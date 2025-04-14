@@ -1,0 +1,20 @@
+# Make sure to check the documentation at https://goreleaser.com
+version: 2
+project_name: chainlink-deployments-framework
+
+builds:
+  - skip: true
+
+release:
+  github:
+    owner: smartcontractkit
+    name: chainlink-deployments-framework
+  prerelease: auto
+  footer: |
+    Check out the official changelog [here](https://github.com/smartcontractkit/chainlink-deployments-framework/blob/main/CHANGELOG.md)
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  disable: true
