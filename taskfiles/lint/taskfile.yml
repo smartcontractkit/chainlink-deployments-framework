@@ -1,0 +1,17 @@
+version: '3'
+
+tasks:
+  default:
+    desc: Runs the linter
+    cmds:
+      - golangci-lint run {{.CLI_ARGS}}
+
+  verbose:
+    desc: Runs the linter in verbose mode
+    cmds:
+      - golangci-lint run --verbose
+
+  fix:
+    desc: Runs the linter in fix mode
+    cmds:
+      - golangci-lint run --fix
