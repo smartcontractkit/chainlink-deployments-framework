@@ -8,7 +8,7 @@ require (
 	github.com/ethereum/go-ethereum v1.15.7
 	github.com/google/uuid v1.6.0
 	github.com/pkg/errors v0.9.1
-	github.com/smartcontractkit/chain-selectors v1.0.49
+	github.com/smartcontractkit/chain-selectors v1.0.50
 	github.com/smartcontractkit/chainlink-common v0.6.0
 	github.com/smartcontractkit/mcms v0.16.1
 	github.com/stretchr/testify v1.10.0
