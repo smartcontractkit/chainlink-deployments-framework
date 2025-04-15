@@ -1,0 +1,148 @@
+version: "2"
+run:
+  timeout: 10m
+linters:
+  enable:
+    - asciicheck
+    - bidichk
+    - bodyclose
+    - containedctx
+    - copyloopvar
+    - decorder
+    - depguard
+    - dogsled
+    - dupword
+    - durationcheck
+    - errchkjson
+    - errname
+    - errorlint
+    - exhaustive
+    - fatcontext
+    - goconst
+    - gosec
+    - intrange
+    - loggercheck
+    - makezero
+    - mirror
+    - misspell
+    - nilerr
+    - nilnil
+    - nlreturn
+    - noctx
+    - nolintlint
+    - paralleltest
+    - perfsprint
+    - prealloc
+    - reassign
+    - revive
+    - spancheck
+    - staticcheck
+    - testifylint
+    - thelper
+    - unconvert
+    - unparam
+    - usestdlibvars
+    - wastedassign
+    - whitespace
+  settings:
+    depguard:
+      rules:
+        main:
+          list-mode: lax
+          deny:
+            - pkg: github.com/gofrs/uuid
+              desc: Use github.com/google/uuid instead
+            - pkg: github.com/satori/go.uuid
+              desc: Use github.com/google/uuid instead
+            - pkg: github.com/test-go/testify/assert
+              desc: Use github.com/stretchr/testify/assert instead
+            - pkg: github.com/test-go/testify/mock
+              desc: Use github.com/stretchr/testify/mock instead
+            - pkg: github.com/test-go/testify/require
+              desc: Use github.com/stretchr/testify/require instead
+            - pkg: go.uber.org/multierr
+              desc: Use the standard library instead, for example https://pkg.go.dev/errors#Join
+            - pkg: gopkg.in/guregu/null.v1
+              desc: Use gopkg.in/guregu/null.v4 instead
+            - pkg: gopkg.in/guregu/null.v2
+              desc: Use gopkg.in/guregu/null.v4 instead
+            - pkg: gopkg.in/guregu/null.v3
+              desc: Use gopkg.in/guregu/null.v4 instead
+            - pkg: github.com/pelletier/go-toml$
+              desc: Use github.com/pelletier/go-toml/v2 instead
+            - pkg: github.com/smartcontractkit/chainlink/v2/core/logger
+              desc: Use github.com/smartcontractkit/chainlink-common/pkg/logger instead
+            - pkg: github.com/pkg/errors
+              desc: Use the standard library instead, for example https://pkg.go.dev/fmt#Errorf
+    goconst:
+      min-len: 5
+    govet:
+      enable:
+        - shadow
+    nlreturn:
+      block-size: 2
+    revive:
+      confidence: 1
+      rules:
+        - name: atomic
+        - name: constant-logical-expr
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: defer
+        - name: dot-imports
+        - name: empty-block
+        - name: error-return
+        - name: error-strings
+        - name: error-naming
+        - name: errorf
+        - name: get-return
+        - name: identical-branches
+        - name: if-return
+        - name: increment-decrement
+        - name: indent-error-flow
+        - name: var-naming
+        - name: var-declaration
+        - name: package-comments
+        - name: range
+        - name: receiver-naming
+        - name: time-naming
+        - name: unexported-return
+        - name: indent-error-flow
+        - name: errorf
+        - name: empty-block
+        - name: string-of-int
+        - name: struct-tag
+        - name: superfluous-else
+        - name: unconditional-recursion
+        - name: unreachable-code
+        - name: redefines-builtin-id
+        - name: waitgroup-by-value
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - goconst
+        path: (.+)_test\.go
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+      - deployment/*
+formatters:
+  enable:
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/smartcontractkit/chainlink-deployments-framework
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

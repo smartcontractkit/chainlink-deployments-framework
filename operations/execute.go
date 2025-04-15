@@ -65,6 +65,7 @@ func ExecuteOperation[IN, OUT, DEP any](
 	if previousReport, found := loadPreviousSuccessfulReport[IN, OUT](b, operation.def, input); found {
 		b.Logger.Infow("Operation already executed. Returning previous result", "id", operation.def.ID,
 			"version", operation.def.Version, "description", operation.def.Description)
+
 		return previousReport, nil
 	}
 
@@ -104,6 +105,7 @@ func ExecuteOperation[IN, OUT, DEP any](
 	if report.Err != nil {
 		return report, report.Err
 	}
+
 	return report, nil
 }
 
@@ -137,6 +139,7 @@ func ExecuteSequence[IN, OUT, DEP any](
 		}
 		b.Logger.Infow("Sequence already executed. Returning previous result", "id", sequence.def.ID,
 			"version", sequence.def.Version, "description", sequence.def.Description)
+
 		return SequenceReport[IN, OUT]{previousReport, executionReports}, nil
 	}
 
@@ -183,6 +186,7 @@ func ExecuteSequence[IN, OUT, DEP any](
 	if report.Err != nil {
 		return SequenceReport[IN, OUT]{report, executionReports}, report.Err
 	}
+
 	return SequenceReport[IN, OUT]{report, executionReports}, nil
 }
 
@@ -221,6 +225,7 @@ func loadPreviousSuccessfulReport[IN, OUT any](
 				continue
 			}
 			b.Logger.Debugw(fmt.Sprintf("Previous %s execution found. Returning its result from Report storage", def.ID), "report_id", report.ID)
+
 			return typedReport, true
 		}
 	}

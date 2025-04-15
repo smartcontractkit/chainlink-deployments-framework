@@ -46,14 +46,15 @@ func isValueSerializable(lggr logger.Logger, v reflect.Value) bool {
 		if v.IsNil() {
 			return true
 		}
+
 		return isValueSerializable(lggr, v.Elem())
 	}
 
 	// Rest of implementation for other types...
-	switch v.Kind() {
+	switch v.Kind() { //nolint:exhaustive // Exhaustive check is not needed here as we don't support all types
 	case reflect.Struct:
 		// Check if each field is serializable
-		for i := 0; i < v.NumField(); i++ {
+		for i := range v.NumField() {
 			field := v.Field(i)
 			fieldType := v.Type().Field(i)
 
@@ -68,12 +69,14 @@ func isValueSerializable(lggr logger.Logger, v reflect.Value) bool {
 				lggr.Errorw("Struct contains unexported field",
 					"struct", v.Type().Name(),
 					"field", v.Type().Field(i).Name)
+
 				return false
 			}
 			if !isValueSerializable(lggr, field) {
 				return false
 			}
 		}
+
 		return true
 
 	case reflect.Map:
@@ -83,15 +86,17 @@ func isValueSerializable(lggr logger.Logger, v reflect.Value) bool {
 				return false
 			}
 		}
+
 		return true
 
 	case reflect.Slice, reflect.Array:
 		// Check each element
-		for i := 0; i < v.Len(); i++ {
+		for i := range v.Len() {
 			if !isValueSerializable(lggr, v.Index(i)) {
 				return false
 			}
 		}
+
 		return true
 
 	default:

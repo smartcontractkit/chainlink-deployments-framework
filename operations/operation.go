@@ -5,7 +5,6 @@ import (
 	"sync"
 
 	"github.com/Masterminds/semver/v3"
-
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 )
 
@@ -71,6 +70,7 @@ func (o *Operation[IN, OUT, DEP]) Description() string {
 func (o *Operation[IN, OUT, DEP]) execute(b Bundle, deps DEP, input IN) (output OUT, err error) {
 	b.Logger.Infow("Executing operation",
 		"id", o.def.ID, "version", o.def.Version, "description", o.def.Description)
+
 	return o.handler(b, deps, input)
 }
 

@@ -113,12 +113,14 @@ func NewMemoryReporter(options ...MemoryReporterOption) *MemoryReporter {
 	for _, opt := range options {
 		opt(reporter)
 	}
+
 	return reporter
 }
 
 // AddReport adds a report to the memory reporter.
 func (e *MemoryReporter) AddReport(report Report[any, any]) error {
 	e.reports = append(e.reports, report)
+
 	return nil
 }
 
@@ -135,6 +137,7 @@ func (e *MemoryReporter) GetReport(id string) (Report[any, any], error) {
 			return report, nil
 		}
 	}
+
 	return Report[any, any]{}, fmt.Errorf("report_id %s: %w", id, ErrReportNotFound)
 }
 
@@ -181,6 +184,7 @@ func (e *RecentReporter) AddReport(report Report[any, any]) error {
 		return err
 	}
 	e.recentReports = append(e.recentReports, report)
+
 	return nil
 }
 
@@ -195,6 +199,7 @@ func NewRecentMemoryReporter(reporter Reporter) *RecentReporter {
 		Reporter:      reporter,
 		recentReports: []Report[any, any]{},
 	}
+
 	return r
 }
 
@@ -226,7 +231,7 @@ func typeReport[IN, OUT any](r Report[any, any]) (Report[IN, OUT], bool) {
 		return Report[IN, OUT]{}, false
 	}
 	var input IN
-	if err := json.Unmarshal(inputBytes, &input); err != nil {
+	if err = json.Unmarshal(inputBytes, &input); err != nil {
 		return Report[IN, OUT]{}, false
 	}
 

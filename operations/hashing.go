@@ -35,6 +35,7 @@ func constructUniqueHashFrom(hashCache *sync.Map, def Definition, input any) (st
 	result := hex.EncodeToString(hash[:])
 
 	hashCache.Store(string(key), result)
+
 	return result, nil
 }
 
@@ -53,6 +54,7 @@ func canonicalizeJSON(value any) ([]byte, error) {
 	if err := decoder.Decode(&data); err != nil {
 		return nil, err
 	}
+
 	// Marshal with sorted keys
 	return json.Marshal(canonicalize(data))
 }
@@ -72,6 +74,7 @@ func canonicalize(data any) any {
 		for _, k := range keys {
 			m[k] = canonicalize(v[k]) // Recursively process values
 		}
+
 		return m
 
 	case []any:
@@ -80,5 +83,6 @@ func canonicalize(data any) any {
 			v[i] = canonicalize(val)
 		}
 	}
+
 	return data
 }

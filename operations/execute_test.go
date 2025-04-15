@@ -7,10 +7,9 @@ import (
 	"testing"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 )
 
 func Test_ExecuteOperation(t *testing.T) {
@@ -96,6 +95,8 @@ func Test_ExecuteOperation(t *testing.T) {
 }
 
 func Test_ExecuteOperation_ErrorReporter(t *testing.T) {
+	t.Parallel()
+
 	op := NewOperation("plus1", semver.MustParse("1.0.0"), "test operation",
 		func(e Bundle, deps any, input int) (output int, err error) {
 			return input + 1, nil
@@ -264,6 +265,7 @@ func Test_ExecuteSequence(t *testing.T) {
 					if tt.simulateOpError {
 						return 0, NewUnrecoverableError(errors.New("fatal error"))
 					}
+
 					return input + 1, nil
 				})
 
@@ -326,6 +328,7 @@ func Test_ExecuteSequence_WithPreviousRun(t *testing.T) {
 		if err != nil {
 			return 0, err
 		}
+
 		return res.Output, nil
 	}
 	handlerWithErrorCalledTimes := 0
@@ -511,6 +514,7 @@ func Test_ExecuteSequence_Unserializable_Data(t *testing.T) {
 					if err != nil {
 						return 0, err
 					}
+
 					return tt.output, nil
 				})
 
@@ -644,6 +648,7 @@ func (e errorReporter) GetReport(id string) (Report[any, any], error) {
 	if e.GetReportError != nil {
 		return Report[any, any]{}, e.GetReportError
 	}
+
 	return e.Reporter.GetReport(id)
 }
 
@@ -651,6 +656,7 @@ func (e errorReporter) GetReports() ([]Report[any, any], error) {
 	if e.GetReportsError != nil {
 		return nil, e.GetReportsError
 	}
+
 	return e.Reporter.GetReports()
 }
 
@@ -658,6 +664,7 @@ func (e errorReporter) AddReport(report Report[any, any]) error {
 	if e.AddReportError != nil {
 		return e.AddReportError
 	}
+
 	return e.Reporter.AddReport(report)
 }
 
@@ -665,5 +672,6 @@ func (e errorReporter) GetExecutionReports(id string) ([]Report[any, any], error
 	if e.GetExecutionReportsError != nil {
 		return nil, e.GetExecutionReportsError
 	}
+
 	return e.Reporter.GetExecutionReports(id)
 }

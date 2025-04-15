@@ -8,11 +8,10 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	chainsel "github.com/smartcontractkit/chain-selectors"
+	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 	mcmslib "github.com/smartcontractkit/mcms"
 	"github.com/smartcontractkit/mcms/types"
 	"github.com/stretchr/testify/require"
-
-	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 )
 
 func Test_IsSerializable(t *testing.T) {
@@ -160,6 +159,8 @@ func Test_IsSerializable(t *testing.T) {
 }
 
 func createMCMSTimelockProposal(t *testing.T) *mcmslib.TimelockProposal {
+	t.Helper()
+
 	futureTime := time.Now().Add(time.Hour * 72).Unix()
 	builder := mcmslib.NewTimelockProposalBuilder()
 	builder.
@@ -198,6 +199,7 @@ func createMCMSTimelockProposal(t *testing.T) *mcmslib.TimelockProposal {
 
 	proposal, err := builder.Build()
 	require.NoError(t, err)
+
 	return proposal
 }
 
