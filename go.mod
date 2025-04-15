@@ -1,4 +1,4 @@
-module chainlink-deployments-framework
+module github.com/smartcontractkit/chainlink-deployments-framework
 
 go 1.24.1
 
