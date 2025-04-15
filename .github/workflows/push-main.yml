@@ -1,0 +1,24 @@
+name: push-main
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  cd-release:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: cd-release
+        uses: smartcontractkit/.github/actions/cicd-changesets@eeb76b5870e3c17856d5a60fd064a053c023b5f5 # cicd-changesets@1.0.0
+        with:
+          # general inputs
+          git-user: app-token-issuer-infra-releng[bot]
+          git-email: app-token-issuer-infra-releng[bot]@users.noreply.github.com
+          # aws inputs
+          aws-region: ${{ secrets.AWS_REGION }}
+          aws-role-arn: ${{ secrets.GATI_AWS_ROLE_CI_CHANGESET_TOKEN_ISSUER_ROLE_ARN }}
+          aws-lambda-url: ${{ secrets.GATI_LAMBDA_ENGOPS_URL }}
