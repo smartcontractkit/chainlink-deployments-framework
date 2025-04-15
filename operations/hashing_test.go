@@ -168,6 +168,7 @@ func Test_constructUniqueHashFrom(t *testing.T) {
 				require.Error(t, err2)
 				require.ErrorContains(t, err1, tt.wantErr)
 				require.ErrorContains(t, err2, tt.wantErr)
+
 				return
 			}
 

@@ -5,11 +5,10 @@ import (
 	"testing"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zapcore"
-
-	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 )
 
 type OpDeps struct{}
