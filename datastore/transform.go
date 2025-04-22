@@ -21,7 +21,7 @@ func ToDefault[CM Cloneable[CM], EM Cloneable[EM]](
 	}
 
 	for _, ar := range addressRefs {
-		err := converted.Addresses().Add(ar)
+		err = converted.Addresses().Add(ar)
 		if err != nil {
 			return nil, fmt.Errorf("error adding AddressRef: for %s@%v: %w",
 				ar.Address, ar.ChainSelector, err)
@@ -63,6 +63,7 @@ func ToDefault[CM Cloneable[CM], EM Cloneable[EM]](
 			// In this case, we don't need to do anything.
 			return converted, nil
 		}
+
 		return nil, err
 	}
 
@@ -103,7 +104,7 @@ func FromDefault[CM Cloneable[CM], EM Cloneable[EM]](
 	}
 
 	for _, ar := range addressRefs {
-		err := converted.Addresses().Add(ar)
+		err = converted.Addresses().Add(ar)
 		if err != nil {
 			return nil, fmt.Errorf("error adding AddressRef: for %s@%v: %w",
 				ar.Address, ar.ChainSelector, err)
@@ -111,7 +112,7 @@ func FromDefault[CM Cloneable[CM], EM Cloneable[EM]](
 	}
 
 	// Copy all contractMetadata over to the new data store and convert the metadata
-	// to to the domain specific type. This is done by unmarshaling the JSON string
+	// to the domain specific type. This is done by unmarshaling the JSON string
 	// representing the metadata into the concrete type.
 	contractMetadata, err := defaultStore.ContractMetadata().Fetch()
 	if err != nil {
@@ -120,7 +121,7 @@ func FromDefault[CM Cloneable[CM], EM Cloneable[EM]](
 
 	for _, cm := range contractMetadata {
 		var metadata CM
-		err := json.Unmarshal([]byte(cm.Metadata.Data), &metadata)
+		err = json.Unmarshal([]byte(cm.Metadata.Data), &metadata)
 		if err != nil {
 			return nil, fmt.Errorf("error unmarshaling ContractMetadata for %s@%v: %w",
 				cm.Address, cm.ChainSelector, err)
@@ -145,6 +146,7 @@ func FromDefault[CM Cloneable[CM], EM Cloneable[EM]](
 			// In this case, we don't need to do anything.
 			return converted.Seal(), nil
 		}
+
 		return nil, err
 	}
 

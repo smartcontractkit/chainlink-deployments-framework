@@ -20,6 +20,8 @@ func (cm CustomMetadata) Clone() CustomMetadata {
 }
 
 func TestToDefault(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		setup    func() MutableDataStore[CustomMetadata, CustomMetadata]
@@ -102,12 +104,13 @@ func TestToDefault(t *testing.T) {
 			require.NoError(t, err)
 
 			require.Equal(t, tt.expected, defaultStore)
-
 		})
 	}
 }
 
 func TestFromDefault(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		setup    func() MutableDataStore[DefaultMetadata, DefaultMetadata]
