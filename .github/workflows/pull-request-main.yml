@@ -16,7 +16,7 @@ jobs:
       actions: read
     steps:
       - name: Linting Go
-        uses: smartcontractkit/.github/actions/ci-lint-go@eeb76b5870e3c17856d5a60fd064a053c023b5f5 # ci-lint-go@1.0.0
+        uses: smartcontractkit/.github/actions/ci-lint-go@b37583d758e3992e0d5bfdb5a36ca243ce53ff59 # ci-lint-go@1.0.0
         with:
           only-new-issues: "false"
           golangci-lint-version: v2.0.2
@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Linting Misc (yaml + sh files)
-        uses: smartcontractkit/.github/actions/ci-lint-misc@eeb76b5870e3c17856d5a60fd064a053c023b5f5 # ci-lint-misc@1.0.0
+        uses: smartcontractkit/.github/actions/ci-lint-misc@b37583d758e3992e0d5bfdb5a36ca243ce53ff59 # ci-lint-misc@1.0.0
 
   ci-test:
     name: Tests
@@ -39,7 +39,7 @@ jobs:
       actions: read
     steps:
       - name: Build and test
-        uses: smartcontractkit/.github/actions/ci-test-go@eeb76b5870e3c17856d5a60fd064a053c023b5f5 # ci-test-go@1.0.0
+        uses: smartcontractkit/.github/actions/ci-test-go@b37583d758e3992e0d5bfdb5a36ca243ce53ff59 # ci-test-go@1.0.0
         with:
           go-test-cmd: go test -coverprofile=coverage.txt $(go list ./...)
           use-go-cache: true
