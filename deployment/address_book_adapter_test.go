@@ -5,10 +5,9 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	chainselectors "github.com/smartcontractkit/chain-selectors"
+	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/smartcontractkit/chainlink/deployment/datastore"
 )
 
 var (
@@ -78,6 +77,61 @@ func TestAddressBookToDataStore(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, linkTokenSol, record.Address)
 		assert.True(t, record.Labels.Contains("testnet"))
+	})
+}
+
+func TestAddressBookToMutableDataStore(t *testing.T) {
+	t.Parallel()
+
+	ab := NewMemoryAddressBook()
+
+	err := ab.Save(chainEthereum, LinkTokenEth, TypeAndVersion{
+		Type:    "LinkToken",
+		Version: *v1,
+		Labels:  NewLabelSet("testLabel"),
+	})
+	require.NoError(t, err)
+
+	// Convert to mutable DataStore
+	ds, err := AddressBookToMutableDataStore[datastore.DefaultMetadata, datastore.DefaultMetadata](ab)
+	require.NoError(t, err)
+
+	t.Run("verifies initial conversion", func(t *testing.T) {
+		t.Run("has expected address count", func(t *testing.T) {
+			addressRefs, err := ds.Addresses().Fetch()
+			require.NoError(t, err)
+			assert.Len(t, addressRefs, 1, "Should have 1 address after conversion")
+		})
+
+		t.Run("has correct address properties", func(t *testing.T) {
+			record, err := ds.Addresses().Get(datastore.NewAddressRefKey(chainEthereum, "LinkToken", v1, ""))
+			require.NoError(t, err)
+			assert.Equal(t, LinkTokenEth, record.Address)
+			assert.True(t, record.Labels.Contains("testLabel"))
+		})
+	})
+
+	t.Run("verifies mutability", func(t *testing.T) {
+		// Add a new address to verify mutability
+		err = ds.Addresses().Upsert(datastore.AddressRef{
+			Address:       usdtETH,
+			ChainSelector: chainEthereum,
+			Type:          "USDT",
+			Version:       v2,
+		})
+		require.NoError(t, err)
+
+		t.Run("has increased address count after addition", func(t *testing.T) {
+			addressRefs, err := ds.Addresses().Fetch()
+			require.NoError(t, err)
+			assert.Len(t, addressRefs, 2, "Should have 2 addresses after adding one to mutable store")
+		})
+
+		t.Run("new address has correct properties", func(t *testing.T) {
+			newRecord, err := ds.Addresses().Get(datastore.NewAddressRefKey(chainEthereum, "USDT", v2, ""))
+			require.NoError(t, err)
+			assert.Equal(t, usdtETH, newRecord.Address)
+		})
 	})
 }
 
@@ -152,61 +206,6 @@ func TestDataStoreToAddressBook(t *testing.T) {
 			assert.Equal(t, ContractType("LinkToken"), tv2.Type)
 			assert.Equal(t, v2.String(), tv2.Version.String())
 			assert.True(t, tv2.Labels.Contains("mainnet"))
-		})
-	})
-}
-
-func TestAddressBookToNewDataStore(t *testing.T) {
-	t.Parallel()
-
-	ab := NewMemoryAddressBook()
-
-	err := ab.Save(chainEthereum, LinkTokenEth, TypeAndVersion{
-		Type:    "LinkToken",
-		Version: *v1,
-		Labels:  NewLabelSet("testLabel"),
-	})
-	require.NoError(t, err)
-
-	// Convert to mutable DataStore
-	ds, err := AddressBookToNewDataStore[datastore.DefaultMetadata, datastore.DefaultMetadata](ab)
-	require.NoError(t, err)
-
-	t.Run("verifies initial conversion", func(t *testing.T) {
-		t.Run("has expected address count", func(t *testing.T) {
-			addressRefs, err := ds.Addresses().Fetch()
-			require.NoError(t, err)
-			assert.Len(t, addressRefs, 1, "Should have 1 address after conversion")
-		})
-
-		t.Run("has correct address properties", func(t *testing.T) {
-			record, err := ds.Addresses().Get(datastore.NewAddressRefKey(chainEthereum, "LinkToken", v1, ""))
-			require.NoError(t, err)
-			assert.Equal(t, LinkTokenEth, record.Address)
-			assert.True(t, record.Labels.Contains("testLabel"))
-		})
-	})
-
-	t.Run("verifies mutability", func(t *testing.T) {
-		// Add a new address to verify mutability
-		err = ds.Addresses().Upsert(datastore.AddressRef{
-			Address:       usdtETH,
-			ChainSelector: chainEthereum,
-			Type:          "USDT",
-			Version:       v2,
-		})
-		require.NoError(t, err)
-
-		t.Run("has increased address count after addition", func(t *testing.T) {
-			addressRefs, err := ds.Addresses().Fetch()
-			require.NoError(t, err)
-			assert.Len(t, addressRefs, 2, "Should have 2 addresses after adding one to mutable store")
-		})
-
-		t.Run("new address has correct properties", func(t *testing.T) {
-			newRecord, err := ds.Addresses().Get(datastore.NewAddressRefKey(chainEthereum, "USDT", v2, ""))
-			require.NoError(t, err)
-			assert.Equal(t, usdtETH, newRecord.Address)
 		})
 	})
 }
