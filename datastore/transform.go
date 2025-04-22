@@ -23,7 +23,8 @@ func ToDefault[CM Cloneable[CM], EM Cloneable[EM]](
 	for _, ar := range addressRefs {
 		err := converted.Addresses().Add(ar)
 		if err != nil {
-			return nil, fmt.Errorf("error adding AddressRef: %w", err)
+			return nil, fmt.Errorf("error adding AddressRef: for %s@%v: %w",
+				ar.Address, ar.ChainSelector, err)
 		}
 	}
 
@@ -37,7 +38,8 @@ func ToDefault[CM Cloneable[CM], EM Cloneable[EM]](
 	for _, cm := range contractMetadata {
 		jsonData, err := json.Marshal(cm.Metadata)
 		if err != nil {
-			return nil, fmt.Errorf("error marshaling ContractMetadata: %w", err)
+			return nil, fmt.Errorf("error marshaling ContractMetadata for %s@%v: %w",
+				cm.Address, cm.ChainSelector, err)
 		}
 
 		err = converted.ContractMetadata().Add(ContractMetadata[DefaultMetadata]{
@@ -48,7 +50,8 @@ func ToDefault[CM Cloneable[CM], EM Cloneable[EM]](
 			},
 		})
 		if err != nil {
-			return nil, fmt.Errorf("error adding ContractMetadata: %w", err)
+			return nil, fmt.Errorf("error adding ContractMetadata for %s@%v: %w",
+				cm.Address, cm.ChainSelector, err)
 		}
 	}
 
@@ -102,7 +105,8 @@ func FromDefault[CM Cloneable[CM], EM Cloneable[EM]](
 	for _, ar := range addressRefs {
 		err := converted.Addresses().Add(ar)
 		if err != nil {
-			return nil, fmt.Errorf("error adding AddressRef: %w", err)
+			return nil, fmt.Errorf("error adding AddressRef: for %s@%v: %w",
+				ar.Address, ar.ChainSelector, err)
 		}
 	}
 
@@ -118,7 +122,8 @@ func FromDefault[CM Cloneable[CM], EM Cloneable[EM]](
 		var metadata CM
 		err := json.Unmarshal([]byte(cm.Metadata.Data), &metadata)
 		if err != nil {
-			return nil, fmt.Errorf("error unmarshaling ContractMetadata: %w", err)
+			return nil, fmt.Errorf("error unmarshaling ContractMetadata for %s@%v: %w",
+				cm.Address, cm.ChainSelector, err)
 		}
 
 		err = converted.ContractMetadata().Add(ContractMetadata[CM]{
@@ -127,7 +132,8 @@ func FromDefault[CM Cloneable[CM], EM Cloneable[EM]](
 			Metadata:      metadata,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("error adding ContractMetadata: %w", err)
+			return nil, fmt.Errorf("error adding ContractMetadata for %s@%v: %w",
+				cm.Address, cm.ChainSelector, err)
 		}
 	}
 
