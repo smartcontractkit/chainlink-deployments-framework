@@ -34,6 +34,7 @@ func addressRefFilter(predicate func(record AddressRef) bool) FilterFunc[Address
 				filtered = append(filtered, record)
 			}
 		}
+
 		return filtered
 	}
 }
@@ -75,6 +76,7 @@ func ContractMetadataByChainSelector[M Cloneable[M]](chainSelector uint64) Filte
 				filtered = append(filtered, record)
 			}
 		}
+
 		return filtered
 	}
 }

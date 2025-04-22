@@ -44,6 +44,7 @@ func (s *MemoryContractMetadataStore[M]) Get(key ContractMetadataKey) (ContractM
 	if idx == -1 {
 		return ContractMetadata[M]{}, ErrContractMetadataNotFound
 	}
+
 	return s.Records[idx].Clone(), nil
 }
 
@@ -56,6 +57,7 @@ func (s *MemoryContractMetadataStore[M]) Fetch() ([]ContractMetadata[M], error) 
 	for _, record := range s.Records {
 		records = append(records, record.Clone())
 	}
+
 	return records, nil
 }
 
@@ -70,6 +72,7 @@ func (s *MemoryContractMetadataStore[M]) Filter(filters ...FilterFunc[ContractMe
 	for _, filter := range filters {
 		records = filter(records)
 	}
+
 	return records
 }
 
@@ -80,6 +83,7 @@ func (s *MemoryContractMetadataStore[M]) indexOf(key ContractMetadataKey) int {
 			return i
 		}
 	}
+
 	return -1
 }
 
@@ -94,6 +98,7 @@ func (s *MemoryContractMetadataStore[M]) Add(record ContractMetadata[M]) error {
 		return ErrContractMetadataExists
 	}
 	s.Records = append(s.Records, record)
+
 	return nil
 }
 
@@ -109,6 +114,7 @@ func (s *MemoryContractMetadataStore[M]) Upsert(record ContractMetadata[M]) erro
 		return nil
 	}
 	s.Records[idx] = record
+
 	return nil
 }
 
@@ -124,6 +130,7 @@ func (s *MemoryContractMetadataStore[M]) Update(record ContractMetadata[M]) erro
 		return ErrContractMetadataNotFound
 	}
 	s.Records[idx] = record
+
 	return nil
 }
 
@@ -138,5 +145,6 @@ func (s *MemoryContractMetadataStore[M]) Delete(key ContractMetadataKey) error {
 		return ErrContractMetadataNotFound
 	}
 	s.Records = append(s.Records[:idx], s.Records[idx+1:]...)
+
 	return nil
 }

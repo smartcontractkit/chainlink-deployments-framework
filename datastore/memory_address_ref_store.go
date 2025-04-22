@@ -43,6 +43,7 @@ func (s *MemoryAddressRefStore) Get(key AddressRefKey) (AddressRef, error) {
 	if idx == -1 {
 		return AddressRef{}, ErrAddressRefNotFound
 	}
+
 	return s.Records[idx].Clone(), nil
 }
 
@@ -55,6 +56,7 @@ func (s *MemoryAddressRefStore) Fetch() ([]AddressRef, error) {
 	for _, record := range s.Records {
 		records = append(records, record.Clone())
 	}
+
 	return records, nil
 }
 
@@ -80,6 +82,7 @@ func (s *MemoryAddressRefStore) indexOf(key AddressRefKey) int {
 			return idx
 		}
 	}
+
 	return -1
 }
 
@@ -94,6 +97,7 @@ func (s *MemoryAddressRefStore) Add(record AddressRef) error {
 		return ErrAddressRefExists
 	}
 	s.Records = append(s.Records, record)
+
 	return nil
 }
 
@@ -109,6 +113,7 @@ func (s *MemoryAddressRefStore) Upsert(record AddressRef) error {
 		return nil
 	}
 	s.Records = append(s.Records, record)
+
 	return nil
 }
 
@@ -124,6 +129,7 @@ func (s *MemoryAddressRefStore) Update(record AddressRef) error {
 		return ErrAddressRefNotFound
 	}
 	s.Records[idx] = record
+
 	return nil
 }
 
@@ -138,5 +144,6 @@ func (s *MemoryAddressRefStore) Delete(key AddressRefKey) error {
 		return ErrAddressRefNotFound
 	}
 	s.Records = append(s.Records[:idx], s.Records[idx+1:]...)
+
 	return nil
 }

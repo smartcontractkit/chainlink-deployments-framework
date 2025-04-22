@@ -14,6 +14,7 @@ func NewLabelSet(labels ...string) LabelSet {
 	for _, lb := range labels {
 		set[lb] = struct{}{}
 	}
+
 	return set
 }
 
@@ -73,6 +74,7 @@ func (ls LabelSet) Equal(other LabelSet) bool {
 			return false
 		}
 	}
+
 	return true
 }
 

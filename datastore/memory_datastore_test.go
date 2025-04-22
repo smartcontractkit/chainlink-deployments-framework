@@ -28,6 +28,7 @@ func TestMemoryDataStore_Merge(t *testing.T) {
 					Qualifier: "qualifier1",
 				})
 				require.NoError(t, err, "Adding data to dataStore2 should not fail")
+
 				return dataStore1, dataStore2
 			},
 			expectedCount: 1,
