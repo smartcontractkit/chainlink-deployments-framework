@@ -97,6 +97,8 @@ func TestToDefault(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			dataStore := tt.setup()
 
 			// Test ToDefault
@@ -186,6 +188,8 @@ func TestFromDefault(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			dataStore := tt.setup()
 
 			// Test FromDefault
