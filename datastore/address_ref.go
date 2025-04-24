@@ -2,7 +2,6 @@ package datastore
 
 import (
 	"errors"
-	"maps"
 
 	"github.com/Masterminds/semver/v3"
 )
@@ -51,7 +50,7 @@ func (r AddressRef) Clone() AddressRef {
 		Version:       r.Version,
 		Qualifier:     r.Qualifier,
 		Address:       r.Address,
-		Labels:        maps.Clone(r.Labels),
+		Labels:        r.Labels.Clone(),
 	}
 }
 
