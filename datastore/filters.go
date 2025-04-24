@@ -39,6 +39,13 @@ func addressRefFilter(predicate func(record AddressRef) bool) FilterFunc[Address
 	}
 }
 
+// AddressRefByAddress returns a filter that only includes records with the provided address
+func AddressRefByAddress(address string) FilterFunc[AddressRefKey, AddressRef] {
+	return addressRefFilter(func(record AddressRef) bool {
+		return record.Address == address
+	})
+}
+
 // AddressRefByChainSelector returns a filter that only includes records with the provided chain.
 func AddressRefByChainSelector(chainSelector uint64) FilterFunc[AddressRefKey, AddressRef] {
 	return addressRefFilter(func(record AddressRef) bool {
