@@ -217,8 +217,8 @@ github.com/shirou/gopsutil v3.21.11+incompatible/go.mod h1:5b4v6he4MtMOwMlS0TUMT
 github.com/shopspring/decimal v1.3.1/go.mod h1:DKyhrW/HYNuLGql+MJL6WCR6knT2jwCFRcu2hWCYk4o=
 github.com/shopspring/decimal v1.4.0 h1:bxl37RwXBklmTi0C79JfXCEBD1cqqHt0bbgBAGFp81k=
 github.com/shopspring/decimal v1.4.0/go.mod h1:gawqmDU56v4yIKSwfBSFip1HdCCXN8/+DMd9qYNcwME=
-github.com/smartcontractkit/chain-selectors v1.0.50 h1:p/1FKI2X/fZqxIHn7P9tlkmSaoYIsTxmPGGkLuWoYy0=
-github.com/smartcontractkit/chain-selectors v1.0.50/go.mod h1:xsKM0aN3YGcQKTPRPDDtPx2l4mlTN1Djmg0VVXV40b8=
+github.com/smartcontractkit/chain-selectors v1.0.52 h1:TMy6hR0s8iZBbYpRFAXJo3HNF21egQ8xeKELQaQos8I=
+github.com/smartcontractkit/chain-selectors v1.0.52/go.mod h1:xsKM0aN3YGcQKTPRPDDtPx2l4mlTN1Djmg0VVXV40b8=
 github.com/smartcontractkit/chainlink-ccip/chains/solana v0.0.0-20250226104101-11778f2ead98 h1:uHdawaiGBA3Xmju92tzbQ2SwsG2DDVJS5E+Jm5QnsQg=
 github.com/smartcontractkit/chainlink-ccip/chains/solana v0.0.0-20250226104101-11778f2ead98/go.mod h1:Bmwq4lNb5tE47sydN0TKetcLEGbgl+VxHEWp4S0LI60=
 github.com/smartcontractkit/chainlink-common v0.6.0 h1:6S9VGl8ObCu9d4zEV/UulKGPL751D0pEmi9CHzPVOaI=
