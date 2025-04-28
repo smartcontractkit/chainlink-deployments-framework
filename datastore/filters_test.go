@@ -7,6 +7,83 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestAddressRefByAddress(t *testing.T) {
+	t.Parallel()
+
+	var (
+		recordOne = AddressRef{
+			Address:       "0x123456",
+			ChainSelector: 1,
+			Type:          "type1",
+			Version:       semver.MustParse("0.5.0"),
+			Qualifier:     "qual1",
+			Labels: NewLabelSet(
+				"label1", "label2", "label3",
+			),
+		}
+
+		recordTwo = AddressRef{
+			Address:       "0x123456",
+			ChainSelector: 2,
+			Type:          "typeX",
+			Version:       semver.MustParse("0.5.0"),
+			Qualifier:     "qual1",
+			Labels: NewLabelSet(
+				"label13", "label23", "label33",
+			),
+		}
+
+		recordThree = AddressRef{
+			Address:       "0x456789",
+			ChainSelector: 2,
+			Type:          "typeX",
+			Version:       semver.MustParse("0.5.0"),
+			Qualifier:     "qual1",
+			Labels: NewLabelSet(
+				"label13", "label23", "label33",
+			),
+		}
+	)
+
+	tests := []struct {
+		name           string
+		givenState     []AddressRef
+		giveAddress    string
+		expectedResult []AddressRef
+	}{
+		{
+			name: "success: returns 2 records with given address",
+			givenState: []AddressRef{
+				recordOne,
+				recordTwo,
+				recordThree,
+			},
+			giveAddress:    "0x123456",
+			expectedResult: []AddressRef{recordOne, recordTwo},
+		},
+		{
+			name: "success: returns 1 record with given address",
+			givenState: []AddressRef{
+				recordOne,
+				recordTwo,
+				recordThree,
+			},
+			giveAddress:    "0x456789",
+			expectedResult: []AddressRef{recordThree},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			filter := AddressRefByAddress(tt.giveAddress)
+			filteredRecords := filter(tt.givenState)
+			assert.Equal(t, tt.expectedResult, filteredRecords)
+		})
+	}
+}
+
 func TestAddressRefByChainSelector(t *testing.T) {
 	t.Parallel()
 

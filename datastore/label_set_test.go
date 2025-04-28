@@ -1,28 +1,35 @@
 package datastore
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func TestNewLabelSet(t *testing.T) {
+func Test_NewLabelSet(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name     string
-		input    []string
-		expected []string
+		name string
+		give []string
+		want []string
 	}{
 		{
-			name:     "no labels",
-			input:    []string{},
-			expected: []string{},
+			name: "no labels",
+			give: []string{},
+			want: []string{},
 		},
 		{
-			name:     "some labels",
-			input:    []string{"foo", "bar"},
-			expected: []string{"foo", "bar"},
+			name: "some labels",
+			give: []string{"foo", "bar"},
+			want: []string{"foo", "bar"},
+		},
+		{
+			name: "non unique labels",
+			give: []string{"foo", "bar", "foo"},
+			want: []string{"foo", "bar"},
 		},
 	}
 
@@ -30,72 +37,98 @@ func TestNewLabelSet(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			ms := NewLabelSet(tt.input...)
-			assert.Len(t, ms, len(tt.expected), "unexpected number of labels in the set")
-			for _, label := range tt.expected {
-				assert.True(t, ms.Contains(label), "expected label '%s' in the set", label)
+			got := NewLabelSet(tt.give...)
+
+			require.Equal(t, len(tt.want), got.Length())
+			for _, l := range tt.want {
+				assert.True(t, got.Contains(l), "expected label '%s' in the set", l)
 			}
 		})
 	}
 }
 
-func TestLabelSet_Add(t *testing.T) {
+func Test_LabelSet_Add(t *testing.T) {
 	t.Parallel()
 
-	ms := NewLabelSet("initial")
-	ms.Add("new")
+	labels := NewLabelSet("initial")
+	labels.Add("new")
 
-	assert.True(t, ms.Contains("initial"), "expected 'initial' in set")
-	assert.True(t, ms.Contains("new"), "expected 'new' in set")
-	assert.Len(t, ms, 2, "expected 2 distinct labels in set")
+	require.Equal(t, 2, labels.Length())
+	assert.True(t, labels.Contains("initial"))
+	assert.True(t, labels.Contains("new"))
 
 	// Add duplicate "new" again; size should remain 2
-	ms.Add("new")
-	assert.Len(t, ms, 2, "expected size to remain 2 after adding a duplicate")
+	labels.Add("new")
+	require.Equal(t, 2, labels.Length())
 }
 
-func TestLabelSet_Remove(t *testing.T) {
+func Test_LabelSet_Remove(t *testing.T) {
 	t.Parallel()
 
-	ms := NewLabelSet("remove_me", "keep")
-	ms.Remove("remove_me")
+	labels := NewLabelSet("remove_me", "keep")
+	labels.Remove("remove_me")
 
-	assert.False(t, ms.Contains("remove_me"), "expected 'remove_me' to be removed")
-	assert.True(t, ms.Contains("keep"), "expected 'keep' to remain")
-	assert.Len(t, ms, 1, "expected set size to be 1 after removal")
+	require.Equal(t, 1, labels.Length())
+	assert.False(t, labels.Contains("remove_me"))
+	assert.True(t, labels.Contains("keep"))
 
 	// Removing a non-existent item shouldn't change the size
-	ms.Remove("non_existent")
-	assert.Len(t, ms, 1, "expected size to remain 1 after removing a non-existent item")
+	labels.Remove("non_existent")
+	require.Equal(t, 1, labels.Length())
 }
 
-func TestLabelSet_Contains(t *testing.T) {
+func Test_LabelSet_Contains(t *testing.T) {
 	t.Parallel()
 
-	ms := NewLabelSet("foo", "bar")
+	got := NewLabelSet("foo", "bar")
 
-	assert.True(t, ms.Contains("foo"))
-	assert.True(t, ms.Contains("bar"))
-	assert.False(t, ms.Contains("baz"))
+	assert.True(t, got.Contains("foo"))
+	assert.True(t, got.Contains("bar"))
+	assert.False(t, got.Contains("baz"))
 }
 
-func TestLabelSet_List(t *testing.T) {
+func Test_LabelSet_String(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name     string
-		input    []string
-		expected []string
+		name   string
+		labels LabelSet
+		want   string
 	}{
 		{
-			name:     "list with items",
-			input:    []string{"foo", "bar", "baz"},
-			expected: []string{"bar", "baz", "foo"},
+			name:   "Empty LabelSet",
+			labels: NewLabelSet(),
+			want:   "",
 		},
 		{
-			name:     "empty list",
-			input:    []string{},
-			expected: []string{},
+			name:   "Single label",
+			labels: NewLabelSet("alpha"),
+			want:   "alpha",
+		},
+		{
+			name:   "Multiple labels in random order",
+			labels: NewLabelSet("beta", "gamma", "alpha"),
+			want:   "alpha beta gamma",
+		},
+		{
+			name:   "Labels with special characters",
+			labels: NewLabelSet("beta", "gamma!", "@alpha"),
+			want:   "@alpha beta gamma!",
+		},
+		{
+			name:   "Labels with spaces",
+			labels: NewLabelSet("beta", "gamma delta", "alpha"),
+			want:   "alpha beta gamma delta",
+		},
+		{
+			name:   "Labels added in different orders",
+			labels: NewLabelSet("delta", "beta", "alpha"),
+			want:   "alpha beta delta",
+		},
+		{
+			name:   "Labels with duplicate additions",
+			labels: NewLabelSet("alpha", "beta", "alpha", "gamma", "beta"),
+			want:   "alpha beta gamma",
 		},
 	}
 
@@ -103,58 +136,29 @@ func TestLabelSet_List(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			ms := NewLabelSet(tt.input...)
-			labels := ms.List()
-
-			assert.Len(t, labels, len(tt.expected), "unexpected number of labels in the list")
-			assert.ElementsMatch(t, tt.expected, labels, "unexpected labels in the list")
+			got := tt.labels.String()
+			assert.Equal(t, tt.want, got, "LabelSet.String() should return the expected sorted string")
 		})
 	}
 }
 
-// TestLabelSet_String tests the String() method of the LabelSet type.
-func TestLabelSet_String(t *testing.T) {
+func Test_LabelSet_List(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name     string
-		labels   LabelSet
-		expected string
+		name string
+		give []string
+		want []string
 	}{
 		{
-			name:     "Empty LabelSet",
-			labels:   NewLabelSet(),
-			expected: "",
+			name: "list with items",
+			give: []string{"foo", "bar", "baz"},
+			want: []string{"bar", "baz", "foo"},
 		},
 		{
-			name:     "Single label",
-			labels:   NewLabelSet("alpha"),
-			expected: "alpha",
-		},
-		{
-			name:     "Multiple labels in random order",
-			labels:   NewLabelSet("beta", "gamma", "alpha"),
-			expected: "alpha beta gamma",
-		},
-		{
-			name:     "Labels with special characters",
-			labels:   NewLabelSet("beta", "gamma!", "@alpha"),
-			expected: "@alpha beta gamma!",
-		},
-		{
-			name:     "Labels with spaces",
-			labels:   NewLabelSet("beta", "gamma delta", "alpha"),
-			expected: "alpha beta gamma delta",
-		},
-		{
-			name:     "Labels added in different orders",
-			labels:   NewLabelSet("delta", "beta", "alpha"),
-			expected: "alpha beta delta",
-		},
-		{
-			name:     "Labels with duplicate additions",
-			labels:   NewLabelSet("alpha", "beta", "alpha", "gamma", "beta"),
-			expected: "alpha beta gamma",
+			name: "empty list",
+			give: []string{},
+			want: []string{},
 		},
 	}
 
@@ -162,74 +166,77 @@ func TestLabelSet_String(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			result := tt.labels.String()
-			assert.Equal(t, tt.expected, result, "LabelSet.String() should return the expected sorted string")
+			ms := NewLabelSet(tt.give...)
+			got := ms.List()
+
+			assert.Len(t, got, len(tt.want), "unexpected number of labels in the list")
+			assert.ElementsMatch(t, tt.want, got, "unexpected labels in the list")
 		})
 	}
 }
 
-func TestLabelSet_Equal(t *testing.T) {
+func Test_LabelSet_Equal(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name     string
-		set1     LabelSet
-		set2     LabelSet
-		expected bool
+		name string
+		set1 LabelSet
+		set2 LabelSet
+		want bool
 	}{
 		{
-			name:     "Both sets empty",
-			set1:     NewLabelSet(),
-			set2:     NewLabelSet(),
-			expected: true,
+			name: "Both sets empty",
+			set1: NewLabelSet(),
+			set2: NewLabelSet(),
+			want: true,
 		},
 		{
-			name:     "First set empty, second set non-empty",
-			set1:     NewLabelSet(),
-			set2:     NewLabelSet("label1"),
-			expected: false,
+			name: "First set empty, second set non-empty",
+			set1: NewLabelSet(),
+			set2: NewLabelSet("label1"),
+			want: false,
 		},
 		{
-			name:     "First set non-empty, second set empty",
-			set1:     NewLabelSet("label1"),
-			set2:     NewLabelSet(),
-			expected: false,
+			name: "First set non-empty, second set empty",
+			set1: NewLabelSet("label1"),
+			set2: NewLabelSet(),
+			want: false,
 		},
 		{
-			name:     "Identical sets with single label",
-			set1:     NewLabelSet("label1"),
-			set2:     NewLabelSet("label1"),
-			expected: true,
+			name: "Identical sets with single label",
+			set1: NewLabelSet("label1"),
+			set2: NewLabelSet("label1"),
+			want: true,
 		},
 		{
-			name:     "Identical sets with multiple labels",
-			set1:     NewLabelSet("label1", "label2", "label3"),
-			set2:     NewLabelSet("label3", "label2", "label1"), // Different order
-			expected: true,
+			name: "Identical sets with multiple labels",
+			set1: NewLabelSet("label1", "label2", "label3"),
+			set2: NewLabelSet("label3", "label2", "label1"), // Different order
+			want: true,
 		},
 		{
-			name:     "Different sets, same size",
-			set1:     NewLabelSet("label1", "label2", "label3"),
-			set2:     NewLabelSet("label1", "label2", "label4"),
-			expected: false,
+			name: "Different sets, same size",
+			set1: NewLabelSet("label1", "label2", "label3"),
+			set2: NewLabelSet("label1", "label2", "label4"),
+			want: false,
 		},
 		{
-			name:     "Different sets, different sizes",
-			set1:     NewLabelSet("label1", "label2"),
-			set2:     NewLabelSet("label1", "label2", "label3"),
-			expected: false,
+			name: "Different sets, different sizes",
+			set1: NewLabelSet("label1", "label2"),
+			set2: NewLabelSet("label1", "label2", "label3"),
+			want: false,
 		},
 		{
-			name:     "Subset sets",
-			set1:     NewLabelSet("label1", "label2"),
-			set2:     NewLabelSet("label1", "label2", "label3"),
-			expected: false,
+			name: "Subset sets",
+			set1: NewLabelSet("label1", "label2"),
+			set2: NewLabelSet("label1", "label2", "label3"),
+			want: false,
 		},
 		{
-			name:     "Disjoint sets",
-			set1:     NewLabelSet("label1", "label2"),
-			set2:     NewLabelSet("label3", "label4"),
-			expected: false,
+			name: "Disjoint sets",
+			set1: NewLabelSet("label1", "label2"),
+			set2: NewLabelSet("label3", "label4"),
+			want: false,
 		},
 	}
 
@@ -237,8 +244,132 @@ func TestLabelSet_Equal(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			result := tt.set1.Equal(tt.set2)
-			assert.Equal(t, tt.expected, result, "Equal(%v, %v) should be %v", tt.set1, tt.set2, tt.expected)
+			got := tt.set1.Equal(tt.set2)
+			assert.Equal(t, tt.want, got, "Equal(%v, %v) should be %v", tt.set1, tt.set2, tt.want)
+		})
+	}
+}
+
+func Test_LabelSet_Length(t *testing.T) {
+	t.Parallel()
+
+	got := NewLabelSet("foo", "bar", "baz")
+	require.Equal(t, 3, got.Length())
+}
+
+func Test_LabelSet_IsEmpty(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		give LabelSet
+		want bool
+	}{
+		{
+			name: "Empty set",
+			give: NewLabelSet(),
+			want: true,
+		},
+		{
+			name: "Non-empty set",
+			give: NewLabelSet("foo"),
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := tt.give.IsEmpty()
+			assert.Equal(t, tt.want, got, "IsEmpty() should return %v", tt.want)
+		})
+	}
+}
+
+func Test_LabelSet_Clone(t *testing.T) {
+	t.Parallel()
+
+	original := NewLabelSet("foo", "bar", "baz")
+	clone := original.Clone()
+
+	assert.Equal(t, original, clone, "Clone() should return an equal LabelSet")
+	assert.NotSame(t, &original, &clone, "Clone() should return a different LabelSet instance")
+
+	// Modify the clone and check that the original is unchanged
+	clone.Add("new")
+	assert.NotEqual(t, original, clone, "Modifying the clone should not affect the original")
+}
+
+func Test_LabelSet_MarshalJSON(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		give LabelSet
+		want string
+	}{
+		{
+			name: "Empty set",
+			give: NewLabelSet(),
+			want: `[]`,
+		},
+		{
+			name: "Single label",
+			give: NewLabelSet("foo"),
+			want: `["foo"]`,
+		},
+		{
+			name: "Multiple labels",
+			give: NewLabelSet("foo", "bar"),
+			want: `["bar","foo"]`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := json.Marshal(tt.give)
+			require.NoError(t, err)
+			assert.JSONEq(t, tt.want, string(got))
+		})
+	}
+}
+
+func Test_LabelSet_UnmarshalJSON(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		give string
+		want LabelSet
+	}{
+		{
+			name: "Empty set",
+			give: `[]`,
+			want: NewLabelSet(),
+		},
+		{
+			name: "Single label",
+			give: `["foo"]`,
+			want: NewLabelSet("foo"),
+		},
+		{
+			name: "Multiple labels",
+			give: `["foo", "bar"]`,
+			want: NewLabelSet("bar", "foo"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var got LabelSet
+			err := json.Unmarshal([]byte(tt.give), &got)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }

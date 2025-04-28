@@ -1,43 +1,51 @@
 package datastore
 
 import (
-	"sort"
+	"encoding/json"
+	"maps"
+	"slices"
 	"strings"
 )
 
 // LabelSet represents a set of labels on an address book entry.
-type LabelSet map[string]struct{}
+type LabelSet struct {
+	elements map[string]struct{}
+}
 
 // NewLabelSet initializes a new LabelSet with any number of labels.
 func NewLabelSet(labels ...string) LabelSet {
-	set := make(LabelSet)
-	for _, lb := range labels {
-		set[lb] = struct{}{}
+	set := make(map[string]struct{}, len(labels))
+	for _, l := range labels {
+		set[l] = struct{}{}
 	}
 
-	return set
+	return LabelSet{
+		elements: set,
+	}
 }
 
 // Add inserts a label into the set.
-func (ls LabelSet) Add(label string) {
-	ls[label] = struct{}{}
+func (s LabelSet) Add(label string) {
+	s.elements[label] = struct{}{}
 }
 
 // Remove deletes a label from the set, if it exists.
-func (ls LabelSet) Remove(label string) {
-	delete(ls, label)
+func (s LabelSet) Remove(label string) {
+	delete(s.elements, label)
 }
 
 // Contains checks if the set contains the given label.
-func (ls LabelSet) Contains(label string) bool {
-	_, ok := ls[label]
+func (s LabelSet) Contains(label string) bool {
+	_, ok := s.elements[label]
+
 	return ok
 }
 
 // String returns the labels as a sorted, space-separated string.
-// It implements the fmt.Stringer interface.
-func (ls LabelSet) String() string {
-	labels := ls.List()
+//
+// Implements the fmt.Stringer interface.
+func (s LabelSet) String() string {
+	labels := s.List()
 	if len(labels) == 0 {
 		return ""
 	}
@@ -47,38 +55,60 @@ func (ls LabelSet) String() string {
 }
 
 // List returns the labels as a sorted slice of strings.
-func (ls LabelSet) List() []string {
-	if len(ls) == 0 {
+func (s LabelSet) List() []string {
+	if len(s.elements) == 0 {
 		return []string{}
 	}
 
 	// Collect labels into a slice
-	labels := make([]string, 0, len(ls))
-	for label := range ls {
-		labels = append(labels, label)
-	}
+	labels := slices.Collect(maps.Keys(s.elements))
 
 	// Sort the labels to ensure consistent ordering
-	sort.Strings(labels)
+	slices.Sort(labels)
 
 	return labels
 }
 
 // Equal checks if two LabelSets are equal.
-func (ls LabelSet) Equal(other LabelSet) bool {
-	if len(ls) != len(other) {
-		return false
-	}
-	for label := range ls {
-		if _, ok := other[label]; !ok {
-			return false
-		}
-	}
+func (s LabelSet) Equal(other LabelSet) bool {
+	return maps.Equal(s.elements, other.elements)
+}
 
-	return true
+// Len returns the number of labels in the set.
+func (s LabelSet) Length() int {
+	return len(s.elements)
 }
 
 // IsEmpty checks if the LabelSet is empty.
-func (ls LabelSet) IsEmpty() bool {
-	return len(ls) == 0
+func (s LabelSet) IsEmpty() bool {
+	return s.Length() == 0
+}
+
+// Clone creates a copy of the LabelSet.
+func (s LabelSet) Clone() LabelSet {
+	return LabelSet{
+		elements: maps.Clone(s.elements),
+	}
+}
+
+// MarshalJSON marshals the LabelSet as a JSON array of strings.
+//
+// Implements the json.Marshaler interface.
+func (s LabelSet) MarshalJSON() ([]byte, error) {
+	return json.Marshal(s.List())
+}
+
+// UnmarshalJSON unmarshals a JSON array of strings into the LabelSet.
+//
+// Implements the json.Unmarshaler interface.
+func (s *LabelSet) UnmarshalJSON(data []byte) error {
+	var labels []string
+	if err := json.Unmarshal(data, &labels); err != nil {
+		return err
+	}
+
+	// Initialize the LabelSet with the unmarshaled labels
+	*s = NewLabelSet(labels...)
+
+	return nil
 }
