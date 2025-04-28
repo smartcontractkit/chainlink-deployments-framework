@@ -44,7 +44,7 @@ type SequenceReport[IN, OUT any] struct {
 // This is useful when we want to return the report as a generic type in the changeset.output.
 func (r SequenceReport[IN, OUT]) ToGenericSequenceReport() SequenceReport[any, any] {
 	return SequenceReport[any, any]{
-		Report:           genericReport[IN, OUT](r.Report),
+		Report:           genericReport(r.Report),
 		ExecutionReports: r.ExecutionReports,
 	}
 }
