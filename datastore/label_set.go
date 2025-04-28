@@ -89,10 +89,6 @@ func (s *LabelSet) IsEmpty() bool {
 
 // Clone creates a copy of the LabelSet.
 func (s *LabelSet) Clone() LabelSet {
-	if len(s.elements) == 0 {
-		return NewLabelSet()
-	}
-
 	return LabelSet{
 		elements: maps.Clone(s.elements),
 	}
@@ -101,7 +97,7 @@ func (s *LabelSet) Clone() LabelSet {
 // MarshalJSON marshals the LabelSet as a JSON array of strings.
 //
 // Implements the json.Marshaler interface.
-func (s *LabelSet) MarshalJSON() ([]byte, error) {
+func (s LabelSet) MarshalJSON() ([]byte, error) {
 	return json.Marshal(s.List())
 }
 
