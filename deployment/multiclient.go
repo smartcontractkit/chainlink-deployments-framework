@@ -231,3 +231,85 @@ func (mc *MultiClient) dialWithRetry(rpc RPC, lggr logger.Logger) (*ethclient.Cl
 	}
 	return client, nil
 }
+
+// The following methods are reimplemented to improve debuggability and better surface
+// errors that may occur when using ethclient.Client methods directly.
+// This is a temporary solution and may be removed in the future.
+func (mc *MultiClient) SuggestGasPrice(ctx context.Context) (*big.Int, error) {
+	var gasPrice *big.Int
+	err := mc.callWithDebug("SuggestGasPrice", func(client *ethclient.Client) error {
+		var err error
+		gasPrice, err = client.SuggestGasPrice(ctx)
+		return err
+	})
+	return gasPrice, err
+}
+
+func (mc *MultiClient) SuggestGasTipCap(ctx context.Context) (*big.Int, error) {
+	var gasTipCap *big.Int
+	err := mc.callWithDebug("SuggestGasTipCap", func(client *ethclient.Client) error {
+		var err error
+		gasTipCap, err = client.SuggestGasTipCap(ctx)
+		return err
+	})
+	return gasTipCap, err
+}
+
+func (mc *MultiClient) PendingCodeAt(ctx context.Context, account common.Address) ([]byte, error) {
+	var code []byte
+	err := mc.callWithDebug("PendingCodeAt", func(client *ethclient.Client) error {
+		var err error
+		code, err = client.PendingCodeAt(ctx, account)
+		return err
+	})
+	return code, err
+}
+
+func (mc *MultiClient) PendingNonceAt(ctx context.Context, account common.Address) (uint64, error) {
+	var count uint64
+	err := mc.callWithDebug("PendingNonceAt", func(client *ethclient.Client) error {
+		var err error
+		count, err = client.PendingNonceAt(ctx, account)
+		return err
+	})
+	return count, err
+}
+
+func (mc *MultiClient) EstimateGas(ctx context.Context, call ethereum.CallMsg) (uint64, error) {
+	var gas uint64
+	err := mc.callWithDebug("EstimateGas", func(client *ethclient.Client) error {
+		var err error
+		gas, err = client.EstimateGas(ctx, call)
+		return err
+	})
+	return gas, err
+}
+
+func (mc *MultiClient) HeaderByNumber(ctx context.Context, number *big.Int) (*types.Header, error) {
+	var header *types.Header
+	err := mc.callWithDebug("HeaderByNumber", func(client *ethclient.Client) error {
+		var err error
+		header, err = client.HeaderByNumber(ctx, number)
+		return err
+	})
+	return header, err
+}
+
+func (mc *MultiClient) BalanceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error) {
+	var balance *big.Int
+	err := mc.callWithDebug("BalanceAt", func(client *ethclient.Client) error {
+		var err error
+		balance, err = client.BalanceAt(ctx, account, blockNumber)
+		return err
+	})
+	return balance, err
+}
+
+func (mc *MultiClient) callWithDebug(callName string, call func(*ethclient.Client) error) error {
+	var err error
+	err = call(mc.Client)
+	if err != nil {
+		mc.lggr.Debugf("error '%s' for call %s for chain %s", MaybeDataErr(err), callName, mc.chainName)
+	}
+	return err
+}
