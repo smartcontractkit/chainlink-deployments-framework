@@ -60,6 +60,16 @@ func Test_LabelSet_Add(t *testing.T) {
 	// Add duplicate "new" again; size should remain 2
 	labels.Add("new")
 	require.Equal(t, 2, labels.Length())
+
+	t.Run("Add to nil elements LabelSet", func(t *testing.T) {
+		t.Parallel()
+
+		var ls LabelSet
+		ls.Add("foo")
+
+		require.Equal(t, 1, ls.Length())
+		assert.True(t, ls.Contains("foo"))
+	})
 }
 
 func Test_LabelSet_Remove(t *testing.T) {
@@ -288,17 +298,27 @@ func Test_LabelSet_IsEmpty(t *testing.T) {
 }
 
 func Test_LabelSet_Clone(t *testing.T) {
-	t.Parallel()
+	t.Run("Clone non-empty", func(t *testing.T) {
+		t.Parallel()
 
-	original := NewLabelSet("foo", "bar", "baz")
-	clone := original.Clone()
+		original := NewLabelSet("foo", "bar", "baz")
+		clone := original.Clone()
 
-	assert.Equal(t, original, clone, "Clone() should return an equal LabelSet")
-	assert.NotSame(t, &original, &clone, "Clone() should return a different LabelSet instance")
+		assert.Equal(t, original, clone, "Clone() should return an equal LabelSet")
+		assert.NotSame(t, &original, &clone, "Clone() should return a different LabelSet instance")
 
-	// Modify the clone and check that the original is unchanged
-	clone.Add("new")
-	assert.NotEqual(t, original, clone, "Modifying the clone should not affect the original")
+		clone.Add("new")
+		assert.NotEqual(t, original, clone, "Modifying the clone should not affect the original")
+	})
+
+	t.Run("Clone empty", func(t *testing.T) {
+		t.Parallel()
+		empty := NewLabelSet()
+		cloned := empty.Clone()
+
+		assert.Equal(t, empty, cloned, "Cloning an empty LabelSet should return an equal empty LabelSet")
+		assert.NotSame(t, &empty, &cloned, "Cloned empty LabelSet should not be the same reference")
+	})
 }
 
 func Test_LabelSet_MarshalJSON(t *testing.T) {
@@ -330,7 +350,7 @@ func Test_LabelSet_MarshalJSON(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := json.Marshal(tt.give)
+			got, err := json.Marshal(&tt.give)
 			require.NoError(t, err)
 			assert.JSONEq(t, tt.want, string(got))
 		})
