@@ -25,17 +25,20 @@ func NewLabelSet(labels ...string) LabelSet {
 }
 
 // Add inserts a label into the set.
-func (s LabelSet) Add(label string) {
+func (s *LabelSet) Add(label string) {
+	if s.elements == nil {
+		s.elements = make(map[string]struct{})
+	}
 	s.elements[label] = struct{}{}
 }
 
 // Remove deletes a label from the set, if it exists.
-func (s LabelSet) Remove(label string) {
+func (s *LabelSet) Remove(label string) {
 	delete(s.elements, label)
 }
 
 // Contains checks if the set contains the given label.
-func (s LabelSet) Contains(label string) bool {
+func (s *LabelSet) Contains(label string) bool {
 	_, ok := s.elements[label]
 
 	return ok
@@ -44,7 +47,7 @@ func (s LabelSet) Contains(label string) bool {
 // String returns the labels as a sorted, space-separated string.
 //
 // Implements the fmt.Stringer interface.
-func (s LabelSet) String() string {
+func (s *LabelSet) String() string {
 	labels := s.List()
 	if len(labels) == 0 {
 		return ""
@@ -55,7 +58,7 @@ func (s LabelSet) String() string {
 }
 
 // List returns the labels as a sorted slice of strings.
-func (s LabelSet) List() []string {
+func (s *LabelSet) List() []string {
 	if len(s.elements) == 0 {
 		return []string{}
 	}
@@ -70,22 +73,22 @@ func (s LabelSet) List() []string {
 }
 
 // Equal checks if two LabelSets are equal.
-func (s LabelSet) Equal(other LabelSet) bool {
+func (s *LabelSet) Equal(other LabelSet) bool {
 	return maps.Equal(s.elements, other.elements)
 }
 
-// Len returns the number of labels in the set.
-func (s LabelSet) Length() int {
+// Length returns the number of labels in the set.
+func (s *LabelSet) Length() int {
 	return len(s.elements)
 }
 
 // IsEmpty checks if the LabelSet is empty.
-func (s LabelSet) IsEmpty() bool {
+func (s *LabelSet) IsEmpty() bool {
 	return s.Length() == 0
 }
 
 // Clone creates a copy of the LabelSet.
-func (s LabelSet) Clone() LabelSet {
+func (s *LabelSet) Clone() LabelSet {
 	return LabelSet{
 		elements: maps.Clone(s.elements),
 	}
