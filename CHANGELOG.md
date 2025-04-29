@@ -1,5 +1,12 @@
 # chainlink-deployments-framework
 
+## 0.0.6
+
+### Patch Changes
+
+- [#40](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/40) [`4331827`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/43318272cbc9a58723c6e54bbdaaa2c98ef6d3b2) Thanks [@ajaskolski](https://github.com/ajaskolski)! - feat: migrate chains and environment from chainlink repo
+  feat: migrate changeset and changeset output from chainlink repo
+
 ## 0.0.5
 
 ### Patch Changes
