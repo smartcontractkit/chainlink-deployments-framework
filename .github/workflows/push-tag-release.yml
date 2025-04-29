@@ -25,17 +25,3 @@ jobs:
           goreleaser-version: '~> v2'
           goreleaser-dist: goreleaser-pro
           goreleaser-key: ${{ secrets.GORELEASER_KEY }}
-
-# todo: enable once i have the secret setup (pending security ticket)
-#      - name: Set tag for Slack notification
-#        run: echo "TAG=${{ github.ref_name }}" >> "$GITHUB_ENV"
-#        shell: bash
-#
-#      - name: Notify Slack
-#        uses: smartcontractkit/.github/actions/slack-notify-git-ref@eeb76b5870e3c17856d5a60fd064a053c023b5f5 # slack-notify-git-ref@1.0.0
-#        with:
-#          slack-channel-id: ${{ secrets.SLACK_CHANNEL_CLDF}}
-#          slack-bot-token: ${{ secrets.SLACK_BOT_TOKEN_RELENG }} # Releng Bot
-#          git-ref: ${{ env.TAG }}
-#          git-ref-type: tag
-#          changelog-url: 'https://github.com/${{ github.repository }}/releases/tag/${{ env.TAG }}'
