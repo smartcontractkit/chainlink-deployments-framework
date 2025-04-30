@@ -305,6 +305,26 @@ func (mc *MultiClient) BalanceAt(ctx context.Context, account common.Address, bl
 	return balance, err
 }
 
+func (mc *MultiClient) FilterLogs(ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error) {
+	var logs []types.Log
+	err := mc.callWithDebug("FilterLogs", func(client *ethclient.Client) error {
+		var err error
+		logs, err = client.FilterLogs(ctx, q)
+		return err
+	})
+	return logs, err
+}
+
+func (mc *MultiClient) SubscribeFilterLogs(ctx context.Context, q ethereum.FilterQuery, ch chan<- types.Log) (ethereum.Subscription, error) {
+	var sub ethereum.Subscription
+	err := mc.callWithDebug("SubscribeFilterLogs", func(client *ethclient.Client) error {
+		var err error
+		sub, err = client.SubscribeFilterLogs(ctx, q, ch)
+		return err
+	})
+	return sub, err
+}
+
 func (mc *MultiClient) callWithDebug(callName string, call func(*ethclient.Client) error) error {
 	mc.lggr.Debugf("Calling %s for chain %s", callName, mc.chainName)
 	var err error
