@@ -205,7 +205,7 @@ func (mc *MultiClient) retryWithBackups(opName string, op func(*ethclient.Client
 		}
 		mc.lggr.Infof("Client at index %d failed, trying next client chain %s", i, mc.chainName)
 	}
-	return errors.Join(err, fmt.Errorf("all backup clients %v failed for chain %s", mc.Backups, mc.chainName))
+	return errors.Join(err, fmt.Errorf("all backup clients failed for chain %s", mc.chainName))
 }
 
 func (mc *MultiClient) dialWithRetry(rpc RPC, lggr logger.Logger) (*ethclient.Client, error) {
