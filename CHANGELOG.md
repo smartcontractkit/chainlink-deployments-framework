@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.0.7
+
+### Patch Changes
+
+- [#44](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/44) [`f3f046f`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/f3f046f4fd3b0e24aac0abeb5208dafa7f8ba263) Thanks [@ajaskolski](https://github.com/ajaskolski)! - chore:updates for aptos from chainlink
+
 ## 0.0.6
 
 ### Patch Changes
