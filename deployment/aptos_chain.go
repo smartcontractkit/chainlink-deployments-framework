@@ -10,4 +10,6 @@ type AptosChain struct {
 	Client         aptos.AptosRpcClient
 	DeployerSigner aptos.TransactionSigner
 	URL            string
+
+	Confirm func(txHash string, opts ...any) error
 }
