@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.0.8
+
+### Patch Changes
+
+- [#43](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/43) [`1691ef8`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/1691ef8020546b400b0ec939616b8dea187f94cb) Thanks [@giogam](https://github.com/giogam)! - feat(multiclient): adds debug logs to ethclient direct calls
+
 ## 0.0.7
 
 ### Patch Changes
