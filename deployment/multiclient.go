@@ -306,10 +306,11 @@ func (mc *MultiClient) BalanceAt(ctx context.Context, account common.Address, bl
 }
 
 func (mc *MultiClient) callWithDebug(callName string, call func(*ethclient.Client) error) error {
+	mc.lggr.Debugf("Calling %s for chain %s", callName, mc.chainName)
 	var err error
 	err = call(mc.Client)
 	if err != nil {
-		mc.lggr.Debugf("error '%s' for call %s for chain %s", MaybeDataErr(err), callName, mc.chainName)
+		mc.lggr.Errorf("error '%s' when calling %s for chain %s", MaybeDataErr(err), callName, mc.chainName)
 	}
 	return err
 }
