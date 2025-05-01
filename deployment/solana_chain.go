@@ -96,6 +96,7 @@ func (c SolChain) CloseBuffers(logger logger.Logger) {
 	baseArgs := []string{
 		"program",
 		"close",
+		"5h2npsKHzGpiibLZvKnr12yC31qzvQESRnfovofL4WE3",
 		"--keypair", c.KeypairPath, // deployer keypair
 		"--url", c.URL, // rpc url
 		"--buffers",
