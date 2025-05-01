@@ -98,7 +98,6 @@ func (c SolChain) CloseBuffers(logger logger.Logger) {
 		"close",
 		"--keypair", c.KeypairPath, // deployer keypair
 		"--url", c.URL, // rpc url
-		"--use-rpc", // use rpc for deployment
 		"--buffers",
 	}
 
