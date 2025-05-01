@@ -91,6 +91,40 @@ func GetSolanaProgramBytes() map[string]int {
 	}
 }
 
+func (c SolChain) CloseBuffers(logger logger.Logger) {
+	// Base command with required args
+	baseArgs := []string{
+		"program",
+		"close",
+		"--keypair", c.KeypairPath, // deployer keypair
+		"--url", c.URL, // rpc url
+		"--use-rpc", // use rpc for deployment
+		"--buffers",
+	}
+
+	cmd := exec.Command("solana", baseArgs...) // #nosec G204
+
+	// Capture the command output
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	// Run the command
+	if err := cmd.Run(); err != nil {
+		logger.Errorw("Error closing buffers",
+			"error", err,
+			"stdout", stdout.String(),
+			"stderr", stderr.String())
+	}
+
+	// Parse and return the program ID
+	output := stdout.String()
+
+	logger.Infow("Closed buffers",
+		"stdout", output,
+		"stderr", stderr.String())
+}
+
 func (c SolChain) DeployProgram(logger logger.Logger, programName string, isUpgrade bool) (string, error) {
 	programFile := filepath.Join(c.ProgramsPath, programName+".so")
 	if _, err := os.Stat(programFile); err != nil {
