@@ -99,6 +99,7 @@ func (c SolChain) CloseBuffers(logger logger.Logger) {
 		"--keypair", c.KeypairPath, // deployer keypair
 		"--url", c.URL, // rpc url
 		"--buffers",
+		"--bypass-warning",
 	}
 
 	cmd := exec.Command("solana", baseArgs...) // #nosec G204
