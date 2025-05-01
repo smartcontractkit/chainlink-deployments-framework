@@ -118,7 +118,7 @@ func (c SolChain) CloseBuffers(logger logger.Logger) {
 	}
 
 	logger.Infow("Closed buffers",
-		"stdout", output,
+		"stdout", stdout.String(),
 		"stderr", stderr.String())
 }
 
