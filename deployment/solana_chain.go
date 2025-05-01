@@ -91,35 +91,45 @@ func GetSolanaProgramBytes() map[string]int {
 	}
 }
 
-func (c SolChain) CloseBuffers(logger logger.Logger) {
+func (c SolChain) CloseBuffers(logger logger.Logger, retries int) {
 	// Base command with required args
-	baseArgs := []string{
-		"program",
-		"close",
-		"5h2npsKHzGpiibLZvKnr12yC31qzvQESRnfovofL4WE3",
-		"--keypair", c.KeypairPath, // deployer keypair
-		"--url", c.URL, // rpc url
-		"--bypass-warning",
-	}
+	for retries > 0 {
+		baseArgs := []string{
+			"program",
+			"close",
+			"5h2npsKHzGpiibLZvKnr12yC31qzvQESRnfovofL4WE3",
+			"--keypair", c.KeypairPath, // deployer keypair
+			"--url", c.URL, // rpc url
+			"--bypass-warning",
+		}
 
-	cmd := exec.Command("solana", baseArgs...) // #nosec G204
+		cmd := exec.Command("solana", baseArgs...) // #nosec G204
+		logger.Infof("Closing buffers with command: %s", cmd.String())
 
-	// Capture the command output
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
+		// Capture the command output
+		var stdout, stderr bytes.Buffer
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
 
-	// Run the command
-	if err := cmd.Run(); err != nil {
-		logger.Errorw("Error closing buffers",
-			"error", err,
+		// Run the command
+		if err := cmd.Run(); err != nil {
+			logger.Errorw("Error closing buffers",
+				"error", err,
+				"stdout", stdout.String(),
+				"stderr", stderr.String())
+		}
+		logger.Infow("Closed buffers",
 			"stdout", stdout.String(),
 			"stderr", stderr.String())
+
+		if strings.Contains(stderr.String(), "Error: Close failed: unable to confirm transaction.") {
+			retries -= 1
+			continue
+		} else {
+			break
+		}
 	}
 
-	logger.Infow("Closed buffers",
-		"stdout", stdout.String(),
-		"stderr", stderr.String())
 }
 
 func (c SolChain) DeployProgram(logger logger.Logger, programName string, isUpgrade bool) (string, error) {
