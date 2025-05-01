@@ -117,9 +117,6 @@ func (c SolChain) CloseBuffers(logger logger.Logger) {
 			"stderr", stderr.String())
 	}
 
-	// Parse and return the program ID
-	output := stdout.String()
-
 	logger.Infow("Closed buffers",
 		"stdout", output,
 		"stderr", stderr.String())
