@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.0.10
+
+### Patch Changes
+
+- [#51](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/51) [`4e85039`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/4e85039f9692ff325f60a863801a1db674fad32e) Thanks [@bytesizedroll](https://github.com/bytesizedroll)! - set multiclient retry to 1
+
 ## 0.0.9
 
 ### Patch Changes
