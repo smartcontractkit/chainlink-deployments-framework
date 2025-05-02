@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.0.9
+
+### Patch Changes
+
+- [#49](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/49) [`937b6c9`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/937b6c91874b5b5fe0749141a95071d2d4725026) Thanks [@giogam](https://github.com/giogam)! - feat(multiclient): wraps HeaderByNumber calls with retry logic
+
 ## 0.0.8
 
 ### Patch Changes
