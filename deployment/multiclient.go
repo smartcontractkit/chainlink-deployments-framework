@@ -153,6 +153,16 @@ func (mc *MultiClient) NonceAtHash(ctx context.Context, account common.Address, 
 	return count, err
 }
 
+func (mc *MultiClient) HeaderByNumber(ctx context.Context, number *big.Int) (*types.Header, error) {
+	var header *types.Header
+	err := mc.retryWithBackups("HeaderByNumber", func(client *ethclient.Client) error {
+		var err error
+		header, err = client.HeaderByNumber(ctx, number)
+		return err
+	})
+	return header, err
+}
+
 func (mc *MultiClient) WaitMined(ctx context.Context, tx *types.Transaction) (*types.Receipt, error) {
 	mc.lggr.Debugf("Waiting for tx %s to be mined for chain %s", tx.Hash().Hex(), mc.chainName)
 	// no retries here because we want to wait for the tx to be mined
@@ -283,16 +293,6 @@ func (mc *MultiClient) EstimateGas(ctx context.Context, call ethereum.CallMsg) (
 		return err
 	})
 	return gas, err
-}
-
-func (mc *MultiClient) HeaderByNumber(ctx context.Context, number *big.Int) (*types.Header, error) {
-	var header *types.Header
-	err := mc.callWithDebug("HeaderByNumber", func(client *ethclient.Client) error {
-		var err error
-		header, err = client.HeaderByNumber(ctx, number)
-		return err
-	})
-	return header, err
 }
 
 func (mc *MultiClient) BalanceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error) {
