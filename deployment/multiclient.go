@@ -13,6 +13,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/google/uuid"
 
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 
@@ -30,14 +31,18 @@ const (
 )
 
 type RetryConfig struct {
-	Attempts uint
-	Delay    time.Duration
+	Attempts     uint
+	Delay        time.Duration
+	DialAttempts uint
+	DialDelay    time.Duration
 }
 
 func defaultRetryConfig() RetryConfig {
 	return RetryConfig{
-		Attempts: RPCDefaultRetryAttempts,
-		Delay:    RPCDefaultRetryDelay,
+		Attempts:     RPCDefaultRetryAttempts,
+		Delay:        RPCDefaultRetryDelay,
+		DialAttempts: RPCDefaultDialRetryAttempts,
+		DialDelay:    RPCDefaultDialRetryDelay,
 	}
 }
 
@@ -63,6 +68,12 @@ func NewMultiClient(lggr logger.Logger, rpcsCfg RPCConfig, opts ...func(client *
 	}
 	mc := MultiClient{lggr: lggr, chainName: chain.Name}
 
+	mc.RetryConfig = defaultRetryConfig()
+
+	for _, opt := range opts {
+		opt(&mc)
+	}
+
 	clients := make([]*ethclient.Client, 0, len(rpcsCfg.RPCs))
 	for i, rpc := range rpcsCfg.RPCs {
 		client, err := mc.dialWithRetry(rpc, lggr)
@@ -79,11 +90,7 @@ func NewMultiClient(lggr logger.Logger, rpcsCfg RPCConfig, opts ...func(client *
 
 	mc.Client = clients[0]
 	mc.Backups = clients[1:]
-	mc.RetryConfig = defaultRetryConfig()
 
-	for _, opt := range opts {
-		opt(&mc)
-	}
 	return &mc, nil
 }
 
@@ -201,11 +208,12 @@ func (mc *MultiClient) WaitMined(ctx context.Context, tx *types.Transaction) (*t
 
 func (mc *MultiClient) retryWithBackups(opName string, op func(*ethclient.Client) error) error {
 	var err error
+	traceID := uuid.New()
 	for i, client := range append([]*ethclient.Client{mc.Client}, mc.Backups...) {
 		err2 := retry.Do(func() error {
 			err = op(client)
 			if err != nil {
-				mc.lggr.Warnf("retryable error '%s' for op %s with chain %s client index %d", MaybeDataErr(err), opName, mc.chainName, i)
+				mc.lggr.Warnf("traceID(%s): retryable error '%s' for op %s with chain %s client index %d", traceID.String(), MaybeDataErr(err), opName, mc.chainName, i)
 				return err
 			}
 			return nil
@@ -213,7 +221,7 @@ func (mc *MultiClient) retryWithBackups(opName string, op func(*ethclient.Client
 		if err2 == nil {
 			return nil
 		}
-		mc.lggr.Infof("Client at index %d failed, trying next client chain %s", i, mc.chainName)
+		mc.lggr.Infof("traceID(%s): Client at index %d failed, trying next client chain %s", traceID.String(), i, mc.chainName)
 	}
 	return errors.Join(err, fmt.Errorf("all backup clients failed for chain %s", mc.chainName))
 }
@@ -224,17 +232,18 @@ func (mc *MultiClient) dialWithRetry(rpc RPC, lggr logger.Logger) (*ethclient.Cl
 		return nil, err
 	}
 
+	traceID := uuid.New()
 	var client *ethclient.Client
 	err = retry.Do(func() error {
 		var err2 error
-		mc.lggr.Debugf("dialing endpoint '%s' for RPC %s for chain %s", endpoint, rpc.Name, mc.chainName)
+		mc.lggr.Debugf("traceID(%s): dialing endpoint '%s' for RPC %s for chain %s", traceID.String(), endpoint, rpc.Name, mc.chainName)
 		client, err2 = ethclient.Dial(endpoint)
 		if err2 != nil {
-			lggr.Warnf("retryable error for RPC %s:%s for chain %s  %v", rpc.Name, endpoint, mc.chainName, err2)
+			lggr.Warnf("traceID(%s): retryable error for RPC %s:%s for chain %s  %v", traceID.String(), rpc.Name, endpoint, mc.chainName, err2)
 			return err2
 		}
 		return nil
-	}, retry.Attempts(RPCDefaultDialRetryAttempts), retry.Delay(RPCDefaultDialRetryDelay))
+	}, retry.Attempts(mc.RetryConfig.DialAttempts), retry.Delay(mc.RetryConfig.DialDelay))
 
 	if err != nil {
 		return nil, errors.Join(err, fmt.Errorf("failed to dial endpoint '%s' for RPC %s for chain %s after retries", endpoint, rpc.Name, mc.chainName))
