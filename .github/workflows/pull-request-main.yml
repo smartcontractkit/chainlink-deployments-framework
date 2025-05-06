@@ -14,6 +14,8 @@ jobs:
       id-token: write
       contents: read
       actions: read
+      # To annotate code in the PR.
+      checks: write
     steps:
       - name: Linting Go
         uses: smartcontractkit/.github/actions/ci-lint-go@eeb76b5870e3c17856d5a60fd064a053c023b5f5 # ci-lint-go@1.0.0
@@ -21,7 +23,7 @@ jobs:
           only-new-issues: "false"
           golangci-lint-version: v2.0.2
           # Override the lint args because the detault ones are not compatible with golangci-lint v2
-          golangci-lint-args: --output.checkstyle.path=golangci-lint-report.xml
+          golangci-lint-args: --output.checkstyle.path=golangci-lint-report.xml -out-format colored-line-number,checkstyle:golangci-lint-report.xml
 
   ci-lint-misc:
     name: Lint GH Actions and scripts

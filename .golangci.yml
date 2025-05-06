@@ -132,7 +132,7 @@ linters:
       - third_party$
       - builtin$
       - examples$
-      - deployment/*
+#      - deployment/*
 formatters:
   enable:
     - goimports
