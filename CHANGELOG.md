@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.0.11
+
+### Patch Changes
+
+- [#59](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/59) [`5d5a317`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/5d5a317363b549ac372b9f1c0430ff9566d4314d) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - better multiclient logging and expose dial attempts and delay as config
+
 ## 0.0.10
 
 ### Patch Changes
