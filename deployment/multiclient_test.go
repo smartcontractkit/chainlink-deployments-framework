@@ -30,8 +30,10 @@ func TestMultiClient(t *testing.T) {
 	require.NotNil(t, mc)
 
 	assert.Equal(t, "ethereum-testnet-sepolia", mc.chainName)
-	assert.Equal(t, mc.RetryConfig.Attempts, uint(RPCDefaultRetryAttempts))
+	assert.Equal(t, uint(RPCDefaultRetryAttempts), mc.RetryConfig.Attempts)
 	assert.Equal(t, RPCDefaultRetryDelay, mc.RetryConfig.Delay)
+	assert.Equal(t, uint(RPCDefaultDialRetryAttempts), mc.RetryConfig.DialAttempts)
+	assert.Equal(t, RPCDefaultDialRetryDelay, mc.RetryConfig.DialDelay)
 
 	// Expect error if no RPCs provided.
 	_, err = NewMultiClient(lggr, RPCConfig{ChainSelector: chainSelector, RPCs: []RPC{}})
@@ -94,7 +96,7 @@ func TestMultiClient_retryWithBackups(t *testing.T) {
 			err = mc.retryWithBackups(tt.opName, tt.op)
 			if tt.wantErr != "" {
 				assert.Error(t, err)
-				assert.Equal(t, tt.wantErr, err.Error())
+				assert.ErrorContains(t, err, tt.wantErr)
 			} else {
 				assert.NoError(t, err)
 			}
