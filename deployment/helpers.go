@@ -3,16 +3,26 @@ package deployment
 import (
 	"bytes"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/rpc"
 	pkgErrors "github.com/pkg/errors"
 	chain_selectors "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 )
+
+// SimTransactOpts is useful to generate just the calldata for a given gethwrapper method.
+func SimTransactOpts() *bind.TransactOpts {
+	return &bind.TransactOpts{Signer: func(address common.Address, transaction *types.Transaction) (*types.Transaction, error) {
+		return transaction, nil
+	}, From: common.HexToAddress("0x0"), NoSend: true, GasLimit: 1_000_000}
+}
 
 func ChainInfo(cs uint64) (chain_selectors.ChainDetails, error) {
 	id, err := chain_selectors.GetChainIDFromSelector(cs)
@@ -62,6 +72,29 @@ func parseErrorFromABI(errorString string, contractABI string) (string, error) {
 	return "", pkgErrors.New("error not found in ABI")
 }
 
+// DecodeErr decodes an error from a contract call using the contract's ABI.
+// If the error is not decodable, it returns the original error.
+func DecodeErr(encodedABI string, err error) error {
+	if err == nil {
+		return nil
+	}
+	//revive:disable
+	var d rpc.DataError
+	ok := pkgErrors.As(err, &d)
+	if ok {
+		encErr, ok := d.ErrorData().(string)
+		if !ok {
+			return fmt.Errorf("error without error data: %s", d.Error())
+		}
+		errStr, parseErr := parseErrorFromABI(encErr, encodedABI)
+		if parseErr != nil {
+			return fmt.Errorf("failed to decode error '%s' with abi: %w", encErr, parseErr)
+		}
+		return fmt.Errorf("contract error: %s", errStr)
+	}
+	return fmt.Errorf("cannot decode error with abi: %w", err)
+}
+
 // ContractDeploy represents the result of an EVM contract deployment
 // via an abigen Go binding. It contains all the return values
 // as they are useful in different ways.
@@ -103,4 +136,16 @@ func DeployContract[C any](
 		return nil, err
 	}
 	return &contractDeploy, nil
+}
+
+// IsValidChainSelector checks if the chain selector is valid.
+func IsValidChainSelector(cs uint64) error {
+	if cs == 0 {
+		return errors.New("chain selector must be set")
+	}
+	_, err := chain_selectors.GetSelectorFamily(cs)
+	if err != nil {
+		return err
+	}
+	return nil
 }
