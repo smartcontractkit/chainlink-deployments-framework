@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.0.12
+
+### Patch Changes
+
+- [#62](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/62) [`e31e3ea`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/e31e3eab10cd8cbb10a3ee17ae4202fb7f9f495f) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - Add more helpers from chainlink/deployment which are useful for writing changesets
+
 ## 0.0.11
 
 ### Patch Changes
