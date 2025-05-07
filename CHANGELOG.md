@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.0.13
+
+### Patch Changes
+
+- [#64](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/64) [`f05efd9`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/f05efd9b0e417da9e6b0fd53372566584ad65520) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - migrate more helpers for writing changesets
+
 ## 0.0.12
 
 ### Patch Changes
