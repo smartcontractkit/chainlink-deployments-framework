@@ -126,9 +126,9 @@ func NewEnvironment(
 	logger logger.Logger,
 	existingAddrs AddressBook,
 	dataStore datastore.DataStore[
-	datastore.DefaultMetadata,
-	datastore.DefaultMetadata,
-],
+		datastore.DefaultMetadata,
+		datastore.DefaultMetadata,
+	],
 	chains map[uint64]Chain,
 	solChains map[uint64]SolChain,
 	aptosChains map[uint64]AptosChain,
@@ -275,4 +275,43 @@ func (e Environment) AllDeployerKeys() []common.Address {
 		deployerKeys = append(deployerKeys, e.Chains[sel].DeployerKey.From)
 	}
 	return deployerKeys
+}
+
+// ConfirmIfNoError confirms the transaction if no error occurred.
+// if the error is a DataError, it will return the decoded error message and data.
+func ConfirmIfNoError(chain Chain, tx *types.Transaction, err error) (uint64, error) {
+	if err != nil {
+		//revive:disable
+		var d rpc.DataError
+		ok := errors.As(err, &d)
+		if ok {
+			return 0, fmt.Errorf("transaction reverted on chain %s: Error %s ErrorData %v", chain.String(), d.Error(), d.ErrorData())
+		}
+		return 0, err
+	}
+	return chain.Confirm(tx)
+}
+
+// ConfirmIfNoErrorWithABI confirms the transaction if no error occurred.
+// if the error is a DataError, it will return the decoded error message and data.
+func ConfirmIfNoErrorWithABI(chain Chain, tx *types.Transaction, abi string, err error) (uint64, error) {
+	if err != nil {
+		return 0, fmt.Errorf("transaction reverted on chain %s: Error %w",
+			chain.String(), DecodedErrFromABIIfDataErr(err, abi))
+	}
+	return chain.Confirm(tx)
+}
+
+// DecodedErrFromABIIfDataErr decodes the error message and data from a DataError.
+func DecodedErrFromABIIfDataErr(err error, abi string) error {
+	var d rpc.DataError
+	ok := errors.As(err, &d)
+	if ok {
+		errReason, err := parseErrorFromABI(fmt.Sprintf("%s", d.ErrorData()), abi)
+		if err != nil {
+			return fmt.Errorf("%s: %v", d.Error(), d.ErrorData())
+		}
+		return fmt.Errorf("%s due to %s: %v", d.Error(), errReason, d.ErrorData())
+	}
+	return err
 }
