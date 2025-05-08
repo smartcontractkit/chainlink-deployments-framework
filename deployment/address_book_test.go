@@ -211,9 +211,9 @@ func TestAddressBook_ConcurrencyAndDeadlock(t *testing.T) {
 	}
 
 	// concurrent reads
-	for i = range 100 {
+	for range 100 {
 		wg.Add(1)
-		go func(input int64) {
+		go func() {
 			addresses, err := baseAB.Addresses()
 			if !assert.NoError(t, err) {
 				return
@@ -233,7 +233,7 @@ func TestAddressBook_ConcurrencyAndDeadlock(t *testing.T) {
 				}
 			}
 			wg.Done()
-		}(i)
+		}()
 	}
 
 	// concurrent merges, starts from 1001 to avoid address conflicts

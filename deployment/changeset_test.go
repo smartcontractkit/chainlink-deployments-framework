@@ -94,6 +94,7 @@ func TestChangeSetLegacyFunction(t *testing.T) {
 }
 
 func NewNoopEnvironment(t *testing.T) Environment {
+	t.Helper()
 	return *NewEnvironment(
 		"noop",
 		logger.Test(t),

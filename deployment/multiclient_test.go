@@ -96,10 +96,10 @@ func TestMultiClient_retryWithBackups(t *testing.T) {
 			// Run operation and check expectations
 			err = mc.retryWithBackups(tt.opName, tt.op)
 			if tt.wantErr != "" {
-				assert.Error(t, err)
-				assert.ErrorContains(t, err, tt.wantErr)
+				require.Error(t, err)
+				require.ErrorContains(t, err, tt.wantErr)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 		})
 	}

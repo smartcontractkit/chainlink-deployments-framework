@@ -15,8 +15,6 @@ import (
 	"github.com/gagliardetto/solana-go"
 	solRpc "github.com/gagliardetto/solana-go/rpc"
 
-	"github.com/gagliardetto/solana-go/rpc"
-
 	solCommonUtil "github.com/smartcontractkit/chainlink-ccip/chains/solana/utils/common"
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 )
@@ -24,7 +22,7 @@ import (
 const (
 	ProgramIDPrefix                 = "Program Id: "
 	BufferIDPrefix                  = "Buffer: "
-	SolDefaultCommitment            = rpc.CommitmentConfirmed
+	SolDefaultCommitment            = solRpc.CommitmentConfirmed
 	RouterProgramName               = "ccip_router"
 	OffRampProgramName              = "ccip_offramp"
 	FeeQuoterProgramName            = "fee_quoter"

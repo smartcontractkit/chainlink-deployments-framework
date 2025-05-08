@@ -129,9 +129,9 @@ func NewEnvironment(
 	logger logger.Logger,
 	existingAddrs AddressBook,
 	dataStore datastore.DataStore[
-	datastore.DefaultMetadata,
-	datastore.DefaultMetadata,
-],
+		datastore.DefaultMetadata,
+		datastore.DefaultMetadata,
+	],
 	chains map[uint64]Chain,
 	solChains map[uint64]SolChain,
 	aptosChains map[uint64]AptosChain,

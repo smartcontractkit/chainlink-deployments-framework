@@ -372,7 +372,7 @@ func (mc *MultiClient) SubscribeFilterLogs(ctx context.Context, q ethereum.Filte
 
 func (mc *MultiClient) callWithDebug(callName string, call func(*ethclient.Client) error) error {
 	mc.lggr.Debugf("Calling %s for chain %s", callName, mc.chainName)
-	var err error = call(mc.Client)
+	var err = call(mc.Client)
 	if err != nil {
 		mc.lggr.Errorf("error '%s' when calling %s for chain %s", MaybeDataErr(err), callName, mc.chainName)
 	}
