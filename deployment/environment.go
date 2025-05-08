@@ -191,7 +191,7 @@ func (e Environment) Clone() Environment {
 }
 
 func (e Environment) AllChainSelectors() []uint64 {
-	var selectors []uint64
+	selectors := make([]uint64, 0, len(e.Chains))
 	for sel := range e.Chains {
 		selectors = append(selectors, sel)
 	}
@@ -203,7 +203,7 @@ func (e Environment) AllChainSelectors() []uint64 {
 }
 
 func (e Environment) AllChainSelectorsExcluding(excluding []uint64) []uint64 {
-	var selectors []uint64
+	selectors := make([]uint64, 0, len(e.Chains))
 	for sel := range e.Chains {
 		excluded := false
 		for _, toExclude := range excluding {
@@ -280,7 +280,7 @@ func (e Environment) AllChainSelectorsAllFamiliesExcluding(excluding []uint64) [
 }
 
 func (e Environment) AllDeployerKeys() []common.Address {
-	var deployerKeys []common.Address
+	deployerKeys := make([]common.Address, 0, len(e.Chains))
 	for sel := range e.Chains {
 		deployerKeys = append(deployerKeys, e.Chains[sel].DeployerKey.From)
 	}
