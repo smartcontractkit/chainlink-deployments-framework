@@ -24,22 +24,52 @@ func Test_ExecuteOperation(t *testing.T) {
 		wantErr           string
 	}{
 		{
-			name:              "DefaultRetry",
+			name:              "no retry",
+			wantOpCalledTimes: 1,
+			wantErr:           "test error",
+		},
+		{
+			name: "with default retry",
+			options: []ExecuteOption[int, any]{
+				WithRetry[int, any](),
+			},
 			wantOpCalledTimes: 3,
 			wantOutput:        2,
 		},
 		{
-			name:              "NoRetry",
-			options:           []ExecuteOption[int, any]{WithRetryConfig[int, any](RetryConfig[int, any]{DisableRetry: true})},
+			name: "with custom retry eventual success",
+			options: []ExecuteOption[int, any]{
+				WithRetryConfig(RetryConfig[int, any]{
+					Enabled: true,
+					Policy: RetryPolicy{
+						MaxAttempts: 10,
+					},
+				}),
+			},
+			wantOpCalledTimes: 3,
+			wantOutput:        2,
+		},
+		{
+			name: "with custom retry eventual failure",
+			options: []ExecuteOption[int, any]{
+				WithRetryConfig(RetryConfig[int, any]{
+					Enabled: true,
+					Policy: RetryPolicy{
+						MaxAttempts: 1,
+					},
+				}),
+			},
 			wantOpCalledTimes: 1,
 			wantErr:           "test error",
 		},
 		{
 			name: "NewInputHook",
-			options: []ExecuteOption[int, any]{WithRetryConfig[int, any](RetryConfig[int, any]{InputHook: func(input int, deps any) int {
-				// update input to 5 after first failed attempt
-				return 5
-			}})},
+			options: []ExecuteOption[int, any]{
+				WithRetryInput(func(input int, deps any) int {
+					// update input to 5 after first failed attempt
+					return 5
+				}),
+			},
 			wantOpCalledTimes: 3,
 			wantOutput:        6,
 		},

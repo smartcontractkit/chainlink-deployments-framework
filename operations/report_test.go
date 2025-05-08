@@ -69,7 +69,7 @@ func Test_NewReport(t *testing.T) {
 
 	testErr := errors.New("test error")
 	childOperationID := uuid.New().String()
-	report := NewReport[int, int](op.def, 1, 2, testErr, childOperationID)
+	report := NewReport(op.def, 1, 2, testErr, childOperationID)
 	assert.NotEmpty(t, report.ID)
 	assert.Equal(t, op.def, report.Def)
 	assert.Equal(t, 1, report.Input)
