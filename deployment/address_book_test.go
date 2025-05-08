@@ -157,7 +157,7 @@ func TestAddressBook_Remove(t *testing.T) {
 		},
 	})
 	require.Error(t, baseAB.Remove(failAB))
-	require.EqualValues(t, baseAB, copyOfBaseAB)
+	require.Equal(t, baseAB, copyOfBaseAB)
 
 	// this Address book should be removed without error
 	successAB := NewMemoryAddressBookFromMap(map[uint64]map[string]TypeAndVersion{
@@ -178,7 +178,7 @@ func TestAddressBook_Remove(t *testing.T) {
 	})
 
 	require.NoError(t, baseAB.Remove(successAB))
-	require.EqualValues(t, baseAB, expectingAB)
+	require.Equal(t, baseAB, expectingAB)
 }
 
 func TestAddressBook_ConcurrencyAndDeadlock(t *testing.T) {
@@ -338,7 +338,7 @@ func Test_EnsureDeduped(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt // capture range variable
+		// capture range variable
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -349,6 +349,7 @@ func Test_EnsureDeduped(t *testing.T) {
 				if tt.wantErrMsg != "" {
 					require.Contains(t, gotErr.Error(), tt.wantErrMsg)
 				}
+
 				return
 			}
 			require.NoError(t, gotErr, "did not expect an error but got one")
@@ -410,7 +411,7 @@ func TestTypeAndVersionFromString(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt // capture range variable
+		// capture range variable
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -470,7 +471,7 @@ func TestTypeAndVersion_AddLabels(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt // capture range variable
+		// capture range variable
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -541,7 +542,7 @@ func Test_toTypeAndVersionMap(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := toTypeAndVersionMap(tt.addrs)
-			require.Equal(t, len(tt.want), len(got))
+			require.Len(t, got, len(tt.want))
 			for k, gotAddresses := range got {
 				wantAddresses, ok := tt.want[k]
 				require.True(t, ok)

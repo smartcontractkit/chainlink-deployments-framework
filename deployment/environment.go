@@ -60,6 +60,7 @@ func (c Chain) String() string {
 		// we should never get here, if the selector is invalid it should not be in the environment
 		panic(err)
 	}
+
 	return fmt.Sprintf("%s (%d)", chainInfo.ChainName, chainInfo.ChainSelector)
 }
 
@@ -72,6 +73,7 @@ func (c Chain) Name() string {
 	if chainInfo.ChainName == "" {
 		return strconv.FormatUint(c.Selector, 10)
 	}
+
 	return chainInfo.ChainName
 }
 
@@ -82,6 +84,7 @@ func MaybeDataErr(err error) error {
 	if ok {
 		return fmt.Errorf("%s: %v", d.Error(), d.ErrorData())
 	}
+
 	return err
 }
 
@@ -170,6 +173,7 @@ func (e Environment) Clone() Environment {
 			panic(fmt.Sprintf("failed to copy datastore: %v", err))
 		}
 	}
+
 	return Environment{
 		Name:              e.Name,
 		Logger:            e.Logger,
@@ -194,6 +198,7 @@ func (e Environment) AllChainSelectors() []uint64 {
 	sort.Slice(selectors, func(i, j int) bool {
 		return selectors[i] < selectors[j]
 	})
+
 	return selectors
 }
 
@@ -214,6 +219,7 @@ func (e Environment) AllChainSelectorsExcluding(excluding []uint64) []uint64 {
 	sort.Slice(selectors, func(i, j int) bool {
 		return selectors[i] < selectors[j]
 	})
+
 	return selectors
 }
 
@@ -225,6 +231,7 @@ func (e Environment) AllChainSelectorsSolana() []uint64 {
 	sort.Slice(selectors, func(i, j int) bool {
 		return selectors[i] < selectors[j]
 	})
+
 	return selectors
 }
 
@@ -236,6 +243,7 @@ func (e Environment) AllChainSelectorsAptos() []uint64 {
 	sort.Slice(selectors, func(i, j int) bool {
 		return selectors[i] < selectors[j]
 	})
+
 	return selectors
 }
 
@@ -253,6 +261,7 @@ func (e Environment) AllChainSelectorsAllFamilies() []uint64 {
 	sort.Slice(selectors, func(i, j int) bool {
 		return selectors[i] < selectors[j]
 	})
+
 	return selectors
 }
 
@@ -266,6 +275,7 @@ func (e Environment) AllChainSelectorsAllFamiliesExcluding(excluding []uint64) [
 		}
 		ret = append(ret, sel)
 	}
+
 	return ret
 }
 
@@ -274,6 +284,7 @@ func (e Environment) AllDeployerKeys() []common.Address {
 	for sel := range e.Chains {
 		deployerKeys = append(deployerKeys, e.Chains[sel].DeployerKey.From)
 	}
+
 	return deployerKeys
 }
 
@@ -287,8 +298,10 @@ func ConfirmIfNoError(chain Chain, tx *types.Transaction, err error) (uint64, er
 		if ok {
 			return 0, fmt.Errorf("transaction reverted on chain %s: Error %s ErrorData %v", chain.String(), d.Error(), d.ErrorData())
 		}
+
 		return 0, err
 	}
+
 	return chain.Confirm(tx)
 }
 
@@ -299,6 +312,7 @@ func ConfirmIfNoErrorWithABI(chain Chain, tx *types.Transaction, abi string, err
 		return 0, fmt.Errorf("transaction reverted on chain %s: Error %w",
 			chain.String(), DecodedErrFromABIIfDataErr(err, abi))
 	}
+
 	return chain.Confirm(tx)
 }
 
@@ -311,7 +325,9 @@ func DecodedErrFromABIIfDataErr(err error, abi string) error {
 		if err != nil {
 			return fmt.Errorf("%s: %v", d.Error(), d.ErrorData())
 		}
+
 		return fmt.Errorf("%s due to %s: %v", d.Error(), errReason, d.ErrorData())
 	}
+
 	return err
 }

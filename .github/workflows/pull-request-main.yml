@@ -20,7 +20,7 @@ jobs:
         with:
           only-new-issues: "false"
           golangci-lint-version: v2.0.2
-          # Override the lint args because the detault ones are not compatible with golangci-lint v2
+          # Override the lint args because the default ones are not compatible with golangci-lint v2
           golangci-lint-args: --output.checkstyle.path=golangci-lint-report.xml
 
   ci-lint-misc:
