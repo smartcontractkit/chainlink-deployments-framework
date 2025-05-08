@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.0.14
+
+### Patch Changes
+
+- [#39](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/39) [`08e4660`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/08e46605ecb71276b7a35aa94887473da5ee08fb) Thanks [@jkongie](https://github.com/jkongie)! - BREAKING: Operations retry logic is now opt in. Use the `WithRetry` method in your `ExecuteOperation` call to enable retries
+
 ## 0.0.13
 
 ### Patch Changes
