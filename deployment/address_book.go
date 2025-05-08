@@ -39,6 +39,7 @@ func (tv TypeAndVersion) String() string {
 
 	// Use the LabelSet's String method for sorted labels
 	sortedLabels := tv.Labels.String()
+
 	return fmt.Sprintf("%s %s %s",
 		tv.Type,
 		tv.Version.String(),
@@ -64,6 +65,7 @@ func MustTypeAndVersionFromString(s string) TypeAndVersion {
 	if err != nil {
 		panic(err)
 	}
+
 	return tv
 }
 
@@ -82,6 +84,7 @@ func TypeAndVersionFromString(s string) (TypeAndVersion, error) {
 	if len(parts) > 2 {
 		labels = NewLabelSet(parts[2:]...)
 	}
+
 	return TypeAndVersion{
 		Type:    ContractType(parts[0]),
 		Version: *v,
@@ -149,6 +152,7 @@ func (m *AddressBookMap) save(chainSelector uint64, address string, typeAndVersi
 		return fmt.Errorf("address %s already exists for chain %d", address, chainSelector)
 	}
 	m.addressesByChain[chainSelector][address] = typeAndVersion
+
 	return nil
 }
 
@@ -157,6 +161,7 @@ func (m *AddressBookMap) save(chainSelector uint64, address string, typeAndVersi
 func (m *AddressBookMap) Save(chainSelector uint64, address string, typeAndVersion TypeAndVersion) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
+
 	return m.save(chainSelector, address, typeAndVersion)
 }
 
@@ -207,6 +212,7 @@ func (m *AddressBookMap) Merge(ab AddressBook) error {
 			}
 		}
 	}
+
 	return nil
 }
 
@@ -246,6 +252,7 @@ func (m *AddressBookMap) cloneAddresses(input map[uint64]map[string]TypeAndVersi
 	for chainSelector, chainAddresses := range input {
 		result[chainSelector] = maps.Clone(chainAddresses)
 	}
+
 	return result
 }
 
@@ -340,6 +347,7 @@ func toTypeAndVersionMap(addrs map[string]TypeAndVersion) map[typeVersionKey][]s
 	for k, v := range addrs {
 		tvkMap[tvKey(v)] = append(tvkMap[tvKey(v)], k)
 	}
+
 	return tvkMap
 }
 

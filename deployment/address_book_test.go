@@ -19,6 +19,7 @@ var (
 )
 
 func TestAddressBook_Save(t *testing.T) {
+	t.Parallel()
 	ab := NewMemoryAddressBook()
 	onRamp100 := NewTypeAndVersion("OnRamp", Version1_0_0)
 	onRamp110 := NewTypeAndVersion("OnRamp", Version1_1_0)
@@ -77,6 +78,7 @@ func TestAddressBook_Save(t *testing.T) {
 }
 
 func TestAddressBook_Merge(t *testing.T) {
+	t.Parallel()
 	onRamp100 := NewTypeAndVersion("OnRamp", Version1_0_0)
 	onRamp110 := NewTypeAndVersion("OnRamp", Version1_1_0)
 	addr1 := common.HexToAddress("0x1").String()
@@ -130,6 +132,7 @@ func TestAddressBook_Merge(t *testing.T) {
 }
 
 func TestAddressBook_Remove(t *testing.T) {
+	t.Parallel()
 	onRamp100 := NewTypeAndVersion("OnRamp", Version1_0_0)
 	onRamp110 := NewTypeAndVersion("OnRamp", Version1_1_0)
 	addr1 := common.HexToAddress("0x1").String()
@@ -182,6 +185,7 @@ func TestAddressBook_Remove(t *testing.T) {
 }
 
 func TestAddressBook_ConcurrencyAndDeadlock(t *testing.T) {
+	t.Parallel()
 	onRamp100 := NewTypeAndVersion("OnRamp", Version1_0_0)
 	onRamp110 := NewTypeAndVersion("OnRamp", Version1_1_0)
 
@@ -207,7 +211,7 @@ func TestAddressBook_ConcurrencyAndDeadlock(t *testing.T) {
 	}
 
 	// concurrent reads
-	for i = 0; i < 100; i++ {
+	for i = range 100 {
 		wg.Add(1)
 		go func(input int64) {
 			addresses, err := baseAB.Addresses()
@@ -500,6 +504,7 @@ func TestTypeAndVersion_AddLabels(t *testing.T) {
 }
 
 func Test_toTypeAndVersionMap(t *testing.T) {
+	t.Parallel()
 	v100 := semver.MustParse("1.0.0")
 
 	tests := []struct {
@@ -541,6 +546,7 @@ func Test_toTypeAndVersionMap(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			got := toTypeAndVersionMap(tt.addrs)
 			require.Len(t, got, len(tt.want))
 			for k, gotAddresses := range got {

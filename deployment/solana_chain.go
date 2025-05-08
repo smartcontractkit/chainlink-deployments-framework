@@ -3,6 +3,7 @@ package deployment
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -27,7 +28,7 @@ const (
 	RouterProgramName               = "ccip_router"
 	OffRampProgramName              = "ccip_offramp"
 	FeeQuoterProgramName            = "fee_quoter"
-	BurnMintTokenPoolProgramName    = "burnmint_token_pool"
+	BurnMintTokenPoolProgramName    = "burnmint_token_pool" // #nosec G101: program identifier, not hardcoded credentials
 	LockReleaseTokenPoolProgramName = "lockrelease_token_pool"
 	AccessControllerProgramName     = "access_controller"
 	TimelockProgramName             = "timelock"
@@ -205,7 +206,7 @@ func parseProgramID(output string, prefix string) (string, error) {
 	// Example output: "Program Id: <PROGRAM_ID>"
 	startIdx := strings.Index(output, prefix)
 	if startIdx == -1 {
-		return "", fmt.Errorf("failed to find program ID in output")
+		return "", errors.New("failed to find program ID in output")
 	}
 	startIdx += len(prefix)
 	endIdx := strings.Index(output[startIdx:], "\n")

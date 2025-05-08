@@ -14,6 +14,7 @@ import (
 
 // TODO(giogam): This test is incomplete, it should be completed with support for websockets URLS
 func TestMultiClient(t *testing.T) {
+	t.Parallel()
 	var (
 		lggr                 = logger.Test(t)
 		chainSelector uint64 = 16015286601757825753 // "ethereum-testnet-sepolia"

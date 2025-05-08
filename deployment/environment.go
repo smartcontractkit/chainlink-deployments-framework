@@ -129,9 +129,9 @@ func NewEnvironment(
 	logger logger.Logger,
 	existingAddrs AddressBook,
 	dataStore datastore.DataStore[
-		datastore.DefaultMetadata,
-		datastore.DefaultMetadata,
-	],
+	datastore.DefaultMetadata,
+	datastore.DefaultMetadata,
+],
 	chains map[uint64]Chain,
 	solChains map[uint64]SolChain,
 	aptosChains map[uint64]AptosChain,
@@ -321,8 +321,8 @@ func DecodedErrFromABIIfDataErr(err error, abi string) error {
 	var d rpc.DataError
 	ok := errors.As(err, &d)
 	if ok {
-		errReason, err := parseErrorFromABI(fmt.Sprintf("%s", d.ErrorData()), abi)
-		if err != nil {
+		errReason, parseErr := parseErrorFromABI(fmt.Sprintf("%s", d.ErrorData()), abi)
+		if parseErr != nil {
 			return fmt.Errorf("%s: %v", d.Error(), d.ErrorData())
 		}
 
