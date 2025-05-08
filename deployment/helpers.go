@@ -12,7 +12,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
-	pkgErrors "github.com/pkg/errors"
 	chain_selectors "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 )
@@ -37,6 +36,7 @@ func ChainInfo(cs uint64) (chain_selectors.ChainDetails, error) {
 	if err != nil {
 		return chain_selectors.ChainDetails{}, err
 	}
+
 	return info, nil
 }
 
@@ -46,7 +46,7 @@ func parseErrorFromABI(errorString string, contractABI string) (string, error) {
 
 	data, err := hex.DecodeString(errorString)
 	if err != nil {
-		return "", pkgErrors.Wrap(err, "error decoding error string")
+		return "", fmt.Errorf("error decoding error string: %w", err)
 	}
 
 	v, err := abi.UnpackRevert(data)
@@ -56,7 +56,7 @@ func parseErrorFromABI(errorString string, contractABI string) (string, error) {
 
 	parsedAbi, err := abi.JSON(strings.NewReader(contractABI))
 	if err != nil {
-		return "", pkgErrors.Wrap(err, "error loading ABI")
+		return "", fmt.Errorf("error loading ABI: %w", err)
 	}
 
 	for errorName, abiError := range parsedAbi.Errors {
@@ -64,12 +64,14 @@ func parseErrorFromABI(errorString string, contractABI string) (string, error) {
 			// Found a matching error
 			v, err3 := abiError.Unpack(data)
 			if err3 != nil {
-				return "", pkgErrors.Wrap(err3, "error unpacking data")
+				return "", fmt.Errorf("error unpacking data: %w", err3)
 			}
+
 			return fmt.Sprintf("error -`%v` args %v", errorName, v), nil
 		}
 	}
-	return "", pkgErrors.New("error not found in ABI")
+
+	return "", errors.New("error not found in ABI")
 }
 
 // DecodeErr decodes an error from a contract call using the contract's ABI.
@@ -80,7 +82,7 @@ func DecodeErr(encodedABI string, err error) error {
 	}
 	//revive:disable
 	var d rpc.DataError
-	ok := pkgErrors.As(err, &d)
+	ok := errors.As(err, &d)
 	if ok {
 		encErr, ok := d.ErrorData().(string)
 		if !ok {
@@ -90,8 +92,10 @@ func DecodeErr(encodedABI string, err error) error {
 		if parseErr != nil {
 			return fmt.Errorf("failed to decode error '%s' with abi: %w", encErr, parseErr)
 		}
+
 		return fmt.Errorf("contract error: %s", errStr)
 	}
+
 	return fmt.Errorf("cannot decode error with abi: %w", err)
 }
 
@@ -135,6 +139,7 @@ func DeployContract[C any](
 		lggr.Errorw("Failed to save contract address", "Contract", contractDeploy.Tv.String(), "addr", contractDeploy.Address, "chain", chain.String(), "err", err)
 		return nil, err
 	}
+
 	return &contractDeploy, nil
 }
 
@@ -147,5 +152,6 @@ func IsValidChainSelector(cs uint64) error {
 	if err != nil {
 		return err
 	}
+
 	return nil
 }

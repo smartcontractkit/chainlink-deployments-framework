@@ -14,6 +14,7 @@ import (
 
 // TODO(giogam): This test is incomplete, it should be completed with support for websockets URLS
 func TestMultiClient(t *testing.T) {
+	t.Parallel()
 	var (
 		lggr                 = logger.Test(t)
 		chainSelector uint64 = 16015286601757825753 // "ethereum-testnet-sepolia"
@@ -95,10 +96,10 @@ func TestMultiClient_retryWithBackups(t *testing.T) {
 			// Run operation and check expectations
 			err = mc.retryWithBackups(tt.opName, tt.op)
 			if tt.wantErr != "" {
-				assert.Error(t, err)
-				assert.ErrorContains(t, err, tt.wantErr)
+				require.Error(t, err)
+				require.ErrorContains(t, err, tt.wantErr)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 		})
 	}

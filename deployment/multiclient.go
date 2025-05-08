@@ -105,8 +105,10 @@ func (mc *MultiClient) CallContract(ctx context.Context, msg ethereum.CallMsg, b
 	err := mc.retryWithBackups("CallContract", func(client *ethclient.Client) error {
 		var err error
 		result, err = client.CallContract(ctx, msg, blockNumber)
+
 		return err
 	})
+
 	return result, err
 }
 
@@ -115,8 +117,10 @@ func (mc *MultiClient) CallContractAtHash(ctx context.Context, msg ethereum.Call
 	err := mc.retryWithBackups("CallContractAtHash", func(client *ethclient.Client) error {
 		var err error
 		result, err = client.CallContractAtHash(ctx, msg, blockHash)
+
 		return err
 	})
+
 	return result, err
 }
 
@@ -125,8 +129,10 @@ func (mc *MultiClient) CodeAt(ctx context.Context, account common.Address, block
 	err := mc.retryWithBackups("CodeAt", func(client *ethclient.Client) error {
 		var err error
 		code, err = client.CodeAt(ctx, account, blockNumber)
+
 		return err
 	})
+
 	return code, err
 }
 
@@ -135,8 +141,10 @@ func (mc *MultiClient) CodeAtHash(ctx context.Context, account common.Address, b
 	err := mc.retryWithBackups("CodeAtHash", func(client *ethclient.Client) error {
 		var err error
 		code, err = client.CodeAtHash(ctx, account, blockHash)
+
 		return err
 	})
+
 	return code, err
 }
 
@@ -145,8 +153,10 @@ func (mc *MultiClient) NonceAt(ctx context.Context, account common.Address, bloc
 	err := mc.retryWithBackups("NonceAt", func(client *ethclient.Client) error {
 		var err error
 		count, err = client.NonceAt(ctx, account, block)
+
 		return err
 	})
+
 	return count, err
 }
 
@@ -155,8 +165,10 @@ func (mc *MultiClient) NonceAtHash(ctx context.Context, account common.Address, 
 	err := mc.retryWithBackups("NonceAtHash", func(client *ethclient.Client) error {
 		var err error
 		count, err = client.NonceAtHash(ctx, account, blockHash)
+
 		return err
 	})
+
 	return count, err
 }
 
@@ -165,8 +177,10 @@ func (mc *MultiClient) HeaderByNumber(ctx context.Context, number *big.Int) (*ty
 	err := mc.retryWithBackups("HeaderByNumber", func(client *ethclient.Client) error {
 		var err error
 		header, err = client.HeaderByNumber(ctx, number)
+
 		return err
 	})
+
 	return header, err
 }
 
@@ -198,10 +212,12 @@ func (mc *MultiClient) WaitMined(ctx context.Context, tx *types.Transaction) (*t
 	case receipt = <-resultCh:
 		close(doneCh)
 		mc.lggr.Debugf("Tx %s mined with chain %s", tx.Hash().Hex(), mc.chainName)
+
 		return receipt, nil
 	case <-ctx.Done():
 		mc.lggr.Warnf("WaitMined context done %v", ctx.Err())
 		close(doneCh)
+
 		return nil, ctx.Err()
 	}
 }
@@ -216,6 +232,7 @@ func (mc *MultiClient) retryWithBackups(opName string, op func(*ethclient.Client
 				mc.lggr.Warnf("traceID(%s): retryable error '%s' for op %s with chain %s client index %d", traceID.String(), MaybeDataErr(err), opName, mc.chainName, i)
 				return err
 			}
+
 			return nil
 		}, retry.Attempts(mc.RetryConfig.Attempts), retry.Delay(mc.RetryConfig.Delay))
 		if err2 == nil {
@@ -223,6 +240,7 @@ func (mc *MultiClient) retryWithBackups(opName string, op func(*ethclient.Client
 		}
 		mc.lggr.Infof("traceID(%s): Client at index %d failed, trying next client chain %s", traceID.String(), i, mc.chainName)
 	}
+
 	return errors.Join(err, fmt.Errorf("all backup clients failed for chain %s", mc.chainName))
 }
 
@@ -242,12 +260,14 @@ func (mc *MultiClient) dialWithRetry(rpc RPC, lggr logger.Logger) (*ethclient.Cl
 			lggr.Warnf("traceID(%s): retryable error for RPC %s:%s for chain %s  %v", traceID.String(), rpc.Name, endpoint, mc.chainName, err2)
 			return err2
 		}
+
 		return nil
 	}, retry.Attempts(mc.RetryConfig.DialAttempts), retry.Delay(mc.RetryConfig.DialDelay))
 
 	if err != nil {
 		return nil, errors.Join(err, fmt.Errorf("failed to dial endpoint '%s' for RPC %s for chain %s after retries", endpoint, rpc.Name, mc.chainName))
 	}
+
 	return client, nil
 }
 
@@ -259,8 +279,10 @@ func (mc *MultiClient) SuggestGasPrice(ctx context.Context) (*big.Int, error) {
 	err := mc.callWithDebug("SuggestGasPrice", func(client *ethclient.Client) error {
 		var err error
 		gasPrice, err = client.SuggestGasPrice(ctx)
+
 		return err
 	})
+
 	return gasPrice, err
 }
 
@@ -269,8 +291,10 @@ func (mc *MultiClient) SuggestGasTipCap(ctx context.Context) (*big.Int, error) {
 	err := mc.callWithDebug("SuggestGasTipCap", func(client *ethclient.Client) error {
 		var err error
 		gasTipCap, err = client.SuggestGasTipCap(ctx)
+
 		return err
 	})
+
 	return gasTipCap, err
 }
 
@@ -279,8 +303,10 @@ func (mc *MultiClient) PendingCodeAt(ctx context.Context, account common.Address
 	err := mc.callWithDebug("PendingCodeAt", func(client *ethclient.Client) error {
 		var err error
 		code, err = client.PendingCodeAt(ctx, account)
+
 		return err
 	})
+
 	return code, err
 }
 
@@ -289,8 +315,10 @@ func (mc *MultiClient) PendingNonceAt(ctx context.Context, account common.Addres
 	err := mc.callWithDebug("PendingNonceAt", func(client *ethclient.Client) error {
 		var err error
 		count, err = client.PendingNonceAt(ctx, account)
+
 		return err
 	})
+
 	return count, err
 }
 
@@ -299,8 +327,10 @@ func (mc *MultiClient) EstimateGas(ctx context.Context, call ethereum.CallMsg) (
 	err := mc.callWithDebug("EstimateGas", func(client *ethclient.Client) error {
 		var err error
 		gas, err = client.EstimateGas(ctx, call)
+
 		return err
 	})
+
 	return gas, err
 }
 
@@ -309,8 +339,10 @@ func (mc *MultiClient) BalanceAt(ctx context.Context, account common.Address, bl
 	err := mc.callWithDebug("BalanceAt", func(client *ethclient.Client) error {
 		var err error
 		balance, err = client.BalanceAt(ctx, account, blockNumber)
+
 		return err
 	})
+
 	return balance, err
 }
 
@@ -319,8 +351,10 @@ func (mc *MultiClient) FilterLogs(ctx context.Context, q ethereum.FilterQuery) (
 	err := mc.callWithDebug("FilterLogs", func(client *ethclient.Client) error {
 		var err error
 		logs, err = client.FilterLogs(ctx, q)
+
 		return err
 	})
+
 	return logs, err
 }
 
@@ -329,17 +363,19 @@ func (mc *MultiClient) SubscribeFilterLogs(ctx context.Context, q ethereum.Filte
 	err := mc.callWithDebug("SubscribeFilterLogs", func(client *ethclient.Client) error {
 		var err error
 		sub, err = client.SubscribeFilterLogs(ctx, q, ch)
+
 		return err
 	})
+
 	return sub, err
 }
 
 func (mc *MultiClient) callWithDebug(callName string, call func(*ethclient.Client) error) error {
 	mc.lggr.Debugf("Calling %s for chain %s", callName, mc.chainName)
-	var err error
-	err = call(mc.Client)
+	var err = call(mc.Client)
 	if err != nil {
 		mc.lggr.Errorf("error '%s' when calling %s for chain %s", MaybeDataErr(err), callName, mc.chainName)
 	}
+
 	return err
 }
