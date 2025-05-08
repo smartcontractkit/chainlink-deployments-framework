@@ -8,6 +8,7 @@ import (
 )
 
 func TestDefaultMetadataMarshalJSON(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		input    DefaultMetadata
@@ -42,6 +43,7 @@ func TestDefaultMetadataMarshalJSON(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result, err := json.Marshal(tt.input)
 			require.NoError(t, err)
 			require.NotNil(t, result)
