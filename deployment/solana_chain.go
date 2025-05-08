@@ -120,7 +120,9 @@ func (c SolChain) CloseBuffers(logger logger.Logger, buffer string) {
 		"stderr", stderr.String())
 }
 
-func (c SolChain) DeployProgram(logger logger.Logger, programName string, isUpgrade bool) (string, error) {
+// Overallocate should be set when deploying any program that may eventually be owned by timelock
+// Overallocate is mutually exclusive with isUpgrade
+func (c SolChain) DeployProgram(logger logger.Logger, programName string, isUpgrade bool, overallocate bool) (string, error) {
 	programFile := filepath.Join(c.ProgramsPath, programName+".so")
 	if _, err := os.Stat(programFile); err != nil {
 		return "", fmt.Errorf("program file not found: %w", err)
@@ -153,7 +155,7 @@ func (c SolChain) DeployProgram(logger logger.Logger, programName string, isUpgr
 			"programKeyPair", programKeyPair)
 		baseArgs = append(baseArgs, "--program-id", programKeyPair)
 		totalBytes := GetSolanaProgramBytes()[programName]
-		if totalBytes > 0 {
+		if overallocate && totalBytes > 0 {
 			baseArgs = append(baseArgs, "--max-len", strconv.Itoa(totalBytes))
 		}
 		cmd = exec.Command("solana", baseArgs...) // #nosec G204
