@@ -20,9 +20,10 @@ import (
 )
 
 const (
-	ProgramIDPrefix                 = "Program Id: "
-	BufferIDPrefix                  = "Buffer: "
-	SolDefaultCommitment            = solRpc.CommitmentConfirmed
+	ProgramIDPrefix      = "Program Id: "
+	BufferIDPrefix       = "Buffer: "
+	SolDefaultCommitment = solRpc.CommitmentConfirmed
+
 	RouterProgramName               = "ccip_router"
 	OffRampProgramName              = "ccip_offramp"
 	FeeQuoterProgramName            = "fee_quoter"

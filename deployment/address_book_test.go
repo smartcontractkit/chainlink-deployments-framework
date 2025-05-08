@@ -342,7 +342,6 @@ func Test_EnsureDeduped(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		// capture range variable
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -415,7 +414,6 @@ func TestTypeAndVersionFromString(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		// capture range variable
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
