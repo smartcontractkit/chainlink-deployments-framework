@@ -3,6 +3,7 @@ package deployment
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -13,22 +14,20 @@ import (
 
 	"github.com/gagliardetto/solana-go"
 	solRpc "github.com/gagliardetto/solana-go/rpc"
-	"github.com/pkg/errors"
-
-	"github.com/gagliardetto/solana-go/rpc"
 
 	solCommonUtil "github.com/smartcontractkit/chainlink-ccip/chains/solana/utils/common"
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 )
 
 const (
-	ProgramIDPrefix                 = "Program Id: "
-	BufferIDPrefix                  = "Buffer: "
-	SolDefaultCommitment            = rpc.CommitmentConfirmed
+	ProgramIDPrefix      = "Program Id: "
+	BufferIDPrefix       = "Buffer: "
+	SolDefaultCommitment = solRpc.CommitmentConfirmed
+
 	RouterProgramName               = "ccip_router"
 	OffRampProgramName              = "ccip_offramp"
 	FeeQuoterProgramName            = "fee_quoter"
-	BurnMintTokenPoolProgramName    = "burnmint_token_pool"
+	BurnMintTokenPoolProgramName    = "burnmint_token_pool" // #nosec G101: program identifier, not hardcoded credentials
 	LockReleaseTokenPoolProgramName = "lockrelease_token_pool"
 	AccessControllerProgramName     = "access_controller"
 	TimelockProgramName             = "timelock"
@@ -60,6 +59,7 @@ func (c SolChain) String() string {
 		// we should never get here, if the selector is invalid it should not be in the environment
 		panic(err)
 	}
+
 	return fmt.Sprintf("%s (%d)", chainInfo.ChainName, chainInfo.ChainSelector)
 }
 
@@ -72,6 +72,7 @@ func (c SolChain) Name() string {
 	if chainInfo.ChainName == "" {
 		return strconv.FormatUint(c.Selector, 10)
 	}
+
 	return chainInfo.ChainName
 }
 
@@ -91,7 +92,42 @@ func GetSolanaProgramBytes() map[string]int {
 	}
 }
 
-func (c SolChain) DeployProgram(logger logger.Logger, programName string, isUpgrade bool) (string, error) {
+func (c SolChain) CloseBuffers(logger logger.Logger, buffer string) error {
+	baseArgs := []string{
+		"program",
+		"close",
+		buffer,                     // buffer address e.g. "5h2npsKHzGpiibLZvKnr12yC31qzvQESRnfovofL4WE3"
+		"--keypair", c.KeypairPath, // deployer keypair
+		"--url", c.URL, // rpc url
+	}
+
+	cmd := exec.Command("solana", baseArgs...) // #nosec G204
+	logger.Infof("Closing buffers with command: %s", cmd.String())
+
+	// Capture the command output
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	// Run the command
+	if err := cmd.Run(); err != nil {
+		logger.Errorw("Error closing buffers",
+			"error", err,
+			"stdout", stdout.String(),
+			"stderr", stderr.String())
+
+		return err
+	}
+	logger.Infow("Closed buffers",
+		"stdout", stdout.String(),
+		"stderr", stderr.String())
+
+	return nil
+}
+
+// Overallocate should be set when deploying any program that may eventually be owned by timelock
+// Overallocate is mutually exclusive with isUpgrade
+func (c SolChain) DeployProgram(logger logger.Logger, programName string, isUpgrade bool, overallocate bool) (string, error) {
 	programFile := filepath.Join(c.ProgramsPath, programName+".so")
 	if _, err := os.Stat(programFile); err != nil {
 		return "", fmt.Errorf("program file not found: %w", err)
@@ -124,7 +160,7 @@ func (c SolChain) DeployProgram(logger logger.Logger, programName string, isUpgr
 			"programKeyPair", programKeyPair)
 		baseArgs = append(baseArgs, "--program-id", programKeyPair)
 		totalBytes := GetSolanaProgramBytes()[programName]
-		if totalBytes > 0 {
+		if overallocate && totalBytes > 0 {
 			baseArgs = append(baseArgs, "--max-len", strconv.Itoa(totalBytes))
 		}
 		cmd = exec.Command("solana", baseArgs...) // #nosec G204
@@ -150,6 +186,7 @@ func (c SolChain) DeployProgram(logger logger.Logger, programName string, isUpgr
 
 	// TODO: obviously need to do this better
 	time.Sleep(5 * time.Second)
+
 	return parseProgramID(output, prefix)
 }
 
@@ -158,6 +195,7 @@ func (c SolChain) GetAccountDataBorshInto(ctx context.Context, pubkey solana.Pub
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -174,5 +212,6 @@ func parseProgramID(output string, prefix string) (string, error) {
 	if endIdx == -1 {
 		endIdx = len(output)
 	}
+
 	return output[startIdx : startIdx+endIdx], nil
 }

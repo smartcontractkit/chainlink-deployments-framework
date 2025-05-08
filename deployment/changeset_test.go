@@ -5,8 +5,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 )
 
 type MyChangeSet struct{}
@@ -93,6 +94,7 @@ func TestChangeSetLegacyFunction(t *testing.T) {
 }
 
 func NewNoopEnvironment(t *testing.T) Environment {
+	t.Helper()
 	return *NewEnvironment(
 		"noop",
 		logger.Test(t),

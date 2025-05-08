@@ -1,5 +1,29 @@
 # chainlink-deployments-framework
 
+## 0.0.14
+
+### Patch Changes
+
+- [#39](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/39) [`08e4660`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/08e46605ecb71276b7a35aa94887473da5ee08fb) Thanks [@jkongie](https://github.com/jkongie)! - BREAKING: Operations retry logic is now opt in. Use the `WithRetry` method in your `ExecuteOperation` call to enable retries
+
+## 0.0.13
+
+### Patch Changes
+
+- [#64](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/64) [`f05efd9`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/f05efd9b0e417da9e6b0fd53372566584ad65520) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - migrate more helpers for writing changesets
+
+## 0.0.12
+
+### Patch Changes
+
+- [#62](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/62) [`e31e3ea`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/e31e3eab10cd8cbb10a3ee17ae4202fb7f9f495f) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - Add more helpers from chainlink/deployment which are useful for writing changesets
+
+## 0.0.11
+
+### Patch Changes
+
+- [#59](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/59) [`5d5a317`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/5d5a317363b549ac372b9f1c0430ff9566d4314d) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - better multiclient logging and expose dial attempts and delay as config
+
 ## 0.0.10
 
 ### Patch Changes

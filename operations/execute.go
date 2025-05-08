@@ -18,16 +18,59 @@ type ExecuteConfig[IN, DEP any] struct {
 type ExecuteOption[IN, DEP any] func(*ExecuteConfig[IN, DEP])
 
 type RetryConfig[IN, DEP any] struct {
-	// DisableRetry disables the retry mechanism if set to true.
-	DisableRetry bool
+	// Enabled determines if the retry is enabled for the operation.
+	Enabled bool
+
+	// Policy is the retry policy to control the behavior of the retry.
+	Policy RetryPolicy
+
 	// InputHook is a function that returns an updated input before retrying the operation.
 	// The operation when retried will use the input returned by this function.
 	// This is useful for scenarios like updating the gas limit.
-	// This will be ignored if DisableRetry is set to true.
 	InputHook func(input IN, deps DEP) IN
 }
 
-// WithRetryConfig is an ExecuteOption that sets the retry configuration.
+// newDisabledRetryConfig returns a default retry configuration that is initially disabled.
+func newDisabledRetryConfig[IN, DEP any]() RetryConfig[IN, DEP] {
+	return RetryConfig[IN, DEP]{
+		Enabled: false,
+		Policy: RetryPolicy{
+			MaxAttempts: 10,
+		},
+	}
+}
+
+// RetryPolicy defines the arguments to control the retry behavior.
+type RetryPolicy struct {
+	MaxAttempts uint
+}
+
+// options returns the 'avast/retry' functional options for the retry policy.
+func (p RetryPolicy) options() []retry.Option {
+	return []retry.Option{
+		retry.Attempts(p.MaxAttempts),
+	}
+}
+
+// WithRetry is an ExecuteOption that enables the default retry for the operation.
+func WithRetry[IN, DEP any]() ExecuteOption[IN, DEP] {
+	return func(c *ExecuteConfig[IN, DEP]) {
+		c.retryConfig.Enabled = true
+	}
+}
+
+// WithRetryInput is an ExecuteOption that enables the default retry and provide an input
+// transform function which will modify the input on each retry attempt.
+func WithRetryInput[IN, DEP any](inputHookFunc func(IN, DEP) IN) ExecuteOption[IN, DEP] {
+	return func(c *ExecuteConfig[IN, DEP]) {
+		c.retryConfig.Enabled = true
+		c.retryConfig.InputHook = inputHookFunc
+	}
+}
+
+// WithRetryConfig is an ExecuteOption that sets the retry configuration. This provides a way to
+// customize the retry behavior specific to the needs of the operation. Use this for the most
+// flexibility and control over the retry behavior.
 func WithRetryConfig[IN, DEP any](config RetryConfig[IN, DEP]) ExecuteOption[IN, DEP] {
 	return func(c *ExecuteConfig[IN, DEP]) {
 		c.retryConfig = config
@@ -69,7 +112,9 @@ func ExecuteOperation[IN, OUT, DEP any](
 		return previousReport, nil
 	}
 
-	executeConfig := &ExecuteConfig[IN, DEP]{retryConfig: RetryConfig[IN, DEP]{}}
+	executeConfig := &ExecuteConfig[IN, DEP]{
+		retryConfig: newDisabledRetryConfig[IN, DEP](),
+	}
 	for _, opt := range opts {
 		opt(executeConfig)
 	}
@@ -77,13 +122,16 @@ func ExecuteOperation[IN, OUT, DEP any](
 	var output OUT
 	var err error
 
-	if executeConfig.retryConfig.DisableRetry {
-		output, err = operation.execute(b, deps, input)
-	} else {
+	if executeConfig.retryConfig.Enabled {
 		var inputTemp = input
-		output, err = retry.DoWithData(func() (OUT, error) {
-			return operation.execute(b, deps, inputTemp)
-		}, retry.OnRetry(func(attempt uint, err error) {
+
+		// Generate the configurable options for the retry
+		retryOpts := executeConfig.retryConfig.Policy.options()
+		// Use the operation context in the retry
+		retryOpts = append(retryOpts, retry.Context(b.GetContext()))
+		// Append the retry logic which will log the retry and attempt to transform the input
+		// if the user provided a custom input hook.
+		retryOpts = append(retryOpts, retry.OnRetry(func(attempt uint, err error) {
 			b.Logger.Infow("Operation failed. Retrying...",
 				"operation", operation.def.ID, "attempt", attempt, "error", err)
 
@@ -91,6 +139,15 @@ func ExecuteOperation[IN, OUT, DEP any](
 				inputTemp = executeConfig.retryConfig.InputHook(inputTemp, deps)
 			}
 		}))
+
+		output, err = retry.DoWithData(
+			func() (OUT, error) {
+				return operation.execute(b, deps, inputTemp)
+			},
+			retryOpts...,
+		)
+	} else {
+		output, err = operation.execute(b, deps, input)
 	}
 
 	if err == nil && !IsSerializable(b.Logger, output) {
@@ -98,10 +155,10 @@ func ExecuteOperation[IN, OUT, DEP any](
 	}
 
 	report := NewReport(operation.def, input, output, err)
-	err = b.reporter.AddReport(genericReport(report))
-	if err != nil {
+	if err = b.reporter.AddReport(genericReport(report)); err != nil {
 		return Report[IN, OUT]{}, err
 	}
+
 	if report.Err != nil {
 		return report, report.Err
 	}
@@ -175,14 +232,15 @@ func ExecuteSequence[IN, OUT, DEP any](
 		childReports...,
 	)
 
-	err = b.reporter.AddReport(genericReport(report))
-	if err != nil {
+	if err = b.reporter.AddReport(genericReport(report)); err != nil {
 		return SequenceReport[IN, OUT]{}, err
 	}
+
 	executionReports, err := b.reporter.GetExecutionReports(report.ID)
 	if err != nil {
 		return SequenceReport[IN, OUT]{}, err
 	}
+
 	if report.Err != nil {
 		return SequenceReport[IN, OUT]{report, executionReports}, report.Err
 	}
@@ -229,6 +287,7 @@ func loadPreviousSuccessfulReport[IN, OUT any](
 			return typedReport, true
 		}
 	}
+
 	// No previous execution was found
 	return Report[IN, OUT]{}, false
 }

@@ -19,5 +19,6 @@ func XXXGenerateTestOCRSecrets() OCRSecrets {
 	var s OCRSecrets
 	copy(s.SharedSecret[:], crypto.Keccak256([]byte("shared"))[:16])
 	copy(s.EphemeralSk[:], crypto.Keccak256([]byte("ephemeral")))
+
 	return s
 }

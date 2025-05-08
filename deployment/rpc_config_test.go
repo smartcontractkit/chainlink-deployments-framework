@@ -7,6 +7,7 @@ import (
 )
 
 func TestRPC_ToEndpoint(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		rpc      RPC
@@ -66,6 +67,7 @@ func TestRPC_ToEndpoint(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			got, err := tt.rpc.ToEndpoint()
 
 			if tt.wantErr != "" {
@@ -79,6 +81,7 @@ func TestRPC_ToEndpoint(t *testing.T) {
 }
 
 func TestURLSchemePreferenceFromString(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected URLSchemePreference
@@ -92,6 +95,7 @@ func TestURLSchemePreferenceFromString(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
+			t.Parallel()
 			got, err := URLSchemePreferenceFromString(tt.input)
 			if tt.wantErr != "" {
 				require.EqualError(t, err, tt.wantErr)
@@ -104,6 +108,7 @@ func TestURLSchemePreferenceFromString(t *testing.T) {
 }
 
 func TestURLSchemePreference_UnmarshalText(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    []byte
 		expected URLSchemePreference
@@ -117,6 +122,7 @@ func TestURLSchemePreference_UnmarshalText(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(string(tt.input), func(t *testing.T) {
+			t.Parallel()
 			var got URLSchemePreference
 			err := got.UnmarshalText(tt.input)
 			if tt.wantErr != "" {
