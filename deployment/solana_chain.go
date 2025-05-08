@@ -91,7 +91,7 @@ func GetSolanaProgramBytes() map[string]int {
 	}
 }
 
-func (c SolChain) CloseBuffers(logger logger.Logger, buffer string) {
+func (c SolChain) CloseBuffers(logger logger.Logger, buffer string) error {
 	baseArgs := []string{
 		"program",
 		"close",
@@ -114,10 +114,12 @@ func (c SolChain) CloseBuffers(logger logger.Logger, buffer string) {
 			"error", err,
 			"stdout", stdout.String(),
 			"stderr", stderr.String())
+		return err
 	}
 	logger.Infow("Closed buffers",
 		"stdout", stdout.String(),
 		"stderr", stderr.String())
+	return nil
 }
 
 // Overallocate should be set when deploying any program that may eventually be owned by timelock
