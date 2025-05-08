@@ -2,4 +2,4 @@
 "chainlink-deployments-framework": patch
 ---
 
-marshall json without double-encoding
+marshal json without double-encoding
