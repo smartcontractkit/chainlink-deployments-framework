@@ -236,6 +236,8 @@ func (mc *MultiClient) retryWithBackups(opName string, op func(*ethclient.Client
 			return nil
 		}, retry.Attempts(mc.RetryConfig.Attempts), retry.Delay(mc.RetryConfig.Delay))
 		if err2 == nil {
+			mc.lggr.Infof("traceID(%s): Successfully executed op %s after retry attempt using client index %d for chain %s", traceID.String(), opName, i, mc.chainName)
+
 			return nil
 		}
 		mc.lggr.Infof("traceID(%s): Client at index %d failed, trying next client chain %s", traceID.String(), i, mc.chainName)
