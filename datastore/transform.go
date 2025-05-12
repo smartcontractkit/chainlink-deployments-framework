@@ -120,11 +120,10 @@ func FromDefault[CM Cloneable[CM], EM Cloneable[EM]](
 	}
 
 	for _, cm := range contractMetadata {
-		var metadata CM
-		cmetaErr = json.Unmarshal([]byte(cm.Metadata.Data), &metadata)
-		if cmetaErr != nil {
-			return nil, fmt.Errorf("error unmarshaling ContractMetadata for %s@%v: %w",
-				cm.Address, cm.ChainSelector, cmetaErr)
+		metadata, ok := cm.Metadata.Data.(CM)
+		if !ok {
+			return nil, fmt.Errorf("error converting ContractMetadata for %s@%v",
+				cm.Address, cm.ChainSelector)
 		}
 
 		cmetaErr = converted.ContractMetadata().Add(ContractMetadata[CM]{
@@ -150,12 +149,10 @@ func FromDefault[CM Cloneable[CM], EM Cloneable[EM]](
 		return nil, envmetaErr
 	}
 
-	// Convert the EnvMetadata to the domain specific type. This is done by unmarshaling
-	// the JSON string representing the metadata into the concrete type.
 	var metadata EM
-	envmetaErr = json.Unmarshal([]byte(envMetadata.Metadata.Data), &metadata)
-	if envmetaErr != nil {
-		return nil, fmt.Errorf("error unmarshaling EnvMetadata: %w", envmetaErr)
+	metadata, ok := envMetadata.Metadata.Data.(EM)
+	if !ok {
+		return nil, fmt.Errorf("error converting EnvMetadata: %w", envmetaErr)
 	}
 
 	// Set the EnvMetadata in the new data store with the domain specific type.
