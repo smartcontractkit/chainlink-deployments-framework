@@ -14,7 +14,7 @@ jobs:
       actions: read
     steps:
       - name: cicd-publish-release
-        uses: smartcontractkit/.github/actions/cicd-build-publish-artifacts-go@b4737861584f88fa9569d6978f70fedf8b1ae67c # cicd-build-publish-artifacts-go@0.4.0
+        uses: smartcontractkit/.github/actions/cicd-build-publish-artifacts-go@e44d530ffc401f7571874c189f06f87fed524a70 # cicd-build-publish-artifacts-go@0.4.0
         with:
           # general inputs
           app-name: chainlink-deployments-framework
