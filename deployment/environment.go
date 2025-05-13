@@ -13,6 +13,9 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/zksync-sdk/zksync2-go/accounts"
+	"github.com/zksync-sdk/zksync2-go/clients"
+
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 	csav1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/csa"
 	jobv1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/job"
@@ -52,6 +55,11 @@ type Chain struct {
 	// Users are a set of keys that can be used to interact with the chain.
 	// These are distinct from the deployer key.
 	Users []*bind.TransactOpts
+
+	// ZK deployment specifics
+	IsZkSyncVM          bool
+	ClientZkSyncVM      *clients.Client
+	DeployerKeyZkSyncVM *accounts.Wallet
 }
 
 func (c Chain) String() string {
