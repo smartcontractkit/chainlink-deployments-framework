@@ -1,5 +1,15 @@
 # chainlink-deployments-framework
 
+## 0.1.0
+
+### Minor Changes
+
+- [#69](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/69) [`ee24199`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/ee24199564bd04fa66dc24152b0cbc263d37f7ac) Thanks [@tt-cll](https://github.com/tt-cll)! - adds solana program close and support for deploying without extended buffers
+
+### Patch Changes
+
+- [#74](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/74) [`98904ba`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/98904ba591ae12bbeb9ef48b15c0bcc990e934c8) Thanks [@giogam](https://github.com/giogam)! - feat(multiclient): wraps debug calls with retry logic
+
 ## 0.0.14
 
 ### Patch Changes
