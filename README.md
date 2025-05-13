@@ -12,14 +12,17 @@ The framework includes the Operations API and Datastore API.
 ## Usage
 
 ```bash
-# for writing changesets (migrated from chainlink/deployments
-$ go get github.com/smartcontractkit/chainlink-deployments-framework/deployment
+$ go get github.com/smartcontractkit/chainlink-deployments-framework
+```
 
-# for operations api
-$ go get github.com/smartcontractkit/chainlink-deployments-framework/operations
+## Imports
 
-# for datastore api
-$ go get github.com/smartcontractkit/chainlink-deployments-framework/datastore
+```go
+import (
+  "github.com/smartcontractkit/chainlink-deployments-framework/deployment" // for writing changesets (migrated from chainlink/deployments
+  "github.com/smartcontractkit/chainlink-deployments-framework/operations" // for operations API
+  "github.com/smartcontractkit/chainlink-deployments-framework/datastore" // for datastore API
+)
 ```
 
 ## Development
