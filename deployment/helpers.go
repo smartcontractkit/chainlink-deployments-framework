@@ -131,7 +131,7 @@ func DeployContract[C any](
 	}
 	var err error
 	if !chain.IsZkSyncVM {
-		_, err := chain.Confirm(contractDeploy.Tx)
+		_, err = chain.Confirm(contractDeploy.Tx)
 		if err != nil {
 			lggr.Errorw("Failed to confirm deployment", "chain", chain.String(), "Contract", contractDeploy.Tv.String(), "err", err)
 			return nil, err
