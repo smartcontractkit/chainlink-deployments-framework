@@ -1,5 +1,13 @@
 # chainlink-deployments-framework
 
+## 0.1.1
+
+### Patch Changes
+
+- [#81](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/81) [`ba1cd63`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/ba1cd6338dd7e0efc087e579ffe6c2f6dd5d8b3f) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix incorrect error message order
+
+- [#83](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/83) [`a3b78c6`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/a3b78c6e1caa60a0dac056f5af2678fa44802831) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - enhance multiclient logging
+
 ## 0.1.0
 
 ### Minor Changes
