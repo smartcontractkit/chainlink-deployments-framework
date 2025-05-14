@@ -322,24 +322,28 @@ func (mc *MultiClient) retryWithBackups(opName string, op func(*ethclient.Client
 	var err error
 	traceID := uuid.New()
 	for i, client := range append([]*ethclient.Client{mc.Client}, mc.Backups...) {
+		retryCount := 0
 		err2 := retry.Do(func() error {
 			err = op(client)
 			if err != nil {
-				mc.lggr.Warnf("traceID(%s): retryable error '%s' for op %s with chain %s client index %d", traceID.String(), MaybeDataErr(err), opName, mc.chainName, i)
+				mc.lggr.Warnf("traceID %q: chain %q: op: %q: client index %d: failed execution - retryable error '%s'", traceID.String(), mc.chainName, opName, i, MaybeDataErr(err))
 				return err
 			}
 
 			return nil
-		}, retry.Attempts(mc.RetryConfig.Attempts), retry.Delay(mc.RetryConfig.Delay))
+		}, retry.Attempts(mc.RetryConfig.Attempts), retry.Delay(mc.RetryConfig.Delay),
+			retry.OnRetry(func(n uint, err error) { retryCount++ }))
 		if err2 == nil {
-			mc.lggr.Infof("traceID(%s): Successfully executed op %s after retry attempt using client index %d for chain %s", traceID.String(), opName, i, mc.chainName)
+			if retryCount > 0 {
+				mc.lggr.Infof("traceID %q: chain %q: op: %q: client index %d: successfully executed after %d retry", traceID.String(), mc.chainName, opName, i, retryCount)
+			}
 
 			return nil
 		}
-		mc.lggr.Infof("traceID(%s): Client at index %d failed, trying next client chain %s", traceID.String(), i, mc.chainName)
+		mc.lggr.Infof("traceID %q: chain %q: op: %q: client index %d: failed, trying next client", traceID.String(), mc.chainName, opName, i)
 	}
 
-	return errors.Join(err, fmt.Errorf("all backup clients failed for chain %s", mc.chainName))
+	return errors.Join(err, fmt.Errorf("all backup clients failed for chain %q", mc.chainName))
 }
 
 func (mc *MultiClient) dialWithRetry(rpc RPC, lggr logger.Logger) (*ethclient.Client, error) {
@@ -350,20 +354,25 @@ func (mc *MultiClient) dialWithRetry(rpc RPC, lggr logger.Logger) (*ethclient.Cl
 
 	traceID := uuid.New()
 	var client *ethclient.Client
+	retryCount := 0
 	err = retry.Do(func() error {
 		var err2 error
-		mc.lggr.Debugf("traceID(%s): dialing endpoint '%s' for RPC %s for chain %s", traceID.String(), endpoint, rpc.Name, mc.chainName)
+		mc.lggr.Debugf("traceID %q: chain %q: rpc: %q: dialing endpoint '%s'", traceID.String(), mc.chainName, rpc.Name, endpoint)
 		client, err2 = ethclient.Dial(endpoint)
 		if err2 != nil {
-			lggr.Warnf("traceID(%s): retryable error for RPC %s:%s for chain %s  %v", traceID.String(), rpc.Name, endpoint, mc.chainName, err2)
+			lggr.Warnf("traceID %q: chain %q: rpc: %q: dialing failed - retryable error: %s: %v", traceID.String(), mc.chainName, rpc.Name, endpoint, err2)
 			return err2
 		}
 
 		return nil
-	}, retry.Attempts(mc.RetryConfig.DialAttempts), retry.Delay(mc.RetryConfig.DialDelay))
+	}, retry.Attempts(mc.RetryConfig.DialAttempts), retry.Delay(mc.RetryConfig.DialDelay),
+		retry.OnRetry(func(n uint, err error) { retryCount++ }))
 
 	if err != nil {
 		return nil, errors.Join(err, fmt.Errorf("failed to dial endpoint '%s' for RPC %s for chain %s after retries", endpoint, rpc.Name, mc.chainName))
+	}
+	if retryCount > 0 {
+		lggr.Infof("traceID %q: chain %q: rpc: %q: successfully dialed endpoint '%s' after %d retries", traceID.String(), mc.chainName, rpc.Name, endpoint, retryCount)
 	}
 
 	return client, nil

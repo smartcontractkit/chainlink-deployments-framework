@@ -68,7 +68,7 @@ func TestMultiClient_retryWithBackups(t *testing.T) {
 			op: func(client *ethclient.Client) error {
 				return errors.New("operation failed")
 			},
-			wantErr: "operation failed\nall backup clients failed for chain ethereum-testnet-sepolia",
+			wantErr: "operation failed\nall backup clients failed for chain \"ethereum-testnet-sepolia\"",
 		},
 	}
 
