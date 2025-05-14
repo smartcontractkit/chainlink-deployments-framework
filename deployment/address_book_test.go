@@ -36,6 +36,11 @@ func TestAddressBook_Save(t *testing.T) {
 	// Valid chain but not present.
 	_, err = ab.AddressesForChain(chainsel.TEST_90000002.Selector)
 	require.ErrorIs(t, err, ErrChainNotFound)
+	require.ErrorContains(t, err, "chain selector 5548718428018410741: chain not found")
+
+	// invalid chain
+	_, err = ab.AddressesForChain(0)
+	require.ErrorContains(t, err, "chain selector 0: invalid chain selector")
 
 	// Invalid selector
 	err = ab.Save(0, addr1, onRamp100)
@@ -75,6 +80,18 @@ func TestAddressBook_Save(t *testing.T) {
 			addr2: onRamp110,
 		},
 	}, addresses)
+
+	// save with bad chain selector
+	err = ab.Save(0, addr1, onRamp100)
+	require.ErrorContains(t, err, "chain selector 0: invalid chain selector")
+
+	// save with empty address
+	err = ab.Save(chainsel.TEST_90000001.Selector, "", onRamp100)
+	require.ErrorContains(t, err, "address cannot be empty: invalid address")
+
+	// save with bad address
+	err = ab.Save(chainsel.TEST_90000001.Selector, "bad address", onRamp100)
+	require.ErrorContains(t, err, "address bad address is not a valid Ethereum address, only Ethereum addresses supported for EVM chains: invalid address")
 }
 
 func TestAddressBook_Merge(t *testing.T) {

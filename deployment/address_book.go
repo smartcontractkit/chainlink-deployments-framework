@@ -6,11 +6,10 @@ import (
 	"strings"
 	"sync"
 
-	"golang.org/x/exp/maps"
-
 	"github.com/Masterminds/semver/v3"
 	"github.com/ethereum/go-ethereum/common"
 	chainsel "github.com/smartcontractkit/chain-selectors"
+	"golang.org/x/exp/maps"
 )
 
 var (
@@ -124,17 +123,17 @@ type AddressBookMap struct {
 func (m *AddressBookMap) save(chainSelector uint64, address string, typeAndVersion TypeAndVersion) error {
 	family, err := chainsel.GetSelectorFamily(chainSelector)
 	if err != nil {
-		return fmt.Errorf("%w: chain selector %d", ErrInvalidChainSelector, chainSelector)
+		return fmt.Errorf("chain selector %d: %w", chainSelector, ErrInvalidChainSelector)
 	}
 	if family == chainsel.FamilyEVM {
 		if address == "" || address == common.HexToAddress("0x0").Hex() {
-			return fmt.Errorf("%w: address cannot be empty", ErrInvalidAddress)
+			return fmt.Errorf("address cannot be empty: %w", ErrInvalidAddress)
 		}
 		if common.IsHexAddress(address) {
 			// IMPORTANT: WE ALWAYS STANDARDIZE ETHEREUM ADDRESS STRINGS TO EIP55
 			address = common.HexToAddress(address).Hex()
 		} else {
-			return fmt.Errorf("%w: address %s is not a valid Ethereum address, only Ethereum addresses supported for EVM chains", ErrInvalidAddress, address)
+			return fmt.Errorf("address %s is not a valid Ethereum address, only Ethereum addresses supported for EVM chains: %w", address, ErrInvalidAddress)
 		}
 	}
 
@@ -178,14 +177,14 @@ func (m *AddressBookMap) Addresses() (map[uint64]map[string]TypeAndVersion, erro
 func (m *AddressBookMap) AddressesForChain(chainSelector uint64) (map[string]TypeAndVersion, error) {
 	_, err := chainsel.GetChainIDFromSelector(chainSelector)
 	if err != nil {
-		return nil, fmt.Errorf("%w: chain selector %d", ErrInvalidChainSelector, chainSelector)
+		return nil, fmt.Errorf("chain selector %d: %w", chainSelector, ErrInvalidChainSelector)
 	}
 
 	m.mtx.RLock()
 	defer m.mtx.RUnlock()
 
 	if _, exists := m.addressesByChain[chainSelector]; !exists {
-		return nil, fmt.Errorf("%w: chain selector %d", ErrChainNotFound, chainSelector)
+		return nil, fmt.Errorf("chain selector %d: %w", chainSelector, ErrChainNotFound)
 	}
 
 	// maps are mutable and pass via a pointer
