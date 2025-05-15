@@ -24,6 +24,7 @@ const (
 	// Default retry configuration for RPC calls
 	RPCDefaultRetryAttempts = 1
 	RPCDefaultRetryDelay    = 1000 * time.Millisecond
+	RPCDefaultRetryTimeout  = 10 * time.Second
 
 	// Default retry configuration for dialing RPC endpoints
 	RPCDefaultDialRetryAttempts = 1
@@ -34,6 +35,7 @@ const (
 type RetryConfig struct {
 	Attempts     uint
 	Delay        time.Duration
+	Timeout      time.Duration
 	DialAttempts uint
 	DialDelay    time.Duration
 	DialTimeout  time.Duration
@@ -43,6 +45,7 @@ func defaultRetryConfig() RetryConfig {
 	return RetryConfig{
 		Attempts:     RPCDefaultRetryAttempts,
 		Delay:        RPCDefaultRetryDelay,
+		Timeout:      RPCDefaultRetryTimeout,
 		DialAttempts: RPCDefaultDialRetryAttempts,
 		DialDelay:    RPCDefaultDialRetryDelay,
 		DialTimeout:  RPCDefaultDialTimeout,
@@ -98,16 +101,16 @@ func NewMultiClient(lggr logger.Logger, rpcsCfg RPCConfig, opts ...func(client *
 }
 
 func (mc *MultiClient) SendTransaction(ctx context.Context, tx *types.Transaction) error {
-	return mc.retryWithBackups("SendTransaction", func(client *ethclient.Client) error {
-		return client.SendTransaction(ctx, tx)
+	return mc.retryWithBackups(ctx, "SendTransaction", func(ct context.Context, client *ethclient.Client) error {
+		return client.SendTransaction(ct, tx)
 	})
 }
 
 func (mc *MultiClient) CallContract(ctx context.Context, msg ethereum.CallMsg, blockNumber *big.Int) ([]byte, error) {
 	var result []byte
-	err := mc.retryWithBackups("CallContract", func(client *ethclient.Client) error {
+	err := mc.retryWithBackups(ctx, "CallContract", func(ct context.Context, client *ethclient.Client) error {
 		var err error
-		result, err = client.CallContract(ctx, msg, blockNumber)
+		result, err = client.CallContract(ct, msg, blockNumber)
 
 		return err
 	})
@@ -117,9 +120,9 @@ func (mc *MultiClient) CallContract(ctx context.Context, msg ethereum.CallMsg, b
 
 func (mc *MultiClient) CallContractAtHash(ctx context.Context, msg ethereum.CallMsg, blockHash common.Hash) ([]byte, error) {
 	var result []byte
-	err := mc.retryWithBackups("CallContractAtHash", func(client *ethclient.Client) error {
+	err := mc.retryWithBackups(ctx, "CallContractAtHash", func(ct context.Context, client *ethclient.Client) error {
 		var err error
-		result, err = client.CallContractAtHash(ctx, msg, blockHash)
+		result, err = client.CallContractAtHash(ct, msg, blockHash)
 
 		return err
 	})
@@ -129,9 +132,9 @@ func (mc *MultiClient) CallContractAtHash(ctx context.Context, msg ethereum.Call
 
 func (mc *MultiClient) CodeAt(ctx context.Context, account common.Address, blockNumber *big.Int) ([]byte, error) {
 	var code []byte
-	err := mc.retryWithBackups("CodeAt", func(client *ethclient.Client) error {
+	err := mc.retryWithBackups(ctx, "CodeAt", func(ct context.Context, client *ethclient.Client) error {
 		var err error
-		code, err = client.CodeAt(ctx, account, blockNumber)
+		code, err = client.CodeAt(ct, account, blockNumber)
 
 		return err
 	})
@@ -141,9 +144,9 @@ func (mc *MultiClient) CodeAt(ctx context.Context, account common.Address, block
 
 func (mc *MultiClient) CodeAtHash(ctx context.Context, account common.Address, blockHash common.Hash) ([]byte, error) {
 	var code []byte
-	err := mc.retryWithBackups("CodeAtHash", func(client *ethclient.Client) error {
+	err := mc.retryWithBackups(ctx, "CodeAtHash", func(ct context.Context, client *ethclient.Client) error {
 		var err error
-		code, err = client.CodeAtHash(ctx, account, blockHash)
+		code, err = client.CodeAtHash(ct, account, blockHash)
 
 		return err
 	})
@@ -153,9 +156,9 @@ func (mc *MultiClient) CodeAtHash(ctx context.Context, account common.Address, b
 
 func (mc *MultiClient) NonceAt(ctx context.Context, account common.Address, block *big.Int) (uint64, error) {
 	var count uint64
-	err := mc.retryWithBackups("NonceAt", func(client *ethclient.Client) error {
+	err := mc.retryWithBackups(ctx, "NonceAt", func(ct context.Context, client *ethclient.Client) error {
 		var err error
-		count, err = client.NonceAt(ctx, account, block)
+		count, err = client.NonceAt(ct, account, block)
 
 		return err
 	})
@@ -165,9 +168,9 @@ func (mc *MultiClient) NonceAt(ctx context.Context, account common.Address, bloc
 
 func (mc *MultiClient) NonceAtHash(ctx context.Context, account common.Address, blockHash common.Hash) (uint64, error) {
 	var count uint64
-	err := mc.retryWithBackups("NonceAtHash", func(client *ethclient.Client) error {
+	err := mc.retryWithBackups(ctx, "NonceAtHash", func(ct context.Context, client *ethclient.Client) error {
 		var err error
-		count, err = client.NonceAtHash(ctx, account, blockHash)
+		count, err = client.NonceAtHash(ct, account, blockHash)
 
 		return err
 	})
@@ -177,9 +180,9 @@ func (mc *MultiClient) NonceAtHash(ctx context.Context, account common.Address, 
 
 func (mc *MultiClient) HeaderByNumber(ctx context.Context, number *big.Int) (*types.Header, error) {
 	var header *types.Header
-	err := mc.retryWithBackups("HeaderByNumber", func(client *ethclient.Client) error {
+	err := mc.retryWithBackups(ctx, "HeaderByNumber", func(ct context.Context, client *ethclient.Client) error {
 		var err error
-		header, err = client.HeaderByNumber(ctx, number)
+		header, err = client.HeaderByNumber(ct, number)
 
 		return err
 	})
@@ -189,9 +192,9 @@ func (mc *MultiClient) HeaderByNumber(ctx context.Context, number *big.Int) (*ty
 
 func (mc *MultiClient) SuggestGasPrice(ctx context.Context) (*big.Int, error) {
 	var gasPrice *big.Int
-	err := mc.retryWithBackups("SuggestGasPrice", func(client *ethclient.Client) error {
+	err := mc.retryWithBackups(ctx, "SuggestGasPrice", func(ct context.Context, client *ethclient.Client) error {
 		var err error
-		gasPrice, err = client.SuggestGasPrice(ctx)
+		gasPrice, err = client.SuggestGasPrice(ct)
 
 		return err
 	})
@@ -201,9 +204,9 @@ func (mc *MultiClient) SuggestGasPrice(ctx context.Context) (*big.Int, error) {
 
 func (mc *MultiClient) SuggestGasTipCap(ctx context.Context) (*big.Int, error) {
 	var gasTipCap *big.Int
-	err := mc.retryWithBackups("SuggestGasTipCap", func(client *ethclient.Client) error {
+	err := mc.retryWithBackups(ctx, "SuggestGasTipCap", func(ct context.Context, client *ethclient.Client) error {
 		var err error
-		gasTipCap, err = client.SuggestGasTipCap(ctx)
+		gasTipCap, err = client.SuggestGasTipCap(ct)
 
 		return err
 	})
@@ -213,9 +216,9 @@ func (mc *MultiClient) SuggestGasTipCap(ctx context.Context) (*big.Int, error) {
 
 func (mc *MultiClient) PendingCodeAt(ctx context.Context, account common.Address) ([]byte, error) {
 	var code []byte
-	err := mc.retryWithBackups("PendingCodeAt", func(client *ethclient.Client) error {
+	err := mc.retryWithBackups(ctx, "PendingCodeAt", func(ct context.Context, client *ethclient.Client) error {
 		var err error
-		code, err = client.PendingCodeAt(ctx, account)
+		code, err = client.PendingCodeAt(ct, account)
 
 		return err
 	})
@@ -225,9 +228,9 @@ func (mc *MultiClient) PendingCodeAt(ctx context.Context, account common.Address
 
 func (mc *MultiClient) PendingNonceAt(ctx context.Context, account common.Address) (uint64, error) {
 	var count uint64
-	err := mc.retryWithBackups("PendingNonceAt", func(client *ethclient.Client) error {
+	err := mc.retryWithBackups(ctx, "PendingNonceAt", func(ct context.Context, client *ethclient.Client) error {
 		var err error
-		count, err = client.PendingNonceAt(ctx, account)
+		count, err = client.PendingNonceAt(ct, account)
 
 		return err
 	})
@@ -237,9 +240,9 @@ func (mc *MultiClient) PendingNonceAt(ctx context.Context, account common.Addres
 
 func (mc *MultiClient) EstimateGas(ctx context.Context, call ethereum.CallMsg) (uint64, error) {
 	var gas uint64
-	err := mc.retryWithBackups("EstimateGas", func(client *ethclient.Client) error {
+	err := mc.retryWithBackups(ctx, "EstimateGas", func(ct context.Context, client *ethclient.Client) error {
 		var err error
-		gas, err = client.EstimateGas(ctx, call)
+		gas, err = client.EstimateGas(ct, call)
 
 		return err
 	})
@@ -249,9 +252,9 @@ func (mc *MultiClient) EstimateGas(ctx context.Context, call ethereum.CallMsg) (
 
 func (mc *MultiClient) BalanceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error) {
 	var balance *big.Int
-	err := mc.retryWithBackups("BalanceAt", func(client *ethclient.Client) error {
+	err := mc.retryWithBackups(ctx, "BalanceAt", func(ct context.Context, client *ethclient.Client) error {
 		var err error
-		balance, err = client.BalanceAt(ctx, account, blockNumber)
+		balance, err = client.BalanceAt(ct, account, blockNumber)
 
 		return err
 	})
@@ -261,9 +264,9 @@ func (mc *MultiClient) BalanceAt(ctx context.Context, account common.Address, bl
 
 func (mc *MultiClient) FilterLogs(ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error) {
 	var logs []types.Log
-	err := mc.retryWithBackups("FilterLogs", func(client *ethclient.Client) error {
+	err := mc.retryWithBackups(ctx, "FilterLogs", func(ct context.Context, client *ethclient.Client) error {
 		var err error
-		logs, err = client.FilterLogs(ctx, q)
+		logs, err = client.FilterLogs(ct, q)
 
 		return err
 	})
@@ -273,9 +276,9 @@ func (mc *MultiClient) FilterLogs(ctx context.Context, q ethereum.FilterQuery) (
 
 func (mc *MultiClient) SubscribeFilterLogs(ctx context.Context, q ethereum.FilterQuery, ch chan<- types.Log) (ethereum.Subscription, error) {
 	var sub ethereum.Subscription
-	err := mc.retryWithBackups("SubscribeFilterLogs", func(client *ethclient.Client) error {
+	err := mc.retryWithBackups(ctx, "SubscribeFilterLogs", func(ct context.Context, client *ethclient.Client) error {
 		var err error
-		sub, err = client.SubscribeFilterLogs(ctx, q, ch)
+		sub, err = client.SubscribeFilterLogs(ct, q, ch)
 
 		return err
 	})
@@ -321,13 +324,16 @@ func (mc *MultiClient) WaitMined(ctx context.Context, tx *types.Transaction) (*t
 	}
 }
 
-func (mc *MultiClient) retryWithBackups(opName string, op func(*ethclient.Client) error) error {
+func (mc *MultiClient) retryWithBackups(ctx context.Context, opName string, op func(context.Context, *ethclient.Client) error) error {
 	var err error
 	traceID := uuid.New()
 	for i, client := range append([]*ethclient.Client{mc.Client}, mc.Backups...) {
 		retryCount := 0
 		err2 := retry.Do(func() error {
-			err = op(client)
+			timeoutCtx, cancel := context.WithTimeout(ctx, mc.RetryConfig.Timeout)
+			defer cancel()
+
+			err = op(timeoutCtx, client)
 			if err != nil {
 				mc.lggr.Warnf("traceID %q: chain %q: op: %q: client index %d: failed execution - retryable error '%s'", traceID.String(), mc.chainName, opName, i, MaybeDataErr(err))
 				return err
