@@ -28,6 +28,7 @@ const (
 	// Default retry configuration for dialing RPC endpoints
 	RPCDefaultDialRetryAttempts = 1
 	RPCDefaultDialRetryDelay    = 1000 * time.Millisecond
+	RPCDefaultDialTimeout       = 10 * time.Second
 )
 
 type RetryConfig struct {
@@ -35,6 +36,7 @@ type RetryConfig struct {
 	Delay        time.Duration
 	DialAttempts uint
 	DialDelay    time.Duration
+	DialTimeout  time.Duration
 }
 
 func defaultRetryConfig() RetryConfig {
@@ -43,6 +45,7 @@ func defaultRetryConfig() RetryConfig {
 		Delay:        RPCDefaultRetryDelay,
 		DialAttempts: RPCDefaultDialRetryAttempts,
 		DialDelay:    RPCDefaultDialRetryDelay,
+		DialTimeout:  RPCDefaultDialTimeout,
 	}
 }
 
@@ -356,9 +359,12 @@ func (mc *MultiClient) dialWithRetry(rpc RPC, lggr logger.Logger) (*ethclient.Cl
 	var client *ethclient.Client
 	retryCount := 0
 	err = retry.Do(func() error {
+		ctx, cancel := context.WithTimeout(context.Background(), mc.RetryConfig.DialTimeout)
+		defer cancel()
+
 		var err2 error
 		mc.lggr.Debugf("traceID %q: chain %q: rpc: %q: dialing endpoint '%s'", traceID.String(), mc.chainName, rpc.Name, endpoint)
-		client, err2 = ethclient.Dial(endpoint)
+		client, err2 = ethclient.DialContext(ctx, endpoint)
 		if err2 != nil {
 			lggr.Warnf("traceID %q: chain %q: rpc: %q: dialing failed - retryable error: %s: %v", traceID.String(), mc.chainName, rpc.Name, endpoint, err2)
 			return err2

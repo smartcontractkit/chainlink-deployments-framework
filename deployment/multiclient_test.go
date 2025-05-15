@@ -49,6 +49,60 @@ func TestMultiClient(t *testing.T) {
 	require.Len(t, mc.Backups, 1)
 }
 
+func TestMultiClient_dialWithRetry(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		URL       string
+		retryConf RetryConfig
+	}{
+		{
+			// this test case that triggers a context timeout error for all dial attempts.
+			// without proper timeout the dial logic inside  will hang forever and the test
+			// will timeout.
+			name: "All dial attempts fail due to context timeout",
+			URL:  "wss://rpcs.cldev.sh/avalanche/test",
+			retryConf: RetryConfig{
+				DialAttempts: 2,
+				DialDelay:    10 * time.Millisecond,
+				DialTimeout:  3 * time.Second,
+			},
+		},
+		{
+			name: "All dial attempts fail due to malformed URL",
+			URL:  "wxz://malformed/avalanche/test",
+			retryConf: RetryConfig{
+				DialAttempts: 2,
+				DialDelay:    10 * time.Millisecond,
+				DialTimeout:  3 * time.Second,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			lggr := logger.Test(t)
+
+			mc := MultiClient{
+				chainName:   "ethereum-testnet-sepolia",
+				RetryConfig: tt.retryConf,
+				lggr:        lggr,
+			}
+
+			_, err := mc.dialWithRetry(RPC{
+				Name:               "test-rpc",
+				WSURL:              tt.URL,
+				PreferredURLScheme: URLSchemePreferenceWS,
+			}, lggr)
+
+			require.Error(t, err)
+		})
+	}
+}
+
 func TestMultiClient_retryWithBackups(t *testing.T) {
 	t.Parallel()
 
