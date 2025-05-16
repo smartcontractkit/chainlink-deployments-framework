@@ -23,17 +23,6 @@ const (
 	ProgramIDPrefix      = "Program Id: "
 	BufferIDPrefix       = "Buffer: "
 	SolDefaultCommitment = solRpc.CommitmentConfirmed
-
-	RouterProgramName               = "ccip_router"
-	OffRampProgramName              = "ccip_offramp"
-	FeeQuoterProgramName            = "fee_quoter"
-	BurnMintTokenPoolProgramName    = "burnmint_token_pool" // #nosec G101: program identifier, not hardcoded credentials
-	LockReleaseTokenPoolProgramName = "lockrelease_token_pool"
-	AccessControllerProgramName     = "access_controller"
-	TimelockProgramName             = "timelock"
-	McmProgramName                  = "mcm"
-	RMNRemoteProgramName            = "rmn_remote"
-	ReceiverProgramName             = "test_ccip_receiver"
 )
 
 // SolChain represents a Solana chain.
@@ -76,22 +65,6 @@ func (c SolChain) Name() string {
 	return chainInfo.ChainName
 }
 
-// https://docs.google.com/document/d/1Fk76lOeyS2z2X6MokaNX_QTMFAn5wvSZvNXJluuNV1E/edit?tab=t.0#heading=h.uij286zaarkz
-// https://docs.google.com/document/d/1nCNuam0ljOHiOW0DUeiZf4ntHf_1Bw94Zi7ThPGoKR4/edit?tab=t.0#heading=h.hju45z55bnqd
-func GetSolanaProgramBytes() map[string]int {
-	return map[string]int{
-		RouterProgramName:               5 * 1024 * 1024,
-		OffRampProgramName:              1.5 * 1024 * 1024, // router should be redeployed but it does support upgrades if required (big fixes etc.)
-		FeeQuoterProgramName:            5 * 1024 * 1024,
-		BurnMintTokenPoolProgramName:    3 * 1024 * 1024,
-		LockReleaseTokenPoolProgramName: 3 * 1024 * 1024,
-		AccessControllerProgramName:     1 * 1024 * 1024,
-		TimelockProgramName:             1 * 1024 * 1024,
-		McmProgramName:                  1 * 1024 * 1024,
-		RMNRemoteProgramName:            3 * 1024 * 1024,
-	}
-}
-
 func (c SolChain) CloseBuffers(logger logger.Logger, buffer string) error {
 	baseArgs := []string{
 		"program",
@@ -125,9 +98,16 @@ func (c SolChain) CloseBuffers(logger logger.Logger, buffer string) error {
 	return nil
 }
 
+// SolProgramInfo contains information about a Solana program.
+type SolProgramInfo struct {
+	Name  string
+	Bytes int
+}
+
 // Overallocate should be set when deploying any program that may eventually be owned by timelock
 // Overallocate is mutually exclusive with isUpgrade
-func (c SolChain) DeployProgram(logger logger.Logger, programName string, isUpgrade bool, overallocate bool) (string, error) {
+func (c SolChain) DeployProgram(logger logger.Logger, programInfo SolProgramInfo, isUpgrade bool, overallocate bool) (string, error) {
+	programName := programInfo.Name
 	programFile := filepath.Join(c.ProgramsPath, programName+".so")
 	if _, err := os.Stat(programFile); err != nil {
 		return "", fmt.Errorf("program file not found: %w", err)
@@ -159,9 +139,9 @@ func (c SolChain) DeployProgram(logger logger.Logger, programName string, isUpgr
 			"programFile", programFile,
 			"programKeyPair", programKeyPair)
 		baseArgs = append(baseArgs, "--program-id", programKeyPair)
-		totalBytes := GetSolanaProgramBytes()[programName]
-		if overallocate && totalBytes > 0 {
-			baseArgs = append(baseArgs, "--max-len", strconv.Itoa(totalBytes))
+		programBytes := programInfo.Bytes
+		if overallocate && programBytes > 0 {
+			baseArgs = append(baseArgs, "--max-len", strconv.Itoa(programBytes))
 		}
 		cmd = exec.Command("solana", baseArgs...) // #nosec G204
 	} else {
