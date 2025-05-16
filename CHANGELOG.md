@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.1.2
+
+### Patch Changes
+
+- [#85](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/85) [`4285f35`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/4285f359dbd872203590661e27512f9d2672a7bd) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(chain): refactor solana DeployProgram to accept ProgramBytes
+
 ## 0.1.1
 
 ### Patch Changes
