@@ -184,19 +184,26 @@ func TestMultiClient_retryWithBackups(t *testing.T) {
 func TestEnsureTimeout(t *testing.T) {
 	t.Parallel()
 
+	var (
+		ctxNoTimeout           = context.Background()
+		ctxWithTimeout, cancel = context.WithTimeout(context.Background(), 2*time.Minute)
+	)
+
+	defer cancel()
+
 	tests := []struct {
 		name          string
-		parentContext context.Context
+		parentContext context.Context //nolint:containedctx
 		timeout       time.Duration
 	}{
 		{
 			name:          "Parent context with deadline",
-			parentContext: func() context.Context { ctx, _ := context.WithTimeout(context.Background(), 2*time.Minute); return ctx }(),
+			parentContext: ctxWithTimeout,
 			timeout:       1 * time.Minute,
 		},
 		{
 			name:          "Parent context without deadline",
-			parentContext: context.Background(),
+			parentContext: ctxNoTimeout,
 			timeout:       1 * time.Minute,
 		},
 	}
