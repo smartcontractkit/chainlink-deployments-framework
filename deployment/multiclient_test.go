@@ -180,3 +180,42 @@ func TestMultiClient_retryWithBackups(t *testing.T) {
 		})
 	}
 }
+
+func TestEnsureTimeout(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name          string
+		parentContext context.Context
+		timeout       time.Duration
+	}{
+		{
+			name:          "Parent context with deadline",
+			parentContext: func() context.Context { ctx, _ := context.WithTimeout(context.Background(), 2*time.Minute); return ctx }(),
+			timeout:       1 * time.Minute,
+		},
+		{
+			name:          "Parent context without deadline",
+			parentContext: context.Background(),
+			timeout:       1 * time.Minute,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx, cancelFunc := ensureTimeout(tt.parentContext, tt.timeout)
+			defer cancelFunc()
+
+			deadline, hasDeadline := ctx.Deadline()
+			require.True(t, hasDeadline, "Expected context to have a deadline")
+
+			if parentDeadline, hasParentDeadline := tt.parentContext.Deadline(); hasParentDeadline {
+				require.WithinDuration(t, parentDeadline, deadline, 0, "Deadline should match parent's deadline")
+			} else {
+				require.WithinDuration(t, time.Now().Add(tt.timeout), deadline, 50*time.Millisecond, "Deadline should be approximately the specified timeout")
+			}
+		})
+	}
+}

@@ -286,6 +286,9 @@ func (mc *MultiClient) SubscribeFilterLogs(ctx context.Context, q ethereum.Filte
 	return sub, err
 }
 
+// WaitMined waits for a transaction to be mined and returns the receipt.
+// A timeout for this operation must be set in the context.
+// Note: retryConfig timeout settings are not used for this operation.
 func (mc *MultiClient) WaitMined(ctx context.Context, tx *types.Transaction) (*types.Receipt, error) {
 	mc.lggr.Debugf("Waiting for tx %s to be mined for chain %s", tx.Hash().Hex(), mc.chainName)
 	// no retries here because we want to wait for the tx to be mined
@@ -330,7 +333,7 @@ func (mc *MultiClient) retryWithBackups(ctx context.Context, opName string, op f
 	for i, client := range append([]*ethclient.Client{mc.Client}, mc.Backups...) {
 		retryCount := 0
 		err2 := retry.Do(func() error {
-			timeoutCtx, cancel := context.WithTimeout(ctx, mc.RetryConfig.Timeout)
+			timeoutCtx, cancel := ensureTimeout(ctx, mc.RetryConfig.Timeout)
 			defer cancel()
 
 			err = op(timeoutCtx, client)
@@ -388,4 +391,18 @@ func (mc *MultiClient) dialWithRetry(rpc RPC, lggr logger.Logger) (*ethclient.Cl
 	}
 
 	return client, nil
+}
+
+// ensureTimeout checks if the parent context has a deadline.
+// If it does, it returns a new cancelable context using the parent's deadline.
+// If it doesn't, it creates a new context with the specified timeout.
+func ensureTimeout(parent context.Context, timeout time.Duration) (context.Context, context.CancelFunc) {
+	// check if the parent context already has a deadline
+	if _, hasDeadline := parent.Deadline(); hasDeadline {
+		// derive a new cancelable context from the parent context with the same deadline
+		return context.WithCancel(parent)
+	}
+
+	// create a new context with the specified timeout
+	return context.WithTimeout(parent, timeout)
 }
