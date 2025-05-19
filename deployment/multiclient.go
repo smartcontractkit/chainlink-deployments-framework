@@ -68,7 +68,7 @@ type MultiClient struct {
 
 // rpcHealthCheck performs a basic health check on the RPC client by calling eth_blockNumber
 func (mc *MultiClient) rpcHealthCheck(ctx context.Context, client *ethclient.Client) error {
-	timeoutCtx, cancel := ensureTimeout(ctx, RPCDefaultHealthCheckTimeout)
+	timeoutCtx, cancel := context.WithTimeout(ctx, RPCDefaultHealthCheckTimeout)
 	defer cancel()
 
 	// Try to get the latest block number
