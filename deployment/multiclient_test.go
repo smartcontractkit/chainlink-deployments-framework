@@ -57,18 +57,20 @@ func TestMultiClient_dialWithRetry(t *testing.T) {
 		name      string
 		URL       string
 		retryConf RetryConfig
+		wantErr   string
 	}{
 		{
 			// this test case that triggers a context timeout error for all dial attempts.
 			// without proper timeout the dial logic inside  will hang forever and the test
 			// will timeout.
 			name: "All dial attempts fail due to context timeout",
-			URL:  "wss://rpcs.cldev.sh/avalanche/test",
+			URL:  "wss://rpcs.cldev.sh/avalanche/fuji",
 			retryConf: RetryConfig{
 				DialAttempts: 2,
 				DialDelay:    10 * time.Millisecond,
-				DialTimeout:  3 * time.Second,
+				DialTimeout:  3 * time.Microsecond,
 			},
+			wantErr: "i/o timeout",
 		},
 		{
 			name: "All dial attempts fail due to malformed URL",
@@ -78,6 +80,7 @@ func TestMultiClient_dialWithRetry(t *testing.T) {
 				DialDelay:    10 * time.Millisecond,
 				DialTimeout:  3 * time.Second,
 			},
+			wantErr: "no known transport for URL scheme \"wxz\"",
 		},
 	}
 
@@ -100,6 +103,7 @@ func TestMultiClient_dialWithRetry(t *testing.T) {
 			}, lggr)
 
 			require.Error(t, err)
+			require.Contains(t, err.Error(), tt.wantErr)
 		})
 	}
 }
@@ -112,13 +116,12 @@ func TestMultiClient_retryWithBackups(t *testing.T) {
 		URL       string
 		retryConf RetryConfig
 		call      func(ctx context.Context, client *ethclient.Client) error
+		wantErr   string
 	}{
 		{
-			// this test case triggers a context timeout error for all dial attempts.
-			// without proper timeout the dial logic inside  will hang forever and the test
-			// will timeout.
-			name: "All dial attempts fail due to context timeout",
-			URL:  "http://rpcs.cldev.sh/avalanche/test",
+			// This test simulates a consistently failing RPC call to exhaust the retry attempts.
+			name: "All retry attempts fail due to failing RPC call",
+			URL:  "http://rpcs.cldev.sh/avalanche/fuji",
 			retryConf: RetryConfig{
 				Attempts: 2,
 				Delay:    10 * time.Millisecond,
@@ -127,10 +130,11 @@ func TestMultiClient_retryWithBackups(t *testing.T) {
 			call: func(ctx context.Context, client *ethclient.Client) error {
 				return errors.New("operation failed")
 			},
+			wantErr: "operation failed",
 		},
 		{
-			name: "All dial attempts fail due to malformed URL",
-			URL:  "http://rpcs.cldev.sh/avalanche/test",
+			name: "All retry attempts fail due to context timeout",
+			URL:  "http://rpcs.cldev.sh/avalanche/fuji",
 			retryConf: RetryConfig{
 				Attempts: 2,
 				Delay:    10 * time.Millisecond,
@@ -145,6 +149,7 @@ func TestMultiClient_retryWithBackups(t *testing.T) {
 					return errors.New("operation failed")
 				}
 			},
+			wantErr: "context deadline exceeded",
 		},
 	}
 
@@ -171,6 +176,7 @@ func TestMultiClient_retryWithBackups(t *testing.T) {
 			)
 
 			require.Error(t, err)
+			require.Contains(t, err.Error(), tt.wantErr)
 		})
 	}
 }
