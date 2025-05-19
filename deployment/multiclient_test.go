@@ -1,6 +1,7 @@
 package deployment
 
 import (
+	"context"
 	"errors"
 	"testing"
 	"time"
@@ -49,26 +50,37 @@ func TestMultiClient(t *testing.T) {
 	require.Len(t, mc.Backups, 1)
 }
 
-func TestMultiClient_retryWithBackups(t *testing.T) {
+func TestMultiClient_dialWithRetry(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name       string
-		URL        string
-		retryDelay time.Duration
-		opName     string
-		op         func(client *ethclient.Client) error
-		wantErr    string
+		name      string
+		URL       string
+		retryConf RetryConfig
+		wantErr   string
 	}{
 		{
-			name:       "All retries fail with http",
-			URL:        "http://example.com",
-			retryDelay: 100,
-			opName:     "test-operation",
-			op: func(client *ethclient.Client) error {
-				return errors.New("operation failed")
+			// this test case that triggers a context timeout error for all dial attempts.
+			// without proper timeout the dial logic inside  will hang forever and the test
+			// will timeout.
+			name: "All dial attempts fail due to context timeout",
+			URL:  "wss://rpcs.cldev.sh/avalanche/fuji",
+			retryConf: RetryConfig{
+				DialAttempts: 2,
+				DialDelay:    10 * time.Millisecond,
+				DialTimeout:  3 * time.Microsecond,
 			},
-			wantErr: "operation failed\nall backup clients failed for chain \"ethereum-testnet-sepolia\"",
+			wantErr: "i/o timeout",
+		},
+		{
+			name: "All dial attempts fail due to malformed URL",
+			URL:  "wxz://malformed/avalanche/test",
+			retryConf: RetryConfig{
+				DialAttempts: 2,
+				DialDelay:    10 * time.Millisecond,
+				DialTimeout:  3 * time.Second,
+			},
+			wantErr: "no known transport for URL scheme \"wxz\"",
 		},
 	}
 
@@ -77,29 +89,139 @@ func TestMultiClient_retryWithBackups(t *testing.T) {
 			t.Parallel()
 
 			lggr := logger.Test(t)
-			chainSelector := uint64(16015286601757825753) // "ethereum-testnet-sepolia"
 
-			// Create MultiClient with retry configuration
-			mc, err := NewMultiClient(lggr, RPCConfig{
-				ChainSelector: chainSelector,
-				RPCs: []RPC{
-					{Name: "test-rpc", HTTPURL: tt.URL, PreferredURLScheme: URLSchemePreferenceHTTP},
-					{Name: "test-rpc-2", HTTPURL: tt.URL, PreferredURLScheme: URLSchemePreferenceHTTP},
-				},
-			})
+			mc := MultiClient{
+				chainName:   "ethereum-testnet-sepolia",
+				RetryConfig: tt.retryConf,
+				lggr:        lggr,
+			}
 
+			_, err := mc.dialWithRetry(RPC{
+				Name:               "test-rpc",
+				WSURL:              tt.URL,
+				PreferredURLScheme: URLSchemePreferenceWS,
+			}, lggr)
+
+			require.Error(t, err)
+			require.Contains(t, err.Error(), tt.wantErr)
+		})
+	}
+}
+
+func TestMultiClient_retryWithBackups(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		URL       string
+		retryConf RetryConfig
+		call      func(ctx context.Context, client *ethclient.Client) error
+		wantErr   string
+	}{
+		{
+			// This test simulates a consistently failing RPC call to exhaust the retry attempts.
+			name: "All retry attempts fail due to failing RPC call",
+			URL:  "http://rpcs.cldev.sh/avalanche/fuji",
+			retryConf: RetryConfig{
+				Attempts: 2,
+				Delay:    10 * time.Millisecond,
+				Timeout:  3 * time.Second,
+			},
+			call: func(ctx context.Context, client *ethclient.Client) error {
+				return errors.New("operation failed")
+			},
+			wantErr: "operation failed",
+		},
+		{
+			name: "All retry attempts fail due to context timeout",
+			URL:  "http://rpcs.cldev.sh/avalanche/fuji",
+			retryConf: RetryConfig{
+				Attempts: 2,
+				Delay:    10 * time.Millisecond,
+				Timeout:  3 * time.Second,
+			},
+			call: func(ctx context.Context, client *ethclient.Client) error {
+				// Simulate a long-running operation that will cause the context to timeout
+				select {
+				case <-ctx.Done():
+					return ctx.Err()
+				case <-time.After(5 * time.Second):
+					return errors.New("operation failed")
+				}
+			},
+			wantErr: "context deadline exceeded",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			lggr := logger.Test(t)
+
+			client, err := ethclient.Dial(tt.URL)
 			require.NoError(t, err)
-			require.NotNil(t, mc)
 
-			mc.RetryConfig.Delay = tt.retryDelay
+			mc := MultiClient{
+				Client:      client,
+				chainName:   "ethereum-testnet-sepolia",
+				RetryConfig: tt.retryConf,
+				lggr:        lggr,
+			}
 
-			// Run operation and check expectations
-			err = mc.retryWithBackups(tt.opName, tt.op)
-			if tt.wantErr != "" {
-				require.Error(t, err)
-				require.ErrorContains(t, err, tt.wantErr)
+			err = mc.retryWithBackups(
+				context.Background(),
+				"test-operation",
+				tt.call,
+			)
+
+			require.Error(t, err)
+			require.Contains(t, err.Error(), tt.wantErr)
+		})
+	}
+}
+
+func TestEnsureTimeout(t *testing.T) {
+	t.Parallel()
+
+	var (
+		ctxNoTimeout           = context.Background()
+		ctxWithTimeout, cancel = context.WithTimeout(context.Background(), 2*time.Minute)
+	)
+
+	defer cancel()
+
+	tests := []struct {
+		name          string
+		parentContext context.Context //nolint:containedctx
+		timeout       time.Duration
+	}{
+		{
+			name:          "Parent context with deadline",
+			parentContext: ctxWithTimeout,
+			timeout:       1 * time.Minute,
+		},
+		{
+			name:          "Parent context without deadline",
+			parentContext: ctxNoTimeout,
+			timeout:       1 * time.Minute,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx, cancelFunc := ensureTimeout(tt.parentContext, tt.timeout)
+			defer cancelFunc()
+
+			deadline, hasDeadline := ctx.Deadline()
+			require.True(t, hasDeadline, "Expected context to have a deadline")
+
+			if parentDeadline, hasParentDeadline := tt.parentContext.Deadline(); hasParentDeadline {
+				require.WithinDuration(t, parentDeadline, deadline, 0, "Deadline should match parent's deadline")
 			} else {
-				require.NoError(t, err)
+				require.WithinDuration(t, time.Now().Add(tt.timeout), deadline, 50*time.Millisecond, "Deadline should be approximately the specified timeout")
 			}
 		})
 	}
