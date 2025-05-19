@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.1.3
+
+### Patch Changes
+
+- [#84](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/84) [`b3fec25`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/b3fec25041be39e035eb7fcbfb3139948bb621d9) Thanks [@giogam](https://github.com/giogam)! - feat(multiclient): adds timeouts to retryWithBackups and dialWithRetry
+
 ## 0.1.2
 
 ### Patch Changes
