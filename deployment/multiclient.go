@@ -30,6 +30,9 @@ const (
 	RPCDefaultDialRetryAttempts = 1
 	RPCDefaultDialRetryDelay    = 1000 * time.Millisecond
 	RPCDefaultDialTimeout       = 10 * time.Second
+
+	// Default timeout for health checks
+	RPCDefaultHealthCheckTimeout = 2 * time.Second
 )
 
 type RetryConfig struct {
@@ -63,6 +66,19 @@ type MultiClient struct {
 	chainName   string
 }
 
+// rpcHealthCheck performs a basic health check on the RPC client by calling eth_blockNumber
+func (mc *MultiClient) rpcHealthCheck(ctx context.Context, client *ethclient.Client) error {
+	timeoutCtx, cancel := ensureTimeout(ctx, RPCDefaultHealthCheckTimeout)
+	defer cancel()
+
+	// Try to get the latest block number
+	_, err := client.BlockNumber(timeoutCtx)
+	if err != nil {
+		return fmt.Errorf("health check failed: %w", err)
+	}
+	return nil
+}
+
 func NewMultiClient(lggr logger.Logger, rpcsCfg RPCConfig, opts ...func(client *MultiClient)) (*MultiClient, error) {
 	if len(rpcsCfg.RPCs) == 0 {
 		return nil, errors.New("no RPCs provided, need at least one")
@@ -85,6 +101,11 @@ func NewMultiClient(lggr logger.Logger, rpcsCfg RPCConfig, opts ...func(client *
 		client, err := mc.dialWithRetry(rpc, lggr)
 		if err != nil {
 			lggr.Warnf("failed to dial client %d for RPC '%s' trying with the next one: %v", i, rpc.Name, err)
+			continue
+		}
+		if err := mc.rpcHealthCheck(context.Background(), client); err != nil {
+			lggr.Warnf("health check failed for client %d for RPC '%s' trying with the next one: %v", i, rpc.Name, err)
+			client.Close()
 			continue
 		}
 		clients = append(clients, client)
