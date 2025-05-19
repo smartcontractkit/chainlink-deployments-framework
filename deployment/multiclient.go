@@ -287,8 +287,7 @@ func (mc *MultiClient) SubscribeFilterLogs(ctx context.Context, q ethereum.Filte
 }
 
 // WaitMined waits for a transaction to be mined and returns the receipt.
-// A timeout for this operation must be set in the context.
-// Note: retryConfig timeout settings are not used for this operation.
+// Note: retryConfig timeout settings are not used for this operation, a timeout can be set in the context.
 func (mc *MultiClient) WaitMined(ctx context.Context, tx *types.Transaction) (*types.Receipt, error) {
 	mc.lggr.Debugf("Waiting for tx %s to be mined for chain %s", tx.Hash().Hex(), mc.chainName)
 	// no retries here because we want to wait for the tx to be mined
