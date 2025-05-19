@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.2.0
+
+### Minor Changes
+
+- [#88](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/88) [`18c3cf2`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/18c3cf210bcd1cd780d0f707337da8aed47bbc23) Thanks [@bytesizedroll](https://github.com/bytesizedroll)! - Adding RPC client health check after successful dial
+
 ## 0.1.3
 
 ### Patch Changes
