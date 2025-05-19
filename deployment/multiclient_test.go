@@ -3,6 +3,8 @@ package deployment
 import (
 	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -13,14 +15,44 @@ import (
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 )
 
+// Helper RPC server that always answers with a valid eth_blockNumber response
+func newMockRPCServer(t *testing.T) *httptest.Server {
+	t.Helper()
+
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		// Return a valid eth_blockNumber response
+		_, _ = w.Write([]byte(`{"jsonrpc":"2.0","id":1,"result":"0x1"}`))
+	})
+
+	return httptest.NewServer(handler)
+}
+
+// Helper RPC server that always answers with a JSON-RPC error payload
+func newBadRPCServer(t *testing.T) *httptest.Server {
+	t.Helper()
+
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		// Standard JSON-RPC error payload
+		_, _ = w.Write([]byte(`{"jsonrpc":"2.0","id":1,"error":{"code":-32000,"message":"internal error"}}`))
+	})
+
+	return httptest.NewServer(handler)
+}
+
 // TODO(giogam): This test is incomplete, it should be completed with support for websockets URLS
 func TestMultiClient(t *testing.T) {
 	t.Parallel()
+
+	mockSrv := newMockRPCServer(t)
+	defer mockSrv.Close()
+
 	var (
 		lggr                 = logger.Test(t)
 		chainSelector uint64 = 16015286601757825753 // "ethereum-testnet-sepolia"
-		wsURL                = "ws://example.com"
-		httpURL              = "http://example.com"
+		wsURL                = ""                   // WS unused in this test
+		httpURL              = mockSrv.URL          // use mock server for health-check
 	)
 
 	// Expect defaults to be set if not provided.
@@ -43,11 +75,48 @@ func TestMultiClient(t *testing.T) {
 
 	// Expect second client to be set as backup.
 	mc, err = NewMultiClient(lggr, RPCConfig{ChainSelector: chainSelector, RPCs: []RPC{
-		{Name: "test-rpc", WSURL: wsURL, HTTPURL: httpURL, PreferredURLScheme: URLSchemePreferenceHTTP},
-		{Name: "test-rpc", WSURL: wsURL, HTTPURL: httpURL, PreferredURLScheme: URLSchemePreferenceHTTP},
+		{Name: "test-rpc", WSURL: wsURL, HTTPURL: httpURL, PreferredURLScheme: URLSchemePreferenceHTTP}, //preferred
+		{Name: "test-rpc", WSURL: wsURL, HTTPURL: httpURL, PreferredURLScheme: URLSchemePreferenceHTTP}, //backup
 	}})
 	require.NoError(t, err)
 	require.Len(t, mc.Backups, 1)
+}
+
+// Verifies that a bad eth_blockNumber response causes MultiClient to skip the
+// first RPC and succeed with the next one.
+func TestMultiClient_healthCheckSkipsBadRPC(t *testing.T) {
+	t.Parallel()
+
+	badSrv := newBadRPCServer(t)
+	defer badSrv.Close()
+
+	goodSrv := newMockRPCServer(t)
+	defer goodSrv.Close()
+
+	var (
+		lggr                 = logger.Test(t)
+		chainSelector uint64 = 16015286601757825753
+	)
+
+	mc, err := NewMultiClient(lggr, RPCConfig{ChainSelector: chainSelector, RPCs: []RPC{
+		// first RPC -> health-check fails
+		{Name: "bad-rpc", WSURL: "", HTTPURL: badSrv.URL, PreferredURLScheme: URLSchemePreferenceHTTP},
+		// second RPC -> health-check passes
+		{Name: "good-rpc", WSURL: "", HTTPURL: goodSrv.URL, PreferredURLScheme: URLSchemePreferenceHTTP},
+	}})
+	require.NoError(t, err)
+
+	// Only the good RPC should remain (primary) and there should be no backups.
+	require.NotNil(t, mc.Client)
+	require.Empty(t, mc.Backups)
+
+	// Sanity-check: calling BlockNumber on the surviving client should succeed.
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+
+	blockNum, err := mc.BlockNumber(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, uint64(1), blockNum)
 }
 
 func TestMultiClient_dialWithRetry(t *testing.T) {
