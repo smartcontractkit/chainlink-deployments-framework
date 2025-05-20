@@ -15,6 +15,8 @@ import (
 
 	chain_selectors "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 )
 
 // SimTransactOpts is useful to generate just the calldata for a given gethwrapper method.
@@ -120,9 +122,9 @@ type ContractDeploy[C any] struct {
 // confirmed or the address could not be saved.
 func DeployContract[C any](
 	lggr logger.Logger,
-	chain Chain,
+	chain evm.Chain,
 	addressBook AddressBook,
-	deploy func(chain Chain) ContractDeploy[C],
+	deploy func(chain evm.Chain) ContractDeploy[C],
 ) (*ContractDeploy[C], error) {
 	contractDeploy := deploy(chain)
 	if contractDeploy.Err != nil {

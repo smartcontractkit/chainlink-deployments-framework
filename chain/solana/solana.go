@@ -1,4 +1,4 @@
-package deployment
+package solana
 
 import (
 	"bytes"
@@ -17,6 +17,8 @@ import (
 
 	solCommonUtil "github.com/smartcontractkit/chainlink-ccip/chains/solana/utils/common"
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/common"
 )
 
 const (
@@ -25,10 +27,10 @@ const (
 	SolDefaultCommitment = solRpc.CommitmentConfirmed
 )
 
-// SolChain represents a Solana chain.
-type SolChain struct {
-	// Selectors used as canonical chain identifier.
-	Selector uint64
+// Chain represents a Solana chain.
+type Chain struct {
+	common.ChainInfoProvider
+
 	// RPC client
 	Client *solRpc.Client
 	URL    string
@@ -42,30 +44,7 @@ type SolChain struct {
 	ProgramsPath string
 }
 
-func (c SolChain) String() string {
-	chainInfo, err := ChainInfo(c.Selector)
-	if err != nil {
-		// we should never get here, if the selector is invalid it should not be in the environment
-		panic(err)
-	}
-
-	return fmt.Sprintf("%s (%d)", chainInfo.ChainName, chainInfo.ChainSelector)
-}
-
-func (c SolChain) Name() string {
-	chainInfo, err := ChainInfo(c.Selector)
-	if err != nil {
-		// we should never get here, if the selector is invalid it should not be in the environment
-		panic(err)
-	}
-	if chainInfo.ChainName == "" {
-		return strconv.FormatUint(c.Selector, 10)
-	}
-
-	return chainInfo.ChainName
-}
-
-func (c SolChain) CloseBuffers(logger logger.Logger, buffer string) error {
+func (c Chain) CloseBuffers(logger logger.Logger, buffer string) error {
 	baseArgs := []string{
 		"program",
 		"close",
@@ -106,7 +85,7 @@ type SolProgramInfo struct {
 
 // Overallocate should be set when deploying any program that may eventually be owned by timelock
 // Overallocate is mutually exclusive with isUpgrade
-func (c SolChain) DeployProgram(logger logger.Logger, programInfo SolProgramInfo, isUpgrade bool, overallocate bool) (string, error) {
+func (c Chain) DeployProgram(logger logger.Logger, programInfo SolProgramInfo, isUpgrade bool, overallocate bool) (string, error) {
 	programName := programInfo.Name
 	programFile := filepath.Join(c.ProgramsPath, programName+".so")
 	if _, err := os.Stat(programFile); err != nil {
@@ -170,7 +149,7 @@ func (c SolChain) DeployProgram(logger logger.Logger, programInfo SolProgramInfo
 	return parseProgramID(output, prefix)
 }
 
-func (c SolChain) GetAccountDataBorshInto(ctx context.Context, pubkey solana.PublicKey, accountState interface{}) error {
+func (c Chain) GetAccountDataBorshInto(ctx context.Context, pubkey solana.PublicKey, accountState interface{}) error {
 	err := solCommonUtil.GetAccountDataBorshInto(ctx, c.Client, pubkey, SolDefaultCommitment, accountState)
 	if err != nil {
 		return err

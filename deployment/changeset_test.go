@@ -7,6 +7,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 )
 
@@ -103,12 +104,10 @@ func NewNoopEnvironment(t *testing.T) Environment {
 			datastore.DefaultMetadata,
 			datastore.DefaultMetadata,
 		]().Seal(),
-		map[uint64]Chain{},
-		map[uint64]SolChain{},
-		map[uint64]AptosChain{},
 		[]string{},
 		nil,
 		t.Context,
 		XXXGenerateTestOCRSecrets(),
+		chain.BlockChains{},
 	)
 }

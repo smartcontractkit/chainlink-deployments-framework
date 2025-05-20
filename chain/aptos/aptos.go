@@ -1,12 +1,15 @@
-package deployment
+package aptos
 
 import (
 	"github.com/aptos-labs/aptos-go-sdk"
+
+	chain_common "github.com/smartcontractkit/chainlink-deployments-framework/chain/common"
 )
 
-// AptosChain represents an Aptos chain.
-type AptosChain struct {
-	Selector       uint64
+// Chain represents an Aptos chain.
+type Chain struct {
+	chain_common.ChainInfoProvider
+
 	Client         aptos.AptosRpcClient
 	DeployerSigner aptos.TransactionSigner
 	URL            string
