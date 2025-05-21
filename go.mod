@@ -15,6 +15,7 @@ require (
 	github.com/smartcontractkit/chainlink-protos/job-distributor v0.10.0
 	github.com/smartcontractkit/mcms v0.16.1
 	github.com/stretchr/testify v1.10.0
+	github.com/xssnick/tonutils-go v1.13.0
 	github.com/zksync-sdk/zksync2-go v1.0.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/exp v0.0.0-20250408133849-7e4ce0ab07d0
@@ -67,9 +68,11 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/mostynb/zstdpool-freelist v0.0.0-20201229113212-927304c0c3b1 // indirect
 	github.com/mr-tron/base58 v1.2.0 // indirect
+	github.com/oasisprotocol/curve25519-voi v0.0.0-20220328075252-7dd334e3daae // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
+	github.com/sigurn/crc16 v0.0.0-20211026045750-20ab5afb07e3 // indirect
 	github.com/smartcontractkit/libocr v0.0.0-20250220133800-f3b940c4f298 // indirect
 	github.com/spf13/cast v1.7.1 // indirect
 	github.com/stephenlacy/go-ethereum-hdwallet v0.0.0-20230913225845-a4fa94429863 // indirect
@@ -82,12 +85,12 @@ require (
 	go.mongodb.org/mongo-driver v1.12.2 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/ratelimit v0.2.0 // indirect
-	golang.org/x/crypto v0.37.0 // indirect
+	golang.org/x/crypto v0.38.0 // indirect
 	golang.org/x/net v0.39.0 // indirect
-	golang.org/x/sync v0.13.0 // indirect
-	golang.org/x/sys v0.32.0 // indirect
-	golang.org/x/term v0.31.0 // indirect
-	golang.org/x/text v0.24.0 // indirect
+	golang.org/x/sync v0.14.0 // indirect
+	golang.org/x/sys v0.33.0 // indirect
+	golang.org/x/term v0.32.0 // indirect
+	golang.org/x/text v0.25.0 // indirect
 	golang.org/x/time v0.9.0 // indirect
 	golang.org/x/tools v0.32.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250422160041-2d3770c4ea7f // indirect
