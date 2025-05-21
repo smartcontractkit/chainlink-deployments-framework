@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.4.0
+
+### Minor Changes
+
+- [#100](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/100) [`a975e70`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/a975e70cc0c4652543e1b8fa5c68aa8d691c32ef) Thanks [@jkongie](https://github.com/jkongie)! - The deprecated `Proposals` field on the `ChangesetOutput` has been removed in favour of `MCMSTimelockProposals`
+
 ## 0.3.0
 
 ### Minor Changes
