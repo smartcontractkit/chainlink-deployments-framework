@@ -46,7 +46,6 @@ jobs:
 
   sonarqube:
     name: Sonar Scan
-    if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
     needs: [ ci-test, ci-lint-misc,  ci-lint ]
     steps:
@@ -55,3 +54,4 @@ jobs:
         with:
           sonar-token: ${{ secrets.SONAR_TOKEN }}
           sonar-host-url: ${{ secrets.SONAR_HOST_URL }}
+          include-lint: true
