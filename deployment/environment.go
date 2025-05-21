@@ -99,9 +99,9 @@ func NewEnvironment(
 	logger logger.Logger,
 	existingAddrs AddressBook,
 	dataStore datastore.DataStore[
-	datastore.DefaultMetadata,
-	datastore.DefaultMetadata,
-],
+		datastore.DefaultMetadata,
+		datastore.DefaultMetadata,
+	],
 	chains map[uint64]Chain,
 	solChains map[uint64]SolChain,
 	aptosChains map[uint64]AptosChain,
@@ -255,6 +255,18 @@ func (e Environment) AllChainSelectorsSolana() []uint64 {
 func (e Environment) AllChainSelectorsAptos() []uint64 {
 	selectors := make([]uint64, 0, len(e.AptosChains))
 	for sel := range e.AptosChains {
+		selectors = append(selectors, sel)
+	}
+	sort.Slice(selectors, func(i, j int) bool {
+		return selectors[i] < selectors[j]
+	})
+
+	return selectors
+}
+
+func (e Environment) AllChainSelectorsTon() []uint64 {
+	selectors := make([]uint64, 0, len(e.TonChains))
+	for sel := range e.TonChains {
 		selectors = append(selectors, sel)
 	}
 	sort.Slice(selectors, func(i, j int) bool {
