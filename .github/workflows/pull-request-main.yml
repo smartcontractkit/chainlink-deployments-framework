@@ -43,3 +43,15 @@ jobs:
         with:
           go-test-cmd: go test -race -coverprofile=coverage.txt $(go list ./...)
           use-go-cache: true
+
+  sonarqube:
+    name: Sonar Scan
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    needs: [ ci-test, ci-lint-misc,  ci-lint ]
+    steps:
+      - name: Scan with Sonarqube
+        uses: smartcontractkit/.github/actions/ci-sonarqube-go@01d931b0455a754d12e7143cc54a5a3521a8f6f6 # ci-sonarqube-go@0.3.1
+        with:
+          sonar-token: ${{ secrets.SONAR_TOKEN }}
+          sonar-host-url: ${{ secrets.SONAR_HOST_URL }}
