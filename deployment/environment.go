@@ -82,6 +82,7 @@ type Environment struct {
 	// AptosChains is being deprecated in favour of BlockChains field
 	// use BlockChains.AptosChains()
 	AptosChains map[uint64]AptosChain
+	TonChains   map[uint64]TonChain
 	NodeIDs     []string
 	Offchain    OffchainClient
 	GetContext  func() context.Context
@@ -118,6 +119,7 @@ func NewEnvironment(
 		Chains:            chains,
 		SolChains:         solChains,
 		AptosChains:       aptosChains,
+		TonChains:         tonChains,
 		NodeIDs:           nodeIDs,
 		Offchain:          offchain,
 		GetContext:        ctx,
