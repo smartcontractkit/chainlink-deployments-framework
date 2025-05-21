@@ -258,6 +258,18 @@ func (e Environment) AllChainSelectorsAptos() []uint64 {
 	return selectors
 }
 
+func (e Environment) AllChainSelectorsTon() []uint64 {
+	selectors := make([]uint64, 0, len(e.TonChains))
+	for sel := range e.TonChains {
+		selectors = append(selectors, sel)
+	}
+	sort.Slice(selectors, func(i, j int) bool {
+		return selectors[i] < selectors[j]
+	})
+
+	return selectors
+}
+
 func (e Environment) AllChainSelectorsAllFamilies() []uint64 {
 	selectors := make([]uint64, 0, len(e.Chains)+len(e.SolChains)+len(e.AptosChains))
 	for sel := range e.Chains {
