@@ -108,6 +108,7 @@ func NewNoopEnvironment(t *testing.T) Environment {
 		map[uint64]Chain{},
 		map[uint64]SolChain{},
 		map[uint64]AptosChain{},
+		map[uint64]TonChain{},
 		[]string{},
 		nil,
 		t.Context,
