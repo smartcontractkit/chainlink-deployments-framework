@@ -10,24 +10,20 @@ func TestMemoryEnvMetadataStore_Get(t *testing.T) {
 	t.Parallel()
 
 	var (
-		recordOne = EnvMetadata[DefaultMetadata]{
-			Domain:      "example.com",
-			Environment: "test",
-			Metadata:    DefaultMetadata{Data: "data1"},
-		}
+		recordOne = TestMetadata{Data: "data1"}
 	)
 
 	tests := []struct {
 		name              string
-		givenState        *EnvMetadata[DefaultMetadata]
+		givenState        CustomMetadata
 		domain            string
 		recordShouldExist bool
-		expectedRecord    EnvMetadata[DefaultMetadata]
+		expectedRecord    CustomMetadata
 		expectedError     error
 	}{
 		{
 			name:              "env metadata set",
-			givenState:        &recordOne,
+			givenState:        recordOne,
 			domain:            "example.com",
 			recordShouldExist: true,
 			expectedRecord:    recordOne,
@@ -36,7 +32,7 @@ func TestMemoryEnvMetadataStore_Get(t *testing.T) {
 			name:              "env metadata not set",
 			domain:            "nonexistent.com",
 			recordShouldExist: false,
-			expectedRecord:    EnvMetadata[DefaultMetadata]{},
+			expectedRecord:    nil,
 			expectedError:     ErrEnvMetadataNotSet,
 		},
 	}
@@ -45,7 +41,7 @@ func TestMemoryEnvMetadataStore_Get(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			store := MemoryEnvMetadataStore[DefaultMetadata]{Record: tt.givenState}
+			store := MemoryEnvMetadataStore{Record: tt.givenState}
 
 			record, err := store.Get()
 			if tt.recordShouldExist {
@@ -63,27 +59,19 @@ func TestMemoryEnvMetadataStore_Set(t *testing.T) {
 	t.Parallel()
 
 	var (
-		recordOne = EnvMetadata[DefaultMetadata]{
-			Domain:      "example.com",
-			Environment: "test",
-			Metadata:    DefaultMetadata{Data: "data1"},
-		}
-		recordTwo = EnvMetadata[DefaultMetadata]{
-			Domain:      "example2.com",
-			Environment: "test2",
-			Metadata:    DefaultMetadata{Data: "data2"},
-		}
+		recordOne = TestMetadata{Data: "data1"}
+		recordTwo = TestMetadata{Data: "data2"}
 	)
 
 	tests := []struct {
 		name           string
-		initialState   *EnvMetadata[DefaultMetadata]
-		updateRecord   EnvMetadata[DefaultMetadata]
-		expectedRecord EnvMetadata[DefaultMetadata]
+		initialState   CustomMetadata
+		updateRecord   CustomMetadata
+		expectedRecord CustomMetadata
 	}{
 		{
 			name:           "update existing record",
-			initialState:   &recordOne,
+			initialState:   recordOne,
 			updateRecord:   recordTwo,
 			expectedRecord: recordTwo,
 		},
@@ -98,7 +86,7 @@ func TestMemoryEnvMetadataStore_Set(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			store := MemoryEnvMetadataStore[DefaultMetadata]{Record: tt.initialState}
+			store := MemoryEnvMetadataStore{Record: tt.initialState}
 
 			err := store.Set(tt.updateRecord)
 			require.NoError(t, err)

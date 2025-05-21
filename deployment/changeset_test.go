@@ -99,10 +99,7 @@ func NewNoopEnvironment(t *testing.T) Environment {
 		"noop",
 		logger.Test(t),
 		NewMemoryAddressBook(),
-		datastore.NewMemoryDataStore[
-			datastore.DefaultMetadata,
-			datastore.DefaultMetadata,
-		]().Seal(),
+		datastore.NewMemoryDataStore().Seal(),
 		map[uint64]Chain{},
 		map[uint64]SolChain{},
 		map[uint64]AptosChain{},
