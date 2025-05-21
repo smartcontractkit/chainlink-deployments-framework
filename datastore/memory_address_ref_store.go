@@ -4,17 +4,11 @@ import (
 	"sync"
 )
 
-// AddressRefStore is an interface that represents an immutable view over a set
-// of AddressRef records  identified by AddressRefKey.
-type AddressRefStore interface {
-	Store[AddressRefKey, AddressRef]
-}
+// MemoryAddressRefStore implements AddressRefStore interface.
+var _ AddressRefStore = &MemoryAddressRefStore{}
 
-// MutableAddressRefStore is an interface that represents a mutable AddressRefStore
-// of AddressRef records identified by AddressRefKey.
-type MutableAddressRefStore interface {
-	MutableStore[AddressRefKey, AddressRef]
-}
+// MemoryAddressRefStore implements MutableAddressRefStore interface.
+var _ MutableAddressRefStore = &MemoryAddressRefStore{}
 
 // MemoryAddressRefStore is an in-memory implementation of the AddressRefStore and
 // MutableAddressRefStore interfaces.
@@ -22,12 +16,6 @@ type MemoryAddressRefStore struct {
 	Records []AddressRef `json:"records"`
 	mu      sync.RWMutex
 }
-
-// MemoryAddressRefStore implements AddressRefStore interface.
-var _ AddressRefStore = &MemoryAddressRefStore{}
-
-// MemoryAddressRefStore implements MutableAddressRefStore interface.
-var _ MutableAddressRefStore = &MemoryAddressRefStore{}
 
 // NewMemoryAddressRefStore creates a new MemoryAddressRefStore instance.
 func NewMemoryAddressRefStore() *MemoryAddressRefStore {

@@ -1,16 +1,5 @@
 package datastore
 
-// ContractMetadataKey is an interface that represents a key for ContractMetadata records.
-// It is used to uniquely identify a record in the ContractMetadataStore.
-type ContractMetadataKey interface {
-	Comparable[ContractMetadataKey]
-
-	// Address returns the address of the contract on the chain.
-	Address() string
-	// ChainSelector returns the chain-selector of the chain where the contract is deployed.
-	ChainSelector() uint64
-}
-
 // contractMetadataKey implements the ContractMetadataKey interface.
 var _ ContractMetadataKey = contractMetadataKey{}
 

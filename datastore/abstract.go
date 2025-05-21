@@ -1,5 +1,7 @@
 package datastore
 
+import "github.com/Masterminds/semver/v3"
+
 // Cloneable provides a Clone() method which returns a semi-deep copy of the type.
 type Cloneable[R any] interface {
 	// Clone() returns a semi-deep copy of the type. The implementation should call Clone() on
@@ -24,7 +26,7 @@ type Fetcher[R any] interface {
 }
 
 // Getter provides a Get() method which is used to complete a read by key query from a Store.
-type Getter[K Comparable[K], R Record[K, R]] interface {
+type Getter[K Comparable[K], R UniqueRecord[K, R]] interface {
 	// Get() returns the record with the given key, or an error if no such record exists.
 	Get(K) (R, error)
 }
@@ -35,29 +37,33 @@ type PrimaryKeyHolder[K Comparable[K]] interface {
 	Key() K
 }
 
-// Record represents a data entry that is both Cloneable and uniquely identifiable by its primary key.
-type Record[K Comparable[K], R PrimaryKeyHolder[K]] interface {
+// UniqueRecord represents a data entry that is both Cloneable and uniquely identifiable by its primary key.
+type UniqueRecord[K Comparable[K], R PrimaryKeyHolder[K]] interface {
 	Cloneable[R]
 	PrimaryKeyHolder[K]
 }
 
+type Record[R any] interface {
+	Cloneable[R]
+}
+
 // FilterFunc is a function that filters a slice of records.
-type FilterFunc[K Comparable[K], R Record[K, R]] func([]R) []R
+type FilterFunc[K Comparable[K], R UniqueRecord[K, R]] func([]R) []R
 
 // Filterable provides a Filter() method which is used to complete a filtered query with from a Store.
-type Filterable[K Comparable[K], R Record[K, R]] interface {
+type Filterable[K Comparable[K], R UniqueRecord[K, R]] interface {
 	Filter(filters ...FilterFunc[K, R]) []R
 }
 
 // Store is an interface that represents an immutable set of records.
-type Store[K Comparable[K], R Record[K, R]] interface {
+type Store[K Comparable[K], R UniqueRecord[K, R]] interface {
 	Fetcher[R]
 	Getter[K, R]
 	Filterable[K, R]
 }
 
 // MutableStore is an interface that represents a mutable set of records.
-type MutableStore[K Comparable[K], R Record[K, R]] interface {
+type MutableStore[K Comparable[K], R UniqueRecord[K, R]] interface {
 	Store[K, R]
 
 	// Add inserts a new record into the MutableStore.
@@ -77,7 +83,7 @@ type MutableStore[K Comparable[K], R Record[K, R]] interface {
 }
 
 // UnaryStore is an interface that represents a read-only store that is limited to a single record.
-type UnaryStore[K Comparable[K], R Record[K, R]] interface {
+type UnaryStore[R Record[R]] interface {
 	// Get returns the record or an error.
 	// if the record exists, the error should be nil.
 	// If the record does not exist, the error should not be nil.
@@ -85,7 +91,7 @@ type UnaryStore[K Comparable[K], R Record[K, R]] interface {
 }
 
 // MutableUnaryStore is an interface that represents a mutable store that contains a single record.
-type MutableUnaryStore[K Comparable[K], R Record[K, R]] interface {
+type MutableUnaryStore[R Record[R]] interface {
 	// Get returns a copy of the record or an error.
 	// If the record exists, the error should be nil.
 	// If the record does not exist, the error should not be nil.
@@ -95,4 +101,71 @@ type MutableUnaryStore[K Comparable[K], R Record[K, R]] interface {
 	// If the record already exists, it should be replaced.
 	// If the record does not exist, it should be added.
 	Set(record R) error
+}
+
+type CustomMetadata interface {
+	// Clone creates a deep copy of the Metadata instance.
+	Clone() CustomMetadata
+}
+
+// EnvMetadataStore is an interface that defines the methods for a store that manages environment metadata.
+type EnvMetadataStore interface {
+	UnaryStore[CustomMetadata]
+}
+
+// MutableEnvMetadataStore is an interface that defines the methods for a mutable store that manages environment metadata.
+type MutableEnvMetadataStore interface {
+	MutableUnaryStore[CustomMetadata]
+}
+
+// ContractMetadataStore is an interface that represents an immutable view over a set
+// of ContractMetadata records identified by ContractMetadataKey.
+type ContractMetadataStore interface {
+	Store[ContractMetadataKey, ContractMetadata]
+}
+
+// MutableContractMetadataStore is an interface that represents a mutable ContractMetadataStore
+// of ContractMetadata records identified by ContractMetadataKey.
+type MutableContractMetadataStore interface {
+	MutableStore[ContractMetadataKey, ContractMetadata]
+}
+
+// AddressRefStore is an interface that represents an immutable view over a set
+// of AddressRef records  identified by AddressRefKey.
+type AddressRefStore interface {
+	Store[AddressRefKey, AddressRef]
+}
+
+// MutableAddressRefStore is an interface that represents a mutable AddressRefStore
+// of AddressRef records identified by AddressRefKey.
+type MutableAddressRefStore interface {
+	MutableStore[AddressRefKey, AddressRef]
+}
+
+// ContractMetadataKey is an interface that represents a key for ContractMetadata records.
+// It is used to uniquely identify a record in the ContractMetadataStore.
+type ContractMetadataKey interface {
+	Comparable[ContractMetadataKey]
+
+	// Address returns the address of the contract on the chain.
+	Address() string
+	// ChainSelector returns the chain-selector of the chain where the contract is deployed.
+	ChainSelector() uint64
+}
+
+// AddressRefKey is an interface that represents a key for AddressRef records.
+// It is used to uniquely identify a record in the AddressRefStore.
+type AddressRefKey interface {
+	Comparable[AddressRefKey]
+
+	// ChainSelector returns the chain-selector selector of the chain where the contract is deployed.
+	ChainSelector() uint64
+	// Type returns the contract type of the contract.
+	// This is a simple string type for identifying contract
+	Type() ContractType
+	// Version returns the semantic version of the contract.
+	Version() *semver.Version
+	// Qualifier returns the optional qualifier for the contract.
+	// This can be used to differentiate between different references of the same contract.
+	Qualifier() string
 }

@@ -4,23 +4,6 @@ import (
 	"github.com/Masterminds/semver/v3"
 )
 
-// AddressRefKey is an interface that represents a key for AddressRef records.
-// It is used to uniquely identify a record in the AddressRefStore.
-type AddressRefKey interface {
-	Comparable[AddressRefKey]
-
-	// ChainSelector returns the chain-selector selector of the chain where the contract is deployed.
-	ChainSelector() uint64
-	// Type returns the contract type of the contract.
-	// This is a simple string type for identifying contract
-	Type() ContractType
-	// Version returns the semantic version of the contract.
-	Version() *semver.Version
-	// Qualifier returns the optional qualifier for the contract.
-	// This can be used to differentiate between different references of the same contract.
-	Qualifier() string
-}
-
 // addressRefKey implements the AddressRefKey interface.
 var _ AddressRefKey = addressRefKey{}
 
