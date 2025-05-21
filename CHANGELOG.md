@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.3.0
+
+### Minor Changes
+
+- [#95](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/95) [`6ea8603`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/6ea86035fc3effc6da0d7047c59e940f1340061b) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat: Concurrency support for Operations API
+
 ## 0.2.0
 
 ### Minor Changes
