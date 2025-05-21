@@ -34,6 +34,9 @@ func addressRefFilter(predicate func(record AddressRef) bool) FilterFunc[Address
 				filtered = append(filtered, record)
 			}
 		}
+		if len(filtered) == 0 {
+			return filtered
+		}
 
 		return filtered
 	}
