@@ -9,7 +9,6 @@ require (
 	github.com/ethereum/go-ethereum v1.15.3
 	github.com/gagliardetto/solana-go v1.12.0
 	github.com/google/uuid v1.6.0
-	github.com/smartcontractkit/ccip-owner-contracts v0.1.0
 	github.com/smartcontractkit/chain-selectors v1.0.57
 	github.com/smartcontractkit/chainlink-ccip/chains/solana v0.0.0-20250425163923-16aa375957b7
 	github.com/smartcontractkit/chainlink-common v0.7.0
