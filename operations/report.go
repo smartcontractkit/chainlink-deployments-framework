@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -93,8 +94,10 @@ type Reporter interface {
 }
 
 // MemoryReporter stores reports in memory.
+// This is thread-safe and can be used in a multi-threaded environment.
 type MemoryReporter struct {
 	reports []Report[any, any]
+	mu      sync.RWMutex
 }
 
 type MemoryReporterOption func(*MemoryReporter)
@@ -119,6 +122,9 @@ func NewMemoryReporter(options ...MemoryReporterOption) *MemoryReporter {
 
 // AddReport adds a report to the memory reporter.
 func (e *MemoryReporter) AddReport(report Report[any, any]) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
 	e.reports = append(e.reports, report)
 
 	return nil
@@ -126,12 +132,22 @@ func (e *MemoryReporter) AddReport(report Report[any, any]) error {
 
 // GetReports returns all reports.
 func (e *MemoryReporter) GetReports() ([]Report[any, any], error) {
-	return e.reports, nil
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	// Create a copy to avoid data races after returning
+	reports := make([]Report[any, any], len(e.reports))
+	copy(reports, e.reports)
+
+	return reports, nil
 }
 
 // GetReport returns a report by ID.
 // Returns ErrReportNotFound if the report is not found.
 func (e *MemoryReporter) GetReport(id string) (Report[any, any], error) {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
 	for _, report := range e.reports {
 		if report.ID == id {
 			return report, nil
@@ -145,14 +161,29 @@ func (e *MemoryReporter) GetReport(id string) (Report[any, any], error) {
 // It does this by recursively fetching all the child reports.
 // Useful when returning all the reports in a sequence to the changeset output.
 func (e *MemoryReporter) GetExecutionReports(seqID string) ([]Report[any, any], error) {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
 	var allReports []Report[any, any]
 
 	var getReportsRecursively func(id string) error
 	getReportsRecursively = func(id string) error {
-		report, err := e.GetReport(id)
-		if err != nil {
-			return err
+		var report Report[any, any]
+		found := false
+
+		for _, r := range e.reports {
+			if r.ID == id {
+				report = r
+				found = true
+
+				break
+			}
 		}
+
+		if !found {
+			return fmt.Errorf("report_id %s: %w", id, ErrReportNotFound)
+		}
+
 		for _, childID := range report.ChildOperationReports {
 			if err := getReportsRecursively(childID); err != nil {
 				return err
@@ -172,17 +203,25 @@ func (e *MemoryReporter) GetExecutionReports(seqID string) ([]Report[any, any], 
 
 // RecentReporter is a wrapper around a Reporter that keeps track of the most recent reports.
 // Useful when trying to get a list of reports that was recently added in a sequence.
+// It is thread-safe and can be used in a multi-threaded environment.
 type RecentReporter struct {
 	Reporter
 	recentReports []Report[any, any]
+	mu            sync.RWMutex
 }
 
 // AddReport adds a report to the recent reporter.
 func (e *RecentReporter) AddReport(report Report[any, any]) error {
+	// First add to underlying reporter
 	err := e.Reporter.AddReport(report)
 	if err != nil {
 		return err
 	}
+
+	// Then add to recent reports
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
 	e.recentReports = append(e.recentReports, report)
 
 	return nil
@@ -190,6 +229,9 @@ func (e *RecentReporter) AddReport(report Report[any, any]) error {
 
 // GetRecentReports returns all the reports that was added since the construction of the RecentReporter.
 func (e *RecentReporter) GetRecentReports() []Report[any, any] {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
 	return e.recentReports
 }
 

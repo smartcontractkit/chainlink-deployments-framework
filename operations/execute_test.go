@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"math"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
@@ -664,6 +666,138 @@ func Test_loadPreviousSuccessfulReport(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_ExecuteSequence_Concurrent(t *testing.T) {
+	t.Parallel()
+
+	version := semver.MustParse("1.0.0")
+
+	op := NewOperation("increment", version, "increment by 1",
+		func(b Bundle, deps any, input int) (output int, err error) {
+			return input + 1, nil
+		})
+
+	sequence := NewSequence("concurrent-seq", version, "concurrent sequence test",
+		func(b Bundle, deps any, input int) (int, error) {
+			res, err := ExecuteOperation(b, op, nil, input)
+			if err != nil {
+				return 0, err
+			}
+
+			// Introduce a small delay to increase chance of race conditions
+			time.Sleep(time.Millisecond)
+
+			return res.Output, nil
+		})
+
+	reporter := NewMemoryReporter()
+	bundle := NewBundle(context.Background, logger.Test(t), reporter)
+
+	const numGoroutines = 10
+	var wg sync.WaitGroup
+	wg.Add(numGoroutines)
+
+	// Channel to collect results
+	type result struct {
+		report SequenceReport[int, int]
+		err    error
+	}
+	results := make(chan result, numGoroutines)
+
+	for i := range numGoroutines {
+		go func(input int) {
+			defer wg.Done()
+
+			report, err := ExecuteSequence(bundle, sequence, nil, input)
+			results <- result{report, err}
+		}(i) // Each goroutine uses its index as input
+	}
+
+	wg.Wait()
+	close(results)
+
+	// Collect and verify results
+	for res := range results {
+		require.NoError(t, res.err, "ExecuteSequence should not return an error")
+		require.Nil(t, res.report.Err, "Report error should be nil")
+
+		// Output should be input + 1
+		input := res.report.Input
+		expectedOutput := input + 1
+		assert.Equal(t, expectedOutput, res.report.Output,
+			"Output should be input + 1 for input %d", input)
+
+		// Verify execution reports
+		assert.Len(t, res.report.ExecutionReports, 2,
+			"Should have 2 execution reports (sequence + operation)")
+	}
+
+	// Verify reporter has all reports
+	allReports, err := reporter.GetReports()
+	require.NoError(t, err)
+
+	// We expect 2*numGoroutines reports (1 sequence + 1 operation per goroutine)
+	assert.Len(t, allReports, numGoroutines*2,
+		"Reporter should have %d reports", numGoroutines*2)
+}
+
+func Test_ExecuteOperation_Concurrent(t *testing.T) {
+	t.Parallel()
+
+	version := semver.MustParse("1.0.0")
+
+	op := NewOperation("increment", version, "increment by 1",
+		func(b Bundle, deps any, input int) (output int, err error) {
+			// Introduce a small delay to increase chance of race conditions
+			time.Sleep(time.Millisecond)
+			return input + 1, nil
+		})
+
+	reporter := NewMemoryReporter()
+	bundle := NewBundle(context.Background, logger.Test(t), reporter)
+
+	const numGoroutines = 10
+	var wg sync.WaitGroup
+	wg.Add(numGoroutines)
+
+	// Channel to collect results
+	type result struct {
+		report Report[int, int]
+		err    error
+	}
+	results := make(chan result, numGoroutines)
+
+	for i := range numGoroutines {
+		go func(input int) {
+			defer wg.Done()
+
+			report, err := ExecuteOperation(bundle, op, nil, input)
+			results <- result{report, err}
+		}(i) // Each goroutine uses its index as input
+	}
+
+	wg.Wait()
+	close(results)
+
+	for res := range results {
+		require.NoError(t, res.err, "ExecuteOperation should not return an error")
+		require.Nil(t, res.report.Err, "Report error should be nil")
+
+		// Output should be input + 1
+		input := res.report.Input
+		expectedOutput := input + 1
+		assert.Equal(t, expectedOutput, res.report.Output,
+			"Output should be input + 1 for input %d", input)
+	}
+
+	// Verify reporter has all reports
+	allReports, err := reporter.GetReports()
+	require.NoError(t, err)
+
+	// We expect numGoroutines reports (1 per goroutine)
+	assert.Len(t, allReports, numGoroutines,
+		"Reporter should have %d reports", numGoroutines)
 }
 
 type errorReporter struct {

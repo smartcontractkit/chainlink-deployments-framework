@@ -41,5 +41,5 @@ jobs:
       - name: Build and test
         uses: smartcontractkit/.github/actions/ci-test-go@eeb76b5870e3c17856d5a60fd064a053c023b5f5 # ci-test-go@1.0.0
         with:
-          go-test-cmd: go test -coverprofile=coverage.txt $(go list ./...)
+          go-test-cmd: go test -race -coverprofile=coverage.txt $(go list ./...)
           use-go-cache: true
