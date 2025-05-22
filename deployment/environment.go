@@ -4,36 +4,22 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math/big"
 	"slices"
 	"sort"
-	"strconv"
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/zksync-sdk/zksync2-go/accounts"
-	"github.com/zksync-sdk/zksync2-go/clients"
-
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 	csav1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/csa"
 	jobv1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/job"
 	nodev1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/node"
 
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 )
-
-// OnchainClient is an EVM chain client.
-// For EVM specifically we can use existing geth interface
-// to abstract chain clients.
-type OnchainClient interface {
-	bind.ContractBackend
-	bind.DeployBackend
-	BalanceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error)
-	NonceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (uint64, error)
-}
 
 // OffchainClient interacts with the job-distributor
 // which is a family agnostic interface for performing
@@ -44,46 +30,9 @@ type OffchainClient interface {
 	csav1.CSAServiceClient
 }
 
-// Chain represents an EVM chain.
-type Chain struct {
-	// Selectors used as canonical chain identifier.
-	Selector uint64
-	Client   OnchainClient
-	// Note the Sign function can be abstract supporting a variety of key storage mechanisms (e.g. KMS etc).
-	DeployerKey *bind.TransactOpts
-	Confirm     func(tx *types.Transaction) (uint64, error)
-	// Users are a set of keys that can be used to interact with the chain.
-	// These are distinct from the deployer key.
-	Users []*bind.TransactOpts
-
-	// ZK deployment specifics
-	IsZkSyncVM          bool
-	ClientZkSyncVM      *clients.Client
-	DeployerKeyZkSyncVM *accounts.Wallet
-}
-
-func (c Chain) String() string {
-	chainInfo, err := ChainInfo(c.Selector)
-	if err != nil {
-		// we should never get here, if the selector is invalid it should not be in the environment
-		panic(err)
-	}
-
-	return fmt.Sprintf("%s (%d)", chainInfo.ChainName, chainInfo.ChainSelector)
-}
-
-func (c Chain) Name() string {
-	chainInfo, err := ChainInfo(c.Selector)
-	if err != nil {
-		// we should never get here, if the selector is invalid it should not be in the environment
-		panic(err)
-	}
-	if chainInfo.ChainName == "" {
-		return strconv.FormatUint(c.Selector, 10)
-	}
-
-	return chainInfo.ChainName
-}
+// todo: clean up in future once Chainlink is migrated
+type OnchainClient = evm.OnchainClient
+type Chain = evm.Chain
 
 func MaybeDataErr(err error) error {
 	//revive:disable
@@ -121,8 +70,17 @@ type Environment struct {
 		datastore.DefaultMetadata,
 		datastore.DefaultMetadata,
 	]
-	Chains      map[uint64]Chain
-	SolChains   map[uint64]SolChain
+
+	// Chains is being deprecated in favour of BlockChains field
+	// use BlockChains.EVMChains()
+	Chains map[uint64]Chain
+
+	// SolChains is being deprecated in favour of BlockChains field
+	// use BlockChains.SolanaChains()
+	SolChains map[uint64]SolChain
+
+	// AptosChains is being deprecated in favour of BlockChains field
+	// use BlockChains.AptosChains()
 	AptosChains map[uint64]AptosChain
 	SuiChains   map[uint64]SuiChain
 	NodeIDs     []string
@@ -131,8 +89,11 @@ type Environment struct {
 	OCRSecrets  OCRSecrets
 	// OperationsBundle contains dependencies required by the operations API.
 	OperationsBundle operations.Bundle
+	// BlockChains is the container of all chains in the environment.
+	BlockChains chain.BlockChains
 }
 
+// todo: remove once chainlink and cld are migrated to NewCLDFEnvironment
 func NewEnvironment(
 	name string,
 	logger logger.Logger,
@@ -168,6 +129,42 @@ func NewEnvironment(
 	}
 }
 
+// NewCLDFEnvironment creates a new environment.
+func NewCLDFEnvironment(
+	name string,
+	logger logger.Logger,
+	existingAddrs AddressBook,
+	dataStore datastore.DataStore[
+		datastore.DefaultMetadata,
+		datastore.DefaultMetadata,
+	],
+	chains map[uint64]Chain,
+	solChains map[uint64]SolChain,
+	aptosChains map[uint64]AptosChain,
+	nodeIDs []string,
+	offchain OffchainClient,
+	ctx func() context.Context,
+	secrets OCRSecrets,
+	blockChains chain.BlockChains,
+) *Environment {
+	return &Environment{
+		Name:              name,
+		Logger:            logger,
+		ExistingAddresses: existingAddrs,
+		DataStore:         dataStore,
+		Chains:            chains,
+		SolChains:         solChains,
+		AptosChains:       aptosChains,
+		NodeIDs:           nodeIDs,
+		Offchain:          offchain,
+		GetContext:        ctx,
+		OCRSecrets:        secrets,
+		// default to memory reporter as that is the only reporter available for now
+		OperationsBundle: operations.NewBundle(ctx, logger, operations.NewMemoryReporter()),
+		BlockChains:      blockChains,
+	}
+}
+
 // Clone creates a copy of the environment with a new reference to the address book.
 func (e Environment) Clone() Environment {
 	ab := NewMemoryAddressBook()
@@ -199,9 +196,12 @@ func (e Environment) Clone() Environment {
 		GetContext:        e.GetContext,
 		OCRSecrets:        e.OCRSecrets,
 		OperationsBundle:  e.OperationsBundle,
+		BlockChains:       e.BlockChains,
 	}
 }
 
+// AllChainSelectors is being deprecated.
+// Use e.BlockChains.ListChainSelectors(...) instead.
 func (e Environment) AllChainSelectors() []uint64 {
 	selectors := make([]uint64, 0, len(e.Chains))
 	for sel := range e.Chains {
@@ -214,6 +214,8 @@ func (e Environment) AllChainSelectors() []uint64 {
 	return selectors
 }
 
+// AllChainSelectorsExcluding is being deprecated.
+// Use e.BlockChains.ListChainSelectors(...) instead.
 func (e Environment) AllChainSelectorsExcluding(excluding []uint64) []uint64 {
 	selectors := make([]uint64, 0, len(e.Chains))
 	for sel := range e.Chains {
@@ -235,6 +237,8 @@ func (e Environment) AllChainSelectorsExcluding(excluding []uint64) []uint64 {
 	return selectors
 }
 
+// AllChainSelectorsSolana is being deprecated.
+// Use e.BlockChains.ListChainSelectors(...) instead.
 func (e Environment) AllChainSelectorsSolana() []uint64 {
 	selectors := make([]uint64, 0, len(e.SolChains))
 	for sel := range e.SolChains {
@@ -247,6 +251,8 @@ func (e Environment) AllChainSelectorsSolana() []uint64 {
 	return selectors
 }
 
+// AllChainSelectorsAptos is being deprecated.
+// Use e.BlockChains.ListChainSelectors(...) instead.
 func (e Environment) AllChainSelectorsAptos() []uint64 {
 	selectors := make([]uint64, 0, len(e.AptosChains))
 	for sel := range e.AptosChains {
@@ -271,6 +277,8 @@ func (e Environment) AllChainSelectorsSui() []uint64 {
 	return selectors
 }
 
+// AllChainSelectorsAllFamilies is being deprecated.
+// Use e.BlockChains.ListChainSelectors instead.
 func (e Environment) AllChainSelectorsAllFamilies() []uint64 {
 	selectors := make([]uint64, 0, len(e.Chains)+len(e.SolChains)+len(e.AptosChains)+len(e.SuiChains))
 	for sel := range e.Chains {
@@ -292,6 +300,8 @@ func (e Environment) AllChainSelectorsAllFamilies() []uint64 {
 	return selectors
 }
 
+// AllChainSelectorsAllFamiliesExcluding is being deprecated.
+// Use e.BlockChains.ListChainSelectors instead.
 func (e Environment) AllChainSelectorsAllFamiliesExcluding(excluding []uint64) []uint64 {
 	selectors := e.AllChainSelectorsAllFamilies()
 	ret := make([]uint64, 0)

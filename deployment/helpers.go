@@ -24,6 +24,9 @@ func SimTransactOpts() *bind.TransactOpts {
 	}, From: common.HexToAddress("0x0"), NoSend: true, GasLimit: 1_000_000}
 }
 
+// ChainInfo returns the chain info for the given selector.
+// It returns an error if the selector is invalid or if the chain info cannot be retrieved.
+// todo: remove when Chainlink is migrated to a local copy
 func ChainInfo(cs uint64) (chain_selectors.ChainDetails, error) {
 	id, err := chain_selectors.GetChainIDFromSelector(cs)
 	if err != nil {
