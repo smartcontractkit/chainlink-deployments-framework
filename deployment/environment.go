@@ -17,7 +17,6 @@ import (
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
-	"github.com/smartcontractkit/chainlink-deployments-framework/chain/sui"
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 )
@@ -265,12 +264,7 @@ func (e Environment) AllChainSelectorsAptos() []uint64 {
 // AllChainSelectorsAllFamilies is being deprecated.
 // Use e.BlockChains.ListChainSelectors instead.
 func (e Environment) AllChainSelectorsAllFamilies() []uint64 {
-	suiChains, err := e.BlockChains.SuiChains()
-	if err != nil {
-		// ignoring error here to avoid breaking change while we transition to BlockChains.ListChainSelectors
-		suiChains = map[uint64]sui.Chain{}
-	}
-	selectors := make([]uint64, 0, len(e.Chains)+len(e.SolChains)+len(e.AptosChains)+len(suiChains))
+	selectors := make([]uint64, 0, len(e.Chains)+len(e.SolChains)+len(e.AptosChains))
 	for sel := range e.Chains {
 		selectors = append(selectors, sel)
 	}
@@ -278,9 +272,6 @@ func (e Environment) AllChainSelectorsAllFamilies() []uint64 {
 		selectors = append(selectors, sel)
 	}
 	for sel := range e.AptosChains {
-		selectors = append(selectors, sel)
-	}
-	for sel := range suiChains {
 		selectors = append(selectors, sel)
 	}
 	sort.Slice(selectors, func(i, j int) bool {
