@@ -1,15 +1,8 @@
 package deployment
 
 import (
-	"github.com/aptos-labs/aptos-go-sdk"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos"
 )
 
-// AptosChain represents an Aptos chain.
-type AptosChain struct {
-	Selector       uint64
-	Client         aptos.AptosRpcClient
-	DeployerSigner aptos.TransactionSigner
-	URL            string
-
-	Confirm func(txHash string, opts ...any) error
-}
+// todo: clean up in future once Chainlink is migrated
+type AptosChain = aptos.Chain

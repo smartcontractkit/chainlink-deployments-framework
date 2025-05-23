@@ -7,6 +7,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 )
 
@@ -95,7 +96,8 @@ func TestChangeSetLegacyFunction(t *testing.T) {
 
 func NewNoopEnvironment(t *testing.T) Environment {
 	t.Helper()
-	return *NewEnvironment(
+
+	return *NewCLDFEnvironment(
 		"noop",
 		logger.Test(t),
 		NewMemoryAddressBook(),
@@ -106,10 +108,10 @@ func NewNoopEnvironment(t *testing.T) Environment {
 		map[uint64]Chain{},
 		map[uint64]SolChain{},
 		map[uint64]AptosChain{},
-		map[uint64]SuiChain{},
 		[]string{},
 		nil,
 		t.Context,
 		XXXGenerateTestOCRSecrets(),
+		chain.NewBlockChains(map[uint64]chain.BlockChain{}),
 	)
 }
