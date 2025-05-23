@@ -1,5 +1,15 @@
 # chainlink-deployments-framework
 
+## 0.5.1
+
+### Patch Changes
+
+- [#114](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/114) [`20b09f9`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/20b09f90628d03171e03c2caa9fd47bccb94b867) Thanks [@jkongie](https://github.com/jkongie)! - Add `Exists` and `ExistsN` methods to `Blockchains` to test for the existence of a chain for the provided selector/s
+
+- [#115](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/115) [`3f32425`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/3f32425197babacd1baf406756cfb458276651b6) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix: remove unused error return value
+
+- [#112](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/112) [`91ac227`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/91ac2274033650e3cfbfe72815e639e61e3e0229) Thanks [@jkongie](https://github.com/jkongie)! - Adds a `Family` method to the `Blockchain` interface
+
 ## 0.5.0
 
 ### Minor Changes
