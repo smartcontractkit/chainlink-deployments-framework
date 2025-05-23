@@ -53,7 +53,7 @@ type BlockChain interface {
 }
 
 // EVMChains returns a map of all EVM chains with their selectors.
-func (b BlockChains) EVMChains() (map[uint64]evm.Chain, error) {
+func (b BlockChains) EVMChains() map[uint64]evm.Chain {
 	var evmChains = make(map[uint64]evm.Chain)
 	for selector, chain := range b.chains {
 		c, ok := chain.(evm.Chain)
@@ -63,11 +63,11 @@ func (b BlockChains) EVMChains() (map[uint64]evm.Chain, error) {
 		evmChains[selector] = c
 	}
 
-	return evmChains, nil
+	return evmChains
 }
 
 // SolanaChains returns a map of all Solana chains with their selectors.
-func (b BlockChains) SolanaChains() (map[uint64]solana.Chain, error) {
+func (b BlockChains) SolanaChains() map[uint64]solana.Chain {
 	var solanaChains = make(map[uint64]solana.Chain)
 	for selector, chain := range b.chains {
 		c, ok := chain.(solana.Chain)
@@ -77,11 +77,11 @@ func (b BlockChains) SolanaChains() (map[uint64]solana.Chain, error) {
 		solanaChains[selector] = c
 	}
 
-	return solanaChains, nil
+	return solanaChains
 }
 
 // AptosChains returns a map of all Aptos chains with their selectors.
-func (b BlockChains) AptosChains() (map[uint64]aptos.Chain, error) {
+func (b BlockChains) AptosChains() map[uint64]aptos.Chain {
 	var aptosChains = make(map[uint64]aptos.Chain)
 	for selector, chain := range b.chains {
 		c, ok := chain.(aptos.Chain)
@@ -91,11 +91,11 @@ func (b BlockChains) AptosChains() (map[uint64]aptos.Chain, error) {
 		aptosChains[selector] = c
 	}
 
-	return aptosChains, nil
+	return aptosChains
 }
 
 // SuiChains returns a map of all Sui chains with their selectors.
-func (b BlockChains) SuiChains() (map[uint64]sui.Chain, error) {
+func (b BlockChains) SuiChains() map[uint64]sui.Chain {
 	var suiChains = make(map[uint64]sui.Chain)
 	for selector, chain := range b.chains {
 		c, ok := chain.(sui.Chain)
@@ -105,11 +105,11 @@ func (b BlockChains) SuiChains() (map[uint64]sui.Chain, error) {
 		suiChains[selector] = c
 	}
 
-	return suiChains, nil
+	return suiChains
 }
 
 // TonChains returns a map of all Ton chains with their selectors.
-func (b BlockChains) TonChains() (map[uint64]ton.Chain, error) {
+func (b BlockChains) TonChains() map[uint64]ton.Chain {
 	var tonChains = make(map[uint64]ton.Chain)
 	for selector, chain := range b.chains {
 		c, ok := chain.(ton.Chain)
@@ -119,7 +119,7 @@ func (b BlockChains) TonChains() (map[uint64]ton.Chain, error) {
 		tonChains[selector] = c
 	}
 
-	return tonChains, nil
+	return tonChains
 }
 
 // ChainSelectorsOption defines a function type for configuring ChainSelectors

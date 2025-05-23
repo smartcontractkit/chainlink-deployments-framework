@@ -52,8 +52,7 @@ func TestBlockChainsEVMChains(t *testing.T) {
 
 	chains := buildBlockChains()
 
-	evmChains, err := chains.EVMChains()
-	require.NoError(t, err)
+	evmChains := chains.EVMChains()
 
 	assert.Len(t, evmChains, 2, "expected 2 EVM chains")
 
@@ -69,8 +68,7 @@ func TestBlockChainsSolanaChains(t *testing.T) {
 
 	chains := buildBlockChains()
 
-	solanaChains, err := chains.SolanaChains()
-	require.NoError(t, err)
+	solanaChains := chains.SolanaChains()
 
 	assert.Len(t, solanaChains, 1, "expected 1 Solana chain")
 
@@ -83,8 +81,7 @@ func TestBlockChainsAptosChains(t *testing.T) {
 
 	chains := buildBlockChains()
 
-	aptosChains, err := chains.AptosChains()
-	require.NoError(t, err)
+	aptosChains := chains.AptosChains()
 
 	assert.Len(t, aptosChains, 1, "expected 1 Aptos chain")
 
@@ -97,8 +94,7 @@ func TestBlockChainsSuiChains(t *testing.T) {
 
 	chains := buildBlockChains()
 
-	suiChains, err := chains.SuiChains()
-	require.NoError(t, err)
+	suiChains := chains.SuiChains()
 
 	assert.Len(t, suiChains, 1, "expected 1 Sui chain")
 
@@ -111,8 +107,7 @@ func TestBlockChainsTonChains(t *testing.T) {
 
 	chains := buildBlockChains()
 
-	tonChains, err := chains.TonChains()
-	require.NoError(t, err)
+	tonChains := chains.TonChains()
 
 	assert.Len(t, tonChains, 1, "expected 1 Ton chain")
 
