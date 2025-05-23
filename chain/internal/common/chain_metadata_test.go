@@ -1,4 +1,4 @@
-package internal_test
+package common_test
 
 import (
 	"testing"
@@ -6,7 +6,7 @@ import (
 	chain_selectors "github.com/smartcontractkit/chain-selectors"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/chain/internal"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/common"
 )
 
 func TestChainInfoProvider(t *testing.T) {
@@ -36,7 +36,7 @@ func TestChainInfoProvider(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			provider := internal.ChainMetadata{
+			provider := common.ChainMetadata{
 				Selector: tt.selector,
 			}
 			assert.Equal(t, tt.selector, provider.ChainSelector())

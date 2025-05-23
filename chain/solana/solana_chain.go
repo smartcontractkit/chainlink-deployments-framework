@@ -18,7 +18,7 @@ import (
 	solCommonUtil "github.com/smartcontractkit/chainlink-ccip/chains/solana/utils/common"
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/chain/internal"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/common"
 )
 
 const (
@@ -182,10 +182,10 @@ func (c Chain) ChainSelector() uint64 {
 
 // String returns chain name and selector "<name> (<selector>)"
 func (c Chain) String() string {
-	return internal.ChainMetadata{Selector: c.Selector}.String()
+	return common.ChainMetadata{Selector: c.Selector}.String()
 }
 
 // Name returns the name of the chain
 func (c Chain) Name() string {
-	return internal.ChainMetadata{Selector: c.Selector}.Name()
+	return common.ChainMetadata{Selector: c.Selector}.Name()
 }

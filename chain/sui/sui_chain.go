@@ -5,7 +5,7 @@ import (
 
 	"github.com/pattonkan/sui-go/suiclient"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/chain/internal"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/common"
 )
 
 // Chain represents an Sui chain.
@@ -27,10 +27,10 @@ func (c Chain) ChainSelector() uint64 {
 
 // String returns chain name and selector "<name> (<selector>)"
 func (c Chain) String() string {
-	return internal.ChainMetadata{Selector: c.Selector}.String()
+	return common.ChainMetadata{Selector: c.Selector}.String()
 }
 
 // Name returns the name of the chain
 func (c Chain) Name() string {
-	return internal.ChainMetadata{Selector: c.Selector}.Name()
+	return common.ChainMetadata{Selector: c.Selector}.Name()
 }

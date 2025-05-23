@@ -3,7 +3,7 @@ package aptos
 import (
 	"github.com/aptos-labs/aptos-go-sdk"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/chain/internal"
+	chain_common "github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/common"
 )
 
 // Chain represents an Aptos chain.
@@ -24,10 +24,10 @@ func (c Chain) ChainSelector() uint64 {
 
 // String returns chain name and selector "<name> (<selector>)"
 func (c Chain) String() string {
-	return internal.ChainMetadata{Selector: c.Selector}.String()
+	return chain_common.ChainMetadata{Selector: c.Selector}.String()
 }
 
 // Name returns the name of the chain
 func (c Chain) Name() string {
-	return internal.ChainMetadata{Selector: c.Selector}.Name()
+	return chain_common.ChainMetadata{Selector: c.Selector}.Name()
 }
