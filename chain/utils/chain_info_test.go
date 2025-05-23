@@ -1,4 +1,4 @@
-package internal_test
+package utils_test
 
 import (
 	"testing"
@@ -7,45 +7,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/chain/internal"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/utils"
 )
-
-func TestChainInfoProvider(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name       string
-		selector   uint64
-		wantName   string
-		wantString string
-	}{
-		{
-			name:       "returns correct info",
-			selector:   chain_selectors.ETHEREUM_MAINNET.Selector,
-			wantString: "ethereum-mainnet (5009297550715157269)",
-			wantName:   chain_selectors.ETHEREUM_MAINNET.Name,
-		},
-		{
-			name:       "returns empty for unknown chain",
-			selector:   0,
-			wantString: "",
-			wantName:   "",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			provider := internal.ChainBase{
-				Selector: tt.selector,
-			}
-			assert.Equal(t, tt.selector, provider.ChainSelector())
-			assert.Equal(t, tt.wantString, provider.String())
-			assert.Equal(t, tt.wantName, provider.Name())
-		})
-	}
-}
 
 func TestChainInfo(t *testing.T) {
 	t.Parallel()
@@ -75,7 +38,7 @@ func TestChainInfo(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			info, err := internal.ChainInfo(tt.selector)
+			info, err := utils.ChainInfo(tt.selector)
 
 			if len(tt.expectError) > 0 {
 				assert.ErrorContains(t, err, tt.expectError)

@@ -15,6 +15,8 @@ import (
 
 	chain_selectors "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/utils"
 )
 
 // SimTransactOpts is useful to generate just the calldata for a given gethwrapper method.
@@ -24,25 +26,8 @@ func SimTransactOpts() *bind.TransactOpts {
 	}, From: common.HexToAddress("0x0"), NoSend: true, GasLimit: 1_000_000}
 }
 
-// ChainInfo returns the chain info for the given selector.
-// It returns an error if the selector is invalid or if the chain info cannot be retrieved.
-// todo: remove when Chainlink is migrated to a local copy
-func ChainInfo(cs uint64) (chain_selectors.ChainDetails, error) {
-	id, err := chain_selectors.GetChainIDFromSelector(cs)
-	if err != nil {
-		return chain_selectors.ChainDetails{}, err
-	}
-	family, err := chain_selectors.GetSelectorFamily(cs)
-	if err != nil {
-		return chain_selectors.ChainDetails{}, err
-	}
-	info, err := chain_selectors.GetChainDetailsByChainIDAndFamily(id, family)
-	if err != nil {
-		return chain_selectors.ChainDetails{}, err
-	}
-
-	return info, nil
-}
+// todo: remove when Chainlink is migrated
+var ChainInfo = utils.ChainInfo
 
 func parseErrorFromABI(errorString string, contractABI string) (string, error) {
 	errorString = strings.TrimPrefix(errorString, "Reverted ")

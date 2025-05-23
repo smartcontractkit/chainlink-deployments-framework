@@ -17,6 +17,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/sui"
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 )
@@ -82,7 +83,6 @@ type Environment struct {
 	// AptosChains is being deprecated in favour of BlockChains field
 	// use BlockChains.AptosChains()
 	AptosChains map[uint64]AptosChain
-	SuiChains   map[uint64]SuiChain
 	NodeIDs     []string
 	Offchain    OffchainClient
 	GetContext  func() context.Context
@@ -105,7 +105,6 @@ func NewEnvironment(
 	chains map[uint64]Chain,
 	solChains map[uint64]SolChain,
 	aptosChains map[uint64]AptosChain,
-	suiChains map[uint64]SuiChain,
 	nodeIDs []string,
 	offchain OffchainClient,
 	ctx func() context.Context,
@@ -119,7 +118,6 @@ func NewEnvironment(
 		Chains:            chains,
 		SolChains:         solChains,
 		AptosChains:       aptosChains,
-		SuiChains:         suiChains,
 		NodeIDs:           nodeIDs,
 		Offchain:          offchain,
 		GetContext:        ctx,
@@ -190,7 +188,6 @@ func (e Environment) Clone() Environment {
 		Chains:            e.Chains,
 		SolChains:         e.SolChains,
 		AptosChains:       e.AptosChains,
-		SuiChains:         e.SuiChains,
 		NodeIDs:           e.NodeIDs,
 		Offchain:          e.Offchain,
 		GetContext:        e.GetContext,
@@ -265,22 +262,15 @@ func (e Environment) AllChainSelectorsAptos() []uint64 {
 	return selectors
 }
 
-func (e Environment) AllChainSelectorsSui() []uint64 {
-	selectors := make([]uint64, 0, len(e.SuiChains))
-	for sel := range e.SuiChains {
-		selectors = append(selectors, sel)
-	}
-	sort.Slice(selectors, func(i, j int) bool {
-		return selectors[i] < selectors[j]
-	})
-
-	return selectors
-}
-
 // AllChainSelectorsAllFamilies is being deprecated.
 // Use e.BlockChains.ListChainSelectors instead.
 func (e Environment) AllChainSelectorsAllFamilies() []uint64 {
-	selectors := make([]uint64, 0, len(e.Chains)+len(e.SolChains)+len(e.AptosChains)+len(e.SuiChains))
+	suiChains, err := e.BlockChains.SuiChains()
+	if err != nil {
+		// ignoring error here to avoid breaking change while we transition to BlockChains.ListChainSelectors
+		suiChains = map[uint64]sui.Chain{}
+	}
+	selectors := make([]uint64, 0, len(e.Chains)+len(e.SolChains)+len(e.AptosChains)+len(suiChains))
 	for sel := range e.Chains {
 		selectors = append(selectors, sel)
 	}
@@ -290,7 +280,7 @@ func (e Environment) AllChainSelectorsAllFamilies() []uint64 {
 	for sel := range e.AptosChains {
 		selectors = append(selectors, sel)
 	}
-	for sel := range e.SuiChains {
+	for sel := range suiChains {
 		selectors = append(selectors, sel)
 	}
 	sort.Slice(selectors, func(i, j int) bool {

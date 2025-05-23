@@ -182,10 +182,10 @@ func (c Chain) ChainSelector() uint64 {
 
 // String returns chain name and selector "<name> (<selector>)"
 func (c Chain) String() string {
-	return internal.ChainBase{Selector: c.Selector}.String()
+	return internal.ChainMetadata{Selector: c.Selector}.String()
 }
 
 // Name returns the name of the chain
 func (c Chain) Name() string {
-	return internal.ChainBase{Selector: c.Selector}.Name()
+	return internal.ChainMetadata{Selector: c.Selector}.Name()
 }

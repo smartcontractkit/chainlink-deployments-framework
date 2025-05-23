@@ -1,18 +1,21 @@
-package aptos
+package sui
 
 import (
-	"github.com/aptos-labs/aptos-go-sdk"
+	"crypto/ed25519"
+
+	"github.com/pattonkan/sui-go/suiclient"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/internal"
 )
 
-// Chain represents an Aptos chain.
+// Chain represents an Sui chain.
 type Chain struct {
 	Selector uint64
-
-	Client         aptos.AptosRpcClient
-	DeployerSigner aptos.TransactionSigner
-	URL            string
+	Client   *suiclient.ClientImpl
+	// TODO: sui-go currently does not have a working Signer interface, so we
+	// have the raw private key for now.
+	DeployerKey ed25519.PrivateKey
+	URL         string
 
 	Confirm func(txHash string, opts ...any) error
 }
