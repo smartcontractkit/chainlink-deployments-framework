@@ -16,6 +16,17 @@ var _ BlockChain = aptos.Chain{}
 var _ BlockChain = sui.Chain{}
 var _ BlockChain = ton.Chain{}
 
+// BlockChain is an interface that represents a chain.
+// A chain can be an EVM chain, Solana chain Aptos chain or others.
+type BlockChain interface {
+	// String returns chain name and selector "<name> (<selector>)"
+	String() string
+	// Name returns the name of the chain
+	Name() string
+	ChainSelector() uint64
+	Family() string
+}
+
 // BlockChains represents a collection of chains.
 // It provides querying capabilities for different types of chains.
 type BlockChains struct {
@@ -41,15 +52,22 @@ func NewBlockChains(chains map[uint64]BlockChain) BlockChains {
 	}
 }
 
-// BlockChain is an interface that represents a chain.
-// A chain can be an EVM chain, Solana chain Aptos chain or others.
-type BlockChain interface {
-	// String returns chain name and selector "<name> (<selector>)"
-	String() string
-	// Name returns the name of the chain
-	Name() string
-	ChainSelector() uint64
-	Family() string
+// Exists checks if a chain with the given selector exists.
+func (b BlockChains) Exists(selector uint64) bool {
+	_, ok := b.chains[selector]
+
+	return ok
+}
+
+// ExistsN checks if all chains with the given selectors exist.
+func (b BlockChains) ExistsN(selectors ...uint64) bool {
+	for _, selector := range selectors {
+		if !b.Exists(selector) {
+			return false
+		}
+	}
+
+	return true
 }
 
 // EVMChains returns a map of all EVM chains with their selectors.

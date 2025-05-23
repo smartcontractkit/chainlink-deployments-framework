@@ -47,6 +47,70 @@ func TestNewBlockChains(t *testing.T) {
 	})
 }
 
+func Test_BlockChains_Exists(t *testing.T) {
+	t.Parallel()
+
+	chains := buildBlockChains()
+
+	tests := []struct {
+		name     string
+		selector uint64
+		expected bool
+	}{
+		{
+			name:     "exists",
+			selector: evmChain1.Selector,
+			expected: true,
+		},
+		{
+			name:     "does not exist",
+			selector: 99999999,
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			exists := chains.Exists(tt.selector)
+			assert.Equal(t, tt.expected, exists)
+		})
+	}
+}
+
+func Test_BlockChains_ExistsN(t *testing.T) {
+	t.Parallel()
+
+	chains := buildBlockChains()
+
+	tests := []struct {
+		name      string
+		selectors []uint64
+		expected  bool
+	}{
+		{
+			name:      "all exist",
+			selectors: []uint64{evmChain1.Selector, solanaChain1.Selector},
+			expected:  true,
+		},
+		{
+			name:      "some do not exist",
+			selectors: []uint64{evmChain1.Selector, 99999999},
+			expected:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			exists := chains.ExistsN(tt.selectors...)
+			assert.Equal(t, tt.expected, exists)
+		})
+	}
+}
+
 func TestBlockChainsEVMChains(t *testing.T) {
 	t.Parallel()
 
