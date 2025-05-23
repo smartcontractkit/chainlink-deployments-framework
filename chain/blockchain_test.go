@@ -12,6 +12,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/sui"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/ton"
 )
 
 var evmChain1 = evm.Chain{Selector: 1}
@@ -19,6 +20,7 @@ var evmChain2 = evm.Chain{Selector: 2}
 var solanaChain1 = solana.Chain{Selector: 3}
 var aptosChain1 = aptos.Chain{Selector: 4}
 var suiChain1 = sui.Chain{Selector: 5}
+var tonChain1 = ton.Chain{Selector: 6}
 
 func TestNewBlockChains(t *testing.T) {
 	t.Parallel()
@@ -103,6 +105,20 @@ func TestBlockChainsSuiChains(t *testing.T) {
 	assert.True(t, exists, "expected Sui chain with selector 5")
 }
 
+func TestBlockChainsTonChains(t *testing.T) {
+	t.Parallel()
+
+	chains := buildBlockChains()
+
+	tonChains, err := chains.TonChains()
+	require.NoError(t, err)
+
+	assert.Len(t, tonChains, 1, "expected 1 Ton chain")
+
+	_, exists := tonChains[tonChain1.Selector]
+	assert.True(t, exists, "expected Ton chain with selector 6")
+}
+
 func TestBlockChainsListChainSelectors(t *testing.T) {
 	t.Parallel()
 
@@ -120,7 +136,7 @@ func TestBlockChainsListChainSelectors(t *testing.T) {
 			expectedIDs: []uint64{
 				evmChain1.ChainSelector(), evmChain2.ChainSelector(),
 				solanaChain1.ChainSelector(), aptosChain1.ChainSelector(),
-				suiChain1.ChainSelector(),
+				suiChain1.ChainSelector(), tonChain1.ChainSelector(),
 			},
 			description: "expected all chain selectors",
 		},
@@ -149,11 +165,17 @@ func TestBlockChainsListChainSelectors(t *testing.T) {
 			description: "expected Sui chain selectors",
 		},
 		{
+			name:        "with family filter - Ton",
+			options:     []chain.ChainSelectorsOption{chain.WithFamily(chain_selectors.FamilyTon)},
+			expectedIDs: []uint64{tonChain1.Selector},
+			description: "expected Ton chain selectors",
+		},
+		{
 			name: "with exclusion",
 			options: []chain.ChainSelectorsOption{chain.WithChainSelectorsExclusion(
 				[]uint64{evmChain1.Selector, aptosChain1.Selector}),
 			},
-			expectedIDs: []uint64{evmChain2.Selector, solanaChain1.Selector, suiChain1.Selector},
+			expectedIDs: []uint64{evmChain2.Selector, solanaChain1.Selector, suiChain1.Selector, tonChain1.Selector},
 			description: "expected chain selectors excluding 1 and 4",
 		},
 		{
@@ -185,6 +207,7 @@ func buildBlockChains() chain.BlockChains {
 		evmChain2.ChainSelector():    evmChain2,
 		aptosChain1.ChainSelector():  aptosChain1,
 		suiChain1.ChainSelector():    suiChain1,
+		tonChain1.ChainSelector():    tonChain1,
 	})
 
 	return chains

@@ -9,12 +9,14 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/sui"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/ton"
 )
 
 var _ BlockChain = evm.Chain{}
 var _ BlockChain = solana.Chain{}
 var _ BlockChain = aptos.Chain{}
 var _ BlockChain = sui.Chain{}
+var _ BlockChain = ton.Chain{}
 
 // BlockChains represents a collection of chains.
 // It provides querying capabilities for different types of chains.
@@ -107,6 +109,20 @@ func (b BlockChains) SuiChains() (map[uint64]sui.Chain, error) {
 	return suiChains, nil
 }
 
+// TonChains returns a map of all Ton chains with their selectors.
+func (b BlockChains) TonChains() (map[uint64]ton.Chain, error) {
+	var tonChains = make(map[uint64]ton.Chain)
+	for selector, chain := range b.chains {
+		c, ok := chain.(ton.Chain)
+		if !ok {
+			continue
+		}
+		tonChains[selector] = c
+	}
+
+	return tonChains, nil
+}
+
 // ChainSelectorsOption defines a function type for configuring ChainSelectors
 type ChainSelectorsOption func(*chainSelectorsOptions)
 
@@ -178,6 +194,10 @@ func (b BlockChains) ListChainSelectors(options ...ChainSelectorsOption) []uint6
 				}
 			case sui.Chain:
 				if opts.family != chain_selectors.FamilySui {
+					continue
+				}
+			case ton.Chain:
+				if opts.family != chain_selectors.FamilyTon {
 					continue
 				}
 			default:
