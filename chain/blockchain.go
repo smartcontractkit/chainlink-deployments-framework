@@ -1,9 +1,7 @@
 package chain
 
 import (
-	"sort"
-
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	"slices"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
@@ -51,6 +49,7 @@ type BlockChain interface {
 	// Name returns the name of the chain
 	Name() string
 	ChainSelector() uint64
+	Family() string
 }
 
 // EVMChains returns a map of all EVM chains with their selectors.
@@ -166,41 +165,13 @@ func (b BlockChains) ListChainSelectors(options ...ChainSelectorsOption) []uint6
 
 	for selector, chain := range b.chains {
 		// Skip if in exclusion list
-		excluded := false
-		for _, exclude := range opts.excluding {
-			if selector == exclude {
-				excluded = true
-				break
-			}
-		}
-		if excluded {
+		if slices.Contains(opts.excluding, selector) {
 			continue
 		}
 
 		// Apply family filter if specified
 		if opts.family != "" {
-			switch chain.(type) {
-			case evm.Chain:
-				if opts.family != chain_selectors.FamilyEVM {
-					continue
-				}
-			case solana.Chain:
-				if opts.family != chain_selectors.FamilySolana {
-					continue
-				}
-			case aptos.Chain:
-				if opts.family != chain_selectors.FamilyAptos {
-					continue
-				}
-			case sui.Chain:
-				if opts.family != chain_selectors.FamilySui {
-					continue
-				}
-			case ton.Chain:
-				if opts.family != chain_selectors.FamilyTon {
-					continue
-				}
-			default:
+			if opts.family != chain.Family() {
 				continue
 			}
 		}
@@ -209,9 +180,7 @@ func (b BlockChains) ListChainSelectors(options ...ChainSelectorsOption) []uint6
 	}
 
 	// Sort for consistent output
-	sort.Slice(selectors, func(i, j int) bool {
-		return selectors[i] < selectors[j]
-	})
+	slices.Sort(selectors)
 
 	return selectors
 }

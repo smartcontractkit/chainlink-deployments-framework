@@ -17,12 +17,14 @@ func TestChain_ChainInfot(t *testing.T) {
 		selector   uint64
 		wantName   string
 		wantString string
+		wantFamily string
 	}{
 		{
 			name:       "returns correct info",
 			selector:   chain_selectors.SOLANA_MAINNET.Selector,
 			wantString: "solana-mainnet (124615329519749607)",
 			wantName:   chain_selectors.SOLANA_MAINNET.Name,
+			wantFamily: chain_selectors.FamilySolana,
 		},
 	}
 
@@ -30,12 +32,13 @@ func TestChain_ChainInfot(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			provider := solana.Chain{
+			c := solana.Chain{
 				Selector: tt.selector,
 			}
-			assert.Equal(t, tt.selector, provider.ChainSelector())
-			assert.Equal(t, tt.wantString, provider.String())
-			assert.Equal(t, tt.wantName, provider.Name())
+			assert.Equal(t, tt.selector, c.ChainSelector())
+			assert.Equal(t, tt.wantString, c.String())
+			assert.Equal(t, tt.wantName, c.Name())
+			assert.Equal(t, tt.wantFamily, c.Family())
 		})
 	}
 }
