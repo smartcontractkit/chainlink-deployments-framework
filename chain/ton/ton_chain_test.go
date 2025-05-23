@@ -17,12 +17,14 @@ func TestChain_ChainInfot(t *testing.T) {
 		selector   uint64
 		wantName   string
 		wantString string
+		wantFamily string
 	}{
 		{
 			name:       "returns correct info",
 			selector:   chain_selectors.TON_MAINNET.Selector,
 			wantString: "ton-mainnet (16448340667252469081)",
 			wantName:   chain_selectors.TON_MAINNET.Name,
+			wantFamily: chain_selectors.FamilyTon,
 		},
 	}
 
@@ -30,12 +32,13 @@ func TestChain_ChainInfot(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			provider := ton.Chain{
+			c := ton.Chain{
 				Selector: tt.selector,
 			}
-			assert.Equal(t, tt.selector, provider.ChainSelector())
-			assert.Equal(t, tt.wantString, provider.String())
-			assert.Equal(t, tt.wantName, provider.Name())
+			assert.Equal(t, tt.selector, c.ChainSelector())
+			assert.Equal(t, tt.wantString, c.String())
+			assert.Equal(t, tt.wantName, c.Name())
+			assert.Equal(t, tt.wantFamily, c.Family())
 		})
 	}
 }

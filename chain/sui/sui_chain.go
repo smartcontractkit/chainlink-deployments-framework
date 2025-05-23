@@ -34,3 +34,8 @@ func (c Chain) String() string {
 func (c Chain) Name() string {
 	return common.ChainMetadata{Selector: c.Selector}.Name()
 }
+
+// Family returns the family of the chain
+func (c Chain) Family() string {
+	return common.ChainMetadata{Selector: c.Selector}.Family()
+}

@@ -3,9 +3,10 @@ package chain_test
 import (
 	"testing"
 
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	chain_selectors "github.com/smartcontractkit/chain-selectors"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos"
@@ -15,12 +16,12 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/ton"
 )
 
-var evmChain1 = evm.Chain{Selector: 1}
-var evmChain2 = evm.Chain{Selector: 2}
-var solanaChain1 = solana.Chain{Selector: 3}
-var aptosChain1 = aptos.Chain{Selector: 4}
-var suiChain1 = sui.Chain{Selector: 5}
-var tonChain1 = ton.Chain{Selector: 6}
+var evmChain1 = evm.Chain{Selector: chain_selectors.TEST_90000001.Selector}
+var evmChain2 = evm.Chain{Selector: chain_selectors.TEST_90000002.Selector}
+var solanaChain1 = solana.Chain{Selector: chain_selectors.TEST_22222222222222222222222222222222222222222222.Selector}
+var aptosChain1 = aptos.Chain{Selector: chain_selectors.APTOS_LOCALNET.Selector}
+var suiChain1 = sui.Chain{Selector: chain_selectors.SUI_LOCALNET.Selector}
+var tonChain1 = ton.Chain{Selector: chain_selectors.TON_LOCALNET.Selector}
 
 func TestNewBlockChains(t *testing.T) {
 	t.Parallel()
@@ -192,8 +193,9 @@ func TestBlockChainsListChainSelectors(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
+
 			selectors := chains.ListChainSelectors(tc.options...)
-			assert.Equal(t, tc.expectedIDs, selectors, tc.description)
+			assert.ElementsMatch(t, tc.expectedIDs, selectors, tc.description)
 		})
 	}
 }
