@@ -1,6 +1,8 @@
 package datastore
 
-import "github.com/Masterminds/semver/v3"
+import (
+	"github.com/Masterminds/semver/v3"
+)
 
 // Cloneable provides a Clone() method which returns a semi-deep copy of the type.
 type Cloneable[R any] interface {
@@ -103,19 +105,14 @@ type MutableUnaryStore[R Record[R]] interface {
 	Set(record R) error
 }
 
-type CustomMetadata interface {
-	// Clone creates a deep copy of the Metadata instance.
-	Clone() CustomMetadata
-}
-
 // EnvMetadataStore is an interface that defines the methods for a store that manages environment metadata.
 type EnvMetadataStore interface {
-	UnaryStore[CustomMetadata]
+	UnaryStore[EnvMetadata]
 }
 
 // MutableEnvMetadataStore is an interface that defines the methods for a mutable store that manages environment metadata.
 type MutableEnvMetadataStore interface {
-	MutableUnaryStore[CustomMetadata]
+	MutableUnaryStore[EnvMetadata]
 }
 
 // ContractMetadataStore is an interface that represents an immutable view over a set

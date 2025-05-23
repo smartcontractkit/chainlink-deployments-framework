@@ -7,14 +7,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestMetadata is a struct that can be used as a default metadata type.
-type TestMetadata struct {
-	Data string `json:"data"`
-}
-
-// DefaultMetadata implements the Cloneable interface
-func (d TestMetadata) Clone() CustomMetadata { return d }
-
 func TestMemoryContractMetadataStore_indexOf(t *testing.T) {
 	t.Parallel()
 
@@ -22,13 +14,25 @@ func TestMemoryContractMetadataStore_indexOf(t *testing.T) {
 		recordOne = ContractMetadata{
 			ChainSelector: 1,
 			Address:       "0x2324224",
-			Metadata:      TestMetadata{Data: "metadata1"},
+			Metadata: TestMetadata{
+				Data:    "metadata1",
+				Version: 1,
+				Tags:    []string{"tag1", "tag2"},
+				Extra:   map[string]string{"key1": "value1", "key2": "value2"},
+				Nested:  NestedMeta{Flag: true, Detail: "detail1"},
+			},
 		}
 
 		recordTwo = ContractMetadata{
 			ChainSelector: 2,
 			Address:       "0x2324224",
-			Metadata:      TestMetadata{Data: "metadata2"},
+			Metadata: TestMetadata{
+				Data:    "metadata2",
+				Version: 2,
+				Tags:    []string{"tag3", "tag4"},
+				Extra:   map[string]string{"key3": "value3", "key4": "value4"},
+				Nested:  NestedMeta{Flag: false, Detail: "detail2"},
+			},
 		}
 	)
 
@@ -75,7 +79,13 @@ func TestMemoryContractMetadataStore_Add(t *testing.T) {
 		record = ContractMetadata{
 			ChainSelector: 1,
 			Address:       "0x2324224",
-			Metadata:      TestMetadata{Data: "metadata1"},
+			Metadata: TestMetadata{
+				Data:    "metadata1",
+				Version: 1,
+				Tags:    []string{"tag1", "tag2"},
+				Extra:   map[string]string{"key1": "value1", "key2": "value2"},
+				Nested:  NestedMeta{Flag: true, Detail: "detail1"},
+			},
 		}
 	)
 
@@ -129,13 +139,25 @@ func TestMemoryContractMetadataStore_Upsert(t *testing.T) {
 		oldRecord = ContractMetadata{
 			ChainSelector: 1,
 			Address:       "0x2324224",
-			Metadata:      TestMetadata{Data: "metadata1"},
+			Metadata: TestMetadata{
+				Data:    "metadata1",
+				Version: 1,
+				Tags:    []string{"tag1", "tag2"},
+				Extra:   map[string]string{"key1": "value1", "key2": "value2"},
+				Nested:  NestedMeta{Flag: true, Detail: "detail1"},
+			},
 		}
 
 		newRecord = ContractMetadata{
 			ChainSelector: 1,
 			Address:       "0x2324224",
-			Metadata:      TestMetadata{Data: "metadata2"},
+			Metadata: TestMetadata{
+				Data:    "metadata2",
+				Version: 2,
+				Tags:    []string{"tag3", "tag4"},
+				Extra:   map[string]string{"key3": "value3", "key4": "value4"},
+				Nested:  NestedMeta{Flag: false, Detail: "detail2"},
+			},
 		}
 	)
 
@@ -186,13 +208,25 @@ func TestMemoryContractMetadataStore_Update(t *testing.T) {
 		oldRecord = ContractMetadata{
 			ChainSelector: 1,
 			Address:       "0x2324224",
-			Metadata:      TestMetadata{Data: "metadata1"},
+			Metadata: TestMetadata{
+				Data:    "metadata1",
+				Version: 1,
+				Tags:    []string{"tag1", "tag2"},
+				Extra:   map[string]string{"key1": "value1", "key2": "value2"},
+				Nested:  NestedMeta{Flag: true, Detail: "detail1"},
+			},
 		}
 
 		newRecord = ContractMetadata{
 			ChainSelector: 1,
 			Address:       "0x2324224",
-			Metadata:      TestMetadata{Data: "metadata2"},
+			Metadata: TestMetadata{
+				Data:    "metadata2",
+				Version: 2,
+				Tags:    []string{"tag3", "tag4"},
+				Extra:   map[string]string{"key3": "value3", "key4": "value4"},
+				Nested:  NestedMeta{Flag: false, Detail: "detail2"},
+			},
 		}
 	)
 
@@ -246,19 +280,37 @@ func TestMemoryMemoryContractMetadataStore_Delete(t *testing.T) {
 		recordOne = ContractMetadata{
 			ChainSelector: 1,
 			Address:       "0x2324224",
-			Metadata:      TestMetadata{Data: "metadata1"},
+			Metadata: TestMetadata{
+				Data:    "metadata1",
+				Version: 1,
+				Tags:    []string{"tag1", "tag2"},
+				Extra:   map[string]string{"key1": "value1", "key2": "value2"},
+				Nested:  NestedMeta{Flag: true, Detail: "detail1"},
+			},
 		}
 
 		recordTwo = ContractMetadata{
 			ChainSelector: 2,
 			Address:       "0x2324224",
-			Metadata:      TestMetadata{Data: "metadata2"},
+			Metadata: TestMetadata{
+				Data:    "metadata2",
+				Version: 2,
+				Tags:    []string{"tag3", "tag4"},
+				Extra:   map[string]string{"key3": "value3", "key4": "value4"},
+				Nested:  NestedMeta{Flag: false, Detail: "detail2"},
+			},
 		}
 
 		recordThree = ContractMetadata{
 			ChainSelector: 3,
 			Address:       "0x2324224",
-			Metadata:      TestMetadata{Data: "metadata3"},
+			Metadata: TestMetadata{
+				Data:    "metadata3",
+				Version: 3,
+				Tags:    []string{"tag5", "tag6"},
+				Extra:   map[string]string{"key5": "value5", "key6": "value6"},
+				Nested:  NestedMeta{Flag: true, Detail: "detail3"},
+			},
 		}
 	)
 
@@ -318,13 +370,25 @@ func TestMemoryContractMetadataStore_Fetch(t *testing.T) {
 		recordOne = ContractMetadata{
 			ChainSelector: 1,
 			Address:       "0x2324224",
-			Metadata:      TestMetadata{Data: "metadata1"},
+			Metadata: TestMetadata{
+				Data:    "metadata1",
+				Version: 1,
+				Tags:    []string{"tag1", "tag2"},
+				Extra:   map[string]string{"key1": "value1", "key2": "value2"},
+				Nested:  NestedMeta{Flag: true, Detail: "detail1"},
+			},
 		}
 
 		recordTwo = ContractMetadata{
 			ChainSelector: 2,
 			Address:       "0x2324224",
-			Metadata:      TestMetadata{Data: "metadata2"},
+			Metadata: TestMetadata{
+				Data:    "metadata2",
+				Version: 2,
+				Tags:    []string{"tag3", "tag4"},
+				Extra:   map[string]string{"key3": "value3", "key4": "value4"},
+				Nested:  NestedMeta{Flag: false, Detail: "detail2"},
+			},
 		}
 	)
 
@@ -379,13 +443,25 @@ func TestMemoryContractMetadataStore_Get(t *testing.T) {
 		recordOne = ContractMetadata{
 			ChainSelector: 1,
 			Address:       "0x2324224",
-			Metadata:      TestMetadata{Data: "metadata1"},
+			Metadata: TestMetadata{
+				Data:    "metadata1",
+				Version: 1,
+				Tags:    []string{"tag1", "tag2"},
+				Extra:   map[string]string{"key1": "value1", "key2": "value2"},
+				Nested:  NestedMeta{Flag: true, Detail: "detail1"},
+			},
 		}
 
 		recordTwo = ContractMetadata{
 			ChainSelector: 2,
 			Address:       "0x2324224",
-			Metadata:      TestMetadata{Data: "metadata2"},
+			Metadata: TestMetadata{
+				Data:    "metadata2",
+				Version: 2,
+				Tags:    []string{"tag3", "tag4"},
+				Extra:   map[string]string{"key3": "value3", "key4": "value4"},
+				Nested:  NestedMeta{Flag: false, Detail: "detail2"},
+			},
 		}
 	)
 
@@ -439,19 +515,37 @@ func TestMemoryContractMetadataStore_Filter(t *testing.T) {
 		recordOne = ContractMetadata{
 			ChainSelector: 1,
 			Address:       "0x2324224",
-			Metadata:      TestMetadata{Data: "metadata1"},
+			Metadata: TestMetadata{
+				Data:    "metadata1",
+				Version: 1,
+				Tags:    []string{"tag1", "tag2"},
+				Extra:   map[string]string{"key1": "value1", "key2": "value2"},
+				Nested:  NestedMeta{Flag: true, Detail: "detail1"},
+			},
 		}
 
 		recordTwo = ContractMetadata{
 			ChainSelector: 2,
 			Address:       "0x2324224",
-			Metadata:      TestMetadata{Data: "metadata2"},
+			Metadata: TestMetadata{
+				Data:    "metadata2",
+				Version: 2,
+				Tags:    []string{"tag3", "tag4"},
+				Extra:   map[string]string{"key3": "value3", "key4": "value4"},
+				Nested:  NestedMeta{Flag: false, Detail: "detail2"},
+			},
 		}
 
 		recordThree = ContractMetadata{
 			ChainSelector: 3,
 			Address:       "0x2324224",
-			Metadata:      TestMetadata{Data: "metadata3"},
+			Metadata: TestMetadata{
+				Data:    "metadata3",
+				Version: 3,
+				Tags:    []string{"tag5", "tag6"},
+				Extra:   map[string]string{"key5": "value5", "key6": "value6"},
+				Nested:  NestedMeta{Flag: true, Detail: "detail3"},
+			},
 		}
 	)
 

@@ -1,6 +1,9 @@
 package datastore
 
-import "errors"
+import (
+	"encoding/json"
+	"errors"
+)
 
 var ErrContractMetadataNotFound = errors.New("no contract metadata record can be found for the provided key")
 var ErrContractMetadataExists = errors.New("a contract metadata record with the supplied key already exists")
@@ -35,4 +38,39 @@ func (r ContractMetadata) Clone() ContractMetadata {
 // It is used to uniquely identify the contract metadata in the datastore.
 func (r ContractMetadata) Key() ContractMetadataKey {
 	return NewContractMetadataKey(r.ChainSelector, r.Address)
+}
+
+// Custom unmarshaler that uses DeferredMetadata
+func (c *ContractMetadata) UnmarshalJSON(data []byte) error {
+	type alias ContractMetadata // avoid recursion
+	tmp := struct {
+		Metadata json.RawMessage `json:"metadata"`
+		*alias
+	}{
+		alias: (*alias)(c),
+	}
+	if err := json.Unmarshal(data, &tmp); err != nil {
+		return err
+	}
+	c.Metadata = RawMetadata{raw: tmp.Metadata}
+	return nil
+}
+
+// Custom marshaler that outputs Metadata as raw JSON
+func (c ContractMetadata) MarshalJSON() ([]byte, error) {
+	type alias ContractMetadata // avoid recursion
+	tmp := struct {
+		Metadata json.RawMessage `json:"metadata"`
+		alias
+	}{
+		alias: (alias)(c),
+	}
+	if c.Metadata != nil {
+		b, err := json.Marshal(c.Metadata)
+		if err != nil {
+			return nil, err
+		}
+		tmp.Metadata = b
+	}
+	return json.Marshal(tmp)
 }
