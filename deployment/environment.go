@@ -124,6 +124,7 @@ type Environment struct {
 	Chains      map[uint64]Chain
 	SolChains   map[uint64]SolChain
 	AptosChains map[uint64]AptosChain
+	SuiChains   map[uint64]SuiChain
 	NodeIDs     []string
 	Offchain    OffchainClient
 	GetContext  func() context.Context
@@ -143,6 +144,7 @@ func NewEnvironment(
 	chains map[uint64]Chain,
 	solChains map[uint64]SolChain,
 	aptosChains map[uint64]AptosChain,
+	suiChains map[uint64]SuiChain,
 	nodeIDs []string,
 	offchain OffchainClient,
 	ctx func() context.Context,
@@ -156,6 +158,7 @@ func NewEnvironment(
 		Chains:            chains,
 		SolChains:         solChains,
 		AptosChains:       aptosChains,
+		SuiChains:         suiChains,
 		NodeIDs:           nodeIDs,
 		Offchain:          offchain,
 		GetContext:        ctx,
@@ -190,6 +193,7 @@ func (e Environment) Clone() Environment {
 		Chains:            e.Chains,
 		SolChains:         e.SolChains,
 		AptosChains:       e.AptosChains,
+		SuiChains:         e.SuiChains,
 		NodeIDs:           e.NodeIDs,
 		Offchain:          e.Offchain,
 		GetContext:        e.GetContext,
@@ -255,8 +259,20 @@ func (e Environment) AllChainSelectorsAptos() []uint64 {
 	return selectors
 }
 
+func (e Environment) AllChainSelectorsSui() []uint64 {
+	selectors := make([]uint64, 0, len(e.SuiChains))
+	for sel := range e.SuiChains {
+		selectors = append(selectors, sel)
+	}
+	sort.Slice(selectors, func(i, j int) bool {
+		return selectors[i] < selectors[j]
+	})
+
+	return selectors
+}
+
 func (e Environment) AllChainSelectorsAllFamilies() []uint64 {
-	selectors := make([]uint64, 0, len(e.Chains)+len(e.SolChains)+len(e.AptosChains))
+	selectors := make([]uint64, 0, len(e.Chains)+len(e.SolChains)+len(e.AptosChains)+len(e.SuiChains))
 	for sel := range e.Chains {
 		selectors = append(selectors, sel)
 	}
@@ -264,6 +280,9 @@ func (e Environment) AllChainSelectorsAllFamilies() []uint64 {
 		selectors = append(selectors, sel)
 	}
 	for sel := range e.AptosChains {
+		selectors = append(selectors, sel)
+	}
+	for sel := range e.SuiChains {
 		selectors = append(selectors, sel)
 	}
 	sort.Slice(selectors, func(i, j int) bool {
