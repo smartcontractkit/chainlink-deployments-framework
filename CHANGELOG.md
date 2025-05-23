@@ -1,5 +1,15 @@
 # chainlink-deployments-framework
 
+## 0.5.0
+
+### Minor Changes
+
+- [#108](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/108) [`c1e68b7`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/c1e68b7ddbe869671d9c61b4d1d45e77d801a1c2) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat: new blockchains field in environment
+
+- [#98](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/98) [`bdddc37`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/bdddc37b7cb7c01833c8019e9baff8dc88f664a8) Thanks [@cfal](https://github.com/cfal)! - add Sui chain support
+
+- [#110](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/110) [`e52fe33`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/e52fe33bd77f1eb67e384d4dccc9bd12d0b9d1b8) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat: add ton chain
+
 ## 0.4.0
 
 ### Minor Changes
