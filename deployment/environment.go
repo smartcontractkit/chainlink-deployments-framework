@@ -141,6 +141,7 @@ func NewCLDFEnvironment(
 	chains map[uint64]Chain,
 	solChains map[uint64]SolChain,
 	aptosChains map[uint64]AptosChain,
+	tonChains map[uint64]TonChain,
 	nodeIDs []string,
 	offchain OffchainClient,
 	ctx func() context.Context,
