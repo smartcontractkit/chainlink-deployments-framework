@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/smartcontractkit/ccip-owner-contracts/pkg/proposal/timelock"
 	"github.com/smartcontractkit/mcms"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
@@ -106,10 +105,8 @@ type ProposedJob struct {
 // this changeset.
 type ChangesetOutput struct {
 	// Deprecated: Prefer Jobs instead.
-	JobSpecs map[string][]string `deprecated:"true"`
-	Jobs     []ProposedJob
-	// Deprecated: Prefer MCMSTimelockProposals instead, will be removed in future
-	Proposals                  []timelock.MCMSWithTimelockProposal
+	JobSpecs                   map[string][]string `deprecated:"true"`
+	Jobs                       []ProposedJob
 	MCMSTimelockProposals      []mcms.TimelockProposal
 	DescribedTimelockProposals []string
 	MCMSProposals              []mcms.Proposal

@@ -1,5 +1,33 @@
 # chainlink-deployments-framework
 
+## 0.5.0
+
+### Minor Changes
+
+- [#108](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/108) [`c1e68b7`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/c1e68b7ddbe869671d9c61b4d1d45e77d801a1c2) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat: new blockchains field in environment
+
+- [#98](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/98) [`bdddc37`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/bdddc37b7cb7c01833c8019e9baff8dc88f664a8) Thanks [@cfal](https://github.com/cfal)! - add Sui chain support
+
+- [#110](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/110) [`e52fe33`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/e52fe33bd77f1eb67e384d4dccc9bd12d0b9d1b8) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat: add ton chain
+
+## 0.4.0
+
+### Minor Changes
+
+- [#100](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/100) [`a975e70`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/a975e70cc0c4652543e1b8fa5c68aa8d691c32ef) Thanks [@jkongie](https://github.com/jkongie)! - The deprecated `Proposals` field on the `ChangesetOutput` has been removed in favour of `MCMSTimelockProposals`
+
+## 0.3.0
+
+### Minor Changes
+
+- [#95](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/95) [`6ea8603`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/6ea86035fc3effc6da0d7047c59e940f1340061b) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat: Concurrency support for Operations API
+
+## 0.2.0
+
+### Minor Changes
+
+- [#88](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/88) [`18c3cf2`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/18c3cf210bcd1cd780d0f707337da8aed47bbc23) Thanks [@bytesizedroll](https://github.com/bytesizedroll)! - Adding RPC client health check after successful dial
+
 ## 0.1.3
 
 ### Patch Changes
