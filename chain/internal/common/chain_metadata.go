@@ -14,6 +14,12 @@ type ChainMetadata struct {
 	Selector uint64
 }
 
+func NewChainMetadata(selector uint64) ChainMetadata {
+	return ChainMetadata{
+		Selector: selector,
+	}
+}
+
 // ChainSelector returns the chain selector of the chain
 func (c ChainMetadata) ChainSelector() uint64 {
 	return c.Selector

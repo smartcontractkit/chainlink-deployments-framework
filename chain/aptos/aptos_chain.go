@@ -1,7 +1,7 @@
 package aptos
 
 import (
-	"github.com/aptos-labs/aptos-go-sdk"
+	aptoslib "github.com/aptos-labs/aptos-go-sdk"
 
 	chain_common "github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/common"
 )
@@ -10,8 +10,8 @@ import (
 type Chain struct {
 	Selector uint64
 
-	Client         aptos.AptosRpcClient
-	DeployerSigner aptos.TransactionSigner
+	Client         aptoslib.AptosRpcClient
+	DeployerSigner aptoslib.TransactionSigner
 	URL            string
 
 	Confirm func(txHash string, opts ...any) error
