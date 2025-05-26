@@ -68,3 +68,11 @@ func TestNewAddressRefKey(t *testing.T) {
 	assert.Equal(t, version, key.Version(), "Version should match")
 	assert.Equal(t, "qualifier1", key.Qualifier(), "Qualifier should match")
 }
+
+func TestAddressRefKey_String(t *testing.T) {
+	t.Parallel()
+
+	key := NewAddressRefKey(42, ContractType("MyType"), semver.MustParse("1.2.3"), "qual")
+	expected := "42_MyType_1.2.3_qual"
+	assert.Equal(t, expected, key.String())
+}
