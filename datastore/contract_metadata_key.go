@@ -1,9 +1,12 @@
 package datastore
 
+import "fmt"
+
 // ContractMetadataKey is an interface that represents a key for ContractMetadata records.
 // It is used to uniquely identify a record in the ContractMetadataStore.
 type ContractMetadataKey interface {
 	Comparable[ContractMetadataKey]
+	fmt.Stringer
 
 	// Address returns the address of the contract on the chain.
 	Address() string
@@ -31,6 +34,11 @@ func (c contractMetadataKey) Address() string { return c.address }
 func (c contractMetadataKey) Equals(other ContractMetadataKey) bool {
 	return c.chainSelector == other.ChainSelector() &&
 		c.address == other.Address()
+}
+
+// String returns a string representation of the ContractMetadataKey.
+func (c contractMetadataKey) String() string {
+	return fmt.Sprintf("%d_%s", c.chainSelector, c.address)
 }
 
 // NewContractMetadataKey creates a new ContractMetadataKey instance.
