@@ -76,8 +76,6 @@ func ToDefault[CM Cloneable[CM], EM Cloneable[EM]](
 
 	// Set the EnvMetadata in the new data store with the JSON string.
 	envmetaErr = converted.EnvMetadata().Set(EnvMetadata[DefaultMetadata]{
-		Domain:      envMetadata.Domain,
-		Environment: envMetadata.Environment,
 		Metadata: DefaultMetadata{
 			Data: string(jsonData),
 		},
@@ -160,9 +158,7 @@ func FromDefault[CM Cloneable[CM], EM Cloneable[EM]](
 
 	// Set the EnvMetadata in the new data store with the domain specific type.
 	envmetaErr = converted.EnvMetadata().Set(EnvMetadata[EM]{
-		Domain:      envMetadata.Domain,
-		Environment: envMetadata.Environment,
-		Metadata:    metadata,
+		Metadata: metadata,
 	})
 	if envmetaErr != nil {
 		return nil, fmt.Errorf("error updating EnvMetadata: %w", envmetaErr)

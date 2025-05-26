@@ -6,12 +6,12 @@ import (
 
 // EnvMetadataStore is an interface that defines the methods for a store that manages environment metadata.
 type EnvMetadataStore[M Cloneable[M]] interface {
-	UnaryStore[EnvMetadataKey, EnvMetadata[M]]
+	UnaryStore[EnvMetadata[M]]
 }
 
 // MutableEnvMetadataStore is an interface that defines the methods for a mutable store that manages environment metadata.
 type MutableEnvMetadataStore[M Cloneable[M]] interface {
-	MutableUnaryStore[EnvMetadataKey, EnvMetadata[M]]
+	MutableUnaryStore[EnvMetadata[M]]
 }
 
 // MemoryEnvMetadataStore is a concrete implementation of the EnvMetadataStore interface.

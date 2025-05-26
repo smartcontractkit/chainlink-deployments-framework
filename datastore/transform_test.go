@@ -50,9 +50,7 @@ func TestToDefault(t *testing.T) {
 				require.NoError(t, err)
 
 				err = ds.EnvMetadata().Set(EnvMetadata[CustomMetadata]{
-					Domain:      "domain1",
-					Environment: "env1",
-					Metadata:    CustomMetadata{Field: "envValue1"},
+					Metadata: CustomMetadata{Field: "envValue1"},
 				})
 				require.NoError(t, err)
 
@@ -84,8 +82,6 @@ func TestToDefault(t *testing.T) {
 				},
 				EnvMetadataStore: &MemoryEnvMetadataStore[DefaultMetadata]{
 					Record: &EnvMetadata[DefaultMetadata]{
-						Domain:      "domain1",
-						Environment: "env1",
 						Metadata: DefaultMetadata{
 							Data: `{"field":"envValue1"}`,
 						},
@@ -143,8 +139,6 @@ func TestFromDefault(t *testing.T) {
 				require.NoError(t, err)
 
 				err = ds.EnvMetadata().Set(EnvMetadata[DefaultMetadata]{
-					Domain:      "domain1",
-					Environment: "env1",
 					Metadata: DefaultMetadata{
 						Data: `{"field":"envValue1"}`,
 					},
@@ -177,9 +171,7 @@ func TestFromDefault(t *testing.T) {
 				},
 				EnvMetadataStore: &MemoryEnvMetadataStore[CustomMetadata]{
 					Record: &EnvMetadata[CustomMetadata]{
-						Domain:      "domain1",
-						Environment: "env1",
-						Metadata:    CustomMetadata{Field: "envValue1"},
+						Metadata: CustomMetadata{Field: "envValue1"},
 					},
 				},
 			},

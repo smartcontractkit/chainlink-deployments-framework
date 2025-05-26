@@ -24,9 +24,14 @@ type Fetcher[R any] interface {
 }
 
 // Getter provides a Get() method which is used to complete a read by key query from a Store.
-type Getter[K Comparable[K], R Record[K, R]] interface {
+type Getter[K Comparable[K], R UniqueRecord[K, R]] interface {
 	// Get() returns the record with the given key, or an error if no such record exists.
 	Get(K) (R, error)
+}
+
+// Record represents a data entry that can be cloned.
+type Record[R any] interface {
+	Cloneable[R]
 }
 
 // PrimaryKeyHolder is an interface for types that can provide a unique identifier key for themselves.
@@ -35,29 +40,29 @@ type PrimaryKeyHolder[K Comparable[K]] interface {
 	Key() K
 }
 
-// Record represents a data entry that is both Cloneable and uniquely identifiable by its primary key.
-type Record[K Comparable[K], R PrimaryKeyHolder[K]] interface {
+// UniqueRecord represents a data entry that is both Cloneable and uniquely identifiable by its primary key.
+type UniqueRecord[K Comparable[K], R PrimaryKeyHolder[K]] interface {
 	Cloneable[R]
 	PrimaryKeyHolder[K]
 }
 
 // FilterFunc is a function that filters a slice of records.
-type FilterFunc[K Comparable[K], R Record[K, R]] func([]R) []R
+type FilterFunc[K Comparable[K], R UniqueRecord[K, R]] func([]R) []R
 
 // Filterable provides a Filter() method which is used to complete a filtered query with from a Store.
-type Filterable[K Comparable[K], R Record[K, R]] interface {
+type Filterable[K Comparable[K], R UniqueRecord[K, R]] interface {
 	Filter(filters ...FilterFunc[K, R]) []R
 }
 
 // Store is an interface that represents an immutable set of records.
-type Store[K Comparable[K], R Record[K, R]] interface {
+type Store[K Comparable[K], R UniqueRecord[K, R]] interface {
 	Fetcher[R]
 	Getter[K, R]
 	Filterable[K, R]
 }
 
 // MutableStore is an interface that represents a mutable set of records.
-type MutableStore[K Comparable[K], R Record[K, R]] interface {
+type MutableStore[K Comparable[K], R UniqueRecord[K, R]] interface {
 	Store[K, R]
 
 	// Add inserts a new record into the MutableStore.
@@ -77,7 +82,7 @@ type MutableStore[K Comparable[K], R Record[K, R]] interface {
 }
 
 // UnaryStore is an interface that represents a read-only store that is limited to a single record.
-type UnaryStore[K Comparable[K], R Record[K, R]] interface {
+type UnaryStore[R Record[R]] interface {
 	// Get returns the record or an error.
 	// if the record exists, the error should be nil.
 	// If the record does not exist, the error should not be nil.
@@ -85,7 +90,7 @@ type UnaryStore[K Comparable[K], R Record[K, R]] interface {
 }
 
 // MutableUnaryStore is an interface that represents a mutable store that contains a single record.
-type MutableUnaryStore[K Comparable[K], R Record[K, R]] interface {
+type MutableUnaryStore[R Record[R]] interface {
 	// Get returns a copy of the record or an error.
 	// If the record exists, the error should be nil.
 	// If the record does not exist, the error should not be nil.

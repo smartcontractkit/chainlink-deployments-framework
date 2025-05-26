@@ -11,9 +11,7 @@ func TestMemoryEnvMetadataStore_Get(t *testing.T) {
 
 	var (
 		recordOne = EnvMetadata[DefaultMetadata]{
-			Domain:      "example.com",
-			Environment: "test",
-			Metadata:    DefaultMetadata{Data: "data1"},
+			Metadata: DefaultMetadata{Data: "data1"},
 		}
 	)
 
@@ -64,14 +62,10 @@ func TestMemoryEnvMetadataStore_Set(t *testing.T) {
 
 	var (
 		recordOne = EnvMetadata[DefaultMetadata]{
-			Domain:      "example.com",
-			Environment: "test",
-			Metadata:    DefaultMetadata{Data: "data1"},
+			Metadata: DefaultMetadata{Data: "data1"},
 		}
 		recordTwo = EnvMetadata[DefaultMetadata]{
-			Domain:      "example2.com",
-			Environment: "test2",
-			Metadata:    DefaultMetadata{Data: "data2"},
+			Metadata: DefaultMetadata{Data: "data2"},
 		}
 	)
 

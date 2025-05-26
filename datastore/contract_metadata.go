@@ -6,7 +6,7 @@ var ErrContractMetadataNotFound = errors.New("no contract metadata record can be
 var ErrContractMetadataExists = errors.New("a contract metadata record with the supplied key already exists")
 
 // ContractMetadata implements the Record interface
-var _ Record[ContractMetadataKey, ContractMetadata[DefaultMetadata]] = ContractMetadata[DefaultMetadata]{}
+var _ UniqueRecord[ContractMetadataKey, ContractMetadata[DefaultMetadata]] = ContractMetadata[DefaultMetadata]{}
 
 // ContractMetadata is a generic struct that holds the metadata for a contract on a specific chain.
 // It implements the Record interface and is used to store contract metadata in the datastore.
