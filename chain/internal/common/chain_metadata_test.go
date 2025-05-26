@@ -9,7 +9,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/common"
 )
 
-func TestChainInfoProvider(t *testing.T) {
+func TestChainMetadata(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {

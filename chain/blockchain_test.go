@@ -20,8 +20,8 @@ var evmChain1 = evm.Chain{Selector: chain_selectors.TEST_90000001.Selector}
 var evmChain2 = evm.Chain{Selector: chain_selectors.TEST_90000002.Selector}
 var solanaChain1 = solana.Chain{Selector: chain_selectors.TEST_22222222222222222222222222222222222222222222.Selector}
 var aptosChain1 = aptos.Chain{Selector: chain_selectors.APTOS_LOCALNET.Selector}
-var suiChain1 = sui.Chain{Selector: chain_selectors.SUI_LOCALNET.Selector}
-var tonChain1 = ton.Chain{Selector: chain_selectors.TON_LOCALNET.Selector}
+var suiChain1 = sui.Chain{ChainMetadata: sui.ChainMetadata{Selector: chain_selectors.SUI_LOCALNET.Selector}}
+var tonChain1 = ton.Chain{ChainMetadata: ton.ChainMetadata{Selector: chain_selectors.TON_LOCALNET.Selector}}
 
 func TestNewBlockChains(t *testing.T) {
 	t.Parallel()

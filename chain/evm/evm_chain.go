@@ -41,6 +41,9 @@ type Chain struct {
 	DeployerKeyZkSyncVM *accounts.Wallet
 }
 
+// Author note: Have to implement the blockhain interface methods explicitly below
+// instead of composing the ChainMetadata struct to avoid breaking change since there are existing usage.
+
 // ChainSelector returns the chain selector of the chain
 func (c Chain) ChainSelector() uint64 {
 	return c.Selector
