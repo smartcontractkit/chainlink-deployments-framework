@@ -33,7 +33,7 @@ func TestChain_ChainInfot(t *testing.T) {
 			t.Parallel()
 
 			c := sui.Chain{
-				Selector: tt.selector,
+				ChainMetadata: sui.ChainMetadata{Selector: tt.selector},
 			}
 			assert.Equal(t, tt.selector, c.ChainSelector())
 			assert.Equal(t, tt.wantString, c.String())

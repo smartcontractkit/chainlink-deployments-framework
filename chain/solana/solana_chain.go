@@ -175,6 +175,9 @@ func parseProgramID(output string, prefix string) (string, error) {
 	return output[startIdx : startIdx+endIdx], nil
 }
 
+// Author note: Have to implement the blockhain interface methods explicitly below
+// instead of composing the ChainMetadata struct to avoid breaking change since there are existing usage.
+
 // ChainSelector returns the chain selector of the chain
 func (c Chain) ChainSelector() uint64 {
 	return c.Selector
