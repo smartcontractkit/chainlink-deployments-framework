@@ -144,22 +144,32 @@ func (b BlockChains) TonChains() map[uint64]ton.Chain {
 type ChainSelectorsOption func(*chainSelectorsOptions)
 
 type chainSelectorsOptions struct {
-	family    string
-	excluding []uint64
+	// Use map for faster lookups
+	includedFamilies  map[string]struct{}
+	excludedChainSels map[uint64]struct{}
 }
 
 // WithFamily returns an option to filter chains by family (evm, solana, aptos)
 // Use constants from chain_selectors package eg WithFamily(chain_selectors.FamilySolana)
+// This can be used more than once to include multiple families.
 func WithFamily(family string) ChainSelectorsOption {
 	return func(o *chainSelectorsOptions) {
-		o.family = family
+		if o.includedFamilies == nil {
+			o.includedFamilies = make(map[string]struct{})
+		}
+		o.includedFamilies[family] = struct{}{}
 	}
 }
 
 // WithChainSelectorsExclusion returns an option to exclude specific chain selectors
 func WithChainSelectorsExclusion(chainSelectors []uint64) ChainSelectorsOption {
 	return func(o *chainSelectorsOptions) {
-		o.excluding = chainSelectors
+		if o.excludedChainSels == nil {
+			o.excludedChainSels = make(map[uint64]struct{})
+		}
+		for _, selector := range chainSelectors {
+			o.excludedChainSels[selector] = struct{}{}
+		}
 	}
 }
 
@@ -168,11 +178,7 @@ func WithChainSelectorsExclusion(chainSelectors []uint64) ChainSelectorsOption {
 // - WithFamily: filter by family eg WithFamily(chain_selectors.FamilySolana)
 // - WithChainSelectorsExclusion: exclude specific chain selectors
 func (b BlockChains) ListChainSelectors(options ...ChainSelectorsOption) []uint64 {
-	// Initialize default options
-	opts := chainSelectorsOptions{
-		family:    "",
-		excluding: []uint64{},
-	}
+	opts := chainSelectorsOptions{}
 
 	// Apply all provided options
 	for _, option := range options {
@@ -182,14 +188,13 @@ func (b BlockChains) ListChainSelectors(options ...ChainSelectorsOption) []uint6
 	selectors := make([]uint64, 0, len(b.chains))
 
 	for selector, chain := range b.chains {
-		// Skip if in exclusion list
-		if slices.Contains(opts.excluding, selector) {
-			continue
+		if opts.excludedChainSels != nil {
+			if _, excluded := opts.excludedChainSels[selector]; excluded {
+				continue
+			}
 		}
-
-		// Apply family filter if specified
-		if opts.family != "" {
-			if opts.family != chain.Family() {
+		if opts.includedFamilies != nil {
+			if _, ok := opts.includedFamilies[chain.Family()]; !ok {
 				continue
 			}
 		}
