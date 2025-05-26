@@ -16,7 +16,7 @@ jobs:
       actions: read
     steps:
       - name: Linting Go
-        uses: smartcontractkit/.github/actions/ci-lint-go@eeb76b5870e3c17856d5a60fd064a053c023b5f5 # ci-lint-go@1.0.0
+        uses: smartcontractkit/.github/actions/ci-lint-go@d333d255c5ce1260b309eb000c11d74e4df80d93 # ci-lint-go@1.0.0
         with:
           only-new-issues: "false"
           golangci-lint-version: v2.0.2
@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Linting Misc (yaml + sh files)
-        uses: smartcontractkit/.github/actions/ci-lint-misc@eeb76b5870e3c17856d5a60fd064a053c023b5f5 # ci-lint-misc@1.0.0
+        uses: smartcontractkit/.github/actions/ci-lint-misc@d333d255c5ce1260b309eb000c11d74e4df80d93 # ci-lint-misc@1.0.0
 
   ci-test:
     name: Tests
@@ -39,7 +39,7 @@ jobs:
       actions: read
     steps:
       - name: Build and test
-        uses: smartcontractkit/.github/actions/ci-test-go@eeb76b5870e3c17856d5a60fd064a053c023b5f5 # ci-test-go@1.0.0
+        uses: smartcontractkit/.github/actions/ci-test-go@d333d255c5ce1260b309eb000c11d74e4df80d93 # ci-test-go@1.0.0
         with:
           go-test-cmd: go test -race -coverprofile=coverage.txt $(go list ./...)
           use-go-cache: true
@@ -51,7 +51,7 @@ jobs:
     needs: [ ci-test, ci-lint-misc,  ci-lint ]
     steps:
       - name: Scan with Sonarqube
-        uses: smartcontractkit/.github/actions/ci-sonarqube-go@01d931b0455a754d12e7143cc54a5a3521a8f6f6 # ci-sonarqube-go@0.3.1
+        uses: smartcontractkit/.github/actions/ci-sonarqube-go@d333d255c5ce1260b309eb000c11d74e4df80d93 # ci-sonarqube-go@0.3.1
         with:
           sonar-token: ${{ secrets.SONAR_TOKEN }}
           sonar-host-url: ${{ secrets.SONAR_HOST_URL }}
