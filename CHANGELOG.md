@@ -1,5 +1,23 @@
 # chainlink-deployments-framework
 
+## 0.5.1
+
+### Patch Changes
+
+- [#114](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/114) [`20b09f9`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/20b09f90628d03171e03c2caa9fd47bccb94b867) Thanks [@jkongie](https://github.com/jkongie)! - Add `Exists` and `ExistsN` methods to `Blockchains` to test for the existence of a chain for the provided selector/s
+
+- [#117](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/117) [`92c030d`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/92c030db30a01c602f21b09b2b6a6766dea4065c) Thanks [@giogam](https://github.com/giogam)! - feat(datastore): Implement Stringer for ContractMetadata and AddressRef Keys
+
+- [#115](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/115) [`3f32425`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/3f32425197babacd1baf406756cfb458276651b6) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix: remove unused error return value
+
+- [#119](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/119) [`bb450f4`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/bb450f4de6fe286f942d5e87a0e7a05af357c7ef) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - ListChainSelectors can filter multiple families
+
+- [#112](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/112) [`91ac227`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/91ac2274033650e3cfbfe72815e639e61e3e0229) Thanks [@jkongie](https://github.com/jkongie)! - Adds a `Family` method to the `Blockchain` interface
+
+- [#116](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/116) [`8eaef28`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/8eaef2828ad73614868927af32e4a67666014aee) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - chains: update sui & ton to compose ChainMetadata
+
+- [#118](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/118) [`afc5f2f`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/afc5f2f300a8588af2061b1dea238d2774d2212c) Thanks [@giogam](https://github.com/giogam)! - feat(datastore): removes EnvMetadataKey implementation
+
 ## 0.5.0
 
 ### Minor Changes
