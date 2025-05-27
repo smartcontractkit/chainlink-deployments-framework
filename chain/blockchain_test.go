@@ -231,6 +231,12 @@ func TestBlockChainsListChainSelectors(t *testing.T) {
 			description: "expected Ton chain selectors",
 		},
 		{
+			name:        "with multiple families",
+			options:     []chain.ChainSelectorsOption{chain.WithFamily(chain_selectors.FamilyEVM), chain.WithFamily(chain_selectors.FamilySolana)},
+			expectedIDs: []uint64{evmChain1.Selector, evmChain2.Selector, solanaChain1.Selector},
+			description: "expected EVM and Solana chain selectors",
+		},
+		{
 			name: "with exclusion",
 			options: []chain.ChainSelectorsOption{chain.WithChainSelectorsExclusion(
 				[]uint64{evmChain1.Selector, aptosChain1.Selector}),
@@ -260,7 +266,7 @@ func TestBlockChainsListChainSelectors(t *testing.T) {
 }
 
 // buildBlockChains creates a new BlockChains instance with the test chains.
-// 2 evm chains, 1 solana chain, 1 aptos chain, 1 sui chain
+// 2 evm chains, 1 solana chain, 1 aptos chain, 1 sui chain, 1 ton chain.
 func buildBlockChains() chain.BlockChains {
 	chains := chain.NewBlockChains(map[uint64]chain.BlockChain{
 		evmChain1.ChainSelector():    evmChain1,
