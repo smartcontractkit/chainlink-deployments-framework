@@ -3,7 +3,6 @@ package datastore
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -11,28 +10,28 @@ func TestMemoryContractMetadataStore_indexOf(t *testing.T) {
 	t.Parallel()
 
 	var (
-		recordOne = ContractMetadata[DefaultMetadata]{
+		recordOne = ContractMetadata{
 			ChainSelector: 1,
 			Address:       "0x2324224",
-			Metadata:      DefaultMetadata{Data: "metadata1"},
+			Metadata:      TestMetadata{Data: "metadata1"},
 		}
 
-		recordTwo = ContractMetadata[DefaultMetadata]{
+		recordTwo = ContractMetadata{
 			ChainSelector: 2,
 			Address:       "0x2324224",
-			Metadata:      DefaultMetadata{Data: "metadata2"},
+			Metadata:      TestMetadata{Data: "metadata2"},
 		}
 	)
 
 	tests := []struct {
 		name          string
-		givenState    []ContractMetadata[DefaultMetadata]
+		givenState    []ContractMetadata
 		giveKey       ContractMetadataKey
 		expectedIndex int
 	}{
 		{
 			name: "success: returns index of record",
-			givenState: []ContractMetadata[DefaultMetadata]{
+			givenState: []ContractMetadata{
 				recordOne,
 				recordTwo,
 			},
@@ -41,7 +40,7 @@ func TestMemoryContractMetadataStore_indexOf(t *testing.T) {
 		},
 		{
 			name: "success: returns -1 if record not found",
-			givenState: []ContractMetadata[DefaultMetadata]{
+			givenState: []ContractMetadata{
 				recordOne,
 			},
 			giveKey:       recordTwo.Key(),
@@ -53,9 +52,9 @@ func TestMemoryContractMetadataStore_indexOf(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			store := MemoryContractMetadataStore[DefaultMetadata]{Records: tt.givenState}
+			store := MemoryContractMetadataStore{Records: tt.givenState}
 			idx := store.indexOf(tt.giveKey)
-			assert.Equal(t, tt.expectedIndex, idx)
+			require.Equal(t, tt.expectedIndex, idx)
 		})
 	}
 }
@@ -64,31 +63,31 @@ func TestMemoryContractMetadataStore_Add(t *testing.T) {
 	t.Parallel()
 
 	var (
-		record = ContractMetadata[DefaultMetadata]{
+		record = ContractMetadata{
 			ChainSelector: 1,
 			Address:       "0x2324224",
-			Metadata:      DefaultMetadata{Data: "metadata1"},
+			Metadata:      TestMetadata{Data: "metadata1"},
 		}
 	)
 
 	tests := []struct {
 		name          string
-		givenState    []ContractMetadata[DefaultMetadata]
-		giveRecord    ContractMetadata[DefaultMetadata]
-		expectedState []ContractMetadata[DefaultMetadata]
+		givenState    []ContractMetadata
+		giveRecord    ContractMetadata
+		expectedState []ContractMetadata
 		expectedError error
 	}{
 		{
 			name:       "success: adds new record",
-			givenState: []ContractMetadata[DefaultMetadata]{},
+			givenState: []ContractMetadata{},
 			giveRecord: record,
-			expectedState: []ContractMetadata[DefaultMetadata]{
+			expectedState: []ContractMetadata{
 				record,
 			},
 		},
 		{
 			name: "error: already existing record",
-			givenState: []ContractMetadata[DefaultMetadata]{
+			givenState: []ContractMetadata{
 				record,
 			},
 			giveRecord:    record,
@@ -100,15 +99,15 @@ func TestMemoryContractMetadataStore_Add(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			store := MemoryContractMetadataStore[DefaultMetadata]{Records: tt.givenState}
+			store := MemoryContractMetadataStore{Records: tt.givenState}
 			err := store.Add(tt.giveRecord)
 
 			if tt.expectedError != nil {
 				require.Error(t, err)
-				assert.Equal(t, tt.expectedError, err)
+				require.Equal(t, tt.expectedError, err)
 			} else {
 				require.NoError(t, err)
-				assert.Equal(t, tt.expectedState, store.Records)
+				require.Equal(t, tt.expectedState, store.Records)
 			}
 		})
 	}
@@ -118,40 +117,40 @@ func TestMemoryContractMetadataStore_Upsert(t *testing.T) {
 	t.Parallel()
 
 	var (
-		oldRecord = ContractMetadata[DefaultMetadata]{
+		oldRecord = ContractMetadata{
 			ChainSelector: 1,
 			Address:       "0x2324224",
-			Metadata:      DefaultMetadata{Data: "metadata1"},
+			Metadata:      TestMetadata{Data: "metadata1"},
 		}
 
-		newRecord = ContractMetadata[DefaultMetadata]{
+		newRecord = ContractMetadata{
 			ChainSelector: 1,
 			Address:       "0x2324224",
-			Metadata:      DefaultMetadata{Data: "metadata2"},
+			Metadata:      TestMetadata{Data: "metadata2"},
 		}
 	)
 
 	tests := []struct {
 		name          string
-		givenState    []ContractMetadata[DefaultMetadata]
-		expectedState []ContractMetadata[DefaultMetadata]
-		giveRecord    ContractMetadata[DefaultMetadata]
+		givenState    []ContractMetadata
+		expectedState []ContractMetadata
+		giveRecord    ContractMetadata
 	}{
 		{
 			name:       "success: adds new record",
-			givenState: []ContractMetadata[DefaultMetadata]{},
+			givenState: []ContractMetadata{},
 			giveRecord: oldRecord,
-			expectedState: []ContractMetadata[DefaultMetadata]{
+			expectedState: []ContractMetadata{
 				oldRecord,
 			},
 		},
 		{
 			name: "success: updates existing record",
-			givenState: []ContractMetadata[DefaultMetadata]{
+			givenState: []ContractMetadata{
 				oldRecord,
 			},
 			giveRecord: newRecord,
-			expectedState: []ContractMetadata[DefaultMetadata]{
+			expectedState: []ContractMetadata{
 				newRecord,
 			},
 		},
@@ -161,12 +160,12 @@ func TestMemoryContractMetadataStore_Upsert(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			store := MemoryContractMetadataStore[DefaultMetadata]{Records: tt.givenState}
+			store := MemoryContractMetadataStore{Records: tt.givenState}
 			// Check the error for the in-memory store, which will always be nil for the
 			// in memory implementation, to satisfy the linter
 			err := store.Upsert(tt.giveRecord)
 			require.NoError(t, err)
-			assert.Equal(t, tt.expectedState, store.Records)
+			require.Equal(t, tt.expectedState, store.Records)
 		})
 	}
 }
@@ -175,39 +174,39 @@ func TestMemoryContractMetadataStore_Update(t *testing.T) {
 	t.Parallel()
 
 	var (
-		oldRecord = ContractMetadata[DefaultMetadata]{
+		oldRecord = ContractMetadata{
 			ChainSelector: 1,
 			Address:       "0x2324224",
-			Metadata:      DefaultMetadata{Data: "metadata1"},
+			Metadata:      TestMetadata{Data: "metadata1"},
 		}
 
-		newRecord = ContractMetadata[DefaultMetadata]{
+		newRecord = ContractMetadata{
 			ChainSelector: 1,
 			Address:       "0x2324224",
-			Metadata:      DefaultMetadata{Data: "metadata2"},
+			Metadata:      TestMetadata{Data: "metadata2"},
 		}
 	)
 
 	tests := []struct {
 		name          string
-		givenState    []ContractMetadata[DefaultMetadata]
-		expectedState []ContractMetadata[DefaultMetadata]
-		giveRecord    ContractMetadata[DefaultMetadata]
+		givenState    []ContractMetadata
+		expectedState []ContractMetadata
+		giveRecord    ContractMetadata
 		expectedError error
 	}{
 		{
 			name: "success: updates existing record",
-			givenState: []ContractMetadata[DefaultMetadata]{
+			givenState: []ContractMetadata{
 				oldRecord,
 			},
 			giveRecord: newRecord,
-			expectedState: []ContractMetadata[DefaultMetadata]{
+			expectedState: []ContractMetadata{
 				newRecord,
 			},
 		},
 		{
 			name:          "error: record not found",
-			givenState:    []ContractMetadata[DefaultMetadata]{},
+			givenState:    []ContractMetadata{},
 			giveRecord:    newRecord,
 			expectedError: ErrContractMetadataNotFound,
 		},
@@ -217,15 +216,15 @@ func TestMemoryContractMetadataStore_Update(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			store := MemoryContractMetadataStore[DefaultMetadata]{Records: tt.givenState}
+			store := MemoryContractMetadataStore{Records: tt.givenState}
 			err := store.Update(tt.giveRecord)
 
 			if tt.expectedError != nil {
 				require.Error(t, err)
-				assert.Equal(t, tt.expectedError, err)
+				require.Equal(t, tt.expectedError, err)
 			} else {
 				require.NoError(t, err)
-				assert.Equal(t, tt.expectedState, store.Records)
+				require.Equal(t, tt.expectedState, store.Records)
 			}
 		})
 	}
@@ -235,48 +234,48 @@ func TestMemoryMemoryContractMetadataStore_Delete(t *testing.T) {
 	t.Parallel()
 
 	var (
-		recordOne = ContractMetadata[DefaultMetadata]{
+		recordOne = ContractMetadata{
 			ChainSelector: 1,
 			Address:       "0x2324224",
-			Metadata:      DefaultMetadata{Data: "metadata1"},
+			Metadata:      TestMetadata{Data: "metadata1"},
 		}
 
-		recordTwo = ContractMetadata[DefaultMetadata]{
+		recordTwo = ContractMetadata{
 			ChainSelector: 2,
 			Address:       "0x2324224",
-			Metadata:      DefaultMetadata{Data: "metadata2"},
+			Metadata:      TestMetadata{Data: "metadata2"},
 		}
 
-		recordThree = ContractMetadata[DefaultMetadata]{
+		recordThree = ContractMetadata{
 			ChainSelector: 3,
 			Address:       "0x2324224",
-			Metadata:      DefaultMetadata{Data: "metadata3"},
+			Metadata:      TestMetadata{Data: "metadata3"},
 		}
 	)
 
 	tests := []struct {
 		name          string
-		givenState    []ContractMetadata[DefaultMetadata]
-		expectedState []ContractMetadata[DefaultMetadata]
+		givenState    []ContractMetadata
+		expectedState []ContractMetadata
 		giveKey       ContractMetadataKey
 		expectedError error
 	}{
 		{
 			name: "success: deletes given record",
-			givenState: []ContractMetadata[DefaultMetadata]{
+			givenState: []ContractMetadata{
 				recordOne,
 				recordTwo,
 				recordThree,
 			},
 			giveKey: recordTwo.Key(),
-			expectedState: []ContractMetadata[DefaultMetadata]{
+			expectedState: []ContractMetadata{
 				recordOne,
 				recordThree,
 			},
 		},
 		{
 			name: "error: record not found",
-			givenState: []ContractMetadata[DefaultMetadata]{
+			givenState: []ContractMetadata{
 				recordOne,
 				recordThree,
 			},
@@ -289,15 +288,15 @@ func TestMemoryMemoryContractMetadataStore_Delete(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			store := MemoryContractMetadataStore[DefaultMetadata]{Records: tt.givenState}
+			store := MemoryContractMetadataStore{Records: tt.givenState}
 			err := store.Delete(tt.giveKey)
 
 			if tt.expectedError != nil {
 				require.Error(t, err)
-				assert.Equal(t, tt.expectedError, err)
+				require.Equal(t, tt.expectedError, err)
 			} else {
 				require.NoError(t, err)
-				assert.Equal(t, tt.expectedState, store.Records)
+				require.Equal(t, tt.expectedState, store.Records)
 			}
 		})
 	}
@@ -307,32 +306,32 @@ func TestMemoryContractMetadataStore_Fetch(t *testing.T) {
 	t.Parallel()
 
 	var (
-		recordOne = ContractMetadata[DefaultMetadata]{
+		recordOne = ContractMetadata{
 			ChainSelector: 1,
 			Address:       "0x2324224",
-			Metadata:      DefaultMetadata{Data: "metadata1"},
+			Metadata:      TestMetadata{Data: "metadata1"},
 		}
 
-		recordTwo = ContractMetadata[DefaultMetadata]{
+		recordTwo = ContractMetadata{
 			ChainSelector: 2,
 			Address:       "0x2324224",
-			Metadata:      DefaultMetadata{Data: "metadata2"},
+			Metadata:      TestMetadata{Data: "metadata2"},
 		}
 	)
 
 	tests := []struct {
 		name            string
-		givenState      []ContractMetadata[DefaultMetadata]
-		expectedRecords []ContractMetadata[DefaultMetadata]
+		givenState      []ContractMetadata
+		expectedRecords []ContractMetadata
 		expectedError   error
 	}{
 		{
 			name: "success: fetches all records",
-			givenState: []ContractMetadata[DefaultMetadata]{
+			givenState: []ContractMetadata{
 				recordOne,
 				recordTwo,
 			},
-			expectedRecords: []ContractMetadata[DefaultMetadata]{
+			expectedRecords: []ContractMetadata{
 				recordOne,
 				recordTwo,
 			},
@@ -340,8 +339,8 @@ func TestMemoryContractMetadataStore_Fetch(t *testing.T) {
 		},
 		{
 			name:            "success: fetches no records",
-			givenState:      []ContractMetadata[DefaultMetadata]{},
-			expectedRecords: []ContractMetadata[DefaultMetadata]{},
+			givenState:      []ContractMetadata{},
+			expectedRecords: []ContractMetadata{},
 			expectedError:   nil,
 		},
 	}
@@ -350,15 +349,25 @@ func TestMemoryContractMetadataStore_Fetch(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			store := MemoryContractMetadataStore[DefaultMetadata]{Records: tt.givenState}
+			store := MemoryContractMetadataStore{Records: tt.givenState}
 			records, err := store.Fetch()
 
 			if tt.expectedError != nil {
 				require.Error(t, err)
-				assert.Equal(t, tt.expectedError, err)
+				require.Equal(t, tt.expectedError, err)
 			} else {
 				require.NoError(t, err)
-				assert.Equal(t, tt.expectedRecords, records)
+				require.Equal(t, len(tt.expectedRecords), len(records), "Expected number of records to match")
+
+				// Ensure that the records are the same by comparing each field
+				for i := range tt.expectedRecords {
+					require.Equal(t, tt.expectedRecords[i].ChainSelector, records[i].ChainSelector)
+					require.Equal(t, tt.expectedRecords[i].Address, records[i].Address)
+					typedMetaActual, err := As[TestMetadata](records[i].Metadata)
+					require.NoError(t, err)
+
+					require.Equal(t, tt.expectedRecords[i].Metadata, typedMetaActual)
+				}
 			}
 		})
 	}
@@ -368,29 +377,29 @@ func TestMemoryContractMetadataStore_Get(t *testing.T) {
 	t.Parallel()
 
 	var (
-		recordOne = ContractMetadata[DefaultMetadata]{
+		recordOne = ContractMetadata{
 			ChainSelector: 1,
 			Address:       "0x2324224",
-			Metadata:      DefaultMetadata{Data: "metadata1"},
+			Metadata:      TestMetadata{Data: "metadata1"},
 		}
 
-		recordTwo = ContractMetadata[DefaultMetadata]{
+		recordTwo = ContractMetadata{
 			ChainSelector: 2,
 			Address:       "0x2324224",
-			Metadata:      DefaultMetadata{Data: "metadata2"},
+			Metadata:      TestMetadata{Data: "metadata2"},
 		}
 	)
 
 	tests := []struct {
 		name           string
-		givenState     []ContractMetadata[DefaultMetadata]
+		givenState     []ContractMetadata
 		giveKey        ContractMetadataKey
-		expectedRecord ContractMetadata[DefaultMetadata]
+		expectedRecord ContractMetadata
 		expectedError  error
 	}{
 		{
 			name: "success: record exists",
-			givenState: []ContractMetadata[DefaultMetadata]{
+			givenState: []ContractMetadata{
 				recordOne,
 				recordTwo,
 			},
@@ -399,9 +408,9 @@ func TestMemoryContractMetadataStore_Get(t *testing.T) {
 		},
 		{
 			name:           "error: record not found",
-			givenState:     []ContractMetadata[DefaultMetadata]{},
+			givenState:     []ContractMetadata{},
 			giveKey:        recordTwo.Key(),
-			expectedRecord: ContractMetadata[DefaultMetadata]{},
+			expectedRecord: ContractMetadata{},
 			expectedError:  ErrContractMetadataNotFound,
 		},
 	}
@@ -410,15 +419,20 @@ func TestMemoryContractMetadataStore_Get(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			store := MemoryContractMetadataStore[DefaultMetadata]{Records: tt.givenState}
+			store := MemoryContractMetadataStore{Records: tt.givenState}
 			record, err := store.Get(tt.giveKey)
 
 			if tt.expectedError != nil {
 				require.Error(t, err)
-				assert.Equal(t, tt.expectedError, err)
+				require.Equal(t, tt.expectedError, err)
 			} else {
 				require.NoError(t, err)
-				assert.Equal(t, tt.expectedRecord, record)
+
+				require.Equal(t, tt.expectedRecord.Address, record.Address)
+				require.Equal(t, tt.expectedRecord.ChainSelector, record.ChainSelector)
+				typedMetaActual, err := As[TestMetadata](record.Metadata)
+				require.NoError(t, err)
+				require.Equal(t, tt.expectedRecord.Metadata, typedMetaActual)
 			}
 		})
 	}
@@ -428,63 +442,63 @@ func TestMemoryContractMetadataStore_Filter(t *testing.T) {
 	t.Parallel()
 
 	var (
-		recordOne = ContractMetadata[DefaultMetadata]{
+		recordOne = ContractMetadata{
 			ChainSelector: 1,
 			Address:       "0x2324224",
-			Metadata:      DefaultMetadata{Data: "metadata1"},
+			Metadata:      TestMetadata{Data: "metadata1"},
 		}
 
-		recordTwo = ContractMetadata[DefaultMetadata]{
+		recordTwo = ContractMetadata{
 			ChainSelector: 2,
 			Address:       "0x2324224",
-			Metadata:      DefaultMetadata{Data: "metadata2"},
+			Metadata:      TestMetadata{Data: "metadata2"},
 		}
 
-		recordThree = ContractMetadata[DefaultMetadata]{
+		recordThree = ContractMetadata{
 			ChainSelector: 3,
 			Address:       "0x2324224",
-			Metadata:      DefaultMetadata{Data: "metadata3"},
+			Metadata:      TestMetadata{Data: "metadata3"},
 		}
 	)
 
 	tests := []struct {
 		name           string
-		givenState     []ContractMetadata[DefaultMetadata]
-		giveFilters    []FilterFunc[ContractMetadataKey, ContractMetadata[DefaultMetadata]]
-		expectedResult []ContractMetadata[DefaultMetadata]
+		givenState     []ContractMetadata
+		giveFilters    []FilterFunc[ContractMetadataKey, ContractMetadata]
+		expectedResult []ContractMetadata
 	}{{
 		name: "success: no filters returns all records",
-		givenState: []ContractMetadata[DefaultMetadata]{
+		givenState: []ContractMetadata{
 			recordOne,
 			recordTwo,
 			recordThree,
 		},
-		giveFilters:    []FilterFunc[ContractMetadataKey, ContractMetadata[DefaultMetadata]]{},
-		expectedResult: []ContractMetadata[DefaultMetadata]{recordOne, recordTwo, recordThree},
+		giveFilters:    []FilterFunc[ContractMetadataKey, ContractMetadata]{},
+		expectedResult: []ContractMetadata{recordOne, recordTwo, recordThree},
 	},
 		{
 			name: "success: returns record with given chain and type",
-			givenState: []ContractMetadata[DefaultMetadata]{
+			givenState: []ContractMetadata{
 				recordOne,
 				recordTwo,
 				recordThree,
 			},
-			giveFilters: []FilterFunc[ContractMetadataKey, ContractMetadata[DefaultMetadata]]{
-				ContractMetadataByChainSelector[DefaultMetadata](2),
+			giveFilters: []FilterFunc[ContractMetadataKey, ContractMetadata]{
+				ContractMetadataByChainSelector(2),
 			},
-			expectedResult: []ContractMetadata[DefaultMetadata]{recordTwo},
+			expectedResult: []ContractMetadata{recordTwo},
 		},
 		{
 			name: "success: returns no record with given chain and type",
-			givenState: []ContractMetadata[DefaultMetadata]{
+			givenState: []ContractMetadata{
 				recordOne,
 				recordTwo,
 				recordThree,
 			},
-			giveFilters: []FilterFunc[ContractMetadataKey, ContractMetadata[DefaultMetadata]]{
-				ContractMetadataByChainSelector[DefaultMetadata](4),
+			giveFilters: []FilterFunc[ContractMetadataKey, ContractMetadata]{
+				ContractMetadataByChainSelector(4),
 			},
-			expectedResult: []ContractMetadata[DefaultMetadata]{},
+			expectedResult: []ContractMetadata{},
 		},
 	}
 
@@ -492,9 +506,9 @@ func TestMemoryContractMetadataStore_Filter(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			store := MemoryContractMetadataStore[DefaultMetadata]{Records: tt.givenState}
+			store := MemoryContractMetadataStore{Records: tt.givenState}
 			filteredRecords := store.Filter(tt.giveFilters...)
-			assert.Equal(t, tt.expectedResult, filteredRecords)
+			require.Equal(t, tt.expectedResult, filteredRecords)
 		})
 	}
 }

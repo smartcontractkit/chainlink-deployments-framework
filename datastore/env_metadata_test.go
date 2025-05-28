@@ -9,12 +9,15 @@ import (
 func TestEnvMetadata_Clone(t *testing.T) {
 	t.Parallel()
 
-	original := EnvMetadata[DefaultMetadata]{
-		Metadata: DefaultMetadata{Data: "test-value"},
+	original := EnvMetadata{
+		Metadata: TestMetadata{Data: "test-value"},
 	}
 
-	cloned := original.Clone()
+	cloned, err := original.Clone()
+	require.NoError(t, err)
 
-	require.Equal(t, original.Metadata, cloned.Metadata)
-	require.NotSame(t, &original.Metadata, &cloned.Metadata) // Ensure Metadata is a deep copy
+	typed, err := As[TestMetadata](cloned.Metadata)
+
+	require.Equal(t, original.Metadata, typed)
+	require.NotSame(t, &original.Metadata, &typed) // Ensure Metadata is a deep copy
 }

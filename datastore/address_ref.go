@@ -43,7 +43,7 @@ type AddressRef struct {
 }
 
 // Clone creates a copy of the AddressRefRecord.
-func (r AddressRef) Clone() AddressRef {
+func (r AddressRef) Clone() (AddressRef, error) {
 	return AddressRef{
 		ChainSelector: r.ChainSelector,
 		Type:          r.Type,
@@ -51,7 +51,7 @@ func (r AddressRef) Clone() AddressRef {
 		Qualifier:     r.Qualifier,
 		Address:       r.Address,
 		Labels:        r.Labels.Clone(),
-	}
+	}, nil
 }
 
 // Key returns the AddressRefKey for the AddressRefRecord.
