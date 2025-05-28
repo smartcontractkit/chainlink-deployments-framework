@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.6.0
+
+### Minor Changes
+
+- [#125](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/125) [`870e061`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/870e061809d9e20acd6ce13022d2150f59d55df4) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat: expose error and attempts on the inputHook
+
 ## 0.5.1
 
 ### Patch Changes
