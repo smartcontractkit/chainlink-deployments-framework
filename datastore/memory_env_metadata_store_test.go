@@ -2,6 +2,7 @@ package datastore
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -11,7 +12,11 @@ func TestMemoryEnvMetadataStore_Get(t *testing.T) {
 
 	var (
 		recordOne = EnvMetadata{
-			Metadata: TestMetadata{Data: "data1"},
+			Metadata: TestEnvMetadata{
+				EnvName:   "env1",
+				EnvID:     "id1",
+				CreatedAt: time.Date(2024, 5, 28, 12, 0, 0, 0, time.UTC),
+			},
 		}
 	)
 
@@ -48,7 +53,7 @@ func TestMemoryEnvMetadataStore_Get(t *testing.T) {
 			record, err := store.Get()
 			if tt.recordShouldExist {
 				require.NoError(t, err)
-				typedMeta, err := As[TestMetadata](record.Metadata)
+				typedMeta, err := As[TestEnvMetadata](record.Metadata)
 				require.NoError(t, err)
 				require.Equal(t, tt.expectedRecord.Metadata, typedMeta)
 			} else {
@@ -64,10 +69,18 @@ func TestMemoryEnvMetadataStore_Set(t *testing.T) {
 
 	var (
 		recordOne = EnvMetadata{
-			Metadata: TestMetadata{Data: "data1"},
+			Metadata: TestEnvMetadata{
+				EnvName:   "env1",
+				EnvID:     "id1",
+				CreatedAt: time.Date(2024, 5, 28, 12, 0, 0, 0, time.UTC),
+			},
 		}
 		recordTwo = EnvMetadata{
-			Metadata: TestMetadata{Data: "data2"},
+			Metadata: TestEnvMetadata{
+				EnvName:   "env2",
+				EnvID:     "id2",
+				CreatedAt: time.Date(2024, 5, 29, 13, 0, 0, 0, time.UTC),
+			},
 		}
 	)
 
@@ -101,7 +114,7 @@ func TestMemoryEnvMetadataStore_Set(t *testing.T) {
 
 			record, err := store.Get()
 			require.NoError(t, err)
-			typedMeta, err := As[TestMetadata](record.Metadata)
+			typedMeta, err := As[TestEnvMetadata](record.Metadata)
 			require.NoError(t, err)
 			require.Equal(t, tt.expectedRecord.Metadata, typedMeta)
 		})

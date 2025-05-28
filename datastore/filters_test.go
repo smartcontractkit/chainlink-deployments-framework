@@ -2,8 +2,10 @@ package datastore
 
 import (
 	"testing"
+	"time"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -353,15 +355,15 @@ func TestContractMetadataByChainSelector(t *testing.T) {
 	var (
 		recordOne = ContractMetadata{
 			ChainSelector: 1,
-			Metadata:      TestMetadata{Data: "Record1"},
+			Metadata:      TestContractMetadata{DeployedAt: time.Date(2024, 5, 28, 12, 0, 0, 0, time.UTC), TxHash: common.HexToHash("0x1"), BlockNumber: 1},
 		}
 		recordTwo = ContractMetadata{
 			ChainSelector: 2,
-			Metadata:      TestMetadata{Data: "Record2"},
+			Metadata:      TestContractMetadata{DeployedAt: time.Date(2024, 5, 29, 13, 0, 0, 0, time.UTC), TxHash: common.HexToHash("0x2"), BlockNumber: 2},
 		}
 		recordThree = ContractMetadata{
 			ChainSelector: 1,
-			Metadata:      TestMetadata{Data: "Record3"},
+			Metadata:      TestContractMetadata{DeployedAt: time.Date(2024, 5, 30, 14, 0, 0, 0, time.UTC), TxHash: common.HexToHash("0x3"), BlockNumber: 3},
 		}
 	)
 
