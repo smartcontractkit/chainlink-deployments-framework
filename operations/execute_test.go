@@ -67,7 +67,8 @@ func Test_ExecuteOperation(t *testing.T) {
 		{
 			name: "NewInputHook",
 			options: []ExecuteOption[int, any]{
-				WithRetryInput(func(input int, deps any) int {
+				WithRetryInput(func(attempt uint, err error, input int, deps any) int {
+					require.ErrorContains(t, err, "test error")
 					// update input to 5 after first failed attempt
 					return 5
 				}),
