@@ -27,7 +27,7 @@ type RetryConfig[IN, DEP any] struct {
 	// InputHook is a function that returns an updated input before retrying the operation.
 	// The operation when retried will use the input returned by this function.
 	// This is useful for scenarios like updating the gas limit.
-	InputHook func(input IN, deps DEP) IN
+	InputHook func(attempt uint, err error, input IN, deps DEP) IN
 }
 
 // newDisabledRetryConfig returns a default retry configuration that is initially disabled.
@@ -61,7 +61,7 @@ func WithRetry[IN, DEP any]() ExecuteOption[IN, DEP] {
 
 // WithRetryInput is an ExecuteOption that enables the default retry and provide an input
 // transform function which will modify the input on each retry attempt.
-func WithRetryInput[IN, DEP any](inputHookFunc func(IN, DEP) IN) ExecuteOption[IN, DEP] {
+func WithRetryInput[IN, DEP any](inputHookFunc func(uint, error, IN, DEP) IN) ExecuteOption[IN, DEP] {
 	return func(c *ExecuteConfig[IN, DEP]) {
 		c.retryConfig.Enabled = true
 		c.retryConfig.InputHook = inputHookFunc
@@ -136,7 +136,7 @@ func ExecuteOperation[IN, OUT, DEP any](
 				"operation", operation.def.ID, "attempt", attempt, "error", err)
 
 			if executeConfig.retryConfig.InputHook != nil {
-				inputTemp = executeConfig.retryConfig.InputHook(inputTemp, deps)
+				inputTemp = executeConfig.retryConfig.InputHook(attempt, err, inputTemp, deps)
 			}
 		}))
 
