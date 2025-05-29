@@ -311,17 +311,17 @@ func TestMultiClient_reorderRPCs(t *testing.T) {
 	}
 
 	tests := []struct {
-		name            string
-		backups         []*ethclient.Client
-		newDefaultIdx   int
-		expectedClient  *ethclient.Client
-		expectedBackups []*ethclient.Client
+		name                string
+		backups             []*ethclient.Client
+		newDefaultClientIdx int
+		expectedClient      *ethclient.Client
+		expectedBackups     []*ethclient.Client
 	}{
 		{
-			name:           "Move first backup to primary",
-			backups:        rpcClients,
-			newDefaultIdx:  1,
-			expectedClient: client1,
+			name:                "Move first backup to primary",
+			backups:             rpcClients,
+			newDefaultClientIdx: 1,
+			expectedClient:      client1,
 			expectedBackups: []*ethclient.Client{
 				client2,
 				client3,
@@ -329,10 +329,10 @@ func TestMultiClient_reorderRPCs(t *testing.T) {
 			},
 		},
 		{
-			name:           "Move middle backup to primary",
-			backups:        rpcClients,
-			newDefaultIdx:  2,
-			expectedClient: client2,
+			name:                "Move middle backup to primary",
+			backups:             rpcClients,
+			newDefaultClientIdx: 2,
+			expectedClient:      client2,
 			expectedBackups: []*ethclient.Client{
 				client3,
 				client1,
@@ -340,10 +340,10 @@ func TestMultiClient_reorderRPCs(t *testing.T) {
 			},
 		},
 		{
-			name:           "Move last backup to primary",
-			backups:        rpcClients,
-			newDefaultIdx:  3,
-			expectedClient: client3,
+			name:                "Move last backup to primary",
+			backups:             rpcClients,
+			newDefaultClientIdx: 3,
+			expectedClient:      client3,
 			expectedBackups: []*ethclient.Client{
 				client1,
 				client2,
@@ -351,10 +351,10 @@ func TestMultiClient_reorderRPCs(t *testing.T) {
 			},
 		},
 		{
-			name:           "Keep primary unchanged",
-			backups:        rpcClients,
-			newDefaultIdx:  0,
-			expectedClient: client0,
+			name:                "Keep primary unchanged",
+			backups:             rpcClients,
+			newDefaultClientIdx: 0,
+			expectedClient:      client0,
 			expectedBackups: []*ethclient.Client{
 				client1,
 				client2,
@@ -362,16 +362,18 @@ func TestMultiClient_reorderRPCs(t *testing.T) {
 			},
 		},
 		{
-			name:            "Keep primary unchanged when no backups",
-			backups:         []*ethclient.Client{},
-			newDefaultIdx:   1,
-			expectedClient:  client0,
-			expectedBackups: []*ethclient.Client{},
+			name:                "Keep primary unchanged when no backups",
+			backups:             []*ethclient.Client{},
+			newDefaultClientIdx: 1,
+			expectedClient:      client0,
+			expectedBackups:     []*ethclient.Client{},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			mc := &MultiClient{
 				Client:  client0,
 				Backups: tt.backups,
@@ -379,7 +381,7 @@ func TestMultiClient_reorderRPCs(t *testing.T) {
 			}
 
 			// Call the method being tested
-			mc.reorderRPCs(tt.newDefaultIdx)
+			mc.reorderRPCs(tt.newDefaultClientIdx)
 
 			// Verify the results
 			assert.Same(t, tt.expectedClient, mc.Client, "Primary client should be the selected backup")

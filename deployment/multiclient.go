@@ -365,7 +365,7 @@ func (mc *MultiClient) retryWithBackups(ctx context.Context, opName string, op f
 				return err
 			}
 
-			// If the operation was successful check if we need to reorder the RPCs
+			// If the operation was successful, check if we need to reorder the RPCs
 			mc.reorderRPCs(rpcIndex)
 
 			return nil
