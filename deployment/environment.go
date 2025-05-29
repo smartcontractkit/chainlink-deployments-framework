@@ -7,7 +7,6 @@ import (
 	"slices"
 	"sort"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
@@ -295,15 +294,6 @@ func (e Environment) AllChainSelectorsAllFamiliesExcluding(excluding []uint64) [
 	}
 
 	return ret
-}
-
-func (e Environment) AllDeployerKeys() []common.Address {
-	deployerKeys := make([]common.Address, 0, len(e.Chains))
-	for sel := range e.Chains {
-		deployerKeys = append(deployerKeys, e.Chains[sel].DeployerKey.From)
-	}
-
-	return deployerKeys
 }
 
 // ConfirmIfNoError confirms the transaction if no error occurred.
