@@ -295,3 +295,101 @@ func TestEnsureTimeout(t *testing.T) {
 		})
 	}
 }
+func TestMultiClient_reorderRPCs(t *testing.T) {
+	t.Parallel()
+
+	// Create some test clients with different memory addresses for identification
+	client0 := ethclient.NewClient(nil) // primary
+	client1 := ethclient.NewClient(nil) // backup 0
+	client2 := ethclient.NewClient(nil) // backup 1
+	client3 := ethclient.NewClient(nil) // backup 2
+
+	rpcClients := []*ethclient.Client{
+		client1, // backup 0
+		client2, // backup 1
+		client3, // backup 2
+	}
+
+	tests := []struct {
+		name            string
+		backups         []*ethclient.Client
+		newDefaultIdx   int
+		expectedClient  *ethclient.Client
+		expectedBackups []*ethclient.Client
+	}{
+		{
+			name:           "Move first backup to primary",
+			backups:        rpcClients,
+			newDefaultIdx:  1,
+			expectedClient: client1,
+			expectedBackups: []*ethclient.Client{
+				client2,
+				client3,
+				client0,
+			},
+		},
+		{
+			name:           "Move middle backup to primary",
+			backups:        rpcClients,
+			newDefaultIdx:  2,
+			expectedClient: client2,
+			expectedBackups: []*ethclient.Client{
+				client3,
+				client1,
+				client0,
+			},
+		},
+		{
+			name:           "Move last backup to primary",
+			backups:        rpcClients,
+			newDefaultIdx:  3,
+			expectedClient: client3,
+			expectedBackups: []*ethclient.Client{
+				client1,
+				client2,
+				client0,
+			},
+		},
+		{
+			name:           "Keep primary unchanged",
+			backups:        rpcClients,
+			newDefaultIdx:  0,
+			expectedClient: client0,
+			expectedBackups: []*ethclient.Client{
+				client1,
+				client2,
+				client3,
+			},
+		},
+		{
+			name:            "Keep primary unchanged when no backups",
+			backups:         []*ethclient.Client{},
+			newDefaultIdx:   1,
+			expectedClient:  client0,
+			expectedBackups: []*ethclient.Client{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mc := &MultiClient{
+				Client:  client0,
+				Backups: tt.backups,
+				lggr:    logger.Test(t),
+			}
+
+			// Call the method being tested
+			mc.reorderRPCs(tt.newDefaultIdx)
+
+			// Verify the results
+			assert.Same(t, tt.expectedClient, mc.Client, "Primary client should be the selected backup")
+			require.Equal(t, len(tt.expectedBackups), len(mc.Backups), "Backup count should remain the same")
+
+			// Check that backups are in the expected order
+			for i, expected := range tt.expectedBackups {
+				assert.Same(t, expected, mc.Backups[i],
+					"Backup at position %d should be as expected", i)
+			}
+		})
+	}
+}
