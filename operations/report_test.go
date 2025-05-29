@@ -78,6 +78,7 @@ func Test_NewReport(t *testing.T) {
 	require.ErrorContains(t, report.Err, testErr.Error())
 	assert.Len(t, report.ChildOperationReports, 1)
 	assert.Equal(t, childOperationID, report.ChildOperationReports[0])
+	assert.False(t, report.Forced)
 }
 
 func Test_RecentReporter(t *testing.T) {
@@ -131,10 +132,20 @@ func Test_typeReport(t *testing.T) {
 		Timestamp:             &now,
 		Err:                   nil,
 		ChildOperationReports: []string{uuid.New().String()},
+		Forced:                true,
 	}
 
-	_, ok := typeReport[map[string]interface{}, float64](report)
+	res, ok := typeReport[map[string]interface{}, float64](report)
 	assert.True(t, ok)
+	assert.Equal(t, "1", res.ID)
+	assert.Equal(t, Definition{}, res.Def)
+	assert.Equal(t, map[string]interface{}{"a": float64(1)}, res.Input)
+	assert.InEpsilon(t, float64(2), res.Output, 0)
+	assert.Equal(t, &now, res.Timestamp)
+	assert.Nil(t, res.Err)
+	assert.Len(t, res.ChildOperationReports, 1)
+	assert.Equal(t, report.ChildOperationReports[0], res.ChildOperationReports[0])
+	assert.True(t, res.Forced)
 
 	// supports unmarshalling into a different type as long it is compatible
 	_, ok = typeReport[Input, int](report)
@@ -225,6 +236,7 @@ func Test_Report_ToGenericReport(t *testing.T) {
 		Timestamp:             &now,
 		Err:                   nil,
 		ChildOperationReports: []string{uuid.New().String()},
+		Forced:                true,
 	}
 
 	r := report.ToGenericReport()
@@ -235,6 +247,7 @@ func Test_Report_ToGenericReport(t *testing.T) {
 	assert.Equal(t, report.Timestamp, r.Timestamp)
 	assert.Equal(t, report.Err, r.Err)
 	assert.Equal(t, report.ChildOperationReports, r.ChildOperationReports)
+	assert.True(t, r.Forced)
 }
 
 func Test_SequenceReport_ToGenericReport(t *testing.T) {

@@ -13,6 +13,7 @@ var ErrNotSerializable = errors.New("data cannot be safely written to disk witho
 // ExecuteConfig is the configuration for the ExecuteOperation function.
 type ExecuteConfig[IN, DEP any] struct {
 	retryConfig RetryConfig[IN, DEP]
+	forceRun    bool
 }
 
 type ExecuteOption[IN, DEP any] func(*ExecuteConfig[IN, DEP])
@@ -77,6 +78,18 @@ func WithRetryConfig[IN, DEP any](config RetryConfig[IN, DEP]) ExecuteOption[IN,
 	}
 }
 
+// WithForceRun is an ExecuteOption that forces the operation to run even if a previous successful execution
+// with the same input was found.
+// This is useful for scenarios where the operation needs to be re-executed regardless of previous results
+// such as deploying the same contract for different purpose (eg MCMS roles).
+// Note: Idempotency will not apply to forced executions.
+// Results of forced executions will not be used to skip any future execution (forced or non-forced).
+func WithForceRun[IN, DEP any]() ExecuteOption[IN, DEP] {
+	return func(c *ExecuteConfig[IN, DEP]) {
+		c.forceRun = true
+	}
+}
+
 // ExecuteOperation executes an operation with the given input and dependencies.
 // Execution will return the previous successful execution result and skip execution if there was a
 // previous successful run found in the Reports.
@@ -105,18 +118,23 @@ func ExecuteOperation[IN, OUT, DEP any](
 		return Report[IN, OUT]{}, fmt.Errorf("operation %s input: %w", operation.def.ID, ErrNotSerializable)
 	}
 
-	if previousReport, found := loadPreviousSuccessfulReport[IN, OUT](b, operation.def, input); found {
-		b.Logger.Infow("Operation already executed. Returning previous result", "id", operation.def.ID,
-			"version", operation.def.Version, "description", operation.def.Description)
-
-		return previousReport, nil
-	}
-
 	executeConfig := &ExecuteConfig[IN, DEP]{
 		retryConfig: newDisabledRetryConfig[IN, DEP](),
 	}
 	for _, opt := range opts {
 		opt(executeConfig)
+	}
+
+	if !executeConfig.forceRun {
+		if previousReport, found := loadPreviousSuccessfulReport[IN, OUT](b, operation.def, input); found {
+			b.Logger.Infow("Operation already executed. Returning previous result", "id", operation.def.ID,
+				"version", operation.def.Version, "description", operation.def.Description)
+
+			return previousReport, nil
+		}
+	} else {
+		b.Logger.Infow("Forcing operation to run", "id", operation.def.ID,
+			"version", operation.def.Version, "description", operation.def.Description)
 	}
 
 	var output OUT
@@ -155,6 +173,10 @@ func ExecuteOperation[IN, OUT, DEP any](
 	}
 
 	report := NewReport(operation.def, input, output, err)
+	if executeConfig.forceRun {
+		report.Forced = true
+	}
+
 	if err = b.reporter.AddReport(genericReport(report)); err != nil {
 		return Report[IN, OUT]{}, err
 	}
@@ -270,6 +292,9 @@ func loadPreviousSuccessfulReport[IN, OUT any](
 	}
 
 	for _, report := range prevReports {
+		if report.Forced {
+			continue // Skip reports that were forced to run, these should not be used for idempotency checks
+		}
 		// Check if operation/sequence was run previously and return the report if successful
 		reportHash, err := constructUniqueHashFrom(b.reportHashCache, report.Def, report.Input)
 		if err != nil {

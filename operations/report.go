@@ -21,6 +21,8 @@ type Report[IN, OUT any] struct {
 	Err       *ReportError `json:"error"`
 	// stores a list of report ID for an operation that was executed as part of a sequence.
 	ChildOperationReports []string `json:"childOperationReports"`
+	// indicates if the operation was forced to run even if the same op was run previously with the same input.
+	Forced bool `json:"forced,omitempty"`
 }
 
 // ToGenericReport converts the Report to a generic Report.
@@ -258,6 +260,7 @@ func genericReport[IN, OUT any](r Report[IN, OUT]) Report[any, any] {
 		Timestamp:             r.Timestamp,
 		Err:                   r.Err,
 		ChildOperationReports: r.ChildOperationReports,
+		Forced:                r.Forced,
 	}
 }
 
@@ -288,11 +291,13 @@ func typeReport[IN, OUT any](r Report[any, any]) (Report[IN, OUT], bool) {
 	}
 
 	return Report[IN, OUT]{
-		ID:        r.ID,
-		Def:       r.Def,
-		Output:    output,
-		Input:     input,
-		Timestamp: r.Timestamp,
-		Err:       r.Err,
+		ID:                    r.ID,
+		Def:                   r.Def,
+		Output:                output,
+		Input:                 input,
+		Timestamp:             r.Timestamp,
+		Err:                   r.Err,
+		ChildOperationReports: r.ChildOperationReports,
+		Forced:                r.Forced,
 	}, true
 }

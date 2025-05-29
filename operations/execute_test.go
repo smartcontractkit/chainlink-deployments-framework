@@ -267,6 +267,79 @@ func Test_ExecuteOperation_Unserializable_Data(t *testing.T) {
 	}
 }
 
+func Test_ExecuteOperation_ForceRun(t *testing.T) {
+	t.Parallel()
+
+	version := semver.MustParse("1.0.0")
+
+	result := 1
+	op := NewOperation("test", version, "test",
+		func(e Bundle, deps OpDeps, input EmptyInput) (output int, err error) {
+			res := result
+			result++
+
+			return res, nil
+		})
+
+	e := NewBundle(context.Background, logger.Test(t), NewMemoryReporter())
+
+	// first run
+	res, err := ExecuteOperation(e, op, OpDeps{}, EmptyInput{})
+	require.NoError(t, err)
+	assert.Equal(t, 1, res.Output)
+	report, err := e.reporter.GetReport(res.ID)
+	require.NoError(t, err)
+	assert.False(t, report.Forced)
+
+	// rerun without force should return previous report
+	res, err = ExecuteOperation(e, op, OpDeps{}, EmptyInput{})
+	require.NoError(t, err)
+	assert.Equal(t, 1, res.Output)
+	report, err = e.reporter.GetReport(res.ID)
+	require.NoError(t, err)
+	assert.False(t, report.Forced)
+
+	// rerun with force should perform execution again
+	res, err = ExecuteOperation(e, op, OpDeps{}, EmptyInput{},
+		WithForceRun[EmptyInput, OpDeps]())
+	require.NoError(t, err)
+	assert.Equal(t, 2, res.Output)
+
+	// check new report is added to reporter
+	report, err = e.reporter.GetReport(res.ID)
+	require.NoError(t, err)
+	assert.True(t, report.Forced)
+}
+
+func Test_ExecuteOperation_ForceRun_SkipIdempotencyCheck(t *testing.T) {
+	t.Parallel()
+
+	version := semver.MustParse("1.0.0")
+
+	result := 1
+	op := NewOperation("test", version, "test",
+		func(e Bundle, deps OpDeps, input EmptyInput) (output int, err error) {
+			res := result
+			result++
+
+			return res, nil
+		})
+
+	e := NewBundle(context.Background, logger.Test(t), NewMemoryReporter())
+
+	// first run - forced
+	res, err := ExecuteOperation(e, op, OpDeps{}, EmptyInput{},
+		WithForceRun[EmptyInput, OpDeps]())
+	require.NoError(t, err)
+	assert.Equal(t, 1, res.Output)
+
+	// 2nd run - not forced
+	// should not return result from previous forced run
+	res, err = ExecuteOperation(e, op, OpDeps{}, EmptyInput{})
+	require.NoError(t, err)
+	assert.Equal(t, 2, res.Output)
+}
+
 func Test_ExecuteSequence(t *testing.T) {
 	t.Parallel()
 
