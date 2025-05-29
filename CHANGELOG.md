@@ -1,5 +1,15 @@
 # chainlink-deployments-framework
 
+## 0.7.0
+
+### Minor Changes
+
+- [#128](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/128) [`a4fe4bf`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/a4fe4bfe51a946a9a9d9840908510cca550e512f) Thanks [@jkongie](https://github.com/jkongie)! - Remove unused `deployment.AllDeployerKeys` function
+
+### Patch Changes
+
+- [#123](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/123) [`aa4c5e6`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/aa4c5e6ed87b70349d8a5763429c7ec12329853b) Thanks [@jkongie](https://github.com/jkongie)! - Adds Aptos Chain providers for RPC and CTF backed chains
+
 ## 0.6.0
 
 ### Minor Changes
