@@ -47,6 +47,28 @@ func TestNewBlockChains(t *testing.T) {
 	})
 }
 
+func TestNewBlockChainsFromSlice(t *testing.T) {
+	t.Parallel()
+
+	t.Run("empty slice", func(t *testing.T) {
+		t.Parallel()
+
+		chains := chain.NewBlockChainsFromSlice(nil)
+
+		require.NotNil(t, chains)
+		assert.Empty(t, chains.AllChains(), "expected empty chains map")
+	})
+
+	t.Run("populated slice", func(t *testing.T) {
+		t.Parallel()
+
+		chains := chain.NewBlockChainsFromSlice([]chain.BlockChain{evmChain1, solanaChain1})
+
+		require.NotNil(t, chains)
+		assert.Len(t, chains.AllChains(), 2, "expected 2 chains")
+	})
+}
+
 func Test_BlockChains_Exists(t *testing.T) {
 	t.Parallel()
 
@@ -108,6 +130,28 @@ func Test_BlockChains_ExistsN(t *testing.T) {
 			exists := chains.ExistsN(tt.selectors...)
 			assert.Equal(t, tt.expected, exists)
 		})
+	}
+}
+
+func TestBlockChainsAllChains(t *testing.T) {
+	t.Parallel()
+
+	chains := buildBlockChains()
+
+	allChains := chains.AllChains()
+
+	assert.Len(t, allChains, 6, "expected 6 chains")
+
+	// Check if all expected chains are present
+	expectedSelectors := []uint64{
+		evmChain1.Selector, evmChain2.Selector,
+		solanaChain1.Selector, aptosChain1.Selector,
+		suiChain1.Selector, tonChain1.Selector,
+	}
+
+	for _, selector := range expectedSelectors {
+		_, exists := allChains[selector]
+		assert.True(t, exists, "expected chain with selector %d", selector)
 	}
 }
 

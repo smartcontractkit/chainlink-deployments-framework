@@ -52,6 +52,19 @@ func NewBlockChains(chains map[uint64]BlockChain) BlockChains {
 	}
 }
 
+// NewBlockChainsFromSlice initializes a new BlockChains instance from a slice of BlockChain.
+func NewBlockChainsFromSlice(chains []BlockChain) BlockChains {
+	// Create a new map to hold the chains
+	chainsMap := make(map[uint64]BlockChain, len(chains))
+
+	// Populate the map with chains
+	for _, chain := range chains {
+		chainsMap[chain.ChainSelector()] = chain
+	}
+
+	return NewBlockChains(chainsMap)
+}
+
 // Exists checks if a chain with the given selector exists.
 func (b BlockChains) Exists(selector uint64) bool {
 	_, ok := b.chains[selector]
@@ -68,6 +81,17 @@ func (b BlockChains) ExistsN(selectors ...uint64) bool {
 	}
 
 	return true
+}
+
+// AllChains returns a map of all chains with their selectors as key.
+func (b BlockChains) AllChains() map[uint64]BlockChain {
+	// Return a copy of the chains map to avoid external mutations
+	chainsCopy := make(map[uint64]BlockChain, len(b.chains))
+	for k, v := range b.chains {
+		chainsCopy[k] = v
+	}
+
+	return chainsCopy
 }
 
 // EVMChains returns a map of all EVM chains with their selectors.
