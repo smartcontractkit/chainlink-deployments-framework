@@ -16,7 +16,7 @@ import (
 	chain_selectors "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/chain/utils"
+	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 )
 
 // SimTransactOpts is useful to generate just the calldata for a given gethwrapper method.
@@ -25,9 +25,6 @@ func SimTransactOpts() *bind.TransactOpts {
 		return transaction, nil
 	}, From: common.HexToAddress("0x0"), NoSend: true, GasLimit: 1_000_000}
 }
-
-// todo: remove when Chainlink is migrated
-var ChainInfo = utils.ChainInfo
 
 func parseErrorFromABI(errorString string, contractABI string) (string, error) {
 	errorString = strings.TrimPrefix(errorString, "Reverted ")
@@ -108,9 +105,9 @@ type ContractDeploy[C any] struct {
 // confirmed or the address could not be saved.
 func DeployContract[C any](
 	lggr logger.Logger,
-	chain Chain,
+	chain cldf_evm.Chain,
 	addressBook AddressBook,
-	deploy func(chain Chain) ContractDeploy[C],
+	deploy func(chain cldf_evm.Chain) ContractDeploy[C],
 ) (*ContractDeploy[C], error) {
 	contractDeploy := deploy(chain)
 	if contractDeploy.Err != nil {
