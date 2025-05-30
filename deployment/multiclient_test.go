@@ -385,7 +385,7 @@ func TestMultiClient_reorderRPCs(t *testing.T) {
 
 			// Verify the results
 			assert.Same(t, tt.expectedClient, mc.Client, "Primary client should be the selected backup")
-			require.Equal(t, len(tt.expectedBackups), len(mc.Backups), "Backup count should remain the same")
+			require.Len(t, mc.Backups, len(tt.expectedBackups), "Backup count should remain the same")
 
 			// Check that backups are in the expected order
 			for i, expected := range tt.expectedBackups {
