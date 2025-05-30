@@ -65,10 +65,7 @@ type Environment struct {
 	// be aware that you may encounter CI failures due to linting errors.
 	// To work around this, you can disable the linter for that specific line using the //nolint directive.
 	ExistingAddresses AddressBook
-	DataStore         datastore.DataStore[
-		datastore.DefaultMetadata,
-		datastore.DefaultMetadata,
-	]
+	DataStore         datastore.DataStore
 
 	// Chains is being deprecated in favour of BlockChains field
 	// use BlockChains.EVMChains()
@@ -96,10 +93,7 @@ func NewEnvironment(
 	name string,
 	logger logger.Logger,
 	existingAddrs AddressBook,
-	dataStore datastore.DataStore[
-		datastore.DefaultMetadata,
-		datastore.DefaultMetadata,
-	],
+	dataStore datastore.DataStore,
 	chains map[uint64]Chain,
 	solChains map[uint64]SolChain,
 	aptosChains map[uint64]AptosChain,
@@ -130,10 +124,7 @@ func NewCLDFEnvironment(
 	name string,
 	logger logger.Logger,
 	existingAddrs AddressBook,
-	dataStore datastore.DataStore[
-		datastore.DefaultMetadata,
-		datastore.DefaultMetadata,
-	],
+	dataStore datastore.DataStore,
 	chains map[uint64]Chain,
 	solChains map[uint64]SolChain,
 	aptosChains map[uint64]AptosChain,
@@ -168,10 +159,7 @@ func (e Environment) Clone() Environment {
 		panic(fmt.Sprintf("failed to copy address book: %v", err))
 	}
 
-	ds := datastore.NewMemoryDataStore[
-		datastore.DefaultMetadata,
-		datastore.DefaultMetadata,
-	]()
+	ds := datastore.NewMemoryDataStore()
 	if e.DataStore != nil {
 		if err := ds.Merge(e.DataStore); err != nil {
 			panic(fmt.Sprintf("failed to copy datastore: %v", err))

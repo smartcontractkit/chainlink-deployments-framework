@@ -44,7 +44,7 @@ func (s *MemoryAddressRefStore) Get(key AddressRefKey) (AddressRef, error) {
 		return AddressRef{}, ErrAddressRefNotFound
 	}
 
-	return s.Records[idx].Clone(), nil
+	return s.Records[idx].Clone()
 }
 
 // Fetch returns a copy of all AddressRef in the store.
@@ -54,7 +54,11 @@ func (s *MemoryAddressRefStore) Fetch() ([]AddressRef, error) {
 
 	records := []AddressRef{}
 	for _, record := range s.Records {
-		records = append(records, record.Clone())
+		clone, err := record.Clone()
+		if err != nil {
+			return []AddressRef{}, err
+		}
+		records = append(records, clone)
 	}
 
 	return records, nil

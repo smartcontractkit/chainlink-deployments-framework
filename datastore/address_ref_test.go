@@ -5,6 +5,7 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAddressRef_Clone(t *testing.T) {
@@ -19,7 +20,8 @@ func TestAddressRef_Clone(t *testing.T) {
 		Version:       semver.MustParse("1.0.0"),
 	}
 
-	clone := original.Clone()
+	clone, err := original.Clone()
+	require.NoError(t, err)
 
 	assert.Equal(t, original, clone, "Clone should produce an identical copy")
 	assert.NotSame(t, &original.Labels, &clone.Labels, "Labels should be deeply cloned")
