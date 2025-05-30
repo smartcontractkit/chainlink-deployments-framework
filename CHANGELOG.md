@@ -1,5 +1,15 @@
 # chainlink-deployments-framework
 
+## 0.8.0
+
+### Minor Changes
+
+- [#134](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/134) [`a09cfcb`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/a09cfcbfc07d144d3f96fe728c8ebbc8e0be9277) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - New blockchain.AllChains() and NewBlockChainFromSlice constructor
+
+### Patch Changes
+
+- [#136](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/136) [`ae801d5`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/ae801d51846f59147d5f69295cdcaf549467ea04) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - rename AllChains to All
+
 ## 0.7.0
 
 ### Minor Changes
