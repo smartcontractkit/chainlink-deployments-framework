@@ -1,6 +1,7 @@
 package chain_test
 
 import (
+	"maps"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -56,7 +57,7 @@ func TestNewBlockChainsFromSlice(t *testing.T) {
 		chains := chain.NewBlockChainsFromSlice(nil)
 
 		require.NotNil(t, chains)
-		assert.Empty(t, chains.AllChains(), "expected empty chains map")
+		assert.Empty(t, maps.Collect(chains.All()), "expected empty chains map")
 	})
 
 	t.Run("populated slice", func(t *testing.T) {
@@ -65,7 +66,7 @@ func TestNewBlockChainsFromSlice(t *testing.T) {
 		chains := chain.NewBlockChainsFromSlice([]chain.BlockChain{evmChain1, solanaChain1})
 
 		require.NotNil(t, chains)
-		assert.Len(t, chains.AllChains(), 2, "expected 2 chains")
+		assert.Len(t, maps.Collect(chains.All()), 2, "expected 2 chains")
 	})
 }
 
@@ -138,16 +139,15 @@ func TestBlockChainsAllChains(t *testing.T) {
 
 	chains := buildBlockChains()
 
-	allChains := chains.AllChains()
+	allChains := maps.Collect(chains.All())
 
-	assert.Len(t, allChains, 6, "expected 6 chains")
-
-	// Check if all expected chains are present
 	expectedSelectors := []uint64{
 		evmChain1.Selector, evmChain2.Selector,
 		solanaChain1.Selector, aptosChain1.Selector,
 		suiChain1.Selector, tonChain1.Selector,
 	}
+
+	assert.Len(t, allChains, len(expectedSelectors))
 
 	for _, selector := range expectedSelectors {
 		_, exists := allChains[selector]

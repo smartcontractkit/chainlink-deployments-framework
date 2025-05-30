@@ -1,6 +1,8 @@
 package chain
 
 import (
+	"iter"
+	"maps"
 	"slices"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos"
@@ -83,15 +85,9 @@ func (b BlockChains) ExistsN(selectors ...uint64) bool {
 	return true
 }
 
-// AllChains returns a map of all chains with their selectors as key.
-func (b BlockChains) AllChains() map[uint64]BlockChain {
-	// Return a copy of the chains map to avoid external mutations
-	chainsCopy := make(map[uint64]BlockChain, len(b.chains))
-	for k, v := range b.chains {
-		chainsCopy[k] = v
-	}
-
-	return chainsCopy
+// All returns an iterator over all chains with their selectors.
+func (b BlockChains) All() iter.Seq2[uint64, BlockChain] {
+	return maps.All(b.chains)
 }
 
 // EVMChains returns a map of all EVM chains with their selectors.
