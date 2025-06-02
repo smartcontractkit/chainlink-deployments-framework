@@ -19,6 +19,8 @@ import (
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 
 	chainsel "github.com/smartcontractkit/chain-selectors"
+
+	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 )
 
 const (
@@ -57,7 +59,7 @@ func defaultRetryConfig() RetryConfig {
 }
 
 // MultiClient should comply with the OnchainClient interface
-var _ OnchainClient = &MultiClient{}
+var _ cldf_evm.OnchainClient = &MultiClient{}
 
 type MultiClient struct {
 	*ethclient.Client
