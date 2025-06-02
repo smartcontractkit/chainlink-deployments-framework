@@ -118,7 +118,7 @@ func (p *CTFChainProvider) Initialize() (chain.BlockChain, error) {
 		},
 	}
 
-	return p.chain, nil
+	return *p.chain, nil
 }
 
 // Name returns the name of the CTFChainProvider.
