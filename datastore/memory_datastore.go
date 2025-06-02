@@ -19,8 +19,7 @@ type Sealer[T any] interface {
 // BaseDataStore is an interface that defines the basic operations for a data store.
 // It is parameterized by the type of address reference store and contract metadata store it uses.
 type BaseDataStore[
-	T Cloneable[T],
-	U Cloneable[U],
+	T, U any,
 	R AddressRefStore, CM ContractMetadataStore[T], EM EnvMetadataStore[U],
 ] interface {
 	Addresses() R
@@ -29,12 +28,12 @@ type BaseDataStore[
 }
 
 // DataStore is an interface that defines the operations for a read-only data store.
-type DataStore[T Cloneable[T], U Cloneable[U]] interface {
+type DataStore[T, U any] interface {
 	BaseDataStore[T, U, AddressRefStore, ContractMetadataStore[T], EnvMetadataStore[U]]
 }
 
 // MutableDataStore is an interface that defines the operations for a mutable data store.
-type MutableDataStore[T Cloneable[T], U Cloneable[U]] interface {
+type MutableDataStore[T any, U any] interface {
 	Merger[DataStore[T, U]]
 	Sealer[DataStore[T, U]]
 
@@ -44,7 +43,7 @@ type MutableDataStore[T Cloneable[T], U Cloneable[U]] interface {
 // MemoryDataStore is a concrete implementation of the MutableDataStore interface.
 var _ MutableDataStore[DefaultMetadata, DefaultMetadata] = &MemoryDataStore[DefaultMetadata, DefaultMetadata]{}
 
-type MemoryDataStore[CM Cloneable[CM], EM Cloneable[EM]] struct {
+type MemoryDataStore[CM any, EM any] struct {
 	AddressRefStore       *MemoryAddressRefStore           `json:"addressRefStore"`
 	ContractMetadataStore *MemoryContractMetadataStore[CM] `json:"contractMetadataStore"`
 	EnvMetadataStore      *MemoryEnvMetadataStore[EM]      `json:"envMetadataStore"`
@@ -52,7 +51,7 @@ type MemoryDataStore[CM Cloneable[CM], EM Cloneable[EM]] struct {
 
 // NewMemoryDataStore creates a new instance of MemoryDataStore.
 // NOTE: The instance returned is mutable and can be modified.
-func NewMemoryDataStore[CM Cloneable[CM], EM Cloneable[EM]]() *MemoryDataStore[CM, EM] {
+func NewMemoryDataStore[CM any, EM any]() *MemoryDataStore[CM, EM] {
 	return &MemoryDataStore[CM, EM]{
 		AddressRefStore:       NewMemoryAddressRefStore(),
 		ContractMetadataStore: NewMemoryContractMetadataStore[CM](),
@@ -134,7 +133,7 @@ func (s *MemoryDataStore[CM, EM]) Merge(other DataStore[CM, EM]) error {
 // It represents a sealed data store that cannot be modified further.
 var _ DataStore[DefaultMetadata, DefaultMetadata] = &sealedMemoryDataStore[DefaultMetadata, DefaultMetadata]{}
 
-type sealedMemoryDataStore[CM Cloneable[CM], EM Cloneable[EM]] struct {
+type sealedMemoryDataStore[CM any, EM any] struct {
 	AddressRefStore       *MemoryAddressRefStore           `json:"addressRefStore"`
 	ContractMetadataStore *MemoryContractMetadataStore[CM] `json:"contractMetadataStore"`
 	EnvMetadataStore      *MemoryEnvMetadataStore[EM]      `json:"envMetadataStore"`
