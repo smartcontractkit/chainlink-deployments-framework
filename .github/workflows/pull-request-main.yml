@@ -16,12 +16,10 @@ jobs:
       actions: read
     steps:
       - name: Linting Go
-        uses: smartcontractkit/.github/actions/ci-lint-go@eeb76b5870e3c17856d5a60fd064a053c023b5f5 # ci-lint-go@1.0.0
+        uses: smartcontractkit/.github/actions/ci-lint-go@ci-lint-go/v2 # ci-lint-go@2.0.0
         with:
           only-new-issues: "false"
-          golangci-lint-version: v2.0.2
-          # Override the lint args because the default ones are not compatible with golangci-lint v2
-          golangci-lint-args: --output.checkstyle.path=golangci-lint-report.xml
+          golangci-lint-version: v2.1.6
 
   ci-lint-misc:
     name: Lint GH Actions and scripts
