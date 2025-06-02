@@ -67,7 +67,7 @@ type MultiClient struct {
 	RetryConfig RetryConfig
 	lggr        logger.Logger
 	chainName   string
-	mu          sync.Mutex
+	mu          sync.RWMutex
 }
 
 // rpcHealthCheck performs a basic health check on the RPC client by calling eth_blockNumber
@@ -336,6 +336,9 @@ func (mc *MultiClient) WaitMined(ctx context.Context, tx *types.Transaction) (*t
 		}
 	}
 
+	mc.mu.RLock()
+	defer mc.mu.RUnlock()
+
 	for _, client := range append([]*ethclient.Client{mc.Client}, mc.Backups...) {
 		go waitMined(client, tx)
 	}
@@ -357,6 +360,10 @@ func (mc *MultiClient) WaitMined(ctx context.Context, tx *types.Transaction) (*t
 func (mc *MultiClient) retryWithBackups(ctx context.Context, opName string, op func(context.Context, *ethclient.Client) error) error {
 	var err error
 	traceID := uuid.New()
+
+	mc.mu.RLock()
+	defer mc.mu.RUnlock()
+
 	for rpcIndex, client := range append([]*ethclient.Client{mc.Client}, mc.Backups...) {
 		retryCount := 0
 		err2 := retry.Do(func() error {
@@ -442,12 +449,12 @@ func ensureTimeout(parent context.Context, timeout time.Duration) (context.Conte
 // If backup RPCs also failed, they will be moved to the end of the backup list.
 // If the primary RPC worked, it will remain the first in the list.
 func (mc *MultiClient) reorderRPCs(rpcIndex int) {
+	mc.mu.Lock()
+	defer mc.mu.Unlock()
+
 	if rpcIndex < 1 || len(mc.Backups) == 0 {
 		return // No need to reorder if the first RPC is still the default or we don't have backups
 	}
-
-	mc.mu.Lock()
-	defer mc.mu.Unlock()
 
 	// Find the index of the backupRPC
 	newDefaultRPCIndex := rpcIndex - 1
