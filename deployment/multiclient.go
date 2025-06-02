@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"sync"
 	"time"
 
 	"github.com/avast/retry-go/v4"
@@ -64,6 +65,7 @@ type MultiClient struct {
 	RetryConfig RetryConfig
 	lggr        logger.Logger
 	chainName   string
+	mu          sync.Mutex
 }
 
 // rpcHealthCheck performs a basic health check on the RPC client by calling eth_blockNumber
@@ -441,6 +443,9 @@ func (mc *MultiClient) reorderRPCs(rpcIndex int) {
 	if rpcIndex < 1 || len(mc.Backups) == 0 {
 		return // No need to reorder if the first RPC is still the default or we don't have backups
 	}
+
+	mc.mu.Lock()
+	defer mc.mu.Unlock()
 
 	// Find the index of the backupRPC
 	newDefaultRPCIndex := rpcIndex - 1
