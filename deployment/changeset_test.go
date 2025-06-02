@@ -97,7 +97,7 @@ func TestChangeSetLegacyFunction(t *testing.T) {
 func NewNoopEnvironment(t *testing.T) Environment {
 	t.Helper()
 
-	return *NewCLDFEnvironment(
+	return *NewEnvironment(
 		"noop",
 		logger.Test(t),
 		NewMemoryAddressBook(),
@@ -105,9 +105,6 @@ func NewNoopEnvironment(t *testing.T) Environment {
 			datastore.DefaultMetadata,
 			datastore.DefaultMetadata,
 		]().Seal(),
-		map[uint64]Chain{},
-		map[uint64]SolChain{},
-		map[uint64]AptosChain{},
 		[]string{},
 		nil,
 		t.Context,
