@@ -1,5 +1,13 @@
 # chainlink-deployments-framework
 
+## 0.8.1
+
+### Patch Changes
+
+- [#133](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/133) [`06ecd68`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/06ecd6875ebc08a0e4edb0171ae41e914ec335b9) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - remove legacy chains field
+
+- [#138](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/138) [`41ec05c`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/41ec05cea2718fb5fc6d34706e45e183db336220) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - support returning BlockChain that are pointers
+
 ## 0.8.0
 
 ### Minor Changes
