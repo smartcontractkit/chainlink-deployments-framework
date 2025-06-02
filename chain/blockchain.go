@@ -3,6 +3,7 @@ package chain
 import (
 	"iter"
 	"maps"
+	"reflect"
 	"slices"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos"
@@ -92,72 +93,27 @@ func (b BlockChains) All() iter.Seq2[uint64, BlockChain] {
 
 // EVMChains returns a map of all EVM chains with their selectors.
 func (b BlockChains) EVMChains() map[uint64]evm.Chain {
-	var evmChains = make(map[uint64]evm.Chain)
-	for selector, chain := range b.chains {
-		c, ok := chain.(evm.Chain)
-		if !ok {
-			continue
-		}
-		evmChains[selector] = c
-	}
-
-	return evmChains
+	return getChainsByType[evm.Chain, *evm.Chain](b)
 }
 
 // SolanaChains returns a map of all Solana chains with their selectors.
 func (b BlockChains) SolanaChains() map[uint64]solana.Chain {
-	var solanaChains = make(map[uint64]solana.Chain)
-	for selector, chain := range b.chains {
-		c, ok := chain.(solana.Chain)
-		if !ok {
-			continue
-		}
-		solanaChains[selector] = c
-	}
-
-	return solanaChains
+	return getChainsByType[solana.Chain, *solana.Chain](b)
 }
 
 // AptosChains returns a map of all Aptos chains with their selectors.
 func (b BlockChains) AptosChains() map[uint64]aptos.Chain {
-	var aptosChains = make(map[uint64]aptos.Chain)
-	for selector, chain := range b.chains {
-		c, ok := chain.(aptos.Chain)
-		if !ok {
-			continue
-		}
-		aptosChains[selector] = c
-	}
-
-	return aptosChains
+	return getChainsByType[aptos.Chain, *aptos.Chain](b)
 }
 
 // SuiChains returns a map of all Sui chains with their selectors.
 func (b BlockChains) SuiChains() map[uint64]sui.Chain {
-	var suiChains = make(map[uint64]sui.Chain)
-	for selector, chain := range b.chains {
-		c, ok := chain.(sui.Chain)
-		if !ok {
-			continue
-		}
-		suiChains[selector] = c
-	}
-
-	return suiChains
+	return getChainsByType[sui.Chain, *sui.Chain](b)
 }
 
 // TonChains returns a map of all Ton chains with their selectors.
 func (b BlockChains) TonChains() map[uint64]ton.Chain {
-	var tonChains = make(map[uint64]ton.Chain)
-	for selector, chain := range b.chains {
-		c, ok := chain.(ton.Chain)
-		if !ok {
-			continue
-		}
-		tonChains[selector] = c
-	}
-
-	return tonChains
+	return getChainsByType[ton.Chain, *ton.Chain](b)
 }
 
 // ChainSelectorsOption defines a function type for configuring ChainSelectors
@@ -226,4 +182,30 @@ func (b BlockChains) ListChainSelectors(options ...ChainSelectorsOption) []uint6
 	slices.Sort(selectors)
 
 	return selectors
+}
+
+// getChainsByType is a helper function to extract chains of a specific type from BlockChains.
+// It accepts two type parameters: VT for the target type and PT for pointer types of the same chain type.
+// eg getChainsByType[evm.Chain, *evm.Chain](b BlockChains) returns a map of uint64 to evm.Chain.
+// It handles both value and pointer types, allowing for flexibility in how chains are stored.
+func getChainsByType[VT any, PT any](b BlockChains) map[uint64]VT {
+	chains := make(map[uint64]VT, len(b.chains))
+	for _, chain := range b.chains {
+		switch c := any(chain).(type) {
+		case VT:
+			chains[chain.ChainSelector()] = c
+		case PT:
+			val := reflect.ValueOf(c)
+			if val.Kind() == reflect.Ptr && !val.IsNil() {
+				elem := val.Elem()
+				if elem.CanInterface() {
+					if v, ok := elem.Interface().(VT); ok {
+						chains[chain.ChainSelector()] = v
+					}
+				}
+			}
+		}
+	}
+
+	return chains
 }

@@ -155,72 +155,116 @@ func TestBlockChainsAllChains(t *testing.T) {
 	}
 }
 
-func TestBlockChainsEVMChains(t *testing.T) {
+func TestBlockChainsGetters(t *testing.T) {
 	t.Parallel()
 
-	chains := buildBlockChains()
+	valueChains := buildBlockChains()
+	pointerChains := buildBlockChainsPointers()
 
-	evmChains := chains.EVMChains()
+	tests := []struct {
+		name        string
+		runTest     func(t *testing.T, chains chain.BlockChains)
+		description string
+	}{
+		{
+			name: "EVMChains",
+			runTest: func(t *testing.T, chains chain.BlockChains) {
+				t.Helper()
+				evmChains := chains.EVMChains()
+				expectedSelectors := []uint64{evmChain1.Selector, evmChain2.Selector}
 
-	assert.Len(t, evmChains, 2, "expected 2 EVM chains")
+				assert.Len(t, evmChains, len(expectedSelectors), "unexpected number of EVM chains")
 
-	_, exists := evmChains[evmChain1.Selector]
-	assert.True(t, exists, "expected EVM chain with selector 1")
+				for _, selector := range expectedSelectors {
+					_, exists := evmChains[selector]
+					assert.True(t, exists, "expected EVM chain with selector %d", selector)
+				}
+			},
+			description: "should return all EVM chains",
+		},
+		{
+			name: "SolanaChains",
+			runTest: func(t *testing.T, chains chain.BlockChains) {
+				t.Helper()
+				solanaChains := chains.SolanaChains()
+				expectedSelectors := []uint64{solanaChain1.Selector}
 
-	_, exists = evmChains[evmChain2.Selector]
-	assert.True(t, exists, "expected EVM chain with selector 3")
-}
+				assert.Len(t, solanaChains, len(expectedSelectors), "unexpected number of Solana chains")
 
-func TestBlockChainsSolanaChains(t *testing.T) {
-	t.Parallel()
+				for _, selector := range expectedSelectors {
+					_, exists := solanaChains[selector]
+					assert.True(t, exists, "expected Solana chain with selector %d", selector)
+				}
+			},
+			description: "should return all Solana chains",
+		},
+		{
+			name: "AptosChains",
+			runTest: func(t *testing.T, chains chain.BlockChains) {
+				t.Helper()
+				aptosChains := chains.AptosChains()
+				expectedSelectors := []uint64{aptosChain1.Selector}
 
-	chains := buildBlockChains()
+				assert.Len(t, aptosChains, len(expectedSelectors), "unexpected number of Aptos chains")
 
-	solanaChains := chains.SolanaChains()
+				for _, selector := range expectedSelectors {
+					_, exists := aptosChains[selector]
+					assert.True(t, exists, "expected Aptos chain with selector %d", selector)
+				}
+			},
+			description: "should return all Aptos chains",
+		},
+		{
+			name: "SuiChains",
+			runTest: func(t *testing.T, chains chain.BlockChains) {
+				t.Helper()
+				suiChains := chains.SuiChains()
+				expectedSelectors := []uint64{suiChain1.Selector}
 
-	assert.Len(t, solanaChains, 1, "expected 1 Solana chain")
+				assert.Len(t, suiChains, len(expectedSelectors), "unexpected number of Sui chains")
 
-	_, exists := solanaChains[solanaChain1.Selector]
-	assert.True(t, exists, "expected Solana chain with selector 2")
-}
+				for _, selector := range expectedSelectors {
+					_, exists := suiChains[selector]
+					assert.True(t, exists, "expected Sui chain with selector %d", selector)
+				}
+			},
+			description: "should return all Sui chains",
+		},
+		{
+			name: "TonChains",
+			runTest: func(t *testing.T, chains chain.BlockChains) {
+				t.Helper()
+				tonChains := chains.TonChains()
+				expectedSelectors := []uint64{tonChain1.Selector}
 
-func TestBlockChainsAptosChains(t *testing.T) {
-	t.Parallel()
+				assert.Len(t, tonChains, len(expectedSelectors), "unexpected number of Ton chains")
 
-	chains := buildBlockChains()
+				for _, selector := range expectedSelectors {
+					_, exists := tonChains[selector]
+					assert.True(t, exists, "expected Ton chain with selector %d", selector)
+				}
+			},
+			description: "should return all Ton chains",
+		},
+	}
 
-	aptosChains := chains.AptosChains()
+	// Run tests for both value and pointer chains
+	chainTypes := []struct {
+		name   string
+		chains chain.BlockChains
+	}{
+		{"value chains", valueChains},
+		{"pointer chains", pointerChains},
+	}
 
-	assert.Len(t, aptosChains, 1, "expected 1 Aptos chain")
-
-	_, exists := aptosChains[aptosChain1.Selector]
-	assert.True(t, exists, "expected Aptos chain with selector 4")
-}
-
-func TestBlockChainsSuiChains(t *testing.T) {
-	t.Parallel()
-
-	chains := buildBlockChains()
-
-	suiChains := chains.SuiChains()
-
-	assert.Len(t, suiChains, 1, "expected 1 Sui chain")
-
-	_, exists := suiChains[suiChain1.Selector]
-	assert.True(t, exists, "expected Sui chain with selector 5")
-}
-
-func TestBlockChainsTonChains(t *testing.T) {
-	t.Parallel()
-
-	chains := buildBlockChains()
-
-	tonChains := chains.TonChains()
-
-	assert.Len(t, tonChains, 1, "expected 1 Ton chain")
-
-	_, exists := tonChains[tonChain1.Selector]
-	assert.True(t, exists, "expected Ton chain with selector 6")
+	for _, tc := range tests {
+		for _, ct := range chainTypes {
+			t.Run(tc.name+"_"+ct.name, func(t *testing.T) {
+				t.Parallel()
+				tc.runTest(t, ct.chains)
+			})
+		}
+	}
 }
 
 func TestBlockChainsListChainSelectors(t *testing.T) {
@@ -322,4 +366,28 @@ func buildBlockChains() chain.BlockChains {
 	})
 
 	return chains
+}
+
+// buildBlockChainsPointers creates a new BlockChains instance with the test chains as pointers.
+func buildBlockChainsPointers() chain.BlockChains {
+	chains := buildBlockChains()
+	pointerChains := make(map[uint64]chain.BlockChain)
+	for selector, c := range chains.All() {
+		switch c := c.(type) {
+		case evm.Chain:
+			pointerChains[selector] = &c
+		case solana.Chain:
+			pointerChains[selector] = &c
+		case aptos.Chain:
+			pointerChains[selector] = &c
+		case sui.Chain:
+			pointerChains[selector] = &c
+		case ton.Chain:
+			pointerChains[selector] = &c
+		default:
+			continue // skip unsupported chains
+		}
+	}
+
+	return chain.NewBlockChains(pointerChains)
 }
