@@ -12,7 +12,7 @@ require (
 	github.com/gagliardetto/solana-go v1.12.0
 	github.com/google/uuid v1.6.0
 	github.com/pattonkan/sui-go v0.1.0
-	github.com/smartcontractkit/chain-selectors v1.0.59
+	github.com/smartcontractkit/chain-selectors v1.0.60
 	github.com/smartcontractkit/chainlink-ccip/chains/solana v0.0.0-20250425163923-16aa375957b7
 	github.com/smartcontractkit/chainlink-common v0.7.0
 	github.com/smartcontractkit/chainlink-protos/job-distributor v0.10.0
@@ -134,7 +134,6 @@ require (
 	github.com/spf13/cast v1.7.1 // indirect
 	github.com/stephenlacy/go-ethereum-hdwallet v0.0.0-20230913225845-a4fa94429863 // indirect
 	github.com/streamingfast/logging v0.0.0-20230608130331-f22c91403091 // indirect
-	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/supranational/blst v0.3.14 // indirect
 	github.com/tidwall/gjson v1.14.4 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
