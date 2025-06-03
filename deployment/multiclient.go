@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"sync"
 	"time"
 
 	"github.com/avast/retry-go/v4"
@@ -66,6 +67,7 @@ type MultiClient struct {
 	RetryConfig RetryConfig
 	lggr        logger.Logger
 	chainName   string
+	mu          sync.RWMutex
 }
 
 // rpcHealthCheck performs a basic health check on the RPC client by calling eth_blockNumber
@@ -334,7 +336,7 @@ func (mc *MultiClient) WaitMined(ctx context.Context, tx *types.Transaction) (*t
 		}
 	}
 
-	for _, client := range append([]*ethclient.Client{mc.Client}, mc.Backups...) {
+	for _, client := range mc.clients() {
 		go waitMined(client, tx)
 	}
 	var receipt *types.Receipt
@@ -355,7 +357,8 @@ func (mc *MultiClient) WaitMined(ctx context.Context, tx *types.Transaction) (*t
 func (mc *MultiClient) retryWithBackups(ctx context.Context, opName string, op func(context.Context, *ethclient.Client) error) error {
 	var err error
 	traceID := uuid.New()
-	for i, client := range append([]*ethclient.Client{mc.Client}, mc.Backups...) {
+
+	for rpcIndex, client := range mc.clients() {
 		retryCount := 0
 		err2 := retry.Do(func() error {
 			timeoutCtx, cancel := ensureTimeout(ctx, mc.RetryConfig.Timeout)
@@ -363,21 +366,24 @@ func (mc *MultiClient) retryWithBackups(ctx context.Context, opName string, op f
 
 			err = op(timeoutCtx, client)
 			if err != nil {
-				mc.lggr.Warnf("traceID %q: chain %q: op: %q: client index %d: failed execution - retryable error '%s'", traceID.String(), mc.chainName, opName, i, MaybeDataErr(err))
+				mc.lggr.Warnf("traceID %q: chain %q: op: %q: client index %d: failed execution - retryable error '%s'", traceID.String(), mc.chainName, opName, rpcIndex, MaybeDataErr(err))
 				return err
 			}
+
+			// If the operation was successful, check if we need to reorder the RPCs
+			mc.reorderRPCs(rpcIndex)
 
 			return nil
 		}, retry.Attempts(mc.RetryConfig.Attempts), retry.Delay(mc.RetryConfig.Delay),
 			retry.OnRetry(func(n uint, err error) { retryCount++ }))
 		if err2 == nil {
 			if retryCount > 0 {
-				mc.lggr.Infof("traceID %q: chain %q: op: %q: client index %d: successfully executed after %d retry", traceID.String(), mc.chainName, opName, i, retryCount)
+				mc.lggr.Infof("traceID %q: chain %q: op: %q: client index %d: successfully executed after %d retry", traceID.String(), mc.chainName, opName, rpcIndex, retryCount)
 			}
 
 			return nil
 		}
-		mc.lggr.Infof("traceID %q: chain %q: op: %q: client index %d: failed, trying next client", traceID.String(), mc.chainName, opName, i)
+		mc.lggr.Infof("traceID %q: chain %q: op: %q: client index %d: failed, trying next client", traceID.String(), mc.chainName, opName, rpcIndex)
 	}
 
 	return errors.Join(err, fmt.Errorf("all backup clients failed for chain %q", mc.chainName))
@@ -430,4 +436,37 @@ func ensureTimeout(parent context.Context, timeout time.Duration) (context.Conte
 
 	// create a new context with the specified timeout
 	return context.WithTimeout(parent, timeout)
+}
+
+// reorderRPCs reorders the RPCs based on the latest call.
+// If the default RPC failed all attempts, it will be moved to the end of the backup list.
+// If backup RPCs also failed, they will be moved to the end of the backup list.
+// If the primary RPC worked, it will remain the first in the list.
+func (mc *MultiClient) reorderRPCs(rpcIndex int) {
+	mc.mu.Lock()
+	defer mc.mu.Unlock()
+
+	if rpcIndex < 1 || len(mc.Backups) == 0 {
+		return // No need to reorder if the first RPC is still the default or we don't have backups
+	}
+
+	// Find the index of the backupRPC
+	newDefaultRPCIndex := rpcIndex - 1
+	newDefaultRPC := mc.Backups[newDefaultRPCIndex]
+
+	// Reorder the failed backups to the end of the list
+	reordered := make([]*ethclient.Client, 0, len(mc.Backups))
+	reordered = append(reordered, mc.Backups[newDefaultRPCIndex+1:]...)
+	reordered = append(reordered, mc.Backups[:newDefaultRPCIndex]...)
+	reordered = append(reordered, mc.Client)
+
+	mc.Backups = reordered
+	mc.Client = newDefaultRPC
+}
+
+func (mc *MultiClient) clients() []*ethclient.Client {
+	mc.mu.RLock()
+	defer mc.mu.RUnlock()
+
+	return append([]*ethclient.Client{mc.Client}, mc.Backups...)
 }
