@@ -13,9 +13,7 @@ import (
 	nodev1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/node"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
-	cldf_aptos "github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos"
 	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
-	cldf_solana "github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 )
@@ -85,40 +83,6 @@ func NewEnvironment(
 		datastore.DefaultMetadata,
 		datastore.DefaultMetadata,
 	],
-	nodeIDs []string,
-	offchain OffchainClient,
-	ctx func() context.Context,
-	secrets OCRSecrets,
-	blockChains chain.BlockChains,
-) *Environment {
-	return &Environment{
-		Name:              name,
-		Logger:            logger,
-		ExistingAddresses: existingAddrs,
-		DataStore:         dataStore,
-		NodeIDs:           nodeIDs,
-		Offchain:          offchain,
-		GetContext:        ctx,
-		OCRSecrets:        secrets,
-		// default to memory reporter as that is the only reporter available for now
-		OperationsBundle: operations.NewBundle(ctx, logger, operations.NewMemoryReporter()),
-		BlockChains:      blockChains,
-	}
-}
-
-// NewCLDFEnvironment creates a new environment.
-// todo: delete this once all consumer are moved to NewEnvironment
-func NewCLDFEnvironment(
-	name string,
-	logger logger.Logger,
-	existingAddrs AddressBook,
-	dataStore datastore.DataStore[
-		datastore.DefaultMetadata,
-		datastore.DefaultMetadata,
-	],
-	chains map[uint64]cldf_evm.Chain,
-	solChains map[uint64]cldf_solana.Chain,
-	aptosChains map[uint64]cldf_aptos.Chain,
 	nodeIDs []string,
 	offchain OffchainClient,
 	ctx func() context.Context,
