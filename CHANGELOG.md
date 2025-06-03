@@ -1,5 +1,13 @@
 # chainlink-deployments-framework
 
+## 0.8.2
+
+### Patch Changes
+
+- [#146](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/146) [`e7804b8`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/e7804b878e63441b9fe9559366fcb2d438877bc1) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - refactor: use chain sel from loop instead of chain.ChainSelector()
+
+- [#137](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/137) [`925f216`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/925f216f2b4dccbc8e0200d9beadb393338ece3d) Thanks [@jkongie](https://github.com/jkongie)! - Fixes Aptos Chain Providers return a Chain pointer instead of value
+
 ## 0.8.1
 
 ### Patch Changes
