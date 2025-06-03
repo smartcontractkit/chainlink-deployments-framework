@@ -443,12 +443,12 @@ func ensureTimeout(parent context.Context, timeout time.Duration) (context.Conte
 // If backup RPCs also failed, they will be moved to the end of the backup list.
 // If the primary RPC worked, it will remain the first in the list.
 func (mc *MultiClient) reorderRPCs(rpcIndex int) {
-	mc.mu.Lock()
-	defer mc.mu.Unlock()
-
 	if rpcIndex < 1 || len(mc.Backups) == 0 {
 		return // No need to reorder if the first RPC is still the default or we don't have backups
 	}
+
+	mc.mu.Lock()
+	defer mc.mu.Unlock()
 
 	// Find the index of the backupRPC
 	newDefaultRPCIndex := rpcIndex - 1
