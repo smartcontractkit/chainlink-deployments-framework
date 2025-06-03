@@ -1,5 +1,17 @@
 # chainlink-deployments-framework
 
+## 0.9.0
+
+### Minor Changes
+
+- [#132](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/132) [`f2929a9`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/f2929a9489f00b67e9c0825bf80af447b505b1bd) Thanks [@DimitriosNaikopoulos](https://github.com/DimitriosNaikopoulos)! - feat: reorder bad RPCs if they fail all retries
+
+### Patch Changes
+
+- [#148](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/148) [`105798d`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/105798d85db65ac8d96fb20247d15e5f10ff22d2) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - remove NewCLDFEnvironment in favour of NewEnvironment
+
+- [#141](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/141) [`c80685e`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/c80685e2099cd04ae43e89292e52294d736bfff7) Thanks [@giogam](https://github.com/giogam)! - feat(datastore): removes Clone requirement for custom metadata types
+
 ## 0.8.2
 
 ### Patch Changes
