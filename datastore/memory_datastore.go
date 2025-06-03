@@ -19,8 +19,7 @@ type Sealer[T any] interface {
 // BaseDataStore is an interface that defines the basic operations for a data store.
 // It is parameterized by the type of address reference store and contract metadata store it uses.
 type BaseDataStore[
-	U any,
-	R AddressRefStore, CM ContractMetadataStore, EM EnvMetadataStore[U],
+	R AddressRefStore, CM ContractMetadataStore, EM EnvMetadataStore,
 ] interface {
 	Addresses() R
 	ContractMetadata() CM
@@ -28,40 +27,40 @@ type BaseDataStore[
 }
 
 // DataStore is an interface that defines the operations for a read-only data store.
-type DataStore[U any] interface {
-	BaseDataStore[U, AddressRefStore, ContractMetadataStore, EnvMetadataStore[U]]
+type DataStore interface {
+	BaseDataStore[AddressRefStore, ContractMetadataStore, EnvMetadataStore]
 }
 
 // MutableDataStore is an interface that defines the operations for a mutable data store.
-type MutableDataStore[U any] interface {
-	Merger[DataStore[U]]
-	Sealer[DataStore[U]]
+type MutableDataStore interface {
+	Merger[DataStore]
+	Sealer[DataStore]
 
-	BaseDataStore[U, MutableAddressRefStore, MutableContractMetadataStore, MutableEnvMetadataStore[U]]
+	BaseDataStore[MutableAddressRefStore, MutableContractMetadataStore, MutableEnvMetadataStore]
 }
 
 // MemoryDataStore is a concrete implementation of the MutableDataStore interface.
-var _ MutableDataStore[DefaultMetadata] = &MemoryDataStore[DefaultMetadata]{}
+var _ MutableDataStore = &MemoryDataStore{}
 
-type MemoryDataStore[EM any] struct {
+type MemoryDataStore struct {
 	AddressRefStore       *MemoryAddressRefStore       `json:"addressRefStore"`
 	ContractMetadataStore *MemoryContractMetadataStore `json:"contractMetadataStore"`
-	EnvMetadataStore      *MemoryEnvMetadataStore[EM]  `json:"envMetadataStore"`
+	EnvMetadataStore      *MemoryEnvMetadataStore      `json:"envMetadataStore"`
 }
 
 // NewMemoryDataStore creates a new instance of MemoryDataStore.
 // NOTE: The instance returned is mutable and can be modified.
-func NewMemoryDataStore[EM any]() *MemoryDataStore[EM] {
-	return &MemoryDataStore[EM]{
+func NewMemoryDataStore() *MemoryDataStore {
+	return &MemoryDataStore{
 		AddressRefStore:       NewMemoryAddressRefStore(),
 		ContractMetadataStore: NewMemoryContractMetadataStore(),
-		EnvMetadataStore:      NewMemoryEnvMetadataStore[EM](),
+		EnvMetadataStore:      NewMemoryEnvMetadataStore(),
 	}
 }
 
 // Seal seals the MemoryDataStore, by returning a new instance of sealedMemoryDataStore.
-func (s *MemoryDataStore[EM]) Seal() DataStore[EM] {
-	return &sealedMemoryDataStore[EM]{
+func (s *MemoryDataStore) Seal() DataStore {
+	return &sealedMemoryDataStore{
 		AddressRefStore:       s.AddressRefStore,
 		ContractMetadataStore: s.ContractMetadataStore,
 		EnvMetadataStore:      s.EnvMetadataStore,
@@ -69,22 +68,22 @@ func (s *MemoryDataStore[EM]) Seal() DataStore[EM] {
 }
 
 // Addresses returns the AddressRefStore of the MemoryDataStore.
-func (s *MemoryDataStore[EM]) Addresses() MutableAddressRefStore {
+func (s *MemoryDataStore) Addresses() MutableAddressRefStore {
 	return s.AddressRefStore
 }
 
 // ContractMetadata returns the ContractMetadataStore of the MemoryDataStore.
-func (s *MemoryDataStore[EM]) ContractMetadata() MutableContractMetadataStore {
+func (s *MemoryDataStore) ContractMetadata() MutableContractMetadataStore {
 	return s.ContractMetadataStore
 }
 
 // EnvMetadata returns the EnvMetadataStore of the MutableEnvMetadataStore.
-func (s *MemoryDataStore[EM]) EnvMetadata() MutableEnvMetadataStore[EM] {
+func (s *MemoryDataStore) EnvMetadata() MutableEnvMetadataStore {
 	return s.EnvMetadataStore
 }
 
 // Merge merges the given mutable data store into the current MemoryDataStore.
-func (s *MemoryDataStore[EM]) Merge(other DataStore[EM]) error {
+func (s *MemoryDataStore) Merge(other DataStore) error {
 	addressRefs, err := other.Addresses().Fetch()
 	if err != nil {
 		return err
@@ -131,26 +130,26 @@ func (s *MemoryDataStore[EM]) Merge(other DataStore[EM]) error {
 
 // SealedMemoryDataStore is a concrete implementation of the DataStore interface.
 // It represents a sealed data store that cannot be modified further.
-var _ DataStore[DefaultMetadata] = &sealedMemoryDataStore[DefaultMetadata]{}
+var _ DataStore = &sealedMemoryDataStore{}
 
-type sealedMemoryDataStore[EM any] struct {
+type sealedMemoryDataStore struct {
 	AddressRefStore       *MemoryAddressRefStore       `json:"addressRefStore"`
 	ContractMetadataStore *MemoryContractMetadataStore `json:"contractMetadataStore"`
-	EnvMetadataStore      *MemoryEnvMetadataStore[EM]  `json:"envMetadataStore"`
+	EnvMetadataStore      *MemoryEnvMetadataStore      `json:"envMetadataStore"`
 }
 
 // Addresses returns the AddressRefStore of the sealedMemoryDataStore.
 // It implements the BaseDataStore interface.
-func (s *sealedMemoryDataStore[EM]) Addresses() AddressRefStore {
+func (s *sealedMemoryDataStore) Addresses() AddressRefStore {
 	return s.AddressRefStore
 }
 
 // ContractMetadata returns the ContractMetadataStore of the sealedMemoryDataStore.
-func (s *sealedMemoryDataStore[EM]) ContractMetadata() ContractMetadataStore {
+func (s *sealedMemoryDataStore) ContractMetadata() ContractMetadataStore {
 	return s.ContractMetadataStore
 }
 
 // EnvMetadata returns the EnvMetadataStore of the sealedMemoryDataStore.
-func (s *sealedMemoryDataStore[EM]) EnvMetadata() EnvMetadataStore[EM] {
+func (s *sealedMemoryDataStore) EnvMetadata() EnvMetadataStore {
 	return s.EnvMetadataStore
 }
