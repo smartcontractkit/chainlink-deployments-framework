@@ -365,7 +365,7 @@ func TestMemoryContractMetadataStore_Fetch(t *testing.T) {
 				require.Equal(t, tt.expectedError, err)
 			} else {
 				require.NoError(t, err)
-				require.Equal(t, len(tt.expectedRecords), len(records), "Expected number of records to match")
+				require.Len(t, records, len(tt.expectedRecords), "Expected number of records to match")
 
 				// Ensure that the records are the same by comparing each field
 				for i := range tt.expectedRecords {

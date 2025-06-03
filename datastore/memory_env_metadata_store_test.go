@@ -48,8 +48,8 @@ func TestMemoryEnvMetadataStore_Get(t *testing.T) {
 			record, err := store.Get()
 			if tt.recordShouldExist {
 				require.NoError(t, err)
-				concrete, err := As[DefaultMetadata](record.Metadata)
-				require.NoError(t, err, "As should not return an error for DefaultMetadata")
+				concrete, convErr := As[DefaultMetadata](record.Metadata)
+				require.NoError(t, convErr, "As should not return an error for DefaultMetadata")
 				require.Equal(t, tt.givenState.Metadata, concrete)
 			} else {
 				require.Equal(t, tt.expectedError, err)
