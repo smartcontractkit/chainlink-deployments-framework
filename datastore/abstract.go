@@ -1,13 +1,5 @@
 package datastore
 
-// Cloneable provides a Clone() method which returns a semi-deep copy of the type.
-type Cloneable[R any] interface {
-	// Clone() returns a semi-deep copy of the type. The implementation should call Clone() on
-	// any nested Cloneable fields, and perform a shallow copy of any slices or maps.
-	// NOTE: Handling non-Cloneable references to Cloneable types is beyond the intended scope of this interface.
-	Clone() R
-}
-
 // Comparable provides an Equals() method which returns true if the two instances are equal, false otherwise.
 type Comparable[T any] interface {
 	// Equals()	returns true if the two instances are equal, false otherwise.
@@ -29,11 +21,6 @@ type Getter[K Comparable[K], R UniqueRecord[K, R]] interface {
 	Get(K) (R, error)
 }
 
-// Record represents a data entry that can be cloned.
-type Record[R any] interface {
-	Cloneable[R]
-}
-
 // PrimaryKeyHolder is an interface for types that can provide a unique identifier key for themselves.
 type PrimaryKeyHolder[K Comparable[K]] interface {
 	// Key() returns the primary key for the implementing type.
@@ -42,7 +29,6 @@ type PrimaryKeyHolder[K Comparable[K]] interface {
 
 // UniqueRecord represents a data entry that is both Cloneable and uniquely identifiable by its primary key.
 type UniqueRecord[K Comparable[K], R PrimaryKeyHolder[K]] interface {
-	Cloneable[R]
 	PrimaryKeyHolder[K]
 }
 
@@ -82,7 +68,7 @@ type MutableStore[K Comparable[K], R UniqueRecord[K, R]] interface {
 }
 
 // UnaryStore is an interface that represents a read-only store that is limited to a single record.
-type UnaryStore[R Record[R]] interface {
+type UnaryStore[R any] interface {
 	// Get returns the record or an error.
 	// if the record exists, the error should be nil.
 	// If the record does not exist, the error should not be nil.
@@ -90,7 +76,7 @@ type UnaryStore[R Record[R]] interface {
 }
 
 // MutableUnaryStore is an interface that represents a mutable store that contains a single record.
-type MutableUnaryStore[R Record[R]] interface {
+type MutableUnaryStore[R any] interface {
 	// Get returns a copy of the record or an error.
 	// If the record exists, the error should be nil.
 	// If the record does not exist, the error should not be nil.

@@ -11,7 +11,7 @@ var _ UniqueRecord[ContractMetadataKey, ContractMetadata[DefaultMetadata]] = Con
 // ContractMetadata is a generic struct that holds the metadata for a contract on a specific chain.
 // It implements the Record interface and is used to store contract metadata in the datastore.
 // The metadata is generic and can be of any type that implements the Cloneable interface.
-type ContractMetadata[M Cloneable[M]] struct {
+type ContractMetadata[M any] struct {
 	// Address is the address of the contract on the chain.
 	Address string `json:"address"`
 	// ChainSelector is the chain-selector of the chain where the contract is deployed.
@@ -23,12 +23,17 @@ type ContractMetadata[M Cloneable[M]] struct {
 
 // Clone creates a copy of the ContractMetadata.
 // The Metadata field is cloned using the Clone method of the Cloneable interface.
-func (r ContractMetadata[M]) Clone() ContractMetadata[M] {
+func (r ContractMetadata[M]) Clone() (ContractMetadata[M], error) {
+	metaClone, err := clone(r.Metadata)
+	if err != nil {
+		return ContractMetadata[M]{}, err
+	}
+
 	return ContractMetadata[M]{
 		ChainSelector: r.ChainSelector,
 		Address:       r.Address,
-		Metadata:      r.Metadata.Clone(),
-	}
+		Metadata:      metaClone,
+	}, nil
 }
 
 // Key returns the ContractMetadataKey for the ContractMetadata.

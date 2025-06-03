@@ -13,7 +13,8 @@ func TestEnvMetadata_Clone(t *testing.T) {
 		Metadata: DefaultMetadata{Data: "test-value"},
 	}
 
-	cloned := original.Clone()
+	cloned, err := original.Clone()
+	require.NoError(t, err, "Clone should not return an error")
 
 	require.Equal(t, original.Metadata, cloned.Metadata)
 	require.NotSame(t, &original.Metadata, &cloned.Metadata) // Ensure Metadata is a deep copy

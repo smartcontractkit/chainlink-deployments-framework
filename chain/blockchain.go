@@ -190,17 +190,17 @@ func (b BlockChains) ListChainSelectors(options ...ChainSelectorsOption) []uint6
 // It handles both value and pointer types, allowing for flexibility in how chains are stored.
 func getChainsByType[VT any, PT any](b BlockChains) map[uint64]VT {
 	chains := make(map[uint64]VT, len(b.chains))
-	for _, chain := range b.chains {
+	for sel, chain := range b.chains {
 		switch c := any(chain).(type) {
 		case VT:
-			chains[chain.ChainSelector()] = c
+			chains[sel] = c
 		case PT:
 			val := reflect.ValueOf(c)
 			if val.Kind() == reflect.Ptr && !val.IsNil() {
 				elem := val.Elem()
 				if elem.CanInterface() {
 					if v, ok := elem.Interface().(VT); ok {
-						chains[chain.ChainSelector()] = v
+						chains[sel] = v
 					}
 				}
 			}
