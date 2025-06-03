@@ -336,10 +336,7 @@ func (mc *MultiClient) WaitMined(ctx context.Context, tx *types.Transaction) (*t
 		}
 	}
 
-	mc.mu.RLock()
-	defer mc.mu.RUnlock()
-
-	for _, client := range append([]*ethclient.Client{mc.Client}, mc.Backups...) {
+	for _, client := range mc.clients() {
 		go waitMined(client, tx)
 	}
 	var receipt *types.Receipt
@@ -361,10 +358,7 @@ func (mc *MultiClient) retryWithBackups(ctx context.Context, opName string, op f
 	var err error
 	traceID := uuid.New()
 
-	mc.mu.RLock()
-	defer mc.mu.RUnlock()
-
-	for rpcIndex, client := range append([]*ethclient.Client{mc.Client}, mc.Backups...) {
+	for rpcIndex, client := range mc.clients() {
 		retryCount := 0
 		err2 := retry.Do(func() error {
 			timeoutCtx, cancel := ensureTimeout(ctx, mc.RetryConfig.Timeout)
@@ -468,4 +462,11 @@ func (mc *MultiClient) reorderRPCs(rpcIndex int) {
 
 	mc.Backups = reordered
 	mc.Client = newDefaultRPC
+}
+
+func (mc *MultiClient) clients() []*ethclient.Client {
+	mc.mu.RLock()
+	defer mc.mu.RUnlock()
+
+	return append([]*ethclient.Client{mc.Client}, mc.Backups...)
 }
