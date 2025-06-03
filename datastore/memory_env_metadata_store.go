@@ -5,17 +5,17 @@ import (
 )
 
 // EnvMetadataStore is an interface that defines the methods for a store that manages environment metadata.
-type EnvMetadataStore[M Cloneable[M]] interface {
+type EnvMetadataStore[M any] interface {
 	UnaryStore[EnvMetadata[M]]
 }
 
 // MutableEnvMetadataStore is an interface that defines the methods for a mutable store that manages environment metadata.
-type MutableEnvMetadataStore[M Cloneable[M]] interface {
+type MutableEnvMetadataStore[M any] interface {
 	MutableUnaryStore[EnvMetadata[M]]
 }
 
 // MemoryEnvMetadataStore is a concrete implementation of the EnvMetadataStore interface.
-type MemoryEnvMetadataStore[M Cloneable[M]] struct {
+type MemoryEnvMetadataStore[M any] struct {
 	mu     sync.RWMutex
 	Record *EnvMetadata[M] `json:"record"`
 }
@@ -27,7 +27,7 @@ var _ EnvMetadataStore[DefaultMetadata] = &MemoryEnvMetadataStore[DefaultMetadat
 var _ MutableEnvMetadataStore[DefaultMetadata] = &MemoryEnvMetadataStore[DefaultMetadata]{}
 
 // NewMemoryEnvMetadataStore creates a new MemoryEnvMetadataStore instance.
-func NewMemoryEnvMetadataStore[M Cloneable[M]]() *MemoryEnvMetadataStore[M] {
+func NewMemoryEnvMetadataStore[M any]() *MemoryEnvMetadataStore[M] {
 	return &MemoryEnvMetadataStore[M]{Record: nil}
 }
 
@@ -42,7 +42,7 @@ func (s *MemoryEnvMetadataStore[M]) Get() (EnvMetadata[M], error) {
 		return EnvMetadata[M]{}, ErrEnvMetadataNotSet
 	}
 
-	return s.Record.Clone(), nil
+	return s.Record.Clone()
 }
 
 // Set sets the EnvMetadata record in the store. If the record already exists, it will be replaced.

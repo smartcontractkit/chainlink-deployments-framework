@@ -6,19 +6,19 @@ import (
 
 // ContractMetadataStore is an interface that represents an immutable view over a set
 // of ContractMetadata records identified by ContractMetadataKey.
-type ContractMetadataStore[M Cloneable[M]] interface {
+type ContractMetadataStore[M any] interface {
 	Store[ContractMetadataKey, ContractMetadata[M]]
 }
 
 // MutableContractMetadataStore is an interface that represents a mutable ContractMetadataStore
 // of ContractMetadata records identified by ContractMetadataKey.
-type MutableContractMetadataStore[M Cloneable[M]] interface {
+type MutableContractMetadataStore[M any] interface {
 	MutableStore[ContractMetadataKey, ContractMetadata[M]]
 }
 
 // MemoryContractMetadataStore is an in-memory implementation of the ContractMetadataStore and
 // MutableContractMetadataStore interfaces.
-type MemoryContractMetadataStore[M Cloneable[M]] struct {
+type MemoryContractMetadataStore[M any] struct {
 	mu      sync.RWMutex
 	Records []ContractMetadata[M] `json:"records"`
 }
@@ -31,7 +31,7 @@ var _ MutableContractMetadataStore[DefaultMetadata] = &MemoryContractMetadataSto
 
 // NewMemoryContractMetadataStore creates a new MemoryContractMetadataStore instance.
 // It is a generic function that takes a type parameter M which must implement the Cloneable interface.
-func NewMemoryContractMetadataStore[M Cloneable[M]]() *MemoryContractMetadataStore[M] {
+func NewMemoryContractMetadataStore[M any]() *MemoryContractMetadataStore[M] {
 	return &MemoryContractMetadataStore[M]{Records: []ContractMetadata[M]{}}
 }
 
@@ -45,7 +45,7 @@ func (s *MemoryContractMetadataStore[M]) Get(key ContractMetadataKey) (ContractM
 		return ContractMetadata[M]{}, ErrContractMetadataNotFound
 	}
 
-	return s.Records[idx].Clone(), nil
+	return s.Records[idx].Clone()
 }
 
 // Fetch returns a copy of all ContractMetadata in the store.
@@ -55,7 +55,11 @@ func (s *MemoryContractMetadataStore[M]) Fetch() ([]ContractMetadata[M], error) 
 
 	records := []ContractMetadata[M]{}
 	for _, record := range s.Records {
-		records = append(records, record.Clone())
+		clone, err := record.Clone()
+		if err != nil {
+			return nil, err
+		}
+		records = append(records, clone)
 	}
 
 	return records, nil

@@ -15,7 +15,8 @@ func TestContractMetadata_Clone(t *testing.T) {
 		Metadata:      DefaultMetadata{Data: "test data"},
 	}
 
-	cloned := original.Clone()
+	cloned, err := original.Clone()
+	require.NoError(t, err, "Clone should not return an error")
 
 	require.Equal(t, original.ChainSelector, cloned.ChainSelector)
 	require.Equal(t, original.Address, cloned.Address)

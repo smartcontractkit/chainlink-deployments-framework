@@ -5,17 +5,21 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/stretchr/testify/require"
+
+	chain_selectors "github.com/smartcontractkit/chain-selectors"
 )
 
 // CustomMetadata is a placeholder type for testing purposes.
 type CustomMetadata struct {
-	Field string `json:"field"`
+	ChainSelector uint64 `json:"chain_selector"`
+	Field         string `json:"field"`
 }
 
 // Clone creates a deep copy of CustomMetadata.
 func (cm CustomMetadata) Clone() CustomMetadata {
 	return CustomMetadata{
-		Field: cm.Field,
+		Field:         cm.Field,
+		ChainSelector: cm.ChainSelector,
 	}
 }
 
@@ -45,12 +49,12 @@ func TestToDefault(t *testing.T) {
 				err = ds.ContractMetadata().Add(ContractMetadata[CustomMetadata]{
 					ChainSelector: 1,
 					Address:       "contract1",
-					Metadata:      CustomMetadata{Field: "value1"},
+					Metadata:      CustomMetadata{Field: "value1", ChainSelector: chain_selectors.APTOS_MAINNET.Selector},
 				})
 				require.NoError(t, err)
 
 				err = ds.EnvMetadata().Set(EnvMetadata[CustomMetadata]{
-					Metadata: CustomMetadata{Field: "envValue1"},
+					Metadata: CustomMetadata{Field: "envValue1", ChainSelector: chain_selectors.APTOS_MAINNET.Selector},
 				})
 				require.NoError(t, err)
 
@@ -75,7 +79,7 @@ func TestToDefault(t *testing.T) {
 							ChainSelector: 1,
 							Address:       "contract1",
 							Metadata: DefaultMetadata{
-								Data: `{"field":"value1"}`,
+								Data: `{"chain_selector":4741433654826277614,"field":"value1"}`,
 							},
 						},
 					},
@@ -83,7 +87,7 @@ func TestToDefault(t *testing.T) {
 				EnvMetadataStore: &MemoryEnvMetadataStore[DefaultMetadata]{
 					Record: &EnvMetadata[DefaultMetadata]{
 						Metadata: DefaultMetadata{
-							Data: `{"field":"envValue1"}`,
+							Data: `{"chain_selector":4741433654826277614,"field":"envValue1"}`,
 						},
 					},
 				},
@@ -133,14 +137,14 @@ func TestFromDefault(t *testing.T) {
 					ChainSelector: 1,
 					Address:       "contract1",
 					Metadata: DefaultMetadata{
-						Data: `{"field":"value1"}`,
+						Data: `{"field":"value1","chain_selector":4741433654826277614}`,
 					},
 				})
 				require.NoError(t, err)
 
 				err = ds.EnvMetadata().Set(EnvMetadata[DefaultMetadata]{
 					Metadata: DefaultMetadata{
-						Data: `{"field":"envValue1"}`,
+						Data: `{"field":"envValue1","chain_selector":4741433654826277614}`,
 					},
 				})
 				require.NoError(t, err)
@@ -165,13 +169,13 @@ func TestFromDefault(t *testing.T) {
 						{
 							ChainSelector: 1,
 							Address:       "contract1",
-							Metadata:      CustomMetadata{Field: "value1"},
+							Metadata:      CustomMetadata{Field: "value1", ChainSelector: chain_selectors.APTOS_MAINNET.Selector},
 						},
 					},
 				},
 				EnvMetadataStore: &MemoryEnvMetadataStore[CustomMetadata]{
 					Record: &EnvMetadata[CustomMetadata]{
-						Metadata: CustomMetadata{Field: "envValue1"},
+						Metadata: CustomMetadata{Field: "envValue1", ChainSelector: chain_selectors.APTOS_MAINNET.Selector},
 					},
 				},
 			},
@@ -191,4 +195,20 @@ func TestFromDefault(t *testing.T) {
 			require.Equal(t, tt.expected, customStore)
 		})
 	}
+}
+
+func TestAs(t *testing.T) {
+	t.Parallel()
+
+	// create a CustomMetadata instance
+	orig := CustomMetadata{
+		Field:         "test",
+		ChainSelector: chain_selectors.APTOS_MAINNET.Selector,
+	}
+
+	// put it in an `any` type and use As to convert it back
+	var a any = orig
+	typed, err := As[CustomMetadata](a)
+	require.NoError(t, err)
+	require.Equal(t, orig, typed)
 }

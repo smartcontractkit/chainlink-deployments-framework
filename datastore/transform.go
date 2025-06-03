@@ -9,7 +9,7 @@ import (
 // ToDefault is a utility function that converts a DataStore with domain specific
 // metadata types into a DataStore with DefaultMetadata types.
 // NOTE: It is assumed that the domain specific metadata types are JSON serializable.
-func ToDefault[CM Cloneable[CM], EM Cloneable[EM]](
+func ToDefault[CM any, EM any](
 	dataStore DataStore[CM, EM],
 ) (MutableDataStore[DefaultMetadata, DefaultMetadata], error) {
 	converted := NewMemoryDataStore[DefaultMetadata, DefaultMetadata]()
@@ -90,7 +90,7 @@ func ToDefault[CM Cloneable[CM], EM Cloneable[EM]](
 // FromDefault is a utility function that converts a DataStore with DefaultMetadata types
 // into a DataStore with domain specific metadata types.
 // NOTE: It is assumed that the domain specific metadata types are JSON deserializable.
-func FromDefault[CM Cloneable[CM], EM Cloneable[EM]](
+func FromDefault[CM any, EM any](
 	defaultStore DataStore[DefaultMetadata, DefaultMetadata],
 ) (DataStore[CM, EM], error) {
 	converted := NewMemoryDataStore[CM, EM]()
@@ -165,4 +165,19 @@ func FromDefault[CM Cloneable[CM], EM Cloneable[EM]](
 	}
 
 	return converted.Seal(), nil
+}
+
+// As is a utility function that converts a source value of any type to a destination type T.
+// It uses JSON marshaling and unmarshaling to perform the conversion.
+func As[T any](src any) (T, error) {
+	var zero T
+	bytes, err := json.Marshal(src)
+	if err != nil {
+		return zero, err
+	}
+
+	var dst T
+	err = json.Unmarshal(bytes, &dst)
+
+	return dst, err
 }
