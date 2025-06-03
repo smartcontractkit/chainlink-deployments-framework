@@ -351,15 +351,15 @@ func TestContractMetadataByChainSelector(t *testing.T) {
 	t.Parallel()
 
 	var (
-		recordOne = ContractMetadata[DefaultMetadata]{
+		recordOne = ContractMetadata{
 			ChainSelector: 1,
 			Metadata:      DefaultMetadata{Data: "Record1"},
 		}
-		recordTwo = ContractMetadata[DefaultMetadata]{
+		recordTwo = ContractMetadata{
 			ChainSelector: 2,
 			Metadata:      DefaultMetadata{Data: "Record2"},
 		}
-		recordThree = ContractMetadata[DefaultMetadata]{
+		recordThree = ContractMetadata{
 			ChainSelector: 1,
 			Metadata:      DefaultMetadata{Data: "Record3"},
 		}
@@ -367,32 +367,32 @@ func TestContractMetadataByChainSelector(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		givenState     []ContractMetadata[DefaultMetadata]
+		givenState     []ContractMetadata
 		giveChain      uint64
-		expectedResult []ContractMetadata[DefaultMetadata]
+		expectedResult []ContractMetadata
 	}{
 		{
 			name: "success: returns records with given chain",
-			givenState: []ContractMetadata[DefaultMetadata]{
+			givenState: []ContractMetadata{
 				recordOne,
 				recordTwo,
 				recordThree,
 			},
 			giveChain: 1,
-			expectedResult: []ContractMetadata[DefaultMetadata]{
+			expectedResult: []ContractMetadata{
 				recordOne,
 				recordThree,
 			},
 		},
 		{
 			name: "success: returns no records with given chain",
-			givenState: []ContractMetadata[DefaultMetadata]{
+			givenState: []ContractMetadata{
 				recordOne,
 				recordTwo,
 				recordThree,
 			},
 			giveChain:      3,
-			expectedResult: []ContractMetadata[DefaultMetadata]{},
+			expectedResult: []ContractMetadata{},
 		},
 	}
 
@@ -400,7 +400,7 @@ func TestContractMetadataByChainSelector(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			filter := ContractMetadataByChainSelector[DefaultMetadata](tt.giveChain)
+			filter := ContractMetadataByChainSelector(tt.giveChain)
 			filteredRecords := filter(tt.givenState)
 			assert.Equal(t, tt.expectedResult, filteredRecords)
 		})

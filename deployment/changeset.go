@@ -115,7 +115,7 @@ type ChangesetOutput struct {
 	// be aware that you may encounter CI failures due to linting errors.
 	// To work around this, you can disable the linter for that specific line using the //nolint directive.
 	AddressBook AddressBook
-	DataStore   datastore.MutableDataStore[datastore.DefaultMetadata, datastore.DefaultMetadata]
+	DataStore   datastore.MutableDataStore[datastore.DefaultMetadata]
 	// Reports are populated by the Operations API with the
 	// results of the operations executed in the changeset.
 	Reports []operations.Report[any, any]

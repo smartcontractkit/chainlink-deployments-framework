@@ -61,10 +61,7 @@ type Environment struct {
 	// be aware that you may encounter CI failures due to linting errors.
 	// To work around this, you can disable the linter for that specific line using the //nolint directive.
 	ExistingAddresses AddressBook
-	DataStore         datastore.DataStore[
-		datastore.DefaultMetadata,
-		datastore.DefaultMetadata,
-	]
+	DataStore         datastore.DataStore[datastore.DefaultMetadata]
 
 	NodeIDs    []string
 	Offchain   OffchainClient
@@ -81,10 +78,7 @@ func NewEnvironment(
 	name string,
 	logger logger.Logger,
 	existingAddrs AddressBook,
-	dataStore datastore.DataStore[
-		datastore.DefaultMetadata,
-		datastore.DefaultMetadata,
-	],
+	dataStore datastore.DataStore[datastore.DefaultMetadata],
 	nodeIDs []string,
 	offchain OffchainClient,
 	ctx func() context.Context,
@@ -112,10 +106,7 @@ func NewCLDFEnvironment(
 	name string,
 	logger logger.Logger,
 	existingAddrs AddressBook,
-	dataStore datastore.DataStore[
-		datastore.DefaultMetadata,
-		datastore.DefaultMetadata,
-	],
+	dataStore datastore.DataStore[datastore.DefaultMetadata],
 	chains map[uint64]cldf_evm.Chain,
 	solChains map[uint64]cldf_solana.Chain,
 	aptosChains map[uint64]cldf_aptos.Chain,
@@ -147,10 +138,7 @@ func (e Environment) Clone() Environment {
 		panic(fmt.Sprintf("failed to copy address book: %v", err))
 	}
 
-	ds := datastore.NewMemoryDataStore[
-		datastore.DefaultMetadata,
-		datastore.DefaultMetadata,
-	]()
+	ds := datastore.NewMemoryDataStore[datastore.DefaultMetadata]()
 	if e.DataStore != nil {
 		if err := ds.Merge(e.DataStore); err != nil {
 			panic(fmt.Sprintf("failed to copy datastore: %v", err))
