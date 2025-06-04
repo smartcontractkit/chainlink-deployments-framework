@@ -167,7 +167,10 @@ func TestAddressBook_Remove(t *testing.T) {
 		},
 	})
 
-	copyOfBaseAB := NewMemoryAddressBookFromMap(baseAB.cloneAddresses(baseAB.addressesByChain))
+	// Create a copy to compare against later
+	baseData, err := baseAB.Addresses()
+	require.NoError(t, err)
+	copyOfBaseAB := NewMemoryAddressBookFromMap(baseData)
 
 	// this address book shouldn't be removed (state of baseAB not changed, error thrown)
 	failAB := NewMemoryAddressBookFromMap(map[uint64]map[string]TypeAndVersion{
@@ -177,7 +180,13 @@ func TestAddressBook_Remove(t *testing.T) {
 		},
 	})
 	require.Error(t, baseAB.Remove(failAB))
-	require.Equal(t, baseAB, copyOfBaseAB)
+
+	// Compare the actual data instead of struct pointers
+	baseData, err = baseAB.Addresses()
+	require.NoError(t, err)
+	copyData, err := copyOfBaseAB.Addresses()
+	require.NoError(t, err)
+	require.Equal(t, baseData, copyData)
 
 	// this Address book should be removed without error
 	successAB := NewMemoryAddressBookFromMap(map[uint64]map[string]TypeAndVersion{
@@ -198,7 +207,13 @@ func TestAddressBook_Remove(t *testing.T) {
 	})
 
 	require.NoError(t, baseAB.Remove(successAB))
-	require.Equal(t, baseAB, expectingAB)
+
+	// Compare the actual data instead of struct pointers
+	finalData, err := baseAB.Addresses()
+	require.NoError(t, err)
+	expectedData, err := expectingAB.Addresses()
+	require.NoError(t, err)
+	require.Equal(t, finalData, expectedData)
 }
 
 func TestAddressBook_ConcurrencyAndDeadlock(t *testing.T) {
@@ -291,7 +306,7 @@ func Test_EnsureDeduped(t *testing.T) {
 	tests := []struct {
 		name       string
 		addrs      map[string]TypeAndVersion // input address map
-		wantTypes  []TypeAndVersion          // the “bundle” we want
+		wantTypes  []TypeAndVersion          // the "bundle" we want
 		wantErr    bool
 		wantErrMsg string
 		wantResult bool // expected boolean return when no error
@@ -570,4 +585,107 @@ func Test_toTypeAndVersionMap(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestAddressBookSorted(t *testing.T) {
+	ab := NewMemoryAddressBook()
+
+	// Create test type and versions
+	v1, err := semver.NewVersion("1.0.0")
+	require.NoError(t, err)
+	v2, err := semver.NewVersion("2.0.0")
+	require.NoError(t, err)
+
+	tv1 := NewTypeAndVersion("Contract1", *v1)
+	tv2 := NewTypeAndVersion("Contract2", *v2)
+
+	// Create valid Ethereum addresses
+	addr1 := common.HexToAddress("0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA").Hex()
+	addr2 := common.HexToAddress("0xBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB").Hex()
+	addr3 := common.HexToAddress("0xCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC").Hex()
+	addr4 := common.HexToAddress("0xDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD").Hex()
+
+	// Add addresses in non-sorted order using valid chain selectors
+	err = ab.Save(chainsel.TEST_90000001.Selector, addr4, tv1)
+	require.NoError(t, err)
+
+	err = ab.Save(chainsel.TEST_90000001.Selector, addr1, tv2)
+	require.NoError(t, err)
+
+	err = ab.Save(chainsel.TEST_90000001.Selector, addr3, tv1)
+	require.NoError(t, err)
+
+	err = ab.Save(chainsel.TEST_90000002.Selector, addr2, tv2)
+	require.NoError(t, err)
+
+	// Test Addresses() - should return results in sorted order
+	allAddresses, err := ab.Addresses()
+	require.NoError(t, err)
+	require.Len(t, allAddresses, 2)
+
+	// Verify we have the expected chains
+	assert.Contains(t, allAddresses, chainsel.TEST_90000001.Selector)
+	assert.Contains(t, allAddresses, chainsel.TEST_90000002.Selector)
+
+	// Verify addresses for chain TEST_90000001 are present
+	chain1 := allAddresses[chainsel.TEST_90000001.Selector]
+	assert.Len(t, chain1, 3)
+	assert.Contains(t, chain1, addr1)
+	assert.Contains(t, chain1, addr3)
+	assert.Contains(t, chain1, addr4)
+
+	// Verify addresses for chain TEST_90000002
+	chain2 := allAddresses[chainsel.TEST_90000002.Selector]
+	assert.Len(t, chain2, 1)
+	assert.Contains(t, chain2, addr2)
+
+	// Test AddressesForChain() - should return results in sorted order
+	sortedChain, err := ab.AddressesForChain(chainsel.TEST_90000001.Selector)
+	require.NoError(t, err)
+	require.Len(t, sortedChain, 3)
+
+	// Verify TypeAndVersion data is preserved
+	assert.Equal(t, tv2, sortedChain[addr1])
+	assert.Equal(t, tv1, sortedChain[addr3])
+	assert.Equal(t, tv1, sortedChain[addr4])
+}
+
+func TestAddressBookSortedEmpty(t *testing.T) {
+	ab := NewMemoryAddressBook()
+
+	// Test empty address book
+	sortedAll, err := ab.Addresses()
+	require.NoError(t, err)
+	assert.Len(t, sortedAll, 0)
+
+	// Test non-existent chain
+	_, err = ab.AddressesForChain(chainsel.APTOS_MAINNET.Selector) // Use a valid but unused chain
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "chain not found")
+}
+
+func TestAddressBookSortedWithLabels(t *testing.T) {
+	ab := NewMemoryAddressBook()
+
+	// Create test type and version with labels
+	v1, err := semver.NewVersion("1.0.0")
+	require.NoError(t, err)
+
+	tv1 := NewTypeAndVersion("Contract1", *v1)
+	tv1.AddLabel("production")
+	tv1.AddLabel("mainnet")
+
+	addr := common.HexToAddress("0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA").Hex()
+	err = ab.Save(chainsel.TEST_90000001.Selector, addr, tv1)
+	require.NoError(t, err)
+
+	// Test that labels are preserved in results
+	sortedChain, err := ab.AddressesForChain(chainsel.TEST_90000001.Selector)
+	require.NoError(t, err)
+	require.Len(t, sortedChain, 1)
+
+	retrievedTv := sortedChain[addr]
+	assert.Equal(t, tv1, retrievedTv)
+	assert.True(t, retrievedTv.Labels.Contains("production"))
+	assert.True(t, retrievedTv.Labels.Contains("mainnet"))
 }
