@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.10.0
+
+### Minor Changes
+
+- [#156](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/156) [`e92e849`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/e92e8498d3276d210cbf3e4383deb99e26d82718) Thanks [@bytesizedroll](https://github.com/bytesizedroll)! - Added custom JSON marshaling methods to AddressBookMap and AddressesByChain types to ensure deterministic JSON output with chain selectors ordered numerically and addresses ordered alphabetically (case-insensitive).
+
 ## 0.9.1
 
 ### Patch Changes
