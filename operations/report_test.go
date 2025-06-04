@@ -133,8 +133,16 @@ func Test_typeReport(t *testing.T) {
 		ChildOperationReports: []string{uuid.New().String()},
 	}
 
-	_, ok := typeReport[map[string]interface{}, float64](report)
+	res, ok := typeReport[map[string]interface{}, float64](report)
 	assert.True(t, ok)
+	assert.Equal(t, "1", res.ID)
+	assert.Equal(t, Definition{}, res.Def)
+	assert.Equal(t, map[string]interface{}{"a": float64(1)}, res.Input)
+	assert.InEpsilon(t, float64(2), res.Output, 0)
+	assert.Equal(t, &now, res.Timestamp)
+	assert.Nil(t, res.Err)
+	assert.Len(t, res.ChildOperationReports, 1)
+	assert.Equal(t, report.ChildOperationReports[0], res.ChildOperationReports[0])
 
 	// supports unmarshalling into a different type as long it is compatible
 	_, ok = typeReport[Input, int](report)
