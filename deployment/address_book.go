@@ -7,9 +7,10 @@ import (
 	"sync"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/emirpasic/gods/maps/treemap"
+	"github.com/emirpasic/gods/utils"
 	"github.com/ethereum/go-ethereum/common"
 	chainsel "github.com/smartcontractkit/chain-selectors"
-	"golang.org/x/exp/maps"
 )
 
 var (
@@ -103,6 +104,7 @@ func NewTypeAndVersion(t ContractType, v semver.Version) TypeAndVersion {
 // chains. It is family agnostic as the keys are chain selectors.
 // We store rather than derive typeAndVersion as some contracts do not support it.
 // For ethereum addresses are always stored in EIP55 format.
+// All methods return results in sorted order for consistent behavior.
 type AddressBook interface {
 	Save(chainSelector uint64, address string, tv TypeAndVersion) error
 	Addresses() (map[uint64]map[string]TypeAndVersion, error)
@@ -115,7 +117,8 @@ type AddressBook interface {
 type AddressesByChain map[uint64]map[string]TypeAndVersion
 
 type AddressBookMap struct {
-	addressesByChain AddressesByChain
+	// Use TreeMap to maintain sorted order automatically
+	addressesByChain *treemap.Map // map[uint64]*treemap.Map[string]TypeAndVersion
 	mtx              sync.RWMutex
 }
 
@@ -143,14 +146,19 @@ func (m *AddressBookMap) save(chainSelector uint64, address string, typeAndVersi
 		return errors.New("type cannot be empty")
 	}
 
-	if _, exists := m.addressesByChain[chainSelector]; !exists {
-		// First time chain add, create map
-		m.addressesByChain[chainSelector] = make(map[string]TypeAndVersion)
+	// Get or create the TreeMap for this chain
+	chainAddresses, exists := m.addressesByChain.Get(chainSelector)
+	if !exists {
+		// First time chain add, create TreeMap with string comparator for sorted addresses
+		chainAddresses = treemap.NewWithStringComparator()
+		m.addressesByChain.Put(chainSelector, chainAddresses)
 	}
-	if _, exists := m.addressesByChain[chainSelector][address]; exists {
+
+	chainMap := chainAddresses.(*treemap.Map)
+	if _, exists := chainMap.Get(address); exists {
 		return fmt.Errorf("address %s already exists for chain %d", address, chainSelector)
 	}
-	m.addressesByChain[chainSelector][address] = typeAndVersion
+	chainMap.Put(address, typeAndVersion)
 
 	return nil
 }
@@ -168,10 +176,27 @@ func (m *AddressBookMap) Addresses() (map[uint64]map[string]TypeAndVersion, erro
 	m.mtx.RLock()
 	defer m.mtx.RUnlock()
 
-	// maps are mutable and pass via a pointer
-	// creating a copy of the map to prevent concurrency
-	// read and changes outside object-bound
-	return m.cloneAddresses(m.addressesByChain), nil
+	result := make(map[uint64]map[string]TypeAndVersion)
+
+	// Iterate through chains in sorted order (TreeMap automatically sorts by key)
+	it := m.addressesByChain.Iterator()
+	for it.Next() {
+		chainSelector := it.Key().(uint64)
+		chainMap := it.Value().(*treemap.Map)
+
+		// Convert TreeMap to regular map for return value
+		addresses := make(map[string]TypeAndVersion)
+		chainIt := chainMap.Iterator()
+		for chainIt.Next() {
+			address := chainIt.Key().(string)
+			tv := chainIt.Value().(TypeAndVersion)
+			addresses[address] = tv
+		}
+
+		result[chainSelector] = addresses
+	}
+
+	return result, nil
 }
 
 func (m *AddressBookMap) AddressesForChain(chainSelector uint64) (map[string]TypeAndVersion, error) {
@@ -183,14 +208,23 @@ func (m *AddressBookMap) AddressesForChain(chainSelector uint64) (map[string]Typ
 	m.mtx.RLock()
 	defer m.mtx.RUnlock()
 
-	if _, exists := m.addressesByChain[chainSelector]; !exists {
+	chainAddresses, exists := m.addressesByChain.Get(chainSelector)
+	if !exists {
 		return nil, fmt.Errorf("chain selector %d: %w", chainSelector, ErrChainNotFound)
 	}
 
-	// maps are mutable and pass via a pointer
-	// creating a copy of the map to prevent concurrency
-	// read and changes outside object-bound
-	return maps.Clone(m.addressesByChain[chainSelector]), nil
+	chainMap := chainAddresses.(*treemap.Map)
+	result := make(map[string]TypeAndVersion)
+
+	// Iterate through addresses in sorted order
+	it := chainMap.Iterator()
+	for it.Next() {
+		address := it.Key().(string)
+		tv := it.Value().(TypeAndVersion)
+		result[address] = tv
+	}
+
+	return result, nil
 }
 
 // Merge will merge the addresses from another address book into this one.
@@ -229,30 +263,28 @@ func (m *AddressBookMap) Remove(ab AddressBook) error {
 	// State of m.addressesByChain storage must not be changed in case of an error
 	// need to do double iteration over the address book. First validation, second actual deletion
 	for chainSelector, chainAddresses := range addresses {
+		chainMap, exists := m.addressesByChain.Get(chainSelector)
+		if !exists {
+			return errors.New("AddressBookMap does not contain chain selector from the given address book")
+		}
+
+		treeMap := chainMap.(*treemap.Map)
 		for address := range chainAddresses {
-			if _, exists := m.addressesByChain[chainSelector][address]; !exists {
+			if _, exists := treeMap.Get(address); !exists {
 				return errors.New("AddressBookMap does not contain address from the given address book")
 			}
 		}
 	}
 
 	for chainSelector, chainAddresses := range addresses {
+		chainMap, _ := m.addressesByChain.Get(chainSelector)
+		treeMap := chainMap.(*treemap.Map)
 		for address := range chainAddresses {
-			delete(m.addressesByChain[chainSelector], address)
+			treeMap.Remove(address)
 		}
 	}
 
 	return nil
-}
-
-// cloneAddresses creates a deep copy of map[uint64]map[string]TypeAndVersion object
-func (m *AddressBookMap) cloneAddresses(input map[uint64]map[string]TypeAndVersion) map[uint64]map[string]TypeAndVersion {
-	result := make(map[uint64]map[string]TypeAndVersion)
-	for chainSelector, chainAddresses := range input {
-		result[chainSelector] = maps.Clone(chainAddresses)
-	}
-
-	return result
 }
 
 // TODO: Maybe could add an environment argument
@@ -260,14 +292,26 @@ func (m *AddressBookMap) cloneAddresses(input map[uint64]map[string]TypeAndVersi
 // for further safety?
 func NewMemoryAddressBook() *AddressBookMap {
 	return &AddressBookMap{
-		addressesByChain: make(map[uint64]map[string]TypeAndVersion),
+		// Use TreeMap with uint64 comparator to keep chains sorted
+		addressesByChain: treemap.NewWith(utils.UInt64Comparator),
 	}
 }
 
 func NewMemoryAddressBookFromMap(addressesByChain map[uint64]map[string]TypeAndVersion) *AddressBookMap {
-	return &AddressBookMap{
-		addressesByChain: addressesByChain,
+	ab := &AddressBookMap{
+		addressesByChain: treemap.NewWith(utils.UInt64Comparator),
 	}
+
+	// Convert the input map to TreeMaps
+	for chainSelector, addresses := range addressesByChain {
+		chainMap := treemap.NewWithStringComparator()
+		for address, tv := range addresses {
+			chainMap.Put(address, tv)
+		}
+		ab.addressesByChain.Put(chainSelector, chainMap)
+	}
+
+	return ab
 }
 
 // SearchAddressBook search an address book for a given chain and contract type and return the first matching address.
