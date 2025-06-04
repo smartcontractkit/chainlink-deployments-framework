@@ -123,29 +123,7 @@ func ExecuteOperation[IN, OUT, DEP any](
 	var err error
 
 	if executeConfig.retryConfig.Enabled {
-		var inputTemp = input
-
-		// Generate the configurable options for the retry
-		retryOpts := executeConfig.retryConfig.Policy.options()
-		// Use the operation context in the retry
-		retryOpts = append(retryOpts, retry.Context(b.GetContext()))
-		// Append the retry logic which will log the retry and attempt to transform the input
-		// if the user provided a custom input hook.
-		retryOpts = append(retryOpts, retry.OnRetry(func(attempt uint, err error) {
-			b.Logger.Infow("Operation failed. Retrying...",
-				"operation", operation.def.ID, "attempt", attempt, "error", err)
-
-			if executeConfig.retryConfig.InputHook != nil {
-				inputTemp = executeConfig.retryConfig.InputHook(attempt, err, inputTemp, deps)
-			}
-		}))
-
-		output, err = retry.DoWithData(
-			func() (OUT, error) {
-				return operation.execute(b, deps, inputTemp)
-			},
-			retryOpts...,
-		)
+		output, err = executeWithRetry(b, operation, deps, input, executeConfig)
 	} else {
 		output, err = operation.execute(b, deps, input)
 	}
@@ -164,6 +142,113 @@ func ExecuteOperation[IN, OUT, DEP any](
 	}
 
 	return report, nil
+}
+
+// ExecuteOperationN executes the given operation multiple n times with the given input and dependencies.
+// Execution will return the previous successful execution results and skip execution if there were
+// previous successful runs found in the Reports.
+// The multipleExecutionID is used to identify the multiple executions as a single unit.
+// It is important to use a unique multipleExecutionID for different sets of multiple executions.
+func ExecuteOperationN[IN, OUT, DEP any](
+	n uint, multipleExecutionID string, b Bundle, operation *Operation[IN, OUT, DEP], deps DEP, input IN,
+	opts ...ExecuteOption[IN, DEP],
+) ([]Report[IN, OUT], error) {
+	if !IsSerializable(b.Logger, input) {
+		return []Report[IN, OUT]{}, fmt.Errorf("operation %s input: %w", operation.def.ID, ErrNotSerializable)
+	}
+
+	results, found := loadSuccessfulMultipleExecutionReports[IN, OUT](b, operation.def, input, multipleExecutionID)
+	if found {
+		// if there are more reports than n, we return only the first n reports
+		if uint(len(results)) >= n {
+			b.Logger.Infow("Operations already executed in multiple execution. Returning previous results", "id", operation.def.ID,
+				"version", operation.def.Version, "description", operation.def.Description, "multipleExecutionID", multipleExecutionID)
+
+			return results[:n], nil
+		}
+	}
+	resultsLength := uint(len(results))
+	remainingTimesToRun := n - resultsLength
+
+	b.Logger.Infow("Executing operation multiple times",
+		"multipleExecutionID", multipleExecutionID,
+		"n", n,
+		"remainingTimesToRun", remainingTimesToRun)
+
+	executeConfig := &ExecuteConfig[IN, DEP]{
+		retryConfig: newDisabledRetryConfig[IN, DEP](),
+	}
+	for _, opt := range opts {
+		opt(executeConfig)
+	}
+
+	order := resultsLength
+	for range remainingTimesToRun {
+		var output OUT
+		var err error
+
+		if executeConfig.retryConfig.Enabled {
+			output, err = executeWithRetry(b, operation, deps, input, executeConfig)
+		} else {
+			output, err = operation.execute(b, deps, input)
+		}
+
+		if err == nil && !IsSerializable(b.Logger, output) {
+			return []Report[IN, OUT]{}, fmt.Errorf("operation %s output: %w", operation.def.ID, ErrNotSerializable)
+		}
+
+		report := NewReport(operation.def, input, output, err)
+		report.MultipleExecution = &MultipleExecution{
+			ID:    multipleExecutionID,
+			Order: order,
+		}
+		order++
+		if err = b.reporter.AddReport(genericReport(report)); err != nil {
+			return []Report[IN, OUT]{}, err
+		}
+
+		if report.Err != nil {
+			return []Report[IN, OUT]{}, report.Err
+		}
+
+		results = append(results, report)
+	}
+
+	return results, nil
+}
+
+func executeWithRetry[IN, OUT, DEP any](
+	b Bundle,
+	operation *Operation[IN, OUT, DEP],
+	deps DEP,
+	input IN,
+	executeConfig *ExecuteConfig[IN, DEP],
+) (OUT, error) {
+	var inputTemp = input
+
+	// Generate the configurable options for the retry
+	retryOpts := executeConfig.retryConfig.Policy.options()
+	// Use the operation context in the retry
+	retryOpts = append(retryOpts, retry.Context(b.GetContext()))
+	// Append the retry logic which will log the retry and attempt to transform the input
+	// if the user provided a custom input hook.
+	retryOpts = append(retryOpts, retry.OnRetry(func(attempt uint, err error) {
+		b.Logger.Infow("Operation failed. Retrying...",
+			"operation", operation.def.ID, "attempt", attempt, "error", err)
+
+		if executeConfig.retryConfig.InputHook != nil {
+			inputTemp = executeConfig.retryConfig.InputHook(attempt, err, inputTemp, deps)
+		}
+	}))
+
+	output, err := retry.DoWithData(
+		func() (OUT, error) {
+			return operation.execute(b, deps, inputTemp)
+		},
+		retryOpts...,
+	)
+
+	return output, err
 }
 
 // ExecuteSequence executes a Sequence and returns a SequenceReport.
@@ -290,4 +375,56 @@ func loadPreviousSuccessfulReport[IN, OUT any](
 
 	// No previous execution was found
 	return Report[IN, OUT]{}, false
+}
+
+func loadSuccessfulMultipleExecutionReports[IN, OUT any](
+	b Bundle, def Definition, input IN, multipleExecutionID string,
+) ([]Report[IN, OUT], bool) {
+	prevReports, err := b.reporter.GetReports()
+	if err != nil {
+		b.Logger.Errorw("Failed to get reports", "error", err)
+		return []Report[IN, OUT]{}, false
+	}
+	currentHash, err := constructUniqueHashFrom(b.reportHashCache, def, input)
+	if err != nil {
+		b.Logger.Errorw("Failed to construct unique hash", "error", err)
+		return []Report[IN, OUT]{}, false
+	}
+
+	var foundReports []Report[IN, OUT]
+	for _, report := range prevReports {
+		// if the report is not part of the same multiple execution, skip it
+		if report.MultipleExecution == nil || report.MultipleExecution.ID != multipleExecutionID {
+			continue
+		}
+		reportHash, err := constructUniqueHashFrom(b.reportHashCache, report.Def, report.Input)
+		if err != nil {
+			b.Logger.Errorw("Failed to construct unique hash for previous report", "error", err)
+			continue
+		}
+		if reportHash == currentHash && report.Err == nil {
+			typedReport, ok := typeReport[IN, OUT](report)
+			if !ok {
+				b.Logger.Debugw(fmt.Sprintf("Previous %s execution found but couldn't find its matching Report", def.ID), "report_id", report.ID)
+				continue
+			}
+
+			b.Logger.Debugw(fmt.Sprintf("Previous %s execution found", def.ID), "report_id", report.ID)
+
+			foundReports = append(foundReports, typedReport)
+		}
+	}
+
+	b.Logger.Infof("Found %d reports for MultipleExecutionID %q", len(foundReports), multipleExecutionID)
+
+	if len(foundReports) == 0 {
+		return []Report[IN, OUT]{}, false
+	}
+
+	results := make([]Report[IN, OUT], len(foundReports))
+	for _, foundReport := range foundReports {
+		results[foundReport.MultipleExecution.Order] = foundReport
+	}
+
+	return results, true
 }

@@ -21,6 +21,18 @@ type Report[IN, OUT any] struct {
 	Err       *ReportError `json:"error"`
 	// stores a list of report ID for an operation that was executed as part of a sequence.
 	ChildOperationReports []string `json:"childOperationReports"`
+	// MultipleExecution is used to track the execution of an operation that was executed multiple times
+	MultipleExecution *MultipleExecution `json:"multipleExecution,omitempty"`
+}
+
+// MultipleExecution is used to track the execution of an operation that was executed multiple times.
+// It contains the unique iD for the MultipleExecution and the order in which it was executed.
+type MultipleExecution struct {
+	// ID is a unique identifier for the multiple execution. Operation with the same MultipleExecutionID
+	// are executed as part of the same multiple execution.
+	ID string `json:"id"`
+	// Order is the order in which the operation was executed as part of the multiple execution.
+	Order uint `json:"order"`
 }
 
 // ToGenericReport converts the Report to a generic Report.
@@ -258,6 +270,7 @@ func genericReport[IN, OUT any](r Report[IN, OUT]) Report[any, any] {
 		Timestamp:             r.Timestamp,
 		Err:                   r.Err,
 		ChildOperationReports: r.ChildOperationReports,
+		MultipleExecution:     r.MultipleExecution,
 	}
 }
 
@@ -295,5 +308,6 @@ func typeReport[IN, OUT any](r Report[any, any]) (Report[IN, OUT], bool) {
 		Timestamp:             r.Timestamp,
 		Err:                   r.Err,
 		ChildOperationReports: r.ChildOperationReports,
+		MultipleExecution:     r.MultipleExecution,
 	}, true
 }
