@@ -213,7 +213,7 @@ func TestAddressBook_Remove(t *testing.T) {
 	require.NoError(t, err)
 	expectedData, err := expectingAB.Addresses()
 	require.NoError(t, err)
-	require.Equal(t, finalData, expectedData)
+	require.Equal(t, expectedData, finalData)
 }
 
 func TestAddressBook_ConcurrencyAndDeadlock(t *testing.T) {
@@ -588,6 +588,7 @@ func Test_toTypeAndVersionMap(t *testing.T) {
 }
 
 func TestAddressBookSorted(t *testing.T) {
+	t.Parallel()
 	ab := NewMemoryAddressBook()
 
 	// Create test type and versions
@@ -651,20 +652,22 @@ func TestAddressBookSorted(t *testing.T) {
 }
 
 func TestAddressBookSortedEmpty(t *testing.T) {
+	t.Parallel()
 	ab := NewMemoryAddressBook()
 
 	// Test empty address book
 	sortedAll, err := ab.Addresses()
 	require.NoError(t, err)
-	assert.Len(t, sortedAll, 0)
+	assert.Empty(t, sortedAll)
 
 	// Test non-existent chain
 	_, err = ab.AddressesForChain(chainsel.APTOS_MAINNET.Selector) // Use a valid but unused chain
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "chain not found")
+	require.Error(t, err)
+	require.ErrorContains(t, err, "chain not found")
 }
 
 func TestAddressBookSortedWithLabels(t *testing.T) {
+	t.Parallel()
 	ab := NewMemoryAddressBook()
 
 	// Create test type and version with labels
