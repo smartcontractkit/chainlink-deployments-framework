@@ -1,5 +1,13 @@
 # chainlink-deployments-framework
 
+## 0.9.1
+
+### Patch Changes
+
+- [#149](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/149) [`7af7a51`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/7af7a51d8f414e49bcb4cfd8937225ff24e586cf) Thanks [@giogam](https://github.com/giogam)! - feat(datastore) remove generics from the top level api
+
+- [#150](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/150) [`1134c51`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/1134c51f19c79d8c51ca8bc5fb165b905b416167) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix: ChildOperationReports not set correctly
+
 ## 0.9.0
 
 ### Minor Changes
