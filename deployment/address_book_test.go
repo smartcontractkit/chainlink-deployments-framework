@@ -1,6 +1,7 @@
 package deployment
 
 import (
+	"encoding/json"
 	"math/big"
 	"sync"
 	"testing"
@@ -624,31 +625,43 @@ func TestAddressBookSorted(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, allAddresses, 2)
 
-	// Verify we have the expected chains
-	assert.Contains(t, allAddresses, chainsel.TEST_90000001.Selector)
-	assert.Contains(t, allAddresses, chainsel.TEST_90000002.Selector)
+	// Verify the exact structure and order using JSON comparison
+	marshal, err := json.MarshalIndent(allAddresses, "", "  ")
+	require.NoError(t, err)
 
-	// Verify addresses for chain TEST_90000001 are present
-	chain1 := allAddresses[chainsel.TEST_90000001.Selector]
-	assert.Len(t, chain1, 3)
-	assert.Contains(t, chain1, addr1)
-	assert.Contains(t, chain1, addr3)
-	assert.Contains(t, chain1, addr4)
-
-	// Verify addresses for chain TEST_90000002
-	chain2 := allAddresses[chainsel.TEST_90000002.Selector]
-	assert.Len(t, chain2, 1)
-	assert.Contains(t, chain2, addr2)
+	// Build expected structure using variables
+	expectedAddresses := map[uint64]map[string]TypeAndVersion{
+		chainsel.TEST_90000001.Selector: {
+			addr1: tv2,
+			addr3: tv1,
+			addr4: tv1,
+		},
+		chainsel.TEST_90000002.Selector: {
+			addr2: tv2,
+		},
+	}
+	expectedMarshal, err := json.MarshalIndent(expectedAddresses, "", "  ")
+	require.NoError(t, err)
+	assert.JSONEq(t, string(expectedMarshal), string(marshal))
 
 	// Test AddressesForChain() - should return results in sorted order
 	sortedChain, err := ab.AddressesForChain(chainsel.TEST_90000001.Selector)
 	require.NoError(t, err)
 	require.Len(t, sortedChain, 3)
 
-	// Verify TypeAndVersion data is preserved
-	assert.Equal(t, tv2, sortedChain[addr1])
-	assert.Equal(t, tv1, sortedChain[addr3])
-	assert.Equal(t, tv1, sortedChain[addr4])
+	// Verify the exact order using JSON comparison
+	chainMarshal, err := json.MarshalIndent(sortedChain, "", "  ")
+	require.NoError(t, err)
+
+	// Build expected chain structure using variables
+	expectedChain := map[string]TypeAndVersion{
+		addr1: tv2,
+		addr3: tv1,
+		addr4: tv1,
+	}
+	expectedChainMarshal, err := json.MarshalIndent(expectedChain, "", "  ")
+	require.NoError(t, err)
+	assert.JSONEq(t, string(expectedChainMarshal), string(chainMarshal))
 }
 
 func TestAddressBookSortedEmpty(t *testing.T) {
