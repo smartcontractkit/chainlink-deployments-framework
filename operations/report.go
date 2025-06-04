@@ -288,11 +288,12 @@ func typeReport[IN, OUT any](r Report[any, any]) (Report[IN, OUT], bool) {
 	}
 
 	return Report[IN, OUT]{
-		ID:        r.ID,
-		Def:       r.Def,
-		Output:    output,
-		Input:     input,
-		Timestamp: r.Timestamp,
-		Err:       r.Err,
+		ID:                    r.ID,
+		Def:                   r.Def,
+		Output:                output,
+		Input:                 input,
+		Timestamp:             r.Timestamp,
+		Err:                   r.Err,
+		ChildOperationReports: r.ChildOperationReports,
 	}, true
 }
