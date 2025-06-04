@@ -8,6 +8,7 @@ require (
 	github.com/Masterminds/semver/v3 v3.3.1
 	github.com/aptos-labs/aptos-go-sdk v1.6.3-0.20250331001805-0680b714db6d
 	github.com/avast/retry-go/v4 v4.6.1
+	github.com/emirpasic/gods v1.18.1
 	github.com/ethereum/go-ethereum v1.15.3
 	github.com/gagliardetto/solana-go v1.12.0
 	github.com/google/uuid v1.6.0
@@ -24,7 +25,6 @@ require (
 	github.com/xssnick/tonutils-go v1.13.0
 	github.com/zksync-sdk/zksync2-go v1.0.0
 	go.uber.org/zap v1.27.0
-	golang.org/x/exp v0.0.0-20250408133849-7e4ce0ab07d0
 )
 
 require (
@@ -152,6 +152,7 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/ratelimit v0.3.1 // indirect
 	golang.org/x/crypto v0.38.0 // indirect
+	golang.org/x/exp v0.0.0-20250408133849-7e4ce0ab07d0 // indirect
 	golang.org/x/net v0.39.0 // indirect
 	golang.org/x/sync v0.14.0 // indirect
 	golang.org/x/sys v0.33.0 // indirect
