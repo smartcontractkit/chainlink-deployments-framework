@@ -21,17 +21,17 @@ type Report[IN, OUT any] struct {
 	Err       *ReportError `json:"error"`
 	// stores a list of report ID for an operation that was executed as part of a sequence.
 	ChildOperationReports []string `json:"childOperationReports"`
-	// MultipleExecution is used to track the execution of an operation that was executed multiple times
-	MultipleExecution *MultipleExecution `json:"multipleExecution,omitempty"`
+	// ExecutionSeries is used to track the execution of an operation that was executed multiple times
+	ExecutionSeries *ExecutionSeries `json:"executionSeries,omitempty"`
 }
 
-// MultipleExecution is used to track the execution of an operation that was executed multiple times.
-// It contains the unique iD for the MultipleExecution and the order in which it was executed.
-type MultipleExecution struct {
-	// ID is a unique identifier for the multiple execution. Operation with the same MultipleExecutionID
-	// are executed as part of the same multiple execution.
+// ExecutionSeries is used to track the execution of an operation that was executed multiple times.
+// It contains the unique ID for the ExecutionSeries and the order in which it was executed.
+// Same Operation with the same executionSeriesID are executed as part of the same group together.
+type ExecutionSeries struct {
+	// ID is a unique identifier for an execution series.
 	ID string `json:"id"`
-	// Order is the order in which the operation was executed as part of the multiple execution.
+	// Order is the execution order in which the operation was executed as part of the execution series
 	Order uint `json:"order"`
 }
 
@@ -270,7 +270,7 @@ func genericReport[IN, OUT any](r Report[IN, OUT]) Report[any, any] {
 		Timestamp:             r.Timestamp,
 		Err:                   r.Err,
 		ChildOperationReports: r.ChildOperationReports,
-		MultipleExecution:     r.MultipleExecution,
+		ExecutionSeries:       r.ExecutionSeries,
 	}
 }
 
@@ -308,6 +308,6 @@ func typeReport[IN, OUT any](r Report[any, any]) (Report[IN, OUT], bool) {
 		Timestamp:             r.Timestamp,
 		Err:                   r.Err,
 		ChildOperationReports: r.ChildOperationReports,
-		MultipleExecution:     r.MultipleExecution,
+		ExecutionSeries:       r.ExecutionSeries,
 	}, true
 }

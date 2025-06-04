@@ -105,7 +105,7 @@ func ExecuteOperation[IN, OUT, DEP any](
 		return Report[IN, OUT]{}, fmt.Errorf("operation %s input: %w", operation.def.ID, ErrNotSerializable)
 	}
 
-	if previousReport, found := loadPreviousSuccessfulReport[IN, OUT](b, operation.def, input); found {
+	if previousReport, ok := loadPreviousSuccessfulReport[IN, OUT](b, operation.def, input); ok {
 		b.Logger.Infow("Operation already executed. Returning previous result", "id", operation.def.ID,
 			"version", operation.def.Version, "description", operation.def.Description)
 
@@ -147,31 +147,31 @@ func ExecuteOperation[IN, OUT, DEP any](
 // ExecuteOperationN executes the given operation multiple n times with the given input and dependencies.
 // Execution will return the previous successful execution results and skip execution if there were
 // previous successful runs found in the Reports.
-// The multipleExecutionID is used to identify the multiple executions as a single unit.
-// It is important to use a unique multipleExecutionID for different sets of multiple executions.
+// executionSeriesID is used to identify the multiple executions as a single unit.
+// It is important to use a unique executionSeriesID for different sets of multiple executions.
 func ExecuteOperationN[IN, OUT, DEP any](
-	n uint, multipleExecutionID string, b Bundle, operation *Operation[IN, OUT, DEP], deps DEP, input IN,
+	b Bundle, operation *Operation[IN, OUT, DEP], deps DEP, input IN, seriesID string, n uint,
 	opts ...ExecuteOption[IN, DEP],
 ) ([]Report[IN, OUT], error) {
 	if !IsSerializable(b.Logger, input) {
 		return []Report[IN, OUT]{}, fmt.Errorf("operation %s input: %w", operation.def.ID, ErrNotSerializable)
 	}
 
-	results, found := loadSuccessfulMultipleExecutionReports[IN, OUT](b, operation.def, input, multipleExecutionID)
-	if found {
+	results, ok := loadSuccessfulExecutionSeriesReports[IN, OUT](b, operation.def, input, seriesID)
+	resultsLen := uint(len(results))
+	if ok {
 		// if there are more reports than n, we return only the first n reports
-		if uint(len(results)) >= n {
-			b.Logger.Infow("Operations already executed in multiple execution. Returning previous results", "id", operation.def.ID,
-				"version", operation.def.Version, "description", operation.def.Description, "multipleExecutionID", multipleExecutionID)
+		if resultsLen >= n {
+			b.Logger.Infow("Operations already executed in an execution series. Returning previous results", "id", operation.def.ID,
+				"version", operation.def.Version, "description", operation.def.Description, "executionSeriesID", seriesID)
 
 			return results[:n], nil
 		}
 	}
-	resultsLength := uint(len(results))
-	remainingTimesToRun := n - resultsLength
+	remainingTimesToRun := n - resultsLen
 
 	b.Logger.Infow("Executing operation multiple times",
-		"multipleExecutionID", multipleExecutionID,
+		"executionSeriesID", seriesID,
 		"n", n,
 		"remainingTimesToRun", remainingTimesToRun)
 
@@ -182,7 +182,7 @@ func ExecuteOperationN[IN, OUT, DEP any](
 		opt(executeConfig)
 	}
 
-	order := resultsLength
+	order := resultsLen
 	for range remainingTimesToRun {
 		var output OUT
 		var err error
@@ -198,8 +198,8 @@ func ExecuteOperationN[IN, OUT, DEP any](
 		}
 
 		report := NewReport(operation.def, input, output, err)
-		report.MultipleExecution = &MultipleExecution{
-			ID:    multipleExecutionID,
+		report.ExecutionSeries = &ExecutionSeries{
+			ID:    seriesID,
 			Order: order,
 		}
 		order++
@@ -274,7 +274,7 @@ func ExecuteSequence[IN, OUT, DEP any](
 		return SequenceReport[IN, OUT]{}, fmt.Errorf("sequence %s input: %w", sequence.def.ID, ErrNotSerializable)
 	}
 
-	if previousReport, found := loadPreviousSuccessfulReport[IN, OUT](b, sequence.def, input); found {
+	if previousReport, ok := loadPreviousSuccessfulReport[IN, OUT](b, sequence.def, input); ok {
 		executionReports, err := b.reporter.GetExecutionReports(previousReport.ID)
 		if err != nil {
 			return SequenceReport[IN, OUT]{}, err
@@ -377,8 +377,9 @@ func loadPreviousSuccessfulReport[IN, OUT any](
 	return Report[IN, OUT]{}, false
 }
 
-func loadSuccessfulMultipleExecutionReports[IN, OUT any](
-	b Bundle, def Definition, input IN, multipleExecutionID string,
+// loadSuccessfulExecutionSeriesReports loads all successful reports for an operation in an execution series.
+func loadSuccessfulExecutionSeriesReports[IN, OUT any](
+	b Bundle, def Definition, input IN, seriesID string,
 ) ([]Report[IN, OUT], bool) {
 	prevReports, err := b.reporter.GetReports()
 	if err != nil {
@@ -393,8 +394,8 @@ func loadSuccessfulMultipleExecutionReports[IN, OUT any](
 
 	var foundReports []Report[IN, OUT]
 	for _, report := range prevReports {
-		// if the report is not part of the same multiple execution, skip it
-		if report.MultipleExecution == nil || report.MultipleExecution.ID != multipleExecutionID {
+		// if the report is not part of the same execution series, skip it
+		if report.ExecutionSeries == nil || report.ExecutionSeries.ID != seriesID {
 			continue
 		}
 		reportHash, err := constructUniqueHashFrom(b.reportHashCache, report.Def, report.Input)
@@ -415,7 +416,7 @@ func loadSuccessfulMultipleExecutionReports[IN, OUT any](
 		}
 	}
 
-	b.Logger.Infof("Found %d reports for MultipleExecutionID %q", len(foundReports), multipleExecutionID)
+	b.Logger.Infof("Found %d reports for ExecutionSeriesID %q", len(foundReports), seriesID)
 
 	if len(foundReports) == 0 {
 		return []Report[IN, OUT]{}, false
@@ -423,7 +424,7 @@ func loadSuccessfulMultipleExecutionReports[IN, OUT any](
 
 	results := make([]Report[IN, OUT], len(foundReports))
 	for _, foundReport := range foundReports {
-		results[foundReport.MultipleExecution.Order] = foundReport
+		results[foundReport.ExecutionSeries.Order] = foundReport
 	}
 
 	return results, true

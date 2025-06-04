@@ -808,7 +808,7 @@ func Test_ExecuteOperationN(t *testing.T) {
 	tests := []struct {
 		name              string
 		n                 uint
-		multipleExecID    string
+		seriesID          string
 		setupReporter     func() Reporter
 		options           []ExecuteOption[int, any]
 		simulateOpError   bool
@@ -820,31 +820,31 @@ func Test_ExecuteOperationN(t *testing.T) {
 		{
 			name:              "execute operation multiple times",
 			n:                 3,
-			multipleExecID:    "test-multiple-1",
+			seriesID:          "test-multiple-1",
 			wantOpCalledTimes: 3,
 			wantReportsCount:  3,
 		},
 		{
 			name:              "execute operation with error",
 			n:                 2,
-			multipleExecID:    "test-multiple-2",
+			seriesID:          "test-multiple-2",
 			simulateOpError:   true,
 			wantOpCalledTimes: 1,
 			wantReportsCount:  0,
 			wantErr:           "fatal error",
 		},
 		{
-			name:           "reuse previous executions",
-			n:              3,
-			multipleExecID: "test-multiple-3",
+			name:     "reuse previous executions",
+			n:        3,
+			seriesID: "test-multiple-3",
 			setupReporter: func() Reporter {
 				r := NewMemoryReporter()
-				// Add two existing reports with the same multipleExecID
+				// Add two existing reports with the same seriesID
 				for i := range 2 {
 					report := NewReport(
 						Definition{ID: "plus1", Version: semver.MustParse("1.0.0"), Description: "test operation"},
 						1, 2, nil)
-					report.MultipleExecution = &MultipleExecution{
+					report.ExecutionSeries = &ExecutionSeries{
 						ID:    "test-multiple-3",
 						Order: uint(i), // #nosec G115
 					}
@@ -860,17 +860,17 @@ func Test_ExecuteOperationN(t *testing.T) {
 			wantReportsCount:  3,
 		},
 		{
-			name:           "all previous executions exist",
-			n:              2,
-			multipleExecID: "test-multiple-4",
+			name:     "all previous executions exist",
+			n:        2,
+			seriesID: "test-multiple-4",
 			setupReporter: func() Reporter {
 				r := NewMemoryReporter()
-				// Add two existing reports with the same multipleExecID
+				// Add two existing reports with the same seriesID
 				for i := range 2 {
 					report := NewReport(
 						Definition{ID: "plus1", Version: semver.MustParse("1.0.0"), Description: "test operation"},
 						1, 2, nil)
-					report.MultipleExecution = &MultipleExecution{
+					report.ExecutionSeries = &ExecutionSeries{
 						ID:    "test-multiple-4",
 						Order: uint(i), // #nosec G115
 					}
@@ -886,17 +886,17 @@ func Test_ExecuteOperationN(t *testing.T) {
 			wantReportsCount:  2,
 		},
 		{
-			name:           "all previous executions exist - more reports than n",
-			n:              2,
-			multipleExecID: "test-multiple-4",
+			name:     "all previous executions exist - more reports than n",
+			n:        2,
+			seriesID: "test-multiple-4",
 			setupReporter: func() Reporter {
 				r := NewMemoryReporter()
-				// Add two existing reports with the same multipleExecID
+				// Add two existing reports with the same seriesID
 				for i := range 4 {
 					report := NewReport(
 						Definition{ID: "plus1", Version: semver.MustParse("1.0.0"), Description: "test operation"},
 						1, 2, nil)
-					report.MultipleExecution = &MultipleExecution{
+					report.ExecutionSeries = &ExecutionSeries{
 						ID:    "test-multiple-4",
 						Order: uint(i), // #nosec G115
 					}
@@ -912,9 +912,9 @@ func Test_ExecuteOperationN(t *testing.T) {
 			wantReportsCount:  2,
 		},
 		{
-			name:           "error from reporter",
-			n:              2,
-			multipleExecID: "test-multiple-5",
+			name:     "error from reporter",
+			n:        2,
+			seriesID: "test-multiple-5",
 			setupReporter: func() Reporter {
 				return errorReporter{
 					Reporter:       NewMemoryReporter(),
@@ -928,7 +928,7 @@ func Test_ExecuteOperationN(t *testing.T) {
 		{
 			name:              "with retry option",
 			n:                 1,
-			multipleExecID:    "test-multiple-6",
+			seriesID:          "test-multiple-6",
 			options:           []ExecuteOption[int, any]{WithRetry[int, any]()},
 			wantOpCalledTimes: 3, // 2 attempts with default retry
 			wantReportsCount:  1,
@@ -967,7 +967,7 @@ func Test_ExecuteOperationN(t *testing.T) {
 
 			bundle := NewBundle(context.Background, logger.Test(t), reporter)
 
-			reports, err := ExecuteOperationN(tt.n, tt.multipleExecID, bundle, op, nil, 1, tt.options...)
+			reports, err := ExecuteOperationN(bundle, op, nil, 1, tt.seriesID, tt.n, tt.options...)
 
 			if tt.wantErr != "" {
 				require.Error(t, err)
@@ -983,9 +983,9 @@ func Test_ExecuteOperationN(t *testing.T) {
 
 			// Verify each report has the correct multipleExecution info
 			for i, report := range reports {
-				assert.Equal(t, tt.multipleExecID, report.MultipleExecution.ID)
-				assert.Equal(t, uint(i), report.MultipleExecution.Order) // #nosec G115
-				assert.Equal(t, 2, report.Output)                        // input + 1
+				assert.Equal(t, tt.seriesID, report.ExecutionSeries.ID)
+				assert.Equal(t, uint(i), report.ExecutionSeries.Order) // #nosec G115
+				assert.Equal(t, 2, report.Output)                      // input + 1
 			}
 		})
 	}
@@ -1029,7 +1029,7 @@ func Test_ExecuteOperationN_Unserializable_Data(t *testing.T) {
 			op := NewOperation("plus1", semver.MustParse("1.0.0"), "test operation", handler)
 			bundle := NewBundle(context.Background, logger.Test(t), NewMemoryReporter())
 
-			_, err := ExecuteOperationN(2, "test-multiple", bundle, op, nil, tt.input)
+			_, err := ExecuteOperationN(bundle, op, nil, tt.input, "test-multiple", 2)
 
 			if tt.wantError != "" {
 				require.Error(t, err)
@@ -1070,8 +1070,8 @@ func Test_ExecuteOperationN_Concurrent(t *testing.T) {
 		go func(i int) {
 			defer wg.Done()
 
-			multipleExecID := fmt.Sprintf("concurrent-test-%d", i)
-			reports, err := ExecuteOperationN(execsPerGoroutine, multipleExecID, bundle, op, nil, i)
+			executionSeriesID := fmt.Sprintf("concurrent-test-%d", i)
+			reports, err := ExecuteOperationN(bundle, op, nil, i, executionSeriesID, execsPerGoroutine)
 			results <- result{reports, err}
 		}(i)
 	}
@@ -1085,7 +1085,7 @@ func Test_ExecuteOperationN_Concurrent(t *testing.T) {
 
 		// Verify each report in the result
 		for i, report := range res.reports {
-			assert.Equal(t, uint(i), report.MultipleExecution.Order) // #nosec G115
+			assert.Equal(t, uint(i), report.ExecutionSeries.Order) // #nosec G115
 			assert.Equal(t, report.Input+1, report.Output)
 		}
 	}
@@ -1105,13 +1105,13 @@ func Test_loadSuccessfulMultipleExecutionReports(t *testing.T) {
 		Version:     version,
 		Description: "plus 1",
 	}
-	MultipleExecutionID := "test-multiple-execution"
+	executionSeriesID := "test-multiple-execution"
 
 	tests := []struct {
 		name          string
 		setupReporter func() Reporter
 		input         float64
-		execID        string
+		seriesID      string
 		wantFound     bool
 		wantReports   int
 	}{
@@ -1123,18 +1123,18 @@ func Test_loadSuccessfulMultipleExecutionReports(t *testing.T) {
 				}
 			},
 			input:     1,
-			execID:    MultipleExecutionID,
+			seriesID:  executionSeriesID,
 			wantFound: false,
 		},
 		{
-			name: "Reports found with matching MultipleExecutionID",
+			name: "Reports found with matching ExecutionSeriesID",
 			setupReporter: func() Reporter {
 				r := NewMemoryReporter()
-				// Add three reports with the same MultipleExecutionID
+				// Add three reports with the same ExecutionSeriesID
 				for i := range 3 {
 					report := NewReport(definition, 1, 2, nil)
-					report.MultipleExecution = &MultipleExecution{
-						ID:    MultipleExecutionID,
+					report.ExecutionSeries = &ExecutionSeries{
+						ID:    executionSeriesID,
 						Order: uint(i), // #nosec G115
 					}
 					err := r.AddReport(genericReport(report))
@@ -1144,18 +1144,18 @@ func Test_loadSuccessfulMultipleExecutionReports(t *testing.T) {
 				return r
 			},
 			input:       1,
-			execID:      MultipleExecutionID,
+			seriesID:    executionSeriesID,
 			wantFound:   true,
 			wantReports: 3,
 		},
 		{
-			name: "No reports found with matching MultipleExecutionID",
+			name: "No reports found with matching ExecutionSeriesID",
 			setupReporter: func() Reporter {
 				r := NewMemoryReporter()
-				// Add reports with a different MultipleExecutionID
+				// Add reports with a different ExecutionSeriesID
 				for i := range 2 {
 					report := NewReport(definition, 1, 2, nil)
-					report.MultipleExecution = &MultipleExecution{
+					report.ExecutionSeries = &ExecutionSeries{
 						ID:    "different-id",
 						Order: uint(i), // #nosec G115
 					}
@@ -1163,7 +1163,7 @@ func Test_loadSuccessfulMultipleExecutionReports(t *testing.T) {
 					require.NoError(t, err)
 				}
 
-				// Add one report with no MultipleExecution
+				// Add one report with no ExecutionSeries
 				report := NewReport(definition, 1, 2, nil)
 				err := r.AddReport(genericReport(report))
 				require.NoError(t, err)
@@ -1171,7 +1171,7 @@ func Test_loadSuccessfulMultipleExecutionReports(t *testing.T) {
 				return r
 			},
 			input:     1,
-			execID:    MultipleExecutionID,
+			seriesID:  executionSeriesID,
 			wantFound: false,
 		},
 		{
@@ -1181,8 +1181,8 @@ func Test_loadSuccessfulMultipleExecutionReports(t *testing.T) {
 				// Add reports with errors
 				for i := range 2 {
 					report := NewReport(definition, 1, 2, errors.New("execution error"))
-					report.MultipleExecution = &MultipleExecution{
-						ID:    MultipleExecutionID,
+					report.ExecutionSeries = &ExecutionSeries{
+						ID:    executionSeriesID,
 						Order: uint(i), // #nosec G115
 					}
 					err := r.AddReport(genericReport(report))
@@ -1192,13 +1192,13 @@ func Test_loadSuccessfulMultipleExecutionReports(t *testing.T) {
 				return r
 			},
 			input:     1,
-			execID:    MultipleExecutionID,
+			seriesID:  executionSeriesID,
 			wantFound: false,
 		},
 		{
 			name:      "Current report with bad hash",
 			input:     math.NaN(),
-			execID:    MultipleExecutionID,
+			seriesID:  executionSeriesID,
 			wantFound: false,
 		},
 		{
@@ -1208,8 +1208,8 @@ func Test_loadSuccessfulMultipleExecutionReports(t *testing.T) {
 				// Add reports with NaN input (which will cause hash calculation to fail)
 				for i := range 2 {
 					report := NewReport(definition, math.NaN(), 2, nil)
-					report.MultipleExecution = &MultipleExecution{
-						ID:    MultipleExecutionID,
+					report.ExecutionSeries = &ExecutionSeries{
+						ID:    executionSeriesID,
 						Order: uint(i), // #nosec G115
 					}
 					err := r.AddReport(genericReport(report))
@@ -1219,7 +1219,7 @@ func Test_loadSuccessfulMultipleExecutionReports(t *testing.T) {
 				return r
 			},
 			input:     1,
-			execID:    MultipleExecutionID,
+			seriesID:  executionSeriesID,
 			wantFound: false,
 		},
 		{
@@ -1230,8 +1230,8 @@ func Test_loadSuccessfulMultipleExecutionReports(t *testing.T) {
 				orders := []uint{2, 0, 1}
 				for _, order := range orders {
 					report := NewReport(definition, 1, 2, nil)
-					report.MultipleExecution = &MultipleExecution{
-						ID:    MultipleExecutionID,
+					report.ExecutionSeries = &ExecutionSeries{
+						ID:    executionSeriesID,
 						Order: order,
 					}
 					err := r.AddReport(genericReport(report))
@@ -1241,7 +1241,7 @@ func Test_loadSuccessfulMultipleExecutionReports(t *testing.T) {
 				return r
 			},
 			input:       1,
-			execID:      MultipleExecutionID,
+			seriesID:    executionSeriesID,
 			wantFound:   true,
 			wantReports: 3,
 		},
@@ -1256,8 +1256,8 @@ func Test_loadSuccessfulMultipleExecutionReports(t *testing.T) {
 				bundle.reporter = tt.setupReporter()
 			}
 
-			reports, found := loadSuccessfulMultipleExecutionReports[float64, int](
-				bundle, definition, tt.input, tt.execID)
+			reports, found := loadSuccessfulExecutionSeriesReports[float64, int](
+				bundle, definition, tt.input, tt.seriesID)
 
 			assert.Equal(t, tt.wantFound, found)
 
@@ -1266,8 +1266,8 @@ func Test_loadSuccessfulMultipleExecutionReports(t *testing.T) {
 
 				// Verify reports are properly ordered
 				for i, report := range reports {
-					assert.Equal(t, tt.execID, report.MultipleExecution.ID)
-					assert.Equal(t, uint(i), report.MultipleExecution.Order) // #nosec G115
+					assert.Equal(t, tt.seriesID, report.ExecutionSeries.ID)
+					assert.Equal(t, uint(i), report.ExecutionSeries.Order) // #nosec G115
 					assert.Equal(t, definition, report.Def)
 				}
 			} else {

@@ -172,7 +172,7 @@ var reportJSON = `
     "message" : "test error"
   },
   "childOperationReports" : [ "157b4a77-bdcb-497d-899d-1e8bb44ced58" ],
-  "multipleExecution" : {
+  "executionSeries" : {
     "id" : "deploy-multiple-contracts",
     "order" : 1
   }
@@ -196,7 +196,7 @@ func Test_Report_Marshal(t *testing.T) {
 		Timestamp:             &timestamp,
 		Err:                   &ReportError{Message: "test error"},
 		ChildOperationReports: []string{"157b4a77-bdcb-497d-899d-1e8bb44ced58"},
-		MultipleExecution: &MultipleExecution{
+		ExecutionSeries: &ExecutionSeries{
 			ID:    "deploy-multiple-contracts",
 			Order: 1,
 		},
@@ -227,8 +227,8 @@ func Test_Report_Unmarshal(t *testing.T) {
 	assert.Len(t, report.ChildOperationReports, 1)
 	assert.Equal(t, "157b4a77-bdcb-497d-899d-1e8bb44ced58", report.ChildOperationReports[0])
 	assert.NotNil(t, report.Timestamp)
-	assert.Equal(t, "deploy-multiple-contracts", report.MultipleExecution.ID)
-	assert.Equal(t, uint(1), report.MultipleExecution.Order)
+	assert.Equal(t, "deploy-multiple-contracts", report.ExecutionSeries.ID)
+	assert.Equal(t, uint(1), report.ExecutionSeries.Order)
 }
 
 func Test_Report_ToGenericReport(t *testing.T) {
@@ -243,7 +243,7 @@ func Test_Report_ToGenericReport(t *testing.T) {
 		Timestamp:             &now,
 		Err:                   nil,
 		ChildOperationReports: []string{uuid.New().String()},
-		MultipleExecution: &MultipleExecution{
+		ExecutionSeries: &ExecutionSeries{
 			ID:    "deploy-multiple-contracts",
 			Order: 1,
 		},
@@ -257,8 +257,8 @@ func Test_Report_ToGenericReport(t *testing.T) {
 	assert.Equal(t, report.Timestamp, r.Timestamp)
 	assert.Equal(t, report.Err, r.Err)
 	assert.Equal(t, report.ChildOperationReports, r.ChildOperationReports)
-	assert.Equal(t, report.MultipleExecution.ID, r.MultipleExecution.ID)
-	assert.Equal(t, report.MultipleExecution.Order, r.MultipleExecution.Order)
+	assert.Equal(t, report.ExecutionSeries.ID, r.ExecutionSeries.ID)
+	assert.Equal(t, report.ExecutionSeries.Order, r.ExecutionSeries.Order)
 }
 
 func Test_SequenceReport_ToGenericReport(t *testing.T) {
