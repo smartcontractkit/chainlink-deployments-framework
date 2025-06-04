@@ -10,8 +10,8 @@ func TestEnvMetadata_Clone(t *testing.T) {
 	t.Parallel()
 
 	var (
-		metaOne  = DefaultMetadata{Data: "test-value-one"}
-		metaTwo  = DefaultMetadata{Data: "test-value-two"}
+		metaOne  = testMetadata{Field: "test-value-one", ChainSelector: 0}
+		metaTwo  = testMetadata{Field: "test-value-two", ChainSelector: 0}
 		original = EnvMetadata{
 			Metadata: metaOne,
 		}
@@ -20,13 +20,13 @@ func TestEnvMetadata_Clone(t *testing.T) {
 	cloned, err := original.Clone()
 	require.NoError(t, err, "Clone should not return an error")
 
-	concrete, err := As[DefaultMetadata](cloned.Metadata)
-	require.NoError(t, err, "As should not return an error for DefaultMetadata")
+	concrete, err := As[testMetadata](cloned.Metadata)
+	require.NoError(t, err, "As should not return an error for CustomMetadata")
 	require.Equal(t, metaOne, concrete)
 
 	original.Metadata = metaTwo
 
-	concreteTwo, err := As[DefaultMetadata](original.Metadata)
-	require.NoError(t, err, "As should not return an error for DefaultMetadata after modification")
+	concreteTwo, err := As[testMetadata](original.Metadata)
+	require.NoError(t, err, "As should not return an error for CustomMetadata after modification")
 	require.NotEqual(t, concrete, concreteTwo, "Cloned metadata should not be equal to modified original metadata")
 }

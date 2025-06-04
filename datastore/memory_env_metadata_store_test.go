@@ -11,7 +11,7 @@ func TestMemoryEnvMetadataStore_Get(t *testing.T) {
 
 	var (
 		recordOne = EnvMetadata{
-			Metadata: DefaultMetadata{Data: "data1"},
+			Metadata: testMetadata{Field: "data1", ChainSelector: 0},
 		}
 	)
 
@@ -48,8 +48,8 @@ func TestMemoryEnvMetadataStore_Get(t *testing.T) {
 			record, err := store.Get()
 			if tt.recordShouldExist {
 				require.NoError(t, err)
-				concrete, convErr := As[DefaultMetadata](record.Metadata)
-				require.NoError(t, convErr, "As should not return an error for DefaultMetadata")
+				concrete, convErr := As[testMetadata](record.Metadata)
+				require.NoError(t, convErr, "As should not return an error for CustomMetadata")
 				require.Equal(t, tt.givenState.Metadata, concrete)
 			} else {
 				require.Equal(t, tt.expectedError, err)
@@ -63,10 +63,10 @@ func TestMemoryEnvMetadataStore_Set(t *testing.T) {
 
 	var (
 		recordOne = EnvMetadata{
-			Metadata: DefaultMetadata{Data: "data1"},
+			Metadata: testMetadata{Field: "data1", ChainSelector: 0},
 		}
 		recordTwo = EnvMetadata{
-			Metadata: DefaultMetadata{Data: "data2"},
+			Metadata: testMetadata{Field: "data2", ChainSelector: 0},
 		}
 	)
 
@@ -101,8 +101,8 @@ func TestMemoryEnvMetadataStore_Set(t *testing.T) {
 			record, err := store.Get()
 			require.NoError(t, err)
 
-			concrete, err := As[DefaultMetadata](record.Metadata)
-			require.NoError(t, err, "As should not return an error for DefaultMetadata")
+			concrete, err := As[testMetadata](record.Metadata)
+			require.NoError(t, err, "As should not return an error for CustomMetadata")
 			require.Equal(t, tt.updateRecord.Metadata, concrete)
 		})
 	}

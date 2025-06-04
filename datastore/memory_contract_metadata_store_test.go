@@ -15,13 +15,13 @@ func TestMemoryContractMetadataStore_indexOf(t *testing.T) {
 		recordOne = ContractMetadata{
 			ChainSelector: 1,
 			Address:       "0x2324224",
-			Metadata:      DefaultMetadata{Data: "metadata1"},
+			Metadata:      testMetadata{Field: "metadata1", ChainSelector: 0},
 		}
 
 		recordTwo = ContractMetadata{
 			ChainSelector: 2,
 			Address:       "0x2324224",
-			Metadata:      DefaultMetadata{Data: "metadata2"},
+			Metadata:      testMetadata{Field: "metadata2", ChainSelector: 0},
 		}
 	)
 
@@ -68,7 +68,7 @@ func TestMemoryContractMetadataStore_Add(t *testing.T) {
 		record = ContractMetadata{
 			ChainSelector: 1,
 			Address:       "0x2324224",
-			Metadata:      DefaultMetadata{Data: "metadata1"},
+			Metadata:      testMetadata{Field: "metadata1", ChainSelector: 0},
 		}
 	)
 
@@ -122,13 +122,13 @@ func TestMemoryContractMetadataStore_Upsert(t *testing.T) {
 		oldRecord = ContractMetadata{
 			ChainSelector: 1,
 			Address:       "0x2324224",
-			Metadata:      DefaultMetadata{Data: "metadata1"},
+			Metadata:      testMetadata{Field: "metadata1", ChainSelector: 0},
 		}
 
 		newRecord = ContractMetadata{
 			ChainSelector: 1,
 			Address:       "0x2324224",
-			Metadata:      DefaultMetadata{Data: "metadata2"},
+			Metadata:      testMetadata{Field: "metadata2", ChainSelector: 0},
 		}
 	)
 
@@ -179,13 +179,13 @@ func TestMemoryContractMetadataStore_Update(t *testing.T) {
 		oldRecord = ContractMetadata{
 			ChainSelector: 1,
 			Address:       "0x2324224",
-			Metadata:      DefaultMetadata{Data: "metadata1"},
+			Metadata:      testMetadata{Field: "metadata1", ChainSelector: 0},
 		}
 
 		newRecord = ContractMetadata{
 			ChainSelector: 1,
 			Address:       "0x2324224",
-			Metadata:      DefaultMetadata{Data: "metadata2"},
+			Metadata:      testMetadata{Field: "metadata2", ChainSelector: 0},
 		}
 	)
 
@@ -239,19 +239,19 @@ func TestMemoryMemoryContractMetadataStore_Delete(t *testing.T) {
 		recordOne = ContractMetadata{
 			ChainSelector: 1,
 			Address:       "0x2324224",
-			Metadata:      DefaultMetadata{Data: "metadata1"},
+			Metadata:      testMetadata{Field: "metadata1", ChainSelector: 0},
 		}
 
 		recordTwo = ContractMetadata{
 			ChainSelector: 2,
 			Address:       "0x2324224",
-			Metadata:      DefaultMetadata{Data: "metadata2"},
+			Metadata:      testMetadata{Field: "metadata2", ChainSelector: 0},
 		}
 
 		recordThree = ContractMetadata{
 			ChainSelector: 3,
 			Address:       "0x2324224",
-			Metadata:      DefaultMetadata{Data: "metadata3"},
+			Metadata:      testMetadata{Field: "metadata3", ChainSelector: 0},
 		}
 	)
 
@@ -311,7 +311,7 @@ func TestMemoryContractMetadataStore_Fetch(t *testing.T) {
 		recordOne = ContractMetadata{
 			ChainSelector: 1,
 			Address:       "0x2324224",
-			Metadata: CustomMetadata{
+			Metadata: testMetadata{
 				Field:         "test field",
 				ChainSelector: chain_selectors.APTOS_MAINNET.Selector,
 			},
@@ -320,7 +320,7 @@ func TestMemoryContractMetadataStore_Fetch(t *testing.T) {
 		recordTwo = ContractMetadata{
 			ChainSelector: 2,
 			Address:       "0x2324224",
-			Metadata: CustomMetadata{
+			Metadata: testMetadata{
 				Field:         "test field 2",
 				ChainSelector: chain_selectors.APTOS_MAINNET.Selector,
 			},
@@ -372,7 +372,7 @@ func TestMemoryContractMetadataStore_Fetch(t *testing.T) {
 					require.Equal(t, tt.expectedRecords[i].ChainSelector, records[i].ChainSelector)
 					require.Equal(t, tt.expectedRecords[i].Address, records[i].Address)
 
-					typedMetaActual, err := As[CustomMetadata](records[i].Metadata)
+					typedMetaActual, err := As[testMetadata](records[i].Metadata)
 					require.NoError(t, err)
 					require.Equal(t, tt.expectedRecords[i].Metadata, typedMetaActual)
 				}
@@ -388,13 +388,13 @@ func TestMemoryContractMetadataStore_Get(t *testing.T) {
 		recordOne = ContractMetadata{
 			ChainSelector: 1,
 			Address:       "0x2324224",
-			Metadata:      DefaultMetadata{Data: "metadata1"},
+			Metadata:      testMetadata{Field: "metadata1", ChainSelector: 0},
 		}
 
 		recordTwo = ContractMetadata{
 			ChainSelector: 2,
 			Address:       "0x2324224",
-			Metadata:      DefaultMetadata{Data: "metadata2"},
+			Metadata:      testMetadata{Field: "metadata2", ChainSelector: 0},
 		}
 	)
 
@@ -437,7 +437,7 @@ func TestMemoryContractMetadataStore_Get(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, tt.expectedRecord.ChainSelector, record.ChainSelector)
 				require.Equal(t, tt.expectedRecord.Address, record.Address)
-				typedMetaActual, err := As[DefaultMetadata](record.Metadata)
+				typedMetaActual, err := As[testMetadata](record.Metadata)
 				require.NoError(t, err)
 				require.Equal(t, tt.expectedRecord.Metadata, typedMetaActual)
 			}
@@ -452,19 +452,19 @@ func TestMemoryContractMetadataStore_Filter(t *testing.T) {
 		recordOne = ContractMetadata{
 			ChainSelector: 1,
 			Address:       "0x2324224",
-			Metadata:      DefaultMetadata{Data: "metadata1"},
+			Metadata:      testMetadata{Field: "metadata1", ChainSelector: 0},
 		}
 
 		recordTwo = ContractMetadata{
 			ChainSelector: 2,
 			Address:       "0x2324224",
-			Metadata:      DefaultMetadata{Data: "metadata2"},
+			Metadata:      testMetadata{Field: "metadata2", ChainSelector: 0},
 		}
 
 		recordThree = ContractMetadata{
 			ChainSelector: 3,
 			Address:       "0x2324224",
-			Metadata:      DefaultMetadata{Data: "metadata3"},
+			Metadata:      testMetadata{Field: "metadata3", ChainSelector: 0},
 		}
 	)
 
