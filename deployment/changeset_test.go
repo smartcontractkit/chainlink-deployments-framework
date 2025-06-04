@@ -28,7 +28,13 @@ func TestChangeSetNormalType(t *testing.T) {
 	verify := cs.VerifyPreconditions(e, 5)
 	require.NoError(t, verify)
 	out, _ := cs.Apply(e, 5)
-	require.Equal(t, NewMemoryAddressBook(), out.AddressBook)
+
+	// Compare the actual data instead of struct pointers
+	expectedData, err := NewMemoryAddressBook().Addresses()
+	require.NoError(t, err)
+	actualData, err := out.AddressBook.Addresses()
+	require.NoError(t, err)
+	require.Equal(t, expectedData, actualData)
 }
 
 func TestChangeSetConstructionComposedFromLambdas(t *testing.T) {
@@ -47,7 +53,13 @@ func TestChangeSetConstructionComposedFromLambdas(t *testing.T) {
 	verify := cs.VerifyPreconditions(e, "foo")
 	require.NoError(t, verify)
 	out, _ := cs.Apply(e, "foo")
-	require.Equal(t, NewMemoryAddressBook(), out.AddressBook)
+
+	// Compare the actual data instead of struct pointers
+	expectedData, err := NewMemoryAddressBook().Addresses()
+	require.NoError(t, err)
+	actualData, err := out.AddressBook.Addresses()
+	require.NoError(t, err)
+	require.Equal(t, expectedData, actualData)
 }
 
 var fakeChangeSet = CreateChangeSet(oldSchool, oldSchoolVerify)
@@ -67,7 +79,13 @@ func TestChangeSetComposedType(t *testing.T) {
 	verify := fakeChangeSet.VerifyPreconditions(e, 5)
 	require.NoError(t, verify)
 	out, _ := fakeChangeSet.Apply(e, 5)
-	require.Equal(t, NewMemoryAddressBook(), out.AddressBook)
+
+	// Compare the actual data instead of struct pointers
+	expectedData, err := NewMemoryAddressBook().Addresses()
+	require.NoError(t, err)
+	actualData, err := out.AddressBook.Addresses()
+	require.NoError(t, err)
+	require.Equal(t, expectedData, actualData)
 }
 
 // TestChangeSetLegacyFunction tests using legacy ChangeSet functions (but just naturally conforming to the type,
@@ -79,7 +97,13 @@ func TestChangeSetLegacyFunctionWithStandardChangeSetFunction(t *testing.T) {
 	verify := cs.VerifyPreconditions(e, 5)
 	require.NoError(t, verify)
 	out, _ := cs.Apply(e, 5)
-	require.Equal(t, NewMemoryAddressBook(), out.AddressBook)
+
+	// Compare the actual data instead of struct pointers
+	expectedData, err := NewMemoryAddressBook().Addresses()
+	require.NoError(t, err)
+	actualData, err := out.AddressBook.Addresses()
+	require.NoError(t, err)
+	require.Equal(t, expectedData, actualData)
 }
 
 // TestChangeSetLegacyFunction tests using legacy ChangeSet (strongly declared as a ChangeSet[C]) in the wrapper.
@@ -91,7 +115,13 @@ func TestChangeSetLegacyFunction(t *testing.T) {
 	verify := cs.VerifyPreconditions(e, 5)
 	require.NoError(t, verify)
 	out, _ := cs.Apply(e, 5)
-	require.Equal(t, NewMemoryAddressBook(), out.AddressBook)
+
+	// Compare the actual data instead of struct pointers
+	expectedData, err := NewMemoryAddressBook().Addresses()
+	require.NoError(t, err)
+	actualData, err := out.AddressBook.Addresses()
+	require.NoError(t, err)
+	require.Equal(t, expectedData, actualData)
 }
 
 func NewNoopEnvironment(t *testing.T) Environment {
