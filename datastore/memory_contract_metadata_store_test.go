@@ -570,7 +570,7 @@ func TestMemoryContractMetadataStore_RecordsOrdering(t *testing.T) {
 	require.NoError(t, err, "Failed to unmarshal store")
 
 	// Verify the records are in the same order
-	require.Equal(t, len(originalStore.Records), len(unmarshaledStore.Records),
+	require.Len(t, originalStore.Records, len(unmarshaledStore.Records),
 		"number of records should match after unmarshaling")
 
 	// Compare each record to ensure order is maintained
