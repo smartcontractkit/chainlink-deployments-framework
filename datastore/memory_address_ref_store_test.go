@@ -1,6 +1,7 @@
 package datastore
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/Masterminds/semver/v3"
@@ -577,5 +578,104 @@ func TestMemoryAddressRefStore_Filter(t *testing.T) {
 			filteredRecords := store.Filter(tt.giveFilters...)
 			assert.Equal(t, tt.expectedResult, filteredRecords)
 		})
+	}
+}
+
+func TestMemoryAddressRefStore_RecordsOrdering(t *testing.T) {
+	t.Parallel()
+
+	var (
+		recordOne = AddressRef{
+			Address:       "0x1111111",
+			ChainSelector: 1,
+			Type:          "contract1",
+			Version:       semver.MustParse("1.0.0"),
+			Qualifier:     "qual1",
+			Labels: NewLabelSet(
+				"label1", "label2",
+			),
+		}
+
+		recordTwo = AddressRef{
+			Address:       "0x2222222",
+			ChainSelector: 2,
+			Type:          "contract2",
+			Version:       semver.MustParse("2.0.0"),
+			Qualifier:     "qual2",
+			Labels: NewLabelSet(
+				"label3", "label4",
+			),
+		}
+
+		recordThree = AddressRef{
+			Address:       "0x3333333",
+			ChainSelector: 3,
+			Type:          "contract3",
+			Version:       semver.MustParse("3.0.0"),
+			Qualifier:     "qual3",
+			Labels: NewLabelSet(
+				"label5", "label6",
+			),
+		}
+
+		recordFour = AddressRef{
+			Address:       "0x4444444",
+			ChainSelector: 4,
+			Type:          "contract4",
+			Version:       semver.MustParse("4.0.0"),
+			Qualifier:     "qual4",
+			Labels: NewLabelSet(
+				"label7", "label8",
+			),
+		}
+	)
+
+	// Create a store with records in specific order
+	originalStore := MemoryAddressRefStore{
+		Records: []AddressRef{
+			recordOne,
+			recordTwo,
+			recordThree,
+			recordFour,
+		},
+	}
+
+	// marshal the store to JSON
+	data, err := json.Marshal(&originalStore)
+	require.NoError(t, err, "Failed to marshal store")
+
+	// unmarshal back to a new store instance
+	var unmarshaledStore MemoryAddressRefStore
+	err = json.Unmarshal(data, &unmarshaledStore)
+	require.NoError(t, err, "Failed to unmarshal store")
+
+	// verify the records are in the same order
+	require.Equal(t, len(originalStore.Records), len(unmarshaledStore.Records),
+		"number of records should match after unmarshaling")
+
+	// compare each record to ensure order is maintained
+	for i, originalRecord := range originalStore.Records {
+		require.Equal(t, originalRecord.Address, unmarshaledStore.Records[i].Address,
+			"address at position %d should match", i)
+		require.Equal(t, originalRecord.ChainSelector, unmarshaledStore.Records[i].ChainSelector,
+			"chainSelector at position %d should match", i)
+		require.Equal(t, originalRecord.Type, unmarshaledStore.Records[i].Type,
+			"type at position %d should match", i)
+		require.Equal(t, originalRecord.Qualifier, unmarshaledStore.Records[i].Qualifier,
+			"qualifier at position %d should match", i)
+
+		// Version is a pointer, so we need to compare the actual version string
+		require.NotNil(t, unmarshaledStore.Records[i].Version, "Version at position %d should not be nil", i)
+		require.Equal(t, originalRecord.Version.String(), unmarshaledStore.Records[i].Version.String(),
+			"version at position %d should match", i)
+
+		require.Equal(t, originalRecord.Labels, unmarshaledStore.Records[i].Labels,
+			"labels at position %d should match", i)
+	}
+
+	// additionally, verify the keys and lookups still work
+	for i, originalRecord := range originalStore.Records {
+		idx := unmarshaledStore.indexOf(originalRecord.Key())
+		require.Equal(t, i, idx, "Index lookup for record %d should match original position", i)
 	}
 }

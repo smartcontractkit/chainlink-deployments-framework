@@ -1,6 +1,7 @@
 package datastore
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -517,5 +518,78 @@ func TestMemoryContractMetadataStore_Filter(t *testing.T) {
 			filteredRecords := store.Filter(tt.giveFilters...)
 			require.Equal(t, tt.expectedResult, filteredRecords)
 		})
+	}
+}
+
+func TestMemoryContractMetadataStore_RecordsOrdering(t *testing.T) {
+	t.Parallel()
+
+	var (
+		recordOne = ContractMetadata{
+			ChainSelector: 1,
+			Address:       "0x1111111",
+			Metadata:      testMetadata{Field: "metadata1", ChainSelector: 1},
+		}
+
+		recordTwo = ContractMetadata{
+			ChainSelector: 2,
+			Address:       "0x2222222",
+			Metadata:      testMetadata{Field: "metadata2", ChainSelector: 2},
+		}
+
+		recordThree = ContractMetadata{
+			ChainSelector: 3,
+			Address:       "0x3333333",
+			Metadata:      testMetadata{Field: "metadata3", ChainSelector: 3},
+		}
+
+		recordFour = ContractMetadata{
+			ChainSelector: 4,
+			Address:       "0x4444444",
+			Metadata:      testMetadata{Field: "metadata4", ChainSelector: 4},
+		}
+	)
+
+	// Create a store with records in specific order
+	originalStore := MemoryContractMetadataStore{
+		Records: []ContractMetadata{
+			recordOne,
+			recordTwo,
+			recordThree,
+			recordFour,
+		},
+	}
+
+	// Marshal the store to JSON
+	data, err := json.Marshal(&originalStore)
+	require.NoError(t, err, "Failed to marshal store")
+
+	// Unmarshal back to a new store instance
+	var unmarshaledStore MemoryContractMetadataStore
+	err = json.Unmarshal(data, &unmarshaledStore)
+	require.NoError(t, err, "Failed to unmarshal store")
+
+	// Verify the records are in the same order
+	require.Equal(t, len(originalStore.Records), len(unmarshaledStore.Records),
+		"number of records should match after unmarshaling")
+
+	// Compare each record to ensure order is maintained
+	for i, originalRecord := range originalStore.Records {
+		require.Equal(t, originalRecord.Address, unmarshaledStore.Records[i].Address,
+			"address at position %d should match", i)
+		require.Equal(t, originalRecord.ChainSelector, unmarshaledStore.Records[i].ChainSelector,
+			"chainSelector at position %d should match", i)
+
+		// Compare metadata fields
+		originalMetadata, err := As[testMetadata](originalRecord.Metadata)
+		require.NoError(t, err, "failed to convert original metadata to testMetadata at position %d", i)
+
+		unmarshaledMetadata, err := As[testMetadata](unmarshaledStore.Records[i].Metadata)
+		require.NoError(t, err, "failed to convert unmarshaled metadata to testMetadata at position %d", i)
+
+		require.Equal(t, originalMetadata.Field, unmarshaledMetadata.Field,
+			"metadata field at position %d should match", i)
+		require.Equal(t, originalMetadata.ChainSelector, unmarshaledMetadata.ChainSelector,
+			"metadata chain selector at position %d should match", i)
 	}
 }
