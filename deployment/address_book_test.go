@@ -661,6 +661,7 @@ func TestAddressBookSorted(t *testing.T) {
 	}
 	expectedChainMarshal, err := json.MarshalIndent(expectedChain, "", "  ")
 	require.NoError(t, err)
+
 	assert.JSONEq(t, string(expectedChainMarshal), string(chainMarshal))
 }
 
@@ -679,6 +680,8 @@ func TestAddressBookSortedEmpty(t *testing.T) {
 	require.ErrorContains(t, err, "chain not found")
 }
 
+// We do not guarantee labels are preserved in sorted order, but we do guarantee they are preserved in the map.
+// This test is to ensure that the labels are strictly preserved in the map.
 func TestAddressBookSortedWithLabels(t *testing.T) {
 	t.Parallel()
 	ab := NewMemoryAddressBook()
@@ -695,11 +698,25 @@ func TestAddressBookSortedWithLabels(t *testing.T) {
 	err = ab.Save(chainsel.TEST_90000001.Selector, addr, tv1)
 	require.NoError(t, err)
 
-	// Test that labels are preserved in results
+	// Test that labels are preserved in results using JSON comparison
 	sortedChain, err := ab.AddressesForChain(chainsel.TEST_90000001.Selector)
 	require.NoError(t, err)
 	require.Len(t, sortedChain, 1)
 
+	// Verify the exact structure and order using JSON comparison
+	chainMarshal, err := json.MarshalIndent(sortedChain, "", "  ")
+	require.NoError(t, err)
+
+	// Build expected chain structure using variables
+	expectedChain := map[string]TypeAndVersion{
+		addr: tv1,
+	}
+	expectedChainMarshal, err := json.MarshalIndent(expectedChain, "", "  ")
+	require.NoError(t, err)
+
+	assert.JSONEq(t, string(expectedChainMarshal), string(chainMarshal))
+
+	// Additional verification that labels are preserved
 	retrievedTv := sortedChain[addr]
 	assert.Equal(t, tv1, retrievedTv)
 	assert.True(t, retrievedTv.Labels.Contains("production"))
