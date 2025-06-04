@@ -3,212 +3,23 @@ package datastore
 import (
 	"testing"
 
-	"github.com/Masterminds/semver/v3"
 	"github.com/stretchr/testify/require"
 
 	chain_selectors "github.com/smartcontractkit/chain-selectors"
 )
 
-// CustomMetadata is a placeholder type for testing purposes.
-type CustomMetadata struct {
-	ChainSelector uint64 `json:"chain_selector"`
-	Field         string `json:"field"`
-}
-
-// Clone creates a deep copy of CustomMetadata.
-func (cm CustomMetadata) Clone() CustomMetadata {
-	return CustomMetadata{
-		Field:         cm.Field,
-		ChainSelector: cm.ChainSelector,
-	}
-}
-
-func TestToDefault(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name     string
-		setup    func() MutableDataStore[CustomMetadata, CustomMetadata]
-		expected MutableDataStore[DefaultMetadata, DefaultMetadata]
-	}{
-		{
-			name: "successful conversion",
-			setup: func() MutableDataStore[CustomMetadata, CustomMetadata] {
-				ds := NewMemoryDataStore[CustomMetadata, CustomMetadata]()
-
-				err := ds.Addresses().Add(AddressRef{
-					Address:       "addr1",
-					Type:          "type1",
-					Version:       semver.MustParse("1.0.0"),
-					ChainSelector: 1,
-					Qualifier:     "qualifier1",
-					Labels:        NewLabelSet("label1", "label2"),
-				})
-				require.NoError(t, err)
-
-				err = ds.ContractMetadata().Add(ContractMetadata[CustomMetadata]{
-					ChainSelector: 1,
-					Address:       "contract1",
-					Metadata:      CustomMetadata{Field: "value1", ChainSelector: chain_selectors.APTOS_MAINNET.Selector},
-				})
-				require.NoError(t, err)
-
-				err = ds.EnvMetadata().Set(EnvMetadata[CustomMetadata]{
-					Metadata: CustomMetadata{Field: "envValue1", ChainSelector: chain_selectors.APTOS_MAINNET.Selector},
-				})
-				require.NoError(t, err)
-
-				return ds
-			},
-			expected: &MemoryDataStore[DefaultMetadata, DefaultMetadata]{
-				AddressRefStore: &MemoryAddressRefStore{
-					Records: []AddressRef{
-						{
-							Address:       "addr1",
-							Type:          "type1",
-							Version:       semver.MustParse("1.0.0"),
-							ChainSelector: 1,
-							Qualifier:     "qualifier1",
-							Labels:        NewLabelSet("label1", "label2"),
-						},
-					},
-				},
-				ContractMetadataStore: &MemoryContractMetadataStore[DefaultMetadata]{
-					Records: []ContractMetadata[DefaultMetadata]{
-						{
-							ChainSelector: 1,
-							Address:       "contract1",
-							Metadata: DefaultMetadata{
-								Data: `{"chain_selector":4741433654826277614,"field":"value1"}`,
-							},
-						},
-					},
-				},
-				EnvMetadataStore: &MemoryEnvMetadataStore[DefaultMetadata]{
-					Record: &EnvMetadata[DefaultMetadata]{
-						Metadata: DefaultMetadata{
-							Data: `{"chain_selector":4741433654826277614,"field":"envValue1"}`,
-						},
-					},
-				},
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			dataStore := tt.setup()
-
-			// Test ToDefault
-			defaultStore, err := ToDefault(dataStore.Seal())
-			require.NoError(t, err)
-
-			require.Equal(t, tt.expected, defaultStore)
-		})
-	}
-}
-
-func TestFromDefault(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name     string
-		setup    func() MutableDataStore[DefaultMetadata, DefaultMetadata]
-		expected DataStore[CustomMetadata, CustomMetadata]
-	}{
-		{
-			name: "successful conversion",
-			setup: func() MutableDataStore[DefaultMetadata, DefaultMetadata] {
-				ds := NewMemoryDataStore[DefaultMetadata, DefaultMetadata]()
-
-				err := ds.Addresses().Add(AddressRef{
-					Address:       "addr1",
-					Type:          "type1",
-					Version:       semver.MustParse("1.0.0"),
-					ChainSelector: 1,
-					Qualifier:     "qualifier1",
-					Labels:        NewLabelSet("label1", "label2"),
-				})
-				require.NoError(t, err)
-
-				err = ds.ContractMetadata().Add(ContractMetadata[DefaultMetadata]{
-					ChainSelector: 1,
-					Address:       "contract1",
-					Metadata: DefaultMetadata{
-						Data: `{"field":"value1","chain_selector":4741433654826277614}`,
-					},
-				})
-				require.NoError(t, err)
-
-				err = ds.EnvMetadata().Set(EnvMetadata[DefaultMetadata]{
-					Metadata: DefaultMetadata{
-						Data: `{"field":"envValue1","chain_selector":4741433654826277614}`,
-					},
-				})
-				require.NoError(t, err)
-
-				return ds
-			},
-			expected: &sealedMemoryDataStore[CustomMetadata, CustomMetadata]{
-				AddressRefStore: &MemoryAddressRefStore{
-					Records: []AddressRef{
-						{
-							Address:       "addr1",
-							Type:          "type1",
-							Version:       semver.MustParse("1.0.0"),
-							ChainSelector: 1,
-							Qualifier:     "qualifier1",
-							Labels:        NewLabelSet("label1", "label2"),
-						},
-					},
-				},
-				ContractMetadataStore: &MemoryContractMetadataStore[CustomMetadata]{
-					Records: []ContractMetadata[CustomMetadata]{
-						{
-							ChainSelector: 1,
-							Address:       "contract1",
-							Metadata:      CustomMetadata{Field: "value1", ChainSelector: chain_selectors.APTOS_MAINNET.Selector},
-						},
-					},
-				},
-				EnvMetadataStore: &MemoryEnvMetadataStore[CustomMetadata]{
-					Record: &EnvMetadata[CustomMetadata]{
-						Metadata: CustomMetadata{Field: "envValue1", ChainSelector: chain_selectors.APTOS_MAINNET.Selector},
-					},
-				},
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			dataStore := tt.setup()
-
-			// Test FromDefault
-			customStore, err := FromDefault[CustomMetadata, CustomMetadata](dataStore.Seal())
-			require.NoError(t, err)
-
-			require.Equal(t, tt.expected, customStore)
-		})
-	}
-}
-
 func TestAs(t *testing.T) {
 	t.Parallel()
 
 	// create a CustomMetadata instance
-	orig := CustomMetadata{
+	orig := testMetadata{
 		Field:         "test",
 		ChainSelector: chain_selectors.APTOS_MAINNET.Selector,
 	}
 
 	// put it in an `any` type and use As to convert it back
 	var a any = orig
-	typed, err := As[CustomMetadata](a)
+	typed, err := As[testMetadata](a)
 	require.NoError(t, err)
 	require.Equal(t, orig, typed)
 }

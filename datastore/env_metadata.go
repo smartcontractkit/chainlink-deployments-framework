@@ -4,22 +4,22 @@ import "errors"
 
 var ErrEnvMetadataNotSet = errors.New("no environment metadata set")
 
-type EnvMetadata[M any] struct {
+type EnvMetadata struct {
 	// Metadata is the metadata associated with the domain and environment.
 	// It is a generic type that can be of any type that implements the Cloneable interface.
-	Metadata M `json:"metadata"`
+	Metadata any `json:"metadata"`
 }
 
 // Clone creates a copy of the EnvMetadata.
 // The Metadata field is cloned using the Clone method of the Cloneable interface.
-func (r EnvMetadata[M]) Clone() (EnvMetadata[M], error) {
+func (r EnvMetadata) Clone() (EnvMetadata, error) {
 	metaClone, err := clone(r.Metadata)
 	if err != nil {
 		// If cloning fails, we return an empty EnvMetadata with the error.
-		return EnvMetadata[M]{}, err
+		return EnvMetadata{}, err
 	}
 
-	return EnvMetadata[M]{
+	return EnvMetadata{
 		Metadata: metaClone,
 	}, nil
 }
