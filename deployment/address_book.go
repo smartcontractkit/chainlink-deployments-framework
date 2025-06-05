@@ -1,10 +1,8 @@
 package deployment
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"sort"
 	"strings"
 	"sync"
 
@@ -126,80 +124,6 @@ type OrderedChain struct {
 type OrderedAddressEntry struct {
 	Address        string         `json:"address"`
 	TypeAndVersion TypeAndVersion `json:"typeAndVersion"`
-}
-
-// MarshalJSON implements custom JSON marshaling for AddressesByChain
-// to ensure deterministic ordering: chain selectors numerically, addresses alphabetically (case-insensitive)
-func (abc AddressesByChain) MarshalJSON() ([]byte, error) {
-	// Get all chain selectors and sort them numerically
-	chainSelectors := make([]uint64, 0, len(abc))
-	for chainSelector := range abc {
-		chainSelectors = append(chainSelectors, chainSelector)
-	}
-	sort.Slice(chainSelectors, func(i, j int) bool {
-		return chainSelectors[i] < chainSelectors[j]
-	})
-
-	// Build ordered result
-	result := make([]OrderedChain, 0, len(chainSelectors))
-
-	for _, chainSelector := range chainSelectors {
-		chainAddresses := abc[chainSelector]
-
-		// Get all addresses and sort them alphabetically
-		addresses := make([]string, 0, len(chainAddresses))
-		for address := range chainAddresses {
-			addresses = append(addresses, address)
-		}
-		sort.Slice(addresses, func(i, j int) bool {
-			return strings.ToLower(addresses[i]) < strings.ToLower(addresses[j]) // Using ToLower to ensure case-insensitive sorting
-		})
-
-		// Build ordered address entries
-		orderedAddresses := make([]OrderedAddressEntry, 0, len(addresses))
-		for _, address := range addresses {
-			orderedAddresses = append(orderedAddresses, OrderedAddressEntry{
-				Address:        address,
-				TypeAndVersion: chainAddresses[address],
-			})
-		}
-
-		result = append(result, OrderedChain{
-			ChainSelector: chainSelector,
-			Addresses:     orderedAddresses,
-		})
-	}
-
-	return json.Marshal(result)
-}
-
-// UnmarshalJSON implements custom JSON unmarshaling for AddressesByChain
-func (abc *AddressesByChain) UnmarshalJSON(data []byte) error {
-	var orderedChains []OrderedChain
-	if err := json.Unmarshal(data, &orderedChains); err != nil {
-		return err
-	}
-
-	// Initialize the map if it's nil
-	if *abc == nil {
-		*abc = make(AddressesByChain)
-	}
-
-	// Convert back to map structure
-	for _, chain := range orderedChains {
-		chainAddresses := make(map[string]TypeAndVersion)
-		for _, addrEntry := range chain.Addresses {
-			tv := addrEntry.TypeAndVersion
-			// Ensure LabelSet is properly initialized if nil
-			if tv.Labels == nil {
-				tv.Labels = make(LabelSet)
-			}
-			chainAddresses[addrEntry.Address] = tv
-		}
-		(*abc)[chain.ChainSelector] = chainAddresses
-	}
-
-	return nil
 }
 
 type AddressBookMap struct {
@@ -444,28 +368,4 @@ func (tv *TypeAndVersion) AddLabel(label string) {
 		tv.Labels = make(LabelSet)
 	}
 	tv.Labels.Add(label)
-}
-
-// MarshalJSON implements custom JSON marshaling for AddressBookMap
-// to ensure deterministic ordering via the AddressesByChain marshaling
-func (m *AddressBookMap) MarshalJSON() ([]byte, error) {
-	m.mtx.RLock()
-	defer m.mtx.RUnlock()
-
-	// Use the custom marshaling of AddressesByChain
-	return json.Marshal(m.addressesByChain)
-}
-
-// UnmarshalJSON implements custom JSON unmarshaling for AddressBookMap
-func (m *AddressBookMap) UnmarshalJSON(data []byte) error {
-	m.mtx.Lock()
-	defer m.mtx.Unlock()
-
-	// Initialize if needed
-	if m.addressesByChain == nil {
-		m.addressesByChain = make(AddressesByChain)
-	}
-
-	// Use the custom unmarshaling of AddressesByChain
-	return json.Unmarshal(data, &m.addressesByChain)
 }
