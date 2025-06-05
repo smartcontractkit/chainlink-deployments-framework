@@ -17,7 +17,8 @@ type Sealer[T any] interface {
 }
 
 // BaseDataStore is an interface that defines the basic operations for a data store.
-// It is parameterized by the type of address reference store and contract metadata store it uses.
+// It is parameterized by the type of address reference store, contract metadata store and
+// env metadata store it uses.
 type BaseDataStore[
 	R AddressRefStore, CM ContractMetadataStore, EM EnvMetadataStore,
 ] interface {

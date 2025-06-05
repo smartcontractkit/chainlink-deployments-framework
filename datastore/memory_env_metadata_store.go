@@ -34,6 +34,8 @@ func NewMemoryEnvMetadataStore() *MemoryEnvMetadataStore {
 // Get returns a copy of the stored EnvMetadata record if it exists or an error if any occurred.
 // If no record exist, it returns an empty EnvMetadata and ErrEnvMetadataNotSet.
 // If the record exists, it returns a copy of the record and a nil error.
+// NOTE: The returned EnvMetadata will have an any type for the Metadata field.
+// To convert it to a specific type, use the utility method As.
 func (s *MemoryEnvMetadataStore) Get() (EnvMetadata, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
