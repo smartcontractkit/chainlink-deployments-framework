@@ -114,18 +114,6 @@ type AddressBook interface {
 
 type AddressesByChain map[uint64]map[string]TypeAndVersion
 
-// OrderedChain represents a chain with its addresses in a deterministic order
-type OrderedChain struct {
-	ChainSelector uint64                `json:"chainSelector"`
-	Addresses     []OrderedAddressEntry `json:"addresses"`
-}
-
-// OrderedAddressEntry represents an address with its type and version
-type OrderedAddressEntry struct {
-	Address        string         `json:"address"`
-	TypeAndVersion TypeAndVersion `json:"typeAndVersion"`
-}
-
 type AddressBookMap struct {
 	addressesByChain AddressesByChain
 	mtx              sync.RWMutex
