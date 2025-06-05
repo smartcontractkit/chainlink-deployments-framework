@@ -27,7 +27,7 @@ type PrimaryKeyHolder[K Comparable[K]] interface {
 	Key() K
 }
 
-// UniqueRecord represents a data entry that is both Cloneable and uniquely identifiable by its primary key.
+// UniqueRecord represents a data entry that is uniquely identifiable by its primary key.
 type UniqueRecord[K Comparable[K], R PrimaryKeyHolder[K]] interface {
 	PrimaryKeyHolder[K]
 }

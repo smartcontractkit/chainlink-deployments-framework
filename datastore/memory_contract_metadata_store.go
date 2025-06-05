@@ -30,12 +30,13 @@ var _ ContractMetadataStore = &MemoryContractMetadataStore{}
 var _ MutableContractMetadataStore = &MemoryContractMetadataStore{}
 
 // NewMemoryContractMetadataStore creates a new MemoryContractMetadataStore instance.
-// It is a generic function that takes a type parameter M which must implement the Cloneable interface.
 func NewMemoryContractMetadataStore() *MemoryContractMetadataStore {
 	return &MemoryContractMetadataStore{Records: []ContractMetadata{}}
 }
 
 // Get returns the ContractMetadata for the provided key, or an error if no such record exists.
+// NOTE: The returned ContractMetadata will have an any type for the Metadata field.
+// To convert it to a specific type, use the utility method As.
 func (s *MemoryContractMetadataStore) Get(key ContractMetadataKey) (ContractMetadata, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -49,6 +50,8 @@ func (s *MemoryContractMetadataStore) Get(key ContractMetadataKey) (ContractMeta
 }
 
 // Fetch returns a copy of all ContractMetadata in the store.
+// NOTE: The returned ContractMetadata will have an any type for the Metadata field.
+// To convert it to a specific type, use the utility method As.
 func (s *MemoryContractMetadataStore) Fetch() ([]ContractMetadata, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -68,6 +71,8 @@ func (s *MemoryContractMetadataStore) Fetch() ([]ContractMetadata, error) {
 // Filter returns a copy of all ContractMetadata in the store that pass all of the provided filters.
 // Filters are applied in the order they are provided.
 // If no filters are provided, all records are returned.
+// NOTE: The returned ContractMetadata will have an any type for the Metadata field.
+// To convert it to a specific type, use the utility method As.
 func (s *MemoryContractMetadataStore) Filter(filters ...FilterFunc[ContractMetadataKey, ContractMetadata]) []ContractMetadata {
 	s.mu.RLock()
 	defer s.mu.RUnlock()

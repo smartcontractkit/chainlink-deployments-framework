@@ -4,14 +4,14 @@ import "errors"
 
 var ErrEnvMetadataNotSet = errors.New("no environment metadata set")
 
+// EnvMetadata is a struct that holds the metadata for a domain and environment.
+// NOTE: Metadata can be of any type. To convert from any to a specific type, use the utility method As.
 type EnvMetadata struct {
 	// Metadata is the metadata associated with the domain and environment.
-	// It is a generic type that can be of any type that implements the Cloneable interface.
 	Metadata any `json:"metadata"`
 }
 
 // Clone creates a copy of the EnvMetadata.
-// The Metadata field is cloned using the Clone method of the Cloneable interface.
 func (r EnvMetadata) Clone() (EnvMetadata, error) {
 	metaClone, err := clone(r.Metadata)
 	if err != nil {
