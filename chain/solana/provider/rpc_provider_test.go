@@ -200,6 +200,8 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 					filepath.Join(keypairDirPath, "authority-keypair.json"),
 					gotChain.KeypairPath,
 				)
+				assert.NotNil(t, gotChain.SendAndConfirm)
+				assert.NotNil(t, gotChain.Confirm)
 			}
 		})
 	}
@@ -228,5 +230,5 @@ func Test_RPCChainProvider_BlockChain(t *testing.T) {
 		chain: chain,
 	}
 
-	assert.Equal(t, chain, p.BlockChain())
+	assert.Equal(t, *chain, p.BlockChain())
 }

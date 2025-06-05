@@ -1,15 +1,20 @@
 package provider
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
+	sollib "github.com/gagliardetto/solana-go"
 	solrpc "github.com/gagliardetto/solana-go/rpc"
+	solCommonUtil "github.com/smartcontractkit/chainlink-ccip/chains/solana/utils/common"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/solana/provider/rpcclient"
 )
 
 // RPCChainProviderConfig holds the configuration to initialize the RPCChainProvider.
@@ -115,16 +120,33 @@ func (p *RPCChainProvider) Initialize() (chain.BlockChain, error) {
 	}
 
 	// Initialize the Solana client with the provided HTTP RPC URL
-	client := solrpc.New(p.config.HTTPURL)
+	client := rpcclient.New(solrpc.New(p.config.HTTPURL), privKey)
 
 	// Create the Solana chain instance with the provided configuration
 	p.chain = &solana.Chain{
 		Selector:     p.selector,
-		Client:       client,
+		Client:       client.Client,
 		URL:          p.config.HTTPURL,
 		DeployerKey:  &privKey,
 		ProgramsPath: p.config.ProgramsPath,
 		KeypairPath:  keypairPath,
+		SendAndConfirm: func(
+			ctx context.Context, instructions []sollib.Instruction, txMods ...rpcclient.TxModifier,
+		) error {
+			_, err := client.SendAndConfirmTx(ctx, instructions,
+				rpcclient.WithTxModifiers(txMods...),
+				rpcclient.WithRetry(1, 50*time.Millisecond),
+			)
+
+			return err
+		},
+		Confirm: func(instructions []sollib.Instruction, opts ...solCommonUtil.TxModifier) error {
+			_, err := solCommonUtil.SendAndConfirm(
+				context.Background(), client.Client, instructions, privKey, solrpc.CommitmentConfirmed, opts...,
+			)
+
+			return err
+		},
 	}
 
 	return *p.chain, nil
@@ -143,5 +165,5 @@ func (p *RPCChainProvider) ChainSelector() uint64 {
 // BlockChain returns the Aptos chain instance managed by this provider. You must call Initialize
 // before using this method to ensure the chain is properly set up.
 func (p *RPCChainProvider) BlockChain() chain.BlockChain {
-	return p.chain
+	return *p.chain
 }

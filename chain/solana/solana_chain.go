@@ -12,19 +12,19 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gagliardetto/solana-go"
-	solRpc "github.com/gagliardetto/solana-go/rpc"
-
+	sollib "github.com/gagliardetto/solana-go"
+	solrpc "github.com/gagliardetto/solana-go/rpc"
 	solCommonUtil "github.com/smartcontractkit/chainlink-ccip/chains/solana/utils/common"
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/common"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/solana/provider/rpcclient"
 )
 
 const (
 	ProgramIDPrefix      = "Program Id: "
 	BufferIDPrefix       = "Buffer: "
-	SolDefaultCommitment = solRpc.CommitmentConfirmed
+	SolDefaultCommitment = solrpc.CommitmentConfirmed
 )
 
 // Chain represents a Solana chain.
@@ -32,12 +32,22 @@ type Chain struct {
 	Selector uint64
 
 	// RPC client
-	Client *solRpc.Client
+	Client *solrpc.Client
 	URL    string
 	WSURL  string
 	// TODO: raw private key for now, need to replace with a more secure way
-	DeployerKey *solana.PrivateKey
-	Confirm     func(instructions []solana.Instruction, opts ...solCommonUtil.TxModifier) error
+	DeployerKey *sollib.PrivateKey
+
+	// SendAndConfim provides a utility function to send a transaction and waits for confirmation.
+	// Options can be passed to modify the transaction such as setting additional signers or
+	// modifying compute unit limits.
+	SendAndConfirm func(
+		ctx context.Context, instructions []sollib.Instruction, opts ...rpcclient.TxModifier,
+	) error
+
+	// Legacy: Use SendAndConfirm instead. This function will be removed in the future.
+	// Confirm is a legacy function that sends a transaction and waits for confirmation.
+	Confirm func(instructions []sollib.Instruction, opts ...solCommonUtil.TxModifier) error
 
 	// deploy uses the solana CLI which needs a keyfile
 	KeypairPath  string
@@ -149,7 +159,7 @@ func (c Chain) DeployProgram(logger logger.Logger, programInfo ProgramInfo, isUp
 	return parseProgramID(output, prefix)
 }
 
-func (c Chain) GetAccountDataBorshInto(ctx context.Context, pubkey solana.PublicKey, accountState interface{}) error {
+func (c Chain) GetAccountDataBorshInto(ctx context.Context, pubkey sollib.PublicKey, accountState interface{}) error {
 	err := solCommonUtil.GetAccountDataBorshInto(ctx, c.Client, pubkey, SolDefaultCommitment, accountState)
 	if err != nil {
 		return err
