@@ -4,9 +4,24 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/gagliardetto/solana-go"
 )
+
+// isValidFilepath checks if the provided file path exists and is absolute.
+func isValidFilepath(fp string) error {
+	_, err := os.Stat(fp)
+	if os.IsNotExist(err) {
+		return fmt.Errorf("required file does not exist: %s", fp)
+	}
+
+	if !filepath.IsAbs(fp) {
+		return fmt.Errorf("required file is not absolute: %s", fp)
+	}
+
+	return nil
+}
 
 // writePrivateKeyToPath writes the provided Solana private key to the specified file path in JSON
 // format. The private key is stored as an array of integers, where each integer represents a byte

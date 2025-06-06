@@ -77,7 +77,7 @@ func NewCTFChainProvider(
 // generating a deployer signer account, and constructing the chain instance.
 func (p *CTFChainProvider) Initialize() (chain.BlockChain, error) {
 	if p.chain != nil {
-		return p.chain, nil // Already initialized
+		return *p.chain, nil // Already initialized
 	}
 
 	if err := p.config.validate(); err != nil {
