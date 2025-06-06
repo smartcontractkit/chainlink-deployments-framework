@@ -29,6 +29,11 @@ func Test_RPCChainProviderConfig_validate(t *testing.T) {
 			wantErr:        "http url is required",
 		},
 		{
+			name:           "missing ws url",
+			giveConfigFunc: func(c *RPCChainProviderConfig) { c.WSURL = "" },
+			wantErr:        "ws url is required",
+		},
+		{
 			name:           "missing deployer key generator",
 			giveConfigFunc: func(c *RPCChainProviderConfig) { c.DeployerKeyGen = nil },
 			wantErr:        "deployer key generator is required",
@@ -80,6 +85,7 @@ func Test_RPCChainProviderConfig_validate(t *testing.T) {
 			// A valid configuration for the RPCChainProviderConfig
 			config := RPCChainProviderConfig{
 				HTTPURL:        "http://localhost:8080",
+				WSURL:          "ws://localhost:8080",
 				DeployerKeyGen: PrivateKeyRandom(),
 				ProgramsPath:   t.TempDir(),
 				KeypairDirPath: t.TempDir(),
@@ -102,20 +108,27 @@ func Test_RPCChainProviderConfig_validate(t *testing.T) {
 func Test_RPCChainProvider_Initialize(t *testing.T) {
 	t.Parallel()
 
+	var (
+		chainSelector = chain_selectors.TEST_22222222222222222222222222222222222222222222.Selector
+		existingChain = &solana.Chain{}
+	)
+
 	tests := []struct {
-		name           string
-		giveSelector   uint64
-		giveConfigFunc func(t *testing.T, programsPath, keypairPath string) RPCChainProviderConfig
-		wantErr        string
+		name              string
+		giveSelector      uint64
+		giveConfigFunc    func(t *testing.T, programsPath, keypairPath string) RPCChainProviderConfig
+		giveExistingChain *solana.Chain // Use this to simulate an already initialized chain
+		wantErr           string
 	}{
 		{
 			name:         "valid initialization",
-			giveSelector: chain_selectors.SOLANA_DEVNET.Selector,
+			giveSelector: chainSelector,
 			giveConfigFunc: func(t *testing.T, programsPath, keypairDirPath string) RPCChainProviderConfig {
 				t.Helper()
 
 				return RPCChainProviderConfig{
 					HTTPURL:        "http://localhost:8080",
+					WSURL:          "ws://localhost:8080",
 					DeployerKeyGen: PrivateKeyRandom(),
 					ProgramsPath:   programsPath,
 					KeypairDirPath: keypairDirPath,
@@ -123,8 +136,13 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 			},
 		},
 		{
+			name:              "returns an already initialized chain",
+			giveSelector:      chainSelector,
+			giveExistingChain: existingChain,
+		},
+		{
 			name:         "fails config validation",
-			giveSelector: chain_selectors.APTOS_LOCALNET.Selector,
+			giveSelector: chainSelector,
 			giveConfigFunc: func(t *testing.T, programsPath, keypairDirPath string) RPCChainProviderConfig {
 				t.Helper()
 
@@ -134,12 +152,13 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 		},
 		{
 			name:         "fails to generate deployer account",
-			giveSelector: chain_selectors.APTOS_LOCALNET.Selector,
+			giveSelector: chainSelector,
 			giveConfigFunc: func(t *testing.T, programsPath, keypairDirPath string) RPCChainProviderConfig {
 				t.Helper()
 
 				return RPCChainProviderConfig{
 					HTTPURL:        "http://localhost:8080",
+					WSURL:          "ws://localhost:8080",
 					DeployerKeyGen: PrivateKeyFromRaw(""), // Invalid private key
 					ProgramsPath:   programsPath,
 					KeypairDirPath: keypairDirPath,
@@ -160,6 +179,7 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 
 				return RPCChainProviderConfig{
 					HTTPURL:        "http://localhost:8080",
+					WSURL:          "ws://localhost:8080",
 					DeployerKeyGen: PrivateKeyRandom(),
 					ProgramsPath:   programsPath,
 					KeypairDirPath: readonlydir,
@@ -178,9 +198,16 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 				keypairDirPath = t.TempDir()
 			)
 
-			config := tt.giveConfigFunc(t, programsPath, keypairDirPath)
+			var config RPCChainProviderConfig
+			if tt.giveConfigFunc != nil {
+				config = tt.giveConfigFunc(t, programsPath, keypairDirPath)
+			}
 
 			p := NewRPCChainProvider(tt.giveSelector, config)
+
+			if tt.giveExistingChain != nil {
+				p.chain = tt.giveExistingChain
+			}
 
 			got, err := p.Initialize()
 			if tt.wantErr != "" {
@@ -188,12 +215,21 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				assert.NotNil(t, p.chain)
+
 				gotChain, ok := got.(solana.Chain)
 				require.True(t, ok, "expected got to be of type solana.Chain")
+
+				// For the already initialized chain case, we can skip the rest of the checks
+				if tt.giveExistingChain != nil {
+					return
+				}
+
+				// Otherwise, check the fields of the chain
 
 				assert.Equal(t, tt.giveSelector, gotChain.Selector)
 				assert.NotNil(t, gotChain.Client)
 				assert.Equal(t, config.HTTPURL, gotChain.URL)
+				assert.Equal(t, config.WSURL, gotChain.WSURL)
 				assert.NotNil(t, gotChain.DeployerKey)
 				assert.Equal(t, programsPath, gotChain.ProgramsPath)
 				assert.Equal(t,

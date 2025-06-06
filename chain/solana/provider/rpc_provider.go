@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"time"
 
@@ -19,8 +18,10 @@ import (
 
 // RPCChainProviderConfig holds the configuration to initialize the RPCChainProvider.
 type RPCChainProviderConfig struct {
-	// Required: The HTTP RPC URL to connect to the Solana node
+	// Required: The HTTP RPC URL to connect to the Solana node.
 	HTTPURL string
+	// Required: The WebSocket URL to connect to the Solana node.
+	WSURL string
 	// Required: A generator for the deployer key. Use PrivateKeyFromRaw to create a deployer
 	// key from a private key.
 	DeployerKeyGen PrivateKeyGenerator
@@ -36,6 +37,9 @@ func (c RPCChainProviderConfig) validate() error {
 	if c.HTTPURL == "" {
 		return errors.New("http url is required")
 	}
+	if c.WSURL == "" {
+		return errors.New("ws url is required")
+	}
 	if c.DeployerKeyGen == nil {
 		return errors.New("deployer key generator is required")
 	}
@@ -46,26 +50,12 @@ func (c RPCChainProviderConfig) validate() error {
 		return errors.New("keypair path is required")
 	}
 
-	if err := c.isValidFilepath(c.ProgramsPath); err != nil {
+	if err := isValidFilepath(c.ProgramsPath); err != nil {
 		return err
 	}
 
-	if err := c.isValidFilepath(c.KeypairDirPath); err != nil {
+	if err := isValidFilepath(c.KeypairDirPath); err != nil {
 		return err
-	}
-
-	return nil
-}
-
-// isValidFilepath checks if the provided file path exists and is absolute.
-func (c RPCChainProviderConfig) isValidFilepath(fp string) error {
-	_, err := os.Stat(fp)
-	if os.IsNotExist(err) {
-		return fmt.Errorf("required file does not exist: %s", fp)
-	}
-
-	if !filepath.IsAbs(fp) {
-		return fmt.Errorf("required file is not absolute: %s", fp)
 	}
 
 	return nil
@@ -82,7 +72,7 @@ type RPCChainProvider struct {
 	// RPCChainProviderConfig holds the configuration for the RPCChainProvider.
 	config RPCChainProviderConfig
 
-	// chain is the Aptos chain instance that this provider manages. The Initialize method
+	// chain is the Solana chain instance that this provider manages. The Initialize method
 	// sets up the chain.
 	chain *solana.Chain
 }
@@ -99,7 +89,7 @@ func NewRPCChainProvider(selector uint64, config RPCChainProviderConfig) *RPCCha
 // with the provided HTTP RPC URL. It returns the initialized Solana chain instance.
 func (p *RPCChainProvider) Initialize() (chain.BlockChain, error) {
 	if p.chain != nil {
-		return p.chain, nil // Already initialized
+		return *p.chain, nil // Already initialized
 	}
 
 	// Validate the provider configuration
@@ -127,6 +117,7 @@ func (p *RPCChainProvider) Initialize() (chain.BlockChain, error) {
 		Selector:     p.selector,
 		Client:       client.Client,
 		URL:          p.config.HTTPURL,
+		WSURL:        p.config.WSURL,
 		DeployerKey:  &privKey,
 		ProgramsPath: p.config.ProgramsPath,
 		KeypairPath:  keypairPath,
@@ -157,12 +148,12 @@ func (*RPCChainProvider) Name() string {
 	return "Solana RPC Chain Provider"
 }
 
-// ChainSelector returns the chain selector of the Aptos chain managed by this provider.
+// ChainSelector returns the chain selector of the Solana chain managed by this provider.
 func (p *RPCChainProvider) ChainSelector() uint64 {
 	return p.selector
 }
 
-// BlockChain returns the Aptos chain instance managed by this provider. You must call Initialize
+// BlockChain returns the Solana chain instance managed by this provider. You must call Initialize
 // before using this method to ensure the chain is properly set up.
 func (p *RPCChainProvider) BlockChain() chain.BlockChain {
 	return *p.chain
