@@ -110,7 +110,7 @@ func Test_CTFChainProvider_Initialize(t *testing.T) {
 
 			p := NewCTFChainProvider(t, tt.giveSelector, tt.giveConfig)
 
-			got, err := p.Initialize()
+			got, err := p.Initialize(t.Context())
 			if tt.wantErr != "" {
 				require.ErrorContains(t, err, tt.wantErr)
 			} else {

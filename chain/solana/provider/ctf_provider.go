@@ -99,7 +99,7 @@ func NewCTFChainProvider(
 
 // Initialize sets up the Solana chain by validating the configuration, starting a CTF container,
 // generating a deployer key, and constructing the chain instance.
-func (p *CTFChainProvider) Initialize() (chain.BlockChain, error) {
+func (p *CTFChainProvider) Initialize(_ context.Context) (chain.BlockChain, error) {
 	if p.chain != nil {
 		return *p.chain, nil // Already initialized
 	}

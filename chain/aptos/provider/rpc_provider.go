@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strconv"
@@ -61,7 +62,7 @@ func NewRPCChainProvider(selector uint64, config RPCChainProviderConfig) *RPCCha
 
 // Initialize initializes the RPCChainProvider, validating the configuration and setting up the
 // Aptos chain client.
-func (p *RPCChainProvider) Initialize() (chain.BlockChain, error) {
+func (p *RPCChainProvider) Initialize(_ context.Context) (chain.BlockChain, error) {
 	if p.chain != nil {
 		return p.chain, nil // Already initialized
 	}

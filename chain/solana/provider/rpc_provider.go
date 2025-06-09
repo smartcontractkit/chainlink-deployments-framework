@@ -87,7 +87,7 @@ func NewRPCChainProvider(selector uint64, config RPCChainProviderConfig) *RPCCha
 // Initialize initializes the RPCChainProvider. It generates the deployer keypair from the provided
 // configuration, writes it to the specified KeypairPath directory, and sets up the Solana client
 // with the provided HTTP RPC URL. It returns the initialized Solana chain instance.
-func (p *RPCChainProvider) Initialize() (chain.BlockChain, error) {
+func (p *RPCChainProvider) Initialize(_ context.Context) (chain.BlockChain, error) {
 	if p.chain != nil {
 		return *p.chain, nil // Already initialized
 	}
