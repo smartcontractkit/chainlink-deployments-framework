@@ -1,5 +1,23 @@
 # chainlink-deployments-framework
 
+## 0.11.0
+
+### Minor Changes
+
+- [#152](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/152) [`662acb2`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/662acb2f43991d56f6e554968904420cc7b7ef21) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat(operations): introduce ExecutionOperationN
+
+### Patch Changes
+
+- [#162](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/162) [`af44a35`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/af44a357d6976071aba41a52d438a5f8faed1ed5) Thanks [@bytesizedroll](https://github.com/bytesizedroll)! - Remove address book types that arent used
+
+- [#161](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/161) [`fb0c82e`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/fb0c82e6ddc54d3466dfe80cbb331319936e9cbd) Thanks [@bytesizedroll](https://github.com/bytesizedroll)! - Revert PR 156 as not needed in CLDF
+
+- [#154](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/154) [`88373b1`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/88373b1beeefb01e350327abd6f8a607fe556a54) Thanks [@jkongie](https://github.com/jkongie)! - Solana Chain now provides a SendAndConfirm method which is intended to replace the Confirm method.
+
+- [#163](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/163) [`bbf7434`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/bbf743441b8da517369f9dc3d622f87341ae37e6) Thanks [@jkongie](https://github.com/jkongie)! - Update chainlink-testing-framework/framework packages to 0.9.0 to fix a flakey test
+
+- [#164](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/164) [`8019439`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/80194395e077d1d6255869dc00771b8cbe3e92d3) Thanks [@jkongie](https://github.com/jkongie)! - Adds a Solana CTF Chain Provider which returns a chain backend by a testing container
+
 ## 0.10.0
 
 ### Minor Changes
