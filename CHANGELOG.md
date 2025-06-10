@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.12.1
+
+### Patch Changes
+
+- [#172](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/172) [`d162d8a`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/d162d8a2d38c19d1f63683b7ed7631f895f01a01) Thanks [@jkongie](https://github.com/jkongie)! - Change ccip-solana version to match chainlink/deployment
+
 ## 0.12.0
 
 ### Minor Changes
