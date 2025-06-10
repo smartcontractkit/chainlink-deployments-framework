@@ -6,10 +6,6 @@
 
 - [#165](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/165) [`5df5ef6`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/5df5ef63dfbbf926c0507743c196a58c267320c4) Thanks [@jkongie](https://github.com/jkongie)! - [BREAKING] The `chain.Provider` `Initialize` method now requires a context to be provided.
 
-## 0.11.0
-
-### Minor Changes
-
 - [#152](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/152) [`662acb2`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/662acb2f43991d56f6e554968904420cc7b7ef21) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat(operations): introduce ExecutionOperationN
 
 ### Patch Changes
