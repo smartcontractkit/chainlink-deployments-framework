@@ -185,7 +185,7 @@ func (p *CTFChainProvider) ChainSelector() uint64 {
 // BlockChain returns the Solana chain instance managed by this provider. You must call Initialize
 // before using this method to ensure the chain is properly set up.
 func (p *CTFChainProvider) BlockChain() chain.BlockChain {
-	return p.chain
+	return *p.chain
 }
 
 // startContainer starts a CTF container for the Solana chain.

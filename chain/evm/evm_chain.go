@@ -14,11 +14,11 @@ import (
 )
 
 // OnchainClient is an EVM chain client.
-// For EVM specifically we can use existing geth interface
-// to abstract chain clients.
+// For EVM specifically we can use existing geth interface to abstract chain clients.
 type OnchainClient interface {
 	bind.ContractBackend
 	bind.DeployBackend
+
 	BalanceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error)
 	NonceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (uint64, error)
 }

@@ -203,5 +203,5 @@ func Test_CTFChainProvider_BlockChain(t *testing.T) {
 		chain: chain,
 	}
 
-	assert.Equal(t, chain, p.BlockChain())
+	assert.Equal(t, *chain, p.BlockChain())
 }

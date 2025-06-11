@@ -129,5 +129,5 @@ func (p *RPCChainProvider) ChainSelector() uint64 {
 // BlockChain returns the Aptos chain instance managed by this provider. You must call Initialize
 // before using this method to ensure the chain is properly set up.
 func (p *RPCChainProvider) BlockChain() chain.BlockChain {
-	return p.chain
+	return *p.chain
 }
