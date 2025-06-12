@@ -3,6 +3,10 @@
 version: "3"
 
 includes:
+  generate:
+    taskfile: ./taskfiles/generate/Taskfile.yml
+    aliases: [gen]
+
   lint:
     taskfile: ./taskfiles/lint/Taskfile.yml
 
