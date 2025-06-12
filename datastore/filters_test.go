@@ -406,3 +406,63 @@ func TestContractMetadataByChainSelector(t *testing.T) {
 		})
 	}
 }
+
+func TestChainMetadataByChainSelector(t *testing.T) {
+	t.Parallel()
+
+	var (
+		recordOne = ChainMetadata{
+			ChainSelector: 1,
+			Metadata:      testMetadata{Field: "Record1", ChainSelector: 0},
+		}
+		recordTwo = ChainMetadata{
+			ChainSelector: 2,
+			Metadata:      testMetadata{Field: "Record2", ChainSelector: 0},
+		}
+		recordThree = ChainMetadata{
+			ChainSelector: 1,
+			Metadata:      testMetadata{Field: "Record3", ChainSelector: 0},
+		}
+	)
+
+	tests := []struct {
+		name           string
+		givenState     []ChainMetadata
+		giveChain      uint64
+		expectedResult []ChainMetadata
+	}{
+		{
+			name: "success: returns records with given chain",
+			givenState: []ChainMetadata{
+				recordOne,
+				recordTwo,
+				recordThree,
+			},
+			giveChain: 1,
+			expectedResult: []ChainMetadata{
+				recordOne,
+				recordThree,
+			},
+		},
+		{
+			name: "success: returns no records with given chain",
+			givenState: []ChainMetadata{
+				recordOne,
+				recordTwo,
+				recordThree,
+			},
+			giveChain:      3,
+			expectedResult: []ChainMetadata{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			filter := ChainMetadataByChainSelector(tt.giveChain)
+			filteredRecords := filter(tt.givenState)
+			assert.Equal(t, tt.expectedResult, filteredRecords)
+		})
+	}
+}
