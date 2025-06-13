@@ -36,8 +36,11 @@ func ExampleOperationRegistry() {
 			return input, nil
 		},
 	)
-	// Create registry with untyped operations
-	registry := NewOperationRegistry(stringOp.AsUntyped(), intOp.AsUntyped())
+	// Create registry with untyped operations by providing optional initial operation
+	registry := NewOperationRegistry(stringOp.AsUntyped())
+
+	// An alternative way to register additional operations without calling AsUntyped()
+	RegisterOperation(registry, intOp)
 
 	// Create execution environment
 	b := NewBundle(context.Background, logger.Nop(), NewMemoryReporter(), WithOperationRegistry(registry))

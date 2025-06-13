@@ -8,8 +8,8 @@ type OperationRegistry struct {
 }
 
 // NewOperationRegistry creates a new OperationRegistry with the provided untyped operations.
-func NewOperationRegistry(ops ...*Operation[any, any, any]) OperationRegistry {
-	return OperationRegistry{
+func NewOperationRegistry(ops ...*Operation[any, any, any]) *OperationRegistry {
+	return &OperationRegistry{
 		ops: ops,
 	}
 }
@@ -25,4 +25,13 @@ func (s OperationRegistry) Retrieve(def Definition) (*Operation[any, any, any], 
 	}
 
 	return nil, errors.New("operation not found in registry")
+}
+
+// RegisterOperation registers new operations in the registry.
+// To register operations with different input, output, and dependency types,
+// call RegisterOperation multiple times with different type parameters.
+func RegisterOperation[D, I, O any](r *OperationRegistry, op ...*Operation[D, I, O]) {
+	for _, o := range op {
+		r.ops = append(r.ops, o.AsUntyped())
+	}
 }

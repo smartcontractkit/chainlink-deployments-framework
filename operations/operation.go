@@ -18,14 +18,14 @@ type Bundle struct {
 	reporter   Reporter
 	// internal use only, for storing the hash of the report to avoid repeat sha256 computation.
 	reportHashCache   *sync.Map
-	OperationRegistry OperationRegistry
+	OperationRegistry *OperationRegistry
 }
 
 // BundleOption is a functional option for configuring a Bundle
 type BundleOption func(*Bundle)
 
 // WithOperationRegistry sets a custom OperationRegistry for the Bundle
-func WithOperationRegistry(registry OperationRegistry) BundleOption {
+func WithOperationRegistry(registry *OperationRegistry) BundleOption {
 	return func(b *Bundle) {
 		b.OperationRegistry = registry
 	}
