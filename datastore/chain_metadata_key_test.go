@@ -38,7 +38,7 @@ func TestChainMetadataKey_Equals(t *testing.T) {
 	}
 }
 
-func TestChainMetadataKey(t *testing.T) {
+func TestChainMetadataKey_ChainSelector(t *testing.T) {
 	t.Parallel()
 
 	chainSelector := uint64(1)
