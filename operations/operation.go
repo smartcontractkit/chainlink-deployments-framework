@@ -2,6 +2,7 @@ package operations
 
 import (
 	"context"
+	"errors"
 	"sync"
 
 	"github.com/Masterminds/semver/v3"
@@ -16,17 +17,36 @@ type Bundle struct {
 	GetContext func() context.Context
 	reporter   Reporter
 	// internal use only, for storing the hash of the report to avoid repeat sha256 computation.
-	reportHashCache *sync.Map
+	reportHashCache   *sync.Map
+	OperationRegistry *OperationRegistry
+}
+
+// BundleOption is a functional option for configuring a Bundle
+type BundleOption func(*Bundle)
+
+// WithOperationRegistry sets a custom OperationRegistry for the Bundle
+func WithOperationRegistry(registry *OperationRegistry) BundleOption {
+	return func(b *Bundle) {
+		b.OperationRegistry = registry
+	}
 }
 
 // NewBundle creates and returns a new Bundle.
-func NewBundle(getContext func() context.Context, logger logger.Logger, reporter Reporter) Bundle {
-	return Bundle{
-		Logger:          logger,
-		GetContext:      getContext,
-		reporter:        reporter,
-		reportHashCache: &sync.Map{},
+func NewBundle(getContext func() context.Context, logger logger.Logger, reporter Reporter, opts ...BundleOption) Bundle {
+	b := Bundle{
+		Logger:            logger,
+		GetContext:        getContext,
+		reporter:          reporter,
+		reportHashCache:   &sync.Map{},
+		OperationRegistry: NewOperationRegistry(),
 	}
+
+	// Apply all provided options
+	for _, opt := range opts {
+		opt(&b)
+	}
+
+	return b
 }
 
 // OperationHandler is the function signature of an operation handler.
@@ -66,12 +86,49 @@ func (o *Operation[IN, OUT, DEP]) Description() string {
 	return o.def.Description
 }
 
+// Def returns the operation definition.
+func (o *Operation[IN, OUT, DEP]) Def() Definition {
+	return o.def
+}
+
 // execute runs the operation by calling the OperationHandler.
 func (o *Operation[IN, OUT, DEP]) execute(b Bundle, deps DEP, input IN) (output OUT, err error) {
 	b.Logger.Infow("Executing operation",
 		"id", o.def.ID, "version", o.def.Version, "description", o.def.Description)
 
 	return o.handler(b, deps, input)
+}
+
+// AsUntyped converts the operation to an untyped operation.
+// This is useful for storing operations in a slice or passing them around without type constraints.
+// Warning: The input and output types will be converted to `any`, so type safety is lost.
+func (o *Operation[IN, OUT, DEP]) AsUntyped() *Operation[any, any, any] {
+	return &Operation[any, any, any]{
+		def: Definition{
+			ID:          o.def.ID,
+			Version:     o.def.Version,
+			Description: o.def.Description,
+		},
+		handler: func(b Bundle, deps any, input any) (any, error) {
+			var typedInput IN
+			if input != nil {
+				var ok bool
+				if typedInput, ok = input.(IN); !ok {
+					return nil, errors.New("input type mismatch")
+				}
+			}
+
+			var typedDeps DEP
+			if deps != nil {
+				var ok bool
+				if typedDeps, ok = deps.(DEP); !ok {
+					return nil, errors.New("dependencies type mismatch")
+				}
+			}
+
+			return o.execute(b, typedDeps, typedInput)
+		},
+	}
 }
 
 // NewOperation creates a new operation.

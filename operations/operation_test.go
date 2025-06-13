@@ -32,6 +32,7 @@ func Test_NewOperation(t *testing.T) {
 	assert.Equal(t, "sum", op.ID())
 	assert.Equal(t, version.String(), op.Version())
 	assert.Equal(t, description, op.Description())
+	assert.Equal(t, op.def, op.Def())
 	res, err := op.handler(Bundle{}, OpDeps{}, OpInput{1, 2})
 	require.NoError(t, err)
 	assert.Equal(t, 3, res)
@@ -81,4 +82,68 @@ func Test_Operation_WithEmptyInput(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, 1, out)
+}
+
+func Test_Operation_AsUntyped(t *testing.T) {
+	t.Parallel()
+
+	version := semver.MustParse("1.0.0")
+	description := "test operation"
+	handler1 := func(b Bundle, deps OpDeps, input OpInput) (output int, err error) {
+		return input.A + input.B, nil
+	}
+	typedOp := NewOperation("sum", version, description, handler1)
+
+	untypedOp := typedOp.AsUntyped()
+	bundle := NewBundle(context.Background, logger.Test(t), nil)
+
+	assert.Equal(t, "sum", untypedOp.ID())
+	assert.Equal(t, version.String(), untypedOp.Version())
+	assert.Equal(t, description, untypedOp.Description())
+
+	tests := []struct {
+		name        string
+		deps        any
+		input       any
+		wantResult  any
+		wantErr     bool
+		errContains string
+	}{
+		{
+			name:       "valid input and dependencies",
+			deps:       OpDeps{},
+			input:      OpInput{A: 3, B: 4},
+			wantResult: 7,
+			wantErr:    false,
+		},
+		{
+			name:        "invalid input type",
+			deps:        OpDeps{},
+			input:       struct{ C int }{C: 5},
+			wantErr:     true,
+			errContains: "input type mismatch",
+		},
+		{
+			name:        "invalid dependencies type",
+			deps:        "invalid",
+			input:       OpInput{A: 1, B: 2},
+			wantErr:     true,
+			errContains: "dependencies type mismatch",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			result, err := untypedOp.handler(bundle, tt.deps, tt.input)
+
+			if tt.wantErr {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errContains)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.wantResult, result)
+			}
+		})
+	}
 }
