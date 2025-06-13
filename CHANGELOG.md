@@ -1,5 +1,13 @@
 # chainlink-deployments-framework
 
+## 0.13.0
+
+### Minor Changes
+
+- [#174](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/174) [`4a4f9b2`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/4a4f9b2d9e0ff5e45f89e609379d470c28f0bc93) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat: support dynamic execution of operation
+
+- [#166](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/166) [`f5a2ca9`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/f5a2ca9248e22b653a723f75b2a55f7e37675312) Thanks [@jkongie](https://github.com/jkongie)! - Adds a zkSync CTF provider under the EVM Chain
+
 ## 0.12.1
 
 ### Patch Changes
