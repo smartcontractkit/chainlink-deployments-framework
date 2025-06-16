@@ -289,10 +289,11 @@ func ExecuteSequence[IN, OUT, DEP any](
 		"version", sequence.def.Version, "description", sequence.def.Description)
 	recentReporter := NewRecentMemoryReporter(b.reporter)
 	newBundle := Bundle{
-		Logger:          b.Logger,
-		GetContext:      b.GetContext,
-		reporter:        recentReporter,
-		reportHashCache: b.reportHashCache,
+		Logger:            b.Logger,
+		GetContext:        b.GetContext,
+		reporter:          recentReporter,
+		reportHashCache:   b.reportHashCache,
+		OperationRegistry: b.OperationRegistry,
 	}
 	ret, err := sequence.handler(newBundle, deps, input)
 	if errors.Is(err, ErrNotSerializable) {
