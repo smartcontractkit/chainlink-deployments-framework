@@ -92,6 +92,10 @@ func Test_ExecuteOperation(t *testing.T) {
 			failTimes := 2
 			handlerCalledTimes := 0
 			handler := func(b Bundle, deps any, input int) (output int, err error) {
+				assert.NotNil(t, b.OperationRegistry)
+				assert.NotNil(t, b.Logger)
+				assert.NotNil(t, b.GetContext)
+
 				handlerCalledTimes++
 				if tt.IsUnrecoverable {
 					return 0, NewUnrecoverableError(errors.New("fatal error"))
@@ -305,8 +309,11 @@ func Test_ExecuteSequence(t *testing.T) {
 
 			var opID string
 			sequence := NewSequence("seq-plus1", version, "plus 1",
-				func(env Bundle, deps any, input int) (int, error) {
-					res, err := ExecuteOperation(env, op, OpDeps{}, input)
+				func(b Bundle, deps any, input int) (int, error) {
+					assert.NotNil(t, b.OperationRegistry)
+					assert.NotNil(t, b.Logger)
+					assert.NotNil(t, b.GetContext)
+					res, err := ExecuteOperation(b, op, OpDeps{}, input)
 					// capture for verification later
 					opID = res.ID
 					if err != nil {
@@ -943,6 +950,10 @@ func Test_ExecuteOperationN(t *testing.T) {
 			failTimes := 2 // First two calls will fail if retrying
 
 			handler := func(b Bundle, deps any, input int) (output int, err error) {
+				assert.NotNil(t, b.OperationRegistry)
+				assert.NotNil(t, b.Logger)
+				assert.NotNil(t, b.GetContext)
+
 				handlerCalledTimes++
 				if tt.simulateOpError {
 					return 0, NewUnrecoverableError(errors.New("fatal error"))
