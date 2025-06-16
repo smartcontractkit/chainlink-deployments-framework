@@ -87,3 +87,17 @@ func ContractMetadataByChainSelector(chainSelector uint64) FilterFunc[ContractMe
 		return filtered
 	}
 }
+
+// ChainMetadataByChainSelector returns a filter that only includes records with the provided chain selector.
+func ChainMetadataByChainSelector(chainSelector uint64) FilterFunc[ChainMetadataKey, ChainMetadata] {
+	return func(records []ChainMetadata) []ChainMetadata {
+		filtered := make([]ChainMetadata, 0, len(records)) // Pre-allocate capacity
+		for _, record := range records {
+			if record.ChainSelector == chainSelector {
+				filtered = append(filtered, record)
+			}
+		}
+
+		return filtered
+	}
+}

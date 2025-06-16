@@ -17,19 +17,23 @@ type Sealer[T any] interface {
 }
 
 // BaseDataStore is an interface that defines the basic operations for a data store.
-// It is parameterized by the type of address reference store, contract metadata store and
+// It is parameterized by the type of address reference store, chain metadata, contract metadata store and
 // env metadata store it uses.
 type BaseDataStore[
-	R AddressRefStore, CM ContractMetadataStore, EM EnvMetadataStore,
+	R AddressRefStore, CH ChainMetadataStore, CM ContractMetadataStore, EM EnvMetadataStore,
 ] interface {
 	Addresses() R
+	ChainMetadata() CH
 	ContractMetadata() CM
 	EnvMetadata() EM
 }
 
 // DataStore is an interface that defines the operations for a read-only data store.
 type DataStore interface {
-	BaseDataStore[AddressRefStore, ContractMetadataStore, EnvMetadataStore]
+	BaseDataStore[
+		AddressRefStore, ChainMetadataStore,
+		ContractMetadataStore, EnvMetadataStore,
+	]
 }
 
 // MutableDataStore is an interface that defines the operations for a mutable data store.
@@ -37,7 +41,10 @@ type MutableDataStore interface {
 	Merger[DataStore]
 	Sealer[DataStore]
 
-	BaseDataStore[MutableAddressRefStore, MutableContractMetadataStore, MutableEnvMetadataStore]
+	BaseDataStore[
+		MutableAddressRefStore, MutableChainMetadataStore,
+		MutableContractMetadataStore, MutableEnvMetadataStore,
+	]
 }
 
 // MemoryDataStore is a concrete implementation of the MutableDataStore interface.
@@ -45,6 +52,7 @@ var _ MutableDataStore = &MemoryDataStore{}
 
 type MemoryDataStore struct {
 	AddressRefStore       *MemoryAddressRefStore       `json:"addressRefStore"`
+	ChainMetadataStore    *MemoryChainMetadataStore    `json:"chainMetadataStore"`
 	ContractMetadataStore *MemoryContractMetadataStore `json:"contractMetadataStore"`
 	EnvMetadataStore      *MemoryEnvMetadataStore      `json:"envMetadataStore"`
 }
@@ -54,6 +62,7 @@ type MemoryDataStore struct {
 func NewMemoryDataStore() *MemoryDataStore {
 	return &MemoryDataStore{
 		AddressRefStore:       NewMemoryAddressRefStore(),
+		ChainMetadataStore:    NewMemoryChainMetadataStore(),
 		ContractMetadataStore: NewMemoryContractMetadataStore(),
 		EnvMetadataStore:      NewMemoryEnvMetadataStore(),
 	}
@@ -63,6 +72,7 @@ func NewMemoryDataStore() *MemoryDataStore {
 func (s *MemoryDataStore) Seal() DataStore {
 	return &sealedMemoryDataStore{
 		AddressRefStore:       s.AddressRefStore,
+		ChainMetadataStore:    s.ChainMetadataStore,
 		ContractMetadataStore: s.ContractMetadataStore,
 		EnvMetadataStore:      s.EnvMetadataStore,
 	}
@@ -71,6 +81,11 @@ func (s *MemoryDataStore) Seal() DataStore {
 // Addresses returns the AddressRefStore of the MemoryDataStore.
 func (s *MemoryDataStore) Addresses() MutableAddressRefStore {
 	return s.AddressRefStore
+}
+
+// ChainMetadata returns the ChainMetadataStore of the MemoryDataStore.
+func (s *MemoryDataStore) ChainMetadata() MutableChainMetadataStore {
+	return s.ChainMetadataStore
 }
 
 // ContractMetadata returns the ContractMetadataStore of the MemoryDataStore.
@@ -92,6 +107,17 @@ func (s *MemoryDataStore) Merge(other DataStore) error {
 
 	for _, addressRef := range addressRefs {
 		if err = s.AddressRefStore.Upsert(addressRef); err != nil {
+			return err
+		}
+	}
+
+	chainMetadataRecords, err := other.ChainMetadata().Fetch()
+	if err != nil {
+		return err
+	}
+
+	for _, record := range chainMetadataRecords {
+		if err = s.ChainMetadataStore.Upsert(record); err != nil {
 			return err
 		}
 	}
@@ -135,6 +161,7 @@ var _ DataStore = &sealedMemoryDataStore{}
 
 type sealedMemoryDataStore struct {
 	AddressRefStore       *MemoryAddressRefStore       `json:"addressRefStore"`
+	ChainMetadataStore    *MemoryChainMetadataStore    `json:"chainMetadataStore"`
 	ContractMetadataStore *MemoryContractMetadataStore `json:"contractMetadataStore"`
 	EnvMetadataStore      *MemoryEnvMetadataStore      `json:"envMetadataStore"`
 }
@@ -143,6 +170,10 @@ type sealedMemoryDataStore struct {
 // It implements the BaseDataStore interface.
 func (s *sealedMemoryDataStore) Addresses() AddressRefStore {
 	return s.AddressRefStore
+}
+
+func (s *sealedMemoryDataStore) ChainMetadata() ChainMetadataStore {
+	return s.ChainMetadataStore
 }
 
 // ContractMetadata returns the ContractMetadataStore of the sealedMemoryDataStore.
