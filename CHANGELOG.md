@@ -1,5 +1,13 @@
 # chainlink-deployments-framework
 
+## 0.13.1
+
+### Patch Changes
+
+- [#177](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/177) [`bf62b62`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/bf62b62cb4b8afdafc234f805888b94cf503e293) Thanks [@giogam](https://github.com/giogam)! - feat(datastore): adds ChainMetadata
+
+- [#180](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/180) [`2da17fa`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/2da17fa445fc2f00d590ccbd977aef127717dec9) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(operations): fix nil OperationRegistry on ExecuteSequence
+
 ## 0.13.0
 
 ### Minor Changes
