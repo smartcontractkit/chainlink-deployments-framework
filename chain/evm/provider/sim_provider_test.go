@@ -76,7 +76,7 @@ func Test_SimChainProvider_Initialize(t *testing.T) {
 							return false
 						}
 
-						return blockNum > 0
+						return blockNum > 1 // We commit the genesis block, so we expect at least 2 blocks (genesis + 1 mined block)
 					}, 1*time.Second, 10*time.Millisecond)
 				}
 			}

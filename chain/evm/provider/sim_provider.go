@@ -102,7 +102,7 @@ func (p *SimChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 
 	// Start mining blocks if a block time is configured
 	if p.config.BlockTime > 0 {
-		mineSimBlocks(p.t, backend, p.config.BlockTime)
+		startAutoMine(p.t, backend, p.config.BlockTime)
 	}
 
 	// Wrap the simulated client to implement the OnchainClient interface. This allows us to use
@@ -172,30 +172,23 @@ func (p *SimChainProvider) BlockChain() chain.BlockChain {
 	return *p.chain
 }
 
-// mineSimBlocks triggers the simulated backend to create a new block at intervals defined by
+// startAutoMine triggers the simulated backend to create a new block at intervals defined by
 // `blockTime`. After the test is done, it stops the mining goroutine.
-func mineSimBlocks(t *testing.T, backend *simulated.Backend, blockTime time.Duration) {
+func startAutoMine(t *testing.T, backend *simulated.Backend, blockTime time.Duration) {
 	t.Helper()
 
+	ctx := t.Context() // Available since Go 1.20
 	ticker := time.NewTicker(blockTime)
-	chStop := make(chan struct{})
-	done := make(chan struct{})
 	go func() {
-		defer close(done)
+		defer ticker.Stop()
 
 		for {
 			select {
 			case <-ticker.C:
 				backend.Commit()
-			case <-chStop:
+			case <-ctx.Done():
 				return
 			}
 		}
 	}()
-
-	t.Cleanup(func() {
-		close(chStop)
-		ticker.Stop()
-		<-done
-	})
 }
