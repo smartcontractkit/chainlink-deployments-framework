@@ -16,14 +16,16 @@ func Test_SimChainProvider_Initialize(t *testing.T) {
 
 	var (
 		chainSelector = chain_selectors.TEST_1000.Selector
+		existingChain = &evm.Chain{}
 	)
 
 	tests := []struct {
-		name           string
-		giveSelector   uint64
-		giveConfig     SimChainProviderConfig
-		wantMinedBlock bool // Indicates whether a block should be mined automatically after initialization.
-		wantErr        string
+		name              string
+		giveSelector      uint64
+		giveConfig        SimChainProviderConfig
+		giveExistingChain *evm.Chain // If provided, this chain will be returned instead of creating a new one.
+		wantMinedBlock    bool       // Indicates whether a block should be mined automatically after initialization.
+		wantErr           string
 	}{
 		{
 			name:         "valid initialization",
@@ -40,6 +42,11 @@ func Test_SimChainProvider_Initialize(t *testing.T) {
 			},
 			wantMinedBlock: true,
 		},
+		{
+			name:              "returns an already initialized chain",
+			giveSelector:      chainSelector,
+			giveExistingChain: existingChain,
+		},
 	}
 
 	for _, tt := range tests {
@@ -47,6 +54,10 @@ func Test_SimChainProvider_Initialize(t *testing.T) {
 			t.Parallel()
 
 			p := NewSimChainProvider(t, tt.giveSelector, tt.giveConfig)
+
+			if tt.giveExistingChain != nil {
+				p.chain = tt.giveExistingChain
+			}
 
 			got, err := p.Initialize(t.Context())
 			if tt.wantErr != "" {
@@ -57,6 +68,11 @@ func Test_SimChainProvider_Initialize(t *testing.T) {
 
 				gotChain, ok := got.(evm.Chain)
 				require.True(t, ok, "expected got to be of type evm.Chain")
+
+				// For the already initialized chain case, we can skip the rest of the checks
+				if tt.giveExistingChain != nil {
+					return
+				}
 
 				assert.Equal(t, tt.giveSelector, gotChain.Selector)
 				assert.NotNil(t, gotChain.Client)
