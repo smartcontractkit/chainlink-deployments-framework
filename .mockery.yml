@@ -11,4 +11,9 @@ require-template-schema-exists: true
 template: testify
 template-schema: '{{.Template}}.schema.json'
 packages:
-  #github.com/smartcontractkit/chainlink-deployments-framework/...
+  github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider:
+    config:
+      all: false
+    interfaces:
+      ContractCaller:
+
