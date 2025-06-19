@@ -48,6 +48,17 @@ jobs:
     runs-on: ubuntu-24.04
     needs: [ ci-test, ci-lint-misc,  ci-lint ]
     steps:
+      - name: Check Sonar Token
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          if [[ -z "${SONAR_TOKEN}" ]]
+          then
+            echo 'Sonar Token not set.'
+          else
+            echo 'Sonar Token set.'
+          fi
+
       - name: Scan with Sonarqube
         uses: smartcontractkit/.github/actions/ci-sonarqube-go@01d931b0455a754d12e7143cc54a5a3521a8f6f6 # ci-sonarqube-go@0.3.1
         with:
