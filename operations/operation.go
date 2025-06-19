@@ -104,11 +104,7 @@ func (o *Operation[IN, OUT, DEP]) execute(b Bundle, deps DEP, input IN) (output 
 // Warning: The input and output types will be converted to `any`, so type safety is lost.
 func (o *Operation[IN, OUT, DEP]) AsUntyped() *Operation[any, any, any] {
 	return &Operation[any, any, any]{
-		def: Definition{
-			ID:          o.def.ID,
-			Version:     o.def.Version,
-			Description: o.def.Description,
-		},
+		def: o.def,
 		handler: func(b Bundle, deps any, input any) (any, error) {
 			var typedInput IN
 			if input != nil {
@@ -126,7 +122,7 @@ func (o *Operation[IN, OUT, DEP]) AsUntyped() *Operation[any, any, any] {
 				}
 			}
 
-			return o.execute(b, typedDeps, typedInput)
+			return o.handler(b, typedDeps, typedInput)
 		},
 	}
 }
