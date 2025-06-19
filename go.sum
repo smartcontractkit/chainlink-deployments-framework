@@ -463,8 +463,8 @@ github.com/smartcontractkit/chainlink-protos/job-distributor v0.10.0 h1:55Izmj3b
 github.com/smartcontractkit/chainlink-protos/job-distributor v0.10.0/go.mod h1:/dVVLXrsp+V0AbcYGJo3XMzKg3CkELsweA/TTopCsKE=
 github.com/smartcontractkit/chainlink-testing-framework/framework v0.9.0 h1:jdftGHqULouQ1bTc92C+PDF6reypEWwdbvG//5yYI0U=
 github.com/smartcontractkit/chainlink-testing-framework/framework v0.9.0/go.mod h1:q99H9vcMJDs6T+zsSI8XJZd6PUkZnyG3iaRbrYNUCTk=
-github.com/smartcontractkit/freeport v0.1.0 h1:3MZHeti5m+tSTBCq5R8rhawFHxrnQZYBZVL+xgS1sPo=
-github.com/smartcontractkit/freeport v0.1.0/go.mod h1:T4zH9R8R8lVWKfU7tUvYz2o2jMv1OpGCdpY2j2QZXzU=
+github.com/smartcontractkit/freeport v0.1.1 h1:B5fhEtmgomdIhw03uPVbVTP6oPv27fBhZsoZZMSIS8I=
+github.com/smartcontractkit/freeport v0.1.1/go.mod h1:T4zH9R8R8lVWKfU7tUvYz2o2jMv1OpGCdpY2j2QZXzU=
 github.com/smartcontractkit/libocr v0.0.0-20250220133800-f3b940c4f298 h1:PKiqnVOTChlH4a4ljJKL3OKGRgYfIpJS4YD1daAIKks=
 github.com/smartcontractkit/libocr v0.0.0-20250220133800-f3b940c4f298/go.mod h1:Mb7+/LC4edz7HyHxX4QkE42pSuov4AV68+AxBXAap0o=
 github.com/smartcontractkit/mcms v0.16.1 h1:8D3/z+H4NF9AQWYBMv3mc6+bFLki0aIjV2Grfbta2Xk=

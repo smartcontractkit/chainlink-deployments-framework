@@ -17,7 +17,7 @@ require (
 	github.com/smartcontractkit/chainlink-common v0.7.0
 	github.com/smartcontractkit/chainlink-protos/job-distributor v0.10.0
 	github.com/smartcontractkit/chainlink-testing-framework/framework v0.9.0
-	github.com/smartcontractkit/freeport v0.1.0
+	github.com/smartcontractkit/freeport v0.1.1
 	github.com/smartcontractkit/mcms v0.16.1
 	github.com/stretchr/testify v1.10.0
 	github.com/testcontainers/testcontainers-go v0.37.0
