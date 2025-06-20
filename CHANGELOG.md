@@ -1,5 +1,17 @@
 # chainlink-deployments-framework
 
+## 0.14.0
+
+### Minor Changes
+
+- [#184](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/184) [`e39a622`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/e39a622603a2e84e0789c2c6441533ccd89fee5c) Thanks [@jkongie](https://github.com/jkongie)! - Adds a Simulated EVM Chain Provider using the go-ethereum `simulated` package as the backend.
+
+- [#186](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/186) [`8c6b0eb`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/8c6b0eb6c58ddb6361a554bfd634bf4e312b6250) Thanks [@jkongie](https://github.com/jkongie)! - Adds an EVM RPC Chain Provider
+
+### Patch Changes
+
+- [#187](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/187) [`3d8c945`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/3d8c945d92915b28f771662a49fe38db42d3d1ba) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(operations): optimization on dynamic execution
+
 ## 0.13.1
 
 ### Patch Changes
