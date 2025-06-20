@@ -114,7 +114,7 @@ func Test_SimChainProvider_ChainSelector(t *testing.T) {
 	assert.Equal(t, chain_selectors.TEST_1000.Selector, p.ChainSelector())
 }
 
-func Test_RPCChainProvider_BlockChain(t *testing.T) {
+func Test_SimChainProvider_BlockChain(t *testing.T) {
 	t.Parallel()
 
 	chain := &evm.Chain{}

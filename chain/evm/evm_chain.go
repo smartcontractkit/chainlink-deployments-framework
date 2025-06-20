@@ -13,6 +13,10 @@ import (
 	chain_common "github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/common"
 )
 
+// ConfirmFunc is a function that takes a transaction, waits for the transaction to be confirmed,
+// and returns the block number and an error.
+type ConfirmFunc func(tx *types.Transaction) (uint64, error)
+
 // OnchainClient is an EVM chain client.
 // For EVM specifically we can use existing geth interface to abstract chain clients.
 type OnchainClient interface {
@@ -30,7 +34,7 @@ type Chain struct {
 	Client OnchainClient
 	// Note the Sign function can be abstract supporting a variety of key storage mechanisms (e.g. KMS etc).
 	DeployerKey *bind.TransactOpts
-	Confirm     func(tx *types.Transaction) (uint64, error)
+	Confirm     ConfirmFunc
 	// Users are a set of keys that can be used to interact with the chain.
 	// These are distinct from the deployer key.
 	Users []*bind.TransactOpts

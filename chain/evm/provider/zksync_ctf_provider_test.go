@@ -83,9 +83,9 @@ func Test_CTFChainProvider_Initialize(t *testing.T) {
 				require.NoError(t, err)
 				assert.NotNil(t, p.chain)
 
-				// Check that the chain is of type *aptos.Chain and has the expected fields
+				// Check that the chain is of type evm.Chain and has the expected fields
 				gotChain, ok := got.(evm.Chain)
-				require.True(t, ok, "expected got to be of type aptos.Chain")
+				require.True(t, ok, "expected got to be of type evm.Chain")
 				assert.Equal(t, tt.giveSelector, gotChain.Selector)
 				assert.NotEmpty(t, gotChain.Client)
 				assert.NotEmpty(t, gotChain.DeployerKey)
