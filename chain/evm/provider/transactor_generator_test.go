@@ -5,10 +5,12 @@ import (
 	"math/big"
 	"testing"
 
+	kmslib "github.com/aws/aws-sdk-go/service/kms"
 	"github.com/ethereum/go-ethereum/crypto"
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	kmsmocks "github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/kms/mocks"
 )
 
 func Test_TransactorGenerator(t *testing.T) {
@@ -23,8 +25,6 @@ func Test_TransactorGenerator(t *testing.T) {
 	hexPrivKey := hex.EncodeToString(privKeyBytes)
 	privKeyHex := crypto.PubkeyToAddress(privKey.PublicKey).Hex()
 
-	chainID := new(big.Int).SetUint64(chain_selectors.TEST_1000.EvmChainID)
-
 	tests := []struct {
 		name        string
 		givePrivKey string
@@ -35,13 +35,13 @@ func Test_TransactorGenerator(t *testing.T) {
 		{
 			name:        "valid default account and private key",
 			givePrivKey: hexPrivKey,
-			giveChainID: chainID,
+			giveChainID: testChainIDBig,
 			want:        privKeyHex,
 		},
 		{
 			name:        "invalid private key",
 			givePrivKey: "invalid",
-			giveChainID: chainID,
+			giveChainID: testChainIDBig,
 			wantErr:     "failed to convert private key to ECDSA",
 		},
 		{
@@ -73,8 +73,6 @@ func Test_TransactorGenerator(t *testing.T) {
 func Test_TransactorRandom(t *testing.T) {
 	t.Parallel()
 
-	chainID := new(big.Int).SetUint64(chain_selectors.TEST_1000.EvmChainID)
-
 	tests := []struct {
 		name        string
 		giveChainID *big.Int
@@ -82,7 +80,7 @@ func Test_TransactorRandom(t *testing.T) {
 	}{
 		{
 			name:        "valid",
-			giveChainID: chainID,
+			giveChainID: testChainIDBig,
 		},
 		{
 			name:        "invalid chain ID",
@@ -104,6 +102,108 @@ func Test_TransactorRandom(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				assert.NotEmpty(t, got.From)
+			}
+		})
+	}
+}
+
+// We only test the initialization here because this constructs an actual KMS client
+// and we don't want to make real KMS calls in unit tests.
+func Test_TransactorFromKMS(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name          string
+		giveKeyID     string
+		giveKeyRegion string
+		wantErr       string
+	}{
+		{
+			name:          "valid KMS key ID and region",
+			giveKeyID:     testKMSKeyID,
+			giveKeyRegion: testKMSKeyRegion,
+		},
+		{
+			name:          "error creating KMS Signer",
+			giveKeyID:     "", // empty key ID should trigger an error
+			giveKeyRegion: testKMSKeyRegion,
+			wantErr:       "failed to create KMS signer",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := TransactorFromKMS(tt.giveKeyID, tt.giveKeyRegion, "")
+
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				require.ErrorContains(t, err, tt.wantErr)
+			} else {
+				require.NoError(t, err)
+				assert.NotNil(t, got)
+			}
+		})
+	}
+}
+
+func Test_TransactorFromKMSSigner(t *testing.T) {
+	t.Parallel()
+
+	publicKeyBytes := testKMSPublicKey(t)
+
+	tests := []struct {
+		name        string
+		beforeFunc  func(*kmsmocks.MockClient)
+		giveChainID *big.Int
+		wantErr     string
+	}{
+		{
+			name: "produces a transactor",
+			beforeFunc: func(c *kmsmocks.MockClient) {
+				c.EXPECT().
+					GetPublicKey(&kmslib.GetPublicKeyInput{
+						KeyId: testKMSKeyIDAWSStr,
+					}).
+					Return(&kmslib.GetPublicKeyOutput{
+						PublicKey: publicKeyBytes,
+					}, nil)
+			},
+			giveChainID: testChainIDBig,
+		},
+		{
+			name:        "fails to generate opts",
+			giveChainID: nil, // nil chain ID should trigger an error
+			wantErr:     "failed to get transact opts from KMS signer",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			client := kmsmocks.NewMockClient(t)
+
+			if tt.beforeFunc != nil {
+				tt.beforeFunc(client)
+			}
+
+			signer := &KMSSigner{
+				client:   client,
+				kmsKeyID: testKMSKeyID,
+			}
+
+			transactor := TransactorFromKMSSigner(signer)
+
+			got, err := transactor.Generate(tt.giveChainID)
+
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				require.ErrorContains(t, err, tt.wantErr)
+			} else {
+				require.NoError(t, err)
+				require.NotNil(t, got)
 			}
 		})
 	}
