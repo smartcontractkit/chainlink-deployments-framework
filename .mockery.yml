@@ -16,4 +16,12 @@ packages:
       all: false
     interfaces:
       ContractCaller:
+  github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/kms:
+    config:
+      all: false
+      pkgname: "kmsmocks"
+      dir: '{{.InterfaceDir}}/mocks'
+      filename: "mock_{{.InterfaceName | snakecase}}.go"
+    interfaces:
+      Client:
 
