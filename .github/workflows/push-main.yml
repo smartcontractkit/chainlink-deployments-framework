@@ -13,7 +13,7 @@ jobs:
       contents: read
     steps:
       - name: cd-release
-        uses: smartcontractkit/.github/actions/cicd-changesets@eeb76b5870e3c17856d5a60fd064a053c023b5f5 # cicd-changesets@1.0.0
+        uses: smartcontractkit/.github/actions/cicd-changesets@08494221eaae4aff37a01669818cff24a4f80b4c # cicd-changesets@1.0.0
         with:
           # general inputs
           git-user: app-token-issuer-infra-releng[bot]
