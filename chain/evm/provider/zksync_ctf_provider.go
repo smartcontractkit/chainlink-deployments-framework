@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/avast/retry-go/v4"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -156,26 +157,49 @@ func (p *ZkSyncCTFChainProvider) BlockChain() chain.BlockChain {
 }
 
 // startContainer starts a CTF container for the ZkSync EVM returning the HTTP URL of the node.
+//
+// Due to the docker container setup making a flakey curl command, we use a retry mechanism
+// to ensure the container is fully up and running before proceeding.
 func (p *ZkSyncCTFChainProvider) startContainer(
 	chainID string,
 ) string {
+	var (
+		attempts = uint(10)
+	)
+
 	// initialize the docker network used by CTF
 	err := framework.DefaultNetwork(p.config.Once)
 	require.NoError(p.t, err)
 
-	// Initialize a port for the container
-	port := freeport.GetOne(p.t)
+	httpURL, err := retry.DoWithData(func() (string, error) {
+		// Initialize a port for the container
+		port := freeport.GetOne(p.t)
 
-	// Create the CTF container for ZkSync
-	output, err := blockchain.NewBlockchainNetwork(&blockchain.Input{
-		Type:    "anvil-zksync",
-		ChainID: chainID,
-		Port:    strconv.Itoa(port),
-	})
-	require.NoError(p.t, err)
-	testcontainers.CleanupContainer(p.t, output.Container)
+		// Create the CTF container for ZkSync
+		output, rerr := blockchain.NewBlockchainNetwork(&blockchain.Input{
+			Type:    "anvil-zksync",
+			ChainID: chainID,
+			Port:    strconv.Itoa(port),
+		})
+		if rerr != nil {
+			// Return the ports to freeport to avoid leaking them during retries
+			freeport.Return([]int{port})
 
-	return output.Nodes[0].ExternalHTTPUrl
+			return "", rerr
+		}
+
+		testcontainers.CleanupContainer(p.t, output.Container)
+
+		return output.Nodes[0].ExternalHTTPUrl, nil
+	},
+		retry.Context(p.t.Context()),
+		retry.Attempts(attempts),
+		retry.Delay(1*time.Second),
+		retry.DelayType(retry.FixedDelay),
+	)
+	require.NoError(p.t, err, "Failed to start CTF ZkSync container after %d attempts", attempts)
+
+	return httpURL
 }
 
 // getTransactors generates transactors from the default list of accounts provided by the CTF.
