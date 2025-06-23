@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"context"
 	"fmt"
 	"math/big"
 
@@ -17,6 +18,7 @@ type TransactorGenerator interface {
 var (
 	_ TransactorGenerator = (*transactorFromRaw)(nil)
 	_ TransactorGenerator = (*transactorRandom)(nil)
+	_ TransactorGenerator = (*transactorFromKMSSigner)(nil)
 )
 
 // TransactorFromRaw returns a generator which creates a transactor from a raw private key.
@@ -38,12 +40,12 @@ func (g *transactorFromRaw) Generate(chainID *big.Int) (*bind.TransactOpts, erro
 		return nil, fmt.Errorf("failed to convert private key to ECDSA: %w", err)
 	}
 
-	key, err := bind.NewKeyedTransactorWithChainID(privKey, chainID)
+	transactor, err := bind.NewKeyedTransactorWithChainID(privKey, chainID)
 	if err != nil {
 		return nil, err
 	}
 
-	return key, nil
+	return transactor, nil
 }
 
 // TransactorRandom is a TransactorGenerator that creates a transactor with a random private key.
@@ -61,10 +63,48 @@ func (g *transactorRandom) Generate(chainID *big.Int) (*bind.TransactOpts, error
 		return nil, fmt.Errorf("failed to generate random private key: %w", err)
 	}
 
-	key, err := bind.NewKeyedTransactorWithChainID(privKey, chainID)
+	transactor, err := bind.NewKeyedTransactorWithChainID(privKey, chainID)
 	if err != nil {
 		return nil, err
 	}
 
-	return key, nil
+	return transactor, nil
+}
+
+// TransactorFromKMS creates a TransactorGenerator that uses a KMS key to sign transactions.
+//
+// It requires the KMS key ID, region, and optionally an AWS profile name. If the AWS profile
+// name is not provided, it defaults to using the environment variables to determine the AWS
+// profile.
+func TransactorFromKMS(keyID, keyRegion, awsProfileName string) (TransactorGenerator, error) {
+	signer, err := NewKMSSigner(keyID, keyRegion, awsProfileName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create KMS signer: %w", err)
+	}
+
+	return &transactorFromKMSSigner{
+		signer: signer,
+	}, nil
+}
+
+// TransactorFromKMSSigner creates a TransactorGenerator from an existing KMSSigner instance.
+func TransactorFromKMSSigner(signer *KMSSigner) TransactorGenerator {
+	return &transactorFromKMSSigner{
+		signer: signer,
+	}
+}
+
+// transactorFromKMSSigner is a TransactorGenerator that creates a transactor using a KMS signer.
+type transactorFromKMSSigner struct {
+	signer *KMSSigner
+}
+
+// Generate uses KMS to create a bind.TransactOpts instance for signing transactions.
+func (g *transactorFromKMSSigner) Generate(chainID *big.Int) (*bind.TransactOpts, error) {
+	transactor, err := g.signer.GetTransactOpts(context.TODO(), chainID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get transact opts from KMS signer: %w", err)
+	}
+
+	return transactor, nil
 }
