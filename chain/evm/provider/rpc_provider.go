@@ -64,7 +64,7 @@ type RPCChainProvider struct {
 	chain *evm.Chain
 }
 
-// NewSimChainProvider creates a new SimChainProvider with the given selector and configuration.
+// NewRPCChainProvider creates a new RPCChainProvider with the given selector and configuration.
 func NewRPCChainProvider(
 	selector uint64, config RPCChainProviderConfig,
 ) *RPCChainProvider {
