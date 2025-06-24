@@ -29,11 +29,6 @@ func Test_RPCChainProviderConfig_validate(t *testing.T) {
 			wantErr:        "http url is required",
 		},
 		{
-			name:           "missing ws url",
-			giveConfigFunc: func(c *RPCChainProviderConfig) { c.WSURL = "" },
-			wantErr:        "ws url is required",
-		},
-		{
 			name:           "missing deployer key generator",
 			giveConfigFunc: func(c *RPCChainProviderConfig) { c.DeployerKeyGen = nil },
 			wantErr:        "deployer key generator is required",
