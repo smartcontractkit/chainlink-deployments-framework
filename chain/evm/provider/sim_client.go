@@ -16,19 +16,19 @@ type SimClient struct {
 
 	// Embed the simulated.Client to provide access to its methods and adhere to the OnchainClient interface.
 	simulated.Client
-	// sim is the underlying simulated backend that this client wraps.
-	sim *simulated.Backend
+	// backend is the underlying simulated backend that this client wraps.
+	backend *simulated.Backend
 }
 
 // NewSimClient creates a new wrappedSimBackend instance from a simulated backend.
-func NewSimClient(t *testing.T, sim *simulated.Backend) *SimClient {
+func NewSimClient(t *testing.T, backend *simulated.Backend) *SimClient {
 	t.Helper()
 
-	require.NotNil(t, sim, "simulated backend must not be nil")
+	require.NotNil(t, backend, "simulated backend must not be nil")
 
 	return &SimClient{
-		sim:    sim,
-		Client: sim.Client(),
+		backend: backend,
+		Client:  backend.Client(),
 	}
 }
 
@@ -36,5 +36,9 @@ func (b *SimClient) Commit() common.Hash {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	return b.sim.Commit()
+	return b.backend.Commit()
+}
+
+func (b *SimClient) Backend() *simulated.Backend {
+	return b.backend
 }
