@@ -20,7 +20,7 @@ import (
 type RPCChainProviderConfig struct {
 	// Required: The HTTP RPC URL to connect to the Solana node.
 	HTTPURL string
-	// Required: The WebSocket URL to connect to the Solana node.
+	// Optional: The WebSocket URL to connect to the Solana node.
 	WSURL string
 	// Required: A generator for the deployer key. Use PrivateKeyFromRaw to create a deployer
 	// key from a private key.
@@ -36,9 +36,6 @@ type RPCChainProviderConfig struct {
 func (c RPCChainProviderConfig) validate() error {
 	if c.HTTPURL == "" {
 		return errors.New("http url is required")
-	}
-	if c.WSURL == "" {
-		return errors.New("ws url is required")
 	}
 	if c.DeployerKeyGen == nil {
 		return errors.New("deployer key generator is required")
