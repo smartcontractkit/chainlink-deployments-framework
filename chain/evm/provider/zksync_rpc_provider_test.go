@@ -13,7 +13,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 )
 
-func Test_RPCChainProviderConfig_validate(t *testing.T) {
+func Test_ZkSyncRPCChainProviderConfig_validate(t *testing.T) {
 	t.Parallel()
 
 	rpc := deployment.RPC{
@@ -27,37 +27,50 @@ func Test_RPCChainProviderConfig_validate(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		config  RPCChainProviderConfig
+		config  ZkSyncRPCChainProviderConfig
 		wantErr string
 	}{
 		{
 			name: "valid config",
-			config: RPCChainProviderConfig{
+			config: ZkSyncRPCChainProviderConfig{
 				DeployerTransactorGen: TransactorRandom(),
+				SignerGenerator:       ZKSyncSignerRandom(),
 				RPCs:                  []deployment.RPC{rpc},
 				ConfirmFunctor:        confirmFuncGeth,
 			},
 		},
 		{
 			name: "missing deployer transactor generator",
-			config: RPCChainProviderConfig{
-				RPCs:           []deployment.RPC{rpc},
-				ConfirmFunctor: confirmFuncGeth,
+			config: ZkSyncRPCChainProviderConfig{
+				SignerGenerator: ZKSyncSignerRandom(),
+				RPCs:            []deployment.RPC{rpc},
+				ConfirmFunctor:  confirmFuncGeth,
 			},
 			wantErr: "deployer transactor generator is required",
 		},
 		{
-			name: "missing confirm functor",
-			config: RPCChainProviderConfig{
+			name: "missing signer generator",
+			config: ZkSyncRPCChainProviderConfig{
 				DeployerTransactorGen: TransactorRandom(),
+				RPCs:                  []deployment.RPC{rpc},
+				ConfirmFunctor:        confirmFuncGeth,
+			},
+			wantErr: "signer generator is required",
+		},
+		{
+			name: "missing confirm functor",
+			config: ZkSyncRPCChainProviderConfig{
+				DeployerTransactorGen: TransactorRandom(),
+				SignerGenerator:       ZKSyncSignerRandom(),
 				RPCs:                  []deployment.RPC{rpc},
 			},
 			wantErr: "confirm functor is required",
 		},
 		{
 			name: "missing rpcs",
-			config: RPCChainProviderConfig{
+			config: ZkSyncRPCChainProviderConfig{
 				DeployerTransactorGen: TransactorRandom(),
+				SignerGenerator:       ZKSyncSignerRandom(),
 				ConfirmFunctor:        confirmFuncGeth,
 			},
 			wantErr: "at least one RPC is required",
@@ -79,7 +92,7 @@ func Test_RPCChainProviderConfig_validate(t *testing.T) {
 }
 
 //nolint:paralleltest // This test cannot run in parallel due to a race condition in seth's log initialization
-func Test_RPCChainProvider_Initialize(t *testing.T) {
+func Test_ZkSyncRPCChainProvider_Initialize(t *testing.T) {
 	var (
 		chainSelector = chain_selectors.TEST_1000.Selector
 		existingChain = &evm.Chain{}
@@ -101,27 +114,26 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 	tests := []struct {
 		name              string
 		giveSelector      uint64
-		giveConfig        RPCChainProviderConfig
+		giveConfig        ZkSyncRPCChainProviderConfig
 		giveExistingChain *evm.Chain // Use this to simulate an already initialized chain
 		wantErr           string
 	}{
 		{
 			name:         "valid initialization",
 			giveSelector: chainSelector,
-			giveConfig: RPCChainProviderConfig{
+			giveConfig: ZkSyncRPCChainProviderConfig{
 				DeployerTransactorGen: TransactorRandom(),
+				SignerGenerator:       ZKSyncSignerRandom(),
 				RPCs:                  []deployment.RPC{rpc},
-				UsersTransactorGen: []TransactorGenerator{
-					TransactorRandom(),
-				},
-				ConfirmFunctor: gethConfirmFunc,
+				ConfirmFunctor:        gethConfirmFunc,
 			},
 		},
 		{
 			name:         "valid initialization with logger",
 			giveSelector: chainSelector,
-			giveConfig: RPCChainProviderConfig{
+			giveConfig: ZkSyncRPCChainProviderConfig{
 				DeployerTransactorGen: TransactorRandom(),
+				SignerGenerator:       ZKSyncSignerRandom(),
 				RPCs:                  []deployment.RPC{rpc},
 				Logger:                logger.Test(t),
 				ConfirmFunctor:        gethConfirmFunc,
@@ -130,8 +142,9 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 		{
 			name:         "valid initialization with seth config",
 			giveSelector: chainSelector,
-			giveConfig: RPCChainProviderConfig{
+			giveConfig: ZkSyncRPCChainProviderConfig{
 				DeployerTransactorGen: TransactorRandom(),
+				SignerGenerator:       ZKSyncSignerRandom(),
 				RPCs:                  []deployment.RPC{rpc},
 				ConfirmFunctor: ConfirmFuncSeth(
 					rpc.HTTPURL, 10*time.Millisecond, []string{}, configPath,
@@ -146,14 +159,15 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 		{
 			name:         "fails config validation",
 			giveSelector: chainSelector,
-			giveConfig:   RPCChainProviderConfig{},
+			giveConfig:   ZkSyncRPCChainProviderConfig{},
 			wantErr:      "deployer transactor generator is required",
 		},
 		{
 			name:         "fails getting chain ID from selector",
 			giveSelector: 1, // Invalid selector
-			giveConfig: RPCChainProviderConfig{
+			giveConfig: ZkSyncRPCChainProviderConfig{
 				DeployerTransactorGen: TransactorRandom(),
+				SignerGenerator:       ZKSyncSignerRandom(),
 				RPCs:                  []deployment.RPC{rpc},
 				ConfirmFunctor:        gethConfirmFunc,
 			},
@@ -162,31 +176,20 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 		{
 			name:         "fails to generate deployer transactor",
 			giveSelector: chainSelector,
-			giveConfig: RPCChainProviderConfig{
+			giveConfig: ZkSyncRPCChainProviderConfig{
 				DeployerTransactorGen: &alwaysFailingTransactorGenerator{},
+				SignerGenerator:       ZKSyncSignerRandom(),
 				RPCs:                  []deployment.RPC{rpc},
 				ConfirmFunctor:        gethConfirmFunc,
 			},
 			wantErr: "failed to generate deployer key",
 		},
 		{
-			name:         "fails to generate users transactors",
-			giveSelector: chainSelector,
-			giveConfig: RPCChainProviderConfig{
-				DeployerTransactorGen: TransactorRandom(),
-				RPCs:                  []deployment.RPC{rpc},
-				UsersTransactorGen: []TransactorGenerator{
-					&alwaysFailingTransactorGenerator{}, // This will always fail
-				},
-				ConfirmFunctor: gethConfirmFunc,
-			},
-			wantErr: "failed to generate user transactor",
-		},
-		{
 			name:         "fails to create multi client",
 			giveSelector: chainSelector,
-			giveConfig: RPCChainProviderConfig{
+			giveConfig: ZkSyncRPCChainProviderConfig{
 				DeployerTransactorGen: TransactorRandom(),
+				SignerGenerator:       ZKSyncSignerRandom(),
 				RPCs:                  []deployment.RPC{{}},
 				ConfirmFunctor:        gethConfirmFunc,
 			},
@@ -195,8 +198,9 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 		{
 			name:         "fails to parse seth configuration",
 			giveSelector: chainSelector,
-			giveConfig: RPCChainProviderConfig{
+			giveConfig: ZkSyncRPCChainProviderConfig{
 				DeployerTransactorGen: TransactorRandom(),
+				SignerGenerator:       ZKSyncSignerRandom(),
 				RPCs:                  []deployment.RPC{rpc},
 				ConfirmFunctor: ConfirmFuncSeth(
 					rpc.HTTPURL, 10*time.Millisecond, []string{}, "nonexistent.toml",
@@ -207,18 +211,30 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 		{
 			name:         "fails to generate confirm function",
 			giveSelector: chainSelector,
-			giveConfig: RPCChainProviderConfig{
+			giveConfig: ZkSyncRPCChainProviderConfig{
 				DeployerTransactorGen: TransactorRandom(),
+				SignerGenerator:       ZKSyncSignerRandom(),
 				RPCs:                  []deployment.RPC{rpc},
 				ConfirmFunctor:        &alwaysFailingConfirmFunctor{},
 			},
 			wantErr: "failed to generate confirm function",
 		},
+		{
+			name:         "fails to generate zkSync signer",
+			giveSelector: chainSelector,
+			giveConfig: ZkSyncRPCChainProviderConfig{
+				DeployerTransactorGen: TransactorRandom(),
+				SignerGenerator:       &alwaysFailingZKSyncSignerGenerator{},
+				RPCs:                  []deployment.RPC{rpc},
+				ConfirmFunctor:        gethConfirmFunc,
+			},
+			wantErr: "failed to generate zkSync signer",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) { //nolint:paralleltest // This test cannot run in parallel due to a race condition in seth's log initialization
-			p := NewRPCChainProvider(tt.giveSelector, tt.giveConfig)
+			p := NewZkSyncRPCChainProvider(tt.giveSelector, tt.giveConfig)
 
 			if tt.giveExistingChain != nil {
 				p.chain = tt.giveExistingChain
@@ -244,32 +260,34 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 				assert.NotNil(t, gotChain.Client)
 				assert.NotNil(t, gotChain.DeployerKey)
 				assert.NotNil(t, gotChain.Confirm)
-				assert.Len(t, gotChain.Users, len(tt.giveConfig.UsersTransactorGen))
+				assert.True(t, gotChain.IsZkSyncVM)
+				assert.NotNil(t, gotChain.ClientZkSyncVM)
+				assert.NotNil(t, gotChain.DeployerKeyZkSyncVM)
 			}
 		})
 	}
 }
 
-func Test_RPCChainProvider_Name(t *testing.T) {
+func Test_ZkSyncRPCChainProvider_Name(t *testing.T) {
 	t.Parallel()
 
-	p := &RPCChainProvider{}
-	assert.Equal(t, "EVM RPC Chain Provider", p.Name())
+	p := &ZkSyncRPCChainProvider{}
+	assert.Equal(t, "ZkSync EVM RPC Chain Provider", p.Name())
 }
 
-func Test_RPCChainProvider_ChainSelector(t *testing.T) {
+func Test_ZkSyncRPCChainProvider_ChainSelector(t *testing.T) {
 	t.Parallel()
 
-	p := &RPCChainProvider{selector: chain_selectors.TEST_1000.Selector}
+	p := &ZkSyncRPCChainProvider{selector: chain_selectors.TEST_1000.Selector}
 	assert.Equal(t, chain_selectors.TEST_1000.Selector, p.ChainSelector())
 }
 
-func Test_RPCChainProvider_BlockChain(t *testing.T) {
+func Test_ZkSyncRPCChainProvider_BlockChain(t *testing.T) {
 	t.Parallel()
 
 	chain := &evm.Chain{}
 
-	p := &RPCChainProvider{
+	p := &ZkSyncRPCChainProvider{
 		chain: chain,
 	}
 
