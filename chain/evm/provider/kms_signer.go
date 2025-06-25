@@ -29,6 +29,9 @@ type KMSSigner struct {
 	// kmsKeyID is the ID of the KMS key used for signing. Required to store it on the struct
 	// so we can use it later to sign transactions.
 	kmsKeyID string
+
+	// Cached ECDSA public key derived from the KMS key.
+	ecdsaPublicKey *ecdsa.PublicKey
 }
 
 // NewKMSSigner creates a new KMSSigner instance using the provided KMS key ID, region, and
@@ -52,6 +55,11 @@ func NewKMSSigner(keyID, keyRegion string, awsProfile string) (*KMSSigner, error
 
 // GetECDSAPublicKey retrieves the public key from KMS and converts it to its ECDSA representation.
 func (s *KMSSigner) GetECDSAPublicKey() (*ecdsa.PublicKey, error) {
+	// If we already have the public key cached, return it directly to avoid unnecessary KMS calls.
+	if s.ecdsaPublicKey != nil {
+		return s.ecdsaPublicKey, nil
+	}
+
 	out, err := s.client.GetPublicKey(&kmslib.GetPublicKeyInput{
 		KeyId: aws.String(s.kmsKeyID),
 	})
@@ -66,15 +74,15 @@ func (s *KMSSigner) GetECDSAPublicKey() (*ecdsa.PublicKey, error) {
 	}
 
 	// Unmarshal the KMS public key bytes into an ECDSA public key.
-	pubKey, err := crypto.UnmarshalPubkey(spki.SubjectPublicKey.Bytes)
+	s.ecdsaPublicKey, err = crypto.UnmarshalPubkey(spki.SubjectPublicKey.Bytes)
 	if err != nil {
 		return nil, fmt.Errorf("cannot unmarshal public key bytes: %w", err)
 	}
 
-	return pubKey, nil
+	return s.ecdsaPublicKey, nil
 }
 
-// GetAddress returns the Ethereum address corresponding to the public key managed by KMS.
+// GetAddress returns the EVM address corresponding to the public key managed by KMS.
 func (s *KMSSigner) GetAddress() (common.Address, error) {
 	pubKey, err := s.GetECDSAPublicKey()
 	if err != nil {
@@ -84,7 +92,7 @@ func (s *KMSSigner) GetAddress() (common.Address, error) {
 	return crypto.PubkeyToAddress(*pubKey), nil
 }
 
-// GetTransactOpts returns a *bind.TransactOpts configured to sign Ethereum transactions using the
+// GetTransactOpts returns a *bind.TransactOpts configured to sign EVM transactions using the
 // KMS-backed key.
 //
 // The returned TransactOpts uses the KMS key for signing and sets the correct sender address
@@ -96,60 +104,84 @@ func (s *KMSSigner) GetTransactOpts(
 		return nil, errors.New("chainID is required")
 	}
 
-	// Construct the key's EVM Address from the public key
-	pubKey, err := s.GetECDSAPublicKey()
+	from, err := s.GetAddress()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get address from public key: %w", err)
 	}
 
 	return &bind.TransactOpts{
-		From:    crypto.PubkeyToAddress(*pubKey),
-		Signer:  s.signerFunc(pubKey, chainID),
+		From:    from,
+		Signer:  s.signerFunc(chainID),
 		Context: ctx,
 	}, nil
 }
 
-// signerFunc returns a function that signs transactions using KMS. The returned function
-// calls the KMS API to sign the transaction hash, converts the KMS signature to an
-// Ethereum-compatible format, and applies the signature to the transaction.
-func (s *KMSSigner) signerFunc(
-	pubKey *ecdsa.PublicKey, chainID *big.Int,
-) func(address common.Address, tx *types.Transaction) (*types.Transaction, error) {
-	// Convert the public key to bytes and derive the EVM address from it.
+// SignHash signs the given transaction hash using the KMS key. It retrieves the public key,
+// signs the hash using KMS, and converts the KMS signature to an Ethereum-compatible signature.
+//
+// The returned signature is in the format expected by Ethereum transactions, including the
+// recovery ID (v) and the r and s values.
+func (s *KMSSigner) SignHash(txHash []byte) ([]byte, error) {
+	var (
+		mType = kmslib.MessageTypeDigest
+		algo  = kmslib.SigningAlgorithmSpecEcdsaSha256
+	)
+
+	// Fetch the ECDSA public key from KMS which is used to convert the KMS signature to an
+	// Ethereum-compatible signature.
+	pubKey, err := s.GetECDSAPublicKey()
+	if err != nil {
+		return nil, err
+	}
 	pubKeyBytes := secp256k1.S256().Marshal(pubKey.X, pubKey.Y)
-	keyAddr := crypto.PubkeyToAddress(*pubKey)
 
-	// Construct the EVM signer
-	signer := types.LatestSignerForChainID(chainID)
-
-	return func(address common.Address, tx *types.Transaction) (*types.Transaction, error) {
-		if address != keyAddr {
-			return nil, bind.ErrNotAuthorized
-		}
-
-		var (
-			txHash = signer.Hash(tx).Bytes()
-			mType  = kmslib.MessageTypeDigest
-			algo   = kmslib.SigningAlgorithmSpecEcdsaSha256
-		)
-
-		// Sign the transaction hash using KMS.
-		out, err := s.client.Sign(&kmslib.SignInput{
+	// Sign the transaction hash using KMS.
+	out, err := s.client.Sign(
+		&kmslib.SignInput{
 			KeyId:            &s.kmsKeyID,
 			SigningAlgorithm: &algo,
 			MessageType:      &mType,
 			Message:          txHash,
 		})
+	if err != nil {
+		return nil, fmt.Errorf("call to kms.Sign() failed: %w", err)
+	}
+
+	evmSig, err := kmsToEVMSig(out.Signature, pubKeyBytes, txHash)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert KMS signature to Ethereum signature: %w", err)
+	}
+
+	return evmSig, nil
+}
+
+// signerFunc returns a function that signs transactions using KMS. The returned function
+// calls the KMS API to sign the transaction hash, converts the KMS signature to an
+// Ethereum-compatible format, and applies the signature to the transaction.
+//
+// This is used by the geth bind package to sign transactions before sending them to the network.
+func (s *KMSSigner) signerFunc(
+	chainID *big.Int,
+) func(address common.Address, tx *types.Transaction) (*types.Transaction, error) {
+	// Construct the EVM signer
+	signer := types.LatestSignerForChainID(chainID)
+
+	return func(address common.Address, tx *types.Transaction) (*types.Transaction, error) {
+		keyAddr, err := s.GetAddress()
 		if err != nil {
-			return nil, fmt.Errorf("call to kms.Sign() failed on transaction: %w", err)
+			return nil, err
 		}
 
-		evmSig, err := kmsToEVMSig(out.Signature, pubKeyBytes, txHash)
-		if err != nil {
-			return nil, fmt.Errorf("failed to convert KMS signature to Ethereum signature: %w", err)
+		if address != keyAddr {
+			return nil, bind.ErrNotAuthorized
 		}
 
-		return tx.WithSignature(signer, evmSig)
+		sig, err := s.SignHash(signer.Hash(tx).Bytes())
+		if err != nil {
+			return nil, err
+		}
+
+		return tx.WithSignature(signer, sig)
 	}
 }
 
