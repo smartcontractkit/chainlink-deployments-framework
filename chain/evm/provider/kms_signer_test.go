@@ -1,6 +1,8 @@
 package provider
 
 import (
+	"crypto/ecdsa"
+	"crypto/sha256"
 	"encoding/hex"
 	"math/big"
 	"testing"
@@ -28,15 +30,20 @@ func Test_NewKMSigner(t *testing.T) {
 	require.NotNil(t, signer.client)
 }
 
-func Test_KMSSigner_GetPublicKey(t *testing.T) {
+func Test_KMSSigner_GetECDSAPublicKey(t *testing.T) {
 	t.Parallel()
 
-	publicKeyBytes := testKMSPublicKey(t)
+	var (
+		publicKeyBytes = testKMSPublicKey(t)
+		ecdsaPublicKey = testECDSAPublicKey(t)
+	)
 
 	tests := []struct {
-		name       string
-		beforeFunc func(c *kmsmocks.MockClient)
-		wantErr    string
+		name          string
+		beforeFunc    func(c *kmsmocks.MockClient)
+		giveCachedKey *ecdsa.PublicKey
+		want          *ecdsa.PublicKey
+		wantErr       string
 	}{
 		{
 			name: "valid public key",
@@ -49,6 +56,12 @@ func Test_KMSSigner_GetPublicKey(t *testing.T) {
 						PublicKey: publicKeyBytes,
 					}, nil)
 			},
+			want: ecdsaPublicKey,
+		},
+		{
+			name:          "cached public key",
+			giveCachedKey: ecdsaPublicKey,
+			want:          ecdsaPublicKey,
 		},
 		{
 			name: "could not get KMS public key",
@@ -58,6 +71,19 @@ func Test_KMSSigner_GetPublicKey(t *testing.T) {
 					Return(nil, assert.AnError)
 			},
 			wantErr: "cannot get public key from KMS",
+		},
+		{
+			name: "could not unmarshal KMS public key",
+			beforeFunc: func(c *kmsmocks.MockClient) {
+				c.EXPECT().
+					GetPublicKey(&kmslib.GetPublicKeyInput{
+						KeyId: testKMSKeyIDAWSStr,
+					}).
+					Return(&kmslib.GetPublicKeyOutput{
+						PublicKey: []byte("invalid"),
+					}, nil)
+			},
+			wantErr: "cannot parse asn1 public key",
 		},
 	}
 
@@ -73,6 +99,10 @@ func Test_KMSSigner_GetPublicKey(t *testing.T) {
 				}
 			)
 
+			if tt.giveCachedKey != nil {
+				signer.ecdsaPublicKey = tt.giveCachedKey
+			}
+
 			if tt.beforeFunc != nil {
 				tt.beforeFunc(client)
 			}
@@ -84,7 +114,7 @@ func Test_KMSSigner_GetPublicKey(t *testing.T) {
 				require.ErrorContains(t, err, tt.wantErr)
 			} else {
 				require.NoError(t, err)
-				require.Equal(t, testECDSAPublicKey(t), pubKey)
+				require.Equal(t, tt.want, pubKey)
 			}
 		})
 	}
@@ -93,7 +123,10 @@ func Test_KMSSigner_GetPublicKey(t *testing.T) {
 func Test_KMSSigner_GetAddress(t *testing.T) {
 	t.Parallel()
 
-	publicKey := testECDSAPublicKey(t)
+	var (
+		kmsPublicKey = testKMSPublicKey(t)
+		publicKey    = testECDSAPublicKey(t)
+	)
 
 	tests := []struct {
 		name       string
@@ -108,7 +141,7 @@ func Test_KMSSigner_GetAddress(t *testing.T) {
 						KeyId: testKMSKeyIDAWSStr,
 					}).
 					Return(&kmslib.GetPublicKeyOutput{
-						PublicKey: testKMSPublicKey(t),
+						PublicKey: kmsPublicKey,
 					}, nil)
 			},
 		},
@@ -222,12 +255,141 @@ func Test_KMSSigner_GetTransactOpts(t *testing.T) {
 	}
 }
 
+func Test_KMSSigner_SignHash(t *testing.T) {
+	t.Parallel()
+
+	var (
+		kmsPublicKey = testKMSPublicKey(t)
+	)
+
+	// Simple hash to sign
+	h := sha256.New()
+	h.Write([]byte("signme"))
+	txHash := h.Sum(nil)
+
+	// A valid KMS signature in ASN.1 format, which we will use as a mock return value.
+	sigBytes, err := hex.DecodeString(
+		"304502206475584f9afacee823cd3479364ec7a2fc2a804739f87e48604d3fd2a74a5dbb022100b802fc3313a86fc442a23f3620e649c9473991a6ac25432b8a636b7dadef3eb3",
+	)
+	require.NoError(t, err)
+
+	// The expected EVM signature bytes that we will compare against based on the sigBytes.
+	wantEVMSigBytes, err := hex.DecodeString("6475584f9afacee823cd3479364ec7a2fc2a804739f87e48604d3fd2a74a5dbb47fd03ccec57903bbd5dc0c9df19b63573754b4003235d10356ef30f2247028e01")
+	require.NoError(t, err)
+
+	tests := []struct {
+		name       string
+		beforeFunc func(c *kmsmocks.MockClient)
+		giveTxHash []byte
+		want       []byte
+		wantErr    string
+	}{
+		{
+			name: "signs the hash successfully",
+			beforeFunc: func(c *kmsmocks.MockClient) {
+				c.EXPECT().
+					GetPublicKey(&kmslib.GetPublicKeyInput{
+						KeyId: testKMSKeyIDAWSStr,
+					}).
+					Return(&kmslib.GetPublicKeyOutput{
+						PublicKey: kmsPublicKey,
+					}, nil)
+
+				c.EXPECT().
+					Sign(mock.IsType(&kmslib.SignInput{})).
+					Return(&kmslib.SignOutput{
+						Signature: sigBytes,
+					}, nil)
+			},
+			giveTxHash: txHash,
+			want:       wantEVMSigBytes,
+		},
+		{
+			name: "failed to get KMS public key",
+			beforeFunc: func(c *kmsmocks.MockClient) {
+				c.EXPECT().
+					GetPublicKey(&kmslib.GetPublicKeyInput{
+						KeyId: testKMSKeyIDAWSStr,
+					}).
+					Return(nil, assert.AnError)
+			},
+			giveTxHash: txHash,
+			wantErr:    "cannot get public key from KMS",
+		},
+		{
+			name: "failed to sign hash with KMS",
+			beforeFunc: func(c *kmsmocks.MockClient) {
+				c.EXPECT().
+					GetPublicKey(&kmslib.GetPublicKeyInput{
+						KeyId: testKMSKeyIDAWSStr,
+					}).
+					Return(&kmslib.GetPublicKeyOutput{
+						PublicKey: kmsPublicKey,
+					}, nil)
+
+				c.EXPECT().
+					Sign(mock.IsType(&kmslib.SignInput{})).
+					Return(nil, assert.AnError)
+			},
+			giveTxHash: txHash,
+			wantErr:    "call to kms.Sign() failed",
+		},
+		{
+			name: "failed to convert KMS signature to Ethereum signature",
+			beforeFunc: func(c *kmsmocks.MockClient) {
+				c.EXPECT().
+					GetPublicKey(&kmslib.GetPublicKeyInput{
+						KeyId: testKMSKeyIDAWSStr,
+					}).
+					Return(&kmslib.GetPublicKeyOutput{
+						PublicKey: kmsPublicKey,
+					}, nil)
+
+				c.EXPECT().
+					Sign(mock.IsType(&kmslib.SignInput{})).
+					Return(&kmslib.SignOutput{
+						Signature: []byte("invalid"),
+					}, nil)
+			},
+			giveTxHash: txHash,
+			wantErr:    "failed to convert KMS signature to Ethereum signature",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var (
+				client = kmsmocks.NewMockClient(t)
+				signer = &KMSSigner{
+					client:   client,
+					kmsKeyID: testKMSKeyID,
+				}
+			)
+
+			if tt.beforeFunc != nil {
+				tt.beforeFunc(client)
+			}
+
+			got, err := signer.SignHash(tt.giveTxHash)
+
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				require.ErrorContains(t, err, tt.wantErr)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.want, got)
+			}
+		})
+	}
+}
+
 // Tests the SignerFunc that is inserted into the TransactOpts.
 func Test_KMSSigner_signerFunc(t *testing.T) {
 	t.Parallel()
 
 	var (
-		publicKey = testECDSAPublicKey(t)
 		// tx is a sample transaction that we will use for testing. Changing this will impact the
 		// expected signature values.
 		tx = types.NewTransaction(
@@ -267,6 +429,12 @@ func Test_KMSSigner_signerFunc(t *testing.T) {
 			name: "signs the transaction",
 			beforeFunc: func(c *kmsmocks.MockClient) {
 				c.EXPECT().
+					GetPublicKey(mock.IsType(&kmslib.GetPublicKeyInput{})).
+					Return(&kmslib.GetPublicKeyOutput{
+						PublicKey: testKMSPublicKey(t),
+					}, nil)
+
+				c.EXPECT().
 					Sign(mock.IsType(&kmslib.SignInput{})).
 					Return(&kmslib.SignOutput{
 						Signature: kmsSigBytes,
@@ -279,7 +447,14 @@ func Test_KMSSigner_signerFunc(t *testing.T) {
 			wantSigV:    sigV,
 		},
 		{
-			name:        "not authorized to sign",
+			name: "not authorized to sign",
+			beforeFunc: func(c *kmsmocks.MockClient) {
+				c.EXPECT().
+					GetPublicKey(mock.IsType(&kmslib.GetPublicKeyInput{})).
+					Return(&kmslib.GetPublicKeyOutput{
+						PublicKey: testKMSPublicKey(t),
+					}, nil)
+			},
 			giveKeyAddr: common.HexToAddress("1234"), // Invalid address
 			giveTx:      tx,
 			wantErr:     bind.ErrNotAuthorized.Error(),
@@ -288,25 +463,18 @@ func Test_KMSSigner_signerFunc(t *testing.T) {
 			name: "error signing transaction with KMS",
 			beforeFunc: func(c *kmsmocks.MockClient) {
 				c.EXPECT().
+					GetPublicKey(mock.IsType(&kmslib.GetPublicKeyInput{})).
+					Return(&kmslib.GetPublicKeyOutput{
+						PublicKey: testKMSPublicKey(t),
+					}, nil)
+
+				c.EXPECT().
 					Sign(mock.IsType(&kmslib.SignInput{})).
 					Return(nil, assert.AnError)
 			},
 			giveKeyAddr: testEVMAddr(t),
 			giveTx:      tx,
 			wantErr:     "call to kms.Sign() failed",
-		},
-		{
-			name: "failed to convert KMS signature to Ethereum signature",
-			beforeFunc: func(c *kmsmocks.MockClient) {
-				c.EXPECT().
-					Sign(mock.IsType(&kmslib.SignInput{})).
-					Return(&kmslib.SignOutput{
-						Signature: []byte("invalid"), // Invalid signature bytes
-					}, nil)
-			},
-			giveKeyAddr: testEVMAddr(t),
-			giveTx:      tx,
-			wantErr:     "failed to convert KMS signature",
 		},
 	}
 
@@ -320,7 +488,7 @@ func Test_KMSSigner_signerFunc(t *testing.T) {
 					client:   client,
 					kmsKeyID: testKMSKeyID,
 				}
-				signerFunc = signer.signerFunc(publicKey, testChainIDBig)
+				signerFunc = signer.signerFunc(testChainIDBig)
 			)
 
 			if tt.beforeFunc != nil {
