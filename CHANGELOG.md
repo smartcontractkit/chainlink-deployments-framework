@@ -1,5 +1,13 @@
 # chainlink-deployments-framework
 
+## 0.15.0
+
+### Minor Changes
+
+- [#198](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/198) [`68696ef`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/68696ef5ac683418c7da7a3e1693fc09dbe0537f) Thanks [@jkongie](https://github.com/jkongie)! - Adds a `Backend` method to the `SimClient` to return the underlying simulated backend
+
+- [#201](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/201) [`b57839d`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/b57839d68b0109997e1e42a1b6abb941337b833f) Thanks [@jkongie](https://github.com/jkongie)! - Adds a new ZkSync Chain Provider
+
 ## 0.14.0
 
 ### Minor Changes
