@@ -21,14 +21,14 @@ import (
 	"github.com/smartcontractkit/freeport"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
-	"github.com/zksync-sdk/zksync2-go/accounts"
-	"github.com/zksync-sdk/zksync2-go/clients"
+	zkAccounts "github.com/zksync-sdk/zksync2-go/accounts"
+	zkClients "github.com/zksync-sdk/zksync2-go/clients"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 )
 
-// ZkCTFChainProviderConfig holds the configuration to initialize the ZkSyncCTFChainProvider.
+// ZkSyncCTFChainProviderConfig holds the configuration to initialize the ZkSyncCTFChainProvider.
 type ZkSyncCTFChainProviderConfig struct {
 	// Required: A sync.Once instance to ensure that the CTF framework only sets up the new
 	// DefaultNetwork once
@@ -109,8 +109,8 @@ func (p *ZkSyncCTFChainProvider) Initialize(ctx context.Context) (chain.BlockCha
 	transactors := p.getTransactors(chainID, gasPrice)
 
 	// Initialize the zksync client and wallet
-	clientZk := clients.NewClient(client.Client())
-	deployerZk, err := accounts.NewWallet(
+	clientZk := zkClients.NewClient(client.Client())
+	deployerZk, err := zkAccounts.NewWallet(
 		common.Hex2Bytes(blockchain.AnvilZKSyncRichAccountPks[0]), clientZk, nil,
 	)
 	require.NoError(p.t, err, "failed to create deployer wallet for ZkSync")

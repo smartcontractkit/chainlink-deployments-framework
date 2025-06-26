@@ -16,6 +16,11 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/kms"
 )
 
+// Defines a general test EVM address
+var (
+	testAddr1 = common.HexToAddress("0xc1d6fEcd5D09Ad67cF5E0FC9633D89759DD84271")
+)
+
 // Defines standard variables for a test chain.
 var (
 	testChainID    = chain_selectors.TEST_1000.EvmChainID // Defines a standard test EVM chain ID
