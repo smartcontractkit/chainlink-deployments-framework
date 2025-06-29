@@ -67,6 +67,8 @@ func NewSimChainProvider(
 // Initialize sets up the simulated chain with a deployer account and additional accounts as
 // specified in the configuration. It returns an initialized evm.Chain instance that can be used
 // to interact with the simulated chain.
+//
+// Each account is prefunded with 1,000,000 Ether (1 million wei).
 func (p *SimChainProvider) Initialize(ctx context.Context) (chain.BlockChain, error) {
 	if p.chain != nil {
 		return *p.chain, nil // Already initialized
@@ -79,6 +81,11 @@ func (p *SimChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 	adminTransactor, err := bind.NewKeyedTransactorWithChainID(key, simChainID)
 	require.NoError(p.t, err)
 
+	// Prefund the admin account
+	genesis := types.GenesisAlloc{
+		adminTransactor.From: {Balance: prefundAmountWei},
+	}
+
 	// Generate keys for additional accounts
 	additionalTransactors := make([]*bind.TransactOpts, 0, p.config.NumAdditionalAccounts)
 	for range p.config.NumAdditionalAccounts {
@@ -89,11 +96,9 @@ func (p *SimChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 		require.NoError(p.t, err)
 
 		additionalTransactors = append(additionalTransactors, transactor)
-	}
 
-	// Prefund the admin account
-	genesis := types.GenesisAlloc{
-		adminTransactor.From: {Balance: prefundAmountWei},
+		// Prefund each additional account
+		genesis[transactor.From] = types.Account{Balance: prefundAmountWei}
 	}
 
 	// Initialize the simulated backend with the genesis state
