@@ -16,7 +16,8 @@ import (
 // RPCChainProviderConfig holds the configuration to initialize the RPCChainProvider.
 type RPCChainProviderConfig struct {
 	// Required: The RPC URL to connect to the Aptos node
-	RPCURL string
+	RPCURL       string
+	RPCFaucetURL string
 	// Required: A generator for the deployer signer account. Use AccountGenPrivateKey to
 	// create a deployer signer from a private key.
 	DeployerSignerGen AccountGenerator
@@ -94,11 +95,17 @@ func (p *RPCChainProvider) Initialize(_ context.Context) (chain.BlockChain, erro
 		return nil, fmt.Errorf("failed to create Aptos RPC client for chain %d: %w", p.selector, err)
 	}
 
+	faucetClient, err := aptoslib.NewFaucetClient(client, p.config.RPCFaucetURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Aptos RPC Faucet client for chain %d: %w", p.selector, err)
+	}
+
 	p.chain = &aptos.Chain{
 		Selector:       p.selector,
 		Client:         client,
 		DeployerSigner: deployerSigner,
 		URL:            p.config.RPCURL,
+		FaucetClient:   faucetClient,
 		Confirm: func(txHash string, opts ...any) error {
 			tx, err := client.WaitForTransaction(txHash, opts...)
 			if err != nil {

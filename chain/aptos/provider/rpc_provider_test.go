@@ -22,6 +22,7 @@ func Test_RPCChainProviderConfig_validate(t *testing.T) {
 			name: "valid config",
 			config: RPCChainProviderConfig{
 				RPCURL:            "http://localhost:8080",
+				RPCFaucetURL:      "http://localhost:8081",
 				DeployerSignerGen: AccountGenCTFDefault(),
 			},
 			wantErr: "",
@@ -37,6 +38,7 @@ func Test_RPCChainProviderConfig_validate(t *testing.T) {
 			name: "missing deployer signer generator",
 			config: RPCChainProviderConfig{
 				RPCURL:            "http://localhost:8080",
+				RPCFaucetURL:      "http://localhost:8081",
 				DeployerSignerGen: nil,
 			},
 			wantErr: "deployer signer generator is required",
@@ -71,6 +73,7 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 			giveSelector: chain_selectors.APTOS_LOCALNET.Selector,
 			giveConfig: RPCChainProviderConfig{
 				RPCURL:            "http://localhost:8080",
+				RPCFaucetURL:      "http://localhost:8081",
 				DeployerSignerGen: AccountGenPrivateKey(testPrivateKey),
 			},
 		},
@@ -88,6 +91,7 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 			giveSelector: chain_selectors.APTOS_LOCALNET.Selector,
 			giveConfig: RPCChainProviderConfig{
 				RPCURL:            "http://localhost:8080",
+				RPCFaucetURL:      "http://localhost:8081",
 				DeployerSignerGen: AccountGenPrivateKey("invalid_private_key"),
 			},
 			wantErr: "failed to generate deployer account",
@@ -97,6 +101,7 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 			giveSelector: 999999, // Invalid selector
 			giveConfig: RPCChainProviderConfig{
 				RPCURL:            "http://localhost:8080",
+				RPCFaucetURL:      "http://localhost:8081",
 				DeployerSignerGen: AccountGenPrivateKey(testPrivateKey),
 			},
 			wantErr: "failed to get chain ID from selector 999999",
@@ -120,6 +125,7 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 				require.True(t, ok, "expected got to be of type aptos.Chain")
 				assert.Equal(t, tt.giveSelector, gotChain.Selector)
 				assert.NotEmpty(t, gotChain.Client)
+				assert.NotEmpty(t, gotChain.FaucetClient)
 				assert.NotEmpty(t, gotChain.DeployerSigner)
 				assert.Equal(t, tt.giveConfig.RPCURL, gotChain.URL)
 				assert.NotEmpty(t, gotChain.Confirm)
