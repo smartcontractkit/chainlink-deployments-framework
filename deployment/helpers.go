@@ -46,7 +46,7 @@ func parseErrorFromABI(errorString string, contractABI string) (string, error) {
 	}
 
 	for errorName, abiError := range parsedAbi.Errors {
-		if bytes.Equal(data[:4], abiError.ID.Bytes()[:4]) {
+		if len(data) >= 4 && bytes.Equal(data[:4], abiError.ID.Bytes()[:4]) {
 			// Found a matching error
 			v, err3 := abiError.Unpack(data)
 			if err3 != nil {

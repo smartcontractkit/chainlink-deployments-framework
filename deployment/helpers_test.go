@@ -15,6 +15,7 @@ func TestParseErrorFromABI(t *testing.T) {
 		RevertReason       string
 		ABI                string
 		ParsedRevertReason string
+		ExpectError        bool
 	}{
 		{
 			Name:               "Generic error with string msg",
@@ -28,14 +29,25 @@ func TestParseErrorFromABI(t *testing.T) {
 			ABI:                sampleABI,
 			ParsedRevertReason: "error -`InvalidConfig` args [4294967297]",
 		},
+		{
+			Name:               "Empty error string",
+			RevertReason:       "",
+			ABI:                sampleABI,
+			ParsedRevertReason: "",
+			ExpectError:        true,
+		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
 			revertReason, err := parseErrorFromABI(tc.RevertReason, tc.ABI)
-			require.NoError(t, err)
-			require.Equal(t, tc.ParsedRevertReason, revertReason)
+			if tc.ExpectError {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tc.ParsedRevertReason, revertReason)
+			}
 		})
 	}
 }
