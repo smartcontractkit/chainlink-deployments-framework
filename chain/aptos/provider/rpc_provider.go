@@ -16,7 +16,8 @@ import (
 // RPCChainProviderConfig holds the configuration to initialize the RPCChainProvider.
 type RPCChainProviderConfig struct {
 	// Required: The RPC URL to connect to the Aptos node
-	RPCURL       string
+	RPCURL string
+	// Optional: The RPC URL to connect to the Aptos node faucet
 	RPCFaucetURL string
 	// Required: A generator for the deployer signer account. Use AccountGenPrivateKey to
 	// create a deployer signer from a private key.
