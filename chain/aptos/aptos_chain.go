@@ -11,6 +11,7 @@ type Chain struct {
 	Selector uint64
 
 	Client         aptoslib.AptosRpcClient
+	FaucetClient   aptoslib.AptosFaucetClient
 	DeployerSigner aptoslib.TransactionSigner
 	URL            string
 
