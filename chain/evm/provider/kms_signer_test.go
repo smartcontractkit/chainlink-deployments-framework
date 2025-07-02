@@ -268,9 +268,7 @@ func Test_KMSSigner_SignHash(t *testing.T) {
 	txHash := h.Sum(nil)
 
 	// A valid KMS signature in ASN.1 format, which we will use as a mock return value.
-	sigBytes, err := hex.DecodeString(
-		"304502206475584f9afacee823cd3479364ec7a2fc2a804739f87e48604d3fd2a74a5dbb022100b802fc3313a86fc442a23f3620e649c9473991a6ac25432b8a636b7dadef3eb3",
-	)
+	sigBytes, err := hex.DecodeString(testKMSSignatureHex)
 	require.NoError(t, err)
 
 	// The expected EVM signature bytes that we will compare against based on the sigBytes.

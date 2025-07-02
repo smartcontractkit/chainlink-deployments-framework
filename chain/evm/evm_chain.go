@@ -39,6 +39,10 @@ type Chain struct {
 	// These are distinct from the deployer key.
 	Users []*bind.TransactOpts
 
+	// SignHash allows signing of arbitrary hashes using the deployer key's signing mechanism.
+	// This function signature matches the expected format: func([]byte) ([]byte, error)
+	SignHash func([]byte) ([]byte, error)
+
 	// ZK deployment specifics
 	IsZkSyncVM          bool
 	ClientZkSyncVM      *clients.Client

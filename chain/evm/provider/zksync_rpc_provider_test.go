@@ -34,7 +34,7 @@ func Test_ZkSyncRPCChainProviderConfig_validate(t *testing.T) {
 			name: "valid config",
 			config: ZkSyncRPCChainProviderConfig{
 				DeployerTransactorGen: TransactorRandom(),
-				SignerGenerator:       ZKSyncSignerRandom(),
+				ZkSyncSignerGen:       ZKSyncSignerRandom(),
 				RPCs:                  []deployment.RPC{rpc},
 				ConfirmFunctor:        confirmFuncGeth,
 			},
@@ -42,7 +42,7 @@ func Test_ZkSyncRPCChainProviderConfig_validate(t *testing.T) {
 		{
 			name: "missing deployer transactor generator",
 			config: ZkSyncRPCChainProviderConfig{
-				SignerGenerator: ZKSyncSignerRandom(),
+				ZkSyncSignerGen: ZKSyncSignerRandom(),
 				RPCs:            []deployment.RPC{rpc},
 				ConfirmFunctor:  confirmFuncGeth,
 			},
@@ -61,7 +61,7 @@ func Test_ZkSyncRPCChainProviderConfig_validate(t *testing.T) {
 			name: "missing confirm functor",
 			config: ZkSyncRPCChainProviderConfig{
 				DeployerTransactorGen: TransactorRandom(),
-				SignerGenerator:       ZKSyncSignerRandom(),
+				ZkSyncSignerGen:       ZKSyncSignerRandom(),
 				RPCs:                  []deployment.RPC{rpc},
 			},
 			wantErr: "confirm functor is required",
@@ -70,7 +70,7 @@ func Test_ZkSyncRPCChainProviderConfig_validate(t *testing.T) {
 			name: "missing rpcs",
 			config: ZkSyncRPCChainProviderConfig{
 				DeployerTransactorGen: TransactorRandom(),
-				SignerGenerator:       ZKSyncSignerRandom(),
+				ZkSyncSignerGen:       ZKSyncSignerRandom(),
 				ConfirmFunctor:        confirmFuncGeth,
 			},
 			wantErr: "at least one RPC is required",
@@ -123,7 +123,7 @@ func Test_ZkSyncRPCChainProvider_Initialize(t *testing.T) {
 			giveSelector: chainSelector,
 			giveConfig: ZkSyncRPCChainProviderConfig{
 				DeployerTransactorGen: TransactorRandom(),
-				SignerGenerator:       ZKSyncSignerRandom(),
+				ZkSyncSignerGen:       ZKSyncSignerRandom(),
 				RPCs:                  []deployment.RPC{rpc},
 				ConfirmFunctor:        gethConfirmFunc,
 			},
@@ -133,7 +133,7 @@ func Test_ZkSyncRPCChainProvider_Initialize(t *testing.T) {
 			giveSelector: chainSelector,
 			giveConfig: ZkSyncRPCChainProviderConfig{
 				DeployerTransactorGen: TransactorRandom(),
-				SignerGenerator:       ZKSyncSignerRandom(),
+				ZkSyncSignerGen:       ZKSyncSignerRandom(),
 				RPCs:                  []deployment.RPC{rpc},
 				Logger:                logger.Test(t),
 				ConfirmFunctor:        gethConfirmFunc,
@@ -144,7 +144,7 @@ func Test_ZkSyncRPCChainProvider_Initialize(t *testing.T) {
 			giveSelector: chainSelector,
 			giveConfig: ZkSyncRPCChainProviderConfig{
 				DeployerTransactorGen: TransactorRandom(),
-				SignerGenerator:       ZKSyncSignerRandom(),
+				ZkSyncSignerGen:       ZKSyncSignerRandom(),
 				RPCs:                  []deployment.RPC{rpc},
 				ConfirmFunctor: ConfirmFuncSeth(
 					rpc.HTTPURL, 10*time.Millisecond, []string{}, configPath,
@@ -167,7 +167,7 @@ func Test_ZkSyncRPCChainProvider_Initialize(t *testing.T) {
 			giveSelector: 1, // Invalid selector
 			giveConfig: ZkSyncRPCChainProviderConfig{
 				DeployerTransactorGen: TransactorRandom(),
-				SignerGenerator:       ZKSyncSignerRandom(),
+				ZkSyncSignerGen:       ZKSyncSignerRandom(),
 				RPCs:                  []deployment.RPC{rpc},
 				ConfirmFunctor:        gethConfirmFunc,
 			},
@@ -178,7 +178,7 @@ func Test_ZkSyncRPCChainProvider_Initialize(t *testing.T) {
 			giveSelector: chainSelector,
 			giveConfig: ZkSyncRPCChainProviderConfig{
 				DeployerTransactorGen: &alwaysFailingTransactorGenerator{},
-				SignerGenerator:       ZKSyncSignerRandom(),
+				ZkSyncSignerGen:       ZKSyncSignerRandom(),
 				RPCs:                  []deployment.RPC{rpc},
 				ConfirmFunctor:        gethConfirmFunc,
 			},
@@ -189,7 +189,7 @@ func Test_ZkSyncRPCChainProvider_Initialize(t *testing.T) {
 			giveSelector: chainSelector,
 			giveConfig: ZkSyncRPCChainProviderConfig{
 				DeployerTransactorGen: TransactorRandom(),
-				SignerGenerator:       ZKSyncSignerRandom(),
+				ZkSyncSignerGen:       ZKSyncSignerRandom(),
 				RPCs:                  []deployment.RPC{{}},
 				ConfirmFunctor:        gethConfirmFunc,
 			},
@@ -200,7 +200,7 @@ func Test_ZkSyncRPCChainProvider_Initialize(t *testing.T) {
 			giveSelector: chainSelector,
 			giveConfig: ZkSyncRPCChainProviderConfig{
 				DeployerTransactorGen: TransactorRandom(),
-				SignerGenerator:       ZKSyncSignerRandom(),
+				ZkSyncSignerGen:       ZKSyncSignerRandom(),
 				RPCs:                  []deployment.RPC{rpc},
 				ConfirmFunctor: ConfirmFuncSeth(
 					rpc.HTTPURL, 10*time.Millisecond, []string{}, "nonexistent.toml",
@@ -213,7 +213,7 @@ func Test_ZkSyncRPCChainProvider_Initialize(t *testing.T) {
 			giveSelector: chainSelector,
 			giveConfig: ZkSyncRPCChainProviderConfig{
 				DeployerTransactorGen: TransactorRandom(),
-				SignerGenerator:       ZKSyncSignerRandom(),
+				ZkSyncSignerGen:       ZKSyncSignerRandom(),
 				RPCs:                  []deployment.RPC{rpc},
 				ConfirmFunctor:        &alwaysFailingConfirmFunctor{},
 			},
@@ -224,7 +224,7 @@ func Test_ZkSyncRPCChainProvider_Initialize(t *testing.T) {
 			giveSelector: chainSelector,
 			giveConfig: ZkSyncRPCChainProviderConfig{
 				DeployerTransactorGen: TransactorRandom(),
-				SignerGenerator:       &alwaysFailingZKSyncSignerGenerator{},
+				ZkSyncSignerGen:       &alwaysFailingZKSyncSignerGenerator{},
 				RPCs:                  []deployment.RPC{rpc},
 				ConfirmFunctor:        gethConfirmFunc,
 			},
@@ -263,6 +263,7 @@ func Test_ZkSyncRPCChainProvider_Initialize(t *testing.T) {
 				assert.True(t, gotChain.IsZkSyncVM)
 				assert.NotNil(t, gotChain.ClientZkSyncVM)
 				assert.NotNil(t, gotChain.DeployerKeyZkSyncVM)
+				assert.NotNil(t, gotChain.SignHash)
 			}
 		})
 	}

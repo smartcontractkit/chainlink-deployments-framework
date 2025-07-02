@@ -36,6 +36,7 @@ var (
 	// testKMSPublicKeyHex is a sample KMS public key in hex format. This is returned as the public key
 	// from the KMS service when calling GetPublicKey for the given kmsKeyID.
 	testKMSPublicKeyHex = "3056301006072a8648ce3d020106052b8104000a034200043f20652b1dd7e8d448a1c9068247fae8940b70599df714a3947106c2411a7f1442ef26f3bb4ac7c5721177ea4a5c855317a25a4a01ae2d10f623c9f42de5d171"
+	testKMSSignatureHex = "304502206475584f9afacee823cd3479364ec7a2fc2a804739f87e48604d3fd2a74a5dbb022100b802fc3313a86fc442a23f3620e649c9473991a6ac25432b8a636b7dadef3eb3"
 )
 
 // testKMSPublicKey returns the KMS public key in bytes.

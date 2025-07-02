@@ -111,7 +111,7 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 			giveConfig: RPCChainProviderConfig{
 				DeployerTransactorGen: TransactorRandom(),
 				RPCs:                  []deployment.RPC{rpc},
-				UsersTransactorGen: []TransactorGenerator{
+				UsersTransactorGen: []SignerGenerator{
 					TransactorRandom(),
 				},
 				ConfirmFunctor: gethConfirmFunc,
@@ -175,7 +175,7 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 			giveConfig: RPCChainProviderConfig{
 				DeployerTransactorGen: TransactorRandom(),
 				RPCs:                  []deployment.RPC{rpc},
-				UsersTransactorGen: []TransactorGenerator{
+				UsersTransactorGen: []SignerGenerator{
 					&alwaysFailingTransactorGenerator{}, // This will always fail
 				},
 				ConfirmFunctor: gethConfirmFunc,
@@ -245,6 +245,7 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 				assert.NotNil(t, gotChain.DeployerKey)
 				assert.NotNil(t, gotChain.Confirm)
 				assert.Len(t, gotChain.Users, len(tt.giveConfig.UsersTransactorGen))
+				assert.NotNil(t, gotChain.SignHash)
 			}
 		})
 	}

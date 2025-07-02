@@ -75,10 +75,10 @@ func (p *SimChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 	}
 
 	// Generate a deployer account
-	key, err := crypto.GenerateKey()
+	adminKey, err := crypto.GenerateKey()
 	require.NoError(p.t, err, "failed to generate deployer key")
 
-	adminTransactor, err := bind.NewKeyedTransactorWithChainID(key, simChainID)
+	adminTransactor, err := bind.NewKeyedTransactorWithChainID(adminKey, simChainID)
 	require.NoError(p.t, err)
 
 	// Prefund the admin account
@@ -155,6 +155,14 @@ func (p *SimChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 			}
 
 			return receipt.BlockNumber.Uint64(), nil
+		},
+		SignHash: func(hash []byte) ([]byte, error) {
+			sig, err := crypto.Sign(hash, adminKey)
+			if err != nil {
+				return nil, fmt.Errorf("failed to sign hash: %w", err)
+			}
+
+			return sig, nil
 		},
 	}
 
