@@ -79,6 +79,7 @@ func Test_SimChainProvider_Initialize(t *testing.T) {
 				assert.NotNil(t, gotChain.DeployerKey)
 				assert.Len(t, gotChain.Users, int(tt.giveConfig.NumAdditionalAccounts)) //nolint:gosec // G115 overflow issue will not occur here
 				assert.NotNil(t, gotChain.Confirm)
+				assert.NotNil(t, gotChain.SignHash)
 
 				// Check for the automated block mining if configured
 				if tt.wantMinedBlock {

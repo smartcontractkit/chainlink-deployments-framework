@@ -108,6 +108,11 @@ func (p *ZkSyncCTFChainProvider) Initialize(ctx context.Context) (chain.BlockCha
 	// Build transactors from the default accounts provided by the CTF
 	transactors := p.getTransactors(chainID, gasPrice)
 
+	// Create SignHash function from the deployer's private key
+	// assume the first account is the deployer
+	deployerPrivateKey, err := crypto.HexToECDSA(blockchain.AnvilZKSyncRichAccountPks[0])
+	require.NoError(p.t, err, "failed to parse deployer private key")
+
 	// Initialize the zksync client and wallet
 	clientZk := zkClients.NewClient(client.Client())
 	deployerZk, err := zkAccounts.NewWallet(
@@ -131,6 +136,9 @@ func (p *ZkSyncCTFChainProvider) Initialize(ctx context.Context) (chain.BlockCha
 			}
 
 			return receipt.Status, nil
+		},
+		SignHash: func(hash []byte) ([]byte, error) {
+			return crypto.Sign(hash, deployerPrivateKey)
 		},
 		IsZkSyncVM:          true,
 		ClientZkSyncVM:      clientZk,

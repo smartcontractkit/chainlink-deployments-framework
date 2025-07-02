@@ -19,7 +19,7 @@ import (
 type RPCChainProviderConfig struct {
 	// Required: A generator for the deployer key. Use TransactorFromRaw to create a deployer
 	// key from a private key, or TransactorFromKMS to create a deployer key from a KMS key.
-	DeployerTransactorGen TransactorGenerator
+	DeployerTransactorGen SignerGenerator
 	// Required: At least one RPC must be provided to connect to the EVM node.
 	RPCs []deployment.RPC
 	// Required: ConfirmFunctor is a type that generates a confirmation function for transactions.
@@ -35,7 +35,7 @@ type RPCChainProviderConfig struct {
 	ClientOpts []func(client *deployment.MultiClient)
 	// Optional: A generator for the additional user transactors. If not provided, no user
 	// transactors will be generated.
-	UsersTransactorGen []TransactorGenerator
+	UsersTransactorGen []SignerGenerator
 	// Optional: Logger is the logger to use for the RPCChainProvider. If not provided, a default
 	// logger will be used.
 	Logger logger.Logger
@@ -148,6 +148,7 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 		DeployerKey: deployerKey,
 		Users:       users,
 		Confirm:     confirmFunc,
+		SignHash:    p.config.DeployerTransactorGen.SignHash,
 	}
 
 	return *p.chain, nil

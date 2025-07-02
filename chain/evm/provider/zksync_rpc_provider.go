@@ -22,12 +22,12 @@ import (
 type ZkSyncRPCChainProviderConfig struct {
 	// Required: A generator for the deployer key. Use TransactorFromRaw to create a deployer
 	// key from a private key, or TransactorFromKMS to create a deployer key from a KMS key.
-	DeployerTransactorGen TransactorGenerator
+	DeployerTransactorGen SignerGenerator
 	// Required: A generator for the ZkSync signer. The generator you choose should match the
 	// type of deployer transactor generator you are using. For example, if you are using
 	// TransactorFromRaw, you should use ZkSyncSignerFromRaw, or if you are using
 	// TransactorFromKMS, you should use ZkSyncSignerFromKMS.
-	SignerGenerator ZkSyncSignerGenerator
+	ZkSyncSignerGen ZkSyncSignerGenerator
 	// Required: At least one RPC must be provided to connect to the EVM node.
 	RPCs []deployment.RPC
 	// Required: ConfirmFunctor is a type that generates a confirmation function for transactions.
@@ -51,7 +51,7 @@ func (c ZkSyncRPCChainProviderConfig) validate() error {
 	if c.DeployerTransactorGen == nil {
 		return errors.New("deployer transactor generator is required")
 	}
-	if c.SignerGenerator == nil {
+	if c.ZkSyncSignerGen == nil {
 		return errors.New("signer generator is required")
 	}
 	if c.ConfirmFunctor == nil {
@@ -142,7 +142,7 @@ func (p *ZkSyncRPCChainProvider) Initialize(ctx context.Context) (chain.BlockCha
 
 	// Initialize the zksync client and wallet
 	clientZk := zkClients.NewClient(client.Client.Client())
-	signer, err := p.config.SignerGenerator.Generate(chainID)
+	signer, err := p.config.ZkSyncSignerGen.Generate(chainID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate zkSync signer: %w", err)
 	}
@@ -157,6 +157,7 @@ func (p *ZkSyncRPCChainProvider) Initialize(ctx context.Context) (chain.BlockCha
 		Client:              client,
 		DeployerKey:         deployerKey,
 		Confirm:             confirmFunc,
+		SignHash:            p.config.DeployerTransactorGen.SignHash,
 		IsZkSyncVM:          true,
 		ClientZkSyncVM:      clientZk,
 		DeployerKeyZkSyncVM: deployerKeyZkSyncVM,

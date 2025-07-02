@@ -3,6 +3,7 @@ package provider
 import (
 	"testing"
 
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -94,6 +95,7 @@ func Test_CTFChainProvider_Initialize(t *testing.T) {
 				assert.True(t, gotChain.IsZkSyncVM)
 				assert.NotNil(t, gotChain.ClientZkSyncVM)
 				assert.NotNil(t, gotChain.DeployerKeyZkSyncVM)
+				assert.NotNil(t, gotChain.SignHash)
 			}
 		})
 	}
@@ -123,4 +125,58 @@ func Test_ZkSyncCTFChainProvider_BlockChain(t *testing.T) {
 	}
 
 	assert.Equal(t, *chain, p.BlockChain())
+}
+
+func Test_ZkSyncCTFChainProvider_SignHash(t *testing.T) {
+	t.Parallel()
+
+	var chainSelector = chain_selectors.TEST_1000.Selector
+
+	p := NewZkSyncCTFChainProvider(t, chainSelector, ZkSyncCTFChainProviderConfig{
+		Once: testutils.DefaultNetworkOnce,
+	})
+
+	chain, err := p.Initialize(t.Context())
+	require.NoError(t, err)
+
+	evmChain, ok := chain.(evm.Chain)
+	require.True(t, ok, "expected chain to be of type evm.Chain")
+	require.NotNil(t, evmChain.SignHash, "SignHash function should not be nil")
+
+	// Test signing a hash
+	testMessage := []byte("test message for signing")
+	testHash := crypto.Keccak256(testMessage)
+
+	signature, err := evmChain.SignHash(testHash)
+	require.NoError(t, err, "SignHash should not return an error")
+	require.NotEmpty(t, signature, "signature should not be empty")
+	require.Len(t, signature, 65, "Ethereum signature should be 65 bytes")
+
+	// Test that SignHash is deterministic for the same input
+	signature2, err := evmChain.SignHash(testHash)
+	require.NoError(t, err)
+	require.Equal(t, signature, signature2, "SignHash should be deterministic for the same input")
+
+	// Test with different hash produces different signature
+	differentMessage := []byte("different test message")
+	differentHash := crypto.Keccak256(differentMessage)
+
+	differentSignature, err := evmChain.SignHash(differentHash)
+	require.NoError(t, err)
+	require.NotEqual(t, signature, differentSignature, "different hashes should produce different signatures")
+
+	// Test with empty hash (but still 32 bytes as required)
+	emptyHash := make([]byte, 32) // Create a 32-byte zero hash
+	emptySignature, err := evmChain.SignHash(emptyHash)
+	require.NoError(t, err)
+	require.NotEmpty(t, emptySignature)
+	require.Len(t, emptySignature, 65)
+
+	// Verify that the signature can be used to recover the correct address
+	// (This tests that the signature is properly formatted)
+	recoveredPubKey, err := crypto.SigToPub(testHash, signature)
+	require.NoError(t, err, "should be able to recover public key from signature")
+
+	recoveredAddr := crypto.PubkeyToAddress(*recoveredPubKey)
+	require.Equal(t, evmChain.DeployerKey.From, recoveredAddr, "recovered address should match the deployer address")
 }

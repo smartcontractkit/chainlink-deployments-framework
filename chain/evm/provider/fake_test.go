@@ -46,6 +46,11 @@ func (a *alwaysFailingTransactorGenerator) Generate(chainID *big.Int) (*bind.Tra
 	return nil, assert.AnError
 }
 
+// SignHash implements the SignerGenerator interface and always returns an error.
+func (a *alwaysFailingTransactorGenerator) SignHash(hash []byte) ([]byte, error) {
+	return nil, assert.AnError
+}
+
 // alwaysFailingConfirmFunctor is a ConfirmFunctor that always fails with an error.
 type alwaysFailingConfirmFunctor struct{}
 
