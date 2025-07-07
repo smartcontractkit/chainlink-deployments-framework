@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.17.0
+
+### Minor Changes
+
+- [#212](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/212) [`c4279c9`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/c4279c96bc1e14b3ec7e2093de90b58f5a7ecd27) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat(ton): new ctf provider
+
 ## 0.16.0
 
 ### Minor Changes
