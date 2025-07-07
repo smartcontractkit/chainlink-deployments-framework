@@ -95,9 +95,32 @@ func (p *ZkSyncCTFChainProvider) Initialize(ctx context.Context) (chain.BlockCha
 	// Start the Zksync CTF container
 	httpURL := p.startContainer(chainID)
 
-	// Setup the Ethereum client
-	client, err := ethclient.Dial(httpURL)
-	require.NoError(p.t, err)
+	// Setup the Ethereum client with retry mechanism for readiness
+	var client *ethclient.Client
+
+	err = retry.Do(func() error {
+		var dialErr error
+		client, dialErr = ethclient.Dial(httpURL)
+		if dialErr != nil {
+			return dialErr
+		}
+
+		// Test the connection and wait for the node to be ready
+		_, pingErr := client.ChainID(ctx)
+		if pingErr != nil {
+			client.Close()
+
+			return pingErr
+		}
+
+		return nil
+	},
+		retry.Context(ctx),
+		retry.Attempts(30),
+		retry.Delay(1*time.Second),
+		retry.DelayType(retry.FixedDelay),
+	)
+	require.NoError(p.t, err, "failed to establish connection from ZkSync node")
 
 	// Fetch the suggested gas price for the chain to set on the transactors.
 	// Anvil zkSync does not support eth_maxPriorityFeePerGas so we set gasPrice to force using
@@ -185,7 +208,7 @@ func (p *ZkSyncCTFChainProvider) startContainer(
 
 		// Create the CTF container for ZkSync
 		output, rerr := blockchain.NewBlockchainNetwork(&blockchain.Input{
-			Type:    "anvil-zksync",
+			Type:    blockchain.TypeAnvilZKSync,
 			ChainID: chainID,
 			Port:    strconv.Itoa(port),
 		})
