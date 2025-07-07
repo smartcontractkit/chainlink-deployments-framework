@@ -216,7 +216,7 @@ func (p *CTFChainProvider) startContainer(
 
 		input := &blockchain.Input{
 			Image:          image,
-			Type:           "solana",
+			Type:           blockchain.TypeSolana,
 			ChainID:        chainID,
 			PublicKey:      adminPubKey.String(),
 			Port:           strconv.Itoa(ports[0]),

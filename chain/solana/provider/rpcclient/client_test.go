@@ -90,7 +90,7 @@ func startSolanaContainer(
 
 	bcInput := &blockchain.Input{
 		Image:     image,
-		Type:      "solana",
+		Type:      blockchain.TypeSolana,
 		ChainID:   chainID,
 		PublicKey: publicKey.String(),
 		Port:      strconv.Itoa(ports[0]),

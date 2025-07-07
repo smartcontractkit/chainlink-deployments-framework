@@ -52,8 +52,6 @@ func Test_ZkSyncCTFChainProviderConfig_validate(t *testing.T) {
 }
 
 func Test_CTFChainProvider_Initialize(t *testing.T) {
-	t.Skip("Skipping test for CTF chain provider initialization, too flaky when starting container," +
-		" enable once the issue is resolved")
 	t.Parallel()
 
 	var chainSelector = chain_selectors.TEST_1000.Selector
@@ -130,8 +128,6 @@ func Test_ZkSyncCTFChainProvider_BlockChain(t *testing.T) {
 }
 
 func Test_ZkSyncCTFChainProvider_SignHash(t *testing.T) {
-	t.Skip("Skipping test, too flaky when starting container," +
-		" enable once the issue is resolved")
 	t.Parallel()
 
 	var chainSelector = chain_selectors.TEST_1000.Selector

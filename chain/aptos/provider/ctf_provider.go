@@ -159,7 +159,7 @@ func (p *CTFChainProvider) startContainer(
 
 		input := &blockchain.Input{
 			Image:     "", // filled out by defaultAptos function
-			Type:      "aptos",
+			Type:      blockchain.TypeAptos,
 			ChainID:   chainID,
 			PublicKey: account.Address.String(),
 			CustomPorts: []string{
