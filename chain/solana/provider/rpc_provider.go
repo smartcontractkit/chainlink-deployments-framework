@@ -102,7 +102,7 @@ func (p *RPCChainProvider) Initialize(_ context.Context) (chain.BlockChain, erro
 
 	// Persist the deployer keypair to the KeypairDirPath for the Solana CLI to use
 	keypairPath := filepath.Join(p.config.KeypairDirPath, "authority-keypair.json")
-	if err := writePrivateKeyToPath(keypairPath, privKey); err != nil {
+	if err := WritePrivateKeyToPath(keypairPath, privKey); err != nil {
 		return nil, fmt.Errorf("failed to write deployer keypair to file: %w", err)
 	}
 
