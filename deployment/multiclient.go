@@ -105,12 +105,12 @@ func NewMultiClient(lggr logger.Logger, rpcsCfg RPCConfig, opts ...func(client *
 	for i, rpc := range rpcsCfg.RPCs {
 		client, err := mc.dialWithRetry(rpc, lggr)
 		if err != nil {
-			lggr.Warnf("failed to dial client %d for RPC '%s' trying with the next one: %v", i, rpc.Name, err)
+			lggr.Warnf("failed to dial client %d for RPC '%s' - %s (%d), trying with the next one: %v", i, rpc.Name, chain.Name, chain.Selector, err)
 
 			continue
 		}
 		if err := mc.rpcHealthCheck(context.Background(), client); err != nil {
-			lggr.Warnf("health check failed for client %d for RPC '%s' trying with the next one: %v", i, rpc.Name, err)
+			lggr.Warnf("health check failed for client %d for RPC '%s' - %s (%d), trying with the next one: %v", i, rpc.Name, chain.Name, chain.Selector, err)
 			client.Close()
 
 			continue
