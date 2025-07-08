@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.17.1
+
+### Patch Changes
+
+- [#215](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/215) [`d748632`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/d748632cbb80494ca17dbbdf62a3252c0e08d418) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix: improve log message on multiclient healthcheck
+
 ## 0.17.0
 
 ### Minor Changes
