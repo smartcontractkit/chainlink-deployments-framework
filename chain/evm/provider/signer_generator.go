@@ -38,6 +38,7 @@ type transactorFromRaw struct {
 
 // Generate parses the hex encoded private key and returns the bind transactor options.
 func (g *transactorFromRaw) Generate(chainID *big.Int) (*bind.TransactOpts, error) {
+	fmt.Printf("Key length: %d\n", len(g.privKey))
 	privKey, err := crypto.HexToECDSA(g.privKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert private key to ECDSA: %w", err)
