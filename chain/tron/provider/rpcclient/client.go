@@ -11,6 +11,7 @@ import (
 	"github.com/fbsobreira/gotron-sdk/pkg/keystore"
 	"github.com/fbsobreira/gotron-sdk/pkg/proto/api"
 	"github.com/fbsobreira/gotron-sdk/pkg/proto/core"
+	cldf_tron "github.com/smartcontractkit/chainlink-deployments-framework/chain/tron"
 )
 
 // confirmConfig defines the configuration for confirming transactions.
@@ -23,7 +24,7 @@ type confirmConfig struct {
 }
 
 // ConfirmRetryOpts returns the retry options for confirming transactions.
-func (c *confirmConfig) ConfirmRetryOpts(ctx context.Context) []retry.Option {
+func ConfirmRetryOpts(ctx context.Context, c cldf_tron.ConfirmRetryOptions) []retry.Option {
 	return []retry.Option{
 		retry.Context(ctx),
 		retry.Attempts(c.RetryAttempts),
@@ -32,24 +33,7 @@ func (c *confirmConfig) ConfirmRetryOpts(ctx context.Context) []retry.Option {
 	}
 }
 
-// confirmConfigDefault provides a default configuration for confirming transactions.
-var confirmConfigDefault = confirmConfig{
-	RetryAttempts: 500,
-	RetryDelay:    50 * time.Millisecond,
-}
-
-// ConfirmOpt is a functional option type that allows for configuring Confirm operations.
-type ConfirmOpt func(*confirmConfig)
-
-// WithRetry sets the number of retry attempts and the delay between retries for confirming transactions.
-func WithRetry(attempts uint, delay time.Duration) ConfirmOpt {
-	return func(config *confirmConfig) {
-		config.RetryDelay = delay
-		config.RetryAttempts = attempts
-	}
-}
-
-// Client is a wrapper around the TRON RPC client that provides additional functionality
+// Client is a wrapper around the Tron RPC client that provides additional functionality
 // such as sending and confirming transactions.
 type Client struct {
 	Client   *client.GrpcClient
@@ -57,7 +41,7 @@ type Client struct {
 	Account  keystore.Account
 }
 
-// New creates a new Client instance with the provided TRON RPC client, keystore, and account.
+// New creates a new Client instance with the provided Tron RPC client, keystore, and account.
 func New(client *client.GrpcClient, keystore *keystore.KeyStore, account keystore.Account) *Client {
 	return &Client{
 		Client:   client,
@@ -71,12 +55,12 @@ func New(client *client.GrpcClient, keystore *keystore.KeyStore, account keystor
 func (c *Client) SendAndConfirmTx(
 	ctx context.Context,
 	tx *api.TransactionExtention,
-	opts ...ConfirmOpt,
+	opts ...cldf_tron.ConfirmRetryOptions,
 ) (*core.TransactionInfo, error) {
 	// Initialize the configuration with defaults or provided options.
-	config := confirmConfigDefault
-	for _, opt := range opts {
-		opt(&config)
+	option := cldf_tron.DefaultConfirmRetryOptions()
+	if len(opts) > 0 {
+		option = opts[0]
 	}
 
 	signedTx, err := c.Keystore.SignTx(c.Account, tx.Transaction)
@@ -90,7 +74,7 @@ func (c *Client) SendAndConfirmTx(
 	}
 
 	// Confirm the transaction
-	return c.confirmTx(ctx, tx.Txid, config.ConfirmRetryOpts(ctx)...)
+	return c.confirmTx(ctx, tx.Txid, ConfirmRetryOpts(ctx, option)...)
 }
 
 // confirmTx checks the transaction receipt by its ID, retrying until it is confirmed or fails.

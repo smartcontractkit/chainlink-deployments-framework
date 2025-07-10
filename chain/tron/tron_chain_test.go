@@ -9,7 +9,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron"
 )
 
-func TestChain_ChainInfot(t *testing.T) {
+func TestChain_ChainInfo(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
