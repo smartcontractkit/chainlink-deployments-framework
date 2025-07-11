@@ -4,6 +4,7 @@ import (
 	"crypto/ed25519"
 
 	"github.com/block-vision/sui-go-sdk/sui"
+
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/common"
 )
 
