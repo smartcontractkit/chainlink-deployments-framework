@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.17.2
+
+### Patch Changes
+
+- [#220](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/220) [`1d13a2d`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/1d13a2d622460265c65be012e3a5946df650fd9f) Thanks [@tt-cll](https://github.com/tt-cll)! - updates solana close
+
 ## 0.17.1
 
 ### Patch Changes
