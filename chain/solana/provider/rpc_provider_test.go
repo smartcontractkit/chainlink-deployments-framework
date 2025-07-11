@@ -33,6 +33,44 @@ func Test_RPCChainProviderConfig_validate(t *testing.T) {
 			giveConfigFunc: func(c *RPCChainProviderConfig) { c.DeployerKeyGen = nil },
 			wantErr:        "deployer key generator is required",
 		},
+		{
+			name:           "missing programs path",
+			giveConfigFunc: func(c *RPCChainProviderConfig) { c.ProgramsPath = "" },
+			wantErr:        "programs path is required",
+		},
+		{
+			name:           "missing keypair path",
+			giveConfigFunc: func(c *RPCChainProviderConfig) { c.KeypairDirPath = "" },
+			wantErr:        "keypair path is required",
+		},
+		{
+			name: "programs path does not exist",
+			giveConfigFunc: func(c *RPCChainProviderConfig) {
+				c.ProgramsPath = "invalid/path/to/programs"
+			},
+			wantErr: "required file does not exist: invalid/path/to/programs",
+		},
+		{
+			name: "programs path is not absolute",
+			giveConfigFunc: func(c *RPCChainProviderConfig) {
+				c.ProgramsPath = "."
+			},
+			wantErr: "required file is not absolute: .",
+		},
+		{
+			name: "keypair path does not exist",
+			giveConfigFunc: func(c *RPCChainProviderConfig) {
+				c.KeypairDirPath = "invalid/path/to/keypair"
+			},
+			wantErr: "required file does not exist: invalid/path/to/keypair",
+		},
+		{
+			name: "keypair path is not absolute",
+			giveConfigFunc: func(c *RPCChainProviderConfig) {
+				c.KeypairDirPath = "."
+			},
+			wantErr: "required file is not absolute: .",
+		},
 	}
 
 	for _, tt := range tests {

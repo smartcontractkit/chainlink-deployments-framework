@@ -4,24 +4,15 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	"time"
 
 	"github.com/avast/retry-go/v4"
 	"github.com/fbsobreira/gotron-sdk/pkg/client"
 	"github.com/fbsobreira/gotron-sdk/pkg/keystore"
 	"github.com/fbsobreira/gotron-sdk/pkg/proto/api"
 	"github.com/fbsobreira/gotron-sdk/pkg/proto/core"
+
 	cldf_tron "github.com/smartcontractkit/chainlink-deployments-framework/chain/tron"
 )
-
-// confirmConfig defines the configuration for confirming transactions.
-type confirmConfig struct {
-	// RetryAttempts sets a fixed number of attempts for confirming transactions.
-	// This is used specifically for confirmation retries.
-	RetryAttempts uint
-	// RetryDelay is the duration to wait between retry attempts.
-	RetryDelay time.Duration
-}
 
 // ConfirmRetryOpts returns the retry options for confirming transactions.
 func ConfirmRetryOpts(ctx context.Context, c cldf_tron.ConfirmRetryOptions) []retry.Option {
@@ -74,12 +65,11 @@ func (c *Client) SendAndConfirmTx(
 	}
 
 	// Confirm the transaction
-	return c.confirmTx(ctx, tx.Txid, ConfirmRetryOpts(ctx, option)...)
+	return c.confirmTx(tx.Txid, ConfirmRetryOpts(ctx, option)...)
 }
 
 // confirmTx checks the transaction receipt by its ID, retrying until it is confirmed or fails.
 func (c *Client) confirmTx(
-	ctx context.Context,
 	txsig []byte,
 	retryOpts ...retry.Option,
 ) (*core.TransactionInfo, error) {
@@ -94,6 +84,7 @@ func (c *Client) confirmTx(
 			return fmt.Errorf("error fetching tx info: %w", err)
 		}
 
+		//nolint:exhaustive // handled via default case
 		switch result := receipt.GetReceipt().GetResult(); result {
 		case core.Transaction_Result_SUCCESS:
 			return nil

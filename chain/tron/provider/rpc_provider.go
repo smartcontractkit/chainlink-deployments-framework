@@ -13,7 +13,6 @@ import (
 	"google.golang.org/grpc/credentials"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
-	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron"
 	cldf_tron "github.com/smartcontractkit/chainlink-deployments-framework/chain/tron"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron/provider/rpcclient"
 )
@@ -31,6 +30,7 @@ func (c RPCChainProviderConfig) validate() error {
 	if c.DeployerSignerGen == nil {
 		return errors.New("deployer signer generator is required")
 	}
+
 	return nil
 }
 
@@ -76,8 +76,8 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 	// Initialize the Tron client with the gRPC client, keystore, and account
 	client := rpcclient.New(grpcClient, ks, acc)
 
-	p.chain = &tron.Chain{
-		ChainMetadata: tron.ChainMetadata{
+	p.chain = &cldf_tron.Chain{
+		ChainMetadata: cldf_tron.ChainMetadata{
 			Selector: p.selector,
 		},
 		Client:   grpcClient,

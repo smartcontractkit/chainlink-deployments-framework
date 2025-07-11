@@ -9,6 +9,7 @@ import (
 	"github.com/fbsobreira/gotron-sdk/pkg/keystore"
 	"github.com/fbsobreira/gotron-sdk/pkg/proto/api"
 	"github.com/fbsobreira/gotron-sdk/pkg/proto/core"
+
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/common"
 )
 
