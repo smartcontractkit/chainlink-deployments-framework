@@ -11,6 +11,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/sui"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/ton"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron"
 )
 
 var _ BlockChain = evm.Chain{}
@@ -18,6 +19,7 @@ var _ BlockChain = solana.Chain{}
 var _ BlockChain = aptos.Chain{}
 var _ BlockChain = sui.Chain{}
 var _ BlockChain = ton.Chain{}
+var _ BlockChain = tron.Chain{}
 
 // BlockChain is an interface that represents a chain.
 // A chain can be an EVM chain, Solana chain Aptos chain or others.
@@ -114,6 +116,11 @@ func (b BlockChains) SuiChains() map[uint64]sui.Chain {
 // TonChains returns a map of all Ton chains with their selectors.
 func (b BlockChains) TonChains() map[uint64]ton.Chain {
 	return getChainsByType[ton.Chain, *ton.Chain](b)
+}
+
+// TronChains returns a map of all Tron chains with their selectors.
+func (b BlockChains) TronChains() map[uint64]tron.Chain {
+	return getChainsByType[tron.Chain, *tron.Chain](b)
 }
 
 // ChainSelectorsOption defines a function type for configuring ChainSelectors

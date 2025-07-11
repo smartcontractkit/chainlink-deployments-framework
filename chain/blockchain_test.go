@@ -15,6 +15,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/sui"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/ton"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron"
 )
 
 var evmChain1 = evm.Chain{Selector: chain_selectors.TEST_90000001.Selector}
@@ -23,6 +24,7 @@ var solanaChain1 = solana.Chain{Selector: chain_selectors.TEST_22222222222222222
 var aptosChain1 = aptos.Chain{Selector: chain_selectors.APTOS_LOCALNET.Selector}
 var suiChain1 = sui.Chain{ChainMetadata: sui.ChainMetadata{Selector: chain_selectors.SUI_LOCALNET.Selector}}
 var tonChain1 = ton.Chain{ChainMetadata: ton.ChainMetadata{Selector: chain_selectors.TON_LOCALNET.Selector}}
+var tronChain1 = tron.Chain{ChainMetadata: tron.ChainMetadata{Selector: chain_selectors.TRON_MAINNET.Selector}}
 
 func TestNewBlockChains(t *testing.T) {
 	t.Parallel()
@@ -145,6 +147,7 @@ func TestBlockChainsAllChains(t *testing.T) {
 		evmChain1.Selector, evmChain2.Selector,
 		solanaChain1.Selector, aptosChain1.Selector,
 		suiChain1.Selector, tonChain1.Selector,
+		tronChain1.Selector,
 	}
 
 	assert.Len(t, allChains, len(expectedSelectors))
@@ -246,6 +249,22 @@ func TestBlockChainsGetters(t *testing.T) {
 			},
 			description: "should return all Ton chains",
 		},
+		{
+			name: "TronChains",
+			runTest: func(t *testing.T, chains chain.BlockChains) {
+				t.Helper()
+				tronChains := chains.TronChains()
+				expectedSelectors := []uint64{tronChain1.Selector}
+
+				assert.Len(t, tronChains, len(expectedSelectors), "unexpected number of Tron chains")
+
+				for _, selector := range expectedSelectors {
+					_, exists := tronChains[selector]
+					assert.True(t, exists, "expected Tron chain with selector %d", selector)
+				}
+			},
+			description: "should return all Tron chains",
+		},
 	}
 
 	// Run tests for both value and pointer chains
@@ -285,6 +304,7 @@ func TestBlockChainsListChainSelectors(t *testing.T) {
 				evmChain1.ChainSelector(), evmChain2.ChainSelector(),
 				solanaChain1.ChainSelector(), aptosChain1.ChainSelector(),
 				suiChain1.ChainSelector(), tonChain1.ChainSelector(),
+				tronChain1.ChainSelector(),
 			},
 			description: "expected all chain selectors",
 		},
@@ -319,6 +339,12 @@ func TestBlockChainsListChainSelectors(t *testing.T) {
 			description: "expected Ton chain selectors",
 		},
 		{
+			name:        "with family filter - Tron",
+			options:     []chain.ChainSelectorsOption{chain.WithFamily(chain_selectors.FamilyTron)},
+			expectedIDs: []uint64{tronChain1.Selector},
+			description: "expected Tron chain selectors",
+		},
+		{
 			name:        "with multiple families",
 			options:     []chain.ChainSelectorsOption{chain.WithFamily(chain_selectors.FamilyEVM), chain.WithFamily(chain_selectors.FamilySolana)},
 			expectedIDs: []uint64{evmChain1.Selector, evmChain2.Selector, solanaChain1.Selector},
@@ -329,7 +355,7 @@ func TestBlockChainsListChainSelectors(t *testing.T) {
 			options: []chain.ChainSelectorsOption{chain.WithChainSelectorsExclusion(
 				[]uint64{evmChain1.Selector, aptosChain1.Selector}),
 			},
-			expectedIDs: []uint64{evmChain2.Selector, solanaChain1.Selector, suiChain1.Selector, tonChain1.Selector},
+			expectedIDs: []uint64{evmChain2.Selector, solanaChain1.Selector, suiChain1.Selector, tonChain1.Selector, tronChain1.Selector},
 			description: "expected chain selectors excluding 1 and 4",
 		},
 		{
@@ -354,7 +380,7 @@ func TestBlockChainsListChainSelectors(t *testing.T) {
 }
 
 // buildBlockChains creates a new BlockChains instance with the test chains.
-// 2 evm chains, 1 solana chain, 1 aptos chain, 1 sui chain, 1 ton chain.
+// 2 evm chains, 1 solana chain, 1 aptos chain, 1 sui chain, 1 ton chain, 1 tron chain.
 func buildBlockChains() chain.BlockChains {
 	chains := chain.NewBlockChains(map[uint64]chain.BlockChain{
 		evmChain1.ChainSelector():    evmChain1,
@@ -363,6 +389,7 @@ func buildBlockChains() chain.BlockChains {
 		aptosChain1.ChainSelector():  aptosChain1,
 		suiChain1.ChainSelector():    suiChain1,
 		tonChain1.ChainSelector():    tonChain1,
+		tronChain1.ChainSelector():   tronChain1,
 	})
 
 	return chains
@@ -383,6 +410,8 @@ func buildBlockChainsPointers() chain.BlockChains {
 		case sui.Chain:
 			pointerChains[selector] = &c
 		case ton.Chain:
+			pointerChains[selector] = &c
+		case tron.Chain:
 			pointerChains[selector] = &c
 		default:
 			continue // skip unsupported chains
