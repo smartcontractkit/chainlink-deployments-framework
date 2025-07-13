@@ -23,10 +23,10 @@ func isValidFilepath(fp string) error {
 	return nil
 }
 
-// writePrivateKeyToPath writes the provided Solana private key to the specified file path in JSON
+// WritePrivateKeyToPath writes the provided Solana private key to the specified file path in JSON
 // format. The private key is stored as an array of integers, where each integer represents a byte
 // of the private key.
-func writePrivateKeyToPath(keyPath string, privKey solana.PrivateKey) error {
+func WritePrivateKeyToPath(keyPath string, privKey solana.PrivateKey) error {
 	b := []byte(privKey)
 
 	// Convert bytes to slice of integers for JSON conversion

@@ -61,6 +61,7 @@ func (c Chain) CloseBuffers(logger logger.Logger, buffer string) error {
 		buffer,                     // buffer address e.g. "5h2npsKHzGpiibLZvKnr12yC31qzvQESRnfovofL4WE3"
 		"--keypair", c.KeypairPath, // deployer keypair
 		"--url", c.URL, // rpc url
+		"--bypass-warning",
 	}
 
 	cmd := exec.Command("solana", baseArgs...) // #nosec G204

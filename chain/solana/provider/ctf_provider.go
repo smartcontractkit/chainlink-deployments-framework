@@ -124,7 +124,7 @@ func (p *CTFChainProvider) Initialize(_ context.Context) (chain.BlockChain, erro
 	keypairDir := p.t.TempDir()
 
 	keypairPath := filepath.Join(keypairDir, "solana-keypair.json")
-	if err = writePrivateKeyToPath(keypairPath, privKey); err != nil {
+	if err = WritePrivateKeyToPath(keypairPath, privKey); err != nil {
 		return nil, fmt.Errorf("failed to write deployer keypair to file: %w", err)
 	}
 
