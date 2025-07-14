@@ -3,6 +3,7 @@ package datastore
 import "errors"
 
 var ErrEnvMetadataNotSet = errors.New("no environment metadata set")
+var ErrEnvMetadataStale = errors.New("environment metadata version is stale")
 
 // EnvMetadata is a struct that holds the metadata for a domain and environment.
 // NOTE: Metadata can be of any type. To convert from any to a specific type, use the utility method As.
