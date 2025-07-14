@@ -30,6 +30,7 @@ type TestEnvMetadata struct {
 
 // setupTestEnvStore creates a test environment metadata store and gRPC connection
 func setupTestEnvStore(t *testing.T) (*CatalogEnvMetadataStore, *grpc.ClientConn) {
+	t.Helper()
 	address := os.Getenv("CATALOG_GRPC_ADDRESS")
 	if address == "" {
 		address = defaultEnvGRPCAddress
@@ -73,6 +74,7 @@ func setupTestEnvStore(t *testing.T) (*CatalogEnvMetadataStore, *grpc.ClientConn
 // requireEnvMetadataEqual compares two EnvMetadata records for equality
 // This handles the fact that JSON serialization/deserialization converts concrete types to map[string]interface{}
 func requireEnvMetadataEqual(t *testing.T, expected, actual datastore.EnvMetadata) {
+	t.Helper()
 	// Convert both to JSON and compare to handle type differences from JSON round-trip
 	expectedJSON, err := json.Marshal(expected.Metadata)
 	require.NoError(t, err, "Failed to marshal expected metadata")

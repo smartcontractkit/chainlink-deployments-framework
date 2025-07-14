@@ -684,6 +684,7 @@ func TestCatalogChainMetadataStore_ConversionHelpers(t *testing.T) {
 		{
 			name: "chainMetadataToProto",
 			test: func(t *testing.T, store *CatalogChainMetadataStore) {
+				t.Helper()
 				metadata := newRandomChainMetadata()
 
 				protoMetadata := store.chainMetadataToProto(metadata, 0)
@@ -702,6 +703,7 @@ func TestCatalogChainMetadataStore_ConversionHelpers(t *testing.T) {
 		{
 			name: "version_handling",
 			test: func(t *testing.T, store *CatalogChainMetadataStore) {
+				t.Helper()
 				// Test protoToChainMetadata with version
 				protoMetadata := &pb.ChainMetadata{
 					Domain:        "test-domain",

@@ -43,6 +43,7 @@ func newTestContractMetadata(name string) TestContractMetadata {
 
 // setupTestContractStore creates a real gRPC client connection to a local service
 func setupTestContractStore(t *testing.T) (*CatalogContractMetadataStore, *grpc.ClientConn) {
+	t.Helper()
 	// Get gRPC address from environment or use default
 	address := os.Getenv("CATALOG_GRPC_ADDRESS")
 	if address == "" {
@@ -274,6 +275,7 @@ func TestCatalogContractMetadataStore_Update(t *testing.T) {
 			},
 			expectError: false,
 			verify: func(t *testing.T, store *CatalogContractMetadataStore, metadata datastore.ContractMetadata) {
+				t.Helper()
 				// Verify the updated values
 				key := datastore.NewContractMetadataKey(metadata.ChainSelector, metadata.Address)
 				retrieved, err := store.Get(key)
@@ -383,6 +385,7 @@ func TestCatalogContractMetadataStore_Upsert(t *testing.T) {
 			},
 			expectError: false,
 			verify: func(t *testing.T, store *CatalogContractMetadataStore, original datastore.ContractMetadata) {
+				t.Helper()
 				// Verify we can get it back
 				key := datastore.NewContractMetadataKey(original.ChainSelector, original.Address)
 				retrieved, err := store.Get(key)
@@ -412,6 +415,7 @@ func TestCatalogContractMetadataStore_Upsert(t *testing.T) {
 			},
 			expectError: false,
 			verify: func(t *testing.T, store *CatalogContractMetadataStore, modified datastore.ContractMetadata) {
+				t.Helper()
 				// Verify the updated values
 				key := datastore.NewContractMetadataKey(modified.ChainSelector, modified.Address)
 				retrieved, err := store.Get(key)
@@ -545,6 +549,7 @@ func TestCatalogContractMetadataStore_FetchAndFilter(t *testing.T) {
 			createFilter: nil,
 			minExpected:  2,
 			verify: func(t *testing.T, results []datastore.ContractMetadata, metadata1, metadata2 datastore.ContractMetadata) {
+				t.Helper()
 				// Check that our records are in the results
 				foundFirst := false
 				foundSecond := false
@@ -589,6 +594,7 @@ func TestCatalogContractMetadataStore_FetchAndFilter(t *testing.T) {
 			},
 			minExpected: 1,
 			verify: func(t *testing.T, results []datastore.ContractMetadata, metadata1, metadata2 datastore.ContractMetadata) {
+				t.Helper()
 				// All results should have the chain selector from metadata1
 				for _, result := range results {
 					require.Equal(t, metadata1.ChainSelector, result.ChainSelector)
@@ -642,6 +648,7 @@ func TestCatalogContractMetadataStore_ConversionHelpers(t *testing.T) {
 		{
 			name: "keyToFilter",
 			test: func(t *testing.T, store *CatalogContractMetadataStore) {
+				t.Helper()
 				key := datastore.NewContractMetadataKey(12345, "0x1234567890abcdef1234567890abcdef12345678")
 
 				filter := store.keyToFilter(key)
@@ -655,6 +662,7 @@ func TestCatalogContractMetadataStore_ConversionHelpers(t *testing.T) {
 		{
 			name: "protoToContractMetadata_success",
 			test: func(t *testing.T, store *CatalogContractMetadataStore) {
+				t.Helper()
 				protoMetadata := &pb.ContractMetadata{
 					Domain:        "test-domain",
 					Environment:   "catalog_testing",
@@ -681,6 +689,7 @@ func TestCatalogContractMetadataStore_ConversionHelpers(t *testing.T) {
 		{
 			name: "protoToContractMetadata_invalid_json",
 			test: func(t *testing.T, store *CatalogContractMetadataStore) {
+				t.Helper()
 				protoMetadata := &pb.ContractMetadata{
 					Domain:        "test-domain",
 					Environment:   "catalog_testing",
@@ -699,6 +708,7 @@ func TestCatalogContractMetadataStore_ConversionHelpers(t *testing.T) {
 		{
 			name: "contractMetadataToProto",
 			test: func(t *testing.T, store *CatalogContractMetadataStore) {
+				t.Helper()
 				metadata := newRandomContractMetadata()
 
 				protoMetadata := store.contractMetadataToProto(metadata, 0)
@@ -718,6 +728,7 @@ func TestCatalogContractMetadataStore_ConversionHelpers(t *testing.T) {
 		{
 			name: "version_handling",
 			test: func(t *testing.T, store *CatalogContractMetadataStore) {
+				t.Helper()
 				// Test protoToContractMetadata with version
 				protoMetadata := &pb.ContractMetadata{
 					Domain:        "test-domain",
