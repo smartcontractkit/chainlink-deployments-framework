@@ -1,11 +1,13 @@
 package catalog
 
 import (
+	"context"
 	"crypto/rand"
 	"fmt"
 	"math/big"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -59,6 +61,20 @@ func setupTestContractStore(t *testing.T) (*CatalogContractMetadataStore, *grpc.
 	// Create client
 	client := pb.NewDeploymentsDatastoreClient(conn)
 
+	// Test if the gRPC service is actually available by making a simple call
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	stream, err := client.DataAccess(ctx)
+	if err != nil {
+		conn.Close()
+		t.Skipf("gRPC service not available at %s: %v. Skipping integration tests.", address, err)
+		return nil, nil
+	}
+	if stream != nil {
+		stream.CloseSend()
+	}
+
 	// Create store
 	store := NewCatalogContractMetadataStore(CatalogContractMetadataStoreConfig{
 		Domain:      "test-domain",
@@ -67,13 +83,6 @@ func setupTestContractStore(t *testing.T) (*CatalogContractMetadataStore, *grpc.
 	})
 
 	return store, conn
-}
-
-// skipIfNoContractService skips the test if we can't connect to the gRPC service
-func skipIfNoContractService(t *testing.T, conn *grpc.ClientConn) {
-	if conn == nil {
-		t.Skip("Skipping test: gRPC service not available")
-	}
 }
 
 // generateRandomContractAddress generates a random contract address
@@ -138,7 +147,6 @@ func TestCatalogContractMetadataStore_Get(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a fresh store for each test case to avoid concurrency issues
 			store, conn := setupTestContractStore(t)
-			skipIfNoContractService(t, conn)
 			defer conn.Close()
 
 			key := tt.setup(store)
@@ -194,7 +202,6 @@ func TestCatalogContractMetadataStore_Add(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a fresh store for each test case to avoid concurrency issues
 			store, conn := setupTestContractStore(t)
-			skipIfNoContractService(t, conn)
 			defer conn.Close()
 
 			metadata := tt.setup(store)
@@ -284,7 +291,6 @@ func TestCatalogContractMetadataStore_Update(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a fresh store for each test case to avoid concurrency issues
 			store, conn := setupTestContractStore(t)
-			skipIfNoContractService(t, conn)
 			defer conn.Close()
 
 			metadata := tt.setup(store)
@@ -311,11 +317,9 @@ func TestCatalogContractMetadataStore_Update(t *testing.T) {
 func TestCatalogContractMetadataStore_Update_StaleVersion(t *testing.T) {
 	// Create two separate stores to simulate concurrent access
 	store1, conn1 := setupTestContractStore(t)
-	skipIfNoContractService(t, conn1)
 	defer conn1.Close()
 
 	store2, conn2 := setupTestContractStore(t)
-	skipIfNoContractService(t, conn2)
 	defer conn2.Close()
 
 	// Add a contract metadata record using store1
@@ -411,7 +415,6 @@ func TestCatalogContractMetadataStore_Upsert(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a fresh store for each test case to avoid concurrency issues
 			store, conn := setupTestContractStore(t)
-			skipIfNoContractService(t, conn)
 			defer conn.Close()
 
 			metadata := tt.setup(store)
@@ -438,11 +441,9 @@ func TestCatalogContractMetadataStore_Upsert(t *testing.T) {
 func TestCatalogContractMetadataStore_Upsert_StaleVersion(t *testing.T) {
 	// Create two separate stores to simulate concurrent access
 	store1, conn1 := setupTestContractStore(t)
-	skipIfNoContractService(t, conn1)
 	defer conn1.Close()
 
 	store2, conn2 := setupTestContractStore(t)
-	skipIfNoContractService(t, conn2)
 	defer conn2.Close()
 
 	// Add a contract metadata record using store1
@@ -480,7 +481,6 @@ func TestCatalogContractMetadataStore_Upsert_StaleVersion(t *testing.T) {
 
 func TestCatalogContractMetadataStore_Delete(t *testing.T) {
 	store, conn := setupTestContractStore(t)
-	skipIfNoContractService(t, conn)
 	defer conn.Close()
 
 	key := datastore.NewContractMetadataKey(12345, "0x1234567890abcdef1234567890abcdef12345678")
@@ -584,7 +584,6 @@ func TestCatalogContractMetadataStore_FetchAndFilter(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a fresh store for each test case to avoid concurrency issues
 			store, conn := setupTestContractStore(t)
-			skipIfNoContractService(t, conn)
 			defer conn.Close()
 
 			metadata1, metadata2 := tt.setup(store)
@@ -728,7 +727,6 @@ func TestCatalogContractMetadataStore_ConversionHelpers(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a fresh store for each test case to avoid concurrency issues
 			store, conn := setupTestContractStore(t)
-			skipIfNoContractService(t, conn)
 			defer conn.Close()
 
 			tt.test(t, store)

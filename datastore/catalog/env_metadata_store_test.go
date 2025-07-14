@@ -1,9 +1,11 @@
 package catalog
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -44,6 +46,20 @@ func setupTestEnvStore(t *testing.T) (*CatalogEnvMetadataStore, *grpc.ClientConn
 	// Create client
 	client := pb.NewDeploymentsDatastoreClient(conn)
 
+	// Test if the gRPC service is actually available by making a simple call
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	stream, err := client.DataAccess(ctx)
+	if err != nil {
+		conn.Close()
+		t.Skipf("gRPC service not available at %s: %v. Skipping integration tests.", address, err)
+		return nil, nil
+	}
+	if stream != nil {
+		stream.CloseSend()
+	}
+
 	// Create store with the standard testing environment name
 	store := NewCatalogEnvMetadataStore(CatalogEnvMetadataStoreConfig{
 		Domain:      "test-domain",
@@ -52,13 +68,6 @@ func setupTestEnvStore(t *testing.T) (*CatalogEnvMetadataStore, *grpc.ClientConn
 	})
 
 	return store, conn
-}
-
-// skipIfNoEnvService skips the test if we can't connect to the gRPC service
-func skipIfNoEnvService(t *testing.T, conn *grpc.ClientConn) {
-	if conn == nil {
-		t.Skip("Skipping test: gRPC service not available")
-	}
 }
 
 // assertEnvMetadataEqual compares two EnvMetadata records for equality
@@ -105,7 +114,6 @@ func TestCatalogEnvMetadataStore_Get(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create store for testing
 			store, conn := setupTestEnvStore(t)
-			skipIfNoEnvService(t, conn)
 			defer conn.Close()
 
 			// Setup test data if needed
@@ -177,7 +185,6 @@ func TestCatalogEnvMetadataStore_Set(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			store, conn := setupTestEnvStore(t)
-			skipIfNoEnvService(t, conn)
 			defer conn.Close()
 
 			// Test Set operation
@@ -209,7 +216,6 @@ func TestCatalogEnvMetadataStore_Set(t *testing.T) {
 
 func TestCatalogEnvMetadataStore_Set_Update(t *testing.T) {
 	store, conn := setupTestEnvStore(t)
-	skipIfNoEnvService(t, conn)
 	defer conn.Close()
 
 	// Set initial record
@@ -243,7 +249,6 @@ func TestCatalogEnvMetadataStore_Set_StaleVersion(t *testing.T) {
 	// Environment metadata is a singleton per domain/environment, so testing
 	// stale version scenarios is more complex than with keyed records.
 	store1, conn1 := setupTestEnvStore(t)
-	skipIfNoEnvService(t, conn1)
 	defer conn1.Close()
 
 	// Set initial record with store1
@@ -261,7 +266,6 @@ func TestCatalogEnvMetadataStore_Set_StaleVersion(t *testing.T) {
 
 	// Create a second store pointing to the same environment
 	store2, conn2 := setupTestEnvStore(t)
-	skipIfNoEnvService(t, conn2)
 	defer conn2.Close()
 
 	// Store2 should be able to read the existing record
@@ -303,7 +307,6 @@ func TestCatalogEnvMetadataStore_Set_StaleVersion(t *testing.T) {
 
 func TestCatalogEnvMetadataStore_ConversionHelpers(t *testing.T) {
 	store, conn := setupTestEnvStore(t)
-	skipIfNoEnvService(t, conn)
 	defer conn.Close()
 
 	t.Run("keyToFilter", func(t *testing.T) {

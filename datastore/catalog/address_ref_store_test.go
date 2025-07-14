@@ -1,11 +1,13 @@
 package catalog
 
 import (
+	"context"
 	"crypto/rand"
 	"fmt"
 	"math/big"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/google/uuid"
@@ -57,7 +59,6 @@ func TestCatalogAddressRefStore_Get(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a fresh store for each test case to avoid concurrency issues
 			store, conn := setupTestStore(t)
-			skipIfNoService(t, conn)
 			defer conn.Close()
 
 			key := tt.setup(store)
@@ -114,7 +115,6 @@ func TestCatalogAddressRefStore_Add(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a fresh store for each test case to avoid concurrency issues
 			store, conn := setupTestStore(t)
-			skipIfNoService(t, conn)
 			defer conn.Close()
 
 			addressRef := tt.setup(store)
@@ -193,7 +193,6 @@ func TestCatalogAddressRefStore_Update(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a fresh store for each test case to avoid concurrency issues
 			store, conn := setupTestStore(t)
-			skipIfNoService(t, conn)
 			defer conn.Close()
 
 			addressRef := tt.setup(store)
@@ -265,7 +264,6 @@ func TestCatalogAddressRefStore_Upsert(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a fresh store for each test case to avoid concurrency issues
 			store, conn := setupTestStore(t)
-			skipIfNoService(t, conn)
 			defer conn.Close()
 
 			addressRef := tt.setup(store)
@@ -282,7 +280,6 @@ func TestCatalogAddressRefStore_Upsert(t *testing.T) {
 
 func TestCatalogAddressRefStore_Delete(t *testing.T) {
 	store, conn := setupTestStore(t)
-	skipIfNoService(t, conn)
 	defer conn.Close()
 
 	version := semver.MustParse("1.0.0")
@@ -443,7 +440,6 @@ func TestCatalogAddressRefStore_FetchAndFilter(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a fresh store for each test case to avoid concurrency issues
 			store, conn := setupTestStore(t)
-			skipIfNoService(t, conn)
 			defer conn.Close()
 
 			addressRef1, addressRef2 := tt.setup(store)
@@ -564,7 +560,6 @@ func TestCatalogAddressRefStore_ConversionHelpers(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a fresh store for each test case to avoid concurrency issues
 			store, conn := setupTestStore(t)
-			skipIfNoService(t, conn)
 			defer conn.Close()
 
 			tt.test(t, store)
@@ -585,11 +580,21 @@ func setupTestStore(t *testing.T) (*CatalogAddressRefStore, *grpc.ClientConn) {
 	)
 	if err != nil {
 		t.Skipf("Failed to connect to gRPC server at %s: %v. Skipping integration tests.", address, err)
-		return nil, nil
 	}
 
 	// Create client
 	client := pb.NewDeploymentsDatastoreClient(conn)
+
+	// Test if the service is actually available by making a simple call
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	stream, err := client.DataAccess(ctx)
+	if err != nil {
+		conn.Close()
+		t.Skipf("gRPC service not available at %s: %v. Skipping integration tests.", address, err)
+	}
+	stream.CloseSend() // Close the test stream
 
 	// Create store
 	store := NewCatalogAddressRefStore(CatalogAddressRefStoreConfig{
@@ -599,13 +604,6 @@ func setupTestStore(t *testing.T) (*CatalogAddressRefStore, *grpc.ClientConn) {
 	})
 
 	return store, conn
-}
-
-// skipIfNoService skips the test if we can't connect to the gRPC service
-func skipIfNoService(t *testing.T, conn *grpc.ClientConn) {
-	if conn == nil {
-		t.Skip("Skipping test: gRPC service not available")
-	}
 }
 
 // randomHex generates a random hex string of specified length
