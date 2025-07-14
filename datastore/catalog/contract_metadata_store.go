@@ -23,6 +23,8 @@ type CatalogContractMetadataStore struct {
 	domain      string
 	environment string
 	client      pb.DeploymentsDatastoreClient
+	// versionCache tracks the current version of each record for optimistic concurrency control
+	versionCache map[string]int32
 }
 
 var _ datastore.ContractMetadataStore = &CatalogContractMetadataStore{}
@@ -30,10 +32,26 @@ var _ datastore.MutableContractMetadataStore = &CatalogContractMetadataStore{}
 
 func NewCatalogContractMetadataStore(cfg CatalogContractMetadataStoreConfig) *CatalogContractMetadataStore {
 	return &CatalogContractMetadataStore{
-		domain:      cfg.Domain,
-		environment: cfg.Environment,
-		client:      cfg.Client,
+		domain:       cfg.Domain,
+		environment:  cfg.Environment,
+		client:       cfg.Client,
+		versionCache: make(map[string]int32),
 	}
+}
+
+// getVersion retrieves the cached version for a record, defaulting to 0 for new records
+func (s *CatalogContractMetadataStore) getVersion(key datastore.ContractMetadataKey) int32 {
+	cacheKey := key.String()
+	if version, exists := s.versionCache[cacheKey]; exists {
+		return version
+	}
+	return 0 // Default version for new records
+}
+
+// setVersion updates the cached version for a record
+func (s *CatalogContractMetadataStore) setVersion(key datastore.ContractMetadataKey, version int32) {
+	cacheKey := key.String()
+	s.versionCache[cacheKey] = version
 }
 
 // keyToFilter converts a ContractMetadataKey to a ContractMetadataKeyFilter for gRPC requests
@@ -63,7 +81,7 @@ func (s *CatalogContractMetadataStore) protoToContractMetadata(protoRecord *pb.C
 }
 
 // contractMetadataToProto converts a datastore ContractMetadata to a protobuf ContractMetadata
-func (s *CatalogContractMetadataStore) contractMetadataToProto(record datastore.ContractMetadata) *pb.ContractMetadata {
+func (s *CatalogContractMetadataStore) contractMetadataToProto(record datastore.ContractMetadata, version int32) *pb.ContractMetadata {
 	var metadataJSON string
 	if record.Metadata != nil {
 		if metadataBytes, err := json.Marshal(record.Metadata); err == nil {
@@ -77,7 +95,7 @@ func (s *CatalogContractMetadataStore) contractMetadataToProto(record datastore.
 		ChainSelector: record.ChainSelector,
 		Address:       record.Address,
 		Metadata:      metadataJSON,
-		RowVersion:    1, // Will be set by the server
+		RowVersion:    version,
 	}
 }
 
@@ -124,7 +142,16 @@ func (s *CatalogContractMetadataStore) Get(key datastore.ContractMetadataKey) (d
 		return datastore.ContractMetadata{}, datastore.ErrContractMetadataNotFound
 	}
 
-	return s.protoToContractMetadata(findResp.References[0])
+	protoRecord := findResp.References[0]
+	record, err := s.protoToContractMetadata(protoRecord)
+	if err != nil {
+		return datastore.ContractMetadata{}, err
+	}
+
+	// Cache the version for future operations
+	s.setVersion(record.Key(), protoRecord.RowVersion)
+
+	return record, nil
 }
 
 // Fetch returns a copy of all ContractMetadata in the catalog.
@@ -173,6 +200,10 @@ func (s *CatalogContractMetadataStore) Fetch() ([]datastore.ContractMetadata, er
 		if err != nil {
 			return nil, fmt.Errorf("failed to convert proto to contract metadata: %w", err)
 		}
+
+		// Cache the version for future operations
+		s.setVersion(record.Key(), protoRecord.RowVersion)
+
 		records = append(records, record)
 	}
 
@@ -217,12 +248,15 @@ func (s *CatalogContractMetadataStore) editRecord(record datastore.ContractMetad
 		return fmt.Errorf("failed to create gRPC stream: %w", err)
 	}
 	defer stream.CloseSend()
+	// Get the current version for this record
+	key := record.Key()
+	version := s.getVersion(key)
 
 	// Send edit request
 	editReq := &pb.DataAccessRequest{
 		Operation: &pb.DataAccessRequest_ContractMetadataEditRequest{
 			ContractMetadataEditRequest: &pb.ContractMetadataEditRequest{
-				Record:    s.contractMetadataToProto(record),
+				Record:    s.contractMetadataToProto(record, version),
 				Semantics: semantics,
 			},
 		},
@@ -243,8 +277,13 @@ func (s *CatalogContractMetadataStore) editRecord(record datastore.ContractMetad
 
 	// Check for errors in the edit response
 	if resp.Status != nil && !resp.Status.Succeeded {
-		if strings.Contains(resp.Status.GetError(), "no record found to update for") && semantics == pb.EditSemantics_SEMANTICS_UPDATE {
+		errorMsg := resp.Status.GetError()
+
+		// Check for specific error conditions
+		if strings.Contains(errorMsg, "no record found to update for") && semantics == pb.EditSemantics_SEMANTICS_UPDATE {
 			return datastore.ErrContractMetadataNotFound
+		} else if strings.Contains(errorMsg, "incorrect row version") && (semantics == pb.EditSemantics_SEMANTICS_UPDATE || semantics == pb.EditSemantics_SEMANTICS_UPSERT) {
+			return datastore.ErrContractMetadataStale
 		}
 
 		return fmt.Errorf("edit request failed: %s", resp.Status.Error)
@@ -254,6 +293,10 @@ func (s *CatalogContractMetadataStore) editRecord(record datastore.ContractMetad
 	if editResp == nil {
 		return fmt.Errorf("unexpected response type")
 	}
+
+	// Update the version cache - increment the version after successful edit
+	newVersion := s.getVersion(key) + 1
+	s.setVersion(key, newVersion)
 
 	return nil
 }

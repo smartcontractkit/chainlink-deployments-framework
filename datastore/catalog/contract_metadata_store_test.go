@@ -102,7 +102,7 @@ func newRandomContractMetadata() datastore.ContractMetadata {
 		Address:       generateRandomContractAddress(),
 		ChainSelector: generateRandomContractChainSelector(),
 		Metadata:      newTestContractMetadata("TestContract-" + id),
-	}
+	} // Version is managed internally by the store
 }
 
 func TestCatalogContractMetadataStore_Get(t *testing.T) {
@@ -244,13 +244,17 @@ func TestCatalogContractMetadataStore_Update(t *testing.T) {
 				err := store.Add(metadata)
 				require.NoError(t, err)
 
+				// Fetch the record to get the current version in cache
+				fetchedMetadata, err := store.Get(metadata.Key())
+				require.NoError(t, err)
+
 				// Modify the metadata
 				updatedMetadata := newTestContractMetadata("UpdatedContract")
 				updatedMetadata.Version = "2.0.0"
 				updatedMetadata.Description = "Updated test contract"
 				updatedMetadata.Tags = []string{"test", "updated"}
-				metadata.Metadata = updatedMetadata
-				return metadata
+				fetchedMetadata.Metadata = updatedMetadata
+				return fetchedMetadata
 			},
 			expectError: false,
 			verify: func(t *testing.T, store *CatalogContractMetadataStore, metadata datastore.ContractMetadata) {
@@ -261,6 +265,7 @@ func TestCatalogContractMetadataStore_Update(t *testing.T) {
 
 				concrete, err := datastore.As[TestContractMetadata](retrieved.Metadata)
 				require.NoError(t, err)
+				// Check that the metadata matches
 				assert.Equal(t, metadata.Metadata, concrete)
 			},
 		},
@@ -303,11 +308,56 @@ func TestCatalogContractMetadataStore_Update(t *testing.T) {
 	}
 }
 
+func TestCatalogContractMetadataStore_Update_StaleVersion(t *testing.T) {
+	// Create two separate stores to simulate concurrent access
+	store1, conn1 := setupTestContractStore(t)
+	skipIfNoContractService(t, conn1)
+	defer conn1.Close()
+
+	store2, conn2 := setupTestContractStore(t)
+	skipIfNoContractService(t, conn2)
+	defer conn2.Close()
+
+	// Add a contract metadata record using store1
+	original := newRandomContractMetadata()
+	err := store1.Add(original)
+	require.NoError(t, err)
+
+	// Both stores get the record to populate their caches with version 1
+	key := datastore.NewContractMetadataKey(original.ChainSelector, original.Address)
+	first, err := store1.Get(key)
+	require.NoError(t, err)
+
+	second, err := store2.Get(key)
+	require.NoError(t, err)
+
+	// Store1 updates the record (this increments server version to 2)
+	updatedMetadata := newTestContractMetadata("FirstUpdate")
+	updatedMetadata.Version = "2.0.0"
+	first.Metadata = updatedMetadata
+	err = store1.Update(first)
+	require.NoError(t, err)
+
+	// Store2 tries to update using its cached version (still version 1, now stale)
+	staleMetadata := newTestContractMetadata("StaleUpdate")
+	staleMetadata.Version = "3.0.0"
+	second.Metadata = staleMetadata
+
+	// Execute update with store2 (should fail due to stale version)
+	err = store2.Update(second)
+
+	// Verify we get the expected stale version error
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, datastore.ErrContractMetadataStale)
+}
+
 func TestCatalogContractMetadataStore_Upsert(t *testing.T) {
 	tests := []struct {
-		name   string
-		setup  func(store *CatalogContractMetadataStore) datastore.ContractMetadata
-		verify func(t *testing.T, store *CatalogContractMetadataStore, original datastore.ContractMetadata)
+		name        string
+		setup       func(store *CatalogContractMetadataStore) datastore.ContractMetadata
+		expectError bool
+		errorType   error
+		verify      func(t *testing.T, store *CatalogContractMetadataStore, original datastore.ContractMetadata)
 	}{
 		{
 			name: "insert_new_record",
@@ -315,6 +365,7 @@ func TestCatalogContractMetadataStore_Upsert(t *testing.T) {
 				// Create a unique contract metadata for this test
 				return newRandomContractMetadata()
 			},
+			expectError: false,
 			verify: func(t *testing.T, store *CatalogContractMetadataStore, original datastore.ContractMetadata) {
 				// Verify we can get it back
 				key := datastore.NewContractMetadataKey(original.ChainSelector, original.Address)
@@ -342,6 +393,7 @@ func TestCatalogContractMetadataStore_Upsert(t *testing.T) {
 				metadata.Metadata = upsertedMetadata
 				return metadata
 			},
+			expectError: false,
 			verify: func(t *testing.T, store *CatalogContractMetadataStore, modified datastore.ContractMetadata) {
 				// Verify the updated values
 				key := datastore.NewContractMetadataKey(modified.ChainSelector, modified.Address)
@@ -368,10 +420,62 @@ func TestCatalogContractMetadataStore_Upsert(t *testing.T) {
 			err := store.Upsert(metadata)
 
 			// Verify
-			assert.NoError(t, err)
-			tt.verify(t, store, metadata)
+			if tt.expectError {
+				assert.Error(t, err)
+				if tt.errorType != nil {
+					assert.ErrorIs(t, err, tt.errorType)
+				}
+			} else {
+				assert.NoError(t, err)
+				if tt.verify != nil {
+					tt.verify(t, store, metadata)
+				}
+			}
 		})
 	}
+}
+
+func TestCatalogContractMetadataStore_Upsert_StaleVersion(t *testing.T) {
+	// Create two separate stores to simulate concurrent access
+	store1, conn1 := setupTestContractStore(t)
+	skipIfNoContractService(t, conn1)
+	defer conn1.Close()
+
+	store2, conn2 := setupTestContractStore(t)
+	skipIfNoContractService(t, conn2)
+	defer conn2.Close()
+
+	// Add a contract metadata record using store1
+	original := newRandomContractMetadata()
+	err := store1.Add(original)
+	require.NoError(t, err)
+
+	// Both stores get the record to populate their caches with version 1
+	key := datastore.NewContractMetadataKey(original.ChainSelector, original.Address)
+	first, err := store1.Get(key)
+	require.NoError(t, err)
+
+	second, err := store2.Get(key)
+	require.NoError(t, err)
+
+	// Store1 updates the record (this increments server version to 2)
+	updatedMetadata := newTestContractMetadata("FirstUpdate")
+	updatedMetadata.Version = "2.0.0"
+	first.Metadata = updatedMetadata
+	err = store1.Update(first)
+	require.NoError(t, err)
+
+	// Store2 tries to upsert using its cached version (still version 1, now stale)
+	staleMetadata := newTestContractMetadata("UpsertStaleUpdate")
+	staleMetadata.Version = "3.0.0"
+	second.Metadata = staleMetadata
+
+	// Execute upsert with store2 (should fail due to stale version)
+	err = store2.Upsert(second)
+
+	// Verify we get the expected stale version error
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, datastore.ErrContractMetadataStale)
 }
 
 func TestCatalogContractMetadataStore_Delete(t *testing.T) {
@@ -579,18 +683,43 @@ func TestCatalogContractMetadataStore_ConversionHelpers(t *testing.T) {
 			test: func(t *testing.T, store *CatalogContractMetadataStore) {
 				metadata := newRandomContractMetadata()
 
-				protoMetadata := store.contractMetadataToProto(metadata)
+				protoMetadata := store.contractMetadataToProto(metadata, 0)
 
 				assert.Equal(t, "test-domain", protoMetadata.Domain)
 				assert.Equal(t, "catalog_testing", protoMetadata.Environment)
 				assert.Equal(t, metadata.ChainSelector, protoMetadata.ChainSelector)
 				assert.Equal(t, metadata.Address, protoMetadata.Address)
 				assert.NotEmpty(t, protoMetadata.Metadata)
-				assert.Equal(t, int32(1), protoMetadata.RowVersion) // Should be 0 initially
+				assert.Equal(t, int32(0), protoMetadata.RowVersion) // Should be 0 initially
 
 				// Verify JSON marshaling worked
 				assert.Contains(t, protoMetadata.Metadata, "name")
 				assert.Contains(t, protoMetadata.Metadata, "version")
+			},
+		},
+		{
+			name: "version_handling",
+			test: func(t *testing.T, store *CatalogContractMetadataStore) {
+				// Test protoToContractMetadata with version
+				protoMetadata := &pb.ContractMetadata{
+					Domain:        "test-domain",
+					Environment:   "catalog_testing",
+					ChainSelector: 12345,
+					Address:       "0x1234567890abcdef1234567890abcdef12345678",
+					Metadata:      `{"name":"TestContract","version":"1.0.0"}`,
+					RowVersion:    5,
+				}
+
+				metadata, err := store.protoToContractMetadata(protoMetadata)
+				assert.NoError(t, err)
+
+				// Test contractMetadataToProto with specific version
+				protoResult := store.contractMetadataToProto(metadata, 7)
+				assert.Equal(t, int32(7), protoResult.RowVersion)
+
+				// Test with version 0 (default for new records)
+				protoResult0 := store.contractMetadataToProto(metadata, 0)
+				assert.Equal(t, int32(0), protoResult0.RowVersion)
 			},
 		},
 	}
