@@ -2,6 +2,7 @@ package catalog
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -42,7 +43,9 @@ func (s *CatalogAddressRefStore) Get(key datastore.AddressRefKey) (datastore.Add
 	if err != nil {
 		return datastore.AddressRef{}, fmt.Errorf("failed to create data access stream: %w", err)
 	}
-	defer stream.CloseSend()
+	defer func() {
+		_ = stream.CloseSend()
+	}()
 
 	// Create the find request with the key converted to a filter
 	filter := s.keyToFilter(key)
@@ -57,8 +60,8 @@ func (s *CatalogAddressRefStore) Get(key datastore.AddressRefKey) (datastore.Add
 		},
 	}
 
-	if err := stream.Send(request); err != nil {
-		return datastore.AddressRef{}, fmt.Errorf("failed to send find request: %w", err)
+	if sendErr := stream.Send(request); sendErr != nil {
+		return datastore.AddressRef{}, fmt.Errorf("failed to send find request: %w", sendErr)
 	}
 
 	// Receive the response
@@ -72,13 +75,14 @@ func (s *CatalogAddressRefStore) Get(key datastore.AddressRefKey) (datastore.Add
 		if strings.Contains(response.Status.GetError(), "No records found") {
 			return datastore.AddressRef{}, datastore.ErrAddressRefNotFound
 		}
+
 		return datastore.AddressRef{}, fmt.Errorf("request failed: %s", response.Status.Error)
 	}
 
 	// Extract the address find response
 	findResponse := response.GetAddressReferenceFindResponse()
 	if findResponse == nil {
-		return datastore.AddressRef{}, fmt.Errorf("unexpected response type")
+		return datastore.AddressRef{}, errors.New("unexpected response type")
 	}
 
 	// Convert the response to datastore format
@@ -103,7 +107,9 @@ func (s *CatalogAddressRefStore) Fetch() ([]datastore.AddressRef, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create data access stream: %w", err)
 	}
-	defer stream.CloseSend()
+	defer func() {
+		_ = stream.CloseSend()
+	}()
 
 	// Create the find request with an empty filter to get all records
 	// We only filter by domain and environment to get all records for this store's scope
@@ -124,8 +130,8 @@ func (s *CatalogAddressRefStore) Fetch() ([]datastore.AddressRef, error) {
 		},
 	}
 
-	if err := stream.Send(request); err != nil {
-		return nil, fmt.Errorf("failed to send find request: %w", err)
+	if sendErr := stream.Send(request); sendErr != nil {
+		return nil, fmt.Errorf("failed to send find request: %w", sendErr)
 	}
 
 	// Receive the response
@@ -142,15 +148,15 @@ func (s *CatalogAddressRefStore) Fetch() ([]datastore.AddressRef, error) {
 	// Extract the address find response
 	findResponse := response.GetAddressReferenceFindResponse()
 	if findResponse == nil {
-		return nil, fmt.Errorf("unexpected response type")
+		return nil, errors.New("unexpected response type")
 	}
 
 	// Convert all protobuf references to datastore format
 	addressRefs := make([]datastore.AddressRef, 0, len(findResponse.References))
 	for _, protoRef := range findResponse.References {
-		addressRef, err := s.protoToAddressRef(protoRef)
-		if err != nil {
-			return nil, fmt.Errorf("failed to convert proto to address ref: %w", err)
+		addressRef, convErr := s.protoToAddressRef(protoRef)
+		if convErr != nil {
+			return nil, fmt.Errorf("failed to convert proto to address ref: %w", convErr)
 		}
 		addressRefs = append(addressRefs, addressRef)
 	}
@@ -184,7 +190,9 @@ func (s *CatalogAddressRefStore) Add(record datastore.AddressRef) error {
 	if err != nil {
 		return fmt.Errorf("failed to create data access stream: %w", err)
 	}
-	defer stream.CloseSend()
+	defer func() {
+		_ = stream.CloseSend()
+	}()
 
 	// Convert the datastore record to protobuf
 	protoRef := s.addressRefToProto(record)
@@ -202,8 +210,8 @@ func (s *CatalogAddressRefStore) Add(record datastore.AddressRef) error {
 		},
 	}
 
-	if err := stream.Send(editReq); err != nil {
-		return fmt.Errorf("failed to send edit request: %w", err)
+	if sendErr := stream.Send(editReq); sendErr != nil {
+		return fmt.Errorf("failed to send edit request: %w", sendErr)
 	}
 
 	// Receive the edit response
@@ -220,7 +228,7 @@ func (s *CatalogAddressRefStore) Add(record datastore.AddressRef) error {
 	// Extract the edit response to validate it
 	editResp := editResponse.GetAddressReferenceEditResponse()
 	if editResp == nil {
-		return fmt.Errorf("unexpected edit response type")
+		return errors.New("unexpected edit response type")
 	}
 
 	return nil
@@ -232,7 +240,9 @@ func (s *CatalogAddressRefStore) Upsert(record datastore.AddressRef) error {
 	if err != nil {
 		return fmt.Errorf("failed to create data access stream: %w", err)
 	}
-	defer stream.CloseSend()
+	defer func() {
+		_ = stream.CloseSend()
+	}()
 
 	// Convert the datastore record to protobuf
 	protoRef := s.addressRefToProto(record)
@@ -250,8 +260,8 @@ func (s *CatalogAddressRefStore) Upsert(record datastore.AddressRef) error {
 		},
 	}
 
-	if err := stream.Send(request); err != nil {
-		return fmt.Errorf("failed to send edit request: %w", err)
+	if sendErr := stream.Send(request); sendErr != nil {
+		return fmt.Errorf("failed to send edit request: %w", sendErr)
 	}
 
 	// Receive the response
@@ -268,7 +278,7 @@ func (s *CatalogAddressRefStore) Upsert(record datastore.AddressRef) error {
 	// Extract the edit response to validate it
 	editResponse := response.GetAddressReferenceEditResponse()
 	if editResponse == nil {
-		return fmt.Errorf("unexpected response type")
+		return errors.New("unexpected response type")
 	}
 
 	return nil
@@ -278,7 +288,7 @@ func (s *CatalogAddressRefStore) Update(record datastore.AddressRef) error {
 	// First check if the record exists
 	key := datastore.NewAddressRefKey(record.ChainSelector, record.Type, record.Version, record.Qualifier)
 	_, err := s.Get(key)
-	if err == datastore.ErrAddressRefNotFound {
+	if errors.Is(err, datastore.ErrAddressRefNotFound) {
 		// Record doesn't exist, return error
 		return datastore.ErrAddressRefNotFound
 	}
@@ -289,11 +299,13 @@ func (s *CatalogAddressRefStore) Update(record datastore.AddressRef) error {
 
 	// Record exists, proceed with updating it
 	// Create a bidirectional stream
-	stream, err := s.client.DataAccess(context.Background())
-	if err != nil {
-		return fmt.Errorf("failed to create data access stream: %w", err)
+	stream, streamErr := s.client.DataAccess(context.Background())
+	if streamErr != nil {
+		return fmt.Errorf("failed to create data access stream: %w", streamErr)
 	}
-	defer stream.CloseSend()
+	defer func() {
+		_ = stream.CloseSend()
+	}()
 
 	// Convert the datastore record to protobuf
 	protoRef := s.addressRefToProto(record)
@@ -311,8 +323,8 @@ func (s *CatalogAddressRefStore) Update(record datastore.AddressRef) error {
 		},
 	}
 
-	if err := stream.Send(editReq); err != nil {
-		return fmt.Errorf("failed to send edit request: %w", err)
+	if sendErr := stream.Send(editReq); sendErr != nil {
+		return fmt.Errorf("failed to send edit request: %w", sendErr)
 	}
 
 	// Receive the edit response
@@ -329,7 +341,7 @@ func (s *CatalogAddressRefStore) Update(record datastore.AddressRef) error {
 	// Extract the edit response to validate it
 	editResp := editResponse.GetAddressReferenceEditResponse()
 	if editResp == nil {
-		return fmt.Errorf("unexpected edit response type")
+		return errors.New("unexpected edit response type")
 	}
 
 	return nil
@@ -338,7 +350,7 @@ func (s *CatalogAddressRefStore) Update(record datastore.AddressRef) error {
 func (s *CatalogAddressRefStore) Delete(key datastore.AddressRefKey) error {
 	// The catalog API does not support delete operations
 	// This is intentional as catalogs are typically immutable reference stores
-	return fmt.Errorf("delete operation not supported by catalog API")
+	return errors.New("delete operation not supported by catalog API")
 }
 
 // keyToFilter converts a datastore.AddressRefKey to a protobuf AddressReferenceKeyFilter

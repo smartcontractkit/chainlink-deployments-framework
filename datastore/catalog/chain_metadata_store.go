@@ -3,6 +3,7 @@ package catalog
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -45,6 +46,7 @@ func (s *CatalogChainMetadataStore) getVersion(key datastore.ChainMetadataKey) i
 	if version, exists := s.versionCache[cacheKey]; exists {
 		return version
 	}
+
 	return 0 // Default version for new records
 }
 
@@ -101,7 +103,9 @@ func (s *CatalogChainMetadataStore) Get(key datastore.ChainMetadataKey) (datasto
 	if err != nil {
 		return datastore.ChainMetadata{}, fmt.Errorf("failed to create gRPC stream: %w", err)
 	}
-	defer stream.CloseSend()
+	defer func() {
+		_ = stream.CloseSend()
+	}()
 
 	// Send find request
 	findReq := &pb.DataAccessRequest{
@@ -112,8 +116,8 @@ func (s *CatalogChainMetadataStore) Get(key datastore.ChainMetadataKey) (datasto
 		},
 	}
 
-	if err := stream.Send(findReq); err != nil {
-		return datastore.ChainMetadata{}, fmt.Errorf("failed to send find request: %w", err)
+	if sendErr := stream.Send(findReq); sendErr != nil {
+		return datastore.ChainMetadata{}, fmt.Errorf("failed to send find request: %w", sendErr)
 	}
 
 	// Receive response
@@ -127,12 +131,13 @@ func (s *CatalogChainMetadataStore) Get(key datastore.ChainMetadataKey) (datasto
 		if strings.Contains(resp.Status.GetError(), "No records found") {
 			return datastore.ChainMetadata{}, datastore.ErrChainMetadataNotFound
 		}
+
 		return datastore.ChainMetadata{}, fmt.Errorf("request failed: %s", resp.Status.Error)
 	}
 
 	findResp := resp.GetChainMetadataFindResponse()
 	if findResp == nil {
-		return datastore.ChainMetadata{}, fmt.Errorf("unexpected response type")
+		return datastore.ChainMetadata{}, errors.New("unexpected response type")
 	}
 
 	if len(findResp.References) == 0 {
@@ -157,7 +162,9 @@ func (s *CatalogChainMetadataStore) Fetch() ([]datastore.ChainMetadata, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gRPC stream: %w", err)
 	}
-	defer stream.CloseSend()
+	defer func() {
+		_ = stream.CloseSend()
+	}()
 
 	// Send find request with domain and environment filter only (fetch all)
 	findReq := &pb.DataAccessRequest{
@@ -171,8 +178,8 @@ func (s *CatalogChainMetadataStore) Fetch() ([]datastore.ChainMetadata, error) {
 		},
 	}
 
-	if err := stream.Send(findReq); err != nil {
-		return nil, fmt.Errorf("failed to send find request: %w", err)
+	if sendErr := stream.Send(findReq); sendErr != nil {
+		return nil, fmt.Errorf("failed to send find request: %w", sendErr)
 	}
 
 	// Receive response
@@ -188,10 +195,10 @@ func (s *CatalogChainMetadataStore) Fetch() ([]datastore.ChainMetadata, error) {
 
 	findResp := resp.GetChainMetadataFindResponse()
 	if findResp == nil {
-		return nil, fmt.Errorf("unexpected response type")
+		return nil, errors.New("unexpected response type")
 	}
 
-	var records []datastore.ChainMetadata
+	records := make([]datastore.ChainMetadata, 0, len(findResp.References))
 	for _, protoRecord := range findResp.References {
 		record, err := s.protoToChainMetadata(protoRecord)
 		if err != nil {
@@ -219,6 +226,7 @@ func (s *CatalogChainMetadataStore) Filter(filters ...datastore.FilterFunc[datas
 	for _, filter := range filters {
 		records = filter(records)
 	}
+
 	return records
 }
 
@@ -235,7 +243,7 @@ func (s *CatalogChainMetadataStore) Update(record datastore.ChainMetadata) error
 }
 
 func (s *CatalogChainMetadataStore) Delete(key datastore.ChainMetadataKey) error {
-	return fmt.Errorf("delete operation not supported for chain metadata store")
+	return errors.New("delete operation not supported for chain metadata store")
 }
 
 // editRecord is a helper method that handles Add, Upsert, and Update operations
@@ -244,7 +252,9 @@ func (s *CatalogChainMetadataStore) editRecord(record datastore.ChainMetadata, s
 	if err != nil {
 		return fmt.Errorf("failed to create gRPC stream: %w", err)
 	}
-	defer stream.CloseSend()
+	defer func() {
+		_ = stream.CloseSend()
+	}()
 
 	// Get the current version for this record
 	key := record.Key()
@@ -260,16 +270,17 @@ func (s *CatalogChainMetadataStore) editRecord(record datastore.ChainMetadata, s
 		},
 	}
 
-	if err := stream.Send(editReq); err != nil {
-		return fmt.Errorf("failed to send edit request: %w", err)
+	if sendErr := stream.Send(editReq); sendErr != nil {
+		return fmt.Errorf("failed to send edit request: %w", sendErr)
 	}
 
 	// Receive response
 	resp, err := stream.Recv()
 	if err != nil {
-		if err == io.EOF {
-			return fmt.Errorf("unexpected end of stream")
+		if errors.Is(err, io.EOF) {
+			return errors.New("unexpected end of stream")
 		}
+
 		return fmt.Errorf("failed to receive response: %w", err)
 	}
 
@@ -289,7 +300,7 @@ func (s *CatalogChainMetadataStore) editRecord(record datastore.ChainMetadata, s
 
 	editResp := resp.GetChainMetadataEditResponse()
 	if editResp == nil {
-		return fmt.Errorf("unexpected response type")
+		return errors.New("unexpected response type")
 	}
 
 	// Update the version cache - increment the version after successful edit

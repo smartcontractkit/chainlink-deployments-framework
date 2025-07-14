@@ -3,6 +3,7 @@ package catalog
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -99,7 +100,9 @@ func (s *CatalogEnvMetadataStore) Get() (datastore.EnvMetadata, error) {
 	if err != nil {
 		return datastore.EnvMetadata{}, fmt.Errorf("failed to create gRPC stream: %w", err)
 	}
-	defer stream.CloseSend()
+	defer func() {
+		_ = stream.CloseSend()
+	}()
 
 	// Send find request
 	findReq := &pb.DataAccessRequest{
@@ -110,8 +113,8 @@ func (s *CatalogEnvMetadataStore) Get() (datastore.EnvMetadata, error) {
 		},
 	}
 
-	if err := stream.Send(findReq); err != nil {
-		return datastore.EnvMetadata{}, fmt.Errorf("failed to send find request: %w", err)
+	if sendErr := stream.Send(findReq); sendErr != nil {
+		return datastore.EnvMetadata{}, fmt.Errorf("failed to send find request: %w", sendErr)
 	}
 
 	// Receive response
@@ -125,12 +128,13 @@ func (s *CatalogEnvMetadataStore) Get() (datastore.EnvMetadata, error) {
 		if strings.Contains(resp.Status.GetError(), "No records found") {
 			return datastore.EnvMetadata{}, datastore.ErrEnvMetadataNotSet
 		}
+
 		return datastore.EnvMetadata{}, fmt.Errorf("request failed: %s", resp.Status.Error)
 	}
 
 	findResp := resp.GetEnvironmentMetadataFindResponse()
 	if findResp == nil {
-		return datastore.EnvMetadata{}, fmt.Errorf("unexpected response type")
+		return datastore.EnvMetadata{}, errors.New("unexpected response type")
 	}
 
 	if len(findResp.References) == 0 {
@@ -154,13 +158,15 @@ func (s *CatalogEnvMetadataStore) Set(record datastore.EnvMetadata) error {
 	if err != nil {
 		return fmt.Errorf("failed to create gRPC stream: %w", err)
 	}
-	defer stream.CloseSend()
+	defer func() {
+		_ = stream.CloseSend()
+	}()
 
 	// First, try to get the current record to sync our version cache
 	// This is important for environment metadata since it's a singleton
-	_, err = s.Get()
-	if err != nil && err != datastore.ErrEnvMetadataNotSet {
-		return fmt.Errorf("failed to get current record for version sync: %w", err)
+	_, getErr := s.Get()
+	if getErr != nil && !errors.Is(getErr, datastore.ErrEnvMetadataNotSet) {
+		return fmt.Errorf("failed to get current record for version sync: %w", getErr)
 	}
 
 	// Get the current version for this record
@@ -176,16 +182,17 @@ func (s *CatalogEnvMetadataStore) Set(record datastore.EnvMetadata) error {
 		},
 	}
 
-	if err := stream.Send(editReq); err != nil {
-		return fmt.Errorf("failed to send edit request: %w", err)
+	if sendErr := stream.Send(editReq); sendErr != nil {
+		return fmt.Errorf("failed to send edit request: %w", sendErr)
 	}
 
 	// Receive response
 	resp, err := stream.Recv()
 	if err != nil {
-		if err == io.EOF {
-			return fmt.Errorf("unexpected end of stream")
+		if errors.Is(err, io.EOF) {
+			return errors.New("unexpected end of stream")
 		}
+
 		return fmt.Errorf("failed to receive response: %w", err)
 	}
 
@@ -203,7 +210,7 @@ func (s *CatalogEnvMetadataStore) Set(record datastore.EnvMetadata) error {
 
 	editResp := resp.GetEnvironmentMetadataEditResponse()
 	if editResp == nil {
-		return fmt.Errorf("unexpected response type")
+		return errors.New("unexpected response type")
 	}
 
 	// Update the version cache - increment the version after successful edit

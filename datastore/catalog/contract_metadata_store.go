@@ -3,6 +3,7 @@ package catalog
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -45,6 +46,7 @@ func (s *CatalogContractMetadataStore) getVersion(key datastore.ContractMetadata
 	if version, exists := s.versionCache[cacheKey]; exists {
 		return version
 	}
+
 	return 0 // Default version for new records
 }
 
@@ -104,7 +106,9 @@ func (s *CatalogContractMetadataStore) Get(key datastore.ContractMetadataKey) (d
 	if err != nil {
 		return datastore.ContractMetadata{}, fmt.Errorf("failed to create gRPC stream: %w", err)
 	}
-	defer stream.CloseSend()
+	defer func() {
+		_ = stream.CloseSend()
+	}()
 
 	// Send find request
 	findReq := &pb.DataAccessRequest{
@@ -115,8 +119,8 @@ func (s *CatalogContractMetadataStore) Get(key datastore.ContractMetadataKey) (d
 		},
 	}
 
-	if err := stream.Send(findReq); err != nil {
-		return datastore.ContractMetadata{}, fmt.Errorf("failed to send find request: %w", err)
+	if sendErr := stream.Send(findReq); sendErr != nil {
+		return datastore.ContractMetadata{}, fmt.Errorf("failed to send find request: %w", sendErr)
 	}
 
 	// Receive response
@@ -130,12 +134,13 @@ func (s *CatalogContractMetadataStore) Get(key datastore.ContractMetadataKey) (d
 		if strings.Contains(resp.Status.GetError(), "No records found") {
 			return datastore.ContractMetadata{}, datastore.ErrContractMetadataNotFound
 		}
+
 		return datastore.ContractMetadata{}, fmt.Errorf("request failed: %s", resp.Status.Error)
 	}
 
 	findResp := resp.GetContractMetadataFindResponse()
 	if findResp == nil {
-		return datastore.ContractMetadata{}, fmt.Errorf("unexpected response type")
+		return datastore.ContractMetadata{}, errors.New("unexpected response type")
 	}
 
 	if len(findResp.References) == 0 {
@@ -160,7 +165,9 @@ func (s *CatalogContractMetadataStore) Fetch() ([]datastore.ContractMetadata, er
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gRPC stream: %w", err)
 	}
-	defer stream.CloseSend()
+	defer func() {
+		_ = stream.CloseSend()
+	}()
 
 	// Send find request with domain and environment filter only (fetch all)
 	findReq := &pb.DataAccessRequest{
@@ -174,8 +181,8 @@ func (s *CatalogContractMetadataStore) Fetch() ([]datastore.ContractMetadata, er
 		},
 	}
 
-	if err := stream.Send(findReq); err != nil {
-		return nil, fmt.Errorf("failed to send find request: %w", err)
+	if sendErr := stream.Send(findReq); sendErr != nil {
+		return nil, fmt.Errorf("failed to send find request: %w", sendErr)
 	}
 
 	// Receive response
@@ -191,13 +198,13 @@ func (s *CatalogContractMetadataStore) Fetch() ([]datastore.ContractMetadata, er
 
 	findResp := resp.GetContractMetadataFindResponse()
 	if findResp == nil {
-		return nil, fmt.Errorf("unexpected response type")
+		return nil, errors.New("unexpected response type")
 	}
 
-	var records []datastore.ContractMetadata
+	records := make([]datastore.ContractMetadata, 0, len(findResp.References))
 	for _, protoRecord := range findResp.References {
-		record, err := s.protoToContractMetadata(protoRecord)
-		if err != nil {
+		record, convErr := s.protoToContractMetadata(protoRecord)
+		if convErr != nil {
 			return nil, fmt.Errorf("failed to convert proto to contract metadata: %w", err)
 		}
 
@@ -222,6 +229,7 @@ func (s *CatalogContractMetadataStore) Filter(filters ...datastore.FilterFunc[da
 	for _, filter := range filters {
 		records = filter(records)
 	}
+
 	return records
 }
 
@@ -238,7 +246,7 @@ func (s *CatalogContractMetadataStore) Update(record datastore.ContractMetadata)
 }
 
 func (s *CatalogContractMetadataStore) Delete(key datastore.ContractMetadataKey) error {
-	return fmt.Errorf("delete operation not supported for contract metadata store")
+	return errors.New("delete operation not supported for contract metadata store")
 }
 
 // editRecord is a helper method that handles Add, Upsert, and Update operations
@@ -247,7 +255,9 @@ func (s *CatalogContractMetadataStore) editRecord(record datastore.ContractMetad
 	if err != nil {
 		return fmt.Errorf("failed to create gRPC stream: %w", err)
 	}
-	defer stream.CloseSend()
+	defer func() {
+		_ = stream.CloseSend()
+	}()
 	// Get the current version for this record
 	key := record.Key()
 	version := s.getVersion(key)
@@ -262,17 +272,18 @@ func (s *CatalogContractMetadataStore) editRecord(record datastore.ContractMetad
 		},
 	}
 
-	if err := stream.Send(editReq); err != nil {
-		return fmt.Errorf("failed to send edit request: %w", err)
+	if sendErr := stream.Send(editReq); sendErr != nil {
+		return fmt.Errorf("failed to send edit request: %w", sendErr)
 	}
 
 	// Receive response
-	resp, err := stream.Recv()
-	if err != nil {
-		if err == io.EOF {
-			return fmt.Errorf("unexpected end of stream")
+	resp, recvErr := stream.Recv()
+	if recvErr != nil {
+		if errors.Is(recvErr, io.EOF) {
+			return errors.New("unexpected end of stream")
 		}
-		return fmt.Errorf("failed to receive response: %w", err)
+
+		return fmt.Errorf("failed to receive response: %w", recvErr)
 	}
 
 	// Check for errors in the edit response
@@ -291,7 +302,7 @@ func (s *CatalogContractMetadataStore) editRecord(record datastore.ContractMetad
 
 	editResp := resp.GetContractMetadataEditResponse()
 	if editResp == nil {
-		return fmt.Errorf("unexpected response type")
+		return errors.New("unexpected response type")
 	}
 
 	// Update the version cache - increment the version after successful edit
