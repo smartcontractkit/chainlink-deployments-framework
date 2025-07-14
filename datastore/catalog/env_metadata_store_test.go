@@ -5,7 +5,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
@@ -73,17 +72,6 @@ func assertEnvMetadataEqual(t *testing.T, expected, actual datastore.EnvMetadata
 	require.NoError(t, err, "Failed to marshal actual metadata")
 
 	assert.JSONEq(t, string(expectedJSON), string(actualJSON), "EnvMetadata should be equal")
-}
-
-// newTestEnvMetadata creates a test environment metadata record
-func newTestEnvMetadata() datastore.EnvMetadata {
-	return datastore.EnvMetadata{
-		Metadata: TestEnvMetadata{
-			Description: "Test environment",
-			Version:     "1.0.0",
-			UUID:        uuid.New().String(),
-		},
-	}
 }
 
 func TestCatalogEnvMetadataStore_Get(t *testing.T) {

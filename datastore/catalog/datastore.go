@@ -2,14 +2,16 @@ package catalog
 
 import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
+	pb "github.com/smartcontractkit/chainlink-deployments-framework/datastore/catalog/protos"
 )
 
 type CatalogDataStoreConfig struct {
-	Domain      string `json:"domain"`
-	Environment string `json:"environment"`
+	Domain      string                        `json:"domain"`
+	Environment string                        `json:"environment"`
+	Client      pb.DeploymentsDatastoreClient `json:"-"`
 }
 
-var _ datastore.MutableDataStore = &CatalogDataStore{}
+var _ datastore.CatalogStore = &CatalogDataStore{}
 
 type CatalogDataStore struct {
 	AddressRefStore       *CatalogAddressRefStore
@@ -30,23 +32,27 @@ func NewCatalogDataStore(config CatalogDataStoreConfig) *CatalogDataStore {
 			CatalogAddressRefStoreConfig{
 				Domain:      config.Domain,
 				Environment: config.Environment,
+				Client:      config.Client,
 			}),
 		ChainMetadataStore: NewCatalogChainMetadataStore(
 			CatalogChainMetadataStoreConfig{
 				Domain:      config.Domain,
 				Environment: config.Environment,
+				Client:      config.Client,
 			},
 		),
 		ContractMetadataStore: NewCatalogContractMetadataStore(
 			CatalogContractMetadataStoreConfig{
 				Domain:      config.Domain,
 				Environment: config.Environment,
+				Client:      config.Client,
 			},
 		),
 		EnvMetadataStore: NewCatalogEnvMetadataStore(
 			CatalogEnvMetadataStoreConfig{
 				Domain:      config.Domain,
 				Environment: config.Environment,
+				Client:      config.Client,
 			},
 		),
 	}
@@ -65,49 +71,5 @@ func (s *CatalogDataStore) ContractMetadata() datastore.MutableContractMetadataS
 }
 
 func (s *CatalogDataStore) EnvMetadata() datastore.MutableEnvMetadataStore {
-	return s.EnvMetadataStore
-}
-
-func (s *CatalogDataStore) Seal() datastore.DataStore {
-	return &sealedCatalogDataStore{
-		AddressRefStore:       s.AddressRefStore,
-		ChainMetadataStore:    s.ChainMetadataStore,
-		ContractMetadataStore: s.ContractMetadataStore,
-		EnvMetadataStore:      s.EnvMetadataStore,
-		domain:                s.domain,
-		environment:           s.environment,
-	}
-}
-
-func (s *CatalogDataStore) Merge(other datastore.DataStore) error {
-	// enpty implementation for now
-	return nil
-}
-
-var _ datastore.DataStore = &sealedCatalogDataStore{}
-
-type sealedCatalogDataStore struct {
-	AddressRefStore       *CatalogAddressRefStore
-	ChainMetadataStore    *CatalogChainMetadataStore
-	ContractMetadataStore *CatalogContractMetadataStore
-	EnvMetadataStore      *CatalogEnvMetadataStore
-
-	domain      string
-	environment string
-}
-
-func (s *sealedCatalogDataStore) Addresses() datastore.AddressRefStore {
-	return s.AddressRefStore
-}
-
-func (s *sealedCatalogDataStore) ChainMetadata() datastore.ChainMetadataStore {
-	return s.ChainMetadataStore
-}
-
-func (s *sealedCatalogDataStore) ContractMetadata() datastore.ContractMetadataStore {
-	return s.ContractMetadataStore
-}
-
-func (s *sealedCatalogDataStore) EnvMetadata() datastore.EnvMetadataStore {
 	return s.EnvMetadataStore
 }
