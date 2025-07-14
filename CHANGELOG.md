@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.17.3
+
+### Patch Changes
+
+- [#222](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/222) [`fe4e84e`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/fe4e84ede1ca415f9ff277c3996da8f5d97b58c8) Thanks [@stackman27](https://github.com/stackman27)! - update sui sdk
+
 ## 0.17.2
 
 ### Patch Changes
