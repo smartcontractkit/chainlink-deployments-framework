@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -44,6 +43,7 @@ func newTestChainMetadata(name string) TestChainMetadata {
 
 // setupTestChainStore creates a real gRPC client connection to a local service
 func setupTestChainStore(t *testing.T) (*CatalogChainMetadataStore, *grpc.ClientConn) {
+	t.Helper()
 	// Get gRPC address from environment or use default
 	address := os.Getenv("CATALOG_GRPC_ADDRESS")
 	if address == "" {
@@ -69,7 +69,7 @@ func setupTestChainStore(t *testing.T) (*CatalogChainMetadataStore, *grpc.Client
 		conn.Close()
 		t.Skipf("gRPC service not available at %s: %v. Skipping integration tests.", address, err)
 	}
-	stream.CloseSend() // Close the test stream
+	_ = stream.CloseSend() // Close the test stream
 
 	// Create store
 	store := NewCatalogChainMetadataStore(CatalogChainMetadataStoreConfig{
@@ -83,11 +83,12 @@ func setupTestChainStore(t *testing.T) (*CatalogChainMetadataStore, *grpc.Client
 
 // generateRandomChainSelector generates a random chain selector
 func generateRandomChainSelector() uint64 {
-	max := big.NewInt(999999999) // Large but reasonable upper bound
-	n, err := rand.Int(rand.Reader, max)
+	maxVal := big.NewInt(999999999) // Large but reasonable upper bound
+	n, err := rand.Int(rand.Reader, maxVal)
 	if err != nil {
 		panic(fmt.Sprintf("failed to generate random chain selector: %v", err))
 	}
+
 	return n.Uint64() + 1 // Ensure it's not zero
 }
 
@@ -101,6 +102,7 @@ func newRandomChainMetadata() datastore.ChainMetadata {
 }
 
 func TestCatalogChainMetadataStore_Get(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		setup       func(store *CatalogChainMetadataStore) datastore.ChainMetadataKey
@@ -123,6 +125,7 @@ func TestCatalogChainMetadataStore_Get(t *testing.T) {
 				metadata := newRandomChainMetadata()
 				err := store.Add(metadata)
 				require.NoError(t, err)
+
 				return datastore.NewChainMetadataKey(metadata.ChainSelector)
 			},
 			expectError: false,
@@ -131,6 +134,7 @@ func TestCatalogChainMetadataStore_Get(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			// Create a fresh store for each test case to avoid concurrency issues
 			store, conn := setupTestChainStore(t)
 			defer conn.Close()
@@ -142,20 +146,21 @@ func TestCatalogChainMetadataStore_Get(t *testing.T) {
 
 			// Verify
 			if tt.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 				if tt.errorType != nil {
-					assert.ErrorIs(t, err, tt.errorType)
+					require.ErrorIs(t, err, tt.errorType)
 				}
 			} else {
-				assert.NoError(t, err)
-				assert.Equal(t, key.ChainSelector(), result.ChainSelector)
-				assert.NotNil(t, result.Metadata)
+				require.NoError(t, err)
+				require.Equal(t, key.ChainSelector(), result.ChainSelector)
+				require.NotNil(t, result.Metadata)
 			}
 		})
 	}
 }
 
 func TestCatalogChainMetadataStore_Add(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		setup       func(store *CatalogChainMetadataStore) datastore.ChainMetadata
@@ -185,6 +190,7 @@ func TestCatalogChainMetadataStore_Add(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			// Create a fresh store for each test case to avoid concurrency issues
 			store, conn := setupTestChainStore(t)
 			defer conn.Close()
@@ -196,29 +202,30 @@ func TestCatalogChainMetadataStore_Add(t *testing.T) {
 
 			// Verify
 			if tt.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 				if tt.errorCheck != nil {
-					assert.True(t, tt.errorCheck(err))
+					require.True(t, tt.errorCheck(err))
 				}
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				// Verify we can get it back
 				retrieved, err := store.Get(metadata.Key())
 				require.NoError(t, err)
 
-				assert.Equal(t, metadata.ChainSelector, retrieved.ChainSelector)
+				require.Equal(t, metadata.ChainSelector, retrieved.ChainSelector)
 
 				concrete, err := datastore.As[TestChainMetadata](retrieved.Metadata)
 				require.NoError(t, err)
 				// Check that the metadata matches
-				assert.Equal(t, metadata.Metadata, concrete)
+				require.Equal(t, metadata.Metadata, concrete)
 			}
 		})
 	}
 }
 
 func TestCatalogChainMetadataStore_Update(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		setup       func(store *CatalogChainMetadataStore) datastore.ChainMetadata
@@ -244,10 +251,12 @@ func TestCatalogChainMetadataStore_Update(t *testing.T) {
 				updatedMetadata.Tags = []string{"test", "updated"}
 				updatedMetadata.IsTestnet = false
 				fetchedMetadata.Metadata = updatedMetadata
+
 				return fetchedMetadata
 			},
 			expectError: false,
 			verify: func(t *testing.T, store *CatalogChainMetadataStore, metadata datastore.ChainMetadata) {
+				t.Helper()
 				// Verify the updated values
 				retrieved, err := store.Get(metadata.Key())
 				require.NoError(t, err)
@@ -255,7 +264,7 @@ func TestCatalogChainMetadataStore_Update(t *testing.T) {
 				concrete, err := datastore.As[TestChainMetadata](retrieved.Metadata)
 				require.NoError(t, err)
 				// Check that the metadata matches
-				assert.Equal(t, metadata.Metadata, concrete)
+				require.Equal(t, metadata.Metadata, concrete)
 			},
 		},
 		{
@@ -271,6 +280,7 @@ func TestCatalogChainMetadataStore_Update(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			// Create a fresh store for each test case to avoid concurrency issues
 			store, conn := setupTestChainStore(t)
 			defer conn.Close()
@@ -282,12 +292,12 @@ func TestCatalogChainMetadataStore_Update(t *testing.T) {
 
 			// Verify
 			if tt.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 				if tt.errorType != nil {
-					assert.ErrorIs(t, err, tt.errorType)
+					require.ErrorIs(t, err, tt.errorType)
 				}
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				if tt.verify != nil {
 					tt.verify(t, store, metadata)
 				}
@@ -297,6 +307,7 @@ func TestCatalogChainMetadataStore_Update(t *testing.T) {
 }
 
 func TestCatalogChainMetadataStore_Update_StaleVersion(t *testing.T) {
+	t.Parallel()
 	// Create two separate stores to simulate concurrent access
 	store1, conn1 := setupTestChainStore(t)
 	defer conn1.Close()
@@ -333,11 +344,12 @@ func TestCatalogChainMetadataStore_Update_StaleVersion(t *testing.T) {
 	err = store2.Update(second)
 
 	// Verify we get the expected stale version error
-	assert.Error(t, err)
-	assert.ErrorIs(t, err, datastore.ErrChainMetadataStale)
+	require.Error(t, err)
+	require.ErrorIs(t, err, datastore.ErrChainMetadataStale)
 }
 
 func TestCatalogChainMetadataStore_Upsert(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		setup       func(store *CatalogChainMetadataStore) datastore.ChainMetadata
@@ -353,6 +365,7 @@ func TestCatalogChainMetadataStore_Upsert(t *testing.T) {
 			},
 			expectError: false,
 			verify: func(t *testing.T, store *CatalogChainMetadataStore, original datastore.ChainMetadata) {
+				t.Helper()
 				// Verify we can get it back
 				key := datastore.NewChainMetadataKey(original.ChainSelector)
 				retrieved, err := store.Get(key)
@@ -360,7 +373,7 @@ func TestCatalogChainMetadataStore_Upsert(t *testing.T) {
 
 				concrete, err := datastore.As[TestChainMetadata](retrieved.Metadata)
 				require.NoError(t, err)
-				assert.Equal(t, original.Metadata, concrete)
+				require.Equal(t, original.Metadata, concrete)
 			},
 		},
 		{
@@ -377,10 +390,12 @@ func TestCatalogChainMetadataStore_Upsert(t *testing.T) {
 				upsertedMetadata.Tags = []string{"test", "upserted"}
 				upsertedMetadata.IsTestnet = false
 				metadata.Metadata = upsertedMetadata
+
 				return metadata
 			},
 			expectError: false,
 			verify: func(t *testing.T, store *CatalogChainMetadataStore, modified datastore.ChainMetadata) {
+				t.Helper()
 				// Verify the updated values
 				key := datastore.NewChainMetadataKey(modified.ChainSelector)
 				retrieved, err := store.Get(key)
@@ -388,13 +403,14 @@ func TestCatalogChainMetadataStore_Upsert(t *testing.T) {
 
 				concrete, err := datastore.As[TestChainMetadata](retrieved.Metadata)
 				require.NoError(t, err)
-				assert.Equal(t, modified.Metadata, concrete)
+				require.Equal(t, modified.Metadata, concrete)
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			// Create a fresh store for each test case to avoid concurrency issues
 			store, conn := setupTestChainStore(t)
 			defer conn.Close()
@@ -406,12 +422,12 @@ func TestCatalogChainMetadataStore_Upsert(t *testing.T) {
 
 			// Verify
 			if tt.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 				if tt.errorType != nil {
-					assert.ErrorIs(t, err, tt.errorType)
+					require.ErrorIs(t, err, tt.errorType)
 				}
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				if tt.verify != nil {
 					tt.verify(t, store, metadata)
 				}
@@ -421,6 +437,7 @@ func TestCatalogChainMetadataStore_Upsert(t *testing.T) {
 }
 
 func TestCatalogChainMetadataStore_Upsert_StaleVersion(t *testing.T) {
+	t.Parallel()
 	// Create two separate stores to simulate concurrent access
 	store1, conn1 := setupTestChainStore(t)
 	defer conn1.Close()
@@ -457,11 +474,12 @@ func TestCatalogChainMetadataStore_Upsert_StaleVersion(t *testing.T) {
 	err = store2.Upsert(second)
 
 	// Verify we get the expected stale version error
-	assert.Error(t, err)
-	assert.ErrorIs(t, err, datastore.ErrChainMetadataStale)
+	require.Error(t, err)
+	require.ErrorIs(t, err, datastore.ErrChainMetadataStale)
 }
 
 func TestCatalogChainMetadataStore_Delete(t *testing.T) {
+	t.Parallel()
 	store, conn := setupTestChainStore(t)
 	defer conn.Close()
 
@@ -471,11 +489,12 @@ func TestCatalogChainMetadataStore_Delete(t *testing.T) {
 	err := store.Delete(key)
 
 	// Verify
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "delete operation not supported")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "delete operation not supported")
 }
 
 func TestCatalogChainMetadataStore_FetchAndFilter(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name         string
 		operation    string
@@ -510,6 +529,7 @@ func TestCatalogChainMetadataStore_FetchAndFilter(t *testing.T) {
 			createFilter: nil,
 			minExpected:  2,
 			verify: func(t *testing.T, results []datastore.ChainMetadata, metadata1, metadata2 datastore.ChainMetadata) {
+				t.Helper()
 				// Check that our records are in the results
 				foundFirst := false
 				foundSecond := false
@@ -521,8 +541,8 @@ func TestCatalogChainMetadataStore_FetchAndFilter(t *testing.T) {
 						foundSecond = true
 					}
 				}
-				assert.True(t, foundFirst, "First chain metadata not found in fetch results")
-				assert.True(t, foundSecond, "Second chain metadata not found in fetch results")
+				require.True(t, foundFirst, "First chain metadata not found in fetch results")
+				require.True(t, foundSecond, "Second chain metadata not found in fetch results")
 			},
 		},
 		{
@@ -554,9 +574,10 @@ func TestCatalogChainMetadataStore_FetchAndFilter(t *testing.T) {
 			},
 			minExpected: 1,
 			verify: func(t *testing.T, results []datastore.ChainMetadata, metadata1, metadata2 datastore.ChainMetadata) {
+				t.Helper()
 				// All results should have the chain selector from metadata1
 				for _, result := range results {
-					assert.Equal(t, metadata1.ChainSelector, result.ChainSelector)
+					require.Equal(t, metadata1.ChainSelector, result.ChainSelector)
 				}
 			},
 		},
@@ -564,6 +585,7 @@ func TestCatalogChainMetadataStore_FetchAndFilter(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			// Create a fresh store for each test case to avoid concurrency issues
 			store, conn := setupTestChainStore(t)
 			defer conn.Close()
@@ -587,9 +609,9 @@ func TestCatalogChainMetadataStore_FetchAndFilter(t *testing.T) {
 
 			// Verify
 			if tt.operation == "fetch" {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
-			assert.GreaterOrEqual(t, len(results), tt.minExpected)
+			require.GreaterOrEqual(t, len(results), tt.minExpected)
 			if tt.verify != nil {
 				tt.verify(t, results, metadata1, metadata2)
 			}
@@ -598,6 +620,7 @@ func TestCatalogChainMetadataStore_FetchAndFilter(t *testing.T) {
 }
 
 func TestCatalogChainMetadataStore_ConversionHelpers(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		test func(t *testing.T, store *CatalogChainMetadataStore)
@@ -605,18 +628,20 @@ func TestCatalogChainMetadataStore_ConversionHelpers(t *testing.T) {
 		{
 			name: "keyToFilter",
 			test: func(t *testing.T, store *CatalogChainMetadataStore) {
+				t.Helper()
 				key := datastore.NewChainMetadataKey(12345)
 
 				filter := store.keyToFilter(key)
 
-				assert.Equal(t, "test-domain", filter.Domain.Value)
-				assert.Equal(t, "catalog_testing", filter.Environment.Value)
-				assert.Equal(t, uint64(12345), filter.ChainSelector.Value)
+				require.Equal(t, "test-domain", filter.Domain.Value)
+				require.Equal(t, "catalog_testing", filter.Environment.Value)
+				require.Equal(t, uint64(12345), filter.ChainSelector.Value)
 			},
 		},
 		{
 			name: "protoToChainMetadata_success",
 			test: func(t *testing.T, store *CatalogChainMetadataStore) {
+				t.Helper()
 				protoMetadata := &pb.ChainMetadata{
 					Domain:        "test-domain",
 					Environment:   "catalog_testing",
@@ -627,20 +652,21 @@ func TestCatalogChainMetadataStore_ConversionHelpers(t *testing.T) {
 
 				metadata, err := store.protoToChainMetadata(protoMetadata)
 
-				assert.NoError(t, err)
-				assert.Equal(t, uint64(12345), metadata.ChainSelector)
-				assert.NotNil(t, metadata.Metadata)
+				require.NoError(t, err)
+				require.Equal(t, uint64(12345), metadata.ChainSelector)
+				require.NotNil(t, metadata.Metadata)
 
 				// Check JSON unmarshaling - it will be unmarshaled as map[string]interface{}
 				// since that's what json.Unmarshal defaults to for interface{}
 				metadataMap := metadata.Metadata.(map[string]interface{})
-				assert.Equal(t, "TestChain", metadataMap["name"])
-				assert.Equal(t, "Test chain", metadataMap["description"])
+				require.Equal(t, "TestChain", metadataMap["name"])
+				require.Equal(t, "Test chain", metadataMap["description"])
 			},
 		},
 		{
 			name: "protoToChainMetadata_invalid_json",
 			test: func(t *testing.T, store *CatalogChainMetadataStore) {
+				t.Helper()
 				protoMetadata := &pb.ChainMetadata{
 					Domain:        "test-domain",
 					Environment:   "catalog_testing",
@@ -651,8 +677,8 @@ func TestCatalogChainMetadataStore_ConversionHelpers(t *testing.T) {
 
 				_, err := store.protoToChainMetadata(protoMetadata)
 
-				assert.Error(t, err)
-				assert.Contains(t, err.Error(), "failed to unmarshal metadata JSON")
+				require.Error(t, err)
+				require.Contains(t, err.Error(), "failed to unmarshal metadata JSON")
 			},
 		},
 		{
@@ -662,15 +688,15 @@ func TestCatalogChainMetadataStore_ConversionHelpers(t *testing.T) {
 
 				protoMetadata := store.chainMetadataToProto(metadata, 0)
 
-				assert.Equal(t, "test-domain", protoMetadata.Domain)
-				assert.Equal(t, "catalog_testing", protoMetadata.Environment)
-				assert.Equal(t, metadata.ChainSelector, protoMetadata.ChainSelector)
-				assert.NotEmpty(t, protoMetadata.Metadata)
-				assert.Equal(t, int32(0), protoMetadata.RowVersion) // Should be 0 initially
+				require.Equal(t, "test-domain", protoMetadata.Domain)
+				require.Equal(t, "catalog_testing", protoMetadata.Environment)
+				require.Equal(t, metadata.ChainSelector, protoMetadata.ChainSelector)
+				require.NotEmpty(t, protoMetadata.Metadata)
+				require.Equal(t, int32(0), protoMetadata.RowVersion) // Should be 0 initially
 
 				// Verify JSON marshaling worked
-				assert.Contains(t, protoMetadata.Metadata, "name")
-				assert.Contains(t, protoMetadata.Metadata, "description")
+				require.Contains(t, protoMetadata.Metadata, "name")
+				require.Contains(t, protoMetadata.Metadata, "description")
 			},
 		},
 		{
@@ -686,21 +712,22 @@ func TestCatalogChainMetadataStore_ConversionHelpers(t *testing.T) {
 				}
 
 				metadata, err := store.protoToChainMetadata(protoMetadata)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				// Test chainMetadataToProto with specific version
 				protoResult := store.chainMetadataToProto(metadata, 7)
-				assert.Equal(t, int32(7), protoResult.RowVersion)
+				require.Equal(t, int32(7), protoResult.RowVersion)
 
 				// Test with version 0 (default for new records)
 				protoResult0 := store.chainMetadataToProto(metadata, 0)
-				assert.Equal(t, int32(0), protoResult0.RowVersion)
+				require.Equal(t, int32(0), protoResult0.RowVersion)
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			// Create a fresh store for each test case to avoid concurrency issues
 			store, conn := setupTestChainStore(t)
 			defer conn.Close()

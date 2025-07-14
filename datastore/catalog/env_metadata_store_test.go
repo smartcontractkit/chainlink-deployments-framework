@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -54,10 +53,11 @@ func setupTestEnvStore(t *testing.T) (*CatalogEnvMetadataStore, *grpc.ClientConn
 	if err != nil {
 		conn.Close()
 		t.Skipf("gRPC service not available at %s: %v. Skipping integration tests.", address, err)
+
 		return nil, nil
 	}
 	if stream != nil {
-		stream.CloseSend()
+		_ = stream.CloseSend()
 	}
 
 	// Create store with the standard testing environment name
@@ -70,9 +70,9 @@ func setupTestEnvStore(t *testing.T) (*CatalogEnvMetadataStore, *grpc.ClientConn
 	return store, conn
 }
 
-// assertEnvMetadataEqual compares two EnvMetadata records for equality
+// requireEnvMetadataEqual compares two EnvMetadata records for equality
 // This handles the fact that JSON serialization/deserialization converts concrete types to map[string]interface{}
-func assertEnvMetadataEqual(t *testing.T, expected, actual datastore.EnvMetadata) {
+func requireEnvMetadataEqual(t *testing.T, expected, actual datastore.EnvMetadata) {
 	// Convert both to JSON and compare to handle type differences from JSON round-trip
 	expectedJSON, err := json.Marshal(expected.Metadata)
 	require.NoError(t, err, "Failed to marshal expected metadata")
@@ -80,10 +80,11 @@ func assertEnvMetadataEqual(t *testing.T, expected, actual datastore.EnvMetadata
 	actualJSON, err := json.Marshal(actual.Metadata)
 	require.NoError(t, err, "Failed to marshal actual metadata")
 
-	assert.JSONEq(t, string(expectedJSON), string(actualJSON), "EnvMetadata should be equal")
+	require.JSONEq(t, string(expectedJSON), string(actualJSON), "EnvMetadata should be equal")
 }
 
 func TestCatalogEnvMetadataStore_Get(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name         string
 		setupRecords []datastore.EnvMetadata
@@ -112,6 +113,7 @@ func TestCatalogEnvMetadataStore_Get(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			// Create store for testing
 			store, conn := setupTestEnvStore(t)
 			defer conn.Close()
@@ -135,18 +137,20 @@ func TestCatalogEnvMetadataStore_Get(t *testing.T) {
 					t.Errorf("Expected error %v, got %v", tt.wantErr, err)
 					return
 				}
+
 				return
 			}
 
 			require.NoError(t, err, "Unexpected error")
 
 			// Verify record
-			assertEnvMetadataEqual(t, tt.wantRecord, gotRecord)
+			requireEnvMetadataEqual(t, tt.wantRecord, gotRecord)
 		})
 	}
 }
 
 func TestCatalogEnvMetadataStore_Set(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		record  datastore.EnvMetadata
@@ -184,6 +188,7 @@ func TestCatalogEnvMetadataStore_Set(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			store, conn := setupTestEnvStore(t)
 			defer conn.Close()
 
@@ -200,6 +205,7 @@ func TestCatalogEnvMetadataStore_Set(t *testing.T) {
 					t.Errorf("Expected error %v, got %v", tt.wantErr, err)
 					return
 				}
+
 				return
 			}
 
@@ -209,12 +215,13 @@ func TestCatalogEnvMetadataStore_Set(t *testing.T) {
 			gotRecord, err := store.Get()
 			require.NoError(t, err, "Failed to retrieve record after Set")
 
-			assertEnvMetadataEqual(t, tt.record, gotRecord)
+			requireEnvMetadataEqual(t, tt.record, gotRecord)
 		})
 	}
 }
 
 func TestCatalogEnvMetadataStore_Set_Update(t *testing.T) {
+	t.Parallel()
 	store, conn := setupTestEnvStore(t)
 	defer conn.Close()
 
@@ -241,10 +248,11 @@ func TestCatalogEnvMetadataStore_Set_Update(t *testing.T) {
 	gotRecord, err := store.Get()
 	require.NoError(t, err, "Failed to retrieve updated record")
 
-	assertEnvMetadataEqual(t, updatedRecord, gotRecord)
+	requireEnvMetadataEqual(t, updatedRecord, gotRecord)
 }
 
 func TestCatalogEnvMetadataStore_Set_StaleVersion(t *testing.T) {
+	t.Parallel()
 	t.Skip("Stale version testing for environment metadata requires more complex setup due to singleton nature")
 	// Environment metadata is a singleton per domain/environment, so testing
 	// stale version scenarios is more complex than with keyed records.
@@ -296,27 +304,30 @@ func TestCatalogEnvMetadataStore_Set_StaleVersion(t *testing.T) {
 	}
 
 	// Verify it's the expected stale error
-	assert.Equal(t, datastore.ErrEnvMetadataStale, err, "Expected ErrEnvMetadataStale")
+	require.Equal(t, datastore.ErrEnvMetadataStale, err, "Expected ErrEnvMetadataStale")
 
 	// Verify the record still has store1's update
 	finalRecord, err := store1.Get()
 	require.NoError(t, err, "Failed to get final record")
 
-	assertEnvMetadataEqual(t, updatedRecord1, finalRecord)
+	requireEnvMetadataEqual(t, updatedRecord1, finalRecord)
 }
 
 func TestCatalogEnvMetadataStore_ConversionHelpers(t *testing.T) {
+	t.Parallel()
 	store, conn := setupTestEnvStore(t)
 	defer conn.Close()
 
 	t.Run("keyToFilter", func(t *testing.T) {
+		t.Parallel()
 		filter := store.keyToFilter()
 		require.NotNil(t, filter, "keyToFilter returned nil")
-		assert.Equal(t, "test-domain", filter.Domain.Value, "Expected domain 'test-domain'")
-		assert.Equal(t, "catalog_testing", filter.Environment.Value, "Expected environment 'catalog_testing'")
+		require.Equal(t, "test-domain", filter.Domain.Value, "Expected domain 'test-domain'")
+		require.Equal(t, "catalog_testing", filter.Environment.Value, "Expected environment 'catalog_testing'")
 	})
 
 	t.Run("protoToEnvMetadata_success", func(t *testing.T) {
+		t.Parallel()
 		protoRecord := &pb.EnvironmentMetadata{
 			Domain:      "test-domain",
 			Environment: "test-env",
@@ -329,12 +340,13 @@ func TestCatalogEnvMetadataStore_ConversionHelpers(t *testing.T) {
 
 		// Since JSON unmarshaling returns map[string]interface{}, we need to assert on that
 		metadata := result.Metadata.(map[string]interface{})
-		assert.Equal(t, "test env", metadata["description"])
-		assert.Equal(t, "1.0", metadata["version"])
-		assert.IsType(t, map[string]interface{}{}, metadata["extra"])
+		require.Equal(t, "test env", metadata["description"])
+		require.Equal(t, "1.0", metadata["version"])
+		require.IsType(t, map[string]interface{}{}, metadata["extra"])
 	})
 
 	t.Run("protoToEnvMetadata_invalid_json", func(t *testing.T) {
+		t.Parallel()
 		protoRecord := &pb.EnvironmentMetadata{
 			Domain:      "test-domain",
 			Environment: "test-env",
@@ -343,10 +355,11 @@ func TestCatalogEnvMetadataStore_ConversionHelpers(t *testing.T) {
 		}
 
 		_, err := store.protoToEnvMetadata(protoRecord)
-		assert.Error(t, err, "Expected error for invalid JSON")
+		require.Error(t, err, "Expected error for invalid JSON")
 	})
 
 	t.Run("envMetadataToProto", func(t *testing.T) {
+		t.Parallel()
 		record := datastore.EnvMetadata{
 			Metadata: TestEnvMetadata{
 				Description: "test environment",
@@ -357,27 +370,28 @@ func TestCatalogEnvMetadataStore_ConversionHelpers(t *testing.T) {
 
 		result := store.envMetadataToProto(record, 5)
 
-		assert.Equal(t, "test-domain", result.Domain, "Expected domain 'test-domain'")
-		assert.Equal(t, "catalog_testing", result.Environment, "Expected environment 'catalog_testing'")
-		assert.Equal(t, int32(5), result.RowVersion, "Expected version 5")
+		require.Equal(t, "test-domain", result.Domain, "Expected domain 'test-domain'")
+		require.Equal(t, "catalog_testing", result.Environment, "Expected environment 'catalog_testing'")
+		require.Equal(t, int32(5), result.RowVersion, "Expected version 5")
 
 		// Parse the JSON metadata to verify it's correct
 		var metadata map[string]interface{}
 		err := json.Unmarshal([]byte(result.Metadata), &metadata)
 		require.NoError(t, err, "Failed to parse result metadata JSON")
 
-		assert.Equal(t, "test environment", metadata["description"], "Expected description 'test environment'")
-		assert.Equal(t, "1.0.0", metadata["version"], "Expected version '1.0.0'")
-		assert.IsType(t, []interface{}{}, metadata["tags"], "Expected tags to be an array")
+		require.Equal(t, "test environment", metadata["description"], "Expected description 'test environment'")
+		require.Equal(t, "1.0.0", metadata["version"], "Expected version '1.0.0'")
+		require.IsType(t, []interface{}{}, metadata["tags"], "Expected tags to be an array")
 	})
 
 	t.Run("version_handling", func(t *testing.T) {
+		t.Parallel()
 		// Test getVersion and setVersion
 		initialVersion := store.getVersion()
-		assert.Equal(t, int32(0), initialVersion, "Expected initial version 0")
+		require.Equal(t, int32(0), initialVersion, "Expected initial version 0")
 
 		store.setVersion(10)
 		newVersion := store.getVersion()
-		assert.Equal(t, int32(10), newVersion, "Expected version 10 after setVersion")
+		require.Equal(t, int32(10), newVersion, "Expected version 10 after setVersion")
 	})
 }

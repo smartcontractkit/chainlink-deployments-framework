@@ -3,13 +3,13 @@ package catalog
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 )
 
 func TestNewCatalogDataStore(t *testing.T) {
+	t.Parallel()
 	config := CatalogDataStoreConfig{
 		Domain:      "test-domain",
 		Environment: "test-env",
@@ -20,17 +20,18 @@ func TestNewCatalogDataStore(t *testing.T) {
 
 	// Verify the datastore is created
 	require.NotNil(t, dataStore)
-	assert.Equal(t, "test-domain", dataStore.domain)
-	assert.Equal(t, "test-env", dataStore.environment)
+	require.Equal(t, "test-domain", dataStore.domain)
+	require.Equal(t, "test-env", dataStore.environment)
 
 	// Verify all stores are initialized
-	assert.NotNil(t, dataStore.AddressRefStore)
-	assert.NotNil(t, dataStore.ChainMetadataStore)
-	assert.NotNil(t, dataStore.ContractMetadataStore)
-	assert.NotNil(t, dataStore.EnvMetadataStore)
+	require.NotNil(t, dataStore.AddressRefStore)
+	require.NotNil(t, dataStore.ChainMetadataStore)
+	require.NotNil(t, dataStore.ContractMetadataStore)
+	require.NotNil(t, dataStore.EnvMetadataStore)
 }
 
 func TestCatalogDataStore_ImplementsCatalogInterface(t *testing.T) {
+	t.Parallel()
 	config := CatalogDataStoreConfig{
 		Domain:      "test-domain",
 		Environment: "test-env",
@@ -44,23 +45,24 @@ func TestCatalogDataStore_ImplementsCatalogInterface(t *testing.T) {
 
 	// Test all interface methods return the expected store types
 	addressStore := dataStore.Addresses()
-	assert.NotNil(t, addressStore)
-	assert.IsType(t, &CatalogAddressRefStore{}, addressStore)
+	require.NotNil(t, addressStore)
+	require.IsType(t, &CatalogAddressRefStore{}, addressStore)
 
 	chainStore := dataStore.ChainMetadata()
-	assert.NotNil(t, chainStore)
-	assert.IsType(t, &CatalogChainMetadataStore{}, chainStore)
+	require.NotNil(t, chainStore)
+	require.IsType(t, &CatalogChainMetadataStore{}, chainStore)
 
 	contractStore := dataStore.ContractMetadata()
-	assert.NotNil(t, contractStore)
-	assert.IsType(t, &CatalogContractMetadataStore{}, contractStore)
+	require.NotNil(t, contractStore)
+	require.IsType(t, &CatalogContractMetadataStore{}, contractStore)
 
 	envStore := dataStore.EnvMetadata()
-	assert.NotNil(t, envStore)
-	assert.IsType(t, &CatalogEnvMetadataStore{}, envStore)
+	require.NotNil(t, envStore)
+	require.IsType(t, &CatalogEnvMetadataStore{}, envStore)
 }
 
 func TestCatalogDataStore_StoreInterfaces(t *testing.T) {
+	t.Parallel()
 	config := CatalogDataStoreConfig{
 		Domain:      "test-domain",
 		Environment: "test-env",
@@ -70,10 +72,10 @@ func TestCatalogDataStore_StoreInterfaces(t *testing.T) {
 	ds := NewCatalogDataStore(config)
 
 	// Verify each store implements the correct mutable interface
-	var _ datastore.MutableAddressRefStore = ds.Addresses()
-	var _ datastore.MutableChainMetadataStore = ds.ChainMetadata()
-	var _ datastore.MutableContractMetadataStore = ds.ContractMetadata()
-	var _ datastore.MutableEnvMetadataStore = ds.EnvMetadata()
+	_ = ds.Addresses()
+	_ = ds.ChainMetadata()
+	_ = ds.ContractMetadata()
+	_ = ds.EnvMetadata()
 
 	// Also verify they implement the read-only interfaces
 	var _ datastore.AddressRefStore = ds.Addresses()
@@ -83,6 +85,7 @@ func TestCatalogDataStore_StoreInterfaces(t *testing.T) {
 }
 
 func TestCatalogDataStoreConfig_ClientPassthrough(t *testing.T) {
+	t.Parallel()
 	config := CatalogDataStoreConfig{
 		Domain:      "test-domain",
 		Environment: "test-env",
@@ -98,16 +101,16 @@ func TestCatalogDataStoreConfig_ClientPassthrough(t *testing.T) {
 
 	// Test that stores have the correct configuration
 	addressStore := ds.AddressRefStore
-	assert.NotNil(t, addressStore)
+	require.NotNil(t, addressStore)
 
 	chainStore := ds.ChainMetadataStore
-	assert.NotNil(t, chainStore)
+	require.NotNil(t, chainStore)
 
 	contractStore := ds.ContractMetadataStore
-	assert.NotNil(t, contractStore)
+	require.NotNil(t, contractStore)
 
 	envStore := ds.EnvMetadataStore
-	assert.NotNil(t, envStore)
+	require.NotNil(t, envStore)
 
 	// Since we can't access private fields directly, we'll just verify
 	// that the stores were created without panicking, which indicates
@@ -115,6 +118,7 @@ func TestCatalogDataStoreConfig_ClientPassthrough(t *testing.T) {
 }
 
 func TestCatalogDataStore_NoSealOrMerge(t *testing.T) {
+	t.Parallel()
 	config := CatalogDataStoreConfig{
 		Domain:      "test-domain",
 		Environment: "test-env",
