@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
@@ -25,6 +26,7 @@ type CatalogEnvMetadataStore struct {
 	client      pb.DeploymentsDatastoreClient
 	// versionCache tracks the current version of the record for optimistic concurrency control
 	// Environment metadata is a single record per domain/environment, so we only need one version
+	mu            sync.RWMutex
 	cachedVersion int32
 }
 
@@ -40,11 +42,15 @@ func NewCatalogEnvMetadataStore(cfg CatalogEnvMetadataStoreConfig) *CatalogEnvMe
 
 // getVersion retrieves the cached version for the record, defaulting to 0 for new records
 func (s *CatalogEnvMetadataStore) getVersion() int32 {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	return s.cachedVersion
 }
 
 // setVersion updates the cached version for the record
 func (s *CatalogEnvMetadataStore) setVersion(version int32) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.cachedVersion = version
 }
 

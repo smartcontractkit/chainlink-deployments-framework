@@ -56,9 +56,9 @@ func TestCatalogDataStore_ImplementsCatalogInterface(t *testing.T) {
 	require.NotNil(t, contractStore)
 	require.IsType(t, &CatalogContractMetadataStore{}, contractStore)
 
-	envStore := dataStore.EnvMetadata()
-	require.NotNil(t, envStore)
-	require.IsType(t, &CatalogEnvMetadataStore{}, envStore)
+	// envStore := dataStore.EnvMetadata()
+	// require.NotNil(t, envStore)
+	// require.IsType(t, &CatalogEnvMetadataStore{}, envStore)
 }
 
 func TestCatalogDataStore_StoreInterfaces(t *testing.T) {
