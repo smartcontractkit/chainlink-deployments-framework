@@ -1,5 +1,7 @@
 package datastore
 
+import "context"
+
 // Comparable provides an Equals() method which returns true if the two instances are equal, false otherwise.
 type Comparable[T any] interface {
 	// Equals()	returns true if the two instances are equal, false otherwise.
@@ -86,4 +88,23 @@ type MutableUnaryStore[R any] interface {
 	// If the record already exists, it should be replaced.
 	// If the record does not exist, it should be added.
 	Set(record R) error
+}
+
+// MutableUnaryStore is an interface that represents a mutable store that contains a single record.
+type MutableUnaryStoreV2[R any] interface {
+	// Get returns a copy of the record or an error.
+	// If the record exists, the error should be nil.
+	// If the record does not exist, the error should not be nil.
+	Get(context.Context) (R, error)
+
+	// Set sets the record in the store.
+	// If the record already exists, it should be replaced.
+	// If the record does not exist, it should be added.
+	Set(ctx context.Context, metadata any, updaters ...MetadataUpdaterF) error
+}
+
+type MetadataUpdaterF func(latest any, incoming any) (any, error)
+
+func IdentityUpdaterF(latest any, incoming any) (any, error) {
+	return incoming, nil
 }

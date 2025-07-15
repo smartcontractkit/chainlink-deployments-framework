@@ -48,5 +48,6 @@ func (s *CatalogDataStore) ContractMetadata() datastore.MutableContractMetadataS
 }
 
 func (s *CatalogDataStore) EnvMetadata() datastore.MutableEnvMetadataStore {
-	return s.EnvMetadataStore
+	// return s.EnvMetadataStore
+	return nil
 }

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"strings"
 
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -28,10 +27,6 @@ type CatalogEnvMetadataStore struct {
 	// Environment metadata is a single record per domain/environment, so we only need one version
 	cachedVersion int32
 }
-
-var _ datastore.EnvMetadataStore = &CatalogEnvMetadataStore{}
-
-var _ datastore.MutableEnvMetadataStore = &CatalogEnvMetadataStore{}
 
 // NewCatalogEnvMetadataStore creates a new CatalogEnvMetadataStore instance.
 func NewCatalogEnvMetadataStore(cfg CatalogEnvMetadataStoreConfig) *CatalogEnvMetadataStore {
@@ -153,30 +148,117 @@ func (s *CatalogEnvMetadataStore) Get() (datastore.EnvMetadata, error) {
 	return record, nil
 }
 
-func (s *CatalogEnvMetadataStore) Set(record datastore.EnvMetadata) error {
-	stream, err := s.client.DataAccess(context.Background())
+// func (s *CatalogEnvMetadataStore) Set(record datastore.EnvMetadata) error {
+// 	stream, err := s.client.DataAccess(context.Background())
+// 	if err != nil {
+// 		return fmt.Errorf("failed to create gRPC stream: %w", err)
+// 	}
+// 	defer func() {
+// 		_ = stream.CloseSend()
+// 	}()
+
+// 	// First, try to get the current record to sync our version cache
+// 	// This is important for environment metadata since it's a singleton
+// 	_, getErr := s.Get()
+// 	if getErr != nil && !errors.Is(getErr, datastore.ErrEnvMetadataNotSet) {
+// 		return fmt.Errorf("failed to get current record for version sync: %w", getErr)
+// 	}
+
+// 	// Get the current version for this record
+// 	version := s.getVersion()
+
+// 	// Send edit request with UPSERT semantics (since Set should always work)
+// 	editReq := &pb.DataAccessRequest{
+// 		Operation: &pb.DataAccessRequest_EnvironmentMetadataEditRequest{
+// 			EnvironmentMetadataEditRequest: &pb.EnvironmentMetadataEditRequest{
+// 				Record:    s.envMetadataToProto(record, version),
+// 				Semantics: pb.EditSemantics_SEMANTICS_UPSERT,
+// 			},
+// 		},
+// 	}
+
+// 	if sendErr := stream.Send(editReq); sendErr != nil {
+// 		return fmt.Errorf("failed to send edit request: %w", sendErr)
+// 	}
+
+// 	// Receive response
+// 	resp, err := stream.Recv()
+// 	if err != nil {
+// 		if errors.Is(err, io.EOF) {
+// 			return errors.New("unexpected end of stream")
+// 		}
+
+// 		return fmt.Errorf("failed to receive response: %w", err)
+// 	}
+
+// 	// Check for errors in the edit response
+// 	if resp.Status != nil && !resp.Status.Succeeded {
+// 		errorMsg := resp.Status.GetError()
+
+// 		// Check for version conflicts
+// 		if strings.Contains(errorMsg, "incorrect row version") {
+// 			return datastore.ErrEnvMetadataStale
+// 		}
+
+// 		return fmt.Errorf("edit request failed: %s", resp.Status.Error)
+// 	}
+
+// 	editResp := resp.GetEnvironmentMetadataEditResponse()
+// 	if editResp == nil {
+// 		return errors.New("unexpected response type")
+// 	}
+
+// 	// Update the version cache - increment the version after successful edit
+// 	newVersion := s.getVersion() + 1
+// 	s.setVersion(newVersion)
+
+// 	return nil
+// }
+
+func (s *CatalogEnvMetadataStore) Set(ctx context.Context, metadata any, updaters ...datastore.MetadataUpdaterF) error {
+	currentRecord, err := s.Get()
+	if err != nil {
+		if !errors.Is(err, datastore.ErrEnvMetadataNotSet) {
+			return fmt.Errorf("failed to get current record for version sync: %w", err)
+		}
+	}
+
+	if len(updaters) == 0 {
+		updaters = []datastore.MetadataUpdaterF{datastore.IdentityUpdaterF}
+	}
+
+	var finalMetadata any = metadata
+	for _, updater := range updaters {
+		var err error
+		finalMetadata, err = updater(currentRecord.Metadata, finalMetadata)
+		if err != nil {
+			return fmt.Errorf("failed to apply metadata updater: %w", err)
+		}
+
+	}
+
+	// Get the current version for this record
+	version := s.getVersion()
+	// Create the protobuf record
+	protoRecord := s.envMetadataToProto(
+		datastore.EnvMetadata{
+			Metadata: finalMetadata,
+		},
+		version,
+	)
+
+	// Send edit request with UPSERT semantics (since Set should always work)
+	stream, err := s.client.DataAccess(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to create gRPC stream: %w", err)
 	}
 	defer func() {
 		_ = stream.CloseSend()
 	}()
-
-	// First, try to get the current record to sync our version cache
-	// This is important for environment metadata since it's a singleton
-	_, getErr := s.Get()
-	if getErr != nil && !errors.Is(getErr, datastore.ErrEnvMetadataNotSet) {
-		return fmt.Errorf("failed to get current record for version sync: %w", getErr)
-	}
-
-	// Get the current version for this record
-	version := s.getVersion()
-
-	// Send edit request with UPSERT semantics (since Set should always work)
 	editReq := &pb.DataAccessRequest{
 		Operation: &pb.DataAccessRequest_EnvironmentMetadataEditRequest{
 			EnvironmentMetadataEditRequest: &pb.EnvironmentMetadataEditRequest{
-				Record:    s.envMetadataToProto(record, version),
+				Record:    protoRecord,
 				Semantics: pb.EditSemantics_SEMANTICS_UPSERT,
 			},
 		},
@@ -185,26 +267,22 @@ func (s *CatalogEnvMetadataStore) Set(record datastore.EnvMetadata) error {
 	if sendErr := stream.Send(editReq); sendErr != nil {
 		return fmt.Errorf("failed to send edit request: %w", sendErr)
 	}
-
 	// Receive response
 	resp, err := stream.Recv()
 	if err != nil {
-		if errors.Is(err, io.EOF) {
-			return errors.New("unexpected end of stream")
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			return fmt.Errorf("request canceled or deadline exceeded: %w", err)
 		}
-
 		return fmt.Errorf("failed to receive response: %w", err)
 	}
 
 	// Check for errors in the edit response
 	if resp.Status != nil && !resp.Status.Succeeded {
 		errorMsg := resp.Status.GetError()
-
 		// Check for version conflicts
 		if strings.Contains(errorMsg, "incorrect row version") {
 			return datastore.ErrEnvMetadataStale
 		}
-
 		return fmt.Errorf("edit request failed: %s", resp.Status.Error)
 	}
 
