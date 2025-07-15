@@ -2,7 +2,7 @@ package catalog
 
 import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
-	pb "github.com/smartcontractkit/chainlink-deployments-framework/datastore/catalog/protos"
+	pb "github.com/smartcontractkit/chainlink-deployments-framework/datastore/catalog/internal/protos"
 )
 
 type CatalogDataStoreConfig struct {
