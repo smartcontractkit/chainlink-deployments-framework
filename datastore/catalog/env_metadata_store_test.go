@@ -122,7 +122,7 @@ func TestCatalogEnvMetadataStore_Get(t *testing.T) {
 
 			// Setup test data if needed
 			for _, record := range tt.setupRecords {
-				err := store.Set(record)
+				err := store.Set(context.Background(), record.Metadata)
 				require.NoError(t, err, "Failed to setup record")
 			}
 
