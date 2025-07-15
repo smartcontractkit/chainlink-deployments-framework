@@ -61,8 +61,6 @@ type Environment struct {
 	ExistingAddresses AddressBook
 	DataStore         datastore.DataStore
 
-	Catalog datastore.CatalogStore
-
 	NodeIDs    []string
 	Offchain   OffchainClient
 	GetContext func() context.Context
@@ -79,7 +77,6 @@ func NewEnvironment(
 	logger logger.Logger,
 	existingAddrs AddressBook,
 	dataStore datastore.DataStore,
-	catalog datastore.CatalogStore,
 	nodeIDs []string,
 	offchain OffchainClient,
 	ctx func() context.Context,
@@ -120,7 +117,6 @@ func (e Environment) Clone() Environment {
 		Logger:            e.Logger,
 		ExistingAddresses: ab,
 		DataStore:         ds.Seal(),
-		Catalog:           e.Catalog,
 		NodeIDs:           e.NodeIDs,
 		Offchain:          e.Offchain,
 		GetContext:        e.GetContext,
