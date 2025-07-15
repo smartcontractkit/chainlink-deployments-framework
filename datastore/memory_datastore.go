@@ -47,6 +47,13 @@ type MutableDataStore interface {
 	]
 }
 
+type CatalogStore interface {
+	BaseDataStore[
+		MutableAddressRefStore, MutableChainMetadataStore,
+		MutableContractMetadataStore, MutableEnvMetadataStore,
+	]
+}
+
 // MemoryDataStore is a concrete implementation of the MutableDataStore interface.
 var _ MutableDataStore = &MemoryDataStore{}
 

@@ -4,6 +4,7 @@ import "errors"
 
 var ErrChainMetadataNotFound = errors.New("no chain metadata record can be found for the provided key")
 var ErrChainMetadataExists = errors.New("a chain metadata record with the supplied key already exists")
+var ErrChainMetadataStale = errors.New("the chain metadata record with the given key is stale and cannot be updated")
 
 // ChainMetadata implements the UniqueRecord interface
 var _ UniqueRecord[ChainMetadataKey, ChainMetadata] = ChainMetadata{}
