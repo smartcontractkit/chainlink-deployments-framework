@@ -102,7 +102,6 @@ func NewNoopEnvironment(t *testing.T) Environment {
 		logger.Test(t),
 		NewMemoryAddressBook(),
 		datastore.NewMemoryDataStore().Seal(),
-		nil,
 		[]string{},
 		nil,
 		t.Context,
