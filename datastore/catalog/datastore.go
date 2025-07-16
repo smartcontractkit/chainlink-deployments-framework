@@ -44,7 +44,7 @@ func (s *CatalogDataStore) ChainMetadata() datastore.MutableStoreV2[datastore.Ch
 }
 
 func (s *CatalogDataStore) ContractMetadata() datastore.MutableContractMetadataStore {
-	return s.ContractMetadataStore
+	return nil
 }
 
 func (s *CatalogDataStore) EnvMetadata() datastore.MutableEnvMetadataStore {

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"sync"
 
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
@@ -25,11 +26,11 @@ type CatalogContractMetadataStore struct {
 	environment string
 	client      pb.DeploymentsDatastoreClient
 	// versionCache tracks the current version of each record for optimistic concurrency control
+	mu           sync.RWMutex
 	versionCache map[string]int32
 }
 
-var _ datastore.ContractMetadataStore = &CatalogContractMetadataStore{}
-var _ datastore.MutableContractMetadataStore = &CatalogContractMetadataStore{}
+var _ datastore.MutableStoreV2[datastore.ContractMetadataKey, datastore.ContractMetadata] = &CatalogContractMetadataStore{}
 
 func NewCatalogContractMetadataStore(cfg CatalogContractMetadataStoreConfig) *CatalogContractMetadataStore {
 	return &CatalogContractMetadataStore{
@@ -42,16 +43,19 @@ func NewCatalogContractMetadataStore(cfg CatalogContractMetadataStoreConfig) *Ca
 
 // getVersion retrieves the cached version for a record, defaulting to 0 for new records
 func (s *CatalogContractMetadataStore) getVersion(key datastore.ContractMetadataKey) int32 {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	cacheKey := key.String()
 	if version, exists := s.versionCache[cacheKey]; exists {
 		return version
 	}
-
 	return 0 // Default version for new records
 }
 
 // setVersion updates the cached version for a record
 func (s *CatalogContractMetadataStore) setVersion(key datastore.ContractMetadataKey, version int32) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	cacheKey := key.String()
 	s.versionCache[cacheKey] = version
 }
@@ -101,8 +105,8 @@ func (s *CatalogContractMetadataStore) contractMetadataToProto(record datastore.
 	}
 }
 
-func (s *CatalogContractMetadataStore) Get(key datastore.ContractMetadataKey) (datastore.ContractMetadata, error) {
-	stream, err := s.client.DataAccess(context.Background())
+func (s *CatalogContractMetadataStore) Get(ctx context.Context, key datastore.ContractMetadataKey) (datastore.ContractMetadata, error) {
+	stream, err := s.client.DataAccess(ctx)
 	if err != nil {
 		return datastore.ContractMetadata{}, fmt.Errorf("failed to create gRPC stream: %w", err)
 	}
@@ -160,8 +164,8 @@ func (s *CatalogContractMetadataStore) Get(key datastore.ContractMetadataKey) (d
 }
 
 // Fetch returns a copy of all ContractMetadata in the catalog.
-func (s *CatalogContractMetadataStore) Fetch() ([]datastore.ContractMetadata, error) {
-	stream, err := s.client.DataAccess(context.Background())
+func (s *CatalogContractMetadataStore) Fetch(ctx context.Context) ([]datastore.ContractMetadata, error) {
+	stream, err := s.client.DataAccess(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gRPC stream: %w", err)
 	}
@@ -220,8 +224,8 @@ func (s *CatalogContractMetadataStore) Fetch() ([]datastore.ContractMetadata, er
 // Filter returns a copy of all ContractMetadata in the catalog that match the provided filter.
 // Filters are applied in the order they are provided.
 // If no filters are provided, all records are returned.
-func (s *CatalogContractMetadataStore) Filter(filters ...datastore.FilterFunc[datastore.ContractMetadataKey, datastore.ContractMetadata]) []datastore.ContractMetadata {
-	records, err := s.Fetch()
+func (s *CatalogContractMetadataStore) Filter(ctx context.Context, filters ...datastore.FilterFunc[datastore.ContractMetadataKey, datastore.ContractMetadata]) []datastore.ContractMetadata {
+	records, err := s.Fetch(ctx)
 	if err != nil {
 		return []datastore.ContractMetadata{}
 	}
@@ -233,25 +237,59 @@ func (s *CatalogContractMetadataStore) Filter(filters ...datastore.FilterFunc[da
 	return records
 }
 
-func (s *CatalogContractMetadataStore) Add(record datastore.ContractMetadata) error {
-	return s.editRecord(record, pb.EditSemantics_SEMANTICS_INSERT)
+func (s *CatalogContractMetadataStore) Add(ctx context.Context, record datastore.ContractMetadata) error {
+	return s.editRecord(ctx, record, pb.EditSemantics_SEMANTICS_INSERT)
 }
 
-func (s *CatalogContractMetadataStore) Upsert(record datastore.ContractMetadata) error {
-	return s.editRecord(record, pb.EditSemantics_SEMANTICS_UPSERT)
+func (s *CatalogContractMetadataStore) Upsert(ctx context.Context, key datastore.ContractMetadataKey, metadata any, updaters ...datastore.MetadataUpdaterF) error {
+	return s.performUpsertOrUpdate(ctx, key, metadata, pb.EditSemantics_SEMANTICS_UPSERT, updaters...)
 }
 
-func (s *CatalogContractMetadataStore) Update(record datastore.ContractMetadata) error {
-	return s.editRecord(record, pb.EditSemantics_SEMANTICS_UPDATE)
+func (s *CatalogContractMetadataStore) Update(ctx context.Context, key datastore.ContractMetadataKey, metadata any, updaters ...datastore.MetadataUpdaterF) error {
+	return s.performUpsertOrUpdate(ctx, key, metadata, pb.EditSemantics_SEMANTICS_UPDATE, updaters...)
 }
 
-func (s *CatalogContractMetadataStore) Delete(key datastore.ContractMetadataKey) error {
+func (s *CatalogContractMetadataStore) Delete(ctx context.Context, key datastore.ContractMetadataKey) error {
 	return errors.New("delete operation not supported for contract metadata store")
 }
 
+// performUpsertOrUpdate handles Upsert and Update operations with metadata updaters
+func (s *CatalogContractMetadataStore) performUpsertOrUpdate(ctx context.Context, key datastore.ContractMetadataKey, metadata any, semantics pb.EditSemantics, updaters ...datastore.MetadataUpdaterF) error {
+	// Get current record for update operations
+	var currentMetadata any
+	if currentRecord, err := s.Get(ctx, key); err == nil {
+		currentMetadata = currentRecord.Metadata
+	} else if err != datastore.ErrContractMetadataNotFound {
+		return fmt.Errorf("failed to get current record for update: %w", err)
+	}
+
+	// Apply updaters if provided, otherwise use identity updater
+	if len(updaters) == 0 {
+		updaters = []datastore.MetadataUpdaterF{datastore.IdentityUpdaterF}
+	}
+
+	finalMetadata := metadata
+	for _, updater := range updaters {
+		var err error
+		finalMetadata, err = updater(currentMetadata, finalMetadata)
+		if err != nil {
+			return fmt.Errorf("failed to apply metadata updater: %w", err)
+		}
+	}
+
+	// Create record with final metadata
+	record := datastore.ContractMetadata{
+		Address:       key.Address(),
+		ChainSelector: key.ChainSelector(),
+		Metadata:      finalMetadata,
+	}
+
+	return s.editRecord(ctx, record, semantics)
+}
+
 // editRecord is a helper method that handles Add, Upsert, and Update operations
-func (s *CatalogContractMetadataStore) editRecord(record datastore.ContractMetadata, semantics pb.EditSemantics) error {
-	stream, err := s.client.DataAccess(context.Background())
+func (s *CatalogContractMetadataStore) editRecord(ctx context.Context, record datastore.ContractMetadata, semantics pb.EditSemantics) error {
+	stream, err := s.client.DataAccess(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to create gRPC stream: %w", err)
 	}
