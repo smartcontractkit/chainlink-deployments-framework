@@ -960,3 +960,252 @@ func TestCatalogContractMetadataStore_UpdaterExamples(t *testing.T) {
 		})
 	}
 }
+
+func TestCatalogContractMetadataStore_Update_WithCustomUpdater(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name         string
+		setup        func(store *CatalogContractMetadataStore) datastore.ContractMetadataKey
+		incomingData any
+		updater      datastore.MetadataUpdaterF
+		expectError  bool
+		errorType    error
+		verifyResult func(t *testing.T, store *CatalogContractMetadataStore, key datastore.ContractMetadataKey)
+	}{
+		{
+			name: "update_with_description_updater",
+			setup: func(store *CatalogContractMetadataStore) datastore.ContractMetadataKey {
+				metadata := newRandomContractMetadata()
+				err := store.Add(context.Background(), metadata)
+				require.NoError(t, err)
+				return datastore.NewContractMetadataKey(metadata.ChainSelector, metadata.Address)
+			},
+			incomingData: "Updated description for contract",
+			updater:      versionOnlyUpdater(), // Reuse existing updater but for description
+			expectError:  false,
+			verifyResult: func(t *testing.T, store *CatalogContractMetadataStore, key datastore.ContractMetadataKey) {
+				t.Helper()
+				result, err := store.Get(context.Background(), key)
+				require.NoError(t, err)
+
+				metadata, err := datastore.As[TestContractMetadata](result.Metadata)
+				require.NoError(t, err)
+				require.Equal(t, "Updated description for contract", metadata.Version) // Using version field as proxy
+			},
+		},
+		{
+			name: "update_with_tag_merger",
+			setup: func(store *CatalogContractMetadataStore) datastore.ContractMetadataKey {
+				metadata := newRandomContractMetadata()
+				// Ensure we have some initial tags
+				testMeta := metadata.Metadata.(TestContractMetadata)
+				testMeta.Tags = []string{"existing", "initial"}
+				metadata.Metadata = testMeta
+				err := store.Add(context.Background(), metadata)
+				require.NoError(t, err)
+				return datastore.NewContractMetadataKey(metadata.ChainSelector, metadata.Address)
+			},
+			incomingData: []string{"new", "updated", "existing"}, // "existing" should not duplicate
+			updater:      smartContractTagMerger(),
+			expectError:  false,
+			verifyResult: func(t *testing.T, store *CatalogContractMetadataStore, key datastore.ContractMetadataKey) {
+				t.Helper()
+				result, err := store.Get(context.Background(), key)
+				require.NoError(t, err)
+
+				metadata, err := datastore.As[TestContractMetadata](result.Metadata)
+				require.NoError(t, err)
+				require.Contains(t, metadata.Tags, "existing")
+				require.Contains(t, metadata.Tags, "initial")
+				require.Contains(t, metadata.Tags, "new")
+				require.Contains(t, metadata.Tags, "updated")
+				require.Len(t, metadata.Tags, 4) // No duplicates
+			},
+		},
+		{
+			name: "update_with_whole_metadata_merger",
+			setup: func(store *CatalogContractMetadataStore) datastore.ContractMetadataKey {
+				metadata := newRandomContractMetadata()
+				err := store.Add(context.Background(), metadata)
+				require.NoError(t, err)
+				return datastore.NewContractMetadataKey(metadata.ChainSelector, metadata.Address)
+			},
+			incomingData: TestContractMetadata{
+				Name:        "MergedContract",
+				Version:     "3.0.0",
+				Description: "Merged contract description",
+				Tags:        []string{"merged", "updated"},
+			},
+			updater:     wholeContractMetadataMerger(),
+			expectError: false,
+			verifyResult: func(t *testing.T, store *CatalogContractMetadataStore, key datastore.ContractMetadataKey) {
+				t.Helper()
+				result, err := store.Get(context.Background(), key)
+				require.NoError(t, err)
+
+				metadata, err := datastore.As[TestContractMetadata](result.Metadata)
+				require.NoError(t, err)
+				require.Equal(t, "MergedContract", metadata.Name)
+				require.Equal(t, "3.0.0", metadata.Version)
+				require.Equal(t, "Merged contract description", metadata.Description)
+				require.Contains(t, metadata.Tags, "merged")
+				require.Contains(t, metadata.Tags, "updated")
+				// Should also contain original tags due to merging
+				require.Contains(t, metadata.Tags, "test")
+				require.Contains(t, metadata.Tags, "integration")
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			store, conn := setupTestContractStore(t)
+			defer conn.Close()
+
+			key := tt.setup(store)
+
+			// Execute update with custom updater
+			err := store.Update(context.Background(), key, tt.incomingData, datastore.WithUpdater(tt.updater))
+
+			// Verify
+			if tt.expectError {
+				require.Error(t, err)
+				if tt.errorType != nil {
+					require.ErrorIs(t, err, tt.errorType)
+				}
+			} else {
+				require.NoError(t, err)
+				if tt.verifyResult != nil {
+					tt.verifyResult(t, store, key)
+				}
+			}
+		})
+	}
+}
+
+func TestCatalogContractMetadataStore_Upsert_WithCustomUpdater(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name         string
+		setup        func(store *CatalogContractMetadataStore) datastore.ContractMetadataKey
+		incomingData any
+		updater      datastore.MetadataUpdaterF
+		expectError  bool
+		errorType    error
+		verifyResult func(t *testing.T, store *CatalogContractMetadataStore, key datastore.ContractMetadataKey)
+	}{
+		{
+			name: "update_existing_with_description_updater",
+			setup: func(store *CatalogContractMetadataStore) datastore.ContractMetadataKey {
+				metadata := newRandomContractMetadata()
+				err := store.Add(context.Background(), metadata)
+				require.NoError(t, err)
+				return datastore.NewContractMetadataKey(metadata.ChainSelector, metadata.Address)
+			},
+			incomingData: "5.0.0", // New version
+			updater:      versionOnlyUpdater(),
+			expectError:  false,
+			verifyResult: func(t *testing.T, store *CatalogContractMetadataStore, key datastore.ContractMetadataKey) {
+				t.Helper()
+				result, err := store.Get(context.Background(), key)
+				require.NoError(t, err)
+
+				metadata, err := datastore.As[TestContractMetadata](result.Metadata)
+				require.NoError(t, err)
+				require.Equal(t, "5.0.0", metadata.Version) // Should be updated
+				// Other fields should remain from original
+				require.Contains(t, metadata.Name, "TestContract")
+				require.Equal(t, "Test contract for integration testing", metadata.Description)
+			},
+		},
+		{
+			name: "update_existing_with_tag_merger",
+			setup: func(store *CatalogContractMetadataStore) datastore.ContractMetadataKey {
+				metadata := newRandomContractMetadata()
+				// Ensure we have some initial tags
+				testMeta := metadata.Metadata.(TestContractMetadata)
+				testMeta.Tags = []string{"original", "base"}
+				metadata.Metadata = testMeta
+				err := store.Add(context.Background(), metadata)
+				require.NoError(t, err)
+				return datastore.NewContractMetadataKey(metadata.ChainSelector, metadata.Address)
+			},
+			incomingData: []string{"enhanced", "improved", "original"}, // "original" should not duplicate
+			updater:      smartContractTagMerger(),
+			expectError:  false,
+			verifyResult: func(t *testing.T, store *CatalogContractMetadataStore, key datastore.ContractMetadataKey) {
+				t.Helper()
+				result, err := store.Get(context.Background(), key)
+				require.NoError(t, err)
+
+				metadata, err := datastore.As[TestContractMetadata](result.Metadata)
+				require.NoError(t, err)
+				require.Contains(t, metadata.Tags, "original")
+				require.Contains(t, metadata.Tags, "base")
+				require.Contains(t, metadata.Tags, "enhanced")
+				require.Contains(t, metadata.Tags, "improved")
+				require.Len(t, metadata.Tags, 4) // No duplicates
+			},
+		},
+		{
+			name: "update_existing_with_whole_metadata_merger",
+			setup: func(store *CatalogContractMetadataStore) datastore.ContractMetadataKey {
+				metadata := newRandomContractMetadata()
+				err := store.Add(context.Background(), metadata)
+				require.NoError(t, err)
+				return datastore.NewContractMetadataKey(metadata.ChainSelector, metadata.Address)
+			},
+			incomingData: TestContractMetadata{
+				Name:        "FullyMergedContract",
+				Version:     "4.0.0",
+				Description: "Fully merged via upsert",
+				Tags:        []string{"merged", "comprehensive"},
+			},
+			updater:     wholeContractMetadataMerger(),
+			expectError: false,
+			verifyResult: func(t *testing.T, store *CatalogContractMetadataStore, key datastore.ContractMetadataKey) {
+				t.Helper()
+				result, err := store.Get(context.Background(), key)
+				require.NoError(t, err)
+
+				metadata, err := datastore.As[TestContractMetadata](result.Metadata)
+				require.NoError(t, err)
+				require.Equal(t, "FullyMergedContract", metadata.Name)
+				require.Equal(t, "4.0.0", metadata.Version)
+				require.Equal(t, "Fully merged via upsert", metadata.Description)
+				require.Contains(t, metadata.Tags, "merged")
+				require.Contains(t, metadata.Tags, "comprehensive")
+				// Should also contain original tags due to merging
+				require.Contains(t, metadata.Tags, "test")
+				require.Contains(t, metadata.Tags, "integration")
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			store, conn := setupTestContractStore(t)
+			defer conn.Close()
+
+			key := tt.setup(store)
+
+			// Execute upsert with custom updater
+			err := store.Upsert(context.Background(), key, tt.incomingData, datastore.WithUpdater(tt.updater))
+
+			// Verify
+			if tt.expectError {
+				require.Error(t, err)
+				if tt.errorType != nil {
+					require.ErrorIs(t, err, tt.errorType)
+				}
+			} else {
+				require.NoError(t, err)
+				if tt.verifyResult != nil {
+					tt.verifyResult(t, store, key)
+				}
+			}
+		})
+	}
+}

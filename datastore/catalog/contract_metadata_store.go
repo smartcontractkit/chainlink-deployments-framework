@@ -242,12 +242,12 @@ func (s *CatalogContractMetadataStore) Add(ctx context.Context, record datastore
 	return s.editRecord(ctx, record, pb.EditSemantics_SEMANTICS_INSERT)
 }
 
-func (s *CatalogContractMetadataStore) Upsert(ctx context.Context, key datastore.ContractMetadataKey, metadata any, updaters ...datastore.MetadataUpdaterF) error {
-	return s.performUpsertOrUpdate(ctx, key, metadata, pb.EditSemantics_SEMANTICS_UPSERT, updaters...)
+func (s *CatalogContractMetadataStore) Upsert(ctx context.Context, key datastore.ContractMetadataKey, metadata any, opts ...datastore.UpdateOption) error {
+	return s.performUpsertOrUpdate(ctx, key, metadata, pb.EditSemantics_SEMANTICS_UPSERT, opts...)
 }
 
-func (s *CatalogContractMetadataStore) Update(ctx context.Context, key datastore.ContractMetadataKey, metadata any, updaters ...datastore.MetadataUpdaterF) error {
-	return s.performUpsertOrUpdate(ctx, key, metadata, pb.EditSemantics_SEMANTICS_UPDATE, updaters...)
+func (s *CatalogContractMetadataStore) Update(ctx context.Context, key datastore.ContractMetadataKey, metadata any, opts ...datastore.UpdateOption) error {
+	return s.performUpsertOrUpdate(ctx, key, metadata, pb.EditSemantics_SEMANTICS_UPDATE, opts...)
 }
 
 func (s *CatalogContractMetadataStore) Delete(ctx context.Context, key datastore.ContractMetadataKey) error {
@@ -255,7 +255,15 @@ func (s *CatalogContractMetadataStore) Delete(ctx context.Context, key datastore
 }
 
 // performUpsertOrUpdate handles Upsert and Update operations with metadata updaters
-func (s *CatalogContractMetadataStore) performUpsertOrUpdate(ctx context.Context, key datastore.ContractMetadataKey, metadata any, semantics pb.EditSemantics, updaters ...datastore.MetadataUpdaterF) error {
+func (s *CatalogContractMetadataStore) performUpsertOrUpdate(ctx context.Context, key datastore.ContractMetadataKey, metadata any, semantics pb.EditSemantics, opts ...datastore.UpdateOption) error {
+	// Build options
+	options := &datastore.UpdateOptions{
+		Updater: datastore.IdentityUpdaterF,
+	}
+	for _, opt := range opts {
+		opt(options)
+	}
+
 	// Get current record for update operations
 	var currentMetadata any
 	if currentRecord, err := s.Get(ctx, key); err == nil {
@@ -264,18 +272,10 @@ func (s *CatalogContractMetadataStore) performUpsertOrUpdate(ctx context.Context
 		return fmt.Errorf("failed to get current record for update: %w", err)
 	}
 
-	// Apply updaters if provided, otherwise use identity updater
-	if len(updaters) == 0 {
-		updaters = []datastore.MetadataUpdaterF{datastore.IdentityUpdaterF}
-	}
-
-	finalMetadata := metadata
-	for _, updater := range updaters {
-		var err error
-		finalMetadata, err = updater(currentMetadata, finalMetadata)
-		if err != nil {
-			return fmt.Errorf("failed to apply metadata updater: %w", err)
-		}
+	// Apply the updater
+	finalMetadata, err := options.Updater(currentMetadata, metadata)
+	if err != nil {
+		return fmt.Errorf("failed to apply metadata updater: %w", err)
 	}
 
 	// Create record with final metadata

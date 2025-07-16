@@ -264,7 +264,7 @@ func TestCatalogEnvMetadataStore_Set_Update(t *testing.T) {
 	updateMetadata := TestEnvMetadata{
 		Tags: []string{"updated", "v2"},
 	}
-	err = store.Set(context.Background(), updateMetadata, mergeUpdater)
+	err = store.Set(context.Background(), updateMetadata, datastore.WithUpdater(mergeUpdater))
 	require.NoError(t, err, "Failed to update record with custom updater")
 
 	// Verify the record was updated with merged data

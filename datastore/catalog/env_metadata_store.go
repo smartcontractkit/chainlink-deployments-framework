@@ -158,7 +158,17 @@ func (s *CatalogEnvMetadataStore) Get(ctx context.Context) (datastore.EnvMetadat
 	return record, nil
 }
 
-func (s *CatalogEnvMetadataStore) Set(ctx context.Context, metadata any, updaters ...datastore.MetadataUpdaterF) error {
+func (s *CatalogEnvMetadataStore) Set(ctx context.Context, metadata any, opts ...datastore.UpdateOption) error {
+	// Build options with defaults
+	options := &datastore.UpdateOptions{
+		Updater: datastore.IdentityUpdaterF, // default updater
+	}
+
+	// Apply user-provided options
+	for _, opt := range opts {
+		opt(options)
+	}
+
 	currentRecord, err := s.Get(ctx)
 	if err != nil {
 		if !errors.Is(err, datastore.ErrEnvMetadataNotSet) {
@@ -166,17 +176,10 @@ func (s *CatalogEnvMetadataStore) Set(ctx context.Context, metadata any, updater
 		}
 	}
 
-	if len(updaters) == 0 {
-		updaters = []datastore.MetadataUpdaterF{datastore.IdentityUpdaterF}
-	}
-
-	var finalMetadata = metadata
-	for _, updater := range updaters {
-		updatedMetadata, updateErr := updater(currentRecord.Metadata, finalMetadata)
-		if updateErr != nil {
-			return fmt.Errorf("failed to apply metadata updater: %w", updateErr)
-		}
-		finalMetadata = updatedMetadata
+	// Apply the updater (either default or custom)
+	finalMetadata, updateErr := options.Updater(currentRecord.Metadata, metadata)
+	if updateErr != nil {
+		return fmt.Errorf("failed to apply metadata updater: %w", updateErr)
 	}
 
 	// Get the current version for this record
