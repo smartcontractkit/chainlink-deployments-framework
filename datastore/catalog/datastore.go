@@ -27,26 +27,10 @@ func NewCatalogDataStore(config CatalogDataStoreConfig) *CatalogDataStore {
 		domain:      config.Domain,
 		environment: config.Environment,
 
-		AddressRefStore: NewCatalogAddressRefStore(CatalogAddressRefStoreConfig{
-			Domain:      config.Domain,
-			Environment: config.Environment,
-			Client:      config.Client,
-		}),
-		ChainMetadataStore: NewCatalogChainMetadataStore(CatalogChainMetadataStoreConfig{
-			Domain:      config.Domain,
-			Environment: config.Environment,
-			Client:      config.Client,
-		}),
-		ContractMetadataStore: NewCatalogContractMetadataStore(CatalogContractMetadataStoreConfig{
-			Domain:      config.Domain,
-			Environment: config.Environment,
-			Client:      config.Client,
-		}),
-		EnvMetadataStore: NewCatalogEnvMetadataStore(CatalogEnvMetadataStoreConfig{
-			Domain:      config.Domain,
-			Environment: config.Environment,
-			Client:      config.Client,
-		}),
+		AddressRefStore:       NewCatalogAddressRefStore(CatalogAddressRefStoreConfig(config)),
+		ChainMetadataStore:    NewCatalogChainMetadataStore(CatalogChainMetadataStoreConfig(config)),
+		ContractMetadataStore: NewCatalogContractMetadataStore(CatalogContractMetadataStoreConfig(config)),
+		EnvMetadataStore:      NewCatalogEnvMetadataStore(CatalogEnvMetadataStoreConfig(config)),
 	}
 }
 
