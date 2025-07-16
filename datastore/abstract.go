@@ -90,6 +90,54 @@ type MutableUnaryStore[R any] interface {
 	Set(record R) error
 }
 
+// V2 interfaces
+type MetadataUpdaterF func(latest any, incoming any) (any, error)
+
+func IdentityUpdaterF(latest any, incoming any) (any, error) {
+	return incoming, nil
+}
+
+// Fetcher provides a Fetch() method which is used to complete a read query from a Store.
+type FetcherV2[R any] interface {
+	// Fetch() returns a slice of records representing the entire data set. The returned slice
+	// will be a newly allocated slice (not a reference to an existing one), and each record should
+	// be a copy of the corresponding stored data. Modifying the returned slice or its records must
+	// not affect the underlying data.
+	Fetch(context.Context) ([]R, error)
+}
+
+// Filterable provides a Filter() method which is used to complete a filtered query with from a Store.
+type FilterableV2[K Comparable[K], R UniqueRecord[K, R]] interface {
+	Filter(context.Context, ...FilterFunc[K, R]) []R
+}
+
+// Getter provides a Get() method which is used to complete a read by key query from a Store.
+type GetterV2[K Comparable[K], R UniqueRecord[K, R]] interface {
+	// Get() returns the record with the given key, or an error if no such record exists.
+	Get(context.Context, K) (R, error)
+}
+
+// MutableStore is an interface that represents a mutable set of records.
+type MutableStoreV2[K Comparable[K], R UniqueRecord[K, R]] interface {
+	FetcherV2[R]
+	GetterV2[K, R]
+	FilterableV2[K, R]
+	// Add inserts a new record into the MutableStore.
+	Add(ctx context.Context, record R) error
+
+	// Upsert behaves like Add where there is not already a record with the same composite primary key as the
+	// supplied record, otherwise it behaves like an update.
+	Upsert(ctx context.Context, key K, metadata any, updaters ...MetadataUpdaterF) error
+
+	// Update edits an existing record whose fields match the primary key elements of the supplied AddressRecord, with
+	// the non-primary-key values of the supplied AddressRecord.
+	Update(ctx context.Context, key K, metadata any, updaters ...MetadataUpdaterF) error
+
+	// Delete deletes record whose primary key elements match the supplied key, returning an error if no
+	// such record exists to be deleted
+	Delete(ctx context.Context, key K) error
+}
+
 // MutableUnaryStore is an interface that represents a mutable store that contains a single record.
 type MutableUnaryStoreV2[R any] interface {
 	// Get returns a copy of the record or an error.
@@ -101,10 +149,4 @@ type MutableUnaryStoreV2[R any] interface {
 	// If the record already exists, it should be replaced.
 	// If the record does not exist, it should be added.
 	Set(ctx context.Context, metadata any, updaters ...MetadataUpdaterF) error
-}
-
-type MetadataUpdaterF func(latest any, incoming any) (any, error)
-
-func IdentityUpdaterF(latest any, incoming any) (any, error) {
-	return incoming, nil
 }
