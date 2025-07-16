@@ -85,7 +85,7 @@ func requireEnvMetadataEqual(t *testing.T, expected, actual datastore.EnvMetadat
 	require.JSONEq(t, string(expectedJSON), string(actualJSON), "EnvMetadata should be equal")
 }
 
-// createMergeUpdater creates a custom updater that merges TestEnvMetadata fields intelligently
+// tagsAppendMerger creates a custom updater that merges TestEnvMetadata fields intelligently
 func tagsAppendMerger() datastore.MetadataUpdaterF {
 	return func(latest any, incoming any) (any, error) {
 		// Convert latest to TestEnvMetadata
