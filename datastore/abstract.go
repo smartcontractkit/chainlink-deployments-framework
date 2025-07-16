@@ -123,6 +123,7 @@ type MutableStoreV2[K Comparable[K], R UniqueRecord[K, R]] interface {
 	FetcherV2[R]
 	GetterV2[K, R]
 	FilterableV2[K, R]
+
 	// Add inserts a new record into the MutableStore.
 	Add(ctx context.Context, record R) error
 
@@ -136,6 +137,20 @@ type MutableStoreV2[K Comparable[K], R UniqueRecord[K, R]] interface {
 
 	// Delete deletes record whose primary key elements match the supplied key, returning an error if no
 	// such record exists to be deleted
+	Delete(ctx context.Context, key K) error
+}
+
+type MutableRefStoreV2[K Comparable[K], R UniqueRecord[K, R]] interface {
+	FetcherV2[R]
+	GetterV2[K, R]
+	FilterableV2[K, R]
+
+	Add(ctx context.Context, record R) error
+
+	Update(ctx context.Context, record R) error
+
+	Upsert(ctx context.Context, record R) error
+
 	Delete(ctx context.Context, key K) error
 }
 

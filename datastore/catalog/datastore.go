@@ -35,7 +35,7 @@ func NewCatalogDataStore(config CatalogDataStoreConfig) *CatalogDataStore {
 	}
 }
 
-func (s *CatalogDataStore) Addresses() datastore.MutableAddressRefStore {
+func (s *CatalogDataStore) Addresses() datastore.MutableRefStoreV2[datastore.AddressRefKey, datastore.AddressRef] {
 	return s.AddressRefStore
 }
 
