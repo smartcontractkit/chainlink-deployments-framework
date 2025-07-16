@@ -20,6 +20,9 @@ type CatalogEnvMetadataStoreConfig struct {
 	Client      pb.DeploymentsDatastoreClient
 }
 
+// Ensure CatalogEnvMetadataStore implements the V2 interface
+var _ datastore.MutableUnaryStoreV2[datastore.EnvMetadata] = &CatalogEnvMetadataStore{}
+
 type CatalogEnvMetadataStore struct {
 	domain      string
 	environment string
@@ -96,8 +99,8 @@ func (s *CatalogEnvMetadataStore) envMetadataToProto(record datastore.EnvMetadat
 	}
 }
 
-func (s *CatalogEnvMetadataStore) Get() (datastore.EnvMetadata, error) {
-	stream, err := s.client.DataAccess(context.Background())
+func (s *CatalogEnvMetadataStore) Get(ctx context.Context) (datastore.EnvMetadata, error) {
+	stream, err := s.client.DataAccess(ctx)
 	if err != nil {
 		return datastore.EnvMetadata{}, fmt.Errorf("failed to create gRPC stream: %w", err)
 	}
@@ -155,7 +158,7 @@ func (s *CatalogEnvMetadataStore) Get() (datastore.EnvMetadata, error) {
 }
 
 func (s *CatalogEnvMetadataStore) Set(ctx context.Context, metadata any, updaters ...datastore.MetadataUpdaterF) error {
-	currentRecord, err := s.Get()
+	currentRecord, err := s.Get(ctx)
 	if err != nil {
 		if !errors.Is(err, datastore.ErrEnvMetadataNotSet) {
 			return fmt.Errorf("failed to get current record for version sync: %w", err)
