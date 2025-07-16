@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"strings"
+	"sync"
 
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
@@ -25,11 +25,11 @@ type CatalogChainMetadataStore struct {
 	environment string
 	client      pb.DeploymentsDatastoreClient
 	// versionCache tracks the current version of each record for optimistic concurrency control
+	mu           sync.RWMutex
 	versionCache map[string]int32
 }
 
-var _ datastore.ChainMetadataStore = &CatalogChainMetadataStore{}
-var _ datastore.MutableChainMetadataStore = &CatalogChainMetadataStore{}
+var _ datastore.MutableStoreV2[datastore.ChainMetadataKey, datastore.ChainMetadata] = &CatalogChainMetadataStore{}
 
 func NewCatalogChainMetadataStore(cfg CatalogChainMetadataStoreConfig) *CatalogChainMetadataStore {
 	return &CatalogChainMetadataStore{
@@ -42,16 +42,19 @@ func NewCatalogChainMetadataStore(cfg CatalogChainMetadataStoreConfig) *CatalogC
 
 // getVersion retrieves the cached version for a record, defaulting to 0 for new records
 func (s *CatalogChainMetadataStore) getVersion(key datastore.ChainMetadataKey) int32 {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	cacheKey := key.String()
 	if version, exists := s.versionCache[cacheKey]; exists {
 		return version
 	}
-
 	return 0 // Default version for new records
 }
 
 // setVersion updates the cached version for a record
 func (s *CatalogChainMetadataStore) setVersion(key datastore.ChainMetadataKey, version int32) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	cacheKey := key.String()
 	s.versionCache[cacheKey] = version
 }
@@ -98,8 +101,8 @@ func (s *CatalogChainMetadataStore) chainMetadataToProto(record datastore.ChainM
 	}
 }
 
-func (s *CatalogChainMetadataStore) Get(key datastore.ChainMetadataKey) (datastore.ChainMetadata, error) {
-	stream, err := s.client.DataAccess(context.Background())
+func (s *CatalogChainMetadataStore) Get(ctx context.Context, key datastore.ChainMetadataKey) (datastore.ChainMetadata, error) {
+	stream, err := s.client.DataAccess(ctx)
 	if err != nil {
 		return datastore.ChainMetadata{}, fmt.Errorf("failed to create gRPC stream: %w", err)
 	}
@@ -131,7 +134,6 @@ func (s *CatalogChainMetadataStore) Get(key datastore.ChainMetadataKey) (datasto
 		if strings.Contains(resp.Status.GetError(), "No records found") {
 			return datastore.ChainMetadata{}, datastore.ErrChainMetadataNotFound
 		}
-
 		return datastore.ChainMetadata{}, fmt.Errorf("request failed: %s", resp.Status.Error)
 	}
 
@@ -157,8 +159,8 @@ func (s *CatalogChainMetadataStore) Get(key datastore.ChainMetadataKey) (datasto
 }
 
 // Fetch returns a copy of all ChainMetadata in the catalog.
-func (s *CatalogChainMetadataStore) Fetch() ([]datastore.ChainMetadata, error) {
-	stream, err := s.client.DataAccess(context.Background())
+func (s *CatalogChainMetadataStore) Fetch(ctx context.Context) ([]datastore.ChainMetadata, error) {
+	stream, err := s.client.DataAccess(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gRPC stream: %w", err)
 	}
@@ -217,8 +219,8 @@ func (s *CatalogChainMetadataStore) Fetch() ([]datastore.ChainMetadata, error) {
 // Filter returns a copy of all ChainMetadata in the catalog that match the provided filter.
 // Filters are applied in the order they are provided.
 // If no filters are provided, all records are returned.
-func (s *CatalogChainMetadataStore) Filter(filters ...datastore.FilterFunc[datastore.ChainMetadataKey, datastore.ChainMetadata]) []datastore.ChainMetadata {
-	records, err := s.Fetch()
+func (s *CatalogChainMetadataStore) Filter(ctx context.Context, filters ...datastore.FilterFunc[datastore.ChainMetadataKey, datastore.ChainMetadata]) []datastore.ChainMetadata {
+	records, err := s.Fetch(ctx)
 	if err != nil {
 		return []datastore.ChainMetadata{}
 	}
@@ -230,25 +232,58 @@ func (s *CatalogChainMetadataStore) Filter(filters ...datastore.FilterFunc[datas
 	return records
 }
 
-func (s *CatalogChainMetadataStore) Add(record datastore.ChainMetadata) error {
-	return s.editRecord(record, pb.EditSemantics_SEMANTICS_INSERT)
+func (s *CatalogChainMetadataStore) Add(ctx context.Context, record datastore.ChainMetadata) error {
+	return s.editRecord(ctx, record, pb.EditSemantics_SEMANTICS_INSERT)
 }
 
-func (s *CatalogChainMetadataStore) Upsert(record datastore.ChainMetadata) error {
-	return s.editRecord(record, pb.EditSemantics_SEMANTICS_UPSERT)
+func (s *CatalogChainMetadataStore) Upsert(ctx context.Context, key datastore.ChainMetadataKey, metadata any, updaters ...datastore.MetadataUpdaterF) error {
+	return s.performUpsertOrUpdate(ctx, key, metadata, pb.EditSemantics_SEMANTICS_UPSERT, updaters...)
 }
 
-func (s *CatalogChainMetadataStore) Update(record datastore.ChainMetadata) error {
-	return s.editRecord(record, pb.EditSemantics_SEMANTICS_UPDATE)
+func (s *CatalogChainMetadataStore) Update(ctx context.Context, key datastore.ChainMetadataKey, metadata any, updaters ...datastore.MetadataUpdaterF) error {
+	return s.performUpsertOrUpdate(ctx, key, metadata, pb.EditSemantics_SEMANTICS_UPDATE, updaters...)
 }
 
-func (s *CatalogChainMetadataStore) Delete(key datastore.ChainMetadataKey) error {
+func (s *CatalogChainMetadataStore) Delete(ctx context.Context, key datastore.ChainMetadataKey) error {
 	return errors.New("delete operation not supported for chain metadata store")
 }
 
+// performUpsertOrUpdate handles Upsert and Update operations with metadata updaters
+func (s *CatalogChainMetadataStore) performUpsertOrUpdate(ctx context.Context, key datastore.ChainMetadataKey, metadata any, semantics pb.EditSemantics, updaters ...datastore.MetadataUpdaterF) error {
+	// Get current record for update operations
+	var currentMetadata any
+	if currentRecord, err := s.Get(ctx, key); err == nil {
+		currentMetadata = currentRecord.Metadata
+	} else if err != datastore.ErrChainMetadataNotFound {
+		return fmt.Errorf("failed to get current record for update: %w", err)
+	}
+
+	// Apply updaters if provided, otherwise use identity updater
+	if len(updaters) == 0 {
+		updaters = []datastore.MetadataUpdaterF{datastore.IdentityUpdaterF}
+	}
+
+	finalMetadata := metadata
+	for _, updater := range updaters {
+		var err error
+		finalMetadata, err = updater(currentMetadata, finalMetadata)
+		if err != nil {
+			return fmt.Errorf("failed to apply metadata updater: %w", err)
+		}
+	}
+
+	// Create record with final metadata
+	record := datastore.ChainMetadata{
+		ChainSelector: key.ChainSelector(),
+		Metadata:      finalMetadata,
+	}
+
+	return s.editRecord(ctx, record, semantics)
+}
+
 // editRecord is a helper method that handles Add, Upsert, and Update operations
-func (s *CatalogChainMetadataStore) editRecord(record datastore.ChainMetadata, semantics pb.EditSemantics) error {
-	stream, err := s.client.DataAccess(context.Background())
+func (s *CatalogChainMetadataStore) editRecord(ctx context.Context, record datastore.ChainMetadata, semantics pb.EditSemantics) error {
+	stream, err := s.client.DataAccess(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to create gRPC stream: %w", err)
 	}
@@ -277,10 +312,6 @@ func (s *CatalogChainMetadataStore) editRecord(record datastore.ChainMetadata, s
 	// Receive response
 	resp, err := stream.Recv()
 	if err != nil {
-		if errors.Is(err, io.EOF) {
-			return errors.New("unexpected end of stream")
-		}
-
 		return fmt.Errorf("failed to receive response: %w", err)
 	}
 

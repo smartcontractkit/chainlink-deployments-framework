@@ -123,10 +123,10 @@ func TestCatalogChainMetadataStore_Get(t *testing.T) {
 			setup: func(store *CatalogChainMetadataStore) datastore.ChainMetadataKey {
 				// Create and add a record first
 				metadata := newRandomChainMetadata()
-				err := store.Add(metadata)
+				err := store.Add(context.Background(), metadata)
 				require.NoError(t, err)
 
-				return datastore.NewChainMetadataKey(metadata.ChainSelector)
+				return metadata.Key()
 			},
 			expectError: false,
 		},
@@ -142,7 +142,7 @@ func TestCatalogChainMetadataStore_Get(t *testing.T) {
 			key := tt.setup(store)
 
 			// Execute
-			result, err := store.Get(key)
+			result, err := store.Get(context.Background(), key)
 
 			// Verify
 			if tt.expectError {
@@ -179,7 +179,7 @@ func TestCatalogChainMetadataStore_Add(t *testing.T) {
 			setup: func(store *CatalogChainMetadataStore) datastore.ChainMetadata {
 				// Create and add a record first
 				metadata := newRandomChainMetadata()
-				err := store.Add(metadata)
+				err := store.Add(context.Background(), metadata)
 				require.NoError(t, err)
 				// Return the same record to test duplicate
 				return metadata
@@ -198,7 +198,7 @@ func TestCatalogChainMetadataStore_Add(t *testing.T) {
 			metadata := tt.setup(store)
 
 			// Execute
-			err := store.Add(metadata)
+			err := store.Add(context.Background(), metadata)
 
 			// Verify
 			if tt.expectError {
@@ -210,7 +210,7 @@ func TestCatalogChainMetadataStore_Add(t *testing.T) {
 				require.NoError(t, err)
 
 				// Verify we can get it back
-				retrieved, err := store.Get(metadata.Key())
+				retrieved, err := store.Get(context.Background(), metadata.Key())
 				require.NoError(t, err)
 
 				require.Equal(t, metadata.ChainSelector, retrieved.ChainSelector)
@@ -238,11 +238,11 @@ func TestCatalogChainMetadataStore_Update(t *testing.T) {
 			setup: func(store *CatalogChainMetadataStore) datastore.ChainMetadata {
 				// Create and add chain metadata
 				metadata := newRandomChainMetadata()
-				err := store.Add(metadata)
+				err := store.Add(context.Background(), metadata)
 				require.NoError(t, err)
 
 				// Fetch the record to get the current version in cache
-				fetchedMetadata, err := store.Get(metadata.Key())
+				fetchedMetadata, err := store.Get(context.Background(), metadata.Key())
 				require.NoError(t, err)
 
 				// Modify the metadata
@@ -258,7 +258,7 @@ func TestCatalogChainMetadataStore_Update(t *testing.T) {
 			verify: func(t *testing.T, store *CatalogChainMetadataStore, metadata datastore.ChainMetadata) {
 				t.Helper()
 				// Verify the updated values
-				retrieved, err := store.Get(metadata.Key())
+				retrieved, err := store.Get(context.Background(), metadata.Key())
 				require.NoError(t, err)
 
 				concrete, err := datastore.As[TestChainMetadata](retrieved.Metadata)
@@ -288,7 +288,7 @@ func TestCatalogChainMetadataStore_Update(t *testing.T) {
 			metadata := tt.setup(store)
 
 			// Execute update
-			err := store.Update(metadata)
+			err := store.Update(context.Background(), metadata.Key(), metadata.Metadata)
 
 			// Verify
 			if tt.expectError {
@@ -317,35 +317,46 @@ func TestCatalogChainMetadataStore_Update_StaleVersion(t *testing.T) {
 
 	// Add a chain metadata record using store1
 	original := newRandomChainMetadata()
-	err := store1.Add(original)
+	err := store1.Add(context.Background(), original)
 	require.NoError(t, err)
 
 	// Both stores get the record to populate their caches with version 1
 	key := datastore.NewChainMetadataKey(original.ChainSelector)
-	first, err := store1.Get(key)
+	first, err := store1.Get(context.Background(), key)
 	require.NoError(t, err)
 
-	second, err := store2.Get(key)
+	second, err := store2.Get(context.Background(), key)
 	require.NoError(t, err)
 
 	// Store1 updates the record (this increments server version to 2)
 	updatedMetadata := newTestChainMetadata("FirstUpdate")
 	updatedMetadata.Description = "First update to chain"
-	first.Metadata = updatedMetadata
-	err = store1.Update(first)
+	updatedMetadata.Tags = []string{"test", "first"}
+	updatedMetadata.IsTestnet = false
+	err = store1.Update(context.Background(), first.Key(), updatedMetadata)
 	require.NoError(t, err)
 
-	// Store2 tries to update using its cached version (still version 1, now stale)
-	staleMetadata := newTestChainMetadata("StaleUpdate")
-	staleMetadata.Description = "Stale update to chain"
-	second.Metadata = staleMetadata
+	// Store2 also updates the record - this should succeed with V2 interface
+	// because Update() fetches the current version internally
+	secondUpdateMetadata := newTestChainMetadata("SecondUpdate")
+	secondUpdateMetadata.Description = "Second update to chain"
+	secondUpdateMetadata.Tags = []string{"test", "second"}
+	secondUpdateMetadata.IsTestnet = true
 
-	// Execute update with store2 (should fail due to stale version)
-	err = store2.Update(second)
+	// Execute update with store2 (should succeed with V2 interface)
+	err = store2.Update(context.Background(), second.Key(), secondUpdateMetadata)
+	require.NoError(t, err)
 
-	// Verify we get the expected stale version error
-	require.Error(t, err)
-	require.ErrorIs(t, err, datastore.ErrChainMetadataStale)
+	// Verify the final state reflects the second update
+	final, err := store1.Get(context.Background(), key)
+	require.NoError(t, err)
+
+	concrete, err := datastore.As[TestChainMetadata](final.Metadata)
+	require.NoError(t, err)
+	require.Equal(t, "SecondUpdate", concrete.Name)
+	require.Equal(t, "Second update to chain", concrete.Description)
+	require.Equal(t, []string{"test", "second"}, concrete.Tags)
+	require.Equal(t, true, concrete.IsTestnet)
 }
 
 func TestCatalogChainMetadataStore_Upsert(t *testing.T) {
@@ -368,7 +379,7 @@ func TestCatalogChainMetadataStore_Upsert(t *testing.T) {
 				t.Helper()
 				// Verify we can get it back
 				key := datastore.NewChainMetadataKey(original.ChainSelector)
-				retrieved, err := store.Get(key)
+				retrieved, err := store.Get(context.Background(), key)
 				require.NoError(t, err)
 
 				concrete, err := datastore.As[TestChainMetadata](retrieved.Metadata)
@@ -381,7 +392,7 @@ func TestCatalogChainMetadataStore_Upsert(t *testing.T) {
 			setup: func(store *CatalogChainMetadataStore) datastore.ChainMetadata {
 				// Create and add chain metadata
 				metadata := newRandomChainMetadata()
-				err := store.Add(metadata)
+				err := store.Add(context.Background(), metadata)
 				require.NoError(t, err)
 
 				// Modify the metadata
@@ -398,7 +409,7 @@ func TestCatalogChainMetadataStore_Upsert(t *testing.T) {
 				t.Helper()
 				// Verify the updated values
 				key := datastore.NewChainMetadataKey(modified.ChainSelector)
-				retrieved, err := store.Get(key)
+				retrieved, err := store.Get(context.Background(), key)
 				require.NoError(t, err)
 
 				concrete, err := datastore.As[TestChainMetadata](retrieved.Metadata)
@@ -418,7 +429,7 @@ func TestCatalogChainMetadataStore_Upsert(t *testing.T) {
 			metadata := tt.setup(store)
 
 			// Execute upsert
-			err := store.Upsert(metadata)
+			err := store.Upsert(context.Background(), metadata.Key(), metadata.Metadata)
 
 			// Verify
 			if tt.expectError {
@@ -447,35 +458,46 @@ func TestCatalogChainMetadataStore_Upsert_StaleVersion(t *testing.T) {
 
 	// Add a chain metadata record using store1
 	original := newRandomChainMetadata()
-	err := store1.Add(original)
+	err := store1.Add(context.Background(), original)
 	require.NoError(t, err)
 
 	// Both stores get the record to populate their caches with version 1
 	key := datastore.NewChainMetadataKey(original.ChainSelector)
-	first, err := store1.Get(key)
+	first, err := store1.Get(context.Background(), key)
 	require.NoError(t, err)
 
-	second, err := store2.Get(key)
+	second, err := store2.Get(context.Background(), key)
 	require.NoError(t, err)
 
 	// Store1 updates the record (this increments server version to 2)
 	updatedMetadata := newTestChainMetadata("FirstUpdate")
 	updatedMetadata.Description = "First update to chain"
-	first.Metadata = updatedMetadata
-	err = store1.Update(first)
+	updatedMetadata.Tags = []string{"test", "first"}
+	updatedMetadata.IsTestnet = false
+	err = store1.Update(context.Background(), first.Key(), updatedMetadata)
 	require.NoError(t, err)
 
-	// Store2 tries to upsert using its cached version (still version 1, now stale)
-	staleMetadata := newTestChainMetadata("UpsertStaleUpdate")
-	staleMetadata.Description = "Stale upsert to chain"
-	second.Metadata = staleMetadata
+	// Store2 upserts the record - this should succeed with V2 interface
+	// because Upsert() fetches the current version internally
+	upsertMetadata := newTestChainMetadata("UpsertUpdate")
+	upsertMetadata.Description = "Upsert update to chain"
+	upsertMetadata.Tags = []string{"test", "upserted"}
+	upsertMetadata.IsTestnet = true
 
-	// Execute upsert with store2 (should fail due to stale version)
-	err = store2.Upsert(second)
+	// Execute upsert with store2 (should succeed with V2 interface)
+	err = store2.Upsert(context.Background(), second.Key(), upsertMetadata)
+	require.NoError(t, err)
 
-	// Verify we get the expected stale version error
-	require.Error(t, err)
-	require.ErrorIs(t, err, datastore.ErrChainMetadataStale)
+	// Verify the final state reflects the upsert
+	final, err := store1.Get(context.Background(), key)
+	require.NoError(t, err)
+
+	concrete, err := datastore.As[TestChainMetadata](final.Metadata)
+	require.NoError(t, err)
+	require.Equal(t, "UpsertUpdate", concrete.Name)
+	require.Equal(t, "Upsert update to chain", concrete.Description)
+	require.Equal(t, []string{"test", "upserted"}, concrete.Tags)
+	require.Equal(t, true, concrete.IsTestnet)
 }
 
 func TestCatalogChainMetadataStore_Delete(t *testing.T) {
@@ -486,7 +508,7 @@ func TestCatalogChainMetadataStore_Delete(t *testing.T) {
 	key := datastore.NewChainMetadataKey(12345)
 
 	// Execute
-	err := store.Delete(key)
+	err := store.Delete(context.Background(), key)
 
 	// Verify
 	require.Error(t, err)
@@ -511,7 +533,7 @@ func TestCatalogChainMetadataStore_FetchAndFilter(t *testing.T) {
 				metadata1 := newRandomChainMetadata()
 				chainSelector1 := generateRandomChainSelector()
 				metadata1.ChainSelector = chainSelector1
-				err := store.Add(metadata1)
+				err := store.Add(context.Background(), metadata1)
 				require.NoError(t, err)
 
 				metadata2 := newRandomChainMetadata()
@@ -521,7 +543,7 @@ func TestCatalogChainMetadataStore_FetchAndFilter(t *testing.T) {
 					chainSelector2 = generateRandomChainSelector()
 				}
 				metadata2.ChainSelector = chainSelector2
-				err = store.Add(metadata2)
+				err = store.Add(context.Background(), metadata2)
 				require.NoError(t, err)
 
 				return metadata1, metadata2
@@ -553,7 +575,7 @@ func TestCatalogChainMetadataStore_FetchAndFilter(t *testing.T) {
 				metadata1 := newRandomChainMetadata()
 				chainSelector1 := generateRandomChainSelector()
 				metadata1.ChainSelector = chainSelector1
-				err := store.Add(metadata1)
+				err := store.Add(context.Background(), metadata1)
 				require.NoError(t, err)
 
 				metadata2 := newRandomChainMetadata()
@@ -563,7 +585,7 @@ func TestCatalogChainMetadataStore_FetchAndFilter(t *testing.T) {
 					chainSelector2 = generateRandomChainSelector()
 				}
 				metadata2.ChainSelector = chainSelector2
-				err = store.Add(metadata2)
+				err = store.Add(context.Background(), metadata2)
 				require.NoError(t, err)
 
 				return metadata1, metadata2
@@ -598,13 +620,13 @@ func TestCatalogChainMetadataStore_FetchAndFilter(t *testing.T) {
 			// Execute operation
 			switch tt.operation {
 			case "fetch":
-				results, err = store.Fetch()
+				results, err = store.Fetch(context.Background())
 			case "filter":
 				var filterFunc datastore.FilterFunc[datastore.ChainMetadataKey, datastore.ChainMetadata]
 				if tt.createFilter != nil {
 					filterFunc = tt.createFilter(metadata1, metadata2)
 				}
-				results = store.Filter(filterFunc)
+				results = store.Filter(context.Background(), filterFunc)
 			}
 
 			// Verify
@@ -616,6 +638,92 @@ func TestCatalogChainMetadataStore_FetchAndFilter(t *testing.T) {
 				tt.verify(t, results, metadata1, metadata2)
 			}
 		})
+	}
+}
+
+// Test updater functions that demonstrate different patterns for MetadataUpdaterF
+
+// wholeMetadataMerger demonstrates merging two complete TestChainMetadata structs
+func wholeMetadataMerger() datastore.MetadataUpdaterF {
+	return func(latest any, incoming any) (any, error) {
+		// Both latest and incoming are complete TestChainMetadata structs
+		latestMeta, err := datastore.As[TestChainMetadata](latest)
+		if err != nil {
+			return nil, err
+		}
+
+		incomingMeta, err := datastore.As[TestChainMetadata](incoming)
+		if err != nil {
+			return nil, err
+		}
+
+		// Merge logic - keep some fields from latest, update others from incoming
+		merged := TestChainMetadata{
+			Name:        incomingMeta.Name,                             // Always update name
+			Description: incomingMeta.Description,                      // Always update description
+			Tags:        append(latestMeta.Tags, incomingMeta.Tags...), // Merge tags
+			IsTestnet:   latestMeta.IsTestnet,                          // Keep original testnet flag
+		}
+
+		return merged, nil
+	}
+}
+
+// descriptionOnlyUpdater demonstrates updating only a specific field
+func descriptionOnlyUpdater() datastore.MetadataUpdaterF {
+	return func(latest any, incoming any) (any, error) {
+		// latest is full metadata, incoming is just a string description
+		latestMeta, err := datastore.As[TestChainMetadata](latest)
+		if err != nil {
+			return nil, err
+		}
+
+		newDescription, err := datastore.As[string](incoming)
+		if err != nil {
+			return nil, err
+		}
+
+		// Update only the description field
+		updated := latestMeta
+		updated.Description = newDescription
+
+		return updated, nil
+	}
+}
+
+// smartTagMerger demonstrates intelligent tag merging without duplicates
+func smartTagMerger() datastore.MetadataUpdaterF {
+	return func(latest any, incoming any) (any, error) {
+		// latest is full metadata, incoming is just new tags to add
+		latestMeta, err := datastore.As[TestChainMetadata](latest)
+		if err != nil {
+			return nil, err
+		}
+
+		newTags, err := datastore.As[[]string](incoming)
+		if err != nil {
+			return nil, err
+		}
+
+		// Smart merge - avoid duplicates using a simple approach
+		existingTags := latestMeta.Tags
+		for _, newTag := range newTags {
+			// Check if tag already exists
+			found := false
+			for _, existing := range existingTags {
+				if existing == newTag {
+					found = true
+					break
+				}
+			}
+			if !found {
+				existingTags = append(existingTags, newTag)
+			}
+		}
+
+		result := latestMeta
+		result.Tags = existingTags
+		return result, nil
 	}
 }
 
@@ -735,6 +843,105 @@ func TestCatalogChainMetadataStore_ConversionHelpers(t *testing.T) {
 			defer conn.Close()
 
 			tt.test(t, store)
+		})
+	}
+}
+
+func TestCatalogChainMetadataStore_UpdaterExamples(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name    string
+		updater datastore.MetadataUpdaterF
+		verify  func(t *testing.T, result any)
+	}{
+		{
+			name:    "whole_metadata_merge",
+			updater: wholeMetadataMerger(),
+			verify: func(t *testing.T, result any) {
+				t.Helper()
+				merged, err := datastore.As[TestChainMetadata](result)
+				require.NoError(t, err)
+				require.Equal(t, "NewChain", merged.Name)
+				require.Equal(t, "New description", merged.Description)
+				require.Contains(t, merged.Tags, "old")
+				require.Contains(t, merged.Tags, "new")
+				require.Equal(t, true, merged.IsTestnet) // Should keep original
+			},
+		},
+		{
+			name:    "description_only_update",
+			updater: descriptionOnlyUpdater(),
+			verify: func(t *testing.T, result any) {
+				t.Helper()
+				updated, err := datastore.As[TestChainMetadata](result)
+				require.NoError(t, err)
+				require.Equal(t, "OriginalChain", updated.Name) // Should be unchanged
+				require.Equal(t, "Updated description only", updated.Description)
+				require.Equal(t, []string{"old"}, updated.Tags) // Should be unchanged
+				require.Equal(t, true, updated.IsTestnet)       // Should be unchanged
+			},
+		},
+		{
+			name:    "smart_tag_merging",
+			updater: smartTagMerger(),
+			verify: func(t *testing.T, result any) {
+				t.Helper()
+				updated, err := datastore.As[TestChainMetadata](result)
+				require.NoError(t, err)
+				require.Equal(t, "OriginalChain", updated.Name)
+				require.Contains(t, updated.Tags, "old")
+				require.Contains(t, updated.Tags, "new")
+				require.Contains(t, updated.Tags, "additional")
+				require.Len(t, updated.Tags, 3) // Should not have duplicates
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Setup test data based on the test case
+			var latest, incoming any
+
+			switch tt.name {
+			case "whole_metadata_merge":
+				latest = TestChainMetadata{
+					Name:        "OriginalChain",
+					Description: "Original description",
+					Tags:        []string{"old"},
+					IsTestnet:   true,
+				}
+				incoming = TestChainMetadata{
+					Name:        "NewChain",
+					Description: "New description",
+					Tags:        []string{"new"},
+					IsTestnet:   false,
+				}
+			case "description_only_update":
+				latest = TestChainMetadata{
+					Name:        "OriginalChain",
+					Description: "Original description",
+					Tags:        []string{"old"},
+					IsTestnet:   true,
+				}
+				incoming = "Updated description only"
+			case "smart_tag_merging":
+				latest = TestChainMetadata{
+					Name:        "OriginalChain",
+					Description: "Original description",
+					Tags:        []string{"old"},
+					IsTestnet:   true,
+				}
+				incoming = []string{"new", "additional", "old"} // "old" should not duplicate
+			}
+
+			// Execute the updater
+			result, err := tt.updater(latest, incoming)
+			require.NoError(t, err)
+
+			// Verify the result
+			tt.verify(t, result)
 		})
 	}
 }

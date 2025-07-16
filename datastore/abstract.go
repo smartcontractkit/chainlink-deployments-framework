@@ -93,6 +93,7 @@ type MutableUnaryStore[R any] interface {
 // V2 interfaces
 type MetadataUpdaterF func(latest any, incoming any) (any, error)
 
+// IdentityUpdaterF is the default updater that simply replaces latest with incoming
 func IdentityUpdaterF(latest any, incoming any) (any, error) {
 	return incoming, nil
 }

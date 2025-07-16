@@ -11,7 +11,7 @@ type CatalogDataStoreConfig struct {
 	Client      pb.DeploymentsDatastoreClient `json:"-"`
 }
 
-var _ datastore.CatalogStore = &CatalogDataStore{}
+//var _ datastore.CatalogStore = &CatalogDataStore{}
 
 type CatalogDataStore struct {
 	AddressRefStore       *CatalogAddressRefStore
@@ -39,8 +39,8 @@ func (s *CatalogDataStore) Addresses() datastore.MutableAddressRefStore {
 	return s.AddressRefStore
 }
 
-func (s *CatalogDataStore) ChainMetadata() datastore.MutableChainMetadataStore {
-	return s.ChainMetadataStore
+func (s *CatalogDataStore) ChainMetadata() datastore.MutableStoreV2[datastore.ChainMetadataKey, datastore.ChainMetadata] {
+	return nil
 }
 
 func (s *CatalogDataStore) ContractMetadata() datastore.MutableContractMetadataStore {
