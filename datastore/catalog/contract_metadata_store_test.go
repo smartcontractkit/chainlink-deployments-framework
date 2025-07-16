@@ -865,12 +865,26 @@ func smartContractTagMerger() datastore.MetadataUpdaterF {
 func TestCatalogContractMetadataStore_UpdaterExamples(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name    string
-		updater datastore.MetadataUpdaterF
-		verify  func(t *testing.T, result any)
+		name     string
+		latest   any
+		incoming any
+		updater  datastore.MetadataUpdaterF
+		verify   func(t *testing.T, result any)
 	}{
 		{
-			name:    "whole_metadata_merge",
+			name: "whole_metadata_merge",
+			latest: TestContractMetadata{
+				Name:        "OriginalContract",
+				Version:     "1.0.0",
+				Description: "Original contract description",
+				Tags:        []string{"old"},
+			},
+			incoming: TestContractMetadata{
+				Name:        "NewContract",
+				Version:     "2.0.0",
+				Description: "New contract description",
+				Tags:        []string{"new"},
+			},
 			updater: wholeContractMetadataMerger(),
 			verify: func(t *testing.T, result any) {
 				t.Helper()
@@ -884,8 +898,15 @@ func TestCatalogContractMetadataStore_UpdaterExamples(t *testing.T) {
 			},
 		},
 		{
-			name:    "version_only_update",
-			updater: versionOnlyUpdater(),
+			name: "version_only_update",
+			latest: TestContractMetadata{
+				Name:        "OriginalContract",
+				Version:     "1.0.0",
+				Description: "Original description",
+				Tags:        []string{"old"},
+			},
+			incoming: "3.0.0",
+			updater:  versionOnlyUpdater(),
 			verify: func(t *testing.T, result any) {
 				t.Helper()
 				updated, err := datastore.As[TestContractMetadata](result)
@@ -897,8 +918,15 @@ func TestCatalogContractMetadataStore_UpdaterExamples(t *testing.T) {
 			},
 		},
 		{
-			name:    "smart_tag_merging",
-			updater: smartContractTagMerger(),
+			name: "smart_tag_merging",
+			latest: TestContractMetadata{
+				Name:        "OriginalContract",
+				Version:     "1.0.0",
+				Description: "Original description",
+				Tags:        []string{"old"},
+			},
+			incoming: []string{"new", "additional", "old"}, // "old" should not duplicate
+			updater:  smartContractTagMerger(),
 			verify: func(t *testing.T, result any) {
 				t.Helper()
 				updated, err := datastore.As[TestContractMetadata](result)
@@ -916,43 +944,8 @@ func TestCatalogContractMetadataStore_UpdaterExamples(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			// Setup test data based on the test case
-			var latest, incoming any
-
-			switch tt.name {
-			case "whole_metadata_merge":
-				latest = TestContractMetadata{
-					Name:        "OriginalContract",
-					Version:     "1.0.0",
-					Description: "Original contract description",
-					Tags:        []string{"old"},
-				}
-				incoming = TestContractMetadata{
-					Name:        "NewContract",
-					Version:     "2.0.0",
-					Description: "New contract description",
-					Tags:        []string{"new"},
-				}
-			case "version_only_update":
-				latest = TestContractMetadata{
-					Name:        "OriginalContract",
-					Version:     "1.0.0",
-					Description: "Original description",
-					Tags:        []string{"old"},
-				}
-				incoming = "3.0.0"
-			case "smart_tag_merging":
-				latest = TestContractMetadata{
-					Name:        "OriginalContract",
-					Version:     "1.0.0",
-					Description: "Original description",
-					Tags:        []string{"old"},
-				}
-				incoming = []string{"new", "additional", "old"} // "old" should not duplicate
-			}
-
 			// Execute the updater
-			result, err := tt.updater(latest, incoming)
+			result, err := tt.updater(tt.latest, tt.incoming)
 			require.NoError(t, err)
 
 			// Verify the result
@@ -978,6 +971,7 @@ func TestCatalogContractMetadataStore_Update_WithCustomUpdater(t *testing.T) {
 				metadata := newRandomContractMetadata()
 				err := store.Add(context.Background(), metadata)
 				require.NoError(t, err)
+
 				return datastore.NewContractMetadataKey(metadata.ChainSelector, metadata.Address)
 			},
 			incomingData: "Updated description for contract",
@@ -1003,6 +997,7 @@ func TestCatalogContractMetadataStore_Update_WithCustomUpdater(t *testing.T) {
 				metadata.Metadata = testMeta
 				err := store.Add(context.Background(), metadata)
 				require.NoError(t, err)
+
 				return datastore.NewContractMetadataKey(metadata.ChainSelector, metadata.Address)
 			},
 			incomingData: []string{"new", "updated", "existing"}, // "existing" should not duplicate
@@ -1028,6 +1023,7 @@ func TestCatalogContractMetadataStore_Update_WithCustomUpdater(t *testing.T) {
 				metadata := newRandomContractMetadata()
 				err := store.Add(context.Background(), metadata)
 				require.NoError(t, err)
+
 				return datastore.NewContractMetadataKey(metadata.ChainSelector, metadata.Address)
 			},
 			incomingData: TestContractMetadata{
@@ -1101,6 +1097,7 @@ func TestCatalogContractMetadataStore_Upsert_WithCustomUpdater(t *testing.T) {
 				metadata := newRandomContractMetadata()
 				err := store.Add(context.Background(), metadata)
 				require.NoError(t, err)
+
 				return datastore.NewContractMetadataKey(metadata.ChainSelector, metadata.Address)
 			},
 			incomingData: "5.0.0", // New version
@@ -1129,6 +1126,7 @@ func TestCatalogContractMetadataStore_Upsert_WithCustomUpdater(t *testing.T) {
 				metadata.Metadata = testMeta
 				err := store.Add(context.Background(), metadata)
 				require.NoError(t, err)
+
 				return datastore.NewContractMetadataKey(metadata.ChainSelector, metadata.Address)
 			},
 			incomingData: []string{"enhanced", "improved", "original"}, // "original" should not duplicate
@@ -1154,6 +1152,7 @@ func TestCatalogContractMetadataStore_Upsert_WithCustomUpdater(t *testing.T) {
 				metadata := newRandomContractMetadata()
 				err := store.Add(context.Background(), metadata)
 				require.NoError(t, err)
+
 				return datastore.NewContractMetadataKey(metadata.ChainSelector, metadata.Address)
 			},
 			incomingData: TestContractMetadata{

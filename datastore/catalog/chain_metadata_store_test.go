@@ -321,6 +321,7 @@ func TestCatalogChainMetadataStore_Update_WithCustomUpdater(t *testing.T) {
 			updater:  descriptionOnlyUpdater(),
 			incoming: "Custom description via updater",
 			verify: func(t *testing.T, result TestChainMetadata, original TestChainMetadata) {
+				t.Helper()
 				require.Equal(t, original.Name, result.Name)
 				require.Equal(t, "Custom description via updater", result.Description)
 				require.Equal(t, original.Tags, result.Tags)
@@ -332,6 +333,7 @@ func TestCatalogChainMetadataStore_Update_WithCustomUpdater(t *testing.T) {
 			updater:  smartTagMerger(),
 			incoming: []string{"custom", "updater", "test"}, // "test" should not duplicate
 			verify: func(t *testing.T, result TestChainMetadata, original TestChainMetadata) {
+				t.Helper()
 				require.Equal(t, original.Name, result.Name)
 				require.Equal(t, original.Description, result.Description)
 				require.Equal(t, original.IsTestnet, result.IsTestnet)
@@ -354,6 +356,7 @@ func TestCatalogChainMetadataStore_Update_WithCustomUpdater(t *testing.T) {
 				IsTestnet:   false, // this will be ignored in favor of keeping original
 			},
 			verify: func(t *testing.T, result TestChainMetadata, original TestChainMetadata) {
+				t.Helper()
 				require.Equal(t, "MergedChain", result.Name)                              // should be updated
 				require.Equal(t, "Merged via whole metadata updater", result.Description) // should be updated
 				require.Equal(t, original.IsTestnet, result.IsTestnet)                    // should keep original
@@ -417,6 +420,7 @@ func TestCatalogChainMetadataStore_Upsert_WithCustomUpdater(t *testing.T) {
 			incoming:    "Updated description via upsert",
 			setupRecord: true, // create existing record first
 			verify: func(t *testing.T, result TestChainMetadata, original *TestChainMetadata) {
+				t.Helper()
 				require.Equal(t, original.Name, result.Name)
 				require.Equal(t, "Updated description via upsert", result.Description)
 				require.Equal(t, original.Tags, result.Tags)
@@ -429,6 +433,7 @@ func TestCatalogChainMetadataStore_Upsert_WithCustomUpdater(t *testing.T) {
 			incoming:    []string{"upserted", "smart", "test"}, // "test" should not duplicate
 			setupRecord: true,                                  // create existing record first
 			verify: func(t *testing.T, result TestChainMetadata, original *TestChainMetadata) {
+				t.Helper()
 				require.Equal(t, original.Name, result.Name)
 				require.Equal(t, original.Description, result.Description)
 				require.Equal(t, original.IsTestnet, result.IsTestnet)
@@ -452,6 +457,7 @@ func TestCatalogChainMetadataStore_Upsert_WithCustomUpdater(t *testing.T) {
 			},
 			setupRecord: true, // create existing record first
 			verify: func(t *testing.T, result TestChainMetadata, original *TestChainMetadata) {
+				t.Helper()
 				require.Equal(t, "UpsertedChain", result.Name)                              // should be updated
 				require.Equal(t, "Upserted via whole metadata updater", result.Description) // should be updated
 				require.Equal(t, original.IsTestnet, result.IsTestnet)                      // should keep original
