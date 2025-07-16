@@ -13,8 +13,6 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	pb "github.com/smartcontractkit/chainlink-deployments-framework/datastore/catalog/internal/protos"
@@ -61,8 +59,8 @@ func TestCatalogAddressRefStore_Get(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			// Create a fresh store for each test case to avoid concurrency issues
-			store, conn := setupTestStore(t)
-			defer conn.Close()
+			store, cleanup := setupTestStore(t)
+			defer cleanup()
 
 			key := tt.setup(store)
 
@@ -119,8 +117,8 @@ func TestCatalogAddressRefStore_Add(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			// Create a fresh store for each test case to avoid concurrency issues
-			store, conn := setupTestStore(t)
-			defer conn.Close()
+			store, cleanup := setupTestStore(t)
+			defer cleanup()
 
 			addressRef := tt.setup(store)
 
@@ -201,8 +199,8 @@ func TestCatalogAddressRefStore_Update(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			// Create a fresh store for each test case to avoid concurrency issues
-			store, conn := setupTestStore(t)
-			defer conn.Close()
+			store, cleanup := setupTestStore(t)
+			defer cleanup()
 
 			addressRef := tt.setup(store)
 
@@ -277,8 +275,8 @@ func TestCatalogAddressRefStore_Upsert(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			// Create a fresh store for each test case to avoid concurrency issues
-			store, conn := setupTestStore(t)
-			defer conn.Close()
+			store, cleanup := setupTestStore(t)
+			defer cleanup()
 
 			addressRef := tt.setup(store)
 
@@ -294,8 +292,8 @@ func TestCatalogAddressRefStore_Upsert(t *testing.T) {
 
 func TestCatalogAddressRefStore_Delete(t *testing.T) {
 	t.Parallel()
-	store, conn := setupTestStore(t)
-	defer conn.Close()
+	store, cleanup := setupTestStore(t)
+	defer cleanup()
 
 	version := semver.MustParse("1.0.0")
 	key := datastore.NewAddressRefKey(12345, "LinkToken", version, "test")
@@ -460,8 +458,8 @@ func TestCatalogAddressRefStore_FetchAndFilter(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			// Create a fresh store for each test case to avoid concurrency issues
-			store, conn := setupTestStore(t)
-			defer conn.Close()
+			store, cleanup := setupTestStore(t)
+			defer cleanup()
 
 			addressRef1, addressRef2 := tt.setup(store)
 
@@ -584,8 +582,8 @@ func TestCatalogAddressRefStore_ConversionHelpers(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			// Create a fresh store for each test case to avoid concurrency issues
-			store, conn := setupTestStore(t)
-			defer conn.Close()
+			store, cleanup := setupTestStore(t)
+			defer cleanup()
 
 			tt.test(t, store)
 		})
@@ -593,7 +591,7 @@ func TestCatalogAddressRefStore_ConversionHelpers(t *testing.T) {
 }
 
 // setupTestStore creates a real gRPC client connection to a local service
-func setupTestStore(t *testing.T) (*CatalogAddressRefStore, *grpc.ClientConn) {
+func setupTestStore(t *testing.T) (*CatalogAddressRefStore, func()) {
 	t.Helper()
 	// Get gRPC address from environment or use default
 	address := os.Getenv("CATALOG_GRPC_ADDRESS")
@@ -601,24 +599,24 @@ func setupTestStore(t *testing.T) (*CatalogAddressRefStore, *grpc.ClientConn) {
 		address = defaultGRPCAddress
 	}
 
-	conn, err := grpc.NewClient(address,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	)
+	// Create CatalogClient using the NewCatalogClient function
+	catalogClient, err := NewCatalogClient(CatalogConfig{
+		GRPC:  address,
+		Creds: nil, // Use insecure credentials for testing
+	})
 	if err != nil {
 		t.Skipf("Failed to connect to gRPC server at %s: %v. Skipping integration tests.", address, err)
+		return nil, func() {}
 	}
-
-	// Create client
-	client := pb.NewDeploymentsDatastoreClient(conn)
 
 	// Test if the service is actually available by making a simple call
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	stream, err := client.DataAccess(ctx)
+	stream, err := catalogClient.DataAccess(ctx)
 	if err != nil {
-		conn.Close()
 		t.Skipf("gRPC service not available at %s: %v. Skipping integration tests.", address, err)
+		return nil, func() {}
 	}
 	_ = stream.CloseSend() // Close the test stream
 
@@ -626,10 +624,14 @@ func setupTestStore(t *testing.T) (*CatalogAddressRefStore, *grpc.ClientConn) {
 	store := NewCatalogAddressRefStore(CatalogAddressRefStoreConfig{
 		Domain:      "test-domain",
 		Environment: "catalog_testing",
-		Client:      client,
+		Client:      catalogClient,
 	})
 
-	return store, conn
+	cleanup := func() {
+		// Connection cleanup is handled internally by CatalogClient
+	}
+
+	return store, cleanup
 }
 
 // randomHex generates a random hex string of specified length

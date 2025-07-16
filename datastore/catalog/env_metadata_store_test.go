@@ -8,8 +8,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	pb "github.com/smartcontractkit/chainlink-deployments-framework/datastore/catalog/internal/protos"
@@ -29,33 +27,31 @@ type TestEnvMetadata struct {
 }
 
 // setupTestEnvStore creates a test environment metadata store and gRPC connection
-func setupTestEnvStore(t *testing.T) (*CatalogEnvMetadataStore, *grpc.ClientConn) {
+func setupTestEnvStore(t *testing.T) (*CatalogEnvMetadataStore, func()) {
 	t.Helper()
 	address := os.Getenv("CATALOG_GRPC_ADDRESS")
 	if address == "" {
 		address = defaultEnvGRPCAddress
 	}
 
-	// Create connection
-	conn, err := grpc.NewClient(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	// Create CatalogClient using the NewCatalogClient function
+	catalogClient, err := NewCatalogClient(CatalogConfig{
+		GRPC:  address,
+		Creds: nil, // Use insecure credentials for testing
+	})
 	if err != nil {
 		t.Skipf("Failed to connect to gRPC server at %s: %v. Skipping integration tests.", address, err)
-		return nil, nil
+		return nil, func() {}
 	}
-
-	// Create client
-	client := pb.NewDeploymentsDatastoreClient(conn)
 
 	// Test if the gRPC service is actually available by making a simple call
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	stream, err := client.DataAccess(ctx)
+	stream, err := catalogClient.DataAccess(ctx)
 	if err != nil {
-		conn.Close()
 		t.Skipf("gRPC service not available at %s: %v. Skipping integration tests.", address, err)
-
-		return nil, nil
+		return nil, func() {}
 	}
 	if stream != nil {
 		_ = stream.CloseSend()
@@ -65,10 +61,14 @@ func setupTestEnvStore(t *testing.T) (*CatalogEnvMetadataStore, *grpc.ClientConn
 	store := NewCatalogEnvMetadataStore(CatalogEnvMetadataStoreConfig{
 		Domain:      "test-domain",
 		Environment: "catalog_testing", // Use static environment name
-		Client:      client,
+		Client:      catalogClient,
 	})
 
-	return store, conn
+	cleanup := func() {
+		// Connection cleanup is handled internally by CatalogClient
+	}
+
+	return store, cleanup
 }
 
 // requireEnvMetadataEqual compares two EnvMetadata records for equality
@@ -138,8 +138,8 @@ func TestCatalogEnvMetadataStore_Get(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			// Create store for testing
-			store, conn := setupTestEnvStore(t)
-			defer conn.Close()
+			store, cleanup := setupTestEnvStore(t)
+			defer cleanup()
 
 			// Setup test data if needed
 			for _, record := range tt.setupRecords {
@@ -212,8 +212,8 @@ func TestCatalogEnvMetadataStore_Set(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			store, conn := setupTestEnvStore(t)
-			defer conn.Close()
+			store, cleanup := setupTestEnvStore(t)
+			defer cleanup()
 
 			// Test Set operation
 			err := store.Set(context.Background(), tt.record.Metadata)
@@ -245,8 +245,8 @@ func TestCatalogEnvMetadataStore_Set(t *testing.T) {
 
 func TestCatalogEnvMetadataStore_Set_Update(t *testing.T) {
 	t.Parallel()
-	store, conn := setupTestEnvStore(t)
-	defer conn.Close()
+	store, cleanup := setupTestEnvStore(t)
+	defer cleanup()
 
 	// Set initial record
 	initialMetadata := TestEnvMetadata{
@@ -298,11 +298,11 @@ func TestCatalogEnvMetadataStore_Set_Update(t *testing.T) {
 func TestCatalogEnvMetadataStore_Set_ConcurrentUpdates(t *testing.T) {
 	t.Parallel()
 	// Create two stores pointing to the same environment
-	store1, conn1 := setupTestEnvStore(t)
-	defer conn1.Close()
+	store1, cleanup1 := setupTestEnvStore(t)
+	defer cleanup1()
 
-	store2, conn2 := setupTestEnvStore(t)
-	defer conn2.Close()
+	store2, cleanup2 := setupTestEnvStore(t)
+	defer cleanup2()
 
 	// Set initial record with store1
 	initialMetadata := TestEnvMetadata{
@@ -445,8 +445,8 @@ func TestCatalogEnvMetadataStore_ConversionHelpers(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			// Create a fresh store for each test case to avoid concurrency issues
-			store, conn := setupTestEnvStore(t)
-			defer conn.Close()
+			store, cleanup := setupTestEnvStore(t)
+			defer cleanup()
 
 			tt.test(t, store)
 		})

@@ -2,13 +2,12 @@ package catalog
 
 import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
-	pb "github.com/smartcontractkit/chainlink-deployments-framework/datastore/catalog/internal/protos"
 )
 
 type CatalogDataStoreConfig struct {
-	Domain      string                        `json:"domain"`
-	Environment string                        `json:"environment"`
-	Client      pb.DeploymentsDatastoreClient `json:"-"`
+	Domain      string        `json:"domain"`
+	Environment string        `json:"environment"`
+	Client      CatalogClient `json:"-"`
 }
 
 var _ datastore.CatalogStore = &CatalogDataStore{}
@@ -28,10 +27,26 @@ func NewCatalogDataStore(config CatalogDataStoreConfig) *CatalogDataStore {
 		domain:      config.Domain,
 		environment: config.Environment,
 
-		AddressRefStore:       NewCatalogAddressRefStore(CatalogAddressRefStoreConfig(config)),
-		ChainMetadataStore:    NewCatalogChainMetadataStore(CatalogChainMetadataStoreConfig(config)),
-		ContractMetadataStore: NewCatalogContractMetadataStore(CatalogContractMetadataStoreConfig(config)),
-		EnvMetadataStore:      NewCatalogEnvMetadataStore(CatalogEnvMetadataStoreConfig(config)),
+		AddressRefStore: NewCatalogAddressRefStore(CatalogAddressRefStoreConfig{
+			Domain:      config.Domain,
+			Environment: config.Environment,
+			Client:      config.Client,
+		}),
+		ChainMetadataStore: NewCatalogChainMetadataStore(CatalogChainMetadataStoreConfig{
+			Domain:      config.Domain,
+			Environment: config.Environment,
+			Client:      config.Client,
+		}),
+		ContractMetadataStore: NewCatalogContractMetadataStore(CatalogContractMetadataStoreConfig{
+			Domain:      config.Domain,
+			Environment: config.Environment,
+			Client:      config.Client,
+		}),
+		EnvMetadataStore: NewCatalogEnvMetadataStore(CatalogEnvMetadataStoreConfig{
+			Domain:      config.Domain,
+			Environment: config.Environment,
+			Client:      config.Client,
+		}),
 	}
 }
 

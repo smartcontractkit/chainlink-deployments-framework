@@ -17,7 +17,7 @@ import (
 type CatalogEnvMetadataStoreConfig struct {
 	Domain      string
 	Environment string
-	Client      pb.DeploymentsDatastoreClient
+	Client      CatalogClient
 }
 
 // Ensure CatalogEnvMetadataStore implements the V2 interface
@@ -26,7 +26,7 @@ var _ datastore.MutableUnaryStoreV2[datastore.EnvMetadata] = &CatalogEnvMetadata
 type CatalogEnvMetadataStore struct {
 	domain      string
 	environment string
-	client      pb.DeploymentsDatastoreClient
+	client      CatalogClient
 	// versionCache tracks the current version of the record for optimistic concurrency control
 	// Environment metadata is a single record per domain/environment, so we only need one version
 	mu            sync.RWMutex

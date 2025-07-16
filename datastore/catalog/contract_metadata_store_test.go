@@ -11,8 +11,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	pb "github.com/smartcontractkit/chainlink-deployments-framework/datastore/catalog/internal/protos"
@@ -42,7 +40,7 @@ func newTestContractMetadata(name string) TestContractMetadata {
 }
 
 // setupTestContractStore creates a real gRPC client connection to a local service
-func setupTestContractStore(t *testing.T) (*CatalogContractMetadataStore, *grpc.ClientConn) {
+func setupTestContractStore(t *testing.T) (*CatalogContractMetadataStore, func()) {
 	t.Helper()
 	// Get gRPC address from environment or use default
 	address := os.Getenv("CATALOG_GRPC_ADDRESS")
@@ -50,27 +48,24 @@ func setupTestContractStore(t *testing.T) (*CatalogContractMetadataStore, *grpc.
 		address = defaultContractGRPCAddress
 	}
 
-	conn, err := grpc.NewClient(address,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	)
+	// Create CatalogClient using the NewCatalogClient function
+	catalogClient, err := NewCatalogClient(CatalogConfig{
+		GRPC:  address,
+		Creds: nil, // Use insecure credentials for testing
+	})
 	if err != nil {
 		t.Skipf("Failed to connect to gRPC server at %s: %v. Skipping integration tests.", address, err)
-		return nil, nil
+		return nil, func() {}
 	}
-
-	// Create client
-	client := pb.NewDeploymentsDatastoreClient(conn)
 
 	// Test if the gRPC service is actually available by making a simple call
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	stream, err := client.DataAccess(ctx)
+	stream, err := catalogClient.DataAccess(ctx)
 	if err != nil {
-		conn.Close()
 		t.Skipf("gRPC service not available at %s: %v. Skipping integration tests.", address, err)
-
-		return nil, nil
+		return nil, func() {}
 	}
 	if stream != nil {
 		_ = stream.CloseSend()
@@ -80,10 +75,16 @@ func setupTestContractStore(t *testing.T) (*CatalogContractMetadataStore, *grpc.
 	store := NewCatalogContractMetadataStore(CatalogContractMetadataStoreConfig{
 		Domain:      "test-domain",
 		Environment: "catalog_testing",
-		Client:      client,
+		Client:      catalogClient,
 	})
 
-	return store, conn
+	// Return a cleanup function - since CatalogClient manages its own connection internally,
+	// we don't need to expose connection management to tests
+	cleanup := func() {
+		// Connection cleanup is handled internally by CatalogClient
+	}
+
+	return store, cleanup
 }
 
 // generateRandomContractAddress generates a random contract address
@@ -152,8 +153,8 @@ func TestCatalogContractMetadataStore_Get(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			// Create a fresh store for each test case to avoid concurrency issues
-			store, conn := setupTestContractStore(t)
-			defer conn.Close()
+			store, cleanup := setupTestContractStore(t)
+			defer cleanup()
 
 			key := tt.setup(store)
 
@@ -209,8 +210,8 @@ func TestCatalogContractMetadataStore_Add(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			// Create a fresh store for each test case to avoid concurrency issues
-			store, conn := setupTestContractStore(t)
-			defer conn.Close()
+			store, cleanup := setupTestContractStore(t)
+			defer cleanup()
 
 			metadata := tt.setup(store)
 
@@ -302,8 +303,8 @@ func TestCatalogContractMetadataStore_Update(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			// Create a fresh store for each test case to avoid concurrency issues
-			store, conn := setupTestContractStore(t)
-			defer conn.Close()
+			store, cleanup := setupTestContractStore(t)
+			defer cleanup()
 
 			metadata := tt.setup(store)
 
@@ -329,11 +330,11 @@ func TestCatalogContractMetadataStore_Update(t *testing.T) {
 func TestCatalogContractMetadataStore_Update_StaleVersion(t *testing.T) {
 	t.Parallel()
 	// Create two separate stores to simulate concurrent access
-	store1, conn1 := setupTestContractStore(t)
-	defer conn1.Close()
+	store1, cleanup1 := setupTestContractStore(t)
+	defer cleanup1()
 
-	store2, conn2 := setupTestContractStore(t)
-	defer conn2.Close()
+	store2, cleanup2 := setupTestContractStore(t)
+	defer cleanup2()
 
 	// Add a contract metadata record using store1
 	original := newRandomContractMetadata()
@@ -438,8 +439,8 @@ func TestCatalogContractMetadataStore_Upsert(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			// Create a fresh store for each test case to avoid concurrency issues
-			store, conn := setupTestContractStore(t)
-			defer conn.Close()
+			store, cleanup := setupTestContractStore(t)
+			defer cleanup()
 
 			metadata := tt.setup(store)
 
@@ -465,11 +466,11 @@ func TestCatalogContractMetadataStore_Upsert(t *testing.T) {
 func TestCatalogContractMetadataStore_Upsert_StaleVersion(t *testing.T) {
 	t.Parallel()
 	// Create two separate stores to simulate concurrent access
-	store1, conn1 := setupTestContractStore(t)
-	defer conn1.Close()
+	store1, cleanup1 := setupTestContractStore(t)
+	defer cleanup1()
 
-	store2, conn2 := setupTestContractStore(t)
-	defer conn2.Close()
+	store2, cleanup2 := setupTestContractStore(t)
+	defer cleanup2()
 
 	// Add a contract metadata record using store1
 	original := newRandomContractMetadata()
@@ -512,8 +513,8 @@ func TestCatalogContractMetadataStore_Upsert_StaleVersion(t *testing.T) {
 
 func TestCatalogContractMetadataStore_Delete(t *testing.T) {
 	t.Parallel()
-	store, conn := setupTestContractStore(t)
-	defer conn.Close()
+	store, cleanup := setupTestContractStore(t)
+	defer cleanup()
 
 	key := datastore.NewContractMetadataKey(12345, "0x1234567890abcdef1234567890abcdef12345678")
 
@@ -619,8 +620,8 @@ func TestCatalogContractMetadataStore_FetchAndFilter(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			// Create a fresh store for each test case to avoid concurrency issues
-			store, conn := setupTestContractStore(t)
-			defer conn.Close()
+			store, cleanup := setupTestContractStore(t)
+			defer cleanup()
 
 			metadata1, metadata2 := tt.setup(store)
 
@@ -767,8 +768,8 @@ func TestCatalogContractMetadataStore_ConversionHelpers(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			// Create a fresh store for each test case to avoid concurrency issues
-			store, conn := setupTestContractStore(t)
-			defer conn.Close()
+			store, cleanup := setupTestContractStore(t)
+			defer cleanup()
 
 			tt.test(t, store)
 		})
@@ -1056,8 +1057,8 @@ func TestCatalogContractMetadataStore_Update_WithCustomUpdater(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			store, conn := setupTestContractStore(t)
-			defer conn.Close()
+			store, cleanup := setupTestContractStore(t)
+			defer cleanup()
 
 			key := tt.setup(store)
 
@@ -1185,8 +1186,8 @@ func TestCatalogContractMetadataStore_Upsert_WithCustomUpdater(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			store, conn := setupTestContractStore(t)
-			defer conn.Close()
+			store, cleanup := setupTestContractStore(t)
+			defer cleanup()
 
 			key := tt.setup(store)
 

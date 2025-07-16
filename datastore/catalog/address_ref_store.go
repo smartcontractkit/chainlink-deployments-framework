@@ -16,13 +16,13 @@ import (
 type CatalogAddressRefStoreConfig struct {
 	Domain      string
 	Environment string
-	Client      pb.DeploymentsDatastoreClient
+	Client      CatalogClient
 }
 
 type CatalogAddressRefStore struct {
 	domain      string
 	environment string
-	client      pb.DeploymentsDatastoreClient
+	client      CatalogClient
 }
 
 // Ensure CatalogAddressRefStore implements the V2 interface

@@ -13,7 +13,7 @@ func TestNewCatalogDataStore(t *testing.T) {
 	config := CatalogDataStoreConfig{
 		Domain:      "test-domain",
 		Environment: "test-env",
-		Client:      nil, // No real client needed for unit tests
+		Client:      CatalogClient{}, // Zero value for unit tests
 	}
 
 	dataStore := NewCatalogDataStore(config)
@@ -35,7 +35,7 @@ func TestCatalogDataStore_ImplementsCatalogInterface(t *testing.T) {
 	config := CatalogDataStoreConfig{
 		Domain:      "test-domain",
 		Environment: "test-env",
-		Client:      nil, // No real client needed for unit tests
+		Client:      CatalogClient{}, // Zero value for unit tests
 	}
 
 	dataStore := NewCatalogDataStore(config)
@@ -67,7 +67,7 @@ func TestCatalogDataStore_StoreInterfaces(t *testing.T) {
 	config := CatalogDataStoreConfig{
 		Domain:      "test-domain",
 		Environment: "test-env",
-		Client:      nil, // No real client needed for unit tests
+		Client:      CatalogClient{}, // Zero value for unit tests
 	}
 
 	ds := NewCatalogDataStore(config)
@@ -84,7 +84,7 @@ func TestCatalogDataStoreConfig_ClientPassthrough(t *testing.T) {
 	config := CatalogDataStoreConfig{
 		Domain:      "test-domain",
 		Environment: "test-env",
-		Client:      nil, // No real client needed for unit tests
+		Client:      CatalogClient{}, // Zero value for unit tests
 	}
 
 	ds := NewCatalogDataStore(config)

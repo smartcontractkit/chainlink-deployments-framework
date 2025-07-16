@@ -17,13 +17,13 @@ import (
 type CatalogChainMetadataStoreConfig struct {
 	Domain      string
 	Environment string
-	Client      pb.DeploymentsDatastoreClient
+	Client      CatalogClient
 }
 
 type CatalogChainMetadataStore struct {
 	domain      string
 	environment string
-	client      pb.DeploymentsDatastoreClient
+	client      CatalogClient
 	// versionCache tracks the current version of each record for optimistic concurrency control
 	mu           sync.RWMutex
 	versionCache map[string]int32
