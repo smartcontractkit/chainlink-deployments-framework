@@ -48,6 +48,7 @@ func (s *CatalogChainMetadataStore) getVersion(key datastore.ChainMetadataKey) i
 	if version, exists := s.versionCache[cacheKey]; exists {
 		return version
 	}
+
 	return 0 // Default version for new records
 }
 
@@ -134,6 +135,7 @@ func (s *CatalogChainMetadataStore) Get(ctx context.Context, key datastore.Chain
 		if strings.Contains(resp.Status.GetError(), "No records found") {
 			return datastore.ChainMetadata{}, datastore.ErrChainMetadataNotFound
 		}
+
 		return datastore.ChainMetadata{}, fmt.Errorf("request failed: %s", resp.Status.Error)
 	}
 
@@ -254,7 +256,7 @@ func (s *CatalogChainMetadataStore) performUpsertOrUpdate(ctx context.Context, k
 	var currentMetadata any
 	if currentRecord, err := s.Get(ctx, key); err == nil {
 		currentMetadata = currentRecord.Metadata
-	} else if err != datastore.ErrChainMetadataNotFound {
+	} else if !errors.Is(err, datastore.ErrChainMetadataNotFound) {
 		return fmt.Errorf("failed to get current record for update: %w", err)
 	}
 

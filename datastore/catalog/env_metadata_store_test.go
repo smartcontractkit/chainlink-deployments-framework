@@ -107,6 +107,7 @@ func tagsAppendMerger() datastore.MetadataUpdaterF {
 }
 
 func TestCatalogEnvMetadataStore_Get(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name         string
 		setupRecords []datastore.EnvMetadata
@@ -135,6 +136,7 @@ func TestCatalogEnvMetadataStore_Get(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			// Create store for testing
 			store, conn := setupTestEnvStore(t)
 			defer conn.Close()
@@ -171,6 +173,7 @@ func TestCatalogEnvMetadataStore_Get(t *testing.T) {
 }
 
 func TestCatalogEnvMetadataStore_Set(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		record  datastore.EnvMetadata
@@ -208,6 +211,7 @@ func TestCatalogEnvMetadataStore_Set(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			store, conn := setupTestEnvStore(t)
 			defer conn.Close()
 
@@ -240,6 +244,7 @@ func TestCatalogEnvMetadataStore_Set(t *testing.T) {
 }
 
 func TestCatalogEnvMetadataStore_Set_Update(t *testing.T) {
+	t.Parallel()
 	store, conn := setupTestEnvStore(t)
 	defer conn.Close()
 
@@ -291,6 +296,7 @@ func TestCatalogEnvMetadataStore_Set_Update(t *testing.T) {
 }
 
 func TestCatalogEnvMetadataStore_Set_ConcurrentUpdates(t *testing.T) {
+	t.Parallel()
 	// Create two stores pointing to the same environment
 	store1, conn1 := setupTestEnvStore(t)
 	defer conn1.Close()

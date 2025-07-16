@@ -49,6 +49,7 @@ func (s *CatalogContractMetadataStore) getVersion(key datastore.ContractMetadata
 	if version, exists := s.versionCache[cacheKey]; exists {
 		return version
 	}
+
 	return 0 // Default version for new records
 }
 
@@ -259,7 +260,7 @@ func (s *CatalogContractMetadataStore) performUpsertOrUpdate(ctx context.Context
 	var currentMetadata any
 	if currentRecord, err := s.Get(ctx, key); err == nil {
 		currentMetadata = currentRecord.Metadata
-	} else if err != datastore.ErrContractMetadataNotFound {
+	} else if !errors.Is(err, datastore.ErrContractMetadataNotFound) {
 		return fmt.Errorf("failed to get current record for update: %w", err)
 	}
 

@@ -356,7 +356,7 @@ func TestCatalogChainMetadataStore_Update_StaleVersion(t *testing.T) {
 	require.Equal(t, "SecondUpdate", concrete.Name)
 	require.Equal(t, "Second update to chain", concrete.Description)
 	require.Equal(t, []string{"test", "second"}, concrete.Tags)
-	require.Equal(t, true, concrete.IsTestnet)
+	require.True(t, concrete.IsTestnet)
 }
 
 func TestCatalogChainMetadataStore_Upsert(t *testing.T) {
@@ -497,7 +497,7 @@ func TestCatalogChainMetadataStore_Upsert_StaleVersion(t *testing.T) {
 	require.Equal(t, "UpsertUpdate", concrete.Name)
 	require.Equal(t, "Upsert update to chain", concrete.Description)
 	require.Equal(t, []string{"test", "upserted"}, concrete.Tags)
-	require.Equal(t, true, concrete.IsTestnet)
+	require.True(t, concrete.IsTestnet)
 }
 
 func TestCatalogChainMetadataStore_Delete(t *testing.T) {
@@ -721,6 +721,7 @@ func smartTagMerger() datastore.MetadataUpdaterF {
 
 		result := latestMeta
 		result.Tags = existingTags
+
 		return result, nil
 	}
 }
@@ -863,7 +864,7 @@ func TestCatalogChainMetadataStore_UpdaterExamples(t *testing.T) {
 				require.Equal(t, "New description", merged.Description)
 				require.Contains(t, merged.Tags, "old")
 				require.Contains(t, merged.Tags, "new")
-				require.Equal(t, true, merged.IsTestnet) // Should keep original
+				require.True(t, merged.IsTestnet) // Should keep original
 			},
 		},
 		{
@@ -876,7 +877,7 @@ func TestCatalogChainMetadataStore_UpdaterExamples(t *testing.T) {
 				require.Equal(t, "OriginalChain", updated.Name) // Should be unchanged
 				require.Equal(t, "Updated description only", updated.Description)
 				require.Equal(t, []string{"old"}, updated.Tags) // Should be unchanged
-				require.Equal(t, true, updated.IsTestnet)       // Should be unchanged
+				require.True(t, updated.IsTestnet)              // Should be unchanged
 			},
 		},
 		{

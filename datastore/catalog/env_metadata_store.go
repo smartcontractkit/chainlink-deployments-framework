@@ -47,6 +47,7 @@ func NewCatalogEnvMetadataStore(cfg CatalogEnvMetadataStoreConfig) *CatalogEnvMe
 func (s *CatalogEnvMetadataStore) getVersion() int32 {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+
 	return s.cachedVersion
 }
 
@@ -169,14 +170,13 @@ func (s *CatalogEnvMetadataStore) Set(ctx context.Context, metadata any, updater
 		updaters = []datastore.MetadataUpdaterF{datastore.IdentityUpdaterF}
 	}
 
-	var finalMetadata any = metadata
+	var finalMetadata = metadata
 	for _, updater := range updaters {
-		var err error
-		finalMetadata, err = updater(currentRecord.Metadata, finalMetadata)
-		if err != nil {
-			return fmt.Errorf("failed to apply metadata updater: %w", err)
+		updatedMetadata, updateErr := updater(currentRecord.Metadata, finalMetadata)
+		if updateErr != nil {
+			return fmt.Errorf("failed to apply metadata updater: %w", updateErr)
 		}
-
+		finalMetadata = updatedMetadata
 	}
 
 	// Get the current version for this record
@@ -215,6 +215,7 @@ func (s *CatalogEnvMetadataStore) Set(ctx context.Context, metadata any, updater
 		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 			return fmt.Errorf("request canceled or deadline exceeded: %w", err)
 		}
+
 		return fmt.Errorf("failed to receive response: %w", err)
 	}
 
@@ -225,6 +226,7 @@ func (s *CatalogEnvMetadataStore) Set(ctx context.Context, metadata any, updater
 		if strings.Contains(errorMsg, "incorrect row version") {
 			return datastore.ErrEnvMetadataStale
 		}
+
 		return fmt.Errorf("edit request failed: %s", resp.Status.Error)
 	}
 

@@ -857,6 +857,7 @@ func smartContractTagMerger() datastore.MetadataUpdaterF {
 
 		result := latestMeta
 		result.Tags = existingTags
+
 		return result, nil
 	}
 }
