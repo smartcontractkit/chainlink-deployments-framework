@@ -109,7 +109,7 @@ type FetcherV2[R any] interface {
 
 // Filterable provides a Filter() method which is used to complete a filtered query with from a Store.
 type FilterableV2[K Comparable[K], R UniqueRecord[K, R]] interface {
-	Filter(context.Context, ...FilterFunc[K, R]) []R
+	Filter(context.Context, ...FilterFunc[K, R]) ([]R, error)
 }
 
 // Getter provides a Get() method which is used to complete a read by key query from a Store.

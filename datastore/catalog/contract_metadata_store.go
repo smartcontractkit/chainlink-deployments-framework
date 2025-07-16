@@ -224,17 +224,17 @@ func (s *CatalogContractMetadataStore) Fetch(ctx context.Context) ([]datastore.C
 // Filter returns a copy of all ContractMetadata in the catalog that match the provided filter.
 // Filters are applied in the order they are provided.
 // If no filters are provided, all records are returned.
-func (s *CatalogContractMetadataStore) Filter(ctx context.Context, filters ...datastore.FilterFunc[datastore.ContractMetadataKey, datastore.ContractMetadata]) []datastore.ContractMetadata {
+func (s *CatalogContractMetadataStore) Filter(ctx context.Context, filters ...datastore.FilterFunc[datastore.ContractMetadataKey, datastore.ContractMetadata]) ([]datastore.ContractMetadata, error) {
 	records, err := s.Fetch(ctx)
 	if err != nil {
-		return []datastore.ContractMetadata{}
+		return []datastore.ContractMetadata{}, fmt.Errorf("failed to fetch records: %w", err)
 	}
 
 	for _, filter := range filters {
 		records = filter(records)
 	}
 
-	return records
+	return records, nil
 }
 
 func (s *CatalogContractMetadataStore) Add(ctx context.Context, record datastore.ContractMetadata) error {

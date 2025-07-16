@@ -166,13 +166,13 @@ func (s *CatalogAddressRefStore) Fetch(ctx context.Context) ([]datastore.Address
 // Filter returns a copy of all AddressRef in the catalog that match the provided filter.
 // Filters are applied in the order they are provided.
 // If no filters are provided, all records are returned.
-func (s *CatalogAddressRefStore) Filter(ctx context.Context, filters ...datastore.FilterFunc[datastore.AddressRefKey, datastore.AddressRef]) []datastore.AddressRef {
+func (s *CatalogAddressRefStore) Filter(ctx context.Context, filters ...datastore.FilterFunc[datastore.AddressRefKey, datastore.AddressRef]) ([]datastore.AddressRef, error) {
 	// First, fetch all records from the catalog
 	records, err := s.Fetch(ctx)
 	if err != nil {
 		// In case of error, return empty slice
 		// In a more robust implementation, you might want to log this error
-		return []datastore.AddressRef{}
+		return []datastore.AddressRef{}, fmt.Errorf("failed to fetch records: %w", err)
 	}
 
 	// Apply each filter in sequence
@@ -180,7 +180,7 @@ func (s *CatalogAddressRefStore) Filter(ctx context.Context, filters ...datastor
 		records = filter(records)
 	}
 
-	return records
+	return records, nil
 }
 
 func (s *CatalogAddressRefStore) Add(ctx context.Context, record datastore.AddressRef) error {

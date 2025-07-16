@@ -219,17 +219,17 @@ func (s *CatalogChainMetadataStore) Fetch(ctx context.Context) ([]datastore.Chai
 // Filter returns a copy of all ChainMetadata in the catalog that match the provided filter.
 // Filters are applied in the order they are provided.
 // If no filters are provided, all records are returned.
-func (s *CatalogChainMetadataStore) Filter(ctx context.Context, filters ...datastore.FilterFunc[datastore.ChainMetadataKey, datastore.ChainMetadata]) []datastore.ChainMetadata {
+func (s *CatalogChainMetadataStore) Filter(ctx context.Context, filters ...datastore.FilterFunc[datastore.ChainMetadataKey, datastore.ChainMetadata]) ([]datastore.ChainMetadata, error) {
 	records, err := s.Fetch(ctx)
 	if err != nil {
-		return []datastore.ChainMetadata{}
+		return []datastore.ChainMetadata{}, fmt.Errorf("failed to fetch records: %w", err)
 	}
 
 	for _, filter := range filters {
 		records = filter(records)
 	}
 
-	return records
+	return records, nil
 }
 
 func (s *CatalogChainMetadataStore) Add(ctx context.Context, record datastore.ChainMetadata) error {

@@ -477,13 +477,11 @@ func TestCatalogAddressRefStore_FetchAndFilter(t *testing.T) {
 				if tt.createFilter != nil {
 					filterFunc = tt.createFilter(addressRef1, addressRef2)
 				}
-				results = store.Filter(context.Background(), filterFunc)
+				results, err = store.Filter(context.Background(), filterFunc)
 			}
 
 			// Verify
-			if tt.operation == "fetch" {
-				require.NoError(t, err)
-			}
+			require.NoError(t, err)
 			require.GreaterOrEqual(t, len(results), tt.minExpected)
 			if tt.verify != nil {
 				tt.verify(t, results, addressRef1, addressRef2)
