@@ -13,33 +13,32 @@ import (
 	pb "github.com/smartcontractkit/chainlink-deployments-framework/datastore/catalog/internal/protos"
 )
 
-type CatalogAddressRefStoreConfig struct {
+type catalogAddressRefStoreConfig struct {
 	Domain      string
 	Environment string
-	Client      pb.DeploymentsDatastoreClient
+	Client      CatalogClient
 }
 
-type CatalogAddressRefStore struct {
+type catalogAddressRefStore struct {
 	domain      string
 	environment string
-	client      pb.DeploymentsDatastoreClient
+	client      CatalogClient
 }
 
-var _ datastore.AddressRefStore = &CatalogAddressRefStore{}
+// Ensure catalogAddressRefStore implements the V2 interface
+var _ datastore.MutableRefStoreV2[datastore.AddressRefKey, datastore.AddressRef] = &catalogAddressRefStore{}
 
-var _ datastore.MutableAddressRefStore = &CatalogAddressRefStore{}
-
-func NewCatalogAddressRefStore(cfg CatalogAddressRefStoreConfig) *CatalogAddressRefStore {
-	return &CatalogAddressRefStore{
+func newCatalogAddressRefStore(cfg catalogAddressRefStoreConfig) *catalogAddressRefStore {
+	return &catalogAddressRefStore{
 		domain:      cfg.Domain,
 		environment: cfg.Environment,
 		client:      cfg.Client,
 	}
 }
 
-func (s *CatalogAddressRefStore) Get(key datastore.AddressRefKey) (datastore.AddressRef, error) {
+func (s *catalogAddressRefStore) Get(ctx context.Context, key datastore.AddressRefKey) (datastore.AddressRef, error) {
 	// Create a bidirectional stream
-	stream, err := s.client.DataAccess(context.Background())
+	stream, err := s.client.DataAccess(ctx)
 	if err != nil {
 		return datastore.AddressRef{}, fmt.Errorf("failed to create data access stream: %w", err)
 	}
@@ -101,9 +100,9 @@ func (s *CatalogAddressRefStore) Get(key datastore.AddressRefKey) (datastore.Add
 }
 
 // Fetch returns a copy of all AddressRef in the catalog.
-func (s *CatalogAddressRefStore) Fetch() ([]datastore.AddressRef, error) {
+func (s *catalogAddressRefStore) Fetch(ctx context.Context) ([]datastore.AddressRef, error) {
 	// Create a bidirectional stream
-	stream, err := s.client.DataAccess(context.Background())
+	stream, err := s.client.DataAccess(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create data access stream: %w", err)
 	}
@@ -167,13 +166,13 @@ func (s *CatalogAddressRefStore) Fetch() ([]datastore.AddressRef, error) {
 // Filter returns a copy of all AddressRef in the catalog that match the provided filter.
 // Filters are applied in the order they are provided.
 // If no filters are provided, all records are returned.
-func (s *CatalogAddressRefStore) Filter(filters ...datastore.FilterFunc[datastore.AddressRefKey, datastore.AddressRef]) []datastore.AddressRef {
+func (s *catalogAddressRefStore) Filter(ctx context.Context, filters ...datastore.FilterFunc[datastore.AddressRefKey, datastore.AddressRef]) ([]datastore.AddressRef, error) {
 	// First, fetch all records from the catalog
-	records, err := s.Fetch()
+	records, err := s.Fetch(ctx)
 	if err != nil {
 		// In case of error, return empty slice
 		// In a more robust implementation, you might want to log this error
-		return []datastore.AddressRef{}
+		return []datastore.AddressRef{}, fmt.Errorf("failed to fetch records: %w", err)
 	}
 
 	// Apply each filter in sequence
@@ -181,12 +180,12 @@ func (s *CatalogAddressRefStore) Filter(filters ...datastore.FilterFunc[datastor
 		records = filter(records)
 	}
 
-	return records
+	return records, nil
 }
 
-func (s *CatalogAddressRefStore) Add(record datastore.AddressRef) error {
+func (s *catalogAddressRefStore) Add(ctx context.Context, record datastore.AddressRef) error {
 	// Create a bidirectional stream
-	stream, err := s.client.DataAccess(context.Background())
+	stream, err := s.client.DataAccess(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to create data access stream: %w", err)
 	}
@@ -234,9 +233,9 @@ func (s *CatalogAddressRefStore) Add(record datastore.AddressRef) error {
 	return nil
 }
 
-func (s *CatalogAddressRefStore) Upsert(record datastore.AddressRef) error {
+func (s *catalogAddressRefStore) Upsert(ctx context.Context, record datastore.AddressRef) error {
 	// Create a bidirectional stream
-	stream, err := s.client.DataAccess(context.Background())
+	stream, err := s.client.DataAccess(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to create data access stream: %w", err)
 	}
@@ -284,10 +283,10 @@ func (s *CatalogAddressRefStore) Upsert(record datastore.AddressRef) error {
 	return nil
 }
 
-func (s *CatalogAddressRefStore) Update(record datastore.AddressRef) error {
+func (s *catalogAddressRefStore) Update(ctx context.Context, record datastore.AddressRef) error {
 	// First check if the record exists
 	key := datastore.NewAddressRefKey(record.ChainSelector, record.Type, record.Version, record.Qualifier)
-	_, err := s.Get(key)
+	_, err := s.Get(ctx, key)
 	if errors.Is(err, datastore.ErrAddressRefNotFound) {
 		// Record doesn't exist, return error
 		return datastore.ErrAddressRefNotFound
@@ -299,7 +298,7 @@ func (s *CatalogAddressRefStore) Update(record datastore.AddressRef) error {
 
 	// Record exists, proceed with updating it
 	// Create a bidirectional stream
-	stream, streamErr := s.client.DataAccess(context.Background())
+	stream, streamErr := s.client.DataAccess(ctx)
 	if streamErr != nil {
 		return fmt.Errorf("failed to create data access stream: %w", streamErr)
 	}
@@ -347,14 +346,14 @@ func (s *CatalogAddressRefStore) Update(record datastore.AddressRef) error {
 	return nil
 }
 
-func (s *CatalogAddressRefStore) Delete(key datastore.AddressRefKey) error {
+func (s *catalogAddressRefStore) Delete(ctx context.Context, key datastore.AddressRefKey) error {
 	// The catalog API does not support delete operations
 	// This is intentional as catalogs are typically immutable reference stores
 	return errors.New("delete operation not supported by catalog API")
 }
 
 // keyToFilter converts a datastore.AddressRefKey to a protobuf AddressReferenceKeyFilter
-func (s *CatalogAddressRefStore) keyToFilter(key datastore.AddressRefKey) *pb.AddressReferenceKeyFilter {
+func (s *catalogAddressRefStore) keyToFilter(key datastore.AddressRefKey) *pb.AddressReferenceKeyFilter {
 	return &pb.AddressReferenceKeyFilter{
 		Domain:        wrapperspb.String(s.domain),
 		Environment:   wrapperspb.String(s.environment),
@@ -366,7 +365,7 @@ func (s *CatalogAddressRefStore) keyToFilter(key datastore.AddressRefKey) *pb.Ad
 }
 
 // protoToAddressRef converts a protobuf AddressReference to a datastore.AddressRef
-func (s *CatalogAddressRefStore) protoToAddressRef(protoRef *pb.AddressReference) (datastore.AddressRef, error) {
+func (s *catalogAddressRefStore) protoToAddressRef(protoRef *pb.AddressReference) (datastore.AddressRef, error) {
 	// Parse the version
 	version, err := semver.NewVersion(protoRef.Version)
 	if err != nil {
@@ -387,7 +386,7 @@ func (s *CatalogAddressRefStore) protoToAddressRef(protoRef *pb.AddressReference
 }
 
 // addressRefToProto converts a datastore.AddressRef to a protobuf AddressReference
-func (s *CatalogAddressRefStore) addressRefToProto(addressRef datastore.AddressRef) *pb.AddressReference {
+func (s *catalogAddressRefStore) addressRefToProto(addressRef datastore.AddressRef) *pb.AddressReference {
 	return &pb.AddressReference{
 		Domain:        s.domain,
 		Environment:   s.environment,

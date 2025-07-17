@@ -28,6 +28,16 @@ type BaseDataStore[
 	EnvMetadata() EM
 }
 
+// BaseDataStoreV2 is an interface that defines the basic operations for a data store using V2 interfaces.
+type BaseDataStoreV2[
+	R MutableRefStoreV2[AddressRefKey, AddressRef], CH MutableStoreV2[ChainMetadataKey, ChainMetadata], CM MutableStoreV2[ContractMetadataKey, ContractMetadata], EM MutableUnaryStoreV2[EnvMetadata],
+] interface {
+	Addresses() R
+	ChainMetadata() CH
+	ContractMetadata() CM
+	EnvMetadata() EM
+}
+
 // DataStore is an interface that defines the operations for a read-only data store.
 type DataStore interface {
 	BaseDataStore[
@@ -48,9 +58,9 @@ type MutableDataStore interface {
 }
 
 type CatalogStore interface {
-	BaseDataStore[
-		MutableAddressRefStore, MutableChainMetadataStore,
-		MutableContractMetadataStore, MutableEnvMetadataStore,
+	BaseDataStoreV2[
+		MutableRefStoreV2[AddressRefKey, AddressRef], MutableStoreV2[ChainMetadataKey, ChainMetadata],
+		MutableStoreV2[ContractMetadataKey, ContractMetadata], MutableUnaryStoreV2[EnvMetadata],
 	]
 }
 

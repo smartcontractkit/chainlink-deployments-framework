@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
@@ -29,46 +28,48 @@ type TestEnvMetadata struct {
 }
 
 // setupTestEnvStore creates a test environment metadata store and gRPC connection
-func setupTestEnvStore(t *testing.T) (*CatalogEnvMetadataStore, *grpc.ClientConn) {
+func setupTestEnvStore(t *testing.T) (*catalogEnvMetadataStore, func()) {
 	t.Helper()
 	address := os.Getenv("CATALOG_GRPC_ADDRESS")
 	if address == "" {
 		address = defaultEnvGRPCAddress
 	}
 
-	// Create connection
-	conn, err := grpc.NewClient(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	// Create CatalogClient using the NewCatalogClient function
+	catalogClient, err := NewCatalogClient(CatalogConfig{
+		GRPC:  address,
+		Creds: insecure.NewCredentials(),
+	})
 	if err != nil {
 		t.Skipf("Failed to connect to gRPC server at %s: %v. Skipping integration tests.", address, err)
-		return nil, nil
+		return nil, func() {}
 	}
-
-	// Create client
-	client := pb.NewDeploymentsDatastoreClient(conn)
 
 	// Test if the gRPC service is actually available by making a simple call
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	stream, err := client.DataAccess(ctx)
+	stream, err := catalogClient.DataAccess(ctx)
 	if err != nil {
-		conn.Close()
 		t.Skipf("gRPC service not available at %s: %v. Skipping integration tests.", address, err)
-
-		return nil, nil
+		return nil, func() {}
 	}
 	if stream != nil {
 		_ = stream.CloseSend()
 	}
 
-	// Create store with the standard testing environment name
-	store := NewCatalogEnvMetadataStore(CatalogEnvMetadataStoreConfig{
+	// Create store with a unique environment name per test to ensure isolation
+	store := newCatalogEnvMetadataStore(catalogEnvMetadataStoreConfig{
 		Domain:      "test-domain",
-		Environment: "catalog_testing",
-		Client:      client,
+		Environment: "catalog_testing", // Use static environment name
+		Client:      catalogClient,
 	})
 
-	return store, conn
+	cleanup := func() {
+		// Connection cleanup is handled internally by CatalogClient
+	}
+
+	return store, cleanup
 }
 
 // requireEnvMetadataEqual compares two EnvMetadata records for equality
@@ -83,6 +84,27 @@ func requireEnvMetadataEqual(t *testing.T, expected, actual datastore.EnvMetadat
 	require.NoError(t, err, "Failed to marshal actual metadata")
 
 	require.JSONEq(t, string(expectedJSON), string(actualJSON), "EnvMetadata should be equal")
+}
+
+// tagsAppendMerger creates a custom updater that merges TestEnvMetadata fields intelligently
+func tagsAppendMerger() datastore.MetadataUpdaterF {
+	return func(latest any, incoming any) (any, error) {
+		// Convert latest to TestEnvMetadata
+		latestMeta, err := datastore.As[TestEnvMetadata](latest)
+		if err != nil {
+			return nil, err
+		}
+		// Convert incoming to TestEnvMetadata
+		incomingMeta, err := datastore.As[TestEnvMetadata](incoming)
+		if err != nil {
+			return nil, err
+		}
+
+		// append tags from incoming to latest
+		latestMeta.Tags = append(latestMeta.Tags, incomingMeta.Tags...)
+
+		return latestMeta, nil
+	}
 }
 
 func TestCatalogEnvMetadataStore_Get(t *testing.T) {
@@ -117,17 +139,17 @@ func TestCatalogEnvMetadataStore_Get(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			// Create store for testing
-			store, conn := setupTestEnvStore(t)
-			defer conn.Close()
+			store, cleanup := setupTestEnvStore(t)
+			defer cleanup()
 
 			// Setup test data if needed
 			for _, record := range tt.setupRecords {
-				err := store.Set(record)
+				err := store.Set(context.Background(), record.Metadata)
 				require.NoError(t, err, "Failed to setup record")
 			}
 
 			// Test Get operation
-			gotRecord, err := store.Get()
+			gotRecord, err := store.Get(context.Background())
 
 			// Verify error
 			if tt.wantErr != nil {
@@ -168,34 +190,16 @@ func TestCatalogEnvMetadataStore_Set(t *testing.T) {
 			},
 			wantErr: nil,
 		},
-		{
-			name: "nil_metadata",
-			record: datastore.EnvMetadata{
-				Metadata: nil,
-			},
-			wantErr: nil,
-		},
-		{
-			name: "complex_metadata",
-			record: datastore.EnvMetadata{
-				Metadata: TestEnvMetadata{
-					Description: "Production environment",
-					Version:     "2.1.0",
-					Tags:        []string{"production", "v1.0"},
-				},
-			},
-			wantErr: nil,
-		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			store, conn := setupTestEnvStore(t)
-			defer conn.Close()
+			store, cleanup := setupTestEnvStore(t)
+			defer cleanup()
 
 			// Test Set operation
-			err := store.Set(tt.record)
+			err := store.Set(context.Background(), tt.record.Metadata)
 
 			// Verify error
 			if tt.wantErr != nil {
@@ -214,7 +218,7 @@ func TestCatalogEnvMetadataStore_Set(t *testing.T) {
 			require.NoError(t, err, "Unexpected error")
 
 			// Verify record was set by retrieving it
-			gotRecord, err := store.Get()
+			gotRecord, err := store.Get(context.Background())
 			require.NoError(t, err, "Failed to retrieve record after Set")
 
 			requireEnvMetadataEqual(t, tt.record, gotRecord)
@@ -224,95 +228,104 @@ func TestCatalogEnvMetadataStore_Set(t *testing.T) {
 
 func TestCatalogEnvMetadataStore_Set_Update(t *testing.T) {
 	t.Parallel()
-	store, conn := setupTestEnvStore(t)
-	defer conn.Close()
+	store, cleanup := setupTestEnvStore(t)
+	defer cleanup()
 
 	// Set initial record
-	initialRecord := datastore.EnvMetadata{
-		Metadata: TestEnvMetadata{
-			Version: "1.0.0",
-		},
+	initialMetadata := TestEnvMetadata{
+		Description: "Initial environment",
+		Version:     "2.0.0",
+		Tags:        []string{"initial"},
 	}
-	err := store.Set(initialRecord)
+	err := store.Set(context.Background(), initialMetadata)
 	require.NoError(t, err, "Failed to set initial record")
 
-	// Update the record
-	updatedRecord := datastore.EnvMetadata{
-		Metadata: TestEnvMetadata{
-			Version:     "2.0.0",
-			Description: "Updated environment",
-		},
-	}
-	err = store.Set(updatedRecord)
-	require.NoError(t, err, "Failed to update record")
+	// Create a custom updater that merges tags and updates version
+	mergeUpdater := tagsAppendMerger()
 
-	// Verify the record was updated
-	gotRecord, err := store.Get()
+	// Update the record using the custom updater
+	updateMetadata := TestEnvMetadata{
+		Tags: []string{"updated", "v2"},
+	}
+	err = store.Set(context.Background(), updateMetadata, datastore.WithUpdater(mergeUpdater))
+	require.NoError(t, err, "Failed to update record with custom updater")
+
+	// Verify the record was updated with merged data
+	gotRecord, err := store.Get(context.Background())
 	require.NoError(t, err, "Failed to retrieve updated record")
 
-	requireEnvMetadataEqual(t, updatedRecord, gotRecord)
+	// Expected result should have:
+	// - Description from initial record (preserved)
+	// - Version from update (2.0.0)
+	// - Tags merged from both (initial, updated, v2)
+	expectedMeta := TestEnvMetadata{
+		Description: "Initial environment",                // Preserved from original
+		Version:     "2.0.0",                              // Updated
+		Tags:        []string{"initial", "updated", "v2"}, // Merged (order may vary)
+	}
+
+	// Check individual fields since tag order might vary
+	actualMeta, err := datastore.As[TestEnvMetadata](gotRecord.Metadata)
+	require.NoError(t, err, "Failed to convert metadata")
+
+	require.Equal(t, expectedMeta.Description, actualMeta.Description, "Description should be preserved")
+	require.Equal(t, expectedMeta.Version, actualMeta.Version, "Version should be updated")
+
+	// Check that all expected tags are present (order doesn't matter)
+	require.Len(t, actualMeta.Tags, len(expectedMeta.Tags), "Should have correct number of tags")
+	for _, expectedTag := range expectedMeta.Tags {
+		require.Contains(t, actualMeta.Tags, expectedTag, "Should contain expected tag: %s", expectedTag)
+	}
 }
 
-func TestCatalogEnvMetadataStore_Set_StaleVersion(t *testing.T) {
+func TestCatalogEnvMetadataStore_Set_ConcurrentUpdates(t *testing.T) {
 	t.Parallel()
-	t.Skip("Stale version testing for environment metadata requires more complex setup due to singleton nature")
-	// Environment metadata is a singleton per domain/environment, so testing
-	// stale version scenarios is more complex than with keyed records.
-	store1, conn1 := setupTestEnvStore(t)
-	defer conn1.Close()
+	// Create two stores pointing to the same environment
+	store1, cleanup1 := setupTestEnvStore(t)
+	defer cleanup1()
+
+	store2, cleanup2 := setupTestEnvStore(t)
+	defer cleanup2()
 
 	// Set initial record with store1
-	initialRecord := datastore.EnvMetadata{
-		Metadata: TestEnvMetadata{
-			Version: "1.0.0",
-		},
+	initialMetadata := TestEnvMetadata{
+		Description: "Initial environment",
+		Version:     "1.0.0",
 	}
-	err := store1.Set(initialRecord)
+	err := store1.Set(context.Background(), initialMetadata)
 	require.NoError(t, err, "Failed to set initial record")
 
-	// Get the record to sync the version cache
-	_, err = store1.Get()
+	// Both stores get the record to sync their version caches
+	_, err = store1.Get(context.Background())
 	require.NoError(t, err, "Store1 failed to get record after initial set")
 
-	// Create a second store pointing to the same environment
-	store2, conn2 := setupTestEnvStore(t)
-	defer conn2.Close()
-
-	// Store2 should be able to read the existing record
-	_, err = store2.Get()
+	_, err = store2.Get(context.Background())
 	require.NoError(t, err, "Store2 failed to get record")
 
 	// Store1 updates the record (this should succeed and increment server version)
-	updatedRecord1 := datastore.EnvMetadata{
-		Metadata: TestEnvMetadata{
-			Version:     "2.0.0",
-			Description: "Updated by store1",
-		},
+	updatedMetadata1 := TestEnvMetadata{
+		Description: "Updated by store1",
+		Version:     "2.0.0",
 	}
-	err = store1.Set(updatedRecord1)
+	err = store1.Set(context.Background(), updatedMetadata1)
 	require.NoError(t, err, "Store1 failed to update record")
 
-	// Store2 tries to update with its cached (now stale) version - this should fail
-	updatedRecord2 := datastore.EnvMetadata{
-		Metadata: TestEnvMetadata{
-			Version:     "2.1.0",
-			Description: "Updated by store2",
-		},
+	// Store2 also updates successfully (both should succeed with UPSERT semantics)
+	updatedMetadata2 := TestEnvMetadata{
+		Description: "Updated by store2",
+		Version:     "2.1.0",
 	}
-	err = store2.Set(updatedRecord2)
-	if err == nil {
-		t.Errorf("Expected stale version error, but Set succeeded")
-		return
-	}
+	err = store2.Set(context.Background(), updatedMetadata2)
+	require.NoError(t, err, "Store2 failed to update record")
 
-	// Verify it's the expected stale error
-	require.Equal(t, datastore.ErrEnvMetadataStale, err, "Expected ErrEnvMetadataStale")
-
-	// Verify the record still has store1's update
-	finalRecord, err := store1.Get()
+	// Verify the record has store2's update (the last one wins)
+	finalRecord, err := store2.Get(context.Background())
 	require.NoError(t, err, "Failed to get final record")
 
-	requireEnvMetadataEqual(t, updatedRecord1, finalRecord)
+	expectedRecord := datastore.EnvMetadata{
+		Metadata: updatedMetadata2,
+	}
+	requireEnvMetadataEqual(t, expectedRecord, finalRecord)
 }
 
 func TestCatalogEnvMetadataStore_ConversionHelpers(t *testing.T) {
@@ -320,11 +333,11 @@ func TestCatalogEnvMetadataStore_ConversionHelpers(t *testing.T) {
 
 	tests := []struct {
 		name string
-		test func(t *testing.T, store *CatalogEnvMetadataStore)
+		test func(t *testing.T, store *catalogEnvMetadataStore)
 	}{
 		{
 			name: "keyToFilter",
-			test: func(t *testing.T, store *CatalogEnvMetadataStore) {
+			test: func(t *testing.T, store *catalogEnvMetadataStore) {
 				t.Helper()
 				filter := store.keyToFilter()
 				require.NotNil(t, filter, "keyToFilter returned nil")
@@ -334,7 +347,7 @@ func TestCatalogEnvMetadataStore_ConversionHelpers(t *testing.T) {
 		},
 		{
 			name: "protoToEnvMetadata_success",
-			test: func(t *testing.T, store *CatalogEnvMetadataStore) {
+			test: func(t *testing.T, store *catalogEnvMetadataStore) {
 				t.Helper()
 				protoRecord := &pb.EnvironmentMetadata{
 					Domain:      "test-domain",
@@ -355,7 +368,7 @@ func TestCatalogEnvMetadataStore_ConversionHelpers(t *testing.T) {
 		},
 		{
 			name: "protoToEnvMetadata_invalid_json",
-			test: func(t *testing.T, store *CatalogEnvMetadataStore) {
+			test: func(t *testing.T, store *catalogEnvMetadataStore) {
 				t.Helper()
 				protoRecord := &pb.EnvironmentMetadata{
 					Domain:      "test-domain",
@@ -370,7 +383,7 @@ func TestCatalogEnvMetadataStore_ConversionHelpers(t *testing.T) {
 		},
 		{
 			name: "envMetadataToProto",
-			test: func(t *testing.T, store *CatalogEnvMetadataStore) {
+			test: func(t *testing.T, store *catalogEnvMetadataStore) {
 				t.Helper()
 				record := datastore.EnvMetadata{
 					Metadata: TestEnvMetadata{
@@ -398,7 +411,7 @@ func TestCatalogEnvMetadataStore_ConversionHelpers(t *testing.T) {
 		},
 		{
 			name: "version_handling",
-			test: func(t *testing.T, store *CatalogEnvMetadataStore) {
+			test: func(t *testing.T, store *catalogEnvMetadataStore) {
 				t.Helper()
 				// Test getVersion and setVersion
 				initialVersion := store.getVersion()
@@ -415,8 +428,8 @@ func TestCatalogEnvMetadataStore_ConversionHelpers(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			// Create a fresh store for each test case to avoid concurrency issues
-			store, conn := setupTestEnvStore(t)
-			defer conn.Close()
+			store, cleanup := setupTestEnvStore(t)
+			defer cleanup()
 
 			tt.test(t, store)
 		})

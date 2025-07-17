@@ -2,51 +2,44 @@ package catalog
 
 import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
-	pb "github.com/smartcontractkit/chainlink-deployments-framework/datastore/catalog/internal/protos"
 )
 
 type CatalogDataStoreConfig struct {
-	Domain      string                        `json:"domain"`
-	Environment string                        `json:"environment"`
-	Client      pb.DeploymentsDatastoreClient `json:"-"`
+	Domain      string
+	Environment string
+	Client      CatalogClient
 }
 
-var _ datastore.CatalogStore = &CatalogDataStore{}
+var _ datastore.CatalogStore = &catalogDataStore{}
 
-type CatalogDataStore struct {
-	AddressRefStore       *CatalogAddressRefStore
-	ChainMetadataStore    *CatalogChainMetadataStore
-	ContractMetadataStore *CatalogContractMetadataStore
-	EnvMetadataStore      *CatalogEnvMetadataStore
-
-	domain      string
-	environment string
+type catalogDataStore struct {
+	addressRefStore       *catalogAddressRefStore
+	chainMetadataStore    *catalogChainMetadataStore
+	contractMetadataStore *catalogContractMetadataStore
+	envMetadataStore      *catalogEnvMetadataStore
 }
 
-func NewCatalogDataStore(config CatalogDataStoreConfig) *CatalogDataStore {
-	return &CatalogDataStore{
-		domain:      config.Domain,
-		environment: config.Environment,
-
-		AddressRefStore:       NewCatalogAddressRefStore(CatalogAddressRefStoreConfig(config)),
-		ChainMetadataStore:    NewCatalogChainMetadataStore(CatalogChainMetadataStoreConfig(config)),
-		ContractMetadataStore: NewCatalogContractMetadataStore(CatalogContractMetadataStoreConfig(config)),
-		EnvMetadataStore:      NewCatalogEnvMetadataStore(CatalogEnvMetadataStoreConfig(config)),
+func NewCatalogDataStore(config CatalogDataStoreConfig) *catalogDataStore {
+	return &catalogDataStore{
+		addressRefStore:       newCatalogAddressRefStore(catalogAddressRefStoreConfig(config)),
+		chainMetadataStore:    newCatalogChainMetadataStore(catalogChainMetadataStoreConfig(config)),
+		contractMetadataStore: newCatalogContractMetadataStore(catalogContractMetadataStoreConfig(config)),
+		envMetadataStore:      newCatalogEnvMetadataStore(catalogEnvMetadataStoreConfig(config)),
 	}
 }
 
-func (s *CatalogDataStore) Addresses() datastore.MutableAddressRefStore {
-	return s.AddressRefStore
+func (s *catalogDataStore) Addresses() datastore.MutableRefStoreV2[datastore.AddressRefKey, datastore.AddressRef] {
+	return s.addressRefStore
 }
 
-func (s *CatalogDataStore) ChainMetadata() datastore.MutableChainMetadataStore {
-	return s.ChainMetadataStore
+func (s *catalogDataStore) ChainMetadata() datastore.MutableStoreV2[datastore.ChainMetadataKey, datastore.ChainMetadata] {
+	return s.chainMetadataStore
 }
 
-func (s *CatalogDataStore) ContractMetadata() datastore.MutableContractMetadataStore {
-	return s.ContractMetadataStore
+func (s *catalogDataStore) ContractMetadata() datastore.MutableStoreV2[datastore.ContractMetadataKey, datastore.ContractMetadata] {
+	return s.contractMetadataStore
 }
 
-func (s *CatalogDataStore) EnvMetadata() datastore.MutableEnvMetadataStore {
-	return s.EnvMetadataStore
+func (s *catalogDataStore) EnvMetadata() datastore.MutableUnaryStoreV2[datastore.EnvMetadata] {
+	return s.envMetadataStore
 }
