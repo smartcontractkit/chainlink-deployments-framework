@@ -1,5 +1,15 @@
 # chainlink-deployments-framework
 
+## 0.18.0
+
+### Minor Changes
+
+- [#230](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/230) [`149c03f`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/149c03f6028011d5dd7cd40f739fa89f32c4462d) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - introduce Catalog GRPC client
+
+### Patch Changes
+
+- [#229](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/229) [`4ea8e79`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/4ea8e790a12017348783df9079c3c86fd72664fd) Thanks [@giogam](https://github.com/giogam)! - Catalog Datastore #2
+
 ## 0.17.3
 
 ### Patch Changes
