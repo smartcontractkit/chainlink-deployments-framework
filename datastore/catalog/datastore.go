@@ -13,33 +13,33 @@ type CatalogDataStoreConfig struct {
 var _ datastore.CatalogStore = &CatalogDataStore{}
 
 type CatalogDataStore struct {
-	AddressRefStore       *CatalogAddressRefStore
-	ChainMetadataStore    *CatalogChainMetadataStore
-	ContractMetadataStore *CatalogContractMetadataStore
-	EnvMetadataStore      *CatalogEnvMetadataStore
+	addressRefStore       *CatalogAddressRefStore
+	chainMetadataStore    *CatalogChainMetadataStore
+	contractMetadataStore *CatalogContractMetadataStore
+	envMetadataStore      *CatalogEnvMetadataStore
 }
 
 func NewCatalogDataStore(config CatalogDataStoreConfig) *CatalogDataStore {
 	return &CatalogDataStore{
-		AddressRefStore:       NewCatalogAddressRefStore(CatalogAddressRefStoreConfig(config)),
-		ChainMetadataStore:    NewCatalogChainMetadataStore(CatalogChainMetadataStoreConfig(config)),
-		ContractMetadataStore: NewCatalogContractMetadataStore(CatalogContractMetadataStoreConfig(config)),
-		EnvMetadataStore:      NewCatalogEnvMetadataStore(CatalogEnvMetadataStoreConfig(config)),
+		addressRefStore:       NewCatalogAddressRefStore(CatalogAddressRefStoreConfig(config)),
+		chainMetadataStore:    NewCatalogChainMetadataStore(CatalogChainMetadataStoreConfig(config)),
+		contractMetadataStore: NewCatalogContractMetadataStore(CatalogContractMetadataStoreConfig(config)),
+		envMetadataStore:      NewCatalogEnvMetadataStore(CatalogEnvMetadataStoreConfig(config)),
 	}
 }
 
 func (s *CatalogDataStore) Addresses() datastore.MutableRefStoreV2[datastore.AddressRefKey, datastore.AddressRef] {
-	return s.AddressRefStore
+	return s.addressRefStore
 }
 
 func (s *CatalogDataStore) ChainMetadata() datastore.MutableStoreV2[datastore.ChainMetadataKey, datastore.ChainMetadata] {
-	return s.ChainMetadataStore
+	return s.chainMetadataStore
 }
 
 func (s *CatalogDataStore) ContractMetadata() datastore.MutableStoreV2[datastore.ContractMetadataKey, datastore.ContractMetadata] {
-	return s.ContractMetadataStore
+	return s.contractMetadataStore
 }
 
 func (s *CatalogDataStore) EnvMetadata() datastore.MutableUnaryStoreV2[datastore.EnvMetadata] {
-	return s.EnvMetadataStore
+	return s.envMetadataStore
 }

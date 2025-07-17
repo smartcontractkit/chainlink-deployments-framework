@@ -22,10 +22,10 @@ func TestNewCatalogDataStore(t *testing.T) {
 	require.NotNil(t, dataStore)
 
 	// Verify all stores are initialized
-	require.NotNil(t, dataStore.AddressRefStore)
-	require.NotNil(t, dataStore.ChainMetadataStore)
-	require.NotNil(t, dataStore.ContractMetadataStore)
-	require.NotNil(t, dataStore.EnvMetadataStore)
+	require.NotNil(t, dataStore.addressRefStore)
+	require.NotNil(t, dataStore.chainMetadataStore)
+	require.NotNil(t, dataStore.contractMetadataStore)
+	require.NotNil(t, dataStore.envMetadataStore)
 }
 
 func TestCatalogDataStore_ImplementsCatalogInterface(t *testing.T) {
@@ -71,41 +71,12 @@ func TestCatalogDataStore_StoreInterfaces(t *testing.T) {
 	ds := NewCatalogDataStore(config)
 
 	// Verify each store implements the correct mutable interface
-	_ = ds.Addresses()
-	_ = ds.ChainMetadata()
-	_ = ds.ContractMetadata()
-	_ = ds.EnvMetadata()
-}
-
-func TestCatalogDataStoreConfig_ClientPassthrough(t *testing.T) {
-	t.Parallel()
-	config := CatalogDataStoreConfig{
-		Domain:      "test-domain",
-		Environment: "test-env",
-		Client:      CatalogClient{}, // Zero value for unit tests
-	}
-
-	ds := NewCatalogDataStore(config)
-
-	// Verify that the client is properly passed through to all stores
-	// We can't directly access the client field since it's private,
-	// but we can verify the stores are configured correctly by checking
-	// their domain and environment values match what we passed in
-
-	// Test that stores have the correct configuration
-	addressStore := ds.AddressRefStore
-	require.NotNil(t, addressStore)
-
-	chainStore := ds.ChainMetadataStore
-	require.NotNil(t, chainStore)
-
-	contractStore := ds.ContractMetadataStore
-	require.NotNil(t, contractStore)
-
-	envStore := ds.EnvMetadataStore
-	require.NotNil(t, envStore)
-
-	// Since we can't access private fields directly, we'll just verify
-	// that the stores were created without panicking, which indicates
-	// the client was properly passed through
+	// nolint:staticcheck
+	var _ datastore.MutableRefStoreV2[datastore.AddressRefKey, datastore.AddressRef] = ds.Addresses()
+	// nolint:staticcheck
+	var _ datastore.MutableStoreV2[datastore.ChainMetadataKey, datastore.ChainMetadata] = ds.ChainMetadata()
+	// nolint:staticcheck
+	var _ datastore.MutableStoreV2[datastore.ContractMetadataKey, datastore.ContractMetadata] = ds.ContractMetadata()
+	// nolint:staticcheck
+	var _ datastore.MutableUnaryStoreV2[datastore.EnvMetadata] = ds.EnvMetadata()
 }
