@@ -1,6 +1,6 @@
 {
   "name": "chainlink-deployments-framework",
-  "version": "0.17.3",
+  "version": "0.18.0",
   "description": "A deployment framework for chainlink-deployments ",
   "private": true,
   "scripts": {
