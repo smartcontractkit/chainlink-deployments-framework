@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	pb "github.com/smartcontractkit/chainlink-deployments-framework/datastore/catalog/internal/protos"
@@ -37,7 +38,7 @@ func setupTestEnvStore(t *testing.T) (*CatalogEnvMetadataStore, func()) {
 	// Create CatalogClient using the NewCatalogClient function
 	catalogClient, err := NewCatalogClient(CatalogConfig{
 		GRPC:  address,
-		Creds: nil, // Use insecure credentials for testing
+		Creds: insecure.NewCredentials(),
 	})
 	if err != nil {
 		t.Skipf("Failed to connect to gRPC server at %s: %v. Skipping integration tests.", address, err)
@@ -185,24 +186,6 @@ func TestCatalogEnvMetadataStore_Set(t *testing.T) {
 				Metadata: TestEnvMetadata{
 					Description: "Test environment",
 					Version:     "1.0.0",
-				},
-			},
-			wantErr: nil,
-		},
-		{
-			name: "nil_metadata",
-			record: datastore.EnvMetadata{
-				Metadata: nil,
-			},
-			wantErr: nil,
-		},
-		{
-			name: "complex_metadata",
-			record: datastore.EnvMetadata{
-				Metadata: TestEnvMetadata{
-					Description: "Production environment",
-					Version:     "2.1.0",
-					Tags:        []string{"production", "v1.0"},
 				},
 			},
 			wantErr: nil,

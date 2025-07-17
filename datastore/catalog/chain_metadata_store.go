@@ -239,19 +239,6 @@ func (s *CatalogChainMetadataStore) Add(ctx context.Context, record datastore.Ch
 }
 
 func (s *CatalogChainMetadataStore) Upsert(ctx context.Context, key datastore.ChainMetadataKey, metadata any, opts ...datastore.UpdateOption) error {
-	return s.performUpsertOrUpdate(ctx, key, metadata, pb.EditSemantics_SEMANTICS_UPSERT, opts...)
-}
-
-func (s *CatalogChainMetadataStore) Update(ctx context.Context, key datastore.ChainMetadataKey, metadata any, opts ...datastore.UpdateOption) error {
-	return s.performUpsertOrUpdate(ctx, key, metadata, pb.EditSemantics_SEMANTICS_UPDATE, opts...)
-}
-
-func (s *CatalogChainMetadataStore) Delete(ctx context.Context, key datastore.ChainMetadataKey) error {
-	return errors.New("delete operation not supported for chain metadata store")
-}
-
-// performUpsertOrUpdate handles Upsert and Update operations with metadata updaters
-func (s *CatalogChainMetadataStore) performUpsertOrUpdate(ctx context.Context, key datastore.ChainMetadataKey, metadata any, semantics pb.EditSemantics, opts ...datastore.UpdateOption) error {
 	// Build options with defaults
 	options := &datastore.UpdateOptions{
 		Updater: datastore.IdentityUpdaterF, // default updater
@@ -262,16 +249,23 @@ func (s *CatalogChainMetadataStore) performUpsertOrUpdate(ctx context.Context, k
 		opt(options)
 	}
 
-	// Get current record for update operations
-	var currentMetadata any
-	if currentRecord, err := s.Get(ctx, key); err == nil {
-		currentMetadata = currentRecord.Metadata
-	} else if !errors.Is(err, datastore.ErrChainMetadataNotFound) {
-		return fmt.Errorf("failed to get current record for update: %w", err)
+	// Get current record for merging
+	currentRecord, err := s.Get(ctx, key)
+	if err != nil {
+		// If record doesn't exist, just insert the new record directly
+		if errors.Is(err, datastore.ErrChainMetadataNotFound) {
+			record := datastore.ChainMetadata{
+				ChainSelector: key.ChainSelector(),
+				Metadata:      metadata,
+			}
+			return s.editRecord(ctx, record, pb.EditSemantics_SEMANTICS_INSERT)
+		}
+
+		return fmt.Errorf("failed to get current record for upsert: %w", err)
 	}
 
-	// Apply the updater (either default or custom)
-	finalMetadata, updateErr := options.Updater(currentMetadata, metadata)
+	// Record exists, apply the updater to merge with existing metadata
+	finalMetadata, updateErr := options.Updater(currentRecord.Metadata, metadata)
 	if updateErr != nil {
 		return fmt.Errorf("failed to apply metadata updater: %w", updateErr)
 	}
@@ -282,7 +276,46 @@ func (s *CatalogChainMetadataStore) performUpsertOrUpdate(ctx context.Context, k
 		Metadata:      finalMetadata,
 	}
 
-	return s.editRecord(ctx, record, semantics)
+	return s.editRecord(ctx, record, pb.EditSemantics_SEMANTICS_UPSERT)
+}
+
+func (s *CatalogChainMetadataStore) Update(ctx context.Context, key datastore.ChainMetadataKey, metadata any, opts ...datastore.UpdateOption) error {
+	// Build options with defaults
+	options := &datastore.UpdateOptions{
+		Updater: datastore.IdentityUpdaterF, // default updater
+	}
+
+	// Apply user-provided options
+	for _, opt := range opts {
+		opt(options)
+	}
+
+	// Get current record - it must exist for update
+	currentRecord, err := s.Get(ctx, key)
+	if err != nil {
+		if errors.Is(err, datastore.ErrChainMetadataNotFound) {
+			return datastore.ErrChainMetadataNotFound
+		}
+		return fmt.Errorf("failed to get current record for update: %w", err)
+	}
+
+	// Apply the updater (either default or custom)
+	finalMetadata, updateErr := options.Updater(currentRecord.Metadata, metadata)
+	if updateErr != nil {
+		return fmt.Errorf("failed to apply metadata updater: %w", updateErr)
+	}
+
+	// Create record with final metadata
+	record := datastore.ChainMetadata{
+		ChainSelector: key.ChainSelector(),
+		Metadata:      finalMetadata,
+	}
+
+	return s.editRecord(ctx, record, pb.EditSemantics_SEMANTICS_UPDATE)
+}
+
+func (s *CatalogChainMetadataStore) Delete(ctx context.Context, key datastore.ChainMetadataKey) error {
+	return errors.New("delete operation not supported for catalog chain metadata store")
 }
 
 // editRecord is a helper method that handles Add, Upsert, and Update operations

@@ -169,28 +169,40 @@ func (s *CatalogEnvMetadataStore) Set(ctx context.Context, metadata any, opts ..
 		opt(options)
 	}
 
+	// Get current record for merging
 	currentRecord, err := s.Get(ctx)
 	if err != nil {
-		if !errors.Is(err, datastore.ErrEnvMetadataNotSet) {
-			return fmt.Errorf("failed to get current record for version sync: %w", err)
+		if errors.Is(err, datastore.ErrEnvMetadataNotSet) {
+			// Record doesn't exist, just insert the new record directly
+			record := datastore.EnvMetadata{
+				Metadata: metadata,
+			}
+			return s.editRecord(ctx, record)
 		}
+
+		return fmt.Errorf("failed to get current record for version sync: %w", err)
 	}
 
-	// Apply the updater (either default or custom)
+	// Record exists, apply the updater to merge with existing metadata
 	finalMetadata, updateErr := options.Updater(currentRecord.Metadata, metadata)
 	if updateErr != nil {
 		return fmt.Errorf("failed to apply metadata updater: %w", updateErr)
 	}
 
+	// Create record with final metadata
+	record := datastore.EnvMetadata{
+		Metadata: finalMetadata,
+	}
+
+	return s.editRecord(ctx, record)
+}
+
+// editRecord is a helper method that handles the edit operation
+func (s *CatalogEnvMetadataStore) editRecord(ctx context.Context, record datastore.EnvMetadata) error {
 	// Get the current version for this record
 	version := s.getVersion()
 	// Create the protobuf record
-	protoRecord := s.envMetadataToProto(
-		datastore.EnvMetadata{
-			Metadata: finalMetadata,
-		},
-		version,
-	)
+	protoRecord := s.envMetadataToProto(record, version)
 
 	// Send edit request with UPSERT semantics (since Set should always work)
 	stream, err := s.client.DataAccess(ctx)
@@ -200,6 +212,7 @@ func (s *CatalogEnvMetadataStore) Set(ctx context.Context, metadata any, opts ..
 	defer func() {
 		_ = stream.CloseSend()
 	}()
+
 	editReq := &pb.DataAccessRequest{
 		Operation: &pb.DataAccessRequest_EnvironmentMetadataEditRequest{
 			EnvironmentMetadataEditRequest: &pb.EnvironmentMetadataEditRequest{
@@ -212,13 +225,13 @@ func (s *CatalogEnvMetadataStore) Set(ctx context.Context, metadata any, opts ..
 	if sendErr := stream.Send(editReq); sendErr != nil {
 		return fmt.Errorf("failed to send edit request: %w", sendErr)
 	}
+
 	// Receive response
 	resp, err := stream.Recv()
 	if err != nil {
 		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 			return fmt.Errorf("request canceled or deadline exceeded: %w", err)
 		}
-
 		return fmt.Errorf("failed to receive response: %w", err)
 	}
 
@@ -229,7 +242,6 @@ func (s *CatalogEnvMetadataStore) Set(ctx context.Context, metadata any, opts ..
 		if strings.Contains(errorMsg, "incorrect row version") {
 			return datastore.ErrEnvMetadataStale
 		}
-
 		return fmt.Errorf("edit request failed: %s", resp.Status.Error)
 	}
 

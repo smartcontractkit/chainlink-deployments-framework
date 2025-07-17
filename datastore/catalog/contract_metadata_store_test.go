@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	pb "github.com/smartcontractkit/chainlink-deployments-framework/datastore/catalog/internal/protos"
@@ -51,7 +52,7 @@ func setupTestContractStore(t *testing.T) (*CatalogContractMetadataStore, func()
 	// Create CatalogClient using the NewCatalogClient function
 	catalogClient, err := NewCatalogClient(CatalogConfig{
 		GRPC:  address,
-		Creds: nil, // Use insecure credentials for testing
+		Creds: insecure.NewCredentials(),
 	})
 	if err != nil {
 		t.Skipf("Failed to connect to gRPC server at %s: %v. Skipping integration tests.", address, err)

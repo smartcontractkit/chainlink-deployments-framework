@@ -5,9 +5,9 @@ import (
 )
 
 type CatalogDataStoreConfig struct {
-	Domain      string        `json:"domain"`
-	Environment string        `json:"environment"`
-	Client      CatalogClient `json:"-"`
+	Domain      string
+	Environment string
+	Client      CatalogClient
 }
 
 var _ datastore.CatalogStore = &CatalogDataStore{}
@@ -17,16 +17,10 @@ type CatalogDataStore struct {
 	ChainMetadataStore    *CatalogChainMetadataStore
 	ContractMetadataStore *CatalogContractMetadataStore
 	EnvMetadataStore      *CatalogEnvMetadataStore
-
-	domain      string
-	environment string
 }
 
 func NewCatalogDataStore(config CatalogDataStoreConfig) *CatalogDataStore {
 	return &CatalogDataStore{
-		domain:      config.Domain,
-		environment: config.Environment,
-
 		AddressRefStore:       NewCatalogAddressRefStore(CatalogAddressRefStoreConfig(config)),
 		ChainMetadataStore:    NewCatalogChainMetadataStore(CatalogChainMetadataStoreConfig(config)),
 		ContractMetadataStore: NewCatalogContractMetadataStore(CatalogContractMetadataStoreConfig(config)),

@@ -20,8 +20,6 @@ func TestNewCatalogDataStore(t *testing.T) {
 
 	// Verify the datastore is created
 	require.NotNil(t, dataStore)
-	require.Equal(t, "test-domain", dataStore.domain)
-	require.Equal(t, "test-env", dataStore.environment)
 
 	// Verify all stores are initialized
 	require.NotNil(t, dataStore.AddressRefStore)

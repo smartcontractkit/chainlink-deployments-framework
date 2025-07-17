@@ -243,39 +243,36 @@ func (s *CatalogContractMetadataStore) Add(ctx context.Context, record datastore
 }
 
 func (s *CatalogContractMetadataStore) Upsert(ctx context.Context, key datastore.ContractMetadataKey, metadata any, opts ...datastore.UpdateOption) error {
-	return s.performUpsertOrUpdate(ctx, key, metadata, pb.EditSemantics_SEMANTICS_UPSERT, opts...)
-}
-
-func (s *CatalogContractMetadataStore) Update(ctx context.Context, key datastore.ContractMetadataKey, metadata any, opts ...datastore.UpdateOption) error {
-	return s.performUpsertOrUpdate(ctx, key, metadata, pb.EditSemantics_SEMANTICS_UPDATE, opts...)
-}
-
-func (s *CatalogContractMetadataStore) Delete(ctx context.Context, key datastore.ContractMetadataKey) error {
-	return errors.New("delete operation not supported for contract metadata store")
-}
-
-// performUpsertOrUpdate handles Upsert and Update operations with metadata updaters
-func (s *CatalogContractMetadataStore) performUpsertOrUpdate(ctx context.Context, key datastore.ContractMetadataKey, metadata any, semantics pb.EditSemantics, opts ...datastore.UpdateOption) error {
-	// Build options
+	// Build options with defaults
 	options := &datastore.UpdateOptions{
-		Updater: datastore.IdentityUpdaterF,
+		Updater: datastore.IdentityUpdaterF, // default updater
 	}
+
+	// Apply user-provided options
 	for _, opt := range opts {
 		opt(options)
 	}
 
-	// Get current record for update operations
-	var currentMetadata any
-	if currentRecord, err := s.Get(ctx, key); err == nil {
-		currentMetadata = currentRecord.Metadata
-	} else if !errors.Is(err, datastore.ErrContractMetadataNotFound) {
-		return fmt.Errorf("failed to get current record for update: %w", err)
+	// Get current record for merging
+	currentRecord, err := s.Get(ctx, key)
+	if err != nil {
+		// If record doesn't exist, just insert the new record directly
+		if errors.Is(err, datastore.ErrContractMetadataNotFound) {
+			record := datastore.ContractMetadata{
+				Address:       key.Address(),
+				ChainSelector: key.ChainSelector(),
+				Metadata:      metadata,
+			}
+			return s.editRecord(ctx, record, pb.EditSemantics_SEMANTICS_INSERT)
+		}
+
+		return fmt.Errorf("failed to get current record for upsert: %w", err)
 	}
 
-	// Apply the updater
-	finalMetadata, err := options.Updater(currentMetadata, metadata)
-	if err != nil {
-		return fmt.Errorf("failed to apply metadata updater: %w", err)
+	// Record exists, apply the updater to merge with existing metadata
+	finalMetadata, updateErr := options.Updater(currentRecord.Metadata, metadata)
+	if updateErr != nil {
+		return fmt.Errorf("failed to apply metadata updater: %w", updateErr)
 	}
 
 	// Create record with final metadata
@@ -285,7 +282,48 @@ func (s *CatalogContractMetadataStore) performUpsertOrUpdate(ctx context.Context
 		Metadata:      finalMetadata,
 	}
 
-	return s.editRecord(ctx, record, semantics)
+	return s.editRecord(ctx, record, pb.EditSemantics_SEMANTICS_UPSERT)
+}
+
+func (s *CatalogContractMetadataStore) Update(ctx context.Context, key datastore.ContractMetadataKey, metadata any, opts ...datastore.UpdateOption) error {
+	// Build options with defaults
+	options := &datastore.UpdateOptions{
+		Updater: datastore.IdentityUpdaterF, // default updater
+	}
+
+	// Apply user-provided options
+	for _, opt := range opts {
+		opt(options)
+	}
+
+	// Get current record - it must exist for update
+	currentRecord, err := s.Get(ctx, key)
+	if err != nil {
+		if errors.Is(err, datastore.ErrContractMetadataNotFound) {
+			return datastore.ErrContractMetadataNotFound
+		}
+
+		return fmt.Errorf("failed to get current record for update: %w", err)
+	}
+
+	// Apply the updater (either default or custom)
+	finalMetadata, updateErr := options.Updater(currentRecord.Metadata, metadata)
+	if updateErr != nil {
+		return fmt.Errorf("failed to apply metadata updater: %w", updateErr)
+	}
+
+	// Create record with final metadata
+	record := datastore.ContractMetadata{
+		Address:       key.Address(),
+		ChainSelector: key.ChainSelector(),
+		Metadata:      finalMetadata,
+	}
+
+	return s.editRecord(ctx, record, pb.EditSemantics_SEMANTICS_UPDATE)
+}
+
+func (s *CatalogContractMetadataStore) Delete(ctx context.Context, key datastore.ContractMetadataKey) error {
+	return errors.New("delete operation not supported for catalog contract metadata store")
 }
 
 // editRecord is a helper method that handles Add, Upsert, and Update operations
