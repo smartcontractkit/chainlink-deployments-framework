@@ -41,7 +41,7 @@ func newTestChainMetadata(name string) TestChainMetadata {
 }
 
 // setupTestChainStore creates a real gRPC client connection to a local service
-func setupTestChainStore(t *testing.T) (*CatalogChainMetadataStore, func()) {
+func setupTestChainStore(t *testing.T) (*catalogChainMetadataStore, func()) {
 	t.Helper()
 	// Get gRPC address from environment or use default
 	address := os.Getenv("CATALOG_GRPC_ADDRESS")
@@ -71,7 +71,7 @@ func setupTestChainStore(t *testing.T) (*CatalogChainMetadataStore, func()) {
 	_ = stream.CloseSend() // Close the test stream
 
 	// Create store
-	store := NewCatalogChainMetadataStore(CatalogChainMetadataStoreConfig{
+	store := newCatalogChainMetadataStore(catalogChainMetadataStoreConfig{
 		Domain:      "test-domain",
 		Environment: "catalog_testing",
 		Client:      catalogClient,
@@ -108,13 +108,13 @@ func TestCatalogChainMetadataStore_Get(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name        string
-		setup       func(store *CatalogChainMetadataStore) datastore.ChainMetadataKey
+		setup       func(store *catalogChainMetadataStore) datastore.ChainMetadataKey
 		expectError bool
 		errorType   error
 	}{
 		{
 			name: "not_found",
-			setup: func(store *CatalogChainMetadataStore) datastore.ChainMetadataKey {
+			setup: func(store *catalogChainMetadataStore) datastore.ChainMetadataKey {
 				// Use a unique key that shouldn't exist
 				return datastore.NewChainMetadataKey(99999999)
 			},
@@ -123,7 +123,7 @@ func TestCatalogChainMetadataStore_Get(t *testing.T) {
 		},
 		{
 			name: "success",
-			setup: func(store *CatalogChainMetadataStore) datastore.ChainMetadataKey {
+			setup: func(store *catalogChainMetadataStore) datastore.ChainMetadataKey {
 				// Create and add a record first
 				metadata := newRandomChainMetadata()
 				err := store.Add(context.Background(), metadata)
@@ -166,20 +166,20 @@ func TestCatalogChainMetadataStore_Add(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name        string
-		setup       func(store *CatalogChainMetadataStore) datastore.ChainMetadata
+		setup       func(store *catalogChainMetadataStore) datastore.ChainMetadata
 		expectError bool
 		errorCheck  func(error) bool
 	}{
 		{
 			name: "success",
-			setup: func(store *CatalogChainMetadataStore) datastore.ChainMetadata {
+			setup: func(store *catalogChainMetadataStore) datastore.ChainMetadata {
 				return newRandomChainMetadata()
 			},
 			expectError: false,
 		},
 		{
 			name: "duplicate_error",
-			setup: func(store *CatalogChainMetadataStore) datastore.ChainMetadata {
+			setup: func(store *catalogChainMetadataStore) datastore.ChainMetadata {
 				// Create and add a record first
 				metadata := newRandomChainMetadata()
 				err := store.Add(context.Background(), metadata)
@@ -231,14 +231,14 @@ func TestCatalogChainMetadataStore_Update(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name        string
-		setup       func(store *CatalogChainMetadataStore) datastore.ChainMetadata
+		setup       func(store *catalogChainMetadataStore) datastore.ChainMetadata
 		expectError bool
 		errorType   error
-		verify      func(t *testing.T, store *CatalogChainMetadataStore, metadata datastore.ChainMetadata)
+		verify      func(t *testing.T, store *catalogChainMetadataStore, metadata datastore.ChainMetadata)
 	}{
 		{
 			name: "success",
-			setup: func(store *CatalogChainMetadataStore) datastore.ChainMetadata {
+			setup: func(store *catalogChainMetadataStore) datastore.ChainMetadata {
 				// Create and add chain metadata
 				metadata := newRandomChainMetadata()
 				err := store.Add(context.Background(), metadata)
@@ -258,7 +258,7 @@ func TestCatalogChainMetadataStore_Update(t *testing.T) {
 				return fetchedMetadata
 			},
 			expectError: false,
-			verify: func(t *testing.T, store *CatalogChainMetadataStore, metadata datastore.ChainMetadata) {
+			verify: func(t *testing.T, store *catalogChainMetadataStore, metadata datastore.ChainMetadata) {
 				t.Helper()
 				// Verify the updated values
 				retrieved, err := store.Get(context.Background(), metadata.Key())
@@ -272,7 +272,7 @@ func TestCatalogChainMetadataStore_Update(t *testing.T) {
 		},
 		{
 			name: "not_found",
-			setup: func(store *CatalogChainMetadataStore) datastore.ChainMetadata {
+			setup: func(store *catalogChainMetadataStore) datastore.ChainMetadata {
 				// Try to update a record that doesn't exist
 				return newRandomChainMetadata()
 			},
@@ -590,19 +590,19 @@ func TestCatalogChainMetadataStore_Upsert(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name        string
-		setup       func(store *CatalogChainMetadataStore) datastore.ChainMetadata
+		setup       func(store *catalogChainMetadataStore) datastore.ChainMetadata
 		expectError bool
 		errorType   error
-		verify      func(t *testing.T, store *CatalogChainMetadataStore, original datastore.ChainMetadata)
+		verify      func(t *testing.T, store *catalogChainMetadataStore, original datastore.ChainMetadata)
 	}{
 		{
 			name: "insert_new_record",
-			setup: func(store *CatalogChainMetadataStore) datastore.ChainMetadata {
+			setup: func(store *catalogChainMetadataStore) datastore.ChainMetadata {
 				// Create a unique chain metadata for this test
 				return newRandomChainMetadata()
 			},
 			expectError: false,
-			verify: func(t *testing.T, store *CatalogChainMetadataStore, original datastore.ChainMetadata) {
+			verify: func(t *testing.T, store *catalogChainMetadataStore, original datastore.ChainMetadata) {
 				t.Helper()
 				// Verify we can get it back
 				key := datastore.NewChainMetadataKey(original.ChainSelector)
@@ -616,7 +616,7 @@ func TestCatalogChainMetadataStore_Upsert(t *testing.T) {
 		},
 		{
 			name: "update_existing_record",
-			setup: func(store *CatalogChainMetadataStore) datastore.ChainMetadata {
+			setup: func(store *catalogChainMetadataStore) datastore.ChainMetadata {
 				// Create and add chain metadata
 				metadata := newRandomChainMetadata()
 				err := store.Add(context.Background(), metadata)
@@ -632,7 +632,7 @@ func TestCatalogChainMetadataStore_Upsert(t *testing.T) {
 				return metadata
 			},
 			expectError: false,
-			verify: func(t *testing.T, store *CatalogChainMetadataStore, modified datastore.ChainMetadata) {
+			verify: func(t *testing.T, store *catalogChainMetadataStore, modified datastore.ChainMetadata) {
 				t.Helper()
 				// Verify the updated values
 				key := datastore.NewChainMetadataKey(modified.ChainSelector)
@@ -747,7 +747,7 @@ func TestCatalogChainMetadataStore_FetchAndFilter(t *testing.T) {
 	tests := []struct {
 		name         string
 		operation    string
-		setup        func(store *CatalogChainMetadataStore) (datastore.ChainMetadata, datastore.ChainMetadata)
+		setup        func(store *catalogChainMetadataStore) (datastore.ChainMetadata, datastore.ChainMetadata)
 		createFilter func(metadata1, metadata2 datastore.ChainMetadata) datastore.FilterFunc[datastore.ChainMetadataKey, datastore.ChainMetadata]
 		minExpected  int
 		verify       func(t *testing.T, results []datastore.ChainMetadata, metadata1, metadata2 datastore.ChainMetadata)
@@ -755,7 +755,7 @@ func TestCatalogChainMetadataStore_FetchAndFilter(t *testing.T) {
 		{
 			name:      "fetch_all",
 			operation: "fetch",
-			setup: func(store *CatalogChainMetadataStore) (datastore.ChainMetadata, datastore.ChainMetadata) {
+			setup: func(store *catalogChainMetadataStore) (datastore.ChainMetadata, datastore.ChainMetadata) {
 				// Setup test data with unique chain selectors
 				metadata1 := newRandomChainMetadata()
 				chainSelector1 := generateRandomChainSelector()
@@ -797,7 +797,7 @@ func TestCatalogChainMetadataStore_FetchAndFilter(t *testing.T) {
 		{
 			name:      "filter_by_chain_selector",
 			operation: "filter",
-			setup: func(store *CatalogChainMetadataStore) (datastore.ChainMetadata, datastore.ChainMetadata) {
+			setup: func(store *catalogChainMetadataStore) (datastore.ChainMetadata, datastore.ChainMetadata) {
 				// Setup test data with unique chain selectors
 				metadata1 := newRandomChainMetadata()
 				chainSelector1 := generateRandomChainSelector()
@@ -957,11 +957,11 @@ func TestCatalogChainMetadataStore_ConversionHelpers(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name string
-		test func(t *testing.T, store *CatalogChainMetadataStore)
+		test func(t *testing.T, store *catalogChainMetadataStore)
 	}{
 		{
 			name: "keyToFilter",
-			test: func(t *testing.T, store *CatalogChainMetadataStore) {
+			test: func(t *testing.T, store *catalogChainMetadataStore) {
 				t.Helper()
 				key := datastore.NewChainMetadataKey(12345)
 
@@ -974,7 +974,7 @@ func TestCatalogChainMetadataStore_ConversionHelpers(t *testing.T) {
 		},
 		{
 			name: "protoToChainMetadata_success",
-			test: func(t *testing.T, store *CatalogChainMetadataStore) {
+			test: func(t *testing.T, store *catalogChainMetadataStore) {
 				t.Helper()
 				protoMetadata := &pb.ChainMetadata{
 					Domain:        "test-domain",
@@ -999,7 +999,7 @@ func TestCatalogChainMetadataStore_ConversionHelpers(t *testing.T) {
 		},
 		{
 			name: "protoToChainMetadata_invalid_json",
-			test: func(t *testing.T, store *CatalogChainMetadataStore) {
+			test: func(t *testing.T, store *catalogChainMetadataStore) {
 				t.Helper()
 				protoMetadata := &pb.ChainMetadata{
 					Domain:        "test-domain",
@@ -1017,7 +1017,7 @@ func TestCatalogChainMetadataStore_ConversionHelpers(t *testing.T) {
 		},
 		{
 			name: "chainMetadataToProto",
-			test: func(t *testing.T, store *CatalogChainMetadataStore) {
+			test: func(t *testing.T, store *catalogChainMetadataStore) {
 				t.Helper()
 				metadata := newRandomChainMetadata()
 
@@ -1036,7 +1036,7 @@ func TestCatalogChainMetadataStore_ConversionHelpers(t *testing.T) {
 		},
 		{
 			name: "version_handling",
-			test: func(t *testing.T, store *CatalogChainMetadataStore) {
+			test: func(t *testing.T, store *catalogChainMetadataStore) {
 				t.Helper()
 				// Test protoToChainMetadata with version
 				protoMetadata := &pb.ChainMetadata{

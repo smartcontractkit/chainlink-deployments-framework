@@ -14,16 +14,16 @@ import (
 	pb "github.com/smartcontractkit/chainlink-deployments-framework/datastore/catalog/internal/protos"
 )
 
-type CatalogEnvMetadataStoreConfig struct {
+type catalogEnvMetadataStoreConfig struct {
 	Domain      string
 	Environment string
 	Client      CatalogClient
 }
 
-// Ensure CatalogEnvMetadataStore implements the V2 interface
-var _ datastore.MutableUnaryStoreV2[datastore.EnvMetadata] = &CatalogEnvMetadataStore{}
+// Ensure catalogEnvMetadataStore implements the V2 interface
+var _ datastore.MutableUnaryStoreV2[datastore.EnvMetadata] = &catalogEnvMetadataStore{}
 
-type CatalogEnvMetadataStore struct {
+type catalogEnvMetadataStore struct {
 	domain      string
 	environment string
 	client      CatalogClient
@@ -33,9 +33,9 @@ type CatalogEnvMetadataStore struct {
 	cachedVersion int32
 }
 
-// NewCatalogEnvMetadataStore creates a new CatalogEnvMetadataStore instance.
-func NewCatalogEnvMetadataStore(cfg CatalogEnvMetadataStoreConfig) *CatalogEnvMetadataStore {
-	return &CatalogEnvMetadataStore{
+// newCatalogEnvMetadataStore creates a new CatalogEnvMetadataStore instance.
+func newCatalogEnvMetadataStore(cfg catalogEnvMetadataStoreConfig) *catalogEnvMetadataStore {
+	return &catalogEnvMetadataStore{
 		domain:        cfg.Domain,
 		environment:   cfg.Environment,
 		client:        cfg.Client,
@@ -44,7 +44,7 @@ func NewCatalogEnvMetadataStore(cfg CatalogEnvMetadataStoreConfig) *CatalogEnvMe
 }
 
 // getVersion retrieves the cached version for the record, defaulting to 0 for new records
-func (s *CatalogEnvMetadataStore) getVersion() int32 {
+func (s *catalogEnvMetadataStore) getVersion() int32 {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -52,14 +52,14 @@ func (s *CatalogEnvMetadataStore) getVersion() int32 {
 }
 
 // setVersion updates the cached version for the record
-func (s *CatalogEnvMetadataStore) setVersion(version int32) {
+func (s *catalogEnvMetadataStore) setVersion(version int32) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.cachedVersion = version
 }
 
 // keyToFilter converts domain/environment to an EnvironmentMetadataKeyFilter for gRPC requests
-func (s *CatalogEnvMetadataStore) keyToFilter() *pb.EnvironmentMetadataKeyFilter {
+func (s *catalogEnvMetadataStore) keyToFilter() *pb.EnvironmentMetadataKeyFilter {
 	return &pb.EnvironmentMetadataKeyFilter{
 		Domain:      wrapperspb.String(s.domain),
 		Environment: wrapperspb.String(s.environment),
@@ -67,7 +67,7 @@ func (s *CatalogEnvMetadataStore) keyToFilter() *pb.EnvironmentMetadataKeyFilter
 }
 
 // protoToEnvMetadata converts a protobuf EnvironmentMetadata to a datastore EnvMetadata
-func (s *CatalogEnvMetadataStore) protoToEnvMetadata(protoRecord *pb.EnvironmentMetadata) (datastore.EnvMetadata, error) {
+func (s *catalogEnvMetadataStore) protoToEnvMetadata(protoRecord *pb.EnvironmentMetadata) (datastore.EnvMetadata, error) {
 	var metadata any
 	if protoRecord.Metadata != "" {
 		if err := json.Unmarshal([]byte(protoRecord.Metadata), &metadata); err != nil {
@@ -81,7 +81,7 @@ func (s *CatalogEnvMetadataStore) protoToEnvMetadata(protoRecord *pb.Environment
 }
 
 // envMetadataToProto converts a datastore EnvMetadata to a protobuf EnvironmentMetadata
-func (s *CatalogEnvMetadataStore) envMetadataToProto(record datastore.EnvMetadata, version int32) *pb.EnvironmentMetadata {
+func (s *catalogEnvMetadataStore) envMetadataToProto(record datastore.EnvMetadata, version int32) *pb.EnvironmentMetadata {
 	var metadataJSON string
 	if record.Metadata != nil {
 		if metadataBytes, err := json.Marshal(record.Metadata); err == nil {
@@ -100,7 +100,7 @@ func (s *CatalogEnvMetadataStore) envMetadataToProto(record datastore.EnvMetadat
 	}
 }
 
-func (s *CatalogEnvMetadataStore) Get(ctx context.Context) (datastore.EnvMetadata, error) {
+func (s *catalogEnvMetadataStore) Get(ctx context.Context) (datastore.EnvMetadata, error) {
 	stream, err := s.client.DataAccess(ctx)
 	if err != nil {
 		return datastore.EnvMetadata{}, fmt.Errorf("failed to create gRPC stream: %w", err)
@@ -158,7 +158,7 @@ func (s *CatalogEnvMetadataStore) Get(ctx context.Context) (datastore.EnvMetadat
 	return record, nil
 }
 
-func (s *CatalogEnvMetadataStore) Set(ctx context.Context, metadata any, opts ...datastore.UpdateOption) error {
+func (s *catalogEnvMetadataStore) Set(ctx context.Context, metadata any, opts ...datastore.UpdateOption) error {
 	// Build options with defaults
 	options := &datastore.UpdateOptions{
 		Updater: datastore.IdentityUpdaterF, // default updater
@@ -199,7 +199,7 @@ func (s *CatalogEnvMetadataStore) Set(ctx context.Context, metadata any, opts ..
 }
 
 // editRecord is a helper method that handles the edit operation
-func (s *CatalogEnvMetadataStore) editRecord(ctx context.Context, record datastore.EnvMetadata) error {
+func (s *catalogEnvMetadataStore) editRecord(ctx context.Context, record datastore.EnvMetadata) error {
 	// Get the current version for this record
 	version := s.getVersion()
 	// Create the protobuf record

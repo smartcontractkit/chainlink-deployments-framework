@@ -28,7 +28,7 @@ type TestEnvMetadata struct {
 }
 
 // setupTestEnvStore creates a test environment metadata store and gRPC connection
-func setupTestEnvStore(t *testing.T) (*CatalogEnvMetadataStore, func()) {
+func setupTestEnvStore(t *testing.T) (*catalogEnvMetadataStore, func()) {
 	t.Helper()
 	address := os.Getenv("CATALOG_GRPC_ADDRESS")
 	if address == "" {
@@ -59,7 +59,7 @@ func setupTestEnvStore(t *testing.T) (*CatalogEnvMetadataStore, func()) {
 	}
 
 	// Create store with a unique environment name per test to ensure isolation
-	store := NewCatalogEnvMetadataStore(CatalogEnvMetadataStoreConfig{
+	store := newCatalogEnvMetadataStore(catalogEnvMetadataStoreConfig{
 		Domain:      "test-domain",
 		Environment: "catalog_testing", // Use static environment name
 		Client:      catalogClient,
@@ -333,11 +333,11 @@ func TestCatalogEnvMetadataStore_ConversionHelpers(t *testing.T) {
 
 	tests := []struct {
 		name string
-		test func(t *testing.T, store *CatalogEnvMetadataStore)
+		test func(t *testing.T, store *catalogEnvMetadataStore)
 	}{
 		{
 			name: "keyToFilter",
-			test: func(t *testing.T, store *CatalogEnvMetadataStore) {
+			test: func(t *testing.T, store *catalogEnvMetadataStore) {
 				t.Helper()
 				filter := store.keyToFilter()
 				require.NotNil(t, filter, "keyToFilter returned nil")
@@ -347,7 +347,7 @@ func TestCatalogEnvMetadataStore_ConversionHelpers(t *testing.T) {
 		},
 		{
 			name: "protoToEnvMetadata_success",
-			test: func(t *testing.T, store *CatalogEnvMetadataStore) {
+			test: func(t *testing.T, store *catalogEnvMetadataStore) {
 				t.Helper()
 				protoRecord := &pb.EnvironmentMetadata{
 					Domain:      "test-domain",
@@ -368,7 +368,7 @@ func TestCatalogEnvMetadataStore_ConversionHelpers(t *testing.T) {
 		},
 		{
 			name: "protoToEnvMetadata_invalid_json",
-			test: func(t *testing.T, store *CatalogEnvMetadataStore) {
+			test: func(t *testing.T, store *catalogEnvMetadataStore) {
 				t.Helper()
 				protoRecord := &pb.EnvironmentMetadata{
 					Domain:      "test-domain",
@@ -383,7 +383,7 @@ func TestCatalogEnvMetadataStore_ConversionHelpers(t *testing.T) {
 		},
 		{
 			name: "envMetadataToProto",
-			test: func(t *testing.T, store *CatalogEnvMetadataStore) {
+			test: func(t *testing.T, store *catalogEnvMetadataStore) {
 				t.Helper()
 				record := datastore.EnvMetadata{
 					Metadata: TestEnvMetadata{
@@ -411,7 +411,7 @@ func TestCatalogEnvMetadataStore_ConversionHelpers(t *testing.T) {
 		},
 		{
 			name: "version_handling",
-			test: func(t *testing.T, store *CatalogEnvMetadataStore) {
+			test: func(t *testing.T, store *catalogEnvMetadataStore) {
 				t.Helper()
 				// Test getVersion and setVersion
 				initialVersion := store.getVersion()

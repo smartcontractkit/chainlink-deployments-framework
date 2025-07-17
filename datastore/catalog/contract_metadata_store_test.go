@@ -41,7 +41,7 @@ func newTestContractMetadata(name string) TestContractMetadata {
 }
 
 // setupTestContractStore creates a real gRPC client connection to a local service
-func setupTestContractStore(t *testing.T) (*CatalogContractMetadataStore, func()) {
+func setupTestContractStore(t *testing.T) (*catalogContractMetadataStore, func()) {
 	t.Helper()
 	// Get gRPC address from environment or use default
 	address := os.Getenv("CATALOG_GRPC_ADDRESS")
@@ -73,7 +73,7 @@ func setupTestContractStore(t *testing.T) (*CatalogContractMetadataStore, func()
 	}
 
 	// Create store
-	store := NewCatalogContractMetadataStore(CatalogContractMetadataStoreConfig{
+	store := newCatalogContractMetadataStore(catalogContractMetadataStoreConfig{
 		Domain:      "test-domain",
 		Environment: "catalog_testing",
 		Client:      catalogClient,
@@ -123,13 +123,13 @@ func TestCatalogContractMetadataStore_Get(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name        string
-		setup       func(store *CatalogContractMetadataStore) datastore.ContractMetadataKey
+		setup       func(store *catalogContractMetadataStore) datastore.ContractMetadataKey
 		expectError bool
 		errorType   error
 	}{
 		{
 			name: "not_found",
-			setup: func(store *CatalogContractMetadataStore) datastore.ContractMetadataKey {
+			setup: func(store *catalogContractMetadataStore) datastore.ContractMetadataKey {
 				// Use a unique key that shouldn't exist
 				return datastore.NewContractMetadataKey(99999999, "0xnonexistent1234567890abcdef1234567890ab")
 			},
@@ -138,7 +138,7 @@ func TestCatalogContractMetadataStore_Get(t *testing.T) {
 		},
 		{
 			name: "success",
-			setup: func(store *CatalogContractMetadataStore) datastore.ContractMetadataKey {
+			setup: func(store *catalogContractMetadataStore) datastore.ContractMetadataKey {
 				// Create and add a record first
 				metadata := newRandomContractMetadata()
 				err := store.Add(context.Background(), metadata)
@@ -182,20 +182,20 @@ func TestCatalogContractMetadataStore_Add(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name        string
-		setup       func(store *CatalogContractMetadataStore) datastore.ContractMetadata
+		setup       func(store *catalogContractMetadataStore) datastore.ContractMetadata
 		expectError bool
 		errorCheck  func(error) bool
 	}{
 		{
 			name: "success",
-			setup: func(store *CatalogContractMetadataStore) datastore.ContractMetadata {
+			setup: func(store *catalogContractMetadataStore) datastore.ContractMetadata {
 				return newRandomContractMetadata()
 			},
 			expectError: false,
 		},
 		{
 			name: "duplicate_error",
-			setup: func(store *CatalogContractMetadataStore) datastore.ContractMetadata {
+			setup: func(store *catalogContractMetadataStore) datastore.ContractMetadata {
 				// Create and add a record first
 				metadata := newRandomContractMetadata()
 				err := store.Add(context.Background(), metadata)
@@ -249,14 +249,14 @@ func TestCatalogContractMetadataStore_Update(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name        string
-		setup       func(store *CatalogContractMetadataStore) datastore.ContractMetadata
+		setup       func(store *catalogContractMetadataStore) datastore.ContractMetadata
 		expectError bool
 		errorType   error
-		verify      func(t *testing.T, store *CatalogContractMetadataStore, metadata datastore.ContractMetadata)
+		verify      func(t *testing.T, store *catalogContractMetadataStore, metadata datastore.ContractMetadata)
 	}{
 		{
 			name: "success",
-			setup: func(store *CatalogContractMetadataStore) datastore.ContractMetadata {
+			setup: func(store *catalogContractMetadataStore) datastore.ContractMetadata {
 				// Create and add contract metadata
 				metadata := newRandomContractMetadata()
 				err := store.Add(context.Background(), metadata)
@@ -276,7 +276,7 @@ func TestCatalogContractMetadataStore_Update(t *testing.T) {
 				return fetchedMetadata
 			},
 			expectError: false,
-			verify: func(t *testing.T, store *CatalogContractMetadataStore, metadata datastore.ContractMetadata) {
+			verify: func(t *testing.T, store *catalogContractMetadataStore, metadata datastore.ContractMetadata) {
 				t.Helper()
 				// Verify the updated values
 				key := datastore.NewContractMetadataKey(metadata.ChainSelector, metadata.Address)
@@ -291,7 +291,7 @@ func TestCatalogContractMetadataStore_Update(t *testing.T) {
 		},
 		{
 			name: "not_found",
-			setup: func(store *CatalogContractMetadataStore) datastore.ContractMetadata {
+			setup: func(store *catalogContractMetadataStore) datastore.ContractMetadata {
 				// Try to update a record that doesn't exist
 				return newRandomContractMetadata()
 			},
@@ -380,19 +380,19 @@ func TestCatalogContractMetadataStore_Upsert(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name        string
-		setup       func(store *CatalogContractMetadataStore) datastore.ContractMetadata
+		setup       func(store *catalogContractMetadataStore) datastore.ContractMetadata
 		expectError bool
 		errorType   error
-		verify      func(t *testing.T, store *CatalogContractMetadataStore, original datastore.ContractMetadata)
+		verify      func(t *testing.T, store *catalogContractMetadataStore, original datastore.ContractMetadata)
 	}{
 		{
 			name: "insert_new_record",
-			setup: func(store *CatalogContractMetadataStore) datastore.ContractMetadata {
+			setup: func(store *catalogContractMetadataStore) datastore.ContractMetadata {
 				// Create a unique contract metadata for this test
 				return newRandomContractMetadata()
 			},
 			expectError: false,
-			verify: func(t *testing.T, store *CatalogContractMetadataStore, original datastore.ContractMetadata) {
+			verify: func(t *testing.T, store *catalogContractMetadataStore, original datastore.ContractMetadata) {
 				t.Helper()
 				// Verify we can get it back
 				key := datastore.NewContractMetadataKey(original.ChainSelector, original.Address)
@@ -406,7 +406,7 @@ func TestCatalogContractMetadataStore_Upsert(t *testing.T) {
 		},
 		{
 			name: "update_existing_record",
-			setup: func(store *CatalogContractMetadataStore) datastore.ContractMetadata {
+			setup: func(store *catalogContractMetadataStore) datastore.ContractMetadata {
 				// Create and add contract metadata
 				metadata := newRandomContractMetadata()
 				err := store.Add(context.Background(), metadata)
@@ -422,7 +422,7 @@ func TestCatalogContractMetadataStore_Upsert(t *testing.T) {
 				return metadata
 			},
 			expectError: false,
-			verify: func(t *testing.T, store *CatalogContractMetadataStore, modified datastore.ContractMetadata) {
+			verify: func(t *testing.T, store *catalogContractMetadataStore, modified datastore.ContractMetadata) {
 				t.Helper()
 				// Verify the updated values
 				key := datastore.NewContractMetadataKey(modified.ChainSelector, modified.Address)
@@ -532,7 +532,7 @@ func TestCatalogContractMetadataStore_FetchAndFilter(t *testing.T) {
 	tests := []struct {
 		name         string
 		operation    string
-		setup        func(store *CatalogContractMetadataStore) (datastore.ContractMetadata, datastore.ContractMetadata)
+		setup        func(store *catalogContractMetadataStore) (datastore.ContractMetadata, datastore.ContractMetadata)
 		createFilter func(metadata1, metadata2 datastore.ContractMetadata) datastore.FilterFunc[datastore.ContractMetadataKey, datastore.ContractMetadata]
 		minExpected  int
 		verify       func(t *testing.T, results []datastore.ContractMetadata, metadata1, metadata2 datastore.ContractMetadata)
@@ -540,7 +540,7 @@ func TestCatalogContractMetadataStore_FetchAndFilter(t *testing.T) {
 		{
 			name:      "fetch_all",
 			operation: "fetch",
-			setup: func(store *CatalogContractMetadataStore) (datastore.ContractMetadata, datastore.ContractMetadata) {
+			setup: func(store *catalogContractMetadataStore) (datastore.ContractMetadata, datastore.ContractMetadata) {
 				// Setup test data with unique chain selectors
 				metadata1 := newRandomContractMetadata()
 				chainSelector1 := generateRandomContractChainSelector()
@@ -582,7 +582,7 @@ func TestCatalogContractMetadataStore_FetchAndFilter(t *testing.T) {
 		{
 			name:      "filter_by_chain_selector",
 			operation: "filter",
-			setup: func(store *CatalogContractMetadataStore) (datastore.ContractMetadata, datastore.ContractMetadata) {
+			setup: func(store *catalogContractMetadataStore) (datastore.ContractMetadata, datastore.ContractMetadata) {
 				// Setup test data with unique chain selectors
 				metadata1 := newRandomContractMetadata()
 				chainSelector1 := generateRandomContractChainSelector()
@@ -655,11 +655,11 @@ func TestCatalogContractMetadataStore_ConversionHelpers(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name string
-		test func(t *testing.T, store *CatalogContractMetadataStore)
+		test func(t *testing.T, store *catalogContractMetadataStore)
 	}{
 		{
 			name: "keyToFilter",
-			test: func(t *testing.T, store *CatalogContractMetadataStore) {
+			test: func(t *testing.T, store *catalogContractMetadataStore) {
 				t.Helper()
 				key := datastore.NewContractMetadataKey(12345, "0x1234567890abcdef1234567890abcdef12345678")
 
@@ -673,7 +673,7 @@ func TestCatalogContractMetadataStore_ConversionHelpers(t *testing.T) {
 		},
 		{
 			name: "protoToContractMetadata_success",
-			test: func(t *testing.T, store *CatalogContractMetadataStore) {
+			test: func(t *testing.T, store *catalogContractMetadataStore) {
 				t.Helper()
 				protoMetadata := &pb.ContractMetadata{
 					Domain:        "test-domain",
@@ -700,7 +700,7 @@ func TestCatalogContractMetadataStore_ConversionHelpers(t *testing.T) {
 		},
 		{
 			name: "protoToContractMetadata_invalid_json",
-			test: func(t *testing.T, store *CatalogContractMetadataStore) {
+			test: func(t *testing.T, store *catalogContractMetadataStore) {
 				t.Helper()
 				protoMetadata := &pb.ContractMetadata{
 					Domain:        "test-domain",
@@ -719,7 +719,7 @@ func TestCatalogContractMetadataStore_ConversionHelpers(t *testing.T) {
 		},
 		{
 			name: "contractMetadataToProto",
-			test: func(t *testing.T, store *CatalogContractMetadataStore) {
+			test: func(t *testing.T, store *catalogContractMetadataStore) {
 				t.Helper()
 				metadata := newRandomContractMetadata()
 
@@ -739,7 +739,7 @@ func TestCatalogContractMetadataStore_ConversionHelpers(t *testing.T) {
 		},
 		{
 			name: "version_handling",
-			test: func(t *testing.T, store *CatalogContractMetadataStore) {
+			test: func(t *testing.T, store *catalogContractMetadataStore) {
 				t.Helper()
 				// Test protoToContractMetadata with version
 				protoMetadata := &pb.ContractMetadata{
@@ -960,16 +960,16 @@ func TestCatalogContractMetadataStore_Update_WithCustomUpdater(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name         string
-		setup        func(store *CatalogContractMetadataStore) datastore.ContractMetadataKey
+		setup        func(store *catalogContractMetadataStore) datastore.ContractMetadataKey
 		incomingData any
 		updater      datastore.MetadataUpdaterF
 		expectError  bool
 		errorType    error
-		verifyResult func(t *testing.T, store *CatalogContractMetadataStore, key datastore.ContractMetadataKey)
+		verifyResult func(t *testing.T, store *catalogContractMetadataStore, key datastore.ContractMetadataKey)
 	}{
 		{
 			name: "update_with_description_updater",
-			setup: func(store *CatalogContractMetadataStore) datastore.ContractMetadataKey {
+			setup: func(store *catalogContractMetadataStore) datastore.ContractMetadataKey {
 				metadata := newRandomContractMetadata()
 				err := store.Add(context.Background(), metadata)
 				require.NoError(t, err)
@@ -979,7 +979,7 @@ func TestCatalogContractMetadataStore_Update_WithCustomUpdater(t *testing.T) {
 			incomingData: "Updated description for contract",
 			updater:      versionOnlyUpdater(), // Reuse existing updater but for description
 			expectError:  false,
-			verifyResult: func(t *testing.T, store *CatalogContractMetadataStore, key datastore.ContractMetadataKey) {
+			verifyResult: func(t *testing.T, store *catalogContractMetadataStore, key datastore.ContractMetadataKey) {
 				t.Helper()
 				result, err := store.Get(context.Background(), key)
 				require.NoError(t, err)
@@ -991,7 +991,7 @@ func TestCatalogContractMetadataStore_Update_WithCustomUpdater(t *testing.T) {
 		},
 		{
 			name: "update_with_tag_merger",
-			setup: func(store *CatalogContractMetadataStore) datastore.ContractMetadataKey {
+			setup: func(store *catalogContractMetadataStore) datastore.ContractMetadataKey {
 				metadata := newRandomContractMetadata()
 				// Ensure we have some initial tags
 				testMeta := metadata.Metadata.(TestContractMetadata)
@@ -1005,7 +1005,7 @@ func TestCatalogContractMetadataStore_Update_WithCustomUpdater(t *testing.T) {
 			incomingData: []string{"new", "updated", "existing"}, // "existing" should not duplicate
 			updater:      smartContractTagMerger(),
 			expectError:  false,
-			verifyResult: func(t *testing.T, store *CatalogContractMetadataStore, key datastore.ContractMetadataKey) {
+			verifyResult: func(t *testing.T, store *catalogContractMetadataStore, key datastore.ContractMetadataKey) {
 				t.Helper()
 				result, err := store.Get(context.Background(), key)
 				require.NoError(t, err)
@@ -1021,7 +1021,7 @@ func TestCatalogContractMetadataStore_Update_WithCustomUpdater(t *testing.T) {
 		},
 		{
 			name: "update_with_whole_metadata_merger",
-			setup: func(store *CatalogContractMetadataStore) datastore.ContractMetadataKey {
+			setup: func(store *catalogContractMetadataStore) datastore.ContractMetadataKey {
 				metadata := newRandomContractMetadata()
 				err := store.Add(context.Background(), metadata)
 				require.NoError(t, err)
@@ -1036,7 +1036,7 @@ func TestCatalogContractMetadataStore_Update_WithCustomUpdater(t *testing.T) {
 			},
 			updater:     wholeContractMetadataMerger(),
 			expectError: false,
-			verifyResult: func(t *testing.T, store *CatalogContractMetadataStore, key datastore.ContractMetadataKey) {
+			verifyResult: func(t *testing.T, store *catalogContractMetadataStore, key datastore.ContractMetadataKey) {
 				t.Helper()
 				result, err := store.Get(context.Background(), key)
 				require.NoError(t, err)
@@ -1086,16 +1086,16 @@ func TestCatalogContractMetadataStore_Upsert_WithCustomUpdater(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name         string
-		setup        func(store *CatalogContractMetadataStore) datastore.ContractMetadataKey
+		setup        func(store *catalogContractMetadataStore) datastore.ContractMetadataKey
 		incomingData any
 		updater      datastore.MetadataUpdaterF
 		expectError  bool
 		errorType    error
-		verifyResult func(t *testing.T, store *CatalogContractMetadataStore, key datastore.ContractMetadataKey)
+		verifyResult func(t *testing.T, store *catalogContractMetadataStore, key datastore.ContractMetadataKey)
 	}{
 		{
 			name: "update_existing_with_description_updater",
-			setup: func(store *CatalogContractMetadataStore) datastore.ContractMetadataKey {
+			setup: func(store *catalogContractMetadataStore) datastore.ContractMetadataKey {
 				metadata := newRandomContractMetadata()
 				err := store.Add(context.Background(), metadata)
 				require.NoError(t, err)
@@ -1105,7 +1105,7 @@ func TestCatalogContractMetadataStore_Upsert_WithCustomUpdater(t *testing.T) {
 			incomingData: "5.0.0", // New version
 			updater:      versionOnlyUpdater(),
 			expectError:  false,
-			verifyResult: func(t *testing.T, store *CatalogContractMetadataStore, key datastore.ContractMetadataKey) {
+			verifyResult: func(t *testing.T, store *catalogContractMetadataStore, key datastore.ContractMetadataKey) {
 				t.Helper()
 				result, err := store.Get(context.Background(), key)
 				require.NoError(t, err)
@@ -1120,7 +1120,7 @@ func TestCatalogContractMetadataStore_Upsert_WithCustomUpdater(t *testing.T) {
 		},
 		{
 			name: "update_existing_with_tag_merger",
-			setup: func(store *CatalogContractMetadataStore) datastore.ContractMetadataKey {
+			setup: func(store *catalogContractMetadataStore) datastore.ContractMetadataKey {
 				metadata := newRandomContractMetadata()
 				// Ensure we have some initial tags
 				testMeta := metadata.Metadata.(TestContractMetadata)
@@ -1134,7 +1134,7 @@ func TestCatalogContractMetadataStore_Upsert_WithCustomUpdater(t *testing.T) {
 			incomingData: []string{"enhanced", "improved", "original"}, // "original" should not duplicate
 			updater:      smartContractTagMerger(),
 			expectError:  false,
-			verifyResult: func(t *testing.T, store *CatalogContractMetadataStore, key datastore.ContractMetadataKey) {
+			verifyResult: func(t *testing.T, store *catalogContractMetadataStore, key datastore.ContractMetadataKey) {
 				t.Helper()
 				result, err := store.Get(context.Background(), key)
 				require.NoError(t, err)
@@ -1150,7 +1150,7 @@ func TestCatalogContractMetadataStore_Upsert_WithCustomUpdater(t *testing.T) {
 		},
 		{
 			name: "update_existing_with_whole_metadata_merger",
-			setup: func(store *CatalogContractMetadataStore) datastore.ContractMetadataKey {
+			setup: func(store *catalogContractMetadataStore) datastore.ContractMetadataKey {
 				metadata := newRandomContractMetadata()
 				err := store.Add(context.Background(), metadata)
 				require.NoError(t, err)
@@ -1165,7 +1165,7 @@ func TestCatalogContractMetadataStore_Upsert_WithCustomUpdater(t *testing.T) {
 			},
 			updater:     wholeContractMetadataMerger(),
 			expectError: false,
-			verifyResult: func(t *testing.T, store *CatalogContractMetadataStore, key datastore.ContractMetadataKey) {
+			verifyResult: func(t *testing.T, store *catalogContractMetadataStore, key datastore.ContractMetadataKey) {
 				t.Helper()
 				result, err := store.Get(context.Background(), key)
 				require.NoError(t, err)

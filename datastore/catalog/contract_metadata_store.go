@@ -15,13 +15,13 @@ import (
 	pb "github.com/smartcontractkit/chainlink-deployments-framework/datastore/catalog/internal/protos"
 )
 
-type CatalogContractMetadataStoreConfig struct {
+type catalogContractMetadataStoreConfig struct {
 	Domain      string
 	Environment string
 	Client      CatalogClient
 }
 
-type CatalogContractMetadataStore struct {
+type catalogContractMetadataStore struct {
 	domain      string
 	environment string
 	client      CatalogClient
@@ -30,10 +30,10 @@ type CatalogContractMetadataStore struct {
 	versionCache map[string]int32
 }
 
-var _ datastore.MutableStoreV2[datastore.ContractMetadataKey, datastore.ContractMetadata] = &CatalogContractMetadataStore{}
+var _ datastore.MutableStoreV2[datastore.ContractMetadataKey, datastore.ContractMetadata] = &catalogContractMetadataStore{}
 
-func NewCatalogContractMetadataStore(cfg CatalogContractMetadataStoreConfig) *CatalogContractMetadataStore {
-	return &CatalogContractMetadataStore{
+func newCatalogContractMetadataStore(cfg catalogContractMetadataStoreConfig) *catalogContractMetadataStore {
+	return &catalogContractMetadataStore{
 		domain:       cfg.Domain,
 		environment:  cfg.Environment,
 		client:       cfg.Client,
@@ -42,7 +42,7 @@ func NewCatalogContractMetadataStore(cfg CatalogContractMetadataStoreConfig) *Ca
 }
 
 // getVersion retrieves the cached version for a record, defaulting to 0 for new records
-func (s *CatalogContractMetadataStore) getVersion(key datastore.ContractMetadataKey) int32 {
+func (s *catalogContractMetadataStore) getVersion(key datastore.ContractMetadataKey) int32 {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	cacheKey := key.String()
@@ -54,7 +54,7 @@ func (s *CatalogContractMetadataStore) getVersion(key datastore.ContractMetadata
 }
 
 // setVersion updates the cached version for a record
-func (s *CatalogContractMetadataStore) setVersion(key datastore.ContractMetadataKey, version int32) {
+func (s *catalogContractMetadataStore) setVersion(key datastore.ContractMetadataKey, version int32) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	cacheKey := key.String()
@@ -62,7 +62,7 @@ func (s *CatalogContractMetadataStore) setVersion(key datastore.ContractMetadata
 }
 
 // keyToFilter converts a ContractMetadataKey to a ContractMetadataKeyFilter for gRPC requests
-func (s *CatalogContractMetadataStore) keyToFilter(key datastore.ContractMetadataKey) *pb.ContractMetadataKeyFilter {
+func (s *catalogContractMetadataStore) keyToFilter(key datastore.ContractMetadataKey) *pb.ContractMetadataKeyFilter {
 	return &pb.ContractMetadataKeyFilter{
 		Domain:        wrapperspb.String(s.domain),
 		Environment:   wrapperspb.String(s.environment),
@@ -72,7 +72,7 @@ func (s *CatalogContractMetadataStore) keyToFilter(key datastore.ContractMetadat
 }
 
 // protoToContractMetadata converts a protobuf ContractMetadata to a datastore ContractMetadata
-func (s *CatalogContractMetadataStore) protoToContractMetadata(protoRecord *pb.ContractMetadata) (datastore.ContractMetadata, error) {
+func (s *catalogContractMetadataStore) protoToContractMetadata(protoRecord *pb.ContractMetadata) (datastore.ContractMetadata, error) {
 	var metadata any
 	if protoRecord.Metadata != "" {
 		if err := json.Unmarshal([]byte(protoRecord.Metadata), &metadata); err != nil {
@@ -88,7 +88,7 @@ func (s *CatalogContractMetadataStore) protoToContractMetadata(protoRecord *pb.C
 }
 
 // contractMetadataToProto converts a datastore ContractMetadata to a protobuf ContractMetadata
-func (s *CatalogContractMetadataStore) contractMetadataToProto(record datastore.ContractMetadata, version int32) *pb.ContractMetadata {
+func (s *catalogContractMetadataStore) contractMetadataToProto(record datastore.ContractMetadata, version int32) *pb.ContractMetadata {
 	var metadataJSON string
 	if record.Metadata != nil {
 		if metadataBytes, err := json.Marshal(record.Metadata); err == nil {
@@ -106,7 +106,7 @@ func (s *CatalogContractMetadataStore) contractMetadataToProto(record datastore.
 	}
 }
 
-func (s *CatalogContractMetadataStore) Get(ctx context.Context, key datastore.ContractMetadataKey) (datastore.ContractMetadata, error) {
+func (s *catalogContractMetadataStore) Get(ctx context.Context, key datastore.ContractMetadataKey) (datastore.ContractMetadata, error) {
 	stream, err := s.client.DataAccess(ctx)
 	if err != nil {
 		return datastore.ContractMetadata{}, fmt.Errorf("failed to create gRPC stream: %w", err)
@@ -165,7 +165,7 @@ func (s *CatalogContractMetadataStore) Get(ctx context.Context, key datastore.Co
 }
 
 // Fetch returns a copy of all ContractMetadata in the catalog.
-func (s *CatalogContractMetadataStore) Fetch(ctx context.Context) ([]datastore.ContractMetadata, error) {
+func (s *catalogContractMetadataStore) Fetch(ctx context.Context) ([]datastore.ContractMetadata, error) {
 	stream, err := s.client.DataAccess(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gRPC stream: %w", err)
@@ -225,7 +225,7 @@ func (s *CatalogContractMetadataStore) Fetch(ctx context.Context) ([]datastore.C
 // Filter returns a copy of all ContractMetadata in the catalog that match the provided filter.
 // Filters are applied in the order they are provided.
 // If no filters are provided, all records are returned.
-func (s *CatalogContractMetadataStore) Filter(ctx context.Context, filters ...datastore.FilterFunc[datastore.ContractMetadataKey, datastore.ContractMetadata]) ([]datastore.ContractMetadata, error) {
+func (s *catalogContractMetadataStore) Filter(ctx context.Context, filters ...datastore.FilterFunc[datastore.ContractMetadataKey, datastore.ContractMetadata]) ([]datastore.ContractMetadata, error) {
 	records, err := s.Fetch(ctx)
 	if err != nil {
 		return []datastore.ContractMetadata{}, fmt.Errorf("failed to fetch records: %w", err)
@@ -238,11 +238,11 @@ func (s *CatalogContractMetadataStore) Filter(ctx context.Context, filters ...da
 	return records, nil
 }
 
-func (s *CatalogContractMetadataStore) Add(ctx context.Context, record datastore.ContractMetadata) error {
+func (s *catalogContractMetadataStore) Add(ctx context.Context, record datastore.ContractMetadata) error {
 	return s.editRecord(ctx, record, pb.EditSemantics_SEMANTICS_INSERT)
 }
 
-func (s *CatalogContractMetadataStore) Upsert(ctx context.Context, key datastore.ContractMetadataKey, metadata any, opts ...datastore.UpdateOption) error {
+func (s *catalogContractMetadataStore) Upsert(ctx context.Context, key datastore.ContractMetadataKey, metadata any, opts ...datastore.UpdateOption) error {
 	// Build options with defaults
 	options := &datastore.UpdateOptions{
 		Updater: datastore.IdentityUpdaterF, // default updater
@@ -286,7 +286,7 @@ func (s *CatalogContractMetadataStore) Upsert(ctx context.Context, key datastore
 	return s.editRecord(ctx, record, pb.EditSemantics_SEMANTICS_UPSERT)
 }
 
-func (s *CatalogContractMetadataStore) Update(ctx context.Context, key datastore.ContractMetadataKey, metadata any, opts ...datastore.UpdateOption) error {
+func (s *catalogContractMetadataStore) Update(ctx context.Context, key datastore.ContractMetadataKey, metadata any, opts ...datastore.UpdateOption) error {
 	// Build options with defaults
 	options := &datastore.UpdateOptions{
 		Updater: datastore.IdentityUpdaterF, // default updater
@@ -323,12 +323,12 @@ func (s *CatalogContractMetadataStore) Update(ctx context.Context, key datastore
 	return s.editRecord(ctx, record, pb.EditSemantics_SEMANTICS_UPDATE)
 }
 
-func (s *CatalogContractMetadataStore) Delete(ctx context.Context, key datastore.ContractMetadataKey) error {
+func (s *catalogContractMetadataStore) Delete(ctx context.Context, key datastore.ContractMetadataKey) error {
 	return errors.New("delete operation not supported for catalog contract metadata store")
 }
 
 // editRecord is a helper method that handles Add, Upsert, and Update operations
-func (s *CatalogContractMetadataStore) editRecord(ctx context.Context, record datastore.ContractMetadata, semantics pb.EditSemantics) error {
+func (s *catalogContractMetadataStore) editRecord(ctx context.Context, record datastore.ContractMetadata, semantics pb.EditSemantics) error {
 	stream, err := s.client.DataAccess(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to create gRPC stream: %w", err)

@@ -44,20 +44,20 @@ func TestCatalogDataStore_ImplementsCatalogInterface(t *testing.T) {
 	// Test all interface methods return the expected store types
 	addressStore := dataStore.Addresses()
 	require.NotNil(t, addressStore)
-	require.IsType(t, &CatalogAddressRefStore{}, addressStore)
+	require.IsType(t, &catalogAddressRefStore{}, addressStore)
 
 	chainStore := dataStore.ChainMetadata()
 	require.NotNil(t, chainStore)
-	require.IsType(t, &CatalogChainMetadataStore{}, chainStore)
+	require.IsType(t, &catalogChainMetadataStore{}, chainStore)
 
 	contractStore := dataStore.ContractMetadata()
 	require.NotNil(t, contractStore)
-	require.IsType(t, &CatalogContractMetadataStore{}, contractStore)
+	require.IsType(t, &catalogContractMetadataStore{}, contractStore)
 
 	// EnvMetadata() now properly returns the V2 store
 	envStore := dataStore.EnvMetadata()
 	require.NotNil(t, envStore) // Now properly returns the V2 env metadata store
-	require.IsType(t, &CatalogEnvMetadataStore{}, envStore)
+	require.IsType(t, &catalogEnvMetadataStore{}, envStore)
 }
 
 func TestCatalogDataStore_StoreInterfaces(t *testing.T) {
