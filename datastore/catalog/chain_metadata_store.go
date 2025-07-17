@@ -258,6 +258,7 @@ func (s *CatalogChainMetadataStore) Upsert(ctx context.Context, key datastore.Ch
 				ChainSelector: key.ChainSelector(),
 				Metadata:      metadata,
 			}
+
 			return s.editRecord(ctx, record, pb.EditSemantics_SEMANTICS_INSERT)
 		}
 
@@ -296,6 +297,7 @@ func (s *CatalogChainMetadataStore) Update(ctx context.Context, key datastore.Ch
 		if errors.Is(err, datastore.ErrChainMetadataNotFound) {
 			return datastore.ErrChainMetadataNotFound
 		}
+
 		return fmt.Errorf("failed to get current record for update: %w", err)
 	}
 

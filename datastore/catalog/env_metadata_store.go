@@ -177,6 +177,7 @@ func (s *CatalogEnvMetadataStore) Set(ctx context.Context, metadata any, opts ..
 			record := datastore.EnvMetadata{
 				Metadata: metadata,
 			}
+
 			return s.editRecord(ctx, record)
 		}
 
@@ -232,6 +233,7 @@ func (s *CatalogEnvMetadataStore) editRecord(ctx context.Context, record datasto
 		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 			return fmt.Errorf("request canceled or deadline exceeded: %w", err)
 		}
+
 		return fmt.Errorf("failed to receive response: %w", err)
 	}
 
@@ -242,6 +244,7 @@ func (s *CatalogEnvMetadataStore) editRecord(ctx context.Context, record datasto
 		if strings.Contains(errorMsg, "incorrect row version") {
 			return datastore.ErrEnvMetadataStale
 		}
+
 		return fmt.Errorf("edit request failed: %s", resp.Status.Error)
 	}
 

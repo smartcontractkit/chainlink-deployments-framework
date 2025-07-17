@@ -263,6 +263,7 @@ func (s *CatalogContractMetadataStore) Upsert(ctx context.Context, key datastore
 				ChainSelector: key.ChainSelector(),
 				Metadata:      metadata,
 			}
+
 			return s.editRecord(ctx, record, pb.EditSemantics_SEMANTICS_INSERT)
 		}
 
