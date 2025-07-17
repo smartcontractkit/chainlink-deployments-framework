@@ -9,7 +9,7 @@ require (
 	github.com/aptos-labs/aptos-go-sdk v1.6.3-0.20250331001805-0680b714db6d
 	github.com/avast/retry-go/v4 v4.6.1
 	github.com/aws/aws-sdk-go v1.55.7
-	github.com/block-vision/sui-go-sdk v1.0.6
+	github.com/block-vision/sui-go-sdk v1.0.9
 	github.com/ethereum/go-ethereum v1.15.3
 	github.com/gagliardetto/solana-go v1.12.0
 	github.com/google/uuid v1.6.0
