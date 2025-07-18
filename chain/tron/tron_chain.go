@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	eth_common "github.com/ethereum/go-ethereum/common"
+	"github.com/fbsobreira/gotron-sdk/pkg/address"
 	"github.com/fbsobreira/gotron-sdk/pkg/client"
 	"github.com/fbsobreira/gotron-sdk/pkg/keystore"
 	"github.com/fbsobreira/gotron-sdk/pkg/proto/api"
@@ -57,14 +57,14 @@ type Chain struct {
 
 	// TriggerContractAndConfim provides a utility function to send a transaction and waits for confirmation.
 	TriggerContractAndConfirm func(
-		ctx context.Context, contractAddr eth_common.Address, functionName string, jsonParams string, opts ...TriggerOptions,
+		ctx context.Context, contractAddr address.Address, functionName string, jsonParams string, opts ...TriggerOptions,
 	) (*core.TransactionInfo, error)
 }
 
 func DefaultConfirmRetryOptions() ConfirmRetryOptions {
 	return ConfirmRetryOptions{
-		RetryAttempts: 500,
-		RetryDelay:    50 * time.Millisecond,
+		RetryAttempts: 180,
+		RetryDelay:    500 * time.Millisecond,
 	}
 }
 

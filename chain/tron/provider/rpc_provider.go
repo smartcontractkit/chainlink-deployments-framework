@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/fbsobreira/gotron-sdk/pkg/address"
 	"github.com/fbsobreira/gotron-sdk/pkg/client"
 	"github.com/fbsobreira/gotron-sdk/pkg/proto/api"
 	"github.com/fbsobreira/gotron-sdk/pkg/proto/core"
@@ -101,7 +101,7 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 			}
 
 			tx, err := grpcClient.DeployContract(
-				string(acc.Address), contractName, abi, bytecode, options.FeeLimit, options.CurPercent, options.EnergyLimit,
+				acc.Address.String(), contractName, abi, bytecode, options.FeeLimit, options.CurPercent, options.EnergyLimit,
 			)
 			if err != nil {
 				return nil, fmt.Errorf("failed to create deploy contract transaction: %w", err)
@@ -110,7 +110,7 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 			return client.SendAndConfirmTx(ctx, tx, options.ConfirmRetryOptions)
 		},
 		TriggerContractAndConfirm: func(
-			ctx context.Context, contractAddr common.Address, functionName string, jsonParams string, opts ...cldf_tron.TriggerOptions,
+			ctx context.Context, contractAddr address.Address, functionName string, jsonParams string, opts ...cldf_tron.TriggerOptions,
 		) (*core.TransactionInfo, error) {
 			options := cldf_tron.DefaultTriggerOptions()
 			if len(opts) > 0 {
@@ -118,7 +118,7 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 			}
 
 			tx, err := grpcClient.TriggerContract(
-				string(acc.Address), contractAddr.String(), functionName, jsonParams, options.FeeLimit, options.TAmount, options.TTokenID, options.TTokenAmount,
+				acc.Address.String(), contractAddr.String(), functionName, jsonParams, options.FeeLimit, options.TAmount, options.TTokenID, options.TTokenAmount,
 			)
 			if err != nil {
 				return nil, fmt.Errorf("failed to create deploy contract transaction: %w", err)
