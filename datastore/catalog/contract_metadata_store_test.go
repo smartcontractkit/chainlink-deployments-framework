@@ -60,7 +60,7 @@ func setupTestContractStore(t *testing.T) (*catalogContractMetadataStore, func()
 	}
 
 	// Test if the gRPC service is actually available by making a simple call
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
 	stream, err := catalogClient.DataAccess(ctx)
@@ -172,7 +172,10 @@ func TestCatalogContractMetadataStore_Get(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, key.ChainSelector(), result.ChainSelector)
 				require.Equal(t, key.Address(), result.Address)
-				require.NotNil(t, result.Metadata)
+
+				typedMeta, err := datastore.As[TestContractMetadata](result.Metadata)
+				require.NoError(t, err)
+				require.NotNil(t, typedMeta.Description)
 			}
 		})
 	}
