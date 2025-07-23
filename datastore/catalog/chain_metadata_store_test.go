@@ -60,7 +60,7 @@ func setupTestChainStore(t *testing.T) (*catalogChainMetadataStore, func()) {
 	}
 
 	// Test if the service is actually available by making a simple call
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	stream, err := catalogClient.DataAccess(ctx)

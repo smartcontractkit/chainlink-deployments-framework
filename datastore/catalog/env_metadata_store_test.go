@@ -46,7 +46,7 @@ func setupTestEnvStore(t *testing.T) (*catalogEnvMetadataStore, func()) {
 	}
 
 	// Test if the gRPC service is actually available by making a simple call
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	stream, err := catalogClient.DataAccess(ctx)
