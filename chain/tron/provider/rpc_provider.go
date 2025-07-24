@@ -1,20 +1,21 @@
 package provider
 
+/*
 import (
 	"context"
 	"errors"
 	"fmt"
 
-	"github.com/fbsobreira/gotron-sdk/pkg/address"
-	"github.com/fbsobreira/gotron-sdk/pkg/client"
-	"github.com/fbsobreira/gotron-sdk/pkg/proto/api"
-	"github.com/fbsobreira/gotron-sdk/pkg/proto/core"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 
+	"github.com/fbsobreira/gotron-sdk/pkg/client"
+	"github.com/fbsobreira/gotron-sdk/pkg/proto/api"
+	"github.com/fbsobreira/gotron-sdk/pkg/proto/core"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	cldf_tron "github.com/smartcontractkit/chainlink-deployments-framework/chain/tron"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron/provider/rpcclient"
+	"github.com/xssnick/tonutils-go/address"
 )
 
 // RPCChainProviderConfig holds configuration for Tron RPC provider
@@ -93,7 +94,7 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 			return client.SendAndConfirmTx(ctx, tx, options)
 		},
 		DeployContractAndConfirm: func(
-			ctx context.Context, contractName string, abi *core.SmartContract_ABI, bytecode string, opts ...cldf_tron.DeployOptions,
+			ctx context.Context, contractName string, abi string, bytecode string, opts ...cldf_tron.DeployOptions,
 		) (*core.TransactionInfo, error) {
 			options := cldf_tron.DefaultDeployOptions()
 			if len(opts) > 0 {
@@ -101,7 +102,7 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 			}
 
 			tx, err := grpcClient.DeployContract(
-				acc.Address.String(), contractName, abi, bytecode, options.FeeLimit, options.CurPercent, options.EnergyLimit,
+				acc.Address.String(), contractName, abi, bytecode, options.EnergyLimit, options.CurPercent, options.FeeLimit,
 			)
 			if err != nil {
 				return nil, fmt.Errorf("failed to create deploy contract transaction: %w", err)
@@ -110,7 +111,7 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 			return client.SendAndConfirmTx(ctx, tx, options.ConfirmRetryOptions)
 		},
 		TriggerContractAndConfirm: func(
-			ctx context.Context, contractAddr address.Address, functionName string, jsonParams string, opts ...cldf_tron.TriggerOptions,
+			ctx context.Context, contractAddr address.Address, functionName string, params []interface{}, opts ...cldf_tron.TriggerOptions,
 		) (*core.TransactionInfo, error) {
 			options := cldf_tron.DefaultTriggerOptions()
 			if len(opts) > 0 {
@@ -142,3 +143,4 @@ func (p *RPCChainProvider) ChainSelector() uint64 {
 func (p *RPCChainProvider) BlockChain() chain.BlockChain {
 	return *p.chain
 }
+*/

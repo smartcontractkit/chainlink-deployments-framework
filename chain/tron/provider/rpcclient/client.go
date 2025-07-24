@@ -1,5 +1,6 @@
 package rpcclient
 
+/*
 import (
 	"context"
 	"encoding/hex"
@@ -100,4 +101,4 @@ func (c *Client) confirmTx(
 	}
 
 	return receipt, err
-}
+}*/

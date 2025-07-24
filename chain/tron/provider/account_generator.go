@@ -5,12 +5,13 @@ import (
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/fbsobreira/gotron-sdk/pkg/keystore"
+	"github.com/fbsobreira/gotron-sdk/pkg/address"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron/keystore"
 )
 
 // AccountGenerator is an interface for generating Tron accounts.
 type AccountGenerator interface {
-	Generate() (*keystore.KeyStore, keystore.Account, error)
+	Generate() (*keystore.Keystore, address.Address, error)
 }
 
 var (
@@ -34,26 +35,25 @@ func AccountGenPrivateKey(privateKey string) *accountGenPrivateKey {
 
 // Generate generates an Tron keystore account from the provided private key. It returns an error if the
 // private key string cannot be parsed.
-func (g *accountGenPrivateKey) Generate() (*keystore.KeyStore, keystore.Account, error) {
+func (g *accountGenPrivateKey) Generate() (*keystore.Keystore, address.Address, error) {
 	// Decode the hex-encoded private key string
 	privBytes, err := hex.DecodeString(g.PrivateKey)
 	if err != nil {
-		return nil, keystore.Account{}, fmt.Errorf("failed to decode hex-encoded private key: %w", err)
+		return nil, nil, fmt.Errorf("failed to decode hex-encoded private key: %w", err)
 	}
 
 	// Parse the bytes into an *ecdsa.PrivateKey
 	privKey, err := crypto.ToECDSA(privBytes)
 	if err != nil {
-		return nil, keystore.Account{}, fmt.Errorf("failed to parse private key bytes: %w", err)
+		return nil, nil, fmt.Errorf("failed to parse private key bytes: %w", err)
 	}
 
-	ks := keystore.NewKeyStore("./wallet", keystore.StandardScryptN, keystore.StandardScryptP)
-	acc, err := ks.ImportECDSA(privKey, "")
+	ks, addr := keystore.NewKeystore(privKey)
 	if err != nil {
-		return nil, keystore.Account{}, fmt.Errorf("failed to import ECDSA private key: %w", err)
+		return nil, nil, fmt.Errorf("failed to import ECDSA private key: %w", err)
 	}
 
-	return ks, acc, err
+	return ks, addr, err
 }
 
 // AccountFromRaw creates a new instance of the accountFromRaw generator.
@@ -70,26 +70,25 @@ type accountFromRaw struct {
 }
 
 // Generate generates a new random Tron keystore account pair and returns them.
-func (g *accountFromRaw) Generate() (*keystore.KeyStore, keystore.Account, error) {
+func (g *accountFromRaw) Generate() (*keystore.Keystore, address.Address, error) {
 	// Decode the hex-encoded private key string
 	privBytes, err := hex.DecodeString(g.PrivateKey)
 	if err != nil {
-		return nil, keystore.Account{}, fmt.Errorf("failed to decode hex-encoded private key: %w", err)
+		return nil, nil, fmt.Errorf("failed to decode hex-encoded private key: %w", err)
 	}
 
 	// Parse the bytes into an *ecdsa.PrivateKey
 	privKey, err := crypto.ToECDSA(privBytes)
 	if err != nil {
-		return nil, keystore.Account{}, fmt.Errorf("failed to parse private key bytes: %w", err)
+		return nil, nil, fmt.Errorf("failed to parse private key bytes: %w", err)
 	}
 
-	ks := keystore.NewKeyStore("./wallet", keystore.StandardScryptN, keystore.StandardScryptP)
-	acc, err := ks.ImportECDSA(privKey, "")
+	ks, addr := keystore.NewKeystore(privKey)
 	if err != nil {
-		return nil, keystore.Account{}, fmt.Errorf("failed to import ECDSA private key: %w", err)
+		return nil, nil, fmt.Errorf("failed to import ECDSA private key: %w", err)
 	}
 
-	return ks, acc, err
+	return ks, addr, err
 }
 
 // AccountRandom creates a new instance of the accountRandom generator.
@@ -101,18 +100,14 @@ func AccountRandom() *accountRandom {
 type accountRandom struct{}
 
 // Generate generates a new random Tron keystore account pair and returns them.
-func (g *accountRandom) Generate() (*keystore.KeyStore, keystore.Account, error) {
+func (g *accountRandom) Generate() (*keystore.Keystore, address.Address, error) {
 	// Generate a new random private key
 	privKey, err := crypto.GenerateKey()
 	if err != nil {
-		return nil, keystore.Account{}, fmt.Errorf("failed to decode a random private key: %w", err)
+		return nil, nil, fmt.Errorf("failed to decode a random private key: %w", err)
 	}
 
-	ks := keystore.NewKeyStore("./wallet", keystore.StandardScryptN, keystore.StandardScryptP)
-	acc, err := ks.ImportECDSA(privKey, "")
-	if err != nil {
-		return nil, keystore.Account{}, fmt.Errorf("failed to import ECDSA private key: %w", err)
-	}
+	ks, addr := keystore.NewKeystore(privKey)
 
-	return ks, acc, err
+	return ks, addr, err
 }

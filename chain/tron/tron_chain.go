@@ -5,16 +5,16 @@ import (
 	"time"
 
 	"github.com/fbsobreira/gotron-sdk/pkg/address"
-	"github.com/fbsobreira/gotron-sdk/pkg/client"
-	"github.com/fbsobreira/gotron-sdk/pkg/keystore"
-	"github.com/fbsobreira/gotron-sdk/pkg/proto/api"
-	"github.com/fbsobreira/gotron-sdk/pkg/proto/core"
+	"github.com/fbsobreira/gotron-sdk/pkg/http/common"
+	"github.com/fbsobreira/gotron-sdk/pkg/http/soliditynode"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron/keystore"
+	"github.com/smartcontractkit/chainlink-tron/relayer/sdk"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/common"
+	cld_common "github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/common"
 )
 
 // ChainMetadata = generic metadata from the framework
-type ChainMetadata = common.ChainMetadata
+type ChainMetadata = cld_common.ChainMetadata
 
 type ConfirmRetryOptions struct {
 	RetryAttempts uint          // Max number of retries for confirming a transaction.
@@ -40,25 +40,25 @@ type TriggerOptions struct {
 
 // Chain represents a Tron chain
 type Chain struct {
-	ChainMetadata                    // Chain selector and metadata
-	Client        *client.GrpcClient // gRPC client to Tron full node
-	Keystore      *keystore.KeyStore // Keystore for managing accounts and signing transactions
-	Account       keystore.Account   // Account abstraction for deployer wallet
-	URL           string             // Optional: Client URL
-	DeployerSeed  string             // Optional: mnemonic or raw seed
+	ChainMetadata                     // Chain selector and metadata
+	Client        *sdk.CombinedClient // Combined client for Tron operations
+	Keystore      *keystore.Keystore  // Keystore for managing accounts and signing transactions
+	Address       address.Address     // Address of the account used for transactions
+	URL           string              // Optional: Client URL
+	DeployerSeed  string              // Optional: mnemonic or raw seed
 
 	// SendAndConfirm provides a utility function to send a transaction and waits for confirmation.
-	SendAndConfirm func(ctx context.Context, tx *api.TransactionExtention, opts ...ConfirmRetryOptions) (*core.TransactionInfo, error)
+	SendAndConfirm func(ctx context.Context, tx *common.Transaction, opts ...ConfirmRetryOptions) (*soliditynode.TransactionInfo, error)
 
 	// DeployContractAndConfirm provides a utility function to deploy a contract and waits for confirmation.
 	DeployContractAndConfirm func(
-		ctx context.Context, contractName string, abi *core.SmartContract_ABI, bytecode string, opts ...DeployOptions,
-	) (*core.TransactionInfo, error)
+		ctx context.Context, contractName string, abi string, bytecode string, params []interface{}, opts ...DeployOptions,
+	) (*soliditynode.TransactionInfo, error)
 
-	// TriggerContractAndConfim provides a utility function to send a transaction and waits for confirmation.
+	// TriggerContractAndConfim provides a utility function to send a contract transaction and waits for confirmation.
 	TriggerContractAndConfirm func(
-		ctx context.Context, contractAddr address.Address, functionName string, jsonParams string, opts ...TriggerOptions,
-	) (*core.TransactionInfo, error)
+		ctx context.Context, contractAddr address.Address, functionName string, params []interface{}, opts ...TriggerOptions,
+	) (*soliditynode.TransactionInfo, error)
 }
 
 func DefaultConfirmRetryOptions() ConfirmRetryOptions {
