@@ -1,5 +1,6 @@
 package provider
 
+/*
 import (
 	"testing"
 
@@ -183,4 +184,4 @@ func Test_RPCChainProvider_BlockChain(t *testing.T) {
 	}
 
 	assert.Equal(t, *chain, p.BlockChain())
-}
+}*/

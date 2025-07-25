@@ -16,7 +16,6 @@ type AccountGenerator interface {
 
 var (
 	_ AccountGenerator = (*accountGenPrivateKey)(nil)
-	_ AccountGenerator = (*accountFromRaw)(nil)
 	_ AccountGenerator = (*accountRandom)(nil)
 )
 
@@ -49,44 +48,6 @@ func (g *accountGenPrivateKey) Generate() (*keystore.Keystore, address.Address, 
 	}
 
 	ks, addr := keystore.NewKeystore(privKey)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to import ECDSA private key: %w", err)
-	}
-
-	return ks, addr, err
-}
-
-// AccountFromRaw creates a new instance of the accountFromRaw generator.
-func AccountFromRaw(privateKey string) *accountFromRaw {
-	return &accountFromRaw{
-		PrivateKey: privateKey,
-	}
-}
-
-// accountFromRaw is an Tron keystore account pair generator created with a raw private key.
-type accountFromRaw struct {
-	// PrivateKey is the hex formatted private key used to generate the Tron account.
-	PrivateKey string
-}
-
-// Generate generates a new random Tron keystore account pair and returns them.
-func (g *accountFromRaw) Generate() (*keystore.Keystore, address.Address, error) {
-	// Decode the hex-encoded private key string
-	privBytes, err := hex.DecodeString(g.PrivateKey)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to decode hex-encoded private key: %w", err)
-	}
-
-	// Parse the bytes into an *ecdsa.PrivateKey
-	privKey, err := crypto.ToECDSA(privBytes)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to parse private key bytes: %w", err)
-	}
-
-	ks, addr := keystore.NewKeystore(privKey)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to import ECDSA private key: %w", err)
-	}
 
 	return ks, addr, err
 }

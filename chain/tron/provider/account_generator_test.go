@@ -1,7 +1,7 @@
 package provider
 
-/*
 import (
+	"crypto/ecdsa"
 	"encoding/hex"
 	"testing"
 
@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_AccountFromRaw(t *testing.T) {
+func Test_AccountGenPrivateKey(t *testing.T) {
 	t.Parallel()
 
 	// Generate a random private key for testing
@@ -28,12 +28,14 @@ func Test_AccountFromRaw(t *testing.T) {
 		name           string
 		givePrivateKey string
 		wantAddr       string
+		wantPrivateKey *ecdsa.PrivateKey
 		wantErr        string
 	}{
 		{
 			name:           "valid private key",
 			givePrivateKey: privKey,
-			wantAddr:       tronAddr.Hex(),
+			wantAddr:       tronAddr.String(),
+			wantPrivateKey: privateKey,
 		},
 		{
 			name:           "invalid private key",
@@ -46,8 +48,8 @@ func Test_AccountFromRaw(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			gen := AccountFromRaw(tt.givePrivateKey)
-			gotKs, gotAcc, err := gen.Generate()
+			gen := AccountGenPrivateKey(tt.givePrivateKey)
+			gotKs, gotAddr, err := gen.Generate()
 
 			if tt.wantErr != "" {
 				require.Error(t, err)
@@ -55,9 +57,9 @@ func Test_AccountFromRaw(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				assert.NotNil(t, gotKs)
-				assert.NotNil(t, gotAcc)
-				assert.Equal(t, tt.wantAddr, gotAcc.Address.Hex())
-				assert.True(t, gotKs.HasAddress(gotAcc.Address))
+				assert.NotNil(t, gotAddr)
+				assert.Equal(t, tt.wantAddr, gotAddr.String())
+				assert.Equal(t, tt.wantPrivateKey, gotKs.Keys[gotAddr.String()])
 			}
 		})
 	}
@@ -81,7 +83,7 @@ func Test_PrivateKeyRandom(t *testing.T) {
 			t.Parallel()
 
 			gen := AccountRandom()
-			gotKs, gotAcc, err := gen.Generate()
+			gotKs, gotAddr, err := gen.Generate()
 
 			if tt.wantErr != "" {
 				require.Error(t, err)
@@ -89,10 +91,9 @@ func Test_PrivateKeyRandom(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				assert.NotNil(t, gotKs)
-				assert.NotNil(t, gotAcc)
-				assert.True(t, gotKs.HasAddress(gotAcc.Address))
+				assert.NotNil(t, gotAddr)
+				require.Contains(t, gotKs.Keys, gotAddr.String())
 			}
 		})
 	}
 }
-*/
