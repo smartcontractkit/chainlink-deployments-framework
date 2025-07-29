@@ -1,32 +1,33 @@
 package provider
 
-/*
 import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
-
-	"github.com/fbsobreira/gotron-sdk/pkg/client"
-	"github.com/fbsobreira/gotron-sdk/pkg/proto/api"
-	"github.com/fbsobreira/gotron-sdk/pkg/proto/core"
+	"github.com/fbsobreira/gotron-sdk/pkg/address"
+	"github.com/fbsobreira/gotron-sdk/pkg/http/common"
+	"github.com/fbsobreira/gotron-sdk/pkg/http/soliditynode"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	cldf_tron "github.com/smartcontractkit/chainlink-deployments-framework/chain/tron"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron/provider/rpcclient"
-	"github.com/xssnick/tonutils-go/address"
+	"github.com/smartcontractkit/chainlink-tron/relayer/sdk"
 )
 
 // RPCChainProviderConfig holds configuration for Tron RPC provider
 type RPCChainProviderConfig struct {
-	RPCURL            string
+	FullNodeURL       string
+	SolidityNodeURL   string
 	DeployerSignerGen AccountGenerator
 }
 
 func (c RPCChainProviderConfig) validate() error {
-	if c.RPCURL == "" {
-		return errors.New("rpc url is required")
+	if c.FullNodeURL == "" {
+		return errors.New("full node url is required")
+	}
+	if c.SolidityNodeURL == "" {
+		return errors.New("solidity node url is required")
 	}
 	if c.DeployerSignerGen == nil {
 		return errors.New("deployer signer generator is required")
@@ -62,30 +63,39 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 		return nil, fmt.Errorf("invalid Tron RPC config: %w", err)
 	}
 
-	// Initialize gRPC client
-	grpcClient := client.NewGrpcClient(p.config.RPCURL)
-	if err := grpcClient.Start(grpc.WithTransportCredentials(credentials.NewClientTLSFromCert(nil, ""))); err != nil {
-		return nil, fmt.Errorf("failed to start Tron gRPC client: %w", err)
+	fullNodeUrlObj, err := url.Parse(p.config.FullNodeURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse full node URL: %w", err)
+	}
+	solidityNodeUrlObj, err := url.Parse(p.config.SolidityNodeURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse solidity node URL: %w", err)
 	}
 
-	// Generate keystore and account using the deployer signer generator
-	ks, acc, err := p.config.DeployerSignerGen.Generate()
+	// Initialize combined client
+	combinedClient, err := sdk.CreateCombinedClient(fullNodeUrlObj, solidityNodeUrlObj)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create combined client: %w", err)
+	}
+
+	// Generate keystore and address using the deployer signer generator
+	ks, addr, err := p.config.DeployerSignerGen.Generate()
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate signer: %w", err)
 	}
 
-	// Initialize the Tron client with the gRPC client, keystore, and account
-	client := rpcclient.New(grpcClient, ks, acc)
+	// Initialize the Tron client with the combined client, keystore, and address
+	client := rpcclient.New(combinedClient, ks, addr)
 
 	p.chain = &cldf_tron.Chain{
 		ChainMetadata: cldf_tron.ChainMetadata{
 			Selector: p.selector,
 		},
-		Client:   grpcClient,
+		Client:   &combinedClient,
 		Keystore: ks,
-		Account:  acc,
-		URL:      p.config.RPCURL,
-		SendAndConfirm: func(ctx context.Context, tx *api.TransactionExtention, opts ...cldf_tron.ConfirmRetryOptions) (*core.TransactionInfo, error) {
+		Address:  addr,
+		URL:      p.config.FullNodeURL,
+		SendAndConfirm: func(ctx context.Context, tx *common.Transaction, opts ...cldf_tron.ConfirmRetryOptions) (*soliditynode.TransactionInfo, error) {
 			options := cldf_tron.DefaultConfirmRetryOptions()
 			if len(opts) > 0 {
 				options = opts[0]
@@ -94,38 +104,53 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 			return client.SendAndConfirmTx(ctx, tx, options)
 		},
 		DeployContractAndConfirm: func(
-			ctx context.Context, contractName string, abi string, bytecode string, opts ...cldf_tron.DeployOptions,
-		) (*core.TransactionInfo, error) {
+			ctx context.Context, contractName string, abi string, bytecode string, params []interface{}, opts ...cldf_tron.DeployOptions,
+		) (address.Address, *soliditynode.TransactionInfo, error) {
 			options := cldf_tron.DefaultDeployOptions()
 			if len(opts) > 0 {
 				options = opts[0]
 			}
 
-			tx, err := grpcClient.DeployContract(
-				acc.Address.String(), contractName, abi, bytecode, options.EnergyLimit, options.CurPercent, options.FeeLimit,
+			deployResponse, err := combinedClient.DeployContract(
+				addr, contractName, abi, bytecode, options.OeLimit, options.CurPercent, options.FeeLimit, params,
 			)
 			if err != nil {
-				return nil, fmt.Errorf("failed to create deploy contract transaction: %w", err)
+				return nil, nil, fmt.Errorf("failed to create deploy contract transaction: %w", err)
 			}
 
-			return client.SendAndConfirmTx(ctx, tx, options.ConfirmRetryOptions)
+			txInfo, err := client.SendAndConfirmTx(ctx, &deployResponse.Transaction, options.ConfirmRetryOptions)
+			if err != nil {
+				return nil, nil, fmt.Errorf("failed to confirm deploy contract transaction: %w", err)
+			}
+
+			contractAddress, err := address.StringToAddress(txInfo.ContractAddress)
+			if err != nil {
+				return nil, nil, fmt.Errorf("failed to parse contract address: %w", err)
+			}
+
+			err = client.CheckContractDeployed(contractAddress)
+			if err != nil {
+				return nil, nil, fmt.Errorf("contract deployment check failed: %w", err)
+			}
+
+			return contractAddress, txInfo, nil
 		},
 		TriggerContractAndConfirm: func(
 			ctx context.Context, contractAddr address.Address, functionName string, params []interface{}, opts ...cldf_tron.TriggerOptions,
-		) (*core.TransactionInfo, error) {
+		) (*soliditynode.TransactionInfo, error) {
 			options := cldf_tron.DefaultTriggerOptions()
 			if len(opts) > 0 {
 				options = opts[0]
 			}
 
-			tx, err := grpcClient.TriggerContract(
-				acc.Address.String(), contractAddr.String(), functionName, jsonParams, options.FeeLimit, options.TAmount, options.TTokenID, options.TTokenAmount,
+			contractResponse, err := combinedClient.TriggerSmartContract(
+				addr, contractAddr, functionName, params, options.FeeLimit, options.TAmount,
 			)
 			if err != nil {
-				return nil, fmt.Errorf("failed to create deploy contract transaction: %w", err)
+				return nil, fmt.Errorf("failed to create trigger contract transaction: %w", err)
 			}
 
-			return client.SendAndConfirmTx(ctx, tx, options.ConfirmRetryOptions)
+			return client.SendAndConfirmTx(ctx, contractResponse.Transaction, options.ConfirmRetryOptions)
 		},
 	}
 
@@ -143,4 +168,3 @@ func (p *RPCChainProvider) ChainSelector() uint64 {
 func (p *RPCChainProvider) BlockChain() chain.BlockChain {
 	return *p.chain
 }
-*/

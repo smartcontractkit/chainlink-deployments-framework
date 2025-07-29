@@ -1,14 +1,12 @@
 package provider
 
-/*
 import (
 	"testing"
 
 	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron"
 )
 
 func Test_RPCChainProviderConfig_validate(t *testing.T) {
@@ -23,9 +21,14 @@ func Test_RPCChainProviderConfig_validate(t *testing.T) {
 			name: "valid config",
 		},
 		{
-			name:           "missing rpc url",
-			giveConfigFunc: func(c *RPCChainProviderConfig) { c.RPCURL = "" },
-			wantErr:        "rpc url is required",
+			name:           "missing full node url",
+			giveConfigFunc: func(c *RPCChainProviderConfig) { c.FullNodeURL = "" },
+			wantErr:        "full node url is required",
+		},
+		{
+			name:           "missing solidity node url",
+			giveConfigFunc: func(c *RPCChainProviderConfig) { c.SolidityNodeURL = "" },
+			wantErr:        "solidity node url is required",
 		},
 		{
 			name:           "missing deployer signer generator",
@@ -40,7 +43,8 @@ func Test_RPCChainProviderConfig_validate(t *testing.T) {
 
 			// A valid configuration for the RPCChainProviderConfig
 			config := RPCChainProviderConfig{
-				RPCURL:            "http://localhost:8080",
+				FullNodeURL:       "http://localhost:8090",
+				SolidityNodeURL:   "http://localhost:8091",
 				DeployerSignerGen: AccountRandom(),
 			}
 
@@ -80,7 +84,8 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 				t.Helper()
 
 				return RPCChainProviderConfig{
-					RPCURL:            "http://localhost:8080",
+					FullNodeURL:       "http://localhost:8090",
+					SolidityNodeURL:   "http://localhost:8091",
 					DeployerSignerGen: AccountRandom(),
 				}
 			},
@@ -107,8 +112,9 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 				t.Helper()
 
 				return RPCChainProviderConfig{
-					RPCURL:            "http://localhost:8080",
-					DeployerSignerGen: AccountFromRaw(""), // Invalid private key
+					FullNodeURL:       "http://localhost:8090",
+					SolidityNodeURL:   "http://localhost:8091",
+					DeployerSignerGen: AccountGenPrivateKey(""), // Invalid private key
 				}
 			},
 			wantErr: "failed to generate signer",
@@ -149,9 +155,9 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 
 				assert.Equal(t, tt.giveSelector, gotChain.Selector)
 				assert.NotNil(t, gotChain.Client)
-				assert.Equal(t, config.RPCURL, gotChain.URL)
+				assert.Equal(t, config.FullNodeURL, gotChain.URL)
 				assert.NotNil(t, gotChain.Keystore)
-				assert.NotNil(t, gotChain.Account)
+				assert.NotNil(t, gotChain.Address)
 				assert.NotNil(t, gotChain.SendAndConfirm)
 				assert.NotNil(t, gotChain.DeployContractAndConfirm)
 				assert.NotNil(t, gotChain.TriggerContractAndConfirm)
@@ -184,4 +190,4 @@ func Test_RPCChainProvider_BlockChain(t *testing.T) {
 	}
 
 	assert.Equal(t, *chain, p.BlockChain())
-}*/
+}

@@ -23,18 +23,16 @@ type ConfirmRetryOptions struct {
 
 // DeployOptions defines optional parameters for deploying a smart contract.
 type DeployOptions struct {
-	FeeLimit            int64               // Max TRX to be used for deploying the contract (gas limit in Tron terms).
-	CurPercent          int64               // Percentage of resource consumption charged to the contract caller (0–100).
-	EnergyLimit         int64               // Max energy the creator is willing to provide during execution.
+	OeLimit             int                 // Max energy the creator is willing to provide during execution.
+	CurPercent          int                 // Percentage of resource consumption charged to the contract caller (0–100).
+	FeeLimit            int                 // Max TRX to be used for deploying the contract (gas limit in Tron terms).
 	ConfirmRetryOptions ConfirmRetryOptions // Retry options for confirming the transaction.
 }
 
 // TriggerOptions defines optional parameters for triggering (calling) a smart contract.
 type TriggerOptions struct {
-	FeeLimit            int64               // Max TRX to be used for this transaction call.
+	FeeLimit            int32               // Max TRX to be used for this transaction call.
 	TAmount             int64               // Amount of TRX to transfer along with the contract call (like msg.value).
-	TTokenID            string              // (Optional) TRC-10 token ID to transfer with the call.
-	TTokenAmount        int64               // Amount of the TRC-10 token to send with the call.
 	ConfirmRetryOptions ConfirmRetryOptions // Retry options for confirming the transaction.
 }
 
@@ -53,7 +51,7 @@ type Chain struct {
 	// DeployContractAndConfirm provides a utility function to deploy a contract and waits for confirmation.
 	DeployContractAndConfirm func(
 		ctx context.Context, contractName string, abi string, bytecode string, params []interface{}, opts ...DeployOptions,
-	) (*soliditynode.TransactionInfo, error)
+	) (address.Address, *soliditynode.TransactionInfo, error)
 
 	// TriggerContractAndConfim provides a utility function to send a contract transaction and waits for confirmation.
 	TriggerContractAndConfirm func(
@@ -72,7 +70,7 @@ func DefaultDeployOptions() DeployOptions {
 	return DeployOptions{
 		FeeLimit:            10_000_000,
 		CurPercent:          100,
-		EnergyLimit:         10_000_000,
+		OeLimit:             10_000_000,
 		ConfirmRetryOptions: DefaultConfirmRetryOptions(),
 	}
 }
@@ -81,8 +79,6 @@ func DefaultTriggerOptions() TriggerOptions {
 	return TriggerOptions{
 		FeeLimit:            10_000_000,
 		TAmount:             0,
-		TTokenID:            "",
-		TTokenAmount:        0,
 		ConfirmRetryOptions: DefaultConfirmRetryOptions(),
 	}
 }
