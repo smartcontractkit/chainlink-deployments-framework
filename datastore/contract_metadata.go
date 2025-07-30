@@ -4,6 +4,7 @@ import "errors"
 
 var ErrContractMetadataNotFound = errors.New("no contract metadata record can be found for the provided key")
 var ErrContractMetadataExists = errors.New("a contract metadata record with the supplied key already exists")
+var ErrContractMetadataStale = errors.New("the contract metadata record with the given key is stale and cannot be updated")
 
 // ContractMetadata implements the UniqueRecord interface
 var _ UniqueRecord[ContractMetadataKey, ContractMetadata] = ContractMetadata{}

@@ -1,5 +1,33 @@
 # chainlink-deployments-framework
 
+## 0.18.0
+
+### Minor Changes
+
+- [#230](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/230) [`149c03f`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/149c03f6028011d5dd7cd40f739fa89f32c4462d) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - introduce Catalog GRPC client
+
+### Patch Changes
+
+- [#229](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/229) [`4ea8e79`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/4ea8e790a12017348783df9079c3c86fd72664fd) Thanks [@giogam](https://github.com/giogam)! - Catalog Datastore #2
+
+## 0.17.3
+
+### Patch Changes
+
+- [#222](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/222) [`fe4e84e`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/fe4e84ede1ca415f9ff277c3996da8f5d97b58c8) Thanks [@stackman27](https://github.com/stackman27)! - update sui sdk
+
+## 0.17.2
+
+### Patch Changes
+
+- [#220](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/220) [`1d13a2d`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/1d13a2d622460265c65be012e3a5946df650fd9f) Thanks [@tt-cll](https://github.com/tt-cll)! - updates solana close
+
+## 0.17.1
+
+### Patch Changes
+
+- [#215](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/215) [`d748632`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/d748632cbb80494ca17dbbdf62a3252c0e08d418) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix: improve log message on multiclient healthcheck
+
 ## 0.17.0
 
 ### Minor Changes

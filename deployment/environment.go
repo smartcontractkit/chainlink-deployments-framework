@@ -61,6 +61,8 @@ type Environment struct {
 	ExistingAddresses AddressBook
 	DataStore         datastore.DataStore
 
+	Catalog datastore.CatalogStore
+
 	NodeIDs    []string
 	Offchain   OffchainClient
 	GetContext func() context.Context
@@ -69,6 +71,16 @@ type Environment struct {
 	OperationsBundle operations.Bundle
 	// BlockChains is the container of all chains in the environment.
 	BlockChains chain.BlockChains
+}
+
+// EnvironmentOption is a functional option for configuring an Environment
+type EnvironmentOption func(*Environment)
+
+// WithCatalog sets the catalog store for the environment
+func WithCatalog(catalog datastore.CatalogStore) EnvironmentOption {
+	return func(e *Environment) {
+		e.Catalog = catalog
+	}
 }
 
 // NewEnvironment creates a new environment for CLDF.
@@ -82,8 +94,9 @@ func NewEnvironment(
 	ctx func() context.Context,
 	secrets OCRSecrets,
 	blockChains chain.BlockChains,
+	opts ...EnvironmentOption,
 ) *Environment {
-	return &Environment{
+	env := &Environment{
 		Name:              name,
 		Logger:            logger,
 		ExistingAddresses: existingAddrs,
@@ -96,6 +109,13 @@ func NewEnvironment(
 		OperationsBundle: operations.NewBundle(ctx, logger, operations.NewMemoryReporter()),
 		BlockChains:      blockChains,
 	}
+
+	// Apply functional options
+	for _, opt := range opts {
+		opt(env)
+	}
+
+	return env
 }
 
 // Clone creates a copy of the environment with a new reference to the address book.
@@ -117,6 +137,7 @@ func (e Environment) Clone() Environment {
 		Logger:            e.Logger,
 		ExistingAddresses: ab,
 		DataStore:         ds.Seal(),
+		Catalog:           e.Catalog, // Preserve the catalog reference
 		NodeIDs:           e.NodeIDs,
 		Offchain:          e.Offchain,
 		GetContext:        e.GetContext,
