@@ -9,10 +9,11 @@ import (
 	"github.com/fbsobreira/gotron-sdk/pkg/address"
 	"github.com/fbsobreira/gotron-sdk/pkg/http/common"
 	"github.com/fbsobreira/gotron-sdk/pkg/http/soliditynode"
+	"github.com/smartcontractkit/chainlink-tron/relayer/sdk"
+
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	cldf_tron "github.com/smartcontractkit/chainlink-deployments-framework/chain/tron"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron/provider/rpcclient"
-	"github.com/smartcontractkit/chainlink-tron/relayer/sdk"
 )
 
 // RPCChainProviderConfig holds configuration for Tron RPC provider
@@ -91,7 +92,7 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 		ChainMetadata: cldf_tron.ChainMetadata{
 			Selector: p.selector,
 		},
-		Client:   &combinedClient,
+		Client:   combinedClient,
 		Keystore: ks,
 		Address:  addr,
 		URL:      p.config.FullNodeURL,

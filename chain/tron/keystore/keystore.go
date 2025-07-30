@@ -3,7 +3,7 @@ package keystore
 import (
 	"context"
 	"crypto/ecdsa"
-	"fmt"
+	"errors"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/fbsobreira/gotron-sdk/pkg/address"
@@ -21,13 +21,14 @@ func NewKeystore(privateKey *ecdsa.PrivateKey) (*Keystore, address.Address) {
 	address := address.PubkeyToAddress(privateKey.PublicKey)
 
 	keys[address.String()] = privateKey
+
 	return &Keystore{Keys: keys}, address
 }
 
 func (ks *Keystore) Sign(ctx context.Context, id string, hash []byte) ([]byte, error) {
 	privateKey, ok := ks.Keys[id]
 	if !ok {
-		return nil, fmt.Errorf("no such key")
+		return nil, errors.New("no such key")
 	}
 
 	// used to check if the account exists.
@@ -41,6 +42,7 @@ func (ks *Keystore) Sign(ctx context.Context, id string, hash []byte) ([]byte, e
 func (ks *Keystore) ImportECDSA(privateKey *ecdsa.PrivateKey) address.Address {
 	address := address.PubkeyToAddress(privateKey.PublicKey)
 	ks.Keys[address.String()] = privateKey
+
 	return address
 }
 
@@ -49,5 +51,6 @@ func (ks *Keystore) Accounts(ctx context.Context) ([]string, error) {
 	for id := range ks.Keys {
 		accounts = append(accounts, id)
 	}
+
 	return accounts, nil
 }

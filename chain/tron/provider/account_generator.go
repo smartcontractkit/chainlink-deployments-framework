@@ -6,6 +6,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/fbsobreira/gotron-sdk/pkg/address"
+
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron/keystore"
 )
 

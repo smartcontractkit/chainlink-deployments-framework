@@ -7,8 +7,9 @@ import (
 	"github.com/fbsobreira/gotron-sdk/pkg/address"
 	"github.com/fbsobreira/gotron-sdk/pkg/http/common"
 	"github.com/fbsobreira/gotron-sdk/pkg/http/soliditynode"
-	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron/keystore"
 	"github.com/smartcontractkit/chainlink-tron/relayer/sdk"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron/keystore"
 
 	cld_common "github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/common"
 )
@@ -38,12 +39,12 @@ type TriggerOptions struct {
 
 // Chain represents a Tron chain
 type Chain struct {
-	ChainMetadata                     // Chain selector and metadata
-	Client        *sdk.CombinedClient // Combined client for Tron operations
-	Keystore      *keystore.Keystore  // Keystore for managing accounts and signing transactions
-	Address       address.Address     // Address of the account used for transactions
-	URL           string              // Optional: Client URL
-	DeployerSeed  string              // Optional: mnemonic or raw seed
+	ChainMetadata                    // Chain selector and metadata
+	Client        sdk.CombinedClient // Combined client for Tron operations
+	Keystore      *keystore.Keystore // Keystore for managing accounts and signing transactions
+	Address       address.Address    // Address of the account used for transactions
+	URL           string             // Optional: Client URL
+	DeployerSeed  string             // Optional: mnemonic or raw seed
 
 	// SendAndConfirm provides a utility function to send a transaction and waits for confirmation.
 	SendAndConfirm func(ctx context.Context, tx *common.Transaction, opts ...ConfirmRetryOptions) (*soliditynode.TransactionInfo, error)

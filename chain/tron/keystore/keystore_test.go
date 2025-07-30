@@ -15,6 +15,7 @@ func generateKeyPair(t *testing.T) *ecdsa.PrivateKey {
 	t.Helper()
 	key, err := crypto.GenerateKey()
 	require.NoError(t, err)
+
 	return key
 }
 
@@ -27,7 +28,7 @@ func Test_NewKeystore(t *testing.T) {
 	expectedAddr := address.PubkeyToAddress(privKey.PublicKey)
 	require.Contains(t, ks.Keys, expectedAddr.String())
 	assert.Equal(t, privKey, ks.Keys[expectedAddr.String()])
-	assert.Equal(t, addr, addr)
+	assert.Equal(t, expectedAddr, addr)
 }
 
 func Test_Keystore_ImportECDSA(t *testing.T) {
@@ -54,6 +55,8 @@ func Test_Keystore_Sign(t *testing.T) {
 	}
 
 	t.Run("successful sign", func(t *testing.T) {
+		t.Parallel()
+
 		hash := crypto.Keccak256([]byte("test data"))
 
 		sig, err := ks.Sign(context.Background(), addrStr, hash)
@@ -62,12 +65,16 @@ func Test_Keystore_Sign(t *testing.T) {
 	})
 
 	t.Run("key not found", func(t *testing.T) {
+		t.Parallel()
+
 		_, err := ks.Sign(context.Background(), "invalid_address", []byte("hash"))
 		require.Error(t, err)
 		assert.EqualError(t, err, "no such key")
 	})
 
 	t.Run("nil hash returns nil without error", func(t *testing.T) {
+		t.Parallel()
+
 		sig, err := ks.Sign(context.Background(), addrStr, nil)
 		require.NoError(t, err)
 		assert.Nil(t, sig)

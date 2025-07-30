@@ -9,10 +9,12 @@ import (
 	"github.com/fbsobreira/gotron-sdk/pkg/address"
 	"github.com/fbsobreira/gotron-sdk/pkg/http/common"
 	"github.com/fbsobreira/gotron-sdk/pkg/http/soliditynode"
+
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron/keystore"
 
-	cldf_tron "github.com/smartcontractkit/chainlink-deployments-framework/chain/tron"
 	"github.com/smartcontractkit/chainlink-tron/relayer/sdk"
+
+	cldf_tron "github.com/smartcontractkit/chainlink-deployments-framework/chain/tron"
 )
 
 // ConfirmRetryOpts returns the retry options for confirming transactions.
@@ -93,7 +95,8 @@ func (c *Client) confirmTx(
 
 		//nolint:exhaustive // handled via default case
 		switch result := receipt.Receipt.Result; result {
-		case soliditynode.TransactionResultSuccess:
+		// TODO: investigate why when confirming a non-contract transaction, the result is empty (see Test_SendTrxWithSendAndConfirm)
+		case "", soliditynode.TransactionResultSuccess:
 			return nil
 		case soliditynode.TransactionResultDefault, soliditynode.TransactionResultUnknown:
 			return fmt.Errorf("transaction %s is not yet confirmed, result: %v", txId, result) // Retry
