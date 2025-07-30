@@ -75,7 +75,7 @@ func DefaultDeployOptions() DeployOptions {
 	return DeployOptions{
 		FeeLimit:            10_000_000, // Default fee limit (in SUN).
 		CurPercent:          100,        // Caller pays full cost.
-		OeLimit:             0,          // Not used when deployer is an EOA (default case).
+		OeLimit:             10_000_000, // Default energy limit.
 		ConfirmRetryOptions: DefaultConfirmRetryOptions(),
 	}
 }

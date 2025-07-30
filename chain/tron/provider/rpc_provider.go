@@ -34,6 +34,7 @@ func (c RPCChainProviderConfig) validate() error {
 	if c.DeployerSignerGen == nil {
 		return errors.New("deployer signer generator is required")
 	}
+
 	return nil
 }
 
@@ -106,6 +107,7 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 			if len(opts) > 0 {
 				options = opts[0]
 			}
+
 			return client.SendAndConfirmTx(ctx, tx, options)
 		},
 

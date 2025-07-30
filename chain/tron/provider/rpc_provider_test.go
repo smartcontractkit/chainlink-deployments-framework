@@ -1,21 +1,19 @@
 package provider
 
 import (
-	"crypto/rand"
-	"fmt"
 	"math/big"
 	"testing"
 
+	"github.com/fbsobreira/gotron-sdk/pkg/address"
 	"github.com/rs/zerolog"
 	chain_selectors "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-evm/gethwrappers/shared/generated/link_token"
-	"github.com/smartcontractkit/chainlink-tron/integration-tests/common"
-	"github.com/smartcontractkit/chainlink-tron/relayer/testutils"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
+	"github.com/smartcontractkit/chainlink-testing-framework/lib/logging"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron"
-	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron/localnet"
 )
 
 func Test_RPCChainProviderConfig_validate(t *testing.T) {
@@ -201,22 +199,15 @@ func Test_RPCChainProvider_BlockChain(t *testing.T) {
 	assert.Equal(t, *chain, p.BlockChain())
 }
 
-//nolint:paralleltest // Setup local stack is not parallel-safe
 func Test_Tron_SendTransfer_And_DeployContract(t *testing.T) {
-	logger := common.GetTestLogger(t)
-	tronChain, err := setupLocalStack(t, logger)
-
-	defer func() {
-		if err = testutils.StopTronNode(); err != nil {
-			logger.Error().Err(err).Msg("Failed to stop Tron node")
-		}
-	}()
-	require.NoError(t, err, "Failed to setup local Tron stack")
+	t.Parallel()
+	logger := logging.GetTestLogger(t)
+	tronChain := setupLocalStack(t, logger)
 
 	t.Run("SendTrxWithSendAndConfirm", func(t *testing.T) {
 		// Generate a random receiver address
-		receiverKey := testutils.CreateKey(rand.Reader)
-		receiverAddress := receiverKey.Address
+		receiverAddress, err := address.Base58ToAddress("TQtWBxe8wNAcio3evcfwMAqsdFzykpi6e7")
+		require.NoError(t, err, "Failed to generate receiver address")
 
 		logger.Info().Str("receiver", receiverAddress.String()).Msg("Generated receiver address")
 
@@ -238,7 +229,7 @@ func Test_Tron_SendTransfer_And_DeployContract(t *testing.T) {
 		require.NoError(t, err, "Failed to send and confirm TRX transfer")
 
 		logger.Info().Str("txID", txInfo.ID).Msg("Transfer transaction ID")
-		logger.Info().Any("receipt", txInfo.Receipt).Msg("Transaction receipt")
+		logger.Info().Any("receipt", txInfo.Receipt).Msg("Transfer transaction receipt")
 
 		// Query receiver balance after transfer
 		afterAccount, err := tronChain.Client.GetAccount(receiverAddress)
@@ -254,7 +245,7 @@ func Test_Tron_SendTransfer_And_DeployContract(t *testing.T) {
 	t.Run("DeployAndTriggerLinkContract", func(t *testing.T) {
 		// Set deploy options, including custom fee limit for local deployment
 		deployOptions := tron.DefaultDeployOptions()
-		deployOptions.FeeLimit = testutils.DevnetFeeLimit
+		deployOptions.FeeLimit = 1_000_000_000
 
 		// Deploy the LinkToken contract and wait for confirmation
 		contractAddress, txInfo, err := tronChain.DeployContractAndConfirm(
@@ -270,8 +261,8 @@ func Test_Tron_SendTransfer_And_DeployContract(t *testing.T) {
 		logger.Info().Str("chain address", tronChain.Address.String()).Msg("Using chain address")
 
 		// Generate a random minter address
-		minterKey := testutils.CreateKey(rand.Reader)
-		minterAddress := minterKey.Address
+		minterAddress, err := address.Base58ToAddress("TQtWBxe8wNAcio3evcfwMAqsdFzykpi6e7")
+		require.NoError(t, err, "Failed to generate minter address")
 
 		// Check the minter role status before granting it
 		beforeMinterResp, err := tronChain.Client.TriggerConstantContract(
@@ -310,18 +301,18 @@ func Test_Tron_SendTransfer_And_DeployContract(t *testing.T) {
 	})
 }
 
-func setupLocalStack(t *testing.T, logger zerolog.Logger) (*tron.Chain, error) {
+func setupLocalStack(t *testing.T, logger zerolog.Logger) *tron.Chain {
 	t.Helper()
 
-	bc, accounts, err := localnet.StartLocalNetwork(t)
+	bc, err := blockchain.NewBlockchainNetwork(&blockchain.Input{Type: "tron"})
 
-	fullNodeUrl := fmt.Sprintf("http://%s/wallet", bc.Nodes[0].ExternalHTTPUrl)
-	solidityNodeUrl := fmt.Sprintf("http://%s/walletsolidity", bc.Nodes[0].ExternalHTTPUrl)
+	fullNodeUrl := bc.Nodes[0].ExternalHTTPUrl + "/wallet"
+	solidityNodeUrl := bc.Nodes[0].ExternalHTTPUrl + "/walletsolidity"
 
 	logger.Info().Str("fullNodeUrl", fullNodeUrl).Str("solidityNodeUrl", solidityNodeUrl).Msg("TRON node config")
 
 	chainSelector := chain_selectors.TEST_22222222222222222222222222222222222222222222.Selector
-	accountGenerator := AccountGenPrivateKey(accounts.PrivateKeys[0])
+	accountGenerator := AccountGenPrivateKey(blockchain.TRONAccounts.PrivateKeys[0])
 
 	rpcClient := NewRPCChainProvider(chainSelector, RPCChainProviderConfig{
 		FullNodeURL:       fullNodeUrl,
@@ -330,19 +321,13 @@ func setupLocalStack(t *testing.T, logger zerolog.Logger) (*tron.Chain, error) {
 	})
 
 	chain, err := rpcClient.Initialize(t.Context())
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize RPCChainProvider: %w", err)
-	}
+	require.NoError(t, err, "Failed to initialize Tron chain provider")
 
 	tronChain, ok := chain.(tron.Chain)
-	if !ok {
-		return nil, fmt.Errorf("unexpected chain type: %T", chain)
-	}
+	require.True(t, ok, "Expected chain to be of type tron.Chain")
 
 	blockInfo, err := tronChain.Client.GetNowBlock()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get block: %w", err)
-	}
+	require.NoError(t, err, "Failed to get current block")
 
 	blockId := blockInfo.BlockID
 	chainIdHex := blockId[len(blockId)-8:]
@@ -351,5 +336,5 @@ func setupLocalStack(t *testing.T, logger zerolog.Logger) (*tron.Chain, error) {
 	chainId := chainIdInt.String()
 	logger.Info().Str("chain id", chainId).Msg("Read first block")
 
-	return &tronChain, nil
+	return &tronChain
 }

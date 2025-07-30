@@ -36,6 +36,3 @@ node_modules/
 
 # Tron wallet folder generated
 */tron/provider/wallet/
-
-# CTF cache configuration files
-ctf-config-cache.toml
