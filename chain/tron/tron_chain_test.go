@@ -2,6 +2,7 @@ package tron_test
 
 import (
 	"testing"
+	"time"
 
 	chain_selectors "github.com/smartcontractkit/chain-selectors"
 	"github.com/stretchr/testify/assert"
@@ -41,4 +42,32 @@ func TestChain_ChainInfo(t *testing.T) {
 			assert.Equal(t, tt.wantFamily, c.Family())
 		})
 	}
+}
+
+func Test_DefaultOptions(t *testing.T) {
+	t.Parallel()
+
+	t.Run("DefaultConfirmRetryOptions", func(t *testing.T) {
+		t.Parallel()
+		opts := tron.DefaultConfirmRetryOptions()
+		assert.Equal(t, uint(180), opts.RetryAttempts)
+		assert.Equal(t, 500*time.Millisecond, opts.RetryDelay)
+	})
+
+	t.Run("DefaultDeployOptions", func(t *testing.T) {
+		t.Parallel()
+		opts := tron.DefaultDeployOptions()
+		assert.Equal(t, 10_000_000, opts.FeeLimit)
+		assert.Equal(t, 100, opts.CurPercent)
+		assert.Equal(t, 10_000_000, opts.OeLimit)
+		assert.Equal(t, tron.DefaultConfirmRetryOptions(), opts.ConfirmRetryOptions)
+	})
+
+	t.Run("DefaultTriggerOptions", func(t *testing.T) {
+		t.Parallel()
+		opts := tron.DefaultTriggerOptions()
+		assert.Equal(t, int32(10_000_000), opts.FeeLimit)
+		assert.Equal(t, int64(0), opts.TAmount)
+		assert.Equal(t, tron.DefaultConfirmRetryOptions(), opts.ConfirmRetryOptions)
+	})
 }
