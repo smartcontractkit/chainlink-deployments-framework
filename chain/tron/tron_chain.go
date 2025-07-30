@@ -60,6 +60,8 @@ type Chain struct {
 	) (*soliditynode.TransactionInfo, error)
 }
 
+// DefaultConfirmRetryOptions returns standard retry options used across contract deployment and invocation.
+// Defaults to 180 retries with a 500ms delay between each attempt.
 func DefaultConfirmRetryOptions() ConfirmRetryOptions {
 	return ConfirmRetryOptions{
 		RetryAttempts: 180,
@@ -67,19 +69,23 @@ func DefaultConfirmRetryOptions() ConfirmRetryOptions {
 	}
 }
 
+// DefaultDeployOptions returns default options used when deploying a contract.
+// It includes a high fee and energy limit suitable for development/testing, and standard retry behavior.
 func DefaultDeployOptions() DeployOptions {
 	return DeployOptions{
-		FeeLimit:            10_000_000,
-		CurPercent:          100,
-		OeLimit:             10_000_000,
+		FeeLimit:            10_000_000, // Default fee limit (in SUN).
+		CurPercent:          100,        // Caller pays full cost.
+		OeLimit:             0,          // Not used when deployer is an EOA (default case).
 		ConfirmRetryOptions: DefaultConfirmRetryOptions(),
 	}
 }
 
+// DefaultTriggerOptions returns default options for calling smart contract methods.
+// These defaults ensure calls succeed on local/dev environments without TRX transfer.
 func DefaultTriggerOptions() TriggerOptions {
 	return TriggerOptions{
-		FeeLimit:            10_000_000,
-		TAmount:             0,
+		FeeLimit:            10_000_000, // Default fee limit (in SUN).
+		TAmount:             0,          // No TRX transferred by default.
 		ConfirmRetryOptions: DefaultConfirmRetryOptions(),
 	}
 }

@@ -16,13 +16,14 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron/provider/rpcclient"
 )
 
-// RPCChainProviderConfig holds configuration for Tron RPC provider
+// RPCChainProviderConfig holds the configuration required to initialize a Tron RPC chain provider.
 type RPCChainProviderConfig struct {
-	FullNodeURL       string
-	SolidityNodeURL   string
-	DeployerSignerGen AccountGenerator
+	FullNodeURL       string           // URL of the full node (used for submitting transactions).
+	SolidityNodeURL   string           // URL of the solidity node (used for confirmed state queries).
+	DeployerSignerGen AccountGenerator // Generator used to create the deployer's keystore and address.
 }
 
+// validate checks whether the configuration contains all required values.
 func (c RPCChainProviderConfig) validate() error {
 	if c.FullNodeURL == "" {
 		return errors.New("full node url is required")
@@ -33,21 +34,20 @@ func (c RPCChainProviderConfig) validate() error {
 	if c.DeployerSignerGen == nil {
 		return errors.New("deployer signer generator is required")
 	}
-
 	return nil
 }
 
 // Ensure interface implementation
 var _ chain.Provider = (*RPCChainProvider)(nil)
 
-// RPCChainProvider implements the Chainlink RPC provider for Tron
+// RPCChainProvider implements the Chainlink `chain.Provider` interface for interacting with a Tron blockchain using RPC.
 type RPCChainProvider struct {
-	selector uint64
-	config   RPCChainProviderConfig
-	chain    *cldf_tron.Chain
+	selector uint64                 // Unique chain selector identifier.
+	config   RPCChainProviderConfig // Configuration used to set up the provider.
+	chain    *cldf_tron.Chain       // Reference to the initialized Tron chain instance.
 }
 
-// NewRPCChainProvider creates a new instance of Tron RPC provider
+// NewRPCChainProvider creates a new Tron RPC provider instance with the given chain selector and configuration.
 func NewRPCChainProvider(selector uint64, config RPCChainProviderConfig) *RPCChainProvider {
 	return &RPCChainProvider{
 		selector: selector,
@@ -55,6 +55,8 @@ func NewRPCChainProvider(selector uint64, config RPCChainProviderConfig) *RPCCha
 	}
 }
 
+// Initialize sets up the Tron chain provider and returns a Chain instance.
+// It connects to the configured full and solidity nodes, initializes the keystore, and wires up helper methods.
 func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, error) {
 	if p.chain != nil {
 		return *p.chain, nil
@@ -73,21 +75,22 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 		return nil, fmt.Errorf("failed to parse solidity node URL: %w", err)
 	}
 
-	// Initialize combined client
+	// Create a client that wraps both full node and solidity node connections
 	combinedClient, err := sdk.CreateCombinedClient(fullNodeUrlObj, solidityNodeUrlObj)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create combined client: %w", err)
 	}
 
-	// Generate keystore and address using the deployer signer generator
+	// Generate deployer keystore and address
 	ks, addr, err := p.config.DeployerSignerGen.Generate()
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate signer: %w", err)
 	}
 
-	// Initialize the Tron client with the combined client, keystore, and address
+	// Initialize local RPC client wrapper
 	client := rpcclient.New(combinedClient, ks, addr)
 
+	// Construct and cache the Tron chain instance with helper methods
 	p.chain = &cldf_tron.Chain{
 		ChainMetadata: cldf_tron.ChainMetadata{
 			Selector: p.selector,
@@ -96,14 +99,17 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 		Keystore: ks,
 		Address:  addr,
 		URL:      p.config.FullNodeURL,
+
+		// Helper for sending and confirming transactions
 		SendAndConfirm: func(ctx context.Context, tx *common.Transaction, opts ...cldf_tron.ConfirmRetryOptions) (*soliditynode.TransactionInfo, error) {
 			options := cldf_tron.DefaultConfirmRetryOptions()
 			if len(opts) > 0 {
 				options = opts[0]
 			}
-
 			return client.SendAndConfirmTx(ctx, tx, options)
 		},
+
+		// Helper for deploying a contract and waiting for confirmation
 		DeployContractAndConfirm: func(
 			ctx context.Context, contractName string, abi string, bytecode string, params []interface{}, opts ...cldf_tron.DeployOptions,
 		) (address.Address, *soliditynode.TransactionInfo, error) {
@@ -129,13 +135,14 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 				return nil, nil, fmt.Errorf("failed to parse contract address: %w", err)
 			}
 
-			err = client.CheckContractDeployed(contractAddress)
-			if err != nil {
+			if err := client.CheckContractDeployed(contractAddress); err != nil {
 				return nil, nil, fmt.Errorf("contract deployment check failed: %w", err)
 			}
 
 			return contractAddress, txInfo, nil
 		},
+
+		// Helper for triggering a contract method and waiting for confirmation
 		TriggerContractAndConfirm: func(
 			ctx context.Context, contractAddr address.Address, functionName string, params []interface{}, opts ...cldf_tron.TriggerOptions,
 		) (*soliditynode.TransactionInfo, error) {
@@ -158,14 +165,17 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 	return *p.chain, nil
 }
 
+// Name returns the name of the provider.
 func (p *RPCChainProvider) Name() string {
 	return "Tron RPC Chain Provider"
 }
 
+// ChainSelector returns the chain selector value used to identify this chain.
 func (p *RPCChainProvider) ChainSelector() uint64 {
 	return p.selector
 }
 
+// BlockChain returns the initialized Tron chain instance.
 func (p *RPCChainProvider) BlockChain() chain.BlockChain {
 	return *p.chain
 }

@@ -95,7 +95,7 @@ func (c *Client) confirmTx(
 
 		//nolint:exhaustive // handled via default case
 		switch result := receipt.Receipt.Result; result {
-		// TODO: investigate why when confirming a non-contract transaction, the result is empty (see Test_SendTrxWithSendAndConfirm)
+		// TODO: investigate why when confirming a non-contract transaction, the result is empty (see SendTrxWithSendAndConfirm test)
 		case "", soliditynode.TransactionResultSuccess:
 			return nil
 		case soliditynode.TransactionResultDefault, soliditynode.TransactionResultUnknown:
@@ -112,6 +112,7 @@ func (c *Client) confirmTx(
 	return receipt, err
 }
 
+// CheckContractDeployed checks if a contract is deployed at the given address.
 func (c *Client) CheckContractDeployed(address address.Address) error {
 	_, err := c.Client.GetContract(address)
 	if err != nil {

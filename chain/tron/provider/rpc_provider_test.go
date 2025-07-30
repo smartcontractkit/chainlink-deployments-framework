@@ -2,12 +2,10 @@ package provider
 
 import (
 	"crypto/rand"
-	"encoding/hex"
 	"fmt"
 	"math/big"
 	"testing"
 
-	"github.com/fbsobreira/gotron-sdk/pkg/address"
 	"github.com/rs/zerolog"
 	chain_selectors "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-evm/gethwrappers/shared/generated/link_token"
@@ -17,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron/localnet"
 )
 
 func Test_RPCChainProviderConfig_validate(t *testing.T) {
@@ -203,7 +202,7 @@ func Test_RPCChainProvider_BlockChain(t *testing.T) {
 }
 
 //nolint:paralleltest // Setup local stack is not parallel-safe
-func Test_SendTrxWithSendAndConfirm(t *testing.T) {
+func Test_Tron_SendTransfer_And_DeployContract(t *testing.T) {
 	logger := common.GetTestLogger(t)
 	tronChain, err := setupLocalStack(t, logger)
 
@@ -214,134 +213,115 @@ func Test_SendTrxWithSendAndConfirm(t *testing.T) {
 	}()
 	require.NoError(t, err, "Failed to setup local Tron stack")
 
-	// Generate a random receiver address
-	receiverKey := testutils.CreateKey(rand.Reader)
-	receiverAddress := receiverKey.Address
+	t.Run("SendTrxWithSendAndConfirm", func(t *testing.T) {
+		// Generate a random receiver address
+		receiverKey := testutils.CreateKey(rand.Reader)
+		receiverAddress := receiverKey.Address
 
-	logger.Info().Str("receiver", receiverAddress.String()).Msg("Generated receiver address")
+		logger.Info().Str("receiver", receiverAddress.String()).Msg("Generated receiver address")
 
-	// Query receiver balance before transfer
-	beforeAccount, err := tronChain.Client.GetAccount(receiverAddress)
-	require.NoError(t, err, "Failed to fetch receiver account before transfer")
-	beforeBalance := beforeAccount.Balance
-	logger.Info().Int64("before balance", beforeBalance).Msg("Receiver balance before transfer")
+		// Query receiver balance before transfer
+		beforeAccount, err := tronChain.Client.GetAccount(receiverAddress)
+		require.NoError(t, err, "Failed to fetch receiver account before transfer")
+		beforeBalance := beforeAccount.Balance
+		logger.Info().Int64("before balance", beforeBalance).Msg("Receiver balance before transfer")
 
-	// Amount to transfer (1 TRX = 1_000_000 SUN)
-	const amount int64 = 1_000_000 // 1 TRX
+		// Amount to transfer (1 TRX = 1_000_000 SUN)
+		const amount int64 = 1_000_000 // 1 TRX
 
-	// Create transfer transaction
-	tx, err := tronChain.Client.Transfer(tronChain.Address, receiverAddress, amount)
-	require.NoError(t, err, "Failed to create transfer transaction")
+		// Create transfer transaction
+		tx, err := tronChain.Client.Transfer(tronChain.Address, receiverAddress, amount)
+		require.NoError(t, err, "Failed to create transfer transaction")
 
-	// Send and confirm transaction
-	txInfo, err := tronChain.SendAndConfirm(t.Context(), tx)
-	require.NoError(t, err, "Failed to send and confirm TRX transfer")
+		// Send and confirm transaction
+		txInfo, err := tronChain.SendAndConfirm(t.Context(), tx)
+		require.NoError(t, err, "Failed to send and confirm TRX transfer")
 
-	logger.Info().Str("txID", txInfo.ID).Msg("Transfer transaction ID")
-	logger.Info().Any("receipt", txInfo.Receipt).Msg("Transaction receipt")
+		logger.Info().Str("txID", txInfo.ID).Msg("Transfer transaction ID")
+		logger.Info().Any("receipt", txInfo.Receipt).Msg("Transaction receipt")
 
-	// Query receiver balance after transfer
-	afterAccount, err := tronChain.Client.GetAccount(receiverAddress)
-	require.NoError(t, err, "Failed to fetch receiver account after transfer")
-	afterBalance := afterAccount.Balance
-	logger.Info().Int64("after balance", afterBalance).Msg("Receiver balance after transfer")
+		// Query receiver balance after transfer
+		afterAccount, err := tronChain.Client.GetAccount(receiverAddress)
+		require.NoError(t, err, "Failed to fetch receiver account after transfer")
+		afterBalance := afterAccount.Balance
+		logger.Info().Int64("after balance", afterBalance).Msg("Receiver balance after transfer")
 
-	// Assert balance increased by expected amount
-	expectedBalance := beforeBalance + amount
-	require.GreaterOrEqual(t, afterBalance, expectedBalance, "Receiver balance should have increased by the transferred amount")
-}
+		// Assert balance increased by expected amount
+		expectedBalance := beforeBalance + amount
+		require.GreaterOrEqual(t, afterBalance, expectedBalance, "Receiver balance should have increased by the transferred amount")
+	})
 
-//nolint:paralleltest // Setup local stack is not parallel-safe
-func Test_DeployAndTriggerLinkContract(t *testing.T) {
-	logger := common.GetTestLogger(t)
-	tronChain, err := setupLocalStack(t, logger)
+	t.Run("DeployAndTriggerLinkContract", func(t *testing.T) {
+		// Set deploy options, including custom fee limit for local deployment
+		deployOptions := tron.DefaultDeployOptions()
+		deployOptions.FeeLimit = testutils.DevnetFeeLimit
 
-	defer func() {
-		if err = testutils.StopTronNode(); err != nil {
-			logger.Error().Err(err).Msg("Failed to stop Tron node")
-		}
-	}()
-	require.NoError(t, err, "Failed to setup local Tron stack")
+		// Deploy the LinkToken contract and wait for confirmation
+		contractAddress, txInfo, err := tronChain.DeployContractAndConfirm(
+			t.Context(), "LinkToken", link_token.LinkTokenABI, link_token.LinkTokenBin, nil, deployOptions)
+		require.NoError(t, err, "Failed to deploy contract")
 
-	// Set deploy options, including custom fee limit for local deployment
-	deployOptions := tron.DefaultDeployOptions()
-	deployOptions.FeeLimit = testutils.DevnetFeeLimit
+		// Log deployed contract address and deployment transaction details
+		logger.Info().Str("contract address", contractAddress.String()).Msg("Deployed contract")
+		logger.Info().Str("transaction id", txInfo.ID).Msg("Deploy transaction ID")
+		logger.Info().Any("transaction receipt", txInfo.Receipt).Msg("Deploy transaction result")
 
-	// Deploy the LinkToken contract and wait for confirmation
-	contractAddress, txInfo, err := tronChain.DeployContractAndConfirm(
-		t.Context(), "LinkToken", link_token.LinkTokenABI, link_token.LinkTokenBin, nil, deployOptions)
-	require.NoError(t, err, "Failed to deploy contract")
+		// Log the address used to deploy contracts (chain address)
+		logger.Info().Str("chain address", tronChain.Address.String()).Msg("Using chain address")
 
-	// Log deployed contract address and deployment transaction details
-	logger.Info().Str("contract address", contractAddress.String()).Msg("Deployed contract")
-	logger.Info().Str("transaction id", txInfo.ID).Msg("Deploy transaction ID")
-	logger.Info().Any("transaction receipt", txInfo.Receipt).Msg("Deploy transaction result")
+		// Generate a random minter address
+		minterKey := testutils.CreateKey(rand.Reader)
+		minterAddress := minterKey.Address
 
-	// Log the address used to deploy contracts (chain address)
-	logger.Info().Str("chain address", tronChain.Address.String()).Msg("Using chain address")
+		// Check the minter role status before granting it
+		beforeMinterResp, err := tronChain.Client.TriggerConstantContract(
+			tronChain.Address, contractAddress, "isMinter(address)", []interface{}{"address", minterAddress})
+		require.NoError(t, err, "Failed to check if minter is set before granting role")
+		logger.Info().Any("before minter response", beforeMinterResp).Msg("Before minter response")
 
-	// Parse the minter address (a predefined address allowed to mint tokens)
-	minterAddress, err := address.Base58ToAddress("TXYZopYRdj2D9XRtbG411XZZ3kM5VkAeBf")
-	require.NoError(t, err, "Failed to parse minter address")
+		// Assert minter role is initially false (not granted)
+		require.Equal(t,
+			"0000000000000000000000000000000000000000000000000000000000000000",
+			beforeMinterResp.ConstantResult[0],
+			"Minter should be set to false",
+		)
 
-	// Check the minter role status before granting it
-	beforeMinterResp, err := tronChain.Client.TriggerConstantContract(
-		tronChain.Address, contractAddress, "isMinter(address)", []interface{}{"address", minterAddress})
-	require.NoError(t, err, "Failed to check if minter is set before granting role")
-	logger.Info().Any("before minter response", beforeMinterResp).Msg("Before minter response")
+		// Grant the minter role to the specified minter address and wait for confirmation
+		grantMintResp, err := tronChain.TriggerContractAndConfirm(
+			t.Context(), contractAddress, "grantMintRole(address)", []interface{}{"address", minterAddress})
+		require.NoError(t, err, "Failed to grant mint role")
 
-	// Assert minter role is initially false (not granted)
-	require.Equal(t,
-		"0000000000000000000000000000000000000000000000000000000000000000",
-		beforeMinterResp.ConstantResult[0],
-		"Minter should be set to false",
-	)
+		// Log the transaction details for granting mint role
+		logger.Info().Str("transaction id", grantMintResp.ID).Msg("Grant mint transaction ID")
+		logger.Info().Any("transaction receipt", grantMintResp.Receipt).Msg("Grant mint transaction result")
 
-	// Grant the minter role to the specified minter address and wait for confirmation
-	grantMintResp, err := tronChain.TriggerContractAndConfirm(
-		t.Context(), contractAddress, "grantMintRole(address)", []interface{}{"address", minterAddress})
-	require.NoError(t, err, "Failed to grant mint role")
+		// Check the minter role status after granting it
+		afterMinterResp, err := tronChain.Client.TriggerConstantContract(
+			tronChain.Address, contractAddress, "isMinter(address)", []interface{}{"address", minterAddress})
+		require.NoError(t, err, "Failed to check if minter is set after granting role")
+		logger.Info().Any("after minter response", afterMinterResp).Msg("After minter response")
 
-	// Log the transaction details for granting mint role
-	logger.Info().Str("transaction id", grantMintResp.ID).Msg("Grant mint transaction ID")
-	logger.Info().Any("transaction receipt", grantMintResp.Receipt).Msg("Grant mint transaction result")
-
-	// Check the minter role status after granting it
-	afterMinterResp, err := tronChain.Client.TriggerConstantContract(
-		tronChain.Address, contractAddress, "isMinter(address)", []interface{}{"address", minterAddress})
-	require.NoError(t, err, "Failed to check if minter is set after granting role")
-	logger.Info().Any("after minter response", afterMinterResp).Msg("After minter response")
-
-	// Assert minter role is now true (successfully granted)
-	require.Equal(t,
-		"0000000000000000000000000000000000000000000000000000000000000001",
-		afterMinterResp.ConstantResult[0],
-		"Minter should be set to true",
-	)
+		// Assert minter role is now true (successfully granted)
+		require.Equal(t,
+			"0000000000000000000000000000000000000000000000000000000000000001",
+			afterMinterResp.ConstantResult[0],
+			"Minter should be set to true",
+		)
+	})
 }
 
 func setupLocalStack(t *testing.T, logger zerolog.Logger) (*tron.Chain, error) {
 	t.Helper()
 
-	genesisAccountKey := testutils.CreateKey(rand.Reader)
-	genesisAddress := genesisAccountKey.Address
-	genesisPrivateKey := genesisAccountKey.PrivateKey
+	bc, accounts, err := localnet.StartLocalNetwork(t)
 
-	logger.Info().Str("Genesis Address", genesisAddress.String()).Msg("Using genesis address")
-
-	fullNodeUrl := fmt.Sprintf("http://%s:%s/wallet", testutils.GetTronNodeIpAddress(), testutils.FullNodePort)
-	solidityNodeUrl := fmt.Sprintf("http://%s:%s/walletsolidity", testutils.GetTronNodeIpAddress(), testutils.SolidityNodePort)
-
-	logger.Info().Msg("Starting java-tron container...")
-	err := testutils.StartTronNode(genesisAddress.String())
-	if err != nil {
-		return nil, fmt.Errorf("could not start java-tron container: %w", err)
-	}
+	fullNodeUrl := fmt.Sprintf("http://%s/wallet", bc.Nodes[0].ExternalHTTPUrl)
+	solidityNodeUrl := fmt.Sprintf("http://%s/walletsolidity", bc.Nodes[0].ExternalHTTPUrl)
 
 	logger.Info().Str("fullNodeUrl", fullNodeUrl).Str("solidityNodeUrl", solidityNodeUrl).Msg("TRON node config")
 
 	chainSelector := chain_selectors.TEST_22222222222222222222222222222222222222222222.Selector
-	accountGenerator := AccountGenPrivateKey(hex.EncodeToString(genesisPrivateKey.D.Bytes()))
+	accountGenerator := AccountGenPrivateKey(accounts.PrivateKeys[0])
 
 	rpcClient := NewRPCChainProvider(chainSelector, RPCChainProviderConfig{
 		FullNodeURL:       fullNodeUrl,
