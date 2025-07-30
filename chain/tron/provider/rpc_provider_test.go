@@ -199,8 +199,8 @@ func Test_RPCChainProvider_BlockChain(t *testing.T) {
 	assert.Equal(t, *chain, p.BlockChain())
 }
 
+//nolint:paralleltest // must run serially to avoid local network conflicts
 func Test_Tron_SendTransfer_And_DeployContract(t *testing.T) {
-	t.Parallel()
 	logger := logging.GetTestLogger(t)
 	tronChain := setupLocalStack(t, logger)
 
@@ -305,6 +305,7 @@ func setupLocalStack(t *testing.T, logger zerolog.Logger) *tron.Chain {
 	t.Helper()
 
 	bc, err := blockchain.NewBlockchainNetwork(&blockchain.Input{Type: "tron"})
+	require.NoError(t, err, "Failed to create blockchain network")
 
 	fullNodeUrl := bc.Nodes[0].ExternalHTTPUrl + "/wallet"
 	solidityNodeUrl := bc.Nodes[0].ExternalHTTPUrl + "/walletsolidity"

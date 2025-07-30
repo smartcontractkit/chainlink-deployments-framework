@@ -18,8 +18,8 @@ import (
 
 // RPCChainProviderConfig holds the configuration required to initialize a Tron RPC chain provider.
 type RPCChainProviderConfig struct {
-	FullNodeURL       string           // URL of the full node (used for submitting transactions).
-	SolidityNodeURL   string           // URL of the solidity node (used for confirmed state queries).
+	FullNodeURL       string           // URL of the full node.
+	SolidityNodeURL   string           // URL of the solidity node.
 	DeployerSignerGen AccountGenerator // Generator used to create the deployer's keystore and address.
 }
 
@@ -42,13 +42,15 @@ func (c RPCChainProviderConfig) validate() error {
 var _ chain.Provider = (*RPCChainProvider)(nil)
 
 // RPCChainProvider implements the Chainlink `chain.Provider` interface for interacting with a Tron blockchain using RPC.
+// It encapsulates configuration and connection details needed to interact with a live or local Tron node.
 type RPCChainProvider struct {
 	selector uint64                 // Unique chain selector identifier.
 	config   RPCChainProviderConfig // Configuration used to set up the provider.
-	chain    *cldf_tron.Chain       // Reference to the initialized Tron chain instance.
+	chain    *cldf_tron.Chain       // Cached reference to the initialized Tron chain instance.
 }
 
 // NewRPCChainProvider creates a new Tron RPC provider instance with the given chain selector and configuration.
+// The actual connection is deferred until Initialize is called.
 func NewRPCChainProvider(selector uint64, config RPCChainProviderConfig) *RPCChainProvider {
 	return &RPCChainProvider{
 		selector: selector,
@@ -59,14 +61,17 @@ func NewRPCChainProvider(selector uint64, config RPCChainProviderConfig) *RPCCha
 // Initialize sets up the Tron chain provider and returns a Chain instance.
 // It connects to the configured full and solidity nodes, initializes the keystore, and wires up helper methods.
 func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, error) {
+	// If already initialized, return cached chain
 	if p.chain != nil {
 		return *p.chain, nil
 	}
 
+	// Validate config
 	if err := p.config.validate(); err != nil {
 		return nil, fmt.Errorf("invalid Tron RPC config: %w", err)
 	}
 
+	// Parse URLs for node connections
 	fullNodeUrlObj, err := url.Parse(p.config.FullNodeURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse full node URL: %w", err)
@@ -88,29 +93,26 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 		return nil, fmt.Errorf("failed to generate signer: %w", err)
 	}
 
-	// Initialize local RPC client wrapper
+	// Initialize local RPC client wrapper that uses the keystore for signing
 	client := rpcclient.New(combinedClient, ks, addr)
 
-	// Construct and cache the Tron chain instance with helper methods
+	// Construct and cache the Tron chain instance with helper methods for deploying and interacting with contracts
 	p.chain = &cldf_tron.Chain{
 		ChainMetadata: cldf_tron.ChainMetadata{
 			Selector: p.selector,
 		},
-		Client:   combinedClient,
-		Keystore: ks,
-		Address:  addr,
+		Client:   combinedClient, // Underlying client for Tron node communication
+		Keystore: ks,             // Keystore for signing transactions
+		Address:  addr,           // Default "from" address for transactions
 		URL:      p.config.FullNodeURL,
-
 		// Helper for sending and confirming transactions
 		SendAndConfirm: func(ctx context.Context, tx *common.Transaction, opts ...cldf_tron.ConfirmRetryOptions) (*soliditynode.TransactionInfo, error) {
 			options := cldf_tron.DefaultConfirmRetryOptions()
 			if len(opts) > 0 {
 				options = opts[0]
 			}
-
 			return client.SendAndConfirmTx(ctx, tx, options)
 		},
-
 		// Helper for deploying a contract and waiting for confirmation
 		DeployContractAndConfirm: func(
 			ctx context.Context, contractName string, abi string, bytecode string, params []interface{}, opts ...cldf_tron.DeployOptions,
@@ -120,6 +122,7 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 				options = opts[0]
 			}
 
+			// Create deploy contract transaction
 			deployResponse, err := combinedClient.DeployContract(
 				addr, contractName, abi, bytecode, options.OeLimit, options.CurPercent, options.FeeLimit, params,
 			)
@@ -127,23 +130,25 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 				return nil, nil, fmt.Errorf("failed to create deploy contract transaction: %w", err)
 			}
 
+			// Send transaction and wait for confirmation
 			txInfo, err := client.SendAndConfirmTx(ctx, &deployResponse.Transaction, options.ConfirmRetryOptions)
 			if err != nil {
 				return nil, nil, fmt.Errorf("failed to confirm deploy contract transaction: %w", err)
 			}
 
-			contractAddress, err := address.StringToAddress(txInfo.ContractAddress)
+			// Parse resulting contract address
+			contractAddr, err := address.StringToAddress(txInfo.ContractAddress)
 			if err != nil {
 				return nil, nil, fmt.Errorf("failed to parse contract address: %w", err)
 			}
 
-			if err := client.CheckContractDeployed(contractAddress); err != nil {
+			// Ensure contract is actually deployed on-chain
+			if err := client.CheckContractDeployed(contractAddr); err != nil {
 				return nil, nil, fmt.Errorf("contract deployment check failed: %w", err)
 			}
 
-			return contractAddress, txInfo, nil
+			return contractAddr, txInfo, nil
 		},
-
 		// Helper for triggering a contract method and waiting for confirmation
 		TriggerContractAndConfirm: func(
 			ctx context.Context, contractAddr address.Address, functionName string, params []interface{}, opts ...cldf_tron.TriggerOptions,
@@ -153,6 +158,12 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 				options = opts[0]
 			}
 
+			// Ensure contract is actually deployed on-chain
+			if err := client.CheckContractDeployed(contractAddr); err != nil {
+				return nil, fmt.Errorf("contract deployment check failed: %w", err)
+			}
+
+			// Create trigger contract transaction
 			contractResponse, err := combinedClient.TriggerSmartContract(
 				addr, contractAddr, functionName, params, options.FeeLimit, options.TAmount,
 			)
@@ -160,6 +171,7 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 				return nil, fmt.Errorf("failed to create trigger contract transaction: %w", err)
 			}
 
+			// Send transaction and wait for confirmation
 			return client.SendAndConfirmTx(ctx, contractResponse.Transaction, options.ConfirmRetryOptions)
 		},
 	}

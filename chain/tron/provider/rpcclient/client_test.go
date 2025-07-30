@@ -3,7 +3,6 @@ package rpcclient
 import (
 	"context"
 	"encoding/hex"
-	"fmt"
 	"math/big"
 	"net/url"
 	"testing"
@@ -14,13 +13,13 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/require"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron"
-	cldf_tron "github.com/smartcontractkit/chainlink-deployments-framework/chain/tron"
-	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron/keystore"
 	"github.com/smartcontractkit/chainlink-evm/gethwrappers/shared/generated/link_token"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/logging"
 	"github.com/smartcontractkit/chainlink-tron/relayer/sdk"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron/keystore"
 )
 
 func TestConfirmRetryOpts_DefaultsAndOverrides(t *testing.T) {
@@ -28,7 +27,7 @@ func TestConfirmRetryOpts_DefaultsAndOverrides(t *testing.T) {
 	ctx := context.Background()
 
 	// Test default options
-	opts := ConfirmRetryOpts(ctx, cldf_tron.DefaultConfirmRetryOptions())
+	opts := ConfirmRetryOpts(ctx, tron.DefaultConfirmRetryOptions())
 	require.Len(t, opts, 4)
 
 	// Confirm context is set correctly
@@ -42,7 +41,7 @@ func TestConfirmRetryOpts_DefaultsAndOverrides(t *testing.T) {
 	require.True(t, hasCtx)
 
 	// Test with custom options
-	customOpts := ConfirmRetryOpts(ctx, cldf_tron.ConfirmRetryOptions{
+	customOpts := ConfirmRetryOpts(ctx, tron.ConfirmRetryOptions{
 		RetryAttempts: 3,
 		RetryDelay:    50 * time.Millisecond,
 	})
@@ -60,9 +59,8 @@ func TestNewClient(t *testing.T) {
 	require.Nil(t, cli.Keystore)
 }
 
+//nolint:paralleltest // must run serially to avoid local network conflicts
 func Test_Tron_SendAndConfirmTx_And_CheckContractDeployed(t *testing.T) {
-	t.Parallel()
-
 	logger := logging.GetTestLogger(t)
 	rpcClient := setupLocalStack(t, logger)
 
@@ -74,6 +72,7 @@ func Test_Tron_SendAndConfirmTx_And_CheckContractDeployed(t *testing.T) {
 	require.NoError(t, err, "Failed to create deploy contract transaction")
 
 	txInfo, err := rpcClient.SendAndConfirmTx(t.Context(), &deployResponse.Transaction, deployOptions.ConfirmRetryOptions)
+	require.NoError(t, err, "Failed to send and confirm transaction")
 
 	logger.Info().Str("txID", txInfo.ID).Msg("Transaction ID")
 	logger.Info().Any("receipt", txInfo.Receipt).Msg("Transaction receipt")
@@ -90,9 +89,10 @@ func setupLocalStack(t *testing.T, logger zerolog.Logger) *Client {
 	t.Helper()
 
 	bc, err := blockchain.NewBlockchainNetwork(&blockchain.Input{Type: "tron"})
+	require.NoError(t, err, "Failed to create blockchain network")
 
-	fullNodeUrl := fmt.Sprintf("%s/wallet", bc.Nodes[0].ExternalHTTPUrl)
-	solidityNodeUrl := fmt.Sprintf("%s/walletsolidity", bc.Nodes[0].ExternalHTTPUrl)
+	fullNodeUrl := bc.Nodes[0].ExternalHTTPUrl + "/wallet"
+	solidityNodeUrl := bc.Nodes[0].ExternalHTTPUrl + "/walletsolidity"
 
 	logger.Info().Str("fullNodeUrl", fullNodeUrl).Str("solidityNodeUrl", solidityNodeUrl).Msg("TRON node config")
 
