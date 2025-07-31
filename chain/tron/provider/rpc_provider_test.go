@@ -1,8 +1,8 @@
 package provider
 
 import (
-	"fmt"
 	"math/big"
+	"strconv"
 	"testing"
 
 	"github.com/fbsobreira/gotron-sdk/pkg/address"
@@ -309,9 +309,7 @@ func setupLocalStack(t *testing.T, logger zerolog.Logger) *tron.Chain {
 	port := freeport.GetOne(t)
 	bc, err := blockchain.NewBlockchainNetwork(&blockchain.Input{
 		Type: "tron",
-		CustomPorts: []string{
-			fmt.Sprintf("%d:9090", port),
-		},
+		Port: strconv.Itoa(port),
 	})
 	require.NoError(t, err, "Failed to create blockchain network")
 

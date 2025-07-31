@@ -3,9 +3,9 @@ package rpcclient
 import (
 	"context"
 	"encoding/hex"
-	"fmt"
 	"math/big"
 	"net/url"
+	"strconv"
 	"testing"
 	"time"
 
@@ -93,9 +93,7 @@ func setupLocalStack(t *testing.T, logger zerolog.Logger) *Client {
 	port := freeport.GetOne(t)
 	bc, err := blockchain.NewBlockchainNetwork(&blockchain.Input{
 		Type: "tron",
-		CustomPorts: []string{
-			fmt.Sprintf("%d:9090", port),
-		},
+		Port: strconv.Itoa(port),
 	})
 	require.NoError(t, err, "Failed to create blockchain network")
 
