@@ -14,12 +14,12 @@ import (
 
 	"github.com/smartcontractkit/chainlink-tron/relayer/sdk"
 
-	cldf_tron "github.com/smartcontractkit/chainlink-deployments-framework/chain/tron"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron"
 )
 
-// ConfirmRetryOpts returns the retry options for confirming transactions.
+// confirmRetryOpts returns the retry options for confirming transactions.
 // It wraps a context and sets retry count and delay based on provided config.
-func ConfirmRetryOpts(ctx context.Context, c cldf_tron.ConfirmRetryOptions) []retry.Option {
+func confirmRetryOpts(ctx context.Context, c tron.ConfirmRetryOptions) []retry.Option {
 	return []retry.Option{
 		retry.Context(ctx),
 		retry.Attempts(c.RetryAttempts),
@@ -53,10 +53,10 @@ func New(client sdk.FullNodeClient, keystore *keystore.Keystore, account address
 func (c *Client) SendAndConfirmTx(
 	ctx context.Context,
 	tx *common.Transaction,
-	opts ...cldf_tron.ConfirmRetryOptions,
+	opts ...tron.ConfirmRetryOptions,
 ) (*soliditynode.TransactionInfo, error) {
 	// Initialize the configuration with defaults or provided options.
-	option := cldf_tron.DefaultConfirmRetryOptions()
+	option := tron.DefaultConfirmRetryOptions()
 	if len(opts) > 0 {
 		option = opts[0]
 	}
@@ -83,7 +83,7 @@ func (c *Client) SendAndConfirmTx(
 	}
 
 	// Confirm the transaction by polling for success/failure based on the TxID
-	return c.confirmTx(broadcastResponse.TxID, ConfirmRetryOpts(ctx, option)...)
+	return c.confirmTx(broadcastResponse.TxID, confirmRetryOpts(ctx, option)...)
 }
 
 // confirmTx checks the transaction receipt by its ID, retrying until it is confirmed or fails.

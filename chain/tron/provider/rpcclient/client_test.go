@@ -3,6 +3,7 @@ package rpcclient
 import (
 	"context"
 	"encoding/hex"
+	"fmt"
 	"math/big"
 	"net/url"
 	"testing"
@@ -17,6 +18,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/logging"
 	"github.com/smartcontractkit/chainlink-tron/relayer/sdk"
+	"github.com/smartcontractkit/freeport"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron/keystore"
@@ -27,7 +29,7 @@ func TestConfirmRetryOpts_DefaultsAndOverrides(t *testing.T) {
 	ctx := context.Background()
 
 	// Test default options
-	opts := ConfirmRetryOpts(ctx, tron.DefaultConfirmRetryOptions())
+	opts := confirmRetryOpts(ctx, tron.DefaultConfirmRetryOptions())
 	require.Len(t, opts, 4)
 
 	// Confirm context is set correctly
@@ -41,7 +43,7 @@ func TestConfirmRetryOpts_DefaultsAndOverrides(t *testing.T) {
 	require.True(t, hasCtx)
 
 	// Test with custom options
-	customOpts := ConfirmRetryOpts(ctx, tron.ConfirmRetryOptions{
+	customOpts := confirmRetryOpts(ctx, tron.ConfirmRetryOptions{
 		RetryAttempts: 3,
 		RetryDelay:    50 * time.Millisecond,
 	})
@@ -88,7 +90,13 @@ func Test_Tron_SendAndConfirmTx_And_CheckContractDeployed(t *testing.T) {
 func setupLocalStack(t *testing.T, logger zerolog.Logger) *Client {
 	t.Helper()
 
-	bc, err := blockchain.NewBlockchainNetwork(&blockchain.Input{Type: "tron"})
+	port := freeport.GetOne(t)
+	bc, err := blockchain.NewBlockchainNetwork(&blockchain.Input{
+		Type: "tron",
+		CustomPorts: []string{
+			fmt.Sprintf("%d:9090", port),
+		},
+	})
 	require.NoError(t, err, "Failed to create blockchain network")
 
 	fullNodeUrl := bc.Nodes[0].ExternalHTTPUrl + "/wallet"

@@ -12,7 +12,7 @@ import (
 	"github.com/smartcontractkit/chainlink-tron/relayer/sdk"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
-	cldf_tron "github.com/smartcontractkit/chainlink-deployments-framework/chain/tron"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron/provider/rpcclient"
 )
 
@@ -46,7 +46,7 @@ var _ chain.Provider = (*RPCChainProvider)(nil)
 type RPCChainProvider struct {
 	selector uint64                 // Unique chain selector identifier.
 	config   RPCChainProviderConfig // Configuration used to set up the provider.
-	chain    *cldf_tron.Chain       // Cached reference to the initialized Tron chain instance.
+	chain    *tron.Chain            // Cached reference to the initialized Tron chain instance.
 }
 
 // NewRPCChainProvider creates a new Tron RPC provider instance with the given chain selector and configuration.
@@ -97,8 +97,8 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 	client := rpcclient.New(combinedClient, ks, addr)
 
 	// Construct and cache the Tron chain instance with helper methods for deploying and interacting with contracts
-	p.chain = &cldf_tron.Chain{
-		ChainMetadata: cldf_tron.ChainMetadata{
+	p.chain = &tron.Chain{
+		ChainMetadata: tron.ChainMetadata{
 			Selector: p.selector,
 		},
 		Client:   combinedClient, // Underlying client for Tron node communication
@@ -106,18 +106,20 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 		Address:  addr,           // Default "from" address for transactions
 		URL:      p.config.FullNodeURL,
 		// Helper for sending and confirming transactions
-		SendAndConfirm: func(ctx context.Context, tx *common.Transaction, opts ...cldf_tron.ConfirmRetryOptions) (*soliditynode.TransactionInfo, error) {
-			options := cldf_tron.DefaultConfirmRetryOptions()
+		SendAndConfirm: func(ctx context.Context, tx *common.Transaction, opts ...tron.ConfirmRetryOptions) (*soliditynode.TransactionInfo, error) {
+			options := tron.DefaultConfirmRetryOptions()
 			if len(opts) > 0 {
 				options = opts[0]
 			}
+
+			// Send transaction and wait for confirmation
 			return client.SendAndConfirmTx(ctx, tx, options)
 		},
 		// Helper for deploying a contract and waiting for confirmation
 		DeployContractAndConfirm: func(
-			ctx context.Context, contractName string, abi string, bytecode string, params []interface{}, opts ...cldf_tron.DeployOptions,
+			ctx context.Context, contractName string, abi string, bytecode string, params []interface{}, opts ...tron.DeployOptions,
 		) (address.Address, *soliditynode.TransactionInfo, error) {
-			options := cldf_tron.DefaultDeployOptions()
+			options := tron.DefaultDeployOptions()
 			if len(opts) > 0 {
 				options = opts[0]
 			}
@@ -151,9 +153,9 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 		},
 		// Helper for triggering a contract method and waiting for confirmation
 		TriggerContractAndConfirm: func(
-			ctx context.Context, contractAddr address.Address, functionName string, params []interface{}, opts ...cldf_tron.TriggerOptions,
+			ctx context.Context, contractAddr address.Address, functionName string, params []interface{}, opts ...tron.TriggerOptions,
 		) (*soliditynode.TransactionInfo, error) {
-			options := cldf_tron.DefaultTriggerOptions()
+			options := tron.DefaultTriggerOptions()
 			if len(opts) > 0 {
 				options = opts[0]
 			}

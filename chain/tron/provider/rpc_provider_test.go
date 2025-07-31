@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"fmt"
 	"math/big"
 	"testing"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/smartcontractkit/chainlink-evm/gethwrappers/shared/generated/link_token"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/logging"
+	"github.com/smartcontractkit/freeport"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -304,7 +306,13 @@ func Test_Tron_SendTransfer_And_DeployContract(t *testing.T) {
 func setupLocalStack(t *testing.T, logger zerolog.Logger) *tron.Chain {
 	t.Helper()
 
-	bc, err := blockchain.NewBlockchainNetwork(&blockchain.Input{Type: "tron"})
+	port := freeport.GetOne(t)
+	bc, err := blockchain.NewBlockchainNetwork(&blockchain.Input{
+		Type: "tron",
+		CustomPorts: []string{
+			fmt.Sprintf("%d:9090", port),
+		},
+	})
 	require.NoError(t, err, "Failed to create blockchain network")
 
 	fullNodeUrl := bc.Nodes[0].ExternalHTTPUrl + "/wallet"
