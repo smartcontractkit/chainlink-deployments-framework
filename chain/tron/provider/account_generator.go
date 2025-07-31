@@ -7,6 +7,8 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/fbsobreira/gotron-sdk/pkg/address"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
+
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron/keystore"
 )
 
@@ -16,9 +18,25 @@ type AccountGenerator interface {
 }
 
 var (
+	_ AccountGenerator = (*accountGenCTFDefault)(nil)
 	_ AccountGenerator = (*accountGenPrivateKey)(nil)
 	_ AccountGenerator = (*accountRandom)(nil)
 )
+
+// accountGenCTFDefault is a default account generator for CTF (Chainlink Testing Framework).
+type accountGenCTFDefault struct {
+	accountGenPrivateKey
+}
+
+// AccountGenCTFDefault creates a new instance of accountGenCTFDefault. It uses the default
+// TRON account and private key from the blockchain package.
+func AccountGenCTFDefault() *accountGenCTFDefault {
+	return &accountGenCTFDefault{
+		accountGenPrivateKey: accountGenPrivateKey{
+			PrivateKey: blockchain.TRONAccounts.PrivateKeys[0],
+		},
+	}
+}
 
 // accountGenPrivateKey is an account generator that creates an account from the private key.
 type accountGenPrivateKey struct {

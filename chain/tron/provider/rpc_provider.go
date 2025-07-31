@@ -18,9 +18,9 @@ import (
 
 // RPCChainProviderConfig holds the configuration required to initialize a Tron RPC chain provider.
 type RPCChainProviderConfig struct {
-	FullNodeURL       string           // URL of the full node.
-	SolidityNodeURL   string           // URL of the solidity node.
-	DeployerSignerGen AccountGenerator // Generator used to create the deployer's keystore and address.
+	FullNodeURL        string           // URL of the full node.
+	SolidityNodeURL    string           // URL of the solidity node.
+	DeployerAccountGen AccountGenerator // Generator used to create the deployer's keystore and address.
 }
 
 // validate checks whether the configuration contains all required values.
@@ -31,8 +31,8 @@ func (c RPCChainProviderConfig) validate() error {
 	if c.SolidityNodeURL == "" {
 		return errors.New("solidity node url is required")
 	}
-	if c.DeployerSignerGen == nil {
-		return errors.New("deployer signer generator is required")
+	if c.DeployerAccountGen == nil {
+		return errors.New("deployer account generator is required")
 	}
 
 	return nil
@@ -88,22 +88,22 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 	}
 
 	// Generate deployer keystore and address
-	ks, addr, err := p.config.DeployerSignerGen.Generate()
+	deployerKeystore, deployerAddr, err := p.config.DeployerAccountGen.Generate()
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate signer: %w", err)
+		return nil, fmt.Errorf("failed to generate deployer account: %w", err)
 	}
 
 	// Initialize local RPC client wrapper that uses the keystore for signing
-	client := rpcclient.New(combinedClient, ks, addr)
+	client := rpcclient.New(combinedClient, deployerKeystore, deployerAddr)
 
 	// Construct and cache the Tron chain instance with helper methods for deploying and interacting with contracts
 	p.chain = &tron.Chain{
 		ChainMetadata: tron.ChainMetadata{
 			Selector: p.selector,
 		},
-		Client:   combinedClient, // Underlying client for Tron node communication
-		Keystore: ks,             // Keystore for signing transactions
-		Address:  addr,           // Default "from" address for transactions
+		Client:   combinedClient,   // Underlying client for Tron node communication
+		Keystore: deployerKeystore, // Keystore for signing transactions
+		Address:  deployerAddr,     // Default "from" address for transactions
 		URL:      p.config.FullNodeURL,
 		// Helper for sending and confirming transactions
 		SendAndConfirm: func(ctx context.Context, tx *common.Transaction, opts ...tron.ConfirmRetryOptions) (*soliditynode.TransactionInfo, error) {
@@ -126,7 +126,7 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 
 			// Create deploy contract transaction
 			deployResponse, err := combinedClient.DeployContract(
-				addr, contractName, abi, bytecode, options.OeLimit, options.CurPercent, options.FeeLimit, params,
+				deployerAddr, contractName, abi, bytecode, options.OeLimit, options.CurPercent, options.FeeLimit, params,
 			)
 			if err != nil {
 				return nil, nil, fmt.Errorf("failed to create deploy contract transaction: %w", err)
@@ -167,7 +167,7 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 
 			// Create trigger contract transaction
 			contractResponse, err := combinedClient.TriggerSmartContract(
-				addr, contractAddr, functionName, params, options.FeeLimit, options.TAmount,
+				deployerAddr, contractAddr, functionName, params, options.FeeLimit, options.TAmount,
 			)
 			if err != nil {
 				return nil, fmt.Errorf("failed to create trigger contract transaction: %w", err)

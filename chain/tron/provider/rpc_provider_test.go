@@ -41,7 +41,7 @@ func Test_RPCChainProviderConfig_validate(t *testing.T) {
 		},
 		{
 			name:           "missing deployer signer generator",
-			giveConfigFunc: func(c *RPCChainProviderConfig) { c.DeployerSignerGen = nil },
+			giveConfigFunc: func(c *RPCChainProviderConfig) { c.DeployerAccountGen = nil },
 			wantErr:        "deployer signer generator is required",
 		},
 	}
@@ -52,9 +52,9 @@ func Test_RPCChainProviderConfig_validate(t *testing.T) {
 
 			// A valid configuration for the RPCChainProviderConfig
 			config := RPCChainProviderConfig{
-				FullNodeURL:       "http://localhost:8090",
-				SolidityNodeURL:   "http://localhost:8091",
-				DeployerSignerGen: AccountRandom(),
+				FullNodeURL:        "http://localhost:8090",
+				SolidityNodeURL:    "http://localhost:8091",
+				DeployerAccountGen: AccountRandom(),
 			}
 
 			if tt.giveConfigFunc != nil {
@@ -93,9 +93,9 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 				t.Helper()
 
 				return RPCChainProviderConfig{
-					FullNodeURL:       "http://localhost:8090",
-					SolidityNodeURL:   "http://localhost:8091",
-					DeployerSignerGen: AccountRandom(),
+					FullNodeURL:        "http://localhost:8090",
+					SolidityNodeURL:    "http://localhost:8091",
+					DeployerAccountGen: AccountRandom(),
 				}
 			},
 		},
@@ -121,9 +121,9 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 				t.Helper()
 
 				return RPCChainProviderConfig{
-					FullNodeURL:       "http://localhost:8090",
-					SolidityNodeURL:   "http://localhost:8091",
-					DeployerSignerGen: AccountGenPrivateKey(""), // Invalid private key
+					FullNodeURL:        "http://localhost:8090",
+					SolidityNodeURL:    "http://localhost:8091",
+					DeployerAccountGen: AccountGenPrivateKey(""), // Invalid private key
 				}
 			},
 			wantErr: "failed to generate signer",
@@ -207,6 +207,7 @@ func Test_Tron_SendTransfer_And_DeployContract(t *testing.T) {
 	logger := logging.GetTestLogger(t)
 	tronChain := setupLocalStack(t, logger)
 
+	//nolint:paralleltest // this subtest shares a local Tron node and must not run in parallel
 	t.Run("SendTrxWithSendAndConfirm", func(t *testing.T) {
 		// Generate a random receiver address
 		receiverAddress, err := address.Base58ToAddress("TQtWBxe8wNAcio3evcfwMAqsdFzykpi6e7")
@@ -245,6 +246,7 @@ func Test_Tron_SendTransfer_And_DeployContract(t *testing.T) {
 		require.GreaterOrEqual(t, afterBalance, expectedBalance, "Receiver balance should have increased by the transferred amount")
 	})
 
+	//nolint:paralleltest // this subtest shares a local Tron node and must not run in parallel
 	t.Run("DeployAndTriggerLinkContract", func(t *testing.T) {
 		// Set deploy options, including custom fee limit for local deployment
 		deployOptions := tron.DefaultDeployOptions()
@@ -323,9 +325,9 @@ func setupLocalStack(t *testing.T, logger zerolog.Logger) *tron.Chain {
 	accountGenerator := AccountGenPrivateKey(blockchain.TRONAccounts.PrivateKeys[0])
 
 	rpcClient := NewRPCChainProvider(chainSelector, RPCChainProviderConfig{
-		FullNodeURL:       fullNodeUrl,
-		SolidityNodeURL:   solidityNodeUrl,
-		DeployerSignerGen: accountGenerator,
+		FullNodeURL:        fullNodeUrl,
+		SolidityNodeURL:    solidityNodeUrl,
+		DeployerAccountGen: accountGenerator,
 	})
 
 	chain, err := rpcClient.Initialize(t.Context())

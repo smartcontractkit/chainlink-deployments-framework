@@ -11,6 +11,24 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func Test_AccountGenCTFDefault(t *testing.T) {
+	t.Parallel()
+
+	gen := AccountGenCTFDefault()
+	require.NotNil(t, gen)
+
+	keystore, addr, err := gen.Generate()
+	require.NoError(t, err)
+	require.NotNil(t, keystore)
+	require.NotEmpty(t, addr)
+
+	// Test that multiple calls generate the same account (deterministic)
+	keystore2, addr2, err2 := gen.Generate()
+	require.NoError(t, err2)
+	require.Equal(t, addr, addr2)
+	require.NotNil(t, keystore2)
+}
+
 func Test_AccountGenPrivateKey(t *testing.T) {
 	t.Parallel()
 
