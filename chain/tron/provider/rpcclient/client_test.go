@@ -61,8 +61,9 @@ func TestNewClient(t *testing.T) {
 	require.Nil(t, cli.Keystore)
 }
 
-//nolint:paralleltest // must run serially to avoid local network conflicts
 func Test_Tron_SendAndConfirmTx_And_CheckContractDeployed(t *testing.T) {
+	t.Parallel()
+
 	logger := logging.GetTestLogger(t)
 	rpcClient := setupLocalStack(t, logger)
 

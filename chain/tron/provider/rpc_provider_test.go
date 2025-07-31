@@ -201,8 +201,9 @@ func Test_RPCChainProvider_BlockChain(t *testing.T) {
 	assert.Equal(t, *chain, p.BlockChain())
 }
 
-//nolint:paralleltest // must run serially to avoid local network conflicts
 func Test_Tron_SendTransfer_And_DeployContract(t *testing.T) {
+	t.Parallel()
+
 	logger := logging.GetTestLogger(t)
 	tronChain := setupLocalStack(t, logger)
 
