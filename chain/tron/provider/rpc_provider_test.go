@@ -40,9 +40,9 @@ func Test_RPCChainProviderConfig_validate(t *testing.T) {
 			wantErr:        "solidity node url is required",
 		},
 		{
-			name:           "missing deployer signer generator",
+			name:           "missing deployer account generator",
 			giveConfigFunc: func(c *RPCChainProviderConfig) { c.DeployerAccountGen = nil },
-			wantErr:        "deployer signer generator is required",
+			wantErr:        "deployer account generator is required",
 		},
 	}
 
@@ -126,7 +126,7 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 					DeployerAccountGen: AccountGenPrivateKey(""), // Invalid private key
 				}
 			},
-			wantErr: "failed to generate signer",
+			wantErr: "failed to generate deployer account",
 		},
 	}
 
