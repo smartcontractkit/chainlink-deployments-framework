@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/avast/retry-go/v4"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/fbsobreira/gotron-sdk/pkg/address"
 	"github.com/rs/zerolog"
@@ -61,9 +62,8 @@ func TestNewClient(t *testing.T) {
 	require.Nil(t, cli.Keystore)
 }
 
+//nolint:paralleltest // this test uses Tron node and must not run in parallel
 func Test_Tron_SendAndConfirmTx_And_CheckContractDeployed(t *testing.T) {
-	t.Parallel()
-
 	logger := logging.GetTestLogger(t)
 	rpcClient := setupLocalStack(t, logger)
 
@@ -91,13 +91,37 @@ func Test_Tron_SendAndConfirmTx_And_CheckContractDeployed(t *testing.T) {
 func setupLocalStack(t *testing.T, logger zerolog.Logger) *Client {
 	t.Helper()
 
-	port := freeport.GetOne(t)
-	bc, err := blockchain.NewBlockchainNetwork(&blockchain.Input{
-		Type:  blockchain.TypeTron,
-		Port:  strconv.Itoa(port),
-		Image: "tronbox/tre:dev", // dev supports arm (mac) and amd (ci)
-	})
-	require.NoError(t, err, "Failed to create blockchain network")
+	var (
+		attempts = uint(10)
+		bc       *blockchain.Output
+	)
+
+	// Retry logic to handle port conflicts using retry.DoWithData
+	bc, err := retry.DoWithData(func() (*blockchain.Output, error) {
+		port := freeport.GetOne(t)
+
+		output, rerr := blockchain.NewBlockchainNetwork(&blockchain.Input{
+			Type:  blockchain.TypeTron,
+			Port:  strconv.Itoa(port),
+			Image: "tronbox/tre:dev", // dev supports arm (mac) and amd (ci)
+		})
+		if rerr != nil {
+			// Return the ports to freeport to avoid leaking them during retries
+			freeport.Return([]int{port})
+			return nil, rerr
+		}
+
+		return output, nil
+	},
+		retry.Context(t.Context()),
+		retry.Attempts(attempts),
+		retry.Delay(1*time.Second),
+		retry.DelayType(retry.FixedDelay),
+		retry.OnRetry(func(attempt uint, err error) {
+			t.Logf("Attempt %d/%d: Failed to start CTF TRON container: %v", attempt+1, attempts, err)
+		}),
+	)
+	require.NoError(t, err, "Failed to start CTF TRON container after %d attempts", attempts)
 
 	fullNodeUrl := bc.Nodes[0].ExternalHTTPUrl + "/wallet"
 	solidityNodeUrl := bc.Nodes[0].ExternalHTTPUrl + "/walletsolidity"
