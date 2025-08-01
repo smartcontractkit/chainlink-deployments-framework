@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-evm/gethwrappers/shared/generated/link_token"
-	"github.com/smartcontractkit/chainlink-testing-framework/lib/logging"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron/provider/rpcclient"
@@ -167,8 +166,6 @@ func TestCTFChainProvider_ContainerStartup(t *testing.T) {
 func TestCTFProvider_SendAndConfirmTx_And_CheckContractDeployed(t *testing.T) {
 	t.Parallel()
 
-	logger := logging.GetTestLogger(t)
-
 	config := CTFChainProviderConfig{
 		DeployerAccountGen: AccountGenCTFDefault(),
 		Once:               &sync.Once{},
@@ -185,7 +182,7 @@ func TestCTFProvider_SendAndConfirmTx_And_CheckContractDeployed(t *testing.T) {
 	tronChain, ok := chainInstance.(tron.Chain)
 	require.True(t, ok, "Expected TRON chain instance")
 
-	logger.Info().Str("chainURL", tronChain.URL).Uint64("selector", tronChain.Selector).Msg("TRON CTF chain initialized")
+	t.Logf("TRON CTF chain initialized: %s, %d", tronChain.URL, tronChain.Selector)
 
 	// Create RPC client using the chain's components
 	rpcClient := rpcclient.New(tronChain.Client, tronChain.Keystore, tronChain.Address)
@@ -200,9 +197,9 @@ func TestCTFProvider_SendAndConfirmTx_And_CheckContractDeployed(t *testing.T) {
 	txInfo, err := rpcClient.SendAndConfirmTx(context.Background(), &deployResponse.Transaction, deployOptions.ConfirmRetryOptions)
 	require.NoError(t, err, "Failed to send and confirm transaction")
 
-	logger.Info().Str("txID", txInfo.ID).Msg("Transaction ID")
-	logger.Info().Any("receipt", txInfo.Receipt).Msg("Transaction receipt")
-	logger.Info().Str("contract address", txInfo.ContractAddress).Msg("Deployed contract")
+	t.Logf("Transaction ID: %s", txInfo.ID)
+	t.Logf("Transaction receipt: %v", txInfo.Receipt)
+	t.Logf("Deployed contract: %s", txInfo.ContractAddress)
 
 	contractAddress, err := address.StringToAddress(txInfo.ContractAddress)
 	require.NoError(t, err, "Failed to parse contract address from transaction info")
