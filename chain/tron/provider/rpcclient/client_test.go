@@ -19,7 +19,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron/keystore"
 	"github.com/smartcontractkit/chainlink-evm/gethwrappers/shared/generated/link_token"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
-	"github.com/smartcontractkit/chainlink-testing-framework/logging"
+	"github.com/smartcontractkit/chainlink-testing-framework/lib/logging"
 	"github.com/smartcontractkit/chainlink-tron/relayer/sdk"
 	"github.com/smartcontractkit/freeport"
 )
