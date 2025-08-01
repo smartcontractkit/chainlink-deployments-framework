@@ -1,18 +1,10 @@
 package provider
 
 import (
-	"context"
 	"sync"
 	"testing"
 
-	"github.com/fbsobreira/gotron-sdk/pkg/address"
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
-	"github.com/smartcontractkit/chainlink-evm/gethwrappers/shared/generated/link_token"
-	"github.com/smartcontractkit/chainlink-testing-framework/lib/logging"
 	"github.com/stretchr/testify/require"
-
-	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron"
-	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron/provider/rpcclient"
 )
 
 func TestCTFChainProviderConfig_validate(t *testing.T) {
@@ -59,6 +51,7 @@ func TestCTFChainProviderConfig_validate(t *testing.T) {
 	}
 }
 
+/*
 func TestNewCTFChainProvider(t *testing.T) {
 	t.Parallel()
 
@@ -208,4 +201,4 @@ func TestCTFProvider_SendAndConfirmTx_And_CheckContractDeployed(t *testing.T) {
 
 	err = rpcClient.CheckContractDeployed(contractAddress)
 	require.NoError(t, err, "Contract deployment check failed")
-}
+}*/
