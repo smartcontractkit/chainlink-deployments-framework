@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/avast/retry-go/v4"
 	"github.com/fbsobreira/gotron-sdk/pkg/address"
 	"github.com/fbsobreira/gotron-sdk/pkg/http/common"
 	"github.com/fbsobreira/gotron-sdk/pkg/http/soliditynode"
@@ -234,34 +235,41 @@ func (p *CTFChainProvider) BlockChain() chain.BlockChain {
 // It returns the URLs of the full node and solidity node to interact with it.
 func (p *CTFChainProvider) startContainer(chainID string) (string, string) {
 	var (
-		maxRetries = 10
-		bc         *blockchain.Output
-		err        error
+		attempts = uint(10)
+		bc       *blockchain.Output
 	)
 
 	// initialize the docker network used by CTF
-	err = framework.DefaultNetwork(p.config.Once)
+	err := framework.DefaultNetwork(p.config.Once)
 	require.NoError(p.t, err)
 
-	// Retry logic to handle port conflicts
-	for i := range maxRetries {
+	// Retry logic to handle port conflicts using retry.DoWithData
+	bc, err = retry.DoWithData(func() (*blockchain.Output, error) {
 		port := freeport.GetOne(p.t)
-		bc, err = blockchain.NewBlockchainNetwork(&blockchain.Input{
+
+		output, rerr := blockchain.NewBlockchainNetwork(&blockchain.Input{
 			Type:    blockchain.TypeTron,
 			ChainID: chainID,
 			Port:    strconv.Itoa(port),
+			Image:   "tronbox/tre:dev", // dev supports arm (mac) and amd (ci)
 		})
-		if err != nil {
-			p.t.Logf("Error creating TRON network (attempt %d): %v", i+1, err)
+		if rerr != nil {
+			// Return the ports to freeport to avoid leaking them during retries
 			freeport.Return([]int{port})
-			time.Sleep(time.Second)
-
-			continue
+			return nil, rerr
 		}
 
-		break
-	}
-	require.NoError(p.t, err, "Failed to create TRON blockchain network")
+		return output, nil
+	},
+		retry.Context(p.t.Context()),
+		retry.Attempts(attempts),
+		retry.Delay(1*time.Second),
+		retry.DelayType(retry.FixedDelay),
+		retry.OnRetry(func(attempt uint, err error) {
+			p.t.Logf("Attempt %d/%d: Failed to start CTF TRON container: %v", attempt+1, attempts, err)
+		}),
+	)
+	require.NoError(p.t, err, "Failed to start CTF TRON container after %d attempts", attempts)
 
 	testcontainers.CleanupContainer(p.t, bc.Container)
 
@@ -285,27 +293,34 @@ func (p *CTFChainProvider) waitForTronNode(fullNodeURL, solidityNodeURL string) 
 	combinedClient, err := sdk.CreateCombinedClient(fullNodeUrlObj, solidityNodeUrlObj)
 	require.NoError(p.t, err, "Failed to create combined client")
 
-	var ready bool
-	for i := range 30 {
-		time.Sleep(time.Second)
-		blockInfo, err := combinedClient.GetNowBlock()
-		if err != nil {
-			p.t.Logf("TRON node not ready yet (attempt %d): %+v\n", i+1, err)
-			continue
+	err = retry.Do(func() error {
+		blockInfo, rerr := combinedClient.GetNowBlock()
+		if rerr != nil {
+			return rerr
 		}
 
-		if blockInfo != nil && len(blockInfo.BlockID) > 0 {
-			// Extract chain ID from block for verification
-			blockId := blockInfo.BlockID
-			chainIdHex := blockId[len(blockId)-8:]
-			chainIdInt := new(big.Int)
-			chainIdInt.SetString(chainIdHex, 16)
-			chainId := chainIdInt.String()
-			p.t.Logf("TRON node ready, chain ID: %s", chainId)
-			ready = true
-
-			break
+		if blockInfo == nil || len(blockInfo.BlockID) == 0 {
+			return errors.New("block info is invalid")
 		}
-	}
-	require.True(p.t, ready, "TRON network not ready")
+
+		// Extract chain ID from block for verification
+		blockId := blockInfo.BlockID
+		chainIdHex := blockId[len(blockId)-8:]
+		chainIdInt := new(big.Int)
+		chainIdInt.SetString(chainIdHex, 16)
+		chainId := chainIdInt.String()
+		p.t.Logf("TRON node ready, chain ID: %s", chainId)
+
+		return nil
+	},
+		retry.Context(p.t.Context()),
+		retry.Attempts(30),
+		retry.Delay(1*time.Second),
+		retry.DelayType(retry.FixedDelay),
+		retry.OnRetry(func(attempt uint, err error) {
+			p.t.Logf("TRON node not ready yet (attempt %d): %v", attempt+1, err)
+		}),
+	)
+
+	require.NoError(p.t, err, "TRON network not ready")
 }
