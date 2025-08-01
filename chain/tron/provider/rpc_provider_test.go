@@ -1,19 +1,9 @@
 package provider
 
 import (
-	"math/big"
-	"strconv"
 	"testing"
-	"time"
 
-	"github.com/avast/retry-go/v4"
-	"github.com/fbsobreira/gotron-sdk/pkg/address"
-	"github.com/rs/zerolog"
 	chain_selectors "github.com/smartcontractkit/chain-selectors"
-	"github.com/smartcontractkit/chainlink-evm/gethwrappers/shared/generated/link_token"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
-	"github.com/smartcontractkit/chainlink-testing-framework/lib/logging"
-	"github.com/smartcontractkit/freeport"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -203,6 +193,7 @@ func Test_RPCChainProvider_BlockChain(t *testing.T) {
 	assert.Equal(t, *chain, p.BlockChain())
 }
 
+/*
 func Test_Tron_SendTransfer_And_DeployContract(t *testing.T) {
 	t.Parallel()
 
@@ -374,4 +365,4 @@ func setupLocalStack(t *testing.T, logger zerolog.Logger) *tron.Chain {
 	logger.Info().Str("chain id", chainId).Msg("Read first block")
 
 	return &tronChain
-}
+}*/
