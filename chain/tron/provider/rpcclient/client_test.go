@@ -2,13 +2,26 @@ package rpcclient
 
 import (
 	"context"
+	"encoding/hex"
+	"math/big"
+	"net/url"
+	"strconv"
 	"testing"
 	"time"
 
+	"github.com/avast/retry-go/v4"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/fbsobreira/gotron-sdk/pkg/address"
+	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron/keystore"
+	"github.com/smartcontractkit/chainlink-evm/gethwrappers/shared/generated/link_token"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
+	"github.com/smartcontractkit/chainlink-testing-framework/logging"
+	"github.com/smartcontractkit/chainlink-tron/relayer/sdk"
+	"github.com/smartcontractkit/freeport"
 )
 
 func TestConfirmRetryOpts_DefaultsAndOverrides(t *testing.T) {
@@ -48,7 +61,6 @@ func TestNewClient(t *testing.T) {
 	require.Nil(t, cli.Keystore)
 }
 
-/*
 func Test_Tron_SendAndConfirmTx_And_CheckContractDeployed(t *testing.T) {
 	t.Parallel()
 
@@ -148,4 +160,4 @@ func setupLocalStack(t *testing.T, logger zerolog.Logger) *Client {
 	logger.Info().Str("chain id", chainId).Msg("Read first block")
 
 	return rpcClient
-}*/
+}
