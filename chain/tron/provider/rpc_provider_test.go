@@ -227,8 +227,9 @@ func Test_Tron_SendTransfer_And_DeployContract(t *testing.T) {
 		tx, err := tronChain.Client.Transfer(tronChain.Address, receiverAddress, amount)
 		require.NoError(t, err, "Failed to create transfer transaction")
 
-		// Send and confirm transaction
-		txInfo, err := tronChain.SendAndConfirm(t.Context(), tx)
+		// Send and confirm transaction with default options
+		confirmRetryOptions := tron.DefaultConfirmRetryOptions()
+		txInfo, err := tronChain.SendAndConfirm(t.Context(), tx, confirmRetryOptions)
 		require.NoError(t, err, "Failed to send and confirm TRX transfer")
 
 		t.Logf("Transfer transaction ID: txID=%s", txInfo.ID)
@@ -281,9 +282,11 @@ func Test_Tron_SendTransfer_And_DeployContract(t *testing.T) {
 			"Minter should be set to false",
 		)
 
+		triggerOptions := tron.DefaultTriggerOptions()
+
 		// Grant the minter role to the specified minter address and wait for confirmation
 		grantMintResp, err := tronChain.TriggerContractAndConfirm(
-			t.Context(), contractAddress, "grantMintRole(address)", []interface{}{"address", minterAddress})
+			t.Context(), contractAddress, "grantMintRole(address)", []interface{}{"address", minterAddress}, triggerOptions)
 		require.NoError(t, err, "Failed to grant mint role")
 
 		// Log the transaction details for granting mint role
