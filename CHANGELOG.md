@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.19.0
+
+### Minor Changes
+
+- [#219](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/219) [`c797129`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/c797129296135df9cab9a991d93db8e0c44ae02c) Thanks [@eduard-cl](https://github.com/eduard-cl)! - feat: introduce tron chain provider and ctf provider
+
 ## 0.18.0
 
 ### Minor Changes
