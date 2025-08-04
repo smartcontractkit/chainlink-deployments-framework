@@ -180,14 +180,14 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 func Test_RPCChainProvider_Name(t *testing.T) {
 	t.Parallel()
 
-	p := &RPCChainProvider{}
+	p := RPCChainProvider{}
 	assert.Equal(t, "Tron RPC Chain Provider", p.Name())
 }
 
 func Test_RPCChainProvider_ChainSelector(t *testing.T) {
 	t.Parallel()
 
-	p := &RPCChainProvider{selector: chain_selectors.TRON_MAINNET.Selector}
+	p := RPCChainProvider{selector: chain_selectors.TRON_MAINNET.Selector}
 	assert.Equal(t, chain_selectors.TRON_MAINNET.Selector, p.ChainSelector())
 }
 
@@ -196,7 +196,7 @@ func Test_RPCChainProvider_BlockChain(t *testing.T) {
 
 	chain := &tron.Chain{}
 
-	p := &RPCChainProvider{
+	p := RPCChainProvider{
 		chain: chain,
 	}
 

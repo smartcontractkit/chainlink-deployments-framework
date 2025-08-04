@@ -9,6 +9,7 @@ import (
 	chain_selectors "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-evm/gethwrappers/shared/generated/link_token"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/logging"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron"
@@ -208,4 +209,30 @@ func TestCTFProvider_SendAndConfirmTx_And_CheckContractDeployed(t *testing.T) {
 
 	err = rpcClient.CheckContractDeployed(contractAddress)
 	require.NoError(t, err, "Contract deployment check failed")
+}
+
+func Test_CTFChainProvider_Name(t *testing.T) {
+	t.Parallel()
+
+	p := CTFChainProvider{}
+	assert.Equal(t, "TRON CTF Chain Provider", p.Name())
+}
+
+func Test_CTFChainProvider_ChainSelector(t *testing.T) {
+	t.Parallel()
+
+	p := CTFChainProvider{selector: chain_selectors.TRON_MAINNET.Selector}
+	assert.Equal(t, chain_selectors.TRON_MAINNET.Selector, p.ChainSelector())
+}
+
+func Test_CTFChainProvider_BlockChain(t *testing.T) {
+	t.Parallel()
+
+	chain := &tron.Chain{}
+
+	p := RPCChainProvider{
+		chain: chain,
+	}
+
+	assert.Equal(t, *chain, p.BlockChain())
 }
