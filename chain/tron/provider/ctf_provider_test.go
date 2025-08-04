@@ -8,6 +8,7 @@ import (
 	"github.com/fbsobreira/gotron-sdk/pkg/address"
 	chain_selectors "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-evm/gethwrappers/shared/generated/link_token"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron"
@@ -240,4 +241,30 @@ func TestCTFProvider_SendAndConfirmTx_And_CheckContractDeployed(t *testing.T) {
 		afterMinterResp.ConstantResult[0],
 		"Minter should be set to true",
 	)
+}
+
+func Test_CTFChainProvider_Name(t *testing.T) {
+	t.Parallel()
+
+	p := CTFChainProvider{}
+	assert.Equal(t, "TRON CTF Chain Provider", p.Name())
+}
+
+func Test_CTFChainProvider_ChainSelector(t *testing.T) {
+	t.Parallel()
+
+	p := CTFChainProvider{selector: chain_selectors.TRON_MAINNET.Selector}
+	assert.Equal(t, chain_selectors.TRON_MAINNET.Selector, p.ChainSelector())
+}
+
+func Test_CTFChainProvider_BlockChain(t *testing.T) {
+	t.Parallel()
+
+	chain := &tron.Chain{}
+
+	p := RPCChainProvider{
+		chain: chain,
+	}
+
+	assert.Equal(t, *chain, p.BlockChain())
 }
