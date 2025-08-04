@@ -8,11 +8,9 @@ import (
 
 	"github.com/avast/retry-go/v4"
 	"github.com/fbsobreira/gotron-sdk/pkg/address"
-	"github.com/rs/zerolog"
 	chain_selectors "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-evm/gethwrappers/shared/generated/link_token"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
-	"github.com/smartcontractkit/chainlink-testing-framework/lib/logging"
 	"github.com/smartcontractkit/freeport"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -206,8 +204,7 @@ func Test_RPCChainProvider_BlockChain(t *testing.T) {
 func Test_Tron_SendTransfer_And_DeployContract(t *testing.T) {
 	t.Parallel()
 
-	logger := logging.GetTestLogger(t)
-	tronChain := setupLocalStack(t, logger)
+	tronChain := setupLocalStack(t)
 
 	//nolint:paralleltest // this subtest shares a local Tron node and must not run in parallel
 	t.Run("SendTrxWithSendAndConfirm", func(t *testing.T) {
@@ -215,13 +212,13 @@ func Test_Tron_SendTransfer_And_DeployContract(t *testing.T) {
 		receiverAddress, err := address.Base58ToAddress("TQtWBxe8wNAcio3evcfwMAqsdFzykpi6e7")
 		require.NoError(t, err, "Failed to generate receiver address")
 
-		logger.Info().Str("receiver", receiverAddress.String()).Msg("Generated receiver address")
+		t.Logf("Generated receiver address: receiver=%s", receiverAddress.String())
 
 		// Query receiver balance before transfer
 		beforeAccount, err := tronChain.Client.GetAccount(receiverAddress)
 		require.NoError(t, err, "Failed to fetch receiver account before transfer")
 		beforeBalance := beforeAccount.Balance
-		logger.Info().Int64("before balance", beforeBalance).Msg("Receiver balance before transfer")
+		t.Logf("Receiver balance before transfer: before balance=%d", beforeBalance)
 
 		// Amount to transfer (1 TRX = 1_000_000 SUN)
 		const amount int64 = 1_000_000 // 1 TRX
@@ -234,14 +231,14 @@ func Test_Tron_SendTransfer_And_DeployContract(t *testing.T) {
 		txInfo, err := tronChain.SendAndConfirm(t.Context(), tx)
 		require.NoError(t, err, "Failed to send and confirm TRX transfer")
 
-		logger.Info().Str("txID", txInfo.ID).Msg("Transfer transaction ID")
-		logger.Info().Any("receipt", txInfo.Receipt).Msg("Transfer transaction receipt")
+		t.Logf("Transfer transaction ID: txID=%s", txInfo.ID)
+		t.Logf("Transfer transaction receipt: receipt=%+v", txInfo.Receipt)
 
 		// Query receiver balance after transfer
 		afterAccount, err := tronChain.Client.GetAccount(receiverAddress)
 		require.NoError(t, err, "Failed to fetch receiver account after transfer")
 		afterBalance := afterAccount.Balance
-		logger.Info().Int64("after balance", afterBalance).Msg("Receiver balance after transfer")
+		t.Logf("Receiver balance after transfer: after balance=%d", afterBalance)
 
 		// Assert balance increased by expected amount
 		expectedBalance := beforeBalance + amount
@@ -260,12 +257,12 @@ func Test_Tron_SendTransfer_And_DeployContract(t *testing.T) {
 		require.NoError(t, err, "Failed to deploy contract")
 
 		// Log deployed contract address and deployment transaction details
-		logger.Info().Str("contract address", contractAddress.String()).Msg("Deployed contract")
-		logger.Info().Str("transaction id", txInfo.ID).Msg("Deploy transaction ID")
-		logger.Info().Any("transaction receipt", txInfo.Receipt).Msg("Deploy transaction result")
+		t.Logf("Deployed contract: contract address=%s", contractAddress.String())
+		t.Logf("Deploy transaction ID: transaction id=%s", txInfo.ID)
+		t.Logf("Deploy transaction result: receipt=%+v", txInfo.Receipt)
 
 		// Log the address used to deploy contracts (chain address)
-		logger.Info().Str("chain address", tronChain.Address.String()).Msg("Using chain address")
+		t.Logf("Using chain address: chain address=%s", tronChain.Address.String())
 
 		// Generate a random minter address
 		minterAddress, err := address.Base58ToAddress("TQtWBxe8wNAcio3evcfwMAqsdFzykpi6e7")
@@ -275,7 +272,7 @@ func Test_Tron_SendTransfer_And_DeployContract(t *testing.T) {
 		beforeMinterResp, err := tronChain.Client.TriggerConstantContract(
 			tronChain.Address, contractAddress, "isMinter(address)", []interface{}{"address", minterAddress})
 		require.NoError(t, err, "Failed to check if minter is set before granting role")
-		logger.Info().Any("before minter response", beforeMinterResp).Msg("Before minter response")
+		t.Logf("Before minter response: response=%+v", beforeMinterResp)
 
 		// Assert minter role is initially false (not granted)
 		require.Equal(t,
@@ -290,14 +287,14 @@ func Test_Tron_SendTransfer_And_DeployContract(t *testing.T) {
 		require.NoError(t, err, "Failed to grant mint role")
 
 		// Log the transaction details for granting mint role
-		logger.Info().Str("transaction id", grantMintResp.ID).Msg("Grant mint transaction ID")
-		logger.Info().Any("transaction receipt", grantMintResp.Receipt).Msg("Grant mint transaction result")
+		t.Logf("Grant mint transaction ID: transaction id=%s", grantMintResp.ID)
+		t.Logf("Grant mint transaction result: receipt=%+v", grantMintResp.Receipt)
 
 		// Check the minter role status after granting it
 		afterMinterResp, err := tronChain.Client.TriggerConstantContract(
 			tronChain.Address, contractAddress, "isMinter(address)", []interface{}{"address", minterAddress})
 		require.NoError(t, err, "Failed to check if minter is set after granting role")
-		logger.Info().Any("after minter response", afterMinterResp).Msg("After minter response")
+		t.Logf("After minter response: response=%+v", afterMinterResp)
 
 		// Assert minter role is now true (successfully granted)
 		require.Equal(t,
@@ -308,7 +305,7 @@ func Test_Tron_SendTransfer_And_DeployContract(t *testing.T) {
 	})
 }
 
-func setupLocalStack(t *testing.T, logger zerolog.Logger) *tron.Chain {
+func setupLocalStack(t *testing.T) *tron.Chain {
 	t.Helper()
 
 	var (
@@ -346,7 +343,7 @@ func setupLocalStack(t *testing.T, logger zerolog.Logger) *tron.Chain {
 	fullNodeUrl := bc.Nodes[0].ExternalHTTPUrl + "/wallet"
 	solidityNodeUrl := bc.Nodes[0].ExternalHTTPUrl + "/walletsolidity"
 
-	logger.Info().Str("fullNodeUrl", fullNodeUrl).Str("solidityNodeUrl", solidityNodeUrl).Msg("TRON node config")
+	t.Logf("TRON node config: fullNodeUrl=%s, solidityNodeUrl=%s", fullNodeUrl, solidityNodeUrl)
 
 	chainSelector := chain_selectors.TEST_22222222222222222222222222222222222222222222.Selector
 	accountGenerator := AccountGenPrivateKey(blockchain.TRONAccounts.PrivateKeys[0])
@@ -371,7 +368,7 @@ func setupLocalStack(t *testing.T, logger zerolog.Logger) *tron.Chain {
 	chainIdInt := new(big.Int)
 	chainIdInt.SetString(chainIdHex, 16)
 	chainId := chainIdInt.String()
-	logger.Info().Str("chain id", chainId).Msg("Read first block")
+	t.Logf("Read first block: chain id=%s", chainId)
 
 	return &tronChain
 }

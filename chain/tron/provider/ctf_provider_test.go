@@ -8,11 +8,9 @@ import (
 	"github.com/fbsobreira/gotron-sdk/pkg/address"
 	chain_selectors "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-evm/gethwrappers/shared/generated/link_token"
-	"github.com/smartcontractkit/chainlink-testing-framework/lib/logging"
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron"
-	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron/provider/rpcclient"
 )
 
 func TestCTFChainProviderConfig_validate(t *testing.T) {
@@ -140,6 +138,9 @@ func TestCTFChainProvider_Initialize(t *testing.T) {
 				require.NotEmpty(t, gotChain.Keystore)
 				require.NotEmpty(t, gotChain.Address)
 				require.NotEmpty(t, gotChain.URL)
+				require.NotEmpty(t, gotChain.SendAndConfirm)
+				require.NotEmpty(t, gotChain.DeployContractAndConfirm)
+				require.NotEmpty(t, gotChain.TriggerContractAndConfirm)
 			}
 		})
 	}
@@ -166,8 +167,6 @@ func TestCTFChainProvider_ContainerStartup(t *testing.T) {
 func TestCTFProvider_SendAndConfirmTx_And_CheckContractDeployed(t *testing.T) {
 	t.Parallel()
 
-	logger := logging.GetTestLogger(t)
-
 	config := CTFChainProviderConfig{
 		DeployerAccountGen: AccountGenCTFDefault(),
 		Once:               &sync.Once{},
@@ -184,28 +183,61 @@ func TestCTFProvider_SendAndConfirmTx_And_CheckContractDeployed(t *testing.T) {
 	tronChain, ok := chainInstance.(tron.Chain)
 	require.True(t, ok, "Expected TRON chain instance")
 
-	logger.Info().Str("chainURL", tronChain.URL).Uint64("selector", tronChain.Selector).Msg("TRON CTF chain initialized")
-
-	// Create RPC client using the chain's components
-	rpcClient := rpcclient.New(tronChain.Client, tronChain.Keystore, tronChain.Address)
+	t.Logf("TRON CTF chain initialized: chainURL=%s, selector=%d", tronChain.URL, tronChain.Selector)
 
 	// Set deploy options, including custom fee limit for local deployment
 	deployOptions := tron.DefaultDeployOptions()
 	deployOptions.FeeLimit = 1_000_000_000
 
-	deployResponse, err := rpcClient.Client.DeployContract(rpcClient.Account, "LinkToken", link_token.LinkTokenABI, link_token.LinkTokenBin, deployOptions.OeLimit, deployOptions.CurPercent, deployOptions.FeeLimit, nil)
-	require.NoError(t, err, "Failed to create deploy contract transaction")
+	// Deploy the LinkToken contract and wait for confirmation
+	contractAddress, txInfo, err := tronChain.DeployContractAndConfirm(
+		t.Context(), "LinkToken", link_token.LinkTokenABI, link_token.LinkTokenBin, nil, deployOptions)
+	require.NoError(t, err, "Failed to deploy contract")
 
-	txInfo, err := rpcClient.SendAndConfirmTx(context.Background(), &deployResponse.Transaction, deployOptions.ConfirmRetryOptions)
-	require.NoError(t, err, "Failed to send and confirm transaction")
+	// Log deployed contract address and deployment transaction details
+	t.Logf("Deployed contract: contract address=%s", contractAddress.String())
+	t.Logf("Deploy transaction ID: transaction id=%s", txInfo.ID)
+	t.Logf("Deploy transaction result: receipt=%+v", txInfo.Receipt)
 
-	logger.Info().Str("txID", txInfo.ID).Msg("Transaction ID")
-	logger.Info().Any("receipt", txInfo.Receipt).Msg("Transaction receipt")
-	logger.Info().Str("contract address", txInfo.ContractAddress).Msg("Deployed contract")
+	// Log the address used to deploy contracts (chain address)
+	t.Logf("Using chain address: chain address=%s", tronChain.Address.String())
 
-	contractAddress, err := address.StringToAddress(txInfo.ContractAddress)
-	require.NoError(t, err, "Failed to parse contract address from transaction info")
+	// Generate a random minter address
+	minterAddress, err := address.Base58ToAddress("TQtWBxe8wNAcio3evcfwMAqsdFzykpi6e7")
+	require.NoError(t, err, "Failed to generate minter address")
 
-	err = rpcClient.CheckContractDeployed(contractAddress)
-	require.NoError(t, err, "Contract deployment check failed")
+	// Check the minter role status before granting it
+	beforeMinterResp, err := tronChain.Client.TriggerConstantContract(
+		tronChain.Address, contractAddress, "isMinter(address)", []interface{}{"address", minterAddress})
+	require.NoError(t, err, "Failed to check if minter is set before granting role")
+	t.Logf("Before minter response: response=%+v", beforeMinterResp)
+
+	// Assert minter role is initially false (not granted)
+	require.Equal(t,
+		"0000000000000000000000000000000000000000000000000000000000000000",
+		beforeMinterResp.ConstantResult[0],
+		"Minter should be set to false",
+	)
+
+	// Grant the minter role to the specified minter address and wait for confirmation
+	grantMintResp, err := tronChain.TriggerContractAndConfirm(
+		t.Context(), contractAddress, "grantMintRole(address)", []interface{}{"address", minterAddress})
+	require.NoError(t, err, "Failed to grant mint role")
+
+	// Log the transaction details for granting mint role
+	t.Logf("Grant mint transaction ID: transaction id=%s", grantMintResp.ID)
+	t.Logf("Grant mint transaction result: receipt=%+v", grantMintResp.Receipt)
+
+	// Check the minter role status after granting it
+	afterMinterResp, err := tronChain.Client.TriggerConstantContract(
+		tronChain.Address, contractAddress, "isMinter(address)", []interface{}{"address", minterAddress})
+	require.NoError(t, err, "Failed to check if minter is set after granting role")
+	t.Logf("After minter response: response=%+v", afterMinterResp)
+
+	// Assert minter role is now true (successfully granted)
+	require.Equal(t,
+		"0000000000000000000000000000000000000000000000000000000000000001",
+		afterMinterResp.ConstantResult[0],
+		"Minter should be set to true",
+	)
 }
