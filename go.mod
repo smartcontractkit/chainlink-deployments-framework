@@ -14,20 +14,18 @@ require (
 	github.com/aptos-labs/aptos-go-sdk v1.6.3-0.20250331001805-0680b714db6d
 	github.com/avast/retry-go/v4 v4.6.1
 	github.com/aws/aws-sdk-go v1.55.7
-	github.com/block-vision/sui-go-sdk v1.0.6
+	github.com/block-vision/sui-go-sdk v1.1.0
 	github.com/ethereum/go-ethereum v1.15.6
 	github.com/fbsobreira/gotron-sdk v0.0.0-20250403083053-2943ce8c759b
 	github.com/gagliardetto/solana-go v1.12.0
 	github.com/google/uuid v1.6.0
 	github.com/pelletier/go-toml/v2 v2.2.4
-	github.com/rs/zerolog v1.33.0
 	github.com/smartcontractkit/chain-selectors v1.0.60
 	github.com/smartcontractkit/chainlink-ccip/chains/solana v0.0.0-20250520123946-6aaf88e0848a
 	github.com/smartcontractkit/chainlink-common v0.7.1-0.20250425195105-d9eabb4a4519
 	github.com/smartcontractkit/chainlink-evm v0.0.0-20250424162751-35c5921b8597
 	github.com/smartcontractkit/chainlink-protos/job-distributor v0.12.0
 	github.com/smartcontractkit/chainlink-testing-framework/framework v0.10.9
-	github.com/smartcontractkit/chainlink-testing-framework/lib v1.54.1
 	github.com/smartcontractkit/chainlink-testing-framework/seth v1.51.2
 	github.com/smartcontractkit/chainlink-tron/relayer v0.0.11-0.20250422175525-b7575d96bd4d
 	github.com/smartcontractkit/freeport v0.1.1
@@ -210,6 +208,7 @@ require (
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rogpeppe/go-internal v1.13.1 // indirect
 	github.com/rs/cors v1.11.1 // indirect
+	github.com/rs/zerolog v1.33.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/santhosh-tekuri/jsonschema/v5 v5.3.1 // indirect
 	github.com/scylladb/go-reflectx v1.0.1 // indirect
@@ -260,6 +259,7 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v1.35.0 // indirect
 	go.opentelemetry.io/otel/trace v1.35.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.5.0 // indirect
+	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/ratelimit v0.3.1 // indirect
 	golang.org/x/crypto v0.38.0 // indirect
