@@ -666,8 +666,6 @@ github.com/smartcontractkit/chainlink-protos/job-distributor v0.12.0 h1:/bhoALRz
 github.com/smartcontractkit/chainlink-protos/job-distributor v0.12.0/go.mod h1:/dVVLXrsp+V0AbcYGJo3XMzKg3CkELsweA/TTopCsKE=
 github.com/smartcontractkit/chainlink-testing-framework/framework v0.10.9 h1:0IJFn61lpb3XE+n9q80Q2JuEXc8HI1FfXc9sZUJ8qBg=
 github.com/smartcontractkit/chainlink-testing-framework/framework v0.10.9/go.mod h1:47sm4C5wBxR8VBAZoDRGSt5wJwDJN3vVeE36l5vQs1g=
-github.com/smartcontractkit/chainlink-testing-framework/lib v1.54.1 h1:3KiRoOPda+ZB4GtdXY15e+ykCWLGBF9zSXVlIrWrBgw=
-github.com/smartcontractkit/chainlink-testing-framework/lib v1.54.1/go.mod h1:orWoMb61wz6RwW++jIOXVmCoVuLIAoowtgrCvLGNBLQ=
 github.com/smartcontractkit/chainlink-testing-framework/seth v1.51.2 h1:ZJ/8Jx6Be5//TyjPi1pS1uotnmcYq5vVkSyISIymSj8=
 github.com/smartcontractkit/chainlink-testing-framework/seth v1.51.2/go.mod h1:kHYJnZUqiPF7/xN5273prV+srrLJkS77GbBXHLKQpx0=
 github.com/smartcontractkit/chainlink-tron/relayer v0.0.11-0.20250422175525-b7575d96bd4d h1:Yc1iLWCbgYHJAVrnMfNEVwSspk+dG/yxYmGbz0jeXw8=
@@ -895,6 +893,8 @@ golang.org/x/net v0.21.0/go.mod h1:bIjVDfnllIU7BJ2DNgfnXvpSvtn8VRwhlsaeUTyUS44=
 golang.org/x/net v0.39.0 h1:ZCu7HMWDxpXpaiKdhzIfaltL9Lp31x/3fCP11bc6/fY=
 golang.org/x/net v0.39.0/go.mod h1:X7NRbYVEA+ewNkCNyJ513WmMdQ3BineSwVtN2zD/d+E=
 golang.org/x/oauth2 v0.0.0-20180821212333-d2e6202438be/go.mod h1:N/0e6XlmueqKjAGxoOufVs8QHGRruUQn6yWY3a++T0U=
+golang.org/x/oauth2 v0.26.0 h1:afQXWNNaeC4nvZ0Ed9XvCCzXM6UHJG7iCg0W4fPqSBE=
+golang.org/x/oauth2 v0.26.0/go.mod h1:XYTD2NtWslqkgxebSiOHnXEap4TF09sJSc7H1sXbhtI=
 golang.org/x/sync v0.0.0-20180314180146-1d60e4601c6f/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
 golang.org/x/sync v0.0.0-20181108010431-42b317875d0f/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
 golang.org/x/sync v0.0.0-20190423024810-112230192c58/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
