@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.20.0
+
+### Minor Changes
+
+- [#236](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/236) [`01e7343`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/01e73431465cd84c334ae234b388a0b918dd2854) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat: new JD client and offchain provider for JD
+
 ## 0.19.0
 
 ### Minor Changes
