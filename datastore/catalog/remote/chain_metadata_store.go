@@ -101,14 +101,19 @@ func (s *catalogChainMetadataStore) chainMetadataToProto(record datastore.ChainM
 		RowVersion:    version,
 	}
 }
-func (s *catalogChainMetadataStore) Get(_ context.Context, key datastore.ChainMetadataKey) (datastore.ChainMetadata, error) {
-	return s.get(false, key)
-}
-func (s *catalogChainMetadataStore) GetIgnoringTransactions(
+func (s *catalogChainMetadataStore) Get(
 	_ context.Context,
 	key datastore.ChainMetadataKey,
+	options ...datastore.GetOption,
 ) (datastore.ChainMetadata, error) {
-	return s.get(true, key)
+	ignoreTransactions := false
+	for _, option := range options {
+		switch option {
+		case datastore.IgnoreTransactionsGetOption:
+			ignoreTransactions = true
+		}
+	}
+	return s.get(ignoreTransactions, key)
 }
 
 func (s *catalogChainMetadataStore) get(ignoreTransaction bool, key datastore.ChainMetadataKey) (datastore.ChainMetadata, error) {

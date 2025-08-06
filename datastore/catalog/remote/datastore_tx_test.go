@@ -61,9 +61,10 @@ func TestCatalogTransactions_Commit(t *testing.T) {
 	t.Run("Read Contract Metadata (from outside tx)", func(t *testing.T) {
 		// Check that the write happened within the transaction, and therefore a read would
 		// fail outside of the transactional context.
-		_, err := catalog.ContractMetadata().GetIgnoringTransactions(
+		_, err := catalog.ContractMetadata().Get(
 			t.Context(),
 			datastore.NewContractMetadataKey(1, "0x12345678"),
+			datastore.IgnoreTransactionsGetOption,
 		)
 		require.ErrorContains(t, err, "no contract metadata record can be found")
 	})
@@ -133,9 +134,10 @@ func TestCatalogTransactions_WithTransactions_Commit(t *testing.T) {
 		t.Run("Read Contract Metadata (from outside tx)", func(t *testing.T) {
 			// Check that the write happened within the transaction, and therefore a read would
 			// fail outside of the transactional context.
-			_, err := catalog.ContractMetadata().GetIgnoringTransactions(
+			_, err := catalog.ContractMetadata().Get(
 				t.Context(),
 				datastore.NewContractMetadataKey(1, "0x12345678"),
+				datastore.IgnoreTransactionsGetOption,
 			)
 			require.ErrorContains(t, err, "no contract metadata record can be found")
 		})
@@ -211,9 +213,10 @@ func TestCatalogTransactions_Rollback(t *testing.T) {
 	t.Run("Read Contract Metadata (from outside tx)", func(t *testing.T) {
 		// Check that the write happened within the transaction, and therefore a read would
 		// fail outside of the transactional context.
-		_, err := catalog.ContractMetadata().GetIgnoringTransactions(
+		_, err := catalog.ContractMetadata().Get(
 			t.Context(),
 			datastore.NewContractMetadataKey(1, "0x12345678"),
+			datastore.IgnoreTransactionsGetOption,
 		)
 		require.ErrorContains(t, err, "no contract metadata record can be found")
 	})
@@ -225,9 +228,10 @@ func TestCatalogTransactions_Rollback(t *testing.T) {
 
 	t.Run("Read Contract Metadata (from outside tx)", func(t *testing.T) {
 		// Ensure the write didn't happen.
-		_, err := catalog.ContractMetadata().GetIgnoringTransactions(
+		_, err := catalog.ContractMetadata().Get(
 			t.Context(),
 			datastore.NewContractMetadataKey(1, "0x12345678"),
+			datastore.IgnoreTransactionsGetOption,
 		)
 		require.ErrorContains(t, err, "no contract metadata record can be found")
 	})
@@ -280,9 +284,10 @@ func TestCatalogTransactions_WithTransactions_Rollback(t *testing.T) {
 		t.Run("Read Contract Metadata (from outside tx)", func(t *testing.T) {
 			// Check that the write happened within the transaction, and therefore a read would
 			// fail outside of the transactional context.
-			_, err := catalog.ContractMetadata().GetIgnoringTransactions(
+			_, err := catalog.ContractMetadata().Get(
 				t.Context(),
 				datastore.NewContractMetadataKey(1, "0x12345678"),
+				datastore.IgnoreTransactionsGetOption,
 			)
 			require.ErrorContains(t, err, "no contract metadata record can be found")
 		})
@@ -293,9 +298,10 @@ func TestCatalogTransactions_WithTransactions_Rollback(t *testing.T) {
 
 	t.Run("Read Contract Metadata (from outside tx)", func(t *testing.T) {
 		// Ensure the write didn't happen.
-		_, err := catalog.ContractMetadata().GetIgnoringTransactions(
+		_, err := catalog.ContractMetadata().Get(
 			t.Context(),
 			datastore.NewContractMetadataKey(1, "0x12345678"),
+			datastore.IgnoreTransactionsGetOption,
 		)
 		require.ErrorContains(t, err, "no contract metadata record can be found")
 	})
