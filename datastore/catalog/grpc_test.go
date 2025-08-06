@@ -27,42 +27,6 @@ func TestNewCatalogClient_Success(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name: "config_with_gap_token_only",
-			config: catalog.CatalogConfig{
-				GRPC:  "localhost:9090",
-				Creds: insecure.NewCredentials(),
-				GAP: &catalog.GAPConfig{
-					Token:      "test-token",
-					Repository: "",
-				},
-			},
-			expectError: false,
-		},
-		{
-			name: "config_with_gap_repository_only",
-			config: catalog.CatalogConfig{
-				GRPC:  "localhost:9090",
-				Creds: insecure.NewCredentials(),
-				GAP: &catalog.GAPConfig{
-					Token:      "",
-					Repository: "test-repo",
-				},
-			},
-			expectError: false,
-		},
-		{
-			name: "full_config",
-			config: catalog.CatalogConfig{
-				GRPC:  "localhost:9090",
-				Creds: insecure.NewCredentials(),
-				GAP: &catalog.GAPConfig{
-					Token:      "test-token",
-					Repository: "test-repo",
-				},
-			},
-			expectError: false,
-		},
-		{
 			name: "no_transport_credentials",
 			config: catalog.CatalogConfig{
 				GRPC: "localhost:9090",

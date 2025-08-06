@@ -7,7 +7,6 @@ import (
 	"google.golang.org/grpc/credentials"
 
 	datastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore/catalog/internal/protos"
-	cldf_grpc "github.com/smartcontractkit/chainlink-deployments-framework/internal/grpc"
 )
 
 type CatalogClient struct {
@@ -15,15 +14,9 @@ type CatalogClient struct {
 	datastore.DeploymentsDatastoreClient
 }
 
-type GAPConfig struct {
-	Token      string
-	Repository string
-}
-
 type CatalogConfig struct {
 	GRPC  string
 	Creds credentials.TransportCredentials
-	GAP   *GAPConfig
 }
 
 // NewCatalogClient creates a new CatalogClient with the provided configuration.
@@ -47,12 +40,6 @@ func newCatalogConnection(cfg CatalogConfig) (*grpc.ClientConn, error) {
 
 	if cfg.Creds != nil {
 		opts = append(opts, grpc.WithTransportCredentials(cfg.Creds))
-	}
-
-	if cfg.GAP != nil && cfg.GAP.Token != "" && cfg.GAP.Repository != "" {
-		interceptors = append(interceptors,
-			cldf_grpc.GapTokenInterceptor(cfg.GAP.Token),
-			cldf_grpc.GapRepositoryInterceptor(cfg.GAP.Repository))
 	}
 
 	if len(interceptors) > 0 {
