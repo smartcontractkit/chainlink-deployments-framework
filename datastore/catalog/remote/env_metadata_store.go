@@ -1,4 +1,4 @@
-package catalog
+package remote
 
 import (
 	"context"
@@ -11,13 +11,13 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
-	pb "github.com/smartcontractkit/chainlink-deployments-framework/datastore/catalog/internal/protos"
+	datastore2 "github.com/smartcontractkit/chainlink-deployments-framework/datastore/catalog/remote/internal/protos"
 )
 
 type catalogEnvMetadataStoreConfig struct {
 	Domain      string
 	Environment string
-	Client      CatalogClient
+	Client      *CatalogClient
 }
 
 // Ensure catalogEnvMetadataStore implements the V2 interface
@@ -26,7 +26,7 @@ var _ datastore.MutableUnaryStoreV2[datastore.EnvMetadata] = &catalogEnvMetadata
 type catalogEnvMetadataStore struct {
 	domain      string
 	environment string
-	client      CatalogClient
+	client      *CatalogClient
 	// versionCache tracks the current version of the record for optimistic concurrency control
 	// Environment metadata is a single record per domain/environment, so we only need one version
 	mu            sync.RWMutex
@@ -59,15 +59,15 @@ func (s *catalogEnvMetadataStore) setVersion(version int32) {
 }
 
 // keyToFilter converts domain/environment to an EnvironmentMetadataKeyFilter for gRPC requests
-func (s *catalogEnvMetadataStore) keyToFilter() *pb.EnvironmentMetadataKeyFilter {
-	return &pb.EnvironmentMetadataKeyFilter{
+func (s *catalogEnvMetadataStore) keyToFilter() *datastore2.EnvironmentMetadataKeyFilter {
+	return &datastore2.EnvironmentMetadataKeyFilter{
 		Domain:      wrapperspb.String(s.domain),
 		Environment: wrapperspb.String(s.environment),
 	}
 }
 
 // protoToEnvMetadata converts a protobuf EnvironmentMetadata to a datastore EnvMetadata
-func (s *catalogEnvMetadataStore) protoToEnvMetadata(protoRecord *pb.EnvironmentMetadata) (datastore.EnvMetadata, error) {
+func (s *catalogEnvMetadataStore) protoToEnvMetadata(protoRecord *datastore2.EnvironmentMetadata) (datastore.EnvMetadata, error) {
 	var metadata any
 	if protoRecord.Metadata != "" {
 		if err := json.Unmarshal([]byte(protoRecord.Metadata), &metadata); err != nil {
@@ -81,7 +81,7 @@ func (s *catalogEnvMetadataStore) protoToEnvMetadata(protoRecord *pb.Environment
 }
 
 // envMetadataToProto converts a datastore EnvMetadata to a protobuf EnvironmentMetadata
-func (s *catalogEnvMetadataStore) envMetadataToProto(record datastore.EnvMetadata, version int32) *pb.EnvironmentMetadata {
+func (s *catalogEnvMetadataStore) envMetadataToProto(record datastore.EnvMetadata, version int32) *datastore2.EnvironmentMetadata {
 	var metadataJSON string
 	if record.Metadata != nil {
 		if metadataBytes, err := json.Marshal(record.Metadata); err == nil {
@@ -92,28 +92,32 @@ func (s *catalogEnvMetadataStore) envMetadataToProto(record datastore.EnvMetadat
 		metadataJSON = "null"
 	}
 
-	return &pb.EnvironmentMetadata{
+	return &datastore2.EnvironmentMetadata{
 		Domain:      s.domain,
 		Environment: s.environment,
 		Metadata:    metadataJSON,
 		RowVersion:  version,
 	}
 }
+func (s *catalogEnvMetadataStore) Get() (datastore.EnvMetadata, error) {
+	return s.get(true)
+}
+func (s *catalogEnvMetadataStore) GetIgnoringTransactions() (datastore.EnvMetadata, error) {
+	return s.get(true)
+}
 
-func (s *catalogEnvMetadataStore) Get(ctx context.Context) (datastore.EnvMetadata, error) {
-	stream, err := s.client.DataAccess(ctx)
+func (s *catalogEnvMetadataStore) get(ignoreTransaction bool) (datastore.EnvMetadata, error) {
+	stream, err := s.client.DataAccess()
 	if err != nil {
 		return datastore.EnvMetadata{}, fmt.Errorf("failed to create gRPC stream: %w", err)
 	}
-	defer func() {
-		_ = stream.CloseSend()
-	}()
 
 	// Send find request
-	findReq := &pb.DataAccessRequest{
-		Operation: &pb.DataAccessRequest_EnvironmentMetadataFindRequest{
-			EnvironmentMetadataFindRequest: &pb.EnvironmentMetadataFindRequest{
-				KeyFilter: s.keyToFilter(),
+	findReq := &datastore2.DataAccessRequest{
+		Operation: &datastore2.DataAccessRequest_EnvironmentMetadataFindRequest{
+			EnvironmentMetadataFindRequest: &datastore2.EnvironmentMetadataFindRequest{
+				KeyFilter:         s.keyToFilter(),
+				IgnoreTransaction: ignoreTransaction,
 			},
 		},
 	}
@@ -158,7 +162,7 @@ func (s *catalogEnvMetadataStore) Get(ctx context.Context) (datastore.EnvMetadat
 	return record, nil
 }
 
-func (s *catalogEnvMetadataStore) Set(ctx context.Context, metadata any, opts ...datastore.UpdateOption) error {
+func (s *catalogEnvMetadataStore) Set(metadata any, opts ...datastore.UpdateOption) error {
 	// Build options with defaults
 	options := &datastore.UpdateOptions{
 		Updater: datastore.IdentityUpdaterF, // default updater
@@ -170,7 +174,7 @@ func (s *catalogEnvMetadataStore) Set(ctx context.Context, metadata any, opts ..
 	}
 
 	// Get current record for merging
-	currentRecord, err := s.Get(ctx)
+	currentRecord, err := s.Get()
 	if err != nil {
 		if errors.Is(err, datastore.ErrEnvMetadataNotSet) {
 			// Record doesn't exist, just insert the new record directly
@@ -178,7 +182,7 @@ func (s *catalogEnvMetadataStore) Set(ctx context.Context, metadata any, opts ..
 				Metadata: metadata,
 			}
 
-			return s.editRecord(ctx, record)
+			return s.editRecord(record)
 		}
 
 		return fmt.Errorf("failed to get current record for version sync: %w", err)
@@ -195,30 +199,27 @@ func (s *catalogEnvMetadataStore) Set(ctx context.Context, metadata any, opts ..
 		Metadata: finalMetadata,
 	}
 
-	return s.editRecord(ctx, record)
+	return s.editRecord(record)
 }
 
 // editRecord is a helper method that handles the edit operation
-func (s *catalogEnvMetadataStore) editRecord(ctx context.Context, record datastore.EnvMetadata) error {
+func (s *catalogEnvMetadataStore) editRecord(record datastore.EnvMetadata) error {
 	// Get the current version for this record
 	version := s.getVersion()
 	// Create the protobuf record
 	protoRecord := s.envMetadataToProto(record, version)
 
 	// Send edit request with UPSERT semantics (since Set should always work)
-	stream, err := s.client.DataAccess(ctx)
+	stream, err := s.client.DataAccess()
 	if err != nil {
 		return fmt.Errorf("failed to create gRPC stream: %w", err)
 	}
-	defer func() {
-		_ = stream.CloseSend()
-	}()
 
-	editReq := &pb.DataAccessRequest{
-		Operation: &pb.DataAccessRequest_EnvironmentMetadataEditRequest{
-			EnvironmentMetadataEditRequest: &pb.EnvironmentMetadataEditRequest{
+	editReq := &datastore2.DataAccessRequest{
+		Operation: &datastore2.DataAccessRequest_EnvironmentMetadataEditRequest{
+			EnvironmentMetadataEditRequest: &datastore2.EnvironmentMetadataEditRequest{
 				Record:    protoRecord,
-				Semantics: pb.EditSemantics_SEMANTICS_UPSERT,
+				Semantics: datastore2.EditSemantics_SEMANTICS_UPSERT,
 			},
 		},
 	}

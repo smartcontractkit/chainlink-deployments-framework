@@ -1,17 +1,15 @@
-package catalog
+package remote
 
 import (
-	"context"
 	"encoding/json"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
-	pb "github.com/smartcontractkit/chainlink-deployments-framework/datastore/catalog/internal/protos"
+	pb "github.com/smartcontractkit/chainlink-deployments-framework/datastore/catalog/remote/internal/protos"
 )
 
 const (
@@ -28,7 +26,7 @@ type TestEnvMetadata struct {
 }
 
 // setupTestEnvStore creates a test environment metadata store and gRPC connection
-func setupTestEnvStore(t *testing.T) (*catalogEnvMetadataStore, func()) {
+func setupTestEnvStore(t *testing.T) *catalogEnvMetadataStore {
 	t.Helper()
 	address := os.Getenv("CATALOG_GRPC_ADDRESS")
 	if address == "" {
@@ -36,26 +34,20 @@ func setupTestEnvStore(t *testing.T) (*catalogEnvMetadataStore, func()) {
 	}
 
 	// Create CatalogClient using the NewCatalogClient function
-	catalogClient, err := NewCatalogClient(CatalogConfig{
+	catalogClient, err := NewCatalogClient(t.Context(), CatalogConfig{
 		GRPC:  address,
 		Creds: insecure.NewCredentials(),
 	})
 	if err != nil {
 		t.Skipf("Failed to connect to gRPC server at %s: %v. Skipping integration tests.", address, err)
-		return nil, func() {}
+		return nil
 	}
 
 	// Test if the gRPC service is actually available by making a simple call
-	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
-	defer cancel()
-
-	stream, err := catalogClient.DataAccess(ctx)
+	_, err = catalogClient.DataAccess()
 	if err != nil {
 		t.Skipf("gRPC service not available at %s: %v. Skipping integration tests.", address, err)
-		return nil, func() {}
-	}
-	if stream != nil {
-		_ = stream.CloseSend()
+		return nil
 	}
 
 	// Create store with a unique environment name per test to ensure isolation
@@ -64,12 +56,11 @@ func setupTestEnvStore(t *testing.T) (*catalogEnvMetadataStore, func()) {
 		Environment: "catalog_testing", // Use static environment name
 		Client:      catalogClient,
 	})
+	t.Cleanup(func() {
+		_ = catalogClient.CloseStream() // Close the test stream at the end of the test.
+	})
 
-	cleanup := func() {
-		// Connection cleanup is handled internally by CatalogClient
-	}
-
-	return store, cleanup
+	return store
 }
 
 // requireEnvMetadataEqual compares two EnvMetadata records for equality
@@ -139,17 +130,16 @@ func TestCatalogEnvMetadataStore_Get(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			// Create store for testing
-			store, cleanup := setupTestEnvStore(t)
-			defer cleanup()
+			store := setupTestEnvStore(t)
 
 			// Setup test data if needed
 			for _, record := range tt.setupRecords {
-				err := store.Set(context.Background(), record.Metadata)
+				err := store.Set(record.Metadata)
 				require.NoError(t, err, "Failed to setup record")
 			}
 
 			// Test Get operation
-			gotRecord, err := store.Get(context.Background())
+			gotRecord, err := store.Get()
 
 			// Verify error
 			if tt.wantErr != nil {
@@ -195,11 +185,10 @@ func TestCatalogEnvMetadataStore_Set(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			store, cleanup := setupTestEnvStore(t)
-			defer cleanup()
+			store := setupTestEnvStore(t)
 
 			// Test Set operation
-			err := store.Set(context.Background(), tt.record.Metadata)
+			err := store.Set(tt.record.Metadata)
 
 			// Verify error
 			if tt.wantErr != nil {
@@ -218,7 +207,7 @@ func TestCatalogEnvMetadataStore_Set(t *testing.T) {
 			require.NoError(t, err, "Unexpected error")
 
 			// Verify record was set by retrieving it
-			gotRecord, err := store.Get(context.Background())
+			gotRecord, err := store.Get()
 			require.NoError(t, err, "Failed to retrieve record after Set")
 
 			requireEnvMetadataEqual(t, tt.record, gotRecord)
@@ -228,8 +217,7 @@ func TestCatalogEnvMetadataStore_Set(t *testing.T) {
 
 func TestCatalogEnvMetadataStore_Set_Update(t *testing.T) {
 	t.Parallel()
-	store, cleanup := setupTestEnvStore(t)
-	defer cleanup()
+	store := setupTestEnvStore(t)
 
 	// Set initial record
 	initialMetadata := TestEnvMetadata{
@@ -237,7 +225,7 @@ func TestCatalogEnvMetadataStore_Set_Update(t *testing.T) {
 		Version:     "2.0.0",
 		Tags:        []string{"initial"},
 	}
-	err := store.Set(context.Background(), initialMetadata)
+	err := store.Set(initialMetadata)
 	require.NoError(t, err, "Failed to set initial record")
 
 	// Create a custom updater that merges tags and updates version
@@ -247,11 +235,11 @@ func TestCatalogEnvMetadataStore_Set_Update(t *testing.T) {
 	updateMetadata := TestEnvMetadata{
 		Tags: []string{"updated", "v2"},
 	}
-	err = store.Set(context.Background(), updateMetadata, datastore.WithUpdater(mergeUpdater))
+	err = store.Set(updateMetadata, datastore.WithUpdater(mergeUpdater))
 	require.NoError(t, err, "Failed to update record with custom updater")
 
 	// Verify the record was updated with merged data
-	gotRecord, err := store.Get(context.Background())
+	gotRecord, err := store.Get()
 	require.NoError(t, err, "Failed to retrieve updated record")
 
 	// Expected result should have:
@@ -281,25 +269,23 @@ func TestCatalogEnvMetadataStore_Set_Update(t *testing.T) {
 func TestCatalogEnvMetadataStore_Set_ConcurrentUpdates(t *testing.T) {
 	t.Parallel()
 	// Create two stores pointing to the same environment
-	store1, cleanup1 := setupTestEnvStore(t)
-	defer cleanup1()
+	store1 := setupTestEnvStore(t)
 
-	store2, cleanup2 := setupTestEnvStore(t)
-	defer cleanup2()
+	store2 := setupTestEnvStore(t)
 
 	// Set initial record with store1
 	initialMetadata := TestEnvMetadata{
 		Description: "Initial environment",
 		Version:     "1.0.0",
 	}
-	err := store1.Set(context.Background(), initialMetadata)
+	err := store1.Set(initialMetadata)
 	require.NoError(t, err, "Failed to set initial record")
 
 	// Both stores get the record to sync their version caches
-	_, err = store1.Get(context.Background())
+	_, err = store1.Get()
 	require.NoError(t, err, "Store1 failed to get record after initial set")
 
-	_, err = store2.Get(context.Background())
+	_, err = store2.Get()
 	require.NoError(t, err, "Store2 failed to get record")
 
 	// Store1 updates the record (this should succeed and increment server version)
@@ -307,7 +293,7 @@ func TestCatalogEnvMetadataStore_Set_ConcurrentUpdates(t *testing.T) {
 		Description: "Updated by store1",
 		Version:     "2.0.0",
 	}
-	err = store1.Set(context.Background(), updatedMetadata1)
+	err = store1.Set(updatedMetadata1)
 	require.NoError(t, err, "Store1 failed to update record")
 
 	// Store2 also updates successfully (both should succeed with UPSERT semantics)
@@ -315,11 +301,11 @@ func TestCatalogEnvMetadataStore_Set_ConcurrentUpdates(t *testing.T) {
 		Description: "Updated by store2",
 		Version:     "2.1.0",
 	}
-	err = store2.Set(context.Background(), updatedMetadata2)
+	err = store2.Set(updatedMetadata2)
 	require.NoError(t, err, "Store2 failed to update record")
 
 	// Verify the record has store2's update (the last one wins)
-	finalRecord, err := store2.Get(context.Background())
+	finalRecord, err := store2.Get()
 	require.NoError(t, err, "Failed to get final record")
 
 	expectedRecord := datastore.EnvMetadata{
@@ -428,8 +414,7 @@ func TestCatalogEnvMetadataStore_ConversionHelpers(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			// Create a fresh store for each test case to avoid concurrency issues
-			store, cleanup := setupTestEnvStore(t)
-			defer cleanup()
+			store := setupTestEnvStore(t)
 
 			tt.test(t, store)
 		})
