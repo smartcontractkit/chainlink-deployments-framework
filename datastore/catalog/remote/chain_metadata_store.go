@@ -11,7 +11,7 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
-	datastore2 "github.com/smartcontractkit/chainlink-deployments-framework/datastore/catalog/remote/internal/protos"
+	pb "github.com/smartcontractkit/chainlink-deployments-framework/datastore/catalog/remote/internal/protos"
 )
 
 type catalogChainMetadataStoreConfig struct {
@@ -61,8 +61,8 @@ func (s *catalogChainMetadataStore) setVersion(key datastore.ChainMetadataKey, v
 }
 
 // keyToFilter converts a ChainMetadataKey to a ChainMetadataKeyFilter for gRPC requests
-func (s *catalogChainMetadataStore) keyToFilter(key datastore.ChainMetadataKey) *datastore2.ChainMetadataKeyFilter {
-	return &datastore2.ChainMetadataKeyFilter{
+func (s *catalogChainMetadataStore) keyToFilter(key datastore.ChainMetadataKey) *pb.ChainMetadataKeyFilter {
+	return &pb.ChainMetadataKeyFilter{
 		Domain:        wrapperspb.String(s.domain),
 		Environment:   wrapperspb.String(s.environment),
 		ChainSelector: wrapperspb.UInt64(key.ChainSelector()),
@@ -70,7 +70,7 @@ func (s *catalogChainMetadataStore) keyToFilter(key datastore.ChainMetadataKey) 
 }
 
 // protoToChainMetadata converts a protobuf ChainMetadata to a datastore ChainMetadata
-func (s *catalogChainMetadataStore) protoToChainMetadata(protoRecord *datastore2.ChainMetadata) (datastore.ChainMetadata, error) {
+func (s *catalogChainMetadataStore) protoToChainMetadata(protoRecord *pb.ChainMetadata) (datastore.ChainMetadata, error) {
 	var metadata any
 	if protoRecord.Metadata != "" {
 		if err := json.Unmarshal([]byte(protoRecord.Metadata), &metadata); err != nil {
@@ -85,7 +85,7 @@ func (s *catalogChainMetadataStore) protoToChainMetadata(protoRecord *datastore2
 }
 
 // chainMetadataToProto converts a datastore ChainMetadata to a protobuf ChainMetadata
-func (s *catalogChainMetadataStore) chainMetadataToProto(record datastore.ChainMetadata, version int32) *datastore2.ChainMetadata {
+func (s *catalogChainMetadataStore) chainMetadataToProto(record datastore.ChainMetadata, version int32) *pb.ChainMetadata {
 	var metadataJSON string
 	if record.Metadata != nil {
 		if metadataBytes, err := json.Marshal(record.Metadata); err == nil {
@@ -93,7 +93,7 @@ func (s *catalogChainMetadataStore) chainMetadataToProto(record datastore.ChainM
 		}
 	}
 
-	return &datastore2.ChainMetadata{
+	return &pb.ChainMetadata{
 		Domain:        s.domain,
 		Environment:   s.environment,
 		ChainSelector: record.ChainSelector,
@@ -118,9 +118,9 @@ func (s *catalogChainMetadataStore) get(ignoreTransaction bool, key datastore.Ch
 	}
 
 	// Send find request
-	findReq := &datastore2.DataAccessRequest{
-		Operation: &datastore2.DataAccessRequest_ChainMetadataFindRequest{
-			ChainMetadataFindRequest: &datastore2.ChainMetadataFindRequest{
+	findReq := &pb.DataAccessRequest{
+		Operation: &pb.DataAccessRequest_ChainMetadataFindRequest{
+			ChainMetadataFindRequest: &pb.ChainMetadataFindRequest{
 				KeyFilter:         s.keyToFilter(key),
 				IgnoreTransaction: ignoreTransaction,
 			},
@@ -175,10 +175,10 @@ func (s *catalogChainMetadataStore) Fetch(_ context.Context) ([]datastore.ChainM
 	}
 
 	// Send find request with domain and environment filter only (fetch all)
-	findReq := &datastore2.DataAccessRequest{
-		Operation: &datastore2.DataAccessRequest_ChainMetadataFindRequest{
-			ChainMetadataFindRequest: &datastore2.ChainMetadataFindRequest{
-				KeyFilter: &datastore2.ChainMetadataKeyFilter{
+	findReq := &pb.DataAccessRequest{
+		Operation: &pb.DataAccessRequest_ChainMetadataFindRequest{
+			ChainMetadataFindRequest: &pb.ChainMetadataFindRequest{
+				KeyFilter: &pb.ChainMetadataKeyFilter{
 					Domain:      wrapperspb.String(s.domain),
 					Environment: wrapperspb.String(s.environment),
 				},
@@ -239,7 +239,7 @@ func (s *catalogChainMetadataStore) Filter(ctx context.Context, filters ...datas
 }
 
 func (s *catalogChainMetadataStore) Add(_ context.Context, record datastore.ChainMetadata) error {
-	return s.editRecord(record, datastore2.EditSemantics_SEMANTICS_INSERT)
+	return s.editRecord(record, pb.EditSemantics_SEMANTICS_INSERT)
 }
 
 func (s *catalogChainMetadataStore) Upsert(ctx context.Context, key datastore.ChainMetadataKey, metadata any, opts ...datastore.UpdateOption) error {
@@ -263,7 +263,7 @@ func (s *catalogChainMetadataStore) Upsert(ctx context.Context, key datastore.Ch
 				Metadata:      metadata,
 			}
 
-			return s.editRecord(record, datastore2.EditSemantics_SEMANTICS_INSERT)
+			return s.editRecord(record, pb.EditSemantics_SEMANTICS_INSERT)
 		}
 
 		return fmt.Errorf("failed to get current record for upsert: %w", err)
@@ -281,7 +281,7 @@ func (s *catalogChainMetadataStore) Upsert(ctx context.Context, key datastore.Ch
 		Metadata:      finalMetadata,
 	}
 
-	return s.editRecord(record, datastore2.EditSemantics_SEMANTICS_UPSERT)
+	return s.editRecord(record, pb.EditSemantics_SEMANTICS_UPSERT)
 }
 
 func (s *catalogChainMetadataStore) Update(ctx context.Context, key datastore.ChainMetadataKey, metadata any, opts ...datastore.UpdateOption) error {
@@ -317,7 +317,7 @@ func (s *catalogChainMetadataStore) Update(ctx context.Context, key datastore.Ch
 		Metadata:      finalMetadata,
 	}
 
-	return s.editRecord(record, datastore2.EditSemantics_SEMANTICS_UPDATE)
+	return s.editRecord(record, pb.EditSemantics_SEMANTICS_UPDATE)
 }
 
 func (s *catalogChainMetadataStore) Delete(_ context.Context, _ datastore.ChainMetadataKey) error {
@@ -325,7 +325,7 @@ func (s *catalogChainMetadataStore) Delete(_ context.Context, _ datastore.ChainM
 }
 
 // editRecord is a helper method that handles Add, Upsert, and Update operations
-func (s *catalogChainMetadataStore) editRecord(record datastore.ChainMetadata, semantics datastore2.EditSemantics) error {
+func (s *catalogChainMetadataStore) editRecord(record datastore.ChainMetadata, semantics pb.EditSemantics) error {
 	stream, err := s.client.DataAccess()
 	if err != nil {
 		return fmt.Errorf("failed to create gRPC stream: %w", err)
@@ -336,9 +336,9 @@ func (s *catalogChainMetadataStore) editRecord(record datastore.ChainMetadata, s
 	version := s.getVersion(key)
 
 	// Send edit request
-	editReq := &datastore2.DataAccessRequest{
-		Operation: &datastore2.DataAccessRequest_ChainMetadataEditRequest{
-			ChainMetadataEditRequest: &datastore2.ChainMetadataEditRequest{
+	editReq := &pb.DataAccessRequest{
+		Operation: &pb.DataAccessRequest_ChainMetadataEditRequest{
+			ChainMetadataEditRequest: &pb.ChainMetadataEditRequest{
 				Record:    s.chainMetadataToProto(record, version),
 				Semantics: semantics,
 			},
@@ -360,9 +360,9 @@ func (s *catalogChainMetadataStore) editRecord(record datastore.ChainMetadata, s
 		errorMsg := resp.Status.GetError()
 
 		// Check for specific error conditions
-		if strings.Contains(errorMsg, "no record found to update for") && semantics == datastore2.EditSemantics_SEMANTICS_UPDATE {
+		if strings.Contains(errorMsg, "no record found to update for") && semantics == pb.EditSemantics_SEMANTICS_UPDATE {
 			return datastore.ErrChainMetadataNotFound
-		} else if strings.Contains(errorMsg, "incorrect row version") && (semantics == datastore2.EditSemantics_SEMANTICS_UPDATE || semantics == datastore2.EditSemantics_SEMANTICS_UPSERT) {
+		} else if strings.Contains(errorMsg, "incorrect row version") && (semantics == pb.EditSemantics_SEMANTICS_UPDATE || semantics == pb.EditSemantics_SEMANTICS_UPSERT) {
 			return datastore.ErrChainMetadataStale
 		}
 

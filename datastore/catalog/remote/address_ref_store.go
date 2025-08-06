@@ -10,7 +10,7 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
-	datastore2 "github.com/smartcontractkit/chainlink-deployments-framework/datastore/catalog/remote/internal/protos"
+	pb "github.com/smartcontractkit/chainlink-deployments-framework/datastore/catalog/remote/internal/protos"
 )
 
 type catalogAddressRefStoreConfig struct {
@@ -58,14 +58,14 @@ func (s *catalogAddressRefStore) get(
 
 	// Create the find request with the key converted to a filter
 	filter := s.keyToFilter(key)
-	findRequest := &datastore2.AddressReferenceFindRequest{
+	findRequest := &pb.AddressReferenceFindRequest{
 		KeyFilter:         filter,
 		IgnoreTransaction: ignoreTransaction,
 	}
 
 	// Send the request
-	request := &datastore2.DataAccessRequest{
-		Operation: &datastore2.DataAccessRequest_AddressReferenceFindRequest{
+	request := &pb.DataAccessRequest{
+		Operation: &pb.DataAccessRequest_AddressReferenceFindRequest{
 			AddressReferenceFindRequest: findRequest,
 		},
 	}
@@ -120,19 +120,19 @@ func (s *catalogAddressRefStore) Fetch(_ context.Context) ([]datastore.AddressRe
 
 	// Create the find request with an empty filter to get all records
 	// We only filter by domain and environment to get all records for this store's scope
-	filter := &datastore2.AddressReferenceKeyFilter{
+	filter := &pb.AddressReferenceKeyFilter{
 		Domain:      wrapperspb.String(s.domain),
 		Environment: wrapperspb.String(s.environment),
 		// Leave other fields nil to fetch all records within the domain/environment
 	}
 
-	findRequest := &datastore2.AddressReferenceFindRequest{
+	findRequest := &pb.AddressReferenceFindRequest{
 		KeyFilter: filter,
 	}
 
 	// Send the request
-	request := &datastore2.DataAccessRequest{
-		Operation: &datastore2.DataAccessRequest_AddressReferenceFindRequest{
+	request := &pb.DataAccessRequest{
+		Operation: &pb.DataAccessRequest_AddressReferenceFindRequest{
 			AddressReferenceFindRequest: findRequest,
 		},
 	}
@@ -205,14 +205,14 @@ func (s *catalogAddressRefStore) Add(_ context.Context, record datastore.Address
 	protoRef := s.addressRefToProto(record)
 
 	// Create the edit request with INSERT semantics
-	editRequest := &datastore2.AddressReferenceEditRequest{
+	editRequest := &pb.AddressReferenceEditRequest{
 		Record:    protoRef,
-		Semantics: datastore2.EditSemantics_SEMANTICS_INSERT,
+		Semantics: pb.EditSemantics_SEMANTICS_INSERT,
 	}
 
 	// Send the edit request
-	editReq := &datastore2.DataAccessRequest{
-		Operation: &datastore2.DataAccessRequest_AddressReferenceEditRequest{
+	editReq := &pb.DataAccessRequest{
+		Operation: &pb.DataAccessRequest_AddressReferenceEditRequest{
 			AddressReferenceEditRequest: editRequest,
 		},
 	}
@@ -252,14 +252,14 @@ func (s *catalogAddressRefStore) Upsert(_ context.Context, record datastore.Addr
 	protoRef := s.addressRefToProto(record)
 
 	// Create the edit request with UPSERT semantics
-	editRequest := &datastore2.AddressReferenceEditRequest{
+	editRequest := &pb.AddressReferenceEditRequest{
 		Record:    protoRef,
-		Semantics: datastore2.EditSemantics_SEMANTICS_UPSERT,
+		Semantics: pb.EditSemantics_SEMANTICS_UPSERT,
 	}
 
 	// Send the edit request
-	request := &datastore2.DataAccessRequest{
-		Operation: &datastore2.DataAccessRequest_AddressReferenceEditRequest{
+	request := &pb.DataAccessRequest{
+		Operation: &pb.DataAccessRequest_AddressReferenceEditRequest{
 			AddressReferenceEditRequest: editRequest,
 		},
 	}
@@ -312,14 +312,14 @@ func (s *catalogAddressRefStore) Update(ctx context.Context, record datastore.Ad
 	protoRef := s.addressRefToProto(record)
 
 	// Create the edit request with UPDATE semantics
-	editRequest := &datastore2.AddressReferenceEditRequest{
+	editRequest := &pb.AddressReferenceEditRequest{
 		Record:    protoRef,
-		Semantics: datastore2.EditSemantics_SEMANTICS_UPDATE,
+		Semantics: pb.EditSemantics_SEMANTICS_UPDATE,
 	}
 
 	// Send the edit request
-	editReq := &datastore2.DataAccessRequest{
-		Operation: &datastore2.DataAccessRequest_AddressReferenceEditRequest{
+	editReq := &pb.DataAccessRequest{
+		Operation: &pb.DataAccessRequest_AddressReferenceEditRequest{
 			AddressReferenceEditRequest: editRequest,
 		},
 	}
@@ -355,8 +355,8 @@ func (s *catalogAddressRefStore) Delete(_ context.Context, _ datastore.AddressRe
 }
 
 // keyToFilter converts a datastore.AddressRefKey to a protobuf AddressReferenceKeyFilter
-func (s *catalogAddressRefStore) keyToFilter(key datastore.AddressRefKey) *datastore2.AddressReferenceKeyFilter {
-	return &datastore2.AddressReferenceKeyFilter{
+func (s *catalogAddressRefStore) keyToFilter(key datastore.AddressRefKey) *pb.AddressReferenceKeyFilter {
+	return &pb.AddressReferenceKeyFilter{
 		Domain:        wrapperspb.String(s.domain),
 		Environment:   wrapperspb.String(s.environment),
 		ChainSelector: wrapperspb.UInt64(key.ChainSelector()),
@@ -367,7 +367,7 @@ func (s *catalogAddressRefStore) keyToFilter(key datastore.AddressRefKey) *datas
 }
 
 // protoToAddressRef converts a protobuf AddressReference to a datastore.AddressRef
-func (s *catalogAddressRefStore) protoToAddressRef(protoRef *datastore2.AddressReference) (datastore.AddressRef, error) {
+func (s *catalogAddressRefStore) protoToAddressRef(protoRef *pb.AddressReference) (datastore.AddressRef, error) {
 	// Parse the version
 	version, err := semver.NewVersion(protoRef.Version)
 	if err != nil {
@@ -388,8 +388,8 @@ func (s *catalogAddressRefStore) protoToAddressRef(protoRef *datastore2.AddressR
 }
 
 // addressRefToProto converts a datastore.AddressRef to a protobuf AddressReference
-func (s *catalogAddressRefStore) addressRefToProto(addressRef datastore.AddressRef) *datastore2.AddressReference {
-	return &datastore2.AddressReference{
+func (s *catalogAddressRefStore) addressRefToProto(addressRef datastore.AddressRef) *pb.AddressReference {
+	return &pb.AddressReference{
 		Domain:        s.domain,
 		Environment:   s.environment,
 		ChainSelector: addressRef.ChainSelector,

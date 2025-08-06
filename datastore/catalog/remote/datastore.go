@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
-	datastore2 "github.com/smartcontractkit/chainlink-deployments-framework/datastore/catalog/remote/internal/protos"
+	pb "github.com/smartcontractkit/chainlink-deployments-framework/datastore/catalog/remote/internal/protos"
 )
 
 type CatalogDataStoreConfig struct {
@@ -25,9 +25,9 @@ type catalogDataStore struct {
 }
 
 func (s *catalogDataStore) BeginTransaction() error {
-	request := &datastore2.DataAccessRequest{
-		Operation: &datastore2.DataAccessRequest_BeginTransactionRequest{
-			BeginTransactionRequest: &datastore2.BeginTransactionRequest{},
+	request := &pb.DataAccessRequest{
+		Operation: &pb.DataAccessRequest_BeginTransactionRequest{
+			BeginTransactionRequest: &pb.BeginTransactionRequest{},
 		},
 	}
 	_, err := ThrowAndCatch(s, request)
@@ -35,9 +35,9 @@ func (s *catalogDataStore) BeginTransaction() error {
 }
 
 func (s *catalogDataStore) CommitTransaction() error {
-	request := &datastore2.DataAccessRequest{
-		Operation: &datastore2.DataAccessRequest_CommitTransactionRequest{
-			CommitTransactionRequest: &datastore2.CommitTransactionRequest{},
+	request := &pb.DataAccessRequest{
+		Operation: &pb.DataAccessRequest_CommitTransactionRequest{
+			CommitTransactionRequest: &pb.CommitTransactionRequest{},
 		},
 	}
 	_, err := ThrowAndCatch(s, request)
@@ -45,9 +45,9 @@ func (s *catalogDataStore) CommitTransaction() error {
 }
 
 func (s *catalogDataStore) RollbackTransaction() error {
-	request := &datastore2.DataAccessRequest{
-		Operation: &datastore2.DataAccessRequest_BeginTransactionRequest{
-			BeginTransactionRequest: &datastore2.BeginTransactionRequest{},
+	request := &pb.DataAccessRequest{
+		Operation: &pb.DataAccessRequest_BeginTransactionRequest{
+			BeginTransactionRequest: &pb.BeginTransactionRequest{},
 		},
 	}
 	_, err := ThrowAndCatch(s, request)
