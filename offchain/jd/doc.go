@@ -10,14 +10,15 @@ mechanisms and provides a unified interface for job management operations.
 
 # Architecture
 
-The package consists of two main components:
+The package consists of three main components:
 
-1. **JD Client** (`client.go`) - Core gRPC client implementation
-2. **Provider Interface** (`provider/`) - A wrapper around the JD client that provides a standarized interface
+1. JD Client (client.go) - Core gRPC client implementation
+2. Client Provider (provider/client_provider.go) - Connects to existing JD services
+3. CTF Provider (provider/ctf_provider.go) - Creates and manages JD Docker containers for testing
 
 # Basic Usage
 
-## Simple Connection
+# Simple Connection
 
 For basic connectivity without authentication:
 
@@ -38,9 +39,10 @@ For basic connectivity without authentication:
 	}
 
 	// Use client for operations
-	pubKey, err := client.GetCSAPublicKey(ctx)
+	import csav1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/csa"
+	keypairs, err := client.ListKeypairs(ctx, &csav1.ListKeypairsRequest{})
 
-## Provider Interface
+# Provider Interface
 
 	import (
 		"github.com/smartcontractkit/chainlink-deployments-framework/offchain/jd/provider"
@@ -68,11 +70,80 @@ For basic connectivity without authentication:
 
 	// client is compatible with the Offchain field in the Environment struct
 
+# CTF Provider (Testing)
+
+For testing scenarios where you need to spin up JD Docker containers:
+
+	import (
+		"testing"
+		"github.com/smartcontractkit/chainlink-deployments-framework/offchain/jd/provider"
+	)
+
+	func TestWithJD(t *testing.T) {
+		config := provider.CTFOffchainProviderConfig{
+			Image: "job-distributor:latest",
+			// OR use environment variable: CTF_JD_IMAGE
+
+			// Optional PostgreSQL configuration
+			PostgresPort:      5432,
+			PostgresHost:      "localhost",
+			PostgresUser:      "chainlink",
+			PostgresPassword:  "chainlink",
+			PostgresDBName:    "chainlink",
+
+			// Optional JD configuration
+			GRPCPort:           14231,
+			WebSocketRPCPort:   8080,
+			CSAEncryptionKey:   "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+			JDSQLDumpPath:      "./migrations.sql", // Optional
+		}
+
+		// Create CTF provider
+		jdProvider := provider.NewCTFOffchainProvider(t, config)
+
+		// Initialize (starts Docker containers with health check)
+		ctx := context.Background()
+		client, err := jdProvider.Initialize(ctx)
+		if err != nil {
+			t.Fatalf("Failed to initialize JD: %v", err)
+		}
+
+		// Use client for testing
+		keypairs, err := client.ListKeypairs(ctx, &csav1.ListKeypairsRequest{})
+		if err != nil {
+			t.Fatalf("Failed to list keypairs: %v", err)
+		}
+
+		t.Logf("JD service ready with %d keypairs", len(keypairs.Keypairs))
+	}
+
+The CTF provider automatically:
+- Starts PostgreSQL container with proper schema
+- Starts JD container with correct configuration
+- Performs health checks using retry logic
+- Cleans up containers when tests complete
+
+# Environment Variable Configuration
+
+You can specify the JD Docker image via environment variable:
+
+	export CTF_JD_IMAGE=localhost:5001/job-distributor:latest
+
+	config := provider.CTFOffchainProviderConfig{
+		// Image field can be omitted when CTF_JD_IMAGE is set
+	}
+
+# Health Check
+
+The CTF provider includes built-in health checking that retries `GetKeypair` calls:
+- 10 retry attempts with 2-second delays
+- Ensures JD service is fully ready before returning
+
 # Authentication
 
 The package supports three authentication mechanisms:
 
-## 1. No Authentication
+# 1. No Authentication
 
 For development or internal networks:
 
@@ -81,7 +152,7 @@ For development or internal networks:
 		Creds: insecure.NewCredentials(),
 	}
 
-## 2. OAuth2 Authentication
+# 2. OAuth2 Authentication
 
 For services requiring OAuth2 Bearer tokens:
 
@@ -101,21 +172,38 @@ For services requiring OAuth2 Bearer tokens:
 
 # Client Operations
 
-The JD client supports various operations:
+The JD client supports various operations through gRPC service interfaces:
 
-## CSA Key Management
+# CSA Key Management
 
-	// Get CSA public key
-	pubKey, err := client.GetCSAPublicKey(ctx)
+	import csav1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/csa"
+
+	// List CSA keypairs
+	keypairs, err := client.ListKeypairs(ctx, &csav1.ListKeypairsRequest{})
 	if err != nil {
-		log.Printf("Failed to get CSA key: %v", err)
+		log.Printf("Failed to list CSA keypairs: %v", err)
 	}
 
-## Job Management
+	for _, keypair := range keypairs.Keypairs {
+		log.Printf("CSA Public Key: %s", keypair.PublicKey)
+	}
 
-	import "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/job"
+# Job Management
 
-	jobSpec := &job.ProposeJobRequest{
+	import jobv1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/job"
+
+	// List existing jobs
+	jobs, err := client.ListJobs(ctx, &jobv1.ListJobsRequest{})
+	if err != nil {
+		log.Printf("Failed to list jobs: %v", err)
+	}
+
+	for _, job := range jobs.Jobs {
+		log.Printf("Job ID: %s", job.Id)
+	}
+
+	// Propose a new job
+	jobSpec := &jobv1.ProposeJobRequest{
 		NodeIds: []string{"node-1", "node-2"},
 		Spec:    "job specification here",
 	}
@@ -123,6 +211,20 @@ The JD client supports various operations:
 	response, err := client.ProposeJob(ctx, jobSpec)
 	if err != nil {
 		log.Printf("Failed to propose job: %v", err)
+	}
+
+# Node Management
+
+	import nodev1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/node"
+
+	// List registered nodes
+	nodes, err := client.ListNodes(ctx, &nodev1.ListNodesRequest{})
+	if err != nil {
+		log.Printf("Failed to list nodes: %v", err)
+	}
+
+	for _, node := range nodes.Nodes {
+		log.Printf("Node ID: %s", node.Id)
 	}
 
 # Configuration Validation

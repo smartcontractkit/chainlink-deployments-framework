@@ -8,7 +8,6 @@ import (
 	"golang.org/x/oauth2"
 	"google.golang.org/grpc/credentials"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/offchain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/offchain/jd"
 )
@@ -39,7 +38,7 @@ var _ offchain.Provider = (*ClientOffchainProvider)(nil)
 // ClientOffchainProvider is a JD provider that connects to a Job Distributor service via gRPC.
 type ClientOffchainProvider struct {
 	config ClientOffchainProviderConfig
-	client deployment.OffchainClient
+	client offchain.Client
 }
 
 // NewClientOffchainProvider creates a new ClientOffchainProvider with the given configuration.
@@ -50,8 +49,8 @@ func NewClientOffchainProvider(config ClientOffchainProviderConfig) *ClientOffch
 }
 
 // Initialize initializes the ClientOffchainProvider, setting up the JD client with the provided
-// configuration. It returns the initialized deployment.OffchainClient or an error if initialization fails.
-func (p *ClientOffchainProvider) Initialize(ctx context.Context) (deployment.OffchainClient, error) {
+// configuration. It returns the initialized offchain.Client or an error if initialization fails.
+func (p *ClientOffchainProvider) Initialize(ctx context.Context) (offchain.Client, error) {
 	if p.client != nil {
 		return p.client, nil // Already initialized
 	}
@@ -87,6 +86,6 @@ func (*ClientOffchainProvider) Name() string {
 
 // OffchainClient returns the JD client instance managed by this provider.
 // You must call Initialize before using this method to ensure the client is properly set up.
-func (p *ClientOffchainProvider) OffchainClient() deployment.OffchainClient {
+func (p *ClientOffchainProvider) OffchainClient() offchain.Client {
 	return p.client
 }

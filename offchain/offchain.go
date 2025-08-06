@@ -1,6 +1,15 @@
 package offchain
 
-import "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+import (
+	csav1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/csa"
+	jobv1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/job"
+	nodev1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/node"
+)
 
-// OffchainClient is an alias for the deployment.OffchainClient type for now until we migrate all reference over to the new offchain package.
-type OffchainClient = deployment.OffchainClient
+// Client is an offchain interface which interacts with job-distributor for performing
+// DON operations.
+type Client interface {
+	jobv1.JobServiceClient
+	nodev1.NodeServiceClient
+	csav1.CSAServiceClient
+}
