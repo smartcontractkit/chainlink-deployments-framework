@@ -4,10 +4,7 @@ go 1.24.2
 
 toolchain go1.24.3
 
-replace (
-	github.com/fbsobreira/gotron-sdk => github.com/smartcontractkit/chainlink-tron/relayer/gotron-sdk v0.0.4
-	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
-)
+replace github.com/fbsobreira/gotron-sdk => github.com/smartcontractkit/chainlink-tron/relayer/gotron-sdk v0.0.4
 
 require (
 	github.com/Masterminds/semver/v3 v3.4.0
@@ -123,7 +120,7 @@ require (
 	github.com/go-resty/resty/v2 v2.16.3 // indirect
 	github.com/go-viper/mapstructure/v2 v2.2.1 // indirect
 	github.com/gofrs/flock v0.12.1 // indirect
-	github.com/gogo/protobuf v1.3.3 // indirect
+	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.1 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/golang/snappy v0.0.5-0.20220116011046-fa5810519dcb // indirect
