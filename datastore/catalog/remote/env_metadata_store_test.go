@@ -134,12 +134,12 @@ func TestCatalogEnvMetadataStore_Get(t *testing.T) {
 
 			// Setup test data if needed
 			for _, record := range tt.setupRecords {
-				err := store.Set(record.Metadata)
+				err := store.Set(t.Context(), record.Metadata)
 				require.NoError(t, err, "Failed to setup record")
 			}
 
 			// Test Get operation
-			gotRecord, err := store.Get()
+			gotRecord, err := store.Get(t.Context())
 
 			// Verify error
 			if tt.wantErr != nil {
@@ -188,7 +188,7 @@ func TestCatalogEnvMetadataStore_Set(t *testing.T) {
 			store := setupTestEnvStore(t)
 
 			// Test Set operation
-			err := store.Set(tt.record.Metadata)
+			err := store.Set(t.Context(), tt.record.Metadata)
 
 			// Verify error
 			if tt.wantErr != nil {
@@ -207,7 +207,7 @@ func TestCatalogEnvMetadataStore_Set(t *testing.T) {
 			require.NoError(t, err, "Unexpected error")
 
 			// Verify record was set by retrieving it
-			gotRecord, err := store.Get()
+			gotRecord, err := store.Get(t.Context())
 			require.NoError(t, err, "Failed to retrieve record after Set")
 
 			requireEnvMetadataEqual(t, tt.record, gotRecord)
@@ -225,7 +225,7 @@ func TestCatalogEnvMetadataStore_Set_Update(t *testing.T) {
 		Version:     "2.0.0",
 		Tags:        []string{"initial"},
 	}
-	err := store.Set(initialMetadata)
+	err := store.Set(t.Context(), initialMetadata)
 	require.NoError(t, err, "Failed to set initial record")
 
 	// Create a custom updater that merges tags and updates version
@@ -235,11 +235,11 @@ func TestCatalogEnvMetadataStore_Set_Update(t *testing.T) {
 	updateMetadata := TestEnvMetadata{
 		Tags: []string{"updated", "v2"},
 	}
-	err = store.Set(updateMetadata, datastore.WithUpdater(mergeUpdater))
+	err = store.Set(t.Context(), updateMetadata, datastore.WithUpdater(mergeUpdater))
 	require.NoError(t, err, "Failed to update record with custom updater")
 
 	// Verify the record was updated with merged data
-	gotRecord, err := store.Get()
+	gotRecord, err := store.Get(t.Context())
 	require.NoError(t, err, "Failed to retrieve updated record")
 
 	// Expected result should have:
@@ -278,14 +278,14 @@ func TestCatalogEnvMetadataStore_Set_ConcurrentUpdates(t *testing.T) {
 		Description: "Initial environment",
 		Version:     "1.0.0",
 	}
-	err := store1.Set(initialMetadata)
+	err := store1.Set(t.Context(), initialMetadata)
 	require.NoError(t, err, "Failed to set initial record")
 
 	// Both stores get the record to sync their version caches
-	_, err = store1.Get()
+	_, err = store1.Get(t.Context())
 	require.NoError(t, err, "Store1 failed to get record after initial set")
 
-	_, err = store2.Get()
+	_, err = store2.Get(t.Context())
 	require.NoError(t, err, "Store2 failed to get record")
 
 	// Store1 updates the record (this should succeed and increment server version)
@@ -293,7 +293,7 @@ func TestCatalogEnvMetadataStore_Set_ConcurrentUpdates(t *testing.T) {
 		Description: "Updated by store1",
 		Version:     "2.0.0",
 	}
-	err = store1.Set(updatedMetadata1)
+	err = store1.Set(t.Context(), updatedMetadata1)
 	require.NoError(t, err, "Store1 failed to update record")
 
 	// Store2 also updates successfully (both should succeed with UPSERT semantics)
@@ -301,11 +301,11 @@ func TestCatalogEnvMetadataStore_Set_ConcurrentUpdates(t *testing.T) {
 		Description: "Updated by store2",
 		Version:     "2.1.0",
 	}
-	err = store2.Set(updatedMetadata2)
+	err = store2.Set(t.Context(), updatedMetadata2)
 	require.NoError(t, err, "Store2 failed to update record")
 
 	// Verify the record has store2's update (the last one wins)
-	finalRecord, err := store2.Get()
+	finalRecord, err := store2.Get(t.Context())
 	require.NoError(t, err, "Failed to get final record")
 
 	expectedRecord := datastore.EnvMetadata{

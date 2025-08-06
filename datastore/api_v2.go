@@ -7,10 +7,18 @@ type TransactionLogic func(ctx context.Context) error
 // Transactional is an interface which supports keeping datastore operations within transactional
 // boundaries.
 type Transactional interface {
-	BeginTransaction() error
-	CommitTransaction() error
-	RollbackTransaction() error
+	// WithTransaction allows the caller to wrap their datastore operations in a transactional
+	// boundary, such that any datastore operations will succeed or fail together. The caller
+	// supplies a lambda containing the operations, which the calling context being plumbed
+	// through. Starting and committing the transaction is automated, and if an error is
+	// returned, the transaction is rolled-back instead.
 	WithTransaction(ctx context.Context, fn TransactionLogic) error
+
+	// These are not publicly available in the API yet, pending further discussion around
+	// exposing them.
+	/* BeginTransaction() error */
+	/* CommitTransaction() error */
+	/* RollbackTransaction() error */
 }
 
 // BaseDataStoreV2 is an interface that defines the basic operations for a data store using V2 interfaces.
@@ -71,22 +79,22 @@ type FetcherV2[R any] interface {
 	// will be a newly allocated slice (not a reference to an existing one), and each record should
 	// be a copy of the corresponding stored data. Modifying the returned slice or its records must
 	// not affect the underlying data.
-	Fetch() ([]R, error)
+	Fetch(context.Context) ([]R, error)
 }
 
 // FilterableV2 provides a Filter() method which is used to complete a filtered query with from a Store.
 type FilterableV2[K Comparable[K], R UniqueRecord[K, R]] interface {
-	Filter(...FilterFunc[K, R]) ([]R, error)
+	Filter(context.Context, ...FilterFunc[K, R]) ([]R, error)
 }
 
 // GetterV2 provides a Get() method which is used to complete a read by key query from a Store.
 type GetterV2[K Comparable[K], R UniqueRecord[K, R]] interface {
 	// Get returns the record with the given key, or an error if no such record exists.
-	Get(K) (R, error)
+	Get(context.Context, K) (R, error)
 	// GetIgnoringTransactions returns the record with the given key, but does so from outside
 	// the current (if any) transaction context. Any writes performed within uncommitted
 	// transactions will not be reflected in the result.
-	GetIgnoringTransactions(K) (R, error)
+	GetIgnoringTransactions(context.Context, K) (R, error)
 }
 
 // MutableStoreV2 is an interface that represents a mutable set of records.
@@ -96,21 +104,21 @@ type MutableStoreV2[K Comparable[K], R UniqueRecord[K, R]] interface {
 	FilterableV2[K, R]
 
 	// Add inserts a new record into the MutableStore.
-	Add(record R) error
+	Add(ctx context.Context, record R) error
 
 	// Upsert behaves like Add where there is not already a record with the same composite primary key as the
 	// supplied record, otherwise it behaves like an update.
 	// Options can be provided to customize the behavior (e.g., custom updater function).
-	Upsert(key K, metadata any, opts ...UpdateOption) error
+	Upsert(ctx context.Context, key K, metadata any, opts ...UpdateOption) error
 
 	// Update edits an existing record whose fields match the primary key elements of the supplied AddressRecord, with
 	// the non-primary-key values of the supplied AddressRecord.
 	// Options can be provided to customize the behavior (e.g., custom updater function).
-	Update(key K, metadata any, opts ...UpdateOption) error
+	Update(ctx context.Context, key K, metadata any, opts ...UpdateOption) error
 
 	// Delete deletes record whose primary key elements match the supplied key, returning an error if no
 	// such record exists to be deleted
-	Delete(key K) error
+	Delete(ctx context.Context, key K) error
 }
 
 type MutableRefStoreV2[K Comparable[K], R UniqueRecord[K, R]] interface {
@@ -118,13 +126,13 @@ type MutableRefStoreV2[K Comparable[K], R UniqueRecord[K, R]] interface {
 	GetterV2[K, R]
 	FilterableV2[K, R]
 
-	Add(record R) error
+	Add(ctx context.Context, record R) error
 
-	Update(record R) error
+	Update(ctx context.Context, record R) error
 
-	Upsert(record R) error
+	Upsert(ctx context.Context, record R) error
 
-	Delete(key K) error
+	Delete(ctx context.Context, key K) error
 }
 
 // MutableUnaryStoreV2 is an interface that represents a mutable store that contains a single record.
@@ -132,11 +140,11 @@ type MutableUnaryStoreV2[R any] interface {
 	// Get returns a copy of the record or an error.
 	// If the record exists, the error should be nil.
 	// If the record does not exist, the error should not be nil.
-	Get() (R, error)
+	Get(ctx context.Context) (R, error)
 
 	// Set sets the record in the store.
 	// If the record already exists, it should be replaced.
 	// If the record does not exist, it should be added.
 	// Options can be provided to customize the behavior (e.g., custom updater function).
-	Set(metadata any, opts ...UpdateOption) error
+	Set(ctx context.Context, metadata any, opts ...UpdateOption) error
 }

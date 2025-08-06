@@ -3,6 +3,7 @@ package remote
 import (
 	"context"
 	"fmt"
+	"math/rand/v2"
 	"os"
 	"testing"
 
@@ -13,7 +14,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 )
 
-func TestCatalogTransactions_Failure(t *testing.T) {
+func TestCatalogTransactions_Commit(t *testing.T) {
 	t.Parallel()
 
 	t.Log("Setup Store")
@@ -35,7 +36,7 @@ func TestCatalogTransactions_Failure(t *testing.T) {
 			Description: "New contract description",
 			Tags:        []string{"first"},
 		}
-		err := catalog.ContractMetadata().Add(datastore.ContractMetadata{
+		err := catalog.ContractMetadata().Add(t.Context(), datastore.ContractMetadata{
 			Address:       "0x12345678",
 			ChainSelector: 1,
 			Metadata:      metadata,
@@ -44,7 +45,7 @@ func TestCatalogTransactions_Failure(t *testing.T) {
 	})
 
 	t.Run("Read Contract Metadata", func(t *testing.T) {
-		result, err := catalog.ContractMetadata().Get(datastore.NewContractMetadataKey(1, "0x12345678"))
+		result, err := catalog.ContractMetadata().Get(t.Context(), datastore.NewContractMetadataKey(1, "0x12345678"))
 		require.NoError(t, err)
 		require.NotNil(t, result)
 		metadata, err := datastore.As[TestContractMetadata](result.Metadata)
@@ -61,6 +62,7 @@ func TestCatalogTransactions_Failure(t *testing.T) {
 		// Check that the write happened within the transaction, and therefore a read would
 		// fail outside of the transactional context.
 		_, err := catalog.ContractMetadata().GetIgnoringTransactions(
+			t.Context(),
 			datastore.NewContractMetadataKey(1, "0x12345678"),
 		)
 		require.ErrorContains(t, err, "no contract metadata record can be found")
@@ -73,7 +75,8 @@ func TestCatalogTransactions_Failure(t *testing.T) {
 
 	t.Run("Read Contract Metadata (from outside tx)", func(t *testing.T) {
 		// Read ignoring transaction context to ensure that the commit worked.
-		result, err := catalog.ContractMetadata().Get(datastore.NewContractMetadataKey(1, "0x12345678"))
+		result, err := catalog.ContractMetadata().
+			Get(t.Context(), datastore.NewContractMetadataKey(1, "0x12345678"))
 		require.NoError(t, err)
 		require.NotNil(t, result)
 		metadata, err := datastore.As[TestContractMetadata](result.Metadata)
@@ -87,7 +90,77 @@ func TestCatalogTransactions_Failure(t *testing.T) {
 	})
 }
 
-func TestCatalogTransactions_Success(t *testing.T) {
+func TestCatalogTransactions_WithTransactions_Commit(t *testing.T) {
+	t.Parallel()
+
+	t.Log("Setup Store")
+	catalog, err := setupStore(t, t.Context())
+	if err != nil {
+		t.Skipf("%s", err)
+		return
+	}
+
+	err = catalog.WithTransaction(t.Context(), func(ctx context.Context) error {
+		t.Run("Add Contract Metadata", func(t *testing.T) {
+			metadata := TestContractMetadata{
+				Name:        "SomeContract",
+				Version:     "2.0.0",
+				Description: "New contract description",
+				Tags:        []string{"first"},
+			}
+			err := catalog.ContractMetadata().Add(t.Context(), datastore.ContractMetadata{
+				Address:       "0x12345678",
+				ChainSelector: 1,
+				Metadata:      metadata,
+			})
+			assert.NoError(t, err)
+		})
+
+		t.Run("Read Contract Metadata", func(t *testing.T) {
+			result, err := catalog.ContractMetadata().Get(t.Context(), datastore.NewContractMetadataKey(1, "0x12345678"))
+			require.NoError(t, err)
+			require.NotNil(t, result)
+			metadata, err := datastore.As[TestContractMetadata](result.Metadata)
+			require.NoError(t, err)
+			require.NotNil(t, metadata)
+
+			assert.Equal(t, metadata.Name, "SomeContract")
+			assert.Equal(t, metadata.Version, "2.0.0")
+			assert.Equal(t, metadata.Description, "New contract description")
+			assert.Equal(t, metadata.Tags, []string{"first"})
+		})
+
+		t.Run("Read Contract Metadata (from outside tx)", func(t *testing.T) {
+			// Check that the write happened within the transaction, and therefore a read would
+			// fail outside of the transactional context.
+			_, err := catalog.ContractMetadata().GetIgnoringTransactions(
+				t.Context(),
+				datastore.NewContractMetadataKey(1, "0x12345678"),
+			)
+			require.ErrorContains(t, err, "no contract metadata record can be found")
+		})
+		return nil
+	})
+	require.NoError(t, err)
+
+	t.Run("Read Contract Metadata (from outside tx)", func(t *testing.T) {
+		// Read ignoring transaction context to ensure that the commit worked.
+		result, err := catalog.ContractMetadata().
+			Get(t.Context(), datastore.NewContractMetadataKey(1, "0x12345678"))
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		metadata, err := datastore.As[TestContractMetadata](result.Metadata)
+		require.NoError(t, err)
+		require.NotNil(t, metadata)
+
+		assert.Equal(t, metadata.Name, "SomeContract")
+		assert.Equal(t, metadata.Version, "2.0.0")
+		assert.Equal(t, metadata.Description, "New contract description")
+		assert.Equal(t, metadata.Tags, []string{"first"})
+	})
+}
+
+func TestCatalogTransactions_Rollback(t *testing.T) {
 	t.Parallel()
 
 	t.Log("Setup Store")
@@ -105,20 +178,24 @@ func TestCatalogTransactions_Success(t *testing.T) {
 	t.Run("Add Contract Metadata", func(t *testing.T) {
 		metadata := TestContractMetadata{
 			Name:        "SomeContract",
-			Version:     "1.0.0",
+			Version:     "3.0.0",
 			Description: "New contract description",
 			Tags:        []string{"first"},
 		}
-		err := catalog.ContractMetadata().Add(datastore.ContractMetadata{
-			Address:       "0x12345678",
-			ChainSelector: 1,
-			Metadata:      metadata,
-		})
+		err := catalog.ContractMetadata().Add(
+			t.Context(),
+			datastore.ContractMetadata{
+				Address:       "0x12345678",
+				ChainSelector: 1,
+				Metadata:      metadata,
+			},
+		)
 		assert.NoError(t, err)
 	})
 
 	t.Run("Read Contract Metadata", func(t *testing.T) {
-		result, err := catalog.ContractMetadata().Get(datastore.NewContractMetadataKey(1, "0x12345678"))
+		result, err := catalog.ContractMetadata().
+			Get(t.Context(), datastore.NewContractMetadataKey(1, "0x12345678"))
 		require.NoError(t, err)
 		require.NotNil(t, result)
 		metadata, err := datastore.As[TestContractMetadata](result.Metadata)
@@ -126,7 +203,7 @@ func TestCatalogTransactions_Success(t *testing.T) {
 		require.NotNil(t, metadata)
 
 		assert.Equal(t, metadata.Name, "SomeContract")
-		assert.Equal(t, metadata.Version, "1.0.0")
+		assert.Equal(t, metadata.Version, "3.0.0")
 		assert.Equal(t, metadata.Description, "New contract description")
 		assert.Equal(t, metadata.Tags, []string{"first"})
 	})
@@ -135,6 +212,7 @@ func TestCatalogTransactions_Success(t *testing.T) {
 		// Check that the write happened within the transaction, and therefore a read would
 		// fail outside of the transactional context.
 		_, err := catalog.ContractMetadata().GetIgnoringTransactions(
+			t.Context(),
 			datastore.NewContractMetadataKey(1, "0x12345678"),
 		)
 		require.ErrorContains(t, err, "no contract metadata record can be found")
@@ -148,6 +226,75 @@ func TestCatalogTransactions_Success(t *testing.T) {
 	t.Run("Read Contract Metadata (from outside tx)", func(t *testing.T) {
 		// Ensure the write didn't happen.
 		_, err := catalog.ContractMetadata().GetIgnoringTransactions(
+			t.Context(),
+			datastore.NewContractMetadataKey(1, "0x12345678"),
+		)
+		require.ErrorContains(t, err, "no contract metadata record can be found")
+	})
+}
+
+func TestCatalogTransactions_WithTransactions_Rollback(t *testing.T) {
+	t.Parallel()
+
+	t.Log("Setup Store")
+	catalog, err := setupStore(t, t.Context())
+	if err != nil {
+		t.Skipf("%s", err)
+		return
+	}
+	err = catalog.WithTransaction(t.Context(), func(ctx context.Context) error {
+
+		t.Run("Add Contract Metadata", func(t *testing.T) {
+			metadata := TestContractMetadata{
+				Name:        "SomeContract",
+				Version:     "4.0.0",
+				Description: "New contract description",
+				Tags:        []string{"first"},
+			}
+			err := catalog.ContractMetadata().Add(
+				t.Context(),
+				datastore.ContractMetadata{
+					Address:       "0x12345678",
+					ChainSelector: 1,
+					Metadata:      metadata,
+				},
+			)
+			assert.NoError(t, err)
+		})
+
+		t.Run("Read Contract Metadata", func(t *testing.T) {
+			result, err := catalog.ContractMetadata().
+				Get(t.Context(), datastore.NewContractMetadataKey(1, "0x12345678"))
+			require.NoError(t, err)
+			require.NotNil(t, result)
+			metadata, err := datastore.As[TestContractMetadata](result.Metadata)
+			require.NoError(t, err)
+			require.NotNil(t, metadata)
+
+			assert.Equal(t, metadata.Name, "SomeContract")
+			assert.Equal(t, metadata.Version, "4.0.0")
+			assert.Equal(t, metadata.Description, "New contract description")
+			assert.Equal(t, metadata.Tags, []string{"first"})
+		})
+
+		t.Run("Read Contract Metadata (from outside tx)", func(t *testing.T) {
+			// Check that the write happened within the transaction, and therefore a read would
+			// fail outside of the transactional context.
+			_, err := catalog.ContractMetadata().GetIgnoringTransactions(
+				t.Context(),
+				datastore.NewContractMetadataKey(1, "0x12345678"),
+			)
+			require.ErrorContains(t, err, "no contract metadata record can be found")
+		})
+
+		return fmt.Errorf("foo")
+	})
+	require.ErrorContains(t, err, "foo")
+
+	t.Run("Read Contract Metadata (from outside tx)", func(t *testing.T) {
+		// Ensure the write didn't happen.
+		_, err := catalog.ContractMetadata().GetIgnoringTransactions(
+			t.Context(),
 			datastore.NewContractMetadataKey(1, "0x12345678"),
 		)
 		require.ErrorContains(t, err, "no contract metadata record can be found")
@@ -208,7 +355,10 @@ func TestCatalogTransactions_OrphanRollback(t *testing.T) {
 	})
 }
 
-func setupStore(t *testing.T, ctx context.Context) (datastore.CatalogStore, error) {
+// setupStore creates a new catalog store.
+//
+// It returns the underlying type, since the *Transaction methods aren't exposed in the API yet.
+func setupStore(t *testing.T, ctx context.Context) (*catalogDataStore, error) {
 	t.Helper()
 	// Get gRPC address from environment or use default
 	address := os.Getenv("CATALOG_GRPC_ADDRESS")
@@ -229,7 +379,7 @@ func setupStore(t *testing.T, ctx context.Context) (datastore.CatalogStore, erro
 		return nil, fmt.Errorf("gRPC service not available at %s: %v. Skipping integration tests", address, err)
 	}
 	config := CatalogDataStoreConfig{
-		Domain:      "test-domain",
+		Domain:      fmt.Sprintf("test-domain-%d", rand.IntN(1000000000)),
 		Environment: "catalog_testing",
 		Client:      catalogClient,
 	}

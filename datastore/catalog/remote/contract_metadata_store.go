@@ -1,6 +1,7 @@
 package remote
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -104,10 +105,11 @@ func (s *catalogContractMetadataStore) contractMetadataToProto(record datastore.
 		RowVersion:    version,
 	}
 }
-func (s *catalogContractMetadataStore) Get(key datastore.ContractMetadataKey) (datastore.ContractMetadata, error) {
+func (s *catalogContractMetadataStore) Get(_ context.Context, key datastore.ContractMetadataKey) (datastore.ContractMetadata, error) {
 	return s.get(false, key)
 }
 func (s *catalogContractMetadataStore) GetIgnoringTransactions(
+	_ context.Context,
 	key datastore.ContractMetadataKey,
 ) (datastore.ContractMetadata, error) {
 	return s.get(true, key)
@@ -170,7 +172,7 @@ func (s *catalogContractMetadataStore) get(ignoreTransaction bool, key datastore
 }
 
 // Fetch returns a copy of all ContractMetadata in the catalog.
-func (s *catalogContractMetadataStore) Fetch() ([]datastore.ContractMetadata, error) {
+func (s *catalogContractMetadataStore) Fetch(_ context.Context) ([]datastore.ContractMetadata, error) {
 	stream, err := s.client.DataAccess()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gRPC stream: %w", err)
@@ -227,8 +229,8 @@ func (s *catalogContractMetadataStore) Fetch() ([]datastore.ContractMetadata, er
 // Filter returns a copy of all ContractMetadata in the catalog that match the provided filter.
 // Filters are applied in the order they are provided.
 // If no filters are provided, all records are returned.
-func (s *catalogContractMetadataStore) Filter(filters ...datastore.FilterFunc[datastore.ContractMetadataKey, datastore.ContractMetadata]) ([]datastore.ContractMetadata, error) {
-	records, err := s.Fetch()
+func (s *catalogContractMetadataStore) Filter(ctx context.Context, filters ...datastore.FilterFunc[datastore.ContractMetadataKey, datastore.ContractMetadata]) ([]datastore.ContractMetadata, error) {
+	records, err := s.Fetch(ctx)
 	if err != nil {
 		return []datastore.ContractMetadata{}, fmt.Errorf("failed to fetch records: %w", err)
 	}
@@ -240,11 +242,11 @@ func (s *catalogContractMetadataStore) Filter(filters ...datastore.FilterFunc[da
 	return records, nil
 }
 
-func (s *catalogContractMetadataStore) Add(record datastore.ContractMetadata) error {
+func (s *catalogContractMetadataStore) Add(_ context.Context, record datastore.ContractMetadata) error {
 	return s.editRecord(record, datastore2.EditSemantics_SEMANTICS_INSERT)
 }
 
-func (s *catalogContractMetadataStore) Upsert(key datastore.ContractMetadataKey, metadata any, opts ...datastore.UpdateOption) error {
+func (s *catalogContractMetadataStore) Upsert(ctx context.Context, key datastore.ContractMetadataKey, metadata any, opts ...datastore.UpdateOption) error {
 	// Build options with defaults
 	options := &datastore.UpdateOptions{
 		Updater: datastore.IdentityUpdaterF, // default updater
@@ -256,7 +258,7 @@ func (s *catalogContractMetadataStore) Upsert(key datastore.ContractMetadataKey,
 	}
 
 	// Get current record for merging
-	currentRecord, err := s.Get(key)
+	currentRecord, err := s.Get(ctx, key)
 	if err != nil {
 		// If record doesn't exist, just insert the new record directly
 		if errors.Is(err, datastore.ErrContractMetadataNotFound) {
@@ -288,7 +290,7 @@ func (s *catalogContractMetadataStore) Upsert(key datastore.ContractMetadataKey,
 	return s.editRecord(record, datastore2.EditSemantics_SEMANTICS_UPSERT)
 }
 
-func (s *catalogContractMetadataStore) Update(key datastore.ContractMetadataKey, metadata any, opts ...datastore.UpdateOption) error {
+func (s *catalogContractMetadataStore) Update(ctx context.Context, key datastore.ContractMetadataKey, metadata any, opts ...datastore.UpdateOption) error {
 	// Build options with defaults
 	options := &datastore.UpdateOptions{
 		Updater: datastore.IdentityUpdaterF, // default updater
@@ -300,7 +302,7 @@ func (s *catalogContractMetadataStore) Update(key datastore.ContractMetadataKey,
 	}
 
 	// Get current record - it must exist for update
-	currentRecord, err := s.Get(key)
+	currentRecord, err := s.Get(ctx, key)
 	if err != nil {
 		if errors.Is(err, datastore.ErrContractMetadataNotFound) {
 			return datastore.ErrContractMetadataNotFound
@@ -325,7 +327,7 @@ func (s *catalogContractMetadataStore) Update(key datastore.ContractMetadataKey,
 	return s.editRecord(record, datastore2.EditSemantics_SEMANTICS_UPDATE)
 }
 
-func (s *catalogContractMetadataStore) Delete(key datastore.ContractMetadataKey) error {
+func (s *catalogContractMetadataStore) Delete(_ context.Context, _ datastore.ContractMetadataKey) error {
 	return errors.New("delete operation not supported for catalog contract metadata store")
 }
 
