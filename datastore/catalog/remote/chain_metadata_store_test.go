@@ -119,7 +119,7 @@ func TestCatalogChainMetadataStore_Get(t *testing.T) {
 			setup: func(store *catalogChainMetadataStore) datastore.ChainMetadataKey {
 				// Create and add a record first
 				metadata := newRandomChainMetadata()
-				err := store.Add(metadata)
+				err := store.Add(t.Context(), metadata)
 				require.NoError(t, err)
 
 				return metadata.Key()
@@ -137,7 +137,7 @@ func TestCatalogChainMetadataStore_Get(t *testing.T) {
 			key := tt.setup(store)
 
 			// Execute
-			result, err := store.Get(key)
+			result, err := store.Get(t.Context(), key)
 
 			// Verify
 			if tt.expectError {
@@ -174,7 +174,7 @@ func TestCatalogChainMetadataStore_Add(t *testing.T) {
 			setup: func(store *catalogChainMetadataStore) datastore.ChainMetadata {
 				// Create and add a record first
 				metadata := newRandomChainMetadata()
-				err := store.Add(metadata)
+				err := store.Add(t.Context(), metadata)
 				require.NoError(t, err)
 				// Return the same record to test duplicate
 				return metadata
@@ -192,7 +192,7 @@ func TestCatalogChainMetadataStore_Add(t *testing.T) {
 			metadata := tt.setup(store)
 
 			// Execute
-			err := store.Add(metadata)
+			err := store.Add(t.Context(), metadata)
 
 			// Verify
 			if tt.expectError {
@@ -204,7 +204,7 @@ func TestCatalogChainMetadataStore_Add(t *testing.T) {
 				require.NoError(t, err)
 
 				// Verify we can get it back
-				retrieved, err := store.Get(metadata.Key())
+				retrieved, err := store.Get(t.Context(), metadata.Key())
 				require.NoError(t, err)
 
 				require.Equal(t, metadata.ChainSelector, retrieved.ChainSelector)
@@ -232,11 +232,11 @@ func TestCatalogChainMetadataStore_Update(t *testing.T) {
 			setup: func(store *catalogChainMetadataStore) datastore.ChainMetadata {
 				// Create and add chain metadata
 				metadata := newRandomChainMetadata()
-				err := store.Add(metadata)
+				err := store.Add(t.Context(), metadata)
 				require.NoError(t, err)
 
 				// Fetch the record to get the current version in cache
-				fetchedMetadata, err := store.Get(metadata.Key())
+				fetchedMetadata, err := store.Get(t.Context(), metadata.Key())
 				require.NoError(t, err)
 
 				// Modify the metadata
@@ -252,7 +252,7 @@ func TestCatalogChainMetadataStore_Update(t *testing.T) {
 			verify: func(t *testing.T, store *catalogChainMetadataStore, metadata datastore.ChainMetadata) {
 				t.Helper()
 				// Verify the updated values
-				retrieved, err := store.Get(metadata.Key())
+				retrieved, err := store.Get(t.Context(), metadata.Key())
 				require.NoError(t, err)
 
 				concrete, err := datastore.As[TestChainMetadata](retrieved.Metadata)
@@ -281,7 +281,7 @@ func TestCatalogChainMetadataStore_Update(t *testing.T) {
 			metadata := tt.setup(store)
 
 			// Execute update
-			err := store.Update(metadata.Key(), metadata.Metadata)
+			err := store.Update(t.Context(), metadata.Key(), metadata.Metadata)
 
 			// Verify
 			if tt.expectError {
@@ -373,15 +373,15 @@ func TestCatalogChainMetadataStore_Update_WithCustomUpdater(t *testing.T) {
 
 			// Create and add initial chain metadata
 			original := newRandomChainMetadata()
-			err := store.Add(original)
+			err := store.Add(t.Context(), original)
 			require.NoError(t, err)
 
 			// Use the options pattern with custom updater
-			err = store.Update(original.Key(), tt.incoming, datastore.WithUpdater(tt.updater))
+			err = store.Update(t.Context(), original.Key(), tt.incoming, datastore.WithUpdater(tt.updater))
 			require.NoError(t, err)
 
 			// Verify the update worked correctly
-			retrieved, err := store.Get(original.Key())
+			retrieved, err := store.Get(t.Context(), original.Key())
 			require.NoError(t, err)
 
 			result, err := datastore.As[TestChainMetadata](retrieved.Metadata)
@@ -477,7 +477,7 @@ func TestCatalogChainMetadataStore_Upsert_WithCustomUpdater(t *testing.T) {
 			if tt.setupRecord {
 				// Create and add initial chain metadata
 				originalRecord := newRandomChainMetadata()
-				err := store.Add(originalRecord)
+				err := store.Add(t.Context(), originalRecord)
 				require.NoError(t, err)
 				original = &originalRecord
 				key = originalRecord.Key()
@@ -488,7 +488,7 @@ func TestCatalogChainMetadataStore_Upsert_WithCustomUpdater(t *testing.T) {
 			}
 
 			// Use the options pattern with custom updater for Upsert
-			err := store.Upsert(key, tt.incoming, datastore.WithUpdater(tt.updater))
+			err := store.Upsert(t.Context(), key, tt.incoming, datastore.WithUpdater(tt.updater))
 
 			// For new records with whole metadata merger, the updater might fail
 			// In that case, we expect the operation to succeed with identity updater fallback
@@ -497,13 +497,13 @@ func TestCatalogChainMetadataStore_Upsert_WithCustomUpdater(t *testing.T) {
 				// but latest will be nil for new records. Let's handle this gracefully.
 				if err != nil {
 					// If the custom updater fails, try without it to verify the record would work normally
-					err = store.Upsert(key, tt.incoming)
+					err = store.Upsert(t.Context(), key, tt.incoming)
 				}
 			}
 			require.NoError(t, err)
 
 			// Verify the upsert worked correctly
-			retrieved, err := store.Get(key)
+			retrieved, err := store.Get(t.Context(), key)
 			require.NoError(t, err)
 
 			result, err := datastore.As[TestChainMetadata](retrieved.Metadata)
@@ -530,15 +530,15 @@ func TestCatalogChainMetadataStore_Update_StaleVersion(t *testing.T) {
 
 	// Add a chain metadata record using store1
 	original := newRandomChainMetadata()
-	err := store1.Add(original)
+	err := store1.Add(t.Context(), original)
 	require.NoError(t, err)
 
 	// Both stores get the record to populate their caches with version 1
 	key := datastore.NewChainMetadataKey(original.ChainSelector)
-	first, err := store1.Get(key)
+	first, err := store1.Get(t.Context(), key)
 	require.NoError(t, err)
 
-	second, err := store2.Get(key)
+	second, err := store2.Get(t.Context(), key)
 	require.NoError(t, err)
 
 	// Store1 updates the record (this increments server version to 2)
@@ -546,7 +546,7 @@ func TestCatalogChainMetadataStore_Update_StaleVersion(t *testing.T) {
 	updatedMetadata.Description = "First update to chain"
 	updatedMetadata.Tags = []string{"test", "first"}
 	updatedMetadata.IsTestnet = false
-	err = store1.Update(first.Key(), updatedMetadata)
+	err = store1.Update(t.Context(), first.Key(), updatedMetadata)
 	require.NoError(t, err)
 
 	// Store2 also updates the record - this should succeed with V2 interface
@@ -557,11 +557,11 @@ func TestCatalogChainMetadataStore_Update_StaleVersion(t *testing.T) {
 	secondUpdateMetadata.IsTestnet = true
 
 	// Execute update with store2 (should succeed with V2 interface)
-	err = store2.Update(second.Key(), secondUpdateMetadata)
+	err = store2.Update(t.Context(), second.Key(), secondUpdateMetadata)
 	require.NoError(t, err)
 
 	// Verify the final state reflects the second update
-	final, err := store1.Get(key)
+	final, err := store1.Get(t.Context(), key)
 	require.NoError(t, err)
 
 	concrete, err := datastore.As[TestChainMetadata](final.Metadata)
@@ -592,7 +592,7 @@ func TestCatalogChainMetadataStore_Upsert(t *testing.T) {
 				t.Helper()
 				// Verify we can get it back
 				key := datastore.NewChainMetadataKey(original.ChainSelector)
-				retrieved, err := store.Get(key)
+				retrieved, err := store.Get(t.Context(), key)
 				require.NoError(t, err)
 
 				concrete, err := datastore.As[TestChainMetadata](retrieved.Metadata)
@@ -605,7 +605,7 @@ func TestCatalogChainMetadataStore_Upsert(t *testing.T) {
 			setup: func(store *catalogChainMetadataStore) datastore.ChainMetadata {
 				// Create and add chain metadata
 				metadata := newRandomChainMetadata()
-				err := store.Add(metadata)
+				err := store.Add(t.Context(), metadata)
 				require.NoError(t, err)
 
 				// Modify the metadata
@@ -622,7 +622,7 @@ func TestCatalogChainMetadataStore_Upsert(t *testing.T) {
 				t.Helper()
 				// Verify the updated values
 				key := datastore.NewChainMetadataKey(modified.ChainSelector)
-				retrieved, err := store.Get(key)
+				retrieved, err := store.Get(t.Context(), key)
 				require.NoError(t, err)
 
 				concrete, err := datastore.As[TestChainMetadata](retrieved.Metadata)
@@ -641,7 +641,7 @@ func TestCatalogChainMetadataStore_Upsert(t *testing.T) {
 			metadata := tt.setup(store)
 
 			// Execute upsert
-			err := store.Upsert(metadata.Key(), metadata.Metadata)
+			err := store.Upsert(t.Context(), metadata.Key(), metadata.Metadata)
 
 			// Verify
 			if tt.expectError {
@@ -668,15 +668,15 @@ func TestCatalogChainMetadataStore_Upsert_StaleVersion(t *testing.T) {
 
 	// Add a chain metadata record using store1
 	original := newRandomChainMetadata()
-	err := store1.Add(original)
+	err := store1.Add(t.Context(), original)
 	require.NoError(t, err)
 
 	// Both stores get the record to populate their caches with version 1
 	key := datastore.NewChainMetadataKey(original.ChainSelector)
-	first, err := store1.Get(key)
+	first, err := store1.Get(t.Context(), key)
 	require.NoError(t, err)
 
-	second, err := store2.Get(key)
+	second, err := store2.Get(t.Context(), key)
 	require.NoError(t, err)
 
 	// Store1 updates the record (this increments server version to 2)
@@ -684,7 +684,7 @@ func TestCatalogChainMetadataStore_Upsert_StaleVersion(t *testing.T) {
 	updatedMetadata.Description = "First update to chain"
 	updatedMetadata.Tags = []string{"test", "first"}
 	updatedMetadata.IsTestnet = false
-	err = store1.Update(first.Key(), updatedMetadata)
+	err = store1.Update(t.Context(), first.Key(), updatedMetadata)
 	require.NoError(t, err)
 
 	// Store2 upserts the record - this should succeed with V2 interface
@@ -695,11 +695,11 @@ func TestCatalogChainMetadataStore_Upsert_StaleVersion(t *testing.T) {
 	upsertMetadata.IsTestnet = true
 
 	// Execute upsert with store2 (should succeed with V2 interface)
-	err = store2.Upsert(second.Key(), upsertMetadata)
+	err = store2.Upsert(t.Context(), second.Key(), upsertMetadata)
 	require.NoError(t, err)
 
 	// Verify the final state reflects the upsert
-	final, err := store1.Get(key)
+	final, err := store1.Get(t.Context(), key)
 	require.NoError(t, err)
 
 	concrete, err := datastore.As[TestChainMetadata](final.Metadata)
@@ -717,7 +717,7 @@ func TestCatalogChainMetadataStore_Delete(t *testing.T) {
 	key := datastore.NewChainMetadataKey(12345)
 
 	// Execute
-	err := store.Delete(key)
+	err := store.Delete(t.Context(), key)
 
 	// Verify
 	require.Error(t, err)
@@ -742,7 +742,7 @@ func TestCatalogChainMetadataStore_FetchAndFilter(t *testing.T) {
 				metadata1 := newRandomChainMetadata()
 				chainSelector1 := generateRandomChainSelector()
 				metadata1.ChainSelector = chainSelector1
-				err := store.Add(metadata1)
+				err := store.Add(t.Context(), metadata1)
 				require.NoError(t, err)
 
 				metadata2 := newRandomChainMetadata()
@@ -752,7 +752,7 @@ func TestCatalogChainMetadataStore_FetchAndFilter(t *testing.T) {
 					chainSelector2 = generateRandomChainSelector()
 				}
 				metadata2.ChainSelector = chainSelector2
-				err = store.Add(metadata2)
+				err = store.Add(t.Context(), metadata2)
 				require.NoError(t, err)
 
 				return metadata1, metadata2
@@ -784,7 +784,7 @@ func TestCatalogChainMetadataStore_FetchAndFilter(t *testing.T) {
 				metadata1 := newRandomChainMetadata()
 				chainSelector1 := generateRandomChainSelector()
 				metadata1.ChainSelector = chainSelector1
-				err := store.Add(metadata1)
+				err := store.Add(t.Context(), metadata1)
 				require.NoError(t, err)
 
 				metadata2 := newRandomChainMetadata()
@@ -794,7 +794,7 @@ func TestCatalogChainMetadataStore_FetchAndFilter(t *testing.T) {
 					chainSelector2 = generateRandomChainSelector()
 				}
 				metadata2.ChainSelector = chainSelector2
-				err = store.Add(metadata2)
+				err = store.Add(t.Context(), metadata2)
 				require.NoError(t, err)
 
 				return metadata1, metadata2
@@ -828,13 +828,13 @@ func TestCatalogChainMetadataStore_FetchAndFilter(t *testing.T) {
 			// Execute operation
 			switch tt.operation {
 			case "fetch":
-				results, err = store.Fetch()
+				results, err = store.Fetch(t.Context())
 			case "filter":
 				var filterFunc datastore.FilterFunc[datastore.ChainMetadataKey, datastore.ChainMetadata]
 				if tt.createFilter != nil {
 					filterFunc = tt.createFilter(metadata1, metadata2)
 				}
-				results, err = store.Filter(filterFunc)
+				results, err = store.Filter(t.Context(), filterFunc)
 			}
 
 			// Verify

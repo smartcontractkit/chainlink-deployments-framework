@@ -1,6 +1,7 @@
 package remote
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -100,10 +101,11 @@ func (s *catalogChainMetadataStore) chainMetadataToProto(record datastore.ChainM
 		RowVersion:    version,
 	}
 }
-func (s *catalogChainMetadataStore) Get(key datastore.ChainMetadataKey) (datastore.ChainMetadata, error) {
+func (s *catalogChainMetadataStore) Get(_ context.Context, key datastore.ChainMetadataKey) (datastore.ChainMetadata, error) {
 	return s.get(false, key)
 }
 func (s *catalogChainMetadataStore) GetIgnoringTransactions(
+	_ context.Context,
 	key datastore.ChainMetadataKey,
 ) (datastore.ChainMetadata, error) {
 	return s.get(true, key)
@@ -166,7 +168,7 @@ func (s *catalogChainMetadataStore) get(ignoreTransaction bool, key datastore.Ch
 }
 
 // Fetch returns a copy of all ChainMetadata in the catalog.
-func (s *catalogChainMetadataStore) Fetch() ([]datastore.ChainMetadata, error) {
+func (s *catalogChainMetadataStore) Fetch(_ context.Context) ([]datastore.ChainMetadata, error) {
 	stream, err := s.client.DataAccess()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gRPC stream: %w", err)
@@ -223,8 +225,8 @@ func (s *catalogChainMetadataStore) Fetch() ([]datastore.ChainMetadata, error) {
 // Filter returns a copy of all ChainMetadata in the catalog that match the provided filter.
 // Filters are applied in the order they are provided.
 // If no filters are provided, all records are returned.
-func (s *catalogChainMetadataStore) Filter(filters ...datastore.FilterFunc[datastore.ChainMetadataKey, datastore.ChainMetadata]) ([]datastore.ChainMetadata, error) {
-	records, err := s.Fetch()
+func (s *catalogChainMetadataStore) Filter(ctx context.Context, filters ...datastore.FilterFunc[datastore.ChainMetadataKey, datastore.ChainMetadata]) ([]datastore.ChainMetadata, error) {
+	records, err := s.Fetch(ctx)
 	if err != nil {
 		return []datastore.ChainMetadata{}, fmt.Errorf("failed to fetch records: %w", err)
 	}
@@ -236,11 +238,11 @@ func (s *catalogChainMetadataStore) Filter(filters ...datastore.FilterFunc[datas
 	return records, nil
 }
 
-func (s *catalogChainMetadataStore) Add(record datastore.ChainMetadata) error {
+func (s *catalogChainMetadataStore) Add(_ context.Context, record datastore.ChainMetadata) error {
 	return s.editRecord(record, datastore2.EditSemantics_SEMANTICS_INSERT)
 }
 
-func (s *catalogChainMetadataStore) Upsert(key datastore.ChainMetadataKey, metadata any, opts ...datastore.UpdateOption) error {
+func (s *catalogChainMetadataStore) Upsert(ctx context.Context, key datastore.ChainMetadataKey, metadata any, opts ...datastore.UpdateOption) error {
 	// Build options with defaults
 	options := &datastore.UpdateOptions{
 		Updater: datastore.IdentityUpdaterF, // default updater
@@ -252,7 +254,7 @@ func (s *catalogChainMetadataStore) Upsert(key datastore.ChainMetadataKey, metad
 	}
 
 	// Get current record for merging
-	currentRecord, err := s.Get(key)
+	currentRecord, err := s.Get(ctx, key)
 	if err != nil {
 		// If record doesn't exist, just insert the new record directly
 		if errors.Is(err, datastore.ErrChainMetadataNotFound) {
@@ -282,7 +284,7 @@ func (s *catalogChainMetadataStore) Upsert(key datastore.ChainMetadataKey, metad
 	return s.editRecord(record, datastore2.EditSemantics_SEMANTICS_UPSERT)
 }
 
-func (s *catalogChainMetadataStore) Update(key datastore.ChainMetadataKey, metadata any, opts ...datastore.UpdateOption) error {
+func (s *catalogChainMetadataStore) Update(ctx context.Context, key datastore.ChainMetadataKey, metadata any, opts ...datastore.UpdateOption) error {
 	// Build options with defaults
 	options := &datastore.UpdateOptions{
 		Updater: datastore.IdentityUpdaterF, // default updater
@@ -294,7 +296,7 @@ func (s *catalogChainMetadataStore) Update(key datastore.ChainMetadataKey, metad
 	}
 
 	// Get current record - it must exist for update
-	currentRecord, err := s.Get(key)
+	currentRecord, err := s.Get(ctx, key)
 	if err != nil {
 		if errors.Is(err, datastore.ErrChainMetadataNotFound) {
 			return datastore.ErrChainMetadataNotFound
@@ -318,7 +320,7 @@ func (s *catalogChainMetadataStore) Update(key datastore.ChainMetadataKey, metad
 	return s.editRecord(record, datastore2.EditSemantics_SEMANTICS_UPDATE)
 }
 
-func (s *catalogChainMetadataStore) Delete(key datastore.ChainMetadataKey) error {
+func (s *catalogChainMetadataStore) Delete(_ context.Context, _ datastore.ChainMetadataKey) error {
 	return errors.New("delete operation not supported for catalog chain metadata store")
 }
 

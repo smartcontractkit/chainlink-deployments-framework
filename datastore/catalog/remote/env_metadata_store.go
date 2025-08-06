@@ -99,10 +99,10 @@ func (s *catalogEnvMetadataStore) envMetadataToProto(record datastore.EnvMetadat
 		RowVersion:  version,
 	}
 }
-func (s *catalogEnvMetadataStore) Get() (datastore.EnvMetadata, error) {
+func (s *catalogEnvMetadataStore) Get(_ context.Context) (datastore.EnvMetadata, error) {
 	return s.get(true)
 }
-func (s *catalogEnvMetadataStore) GetIgnoringTransactions() (datastore.EnvMetadata, error) {
+func (s *catalogEnvMetadataStore) GetIgnoringTransactions(_ context.Context) (datastore.EnvMetadata, error) {
 	return s.get(true)
 }
 
@@ -162,7 +162,7 @@ func (s *catalogEnvMetadataStore) get(ignoreTransaction bool) (datastore.EnvMeta
 	return record, nil
 }
 
-func (s *catalogEnvMetadataStore) Set(metadata any, opts ...datastore.UpdateOption) error {
+func (s *catalogEnvMetadataStore) Set(ctx context.Context, metadata any, opts ...datastore.UpdateOption) error {
 	// Build options with defaults
 	options := &datastore.UpdateOptions{
 		Updater: datastore.IdentityUpdaterF, // default updater
@@ -174,7 +174,7 @@ func (s *catalogEnvMetadataStore) Set(metadata any, opts ...datastore.UpdateOpti
 	}
 
 	// Get current record for merging
-	currentRecord, err := s.Get()
+	currentRecord, err := s.Get(ctx)
 	if err != nil {
 		if errors.Is(err, datastore.ErrEnvMetadataNotSet) {
 			// Record doesn't exist, just insert the new record directly

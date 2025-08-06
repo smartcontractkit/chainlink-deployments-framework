@@ -1,6 +1,7 @@
 package remote
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -34,11 +35,12 @@ func newCatalogAddressRefStore(cfg catalogAddressRefStoreConfig) *catalogAddress
 		client:      cfg.Client,
 	}
 }
-func (s *catalogAddressRefStore) Get(key datastore.AddressRefKey) (datastore.AddressRef, error) {
+func (s *catalogAddressRefStore) Get(_ context.Context, key datastore.AddressRefKey) (datastore.AddressRef, error) {
 	return s.get(false, key)
 }
 
 func (s *catalogAddressRefStore) GetIgnoringTransactions(
+	_ context.Context,
 	key datastore.AddressRefKey,
 ) (datastore.AddressRef, error) {
 	return s.get(true, key)
@@ -109,7 +111,7 @@ func (s *catalogAddressRefStore) get(
 }
 
 // Fetch returns a copy of all AddressRef in the catalog.
-func (s *catalogAddressRefStore) Fetch() ([]datastore.AddressRef, error) {
+func (s *catalogAddressRefStore) Fetch(_ context.Context) ([]datastore.AddressRef, error) {
 	// Create a bidirectional stream
 	stream, err := s.client.DataAccess()
 	if err != nil {
@@ -172,9 +174,12 @@ func (s *catalogAddressRefStore) Fetch() ([]datastore.AddressRef, error) {
 // Filter returns a copy of all AddressRef in the catalog that match the provided filter.
 // Filters are applied in the order they are provided.
 // If no filters are provided, all records are returned.
-func (s *catalogAddressRefStore) Filter(filters ...datastore.FilterFunc[datastore.AddressRefKey, datastore.AddressRef]) ([]datastore.AddressRef, error) {
+func (s *catalogAddressRefStore) Filter(
+	ctx context.Context,
+	filters ...datastore.FilterFunc[datastore.AddressRefKey, datastore.AddressRef],
+) ([]datastore.AddressRef, error) {
 	// First, fetch all records from the catalog
-	records, err := s.Fetch()
+	records, err := s.Fetch(ctx)
 	if err != nil {
 		// In case of error, return empty slice
 		// In a more robust implementation, you might want to log this error
@@ -189,7 +194,7 @@ func (s *catalogAddressRefStore) Filter(filters ...datastore.FilterFunc[datastor
 	return records, nil
 }
 
-func (s *catalogAddressRefStore) Add(record datastore.AddressRef) error {
+func (s *catalogAddressRefStore) Add(_ context.Context, record datastore.AddressRef) error {
 	// Create a bidirectional stream
 	stream, err := s.client.DataAccess()
 	if err != nil {
@@ -236,7 +241,7 @@ func (s *catalogAddressRefStore) Add(record datastore.AddressRef) error {
 	return nil
 }
 
-func (s *catalogAddressRefStore) Upsert(record datastore.AddressRef) error {
+func (s *catalogAddressRefStore) Upsert(_ context.Context, record datastore.AddressRef) error {
 	// Create a bidirectional stream
 	stream, err := s.client.DataAccess()
 	if err != nil {
@@ -283,10 +288,10 @@ func (s *catalogAddressRefStore) Upsert(record datastore.AddressRef) error {
 	return nil
 }
 
-func (s *catalogAddressRefStore) Update(record datastore.AddressRef) error {
+func (s *catalogAddressRefStore) Update(ctx context.Context, record datastore.AddressRef) error {
 	// First check if the record exists
 	key := datastore.NewAddressRefKey(record.ChainSelector, record.Type, record.Version, record.Qualifier)
-	_, err := s.Get(key)
+	_, err := s.Get(ctx, key)
 	if errors.Is(err, datastore.ErrAddressRefNotFound) {
 		// Record doesn't exist, return error
 		return datastore.ErrAddressRefNotFound
@@ -343,7 +348,7 @@ func (s *catalogAddressRefStore) Update(record datastore.AddressRef) error {
 	return nil
 }
 
-func (s *catalogAddressRefStore) Delete(key datastore.AddressRefKey) error {
+func (s *catalogAddressRefStore) Delete(_ context.Context, _ datastore.AddressRefKey) error {
 	// The catalog API does not support delete operations
 	// This is intentional as catalogs are typically immutable reference stores
 	return errors.New("delete operation not supported by catalog API")
