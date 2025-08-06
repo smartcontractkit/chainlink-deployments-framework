@@ -105,14 +105,19 @@ func (s *catalogContractMetadataStore) contractMetadataToProto(record datastore.
 		RowVersion:    version,
 	}
 }
-func (s *catalogContractMetadataStore) Get(_ context.Context, key datastore.ContractMetadataKey) (datastore.ContractMetadata, error) {
-	return s.get(false, key)
-}
-func (s *catalogContractMetadataStore) GetIgnoringTransactions(
+func (s *catalogContractMetadataStore) Get(
 	_ context.Context,
 	key datastore.ContractMetadataKey,
+	options ...datastore.GetOption,
 ) (datastore.ContractMetadata, error) {
-	return s.get(true, key)
+	ignoreTransactions := false
+	for _, option := range options {
+		switch option {
+		case datastore.IgnoreTransactionsGetOption:
+			ignoreTransactions = true
+		}
+	}
+	return s.get(ignoreTransactions, key)
 }
 
 func (s *catalogContractMetadataStore) get(ignoreTransaction bool, key datastore.ContractMetadataKey) (datastore.ContractMetadata, error) {

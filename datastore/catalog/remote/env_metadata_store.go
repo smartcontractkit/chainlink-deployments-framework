@@ -99,13 +99,19 @@ func (s *catalogEnvMetadataStore) envMetadataToProto(record datastore.EnvMetadat
 		RowVersion:  version,
 	}
 }
-func (s *catalogEnvMetadataStore) Get(_ context.Context) (datastore.EnvMetadata, error) {
-	return s.get(true)
+func (s *catalogEnvMetadataStore) Get(
+	_ context.Context,
+	options ...datastore.GetOption,
+) (datastore.EnvMetadata, error) {
+	ignoreTransactions := false
+	for _, option := range options {
+		switch option {
+		case datastore.IgnoreTransactionsGetOption:
+			ignoreTransactions = true
+		}
+	}
+	return s.get(ignoreTransactions)
 }
-func (s *catalogEnvMetadataStore) GetIgnoringTransactions(_ context.Context) (datastore.EnvMetadata, error) {
-	return s.get(true)
-}
-
 func (s *catalogEnvMetadataStore) get(ignoreTransaction bool) (datastore.EnvMetadata, error) {
 	stream, err := s.client.DataAccess()
 	if err != nil {

@@ -87,14 +87,25 @@ type FilterableV2[K Comparable[K], R UniqueRecord[K, R]] interface {
 	Filter(context.Context, ...FilterFunc[K, R]) ([]R, error)
 }
 
+// GetOption is a supertype of all options for fetching/getting. Only the options specified in
+// this package are valid.
+type GetOption interface {
+	getOptionImplementation() bool
+}
+
+var IgnoreTransactionsGetOption GetOption = ignoreTransactionsGetOption{}
+
+// ignoreTransactionsGetOption signals the get method to ignore the current transaction context.
+type ignoreTransactionsGetOption struct {
+	GetOption
+}
+
 // GetterV2 provides a Get() method which is used to complete a read by key query from a Store.
 type GetterV2[K Comparable[K], R UniqueRecord[K, R]] interface {
 	// Get returns the record with the given key, or an error if no such record exists.
-	Get(context.Context, K) (R, error)
-	// GetIgnoringTransactions returns the record with the given key, but does so from outside
-	// the current (if any) transaction context. Any writes performed within uncommitted
-	// transactions will not be reflected in the result.
-	GetIgnoringTransactions(context.Context, K) (R, error)
+	//
+	// GetOptions may be supplied to modify the semantics of the call, as specified in the option.
+	Get(context.Context, K, ...GetOption) (R, error)
 }
 
 // MutableStoreV2 is an interface that represents a mutable set of records.
@@ -140,7 +151,7 @@ type MutableUnaryStoreV2[R any] interface {
 	// Get returns a copy of the record or an error.
 	// If the record exists, the error should be nil.
 	// If the record does not exist, the error should not be nil.
-	Get(ctx context.Context) (R, error)
+	Get(ctx context.Context, options ...GetOption) (R, error)
 
 	// Set sets the record in the store.
 	// If the record already exists, it should be replaced.
