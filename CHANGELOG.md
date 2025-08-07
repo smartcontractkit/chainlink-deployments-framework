@@ -1,5 +1,17 @@
 # chainlink-deployments-framework
 
+## 0.21.0
+
+### Minor Changes
+
+- [#246](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/246) [`cf4cb13`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/cf4cb131a1ec9cf021e3ca29e4422f641bc23e2b) Thanks [@jkongie](https://github.com/jkongie)! - Adds a network configuration package to the CLD engine
+
+- [#241](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/241) [`440d5ea`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/440d5ea70c6138075aa908309512cd062b8c52ce) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat: new CTF provider for JD
+
+### Patch Changes
+
+- [#243](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/243) [`e45f09f`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/e45f09fdb65a1dd355355a757a7af6e0ded6eec2) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - remove gogo/protobuf replace use v1.3.2
+
 ## 0.20.0
 
 ### Minor Changes
