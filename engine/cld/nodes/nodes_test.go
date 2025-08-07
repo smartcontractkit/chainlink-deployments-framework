@@ -1,4 +1,4 @@
-package migrations
+package nodes
 
 import (
 	"encoding/json"
