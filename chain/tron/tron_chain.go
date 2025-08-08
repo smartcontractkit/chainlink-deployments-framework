@@ -73,9 +73,9 @@ func DefaultConfirmRetryOptions() *ConfirmRetryOptions {
 // It includes a high fee and energy limit suitable for development/testing, and standard retry behavior.
 func DefaultDeployOptions() *DeployOptions {
 	return &DeployOptions{
-		FeeLimit:            10_000_000, // Default fee limit (in SUN).
-		CurPercent:          100,        // Caller pays full cost.
-		OeLimit:             10_000_000, // Default energy limit.
+		FeeLimit:            100_000_000, // Default fee limit (in SUN).
+		CurPercent:          100,         // Caller pays full cost.
+		OeLimit:             50_000_000,  // Default energy limit.
 		ConfirmRetryOptions: DefaultConfirmRetryOptions(),
 	}
 }

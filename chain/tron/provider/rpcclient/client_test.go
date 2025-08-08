@@ -16,7 +16,7 @@ func TestConfirmRetryOpts_DefaultsAndOverrides(t *testing.T) {
 	ctx := context.Background()
 
 	// Test default options
-	opts := confirmRetryOpts(ctx, tron.DefaultConfirmRetryOptions())
+	opts := confirmRetryOpts(ctx, *tron.DefaultConfirmRetryOptions())
 	require.Len(t, opts, 4)
 
 	// Confirm context is set correctly
