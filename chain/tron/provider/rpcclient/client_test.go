@@ -16,7 +16,7 @@ func TestConfirmRetryOpts_DefaultsAndOverrides(t *testing.T) {
 	ctx := context.Background()
 
 	// Test default options
-	opts := confirmRetryOpts(ctx, *tron.DefaultConfirmRetryOptions())
+	opts := confirmRetryOpts(ctx, tron.DefaultConfirmRetryOptions())
 	require.Len(t, opts, 4)
 
 	// Confirm context is set correctly
@@ -30,7 +30,7 @@ func TestConfirmRetryOpts_DefaultsAndOverrides(t *testing.T) {
 	require.True(t, hasCtx)
 
 	// Test with custom options
-	customOpts := confirmRetryOpts(ctx, tron.ConfirmRetryOptions{
+	customOpts := confirmRetryOpts(ctx, &tron.ConfirmRetryOptions{
 		RetryAttempts: 3,
 		RetryDelay:    50 * time.Millisecond,
 	})

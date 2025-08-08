@@ -19,7 +19,7 @@ import (
 
 // confirmRetryOpts returns the retry options for confirming transactions.
 // It wraps a context and sets retry count and delay based on provided config.
-func confirmRetryOpts(ctx context.Context, c tron.ConfirmRetryOptions) []retry.Option {
+func confirmRetryOpts(ctx context.Context, c *tron.ConfirmRetryOptions) []retry.Option {
 	return []retry.Option{
 		retry.Context(ctx),
 		retry.Attempts(c.RetryAttempts),
@@ -83,7 +83,7 @@ func (c *Client) SendAndConfirmTx(
 	}
 
 	// Confirm the transaction by polling for success/failure based on the TxID
-	return c.confirmTx(broadcastResponse.TxID, confirmRetryOpts(ctx, *option)...)
+	return c.confirmTx(broadcastResponse.TxID, confirmRetryOpts(ctx, option)...)
 }
 
 // confirmTx checks the transaction receipt by its ID, retrying until it is confirmed or fails.
