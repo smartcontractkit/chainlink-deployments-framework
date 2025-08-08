@@ -16,10 +16,6 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 )
 
-// OffchainClient is an alias for the offchain.Client type for now until we migrate all reference over to the new offchain package.
-// Then we will remove this alias.
-type OffchainClient = offchain.Client
-
 func MaybeDataErr(err error) error {
 	//revive:disable
 	var d rpc.DataError
@@ -57,7 +53,7 @@ type Environment struct {
 	Catalog datastore.CatalogStore
 
 	NodeIDs    []string
-	Offchain   OffchainClient
+	Offchain   offchain.Client
 	GetContext func() context.Context
 	OCRSecrets OCRSecrets
 	// OperationsBundle contains dependencies required by the operations API.
@@ -83,7 +79,7 @@ func NewEnvironment(
 	existingAddrs AddressBook,
 	dataStore datastore.DataStore,
 	nodeIDs []string,
-	offchain OffchainClient,
+	offchain offchain.Client,
 	ctx func() context.Context,
 	secrets OCRSecrets,
 	blockChains chain.BlockChains,
