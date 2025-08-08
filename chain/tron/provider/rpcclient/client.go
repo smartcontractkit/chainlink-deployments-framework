@@ -53,12 +53,12 @@ func New(client sdk.FullNodeClient, keystore *keystore.Keystore, account address
 func (c *Client) SendAndConfirmTx(
 	ctx context.Context,
 	tx *common.Transaction,
-	opts ...tron.ConfirmRetryOptions,
+	opts *tron.ConfirmRetryOptions,
 ) (*soliditynode.TransactionInfo, error) {
 	// Initialize the configuration with defaults or provided options.
 	option := tron.DefaultConfirmRetryOptions()
-	if len(opts) > 0 {
-		option = opts[0]
+	if opts != nil {
+		option = opts
 	}
 
 	// Decode the TxID from hex into bytes, required for signing
@@ -83,7 +83,7 @@ func (c *Client) SendAndConfirmTx(
 	}
 
 	// Confirm the transaction by polling for success/failure based on the TxID
-	return c.confirmTx(broadcastResponse.TxID, confirmRetryOpts(ctx, option)...)
+	return c.confirmTx(broadcastResponse.TxID, confirmRetryOpts(ctx, *option)...)
 }
 
 // confirmTx checks the transaction receipt by its ID, retrying until it is confirmed or fails.

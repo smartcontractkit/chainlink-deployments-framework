@@ -106,10 +106,10 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 		Address:  deployerAddr,     // Default "from" address for transactions
 		URL:      p.config.FullNodeURL,
 		// Helper for sending and confirming transactions
-		SendAndConfirm: func(ctx context.Context, tx *common.Transaction, opts ...tron.ConfirmRetryOptions) (*soliditynode.TransactionInfo, error) {
+		SendAndConfirm: func(ctx context.Context, tx *common.Transaction, opts *tron.ConfirmRetryOptions) (*soliditynode.TransactionInfo, error) {
 			options := tron.DefaultConfirmRetryOptions()
-			if len(opts) > 0 {
-				options = opts[0]
+			if opts != nil {
+				options = opts
 			}
 
 			// Send transaction and wait for confirmation
@@ -117,11 +117,11 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 		},
 		// Helper for deploying a contract and waiting for confirmation
 		DeployContractAndConfirm: func(
-			ctx context.Context, contractName string, abi string, bytecode string, params []interface{}, opts ...tron.DeployOptions,
+			ctx context.Context, contractName string, abi string, bytecode string, params []interface{}, opts *tron.DeployOptions,
 		) (address.Address, *soliditynode.TransactionInfo, error) {
 			options := tron.DefaultDeployOptions()
-			if len(opts) > 0 {
-				options = opts[0]
+			if opts != nil {
+				options = opts
 			}
 
 			// Create deploy contract transaction
@@ -153,11 +153,11 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 		},
 		// Helper for triggering a contract method and waiting for confirmation
 		TriggerContractAndConfirm: func(
-			ctx context.Context, contractAddr address.Address, functionName string, params []interface{}, opts ...tron.TriggerOptions,
+			ctx context.Context, contractAddr address.Address, functionName string, params []interface{}, opts *tron.TriggerOptions,
 		) (*soliditynode.TransactionInfo, error) {
 			options := tron.DefaultTriggerOptions()
-			if len(opts) > 0 {
-				options = opts[0]
+			if opts != nil {
+				options = opts
 			}
 
 			// Ensure contract is actually deployed on-chain

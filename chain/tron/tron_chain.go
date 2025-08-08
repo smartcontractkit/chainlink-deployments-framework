@@ -24,17 +24,17 @@ type ConfirmRetryOptions struct {
 
 // DeployOptions defines optional parameters for deploying a smart contract.
 type DeployOptions struct {
-	OeLimit             int                 // Max energy the creator is willing to provide during execution.
-	CurPercent          int                 // Percentage of resource consumption charged to the contract caller (0–100).
-	FeeLimit            int                 // Max TRX to be used for deploying the contract (gas limit in Tron terms).
-	ConfirmRetryOptions ConfirmRetryOptions // Retry options for confirming the transaction.
+	OeLimit             int                  // Max energy the creator is willing to provide during execution.
+	CurPercent          int                  // Percentage of resource consumption charged to the contract caller (0–100).
+	FeeLimit            int                  // Max TRX to be used for deploying the contract (gas limit in Tron terms).
+	ConfirmRetryOptions *ConfirmRetryOptions // Retry options for confirming the transaction.
 }
 
 // TriggerOptions defines optional parameters for triggering (calling) a smart contract.
 type TriggerOptions struct {
-	FeeLimit            int32               // Max TRX to be used for this transaction call.
-	TAmount             int64               // Amount of TRX to transfer along with the contract call (like msg.value).
-	ConfirmRetryOptions ConfirmRetryOptions // Retry options for confirming the transaction.
+	FeeLimit            int32                // Max TRX to be used for this transaction call.
+	TAmount             int64                // Amount of TRX to transfer along with the contract call (like msg.value).
+	ConfirmRetryOptions *ConfirmRetryOptions // Retry options for confirming the transaction.
 }
 
 // Chain represents a Tron chain
@@ -47,23 +47,23 @@ type Chain struct {
 	DeployerSeed  string             // Optional: mnemonic or raw seed
 
 	// SendAndConfirm provides a utility function to send a transaction and waits for confirmation.
-	SendAndConfirm func(ctx context.Context, tx *common.Transaction, opts ...ConfirmRetryOptions) (*soliditynode.TransactionInfo, error)
+	SendAndConfirm func(ctx context.Context, tx *common.Transaction, opts *ConfirmRetryOptions) (*soliditynode.TransactionInfo, error)
 
 	// DeployContractAndConfirm provides a utility function to deploy a contract and waits for confirmation.
 	DeployContractAndConfirm func(
-		ctx context.Context, contractName string, abi string, bytecode string, params []interface{}, opts ...DeployOptions,
+		ctx context.Context, contractName string, abi string, bytecode string, params []interface{}, opts *DeployOptions,
 	) (address.Address, *soliditynode.TransactionInfo, error)
 
 	// TriggerContractAndConfim provides a utility function to send a contract transaction and waits for confirmation.
 	TriggerContractAndConfirm func(
-		ctx context.Context, contractAddr address.Address, functionName string, params []interface{}, opts ...TriggerOptions,
+		ctx context.Context, contractAddr address.Address, functionName string, params []interface{}, opts *TriggerOptions,
 	) (*soliditynode.TransactionInfo, error)
 }
 
 // DefaultConfirmRetryOptions returns standard retry options used across contract deployment and invocation.
 // Defaults to 180 retries with a 500ms delay between each attempt.
-func DefaultConfirmRetryOptions() ConfirmRetryOptions {
-	return ConfirmRetryOptions{
+func DefaultConfirmRetryOptions() *ConfirmRetryOptions {
+	return &ConfirmRetryOptions{
 		RetryAttempts: 180,
 		RetryDelay:    500 * time.Millisecond,
 	}
@@ -71,8 +71,8 @@ func DefaultConfirmRetryOptions() ConfirmRetryOptions {
 
 // DefaultDeployOptions returns default options used when deploying a contract.
 // It includes a high fee and energy limit suitable for development/testing, and standard retry behavior.
-func DefaultDeployOptions() DeployOptions {
-	return DeployOptions{
+func DefaultDeployOptions() *DeployOptions {
+	return &DeployOptions{
 		FeeLimit:            10_000_000, // Default fee limit (in SUN).
 		CurPercent:          100,        // Caller pays full cost.
 		OeLimit:             10_000_000, // Default energy limit.
@@ -82,8 +82,8 @@ func DefaultDeployOptions() DeployOptions {
 
 // DefaultTriggerOptions returns default options for calling smart contract methods.
 // These defaults ensure calls succeed on local/dev environments without TRX transfer.
-func DefaultTriggerOptions() TriggerOptions {
-	return TriggerOptions{
+func DefaultTriggerOptions() *TriggerOptions {
+	return &TriggerOptions{
 		FeeLimit:            10_000_000, // Default fee limit (in SUN).
 		TAmount:             0,          // No TRX transferred by default.
 		ConfirmRetryOptions: DefaultConfirmRetryOptions(),
