@@ -1,5 +1,24 @@
 # chainlink-deployments-framework
 
+## 0.22.0
+
+### Minor Changes
+
+- [#249](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/249) [`01b951b`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/01b951bc5bf9c1ba8edd1a620819a2c023409edd) Thanks [@ajaskolski](https://github.com/ajaskolski)! - refactor: migrates nodes management logic from cld
+
+- [#251](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/251) [`6c1338e`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/6c1338e66edfe0cccaeae91aaa1a1dd9074999da) Thanks [@ajaskolski](https://github.com/ajaskolski)! - refactor: adds files and json utils from cld
+
+### Patch Changes
+
+- [#252](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/252) [`4d57885`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/4d57885f3b3248a499f1a22744f8418144000236) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - BREAKING: remove deployment.OffchainClient. Use offchain.Client instead
+
+  Migration Guide:
+
+  ```
+  cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment" -> cldf_offchain "github.com/smartcontractkit/chainlink-deployments-framework/offchain"
+  cldf.OffchainClient -> offchain.Client
+  ```
+
 ## 0.21.0
 
 ### Minor Changes
