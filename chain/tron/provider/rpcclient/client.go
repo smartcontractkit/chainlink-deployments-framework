@@ -19,7 +19,7 @@ import (
 
 // confirmRetryOpts returns the retry options for confirming transactions.
 // It wraps a context and sets retry count and delay based on provided config.
-func confirmRetryOpts(ctx context.Context, c tron.ConfirmRetryOptions) []retry.Option {
+func confirmRetryOpts(ctx context.Context, c *tron.ConfirmRetryOptions) []retry.Option {
 	return []retry.Option{
 		retry.Context(ctx),
 		retry.Attempts(c.RetryAttempts),
@@ -53,12 +53,12 @@ func New(client sdk.FullNodeClient, keystore *keystore.Keystore, account address
 func (c *Client) SendAndConfirmTx(
 	ctx context.Context,
 	tx *common.Transaction,
-	opts ...tron.ConfirmRetryOptions,
+	opts *tron.ConfirmRetryOptions,
 ) (*soliditynode.TransactionInfo, error) {
 	// Initialize the configuration with defaults or provided options.
 	option := tron.DefaultConfirmRetryOptions()
-	if len(opts) > 0 {
-		option = opts[0]
+	if opts != nil {
+		option = opts
 	}
 
 	// Decode the TxID from hex into bytes, required for signing
