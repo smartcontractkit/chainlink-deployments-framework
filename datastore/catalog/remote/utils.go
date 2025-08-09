@@ -23,5 +23,6 @@ func ThrowAndCatch(
 	if err != nil {
 		return nil, fmt.Errorf("failed to receive response: %w", err)
 	}
+
 	return response, nil
 }

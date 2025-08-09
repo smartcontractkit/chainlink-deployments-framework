@@ -2,8 +2,10 @@ package remote
 
 import (
 	"context"
+	"crypto/rand"
+	"errors"
 	"fmt"
-	"math/rand/v2"
+	"math/big"
 	"os"
 	"testing"
 
@@ -14,6 +16,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 )
 
+//nolint:paralleltest
 func TestCatalogTransactions_Commit(t *testing.T) {
 	t.Parallel()
 
@@ -52,10 +55,10 @@ func TestCatalogTransactions_Commit(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, metadata)
 
-		assert.Equal(t, metadata.Name, "SomeContract")
-		assert.Equal(t, metadata.Version, "1.0.0")
-		assert.Equal(t, metadata.Description, "New contract description")
-		assert.Equal(t, metadata.Tags, []string{"first"})
+		assert.Equal(t, "SomeContract", metadata.Name)
+		assert.Equal(t, "1.0.0", metadata.Version)
+		assert.Equal(t, "New contract description", metadata.Description)
+		assert.Equal(t, []string{"first"}, metadata.Tags)
 	})
 
 	t.Run("Read Contract Metadata (from outside tx)", func(t *testing.T) {
@@ -84,13 +87,14 @@ func TestCatalogTransactions_Commit(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, metadata)
 
-		assert.Equal(t, metadata.Name, "SomeContract")
-		assert.Equal(t, metadata.Version, "1.0.0")
-		assert.Equal(t, metadata.Description, "New contract description")
-		assert.Equal(t, metadata.Tags, []string{"first"})
+		assert.Equal(t, "SomeContract", metadata.Name)
+		assert.Equal(t, "1.0.0", metadata.Version)
+		assert.Equal(t, "New contract description", metadata.Description)
+		assert.Equal(t, []string{"first"}, metadata.Tags)
 	})
 }
 
+//nolint:paralleltest
 func TestCatalogTransactions_WithTransactions_Commit(t *testing.T) {
 	t.Parallel()
 
@@ -109,38 +113,39 @@ func TestCatalogTransactions_WithTransactions_Commit(t *testing.T) {
 				Description: "New contract description",
 				Tags:        []string{"first"},
 			}
-			err := catalog.ContractMetadata().Add(t.Context(), datastore.ContractMetadata{
+			err2 := catalog.ContractMetadata().Add(t.Context(), datastore.ContractMetadata{
 				Address:       "0x12345678",
 				ChainSelector: 1,
 				Metadata:      metadata,
 			})
-			assert.NoError(t, err)
+			assert.NoError(t, err2)
 		})
 
 		t.Run("Read Contract Metadata", func(t *testing.T) {
-			result, err := catalog.ContractMetadata().Get(t.Context(), datastore.NewContractMetadataKey(1, "0x12345678"))
-			require.NoError(t, err)
+			result, err2 := catalog.ContractMetadata().Get(t.Context(), datastore.NewContractMetadataKey(1, "0x12345678"))
+			require.NoError(t, err2)
 			require.NotNil(t, result)
-			metadata, err := datastore.As[TestContractMetadata](result.Metadata)
-			require.NoError(t, err)
+			metadata, err2 := datastore.As[TestContractMetadata](result.Metadata)
+			require.NoError(t, err2)
 			require.NotNil(t, metadata)
 
-			assert.Equal(t, metadata.Name, "SomeContract")
-			assert.Equal(t, metadata.Version, "2.0.0")
-			assert.Equal(t, metadata.Description, "New contract description")
-			assert.Equal(t, metadata.Tags, []string{"first"})
+			assert.Equal(t, "SomeContract", metadata.Name)
+			assert.Equal(t, "2.0.0", metadata.Version)
+			assert.Equal(t, "New contract description", metadata.Description)
+			assert.Equal(t, []string{"first"}, metadata.Tags)
 		})
 
 		t.Run("Read Contract Metadata (from outside tx)", func(t *testing.T) {
 			// Check that the write happened within the transaction, and therefore a read would
 			// fail outside of the transactional context.
-			_, err := catalog.ContractMetadata().Get(
+			_, err2 := catalog.ContractMetadata().Get(
 				t.Context(),
 				datastore.NewContractMetadataKey(1, "0x12345678"),
 				datastore.IgnoreTransactionsGetOption,
 			)
-			require.ErrorContains(t, err, "no contract metadata record can be found")
+			require.ErrorContains(t, err2, "no contract metadata record can be found")
 		})
+
 		return nil
 	})
 	require.NoError(t, err)
@@ -155,13 +160,14 @@ func TestCatalogTransactions_WithTransactions_Commit(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, metadata)
 
-		assert.Equal(t, metadata.Name, "SomeContract")
-		assert.Equal(t, metadata.Version, "2.0.0")
-		assert.Equal(t, metadata.Description, "New contract description")
-		assert.Equal(t, metadata.Tags, []string{"first"})
+		assert.Equal(t, "SomeContract", metadata.Name)
+		assert.Equal(t, "2.0.0", metadata.Version)
+		assert.Equal(t, "New contract description", metadata.Description)
+		assert.Equal(t, []string{"first"}, metadata.Tags)
 	})
 }
 
+//nolint:paralleltest
 func TestCatalogTransactions_Rollback(t *testing.T) {
 	t.Parallel()
 
@@ -204,10 +210,10 @@ func TestCatalogTransactions_Rollback(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, metadata)
 
-		assert.Equal(t, metadata.Name, "SomeContract")
-		assert.Equal(t, metadata.Version, "3.0.0")
-		assert.Equal(t, metadata.Description, "New contract description")
-		assert.Equal(t, metadata.Tags, []string{"first"})
+		assert.Equal(t, "SomeContract", metadata.Name)
+		assert.Equal(t, "3.0.0", metadata.Version)
+		assert.Equal(t, "New contract description", metadata.Description)
+		assert.Equal(t, []string{"first"}, metadata.Tags)
 	})
 
 	t.Run("Read Contract Metadata (from outside tx)", func(t *testing.T) {
@@ -237,6 +243,7 @@ func TestCatalogTransactions_Rollback(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest
 func TestCatalogTransactions_WithTransactions_Rollback(t *testing.T) {
 	t.Parallel()
 
@@ -247,7 +254,6 @@ func TestCatalogTransactions_WithTransactions_Rollback(t *testing.T) {
 		return
 	}
 	err = catalog.WithTransaction(t.Context(), func(ctx context.Context) error {
-
 		t.Run("Add Contract Metadata", func(t *testing.T) {
 			metadata := TestContractMetadata{
 				Name:        "SomeContract",
@@ -255,7 +261,7 @@ func TestCatalogTransactions_WithTransactions_Rollback(t *testing.T) {
 				Description: "New contract description",
 				Tags:        []string{"first"},
 			}
-			err := catalog.ContractMetadata().Add(
+			err2 := catalog.ContractMetadata().Add(
 				t.Context(),
 				datastore.ContractMetadata{
 					Address:       "0x12345678",
@@ -263,36 +269,36 @@ func TestCatalogTransactions_WithTransactions_Rollback(t *testing.T) {
 					Metadata:      metadata,
 				},
 			)
-			assert.NoError(t, err)
+			assert.NoError(t, err2)
 		})
 
 		t.Run("Read Contract Metadata", func(t *testing.T) {
-			result, err := catalog.ContractMetadata().
+			result, err2 := catalog.ContractMetadata().
 				Get(t.Context(), datastore.NewContractMetadataKey(1, "0x12345678"))
-			require.NoError(t, err)
+			require.NoError(t, err2)
 			require.NotNil(t, result)
-			metadata, err := datastore.As[TestContractMetadata](result.Metadata)
-			require.NoError(t, err)
+			metadata, err2 := datastore.As[TestContractMetadata](result.Metadata)
+			require.NoError(t, err2)
 			require.NotNil(t, metadata)
 
-			assert.Equal(t, metadata.Name, "SomeContract")
-			assert.Equal(t, metadata.Version, "4.0.0")
-			assert.Equal(t, metadata.Description, "New contract description")
-			assert.Equal(t, metadata.Tags, []string{"first"})
+			assert.Equal(t, "SomeContract", metadata.Name)
+			assert.Equal(t, "4.0.0", metadata.Version)
+			assert.Equal(t, "New contract description", metadata.Description)
+			assert.Equal(t, []string{"first"}, metadata.Tags)
 		})
 
 		t.Run("Read Contract Metadata (from outside tx)", func(t *testing.T) {
 			// Check that the write happened within the transaction, and therefore a read would
 			// fail outside of the transactional context.
-			_, err := catalog.ContractMetadata().Get(
+			_, err2 := catalog.ContractMetadata().Get(
 				t.Context(),
 				datastore.NewContractMetadataKey(1, "0x12345678"),
 				datastore.IgnoreTransactionsGetOption,
 			)
-			require.ErrorContains(t, err, "no contract metadata record can be found")
+			require.ErrorContains(t, err2, "no contract metadata record can be found")
 		})
 
-		return fmt.Errorf("foo")
+		return errors.New("foo")
 	})
 	require.ErrorContains(t, err, "foo")
 
@@ -307,6 +313,7 @@ func TestCatalogTransactions_WithTransactions_Rollback(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest
 func TestCatalogTransactions_DoubleBegin(t *testing.T) {
 	t.Skipf("Expected behavior from server has a bug, so skip for now.")
 	t.Parallel()
@@ -377,17 +384,20 @@ func setupStore(t *testing.T, ctx context.Context) (*catalogDataStore, error) {
 		Creds: insecure.NewCredentials(),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to gRPC server at %s: %v. Skipping integration tests", address, err)
+		return nil, fmt.Errorf("failed to connect to gRPC server at %s: %w. Skipping integration tests", address, err)
 	}
 	// Test if the service is actually available by making a simple call
 	_, err = catalogClient.DataAccess()
 	if err != nil {
-		return nil, fmt.Errorf("gRPC service not available at %s: %v. Skipping integration tests", address, err)
+		return nil, fmt.Errorf("gRPC service not available at %s: %w. Skipping integration tests", address, err)
 	}
+	random, err := rand.Int(rand.Reader, big.NewInt(1000000000))
+	require.NoError(t, err)
 	config := CatalogDataStoreConfig{
-		Domain:      fmt.Sprintf("test-domain-%d", rand.IntN(1000000000)),
+		Domain:      fmt.Sprintf("test-domain-%d", random),
 		Environment: "catalog_testing",
 		Client:      catalogClient,
 	}
+
 	return NewCatalogDataStore(config), nil
 }

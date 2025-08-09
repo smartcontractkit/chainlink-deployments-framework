@@ -117,6 +117,7 @@ func (s *catalogContractMetadataStore) Get(
 			ignoreTransactions = true
 		}
 	}
+
 	return s.get(ignoreTransactions, key)
 }
 

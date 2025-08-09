@@ -384,7 +384,7 @@ func TestCatalogContractMetadataStore_Upsert(t *testing.T) {
 				// Verify we can get it back
 				key := datastore.NewContractMetadataKey(original.ChainSelector, original.Address)
 				_, err := store.Get(t.Context(), key)
-				require.Error(t, datastore.ErrContractMetadataNotFound, err)
+				require.ErrorIs(t, datastore.ErrContractMetadataNotFound, err)
 			},
 		},
 		{

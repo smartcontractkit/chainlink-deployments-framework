@@ -113,6 +113,7 @@ func (s *catalogChainMetadataStore) Get(
 			ignoreTransactions = true
 		}
 	}
+
 	return s.get(ignoreTransactions, key)
 }
 
