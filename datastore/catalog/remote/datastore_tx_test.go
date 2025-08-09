@@ -28,7 +28,7 @@ func TestCatalogTransactions_Commit(t *testing.T) {
 	}
 
 	t.Run("Begin Transaction", func(t *testing.T) {
-		err := catalog.BeginTransaction()
+		err := catalog.beginTransaction()
 		require.NoError(t, err)
 	})
 
@@ -73,7 +73,7 @@ func TestCatalogTransactions_Commit(t *testing.T) {
 	})
 
 	t.Run("Commit Transaction", func(t *testing.T) {
-		err := catalog.BeginTransaction()
+		err := catalog.beginTransaction()
 		require.NoError(t, err)
 	})
 
@@ -179,7 +179,7 @@ func TestCatalogTransactions_Rollback(t *testing.T) {
 	}
 
 	t.Run("Begin Transaction", func(t *testing.T) {
-		err := catalog.BeginTransaction()
+		err := catalog.beginTransaction()
 		require.NoError(t, err)
 	})
 
@@ -228,7 +228,7 @@ func TestCatalogTransactions_Rollback(t *testing.T) {
 	})
 
 	t.Run("Rollback Transaction", func(t *testing.T) {
-		err := catalog.BeginTransaction()
+		err := catalog.beginTransaction()
 		require.NoError(t, err)
 	})
 
@@ -326,12 +326,12 @@ func TestCatalogTransactions_DoubleBegin(t *testing.T) {
 	}
 
 	t.Run("Begin Transaction", func(t *testing.T) {
-		err := catalog.BeginTransaction()
+		err := catalog.beginTransaction()
 		require.NoError(t, err)
 	})
 
 	t.Run("Begin Second (conflicting) Transaction", func(t *testing.T) {
-		err := catalog.BeginTransaction()
+		err := catalog.beginTransaction()
 		require.ErrorContains(t, err, "blah")
 	})
 }
@@ -347,7 +347,7 @@ func TestCatalogTransactions_OrphanCommit(t *testing.T) {
 	}
 
 	t.Run("Commit Without Transaction", func(t *testing.T) {
-		err := catalog.CommitTransaction()
+		err := catalog.commitTransaction()
 		require.NoError(t, err)
 	})
 }
@@ -363,7 +363,7 @@ func TestCatalogTransactions_OrphanRollback(t *testing.T) {
 	}
 
 	t.Run("Commit Without Transaction", func(t *testing.T) {
-		err := catalog.CommitTransaction()
+		err := catalog.commitTransaction()
 		require.NoError(t, err)
 	})
 }
