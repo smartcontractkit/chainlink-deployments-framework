@@ -24,7 +24,7 @@ type catalogDataStore struct {
 	envMetadataStore      *catalogEnvMetadataStore
 }
 
-func (s *catalogDataStore) BeginTransaction() error {
+func (s *catalogDataStore) beginTransaction() error {
 	request := &pb.DataAccessRequest{
 		Operation: &pb.DataAccessRequest_BeginTransactionRequest{
 			BeginTransactionRequest: &pb.BeginTransactionRequest{},
@@ -35,7 +35,7 @@ func (s *catalogDataStore) BeginTransaction() error {
 	return err
 }
 
-func (s *catalogDataStore) CommitTransaction() error {
+func (s *catalogDataStore) commitTransaction() error {
 	request := &pb.DataAccessRequest{
 		Operation: &pb.DataAccessRequest_CommitTransactionRequest{
 			CommitTransactionRequest: &pb.CommitTransactionRequest{},
@@ -46,7 +46,7 @@ func (s *catalogDataStore) CommitTransaction() error {
 	return err
 }
 
-func (s *catalogDataStore) RollbackTransaction() error {
+func (s *catalogDataStore) rollbackTransaction() error {
 	request := &pb.DataAccessRequest{
 		Operation: &pb.DataAccessRequest_BeginTransactionRequest{
 			BeginTransactionRequest: &pb.BeginTransactionRequest{},
@@ -58,20 +58,20 @@ func (s *catalogDataStore) RollbackTransaction() error {
 }
 
 func (s *catalogDataStore) WithTransaction(ctx context.Context, fn datastore.TransactionLogic) error {
-	err := s.BeginTransaction()
+	err := s.beginTransaction()
 	if err != nil {
 		return err
 	}
 	err = fn(ctx)
 	if err != nil {
-		err2 := s.RollbackTransaction()
+		err2 := s.rollbackTransaction()
 		if err2 != nil {
 			return fmt.Errorf("failed to rollback transaction: %w: %w", err, err2)
 		}
 
 		return err
 	}
-	err = s.CommitTransaction()
+	err = s.commitTransaction()
 	if err != nil {
 		return fmt.Errorf("failed to commit transaction: %w", err)
 	}

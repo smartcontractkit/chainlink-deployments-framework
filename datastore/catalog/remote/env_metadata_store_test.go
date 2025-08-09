@@ -1,7 +1,10 @@
 package remote
 
 import (
+	"crypto/rand"
 	"encoding/json"
+	"fmt"
+	"math/big"
 	"os"
 	"testing"
 
@@ -26,7 +29,7 @@ type TestEnvMetadata struct {
 }
 
 // setupTestEnvStore creates a test environment metadata store and gRPC connection
-func setupTestEnvStore(t *testing.T) *catalogEnvMetadataStore {
+func setupTestEnvStore(t *testing.T, overrideDomain string) *catalogEnvMetadataStore {
 	t.Helper()
 	address := os.Getenv("CATALOG_GRPC_ADDRESS")
 	if address == "" {
@@ -50,9 +53,18 @@ func setupTestEnvStore(t *testing.T) *catalogEnvMetadataStore {
 		return nil
 	}
 
-	// Create store with a unique environment name per test to ensure isolation
+	// Create store with a unique domain name per test to ensure isolation
+	random, err := rand.Int(rand.Reader, big.NewInt(1000000000))
+	require.NoError(t, err)
+	var domain string
+	if overrideDomain != "" {
+		domain = overrideDomain
+	} else {
+		domain = fmt.Sprintf("test-domain-%d", random)
+	}
+
 	store := newCatalogEnvMetadataStore(catalogEnvMetadataStoreConfig{
-		Domain:      "test-domain",
+		Domain:      domain,
 		Environment: "catalog_testing", // Use static environment name
 		Client:      catalogClient,
 	})
@@ -130,7 +142,7 @@ func TestCatalogEnvMetadataStore_Get(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			// Create store for testing
-			store := setupTestEnvStore(t)
+			store := setupTestEnvStore(t, "")
 
 			// Setup test data if needed
 			for _, record := range tt.setupRecords {
@@ -185,7 +197,7 @@ func TestCatalogEnvMetadataStore_Set(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			store := setupTestEnvStore(t)
+			store := setupTestEnvStore(t, "")
 
 			// Test Set operation
 			err := store.Set(t.Context(), tt.record.Metadata)
@@ -217,7 +229,7 @@ func TestCatalogEnvMetadataStore_Set(t *testing.T) {
 
 func TestCatalogEnvMetadataStore_Set_Update(t *testing.T) {
 	t.Parallel()
-	store := setupTestEnvStore(t)
+	store := setupTestEnvStore(t, "")
 
 	// Set initial record
 	initialMetadata := TestEnvMetadata{
@@ -269,16 +281,18 @@ func TestCatalogEnvMetadataStore_Set_Update(t *testing.T) {
 func TestCatalogEnvMetadataStore_Set_ConcurrentUpdates(t *testing.T) {
 	t.Parallel()
 	// Create two stores pointing to the same environment
-	store1 := setupTestEnvStore(t)
-
-	store2 := setupTestEnvStore(t)
+	random, err := rand.Int(rand.Reader, big.NewInt(1000000000))
+	require.NoError(t, err)
+	domain := fmt.Sprintf("test-domain-%d", random)
+	store1 := setupTestEnvStore(t, domain)
+	store2 := setupTestEnvStore(t, domain)
 
 	// Set initial record with store1
 	initialMetadata := TestEnvMetadata{
 		Description: "Initial environment",
 		Version:     "1.0.0",
 	}
-	err := store1.Set(t.Context(), initialMetadata)
+	err = store1.Set(t.Context(), initialMetadata)
 	require.NoError(t, err, "Failed to set initial record")
 
 	// Both stores get the record to sync their version caches
@@ -327,7 +341,7 @@ func TestCatalogEnvMetadataStore_ConversionHelpers(t *testing.T) {
 				t.Helper()
 				filter := store.keyToFilter()
 				require.NotNil(t, filter, "keyToFilter returned nil")
-				require.Equal(t, "test-domain", filter.Domain.Value, "Expected domain 'test-domain'")
+				require.Equal(t, store.domain, filter.Domain.Value, "Expected domain 'test-domain'")
 				require.Equal(t, "catalog_testing", filter.Environment.Value, "Expected environment 'catalog_testing'")
 			},
 		},
@@ -381,7 +395,7 @@ func TestCatalogEnvMetadataStore_ConversionHelpers(t *testing.T) {
 
 				result := store.envMetadataToProto(record, 5)
 
-				require.Equal(t, "test-domain", result.Domain, "Expected domain 'test-domain'")
+				require.Equal(t, store.domain, result.Domain, "Expected domain 'test-domain'")
 				require.Equal(t, "catalog_testing", result.Environment, "Expected environment 'catalog_testing'")
 				require.Equal(t, int32(5), result.RowVersion, "Expected version 5")
 
@@ -414,7 +428,7 @@ func TestCatalogEnvMetadataStore_ConversionHelpers(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			// Create a fresh store for each test case to avoid concurrency issues
-			store := setupTestEnvStore(t)
+			store := setupTestEnvStore(t, "")
 
 			tt.test(t, store)
 		})
