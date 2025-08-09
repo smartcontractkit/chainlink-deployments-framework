@@ -44,6 +44,7 @@ func (s *catalogAddressRefStore) Get(_ context.Context, key datastore.AddressRef
 			ignoreTransactions = true
 		}
 	}
+
 	return s.get(ignoreTransactions, key)
 }
 

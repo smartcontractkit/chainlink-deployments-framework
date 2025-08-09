@@ -31,6 +31,7 @@ func (s *catalogDataStore) BeginTransaction() error {
 		},
 	}
 	_, err := ThrowAndCatch(s, request)
+
 	return err
 }
 
@@ -41,6 +42,7 @@ func (s *catalogDataStore) CommitTransaction() error {
 		},
 	}
 	_, err := ThrowAndCatch(s, request)
+
 	return err
 }
 
@@ -51,8 +53,8 @@ func (s *catalogDataStore) RollbackTransaction() error {
 		},
 	}
 	_, err := ThrowAndCatch(s, request)
-	return err
 
+	return err
 }
 
 func (s *catalogDataStore) WithTransaction(ctx context.Context, fn datastore.TransactionLogic) error {
@@ -64,16 +66,17 @@ func (s *catalogDataStore) WithTransaction(ctx context.Context, fn datastore.Tra
 	if err != nil {
 		err2 := s.RollbackTransaction()
 		if err2 != nil {
-			return fmt.Errorf("failed to rollback transaction: %s: %s", err, err2)
+			return fmt.Errorf("failed to rollback transaction: %w: %w", err, err2)
 		}
+
 		return err
-	} else {
-		err := s.CommitTransaction()
-		if err != nil {
-			return fmt.Errorf("failed to commit transaction: %s", err)
-		}
-		return nil
 	}
+	err = s.CommitTransaction()
+	if err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return nil
 }
 
 func NewCatalogDataStore(config CatalogDataStoreConfig) *catalogDataStore {

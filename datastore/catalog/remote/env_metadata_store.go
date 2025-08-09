@@ -110,6 +110,7 @@ func (s *catalogEnvMetadataStore) Get(
 			ignoreTransactions = true
 		}
 	}
+
 	return s.get(ignoreTransactions)
 }
 func (s *catalogEnvMetadataStore) get(ignoreTransaction bool) (datastore.EnvMetadata, error) {

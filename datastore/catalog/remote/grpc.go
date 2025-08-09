@@ -16,6 +16,11 @@ type CatalogClient struct {
 	// call stack context. This is different than the go norm, but because we need a long-lived
 	// comms session to the gRPC server, anything cancelling that context (such as a test ending)
 	// would result in a dangling context.
+	//
+	// Another way to express this, is that this is analogous to the "request-scoped" exception to
+	// passing context down the call-stack.
+	//
+	//nolint:containedctx
 	ctx          context.Context
 	cachedStream grpc.BidiStreamingClient[pb.DataAccessRequest, pb.DataAccessResponse]
 }
@@ -28,6 +33,7 @@ func (c *CatalogClient) DataAccess() (grpc.BidiStreamingClient[pb.DataAccessRequ
 		}
 		c.cachedStream = stream
 	}
+
 	return c.cachedStream, nil
 }
 
@@ -40,6 +46,7 @@ func (c *CatalogClient) CloseStream() error {
 		return err
 	}
 	c.cachedStream = nil
+
 	return nil
 }
 
