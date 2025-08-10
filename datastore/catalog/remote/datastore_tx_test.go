@@ -105,7 +105,7 @@ func TestCatalogTransactions_WithTransactions_Commit(t *testing.T) {
 		return
 	}
 
-	err = catalog.WithTransaction(t.Context(), func(ctx context.Context) error {
+	err = catalog.WithTransaction(t.Context(), func(ctx context.Context, catalog datastore.BaseCatalogStore) error {
 		t.Run("Add Contract Metadata", func(t *testing.T) {
 			metadata := TestContractMetadata{
 				Name:        "SomeContract",
@@ -253,7 +253,7 @@ func TestCatalogTransactions_WithTransactions_Rollback(t *testing.T) {
 		t.Skipf("%s", err)
 		return
 	}
-	err = catalog.WithTransaction(t.Context(), func(ctx context.Context) error {
+	err = catalog.WithTransaction(t.Context(), func(ctx context.Context, catalog datastore.BaseCatalogStore) error {
 		t.Run("Add Contract Metadata", func(t *testing.T) {
 			metadata := TestContractMetadata{
 				Name:        "SomeContract",

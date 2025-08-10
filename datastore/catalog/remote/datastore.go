@@ -62,7 +62,7 @@ func (s *catalogDataStore) WithTransaction(ctx context.Context, fn datastore.Tra
 	if err != nil {
 		return err
 	}
-	err = fn(ctx)
+	err = fn(ctx, s)
 	if err != nil {
 		err2 := s.rollbackTransaction()
 		if err2 != nil {

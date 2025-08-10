@@ -2,7 +2,7 @@ package datastore
 
 import "context"
 
-type TransactionLogic func(ctx context.Context) error
+type TransactionLogic func(ctx context.Context, catalog BaseCatalogStore) error
 
 // Transactional is an interface which supports keeping datastore operations within transactional
 // boundaries.
@@ -34,14 +34,20 @@ type BaseDataStoreV2[
 	EnvMetadata() EM
 }
 
-// CatalogStore is a convenience interface which wraps up the various generics so they need not
-// be repeatedly specified.
-type CatalogStore interface {
-	Transactional
+// BaseCatalogStore is a convenience interface which pulls together all of the individual store
+// (table) interfaces.
+type BaseCatalogStore interface {
 	BaseDataStoreV2[
 		MutableRefStoreV2[AddressRefKey, AddressRef], MutableStoreV2[ChainMetadataKey, ChainMetadata],
 		MutableStoreV2[ContractMetadataKey, ContractMetadata], MutableUnaryStoreV2[EnvMetadata],
 	]
+}
+
+// CatalogStore is a fully featured data store, with read/write access to all of the individual
+// stores (tables), as well as supporting transaction handling.
+type CatalogStore interface {
+	Transactional
+	BaseCatalogStore
 }
 
 // MetadataUpdaterF  characterises a change to some metadata as a sort of operational transform,
