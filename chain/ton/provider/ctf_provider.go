@@ -229,7 +229,7 @@ func (p *CTFChainProvider) ChainSelector() uint64 {
 }
 
 // BlockChain returns the Ton chain instance managed by this provider. You must call Initialize
-// before using this method to ensure the chain is properly set up.
+// before using this method to ensure the chain is properly set up.test
 func (p *CTFChainProvider) BlockChain() chain.BlockChain {
 	return *p.chain
 }
