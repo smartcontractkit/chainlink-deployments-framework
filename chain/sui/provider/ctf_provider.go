@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/avast/retry-go/v4"
 	sui_sdk "github.com/block-vision/sui-go-sdk/sui"
 	chain_selectors "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
@@ -135,7 +136,7 @@ func (p *CTFChainProvider) startContainer(
 	chainID string, account sui.SuiSigner,
 ) (string, sui_sdk.ISuiAPI) {
 	var (
-		maxRetries    = 10
+		attempts      = uint(10)
 		url           string
 		containerName string
 	)
@@ -144,16 +145,18 @@ func (p *CTFChainProvider) startContainer(
 	err := framework.DefaultNetwork(p.config.Once)
 	require.NoError(p.t, err)
 
-	for range maxRetries {
+	// Get address from signer
+	address, err := account.GetAddress()
+	require.NoError(p.t, err)
+
+	type containerResult struct {
+		url           string
+		containerName string
+	}
+
+	result, err := retry.DoWithData(func() (containerResult, error) {
 		// reserve all the ports we need explicitly to avoid port conflicts in other tests
 		ports := freeport.GetN(p.t, 2)
-
-		// Get address from signer
-		address, addrErr := account.GetAddress()
-		if addrErr != nil {
-			p.t.Logf("Error getting address from signer: %v", addrErr)
-			continue
-		}
 
 		input := &blockchain.Input{
 			Image:     "", // filled out by defaultSui function
@@ -162,24 +165,29 @@ func (p *CTFChainProvider) startContainer(
 			PublicKey: address,
 		}
 
-		var output *blockchain.Output
-		output, chainErr := blockchain.NewBlockchainNetwork(input)
-		if chainErr != nil {
-			p.t.Logf("Error creating Sui network: %v", chainErr)
+		output, rerr := blockchain.NewBlockchainNetwork(input)
+		if rerr != nil {
+			// Return the ports to freeport to avoid leaking them during retries
 			freeport.Return(ports)
-			time.Sleep(time.Second)
-			maxRetries -= 1
-
-			continue
+			return containerResult{}, rerr
 		}
-		require.NoError(p.t, chainErr)
 
-		containerName = output.ContainerName
 		testcontainers.CleanupContainer(p.t, output.Container)
-		url = output.Nodes[0].ExternalHTTPUrl + "/v1"
 
-		break
-	}
+		return containerResult{
+			url:           output.Nodes[0].ExternalHTTPUrl + "/v1",
+			containerName: output.ContainerName,
+		}, nil
+	},
+		retry.Context(p.t.Context()),
+		retry.Attempts(attempts),
+		retry.Delay(1*time.Second),
+		retry.DelayType(retry.FixedDelay),
+	)
+	require.NoError(p.t, err)
+
+	url = result.url
+	containerName = result.containerName
 
 	client := sui_sdk.NewSuiClient(url)
 
@@ -195,10 +203,6 @@ func (p *CTFChainProvider) startContainer(
 	require.True(p.t, ready, "Sui network not ready")
 
 	dc, err := framework.NewDockerClient()
-	require.NoError(p.t, err)
-
-	// incase we didn't use the default account above
-	address, err := account.GetAddress()
 	require.NoError(p.t, err)
 
 	_, err = dc.ExecContainer(containerName, []string{
