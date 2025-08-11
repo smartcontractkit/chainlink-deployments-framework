@@ -149,9 +149,9 @@ func (p *CTFChainProvider) startContainer(
 		ports := freeport.GetN(p.t, 2)
 
 		// Get address from signer
-		address, err := account.GetAddress()
-		if err != nil {
-			p.t.Logf("Error getting address from signer: %v", err)
+		address, addrErr := account.GetAddress()
+		if addrErr != nil {
+			p.t.Logf("Error getting address from signer: %v", addrErr)
 			continue
 		}
 
@@ -163,16 +163,16 @@ func (p *CTFChainProvider) startContainer(
 		}
 
 		var output *blockchain.Output
-		output, err = blockchain.NewBlockchainNetwork(input)
-		if err != nil {
-			p.t.Logf("Error creating Sui network: %v", err)
+		output, chainErr := blockchain.NewBlockchainNetwork(input)
+		if chainErr != nil {
+			p.t.Logf("Error creating Sui network: %v", chainErr)
 			freeport.Return(ports)
 			time.Sleep(time.Second)
 			maxRetries -= 1
 
 			continue
 		}
-		require.NoError(p.t, err)
+		require.NoError(p.t, chainErr)
 
 		containerName = output.ContainerName
 		testcontainers.CleanupContainer(p.t, output.Container)
@@ -189,6 +189,7 @@ func (p *CTFChainProvider) startContainer(
 		// TODO: Add appropriate readiness check when available
 		p.t.Logf("Sui client ready check (attempt %d)\n", i+1)
 		ready = true
+
 		break
 	}
 	require.True(p.t, ready, "Sui network not ready")

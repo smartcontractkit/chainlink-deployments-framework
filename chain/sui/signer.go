@@ -2,6 +2,7 @@ package sui
 
 import (
 	"encoding/hex"
+	"errors"
 	"fmt"
 
 	"github.com/block-vision/sui-go-sdk/constant"
@@ -45,7 +46,7 @@ func NewSignerFromHexPrivateKey(hexPrivateKey string) (SuiSigner, error) {
 
 func (s *suiSigner) Sign(message []byte) ([]string, error) {
 	if s.signer == nil {
-		return nil, fmt.Errorf("signer is nil")
+		return nil, errors.New("signer is nil")
 	}
 
 	// Sign the message as a transaction message
@@ -59,7 +60,7 @@ func (s *suiSigner) Sign(message []byte) ([]string, error) {
 
 func (s *suiSigner) GetAddress() (string, error) {
 	if s.signer == nil {
-		return "", fmt.Errorf("signer is nil")
+		return "", errors.New("signer is nil")
 	}
 
 	return s.signer.Address, nil

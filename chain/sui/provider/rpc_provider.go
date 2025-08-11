@@ -6,7 +6,9 @@ import (
 	"fmt"
 
 	sui_sdk "github.com/block-vision/sui-go-sdk/sui"
+
 	chain_selectors "github.com/smartcontractkit/chain-selectors"
+
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/sui"
 )
@@ -27,6 +29,7 @@ func (c RPCChainProviderConfig) validate() error {
 	if c.DeployerSignerGen == nil {
 		return errors.New("deployer signer generator is required")
 	}
+
 	return nil
 }
 
