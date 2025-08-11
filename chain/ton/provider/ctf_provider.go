@@ -121,6 +121,7 @@ func (p *CTFChainProvider) startContainer(chainID string) (string, *ton.APIClien
 			Type:    blockchain.TypeTon,
 			ChainID: chainID,
 			Port:    strconv.Itoa(port),
+			Image:   "ghcr.io/neodix42/mylocalton-docker:dev", // as of 11th Aug 2025, the tag 'latest' image used by default fails to startup. Override it with the 'dev' image
 		})
 		if rerr != nil {
 			// Return the ports to freeport to avoid leaking them during retries
