@@ -57,9 +57,9 @@ func Test_DefaultOptions(t *testing.T) {
 	t.Run("DefaultDeployOptions", func(t *testing.T) {
 		t.Parallel()
 		opts := tron.DefaultDeployOptions()
-		assert.Equal(t, 10_000_000, opts.FeeLimit)
+		assert.Equal(t, 100_000_000, opts.FeeLimit)
 		assert.Equal(t, 100, opts.CurPercent)
-		assert.Equal(t, 10_000_000, opts.OeLimit)
+		assert.Equal(t, 50_000_000, opts.OeLimit)
 		assert.Equal(t, tron.DefaultConfirmRetryOptions(), opts.ConfirmRetryOptions)
 	})
 
