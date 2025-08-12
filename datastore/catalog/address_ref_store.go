@@ -9,8 +9,9 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
+	pb "github.com/smartcontractkit/chainlink-protos/chainlink-catalog/v1/datastore"
+
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
-	pb "github.com/smartcontractkit/chainlink-deployments-framework/datastore/catalog/internal/protos"
 )
 
 type catalogAddressRefStoreConfig struct {
