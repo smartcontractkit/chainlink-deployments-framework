@@ -9,7 +9,7 @@ import (
 	"github.com/avast/retry-go/v4"
 	"github.com/fbsobreira/gotron-sdk/pkg/address"
 	chain_selectors "github.com/smartcontractkit/chain-selectors"
-	"github.com/smartcontractkit/chainlink-evm/gethwrappers/shared/generated/link_token"
+	"github.com/smartcontractkit/chainlink-evm/gethwrappers/shared/generated/initial/link_token"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/freeport"
 	"github.com/stretchr/testify/assert"
