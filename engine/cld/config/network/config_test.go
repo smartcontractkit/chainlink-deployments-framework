@@ -686,43 +686,70 @@ networks:
 - type: "mainnet"
   chain_selector: 1
   rpcs:
-  - rpc_name: "test_rpc"
-    preferred_url_scheme: "http"
-    http_url: "https://test.rpc"
-    ws_url: "wss://test.rpc"`
+    - rpc_name: "test_rpc"
+      preferred_url_scheme: "http"
+      http_url: "https://test.rpc"
+      ws_url: "wss://test.rpc"
+  metadata:
+    anvil_config:
+      archive_http_url: "https://test.archive.rpc"
+`
 
 	tmpFile := filepath.Join(tmpDir, "test.yaml")
 	err := os.WriteFile(tmpFile, []byte(yamlContent), 0600)
 	require.NoError(t, err, "Failed to create test file")
 
-	// Test URL transformer
-	transformer := func(cfg *Config) {
-		for _, network := range cfg.Networks() {
-			for j, rpc := range network.RPCs {
-				rpc.HTTPURL = strings.Replace(rpc.HTTPURL, "test", "test2", 1)
-				rpc.WSURL = strings.Replace(rpc.WSURL, "test", "test2", 1)
-				network.RPCs[j] = rpc
-			}
-		}
+	// Simple URL transformer
+	transformFunc := func(url string) string {
+		return strings.Replace(url, "test", "test2", 1)
 	}
 
-	got, err := Load([]string{tmpFile}, WithURLTransform(transformer))
-	require.NoError(t, err, "Load() should not return an error")
-
-	want := NewConfig([]Network{
+	tests := []struct {
+		name               string
+		givePath           string
+		giveURLTransformer URLTransformer
+		want               *Config
+		wantErr            string
+	}{
 		{
-			Type:          "mainnet",
-			ChainSelector: 1,
-			RPCs: []RPC{
+			name:               "transform RPC URLs",
+			givePath:           tmpFile,
+			giveURLTransformer: transformFunc,
+			want: NewConfig([]Network{
 				{
-					RPCName:            "test_rpc",
-					PreferredURLScheme: "http",
-					HTTPURL:            "https://test2.rpc",
-					WSURL:              "wss://test2.rpc",
+					Type:          "mainnet",
+					ChainSelector: 1,
+					RPCs: []RPC{
+						{
+							RPCName:            "test_rpc",
+							PreferredURLScheme: "http",
+							HTTPURL:            "https://test2.rpc",
+							WSURL:              "wss://test2.rpc",
+						},
+					},
+					Metadata: EVMMetadata{
+						AnvilConfig: &AnvilConfig{
+							ArchiveHTTPURL: "https://test2.archive.rpc",
+						},
+					},
 				},
-			},
+			}),
 		},
-	})
+	}
 
-	assert.Equal(t, want, got)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := Load([]string{tt.givePath}, WithRPCURLTransformer(tt.giveURLTransformer))
+			require.NoError(t, err)
+
+			if tt.wantErr != "" {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.want, got)
+			}
+		})
+	}
 }
