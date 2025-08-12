@@ -13,7 +13,6 @@ import (
 	chain_selectors "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
-	"github.com/smartcontractkit/freeport"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 
@@ -155,20 +154,17 @@ func (p *CTFChainProvider) startContainer(
 	}
 
 	result, err := retry.DoWithData(func() (containerResult, error) {
-		// reserve all the ports we need explicitly to avoid port conflicts in other tests
-		ports := freeport.GetN(p.t, 2)
-
+		// NOTE: Sui blockchain containers use hardcoded ports (9000/9123) and ignore the Port field
 		input := &blockchain.Input{
 			Image:     "", // filled out by defaultSui function
 			Type:      blockchain.TypeSui,
 			ChainID:   chainID,
 			PublicKey: address,
+			// Port field is ignored by Sui containers - they always use ports 9000/9123
 		}
 
 		output, rerr := blockchain.NewBlockchainNetwork(input)
 		if rerr != nil {
-			// Return the ports to freeport to avoid leaking them during retries
-			freeport.Return(ports)
 			return containerResult{}, rerr
 		}
 

@@ -59,9 +59,10 @@ func Test_CTFChainProviderConfig_validate(t *testing.T) {
 	}
 }
 
+// CTF hardcodes Sui ports creating conflicts when running tests in parallel
+//
+//nolint:paralleltest
 func Test_CTFChainProvider_Initialize(t *testing.T) {
-	t.Parallel()
-
 	tests := []struct {
 		name         string
 		giveSelector uint64
