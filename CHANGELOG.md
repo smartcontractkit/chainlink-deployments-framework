@@ -1,5 +1,13 @@
 # chainlink-deployments-framework
 
+## 0.23.0
+
+### Minor Changes
+
+- [#257](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/257) [`f051994`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/f0519945aca878c4a6728a26c0c818aea5498e5b) Thanks [@RodrigoAD](https://github.com/RodrigoAD)! - Add Sui chain providers for RPC and CTF
+
+- [#264](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/264) [`b9ef148`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/b9ef148b8e2b29d5651b6552ef2bd60120dd0aad) Thanks [@eduard-cl](https://github.com/eduard-cl)! - Update chainlink-evm gethwrappers version
+
 ## 0.22.0
 
 ### Minor Changes
