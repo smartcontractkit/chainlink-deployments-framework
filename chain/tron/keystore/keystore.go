@@ -49,6 +49,10 @@ func (ks *Keystore) Sign(ctx context.Context, id string, hash []byte) ([]byte, e
 	return crypto.Sign(hash, privateKey)
 }
 
+func (ks *Keystore) Decrypt(ctx context.Context, id string, ctxt []byte) ([]byte, error) {
+	return nil, errors.New("decrypt not implemented in Tron Keystore")
+}
+
 // ImportECDSA adds a new private key to the Keystore, deriving its Tron address
 // and storing it using that address as the map key.
 func (ks *Keystore) ImportECDSA(privateKey *ecdsa.PrivateKey) address.Address {
