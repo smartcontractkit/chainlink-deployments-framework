@@ -58,7 +58,7 @@ func Test_AccountGenPrivateKey(t *testing.T) {
 		{
 			name:           "invalid private key",
 			givePrivateKey: "invalid_private_key",
-			wantErr:        "failed to decode hex-encoded private key",
+			wantErr:        "failed to convert private key to ECDSA",
 		},
 	}
 
