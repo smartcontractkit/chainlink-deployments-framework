@@ -15,6 +15,7 @@ require (
 	github.com/gagliardetto/solana-go v1.12.0
 	github.com/google/uuid v1.6.0
 	github.com/pelletier/go-toml/v2 v2.2.4
+	github.com/segmentio/ksuid v1.0.4
 	github.com/smartcontractkit/chain-selectors v1.0.60
 	github.com/smartcontractkit/chainlink-ccip/chains/solana v0.0.0-20250520123946-6aaf88e0848a
 	github.com/smartcontractkit/chainlink-common v0.7.1-0.20250425195105-d9eabb4a4519
