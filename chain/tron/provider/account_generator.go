@@ -1,7 +1,6 @@
 package provider
 
 import (
-	"encoding/hex"
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -54,16 +53,9 @@ func AccountGenPrivateKey(privateKey string) *accountGenPrivateKey {
 // Generate generates an Tron keystore account from the provided private key. It returns an error if the
 // private key string cannot be parsed.
 func (g *accountGenPrivateKey) Generate() (*keystore.Keystore, address.Address, error) {
-	// Decode the hex-encoded private key string
-	privBytes, err := hex.DecodeString(g.PrivateKey)
+	privKey, err := crypto.HexToECDSA(g.PrivateKey)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to decode hex-encoded private key: %w", err)
-	}
-
-	// Parse the bytes into an *ecdsa.PrivateKey
-	privKey, err := crypto.ToECDSA(privBytes)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to parse private key bytes: %w", err)
+		return nil, nil, fmt.Errorf("failed to convert private key to ECDSA: %w", err)
 	}
 
 	ks, addr := keystore.NewKeystore(privKey)
