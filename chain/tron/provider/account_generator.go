@@ -53,6 +53,7 @@ func AccountGenPrivateKey(privateKey string) *accountGenPrivateKey {
 // Generate generates an Tron keystore account from the provided private key. It returns an error if the
 // private key string cannot be parsed.
 func (g *accountGenPrivateKey) Generate() (*keystore.Keystore, address.Address, error) {
+	// Parse the string into an *ecdsa.PrivateKey
 	privKey, err := crypto.HexToECDSA(g.PrivateKey)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to convert private key to ECDSA: %w", err)
