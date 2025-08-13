@@ -263,7 +263,7 @@ func Test_Domain_CmdDirPath(t *testing.T) {
 // 	}
 //
 // 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
+// 		t.Fixture(tt.name, func(t *testing.T) {
 // 			t.Parallel()
 //
 // 			fixture := setupTestDomainsFS(t)
