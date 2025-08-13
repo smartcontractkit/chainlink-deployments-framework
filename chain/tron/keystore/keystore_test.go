@@ -101,3 +101,11 @@ func Test_Keystore_Accounts(t *testing.T) {
 	require.NoError(t, err)
 	assert.ElementsMatch(t, []string{addr1, addr2}, accounts)
 }
+
+func Test_Keystore_Decrypt(t *testing.T) {
+	t.Parallel()
+
+	ks := &Keystore{Keys: make(map[string]*ecdsa.PrivateKey)}
+	_, err := ks.Decrypt(t.Context(), "account1", []byte("ciphertext"))
+	require.ErrorContains(t, err, "decrypt not implemented")
+}
