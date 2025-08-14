@@ -1,20 +1,18 @@
-package catalog
+package remote
 
 import (
-	"context"
 	"crypto/rand"
 	"fmt"
 	"math/big"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
-	pb "github.com/smartcontractkit/chainlink-deployments-framework/datastore/catalog/internal/protos"
+	pb "github.com/smartcontractkit/chainlink-deployments-framework/datastore/catalog/remote/internal/protos"
 )
 
 const (
@@ -41,7 +39,7 @@ func newTestContractMetadata(name string) TestContractMetadata {
 }
 
 // setupTestContractStore creates a real gRPC client connection to a local service
-func setupTestContractStore(t *testing.T) (*catalogContractMetadataStore, func()) {
+func setupTestContractStore(t *testing.T) *catalogContractMetadataStore {
 	t.Helper()
 	// Get gRPC address from environment or use default
 	address := os.Getenv("CATALOG_GRPC_ADDRESS")
@@ -50,27 +48,24 @@ func setupTestContractStore(t *testing.T) (*catalogContractMetadataStore, func()
 	}
 
 	// Create CatalogClient using the NewCatalogClient function
-	catalogClient, err := NewCatalogClient(CatalogConfig{
+	catalogClient, err := NewCatalogClient(t.Context(), CatalogConfig{
 		GRPC:  address,
 		Creds: insecure.NewCredentials(),
 	})
 	if err != nil {
 		t.Skipf("Failed to connect to gRPC server at %s: %v. Skipping integration tests.", address, err)
-		return nil, func() {}
+		return nil
 	}
 
 	// Test if the gRPC service is actually available by making a simple call
-	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
-	defer cancel()
-
-	stream, err := catalogClient.DataAccess(ctx)
+	_, err = catalogClient.DataAccess()
 	if err != nil {
 		t.Skipf("gRPC service not available at %s: %v. Skipping integration tests.", address, err)
-		return nil, func() {}
+		return nil
 	}
-	if stream != nil {
-		_ = stream.CloseSend()
-	}
+	t.Cleanup(func() {
+		_ = catalogClient.CloseStream() // Close the test stream at the end of the test.
+	})
 
 	// Create store
 	store := newCatalogContractMetadataStore(catalogContractMetadataStoreConfig{
@@ -79,13 +74,7 @@ func setupTestContractStore(t *testing.T) (*catalogContractMetadataStore, func()
 		Client:      catalogClient,
 	})
 
-	// Return a cleanup function - since CatalogClient manages its own connection internally,
-	// we don't need to expose connection management to tests
-	cleanup := func() {
-		// Connection cleanup is handled internally by CatalogClient
-	}
-
-	return store, cleanup
+	return store
 }
 
 // generateRandomContractAddress generates a random contract address
@@ -141,7 +130,7 @@ func TestCatalogContractMetadataStore_Get(t *testing.T) {
 			setup: func(store *catalogContractMetadataStore) datastore.ContractMetadataKey {
 				// Create and add a record first
 				metadata := newRandomContractMetadata()
-				err := store.Add(context.Background(), metadata)
+				err := store.Add(t.Context(), metadata)
 				require.NoError(t, err)
 
 				return datastore.NewContractMetadataKey(metadata.ChainSelector, metadata.Address)
@@ -154,13 +143,12 @@ func TestCatalogContractMetadataStore_Get(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			// Create a fresh store for each test case to avoid concurrency issues
-			store, cleanup := setupTestContractStore(t)
-			defer cleanup()
+			store := setupTestContractStore(t)
 
 			key := tt.setup(store)
 
 			// Execute
-			result, err := store.Get(context.Background(), key)
+			result, err := store.Get(t.Context(), key)
 
 			// Verify
 			if tt.expectError {
@@ -201,7 +189,7 @@ func TestCatalogContractMetadataStore_Add(t *testing.T) {
 			setup: func(store *catalogContractMetadataStore) datastore.ContractMetadata {
 				// Create and add a record first
 				metadata := newRandomContractMetadata()
-				err := store.Add(context.Background(), metadata)
+				err := store.Add(t.Context(), metadata)
 				require.NoError(t, err)
 				// Return the same record to test duplicate
 				return metadata
@@ -214,13 +202,12 @@ func TestCatalogContractMetadataStore_Add(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			// Create a fresh store for each test case to avoid concurrency issues
-			store, cleanup := setupTestContractStore(t)
-			defer cleanup()
+			store := setupTestContractStore(t)
 
 			metadata := tt.setup(store)
 
 			// Execute
-			err := store.Add(context.Background(), metadata)
+			err := store.Add(t.Context(), metadata)
 
 			// Verify
 			if tt.expectError {
@@ -233,7 +220,7 @@ func TestCatalogContractMetadataStore_Add(t *testing.T) {
 
 				// Verify we can get it back
 				key := datastore.NewContractMetadataKey(metadata.ChainSelector, metadata.Address)
-				retrieved, err := store.Get(context.Background(), key)
+				retrieved, err := store.Get(t.Context(), key)
 				require.NoError(t, err)
 
 				require.Equal(t, metadata.Address, retrieved.Address)
@@ -262,11 +249,11 @@ func TestCatalogContractMetadataStore_Update(t *testing.T) {
 			setup: func(store *catalogContractMetadataStore) datastore.ContractMetadata {
 				// Create and add contract metadata
 				metadata := newRandomContractMetadata()
-				err := store.Add(context.Background(), metadata)
+				err := store.Add(t.Context(), metadata)
 				require.NoError(t, err)
 
 				// Fetch the record to get the current version in cache
-				fetchedMetadata, err := store.Get(context.Background(), metadata.Key())
+				fetchedMetadata, err := store.Get(t.Context(), metadata.Key())
 				require.NoError(t, err)
 
 				// Modify the metadata
@@ -283,7 +270,7 @@ func TestCatalogContractMetadataStore_Update(t *testing.T) {
 				t.Helper()
 				// Verify the updated values
 				key := datastore.NewContractMetadataKey(metadata.ChainSelector, metadata.Address)
-				retrieved, err := store.Get(context.Background(), key)
+				retrieved, err := store.Get(t.Context(), key)
 				require.NoError(t, err)
 
 				concrete, err := datastore.As[TestContractMetadata](retrieved.Metadata)
@@ -307,13 +294,12 @@ func TestCatalogContractMetadataStore_Update(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			// Create a fresh store for each test case to avoid concurrency issues
-			store, cleanup := setupTestContractStore(t)
-			defer cleanup()
+			store := setupTestContractStore(t)
 
 			metadata := tt.setup(store)
 
 			// Execute update
-			err := store.Update(context.Background(), metadata.Key(), metadata.Metadata)
+			err := store.Update(t.Context(), metadata.Key(), metadata.Metadata)
 
 			// Verify
 			if tt.expectError {
@@ -334,29 +320,27 @@ func TestCatalogContractMetadataStore_Update(t *testing.T) {
 func TestCatalogContractMetadataStore_Update_StaleVersion(t *testing.T) {
 	t.Parallel()
 	// Create two separate stores to simulate concurrent access
-	store1, cleanup1 := setupTestContractStore(t)
-	defer cleanup1()
+	store1 := setupTestContractStore(t)
 
-	store2, cleanup2 := setupTestContractStore(t)
-	defer cleanup2()
+	store2 := setupTestContractStore(t)
 
 	// Add a contract metadata record using store1
 	original := newRandomContractMetadata()
-	err := store1.Add(context.Background(), original)
+	err := store1.Add(t.Context(), original)
 	require.NoError(t, err)
 
 	// Both stores get the record to populate their caches with version 1
 	key := datastore.NewContractMetadataKey(original.ChainSelector, original.Address)
-	first, err := store1.Get(context.Background(), key)
+	first, err := store1.Get(t.Context(), key)
 	require.NoError(t, err)
 
-	second, err := store2.Get(context.Background(), key)
+	second, err := store2.Get(t.Context(), key)
 	require.NoError(t, err)
 
 	// Store1 updates the record (this increments server version to 2)
 	updatedMetadata := newTestContractMetadata("FirstUpdate")
 	updatedMetadata.Version = "2.0.0"
-	err = store1.Update(context.Background(), first.Key(), updatedMetadata)
+	err = store1.Update(t.Context(), first.Key(), updatedMetadata)
 	require.NoError(t, err)
 
 	// Store2 tries to update using its cached version (still version 1, now stale)
@@ -365,13 +349,13 @@ func TestCatalogContractMetadataStore_Update_StaleVersion(t *testing.T) {
 	staleMetadata.Version = "3.0.0"
 
 	// Execute update with store2 (should succeed in V2 due to internal version fetching)
-	err = store2.Update(context.Background(), second.Key(), staleMetadata)
+	err = store2.Update(t.Context(), second.Key(), staleMetadata)
 
 	// Verify both updates succeeded
 	require.NoError(t, err)
 
 	// Verify the final state - should have the second update's metadata
-	final, err := store1.Get(context.Background(), key)
+	final, err := store1.Get(t.Context(), key)
 	require.NoError(t, err)
 
 	concrete, err := datastore.As[TestContractMetadata](final.Metadata)
@@ -399,7 +383,7 @@ func TestCatalogContractMetadataStore_Upsert(t *testing.T) {
 				t.Helper()
 				// Verify we can get it back
 				key := datastore.NewContractMetadataKey(original.ChainSelector, original.Address)
-				retrieved, err := store.Get(context.Background(), key)
+				retrieved, err := store.Get(t.Context(), key)
 				require.NoError(t, err)
 
 				concrete, err := datastore.As[TestContractMetadata](retrieved.Metadata)
@@ -412,7 +396,7 @@ func TestCatalogContractMetadataStore_Upsert(t *testing.T) {
 			setup: func(store *catalogContractMetadataStore) datastore.ContractMetadata {
 				// Create and add contract metadata
 				metadata := newRandomContractMetadata()
-				err := store.Add(context.Background(), metadata)
+				err := store.Add(t.Context(), metadata)
 				require.NoError(t, err)
 
 				// Modify the metadata
@@ -429,7 +413,7 @@ func TestCatalogContractMetadataStore_Upsert(t *testing.T) {
 				t.Helper()
 				// Verify the updated values
 				key := datastore.NewContractMetadataKey(modified.ChainSelector, modified.Address)
-				retrieved, err := store.Get(context.Background(), key)
+				retrieved, err := store.Get(t.Context(), key)
 				require.NoError(t, err)
 
 				concrete, err := datastore.As[TestContractMetadata](retrieved.Metadata)
@@ -443,13 +427,12 @@ func TestCatalogContractMetadataStore_Upsert(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			// Create a fresh store for each test case to avoid concurrency issues
-			store, cleanup := setupTestContractStore(t)
-			defer cleanup()
+			store := setupTestContractStore(t)
 
 			metadata := tt.setup(store)
 
 			// Execute upsert
-			err := store.Upsert(context.Background(), metadata.Key(), metadata.Metadata)
+			err := store.Upsert(t.Context(), metadata.Key(), metadata.Metadata)
 
 			// Verify
 			if tt.expectError {
@@ -470,29 +453,27 @@ func TestCatalogContractMetadataStore_Upsert(t *testing.T) {
 func TestCatalogContractMetadataStore_Upsert_StaleVersion(t *testing.T) {
 	t.Parallel()
 	// Create two separate stores to simulate concurrent access
-	store1, cleanup1 := setupTestContractStore(t)
-	defer cleanup1()
+	store1 := setupTestContractStore(t)
 
-	store2, cleanup2 := setupTestContractStore(t)
-	defer cleanup2()
+	store2 := setupTestContractStore(t)
 
 	// Add a contract metadata record using store1
 	original := newRandomContractMetadata()
-	err := store1.Add(context.Background(), original)
+	err := store1.Add(t.Context(), original)
 	require.NoError(t, err)
 
 	// Both stores get the record to populate their caches with version 1
 	key := datastore.NewContractMetadataKey(original.ChainSelector, original.Address)
-	first, err := store1.Get(context.Background(), key)
+	first, err := store1.Get(t.Context(), key)
 	require.NoError(t, err)
 
-	second, err := store2.Get(context.Background(), key)
+	second, err := store2.Get(t.Context(), key)
 	require.NoError(t, err)
 
 	// Store1 updates the record (this increments server version to 2)
 	updatedMetadata := newTestContractMetadata("FirstUpdate")
 	updatedMetadata.Version = "2.0.0"
-	err = store1.Update(context.Background(), first.Key(), updatedMetadata)
+	err = store1.Update(t.Context(), first.Key(), updatedMetadata)
 	require.NoError(t, err)
 
 	// Store2 tries to upsert using its cached version (still version 1, now stale)
@@ -501,13 +482,13 @@ func TestCatalogContractMetadataStore_Upsert_StaleVersion(t *testing.T) {
 	staleMetadata.Version = "3.0.0"
 
 	// Execute upsert with store2 (should succeed in V2 due to internal version fetching)
-	err = store2.Upsert(context.Background(), second.Key(), staleMetadata)
+	err = store2.Upsert(t.Context(), second.Key(), staleMetadata)
 
 	// Verify both operations succeeded
 	require.NoError(t, err)
 
 	// Verify the final state - should have the second upsert's metadata
-	final, err := store1.Get(context.Background(), key)
+	final, err := store1.Get(t.Context(), key)
 	require.NoError(t, err)
 
 	concrete, err := datastore.As[TestContractMetadata](final.Metadata)
@@ -517,13 +498,12 @@ func TestCatalogContractMetadataStore_Upsert_StaleVersion(t *testing.T) {
 
 func TestCatalogContractMetadataStore_Delete(t *testing.T) {
 	t.Parallel()
-	store, cleanup := setupTestContractStore(t)
-	defer cleanup()
+	store := setupTestContractStore(t)
 
 	key := datastore.NewContractMetadataKey(12345, "0x1234567890abcdef1234567890abcdef12345678")
 
 	// Execute
-	err := store.Delete(context.Background(), key)
+	err := store.Delete(t.Context(), key)
 
 	// Verify
 	require.Error(t, err)
@@ -548,7 +528,7 @@ func TestCatalogContractMetadataStore_FetchAndFilter(t *testing.T) {
 				metadata1 := newRandomContractMetadata()
 				chainSelector1 := generateRandomContractChainSelector()
 				metadata1.ChainSelector = chainSelector1
-				err := store.Add(context.Background(), metadata1)
+				err := store.Add(t.Context(), metadata1)
 				require.NoError(t, err)
 
 				metadata2 := newRandomContractMetadata()
@@ -558,7 +538,7 @@ func TestCatalogContractMetadataStore_FetchAndFilter(t *testing.T) {
 					chainSelector2 = generateRandomContractChainSelector()
 				}
 				metadata2.ChainSelector = chainSelector2
-				err = store.Add(context.Background(), metadata2)
+				err = store.Add(t.Context(), metadata2)
 				require.NoError(t, err)
 
 				return metadata1, metadata2
@@ -590,7 +570,7 @@ func TestCatalogContractMetadataStore_FetchAndFilter(t *testing.T) {
 				metadata1 := newRandomContractMetadata()
 				chainSelector1 := generateRandomContractChainSelector()
 				metadata1.ChainSelector = chainSelector1
-				err := store.Add(context.Background(), metadata1)
+				err := store.Add(t.Context(), metadata1)
 				require.NoError(t, err)
 
 				metadata2 := newRandomContractMetadata()
@@ -600,7 +580,7 @@ func TestCatalogContractMetadataStore_FetchAndFilter(t *testing.T) {
 					chainSelector2 = generateRandomContractChainSelector()
 				}
 				metadata2.ChainSelector = chainSelector2
-				err = store.Add(context.Background(), metadata2)
+				err = store.Add(t.Context(), metadata2)
 				require.NoError(t, err)
 
 				return metadata1, metadata2
@@ -624,8 +604,7 @@ func TestCatalogContractMetadataStore_FetchAndFilter(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			// Create a fresh store for each test case to avoid concurrency issues
-			store, cleanup := setupTestContractStore(t)
-			defer cleanup()
+			store := setupTestContractStore(t)
 
 			metadata1, metadata2 := tt.setup(store)
 
@@ -635,13 +614,13 @@ func TestCatalogContractMetadataStore_FetchAndFilter(t *testing.T) {
 			// Execute operation
 			switch tt.operation {
 			case "fetch":
-				results, err = store.Fetch(context.Background())
+				results, err = store.Fetch(t.Context())
 			case "filter":
 				var filterFunc datastore.FilterFunc[datastore.ContractMetadataKey, datastore.ContractMetadata]
 				if tt.createFilter != nil {
 					filterFunc = tt.createFilter(metadata1, metadata2)
 				}
-				results, err = store.Filter(context.Background(), filterFunc)
+				results, err = store.Filter(t.Context(), filterFunc)
 			}
 
 			// Verify
@@ -772,8 +751,7 @@ func TestCatalogContractMetadataStore_ConversionHelpers(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			// Create a fresh store for each test case to avoid concurrency issues
-			store, cleanup := setupTestContractStore(t)
-			defer cleanup()
+			store := setupTestContractStore(t)
 
 			tt.test(t, store)
 		})
@@ -974,7 +952,7 @@ func TestCatalogContractMetadataStore_Update_WithCustomUpdater(t *testing.T) {
 			name: "update_with_description_updater",
 			setup: func(store *catalogContractMetadataStore) datastore.ContractMetadataKey {
 				metadata := newRandomContractMetadata()
-				err := store.Add(context.Background(), metadata)
+				err := store.Add(t.Context(), metadata)
 				require.NoError(t, err)
 
 				return datastore.NewContractMetadataKey(metadata.ChainSelector, metadata.Address)
@@ -984,7 +962,7 @@ func TestCatalogContractMetadataStore_Update_WithCustomUpdater(t *testing.T) {
 			expectError:  false,
 			verifyResult: func(t *testing.T, store *catalogContractMetadataStore, key datastore.ContractMetadataKey) {
 				t.Helper()
-				result, err := store.Get(context.Background(), key)
+				result, err := store.Get(t.Context(), key)
 				require.NoError(t, err)
 
 				metadata, err := datastore.As[TestContractMetadata](result.Metadata)
@@ -1000,7 +978,7 @@ func TestCatalogContractMetadataStore_Update_WithCustomUpdater(t *testing.T) {
 				testMeta := metadata.Metadata.(TestContractMetadata)
 				testMeta.Tags = []string{"existing", "initial"}
 				metadata.Metadata = testMeta
-				err := store.Add(context.Background(), metadata)
+				err := store.Add(t.Context(), metadata)
 				require.NoError(t, err)
 
 				return datastore.NewContractMetadataKey(metadata.ChainSelector, metadata.Address)
@@ -1010,7 +988,7 @@ func TestCatalogContractMetadataStore_Update_WithCustomUpdater(t *testing.T) {
 			expectError:  false,
 			verifyResult: func(t *testing.T, store *catalogContractMetadataStore, key datastore.ContractMetadataKey) {
 				t.Helper()
-				result, err := store.Get(context.Background(), key)
+				result, err := store.Get(t.Context(), key)
 				require.NoError(t, err)
 
 				metadata, err := datastore.As[TestContractMetadata](result.Metadata)
@@ -1026,7 +1004,7 @@ func TestCatalogContractMetadataStore_Update_WithCustomUpdater(t *testing.T) {
 			name: "update_with_whole_metadata_merger",
 			setup: func(store *catalogContractMetadataStore) datastore.ContractMetadataKey {
 				metadata := newRandomContractMetadata()
-				err := store.Add(context.Background(), metadata)
+				err := store.Add(t.Context(), metadata)
 				require.NoError(t, err)
 
 				return datastore.NewContractMetadataKey(metadata.ChainSelector, metadata.Address)
@@ -1041,7 +1019,7 @@ func TestCatalogContractMetadataStore_Update_WithCustomUpdater(t *testing.T) {
 			expectError: false,
 			verifyResult: func(t *testing.T, store *catalogContractMetadataStore, key datastore.ContractMetadataKey) {
 				t.Helper()
-				result, err := store.Get(context.Background(), key)
+				result, err := store.Get(t.Context(), key)
 				require.NoError(t, err)
 
 				metadata, err := datastore.As[TestContractMetadata](result.Metadata)
@@ -1061,13 +1039,12 @@ func TestCatalogContractMetadataStore_Update_WithCustomUpdater(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			store, cleanup := setupTestContractStore(t)
-			defer cleanup()
+			store := setupTestContractStore(t)
 
 			key := tt.setup(store)
 
 			// Execute update with custom updater
-			err := store.Update(context.Background(), key, tt.incomingData, datastore.WithUpdater(tt.updater))
+			err := store.Update(t.Context(), key, tt.incomingData, datastore.WithUpdater(tt.updater))
 
 			// Verify
 			if tt.expectError {
@@ -1100,7 +1077,7 @@ func TestCatalogContractMetadataStore_Upsert_WithCustomUpdater(t *testing.T) {
 			name: "update_existing_with_description_updater",
 			setup: func(store *catalogContractMetadataStore) datastore.ContractMetadataKey {
 				metadata := newRandomContractMetadata()
-				err := store.Add(context.Background(), metadata)
+				err := store.Add(t.Context(), metadata)
 				require.NoError(t, err)
 
 				return datastore.NewContractMetadataKey(metadata.ChainSelector, metadata.Address)
@@ -1110,7 +1087,7 @@ func TestCatalogContractMetadataStore_Upsert_WithCustomUpdater(t *testing.T) {
 			expectError:  false,
 			verifyResult: func(t *testing.T, store *catalogContractMetadataStore, key datastore.ContractMetadataKey) {
 				t.Helper()
-				result, err := store.Get(context.Background(), key)
+				result, err := store.Get(t.Context(), key)
 				require.NoError(t, err)
 
 				metadata, err := datastore.As[TestContractMetadata](result.Metadata)
@@ -1129,7 +1106,7 @@ func TestCatalogContractMetadataStore_Upsert_WithCustomUpdater(t *testing.T) {
 				testMeta := metadata.Metadata.(TestContractMetadata)
 				testMeta.Tags = []string{"original", "base"}
 				metadata.Metadata = testMeta
-				err := store.Add(context.Background(), metadata)
+				err := store.Add(t.Context(), metadata)
 				require.NoError(t, err)
 
 				return datastore.NewContractMetadataKey(metadata.ChainSelector, metadata.Address)
@@ -1139,7 +1116,7 @@ func TestCatalogContractMetadataStore_Upsert_WithCustomUpdater(t *testing.T) {
 			expectError:  false,
 			verifyResult: func(t *testing.T, store *catalogContractMetadataStore, key datastore.ContractMetadataKey) {
 				t.Helper()
-				result, err := store.Get(context.Background(), key)
+				result, err := store.Get(t.Context(), key)
 				require.NoError(t, err)
 
 				metadata, err := datastore.As[TestContractMetadata](result.Metadata)
@@ -1155,7 +1132,7 @@ func TestCatalogContractMetadataStore_Upsert_WithCustomUpdater(t *testing.T) {
 			name: "update_existing_with_whole_metadata_merger",
 			setup: func(store *catalogContractMetadataStore) datastore.ContractMetadataKey {
 				metadata := newRandomContractMetadata()
-				err := store.Add(context.Background(), metadata)
+				err := store.Add(t.Context(), metadata)
 				require.NoError(t, err)
 
 				return datastore.NewContractMetadataKey(metadata.ChainSelector, metadata.Address)
@@ -1170,7 +1147,7 @@ func TestCatalogContractMetadataStore_Upsert_WithCustomUpdater(t *testing.T) {
 			expectError: false,
 			verifyResult: func(t *testing.T, store *catalogContractMetadataStore, key datastore.ContractMetadataKey) {
 				t.Helper()
-				result, err := store.Get(context.Background(), key)
+				result, err := store.Get(t.Context(), key)
 				require.NoError(t, err)
 
 				metadata, err := datastore.As[TestContractMetadata](result.Metadata)
@@ -1190,13 +1167,12 @@ func TestCatalogContractMetadataStore_Upsert_WithCustomUpdater(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			store, cleanup := setupTestContractStore(t)
-			defer cleanup()
+			store := setupTestContractStore(t)
 
 			key := tt.setup(store)
 
 			// Execute upsert with custom updater
-			err := store.Upsert(context.Background(), key, tt.incomingData, datastore.WithUpdater(tt.updater))
+			err := store.Upsert(t.Context(), key, tt.incomingData, datastore.WithUpdater(tt.updater))
 
 			// Verify
 			if tt.expectError {
