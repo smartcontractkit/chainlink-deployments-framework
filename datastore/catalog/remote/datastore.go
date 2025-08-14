@@ -48,8 +48,8 @@ func (s *catalogDataStore) commitTransaction() error {
 
 func (s *catalogDataStore) rollbackTransaction() error {
 	request := &pb.DataAccessRequest{
-		Operation: &pb.DataAccessRequest_BeginTransactionRequest{
-			BeginTransactionRequest: &pb.BeginTransactionRequest{},
+		Operation: &pb.DataAccessRequest_RollbackTransactionRequest{
+			RollbackTransactionRequest: &pb.RollbackTransactionRequest{},
 		},
 	}
 	_, err := ThrowAndCatch(s, request)
