@@ -40,9 +40,9 @@ func Test_RPCChainProviderConfig_validate(t *testing.T) {
 			wantErr:        "solidity node url is required",
 		},
 		{
-			name:           "missing deployer account generator",
-			giveConfigFunc: func(c *RPCChainProviderConfig) { c.DeployerAccountGen = nil },
-			wantErr:        "deployer account generator is required",
+			name:           "missing deployer signer generator",
+			giveConfigFunc: func(c *RPCChainProviderConfig) { c.DeployerSignerGen = nil },
+			wantErr:        "deployer signer generator is required",
 		},
 	}
 
@@ -52,9 +52,9 @@ func Test_RPCChainProviderConfig_validate(t *testing.T) {
 
 			// A valid configuration for the RPCChainProviderConfig
 			config := RPCChainProviderConfig{
-				FullNodeURL:        "http://localhost:8090",
-				SolidityNodeURL:    "http://localhost:8091",
-				DeployerAccountGen: AccountRandom(),
+				FullNodeURL:       "http://localhost:8090",
+				SolidityNodeURL:   "http://localhost:8091",
+				DeployerSignerGen: SignerRandom(),
 			}
 
 			if tt.giveConfigFunc != nil {
@@ -93,9 +93,9 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 				t.Helper()
 
 				return RPCChainProviderConfig{
-					FullNodeURL:        "http://localhost:8090",
-					SolidityNodeURL:    "http://localhost:8091",
-					DeployerAccountGen: AccountRandom(),
+					FullNodeURL:       "http://localhost:8090",
+					SolidityNodeURL:   "http://localhost:8091",
+					DeployerSignerGen: SignerRandom(),
 				}
 			},
 		},
@@ -115,18 +115,19 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 			wantErr: "invalid Tron RPC config",
 		},
 		{
-			name:         "fails to generate deployer account",
+			name:         "lazy initialization with invalid private key",
 			giveSelector: chainSelector,
 			giveConfigFunc: func(t *testing.T) RPCChainProviderConfig {
 				t.Helper()
 
 				return RPCChainProviderConfig{
-					FullNodeURL:        "http://localhost:8090",
-					SolidityNodeURL:    "http://localhost:8091",
-					DeployerAccountGen: AccountGenPrivateKey(""), // Invalid private key
+					FullNodeURL:       "http://localhost:8090",
+					SolidityNodeURL:   "http://localhost:8091",
+					DeployerSignerGen: SignerGenPrivateKey(""), // Invalid private key
 				}
 			},
-			wantErr: "failed to generate deployer account",
+			// Now returns error during initialization when GetAddress() is called
+			wantErr: "failed to get deployer address",
 		},
 	}
 
@@ -165,8 +166,10 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 				assert.Equal(t, tt.giveSelector, gotChain.Selector)
 				assert.NotNil(t, gotChain.Client)
 				assert.Equal(t, config.FullNodeURL, gotChain.URL)
-				assert.NotNil(t, gotChain.Keystore)
+				assert.NotNil(t, gotChain.SignHash)
+
 				assert.NotNil(t, gotChain.Address)
+
 				assert.NotNil(t, gotChain.SendAndConfirm)
 				assert.NotNil(t, gotChain.DeployContractAndConfirm)
 				assert.NotNil(t, gotChain.TriggerContractAndConfirm)
@@ -349,12 +352,12 @@ func setupLocalStack(t *testing.T) *tron.Chain {
 	t.Logf("TRON node config: fullNodeUrl=%s, solidityNodeUrl=%s", fullNodeUrl, solidityNodeUrl)
 
 	chainSelector := chain_selectors.TEST_22222222222222222222222222222222222222222222.Selector
-	accountGenerator := AccountGenPrivateKey(blockchain.TRONAccounts.PrivateKeys[0])
+	signerGenerator := SignerGenPrivateKey(blockchain.TRONAccounts.PrivateKeys[0])
 
 	rpcClient := NewRPCChainProvider(chainSelector, RPCChainProviderConfig{
-		FullNodeURL:        fullNodeUrl,
-		SolidityNodeURL:    solidityNodeUrl,
-		DeployerAccountGen: accountGenerator,
+		FullNodeURL:       fullNodeUrl,
+		SolidityNodeURL:   solidityNodeUrl,
+		DeployerSignerGen: signerGenerator,
 	})
 
 	chain, err := rpcClient.Initialize(t.Context())
