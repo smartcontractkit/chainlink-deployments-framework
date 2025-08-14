@@ -271,14 +271,13 @@ func TestCatalogTransactions_WithTransactions_Rollback(t *testing.T) {
 			)
 			assert.NoError(t, err2)
 		})
-
 		t.Run("Read Contract Metadata", func(t *testing.T) {
-			result, err2 := catalog.ContractMetadata().
+			result, err := catalog.ContractMetadata().
 				Get(t.Context(), datastore.NewContractMetadataKey(1, "0x12345678"))
-			require.NoError(t, err2)
+			require.NoError(t, err)
 			require.NotNil(t, result)
-			metadata, err2 := datastore.As[TestContractMetadata](result.Metadata)
-			require.NoError(t, err2)
+			metadata, err := datastore.As[TestContractMetadata](result.Metadata)
+			require.NoError(t, err)
 			require.NotNil(t, metadata)
 
 			assert.Equal(t, "SomeContract", metadata.Name)
@@ -311,6 +310,70 @@ func TestCatalogTransactions_WithTransactions_Rollback(t *testing.T) {
 		)
 		require.ErrorContains(t, err, "no contract metadata record can be found")
 	})
+}
+
+//nolint:paralleltest
+func TestCatalogTransactions_WithTransactions_Panic(t *testing.T) {
+	t.Parallel()
+
+	t.Log("Setup Store")
+	catalog, err := setupStore(t, t.Context())
+	if err != nil {
+		t.Skipf("%s", err)
+		return
+	}
+	defer func() {
+		// Do this check in a defer, since the panic logic handling in WithTransaction re-panics
+		r := recover()
+		assert.NotNil(t, r)
+		assert.Equal(t, "foo", r)
+		t.Run("Ensure write was rolled-back", func(t *testing.T) {
+			_, err := catalog.ContractMetadata().Get(
+				t.Context(),
+				datastore.NewContractMetadataKey(1, "0x12345678"),
+				datastore.IgnoreTransactionsGetOption,
+			)
+			require.ErrorContains(t, err, "no contract metadata record can be found")
+		})
+	}()
+
+	err = catalog.WithTransaction(t.Context(), func(ctx context.Context, catalog datastore.BaseCatalogStore) error {
+		t.Run("Add Contract Metadata", func(t *testing.T) {
+			metadata := TestContractMetadata{
+				Name:        "SomeContract",
+				Version:     "4.0.0",
+				Description: "New contract description",
+				Tags:        []string{"first"},
+			}
+			err2 := catalog.ContractMetadata().Add(
+				t.Context(),
+				datastore.ContractMetadata{
+					Address:       "0x12345678",
+					ChainSelector: 1,
+					Metadata:      metadata,
+				},
+			)
+			assert.NoError(t, err2)
+		})
+
+		t.Run("Read Contract Metadata", func(t *testing.T) {
+			result, err2 := catalog.ContractMetadata().
+				Get(t.Context(), datastore.NewContractMetadataKey(1, "0x12345678"))
+			require.NoError(t, err2)
+			require.NotNil(t, result)
+			metadata, err2 := datastore.As[TestContractMetadata](result.Metadata)
+			require.NoError(t, err2)
+			require.NotNil(t, metadata)
+
+			assert.Equal(t, "SomeContract", metadata.Name)
+			assert.Equal(t, "4.0.0", metadata.Version)
+			assert.Equal(t, "New contract description", metadata.Description)
+			assert.Equal(t, []string{"first"}, metadata.Tags)
+		})
+		panic("foo")
+		return nil
+	})
+
 }
 
 //nolint:paralleltest

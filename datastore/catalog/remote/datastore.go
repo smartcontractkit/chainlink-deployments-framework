@@ -2,7 +2,7 @@ package remote
 
 import (
 	"context"
-	"fmt"
+	"errors"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	pb "github.com/smartcontractkit/chainlink-deployments-framework/datastore/catalog/remote/internal/protos"
@@ -57,26 +57,29 @@ func (s *catalogDataStore) rollbackTransaction() error {
 	return err
 }
 
-func (s *catalogDataStore) WithTransaction(ctx context.Context, fn datastore.TransactionLogic) error {
-	err := s.beginTransaction()
+func (s *catalogDataStore) WithTransaction(ctx context.Context, fn datastore.TransactionLogic) (err error) {
+	err = s.beginTransaction()
 	if err != nil {
 		return err
 	}
-	err = fn(ctx, s)
-	if err != nil {
-		err2 := s.rollbackTransaction()
-		if err2 != nil {
-			return fmt.Errorf("failed to rollback transaction: %w: %w", err, err2)
+
+	var txerr error
+	defer func() {
+		if r := recover(); r != nil {
+			// rollback before re-panicking
+			_ = s.rollbackTransaction()
+			panic(r)
+		} else if txerr != nil {
+			// non panic error from the transaction logic itself
+			err = errors.Join(err, s.rollbackTransaction())
+		} else {
+			// everything went fine
+			err = s.commitTransaction()
 		}
+	}()
 
-		return err
-	}
-	err = s.commitTransaction()
-	if err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
-	}
-
-	return nil
+	txerr = fn(ctx, s)
+	return txerr
 }
 
 func NewCatalogDataStore(config CatalogDataStoreConfig) *catalogDataStore {
