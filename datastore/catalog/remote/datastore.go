@@ -79,6 +79,7 @@ func (s *catalogDataStore) WithTransaction(ctx context.Context, fn datastore.Tra
 	}()
 
 	txerr = fn(ctx, s)
+
 	return txerr
 }
 
