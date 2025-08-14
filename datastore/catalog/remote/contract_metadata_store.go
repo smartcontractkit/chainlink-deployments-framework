@@ -1,10 +1,11 @@
-package catalog
+package remote
 
 import (
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 	"sync"
 
@@ -15,25 +16,25 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 )
 
-type catalogChainMetadataStoreConfig struct {
+type catalogContractMetadataStoreConfig struct {
 	Domain      string
 	Environment string
-	Client      CatalogClient
+	Client      *CatalogClient
 }
 
-type catalogChainMetadataStore struct {
+type catalogContractMetadataStore struct {
 	domain      string
 	environment string
-	client      CatalogClient
+	client      *CatalogClient
 	// versionCache tracks the current version of each record for optimistic concurrency control
 	mu           sync.RWMutex
 	versionCache map[string]int32
 }
 
-var _ datastore.MutableStoreV2[datastore.ChainMetadataKey, datastore.ChainMetadata] = &catalogChainMetadataStore{}
+var _ datastore.MutableStoreV2[datastore.ContractMetadataKey, datastore.ContractMetadata] = &catalogContractMetadataStore{}
 
-func newCatalogChainMetadataStore(cfg catalogChainMetadataStoreConfig) *catalogChainMetadataStore {
-	return &catalogChainMetadataStore{
+func newCatalogContractMetadataStore(cfg catalogContractMetadataStoreConfig) *catalogContractMetadataStore {
+	return &catalogContractMetadataStore{
 		domain:       cfg.Domain,
 		environment:  cfg.Environment,
 		client:       cfg.Client,
@@ -42,7 +43,7 @@ func newCatalogChainMetadataStore(cfg catalogChainMetadataStoreConfig) *catalogC
 }
 
 // getVersion retrieves the cached version for a record, defaulting to 0 for new records
-func (s *catalogChainMetadataStore) getVersion(key datastore.ChainMetadataKey) int32 {
+func (s *catalogContractMetadataStore) getVersion(key datastore.ContractMetadataKey) int32 {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	cacheKey := key.String()
@@ -54,39 +55,41 @@ func (s *catalogChainMetadataStore) getVersion(key datastore.ChainMetadataKey) i
 }
 
 // setVersion updates the cached version for a record
-func (s *catalogChainMetadataStore) setVersion(key datastore.ChainMetadataKey, version int32) {
+func (s *catalogContractMetadataStore) setVersion(key datastore.ContractMetadataKey, version int32) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	cacheKey := key.String()
 	s.versionCache[cacheKey] = version
 }
 
-// keyToFilter converts a ChainMetadataKey to a ChainMetadataKeyFilter for gRPC requests
-func (s *catalogChainMetadataStore) keyToFilter(key datastore.ChainMetadataKey) *pb.ChainMetadataKeyFilter {
-	return &pb.ChainMetadataKeyFilter{
+// keyToFilter converts a ContractMetadataKey to a ContractMetadataKeyFilter for gRPC requests
+func (s *catalogContractMetadataStore) keyToFilter(key datastore.ContractMetadataKey) *pb.ContractMetadataKeyFilter {
+	return &pb.ContractMetadataKeyFilter{
 		Domain:        wrapperspb.String(s.domain),
 		Environment:   wrapperspb.String(s.environment),
 		ChainSelector: wrapperspb.UInt64(key.ChainSelector()),
+		Address:       wrapperspb.String(key.Address()),
 	}
 }
 
-// protoToChainMetadata converts a protobuf ChainMetadata to a datastore ChainMetadata
-func (s *catalogChainMetadataStore) protoToChainMetadata(protoRecord *pb.ChainMetadata) (datastore.ChainMetadata, error) {
+// protoToContractMetadata converts a protobuf ContractMetadata to a datastore ContractMetadata
+func (s *catalogContractMetadataStore) protoToContractMetadata(protoRecord *pb.ContractMetadata) (datastore.ContractMetadata, error) {
 	var metadata any
 	if protoRecord.Metadata != "" {
 		if err := json.Unmarshal([]byte(protoRecord.Metadata), &metadata); err != nil {
-			return datastore.ChainMetadata{}, fmt.Errorf("failed to unmarshal metadata JSON: %w", err)
+			return datastore.ContractMetadata{}, fmt.Errorf("failed to unmarshal metadata JSON: %w", err)
 		}
 	}
 
-	return datastore.ChainMetadata{
+	return datastore.ContractMetadata{
+		Address:       protoRecord.Address,
 		ChainSelector: protoRecord.ChainSelector,
 		Metadata:      metadata,
 	}, nil
 }
 
-// chainMetadataToProto converts a datastore ChainMetadata to a protobuf ChainMetadata
-func (s *catalogChainMetadataStore) chainMetadataToProto(record datastore.ChainMetadata, version int32) *pb.ChainMetadata {
+// contractMetadataToProto converts a datastore ContractMetadata to a protobuf ContractMetadata
+func (s *catalogContractMetadataStore) contractMetadataToProto(record datastore.ContractMetadata, version int32) *pb.ContractMetadata {
 	var metadataJSON string
 	if record.Metadata != nil {
 		if metadataBytes, err := json.Marshal(record.Metadata); err == nil {
@@ -94,65 +97,79 @@ func (s *catalogChainMetadataStore) chainMetadataToProto(record datastore.ChainM
 		}
 	}
 
-	return &pb.ChainMetadata{
+	return &pb.ContractMetadata{
 		Domain:        s.domain,
 		Environment:   s.environment,
 		ChainSelector: record.ChainSelector,
+		Address:       record.Address,
 		Metadata:      metadataJSON,
 		RowVersion:    version,
 	}
 }
-
-func (s *catalogChainMetadataStore) Get(ctx context.Context, key datastore.ChainMetadataKey) (datastore.ChainMetadata, error) {
-	stream, err := s.client.DataAccess(ctx)
-	if err != nil {
-		return datastore.ChainMetadata{}, fmt.Errorf("failed to create gRPC stream: %w", err)
+func (s *catalogContractMetadataStore) Get(
+	_ context.Context,
+	key datastore.ContractMetadataKey,
+	options ...datastore.GetOption,
+) (datastore.ContractMetadata, error) {
+	ignoreTransactions := false
+	for _, option := range options {
+		switch option {
+		case datastore.IgnoreTransactionsGetOption:
+			ignoreTransactions = true
+		}
 	}
-	defer func() {
-		_ = stream.CloseSend()
-	}()
+
+	return s.get(ignoreTransactions, key)
+}
+
+func (s *catalogContractMetadataStore) get(ignoreTransaction bool, key datastore.ContractMetadataKey) (datastore.ContractMetadata, error) {
+	stream, err := s.client.DataAccess()
+	if err != nil {
+		return datastore.ContractMetadata{}, fmt.Errorf("failed to create gRPC stream: %w", err)
+	}
 
 	// Send find request
 	findReq := &pb.DataAccessRequest{
-		Operation: &pb.DataAccessRequest_ChainMetadataFindRequest{
-			ChainMetadataFindRequest: &pb.ChainMetadataFindRequest{
-				KeyFilter: s.keyToFilter(key),
+		Operation: &pb.DataAccessRequest_ContractMetadataFindRequest{
+			ContractMetadataFindRequest: &pb.ContractMetadataFindRequest{
+				KeyFilter:         s.keyToFilter(key),
+				IgnoreTransaction: ignoreTransaction,
 			},
 		},
 	}
 
 	if sendErr := stream.Send(findReq); sendErr != nil {
-		return datastore.ChainMetadata{}, fmt.Errorf("failed to send find request: %w", sendErr)
+		return datastore.ContractMetadata{}, fmt.Errorf("failed to send find request: %w", sendErr)
 	}
 
 	// Receive response
 	resp, err := stream.Recv()
 	if err != nil {
-		return datastore.ChainMetadata{}, fmt.Errorf("failed to receive response: %w", err)
+		return datastore.ContractMetadata{}, fmt.Errorf("failed to receive response: %w", err)
 	}
 
 	// Check for errors in the response
 	if resp.Status != nil && !resp.Status.Succeeded {
 		if strings.Contains(resp.Status.GetError(), "No records found") {
-			return datastore.ChainMetadata{}, datastore.ErrChainMetadataNotFound
+			return datastore.ContractMetadata{}, datastore.ErrContractMetadataNotFound
 		}
 
-		return datastore.ChainMetadata{}, fmt.Errorf("request failed: %s", resp.Status.Error)
+		return datastore.ContractMetadata{}, fmt.Errorf("request failed: %s", resp.Status.Error)
 	}
 
-	findResp := resp.GetChainMetadataFindResponse()
+	findResp := resp.GetContractMetadataFindResponse()
 	if findResp == nil {
-		return datastore.ChainMetadata{}, errors.New("unexpected response type")
+		return datastore.ContractMetadata{}, errors.New("unexpected response type")
 	}
 
 	if len(findResp.References) == 0 {
-		return datastore.ChainMetadata{}, datastore.ErrChainMetadataNotFound
+		return datastore.ContractMetadata{}, datastore.ErrContractMetadataNotFound
 	}
 
 	protoRecord := findResp.References[0]
-	record, err := s.protoToChainMetadata(protoRecord)
+	record, err := s.protoToContractMetadata(protoRecord)
 	if err != nil {
-		return datastore.ChainMetadata{}, err
+		return datastore.ContractMetadata{}, err
 	}
 
 	// Cache the version for future operations
@@ -161,21 +178,18 @@ func (s *catalogChainMetadataStore) Get(ctx context.Context, key datastore.Chain
 	return record, nil
 }
 
-// Fetch returns a copy of all ChainMetadata in the catalog.
-func (s *catalogChainMetadataStore) Fetch(ctx context.Context) ([]datastore.ChainMetadata, error) {
-	stream, err := s.client.DataAccess(ctx)
+// Fetch returns a copy of all ContractMetadata in the catalog.
+func (s *catalogContractMetadataStore) Fetch(_ context.Context) ([]datastore.ContractMetadata, error) {
+	stream, err := s.client.DataAccess()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gRPC stream: %w", err)
 	}
-	defer func() {
-		_ = stream.CloseSend()
-	}()
 
 	// Send find request with domain and environment filter only (fetch all)
 	findReq := &pb.DataAccessRequest{
-		Operation: &pb.DataAccessRequest_ChainMetadataFindRequest{
-			ChainMetadataFindRequest: &pb.ChainMetadataFindRequest{
-				KeyFilter: &pb.ChainMetadataKeyFilter{
+		Operation: &pb.DataAccessRequest_ContractMetadataFindRequest{
+			ContractMetadataFindRequest: &pb.ContractMetadataFindRequest{
+				KeyFilter: &pb.ContractMetadataKeyFilter{
 					Domain:      wrapperspb.String(s.domain),
 					Environment: wrapperspb.String(s.environment),
 				},
@@ -198,16 +212,16 @@ func (s *catalogChainMetadataStore) Fetch(ctx context.Context) ([]datastore.Chai
 		return nil, fmt.Errorf("request failed: %s", resp.Status.Error)
 	}
 
-	findResp := resp.GetChainMetadataFindResponse()
+	findResp := resp.GetContractMetadataFindResponse()
 	if findResp == nil {
 		return nil, errors.New("unexpected response type")
 	}
 
-	records := make([]datastore.ChainMetadata, 0, len(findResp.References))
+	records := make([]datastore.ContractMetadata, 0, len(findResp.References))
 	for _, protoRecord := range findResp.References {
-		record, err := s.protoToChainMetadata(protoRecord)
-		if err != nil {
-			return nil, fmt.Errorf("failed to convert proto to chain metadata: %w", err)
+		record, convErr := s.protoToContractMetadata(protoRecord)
+		if convErr != nil {
+			return nil, fmt.Errorf("failed to convert proto to contract metadata: %w", err)
 		}
 
 		// Cache the version for future operations
@@ -219,13 +233,13 @@ func (s *catalogChainMetadataStore) Fetch(ctx context.Context) ([]datastore.Chai
 	return records, nil
 }
 
-// Filter returns a copy of all ChainMetadata in the catalog that match the provided filter.
+// Filter returns a copy of all ContractMetadata in the catalog that match the provided filter.
 // Filters are applied in the order they are provided.
 // If no filters are provided, all records are returned.
-func (s *catalogChainMetadataStore) Filter(ctx context.Context, filters ...datastore.FilterFunc[datastore.ChainMetadataKey, datastore.ChainMetadata]) ([]datastore.ChainMetadata, error) {
+func (s *catalogContractMetadataStore) Filter(ctx context.Context, filters ...datastore.FilterFunc[datastore.ContractMetadataKey, datastore.ContractMetadata]) ([]datastore.ContractMetadata, error) {
 	records, err := s.Fetch(ctx)
 	if err != nil {
-		return []datastore.ChainMetadata{}, fmt.Errorf("failed to fetch records: %w", err)
+		return []datastore.ContractMetadata{}, fmt.Errorf("failed to fetch records: %w", err)
 	}
 
 	for _, filter := range filters {
@@ -235,11 +249,11 @@ func (s *catalogChainMetadataStore) Filter(ctx context.Context, filters ...datas
 	return records, nil
 }
 
-func (s *catalogChainMetadataStore) Add(ctx context.Context, record datastore.ChainMetadata) error {
-	return s.editRecord(ctx, record, pb.EditSemantics_SEMANTICS_INSERT)
+func (s *catalogContractMetadataStore) Add(_ context.Context, record datastore.ContractMetadata) error {
+	return s.editRecord(record, pb.EditSemantics_SEMANTICS_INSERT)
 }
 
-func (s *catalogChainMetadataStore) Upsert(ctx context.Context, key datastore.ChainMetadataKey, metadata any, opts ...datastore.UpdateOption) error {
+func (s *catalogContractMetadataStore) Upsert(ctx context.Context, key datastore.ContractMetadataKey, metadata any, opts ...datastore.UpdateOption) error {
 	// Build options with defaults
 	options := &datastore.UpdateOptions{
 		Updater: datastore.IdentityUpdaterF, // default updater
@@ -254,13 +268,14 @@ func (s *catalogChainMetadataStore) Upsert(ctx context.Context, key datastore.Ch
 	currentRecord, err := s.Get(ctx, key)
 	if err != nil {
 		// If record doesn't exist, just insert the new record directly
-		if errors.Is(err, datastore.ErrChainMetadataNotFound) {
-			record := datastore.ChainMetadata{
+		if errors.Is(err, datastore.ErrContractMetadataNotFound) {
+			record := datastore.ContractMetadata{
+				Address:       key.Address(),
 				ChainSelector: key.ChainSelector(),
 				Metadata:      metadata,
 			}
 
-			return s.editRecord(ctx, record, pb.EditSemantics_SEMANTICS_INSERT)
+			return s.editRecord(record, pb.EditSemantics_SEMANTICS_INSERT)
 		}
 
 		return fmt.Errorf("failed to get current record for upsert: %w", err)
@@ -273,15 +288,16 @@ func (s *catalogChainMetadataStore) Upsert(ctx context.Context, key datastore.Ch
 	}
 
 	// Create record with final metadata
-	record := datastore.ChainMetadata{
+	record := datastore.ContractMetadata{
+		Address:       key.Address(),
 		ChainSelector: key.ChainSelector(),
 		Metadata:      finalMetadata,
 	}
 
-	return s.editRecord(ctx, record, pb.EditSemantics_SEMANTICS_UPSERT)
+	return s.editRecord(record, pb.EditSemantics_SEMANTICS_UPSERT)
 }
 
-func (s *catalogChainMetadataStore) Update(ctx context.Context, key datastore.ChainMetadataKey, metadata any, opts ...datastore.UpdateOption) error {
+func (s *catalogContractMetadataStore) Update(ctx context.Context, key datastore.ContractMetadataKey, metadata any, opts ...datastore.UpdateOption) error {
 	// Build options with defaults
 	options := &datastore.UpdateOptions{
 		Updater: datastore.IdentityUpdaterF, // default updater
@@ -295,8 +311,8 @@ func (s *catalogChainMetadataStore) Update(ctx context.Context, key datastore.Ch
 	// Get current record - it must exist for update
 	currentRecord, err := s.Get(ctx, key)
 	if err != nil {
-		if errors.Is(err, datastore.ErrChainMetadataNotFound) {
-			return datastore.ErrChainMetadataNotFound
+		if errors.Is(err, datastore.ErrContractMetadataNotFound) {
+			return datastore.ErrContractMetadataNotFound
 		}
 
 		return fmt.Errorf("failed to get current record for update: %w", err)
@@ -309,27 +325,25 @@ func (s *catalogChainMetadataStore) Update(ctx context.Context, key datastore.Ch
 	}
 
 	// Create record with final metadata
-	record := datastore.ChainMetadata{
+	record := datastore.ContractMetadata{
+		Address:       key.Address(),
 		ChainSelector: key.ChainSelector(),
 		Metadata:      finalMetadata,
 	}
 
-	return s.editRecord(ctx, record, pb.EditSemantics_SEMANTICS_UPDATE)
+	return s.editRecord(record, pb.EditSemantics_SEMANTICS_UPDATE)
 }
 
-func (s *catalogChainMetadataStore) Delete(ctx context.Context, key datastore.ChainMetadataKey) error {
-	return errors.New("delete operation not supported for catalog chain metadata store")
+func (s *catalogContractMetadataStore) Delete(_ context.Context, _ datastore.ContractMetadataKey) error {
+	return errors.New("delete operation not supported for catalog contract metadata store")
 }
 
 // editRecord is a helper method that handles Add, Upsert, and Update operations
-func (s *catalogChainMetadataStore) editRecord(ctx context.Context, record datastore.ChainMetadata, semantics pb.EditSemantics) error {
-	stream, err := s.client.DataAccess(ctx)
+func (s *catalogContractMetadataStore) editRecord(record datastore.ContractMetadata, semantics pb.EditSemantics) error {
+	stream, err := s.client.DataAccess()
 	if err != nil {
 		return fmt.Errorf("failed to create gRPC stream: %w", err)
 	}
-	defer func() {
-		_ = stream.CloseSend()
-	}()
 
 	// Get the current version for this record
 	key := record.Key()
@@ -337,9 +351,9 @@ func (s *catalogChainMetadataStore) editRecord(ctx context.Context, record datas
 
 	// Send edit request
 	editReq := &pb.DataAccessRequest{
-		Operation: &pb.DataAccessRequest_ChainMetadataEditRequest{
-			ChainMetadataEditRequest: &pb.ChainMetadataEditRequest{
-				Record:    s.chainMetadataToProto(record, version),
+		Operation: &pb.DataAccessRequest_ContractMetadataEditRequest{
+			ContractMetadataEditRequest: &pb.ContractMetadataEditRequest{
+				Record:    s.contractMetadataToProto(record, version),
 				Semantics: semantics,
 			},
 		},
@@ -350,9 +364,13 @@ func (s *catalogChainMetadataStore) editRecord(ctx context.Context, record datas
 	}
 
 	// Receive response
-	resp, err := stream.Recv()
-	if err != nil {
-		return fmt.Errorf("failed to receive response: %w", err)
+	resp, recvErr := stream.Recv()
+	if recvErr != nil {
+		if errors.Is(recvErr, io.EOF) {
+			return errors.New("unexpected end of stream")
+		}
+
+		return fmt.Errorf("failed to receive response: %w", recvErr)
 	}
 
 	// Check for errors in the edit response
@@ -361,15 +379,15 @@ func (s *catalogChainMetadataStore) editRecord(ctx context.Context, record datas
 
 		// Check for specific error conditions
 		if strings.Contains(errorMsg, "no record found to update for") && semantics == pb.EditSemantics_SEMANTICS_UPDATE {
-			return datastore.ErrChainMetadataNotFound
+			return datastore.ErrContractMetadataNotFound
 		} else if strings.Contains(errorMsg, "incorrect row version") && (semantics == pb.EditSemantics_SEMANTICS_UPDATE || semantics == pb.EditSemantics_SEMANTICS_UPSERT) {
-			return datastore.ErrChainMetadataStale
+			return datastore.ErrContractMetadataStale
 		}
 
 		return fmt.Errorf("edit request failed: %s", resp.Status.Error)
 	}
 
-	editResp := resp.GetChainMetadataEditResponse()
+	editResp := resp.GetContractMetadataEditResponse()
 	if editResp == nil {
 		return errors.New("unexpected response type")
 	}

@@ -134,6 +134,47 @@ func ChainFamilyFilter(chainFamily string) NetworkFilter {
 	}
 }
 
+// transformHTTPURLs transforms the HTTP URLs of the networks in the config.
+func (c *Config) transformHTTPURLs(transform URLTransformer) {
+	for k, n := range c.networks {
+		// Transform the RPC URLS
+		for i, rpc := range n.RPCs {
+			rpc.HTTPURL = transform(rpc.HTTPURL)
+
+			n.RPCs[i] = rpc
+		}
+
+		// Transform EVM Metadata URLs
+		md, err := DecodeMetadata[EVMMetadata](n.Metadata)
+		if err != nil {
+			continue // skip this network since metadata cannot be decoded
+		}
+
+		md.AnvilConfig.ArchiveHTTPURL = transform(md.AnvilConfig.ArchiveHTTPURL)
+		n.Metadata = md
+
+		// Update the network with the modifications. We need to do this the network is a value
+		// type, so we need to update the map with the new network.
+		c.networks[k] = n
+	}
+}
+
+// transformWSURLs transforms the websocket URLs of the networks in the config.
+func (c *Config) transformWSURLs(transform URLTransformer) {
+	for k, n := range c.networks {
+		// Transform the RPC URLS
+		for i, rpc := range n.RPCs {
+			rpc.WSURL = transform(rpc.WSURL)
+
+			n.RPCs[i] = rpc
+		}
+
+		// Update the network with the modifications. We need to do this the network is a value
+		// type, so we need to update the map with the new network.
+		c.networks[k] = n
+	}
+}
+
 // Load loads configuration from the specified file paths, and merges them into a single Config.
 //
 // It accepts load options to customize the loading behavior.
@@ -161,28 +202,40 @@ func Load(filePaths []string, opts ...LoadOption) (*Config, error) {
 		cfg.Merge(&fileCfg)
 	}
 
-	// Apply the URL transformer if one is provided.
-	if loadCfg.URLTransformer != nil {
-		loadCfg.URLTransformer(cfg)
+	// Apply the URL transformers if provided
+	if loadCfg.HTTPURLTransformer != nil {
+		cfg.transformHTTPURLs(loadCfg.HTTPURLTransformer)
+	}
+
+	if loadCfg.WSURLTransformer != nil {
+		cfg.transformWSURLs(loadCfg.WSURLTransformer)
 	}
 
 	return cfg, nil
 }
 
-// LoadOption defines a function that modifies the load configuration.
+// LoadOption defines a function which modifies the load configuration.
 type LoadOption func(*loadConfig)
-
-// URLTransformer is a function that transforms the URLs in the Config.
-type URLTransformer func(*Config)
 
 // loadConfig holds the configuration for loading the config.
 type loadConfig struct {
-	URLTransformer URLTransformer
+	HTTPURLTransformer URLTransformer
+	WSURLTransformer   URLTransformer
 }
 
-// WithURLTransform allows setting a custom URL transformer for the config.
-func WithURLTransform(t URLTransformer) func(opts *loadConfig) {
+// URLTransformer is a function that transforms a URL.
+type URLTransformer func(string) string
+
+// WithHTTPURLTransformer transforms the HTTP URLs of the networks RPCs after loading.
+func WithHTTPURLTransformer(t URLTransformer) LoadOption {
 	return func(opts *loadConfig) {
-		opts.URLTransformer = t
+		opts.HTTPURLTransformer = t
+	}
+}
+
+// WithWSURLTransformer transforms the websocket URLs of the networks RPCs after loading.
+func WithWSURLTransformer(t URLTransformer) LoadOption {
+	return func(opts *loadConfig) {
+		opts.WSURLTransformer = t
 	}
 }

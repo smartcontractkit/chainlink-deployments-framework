@@ -30,7 +30,7 @@ func TestConfirmRetryOpts_DefaultsAndOverrides(t *testing.T) {
 	require.True(t, hasCtx)
 
 	// Test with custom options
-	customOpts := confirmRetryOpts(ctx, tron.ConfirmRetryOptions{
+	customOpts := confirmRetryOpts(ctx, &tron.ConfirmRetryOptions{
 		RetryAttempts: 3,
 		RetryDelay:    50 * time.Millisecond,
 	})

@@ -1,4 +1,4 @@
-package catalog
+package remote
 
 import (
 	"context"
@@ -17,13 +17,13 @@ import (
 type catalogAddressRefStoreConfig struct {
 	Domain      string
 	Environment string
-	Client      CatalogClient
+	Client      *CatalogClient
 }
 
 type catalogAddressRefStore struct {
 	domain      string
 	environment string
-	client      CatalogClient
+	client      *CatalogClient
 }
 
 // Ensure catalogAddressRefStore implements the V2 interface
@@ -37,20 +37,33 @@ func newCatalogAddressRefStore(cfg catalogAddressRefStoreConfig) *catalogAddress
 	}
 }
 
-func (s *catalogAddressRefStore) Get(ctx context.Context, key datastore.AddressRefKey) (datastore.AddressRef, error) {
+func (s *catalogAddressRefStore) Get(_ context.Context, key datastore.AddressRefKey, options ...datastore.GetOption) (datastore.AddressRef, error) {
+	ignoreTransactions := false
+	for _, option := range options {
+		switch option {
+		case datastore.IgnoreTransactionsGetOption:
+			ignoreTransactions = true
+		}
+	}
+
+	return s.get(ignoreTransactions, key)
+}
+
+func (s *catalogAddressRefStore) get(
+	ignoreTransaction bool,
+	key datastore.AddressRefKey,
+) (datastore.AddressRef, error) {
 	// Create a bidirectional stream
-	stream, err := s.client.DataAccess(ctx)
+	stream, err := s.client.DataAccess()
 	if err != nil {
 		return datastore.AddressRef{}, fmt.Errorf("failed to create data access stream: %w", err)
 	}
-	defer func() {
-		_ = stream.CloseSend()
-	}()
 
 	// Create the find request with the key converted to a filter
 	filter := s.keyToFilter(key)
 	findRequest := &pb.AddressReferenceFindRequest{
-		KeyFilter: filter,
+		KeyFilter:         filter,
+		IgnoreTransaction: ignoreTransaction,
 	}
 
 	// Send the request
@@ -101,15 +114,12 @@ func (s *catalogAddressRefStore) Get(ctx context.Context, key datastore.AddressR
 }
 
 // Fetch returns a copy of all AddressRef in the catalog.
-func (s *catalogAddressRefStore) Fetch(ctx context.Context) ([]datastore.AddressRef, error) {
+func (s *catalogAddressRefStore) Fetch(_ context.Context) ([]datastore.AddressRef, error) {
 	// Create a bidirectional stream
-	stream, err := s.client.DataAccess(ctx)
+	stream, err := s.client.DataAccess()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create data access stream: %w", err)
 	}
-	defer func() {
-		_ = stream.CloseSend()
-	}()
 
 	// Create the find request with an empty filter to get all records
 	// We only filter by domain and environment to get all records for this store's scope
@@ -167,7 +177,10 @@ func (s *catalogAddressRefStore) Fetch(ctx context.Context) ([]datastore.Address
 // Filter returns a copy of all AddressRef in the catalog that match the provided filter.
 // Filters are applied in the order they are provided.
 // If no filters are provided, all records are returned.
-func (s *catalogAddressRefStore) Filter(ctx context.Context, filters ...datastore.FilterFunc[datastore.AddressRefKey, datastore.AddressRef]) ([]datastore.AddressRef, error) {
+func (s *catalogAddressRefStore) Filter(
+	ctx context.Context,
+	filters ...datastore.FilterFunc[datastore.AddressRefKey, datastore.AddressRef],
+) ([]datastore.AddressRef, error) {
 	// First, fetch all records from the catalog
 	records, err := s.Fetch(ctx)
 	if err != nil {
@@ -184,15 +197,12 @@ func (s *catalogAddressRefStore) Filter(ctx context.Context, filters ...datastor
 	return records, nil
 }
 
-func (s *catalogAddressRefStore) Add(ctx context.Context, record datastore.AddressRef) error {
+func (s *catalogAddressRefStore) Add(_ context.Context, record datastore.AddressRef) error {
 	// Create a bidirectional stream
-	stream, err := s.client.DataAccess(ctx)
+	stream, err := s.client.DataAccess()
 	if err != nil {
 		return fmt.Errorf("failed to create data access stream: %w", err)
 	}
-	defer func() {
-		_ = stream.CloseSend()
-	}()
 
 	// Convert the datastore record to protobuf
 	protoRef := s.addressRefToProto(record)
@@ -234,15 +244,12 @@ func (s *catalogAddressRefStore) Add(ctx context.Context, record datastore.Addre
 	return nil
 }
 
-func (s *catalogAddressRefStore) Upsert(ctx context.Context, record datastore.AddressRef) error {
+func (s *catalogAddressRefStore) Upsert(_ context.Context, record datastore.AddressRef) error {
 	// Create a bidirectional stream
-	stream, err := s.client.DataAccess(ctx)
+	stream, err := s.client.DataAccess()
 	if err != nil {
 		return fmt.Errorf("failed to create data access stream: %w", err)
 	}
-	defer func() {
-		_ = stream.CloseSend()
-	}()
 
 	// Convert the datastore record to protobuf
 	protoRef := s.addressRefToProto(record)
@@ -299,13 +306,10 @@ func (s *catalogAddressRefStore) Update(ctx context.Context, record datastore.Ad
 
 	// Record exists, proceed with updating it
 	// Create a bidirectional stream
-	stream, streamErr := s.client.DataAccess(ctx)
+	stream, streamErr := s.client.DataAccess()
 	if streamErr != nil {
 		return fmt.Errorf("failed to create data access stream: %w", streamErr)
 	}
-	defer func() {
-		_ = stream.CloseSend()
-	}()
 
 	// Convert the datastore record to protobuf
 	protoRef := s.addressRefToProto(record)
@@ -347,7 +351,7 @@ func (s *catalogAddressRefStore) Update(ctx context.Context, record datastore.Ad
 	return nil
 }
 
-func (s *catalogAddressRefStore) Delete(ctx context.Context, key datastore.AddressRefKey) error {
+func (s *catalogAddressRefStore) Delete(_ context.Context, _ datastore.AddressRefKey) error {
 	// The catalog API does not support delete operations
 	// This is intentional as catalogs are typically immutable reference stores
 	return errors.New("delete operation not supported by catalog API")

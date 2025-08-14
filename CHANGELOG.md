@@ -1,5 +1,48 @@
 # chainlink-deployments-framework
 
+## 0.24.0
+
+### Minor Changes
+
+- [#270](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/270) [`38e003a`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/38e003a9baf16313515bd8344e729e7a220b5a7b) Thanks [@jkongie](https://github.com/jkongie)! - [BREAKING] Removes `WithRPCURLTransformer` load option with 2 separated options targeting HTTP and WS separately (`WithHTTPURLTransformer` and `WithWSURLTransformer`).
+
+- [#261](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/261) [`023116b`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/023116b9b4eb7f9e0e645f67b72af6ce159d217c) Thanks [@ajaskolski](https://github.com/ajaskolski)! - refactor: moved domain from cld pkg/migrations to cldf
+
+## 0.23.0
+
+### Minor Changes
+
+- [#257](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/257) [`f051994`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/f0519945aca878c4a6728a26c0c818aea5498e5b) Thanks [@RodrigoAD](https://github.com/RodrigoAD)! - Add Sui chain providers for RPC and CTF
+
+- [#264](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/264) [`b9ef148`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/b9ef148b8e2b29d5651b6552ef2bd60120dd0aad) Thanks [@eduard-cl](https://github.com/eduard-cl)! - Update chainlink-evm gethwrappers version
+
+## 0.22.0
+
+### Minor Changes
+
+- [#249](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/249) [`01b951b`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/01b951bc5bf9c1ba8edd1a620819a2c023409edd) Thanks [@ajaskolski](https://github.com/ajaskolski)! - refactor: migrates nodes management logic from cld
+
+- [#259](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/259) [`1d96752`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/1d9675226efc16bff68b23772e70ceb6da962582) Thanks [@jkongie](https://github.com/jkongie)! - [BREAKING] The Load function of Network Config has been changed to simplify the URL transformation option
+
+- [#258](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/258) [`0e7b13c`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/0e7b13c5f817d2da1a019ebfd95520f215a10e1c) Thanks [@jkongie](https://github.com/jkongie)! - Adds configuration loading to the CLD engine
+
+- [#251](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/251) [`6c1338e`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/6c1338e66edfe0cccaeae91aaa1a1dd9074999da) Thanks [@ajaskolski](https://github.com/ajaskolski)! - refactor: adds files and json utils from cld
+
+### Patch Changes
+
+- [#252](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/252) [`4d57885`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/4d57885f3b3248a499f1a22744f8418144000236) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - BREAKING: remove deployment.OffchainClient. Use offchain.Client instead
+
+  Migration Guide:
+
+  ```
+  cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment" -> cldf_offchain "github.com/smartcontractkit/chainlink-deployments-framework/offchain"
+  cldf.OffchainClient -> offchain.Client
+  ```
+
+- [#256](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/256) [`afca1be`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/afca1be4cfc6a7e32694a069289ef27f00105e0a) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - use dev tagged image for TON CTF Provider
+
+- [#253](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/253) [`f8876aa`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/f8876aa46bfdde3f06c8f98d133d27f5320cfd14) Thanks [@eduard-cl](https://github.com/eduard-cl)! - Refactor the Tron package options to be pointers in order to support optional configuration.
+
 ## 0.21.0
 
 ### Minor Changes

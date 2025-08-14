@@ -1,14 +1,12 @@
-package catalog
+package remote
 
 import (
-	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
 	"math/big"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/google/uuid"
@@ -48,7 +46,7 @@ func TestCatalogAddressRefStore_Get(t *testing.T) {
 			setup: func(store *catalogAddressRefStore) datastore.AddressRefKey {
 				// Create and add a record first
 				addressRef := newRandomAddressRef()
-				err := store.Add(context.Background(), addressRef)
+				err := store.Add(t.Context(), addressRef)
 				require.NoError(t, err)
 
 				return datastore.NewAddressRefKey(addressRef.ChainSelector, addressRef.Type, addressRef.Version, addressRef.Qualifier)
@@ -61,13 +59,12 @@ func TestCatalogAddressRefStore_Get(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			// Create a fresh store for each test case to avoid concurrency issues
-			store, cleanup := setupTestStore(t)
-			defer cleanup()
+			store := setupTestStore(t)
 
 			key := tt.setup(store)
 
 			// Execute
-			result, err := store.Get(context.Background(), key)
+			result, err := store.Get(t.Context(), key)
 
 			// Verify
 			if tt.expectError {
@@ -106,7 +103,7 @@ func TestCatalogAddressRefStore_Add(t *testing.T) {
 			setup: func(store *catalogAddressRefStore) datastore.AddressRef {
 				// Create and add a record first
 				ref := newRandomAddressRef()
-				err := store.Add(context.Background(), ref)
+				err := store.Add(t.Context(), ref)
 				require.NoError(t, err)
 				// Return the same record to test duplicate
 				return ref
@@ -119,13 +116,12 @@ func TestCatalogAddressRefStore_Add(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			// Create a fresh store for each test case to avoid concurrency issues
-			store, cleanup := setupTestStore(t)
-			defer cleanup()
+			store := setupTestStore(t)
 
 			addressRef := tt.setup(store)
 
 			// Execute
-			err := store.Add(context.Background(), addressRef)
+			err := store.Add(t.Context(), addressRef)
 
 			// Verify
 			if tt.expectError {
@@ -138,7 +134,7 @@ func TestCatalogAddressRefStore_Add(t *testing.T) {
 
 				// Verify we can get it back
 				key := datastore.NewAddressRefKey(addressRef.ChainSelector, addressRef.Type, addressRef.Version, addressRef.Qualifier)
-				retrieved, err := store.Get(context.Background(), key)
+				retrieved, err := store.Get(t.Context(), key)
 				require.NoError(t, err)
 
 				require.Equal(t, addressRef.Address, retrieved.Address)
@@ -166,7 +162,7 @@ func TestCatalogAddressRefStore_Update(t *testing.T) {
 			setup: func(store *catalogAddressRefStore) datastore.AddressRef {
 				// Create and add an address ref
 				addressRef := newRandomAddressRef()
-				err := store.Add(context.Background(), addressRef)
+				err := store.Add(t.Context(), addressRef)
 				require.NoError(t, err)
 
 				// Modify the address ref with new unique values
@@ -180,7 +176,7 @@ func TestCatalogAddressRefStore_Update(t *testing.T) {
 				t.Helper()
 				// Verify the updated values
 				key := datastore.NewAddressRefKey(addressRef.ChainSelector, addressRef.Type, addressRef.Version, addressRef.Qualifier)
-				retrieved, err := store.Get(context.Background(), key)
+				retrieved, err := store.Get(t.Context(), key)
 				require.NoError(t, err)
 				require.Equal(t, addressRef.Address, retrieved.Address)
 				require.Equal(t, addressRef.Labels.List(), retrieved.Labels.List())
@@ -201,13 +197,12 @@ func TestCatalogAddressRefStore_Update(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			// Create a fresh store for each test case to avoid concurrency issues
-			store, cleanup := setupTestStore(t)
-			defer cleanup()
+			store := setupTestStore(t)
 
 			addressRef := tt.setup(store)
 
 			// Execute update
-			err := store.Update(context.Background(), addressRef)
+			err := store.Update(t.Context(), addressRef)
 
 			// Verify
 			if tt.expectError {
@@ -242,7 +237,7 @@ func TestCatalogAddressRefStore_Upsert(t *testing.T) {
 				t.Helper()
 				// Verify we can get it back
 				key := datastore.NewAddressRefKey(original.ChainSelector, original.Type, original.Version, original.Qualifier)
-				retrieved, err := store.Get(context.Background(), key)
+				retrieved, err := store.Get(t.Context(), key)
 				require.NoError(t, err)
 				require.Equal(t, original.Address, retrieved.Address)
 			},
@@ -252,7 +247,7 @@ func TestCatalogAddressRefStore_Upsert(t *testing.T) {
 			setup: func(store *catalogAddressRefStore) datastore.AddressRef {
 				// Create and add an address ref
 				addressRef := newRandomAddressRef()
-				err := store.Add(context.Background(), addressRef)
+				err := store.Add(t.Context(), addressRef)
 				require.NoError(t, err)
 
 				// Modify the address ref with new unique values
@@ -265,7 +260,7 @@ func TestCatalogAddressRefStore_Upsert(t *testing.T) {
 				t.Helper()
 				// Verify the updated values
 				key := datastore.NewAddressRefKey(modified.ChainSelector, modified.Type, modified.Version, modified.Qualifier)
-				retrieved, err := store.Get(context.Background(), key)
+				retrieved, err := store.Get(t.Context(), key)
 				require.NoError(t, err)
 				require.Equal(t, modified.Address, retrieved.Address)
 				require.Equal(t, modified.Labels.List(), retrieved.Labels.List())
@@ -277,13 +272,12 @@ func TestCatalogAddressRefStore_Upsert(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			// Create a fresh store for each test case to avoid concurrency issues
-			store, cleanup := setupTestStore(t)
-			defer cleanup()
+			store := setupTestStore(t)
 
 			addressRef := tt.setup(store)
 
 			// Execute upsert
-			err := store.Upsert(context.Background(), addressRef)
+			err := store.Upsert(t.Context(), addressRef)
 
 			// Verify
 			require.NoError(t, err)
@@ -294,14 +288,13 @@ func TestCatalogAddressRefStore_Upsert(t *testing.T) {
 
 func TestCatalogAddressRefStore_Delete(t *testing.T) {
 	t.Parallel()
-	store, cleanup := setupTestStore(t)
-	defer cleanup()
+	store := setupTestStore(t)
 
 	version := semver.MustParse("1.0.0")
 	key := datastore.NewAddressRefKey(12345, "LinkToken", version, "test")
 
 	// Execute
-	err := store.Delete(context.Background(), key)
+	err := store.Delete(t.Context(), key)
 
 	// Verify
 	require.Error(t, err)
@@ -326,7 +319,7 @@ func TestCatalogAddressRefStore_FetchAndFilter(t *testing.T) {
 				addressRef1 := newRandomAddressRef()
 				chainSelector1 := randomChainSelector()
 				addressRef1.ChainSelector = chainSelector1
-				err := store.Add(context.Background(), addressRef1)
+				err := store.Add(t.Context(), addressRef1)
 				require.NoError(t, err)
 
 				addressRef2 := newRandomAddressRef()
@@ -336,7 +329,7 @@ func TestCatalogAddressRefStore_FetchAndFilter(t *testing.T) {
 					chainSelector2 = randomChainSelector()
 				}
 				addressRef2.ChainSelector = chainSelector2
-				err = store.Add(context.Background(), addressRef2)
+				err = store.Add(t.Context(), addressRef2)
 				require.NoError(t, err)
 
 				return addressRef1, addressRef2
@@ -368,7 +361,7 @@ func TestCatalogAddressRefStore_FetchAndFilter(t *testing.T) {
 				addressRef1 := newRandomAddressRef()
 				chainSelector1 := randomChainSelector()
 				addressRef1.ChainSelector = chainSelector1
-				err := store.Add(context.Background(), addressRef1)
+				err := store.Add(t.Context(), addressRef1)
 				require.NoError(t, err)
 
 				addressRef2 := newRandomAddressRef()
@@ -378,7 +371,7 @@ func TestCatalogAddressRefStore_FetchAndFilter(t *testing.T) {
 					chainSelector2 = randomChainSelector()
 				}
 				addressRef2.ChainSelector = chainSelector2
-				err = store.Add(context.Background(), addressRef2)
+				err = store.Add(t.Context(), addressRef2)
 				require.NoError(t, err)
 
 				return addressRef1, addressRef2
@@ -402,11 +395,11 @@ func TestCatalogAddressRefStore_FetchAndFilter(t *testing.T) {
 			setup: func(store *catalogAddressRefStore) (datastore.AddressRef, datastore.AddressRef) {
 				// Setup test data with unique addresses
 				addressRef1 := newRandomAddressRef()
-				err := store.Add(context.Background(), addressRef1)
+				err := store.Add(t.Context(), addressRef1)
 				require.NoError(t, err)
 
 				addressRef2 := newRandomAddressRef()
-				err = store.Add(context.Background(), addressRef2)
+				err = store.Add(t.Context(), addressRef2)
 				require.NoError(t, err)
 
 				return addressRef1, addressRef2
@@ -431,12 +424,12 @@ func TestCatalogAddressRefStore_FetchAndFilter(t *testing.T) {
 				// Setup test data with different contract types
 				addressRef1 := newRandomAddressRef()
 				addressRef1.Type = "UniqueContract1"
-				err := store.Add(context.Background(), addressRef1)
+				err := store.Add(t.Context(), addressRef1)
 				require.NoError(t, err)
 
 				addressRef2 := newRandomAddressRef()
 				addressRef2.Type = "UniqueContract2"
-				err = store.Add(context.Background(), addressRef2)
+				err = store.Add(t.Context(), addressRef2)
 				require.NoError(t, err)
 
 				return addressRef1, addressRef2
@@ -460,8 +453,7 @@ func TestCatalogAddressRefStore_FetchAndFilter(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			// Create a fresh store for each test case to avoid concurrency issues
-			store, cleanup := setupTestStore(t)
-			defer cleanup()
+			store := setupTestStore(t)
 
 			addressRef1, addressRef2 := tt.setup(store)
 
@@ -471,13 +463,13 @@ func TestCatalogAddressRefStore_FetchAndFilter(t *testing.T) {
 			// Execute operation
 			switch tt.operation {
 			case "fetch":
-				results, err = store.Fetch(context.Background())
+				results, err = store.Fetch(t.Context())
 			case "filter":
 				var filterFunc datastore.FilterFunc[datastore.AddressRefKey, datastore.AddressRef]
 				if tt.createFilter != nil {
 					filterFunc = tt.createFilter(addressRef1, addressRef2)
 				}
-				results, err = store.Filter(context.Background(), filterFunc)
+				results, err = store.Filter(t.Context(), filterFunc)
 			}
 
 			// Verify
@@ -584,8 +576,7 @@ func TestCatalogAddressRefStore_ConversionHelpers(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			// Create a fresh store for each test case to avoid concurrency issues
-			store, cleanup := setupTestStore(t)
-			defer cleanup()
+			store := setupTestStore(t)
 
 			tt.test(t, store)
 		})
@@ -593,7 +584,7 @@ func TestCatalogAddressRefStore_ConversionHelpers(t *testing.T) {
 }
 
 // setupTestStore creates a real gRPC client connection to a local service
-func setupTestStore(t *testing.T) (*catalogAddressRefStore, func()) {
+func setupTestStore(t *testing.T) *catalogAddressRefStore {
 	t.Helper()
 	// Get gRPC address from environment or use default
 	address := os.Getenv("CATALOG_GRPC_ADDRESS")
@@ -602,25 +593,24 @@ func setupTestStore(t *testing.T) (*catalogAddressRefStore, func()) {
 	}
 
 	// Create CatalogClient using the NewCatalogClient function
-	catalogClient, err := NewCatalogClient(CatalogConfig{
+	catalogClient, err := NewCatalogClient(t.Context(), CatalogConfig{
 		GRPC:  address,
 		Creds: insecure.NewCredentials(),
 	})
 	if err != nil {
 		t.Skipf("Failed to connect to gRPC server at %s: %v. Skipping integration tests.", address, err)
-		return nil, func() {}
+		return nil
 	}
 
 	// Test if the service is actually available by making a simple call
-	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
-	defer cancel()
-
-	stream, err := catalogClient.DataAccess(ctx)
+	_, err = catalogClient.DataAccess()
 	if err != nil {
 		t.Skipf("gRPC service not available at %s: %v. Skipping integration tests.", address, err)
-		return nil, func() {}
+		return nil
 	}
-	_ = stream.CloseSend() // Close the test stream
+	t.Cleanup(func() {
+		_ = catalogClient.CloseStream() // Close the test stream at the end of the test.
+	})
 
 	// Create store
 	store := newCatalogAddressRefStore(catalogAddressRefStoreConfig{
@@ -629,11 +619,7 @@ func setupTestStore(t *testing.T) (*catalogAddressRefStore, func()) {
 		Client:      catalogClient,
 	})
 
-	cleanup := func() {
-		// Connection cleanup is handled internally by CatalogClient
-	}
-
-	return store, cleanup
+	return store
 }
 
 // randomHex generates a random hex string of specified length
