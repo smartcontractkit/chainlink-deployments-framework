@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fbsobreira/gotron-sdk/pkg/address"
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron"
@@ -40,10 +39,8 @@ func TestConfirmRetryOpts_DefaultsAndOverrides(t *testing.T) {
 func TestNewClient(t *testing.T) {
 	t.Parallel()
 
-	dummyAddr := address.Address{}
-	cli := New(nil, nil, dummyAddr)
+	cli := New(nil, nil)
 	require.NotNil(t, cli)
-	require.Equal(t, dummyAddr, cli.Account)
 	require.Nil(t, cli.Client)
-	require.Nil(t, cli.Keystore)
+	require.Nil(t, cli.SignHash)
 }
