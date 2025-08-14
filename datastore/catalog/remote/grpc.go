@@ -7,7 +7,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 
-	pb "github.com/smartcontractkit/chainlink-deployments-framework/datastore/catalog/remote/internal/protos"
+	pb "github.com/smartcontractkit/chainlink-protos/chainlink-catalog/v1/datastore"
 )
 
 type CatalogClient struct {
