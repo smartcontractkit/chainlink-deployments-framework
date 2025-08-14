@@ -24,10 +24,11 @@ type JDConfig struct {
 
 // JobDistributor is the client for the Job Distributor service.
 type JobDistributor struct {
-	WSRPC string
 	nodev1.NodeServiceClient
 	jobv1.JobServiceClient
 	csav1.CSAServiceClient
+
+	WSRPC string
 }
 
 // NewJDClient creates a new Job Distributor client
@@ -73,6 +74,7 @@ func (jd *JobDistributor) ProposeJob(ctx context.Context, in *jobv1.ProposeJobRe
 	return res, nil
 }
 
+// newJDConnection creates a new connection to the Job Distributor service.
 func newJDConnection(cfg JDConfig) (*grpc.ClientConn, error) {
 	opts := []grpc.DialOption{}
 	interceptors := []grpc.UnaryClientInterceptor{}

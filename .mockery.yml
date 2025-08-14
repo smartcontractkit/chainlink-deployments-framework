@@ -24,4 +24,28 @@ packages:
       filename: "mock_{{.InterfaceName | snakecase}}.go"
     interfaces:
       Client:
+  github.com/smartcontractkit/chainlink-protos/job-distributor/v1/job:
+    config:
+      all: false
+      pkgname: "mocks"
+      dir: "offchain/jd/internal/mocks"
+      filename: "mock_{{.InterfaceName | snakecase}}.go"
+    interfaces:
+      JobServiceClient:
+  github.com/smartcontractkit/chainlink-protos/job-distributor/v1/csa:
+    config:
+      all: false
+      pkgname: "mocks"
+      dir: "offchain/jd/internal/mocks"
+      filename: "mock_{{.InterfaceName | snakecase}}.go"
+    interfaces:
+      CSAServiceClient:
+  github.com/smartcontractkit/chainlink-protos/job-distributor/v1/node:
+    config:
+      all: false
+      pkgname: "mocks"
+      dir: "offchain/jd/internal/mocks"
+      filename: "mock_{{.InterfaceName | snakecase}}.go"
+    interfaces:
+      NodeServiceClient:
 
