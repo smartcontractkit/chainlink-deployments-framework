@@ -677,7 +677,7 @@ networks:
 	}
 }
 
-func Test_Load_WithURLTransformer(t *testing.T) {
+func Test_Load_WithTransforms(t *testing.T) {
 	t.Parallel()
 
 	tmpDir := t.TempDir()
@@ -741,7 +741,10 @@ networks:
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := Load([]string{tt.givePath}, WithRPCURLTransformer(tt.giveURLTransformer))
+			got, err := Load([]string{tt.givePath},
+				WithHTTPURLTransformer(tt.giveURLTransformer),
+				WithWSURLTransformer(tt.giveURLTransformer),
+			)
 			require.NoError(t, err)
 
 			if tt.wantErr != "" {
