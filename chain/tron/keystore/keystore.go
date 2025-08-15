@@ -16,6 +16,7 @@ import (
 //   - value (*ecdsa.PrivateKey): the private key associated with that address
 type Keystore struct {
 	Keys map[string]*ecdsa.PrivateKey
+	core.UnimplementedKeystore
 }
 
 // Assert that *Keystore implements the loop.Keystore interface
@@ -47,10 +48,6 @@ func (ks *Keystore) Sign(ctx context.Context, id string, hash []byte) ([]byte, e
 	}
 
 	return crypto.Sign(hash, privateKey)
-}
-
-func (ks *Keystore) Decrypt(ctx context.Context, id string, ctxt []byte) ([]byte, error) {
-	return nil, errors.New("decrypt not implemented in Tron Keystore")
 }
 
 // ImportECDSA adds a new private key to the Keystore, deriving its Tron address
