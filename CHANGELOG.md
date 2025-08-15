@@ -1,5 +1,17 @@
 # chainlink-deployments-framework
 
+## 0.25.0
+
+### Minor Changes
+
+- [#272](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/272) [`10bd095`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/10bd0955f1b81033d39a6a338b8337f63c2dab1a) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - Introdce KMS signer for TRON
+
+- [#277](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/277) [`372d4c5`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/372d4c51481f5e16420efa36ff5aeaa9f8f69481) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(tron): signer generator no longer lazy loads
+
+### Patch Changes
+
+- [#245](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/245) [`5215932`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/52159327fe87bd88cb23e17fd422fd1b5ab76c01) Thanks [@cgruber](https://github.com/cgruber)! - Implement transactional logic in Catalog backed datastore APIs.
+
 ## 0.24.0
 
 ### Minor Changes
