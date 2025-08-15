@@ -38,18 +38,21 @@ func TestNewKMSSigner(t *testing.T) {
 		keyID      string
 		keyRegion  string
 		awsProfile string
+		wantErr    bool
 	}{
 		{
-			name:       "valid parameters",
+			name:       "invalid parameters - will fail during initialization",
 			keyID:      "test-key-id",
 			keyRegion:  "us-east-1",
 			awsProfile: "test-profile",
+			wantErr:    true,
 		},
 		{
-			name:       "empty aws profile",
+			name:       "empty aws profile - will fail during initialization",
 			keyID:      "test-key-id",
 			keyRegion:  "us-west-2",
 			awsProfile: "",
+			wantErr:    true,
 		},
 	}
 
@@ -57,39 +60,34 @@ func TestNewKMSSigner(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			signer := newKMSSigner(tt.keyID, tt.keyRegion, tt.awsProfile)
+			signer, err := newKMSSigner(tt.keyID, tt.keyRegion, tt.awsProfile)
 
-			require.NotNil(t, signer)
-			assert.Equal(t, tt.keyID, signer.KeyID)
-			assert.Equal(t, tt.keyRegion, signer.KeyRegion)
-			assert.Equal(t, tt.awsProfile, signer.AWSProfile)
+			if tt.wantErr {
+				require.Error(t, err)
+				assert.Nil(t, signer)
+			} else {
+				require.NoError(t, err)
+				require.NotNil(t, signer)
+				assert.Equal(t, tt.keyID, signer.KeyID)
+				assert.Equal(t, tt.keyRegion, signer.KeyRegion)
+				assert.Equal(t, tt.awsProfile, signer.AWSProfile)
 
-			// Verify lazy initialization fields are in initial state
-			assert.Nil(t, signer.client)
-			assert.Empty(t, signer.kmsKeyID)
-			assert.Nil(t, signer.ecdsaPublicKey)
-			assert.Empty(t, signer.address)
-			assert.NoError(t, signer.initError)
+				// Verify initialization fields are properly set
+				assert.NotNil(t, signer.client)
+				assert.NotEmpty(t, signer.kmsKeyID)
+				assert.NotNil(t, signer.ecdsaPublicKey)
+				assert.NotEmpty(t, signer.address)
+			}
 		})
 	}
 }
 
-func TestKMSSigner_LazyInitialization(t *testing.T) {
+func TestKMSSigner_SignatureConversion(t *testing.T) {
 	t.Parallel()
 
 	// Generate a test private key
 	privateKey, err := crypto.GenerateKey()
 	require.NoError(t, err)
-
-	signer := newKMSSigner("test-key-id", "us-east-1", "test-profile")
-	require.NotNil(t, signer)
-
-	// Verify initial state - should not be initialized yet
-	assert.Nil(t, signer.client)
-	assert.Empty(t, signer.kmsKeyID)
-	assert.Nil(t, signer.ecdsaPublicKey)
-	assert.Empty(t, signer.address)
-	require.NoError(t, signer.initError)
 
 	t.Run("signature conversion with real signature", func(t *testing.T) {
 		// Create a real signature for testing

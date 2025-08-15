@@ -15,7 +15,8 @@ import (
 func Test_SignerGenCTFDefault(t *testing.T) {
 	t.Parallel()
 
-	gen := SignerGenCTFDefault()
+	gen, err := SignerGenCTFDefault()
+	require.NoError(t, err)
 	require.NotNil(t, gen)
 
 	addr, err := gen.GetAddress()
@@ -65,14 +66,18 @@ func Test_SignerGenPrivateKey(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			gen := SignerGenPrivateKey(tt.givePrivateKey)
-			gotAddr, err := gen.GetAddress()
+			gen, err := SignerGenPrivateKey(tt.givePrivateKey)
 
 			if tt.wantErr != "" {
-				// For error cases, GetAddress should return an error
+				// For error cases, constructor should return an error
 				require.Error(t, err)
 				require.ErrorContains(t, err, tt.wantErr)
+				require.Nil(t, gen)
 			} else {
+				require.NoError(t, err)
+				require.NotNil(t, gen)
+
+				gotAddr, err := gen.GetAddress()
 				require.NoError(t, err)
 				assert.NotNil(t, gotAddr)
 				assert.Equal(t, tt.wantAddr, gotAddr.String())
@@ -103,14 +108,18 @@ func Test_SignerRandom(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			gen := SignerRandom()
-			gotAddr, err := gen.GetAddress()
+			gen, err := SignerRandom()
 
 			if tt.wantErr != "" {
-				// For error cases, GetAddress should return an error
+				// For error cases, constructor should return an error
 				require.Error(t, err)
 				require.ErrorContains(t, err, tt.wantErr)
+				require.Nil(t, gen)
 			} else {
+				require.NoError(t, err)
+				require.NotNil(t, gen)
+
+				gotAddr, err := gen.GetAddress()
 				require.NoError(t, err)
 				assert.NotNil(t, gotAddr)
 
@@ -123,7 +132,7 @@ func Test_SignerRandom(t *testing.T) {
 	}
 }
 
-func Test_SignerGenKMS(t *testing.T) {
+func Test_SignerGenKMS_Validation(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -134,23 +143,11 @@ func Test_SignerGenKMS(t *testing.T) {
 		wantErr    string
 	}{
 		{
-			name:       "valid configuration",
-			keyID:      "test-key-id",
-			keyRegion:  "us-east-1",
-			awsProfile: "test-profile",
-		},
-		{
-			name:       "empty aws profile",
-			keyID:      "test-key-id",
-			keyRegion:  "us-west-2",
-			awsProfile: "",
-		},
-		{
 			name:       "empty key id",
 			keyID:      "",
 			keyRegion:  "us-east-1",
 			awsProfile: "test-profile",
-			wantErr:    "failed to create KMS client", // This would happen during lazy init
+			wantErr:    "failed to create KMS client",
 		},
 	}
 
@@ -158,18 +155,15 @@ func Test_SignerGenKMS(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			gen := SignerGenKMS(tt.keyID, tt.keyRegion, tt.awsProfile)
-			require.NotNil(t, gen)
-			require.NotNil(t, gen.signer)
+			gen, err := SignerGenKMS(tt.keyID, tt.keyRegion, tt.awsProfile)
 
-			// Verify the KMS signer has the correct configuration
-			assert.Equal(t, tt.keyID, gen.signer.KeyID)
-			assert.Equal(t, tt.keyRegion, gen.signer.KeyRegion)
-			assert.Equal(t, tt.awsProfile, gen.signer.AWSProfile)
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				require.ErrorContains(t, err, tt.wantErr)
+				require.Nil(t, gen)
+			}
 
-			// Note: We can't easily test Sign() and GetAddress() without mocking
-			// the AWS KMS service, which would require dependency injection or
-			// more complex mocking setup. The KMS signer tests cover the core logic.
+			// will not test the valid case because we can't connect to KMS in tests
 		})
 	}
 }
@@ -179,15 +173,15 @@ func Test_SignerGenerators_Signing(t *testing.T) {
 
 	tests := []struct {
 		name   string
-		signer SignerGenerator
+		signer func() (SignerGenerator, error)
 	}{
 		{
 			name:   "SignerGenPrivateKey with CTF default key",
-			signer: SignerGenCTFDefault(),
+			signer: func() (SignerGenerator, error) { return SignerGenCTFDefault() },
 		},
 		{
 			name:   "SignerRandom with generated key",
-			signer: SignerRandom(),
+			signer: func() (SignerGenerator, error) { return SignerRandom() },
 		},
 	}
 
@@ -195,8 +189,13 @@ func Test_SignerGenerators_Signing(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
+			// Create the signer
+			signer, err := tt.signer()
+			require.NoError(t, err, "Failed to create signer")
+			require.NotNil(t, signer, "Signer should not be nil")
+
 			// Test that we can get a valid address from the signer
-			signerAddr, err := tt.signer.GetAddress()
+			signerAddr, err := signer.GetAddress()
 			require.NoError(t, err, "Failed to get signer address")
 			require.NotEmpty(t, signerAddr.String(), "Signer address should not be empty")
 
@@ -205,7 +204,7 @@ func Test_SignerGenerators_Signing(t *testing.T) {
 			sampleTxHash := []byte("test_transaction_hash_32_bytes_!")
 			require.Len(t, sampleTxHash, 32, "Sample hash should be 32 bytes")
 
-			signature, err := tt.signer.Sign(context.Background(), sampleTxHash)
+			signature, err := signer.Sign(context.Background(), sampleTxHash)
 			require.NoError(t, err, "Failed to sign transaction hash")
 			require.NotEmpty(t, signature, "Signature should not be empty")
 			require.Len(t, signature, 65, "TRON signature should be 65 bytes (r+s+v)")
@@ -217,7 +216,7 @@ func Test_SignerGenerators_Signing(t *testing.T) {
 				"Recovery ID should be in range [0, 1] for TRON, got: %d", recoveryID)
 
 			// Test signature consistency - signing the same hash should produce the same result
-			signature2, err := tt.signer.Sign(context.Background(), sampleTxHash)
+			signature2, err := signer.Sign(context.Background(), sampleTxHash)
 			require.NoError(t, err, "Failed to sign transaction hash again")
 			require.Equal(t, signature, signature2, "Signatures should be deterministic for the same input")
 		})
