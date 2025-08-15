@@ -25,21 +25,31 @@ func TestCTFChainProviderConfig_validate(t *testing.T) {
 		{
 			name:        "empty config",
 			config:      CTFChainProviderConfig{},
-			expectedErr: "deployer account generator is required",
+			expectedErr: "deployer signer generator is required",
 		},
 		{
 			name: "missing sync.Once",
-			config: CTFChainProviderConfig{
-				DeployerAccountGen: AccountGenCTFDefault(),
-			},
+			config: func() CTFChainProviderConfig {
+				signerGen, err := SignerGenCTFDefault()
+				require.NoError(t, err)
+
+				return CTFChainProviderConfig{
+					DeployerSignerGen: signerGen,
+				}
+			}(),
 			expectedErr: "sync.Once instance is required",
 		},
 		{
 			name: "valid config",
-			config: CTFChainProviderConfig{
-				DeployerAccountGen: AccountGenCTFDefault(),
-				Once:               &sync.Once{},
-			},
+			config: func() CTFChainProviderConfig {
+				signerGen, err := SignerGenCTFDefault()
+				require.NoError(t, err)
+
+				return CTFChainProviderConfig{
+					DeployerSignerGen: signerGen,
+					Once:              &sync.Once{},
+				}
+			}(),
 			expectedErr: "",
 		},
 	}
@@ -61,9 +71,12 @@ func TestCTFChainProviderConfig_validate(t *testing.T) {
 func TestNewCTFChainProvider(t *testing.T) {
 	t.Parallel()
 
+	signerGen, err := SignerGenCTFDefault()
+	require.NoError(t, err)
+
 	config := CTFChainProviderConfig{
-		DeployerAccountGen: AccountGenCTFDefault(),
-		Once:               &sync.Once{},
+		DeployerSignerGen: signerGen,
+		Once:              &sync.Once{},
 	}
 
 	provider := NewCTFChainProvider(t, 123456, config)
@@ -86,10 +99,15 @@ func TestCTFChainProvider_Initialize(t *testing.T) {
 		{
 			name:         "valid initialization",
 			giveSelector: chain_selectors.TRON_TESTNET_NILE.Selector,
-			giveConfig: CTFChainProviderConfig{
-				DeployerAccountGen: AccountGenCTFDefault(),
-				Once:               &sync.Once{},
-			},
+			giveConfig: func() CTFChainProviderConfig {
+				signerGen, err := SignerGenCTFDefault()
+				require.NoError(t, err)
+
+				return CTFChainProviderConfig{
+					DeployerSignerGen: signerGen,
+					Once:              &sync.Once{},
+				}
+			}(),
 		},
 		{
 			name:         "fails config validation",
@@ -97,23 +115,33 @@ func TestCTFChainProvider_Initialize(t *testing.T) {
 			giveConfig: CTFChainProviderConfig{
 				Once: &sync.Once{},
 			},
-			wantErr: "deployer account generator is required",
+			wantErr: "deployer signer generator is required",
 		},
 		{
 			name:         "missing sync.Once",
 			giveSelector: chain_selectors.TRON_TESTNET_NILE.Selector,
-			giveConfig: CTFChainProviderConfig{
-				DeployerAccountGen: AccountGenCTFDefault(),
-			},
+			giveConfig: func() CTFChainProviderConfig {
+				signerGen, err := SignerGenCTFDefault()
+				require.NoError(t, err)
+
+				return CTFChainProviderConfig{
+					DeployerSignerGen: signerGen,
+				}
+			}(),
 			wantErr: "sync.Once instance is required",
 		},
 		{
 			name:         "chain id not found for selector",
 			giveSelector: 999999, // Invalid selector
-			giveConfig: CTFChainProviderConfig{
-				DeployerAccountGen: AccountGenCTFDefault(),
-				Once:               &sync.Once{},
-			},
+			giveConfig: func() CTFChainProviderConfig {
+				signerGen, err := SignerGenCTFDefault()
+				require.NoError(t, err)
+
+				return CTFChainProviderConfig{
+					DeployerSignerGen: signerGen,
+					Once:              &sync.Once{},
+				}
+			}(),
 			wantErr: "failed to get chain ID from selector 999999",
 		},
 	}
@@ -136,7 +164,7 @@ func TestCTFChainProvider_Initialize(t *testing.T) {
 				require.True(t, ok, "expected got to be of type tron.Chain")
 				require.Equal(t, tt.giveSelector, gotChain.Selector)
 				require.NotEmpty(t, gotChain.Client)
-				require.NotEmpty(t, gotChain.Keystore)
+				require.NotEmpty(t, gotChain.SignHash)
 				require.NotEmpty(t, gotChain.Address)
 				require.NotEmpty(t, gotChain.URL)
 				require.NotEmpty(t, gotChain.SendAndConfirm)
@@ -149,9 +177,13 @@ func TestCTFChainProvider_Initialize(t *testing.T) {
 
 func TestCTFChainProvider_ContainerStartup(t *testing.T) {
 	t.Parallel()
+
+	signerGen, err := SignerGenCTFDefault()
+	require.NoError(t, err)
+
 	config := CTFChainProviderConfig{
-		DeployerAccountGen: AccountGenCTFDefault(),
-		Once:               &sync.Once{},
+		DeployerSignerGen: signerGen,
+		Once:              &sync.Once{},
 	}
 
 	provider := NewCTFChainProvider(t, chain_selectors.TRON_TESTNET_NILE.Selector, config)
@@ -168,9 +200,12 @@ func TestCTFChainProvider_ContainerStartup(t *testing.T) {
 func TestCTFProvider_SendAndConfirmTx_And_CheckContractDeployed(t *testing.T) {
 	t.Parallel()
 
+	signerGen, err := SignerGenCTFDefault()
+	require.NoError(t, err)
+
 	config := CTFChainProviderConfig{
-		DeployerAccountGen: AccountGenCTFDefault(),
-		Once:               &sync.Once{},
+		DeployerSignerGen: signerGen,
+		Once:              &sync.Once{},
 	}
 
 	chainSelector := chain_selectors.TRON_TESTNET_NILE.Selector

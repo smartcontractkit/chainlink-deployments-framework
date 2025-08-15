@@ -10,8 +10,6 @@ import (
 	"github.com/fbsobreira/gotron-sdk/pkg/http/common"
 	"github.com/fbsobreira/gotron-sdk/pkg/http/soliditynode"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron/keystore"
-
 	"github.com/smartcontractkit/chainlink-tron/relayer/sdk"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron"
@@ -32,18 +30,16 @@ func confirmRetryOpts(ctx context.Context, c *tron.ConfirmRetryOptions) []retry.
 // such as signing, sending, and confirming transactions. It abstracts signing logic
 // and retry-based confirmation flows.
 type Client struct {
-	Client   sdk.FullNodeClient // Underlying Tron full node client
-	Keystore *keystore.Keystore // Keystore used to sign transactions
-	Account  address.Address    // Address used for signing transactions
+	Client   sdk.FullNodeClient                                       // Underlying Tron full node client
+	SignHash func(ctx context.Context, txHash []byte) ([]byte, error) // Function used to sign transactions
 }
 
-// New creates a new Client instance with the provided Tron RPC client, keystore, and account.
-// This prepares the client to sign and send transactions using the given identity.
-func New(client sdk.FullNodeClient, keystore *keystore.Keystore, account address.Address) *Client {
+// New creates a new Client instance with the provided Tron RPC client and signing function.
+// This prepares the client to sign and send transactions using the given signing function.
+func New(client sdk.FullNodeClient, signHash func(ctx context.Context, txHash []byte) ([]byte, error)) *Client {
 	return &Client{
 		Client:   client,
-		Keystore: keystore,
-		Account:  account,
+		SignHash: signHash,
 	}
 }
 
@@ -67,8 +63,8 @@ func (c *Client) SendAndConfirmTx(
 		return nil, fmt.Errorf("failed to decode transaction ID: %w", err)
 	}
 
-	// Sign the transaction using the client's keystore and the decoded TxID
-	signature, err := c.Keystore.Sign(context.Background(), c.Account.String(), txIdBytes)
+	// Sign the transaction using the client's signing function and the decoded TxID
+	signature, err := c.SignHash(ctx, txIdBytes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign transaction: %w", err)
 	}

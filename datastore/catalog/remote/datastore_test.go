@@ -1,4 +1,4 @@
-package catalog
+package remote
 
 import (
 	"testing"
@@ -13,7 +13,7 @@ func TestNewCatalogDataStore(t *testing.T) {
 	config := CatalogDataStoreConfig{
 		Domain:      "test-domain",
 		Environment: "test-env",
-		Client:      CatalogClient{}, // Zero value for unit tests
+		Client:      &CatalogClient{}, // Zero value for unit tests
 	}
 
 	dataStore := NewCatalogDataStore(config)
@@ -33,7 +33,7 @@ func TestCatalogDataStore_ImplementsCatalogInterface(t *testing.T) {
 	config := CatalogDataStoreConfig{
 		Domain:      "test-domain",
 		Environment: "test-env",
-		Client:      CatalogClient{}, // Zero value for unit tests
+		Client:      &CatalogClient{}, // Zero value for unit tests
 	}
 
 	dataStore := NewCatalogDataStore(config)
@@ -65,7 +65,7 @@ func TestCatalogDataStore_StoreInterfaces(t *testing.T) {
 	config := CatalogDataStoreConfig{
 		Domain:      "test-domain",
 		Environment: "test-env",
-		Client:      CatalogClient{}, // Zero value for unit tests
+		Client:      &CatalogClient{}, // Zero value for unit tests
 	}
 
 	ds := NewCatalogDataStore(config)

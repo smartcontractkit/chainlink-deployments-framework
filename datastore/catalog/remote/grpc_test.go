@@ -1,4 +1,4 @@
-package catalog_test
+package remote_test
 
 import (
 	"testing"
@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/credentials/insecure"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/datastore/catalog"
+	"github.com/smartcontractkit/chainlink-deployments-framework/datastore/catalog/remote"
 )
 
 func TestNewCatalogClient_Success(t *testing.T) {
@@ -14,13 +14,13 @@ func TestNewCatalogClient_Success(t *testing.T) {
 
 	tests := []struct {
 		name          string
-		config        catalog.CatalogConfig
+		config        remote.CatalogConfig
 		expectError   bool
 		errorContains string
 	}{
 		{
 			name: "config_with_insecure_credentials",
-			config: catalog.CatalogConfig{
+			config: remote.CatalogConfig{
 				GRPC:  "localhost:9090",
 				Creds: insecure.NewCredentials(),
 			},
@@ -28,7 +28,7 @@ func TestNewCatalogClient_Success(t *testing.T) {
 		},
 		{
 			name: "no_transport_credentials",
-			config: catalog.CatalogConfig{
+			config: remote.CatalogConfig{
 				GRPC: "localhost:9090",
 				// No Creds field set
 			},
@@ -42,18 +42,16 @@ func TestNewCatalogClient_Success(t *testing.T) {
 			t.Parallel()
 
 			// Execute
-			client, err := catalog.NewCatalogClient(tt.config)
+			client, err := remote.NewCatalogClient(t.Context(), tt.config)
 
 			// Verify
 			if tt.expectError {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tt.errorContains)
-				require.Equal(t, catalog.CatalogClient{}, client)
+				require.Equal(t, &remote.CatalogClient{}, client)
 			} else {
 				require.NoError(t, err)
 				require.NotNil(t, client)
-				require.Equal(t, tt.config.GRPC, client.GRPC)
-				require.NotNil(t, client.DeploymentsDatastoreClient)
 			}
 		})
 	}
