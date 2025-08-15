@@ -121,29 +121,18 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 			wantErr: "invalid Tron RPC config",
 		},
 		{
-			name:         "initialization with invalid private key",
+			name:         "initialization with nil signer generator",
 			giveSelector: chainSelector,
 			giveConfigFunc: func(t *testing.T) RPCChainProviderConfig {
 				t.Helper()
 
-				signerGen, err := SignerGenPrivateKey("") // Invalid private key
-				if err != nil {
-					// Return a config with nil signer to trigger validation error
-					return RPCChainProviderConfig{
-						FullNodeURL:       "http://localhost:8090",
-						SolidityNodeURL:   "http://localhost:8091",
-						DeployerSignerGen: nil,
-					}
-				}
-
 				return RPCChainProviderConfig{
 					FullNodeURL:       "http://localhost:8090",
 					SolidityNodeURL:   "http://localhost:8091",
-					DeployerSignerGen: signerGen,
+					DeployerSignerGen: nil,
 				}
 			},
-			// Now returns error during config validation
-			wantErr: "failed to get deployer address",
+			wantErr: "deployer signer generator is required",
 		},
 	}
 
