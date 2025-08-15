@@ -6,29 +6,16 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/aws/aws-sdk-go/aws"
 	kmslib "github.com/aws/aws-sdk-go/service/kms"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/fbsobreira/gotron-sdk/pkg/address"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/kms"
+	kmsmocks "github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/kms/mocks"
 )
-
-// MockKMSClient is a mock implementation of kms.Client for testing
-type MockKMSClient struct {
-	mock.Mock
-}
-
-func (m *MockKMSClient) GetPublicKey(input *kmslib.GetPublicKeyInput) (*kmslib.GetPublicKeyOutput, error) {
-	args := m.Called(input)
-	return args.Get(0).(*kmslib.GetPublicKeyOutput), args.Error(1)
-}
-
-func (m *MockKMSClient) Sign(input *kmslib.SignInput) (*kmslib.SignOutput, error) {
-	args := m.Called(input)
-	return args.Get(0).(*kmslib.SignOutput), args.Error(1)
-}
 
 func TestNewKMSSigner(t *testing.T) {
 	t.Parallel()
@@ -38,18 +25,21 @@ func TestNewKMSSigner(t *testing.T) {
 		keyID      string
 		keyRegion  string
 		awsProfile string
+		wantErr    bool
 	}{
 		{
-			name:       "valid parameters",
+			name:       "invalid parameters - will fail during initialization",
 			keyID:      "test-key-id",
 			keyRegion:  "us-east-1",
 			awsProfile: "test-profile",
+			wantErr:    true,
 		},
 		{
-			name:       "empty aws profile",
+			name:       "empty aws profile - will fail during initialization",
 			keyID:      "test-key-id",
 			keyRegion:  "us-west-2",
 			awsProfile: "",
+			wantErr:    true,
 		},
 	}
 
@@ -57,76 +47,227 @@ func TestNewKMSSigner(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			signer := newKMSSigner(tt.keyID, tt.keyRegion, tt.awsProfile)
+			signer, err := newKMSSigner(tt.keyID, tt.keyRegion, tt.awsProfile)
 
-			require.NotNil(t, signer)
-			assert.Equal(t, tt.keyID, signer.KeyID)
-			assert.Equal(t, tt.keyRegion, signer.KeyRegion)
-			assert.Equal(t, tt.awsProfile, signer.AWSProfile)
+			if tt.wantErr {
+				require.Error(t, err)
+				assert.Nil(t, signer)
+			} else {
+				require.NoError(t, err)
+				require.NotNil(t, signer)
 
-			// Verify lazy initialization fields are in initial state
-			assert.Nil(t, signer.client)
-			assert.Empty(t, signer.kmsKeyID)
-			assert.Nil(t, signer.ecdsaPublicKey)
-			assert.Empty(t, signer.address)
-			assert.NoError(t, signer.initError)
+				// Verify initialization fields are properly set
+				assert.NotNil(t, signer.client)
+				assert.Equal(t, tt.keyID, signer.kmsKeyID)
+				assert.NotNil(t, signer.ecdsaPublicKey)
+				assert.NotEmpty(t, signer.address)
+			}
 		})
 	}
 }
 
-func TestKMSSigner_LazyInitialization(t *testing.T) {
+func TestNewKMSSignerWithClient_Constructor(t *testing.T) {
 	t.Parallel()
 
-	// Generate a test private key
+	// Generate a test private key and derive public key
 	privateKey, err := crypto.GenerateKey()
 	require.NoError(t, err)
 
-	signer := newKMSSigner("test-key-id", "us-east-1", "test-profile")
-	require.NotNil(t, signer)
+	// Marshal the public key to DER format (as KMS would return it)
+	pubKeyBytes := crypto.FromECDSAPub(&privateKey.PublicKey)
 
-	// Verify initial state - should not be initialized yet
-	assert.Nil(t, signer.client)
-	assert.Empty(t, signer.kmsKeyID)
-	assert.Nil(t, signer.ecdsaPublicKey)
-	assert.Empty(t, signer.address)
-	require.NoError(t, signer.initError)
+	tests := []struct {
+		name        string
+		keyID       string
+		setupMock   func(*kmsmocks.MockClient)
+		wantErr     bool
+		errContains string
+	}{
+		{
+			name:  "successful initialization with mock client",
+			keyID: "test-key-id",
+			setupMock: func(mockClient *kmsmocks.MockClient) {
+				mockClient.EXPECT().GetPublicKey(&kmslib.GetPublicKeyInput{
+					KeyId: aws.String("test-key-id"),
+				}).Return(&kmslib.GetPublicKeyOutput{
+					PublicKey: pubKeyBytes,
+				}, nil)
+			},
+			wantErr: false,
+		},
+		{
+			name:  "KMS GetPublicKey fails",
+			keyID: "test-key-id",
+			setupMock: func(mockClient *kmsmocks.MockClient) {
+				mockClient.EXPECT().GetPublicKey(&kmslib.GetPublicKeyInput{
+					KeyId: aws.String("test-key-id"),
+				}).Return(nil, assert.AnError)
+			},
+			wantErr:     true,
+			errContains: "failed to get public key from KMS",
+		},
+		{
+			name:  "invalid public key format",
+			keyID: "test-key-id",
+			setupMock: func(mockClient *kmsmocks.MockClient) {
+				mockClient.EXPECT().GetPublicKey(&kmslib.GetPublicKeyInput{
+					KeyId: aws.String("test-key-id"),
+				}).Return(&kmslib.GetPublicKeyOutput{
+					PublicKey: []byte("invalid-public-key"),
+				}, nil)
+			},
+			wantErr:     true,
+			errContains: "failed to parse ECDSA public key",
+		},
+	}
 
-	t.Run("signature conversion with real signature", func(t *testing.T) {
-		// Create a real signature for testing
-		hash := crypto.Keccak256([]byte("test message"))
-		realSig, err := crypto.Sign(hash, privateKey)
-		require.NoError(t, err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-		// Extract r and s from the real signature
-		r := new(big.Int).SetBytes(realSig[:32])
-		s := new(big.Int).SetBytes(realSig[32:64])
+			mockClient := kmsmocks.NewMockClient(t)
+			tt.setupMock(mockClient)
 
-		// Create KMS signature structure
-		ecdsaSig := kms.ECDSASig{
-			R: asn1.RawValue{Bytes: r.Bytes()},
-			S: asn1.RawValue{Bytes: s.Bytes()},
-		}
+			signer, err := newKMSSignerWithClient(tt.keyID, mockClient)
 
-		kmsSignature, err := asn1.Marshal(ecdsaSig)
-		require.NoError(t, err)
+			if tt.wantErr {
+				require.Error(t, err)
+				assert.Nil(t, signer)
+				if tt.errContains != "" {
+					assert.Contains(t, err.Error(), tt.errContains)
+				}
+			} else {
+				require.NoError(t, err)
+				require.NotNil(t, signer)
+				assert.Equal(t, mockClient, signer.client)
+				assert.Equal(t, tt.keyID, signer.kmsKeyID)
+				assert.NotNil(t, signer.ecdsaPublicKey)
+				assert.NotEmpty(t, signer.address)
 
-		// Test signature conversion
-		tronSig, err := kmsToTronSig(kmsSignature, &privateKey.PublicKey, hash)
+				// Verify the address is properly derived
+				expectedAddress := address.PubkeyToAddress(privateKey.PublicKey)
+				assert.Equal(t, expectedAddress, signer.address)
+			}
+		})
+	}
+}
 
-		// The conversion should succeed with a real signature
-		require.NoError(t, err)
-		require.Len(t, tronSig, 65) // 32 bytes r + 32 bytes s + 1 byte v
+func TestKMSSignerWithClient_Sign(t *testing.T) {
+	t.Parallel()
 
-		// Verify the r and s components
-		rResult := tronSig[:32]
-		sResult := tronSig[32:64]
-		recoveryID := tronSig[64]
+	// Generate a test private key and derive public key
+	privateKey, err := crypto.GenerateKey()
+	require.NoError(t, err)
 
-		// Check that r and s are properly padded to 32 bytes
-		assert.Len(t, rResult, 32)
-		assert.Len(t, sResult, 32)
-		assert.LessOrEqual(t, recoveryID, byte(1)) // Recovery ID should be 0 or 1
-	})
+	// Marshal the public key to DER format (as KMS would return it)
+	pubKeyBytes := crypto.FromECDSAPub(&privateKey.PublicKey)
+
+	// Create test hash to sign
+	testHash := crypto.Keccak256([]byte("test message"))
+
+	// Create a real signature to use as mock KMS response
+	realSig, err := crypto.Sign(testHash, privateKey)
+	require.NoError(t, err)
+
+	// Extract r and s from the real signature to create mock KMS signature
+	r := new(big.Int).SetBytes(realSig[:32])
+	s := new(big.Int).SetBytes(realSig[32:64])
+
+	ecdsaSig := kms.ECDSASig{
+		R: asn1.RawValue{Bytes: r.Bytes()},
+		S: asn1.RawValue{Bytes: s.Bytes()},
+	}
+
+	mockKMSSignature, err := asn1.Marshal(ecdsaSig)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name        string
+		keyID       string
+		setupMock   func(*kmsmocks.MockClient)
+		wantErr     bool
+		errContains string
+	}{
+		{
+			name:  "successful signing",
+			keyID: "test-key-id",
+			setupMock: func(mockClient *kmsmocks.MockClient) {
+				// Mock GetPublicKey for initialization
+				mockClient.EXPECT().GetPublicKey(&kmslib.GetPublicKeyInput{
+					KeyId: aws.String("test-key-id"),
+				}).Return(&kmslib.GetPublicKeyOutput{
+					PublicKey: pubKeyBytes,
+				}, nil)
+
+				// Mock Sign operation
+				mockClient.EXPECT().Sign(&kmslib.SignInput{
+					KeyId:            aws.String("test-key-id"),
+					Message:          testHash,
+					MessageType:      aws.String(kmslib.MessageTypeDigest),
+					SigningAlgorithm: aws.String(kmslib.SigningAlgorithmSpecEcdsaSha256),
+				}).Return(&kmslib.SignOutput{
+					Signature: mockKMSSignature,
+				}, nil)
+			},
+			wantErr: false,
+		},
+		{
+			name:  "KMS Sign fails",
+			keyID: "test-key-id",
+			setupMock: func(mockClient *kmsmocks.MockClient) {
+				// Mock GetPublicKey for initialization
+				mockClient.EXPECT().GetPublicKey(&kmslib.GetPublicKeyInput{
+					KeyId: aws.String("test-key-id"),
+				}).Return(&kmslib.GetPublicKeyOutput{
+					PublicKey: pubKeyBytes,
+				}, nil)
+
+				// Mock Sign operation failure
+				mockClient.EXPECT().Sign(&kmslib.SignInput{
+					KeyId:            aws.String("test-key-id"),
+					Message:          testHash,
+					MessageType:      aws.String(kmslib.MessageTypeDigest),
+					SigningAlgorithm: aws.String(kmslib.SigningAlgorithmSpecEcdsaSha256),
+				}).Return(nil, assert.AnError)
+			},
+			wantErr:     true,
+			errContains: "failed to sign transaction hash with KMS",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			mockClient := kmsmocks.NewMockClient(t)
+			tt.setupMock(mockClient)
+
+			signer, err := newKMSSignerWithClient(tt.keyID, mockClient)
+			require.NoError(t, err)
+			require.NotNil(t, signer)
+
+			signature, err := signer.Sign(testHash)
+
+			if tt.wantErr {
+				require.Error(t, err)
+				assert.Nil(t, signature)
+				if tt.errContains != "" {
+					assert.Contains(t, err.Error(), tt.errContains)
+				}
+			} else {
+				require.NoError(t, err)
+				require.NotNil(t, signature)
+				assert.Len(t, signature, 65) // 32 bytes r + 32 bytes s + 1 byte recovery ID
+
+				// Verify signature format
+				recoveryID := signature[64]
+				assert.LessOrEqual(t, recoveryID, byte(1))
+
+				// Verify the signature can recover to the correct public key
+				assert.True(t, isValidRecovery(signature, testHash, &privateKey.PublicKey))
+			}
+		})
+	}
 }
 
 func TestKMSToTronSig(t *testing.T) {
@@ -268,48 +409,4 @@ func TestIsValidRecovery(t *testing.T) {
 			assert.Equal(t, tt.expected, result)
 		})
 	}
-}
-
-func TestKMSSigner_ErrorScenarios(t *testing.T) {
-	t.Parallel()
-
-	t.Run("invalid asn1 signature", func(t *testing.T) {
-		t.Parallel()
-
-		privateKey, err := crypto.GenerateKey()
-		require.NoError(t, err)
-
-		hash := crypto.Keccak256([]byte("test message"))
-		invalidKMSSignature := []byte("invalid asn1 data")
-
-		_, err = kmsToTronSig(invalidKMSSignature, &privateKey.PublicKey, hash)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to unmarshal KMS signature")
-	})
-
-	t.Run("no valid recovery id found", func(t *testing.T) {
-		t.Parallel()
-
-		// This test is tricky because we need to create a signature that doesn't
-		// recover to the expected public key with either recovery ID
-		// For now, we'll test with zero values which should fail
-		zero := big.NewInt(0)
-
-		ecdsaSig := kms.ECDSASig{
-			R: asn1.RawValue{Bytes: zero.Bytes()},
-			S: asn1.RawValue{Bytes: zero.Bytes()},
-		}
-
-		kmsSignature, err := asn1.Marshal(ecdsaSig)
-		require.NoError(t, err)
-
-		privateKey, err := crypto.GenerateKey()
-		require.NoError(t, err)
-
-		hash := crypto.Keccak256([]byte("test message"))
-
-		_, err = kmsToTronSig(kmsSignature, &privateKey.PublicKey, hash)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to find valid recovery ID for TRON signature")
-	})
 }
