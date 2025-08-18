@@ -415,3 +415,8 @@ func (d EnvDir) CreateDurablePipelinesDir() error {
 
 	return nil
 }
+
+// SaveViewState saves the view state of the domain's environment with the default filename.
+func (d EnvDir) SaveViewState(v json.Marshaler) error {
+	return SaveViewState(d.ViewStateFilePath(), v)
+}
