@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.26.0
+
+### Minor Changes
+
+- [#279](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/279) [`7ffac78`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/7ffac78a9ce16170c77db3bc87e9bb9a311c8cfa) Thanks [@ajaskolski](https://github.com/ajaskolski)! - refactor(engine): domain move view state from cld to cldf
+
 ## 0.25.0
 
 ### Minor Changes
