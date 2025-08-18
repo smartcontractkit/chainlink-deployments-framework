@@ -107,9 +107,3 @@ func (d Domain) InternalDirPath() string {
 func (d Domain) CmdDirPath() string {
 	return filepath.Join(d.DirPath(), CmdDirName)
 }
-
-// todo: uncomment after viewState is moved over to cldf
-// SaveViewState saves the view state of the domain's environment with the default filename.
-// func (d EnvDir) SaveViewState(v json.Marshaler) error {
-// 	return SaveViewState(d.ViewStateFilePath(), v)
-// }
