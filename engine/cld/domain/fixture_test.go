@@ -25,8 +25,9 @@ type testDomainFS struct {
 	artifactsDir *ArtifactsDir
 }
 
+// TODO: unexport after migrations/archive.go is extracted from cldf
 // setupDomainFS creates the domain directory structure for testing.
-func setupTestDomainsFS(t *testing.T) testDomainFS {
+func SetupTestDomainsFS(t *testing.T) testDomainFS {
 	t.Helper()
 
 	// Setup the root directory.

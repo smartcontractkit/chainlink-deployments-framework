@@ -134,7 +134,7 @@ func Test_Artifacts_ArchivedProposalDirPath(t *testing.T) {
 func Test_Artifacts_CreateMigrationDir(t *testing.T) {
 	t.Parallel()
 
-	fixture := setupTestDomainsFS(t)
+	fixture := SetupTestDomainsFS(t)
 
 	arts := fixture.artifactsDir
 
@@ -149,7 +149,7 @@ func Test_Artifacts_CreateMigrationDir(t *testing.T) {
 func Test_Artifacts_CreateProposalsDir(t *testing.T) {
 	t.Parallel()
 
-	fixture := setupTestDomainsFS(t)
+	fixture := SetupTestDomainsFS(t)
 
 	arts := fixture.artifactsDir
 
@@ -184,7 +184,7 @@ func Test_Artifacts_CreateProposalsDir(t *testing.T) {
 func Test_Artifacts_CreateArchivedProposalsDir(t *testing.T) {
 	t.Parallel()
 
-	fixture := setupTestDomainsFS(t)
+	fixture := SetupTestDomainsFS(t)
 
 	arts := fixture.artifactsDir
 
@@ -216,7 +216,7 @@ func Test_Artifacts_CreateArchivedProposalsDir(t *testing.T) {
 func Test_Artifacts_CreateOperationsReportsDir(t *testing.T) {
 	t.Parallel()
 
-	fixture := setupTestDomainsFS(t)
+	fixture := SetupTestDomainsFS(t)
 
 	arts := fixture.artifactsDir
 
@@ -248,7 +248,7 @@ func Test_Artifacts_CreateOperationsReportsDir(t *testing.T) {
 func Test_Artifacts_RemoveMigrationDir(t *testing.T) {
 	t.Parallel()
 
-	fixture := setupTestDomainsFS(t)
+	fixture := SetupTestDomainsFS(t)
 	arts := fixture.artifactsDir
 
 	err := arts.CreateMigrationDir("0001_initial")
@@ -311,7 +311,7 @@ func Test_Artifacts_MigrationDirExists(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			fixture := setupTestDomainsFS(t)
+			fixture := SetupTestDomainsFS(t)
 			artsDir := fixture.artifactsDir
 
 			if tt.beforeFunc != nil {
@@ -372,7 +372,7 @@ func Test_Artifacts_OperationsReportsDirExists(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			fixture := setupTestDomainsFS(t)
+			fixture := SetupTestDomainsFS(t)
 			artsDir := fixture.artifactsDir
 
 			if tt.beforeFunc != nil {
@@ -435,7 +435,7 @@ func Test_Artifacts_MigrationOperationsReportsFileExists(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			fixture := setupTestDomainsFS(t)
+			fixture := SetupTestDomainsFS(t)
 			artsDir := fixture.artifactsDir
 
 			if tt.beforeFunc != nil {
@@ -691,7 +691,7 @@ func Test_Artifacts_SaveChangesetOutput_LoadChangesetOutput(t *testing.T) {
 		t.Run("migrations "+tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			fixture := setupTestDomainsFS(t)
+			fixture := SetupTestDomainsFS(t)
 
 			artsDir := fixture.artifactsDir
 
@@ -704,7 +704,7 @@ func Test_Artifacts_SaveChangesetOutput_LoadChangesetOutput(t *testing.T) {
 		t.Run("durable pipelines "+tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			fixture := setupTestDomainsFS(t)
+			fixture := SetupTestDomainsFS(t)
 
 			artsDir := fixture.artifactsDir
 
@@ -808,7 +808,7 @@ func Test_Artifacts_LoadAddressBookByMigrationKey(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			fixture := setupTestDomainsFS(t)
+			fixture := SetupTestDomainsFS(t)
 			artsDir := fixture.artifactsDir
 
 			if tt.beforeFunc != nil {
@@ -898,7 +898,7 @@ func Test_Artifacts_LoadDataStoreByMigrationKey(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			fixture := setupTestDomainsFS(t)
+			fixture := SetupTestDomainsFS(t)
 			artsDir := fixture.artifactsDir
 
 			if tt.beforeFunc != nil {
@@ -978,7 +978,7 @@ func Test_Artifacts_SaveAndLoadOperationsReport(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			fixture := setupTestDomainsFS(t)
+			fixture := SetupTestDomainsFS(t)
 			artsDir := fixture.artifactsDir
 
 			if tt.beforeFunc != nil {
@@ -1020,7 +1020,7 @@ func Test_Artifacts_SaveAndLoadOperationsReport(t *testing.T) {
 func Test_Artifacts_SaveAndLoadMultipleProposals(t *testing.T) {
 	t.Parallel()
 
-	fixture := setupTestDomainsFS(t)
+	fixture := SetupTestDomainsFS(t)
 	migrationKey := "0001_initial"
 	artsDir := fixture.artifactsDir
 
@@ -1167,7 +1167,7 @@ func Test_Artifacts_SetDurablePipelinesTimestamp(t *testing.T) {
 func Test_Artifacts_SaveAddressBookInSortedOrder(t *testing.T) {
 	t.Parallel()
 
-	fixture := setupTestDomainsFS(t)
+	fixture := SetupTestDomainsFS(t)
 	artsDir := fixture.artifactsDir
 
 	// Set timestamp for durable pipelines directory structure
@@ -1279,7 +1279,7 @@ func Test_getOperationsReportsFilePath(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			fixture := setupTestDomainsFS(t)
+			fixture := SetupTestDomainsFS(t)
 			artsDir := fixture.artifactsDir
 
 			if tt.isDurablePipelines {

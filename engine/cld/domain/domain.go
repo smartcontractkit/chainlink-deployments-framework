@@ -55,6 +55,9 @@ func NewDomain(rootPath, key string) Domain {
 	}
 }
 
+// RootPath returns the root path of domains filesystem.
+func (d Domain) RootPath() string { return d.rootPath }
+
 // DirPath returns the path to the domain directory.
 func (d Domain) DirPath() string {
 	return filepath.Join(d.rootPath, d.key)
