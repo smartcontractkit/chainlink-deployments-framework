@@ -55,6 +55,9 @@ func NewDomain(rootPath, key string) Domain {
 	}
 }
 
+// RootPath returns the root path of domains filesystem.
+func (d Domain) RootPath() string { return d.rootPath }
+
 // DirPath returns the path to the domain directory.
 func (d Domain) DirPath() string {
 	return filepath.Join(d.rootPath, d.key)
@@ -107,9 +110,3 @@ func (d Domain) InternalDirPath() string {
 func (d Domain) CmdDirPath() string {
 	return filepath.Join(d.DirPath(), CmdDirName)
 }
-
-// todo: uncomment after viewState is moved over to cldf
-// SaveViewState saves the view state of the domain's environment with the default filename.
-// func (d EnvDir) SaveViewState(v json.Marshaler) error {
-// 	return SaveViewState(d.ViewStateFilePath(), v)
-// }
