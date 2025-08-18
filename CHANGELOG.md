@@ -1,5 +1,15 @@
 # chainlink-deployments-framework
 
+## 0.27.0
+
+### Minor Changes
+
+- [#276](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/276) [`55e476b`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/55e476ba237aaf2aadf3e0327a649a3b0ce925e2) Thanks [@jkongie](https://github.com/jkongie)! - Bump the mcms library to v0.21.1
+
+### Patch Changes
+
+- [#281](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/281) [`9c26dea`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/9c26deaf567f67f14eaae88cbc58f76fb6d180a2) Thanks [@ajaskolski](https://github.com/ajaskolski)! - chore(domain): export SetupTestDomainsFS and rootPath for easier granular refactor
+
 ## 0.26.0
 
 ### Minor Changes
