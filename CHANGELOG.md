@@ -1,5 +1,21 @@
 # chainlink-deployments-framework
 
+## 0.28.0
+
+### Minor Changes
+
+- [#288](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/288) [`762cddd`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/762cddd7ce357c5a5d37154a51170c91fec83686) Thanks [@RodrigoAD](https://github.com/RodrigoAD)! - Add Sui env config support
+
+- [#269](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/269) [`b25a886`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/b25a8865f7d6d59c7821a6d8bb10372fc9941781) Thanks [@vreff](https://github.com/vreff)! - #changed bump chainlink-common, update Keystore to implement extended Keystore interface
+
+- [#289](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/289) [`6a5acfb`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/6a5acfbb6e01999aafcc9cf9f3621bb803e3f7e0) Thanks [@jkongie](https://github.com/jkongie)! - Network configuration is now validated on load. It ensures that the type and chain selector are present, as well as at least one RPC.
+
+- [#283](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/283) [`f89cfad`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/f89cfada6ea8de2b91f5a17cd5881d1efdd71079) Thanks [@jkongie](https://github.com/jkongie)! - [BREAKING] JobDistributorConfig.Auth is now a pointer to indicate that it is an optional field
+
+### Patch Changes
+
+- [#291](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/291) [`af3df24`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/af3df247572945d736a0b098cbb34703eab8ea24) Thanks [@jkongie](https://github.com/jkongie)! - Fixes legacy env vars fallback for certain fields on the env.Config
+
 ## 0.27.0
 
 ### Minor Changes
