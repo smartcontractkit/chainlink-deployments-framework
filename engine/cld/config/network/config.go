@@ -38,6 +38,17 @@ func NewConfig(networks []Network) *Config {
 	}
 }
 
+// Validate ensures that all networks are valid.
+func (c *Config) Validate() error {
+	for _, network := range c.Networks() {
+		if err := network.Validate(); err != nil {
+			return fmt.Errorf("network %d: %w", network.ChainSelector, err)
+		}
+	}
+
+	return nil
+}
+
 // Networks returns a slice of all networks in the config.
 func (c *Config) Networks() []Network {
 	return slices.Collect(maps.Values(c.networks))
@@ -209,6 +220,10 @@ func Load(filePaths []string, opts ...LoadOption) (*Config, error) {
 
 	if loadCfg.WSURLTransformer != nil {
 		cfg.transformWSURLs(loadCfg.WSURLTransformer)
+	}
+
+	if err := cfg.Validate(); err != nil {
+		return nil, fmt.Errorf("failed to validate networks configuration: %w", err)
 	}
 
 	return cfg, nil
