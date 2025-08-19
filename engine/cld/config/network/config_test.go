@@ -12,6 +12,55 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+func Test_Config_Validate(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		give    *Config
+		wantErr string
+	}{
+		{
+			name: "valid config",
+			give: NewConfig([]Network{
+				{
+					Type:          NetworkTypeMainnet,
+					ChainSelector: 1,
+					RPCs: []RPC{
+						{
+							RPCName: "test_rpc",
+						},
+					},
+				},
+			}),
+		},
+		{
+			name: "invalid config",
+			give: NewConfig([]Network{
+				{
+					Type:          NetworkTypeMainnet,
+					ChainSelector: 1,
+				},
+			}),
+			wantErr: "network 1: at least one RPC is required",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			err := tt.give.Validate()
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				assert.EqualError(t, err, tt.wantErr)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
 func Test_Config_MarshalYAML(t *testing.T) {
 	t.Parallel()
 
@@ -481,145 +530,79 @@ func Test_ChainFamilyFilter(t *testing.T) {
 func Test_Config_Load(t *testing.T) {
 	t.Parallel()
 
-	// Create temporary test files
-	tmpDir := t.TempDir()
+	var (
+		file1 = "./testdata/networks_1.yml"
+		file2 = "./testdata/networks_2.yml"
 
-	// Valid YAML content for first file
-	yamlContent1 := `
-networks:
-- type: "mainnet"
-  chain_selector: 1
-  block_explorer:
-    type: "Etherscan"
-    api_key: "test_key"
-    url: "https://etherscan.io"
-  rpcs:
-  - rpc_name: "test_rpc"
-    preferred_url_scheme: "http"
-    http_url: "https://test.rpc"
-    ws_url: "wss://test.rpc"
-  - rpc_name: "test_rpc2"
-    preferred_url_scheme: "http"
-    http_url: "https://test2.rpc"
-    ws_url: "wss://test2.rpc"
-- type: "testnet"
-  chain_selector: 2
-  rpcs:
-  - rpc_name: "duplicate_test_rpc"
-    preferred_url_scheme: "http"
-    http_url: "https://dup-test.rpc"
-    ws_url: "wss://dup-test.rpc"
-- type: "testnet"
-  chain_selector: 2
-  rpcs:
-  - rpc_name: "test_rpc"
-    preferred_url_scheme: "http"
-    http_url: "https://test.rpc"
-    ws_url: "wss://test.rpc"
-- type: "mainnet"
-  chain_selector: 3
-  rpcs:
-  - rpc_name: "test_rpc3"
-    preferred_url_scheme: "http"
-    http_url: "https://dup-test3.rpc"
-    ws_url: "wss://dup-test3.rpc"`
-
-	// Valid YAML content for second file
-	yamlContent2 := `
-networks:
-- type: "mainnet"
-  chain_selector: 3
-  metadata:
-    test_config:
-      test_field: "value"
-      test_another_field: 123
-  rpcs:
-  - rpc_name: "test_rpc3"
-    preferred_url_scheme: "http"
-    http_url: "https://test3.rpc"
-    ws_url: "wss://test3.rpc"`
-
-	tmpFile1 := filepath.Join(tmpDir, "test1.yaml")
-	tmpFile2 := filepath.Join(tmpDir, "test2.yaml")
-	invalidFile := filepath.Join(tmpDir, "invalid.yaml")
-
-	network1 := Network{
-		Type:          "mainnet",
-		ChainSelector: 1,
-		BlockExplorer: BlockExplorer{
-			Type:   "Etherscan",
-			APIKey: "test_key",
-			URL:    "https://etherscan.io",
-		},
-		RPCs: []RPC{
-			{
-				RPCName:            "test_rpc",
-				PreferredURLScheme: "http",
-				HTTPURL:            "https://test.rpc",
-				WSURL:              "wss://test.rpc",
+		network1 = Network{
+			Type:          "mainnet",
+			ChainSelector: 1,
+			BlockExplorer: BlockExplorer{
+				Type:   "Etherscan",
+				APIKey: "test_key",
+				URL:    "https://etherscan.io",
 			},
-			{
-				RPCName:            "test_rpc2",
-				PreferredURLScheme: "http",
-				HTTPURL:            "https://test2.rpc",
-				WSURL:              "wss://test2.rpc",
+			RPCs: []RPC{
+				{
+					RPCName:            "test_rpc",
+					PreferredURLScheme: "http",
+					HTTPURL:            "https://test.rpc",
+					WSURL:              "wss://test.rpc",
+				},
+				{
+					RPCName:            "test_rpc2",
+					PreferredURLScheme: "http",
+					HTTPURL:            "https://test2.rpc",
+					WSURL:              "wss://test2.rpc",
+				},
 			},
-		},
-	}
+		}
 
-	network2 := Network{
-		Type:          "testnet",
-		ChainSelector: 2,
-		RPCs: []RPC{
-			{
-				RPCName:            "test_rpc",
-				PreferredURLScheme: "http",
-				HTTPURL:            "https://test.rpc",
-				WSURL:              "wss://test.rpc",
+		network2 = Network{
+			Type:          "testnet",
+			ChainSelector: 2,
+			RPCs: []RPC{
+				{
+					RPCName:            "test_rpc",
+					PreferredURLScheme: "http",
+					HTTPURL:            "https://test.rpc",
+					WSURL:              "wss://test.rpc",
+				},
 			},
-		},
-	}
+		}
 
-	network3 := Network{
-		Type:          "mainnet",
-		ChainSelector: 3,
-		Metadata: map[string]any{
-			"test_config": map[string]any{
-				"test_field":         "value",
-				"test_another_field": 123,
+		network3 = Network{
+			Type:          "mainnet",
+			ChainSelector: 3,
+			Metadata: map[string]any{
+				"test_config": map[string]any{
+					"test_field":         "value",
+					"test_another_field": 123,
+				},
 			},
-		},
-		RPCs: []RPC{
-			{
-				RPCName:            "test_rpc3",
-				PreferredURLScheme: "http",
-				HTTPURL:            "https://test3.rpc",
-				WSURL:              "wss://test3.rpc",
+			RPCs: []RPC{
+				{
+					RPCName:            "test_rpc3",
+					PreferredURLScheme: "http",
+					HTTPURL:            "https://test3.rpc",
+					WSURL:              "wss://test3.rpc",
+				},
 			},
-		},
-	}
+		}
 
-	network4 := Network{
-		Type:          "mainnet",
-		ChainSelector: 3,
-		RPCs: []RPC{
-			{
-				RPCName:            "test_rpc3",
-				PreferredURLScheme: "http",
-				HTTPURL:            "https://dup-test3.rpc",
-				WSURL:              "wss://dup-test3.rpc",
+		network4 = Network{
+			Type:          "mainnet",
+			ChainSelector: 3,
+			RPCs: []RPC{
+				{
+					RPCName:            "test_rpc3",
+					PreferredURLScheme: "http",
+					HTTPURL:            "https://dup-test3.rpc",
+					WSURL:              "wss://dup-test3.rpc",
+				},
 			},
-		},
-	}
-
-	err := os.WriteFile(tmpFile1, []byte(yamlContent1), 0600)
-	require.NoError(t, err, "Failed to create test file")
-
-	err = os.WriteFile(tmpFile2, []byte(yamlContent2), 0600)
-	require.NoError(t, err, "Failed to create test file")
-
-	err = os.WriteFile(invalidFile, []byte("invalid: yaml: content: ["), 0600)
-	require.NoError(t, err, "Failed to create invalid test file")
+		}
+	)
 
 	tests := []struct {
 		name          string
@@ -629,7 +612,7 @@ networks:
 	}{
 		{
 			name:          "single valid file",
-			giveFilePaths: []string{tmpFile1},
+			giveFilePaths: []string{file1},
 			want: NewConfig([]Network{
 				network1,
 				network2,
@@ -638,7 +621,7 @@ networks:
 		},
 		{
 			name:          "multiple valid files",
-			giveFilePaths: []string{tmpFile1, tmpFile2},
+			giveFilePaths: []string{file1, file2},
 			want: NewConfig([]Network{
 				network1,
 				network2,
@@ -652,7 +635,12 @@ networks:
 		},
 		{
 			name:          "invalid yaml",
-			giveFilePaths: []string{invalidFile},
+			giveFilePaths: []string{"./testdata/invalid_yaml.yaml"},
+			wantErr:       true,
+		},
+		{
+			name:          "invalid network",
+			giveFilePaths: []string{"./testdata/invalid_network.yaml"},
 			wantErr:       true,
 		},
 		{
