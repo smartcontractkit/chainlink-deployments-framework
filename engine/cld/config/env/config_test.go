@@ -35,7 +35,7 @@ var (
 		},
 		Offchain: OffchainConfig{
 			JobDistributor: JobDistributorConfig{
-				Auth: JobDistributorAuth{
+				Auth: &JobDistributorAuth{
 					CognitoAppClientID:     "af1a2b3c",
 					CognitoAppClientSecret: "11111111",
 					AWSRegion:              "us-west-1",
@@ -103,7 +103,7 @@ var (
 		},
 		Offchain: OffchainConfig{
 			JobDistributor: JobDistributorConfig{
-				Auth: JobDistributorAuth{
+				Auth: &JobDistributorAuth{
 					CognitoAppClientID:     "123",
 					CognitoAppClientSecret: "123",
 					AWSRegion:              "us-east-1",
@@ -138,6 +138,29 @@ func Test_Load(t *testing.T) { //nolint:paralleltest // see comment in setupTest
 			name:     "load from file",
 			givePath: "./testdata/config.yml",
 			want:     fileCfg,
+		},
+		{
+			name:     "load from empty file and env vars",
+			givePath: "./testdata/empty.yml",
+			want: &Config{
+				Onchain: OnchainConfig{
+					KMS: KMSConfig{},
+					EVM: EVMConfig{
+						Seth: nil, // Testing optional pointer fields
+					},
+					Solana: SolanaConfig{},
+					Aptos:  AptosConfig{},
+					Tron:   TronConfig{},
+				},
+				Offchain: OffchainConfig{
+					JobDistributor: JobDistributorConfig{
+						Auth:      nil, // Testing optional pointer fields
+						Endpoints: JobDistributorEndpoints{},
+					},
+					OCR: OCRConfig{},
+				},
+				Catalog: CatalogConfig{},
+			},
 		},
 		{
 			name: "override with env",

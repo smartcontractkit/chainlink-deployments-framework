@@ -64,7 +64,7 @@ type TronConfig struct {
 // configuration.
 type JobDistributorConfig struct {
 	Endpoints JobDistributorEndpoints `mapstructure:"endpoints"` // The URL endpoints for the Job Distributor
-	Auth      JobDistributorAuth      `mapstructure:"auth"`      // Secret: The authentication configuration for the Job Distributor
+	Auth      *JobDistributorAuth     `mapstructure:"auth"`      // Secret: The authentication configuration for the Job Distributor
 }
 
 // JobDistributorAuth is the configuration for authenticating to the Job Distributor via Cognito.
