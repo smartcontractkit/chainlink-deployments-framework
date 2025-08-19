@@ -49,7 +49,7 @@ type AptosConfig struct {
 	DeployerKey string `mapstructure:"deployer_key"` // Secret: The private key of the deployer account.
 }
 
-// SuiConfig is the configuration for the Aptos Chains.
+// SuiConfig is the configuration for the Sui Chains.
 //
 // WARNING: This data type contains sensitive fields and should not be logged or set in file
 // configuration.
