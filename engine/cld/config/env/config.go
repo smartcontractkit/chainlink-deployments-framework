@@ -49,6 +49,14 @@ type AptosConfig struct {
 	DeployerKey string `mapstructure:"deployer_key"` // Secret: The private key of the deployer account.
 }
 
+// SuiConfig is the configuration for the Sui Chains.
+//
+// WARNING: This data type contains sensitive fields and should not be logged or set in file
+// configuration.
+type SuiConfig struct {
+	DeployerKey string `mapstructure:"deployer_key"` // Secret: The private key of the deployer account.
+}
+
 // TronConfig is the configuration for the Tron Chains.
 //
 // WARNING: This data type contains sensitive fields and should not be logged or set in file
@@ -105,6 +113,7 @@ type OnchainConfig struct {
 	EVM    EVMConfig    `mapstructure:"evm"`
 	Solana SolanaConfig `mapstructure:"solana"`
 	Aptos  AptosConfig  `mapstructure:"aptos"`
+	Sui    SuiConfig    `mapstructure:"sui"`
 	Tron   TronConfig   `mapstructure:"tron"`
 }
 

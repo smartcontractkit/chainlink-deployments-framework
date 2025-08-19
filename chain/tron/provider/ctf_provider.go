@@ -237,7 +237,8 @@ func (p *CTFChainProvider) BlockChain() chain.BlockChain {
 	return *p.chain
 }
 
-// Cleanup terminates the CTF container if it's running
+// Cleanup terminates the CTF container if it's running. This is optional since
+// the container will automatically cleanup when the context passed to Initialize is canceled.
 func (p *CTFChainProvider) Cleanup(ctx context.Context) error {
 	if p.container != nil {
 		return p.container.Terminate(ctx)
@@ -292,6 +293,18 @@ func (p *CTFChainProvider) startContainer(ctx context.Context, chainID string) (
 	}
 
 	p.container = bc.Container
+
+	// Auto-cleanup when context is canceled
+	go func() {
+		<-ctx.Done()
+		if p.container != nil {
+			cleanupCtx := context.Background()
+			log.Printf("Auto-cleaning up container")
+			if err := p.container.Terminate(cleanupCtx); err != nil {
+				log.Printf("Failed to auto-cleanup container: %v", err)
+			}
+		}
+	}()
 
 	fullNodeURL := bc.Nodes[0].ExternalHTTPUrl + "/wallet"
 	solidityNodeURL := bc.Nodes[0].ExternalHTTPUrl + "/walletsolidity"
