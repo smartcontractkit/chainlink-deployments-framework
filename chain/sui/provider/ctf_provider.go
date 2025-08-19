@@ -9,7 +9,9 @@ import (
 	"time"
 
 	"github.com/avast/retry-go/v4"
+	"github.com/block-vision/sui-go-sdk/models"
 	sui_sdk "github.com/block-vision/sui-go-sdk/sui"
+	"github.com/go-resty/resty/v2"
 	chain_selectors "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
@@ -135,9 +137,8 @@ func (p *CTFChainProvider) startContainer(
 	chainID string, account sui.SuiSigner,
 ) (string, sui_sdk.ISuiAPI) {
 	var (
-		attempts      = uint(10)
-		url           string
-		containerName string
+		attempts = uint(10)
+		url      string
 	)
 
 	// initialize the docker network used by CTF
@@ -171,7 +172,7 @@ func (p *CTFChainProvider) startContainer(
 		testcontainers.CleanupContainer(p.t, output.Container)
 
 		return containerResult{
-			url:           output.Nodes[0].ExternalHTTPUrl + "/v1",
+			url:           output.Nodes[0].ExternalHTTPUrl,
 			containerName: output.ContainerName,
 		}, nil
 	},
@@ -183,7 +184,6 @@ func (p *CTFChainProvider) startContainer(
 	require.NoError(p.t, err)
 
 	url = result.url
-	containerName = result.containerName
 
 	client := sui_sdk.NewSuiClient(url)
 
@@ -198,14 +198,23 @@ func (p *CTFChainProvider) startContainer(
 	}
 	require.True(p.t, ready, "Sui network not ready")
 
-	dc, err := framework.NewDockerClient()
-	require.NoError(p.t, err)
-
-	_, err = dc.ExecContainer(containerName, []string{
-		"sui", "client", "faucet",
-		"--address", address,
-	})
+	err = fundAccount(fmt.Sprintf("http://%s:%s", "127.0.0.1", "9123"), address)
 	require.NoError(p.t, err)
 
 	return url, client
+}
+
+func fundAccount(url string, address string) error {
+	r := resty.New().SetBaseURL(url)
+	b := &models.FaucetRequest{
+		FixedAmountRequest: &models.FaucetFixedAmountRequest{
+			Recipient: address,
+		},
+	}
+	resp, err := r.R().SetBody(b).SetHeader("Content-Type", "application/json").Post("/gas")
+	if err != nil {
+		return err
+	}
+	framework.L.Info().Any("Resp", resp).Msg("Address is funded!")
+	return nil
 }
