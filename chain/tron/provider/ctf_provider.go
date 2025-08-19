@@ -30,10 +30,10 @@ import (
 
 // CTFChainProviderConfig holds the configuration to initialize the CTFChainProvider.
 type CTFChainProviderConfig struct {
-	// Required: A generator for the deployer account. Use AccountGenCTFDefault to
-	// create a deployer account from the default CTF account. Alternatively, you can use
-	// AccountRandom to create a new random account.
-	DeployerAccountGen AccountGenerator
+	// Required: A generator for the deployer signer. Use SignerGenCTFDefault to
+	// create a deployer signer from the default CTF account. Alternatively, you can use
+	// SignerRandom to create a new random signer.
+	DeployerSignerGen SignerGenerator
 
 	// Required: A sync.Once instance to ensure that the CTF framework only sets up the new
 	// DefaultNetwork once
@@ -42,8 +42,8 @@ type CTFChainProviderConfig struct {
 
 // validate checks whether the configuration contains all required values.
 func (c CTFChainProviderConfig) validate() error {
-	if c.DeployerAccountGen == nil {
-		return errors.New("deployer account generator is required")
+	if c.DeployerSignerGen == nil {
+		return errors.New("deployer signer generator is required")
 	}
 	if c.Once == nil {
 		return errors.New("sync.Once instance is required")
@@ -121,23 +121,23 @@ func (p *CTFChainProvider) Initialize(_ context.Context) (chain.BlockChain, erro
 		return nil, fmt.Errorf("failed to create combined client: %w", err)
 	}
 
-	// Generate deployer keystore and address
-	deployerKeystore, deployerAddr, err := p.config.DeployerAccountGen.Generate()
+	// Get deployer address from the signer generator
+	deployerAddr, err := p.config.DeployerSignerGen.GetAddress()
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate deployer account: %w", err)
+		return nil, fmt.Errorf("failed to get deployer address: %w", err)
 	}
 
-	// Initialize local RPC client wrapper that uses the keystore for signing
-	client := rpcclient.New(combinedClient, deployerKeystore, deployerAddr)
+	// Initialize local RPC client wrapper that uses the signer generator's signing function
+	client := rpcclient.New(combinedClient, p.config.DeployerSignerGen.Sign)
 
 	// Construct and cache the Tron chain instance with helper methods for deploying and interacting with contracts
 	p.chain = &tron.Chain{
 		ChainMetadata: tron.ChainMetadata{
 			Selector: p.selector,
 		},
-		Client:   combinedClient,   // Underlying client for Tron node communication
-		Keystore: deployerKeystore, // Keystore for signing transactions
-		Address:  deployerAddr,     // Default "from" address for transactions
+		Client:   combinedClient,                  // Underlying client for Tron node communication
+		SignHash: p.config.DeployerSignerGen.Sign, // Function for signing transactions
+		Address:  deployerAddr,                    // Default "from" address for transactions
 		URL:      fullNodeURL,
 		// Helper for sending and confirming transactions
 		SendAndConfirm: func(ctx context.Context, tx *common.Transaction, opts *tron.ConfirmRetryOptions) (*soliditynode.TransactionInfo, error) {

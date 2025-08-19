@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -15,6 +16,7 @@ import (
 	chain_selectors "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
+	"github.com/smartcontractkit/freeport"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 
@@ -155,17 +157,20 @@ func (p *CTFChainProvider) startContainer(
 	}
 
 	result, err := retry.DoWithData(func() (containerResult, error) {
-		// NOTE: Sui blockchain containers use hardcoded ports (9000/9123) and ignore the Port field
+		port := freeport.GetOne(p.t)
+
 		input := &blockchain.Input{
 			Image:     "", // filled out by defaultSui function
 			Type:      blockchain.TypeSui,
 			ChainID:   chainID,
 			PublicKey: address,
-			// Port field is ignored by Sui containers - they always use ports 9000/9123
+			Port:      strconv.Itoa(port),
 		}
 
 		output, rerr := blockchain.NewBlockchainNetwork(input)
 		if rerr != nil {
+			// Return the ports to freeport to avoid leaking them during retries
+			freeport.Return([]int{port})
 			return containerResult{}, rerr
 		}
 
@@ -180,8 +185,11 @@ func (p *CTFChainProvider) startContainer(
 		retry.Attempts(attempts),
 		retry.Delay(1*time.Second),
 		retry.DelayType(retry.FixedDelay),
+		retry.OnRetry(func(attempt uint, err error) {
+			p.t.Logf("Attempt %d/%d: Failed to start CTF Sui container: %v", attempt+1, attempts, err)
+		}),
 	)
-	require.NoError(p.t, err)
+	require.NoError(p.t, err, "Failed to start CTF Sui container after %d attempts", attempts)
 
 	url = result.url
 

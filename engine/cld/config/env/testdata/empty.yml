@@ -1,0 +1,2 @@
+# This file is used to test the loading of an empty config file.
+# It should return an empty config object.
