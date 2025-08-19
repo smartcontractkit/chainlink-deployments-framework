@@ -198,15 +198,16 @@ var (
 	// When loading, Viper will check each listed environment variable in order and use the first one
 	// that is set.
 	envBindings = map[string][]string{
-		"onchain.kms.key_id":                                      {"ONCHAIN_KMS_KEY_ID", "KMS_KEY_ID"},
-		"onchain.kms.key_region":                                  {"ONCHAIN_KMS_KEY_REGION", "KMS_KEY_REGION"},
-		"onchain.evm.deployer_key":                                {"ONCHAIN_EVM_DEPLOYER_KEY", "EVM_DEPLOYER_KEY"},
+		"onchain.kms.key_id":                                      {"ONCHAIN_KMS_KEY_ID", "KMS_DEPLOYER_KEY_ID"},
+		"onchain.kms.key_region":                                  {"ONCHAIN_KMS_KEY_REGION", "KMS_DEPLOYER_KEY_REGION"},
+		"onchain.evm.deployer_key":                                {"ONCHAIN_EVM_DEPLOYER_KEY", "TEST_WALLET_KEY"},
 		"onchain.evm.seth.config_file_path":                       {"ONCHAIN_EVM_SETH_CONFIG_FILE_PATH", "SETH_CONFIG_FILE"},
 		"onchain.evm.seth.geth_wrapper_dirs":                      {"ONCHAIN_EVM_SETH_GETH_WRAPPER_DIRS", "GETH_WRAPPERS_DIRS"},
 		"onchain.solana.wallet_key":                               {"ONCHAIN_SOLANA_WALLET_KEY", "SOLANA_WALLET_KEY"},
 		"onchain.solana.programs_dir_path":                        {"ONCHAIN_SOLANA_PROGRAMS_DIR_PATH", "SOLANA_PROGRAM_PATH"},
 		"onchain.aptos.deployer_key":                              {"ONCHAIN_APTOS_DEPLOYER_KEY", "APTOS_DEPLOYER_KEY"},
 		"onchain.tron.deployer_key":                               {"ONCHAIN_TRON_DEPLOYER_KEY", "TRON_DEPLOYER_KEY"},
+		"onchain.sui.deployer_key":                                {"ONCHAIN_SUI_DEPLOYER_KEY"},
 		"offchain.job_distributor.auth.cognito_app_client_id":     {"OFFCHAIN_JD_AUTH_COGNITO_APP_CLIENT_ID", "JD_AUTH_COGNITO_APP_CLIENT_ID"},
 		"offchain.job_distributor.auth.cognito_app_client_secret": {"OFFCHAIN_JD_AUTH_COGNITO_APP_CLIENT_SECRET", "JD_AUTH_COGNITO_APP_CLIENT_SECRET"},
 		"offchain.job_distributor.auth.aws_region":                {"OFFCHAIN_JD_AUTH_AWS_REGION", "JD_AUTH_AWS_REGION"},
@@ -216,7 +217,7 @@ var (
 		"offchain.job_distributor.endpoints.grpc":                 {"OFFCHAIN_JD_ENDPOINTS_GRPC", "JD_GRPC"},
 		"offchain.ocr.x_signers":                                  {"OFFCHAIN_OCR_X_SIGNERS", "OCR_X_SIGNERS"},
 		"offchain.ocr.x_proposers":                                {"OFFCHAIN_OCR_X_PROPOSERS", "OCR_X_PROPOSERS"},
-		"catalog.grpc":                                            {"CATALOG_GRPC"},
+		"catalog.grpc":                                            {"CATALOG_GRPC", "CATALOG_SERVICE_GRPC"},
 	}
 )
 
