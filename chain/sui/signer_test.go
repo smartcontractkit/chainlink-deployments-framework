@@ -75,7 +75,7 @@ func TestNewSignerFromHexPrivateKey(t *testing.T) {
 }
 
 func TestSuiSigner_Integration(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 
 	t.Run("hex private key to signer workflow", func(t *testing.T) {
 		t.Parallel()
