@@ -51,7 +51,7 @@ func (s *suiSigner) Sign(message []byte) ([]string, error) {
 	}
 
 	// Sign the message as a transaction message
-	b64Message := base64.StdEncoding.EncodeToString([]byte(message))
+	b64Message := base64.StdEncoding.EncodeToString(message)
 	signedMsg, err := s.signer.SignMessage(b64Message, constant.TransactionDataIntentScope)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign message: %w", err)
