@@ -1,6 +1,7 @@
 package sui
 
 import (
+	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -50,7 +51,8 @@ func (s *suiSigner) Sign(message []byte) ([]string, error) {
 	}
 
 	// Sign the message as a transaction message
-	signedMsg, err := s.signer.SignMessage(string(message), constant.TransactionDataIntentScope)
+	b64Message := base64.StdEncoding.EncodeToString([]byte(message))
+	signedMsg, err := s.signer.SignMessage(b64Message, constant.TransactionDataIntentScope)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign message: %w", err)
 	}
