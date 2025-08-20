@@ -173,7 +173,7 @@ func Test_Domain_EnvDir(t *testing.T) {
 
 func Test_Domain_AddressBookByEnv(t *testing.T) {
 	t.Parallel()
-	fixture := SetupTestDomainsFS(t)
+	fixture := setupTestDomainsFS(t)
 	d := NewDomain(fixture.rootDirPath, "ccip")
 	got, err := d.AddressBookByEnv("staging")
 	require.NoError(t, err)
@@ -183,7 +183,7 @@ func Test_Domain_AddressBookByEnv(t *testing.T) {
 
 func Test_Domain_DataStoreByEnv(t *testing.T) {
 	t.Parallel()
-	fixture := SetupTestDomainsFS(t)
+	fixture := setupTestDomainsFS(t)
 	d := NewDomain(fixture.rootDirPath, "ccip")
 	got, err := d.DataStoreByEnv("staging")
 	require.NoError(t, err)
@@ -193,7 +193,7 @@ func Test_Domain_DataStoreByEnv(t *testing.T) {
 
 func Test_Domain_ArtifactsByEnv(t *testing.T) {
 	t.Parallel()
-	fixture := SetupTestDomainsFS(t)
+	fixture := setupTestDomainsFS(t)
 	d := NewDomain(fixture.rootDirPath, "ccip")
 	got := d.ArtifactsDirByEnv("staging")
 	assert.Equal(t, fixture.artifactsDir, got)
@@ -210,7 +210,7 @@ func Test_Domain_CmdDirPath(t *testing.T) {
 // 	t.Parallel()
 //
 // 	var (
-// 		fixture = SetupTestDomainsFS(t)
+// 		fixture = setupTestDomainsFS(t)
 // 		envdir  = fixture.envDir
 // 		reg     = NewMigrationsRegistry()
 // 	)
@@ -266,7 +266,7 @@ func Test_Domain_CmdDirPath(t *testing.T) {
 // 		t.Run(tt.name, func(t *testing.T) {
 // 			t.Parallel()
 //
-// 			fixture := SetupTestDomainsFS(t)
+// 			fixture := setupTestDomainsFS(t)
 //
 // 			err := fixture.envDir.SaveViewState(tt.giveState)
 //

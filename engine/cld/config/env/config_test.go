@@ -64,6 +64,7 @@ var (
 		"ONCHAIN_SOLANA_PROGRAMS_DIR_PATH":           "/tmp",
 		"ONCHAIN_APTOS_DEPLOYER_KEY":                 "0x123",
 		"ONCHAIN_TRON_DEPLOYER_KEY":                  "0x123",
+		"ONCHAIN_SUI_DEPLOYER_KEY":                   "0x123",
 		"OFFCHAIN_JD_AUTH_COGNITO_APP_CLIENT_ID":     "123",
 		"OFFCHAIN_JD_AUTH_COGNITO_APP_CLIENT_SECRET": "123",
 		"OFFCHAIN_JD_AUTH_AWS_REGION":                "us-east-1",
@@ -74,6 +75,30 @@ var (
 		"OFFCHAIN_OCR_X_SIGNERS":                     "awkward bat",
 		"OFFCHAIN_OCR_X_PROPOSERS":                   "caring deer",
 		"CATALOG_GRPC":                               "http://localhost:8080",
+	}
+
+	legacyEnvVars = map[string]string{
+		"KMS_DEPLOYER_KEY_ID":               "123",
+		"KMS_DEPLOYER_KEY_REGION":           "us-east-1",
+		"TEST_WALLET_KEY":                   "0x123",
+		"SETH_CONFIG_FILE":                  "config.json",
+		"GETH_WRAPPERS_DIRS":                "./a,./b",
+		"SOLANA_WALLET_KEY":                 "0x123",
+		"SOLANA_PROGRAM_PATH":               "/tmp",
+		"APTOS_DEPLOYER_KEY":                "0x123",
+		"TRON_DEPLOYER_KEY":                 "0x123",
+		"JD_AUTH_COGNITO_APP_CLIENT_ID":     "123",
+		"JD_AUTH_COGNITO_APP_CLIENT_SECRET": "123",
+		"JD_AUTH_AWS_REGION":                "us-east-1",
+		"JD_AUTH_USERNAME":                  "123",
+		"JD_AUTH_PASSWORD":                  "123",
+		"JD_WS_RPC":                         "WSRPC2",
+		"JD_GRPC":                           "GRPC2",
+		"OCR_X_SIGNERS":                     "awkward bat",
+		"OCR_X_PROPOSERS":                   "caring deer",
+		"CATALOG_SERVICE_GRPC":              "http://localhost:8080",
+		// These values do not have a legacy equivalent
+		"ONCHAIN_SUI_DEPLOYER_KEY": "0x123",
 	}
 
 	// envCfg is the config that is loaded from the environment variables.
@@ -98,6 +123,9 @@ var (
 				DeployerKey: "0x123",
 			},
 			Tron: TronConfig{
+				DeployerKey: "0x123",
+			},
+			Sui: SuiConfig{
 				DeployerKey: "0x123",
 			},
 		},
@@ -167,7 +195,7 @@ func Test_Load(t *testing.T) { //nolint:paralleltest // see comment in setupTest
 			beforeFunc: func(t *testing.T) {
 				t.Helper()
 
-				setupTestEnvVars(t)
+				setupEnvVars(t, envVars)
 			},
 			givePath: "./testdata/config.yml",
 			want:     envCfg,
@@ -177,7 +205,7 @@ func Test_Load(t *testing.T) { //nolint:paralleltest // see comment in setupTest
 			beforeFunc: func(t *testing.T) {
 				t.Helper()
 
-				setupTestEnvVars(t)
+				setupEnvVars(t, envVars)
 			},
 			givePath: "./testdata/invalid.yml",
 			want:     envCfg,
@@ -240,8 +268,17 @@ func Test_LoadFile(t *testing.T) {
 	}
 }
 
-func Test_LoadEnv(t *testing.T) { //nolint:paralleltest // see comment in setupTestEnvVars
-	setupTestEnvVars(t)
+func Test_LoadEnv(t *testing.T) { //nolint:paralleltest // see comment in setupEnvVars
+	setupEnvVars(t, envVars)
+
+	got, err := LoadEnv()
+	require.NoError(t, err)
+
+	assert.Equal(t, envCfg, got)
+}
+
+func Test_LoadEnv_Legacy(t *testing.T) { //nolint:paralleltest // see comment in setupEnvVars
+	setupEnvVars(t, legacyEnvVars)
 
 	got, err := LoadEnv()
 	require.NoError(t, err)
@@ -253,7 +290,7 @@ func Test_LoadEnv(t *testing.T) { //nolint:paralleltest // see comment in setupT
 //
 // CAUTION: Because this function uses t.Setenv which affects the entire process, tests which call
 // this function cannot be run in parallel.
-func setupTestEnvVars(t *testing.T) {
+func setupEnvVars(t *testing.T, envVars map[string]string) {
 	t.Helper()
 
 	for key, value := range envVars {

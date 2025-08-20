@@ -156,20 +156,23 @@ func (p *CTFChainProvider) startContainer(
 	}
 
 	result, err := retry.DoWithData(func() (containerResult, error) {
-		port := freeport.GetOne(p.t)
+		ports := freeport.GetN(p.t, 2)
+		port := ports[0]
+		faucetPort := ports[1]
 
 		input := &blockchain.Input{
-			Image:     "", // filled out by defaultSui function
-			Type:      blockchain.TypeSui,
-			ChainID:   chainID,
-			PublicKey: address,
-			Port:      strconv.Itoa(port),
+			Image:      "", // filled out by defaultSui function
+			Type:       blockchain.TypeSui,
+			ChainID:    chainID,
+			PublicKey:  address,
+			Port:       strconv.Itoa(port),
+			FaucetPort: strconv.Itoa(faucetPort),
 		}
 
 		output, rerr := blockchain.NewBlockchainNetwork(input)
 		if rerr != nil {
 			// Return the ports to freeport to avoid leaking them during retries
-			freeport.Return([]int{port})
+			freeport.Return([]int{port, faucetPort})
 			return containerResult{}, rerr
 		}
 

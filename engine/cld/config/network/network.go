@@ -1,6 +1,8 @@
 package network
 
 import (
+	"errors"
+
 	chain_selectors "github.com/smartcontractkit/chain-selectors"
 )
 
@@ -29,6 +31,23 @@ func (n *Network) ChainFamily() (string, error) {
 // ChainID returns the chain ID as a string based on the chain selector.
 func (n *Network) ChainID() (string, error) {
 	return chain_selectors.GetChainIDFromSelector(n.ChainSelector)
+}
+
+// Validate validates the network configuration to ensure that all required fields are set.
+func (n *Network) Validate() error {
+	if n.Type == "" {
+		return errors.New("type is required")
+	}
+
+	if n.ChainSelector == 0 {
+		return errors.New("chain selector is required")
+	}
+
+	if len(n.RPCs) == 0 {
+		return errors.New("at least one RPC is required")
+	}
+
+	return nil
 }
 
 // RPC represents an RPC configuration in the flattened structure
