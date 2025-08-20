@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -16,7 +15,6 @@ import (
 	chain_selectors "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
-	"github.com/smartcontractkit/freeport"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 
@@ -157,20 +155,15 @@ func (p *CTFChainProvider) startContainer(
 	}
 
 	result, err := retry.DoWithData(func() (containerResult, error) {
-		port := freeport.GetOne(p.t)
-
 		input := &blockchain.Input{
 			Image:     "", // filled out by defaultSui function
 			Type:      blockchain.TypeSui,
 			ChainID:   chainID,
 			PublicKey: address,
-			Port:      strconv.Itoa(port),
 		}
 
 		output, rerr := blockchain.NewBlockchainNetwork(input)
 		if rerr != nil {
-			// Return the ports to freeport to avoid leaking them during retries
-			freeport.Return([]int{port})
 			return containerResult{}, rerr
 		}
 
