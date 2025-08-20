@@ -25,7 +25,7 @@ require (
 	github.com/smartcontractkit/chainlink-testing-framework/framework v0.10.15
 	github.com/smartcontractkit/chainlink-testing-framework/seth v1.51.2
 	github.com/smartcontractkit/chainlink-tron/relayer v0.0.11-0.20250815105909-75499abc4335
-	github.com/smartcontractkit/freeport v0.1.1
+	github.com/smartcontractkit/freeport v0.1.2
 	github.com/smartcontractkit/mcms v0.21.1
 	github.com/spf13/viper v1.20.1
 	github.com/stretchr/testify v1.10.0
