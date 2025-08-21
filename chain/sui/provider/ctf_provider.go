@@ -31,6 +31,14 @@ type CTFChainProviderConfig struct {
 	// Required: A sync.Once instance to ensure that the CTF framework only sets up the new
 	// DefaultNetwork once
 	Once *sync.Once
+
+	// Optional: A specification of the image to use for the CTF container.
+	// Default: mysten/sui-tools:devnet
+	Image *string
+
+	// Optional: A specification of the platform to use for the CTF container.
+	// Default: linux/amd64
+	Platform *string
 }
 
 // validate checks if the CTFChainProviderConfig is valid.
@@ -160,13 +168,19 @@ func (p *CTFChainProvider) startContainer(
 		port := ports[0]
 		faucetPort := ports[1]
 
+		image := ""
+		if p.config.Image != nil {
+			image = *p.config.Image
+		}
+
 		input := &blockchain.Input{
-			Image:      "", // filled out by defaultSui function
-			Type:       blockchain.TypeSui,
-			ChainID:    chainID,
-			PublicKey:  address,
-			Port:       strconv.Itoa(port),
-			FaucetPort: strconv.Itoa(faucetPort),
+			Image:         image,
+			ImagePlatform: p.config.Platform,
+			Type:          blockchain.TypeSui,
+			ChainID:       chainID,
+			PublicKey:     address,
+			Port:          strconv.Itoa(port),
+			FaucetPort:    strconv.Itoa(faucetPort),
 		}
 
 		output, rerr := blockchain.NewBlockchainNetwork(input)
