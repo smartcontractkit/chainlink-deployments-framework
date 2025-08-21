@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"fmt"
-	"sync"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/fbsobreira/gotron-sdk/pkg/address"
@@ -34,12 +33,15 @@ type signerGenCTFDefault struct {
 
 // SignerGenCTFDefault creates a new instance of signerGenCTFDefault. It uses the default
 // TRON account and private key from the blockchain package.
-func SignerGenCTFDefault() *signerGenCTFDefault {
-	return &signerGenCTFDefault{
-		signerGenPrivateKey: signerGenPrivateKey{
-			PrivateKey: blockchain.TRONAccounts.PrivateKeys[0],
-		},
+func SignerGenCTFDefault() (*signerGenCTFDefault, error) {
+	privKeyGen, err := SignerGenPrivateKey(blockchain.TRONAccounts.PrivateKeys[0])
+	if err != nil {
+		return nil, fmt.Errorf("failed to create CTF default signer: %w", err)
 	}
+
+	return &signerGenCTFDefault{
+		signerGenPrivateKey: *privKeyGen,
+	}, nil
 }
 
 // signerGenPrivateKey is a signer generator that creates a signer from the private key.
@@ -47,19 +49,21 @@ type signerGenPrivateKey struct {
 	// PrivateKey is the hex formatted private key used to generate the Tron account.
 	PrivateKey string
 
-	// Lazy initialization fields
-	once      sync.Once
-	privKey   *ecdsa.PrivateKey
-	address   address.Address
-	initError error
+	privKey *ecdsa.PrivateKey
+	address address.Address
 }
 
 // SignerGenPrivateKey creates a new instance of signerGenPrivateKey with the provided private key.
-// Initialization is performed lazily on first Sign() or GetAddress() call using sync.Once.
-func SignerGenPrivateKey(privateKey string) *signerGenPrivateKey {
-	return &signerGenPrivateKey{
+func SignerGenPrivateKey(privateKey string) (*signerGenPrivateKey, error) {
+	gen := &signerGenPrivateKey{
 		PrivateKey: privateKey,
 	}
+
+	if err := gen.initialize(); err != nil {
+		return nil, err
+	}
+
+	return gen, nil
 }
 
 // initialize parses the private key and derives the TRON address.
@@ -77,48 +81,30 @@ func (g *signerGenPrivateKey) initialize() error {
 }
 
 // Sign signs the given transaction hash using the private key.
-// Initializes the private key lazily on first call.
 func (g *signerGenPrivateKey) Sign(ctx context.Context, txHash []byte) ([]byte, error) {
-	// Lazy initialization using sync.Once
-	g.once.Do(func() {
-		g.initError = g.initialize()
-	})
-
-	if g.initError != nil {
-		return nil, fmt.Errorf("account generator initialization failed: %w", g.initError)
-	}
-
 	return crypto.Sign(txHash, g.privKey)
 }
 
 // GetAddress returns the TRON address associated with this signer generator.
-// Initializes the private key lazily if not already initialized.
 func (g *signerGenPrivateKey) GetAddress() (address.Address, error) {
-	// Lazy initialization using sync.Once
-	g.once.Do(func() {
-		g.initError = g.initialize()
-	})
-
-	if g.initError != nil {
-		return address.Address(""), fmt.Errorf("private key signer initialization failed: %w", g.initError)
-	}
-
 	return g.address, nil
 }
 
 // SignerRandom creates a new instance of the signerRandom generator.
-// Initialization is performed lazily on first Sign() or GetAddress() call.
-func SignerRandom() *signerRandom {
-	return &signerRandom{}
+func SignerRandom() (*signerRandom, error) {
+	gen := &signerRandom{}
+
+	if err := gen.initialize(); err != nil {
+		return nil, err
+	}
+
+	return gen, nil
 }
 
 // signerRandom is a TRON signer generator created with a random account.
 type signerRandom struct {
-	// Lazy initialization fields
-	once      sync.Once
-	privKey   *ecdsa.PrivateKey
-	address   address.Address
-	initError error
+	privKey *ecdsa.PrivateKey
+	address address.Address
 }
 
 // initialize generates a new random TRON private key and derives the address.
@@ -137,29 +123,11 @@ func (g *signerRandom) initialize() error {
 
 // Sign signs the given transaction hash using the private key.
 func (g *signerRandom) Sign(ctx context.Context, txHash []byte) ([]byte, error) {
-	// Lazy initialization using sync.Once
-	g.once.Do(func() {
-		g.initError = g.initialize()
-	})
-
-	if g.initError != nil {
-		return nil, fmt.Errorf("account generator initialization failed: %w", g.initError)
-	}
-
 	return crypto.Sign(txHash, g.privKey)
 }
 
 // GetAddress returns the TRON address associated with this signer generator.
 func (g *signerRandom) GetAddress() (address.Address, error) {
-	// Lazy initialization using sync.Once
-	g.once.Do(func() {
-		g.initError = g.initialize()
-	})
-
-	if g.initError != nil {
-		return address.Address(""), fmt.Errorf("random signer initialization failed: %w", g.initError)
-	}
-
 	return g.address, nil
 }
 
@@ -169,11 +137,16 @@ type signerGenKMS struct {
 }
 
 // SignerGenKMS creates a new instance of signerGenKMS with the provided KMS configuration.
-// Initialization is performed lazily on first Sign() or GetAddress() call using sync.Once.
-func SignerGenKMS(keyID, keyRegion, awsProfile string) *signerGenKMS {
-	return &signerGenKMS{
-		signer: newKMSSigner(keyID, keyRegion, awsProfile),
+
+func SignerGenKMS(keyID, keyRegion, awsProfile string) (*signerGenKMS, error) {
+	signer, err := newKMSSigner(keyID, keyRegion, awsProfile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create KMS signer: %w", err)
 	}
+
+	return &signerGenKMS{
+		signer: signer,
+	}, nil
 }
 
 // Sign signs the given transaction hash using the KMS signer.

@@ -18,6 +18,7 @@ import (
 type EnvDir struct {
 	// rootPath is absolute path of the domains filesystem. e.g. if the domain directory is in the
 	// project root directory, this would be the project root directory.
+	// TODO: unexport after scaffolding logic moved to cld
 	rootPath string
 
 	// The key of the domain that the environment belongs to. e.g. "ccip", "keystone"
@@ -45,6 +46,9 @@ func (d EnvDir) String() string {
 func (d EnvDir) DirPath() string {
 	return filepath.Join(d.rootPath, d.domainKey, d.key)
 }
+
+// RootPath returns the root path of the environment directory.
+func (d EnvDir) RootPath() string { return d.rootPath }
 
 // DomainKey returns the domain key that the environment belongs to.
 func (d EnvDir) DomainKey() string {
@@ -414,4 +418,9 @@ func (d EnvDir) CreateDurablePipelinesDir() error {
 	}
 
 	return nil
+}
+
+// SaveViewState saves the view state of the domain's environment with the default filename.
+func (d EnvDir) SaveViewState(v json.Marshaler) error {
+	return SaveViewState(d.ViewStateFilePath(), v)
 }

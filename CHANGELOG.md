@@ -1,5 +1,69 @@
 # chainlink-deployments-framework
 
+## 0.30.0
+
+### Minor Changes
+
+- [#297](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/297) [`c092120`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/c0921203f73f596d024cdcb2d4bc180056688652) Thanks [@jkongie](https://github.com/jkongie)! - Allow users to marshal and unmarshal env config directly
+
+- [#298](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/298) [`c754f68`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/c754f68e56e44e95dd0a46deb6c5d864e2c194f5) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat: New EVM CTF Anvil Provider
+
+### Patch Changes
+
+- [#300](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/300) [`4ff7f93`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/4ff7f9323e82524f73385ad41cdc3f1e5220e938) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - Moved analyze.go from chainlink repo
+
+- [#296](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/296) [`b4ba277`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/b4ba2773290fdbc5be5c4210ab184bdab7258132) Thanks [@RodrigoAD](https://github.com/RodrigoAD)! - Fix message encoding in Sui signing
+
+## 0.29.0
+
+### Minor Changes
+
+- [#294](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/294) [`6e35a51`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/6e35a51007ab51169cf258c532cbfadd7caf83ab) Thanks [@ajaskolski](https://github.com/ajaskolski)! - refactor: extract chains network and minimal env dependency from cld
+
+## 0.28.0
+
+### Minor Changes
+
+- [#288](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/288) [`762cddd`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/762cddd7ce357c5a5d37154a51170c91fec83686) Thanks [@RodrigoAD](https://github.com/RodrigoAD)! - Add Sui env config support
+
+- [#269](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/269) [`b25a886`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/b25a8865f7d6d59c7821a6d8bb10372fc9941781) Thanks [@vreff](https://github.com/vreff)! - #changed bump chainlink-common, update Keystore to implement extended Keystore interface
+
+- [#289](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/289) [`6a5acfb`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/6a5acfbb6e01999aafcc9cf9f3621bb803e3f7e0) Thanks [@jkongie](https://github.com/jkongie)! - Network configuration is now validated on load. It ensures that the type and chain selector are present, as well as at least one RPC.
+
+- [#283](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/283) [`f89cfad`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/f89cfada6ea8de2b91f5a17cd5881d1efdd71079) Thanks [@jkongie](https://github.com/jkongie)! - [BREAKING] JobDistributorConfig.Auth is now a pointer to indicate that it is an optional field
+
+### Patch Changes
+
+- [#291](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/291) [`af3df24`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/af3df247572945d736a0b098cbb34703eab8ea24) Thanks [@jkongie](https://github.com/jkongie)! - Fixes legacy env vars fallback for certain fields on the env.Config
+
+## 0.27.0
+
+### Minor Changes
+
+- [#276](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/276) [`55e476b`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/55e476ba237aaf2aadf3e0327a649a3b0ce925e2) Thanks [@jkongie](https://github.com/jkongie)! - Bump the mcms library to v0.21.1
+
+### Patch Changes
+
+- [#281](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/281) [`9c26dea`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/9c26deaf567f67f14eaae88cbc58f76fb6d180a2) Thanks [@ajaskolski](https://github.com/ajaskolski)! - chore(domain): export SetupTestDomainsFS and rootPath for easier granular refactor
+
+## 0.26.0
+
+### Minor Changes
+
+- [#279](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/279) [`7ffac78`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/7ffac78a9ce16170c77db3bc87e9bb9a311c8cfa) Thanks [@ajaskolski](https://github.com/ajaskolski)! - refactor(engine): domain move view state from cld to cldf
+
+## 0.25.0
+
+### Minor Changes
+
+- [#272](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/272) [`10bd095`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/10bd0955f1b81033d39a6a338b8337f63c2dab1a) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - Introdce KMS signer for TRON
+
+- [#277](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/277) [`372d4c5`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/372d4c51481f5e16420efa36ff5aeaa9f8f69481) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(tron): signer generator no longer lazy loads
+
+### Patch Changes
+
+- [#245](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/245) [`5215932`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/52159327fe87bd88cb23e17fd422fd1b5ab76c01) Thanks [@cgruber](https://github.com/cgruber)! - Implement transactional logic in Catalog backed datastore APIs.
+
 ## 0.24.0
 
 ### Minor Changes

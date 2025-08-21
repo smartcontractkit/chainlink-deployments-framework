@@ -1,0 +1,12 @@
+networks:
+  - type: "mainnet"
+    chain_selector: 3
+    metadata:
+      test_config:
+        test_field: "value"
+        test_another_field: 123
+    rpcs:
+      - rpc_name: "test_rpc3"
+        preferred_url_scheme: "http"
+        http_url: "https://test3.rpc"
+        ws_url: "wss://test3.rpc"

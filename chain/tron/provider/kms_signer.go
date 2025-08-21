@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"sync"
 
 	"github.com/aws/aws-sdk-go/aws"
 	kmslib "github.com/aws/aws-sdk-go/service/kms"
@@ -18,43 +17,45 @@ import (
 
 // kmsSigner handles TRON transaction signing using AWS KMS.
 type kmsSigner struct {
-	KeyID      string
-	KeyRegion  string
-	AWSProfile string
-
-	// Lazy initialization fields
-	once           sync.Once
 	client         kms.Client
 	kmsKeyID       string
 	ecdsaPublicKey *ecdsa.PublicKey
 	address        address.Address
-	initError      error
 }
 
 // newKMSSigner creates a new KMS signer with the provided configuration.
-// Initialization is performed lazily on first Sign() or GetAddress() call using sync.Once.
-func newKMSSigner(keyID, keyRegion, awsProfile string) *kmsSigner {
-	return &kmsSigner{
+// It initializes the KMS client and retrieves the address for the configured KMS key.
+func newKMSSigner(keyID, keyRegion, awsProfile string) (*kmsSigner, error) {
+	client, err := kms.NewClient(kms.ClientConfig{
 		KeyID:      keyID,
 		KeyRegion:  keyRegion,
 		AWSProfile: awsProfile,
-	}
-}
-
-// initialize initializes the KMS client and retrieves the address for the configured KMS key.
-func (s *kmsSigner) initialize() error {
-	client, err := kms.NewClient(kms.ClientConfig{
-		KeyID:      s.KeyID,
-		KeyRegion:  s.KeyRegion,
-		AWSProfile: s.AWSProfile,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to create KMS client: %w", err)
+		return nil, fmt.Errorf("failed to create KMS client: %w", err)
 	}
 
-	s.client = client
-	s.kmsKeyID = s.KeyID
+	return newKMSSignerWithClient(keyID, client)
+}
 
+// newKMSSignerWithClient creates a new KMS signer with the provided KMS client.
+// This constructor allows for dependency injection of the KMS client, which is useful for testing.
+func newKMSSignerWithClient(keyID string, client kms.Client) (*kmsSigner, error) {
+	signer := &kmsSigner{
+		client:   client,
+		kmsKeyID: keyID,
+	}
+
+	if err := signer.initializeWithClient(); err != nil {
+		return nil, err
+	}
+
+	return signer, nil
+}
+
+// initializeWithClient initializes the KMS signer using the provided client.
+// It retrieves the public key from KMS and derives the TRON address.
+func (s *kmsSigner) initializeWithClient() error {
 	// Get the public key from KMS to derive the TRON address
 	pubKeyOutput, err := s.client.GetPublicKey(&kmslib.GetPublicKeyInput{
 		KeyId: aws.String(s.kmsKeyID),
@@ -79,15 +80,6 @@ func (s *kmsSigner) initialize() error {
 
 // Sign signs the given transaction hash using the KMS key.
 func (s *kmsSigner) Sign(txHash []byte) ([]byte, error) {
-	// Lazy initialization using sync.Once
-	s.once.Do(func() {
-		s.initError = s.initialize()
-	})
-
-	if s.initError != nil {
-		return nil, fmt.Errorf("KMS signer initialization failed: %w", s.initError)
-	}
-
 	var (
 		mType = kmslib.MessageTypeDigest
 		algo  = kmslib.SigningAlgorithmSpecEcdsaSha256
@@ -115,15 +107,6 @@ func (s *kmsSigner) Sign(txHash []byte) ([]byte, error) {
 
 // GetAddress returns the TRON address associated with this KMS signer.
 func (s *kmsSigner) GetAddress() (address.Address, error) {
-	// Lazy initialization using sync.Once
-	s.once.Do(func() {
-		s.initError = s.initialize()
-	})
-
-	if s.initError != nil {
-		return address.Address(""), fmt.Errorf("KMS signer initialization failed: %w", s.initError)
-	}
-
 	return s.address, nil
 }
 
