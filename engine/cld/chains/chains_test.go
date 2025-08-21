@@ -142,8 +142,8 @@ func Test_LoadChains(t *testing.T) {
 			name:              "loads all valid chains",
 			giveNetworkConfig: networksConfig,
 			giveOnchainConfig: onchainConfig,
-			giveSelectors:     []uint64{evmSelector, solanaSelector, aptosSelector, tronSelector},
-			wantCount:         4,
+			giveSelectors:     []uint64{evmSelector, solanaSelector, aptosSelector, tronSelector, suiSelector},
+			wantCount:         5,
 		},
 		{
 			name:              "fails with unknown selector",
@@ -332,8 +332,6 @@ func Test_chainLoaderAptos_Load(t *testing.T) {
 func Test_chainLoaderSui_Load(t *testing.T) {
 	t.Parallel()
 
-	ctx := t.Context()
-
 	var suiSelector = chain_selectors.SUI_LOCALNET.Selector
 
 	networkCfg := cldf_config_network.NewConfig([]cldf_config_network.Network{
@@ -421,6 +419,8 @@ func Test_chainLoaderSui_Load(t *testing.T) {
 
 			loader := newChainLoaderSui(tt.giveNetworkConfig, tt.giveOnchainConfig)
 			require.NotNil(t, loader)
+
+			ctx := t.Context()
 
 			chain, err := loader.Load(ctx, tt.giveSelector)
 
