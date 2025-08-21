@@ -22,6 +22,7 @@ type memoryDataStore struct {
 	pg                    *pgtest.PG
 	addressReferenceStore *memoryAddressRefStore
 	chainMetadataStore    *memoryChainMetadataStore
+	contractMetadataStore *memoryContractMetadataStore
 }
 
 type MemoryDataStoreConfig struct {
@@ -57,6 +58,7 @@ func NewMemoryDataStore(t *testing.T, config MemoryDataStoreConfig) *memoryDataS
 		pg:                    pg,
 		addressReferenceStore: newCatalogAddressRefStore(t, config, ctrl),
 		chainMetadataStore:    newCatalogChainMetadataStore(t, config, ctrl),
+		contractMetadataStore: newCatalogContractMetadataStore(t, config, ctrl),
 	}
 }
 
@@ -98,8 +100,7 @@ func (m memoryDataStore) ChainMetadata() datastore.MutableStoreV2[datastore.Chai
 }
 
 func (m memoryDataStore) ContractMetadata() datastore.MutableStoreV2[datastore.ContractMetadataKey, datastore.ContractMetadata] {
-	//TODO implement me
-	panic("implement me")
+	return m.contractMetadataStore
 }
 
 func (m memoryDataStore) EnvMetadata() datastore.MutableUnaryStoreV2[datastore.EnvMetadata] {
