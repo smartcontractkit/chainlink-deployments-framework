@@ -5,11 +5,6 @@ onchain:
     key_region: "us-west-1"
   evm:
     deployer_key: "0xabc"
-    seth:
-      config_file_path: "/tmp/config"
-      geth_wrapper_dirs:
-        - "./dir1"
-        - "./dir2"
   solana:
     wallet_key: "0xbcd"
     programs_dir_path: "/tmp/program"
@@ -24,12 +19,6 @@ offchain:
     endpoints:
       wsrpc: "ws://localhost:1234"
       grpc: "grpc://localhost:4567"
-    auth:
-      cognito_app_client_id: "af1a2b3c"
-      cognito_app_client_secret: "11111111"
-      aws_region: "us-west-1"
-      username: "user1"
-      password: "password1"
   ocr:
     x_signers: "rabid mouse"
     x_proposers: "furious fox"
