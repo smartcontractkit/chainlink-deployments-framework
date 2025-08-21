@@ -1,5 +1,19 @@
 # chainlink-deployments-framework
 
+## 0.30.0
+
+### Minor Changes
+
+- [#297](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/297) [`c092120`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/c0921203f73f596d024cdcb2d4bc180056688652) Thanks [@jkongie](https://github.com/jkongie)! - Allow users to marshal and unmarshal env config directly
+
+- [#298](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/298) [`c754f68`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/c754f68e56e44e95dd0a46deb6c5d864e2c194f5) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat: New EVM CTF Anvil Provider
+
+### Patch Changes
+
+- [#300](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/300) [`4ff7f93`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/4ff7f9323e82524f73385ad41cdc3f1e5220e938) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - Moved analyze.go from chainlink repo
+
+- [#296](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/296) [`b4ba277`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/b4ba2773290fdbc5be5c4210ab184bdab7258132) Thanks [@RodrigoAD](https://github.com/RodrigoAD)! - Fix message encoding in Sui signing
+
 ## 0.29.0
 
 ### Minor Changes
