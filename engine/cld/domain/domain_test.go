@@ -205,6 +205,36 @@ func Test_Domain_CmdDirPath(t *testing.T) {
 	assert.Equal(t, "domains/ccip/cmd", d.CmdDirPath())
 }
 
+func Test_Domain_ConfigDirPath(t *testing.T) {
+	t.Parallel()
+	d := NewDomain("domains", "ccip")
+	assert.Equal(t, "domains/ccip/.config", d.ConfigDirPath())
+}
+
+func Test_Domain_ConfigLocalDirPath(t *testing.T) {
+	t.Parallel()
+	d := NewDomain("domains", "ccip")
+	assert.Equal(t, "domains/ccip/.config/local", d.ConfigLocalDirPath())
+}
+
+func Test_Domain_ConfigLocalFileName(t *testing.T) {
+	t.Parallel()
+	d := NewDomain("domains", "ccip")
+	assert.Equal(t, "domains/ccip/.config/local/config.staging.yaml", d.ConfigLocalFileName("staging"))
+}
+
+func Test_Domain_ConfigNetworksFilePath(t *testing.T) {
+	t.Parallel()
+	d := NewDomain("domains", "ccip")
+	assert.Equal(t, "domains/ccip/.config/networks", d.ConfigNetworksFilePath())
+}
+
+func Test_Domain_ConfigCIDirPath(t *testing.T) {
+	t.Parallel()
+	d := NewDomain("domains", "ccip")
+	assert.Equal(t, "domains/ccip/.config/ci", d.ConfigCIDirPath())
+}
+
 // todo: uncomment after moving migration registry over to cldf
 // func Test_EnvDir_LatestExecutedMigration(t *testing.T) {
 // 	t.Parallel()
@@ -236,50 +266,4 @@ func Test_Domain_CmdDirPath(t *testing.T) {
 // 	got, err = envdir.LatestExecutedMigration(reg)
 // 	require.NoError(t, err)
 // 	require.Equal(t, "0002_second", got)
-// }
-
-// todo: uncomment after moving view state over to cldf
-// func Test_EnvDir_SaveViewState(t *testing.T) {
-// 	t.Parallel()
-//
-// 	tests := []struct {
-// 		name      string
-// 		giveState json.Marshaler
-// 		want      string
-// 		wantErr   string
-// 	}{
-// 		{
-// 			name: "success",
-// 			giveState: &testMarshaler{
-// 				Name: "test",
-// 			},
-// 			want: `{"Name":"test"}`,
-// 		},
-// 		{
-// 			name:      "save error",
-// 			giveState: &failedMarshaler{},
-// 			wantErr:   "unable to marshal state",
-// 		},
-// 	}
-//
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			t.Parallel()
-//
-// 			fixture := setupTestDomainsFS(t)
-//
-// 			err := fixture.envDir.SaveViewState(tt.giveState)
-//
-// 			if tt.wantErr != "" {
-// 				require.Error(t, err)
-// 				assert.ErrorContains(t, err, tt.wantErr)
-// 			} else {
-// 				require.NoError(t, err)
-// 				b, err := os.ReadFile(fixture.envDir.ViewStateFilePath())
-// 				require.NoError(t, err)
-//
-// 				assert.JSONEq(t, tt.want, string(b))
-// 			}
-// 		})
-// 	}
 // }
