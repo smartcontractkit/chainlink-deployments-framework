@@ -16,6 +16,7 @@ import (
 	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	cldf_evm_provider "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider"
 	cldf_solana_provider "github.com/smartcontractkit/chainlink-deployments-framework/chain/solana/provider"
+	cldf_sui_provider "github.com/smartcontractkit/chainlink-deployments-framework/chain/sui/provider"
 	cldf_tron_provider "github.com/smartcontractkit/chainlink-deployments-framework/chain/tron/provider"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	cldf_config_env "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/env"
@@ -179,6 +180,12 @@ func newChainLoaders(
 		lggr.Warn("Skipping Aptos chains, no private key found in secrets")
 	}
 
+	if cfg.Sui.DeployerKey != "" {
+		loaders[chainsel.FamilySui] = newChainLoaderSui(networks, cfg)
+	} else {
+		lggr.Warn("Skipping Sui chains, no private key found in secrets")
+	}
+
 	return loaders
 }
 
@@ -187,6 +194,7 @@ var (
 	_ ChainLoader = &chainLoaderSolana{}
 	_ ChainLoader = &chainLoaderEVM{}
 	_ ChainLoader = &chainLoaderTron{}
+	_ ChainLoader = &chainLoaderSui{}
 )
 
 // ChainLoader is an interface that defines the methods for loading a chain.
@@ -254,6 +262,41 @@ func (l *chainLoaderAptos) Load(ctx context.Context, selector uint64) (cldf_chai
 	).Initialize(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Aptos chain %d: %w", selector, err)
+	}
+
+	return c, nil
+}
+
+// chainLoaderSui implements the ChainLoader interface for Sui.
+type chainLoaderSui struct {
+	*baseChainLoader
+}
+
+// newChainLoaderSui creates a new chain loader for Sui.
+func newChainLoaderSui(
+	networks *cldf_config_network.Config, cfg cldf_config_env.OnchainConfig,
+) *chainLoaderSui {
+	return &chainLoaderSui{
+		baseChainLoader: newBaseChainLoader(networks, cfg),
+	}
+}
+
+// Load loads a Sui Chain for a selector.
+func (l *chainLoaderSui) Load(ctx context.Context, selector uint64) (cldf_chain.BlockChain, error) {
+	network, err := l.getNetwork(selector)
+	if err != nil {
+		return nil, err
+	}
+
+	rpcURL := network.RPCs[0].HTTPURL
+	c, err := cldf_sui_provider.NewRPCChainProvider(selector,
+		cldf_sui_provider.RPCChainProviderConfig{
+			RPCURL:            rpcURL,
+			DeployerSignerGen: cldf_sui_provider.AccountGenPrivateKey(l.cfg.Sui.DeployerKey),
+		},
+	).Initialize(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize Sui chain %d: %w", selector, err)
 	}
 
 	return c, nil
