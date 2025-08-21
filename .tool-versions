@@ -4,3 +4,4 @@ mockery       3.3.4
 nodejs        20.16.0
 pnpm          10.6.5
 task          3.41.0
+postgres      15.1
