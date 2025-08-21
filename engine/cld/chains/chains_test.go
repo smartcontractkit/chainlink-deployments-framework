@@ -30,6 +30,7 @@ func Test_LoadChains(t *testing.T) {
 		solanaSelector = chain_selectors.TEST_22222222222222222222222222222222222222222222.Selector
 		aptosSelector  = chain_selectors.APTOS_LOCALNET.Selector
 		tronSelector   = chain_selectors.TRON_TESTNET_NILE.Selector
+		suiSelector    = chain_selectors.SUI_LOCALNET.Selector
 	)
 
 	networks := []cldf_config_network.Network{
@@ -81,6 +82,18 @@ func Test_LoadChains(t *testing.T) {
 				},
 			},
 		},
+		{
+			Type:          cldf_config_network.NetworkTypeTestnet,
+			ChainSelector: suiSelector,
+			RPCs: []cldf_config_network.RPC{
+				{
+					RPCName:            "sui_rpc",
+					PreferredURLScheme: "http",
+					HTTPURL:            "http://sui-rpc",
+					WSURL:              "",
+				},
+			},
+		},
 	}
 	networksConfig := cldf_config_network.NewConfig(networks)
 
@@ -111,6 +124,9 @@ func Test_LoadChains(t *testing.T) {
 		},
 		Tron: cldf_config_env.TronConfig{
 			DeployerKey: evmKeyHex, // Uses the same key as the EVM chain
+		},
+		Sui: cldf_config_env.SuiConfig{
+			DeployerKey: "0xA1B2C3D4E5F60718293A4B5C6D7E8F90123456789ABCDEF0123456789ABCDEF0", // Mock private key
 		},
 	}
 
@@ -308,6 +324,116 @@ func Test_chainLoaderAptos_Load(t *testing.T) {
 
 				// Verify that the chain family is Aptos
 				assert.Equal(t, "aptos", chain.Family())
+			}
+		})
+	}
+}
+
+func Test_chainLoaderSui_Load(t *testing.T) {
+	t.Parallel()
+
+	ctx := t.Context()
+
+	var suiSelector = chain_selectors.SUI_LOCALNET.Selector
+
+	networkCfg := cldf_config_network.NewConfig([]cldf_config_network.Network{
+		{
+			Type:          cldf_config_network.NetworkTypeMainnet,
+			ChainSelector: suiSelector,
+			RPCs: []cldf_config_network.RPC{
+				{
+					RPCName:            "sui_localnet_rpc",
+					PreferredURLScheme: "http",
+					HTTPURL:            "https://fullnode.localnet.suilabs.com/v1",
+					WSURL:              "", // This is not used for Sui
+				},
+			},
+		},
+		{
+			Type:          cldf_config_network.NetworkTypeTestnet,
+			ChainSelector: 999999, // Different chain for testing
+			RPCs: []cldf_config_network.RPC{
+				{
+					RPCName:            "other_chain_rpc",
+					PreferredURLScheme: "http",
+					HTTPURL:            "https://other.rpc.com",
+					WSURL:              "",
+				},
+			},
+		},
+	})
+
+	onchainConfig := cldf_config_env.OnchainConfig{
+		Sui: cldf_config_env.SuiConfig{
+			DeployerKey: "0xA1B2C3D4E5F60718293A4B5C6D7E8F90123456789ABCDEF0123456789ABCDEF0", // Mock private key
+		},
+	}
+
+	tests := []struct {
+		name              string
+		giveSelector      uint64
+		giveNetworkConfig *cldf_config_network.Config
+		giveOnchainConfig cldf_config_env.OnchainConfig
+		wantErr           string
+	}{
+		{
+			name:              "successful load",
+			giveSelector:      suiSelector,
+			giveNetworkConfig: networkCfg,
+			giveOnchainConfig: onchainConfig,
+		},
+		{
+			name:              "network not found",
+			giveSelector:      88888888, // Non-existent chain selector
+			giveNetworkConfig: networkCfg,
+			giveOnchainConfig: onchainConfig,
+			wantErr:           "not found in configuration",
+		},
+		{
+			name:         "no RPCs configured",
+			giveSelector: 777777,
+			giveNetworkConfig: cldf_config_network.NewConfig([]cldf_config_network.Network{
+				{
+					Type:          cldf_config_network.NetworkTypeTestnet,
+					ChainSelector: 777777,
+					RPCs:          []cldf_config_network.RPC{},
+				},
+			}),
+			giveOnchainConfig: onchainConfig,
+			wantErr:           "no RPCs found for chain selector: 777777",
+		},
+		{
+			name:              "empty private key",
+			giveSelector:      suiSelector,
+			giveNetworkConfig: networkCfg,
+			giveOnchainConfig: cldf_config_env.OnchainConfig{
+				Sui: cldf_config_env.SuiConfig{
+					DeployerKey: "",
+				},
+			},
+			wantErr: "failed to initialize Sui chain",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			loader := newChainLoaderSui(tt.giveNetworkConfig, tt.giveOnchainConfig)
+			require.NotNil(t, loader)
+
+			chain, err := loader.Load(ctx, tt.giveSelector)
+
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				require.ErrorContains(t, err, tt.wantErr)
+				assert.Nil(t, chain)
+			} else {
+				require.NoError(t, err)
+				require.NotNil(t, chain)
+
+				assert.Equal(t, tt.giveSelector, chain.ChainSelector())
+				assert.Equal(t, "sui", chain.Family())
 			}
 		})
 	}
