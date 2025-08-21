@@ -41,6 +41,8 @@ type memoryChainMetadataStore struct {
 var _ datastore.MutableStoreV2[datastore.ChainMetadataKey, datastore.ChainMetadata] = &memoryChainMetadataStore{}
 
 func newCatalogChainMetadataStore(t *testing.T, config MemoryDataStoreConfig, db *dbController) *memoryChainMetadataStore {
+	t.Helper()
+	
 	return &memoryChainMetadataStore{
 		t:      t,
 		config: config,
@@ -84,8 +86,8 @@ func (s *memoryChainMetadataStore) Get(_ context.Context, key datastore.ChainMet
 		// Parse metadata JSON if present
 		if metadataJSON.Valid && metadataJSON.String != "" {
 			var metadata any
-			if err := json.Unmarshal([]byte(metadataJSON.String), &metadata); err != nil {
-				return datastore.ChainMetadata{}, fmt.Errorf("failed to unmarshal metadata JSON: %w", err)
+			if unmarshalErr := json.Unmarshal([]byte(metadataJSON.String), &metadata); unmarshalErr != nil {
+				return datastore.ChainMetadata{}, fmt.Errorf("failed to unmarshal metadata JSON: %w", unmarshalErr)
 			}
 			row.Metadata = metadata
 		}
@@ -133,6 +135,7 @@ func (s *memoryChainMetadataStore) Fetch(_ context.Context) ([]datastore.ChainMe
 
 		records = append(records, *row)
 	}
+
 	return records, nil
 }
 

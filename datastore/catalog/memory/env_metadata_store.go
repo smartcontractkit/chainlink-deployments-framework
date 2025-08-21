@@ -75,8 +75,8 @@ func (s *memoryEnvMetadataStore) Get(_ context.Context, options ...datastore.Get
 		// Parse metadata JSON if present
 		if metadataJSON.Valid && metadataJSON.String != "" {
 			var metadata any
-			if err := json.Unmarshal([]byte(metadataJSON.String), &metadata); err != nil {
-				return datastore.EnvMetadata{}, fmt.Errorf("failed to unmarshal metadata JSON: %w", err)
+			if unmarshalErr := json.Unmarshal([]byte(metadataJSON.String), &metadata); unmarshalErr != nil {
+				return datastore.EnvMetadata{}, fmt.Errorf("failed to unmarshal metadata JSON: %w", unmarshalErr)
 			}
 			row.Metadata = metadata
 		}

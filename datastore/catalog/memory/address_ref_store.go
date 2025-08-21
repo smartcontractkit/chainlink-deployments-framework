@@ -48,6 +48,8 @@ type memoryAddressRefStore struct {
 var _ datastore.MutableRefStoreV2[datastore.AddressRefKey, datastore.AddressRef] = &memoryAddressRefStore{}
 
 func newCatalogAddressRefStore(t *testing.T, config MemoryDataStoreConfig, db *dbController) *memoryAddressRefStore {
+	t.Helper()
+	
 	return &memoryAddressRefStore{
 		t:      t,
 		config: config,
@@ -122,6 +124,7 @@ func (s *memoryAddressRefStore) Fetch(_ context.Context) ([]datastore.AddressRef
 		}
 		refs = append(refs, *row)
 	}
+
 	return refs, nil
 }
 
@@ -185,6 +188,7 @@ func (s *memoryAddressRefStore) edit(_ context.Context, qry string, r datastore.
 			return fmt.Errorf("expected 1 row affected, got %d", count)
 		}
 	}
+
 	return nil
 }
 

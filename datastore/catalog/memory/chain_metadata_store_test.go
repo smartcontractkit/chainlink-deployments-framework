@@ -32,6 +32,8 @@ func TestCatalogChainMetadataStore_Get(t *testing.T) {
 	defer closer()
 
 	t.Run("not found", func(t *testing.T) {
+		t.Parallel()
+
 		key := datastore.NewChainMetadataKey(99999999)
 		_, err := store.ChainMetadata().Get(context.Background(), key)
 		require.Error(t, err)
@@ -39,6 +41,8 @@ func TestCatalogChainMetadataStore_Get(t *testing.T) {
 	})
 
 	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+
 		chainMetadata := newRandomChainMetadata()
 		err := store.ChainMetadata().Add(context.Background(), chainMetadata)
 		require.NoError(t, err)
@@ -51,6 +55,8 @@ func TestCatalogChainMetadataStore_Get(t *testing.T) {
 	})
 
 	t.Run("success with nil metadata", func(t *testing.T) {
+		t.Parallel()
+
 		chainMetadata := datastore.ChainMetadata{
 			ChainSelector: newRandomChainSelector(),
 			Metadata:      nil,
@@ -148,6 +154,8 @@ func TestCatalogChainMetadataStore_Update(t *testing.T) {
 	defer closer()
 
 	t.Run("not found", func(t *testing.T) {
+		t.Parallel()
+
 		key := datastore.NewChainMetadataKey(99999999)
 		err := store.ChainMetadata().Update(context.Background(), key, map[string]string{"test": "value"})
 		require.Error(t, err)
@@ -155,6 +163,8 @@ func TestCatalogChainMetadataStore_Update(t *testing.T) {
 	})
 
 	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+
 		// Add initial record
 		chainMetadata := newRandomChainMetadata()
 		err := store.ChainMetadata().Add(context.Background(), chainMetadata)
@@ -177,6 +187,8 @@ func TestCatalogChainMetadataStore_Update(t *testing.T) {
 	})
 
 	t.Run("success with custom updater", func(t *testing.T) {
+		t.Parallel()
+
 		// Add initial record with map metadata
 		initialMetadata := map[string]any{
 			"name":    "Test Chain",
@@ -224,9 +236,9 @@ func TestCatalogChainMetadataStore_Update(t *testing.T) {
 
 		resultMap, ok := result.Metadata.(map[string]any)
 		require.True(t, ok)
-		require.Equal(t, "Test Chain", resultMap["name"])   // from original
-		require.Equal(t, float64(2), resultMap["version"])  // updated (JSON numbers are float64)
-		require.Equal(t, "newValue", resultMap["newField"]) // added
+		require.Equal(t, "Test Chain", resultMap["name"])            // from original
+		require.InEpsilon(t, float64(2), resultMap["version"], 0.01) // updated (JSON numbers are float64)
+		require.Equal(t, "newValue", resultMap["newField"])          // added
 	})
 }
 
@@ -236,6 +248,8 @@ func TestCatalogChainMetadataStore_Upsert(t *testing.T) {
 	defer closer()
 
 	t.Run("insert new record", func(t *testing.T) {
+		t.Parallel()
+
 		key := datastore.NewChainMetadataKey(newRandomChainSelector())
 		metadata := map[string]any{
 			"name": "New Chain",
@@ -253,6 +267,8 @@ func TestCatalogChainMetadataStore_Upsert(t *testing.T) {
 	})
 
 	t.Run("update existing record", func(t *testing.T) {
+		t.Parallel()
+
 		// Add initial record
 		chainMetadata := newRandomChainMetadata()
 		err := store.ChainMetadata().Add(context.Background(), chainMetadata)
@@ -281,6 +297,8 @@ func TestCatalogChainMetadataStore_Delete(t *testing.T) {
 	defer closer()
 
 	t.Run("not found", func(t *testing.T) {
+		t.Parallel()
+
 		key := datastore.NewChainMetadataKey(99999999)
 		err := store.ChainMetadata().Delete(context.Background(), key)
 		require.Error(t, err)
@@ -288,6 +306,8 @@ func TestCatalogChainMetadataStore_Delete(t *testing.T) {
 	})
 
 	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+
 		// Add a record first
 		chainMetadata := newRandomChainMetadata()
 		err := store.ChainMetadata().Add(context.Background(), chainMetadata)
@@ -311,12 +331,16 @@ func TestCatalogChainMetadataStore_Fetch(t *testing.T) {
 	defer closer()
 
 	t.Run("empty store", func(t *testing.T) {
+		t.Parallel()
+
 		results, err := store.ChainMetadata().Fetch(context.Background())
 		require.NoError(t, err)
 		require.Empty(t, results)
 	})
 
 	t.Run("multiple records", func(t *testing.T) {
+		t.Parallel()
+
 		// Add multiple records
 		records := []datastore.ChainMetadata{
 			newRandomChainMetadata(),
@@ -376,12 +400,16 @@ func TestCatalogChainMetadataStore_Filter(t *testing.T) {
 	}
 
 	t.Run("no filters", func(t *testing.T) {
+		t.Parallel()
+
 		results, err := store.ChainMetadata().Filter(context.Background())
 		require.NoError(t, err)
 		require.Len(t, results, len(records))
 	})
 
 	t.Run("filter by chain selector", func(t *testing.T) {
+		t.Parallel()
+
 		filter := func(records []datastore.ChainMetadata) []datastore.ChainMetadata {
 			var filtered []datastore.ChainMetadata
 			for _, record := range records {
@@ -399,6 +427,8 @@ func TestCatalogChainMetadataStore_Filter(t *testing.T) {
 	})
 
 	t.Run("filter by metadata field", func(t *testing.T) {
+		t.Parallel()
+
 		filter := func(records []datastore.ChainMetadata) []datastore.ChainMetadata {
 			var filtered []datastore.ChainMetadata
 			for _, record := range records {
@@ -425,6 +455,8 @@ func TestCatalogChainMetadataStore_Filter(t *testing.T) {
 	})
 
 	t.Run("multiple filters", func(t *testing.T) {
+		t.Parallel()
+
 		// First filter: only mainnet
 		mainnetFilter := func(records []datastore.ChainMetadata) []datastore.ChainMetadata {
 			var filtered []datastore.ChainMetadata
@@ -462,6 +494,8 @@ func TestCatalogChainMetadataStore_Transactions(t *testing.T) {
 	defer closer()
 
 	t.Run("transaction rollback", func(t *testing.T) {
+		t.Parallel()
+
 		chainMetadata := newRandomChainMetadata()
 
 		err := store.WithTransaction(context.Background(), func(ctx context.Context, txStore datastore.BaseCatalogStore) error {
@@ -488,6 +522,8 @@ func TestCatalogChainMetadataStore_Transactions(t *testing.T) {
 	})
 
 	t.Run("transaction commit", func(t *testing.T) {
+		t.Parallel()
+
 		chainMetadata := newRandomChainMetadata()
 
 		err := store.WithTransaction(context.Background(), func(ctx context.Context, txStore datastore.BaseCatalogStore) error {
@@ -505,6 +541,8 @@ func TestCatalogChainMetadataStore_Transactions(t *testing.T) {
 	})
 
 	t.Run("ignore transactions option", func(t *testing.T) {
+		t.Parallel()
+
 		chainMetadata := newRandomChainMetadata()
 
 		// Add record outside transaction
@@ -535,8 +573,8 @@ func TestCatalogChainMetadataStore_Transactions(t *testing.T) {
 
 func newRandomChainSelector() uint64 {
 	// Generate a random uint64 for chain selector
-	max := big.NewInt(0).SetUint64(^uint64(0) >> 1) // Max int64 to avoid overflow issues
-	n, _ := rand.Int(rand.Reader, max)
+	maxVal := big.NewInt(0).SetUint64(^uint64(0) >> 1) // Max int64 to avoid overflow issues
+	n, _ := rand.Int(rand.Reader, maxVal)
 	return n.Uint64()
 }
 

@@ -29,12 +29,16 @@ func TestCatalogEnvMetadataStore_Get(t *testing.T) {
 	defer closer()
 
 	t.Run("not set", func(t *testing.T) {
+		t.Parallel()
+
 		_, err := store.EnvMetadata().Get(context.Background())
 		require.Error(t, err)
 		require.ErrorIs(t, err, datastore.ErrEnvMetadataNotSet)
 	})
 
 	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+
 		envMetadata := map[string]any{
 			"domain":      "test_domain",
 			"environment": "catalog_testing",
@@ -50,6 +54,8 @@ func TestCatalogEnvMetadataStore_Get(t *testing.T) {
 	})
 
 	t.Run("success with nil metadata", func(t *testing.T) {
+		t.Parallel()
+
 		store2, closer2 := setupEnvMetadataTestStore(t)
 		defer closer2()
 
@@ -239,6 +245,7 @@ func TestCatalogEnvMetadataStore_Set_WithCustomUpdater(t *testing.T) {
 							mergedConfig[ck] = cv
 						}
 						result[k] = mergedConfig
+
 						continue
 					}
 				}
@@ -257,10 +264,10 @@ func TestCatalogEnvMetadataStore_Set_WithCustomUpdater(t *testing.T) {
 
 	resultMap, ok := result.Metadata.(map[string]any)
 	require.True(t, ok)
-	require.Equal(t, "test_domain", resultMap["domain"])   // from original
-	require.Equal(t, "test_env", resultMap["environment"]) // from original
-	require.Equal(t, float64(2), resultMap["version"])     // updated
-	require.Equal(t, "addedField", resultMap["newField"])  // added
+	require.Equal(t, "test_domain", resultMap["domain"])         // from original
+	require.Equal(t, "test_env", resultMap["environment"])       // from original
+	require.InEpsilon(t, float64(2), resultMap["version"], 0.01) // updated
+	require.Equal(t, "addedField", resultMap["newField"])        // added
 
 	// Check nested config merge
 	configMap, ok := resultMap["config"].(map[string]any)

@@ -14,16 +14,15 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 )
 
-const (
-	// Default gRPC server address - can be overridden with CATALOG_GRPC_ADDRESS env var
-	defaultGRPCAddress = "localhost:8080"
-)
+
 
 func TestCatalogAddressRefStore_Get(t *testing.T) {
 	t.Parallel()
 	store, closer := setupTestStore(t)
 
 	t.Run("not found", func(t *testing.T) {
+		t.Parallel()
+		
 		version := semver.MustParse("99.99.99")
 		key := datastore.NewAddressRefKey(99999999, "NonExistentContract", version, "nonexistent")
 		_, err := store.Get(t.Context(), key)
@@ -32,6 +31,8 @@ func TestCatalogAddressRefStore_Get(t *testing.T) {
 	})
 
 	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+		
 		addressRef := newRandomAddressRef()
 		err := store.Add(t.Context(), addressRef)
 		require.NoError(t, err)

@@ -2,6 +2,7 @@ package memory
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 
 	_ "github.com/proullon/ramsql/driver"
@@ -47,7 +48,7 @@ func (d *dbController) Fixture(q string, args ...any) error {
 
 func (d *dbController) Begin() error {
 	if d.tx != nil {
-		return fmt.Errorf("transaction already started")
+		return errors.New("transaction already started")
 	}
 	tx, err := d.base.Begin()
 	if err != nil {
@@ -59,7 +60,7 @@ func (d *dbController) Begin() error {
 
 func (d *dbController) Commit() error {
 	if d.tx == nil {
-		return fmt.Errorf("no transaction to commit")
+		return errors.New("no transaction to commit")
 	}
 	defer func() {
 		d.tx = nil
@@ -69,7 +70,7 @@ func (d *dbController) Commit() error {
 
 func (d *dbController) Rollback() error {
 	if d.tx == nil {
-		return fmt.Errorf("no transaction to roll back")
+		return errors.New("no transaction to roll back")
 	}
 	defer func() {
 		d.tx = nil

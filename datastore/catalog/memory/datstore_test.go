@@ -7,6 +7,8 @@ import (
 )
 
 func TestMemoryDatastore(t *testing.T) {
+	t.Parallel()
+
 	config := MemoryDataStoreConfig{}
 	store := NewMemoryDataStore(t, config)
 	defer store.Close()

@@ -41,6 +41,8 @@ type memoryContractMetadataStore struct {
 var _ datastore.MutableStoreV2[datastore.ContractMetadataKey, datastore.ContractMetadata] = &memoryContractMetadataStore{}
 
 func newCatalogContractMetadataStore(t *testing.T, config MemoryDataStoreConfig, db *dbController) *memoryContractMetadataStore {
+	t.Helper()
+
 	return &memoryContractMetadataStore{
 		t:      t,
 		config: config,
@@ -84,8 +86,8 @@ func (s *memoryContractMetadataStore) Get(_ context.Context, key datastore.Contr
 		// Parse metadata JSON if present
 		if metadataJSON.Valid && metadataJSON.String != "" {
 			var metadata any
-			if err := json.Unmarshal([]byte(metadataJSON.String), &metadata); err != nil {
-				return datastore.ContractMetadata{}, fmt.Errorf("failed to unmarshal metadata JSON: %w", err)
+			if unmarshalErr := json.Unmarshal([]byte(metadataJSON.String), &metadata); unmarshalErr != nil {
+				return datastore.ContractMetadata{}, fmt.Errorf("failed to unmarshal metadata JSON: %w", unmarshalErr)
 			}
 			row.Metadata = metadata
 		}

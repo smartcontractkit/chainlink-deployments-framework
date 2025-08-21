@@ -32,7 +32,7 @@ func TestNewControllerCommit(t *testing.T) {
 			count++
 		}
 		require.NoError(t, err2)
-		assert.Equal(t, count, 1)
+		assert.Equal(t, 1, count)
 	})
 
 	t.Run("Check inserted values (outside of tx, so fail)", func(t *testing.T) {
@@ -56,7 +56,7 @@ func TestNewControllerCommit(t *testing.T) {
 			count++
 		}
 		require.NoError(t, err2)
-		assert.Equal(t, count, 1)
+		assert.Equal(t, 1, count)
 	})
 }
 
@@ -84,7 +84,7 @@ func TestNewControllerRollback(t *testing.T) {
 			count++
 		}
 		require.NoError(t, err2)
-		assert.Equal(t, count, 1)
+		assert.Equal(t, 1, count)
 	})
 
 	t.Run("Check inserted values (outside of tx, so fail)", func(t *testing.T) {

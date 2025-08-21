@@ -32,6 +32,8 @@ func TestCatalogContractMetadataStore_Get(t *testing.T) {
 	defer closer()
 
 	t.Run("not found", func(t *testing.T) {
+		t.Parallel()
+
 		key := datastore.NewContractMetadataKey(99999999, "0x1234567890123456789012345678901234567890")
 		_, err := store.ContractMetadata().Get(context.Background(), key)
 		require.Error(t, err)
@@ -234,9 +236,9 @@ func TestCatalogContractMetadataStore_Update(t *testing.T) {
 
 		resultMap, ok := result.Metadata.(map[string]any)
 		require.True(t, ok)
-		require.Equal(t, "Test Contract", resultMap["name"]) // from original
-		require.Equal(t, float64(2), resultMap["version"])   // updated (JSON numbers are float64)
-		require.Equal(t, "newValue", resultMap["newField"])  // added
+		require.Equal(t, "Test Contract", resultMap["name"])         // from original
+		require.InEpsilon(t, float64(2), resultMap["version"], 0.01) // updated (JSON numbers are float64)
+		require.Equal(t, "newValue", resultMap["newField"])          // added
 	})
 }
 
