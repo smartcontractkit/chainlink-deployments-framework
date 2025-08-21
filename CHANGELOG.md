@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.29.0
+
+### Minor Changes
+
+- [#294](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/294) [`6e35a51`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/6e35a51007ab51169cf258c532cbfadd7caf83ab) Thanks [@ajaskolski](https://github.com/ajaskolski)! - refactor: extract chains network and minimal env dependency from cld
+
 ## 0.28.0
 
 ### Minor Changes
