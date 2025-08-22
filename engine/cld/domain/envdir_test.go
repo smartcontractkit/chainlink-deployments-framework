@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -103,7 +104,7 @@ func Test_EnvDir_RemoveMigrationAddressBook(t *testing.T) {
 			t.Parallel()
 
 			var (
-				fixture = SetupTestDomainsFS(t)
+				fixture = setupTestDomainsFS(t)
 				envDir  = fixture.envDir
 			)
 
@@ -234,7 +235,7 @@ func Test_EnvDir_MigrateAddressBook(t *testing.T) {
 			t.Parallel()
 
 			var (
-				fixture = SetupTestDomainsFS(t)
+				fixture = setupTestDomainsFS(t)
 				envDir  = fixture.envDir
 			)
 
@@ -410,7 +411,7 @@ func Test_EnvDir_MutableDataStore(t *testing.T) {
 
 			require.NotNil(t, tt.give)
 
-			fixture := SetupTestDomainsFS(t)
+			fixture := setupTestDomainsFS(t)
 			envdir := tt.give(t, fixture)
 
 			got, err := envdir.MutableDataStore()
@@ -429,7 +430,7 @@ func Test_EnvDir_MutableDataStore(t *testing.T) {
 func Test_EnvDir_Artifacts(t *testing.T) {
 	t.Parallel()
 
-	fixture := SetupTestDomainsFS(t)
+	fixture := setupTestDomainsFS(t)
 
 	got := fixture.envDir.ArtifactsDir()
 
@@ -589,7 +590,7 @@ func Test_EnvDir_MergeMigrationAddressBook(t *testing.T) {
 			t.Parallel()
 
 			var (
-				fixture = SetupTestDomainsFS(t)
+				fixture = setupTestDomainsFS(t)
 				envDir  = fixture.envDir
 			)
 
@@ -741,7 +742,7 @@ func Test_EnvDir_MergeMigrationDataStore(t *testing.T) {
 			t.Parallel()
 
 			var (
-				fixture = SetupTestDomainsFS(t)
+				fixture = setupTestDomainsFS(t)
 				envDir  = fixture.envDir
 			)
 
@@ -793,7 +794,7 @@ func Test_EnvDir_DurablePipelinesInputsDirPath(t *testing.T) {
 func Test_EnvDir_CreateDurablePipelinesDir(t *testing.T) {
 	t.Parallel()
 
-	fixture := SetupTestDomainsFS(t)
+	fixture := setupTestDomainsFS(t)
 	envdir := fixture.envDir
 
 	err := envdir.CreateDurablePipelinesDir()
@@ -962,7 +963,7 @@ func Test_EnvDir_AddressBook(t *testing.T) {
 
 			require.NotNil(t, tt.give)
 
-			fixture := SetupTestDomainsFS(t)
+			fixture := setupTestDomainsFS(t)
 			envdir := tt.give(t, fixture)
 
 			got, err := envdir.AddressBook()
@@ -1125,7 +1126,7 @@ func Test_EnvDir_DataStore(t *testing.T) {
 
 			require.NotNil(t, tt.give)
 
-			fixture := SetupTestDomainsFS(t)
+			fixture := setupTestDomainsFS(t)
 			envdir := tt.give(t, fixture)
 
 			got, err := envdir.DataStore()
@@ -1204,7 +1205,7 @@ func Test_EnvDir_LoadNodes(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			fixture := SetupTestDomainsFS(t)
+			fixture := setupTestDomainsFS(t)
 
 			if tt.beforeFunc != nil {
 				tt.beforeFunc(t, fixture)
@@ -1307,7 +1308,7 @@ func Test_EnvDir_SaveFile(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			fixture := SetupTestDomainsFS(t)
+			fixture := setupTestDomainsFS(t)
 
 			if tt.beforeFunc != nil {
 				tt.beforeFunc(t, fixture)
@@ -1323,6 +1324,51 @@ func Test_EnvDir_SaveFile(t *testing.T) {
 
 				require.NoError(t, err)
 				assert.Equal(t, tt.want, nodes)
+			}
+		})
+	}
+}
+
+func Test_EnvDir_SaveViewState(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		giveState json.Marshaler
+		want      string
+		wantErr   string
+	}{
+		{
+			name: "success",
+			giveState: &testMarshaler{
+				Name: "test",
+			},
+			want: `{"Name":"test"}`,
+		},
+		{
+			name:      "save error",
+			giveState: &failedMarshaler{},
+			wantErr:   "unable to marshal state",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			fixture := setupTestDomainsFS(t)
+
+			err := fixture.envDir.SaveViewState(tt.giveState)
+
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				assert.ErrorContains(t, err, tt.wantErr)
+			} else {
+				require.NoError(t, err)
+				b, err := os.ReadFile(fixture.envDir.ViewStateFilePath())
+				require.NoError(t, err)
+
+				assert.JSONEq(t, tt.want, string(b))
 			}
 		})
 	}

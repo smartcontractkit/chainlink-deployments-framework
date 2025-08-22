@@ -110,3 +110,28 @@ func (d Domain) InternalDirPath() string {
 func (d Domain) CmdDirPath() string {
 	return filepath.Join(d.DirPath(), CmdDirName)
 }
+
+// ConfigDirPath returns the path to the domain config directory within the domain.
+func (d Domain) ConfigDirPath() string {
+	return filepath.Join(d.DirPath(), DomainConfigDirName)
+}
+
+// ConfigLocalDirPath returns the path where local execution config files are stored.
+func (d Domain) ConfigLocalDirPath() string {
+	return filepath.Join(d.ConfigDirPath(), DomainConfigLocalDirName)
+}
+
+// ConfigLocalFileName returns the path to a domain environment's local execution config file.
+func (d Domain) ConfigLocalFileName(env string) string {
+	return filepath.Join(d.ConfigLocalDirPath(), "config."+env+".yaml")
+}
+
+// ConfigNetworksFilePath returns the path where the domain's networks config files are stored.
+func (d Domain) ConfigNetworksFilePath() string {
+	return filepath.Join(d.ConfigDirPath(), DomainConfigNetworksDirName)
+}
+
+// ConfigCIDirPath returns the path where the domain's CI .env files are stored.
+func (d Domain) ConfigCIDirPath() string {
+	return filepath.Join(d.ConfigDirPath(), DomainConfigCIDirName)
+}

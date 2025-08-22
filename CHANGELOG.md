@@ -1,5 +1,33 @@
 # chainlink-deployments-framework
 
+## 0.31.0
+
+### Minor Changes
+
+- [#303](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/303) [`c22683e`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/c22683ebe97aba5755cef1492220a3c2b05cec2a) Thanks [@RodrigoAD](https://github.com/RodrigoAD)! - Add Sui chain
+
+- [#306](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/306) [`f876eea`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/f876eeac15b6e4ac6921ba96d2323f346cd22a5d) Thanks [@faisal-chainlink](https://github.com/faisal-chainlink)! - Added optional configs for Sui CTF provider config to allow specifying image and platform.
+
+## 0.30.0
+
+### Minor Changes
+
+- [#297](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/297) [`c092120`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/c0921203f73f596d024cdcb2d4bc180056688652) Thanks [@jkongie](https://github.com/jkongie)! - Allow users to marshal and unmarshal env config directly
+
+- [#298](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/298) [`c754f68`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/c754f68e56e44e95dd0a46deb6c5d864e2c194f5) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat: New EVM CTF Anvil Provider
+
+### Patch Changes
+
+- [#300](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/300) [`4ff7f93`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/4ff7f9323e82524f73385ad41cdc3f1e5220e938) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - Moved analyze.go from chainlink repo
+
+- [#296](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/296) [`b4ba277`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/b4ba2773290fdbc5be5c4210ab184bdab7258132) Thanks [@RodrigoAD](https://github.com/RodrigoAD)! - Fix message encoding in Sui signing
+
+## 0.29.0
+
+### Minor Changes
+
+- [#294](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/294) [`6e35a51`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/6e35a51007ab51169cf258c532cbfadd7caf83ab) Thanks [@ajaskolski](https://github.com/ajaskolski)! - refactor: extract chains network and minimal env dependency from cld
+
 ## 0.28.0
 
 ### Minor Changes

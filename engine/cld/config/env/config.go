@@ -14,8 +14,8 @@ import (
 // WARNING: This data type contains sensitive fields and should not be logged or set in file
 // configuration.
 type KMSConfig struct {
-	KeyID     string `mapstructure:"key_id"`     // Secret: AWS KMS Key ID
-	KeyRegion string `mapstructure:"key_region"` // Secret: AWS KMS Key Region (e.g. us-west-1)
+	KeyID     string `mapstructure:"key_id" yaml:"key_id"`         // Secret: AWS KMS Key ID
+	KeyRegion string `mapstructure:"key_region" yaml:"key_region"` // Secret: AWS KMS Key Region (e.g. us-west-1)
 }
 
 // EVMConfig is the configuration for the EVM Chains.
@@ -23,13 +23,13 @@ type KMSConfig struct {
 // WARNING: This data type contains sensitive fields and should not be logged or set in file
 // configuration.
 type EVMConfig struct {
-	DeployerKey string      `mapstructure:"deployer_key"` // Secret: The private key of the deployer account. Prefer to use KMS keys instead.
-	Seth        *SethConfig `mapstructure:"seth"`         // Seth configuration for transaction tracing
+	DeployerKey string      `mapstructure:"deployer_key" yaml:"deployer_key"` // Secret: The private key of the deployer account. Prefer to use KMS keys instead.
+	Seth        *SethConfig `mapstructure:"seth" yaml:"seth,omitempty"`       // Seth configuration for transaction tracing
 }
 
 type SethConfig struct {
-	ConfigFilePath  string   `mapstructure:"config_file_path"`  // The path to the Seth config file
-	GethWrapperDirs []string `mapstructure:"geth_wrapper_dirs"` // The paths to the Geth wrapper directories
+	ConfigFilePath  string   `mapstructure:"config_file_path" yaml:"config_file_path"`   // The path to the Seth config file
+	GethWrapperDirs []string `mapstructure:"geth_wrapper_dirs" yaml:"geth_wrapper_dirs"` // The paths to the Geth wrapper directories
 }
 
 // SolanaConfig is the configuration for the Solana Chains.
@@ -37,8 +37,8 @@ type SethConfig struct {
 // WARNING: This data type contains sensitive fields and should not be logged or set in file
 // configuration.
 type SolanaConfig struct {
-	WalletKey       string `mapstructure:"wallet_key"`        // Secret: The private key of the wallet account.
-	ProgramsDirPath string `mapstructure:"programs_dir_path"` // The path to the Solana programs directory.
+	WalletKey       string `mapstructure:"wallet_key" yaml:"wallet_key"`               // Secret: The private key of the wallet account.
+	ProgramsDirPath string `mapstructure:"programs_dir_path" yaml:"programs_dir_path"` // The path to the Solana programs directory.
 }
 
 // AptosConfig is the configuration for the Aptos Chains.
@@ -46,7 +46,7 @@ type SolanaConfig struct {
 // WARNING: This data type contains sensitive fields and should not be logged or set in file
 // configuration.
 type AptosConfig struct {
-	DeployerKey string `mapstructure:"deployer_key"` // Secret: The private key of the deployer account.
+	DeployerKey string `mapstructure:"deployer_key" yaml:"deployer_key"` // Secret: The private key of the deployer account.
 }
 
 // SuiConfig is the configuration for the Sui Chains.
@@ -54,7 +54,7 @@ type AptosConfig struct {
 // WARNING: This data type contains sensitive fields and should not be logged or set in file
 // configuration.
 type SuiConfig struct {
-	DeployerKey string `mapstructure:"deployer_key"` // Secret: The private key of the deployer account.
+	DeployerKey string `mapstructure:"deployer_key" yaml:"deployer_key"` // Secret: The private key of the deployer account.
 }
 
 // TronConfig is the configuration for the Tron Chains.
@@ -62,7 +62,7 @@ type SuiConfig struct {
 // WARNING: This data type contains sensitive fields and should not be logged or set in file
 // configuration.
 type TronConfig struct {
-	DeployerKey string `mapstructure:"deployer_key"` // Secret: The private key of the deployer account.
+	DeployerKey string `mapstructure:"deployer_key" yaml:"deployer_key"` // Secret: The private key of the deployer account.
 }
 
 // JobDistributorConfig is the configuration for connecting and authenticating to the Job
@@ -71,8 +71,8 @@ type TronConfig struct {
 // WARNING: This data type contains sensitive fields and should not be logged or set in file
 // configuration.
 type JobDistributorConfig struct {
-	Endpoints JobDistributorEndpoints `mapstructure:"endpoints"` // The URL endpoints for the Job Distributor
-	Auth      *JobDistributorAuth     `mapstructure:"auth"`      // Secret: The authentication configuration for the Job Distributor
+	Endpoints JobDistributorEndpoints `mapstructure:"endpoints" yaml:"endpoints"` // The URL endpoints for the Job Distributor
+	Auth      *JobDistributorAuth     `mapstructure:"auth" yaml:"auth,omitempty"` // Secret: The authentication configuration for the Job Distributor
 }
 
 // JobDistributorAuth is the configuration for authenticating to the Job Distributor via Cognito.
@@ -80,17 +80,17 @@ type JobDistributorConfig struct {
 // WARNING: This data type contains sensitive fields and should not be logged or set in file
 // configuration.
 type JobDistributorAuth struct {
-	CognitoAppClientID     string `mapstructure:"cognito_app_client_id"`     // Secret: The Cognito App Client ID
-	CognitoAppClientSecret string `mapstructure:"cognito_app_client_secret"` // Secret: The Cognito App Client Secret
-	AWSRegion              string `mapstructure:"aws_region"`                // Secret: The AWS Region
-	Username               string `mapstructure:"username"`                  // Secret: The Cognito username for the Job Distributor
-	Password               string `mapstructure:"password"`                  // Secret: The Cognito password for the Job Distributor
+	CognitoAppClientID     string `mapstructure:"cognito_app_client_id" yaml:"cognito_app_client_id"`         // Secret: The Cognito App Client ID
+	CognitoAppClientSecret string `mapstructure:"cognito_app_client_secret" yaml:"cognito_app_client_secret"` // Secret: The Cognito App Client Secret
+	AWSRegion              string `mapstructure:"aws_region" yaml:"aws_region"`                               // Secret: The AWS Region
+	Username               string `mapstructure:"username" yaml:"username"`                                   // Secret: The Cognito username for the Job Distributor
+	Password               string `mapstructure:"password" yaml:"password"`                                   // Secret: The Cognito password for the Job Distributor
 }
 
 // JobDistributorEndpoints is the configuration for the URL endpoints for the Job Distributor.
 type JobDistributorEndpoints struct {
-	WSRPC string `mapstructure:"wsrpc"` // The WebSocket RPC URL for the Job Distributor. Used to connect Job Distributor to CL nodes.
-	GRPC  string `mapstructure:"grpc"`  // The gRPC URL for the Job Distributor. Used to interact with the Job Distributor API.
+	WSRPC string `mapstructure:"wsrpc" yaml:"wsrpc"` // The WebSocket RPC URL for the Job Distributor. Used to connect Job Distributor to CL nodes.
+	GRPC  string `mapstructure:"grpc" yaml:"grpc"`   // The gRPC URL for the Job Distributor. Used to interact with the Job Distributor API.
 }
 
 // OCRConfig is the configuration for the OCR.
@@ -98,36 +98,36 @@ type JobDistributorEndpoints struct {
 // WARNING: This data type contains sensitive fields and should not be logged or set in file
 // configuration.
 type OCRConfig struct {
-	XSigners   string `mapstructure:"x_signers"`   // Secret: BIP39 mnemonic phrase for the OCR signer.
-	XProposers string `mapstructure:"x_proposers"` // Secret: BIP39 mnemonic phrase for the OCR proposer.
+	XSigners   string `mapstructure:"x_signers" yaml:"x_signers"`     // Secret: BIP39 mnemonic phrase for the OCR signer.
+	XProposers string `mapstructure:"x_proposers" yaml:"x_proposers"` // Secret: BIP39 mnemonic phrase for the OCR proposer.
 }
 
 // CatalogConfig is the configuration to connect to the Catalog.
 type CatalogConfig struct {
-	GRPC string `mapstructure:"grpc"` // The gRPC URL for the Catalog. Used to interact with the Catalog API.
+	GRPC string `mapstructure:"grpc" yaml:"grpc"` // The gRPC URL for the Catalog. Used to interact with the Catalog API.
 }
 
 // OnchainConfig wraps the configuration for the onchain components.
 type OnchainConfig struct {
-	KMS    KMSConfig    `mapstructure:"kms"`
-	EVM    EVMConfig    `mapstructure:"evm"`
-	Solana SolanaConfig `mapstructure:"solana"`
-	Aptos  AptosConfig  `mapstructure:"aptos"`
-	Sui    SuiConfig    `mapstructure:"sui"`
-	Tron   TronConfig   `mapstructure:"tron"`
+	KMS    KMSConfig    `mapstructure:"kms" yaml:"kms"`
+	EVM    EVMConfig    `mapstructure:"evm" yaml:"evm"`
+	Solana SolanaConfig `mapstructure:"solana" yaml:"solana"`
+	Aptos  AptosConfig  `mapstructure:"aptos" yaml:"aptos"`
+	Sui    SuiConfig    `mapstructure:"sui" yaml:"sui"`
+	Tron   TronConfig   `mapstructure:"tron" yaml:"tron"`
 }
 
 // OffchainConfig wraps the configuration for the offchain components.
 type OffchainConfig struct {
-	JobDistributor JobDistributorConfig `mapstructure:"job_distributor"`
-	OCR            OCRConfig            `mapstructure:"ocr"`
+	JobDistributor JobDistributorConfig `mapstructure:"job_distributor" yaml:"job_distributor"`
+	OCR            OCRConfig            `mapstructure:"ocr" yaml:"ocr"`
 }
 
 // Config wraps the entire configuration for the CLD engine.
 type Config struct {
-	Onchain  OnchainConfig  `mapstructure:"onchain"`
-	Offchain OffchainConfig `mapstructure:"offchain"`
-	Catalog  CatalogConfig  `mapstructure:"catalog"`
+	Onchain  OnchainConfig  `mapstructure:"onchain" yaml:"onchain"`
+	Offchain OffchainConfig `mapstructure:"offchain" yaml:"offchain"`
+	Catalog  CatalogConfig  `mapstructure:"catalog" yaml:"catalog"`
 }
 
 // Load loads the config from the file path, falling back to env vars if the file does not exist.
