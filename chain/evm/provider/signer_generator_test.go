@@ -74,6 +74,7 @@ func Test_TransactorFromRaw(t *testing.T) {
 			if tt.wantErr != "" {
 				require.Error(t, err)
 				require.ErrorContains(t, err, tt.wantErr)
+
 				return
 			}
 

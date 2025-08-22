@@ -48,6 +48,7 @@ func TransactorFromRaw(privKey string, opts ...GeneratorOption) SignerGenerator 
 	for _, opt := range opts {
 		opt(defaultOpts)
 	}
+
 	return &transactorFromRaw{
 		privKey:  privKey,
 		gasLimit: defaultOpts.gasLimit,
