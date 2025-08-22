@@ -32,6 +32,8 @@ type memoryEnvMetadataStore struct {
 var _ datastore.MutableUnaryStoreV2[datastore.EnvMetadata] = &memoryEnvMetadataStore{}
 
 func newCatalogEnvMetadataStore(t *testing.T, config MemoryDataStoreConfig, db *dbController) *memoryEnvMetadataStore {
+	t.Helper()
+
 	return &memoryEnvMetadataStore{
 		t:      t,
 		config: config,
@@ -152,5 +154,6 @@ func (s *memoryEnvMetadataStore) edit(_ context.Context, r datastore.EnvMetadata
 	if count != 1 {
 		return fmt.Errorf("expected 1 row affected, got %d", count)
 	}
+
 	return nil
 }

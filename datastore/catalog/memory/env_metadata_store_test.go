@@ -18,6 +18,7 @@ func setupEnvMetadataTestStore(t *testing.T) (*memoryDataStore, func()) {
 		Environment: "catalog_testing",
 	}
 	store := NewMemoryDataStore(t, config)
+
 	return store, func() {
 		store.Close()
 	}
@@ -252,6 +253,7 @@ func TestCatalogEnvMetadataStore_Set_WithCustomUpdater(t *testing.T) {
 			}
 			result[k] = v
 		}
+
 		return result, nil
 	}
 
@@ -272,9 +274,9 @@ func TestCatalogEnvMetadataStore_Set_WithCustomUpdater(t *testing.T) {
 	// Check nested config merge
 	configMap, ok := resultMap["config"].(map[string]any)
 	require.True(t, ok)
-	require.Equal(t, float64(10000), configMap["timeout"]) // updated
-	require.Equal(t, float64(3), configMap["retries"])     // preserved from original
-	require.Equal(t, "newValue", configMap["newOption"])   // added
+	require.InEpsilon(t, float64(10000), configMap["timeout"], 0.001) // updated
+	require.InEpsilon(t, float64(3), configMap["retries"], 0.001)     // preserved from original
+	require.Equal(t, "newValue", configMap["newOption"])              // added
 }
 
 func TestCatalogEnvMetadataStore_Transactions(t *testing.T) {
@@ -283,6 +285,7 @@ func TestCatalogEnvMetadataStore_Transactions(t *testing.T) {
 	defer closer()
 
 	t.Run("transaction rollback", func(t *testing.T) {
+		t.Parallel()
 		envMetadata := map[string]any{
 			"domain":      "test_domain",
 			"environment": "test_env",
@@ -311,6 +314,7 @@ func TestCatalogEnvMetadataStore_Transactions(t *testing.T) {
 	})
 
 	t.Run("transaction commit", func(t *testing.T) {
+		t.Parallel()
 		envMetadata := map[string]any{
 			"domain":      "test_domain",
 			"environment": "test_env",
@@ -330,6 +334,7 @@ func TestCatalogEnvMetadataStore_Transactions(t *testing.T) {
 	})
 
 	t.Run("ignore transactions option", func(t *testing.T) {
+		t.Parallel()
 		envMetadata := map[string]any{
 			"domain":      "test_domain",
 			"environment": "test_env",

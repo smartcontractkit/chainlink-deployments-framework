@@ -29,6 +29,7 @@ func (d *dbController) Query(q string, args ...any) (*sql.Rows, error) {
 	if d.tx != nil {
 		return d.tx.Query(q, args...)
 	}
+
 	return d.base.Query(q, args...)
 }
 
@@ -37,6 +38,7 @@ func (d *dbController) Exec(q string, args ...any) (sql.Result, error) {
 	if d.tx != nil {
 		return d.tx.Exec(q, args...)
 	}
+
 	return d.base.Exec(q, args...)
 }
 
@@ -55,6 +57,7 @@ func (d *dbController) Begin() error {
 		return err
 	}
 	d.tx = tx
+
 	return nil
 }
 
@@ -65,6 +68,7 @@ func (d *dbController) Commit() error {
 	defer func() {
 		d.tx = nil
 	}()
+
 	return d.tx.Commit()
 }
 
@@ -75,5 +79,6 @@ func (d *dbController) Rollback() error {
 	defer func() {
 		d.tx = nil
 	}()
+
 	return d.tx.Rollback()
 }

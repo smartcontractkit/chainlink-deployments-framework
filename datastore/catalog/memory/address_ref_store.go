@@ -49,7 +49,7 @@ var _ datastore.MutableRefStoreV2[datastore.AddressRefKey, datastore.AddressRef]
 
 func newCatalogAddressRefStore(t *testing.T, config MemoryDataStoreConfig, db *dbController) *memoryAddressRefStore {
 	t.Helper()
-	
+
 	return &memoryAddressRefStore{
 		t:      t,
 		config: config,

@@ -9,6 +9,7 @@ import (
 )
 
 func TestNewControllerCommit(t *testing.T) {
+	t.Parallel()
 	db, stop := openMemDbForTest(t)
 	defer stop()
 
@@ -21,6 +22,7 @@ func TestNewControllerCommit(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("Check inserted values", func(t *testing.T) {
+		t.Parallel()
 		rows, err2 := ctrl.Query("SELECT * FROM test")
 		defer func(rows *sql.Rows) {
 			assert.NoError(t, rows.Close())
@@ -36,6 +38,7 @@ func TestNewControllerCommit(t *testing.T) {
 	})
 
 	t.Run("Check inserted values (outside of tx, so fail)", func(t *testing.T) {
+		t.Parallel()
 		_, err2 := ctrl.base.Query(`SELECT * FROM test`)
 		require.ErrorContains(t, err2, `"test" does not exist`)
 	})
@@ -45,6 +48,7 @@ func TestNewControllerCommit(t *testing.T) {
 	assert.Nil(t, ctrl.tx)
 
 	t.Run("Check inserted values (post-commit)", func(t *testing.T) {
+		t.Parallel()
 		rows, err2 := ctrl.Query("SELECT * FROM test")
 		defer func(rows *sql.Rows) {
 			assert.NoError(t, rows.Close())
@@ -61,6 +65,7 @@ func TestNewControllerCommit(t *testing.T) {
 }
 
 func TestNewControllerRollback(t *testing.T) {
+	t.Parallel()
 	db, stop := openMemDbForTest(t)
 	defer stop()
 
@@ -73,6 +78,7 @@ func TestNewControllerRollback(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("Check inserted values", func(t *testing.T) {
+		t.Parallel()
 		rows, err2 := ctrl.Query("SELECT * FROM test")
 		defer func(rows *sql.Rows) {
 			assert.NoError(t, rows.Close())
@@ -88,6 +94,7 @@ func TestNewControllerRollback(t *testing.T) {
 	})
 
 	t.Run("Check inserted values (outside of tx, so fail)", func(t *testing.T) {
+		t.Parallel()
 		_, err2 := ctrl.base.Query("SELECT * FROM test")
 		require.ErrorContains(t, err2, `"test" does not exist`)
 	})
@@ -97,6 +104,7 @@ func TestNewControllerRollback(t *testing.T) {
 	assert.Nil(t, ctrl.tx)
 
 	t.Run("Check inserted values (post-rollback)", func(t *testing.T) {
+		t.Parallel()
 		_, err2 := ctrl.Query("SELECT * FROM test")
 		require.ErrorContains(t, err2, `"test" does not exist`)
 	})

@@ -42,7 +42,7 @@ var _ datastore.MutableStoreV2[datastore.ChainMetadataKey, datastore.ChainMetada
 
 func newCatalogChainMetadataStore(t *testing.T, config MemoryDataStoreConfig, db *dbController) *memoryChainMetadataStore {
 	t.Helper()
-	
+
 	return &memoryChainMetadataStore{
 		t:      t,
 		config: config,
@@ -220,6 +220,7 @@ func (s *memoryChainMetadataStore) Update(ctx context.Context, key datastore.Cha
 		if errors.Is(err, datastore.ErrChainMetadataNotFound) {
 			return datastore.ErrChainMetadataNotFound
 		}
+
 		return fmt.Errorf("failed to get current record for update: %w", err)
 	}
 
@@ -250,6 +251,7 @@ func (s *memoryChainMetadataStore) Delete(_ context.Context, key datastore.Chain
 	if count != 1 {
 		return datastore.ErrChainMetadataNotFound
 	}
+
 	return nil
 }
 
@@ -280,5 +282,6 @@ func (s *memoryChainMetadataStore) edit(_ context.Context, qry string, r datasto
 			return fmt.Errorf("expected 1 row affected, got %d", count)
 		}
 	}
+
 	return nil
 }

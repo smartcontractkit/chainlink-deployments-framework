@@ -135,6 +135,7 @@ func (s *memoryContractMetadataStore) Fetch(_ context.Context) ([]datastore.Cont
 
 		records = append(records, *row)
 	}
+
 	return records, nil
 }
 
@@ -220,6 +221,7 @@ func (s *memoryContractMetadataStore) Update(ctx context.Context, key datastore.
 		if errors.Is(err, datastore.ErrContractMetadataNotFound) {
 			return datastore.ErrContractMetadataNotFound
 		}
+
 		return fmt.Errorf("failed to get current record for update: %w", err)
 	}
 
@@ -251,6 +253,7 @@ func (s *memoryContractMetadataStore) Delete(_ context.Context, key datastore.Co
 	if count != 1 {
 		return datastore.ErrContractMetadataNotFound
 	}
+
 	return nil
 }
 
@@ -281,5 +284,6 @@ func (s *memoryContractMetadataStore) edit(_ context.Context, qry string, r data
 			return fmt.Errorf("expected 1 row affected, got %d", count)
 		}
 	}
+
 	return nil
 }

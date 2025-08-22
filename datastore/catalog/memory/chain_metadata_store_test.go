@@ -21,6 +21,7 @@ func setupChainMetadataTestStore(t *testing.T) (*memoryDataStore, func()) {
 		Environment: "catalog_testing",
 	}
 	store := NewMemoryDataStore(t, config)
+
 	return store, func() {
 		store.Close()
 	}
@@ -223,6 +224,7 @@ func TestCatalogChainMetadataStore_Update(t *testing.T) {
 			for k, v := range incomingMap {
 				result[k] = v
 			}
+
 			return result, nil
 		}
 
@@ -417,6 +419,7 @@ func TestCatalogChainMetadataStore_Filter(t *testing.T) {
 					filtered = append(filtered, record)
 				}
 			}
+
 			return filtered
 		}
 
@@ -438,6 +441,7 @@ func TestCatalogChainMetadataStore_Filter(t *testing.T) {
 					}
 				}
 			}
+
 			return filtered
 		}
 
@@ -467,6 +471,7 @@ func TestCatalogChainMetadataStore_Filter(t *testing.T) {
 					}
 				}
 			}
+
 			return filtered
 		}
 
@@ -478,6 +483,7 @@ func TestCatalogChainMetadataStore_Filter(t *testing.T) {
 					filtered = append(filtered, record)
 				}
 			}
+
 			return filtered
 		}
 
@@ -575,6 +581,7 @@ func newRandomChainSelector() uint64 {
 	// Generate a random uint64 for chain selector
 	maxVal := big.NewInt(0).SetUint64(^uint64(0) >> 1) // Max int64 to avoid overflow issues
 	n, _ := rand.Int(rand.Reader, maxVal)
+
 	return n.Uint64()
 }
 

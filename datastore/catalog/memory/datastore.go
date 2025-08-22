@@ -52,6 +52,7 @@ func NewMemoryDataStore(t *testing.T, config MemoryDataStoreConfig) *memoryDataS
 	require.NoError(t, ctrl.Fixture(sCHEMA_CONTRACT_METADATA))
 	require.NoError(t, ctrl.Fixture(sCHEMA_CHAIN_METADATA))
 	require.NoError(t, ctrl.Fixture(sCHEMA_ENVIRONMENT_METADATA))
+
 	return &memoryDataStore{
 		t:                     t,
 		config:                config,
