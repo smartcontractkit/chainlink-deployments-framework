@@ -30,14 +30,25 @@ func Test_TransactorFromRaw(t *testing.T) {
 		name        string
 		givePrivKey string
 		giveChainID *big.Int
-		want        string
+		giveOpts    []GeneratorOption
+		wantAddr    string
+		wantGas     uint64
 		wantErr     string
 	}{
 		{
-			name:        "valid default account and private key",
+			name:        "valid default account and private key (no gas limit)",
 			givePrivKey: hexPrivKey,
 			giveChainID: testChainIDBig,
-			want:        privKeyHex,
+			wantAddr:    privKeyHex,
+			wantGas:     0,
+		},
+		{
+			name:        "valid with custom gas limit",
+			givePrivKey: hexPrivKey,
+			giveChainID: testChainIDBig,
+			giveOpts:    []GeneratorOption{WithGasLimit(123456)},
+			wantAddr:    privKeyHex,
+			wantGas:     123456,
 		},
 		{
 			name:        "invalid private key",
@@ -57,16 +68,18 @@ func Test_TransactorFromRaw(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			gen := TransactorFromRaw(tt.givePrivKey)
+			gen := TransactorFromRaw(tt.givePrivKey, tt.giveOpts...)
 
 			got, err := gen.Generate(tt.giveChainID)
 			if tt.wantErr != "" {
 				require.Error(t, err)
 				require.ErrorContains(t, err, tt.wantErr)
-			} else {
-				require.NoError(t, err)
-				assert.Equal(t, tt.want, got.From.Hex())
+				return
 			}
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantAddr, got.From.Hex())
+			assert.Equal(t, tt.wantGas, got.GasLimit)
 		})
 	}
 }
