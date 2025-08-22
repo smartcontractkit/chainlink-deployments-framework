@@ -1,5 +1,13 @@
 # chainlink-deployments-framework
 
+## 0.31.0
+
+### Minor Changes
+
+- [#303](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/303) [`c22683e`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/c22683ebe97aba5755cef1492220a3c2b05cec2a) Thanks [@RodrigoAD](https://github.com/RodrigoAD)! - Add Sui chain
+
+- [#306](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/306) [`f876eea`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/f876eeac15b6e4ac6921ba96d2323f346cd22a5d) Thanks [@faisal-chainlink](https://github.com/faisal-chainlink)! - Added optional configs for Sui CTF provider config to allow specifying image and platform.
+
 ## 0.30.0
 
 ### Minor Changes

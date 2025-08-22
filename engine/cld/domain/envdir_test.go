@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -1323,6 +1324,51 @@ func Test_EnvDir_SaveFile(t *testing.T) {
 
 				require.NoError(t, err)
 				assert.Equal(t, tt.want, nodes)
+			}
+		})
+	}
+}
+
+func Test_EnvDir_SaveViewState(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		giveState json.Marshaler
+		want      string
+		wantErr   string
+	}{
+		{
+			name: "success",
+			giveState: &testMarshaler{
+				Name: "test",
+			},
+			want: `{"Name":"test"}`,
+		},
+		{
+			name:      "save error",
+			giveState: &failedMarshaler{},
+			wantErr:   "unable to marshal state",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			fixture := setupTestDomainsFS(t)
+
+			err := fixture.envDir.SaveViewState(tt.giveState)
+
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				assert.ErrorContains(t, err, tt.wantErr)
+			} else {
+				require.NoError(t, err)
+				b, err := os.ReadFile(fixture.envDir.ViewStateFilePath())
+				require.NoError(t, err)
+
+				assert.JSONEq(t, tt.want, string(b))
 			}
 		})
 	}
