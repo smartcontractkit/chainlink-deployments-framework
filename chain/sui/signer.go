@@ -1,10 +1,7 @@
 package sui
 
 import (
-<<<<<<< HEAD
 	"crypto/ed25519"
-=======
->>>>>>> main
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
@@ -52,17 +49,8 @@ func (s *suiSigner) Sign(message []byte) ([]string, error) {
 	// Add intent scope for transaction data (0x00, 0x00, 0x00)
 	intentMessage := append([]byte{0x00, 0x00, 0x00}, message...)
 
-<<<<<<< HEAD
 	// Hash the message with blake2b
 	hash := blake2b.Sum256(intentMessage)
-=======
-	// Sign the message as a transaction message
-	b64Message := base64.StdEncoding.EncodeToString(message)
-	signedMsg, err := s.signer.SignMessage(b64Message, constant.TransactionDataIntentScope)
-	if err != nil {
-		return nil, fmt.Errorf("failed to sign message: %w", err)
-	}
->>>>>>> main
 
 	// Sign the hash
 	signature := ed25519.Sign(s.signer.PriKey, hash[:])
