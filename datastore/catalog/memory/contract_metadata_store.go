@@ -67,7 +67,9 @@ func (s *memoryContractMetadataStore) Get(_ context.Context, key datastore.Contr
 
 	rows, err := db.Query(query_CONTRACT_METADATA_BY_ID, key.ChainSelector(), key.Address())
 	defer func(rows *sql.Rows) {
-		_ = rows.Close()
+		if rows != nil {
+			_ = rows.Close()
+		}
 	}(rows)
 	if err != nil {
 		return datastore.ContractMetadata{}, err
@@ -108,7 +110,9 @@ func (s *memoryContractMetadataStore) Get(_ context.Context, key datastore.Contr
 func (s *memoryContractMetadataStore) Fetch(_ context.Context) ([]datastore.ContractMetadata, error) {
 	rows, err := s.db.Query(query_ALL_CONTRACT_METADATA)
 	defer func(rows *sql.Rows) {
-		_ = rows.Close()
+		if rows != nil {
+			_ = rows.Close()
+		}
 	}(rows)
 
 	if err != nil {

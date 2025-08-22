@@ -58,7 +58,9 @@ func (s *memoryEnvMetadataStore) Get(_ context.Context, options ...datastore.Get
 
 	rows, err := db.Query(query_ENV_METADATA_GET)
 	defer func(rows *sql.Rows) {
-		_ = rows.Close()
+		if rows != nil {
+			_ = rows.Close()
+		}
 	}(rows)
 	if err != nil {
 		return datastore.EnvMetadata{}, err

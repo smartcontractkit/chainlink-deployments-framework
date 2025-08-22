@@ -67,7 +67,9 @@ func (s *memoryChainMetadataStore) Get(_ context.Context, key datastore.ChainMet
 
 	rows, err := db.Query(query_CHAIN_METADATA_BY_ID, key.ChainSelector())
 	defer func(rows *sql.Rows) {
-		_ = rows.Close()
+		if rows != nil {
+			_ = rows.Close()
+		}
 	}(rows)
 	if err != nil {
 		return datastore.ChainMetadata{}, err
@@ -108,7 +110,9 @@ func (s *memoryChainMetadataStore) Get(_ context.Context, key datastore.ChainMet
 func (s *memoryChainMetadataStore) Fetch(_ context.Context) ([]datastore.ChainMetadata, error) {
 	rows, err := s.db.Query(query_ALL_CHAIN_METADATA)
 	defer func(rows *sql.Rows) {
-		_ = rows.Close()
+		if rows != nil {
+			_ = rows.Close()
+		}
 	}(rows)
 
 	if err != nil {

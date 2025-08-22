@@ -73,7 +73,9 @@ func (s *memoryAddressRefStore) Get(_ context.Context, key datastore.AddressRefK
 	}
 	rows, err := db.Query(query_ADDRESS_REFERENCE_BY_ID, key.ChainSelector(), key.Type().String(), key.Version().String(), key.Qualifier())
 	defer func(rows *sql.Rows) {
-		_ = rows.Close()
+		if rows != nil {
+			_ = rows.Close()
+		}
 	}(rows)
 	if err != nil {
 		return datastore.AddressRef{}, err
@@ -106,7 +108,9 @@ func (s *memoryAddressRefStore) Get(_ context.Context, key datastore.AddressRefK
 func (s *memoryAddressRefStore) Fetch(_ context.Context) ([]datastore.AddressRef, error) {
 	rows, err := s.db.Query(query_ALL_ADDRESS_REFERENCES)
 	defer func(rows *sql.Rows) {
-		_ = rows.Close()
+		if rows != nil {
+			_ = rows.Close()
+		}
 	}(rows)
 
 	if err != nil {

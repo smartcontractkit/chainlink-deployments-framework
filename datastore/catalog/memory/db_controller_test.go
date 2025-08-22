@@ -21,11 +21,12 @@ func TestNewControllerCommit(t *testing.T) {
 	_, err = ctrl.Exec("INSERT INTO test (a) VALUES (1)")
 	require.NoError(t, err)
 
-	t.Run("Check inserted values", func(t *testing.T) {
-		t.Parallel()
+	t.Run("Check inserted values", func(t *testing.T) { //nolint:paralleltest // Cannot run in parallel due to shared database state
 		rows, err2 := ctrl.Query("SELECT * FROM test")
 		defer func(rows *sql.Rows) {
-			assert.NoError(t, rows.Close())
+			if rows != nil {
+				assert.NoError(t, rows.Close())
+			}
 		}(rows)
 		require.NoError(t, err2)
 		count := 0
@@ -37,8 +38,7 @@ func TestNewControllerCommit(t *testing.T) {
 		assert.Equal(t, 1, count)
 	})
 
-	t.Run("Check inserted values (outside of tx, so fail)", func(t *testing.T) {
-		t.Parallel()
+	t.Run("Check inserted values (outside of tx, so fail)", func(t *testing.T) { //nolint:paralleltest // Cannot run in parallel due to shared database state
 		_, err2 := ctrl.base.Query(`SELECT * FROM test`)
 		require.ErrorContains(t, err2, `"test" does not exist`)
 	})
@@ -47,11 +47,12 @@ func TestNewControllerCommit(t *testing.T) {
 	require.NoError(t, err)
 	assert.Nil(t, ctrl.tx)
 
-	t.Run("Check inserted values (post-commit)", func(t *testing.T) {
-		t.Parallel()
+	t.Run("Check inserted values (post-commit)", func(t *testing.T) { //nolint:paralleltest // Cannot run in parallel due to shared database state
 		rows, err2 := ctrl.Query("SELECT * FROM test")
 		defer func(rows *sql.Rows) {
-			assert.NoError(t, rows.Close())
+			if rows != nil {
+				assert.NoError(t, rows.Close())
+			}
 		}(rows)
 		require.NoError(t, err2)
 		count := 0
@@ -77,11 +78,12 @@ func TestNewControllerRollback(t *testing.T) {
 	_, err = ctrl.Exec("INSERT INTO test (a) VALUES (1)")
 	require.NoError(t, err)
 
-	t.Run("Check inserted values", func(t *testing.T) {
-		t.Parallel()
+	t.Run("Check inserted values", func(t *testing.T) { //nolint:paralleltest // Cannot run in parallel due to shared database state
 		rows, err2 := ctrl.Query("SELECT * FROM test")
 		defer func(rows *sql.Rows) {
-			assert.NoError(t, rows.Close())
+			if rows != nil {
+				assert.NoError(t, rows.Close())
+			}
 		}(rows)
 		require.NoError(t, err2)
 		count := 0
@@ -93,8 +95,7 @@ func TestNewControllerRollback(t *testing.T) {
 		assert.Equal(t, 1, count)
 	})
 
-	t.Run("Check inserted values (outside of tx, so fail)", func(t *testing.T) {
-		t.Parallel()
+	t.Run("Check inserted values (outside of tx, so fail)", func(t *testing.T) { //nolint:paralleltest // Cannot run in parallel due to shared database state
 		_, err2 := ctrl.base.Query("SELECT * FROM test")
 		require.ErrorContains(t, err2, `"test" does not exist`)
 	})
@@ -103,8 +104,7 @@ func TestNewControllerRollback(t *testing.T) {
 	require.NoError(t, err)
 	assert.Nil(t, ctrl.tx)
 
-	t.Run("Check inserted values (post-rollback)", func(t *testing.T) {
-		t.Parallel()
+	t.Run("Check inserted values (post-rollback)", func(t *testing.T) { //nolint:paralleltest // Cannot run in parallel due to shared database state
 		_, err2 := ctrl.Query("SELECT * FROM test")
 		require.ErrorContains(t, err2, `"test" does not exist`)
 	})
