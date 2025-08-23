@@ -28,18 +28,18 @@ func (ct ContractType) String() string {
 var _ UniqueRecord[AddressRefKey, AddressRef] = AddressRef{}
 
 type AddressRef struct {
+	// Address is the address of the contract on the chain.
+	Address string `json:"address"`
 	// ChainSelector is the chain-selector of the chain where the contract is deployed.
 	ChainSelector uint64 `json:"chainSelector"`
+	// Labels are the labels associated with the contract.
+	Labels LabelSet `json:"labels"`
+	// Qualifier is an optional qualifier for the contract.
+	Qualifier string `json:"qualifier"`
 	// ContractType is a simple string type for identifying contract types.
 	Type ContractType `json:"type"`
 	// Version is the version of the contract.
 	Version *semver.Version `json:"version"`
-	// Qualifier is an optional qualifier for the contract.
-	Qualifier string `json:"qualifier"`
-	// Address is the address of the contract on the chain.
-	Address string `json:"address"`
-	// Labels are the labels associated with the contract.
-	Labels LabelSet `json:"labels"`
 }
 
 // Clone creates a copy of the AddressRefRecord.

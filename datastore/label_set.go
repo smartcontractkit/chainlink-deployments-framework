@@ -24,14 +24,12 @@ func NewLabelSet(labels ...string) LabelSet {
 	}
 }
 
-// Add inserts one or more labels into the set.
-func (s *LabelSet) Add(labels ...string) {
+// Add inserts a label into the set.
+func (s *LabelSet) Add(label string) {
 	if s.elements == nil {
 		s.elements = make(map[string]struct{})
 	}
-	for _, l := range labels {
-		s.elements[l] = struct{}{}
-	}
+	s.elements[label] = struct{}{}
 }
 
 // Remove deletes a label from the set, if it exists.

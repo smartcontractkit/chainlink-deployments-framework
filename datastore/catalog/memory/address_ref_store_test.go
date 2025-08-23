@@ -14,13 +14,11 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 )
 
+//nolint:paralleltest // Subtests share database instance, cannot run in parallel
 func TestCatalogAddressRefStore_Get(t *testing.T) {
-	t.Parallel()
 	store, closer := setupTestStore(t)
 
 	t.Run("not found", func(t *testing.T) {
-		t.Parallel()
-
 		version := semver.MustParse("99.99.99")
 		key := datastore.NewAddressRefKey(99999999, "NonExistentContract", version, "nonexistent")
 		_, err := store.Get(t.Context(), key)
@@ -29,8 +27,6 @@ func TestCatalogAddressRefStore_Get(t *testing.T) {
 	})
 
 	t.Run("success", func(t *testing.T) {
-		t.Parallel()
-
 		addressRef := newRandomAddressRef()
 		err := store.Add(t.Context(), addressRef)
 		require.NoError(t, err)
@@ -47,8 +43,8 @@ func TestCatalogAddressRefStore_Get(t *testing.T) {
 	defer closer()
 }
 
+//nolint:paralleltest // Subtests share database instance, cannot run in parallel
 func TestCatalogAddressRefStore_Add(t *testing.T) {
-	t.Parallel()
 	tests := []struct {
 		name        string
 		setup       func(store *memoryAddressRefStore) datastore.AddressRef
@@ -78,7 +74,6 @@ func TestCatalogAddressRefStore_Add(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 			// Create a fresh store for each test case to avoid concurrency issues
 			store, closer := setupTestStore(t)
 			defer closer()
@@ -113,8 +108,8 @@ func TestCatalogAddressRefStore_Add(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // Subtests share database instance, cannot run in parallel
 func TestCatalogAddressRefStore_Update(t *testing.T) {
-	t.Parallel()
 	tests := []struct {
 		name        string
 		setup       func(store *memoryAddressRefStore) datastore.AddressRef
@@ -160,7 +155,6 @@ func TestCatalogAddressRefStore_Update(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 			// Create a fresh store for each test case to avoid concurrency issues
 			store, closer := setupTestStore(t)
 			defer closer()
@@ -186,8 +180,8 @@ func TestCatalogAddressRefStore_Update(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // Subtests share database instance, cannot run in parallel
 func TestCatalogAddressRefStore_Upsert(t *testing.T) {
-	t.Parallel()
 	tests := []struct {
 		name   string
 		setup  func(store *memoryAddressRefStore) datastore.AddressRef
@@ -236,7 +230,6 @@ func TestCatalogAddressRefStore_Upsert(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 			// Create a fresh store for each test case to avoid concurrency issues
 			store, closer := setupTestStore(t)
 			defer closer()
@@ -253,8 +246,8 @@ func TestCatalogAddressRefStore_Upsert(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // Subtests share database instance, cannot run in parallel
 func TestCatalogAddressRefStore_Delete(t *testing.T) {
-	t.Parallel()
 	store, closer := setupTestStore(t)
 	defer closer()
 
@@ -269,8 +262,8 @@ func TestCatalogAddressRefStore_Delete(t *testing.T) {
 	require.Contains(t, err.Error(), "delete operation not supported")
 }
 
+//nolint:paralleltest // Subtests share database instance, cannot run in parallel
 func TestCatalogAddressRefStore_FetchAndFilter(t *testing.T) {
-	t.Parallel()
 	tests := []struct {
 		name         string
 		operation    string
@@ -419,7 +412,6 @@ func TestCatalogAddressRefStore_FetchAndFilter(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 			// Create a fresh store for each test case to avoid concurrency issues
 			store, closer := setupTestStore(t)
 			defer closer()

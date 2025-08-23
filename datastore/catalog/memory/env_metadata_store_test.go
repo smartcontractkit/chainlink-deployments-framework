@@ -24,22 +24,18 @@ func setupEnvMetadataTestStore(t *testing.T) (*memoryDataStore, func()) {
 	}
 }
 
+//nolint:paralleltest // Subtests share database instance, cannot run in parallel
 func TestCatalogEnvMetadataStore_Get(t *testing.T) {
-	t.Parallel()
 	store, closer := setupEnvMetadataTestStore(t)
 	defer closer()
 
 	t.Run("not set", func(t *testing.T) {
-		t.Parallel()
-
 		_, err := store.EnvMetadata().Get(context.Background())
 		require.Error(t, err)
 		require.ErrorIs(t, err, datastore.ErrEnvMetadataNotSet)
 	})
 
 	t.Run("success", func(t *testing.T) {
-		t.Parallel()
-
 		envMetadata := map[string]any{
 			"domain":      "test_domain",
 			"environment": "catalog_testing",
@@ -55,8 +51,6 @@ func TestCatalogEnvMetadataStore_Get(t *testing.T) {
 	})
 
 	t.Run("success with nil metadata", func(t *testing.T) {
-		t.Parallel()
-
 		store2, closer2 := setupEnvMetadataTestStore(t)
 		defer closer2()
 
@@ -69,8 +63,8 @@ func TestCatalogEnvMetadataStore_Get(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // Subtests share database instance, cannot run in parallel
 func TestCatalogEnvMetadataStore_Set(t *testing.T) {
-	t.Parallel()
 	tests := []struct {
 		name     string
 		setup    func(store *memoryDataStore) any
@@ -137,7 +131,6 @@ func TestCatalogEnvMetadataStore_Set(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 			// Create a fresh store for each test case
 			store, closer := setupEnvMetadataTestStore(t)
 			defer closer()
@@ -156,8 +149,8 @@ func TestCatalogEnvMetadataStore_Set(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // Uses shared database instance, cannot run in parallel
 func TestCatalogEnvMetadataStore_Set_Replace(t *testing.T) {
-	t.Parallel()
 	store, closer := setupEnvMetadataTestStore(t)
 	defer closer()
 
@@ -193,8 +186,8 @@ func TestCatalogEnvMetadataStore_Set_Replace(t *testing.T) {
 	require.Equal(t, newMetadata, result.Metadata)
 }
 
+//nolint:paralleltest // Uses shared database instance, cannot run in parallel
 func TestCatalogEnvMetadataStore_Set_WithCustomUpdater(t *testing.T) {
-	t.Parallel()
 	store, closer := setupEnvMetadataTestStore(t)
 	defer closer()
 
@@ -279,13 +272,12 @@ func TestCatalogEnvMetadataStore_Set_WithCustomUpdater(t *testing.T) {
 	require.Equal(t, "newValue", configMap["newOption"])              // added
 }
 
+//nolint:paralleltest // Subtests share database instance, cannot run in parallel
 func TestCatalogEnvMetadataStore_Transactions(t *testing.T) {
-	t.Parallel()
 	store, closer := setupEnvMetadataTestStore(t)
 	defer closer()
 
 	t.Run("transaction rollback", func(t *testing.T) {
-		t.Parallel()
 		envMetadata := map[string]any{
 			"domain":      "test_domain",
 			"environment": "test_env",
@@ -314,7 +306,6 @@ func TestCatalogEnvMetadataStore_Transactions(t *testing.T) {
 	})
 
 	t.Run("transaction commit", func(t *testing.T) {
-		t.Parallel()
 		envMetadata := map[string]any{
 			"domain":      "test_domain",
 			"environment": "test_env",
@@ -334,7 +325,6 @@ func TestCatalogEnvMetadataStore_Transactions(t *testing.T) {
 	})
 
 	t.Run("ignore transactions option", func(t *testing.T) {
-		t.Parallel()
 		envMetadata := map[string]any{
 			"domain":      "test_domain",
 			"environment": "test_env",
@@ -362,8 +352,8 @@ func TestCatalogEnvMetadataStore_Transactions(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // Uses shared database instance, cannot run in parallel
 func TestCatalogEnvMetadataStore_SingleRecord(t *testing.T) {
-	t.Parallel()
 	store, closer := setupEnvMetadataTestStore(t)
 	defer closer()
 
@@ -396,8 +386,8 @@ func TestCatalogEnvMetadataStore_SingleRecord(t *testing.T) {
 	// but the fact that Get() works correctly indicates single record behavior
 }
 
+//nolint:paralleltest // Uses shared database instance, cannot run in parallel
 func TestCatalogEnvMetadataStore_JSONSerialization(t *testing.T) {
-	t.Parallel()
 	store, closer := setupEnvMetadataTestStore(t)
 	defer closer()
 
