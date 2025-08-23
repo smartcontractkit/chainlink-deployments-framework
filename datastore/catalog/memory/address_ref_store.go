@@ -87,7 +87,9 @@ func (s *memoryAddressRefStore) Get(_ context.Context, key datastore.AddressRefK
 		count++
 		array := pq.StringArray{}
 		err = rows.Scan(&row.ChainSelector, &row.Type, &row.Version, &row.Qualifier, &row.Address, &array)
-		row.Labels.Add(array...)
+		for _, label := range array {
+			row.Labels.Add(label)
+		}
 		if err != nil {
 			return datastore.AddressRef{}, err
 		}
@@ -122,7 +124,9 @@ func (s *memoryAddressRefStore) Fetch(_ context.Context) ([]datastore.AddressRef
 		row := &datastore.AddressRef{}
 		array := pq.StringArray{}
 		err = rows.Scan(&row.ChainSelector, &row.Type, &row.Version, &row.Qualifier, &row.Address, &array)
-		row.Labels.Add(array...)
+		for _, label := range array {
+			row.Labels.Add(label)
+		}
 		if err != nil {
 			return refs, err
 		}
