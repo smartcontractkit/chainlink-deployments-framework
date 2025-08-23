@@ -24,16 +24,41 @@ var (
 	_ SignerGenerator = (*transactorFromKMSSigner)(nil)
 )
 
+// GeneratorOptions contains configuration options for the SignerGenerator.
+type GeneratorOptions struct {
+	gasLimit uint64
+}
+
+// GeneratorOption is a function that modifies GeneratorOptions.
+type GeneratorOption func(*GeneratorOptions)
+
+func WithGasLimit(gasLimit uint64) GeneratorOption {
+	return func(opts *GeneratorOptions) {
+		opts.gasLimit = gasLimit
+	}
+}
+
 // TransactorFromRaw returns a generator which creates a transactor from a raw private key.
-func TransactorFromRaw(privKey string) SignerGenerator {
+func TransactorFromRaw(privKey string, opts ...GeneratorOption) SignerGenerator {
+	// load default options
+	defaultOpts := &GeneratorOptions{
+		gasLimit: 0,
+	}
+	// apply provided options
+	for _, opt := range opts {
+		opt(defaultOpts)
+	}
+
 	return &transactorFromRaw{
-		privKey: privKey,
+		privKey:  privKey,
+		gasLimit: defaultOpts.gasLimit,
 	}
 }
 
 // transactorFromRaw is a SignerGenerator that creates a transactor from a private key.
 type transactorFromRaw struct {
-	privKey string
+	privKey  string
+	gasLimit uint64
 }
 
 // Generate parses the hex encoded private key and returns the bind transactor options.
@@ -46,6 +71,9 @@ func (g *transactorFromRaw) Generate(chainID *big.Int) (*bind.TransactOpts, erro
 	transactor, err := bind.NewKeyedTransactorWithChainID(privKey, chainID)
 	if err != nil {
 		return nil, err
+	}
+	if g.gasLimit > 0 {
+		transactor.GasLimit = g.gasLimit
 	}
 
 	return transactor, nil

@@ -1,5 +1,13 @@
 # chainlink-deployments-framework
 
+## 0.32.0
+
+### Minor Changes
+
+- [#308](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/308) [`11daf8d`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/11daf8de3cb89d01525988fcc427a45cf56ca29f) Thanks [@jkongie](https://github.com/jkongie)! - Adds additional config related file path getter methods to Domains
+
+- [#311](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/311) [`ae71e08`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/ae71e085d407cd0102a6c5a571678bdeb77cf5bf) Thanks [@ecPablo](https://github.com/ecPablo)! - Add support for gas limit option on raw signer generator
+
 ## 0.31.0
 
 ### Minor Changes
