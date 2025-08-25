@@ -2,10 +2,12 @@ package provider
 
 import (
 	"context"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/smartcontractkit/freeport"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -33,7 +35,7 @@ func TestCTFAnvilChainProvider_Initialize(t *testing.T) {
 	assert.Equal(t, selector, provider.ChainSelector())
 	assert.Equal(t, "Anvil EVM CTF Chain Provider", provider.Name())
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Minute)
 	defer cancel()
 
 	// Initialize the provider
@@ -281,7 +283,7 @@ func TestCTFAnvilChainProvider_InitializeErrors(t *testing.T) {
 
 			provider := NewCTFAnvilChainProvider(tt.selector, tt.config)
 
-			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 			defer cancel()
 
 			_, err := provider.Initialize(ctx)
@@ -311,7 +313,7 @@ func TestCTFAnvilChainProvider_SignerIntegration(t *testing.T) {
 		selector := uint64(13264668187771770619) // Chain ID 31337
 		provider := NewCTFAnvilChainProvider(selector, config)
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		ctx, cancel := context.WithTimeout(t.Context(), 5*time.Minute)
 		defer cancel()
 
 		blockchain, err := provider.Initialize(ctx)
@@ -350,7 +352,7 @@ func TestCTFAnvilChainProvider_SignerIntegration(t *testing.T) {
 		selector := uint64(13264668187771770619) // Chain ID 31337
 		provider := NewCTFAnvilChainProvider(selector, config)
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		ctx, cancel := context.WithTimeout(t.Context(), 5*time.Minute)
 		defer cancel()
 
 		blockchain, err := provider.Initialize(ctx)
@@ -388,7 +390,7 @@ func TestCTFAnvilChainProvider_SignerIntegration(t *testing.T) {
 		selector := uint64(13264668187771770619) // Chain ID 31337
 		provider := NewCTFAnvilChainProvider(selector, config)
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		ctx, cancel := context.WithTimeout(t.Context(), 5*time.Minute)
 		defer cancel()
 
 		blockchain, err := provider.Initialize(ctx)
@@ -427,7 +429,7 @@ func TestCTFAnvilChainProvider_SignerIntegration(t *testing.T) {
 		selector := uint64(13264668187771770619) // Chain ID 31337
 		provider := NewCTFAnvilChainProvider(selector, config)
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		ctx, cancel := context.WithTimeout(t.Context(), 5*time.Minute)
 		defer cancel()
 
 		blockchain, err := provider.Initialize(ctx)
@@ -462,7 +464,7 @@ func TestCTFAnvilChainProvider_SignerIntegration(t *testing.T) {
 		selector := uint64(13264668187771770619) // Chain ID 31337
 		provider := NewCTFAnvilChainProvider(selector, config)
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		ctx, cancel := context.WithTimeout(t.Context(), 5*time.Minute)
 		defer cancel()
 
 		blockchain, err := provider.Initialize(ctx)
@@ -471,5 +473,167 @@ func TestCTFAnvilChainProvider_SignerIntegration(t *testing.T) {
 
 		// Verify that client options were applied
 		assert.True(t, clientOptsCalled, "ClientOpts should have been called during initialization")
+	})
+}
+
+func TestCTFAnvilChainProvider_Cleanup(t *testing.T) {
+	t.Parallel()
+
+	t.Run("cleanup after initialization with T provided", func(t *testing.T) {
+		t.Parallel()
+
+		var once sync.Once
+		config := CTFAnvilChainProviderConfig{
+			Once:           &once,
+			ConfirmFunctor: ConfirmFuncGeth(2 * time.Minute),
+			T:              t,
+		}
+
+		selector := uint64(13264668187771770619) // Chain ID 31337
+		provider := NewCTFAnvilChainProvider(selector, config)
+
+		ctx, cancel := context.WithTimeout(t.Context(), 5*time.Minute)
+		defer cancel()
+
+		blockchain, err := provider.Initialize(ctx)
+		require.NoError(t, err)
+		require.NotNil(t, blockchain)
+
+		assert.NotNil(t, provider.container, "Container reference should be stored after initialization")
+
+		err = provider.Cleanup(ctx)
+		require.NoError(t, err, "Cleanup should succeed")
+
+		assert.Nil(t, provider.container, "Container reference should be cleared after cleanup")
+	})
+
+	t.Run("cleanup after initialization with fixed port (T=nil)", func(t *testing.T) {
+		t.Parallel()
+
+		// Allocate a free port for this test
+		port := freeport.GetOne(t)
+		defer freeport.Return([]int{port})
+
+		var once sync.Once
+		config := CTFAnvilChainProviderConfig{
+			Once:           &once,
+			ConfirmFunctor: ConfirmFuncGeth(2 * time.Minute),
+			Port:           strconv.Itoa(port), // Use allocated port to avoid conflicts
+			T:              nil,                // No T provided - simulates production usage
+		}
+
+		selector := uint64(13264668187771770619) // Chain ID 31337
+		provider := NewCTFAnvilChainProvider(selector, config)
+
+		ctx, cancel := context.WithTimeout(t.Context(), 5*time.Minute)
+		defer cancel()
+
+		blockchain, err := provider.Initialize(ctx)
+		require.NoError(t, err)
+		require.NotNil(t, blockchain)
+
+		assert.NotNil(t, provider.container, "Container reference should be stored after initialization")
+
+		err = provider.Cleanup(ctx)
+		require.NoError(t, err, "Cleanup should succeed even when T is nil")
+
+		assert.Nil(t, provider.container, "Container reference should be cleared after cleanup")
+	})
+
+	t.Run("cleanup before initialization", func(t *testing.T) {
+		t.Parallel()
+
+		var once sync.Once
+		config := CTFAnvilChainProviderConfig{
+			Once:           &once,
+			ConfirmFunctor: ConfirmFuncGeth(2 * time.Minute),
+			T:              t,
+		}
+
+		selector := uint64(13264668187771770619) // Chain ID 31337
+		provider := NewCTFAnvilChainProvider(selector, config)
+
+		ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+		defer cancel()
+
+		// Test cleanup before initialization - should be a no-op
+		err := provider.Cleanup(ctx)
+		require.NoError(t, err, "Cleanup should succeed even when no container exists")
+
+		// Verify container is still nil
+		assert.Nil(t, provider.container, "Container reference should remain nil")
+	})
+
+	t.Run("multiple cleanup calls", func(t *testing.T) {
+		t.Parallel()
+
+		var once sync.Once
+		config := CTFAnvilChainProviderConfig{
+			Once:           &once,
+			ConfirmFunctor: ConfirmFuncGeth(2 * time.Minute),
+			T:              t,
+		}
+
+		selector := uint64(13264668187771770619) // Chain ID 31337
+		provider := NewCTFAnvilChainProvider(selector, config)
+
+		ctx, cancel := context.WithTimeout(t.Context(), 5*time.Minute)
+		defer cancel()
+
+		blockchain, err := provider.Initialize(ctx)
+		require.NoError(t, err)
+		require.NotNil(t, blockchain)
+
+		// First cleanup
+		err = provider.Cleanup(ctx)
+		require.NoError(t, err, "First cleanup should succeed")
+		assert.Nil(t, provider.container, "Container reference should be cleared after first cleanup")
+
+		// Second cleanup - should be a no-op
+		err = provider.Cleanup(ctx)
+		require.NoError(t, err, "Second cleanup should succeed (no-op)")
+		assert.Nil(t, provider.container, "Container reference should remain nil after second cleanup")
+
+		// Third cleanup - should still be a no-op
+		err = provider.Cleanup(ctx)
+		require.NoError(t, err, "Third cleanup should succeed (no-op)")
+		assert.Nil(t, provider.container, "Container reference should remain nil after third cleanup")
+	})
+
+	t.Run("cleanup with cancelled context", func(t *testing.T) {
+		t.Parallel()
+
+		var once sync.Once
+		config := CTFAnvilChainProviderConfig{
+			Once:           &once,
+			ConfirmFunctor: ConfirmFuncGeth(2 * time.Minute),
+			T:              t,
+		}
+
+		selector := uint64(13264668187771770619) // Chain ID 31337
+		provider := NewCTFAnvilChainProvider(selector, config)
+
+		ctx, cancel := context.WithTimeout(t.Context(), 5*time.Minute)
+		defer cancel()
+
+		blockchain, err := provider.Initialize(ctx)
+		require.NoError(t, err)
+		require.NotNil(t, blockchain)
+
+		cancelledCtx, cancelFunc := context.WithCancel(t.Context())
+		cancelFunc() // Cancel immediately
+
+		// Test cleanup with cancelled context - should return an error
+		err = provider.Cleanup(cancelledCtx)
+		require.Error(t, err, "Cleanup should fail with cancelled context")
+		assert.Contains(t, err.Error(), "failed to terminate Anvil container", "Error should mention container termination failure")
+
+		// Container reference should still exist since cleanup failed
+		assert.NotNil(t, provider.container, "Container reference should remain when cleanup fails")
+
+		// Cleanup with proper context should still work
+		err = provider.Cleanup(ctx)
+		require.NoError(t, err, "Cleanup with valid context should succeed after previous failure")
+		assert.Nil(t, provider.container, "Container reference should be cleared after successful cleanup")
 	})
 }

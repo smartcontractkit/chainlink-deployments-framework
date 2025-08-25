@@ -148,6 +148,32 @@
 //		// Chain ID is automatically derived from the chainSelector
 //	}
 //
+// Usage in production/non-test contexts with manual cleanup:
+//
+//	func main() {
+//		var once sync.Once
+//		config := CTFAnvilChainProviderConfig{
+//			Once:           &once,
+//			ConfirmFunctor: ConfirmFuncGeth(2 * time.Minute),
+//			Port:           "8545", // T not required when Port is provided
+//		}
+//
+//		provider := NewCTFAnvilChainProvider(chainSelector, config)
+//		blockchain, err := provider.Initialize(context.Background())
+//		if err != nil {
+//			log.Fatal(err)
+//		}
+//
+//		// Use the blockchain...
+//
+//		// Important: Clean up the container when done
+//		defer func() {
+//			if err := provider.Cleanup(context.Background()); err != nil {
+//				log.Printf("Failed to cleanup container: %v", err)
+//			}
+//		}()
+//	}
+//
 // # Chain Selectors
 //
 // Common chain selectors for Anvil testing:
@@ -308,8 +334,9 @@ type CTFAnvilChainProvider struct {
 	selector uint64
 	config   CTFAnvilChainProviderConfig
 
-	chain   *evm.Chain
-	httpURL string
+	chain     *evm.Chain
+	httpURL   string
+	container testcontainers.Container
 }
 
 // NewCTFAnvilChainProvider creates a new CTFAnvilChainProvider with the given selector and
@@ -474,6 +501,28 @@ func (p *CTFAnvilChainProvider) GetNodeHTTPURL() string {
 	return p.httpURL
 }
 
+// Cleanup terminates the Anvil container and cleans up associated resources.
+//
+// This method provides explicit control over container lifecycle, which is especially
+// important when the provider is used outside of test contexts where automatic cleanup
+// via testcontainers.CleanupContainer is not available.
+//
+// It's safe to call this method multiple times - subsequent calls will be no-ops if
+// the container has already been terminated.
+//
+// Returns an error if the container termination fails.
+func (p *CTFAnvilChainProvider) Cleanup(ctx context.Context) error {
+	if p.container != nil {
+		err := p.container.Terminate(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to terminate Anvil container: %w", err)
+		}
+		p.container = nil // Clear the reference after successful termination
+	}
+
+	return nil
+}
+
 // startContainer starts a CTF container for the Anvil EVM returning the HTTP URL of the node.
 //
 // This method handles the Docker container lifecycle including:
@@ -534,7 +583,13 @@ func (p *CTFAnvilChainProvider) startContainer(ctx context.Context, chainID stri
 			return "", fmt.Errorf("failed to create Anvil container: %w", rerr)
 		}
 
-		testcontainers.CleanupContainer(p.config.T, output.Container)
+		// Store container reference for manual cleanup
+		p.container = output.Container
+
+		// Only register cleanup if T is available (for test cleanup)
+		if p.config.T != nil {
+			testcontainers.CleanupContainer(p.config.T, output.Container)
+		}
 
 		return output.Nodes[0].ExternalHTTPUrl, nil
 	},
