@@ -293,29 +293,14 @@ func TestCatalogContractMetadataStore_Delete(t *testing.T) {
 	store, closer := setupContractMetadataTestStore(t)
 	defer closer()
 
-	t.Run("not found", func(t *testing.T) {
-		key := datastore.NewContractMetadataKey(99999999, "0x1234567890123456789012345678901234567890")
-		err := store.ContractMetadata().Delete(t.Context(), key)
-		require.Error(t, err)
-		require.ErrorIs(t, err, datastore.ErrContractMetadataNotFound)
-	})
+	key := datastore.NewContractMetadataKey(12345, "0x1234567890123456789012345678901234567890")
 
-	t.Run("success", func(t *testing.T) {
-		// Add a record first
-		contractMetadata := newRandomContractMetadata()
-		err := store.ContractMetadata().Add(t.Context(), contractMetadata)
-		require.NoError(t, err)
+	// Execute
+	err := store.ContractMetadata().Delete(t.Context(), key)
 
-		// Delete it
-		key := datastore.NewContractMetadataKey(contractMetadata.ChainSelector, contractMetadata.Address)
-		err = store.ContractMetadata().Delete(t.Context(), key)
-		require.NoError(t, err)
-
-		// Verify it's gone
-		_, err = store.ContractMetadata().Get(t.Context(), key)
-		require.Error(t, err)
-		require.ErrorIs(t, err, datastore.ErrContractMetadataNotFound)
-	})
+	// Verify
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "delete operation not supported")
 }
 
 //nolint:paralleltest // Subtests share database instance, cannot run in parallel

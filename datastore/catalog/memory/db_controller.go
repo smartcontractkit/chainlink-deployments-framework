@@ -3,7 +3,6 @@ package memory
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 
 	_ "github.com/proullon/ramsql/driver"
 )
@@ -25,7 +24,6 @@ type dbController struct {
 }
 
 func (d *dbController) Query(q string, args ...any) (*sql.Rows, error) {
-	fmt.Println("Executing query ", append([]any{q}, args))
 	if d.tx != nil {
 		return d.tx.Query(q, args...)
 	}
@@ -34,7 +32,6 @@ func (d *dbController) Query(q string, args ...any) (*sql.Rows, error) {
 }
 
 func (d *dbController) Exec(q string, args ...any) (sql.Result, error) {
-	fmt.Println("Executing statement ", append([]any{q}, args))
 	if d.tx != nil {
 		return d.tx.Exec(q, args...)
 	}

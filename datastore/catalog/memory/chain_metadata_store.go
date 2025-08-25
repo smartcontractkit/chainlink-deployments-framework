@@ -243,20 +243,10 @@ func (s *memoryChainMetadataStore) Update(ctx context.Context, key datastore.Cha
 	return s.edit(ctx, query_UPDATE_CHAIN_METADATA, record)
 }
 
-func (s *memoryChainMetadataStore) Delete(_ context.Context, key datastore.ChainMetadataKey) error {
-	result, err := s.db.Exec(query_DELETE_CHAIN_METADATA, key.ChainSelector())
-	if err != nil {
-		return err
-	}
-	count, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if count != 1 {
-		return datastore.ErrChainMetadataNotFound
-	}
-
-	return nil
+func (s *memoryChainMetadataStore) Delete(_ context.Context, _ datastore.ChainMetadataKey) error {
+	// The catalog API does not support delete operations
+	// This is intentional as catalogs are typically immutable reference stores
+	return errors.New("delete operation not supported for catalog chain metadata store")
 }
 
 func (s *memoryChainMetadataStore) edit(_ context.Context, qry string, r datastore.ChainMetadata) error {

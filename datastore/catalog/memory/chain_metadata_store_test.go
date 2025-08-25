@@ -281,29 +281,14 @@ func TestCatalogChainMetadataStore_Delete(t *testing.T) {
 	store, closer := setupChainMetadataTestStore(t)
 	defer closer()
 
-	t.Run("not found", func(t *testing.T) {
-		key := datastore.NewChainMetadataKey(99999999)
-		err := store.ChainMetadata().Delete(t.Context(), key)
-		require.Error(t, err)
-		require.ErrorIs(t, err, datastore.ErrChainMetadataNotFound)
-	})
+	key := datastore.NewChainMetadataKey(12345)
 
-	t.Run("success", func(t *testing.T) {
-		// Add a record first
-		chainMetadata := newRandomChainMetadata()
-		err := store.ChainMetadata().Add(t.Context(), chainMetadata)
-		require.NoError(t, err)
+	// Execute
+	err := store.ChainMetadata().Delete(t.Context(), key)
 
-		// Delete it
-		key := datastore.NewChainMetadataKey(chainMetadata.ChainSelector)
-		err = store.ChainMetadata().Delete(t.Context(), key)
-		require.NoError(t, err)
-
-		// Verify it's gone
-		_, err = store.ChainMetadata().Get(t.Context(), key)
-		require.Error(t, err)
-		require.ErrorIs(t, err, datastore.ErrChainMetadataNotFound)
-	})
+	// Verify
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "delete operation not supported")
 }
 
 //nolint:paralleltest // Subtests share database instance, cannot run in parallel

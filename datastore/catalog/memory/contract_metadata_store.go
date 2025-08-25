@@ -245,20 +245,10 @@ func (s *memoryContractMetadataStore) Update(ctx context.Context, key datastore.
 	return s.edit(ctx, query_UPDATE_CONTRACT_METADATA, record)
 }
 
-func (s *memoryContractMetadataStore) Delete(_ context.Context, key datastore.ContractMetadataKey) error {
-	result, err := s.db.Exec(query_DELETE_CONTRACT_METADATA, key.ChainSelector(), key.Address())
-	if err != nil {
-		return err
-	}
-	count, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if count != 1 {
-		return datastore.ErrContractMetadataNotFound
-	}
-
-	return nil
+func (s *memoryContractMetadataStore) Delete(_ context.Context, _ datastore.ContractMetadataKey) error {
+	// The catalog API does not support delete operations
+	// This is intentional as catalogs are typically immutable reference stores
+	return errors.New("delete operation not supported for catalog contract metadata store")
 }
 
 func (s *memoryContractMetadataStore) edit(_ context.Context, qry string, r datastore.ContractMetadata) error {
