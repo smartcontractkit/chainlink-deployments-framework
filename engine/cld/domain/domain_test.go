@@ -220,13 +220,13 @@ func Test_Domain_ConfigLocalDirPath(t *testing.T) {
 func Test_Domain_ConfigLocalFileName(t *testing.T) {
 	t.Parallel()
 	d := NewDomain("domains", "ccip")
-	assert.Equal(t, "domains/ccip/.config/local/config.staging.yaml", d.ConfigLocalFileName("staging"))
+	assert.Equal(t, "domains/ccip/.config/local/config.staging.yaml", d.ConfigLocalFilePath("staging"))
 }
 
 func Test_Domain_ConfigNetworksFilePath(t *testing.T) {
 	t.Parallel()
 	d := NewDomain("domains", "ccip")
-	assert.Equal(t, "domains/ccip/.config/networks", d.ConfigNetworksFilePath())
+	assert.Equal(t, "domains/ccip/.config/networks", d.ConfigNetworksDirPath())
 }
 
 func Test_Domain_ConfigCIDirPath(t *testing.T) {

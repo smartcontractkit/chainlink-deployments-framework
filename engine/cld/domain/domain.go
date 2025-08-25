@@ -121,13 +121,13 @@ func (d Domain) ConfigLocalDirPath() string {
 	return filepath.Join(d.ConfigDirPath(), DomainConfigLocalDirName)
 }
 
-// ConfigLocalFileName returns the path to a domain environment's local execution config file.
-func (d Domain) ConfigLocalFileName(env string) string {
+// ConfigLocalFilePath returns the path to a domain environment's local execution config file.
+func (d Domain) ConfigLocalFilePath(env string) string {
 	return filepath.Join(d.ConfigLocalDirPath(), "config."+env+".yaml")
 }
 
-// ConfigNetworksFilePath returns the path where the domain's networks config files are stored.
-func (d Domain) ConfigNetworksFilePath() string {
+// ConfigNetworksDirPath returns the path where the domain's networks config files are stored.
+func (d Domain) ConfigNetworksDirPath() string {
 	return filepath.Join(d.ConfigDirPath(), DomainConfigNetworksDirName)
 }
 
