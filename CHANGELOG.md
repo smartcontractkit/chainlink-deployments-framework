@@ -1,5 +1,15 @@
 # chainlink-deployments-framework
 
+## 0.33.0
+
+### Minor Changes
+
+- [#312](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/312) [`4ef3084`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/4ef30847da776685b9bd38c67f9487bd10182a83) Thanks [@jkongie](https://github.com/jkongie)! - [BREAKING] Fixes domain config path getters to have more consistent naming
+
+### Patch Changes
+
+- [#313](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/313) [`0f3e368`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/0f3e3687e00101917787e6893ca549dd268ec0a5) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(anvil): fix nil pointer when T is not provided
+
 ## 0.32.0
 
 ### Minor Changes
