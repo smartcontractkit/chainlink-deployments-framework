@@ -34,18 +34,18 @@ func TestCatalogChainMetadataStore_Get(t *testing.T) {
 
 	t.Run("not found", func(t *testing.T) {
 		key := datastore.NewChainMetadataKey(99999999)
-		_, err := store.ChainMetadata().Get(context.Background(), key)
+		_, err := store.ChainMetadata().Get(t.Context(), key)
 		require.Error(t, err)
 		require.ErrorIs(t, err, datastore.ErrChainMetadataNotFound)
 	})
 
 	t.Run("success", func(t *testing.T) {
 		chainMetadata := newRandomChainMetadata()
-		err := store.ChainMetadata().Add(context.Background(), chainMetadata)
+		err := store.ChainMetadata().Add(t.Context(), chainMetadata)
 		require.NoError(t, err)
 
 		key := datastore.NewChainMetadataKey(chainMetadata.ChainSelector)
-		result, err := store.ChainMetadata().Get(context.Background(), key)
+		result, err := store.ChainMetadata().Get(t.Context(), key)
 		require.NoError(t, err)
 		require.Equal(t, key.ChainSelector(), result.ChainSelector)
 		require.Equal(t, chainMetadata.Metadata, result.Metadata)
@@ -56,11 +56,11 @@ func TestCatalogChainMetadataStore_Get(t *testing.T) {
 			ChainSelector: newRandomChainSelector(),
 			Metadata:      nil,
 		}
-		err := store.ChainMetadata().Add(context.Background(), chainMetadata)
+		err := store.ChainMetadata().Add(t.Context(), chainMetadata)
 		require.NoError(t, err)
 
 		key := datastore.NewChainMetadataKey(chainMetadata.ChainSelector)
-		result, err := store.ChainMetadata().Get(context.Background(), key)
+		result, err := store.ChainMetadata().Get(t.Context(), key)
 		require.NoError(t, err)
 		require.Equal(t, key.ChainSelector(), result.ChainSelector)
 		require.Nil(t, result.Metadata)
@@ -102,7 +102,7 @@ func TestCatalogChainMetadataStore_Add(t *testing.T) {
 			setup: func(store *memoryDataStore) datastore.ChainMetadata {
 				// Create and add a record first
 				metadata := newRandomChainMetadata()
-				err := store.ChainMetadata().Add(context.Background(), metadata)
+				err := store.ChainMetadata().Add(t.Context(), metadata)
 				require.NoError(t, err)
 				// Return the same record to test duplicate
 				return metadata
@@ -120,7 +120,7 @@ func TestCatalogChainMetadataStore_Add(t *testing.T) {
 			chainMetadata := tt.setup(store)
 
 			// Execute
-			err := store.ChainMetadata().Add(context.Background(), chainMetadata)
+			err := store.ChainMetadata().Add(t.Context(), chainMetadata)
 
 			// Verify
 			if tt.expectError {
@@ -133,7 +133,7 @@ func TestCatalogChainMetadataStore_Add(t *testing.T) {
 
 				// Verify the record was added correctly
 				key := datastore.NewChainMetadataKey(chainMetadata.ChainSelector)
-				result, getErr := store.ChainMetadata().Get(context.Background(), key)
+				result, getErr := store.ChainMetadata().Get(t.Context(), key)
 				require.NoError(t, getErr)
 				require.Equal(t, chainMetadata.ChainSelector, result.ChainSelector)
 				require.Equal(t, chainMetadata.Metadata, result.Metadata)
@@ -149,7 +149,7 @@ func TestCatalogChainMetadataStore_Update(t *testing.T) {
 
 	t.Run("not found", func(t *testing.T) {
 		key := datastore.NewChainMetadataKey(99999999)
-		err := store.ChainMetadata().Update(context.Background(), key, map[string]string{"test": "value"})
+		err := store.ChainMetadata().Update(t.Context(), key, map[string]string{"test": "value"})
 		require.Error(t, err)
 		require.ErrorIs(t, err, datastore.ErrChainMetadataNotFound)
 	})
@@ -157,7 +157,7 @@ func TestCatalogChainMetadataStore_Update(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// Add initial record
 		chainMetadata := newRandomChainMetadata()
-		err := store.ChainMetadata().Add(context.Background(), chainMetadata)
+		err := store.ChainMetadata().Add(t.Context(), chainMetadata)
 		require.NoError(t, err)
 
 		// Update with new metadata
@@ -166,11 +166,11 @@ func TestCatalogChainMetadataStore_Update(t *testing.T) {
 			"updated": true,
 			"version": float64(2), // JSON unmarshals numbers as float64
 		}
-		err = store.ChainMetadata().Update(context.Background(), key, newMetadata)
+		err = store.ChainMetadata().Update(t.Context(), key, newMetadata)
 		require.NoError(t, err)
 
 		// Verify the update
-		result, err := store.ChainMetadata().Get(context.Background(), key)
+		result, err := store.ChainMetadata().Get(t.Context(), key)
 		require.NoError(t, err)
 		require.Equal(t, chainMetadata.ChainSelector, result.ChainSelector)
 		require.Equal(t, newMetadata, result.Metadata)
@@ -186,7 +186,7 @@ func TestCatalogChainMetadataStore_Update(t *testing.T) {
 			ChainSelector: newRandomChainSelector(),
 			Metadata:      initialMetadata,
 		}
-		err := store.ChainMetadata().Add(context.Background(), chainMetadata)
+		err := store.ChainMetadata().Add(t.Context(), chainMetadata)
 		require.NoError(t, err)
 
 		// Update with custom merger that combines maps
@@ -215,11 +215,11 @@ func TestCatalogChainMetadataStore_Update(t *testing.T) {
 			return result, nil
 		}
 
-		err = store.ChainMetadata().Update(context.Background(), key, updateMetadata, datastore.WithUpdater(customUpdater))
+		err = store.ChainMetadata().Update(t.Context(), key, updateMetadata, datastore.WithUpdater(customUpdater))
 		require.NoError(t, err)
 
 		// Verify the merge
-		result, err := store.ChainMetadata().Get(context.Background(), key)
+		result, err := store.ChainMetadata().Get(t.Context(), key)
 		require.NoError(t, err)
 		require.Equal(t, chainMetadata.ChainSelector, result.ChainSelector)
 
@@ -243,11 +243,11 @@ func TestCatalogChainMetadataStore_Upsert(t *testing.T) {
 			"id":   float64(123), // JSON unmarshals numbers as float64
 		}
 
-		err := store.ChainMetadata().Upsert(context.Background(), key, metadata)
+		err := store.ChainMetadata().Upsert(t.Context(), key, metadata)
 		require.NoError(t, err)
 
 		// Verify the record was created
-		result, err := store.ChainMetadata().Get(context.Background(), key)
+		result, err := store.ChainMetadata().Get(t.Context(), key)
 		require.NoError(t, err)
 		require.Equal(t, key.ChainSelector(), result.ChainSelector)
 		require.Equal(t, metadata, result.Metadata)
@@ -256,7 +256,7 @@ func TestCatalogChainMetadataStore_Upsert(t *testing.T) {
 	t.Run("update existing record", func(t *testing.T) {
 		// Add initial record
 		chainMetadata := newRandomChainMetadata()
-		err := store.ChainMetadata().Add(context.Background(), chainMetadata)
+		err := store.ChainMetadata().Add(t.Context(), chainMetadata)
 		require.NoError(t, err)
 
 		// Upsert with new metadata
@@ -265,11 +265,11 @@ func TestCatalogChainMetadataStore_Upsert(t *testing.T) {
 			"updated": true,
 			"version": float64(2), // JSON unmarshals numbers as float64
 		}
-		err = store.ChainMetadata().Upsert(context.Background(), key, newMetadata)
+		err = store.ChainMetadata().Upsert(t.Context(), key, newMetadata)
 		require.NoError(t, err)
 
 		// Verify the update
-		result, err := store.ChainMetadata().Get(context.Background(), key)
+		result, err := store.ChainMetadata().Get(t.Context(), key)
 		require.NoError(t, err)
 		require.Equal(t, chainMetadata.ChainSelector, result.ChainSelector)
 		require.Equal(t, newMetadata, result.Metadata)
@@ -283,7 +283,7 @@ func TestCatalogChainMetadataStore_Delete(t *testing.T) {
 
 	t.Run("not found", func(t *testing.T) {
 		key := datastore.NewChainMetadataKey(99999999)
-		err := store.ChainMetadata().Delete(context.Background(), key)
+		err := store.ChainMetadata().Delete(t.Context(), key)
 		require.Error(t, err)
 		require.ErrorIs(t, err, datastore.ErrChainMetadataNotFound)
 	})
@@ -291,16 +291,16 @@ func TestCatalogChainMetadataStore_Delete(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// Add a record first
 		chainMetadata := newRandomChainMetadata()
-		err := store.ChainMetadata().Add(context.Background(), chainMetadata)
+		err := store.ChainMetadata().Add(t.Context(), chainMetadata)
 		require.NoError(t, err)
 
 		// Delete it
 		key := datastore.NewChainMetadataKey(chainMetadata.ChainSelector)
-		err = store.ChainMetadata().Delete(context.Background(), key)
+		err = store.ChainMetadata().Delete(t.Context(), key)
 		require.NoError(t, err)
 
 		// Verify it's gone
-		_, err = store.ChainMetadata().Get(context.Background(), key)
+		_, err = store.ChainMetadata().Get(t.Context(), key)
 		require.Error(t, err)
 		require.ErrorIs(t, err, datastore.ErrChainMetadataNotFound)
 	})
@@ -312,7 +312,7 @@ func TestCatalogChainMetadataStore_Fetch(t *testing.T) {
 	defer closer()
 
 	t.Run("empty store", func(t *testing.T) {
-		results, err := store.ChainMetadata().Fetch(context.Background())
+		results, err := store.ChainMetadata().Fetch(t.Context())
 		require.NoError(t, err)
 		require.Empty(t, results)
 	})
@@ -326,12 +326,12 @@ func TestCatalogChainMetadataStore_Fetch(t *testing.T) {
 		}
 
 		for _, record := range records {
-			err := store.ChainMetadata().Add(context.Background(), record)
+			err := store.ChainMetadata().Add(t.Context(), record)
 			require.NoError(t, err)
 		}
 
 		// Fetch all
-		results, err := store.ChainMetadata().Fetch(context.Background())
+		results, err := store.ChainMetadata().Fetch(t.Context())
 		require.NoError(t, err)
 		require.Len(t, results, len(records))
 
@@ -372,12 +372,12 @@ func TestCatalogChainMetadataStore_Filter(t *testing.T) {
 	}
 
 	for _, record := range records {
-		err := store.ChainMetadata().Add(context.Background(), record)
+		err := store.ChainMetadata().Add(t.Context(), record)
 		require.NoError(t, err)
 	}
 
 	t.Run("no filters", func(t *testing.T) {
-		results, err := store.ChainMetadata().Filter(context.Background())
+		results, err := store.ChainMetadata().Filter(t.Context())
 		require.NoError(t, err)
 		require.Len(t, results, len(records))
 	})
@@ -394,7 +394,7 @@ func TestCatalogChainMetadataStore_Filter(t *testing.T) {
 			return filtered
 		}
 
-		results, err := store.ChainMetadata().Filter(context.Background(), filter)
+		results, err := store.ChainMetadata().Filter(t.Context(), filter)
 		require.NoError(t, err)
 		require.Len(t, results, 1)
 		require.Equal(t, uint64(137), results[0].ChainSelector)
@@ -414,7 +414,7 @@ func TestCatalogChainMetadataStore_Filter(t *testing.T) {
 			return filtered
 		}
 
-		results, err := store.ChainMetadata().Filter(context.Background(), filter)
+		results, err := store.ChainMetadata().Filter(t.Context(), filter)
 		require.NoError(t, err)
 		require.Len(t, results, 2) // Ethereum and Polygon
 
@@ -454,7 +454,7 @@ func TestCatalogChainMetadataStore_Filter(t *testing.T) {
 			return filtered
 		}
 
-		results, err := store.ChainMetadata().Filter(context.Background(), mainnetFilter, ethereumFilter)
+		results, err := store.ChainMetadata().Filter(t.Context(), mainnetFilter, ethereumFilter)
 		require.NoError(t, err)
 		require.Len(t, results, 1)
 		require.Equal(t, uint64(1), results[0].ChainSelector)
@@ -469,7 +469,7 @@ func TestCatalogChainMetadataStore_Transactions(t *testing.T) {
 	t.Run("transaction rollback", func(t *testing.T) {
 		chainMetadata := newRandomChainMetadata()
 
-		err := store.WithTransaction(context.Background(), func(ctx context.Context, txStore datastore.BaseCatalogStore) error {
+		err := store.WithTransaction(t.Context(), func(ctx context.Context, txStore datastore.BaseCatalogStore) error {
 			// Add record within transaction
 			addErr := txStore.ChainMetadata().Add(ctx, chainMetadata)
 			require.NoError(t, addErr)
@@ -487,7 +487,7 @@ func TestCatalogChainMetadataStore_Transactions(t *testing.T) {
 
 		// Verify record doesn't exist after rollback
 		key := datastore.NewChainMetadataKey(chainMetadata.ChainSelector)
-		_, err = store.ChainMetadata().Get(context.Background(), key)
+		_, err = store.ChainMetadata().Get(t.Context(), key)
 		require.Error(t, err)
 		require.ErrorIs(t, err, datastore.ErrChainMetadataNotFound)
 	})
@@ -495,7 +495,7 @@ func TestCatalogChainMetadataStore_Transactions(t *testing.T) {
 	t.Run("transaction commit", func(t *testing.T) {
 		chainMetadata := newRandomChainMetadata()
 
-		err := store.WithTransaction(context.Background(), func(ctx context.Context, txStore datastore.BaseCatalogStore) error {
+		err := store.WithTransaction(t.Context(), func(ctx context.Context, txStore datastore.BaseCatalogStore) error {
 			// Add record within transaction
 			return txStore.ChainMetadata().Add(ctx, chainMetadata)
 		})
@@ -503,7 +503,7 @@ func TestCatalogChainMetadataStore_Transactions(t *testing.T) {
 
 		// Verify record exists after commit
 		key := datastore.NewChainMetadataKey(chainMetadata.ChainSelector)
-		result, err := store.ChainMetadata().Get(context.Background(), key)
+		result, err := store.ChainMetadata().Get(t.Context(), key)
 		require.NoError(t, err)
 		require.Equal(t, chainMetadata.ChainSelector, result.ChainSelector)
 		require.Equal(t, chainMetadata.Metadata, result.Metadata)
@@ -513,10 +513,10 @@ func TestCatalogChainMetadataStore_Transactions(t *testing.T) {
 		chainMetadata := newRandomChainMetadata()
 
 		// Add record outside transaction
-		err := store.ChainMetadata().Add(context.Background(), chainMetadata)
+		err := store.ChainMetadata().Add(t.Context(), chainMetadata)
 		require.NoError(t, err)
 
-		err = store.WithTransaction(context.Background(), func(ctx context.Context, txStore datastore.BaseCatalogStore) error {
+		err = store.WithTransaction(t.Context(), func(ctx context.Context, txStore datastore.BaseCatalogStore) error {
 			key := datastore.NewChainMetadataKey(chainMetadata.ChainSelector)
 
 			// Should be able to read with ignore transactions option
@@ -531,7 +531,7 @@ func TestCatalogChainMetadataStore_Transactions(t *testing.T) {
 
 		// Record should still exist since it was added outside transaction
 		key := datastore.NewChainMetadataKey(chainMetadata.ChainSelector)
-		_, err = store.ChainMetadata().Get(context.Background(), key)
+		_, err = store.ChainMetadata().Get(t.Context(), key)
 		require.NoError(t, err)
 	})
 }

@@ -34,18 +34,18 @@ func TestCatalogContractMetadataStore_Get(t *testing.T) {
 
 	t.Run("not found", func(t *testing.T) {
 		key := datastore.NewContractMetadataKey(99999999, "0x1234567890123456789012345678901234567890")
-		_, err := store.ContractMetadata().Get(context.Background(), key)
+		_, err := store.ContractMetadata().Get(t.Context(), key)
 		require.Error(t, err)
 		require.ErrorIs(t, err, datastore.ErrContractMetadataNotFound)
 	})
 
 	t.Run("success", func(t *testing.T) {
 		contractMetadata := newRandomContractMetadata()
-		err := store.ContractMetadata().Add(context.Background(), contractMetadata)
+		err := store.ContractMetadata().Add(t.Context(), contractMetadata)
 		require.NoError(t, err)
 
 		key := datastore.NewContractMetadataKey(contractMetadata.ChainSelector, contractMetadata.Address)
-		result, err := store.ContractMetadata().Get(context.Background(), key)
+		result, err := store.ContractMetadata().Get(t.Context(), key)
 		require.NoError(t, err)
 		require.Equal(t, key.ChainSelector(), result.ChainSelector)
 		require.Equal(t, key.Address(), result.Address)
@@ -58,11 +58,11 @@ func TestCatalogContractMetadataStore_Get(t *testing.T) {
 			Address:       newRandomAddress(),
 			Metadata:      nil,
 		}
-		err := store.ContractMetadata().Add(context.Background(), contractMetadata)
+		err := store.ContractMetadata().Add(t.Context(), contractMetadata)
 		require.NoError(t, err)
 
 		key := datastore.NewContractMetadataKey(contractMetadata.ChainSelector, contractMetadata.Address)
-		result, err := store.ContractMetadata().Get(context.Background(), key)
+		result, err := store.ContractMetadata().Get(t.Context(), key)
 		require.NoError(t, err)
 		require.Equal(t, key.ChainSelector(), result.ChainSelector)
 		require.Equal(t, key.Address(), result.Address)
@@ -108,7 +108,7 @@ func TestCatalogContractMetadataStore_Add(t *testing.T) {
 			setup: func(store *memoryDataStore) datastore.ContractMetadata {
 				// Create and add a record first
 				metadata := newRandomContractMetadata()
-				err := store.ContractMetadata().Add(context.Background(), metadata)
+				err := store.ContractMetadata().Add(t.Context(), metadata)
 				require.NoError(t, err)
 				// Return the same record to test duplicate
 				return metadata
@@ -126,7 +126,7 @@ func TestCatalogContractMetadataStore_Add(t *testing.T) {
 			contractMetadata := tt.setup(store)
 
 			// Execute
-			err := store.ContractMetadata().Add(context.Background(), contractMetadata)
+			err := store.ContractMetadata().Add(t.Context(), contractMetadata)
 
 			// Verify
 			if tt.expectError {
@@ -139,7 +139,7 @@ func TestCatalogContractMetadataStore_Add(t *testing.T) {
 
 				// Verify the record was added correctly
 				key := datastore.NewContractMetadataKey(contractMetadata.ChainSelector, contractMetadata.Address)
-				result, getErr := store.ContractMetadata().Get(context.Background(), key)
+				result, getErr := store.ContractMetadata().Get(t.Context(), key)
 				require.NoError(t, getErr)
 				require.Equal(t, contractMetadata.ChainSelector, result.ChainSelector)
 				require.Equal(t, contractMetadata.Address, result.Address)
@@ -156,7 +156,7 @@ func TestCatalogContractMetadataStore_Update(t *testing.T) {
 
 	t.Run("not found", func(t *testing.T) {
 		key := datastore.NewContractMetadataKey(99999999, "0x1234567890123456789012345678901234567890")
-		err := store.ContractMetadata().Update(context.Background(), key, map[string]string{"test": "value"})
+		err := store.ContractMetadata().Update(t.Context(), key, map[string]string{"test": "value"})
 		require.Error(t, err)
 		require.ErrorIs(t, err, datastore.ErrContractMetadataNotFound)
 	})
@@ -164,7 +164,7 @@ func TestCatalogContractMetadataStore_Update(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// Add initial record
 		contractMetadata := newRandomContractMetadata()
-		err := store.ContractMetadata().Add(context.Background(), contractMetadata)
+		err := store.ContractMetadata().Add(t.Context(), contractMetadata)
 		require.NoError(t, err)
 
 		// Update with new metadata
@@ -173,11 +173,11 @@ func TestCatalogContractMetadataStore_Update(t *testing.T) {
 			"updated": true,
 			"version": float64(2), // JSON unmarshals numbers as float64
 		}
-		err = store.ContractMetadata().Update(context.Background(), key, newMetadata)
+		err = store.ContractMetadata().Update(t.Context(), key, newMetadata)
 		require.NoError(t, err)
 
 		// Verify the update
-		result, err := store.ContractMetadata().Get(context.Background(), key)
+		result, err := store.ContractMetadata().Get(t.Context(), key)
 		require.NoError(t, err)
 		require.Equal(t, contractMetadata.ChainSelector, result.ChainSelector)
 		require.Equal(t, contractMetadata.Address, result.Address)
@@ -195,7 +195,7 @@ func TestCatalogContractMetadataStore_Update(t *testing.T) {
 			Address:       newRandomAddress(),
 			Metadata:      initialMetadata,
 		}
-		err := store.ContractMetadata().Add(context.Background(), contractMetadata)
+		err := store.ContractMetadata().Add(t.Context(), contractMetadata)
 		require.NoError(t, err)
 
 		// Update with custom merger that combines maps
@@ -224,11 +224,11 @@ func TestCatalogContractMetadataStore_Update(t *testing.T) {
 			return result, nil
 		}
 
-		err = store.ContractMetadata().Update(context.Background(), key, updateMetadata, datastore.WithUpdater(customUpdater))
+		err = store.ContractMetadata().Update(t.Context(), key, updateMetadata, datastore.WithUpdater(customUpdater))
 		require.NoError(t, err)
 
 		// Verify the merge
-		result, err := store.ContractMetadata().Get(context.Background(), key)
+		result, err := store.ContractMetadata().Get(t.Context(), key)
 		require.NoError(t, err)
 		require.Equal(t, contractMetadata.ChainSelector, result.ChainSelector)
 		require.Equal(t, contractMetadata.Address, result.Address)
@@ -253,11 +253,11 @@ func TestCatalogContractMetadataStore_Upsert(t *testing.T) {
 			"decimals": float64(18), // JSON unmarshals numbers as float64
 		}
 
-		err := store.ContractMetadata().Upsert(context.Background(), key, metadata)
+		err := store.ContractMetadata().Upsert(t.Context(), key, metadata)
 		require.NoError(t, err)
 
 		// Verify the record was created
-		result, err := store.ContractMetadata().Get(context.Background(), key)
+		result, err := store.ContractMetadata().Get(t.Context(), key)
 		require.NoError(t, err)
 		require.Equal(t, key.ChainSelector(), result.ChainSelector)
 		require.Equal(t, key.Address(), result.Address)
@@ -267,7 +267,7 @@ func TestCatalogContractMetadataStore_Upsert(t *testing.T) {
 	t.Run("update existing record", func(t *testing.T) {
 		// Add initial record
 		contractMetadata := newRandomContractMetadata()
-		err := store.ContractMetadata().Add(context.Background(), contractMetadata)
+		err := store.ContractMetadata().Add(t.Context(), contractMetadata)
 		require.NoError(t, err)
 
 		// Upsert with new metadata
@@ -276,11 +276,11 @@ func TestCatalogContractMetadataStore_Upsert(t *testing.T) {
 			"updated": true,
 			"version": float64(2), // JSON unmarshals numbers as float64
 		}
-		err = store.ContractMetadata().Upsert(context.Background(), key, newMetadata)
+		err = store.ContractMetadata().Upsert(t.Context(), key, newMetadata)
 		require.NoError(t, err)
 
 		// Verify the update
-		result, err := store.ContractMetadata().Get(context.Background(), key)
+		result, err := store.ContractMetadata().Get(t.Context(), key)
 		require.NoError(t, err)
 		require.Equal(t, contractMetadata.ChainSelector, result.ChainSelector)
 		require.Equal(t, contractMetadata.Address, result.Address)
@@ -295,7 +295,7 @@ func TestCatalogContractMetadataStore_Delete(t *testing.T) {
 
 	t.Run("not found", func(t *testing.T) {
 		key := datastore.NewContractMetadataKey(99999999, "0x1234567890123456789012345678901234567890")
-		err := store.ContractMetadata().Delete(context.Background(), key)
+		err := store.ContractMetadata().Delete(t.Context(), key)
 		require.Error(t, err)
 		require.ErrorIs(t, err, datastore.ErrContractMetadataNotFound)
 	})
@@ -303,16 +303,16 @@ func TestCatalogContractMetadataStore_Delete(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// Add a record first
 		contractMetadata := newRandomContractMetadata()
-		err := store.ContractMetadata().Add(context.Background(), contractMetadata)
+		err := store.ContractMetadata().Add(t.Context(), contractMetadata)
 		require.NoError(t, err)
 
 		// Delete it
 		key := datastore.NewContractMetadataKey(contractMetadata.ChainSelector, contractMetadata.Address)
-		err = store.ContractMetadata().Delete(context.Background(), key)
+		err = store.ContractMetadata().Delete(t.Context(), key)
 		require.NoError(t, err)
 
 		// Verify it's gone
-		_, err = store.ContractMetadata().Get(context.Background(), key)
+		_, err = store.ContractMetadata().Get(t.Context(), key)
 		require.Error(t, err)
 		require.ErrorIs(t, err, datastore.ErrContractMetadataNotFound)
 	})
@@ -324,7 +324,7 @@ func TestCatalogContractMetadataStore_Fetch(t *testing.T) {
 	defer closer()
 
 	t.Run("empty store", func(t *testing.T) {
-		results, err := store.ContractMetadata().Fetch(context.Background())
+		results, err := store.ContractMetadata().Fetch(t.Context())
 		require.NoError(t, err)
 		require.Empty(t, results)
 	})
@@ -338,12 +338,12 @@ func TestCatalogContractMetadataStore_Fetch(t *testing.T) {
 		}
 
 		for _, record := range records {
-			err := store.ContractMetadata().Add(context.Background(), record)
+			err := store.ContractMetadata().Add(t.Context(), record)
 			require.NoError(t, err)
 		}
 
 		// Fetch all
-		results, err := store.ContractMetadata().Fetch(context.Background())
+		results, err := store.ContractMetadata().Fetch(t.Context())
 		require.NoError(t, err)
 		require.Len(t, results, len(records))
 
@@ -399,12 +399,12 @@ func TestCatalogContractMetadataStore_Filter(t *testing.T) {
 	}
 
 	for _, record := range records {
-		err := store.ContractMetadata().Add(context.Background(), record)
+		err := store.ContractMetadata().Add(t.Context(), record)
 		require.NoError(t, err)
 	}
 
 	t.Run("no filters", func(t *testing.T) {
-		results, err := store.ContractMetadata().Filter(context.Background())
+		results, err := store.ContractMetadata().Filter(t.Context())
 		require.NoError(t, err)
 		require.Len(t, results, len(records))
 	})
@@ -421,7 +421,7 @@ func TestCatalogContractMetadataStore_Filter(t *testing.T) {
 			return filtered
 		}
 
-		results, err := store.ContractMetadata().Filter(context.Background(), filter)
+		results, err := store.ContractMetadata().Filter(t.Context(), filter)
 		require.NoError(t, err)
 		require.Len(t, results, 3) // USDC, DAI, WETH on Ethereum
 
@@ -443,7 +443,7 @@ func TestCatalogContractMetadataStore_Filter(t *testing.T) {
 			return filtered
 		}
 
-		results, err := store.ContractMetadata().Filter(context.Background(), filter)
+		results, err := store.ContractMetadata().Filter(t.Context(), filter)
 		require.NoError(t, err)
 		require.Len(t, results, 2) // USDC on Ethereum and Polygon
 
@@ -467,7 +467,7 @@ func TestCatalogContractMetadataStore_Filter(t *testing.T) {
 			return filtered
 		}
 
-		results, err := store.ContractMetadata().Filter(context.Background(), filter)
+		results, err := store.ContractMetadata().Filter(t.Context(), filter)
 		require.NoError(t, err)
 		require.Len(t, results, 3) // USDC (2x) and DAI
 
@@ -506,7 +506,7 @@ func TestCatalogContractMetadataStore_Filter(t *testing.T) {
 			return filtered
 		}
 
-		results, err := store.ContractMetadata().Filter(context.Background(), ethereumFilter, stablecoinFilter)
+		results, err := store.ContractMetadata().Filter(t.Context(), ethereumFilter, stablecoinFilter)
 		require.NoError(t, err)
 		require.Len(t, results, 2) // USDC and DAI on Ethereum
 
@@ -528,7 +528,7 @@ func TestCatalogContractMetadataStore_Transactions(t *testing.T) {
 	t.Run("transaction rollback", func(t *testing.T) {
 		contractMetadata := newRandomContractMetadata()
 
-		err := store.WithTransaction(context.Background(), func(ctx context.Context, txStore datastore.BaseCatalogStore) error {
+		err := store.WithTransaction(t.Context(), func(ctx context.Context, txStore datastore.BaseCatalogStore) error {
 			// Add record within transaction
 			addErr := txStore.ContractMetadata().Add(ctx, contractMetadata)
 			require.NoError(t, addErr)
@@ -546,7 +546,7 @@ func TestCatalogContractMetadataStore_Transactions(t *testing.T) {
 
 		// Verify record doesn't exist after rollback
 		key := datastore.NewContractMetadataKey(contractMetadata.ChainSelector, contractMetadata.Address)
-		_, err = store.ContractMetadata().Get(context.Background(), key)
+		_, err = store.ContractMetadata().Get(t.Context(), key)
 		require.Error(t, err)
 		require.ErrorIs(t, err, datastore.ErrContractMetadataNotFound)
 	})
@@ -554,7 +554,7 @@ func TestCatalogContractMetadataStore_Transactions(t *testing.T) {
 	t.Run("transaction commit", func(t *testing.T) {
 		contractMetadata := newRandomContractMetadata()
 
-		err := store.WithTransaction(context.Background(), func(ctx context.Context, txStore datastore.BaseCatalogStore) error {
+		err := store.WithTransaction(t.Context(), func(ctx context.Context, txStore datastore.BaseCatalogStore) error {
 			// Add record within transaction
 			return txStore.ContractMetadata().Add(ctx, contractMetadata)
 		})
@@ -562,7 +562,7 @@ func TestCatalogContractMetadataStore_Transactions(t *testing.T) {
 
 		// Verify record exists after commit
 		key := datastore.NewContractMetadataKey(contractMetadata.ChainSelector, contractMetadata.Address)
-		result, err := store.ContractMetadata().Get(context.Background(), key)
+		result, err := store.ContractMetadata().Get(t.Context(), key)
 		require.NoError(t, err)
 		require.Equal(t, contractMetadata.ChainSelector, result.ChainSelector)
 		require.Equal(t, contractMetadata.Address, result.Address)
@@ -573,10 +573,10 @@ func TestCatalogContractMetadataStore_Transactions(t *testing.T) {
 		contractMetadata := newRandomContractMetadata()
 
 		// Add record outside transaction
-		err := store.ContractMetadata().Add(context.Background(), contractMetadata)
+		err := store.ContractMetadata().Add(t.Context(), contractMetadata)
 		require.NoError(t, err)
 
-		err = store.WithTransaction(context.Background(), func(ctx context.Context, txStore datastore.BaseCatalogStore) error {
+		err = store.WithTransaction(t.Context(), func(ctx context.Context, txStore datastore.BaseCatalogStore) error {
 			key := datastore.NewContractMetadataKey(contractMetadata.ChainSelector, contractMetadata.Address)
 
 			// Should be able to read with ignore transactions option
@@ -592,7 +592,7 @@ func TestCatalogContractMetadataStore_Transactions(t *testing.T) {
 
 		// Record should still exist since it was added outside transaction
 		key := datastore.NewContractMetadataKey(contractMetadata.ChainSelector, contractMetadata.Address)
-		_, err = store.ContractMetadata().Get(context.Background(), key)
+		_, err = store.ContractMetadata().Get(t.Context(), key)
 		require.NoError(t, err)
 	})
 }

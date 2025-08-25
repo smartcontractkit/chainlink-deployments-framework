@@ -30,7 +30,7 @@ func TestCatalogEnvMetadataStore_Get(t *testing.T) {
 	defer closer()
 
 	t.Run("not set", func(t *testing.T) {
-		_, err := store.EnvMetadata().Get(context.Background())
+		_, err := store.EnvMetadata().Get(t.Context())
 		require.Error(t, err)
 		require.ErrorIs(t, err, datastore.ErrEnvMetadataNotSet)
 	})
@@ -42,10 +42,10 @@ func TestCatalogEnvMetadataStore_Get(t *testing.T) {
 			"version":     float64(1), // JSON unmarshals numbers as float64
 			"active":      true,
 		}
-		err := store.EnvMetadata().Set(context.Background(), envMetadata)
+		err := store.EnvMetadata().Set(t.Context(), envMetadata)
 		require.NoError(t, err)
 
-		result, err := store.EnvMetadata().Get(context.Background())
+		result, err := store.EnvMetadata().Get(t.Context())
 		require.NoError(t, err)
 		require.Equal(t, envMetadata, result.Metadata)
 	})
@@ -54,10 +54,10 @@ func TestCatalogEnvMetadataStore_Get(t *testing.T) {
 		store2, closer2 := setupEnvMetadataTestStore(t)
 		defer closer2()
 
-		err := store2.EnvMetadata().Set(context.Background(), nil)
+		err := store2.EnvMetadata().Set(t.Context(), nil)
 		require.NoError(t, err)
 
-		result, err := store2.EnvMetadata().Get(context.Background())
+		result, err := store2.EnvMetadata().Get(t.Context())
 		require.NoError(t, err)
 		require.Nil(t, result.Metadata)
 	})
@@ -67,47 +67,22 @@ func TestCatalogEnvMetadataStore_Get(t *testing.T) {
 func TestCatalogEnvMetadataStore_Set(t *testing.T) {
 	tests := []struct {
 		name     string
-		setup    func(store *memoryDataStore) any
-		expected any
+		metadata any
 	}{
 		{
 			name: "simple metadata",
-			setup: func(store *memoryDataStore) any {
-				return map[string]any{
-					"domain":      "test_domain",
-					"environment": "test_env",
-					"version":     float64(1), // JSON unmarshals numbers as float64
-				}
-			},
-			expected: map[string]any{
+			metadata: map[string]any{
 				"domain":      "test_domain",
 				"environment": "test_env",
-				"version":     float64(1),
+				"version":     float64(1), // JSON unmarshals numbers as float64
 			},
 		},
 		{
 			name: "complex metadata",
-			setup: func(store *memoryDataStore) any {
-				return map[string]any{
-					"domain":      "production",
-					"environment": "mainnet",
-					"version":     float64(2), // JSON unmarshals numbers as float64
-					"config": map[string]any{
-						"maxRetries":    float64(3),
-						"timeout":       float64(30000),
-						"enableLogging": true,
-					},
-					"chains": []any{
-						map[string]any{"name": "Ethereum", "id": float64(1)},
-						map[string]any{"name": "Polygon", "id": float64(137)},
-					},
-					"features": []any{"monitoring", "alerting", "backup"},
-				}
-			},
-			expected: map[string]any{
+			metadata: map[string]any{
 				"domain":      "production",
 				"environment": "mainnet",
-				"version":     float64(2),
+				"version":     float64(2), // JSON unmarshals numbers as float64
 				"config": map[string]any{
 					"maxRetries":    float64(3),
 					"timeout":       float64(30000),
@@ -121,11 +96,8 @@ func TestCatalogEnvMetadataStore_Set(t *testing.T) {
 			},
 		},
 		{
-			name: "nil metadata",
-			setup: func(store *memoryDataStore) any {
-				return nil
-			},
-			expected: nil,
+			name:     "nil metadata",
+			metadata: nil,
 		},
 	}
 
@@ -135,16 +107,14 @@ func TestCatalogEnvMetadataStore_Set(t *testing.T) {
 			store, closer := setupEnvMetadataTestStore(t)
 			defer closer()
 
-			metadata := tt.setup(store)
-
 			// Execute
-			err := store.EnvMetadata().Set(context.Background(), metadata)
+			err := store.EnvMetadata().Set(context.Background(), tt.metadata)
 			require.NoError(t, err)
 
 			// Verify
 			result, err := store.EnvMetadata().Get(context.Background())
 			require.NoError(t, err)
-			require.Equal(t, tt.expected, result.Metadata)
+			require.Equal(t, tt.metadata, result.Metadata)
 		})
 	}
 }
@@ -161,11 +131,11 @@ func TestCatalogEnvMetadataStore_Set_Replace(t *testing.T) {
 		"version":     float64(1), // JSON unmarshals numbers as float64
 		"active":      true,
 	}
-	err := store.EnvMetadata().Set(context.Background(), initialMetadata)
+	err := store.EnvMetadata().Set(t.Context(), initialMetadata)
 	require.NoError(t, err)
 
 	// Verify initial metadata
-	result, err := store.EnvMetadata().Get(context.Background())
+	result, err := store.EnvMetadata().Get(t.Context())
 	require.NoError(t, err)
 	require.Equal(t, initialMetadata, result.Metadata)
 
@@ -177,11 +147,11 @@ func TestCatalogEnvMetadataStore_Set_Replace(t *testing.T) {
 		"active":      false,
 		"newField":    "newValue",
 	}
-	err = store.EnvMetadata().Set(context.Background(), newMetadata)
+	err = store.EnvMetadata().Set(t.Context(), newMetadata)
 	require.NoError(t, err)
 
 	// Verify new metadata replaced the old one
-	result, err = store.EnvMetadata().Get(context.Background())
+	result, err = store.EnvMetadata().Get(t.Context())
 	require.NoError(t, err)
 	require.Equal(t, newMetadata, result.Metadata)
 }
@@ -201,7 +171,7 @@ func TestCatalogEnvMetadataStore_Set_WithCustomUpdater(t *testing.T) {
 			"retries": float64(3),
 		},
 	}
-	err := store.EnvMetadata().Set(context.Background(), initialMetadata)
+	err := store.EnvMetadata().Set(t.Context(), initialMetadata)
 	require.NoError(t, err)
 
 	// Update with custom merger that combines maps
@@ -250,11 +220,11 @@ func TestCatalogEnvMetadataStore_Set_WithCustomUpdater(t *testing.T) {
 		return result, nil
 	}
 
-	err = store.EnvMetadata().Set(context.Background(), updateMetadata, datastore.WithUpdater(customUpdater))
+	err = store.EnvMetadata().Set(t.Context(), updateMetadata, datastore.WithUpdater(customUpdater))
 	require.NoError(t, err)
 
 	// Verify the merge
-	result, err := store.EnvMetadata().Get(context.Background())
+	result, err := store.EnvMetadata().Get(t.Context())
 	require.NoError(t, err)
 
 	resultMap, ok := result.Metadata.(map[string]any)
@@ -284,7 +254,7 @@ func TestCatalogEnvMetadataStore_Transactions(t *testing.T) {
 			"version":     float64(1), // JSON unmarshals numbers as float64
 		}
 
-		err := store.WithTransaction(context.Background(), func(ctx context.Context, txStore datastore.BaseCatalogStore) error {
+		err := store.WithTransaction(t.Context(), func(ctx context.Context, txStore datastore.BaseCatalogStore) error {
 			// Set metadata within transaction
 			setErr := txStore.EnvMetadata().Set(ctx, envMetadata)
 			require.NoError(t, setErr)
@@ -300,7 +270,7 @@ func TestCatalogEnvMetadataStore_Transactions(t *testing.T) {
 		require.Contains(t, err.Error(), "force rollback")
 
 		// Verify metadata doesn't exist after rollback
-		_, err = store.EnvMetadata().Get(context.Background())
+		_, err = store.EnvMetadata().Get(t.Context())
 		require.Error(t, err)
 		require.ErrorIs(t, err, datastore.ErrEnvMetadataNotSet)
 	})
@@ -312,14 +282,14 @@ func TestCatalogEnvMetadataStore_Transactions(t *testing.T) {
 			"version":     float64(1), // JSON unmarshals numbers as float64
 		}
 
-		err := store.WithTransaction(context.Background(), func(ctx context.Context, txStore datastore.BaseCatalogStore) error {
+		err := store.WithTransaction(t.Context(), func(ctx context.Context, txStore datastore.BaseCatalogStore) error {
 			// Set metadata within transaction
 			return txStore.EnvMetadata().Set(ctx, envMetadata)
 		})
 		require.NoError(t, err)
 
 		// Verify metadata exists after commit
-		result, err := store.EnvMetadata().Get(context.Background())
+		result, err := store.EnvMetadata().Get(t.Context())
 		require.NoError(t, err)
 		require.Equal(t, envMetadata, result.Metadata)
 	})
@@ -332,10 +302,10 @@ func TestCatalogEnvMetadataStore_Transactions(t *testing.T) {
 		}
 
 		// Set metadata outside transaction
-		err := store.EnvMetadata().Set(context.Background(), envMetadata)
+		err := store.EnvMetadata().Set(t.Context(), envMetadata)
 		require.NoError(t, err)
 
-		err = store.WithTransaction(context.Background(), func(ctx context.Context, txStore datastore.BaseCatalogStore) error {
+		err = store.WithTransaction(t.Context(), func(ctx context.Context, txStore datastore.BaseCatalogStore) error {
 			// Should be able to read with ignore transactions option
 			result, getErr := txStore.EnvMetadata().Get(ctx, datastore.IgnoreTransactionsGetOption)
 			require.NoError(t, getErr)
@@ -347,7 +317,7 @@ func TestCatalogEnvMetadataStore_Transactions(t *testing.T) {
 		require.Error(t, err)
 
 		// Metadata should still exist since it was set outside transaction
-		_, err = store.EnvMetadata().Get(context.Background())
+		_, err = store.EnvMetadata().Get(t.Context())
 		require.NoError(t, err)
 	})
 }
@@ -362,10 +332,10 @@ func TestCatalogEnvMetadataStore_SingleRecord(t *testing.T) {
 		"version": float64(1),
 		"config":  "initial",
 	}
-	err := store.EnvMetadata().Set(context.Background(), metadata1)
+	err := store.EnvMetadata().Set(t.Context(), metadata1)
 	require.NoError(t, err)
 
-	result, err := store.EnvMetadata().Get(context.Background())
+	result, err := store.EnvMetadata().Get(t.Context())
 	require.NoError(t, err)
 	require.Equal(t, metadata1, result.Metadata)
 
@@ -374,10 +344,10 @@ func TestCatalogEnvMetadataStore_SingleRecord(t *testing.T) {
 		"version": float64(2),
 		"config":  "updated",
 	}
-	err = store.EnvMetadata().Set(context.Background(), metadata2)
+	err = store.EnvMetadata().Set(t.Context(), metadata2)
 	require.NoError(t, err)
 
-	result, err = store.EnvMetadata().Get(context.Background())
+	result, err = store.EnvMetadata().Get(t.Context())
 	require.NoError(t, err)
 	require.Equal(t, metadata2, result.Metadata)
 
@@ -407,10 +377,10 @@ func TestCatalogEnvMetadataStore_JSONSerialization(t *testing.T) {
 		},
 	}
 
-	err := store.EnvMetadata().Set(context.Background(), complexMetadata)
+	err := store.EnvMetadata().Set(t.Context(), complexMetadata)
 	require.NoError(t, err)
 
-	result, err := store.EnvMetadata().Get(context.Background())
+	result, err := store.EnvMetadata().Get(t.Context())
 	require.NoError(t, err)
 	require.Equal(t, complexMetadata, result.Metadata)
 }
