@@ -235,6 +235,18 @@ func Test_Domain_ConfigCIDirPath(t *testing.T) {
 	assert.Equal(t, "domains/ccip/.config/ci", d.ConfigCIDirPath())
 }
 
+func Test_Domain_ConfigCICommonFilePath(t *testing.T) {
+	t.Parallel()
+	d := NewDomain("domains", "ccip")
+	assert.Equal(t, "domains/ccip/.config/ci/common.env", d.ConfigCICommonFilePath())
+}
+
+func Test_Domain_ConfigCIEnvFilePath(t *testing.T) {
+	t.Parallel()
+	d := NewDomain("domains", "ccip")
+	assert.Equal(t, "domains/ccip/.config/ci/staging.env", d.ConfigCIEnvFilePath("staging"))
+}
+
 // todo: uncomment after moving migration registry over to cldf
 // func Test_EnvDir_LatestExecutedMigration(t *testing.T) {
 // 	t.Parallel()
