@@ -1,5 +1,17 @@
 # chainlink-deployments-framework
 
+## 0.34.0
+
+### Minor Changes
+
+- [#316](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/316) [`7c113b3`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/7c113b3a30f017fd8541d45d38cfbf93f6120405) Thanks [@bytesizedroll](https://github.com/bytesizedroll)! - Move config resolver framework into CLDF
+
+### Patch Changes
+
+- [#318](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/318) [`fb41871`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/fb41871d33d5ba8c0df1cc7f1bca2dee8137684c) Thanks [@giogam](https://github.com/giogam)! - feat: adds ci config files path methods
+
+- [#278](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/278) [`51ef269`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/51ef2692b7108894649a8ead612e502724e5b80f) Thanks [@cgruber](https://github.com/cgruber)! - Adds an in-memory catalog implementation for testing.
+
 ## 0.33.0
 
 ### Minor Changes
