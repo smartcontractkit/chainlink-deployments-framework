@@ -32,7 +32,7 @@ const (
 
 	sCHEMA_ENVIRONMENT_METADATA = `
 		CREATE TABLE environment_metadata (
-			id        BOOLEAN not null,
+			id        INTEGER not null,
 			metadata  text,
 
 			PRIMARY KEY(id)

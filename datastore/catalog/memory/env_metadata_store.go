@@ -12,12 +12,15 @@ import (
 )
 
 const (
+	// envMetadataID is the fixed ID used for environment metadata (singleton pattern)
+	envMetadataID = 1
+
 	query_ENV_METADATA_GET = `
 		SELECT metadata FROM environment_metadata
-		WHERE id = true`
+		WHERE id = $1`
 	query_ENV_METADATA_SET = `
 		INSERT INTO environment_metadata (id, metadata)
-		VALUES (true, $1)
+		VALUES ($1, $2)
 		ON CONFLICT ON CONSTRAINT environment_metadata_pkey
 			DO UPDATE SET metadata = excluded.metadata`
 )
@@ -56,7 +59,7 @@ func (s *memoryEnvMetadataStore) Get(_ context.Context, options ...datastore.Get
 		db = s.db
 	}
 
-	rows, err := db.Query(query_ENV_METADATA_GET)
+	rows, err := db.Query(query_ENV_METADATA_GET, envMetadataID)
 	defer func(rows *sql.Rows) {
 		if rows != nil {
 			_ = rows.Close()
@@ -145,7 +148,7 @@ func (s *memoryEnvMetadataStore) edit(_ context.Context, r datastore.EnvMetadata
 		metadataJSON = string(metadataBytes)
 	}
 
-	result, err := s.db.Exec(query_ENV_METADATA_SET, metadataJSON)
+	result, err := s.db.Exec(query_ENV_METADATA_SET, envMetadataID, metadataJSON)
 	if err != nil {
 		return err
 	}
