@@ -156,12 +156,12 @@ func TestExtractFunctionName(t *testing.T) {
 		{
 			name:         "named function 1",
 			fn:           testResolverFunction1,
-			expectedName: "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/resolvers.testResolverFunction1",
+			expectedName: "github.com/smartcontractkit/chainlink-deployments-framework/changeset/resolvers.testResolverFunction1",
 		},
 		{
 			name:         "named function 2",
 			fn:           testResolverFunction2,
-			expectedName: "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/resolvers.testResolverFunction2",
+			expectedName: "github.com/smartcontractkit/chainlink-deployments-framework/changeset/resolvers.testResolverFunction2",
 		},
 	}
 
