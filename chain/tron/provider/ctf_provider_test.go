@@ -79,11 +79,10 @@ func TestNewCTFChainProvider(t *testing.T) {
 		Once:              &sync.Once{},
 	}
 
-	provider := NewCTFChainProvider(t, 123456, config)
+	provider := NewCTFChainProvider(123456, config)
 	require.NotNil(t, provider)
 	require.Equal(t, uint64(123456), provider.selector)
 	require.Equal(t, config, provider.config)
-	require.Equal(t, t, provider.t)
 	require.Nil(t, provider.chain)
 }
 
@@ -150,7 +149,7 @@ func TestCTFChainProvider_Initialize(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			p := NewCTFChainProvider(t, tt.giveSelector, tt.giveConfig)
+			p := NewCTFChainProvider(tt.giveSelector, tt.giveConfig)
 
 			got, err := p.Initialize(context.Background())
 			if tt.wantErr != "" {
@@ -186,11 +185,12 @@ func TestCTFChainProvider_ContainerStartup(t *testing.T) {
 		Once:              &sync.Once{},
 	}
 
-	provider := NewCTFChainProvider(t, chain_selectors.TRON_TESTNET_NILE.Selector, config)
+	provider := NewCTFChainProvider(chain_selectors.TRON_TESTNET_NILE.Selector, config)
 
 	chainID, err := chain_selectors.GetChainIDFromSelector(chain_selectors.TRON_MAINNET.Selector)
 	require.NoError(t, err)
-	fullNodeURL, solidityNodeURL := provider.startContainer(chainID)
+	fullNodeURL, solidityNodeURL, err := provider.startContainer(context.Background(), chainID)
+	require.NoError(t, err)
 	require.NotEmpty(t, fullNodeURL)
 	require.NotEmpty(t, solidityNodeURL)
 	require.Contains(t, fullNodeURL, "/wallet")
@@ -211,7 +211,7 @@ func TestCTFProvider_SendAndConfirmTx_And_CheckContractDeployed(t *testing.T) {
 	chainSelector := chain_selectors.TRON_TESTNET_NILE.Selector
 
 	// Create and initialize the CTF provider
-	ctfProvider := NewCTFChainProvider(t, chainSelector, config)
+	ctfProvider := NewCTFChainProvider(chainSelector, config)
 	chainInstance, err := ctfProvider.Initialize(context.Background())
 	require.NoError(t, err, "Failed to initialize CTF provider")
 
