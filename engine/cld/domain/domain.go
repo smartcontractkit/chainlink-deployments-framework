@@ -135,3 +135,13 @@ func (d Domain) ConfigNetworksDirPath() string {
 func (d Domain) ConfigCIDirPath() string {
 	return filepath.Join(d.ConfigDirPath(), DomainConfigCIDirName)
 }
+
+// ConfigCICommonFilePath returns the path to the domain's CI common .env file.
+func (d Domain) ConfigCICommonFilePath() string {
+	return filepath.Join(d.ConfigCIDirPath(), "common.env")
+}
+
+// ConfigCIEnvFilePath returns the path to the domain's CI .env file for the specified environment.
+func (d Domain) ConfigCIEnvFilePath(env string) string {
+	return filepath.Join(d.ConfigCIDirPath(), env+".env")
+}
