@@ -177,6 +177,8 @@ func TestExtractFunctionName(t *testing.T) {
 }
 
 func TestCallResolver_Success(t *testing.T) {
+	t.Parallel()
+
 	type TestConfigType struct {
 		Value string
 		Count int
@@ -198,6 +200,8 @@ func TestCallResolver_Success(t *testing.T) {
 }
 
 func TestCallResolver_InvalidJSON(t *testing.T) {
+	t.Parallel()
+
 	resolver := func(input map[string]any) (string, error) {
 		return "config", nil
 	}
@@ -210,6 +214,8 @@ func TestCallResolver_InvalidJSON(t *testing.T) {
 }
 
 func TestCallResolver_ResolverError(t *testing.T) {
+	t.Parallel()
+
 	expectedError := errors.New("resolver failed")
 	resolver := func(input map[string]any) (string, error) {
 		return "", expectedError
@@ -223,6 +229,8 @@ func TestCallResolver_ResolverError(t *testing.T) {
 }
 
 func TestCallResolver_WrongReturnType(t *testing.T) {
+	t.Parallel()
+
 	resolver := func(input map[string]any) (int, error) {
 		return 42, nil // Return int instead of string
 	}
@@ -235,6 +243,8 @@ func TestCallResolver_WrongReturnType(t *testing.T) {
 }
 
 func TestCallResolver_InvalidResolverSignature(t *testing.T) {
+	t.Parallel()
+
 	// Function with wrong signature (no error return)
 	invalidResolver := func(input map[string]any) string {
 		return "config"
@@ -248,6 +258,8 @@ func TestCallResolver_InvalidResolverSignature(t *testing.T) {
 }
 
 func TestRegister_InvalidSignature(t *testing.T) {
+	t.Parallel()
+
 	manager := NewConfigResolverManager()
 
 	// Test various invalid signatures
@@ -279,6 +291,8 @@ func TestRegister_InvalidSignature(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			assert.Panics(t, func() {
 				manager.Register(tc.resolver, ResolverInfo{Description: "Test"})
 			})
@@ -287,6 +301,8 @@ func TestRegister_InvalidSignature(t *testing.T) {
 }
 
 func TestRegister_EmptyName(t *testing.T) {
+	t.Parallel()
+
 	manager := NewConfigResolverManager()
 
 	// This should panic because reflect.TypeOf(nil) will cause issues in signature validation
@@ -296,6 +312,8 @@ func TestRegister_EmptyName(t *testing.T) {
 }
 
 func TestCallResolver_PointerTypes(t *testing.T) {
+	t.Parallel()
+
 	type TestInput struct {
 		Value string `json:"value"`
 	}
@@ -316,6 +334,7 @@ func TestCallResolver_PointerTypes(t *testing.T) {
 }
 
 func TestCallResolver_ValueTypes(t *testing.T) {
+	t.Parallel()
 	type TestInput struct {
 		Value string `json:"value"`
 	}
