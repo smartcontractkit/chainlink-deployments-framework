@@ -512,7 +512,7 @@ func TestCTFAnvilChainProvider_Cleanup(t *testing.T) {
 
 		// Allocate a free port for this test
 		port := freeport.GetOne(t)
-		defer freeport.Return([]int{port})
+		t.Cleanup(func() { freeport.Return([]int{port}) })
 
 		var once sync.Once
 		config := CTFAnvilChainProviderConfig{
