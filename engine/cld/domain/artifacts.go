@@ -676,6 +676,9 @@ func (a *ArtifactsDir) saveArtifact(k ksuid.KSUID, migKey, name string, v any) e
 // saveProposalArtifact writes a proposal artifact as JSON to the specified migration directory.
 func (a *ArtifactsDir) saveProposalArtifact(migkey string, name string, index int, v any) error {
 	filename := fmt.Sprintf("%s-%s-%s_%s_%d.%s", a.DomainKey(), a.EnvKey(), migkey, name, index, JSONExt)
+	if a.timestamp != "" {
+		filename = fmt.Sprintf("%s-%s", a.timestamp, filename)
+	}
 
 	return jsonutils.WriteFile(filepath.Join(a.getProposalDir(), filename), v)
 }
@@ -683,6 +686,9 @@ func (a *ArtifactsDir) saveProposalArtifact(migkey string, name string, index in
 // saveDecodedProposalArtifact writes a decoded proposal artifact as JSON to the specified migration directory.
 func (a *ArtifactsDir) saveDecodedProposalArtifact(migkey string, name string, index int, data string) error {
 	filename := fmt.Sprintf("%s-%s-%s_%s_%d_decoded.%s", a.DomainKey(), a.EnvKey(), migkey, name, index, TxtExt)
+	if a.timestamp != "" {
+		filename = fmt.Sprintf("%s-%s", a.timestamp, filename)
+	}
 
 	return os.WriteFile(filepath.Join(a.getDecodedProposalDir(), filename), []byte(data), 0600)
 }
