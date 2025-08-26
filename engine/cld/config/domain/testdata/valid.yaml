@@ -1,0 +1,20 @@
+environments:
+  development:
+    networkAccess:
+      - testnet
+  staging:
+    networkAccess:
+      - testnet
+      - mainnet
+  production: 
+    networkAccess:
+      - mainnet
+  local:
+    networkAccess:
+      - testnet
+  dudeenv:
+    networkAccess:
+      - testnet
+  testtest:
+    networkAccess:
+      - mainnet
