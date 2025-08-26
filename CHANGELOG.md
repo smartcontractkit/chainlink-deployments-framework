@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.34.1
+
+### Patch Changes
+
+- [#319](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/319) [`34bcf7f`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/34bcf7f2f5e8b90a4297ef457f3dcb31e95a16f3) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - add prefix to proposal if timestamp is available
+
 ## 0.34.0
 
 ### Minor Changes
