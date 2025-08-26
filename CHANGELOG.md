@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.35.0
+
+### Minor Changes
+
+- [#324](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/324) [`399f4bb`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/399f4bb7e12093888dec713b2f043cd471f3e30c) Thanks [@bytesizedroll](https://github.com/bytesizedroll)! - Changeset framework to CLDF
+
 ## 0.34.1
 
 ### Patch Changes
