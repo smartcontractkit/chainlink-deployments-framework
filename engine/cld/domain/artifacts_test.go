@@ -3,6 +3,7 @@ package domain
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -1020,10 +1021,6 @@ func Test_Artifacts_SaveAndLoadOperationsReport(t *testing.T) {
 func Test_Artifacts_SaveAndLoadMultipleProposals(t *testing.T) {
 	t.Parallel()
 
-	fixture := setupTestDomainsFS(t)
-	migrationKey := "0001_initial"
-	artsDir := fixture.artifactsDir
-
 	validUntilUnixTime := uint32(time.Now().Add(time.Hour).Unix()) //nolint:gosec // This won't overflow until 7 Feb 2106, and would also cause MCMS to fail anyway
 
 	proposals := []mcmsv2.Proposal{
@@ -1071,38 +1068,103 @@ func Test_Artifacts_SaveAndLoadMultipleProposals(t *testing.T) {
 		},
 	}
 
-	// Save multiple proposals
-	require.NoError(t, artsDir.CreateMigrationDir(migrationKey))
-	for i, proposal := range proposals {
-		err := artsDir.saveProposalArtifact(migrationKey, ArtifactMCMSProposal, i, proposal)
-		require.NoError(t, err)
-		err = artsDir.saveDecodedProposalArtifact(migrationKey, ArtifactMCMSProposal, i, "some decoded proposal")
-		require.NoError(t, err)
+	tests := []struct {
+		name               string
+		migrationKey       string
+		setupFunc          func(t *testing.T, artsDir *ArtifactsDir)
+		expectedFilePrefix string
+		isDurablePipelines bool
+	}{
+		{
+			name:               "regular migration proposals",
+			migrationKey:       "0001_initial",
+			expectedFilePrefix: "",
+			isDurablePipelines: false,
+		},
+		{
+			name:         "durable pipelines proposals with timestamp prefix",
+			migrationKey: "0001_initial",
+			setupFunc: func(t *testing.T, artsDir *ArtifactsDir) {
+				t.Helper()
+				err := artsDir.SetDurablePipelines("1234567890123456789")
+				require.NoError(t, err)
+			},
+			expectedFilePrefix: "1234567890123456789-",
+			isDurablePipelines: true,
+		},
 	}
 
-	// Verify proposal files were created with correct indexes
-	files, err := os.ReadDir(artsDir.ProposalsDirPath())
-	sort.Slice(files, func(i, j int) bool { return files[i].Name() < files[j].Name() })
-	require.NoError(t, err)
-	assert.Len(t, files, len(proposals))
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	for i, file := range files {
-		assert.Contains(t, file.Name(), migrationKey)
-		assert.Contains(t, file.Name(), ArtifactMCMSProposal)
-		assert.Contains(t, file.Name(), "_"+strconv.Itoa(i))
-	}
+			fixture := setupTestDomainsFS(t)
+			artsDir := fixture.artifactsDir
 
-	// Load proposals and verify
-	exists, err := artsDir.MigrationDirExists(migrationKey)
-	require.NoError(t, err)
-	require.True(t, exists)
-	loadedProposals, err := artsDir.LoadChangesetOutput(migrationKey)
-	require.NoError(t, err)
-	assert.Len(t, loadedProposals.MCMSProposals, len(proposals))
+			if tt.setupFunc != nil {
+				tt.setupFunc(t, artsDir)
+			}
 
-	for i, proposal := range loadedProposals.MCMSProposals {
-		assert.Equal(t, proposals[i].Version, proposal.Version)
-		assert.Equal(t, proposals[i].ValidUntil, proposal.ValidUntil)
+			// Save multiple proposals
+			require.NoError(t, artsDir.CreateMigrationDir(tt.migrationKey))
+			for i, proposal := range proposals {
+				err := artsDir.saveProposalArtifact(tt.migrationKey, ArtifactMCMSProposal, i, proposal)
+				require.NoError(t, err)
+				err = artsDir.saveDecodedProposalArtifact(tt.migrationKey, ArtifactMCMSProposal, i, "some decoded proposal")
+				require.NoError(t, err)
+			}
+
+			// Verify proposal files were created with correct indexes and timestamp prefix
+			proposalFiles, err := os.ReadDir(artsDir.ProposalsDirPath())
+			require.NoError(t, err)
+			sort.Slice(proposalFiles, func(i, j int) bool { return proposalFiles[i].Name() < proposalFiles[j].Name() })
+			assert.Len(t, proposalFiles, len(proposals))
+
+			// Verify decoded proposal files were created
+			decodedFiles, err := os.ReadDir(artsDir.DecodedProposalsDirPath())
+			require.NoError(t, err)
+			sort.Slice(decodedFiles, func(i, j int) bool { return decodedFiles[i].Name() < decodedFiles[j].Name() })
+			assert.Len(t, decodedFiles, len(proposals))
+
+			// Check proposal file naming conventions
+			for i, file := range proposalFiles {
+				expectedFileName := fmt.Sprintf("%s%s-%s-%s_%s_%d.%s",
+					tt.expectedFilePrefix,
+					artsDir.DomainKey(),
+					artsDir.EnvKey(),
+					tt.migrationKey,
+					ArtifactMCMSProposal,
+					i,
+					JSONExt)
+				assert.Equal(t, expectedFileName, file.Name())
+			}
+
+			// Check decoded proposal file naming conventions
+			for i, file := range decodedFiles {
+				expectedFileName := fmt.Sprintf("%s%s-%s-%s_%s_%d_decoded.%s",
+					tt.expectedFilePrefix,
+					artsDir.DomainKey(),
+					artsDir.EnvKey(),
+					tt.migrationKey,
+					ArtifactMCMSProposal,
+					i,
+					TxtExt)
+				assert.Equal(t, expectedFileName, file.Name())
+			}
+
+			// Load proposals and verify
+			exists, err := artsDir.MigrationDirExists(tt.migrationKey)
+			require.NoError(t, err)
+			require.True(t, exists)
+			loadedProposals, err := artsDir.LoadChangesetOutput(tt.migrationKey)
+			require.NoError(t, err)
+			assert.Len(t, loadedProposals.MCMSProposals, len(proposals))
+
+			for i, proposal := range loadedProposals.MCMSProposals {
+				assert.Equal(t, proposals[i].Version, proposal.Version)
+				assert.Equal(t, proposals[i].ValidUntil, proposal.ValidUntil)
+			}
+		})
 	}
 }
 
