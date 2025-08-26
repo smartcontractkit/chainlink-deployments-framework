@@ -6,20 +6,20 @@ import (
 
 type PostProcessor func(e deployment.Environment, config deployment.ChangesetOutput) (deployment.ChangesetOutput, error)
 
-type PostProcessingMigration internalMigration
+type PostProcessingChangeSet internalChangeSet
 
-var _ PostProcessingMigration = PostProcessingMigrationImpl[any]{}
+var _ PostProcessingChangeSet = PostProcessingChangeSetImpl[any]{}
 
-type PostProcessingMigrationImpl[C any] struct {
-	migration     MigrationImpl[C]
+type PostProcessingChangeSetImpl[C any] struct {
+	changeset     ChangeSetImpl[C]
 	postProcessor PostProcessor
 }
 
-func (ccs PostProcessingMigrationImpl[C]) noop() {}
+func (ccs PostProcessingChangeSetImpl[C]) noop() {}
 
-func (ccs PostProcessingMigrationImpl[C]) Apply(env deployment.Environment) (deployment.ChangesetOutput, error) {
-	env.Logger.Debugf("Post-processing ChangesetOutput from %T", ccs.migration.migration.operation)
-	output, err := ccs.migration.Apply(env)
+func (ccs PostProcessingChangeSetImpl[C]) Apply(env deployment.Environment) (deployment.ChangesetOutput, error) {
+	env.Logger.Debugf("Post-processing ChangesetOutput from %T", ccs.changeset.changeset.operation)
+	output, err := ccs.changeset.Apply(env)
 	if err != nil {
 		return output, err
 	}
@@ -27,6 +27,6 @@ func (ccs PostProcessingMigrationImpl[C]) Apply(env deployment.Environment) (dep
 	return ccs.postProcessor(env, output)
 }
 
-func (ccs PostProcessingMigrationImpl[C]) Configurations() (Configurations, error) {
-	return ccs.migration.Configurations()
+func (ccs PostProcessingChangeSetImpl[C]) Configurations() (Configurations, error) {
+	return ccs.changeset.Configurations()
 }

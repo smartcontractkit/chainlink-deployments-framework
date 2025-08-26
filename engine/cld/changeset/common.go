@@ -10,7 +10,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 )
 
-// Configurations holds options for a configured migration
+// Configurations holds options for a configured changeset
 type Configurations struct {
 	InputChainOverrides []uint64
 
@@ -19,20 +19,20 @@ type Configurations struct {
 	ConfigResolver resolvers.ConfigResolver
 }
 
-// internalMigration provides an opaque type, to force the usage of only the MigrationImpl
+// internalChangeSet provides an opaque type, to force the usage of only the ChangeSetImpl
 // for this purpose, but allowing the flexibility of an interface to work around the lack of covariant
 // type-parameters.
-type internalMigration interface {
-	noop() // unexported function to prevent arbitrary structs from implementing Migration.
+type internalChangeSet interface {
+	noop() // unexported function to prevent arbitrary structs from implementing ChangeSet.
 	Apply(env deployment.Environment) (deployment.ChangesetOutput, error)
 	Configurations() (Configurations, error)
 }
 
-type Migration internalMigration
+type ChangeSet internalChangeSet
 
-type ConfiguredMigration interface {
-	Migration
-	ThenWith(postProcessor PostProcessor) PostProcessingMigration
+type ConfiguredChangeSet interface {
+	ChangeSet
+	ThenWith(postProcessor PostProcessor) PostProcessingChangeSet
 }
 
 // WrappedChangeSet simply wraps a deployment.ChangeSetV2 to use it in the fluent interface, which hosts
@@ -58,8 +58,8 @@ func Configure[C any](operation deployment.ChangeSetV2[C]) WrappedChangeSet[C] {
 
 // With returns a fully configured changeset, which pairs a [deployment.ChangeSet] with its configuration. It also
 // allows extensions, such as a PostProcessing function.
-func (f WrappedChangeSet[C]) With(config C) ConfiguredMigration {
-	return MigrationImpl[C]{migration: f, configProvider: func() (C, error) { return config, nil }}
+func (f WrappedChangeSet[C]) With(config C) ConfiguredChangeSet {
+	return ChangeSetImpl[C]{changeset: f, configProvider: func() (C, error) { return config, nil }}
 }
 
 // inputObject is a JSON object with a "payload" field that contains the actual input data for a Durable Pipeline.
@@ -81,8 +81,8 @@ type TypedJSON struct {
 //	}
 //
 // Note: Prefer WithEnvInput for durable_pipelines.go
-func (f WrappedChangeSet[C]) WithJSON(_ C, inputStr string) ConfiguredMigration {
-	return MigrationImpl[C]{migration: f, configProvider: func() (C, error) {
+func (f WrappedChangeSet[C]) WithJSON(_ C, inputStr string) ConfiguredChangeSet {
+	return ChangeSetImpl[C]{changeset: f, configProvider: func() (C, error) {
 		var config C
 
 		if inputStr == "" {
@@ -131,7 +131,7 @@ func InputModifierFunc[C any](modifier func(c C) (C, error)) EnvInputOption[C] {
 // on the input defined in durable_pipelines/inputs for durable pipelines. It also allows extensions, such as a PostProcessing function.
 // Options:
 // - InputModifierFunc: allows providing a custom function to update the input.
-func (f WrappedChangeSet[C]) WithEnvInput(opts ...EnvInputOption[C]) ConfiguredMigration {
+func (f WrappedChangeSet[C]) WithEnvInput(opts ...EnvInputOption[C]) ConfiguredChangeSet {
 	options := &envInputOptions[C]{}
 	for _, opt := range opts {
 		opt(options)
@@ -139,7 +139,7 @@ func (f WrappedChangeSet[C]) WithEnvInput(opts ...EnvInputOption[C]) ConfiguredM
 
 	inputStr := os.Getenv("DURABLE_PIPELINE_INPUT")
 
-	return MigrationImpl[C]{migration: f, configProvider: func() (C, error) {
+	return ChangeSetImpl[C]{changeset: f, configProvider: func() (C, error) {
 		var config C
 
 		if inputStr == "" {
@@ -195,14 +195,14 @@ func loadInputChainOverrides(inputStr string) ([]uint64, error) {
 // the configured changeset. This is then used to abort execution with a cleaner message than a panic.
 // This allows for more robust error handling to happen for complex configs, factored into a function, without
 // needing to use the "mustGetConfig" pattern
-func (f WrappedChangeSet[C]) WithConfigFrom(configProvider func() (C, error)) ConfiguredMigration {
-	return MigrationImpl[C]{migration: f, configProvider: configProvider}
+func (f WrappedChangeSet[C]) WithConfigFrom(configProvider func() (C, error)) ConfiguredChangeSet {
+	return ChangeSetImpl[C]{changeset: f, configProvider: configProvider}
 }
 
 // WithConfigResolver uses a registered config resolver to generate the configuration.
 // It reads input from the DURABLE_PIPELINE_INPUT environment variable (JSON format)
 // and uses the specified resolver to generate the typed configuration.
-func (f WrappedChangeSet[C]) WithConfigResolver(resolver resolvers.ConfigResolver) ConfiguredMigration {
+func (f WrappedChangeSet[C]) WithConfigResolver(resolver resolvers.ConfigResolver) ConfiguredChangeSet {
 	// Read input from environment variable
 	inputStr := os.Getenv("DURABLE_PIPELINE_INPUT")
 
@@ -233,7 +233,7 @@ func (f WrappedChangeSet[C]) WithConfigResolver(resolver resolvers.ConfigResolve
 		return typedConfig, nil
 	}
 
-	return MigrationImpl[C]{migration: f, configProvider: configProvider,
+	return ChangeSetImpl[C]{changeset: f, configProvider: configProvider,
 		ConfigResolver: resolver,
 		inputChainOverrides: func() ([]uint64, error) {
 			return loadInputChainOverrides(inputStr)
@@ -241,10 +241,10 @@ func (f WrappedChangeSet[C]) WithConfigResolver(resolver resolvers.ConfigResolve
 	}
 }
 
-var _ ConfiguredMigration = MigrationImpl[any]{}
+var _ ConfiguredChangeSet = ChangeSetImpl[any]{}
 
-type MigrationImpl[C any] struct {
-	migration           WrappedChangeSet[C]
+type ChangeSetImpl[C any] struct {
+	changeset           WrappedChangeSet[C]
 	configProvider      func() (C, error)
 	inputChainOverrides func() ([]uint64, error)
 
@@ -253,22 +253,22 @@ type MigrationImpl[C any] struct {
 	ConfigResolver resolvers.ConfigResolver
 }
 
-func (ccs MigrationImpl[C]) noop() {}
+func (ccs ChangeSetImpl[C]) noop() {}
 
-func (ccs MigrationImpl[C]) Apply(env deployment.Environment) (deployment.ChangesetOutput, error) {
+func (ccs ChangeSetImpl[C]) Apply(env deployment.Environment) (deployment.ChangesetOutput, error) {
 	c, err := ccs.configProvider()
 	if err != nil {
 		return deployment.ChangesetOutput{}, err
 	}
-	err = ccs.migration.operation.VerifyPreconditions(env, c)
+	err = ccs.changeset.operation.VerifyPreconditions(env, c)
 	if err != nil {
 		return deployment.ChangesetOutput{}, err
 	}
 
-	return ccs.migration.operation.Apply(env, c)
+	return ccs.changeset.operation.Apply(env, c)
 }
 
-func (ccs MigrationImpl[C]) Configurations() (Configurations, error) {
+func (ccs ChangeSetImpl[C]) Configurations() (Configurations, error) {
 	if ccs.inputChainOverrides == nil {
 		// If no inputChainOverrides function is provided, return an empty Configurations
 		return Configurations{}, nil
@@ -284,10 +284,10 @@ func (ccs MigrationImpl[C]) Configurations() (Configurations, error) {
 	}, nil
 }
 
-// ThenWith adds post-processing to a configured migration
-func (ccs MigrationImpl[C]) ThenWith(postProcessor PostProcessor) PostProcessingMigration {
-	return PostProcessingMigrationImpl[C]{
-		migration:     ccs,
+// ThenWith adds post-processing to a configured changeset
+func (ccs ChangeSetImpl[C]) ThenWith(postProcessor PostProcessor) PostProcessingChangeSet {
+	return PostProcessingChangeSetImpl[C]{
+		changeset:     ccs,
 		postProcessor: postProcessor,
 	}
 }
