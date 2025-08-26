@@ -207,7 +207,9 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -398,7 +400,7 @@ func (p *CTFAnvilChainProvider) Initialize(ctx context.Context) (chain.BlockChai
 		},
 	}, p.config.ClientOpts...)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create multiclient for Anvil at %s: %w", httpURL, err)
 	}
 
 	// Get the Chain ID as big.Int for transactor generation
@@ -591,7 +593,18 @@ func (p *CTFAnvilChainProvider) startContainer(ctx context.Context, chainID stri
 			testcontainers.CleanupContainer(p.config.T, output.Container)
 		}
 
-		return output.Nodes[0].ExternalHTTPUrl, nil
+		// Validate that the ExternalHTTPUrl is not empty
+		externalURL := output.Nodes[0].ExternalHTTPUrl
+		if externalURL == "" {
+			return "", errors.New("container started but ExternalHTTPUrl is empty")
+		}
+
+		// Perform health check to ensure Anvil is ready
+		if healthErr := p.waitForAnvilReady(ctx, externalURL); healthErr != nil {
+			return "", fmt.Errorf("anvil container started but health check failed: %w", healthErr)
+		}
+
+		return externalURL, nil
 	},
 		retry.Context(ctx),
 		retry.Attempts(attempts),
@@ -658,4 +671,45 @@ func (p *CTFAnvilChainProvider) getUserTransactors(chainID string) ([]*bind.Tran
 	}
 
 	return transactors, nil
+}
+
+// waitForAnvilReady performs a health check on the Anvil node to ensure it's ready to accept requests.
+// It sends a simple JSON-RPC request to check if the node is responding correctly.
+func (p *CTFAnvilChainProvider) waitForAnvilReady(ctx context.Context, httpURL string) error {
+	const (
+		maxAttempts = 30
+		retryDelay  = 1 * time.Second
+	)
+
+	// Simple JSON-RPC request to check if Anvil is ready
+	jsonRPCRequest := `{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}`
+
+	return retry.Do(func() error {
+		reqCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
+
+		req, err := http.NewRequestWithContext(reqCtx, http.MethodPost, httpURL, strings.NewReader(jsonRPCRequest))
+		if err != nil {
+			return fmt.Errorf("failed to create request: %w", err)
+		}
+		req.Header.Set("Content-Type", "application/json")
+
+		client := &http.Client{Timeout: 5 * time.Second}
+		resp, err := client.Do(req)
+		if err != nil {
+			return fmt.Errorf("failed to make request: %w", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("received non-200 status code: %d", resp.StatusCode)
+		}
+
+		return nil
+	},
+		retry.Context(ctx),
+		retry.Attempts(maxAttempts),
+		retry.Delay(retryDelay),
+		retry.DelayType(retry.FixedDelay),
+	)
 }
