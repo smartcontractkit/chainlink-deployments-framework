@@ -1,0 +1,15 @@
+[[contracts]]
+selector = 6955638871347136141
+environment = "testnet"
+contract_address = "0xF389104dFaD66cED6B77b879FF76b572a8cC3590"
+contract_name = "EVM2EVMOffRamp"
+optimizer_runs = 26000
+compiler_version = "v0.8.24"
+
+[[contracts]]
+selector = 6955638871347136141
+environment = "testnet"
+contract_address = "0x8EAC33c3B95770fE8D201866E06f60Ad453F3779"
+contract_name = "EVM2EVMOnRamp"
+optimizer_runs = 26000
+compiler_version = "v0.8.24"
