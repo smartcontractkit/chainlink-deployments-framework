@@ -512,7 +512,9 @@ func TestCTFAnvilChainProvider_Cleanup(t *testing.T) {
 
 		// Allocate a free port for this test
 		port := freeport.GetOne(t)
-		defer freeport.Return([]int{port})
+		t.Cleanup(func() {
+			freeport.Return([]int{port})
+		})
 
 		var once sync.Once
 		config := CTFAnvilChainProviderConfig{
@@ -524,6 +526,14 @@ func TestCTFAnvilChainProvider_Cleanup(t *testing.T) {
 
 		selector := uint64(13264668187771770619) // Chain ID 31337
 		provider := NewCTFAnvilChainProvider(selector, config)
+
+		t.Cleanup(func() {
+			// Ensure cleanup is called at the end of the test to avoid leaking containers
+			// even if the test fails
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+			defer cancel()
+			_ = provider.Cleanup(ctx)
+		})
 
 		ctx, cancel := context.WithTimeout(t.Context(), 5*time.Minute)
 		defer cancel()
