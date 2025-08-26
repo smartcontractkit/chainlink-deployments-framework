@@ -4,17 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/avast/retry-go/v4"
+	"github.com/block-vision/sui-go-sdk/models"
 	sui_sdk "github.com/block-vision/sui-go-sdk/sui"
+	"github.com/go-resty/resty/v2"
 	chain_selectors "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
-	"github.com/smartcontractkit/freeport"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 
@@ -145,9 +145,8 @@ func (p *CTFChainProvider) startContainer(
 	chainID string, account sui.SuiSigner,
 ) (string, sui_sdk.ISuiAPI) {
 	var (
-		attempts      = uint(10)
-		url           string
-		containerName string
+		attempts = uint(10)
+		url      string
 	)
 
 	// initialize the docker network used by CTF
@@ -164,10 +163,6 @@ func (p *CTFChainProvider) startContainer(
 	}
 
 	result, err := retry.DoWithData(func() (containerResult, error) {
-		ports := freeport.GetN(p.t, 2)
-		port := ports[0]
-		faucetPort := ports[1]
-
 		image := ""
 		if p.config.Image != nil {
 			image = *p.config.Image
@@ -179,21 +174,19 @@ func (p *CTFChainProvider) startContainer(
 			Type:          blockchain.TypeSui,
 			ChainID:       chainID,
 			PublicKey:     address,
-			Port:          strconv.Itoa(port),
-			FaucetPort:    strconv.Itoa(faucetPort),
 		}
 
 		output, rerr := blockchain.NewBlockchainNetwork(input)
 		if rerr != nil {
 			// Return the ports to freeport to avoid leaking them during retries
-			freeport.Return([]int{port, faucetPort})
+
 			return containerResult{}, rerr
 		}
 
 		testcontainers.CleanupContainer(p.t, output.Container)
 
 		return containerResult{
-			url:           output.Nodes[0].ExternalHTTPUrl + "/v1",
+			url:           output.Nodes[0].ExternalHTTPUrl,
 			containerName: output.ContainerName,
 		}, nil
 	},
@@ -208,7 +201,6 @@ func (p *CTFChainProvider) startContainer(
 	require.NoError(p.t, err, "Failed to start CTF Sui container after %d attempts", attempts)
 
 	url = result.url
-	containerName = result.containerName
 
 	client := sui_sdk.NewSuiClient(url)
 
@@ -223,14 +215,23 @@ func (p *CTFChainProvider) startContainer(
 	}
 	require.True(p.t, ready, "Sui network not ready")
 
-	dc, err := framework.NewDockerClient()
-	require.NoError(p.t, err)
-
-	_, err = dc.ExecContainer(containerName, []string{
-		"sui", "client", "faucet",
-		"--address", address,
-	})
+	err = fundAccount(fmt.Sprintf("http://%s:%s", "127.0.0.1", "9123"), address)
 	require.NoError(p.t, err)
 
 	return url, client
+}
+
+func fundAccount(url string, address string) error {
+	r := resty.New().SetBaseURL(url)
+	b := &models.FaucetRequest{
+		FixedAmountRequest: &models.FaucetFixedAmountRequest{
+			Recipient: address,
+		},
+	}
+	resp, err := r.R().SetBody(b).SetHeader("Content-Type", "application/json").Post("/gas")
+	if err != nil {
+		return err
+	}
+	framework.L.Info().Any("Resp", resp).Msg("Address is funded!")
+	return nil
 }
