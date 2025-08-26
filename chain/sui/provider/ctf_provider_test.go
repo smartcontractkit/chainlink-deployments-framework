@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"runtime"
 	"testing"
 
 	chain_selectors "github.com/smartcontractkit/chain-selectors"
@@ -63,6 +64,11 @@ func Test_CTFChainProviderConfig_validate(t *testing.T) {
 //
 //nolint:paralleltest
 func Test_CTFChainProvider_Initialize(t *testing.T) {
+	// Skip this test on Darwin ARM64 (Apple Silicon) due to container timeout issues
+	// The Linux/AMD64 SUI container has performance issues under emulation on ARM64 Macs
+	if runtime.GOOS == "darwin" && runtime.GOARCH == "arm64" {
+		t.Skip("Skipping SUI CTF test on Darwin ARM64 due to container timeout issues")
+	}
 	tests := []struct {
 		name         string
 		giveSelector uint64
@@ -154,4 +160,9 @@ func Test_CTFChainProvider_BlockChain(t *testing.T) {
 	}
 
 	assert.Equal(t, *chain, p.BlockChain())
+}
+
+// stringPtr returns a pointer to a string value
+func stringPtr(s string) *string {
+	return &s
 }
