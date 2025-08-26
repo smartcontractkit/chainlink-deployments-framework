@@ -25,4 +25,3 @@ func RequireDeployerKeyBalance(ctx context.Context, allChains map[uint64]evm.Cha
 
 	return nil
 }
-
