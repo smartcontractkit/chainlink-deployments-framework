@@ -161,8 +161,3 @@ func Test_CTFChainProvider_BlockChain(t *testing.T) {
 
 	assert.Equal(t, *chain, p.BlockChain())
 }
-
-// stringPtr returns a pointer to a string value
-func stringPtr(s string) *string {
-	return &s
-}
