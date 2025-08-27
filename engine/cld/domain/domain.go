@@ -145,3 +145,8 @@ func (d Domain) ConfigCICommonFilePath() string {
 func (d Domain) ConfigCIEnvFilePath(env string) string {
 	return filepath.Join(d.ConfigCIDirPath(), env+".env")
 }
+
+// ConfigDomainFilePath returns the path to the domain's domain config file.
+func (d Domain) ConfigDomainFilePath() string {
+	return filepath.Join(d.ConfigDirPath(), "domain.yaml")
+}
