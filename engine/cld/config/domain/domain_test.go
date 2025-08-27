@@ -175,6 +175,11 @@ func TestLoad(t *testing.T) {
 			},
 		},
 		{
+			name:     "invalid network access in environment",
+			filePath: "testdata/mixed_access.yaml",
+			wantErr:  true,
+		},
+		{
 			name:     "error when file not found",
 			filePath: "/tmp/nonexistent_file.yml",
 			wantErr:  true,
