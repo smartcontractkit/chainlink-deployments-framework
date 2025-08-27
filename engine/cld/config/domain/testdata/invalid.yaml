@@ -1,4 +1,4 @@
 environments:
   development
-    networkAccess:
+    network_types:
       - testnet

@@ -1,11 +1,11 @@
 environments:
   dev:
-    networkAccess:
+    network_types:
       - testnet
   staging:
-    networkAccess:
+    network_types:
       - testnet
       - mainnet
   prod:
-    networkAccess:
+    network_types:
       - invalid_network

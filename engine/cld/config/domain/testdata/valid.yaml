@@ -1,20 +1,20 @@
 environments:
   development:
-    networkAccess:
+    network_types:
       - testnet
   staging:
-    networkAccess:
+    network_types:
       - testnet
       - mainnet
   production: 
-    networkAccess:
+    network_types:
       - mainnet
   local:
-    networkAccess:
+    network_types:
       - testnet
   dudeenv:
-    networkAccess:
+    network_types:
       - testnet
   testtest:
-    networkAccess:
+    network_types:
       - mainnet
