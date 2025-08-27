@@ -1,0 +1,4 @@
+environments:
+  development
+    networkAccess:
+      - testnet
