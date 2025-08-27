@@ -7,57 +7,29 @@ import (
 
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 
-	cldf_config_domain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/domain"
 	cldf_config_network "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/network"
 	cldf_domain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
 )
 
-// stringToNetworkType converts a string network type to NetworkType enum.
-func stringToNetworkType(s string) cldf_config_network.NetworkType {
-	switch s {
-	case "mainnet":
-		return cldf_config_network.NetworkTypeMainnet
-	case "testnet":
-		return cldf_config_network.NetworkTypeTestnet
-	default:
-		return ""
+// LoadNetworks retrieves the network configuration for the given domain and filters the networks
+// according to the specified environment. This ensures that only networks relevant to the selected
+// environment are accessible, minimizing the risk of accidental operations on unintended networks.
+func LoadNetworks(
+	env string, domain cldf_domain.Domain, lggr logger.Logger,
+) (*cldf_config_network.Config, error) {
+	cfg, err := loadNetworkConfig(domain)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load network config: %w", err)
 	}
-}
 
-// determineNetworkTypes determines the network types for a given environment and domain.
-// It first tries to load from domain config, and if that fails or doesn't exist,
-// it falls back to the legacy switch logic.
-func determineNetworkTypes(env string, domain cldf_domain.Domain, lggr logger.Logger) ([]cldf_config_network.NetworkType, error) {
 	var (
 		typesAll     = []cldf_config_network.NetworkType{cldf_config_network.NetworkTypeTestnet, cldf_config_network.NetworkTypeMainnet}
 		typesTestnet = []cldf_config_network.NetworkType{cldf_config_network.NetworkTypeTestnet}
 		typesMainnet = []cldf_config_network.NetworkType{cldf_config_network.NetworkTypeMainnet}
 	)
 
-	// Try to load domain config first
-	domainConfigPath := filepath.Join(domain.DirPath(), ".config", "domain.yaml")
-	if _, err := os.Stat(domainConfigPath); err == nil {
-		domainConfig, err := cldf_config_domain.Load(domainConfigPath)
-		if err != nil {
-			lggr.Warnf("Failed to load domain config, falling back to legacy logic: %v", err)
-		} else {
-			envConfig, ok := domainConfig.Environments[env]
-			if !ok {
-				return nil, fmt.Errorf("environment %s not found in domain config", env)
-			}
-
-			var networkTypes []cldf_config_network.NetworkType
-			for _, networkType := range envConfig.NetworkTypes {
-				if nt := stringToNetworkType(networkType); nt != "" {
-					networkTypes = append(networkTypes, nt)
-				}
-			}
-			return networkTypes, nil
-		}
-	}
-
-	// Fallback to legacy switch logic
+	// Filter networks based on the environment
 	var networkTypes []cldf_config_network.NetworkType
 	switch env {
 	case environment.Local, environment.StagingTestnet, environment.ProdTestnet:
@@ -80,26 +52,8 @@ func determineNetworkTypes(env string, domain cldf_domain.Domain, lggr logger.Lo
 		networkTypes = typesMainnet
 	default:
 		lggr.Errorf("Unknown environment: %s", env)
+
 		return nil, fmt.Errorf("unknown env: %s", env)
-	}
-
-	return networkTypes, nil
-}
-
-// LoadNetworks retrieves the network configuration for the given domain and filters the networks
-// according to the specified environment. This ensures that only networks relevant to the selected
-// environment are accessible, minimizing the risk of accidental operations on unintended networks.
-func LoadNetworks(
-	env string, domain cldf_domain.Domain, lggr logger.Logger,
-) (*cldf_config_network.Config, error) {
-	cfg, err := loadNetworkConfig(domain)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load network config: %w", err)
-	}
-
-	networkTypes, err := determineNetworkTypes(env, domain, lggr)
-	if err != nil {
-		return nil, fmt.Errorf("failed to determine network types: %w", err)
 	}
 
 	lggr.Infof("Loaded %s Networks for %s/%s", networkTypes, domain.Key(), env)
