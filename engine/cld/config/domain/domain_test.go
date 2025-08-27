@@ -114,7 +114,7 @@ func TestEnvironment_Validate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			err := tt.environment.Validate()
+			err := tt.environment.validate()
 			if tt.wantErr {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tt.errContains)

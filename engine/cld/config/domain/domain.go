@@ -2,7 +2,6 @@ package domain
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/spf13/viper"
 )
@@ -12,8 +11,8 @@ type Environment struct {
 	NetworkAccess []string `mapstructure:"networkAccess" yaml:"networkAccess"`
 }
 
-// Validate validates the environment configuration.
-func (e *Environment) Validate() error {
+// validate validates the environment configuration.
+func (e *Environment) validate() error {
 	if len(e.NetworkAccess) == 0 {
 		return errors.New("networkAccess is required and cannot be empty")
 	}
@@ -21,7 +20,7 @@ func (e *Environment) Validate() error {
 	// Check for valid values
 	for _, access := range e.NetworkAccess {
 		if !isValidNetworkAccess(access) {
-			return fmt.Errorf("invalid networkAccess value: %s (must be 'mainnet' or 'testnet')", access)
+			return errors.New("invalid networkAccess value: " + access + " (must be 'mainnet' or 'testnet')")
 		}
 	}
 
@@ -29,7 +28,7 @@ func (e *Environment) Validate() error {
 	seen := make(map[string]bool)
 	for _, access := range e.NetworkAccess {
 		if seen[access] {
-			return fmt.Errorf("duplicate networkAccess value: %s", access)
+			return errors.New("duplicate networkAccess value: " + access)
 		}
 		seen[access] = true
 	}
@@ -47,6 +46,18 @@ type DomainConfig struct {
 	Environments map[string]Environment `mapstructure:"environments" yaml:"environments"`
 }
 
+// validate validates all environments in the domain configuration.
+func (cfg *DomainConfig) validate() error {
+	// Validate each environment in the domain configuration.
+	for name, env := range cfg.Environments {
+		if err := env.validate(); err != nil {
+			return errors.Join(errors.New("invalid config for environment "+name), err)
+		}
+	}
+
+	return nil
+}
+
 // Load loads domain configuration from a YAML file.
 func Load(filePath string) (*DomainConfig, error) {
 	v := viper.New()
@@ -57,7 +68,13 @@ func Load(filePath string) (*DomainConfig, error) {
 	}
 
 	cfg := &DomainConfig{}
-	err := v.Unmarshal(cfg)
+	if err := v.Unmarshal(cfg); err != nil {
+		return nil, err
+	}
 
-	return cfg, err
+	if err := cfg.validate(); err != nil {
+		return nil, err
+	}
+
+	return cfg, nil
 }
