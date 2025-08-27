@@ -464,7 +464,7 @@ func Test_LoadNetworks_WithDomainConfig(t *testing.T) {
 			)
 
 			// Create the domain and config directory
-			err = os.MkdirAll(filepath.Join(configDir, "networks"), 0755)
+			err := os.MkdirAll(filepath.Join(configDir, "networks"), 0755)
 			require.NoError(t, err)
 
 			// Create the network config file
