@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestIsValidNetworkAccess(t *testing.T) {
+func TestIsValidNetworkType(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -41,7 +41,7 @@ func TestIsValidNetworkAccess(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			assert.Equal(t, tt.expected, isValidNetworkAccess(tt.access))
+			assert.Equal(t, tt.expected, isValidNetworkType(tt.access))
 		})
 	}
 }
@@ -58,55 +58,55 @@ func TestEnvironment_Validate(t *testing.T) {
 		{
 			name: "valid environment with both access types",
 			environment: Environment{
-				NetworkAccess: []string{"testnet", "mainnet"},
+				NetworkTypes: []string{"testnet", "mainnet"},
 			},
 			wantErr: false,
 		},
 		{
 			name: "valid environment with mainnet only",
 			environment: Environment{
-				NetworkAccess: []string{"mainnet"},
+				NetworkTypes: []string{"mainnet"},
 			},
 			wantErr: false,
 		},
 		{
 			name: "valid environment with testnet only",
 			environment: Environment{
-				NetworkAccess: []string{"testnet"},
+				NetworkTypes: []string{"testnet"},
 			},
 			wantErr: false,
 		},
 		{
 			name: "empty network access",
 			environment: Environment{
-				NetworkAccess: []string{},
+				NetworkTypes: []string{},
 			},
 			wantErr:     true,
-			errContains: "networkAccess is required and cannot be empty",
+			errContains: "network_types is required and cannot be empty",
 		},
 		{
 			name: "invalid network access value",
 			environment: Environment{
-				NetworkAccess: []string{"invalid"},
+				NetworkTypes: []string{"invalid"},
 			},
 			wantErr:     true,
-			errContains: "invalid networkAccess value: invalid",
+			errContains: "invalid network_types value: invalid",
 		},
 		{
 			name: "duplicate network access values",
 			environment: Environment{
-				NetworkAccess: []string{"testnet", "testnet"},
+				NetworkTypes: []string{"testnet", "testnet"},
 			},
 			wantErr:     true,
-			errContains: "duplicate networkAccess value: testnet",
+			errContains: "duplicate network_types value: testnet",
 		},
 		{
 			name: "duplicate mainnet values",
 			environment: Environment{
-				NetworkAccess: []string{"mainnet", "mainnet"},
+				NetworkTypes: []string{"mainnet", "mainnet"},
 			},
 			wantErr:     true,
-			errContains: "duplicate networkAccess value: mainnet",
+			errContains: "duplicate network_types value: mainnet",
 		},
 	}
 
@@ -156,27 +156,27 @@ func TestLoad(t *testing.T) {
 
 				// Test specific environment configurations
 				dev := config.Environments["development"]
-				assert.Equal(t, []string{"testnet"}, dev.NetworkAccess)
+				assert.Equal(t, []string{"testnet"}, dev.NetworkTypes)
 
 				staging := config.Environments["staging"]
-				assert.ElementsMatch(t, []string{"testnet", "mainnet"}, staging.NetworkAccess)
+				assert.ElementsMatch(t, []string{"testnet", "mainnet"}, staging.NetworkTypes)
 
 				prod := config.Environments["production"]
-				assert.Equal(t, []string{"mainnet"}, prod.NetworkAccess)
+				assert.Equal(t, []string{"mainnet"}, prod.NetworkTypes)
 
 				local := config.Environments["local"]
-				assert.Equal(t, []string{"testnet"}, local.NetworkAccess)
+				assert.Equal(t, []string{"testnet"}, local.NetworkTypes)
 
 				dudeenv := config.Environments["dudeenv"]
-				assert.Equal(t, []string{"testnet"}, dudeenv.NetworkAccess)
+				assert.Equal(t, []string{"testnet"}, dudeenv.NetworkTypes)
 
 				testtest := config.Environments["testtest"]
-				assert.Equal(t, []string{"mainnet"}, testtest.NetworkAccess)
+				assert.Equal(t, []string{"mainnet"}, testtest.NetworkTypes)
 			},
 		},
 		{
 			name:     "invalid network access in environment",
-			filePath: "testdata/mixed_access.yaml",
+			filePath: "testdata/mixed.yaml",
 			wantErr:  true,
 		},
 		{
@@ -191,7 +191,7 @@ func TestLoad(t *testing.T) {
 		},
 		{
 			name:     "empty environments",
-			filePath: "testdata/empty_environments.yaml",
+			filePath: "testdata/empty.yaml",
 			wantErr:  true,
 		},
 	}
