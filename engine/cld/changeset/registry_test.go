@@ -1,45 +1,30 @@
-package registry
+package changeset
 
 import (
-	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/changeset"
 )
 
-// noopChangesetConfig holds configuration for the noop changeset.
-type noopChangesetConfig struct {
+// noopMigration is a migration that does nothing.
+//
+// Used for testing.
+type noopMigration struct {
+	chainOverrides []uint64
 }
 
-// createNoopChangeset creates a noop changeset for testing.
-func createNoopChangeset(t *testing.T, chainOverrides []uint64) changeset.ChangeSet {
-	t.Helper()
+func (noopMigration) noop() {}
 
-	cs := cldf.CreateChangeSet(
-		func(e cldf.Environment, config noopChangesetConfig) (cldf.ChangesetOutput, error) {
-			return cldf.ChangesetOutput{}, nil
-		},
-		func(e cldf.Environment, config noopChangesetConfig) error {
-			return nil
-		},
-	)
+func (noopMigration) Apply(e cldf.Environment) (cldf.ChangesetOutput, error) {
+	return cldf.ChangesetOutput{}, nil
+}
 
-	if chainOverrides != nil {
-		// Create a JSON input with chain overrides
-		inputJSON := map[string]interface{}{
-			"payload":        "{}",
-			"chainOverrides": chainOverrides,
-		}
-		inputStr, err := json.Marshal(inputJSON)
-		require.NoError(t, err)
-
-		return changeset.Configure(cs).WithJSON(noopChangesetConfig{}, string(inputStr))
-	}
-
-	return changeset.Configure(cs).With(noopChangesetConfig{})
+func (n noopMigration) Configurations() (Configurations, error) {
+	return Configurations{
+		InputChainOverrides: n.chainOverrides,
+	}, nil
 }
 
 func Test_BaseRegistryProvider_Registry(t *testing.T) {
@@ -66,7 +51,7 @@ func Test_Changesets_Apply(t *testing.T) {
 		archivedSHA = "abcdef"
 
 		applyKey       = "0002_apply_mig"
-		applyChangeset = createNoopChangeset(t, nil)
+		applyChangeset = noopMigration{}
 	)
 
 	tests := []struct {
@@ -120,31 +105,31 @@ func Test_Changesets_Add(t *testing.T) {
 
 	r := NewChangesetsRegistry()
 
-	r.Add("0001_cap_reg", createNoopChangeset(t, nil))
+	r.Add("0001_cap_reg", noopMigration{})
 	require.Equal(t, []string{"0001_cap_reg"}, r.keyHistory)
 
-	r.Add("0002_cap_reg", createNoopChangeset(t, nil))
+	r.Add("0002_cap_reg", noopMigration{})
 	require.Equal(t, []string{"0001_cap_reg", "0002_cap_reg"}, r.keyHistory)
 
 	require.Panics(t, func() {
-		r.Add("0002_same_index", createNoopChangeset(t, nil))
+		r.Add("0002_same_index", noopMigration{})
 	}, "Add should panic when adding a key with the same index")
 
 	require.Panics(t, func() {
-		r.Add("0001_lower_index", createNoopChangeset(t, nil))
+		r.Add("0001_lower_index", noopMigration{})
 	}, "Add should panic when adding a key with lower index")
 
 	require.Panics(t, func() {
-		r.Add("xxxx_invalid_key", createNoopChangeset(t, nil))
+		r.Add("xxxx_invalid_key", noopMigration{})
 	}, "Add should panic when adding a key with invalid format")
 
 	require.Panics(t, func() {
-		r.Add("InvalidChangesetKeyFormat", createNoopChangeset(t, nil))
+		r.Add("InvalidChangesetKeyFormat", noopMigration{})
 	}, "Add should panic when adding an invalid changeset key format")
 
 	r.SetValidate(false)
 	require.NotPanics(t, func() {
-		r.Add("0002_same_index", createNoopChangeset(t, nil))
+		r.Add("0002_same_index", noopMigration{})
 	}, "Add should not panic when validation is disabled")
 }
 
@@ -165,8 +150,8 @@ func Test_Changesets_ListKeys(t *testing.T) {
 
 	r := NewChangesetsRegistry()
 
-	r.Add("0001_cap_reg", createNoopChangeset(t, nil))
-	r.Add("0002_cap_reg", createNoopChangeset(t, nil))
+	r.Add("0001_cap_reg", noopMigration{})
+	r.Add("0002_cap_reg", noopMigration{})
 	require.Equal(t, []string{"0001_cap_reg", "0002_cap_reg"}, r.ListKeys())
 }
 
@@ -203,7 +188,7 @@ func Test_Changesets_LatestKey(t *testing.T) {
 			r := NewChangesetsRegistry()
 
 			for _, key := range tt.giveKeys {
-				r.Add(key, createNoopChangeset(t, nil))
+				r.Add(key, noopMigration{})
 			}
 
 			got, err := r.LatestKey()
@@ -240,7 +225,7 @@ func Test_Changesets_GetChangesetOptions(t *testing.T) {
 		name    string
 		setup   func(*ChangesetsRegistry)
 		giveKey string
-		want    ChangesetConfig
+		want    changesetConfig
 		wantErr string
 	}{
 		{
@@ -252,30 +237,30 @@ func Test_Changesets_GetChangesetOptions(t *testing.T) {
 		{
 			name: "a changeset without options",
 			setup: func(r *ChangesetsRegistry) {
-				r.Add("0001_cap_reg", createNoopChangeset(t, nil))
+				r.Add("0001_cap_reg", noopMigration{})
 			},
 			giveKey: "0001_cap_reg",
-			want:    ChangesetConfig{},
+			want:    changesetConfig{},
 		},
 		{
 			name: "a changeset with OnlyLoadChainsFor option",
 			setup: func(r *ChangesetsRegistry) {
-				r.Add("0002_cap_reg", createNoopChangeset(t, nil), OnlyLoadChainsFor(1, 2))
+				r.Add("0002_cap_reg", noopMigration{}, OnlyLoadChainsFor(1, 2))
 			},
 			giveKey: "0002_cap_reg",
-			want: ChangesetConfig{
-				ChainsToLoad: []uint64{1, 2},
-				WithoutJD:    false,
+			want: changesetConfig{
+				chainsToLoad: []uint64{1, 2},
+				withoutJD:    false,
 			},
 		},
 		{
 			name: "a changeset with WithoutJD option",
 			setup: func(r *ChangesetsRegistry) {
-				r.Add("0003_cap_reg", createNoopChangeset(t, nil), WithoutJD())
+				r.Add("0003_cap_reg", noopMigration{}, WithoutJD())
 			},
 			giveKey: "0003_cap_reg",
-			want: ChangesetConfig{
-				WithoutJD: true,
+			want: changesetConfig{
+				withoutJD: true,
 			},
 		},
 	}
@@ -319,7 +304,7 @@ func Test_Changesets_InputChainOverrides(t *testing.T) {
 		{
 			name: "a changeset without input chain overrides",
 			setup: func(r *ChangesetsRegistry) {
-				r.Add("0001_cap_reg", createNoopChangeset(t, nil))
+				r.Add("0001_cap_reg", noopMigration{})
 			},
 			giveKey: "0001_cap_reg",
 			want:    nil,
@@ -327,7 +312,7 @@ func Test_Changesets_InputChainOverrides(t *testing.T) {
 		{
 			name: "a changeset with input chain overrides",
 			setup: func(r *ChangesetsRegistry) {
-				r.Add("0002_cap_reg", createNoopChangeset(t, []uint64{1, 2}))
+				r.Add("0002_cap_reg", noopMigration{chainOverrides: []uint64{1, 2}})
 			},
 			giveKey: "0002_cap_reg",
 			want:    []uint64{1, 2},
