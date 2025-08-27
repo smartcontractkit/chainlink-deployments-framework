@@ -192,13 +192,7 @@ func TestLoad(t *testing.T) {
 		{
 			name:     "empty environments",
 			filePath: "testdata/empty_environments.yaml",
-			wantErr:  false,
-			validate: func(t *testing.T, config *DomainConfig) {
-				t.Helper()
-
-				require.NotNil(t, config)
-				assert.Empty(t, config.Environments)
-			},
+			wantErr:  true,
 		},
 	}
 

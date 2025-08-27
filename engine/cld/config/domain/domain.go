@@ -48,6 +48,10 @@ type DomainConfig struct {
 
 // validate validates all environments in the domain configuration.
 func (cfg *DomainConfig) validate() error {
+	if len(cfg.Environments) == 0 {
+		return errors.New("environments is required and cannot be empty")
+	}
+
 	// Validate each environment in the domain configuration.
 	for name, env := range cfg.Environments {
 		if err := env.validate(); err != nil {
