@@ -1,7 +1,6 @@
 package domain
 
 import (
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -9,6 +8,8 @@ import (
 )
 
 func TestIsValidNetworkAccess(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		access   string
@@ -38,12 +39,16 @@ func TestIsValidNetworkAccess(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			assert.Equal(t, tt.expected, isValidNetworkAccess(tt.access))
 		})
 	}
 }
 
 func TestEnvironment_Validate(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name        string
 		environment Environment
@@ -107,6 +112,8 @@ func TestEnvironment_Validate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			err := tt.environment.Validate()
 			if tt.wantErr {
 				require.Error(t, err)
@@ -119,20 +126,21 @@ func TestEnvironment_Validate(t *testing.T) {
 }
 
 func TestLoad(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
-		name           string
-		useFixtureFile bool
-		filePath       string
-		yamlContent    string
-		wantErr        bool
-		validate       func(t *testing.T, config *DomainConfig)
+		name     string
+		filePath string
+		wantErr  bool
+		validate func(t *testing.T, config *DomainConfig)
 	}{
 		{
-			name:           "load valid yaml fixture file",
-			useFixtureFile: true,
-			filePath:       "testdata/valid.yaml",
-			wantErr:        false,
+			name:     "load valid yaml fixture file",
+			filePath: "testdata/valid.yaml",
+			wantErr:  false,
 			validate: func(t *testing.T, config *DomainConfig) {
+				t.Helper()
+
 				require.NotNil(t, config)
 
 				// Check that all expected environments are loaded
@@ -167,33 +175,33 @@ func TestLoad(t *testing.T) {
 			},
 		},
 		{
-			name:           "error when file not found",
-			useFixtureFile: true,
-			filePath:       "/tmp/nonexistent_file.yml",
-			wantErr:        true,
+			name:     "error when file not found",
+			filePath: "/tmp/nonexistent_file.yml",
+			wantErr:  true,
 		},
 		{
-			name:           "invalid yaml content",
-			useFixtureFile: true,
-			filePath:       "testdata/invalid.yaml",
-			wantErr:        true,
+			name:     "invalid yaml content",
+			filePath: "testdata/invalid.yaml",
+			wantErr:  true,
 		},
 		{
-			name:           "empty environments",
-			useFixtureFile: true,
-			filePath:       "testdata/empty_environments.yaml",
-			wantErr:        false,
+			name:     "empty environments",
+			filePath: "testdata/empty_environments.yaml",
+			wantErr:  false,
 			validate: func(t *testing.T, config *DomainConfig) {
+				t.Helper()
+
 				require.NotNil(t, config)
-				assert.Len(t, config.Environments, 0)
+				assert.Empty(t, config.Environments)
 			},
 		},
 		{
-			name:           "multiple environments with mixed access",
-			useFixtureFile: true,
-			filePath:       "testdata/mixed_access.yaml",
-			wantErr:        false,
+			name:     "multiple environments with mixed access",
+			filePath: "testdata/mixed_access.yaml",
+			wantErr:  false,
 			validate: func(t *testing.T, config *DomainConfig) {
+				t.Helper()
+
 				require.NotNil(t, config)
 				assert.Len(t, config.Environments, 3)
 
@@ -211,24 +219,9 @@ func TestLoad(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var filePath string
+			t.Parallel()
 
-			if tt.useFixtureFile {
-				filePath = tt.filePath
-			} else {
-				// Create temporary file with YAML content
-				tmpFile, err := os.CreateTemp("", "domain_test_*.yml")
-				require.NoError(t, err)
-				defer os.Remove(tmpFile.Name())
-
-				_, err = tmpFile.WriteString(tt.yamlContent)
-				require.NoError(t, err)
-				require.NoError(t, tmpFile.Close())
-
-				filePath = tmpFile.Name()
-			}
-
-			config, err := Load(filePath)
+			config, err := Load(tt.filePath)
 
 			if tt.wantErr {
 				require.Error(t, err)
@@ -239,198 +232,6 @@ func TestLoad(t *testing.T) {
 				if tt.validate != nil {
 					tt.validate(t, config)
 				}
-			}
-		})
-	}
-}
-
-func TestDomainConfig_Validation(t *testing.T) {
-	tests := []struct {
-		name           string
-		yamlContent    string
-		loadShouldFail bool
-		envToValidate  string
-		validationErr  bool
-		errContains    string
-		validate       func(t *testing.T, config *DomainConfig)
-	}{
-		{
-			name: "environments with invalid network access should be loadable but fail validation",
-			yamlContent: `
-environments:
-  development:
-    networkAccess:
-      - invalid_access
-`,
-			loadShouldFail: false,
-			envToValidate:  "development",
-			validationErr:  true,
-			errContains:    "invalid networkAccess value: invalid_access",
-		},
-		{
-			name: "environments with duplicate network access should fail validation",
-			yamlContent: `
-environments:
-  development:
-    networkAccess:
-      - testnet
-      - testnet
-`,
-			loadShouldFail: false,
-			envToValidate:  "development",
-			validationErr:  true,
-			errContains:    "duplicate networkAccess value: testnet",
-		},
-		{
-			name: "environments with duplicate mainnet should fail validation",
-			yamlContent: `
-environments:
-  production:
-    networkAccess:
-      - mainnet
-      - mainnet
-`,
-			loadShouldFail: false,
-			envToValidate:  "production",
-			validationErr:  true,
-			errContains:    "duplicate networkAccess value: mainnet",
-		},
-		{
-			name: "environments with empty network access should fail validation",
-			yamlContent: `
-environments:
-  development:
-    networkAccess: []
-`,
-			loadShouldFail: false,
-			envToValidate:  "development",
-			validationErr:  true,
-			errContains:    "networkAccess is required and cannot be empty",
-		},
-		{
-			name: "environments with mixed invalid and valid access should fail validation",
-			yamlContent: `
-environments:
-  staging:
-    networkAccess:
-      - testnet
-      - invalid_network
-      - mainnet
-`,
-			loadShouldFail: false,
-			envToValidate:  "staging",
-			validationErr:  true,
-			errContains:    "invalid networkAccess value: invalid_network",
-		},
-		{
-			name: "empty environments map should load successfully",
-			yamlContent: `
-environments: {}
-`,
-			loadShouldFail: false,
-			validate: func(t *testing.T, config *DomainConfig) {
-				require.NotNil(t, config)
-				assert.Len(t, config.Environments, 0)
-			},
-		},
-		{
-			name: "valid environments should pass validation",
-			yamlContent: `
-environments:
-  development:
-    networkAccess:
-      - testnet
-  staging:
-    networkAccess:
-      - testnet
-      - mainnet
-  production:
-    networkAccess:
-      - mainnet
-`,
-			loadShouldFail: false,
-			validate: func(t *testing.T, config *DomainConfig) {
-				require.NotNil(t, config)
-				assert.Len(t, config.Environments, 3)
-
-				// Validate each environment
-				for envName, env := range config.Environments {
-					err := env.Validate()
-					assert.NoError(t, err, "Environment %s should be valid", envName)
-				}
-			},
-		},
-		{
-			name: "multiple environments with some invalid should allow selective validation",
-			yamlContent: `
-environments:
-  valid_env:
-    networkAccess:
-      - testnet
-  invalid_env:
-    networkAccess:
-      - invalid_access
-`,
-			loadShouldFail: false,
-			validate: func(t *testing.T, config *DomainConfig) {
-				require.NotNil(t, config)
-				assert.Len(t, config.Environments, 2)
-
-				// Valid environment should pass validation
-				validEnv := config.Environments["valid_env"]
-				err := validEnv.Validate()
-				assert.NoError(t, err)
-
-				// Invalid environment should fail validation
-				invalidEnv := config.Environments["invalid_env"]
-				err = invalidEnv.Validate()
-				assert.Error(t, err)
-				assert.Contains(t, err.Error(), "invalid networkAccess value: invalid_access")
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Create temporary file with YAML content
-			tmpFile, err := os.CreateTemp("", "domain_test_*.yml")
-			require.NoError(t, err)
-			defer os.Remove(tmpFile.Name())
-
-			_, err = tmpFile.WriteString(tt.yamlContent)
-			require.NoError(t, err)
-			require.NoError(t, tmpFile.Close())
-
-			config, err := Load(tmpFile.Name())
-
-			if tt.loadShouldFail {
-				require.Error(t, err)
-				assert.Nil(t, config)
-				return
-			}
-
-			require.NoError(t, err)
-			require.NotNil(t, config)
-
-			// If we need to validate a specific environment
-			if tt.envToValidate != "" {
-				env, exists := config.Environments[tt.envToValidate]
-				require.True(t, exists, "Environment %s should exist", tt.envToValidate)
-
-				err = env.Validate()
-				if tt.validationErr {
-					require.Error(t, err)
-					if tt.errContains != "" {
-						assert.Contains(t, err.Error(), tt.errContains)
-					}
-				} else {
-					require.NoError(t, err)
-				}
-			}
-
-			// Run custom validation if provided
-			if tt.validate != nil {
-				tt.validate(t, config)
 			}
 		})
 	}
