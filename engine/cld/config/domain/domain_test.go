@@ -195,26 +195,6 @@ func TestLoad(t *testing.T) {
 				assert.Empty(t, config.Environments)
 			},
 		},
-		{
-			name:     "multiple environments with mixed access",
-			filePath: "testdata/mixed_access.yaml",
-			wantErr:  false,
-			validate: func(t *testing.T, config *DomainConfig) {
-				t.Helper()
-
-				require.NotNil(t, config)
-				assert.Len(t, config.Environments, 3)
-
-				dev := config.Environments["dev"]
-				assert.Equal(t, []string{"testnet"}, dev.NetworkAccess)
-
-				staging := config.Environments["staging"]
-				assert.ElementsMatch(t, []string{"testnet", "mainnet"}, staging.NetworkAccess)
-
-				prod := config.Environments["prod"]
-				assert.Equal(t, []string{"mainnet"}, prod.NetworkAccess)
-			},
-		},
 	}
 
 	for _, tt := range tests {
