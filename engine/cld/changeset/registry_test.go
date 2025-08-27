@@ -225,7 +225,7 @@ func Test_Changesets_GetChangesetOptions(t *testing.T) {
 		name    string
 		setup   func(*ChangesetsRegistry)
 		giveKey string
-		want    changesetConfig
+		want    ChangesetConfig
 		wantErr string
 	}{
 		{
@@ -240,7 +240,7 @@ func Test_Changesets_GetChangesetOptions(t *testing.T) {
 				r.Add("0001_cap_reg", noopMigration{})
 			},
 			giveKey: "0001_cap_reg",
-			want:    changesetConfig{},
+			want:    ChangesetConfig{},
 		},
 		{
 			name: "a changeset with OnlyLoadChainsFor option",
@@ -248,9 +248,9 @@ func Test_Changesets_GetChangesetOptions(t *testing.T) {
 				r.Add("0002_cap_reg", noopMigration{}, OnlyLoadChainsFor(1, 2))
 			},
 			giveKey: "0002_cap_reg",
-			want: changesetConfig{
-				chainsToLoad: []uint64{1, 2},
-				withoutJD:    false,
+			want: ChangesetConfig{
+				ChainsToLoad: []uint64{1, 2},
+				WithoutJD:    false,
 			},
 		},
 		{
@@ -259,8 +259,8 @@ func Test_Changesets_GetChangesetOptions(t *testing.T) {
 				r.Add("0003_cap_reg", noopMigration{}, WithoutJD())
 			},
 			giveKey: "0003_cap_reg",
-			want: changesetConfig{
-				withoutJD: true,
+			want: ChangesetConfig{
+				WithoutJD: true,
 			},
 		},
 	}

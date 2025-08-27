@@ -71,11 +71,11 @@ type registryEntry struct {
 	gitSHA *string
 
 	// options contains the configuration options for this changeset
-	options changesetConfig
+	options ChangesetConfig
 }
 
 // newRegistryEntry creates a new registry entry for a changeset.
-func newRegistryEntry(c ChangeSet, opts changesetConfig) registryEntry {
+func newRegistryEntry(c ChangeSet, opts ChangesetConfig) registryEntry {
 	return registryEntry{changeset: c, options: opts}
 }
 
@@ -140,10 +140,10 @@ func (r *ChangesetsRegistry) Apply(
 }
 
 // GetChangesetOptions retrieves the configuration options for a changeset.
-func (r *ChangesetsRegistry) GetChangesetOptions(key string) (changesetConfig, error) {
+func (r *ChangesetsRegistry) GetChangesetOptions(key string) (ChangesetConfig, error) {
 	entry, ok := r.entries[key]
 	if !ok {
-		return changesetConfig{}, fmt.Errorf("changeset '%s' not found", key)
+		return ChangesetConfig{}, fmt.Errorf("changeset '%s' not found", key)
 	}
 
 	return entry.options, nil
@@ -160,21 +160,21 @@ func (r *ChangesetsRegistry) GetConfigurations(key string) (Configurations, erro
 }
 
 // ChangesetOption defines an option for configuring a changeset
-type ChangesetOption func(*changesetConfig)
+type ChangesetOption func(*ChangesetConfig)
 
-// changesetConfig holds configuration options for a changeset
-type changesetConfig struct {
-	chainsToLoad      []uint64
-	withoutJD         bool
-	operationRegistry *operations.OperationRegistry
+// ChangesetConfig holds configuration options for a changeset
+type ChangesetConfig struct {
+	ChainsToLoad      []uint64
+	WithoutJD         bool
+	OperationRegistry *operations.OperationRegistry
 }
 
 // OnlyLoadChainsFor will configure the environment to load only the specified chains.
 // By default, if option is not specified, all chains are loaded.
 // This is useful for changesets that are only applicable to a subset of chains.
 func OnlyLoadChainsFor(chainSelectors ...uint64) ChangesetOption {
-	return func(o *changesetConfig) {
-		o.chainsToLoad = chainSelectors
+	return func(o *ChangesetConfig) {
+		o.ChainsToLoad = chainSelectors
 	}
 }
 
@@ -182,15 +182,15 @@ func OnlyLoadChainsFor(chainSelectors ...uint64) ChangesetOption {
 // By default, if option is not specified, Job Distributor is loaded.
 // This is useful for changesets that do not require Job Distributor to be loaded.
 func WithoutJD() ChangesetOption {
-	return func(o *changesetConfig) {
-		o.withoutJD = true
+	return func(o *ChangesetConfig) {
+		o.WithoutJD = true
 	}
 }
 
 // WithOperationRegistry will configure the changeset to use the specified operation registry.
 func WithOperationRegistry(registry *operations.OperationRegistry) ChangesetOption {
-	return func(o *changesetConfig) {
-		o.operationRegistry = registry
+	return func(o *ChangesetConfig) {
+		o.OperationRegistry = registry
 	}
 }
 
@@ -211,7 +211,7 @@ func (r *ChangesetsRegistry) Add(key string, cs ChangeSet, opts ...ChangesetOpti
 	}
 
 	// Process the options
-	options := changesetConfig{}
+	options := ChangesetConfig{}
 	for _, opt := range opts {
 		opt(&options)
 	}

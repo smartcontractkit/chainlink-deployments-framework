@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/docker/docker/api/types/registry"
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 
@@ -19,6 +20,7 @@ import (
 	cldf_sui_provider "github.com/smartcontractkit/chainlink-deployments-framework/chain/sui/provider"
 	cldf_tron_provider "github.com/smartcontractkit/chainlink-deployments-framework/chain/tron/provider"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/changeset"
 	cldf_config_env "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/env"
 	cldf_config_network "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/network"
 	cldf_environment "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
@@ -49,6 +51,11 @@ func LoadChains(
 		family   string
 		loader   ChainLoader
 	}, 0)
+
+	registry := changeset.NewBaseRegistryProvider()
+	registry.Init()
+	options, _ := registry.Registry().GetChangesetOptions("test")
+	options.
 
 	for _, selector := range chainSelectorsToLoad {
 		// Get the chain family for this selector
