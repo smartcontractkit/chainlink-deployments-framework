@@ -42,12 +42,12 @@ func isValidNetworkAccess(access string) bool {
 	return access == "mainnet" || access == "testnet"
 }
 
-// DomainConfig represents the parsed and validated environment configuration.
+// DomainConfig represents the parsed and validated domain configuration.
 type DomainConfig struct {
 	Environments map[string]Environment `mapstructure:"environments" yaml:"environments"`
 }
 
-// Load loads environment configuration from a YAML file.
+// Load loads domain configuration from a YAML file.
 func Load(filePath string) (*DomainConfig, error) {
 	v := viper.New()
 	v.SetConfigFile(filePath)
