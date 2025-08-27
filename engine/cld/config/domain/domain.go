@@ -8,37 +8,37 @@ import (
 
 // Environment represents a single environment configuration.
 type Environment struct {
-	NetworkAccess []string `mapstructure:"networkAccess" yaml:"networkAccess"`
+	NetworkTypes []string `mapstructure:"network_types" yaml:"network_types"`
 }
 
 // validate validates the environment configuration.
 func (e *Environment) validate() error {
-	if len(e.NetworkAccess) == 0 {
-		return errors.New("networkAccess is required and cannot be empty")
+	if len(e.NetworkTypes) == 0 {
+		return errors.New("network_types is required and cannot be empty")
 	}
 
 	// Check for valid values
-	for _, access := range e.NetworkAccess {
-		if !isValidNetworkAccess(access) {
-			return errors.New("invalid networkAccess value: " + access + " (must be 'mainnet' or 'testnet')")
+	for _, networkType := range e.NetworkTypes {
+		if !isValidNetworkType(networkType) {
+			return errors.New("invalid network_types value: " + networkType + " (must be 'mainnet' or 'testnet')")
 		}
 	}
 
 	// Check for duplicates
 	seen := make(map[string]bool)
-	for _, access := range e.NetworkAccess {
-		if seen[access] {
-			return errors.New("duplicate networkAccess value: " + access)
+	for _, networkType := range e.NetworkTypes {
+		if seen[networkType] {
+			return errors.New("duplicate network_types value: " + networkType)
 		}
-		seen[access] = true
+		seen[networkType] = true
 	}
 
 	return nil
 }
 
-// isValidNetworkAccess checks if the network access value is valid.
-func isValidNetworkAccess(access string) bool {
-	return access == "mainnet" || access == "testnet"
+// isValidNetworkType checks if the network type value is valid.
+func isValidNetworkType(networkType string) bool {
+	return networkType == "mainnet" || networkType == "testnet"
 }
 
 // DomainConfig represents the parsed and validated domain configuration.
