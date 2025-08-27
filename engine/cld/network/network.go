@@ -13,79 +13,6 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
 )
 
-// stringToNetworkType converts a string network type to NetworkType enum.
-func stringToNetworkType(s string) cldf_config_network.NetworkType {
-	switch s {
-	case "mainnet":
-		return cldf_config_network.NetworkTypeMainnet
-	case "testnet":
-		return cldf_config_network.NetworkTypeTestnet
-	default:
-		return ""
-	}
-}
-
-// determineNetworkTypes determines the network types for a given environment and domain.
-// It first tries to load from domain config, and if that fails or doesn't exist,
-// it falls back to the legacy switch logic.
-func determineNetworkTypes(env string, domain cldf_domain.Domain, lggr logger.Logger) ([]cldf_config_network.NetworkType, error) {
-	var (
-		typesAll     = []cldf_config_network.NetworkType{cldf_config_network.NetworkTypeTestnet, cldf_config_network.NetworkTypeMainnet}
-		typesTestnet = []cldf_config_network.NetworkType{cldf_config_network.NetworkTypeTestnet}
-		typesMainnet = []cldf_config_network.NetworkType{cldf_config_network.NetworkTypeMainnet}
-	)
-
-	// Try to load domain config first
-	domainConfigPath := filepath.Join(domain.DirPath(), ".config", "domain.yaml")
-	if _, err := os.Stat(domainConfigPath); err == nil {
-		domainConfig, err := cldf_config_domain.Load(domainConfigPath)
-		if err != nil {
-			lggr.Warnf("Failed to load domain config, falling back to legacy logic: %v", err)
-		} else {
-			envConfig, ok := domainConfig.Environments[env]
-			if !ok {
-				return nil, fmt.Errorf("environment %s not found in domain config", env)
-			}
-
-			var networkTypes []cldf_config_network.NetworkType
-			for _, accessType := range envConfig.NetworkAccess {
-				if nt := stringToNetworkType(accessType); nt != "" {
-					networkTypes = append(networkTypes, nt)
-				}
-			}
-			return networkTypes, nil
-		}
-	}
-
-	// Fallback to legacy switch logic
-	var networkTypes []cldf_config_network.NetworkType
-	switch env {
-	case environment.Local, environment.StagingTestnet, environment.ProdTestnet:
-		networkTypes = typesTestnet
-	case environment.StagingMainnet, environment.ProdMainnet:
-		networkTypes = typesMainnet
-	case environment.Prod:
-		networkTypes = typesAll
-	// The following environments are legacy environments that are used to support domains which
-	// have not transitioned to the new environment structure.
-	case environment.Testnet, environment.SolStaging:
-		networkTypes = typesTestnet
-	case environment.Staging:
-		if domain.Key() == "data-streams" {
-			networkTypes = typesAll
-		} else {
-			networkTypes = typesTestnet
-		}
-	case environment.Mainnet:
-		networkTypes = typesMainnet
-	default:
-		lggr.Errorf("Unknown environment: %s", env)
-		return nil, fmt.Errorf("unknown env: %s", env)
-	}
-
-	return networkTypes, nil
-}
-
 // LoadNetworks retrieves the network configuration for the given domain and filters the networks
 // according to the specified environment. This ensures that only networks relevant to the selected
 // environment are accessible, minimizing the risk of accidental operations on unintended networks.
@@ -97,9 +24,27 @@ func LoadNetworks(
 		return nil, fmt.Errorf("failed to load network config: %w", err)
 	}
 
-	networkTypes, err := determineNetworkTypes(env, domain, lggr)
+	// Try to load from domain config first
+	domainConfigPath := filepath.Join(domain.ConfigDomainFilePath())
+	if _, statErr := os.Stat(domainConfigPath); statErr != nil {
+		// Domain config doesn't exist, use legacy logic
+		networkTypes, legacyErr := getLegacyNetworkTypes(env, domain, lggr)
+		if legacyErr != nil {
+			return nil, fmt.Errorf("failed to determine network types: %w", legacyErr)
+		}
+		lggr.Infof("Loaded %s Networks for %s/%s", networkTypes, domain.Key(), env)
+
+		return cfg.FilterWith(cldf_config_network.TypesFilter(networkTypes...)), nil
+	}
+
+	// Happy path: domain config exists, try to load it
+	networkTypes, err := loadDomainConfigNetworkTypes(env, domain)
 	if err != nil {
-		return nil, fmt.Errorf("failed to determine network types: %w", err)
+		lggr.Warnf("Failed to load domain config, falling back to legacy logic: %v", err)
+		networkTypes, err = getLegacyNetworkTypes(env, domain, lggr)
+		if err != nil {
+			return nil, fmt.Errorf("failed to determine network types: %w", err)
+		}
 	}
 
 	lggr.Infof("Loaded %s Networks for %s/%s", networkTypes, domain.Key(), env)
@@ -140,4 +85,55 @@ func loadNetworkConfig(domain cldf_domain.Domain) (*cldf_config_network.Config, 
 	}
 
 	return cfg, nil
+}
+
+// loadDomainConfigNetworkTypes loads network types from domain config for the given environment.
+func loadDomainConfigNetworkTypes(env string, domain cldf_domain.Domain) ([]cldf_config_network.NetworkType, error) {
+	domainConfigPath := filepath.Join(domain.ConfigDomainFilePath())
+	domainConfig, err := cldf_config_domain.Load(domainConfigPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load domain config: %w", err)
+	}
+
+	envConfig, ok := domainConfig.Environments[env]
+	if !ok {
+		return nil, fmt.Errorf("environment %s not found in domain config", env)
+	}
+
+	networkTypes := make([]cldf_config_network.NetworkType, 0, len(envConfig.NetworkTypes))
+	for _, networkType := range envConfig.NetworkTypes {
+		networkTypes = append(networkTypes, cldf_config_network.NetworkType(networkType))
+	}
+
+	return networkTypes, nil
+}
+
+// getLegacyNetworkTypes returns network types based on legacy switch logic.
+func getLegacyNetworkTypes(env string, domain cldf_domain.Domain, lggr logger.Logger) ([]cldf_config_network.NetworkType, error) {
+	var networkTypes []cldf_config_network.NetworkType
+	switch env {
+	case environment.Local, environment.StagingTestnet, environment.ProdTestnet:
+		networkTypes = []cldf_config_network.NetworkType{cldf_config_network.NetworkTypeTestnet}
+	case environment.StagingMainnet, environment.ProdMainnet:
+		networkTypes = []cldf_config_network.NetworkType{cldf_config_network.NetworkTypeMainnet}
+	case environment.Prod:
+		networkTypes = []cldf_config_network.NetworkType{cldf_config_network.NetworkTypeTestnet, cldf_config_network.NetworkTypeMainnet}
+	// The following environments are legacy environments that are used to support domains which
+	// have not transitioned to the new environment structure.
+	case environment.Testnet, environment.SolStaging:
+		networkTypes = []cldf_config_network.NetworkType{cldf_config_network.NetworkTypeTestnet}
+	case environment.Staging:
+		if domain.Key() == "data-streams" {
+			networkTypes = []cldf_config_network.NetworkType{cldf_config_network.NetworkTypeTestnet, cldf_config_network.NetworkTypeMainnet}
+		} else {
+			networkTypes = []cldf_config_network.NetworkType{cldf_config_network.NetworkTypeTestnet}
+		}
+	case environment.Mainnet:
+		networkTypes = []cldf_config_network.NetworkType{cldf_config_network.NetworkTypeMainnet}
+	default:
+		lggr.Errorf("Unknown environment: %s", env)
+		return nil, fmt.Errorf("unknown env: %s", env)
+	}
+
+	return networkTypes, nil
 }
