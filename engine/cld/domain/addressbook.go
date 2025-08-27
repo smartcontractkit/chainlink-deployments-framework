@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/lib/jsonutils"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/internal/jsonutils"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 )
