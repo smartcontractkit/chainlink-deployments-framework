@@ -247,6 +247,12 @@ func Test_Domain_ConfigCIEnvFilePath(t *testing.T) {
 	assert.Equal(t, "domains/ccip/.config/ci/staging.env", d.ConfigCIEnvFilePath("staging"))
 }
 
+func Test_Domain_ConfigDomainFilePath(t *testing.T) {
+	t.Parallel()
+	d := NewDomain("domains", "ccip")
+	assert.Equal(t, "domains/ccip/.config/domain.yaml", d.ConfigDomainFilePath())
+}
+
 // todo: uncomment after moving migration registry over to cldf
 // func Test_EnvDir_LatestExecutedMigration(t *testing.T) {
 // 	t.Parallel()
