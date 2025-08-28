@@ -1,5 +1,23 @@
 # chainlink-deployments-framework
 
+## 0.36.0
+
+### Minor Changes
+
+- [#336](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/336) [`ed5dc34`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/ed5dc34958880d38cfa0c48e24181dfeaf8fd4f0) Thanks [@jkongie](https://github.com/jkongie)! - Adds a struct to generate Cognito oauth tokens for Job Distributor
+
+- [#340](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/340) [`c9e6857`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/c9e6857091dd0a761e2c469dc3c60f8cf8551f60) Thanks [@jkongie](https://github.com/jkongie)! - Adds `cli` package to `engine/cld/legacy`
+
+### Patch Changes
+
+- [#327](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/327) [`8d0cbfb`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/8d0cbfb6581d6611609a08d50414506086221514) Thanks [@giogam](https://github.com/giogam)! - feat: adds domain config
+
+- [#328](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/328) [`240a44f`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/240a44f7d17afb9343ca09a402cbe60d2e9c0fd7) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(sui): use correct docker image on arm64
+
+- [#332](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/332) [`d577271`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/d57727139630cd31da5cfa4c4d74d8174dd2e347) Thanks [@ajaskolski](https://github.com/ajaskolski)! - refactor: move environment network from cld
+
+- [#337](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/337) [`b3bdffc`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/b3bdffcd0346d329fc4e6a37397dec4cf277bc27) Thanks [@giogam](https://github.com/giogam)! - chore: refactor camelCase with snake_case
+
 ## 0.35.0
 
 ### Minor Changes
