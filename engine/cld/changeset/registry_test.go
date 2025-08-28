@@ -8,20 +8,20 @@ import (
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 )
 
-// noopMigration is a migration that does nothing.
+// noopChangeset is a migration that does nothing.
 //
 // Used for testing.
-type noopMigration struct {
+type noopChangeset struct {
 	chainOverrides []uint64
 }
 
-func (noopMigration) noop() {}
+func (noopChangeset) noop() {}
 
-func (noopMigration) Apply(e cldf.Environment) (cldf.ChangesetOutput, error) {
+func (noopChangeset) Apply(e cldf.Environment) (cldf.ChangesetOutput, error) {
 	return cldf.ChangesetOutput{}, nil
 }
 
-func (n noopMigration) Configurations() (Configurations, error) {
+func (n noopChangeset) Configurations() (Configurations, error) {
 	return Configurations{
 		InputChainOverrides: n.chainOverrides,
 	}, nil
@@ -51,7 +51,7 @@ func Test_Changesets_Apply(t *testing.T) {
 		archivedSHA = "abcdef"
 
 		applyKey       = "0002_apply_mig"
-		applyChangeset = noopMigration{}
+		applyChangeset = noopChangeset{}
 	)
 
 	tests := []struct {
@@ -105,31 +105,31 @@ func Test_Changesets_Add(t *testing.T) {
 
 	r := NewChangesetsRegistry()
 
-	r.Add("0001_cap_reg", noopMigration{})
+	r.Add("0001_cap_reg", noopChangeset{})
 	require.Equal(t, []string{"0001_cap_reg"}, r.keyHistory)
 
-	r.Add("0002_cap_reg", noopMigration{})
+	r.Add("0002_cap_reg", noopChangeset{})
 	require.Equal(t, []string{"0001_cap_reg", "0002_cap_reg"}, r.keyHistory)
 
 	require.Panics(t, func() {
-		r.Add("0002_same_index", noopMigration{})
+		r.Add("0002_same_index", noopChangeset{})
 	}, "Add should panic when adding a key with the same index")
 
 	require.Panics(t, func() {
-		r.Add("0001_lower_index", noopMigration{})
+		r.Add("0001_lower_index", noopChangeset{})
 	}, "Add should panic when adding a key with lower index")
 
 	require.Panics(t, func() {
-		r.Add("xxxx_invalid_key", noopMigration{})
+		r.Add("xxxx_invalid_key", noopChangeset{})
 	}, "Add should panic when adding a key with invalid format")
 
 	require.Panics(t, func() {
-		r.Add("InvalidChangesetKeyFormat", noopMigration{})
+		r.Add("InvalidChangesetKeyFormat", noopChangeset{})
 	}, "Add should panic when adding an invalid changeset key format")
 
 	r.SetValidate(false)
 	require.NotPanics(t, func() {
-		r.Add("0002_same_index", noopMigration{})
+		r.Add("0002_same_index", noopChangeset{})
 	}, "Add should not panic when validation is disabled")
 }
 
@@ -150,8 +150,8 @@ func Test_Changesets_ListKeys(t *testing.T) {
 
 	r := NewChangesetsRegistry()
 
-	r.Add("0001_cap_reg", noopMigration{})
-	r.Add("0002_cap_reg", noopMigration{})
+	r.Add("0001_cap_reg", noopChangeset{})
+	r.Add("0002_cap_reg", noopChangeset{})
 	require.Equal(t, []string{"0001_cap_reg", "0002_cap_reg"}, r.ListKeys())
 }
 
@@ -188,7 +188,7 @@ func Test_Changesets_LatestKey(t *testing.T) {
 			r := NewChangesetsRegistry()
 
 			for _, key := range tt.giveKeys {
-				r.Add(key, noopMigration{})
+				r.Add(key, noopChangeset{})
 			}
 
 			got, err := r.LatestKey()
@@ -237,7 +237,7 @@ func Test_Changesets_GetChangesetOptions(t *testing.T) {
 		{
 			name: "a changeset without options",
 			setup: func(r *ChangesetsRegistry) {
-				r.Add("0001_cap_reg", noopMigration{})
+				r.Add("0001_cap_reg", noopChangeset{})
 			},
 			giveKey: "0001_cap_reg",
 			want:    ChangesetConfig{},
@@ -245,7 +245,7 @@ func Test_Changesets_GetChangesetOptions(t *testing.T) {
 		{
 			name: "a changeset with OnlyLoadChainsFor option",
 			setup: func(r *ChangesetsRegistry) {
-				r.Add("0002_cap_reg", noopMigration{}, OnlyLoadChainsFor(1, 2))
+				r.Add("0002_cap_reg", noopChangeset{}, OnlyLoadChainsFor(1, 2))
 			},
 			giveKey: "0002_cap_reg",
 			want: ChangesetConfig{
@@ -256,7 +256,7 @@ func Test_Changesets_GetChangesetOptions(t *testing.T) {
 		{
 			name: "a changeset with WithoutJD option",
 			setup: func(r *ChangesetsRegistry) {
-				r.Add("0003_cap_reg", noopMigration{}, WithoutJD())
+				r.Add("0003_cap_reg", noopChangeset{}, WithoutJD())
 			},
 			giveKey: "0003_cap_reg",
 			want: ChangesetConfig{
@@ -304,7 +304,7 @@ func Test_Changesets_InputChainOverrides(t *testing.T) {
 		{
 			name: "a changeset without input chain overrides",
 			setup: func(r *ChangesetsRegistry) {
-				r.Add("0001_cap_reg", noopMigration{})
+				r.Add("0001_cap_reg", noopChangeset{})
 			},
 			giveKey: "0001_cap_reg",
 			want:    nil,
@@ -312,7 +312,7 @@ func Test_Changesets_InputChainOverrides(t *testing.T) {
 		{
 			name: "a changeset with input chain overrides",
 			setup: func(r *ChangesetsRegistry) {
-				r.Add("0002_cap_reg", noopMigration{chainOverrides: []uint64{1, 2}})
+				r.Add("0002_cap_reg", noopChangeset{chainOverrides: []uint64{1, 2}})
 			},
 			giveKey: "0002_cap_reg",
 			want:    []uint64{1, 2},
