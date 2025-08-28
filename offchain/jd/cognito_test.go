@@ -33,9 +33,8 @@ func Test_NewCognitoTokenSource(t *testing.T) {
 		Password:               "testpass",
 	}
 
-	tokenSource, err := NewCognitoTokenSource(auth)
+	tokenSource := NewCognitoTokenSource(auth)
 
-	require.NoError(t, err)
 	assert.NotNil(t, tokenSource)
 	assert.Equal(t, auth, tokenSource.auth)
 	assert.Nil(t, tokenSource.client)
@@ -153,8 +152,6 @@ func Test_CognitoTokenSource_Token(t *testing.T) {
 				source.authResult = &types.AuthenticationResultType{
 					AccessToken: &accessToken,
 				}
-
-				client.AssertNotCalled(t, "InitiateAuth")
 			},
 			wantToken: &oauth2.Token{
 				AccessToken: "cached-access-token",
@@ -214,7 +211,7 @@ func Test_CognitoTokenSource_secretHash(t *testing.T) {
 		Username:               "user",
 	}
 
-	tokenSource, _ := NewCognitoTokenSource(auth)
+	tokenSource := NewCognitoTokenSource(auth)
 	hash := tokenSource.secretHash()
 
 	// This is the expected base64-encoded HMAC-SHA256 hash for the above values

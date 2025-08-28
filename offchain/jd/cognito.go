@@ -47,10 +47,10 @@ type CognitoAuth struct {
 
 // NewCognitoTokenSource creates a new CognitoTokenSource with the given CognitoAuth configuration.
 // If client is nil, a real AWS Cognito client will be created when Authenticate is called.
-func NewCognitoTokenSource(auth CognitoAuth) (*CognitoTokenSource, error) {
+func NewCognitoTokenSource(auth CognitoAuth) *CognitoTokenSource {
 	return &CognitoTokenSource{
 		auth: auth,
-	}, nil
+	}
 }
 
 // Authenticate performs user authentication against AWS Cognito using the USER_PASSWORD_AUTH flow.
