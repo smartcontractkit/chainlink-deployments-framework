@@ -8,7 +8,7 @@ import (
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 )
 
-// noopChangeset is a migration that does nothing.
+// noopChangeset is a changeset that does nothing.
 //
 // Used for testing.
 type noopChangeset struct {
