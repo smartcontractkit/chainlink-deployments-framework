@@ -1,5 +1,13 @@
 # chainlink-deployments-framework
 
+## 0.37.0
+
+### Minor Changes
+
+- [#341](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/341) [`365c01c`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/365c01c097e1d165953b51ff3c67bebe087f15fb) Thanks [@jkongie](https://github.com/jkongie)! - [Breaking] Change CognitoAuth field names
+
+- [#335](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/335) [`1602a8d`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/1602a8d105c74a1d0070ff1617c05b9e2ab3cac6) Thanks [@DimitriosNaikopoulos](https://github.com/DimitriosNaikopoulos)! - Add changeset registry
+
 ## 0.36.0
 
 ### Minor Changes
