@@ -24,6 +24,14 @@ packages:
       filename: "mock_{{.InterfaceName | snakecase}}.go"
     interfaces:
       Client:
+  github.com/smartcontractkit/chainlink-deployments-framework/offchain/jd:
+    config:
+      all: false
+      pkgname: "mocks"
+      dir: "offchain/jd/internal/mocks"
+      filename: "mock_{{.InterfaceName | snakecase}}.go"
+    interfaces:
+      CognitoClient:
   github.com/smartcontractkit/chainlink-protos/job-distributor/v1/job:
     config:
       all: false
@@ -48,4 +56,3 @@ packages:
       filename: "mock_{{.InterfaceName | snakecase}}.go"
     interfaces:
       NodeServiceClient:
-
