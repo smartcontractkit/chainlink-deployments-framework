@@ -7,11 +7,11 @@ import (
 
 	"github.com/fbsobreira/gotron-sdk/pkg/address"
 	chain_selectors "github.com/smartcontractkit/chain-selectors"
-	"github.com/smartcontractkit/chainlink-evm/gethwrappers/shared/generated/initial/link_token"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron/provider/testdata"
 )
 
 func TestCTFChainProviderConfig_validate(t *testing.T) {
@@ -269,7 +269,7 @@ func TestCTFProvider_SendAndConfirmTx_And_CheckContractDeployed(t *testing.T) {
 
 		// Deploy the LinkToken contract and wait for confirmation
 		contractAddress, txInfo, err := tronChain.DeployContractAndConfirm(
-			t.Context(), "LinkToken", link_token.LinkTokenABI, link_token.LinkTokenBin, nil, deployOptions)
+			t.Context(), "LinkToken", testdata.LinkTokenMetaDataABI, testdata.LinkTokenMetaDataBIN, nil, deployOptions)
 		require.NoError(t, err, "Failed to deploy contract")
 
 		// Log deployed contract address and deployment transaction details
