@@ -38,11 +38,11 @@ type CognitoTokenSource struct {
 // CognitoAuth contains the Cognito authentication information required to generate a token from
 // Cognito.
 type CognitoAuth struct {
-	AWSRegion              string
-	CognitoAppClientID     string
-	CognitoAppClientSecret string
-	Username               string
-	Password               string
+	AWSRegion       string
+	AppClientID     string
+	AppClientSecret string
+	Username        string
+	Password        string
 }
 
 // NewCognitoTokenSource creates a new CognitoTokenSource with the given CognitoAuth configuration.
@@ -72,7 +72,7 @@ func (c *CognitoTokenSource) Authenticate(ctx context.Context) error {
 	// Authenticate the user
 	input := &cognitoidentityprovider.InitiateAuthInput{
 		AuthFlow: types.AuthFlowTypeUserPasswordAuth,
-		ClientId: aws.String(c.auth.CognitoAppClientID),
+		ClientId: aws.String(c.auth.AppClientID),
 		AuthParameters: map[string]string{
 			"USERNAME":    c.auth.Username,
 			"PASSWORD":    c.auth.Password,
@@ -135,8 +135,8 @@ func (c *CognitoTokenSource) Token() (*oauth2.Token, error) {
 //
 // Returns the computed secret hash as a base64-encoded string.
 func (c *CognitoTokenSource) secretHash() string {
-	hmac := hmac.New(sha256.New, []byte(c.auth.CognitoAppClientSecret))
-	message := []byte(c.auth.Username + c.auth.CognitoAppClientID)
+	hmac := hmac.New(sha256.New, []byte(c.auth.AppClientSecret))
+	message := []byte(c.auth.Username + c.auth.AppClientID)
 	hmac.Write(message)
 	dataHmac := hmac.Sum(nil)
 

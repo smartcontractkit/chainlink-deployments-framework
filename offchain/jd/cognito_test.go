@@ -26,11 +26,11 @@ func Test_NewCognitoTokenSource(t *testing.T) {
 	t.Parallel()
 
 	auth := CognitoAuth{
-		AWSRegion:              "us-east-1",
-		CognitoAppClientID:     "test-client-id",
-		CognitoAppClientSecret: "test-client-secret",
-		Username:               "testuser",
-		Password:               "testpass",
+		AWSRegion:       "us-east-1",
+		AppClientID:     "test-client-id",
+		AppClientSecret: "test-client-secret",
+		Username:        "testuser",
+		Password:        "testpass",
 	}
 
 	tokenSource := NewCognitoTokenSource(auth)
@@ -45,11 +45,11 @@ func Test_CognitoTokenSource_Authenticate(t *testing.T) {
 	t.Parallel()
 
 	auth := CognitoAuth{
-		AWSRegion:              "us-east-1",
-		CognitoAppClientID:     "test-client-id",
-		CognitoAppClientSecret: "test-client-secret",
-		Username:               "testuser",
-		Password:               "testpass",
+		AWSRegion:       "us-east-1",
+		AppClientID:     "test-client-id",
+		AppClientSecret: "test-client-secret",
+		Username:        "testuser",
+		Password:        "testpass",
 	}
 
 	tests := []struct {
@@ -72,7 +72,7 @@ func Test_CognitoTokenSource_Authenticate(t *testing.T) {
 				}
 
 				client.EXPECT().InitiateAuth(mock.Anything, mock.MatchedBy(func(input *cognitoidentityprovider.InitiateAuthInput) bool {
-					return *input.ClientId == auth.CognitoAppClientID &&
+					return *input.ClientId == auth.AppClientID &&
 						input.AuthFlow == types.AuthFlowTypeUserPasswordAuth &&
 						input.AuthParameters["USERNAME"] == auth.Username &&
 						input.AuthParameters["PASSWORD"] == auth.Password &&
@@ -175,11 +175,11 @@ func Test_CognitoTokenSource_Token(t *testing.T) {
 
 			client := mocks.NewMockCognitoClient(t)
 			auth := CognitoAuth{
-				AWSRegion:              "us-east-1",
-				CognitoAppClientID:     "test-client-id",
-				CognitoAppClientSecret: "test-client-secret",
-				Username:               "testuser",
-				Password:               "testpass",
+				AWSRegion:       "us-east-1",
+				AppClientID:     "test-client-id",
+				AppClientSecret: "test-client-secret",
+				Username:        "testuser",
+				Password:        "testpass",
 			}
 
 			source := newCognitoTokenSourceWithClient(auth, client)
@@ -206,9 +206,9 @@ func Test_CognitoTokenSource_secretHash(t *testing.T) {
 
 	// Test with static values to ensure the hash calculation is correct
 	auth := CognitoAuth{
-		CognitoAppClientID:     "clientid",
-		CognitoAppClientSecret: "secret",
-		Username:               "user",
+		AppClientID:     "clientid",
+		AppClientSecret: "secret",
+		Username:        "user",
 	}
 
 	tokenSource := NewCognitoTokenSource(auth)
