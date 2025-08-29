@@ -33,7 +33,7 @@ func Test_ScaffoldDomain(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, info.IsDir())
 
-	_, err = os.Stat(dom.LibDirPath())
+	info, err = os.Stat(dom.LibDirPath())
 	require.NoError(t, err)
 	assert.True(t, info.IsDir())
 
@@ -97,10 +97,6 @@ func Test_ScaffoldEnvDir(t *testing.T) {
 	_, err = os.Stat(envdir.AddressBookFilePath())
 	require.NoError(t, err)
 
-	_, err = os.Stat(envdir.DataStoreDirPath())
-	require.NoError(t, err)
-	assert.True(t, info.IsDir())
-
 	_, err = os.Stat(envdir.AddressRefsFilePath())
 	require.NoError(t, err)
 
@@ -148,6 +144,10 @@ func Test_ScaffoldEnvDir(t *testing.T) {
 	assert.True(t, info.IsDir())
 
 	info, err = os.Stat(envdir.ArtifactsDir().OperationsReportsDirPath())
+	require.NoError(t, err)
+	assert.True(t, info.IsDir())
+
+	info, err = os.Stat(envdir.DataStoreDirPath())
 	require.NoError(t, err)
 	assert.True(t, info.IsDir())
 
