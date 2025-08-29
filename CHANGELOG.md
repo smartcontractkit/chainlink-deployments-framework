@@ -1,5 +1,15 @@
 # chainlink-deployments-framework
 
+## 0.37.1
+
+### Patch Changes
+
+- [#338](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/338) [`d207c3b`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/d207c3b4f9bd9a6adf8171cb333e325c45588bd6) Thanks [@giogam](https://github.com/giogam)! - feat: load network types from domain config
+
+- [#344](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/344) [`cf1cc45`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/cf1cc4586605d13276edb2033fdd68942e78946a) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(operations): handle missing case causing Operations APi unable to serialize certain Marshalable struct
+
+- [#345](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/345) [`ba11ea0`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/ba11ea024b8d8796aa834dbab2b60b977f3b0595) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - Migrated Dry Run JD Client from CLD
+
 ## 0.37.0
 
 ### Minor Changes
