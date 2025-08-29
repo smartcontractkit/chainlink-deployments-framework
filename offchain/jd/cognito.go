@@ -5,6 +5,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -30,6 +31,9 @@ type CognitoTokenSource struct {
 
 	// The cached authentication result from Cognito
 	authResult *types.AuthenticationResultType
+
+	// The time when the cached token expires
+	tokenExpiry time.Time
 
 	// The Cognito client interface for making API calls
 	client CognitoClient
@@ -85,29 +89,44 @@ func (c *CognitoTokenSource) Authenticate(ctx context.Context) error {
 		return err
 	}
 
-	c.authResult = output.AuthenticationResult
+	c.setAuthResult(output.AuthenticationResult)
 
 	return nil
 }
 
 // Token retrieves an OAuth2 access token for authenticating with the Job Distributor service.
 //
-// This method implements a lazy loading pattern:
-//  1. If an authentication result is already cached, it returns the cached access token
-//  2. If no cached result exists, it automatically authenticates with AWS Cognito first
-//  3. Returns the access token wrapped in an oauth2.Token struct
+// This method implements a lazy loading pattern with automatic token refresh:
+//  1. If no authentication result is cached, it authenticates with AWS Cognito
+//  2. If the cached token has expired, it refreshes using the refresh token (REFRESH_TOKEN_AUTH flow)
+//  3. Otherwise, it returns the cached access token
+//  4. Returns the access token wrapped in an oauth2.Token struct
 //
 // The method implements the oauth2.TokenSource interface, making it compatible with
-// standard OAuth2 client libraries and HTTP clients that support token sources.
+// standard OAuth2 client libraries and HTTP clients that support token sources. Following OAuth2
+// best practices, it uses the refresh token when available to refresh the access token.
 //
-// Note: This method uses context.Background() for authentication if no cached token exists.
-// For more control over authentication context and timeout behavior, consider calling
-// Authenticate() explicitly before calling Token().
+// Note: This method uses context.Background() for authentication/refresh if no cached token exists
+// or if the token needs to be refreshed. For more control over authentication context and
+// timeout behavior, consider calling Authenticate() or RefreshToken() explicitly before calling
+// Token().
 //
 // Returns an OAuth2 token containing the Cognito access token
 func (c *CognitoTokenSource) Token() (*oauth2.Token, error) {
+	ctx := context.Background()
+
+	// Check if we need to authenticate (no token or token expired)
 	if c.authResult == nil {
-		if err := c.Authenticate(context.Background()); err != nil {
+		// No token cached, perform full authentication
+		if err := c.Authenticate(ctx); err != nil {
+			return nil, err
+		}
+	}
+
+	// Check if the token has expired and refresh if necessary
+	if time.Now().After(c.tokenExpiry) {
+		// Token expired, try to refresh using refresh token
+		if err := c.RefreshToken(ctx); err != nil {
 			return nil, err
 		}
 	}
@@ -115,6 +134,49 @@ func (c *CognitoTokenSource) Token() (*oauth2.Token, error) {
 	return &oauth2.Token{
 		AccessToken: aws.ToString(c.authResult.AccessToken),
 	}, nil
+}
+
+// RefreshToken refreshes the access token using the stored refresh token via the REFRESH_TOKEN_AUTH flow.
+//
+// This method uses the refresh token from the cached authentication result to obtain new access and ID tokens
+// without reusing the user's credentials. This is more efficient than full re-authentication
+// and follows OAuth2 best practices.
+//
+// The method:
+//  1. Uses the cached refresh token to call InitiateAuth with REFRESH_TOKEN_AUTH flow
+//  2. Updates the cached authentication result with new tokens
+//  3. Calculates and stores the new token expiry time
+//
+// Returns an error if the refresh fails (e.g., refresh token expired or invalid).
+func (c *CognitoTokenSource) RefreshToken(ctx context.Context) error {
+	if c.authResult == nil || c.authResult.RefreshToken == nil {
+		return c.Authenticate(ctx) // Fall back to full authentication if no refresh token
+	}
+
+	input := &cognitoidentityprovider.InitiateAuthInput{
+		AuthFlow: types.AuthFlowTypeRefreshTokenAuth,
+		ClientId: aws.String(c.auth.AppClientID),
+		AuthParameters: map[string]string{
+			"REFRESH_TOKEN": aws.ToString(c.authResult.RefreshToken),
+			"SECRET_HASH":   c.secretHash(),
+		},
+	}
+
+	output, err := c.client.InitiateAuth(ctx, input)
+	if err != nil {
+		// If refresh fails, fall back to full authentication
+		return c.Authenticate(ctx)
+	}
+
+	// Set the new authentication result and token expiry time
+	c.setAuthResult(output.AuthenticationResult)
+
+	return nil
+}
+
+// TokenExpiresAt returns the time when the cached token expires.
+func (c *CognitoTokenSource) TokenExpiresAt() time.Time {
+	return c.tokenExpiry
 }
 
 // secretHash computes the AWS Cognito secret hash required for authentication with app clients that have a client secret.
@@ -141,4 +203,14 @@ func (c *CognitoTokenSource) secretHash() string {
 	dataHmac := hmac.Sum(nil)
 
 	return base64.StdEncoding.EncodeToString(dataHmac)
+}
+
+// setAuthResult sets the authentication result and token expiry time
+func (c *CognitoTokenSource) setAuthResult(authResult *types.AuthenticationResultType) {
+	// Set the new authentication result
+	c.authResult = authResult
+
+	// Calculate and set the token expiry by appending expiresIn (seconds) to the current time
+	expiresDuration := time.Duration(authResult.ExpiresIn) * time.Second
+	c.tokenExpiry = time.Now().Add(expiresDuration)
 }
