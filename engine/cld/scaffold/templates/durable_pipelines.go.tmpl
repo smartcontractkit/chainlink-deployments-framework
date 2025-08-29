@@ -1,0 +1,38 @@
+package {{.package}}
+
+import (
+	"errors"
+
+	cldf_changeset "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/changeset"
+)
+
+var _ cldf_changeset.RegistryProvider = (*DurablePipelinesRegistryProvider)(nil)
+
+// DurablePipelinesRegistryProvider wraps the cldf_changeset.BaseRegistryProvider and
+// provides an Init function to register Durable Pipelines with the underlying
+// registry.
+type DurablePipelinesRegistryProvider struct {
+	*cldf_changeset.BaseRegistryProvider
+}
+
+// NewDurablePipelinesRegistryProvider creates a new DurablePipelinesRegistryProvider.
+// The BaseRegistryProvider is initialized with a default registry.
+func NewDurablePipelinesRegistryProvider() *DurablePipelinesRegistryProvider {
+	return &DurablePipelinesRegistryProvider{
+		BaseRegistryProvider: cldf_changeset.NewBaseRegistryProvider(),
+	}
+}
+
+// Archive is a noop for the DurablePipelines.
+func (*DurablePipelinesRegistryProvider) Archive() {}
+
+// Init is used to register Durable Pipelines with the registry
+//
+// Add your Durable Pipeline migration to the registry here.
+func (p *DurablePipelinesRegistryProvider) Init() error {
+	// Uncomment this line to start adding new Durable Pipelines to the registry
+	// lint:ignore Intentionally unused for future migrations
+	// registry := p.Registry()
+
+	return nil
+}
