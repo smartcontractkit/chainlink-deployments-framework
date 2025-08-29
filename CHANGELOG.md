@@ -1,5 +1,13 @@
 # chainlink-deployments-framework
 
+## 0.38.0
+
+### Minor Changes
+
+- [#349](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/349) [`811b2b5`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/811b2b5b0d60614e3d3df4e7e96d88282b4e35d5) Thanks [@DimitriosNaikopoulos](https://github.com/DimitriosNaikopoulos)! - Add scaffolding to the framework
+
+- [#347](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/347) [`6639d28`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/6639d285c03ab8e92ca649508c5bba0fe22e2e51) Thanks [@jkongie](https://github.com/jkongie)! - Remove unused `changeset.RequireDeployerKeyBalance` method as it is unused.
+
 ## 0.37.1
 
 ### Patch Changes
