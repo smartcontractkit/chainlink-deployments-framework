@@ -240,5 +240,68 @@ The provider automatically validates configurations:
 		// Handle validation error
 		log.Printf("Invalid configuration: %v", err)
 	}
+
+# Dry Run Mode
+
+The package includes a dry run client that provides safe testing capabilities without
+affecting real Job Distributor operations:
+
+	import (
+		"github.com/smartcontractkit/chainlink-deployments-framework/offchain/jd"
+		"github.com/smartcontractkit/chainlink-common/pkg/logger"
+	)
+
+	// Create a real client for read operations
+	realClient, err := jd.NewJDClient(jd.JDConfig{
+		GRPC: "localhost:9090",
+		Creds: insecure.NewCredentials(),
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Wrap with dry run client
+	dryRunClient := jd.NewDryRunJobDistributor(realClient, logger.DefaultLogger)
+
+	// Read operations work normally (forwarded to real backend)
+	jobs, err := dryRunClient.ListJobs(ctx, &jobv1.ListJobsRequest{})
+
+	// Write operations are simulated (logged but not executed)
+	response, err := dryRunClient.ProposeJob(ctx, &jobv1.ProposeJobRequest{
+		NodeId: "test-node",
+		Spec:   "test job spec",
+	})
+	// Returns mock response without actually proposing the job
+
+# Dry Run with Provider (Recommended)
+
+For a cleaner approach, use the provider's functional option:
+
+	import (
+		"github.com/smartcontractkit/chainlink-deployments-framework/offchain/jd/provider"
+		"github.com/smartcontractkit/chainlink-common/pkg/logger"
+	)
+
+	// Create provider with dry run mode enabled
+	jdProvider := provider.NewClientOffchainProvider(
+		provider.ClientOffchainProviderConfig{
+			GRPC: "localhost:9090",
+			Creds: insecure.NewCredentials(),
+		},
+		provider.WithDryRun(logger),
+	)
+
+	// Initialize - returns a dry run client automatically
+	client, err := jdProvider.Initialize(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// All operations now use dry run mode
+	jobs, err := client.ListJobs(ctx, &jobv1.ListJobsRequest{})        // Read: forwarded
+	response, err := client.ProposeJob(ctx, &jobv1.ProposeJobRequest{  // Write: simulated
+		NodeId: "test-node",
+		Spec:   "test job spec",
+	})
 */
 package jd
