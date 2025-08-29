@@ -32,12 +32,17 @@ func isValueSerializable(lggr logger.Logger, v reflect.Value) bool {
 	}
 
 	// Check if type implements json.Marshaler and json.Unmarshaler
-	t := v.Type()
+	fieldTypeRef := v.Type()
+	ptrFieldTypeRef := reflect.PointerTo(fieldTypeRef)
+
 	marshalType := reflect.TypeOf((*json.Marshaler)(nil)).Elem()
 	unmarshalType := reflect.TypeOf((*json.Unmarshaler)(nil)).Elem()
 
+	implementsMarshaler := fieldTypeRef.Implements(marshalType) || ptrFieldTypeRef.Implements(marshalType)
+	implementsUnmarshaler := fieldTypeRef.Implements(unmarshalType) || ptrFieldTypeRef.Implements(unmarshalType)
+
 	// If it implements both interfaces, assume it's serializable
-	if t.Implements(marshalType) && t.Implements(unmarshalType) {
+	if implementsMarshaler && implementsUnmarshaler {
 		return true
 	}
 

@@ -12,6 +12,8 @@ import (
 	mcmslib "github.com/smartcontractkit/mcms"
 	"github.com/smartcontractkit/mcms/types"
 	"github.com/stretchr/testify/require"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 )
 
 func Test_IsSerializable(t *testing.T) {
@@ -78,9 +80,9 @@ func Test_IsSerializable(t *testing.T) {
 			want: true,
 		},
 		{
-			name: "should fail to serialise value customMarshaler - does not implements MarshalJSON & UnmarshalJSON",
+			name: "should serialise value customMarshaler - also implements MarshalJSON & UnmarshalJSON",
 			v:    customMarshaler{data: "test"},
-			want: false,
+			want: true,
 		},
 		{
 			name: "should serialise nested struct",
@@ -142,6 +144,11 @@ func Test_IsSerializable(t *testing.T) {
 		{
 			name: "should serialise TimelockProposal",
 			v:    createMCMSTimelockProposal(t),
+			want: true,
+		},
+		{
+			name: "should serialize Datastore AddressRef",
+			v:    datastore.AddressRef{},
 			want: true,
 		},
 	}
