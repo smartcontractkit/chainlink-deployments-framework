@@ -1,0 +1,80 @@
+// Package cli provides the CLI App for interacting with the {{ .package }} domain.
+package cli
+
+import (
+	"fmt"
+
+	"github.com/spf13/cobra"
+	"go.uber.org/zap/zapcore"
+
+	cldf_changeset "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/changeset"
+	clilib "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/legacy/cli"
+)
+
+// LoadMigrationsRegistry loads the Migrations Registry for the specified environment.
+func LoadMigrationsRegistry(envKey string) (*cldf_changeset.ChangesetsRegistry, error) {
+	var rp cldf_changeset.RegistryProvider
+
+	switch envKey {
+	// Load your environment-specific registry provider here
+	// case environment.Testnet:
+	// 	rp = testnet.NewMigrationsRegistryProvider()
+	default:
+		return nil, fmt.Errorf("unsupported environment %s", envKey)
+	}
+
+	// Uncomment this once a real migrations registry is available
+	// if err := rp.Init(); err != nil {
+	// 	return nil, fmt.Errorf("failed to init migrations %w", err)
+	// }
+
+	return rp.Registry(), nil //nolint:govet // ignore this until the registry is implemented
+}
+
+// UNCOMMENT THIS TO ENABLE THE DURABLE PIPELINES REGISTRY
+//
+// LoadDurablePipelinesRegistry loads the Durable Pipelines Registry for the specified environment.
+// func LoadDurablePipelinesRegistry(envKey string) (*cldf_changeset.ChangesetsRegistry, error) {
+// 	var rp cldf_changeset.RegistryProvider
+
+// 	switch envKey {
+//  case environment.Testnet:
+// 	    rp = testnet.NewDurablePipelinesRegistryProvider()
+// 	default:
+// 		return nil, fmt.Errorf("unsupported environment %s", envKey)
+// 	}
+
+//	// Don't validate the registry for the durable pipelines
+//	rp.Registry().SetValidate(false)
+
+// 	if err := rp.Init(); err != nil {
+// 		return nil, fmt.Errorf("failed to init migrations %w", err)
+// 	}
+
+// 	return rp.Registry(), nil
+// }
+
+type App struct {
+	*clilib.Base
+}
+
+func NewApp() (*App, error) {
+	lggr, err := clilib.NewLogger(zapcore.DebugLevel)
+	if err != nil {
+		return nil, err
+	}
+
+	app := &App{
+		Base: clilib.NewBase(lggr, &cobra.Command{
+			Use:   "{{ .package }}",
+			Short: "Manage {{ .package }} deployments",
+		}),
+	}
+
+	// Add your Domain specific commands here
+	app.AddCommand(
+	//...
+	)
+
+	return app, nil
+}

@@ -1,0 +1,14 @@
+package {{.package}}
+
+// Archive archives migrations that are no longer needed. Extend this function to archive
+// additional migrations.
+//
+// Each 'Archive' call MUST include the migration key and the git SHA of the last commit that contained
+// the migration on the main branch.
+//
+// Example:
+// registry.Archive("0001_initial_migration", "a1b2c3d4e5f6")
+func (p *MigrationsRegistryProvider) Archive() {
+	// Uncomment this line to start archiving migrations with the `registry.Archive` method.
+	// registry := p.Registry()
+}
