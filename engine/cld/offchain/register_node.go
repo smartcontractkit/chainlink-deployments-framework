@@ -3,6 +3,7 @@ package offchain
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	nodev1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/node"
 	"github.com/smartcontractkit/chainlink-protos/job-distributor/v1/shared/ptypes"
@@ -42,10 +43,18 @@ func RegisterNode(
 		Key:   "environment",
 		Value: &environment,
 	})
-	for key, value := range extraLabels {
+
+	// Sort extraLabels keys to ensure deterministic label ordering
+	extraLabelKeys := make([]string, 0, len(extraLabels))
+	for key := range extraLabels {
+		extraLabelKeys = append(extraLabelKeys, key)
+	}
+	sort.Strings(extraLabelKeys)
+
+	for _, key := range extraLabelKeys {
 		labels = append(labels, &ptypes.Label{
 			Key:   key,
-			Value: pointer.To(value),
+			Value: pointer.To(extraLabels[key]),
 		})
 	}
 	if isBootstrap {
