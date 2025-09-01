@@ -430,34 +430,40 @@ func TestProposeJob_WithComplexSelectors(t *testing.T) {
 		Nodes: nodes,
 	}
 
-	// Expected selectors with multiple node labels
-	expectedFilter := &nodev1.ListNodesRequest_Filter{
-		Enabled: 1,
-		Selectors: []*ptypes.Selector{
-			{
-				Key:   "product",
-				Op:    ptypes.SelectorOp_EQ,
-				Value: pointer.To("keystone"),
-			},
-			{
-				Key:   "environment",
-				Op:    ptypes.SelectorOp_EQ,
-				Value: pointer.To("staging"),
-			},
-			{
-				Key:   "region",
-				Op:    ptypes.SelectorOp_EQ,
-				Value: pointer.To("us-west-2"),
-			},
-			{
-				Key:   "type",
-				Op:    ptypes.SelectorOp_EQ,
-				Value: pointer.To("plugin"),
-			},
-		},
-	}
+	// Use mock.MatchedBy to handle selector ordering since maps don't guarantee iteration order
+	mockClient.MockNodeServiceClient.On("ListNodes", ctx, mock.MatchedBy(func(req *nodev1.ListNodesRequest) bool {
+		if req.Filter == nil || req.Filter.Enabled != 1 {
+			return false
+		}
 
-	mockClient.MockNodeServiceClient.On("ListNodes", ctx, &nodev1.ListNodesRequest{Filter: expectedFilter}).Return(listNodesResponse, nil)
+		// Convert selectors to map for comparison
+		selectorMap := make(map[string]string)
+		for _, selector := range req.Filter.Selectors {
+			if selector.Value != nil {
+				selectorMap[selector.Key] = *selector.Value
+			}
+		}
+
+		// Check expected selectors
+		expectedSelectors := map[string]string{
+			"product":     "keystone",
+			"environment": "staging",
+			"region":      "us-west-2",
+			"type":        "plugin",
+		}
+
+		if len(selectorMap) != len(expectedSelectors) {
+			return false
+		}
+
+		for key, expectedValue := range expectedSelectors {
+			if actualValue, exists := selectorMap[key]; !exists || actualValue != expectedValue {
+				return false
+			}
+		}
+
+		return true
+	})).Return(listNodesResponse, nil)
 
 	proposeJobResponse := &jobv1.ProposeJobResponse{
 		Proposal: &jobv1.Proposal{
