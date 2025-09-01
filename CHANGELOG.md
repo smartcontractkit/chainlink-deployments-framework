@@ -1,5 +1,17 @@
 # chainlink-deployments-framework
 
+## 0.38.0
+
+### Minor Changes
+
+- [#349](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/349) [`811b2b5`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/811b2b5b0d60614e3d3df4e7e96d88282b4e35d5) Thanks [@DimitriosNaikopoulos](https://github.com/DimitriosNaikopoulos)! - Add scaffolding to the framework
+
+- [#350](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/350) [`0344f12`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/0344f129ce2b6d4f6af1df2abbb1c52763667fa3) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat: migrate ProposeJob and RegisterNode from CLD to CLDF
+
+- [#347](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/347) [`6639d28`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/6639d285c03ab8e92ca649508c5bba0fe22e2e51) Thanks [@jkongie](https://github.com/jkongie)! - Remove unused `changeset.RequireDeployerKeyBalance` method as it is unused.
+
+- [#351](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/351) [`2587c25`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/2587c254390f7a0e9f50aace28b12ea8b6878223) Thanks [@jkongie](https://github.com/jkongie)! - Adds an `environment.LoadConfig` method to load all config for an environment
+
 ## 0.37.1
 
 ### Patch Changes
