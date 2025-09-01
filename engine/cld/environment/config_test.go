@@ -8,10 +8,8 @@ import (
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v3"
 
 	config_env "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/env"
-	config_network "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/network"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 )
 
@@ -30,17 +28,21 @@ func Test_LoadConfig(t *testing.T) {
 
 				writeConfigNetworksFile(t, dom, "networks.yaml", "networks.yaml")
 				writeConfigLocalFile(t, dom, envKey, "config.testnet.yaml")
+				// Create domain config file so LoadNetworks can succeed
+				domainConfig := "environments:\n  " + envKey + ":\n    network_types:\n      - testnet"
+				err := os.WriteFile(dom.ConfigDomainFilePath(), []byte(domainConfig), filePerms)
+				require.NoError(t, err)
 			},
 		},
 		// TODO: potentially add test for failing to load network config with network file missing. This logic does not exist currently, as it just returns an empty config.
 		{
-			name: "fails to load env config",
+			name: "fails to load networks - no domain config",
 			beforeFunc: func(t *testing.T, dom domain.Domain, envKey string) {
 				t.Helper()
 
 				writeConfigNetworksFile(t, dom, "networks.yaml", "networks.yaml")
 			},
-			wantErr: "failed to load env config",
+			wantErr: "failed to load networks",
 		},
 	}
 
@@ -249,168 +251,6 @@ func Test_LoadEnvConfig(t *testing.T) { //nolint:paralleltest // These tests are
 				}
 
 				tt.wantFunc(t, got)
-			}
-		})
-	}
-}
-
-func Test_LoadNetworks(t *testing.T) {
-	t.Parallel()
-
-	var (
-		networks = []config_network.Network{
-			{
-				Type:          config_network.NetworkTypeMainnet,
-				ChainSelector: 1,
-				RPCs: []config_network.RPC{
-					{
-						RPCName:            "test_rpc",
-						PreferredURLScheme: "http",
-						HTTPURL:            "https://test.rpc",
-						WSURL:              "wss://test.rpc",
-					},
-				},
-			},
-			{
-				Type:          config_network.NetworkTypeTestnet,
-				ChainSelector: 2,
-				RPCs: []config_network.RPC{
-					{
-						RPCName:            "test_rpc",
-						PreferredURLScheme: "http",
-						HTTPURL:            "https://test.rpc",
-						WSURL:              "wss://test.rpc",
-					},
-				},
-			},
-		}
-
-		cfg        = config_network.NewConfig(networks)
-		mainnetCfg = config_network.NewConfig([]config_network.Network{networks[0]})
-		testnetCfg = config_network.NewConfig([]config_network.Network{networks[1]})
-	)
-
-	fixture, err := yaml.Marshal(cfg)
-	require.NoError(t, err)
-
-	dom, _ := setupConfigDirs(t)
-
-	// Create the network config file
-	err = os.WriteFile(dom.ConfigNetworksFilePath("networks.yaml"), fixture, 0600)
-	require.NoError(t, err)
-
-	// Temporary domain for testing the Data Streams domain exception
-	var (
-		streamsDomainDir = filepath.Join(dom.RootPath(), "data-streams")
-		streamsConfigDir = filepath.Join(streamsDomainDir, ".config", "networks")
-	)
-
-	err = os.MkdirAll(streamsConfigDir, 0755)
-	require.NoError(t, err)
-
-	err = os.WriteFile(
-		filepath.Join(streamsConfigDir, "networks.yaml"), fixture, 0600,
-	)
-	require.NoError(t, err)
-
-	tests := []struct {
-		name       string
-		giveEnv    string
-		giveDomain domain.Domain
-		want       *config_network.Config
-		wantErr    string
-	}{
-		{
-			name:       "Local",
-			giveEnv:    Testnet,
-			giveDomain: dom,
-			want:       testnetCfg,
-		},
-		{
-			name:       "Staging Testnet",
-			giveEnv:    StagingTestnet,
-			giveDomain: dom,
-			want:       testnetCfg,
-		},
-		{
-			name:       "Prod Testnet",
-			giveEnv:    ProdTestnet,
-			giveDomain: dom,
-			want:       testnetCfg,
-		},
-		{
-			name:       "Staging Mainnet",
-			giveEnv:    StagingMainnet,
-			giveDomain: dom,
-			want:       mainnetCfg,
-		},
-		{
-			name:       "Prod Mainnet",
-			giveEnv:    ProdMainnet,
-			giveDomain: dom,
-			want:       mainnetCfg,
-		},
-		{
-			name:       "Prod",
-			giveEnv:    Prod,
-			giveDomain: dom,
-			want:       cfg,
-		},
-		{
-			name:       "Testnet",
-			giveEnv:    Testnet,
-			giveDomain: dom,
-			want:       testnetCfg,
-		},
-		{
-			name:       "Sol Staging",
-			giveEnv:    SolStaging,
-			giveDomain: dom,
-			want:       testnetCfg,
-		},
-		{
-			name:       "Staging",
-			giveEnv:    Staging,
-			giveDomain: dom,
-			want:       testnetCfg,
-		},
-		// To be removed once we remove legacy predefined environments
-		{
-			name:       "Staging",
-			giveEnv:    Staging,
-			giveDomain: domain.NewDomain(dom.RootPath(), "data-streams"),
-			want:       cfg,
-		},
-		{
-			name:       "Mainnet",
-			giveEnv:    Mainnet,
-			giveDomain: dom,
-			want:       mainnetCfg,
-		},
-		{
-			name:       "Unknown Environment",
-			giveEnv:    "unknown",
-			giveDomain: dom,
-			wantErr:    "unknown env: unknown",
-		},
-		{
-			name:       "failed to load network config",
-			giveEnv:    StagingTestnet,
-			giveDomain: domain.NewDomain("nonexistent", "dummy"),
-			wantErr:    "failed to load network config",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			got, err := LoadNetworks(tt.giveEnv, tt.giveDomain, logger.Test(t))
-			if tt.wantErr != "" {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-				assert.Equal(t, tt.want, got)
 			}
 		})
 	}
