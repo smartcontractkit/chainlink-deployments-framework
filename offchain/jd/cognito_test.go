@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/oauth2"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/offchain/jd/internal/mocks"
+	"github.com/smartcontractkit/chainlink-deployments-framework/internal/testing/jd/mocks"
 )
 
 // newCognitoTokenSourceWithClient creates a new CognitoTokenSource with a custom client.

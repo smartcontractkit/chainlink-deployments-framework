@@ -10,7 +10,7 @@ import (
 	"golang.org/x/oauth2"
 	"google.golang.org/grpc/credentials/insecure"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/offchain/jd/internal/mocks"
+	"github.com/smartcontractkit/chainlink-deployments-framework/internal/testing/jd/mocks"
 )
 
 func TestNewJDClient_ConfigurationScenarios(t *testing.T) {

@@ -1,15 +1,15 @@
 all: false
-dir: '{{.InterfaceDir}}'
+dir: "{{.InterfaceDir}}"
 filename: "mocks_test.go"
 force-file-write: true
 formatter: goimports
 log-level: info
-structname: '{{.Mock}}{{.InterfaceName}}'
-pkgname: '{{.SrcPackageName}}'
+structname: "{{.Mock}}{{.InterfaceName}}"
+pkgname: "{{.SrcPackageName}}"
 recursive: false
 require-template-schema-exists: true
 template: testify
-template-schema: '{{.Template}}.schema.json'
+template-schema: "{{.Template}}.schema.json"
 packages:
   github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider:
     config:
@@ -20,7 +20,7 @@ packages:
     config:
       all: false
       pkgname: "kmsmocks"
-      dir: '{{.InterfaceDir}}/mocks'
+      dir: "{{.InterfaceDir}}/mocks"
       filename: "mock_{{.InterfaceName | snakecase}}.go"
     interfaces:
       Client:
@@ -36,7 +36,7 @@ packages:
     config:
       all: false
       pkgname: "mocks"
-      dir: "offchain/jd/internal/mocks"
+      dir: "internal/testing/jd/mocks"
       filename: "mock_{{.InterfaceName | snakecase}}.go"
     interfaces:
       JobServiceClient:
@@ -44,7 +44,7 @@ packages:
     config:
       all: false
       pkgname: "mocks"
-      dir: "offchain/jd/internal/mocks"
+      dir: "internal/testing/jd/mocks"
       filename: "mock_{{.InterfaceName | snakecase}}.go"
     interfaces:
       CSAServiceClient:
@@ -52,7 +52,7 @@ packages:
     config:
       all: false
       pkgname: "mocks"
-      dir: "offchain/jd/internal/mocks"
+      dir: "internal/testing/jd/mocks"
       filename: "mock_{{.InterfaceName | snakecase}}.go"
     interfaces:
       NodeServiceClient:
