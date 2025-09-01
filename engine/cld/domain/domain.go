@@ -131,6 +131,11 @@ func (d Domain) ConfigNetworksDirPath() string {
 	return filepath.Join(d.ConfigDirPath(), DomainConfigNetworksDirName)
 }
 
+// ConfigNetworksFilePath returns the path to a domain environment's networks config file.
+func (d Domain) ConfigNetworksFilePath(filename string) string {
+	return filepath.Join(d.ConfigNetworksDirPath(), filename)
+}
+
 // ConfigCIDirPath returns the path where the domain's CI .env files are stored.
 func (d Domain) ConfigCIDirPath() string {
 	return filepath.Join(d.ConfigDirPath(), DomainConfigCIDirName)
