@@ -91,7 +91,7 @@ func Test_Load_InvalidEnvironment(t *testing.T) {
 	getCtx := func() context.Context { return context.Background() }
 
 	_, err := Load(getCtx, lggr, "non_existent_env", domain, false)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to load networks")
 }
 
@@ -105,7 +105,7 @@ func Test_Load_AddressBookFailure(t *testing.T) {
 	getCtx := func() context.Context { return context.Background() }
 
 	_, err := Load(getCtx, lggr, "staging", domain, false)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "addresses.json: no such file or directory")
 }
 
@@ -119,7 +119,7 @@ func Test_Load_LoadNodesFailure(t *testing.T) {
 	getCtx := func() context.Context { return context.Background() }
 
 	_, err := Load(getCtx, lggr, "staging", domain, false)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "nodes.json: no such file or directory")
 }
 
@@ -133,7 +133,8 @@ func Test_Load_LoadOffchainClientFailure(t *testing.T) {
 	getCtx := func() context.Context { return context.Background() }
 
 	assert.Panics(t, func() {
-		Load(getCtx, lggr, "staging", domain, false)
+		_, err := Load(getCtx, lggr, "staging", domain, false)
+		require.NoError(t, err)
 	})
 }
 
@@ -147,7 +148,7 @@ func Test_Load_NoError(t *testing.T) {
 	getCtx := func() context.Context { return context.Background() }
 
 	_, err := Load(getCtx, lggr, "staging", domain, false, WithoutJD())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func setupTest(t *testing.T, setupFnc ...func(t *testing.T, domain cldf_domain.Domain)) cldf_domain.Domain {
@@ -158,14 +159,14 @@ func setupTest(t *testing.T, setupFnc ...func(t *testing.T, domain cldf_domain.D
 
 	// Create a minimal domain structure
 	domainsDir := filepath.Join(tempDir, "domains")
-	require.NoError(t, os.MkdirAll(domainsDir, 0o755))
+	require.NoError(t, os.MkdirAll(domainsDir, 0755))
 
 	testDomainDir := filepath.Join(domainsDir, "test")
-	require.NoError(t, os.MkdirAll(testDomainDir, 0o755))
+	require.NoError(t, os.MkdirAll(testDomainDir, 0755))
 
 	// Create environments directory
 	envsDir := filepath.Join(testDomainDir, "staging")
-	require.NoError(t, os.MkdirAll(envsDir, 0o755))
+	require.NoError(t, os.MkdirAll(envsDir, 0755))
 
 	// Set up domain
 	domain := cldf_domain.NewDomain(domainsDir, "test")
@@ -182,33 +183,33 @@ func setupTestConfig(t *testing.T, domain cldf_domain.Domain) {
 
 	// Create a minimal config directory
 	configDir := filepath.Join(domain.DirPath(), ".config")
-	require.NoError(t, os.MkdirAll(configDir, 0o755))
+	require.NoError(t, os.MkdirAll(configDir, 0755))
 	networksDir := filepath.Join(configDir, "networks")
-	require.NoError(t, os.MkdirAll(networksDir, 0o755))
+	require.NoError(t, os.MkdirAll(networksDir, 0755))
 
 	// Create network configuration file
 	input, err := os.ReadFile(filepath.Join("testdata", "networks.yaml"))
 	require.NoError(t, err)
 
 	networksPath := filepath.Join(networksDir, "networks-testnet.yaml")
-	require.NoError(t, os.WriteFile(networksPath, []byte(input), 0o644))
+	require.NoError(t, os.WriteFile(networksPath, input, 0600))
 
 	// Create local configuration file
 	localDir := filepath.Join(configDir, "local")
-	require.NoError(t, os.MkdirAll(localDir, 0o755))
+	require.NoError(t, os.MkdirAll(localDir, 0755))
 
 	input, err = os.ReadFile(filepath.Join("testdata", "config.staging.yaml"))
 	require.NoError(t, err)
 
 	localPath := filepath.Join(localDir, "config.staging.yaml")
-	require.NoError(t, os.WriteFile(localPath, []byte(input), 0o644))
+	require.NoError(t, os.WriteFile(localPath, input, 0600))
 
 	// Create domains configuration file
 	input, err = os.ReadFile(filepath.Join("testdata", "domain.yaml"))
 	require.NoError(t, err)
 
 	domainPath := filepath.Join(configDir, "domain.yaml")
-	require.NoError(t, os.WriteFile(domainPath, []byte(input), 0o644))
+	require.NoError(t, os.WriteFile(domainPath, input, 0600))
 }
 
 func setupAddressbook(t *testing.T, domain cldf_domain.Domain) {
@@ -219,7 +220,7 @@ func setupAddressbook(t *testing.T, domain cldf_domain.Domain) {
 
 	// Create address book file
 	addressBookPath := filepath.Join(env.DirPath(), "addresses.json")
-	require.NoError(t, os.WriteFile(addressBookPath, []byte(addressbookConfig), 0o644))
+	require.NoError(t, os.WriteFile(addressBookPath, []byte(addressbookConfig), 0600))
 }
 
 func setupNodes(t *testing.T, domain cldf_domain.Domain) {
@@ -230,5 +231,5 @@ func setupNodes(t *testing.T, domain cldf_domain.Domain) {
 
 	// Create nodes file
 	nodesPath := filepath.Join(env.DirPath(), "nodes.json")
-	require.NoError(t, os.WriteFile(nodesPath, []byte(nodesConfig), 0o644))
+	require.NoError(t, os.WriteFile(nodesPath, []byte(nodesConfig), 0600))
 }
