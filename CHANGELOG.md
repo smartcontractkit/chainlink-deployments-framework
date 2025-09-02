@@ -1,5 +1,21 @@
 # chainlink-deployments-framework
 
+## 0.39.0
+
+### Minor Changes
+
+- [#357](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/357) [`8289afa`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/8289afa366c63d9288251b4c355f65135537b517) Thanks [@jkongie](https://github.com/jkongie)! - Moves `environment.Config` to `config.Config`
+
+- [#352](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/352) [`5088d9c`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/5088d9c99c8bdae6f00d4190ef8f0b1766394cb6) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix: migrate Update Node from CLD
+
+### Patch Changes
+
+- [#355](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/355) [`63d8f65`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/63d8f65e3f156862d00ed4562fbdc9d460b8a1e7) Thanks [@bytesizedroll](https://github.com/bytesizedroll)! - Fix flaky test in TestRegisterNode_Success_Plugin
+
+- [#358](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/358) [`6ef6875`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/6ef6875d8d498f55c9bc89d6969c20006297cc71) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - Migrate LoadCatalogStore and LoadJDClient to engine
+
+- [#356](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/356) [`fd159c8`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/fd159c8e15ae31aacefeb9dea7b5c947c97b5ad6) Thanks [@giogam](https://github.com/giogam)! - feat(environment): removes getLegacyNetworkTypes
+
 ## 0.38.0
 
 ### Minor Changes
