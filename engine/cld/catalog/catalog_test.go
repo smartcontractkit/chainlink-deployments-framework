@@ -6,9 +6,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore/catalog/remote"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config"
 	config_env "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/env"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
 )
 
 func TestLoadCatalog(t *testing.T) {
@@ -17,14 +17,14 @@ func TestLoadCatalog(t *testing.T) {
 	tests := []struct {
 		name    string
 		env     string
-		config  *environment.Config
+		config  *config.Config
 		domain  domain.Domain
 		wantErr string
 	}{
 		{
 			name: "successful catalog loading",
 			env:  "testnet",
-			config: &environment.Config{
+			config: &config.Config{
 				Env: &config_env.Config{
 					Catalog: config_env.CatalogConfig{
 						GRPC: "localhost:50051",
@@ -36,7 +36,7 @@ func TestLoadCatalog(t *testing.T) {
 		{
 			name: "valid config with different grpc url",
 			env:  "testnet",
-			config: &environment.Config{
+			config: &config.Config{
 				Env: &config_env.Config{
 					Catalog: config_env.CatalogConfig{
 						GRPC: "grpc.example.com:443",

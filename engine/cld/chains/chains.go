@@ -19,9 +19,9 @@ import (
 	cldf_sui_provider "github.com/smartcontractkit/chainlink-deployments-framework/chain/sui/provider"
 	cldf_tron_provider "github.com/smartcontractkit/chainlink-deployments-framework/chain/tron/provider"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
-	cldf_config_env "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/env"
-	cldf_config_network "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/network"
-	cldf_environment "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config"
+	config_env "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/env"
+	config_network "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/network"
 )
 
 // LoadChains concurrently loads all chains for the given environment. Each chain is loaded in parallel, and the results
@@ -30,10 +30,10 @@ import (
 func LoadChains(
 	ctx context.Context,
 	lggr logger.Logger,
-	config *cldf_environment.Config,
+	cfg *config.Config,
 	chainSelectorsToLoad []uint64,
 ) (cldf_chain.BlockChains, error) {
-	chainLoaders := newChainLoaders(lggr, config.Networks, config.Env.Onchain)
+	chainLoaders := newChainLoaders(lggr, cfg.Networks, cfg.Env.Onchain)
 
 	// Define a result struct to hold chain loading results
 	type chainResult struct {
@@ -160,7 +160,7 @@ func LoadChains(
 // This ensures that only properly configured chains are attempted to be loaded, preventing runtime errors
 // due to missing credentials or configuration.
 func newChainLoaders(
-	lggr logger.Logger, networks *cldf_config_network.Config, cfg cldf_config_env.OnchainConfig,
+	lggr logger.Logger, networks *config_network.Config, cfg config_env.OnchainConfig,
 ) map[string]ChainLoader {
 	// EVM chains are always loaded.
 	loaders := map[string]ChainLoader{
@@ -205,13 +205,13 @@ type ChainLoader interface {
 // baseChainLoader is a base implementation of the ChainLoader interface. It contains the common
 // fields for all chain loaders.
 type baseChainLoader struct {
-	networks *cldf_config_network.Config
-	cfg      cldf_config_env.OnchainConfig
+	networks *config_network.Config
+	cfg      config_env.OnchainConfig
 }
 
 // newBaseChainLoader creates a new base chain loader.
 func newBaseChainLoader(
-	networks *cldf_config_network.Config, cfg cldf_config_env.OnchainConfig,
+	networks *config_network.Config, cfg config_env.OnchainConfig,
 ) *baseChainLoader {
 	return &baseChainLoader{
 		networks: networks,
@@ -220,13 +220,13 @@ func newBaseChainLoader(
 }
 
 // getNetwork gets the network for a given selector.
-func (l *baseChainLoader) getNetwork(selector uint64) (cldf_config_network.Network, error) {
+func (l *baseChainLoader) getNetwork(selector uint64) (config_network.Network, error) {
 	network, err := l.networks.NetworkBySelector(selector)
 	if err != nil {
-		return cldf_config_network.Network{}, err
+		return config_network.Network{}, err
 	}
 	if len(network.RPCs) == 0 {
-		return cldf_config_network.Network{}, fmt.Errorf("no RPCs found for chain selector: %d", selector)
+		return config_network.Network{}, fmt.Errorf("no RPCs found for chain selector: %d", selector)
 	}
 
 	return network, nil
@@ -239,7 +239,7 @@ type chainLoaderAptos struct {
 
 // newChainLoaderAptos creates a new chain loader for Aptos.
 func newChainLoaderAptos(
-	networks *cldf_config_network.Config, cfg cldf_config_env.OnchainConfig,
+	networks *config_network.Config, cfg config_env.OnchainConfig,
 ) *chainLoaderAptos {
 	return &chainLoaderAptos{
 		baseChainLoader: newBaseChainLoader(networks, cfg),
@@ -274,7 +274,7 @@ type chainLoaderSui struct {
 
 // newChainLoaderSui creates a new chain loader for Sui.
 func newChainLoaderSui(
-	networks *cldf_config_network.Config, cfg cldf_config_env.OnchainConfig,
+	networks *config_network.Config, cfg config_env.OnchainConfig,
 ) *chainLoaderSui {
 	return &chainLoaderSui{
 		baseChainLoader: newBaseChainLoader(networks, cfg),
@@ -309,7 +309,7 @@ type chainLoaderSolana struct {
 
 // newChainLoaderSolana a new chain loader for Solana.
 func newChainLoaderSolana(
-	networks *cldf_config_network.Config, cfg cldf_config_env.OnchainConfig,
+	networks *config_network.Config, cfg config_env.OnchainConfig,
 ) *chainLoaderSolana {
 	return &chainLoaderSolana{
 		baseChainLoader: newBaseChainLoader(networks, cfg),
@@ -357,7 +357,7 @@ type chainLoaderEVM struct {
 
 // newChainLoaderEVM creates a new chain loader for EVM.
 func newChainLoaderEVM(
-	networks *cldf_config_network.Config, cfg cldf_config_env.OnchainConfig, lggr logger.Logger,
+	networks *config_network.Config, cfg config_env.OnchainConfig, lggr logger.Logger,
 ) *chainLoaderEVM {
 	return &chainLoaderEVM{
 		baseChainLoader: newBaseChainLoader(networks, cfg),
@@ -457,7 +457,7 @@ func (l *chainLoaderEVM) isZkSyncVM(selector uint64) bool {
 }
 
 // toRPCs converts a network to a slice of RPCs for a specific chain ID.
-func (l *chainLoaderEVM) toRPCs(rpcCfgs []cldf_config_network.RPC) ([]cldf.RPC, error) {
+func (l *chainLoaderEVM) toRPCs(rpcCfgs []config_network.RPC) ([]cldf.RPC, error) {
 	rpcs := make([]cldf.RPC, 0, len(rpcCfgs))
 
 	for _, rpcCfg := range rpcCfgs {
@@ -481,7 +481,7 @@ func (l *chainLoaderEVM) toRPCs(rpcCfgs []cldf_config_network.RPC) ([]cldf.RPC, 
 
 // evmSignerGenerator creates a transactor generator for an EVM chain.
 func (l *chainLoaderEVM) evmSignerGenerator(
-	cfg cldf_config_env.OnchainConfig,
+	cfg config_env.OnchainConfig,
 ) (cldf_evm_provider.SignerGenerator, error) {
 	if useKMS(cfg.KMS) {
 		return cldf_evm_provider.TransactorFromKMS(
@@ -498,7 +498,7 @@ func (l *chainLoaderEVM) evmSignerGenerator(
 // function, but falls back to Geth's confirm function if Seth config is not provided, or there
 // are no wrappers provided.
 func (l *chainLoaderEVM) confirmFunctor(
-	network cldf_config_network.Network, sethCfg *cldf_config_env.SethConfig,
+	network config_network.Network, sethCfg *config_env.SethConfig,
 ) cldf_evm_provider.ConfirmFunctor {
 	if sethCfg == nil || len(sethCfg.GethWrapperDirs) == 0 {
 		l.lggr.Infow("No Seth config provided, using Geth's confirm function",
@@ -519,7 +519,7 @@ func (l *chainLoaderEVM) confirmFunctor(
 
 // zkSyncSignerGenerator creates a ZkSync signer generator for a zkSync chain.
 func (l *chainLoaderEVM) zkSyncSignerGenerator(
-	cfg cldf_config_env.OnchainConfig,
+	cfg config_env.OnchainConfig,
 ) (cldf_evm_provider.ZkSyncSignerGenerator, error) {
 	if useKMS(cfg.KMS) {
 		return cldf_evm_provider.ZkSyncSignerFromKMS(
@@ -539,7 +539,7 @@ type chainLoaderTron struct {
 
 // newChainLoaderTron a new chain loader for Tron.
 func newChainLoaderTron(
-	networks *cldf_config_network.Config, cfg cldf_config_env.OnchainConfig,
+	networks *config_network.Config, cfg config_env.OnchainConfig,
 ) *chainLoaderTron {
 	return &chainLoaderTron{
 		baseChainLoader: newBaseChainLoader(networks, cfg),
@@ -577,7 +577,7 @@ func (l *chainLoaderTron) Load(ctx context.Context, selector uint64) (cldf_chain
 
 // tronSignerGenerator creates a transactor generator for an TRON chain.
 func (l *chainLoaderTron) tronSignerGenerator(
-	cfg cldf_config_env.OnchainConfig,
+	cfg config_env.OnchainConfig,
 ) (cldf_tron_provider.SignerGenerator, error) {
 	if useKMS(cfg.KMS) {
 		return cldf_tron_provider.SignerGenKMS(
@@ -591,6 +591,6 @@ func (l *chainLoaderTron) tronSignerGenerator(
 }
 
 // useKMS returns true if both KeyID and KeyRegion are set in the provided KMS config.
-func useKMS(kmsCfg cldf_config_env.KMSConfig) bool {
+func useKMS(kmsCfg config_env.KMSConfig) bool {
 	return kmsCfg.KeyID != "" && kmsCfg.KeyRegion != ""
 }
