@@ -7,7 +7,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore/catalog/remote"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/internal"
+	credentials "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/internal/credentials"
 )
 
 // LoadCatalog loads a catalog data store for the specified domain and environment.
@@ -31,7 +31,7 @@ func LoadCatalog(ctx context.Context, env string,
 func loadCatalogClient(
 	ctx context.Context, env string, url string,
 ) (*remote.CatalogClient, error) {
-	creds := internal.GetCredsForEnv(env)
+	creds := credentials.GetCredsForEnv(env)
 
 	client, err := remote.NewCatalogClient(ctx, remote.CatalogConfig{
 		GRPC:  url,
