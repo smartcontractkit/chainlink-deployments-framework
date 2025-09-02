@@ -80,6 +80,7 @@ func ScaffoldDomain(domain cldf_domain.Domain, opts ...ScaffoldOption) error {
 			}),
 		}),
 		dirFSNode(".config", []*fsnode{
+			fileFSNode("domain.yaml", withTemplate("domain.yaml.tmpl")),
 			dirFSNode("networks", []*fsnode{
 				fileFSNode("mainnet.yaml", withTemplate("mainnet.yaml.tmpl")),
 				fileFSNode("testnet.yaml", withTemplate("testnet.yaml.tmpl")),

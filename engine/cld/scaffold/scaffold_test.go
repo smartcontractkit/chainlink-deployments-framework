@@ -55,6 +55,9 @@ func Test_ScaffoldDomain(t *testing.T) {
 	_, err = os.Stat(filepath.Join(dom.DirPath(), ".config", "ci", "common.env"))
 	require.NoError(t, err)
 
+	_, err = os.Stat(filepath.Join(dom.DirPath(), ".config", "domain.yaml"))
+	require.NoError(t, err)
+
 	// Check that go.mod file is created
 	goModPath := filepath.Join(dom.DirPath(), "go.mod")
 	_, err = os.Stat(goModPath)
