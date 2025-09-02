@@ -1,4 +1,4 @@
-package environment
+package config
 
 import (
 	"fmt"
@@ -8,58 +8,9 @@ import (
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 
 	config_domain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/domain"
-	config_env "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/env"
 	config_network "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/network"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 )
-
-// Config consolidates all the config that is required to be loaded for a domain environment.
-//
-// Specifically it contains the network config and secrets which is loaded from files or env vars.
-type Config struct {
-	Networks *config_network.Config // The network config loaded from the network manifest file
-	Env      *config_env.Config     // The cld engine's environment config
-}
-
-// LoadConfig loads and consolidates all configuration required for a domain environment, including
-// network configuration and environment-specific settings.n.
-func LoadConfig(dom domain.Domain, env string, lggr logger.Logger) (*Config, error) {
-	// Load the network manifest for the domain environment.
-	networks, err := LoadNetworks(env, dom, lggr)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load networks: %w", err)
-	}
-
-	envCfg, err := LoadEnvConfig(dom, env)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load env config: %w", err)
-	}
-
-	return &Config{
-		Networks: networks,
-		Env:      envCfg,
-	}, nil
-}
-
-// LoadEnvConfig retrieves the environment configuration for a given domain and environment.
-//
-// Loading strategy:
-//   - In CI environments: Loads configuration exclusively from environment variables set by the CI pipeline.
-//   - In local development: Loads configuration from a local config file specific to the domain and environment.
-func LoadEnvConfig(dom domain.Domain, env string) (*config_env.Config, error) {
-	if isCI() {
-		cfg, err := config_env.LoadEnv()
-		if err != nil {
-			return nil, fmt.Errorf("failed to load env config: %w", err)
-		}
-
-		return cfg, nil
-	}
-
-	fp := filepath.Join(dom.ConfigLocalFilePath(env))
-
-	return config_env.LoadFile(fp)
-}
 
 // LoadNetworks retrieves the network configuration for the given domain and filters the networks
 // according to the specified environment. This ensures that only networks relevant to the selected

@@ -1,77 +1,14 @@
-package environment
+package config
 
 import (
 	"os"
-	"path/filepath"
 	"testing"
 
-	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	config_env "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/env"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 )
-
-func Test_LoadConfig(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name       string
-		beforeFunc func(t *testing.T, dom domain.Domain, envKey string)
-		wantErr    string
-	}{
-		{
-			name: "Loads config",
-			beforeFunc: func(t *testing.T, dom domain.Domain, envKey string) {
-				t.Helper()
-
-				writeConfigNetworksFile(t, dom, "networks.yaml", "networks.yaml")
-				writeConfigLocalFile(t, dom, envKey, "config.testnet.yaml")
-				// Create domain config file so LoadNetworks can succeed
-				domainConfig := "environments:\n  " + envKey + ":\n    network_types:\n      - testnet"
-				err := os.WriteFile(dom.ConfigDomainFilePath(), []byte(domainConfig), filePerms)
-				require.NoError(t, err)
-			},
-		},
-		// TODO: potentially add test for failing to load network config with network file missing. This logic does not exist currently, as it just returns an empty config.
-		{
-			name: "fails to load networks - no domain config",
-			beforeFunc: func(t *testing.T, dom domain.Domain, envKey string) {
-				t.Helper()
-
-				writeConfigNetworksFile(t, dom, "networks.yaml", "networks.yaml")
-			},
-			wantErr: "failed to load networks",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			var (
-				dom, envKey = setupConfigDirs(t)
-				lggr        = logger.Test(t)
-			)
-
-			if tt.beforeFunc != nil {
-				tt.beforeFunc(t, dom, envKey)
-			}
-
-			got, err := LoadConfig(dom, envKey, lggr)
-
-			if tt.wantErr != "" {
-				require.Error(t, err)
-				require.ErrorContains(t, err, tt.wantErr)
-			} else {
-				require.NoError(t, err)
-				require.NotEmpty(t, got.Networks)
-				require.NotNil(t, got.Env)
-			}
-		})
-	}
-}
 
 func Test_LoadEnvConfig(t *testing.T) { //nolint:paralleltest // These tests are not parallel safe due to setting of env vars
 	tests := []struct {
@@ -254,61 +191,4 @@ func Test_LoadEnvConfig(t *testing.T) { //nolint:paralleltest // These tests are
 			}
 		})
 	}
-}
-
-var (
-	// Directory permissions for test setup
-	dirPerms = os.FileMode(0700)
-	// File permissions for test setup
-	filePerms = os.FileMode(0600)
-)
-
-// setupConfigDirs sets up a minimal domain structure with a .config directory structure and returns
-// the domain and environment key.
-func setupConfigDirs(t *testing.T) (domain.Domain, string) {
-	t.Helper()
-
-	// Create a temporary directory structure for testing
-	rootDir := t.TempDir()
-	domainKey := "test-domain"
-	envKey := "testnet"
-
-	// Set up minimal domain structure
-	domainDir := filepath.Join(rootDir, domainKey)
-	require.NoError(t, os.MkdirAll(domainDir, dirPerms))
-
-	// Create .config directory structure
-	configDir := filepath.Join(domainDir, ".config")
-	networksDir := filepath.Join(configDir, "networks")
-	require.NoError(t, os.MkdirAll(networksDir, dirPerms))
-
-	// Create local directory
-	localDir := filepath.Join(configDir, "local")
-	require.NoError(t, os.MkdirAll(localDir, dirPerms))
-
-	return domain.NewDomain(rootDir, domainKey), envKey
-}
-
-// writeConfigLocalFile writes a config file to the domain's local directory with testdata.
-func writeConfigLocalFile(t *testing.T, dom domain.Domain, envKey string, testdataFileName string) {
-	t.Helper()
-
-	// Create .config.testnet.yaml file for the new config format
-	input, err := os.ReadFile(filepath.Join("testdata", testdataFileName))
-	require.NoError(t, err)
-
-	err = os.WriteFile(dom.ConfigLocalFilePath(envKey), input, filePerms)
-	require.NoError(t, err)
-}
-
-// writeConfigNetworksFile writes a config file to the domain's networks directory with testdata.
-func writeConfigNetworksFile(t *testing.T, dom domain.Domain, filename string, testdataFileName string) {
-	t.Helper()
-
-	// Create network configuration file
-	input, err := os.ReadFile(filepath.Join("testdata", testdataFileName))
-	require.NoError(t, err)
-
-	err = os.WriteFile(dom.ConfigNetworksFilePath(filename), input, filePerms)
-	require.NoError(t, err)
 }
