@@ -72,27 +72,15 @@ func LoadNetworks(
 		return nil, fmt.Errorf("failed to load network config: %w", err)
 	}
 
-	// Try to load from domain config first
+	// Load network types from domain config
 	domainConfigPath := filepath.Join(dom.ConfigDomainFilePath())
 	if _, statErr := os.Stat(domainConfigPath); statErr != nil {
-		// Domain config doesn't exist, use legacy logic
-		networkTypes, legacyErr := getLegacyNetworkTypes(env, dom, lggr)
-		if legacyErr != nil {
-			return nil, fmt.Errorf("failed to determine network types: %w", legacyErr)
-		}
-		lggr.Infof("Loaded %s Networks for %s/%s", networkTypes, dom.Key(), env)
-
-		return cfg.FilterWith(config_network.TypesFilter(networkTypes...)), nil
+		return nil, fmt.Errorf("domain config not found at %s: %w", domainConfigPath, statErr)
 	}
 
-	// Happy path: domain config exists, try to load it
 	networkTypes, err := loadDomainConfigNetworkTypes(env, dom)
 	if err != nil {
-		lggr.Warnf("Failed to load domain config, falling back to legacy logic: %v", err)
-		networkTypes, err = getLegacyNetworkTypes(env, dom, lggr)
-		if err != nil {
-			return nil, fmt.Errorf("failed to determine network types: %w", err)
-		}
+		return nil, fmt.Errorf("failed to load domain config network types: %w", err)
 	}
 
 	lggr.Infof("Loaded %s Networks for %s/%s", networkTypes, dom.Key(), env)
@@ -151,36 +139,6 @@ func loadDomainConfigNetworkTypes(env string, dom domain.Domain) ([]config_netwo
 	networkTypes := make([]config_network.NetworkType, 0, len(envConfig.NetworkTypes))
 	for _, networkType := range envConfig.NetworkTypes {
 		networkTypes = append(networkTypes, config_network.NetworkType(networkType))
-	}
-
-	return networkTypes, nil
-}
-
-// getLegacyNetworkTypes returns network types based on legacy switch logic.
-func getLegacyNetworkTypes(env string, dom domain.Domain, lggr logger.Logger) ([]config_network.NetworkType, error) {
-	var networkTypes []config_network.NetworkType
-	switch env {
-	case Local, StagingTestnet, ProdTestnet:
-		networkTypes = []config_network.NetworkType{config_network.NetworkTypeTestnet}
-	case StagingMainnet, ProdMainnet:
-		networkTypes = []config_network.NetworkType{config_network.NetworkTypeMainnet}
-	case Prod:
-		networkTypes = []config_network.NetworkType{config_network.NetworkTypeTestnet, config_network.NetworkTypeMainnet}
-	// The following environments are legacy environments that are used to support domains which
-	// have not transitioned to the new environment structure.
-	case Testnet, SolStaging:
-		networkTypes = []config_network.NetworkType{config_network.NetworkTypeTestnet}
-	case Staging:
-		if dom.Key() == "data-streams" {
-			networkTypes = []config_network.NetworkType{config_network.NetworkTypeTestnet, config_network.NetworkTypeMainnet}
-		} else {
-			networkTypes = []config_network.NetworkType{config_network.NetworkTypeTestnet}
-		}
-	case Mainnet:
-		networkTypes = []config_network.NetworkType{config_network.NetworkTypeMainnet}
-	default:
-		lggr.Errorf("Unknown environment: %s", env)
-		return nil, fmt.Errorf("unknown env: %s", env)
 	}
 
 	return networkTypes, nil
