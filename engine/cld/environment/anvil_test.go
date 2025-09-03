@@ -1,7 +1,6 @@
 package environment
 
 import (
-	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -87,7 +86,7 @@ func Test_AnvilClient_SendTransaction_Success(t *testing.T) {
 	to := "0x0987654321098765432109876543210987654321"
 	data := []byte("test data")
 
-	err := client.SendTransaction(context.Background(), from, to, data)
+	err := client.SendTransaction(t.Context(), from, to, data)
 
 	require.NoError(t, err)
 }
@@ -105,7 +104,7 @@ func Test_AnvilClient_SendTransaction_FailOnSetBalance(t *testing.T) {
 	to := "0x0987654321098765432109876543210987654321"
 	data := []byte("test data")
 
-	err := client.SendTransaction(context.Background(), from, to, data)
+	err := client.SendTransaction(t.Context(), from, to, data)
 
 	// Should fail on the anvil_setBalance method
 	require.ErrorContains(t, err, "failed to update balance")
@@ -124,7 +123,7 @@ func Test_AnvilClient_SendTransaction_FailOnEthSendTransaction(t *testing.T) {
 	to := "0x0987654321098765432109876543210987654321"
 	data := []byte("test data")
 
-	err := client.SendTransaction(context.Background(), from, to, data)
+	err := client.SendTransaction(t.Context(), from, to, data)
 
 	require.ErrorContains(t, err, "failed to send transaction")
 }
@@ -142,7 +141,7 @@ func Test_AnvilClient_SendTransaction_FailOnMine(t *testing.T) {
 	to := "0x0987654321098765432109876543210987654321"
 	data := []byte("test data")
 
-	err := client.SendTransaction(context.Background(), from, to, data)
+	err := client.SendTransaction(t.Context(), from, to, data)
 
 	require.ErrorContains(t, err, "failed to mine transaction")
 }
