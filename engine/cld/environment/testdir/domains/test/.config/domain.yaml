@@ -1,5 +1,0 @@
-environments:
-  staging:
-    network_types:
-      - testnet
-      - mainnet
