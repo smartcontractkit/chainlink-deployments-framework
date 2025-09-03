@@ -1,5 +1,15 @@
 # chainlink-deployments-framework
 
+## 0.40.0
+
+### Minor Changes
+
+- [#363](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/363) [`6fa7125`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/6fa71251f39b58037fff33f4dda6c65a6e9851fe) Thanks [@DimitriosNaikopoulos](https://github.com/DimitriosNaikopoulos)! - Add load environment to framework
+
+### Patch Changes
+
+- [#360](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/360) [`5bd5575`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/5bd557547d295f2fc8012ccb8924d1b1d0da5ec8) Thanks [@giogam](https://github.com/giogam)! - feat: updates domains scaffold
+
 ## 0.39.0
 
 ### Minor Changes
