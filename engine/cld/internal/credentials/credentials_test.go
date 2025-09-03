@@ -8,8 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
-
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
 )
 
 func TestGetCredsForEnv(t *testing.T) {
@@ -23,7 +21,7 @@ func TestGetCredsForEnv(t *testing.T) {
 	}{
 		{
 			name:         "local environment returns insecure credentials",
-			env:          environment.Local,
+			env:          "local",
 			wantInsecure: true,
 			wantTLS:      false,
 		},

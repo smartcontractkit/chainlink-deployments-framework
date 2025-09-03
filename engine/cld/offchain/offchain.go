@@ -10,7 +10,7 @@ import (
 
 	cldf_config_env "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/env"
 	cldf_domain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/internal"
+	credentials "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/internal/credentials"
 	cldf_offchain "github.com/smartcontractkit/chainlink-deployments-framework/offchain"
 	offchain_jd "github.com/smartcontractkit/chainlink-deployments-framework/offchain/jd"
 	offchain_jd_provider "github.com/smartcontractkit/chainlink-deployments-framework/offchain/jd/provider"
@@ -51,7 +51,7 @@ func LoadOffchainClient(
 
 			oauth = source
 		}
-		creds := internal.GetCredsForEnv(env)
+		creds := credentials.GetCredsForEnv(env)
 
 		var offchainOptions []offchain_jd_provider.ClientProviderOption
 		if !useRealBackends {

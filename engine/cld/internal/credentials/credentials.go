@@ -5,13 +5,11 @@ import (
 
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
-
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
 )
 
 // GetCredsForEnv returns the appropriate gRPC transport credentials based on the environment.
 func GetCredsForEnv(env string) credentials.TransportCredentials {
-	if env == environment.Local {
+	if env == "local" {
 		return insecure.NewCredentials()
 	}
 
