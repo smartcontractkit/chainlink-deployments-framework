@@ -62,9 +62,9 @@ const (
 	// DecodedProposalsDirName is the name of the directory containing decoded proposals.
 	DecodedProposalsDirName = "decoded_proposals"
 
-	// DurablePipelinesFileName is the name of the file containing the durable pipelines for
+	// PipelinesFileName is the name of the file containing the pipelines initialization for
 	// the environment.
-	DurablePipelinesFileName = "durable_pipelines.go"
+	PipelinesFileName = "pipelines.go"
 
 	// OperationsReportsDirName is the name of the directory containing operations reports.[
 	OperationsReportsDirName = "operations_reports"

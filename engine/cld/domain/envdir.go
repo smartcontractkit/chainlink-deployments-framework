@@ -65,10 +65,10 @@ func (d EnvDir) Key() string {
 	return d.key
 }
 
-// DurablePipelineFilePath returns the path to the Durable Pipeline file for the domain's environment
+// PipelinesFilePath returns the path to the Pipeline file for the domain's environment
 // directory.
-func (d EnvDir) DurablePipelineFilePath() string {
-	return filepath.Join(d.DirPath(), DurablePipelinesFileName)
+func (d EnvDir) PipelinesFilePath() string {
+	return filepath.Join(d.DirPath(), PipelinesFileName)
 }
 
 // MigrationsFilePath returns the path to the migrations file for the domain's environment

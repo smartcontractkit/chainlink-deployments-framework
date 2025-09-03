@@ -847,12 +847,12 @@ func Test_EnvDir_Key(t *testing.T) {
 	assert.Equal(t, "staging", envdir.Key())
 }
 
-func Test_EnvDir_DurablePipelineFilePath(t *testing.T) {
+func Test_EnvDir_PipelinesFilePath(t *testing.T) {
 	t.Parallel()
 
 	envdir := NewEnvDir("domains", "ccip", "staging")
 
-	assert.Equal(t, "domains/ccip/staging/durable_pipelines.go", envdir.DurablePipelineFilePath())
+	assert.Equal(t, "domains/ccip/staging/pipelines.go", envdir.PipelinesFilePath())
 }
 
 func Test_EnvDir_AddressRefsFilePath(t *testing.T) {
