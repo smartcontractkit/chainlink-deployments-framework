@@ -118,16 +118,10 @@ func Test_ScaffoldEnvDir(t *testing.T) {
 	_, err = os.Stat(envdir.ViewStateFilePath())
 	require.NoError(t, err)
 
-	_, err = os.Stat(filepath.Join(envdir.DirPath(), "migrations.go"))
+	_, err = os.Stat(filepath.Join(envdir.DirPath(), "pipelines.go"))
 	require.NoError(t, err)
 
-	_, err = os.Stat(filepath.Join(envdir.DirPath(), "migrations_test.go"))
-	require.NoError(t, err)
-
-	_, err = os.Stat(filepath.Join(envdir.DirPath(), "durable_pipelines.go"))
-	require.NoError(t, err)
-
-	_, err = os.Stat(filepath.Join(envdir.DirPath(), "durable_pipelines_test.go"))
+	_, err = os.Stat(filepath.Join(envdir.DirPath(), "pipelines_test.go"))
 	require.NoError(t, err)
 
 	info, err = os.Stat(envdir.ArtifactsDir().ArtifactsDirPath())
