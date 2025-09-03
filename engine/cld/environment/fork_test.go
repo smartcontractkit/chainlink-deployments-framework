@@ -31,8 +31,7 @@ func Test_LoadForkedEnvironment_InvalidEnvironment(t *testing.T) {
 	}
 
 	_, err := LoadForkedEnvironment(t.Context(), lggr, "non_existent_env", domain, blockNumbers)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to load config")
+	require.ErrorContains(t, err, "failed to load config")
 }
 
 func Test_LoadForkedEnvironment_AddressBookFailure(t *testing.T) {
@@ -47,8 +46,7 @@ func Test_LoadForkedEnvironment_AddressBookFailure(t *testing.T) {
 	}
 
 	_, err := LoadForkedEnvironment(t.Context(), lggr, "staging", domain, blockNumbers)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to load address book")
+	require.ErrorContains(t, err, "failed to load address book")
 }
 
 func Test_LoadForkedEnvironment_EmptyBlockNumbers(t *testing.T) {
@@ -61,8 +59,7 @@ func Test_LoadForkedEnvironment_EmptyBlockNumbers(t *testing.T) {
 	blockNumbers := map[uint64]*big.Int{}
 
 	_, err := LoadForkedEnvironment(t.Context(), lggr, "staging", domain, blockNumbers)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to create anvil chains")
+	require.ErrorContains(t, err, "failed to create anvil chains")
 }
 
 func Test_LoadForkedEnvironment_InvalidNodesFile(t *testing.T) {
@@ -77,8 +74,7 @@ func Test_LoadForkedEnvironment_InvalidNodesFile(t *testing.T) {
 	}
 
 	_, err := LoadForkedEnvironment(t.Context(), lggr, "staging", domain, blockNumbers)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to load nodes")
+	require.ErrorContains(t, err, "failed to load nodes")
 }
 
 func Test_LoadForkedEnvironment_OffchainClient(t *testing.T) {
@@ -133,8 +129,7 @@ func Test_ApplyChangesetOutput_Timelock_NoTimeLockAddress(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = forkEnv.ApplyChangesetOutput(t.Context(), output)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "no timelock address defined for chain selector")
+	require.ErrorContains(t, err, "no timelock address defined for chain selector")
 }
 
 func Test_ApplyChangesetOutput_Timelock_NoForkClient(t *testing.T) {
@@ -156,8 +151,7 @@ func Test_ApplyChangesetOutput_Timelock_NoForkClient(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = forkEnv.ApplyChangesetOutput(t.Context(), output)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "no fork client defined for chain selector")
+	require.ErrorContains(t, err, "no fork client defined for chain selector")
 }
 
 func Test_ApplyChangesetOutput_Timelock_FailedTx(t *testing.T) {
@@ -183,8 +177,7 @@ func Test_ApplyChangesetOutput_Timelock_FailedTx(t *testing.T) {
 	}
 
 	_, err = forkEnv.ApplyChangesetOutput(t.Context(), output)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to send transaction on chain")
+	require.ErrorContains(t, err, "failed to send transaction on chain")
 }
 
 func Test_ApplyChangesetOutput_Timelock(t *testing.T) {
@@ -232,8 +225,7 @@ func Test_ApplyChangesetOutput_Base_NoForkClient(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = forkEnv.ApplyChangesetOutput(t.Context(), output)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "no fork client defined for chain selector")
+	require.ErrorContains(t, err, "no fork client defined for chain selector")
 }
 
 func Test_ApplyChangesetOutput_Base_FailedTx(t *testing.T) {
@@ -245,10 +237,10 @@ func Test_ApplyChangesetOutput_Base_FailedTx(t *testing.T) {
 		uint64(types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector)): big.NewInt(1000),
 	}
 
-	proposal := createMCMSTimelockProposal(t, types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector), types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector))
+	proposal := createBaseProposal(t, types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector), types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector))
 
 	output := cldf.ChangesetOutput{
-		MCMSTimelockProposals: []mcms.TimelockProposal{*proposal},
+		MCMSProposals: []mcms.Proposal{*proposal},
 	}
 
 	forkEnv, err := LoadForkedEnvironment(t.Context(), lggr, "staging", domain, blockNumbers, WithoutJD())
@@ -259,8 +251,7 @@ func Test_ApplyChangesetOutput_Base_FailedTx(t *testing.T) {
 	}
 
 	_, err = forkEnv.ApplyChangesetOutput(t.Context(), output)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to send transaction on chain")
+	require.ErrorContains(t, err, "failed to send transaction on chain")
 }
 
 func Test_ApplyChangesetOutput_Base(t *testing.T) {
@@ -272,10 +263,10 @@ func Test_ApplyChangesetOutput_Base(t *testing.T) {
 		uint64(types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector)): big.NewInt(1000),
 	}
 
-	proposal := createMCMSTimelockProposal(t, types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector), types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector))
+	proposal := createBaseProposal(t, types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector), types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector))
 
 	output := cldf.ChangesetOutput{
-		MCMSTimelockProposals: []mcms.TimelockProposal{*proposal},
+		MCMSProposals: []mcms.Proposal{*proposal},
 	}
 
 	forkEnv, err := LoadForkedEnvironment(t.Context(), lggr, "staging", domain, blockNumbers, WithoutJD())
