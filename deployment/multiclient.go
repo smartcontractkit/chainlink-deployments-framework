@@ -3,15 +3,15 @@ package deployment
 import (
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 
-	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider/rpcclient"
 )
 
-type RetryConfig = cldf_evm.RetryConfig
+type RetryConfig = rpcclient.RetryConfig
 
 // MultiClient provides failover functionality for Ethereum RPC clients.
-type MultiClient = cldf_evm.MultiClient
+type MultiClient = rpcclient.MultiClient
 
 // NewMultiClient creates a new MultiClient with failover capabilities.
 func NewMultiClient(lggr logger.Logger, rpcsCfg RPCConfig, opts ...func(client *MultiClient)) (*MultiClient, error) {
-	return cldf_evm.NewMultiClient(lggr, rpcsCfg, opts...)
+	return rpcclient.NewMultiClient(lggr, rpcsCfg, opts...)
 }
