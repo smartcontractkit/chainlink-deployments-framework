@@ -63,8 +63,8 @@ func createMockServer(t *testing.T, methodsToFail []string) *httptest.Server {
 	return server
 }
 
-// createAnvilClientForTest creates an anvilClient for testing with the given server URL
-func createAnvilClientForTest(serverURL string) *anvilClient {
+// createMockAnvilClient creates an anvilClient for testing with the given server URL
+func createMockAnvilClient(serverURL string) *anvilClient {
 	return &anvilClient{
 		url: serverURL,
 		client: resty.New().
@@ -73,75 +73,56 @@ func createAnvilClientForTest(serverURL string) *anvilClient {
 	}
 }
 
-func Test_AnvilClient_SendTransaction_Success(t *testing.T) {
+func Test_AnvilClient_SendTransaction(t *testing.T) {
 	t.Parallel()
 
-	// Create mock server that never fails (empty methodsToFail slice)
-	server := createMockServer(t, []string{})
-	defer server.Close()
+	testCases := []struct {
+		name          string
+		methodsToFail []string
+		expectedError string
+	}{
+		{
+			name:          "Success",
+			methodsToFail: []string{},
+			expectedError: "",
+		},
+		{
+			name:          "FailOnSetBalance",
+			methodsToFail: []string{"anvil_setBalance"},
+			expectedError: "failed to update balance",
+		},
+		{
+			name:          "FailOnEthSendTransaction",
+			methodsToFail: []string{"eth_sendTransaction"},
+			expectedError: "failed to send transaction",
+		},
+		{
+			name:          "FailOnMine",
+			methodsToFail: []string{"anvil_mine"},
+			expectedError: "failed to mine transaction",
+		},
+	}
 
-	client := createAnvilClientForTest(server.URL)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 
-	from := "0x1234567890123456789012345678901234567890"
-	to := "0x0987654321098765432109876543210987654321"
-	data := []byte("test data")
+			server := createMockServer(t, tc.methodsToFail)
+			defer server.Close()
 
-	err := client.SendTransaction(t.Context(), from, to, data)
+			client := createMockAnvilClient(server.URL)
 
-	require.NoError(t, err)
-}
+			from := "0x1234567890123456789012345678901234567890"
+			to := "0x0987654321098765432109876543210987654321"
+			data := []byte("test data")
 
-func Test_AnvilClient_SendTransaction_FailOnSetBalance(t *testing.T) {
-	t.Parallel()
+			err := client.SendTransaction(t.Context(), from, to, data)
 
-	// Create mock server that fails on anvil_setBalance method
-	server := createMockServer(t, []string{"anvil_setBalance"})
-	defer server.Close()
-
-	client := createAnvilClientForTest(server.URL)
-
-	from := "0x1234567890123456789012345678901234567890"
-	to := "0x0987654321098765432109876543210987654321"
-	data := []byte("test data")
-
-	err := client.SendTransaction(t.Context(), from, to, data)
-
-	// Should fail on the anvil_setBalance method
-	require.ErrorContains(t, err, "failed to update balance")
-}
-
-func Test_AnvilClient_SendTransaction_FailOnEthSendTransaction(t *testing.T) {
-	t.Parallel()
-
-	// Create mock server that fails on eth_sendTransaction method
-	server := createMockServer(t, []string{"eth_sendTransaction"})
-	defer server.Close()
-
-	client := createAnvilClientForTest(server.URL)
-
-	from := "0x1234567890123456789012345678901234567890"
-	to := "0x0987654321098765432109876543210987654321"
-	data := []byte("test data")
-
-	err := client.SendTransaction(t.Context(), from, to, data)
-
-	require.ErrorContains(t, err, "failed to send transaction")
-}
-
-func Test_AnvilClient_SendTransaction_FailOnMine(t *testing.T) {
-	t.Parallel()
-
-	// Create mock server that fails on anvil_mine method
-	server := createMockServer(t, []string{"anvil_mine"})
-	defer server.Close()
-
-	client := createAnvilClientForTest(server.URL)
-
-	from := "0x1234567890123456789012345678901234567890"
-	to := "0x0987654321098765432109876543210987654321"
-	data := []byte("test data")
-
-	err := client.SendTransaction(t.Context(), from, to, data)
-
-	require.ErrorContains(t, err, "failed to mine transaction")
+			if tc.expectedError == "" {
+				require.NoError(t, err)
+			} else {
+				require.ErrorContains(t, err, tc.expectedError)
+			}
+		})
+	}
 }

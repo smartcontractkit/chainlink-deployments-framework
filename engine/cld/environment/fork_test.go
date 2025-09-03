@@ -19,265 +19,234 @@ import (
 	cldf_domain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 )
 
-func Test_LoadForkedEnvironment_InvalidEnvironment(t *testing.T) {
-	t.Parallel()
-
-	// Set up domain
-	domain := cldf_domain.NewDomain("dummy", "test")
-
-	lggr := logger.Test(t)
-	blockNumbers := map[uint64]*big.Int{
-		1: big.NewInt(1000),
-	}
-
-	_, err := LoadForkedEnvironment(t.Context(), lggr, "non_existent_env", domain, blockNumbers)
-	require.ErrorContains(t, err, "failed to load config")
-}
-
-func Test_LoadForkedEnvironment_AddressBookFailure(t *testing.T) {
-	t.Parallel()
-
-	// Set up domain
-	domain := setupTest(t, setupTestConfig)
-
-	lggr := logger.Test(t)
-	blockNumbers := map[uint64]*big.Int{
-		1: big.NewInt(1000),
-	}
-
-	_, err := LoadForkedEnvironment(t.Context(), lggr, "staging", domain, blockNumbers)
-	require.ErrorContains(t, err, "failed to load address book")
-}
-
-func Test_LoadForkedEnvironment_EmptyBlockNumbers(t *testing.T) {
-	t.Parallel()
-
-	// Set up domain
-	domain := setupTest(t, setupTestConfig, setupAddressbook)
-
-	lggr := logger.Test(t)
-	blockNumbers := map[uint64]*big.Int{}
-
-	_, err := LoadForkedEnvironment(t.Context(), lggr, "staging", domain, blockNumbers)
-	require.ErrorContains(t, err, "failed to create anvil chains")
-}
-
-func Test_LoadForkedEnvironment_InvalidNodesFile(t *testing.T) {
-	t.Parallel()
-
-	// Set up domain
-	domain := setupTest(t, setupTestConfig, setupAddressbook)
-
-	lggr := logger.Test(t)
-	blockNumbers := map[uint64]*big.Int{
-		16015286601757825753: big.NewInt(1000),
-	}
-
-	_, err := LoadForkedEnvironment(t.Context(), lggr, "staging", domain, blockNumbers)
-	require.ErrorContains(t, err, "failed to load nodes")
-}
-
-func Test_LoadForkedEnvironment_OffchainClient(t *testing.T) {
-	t.Parallel()
-
-	// Set up domain
-	domain := setupTest(t, setupTestConfig, setupAddressbook, setupNodes)
-
-	lggr := logger.Test(t)
-	blockNumbers := map[uint64]*big.Int{
-		16015286601757825753: big.NewInt(1000),
-	}
-
-	assert.Panics(t, func() {
-		_, err := LoadForkedEnvironment(t.Context(), lggr, "staging", domain, blockNumbers)
-		require.NoError(t, err)
-	})
-}
-
 func Test_LoadForkedEnvironment(t *testing.T) {
 	t.Parallel()
 
-	// Set up domain
-	domain := setupTest(t, setupTestConfig, setupAddressbook, setupNodes)
-
-	lggr := logger.Test(t)
-	blockNumbers := map[uint64]*big.Int{
-		16015286601757825753: big.NewInt(1000),
+	tests := []struct {
+		name         string
+		domain       cldf_domain.Domain
+		env          string
+		blockNumbers map[uint64]*big.Int
+		options      []LoadEnvironmentOption
+		expectError  string
+		expectPanic  bool
+	}{
+		{
+			name:   "Invalid Environment",
+			domain: cldf_domain.NewDomain("dummy", "test"),
+			env:    "non_existent_env",
+			blockNumbers: map[uint64]*big.Int{
+				1: big.NewInt(1000),
+			},
+			expectError: "failed to load config",
+		},
+		{
+			name:   "Address Book Failure",
+			domain: setupTest(t, setupTestConfig),
+			env:    "staging",
+			blockNumbers: map[uint64]*big.Int{
+				1: big.NewInt(1000),
+			},
+			expectError: "failed to load address book",
+		},
+		{
+			name:         "Empty Block Numbers",
+			domain:       setupTest(t, setupTestConfig, setupAddressbook),
+			env:          "staging",
+			blockNumbers: map[uint64]*big.Int{},
+			expectError:  "failed to create anvil chains",
+		},
+		{
+			name:   "Invalid Nodes File",
+			domain: setupTest(t, setupTestConfig, setupAddressbook),
+			env:    "staging",
+			blockNumbers: map[uint64]*big.Int{
+				16015286601757825753: big.NewInt(1000),
+			},
+			expectError: "failed to load nodes",
+		},
+		{
+			name:   "OffchainClient Failure",
+			domain: setupTest(t, setupTestConfig, setupAddressbook, setupNodes),
+			env:    "staging",
+			blockNumbers: map[uint64]*big.Int{
+				16015286601757825753: big.NewInt(1000),
+			},
+			expectPanic: true,
+		},
+		{
+			name:   "No Error",
+			domain: setupTest(t, setupTestConfig, setupAddressbook, setupNodes),
+			env:    "staging",
+			blockNumbers: map[uint64]*big.Int{
+				16015286601757825753: big.NewInt(1000),
+			},
+			options: []LoadEnvironmentOption{WithoutJD()},
+		},
 	}
 
-	forkEnv, err := LoadForkedEnvironment(t.Context(), lggr, "staging", domain, blockNumbers, WithoutJD())
-	require.NoError(t, err)
-	assert.Equal(t, "fork", forkEnv.Name)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			lggr := logger.Test(t)
+
+			if tt.expectPanic {
+				assert.Panics(t, func() {
+					_, err := LoadForkedEnvironment(t.Context(), lggr, tt.env, tt.domain, tt.blockNumbers, tt.options...)
+					require.NoError(t, err)
+				})
+
+				return
+			}
+
+			forkEnv, err := LoadForkedEnvironment(t.Context(), lggr, tt.env, tt.domain, tt.blockNumbers, tt.options...)
+
+			if tt.expectError != "" {
+				require.ErrorContains(t, err, tt.expectError)
+
+				return
+			}
+
+			require.NoError(t, err)
+			assert.Equal(t, "fork", forkEnv.Name)
+		})
+	}
 }
 
-func Test_ApplyChangesetOutput_Timelock_NoTimeLockAddress(t *testing.T) {
+func Test_ApplyChangesetOutput(t *testing.T) {
 	t.Parallel()
 
-	lggr := logger.Test(t)
-	domain := setupTest(t, setupTestConfig, setupAddressbook, setupNodes)
-	blockNumbers := map[uint64]*big.Int{
-		16015286601757825753: big.NewInt(1000),
+	tests := []struct {
+		name            string
+		changesetOutput cldf.ChangesetOutput
+		forkClients     map[uint64]ForkedOnchainClient
+		blockNumbers    map[uint64]*big.Int
+		expectError     string
+	}{
+		{
+			name: "Timelock Proposal - No TimeLock Address",
+			changesetOutput: cldf.ChangesetOutput{
+				MCMSTimelockProposals: []mcms.TimelockProposal{
+					createMCMSTimelockProposal(t, 123, types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector)),
+				},
+			},
+			forkClients: nil,
+			blockNumbers: map[uint64]*big.Int{
+				16015286601757825753: big.NewInt(1000),
+			},
+			expectError: "no timelock address defined for chain selector",
+		},
+		{
+			name: "Timelock Proposal - No Fork Client",
+			changesetOutput: cldf.ChangesetOutput{
+				MCMSTimelockProposals: []mcms.TimelockProposal{
+					createMCMSTimelockProposal(t, types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector), types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector)),
+				},
+			},
+			forkClients: nil,
+			blockNumbers: map[uint64]*big.Int{
+				16015286601757825753: big.NewInt(1000),
+			},
+			expectError: "no fork client defined for chain selector",
+		},
+		{
+			name: "Timelock Proposal - Failed Transaction",
+			changesetOutput: cldf.ChangesetOutput{
+				MCMSTimelockProposals: []mcms.TimelockProposal{
+					createMCMSTimelockProposal(t, types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector), types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector)),
+				},
+			},
+			forkClients: map[uint64]ForkedOnchainClient{
+				uint64(types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector)): MockForkedOnchainClient{returnError: true},
+			},
+			blockNumbers: map[uint64]*big.Int{
+				uint64(types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector)): big.NewInt(1000),
+			},
+			expectError: "failed to send transaction on chain",
+		},
+		{
+			name: "Timelock Proposal - No Error",
+			changesetOutput: cldf.ChangesetOutput{
+				MCMSTimelockProposals: []mcms.TimelockProposal{
+					createMCMSTimelockProposal(t, types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector), types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector)),
+				},
+			},
+			forkClients: map[uint64]ForkedOnchainClient{
+				uint64(types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector)): MockForkedOnchainClient{},
+			},
+			blockNumbers: map[uint64]*big.Int{
+				uint64(types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector)): big.NewInt(1000),
+			},
+		},
+		{
+			name: "Base Proposal - No Fork Client",
+			changesetOutput: cldf.ChangesetOutput{
+				MCMSProposals: []mcms.Proposal{
+					createBaseProposal(t, types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector), types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector)),
+				},
+			},
+			forkClients: nil,
+			blockNumbers: map[uint64]*big.Int{
+				16015286601757825753: big.NewInt(1000),
+			},
+			expectError: "no fork client defined for chain selector",
+		},
+		{
+			name: "Base Proposal - Failed Transaction",
+			changesetOutput: cldf.ChangesetOutput{
+				MCMSProposals: []mcms.Proposal{
+					createBaseProposal(t, types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector), types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector)),
+				},
+			},
+			forkClients: map[uint64]ForkedOnchainClient{
+				uint64(types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector)): MockForkedOnchainClient{returnError: true},
+			},
+			blockNumbers: map[uint64]*big.Int{
+				uint64(types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector)): big.NewInt(1000),
+			},
+			expectError: "failed to send transaction on chain",
+		},
+		{
+			name: "Base Proposal - No Error",
+			changesetOutput: cldf.ChangesetOutput{
+				MCMSProposals: []mcms.Proposal{
+					createBaseProposal(t, types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector), types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector)),
+				},
+			},
+			forkClients: map[uint64]ForkedOnchainClient{
+				uint64(types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector)): MockForkedOnchainClient{},
+			},
+			blockNumbers: map[uint64]*big.Int{
+				uint64(types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector)): big.NewInt(1000),
+			},
+		},
 	}
 
-	proposal := createMCMSTimelockProposal(t, 123, types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector))
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	output := cldf.ChangesetOutput{
-		MCMSTimelockProposals: []mcms.TimelockProposal{*proposal},
+			lggr := logger.Test(t)
+			domain := setupTest(t, setupTestConfig, setupAddressbook, setupNodes)
+
+			forkEnv, err := LoadForkedEnvironment(t.Context(), lggr, "staging", domain, tt.blockNumbers, WithoutJD())
+			require.NoError(t, err)
+
+			if tt.forkClients != nil {
+				forkEnv.ForkClients = tt.forkClients
+			}
+
+			_, err = forkEnv.ApplyChangesetOutput(t.Context(), tt.changesetOutput)
+
+			if tt.expectError != "" {
+				require.ErrorContains(t, err, tt.expectError)
+				return
+			}
+
+			require.NoError(t, err)
+		})
 	}
-
-	forkEnv, err := LoadForkedEnvironment(t.Context(), lggr, "staging", domain, blockNumbers, WithoutJD())
-	require.NoError(t, err)
-
-	_, err = forkEnv.ApplyChangesetOutput(t.Context(), output)
-	require.ErrorContains(t, err, "no timelock address defined for chain selector")
-}
-
-func Test_ApplyChangesetOutput_Timelock_NoForkClient(t *testing.T) {
-	t.Parallel()
-
-	lggr := logger.Test(t)
-	domain := setupTest(t, setupTestConfig, setupAddressbook, setupNodes)
-	blockNumbers := map[uint64]*big.Int{
-		16015286601757825753: big.NewInt(1000),
-	}
-
-	proposal := createMCMSTimelockProposal(t, types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector), types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector))
-
-	output := cldf.ChangesetOutput{
-		MCMSTimelockProposals: []mcms.TimelockProposal{*proposal},
-	}
-
-	forkEnv, err := LoadForkedEnvironment(t.Context(), lggr, "staging", domain, blockNumbers, WithoutJD())
-	require.NoError(t, err)
-
-	_, err = forkEnv.ApplyChangesetOutput(t.Context(), output)
-	require.ErrorContains(t, err, "no fork client defined for chain selector")
-}
-
-func Test_ApplyChangesetOutput_Timelock_FailedTx(t *testing.T) {
-	t.Parallel()
-
-	lggr := logger.Test(t)
-	domain := setupTest(t, setupTestConfig, setupAddressbook, setupNodes)
-	blockNumbers := map[uint64]*big.Int{
-		uint64(types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector)): big.NewInt(1000),
-	}
-
-	proposal := createMCMSTimelockProposal(t, types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector), types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector))
-
-	output := cldf.ChangesetOutput{
-		MCMSTimelockProposals: []mcms.TimelockProposal{*proposal},
-	}
-
-	forkEnv, err := LoadForkedEnvironment(t.Context(), lggr, "staging", domain, blockNumbers, WithoutJD())
-	require.NoError(t, err)
-
-	forkEnv.ForkClients = map[uint64]ForkedOnchainClient{
-		uint64(types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector)): MockForkedOnchainClient{returnError: true},
-	}
-
-	_, err = forkEnv.ApplyChangesetOutput(t.Context(), output)
-	require.ErrorContains(t, err, "failed to send transaction on chain")
-}
-
-func Test_ApplyChangesetOutput_Timelock(t *testing.T) {
-	t.Parallel()
-
-	lggr := logger.Test(t)
-	domain := setupTest(t, setupTestConfig, setupAddressbook, setupNodes)
-	blockNumbers := map[uint64]*big.Int{
-		uint64(types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector)): big.NewInt(1000),
-	}
-
-	proposal := createMCMSTimelockProposal(t, types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector), types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector))
-
-	output := cldf.ChangesetOutput{
-		MCMSTimelockProposals: []mcms.TimelockProposal{*proposal},
-	}
-
-	forkEnv, err := LoadForkedEnvironment(t.Context(), lggr, "staging", domain, blockNumbers, WithoutJD())
-	require.NoError(t, err)
-
-	forkEnv.ForkClients = map[uint64]ForkedOnchainClient{
-		uint64(types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector)): MockForkedOnchainClient{},
-	}
-
-	_, err = forkEnv.ApplyChangesetOutput(t.Context(), output)
-	require.NoError(t, err)
-}
-
-func Test_ApplyChangesetOutput_Base_NoForkClient(t *testing.T) {
-	t.Parallel()
-
-	lggr := logger.Test(t)
-	domain := setupTest(t, setupTestConfig, setupAddressbook, setupNodes)
-	blockNumbers := map[uint64]*big.Int{
-		16015286601757825753: big.NewInt(1000),
-	}
-
-	proposal := createMCMSTimelockProposal(t, types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector), types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector))
-
-	output := cldf.ChangesetOutput{
-		MCMSTimelockProposals: []mcms.TimelockProposal{*proposal},
-	}
-
-	forkEnv, err := LoadForkedEnvironment(t.Context(), lggr, "staging", domain, blockNumbers, WithoutJD())
-	require.NoError(t, err)
-
-	_, err = forkEnv.ApplyChangesetOutput(t.Context(), output)
-	require.ErrorContains(t, err, "no fork client defined for chain selector")
-}
-
-func Test_ApplyChangesetOutput_Base_FailedTx(t *testing.T) {
-	t.Parallel()
-
-	lggr := logger.Test(t)
-	domain := setupTest(t, setupTestConfig, setupAddressbook, setupNodes)
-	blockNumbers := map[uint64]*big.Int{
-		uint64(types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector)): big.NewInt(1000),
-	}
-
-	proposal := createBaseProposal(t, types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector), types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector))
-
-	output := cldf.ChangesetOutput{
-		MCMSProposals: []mcms.Proposal{*proposal},
-	}
-
-	forkEnv, err := LoadForkedEnvironment(t.Context(), lggr, "staging", domain, blockNumbers, WithoutJD())
-	require.NoError(t, err)
-
-	forkEnv.ForkClients = map[uint64]ForkedOnchainClient{
-		uint64(types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector)): MockForkedOnchainClient{returnError: true},
-	}
-
-	_, err = forkEnv.ApplyChangesetOutput(t.Context(), output)
-	require.ErrorContains(t, err, "failed to send transaction on chain")
-}
-
-func Test_ApplyChangesetOutput_Base(t *testing.T) {
-	t.Parallel()
-
-	lggr := logger.Test(t)
-	domain := setupTest(t, setupTestConfig, setupAddressbook, setupNodes)
-	blockNumbers := map[uint64]*big.Int{
-		uint64(types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector)): big.NewInt(1000),
-	}
-
-	proposal := createBaseProposal(t, types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector), types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector))
-
-	output := cldf.ChangesetOutput{
-		MCMSProposals: []mcms.Proposal{*proposal},
-	}
-
-	forkEnv, err := LoadForkedEnvironment(t.Context(), lggr, "staging", domain, blockNumbers, WithoutJD())
-	require.NoError(t, err)
-
-	forkEnv.ForkClients = map[uint64]ForkedOnchainClient{
-		uint64(types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector)): MockForkedOnchainClient{},
-	}
-
-	_, err = forkEnv.ApplyChangesetOutput(t.Context(), output)
-	require.NoError(t, err)
 }
 
 // MockForkedOnchainClient is a mock implementation of ForkedOnchainClient
@@ -294,7 +263,7 @@ func (m MockForkedOnchainClient) SendTransaction(ctx context.Context, from strin
 }
 
 // createMCMSTimelockProposal creates a new MCMS timelock proposal for testing purposes.
-func createMCMSTimelockProposal(t *testing.T, timelockAddress types.ChainSelector, operationsAddress types.ChainSelector) *mcms.TimelockProposal {
+func createMCMSTimelockProposal(t *testing.T, timelockAddress types.ChainSelector, operationsAddress types.ChainSelector) mcms.TimelockProposal {
 	t.Helper()
 
 	futureTime := time.Now().Add(time.Hour * 72).Unix()
@@ -344,11 +313,11 @@ func createMCMSTimelockProposal(t *testing.T, timelockAddress types.ChainSelecto
 	proposal, err := builder.Build()
 	require.NoError(t, err)
 
-	return proposal
+	return *proposal
 }
 
 // createBaseProposal creates a new MCMS timelock proposal for testing purposes.
-func createBaseProposal(t *testing.T, metadataAddress types.ChainSelector, operationAddress types.ChainSelector) *mcms.Proposal {
+func createBaseProposal(t *testing.T, metadataAddress types.ChainSelector, operationAddress types.ChainSelector) mcms.Proposal {
 	t.Helper()
 
 	futureTime := time.Now().Add(time.Hour * 72).Unix()
@@ -383,5 +352,5 @@ func createBaseProposal(t *testing.T, metadataAddress types.ChainSelector, opera
 	proposal, err := builder.Build()
 	require.NoError(t, err)
 
-	return proposal
+	return *proposal
 }
