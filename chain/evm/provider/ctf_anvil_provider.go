@@ -91,8 +91,8 @@
 //		config := CTFAnvilChainProviderConfig{
 //			Once:           &once,
 //			ConfirmFunctor: ConfirmFuncGeth(2 * time.Minute),
-//			ClientOpts: []func(client *deployment.MultiClient){
-//				func(client *deployment.MultiClient) {
+//			ClientOpts: []func(client *evm.MultiClient){
+//				func(client *evm.MultiClient) {
 //					// Custom client configuration
 //					client.SetTimeout(30 * time.Second)
 //				},
@@ -226,7 +226,6 @@ import (
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
-	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 )
 
 // anvilTestPrivateKeys contains the standard Anvil test accounts.
@@ -264,7 +263,7 @@ type CTFAnvilChainProviderConfig struct {
 	// CTFAnvilChainProvider. These options are applied to the MultiClient instance created by the
 	// provider. You can use this to set up custom HTTP clients, timeouts, or other
 	// configurations for the RPC connections.
-	ClientOpts []func(client *deployment.MultiClient)
+	ClientOpts []func(client *evm.MultiClient)
 
 	// Optional: DockerCmdParamsOverrides allows customization of Docker command parameters
 	// for the Anvil container. These parameters are passed directly to the Docker container
@@ -388,14 +387,14 @@ func (p *CTFAnvilChainProvider) Initialize(ctx context.Context) (chain.BlockChai
 		return nil, err
 	}
 
-	client, err := deployment.NewMultiClient(lggr, deployment.RPCConfig{
+	client, err := evm.NewMultiClient(lggr, evm.RPCConfig{
 		ChainSelector: p.selector,
-		RPCs: []deployment.RPC{
+		RPCs: []evm.RPC{
 			{
 				Name:               "anvil-local",
 				HTTPURL:            httpURL,
 				WSURL:              "", // Anvil typically doesn't provide WebSocket, only HTTP
-				PreferredURLScheme: deployment.URLSchemePreferenceHTTP,
+				PreferredURLScheme: evm.URLSchemePreferenceHTTP,
 			},
 		},
 	}, p.config.ClientOpts...)

@@ -13,7 +13,6 @@ import (
 	chain_selectors "github.com/smartcontractkit/chain-selectors"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
-	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 )
 
 // ConfirmFunctor is an interface for creating a confirmation function for transactions on the
@@ -113,9 +112,9 @@ func (g *confirmFuncSeth) Generate(
 ) (evm.ConfirmFunc, error) {
 	// Convert the client to a MultiClient because we need to use the multi-client's WaitMined
 	// method.
-	multiClient, ok := client.(*deployment.MultiClient)
+	multiClient, ok := client.(*evm.MultiClient)
 	if !ok {
-		return nil, fmt.Errorf("expected client to be of type *deployment.MultiClient, got %T", client)
+		return nil, fmt.Errorf("expected client to be of type *evm.MultiClient, got %T", client)
 	}
 
 	// Get the ChainID from the selector

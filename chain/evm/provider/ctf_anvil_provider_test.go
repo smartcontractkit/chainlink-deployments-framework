@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
-	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 )
 
 func TestCTFAnvilChainProvider_Initialize(t *testing.T) {
@@ -451,8 +450,8 @@ func TestCTFAnvilChainProvider_SignerIntegration(t *testing.T) {
 		config := CTFAnvilChainProviderConfig{
 			Once:           &once,
 			ConfirmFunctor: ConfirmFuncGeth(2 * time.Minute),
-			ClientOpts: []func(client *deployment.MultiClient){
-				func(client *deployment.MultiClient) {
+			ClientOpts: []func(client *evm.MultiClient){
+				func(client *evm.MultiClient) {
 					clientOptsCalled = true
 					// This is a test to verify the option is called
 					// In real scenarios, you might configure timeouts, etc.

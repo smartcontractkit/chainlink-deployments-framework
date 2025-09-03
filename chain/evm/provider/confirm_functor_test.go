@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
-	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 )
 
 func Test_ConfirmFuncGeth_ConfirmFunc(t *testing.T) {
@@ -165,7 +164,7 @@ func Test_ConfirmFuncSeth_Generate(t *testing.T) {
 			name:           "valid generation confirmation function",
 			giveRPCURL:     rpcURL,
 			giveSelector:   chainSelector,
-			giveClient:     &deployment.MultiClient{},
+			giveClient:     &evm.MultiClient{},
 			giveConfigPath: configPath,
 		},
 		{
@@ -174,13 +173,13 @@ func Test_ConfirmFuncSeth_Generate(t *testing.T) {
 			giveSelector:   chainSelector,
 			giveClient:     SimClient{},
 			giveConfigPath: configPath,
-			wantErr:        "expected client to be of type *deployment.MultiClient",
+			wantErr:        "expected client to be of type *evm.MultiClient",
 		},
 		{
 			name:           "invalid chain ID",
 			giveRPCURL:     rpcURL,
 			giveSelector:   1,
-			giveClient:     &deployment.MultiClient{},
+			giveClient:     &evm.MultiClient{},
 			giveConfigPath: configPath,
 			wantErr:        "failed to get chain ID from selector",
 		},
@@ -188,7 +187,7 @@ func Test_ConfirmFuncSeth_Generate(t *testing.T) {
 			name:           "failed to setup seth client",
 			giveRPCURL:     "http://invalid-url",
 			giveSelector:   chainSelector,
-			giveClient:     &deployment.MultiClient{},
+			giveClient:     &evm.MultiClient{},
 			giveConfigPath: invalidConfigPath,
 			wantErr:        "failed to setup seth client",
 		},
