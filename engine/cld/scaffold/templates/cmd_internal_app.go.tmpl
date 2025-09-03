@@ -11,48 +11,27 @@ import (
 	clilib "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/legacy/cli"
 )
 
-// LoadMigrationsRegistry loads the Migrations Registry for the specified environment.
-func LoadMigrationsRegistry(envKey string) (*cldf_changeset.ChangesetsRegistry, error) {
+// LoadPipelinesRegistry loads the Pipelines ChangesetsRegistry for the specified environment.
+func LoadPipelinesRegistry(envKey string) (*cldf_changeset.ChangesetsRegistry, error) {
 	var rp cldf_changeset.RegistryProvider
 
 	switch envKey {
-	// Load your environment-specific registry provider here
-	// case environment.Testnet:
-	// 	rp = testnet.NewMigrationsRegistryProvider()
+	// Load your environment-specific registry provider here. For example:
+	// case cldf_environment.Testnet:
+	//	rp = testnet.NewPipelinesRegistryProvider()
 	default:
 		return nil, fmt.Errorf("unsupported environment %s", envKey)
 	}
 
-	// Uncomment this once a real migrations registry is available
-	// if err := rp.Init(); err != nil {
-	// 	return nil, fmt.Errorf("failed to init migrations %w", err)
-	// }
+	// Don't validate the registry for the durable pipelines
+	rp.Registry().SetValidate(false)
 
-	return rp.Registry(), nil //nolint:govet // ignore this until the registry is implemented
+	if err := rp.Init(); err != nil {
+		return nil, fmt.Errorf("failed to init migrations %w", err)
+	}
+
+	return rp.Registry(), nil //nolint:govet // remove when the first registry is available
 }
-
-// UNCOMMENT THIS TO ENABLE THE DURABLE PIPELINES REGISTRY
-//
-// LoadDurablePipelinesRegistry loads the Durable Pipelines Registry for the specified environment.
-// func LoadDurablePipelinesRegistry(envKey string) (*cldf_changeset.ChangesetsRegistry, error) {
-// 	var rp cldf_changeset.RegistryProvider
-
-// 	switch envKey {
-//  case environment.Testnet:
-// 	    rp = testnet.NewDurablePipelinesRegistryProvider()
-// 	default:
-// 		return nil, fmt.Errorf("unsupported environment %s", envKey)
-// 	}
-
-//	// Don't validate the registry for the durable pipelines
-//	rp.Registry().SetValidate(false)
-
-// 	if err := rp.Init(); err != nil {
-// 		return nil, fmt.Errorf("failed to init migrations %w", err)
-// 	}
-
-// 	return rp.Registry(), nil
-// }
 
 type App struct {
 	*clilib.Base
