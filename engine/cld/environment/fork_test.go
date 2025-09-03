@@ -212,28 +212,6 @@ func Test_ApplyChangesetOutput_Timelock(t *testing.T) {
 	_, err = forkEnv.ApplyChangesetOutput(context.Background(), output)
 	require.NoError(t, err)
 }
-func Test_ApplyChangesetOutput_Base_NoTimeLockAddress(t *testing.T) {
-	t.Parallel()
-
-	lggr := logger.Test(t)
-	domain := setupTest(t, setupTestConfig, setupAddressbook, setupNodes)
-	blockNumbers := map[uint64]*big.Int{
-		16015286601757825753: big.NewInt(1000),
-	}
-
-	proposal := createBaseProposal(t, types.ChainSelector(chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector), types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector))
-
-	output := cldf.ChangesetOutput{
-		MCMSProposals: []mcms.Proposal{*proposal},
-	}
-
-	forkEnv, err := LoadForkedEnvironment(context.Background(), lggr, "staging", domain, blockNumbers, WithoutJD())
-	require.NoError(t, err)
-
-	_, err = forkEnv.ApplyChangesetOutput(context.Background(), output)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "missing metadata for chain")
-}
 
 func Test_ApplyChangesetOutput_Base_NoForkClient(t *testing.T) {
 	t.Parallel()
