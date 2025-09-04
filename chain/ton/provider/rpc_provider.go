@@ -67,16 +67,13 @@ func (p *RPCChainProvider) Initialize(_ context.Context) (chain.BlockChain, erro
 		return *p.chain, nil // Already initialized
 	}
 
-	// Validate the provider configuration
 	if err := p.config.validate(); err != nil {
 		return nil, fmt.Errorf("failed to validate provider config: %w", err)
 	}
 
 	// Initialize TON client
 	connectionPool := liteclient.NewConnectionPool()
-	//  "https://ton-blockchain.github.io/testnet-global.config.json"
-	// Connect to public LiteServer config. We use the RPC URL to
-	// TODO Ask Blockchain connectivity how to get the correct config url for different networks
+	// Connect to public LiteServer config. We use the RPC URL to get the config
 	err := connectionPool.AddConnectionsFromConfigUrl(context.Background(), p.config.HTTPURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve ton network config: %w", err)
@@ -100,7 +97,6 @@ func (p *RPCChainProvider) Initialize(_ context.Context) (chain.BlockChain, erro
 
 	log.Printf("TON wallet loaded with address %s", tonWallet.WalletAddress().String())
 
-	// Create the TON chain instance with the provided configuration
 	p.chain = &ton.Chain{
 		ChainMetadata: ton.ChainMetadata{
 			Selector: p.selector,
@@ -114,6 +110,7 @@ func (p *RPCChainProvider) Initialize(_ context.Context) (chain.BlockChain, erro
 	return *p.chain, nil
 }
 
+// getWalletVersionConfig returns the wallet version. V5R1 is the default if version is empty.
 func getWalletVersionConfig(version string) (wallet.VersionConfig, error) {
 	switch version {
 	case "V1R1":
