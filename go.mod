@@ -17,13 +17,14 @@ require (
 	github.com/ethereum/go-ethereum v1.15.7
 	github.com/fbsobreira/gotron-sdk v0.0.0-20250403083053-2943ce8c759b
 	github.com/gagliardetto/solana-go v1.13.0
+	github.com/go-resty/resty/v2 v2.16.3
 	github.com/google/uuid v1.6.0
 	github.com/lib/pq v1.10.9
 	github.com/pelletier/go-toml/v2 v2.2.4
 	github.com/proullon/ramsql v0.1.4
 	github.com/rubenv/pgtest v1.1.0
 	github.com/segmentio/ksuid v1.0.4
-	github.com/smartcontractkit/chain-selectors v1.0.67
+	github.com/smartcontractkit/chain-selectors v1.0.68
 	github.com/smartcontractkit/chainlink-ccip/chains/solana v0.0.0-20250805210128-7f8a0f403c3a
 	github.com/smartcontractkit/chainlink-common v0.9.1-0.20250815142532-64e0a7965958
 	github.com/smartcontractkit/chainlink-protos/chainlink-catalog v0.0.2
@@ -126,7 +127,6 @@ require (
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.26.0 // indirect
-	github.com/go-resty/resty/v2 v2.16.3 // indirect
 	github.com/go-viper/mapstructure/v2 v2.3.0 // indirect
 	github.com/gofrs/flock v0.12.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
