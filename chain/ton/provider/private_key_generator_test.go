@@ -75,7 +75,6 @@ func Test_PrivateKeyRandom(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt // capture
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -85,6 +84,7 @@ func Test_PrivateKeyRandom(t *testing.T) {
 			if tt.wantErr != "" {
 				require.Error(t, err)
 				require.ErrorContains(t, err, tt.wantErr)
+				
 				return
 			}
 
