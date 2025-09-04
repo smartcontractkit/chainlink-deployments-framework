@@ -41,6 +41,15 @@ type SolanaConfig struct {
 	ProgramsDirPath string `mapstructure:"programs_dir_path" yaml:"programs_dir_path"` // The path to the Solana programs directory.
 }
 
+// TonsConfig is the configuration for the Ton Chains.
+//
+// WARNING: This data type contains sensitive fields and should not be logged or set in file
+// configuration.
+type TonConfig struct {
+	DeployerKey   string `mapstructure:"deployer_key" yaml:"deployer_key"`     // Secret: The private key of the deployer account.
+	WalletVersion string `mapstructure:"wallet_version" yaml:"wallet_version"` // The version of the TON wallet
+}
+
 // AptosConfig is the configuration for the Aptos Chains.
 //
 // WARNING: This data type contains sensitive fields and should not be logged or set in file
@@ -115,6 +124,7 @@ type OnchainConfig struct {
 	Aptos  AptosConfig  `mapstructure:"aptos" yaml:"aptos"`
 	Sui    SuiConfig    `mapstructure:"sui" yaml:"sui"`
 	Tron   TronConfig   `mapstructure:"tron" yaml:"tron"`
+	Ton    TonConfig    `mapstructure:"ton" yaml:"ton"`
 }
 
 // OffchainConfig wraps the configuration for the offchain components.

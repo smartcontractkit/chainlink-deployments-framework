@@ -17,6 +17,7 @@ import (
 	cldf_evm_provider "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider"
 	cldf_solana_provider "github.com/smartcontractkit/chainlink-deployments-framework/chain/solana/provider"
 	cldf_sui_provider "github.com/smartcontractkit/chainlink-deployments-framework/chain/sui/provider"
+	cldf_ton_provider "github.com/smartcontractkit/chainlink-deployments-framework/chain/ton/provider"
 	cldf_tron_provider "github.com/smartcontractkit/chainlink-deployments-framework/chain/tron/provider"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config"
@@ -186,6 +187,12 @@ func newChainLoaders(
 		lggr.Warn("Skipping Sui chains, no private key found in secrets")
 	}
 
+	if cfg.Ton.DeployerKey != "" {
+		loaders[chainsel.FamilyTon] = newChainLoaderTon(networks, cfg)
+	} else {
+		lggr.Warn("Skipping Ton chains, no private key found in secrets")
+	}
+
 	return loaders
 }
 
@@ -307,11 +314,24 @@ type chainLoaderSolana struct {
 	*baseChainLoader
 }
 
+type chainLoaderTon struct {
+	*baseChainLoader
+}
+
 // newChainLoaderSolana a new chain loader for Solana.
 func newChainLoaderSolana(
 	networks *config_network.Config, cfg config_env.OnchainConfig,
 ) *chainLoaderSolana {
 	return &chainLoaderSolana{
+		baseChainLoader: newBaseChainLoader(networks, cfg),
+	}
+}
+
+// newChainLoaderTon a new chain loader for Ton.
+func newChainLoaderTon(
+	networks *config_network.Config, cfg config_env.OnchainConfig,
+) *chainLoaderTon {
+	return &chainLoaderTon{
 		baseChainLoader: newBaseChainLoader(networks, cfg),
 	}
 }
@@ -343,6 +363,31 @@ func (l *chainLoaderSolana) Load(ctx context.Context, selector uint64) (cldf_cha
 	).Initialize(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Solana chain %d: %w", selector, err)
+	}
+
+	return c, nil
+}
+
+// Load loads a Ton Chain for a selector.
+func (l *chainLoaderTon) Load(ctx context.Context, selector uint64) (cldf_chain.BlockChain, error) {
+	network, err := l.getNetwork(selector)
+	if err != nil {
+		return nil, err
+	}
+
+	httpURL := network.RPCs[0].HTTPURL
+	wsURL := network.RPCs[0].WSURL
+
+	c, err := cldf_ton_provider.NewRPCChainProvider(selector,
+		cldf_ton_provider.RPCChainProviderConfig{
+			HTTPURL:           httpURL,
+			WSURL:             wsURL,
+			DeployerSignerGen: cldf_ton_provider.PrivateKeyFromRaw(l.cfg.Ton.DeployerKey),
+			WalletVersion:     l.cfg.Ton.WalletVersion,
+		},
+	).Initialize(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize TON chain %d: %w", selector, err)
 	}
 
 	return c, nil

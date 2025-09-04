@@ -31,6 +31,7 @@ func Test_LoadChains(t *testing.T) {
 		aptosSelector  = chain_selectors.APTOS_LOCALNET.Selector
 		tronSelector   = chain_selectors.TRON_TESTNET_NILE.Selector
 		suiSelector    = chain_selectors.SUI_LOCALNET.Selector
+		tonSelector    = chain_selectors.TON_TESTNET.Selector
 	)
 
 	networks := []config_network.Network{
@@ -94,6 +95,18 @@ func Test_LoadChains(t *testing.T) {
 				},
 			},
 		},
+		{
+			Type:          config_network.NetworkTypeTestnet,
+			ChainSelector: tonSelector,
+			RPCs: []config_network.RPC{
+				{
+					RPCName:            "ton_rpc",
+					PreferredURLScheme: "http",
+					HTTPURL:            "http://ton-rpc",
+					WSURL:              "",
+				},
+			},
+		},
 	}
 	networksConfig := config_network.NewConfig(networks)
 
@@ -128,6 +141,10 @@ func Test_LoadChains(t *testing.T) {
 		Sui: config_env.SuiConfig{
 			DeployerKey: "0xA1B2C3D4E5F60718293A4B5C6D7E8F90123456789ABCDEF0123456789ABCDEF0", // Mock private key
 		},
+		Ton: config_env.TonConfig{
+			DeployerKey:   "0b1f7dbb19112fdac53344cf49731e41bfc420ac6a71d38c89fb38d04a6563d99aa3d1fa430550e8de5171ec55453b4e048c1701cadfa56726d489c56d67bab3", // Mock private key
+			WalletVersion: "V4R2",
+		},
 	}
 
 	tests := []struct {
@@ -142,8 +159,8 @@ func Test_LoadChains(t *testing.T) {
 			name:              "loads all valid chains",
 			giveNetworkConfig: networksConfig,
 			giveOnchainConfig: onchainConfig,
-			giveSelectors:     []uint64{evmSelector, solanaSelector, aptosSelector, tronSelector, suiSelector},
-			wantCount:         5,
+			giveSelectors:     []uint64{evmSelector, solanaSelector, aptosSelector, tronSelector, suiSelector, tonSelector},
+			wantCount:         6,
 		},
 		{
 			name:              "fails with unknown selector",
