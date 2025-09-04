@@ -9,6 +9,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
+	focr "github.com/smartcontractkit/chainlink-deployments-framework/offchain/ocr"
 )
 
 type MyChangeSet struct{}
@@ -105,7 +106,7 @@ func NewNoopEnvironment(t *testing.T) Environment {
 		[]string{},
 		nil,
 		t.Context,
-		XXXGenerateTestOCRSecrets(),
+		focr.XXXGenerateTestOCRSecrets(),
 		chain.NewBlockChains(map[uint64]chain.BlockChain{}),
 	)
 }

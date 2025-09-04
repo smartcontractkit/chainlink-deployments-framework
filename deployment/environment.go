@@ -13,6 +13,7 @@ import (
 	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	"github.com/smartcontractkit/chainlink-deployments-framework/offchain"
+	focr "github.com/smartcontractkit/chainlink-deployments-framework/offchain/ocr"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 )
 
@@ -56,7 +57,7 @@ type Environment struct {
 	NodeIDs    []string
 	Offchain   offchain.Client
 	GetContext func() context.Context
-	OCRSecrets OCRSecrets
+	OCRSecrets focr.OCRSecrets
 	// OperationsBundle contains dependencies required by the operations API.
 	OperationsBundle operations.Bundle
 	// BlockChains is the container of all chains in the environment.
@@ -82,7 +83,7 @@ func NewEnvironment(
 	nodeIDs []string,
 	offchain offchain.Client,
 	ctx func() context.Context,
-	secrets OCRSecrets,
+	secrets focr.OCRSecrets,
 	blockChains chain.BlockChains,
 	opts ...EnvironmentOption,
 ) *Environment {
