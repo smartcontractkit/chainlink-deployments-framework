@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
-
 	"github.com/xssnick/tonutils-go/liteclient"
 	tonlib "github.com/xssnick/tonutils-go/ton"
 	"github.com/xssnick/tonutils-go/ton/wallet"
@@ -14,14 +12,35 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/ton"
 )
 
+type WalletVersion string
+
+// Allowed TON wallet versions
+const (
+	WalletVersionV1R1    WalletVersion = "V1R1"
+	WalletVersionV1R2    WalletVersion = "V1R2"
+	WalletVersionV1R3    WalletVersion = "V1R3"
+	WalletVersionV2R1    WalletVersion = "V2R1"
+	WalletVersionV2R2    WalletVersion = "V2R2"
+	WalletVersionV3R1    WalletVersion = "V3R1"
+	WalletVersionV3R2    WalletVersion = "V3R2"
+	WalletVersionV4R1    WalletVersion = "V4R1"
+	WalletVersionV4R2    WalletVersion = "V4R2"
+	WalletVersionV5R1    WalletVersion = "V5R1"
+	WalletVersionDefault WalletVersion = ""
+)
+
 // RPCChainProviderConfig holds the configuration to initialize the RPCChainProvider.
 type RPCChainProviderConfig struct {
 	// Required: The HTTP RPC URL to connect to the Ton node.
 	HTTPURL string
 	// Optional: The WebSocket URL to connect to the Ton node.
-	WSURL             string
+	WSURL string
+	// Required: A generator for the deployer key. Use PrivateKeyFromRaw to create a deployer
+	// key from a private key.
 	DeployerSignerGen PrivateKeyGenerator
-	WalletVersion     string
+	// Optional: The TON wallet version to use. Supported versions are: V1R1, V1R2, V1R3, V2R1,
+	// V2R2, V3R1, V3R2, V4R1, V4R2 and V5R1. If no value provided, V5R1 is used as default.
+	WalletVersion WalletVersion
 }
 
 // validate checks if the RPCChainProviderConfig is valid.
@@ -63,7 +82,7 @@ func NewRPCChainProvider(selector uint64, config RPCChainProviderConfig) *RPCCha
 }
 
 // Initialize initializes the RPCChainProvider.
-func (p *RPCChainProvider) Initialize(_ context.Context) (chain.BlockChain, error) {
+func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, error) {
 	if p.chain != nil {
 		return *p.chain, nil // Already initialized
 	}
@@ -75,7 +94,7 @@ func (p *RPCChainProvider) Initialize(_ context.Context) (chain.BlockChain, erro
 	// Initialize TON client
 	connectionPool := liteclient.NewConnectionPool()
 	// Connect to public LiteServer config. We use the RPC URL to get the config
-	err := connectionPool.AddConnectionsFromConfigUrl(context.Background(), p.config.HTTPURL)
+	err := connectionPool.AddConnectionsFromConfigUrl(ctx, p.config.HTTPURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve ton network config: %w", err)
 	}
@@ -96,8 +115,6 @@ func (p *RPCChainProvider) Initialize(_ context.Context) (chain.BlockChain, erro
 		return nil, fmt.Errorf("failed to init TON wallet: %w", err)
 	}
 
-	log.Printf("TON wallet loaded with address %s", tonWallet.WalletAddress().String())
-
 	p.chain = &ton.Chain{
 		ChainMetadata: ton.ChainMetadata{
 			Selector: p.selector,
@@ -111,30 +128,30 @@ func (p *RPCChainProvider) Initialize(_ context.Context) (chain.BlockChain, erro
 	return *p.chain, nil
 }
 
-// getWalletVersionConfig returns the wallet version. V5R1 is the default if version is empty.
-func getWalletVersionConfig(version string) (wallet.VersionConfig, error) {
+// GetWalletVersionConfig returns the wallet version. V5R1 is the default if version is empty.
+func getWalletVersionConfig(version WalletVersion) (wallet.VersionConfig, error) {
 	switch version {
-	case "V1R1":
+	case WalletVersionV1R1:
 		return wallet.V1R1, nil
-	case "V1R2":
+	case WalletVersionV1R2:
 		return wallet.V1R2, nil
-	case "V1R3":
+	case WalletVersionV1R3:
 		return wallet.V1R3, nil
-	case "V2R1":
+	case WalletVersionV2R1:
 		return wallet.V2R1, nil
-	case "V2R2":
+	case WalletVersionV2R2:
 		return wallet.V2R2, nil
-	case "V3R1":
+	case WalletVersionV3R1:
 		return wallet.V3R1, nil
-	case "V3R2":
+	case WalletVersionV3R2:
 		return wallet.V3R2, nil
-	case "V4R1":
+	case WalletVersionV4R1:
 		return wallet.V4R1, nil
-	case "V4R2":
+	case WalletVersionV4R2:
 		return wallet.V4R2, nil
-	case "V5R1":
+	case WalletVersionV5R1:
 		return wallet.ConfigV5R1Beta{NetworkGlobalID: -239, Workchain: 0}, nil
-	case "":
+	case WalletVersionDefault:
 		return wallet.ConfigV5R1Beta{NetworkGlobalID: -239, Workchain: 0}, nil
 	default:
 		return nil, fmt.Errorf("unsupported wallet version: %s", version)

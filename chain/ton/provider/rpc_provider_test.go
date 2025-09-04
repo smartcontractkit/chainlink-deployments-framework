@@ -9,8 +9,6 @@ import (
 	tonchain "github.com/smartcontractkit/chainlink-deployments-framework/chain/ton"
 )
 
-// --- RPCChainProviderConfig.validate ---
-
 func Test_RPCChainProviderConfig_validate(t *testing.T) {
 	t.Parallel()
 
@@ -73,8 +71,6 @@ func Test_RPCChainProviderConfig_validate(t *testing.T) {
 		})
 	}
 }
-
-// --- RPCChainProvider.Initialize ---
 
 func Test_RPCChainProvider_Initialize(t *testing.T) {
 	t.Parallel()
@@ -185,8 +181,6 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 		})
 	}
 }
-
-// --- Accessors ---
 
 func Test_RPCChainProvider_Name(t *testing.T) {
 	t.Parallel()

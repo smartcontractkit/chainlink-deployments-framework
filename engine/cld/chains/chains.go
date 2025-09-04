@@ -314,24 +314,11 @@ type chainLoaderSolana struct {
 	*baseChainLoader
 }
 
-type chainLoaderTon struct {
-	*baseChainLoader
-}
-
 // newChainLoaderSolana a new chain loader for Solana.
 func newChainLoaderSolana(
 	networks *config_network.Config, cfg config_env.OnchainConfig,
 ) *chainLoaderSolana {
 	return &chainLoaderSolana{
-		baseChainLoader: newBaseChainLoader(networks, cfg),
-	}
-}
-
-// newChainLoaderTon a new chain loader for Ton.
-func newChainLoaderTon(
-	networks *config_network.Config, cfg config_env.OnchainConfig,
-) *chainLoaderTon {
-	return &chainLoaderTon{
 		baseChainLoader: newBaseChainLoader(networks, cfg),
 	}
 }
@@ -368,6 +355,19 @@ func (l *chainLoaderSolana) Load(ctx context.Context, selector uint64) (cldf_cha
 	return c, nil
 }
 
+type chainLoaderTon struct {
+	*baseChainLoader
+}
+
+// newChainLoaderTon a new chain loader for Ton.
+func newChainLoaderTon(
+	networks *config_network.Config, cfg config_env.OnchainConfig,
+) *chainLoaderTon {
+	return &chainLoaderTon{
+		baseChainLoader: newBaseChainLoader(networks, cfg),
+	}
+}
+
 // Load loads a Ton Chain for a selector.
 func (l *chainLoaderTon) Load(ctx context.Context, selector uint64) (cldf_chain.BlockChain, error) {
 	network, err := l.getNetwork(selector)
@@ -383,7 +383,7 @@ func (l *chainLoaderTon) Load(ctx context.Context, selector uint64) (cldf_chain.
 			HTTPURL:           httpURL,
 			WSURL:             wsURL,
 			DeployerSignerGen: cldf_ton_provider.PrivateKeyFromRaw(l.cfg.Ton.DeployerKey),
-			WalletVersion:     l.cfg.Ton.WalletVersion,
+			WalletVersion:     cldf_ton_provider.WalletVersion(l.cfg.Ton.WalletVersion),
 		},
 	).Initialize(ctx)
 	if err != nil {

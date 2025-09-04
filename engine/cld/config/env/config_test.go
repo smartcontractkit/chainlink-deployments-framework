@@ -102,8 +102,6 @@ var (
 		"SOLANA_PROGRAM_PATH":               "/tmp",
 		"APTOS_DEPLOYER_KEY":                "0x123",
 		"TRON_DEPLOYER_KEY":                 "0x123",
-		"TON_DEPLOYER_KEY":                  "0x123",
-		"TON_WALLET_VERSION":                "V5R1",
 		"JD_AUTH_COGNITO_APP_CLIENT_ID":     "123",
 		"JD_AUTH_COGNITO_APP_CLIENT_SECRET": "123",
 		"JD_AUTH_AWS_REGION":                "us-east-1",
@@ -115,7 +113,9 @@ var (
 		"OCR_X_PROPOSERS":                   "caring deer",
 		"CATALOG_SERVICE_GRPC":              "http://localhost:8080",
 		// These values do not have a legacy equivalent
-		"ONCHAIN_SUI_DEPLOYER_KEY": "0x123",
+		"ONCHAIN_SUI_DEPLOYER_KEY":   "0x123",
+		"ONCHAIN_TON_DEPLOYER_KEY":   "0x123",
+		"ONCHAIN_TON_WALLET_VERSION": "V5R1",
 	}
 
 	// envCfg is the config that is loaded from the environment variables.
