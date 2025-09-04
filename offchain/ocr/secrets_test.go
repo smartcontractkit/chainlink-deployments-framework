@@ -147,7 +147,7 @@ func TestGenerateSharedSecrets(t *testing.T) {
 			if tt.expectError {
 				require.Error(t, err)
 				if tt.errorType != nil {
-					assert.ErrorIs(t, err, tt.errorType)
+					require.ErrorIs(t, err, tt.errorType)
 				}
 				assert.True(t, secrets.IsEmpty(), "secrets should be empty when error occurs")
 			} else {
