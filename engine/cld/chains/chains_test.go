@@ -102,7 +102,7 @@ func Test_LoadChains(t *testing.T) {
 				{
 					RPCName:            "ton_rpc",
 					PreferredURLScheme: "http",
-					HTTPURL:            "http://ton-rpc",
+					HTTPURL:            "https://ton-blockchain.github.io/testnet-global.config.json",
 					WSURL:              "",
 				},
 			},
