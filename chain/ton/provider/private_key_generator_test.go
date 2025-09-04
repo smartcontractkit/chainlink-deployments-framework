@@ -42,7 +42,6 @@ func Test_PrivateKeyFromRaw(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt // capture
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -52,6 +51,7 @@ func Test_PrivateKeyFromRaw(t *testing.T) {
 			if tt.wantErr != "" {
 				require.Error(t, err)
 				require.ErrorContains(t, err, tt.wantErr)
+
 				return
 			}
 
@@ -90,7 +90,7 @@ func Test_PrivateKeyRandom(t *testing.T) {
 
 			require.NoError(t, err)
 			assert.NotNil(t, got)
-			assert.Equal(t, ed25519.PrivateKeySize, len(got))
+			assert.Len(t, got, ed25519.PrivateKeySize)
 
 			// Sanity check: sign and verify a message
 			msg := []byte("ton-provider-key-test")

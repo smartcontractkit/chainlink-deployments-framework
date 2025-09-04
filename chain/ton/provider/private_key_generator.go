@@ -4,6 +4,7 @@ import (
 	"crypto/ed25519"
 	"encoding/hex"
 	"fmt"
+
 	"github.com/xssnick/tonutils-go/ton/wallet"
 )
 
