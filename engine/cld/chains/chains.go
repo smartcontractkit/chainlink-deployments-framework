@@ -15,11 +15,11 @@ import (
 	cldf_aptos_provider "github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos/provider"
 	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	cldf_evm_provider "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider"
+	cldf_evm_rpcclient "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider/rpcclient"
 	cldf_solana_provider "github.com/smartcontractkit/chainlink-deployments-framework/chain/solana/provider"
 	cldf_sui_provider "github.com/smartcontractkit/chainlink-deployments-framework/chain/sui/provider"
 	cldf_ton_provider "github.com/smartcontractkit/chainlink-deployments-framework/chain/ton/provider"
 	cldf_tron_provider "github.com/smartcontractkit/chainlink-deployments-framework/chain/tron/provider"
-	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config"
 	config_env "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/env"
 	config_network "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/network"
@@ -433,9 +433,9 @@ func (l *chainLoaderEVM) Load(ctx context.Context, selector uint64) (cldf_chain.
 	confirmFunctor := l.confirmFunctor(network, l.cfg.EVM.Seth)
 
 	// Define the client options to use for the MultiClient.
-	clientOpts := []func(client *cldf.MultiClient){
-		func(client *cldf.MultiClient) {
-			client.RetryConfig = cldf.RetryConfig{
+	clientOpts := []func(client *cldf_evm_rpcclient.MultiClient){
+		func(client *cldf_evm_rpcclient.MultiClient) {
+			client.RetryConfig = cldf_evm_rpcclient.RetryConfig{
 				Attempts:     5,                     // assuming failure rate is 20%, this will take 5 attempts to succeed
 				Delay:        10 * time.Millisecond, // this is a very short delay, we want to be fast in this case
 				Timeout:      5 * time.Second,
@@ -502,18 +502,18 @@ func (l *chainLoaderEVM) isZkSyncVM(selector uint64) bool {
 }
 
 // toRPCs converts a network to a slice of RPCs for a specific chain ID.
-func (l *chainLoaderEVM) toRPCs(rpcCfgs []config_network.RPC) ([]cldf.RPC, error) {
-	rpcs := make([]cldf.RPC, 0, len(rpcCfgs))
+func (l *chainLoaderEVM) toRPCs(rpcCfgs []config_network.RPC) ([]cldf_evm_rpcclient.RPC, error) {
+	rpcs := make([]cldf_evm_rpcclient.RPC, 0, len(rpcCfgs))
 
 	for _, rpcCfg := range rpcCfgs {
-		preferedUrlScheme, err := cldf.URLSchemePreferenceFromString(rpcCfg.PreferredURLScheme)
+		preferedUrlScheme, err := cldf_evm_rpcclient.URLSchemePreferenceFromString(rpcCfg.PreferredURLScheme)
 		if err != nil {
 			return nil, fmt.Errorf("invalid URL scheme preference %s: %w",
 				rpcCfg.PreferredURLScheme, err,
 			)
 		}
 
-		rpcs = append(rpcs, cldf.RPC{
+		rpcs = append(rpcs, cldf_evm_rpcclient.RPC{
 			Name:               rpcCfg.RPCName,
 			WSURL:              rpcCfg.WSURL,
 			HTTPURL:            rpcCfg.HTTPURL,
