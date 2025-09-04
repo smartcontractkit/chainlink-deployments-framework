@@ -12,7 +12,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
-	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider/rpcclient"
 )
 
 // RPCChainProviderConfig holds the configuration to initialize the RPCChainProvider.
@@ -21,7 +21,7 @@ type RPCChainProviderConfig struct {
 	// key from a private key, or TransactorFromKMS to create a deployer key from a KMS key.
 	DeployerTransactorGen SignerGenerator
 	// Required: At least one RPC must be provided to connect to the EVM node.
-	RPCs []deployment.RPC
+	RPCs []rpcclient.RPC
 	// Required: ConfirmFunctor is a type that generates a confirmation function for transactions.
 	// Use ConfirmFuncGeth to use the Geth client for transaction confirmation, or
 	// ConfirmFuncSeth to use the Seth client for transaction confirmation with richer debugging.
@@ -32,7 +32,7 @@ type RPCChainProviderConfig struct {
 	// RPCChainProvider. These options are applied to the MultiClient instance created by the
 	// RPCChainProvider. You can use this to set up custom HTTP clients, timeouts, or other
 	// configurations for the RPC connections.
-	ClientOpts []func(client *deployment.MultiClient)
+	ClientOpts []func(client *rpcclient.MultiClient)
 	// Optional: A generator for the additional user transactors. If not provided, no user
 	// transactors will be generated.
 	UsersTransactorGen []SignerGenerator
@@ -124,9 +124,7 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 	}
 
 	// Setup the client.
-	//
-	// TODO: Move the multiclient into this package
-	client, err := deployment.NewMultiClient(p.config.Logger, deployment.RPCConfig{
+	client, err := rpcclient.NewMultiClient(p.config.Logger, rpcclient.RPCConfig{
 		ChainSelector: p.selector,
 		RPCs:          p.config.RPCs,
 	}, p.config.ClientOpts...)

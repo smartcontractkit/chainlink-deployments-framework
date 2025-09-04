@@ -16,6 +16,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 )
 
+// TODO(giogam): remove this once multiclient is removed from deployment
 func MaybeDataErr(err error) error {
 	//revive:disable
 	var d rpc.DataError
