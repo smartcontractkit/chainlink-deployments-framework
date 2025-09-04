@@ -309,7 +309,28 @@ chain = { key = "api-key", url = "https://test-url.com", chain = "100" }`
 func TestReadContractsList(t *testing.T) {
 	t.Parallel()
 
-	example, err := readContractsList(filepath.Join(cldf_domain.ProjectRoot, "contracts.example.toml"))
+	const tomlContent = `[[contracts]]
+selector = 6955638871347136141
+environment = "testnet"
+contract_address = "0xF389104dFaD66cED6B77b879FF76b572a8cC3590"
+contract_name = "EVM2EVMOffRamp"
+optimizer_runs = 26000
+compiler_version = "v0.8.24"
+
+[[contracts]]
+selector = 6955638871347136141
+environment = "testnet"
+contract_address = "0x8EAC33c3B95770fE8D201866E06f60Ad453F3779"
+contract_name = "EVM2EVMOnRamp"
+optimizer_runs = 26000
+compiler_version = "v0.8.24"
+`
+
+	tmp := t.TempDir()
+	path := filepath.Join(tmp, "contracts.example.toml")
+	require.NoError(t, os.WriteFile(path, []byte(tomlContent), 0600))
+
+	example, err := readContractsList(path)
 	require.NoError(t, err)
 	require.Len(t, example.Contracts, 2)
 	require.Equal(t, "0xF389104dFaD66cED6B77b879FF76b572a8cC3590", example.Contracts[0].ContractAddress)
