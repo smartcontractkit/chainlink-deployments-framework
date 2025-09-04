@@ -37,6 +37,10 @@ var (
 			Sui: SuiConfig{
 				DeployerKey: "0xefg",
 			},
+			Ton: TonConfig{
+				DeployerKey:   "0xedd",
+				WalletVersion: "V5R1",
+			},
 		},
 		Offchain: OffchainConfig{
 			JobDistributor: JobDistributorConfig{
@@ -74,6 +78,8 @@ var (
 		"ONCHAIN_APTOS_DEPLOYER_KEY":                 "0x123",
 		"ONCHAIN_TRON_DEPLOYER_KEY":                  "0x123",
 		"ONCHAIN_SUI_DEPLOYER_KEY":                   "0x123",
+		"ONCHAIN_TON_DEPLOYER_KEY":                   "0x123",
+		"ONCHAIN_TON_WALLET_VERSION":                 "V5R1",
 		"OFFCHAIN_JD_AUTH_COGNITO_APP_CLIENT_ID":     "123",
 		"OFFCHAIN_JD_AUTH_COGNITO_APP_CLIENT_SECRET": "123",
 		"OFFCHAIN_JD_AUTH_AWS_REGION":                "us-east-1",
@@ -96,6 +102,8 @@ var (
 		"SOLANA_PROGRAM_PATH":               "/tmp",
 		"APTOS_DEPLOYER_KEY":                "0x123",
 		"TRON_DEPLOYER_KEY":                 "0x123",
+		"TON_DEPLOYER_KEY":                  "0x123",
+		"TON_WALLET_VERSION":                "V5R1",
 		"JD_AUTH_COGNITO_APP_CLIENT_ID":     "123",
 		"JD_AUTH_COGNITO_APP_CLIENT_SECRET": "123",
 		"JD_AUTH_AWS_REGION":                "us-east-1",
@@ -136,6 +144,10 @@ var (
 			},
 			Sui: SuiConfig{
 				DeployerKey: "0x123",
+			},
+			Ton: TonConfig{
+				DeployerKey:   "0x123",
+				WalletVersion: "V5R1",
 			},
 		},
 		Offchain: OffchainConfig{
@@ -188,6 +200,7 @@ func Test_Load(t *testing.T) { //nolint:paralleltest // see comment in setupTest
 					Solana: SolanaConfig{},
 					Aptos:  AptosConfig{},
 					Tron:   TronConfig{},
+					Ton:    TonConfig{},
 				},
 				Offchain: OffchainConfig{
 					JobDistributor: JobDistributorConfig{
