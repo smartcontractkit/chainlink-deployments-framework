@@ -858,7 +858,7 @@ func Test_ChainLoaderTron_Load(t *testing.T) {
 }
 
 // newFakeRPCServer returns a fake RPC server which always answers with a valid `eth_blockNumber“
-// response for evm and and a valid config for ton.
+// response for evm and a valid config for ton.
 //
 // When the test is done, the server is closed automatically.
 func newFakeRPCServer(t *testing.T) *httptest.Server {
