@@ -39,6 +39,7 @@ const (
 	RPCDefaultHealthCheckTimeout = 2 * time.Second
 )
 
+// RetryConfig configures retry behavior for RPC operations.
 type RetryConfig struct {
 	Attempts     uint
 	Delay        time.Duration
@@ -48,6 +49,7 @@ type RetryConfig struct {
 	DialTimeout  time.Duration
 }
 
+// defaultRetryConfig returns default retry configuration.
 func defaultRetryConfig() RetryConfig {
 	return RetryConfig{
 		Attempts:     RPCDefaultRetryAttempts,
@@ -62,6 +64,7 @@ func defaultRetryConfig() RetryConfig {
 // MultiClient should comply with the OnchainClient interface
 var _ evm.OnchainClient = &MultiClient{}
 
+// MultiClient is a client that can manage multiple RPC endpoints with a failover mechanism and retry logic.
 type MultiClient struct {
 	*ethclient.Client
 	Backups     []*ethclient.Client
@@ -85,6 +88,7 @@ func (mc *MultiClient) rpcHealthCheck(ctx context.Context, client *ethclient.Cli
 	return nil
 }
 
+// NewMultiClient creates a new MultiClient with failover capabilities.
 func NewMultiClient(lggr logger.Logger, rpcsCfg RPCConfig, opts ...func(client *MultiClient)) (*MultiClient, error) {
 	if len(rpcsCfg.RPCs) == 0 {
 		return nil, errors.New("no RPCs provided, need at least one")

@@ -6,6 +6,7 @@ import (
 	"strings"
 )
 
+// URLSchemePreference defines URL scheme preferences for RPC connections.
 type URLSchemePreference int
 
 const (
@@ -14,6 +15,7 @@ const (
 	URLSchemePreferenceHTTP
 )
 
+// URLSchemePreferenceFromString converts a string to URLSchemePreference.
 func URLSchemePreferenceFromString(s string) (URLSchemePreference, error) {
 	switch strings.ToLower(s) {
 	case "none":
@@ -27,6 +29,7 @@ func URLSchemePreferenceFromString(s string) (URLSchemePreference, error) {
 	}
 }
 
+// UnmarshalText unmarshals the URLSchemePreference from a text.
 func (u *URLSchemePreference) UnmarshalText(text []byte) error {
 	preference, err := URLSchemePreferenceFromString(string(text))
 	if err != nil {
@@ -37,6 +40,7 @@ func (u *URLSchemePreference) UnmarshalText(text []byte) error {
 	return nil
 }
 
+// RPC represents a single RPC endpoint configuration.
 type RPC struct {
 	Name               string
 	WSURL              string
