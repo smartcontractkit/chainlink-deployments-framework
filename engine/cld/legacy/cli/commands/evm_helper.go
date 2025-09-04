@@ -296,17 +296,19 @@ func verifyContract(
 	}
 
 	lggr.Infof("Assembled verification command")
-	// make a shallow copy for logging, then mask the key
 	var logCmd []string
+	// Mask (redact) any sensitive API key value.
 	for i := 0; i < len(cmdStrs); i++ {
 		if cmdStrs[i] == "--etherscan-api-key" && i+1 < len(cmdStrs) {
-			// Skip the key and its value
-			i++
+			logCmd = append(logCmd, cmdStrs[i])
+			logCmd = append(logCmd, "<REDACTED>")
+			i++ // Skip the actual key value
+
 			continue
 		}
 		logCmd = append(logCmd, cmdStrs[i])
 	}
-	lggr.Infof("Verification command assembled without sensitive data: %v", logCmd)
+	lggr.Infof("Verification command assembled (API key redacted): %v", logCmd)
 
 	// Keep this close to exec to avoid out of band checkouts changing it.
 	if err = checkoutCommit(contractDirectory, commit); err != nil {
