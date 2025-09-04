@@ -1,5 +1,19 @@
 # chainlink-deployments-framework
 
+## 0.41.0
+
+### Minor Changes
+
+- [#369](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/369) [`208aac1`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/208aac10a18740a99179a7d6aff5bd753901eee8) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat(command): migrate env command
+
+- [#364](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/364) [`12c9d4d`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/12c9d4d52865b8bd50a7157e071e75d1326ac249) Thanks [@jkongie](https://github.com/jkongie)! - Remove migration file from the scaffold. Pipelines is the preferred way to run Changesets.
+
+- [#368](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/368) [`9b3255e`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/9b3255e41dfd3104703256da0bbdf890f78365fc) Thanks [@DimitriosNaikopoulos](https://github.com/DimitriosNaikopoulos)! - Migrate fork environment and anvil to framework
+
+### Patch Changes
+
+- [#365](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/365) [`0c50737`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/0c5073749981e6cf478a0465590efff88d249abb) Thanks [@giogam](https://github.com/giogam)! - chore: duplicates multiclient and rpc_config in chain/evm
+
 ## 0.40.0
 
 ### Minor Changes
