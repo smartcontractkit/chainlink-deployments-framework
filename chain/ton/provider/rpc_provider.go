@@ -17,14 +17,7 @@ type WalletVersion string
 
 // Allowed TON wallet versions
 const (
-	WalletVersionV1R1    WalletVersion = "V1R1"
-	WalletVersionV1R2    WalletVersion = "V1R2"
-	WalletVersionV1R3    WalletVersion = "V1R3"
-	WalletVersionV2R1    WalletVersion = "V2R1"
-	WalletVersionV2R2    WalletVersion = "V2R2"
-	WalletVersionV3R1    WalletVersion = "V3R1"
 	WalletVersionV3R2    WalletVersion = "V3R2"
-	WalletVersionV4R1    WalletVersion = "V4R1"
 	WalletVersionV4R2    WalletVersion = "V4R2"
 	WalletVersionV5R1    WalletVersion = "V5R1"
 	WalletVersionDefault WalletVersion = ""
@@ -100,7 +93,7 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 		return nil, fmt.Errorf("failed to retrieve ton network config: %w", err)
 	}
 
-	api := tonlib.NewAPIClient(connectionPool, tonlib.ProofCheckPolicySecure)
+	api := tonlib.NewAPIClient(connectionPool, tonlib.ProofCheckPolicyFast)
 
 	// Wallet
 	privateKey, err := p.config.DeployerSignerGen.Generate()
@@ -132,28 +125,14 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 // GetWalletVersionConfig returns the wallet version. V5R1 is the default if version is empty.
 func getWalletVersionConfig(version WalletVersion) (wallet.VersionConfig, error) {
 	switch version {
-	case WalletVersionV1R1:
-		return wallet.V1R1, nil
-	case WalletVersionV1R2:
-		return wallet.V1R2, nil
-	case WalletVersionV1R3:
-		return wallet.V1R3, nil
-	case WalletVersionV2R1:
-		return wallet.V2R1, nil
-	case WalletVersionV2R2:
-		return wallet.V2R2, nil
-	case WalletVersionV3R1:
-		return wallet.V3R1, nil
 	case WalletVersionV3R2:
 		return wallet.V3R2, nil
-	case WalletVersionV4R1:
-		return wallet.V4R1, nil
 	case WalletVersionV4R2:
 		return wallet.V4R2, nil
 	case WalletVersionV5R1:
-		return wallet.ConfigV5R1Beta{NetworkGlobalID: -239, Workchain: 0}, nil
+		return wallet.ConfigV5R1Final{NetworkGlobalID: -239, Workchain: 0}, nil
 	case WalletVersionDefault:
-		return wallet.ConfigV5R1Beta{NetworkGlobalID: -239, Workchain: 0}, nil
+		return wallet.ConfigV5R1Final{NetworkGlobalID: -239, Workchain: 0}, nil
 	default:
 		return nil, fmt.Errorf("unsupported wallet version: %s", version)
 	}
