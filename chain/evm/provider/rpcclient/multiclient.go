@@ -133,12 +133,14 @@ func NewMultiClient(lggr logger.Logger, rpcsCfg RPCConfig, opts ...func(client *
 	return &mc, nil
 }
 
+// SendTransaction is a wrapper around the ethclient.SendTransaction method that retries on failure.
 func (mc *MultiClient) SendTransaction(ctx context.Context, tx *types.Transaction) error {
 	return mc.retryWithBackups(ctx, "SendTransaction", func(ct context.Context, client *ethclient.Client) error {
 		return client.SendTransaction(ct, tx)
 	})
 }
 
+// CallContract is a wrapper around the ethclient.CallContract method that retries on failure.
 func (mc *MultiClient) CallContract(ctx context.Context, msg ethereum.CallMsg, blockNumber *big.Int) ([]byte, error) {
 	var result []byte
 	err := mc.retryWithBackups(ctx, "CallContract", func(ct context.Context, client *ethclient.Client) error {
@@ -151,6 +153,7 @@ func (mc *MultiClient) CallContract(ctx context.Context, msg ethereum.CallMsg, b
 	return result, err
 }
 
+// CallContractAtHash is a wrapper around the ethclient.CallContractAtHash method that retries on failure.
 func (mc *MultiClient) CallContractAtHash(ctx context.Context, msg ethereum.CallMsg, blockHash common.Hash) ([]byte, error) {
 	var result []byte
 	err := mc.retryWithBackups(ctx, "CallContractAtHash", func(ct context.Context, client *ethclient.Client) error {
@@ -163,6 +166,7 @@ func (mc *MultiClient) CallContractAtHash(ctx context.Context, msg ethereum.Call
 	return result, err
 }
 
+// CodeAt is a wrapper around the ethclient.CodeAt method that retries on failure.
 func (mc *MultiClient) CodeAt(ctx context.Context, account common.Address, blockNumber *big.Int) ([]byte, error) {
 	var code []byte
 	err := mc.retryWithBackups(ctx, "CodeAt", func(ct context.Context, client *ethclient.Client) error {
@@ -175,6 +179,7 @@ func (mc *MultiClient) CodeAt(ctx context.Context, account common.Address, block
 	return code, err
 }
 
+// CodeAtHash is a wrapper around the ethclient.CodeAtHash method that retries on failure.
 func (mc *MultiClient) CodeAtHash(ctx context.Context, account common.Address, blockHash common.Hash) ([]byte, error) {
 	var code []byte
 	err := mc.retryWithBackups(ctx, "CodeAtHash", func(ct context.Context, client *ethclient.Client) error {
@@ -187,6 +192,7 @@ func (mc *MultiClient) CodeAtHash(ctx context.Context, account common.Address, b
 	return code, err
 }
 
+// NonceAt is a wrapper around the ethclient.NonceAt method that retries on failure.
 func (mc *MultiClient) NonceAt(ctx context.Context, account common.Address, block *big.Int) (uint64, error) {
 	var count uint64
 	err := mc.retryWithBackups(ctx, "NonceAt", func(ct context.Context, client *ethclient.Client) error {
@@ -199,6 +205,7 @@ func (mc *MultiClient) NonceAt(ctx context.Context, account common.Address, bloc
 	return count, err
 }
 
+// NonceAtHash is a wrapper around the ethclient.NonceAtHash method that retries on failure.
 func (mc *MultiClient) NonceAtHash(ctx context.Context, account common.Address, blockHash common.Hash) (uint64, error) {
 	var count uint64
 	err := mc.retryWithBackups(ctx, "NonceAtHash", func(ct context.Context, client *ethclient.Client) error {
@@ -211,6 +218,7 @@ func (mc *MultiClient) NonceAtHash(ctx context.Context, account common.Address, 
 	return count, err
 }
 
+// HeaderByNumber is a wrapper around the ethclient.HeaderByNumber method that retries on failure.
 func (mc *MultiClient) HeaderByNumber(ctx context.Context, number *big.Int) (*types.Header, error) {
 	var header *types.Header
 	err := mc.retryWithBackups(ctx, "HeaderByNumber", func(ct context.Context, client *ethclient.Client) error {
@@ -223,6 +231,7 @@ func (mc *MultiClient) HeaderByNumber(ctx context.Context, number *big.Int) (*ty
 	return header, err
 }
 
+// SuggestGasPrice is a wrapper around the ethclient.SuggestGasPrice method that retries on failure.
 func (mc *MultiClient) SuggestGasPrice(ctx context.Context) (*big.Int, error) {
 	var gasPrice *big.Int
 	err := mc.retryWithBackups(ctx, "SuggestGasPrice", func(ct context.Context, client *ethclient.Client) error {
@@ -235,6 +244,7 @@ func (mc *MultiClient) SuggestGasPrice(ctx context.Context) (*big.Int, error) {
 	return gasPrice, err
 }
 
+// SuggestGasTipCap is a wrapper around the ethclient.SuggestGasTipCap method that retries on failure.
 func (mc *MultiClient) SuggestGasTipCap(ctx context.Context) (*big.Int, error) {
 	var gasTipCap *big.Int
 	err := mc.retryWithBackups(ctx, "SuggestGasTipCap", func(ct context.Context, client *ethclient.Client) error {
@@ -247,6 +257,7 @@ func (mc *MultiClient) SuggestGasTipCap(ctx context.Context) (*big.Int, error) {
 	return gasTipCap, err
 }
 
+// PendingCodeAt is a wrapper around the ethclient.PendingCodeAt method that retries on failure.
 func (mc *MultiClient) PendingCodeAt(ctx context.Context, account common.Address) ([]byte, error) {
 	var code []byte
 	err := mc.retryWithBackups(ctx, "PendingCodeAt", func(ct context.Context, client *ethclient.Client) error {
@@ -259,6 +270,7 @@ func (mc *MultiClient) PendingCodeAt(ctx context.Context, account common.Address
 	return code, err
 }
 
+// PendingNonceAt is a wrapper around the ethclient.PendingNonceAt method that retries on failure.
 func (mc *MultiClient) PendingNonceAt(ctx context.Context, account common.Address) (uint64, error) {
 	var count uint64
 	err := mc.retryWithBackups(ctx, "PendingNonceAt", func(ct context.Context, client *ethclient.Client) error {
@@ -271,6 +283,7 @@ func (mc *MultiClient) PendingNonceAt(ctx context.Context, account common.Addres
 	return count, err
 }
 
+// EstimateGas is a wrapper around the ethclient.EstimateGas method that retries on failure.
 func (mc *MultiClient) EstimateGas(ctx context.Context, call ethereum.CallMsg) (uint64, error) {
 	var gas uint64
 	err := mc.retryWithBackups(ctx, "EstimateGas", func(ct context.Context, client *ethclient.Client) error {
@@ -283,6 +296,7 @@ func (mc *MultiClient) EstimateGas(ctx context.Context, call ethereum.CallMsg) (
 	return gas, err
 }
 
+// BalanceAt is a wrapper around the ethclient.BalanceAt method that retries on failure.
 func (mc *MultiClient) BalanceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error) {
 	var balance *big.Int
 	err := mc.retryWithBackups(ctx, "BalanceAt", func(ct context.Context, client *ethclient.Client) error {
@@ -295,6 +309,7 @@ func (mc *MultiClient) BalanceAt(ctx context.Context, account common.Address, bl
 	return balance, err
 }
 
+// FilterLogs is a wrapper around the ethclient.FilterLogs method that retries on failure.
 func (mc *MultiClient) FilterLogs(ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error) {
 	var logs []types.Log
 	err := mc.retryWithBackups(ctx, "FilterLogs", func(ct context.Context, client *ethclient.Client) error {
@@ -307,6 +322,7 @@ func (mc *MultiClient) FilterLogs(ctx context.Context, q ethereum.FilterQuery) (
 	return logs, err
 }
 
+// SubscribeFilterLogs is a wrapper around the ethclient.SubscribeFilterLogs method that retries on failure.
 func (mc *MultiClient) SubscribeFilterLogs(ctx context.Context, q ethereum.FilterQuery, ch chan<- types.Log) (ethereum.Subscription, error) {
 	var sub ethereum.Subscription
 	err := mc.retryWithBackups(ctx, "SubscribeFilterLogs", func(ct context.Context, client *ethclient.Client) error {
@@ -359,6 +375,7 @@ func (mc *MultiClient) WaitMined(ctx context.Context, tx *types.Transaction) (*t
 	}
 }
 
+// retryWithBackups tries an operation with all the clients in the order of the primary client and the backups.
 func (mc *MultiClient) retryWithBackups(ctx context.Context, opName string, op func(context.Context, *ethclient.Client) error) error {
 	var err error
 	traceID := uuid.New()
@@ -394,6 +411,7 @@ func (mc *MultiClient) retryWithBackups(ctx context.Context, opName string, op f
 	return errors.Join(err, fmt.Errorf("all backup clients failed for chain %q", mc.chainName))
 }
 
+// dialWithRetry dials an RPC endpoint with retry logic.
 func (mc *MultiClient) dialWithRetry(rpc RPC, lggr logger.Logger) (*ethclient.Client, error) {
 	endpoint, err := rpc.ToEndpoint()
 	if err != nil {
@@ -469,6 +487,7 @@ func (mc *MultiClient) reorderRPCs(rpcIndex int) {
 	mc.Client = newDefaultRPC
 }
 
+// clients returns the clients in the order of the primary client and the backups.
 func (mc *MultiClient) clients() []*ethclient.Client {
 	mc.mu.RLock()
 	defer mc.mu.RUnlock()
@@ -476,6 +495,7 @@ func (mc *MultiClient) clients() []*ethclient.Client {
 	return append([]*ethclient.Client{mc.Client}, mc.Backups...)
 }
 
+// maybeDataErr is a helper function to check if the error is a data error.
 func maybeDataErr(err error) error {
 	//revive:disable
 	var d rpc.DataError
