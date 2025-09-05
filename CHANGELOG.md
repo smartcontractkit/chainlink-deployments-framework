@@ -1,5 +1,23 @@
 # chainlink-deployments-framework
 
+## 0.42.0
+
+### Minor Changes
+
+- [#373](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/373) [`14af85c`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/14af85cf91cab7cb971c22285ac7f894de04fab1) Thanks [@nicolasgnr](https://github.com/nicolasgnr)! - Adding TON support to CLD
+
+- [#381](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/381) [`2b56b8a`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/2b56b8a3edf78bc9891cff6c9922e66b0f9d2b5f) Thanks [@DimitriosNaikopoulos](https://github.com/DimitriosNaikopoulos)! - feat: migrate jd commands to framework
+
+- [#379](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/379) [`237e390`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/237e390a86ad8fd000bf59ed4ef8fa5a65438630) Thanks [@jkongie](https://github.com/jkongie)! - Private Key Generators for Chain Providers no longer expose the private key as a public field
+
+### Patch Changes
+
+- [#375](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/375) [`0b48f42`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/0b48f4218fcb025c1d9f43f27e5b4fb3ead70c9d) Thanks [@giogam](https://github.com/giogam)! - chore: moves ocr_secrets deployment -> offchain/ocr
+
+- [#374](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/374) [`cc451a0`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/cc451a060d31af1ebec445a871d0de5957e80a9c) Thanks [@giogam](https://github.com/giogam)! - chore(deployment): removes multiclient aliases
+
+- [#370](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/370) [`b978df4`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/b978df4abac430dcbb1655a246e5a16f882bf96a) Thanks [@ajaskolski](https://github.com/ajaskolski)! - feat: migrate evm commands from cld
+
 ## 0.41.0
 
 ### Minor Changes
