@@ -42,7 +42,6 @@ type Chain struct {
 	SignHash      func(ctx context.Context, txHash []byte) ([]byte, error) // Function for signing transaction hashes
 	Address       address.Address                                          // Address of the account used for transactions
 	URL           string                                                   // Optional: Client URL
-	DeployerSeed  string                                                   // Optional: mnemonic or raw seed
 
 	// SendAndConfirm provides a utility function to send a transaction and waits for confirmation.
 	SendAndConfirm func(ctx context.Context, tx *common.Transaction, opts *ConfirmRetryOptions) (*soliditynode.TransactionInfo, error)
