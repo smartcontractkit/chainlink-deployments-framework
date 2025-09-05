@@ -53,7 +53,7 @@ func (reg environmentSolanaRegistry) AddSolanaInstructionDecoder(typeAndVersion 
 
 // NewEnvironmentSolanaRegistry creates a new environmentSolanaRegistry from the provided ABI mappings and domain name.
 func NewEnvironmentSolanaRegistry(env cldf.Environment, decoderMappings map[string]DecodeInstructionFn) (*environmentSolanaRegistry, error) {
-	addressesByChain, errAddrBook := env.ExistingAddresses.Addresses()
+	addressesByChain, errAddrBook := env.ExistingAddresses.Addresses() //nolint:staticcheck
 	if errAddrBook != nil {
 		return nil, errAddrBook
 	}

@@ -169,7 +169,7 @@ func NewDefaultProposalContext(env cldf.Environment, opts ...proposalCtxOption) 
 			return nil, err
 		}
 	}
-	addressesByChain, errAddrBook := env.ExistingAddresses.Addresses()
+	addressesByChain, errAddrBook := env.ExistingAddresses.Addresses() //nolint:staticcheck
 	if errAddrBook != nil {
 		return nil, errAddrBook
 	}

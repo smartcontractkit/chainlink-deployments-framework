@@ -71,7 +71,7 @@ func (reg environmentEVMRegistry) AddABI(typeAndVersion cldf.TypeAndVersion, abi
 
 // NewEnvironmentEVMRegistry creates a new environmentEVMRegistry from the provided ABI mappings and domain name.
 func NewEnvironmentEVMRegistry(env cldf.Environment, abiMappings map[string]string) (*environmentEVMRegistry, error) {
-	addressesByChain, errAddrBook := env.ExistingAddresses.Addresses()
+	addressesByChain, errAddrBook := env.ExistingAddresses.Addresses() //nolint:staticcheck
 	if errAddrBook != nil {
 		return nil, errAddrBook
 	}
