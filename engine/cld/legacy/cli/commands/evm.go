@@ -13,9 +13,9 @@ import (
 	nodev1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/node"
 	"github.com/spf13/cobra"
 
-	fclient "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider/rpcclient"
-	cldf_chains "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/chains"
-	cldf_config "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config"
+	evmclient "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider/rpcclient"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/chains"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/legacy/cli"
@@ -84,20 +84,20 @@ func (c Commands) newEvmNonceClear(domain domain.Domain) *cobra.Command {
 		Example: evmNonceClearExample,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			envKey, _ := cmd.Flags().GetString("environment")
-			chainSelector, _ := cmd.Flags().GetUint64("selector")
+			chainselector, _ := cmd.Flags().GetUint64("selector")
 
-			_, ok := chainsel.ChainBySelector(chainSelector)
+			_, ok := chainsel.ChainBySelector(chainselector)
 			if !ok {
-				return fmt.Errorf("EVM chain not found for selector %d", chainSelector)
+				return fmt.Errorf("EVM chain not found for selector %d", chainselector)
 			}
 
-			config, err := cldf_config.Load(domain, envKey, c.lggr)
+			config, err := config.Load(domain, envKey, c.lggr)
 			if err != nil {
 				return fmt.Errorf("failed to load config: %w", err)
 			}
 
-			chains, err := cldf_chains.LoadChains(
-				cmd.Context(), c.lggr, config, []uint64{chainSelector},
+			chains, err := chains.LoadChains(
+				cmd.Context(), c.lggr, config, []uint64{chainselector},
 			)
 			if err != nil {
 				return fmt.Errorf("failed to load chains from env: %w", err)
@@ -105,14 +105,14 @@ func (c Commands) newEvmNonceClear(domain domain.Domain) *cobra.Command {
 
 			evmChains := chains.EVMChains()
 
-			chain := evmChains[chainSelector]
+			chain := evmChains[chainselector]
 			fromAddr := chain.DeployerKey.From
 
 			pendingNonce, err := chain.Client.PendingNonceAt(cmd.Context(), fromAddr)
 			if err != nil {
 				return err
 			}
-			nonce, err := chain.Client.(*fclient.MultiClient).Client.NonceAt(cmd.Context(), fromAddr, nil)
+			nonce, err := chain.Client.(*evmclient.MultiClient).Client.NonceAt(cmd.Context(), fromAddr, nil)
 			if err != nil {
 				return err
 			}
@@ -185,20 +185,20 @@ func (c Commands) newEvmGasSend(domain domain.Domain) *cobra.Command {
 		Example: evmGasSendExample,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			envKey, _ := cmd.Flags().GetString("environment")
-			chainSelector, _ := cmd.Flags().GetUint64("selector")
+			chainselector, _ := cmd.Flags().GetUint64("selector")
 
-			_, ok := chainsel.ChainBySelector(chainSelector)
+			_, ok := chainsel.ChainBySelector(chainselector)
 			if !ok {
-				return fmt.Errorf("EVM chain not found for selector %d", chainSelector)
+				return fmt.Errorf("EVM chain not found for selector %d", chainselector)
 			}
 
-			config, err := cldf_config.Load(domain, envKey, c.lggr)
+			config, err := config.Load(domain, envKey, c.lggr)
 			if err != nil {
 				return fmt.Errorf("failed to load config: %w", err)
 			}
 
-			chains, err := cldf_chains.LoadChains(
-				cmd.Context(), c.lggr, config, []uint64{chainSelector},
+			chains, err := chains.LoadChains(
+				cmd.Context(), c.lggr, config, []uint64{chainselector},
 			)
 			if err != nil {
 				return fmt.Errorf("failed to load chains from env: %w", err)
@@ -206,7 +206,7 @@ func (c Commands) newEvmGasSend(domain domain.Domain) *cobra.Command {
 
 			evmChains := chains.EVMChains()
 
-			chain := evmChains[chainSelector]
+			chain := evmChains[chainselector]
 			err = sendGas(cmd.Context(), c.lggr, chain, amountStr, toStr, use1559)
 			if err != nil {
 				return fmt.Errorf("failed to send gas: %w", err)
@@ -250,15 +250,15 @@ func (c Commands) newEvmNodesFund(domain domain.Domain) *cobra.Command {
 		Example: evmNodesFundExample,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			envKey, _ := cmd.Flags().GetString("environment")
-			chainSelector, _ := cmd.Flags().GetUint64("selector")
+			chainselector, _ := cmd.Flags().GetUint64("selector")
 
 			env, err := environment.Load(cmd.Context, c.lggr, envKey, domain, true /*useRealBackends*/)
 			if err != nil {
 				return fmt.Errorf("failed to load command environment: %w", err)
 			}
-			cs, exists := chainsel.ChainBySelector(chainSelector)
+			cs, exists := chainsel.ChainBySelector(chainselector)
 			if !exists {
-				return fmt.Errorf("chain not found for selector %d", chainSelector)
+				return fmt.Errorf("chain not found for selector %d", chainselector)
 			}
 			chain := env.BlockChains.EVMChains()[cs.Selector]
 			targetAmount, success := big.NewInt(0).SetString(amountStr, 10)
@@ -366,13 +366,13 @@ func (c Commands) newEvmContractVerify(domain domain.Domain) *cobra.Command {
 		Example: evmContractVerifyExample,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			envKey, _ := cmd.Flags().GetString("environment")
-			chainSelector, _ := cmd.Flags().GetUint64("selector")
+			chainselector, _ := cmd.Flags().GetUint64("selector")
 
 			return verifyContract(
 				cmd.Context(),
 				c.lggr,
 				domain,
-				chainSelector,
+				chainselector,
 				envKey,
 				contractDirectory,
 				commit,

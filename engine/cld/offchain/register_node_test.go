@@ -11,17 +11,17 @@ import (
 	nodev1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/node"
 	"github.com/smartcontractkit/chainlink-protos/job-distributor/v1/shared/ptypes"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
-	"github.com/smartcontractkit/chainlink-deployments-framework/internal/pointer"
-	"github.com/smartcontractkit/chainlink-deployments-framework/internal/testing/jd/mocks"
+	fdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
+	fpointer "github.com/smartcontractkit/chainlink-deployments-framework/internal/pointer"
+	jdmocks "github.com/smartcontractkit/chainlink-deployments-framework/internal/testing/jd/mocks"
 )
 
 func TestRegisterNode_Success_Bootstrap(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
-	mockClient := mocks.NewMockJDClient(t)
-	testDomain := domain.NewDomain("/test", "ccip")
+	mockClient := jdmocks.NewMockJDClient(t)
+	testDomain := fdomain.NewDomain("/test", "ccip")
 
 	// Expected request for bootstrap node
 	expectedRequest := &nodev1.RegisterNodeRequest{
@@ -30,19 +30,19 @@ func TestRegisterNode_Success_Bootstrap(t *testing.T) {
 		Labels: []*ptypes.Label{
 			{
 				Key:   "product",
-				Value: pointer.To("ccip"),
+				Value: fpointer.To("ccip"),
 			},
 			{
 				Key:   "environment",
-				Value: pointer.To("testnet"),
+				Value: fpointer.To("testnet"),
 			},
 			{
 				Key:   "region",
-				Value: pointer.To("us-east-1"),
+				Value: fpointer.To("us-east-1"),
 			},
 			{
 				Key:   "type",
-				Value: pointer.To("bootstrap"),
+				Value: fpointer.To("bootstrap"),
 			},
 		},
 	}
@@ -79,8 +79,8 @@ func TestRegisterNode_Success_Plugin(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
-	mockClient := mocks.NewMockJDClient(t)
-	testDomain := domain.NewDomain("/test", "keystone")
+	mockClient := jdmocks.NewMockJDClient(t)
+	testDomain := fdomain.NewDomain("/test", "keystone")
 
 	// Expected request for plugin node
 	expectedRequest := &nodev1.RegisterNodeRequest{
@@ -89,23 +89,23 @@ func TestRegisterNode_Success_Plugin(t *testing.T) {
 		Labels: []*ptypes.Label{
 			{
 				Key:   "product",
-				Value: pointer.To("keystone"),
+				Value: fpointer.To("keystone"),
 			},
 			{
 				Key:   "environment",
-				Value: pointer.To("staging"),
+				Value: fpointer.To("staging"),
 			},
 			{
 				Key:   "datacenter",
-				Value: pointer.To("dc1"),
+				Value: fpointer.To("dc1"),
 			},
 			{
 				Key:   "tier",
-				Value: pointer.To("premium"),
+				Value: fpointer.To("premium"),
 			},
 			{
 				Key:   "type",
-				Value: pointer.To("plugin"),
+				Value: fpointer.To("plugin"),
 			},
 		},
 	}
@@ -145,8 +145,8 @@ func TestRegisterNode_Success_NoExtraLabels(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
-	mockClient := mocks.NewMockJDClient(t)
-	testDomain := domain.NewDomain("/test", "ccip")
+	mockClient := jdmocks.NewMockJDClient(t)
+	testDomain := fdomain.NewDomain("/test", "ccip")
 
 	// Expected request with only required labels
 	expectedRequest := &nodev1.RegisterNodeRequest{
@@ -155,15 +155,15 @@ func TestRegisterNode_Success_NoExtraLabels(t *testing.T) {
 		Labels: []*ptypes.Label{
 			{
 				Key:   "product",
-				Value: pointer.To("ccip"),
+				Value: fpointer.To("ccip"),
 			},
 			{
 				Key:   "environment",
-				Value: pointer.To("mainnet"),
+				Value: fpointer.To("mainnet"),
 			},
 			{
 				Key:   "type",
-				Value: pointer.To("plugin"),
+				Value: fpointer.To("plugin"),
 			},
 		},
 	}
@@ -200,8 +200,8 @@ func TestRegisterNode_ClientError(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
-	mockClient := mocks.NewMockJDClient(t)
-	testDomain := domain.NewDomain("/test", "ccip")
+	mockClient := jdmocks.NewMockJDClient(t)
+	testDomain := fdomain.NewDomain("/test", "ccip")
 
 	// Mock client error
 	expectedError := errors.New("registration failed: node already exists")
@@ -230,8 +230,8 @@ func TestRegisterNode_NilResponse(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
-	mockClient := mocks.NewMockJDClient(t)
-	testDomain := domain.NewDomain("/test", "ccip")
+	mockClient := jdmocks.NewMockJDClient(t)
+	testDomain := fdomain.NewDomain("/test", "ccip")
 
 	// Mock nil response
 	mockClient.MockNodeServiceClient.On("RegisterNode", ctx, mock.AnythingOfType("*node.RegisterNodeRequest")).Return(nil, nil)
@@ -258,8 +258,8 @@ func TestRegisterNode_NilNodeInResponse(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
-	mockClient := mocks.NewMockJDClient(t)
-	testDomain := domain.NewDomain("/test", "ccip")
+	mockClient := jdmocks.NewMockJDClient(t)
+	testDomain := fdomain.NewDomain("/test", "ccip")
 
 	// Mock response with nil node
 	response := &nodev1.RegisterNodeResponse{
@@ -289,8 +289,8 @@ func TestRegisterNode_EmptyNodeIDInResponse(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
-	mockClient := mocks.NewMockJDClient(t)
-	testDomain := domain.NewDomain("/test", "ccip")
+	mockClient := jdmocks.NewMockJDClient(t)
+	testDomain := fdomain.NewDomain("/test", "ccip")
 
 	// Mock response with empty node ID
 	response := &nodev1.RegisterNodeResponse{
@@ -323,7 +323,7 @@ func TestRegisterNode_EmptyNodeIDInResponse(t *testing.T) {
 func TestRegisterNode_BootstrapVsPluginLabels(t *testing.T) {
 	t.Parallel()
 
-	testDomain := domain.NewDomain("/test", "ccip")
+	testDomain := fdomain.NewDomain("/test", "ccip")
 
 	tests := []struct {
 		name         string
@@ -347,7 +347,7 @@ func TestRegisterNode_BootstrapVsPluginLabels(t *testing.T) {
 			t.Parallel()
 
 			ctx := t.Context()
-			mockClient := mocks.NewMockJDClient(t)
+			mockClient := jdmocks.NewMockJDClient(t)
 
 			// Capture the actual request to verify the type label
 			var capturedRequest *nodev1.RegisterNodeRequest
@@ -397,8 +397,8 @@ func TestRegisterNode_Labels(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
-	mockClient := mocks.NewMockJDClient(t)
-	testDomain := domain.NewDomain("/test", "automation")
+	mockClient := jdmocks.NewMockJDClient(t)
+	testDomain := fdomain.NewDomain("/test", "automation")
 
 	// Capture the actual request to verify label structure
 	var capturedRequest *nodev1.RegisterNodeRequest
@@ -457,8 +457,8 @@ func TestRegisterNode_EmptyExtraLabelsMap(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
-	mockClient := mocks.NewMockJDClient(t)
-	testDomain := domain.NewDomain("/test", "ccip")
+	mockClient := jdmocks.NewMockJDClient(t)
+	testDomain := fdomain.NewDomain("/test", "ccip")
 
 	// Capture the actual request to verify labels
 	var capturedRequest *nodev1.RegisterNodeRequest
@@ -535,8 +535,8 @@ func TestRegisterNode_DifferentDomains(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			mockClient := mocks.NewMockJDClient(t)
-			testDomain := domain.NewDomain("/test", tc.domainKey)
+			mockClient := jdmocks.NewMockJDClient(t)
+			testDomain := fdomain.NewDomain("/test", tc.domainKey)
 
 			// Capture the actual request to verify domain key
 			var capturedRequest *nodev1.RegisterNodeRequest

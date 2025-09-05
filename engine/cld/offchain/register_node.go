@@ -8,10 +8,10 @@ import (
 	nodev1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/node"
 	"github.com/smartcontractkit/chainlink-protos/job-distributor/v1/shared/ptypes"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
-	"github.com/smartcontractkit/chainlink-deployments-framework/internal/pointer"
+	fdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
+	fpointer "github.com/smartcontractkit/chainlink-deployments-framework/internal/pointer"
 
-	cldf_offchain "github.com/smartcontractkit/chainlink-deployments-framework/offchain"
+	foffchain "github.com/smartcontractkit/chainlink-deployments-framework/offchain"
 )
 
 // Matches the labels at
@@ -25,11 +25,11 @@ const (
 // RegisterNode registers a single node with the job distributor. It errors if the node is already registered.
 func RegisterNode(
 	ctx context.Context,
-	jd cldf_offchain.Client,
+	jd foffchain.Client,
 	name string,
 	csaKey string,
 	isBootstrap bool,
-	domain domain.Domain,
+	domain fdomain.Domain,
 	environment string,
 	extraLabels map[string]string,
 ) (string, error) {
@@ -54,18 +54,18 @@ func RegisterNode(
 	for _, key := range extraLabelKeys {
 		labels = append(labels, &ptypes.Label{
 			Key:   key,
-			Value: pointer.To(extraLabels[key]),
+			Value: fpointer.To(extraLabels[key]),
 		})
 	}
 	if isBootstrap {
 		labels = append(labels, &ptypes.Label{
 			Key:   labelNodeTypeKey,
-			Value: pointer.To(labelNodeTypeValueBootstrap),
+			Value: fpointer.To(labelNodeTypeValueBootstrap),
 		})
 	} else {
 		labels = append(labels, &ptypes.Label{
 			Key:   labelNodeTypeKey,
-			Value: pointer.To(labelNodeTypeValuePlugin),
+			Value: fpointer.To(labelNodeTypeValuePlugin),
 		})
 	}
 	resp, err := jd.RegisterNode(ctx, &nodev1.RegisterNodeRequest{

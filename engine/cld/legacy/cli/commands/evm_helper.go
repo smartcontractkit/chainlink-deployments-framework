@@ -24,11 +24,11 @@ import (
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 	"github.com/spf13/cobra"
 
-	cldf_config "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config"
-	domain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 
-	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
-	cldf_config_network "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/network"
+	fevm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
+	cfgnet "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/network"
 )
 
 const (
@@ -228,7 +228,7 @@ func verifyContract(
 	ctx context.Context,
 	lggr logger.Logger,
 	domain domain.Domain,
-	chainSelector uint64,
+	chainselector uint64,
 	environmentStr,
 	contractDirectory,
 	commit,
@@ -237,22 +237,22 @@ func verifyContract(
 	optimizerRuns uint64,
 	contractName string,
 ) error {
-	networks, err := cldf_config.LoadNetworks(environmentStr, domain, lggr)
+	networks, err := config.LoadNetworks(environmentStr, domain, lggr)
 	if err != nil {
 		return fmt.Errorf("failed to load networks from env %s: %w", environmentStr, err)
 	}
 
-	network, err := networks.NetworkBySelector(chainSelector)
+	network, err := networks.NetworkBySelector(chainselector)
 	if err != nil {
 		return fmt.Errorf("network configuration not found with chain selector %d: %w",
-			chainSelector, err,
+			chainselector, err,
 		)
 	}
 
 	chainID, err := network.ChainID()
 	if err != nil {
 		return fmt.Errorf("chain ID does not exist for network with chain selector %d: %w",
-			chainSelector, err,
+			chainselector, err,
 		)
 	}
 
@@ -358,7 +358,7 @@ func checkoutCommit(dirPath, commitHash string) error {
 // defined apiKey, apiEndpoint and ChainID. Currently, it's the only way to make Forge
 // tool works with new/unknown chains.
 func appendEtherscanInfoToFoundryToml(
-	dirPath, chainID string, explorer cldf_config_network.BlockExplorer,
+	dirPath, chainID string, explorer cfgnet.BlockExplorer,
 ) (func() error, error) {
 	foundryToml := filepath.Join(dirPath, "foundry.toml")
 	foundryBackupToml := filepath.Join(dirPath, "foundry.backup.toml")
@@ -432,7 +432,7 @@ func readContractsList(tomlPth string) (ContractsToVerify, error) {
 func build1559Tx(
 	ctx context.Context,
 	lggr logger.Logger,
-	chain cldf_evm.Chain,
+	chain fevm.Chain,
 	amount *big.Int,
 	toAddr common.Address,
 	nonce uint64,
@@ -488,7 +488,7 @@ func indexOf(slice []*cobra.Command, s string) int {
 	return -1
 }
 
-func sendGas(ctx context.Context, lggr logger.Logger, chain cldf_evm.Chain, amountStr, toStr string, use1559 bool) error {
+func sendGas(ctx context.Context, lggr logger.Logger, chain fevm.Chain, amountStr, toStr string, use1559 bool) error {
 	nonce, err := chain.Client.PendingNonceAt(ctx, chain.DeployerKey.From)
 	if err != nil {
 		return err

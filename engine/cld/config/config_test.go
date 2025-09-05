@@ -6,7 +6,7 @@ import (
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 	"github.com/stretchr/testify/require"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
+	fdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 )
 
 func Test_Load(t *testing.T) {
@@ -14,12 +14,12 @@ func Test_Load(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		beforeFunc func(t *testing.T, dom domain.Domain, envKey string)
+		beforeFunc func(t *testing.T, dom fdomain.Domain, envKey string)
 		wantErr    string
 	}{
 		{
 			name: "Loads config",
-			beforeFunc: func(t *testing.T, dom domain.Domain, envKey string) {
+			beforeFunc: func(t *testing.T, dom fdomain.Domain, envKey string) {
 				t.Helper()
 
 				writeConfigNetworksFile(t, dom, "networks.yaml", "networks-testnet.yaml")
@@ -29,7 +29,7 @@ func Test_Load(t *testing.T) {
 		},
 		{
 			name: "fails to load networks - domain config does not exist",
-			beforeFunc: func(t *testing.T, dom domain.Domain, envKey string) {
+			beforeFunc: func(t *testing.T, dom fdomain.Domain, envKey string) {
 				t.Helper()
 
 				writeConfigNetworksFile(t, dom, "networks.yaml", "networks-testnet.yaml")
@@ -38,7 +38,7 @@ func Test_Load(t *testing.T) {
 		},
 		{
 			name: "fails to load env config",
-			beforeFunc: func(t *testing.T, dom domain.Domain, envKey string) {
+			beforeFunc: func(t *testing.T, dom fdomain.Domain, envKey string) {
 				t.Helper()
 
 				writeConfigNetworksFile(t, dom, "networks.yaml", "networks-testnet.yaml")

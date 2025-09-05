@@ -7,8 +7,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
-	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
+	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/internal/fileutils"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/internal/jsonutils"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/nodes"
@@ -114,23 +114,23 @@ func (d EnvDir) EnvMetadataFilePath() string {
 }
 
 // AddressBook returns the address book for the domain's environment directory.
-func (d EnvDir) AddressBook() (cldf.AddressBook, error) {
+func (d EnvDir) AddressBook() (fdeployment.AddressBook, error) {
 	filePath := d.AddressBookFilePath()
 	b, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file %s: %w", filePath, err)
 	}
 
-	addrsByChain := make(map[uint64]map[string]cldf.TypeAndVersion)
+	addrsByChain := make(map[uint64]map[string]fdeployment.TypeAndVersion)
 	if err = json.Unmarshal(b, &addrsByChain); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal JSON: %w", err)
 	}
 
-	return cldf.NewMemoryAddressBookFromMap(addrsByChain), nil
+	return fdeployment.NewMemoryAddressBookFromMap(addrsByChain), nil
 }
 
 // DataStore returns the datastore for the domain's environment directory as read-only.
-func (d EnvDir) DataStore() (datastore.DataStore, error) {
+func (d EnvDir) DataStore() (fdatastore.DataStore, error) {
 	ds, err := d.loadDataStore()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load datastore: %w", err)
@@ -140,7 +140,7 @@ func (d EnvDir) DataStore() (datastore.DataStore, error) {
 }
 
 // MutableDataStore returns the datastore for the domain's environment directory as mutable.
-func (d EnvDir) MutableDataStore() (datastore.MutableDataStore, error) {
+func (d EnvDir) MutableDataStore() (fdatastore.MutableDataStore, error) {
 	ds, err := d.loadDataStore()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load mutable datastore: %w", err)
@@ -151,7 +151,7 @@ func (d EnvDir) MutableDataStore() (datastore.MutableDataStore, error) {
 
 // loadDataStore is a helper function that loads the datastore for the domain's environment
 // directory from the address_refs.json, contract_metadata.json, and env_metadata.json files.
-func (d EnvDir) loadDataStore() (datastore.MutableDataStore, error) {
+func (d EnvDir) loadDataStore() (fdatastore.MutableDataStore, error) {
 	addrRefsPath := d.AddressRefsFilePath()
 	refs, err := os.ReadFile(addrRefsPath)
 	if err != nil && !os.IsNotExist(err) {
@@ -176,7 +176,7 @@ func (d EnvDir) loadDataStore() (datastore.MutableDataStore, error) {
 		return nil, fmt.Errorf("failed to read env_metadata file %s: %w", envMetaPath, err)
 	}
 
-	var ds = datastore.NewMemoryDataStore()
+	var ds = fdatastore.NewMemoryDataStore()
 
 	if len(refs) > 0 {
 		if err = json.Unmarshal(refs, &ds.AddressRefStore.Records); err != nil {
@@ -230,7 +230,7 @@ func (d EnvDir) MergeMigrationDataStore(migkey, timestamp string) error {
 	}
 
 	// Cast the datastore to the concrete type and write it to the file
-	dataStoreConcrete, ok := dataStore.(*datastore.MemoryDataStore)
+	dataStoreConcrete, ok := dataStore.(*fdatastore.MemoryDataStore)
 	if !ok {
 		return errors.New("failed to cast dataStore to concrete type MemoryDataStore")
 	}

@@ -7,29 +7,29 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 )
 
-var MyChangeSet deployment.ChangeSetV2[string] = MyChangeSetImpl{}
+var MyChangeSet fdeployment.ChangeSetV2[string] = MyChangeSetImpl{}
 
 type MyChangeSetImpl struct{}
 
-func (m MyChangeSetImpl) Apply(_ deployment.Environment, _ string) (deployment.ChangesetOutput, error) {
-	return deployment.ChangesetOutput{}, nil
+func (m MyChangeSetImpl) Apply(_ fdeployment.Environment, _ string) (fdeployment.ChangesetOutput, error) {
+	return fdeployment.ChangesetOutput{}, nil
 }
 
-func (m MyChangeSetImpl) VerifyPreconditions(_ deployment.Environment, _ string) error { return nil }
+func (m MyChangeSetImpl) VerifyPreconditions(_ fdeployment.Environment, _ string) error { return nil }
 
 func TestChangesets_PostProcess(t *testing.T) {
 	t.Parallel()
 
-	env := deployment.Environment{
+	env := fdeployment.Environment{
 		Logger: logger.Test(t),
 	}
 	var executed = false
 	configured := Configure(MyChangeSet).
 		With("MyString").
-		ThenWith(func(e deployment.Environment, o deployment.ChangesetOutput) (deployment.ChangesetOutput, error) {
+		ThenWith(func(e fdeployment.Environment, o fdeployment.ChangesetOutput) (fdeployment.ChangesetOutput, error) {
 			executed = true
 			return o, nil
 		})

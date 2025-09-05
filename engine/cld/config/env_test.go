@@ -7,21 +7,21 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	config_env "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/env"
+	cfgenv "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/env"
 )
 
 func Test_LoadEnvConfig(t *testing.T) { //nolint:paralleltest // These tests are not parallel safe due to setting of env vars
 	tests := []struct {
 		name     string
-		skipCI   bool                                       // Option to skip this test in CI because loading from file requires the 'CI' env var to not be set, but it is always set when running the test in CI.
-		envvars  map[string]string                          // Environment variables to set
-		wantFunc func(t *testing.T, cfg *config_env.Config) // Function to validate the config
+		skipCI   bool                                   // Option to skip this test in CI because loading from file requires the 'CI' env var to not be set, but it is always set when running the test in CI.
+		envvars  map[string]string                      // Environment variables to set
+		wantFunc func(t *testing.T, cfg *cfgenv.Config) // Function to validate the config
 		wantErr  string
 	}{
 		{
 			name:   "Load networks and config with new config enabled (loads from file)",
 			skipCI: true,
-			wantFunc: func(t *testing.T, cfg *config_env.Config) {
+			wantFunc: func(t *testing.T, cfg *cfgenv.Config) {
 				t.Helper()
 
 				require.NotNil(t, cfg)
@@ -68,7 +68,7 @@ func Test_LoadEnvConfig(t *testing.T) { //nolint:paralleltest // These tests are
 				"TRON_DEPLOYER_KEY":                 "0x456",
 				"CATALOG_SERVICE_GRPC":              "http://localhost:2000",
 			},
-			wantFunc: func(t *testing.T, cfg *config_env.Config) {
+			wantFunc: func(t *testing.T, cfg *cfgenv.Config) {
 				t.Helper()
 
 				require.NotNil(t, cfg)
@@ -121,7 +121,7 @@ func Test_LoadEnvConfig(t *testing.T) { //nolint:paralleltest // These tests are
 				"ONCHAIN_GETH_WRAPPERS_DIRS":                 "dir1,dir2",
 				"ONCHAIN_SETH_CONFIG_FILE":                   "/tmp/config",
 			},
-			wantFunc: func(t *testing.T, cfg *config_env.Config) {
+			wantFunc: func(t *testing.T, cfg *cfgenv.Config) {
 				t.Helper()
 
 				require.NotNil(t, cfg)

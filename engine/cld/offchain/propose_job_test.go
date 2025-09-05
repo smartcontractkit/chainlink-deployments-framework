@@ -13,17 +13,17 @@ import (
 	nodev1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/node"
 	"github.com/smartcontractkit/chainlink-protos/job-distributor/v1/shared/ptypes"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
-	"github.com/smartcontractkit/chainlink-deployments-framework/internal/pointer"
-	"github.com/smartcontractkit/chainlink-deployments-framework/internal/testing/jd/mocks"
+	fdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
+	fpointer "github.com/smartcontractkit/chainlink-deployments-framework/internal/pointer"
+	jdmocks "github.com/smartcontractkit/chainlink-deployments-framework/internal/testing/jd/mocks"
 )
 
 func TestProposeJobRequest_Validate(t *testing.T) {
 	t.Parallel()
 
-	mockClient := mocks.NewMockJDClient(t)
+	mockClient := jdmocks.NewMockJDClient(t)
 	mockLogger := logger.Test(t)
-	testDomain := domain.NewDomain("/test", "ccip")
+	testDomain := fdomain.NewDomain("/test", "ccip")
 
 	tests := []struct {
 		name    string
@@ -60,7 +60,7 @@ func TestProposeJobRequest_Validate(t *testing.T) {
 			name: "empty domain",
 			req: ProposeJobRequest{
 				Job:            "test job spec",
-				Domain:         domain.NewDomain("/test", ""),
+				Domain:         fdomain.NewDomain("/test", ""),
 				Environment:    "testnet",
 				OffchainClient: mockClient,
 				Lggr:           mockLogger,
@@ -125,9 +125,9 @@ func TestProposeJob_Success(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
-	mockClient := mocks.NewMockJDClient(t)
+	mockClient := jdmocks.NewMockJDClient(t)
 	mockLogger := logger.Test(t)
-	testDomain := domain.NewDomain("/test", "ccip")
+	testDomain := fdomain.NewDomain("/test", "ccip")
 
 	// Mock nodes response
 	nodes := []*nodev1.Node{
@@ -151,17 +151,17 @@ func TestProposeJob_Success(t *testing.T) {
 			{
 				Key:   "product",
 				Op:    ptypes.SelectorOp_EQ,
-				Value: pointer.To("ccip"),
+				Value: fpointer.To("ccip"),
 			},
 			{
 				Key:   "environment",
 				Op:    ptypes.SelectorOp_EQ,
-				Value: pointer.To("testnet"),
+				Value: fpointer.To("testnet"),
 			},
 			{
 				Key:   "region",
 				Op:    ptypes.SelectorOp_EQ,
-				Value: pointer.To("us-east-1"),
+				Value: fpointer.To("us-east-1"),
 			},
 		},
 	}
@@ -178,7 +178,7 @@ func TestProposeJob_Success(t *testing.T) {
 	expectedJobLabels := []*ptypes.Label{
 		{
 			Key:   "version",
-			Value: pointer.To("1.0"),
+			Value: fpointer.To("1.0"),
 		},
 	}
 
@@ -215,9 +215,9 @@ func TestProposeJob_ListNodesError(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
-	mockClient := mocks.NewMockJDClient(t)
+	mockClient := jdmocks.NewMockJDClient(t)
 	mockLogger := logger.Test(t)
-	testDomain := domain.NewDomain("/test", "ccip")
+	testDomain := fdomain.NewDomain("/test", "ccip")
 
 	// Mock ListNodes to return an error
 	expectedError := errors.New("failed to list nodes")
@@ -242,9 +242,9 @@ func TestProposeJob_PartialFailure(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
-	mockClient := mocks.NewMockJDClient(t)
+	mockClient := jdmocks.NewMockJDClient(t)
 	mockLogger := logger.Test(t)
-	testDomain := domain.NewDomain("/test", "ccip")
+	testDomain := fdomain.NewDomain("/test", "ccip")
 
 	// Mock nodes response
 	nodes := []*nodev1.Node{
@@ -319,9 +319,9 @@ func TestProposeJob_EmptyNodesList(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
-	mockClient := mocks.NewMockJDClient(t)
+	mockClient := jdmocks.NewMockJDClient(t)
 	mockLogger := logger.Test(t)
-	testDomain := domain.NewDomain("/test", "ccip")
+	testDomain := fdomain.NewDomain("/test", "ccip")
 
 	// Mock empty nodes response
 	listNodesResponse := &nodev1.ListNodesResponse{
@@ -365,7 +365,7 @@ func TestConvertLabels(t *testing.T) {
 			expect: []*ptypes.Label{
 				{
 					Key:   "key1",
-					Value: pointer.To("value1"),
+					Value: fpointer.To("value1"),
 				},
 			},
 		},
@@ -378,11 +378,11 @@ func TestConvertLabels(t *testing.T) {
 			expect: []*ptypes.Label{
 				{
 					Key:   "key1",
-					Value: pointer.To("value1"),
+					Value: fpointer.To("value1"),
 				},
 				{
 					Key:   "key2",
-					Value: pointer.To("value2"),
+					Value: fpointer.To("value2"),
 				},
 			},
 		},
@@ -416,9 +416,9 @@ func TestProposeJob_WithComplexSelectors(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
-	mockClient := mocks.NewMockJDClient(t)
+	mockClient := jdmocks.NewMockJDClient(t)
 	mockLogger := logger.Test(t)
-	testDomain := domain.NewDomain("/test", "keystone")
+	testDomain := fdomain.NewDomain("/test", "keystone")
 
 	nodes := []*nodev1.Node{
 		{

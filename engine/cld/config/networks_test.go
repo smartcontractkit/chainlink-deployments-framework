@@ -11,16 +11,16 @@ import (
 
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 
-	config_domain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/domain"
-	config_network "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/network"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
+	cfgdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/domain"
+	cfgnet "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/network"
+	fdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 )
 
 func Test_LoadNetworks(t *testing.T) {
 	t.Parallel()
 
 	// Default setup function for creating a domain with testnet and mainnet networks and a domain config file.
-	defaultSetupFunc := func(t *testing.T) domain.Domain {
+	defaultSetupFunc := func(t *testing.T) fdomain.Domain {
 		t.Helper()
 
 		dom, _ := setupConfigDirs(t)
@@ -33,42 +33,42 @@ func Test_LoadNetworks(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		setupFunc func(t *testing.T) domain.Domain
+		setupFunc func(t *testing.T) fdomain.Domain
 		giveEnv   string
-		want      *config_network.Config
+		want      *cfgnet.Config
 		wantErr   string
 	}{
 		{
 			name:      "Only Testnet",
 			setupFunc: defaultSetupFunc,
 			giveEnv:   "staging_testnet",
-			want:      config_network.NewConfig([]config_network.Network{testnetNetwork1, testnetNetwork2}),
+			want:      cfgnet.NewConfig([]cfgnet.Network{testnetNetwork1, testnetNetwork2}),
 		},
 		{
 			name:      "Only Mainnet",
 			setupFunc: defaultSetupFunc,
 			giveEnv:   "prod_mainnet",
-			want:      config_network.NewConfig([]config_network.Network{mainnetNetwork1}),
+			want:      cfgnet.NewConfig([]cfgnet.Network{mainnetNetwork1}),
 		},
 		{
 			name:      "Both Testnet and Mainnet",
 			setupFunc: defaultSetupFunc,
 			giveEnv:   "staging",
-			want:      config_network.NewConfig([]config_network.Network{testnetNetwork1, testnetNetwork2, mainnetNetwork1}),
+			want:      cfgnet.NewConfig([]cfgnet.Network{testnetNetwork1, testnetNetwork2, mainnetNetwork1}),
 		},
 		{
 			name: "failed to load network config",
-			setupFunc: func(t *testing.T) domain.Domain {
+			setupFunc: func(t *testing.T) fdomain.Domain {
 				t.Helper()
 
-				return domain.NewDomain("nonexistent", "dummy")
+				return fdomain.NewDomain("nonexistent", "dummy")
 			},
 			giveEnv: "staging_testnet",
 			wantErr: "failed to load network config",
 		},
 		{
 			name: "domain config not found",
-			setupFunc: func(t *testing.T) domain.Domain {
+			setupFunc: func(t *testing.T) fdomain.Domain {
 				t.Helper()
 
 				dom, _ := setupConfigDirs(t)
@@ -80,7 +80,7 @@ func Test_LoadNetworks(t *testing.T) {
 		},
 		{
 			name: "failed to load domain config network types",
-			setupFunc: func(t *testing.T) domain.Domain {
+			setupFunc: func(t *testing.T) fdomain.Domain {
 				t.Helper()
 
 				dom, _ := setupConfigDirs(t)
@@ -97,7 +97,7 @@ func Test_LoadNetworks(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			var dom domain.Domain
+			var dom fdomain.Domain
 			if tt.setupFunc != nil {
 				dom = tt.setupFunc(t)
 			}
@@ -119,18 +119,18 @@ func Test_loadNetworkConfig(t *testing.T) {
 	tests := []struct {
 		name         string
 		networkFiles map[string]string // Maps the network config file name to a filename in the testdata directory.
-		want         *config_network.Config
+		want         *cfgnet.Config
 		wantErr      string
 	}{
 		{
 			name:         "Loading single file with yaml extension",
 			networkFiles: map[string]string{"networks.yaml": "networks-testnet.yaml"},
-			want:         config_network.NewConfig([]config_network.Network{testnetNetwork1, testnetNetwork2}),
+			want:         cfgnet.NewConfig([]cfgnet.Network{testnetNetwork1, testnetNetwork2}),
 		},
 		{
 			name:         "Loading single file with yml extension",
 			networkFiles: map[string]string{"networks.yml": "networks-testnet.yaml"},
-			want:         config_network.NewConfig([]config_network.Network{testnetNetwork1, testnetNetwork2}),
+			want:         cfgnet.NewConfig([]cfgnet.Network{testnetNetwork1, testnetNetwork2}),
 		},
 		{
 			name: "Loading multiple files",
@@ -138,7 +138,7 @@ func Test_loadNetworkConfig(t *testing.T) {
 				"networks-1.yaml": "networks-testnet.yaml",
 				"networks-2.yml":  "networks-mainnet.yaml",
 			},
-			want: config_network.NewConfig([]config_network.Network{testnetNetwork1, testnetNetwork2, mainnetNetwork1}),
+			want: cfgnet.NewConfig([]cfgnet.Network{testnetNetwork1, testnetNetwork2, mainnetNetwork1}),
 		},
 		{
 			name:    "No config files found",
@@ -181,28 +181,28 @@ func Test_loadDomainConfigNetworkTypes(t *testing.T) {
 		name       string
 		configEnvs []string // The environments to include in the domain config file. Use this to set the network types for the environment.
 		giveEnv    string
-		want       []config_network.NetworkType
+		want       []cfgnet.NetworkType
 		wantErr    string
 	}{
 		{
 			name:       "Valid domain config with testnet",
 			configEnvs: []string{"testnet"},
 			giveEnv:    testEnv,
-			want:       []config_network.NetworkType{config_network.NetworkTypeTestnet},
+			want:       []cfgnet.NetworkType{cfgnet.NetworkTypeTestnet},
 		},
 		{
 			name:       "Valid domain config with mainnet",
 			configEnvs: []string{"mainnet"},
 			giveEnv:    testEnv,
-			want:       []config_network.NetworkType{config_network.NetworkTypeMainnet},
+			want:       []cfgnet.NetworkType{cfgnet.NetworkTypeMainnet},
 		},
 		{
 			name:       "Valid domain config with both types",
 			configEnvs: []string{"testnet", "mainnet"},
 			giveEnv:    testEnv,
-			want: []config_network.NetworkType{
-				config_network.NetworkTypeTestnet,
-				config_network.NetworkTypeMainnet,
+			want: []cfgnet.NetworkType{
+				cfgnet.NetworkTypeTestnet,
+				cfgnet.NetworkTypeMainnet,
 			},
 		},
 		{
@@ -232,8 +232,8 @@ func Test_loadDomainConfigNetworkTypes(t *testing.T) {
 			dom, _ := setupConfigDirs(t)
 
 			if tt.configEnvs != nil {
-				domainConfig := config_domain.DomainConfig{
-					Environments: map[string]config_domain.Environment{
+				domainConfig := cfgdomain.DomainConfig{
+					Environments: map[string]cfgdomain.Environment{
 						testEnv: {
 							NetworkTypes: tt.configEnvs,
 						},

@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 )
 
 // noopChangeset is a changeset that does nothing.
@@ -17,8 +17,8 @@ type noopChangeset struct {
 
 func (noopChangeset) noop() {}
 
-func (noopChangeset) Apply(e cldf.Environment) (cldf.ChangesetOutput, error) {
-	return cldf.ChangesetOutput{}, nil
+func (noopChangeset) Apply(e fdeployment.Environment) (fdeployment.ChangesetOutput, error) {
+	return fdeployment.ChangesetOutput{}, nil
 }
 
 func (n noopChangeset) Configurations() (Configurations, error) {
@@ -57,13 +57,13 @@ func Test_Changesets_Apply(t *testing.T) {
 	tests := []struct {
 		name    string
 		giveKey string
-		want    cldf.ChangesetOutput
+		want    fdeployment.ChangesetOutput
 		wantErr string
 	}{
 		{
 			name:    "with a registered changeset",
 			giveKey: applyKey,
-			want:    cldf.ChangesetOutput{},
+			want:    fdeployment.ChangesetOutput{},
 		},
 		{
 			name:    "with an unregistered changeset",
@@ -87,7 +87,7 @@ func Test_Changesets_Apply(t *testing.T) {
 			r.Archive(archivedKey, archivedSHA)
 			r.Add(applyKey, applyChangeset)
 
-			got, err := r.Apply(tt.giveKey, cldf.Environment{})
+			got, err := r.Apply(tt.giveKey, fdeployment.Environment{})
 
 			if tt.wantErr != "" {
 				require.Error(t, err)

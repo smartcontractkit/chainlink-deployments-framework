@@ -16,8 +16,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config"
-	config_env "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/env"
-	config_network "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/network"
+	cfgenv "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/env"
+	cfgnet "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/network"
 )
 
 func Test_LoadChains(t *testing.T) {
@@ -34,11 +34,11 @@ func Test_LoadChains(t *testing.T) {
 		tonSelector    = chainsel.TON_TESTNET.Selector
 	)
 
-	networks := []config_network.Network{
+	networks := []cfgnet.Network{
 		{
-			Type:          config_network.NetworkTypeTestnet,
+			Type:          cfgnet.NetworkTypeTestnet,
 			ChainSelector: evmSelector,
-			RPCs: []config_network.RPC{
+			RPCs: []cfgnet.RPC{
 				{
 					RPCName:            "evm_rpc",
 					PreferredURLScheme: "http",
@@ -48,9 +48,9 @@ func Test_LoadChains(t *testing.T) {
 			},
 		},
 		{
-			Type:          config_network.NetworkTypeTestnet,
+			Type:          cfgnet.NetworkTypeTestnet,
 			ChainSelector: solanaSelector,
-			RPCs: []config_network.RPC{
+			RPCs: []cfgnet.RPC{
 				{
 					RPCName:            "solana_rpc",
 					PreferredURLScheme: "http",
@@ -60,9 +60,9 @@ func Test_LoadChains(t *testing.T) {
 			},
 		},
 		{
-			Type:          config_network.NetworkTypeTestnet,
+			Type:          cfgnet.NetworkTypeTestnet,
 			ChainSelector: aptosSelector,
-			RPCs: []config_network.RPC{
+			RPCs: []cfgnet.RPC{
 				{
 					RPCName:            "aptos_rpc",
 					PreferredURLScheme: "http",
@@ -72,9 +72,9 @@ func Test_LoadChains(t *testing.T) {
 			},
 		},
 		{
-			Type:          config_network.NetworkTypeTestnet,
+			Type:          cfgnet.NetworkTypeTestnet,
 			ChainSelector: tronSelector,
-			RPCs: []config_network.RPC{
+			RPCs: []cfgnet.RPC{
 				{
 					RPCName:            "tron_rpc",
 					PreferredURLScheme: "http",
@@ -84,9 +84,9 @@ func Test_LoadChains(t *testing.T) {
 			},
 		},
 		{
-			Type:          config_network.NetworkTypeTestnet,
+			Type:          cfgnet.NetworkTypeTestnet,
 			ChainSelector: suiSelector,
-			RPCs: []config_network.RPC{
+			RPCs: []cfgnet.RPC{
 				{
 					RPCName:            "sui_rpc",
 					PreferredURLScheme: "http",
@@ -96,9 +96,9 @@ func Test_LoadChains(t *testing.T) {
 			},
 		},
 		{
-			Type:          config_network.NetworkTypeTestnet,
+			Type:          cfgnet.NetworkTypeTestnet,
 			ChainSelector: tonSelector,
-			RPCs: []config_network.RPC{
+			RPCs: []cfgnet.RPC{
 				{
 					RPCName:            "ton_rpc",
 					PreferredURLScheme: "http",
@@ -108,7 +108,7 @@ func Test_LoadChains(t *testing.T) {
 			},
 		},
 	}
-	networksConfig := config_network.NewConfig(networks)
+	networksConfig := cfgnet.NewConfig(networks)
 
 	// Generate a random EVM private key for testing
 	evmKey, err := crypto.GenerateKey()
@@ -123,25 +123,25 @@ func Test_LoadChains(t *testing.T) {
 	solProgramsPath := t.TempDir()
 
 	// Compose onchain config
-	onchainConfig := config_env.OnchainConfig{
-		EVM: config_env.EVMConfig{
+	onchainConfig := cfgenv.OnchainConfig{
+		EVM: cfgenv.EVMConfig{
 			DeployerKey: evmKeyHex,
-			Seth:        &config_env.SethConfig{},
+			Seth:        &cfgenv.SethConfig{},
 		},
-		Solana: config_env.SolanaConfig{
+		Solana: cfgenv.SolanaConfig{
 			WalletKey:       solKey.String(),
 			ProgramsDirPath: solProgramsPath,
 		},
-		Aptos: config_env.AptosConfig{
+		Aptos: cfgenv.AptosConfig{
 			DeployerKey: "0xE4FD0E90D32CB98DC6AD64516A421E8C2731870217CDBA64203CEB158A866304",
 		},
-		Tron: config_env.TronConfig{
+		Tron: cfgenv.TronConfig{
 			DeployerKey: evmKeyHex, // Uses the same key as the EVM chain
 		},
-		Sui: config_env.SuiConfig{
+		Sui: cfgenv.SuiConfig{
 			DeployerKey: "0xA1B2C3D4E5F60718293A4B5C6D7E8F90123456789ABCDEF0123456789ABCDEF0", // Mock private key
 		},
-		Ton: config_env.TonConfig{
+		Ton: cfgenv.TonConfig{
 			DeployerKey:   "0b1f7dbb19112fdac53344cf49731e41bfc420ac6a71d38c89fb38d04a6563d99aa3d1fa430550e8de5171ec55453b4e048c1701cadfa56726d489c56d67bab3", // Mock private key
 			WalletVersion: "V4R2",
 		},
@@ -149,8 +149,8 @@ func Test_LoadChains(t *testing.T) {
 
 	tests := []struct {
 		name              string
-		giveNetworkConfig *config_network.Config
-		giveOnchainConfig config_env.OnchainConfig
+		giveNetworkConfig *cfgnet.Config
+		giveOnchainConfig cfgenv.OnchainConfig
 		giveSelectors     []uint64
 		wantCount         int
 		wantErr           string
@@ -178,11 +178,11 @@ func Test_LoadChains(t *testing.T) {
 		},
 		{
 			name: "fails to load a chain",
-			giveNetworkConfig: config_network.NewConfig([]config_network.Network{
+			giveNetworkConfig: cfgnet.NewConfig([]cfgnet.Network{
 				{
-					Type:          config_network.NetworkTypeTestnet,
+					Type:          cfgnet.NetworkTypeTestnet,
 					ChainSelector: evmSelector,
-					RPCs: []config_network.RPC{
+					RPCs: []cfgnet.RPC{
 						{
 							RPCName:            "evm_rpc",
 							PreferredURLScheme: "http",
@@ -210,7 +210,7 @@ func Test_LoadChains(t *testing.T) {
 
 			cfg := &config.Config{
 				Networks: tt.giveNetworkConfig,
-				Env: &config_env.Config{
+				Env: &cfgenv.Config{
 					Onchain: tt.giveOnchainConfig,
 				},
 			}
@@ -237,11 +237,11 @@ func Test_chainLoaderAptos_Load(t *testing.T) {
 	var aptosSelector = chainsel.APTOS_LOCALNET.Selector
 
 	// Create test network config
-	networkCfg := config_network.NewConfig([]config_network.Network{
+	networkCfg := cfgnet.NewConfig([]cfgnet.Network{
 		{
-			Type:          config_network.NetworkTypeMainnet,
+			Type:          cfgnet.NetworkTypeMainnet,
 			ChainSelector: aptosSelector,
-			RPCs: []config_network.RPC{
+			RPCs: []cfgnet.RPC{
 				{
 					RPCName:            "aptos_localnet_rpc",
 					PreferredURLScheme: "http",
@@ -251,9 +251,9 @@ func Test_chainLoaderAptos_Load(t *testing.T) {
 			},
 		},
 		{
-			Type:          config_network.NetworkTypeTestnet,
+			Type:          cfgnet.NetworkTypeTestnet,
 			ChainSelector: 999999, // Different chain for testing
-			RPCs: []config_network.RPC{
+			RPCs: []cfgnet.RPC{
 				{
 					RPCName:            "other_chain_rpc",
 					PreferredURLScheme: "http",
@@ -265,8 +265,8 @@ func Test_chainLoaderAptos_Load(t *testing.T) {
 	})
 
 	// Create test secrets with Aptos deployer key
-	onchainConfig := config_env.OnchainConfig{
-		Aptos: config_env.AptosConfig{
+	onchainConfig := cfgenv.OnchainConfig{
+		Aptos: cfgenv.AptosConfig{
 			DeployerKey: "0xE4FD0E90D32CB98DC6AD64516A421E8C2731870217CDBA64203CEB158A866304", // Mock private key
 		},
 	}
@@ -274,8 +274,8 @@ func Test_chainLoaderAptos_Load(t *testing.T) {
 	tests := []struct {
 		name              string
 		giveSelector      uint64
-		giveNetworkConfig *config_network.Config
-		giveOnchainConfig config_env.OnchainConfig
+		giveNetworkConfig *cfgnet.Config
+		giveOnchainConfig cfgenv.OnchainConfig
 		wantErr           string
 	}{
 		{
@@ -294,11 +294,11 @@ func Test_chainLoaderAptos_Load(t *testing.T) {
 		{
 			name:         "no RPCs configured",
 			giveSelector: 777777,
-			giveNetworkConfig: config_network.NewConfig([]config_network.Network{
+			giveNetworkConfig: cfgnet.NewConfig([]cfgnet.Network{
 				{
-					Type:          config_network.NetworkTypeTestnet,
+					Type:          cfgnet.NetworkTypeTestnet,
 					ChainSelector: 777777,
-					RPCs:          []config_network.RPC{}, // Empty RPCs slice
+					RPCs:          []cfgnet.RPC{}, // Empty RPCs slice
 				},
 			}),
 			giveOnchainConfig: onchainConfig,
@@ -308,8 +308,8 @@ func Test_chainLoaderAptos_Load(t *testing.T) {
 			name:              "empty private key",
 			giveSelector:      aptosSelector,
 			giveNetworkConfig: networkCfg,
-			giveOnchainConfig: config_env.OnchainConfig{
-				Aptos: config_env.AptosConfig{
+			giveOnchainConfig: cfgenv.OnchainConfig{
+				Aptos: cfgenv.AptosConfig{
 					DeployerKey: "",
 				},
 			},
@@ -351,11 +351,11 @@ func Test_chainLoaderSui_Load(t *testing.T) {
 
 	var suiSelector = chainsel.SUI_LOCALNET.Selector
 
-	networkCfg := config_network.NewConfig([]config_network.Network{
+	networkCfg := cfgnet.NewConfig([]cfgnet.Network{
 		{
-			Type:          config_network.NetworkTypeMainnet,
+			Type:          cfgnet.NetworkTypeMainnet,
 			ChainSelector: suiSelector,
-			RPCs: []config_network.RPC{
+			RPCs: []cfgnet.RPC{
 				{
 					RPCName:            "sui_localnet_rpc",
 					PreferredURLScheme: "http",
@@ -365,9 +365,9 @@ func Test_chainLoaderSui_Load(t *testing.T) {
 			},
 		},
 		{
-			Type:          config_network.NetworkTypeTestnet,
+			Type:          cfgnet.NetworkTypeTestnet,
 			ChainSelector: 999999, // Different chain for testing
-			RPCs: []config_network.RPC{
+			RPCs: []cfgnet.RPC{
 				{
 					RPCName:            "other_chain_rpc",
 					PreferredURLScheme: "http",
@@ -378,8 +378,8 @@ func Test_chainLoaderSui_Load(t *testing.T) {
 		},
 	})
 
-	onchainConfig := config_env.OnchainConfig{
-		Sui: config_env.SuiConfig{
+	onchainConfig := cfgenv.OnchainConfig{
+		Sui: cfgenv.SuiConfig{
 			DeployerKey: "0xA1B2C3D4E5F60718293A4B5C6D7E8F90123456789ABCDEF0123456789ABCDEF0", // Mock private key
 		},
 	}
@@ -387,8 +387,8 @@ func Test_chainLoaderSui_Load(t *testing.T) {
 	tests := []struct {
 		name              string
 		giveSelector      uint64
-		giveNetworkConfig *config_network.Config
-		giveOnchainConfig config_env.OnchainConfig
+		giveNetworkConfig *cfgnet.Config
+		giveOnchainConfig cfgenv.OnchainConfig
 		wantErr           string
 	}{
 		{
@@ -407,11 +407,11 @@ func Test_chainLoaderSui_Load(t *testing.T) {
 		{
 			name:         "no RPCs configured",
 			giveSelector: 777777,
-			giveNetworkConfig: config_network.NewConfig([]config_network.Network{
+			giveNetworkConfig: cfgnet.NewConfig([]cfgnet.Network{
 				{
-					Type:          config_network.NetworkTypeTestnet,
+					Type:          cfgnet.NetworkTypeTestnet,
 					ChainSelector: 777777,
-					RPCs:          []config_network.RPC{},
+					RPCs:          []cfgnet.RPC{},
 				},
 			}),
 			giveOnchainConfig: onchainConfig,
@@ -421,8 +421,8 @@ func Test_chainLoaderSui_Load(t *testing.T) {
 			name:              "empty private key",
 			giveSelector:      suiSelector,
 			giveNetworkConfig: networkCfg,
-			giveOnchainConfig: config_env.OnchainConfig{
-				Sui: config_env.SuiConfig{
+			giveOnchainConfig: cfgenv.OnchainConfig{
+				Sui: cfgenv.SuiConfig{
 					DeployerKey: "",
 				},
 			},
@@ -465,11 +465,11 @@ func Test_ChainLoaderSolana_Load(t *testing.T) {
 	var solanaSelector = chainsel.TEST_22222222222222222222222222222222222222222222.Selector
 
 	// Create test network config
-	networkCfg := config_network.NewConfig([]config_network.Network{
+	networkCfg := cfgnet.NewConfig([]cfgnet.Network{
 		{
-			Type:          config_network.NetworkTypeTestnet,
+			Type:          cfgnet.NetworkTypeTestnet,
 			ChainSelector: solanaSelector,
-			RPCs: []config_network.RPC{
+			RPCs: []cfgnet.RPC{
 				{
 					RPCName:            "solana_localnet_rpc",
 					PreferredURLScheme: "http",
@@ -479,9 +479,9 @@ func Test_ChainLoaderSolana_Load(t *testing.T) {
 			},
 		},
 		{
-			Type:          config_network.NetworkTypeTestnet,
+			Type:          cfgnet.NetworkTypeTestnet,
 			ChainSelector: 123456, // Different chain for testing
-			RPCs: []config_network.RPC{
+			RPCs: []cfgnet.RPC{
 				{
 					RPCName:            "other_chain_rpc",
 					PreferredURLScheme: "http",
@@ -497,8 +497,8 @@ func Test_ChainLoaderSolana_Load(t *testing.T) {
 	require.NoError(t, err)
 	programsPath := t.TempDir()
 
-	onchainConfig := config_env.OnchainConfig{
-		Solana: config_env.SolanaConfig{
+	onchainConfig := cfgenv.OnchainConfig{
+		Solana: cfgenv.SolanaConfig{
 			WalletKey:       privKey.String(), // Mock private key
 			ProgramsDirPath: programsPath,     // Mock path
 		},
@@ -507,8 +507,8 @@ func Test_ChainLoaderSolana_Load(t *testing.T) {
 	tests := []struct {
 		name              string
 		giveSelector      uint64
-		giveNetworkConfig *config_network.Config
-		giveOnchainConfig config_env.OnchainConfig
+		giveNetworkConfig *cfgnet.Config
+		giveOnchainConfig cfgenv.OnchainConfig
 		wantErr           string
 	}{
 		{
@@ -527,11 +527,11 @@ func Test_ChainLoaderSolana_Load(t *testing.T) {
 		{
 			name:         "no RPCs configured",
 			giveSelector: 888888,
-			giveNetworkConfig: config_network.NewConfig([]config_network.Network{
+			giveNetworkConfig: cfgnet.NewConfig([]cfgnet.Network{
 				{
-					Type:          config_network.NetworkTypeTestnet,
+					Type:          cfgnet.NetworkTypeTestnet,
 					ChainSelector: 888888,
-					RPCs:          []config_network.RPC{}, // Empty RPCs slice
+					RPCs:          []cfgnet.RPC{}, // Empty RPCs slice
 				},
 			}),
 			giveOnchainConfig: onchainConfig,
@@ -541,8 +541,8 @@ func Test_ChainLoaderSolana_Load(t *testing.T) {
 			name:              "empty private key",
 			giveSelector:      solanaSelector,
 			giveNetworkConfig: networkCfg,
-			giveOnchainConfig: config_env.OnchainConfig{
-				Solana: config_env.SolanaConfig{
+			giveOnchainConfig: cfgenv.OnchainConfig{
+				Solana: cfgenv.SolanaConfig{
 					WalletKey:       "",
 					ProgramsDirPath: programsPath,
 				},
@@ -553,8 +553,8 @@ func Test_ChainLoaderSolana_Load(t *testing.T) {
 			name:              "invalid program path",
 			giveSelector:      solanaSelector,
 			giveNetworkConfig: networkCfg,
-			giveOnchainConfig: config_env.OnchainConfig{
-				Solana: config_env.SolanaConfig{
+			giveOnchainConfig: cfgenv.OnchainConfig{
+				Solana: cfgenv.SolanaConfig{
 					WalletKey:       privKey.String(),
 					ProgramsDirPath: "asaa",
 				},
@@ -592,18 +592,18 @@ func Test_ChainLoaderEVM_Load(t *testing.T) {
 
 	// Test chain selector for Ethereum Sepolia testnet
 	var (
-		ctx            = t.Context()
-		fakeSrv        = newFakeRPCServer(t)
-		evmSelector    = chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector
-		zksyncSelector = chainsel.ETHEREUM_TESTNET_SEPOLIA_ZKSYNC_1.Selector
+		ctx                 = t.Context()
+		fakeSrv             = newFakeRPCServer(t)
+		evmSelector         = chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector
+		zksyncChainSelector = chainsel.ETHEREUM_TESTNET_SEPOLIA_ZKSYNC_1.Selector
 	)
 
 	// Create test network config
-	networkCfg := config_network.NewConfig([]config_network.Network{
+	networkCfg := cfgnet.NewConfig([]cfgnet.Network{
 		{
-			Type:          config_network.NetworkTypeTestnet,
+			Type:          cfgnet.NetworkTypeTestnet,
 			ChainSelector: evmSelector,
-			RPCs: []config_network.RPC{
+			RPCs: []cfgnet.RPC{
 				{
 					RPCName:            "sepolia_rpc",
 					PreferredURLScheme: "http",
@@ -612,9 +612,9 @@ func Test_ChainLoaderEVM_Load(t *testing.T) {
 			},
 		},
 		{
-			Type:          config_network.NetworkTypeTestnet,
-			ChainSelector: zksyncSelector,
-			RPCs: []config_network.RPC{
+			Type:          cfgnet.NetworkTypeTestnet,
+			ChainSelector: zksyncChainSelector,
+			RPCs: []cfgnet.RPC{
 				{
 					RPCName:            "zksync_rpc",
 					PreferredURLScheme: "http",
@@ -623,9 +623,9 @@ func Test_ChainLoaderEVM_Load(t *testing.T) {
 			},
 		},
 		{
-			Type:          config_network.NetworkTypeTestnet,
+			Type:          cfgnet.NetworkTypeTestnet,
 			ChainSelector: 999999, // Different chain for testing
-			RPCs: []config_network.RPC{
+			RPCs: []cfgnet.RPC{
 				{
 					RPCName:            "other_chain_rpc",
 					PreferredURLScheme: "http",
@@ -642,8 +642,8 @@ func Test_ChainLoaderEVM_Load(t *testing.T) {
 	privKeyHex := hex.EncodeToString(crypto.FromECDSA(privKey))
 
 	// Create test secrets with EVM wallet key
-	onchainConfig := config_env.OnchainConfig{
-		EVM: config_env.EVMConfig{
+	onchainConfig := cfgenv.OnchainConfig{
+		EVM: cfgenv.EVMConfig{
 			DeployerKey: privKeyHex,
 		},
 	}
@@ -651,8 +651,8 @@ func Test_ChainLoaderEVM_Load(t *testing.T) {
 	tests := []struct {
 		name              string
 		giveSelector      uint64
-		giveConfig        *config_network.Config
-		giveOnchainConfig config_env.OnchainConfig
+		giveConfig        *cfgnet.Config
+		giveOnchainConfig cfgenv.OnchainConfig
 		wantErr           string
 	}{
 		{
@@ -663,7 +663,7 @@ func Test_ChainLoaderEVM_Load(t *testing.T) {
 		},
 		{
 			name:              "successful load: zksync",
-			giveSelector:      zksyncSelector,
+			giveSelector:      zksyncChainSelector,
 			giveConfig:        networkCfg,
 			giveOnchainConfig: onchainConfig,
 		},
@@ -677,11 +677,11 @@ func Test_ChainLoaderEVM_Load(t *testing.T) {
 		{
 			name:         "no RPCs configured",
 			giveSelector: 777777,
-			giveConfig: config_network.NewConfig([]config_network.Network{
+			giveConfig: cfgnet.NewConfig([]cfgnet.Network{
 				{
-					Type:          config_network.NetworkTypeTestnet,
+					Type:          cfgnet.NetworkTypeTestnet,
 					ChainSelector: 777777,
-					RPCs:          []config_network.RPC{}, // Empty RPCs slice
+					RPCs:          []cfgnet.RPC{}, // Empty RPCs slice
 				},
 			}),
 			giveOnchainConfig: onchainConfig,
@@ -691,10 +691,10 @@ func Test_ChainLoaderEVM_Load(t *testing.T) {
 			name:         "fail to initialize evm chain",
 			giveSelector: evmSelector,
 			giveConfig:   networkCfg,
-			giveOnchainConfig: config_env.OnchainConfig{
-				EVM: config_env.EVMConfig{
+			giveOnchainConfig: cfgenv.OnchainConfig{
+				EVM: cfgenv.EVMConfig{
 					DeployerKey: privKeyHex,
-					Seth: &config_env.SethConfig{
+					Seth: &cfgenv.SethConfig{
 						GethWrapperDirs: []string{"some/valid/gethwrapper"},
 						ConfigFilePath:  "/invalid", // Must be empty or a valid path
 					},
@@ -704,18 +704,18 @@ func Test_ChainLoaderEVM_Load(t *testing.T) {
 		},
 		{
 			name:         "fail to initialize zksync chain",
-			giveSelector: zksyncSelector,
+			giveSelector: zksyncChainSelector,
 			giveConfig:   networkCfg,
-			giveOnchainConfig: config_env.OnchainConfig{
-				EVM: config_env.EVMConfig{
+			giveOnchainConfig: cfgenv.OnchainConfig{
+				EVM: cfgenv.EVMConfig{
 					DeployerKey: privKeyHex,
-					Seth: &config_env.SethConfig{
+					Seth: &cfgenv.SethConfig{
 						GethWrapperDirs: []string{"some/valid/gethwrapper"},
 						ConfigFilePath:  "/invalid", // Must be empty or a valid path
 					},
 				},
 			},
-			wantErr: fmt.Sprintf("failed to initialize chain %d", zksyncSelector),
+			wantErr: fmt.Sprintf("failed to initialize chain %d", zksyncChainSelector),
 		},
 	}
 
@@ -755,11 +755,11 @@ func Test_ChainLoaderTron_Load(t *testing.T) {
 
 	var tronSelector = chainsel.TRON_TESTNET_NILE.Selector
 
-	networks := config_network.NewConfig([]config_network.Network{
+	networks := cfgnet.NewConfig([]cfgnet.Network{
 		{
-			Type:          config_network.NetworkTypeTestnet,
+			Type:          cfgnet.NetworkTypeTestnet,
 			ChainSelector: tronSelector,
-			RPCs: []config_network.RPC{
+			RPCs: []cfgnet.RPC{
 				{
 					RPCName:            "tron_testnet_rpc",
 					PreferredURLScheme: "http",
@@ -768,9 +768,9 @@ func Test_ChainLoaderTron_Load(t *testing.T) {
 			},
 		},
 		{
-			Type:          config_network.NetworkTypeTestnet,
+			Type:          cfgnet.NetworkTypeTestnet,
 			ChainSelector: 999999, // Different chain for testing
-			RPCs: []config_network.RPC{
+			RPCs: []cfgnet.RPC{
 				{
 					RPCName:            "other_chain_rpc",
 					PreferredURLScheme: "http",
@@ -781,8 +781,8 @@ func Test_ChainLoaderTron_Load(t *testing.T) {
 		},
 	})
 
-	onchainConfig := config_env.OnchainConfig{
-		Tron: config_env.TronConfig{
+	onchainConfig := cfgenv.OnchainConfig{
+		Tron: cfgenv.TronConfig{
 			DeployerKey: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", // Mock private key
 		},
 	}
@@ -790,8 +790,8 @@ func Test_ChainLoaderTron_Load(t *testing.T) {
 	tests := []struct {
 		name              string
 		giveSelector      uint64
-		giveNetworkConfig *config_network.Config
-		giveOnchainConfig config_env.OnchainConfig
+		giveNetworkConfig *cfgnet.Config
+		giveOnchainConfig cfgenv.OnchainConfig
 		wantErr           string
 	}{
 		{
@@ -810,11 +810,11 @@ func Test_ChainLoaderTron_Load(t *testing.T) {
 		{
 			name:         "no RPCs configured",
 			giveSelector: 777777,
-			giveNetworkConfig: config_network.NewConfig([]config_network.Network{
+			giveNetworkConfig: cfgnet.NewConfig([]cfgnet.Network{
 				{
-					Type:          config_network.NetworkTypeTestnet,
+					Type:          cfgnet.NetworkTypeTestnet,
 					ChainSelector: 777777,
-					RPCs:          []config_network.RPC{}, // Empty RPCs slice
+					RPCs:          []cfgnet.RPC{}, // Empty RPCs slice
 				},
 			}),
 			giveOnchainConfig: onchainConfig,
@@ -824,8 +824,8 @@ func Test_ChainLoaderTron_Load(t *testing.T) {
 			name:              "empty private key",
 			giveSelector:      tronSelector,
 			giveNetworkConfig: networks,
-			giveOnchainConfig: config_env.OnchainConfig{
-				Tron: config_env.TronConfig{
+			giveOnchainConfig: cfgenv.OnchainConfig{
+				Tron: cfgenv.TronConfig{
 					DeployerKey: "", // Empty key
 				},
 			},

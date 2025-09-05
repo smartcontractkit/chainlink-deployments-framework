@@ -7,17 +7,17 @@ import (
 	"github.com/spf13/cobra"
 	"go.uber.org/zap/zapcore"
 
-	cldf_changeset "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/changeset"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/changeset"
 	clilib "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/legacy/cli"
 )
 
 // LoadPipelinesRegistry loads the Pipelines ChangesetsRegistry for the specified environment.
-func LoadPipelinesRegistry(envKey string) (*cldf_changeset.ChangesetsRegistry, error) {
-	var rp cldf_changeset.RegistryProvider
+func LoadPipelinesRegistry(envKey string) (*changeset.ChangesetsRegistry, error) {
+	var rp changeset.RegistryProvider
 
 	switch envKey {
 	// Load your environment-specific registry provider here. For example:
-	// case cldf_environment.Testnet:
+	// case environment.Testnet:
 	//	rp = testnet.NewPipelinesRegistryProvider()
 	default:
 		return nil, fmt.Errorf("unsupported environment %s", envKey)

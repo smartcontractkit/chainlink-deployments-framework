@@ -7,19 +7,19 @@ import (
 	"math/big"
 	"strings"
 
-	chainselectors "github.com/smartcontractkit/chain-selectors"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
-	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
-	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
-	cldf_config "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config"
-	cldf_config_network "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/network"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
-	cldf_engine_offchain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/offchain"
-	cldf_offchain "github.com/smartcontractkit/chainlink-deployments-framework/offchain"
+	fchain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
+	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
+	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config"
+	cfgnet "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/network"
+	fdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/offchain"
+	foffchain "github.com/smartcontractkit/chainlink-deployments-framework/offchain"
 	focr "github.com/smartcontractkit/chainlink-deployments-framework/offchain/ocr"
-	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
+	foperations "github.com/smartcontractkit/chainlink-deployments-framework/operations"
 )
 
 // ForkedOnchainClient is a client for a fork of a blockchain node.
@@ -31,9 +31,9 @@ type ForkedOnchainClient interface {
 }
 
 // ForkedEnvironment represents a forked deployment environment.
-// It embeds a standard environment with the addition of a client for forking per chain.
+// It embeds a standard environment with the addition of a client for forking per fchain.
 type ForkedEnvironment struct {
-	cldf.Environment
+	fdeployment.Environment
 	ChainConfigs map[uint64]ChainConfig
 	ForkClients  map[uint64]ForkedOnchainClient
 }
@@ -43,23 +43,23 @@ type ForkedEnvironment struct {
 //
 // Limitations:
 // - EVM only
-func LoadForkedEnvironment(ctx context.Context, lggr logger.Logger, env string, domain domain.Domain, blockNumbers map[uint64]*big.Int, opts ...LoadEnvironmentOption) (ForkedEnvironment, error) {
+func LoadForkedEnvironment(ctx context.Context, lggr logger.Logger, env string, domain fdomain.Domain, blockNumbers map[uint64]*big.Int, opts ...LoadEnvironmentOption) (ForkedEnvironment, error) {
 	// Default options
 	options := &LoadEnvironmentOptions{
-		reporter:          operations.NewMemoryReporter(),
-		operationRegistry: operations.NewOperationRegistry(),
+		reporter:          foperations.NewMemoryReporter(),
+		operationRegistry: foperations.NewOperationRegistry(),
 	}
 	for _, opt := range opts {
 		opt(options)
 	}
-	config, err := cldf_config.Load(domain, env, lggr)
+	cfg, err := config.Load(domain, env, lggr)
 	if err != nil {
 		return ForkedEnvironment{}, fmt.Errorf("failed to load config: %w", err)
 	}
 
 	// Limit to EVM networks only
-	networks := config.Networks.FilterWith(
-		cldf_config_network.ChainFamilyFilter(chainselectors.FamilyEVM),
+	networks := cfg.Networks.FilterWith(
+		cfgnet.ChainFamilyFilter(chainsel.FamilyEVM),
 	)
 
 	envdir := domain.EnvDir(env)
@@ -73,8 +73,8 @@ func LoadForkedEnvironment(ctx context.Context, lggr logger.Logger, env string, 
 		ab,
 		networks,
 		blockNumbers,
-		config.Env.Onchain,
-		config.Env.Onchain.KMS,
+		cfg.Env.Onchain,
+		cfg.Env.Onchain.KMS,
 		options.chainSelectorsToLoad,
 		options.anvilKeyAsDeployer,
 	)
@@ -90,15 +90,15 @@ func LoadForkedEnvironment(ctx context.Context, lggr logger.Logger, env string, 
 		return ForkedEnvironment{}, fmt.Errorf("failed to load nodes: %w", err)
 	}
 
-	cfg, err := cldf_config.LoadEnvConfig(domain, env)
+	config, err := config.LoadEnvConfig(domain, env)
 	if err != nil {
 		return ForkedEnvironment{}, err
 	}
 
-	var oc cldf_offchain.Client
+	var oc foffchain.Client
 
 	if !options.withoutJD {
-		oc, err = cldf_engine_offchain.LoadOffchainClient(ctx, domain, env, cfg, lggr, false)
+		oc, err = offchain.LoadOffchainClient(ctx, domain, env, config, lggr, false)
 		if err != nil {
 			return ForkedEnvironment{}, fmt.Errorf("failed to load offchain client: %w", err)
 		}
@@ -107,20 +107,20 @@ func LoadForkedEnvironment(ctx context.Context, lggr logger.Logger, env string, 
 	}
 
 	// TODO: once all products are on the new datastore, we can remove this default
-	ds := datastore.NewMemoryDataStore().Seal()
+	ds := fdatastore.NewMemoryDataStore().Seal()
 	if s, err := envdir.DataStore(); err == nil {
 		ds = s
 	} else {
 		lggr.Warnf("failed to load datastore: %v", err)
 	}
 
-	blockChains := map[uint64]chain.BlockChain{}
+	blockChains := map[uint64]fchain.BlockChain{}
 	for selector, ch := range anvilOutput.Chains {
 		blockChains[selector] = ch
 	}
 
 	// TODO: newSolChains, newAptosChains, etc.
-	environment := cldf.NewEnvironment(
+	environment := fdeployment.NewEnvironment(
 		"fork",
 		lggr,
 		ab,
@@ -129,7 +129,7 @@ func LoadForkedEnvironment(ctx context.Context, lggr logger.Logger, env string, 
 		oc,
 		func() context.Context { return ctx },
 		focr.XXXGenerateTestOCRSecrets(),
-		chain.NewBlockChains(blockChains),
+		fchain.NewBlockChains(blockChains),
 	)
 
 	return ForkedEnvironment{
@@ -140,7 +140,7 @@ func LoadForkedEnvironment(ctx context.Context, lggr logger.Logger, env string, 
 }
 
 // ApplyChangesetOutput executes MCMS proposals and merges addresses into the address book.
-func (e ForkedEnvironment) ApplyChangesetOutput(ctx context.Context, output cldf.ChangesetOutput) (ForkedEnvironment, error) {
+func (e ForkedEnvironment) ApplyChangesetOutput(ctx context.Context, output fdeployment.ChangesetOutput) (ForkedEnvironment, error) {
 	// TODO: Applying jobs? How would this work in a forked environment?
 
 	// Apply mcms proposals that forego timelock usage
@@ -182,8 +182,8 @@ func (e ForkedEnvironment) ApplyChangesetOutput(ctx context.Context, output cldf
 	}
 
 	// Merge new addresses into address book
-	if output.AddressBook != nil { //nolint
-		err := e.ExistingAddresses.Merge(output.AddressBook) //nolint
+	if output.AddressBook != nil { // nolint
+		err := e.ExistingAddresses.Merge(output.AddressBook) // nolint
 		if err != nil {
 			return ForkedEnvironment{}, fmt.Errorf("failed to merge new addresses into address book: %w", err)
 		}

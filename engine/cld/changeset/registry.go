@@ -8,9 +8,9 @@ import (
 	"strings"
 	"sync"
 
-	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
+	foperations "github.com/smartcontractkit/chainlink-deployments-framework/operations"
 )
 
 // RegistryProvider defines an interface for initializing and managing the changeset registry
@@ -122,18 +122,18 @@ func (r *ChangesetsRegistry) SetValidate(validate bool) {
 
 // Apply applies a changeset.
 func (r *ChangesetsRegistry) Apply(
-	key string, e cldf.Environment,
-) (cldf.ChangesetOutput, error) {
+	key string, e fdeployment.Environment,
+) (fdeployment.ChangesetOutput, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	entry, ok := r.entries[key]
 	if !ok {
-		return cldf.ChangesetOutput{}, fmt.Errorf("changeset '%s' not found", key)
+		return fdeployment.ChangesetOutput{}, fmt.Errorf("changeset '%s' not found", key)
 	}
 
 	if entry.IsArchived() {
-		return cldf.ChangesetOutput{}, fmt.Errorf("changeset '%s' is archived at SHA '%s'", key, *entry.gitSHA)
+		return fdeployment.ChangesetOutput{}, fmt.Errorf("changeset '%s' is archived at SHA '%s'", key, *entry.gitSHA)
 	}
 
 	return entry.changeset.Apply(e)
@@ -166,15 +166,15 @@ type ChangesetOption func(*ChangesetConfig)
 type ChangesetConfig struct {
 	ChainsToLoad      []uint64
 	WithoutJD         bool
-	OperationRegistry *operations.OperationRegistry
+	OperationRegistry *foperations.OperationRegistry
 }
 
 // OnlyLoadChainsFor will configure the environment to load only the specified chains.
 // By default, if option is not specified, all chains are loaded.
 // This is useful for changesets that are only applicable to a subset of chains.
-func OnlyLoadChainsFor(chainSelectors ...uint64) ChangesetOption {
+func OnlyLoadChainsFor(chainselectors ...uint64) ChangesetOption {
 	return func(o *ChangesetConfig) {
-		o.ChainsToLoad = chainSelectors
+		o.ChainsToLoad = chainselectors
 	}
 }
 
@@ -188,7 +188,7 @@ func WithoutJD() ChangesetOption {
 }
 
 // WithOperationRegistry will configure the changeset to use the specified operation registry.
-func WithOperationRegistry(registry *operations.OperationRegistry) ChangesetOption {
+func WithOperationRegistry(registry *foperations.OperationRegistry) ChangesetOption {
 	return func(o *ChangesetConfig) {
 		o.OperationRegistry = registry
 	}

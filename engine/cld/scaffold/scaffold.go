@@ -9,7 +9,7 @@ import (
 	"strings"
 	"text/template"
 
-	cldf_domain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
+	enginedomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 )
 
 //go:embed templates/*
@@ -45,7 +45,7 @@ func getRepositoryName(rootDir string) string {
 
 // ScaffoldDomain creates a new domain directory structure within the specified base path.
 // Use WithModTidy() option to run 'go mod tidy' after scaffolding.
-func ScaffoldDomain(domain cldf_domain.Domain, opts ...ScaffoldOption) error {
+func ScaffoldDomain(domain enginedomain.Domain, opts ...ScaffoldOption) error {
 	// Apply default options and then user-provided options
 	options := defaultScaffoldOptions()
 	for _, opt := range opts {
@@ -69,11 +69,11 @@ func ScaffoldDomain(domain cldf_domain.Domain, opts ...ScaffoldOption) error {
 	structure := dirFSNode(domain.Key(), []*fsnode{
 		fileFSNode("go.mod", withTemplate("go.mod.tmpl")),
 		dirFSNode("pkg", []*fsnode{gitKeepFSNode()}),
-		dirFSNode(cldf_domain.LibDirName, []*fsnode{gitKeepFSNode()}),
-		dirFSNode(cldf_domain.InternalDirName, []*fsnode{gitKeepFSNode()}),
-		dirFSNode(cldf_domain.CmdDirName, []*fsnode{
+		dirFSNode(enginedomain.LibDirName, []*fsnode{gitKeepFSNode()}),
+		dirFSNode(enginedomain.InternalDirName, []*fsnode{gitKeepFSNode()}),
+		dirFSNode(enginedomain.CmdDirName, []*fsnode{
 			fileFSNode("main.go", withTemplate("cmd_main.go.tmpl")),
-			dirFSNode(cldf_domain.InternalDirName, []*fsnode{
+			dirFSNode(enginedomain.InternalDirName, []*fsnode{
 				dirFSNode("cli", []*fsnode{
 					fileFSNode("app.go", withTemplate("cmd_internal_app.go.tmpl")),
 				}),
@@ -109,7 +109,7 @@ func ScaffoldDomain(domain cldf_domain.Domain, opts ...ScaffoldOption) error {
 }
 
 // ScaffoldEnvDir creates a new environment directory structure within the specified base path.
-func ScaffoldEnvDir(envdir cldf_domain.EnvDir) error {
+func ScaffoldEnvDir(envdir enginedomain.EnvDir) error {
 	// Check if the directory already exists or if there is an error accessing it
 	if err := checkDirExists(envdir.DirPath()); err != nil {
 		return fmt.Errorf("failed to create %s env directory: %w", envdir.String(), err)
@@ -122,25 +122,25 @@ func ScaffoldEnvDir(envdir cldf_domain.EnvDir) error {
 
 	// Define the structure
 	structure := dirFSNode(envdir.Key(), []*fsnode{
-		fileFSNode(cldf_domain.AddressBookFileName, withTemplate("address_book.json.tmpl")),
-		dirFSNode(cldf_domain.DatastoreDirName, []*fsnode{
-			fileFSNode(cldf_domain.AddressRefsFileName, withTemplate("address_refs.json.tmpl")),
-			fileFSNode(cldf_domain.ChainMetadataFileName, withTemplate("chain_metadata.json.tmpl")),
-			fileFSNode(cldf_domain.ContractMetadataFileName, withTemplate("contract_metadata.json.tmpl")),
-			fileFSNode(cldf_domain.EnvMetadataFileName, withTemplate("env_metadata.json.tmpl")),
+		fileFSNode(enginedomain.AddressBookFileName, withTemplate("address_book.json.tmpl")),
+		dirFSNode(enginedomain.DatastoreDirName, []*fsnode{
+			fileFSNode(enginedomain.AddressRefsFileName, withTemplate("address_refs.json.tmpl")),
+			fileFSNode(enginedomain.ChainMetadataFileName, withTemplate("chain_metadata.json.tmpl")),
+			fileFSNode(enginedomain.ContractMetadataFileName, withTemplate("contract_metadata.json.tmpl")),
+			fileFSNode(enginedomain.EnvMetadataFileName, withTemplate("env_metadata.json.tmpl")),
 		}),
-		fileFSNode(cldf_domain.NodesFileName, withTemplate("nodes.json.tmpl")),
-		fileFSNode(cldf_domain.ViewStateFileName, withTemplate("view_state.json.tmpl")),
-		fileFSNode(cldf_domain.PipelinesFileName, withTemplate("pipelines.go.tmpl")),
+		fileFSNode(enginedomain.NodesFileName, withTemplate("nodes.json.tmpl")),
+		fileFSNode(enginedomain.ViewStateFileName, withTemplate("view_state.json.tmpl")),
+		fileFSNode(enginedomain.PipelinesFileName, withTemplate("pipelines.go.tmpl")),
 		fileFSNode("pipelines_test.go", withTemplate("pipelines_test.go.tmpl")),
-		dirFSNode(cldf_domain.ArtifactsDirName, []*fsnode{gitKeepFSNode()}),
-		dirFSNode(cldf_domain.ProposalsDirName, []*fsnode{gitKeepFSNode()}),
-		dirFSNode(cldf_domain.ArchivedProposalsDirName, []*fsnode{gitKeepFSNode()}),
-		dirFSNode(cldf_domain.DecodedProposalsDirName, []*fsnode{gitKeepFSNode()}),
-		dirFSNode(cldf_domain.OperationsReportsDirName, []*fsnode{gitKeepFSNode()}),
-		dirFSNode(cldf_domain.DurablePipelineDirName, []*fsnode{
+		dirFSNode(enginedomain.ArtifactsDirName, []*fsnode{gitKeepFSNode()}),
+		dirFSNode(enginedomain.ProposalsDirName, []*fsnode{gitKeepFSNode()}),
+		dirFSNode(enginedomain.ArchivedProposalsDirName, []*fsnode{gitKeepFSNode()}),
+		dirFSNode(enginedomain.DecodedProposalsDirName, []*fsnode{gitKeepFSNode()}),
+		dirFSNode(enginedomain.OperationsReportsDirName, []*fsnode{gitKeepFSNode()}),
+		dirFSNode(enginedomain.DurablePipelineDirName, []*fsnode{
 			gitKeepFSNode(),
-			dirFSNode(cldf_domain.DurablePipelineInputsDirName, []*fsnode{gitKeepFSNode()}),
+			dirFSNode(enginedomain.DurablePipelineInputsDirName, []*fsnode{gitKeepFSNode()}),
 		}),
 	})
 

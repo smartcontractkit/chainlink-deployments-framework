@@ -9,16 +9,17 @@ import (
 
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 
-	cldf_datastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
-	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
+	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 
-	cldf_engine_catalog "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/catalog"
-	cldf_chains "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/chains"
-	cldf_config "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config"
-	cldf_domain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
-	cldf_engine_offchain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/offchain"
-	cldf_offchain "github.com/smartcontractkit/chainlink-deployments-framework/offchain"
+	fcatalog "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/catalog"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/chains"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config"
+	fdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/offchain"
+	foffchain "github.com/smartcontractkit/chainlink-deployments-framework/offchain"
 	focr "github.com/smartcontractkit/chainlink-deployments-framework/offchain/ocr"
+
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 )
 
@@ -81,10 +82,10 @@ func Load(
 	getCtx func() context.Context,
 	lggr logger.Logger,
 	env string,
-	domain cldf_domain.Domain,
+	domain fdomain.Domain,
 	useRealBackends bool,
 	opts ...LoadEnvironmentOption,
-) (cldf.Environment, error) {
+) (fdeployment.Environment, error) {
 	// Default options
 	options := &LoadEnvironmentOptions{
 		reporter:          operations.NewMemoryReporter(),
@@ -96,19 +97,19 @@ func Load(
 
 	envdir := domain.EnvDir(env)
 
-	config, err := cldf_config.Load(domain, env, lggr)
+	cfg, err := config.Load(domain, env, lggr)
 	if err != nil {
-		return cldf.Environment{}, err
+		return fdeployment.Environment{}, err
 	}
 
 	ab, err := envdir.AddressBook()
 	if err != nil {
-		return cldf.Environment{}, err
+		return fdeployment.Environment{}, err
 	}
 
 	// Note: Currently, if no datastore is present in the envdir, no error is returned.
 	// This behavior is temporary and will be updated to return an error once all environments
-	// are guaranteed to have a datastore.
+	// are guaranteed to have a fdatastore.
 	ds, err := envdir.DataStore()
 	if err != nil {
 		lggr.Warn("Unable to load datastore, skipping")
@@ -116,7 +117,7 @@ func Load(
 
 	addressesByChain, err := ab.Addresses()
 	if err != nil {
-		return cldf.Environment{}, err
+		return fdeployment.Environment{}, err
 	}
 
 	// default - loads all chains
@@ -127,28 +128,28 @@ func Load(
 		chainSelectorsToLoad = options.chainSelectorsToLoad
 	}
 
-	blockChains, err := cldf_chains.LoadChains(getCtx(), lggr, config, chainSelectorsToLoad)
+	blockChains, err := chains.LoadChains(getCtx(), lggr, cfg, chainSelectorsToLoad)
 	if err != nil {
-		return cldf.Environment{}, err
+		return fdeployment.Environment{}, err
 	}
 
 	nodes, err := envdir.LoadNodes()
 	if err != nil {
-		return cldf.Environment{}, err
+		return fdeployment.Environment{}, err
 	}
 
-	var jd cldf_offchain.Client
+	var jd foffchain.Client
 	if !options.withoutJD {
-		jd, err = cldf_engine_offchain.LoadOffchainClient(
+		jd, err = offchain.LoadOffchainClient(
 			getCtx(),
 			domain,
 			env,
-			config.Env,
+			cfg.Env,
 			lggr,
 			useRealBackends,
 		)
 		if err != nil {
-			return cldf.Environment{},
+			return fdeployment.Environment{},
 				fmt.Errorf("failed to load offchain client for environment %s: %w", env, err)
 		}
 	} else {
@@ -158,28 +159,28 @@ func Load(
 	lggr.Debugw("Loaded environment", "env", env, "addressBook", ab)
 
 	sharedSecrets, err := focr.GenerateSharedSecrets(
-		config.Env.Offchain.OCR.XSigners, config.Env.Offchain.OCR.XProposers,
+		cfg.Env.Offchain.OCR.XSigners, cfg.Env.Offchain.OCR.XProposers,
 	)
 	if err != nil {
-		if errors.Is(err, cldf.ErrMnemonicRequired) {
+		if errors.Is(err, fdeployment.ErrMnemonicRequired) {
 			lggr.Warn("No OCR secrets found in environment, proceeding without them")
 		} else {
-			return cldf.Environment{}, err
+			return fdeployment.Environment{}, err
 		}
 	}
 
-	var catalogDataStore cldf_datastore.CatalogStore
-	if config.Env.Catalog.GRPC != "" {
-		lggr.Infow("Initializing Catalog client", "url", config.Env.Catalog.GRPC)
-		catalogDataStore, err = cldf_engine_catalog.LoadCatalog(getCtx(), env, config, domain)
+	var catalogDataStore fdatastore.CatalogStore
+	if cfg.Env.Catalog.GRPC != "" {
+		lggr.Infow("Initializing Catalog client", "url", cfg.Env.Catalog.GRPC)
+		catalogDataStore, err = fcatalog.LoadCatalog(getCtx(), env, cfg, domain)
 		if err != nil {
-			return cldf.Environment{}, err
+			return fdeployment.Environment{}, err
 		}
 	} else {
 		lggr.Info("Skipping Catalog client initialization, no Catalog config found")
 	}
 
-	return cldf.Environment{
+	return fdeployment.Environment{
 		Name:              env,
 		Logger:            lggr,
 		ExistingAddresses: ab,

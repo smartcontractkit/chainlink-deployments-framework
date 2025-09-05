@@ -8,8 +8,8 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/stretchr/testify/require"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
-	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
+	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 )
 
 var (
@@ -153,40 +153,40 @@ func setupTestDomainsFS(t *testing.T) testDomainFS {
 
 // createAddressBook creates an address book with a single entry for testing.
 func createAddressBookMap(
-	t *testing.T, cType cldf.ContractType, ver semver.Version, csel uint64, addr string, //nolint:unparam // Unused parameters are for testing purposes
-) *cldf.AddressBookMap {
+	t *testing.T, cType fdeployment.ContractType, ver semver.Version, chainsel uint64, addr string, //nolint:unparam // Unused parameters are for testing purposes
+) *fdeployment.AddressBookMap {
 	t.Helper()
 
 	// Create a new migration with an address book
 	var (
-		addrBook = cldf.NewMemoryAddressBook()
-		tv       = cldf.NewTypeAndVersion(cType, ver)
+		addrBook = fdeployment.NewMemoryAddressBook()
+		tv       = fdeployment.NewTypeAndVersion(cType, ver)
 	)
 
 	// Save data to the address book
-	err := addrBook.Save(csel, addr, tv)
+	err := addrBook.Save(chainsel, addr, tv)
 	require.NoError(t, err)
 
 	return addrBook
 }
 
 func createDataStore(
-	t *testing.T, cType cldf.ContractType, ver semver.Version, csel uint64, addr string, qual string, //nolint:unparam // Unused parameters are for testing purposes
-) *datastore.MemoryDataStore {
+	t *testing.T, cType fdeployment.ContractType, ver semver.Version, chainsel uint64, addr string, qual string, //nolint:unparam // Unused parameters are for testing purposes
+) *fdatastore.MemoryDataStore {
 	t.Helper()
 
 	// Create a new migration with an address book
-	ds := datastore.NewMemoryDataStore()
+	ds := fdatastore.NewMemoryDataStore()
 
 	// Save data to the address book
 	err := ds.Addresses().Add(
-		datastore.AddressRef{
-			ChainSelector: csel,
+		fdatastore.AddressRef{
+			ChainSelector: chainsel,
 			Address:       addr,
-			Type:          datastore.ContractType(cType),
+			Type:          fdatastore.ContractType(cType),
 			Version:       &ver,
 			Qualifier:     qual,
-			Labels: datastore.NewLabelSet(
+			Labels: fdatastore.NewLabelSet(
 				"LinkToken",
 				"LinkTokenV1",
 			),

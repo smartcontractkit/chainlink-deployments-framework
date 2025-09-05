@@ -1,22 +1,22 @@
 package {{.package}}
 
 import (
-	cldf_changeset "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/changeset"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/changeset"
 )
 
-var _ cldf_changeset.RegistryProvider = (*PipelinesRegistryProvider)(nil)
+var _ changeset.RegistryProvider = (*PipelinesRegistryProvider)(nil)
 
-// PipelinesRegistryProvider wraps the cldf_changeset.BaseRegistryProvider and
+// PipelinesRegistryProvider wraps the changeset.BaseRegistryProvider and
 // provides an Init function to register Pipelines with the underlying registry.
 type PipelinesRegistryProvider struct {
-	*cldf_changeset.BaseRegistryProvider
+	*changeset.BaseRegistryProvider
 }
 
 // NewPipelinesRegistryProvider creates a new PipelinesRegistryProvider.
 // The BaseRegistryProvider is initialized with a default registry.
 func NewPipelinesRegistryProvider() *PipelinesRegistryProvider {
 	return &PipelinesRegistryProvider{
-		BaseRegistryProvider: cldf_changeset.NewBaseRegistryProvider(),
+		BaseRegistryProvider: changeset.NewBaseRegistryProvider(),
 	}
 }
 

@@ -8,7 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
 )
@@ -29,7 +29,7 @@ func (c Commands) NewStateCmds(dom domain.Domain, config StateConfig) *cobra.Com
 }
 
 type StateConfig struct {
-	ViewState cldf.ViewStateV2
+	ViewState deployment.ViewStateV2
 }
 
 func (c Commands) newStateGenerate(dom domain.Domain, cfg StateConfig) *cobra.Command {

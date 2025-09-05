@@ -15,8 +15,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
-	cldf_domain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
+	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	fdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 )
 
 func Test_LoadForkedEnvironment(t *testing.T) {
@@ -24,7 +24,7 @@ func Test_LoadForkedEnvironment(t *testing.T) {
 
 	tests := []struct {
 		name         string
-		domain       cldf_domain.Domain
+		domain       fdomain.Domain
 		env          string
 		blockNumbers map[uint64]*big.Int
 		options      []LoadEnvironmentOption
@@ -33,7 +33,7 @@ func Test_LoadForkedEnvironment(t *testing.T) {
 	}{
 		{
 			name:   "Invalid Environment",
-			domain: cldf_domain.NewDomain("dummy", "test"),
+			domain: fdomain.NewDomain("dummy", "test"),
 			env:    "non_existent_env",
 			blockNumbers: map[uint64]*big.Int{
 				1: big.NewInt(1000),
@@ -119,14 +119,14 @@ func Test_ApplyChangesetOutput(t *testing.T) {
 
 	tests := []struct {
 		name            string
-		changesetOutput cldf.ChangesetOutput
+		changesetOutput fdeployment.ChangesetOutput
 		forkClients     map[uint64]ForkedOnchainClient
 		blockNumbers    map[uint64]*big.Int
 		expectError     string
 	}{
 		{
 			name: "Timelock Proposal - No TimeLock Address",
-			changesetOutput: cldf.ChangesetOutput{
+			changesetOutput: fdeployment.ChangesetOutput{
 				MCMSTimelockProposals: []mcms.TimelockProposal{
 					createMCMSTimelockProposal(t, 123, types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector)),
 				},
@@ -139,7 +139,7 @@ func Test_ApplyChangesetOutput(t *testing.T) {
 		},
 		{
 			name: "Timelock Proposal - No Fork Client",
-			changesetOutput: cldf.ChangesetOutput{
+			changesetOutput: fdeployment.ChangesetOutput{
 				MCMSTimelockProposals: []mcms.TimelockProposal{
 					createMCMSTimelockProposal(t, types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector), types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector)),
 				},
@@ -152,7 +152,7 @@ func Test_ApplyChangesetOutput(t *testing.T) {
 		},
 		{
 			name: "Timelock Proposal - Failed Transaction",
-			changesetOutput: cldf.ChangesetOutput{
+			changesetOutput: fdeployment.ChangesetOutput{
 				MCMSTimelockProposals: []mcms.TimelockProposal{
 					createMCMSTimelockProposal(t, types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector), types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector)),
 				},
@@ -167,7 +167,7 @@ func Test_ApplyChangesetOutput(t *testing.T) {
 		},
 		{
 			name: "Timelock Proposal - No Error",
-			changesetOutput: cldf.ChangesetOutput{
+			changesetOutput: fdeployment.ChangesetOutput{
 				MCMSTimelockProposals: []mcms.TimelockProposal{
 					createMCMSTimelockProposal(t, types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector), types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector)),
 				},
@@ -181,7 +181,7 @@ func Test_ApplyChangesetOutput(t *testing.T) {
 		},
 		{
 			name: "Base Proposal - No Fork Client",
-			changesetOutput: cldf.ChangesetOutput{
+			changesetOutput: fdeployment.ChangesetOutput{
 				MCMSProposals: []mcms.Proposal{
 					createBaseProposal(t, types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector), types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector)),
 				},
@@ -194,7 +194,7 @@ func Test_ApplyChangesetOutput(t *testing.T) {
 		},
 		{
 			name: "Base Proposal - Failed Transaction",
-			changesetOutput: cldf.ChangesetOutput{
+			changesetOutput: fdeployment.ChangesetOutput{
 				MCMSProposals: []mcms.Proposal{
 					createBaseProposal(t, types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector), types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector)),
 				},
@@ -209,7 +209,7 @@ func Test_ApplyChangesetOutput(t *testing.T) {
 		},
 		{
 			name: "Base Proposal - No Error",
-			changesetOutput: cldf.ChangesetOutput{
+			changesetOutput: fdeployment.ChangesetOutput{
 				MCMSProposals: []mcms.Proposal{
 					createBaseProposal(t, types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector), types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector)),
 				},

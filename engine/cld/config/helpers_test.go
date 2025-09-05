@@ -7,8 +7,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	config_network "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/network"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
+	cfgnet "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/network"
+	fdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 )
 
 var (
@@ -21,10 +21,10 @@ var (
 // Network fixtures which map exactly to the network data in testdata files.
 // Used for asserting against the expected network configuration.
 var (
-	testnetNetwork1 = config_network.Network{
+	testnetNetwork1 = cfgnet.Network{
 		Type:          "testnet",
 		ChainSelector: 16015286601757825753,
-		RPCs: []config_network.RPC{
+		RPCs: []cfgnet.RPC{
 			{
 				RPCName:            "sepolia-rpc",
 				PreferredURLScheme: "http",
@@ -34,10 +34,10 @@ var (
 		},
 	}
 
-	testnetNetwork2 = config_network.Network{
+	testnetNetwork2 = cfgnet.Network{
 		Type:          "testnet",
 		ChainSelector: 12532609583862916517,
-		RPCs: []config_network.RPC{
+		RPCs: []cfgnet.RPC{
 			{
 				RPCName:            "mumbai-rpc",
 				PreferredURLScheme: "http",
@@ -47,10 +47,10 @@ var (
 		},
 	}
 
-	mainnetNetwork1 = config_network.Network{
+	mainnetNetwork1 = cfgnet.Network{
 		Type:          "mainnet",
 		ChainSelector: 5009297550715157269,
-		RPCs: []config_network.RPC{
+		RPCs: []cfgnet.RPC{
 			{
 				RPCName:            "mainnet-rpc",
 				PreferredURLScheme: "http",
@@ -63,7 +63,7 @@ var (
 
 // setupConfigDirs sets up a minimal domain structure with a .config directory structure and returns
 // the domain and environment key.
-func setupConfigDirs(t *testing.T) (domain.Domain, string) {
+func setupConfigDirs(t *testing.T) (fdomain.Domain, string) {
 	t.Helper()
 
 	// Create a temporary directory structure for testing
@@ -84,11 +84,11 @@ func setupConfigDirs(t *testing.T) (domain.Domain, string) {
 	localDir := filepath.Join(configDir, "local")
 	require.NoError(t, os.MkdirAll(localDir, dirPerms))
 
-	return domain.NewDomain(rootDir, domainKey), envKey
+	return fdomain.NewDomain(rootDir, domainKey), envKey
 }
 
 // writeConfigLocalFile writes a config file to the domain's local directory with testdata.
-func writeConfigLocalFile(t *testing.T, dom domain.Domain, envKey, testdataFileName string) {
+func writeConfigLocalFile(t *testing.T, dom fdomain.Domain, envKey, testdataFileName string) {
 	t.Helper()
 
 	// Create .config.testnet.yaml file for the new config format
@@ -100,7 +100,7 @@ func writeConfigLocalFile(t *testing.T, dom domain.Domain, envKey, testdataFileN
 }
 
 // writeConfigNetworksFile writes a config file to the domain's networks directory with testdata.
-func writeConfigNetworksFile(t *testing.T, dom domain.Domain, filename, testdataFileName string) {
+func writeConfigNetworksFile(t *testing.T, dom fdomain.Domain, filename, testdataFileName string) {
 	t.Helper()
 
 	// Create network configuration file
@@ -112,7 +112,7 @@ func writeConfigNetworksFile(t *testing.T, dom domain.Domain, filename, testdata
 }
 
 // writeConfigDomainFile writes a config file to the domain's directory with testdata.
-func writeConfigDomainFile(t *testing.T, dom domain.Domain, testdataFileName string) { //nolint:unparam // testdataFileName could be different for any future tests
+func writeConfigDomainFile(t *testing.T, dom fdomain.Domain, testdataFileName string) { //nolint:unparam // testdataFileName could be different for any future tests
 	t.Helper()
 
 	// Create network configuration file
