@@ -19,6 +19,9 @@ onchain:
     deployer_key: "0xdef"
   sui:
     deployer_key: "0xefg"
+  ton:
+    deployer_key: "0xedd"
+    wallet_version: "V5R1"
 offchain:
   job_distributor:
     endpoints:

@@ -41,6 +41,15 @@ type SolanaConfig struct {
 	ProgramsDirPath string `mapstructure:"programs_dir_path" yaml:"programs_dir_path"` // The path to the Solana programs directory.
 }
 
+// TonConfig is the configuration for the TON Chains.
+//
+// WARNING: This data type contains sensitive fields and should not be logged or set in file
+// configuration.
+type TonConfig struct {
+	DeployerKey   string `mapstructure:"deployer_key" yaml:"deployer_key"`     // Secret: The private key of the deployer account.
+	WalletVersion string `mapstructure:"wallet_version" yaml:"wallet_version"` // The version of the TON wallet
+}
+
 // AptosConfig is the configuration for the Aptos Chains.
 //
 // WARNING: This data type contains sensitive fields and should not be logged or set in file
@@ -115,6 +124,7 @@ type OnchainConfig struct {
 	Aptos  AptosConfig  `mapstructure:"aptos" yaml:"aptos"`
 	Sui    SuiConfig    `mapstructure:"sui" yaml:"sui"`
 	Tron   TronConfig   `mapstructure:"tron" yaml:"tron"`
+	Ton    TonConfig    `mapstructure:"ton" yaml:"ton"`
 }
 
 // OffchainConfig wraps the configuration for the offchain components.
@@ -208,6 +218,8 @@ var (
 		"onchain.aptos.deployer_key":                              {"ONCHAIN_APTOS_DEPLOYER_KEY", "APTOS_DEPLOYER_KEY"},
 		"onchain.tron.deployer_key":                               {"ONCHAIN_TRON_DEPLOYER_KEY", "TRON_DEPLOYER_KEY"},
 		"onchain.sui.deployer_key":                                {"ONCHAIN_SUI_DEPLOYER_KEY"},
+		"onchain.ton.deployer_key":                                {"ONCHAIN_TON_DEPLOYER_KEY"},
+		"onchain.ton.wallet_version":                              {"ONCHAIN_TON_WALLET_VERSION"},
 		"offchain.job_distributor.auth.cognito_app_client_id":     {"OFFCHAIN_JD_AUTH_COGNITO_APP_CLIENT_ID", "JD_AUTH_COGNITO_APP_CLIENT_ID"},
 		"offchain.job_distributor.auth.cognito_app_client_secret": {"OFFCHAIN_JD_AUTH_COGNITO_APP_CLIENT_SECRET", "JD_AUTH_COGNITO_APP_CLIENT_SECRET"},
 		"offchain.job_distributor.auth.aws_region":                {"OFFCHAIN_JD_AUTH_AWS_REGION", "JD_AUTH_AWS_REGION"},
