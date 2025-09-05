@@ -6,12 +6,12 @@ import (
 	"testing"
 
 	"github.com/fbsobreira/gotron-sdk/pkg/address"
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
-	"github.com/smartcontractkit/chainlink-evm/gethwrappers/shared/generated/initial/link_token"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron/provider/testdata"
 )
 
 func TestCTFChainProviderConfig_validate(t *testing.T) {
@@ -98,7 +98,7 @@ func TestCTFChainProvider_Initialize(t *testing.T) {
 	}{
 		{
 			name:         "valid initialization",
-			giveSelector: chain_selectors.TRON_TESTNET_NILE.Selector,
+			giveSelector: chainsel.TRON_TESTNET_NILE.Selector,
 			giveConfig: func() CTFChainProviderConfig {
 				signerGen, err := SignerGenCTFDefault()
 				require.NoError(t, err)
@@ -111,7 +111,7 @@ func TestCTFChainProvider_Initialize(t *testing.T) {
 		},
 		{
 			name:         "fails config validation",
-			giveSelector: chain_selectors.TRON_TESTNET_NILE.Selector,
+			giveSelector: chainsel.TRON_TESTNET_NILE.Selector,
 			giveConfig: CTFChainProviderConfig{
 				Once: &sync.Once{},
 			},
@@ -119,7 +119,7 @@ func TestCTFChainProvider_Initialize(t *testing.T) {
 		},
 		{
 			name:         "missing sync.Once",
-			giveSelector: chain_selectors.TRON_TESTNET_NILE.Selector,
+			giveSelector: chainsel.TRON_TESTNET_NILE.Selector,
 			giveConfig: func() CTFChainProviderConfig {
 				signerGen, err := SignerGenCTFDefault()
 				require.NoError(t, err)
@@ -186,9 +186,9 @@ func TestCTFChainProvider_ContainerStartup(t *testing.T) {
 		Once:              &sync.Once{},
 	}
 
-	provider := NewCTFChainProvider(t, chain_selectors.TRON_TESTNET_NILE.Selector, config)
+	provider := NewCTFChainProvider(t, chainsel.TRON_TESTNET_NILE.Selector, config)
 
-	chainID, err := chain_selectors.GetChainIDFromSelector(chain_selectors.TRON_MAINNET.Selector)
+	chainID, err := chainsel.GetChainIDFromSelector(chainsel.TRON_MAINNET.Selector)
 	require.NoError(t, err)
 	fullNodeURL, solidityNodeURL := provider.startContainer(chainID)
 	require.NotEmpty(t, fullNodeURL)
@@ -208,7 +208,7 @@ func TestCTFProvider_SendAndConfirmTx_And_CheckContractDeployed(t *testing.T) {
 		Once:              &sync.Once{},
 	}
 
-	chainSelector := chain_selectors.TRON_TESTNET_NILE.Selector
+	chainSelector := chainsel.TRON_TESTNET_NILE.Selector
 
 	// Create and initialize the CTF provider
 	ctfProvider := NewCTFChainProvider(t, chainSelector, config)
@@ -269,7 +269,7 @@ func TestCTFProvider_SendAndConfirmTx_And_CheckContractDeployed(t *testing.T) {
 
 		// Deploy the LinkToken contract and wait for confirmation
 		contractAddress, txInfo, err := tronChain.DeployContractAndConfirm(
-			t.Context(), "LinkToken", link_token.LinkTokenABI, link_token.LinkTokenBin, nil, deployOptions)
+			t.Context(), "LinkToken", testdata.LinkTokenMetaDataABI, testdata.LinkTokenMetaDataBIN, nil, deployOptions)
 		require.NoError(t, err, "Failed to deploy contract")
 
 		// Log deployed contract address and deployment transaction details
@@ -333,8 +333,8 @@ func Test_CTFChainProvider_Name(t *testing.T) {
 func Test_CTFChainProvider_ChainSelector(t *testing.T) {
 	t.Parallel()
 
-	p := CTFChainProvider{selector: chain_selectors.TRON_MAINNET.Selector}
-	assert.Equal(t, chain_selectors.TRON_MAINNET.Selector, p.ChainSelector())
+	p := CTFChainProvider{selector: chainsel.TRON_MAINNET.Selector}
+	assert.Equal(t, chainsel.TRON_MAINNET.Selector, p.ChainSelector())
 }
 
 func Test_CTFChainProvider_BlockChain(t *testing.T) {

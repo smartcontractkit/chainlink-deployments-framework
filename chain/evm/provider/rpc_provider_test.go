@@ -4,23 +4,23 @@ import (
 	"testing"
 	"time"
 
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
-	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider/rpcclient"
 )
 
 func Test_RPCChainProviderConfig_validate(t *testing.T) {
 	t.Parallel()
 
-	rpc := deployment.RPC{
+	rpc := rpcclient.RPC{
 		Name:               "Test",
 		HTTPURL:            "http://localhost:8545",
 		WSURL:              "ws://localhost:8546",
-		PreferredURLScheme: deployment.URLSchemePreferenceHTTP,
+		PreferredURLScheme: rpcclient.URLSchemePreferenceHTTP,
 	}
 
 	confirmFuncGeth := ConfirmFuncGeth(10 * time.Millisecond)
@@ -34,14 +34,14 @@ func Test_RPCChainProviderConfig_validate(t *testing.T) {
 			name: "valid config",
 			config: RPCChainProviderConfig{
 				DeployerTransactorGen: TransactorRandom(),
-				RPCs:                  []deployment.RPC{rpc},
+				RPCs:                  []rpcclient.RPC{rpc},
 				ConfirmFunctor:        confirmFuncGeth,
 			},
 		},
 		{
 			name: "missing deployer transactor generator",
 			config: RPCChainProviderConfig{
-				RPCs:           []deployment.RPC{rpc},
+				RPCs:           []rpcclient.RPC{rpc},
 				ConfirmFunctor: confirmFuncGeth,
 			},
 			wantErr: "deployer transactor generator is required",
@@ -50,7 +50,7 @@ func Test_RPCChainProviderConfig_validate(t *testing.T) {
 			name: "missing confirm functor",
 			config: RPCChainProviderConfig{
 				DeployerTransactorGen: TransactorRandom(),
-				RPCs:                  []deployment.RPC{rpc},
+				RPCs:                  []rpcclient.RPC{rpc},
 			},
 			wantErr: "confirm functor is required",
 		},
@@ -81,7 +81,7 @@ func Test_RPCChainProviderConfig_validate(t *testing.T) {
 //nolint:paralleltest // This test cannot run in parallel due to a race condition in seth's log initialization
 func Test_RPCChainProvider_Initialize(t *testing.T) {
 	var (
-		chainSelector = chain_selectors.TEST_1000.Selector
+		chainSelector = chainsel.TEST_1000.Selector
 		existingChain = &evm.Chain{}
 		configPath    = writeSethConfigFile(t)
 	)
@@ -90,10 +90,10 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 	mockSrv := newFakeRPCServer(t)
 
 	// Define a general RPC configuration for use
-	rpc := deployment.RPC{
+	rpc := rpcclient.RPC{
 		Name:               "Test",
 		HTTPURL:            mockSrv.URL,
-		PreferredURLScheme: deployment.URLSchemePreferenceHTTP,
+		PreferredURLScheme: rpcclient.URLSchemePreferenceHTTP,
 	}
 
 	gethConfirmFunc := ConfirmFuncGeth(1 * time.Second)
@@ -110,7 +110,7 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 			giveSelector: chainSelector,
 			giveConfig: RPCChainProviderConfig{
 				DeployerTransactorGen: TransactorRandom(),
-				RPCs:                  []deployment.RPC{rpc},
+				RPCs:                  []rpcclient.RPC{rpc},
 				UsersTransactorGen: []SignerGenerator{
 					TransactorRandom(),
 				},
@@ -122,7 +122,7 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 			giveSelector: chainSelector,
 			giveConfig: RPCChainProviderConfig{
 				DeployerTransactorGen: TransactorRandom(),
-				RPCs:                  []deployment.RPC{rpc},
+				RPCs:                  []rpcclient.RPC{rpc},
 				Logger:                logger.Test(t),
 				ConfirmFunctor:        gethConfirmFunc,
 			},
@@ -132,7 +132,7 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 			giveSelector: chainSelector,
 			giveConfig: RPCChainProviderConfig{
 				DeployerTransactorGen: TransactorRandom(),
-				RPCs:                  []deployment.RPC{rpc},
+				RPCs:                  []rpcclient.RPC{rpc},
 				ConfirmFunctor: ConfirmFuncSeth(
 					rpc.HTTPURL, 10*time.Millisecond, []string{}, configPath,
 				),
@@ -154,7 +154,7 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 			giveSelector: 1, // Invalid selector
 			giveConfig: RPCChainProviderConfig{
 				DeployerTransactorGen: TransactorRandom(),
-				RPCs:                  []deployment.RPC{rpc},
+				RPCs:                  []rpcclient.RPC{rpc},
 				ConfirmFunctor:        gethConfirmFunc,
 			},
 			wantErr: "failed to get chain ID from selector",
@@ -164,7 +164,7 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 			giveSelector: chainSelector,
 			giveConfig: RPCChainProviderConfig{
 				DeployerTransactorGen: &alwaysFailingTransactorGenerator{},
-				RPCs:                  []deployment.RPC{rpc},
+				RPCs:                  []rpcclient.RPC{rpc},
 				ConfirmFunctor:        gethConfirmFunc,
 			},
 			wantErr: "failed to generate deployer key",
@@ -174,7 +174,7 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 			giveSelector: chainSelector,
 			giveConfig: RPCChainProviderConfig{
 				DeployerTransactorGen: TransactorRandom(),
-				RPCs:                  []deployment.RPC{rpc},
+				RPCs:                  []rpcclient.RPC{rpc},
 				UsersTransactorGen: []SignerGenerator{
 					&alwaysFailingTransactorGenerator{}, // This will always fail
 				},
@@ -187,7 +187,7 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 			giveSelector: chainSelector,
 			giveConfig: RPCChainProviderConfig{
 				DeployerTransactorGen: TransactorRandom(),
-				RPCs:                  []deployment.RPC{{}},
+				RPCs:                  []rpcclient.RPC{{}},
 				ConfirmFunctor:        gethConfirmFunc,
 			},
 			wantErr: "failed to create multi-client",
@@ -197,7 +197,7 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 			giveSelector: chainSelector,
 			giveConfig: RPCChainProviderConfig{
 				DeployerTransactorGen: TransactorRandom(),
-				RPCs:                  []deployment.RPC{rpc},
+				RPCs:                  []rpcclient.RPC{rpc},
 				ConfirmFunctor: ConfirmFuncSeth(
 					rpc.HTTPURL, 10*time.Millisecond, []string{}, "nonexistent.toml",
 				), // Invalid path
@@ -209,7 +209,7 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 			giveSelector: chainSelector,
 			giveConfig: RPCChainProviderConfig{
 				DeployerTransactorGen: TransactorRandom(),
-				RPCs:                  []deployment.RPC{rpc},
+				RPCs:                  []rpcclient.RPC{rpc},
 				ConfirmFunctor:        &alwaysFailingConfirmFunctor{},
 			},
 			wantErr: "failed to generate confirm function",
@@ -261,8 +261,8 @@ func Test_RPCChainProvider_Name(t *testing.T) {
 func Test_RPCChainProvider_ChainSelector(t *testing.T) {
 	t.Parallel()
 
-	p := &RPCChainProvider{selector: chain_selectors.TEST_1000.Selector}
-	assert.Equal(t, chain_selectors.TEST_1000.Selector, p.ChainSelector())
+	p := &RPCChainProvider{selector: chainsel.TEST_1000.Selector}
+	assert.Equal(t, chainsel.TEST_1000.Selector, p.ChainSelector())
 }
 
 func Test_RPCChainProvider_BlockChain(t *testing.T) {

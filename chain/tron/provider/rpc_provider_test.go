@@ -8,14 +8,14 @@ import (
 
 	"github.com/avast/retry-go/v4"
 	"github.com/fbsobreira/gotron-sdk/pkg/address"
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
-	"github.com/smartcontractkit/chainlink-evm/gethwrappers/shared/generated/initial/link_token"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/freeport"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron/provider/testdata"
 )
 
 func Test_RPCChainProviderConfig_validate(t *testing.T) {
@@ -78,7 +78,7 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 	t.Parallel()
 
 	var (
-		chainSelector = chain_selectors.TEST_22222222222222222222222222222222222222222222.Selector
+		chainSelector = chainsel.TEST_22222222222222222222222222222222222222222222.Selector
 		existingChain = &tron.Chain{}
 	)
 
@@ -193,8 +193,8 @@ func Test_RPCChainProvider_Name(t *testing.T) {
 func Test_RPCChainProvider_ChainSelector(t *testing.T) {
 	t.Parallel()
 
-	p := RPCChainProvider{selector: chain_selectors.TRON_MAINNET.Selector}
-	assert.Equal(t, chain_selectors.TRON_MAINNET.Selector, p.ChainSelector())
+	p := RPCChainProvider{selector: chainsel.TRON_MAINNET.Selector}
+	assert.Equal(t, chainsel.TRON_MAINNET.Selector, p.ChainSelector())
 }
 
 func Test_RPCChainProvider_BlockChain(t *testing.T) {
@@ -262,7 +262,7 @@ func Test_Tron_SendTransfer_And_DeployContract(t *testing.T) {
 
 		// Deploy the LinkToken contract and wait for confirmation
 		contractAddress, txInfo, err := tronChain.DeployContractAndConfirm(
-			t.Context(), "LinkToken", link_token.LinkTokenABI, link_token.LinkTokenBin, nil, deployOptions)
+			t.Context(), "LinkToken", testdata.LinkTokenMetaDataABI, testdata.LinkTokenMetaDataBIN, nil, deployOptions)
 		require.NoError(t, err, "Failed to deploy contract")
 
 		// Log deployed contract address and deployment transaction details
@@ -356,7 +356,7 @@ func setupLocalStack(t *testing.T) *tron.Chain {
 
 	t.Logf("TRON node config: fullNodeUrl=%s, solidityNodeUrl=%s", fullNodeUrl, solidityNodeUrl)
 
-	chainSelector := chain_selectors.TEST_22222222222222222222222222222222222222222222.Selector
+	chainSelector := chainsel.TEST_22222222222222222222222222222222222222222222.Selector
 	signerGenerator, err := SignerGenPrivateKey(blockchain.TRONAccounts.PrivateKeys[0])
 	require.NoError(t, err)
 

@@ -6,14 +6,14 @@ import (
 	"fmt"
 	"math/big"
 
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 	zkAccounts "github.com/zksync-sdk/zksync2-go/accounts"
 	zkClients "github.com/zksync-sdk/zksync2-go/clients"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
-	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider/rpcclient"
 )
 
 // ZkSyncRPCChainProviderConfig holds the configuration to initialize the RPCChainProvider. While
@@ -29,7 +29,7 @@ type ZkSyncRPCChainProviderConfig struct {
 	// TransactorFromKMS, you should use ZkSyncSignerFromKMS.
 	ZkSyncSignerGen ZkSyncSignerGenerator
 	// Required: At least one RPC must be provided to connect to the EVM node.
-	RPCs []deployment.RPC
+	RPCs []rpcclient.RPC
 	// Required: ConfirmFunctor is a type that generates a confirmation function for transactions.
 	// Use ConfirmFuncGeth to use the Geth client for transaction confirmation, or
 	// ConfirmFuncSeth to use the Seth client for transaction confirmation with richer debugging.
@@ -40,7 +40,7 @@ type ZkSyncRPCChainProviderConfig struct {
 	// RPCChainProvider. These options are applied to the MultiClient instance created by the
 	// RPCChainProvider. You can use this to set up custom HTTP clients, timeouts, or other
 	// configurations for the RPC connections.
-	ClientOpts []func(client *deployment.MultiClient)
+	ClientOpts []func(client *rpcclient.MultiClient)
 	// Optional: Logger is the logger to use for the RPCChainProvider. If not provided, a default
 	// logger will be used.
 	Logger logger.Logger
@@ -107,7 +107,7 @@ func (p *ZkSyncRPCChainProvider) Initialize(ctx context.Context) (chain.BlockCha
 	}
 
 	// Get the Chain ID
-	chainIDStr, err := chain_selectors.GetChainIDFromSelector(p.selector)
+	chainIDStr, err := chainsel.GetChainIDFromSelector(p.selector)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get chain ID from selector %d: %w", p.selector, err)
 	}
@@ -124,7 +124,7 @@ func (p *ZkSyncRPCChainProvider) Initialize(ctx context.Context) (chain.BlockCha
 	}
 
 	// Setup the client.
-	client, err := deployment.NewMultiClient(p.config.Logger, deployment.RPCConfig{
+	client, err := rpcclient.NewMultiClient(p.config.Logger, rpcclient.RPCConfig{
 		ChainSelector: p.selector,
 		RPCs:          p.config.RPCs,
 	}, p.config.ClientOpts...)

@@ -3,7 +3,7 @@ package evm_test
 import (
 	"testing"
 
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
@@ -21,10 +21,10 @@ func TestChain_ChainInfo(t *testing.T) {
 	}{
 		{
 			name:       "returns correct info",
-			selector:   chain_selectors.ETHEREUM_MAINNET.Selector,
+			selector:   chainsel.ETHEREUM_MAINNET.Selector,
 			wantString: "ethereum-mainnet (5009297550715157269)",
-			wantName:   chain_selectors.ETHEREUM_MAINNET.Name,
-			wantFamily: chain_selectors.FamilyEVM,
+			wantName:   chainsel.ETHEREUM_MAINNET.Name,
+			wantFamily: chainsel.FamilyEVM,
 		},
 	}
 

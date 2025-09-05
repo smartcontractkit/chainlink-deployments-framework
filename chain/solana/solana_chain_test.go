@@ -3,7 +3,7 @@ package solana_test
 import (
 	"testing"
 
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
@@ -21,10 +21,10 @@ func TestChain_ChainInfot(t *testing.T) {
 	}{
 		{
 			name:       "returns correct info",
-			selector:   chain_selectors.SOLANA_MAINNET.Selector,
+			selector:   chainsel.SOLANA_MAINNET.Selector,
 			wantString: "solana-mainnet (124615329519749607)",
-			wantName:   chain_selectors.SOLANA_MAINNET.Name,
-			wantFamily: chain_selectors.FamilySolana,
+			wantName:   chainsel.SOLANA_MAINNET.Name,
+			wantFamily: chainsel.FamilySolana,
 		},
 	}
 

@@ -1,10 +1,10 @@
 package changeset
 
 import (
-	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 )
 
-type PostProcessor func(e deployment.Environment, config deployment.ChangesetOutput) (deployment.ChangesetOutput, error)
+type PostProcessor func(e fdeployment.Environment, config fdeployment.ChangesetOutput) (fdeployment.ChangesetOutput, error)
 
 type PostProcessingChangeSet internalChangeSet
 
@@ -17,7 +17,7 @@ type PostProcessingChangeSetImpl[C any] struct {
 
 func (ccs PostProcessingChangeSetImpl[C]) noop() {}
 
-func (ccs PostProcessingChangeSetImpl[C]) Apply(env deployment.Environment) (deployment.ChangesetOutput, error) {
+func (ccs PostProcessingChangeSetImpl[C]) Apply(env fdeployment.Environment) (fdeployment.ChangesetOutput, error) {
 	env.Logger.Debugf("Post-processing ChangesetOutput from %T", ccs.changeset.changeset.operation)
 	output, err := ccs.changeset.Apply(env)
 	if err != nil {

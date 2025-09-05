@@ -3,7 +3,7 @@ package ton_test
 import (
 	"testing"
 
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/ton"
@@ -21,10 +21,10 @@ func TestChain_ChainInfot(t *testing.T) {
 	}{
 		{
 			name:       "returns correct info",
-			selector:   chain_selectors.TON_MAINNET.Selector,
+			selector:   chainsel.TON_MAINNET.Selector,
 			wantString: "ton-mainnet (16448340667252469081)",
-			wantName:   chain_selectors.TON_MAINNET.Name,
-			wantFamily: chain_selectors.FamilyTon,
+			wantName:   chainsel.TON_MAINNET.Name,
+			wantFamily: chainsel.FamilyTon,
 		},
 	}
 

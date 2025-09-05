@@ -91,8 +91,8 @@
 //		config := CTFAnvilChainProviderConfig{
 //			Once:           &once,
 //			ConfirmFunctor: ConfirmFuncGeth(2 * time.Minute),
-//			ClientOpts: []func(client *deployment.MultiClient){
-//				func(client *deployment.MultiClient) {
+//			ClientOpts: []func(client *evm.MultiClient){
+//				func(client *evm.MultiClient) {
 //					// Custom client configuration
 //					client.SetTimeout(30 * time.Second)
 //				},
@@ -217,7 +217,7 @@ import (
 	"github.com/avast/retry-go/v4"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/crypto"
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
@@ -226,7 +226,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
-	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider/rpcclient"
 )
 
 // anvilTestPrivateKeys contains the standard Anvil test accounts.
@@ -264,7 +264,7 @@ type CTFAnvilChainProviderConfig struct {
 	// CTFAnvilChainProvider. These options are applied to the MultiClient instance created by the
 	// provider. You can use this to set up custom HTTP clients, timeouts, or other
 	// configurations for the RPC connections.
-	ClientOpts []func(client *deployment.MultiClient)
+	ClientOpts []func(client *rpcclient.MultiClient)
 
 	// Optional: DockerCmdParamsOverrides allows customization of Docker command parameters
 	// for the Anvil container. These parameters are passed directly to the Docker container
@@ -372,7 +372,7 @@ func (p *CTFAnvilChainProvider) Initialize(ctx context.Context) (chain.BlockChai
 		return nil, err
 	}
 
-	chainID, err := chain_selectors.GetChainIDFromSelector(p.selector)
+	chainID, err := chainsel.GetChainIDFromSelector(p.selector)
 	if err != nil {
 		return nil, err
 	}
@@ -388,14 +388,14 @@ func (p *CTFAnvilChainProvider) Initialize(ctx context.Context) (chain.BlockChai
 		return nil, err
 	}
 
-	client, err := deployment.NewMultiClient(lggr, deployment.RPCConfig{
+	client, err := rpcclient.NewMultiClient(lggr, rpcclient.RPCConfig{
 		ChainSelector: p.selector,
-		RPCs: []deployment.RPC{
+		RPCs: []rpcclient.RPC{
 			{
 				Name:               "anvil-local",
 				HTTPURL:            httpURL,
 				WSURL:              "", // Anvil typically doesn't provide WebSocket, only HTTP
-				PreferredURLScheme: deployment.URLSchemePreferenceHTTP,
+				PreferredURLScheme: rpcclient.URLSchemePreferenceHTTP,
 			},
 		},
 	}, p.config.ClientOpts...)

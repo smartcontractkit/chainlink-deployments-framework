@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"runtime"
 	"strconv"
 	"sync"
 	"testing"
@@ -11,7 +12,7 @@ import (
 
 	"github.com/avast/retry-go/v4"
 	sui_sdk "github.com/block-vision/sui-go-sdk/sui"
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/freeport"
@@ -101,7 +102,7 @@ func (p *CTFChainProvider) Initialize(_ context.Context) (chain.BlockChain, erro
 	}
 
 	// Get the Sui Chain ID
-	chainID, err := chain_selectors.GetChainIDFromSelector(p.selector)
+	chainID, err := chainsel.GetChainIDFromSelector(p.selector)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get chain ID from selector %d: %w", p.selector, err)
 	}
@@ -169,13 +170,29 @@ func (p *CTFChainProvider) startContainer(
 		faucetPort := ports[1]
 
 		image := ""
+		platform := ""
+
+		// by default, if image and platform are empty, they are set to amd64 by CTF
+		// to support running locally on macos arm64, we set the image and platform to ci-arm64 and linux/arm64 respectively
 		if p.config.Image != nil {
 			image = *p.config.Image
+		} else {
+			if runtime.GOARCH == "arm64" {
+				image = "mysten/sui-tools:ci-arm64"
+			}
+		}
+
+		if p.config.Platform != nil {
+			platform = *p.config.Platform
+		} else {
+			if runtime.GOARCH == "arm64" {
+				platform = "linux/arm64"
+			}
 		}
 
 		input := &blockchain.Input{
 			Image:         image,
-			ImagePlatform: p.config.Platform,
+			ImagePlatform: &platform,
 			Type:          blockchain.TypeSui,
 			ChainID:       chainID,
 			PublicKey:     address,

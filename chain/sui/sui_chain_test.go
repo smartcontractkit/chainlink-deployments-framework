@@ -3,7 +3,7 @@ package sui_test
 import (
 	"testing"
 
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/sui"
@@ -21,10 +21,10 @@ func TestChain_ChainInfot(t *testing.T) {
 	}{
 		{
 			name:       "returns correct info",
-			selector:   chain_selectors.SUI_MAINNET.Selector,
+			selector:   chainsel.SUI_MAINNET.Selector,
 			wantString: "sui-mainnet (17529533435026248318)",
-			wantName:   chain_selectors.SUI_MAINNET.Name,
-			wantFamily: chain_selectors.FamilySui,
+			wantName:   chainsel.SUI_MAINNET.Name,
+			wantFamily: chainsel.FamilySui,
 		},
 	}
 

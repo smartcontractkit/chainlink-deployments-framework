@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
-	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
+	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 )
 
 type tempProj struct {
@@ -177,7 +177,7 @@ func Test_Domain_AddressBookByEnv(t *testing.T) {
 	d := NewDomain(fixture.rootDirPath, "ccip")
 	got, err := d.AddressBookByEnv("staging")
 	require.NoError(t, err)
-	want := cldf.NewMemoryAddressBookFromMap(map[uint64]map[string]cldf.TypeAndVersion{})
+	want := fdeployment.NewMemoryAddressBookFromMap(map[uint64]map[string]fdeployment.TypeAndVersion{})
 	assert.Equal(t, want, got)
 }
 
@@ -187,7 +187,7 @@ func Test_Domain_DataStoreByEnv(t *testing.T) {
 	d := NewDomain(fixture.rootDirPath, "ccip")
 	got, err := d.DataStoreByEnv("staging")
 	require.NoError(t, err)
-	want := datastore.NewMemoryDataStore().Seal()
+	want := fdatastore.NewMemoryDataStore().Seal()
 	assert.Equal(t, want, got)
 }
 
@@ -223,10 +223,16 @@ func Test_Domain_ConfigLocalFileName(t *testing.T) {
 	assert.Equal(t, "domains/ccip/.config/local/config.staging.yaml", d.ConfigLocalFilePath("staging"))
 }
 
-func Test_Domain_ConfigNetworksFilePath(t *testing.T) {
+func Test_Domain_ConfigNetworksDirPath(t *testing.T) {
 	t.Parallel()
 	d := NewDomain("domains", "ccip")
 	assert.Equal(t, "domains/ccip/.config/networks", d.ConfigNetworksDirPath())
+}
+
+func Test_Domain_ConfigNetworksFilePath(t *testing.T) {
+	t.Parallel()
+	d := NewDomain("domains", "ccip")
+	assert.Equal(t, "domains/ccip/.config/networks/networks.yaml", d.ConfigNetworksFilePath("networks.yaml"))
 }
 
 func Test_Domain_ConfigCIDirPath(t *testing.T) {
@@ -245,6 +251,12 @@ func Test_Domain_ConfigCIEnvFilePath(t *testing.T) {
 	t.Parallel()
 	d := NewDomain("domains", "ccip")
 	assert.Equal(t, "domains/ccip/.config/ci/staging.env", d.ConfigCIEnvFilePath("staging"))
+}
+
+func Test_Domain_ConfigDomainFilePath(t *testing.T) {
+	t.Parallel()
+	d := NewDomain("domains", "ccip")
+	assert.Equal(t, "domains/ccip/.config/domain.yaml", d.ConfigDomainFilePath())
 }
 
 // todo: uncomment after moving migration registry over to cldf

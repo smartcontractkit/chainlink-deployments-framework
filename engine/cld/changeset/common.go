@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/changeset/resolvers"
-	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	fresolvers "github.com/smartcontractkit/chainlink-deployments-framework/changeset/resolvers"
+	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 )
 
 // Configurations holds options for a configured changeset
@@ -16,7 +16,7 @@ type Configurations struct {
 
 	// Present only when the migration was wired with
 	// Configure(...).WithConfigResolver(...)
-	ConfigResolver resolvers.ConfigResolver
+	ConfigResolver fresolvers.ConfigResolver
 }
 
 // internalChangeSet provides an opaque type, to force the usage of only the ChangeSetImpl
@@ -24,7 +24,7 @@ type Configurations struct {
 // type-parameters.
 type internalChangeSet interface {
 	noop() // unexported function to prevent arbitrary structs from implementing ChangeSet.
-	Apply(env deployment.Environment) (deployment.ChangesetOutput, error)
+	Apply(env fdeployment.Environment) (fdeployment.ChangesetOutput, error)
 	Configurations() (Configurations, error)
 }
 
@@ -35,28 +35,28 @@ type ConfiguredChangeSet interface {
 	ThenWith(postProcessor PostProcessor) PostProcessingChangeSet
 }
 
-// WrappedChangeSet simply wraps a deployment.ChangeSetV2 to use it in the fluent interface, which hosts
+// WrappedChangeSet simply wraps a fdeployment.ChangeSetV2 to use it in the fluent interface, which hosts
 // the "With" function, so you can write `ConfigureLegacy(myChangeSet).With(aConfig)` in a typesafe way, and pass
 // that into the ChangeSets.Add() function.
 type WrappedChangeSet[C any] struct {
-	operation deployment.ChangeSetV2[C]
+	operation fdeployment.ChangeSetV2[C]
 }
 
-// ConfigureLegacy begins a chain of functions that pairs a legacy (pure function) deployment.ChangeSet to a config,
+// ConfigureLegacy begins a chain of functions that pairs a legacy (pure function) fdeployment.ChangeSet to a config,
 // for registration as a migration.
 //
-// Deprecated: This wraps the deprecated deployment.ChangeSet. Should use deployment.ChangeSetV2
-func ConfigureLegacy[C any](operation deployment.ChangeSet[C]) WrappedChangeSet[C] {
-	return Configure[C](deployment.CreateLegacyChangeSet(operation))
+// Deprecated: This wraps the deprecated fdeployment.ChangeSet. Should use fdeployment.ChangeSetV2
+func ConfigureLegacy[C any](operation fdeployment.ChangeSet[C]) WrappedChangeSet[C] {
+	return Configure[C](fdeployment.CreateLegacyChangeSet(operation))
 }
 
-// Configure begins a chain of functions that pairs a deployment.ChangeSetV2 to a config, for registration as a
+// Configure begins a chain of functions that pairs a fdeployment.ChangeSetV2 to a config, for registration as a
 // migration.
-func Configure[C any](operation deployment.ChangeSetV2[C]) WrappedChangeSet[C] {
+func Configure[C any](operation fdeployment.ChangeSetV2[C]) WrappedChangeSet[C] {
 	return WrappedChangeSet[C]{operation: operation}
 }
 
-// With returns a fully configured changeset, which pairs a [deployment.ChangeSet] with its configuration. It also
+// With returns a fully configured changeset, which pairs a [fdeployment.ChangeSet] with its configuration. It also
 // allows extensions, such as a PostProcessing function.
 func (f WrappedChangeSet[C]) With(config C) ConfiguredChangeSet {
 	return ChangeSetImpl[C]{changeset: f, configProvider: func() (C, error) { return config, nil }}
@@ -68,7 +68,7 @@ type TypedJSON struct {
 	ChainOverrides []uint64        `json:"chainOverrides"` // Optional field for chain overrides
 }
 
-// WithJSON returns a fully configured changeset, which pairs a [deployment.ChangeSet] with its configuration based
+// WithJSON returns a fully configured changeset, which pairs a [fdeployment.ChangeSet] with its configuration based
 // a JSON input. It also allows extensions, such as a PostProcessing function.
 // InputStr must be a JSON object with a "payload" field that contains the actual input data for a Durable Pipeline.
 // Example:
@@ -127,7 +127,7 @@ func InputModifierFunc[C any](modifier func(c C) (C, error)) EnvInputOption[C] {
 	}
 }
 
-// WithEnvInput returns a fully configured changeset, which pairs a [deployment.ChangeSet] with its configuration based
+// WithEnvInput returns a fully configured changeset, which pairs a [fdeployment.ChangeSet] with its configuration based
 // on the input defined in durable_pipelines/inputs for durable pipelines. It also allows extensions, such as a PostProcessing function.
 // Options:
 // - InputModifierFunc: allows providing a custom function to update the input.
@@ -202,7 +202,7 @@ func (f WrappedChangeSet[C]) WithConfigFrom(configProvider func() (C, error)) Co
 // WithConfigResolver uses a registered config resolver to generate the configuration.
 // It reads input from the DURABLE_PIPELINE_INPUT environment variable (JSON format)
 // and uses the specified resolver to generate the typed configuration.
-func (f WrappedChangeSet[C]) WithConfigResolver(resolver resolvers.ConfigResolver) ConfiguredChangeSet {
+func (f WrappedChangeSet[C]) WithConfigResolver(resolver fresolvers.ConfigResolver) ConfiguredChangeSet {
 	// Read input from environment variable
 	inputStr := os.Getenv("DURABLE_PIPELINE_INPUT")
 
@@ -225,7 +225,7 @@ func (f WrappedChangeSet[C]) WithConfigResolver(resolver resolvers.ConfigResolve
 		}
 
 		// Call resolver – automatically unmarshal into its expected input type.
-		typedConfig, err := resolvers.CallResolver[C](resolver, inputObject.Payload)
+		typedConfig, err := fresolvers.CallResolver[C](resolver, inputObject.Payload)
 		if err != nil {
 			return zero, fmt.Errorf("config resolver failed: %w", err)
 		}
@@ -250,19 +250,19 @@ type ChangeSetImpl[C any] struct {
 
 	// Present only when the migration was wired with
 	// Configure(...).WithConfigResolver(...)
-	ConfigResolver resolvers.ConfigResolver
+	ConfigResolver fresolvers.ConfigResolver
 }
 
 func (ccs ChangeSetImpl[C]) noop() {}
 
-func (ccs ChangeSetImpl[C]) Apply(env deployment.Environment) (deployment.ChangesetOutput, error) {
+func (ccs ChangeSetImpl[C]) Apply(env fdeployment.Environment) (fdeployment.ChangesetOutput, error) {
 	c, err := ccs.configProvider()
 	if err != nil {
-		return deployment.ChangesetOutput{}, err
+		return fdeployment.ChangesetOutput{}, err
 	}
 	err = ccs.changeset.operation.VerifyPreconditions(env, c)
 	if err != nil {
-		return deployment.ChangesetOutput{}, err
+		return fdeployment.ChangesetOutput{}, err
 	}
 
 	return ccs.changeset.operation.Apply(env, c)

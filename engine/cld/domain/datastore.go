@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
+	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 )
 
 // LoadDataStoreByMigrationKey searches for a datastore file in the migration directory and
@@ -15,7 +15,7 @@ import (
 // or if an error occurs during the search.
 //
 // Pattern format: "*-<domain>-<env>-<migKey>_datastore.json".
-func (a *ArtifactsDir) LoadDataStoreByMigrationKey(migKey string) (datastore.DataStore, error) {
+func (a *ArtifactsDir) LoadDataStoreByMigrationKey(migKey string) (fdatastore.DataStore, error) {
 	migDirPath := a.MigrationDirPath(migKey)
 	pattern := fmt.Sprintf("*-%s-%s-%s_%s",
 		a.DomainKey(), a.EnvKey(), migKey, DataStoreFileName,
@@ -29,7 +29,7 @@ func (a *ArtifactsDir) LoadDataStoreByMigrationKey(migKey string) (datastore.Dat
 	return a.loadDataStore(dataStorePath)
 }
 
-func loadDataStoreByMigrationKey(artDir *ArtifactsDir, migKey, timestamp string) (datastore.DataStore, error) {
+func loadDataStoreByMigrationKey(artDir *ArtifactsDir, migKey, timestamp string) (fdatastore.DataStore, error) {
 	// Set the durable pipelines directory and timestamp if provided
 	if timestamp != "" {
 		if err := artDir.SetDurablePipelines(timestamp); err != nil {
@@ -43,10 +43,10 @@ func loadDataStoreByMigrationKey(artDir *ArtifactsDir, migKey, timestamp string)
 		if errors.Is(err, ErrArtifactNotFound) {
 			fmt.Println("No migration data store found, skipping merge")
 
-			return datastore.NewMemoryDataStore().Seal(), nil
+			return fdatastore.NewMemoryDataStore().Seal(), nil
 		}
 
-		return datastore.NewMemoryDataStore().Seal(), err
+		return fdatastore.NewMemoryDataStore().Seal(), err
 	}
 
 	return migDataStore, nil

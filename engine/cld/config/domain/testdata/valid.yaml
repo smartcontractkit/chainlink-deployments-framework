@@ -1,0 +1,20 @@
+environments:
+  development:
+    network_types:
+      - testnet
+  staging:
+    network_types:
+      - testnet
+      - mainnet
+  production: 
+    network_types:
+      - mainnet
+  local:
+    network_types:
+      - testnet
+  dudeenv:
+    network_types:
+      - testnet
+  testtest:
+    network_types:
+      - mainnet

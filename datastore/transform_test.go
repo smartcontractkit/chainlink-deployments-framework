@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 )
 
 func TestAs(t *testing.T) {
@@ -14,7 +14,7 @@ func TestAs(t *testing.T) {
 	// create a CustomMetadata instance
 	orig := testMetadata{
 		Field:         "test",
-		ChainSelector: chain_selectors.APTOS_MAINNET.Selector,
+		ChainSelector: chainsel.APTOS_MAINNET.Selector,
 	}
 
 	// put it in an `any` type and use As to convert it back

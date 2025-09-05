@@ -1,5 +1,111 @@
 # chainlink-deployments-framework
 
+## 0.42.0
+
+### Minor Changes
+
+- [#373](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/373) [`14af85c`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/14af85cf91cab7cb971c22285ac7f894de04fab1) Thanks [@nicolasgnr](https://github.com/nicolasgnr)! - Adding TON support to CLD
+
+- [#381](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/381) [`2b56b8a`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/2b56b8a3edf78bc9891cff6c9922e66b0f9d2b5f) Thanks [@DimitriosNaikopoulos](https://github.com/DimitriosNaikopoulos)! - feat: migrate jd commands to framework
+
+- [#379](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/379) [`237e390`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/237e390a86ad8fd000bf59ed4ef8fa5a65438630) Thanks [@jkongie](https://github.com/jkongie)! - Private Key Generators for Chain Providers no longer expose the private key as a public field
+
+### Patch Changes
+
+- [#375](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/375) [`0b48f42`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/0b48f4218fcb025c1d9f43f27e5b4fb3ead70c9d) Thanks [@giogam](https://github.com/giogam)! - chore: moves ocr_secrets deployment -> offchain/ocr
+
+- [#374](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/374) [`cc451a0`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/cc451a060d31af1ebec445a871d0de5957e80a9c) Thanks [@giogam](https://github.com/giogam)! - chore(deployment): removes multiclient aliases
+
+- [#370](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/370) [`b978df4`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/b978df4abac430dcbb1655a246e5a16f882bf96a) Thanks [@ajaskolski](https://github.com/ajaskolski)! - feat: migrate evm commands from cld
+
+## 0.41.0
+
+### Minor Changes
+
+- [#369](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/369) [`208aac1`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/208aac10a18740a99179a7d6aff5bd753901eee8) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat(command): migrate env command
+
+- [#364](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/364) [`12c9d4d`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/12c9d4d52865b8bd50a7157e071e75d1326ac249) Thanks [@jkongie](https://github.com/jkongie)! - Remove migration file from the scaffold. Pipelines is the preferred way to run Changesets.
+
+- [#368](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/368) [`9b3255e`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/9b3255e41dfd3104703256da0bbdf890f78365fc) Thanks [@DimitriosNaikopoulos](https://github.com/DimitriosNaikopoulos)! - Migrate fork environment and anvil to framework
+
+### Patch Changes
+
+- [#365](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/365) [`0c50737`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/0c5073749981e6cf478a0465590efff88d249abb) Thanks [@giogam](https://github.com/giogam)! - chore: duplicates multiclient and rpc_config in chain/evm
+
+## 0.40.0
+
+### Minor Changes
+
+- [#363](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/363) [`6fa7125`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/6fa71251f39b58037fff33f4dda6c65a6e9851fe) Thanks [@DimitriosNaikopoulos](https://github.com/DimitriosNaikopoulos)! - Add load environment to framework
+
+### Patch Changes
+
+- [#360](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/360) [`5bd5575`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/5bd557547d295f2fc8012ccb8924d1b1d0da5ec8) Thanks [@giogam](https://github.com/giogam)! - feat: updates domains scaffold
+
+## 0.39.0
+
+### Minor Changes
+
+- [#357](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/357) [`8289afa`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/8289afa366c63d9288251b4c355f65135537b517) Thanks [@jkongie](https://github.com/jkongie)! - Moves `environment.Config` to `config.Config`
+
+- [#352](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/352) [`5088d9c`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/5088d9c99c8bdae6f00d4190ef8f0b1766394cb6) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix: migrate Update Node from CLD
+
+### Patch Changes
+
+- [#355](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/355) [`63d8f65`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/63d8f65e3f156862d00ed4562fbdc9d460b8a1e7) Thanks [@bytesizedroll](https://github.com/bytesizedroll)! - Fix flaky test in TestRegisterNode_Success_Plugin
+
+- [#358](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/358) [`6ef6875`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/6ef6875d8d498f55c9bc89d6969c20006297cc71) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - Migrate LoadCatalogStore and LoadJDClient to engine
+
+- [#356](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/356) [`fd159c8`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/fd159c8e15ae31aacefeb9dea7b5c947c97b5ad6) Thanks [@giogam](https://github.com/giogam)! - feat(environment): removes getLegacyNetworkTypes
+
+## 0.38.0
+
+### Minor Changes
+
+- [#349](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/349) [`811b2b5`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/811b2b5b0d60614e3d3df4e7e96d88282b4e35d5) Thanks [@DimitriosNaikopoulos](https://github.com/DimitriosNaikopoulos)! - Add scaffolding to the framework
+
+- [#350](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/350) [`0344f12`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/0344f129ce2b6d4f6af1df2abbb1c52763667fa3) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat: migrate ProposeJob and RegisterNode from CLD to CLDF
+
+- [#347](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/347) [`6639d28`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/6639d285c03ab8e92ca649508c5bba0fe22e2e51) Thanks [@jkongie](https://github.com/jkongie)! - Remove unused `changeset.RequireDeployerKeyBalance` method as it is unused.
+
+- [#351](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/351) [`2587c25`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/2587c254390f7a0e9f50aace28b12ea8b6878223) Thanks [@jkongie](https://github.com/jkongie)! - Adds an `environment.LoadConfig` method to load all config for an environment
+
+## 0.37.1
+
+### Patch Changes
+
+- [#338](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/338) [`d207c3b`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/d207c3b4f9bd9a6adf8171cb333e325c45588bd6) Thanks [@giogam](https://github.com/giogam)! - feat: load network types from domain config
+
+- [#344](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/344) [`cf1cc45`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/cf1cc4586605d13276edb2033fdd68942e78946a) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(operations): handle missing case causing Operations APi unable to serialize certain Marshalable struct
+
+- [#345](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/345) [`ba11ea0`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/ba11ea024b8d8796aa834dbab2b60b977f3b0595) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - Migrated Dry Run JD Client from CLD
+
+## 0.37.0
+
+### Minor Changes
+
+- [#341](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/341) [`365c01c`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/365c01c097e1d165953b51ff3c67bebe087f15fb) Thanks [@jkongie](https://github.com/jkongie)! - [Breaking] Change CognitoAuth field names
+
+- [#335](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/335) [`1602a8d`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/1602a8d105c74a1d0070ff1617c05b9e2ab3cac6) Thanks [@DimitriosNaikopoulos](https://github.com/DimitriosNaikopoulos)! - Add changeset registry
+
+## 0.36.0
+
+### Minor Changes
+
+- [#336](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/336) [`ed5dc34`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/ed5dc34958880d38cfa0c48e24181dfeaf8fd4f0) Thanks [@jkongie](https://github.com/jkongie)! - Adds a struct to generate Cognito oauth tokens for Job Distributor
+
+- [#340](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/340) [`c9e6857`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/c9e6857091dd0a761e2c469dc3c60f8cf8551f60) Thanks [@jkongie](https://github.com/jkongie)! - Adds `cli` package to `engine/cld/legacy`
+
+### Patch Changes
+
+- [#327](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/327) [`8d0cbfb`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/8d0cbfb6581d6611609a08d50414506086221514) Thanks [@giogam](https://github.com/giogam)! - feat: adds domain config
+
+- [#328](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/328) [`240a44f`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/240a44f7d17afb9343ca09a402cbe60d2e9c0fd7) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(sui): use correct docker image on arm64
+
+- [#332](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/332) [`d577271`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/d57727139630cd31da5cfa4c4d74d8174dd2e347) Thanks [@ajaskolski](https://github.com/ajaskolski)! - refactor: move environment network from cld
+
+- [#337](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/337) [`b3bdffc`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/b3bdffcd0346d329fc4e6a37397dec4cf277bc27) Thanks [@giogam](https://github.com/giogam)! - chore: refactor camelCase with snake_case
+
 ## 0.35.0
 
 ### Minor Changes
