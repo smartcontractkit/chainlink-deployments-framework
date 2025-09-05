@@ -10,7 +10,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/gagliardetto/solana-go"
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -26,12 +26,12 @@ func Test_LoadChains(t *testing.T) {
 	var (
 		fakeSrv = newFakeRPCServer(t)
 
-		evmSelector    = chain_selectors.TEST_1000.Selector
-		solanaSelector = chain_selectors.TEST_22222222222222222222222222222222222222222222.Selector
-		aptosSelector  = chain_selectors.APTOS_LOCALNET.Selector
-		tronSelector   = chain_selectors.TRON_TESTNET_NILE.Selector
-		suiSelector    = chain_selectors.SUI_LOCALNET.Selector
-		tonSelector    = chain_selectors.TON_TESTNET.Selector
+		evmSelector    = chainsel.TEST_1000.Selector
+		solanaSelector = chainsel.TEST_22222222222222222222222222222222222222222222.Selector
+		aptosSelector  = chainsel.APTOS_LOCALNET.Selector
+		tronSelector   = chainsel.TRON_TESTNET_NILE.Selector
+		suiSelector    = chainsel.SUI_LOCALNET.Selector
+		tonSelector    = chainsel.TON_TESTNET.Selector
 	)
 
 	networks := []config_network.Network{
@@ -173,7 +173,7 @@ func Test_LoadChains(t *testing.T) {
 			name:              "skips selector not found in networks",
 			giveNetworkConfig: networksConfig,
 			giveOnchainConfig: onchainConfig,
-			giveSelectors:     []uint64{evmSelector, chain_selectors.TEST_90000001.Selector},
+			giveSelectors:     []uint64{evmSelector, chainsel.TEST_90000001.Selector},
 			wantErr:           "failed to load 1 out of 2 chains",
 		},
 		{
@@ -234,7 +234,7 @@ func Test_chainLoaderAptos_Load(t *testing.T) {
 	ctx := t.Context()
 
 	// Test chain selector for Aptos mainnet
-	var aptosSelector = chain_selectors.APTOS_LOCALNET.Selector
+	var aptosSelector = chainsel.APTOS_LOCALNET.Selector
 
 	// Create test network config
 	networkCfg := config_network.NewConfig([]config_network.Network{
@@ -349,7 +349,7 @@ func Test_chainLoaderAptos_Load(t *testing.T) {
 func Test_chainLoaderSui_Load(t *testing.T) {
 	t.Parallel()
 
-	var suiSelector = chain_selectors.SUI_LOCALNET.Selector
+	var suiSelector = chainsel.SUI_LOCALNET.Selector
 
 	networkCfg := config_network.NewConfig([]config_network.Network{
 		{
@@ -462,7 +462,7 @@ func Test_ChainLoaderSolana_Load(t *testing.T) {
 	ctx := t.Context()
 
 	// Test chain selector for Solana localnet
-	var solanaSelector = chain_selectors.TEST_22222222222222222222222222222222222222222222.Selector
+	var solanaSelector = chainsel.TEST_22222222222222222222222222222222222222222222.Selector
 
 	// Create test network config
 	networkCfg := config_network.NewConfig([]config_network.Network{
@@ -594,8 +594,8 @@ func Test_ChainLoaderEVM_Load(t *testing.T) {
 	var (
 		ctx            = t.Context()
 		fakeSrv        = newFakeRPCServer(t)
-		evmSelector    = chain_selectors.ETHEREUM_TESTNET_SEPOLIA.Selector
-		zksyncSelector = chain_selectors.ETHEREUM_TESTNET_SEPOLIA_ZKSYNC_1.Selector
+		evmSelector    = chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector
+		zksyncSelector = chainsel.ETHEREUM_TESTNET_SEPOLIA_ZKSYNC_1.Selector
 	)
 
 	// Create test network config
@@ -753,7 +753,7 @@ func Test_ChainLoaderTron_Load(t *testing.T) {
 
 	ctx := t.Context()
 
-	var tronSelector = chain_selectors.TRON_TESTNET_NILE.Selector
+	var tronSelector = chainsel.TRON_TESTNET_NILE.Selector
 
 	networks := config_network.NewConfig([]config_network.Network{
 		{

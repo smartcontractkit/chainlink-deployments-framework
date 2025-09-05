@@ -3,7 +3,7 @@ package provider
 import (
 	"testing"
 
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -68,7 +68,7 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 	}{
 		{
 			name:         "valid initialization",
-			giveSelector: chain_selectors.SUI_LOCALNET.Selector,
+			giveSelector: chainsel.SUI_LOCALNET.Selector,
 			giveConfig: RPCChainProviderConfig{
 				RPCURL:            "http://localhost:9000",
 				DeployerSignerGen: AccountGenPrivateKey(testPrivateKey),
@@ -76,7 +76,7 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 		},
 		{
 			name:         "fails config validation",
-			giveSelector: chain_selectors.SUI_LOCALNET.Selector,
+			giveSelector: chainsel.SUI_LOCALNET.Selector,
 			giveConfig: RPCChainProviderConfig{
 				RPCURL:            "",
 				DeployerSignerGen: AccountGenPrivateKey(testPrivateKey),
@@ -85,7 +85,7 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 		},
 		{
 			name:         "fails to generate deployer account",
-			giveSelector: chain_selectors.SUI_LOCALNET.Selector,
+			giveSelector: chainsel.SUI_LOCALNET.Selector,
 			giveConfig: RPCChainProviderConfig{
 				RPCURL:            "http://localhost:9000",
 				DeployerSignerGen: AccountGenPrivateKey("invalid_private_key"),
@@ -137,8 +137,8 @@ func Test_RPCChainProvider_Name(t *testing.T) {
 func Test_RPCChainProvider_ChainSelector(t *testing.T) {
 	t.Parallel()
 
-	p := &RPCChainProvider{selector: chain_selectors.SUI_LOCALNET.Selector}
-	assert.Equal(t, chain_selectors.SUI_LOCALNET.Selector, p.ChainSelector())
+	p := &RPCChainProvider{selector: chainsel.SUI_LOCALNET.Selector}
+	assert.Equal(t, chainsel.SUI_LOCALNET.Selector, p.ChainSelector())
 }
 
 func Test_RPCChainProvider_BlockChain(t *testing.T) {

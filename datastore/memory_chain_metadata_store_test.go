@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 )
 
 func TestMemoryChainMetadataStore_indexOf(t *testing.T) {
@@ -302,7 +302,7 @@ func TestMemoryChainMetadataStore_Fetch(t *testing.T) {
 			ChainSelector: 1,
 			Metadata: testMetadata{
 				Field:         "test field",
-				ChainSelector: chain_selectors.APTOS_MAINNET.Selector,
+				ChainSelector: chainsel.APTOS_MAINNET.Selector,
 			},
 		}
 
@@ -310,7 +310,7 @@ func TestMemoryChainMetadataStore_Fetch(t *testing.T) {
 			ChainSelector: 2,
 			Metadata: testMetadata{
 				Field:         "test field 2",
-				ChainSelector: chain_selectors.APTOS_MAINNET.Selector,
+				ChainSelector: chainsel.APTOS_MAINNET.Selector,
 			},
 		}
 	)

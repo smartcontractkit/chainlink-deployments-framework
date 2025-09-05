@@ -11,7 +11,7 @@ import (
 	sollib "github.com/gagliardetto/solana-go"
 	solsystem "github.com/gagliardetto/solana-go/programs/system"
 	solrpc "github.com/gagliardetto/solana-go/rpc"
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/freeport"
@@ -25,7 +25,7 @@ func Test_Client_SendAndConfirmTx(t *testing.T) {
 	t.Parallel()
 
 	var (
-		chainID = chain_selectors.TEST_22222222222222222222222222222222222222222222.ChainID
+		chainID = chainsel.TEST_22222222222222222222222222222222222222222222.ChainID
 	)
 	// The admin key is a private key assigned as the token mint authority
 	minterKey, err := sollib.NewRandomPrivateKey()

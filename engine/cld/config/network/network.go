@@ -3,7 +3,7 @@ package network
 import (
 	"errors"
 
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 )
 
 // NetworkType represents the type of network, which can either be mainnet or testnet.
@@ -25,12 +25,12 @@ type Network struct {
 
 // ChainFamily returns the family of the network based on its chain selector.
 func (n *Network) ChainFamily() (string, error) {
-	return chain_selectors.GetSelectorFamily(n.ChainSelector)
+	return chainsel.GetSelectorFamily(n.ChainSelector)
 }
 
 // ChainID returns the chain ID as a string based on the chain selector.
 func (n *Network) ChainID() (string, error) {
-	return chain_selectors.GetChainIDFromSelector(n.ChainSelector)
+	return chainsel.GetChainIDFromSelector(n.ChainSelector)
 }
 
 // Validate validates the network configuration to ensure that all required fields are set.

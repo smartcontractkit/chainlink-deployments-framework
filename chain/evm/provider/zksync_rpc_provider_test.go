@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -94,7 +94,7 @@ func Test_ZkSyncRPCChainProviderConfig_validate(t *testing.T) {
 //nolint:paralleltest // This test cannot run in parallel due to a race condition in seth's log initialization
 func Test_ZkSyncRPCChainProvider_Initialize(t *testing.T) {
 	var (
-		chainSelector = chain_selectors.TEST_1000.Selector
+		chainSelector = chainsel.TEST_1000.Selector
 		existingChain = &evm.Chain{}
 		configPath    = writeSethConfigFile(t)
 	)
@@ -279,8 +279,8 @@ func Test_ZkSyncRPCChainProvider_Name(t *testing.T) {
 func Test_ZkSyncRPCChainProvider_ChainSelector(t *testing.T) {
 	t.Parallel()
 
-	p := &ZkSyncRPCChainProvider{selector: chain_selectors.TEST_1000.Selector}
-	assert.Equal(t, chain_selectors.TEST_1000.Selector, p.ChainSelector())
+	p := &ZkSyncRPCChainProvider{selector: chainsel.TEST_1000.Selector}
+	assert.Equal(t, chainsel.TEST_1000.Selector, p.ChainSelector())
 }
 
 func Test_ZkSyncRPCChainProvider_BlockChain(t *testing.T) {

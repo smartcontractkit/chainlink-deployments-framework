@@ -10,10 +10,10 @@ import (
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
-	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	"github.com/smartcontractkit/chainlink-deployments-framework/offchain"
-	focr "github.com/smartcontractkit/chainlink-deployments-framework/offchain/ocr"
+	"github.com/smartcontractkit/chainlink-deployments-framework/offchain/ocr"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 )
 
@@ -57,7 +57,7 @@ type Environment struct {
 	NodeIDs    []string
 	Offchain   offchain.Client
 	GetContext func() context.Context
-	OCRSecrets focr.OCRSecrets
+	OCRSecrets ocr.OCRSecrets
 	// OperationsBundle contains dependencies required by the operations API.
 	OperationsBundle operations.Bundle
 	// BlockChains is the container of all chains in the environment.
@@ -83,7 +83,7 @@ func NewEnvironment(
 	nodeIDs []string,
 	offchain offchain.Client,
 	ctx func() context.Context,
-	secrets focr.OCRSecrets,
+	secrets ocr.OCRSecrets,
 	blockChains chain.BlockChains,
 	opts ...EnvironmentOption,
 ) *Environment {
@@ -140,7 +140,7 @@ func (e Environment) Clone() Environment {
 
 // ConfirmIfNoError confirms the transaction if no error occurred.
 // if the error is a DataError, it will return the decoded error message and data.
-func ConfirmIfNoError(chain cldf_evm.Chain, tx *types.Transaction, err error) (uint64, error) {
+func ConfirmIfNoError(chain evm.Chain, tx *types.Transaction, err error) (uint64, error) {
 	if err != nil {
 		//revive:disable
 		var d rpc.DataError
@@ -157,7 +157,7 @@ func ConfirmIfNoError(chain cldf_evm.Chain, tx *types.Transaction, err error) (u
 
 // ConfirmIfNoErrorWithABI confirms the transaction if no error occurred.
 // if the error is a DataError, it will return the decoded error message and data.
-func ConfirmIfNoErrorWithABI(chain cldf_evm.Chain, tx *types.Transaction, abi string, err error) (uint64, error) {
+func ConfirmIfNoErrorWithABI(chain evm.Chain, tx *types.Transaction, abi string, err error) (uint64, error) {
 	if err != nil {
 		return 0, fmt.Errorf("transaction reverted on chain %s: Error %w",
 			chain.String(), DecodedErrFromABIIfDataErr(err, abi))

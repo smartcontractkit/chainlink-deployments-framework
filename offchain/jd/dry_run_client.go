@@ -5,7 +5,7 @@ import (
 
 	"google.golang.org/grpc"
 
-	cldf_offchain "github.com/smartcontractkit/chainlink-deployments-framework/offchain"
+	"github.com/smartcontractkit/chainlink-deployments-framework/offchain"
 
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 	csav1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/csa"
@@ -17,14 +17,14 @@ import (
 // Read operations are forwarded to the real backend, while write operations are ignored.
 type DryRunJobDistributor struct {
 	// Used for read-only commands
-	realBackend cldf_offchain.Client
+	realBackend offchain.Client
 	lggr        logger.Logger
 }
 
-var _ cldf_offchain.Client = (*DryRunJobDistributor)(nil)
+var _ offchain.Client = (*DryRunJobDistributor)(nil)
 
 // NewDryRunJobDistributor creates a new DryRunJobDistributor.
-func NewDryRunJobDistributor(realBackend cldf_offchain.Client, lggr logger.Logger) *DryRunJobDistributor {
+func NewDryRunJobDistributor(realBackend offchain.Client, lggr logger.Logger) *DryRunJobDistributor {
 	return &DryRunJobDistributor{
 		realBackend: realBackend,
 		lggr:        lggr,
