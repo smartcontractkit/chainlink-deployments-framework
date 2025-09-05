@@ -22,17 +22,17 @@ var (
 // key.
 func PrivateKeyFromRaw(privateKey string) *privateKeyFromRaw {
 	return &privateKeyFromRaw{
-		PrivateKey: privateKey,
+		privateKey: privateKey,
 	}
 }
 
 type privateKeyFromRaw struct {
-	// PrivateKey is the hex encoded private key used to generate the TON keypair.
-	PrivateKey string
+	// privateKey is the hex encoded private key used to generate the TON keypair.
+	privateKey string
 }
 
 func (g *privateKeyFromRaw) Generate() (ed25519.PrivateKey, error) {
-	privateKeyBytes, err := hex.DecodeString(g.PrivateKey)
+	privateKeyBytes, err := hex.DecodeString(g.privateKey)
 	if err != nil {
 		return ed25519.PrivateKey{}, fmt.Errorf("failed to parse private key: %w", err)
 	}
