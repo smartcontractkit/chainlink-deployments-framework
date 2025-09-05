@@ -10,7 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider/rpcclient"
@@ -119,7 +119,7 @@ func (g *confirmFuncSeth) Generate(
 	}
 
 	// Get the ChainID from the selector
-	chainIDStr, err := chain_selectors.GetChainIDFromSelector(selector)
+	chainIDStr, err := chainsel.GetChainIDFromSelector(selector)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get chain ID from selector %d: %w", selector, err)
 	}

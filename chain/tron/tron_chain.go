@@ -9,11 +9,11 @@ import (
 	"github.com/fbsobreira/gotron-sdk/pkg/http/soliditynode"
 	"github.com/smartcontractkit/chainlink-tron/relayer/sdk"
 
-	cld_common "github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/common"
+	chaincommon "github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/common"
 )
 
 // ChainMetadata = generic metadata from the framework
-type ChainMetadata = cld_common.ChainMetadata
+type ChainMetadata = chaincommon.ChainMetadata
 
 type ConfirmRetryOptions struct {
 	RetryAttempts uint          // Max number of retries for confirming a transaction.

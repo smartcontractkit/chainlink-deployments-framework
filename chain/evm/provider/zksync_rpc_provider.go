@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"math/big"
 
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 	zkAccounts "github.com/zksync-sdk/zksync2-go/accounts"
 	zkClients "github.com/zksync-sdk/zksync2-go/clients"
@@ -107,7 +107,7 @@ func (p *ZkSyncRPCChainProvider) Initialize(ctx context.Context) (chain.BlockCha
 	}
 
 	// Get the Chain ID
-	chainIDStr, err := chain_selectors.GetChainIDFromSelector(p.selector)
+	chainIDStr, err := chainsel.GetChainIDFromSelector(p.selector)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get chain ID from selector %d: %w", p.selector, err)
 	}

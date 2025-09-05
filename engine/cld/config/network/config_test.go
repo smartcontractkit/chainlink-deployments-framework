@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
@@ -257,7 +257,7 @@ func Test_Config_FilterWith(t *testing.T) {
 	// Create test networks
 	mainnetNetwork1 := Network{
 		Type:          "mainnet",
-		ChainSelector: chain_selectors.ETHEREUM_MAINNET.Selector,
+		ChainSelector: chainsel.ETHEREUM_MAINNET.Selector,
 		RPCs: []RPC{
 			{
 				RPCName:            "test_rpc",
@@ -270,7 +270,7 @@ func Test_Config_FilterWith(t *testing.T) {
 
 	mainnetNetwork2 := Network{
 		Type:          "mainnet",
-		ChainSelector: chain_selectors.SOLANA_MAINNET.Selector,
+		ChainSelector: chainsel.SOLANA_MAINNET.Selector,
 		RPCs: []RPC{
 			{
 				RPCName:            "test_rpc3",
@@ -283,7 +283,7 @@ func Test_Config_FilterWith(t *testing.T) {
 
 	testnetNetwork := Network{
 		Type:          "testnet",
-		ChainSelector: chain_selectors.ETHEREUM_TESTNET_SEPOLIA.Selector,
+		ChainSelector: chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector,
 		RPCs: []RPC{
 			{
 				RPCName:            "test_rpc2",
@@ -317,7 +317,7 @@ func Test_Config_FilterWith(t *testing.T) {
 		},
 		{
 			name:        "filter by chain selector 1",
-			giveFilters: []NetworkFilter{ChainSelectorFilter(chain_selectors.ETHEREUM_MAINNET.Selector)},
+			giveFilters: []NetworkFilter{ChainSelectorFilter(chainsel.ETHEREUM_MAINNET.Selector)},
 			want:        NewConfig([]Network{mainnetNetwork1}),
 		},
 		{
@@ -327,14 +327,14 @@ func Test_Config_FilterWith(t *testing.T) {
 		},
 		{
 			name:        "filter by chain family",
-			giveFilters: []NetworkFilter{ChainFamilyFilter(chain_selectors.FamilyEVM)},
+			giveFilters: []NetworkFilter{ChainFamilyFilter(chainsel.FamilyEVM)},
 			want:        NewConfig([]Network{mainnetNetwork1, testnetNetwork}),
 		},
 		{
 			name: "combination: filter by mainnet and chain selector 1",
 			giveFilters: []NetworkFilter{
 				TypesFilter(NetworkTypeMainnet),
-				ChainSelectorFilter(chain_selectors.ETHEREUM_MAINNET.Selector),
+				ChainSelectorFilter(chainsel.ETHEREUM_MAINNET.Selector),
 			},
 			want: NewConfig([]Network{mainnetNetwork1}),
 		},
@@ -342,7 +342,7 @@ func Test_Config_FilterWith(t *testing.T) {
 			name: "combination: filter by testnet and chain selector 1 (no match)",
 			giveFilters: []NetworkFilter{
 				TypesFilter(NetworkTypeTestnet),
-				ChainSelectorFilter(chain_selectors.ETHEREUM_MAINNET.Selector),
+				ChainSelectorFilter(chainsel.ETHEREUM_MAINNET.Selector),
 			},
 			want: NewConfig([]Network{}),
 		},
@@ -485,7 +485,7 @@ func Test_ChainFamilyFilter(t *testing.T) {
 
 	network := Network{
 		Type:          NetworkTypeMainnet,
-		ChainSelector: chain_selectors.TEST_1000.Selector, // EVM
+		ChainSelector: chainsel.TEST_1000.Selector, // EVM
 	}
 
 	tests := []struct {
@@ -496,19 +496,19 @@ func Test_ChainFamilyFilter(t *testing.T) {
 	}{
 		{
 			name:        "matching EVM family",
-			giveFamily:  chain_selectors.FamilyEVM,
+			giveFamily:  chainsel.FamilyEVM,
 			giveNetwork: network,
 			want:        true,
 		},
 		{
 			name:        "does not match EVM family",
-			giveFamily:  chain_selectors.FamilySolana,
+			giveFamily:  chainsel.FamilySolana,
 			giveNetwork: network,
 			want:        false,
 		},
 		{
 			name:       "chain selector does not have family",
-			giveFamily: chain_selectors.FamilyEVM,
+			giveFamily: chainsel.FamilyEVM,
 			giveNetwork: Network{
 				ChainSelector: 999999999999999999, // Non-existent chain selector
 			},
