@@ -205,10 +205,10 @@ func setupTestConfig(t *testing.T, domain fdomain.Domain) {
 	require.NoError(t, os.WriteFile(localPath, input, 0600))
 
 	// Create domains configuration file
-	input, err = os.ReadFile(filepath.Join("testdata", "fdomainyaml"))
+	input, err = os.ReadFile(filepath.Join("testdata", "domain.yaml"))
 	require.NoError(t, err)
 
-	domainPath := filepath.Join(configDir, "fdomainyaml")
+	domainPath := filepath.Join(configDir, "domain.yaml")
 	require.NoError(t, os.WriteFile(domainPath, input, 0600))
 }
 

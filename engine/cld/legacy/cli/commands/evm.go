@@ -13,7 +13,7 @@ import (
 	nodev1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/node"
 	"github.com/spf13/cobra"
 
-	fclient "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider/rpcclient"
+	evmclient "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider/rpcclient"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/chains"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
@@ -112,7 +112,7 @@ func (c Commands) newEvmNonceClear(domain domain.Domain) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			nonce, err := chain.Client.(*fclient.MultiClient).Client.NonceAt(cmd.Context(), fromAddr, nil)
+			nonce, err := chain.Client.(*evmclient.MultiClient).Client.NonceAt(cmd.Context(), fromAddr, nil)
 			if err != nil {
 				return err
 			}

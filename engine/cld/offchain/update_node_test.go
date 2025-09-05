@@ -625,7 +625,7 @@ func TestUpdateNodes_UpdateNodeError(t *testing.T) {
 
 	// Mock UpdateNode error
 	updateError := errors.New("failed to update node")
-	mockClient.MockNodeServiceClient.On("UpdateNode", ctx, mock.AnythingOfType("*fnode.UpdateNodeRequest")).Return(nil, updateError)
+	mockClient.MockNodeServiceClient.On("UpdateNode", ctx, mock.AnythingOfType("*node.UpdateNodeRequest")).Return(nil, updateError)
 
 	err = UpdateNodes(ctx, mockClient, updateReq)
 	require.Error(t, err)

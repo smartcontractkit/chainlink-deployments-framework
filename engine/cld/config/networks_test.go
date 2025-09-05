@@ -26,7 +26,7 @@ func Test_LoadNetworks(t *testing.T) {
 		dom, _ := setupConfigDirs(t)
 		writeConfigNetworksFile(t, dom, "networks-testnet.yaml", "networks-testnet.yaml")
 		writeConfigNetworksFile(t, dom, "networks-mainnet.yaml", "networks-mainnet.yaml")
-		writeConfigDomainFile(t, dom, "fdomain.yaml")
+		writeConfigDomainFile(t, dom, "domain.yaml")
 
 		return dom
 	}
@@ -84,7 +84,7 @@ func Test_LoadNetworks(t *testing.T) {
 				t.Helper()
 
 				dom, _ := setupConfigDirs(t)
-				writeConfigDomainFile(t, dom, "fdomain.yaml")
+				writeConfigDomainFile(t, dom, "domain.yaml")
 
 				return dom
 			},

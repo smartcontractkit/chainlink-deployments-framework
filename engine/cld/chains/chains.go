@@ -15,7 +15,7 @@ import (
 	aptosprov "github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos/provider"
 	fevm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	evmprov "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider"
-	fclient "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider/rpcclient"
+	evmclient "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider/rpcclient"
 	solanaprov "github.com/smartcontractkit/chainlink-deployments-framework/chain/solana/provider"
 	suiprov "github.com/smartcontractkit/chainlink-deployments-framework/chain/sui/provider"
 	tonprov "github.com/smartcontractkit/chainlink-deployments-framework/chain/ton/provider"
@@ -433,9 +433,9 @@ func (l *chainLoaderEVM) Load(ctx context.Context, selector uint64) (fchain.Bloc
 	confirmFunctor := l.confirmFunctor(network, l.cfg.EVM.Seth)
 
 	// Define the client options to use for the MultiClient.
-	clientOpts := []func(client *fclient.MultiClient){
-		func(client *fclient.MultiClient) {
-			client.RetryConfig = fclient.RetryConfig{
+	clientOpts := []func(client *evmclient.MultiClient){
+		func(client *evmclient.MultiClient) {
+			client.RetryConfig = evmclient.RetryConfig{
 				Attempts:     5,                     // assuming failure rate is 20%, this will take 5 attempts to succeed
 				Delay:        10 * time.Millisecond, // this is a very short delay, we want to be fast in this case
 				Timeout:      5 * time.Second,
@@ -502,18 +502,18 @@ func (l *chainLoaderEVM) isZkSyncVM(selector uint64) bool {
 }
 
 // toRPCs converts a network to a slice of RPCs for a specific chain ID.
-func (l *chainLoaderEVM) toRPCs(rpcCfgs []cfgnet.RPC) ([]fclient.RPC, error) {
-	rpcs := make([]fclient.RPC, 0, len(rpcCfgs))
+func (l *chainLoaderEVM) toRPCs(rpcCfgs []cfgnet.RPC) ([]evmclient.RPC, error) {
+	rpcs := make([]evmclient.RPC, 0, len(rpcCfgs))
 
 	for _, rpcCfg := range rpcCfgs {
-		preferedUrlScheme, err := fclient.URLSchemePreferenceFromString(rpcCfg.PreferredURLScheme)
+		preferedUrlScheme, err := evmclient.URLSchemePreferenceFromString(rpcCfg.PreferredURLScheme)
 		if err != nil {
 			return nil, fmt.Errorf("invalid URL scheme preference %s: %w",
 				rpcCfg.PreferredURLScheme, err,
 			)
 		}
 
-		rpcs = append(rpcs, fclient.RPC{
+		rpcs = append(rpcs, evmclient.RPC{
 			Name:               rpcCfg.RPCName,
 			WSURL:              rpcCfg.WSURL,
 			HTTPURL:            rpcCfg.HTTPURL,

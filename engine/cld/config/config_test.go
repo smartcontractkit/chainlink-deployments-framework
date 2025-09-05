@@ -24,7 +24,7 @@ func Test_Load(t *testing.T) {
 
 				writeConfigNetworksFile(t, dom, "networks.yaml", "networks-testnet.yaml")
 				writeConfigLocalFile(t, dom, envKey, "config.testnet.yaml")
-				writeConfigDomainFile(t, dom, "fdomain.yaml")
+				writeConfigDomainFile(t, dom, "domain.yaml")
 			},
 		},
 		{
@@ -42,7 +42,7 @@ func Test_Load(t *testing.T) {
 				t.Helper()
 
 				writeConfigNetworksFile(t, dom, "networks.yaml", "networks-testnet.yaml")
-				writeConfigDomainFile(t, dom, "fdomain.yaml")
+				writeConfigDomainFile(t, dom, "domain.yaml")
 			},
 			wantErr: "failed to load env config",
 		},

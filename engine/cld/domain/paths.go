@@ -23,7 +23,7 @@ const (
 	DatastoreDirName = "datastore"
 
 	// DataStoreFileName is the name of the file containing the fdatastore.
-	DataStoreFileName = "fdatastore.json"
+	DataStoreFileName = "datastore.json"
 
 	// AddressRefsFileName is the name of the file containing the address refs.
 	AddressRefsFileName = "address_refs.json"
