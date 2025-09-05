@@ -2,4 +2,4 @@
 "chainlink-deployments-framework": minor
 ---
 
-Migrate JD commands to framework
+feat: migrate jd commands to framework
