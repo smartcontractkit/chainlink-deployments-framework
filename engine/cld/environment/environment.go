@@ -18,6 +18,7 @@ import (
 	cldf_domain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	cldf_engine_offchain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/offchain"
 	cldf_offchain "github.com/smartcontractkit/chainlink-deployments-framework/offchain"
+	focr "github.com/smartcontractkit/chainlink-deployments-framework/offchain/ocr"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 )
 
@@ -156,7 +157,7 @@ func Load(
 
 	lggr.Debugw("Loaded environment", "env", env, "addressBook", ab)
 
-	sharedSecrets, err := cldf.GenerateSharedSecrets(
+	sharedSecrets, err := focr.GenerateSharedSecrets(
 		config.Env.Offchain.OCR.XSigners, config.Env.Offchain.OCR.XProposers,
 	)
 	if err != nil {

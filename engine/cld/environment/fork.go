@@ -18,6 +18,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	cldf_engine_offchain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/offchain"
 	cldf_offchain "github.com/smartcontractkit/chainlink-deployments-framework/offchain"
+	focr "github.com/smartcontractkit/chainlink-deployments-framework/offchain/ocr"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 )
 
@@ -127,7 +128,7 @@ func LoadForkedEnvironment(ctx context.Context, lggr logger.Logger, env string, 
 		nodes.Keys(),
 		oc,
 		func() context.Context { return ctx },
-		cldf.XXXGenerateTestOCRSecrets(),
+		focr.XXXGenerateTestOCRSecrets(),
 		chain.NewBlockChains(blockChains),
 	)
 
