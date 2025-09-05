@@ -8,7 +8,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/google/go-cmp/cmp"
-	mcmsbindings "github.com/smartcontractkit/ccip-owner-contracts/pkg/gethwrappers"
 	"github.com/smartcontractkit/chainlink-ccip/chains/evm/gobindings/generated/v1_6_0/rmn_remote"
 	rmnremotebindings "github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings/v0_1_0/rmn_remote"
 	timelockbindings "github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings/v0_1_0/timelock"
@@ -79,9 +78,9 @@ func TestUpfConvertTimelockProposal(t *testing.T) {
 	proposalCtx, err := mcmsanalyzer.NewDefaultProposalContext(
 		env,
 		mcmsanalyzer.WithEVMABIMappings(map[string]string{
-			"RBACTimelock 1.0.0":              mcmsbindings.RBACTimelockABI,
+			"RBACTimelock 1.0.0":              mcmsanalyzer.RBACTimelockMetaDataTesting.ABI,
 			"RMNRemote 1.6.0":                 rmn_remote.RMNRemoteABI,
-			"ProposerManyChainMultisig 1.0.0": mcmsbindings.ManyChainMultiSigABI,
+			"ProposerManyChainMultisig 1.0.0": mcmsanalyzer.ManyChainMultiSigMetaData.ABI,
 		}),
 		mcmsanalyzer.WithSolanaDecoders(map[string]mcmsanalyzer.DecodeInstructionFn{
 			"RBACTimelockProgram 1.0.0": mcmsanalyzer.DIFn(timelockbindings.DecodeInstruction),
