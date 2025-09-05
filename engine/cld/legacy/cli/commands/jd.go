@@ -1034,7 +1034,7 @@ func (c Commands) newJDNodeSaveAll(domain domain.Domain) *cobra.Command {
 			nodesFilePath := envDir.NodesFilePath()
 
 			// Write the nodes.json file
-			err = os.WriteFile(nodesFilePath, jsonData, 0644)
+			err = os.WriteFile(nodesFilePath, jsonData, 0600)
 			if err != nil {
 				return fmt.Errorf("failed to write nodes.json file: %w", err)
 			}
