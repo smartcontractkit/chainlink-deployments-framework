@@ -20,12 +20,12 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/freeport"
 
-	cldfchain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
-	cldfevm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
-	cldfevmprovider "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider"
-	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
-	cldfconfigenv "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/env"
-	cldfconfignetwork "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/network"
+	fchain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
+	fevm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
+	evmprov "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider"
+	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	cfgenv "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/env"
+	cfgnet "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/network"
 )
 
 var (
@@ -119,7 +119,7 @@ type ChainConfig struct {
 
 // AnvilChainsOutput represents the output of the newAnvilChains function.
 type AnvilChainsOutput struct {
-	Chains       map[uint64]cldfevm.Chain
+	Chains       map[uint64]fevm.Chain
 	ForkClients  map[uint64]ForkedOnchainClient
 	ChainConfigs map[uint64]ChainConfig
 }
@@ -128,16 +128,16 @@ type AnvilChainsOutput struct {
 func newAnvilChains(
 	ctx context.Context,
 	lggr logger.Logger,
-	addressBook cldf.AddressBook,
-	evmNetworks *cldfconfignetwork.Config,
+	addressBook fdeployment.AddressBook,
+	evmNetworks *cfgnet.Config,
 	blockNumbers map[uint64]*big.Int,
-	onchainConfig cldfconfigenv.OnchainConfig,
-	kmsConfig cldfconfigenv.KMSConfig,
+	onchainConfig cfgenv.OnchainConfig,
+	kmsConfig cfgenv.KMSConfig,
 	chainSelectorsToLoad []uint64,
 	anvilKeyAsDeployer bool,
 ) (*AnvilChainsOutput, error) {
 	// filter out not in blockNumbers, if any, to ensure we only use the chains we care about for forking
-	filteredEvmNetworks := make([]cldfconfignetwork.Network, 0, len(blockNumbers))
+	filteredEvmNetworks := make([]cfgnet.Network, 0, len(blockNumbers))
 	if blockNumbers != nil {
 		for _, network := range evmNetworks.Networks() {
 			if _, ok := blockNumbers[network.ChainSelector]; !ok {
@@ -165,7 +165,7 @@ func newAnvilChains(
 	}
 
 	var once sync.Once
-	blockChains := make([]cldfchain.BlockChain, 0, len(filteredEvmNetworks))
+	blockChains := make([]fchain.BlockChain, 0, len(filteredEvmNetworks))
 	for _, network := range filteredEvmNetworks {
 		chainSelector := network.ChainSelector
 		if chainSelectorsToLoad != nil && !slices.Contains(chainSelectorsToLoad, chainSelector) {
@@ -191,8 +191,8 @@ func newAnvilChains(
 			if len(ports) == 0 {
 				return nil, fmt.Errorf("no free ports available for chain selector %d", chainSelector)
 			}
-			network.Metadata = cldfconfignetwork.EVMMetadata{
-				AnvilConfig: &cldfconfignetwork.AnvilConfig{
+			network.Metadata = cfgnet.EVMMetadata{
+				AnvilConfig: &cfgnet.AnvilConfig{
 					Image:          "f4hrenh9it/foundry:latest",
 					Port:           uint64(ports[0]), //nolint:gosec // G115: int to uint64 conversion is safe here (port numbers are always in valid range)
 					ArchiveHTTPURL: network.RPCs[0].HTTPURL,
@@ -200,7 +200,7 @@ func newAnvilChains(
 			}
 		}
 
-		metadata, errMeta := cldfconfignetwork.DecodeMetadata[cldfconfignetwork.EVMMetadata](network.Metadata)
+		metadata, errMeta := cfgnet.DecodeMetadata[cfgnet.EVMMetadata](network.Metadata)
 		if errMeta != nil {
 			return nil, fmt.Errorf(
 				"failed to decode network metadata for chain selector %d: %w", chainSelector, errMeta,
@@ -219,30 +219,30 @@ func newAnvilChains(
 			continue
 		}
 
-		var signerGenerator cldfevmprovider.SignerGenerator
+		var signerGenerator evmprov.SignerGenerator
 		if kmsConfig.KeyID != "" {
 			var err error
-			signerGenerator, err = cldfevmprovider.TransactorFromKMS(kmsConfig.KeyID, kmsConfig.KeyRegion, "")
+			signerGenerator, err = evmprov.TransactorFromKMS(kmsConfig.KeyID, kmsConfig.KeyRegion, "")
 			if err != nil {
 				return nil, fmt.Errorf("failed to create transactor from KMS: %w", err)
 			}
 		} else {
-			signerGenerator = cldfevmprovider.TransactorFromRaw(onchainConfig.EVM.DeployerKey)
+			signerGenerator = evmprov.TransactorFromRaw(onchainConfig.EVM.DeployerKey)
 		}
 
 		if anvilKeyAsDeployer {
 			// Set high gas limit to avoid using gas estimator
 			// In fork tests the gas estimator can cause timeouts if txs have errors
 			// occluding the real issue.
-			signerGenerator = cldfevmprovider.TransactorFromRaw(
+			signerGenerator = evmprov.TransactorFromRaw(
 				blockchain.DefaultAnvilPrivateKey,
-				cldfevmprovider.WithGasLimit(10_000_000),
+				evmprov.WithGasLimit(10_000_000),
 			)
 		}
 
-		config := cldfevmprovider.CTFAnvilChainProviderConfig{
+		config := evmprov.CTFAnvilChainProviderConfig{
 			Once:           &once,
-			ConfirmFunctor: cldfevmprovider.ConfirmFuncGeth(3 * time.Minute),
+			ConfirmFunctor: evmprov.ConfirmFuncGeth(3 * time.Minute),
 			DockerCmdParamsOverrides: []string{
 				"--fork-url", metadata.AnvilConfig.ArchiveHTTPURL,
 				"--auto-impersonate",
@@ -257,7 +257,7 @@ func newAnvilChains(
 			config.DockerCmdParamsOverrides = append(config.DockerCmdParamsOverrides, "--fork-block-number", blockNumber.String())
 		}
 
-		provider := cldfevmprovider.NewCTFAnvilChainProvider(chainSelector, config)
+		provider := evmprov.NewCTFAnvilChainProvider(chainSelector, config)
 		b, err := provider.Initialize(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("failed to initialize anvil chain provider for chain selector %d: %w", chainSelector, err)
@@ -286,7 +286,7 @@ func newAnvilChains(
 	}
 
 	return &AnvilChainsOutput{
-		Chains:       cldfchain.NewBlockChainsFromSlice(blockChains).EVMChains(),
+		Chains:       fchain.NewBlockChainsFromSlice(blockChains).EVMChains(),
 		ForkClients:  anvilClients,
 		ChainConfigs: chainConfigsBySelector,
 	}, nil

@@ -5,9 +5,9 @@ import (
 
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 
-	config_env "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/env"
-	config_network "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/network"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
+	cfgenv "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/env"
+	cfgnet "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/network"
+	fdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 )
 
 // Config aggregates all configuration required by the Chainlink Deployments (CLD) engine.
@@ -17,17 +17,17 @@ type Config struct {
 	// Networks contains blockchain network configurations loaded from YAML manifest files.
 	// This includes chain selectors, RPC endpoints, and network-specific parameters
 	// for all supported blockchain networks.
-	Networks *config_network.Config
+	Networks *cfgnet.Config
 
 	// Env contains environment-specific configuration including credentials, API keys,
 	// and deployment settings. This configuration varies between environments
 	// (development, staging, production) and contains sensitive data.
-	Env *config_env.Config
+	Env *cfgenv.Config
 }
 
 // Load loads and consolidates all configuration required for a domain environment, including
 // network configuration and environment-specific settings.n.
-func Load(dom domain.Domain, env string, lggr logger.Logger) (*Config, error) {
+func Load(dom fdomain.Domain, env string, lggr logger.Logger) (*Config, error) {
 	networks, err := LoadNetworks(env, dom, lggr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load networks: %w", err)

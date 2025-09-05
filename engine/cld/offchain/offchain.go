@@ -8,29 +8,29 @@ import (
 	csav1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/csa"
 	"golang.org/x/oauth2"
 
-	cldf_config_env "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/env"
-	cldf_domain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
+	cfgenv "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/env"
+	enginedomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	credentials "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/internal/credentials"
-	cldf_offchain "github.com/smartcontractkit/chainlink-deployments-framework/offchain"
-	offchain_jd "github.com/smartcontractkit/chainlink-deployments-framework/offchain/jd"
-	offchain_jd_provider "github.com/smartcontractkit/chainlink-deployments-framework/offchain/jd/provider"
+	foffchain "github.com/smartcontractkit/chainlink-deployments-framework/offchain"
+	jdoffchain "github.com/smartcontractkit/chainlink-deployments-framework/offchain/jd"
+	jdprov "github.com/smartcontractkit/chainlink-deployments-framework/offchain/jd/provider"
 )
 
 // LoadOffchainClient loads an offchain client for the specified domain and environment.
 func LoadOffchainClient(
 	ctx context.Context,
-	domain cldf_domain.Domain,
+	domain enginedomain.Domain,
 	env string,
-	config *cldf_config_env.Config,
+	config *cfgenv.Config,
 	lggr logger.Logger,
 	useRealBackends bool,
-) (cldf_offchain.Client, error) {
-	var jd cldf_offchain.Client
+) (foffchain.Client, error) {
+	var jd foffchain.Client
 
 	endpoints := config.Offchain.JobDistributor.Endpoints
 	auth := config.Offchain.JobDistributor.Auth
 
-	if domain.Key() == cldf_domain.MustGetDomain("keystone").Key() && endpoints.WSRPC == "" {
+	if domain.Key() == enginedomain.MustGetDomain("keystone").Key() && endpoints.WSRPC == "" {
 		lggr.Warn("Skipping JD initialization for Keystone, fallback to CLO data")
 	} else if endpoints.WSRPC == "" || endpoints.GRPC == "" {
 		lggr.Warn("Skipping JD initialization no JD config for WS or gRPC")
@@ -38,7 +38,7 @@ func LoadOffchainClient(
 		lggr.Info("Initializing JD client")
 		var oauth oauth2.TokenSource
 		if config.Offchain.JobDistributor.Auth != nil {
-			source := offchain_jd.NewCognitoTokenSource(offchain_jd.CognitoAuth{
+			source := jdoffchain.NewCognitoTokenSource(jdoffchain.CognitoAuth{
 				AppClientID:     auth.CognitoAppClientID,
 				AppClientSecret: auth.CognitoAppClientSecret,
 				Username:        auth.Username,
@@ -53,13 +53,13 @@ func LoadOffchainClient(
 		}
 		creds := credentials.GetCredsForEnv(env)
 
-		var offchainOptions []offchain_jd_provider.ClientProviderOption
+		var offchainOptions []jdprov.ClientProviderOption
 		if !useRealBackends {
 			lggr.Infow("Using a dry-run JD client")
-			offchainOptions = append(offchainOptions, offchain_jd_provider.WithDryRun(lggr))
+			offchainOptions = append(offchainOptions, jdprov.WithDryRun(lggr))
 		}
 
-		provider := offchain_jd_provider.NewClientOffchainProvider(offchain_jd_provider.ClientOffchainProviderConfig{
+		provider := jdprov.NewClientOffchainProvider(jdprov.ClientOffchainProviderConfig{
 			GRPC:  endpoints.GRPC,
 			WSRPC: endpoints.WSRPC,
 			Creds: creds,

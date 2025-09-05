@@ -5,8 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
-	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
+	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 )
 
 // GetDomain returns a Domain for the specified key based on the available dirs in the domains root.
@@ -79,12 +79,12 @@ func (d Domain) EnvDir(env string) EnvDir {
 }
 
 // AddressBookByEnv returns the address book for the specified environment.
-func (d Domain) AddressBookByEnv(env string) (cldf.AddressBook, error) {
+func (d Domain) AddressBookByEnv(env string) (fdeployment.AddressBook, error) {
 	return d.EnvDir(env).AddressBook()
 }
 
 // DataStoreByEnv returns the datastore for the specified environment.
-func (d Domain) DataStoreByEnv(env string) (datastore.DataStore, error) {
+func (d Domain) DataStoreByEnv(env string) (fdatastore.DataStore, error) {
 	return d.EnvDir(env).DataStore()
 }
 

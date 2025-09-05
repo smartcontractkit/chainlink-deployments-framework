@@ -5,9 +5,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/datastore/catalog/remote"
+	catalogremote "github.com/smartcontractkit/chainlink-deployments-framework/datastore/catalog/remote"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config"
-	config_env "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/env"
+	cfgenv "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/env"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 )
 
@@ -25,8 +25,8 @@ func TestLoadCatalog(t *testing.T) {
 			name: "successful catalog loading",
 			env:  "testnet",
 			config: &config.Config{
-				Env: &config_env.Config{
-					Catalog: config_env.CatalogConfig{
+				Env: &cfgenv.Config{
+					Catalog: cfgenv.CatalogConfig{
 						GRPC: "localhost:50051",
 					},
 				},
@@ -37,8 +37,8 @@ func TestLoadCatalog(t *testing.T) {
 			name: "valid config with different grpc url",
 			env:  "testnet",
 			config: &config.Config{
-				Env: &config_env.Config{
-					Catalog: config_env.CatalogConfig{
+				Env: &cfgenv.Config{
+					Catalog: cfgenv.CatalogConfig{
 						GRPC: "grpc.example.com:443",
 					},
 				},
@@ -112,7 +112,7 @@ func TestLoadCatalogClient(t *testing.T) {
 				// even if it can't actually connect to the service
 				require.NoError(t, err)
 				require.NotNil(t, result)
-				require.IsType(t, &remote.CatalogClient{}, result)
+				require.IsType(t, &catalogremote.CatalogClient{}, result)
 			}
 		})
 	}

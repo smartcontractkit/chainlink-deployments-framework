@@ -6,7 +6,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 
-	cldf_domain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
+	domain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 )
 
 func findCmd(cmd *cobra.Command, name string) *cobra.Command {
@@ -22,7 +22,7 @@ func findCmd(cmd *cobra.Command, name string) *cobra.Command {
 func TestNewEnvCmds_BasicStructure(t *testing.T) {
 	t.Parallel()
 	var c Commands
-	root := c.NewEnvCmds(cldf_domain.NewDomain("/tmp", "keystone"))
+	root := c.NewEnvCmds(domain.NewDomain("/tmp", "keystone"))
 	require.NotNil(t, root, "NewEnvCmds returned nil")
 	require.Equal(t, "env", root.Use)
 	require.Equal(t, "Env commands", root.Short)
@@ -42,7 +42,7 @@ func TestNewEnvCmds_BasicStructure(t *testing.T) {
 
 func TestEnvLoad_Command(t *testing.T) {
 	t.Parallel()
-	domain := cldf_domain.NewDomain("/tmp", "keystone")
+	domain := domain.NewDomain("/tmp", "keystone")
 	cmd := Commands{}.newEnvLoad(domain)
 	require.NotNil(t, cmd, "newEnvLoad returned nil")
 	require.Equal(t, "load", cmd.Use)

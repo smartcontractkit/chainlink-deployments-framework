@@ -12,9 +12,9 @@ import (
 	nodev1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/node"
 	"github.com/smartcontractkit/chainlink-protos/job-distributor/v1/shared/ptypes"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/internal/pointer"
-	"github.com/smartcontractkit/chainlink-deployments-framework/internal/testing/jd/mocks"
-	"github.com/smartcontractkit/chainlink-deployments-framework/offchain/node"
+	fpointer "github.com/smartcontractkit/chainlink-deployments-framework/internal/pointer"
+	jdmocks "github.com/smartcontractkit/chainlink-deployments-framework/internal/testing/jd/mocks"
+	fnode "github.com/smartcontractkit/chainlink-deployments-framework/offchain/node"
 )
 
 func TestGetNode(t *testing.T) {
@@ -118,7 +118,7 @@ func TestGetNode(t *testing.T) {
 			args: args{
 				resp:    resp,
 				keyType: NodeKey_Label,
-				key:     pointer.To("p2p_id"),
+				key:     fpointer.To("p2p_id"),
 				value:   "p2p_id2",
 			},
 			want: node2,
@@ -128,7 +128,7 @@ func TestGetNode(t *testing.T) {
 			args: args{
 				resp:    resp,
 				keyType: NodeKey_Label,
-				key:     pointer.To("not_a_label"),
+				key:     fpointer.To("not_a_label"),
 				value:   "foo",
 			},
 			want:    nil,
@@ -139,7 +139,7 @@ func TestGetNode(t *testing.T) {
 			args: args{
 				resp:    resp,
 				keyType: NodeKey_Label,
-				key:     pointer.To("p2p_id"),
+				key:     fpointer.To("p2p_id"),
 				value:   "not_a_p2p_id",
 			},
 			want:    nil,
@@ -194,7 +194,7 @@ func TestNodeFinderCfg_Validate(t *testing.T) {
 			name: "valid label key type with label name",
 			cfg: NodeFinderCfg{
 				KeyType:   NodeKey_Label,
-				LabelName: pointer.To("p2p_id"),
+				LabelName: fpointer.To("p2p_id"),
 			},
 			wantErr: false,
 		},
@@ -227,8 +227,8 @@ func TestNodeFinderCfg_Validate(t *testing.T) {
 func TestNewUpdateNodeRequest(t *testing.T) {
 	t.Parallel()
 
-	validNodeCfg := node.NodeCfg{
-		MinimalNodeCfg: node.MinimalNodeCfg{
+	validNodeCfg := fnode.NodeCfg{
+		MinimalNodeCfg: fnode.MinimalNodeCfg{
 			Name:                "test-node",
 			CSAKey:              "test-csa-key",
 			NOP:                 "test-nop",
@@ -244,7 +244,7 @@ func TestNewUpdateNodeRequest(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		cfg         node.NodeCfg
+		cfg         fnode.NodeCfg
 		finderCfg   NodeFinderCfg
 		wantErr     bool
 		errContains string
@@ -270,7 +270,7 @@ func TestNewUpdateNodeRequest(t *testing.T) {
 			cfg:  validNodeCfg,
 			finderCfg: NodeFinderCfg{
 				KeyType:   NodeKey_Label,
-				LabelName: pointer.To("region"),
+				LabelName: fpointer.To("region"),
 			},
 			wantErr: false,
 		},
@@ -298,7 +298,7 @@ func TestNewUpdateNodeRequest(t *testing.T) {
 			cfg:  validNodeCfg,
 			finderCfg: NodeFinderCfg{
 				KeyType:   NodeKey_Label,
-				LabelName: pointer.To("nonexistent"),
+				LabelName: fpointer.To("nonexistent"),
 			},
 			wantErr: false, // This doesn't error, it just gets empty string
 		},
@@ -325,8 +325,8 @@ func TestNewUpdateNodeRequest(t *testing.T) {
 func TestUpdateNodeRequest_Labels(t *testing.T) {
 	t.Parallel()
 
-	nodeCfg := node.NodeCfg{
-		MinimalNodeCfg: node.MinimalNodeCfg{
+	nodeCfg := fnode.NodeCfg{
+		MinimalNodeCfg: fnode.MinimalNodeCfg{
 			Name:                "test-node",
 			CSAKey:              "test-csa-key",
 			NOP:                 "Test NOP",
@@ -334,7 +334,7 @@ func TestUpdateNodeRequest_Labels(t *testing.T) {
 		},
 		P2PID:        "test-p2p-id",
 		AdminAddr:    "0x1234567890123456789012345678901234567890",
-		MultiAddress: pointer.To("127.0.0.1:8080"),
+		MultiAddress: fpointer.To("127.0.0.1:8080"),
 		Tags: map[string]string{
 			"region": "us-east-1",
 			"env":    "test",
@@ -367,8 +367,8 @@ func TestUpdateNodeRequest_Labels(t *testing.T) {
 func TestUpdateNodeRequest_NodeKeyCriteria(t *testing.T) {
 	t.Parallel()
 
-	nodeCfg := node.NodeCfg{
-		MinimalNodeCfg: node.MinimalNodeCfg{
+	nodeCfg := fnode.NodeCfg{
+		MinimalNodeCfg: fnode.MinimalNodeCfg{
 			Name:   "test-node",
 			CSAKey: "test-csa-key",
 		},
@@ -400,7 +400,7 @@ func TestUpdateNodeRequest_NodeKeyCriteria(t *testing.T) {
 			name: "label key type",
 			finderCfg: NodeFinderCfg{
 				KeyType:   NodeKey_Label,
-				LabelName: pointer.To("region"),
+				LabelName: fpointer.To("region"),
 			},
 			expectedCriteria: "key-type=label, value=region=us-east-1",
 		},
@@ -423,7 +423,7 @@ func TestUpdateNodes_Success(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
-	mockClient := mocks.NewMockJDClient(t)
+	mockClient := jdmocks.NewMockJDClient(t)
 
 	// Create test nodes
 	existingNodes := []*nodev1.Node{
@@ -452,8 +452,8 @@ func TestUpdateNodes_Success(t *testing.T) {
 	}
 
 	// Create update requests
-	req1, err := NewUpdateNodeRequest(node.NodeCfg{
-		MinimalNodeCfg: node.MinimalNodeCfg{
+	req1, err := NewUpdateNodeRequest(fnode.NodeCfg{
+		MinimalNodeCfg: fnode.MinimalNodeCfg{
 			Name:   "new-name-1",
 			CSAKey: "csa-key-1",
 			NOP:    "nop-1",
@@ -463,8 +463,8 @@ func TestUpdateNodes_Success(t *testing.T) {
 	}, NodeFinderCfg{KeyType: NodeKey_CSAKey})
 	require.NoError(t, err)
 
-	req2, err := NewUpdateNodeRequest(node.NodeCfg{
-		MinimalNodeCfg: node.MinimalNodeCfg{
+	req2, err := NewUpdateNodeRequest(fnode.NodeCfg{
+		MinimalNodeCfg: fnode.MinimalNodeCfg{
 			Name:   "new-name-2",
 			CSAKey: "csa-key-2",
 			NOP:    "nop-2",
@@ -500,7 +500,7 @@ func TestUpdateNodes_EmptyRequest(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
-	mockClient := mocks.NewMockJDClient(t)
+	mockClient := jdmocks.NewMockJDClient(t)
 
 	updateReq := UpdateNodesRequest{
 		Requests: []*UpdateNodeRequest{},
@@ -517,10 +517,10 @@ func TestUpdateNodes_ListNodesError(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
-	mockClient := mocks.NewMockJDClient(t)
+	mockClient := jdmocks.NewMockJDClient(t)
 
-	req, err := NewUpdateNodeRequest(node.NodeCfg{
-		MinimalNodeCfg: node.MinimalNodeCfg{
+	req, err := NewUpdateNodeRequest(fnode.NodeCfg{
+		MinimalNodeCfg: fnode.MinimalNodeCfg{
 			Name:   "test-node",
 			CSAKey: "test-csa-key",
 			NOP:    "test-nop",
@@ -549,7 +549,7 @@ func TestUpdateNodes_NodeNotFound(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
-	mockClient := mocks.NewMockJDClient(t)
+	mockClient := jdmocks.NewMockJDClient(t)
 
 	listResponse := &nodev1.ListNodesResponse{
 		Nodes: []*nodev1.Node{
@@ -561,8 +561,8 @@ func TestUpdateNodes_NodeNotFound(t *testing.T) {
 		},
 	}
 
-	req, err := NewUpdateNodeRequest(node.NodeCfg{
-		MinimalNodeCfg: node.MinimalNodeCfg{
+	req, err := NewUpdateNodeRequest(fnode.NodeCfg{
+		MinimalNodeCfg: fnode.MinimalNodeCfg{
 			Name:   "nonexistent-node",
 			CSAKey: "nonexistent-csa-key",
 			NOP:    "test-nop",
@@ -591,7 +591,7 @@ func TestUpdateNodes_UpdateNodeError(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
-	mockClient := mocks.NewMockJDClient(t)
+	mockClient := jdmocks.NewMockJDClient(t)
 
 	existingNodes := []*nodev1.Node{
 		{
@@ -605,8 +605,8 @@ func TestUpdateNodes_UpdateNodeError(t *testing.T) {
 		Nodes: existingNodes,
 	}
 
-	req, err := NewUpdateNodeRequest(node.NodeCfg{
-		MinimalNodeCfg: node.MinimalNodeCfg{
+	req, err := NewUpdateNodeRequest(fnode.NodeCfg{
+		MinimalNodeCfg: fnode.MinimalNodeCfg{
 			Name:   "test-node",
 			CSAKey: "test-csa-key",
 			NOP:    "test-nop",
@@ -625,7 +625,7 @@ func TestUpdateNodes_UpdateNodeError(t *testing.T) {
 
 	// Mock UpdateNode error
 	updateError := errors.New("failed to update node")
-	mockClient.MockNodeServiceClient.On("UpdateNode", ctx, mock.AnythingOfType("*node.UpdateNodeRequest")).Return(nil, updateError)
+	mockClient.MockNodeServiceClient.On("UpdateNode", ctx, mock.AnythingOfType("*fnode.UpdateNodeRequest")).Return(nil, updateError)
 
 	err = UpdateNodes(ctx, mockClient, updateReq)
 	require.Error(t, err)
@@ -638,8 +638,8 @@ func TestUpdateNodes_UpdateNodeError(t *testing.T) {
 func TestNewNodeKeyCfg(t *testing.T) {
 	t.Parallel()
 
-	nodeCfg := node.NodeCfg{
-		MinimalNodeCfg: node.MinimalNodeCfg{
+	nodeCfg := fnode.NodeCfg{
+		MinimalNodeCfg: fnode.MinimalNodeCfg{
 			Name:   "test-node",
 			CSAKey: "test-csa-key",
 		},
@@ -682,12 +682,12 @@ func TestNewNodeKeyCfg(t *testing.T) {
 			name: "label key type",
 			finderCfg: NodeFinderCfg{
 				KeyType:   NodeKey_Label,
-				LabelName: pointer.To("region"),
+				LabelName: fpointer.To("region"),
 			},
 			want: nodeKeyCfg{
 				keyType:  NodeKey_Label,
 				value:    "us-east-1",
-				labelKey: pointer.To("region"),
+				labelKey: fpointer.To("region"),
 			},
 			wantErr: false,
 		},
@@ -695,12 +695,12 @@ func TestNewNodeKeyCfg(t *testing.T) {
 			name: "label key type with nonexistent label",
 			finderCfg: NodeFinderCfg{
 				KeyType:   NodeKey_Label,
-				LabelName: pointer.To("nonexistent"),
+				LabelName: fpointer.To("nonexistent"),
 			},
 			want: nodeKeyCfg{
 				keyType:  NodeKey_Label,
 				value:    "", // empty string for nonexistent label
-				labelKey: pointer.To("nonexistent"),
+				labelKey: fpointer.To("nonexistent"),
 			},
 			wantErr: false,
 		},
@@ -767,7 +767,7 @@ func TestNodeKeyCfg_String(t *testing.T) {
 			cfg: nodeKeyCfg{
 				keyType:  NodeKey_Label,
 				value:    "us-east-1",
-				labelKey: pointer.To("region"),
+				labelKey: fpointer.To("region"),
 			},
 			want: "key-type=label, value=region=us-east-1",
 		},
@@ -776,7 +776,7 @@ func TestNodeKeyCfg_String(t *testing.T) {
 			cfg: nodeKeyCfg{
 				keyType:  NodeKey_Label,
 				value:    "",
-				labelKey: pointer.To("nonexistent"),
+				labelKey: fpointer.To("nonexistent"),
 			},
 			want: "key-type=label, value=nonexistent=",
 		},

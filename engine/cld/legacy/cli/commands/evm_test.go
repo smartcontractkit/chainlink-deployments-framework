@@ -10,9 +10,9 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/require"
 
-	cldf_domain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 
-	cldf_config_network "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/network"
+	cfgnet "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/network"
 )
 
 // --- Structure & Metadata Tests ---
@@ -20,7 +20,7 @@ import (
 func TestNewEvmCmds_Structure(t *testing.T) {
 	t.Parallel()
 	c := Commands{}
-	var domain cldf_domain.Domain
+	var domain domain.Domain
 	root := c.NewEvmCmds(domain)
 
 	require.Equal(t, "evm", root.Use)
@@ -44,7 +44,7 @@ func TestNewEvmCmds_Structure(t *testing.T) {
 func TestEvmClearCommand_Metadata(t *testing.T) {
 	t.Parallel()
 	c := Commands{}
-	var domain cldf_domain.Domain
+	var domain domain.Domain
 	root := c.NewEvmCmds(domain)
 
 	tcData := []struct {
@@ -91,7 +91,7 @@ func TestEvmClearCommand_Metadata(t *testing.T) {
 func TestNewEvmNonceClear_Metadata(t *testing.T) {
 	t.Parallel()
 	c := Commands{}
-	var domain cldf_domain.Domain
+	var domain domain.Domain
 	cmd := c.newEvmNonceClear(domain)
 
 	require.Equal(t, "clear", cmd.Use)
@@ -114,7 +114,7 @@ func TestNewEvmNonceClear_Metadata(t *testing.T) {
 func TestNewEvmNodesFund_Metadata(t *testing.T) {
 	t.Parallel()
 	c := Commands{}
-	var domain cldf_domain.Domain
+	var domain domain.Domain
 	cmd := c.newEvmNodesFund(domain)
 
 	// Basic use/description/examples
@@ -147,7 +147,7 @@ func TestNewEvmNodesFund_Metadata(t *testing.T) {
 func TestNewEvmGasSend_Metadata(t *testing.T) {
 	t.Parallel()
 	c := Commands{}
-	var domain cldf_domain.Domain
+	var domain domain.Domain
 	cmd := c.newEvmGasSend(domain)
 
 	require.Equal(t, "send", cmd.Use)
@@ -181,7 +181,7 @@ func TestNewEvmGasSend_Metadata(t *testing.T) {
 func TestNewEvmContractVerify_Metadata(t *testing.T) {
 	t.Parallel()
 	c := Commands{}
-	var domain cldf_domain.Domain
+	var domain domain.Domain
 	cmd := c.newEvmContractVerify(domain)
 
 	require.Equal(t, "verify", cmd.Use)
@@ -224,7 +224,7 @@ func TestNewEvmContractVerify_Metadata(t *testing.T) {
 func TestNewEvmContractBatchVerify_Metadata(t *testing.T) {
 	t.Parallel()
 	c := Commands{}
-	var domain cldf_domain.Domain
+	var domain domain.Domain
 	cmd := c.newEvmContractBatchVerify(domain)
 
 	require.Equal(t, "verify-batch", cmd.Use)
@@ -286,7 +286,7 @@ chain = { key = "api-key", url = "https://test-url.com", chain = "100" }`
 	err = os.WriteFile(foundryToml, []byte(testSourceCfg), 0600)
 	require.NoError(t, err)
 
-	closeFn, err := appendEtherscanInfoToFoundryToml(tmpDir, "100", cldf_config_network.BlockExplorer{
+	closeFn, err := appendEtherscanInfoToFoundryToml(tmpDir, "100", cfgnet.BlockExplorer{
 		Type:   "Etherscan",
 		APIKey: "api-key",
 		URL:    "https://test-url.com",

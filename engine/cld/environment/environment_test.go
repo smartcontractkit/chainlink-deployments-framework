@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	cldf_domain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
-	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
+	fdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
+	foperations "github.com/smartcontractkit/chainlink-deployments-framework/operations"
 )
 
 func Test_WithAnvilKeyAsDeployer(t *testing.T) {
@@ -32,7 +32,7 @@ func Test_WithReporter(t *testing.T) {
 	opts := &LoadEnvironmentOptions{}
 	assert.Nil(t, opts.reporter)
 
-	reporter := operations.NewMemoryReporter()
+	reporter := foperations.NewMemoryReporter()
 	option := WithReporter(reporter)
 	option(opts)
 
@@ -74,7 +74,7 @@ func Test_WithOperationRegistry(t *testing.T) {
 	opts := &LoadEnvironmentOptions{}
 	assert.Nil(t, opts.operationRegistry)
 
-	registry := operations.NewOperationRegistry()
+	registry := foperations.NewOperationRegistry()
 	option := WithOperationRegistry(registry)
 	option(opts)
 
@@ -85,7 +85,7 @@ func Test_Load_InvalidEnvironment(t *testing.T) {
 	t.Parallel()
 
 	// Set up domain
-	domain := cldf_domain.NewDomain("dummy", "test")
+	domain := fdomain.NewDomain("dummy", "test")
 
 	lggr := logger.Test(t)
 	getCtx := func() context.Context { return context.Background() }
@@ -151,7 +151,7 @@ func Test_Load_NoError(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func setupTest(t *testing.T, setupFnc ...func(t *testing.T, domain cldf_domain.Domain)) cldf_domain.Domain {
+func setupTest(t *testing.T, setupFnc ...func(t *testing.T, domain fdomain.Domain)) fdomain.Domain {
 	t.Helper()
 
 	// Create a temporary directory for testing
@@ -169,7 +169,7 @@ func setupTest(t *testing.T, setupFnc ...func(t *testing.T, domain cldf_domain.D
 	require.NoError(t, os.MkdirAll(envsDir, 0755))
 
 	// Set up domain
-	domain := cldf_domain.NewDomain(domainsDir, "test")
+	domain := fdomain.NewDomain(domainsDir, "test")
 
 	for _, fn := range setupFnc {
 		fn(t, domain)
@@ -178,7 +178,7 @@ func setupTest(t *testing.T, setupFnc ...func(t *testing.T, domain cldf_domain.D
 	return domain
 }
 
-func setupTestConfig(t *testing.T, domain cldf_domain.Domain) {
+func setupTestConfig(t *testing.T, domain fdomain.Domain) {
 	t.Helper()
 
 	// Create a minimal config directory
@@ -205,14 +205,14 @@ func setupTestConfig(t *testing.T, domain cldf_domain.Domain) {
 	require.NoError(t, os.WriteFile(localPath, input, 0600))
 
 	// Create domains configuration file
-	input, err = os.ReadFile(filepath.Join("testdata", "domain.yaml"))
+	input, err = os.ReadFile(filepath.Join("testdata", "fdomainyaml"))
 	require.NoError(t, err)
 
-	domainPath := filepath.Join(configDir, "domain.yaml")
+	domainPath := filepath.Join(configDir, "fdomainyaml")
 	require.NoError(t, os.WriteFile(domainPath, input, 0600))
 }
 
-func setupAddressbook(t *testing.T, domain cldf_domain.Domain) {
+func setupAddressbook(t *testing.T, domain fdomain.Domain) {
 	t.Helper()
 
 	env := domain.EnvDir("staging")
@@ -223,7 +223,7 @@ func setupAddressbook(t *testing.T, domain cldf_domain.Domain) {
 	require.NoError(t, os.WriteFile(addressBookPath, []byte(addressbookConfig), 0600))
 }
 
-func setupNodes(t *testing.T, domain cldf_domain.Domain) {
+func setupNodes(t *testing.T, domain fdomain.Domain) {
 	t.Helper()
 
 	env := domain.EnvDir("staging")

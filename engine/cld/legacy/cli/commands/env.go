@@ -5,14 +5,14 @@ import (
 
 	"github.com/spf13/cobra"
 
-	cldf_domain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
+	domain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/legacy/cli"
 )
 
 // NewEnvCmds creates a new set of commands for managing environment.
 func (c Commands) NewEnvCmds(
-	domain cldf_domain.Domain,
+	domain domain.Domain,
 ) *cobra.Command {
 	envCmd := &cobra.Command{
 		Use:   "env",
@@ -42,7 +42,7 @@ var (
 )
 
 // newEnvLoad creates the "load" subcommand for environment checks.
-func (c Commands) newEnvLoad(domain cldf_domain.Domain) *cobra.Command {
+func (c Commands) newEnvLoad(domain domain.Domain) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "load",
 		Short:   "Runs load environment sanity check",

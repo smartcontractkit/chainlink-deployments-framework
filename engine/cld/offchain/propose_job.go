@@ -10,22 +10,22 @@ import (
 	nodev1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/node"
 	"github.com/smartcontractkit/chainlink-protos/job-distributor/v1/shared/ptypes"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
-	"github.com/smartcontractkit/chainlink-deployments-framework/internal/pointer"
+	fdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
+	fpointer "github.com/smartcontractkit/chainlink-deployments-framework/internal/pointer"
 
-	cldf_offchain "github.com/smartcontractkit/chainlink-deployments-framework/offchain"
+	foffchain "github.com/smartcontractkit/chainlink-deployments-framework/offchain"
 )
 
 // ProposeJobRequest is the request to propose a job to a node using JD
 type ProposeJobRequest struct {
 	Job         string // toml
-	Domain      domain.Domain
+	Domain      fdomain.Domain
 	Environment string
 	// labels to filter nodes by
 	NodeLabels map[string]string
 	// labels to set on the new/updated job object
 	JobLabels      map[string]string
-	OffchainClient cldf_offchain.Client
+	OffchainClient foffchain.Client
 	Lggr           logger.Logger
 }
 
@@ -75,7 +75,7 @@ func ProposeJob(ctx context.Context, req ProposeJobRequest) error {
 		selectors = append(selectors, &ptypes.Selector{
 			Key:   key,
 			Op:    ptypes.SelectorOp_EQ,
-			Value: pointer.To(value), // TODO is this correct?
+			Value: fpointer.To(value), // TODO is this correct?
 		})
 	}
 	nodes, err := req.OffchainClient.ListNodes(ctx, &nodev1.ListNodesRequest{Filter: &nodev1.ListNodesRequest_Filter{
@@ -106,8 +106,8 @@ func ProposeJob(ctx context.Context, req ProposeJobRequest) error {
 
 // ProposeJobs proposes job specs to nodes using jobspecs file
 // TODO remove when all migrations use Jobs instead of JobSpecs
-func ProposeJobs(ctx context.Context, lggr logger.Logger, oc cldf_offchain.Client, jobSpecFilePath string) error {
-	jobSpecToNodes, err := domain.LoadJobSpecs(jobSpecFilePath) //nolint:staticcheck // TODO: remove when all migrations use Jobs instead of JobSpecs
+func ProposeJobs(ctx context.Context, lggr logger.Logger, oc foffchain.Client, jobSpecFilePath string) error {
+	jobSpecToNodes, err := fdomain.LoadJobSpecs(jobSpecFilePath) //nolint:staticcheck // TODO: remove when all migrations use Jobs instead of JobSpecs
 	if err != nil {
 		return err
 	}
@@ -135,8 +135,8 @@ func ProposeJobs(ctx context.Context, lggr logger.Logger, oc cldf_offchain.Clien
 }
 
 // ProposeWithJobDetails proposes job specs to nodes using jobspecs file
-func ProposeWithJobDetails(ctx context.Context, lggr logger.Logger, oc cldf_offchain.Client, jobsPath string) error {
-	jobs, err := domain.LoadJobs(jobsPath)
+func ProposeWithJobDetails(ctx context.Context, lggr logger.Logger, oc foffchain.Client, jobsPath string) error {
+	jobs, err := fdomain.LoadJobs(jobsPath)
 	if err != nil {
 		return err
 	}

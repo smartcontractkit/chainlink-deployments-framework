@@ -15,11 +15,11 @@ import (
 
 	"github.com/smartcontractkit/mcms"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
-	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
+	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/internal/fileutils"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/internal/jsonutils"
-	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
+	foperations "github.com/smartcontractkit/chainlink-deployments-framework/operations"
 )
 
 const (
@@ -288,7 +288,7 @@ func (a *ArtifactsDir) ArchiveProposalsDirExists() (bool, error) {
 }
 
 // SaveChangesetOutput writes the ChangesetOutput as artifacts to the specified migration directory.
-func (a *ArtifactsDir) SaveChangesetOutput(migKey string, output cldf.ChangesetOutput) error {
+func (a *ArtifactsDir) SaveChangesetOutput(migKey string, output fdeployment.ChangesetOutput) error {
 	id := ksuid.New()
 
 	// Create the migration directory if it doesn't exist
@@ -384,18 +384,18 @@ func (a *ArtifactsDir) SaveChangesetOutput(migKey string, output cldf.ChangesetO
 }
 
 // LoadChangesetOutput reads the artifacts from the specified migration directory and returns the ChangesetOutput.
-func (a *ArtifactsDir) LoadChangesetOutput(migKey string) (cldf.ChangesetOutput, error) {
+func (a *ArtifactsDir) LoadChangesetOutput(migKey string) (fdeployment.ChangesetOutput, error) {
 	migrationsDir := a.MigrationDirPath(migKey)
 	proposalsDir := a.getProposalDir()
 
 	artifactEntries, err := os.ReadDir(migrationsDir)
 	if err != nil {
-		return cldf.ChangesetOutput{}, err
+		return fdeployment.ChangesetOutput{}, err
 	}
 
 	proposalEntries, err := os.ReadDir(proposalsDir)
 	if err != nil {
-		return cldf.ChangesetOutput{}, err
+		return fdeployment.ChangesetOutput{}, err
 	}
 
 	jobSpecsRgx := regexp.MustCompile(fmt.Sprintf(`^[a-zA-Z0-9_-]+_%s\.json$`, ArtifactJobSpec))
@@ -409,7 +409,7 @@ func (a *ArtifactsDir) LoadChangesetOutput(migKey string) (cldf.ChangesetOutput,
 		fmt.Sprintf(`^[a-zA-Z0-9_-]+_%s_\d+\.json$`, ArtifactMCMSProposal),
 	)
 
-	var output cldf.ChangesetOutput
+	var output fdeployment.ChangesetOutput
 	for _, entry := range artifactEntries {
 		// Shortcircuit to ignore directories and the .gitkeep file
 		if entry.IsDir() || entry.Name() == ".gitkeep" {
@@ -423,27 +423,27 @@ func (a *ArtifactsDir) LoadChangesetOutput(migKey string) (cldf.ChangesetOutput,
 		case jobSpecsRgx.MatchString(name):
 			jss, err1 := LoadJobSpecs(entryPath)
 			if err1 != nil {
-				return cldf.ChangesetOutput{}, err1
+				return fdeployment.ChangesetOutput{}, err1
 			}
 			//nolint:staticcheck
 			output.JobSpecs = jss
 		case jobsRgx.MatchString(name):
 			jobs, err1 := LoadJobs(entryPath)
 			if err1 != nil {
-				return cldf.ChangesetOutput{}, err1
+				return fdeployment.ChangesetOutput{}, err1
 			}
 			output.Jobs = jobs
 		case addressesRgx.MatchString(name):
 			ab, err1 := a.loadAddressBook(entryPath)
 			if err1 != nil {
-				return cldf.ChangesetOutput{}, err1
+				return fdeployment.ChangesetOutput{}, err1
 			}
 			//nolint:staticcheck
 			output.AddressBook = ab
 		case datastoreRgx.MatchString(name):
 			ds, err1 := a.loadMutableDataStore(entryPath)
 			if err1 != nil {
-				return cldf.ChangesetOutput{}, err1
+				return fdeployment.ChangesetOutput{}, err1
 			}
 			output.DataStore = ds
 		}
@@ -461,13 +461,13 @@ func (a *ArtifactsDir) LoadChangesetOutput(migKey string) (cldf.ChangesetOutput,
 		case mcmsTimelockProposalRgx.MatchString(name):
 			p, err1 := a.loadMCMSTimelockProposal(entryPath)
 			if err1 != nil {
-				return cldf.ChangesetOutput{}, err1
+				return fdeployment.ChangesetOutput{}, err1
 			}
 			output.MCMSTimelockProposals = append(output.MCMSTimelockProposals, *p)
 		case mcmsProposalRgx.MatchString(name):
 			p, err1 := a.loadMCMSProposal(entryPath)
 			if err1 != nil {
-				return cldf.ChangesetOutput{}, err1
+				return fdeployment.ChangesetOutput{}, err1
 			}
 			output.MCMSProposals = append(output.MCMSProposals, *p)
 		default:
@@ -487,7 +487,7 @@ func (a *ArtifactsDir) LoadChangesetOutput(migKey string) (cldf.ChangesetOutput,
 // or if an error occurs during the search.
 //
 // Pattern format: "*-<domain>-<env>-<migKey>_addresses.json".
-func (a *ArtifactsDir) LoadAddressBookByMigrationKey(migKey string) (*cldf.AddressBookMap, error) {
+func (a *ArtifactsDir) LoadAddressBookByMigrationKey(migKey string) (*fdeployment.AddressBookMap, error) {
 	migDirPath := a.MigrationDirPath(migKey)
 	pattern := fmt.Sprintf("*-%s-%s-%s_%s",
 		a.DomainKey(), a.EnvKey(), migKey, AddressBookFileName,
@@ -502,14 +502,14 @@ func (a *ArtifactsDir) LoadAddressBookByMigrationKey(migKey string) (*cldf.Addre
 }
 
 // LoadOperationsReports reads the reports from the operations reports directory for the specified migration key.
-func (a *ArtifactsDir) LoadOperationsReports(migKey string) ([]operations.Report[any, any], error) {
+func (a *ArtifactsDir) LoadOperationsReports(migKey string) ([]foperations.Report[any, any], error) {
 	exists, err := a.MigrationOperationsReportsFileExists(migKey)
 	if err != nil {
 		return nil, err
 	}
 
 	if !exists {
-		return []operations.Report[any, any]{}, nil
+		return []foperations.Report[any, any]{}, nil
 	}
 
 	file, err := os.ReadFile(a.getOperationsReportsFilePath(migKey))
@@ -517,13 +517,13 @@ func (a *ArtifactsDir) LoadOperationsReports(migKey string) ([]operations.Report
 		return nil, err
 	}
 
-	var reports []operations.Report[json.RawMessage, json.RawMessage]
+	var reports []foperations.Report[json.RawMessage, json.RawMessage]
 	err = json.Unmarshal(file, &reports)
 	if err != nil {
 		return nil, err
 	}
 
-	anyReports := make([]operations.Report[any, any], 0, len(reports))
+	anyReports := make([]foperations.Report[any, any], 0, len(reports))
 	for _, r := range reports {
 		anyReports = append(anyReports, r.ToGenericReport())
 	}
@@ -535,7 +535,7 @@ func (a *ArtifactsDir) LoadOperationsReports(migKey string) ([]operations.Report
 // the specified migration key.
 // if the directory does not exist, it will be created.
 // if the file already exists, it will be overwritten.
-func (a *ArtifactsDir) SaveOperationsReports(migKey string, reports []operations.Report[any, any]) error {
+func (a *ArtifactsDir) SaveOperationsReports(migKey string, reports []foperations.Report[any, any]) error {
 	found, err := a.OperationsReportsDirExists()
 	if err != nil {
 		return err
@@ -615,30 +615,30 @@ func (a *ArtifactsDir) loadMCMSTimelockProposal(filePath string) (*mcms.Timelock
 }
 
 // loadAddressBook reads an address book file and returns the address book as an AddressBookMap.
-func (a *ArtifactsDir) loadAddressBook(addrBookPath string) (*cldf.AddressBookMap, error) {
+func (a *ArtifactsDir) loadAddressBook(addrBookPath string) (*fdeployment.AddressBookMap, error) {
 	b, err := os.ReadFile(addrBookPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file: %w", err)
 	}
 
-	addressesByChain := make(map[uint64]map[string]cldf.TypeAndVersion)
+	addressesByChain := make(map[uint64]map[string]fdeployment.TypeAndVersion)
 	if err = json.Unmarshal(b, &addressesByChain); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal JSON for address book from path %s: %w",
 			addrBookPath, err,
 		)
 	}
 
-	return cldf.NewMemoryAddressBookFromMap(addressesByChain), nil
+	return fdeployment.NewMemoryAddressBookFromMap(addressesByChain), nil
 }
 
 // loadDataStore reads a datastore file and returns the datastore as read-only.
-func (a *ArtifactsDir) loadDataStore(dataStorePath string) (datastore.DataStore, error) {
+func (a *ArtifactsDir) loadDataStore(dataStorePath string) (fdatastore.DataStore, error) {
 	b, err := os.ReadFile(dataStorePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file: %w", err)
 	}
 
-	var dataStore datastore.MemoryDataStore
+	var dataStore fdatastore.MemoryDataStore
 	if err = json.Unmarshal(b, &dataStore); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal JSON for datastore from path %s: %w",
 			dataStorePath, err,
@@ -648,13 +648,13 @@ func (a *ArtifactsDir) loadDataStore(dataStorePath string) (datastore.DataStore,
 	return dataStore.Seal(), nil
 }
 
-func (a *ArtifactsDir) loadMutableDataStore(dataStorePath string) (datastore.MutableDataStore, error) {
+func (a *ArtifactsDir) loadMutableDataStore(dataStorePath string) (fdatastore.MutableDataStore, error) {
 	b, err := os.ReadFile(dataStorePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file: %w", err)
 	}
 
-	var dataStore datastore.MemoryDataStore
+	var dataStore fdatastore.MemoryDataStore
 	if err = json.Unmarshal(b, &dataStore); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal JSON for datastore from path %s: %w",
 			dataStorePath, err,
@@ -716,7 +716,7 @@ func (a *ArtifactsDir) getArchivedProposalDir() string {
 // marshalIndentAndSort marshals a map of addresses to their types and versions into a sorted JSON object format.
 // This is a workaround to ensure that the JSON output is deterministic and sorted by chain selector and address which
 // helps to avoid merge conflicts in git when multiple migrations are run.
-func marshalIndentAndSort(addrMap map[uint64]map[string]cldf.TypeAndVersion) ([]byte, error) {
+func marshalIndentAndSort(addrMap map[uint64]map[string]fdeployment.TypeAndVersion) ([]byte, error) {
 	// Sort the outer map keys (chain selectors)
 	chainSelectors := make([]uint64, 0, len(addrMap))
 	for k := range addrMap {

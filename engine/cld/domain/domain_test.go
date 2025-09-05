@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
-	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
+	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 )
 
 type tempProj struct {
@@ -177,7 +177,7 @@ func Test_Domain_AddressBookByEnv(t *testing.T) {
 	d := NewDomain(fixture.rootDirPath, "ccip")
 	got, err := d.AddressBookByEnv("staging")
 	require.NoError(t, err)
-	want := cldf.NewMemoryAddressBookFromMap(map[uint64]map[string]cldf.TypeAndVersion{})
+	want := fdeployment.NewMemoryAddressBookFromMap(map[uint64]map[string]fdeployment.TypeAndVersion{})
 	assert.Equal(t, want, got)
 }
 
@@ -187,7 +187,7 @@ func Test_Domain_DataStoreByEnv(t *testing.T) {
 	d := NewDomain(fixture.rootDirPath, "ccip")
 	got, err := d.DataStoreByEnv("staging")
 	require.NoError(t, err)
-	want := datastore.NewMemoryDataStore().Seal()
+	want := fdatastore.NewMemoryDataStore().Seal()
 	assert.Equal(t, want, got)
 }
 

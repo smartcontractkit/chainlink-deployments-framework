@@ -7,8 +7,8 @@ import (
 
 	nodev1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/node"
 
-	cldf_offchain "github.com/smartcontractkit/chainlink-deployments-framework/offchain"
-	"github.com/smartcontractkit/chainlink-deployments-framework/offchain/node"
+	foffchain "github.com/smartcontractkit/chainlink-deployments-framework/offchain"
+	fnode "github.com/smartcontractkit/chainlink-deployments-framework/offchain/node"
 
 	"github.com/smartcontractkit/chainlink-protos/job-distributor/v1/shared/ptypes"
 )
@@ -16,7 +16,7 @@ import (
 // UpdateNodeRequest is the request to update a node using JD
 type UpdateNodeRequest struct {
 	// Cfg is the configuration for the used to update node
-	Cfg node.NodeCfg
+	Cfg fnode.NodeCfg
 	// keyCfg is the configuration for how to find the node to update
 	keyCfg nodeKeyCfg
 }
@@ -36,7 +36,7 @@ func (c NodeFinderCfg) Validate() error {
 }
 
 // NewUpdateNodeRequest creates a new UpdateNodeRequest
-func NewUpdateNodeRequest(cfg node.NodeCfg, f NodeFinderCfg) (*UpdateNodeRequest, error) {
+func NewUpdateNodeRequest(cfg fnode.NodeCfg, f NodeFinderCfg) (*UpdateNodeRequest, error) {
 	if err := f.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid node finder config: %w", err)
 	}
@@ -77,7 +77,7 @@ type UpdateNodesRequest struct {
 }
 
 // UpdateNodes updates the nodes with the given configurations.
-func UpdateNodes(ctx context.Context, client cldf_offchain.Client, req UpdateNodesRequest) error {
+func UpdateNodes(ctx context.Context, client foffchain.Client, req UpdateNodesRequest) error {
 	if len(req.Requests) == 0 {
 		return nil
 	}
@@ -183,7 +183,7 @@ func (c nodeKeyCfg) String() string {
 	return fmt.Sprintf("key-type=%s, value=%s", c.keyType, v)
 }
 
-func newNodeKeyCfg(n node.NodeCfg, c NodeFinderCfg) (nodeKeyCfg, error) {
+func newNodeKeyCfg(n fnode.NodeCfg, c NodeFinderCfg) (nodeKeyCfg, error) {
 	out := nodeKeyCfg{
 		keyType: c.KeyType,
 	}
