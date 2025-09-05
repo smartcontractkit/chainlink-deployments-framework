@@ -1,5 +1,9 @@
 package environment
 
+// NOTE: Although these constants are not used directly in the current codebase,
+// they are imported into CLD and used in scaffolding templates.
+// Do NOT delete them unless you are certain they are no longer referenced externally.
+
 const (
 	Local          = "local"
 	StagingTestnet = "staging_testnet"
