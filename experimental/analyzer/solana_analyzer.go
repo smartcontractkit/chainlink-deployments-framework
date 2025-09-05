@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	binary "github.com/gagliardetto/binary"
-	solana "github.com/gagliardetto/solana-go"
+	"github.com/gagliardetto/solana-go"
 	"github.com/goccy/go-yaml"
 	mcmssolanasdk "github.com/smartcontractkit/mcms/sdk/solana"
 	mcmstypes "github.com/smartcontractkit/mcms/types"

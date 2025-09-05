@@ -5,9 +5,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	cldfds "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
+	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 
-	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 )
 
 func Test_EnvironmentSolanaRegistry_GetSolanaInstructionDecoderByAddress(t *testing.T) {
@@ -16,7 +16,7 @@ func Test_EnvironmentSolanaRegistry_GetSolanaInstructionDecoderByAddress(t *test
 	tests := []struct {
 		name          string
 		registry      map[string]DecodeInstructionFn
-		addresses     cldf.AddressesByChain
+		addresses     deployment.AddressesByChain
 		chainSelector uint64
 		address       string
 		wantNil       bool
@@ -25,11 +25,11 @@ func Test_EnvironmentSolanaRegistry_GetSolanaInstructionDecoderByAddress(t *test
 		{
 			name: "success - decoder found",
 			registry: map[string]DecodeInstructionFn{
-				cldf.MustTypeAndVersionFromString("Timelock 1.0.0").String(): nil, // store nil decoder; type matches
+				deployment.MustTypeAndVersionFromString("Timelock 1.0.0").String(): nil, // store nil decoder; type matches
 			},
-			addresses: cldf.AddressesByChain{
+			addresses: deployment.AddressesByChain{
 				1234: {
-					"So1anaTimelock11111111111111111111111111111111": cldf.MustTypeAndVersionFromString("Timelock 1.0.0"),
+					"So1anaTimelock11111111111111111111111111111111": deployment.MustTypeAndVersionFromString("Timelock 1.0.0"),
 				},
 			},
 			chainSelector: 1234,
@@ -39,11 +39,11 @@ func Test_EnvironmentSolanaRegistry_GetSolanaInstructionDecoderByAddress(t *test
 		{
 			name: "failure - unknown chain",
 			registry: map[string]DecodeInstructionFn{
-				cldf.MustTypeAndVersionFromString("Timelock 1.0.0").String(): nil,
+				deployment.MustTypeAndVersionFromString("Timelock 1.0.0").String(): nil,
 			},
-			addresses: cldf.AddressesByChain{
+			addresses: deployment.AddressesByChain{
 				1234: {
-					"So1anaTimelock11111111111111111111111111111111": cldf.MustTypeAndVersionFromString("Timelock 1.0.0"),
+					"So1anaTimelock11111111111111111111111111111111": deployment.MustTypeAndVersionFromString("Timelock 1.0.0"),
 				},
 			},
 			chainSelector: 5678,
@@ -53,11 +53,11 @@ func Test_EnvironmentSolanaRegistry_GetSolanaInstructionDecoderByAddress(t *test
 		{
 			name: "failure - unknown address",
 			registry: map[string]DecodeInstructionFn{
-				cldf.MustTypeAndVersionFromString("Timelock 1.0.0").String(): nil,
+				deployment.MustTypeAndVersionFromString("Timelock 1.0.0").String(): nil,
 			},
-			addresses: cldf.AddressesByChain{
+			addresses: deployment.AddressesByChain{
 				1234: {
-					"So1anaTimelock11111111111111111111111111111111": cldf.MustTypeAndVersionFromString("Timelock 1.0.0"),
+					"So1anaTimelock11111111111111111111111111111111": deployment.MustTypeAndVersionFromString("Timelock 1.0.0"),
 				},
 			},
 			chainSelector: 1234,
@@ -69,9 +69,9 @@ func Test_EnvironmentSolanaRegistry_GetSolanaInstructionDecoderByAddress(t *test
 			registry: map[string]DecodeInstructionFn{
 				// intentionally empty; address maps to unknown type/version
 			},
-			addresses: cldf.AddressesByChain{
+			addresses: deployment.AddressesByChain{
 				1234: {
-					"So1anaOther111111111111111111111111111111111": cldf.MustTypeAndVersionFromString("UnknownProgram 1.0.0"),
+					"So1anaOther111111111111111111111111111111111": deployment.MustTypeAndVersionFromString("UnknownProgram 1.0.0"),
 				},
 			},
 			chainSelector: 1234,
@@ -84,21 +84,21 @@ func Test_EnvironmentSolanaRegistry_GetSolanaInstructionDecoderByAddress(t *test
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			ds := cldfds.NewMemoryDataStore()
+			ds := datastore.NewMemoryDataStore()
 			for chainSelector, addrMap := range tt.addresses {
 				for addr, typeAndVer := range addrMap {
-					err := ds.Addresses().Add(cldfds.AddressRef{
+					err := ds.Addresses().Add(datastore.AddressRef{
 						ChainSelector: chainSelector,
 						Address:       addr,
-						Type:          cldfds.ContractType(typeAndVer.Type),
+						Type:          datastore.ContractType(typeAndVer.Type),
 						Version:       &typeAndVer.Version,
 					})
 					require.NoError(t, err)
 				}
 			}
 			reg, err := NewEnvironmentSolanaRegistry(
-				cldf.Environment{
-					ExistingAddresses: cldf.NewMemoryAddressBook(),
+				deployment.Environment{
+					ExistingAddresses: deployment.NewMemoryAddressBook(),
 					DataStore:         ds.Seal()},
 				tt.registry,
 			)
@@ -124,14 +124,14 @@ func Test_EnvironmentSolanaRegistry_GetSolanaInstructionDecoderByAddress(t *test
 func Test_EnvironmentSolanaRegistry_GetSolanaInstructionDecoderByType_And_Add(t *testing.T) {
 	t.Parallel()
 
-	reg, err := NewEnvironmentSolanaRegistry(cldf.Environment{
-		ExistingAddresses: cldf.NewMemoryAddressBook(),
-		DataStore:         cldfds.NewMemoryDataStore().Seal(),
+	reg, err := NewEnvironmentSolanaRegistry(deployment.Environment{
+		ExistingAddresses: deployment.NewMemoryAddressBook(),
+		DataStore:         datastore.NewMemoryDataStore().Seal(),
 	}, map[string]DecodeInstructionFn{})
 	require.NoError(t, err)
 
 	// Use nil as a stand-in decoder; verifies registry wiring without needing the signature of DecodeInstructionFn.
-	tv := cldf.MustTypeAndVersionFromString("Bypasser 2.0.0")
+	tv := deployment.MustTypeAndVersionFromString("Bypasser 2.0.0")
 
 	// Not present initially
 	_, err = reg.GetSolanaInstructionDecoderByType(tv)

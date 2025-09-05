@@ -20,32 +20,32 @@ import (
 	mcmssolanasdk "github.com/smartcontractkit/mcms/sdk/solana"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 
-	cldfds "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
-	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
+	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 
 	mcmsanalyzer "github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 )
 
 func TestUpfConvertTimelockProposal(t *testing.T) {
 	t.Parallel()
-	ds := cldfds.NewMemoryDataStore()
+	ds := datastore.NewMemoryDataStore()
 
 	mustAdd := func(chain uint64, addr, typeAndVersion string) {
-		tv := cldf.MustTypeAndVersionFromString(typeAndVersion)
+		tv := deployment.MustTypeAndVersionFromString(typeAndVersion)
 		storeAddr := addr
 		if strings.HasPrefix(addr, "0x") {
 			storeAddr = addr
 		}
-		ref := cldfds.AddressRef{
+		ref := datastore.AddressRef{
 			ChainSelector: chain,
 			Address:       storeAddr,
-			Type:          cldfds.ContractType(tv.Type),
+			Type:          datastore.ContractType(tv.Type),
 			Version:       &tv.Version,
 			// Use address+type as a unique Qualifier (avoids clashes)
 			Qualifier: fmt.Sprintf("%s-%s", addr, tv.Type),
 		}
 		if !tv.Labels.IsEmpty() {
-			ref.Labels = cldfds.NewLabelSet(tv.Labels.List()...)
+			ref.Labels = datastore.NewLabelSet(tv.Labels.List()...)
 		}
 		require.NoError(t, ds.Addresses().Add(ref))
 	}
@@ -70,9 +70,9 @@ func TestUpfConvertTimelockProposal(t *testing.T) {
 	mustAdd(16423721717087811551, "68ds9kDfB6rJfC4zzeeQ8E9ZMwqSzFQEie1886VAPn68", "BypasserAccessControllerAccount 1.0.0")
 	mustAdd(16423721717087811551, "RmnXLft1mSEwDgMKu2okYuHkiazxntFFcZFrrcXxYg7", "RMNRemote 1.0.0")
 
-	env := cldf.Environment{
+	env := deployment.Environment{
 		DataStore:         ds.Seal(),
-		ExistingAddresses: cldf.NewMemoryAddressBook(),
+		ExistingAddresses: deployment.NewMemoryAddressBook(),
 	}
 
 	proposalCtx, err := mcmsanalyzer.NewDefaultProposalContext(

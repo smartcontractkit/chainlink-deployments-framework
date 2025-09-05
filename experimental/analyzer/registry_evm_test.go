@@ -5,9 +5,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	cldfds "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
+	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 
-	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 )
 
 func Test_EnvironmentEVMRegistry_GetABIByAddress(t *testing.T) {
@@ -19,7 +19,7 @@ func Test_EnvironmentEVMRegistry_GetABIByAddress(t *testing.T) {
 	tests := []struct {
 		name          string
 		abiRegistry   map[string]string
-		addresses     cldf.AddressesByChain
+		addresses     deployment.AddressesByChain
 		chainSelector uint64
 		address       string
 		wantABI       string
@@ -28,11 +28,11 @@ func Test_EnvironmentEVMRegistry_GetABIByAddress(t *testing.T) {
 		{
 			name: "success - RBACTimelock",
 			abiRegistry: map[string]string{
-				cldf.MustTypeAndVersionFromString("RBACTimelock 1.0.0").String(): rbacTimelockABI,
+				deployment.MustTypeAndVersionFromString("RBACTimelock 1.0.0").String(): rbacTimelockABI,
 			},
-			addresses: cldf.AddressesByChain{
+			addresses: deployment.AddressesByChain{
 				1234: {
-					"0xrbacTimelockAddress": cldf.MustTypeAndVersionFromString("RBACTimelock 1.0.0"),
+					"0xrbacTimelockAddress": deployment.MustTypeAndVersionFromString("RBACTimelock 1.0.0"),
 				},
 			},
 			chainSelector: 1234,
@@ -42,11 +42,11 @@ func Test_EnvironmentEVMRegistry_GetABIByAddress(t *testing.T) {
 		{
 			name: "failure - unknown chain",
 			abiRegistry: map[string]string{
-				cldf.MustTypeAndVersionFromString("RBACTimelock 1.0.0").String(): rbacTimelockABI,
+				deployment.MustTypeAndVersionFromString("RBACTimelock 1.0.0").String(): rbacTimelockABI,
 			},
-			addresses: cldf.AddressesByChain{
+			addresses: deployment.AddressesByChain{
 				1234: {
-					"0xrbacTimelockAddress": cldf.MustTypeAndVersionFromString("RBACTimelock 1.0.0"),
+					"0xrbacTimelockAddress": deployment.MustTypeAndVersionFromString("RBACTimelock 1.0.0"),
 				},
 			},
 			chainSelector: 5678,
@@ -56,11 +56,11 @@ func Test_EnvironmentEVMRegistry_GetABIByAddress(t *testing.T) {
 		{
 			name: "failure - unknown address",
 			abiRegistry: map[string]string{
-				cldf.MustTypeAndVersionFromString("RBACTimelock 1.0.0").String(): rbacTimelockABI,
+				deployment.MustTypeAndVersionFromString("RBACTimelock 1.0.0").String(): rbacTimelockABI,
 			},
-			addresses: cldf.AddressesByChain{
+			addresses: deployment.AddressesByChain{
 				1234: {
-					"0xrbacTimelockAddress": cldf.MustTypeAndVersionFromString("RBACTimelock 1.0.0"),
+					"0xrbacTimelockAddress": deployment.MustTypeAndVersionFromString("RBACTimelock 1.0.0"),
 				},
 			},
 			chainSelector: 1234,
@@ -72,9 +72,9 @@ func Test_EnvironmentEVMRegistry_GetABIByAddress(t *testing.T) {
 			abiRegistry: map[string]string{
 				// intentionally empty for UnknownContractType
 			},
-			addresses: cldf.AddressesByChain{
+			addresses: deployment.AddressesByChain{
 				1234: {
-					"0xunknownAddress": cldf.MustTypeAndVersionFromString("UnknownContractType 1.0.0"),
+					"0xunknownAddress": deployment.MustTypeAndVersionFromString("UnknownContractType 1.0.0"),
 				},
 			},
 			chainSelector: 1234,
@@ -86,25 +86,25 @@ func Test_EnvironmentEVMRegistry_GetABIByAddress(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			ds := cldfds.NewMemoryDataStore()
+			ds := datastore.NewMemoryDataStore()
 			// populate the in-memory datastore with the test addresses
 			for chainSel, addrMap := range tt.addresses {
 				for addr, tv := range addrMap {
-					ref := cldfds.AddressRef{
+					ref := datastore.AddressRef{
 						ChainSelector: chainSel,
 						Address:       addr, // already lowercased in tt.addresses where needed
-						Type:          cldfds.ContractType(tv.Type),
+						Type:          datastore.ContractType(tv.Type),
 						Version:       &tv.Version,
 					}
 					if !tv.Labels.IsEmpty() {
-						ref.Labels = cldfds.NewLabelSet(tv.Labels.List()...)
+						ref.Labels = datastore.NewLabelSet(tv.Labels.List()...)
 					}
 					require.NoError(t, ds.Addresses().Add(ref))
 				}
 			}
 
 			// now seal and build the env/registry
-			env := cldf.Environment{DataStore: ds.Seal(), ExistingAddresses: cldf.NewMemoryAddressBook()}
+			env := deployment.Environment{DataStore: ds.Seal(), ExistingAddresses: deployment.NewMemoryAddressBook()}
 			reg, err := NewEnvironmentEVMRegistry(env, tt.abiRegistry)
 			require.NoError(t, err)
 

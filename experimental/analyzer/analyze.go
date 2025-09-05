@@ -6,7 +6,7 @@ import (
 	"github.com/smartcontractkit/mcms"
 	"github.com/smartcontractkit/mcms/types"
 
-	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/proposalutils"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer/pointer"
@@ -18,7 +18,7 @@ type ProposalContext interface {
 	ArgumentContext(chainSelector uint64) *proposalutils.ArgumentContext
 }
 
-type ProposalContextProvider func(env cldf.Environment) (ProposalContext, error)
+type ProposalContextProvider func(env deployment.Environment) (ProposalContext, error)
 
 func DescribeTimelockProposal(ctx ProposalContext, proposal *mcms.TimelockProposal) (string, error) {
 	describedBatch, err := describeBatchOperations(ctx, proposal.Operations)
@@ -124,7 +124,7 @@ func describeOperations(ctx ProposalContext, operations []types.Operation) ([]st
 // DefaultProposalContext implements a default proposal analysis context which searches
 // for the EVM ABI of all known contracts.
 type DefaultProposalContext struct {
-	AddressesByChain cldf.AddressesByChain
+	AddressesByChain deployment.AddressesByChain
 	evmRegistry      EVMABIRegistry
 	solanaRegistry   SolanaDecoderRegistry
 }
@@ -158,7 +158,7 @@ func WithSolanaDecoders(decoders map[string]DecodeInstructionFn) proposalCtxOpti
 	}
 }
 
-func NewDefaultProposalContext(env cldf.Environment, opts ...proposalCtxOption) (ProposalContext, error) {
+func NewDefaultProposalContext(env deployment.Environment, opts ...proposalCtxOption) (ProposalContext, error) {
 	// Apply options
 	options := &proposalCtxOptions{
 		evmABIMappings: map[string]string{},
@@ -180,12 +180,12 @@ func NewDefaultProposalContext(env cldf.Environment, opts ...proposalCtxOption) 
 	for _, address := range dataStoreAddresses {
 		chainAddresses, exists := addressesByChain[address.ChainSelector]
 		if !exists {
-			chainAddresses = map[string]cldf.TypeAndVersion{}
+			chainAddresses = map[string]deployment.TypeAndVersion{}
 		}
-		chainAddresses[address.Address] = cldf.TypeAndVersion{
-			Type:    cldf.ContractType(address.Type),
+		chainAddresses[address.Address] = deployment.TypeAndVersion{
+			Type:    deployment.ContractType(address.Type),
 			Version: pointer.DerefOrEmpty(address.Version),
-			Labels:  cldf.NewLabelSet(address.Labels.List()...),
+			Labels:  deployment.NewLabelSet(address.Labels.List()...),
 		}
 		addressesByChain[address.ChainSelector] = chainAddresses
 	}
@@ -214,7 +214,7 @@ func NewDefaultProposalContext(env cldf.Environment, opts ...proposalCtxOption) 
 }
 
 func (c *DefaultProposalContext) ArgumentContext(chainSelector uint64) *proposalutils.ArgumentContext {
-	chainAddresses := cldf.AddressesByChain{}
+	chainAddresses := deployment.AddressesByChain{}
 	chainAddresses[chainSelector] = c.AddressesByChain[chainSelector]
 
 	return proposalutils.NewArgumentContext(chainAddresses)

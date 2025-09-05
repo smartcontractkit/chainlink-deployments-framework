@@ -8,8 +8,8 @@ import (
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/proposalutils"
 
-	cldfds "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
-	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
+	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 )
 
 func TestNewDefaultProposalContext(t *testing.T) {
@@ -17,20 +17,20 @@ func TestNewDefaultProposalContext(t *testing.T) {
 
 	// --- arrange ---
 
-	datastore := cldfds.NewMemoryDataStore()
-	err := datastore.Addresses().Add(cldfds.AddressRef{
+	ds := datastore.NewMemoryDataStore()
+	err := ds.Addresses().Add(datastore.AddressRef{
 		ChainSelector: 9012,
 		Address:       "0xcallproxyaddress",
 		Type:          "CallProxy",
 		Version:       semver.MustParse("9.0.1"),
 		Qualifier:     "",
-		Labels:        cldfds.NewLabelSet("call-proxy-label"),
+		Labels:        datastore.NewLabelSet("call-proxy-label"),
 	})
 	require.NoError(t, err)
 
-	env := cldf.Environment{
-		ExistingAddresses: cldf.NewMemoryAddressBook(),
-		DataStore:         datastore.Seal(),
+	env := deployment.Environment{
+		ExistingAddresses: deployment.NewMemoryAddressBook(),
+		DataStore:         ds.Seal(),
 	}
 
 	// --- act ---
@@ -39,12 +39,12 @@ func TestNewDefaultProposalContext(t *testing.T) {
 	// --- assert ---
 	require.NoError(t, err)
 	require.IsType(t, &DefaultProposalContext{}, got)
-	require.Equal(t, got.(*DefaultProposalContext).AddressesByChain, cldf.AddressesByChain{ //nolint:testifylint
+	require.Equal(t, got.(*DefaultProposalContext).AddressesByChain, deployment.AddressesByChain{ //nolint:testifylint
 		9012: {
-			"0xcallproxyaddress": cldf.TypeAndVersion{
-				Type:    cldf.ContractType("CallProxy"),
+			"0xcallproxyaddress": deployment.TypeAndVersion{
+				Type:    deployment.ContractType("CallProxy"),
 				Version: *semver.MustParse("9.0.1"),
-				Labels:  cldf.NewLabelSet("call-proxy-label"),
+				Labels:  deployment.NewLabelSet("call-proxy-label"),
 			},
 		},
 	})
@@ -53,12 +53,12 @@ func TestNewDefaultProposalContext(t *testing.T) {
 func Test_DefaultProposalContext_ArgumentContext(t *testing.T) {
 	t.Parallel()
 
-	addresses := cldf.AddressesByChain{
+	addresses := deployment.AddressesByChain{
 		1234: {
-			"0xrbacTimelockAddress": cldf.MustTypeAndVersionFromString("RBACTimelock 1.0.0"),
+			"0xrbacTimelockAddress": deployment.MustTypeAndVersionFromString("RBACTimelock 1.0.0"),
 		},
 		5678: {
-			"0xmanyChainMultisigAddress": cldf.MustTypeAndVersionFromString("ManyChainMultisig 1.0.0"),
+			"0xmanyChainMultisigAddress": deployment.MustTypeAndVersionFromString("ManyChainMultisig 1.0.0"),
 		},
 	}
 	proposalContext := &DefaultProposalContext{AddressesByChain: addresses}
@@ -67,9 +67,9 @@ func Test_DefaultProposalContext_ArgumentContext(t *testing.T) {
 
 	require.Equal(t, got, &proposalutils.ArgumentContext{ //nolint:testifylint
 		Ctx: map[string]any{
-			"AddressesByChain": cldf.AddressesByChain{
+			"AddressesByChain": deployment.AddressesByChain{
 				5678: {
-					"0xmanyChainMultisigAddress": cldf.MustTypeAndVersionFromString("ManyChainMultisig 1.0.0"),
+					"0xmanyChainMultisigAddress": deployment.MustTypeAndVersionFromString("ManyChainMultisig 1.0.0"),
 				},
 			},
 		},

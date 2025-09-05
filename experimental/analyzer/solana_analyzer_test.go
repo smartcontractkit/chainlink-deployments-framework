@@ -9,15 +9,15 @@ import (
 
 	timelockbindings "github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings/v0_1_0/timelock"
 
-	cldfds "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
+	datastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 
 	"github.com/stretchr/testify/require"
 
-	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	cpistub "github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings/v0_1_0/external_program_cpi_stub"
-	mcm "github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings/v0_1_0/mcm"
+	"github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings/v0_1_0/mcm"
 
 	mcmssolanasdk "github.com/smartcontractkit/mcms/sdk/solana"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
@@ -29,20 +29,20 @@ func Test_solanaAnalyzer_describeOperations(t *testing.T) {
 	cpistub.SetProgramID(solana.MPK(cpiStubProgramID))
 	mcm.SetProgramID(solana.MPK(mcmProgramID))
 	solanaChainSelector := mcmstypes.ChainSelector(chainsel.SOLANA_DEVNET.Selector)
-	ds := cldfds.NewMemoryDataStore()
-	require.NoError(t, ds.Addresses().Add(cldfds.AddressRef{
+	ds := datastore.NewMemoryDataStore()
+	require.NoError(t, ds.Addresses().Add(datastore.AddressRef{
 		ChainSelector: chainsel.SOLANA_DEVNET.Selector,
 		Address:       cpiStubProgramID,
 		Type:          "ExternalProgramCpiStub",
 		Version:       &Version1_0_0,
 	}))
-	require.NoError(t, ds.Addresses().Add(cldfds.AddressRef{
+	require.NoError(t, ds.Addresses().Add(datastore.AddressRef{
 		ChainSelector: chainsel.SOLANA_DEVNET.Selector,
 		Address:       mcmProgramID,
 		Type:          "ManyChainMultiSigProgram",
 		Version:       &Version1_0_0,
 	}))
-	env := cldf.Environment{DataStore: ds.Seal(), ExistingAddresses: cldf.NewMemoryAddressBook()}
+	env := deployment.Environment{DataStore: ds.Seal(), ExistingAddresses: deployment.NewMemoryAddressBook()}
 	defaultProposalCtx, err := NewDefaultProposalContext(
 		env,
 		WithEVMABIMappings(map[string]string{
@@ -454,16 +454,16 @@ func Test_solanaAnalyzer_describeBatchOperations(t *testing.T) {
 
 	cpistub.SetProgramID(solana.MPK(cpiStubProgramID))
 	solanaChainSelector := mcmstypes.ChainSelector(chainsel.SOLANA_DEVNET.Selector)
-	ds := cldfds.NewMemoryDataStore()
-	err := ds.Addresses().Add(cldfds.AddressRef{
+	ds := datastore.NewMemoryDataStore()
+	err := ds.Addresses().Add(datastore.AddressRef{
 		ChainSelector: chainsel.SOLANA_DEVNET.Selector,
 		Address:       cpiStubProgramID,
 		Type:          "ExternalProgramCpiStub",
 		Version:       &Version1_0_0,
 	})
 	require.NoError(t, err)
-	env := cldf.Environment{
-		ExistingAddresses: cldf.NewMemoryAddressBook(),
+	env := deployment.Environment{
+		ExistingAddresses: deployment.NewMemoryAddressBook(),
 		DataStore:         ds.Seal(),
 	}
 
@@ -475,7 +475,7 @@ func Test_solanaAnalyzer_describeBatchOperations(t *testing.T) {
 		WithSolanaDecoders(map[string]DecodeInstructionFn{
 			"RBACTimelockProgram 1.0.0": DIFn(timelockbindings.DecodeInstruction),
 
-			cldf.NewTypeAndVersion("ExternalProgramCpiStub", Version1_0_0).String(): DIFn(cpistub.DecodeInstruction),
+			deployment.NewTypeAndVersion("ExternalProgramCpiStub", Version1_0_0).String(): DIFn(cpistub.DecodeInstruction),
 		}),
 	)
 

@@ -9,7 +9,7 @@ import (
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/mcms/types"
 
-	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 )
 
 const testAddress = "0xe86f0e5a8b9cb6ab31b656baa83a0d2eb761b32eb31b9a9c74abb7d0cffd26fa"
@@ -38,9 +38,9 @@ func TestDescribeBatchOperations(t *testing.T) {
 	t.Parallel()
 
 	defaultProposalCtx := &DefaultProposalContext{
-		AddressesByChain: cldf.AddressesByChain{
+		AddressesByChain: deployment.AddressesByChain{
 			chainsel.APTOS_TESTNET.Selector: {
-				testAddress: cldf.MustTypeAndVersionFromString("TestCCIP 1.0.0"),
+				testAddress: deployment.MustTypeAndVersionFromString("TestCCIP 1.0.0"),
 			},
 		},
 	}

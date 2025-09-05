@@ -6,7 +6,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 
-	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer/pointer"
 )
@@ -14,8 +14,8 @@ import (
 type EVMABIRegistry interface {
 	GetABIByAddress(chainSelector uint64, address string) (*abi.ABI, string, error)
 	GetAllABIs() map[string]string
-	GetABIByType(typeAndVersion cldf.TypeAndVersion) (*abi.ABI, string, error)
-	AddABI(contractType cldf.TypeAndVersion, abi string) error
+	GetABIByType(typeAndVersion deployment.TypeAndVersion) (*abi.ABI, string, error)
+	AddABI(contractType deployment.TypeAndVersion, abi string) error
 }
 
 var _ EVMABIRegistry = (*environmentEVMRegistry)(nil)
@@ -23,8 +23,8 @@ var _ EVMABIRegistry = (*environmentEVMRegistry)(nil)
 // environmentEVMRegistry is an implementation of EVMABIRegistry that retrieves ABIs from the provided environment using DataStore.
 type environmentEVMRegistry struct {
 	abiRegistry      map[string]string
-	env              cldf.Environment
-	addressesByChain cldf.AddressesByChain
+	env              deployment.Environment
+	addressesByChain deployment.AddressesByChain
 }
 
 func (reg environmentEVMRegistry) GetAllABIs() map[string]string {
@@ -44,8 +44,8 @@ func (reg environmentEVMRegistry) GetABIByAddress(chainSelector uint64, address 
 	return reg.GetABIByType(addressTypeAndVersion)
 }
 
-func (reg environmentEVMRegistry) GetABIByType(typeAndVersion cldf.TypeAndVersion) (*abi.ABI, string, error) {
-	registryKey := cldf.TypeAndVersion{Type: typeAndVersion.Type, Version: typeAndVersion.Version}.String()
+func (reg environmentEVMRegistry) GetABIByType(typeAndVersion deployment.TypeAndVersion) (*abi.ABI, string, error) {
+	registryKey := deployment.TypeAndVersion{Type: typeAndVersion.Type, Version: typeAndVersion.Version}.String()
 	abiStr, found := reg.abiRegistry[registryKey]
 	if !found {
 		return nil, "", fmt.Errorf("ABI not found for type and version %v", typeAndVersion)
@@ -59,7 +59,7 @@ func (reg environmentEVMRegistry) GetABIByType(typeAndVersion cldf.TypeAndVersio
 	return &abiObj, abiStr, nil
 }
 
-func (reg environmentEVMRegistry) AddABI(typeAndVersion cldf.TypeAndVersion, abiStr string) error {
+func (reg environmentEVMRegistry) AddABI(typeAndVersion deployment.TypeAndVersion, abiStr string) error {
 	_, err := abi.JSON(strings.NewReader(abiStr))
 	if err != nil {
 		return fmt.Errorf("failed to parse ABI for typeAndVersion %s", typeAndVersion.String())
@@ -70,7 +70,7 @@ func (reg environmentEVMRegistry) AddABI(typeAndVersion cldf.TypeAndVersion, abi
 }
 
 // NewEnvironmentEVMRegistry creates a new environmentEVMRegistry from the provided ABI mappings and domain name.
-func NewEnvironmentEVMRegistry(env cldf.Environment, abiMappings map[string]string) (*environmentEVMRegistry, error) {
+func NewEnvironmentEVMRegistry(env deployment.Environment, abiMappings map[string]string) (*environmentEVMRegistry, error) {
 	addressesByChain, errAddrBook := env.ExistingAddresses.Addresses() //nolint:staticcheck
 	if errAddrBook != nil {
 		return nil, errAddrBook
@@ -82,12 +82,12 @@ func NewEnvironmentEVMRegistry(env cldf.Environment, abiMappings map[string]stri
 	for _, address := range dataStoreAddresses {
 		chainAddresses, exists := addressesByChain[address.ChainSelector]
 		if !exists {
-			chainAddresses = map[string]cldf.TypeAndVersion{}
+			chainAddresses = map[string]deployment.TypeAndVersion{}
 		}
-		chainAddresses[address.Address] = cldf.TypeAndVersion{
-			Type:    cldf.ContractType(address.Type),
+		chainAddresses[address.Address] = deployment.TypeAndVersion{
+			Type:    deployment.ContractType(address.Type),
 			Version: pointer.DerefOrEmpty(address.Version),
-			Labels:  cldf.NewLabelSet(address.Labels.List()...),
+			Labels:  deployment.NewLabelSet(address.Labels.List()...),
 		}
 		addressesByChain[address.ChainSelector] = chainAddresses
 	}
