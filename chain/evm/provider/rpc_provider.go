@@ -7,7 +7,7 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
@@ -96,7 +96,7 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 	}
 
 	// Get the Chain ID
-	chainIDStr, err := chain_selectors.GetChainIDFromSelector(p.selector)
+	chainIDStr, err := chainsel.GetChainIDFromSelector(p.selector)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get chain ID from selector %d: %w", p.selector, err)
 	}

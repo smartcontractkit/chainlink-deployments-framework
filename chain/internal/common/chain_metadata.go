@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/utils"
 )
@@ -44,7 +44,7 @@ func (c ChainMetadata) Name() string {
 
 // Family returns the family of the chain
 func (c ChainMetadata) Family() string {
-	family, err := chain_selectors.GetSelectorFamily(c.Selector)
+	family, err := chainsel.GetSelectorFamily(c.Selector)
 	if err != nil {
 		return ""
 	}

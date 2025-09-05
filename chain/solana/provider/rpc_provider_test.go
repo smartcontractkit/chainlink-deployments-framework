@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -104,7 +104,7 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 	t.Parallel()
 
 	var (
-		chainSelector = chain_selectors.TEST_22222222222222222222222222222222222222222222.Selector
+		chainSelector = chainsel.TEST_22222222222222222222222222222222222222222222.Selector
 		existingChain = &solana.Chain{}
 	)
 
@@ -248,8 +248,8 @@ func Test_RPCChainProvider_Name(t *testing.T) {
 func Test_RPCChainProvider_ChainSelector(t *testing.T) {
 	t.Parallel()
 
-	p := &RPCChainProvider{selector: chain_selectors.SOLANA_DEVNET.Selector}
-	assert.Equal(t, chain_selectors.SOLANA_DEVNET.Selector, p.ChainSelector())
+	p := &RPCChainProvider{selector: chainsel.SOLANA_DEVNET.Selector}
+	assert.Equal(t, chainsel.SOLANA_DEVNET.Selector, p.ChainSelector())
 }
 
 func Test_RPCChainProvider_BlockChain(t *testing.T) {

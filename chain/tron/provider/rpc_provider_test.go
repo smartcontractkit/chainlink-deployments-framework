@@ -8,7 +8,7 @@ import (
 
 	"github.com/avast/retry-go/v4"
 	"github.com/fbsobreira/gotron-sdk/pkg/address"
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/freeport"
 	"github.com/stretchr/testify/assert"
@@ -78,7 +78,7 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 	t.Parallel()
 
 	var (
-		chainSelector = chain_selectors.TEST_22222222222222222222222222222222222222222222.Selector
+		chainSelector = chainsel.TEST_22222222222222222222222222222222222222222222.Selector
 		existingChain = &tron.Chain{}
 	)
 
@@ -193,8 +193,8 @@ func Test_RPCChainProvider_Name(t *testing.T) {
 func Test_RPCChainProvider_ChainSelector(t *testing.T) {
 	t.Parallel()
 
-	p := RPCChainProvider{selector: chain_selectors.TRON_MAINNET.Selector}
-	assert.Equal(t, chain_selectors.TRON_MAINNET.Selector, p.ChainSelector())
+	p := RPCChainProvider{selector: chainsel.TRON_MAINNET.Selector}
+	assert.Equal(t, chainsel.TRON_MAINNET.Selector, p.ChainSelector())
 }
 
 func Test_RPCChainProvider_BlockChain(t *testing.T) {
@@ -356,7 +356,7 @@ func setupLocalStack(t *testing.T) *tron.Chain {
 
 	t.Logf("TRON node config: fullNodeUrl=%s, solidityNodeUrl=%s", fullNodeUrl, solidityNodeUrl)
 
-	chainSelector := chain_selectors.TEST_22222222222222222222222222222222222222222222.Selector
+	chainSelector := chainsel.TEST_22222222222222222222222222222222222222222222.Selector
 	signerGenerator, err := SignerGenPrivateKey(blockchain.TRONAccounts.PrivateKeys[0])
 	require.NoError(t, err)
 

@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 
-	sui_sdk "github.com/block-vision/sui-go-sdk/sui"
+	suisdk "github.com/block-vision/sui-go-sdk/sui"
 
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/sui"
@@ -77,12 +77,12 @@ func (p *RPCChainProvider) Initialize(_ context.Context) (chain.BlockChain, erro
 	}
 
 	// Validate that the chain selector is known
-	_, err = chain_selectors.GetChainIDFromSelector(p.selector)
+	_, err = chainsel.GetChainIDFromSelector(p.selector)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get chain ID from selector %d: %w", p.selector, err)
 	}
 
-	client := sui_sdk.NewSuiClient(p.config.RPCURL)
+	client := suisdk.NewSuiClient(p.config.RPCURL)
 
 	p.chain = &sui.Chain{
 		ChainMetadata: sui.ChainMetadata{

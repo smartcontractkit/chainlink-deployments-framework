@@ -1,21 +1,21 @@
 package utils
 
-import chain_selectors "github.com/smartcontractkit/chain-selectors"
+import chainsel "github.com/smartcontractkit/chain-selectors"
 
 // ChainInfo returns the chain info for the given selector.
 // It returns an error if the selector is invalid or if the chain info cannot be retrieved.
-func ChainInfo(cs uint64) (chain_selectors.ChainDetails, error) {
-	id, err := chain_selectors.GetChainIDFromSelector(cs)
+func ChainInfo(cs uint64) (chainsel.ChainDetails, error) {
+	id, err := chainsel.GetChainIDFromSelector(cs)
 	if err != nil {
-		return chain_selectors.ChainDetails{}, err
+		return chainsel.ChainDetails{}, err
 	}
-	family, err := chain_selectors.GetSelectorFamily(cs)
+	family, err := chainsel.GetSelectorFamily(cs)
 	if err != nil {
-		return chain_selectors.ChainDetails{}, err
+		return chainsel.ChainDetails{}, err
 	}
-	info, err := chain_selectors.GetChainDetailsByChainIDAndFamily(id, family)
+	info, err := chainsel.GetChainDetailsByChainIDAndFamily(id, family)
 	if err != nil {
-		return chain_selectors.ChainDetails{}, err
+		return chainsel.ChainDetails{}, err
 	}
 
 	return info, nil

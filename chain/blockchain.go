@@ -133,7 +133,7 @@ type chainSelectorsOptions struct {
 }
 
 // WithFamily returns an option to filter chains by family (evm, solana, aptos)
-// Use constants from chain_selectors package eg WithFamily(chain_selectors.FamilySolana)
+// Use constants from chainsel package eg WithFamily(chainsel.FamilySolana)
 // This can be used more than once to include multiple families.
 func WithFamily(family string) ChainSelectorsOption {
 	return func(o *chainSelectorsOptions) {
@@ -158,7 +158,7 @@ func WithChainSelectorsExclusion(chainSelectors []uint64) ChainSelectorsOption {
 
 // ListChainSelectors returns all chain selectors with optional filtering
 // Options:
-// - WithFamily: filter by family eg WithFamily(chain_selectors.FamilySolana)
+// - WithFamily: filter by family eg WithFamily(chainsel.FamilySolana)
 // - WithChainSelectorsExclusion: exclude specific chain selectors
 func (b BlockChains) ListChainSelectors(options ...ChainSelectorsOption) []uint64 {
 	opts := chainSelectorsOptions{}

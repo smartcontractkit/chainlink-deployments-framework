@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/testutils"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/ton"
@@ -53,7 +53,7 @@ func Test_CTFChainProviderConfig_validate(t *testing.T) {
 func Test_CTFChainProvider_Initialize(t *testing.T) {
 	t.Parallel()
 
-	var chainSelector = chain_selectors.TEST_1000.Selector
+	var chainSelector = chainsel.TEST_1000.Selector
 
 	tests := []struct {
 		name         string
@@ -105,8 +105,8 @@ func Test_CTFChainProvider_Name(t *testing.T) {
 func Test_CTFChainProvider_ChainSelector(t *testing.T) {
 	t.Parallel()
 
-	p := &CTFChainProvider{selector: chain_selectors.TEST_1000.Selector}
-	assert.Equal(t, chain_selectors.TEST_1000.Selector, p.ChainSelector())
+	p := &CTFChainProvider{selector: chainsel.TEST_1000.Selector}
+	assert.Equal(t, chainsel.TEST_1000.Selector, p.ChainSelector())
 }
 
 func Test_CTFChainProvider_BlockChain(t *testing.T) {

@@ -10,7 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/kms"
@@ -23,8 +23,8 @@ var (
 
 // Defines standard variables for a test chain.
 var (
-	testChainID    = chain_selectors.TEST_1000.EvmChainID // Defines a standard test EVM chain ID
-	testChainIDBig = new(big.Int).SetUint64(testChainID)  // Defines the testChainID in *big.Int format
+	testChainID    = chainsel.TEST_1000.EvmChainID       // Defines a standard test EVM chain ID
+	testChainIDBig = new(big.Int).SetUint64(testChainID) // Defines the testChainID in *big.Int format
 )
 
 // Variables used for testing the KMS provider.

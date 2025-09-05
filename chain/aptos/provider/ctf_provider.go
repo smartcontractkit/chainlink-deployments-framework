@@ -9,7 +9,7 @@ import (
 	"time"
 
 	aptoslib "github.com/aptos-labs/aptos-go-sdk"
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/freeport"
@@ -92,7 +92,7 @@ func (p *CTFChainProvider) Initialize(_ context.Context) (chain.BlockChain, erro
 	}
 
 	// Get the Aptos Chain ID
-	chainID, err := chain_selectors.GetChainIDFromSelector(p.selector)
+	chainID, err := chainsel.GetChainIDFromSelector(p.selector)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get chain ID from selector %d: %w", p.selector, err)
 	}

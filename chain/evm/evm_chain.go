@@ -10,7 +10,7 @@ import (
 	"github.com/zksync-sdk/zksync2-go/accounts"
 	"github.com/zksync-sdk/zksync2-go/clients"
 
-	chain_common "github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/common"
+	chaincommon "github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/common"
 )
 
 // ConfirmFunc is a function that takes a transaction, waits for the transaction to be confirmed,
@@ -59,15 +59,15 @@ func (c Chain) ChainSelector() uint64 {
 
 // String returns chain name and selector "<name> (<selector>)"
 func (c Chain) String() string {
-	return chain_common.ChainMetadata{Selector: c.Selector}.String()
+	return chaincommon.ChainMetadata{Selector: c.Selector}.String()
 }
 
 // Name returns the name of the chain
 func (c Chain) Name() string {
-	return chain_common.ChainMetadata{Selector: c.Selector}.Name()
+	return chaincommon.ChainMetadata{Selector: c.Selector}.Name()
 }
 
 // Family returns the family of the chain
 func (c Chain) Family() string {
-	return chain_common.ChainMetadata{Selector: c.Selector}.Family()
+	return chaincommon.ChainMetadata{Selector: c.Selector}.Family()
 }
