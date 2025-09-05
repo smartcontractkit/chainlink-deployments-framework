@@ -2,6 +2,7 @@ package evm
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -70,4 +71,15 @@ func (c Chain) Name() string {
 // Family returns the family of the chain
 func (c Chain) Family() string {
 	return chain_common.ChainMetadata{Selector: c.Selector}.Family()
+}
+
+// AddressToBytes converts an EVM address string to bytes.
+func (c Chain) AddressToBytes(address string) ([]byte, error) {
+	if !common.IsHexAddress(address) {
+		return nil, fmt.Errorf("invalid EVM address format: %s", address)
+	}
+
+	addr := common.HexToAddress(address)
+
+	return addr.Bytes(), nil
 }

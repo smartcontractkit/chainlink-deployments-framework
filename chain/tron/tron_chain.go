@@ -2,6 +2,7 @@ package tron
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/fbsobreira/gotron-sdk/pkg/address"
@@ -86,4 +87,15 @@ func DefaultTriggerOptions() *TriggerOptions {
 		TAmount:             0,          // No TRX transferred by default.
 		ConfirmRetryOptions: DefaultConfirmRetryOptions(),
 	}
+}
+
+// AddressToBytes converts a Tron address string to bytes.
+// Tron addresses can be in base58 format (like "TLyqzVGLV1srkB7dToTAEqgDSfPtXRJZYH").
+func (c Chain) AddressToBytes(addressStr string) ([]byte, error) {
+	addr, err := address.Base58ToAddress(addressStr)
+	if err != nil {
+		return nil, fmt.Errorf("invalid Tron address format: %s, error: %w", addressStr, err)
+	}
+
+	return addr.Bytes(), nil
 }

@@ -208,3 +208,14 @@ func (c Chain) Name() string {
 func (c Chain) Family() string {
 	return common.ChainMetadata{Selector: c.Selector}.Family()
 }
+
+// AddressToBytes converts a Solana address string to bytes.
+// Solana addresses are base58-encoded public keys (32 bytes).
+func (c Chain) AddressToBytes(address string) ([]byte, error) {
+	pubkey, err := sollib.PublicKeyFromBase58(address)
+	if err != nil {
+		return nil, fmt.Errorf("invalid Solana address format: %s, error: %w", address, err)
+	}
+
+	return pubkey.Bytes(), nil
+}

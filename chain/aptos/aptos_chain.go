@@ -1,6 +1,8 @@
 package aptos
 
 import (
+	"fmt"
+
 	aptoslib "github.com/aptos-labs/aptos-go-sdk"
 
 	chain_common "github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/common"
@@ -38,4 +40,15 @@ func (c Chain) Name() string {
 // Family returns the family of the chain
 func (c Chain) Family() string {
 	return chain_common.ChainMetadata{Selector: c.Selector}.Family()
+}
+
+// AddressToBytes converts an Aptos address string to bytes.
+func (c Chain) AddressToBytes(address string) ([]byte, error) {
+	var addr aptoslib.AccountAddress
+	err := addr.ParseStringRelaxed(address)
+	if err != nil {
+		return nil, fmt.Errorf("invalid Aptos address format: %s, error: %w", address, err)
+	}
+
+	return addr[:], nil
 }

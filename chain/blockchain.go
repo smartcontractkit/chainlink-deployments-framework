@@ -30,6 +30,8 @@ type BlockChain interface {
 	Name() string
 	ChainSelector() uint64
 	Family() string
+	// AddressToBytes converts an address string to bytes.
+	AddressToBytes(address string) ([]byte, error)
 }
 
 // BlockChains represents a collection of chains.
