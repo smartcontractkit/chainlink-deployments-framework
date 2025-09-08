@@ -112,14 +112,14 @@ func NewRPCChainProvider(selector uint64, config RPCChainProviderConfig) *RPCCha
 
 // setupConnection creates and tests a connection to the TON liteserver
 func setupConnection(ctx context.Context, liteserverURL string) (*tonlib.APIClient, error) {
-	connectionPool, err := getConnectionPoolFromLiteserverURL(ctx, liteserverURL)
+	connectionPool, err := createLiteclientConnectionPool(ctx, liteserverURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to liteserver: %w", err)
 	}
 
 	api := tonlib.NewAPIClient(connectionPool, tonlib.ProofCheckPolicyFast)
 
-	// Check connection and get current block
+	// Test connection and get current block
 	mb, err := api.GetMasterchainInfo(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get masterchain info: %w", err)
@@ -187,37 +187,36 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 	return *p.chain, nil
 }
 
-// getConnectionPoolFromLiteserverURL parses a liteserver:// URL and creates a connection pool
-func getConnectionPoolFromLiteserverURL(ctx context.Context, liteserverURL string) (*liteclient.ConnectionPool, error) {
+// createLiteclientConnectionPool creates connection pool returning concrete type for production use
+func createLiteclientConnectionPool(ctx context.Context, liteserverURL string) (*liteclient.ConnectionPool, error) {
 	// Validate URL format first
 	if err := validateLiteserverURL(liteserverURL); err != nil {
 		return nil, err
 	}
 
-	// Parse the validated URL
+	// Parse the URL
 	urlPart := strings.TrimPrefix(liteserverURL, "liteserver://")
 	parts := strings.Split(urlPart, "@")
 	publicKey := parts[0]
 	hostPort := parts[1]
 
-	connectionPool := liteclient.NewConnectionPool()
+	pool := liteclient.NewConnectionPool()
 
-	// mirror the exact logic from AddConnectionsFromConfig
+	// Setup connection timeout - mirrors tonutils-go AddConnectionsFromConfig logic
 	timeout := 3 * time.Second
 	if dl, ok := ctx.Deadline(); ok {
 		timeout = time.Until(dl)
 	}
 
-	// create personal context for the connection attempt
 	connCtx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	err := connectionPool.AddConnection(connCtx, hostPort, publicKey)
+	err := pool.AddConnection(connCtx, hostPort, publicKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add liteserver connection: %w", err)
 	}
 
-	return connectionPool, nil
+	return pool, nil
 }
 
 // GetWalletVersionConfig returns the wallet version. V5R1 is the default if version is empty.

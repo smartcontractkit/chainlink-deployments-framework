@@ -143,9 +143,9 @@ func (p *CTFChainProvider) startContainer(chainID string) (string, *ton.APIClien
 	)
 	require.NoError(p.t, err, "Failed to start CTF Ton container after %d attempts", attempts)
 
-	connectionPool, err := getConnectionPoolFromLiteserverURL(p.t.Context(), url)
-
+	connectionPool, err := createLiteclientConnectionPool(p.t.Context(), url)
 	require.NoError(p.t, err)
+
 	client := ton.NewAPIClient(connectionPool, ton.ProofCheckPolicyFast)
 
 	// check connection, CTFv2 handles the readiness
