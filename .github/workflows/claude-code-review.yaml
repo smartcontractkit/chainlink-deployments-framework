@@ -1,0 +1,188 @@
+name: List Open PRs
+
+on:
+  workflow_dispatch:
+
+jobs:
+  list-prs:
+    name: List Open Pull Requests
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      pull-requests: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v2.1.2
+        with:
+          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+          create_credentials_file: true
+          export_environment_variables: true
+        env:
+          # Ensure credentials are created outside the git repository
+          GOOGLE_APPLICATION_CREDENTIALS_FILE_PATH: /tmp/gcp-credentials.json
+
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2.1.0
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4.0.3
+        with:
+          node-version: '22'
+
+      - name: Install Claude Code
+        run: |
+          npm install -g @anthropic-ai/claude-code
+          echo "Claude Code installed successfully"
+
+      - name: Configure Claude Code for Vertex AI
+        run: |
+          echo "CLAUDE_CODE_USE_VERTEX=1" >> $GITHUB_ENV
+          echo "CLOUD_ML_REGION=us-east5" >> $GITHUB_ENV
+          echo "ANTHROPIC_VERTEX_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}" >> $GITHUB_ENV
+          echo "DISABLE_PROMPT_CACHING=1" >> $GITHUB_ENV
+          echo "DISABLE_TELEMETRY=1" >> $GITHUB_ENV
+          echo "DISABLE_ERROR_REPORTING=1" >> $GITHUB_ENV
+          echo "DISABLE_BUG_COMMAND=1" >> $GITHUB_ENV
+          echo "CI=true" >> $GITHUB_ENV
+          echo "TERM=dumb" >> $GITHUB_ENV
+          echo "NO_COLOR=1" >> $GITHUB_ENV
+          echo "FORCE_COLOR=0" >> $GITHUB_ENV
+          echo "DEBIAN_FRONTEND=noninteractive" >> $GITHUB_ENV
+          echo "ANTHROPIC_MODEL=claude-sonnet-4@20250514" >> $GITHUB_ENV
+
+      - name: List Open Pull Requests with Claude Analysis
+        run: |
+          echo "=== Open Pull Requests Analysis by Claude ==="
+          echo "Repository: ${{ github.repository }}"
+          echo "Generated at: $(date)"
+          echo ""
+
+          # Get open PRs
+          curl -s \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/pulls?state=open&per_page=100" \
+            > open_prs.json
+
+          PR_COUNT=$(cat open_prs.json | jq length)
+          echo "Total open PRs: $PR_COUNT"
+          echo ""
+
+          if [ "$PR_COUNT" -eq 0 ]; then
+            echo "🎉 No open pull requests!"
+            exit 0
+          fi
+
+          # Process each PR with Claude analysis
+          cat open_prs.json | jq -c '.[]' | while read -r pr; do
+            PR_NUMBER=$(echo "$pr" | jq -r '.number')
+            PR_TITLE=$(echo "$pr" | jq -r '.title')
+            PR_AUTHOR=$(echo "$pr" | jq -r '.user.login')
+            PR_URL=$(echo "$pr" | jq -r '.html_url')
+            PR_BODY=$(echo "$pr" | jq -r '.body // "No description provided"')
+            PR_CREATED=$(echo "$pr" | jq -r '.created_at')
+            DRAFT=$(echo "$pr" | jq -r '.draft')
+
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "🔄 PR #$PR_NUMBER: $PR_TITLE"
+            echo "👤 Author: @$PR_AUTHOR"
+            echo "🔗 URL: $PR_URL"
+            echo "📅 Created: $PR_CREATED"
+            if [ "$DRAFT" == "true" ]; then
+              echo "🚧 Status: DRAFT"
+            else
+              echo "✅ Status: Ready for Review"
+            fi
+            echo ""
+
+            # Get PR diff for Claude analysis
+            curl -s \
+              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              -H "Accept: application/vnd.github.diff" \
+              "https://api.github.com/repos/${{ github.repository }}/pulls/$PR_NUMBER" \
+              > "pr_${PR_NUMBER}.diff"
+
+            # Get files changed for context
+            curl -s \
+              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              "https://api.github.com/repos/${{ github.repository }}/pulls/$PR_NUMBER/files" \
+              > "pr_${PR_NUMBER}_files.json"
+
+            FILES_COUNT=$(cat "pr_${PR_NUMBER}_files.json" | jq length)
+
+            # Create analysis prompt for Claude
+            cat > "claude_prompt_${PR_NUMBER}.txt" << EOF
+            Please analyze this pull request and provide a concise summary.
+
+            PR Title: $PR_TITLE
+            PR Description: $PR_BODY
+            Files changed: $FILES_COUNT
+
+            Key files modified:
+            $(cat "pr_${PR_NUMBER}_files.json" | jq -r '.[] | "- \(.filename) (\(.status)) +\(.additions)/-\(.deletions)"' | head -10)
+
+            Please provide:
+            1. A brief summary of what this PR does (2-3 sentences)
+            2. The main technical changes or features added
+            3. Any potential impact or risks you notice
+            4. Overall assessment (bug fix, feature, refactor, etc.)
+
+            Keep the response concise and focused on the key changes.
+            EOF
+
+            echo "🤖 Claude Analysis:"
+
+            # Create temp directory outside git repository for Claude prompt
+            TEMP_DIR="/tmp/claude-pr-${PR_NUMBER}-$$"
+            mkdir -p "$TEMP_DIR"
+
+            # Move the prompt to temp directory
+            mv "claude_prompt_${PR_NUMBER}.txt" "$TEMP_DIR/claude_prompt.txt"
+
+            # Use Claude Code CLI with Vertex AI configuration
+            cd "$TEMP_DIR"
+            CLAUDE_RESPONSE=$(claude -p "$(cat claude_prompt.txt)" --output-format stream-json --verbose 2>&1 | tail -n 20)
+            cd - > /dev/null
+
+            if [ $? -eq 0 ]; then
+              # Claude succeeded - display the response
+              echo "$CLAUDE_RESPONSE" | sed 's/^/   /'
+            else
+              echo "   Claude analysis failed. Error output:"
+              echo "$CLAUDE_RESPONSE" | sed 's/^/   /'
+              echo ""
+              echo "   Fallback: Basic analysis based on file changes"
+              echo "   This PR modifies $FILES_COUNT file(s) in the repository."
+              echo "   Manual review recommended for detailed assessment."
+            fi
+
+            # Cleanup temp directory
+            rm -rf "$TEMP_DIR"
+
+            echo ""
+            echo "📁 Files Summary: $FILES_COUNT file(s) changed"
+            if [ "$FILES_COUNT" -gt 0 ]; then
+              cat "pr_${PR_NUMBER}_files.json" | jq -r '.[] | "   • \(.filename) (\(.status))"' | head -5
+              if [ "$FILES_COUNT" -gt 5 ]; then
+                echo "   ... and $((FILES_COUNT - 5)) more files"
+              fi
+            fi
+
+            echo ""
+            echo ""
+
+            # Clean up temp files
+            rm -f "pr_${PR_NUMBER}.diff" "pr_${PR_NUMBER}_files.json"
+          done
+
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "🎯 Analysis complete! Found $PR_COUNT open pull request(s) analyzed by Claude."
