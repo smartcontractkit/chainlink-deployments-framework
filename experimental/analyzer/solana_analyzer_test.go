@@ -23,8 +23,8 @@ import (
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 )
 
+//nolint:paralleltest // call to SetProgramID is not thread-safe
 func Test_solanaAnalyzer_describeOperations(t *testing.T) {
-	t.Parallel()
 
 	cpistub.SetProgramID(solana.MPK(cpiStubProgramID))
 	mcm.SetProgramID(solana.MPK(mcmProgramID))
@@ -449,8 +449,8 @@ func Test_solanaAnalyzer_describeOperations(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // call to SetProgramID is not thread-safe
 func Test_solanaAnalyzer_describeBatchOperations(t *testing.T) {
-	t.Parallel()
 
 	cpistub.SetProgramID(solana.MPK(cpiStubProgramID))
 	solanaChainSelector := mcmstypes.ChainSelector(chainsel.SOLANA_DEVNET.Selector)
