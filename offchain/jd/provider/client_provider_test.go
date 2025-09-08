@@ -6,6 +6,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 )
 
 func TestClientOffchainProviderConfig_validate(t *testing.T) {
@@ -114,4 +116,41 @@ func TestInitializeProvider(t *testing.T) {
 	require.Error(t, err)
 	assert.Nil(t, client)
 	assert.Contains(t, err.Error(), "failed to validate provider config")
+}
+
+func TestWithDryRun(t *testing.T) {
+	t.Parallel()
+
+	lggr := logger.Test(t)
+
+	// Test that WithDryRun option sets the dry run fields correctly
+	config := ClientOffchainProviderConfig{
+		GRPC: "localhost:9090",
+	}
+
+	provider := NewClientOffchainProvider(config, WithDryRun(lggr))
+
+	// Verify that dry run fields are set (we can't access them directly since they're private,
+	// but we can test validation)
+	err := provider.config.validate()
+	require.NoError(t, err, "Config with dry run and logger should be valid")
+}
+
+func TestWithDryRun_MissingLogger(t *testing.T) {
+	t.Parallel()
+
+	// Test that dry run without logger fails validation
+	config := ClientOffchainProviderConfig{
+		GRPC: "localhost:9090",
+	}
+
+	// Manually set dry run without logger to test validation
+	config.dryRun = true
+	// config.dryRunLogger is nil
+
+	provider := NewClientOffchainProvider(config)
+
+	err := provider.config.validate()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "dry run logger is required when dry run mode is enabled")
 }

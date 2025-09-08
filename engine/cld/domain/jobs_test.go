@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/lib/jsonutils"
+	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/internal/jsonutils"
 )
 
 type testJobSpec struct {
@@ -97,7 +97,7 @@ func Test_LoadJobSpecs(t *testing.T) {
 func Test_LoadJobs(t *testing.T) {
 	t.Parallel()
 
-	jobs := []cldf.ProposedJob{
+	jobs := []fdeployment.ProposedJob{
 		{
 			JobID: "job_123",
 			Node:  "node1",
@@ -109,7 +109,7 @@ func Test_LoadJobs(t *testing.T) {
 		name         string
 		beforeFunc   func(t *testing.T, rootDir string)
 		giveFilePath string
-		want         []cldf.ProposedJob
+		want         []fdeployment.ProposedJob
 		wantErr      string
 	}{
 		{

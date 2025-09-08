@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 )
 
 // LoadJobSpecs loads job specs from a file.
 
 // Deprecated: The map used to represent the job specs that was provided by
 // `chainlink/deployments` is no longer used, and has been replaced by a slice
-// of `deployment.ProposedJob` structs. This has been kept around for backwards
+// of `fdeployment.ProposedJob` structs. This has been kept around for backwards
 // compatibility with existing migrations, but should not be used in new code.
 // Prefer using `LoadJobs` instead.
 func LoadJobSpecs(jobSpecsFilePath string) (map[string][]string, error) {
@@ -29,9 +29,9 @@ func LoadJobSpecs(jobSpecsFilePath string) (map[string][]string, error) {
 	return specs, nil
 }
 
-// LoadJobs unmarshals a slice of `deployment.ProposedJob` structs from a file.
-func LoadJobs(jobsFilePath string) ([]deployment.ProposedJob, error) {
-	jobs := make([]deployment.ProposedJob, 0)
+// LoadJobs unmarshals a slice of `fdeployment.ProposedJob` structs from a file.
+func LoadJobs(jobsFilePath string) ([]fdeployment.ProposedJob, error) {
+	jobs := make([]fdeployment.ProposedJob, 0)
 	b, err := os.ReadFile(jobsFilePath)
 	if err != nil {
 		return jobs, err

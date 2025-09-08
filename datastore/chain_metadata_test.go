@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 )
 
 func TestChainMetadata_Clone(t *testing.T) {
@@ -15,7 +15,7 @@ func TestChainMetadata_Clone(t *testing.T) {
 		ChainSelector: 1,
 		Metadata: testMetadata{
 			Field:         "test field",
-			ChainSelector: chain_selectors.APTOS_MAINNET.Selector,
+			ChainSelector: chainsel.APTOS_MAINNET.Selector,
 		},
 	}
 
@@ -32,7 +32,7 @@ func TestChainMetadata_Clone(t *testing.T) {
 	original.ChainSelector = 2
 	original.Metadata = testMetadata{
 		Field:         "updated field",
-		ChainSelector: chain_selectors.APTOS_MAINNET.Selector,
+		ChainSelector: chainsel.APTOS_MAINNET.Selector,
 	}
 
 	require.NotEqual(t, original.ChainSelector, cloned.ChainSelector)

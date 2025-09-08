@@ -3,7 +3,7 @@ package aptos_test
 import (
 	"testing"
 
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos"
@@ -21,10 +21,10 @@ func TestChain_ChainInfot(t *testing.T) {
 	}{
 		{
 			name:       "returns correct info",
-			selector:   chain_selectors.APTOS_MAINNET.Selector,
+			selector:   chainsel.APTOS_MAINNET.Selector,
 			wantString: "aptos-mainnet (4741433654826277614)",
-			wantName:   chain_selectors.APTOS_MAINNET.Name,
-			wantFamily: chain_selectors.FamilyAptos,
+			wantName:   chainsel.APTOS_MAINNET.Name,
+			wantFamily: chainsel.FamilyAptos,
 		},
 	}
 

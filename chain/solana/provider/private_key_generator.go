@@ -21,20 +21,20 @@ var (
 // key.
 func PrivateKeyFromRaw(privateKey string) *privateKeyFromRaw {
 	return &privateKeyFromRaw{
-		PrivateKey: privateKey,
+		privateKey: privateKey,
 	}
 }
 
 // privateKeyFromRaw is an Solana keypair generator that creates an keypair from a private key.
 type privateKeyFromRaw struct {
-	// PrivateKey is the base58 encoded private key used to generate the Solana keypair.
-	PrivateKey string
+	// privateKey is the base58 encoded private key used to generate the Solana keypair.
+	privateKey string
 }
 
 // Generate generates a Solana keypair from the provided base58 encoded private key and returns the
 // private key.
 func (g *privateKeyFromRaw) Generate() (sollib.PrivateKey, error) {
-	privKey, err := sollib.PrivateKeyFromBase58(g.PrivateKey)
+	privKey, err := sollib.PrivateKeyFromBase58(g.privateKey)
 	if err != nil {
 		return sollib.PrivateKey{}, fmt.Errorf("failed to parse private key: %w", err)
 	}

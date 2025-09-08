@@ -1,0 +1,59 @@
+// Package cli provides the CLI App for interacting with the {{ .package }} domain.
+package cli
+
+import (
+	"fmt"
+
+	"github.com/spf13/cobra"
+	"go.uber.org/zap/zapcore"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/changeset"
+	clilib "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/legacy/cli"
+)
+
+// LoadPipelinesRegistry loads the Pipelines ChangesetsRegistry for the specified environment.
+func LoadPipelinesRegistry(envKey string) (*changeset.ChangesetsRegistry, error) {
+	var rp changeset.RegistryProvider
+
+	switch envKey {
+	// Load your environment-specific registry provider here. For example:
+	// case environment.Testnet:
+	//	rp = testnet.NewPipelinesRegistryProvider()
+	default:
+		return nil, fmt.Errorf("unsupported environment %s", envKey)
+	}
+
+	// Don't validate the registry for the durable pipelines
+	rp.Registry().SetValidate(false)
+
+	if err := rp.Init(); err != nil {
+		return nil, fmt.Errorf("failed to init migrations %w", err)
+	}
+
+	return rp.Registry(), nil //nolint:govet // remove when the first registry is available
+}
+
+type App struct {
+	*clilib.Base
+}
+
+func NewApp() (*App, error) {
+	lggr, err := clilib.NewLogger(zapcore.DebugLevel)
+	if err != nil {
+		return nil, err
+	}
+
+	app := &App{
+		Base: clilib.NewBase(lggr, &cobra.Command{
+			Use:   "{{ .package }}",
+			Short: "Manage {{ .package }} deployments",
+		}),
+	}
+
+	// Add your Domain specific commands here
+	app.AddCommand(
+	//...
+	)
+
+	return app, nil
+}

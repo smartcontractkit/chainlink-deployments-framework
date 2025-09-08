@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,8 +12,8 @@ import (
 
 	chainsel "github.com/smartcontractkit/chain-selectors"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
-	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
+	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/nodes"
 )
 
@@ -32,7 +33,7 @@ func Test_EnvDir_RemoveMigrationAddressBook(t *testing.T) {
 		beforeFunc        func(*testing.T, EnvDir)
 		giveMigrationName string
 		timestamp         string
-		want              *cldf.AddressBookMap
+		want              *fdeployment.AddressBookMap
 		wantErr           string
 	}{
 		{
@@ -42,7 +43,7 @@ func Test_EnvDir_RemoveMigrationAddressBook(t *testing.T) {
 
 				// Create the artifacts for the migration
 				arts := envdir.ArtifactsDir()
-				err := arts.SaveChangesetOutput("0001_initial", cldf.ChangesetOutput{
+				err := arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{
 					AddressBook: addrBook1,
 				})
 				require.NoError(t, err)
@@ -51,7 +52,7 @@ func Test_EnvDir_RemoveMigrationAddressBook(t *testing.T) {
 				require.NoError(t, err)
 			},
 			giveMigrationName: "0001_initial",
-			want: cldf.NewMemoryAddressBookFromMap(map[uint64]map[string]cldf.TypeAndVersion{
+			want: fdeployment.NewMemoryAddressBookFromMap(map[uint64]map[string]fdeployment.TypeAndVersion{
 				chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector: {},
 			}),
 		},
@@ -65,7 +66,7 @@ func Test_EnvDir_RemoveMigrationAddressBook(t *testing.T) {
 				err := arts.SetDurablePipelines(timestamp)
 				require.NoError(t, err)
 
-				err = arts.SaveChangesetOutput("0001_initial", cldf.ChangesetOutput{
+				err = arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{
 					AddressBook: addrBook1,
 				})
 				require.NoError(t, err)
@@ -75,7 +76,7 @@ func Test_EnvDir_RemoveMigrationAddressBook(t *testing.T) {
 			},
 			giveMigrationName: "0001_initial",
 			timestamp:         timestamp,
-			want: cldf.NewMemoryAddressBookFromMap(map[uint64]map[string]cldf.TypeAndVersion{
+			want: fdeployment.NewMemoryAddressBookFromMap(map[uint64]map[string]fdeployment.TypeAndVersion{
 				chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector: {},
 			}),
 		},
@@ -85,11 +86,11 @@ func Test_EnvDir_RemoveMigrationAddressBook(t *testing.T) {
 				t.Helper()
 
 				arts := envdir.ArtifactsDir()
-				err := arts.SaveChangesetOutput("0001_initial", cldf.ChangesetOutput{})
+				err := arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{})
 				require.NoError(t, err)
 			},
 			giveMigrationName: "0001_initial",
-			want:              cldf.NewMemoryAddressBookFromMap(map[uint64]map[string]cldf.TypeAndVersion{}),
+			want:              fdeployment.NewMemoryAddressBookFromMap(map[uint64]map[string]fdeployment.TypeAndVersion{}),
 		},
 		{
 			name:              "failure when no migration artifacts directory exists",
@@ -135,52 +136,52 @@ func Test_EnvDir_MigrateAddressBook(t *testing.T) {
 		addr1 = "0x5B5BBb15ECE0a4Ed8cDab22F902e83F66aBe848f"
 		addr2 = "0x6619Bad7fadbc282B1EF2F6cC078fCbE61478792"
 
-		csel1 = chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector
-		csel2 = chainsel.ETHEREUM_TESTNET_SEPOLIA_ARBITRUM_1.Selector
+		chainsel1 = chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector
+		chainsel2 = chainsel.ETHEREUM_TESTNET_SEPOLIA_ARBITRUM_1.Selector
 
-		ctype = datastore.ContractType("Contract")
+		ctype = fdatastore.ContractType("Contract")
 
 		addrBook1 = createAddressBookMap(t,
 			"Contract",
 			version1_0_0,
-			csel1,
+			chainsel1,
 			addr1,
 		)
 		addrBook2 = createAddressBookMap(t,
 			"Contract",
 			version1_0_0,
-			csel2,
+			chainsel2,
 			addr2,
 		)
 	)
 	addrs, err := addrBook1.Addresses()
 	require.NoError(t, err)
 
-	addrs[csel1][addr1].Labels.Add("label1")
-	addrBook1 = cldf.NewMemoryAddressBookFromMap(addrs)
+	addrs[chainsel1][addr1].Labels.Add("label1")
+	addrBook1 = fdeployment.NewMemoryAddressBookFromMap(addrs)
 
-	convDataStore := datastore.NewMemoryDataStore()
+	convDataStore := fdatastore.NewMemoryDataStore()
 
 	err = convDataStore.Addresses().Add(
-		datastore.AddressRef{
+		fdatastore.AddressRef{
 			Address:       addr1,
-			ChainSelector: csel1,
+			ChainSelector: chainsel1,
 			Type:          ctype,
 			Version:       &version1_0_0,
 			Qualifier:     fmt.Sprintf("%s-%s", addr1, "Contract"),
-			Labels:        datastore.NewLabelSet("label1"),
+			Labels:        fdatastore.NewLabelSet("label1"),
 		},
 	)
 	require.NoError(t, err)
 
 	err = convDataStore.Addresses().Add(
-		datastore.AddressRef{
+		fdatastore.AddressRef{
 			Address:       addr2,
-			ChainSelector: csel2,
+			ChainSelector: chainsel2,
 			Type:          ctype,
 			Version:       &version1_0_0,
 			Qualifier:     fmt.Sprintf("%s-%s", addr2, "Contract"),
-			Labels:        datastore.NewLabelSet(),
+			Labels:        fdatastore.NewLabelSet(),
 		},
 	)
 	require.NoError(t, err)
@@ -189,7 +190,7 @@ func Test_EnvDir_MigrateAddressBook(t *testing.T) {
 		name              string
 		beforeFunc        func(*testing.T, EnvDir)
 		giveMigrationName string
-		want              datastore.DataStore
+		want              fdatastore.DataStore
 	}{
 		{
 			name: "success when converting empty address book",
@@ -198,11 +199,11 @@ func Test_EnvDir_MigrateAddressBook(t *testing.T) {
 
 				// Create the artifacts for the migration
 				arts := envdir.ArtifactsDir()
-				err := arts.SaveChangesetOutput("0001_initial", cldf.ChangesetOutput{})
+				err := arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{})
 				require.NoError(t, err)
 			},
 			giveMigrationName: "0001_initial",
-			want:              datastore.NewMemoryDataStore().Seal(),
+			want:              fdatastore.NewMemoryDataStore().Seal(),
 		},
 		{
 			name: "success when converting non empty address book",
@@ -211,7 +212,7 @@ func Test_EnvDir_MigrateAddressBook(t *testing.T) {
 
 				// Create the artifacts for the migration
 				arts := envdir.ArtifactsDir()
-				err := arts.SaveChangesetOutput("0001_initial", cldf.ChangesetOutput{
+				err := arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{
 					AddressBook: addrBook1,
 				})
 				require.NoError(t, err)
@@ -219,7 +220,7 @@ func Test_EnvDir_MigrateAddressBook(t *testing.T) {
 				err = envdir.MergeMigrationAddressBook("0001_initial", "")
 				require.NoError(t, err)
 
-				err = arts.SaveChangesetOutput("0002_second", cldf.ChangesetOutput{
+				err = arts.SaveChangesetOutput("0002_second", fdeployment.ChangesetOutput{
 					AddressBook: addrBook2,
 				})
 				require.NoError(t, err)
@@ -269,7 +270,7 @@ func Test_EnvDir_MutableDataStore(t *testing.T) {
 	tests := []struct {
 		name    string
 		give    func(*testing.T, testDomainFS) EnvDir
-		want    datastore.MutableDataStore
+		want    fdatastore.MutableDataStore
 		wantErr string
 	}{
 		{
@@ -279,7 +280,7 @@ func Test_EnvDir_MutableDataStore(t *testing.T) {
 
 				return fixture.envDir
 			},
-			want: datastore.NewMemoryDataStore(),
+			want: fdatastore.NewMemoryDataStore(),
 		},
 		{
 			name: "missing file will return new empty datastore",
@@ -288,14 +289,14 @@ func Test_EnvDir_MutableDataStore(t *testing.T) {
 
 				return fixture.domain.EnvDir("invalid")
 			},
-			want: datastore.NewMemoryDataStore(),
+			want: fdatastore.NewMemoryDataStore(),
 		},
 		{
 			name: "empty file will return new empty datastore",
 			give: func(t *testing.T, fixture testDomainFS) EnvDir {
 				t.Helper()
 
-				// Create empty files in a new environment to simulate a corrupted datastore.
+				// Create empty files in a new environment to simulate a corrupted fdatastore.
 				err := os.Mkdir(filepath.Join(fixture.domain.DirPath(), "test"), 0755)
 				require.NoError(t, err)
 
@@ -320,7 +321,7 @@ func Test_EnvDir_MutableDataStore(t *testing.T) {
 
 				return fixture.domain.EnvDir("test")
 			},
-			want: datastore.NewMemoryDataStore(),
+			want: fdatastore.NewMemoryDataStore(),
 		},
 		{
 			name: "failed to unmarshal address ref JSON",
@@ -455,7 +456,7 @@ func Test_EnvDir_MergeMigrationAddressBook(t *testing.T) {
 		name              string
 		beforeFunc        func(*testing.T, EnvDir)
 		giveMigrationName string
-		want              *cldf.AddressBookMap
+		want              *fdeployment.AddressBookMap
 		wantErr           string
 	}{
 		{
@@ -465,15 +466,15 @@ func Test_EnvDir_MergeMigrationAddressBook(t *testing.T) {
 
 				// Create the artifacts for the migration
 				arts := envdir.ArtifactsDir()
-				err := arts.SaveChangesetOutput("0001_initial", cldf.ChangesetOutput{
+				err := arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{
 					AddressBook: addrBook1,
 				})
 				require.NoError(t, err)
 			},
 			giveMigrationName: "0001_initial",
-			want: cldf.NewMemoryAddressBookFromMap(map[uint64]map[string]cldf.TypeAndVersion{
+			want: fdeployment.NewMemoryAddressBookFromMap(map[uint64]map[string]fdeployment.TypeAndVersion{
 				chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector: {
-					"0x5B5BBb15ECE0a4Ed8cDab22F902e83F66aBe848f": cldf.TypeAndVersion{
+					"0x5B5BBb15ECE0a4Ed8cDab22F902e83F66aBe848f": fdeployment.TypeAndVersion{
 						Type:    "Contract",
 						Version: version1_0_0,
 						Labels:  nil,
@@ -488,7 +489,7 @@ func Test_EnvDir_MergeMigrationAddressBook(t *testing.T) {
 
 				// Create the artifacts for the migration and merge to the address book
 				arts := envdir.ArtifactsDir()
-				err := arts.SaveChangesetOutput("0001_initial", cldf.ChangesetOutput{
+				err := arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{
 					AddressBook: addrBook1,
 				})
 				require.NoError(t, err)
@@ -497,13 +498,13 @@ func Test_EnvDir_MergeMigrationAddressBook(t *testing.T) {
 				require.NoError(t, err)
 
 				// Create a migration with another address book
-				err = arts.SaveChangesetOutput("0002_second", cldf.ChangesetOutput{
+				err = arts.SaveChangesetOutput("0002_second", fdeployment.ChangesetOutput{
 					AddressBook: addrBook2,
 				})
 				require.NoError(t, err)
 			},
 			giveMigrationName: "0002_second",
-			want: cldf.NewMemoryAddressBookFromMap(map[uint64]map[string]cldf.TypeAndVersion{
+			want: fdeployment.NewMemoryAddressBookFromMap(map[uint64]map[string]fdeployment.TypeAndVersion{
 				chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector: {
 					"0x5B5BBb15ECE0a4Ed8cDab22F902e83F66aBe848f": {
 						Type:    "Contract",
@@ -527,7 +528,7 @@ func Test_EnvDir_MergeMigrationAddressBook(t *testing.T) {
 
 				// Create the artifacts for the migration and merge to the address book
 				arts := envdir.ArtifactsDir()
-				err := arts.SaveChangesetOutput("0001_initial", cldf.ChangesetOutput{
+				err := arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{
 					AddressBook: addrBook1,
 				})
 				require.NoError(t, err)
@@ -539,7 +540,7 @@ func Test_EnvDir_MergeMigrationAddressBook(t *testing.T) {
 				err = arts.SetDurablePipelines("1742316304198171000")
 				require.NoError(t, err)
 
-				err = arts.SaveChangesetOutput("durable_pipeline", cldf.ChangesetOutput{
+				err = arts.SaveChangesetOutput("durable_pipeline", fdeployment.ChangesetOutput{
 					AddressBook: addrBook2,
 				})
 				require.NoError(t, err)
@@ -548,7 +549,7 @@ func Test_EnvDir_MergeMigrationAddressBook(t *testing.T) {
 				require.NoError(t, err)
 			},
 			giveMigrationName: "durable_pipeline",
-			want: cldf.NewMemoryAddressBookFromMap(map[uint64]map[string]cldf.TypeAndVersion{
+			want: fdeployment.NewMemoryAddressBookFromMap(map[uint64]map[string]fdeployment.TypeAndVersion{
 				chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector: {
 					"0x5B5BBb15ECE0a4Ed8cDab22F902e83F66aBe848f": {
 						Type:    "Contract",
@@ -571,11 +572,11 @@ func Test_EnvDir_MergeMigrationAddressBook(t *testing.T) {
 				t.Helper()
 
 				arts := envdir.ArtifactsDir()
-				err := arts.SaveChangesetOutput("0001_initial", cldf.ChangesetOutput{})
+				err := arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{})
 				require.NoError(t, err)
 			},
 			giveMigrationName: "0001_initial",
-			want:              cldf.NewMemoryAddressBookFromMap(map[uint64]map[string]cldf.TypeAndVersion{}),
+			want:              fdeployment.NewMemoryAddressBookFromMap(map[uint64]map[string]fdeployment.TypeAndVersion{}),
 		},
 		{
 			name:              "failure when no migration artifacts directory exists",
@@ -633,7 +634,7 @@ func Test_EnvDir_MergeMigrationDataStore(t *testing.T) {
 		)
 	)
 
-	mergeDatastore := datastore.NewMemoryDataStore()
+	mergeDatastore := fdatastore.NewMemoryDataStore()
 
 	err := mergeDatastore.Merge(dataStore1.Seal())
 	require.NoError(t, err)
@@ -645,7 +646,7 @@ func Test_EnvDir_MergeMigrationDataStore(t *testing.T) {
 		name              string
 		beforeFunc        func(*testing.T, EnvDir)
 		giveMigrationName string
-		want              datastore.DataStore
+		want              fdatastore.DataStore
 		wantErr           string
 	}{
 		{
@@ -655,7 +656,7 @@ func Test_EnvDir_MergeMigrationDataStore(t *testing.T) {
 
 				// Create the artifacts for the migration
 				arts := envdir.ArtifactsDir()
-				err := arts.SaveChangesetOutput("0001_initial", cldf.ChangesetOutput{
+				err := arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{
 					DataStore: dataStore1,
 				})
 				require.NoError(t, err)
@@ -670,7 +671,7 @@ func Test_EnvDir_MergeMigrationDataStore(t *testing.T) {
 
 				// Create the artifacts for the migration and merge to the address book
 				arts := envdir.ArtifactsDir()
-				err := arts.SaveChangesetOutput("0001_initial", cldf.ChangesetOutput{
+				err := arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{
 					DataStore: dataStore1,
 				})
 				require.NoError(t, err)
@@ -679,7 +680,7 @@ func Test_EnvDir_MergeMigrationDataStore(t *testing.T) {
 				require.NoError(t, err)
 
 				// Create a migration with another datastore
-				err = arts.SaveChangesetOutput("0002_second", cldf.ChangesetOutput{
+				err = arts.SaveChangesetOutput("0002_second", fdeployment.ChangesetOutput{
 					DataStore: dataStore2,
 				})
 				require.NoError(t, err)
@@ -694,7 +695,7 @@ func Test_EnvDir_MergeMigrationDataStore(t *testing.T) {
 
 				// Create the artifacts for the migration and merge to the address book
 				arts := envdir.ArtifactsDir()
-				err := arts.SaveChangesetOutput("0001_initial", cldf.ChangesetOutput{
+				err := arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{
 					DataStore: dataStore1,
 				})
 				require.NoError(t, err)
@@ -706,7 +707,7 @@ func Test_EnvDir_MergeMigrationDataStore(t *testing.T) {
 				err = arts.SetDurablePipelines("1742316304198171000")
 				require.NoError(t, err)
 
-				err = arts.SaveChangesetOutput("durable_pipeline", cldf.ChangesetOutput{
+				err = arts.SaveChangesetOutput("durable_pipeline", fdeployment.ChangesetOutput{
 					DataStore: dataStore2,
 				})
 				require.NoError(t, err)
@@ -723,11 +724,11 @@ func Test_EnvDir_MergeMigrationDataStore(t *testing.T) {
 				t.Helper()
 
 				arts := envdir.ArtifactsDir()
-				err := arts.SaveChangesetOutput("0001_initial", cldf.ChangesetOutput{})
+				err := arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{})
 				require.NoError(t, err)
 			},
 			giveMigrationName: "0001_initial",
-			want:              datastore.NewMemoryDataStore().Seal(),
+			want:              fdatastore.NewMemoryDataStore().Seal(),
 		},
 		{
 			name:              "failure when no migration artifacts directory exists",
@@ -846,12 +847,12 @@ func Test_EnvDir_Key(t *testing.T) {
 	assert.Equal(t, "staging", envdir.Key())
 }
 
-func Test_EnvDir_DurablePipelineFilePath(t *testing.T) {
+func Test_EnvDir_PipelinesFilePath(t *testing.T) {
 	t.Parallel()
 
 	envdir := NewEnvDir("domains", "ccip", "staging")
 
-	assert.Equal(t, "domains/ccip/staging/durable_pipelines.go", envdir.DurablePipelineFilePath())
+	assert.Equal(t, "domains/ccip/staging/pipelines.go", envdir.PipelinesFilePath())
 }
 
 func Test_EnvDir_AddressRefsFilePath(t *testing.T) {
@@ -916,7 +917,7 @@ func Test_EnvDir_AddressBook(t *testing.T) {
 	tests := []struct {
 		name    string
 		give    func(*testing.T, testDomainFS) EnvDir
-		want    cldf.AddressBook
+		want    fdeployment.AddressBook
 		wantErr string
 	}{
 		{
@@ -926,7 +927,7 @@ func Test_EnvDir_AddressBook(t *testing.T) {
 
 				return fixture.envDir
 			},
-			want: cldf.NewMemoryAddressBookFromMap(map[uint64]map[string]cldf.TypeAndVersion{}),
+			want: fdeployment.NewMemoryAddressBookFromMap(map[uint64]map[string]fdeployment.TypeAndVersion{}),
 		},
 		{
 			name: "failed to read file: missing file",
@@ -984,7 +985,7 @@ func Test_EnvDir_DataStore(t *testing.T) {
 	tests := []struct {
 		name    string
 		give    func(*testing.T, testDomainFS) EnvDir
-		want    datastore.DataStore
+		want    fdatastore.DataStore
 		wantErr string
 	}{
 		{
@@ -994,7 +995,7 @@ func Test_EnvDir_DataStore(t *testing.T) {
 
 				return fixture.envDir
 			},
-			want: datastore.NewMemoryDataStore().Seal(),
+			want: fdatastore.NewMemoryDataStore().Seal(),
 		},
 		{
 			name: "missing file will return new empty datastore",
@@ -1003,14 +1004,14 @@ func Test_EnvDir_DataStore(t *testing.T) {
 
 				return fixture.domain.EnvDir("invalid")
 			},
-			want: datastore.NewMemoryDataStore().Seal(),
+			want: fdatastore.NewMemoryDataStore().Seal(),
 		},
 		{
 			name: "empty file will return new empty datastore",
 			give: func(t *testing.T, fixture testDomainFS) EnvDir {
 				t.Helper()
 
-				// Create empty files in a new environment to simulate a corrupted datastore.
+				// Create empty files in a new environment to simulate a corrupted fdatastore.
 				err := os.Mkdir(filepath.Join(fixture.domain.DirPath(), "test"), 0755)
 				require.NoError(t, err)
 
@@ -1035,7 +1036,7 @@ func Test_EnvDir_DataStore(t *testing.T) {
 
 				return fixture.domain.EnvDir("test")
 			},
-			want: datastore.NewMemoryDataStore().Seal(),
+			want: fdatastore.NewMemoryDataStore().Seal(),
 		},
 		{
 			name: "failed to unmarshal address ref JSON",
@@ -1323,6 +1324,51 @@ func Test_EnvDir_SaveFile(t *testing.T) {
 
 				require.NoError(t, err)
 				assert.Equal(t, tt.want, nodes)
+			}
+		})
+	}
+}
+
+func Test_EnvDir_SaveViewState(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		giveState json.Marshaler
+		want      string
+		wantErr   string
+	}{
+		{
+			name: "success",
+			giveState: &testMarshaler{
+				Name: "test",
+			},
+			want: `{"Name":"test"}`,
+		},
+		{
+			name:      "save error",
+			giveState: &failedMarshaler{},
+			wantErr:   "unable to marshal state",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			fixture := setupTestDomainsFS(t)
+
+			err := fixture.envDir.SaveViewState(tt.giveState)
+
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				assert.ErrorContains(t, err, tt.wantErr)
+			} else {
+				require.NoError(t, err)
+				b, err := os.ReadFile(fixture.envDir.ViewStateFilePath())
+				require.NoError(t, err)
+
+				assert.JSONEq(t, tt.want, string(b))
 			}
 		})
 	}

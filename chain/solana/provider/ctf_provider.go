@@ -14,7 +14,7 @@ import (
 	"github.com/avast/retry-go/v4"
 	sollib "github.com/gagliardetto/solana-go"
 	solrpc "github.com/gagliardetto/solana-go/rpc"
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 	solCommonUtil "github.com/smartcontractkit/chainlink-ccip/chains/solana/utils/common"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
@@ -109,7 +109,7 @@ func (p *CTFChainProvider) Initialize(_ context.Context) (chain.BlockChain, erro
 	}
 
 	// Get the Solana Chain ID
-	chainID, err := chain_selectors.GetChainIDFromSelector(p.selector)
+	chainID, err := chainsel.GetChainIDFromSelector(p.selector)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get chain ID from selector %d: %w", p.selector, err)
 	}

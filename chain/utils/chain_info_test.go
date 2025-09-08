@@ -3,7 +3,7 @@ package utils_test
 import (
 	"testing"
 
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -17,15 +17,15 @@ func TestChainInfo(t *testing.T) {
 		name          string
 		selector      uint64
 		expectError   string
-		validateChain func(t *testing.T, info chain_selectors.ChainDetails)
+		validateChain func(t *testing.T, info chainsel.ChainDetails)
 	}{
 		{
 			name:     "returns details for valid chain selector",
-			selector: chain_selectors.ETHEREUM_MAINNET.Selector,
-			validateChain: func(t *testing.T, info chain_selectors.ChainDetails) {
+			selector: chainsel.ETHEREUM_MAINNET.Selector,
+			validateChain: func(t *testing.T, info chainsel.ChainDetails) {
 				t.Helper()
-				assert.Equal(t, chain_selectors.ETHEREUM_MAINNET.Name, info.ChainName)
-				assert.Equal(t, chain_selectors.ETHEREUM_MAINNET.Selector, info.ChainSelector)
+				assert.Equal(t, chainsel.ETHEREUM_MAINNET.Name, info.ChainName)
+				assert.Equal(t, chainsel.ETHEREUM_MAINNET.Selector, info.ChainSelector)
 			},
 		},
 		{

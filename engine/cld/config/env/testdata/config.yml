@@ -1,4 +1,4 @@
-# This is a test config file for the config package. It is used to test the config package.
+# This is a test config file for the config package.
 onchain:
   kms:
     key_id: "f1a2b3c4"
@@ -17,6 +17,11 @@ onchain:
     deployer_key: "0xcde"
   tron:
     deployer_key: "0xdef"
+  sui:
+    deployer_key: "0xefg"
+  ton:
+    deployer_key: "0xedd"
+    wallet_version: "V5R1"
 offchain:
   job_distributor:
     endpoints:
@@ -28,5 +33,8 @@ offchain:
       aws_region: "us-west-1"
       username: "user1"
       password: "password1"
+  ocr:
+    x_signers: "rabid mouse"
+    x_proposers: "furious fox"
 catalog:
   grpc: "http://localhost:1000"

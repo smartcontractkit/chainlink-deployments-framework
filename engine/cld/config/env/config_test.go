@@ -1,10 +1,12 @@
 package config
 
 import (
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 )
 
 var (
@@ -32,6 +34,13 @@ var (
 			Tron: TronConfig{
 				DeployerKey: "0xdef",
 			},
+			Sui: SuiConfig{
+				DeployerKey: "0xefg",
+			},
+			Ton: TonConfig{
+				DeployerKey:   "0xedd",
+				WalletVersion: "V5R1",
+			},
 		},
 		Offchain: OffchainConfig{
 			JobDistributor: JobDistributorConfig{
@@ -46,6 +55,10 @@ var (
 					WSRPC: "ws://localhost:1234",
 					GRPC:  "grpc://localhost:4567",
 				},
+			},
+			OCR: OCRConfig{
+				XSigners:   "rabid mouse",
+				XProposers: "furious fox",
 			},
 		},
 		Catalog: CatalogConfig{
@@ -65,6 +78,8 @@ var (
 		"ONCHAIN_APTOS_DEPLOYER_KEY":                 "0x123",
 		"ONCHAIN_TRON_DEPLOYER_KEY":                  "0x123",
 		"ONCHAIN_SUI_DEPLOYER_KEY":                   "0x123",
+		"ONCHAIN_TON_DEPLOYER_KEY":                   "0x123",
+		"ONCHAIN_TON_WALLET_VERSION":                 "V5R1",
 		"OFFCHAIN_JD_AUTH_COGNITO_APP_CLIENT_ID":     "123",
 		"OFFCHAIN_JD_AUTH_COGNITO_APP_CLIENT_SECRET": "123",
 		"OFFCHAIN_JD_AUTH_AWS_REGION":                "us-east-1",
@@ -98,7 +113,9 @@ var (
 		"OCR_X_PROPOSERS":                   "caring deer",
 		"CATALOG_SERVICE_GRPC":              "http://localhost:8080",
 		// These values do not have a legacy equivalent
-		"ONCHAIN_SUI_DEPLOYER_KEY": "0x123",
+		"ONCHAIN_SUI_DEPLOYER_KEY":   "0x123",
+		"ONCHAIN_TON_DEPLOYER_KEY":   "0x123",
+		"ONCHAIN_TON_WALLET_VERSION": "V5R1",
 	}
 
 	// envCfg is the config that is loaded from the environment variables.
@@ -127,6 +144,10 @@ var (
 			},
 			Sui: SuiConfig{
 				DeployerKey: "0x123",
+			},
+			Ton: TonConfig{
+				DeployerKey:   "0x123",
+				WalletVersion: "V5R1",
 			},
 		},
 		Offchain: OffchainConfig{
@@ -179,6 +200,7 @@ func Test_Load(t *testing.T) { //nolint:paralleltest // see comment in setupTest
 					Solana: SolanaConfig{},
 					Aptos:  AptosConfig{},
 					Tron:   TronConfig{},
+					Ton:    TonConfig{},
 				},
 				Offchain: OffchainConfig{
 					JobDistributor: JobDistributorConfig{
@@ -284,6 +306,55 @@ func Test_LoadEnv_Legacy(t *testing.T) { //nolint:paralleltest // see comment in
 	require.NoError(t, err)
 
 	assert.Equal(t, envCfg, got)
+}
+
+func Test_YAML_Marshal_Unmarshal(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		givePath string
+		want     func() *Config
+	}{
+		{
+			name:     "load full config",
+			givePath: "./testdata/config.yml",
+			want:     func() *Config { return fileCfg },
+		},
+		{
+			name:     "load config, omitting optional",
+			givePath: "./testdata/config_with_optional_values.yml",
+			want: func() *Config {
+				// Copy the fileCfg to avoid modifying it
+				cfg := *fileCfg
+
+				cfg.Offchain.JobDistributor.Auth = nil
+				cfg.Onchain.EVM.Seth = nil
+
+				return &cfg
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			yamlCfg, err := os.ReadFile(tt.givePath)
+			require.NoError(t, err)
+
+			var cfg Config
+			err = yaml.Unmarshal(yamlCfg, &cfg)
+			require.NoError(t, err)
+
+			assert.Equal(t, *tt.want(), cfg)
+
+			b, err := yaml.Marshal(cfg)
+			require.NoError(t, err)
+
+			assert.YAMLEq(t, string(yamlCfg), string(b))
+		})
+	}
 }
 
 // setupTestEnvVars sets up the environment variables for the test.

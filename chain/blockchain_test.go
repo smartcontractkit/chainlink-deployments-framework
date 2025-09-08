@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos"
@@ -18,13 +18,13 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron"
 )
 
-var evmChain1 = evm.Chain{Selector: chain_selectors.TEST_90000001.Selector}
-var evmChain2 = evm.Chain{Selector: chain_selectors.TEST_90000002.Selector}
-var solanaChain1 = solana.Chain{Selector: chain_selectors.TEST_22222222222222222222222222222222222222222222.Selector}
-var aptosChain1 = aptos.Chain{Selector: chain_selectors.APTOS_LOCALNET.Selector}
-var suiChain1 = sui.Chain{ChainMetadata: sui.ChainMetadata{Selector: chain_selectors.SUI_LOCALNET.Selector}}
-var tonChain1 = ton.Chain{ChainMetadata: ton.ChainMetadata{Selector: chain_selectors.TON_LOCALNET.Selector}}
-var tronChain1 = tron.Chain{ChainMetadata: tron.ChainMetadata{Selector: chain_selectors.TRON_MAINNET.Selector}}
+var evmChain1 = evm.Chain{Selector: chainsel.TEST_90000001.Selector}
+var evmChain2 = evm.Chain{Selector: chainsel.TEST_90000002.Selector}
+var solanaChain1 = solana.Chain{Selector: chainsel.TEST_22222222222222222222222222222222222222222222.Selector}
+var aptosChain1 = aptos.Chain{Selector: chainsel.APTOS_LOCALNET.Selector}
+var suiChain1 = sui.Chain{ChainMetadata: sui.ChainMetadata{Selector: chainsel.SUI_LOCALNET.Selector}}
+var tonChain1 = ton.Chain{ChainMetadata: ton.ChainMetadata{Selector: chainsel.TON_LOCALNET.Selector}}
+var tronChain1 = tron.Chain{ChainMetadata: tron.ChainMetadata{Selector: chainsel.TRON_MAINNET.Selector}}
 
 func TestNewBlockChains(t *testing.T) {
 	t.Parallel()
@@ -310,43 +310,43 @@ func TestBlockChainsListChainSelectors(t *testing.T) {
 		},
 		{
 			name:        "with family filter - EVM",
-			options:     []chain.ChainSelectorsOption{chain.WithFamily(chain_selectors.FamilyEVM)},
+			options:     []chain.ChainSelectorsOption{chain.WithFamily(chainsel.FamilyEVM)},
 			expectedIDs: []uint64{evmChain1.ChainSelector(), evmChain2.ChainSelector()},
 			description: "expected EVM chain selectors",
 		},
 		{
 			name:        "with family filter - Solana",
-			options:     []chain.ChainSelectorsOption{chain.WithFamily(chain_selectors.FamilySolana)},
+			options:     []chain.ChainSelectorsOption{chain.WithFamily(chainsel.FamilySolana)},
 			expectedIDs: []uint64{solanaChain1.Selector},
 			description: "expected Solana chain selectors",
 		},
 		{
 			name:        "with family filter - Aptos",
-			options:     []chain.ChainSelectorsOption{chain.WithFamily(chain_selectors.FamilyAptos)},
+			options:     []chain.ChainSelectorsOption{chain.WithFamily(chainsel.FamilyAptos)},
 			expectedIDs: []uint64{aptosChain1.Selector},
 			description: "expected Aptos chain selectors",
 		},
 		{
 			name:        "with family filter - Sui",
-			options:     []chain.ChainSelectorsOption{chain.WithFamily(chain_selectors.FamilySui)},
+			options:     []chain.ChainSelectorsOption{chain.WithFamily(chainsel.FamilySui)},
 			expectedIDs: []uint64{suiChain1.Selector},
 			description: "expected Sui chain selectors",
 		},
 		{
 			name:        "with family filter - Ton",
-			options:     []chain.ChainSelectorsOption{chain.WithFamily(chain_selectors.FamilyTon)},
+			options:     []chain.ChainSelectorsOption{chain.WithFamily(chainsel.FamilyTon)},
 			expectedIDs: []uint64{tonChain1.Selector},
 			description: "expected Ton chain selectors",
 		},
 		{
 			name:        "with family filter - Tron",
-			options:     []chain.ChainSelectorsOption{chain.WithFamily(chain_selectors.FamilyTron)},
+			options:     []chain.ChainSelectorsOption{chain.WithFamily(chainsel.FamilyTron)},
 			expectedIDs: []uint64{tronChain1.Selector},
 			description: "expected Tron chain selectors",
 		},
 		{
 			name:        "with multiple families",
-			options:     []chain.ChainSelectorsOption{chain.WithFamily(chain_selectors.FamilyEVM), chain.WithFamily(chain_selectors.FamilySolana)},
+			options:     []chain.ChainSelectorsOption{chain.WithFamily(chainsel.FamilyEVM), chain.WithFamily(chainsel.FamilySolana)},
 			expectedIDs: []uint64{evmChain1.Selector, evmChain2.Selector, solanaChain1.Selector},
 			description: "expected EVM and Solana chain selectors",
 		},
@@ -361,7 +361,7 @@ func TestBlockChainsListChainSelectors(t *testing.T) {
 		{
 			name: "with family and exclusion",
 			options: []chain.ChainSelectorsOption{
-				chain.WithFamily(chain_selectors.FamilyEVM),
+				chain.WithFamily(chainsel.FamilyEVM),
 				chain.WithChainSelectorsExclusion([]uint64{evmChain1.Selector}),
 			},
 			expectedIDs: []uint64{evmChain2.Selector},

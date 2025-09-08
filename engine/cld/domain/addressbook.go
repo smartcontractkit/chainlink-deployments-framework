@@ -4,10 +4,10 @@ import (
 	"errors"
 	"fmt"
 
-	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/lib/jsonutils"
+	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/internal/jsonutils"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
+	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 )
 
 // MigrateAddressBook migrates the address book for the domain's environment directory
@@ -25,14 +25,14 @@ func (d EnvDir) MigrateAddressBook() error {
 		return err
 	}
 
-	ds := datastore.NewMemoryDataStore()
+	ds := fdatastore.NewMemoryDataStore()
 
-	for chainSelector, chainAddresses := range addrs {
+	for chainselector, chainAddresses := range addrs {
 		for addr, typever := range chainAddresses {
-			ref := datastore.AddressRef{
-				ChainSelector: chainSelector,
+			ref := fdatastore.AddressRef{
+				ChainSelector: chainselector,
 				Address:       addr,
-				Type:          datastore.ContractType(typever.Type),
+				Type:          fdatastore.ContractType(typever.Type),
 				Version:       &typever.Version,
 				// Since the address book does not have a qualifier, we use the address and type as a
 				// unique identifier for the addressRef. Otherwise, we would have some clashes in the
@@ -42,7 +42,7 @@ func (d EnvDir) MigrateAddressBook() error {
 
 			// If the address book has labels, we need to add them to the addressRef
 			if !typever.Labels.IsEmpty() {
-				ref.Labels = datastore.NewLabelSet(typever.Labels.List()...)
+				ref.Labels = fdatastore.NewLabelSet(typever.Labels.List()...)
 			}
 
 			if err = ds.Addresses().Add(ref); err != nil {
@@ -74,11 +74,11 @@ func (d EnvDir) MigrateAddressBook() error {
 	return nil
 }
 
-func loadAddressBookByMigrationKey(artDir *ArtifactsDir, migKey, timestamp string) (cldf.AddressBook, error) {
+func loadAddressBookByMigrationKey(artDir *ArtifactsDir, migKey, timestamp string) (fdeployment.AddressBook, error) {
 	// Set the durable pipelines directory and timestamp if provided
 	if timestamp != "" {
 		if err := artDir.SetDurablePipelines(timestamp); err != nil {
-			return &cldf.AddressBookMap{}, err
+			return &fdeployment.AddressBookMap{}, err
 		}
 	}
 
@@ -88,10 +88,10 @@ func loadAddressBookByMigrationKey(artDir *ArtifactsDir, migKey, timestamp strin
 		if errors.Is(err, ErrArtifactNotFound) {
 			fmt.Println("No migration address book found, skipping merge")
 
-			return &cldf.AddressBookMap{}, nil
+			return &fdeployment.AddressBookMap{}, nil
 		}
 
-		return &cldf.AddressBookMap{}, err
+		return &fdeployment.AddressBookMap{}, err
 	}
 
 	return migAddrBook, nil

@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/testutils"
@@ -54,7 +54,7 @@ func Test_ZkSyncCTFChainProviderConfig_validate(t *testing.T) {
 func Test_CTFChainProvider_Initialize(t *testing.T) {
 	t.Parallel()
 
-	var chainSelector = chain_selectors.TEST_1000.Selector
+	var chainSelector = chainsel.TEST_1000.Selector
 
 	tests := []struct {
 		name         string
@@ -111,8 +111,8 @@ func Test_ZkSyncCTFChainProvider_Name(t *testing.T) {
 func Test_ZkSyncCTFChainProvider_ChainSelector(t *testing.T) {
 	t.Parallel()
 
-	p := &ZkSyncCTFChainProvider{selector: chain_selectors.TEST_1000.Selector}
-	assert.Equal(t, chain_selectors.TEST_1000.Selector, p.ChainSelector())
+	p := &ZkSyncCTFChainProvider{selector: chainsel.TEST_1000.Selector}
+	assert.Equal(t, chainsel.TEST_1000.Selector, p.ChainSelector())
 }
 
 func Test_ZkSyncCTFChainProvider_BlockChain(t *testing.T) {
@@ -130,7 +130,7 @@ func Test_ZkSyncCTFChainProvider_BlockChain(t *testing.T) {
 func Test_ZkSyncCTFChainProvider_SignHash(t *testing.T) {
 	t.Parallel()
 
-	var chainSelector = chain_selectors.TEST_1000.Selector
+	var chainSelector = chainsel.TEST_1000.Selector
 
 	p := NewZkSyncCTFChainProvider(t, chainSelector, ZkSyncCTFChainProviderConfig{
 		Once: testutils.DefaultNetworkOnce,

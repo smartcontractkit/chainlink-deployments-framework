@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron"
@@ -22,10 +22,10 @@ func TestChain_ChainInfo(t *testing.T) {
 	}{
 		{
 			name:       "returns correct info",
-			selector:   chain_selectors.TRON_MAINNET.Selector,
+			selector:   chainsel.TRON_MAINNET.Selector,
 			wantString: "tron-mainnet (1546563616611573945)",
-			wantName:   chain_selectors.TRON_MAINNET.Name,
-			wantFamily: chain_selectors.FamilyTron,
+			wantName:   chainsel.TRON_MAINNET.Name,
+			wantFamily: chainsel.FamilyTron,
 		},
 	}
 

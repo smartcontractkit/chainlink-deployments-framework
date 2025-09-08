@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -15,7 +15,7 @@ func Test_SimChainProvider_Initialize(t *testing.T) {
 	t.Parallel()
 
 	var (
-		chainSelector = chain_selectors.TEST_1000.Selector
+		chainSelector = chainsel.TEST_1000.Selector
 		existingChain = &evm.Chain{}
 	)
 
@@ -111,8 +111,8 @@ func Test_SimChainProvider_Name(t *testing.T) {
 func Test_SimChainProvider_ChainSelector(t *testing.T) {
 	t.Parallel()
 
-	p := &SimChainProvider{selector: chain_selectors.TEST_1000.Selector}
-	assert.Equal(t, chain_selectors.TEST_1000.Selector, p.ChainSelector())
+	p := &SimChainProvider{selector: chainsel.TEST_1000.Selector}
+	assert.Equal(t, chainsel.TEST_1000.Selector, p.ChainSelector())
 }
 
 func Test_SimChainProvider_BlockChain(t *testing.T) {

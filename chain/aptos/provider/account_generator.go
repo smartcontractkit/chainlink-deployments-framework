@@ -73,14 +73,14 @@ func (g *accountGenNewSingleSender) Generate() (*aptoslib.Account, error) {
 
 // accountGenPrivateKey is an account generator that creates an account from the private key.
 type accountGenPrivateKey struct {
-	// PrivateKey is the hex formatted private key used to generate the Aptos account.
-	PrivateKey string
+	// privateKey is the hex formatted private key used to generate the Aptos account.
+	privateKey string
 }
 
 // AccountGenPrivateKey creates a new instance of accountGenPrivateKey with the provided private key.
 func AccountGenPrivateKey(privateKey string) *accountGenPrivateKey {
 	return &accountGenPrivateKey{
-		PrivateKey: privateKey,
+		privateKey: privateKey,
 	}
 }
 
@@ -88,7 +88,7 @@ func AccountGenPrivateKey(privateKey string) *accountGenPrivateKey {
 // private key string cannot be parsed.
 func (g *accountGenPrivateKey) Generate() (*aptoslib.Account, error) {
 	privateKey := &crypto.Ed25519PrivateKey{}
-	if err := privateKey.FromHex(g.PrivateKey); err != nil {
+	if err := privateKey.FromHex(g.privateKey); err != nil {
 		return nil, fmt.Errorf("failed to parse private key: %w", err)
 	}
 

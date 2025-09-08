@@ -3,7 +3,7 @@ package provider
 import (
 	"testing"
 
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -11,7 +11,7 @@ import (
 //nolint:paralleltest // This test cannot run in parallel due to a race condition in seth's log initialization
 func Test_newSethClient(t *testing.T) {
 	var (
-		chainID    = chain_selectors.TEST_1000.EvmChainID
+		chainID    = chainsel.TEST_1000.EvmChainID
 		configPath = writeSethConfigFile(t)
 	)
 
