@@ -1,5 +1,13 @@
 # chainlink-deployments-framework
 
+## 0.43.0
+
+### Minor Changes
+
+- [#382](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/382) [`0de5d03`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/0de5d036ff3761856a7f5d61a48c01b7c7275ca9) Thanks [@jkongie](https://github.com/jkongie)! - Remove DeployerSeed field from Tron and Ton Chain
+
+- [#384](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/384) [`6a9e263`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/6a9e2636cc24690b0ec54be064c631756d4e02e7) Thanks [@ecPablo](https://github.com/ecPablo)! - Adds proposal analyzer package to experimental
+
 ## 0.42.0
 
 ### Minor Changes
