@@ -16,6 +16,7 @@ import (
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
+	"github.com/smartcontractkit/freeport"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 
@@ -164,6 +165,10 @@ func (p *CTFChainProvider) startContainer(
 	}
 
 	result, err := retry.DoWithData(func() (containerResult, error) {
+		ports := freeport.GetN(p.t, 2)
+		port := ports[0]
+		faucetPort := ports[1]
+
 		image := ""
 		platform := ""
 
@@ -191,6 +196,8 @@ func (p *CTFChainProvider) startContainer(
 			Type:          blockchain.TypeSui,
 			ChainID:       chainID,
 			PublicKey:     address,
+			Port:          strconv.Itoa(port),
+			FaucetPort:    strconv.Itoa(faucetPort),
 		}
 
 		output, rerr := blockchain.NewBlockchainNetwork(input)
