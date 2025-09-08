@@ -98,6 +98,7 @@ func PublicKeyBytes(s SuiSigner) ([]byte, error) {
 	}
 	pub := make([]byte, ed25519.PublicKeySize)
 	copy(pub, priv[32:]) // last 32 bytes are the pubkey
+
 	return pub, nil
 }
 
@@ -108,5 +109,6 @@ func PrivateKey(s SuiSigner) (ed25519.PrivateKey, error) {
 	if !ok {
 		return nil, fmt.Errorf("unsupported signer type %T", s)
 	}
+
 	return impl.signer.PriKey, nil
 }

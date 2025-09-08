@@ -167,9 +167,8 @@ func (p *CTFChainProvider) startContainer(
 	}
 
 	result, err := retry.DoWithData(func() (containerResult, error) {
-		ports := freeport.GetN(p.t, 2)
+		ports := freeport.GetN(p.t, 1)
 		port := ports[0]
-		faucetPort := ports[1]
 
 		image := ""
 		platform := ""
@@ -199,7 +198,6 @@ func (p *CTFChainProvider) startContainer(
 			ChainID:       chainID,
 			PublicKey:     address,
 			Port:          strconv.Itoa(port),
-			FaucetPort:    strconv.Itoa(faucetPort),
 		}
 
 		output, rerr := blockchain.NewBlockchainNetwork(input)
@@ -259,5 +257,6 @@ func fundAccount(url string, address string) error {
 		return err
 	}
 	framework.L.Info().Any("Resp", resp).Msg("Address is funded!")
+
 	return nil
 }
