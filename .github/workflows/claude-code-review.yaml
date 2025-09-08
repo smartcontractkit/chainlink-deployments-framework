@@ -93,7 +93,7 @@ jobs:
             PR_TITLE="$(jq -r '.title' <<<"$pr")"
             PR_AUTHOR="$(jq -r '.user.login' <<<"$pr")"
             PR_URL="$(jq -r '.html_url' <<<"$pr")"
-            PR_BODY="$(jq -r '.body // "No description provided"' <<<"$pr")"
+            PR_BODY="$(jq -r '.body // "No description provided"' <<<"$pr" | head -20)"
             PR_CREATED="$(jq -r '.created_at' <<<"$pr")"
             DRAFT="$(jq -r '.draft' <<<"$pr")"
 
@@ -127,23 +127,41 @@ jobs:
 
             # Create analysis prompt for Claude (ensure expansion happens)
             {
-              echo "Please analyze this pull request and provide a concise summary."
+              echo "Please analyze Pull Request #$PR_NUMBER from the chainlink-deployments-framework repository and provide a concise summary."
               echo ""
-              echo "PR Title: $PR_TITLE"
-              echo "PR Description: $PR_BODY"
-              echo "Files changed: $FILES_COUNT"
+              echo "PR Details:"
+              echo "- Number: #$PR_NUMBER"
+              echo "- Title: $PR_TITLE"
+              echo "- Author: @$PR_AUTHOR"
+              echo "- Status: $([ "$DRAFT" = "true" ] && echo "DRAFT" || echo "Ready for Review")"
+              echo "- URL: $PR_URL"
               echo ""
-              echo "Key files modified:"
-              jq -r '.[] | "- \(.filename) (\(.status)) +\(.additions)/-\(.deletions)"' "pr_${PR_NUMBER}_files.json" | head -10
+              echo "Description:"
+              if [ -n "$PR_BODY" ] && [ "$PR_BODY" != "No description provided" ]; then
+                echo "$PR_BODY"
+              else
+                echo "No description provided by the author."
+              fi
               echo ""
-              echo "Please provide:"
-              echo "1. A brief summary of what this PR does (2-3 sentences)"
-              echo "2. The main technical changes or features added"
-              echo "3. Any potential impact or risks you notice"
-              echo "4. Overall assessment (bug fix, feature, refactor, etc.)"
+              echo "Files Analysis:"
+              echo "- Total files changed: $FILES_COUNT"
+              if [ "$FILES_COUNT" -gt 0 ]; then
+                echo "- Key files modified:"
+                jq -r '.[] | "  • \(.filename) (\(.status)) +\(.additions)/-\(.deletions) lines"' "pr_${PR_NUMBER}_files.json" | head -10
+              fi
               echo ""
-              echo "Keep the response concise and focused on the key changes."
+              echo "Please provide a focused analysis with:"
+              echo "1. A brief summary of what this PR accomplishes (2-3 sentences)"
+              echo "2. The main technical changes or features introduced"
+              echo "3. Any potential impact, risks, or considerations"
+              echo "4. Overall category (bug fix, feature, refactor, documentation, etc.)"
+              echo ""
+              echo "Focus on the actual changes made in this specific PR."
             } > "claude_prompt_${PR_NUMBER}.txt"
+
+            # Debug: Show first few lines of prompt to verify variable expansion
+            echo "Debug - Prompt preview:"
+            head -8 "claude_prompt_${PR_NUMBER}.txt" | sed 's/^/  /'
 
             echo "Claude Analysis:"
 
@@ -151,22 +169,23 @@ jobs:
             cp "claude_prompt_${PR_NUMBER}.txt" "$TEMP_DIR/claude_prompt.txt"
 
             pushd "$TEMP_DIR" >/dev/null
-            CLAUDE_RESPONSE="$(claude -p "$(cat claude_prompt.txt)" --output-format stream-json --verbose 2>&1 | tail -n 20)"
-            CLAUDE_EXIT=$?
-            popd >/dev/null
-
-            if [ $CLAUDE_EXIT -eq 0 ]; then
-              echo "$CLAUDE_RESPONSE" | sed 's/^/  /'
+            if CLAUDE_RESPONSE="$(claude -p "$(cat claude_prompt.txt)" 2>/tmp/claude_error.log)"; then
+              echo "$CLAUDE_RESPONSE" | sed 's/^/  /' | head -50
             else
-              echo "  Claude analysis failed. Error output:"
-              echo "$CLAUDE_RESPONSE" | sed 's/^/  /'
+              echo "  Claude analysis failed."
+              if [ -s /tmp/claude_error.log ]; then
+                echo "  Error details:"
+                head -5 /tmp/claude_error.log | sed 's/^/    /'
+              fi
               echo
               echo "  Fallback: Basic analysis based on file changes"
               echo "  This PR modifies $FILES_COUNT file(s) in the repository."
               echo "  Manual review recommended for detailed assessment."
             fi
+            popd >/dev/null
 
             rm -rf "$TEMP_DIR"
+            rm -f /tmp/claude_error.log
 
             echo
             echo "Files Summary: $FILES_COUNT file(s) changed"
