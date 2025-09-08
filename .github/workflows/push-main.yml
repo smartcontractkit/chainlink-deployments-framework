@@ -6,6 +6,20 @@ on:
       - main
 
 jobs:
+  cache-gomod:
+    name: Cache Go modules
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1 # fetch only the latest commit
+      - name: Cache Go modules
+        uses: smartcontractkit/.github/actions/setup-golang@dcdc10badaa0702553d4aa2c8311b4239b48be2c # setup-golang@v0.3.2
+        with:
+          use-go-cache: true # this will setup the go cache
+          only-modules: true
+
   cd-release:
     runs-on: ubuntu-latest
     permissions:
