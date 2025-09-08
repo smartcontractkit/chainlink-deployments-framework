@@ -25,7 +25,6 @@ import (
 
 //nolint:paralleltest // call to SetProgramID is not thread-safe
 func Test_solanaAnalyzer_describeOperations(t *testing.T) {
-
 	cpistub.SetProgramID(solana.MPK(cpiStubProgramID))
 	mcm.SetProgramID(solana.MPK(mcmProgramID))
 	solanaChainSelector := mcmstypes.ChainSelector(chainsel.SOLANA_DEVNET.Selector)
@@ -451,7 +450,6 @@ func Test_solanaAnalyzer_describeOperations(t *testing.T) {
 
 //nolint:paralleltest // call to SetProgramID is not thread-safe
 func Test_solanaAnalyzer_describeBatchOperations(t *testing.T) {
-
 	cpistub.SetProgramID(solana.MPK(cpiStubProgramID))
 	solanaChainSelector := mcmstypes.ChainSelector(chainsel.SOLANA_DEVNET.Selector)
 	ds := datastore.NewMemoryDataStore()
