@@ -123,24 +123,24 @@ jobs:
             FILES_COUNT=$(cat "pr_${PR_NUMBER}_files.json" | jq length)
 
             # Create analysis prompt for Claude
-            cat > "claude_prompt_${PR_NUMBER}.txt" << EOF
-Please analyze this pull request and provide a concise summary.
+            cat > "claude_prompt_${PR_NUMBER}.txt" << 'PROMPT_EOF'
+            Please analyze this pull request and provide a concise summary.
 
-PR Title: $PR_TITLE
-PR Description: $PR_BODY
-Files changed: $FILES_COUNT
+            PR Title: $PR_TITLE
+            PR Description: $PR_BODY
+            Files changed: $FILES_COUNT
 
-Key files modified:
-\$(cat "pr_${PR_NUMBER}_files.json" | jq -r '.[] | "- \(.filename) (\(.status)) +\(.additions)/-\(.deletions)"' | head -10)
+            Key files modified:
+            \$(cat "pr_${PR_NUMBER}_files.json" | jq -r '.[] | "- \(.filename) (\(.status)) +\(.additions)/-\(.deletions)"' | head -10)
 
-Please provide:
-1. A brief summary of what this PR does (2-3 sentences)
-2. The main technical changes or features added
-3. Any potential impact or risks you notice
-4. Overall assessment (bug fix, feature, refactor, etc.)
+            Please provide:
+            1. A brief summary of what this PR does (2-3 sentences)
+            2. The main technical changes or features added
+            3. Any potential impact or risks you notice
+            4. Overall assessment (bug fix, feature, refactor, etc.)
 
-Keep the response concise and focused on the key changes.
-EOF
+            Keep the response concise and focused on the key changes.
+            PROMPT_EOF
 
             echo "🤖 Claude Analysis:"
 
