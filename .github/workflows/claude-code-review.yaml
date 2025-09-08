@@ -27,7 +27,6 @@ jobs:
           create_credentials_file: true
           export_environment_variables: true
         env:
-          # Ensure credentials are created outside the git repository
           GOOGLE_APPLICATION_CREDENTIALS_FILE_PATH: /tmp/gcp-credentials.json
 
       - name: Set up Google Cloud SDK
@@ -47,19 +46,21 @@ jobs:
 
       - name: Configure Claude Code for Vertex AI
         run: |
-          echo "CLAUDE_CODE_USE_VERTEX=1" >> "$GITHUB_ENV"
-          echo "CLOUD_ML_REGION=us-east5" >> "$GITHUB_ENV"
-          echo "ANTHROPIC_VERTEX_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}" >> "$GITHUB_ENV"
-          echo "DISABLE_PROMPT_CACHING=1" >> "$GITHUB_ENV"
-          echo "DISABLE_TELEMETRY=1" >> "$GITHUB_ENV"
-          echo "DISABLE_ERROR_REPORTING=1" >> "$GITHUB_ENV"
-          echo "DISABLE_BUG_COMMAND=1" >> "$GITHUB_ENV"
-          echo "CI=true" >> "$GITHUB_ENV"
-          echo "TERM=dumb" >> "$GITHUB_ENV"
-          echo "NO_COLOR=1" >> "$GITHUB_ENV"
-          echo "FORCE_COLOR=0" >> "$GITHUB_ENV"
-          echo "DEBIAN_FRONTEND=noninteractive" >> "$GITHUB_ENV"
-          echo "ANTHROPIC_MODEL=claude-sonnet-4@20250514" >> "$GITHUB_ENV"
+          {
+            echo "CLAUDE_CODE_USE_VERTEX=1"
+            echo "CLOUD_ML_REGION=us-east5"
+            echo "ANTHROPIC_VERTEX_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}"
+            echo "DISABLE_PROMPT_CACHING=1"
+            echo "DISABLE_TELEMETRY=1"
+            echo "DISABLE_ERROR_REPORTING=1"
+            echo "DISABLE_BUG_COMMAND=1"
+            echo "CI=true"
+            echo "TERM=dumb"
+            echo "NO_COLOR=1"
+            echo "FORCE_COLOR=0"
+            echo "DEBIAN_FRONTEND=noninteractive"
+            echo "ANTHROPIC_MODEL=claude-sonnet-4@20250514"
+          } >> "$GITHUB_ENV"
 
       - name: List Open Pull Requests with Claude Analysis
         shell: bash
@@ -69,7 +70,7 @@ jobs:
           echo "=== Open Pull Requests Analysis by Claude ==="
           echo "Repository: ${{ github.repository }}"
           echo "Generated at: $(date -u)"
-          echo ""
+          echo
 
           # Get open PRs
           curl -s \
@@ -80,14 +81,13 @@ jobs:
 
           PR_COUNT="$(jq length < open_prs.json)"
           echo "Total open PRs: $PR_COUNT"
-          echo ""
+          echo
 
           if [ "$PR_COUNT" -eq 0 ]; then
-            echo "🎉 No open pull requests!"
+            echo "No open pull requests."
             exit 0
           fi
 
-          # Iterate PRs
           jq -c '.[]' open_prs.json | while read -r pr; do
             PR_NUMBER="$(jq -r '.number' <<<"$pr")"
             PR_TITLE="$(jq -r '.title' <<<"$pr")"
@@ -97,26 +97,26 @@ jobs:
             PR_CREATED="$(jq -r '.created_at' <<<"$pr")"
             DRAFT="$(jq -r '.draft' <<<"$pr")"
 
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo "🔄 PR #$PR_NUMBER: $PR_TITLE"
-            echo "👤 Author: @$PR_AUTHOR"
-            echo "🔗 URL: $PR_URL"
-            echo "📅 Created: $PR_CREATED"
+            echo "------------------------------------------------------------"
+            echo "PR #$PR_NUMBER: $PR_TITLE"
+            echo "Author: @$PR_AUTHOR"
+            echo "URL: $PR_URL"
+            echo "Created: $PR_CREATED"
             if [ "$DRAFT" = "true" ]; then
-              echo "🚧 Status: DRAFT"
+              echo "Status: DRAFT"
             else
-              echo "✅ Status: Ready for Review"
+              echo "Status: Ready for Review"
             fi
-            echo ""
+            echo
 
-            # Get PR diff (not used in prompt, but handy to keep for future)
+            # Get PR diff (optional)
             curl -s \
               -H "Authorization: Bearer ${{ github.token }}" \
               -H "Accept: application/vnd.github.diff" \
               "https://api.github.com/repos/${{ github.repository }}/pulls/$PR_NUMBER" \
               > "pr_${PR_NUMBER}.diff"
 
-            # Get files changed for context
+            # Get files changed
             curl -s \
               -H "Authorization: Bearer ${{ github.token }}" \
               -H "Accept: application/vnd.github.v3+json" \
@@ -125,29 +125,28 @@ jobs:
 
             FILES_COUNT="$(jq length < "pr_${PR_NUMBER}_files.json")"
 
-            # Create analysis prompt for Claude (unquoted EOF so variables/commands expand)
-            cat > "claude_prompt_${PR_NUMBER}.txt" <<EOF
-Please analyze this pull request and provide a concise summary.
+            # Create analysis prompt for Claude (ensure expansion happens)
+            {
+              echo "Please analyze this pull request and provide a concise summary."
+              echo ""
+              echo "PR Title: $PR_TITLE"
+              echo "PR Description: $PR_BODY"
+              echo "Files changed: $FILES_COUNT"
+              echo ""
+              echo "Key files modified:"
+              jq -r '.[] | "- \(.filename) (\(.status)) +\(.additions)/-\(.deletions)"' "pr_${PR_NUMBER}_files.json" | head -10
+              echo ""
+              echo "Please provide:"
+              echo "1. A brief summary of what this PR does (2-3 sentences)"
+              echo "2. The main technical changes or features added"
+              echo "3. Any potential impact or risks you notice"
+              echo "4. Overall assessment (bug fix, feature, refactor, etc.)"
+              echo ""
+              echo "Keep the response concise and focused on the key changes."
+            } > "claude_prompt_${PR_NUMBER}.txt"
 
-PR Title: $PR_TITLE
-PR Description: $PR_BODY
-Files changed: $FILES_COUNT
+            echo "Claude Analysis:"
 
-Key files modified:
-$(jq -r '.[] | "- \(.filename) (\(.status)) +\(.additions)/-\(.deletions)"' "pr_${PR_NUMBER}_files.json" | head -10)
-
-Please provide:
-1. A brief summary of what this PR does (2-3 sentences)
-2. The main technical changes or features added
-3. Any potential impact or risks you notice
-4. Overall assessment (bug fix, feature, refactor, etc.)
-
-Keep the response concise and focused on the key changes.
-EOF
-
-            echo "🤖 Claude Analysis:"
-
-            # Create temp dir outside repo and ensure cleanup
             TEMP_DIR="$(mktemp -d "/tmp/claude-pr-${PR_NUMBER}-XXXXXX")"
             cp "claude_prompt_${PR_NUMBER}.txt" "$TEMP_DIR/claude_prompt.txt"
 
@@ -157,34 +156,30 @@ EOF
             popd >/dev/null
 
             if [ $CLAUDE_EXIT -eq 0 ]; then
-              echo "$CLAUDE_RESPONSE" | sed 's/^/   /'
+              echo "$CLAUDE_RESPONSE" | sed 's/^/  /'
             else
-              echo "   Claude analysis failed. Error output:"
-              echo "$CLAUDE_RESPONSE" | sed 's/^/   /'
-              echo ""
-              echo "   Fallback: Basic analysis based on file changes"
-              echo "   This PR modifies $FILES_COUNT file(s) in the repository."
-              echo "   Manual review recommended for detailed assessment."
+              echo "  Claude analysis failed. Error output:"
+              echo "$CLAUDE_RESPONSE" | sed 's/^/  /'
+              echo
+              echo "  Fallback: Basic analysis based on file changes"
+              echo "  This PR modifies $FILES_COUNT file(s) in the repository."
+              echo "  Manual review recommended for detailed assessment."
             fi
 
-            # Cleanup temp dir
             rm -rf "$TEMP_DIR"
 
-            echo ""
-            echo "📁 Files Summary: $FILES_COUNT file(s) changed"
+            echo
+            echo "Files Summary: $FILES_COUNT file(s) changed"
             if [ "$FILES_COUNT" -gt 0 ]; then
-              jq -r '.[] | "   • \(.filename) (\(.status))"' "pr_${PR_NUMBER}_files.json" | head -5
+              jq -r '.[] | "  • \(.filename) (\(.status))"' "pr_${PR_NUMBER}_files.json" | head -5
               if [ "$FILES_COUNT" -gt 5 ]; then
-                echo "   ... and $((FILES_COUNT - 5)) more files"
+                echo "  ... and $((FILES_COUNT - 5)) more files"
               fi
             fi
 
-            echo ""
-            echo ""
-
-            # Clean up per-PR artifacts in repo workspace
+            echo
             rm -f "pr_${PR_NUMBER}.diff" "pr_${PR_NUMBER}_files.json" "claude_prompt_${PR_NUMBER}.txt"
           done
 
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo "🎯 Analysis complete! Found $PR_COUNT open pull request(s) analyzed by Claude."
+          echo "------------------------------------------------------------"
+          echo "Analysis complete. Found $PR_COUNT open pull request(s)."
