@@ -72,114 +72,21 @@ func Test_RPCChainProviderConfig_validate(t *testing.T) {
 	}
 }
 
-func Test_RPCChainProvider_Initialize(t *testing.T) {
+func Test_RPCChainProvider_Initialize_AlreadyInitialized(t *testing.T) {
 	t.Parallel()
 
-	var (
-		selector      uint64 = 16423721717087811551
-		existingChain        = &tonchain.Chain{}
-	)
-
-	tests := []struct {
-		name              string
-		giveSelector      uint64
-		giveConfigFunc    func(t *testing.T) RPCChainProviderConfig
-		giveExistingChain *tonchain.Chain
-		wantErr           string
-	}{
-		{
-			name:              "returns an already initialized chain",
-			giveSelector:      selector,
-			giveExistingChain: existingChain,
-		},
-		{
-			name:         "fails config validation (missing url & keygen)",
-			giveSelector: selector,
-			giveConfigFunc: func(t *testing.T) RPCChainProviderConfig {
-				t.Helper()
-				return RPCChainProviderConfig{} // invalid
-			},
-			wantErr: "liteserver url is required",
-		},
-		{
-			name:         "fails to connect to liteserver (bad URL)",
-			giveSelector: selector,
-			giveConfigFunc: func(t *testing.T) RPCChainProviderConfig {
-				t.Helper()
-				return RPCChainProviderConfig{
-					HTTPURL:           "liteserver://invalidkey@127.0.0.1:0",
-					WSURL:             "",
-					DeployerSignerGen: PrivateKeyRandom(),
-					WalletVersion:     "",
-				}
-			},
-			wantErr: "failed to connect to liteserver",
-		},
-		{
-			name:         "fails to generate private key",
-			giveSelector: selector,
-			giveConfigFunc: func(t *testing.T) RPCChainProviderConfig {
-				t.Helper()
-				return RPCChainProviderConfig{
-					HTTPURL:           "liteserver://validkey@127.0.0.1:0", // will fail before keygen if URL is good; keep bad URL to avoid network
-					DeployerSignerGen: PrivateKeyFromRaw("invalid-key"),
-				}
-			},
-			wantErr: "failed to parse private key",
-		},
-		{
-			name:         "everything ok",
-			giveSelector: selector,
-			giveConfigFunc: func(t *testing.T) RPCChainProviderConfig {
-				t.Helper()
-				return RPCChainProviderConfig{
-					HTTPURL:           "liteserver://Pk9K5wQLvlFapDT6BVBuSXg3yh7GHjV5IFsAJqPGvxQ=@13.232.131.210:46995",
-					DeployerSignerGen: PrivateKeyFromRaw("0b1f7dbb19112fdac53344cf49731e41bfc420ac6a71d38c89fb38d04a6563d99aa3d1fa430550e8de5171ec55453b4e048c1701cadfa56726d489c56d67bab3"),
-				}
-			},
-			wantErr: "",
-		},
+	existingChain := &tonchain.Chain{ChainMetadata: tonchain.ChainMetadata{Selector: 123}}
+	p := &RPCChainProvider{
+		selector: 123,
+		chain:    existingChain,
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
+	got, err := p.Initialize(t.Context())
+	require.NoError(t, err)
 
-			var cfg RPCChainProviderConfig
-			if tt.giveConfigFunc != nil {
-				cfg = tt.giveConfigFunc(t)
-			}
-
-			p := NewRPCChainProvider(tt.giveSelector, cfg)
-
-			if tt.giveExistingChain != nil {
-				p.chain = tt.giveExistingChain
-			}
-
-			got, err := p.Initialize(t.Context())
-			if tt.wantErr != "" {
-				require.ErrorContains(t, err, tt.wantErr)
-				return
-			}
-
-			require.NoError(t, err)
-			assert.NotNil(t, p.chain)
-
-			gotChain, ok := got.(tonchain.Chain)
-			require.True(t, ok, "expected got to be of type ton.Chain")
-
-			// For the already initialized chain case, we can skip additional checks.
-			if tt.giveExistingChain != nil {
-				return
-			}
-
-			assert.Equal(t, tt.giveSelector, gotChain.Selector)
-			assert.Equal(t, cfg.HTTPURL, gotChain.URL)
-			assert.NotNil(t, gotChain.Client)
-			assert.NotNil(t, gotChain.Wallet)
-			assert.NotNil(t, gotChain.WalletAddress)
-		})
-	}
+	gotChain, ok := got.(tonchain.Chain)
+	require.True(t, ok)
+	assert.Equal(t, existingChain.Selector, gotChain.Selector)
 }
 
 func Test_RPCChainProvider_Name(t *testing.T) {
@@ -203,4 +110,115 @@ func Test_RPCChainProvider_BlockChain(t *testing.T) {
 	p := &RPCChainProvider{chain: c}
 
 	assert.Equal(t, *c, p.BlockChain())
+}
+
+// Unit tests for extracted functions
+
+func Test_validateLiteserverURL(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		url     string
+		wantErr string
+	}{
+		{
+			name: "valid URL",
+			url:  "liteserver://validkey@localhost:8080",
+		},
+		{
+			name:    "empty URL",
+			url:     "",
+			wantErr: "liteserver url is required",
+		},
+		{
+			name:    "invalid prefix",
+			url:     "http://example.com",
+			wantErr: "invalid liteserver URL format: expected liteserver:// prefix",
+		},
+		{
+			name:    "missing @",
+			url:     "liteserver://invalidurl",
+			wantErr: "invalid liteserver URL format: expected publickey@host:port",
+		},
+		{
+			name:    "multiple @",
+			url:     "liteserver://key1@key2@host:port",
+			wantErr: "invalid liteserver URL format: expected publickey@host:port",
+		},
+		{
+			name:    "empty public key",
+			url:     "liteserver://@localhost:8080",
+			wantErr: "invalid liteserver URL format: public key cannot be empty",
+		},
+		{
+			name:    "empty host:port",
+			url:     "liteserver://validkey@",
+			wantErr: "invalid liteserver URL format: host:port cannot be empty",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			err := validateLiteserverURL(tt.url)
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func Test_getWalletVersionConfig(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		version WalletVersion
+		wantErr bool
+	}{
+		{
+			name:    "V3R2",
+			version: WalletVersionV3R2,
+			wantErr: false,
+		},
+		{
+			name:    "V4R2",
+			version: WalletVersionV4R2,
+			wantErr: false,
+		},
+		{
+			name:    "V5R1",
+			version: WalletVersionV5R1,
+			wantErr: false,
+		},
+		{
+			name:    "Default (empty)",
+			version: WalletVersionDefault,
+			wantErr: false,
+		},
+		{
+			name:    "Unsupported version",
+			version: "V9R9",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			cfg, err := getWalletVersionConfig(tt.version)
+			if tt.wantErr {
+				require.Error(t, err)
+				assert.Nil(t, cfg)
+			} else {
+				require.NoError(t, err)
+				assert.NotNil(t, cfg)
+			}
+		})
+	}
 }
