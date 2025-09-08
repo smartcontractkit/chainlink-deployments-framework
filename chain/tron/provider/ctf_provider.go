@@ -15,7 +15,7 @@ import (
 	"github.com/fbsobreira/gotron-sdk/pkg/address"
 	"github.com/fbsobreira/gotron-sdk/pkg/http/common"
 	"github.com/fbsobreira/gotron-sdk/pkg/http/soliditynode"
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/chainlink-tron/relayer/sdk"
@@ -97,7 +97,7 @@ func (p *CTFChainProvider) Initialize(_ context.Context) (chain.BlockChain, erro
 	}
 
 	// Get the TRON Chain ID
-	chainID, err := chain_selectors.GetChainIDFromSelector(p.selector)
+	chainID, err := chainsel.GetChainIDFromSelector(p.selector)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get chain ID from selector %d: %w", p.selector, err)
 	}

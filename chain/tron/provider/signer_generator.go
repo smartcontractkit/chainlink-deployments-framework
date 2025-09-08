@@ -46,8 +46,8 @@ func SignerGenCTFDefault() (*signerGenCTFDefault, error) {
 
 // signerGenPrivateKey is a signer generator that creates a signer from the private key.
 type signerGenPrivateKey struct {
-	// PrivateKey is the hex formatted private key used to generate the Tron account.
-	PrivateKey string
+	// privateKey is the hex formatted private key used to generate the Tron account.
+	privateKey string
 
 	privKey *ecdsa.PrivateKey
 	address address.Address
@@ -56,7 +56,7 @@ type signerGenPrivateKey struct {
 // SignerGenPrivateKey creates a new instance of signerGenPrivateKey with the provided private key.
 func SignerGenPrivateKey(privateKey string) (*signerGenPrivateKey, error) {
 	gen := &signerGenPrivateKey{
-		PrivateKey: privateKey,
+		privateKey: privateKey,
 	}
 
 	if err := gen.initialize(); err != nil {
@@ -69,7 +69,7 @@ func SignerGenPrivateKey(privateKey string) (*signerGenPrivateKey, error) {
 // initialize parses the private key and derives the TRON address.
 func (g *signerGenPrivateKey) initialize() error {
 	// Parse the hex-encoded private key string directly to *ecdsa.PrivateKey
-	privKey, err := crypto.HexToECDSA(g.PrivateKey)
+	privKey, err := crypto.HexToECDSA(g.privateKey)
 	if err != nil {
 		return fmt.Errorf("failed to parse private key: %w", err)
 	}

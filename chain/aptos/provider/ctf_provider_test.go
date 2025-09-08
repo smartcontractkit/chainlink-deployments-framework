@@ -3,7 +3,7 @@ package provider
 import (
 	"testing"
 
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -70,7 +70,7 @@ func Test_CTFChainProvider_Initialize(t *testing.T) {
 	}{
 		{
 			name:         "valid initialization",
-			giveSelector: chain_selectors.APTOS_LOCALNET.Selector,
+			giveSelector: chainsel.APTOS_LOCALNET.Selector,
 			giveConfig: CTFChainProviderConfig{
 				DeployerSignerGen: AccountGenCTFDefault(),
 				Once:              testutils.DefaultNetworkOnce,
@@ -78,7 +78,7 @@ func Test_CTFChainProvider_Initialize(t *testing.T) {
 		},
 		{
 			name:         "fails config validation",
-			giveSelector: chain_selectors.APTOS_LOCALNET.Selector,
+			giveSelector: chainsel.APTOS_LOCALNET.Selector,
 			giveConfig: CTFChainProviderConfig{
 				Once: testutils.DefaultNetworkOnce,
 			},
@@ -86,7 +86,7 @@ func Test_CTFChainProvider_Initialize(t *testing.T) {
 		},
 		{
 			name:         "fails to generate deployer account",
-			giveSelector: chain_selectors.APTOS_LOCALNET.Selector,
+			giveSelector: chainsel.APTOS_LOCALNET.Selector,
 			giveConfig: CTFChainProviderConfig{
 				DeployerSignerGen: AccountGenPrivateKey("invalid_private_key"),
 				Once:              testutils.DefaultNetworkOnce,
@@ -140,8 +140,8 @@ func Test_CTFChainProvider_Name(t *testing.T) {
 func Test_CTFChainProvider_ChainSelector(t *testing.T) {
 	t.Parallel()
 
-	p := &CTFChainProvider{selector: chain_selectors.APTOS_LOCALNET.Selector}
-	assert.Equal(t, chain_selectors.APTOS_LOCALNET.Selector, p.ChainSelector())
+	p := &CTFChainProvider{selector: chainsel.APTOS_LOCALNET.Selector}
+	assert.Equal(t, chainsel.APTOS_LOCALNET.Selector, p.ChainSelector())
 }
 
 func Test_CTFChainProvider_BlockChain(t *testing.T) {

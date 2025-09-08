@@ -10,7 +10,7 @@ import (
 	"golang.org/x/oauth2"
 	"google.golang.org/grpc/credentials/insecure"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/offchain/jd/internal/mocks"
+	"github.com/smartcontractkit/chainlink-deployments-framework/internal/testing/jd/mocks"
 )
 
 func TestNewJDClient_ConfigurationScenarios(t *testing.T) {
@@ -198,23 +198,16 @@ func TestJDClient_GetCSAPublicKey(t *testing.T) {
 func TestJDClient_ProposeJob(t *testing.T) {
 	t.Parallel()
 
-	var (
-		request = &jobv1.ProposeJobRequest{
-			NodeId: "test-node-123",
-			Spec:   "test-job-spec",
-		}
-	)
-
 	tests := []struct {
 		name       string
-		beforeFunc func(t *testing.T, mockJob *mocks.MockJobServiceClient)
+		beforeFunc func(t *testing.T, mockJob *mocks.MockJobServiceClient, request *jobv1.ProposeJobRequest)
 		request    *jobv1.ProposeJobRequest
 		want       *jobv1.ProposeJobResponse
 		wantErr    string
 	}{
 		{
 			name: "success with valid proposal",
-			beforeFunc: func(t *testing.T, mockJob *mocks.MockJobServiceClient) {
+			beforeFunc: func(t *testing.T, mockJob *mocks.MockJobServiceClient, request *jobv1.ProposeJobRequest) {
 				t.Helper()
 
 				response := &jobv1.ProposeJobResponse{
@@ -244,7 +237,7 @@ func TestJDClient_ProposeJob(t *testing.T) {
 		},
 		{
 			name: "error when ProposeJob service call fails",
-			beforeFunc: func(t *testing.T, mockJob *mocks.MockJobServiceClient) {
+			beforeFunc: func(t *testing.T, mockJob *mocks.MockJobServiceClient, request *jobv1.ProposeJobRequest) {
 				t.Helper()
 
 				mockJob.EXPECT().ProposeJob(
@@ -260,7 +253,7 @@ func TestJDClient_ProposeJob(t *testing.T) {
 		},
 		{
 			name: "error when proposal is nil in response",
-			beforeFunc: func(t *testing.T, mockJob *mocks.MockJobServiceClient) {
+			beforeFunc: func(t *testing.T, mockJob *mocks.MockJobServiceClient, request *jobv1.ProposeJobRequest) {
 				t.Helper()
 
 				response := &jobv1.ProposeJobResponse{
@@ -280,10 +273,9 @@ func TestJDClient_ProposeJob(t *testing.T) {
 		},
 		{
 			name: "success with empty request",
-			beforeFunc: func(t *testing.T, mockJob *mocks.MockJobServiceClient) {
+			beforeFunc: func(t *testing.T, mockJob *mocks.MockJobServiceClient, request *jobv1.ProposeJobRequest) {
 				t.Helper()
 
-				request := &jobv1.ProposeJobRequest{}
 				response := &jobv1.ProposeJobResponse{
 					Proposal: &jobv1.Proposal{
 						Id: "empty-proposal-123",
@@ -310,7 +302,7 @@ func TestJDClient_ProposeJob(t *testing.T) {
 
 			// Create mock job service client
 			mockClients := mocks.NewMockClients(t)
-			tt.beforeFunc(t, mockClients.JobServiceClient)
+			tt.beforeFunc(t, mockClients.JobServiceClient, tt.request)
 
 			// Create JobDistributor with mock
 			jd := &JobDistributor{

@@ -91,8 +91,8 @@
 //		config := CTFAnvilChainProviderConfig{
 //			Once:           &once,
 //			ConfirmFunctor: ConfirmFuncGeth(2 * time.Minute),
-//			ClientOpts: []func(client *deployment.MultiClient){
-//				func(client *deployment.MultiClient) {
+//			ClientOpts: []func(client *evm.MultiClient){
+//				func(client *evm.MultiClient) {
 //					// Custom client configuration
 //					client.SetTimeout(30 * time.Second)
 //				},
@@ -148,6 +148,32 @@
 //		// Chain ID is automatically derived from the chainSelector
 //	}
 //
+// Usage in production/non-test contexts with manual cleanup:
+//
+//	func main() {
+//		var once sync.Once
+//		config := CTFAnvilChainProviderConfig{
+//			Once:           &once,
+//			ConfirmFunctor: ConfirmFuncGeth(2 * time.Minute),
+//			Port:           "8545", // T not required when Port is provided
+//		}
+//
+//		provider := NewCTFAnvilChainProvider(chainSelector, config)
+//		blockchain, err := provider.Initialize(context.Background())
+//		if err != nil {
+//			log.Fatal(err)
+//		}
+//
+//		// Use the blockchain...
+//
+//		// Important: Clean up the container when done
+//		defer func() {
+//			if err := provider.Cleanup(context.Background()); err != nil {
+//				log.Printf("Failed to cleanup container: %v", err)
+//			}
+//		}()
+//	}
+//
 // # Chain Selectors
 //
 // Common chain selectors for Anvil testing:
@@ -181,7 +207,9 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -189,7 +217,7 @@ import (
 	"github.com/avast/retry-go/v4"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/crypto"
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
@@ -198,7 +226,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
-	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider/rpcclient"
 )
 
 // anvilTestPrivateKeys contains the standard Anvil test accounts.
@@ -236,7 +264,7 @@ type CTFAnvilChainProviderConfig struct {
 	// CTFAnvilChainProvider. These options are applied to the MultiClient instance created by the
 	// provider. You can use this to set up custom HTTP clients, timeouts, or other
 	// configurations for the RPC connections.
-	ClientOpts []func(client *deployment.MultiClient)
+	ClientOpts []func(client *rpcclient.MultiClient)
 
 	// Optional: DockerCmdParamsOverrides allows customization of Docker command parameters
 	// for the Anvil container. These parameters are passed directly to the Docker container
@@ -308,8 +336,9 @@ type CTFAnvilChainProvider struct {
 	selector uint64
 	config   CTFAnvilChainProviderConfig
 
-	chain   *evm.Chain
-	httpURL string
+	chain     *evm.Chain
+	httpURL   string
+	container testcontainers.Container
 }
 
 // NewCTFAnvilChainProvider creates a new CTFAnvilChainProvider with the given selector and
@@ -343,7 +372,7 @@ func (p *CTFAnvilChainProvider) Initialize(ctx context.Context) (chain.BlockChai
 		return nil, err
 	}
 
-	chainID, err := chain_selectors.GetChainIDFromSelector(p.selector)
+	chainID, err := chainsel.GetChainIDFromSelector(p.selector)
 	if err != nil {
 		return nil, err
 	}
@@ -359,19 +388,19 @@ func (p *CTFAnvilChainProvider) Initialize(ctx context.Context) (chain.BlockChai
 		return nil, err
 	}
 
-	client, err := deployment.NewMultiClient(lggr, deployment.RPCConfig{
+	client, err := rpcclient.NewMultiClient(lggr, rpcclient.RPCConfig{
 		ChainSelector: p.selector,
-		RPCs: []deployment.RPC{
+		RPCs: []rpcclient.RPC{
 			{
 				Name:               "anvil-local",
 				HTTPURL:            httpURL,
 				WSURL:              "", // Anvil typically doesn't provide WebSocket, only HTTP
-				PreferredURLScheme: deployment.URLSchemePreferenceHTTP,
+				PreferredURLScheme: rpcclient.URLSchemePreferenceHTTP,
 			},
 		},
 	}, p.config.ClientOpts...)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create multiclient for Anvil at %s: %w", httpURL, err)
 	}
 
 	// Get the Chain ID as big.Int for transactor generation
@@ -474,6 +503,28 @@ func (p *CTFAnvilChainProvider) GetNodeHTTPURL() string {
 	return p.httpURL
 }
 
+// Cleanup terminates the Anvil container and cleans up associated resources.
+//
+// This method provides explicit control over container lifecycle, which is especially
+// important when the provider is used outside of test contexts where automatic cleanup
+// via testcontainers.CleanupContainer is not available.
+//
+// It's safe to call this method multiple times - subsequent calls will be no-ops if
+// the container has already been terminated.
+//
+// Returns an error if the container termination fails.
+func (p *CTFAnvilChainProvider) Cleanup(ctx context.Context) error {
+	if p.container != nil {
+		err := p.container.Terminate(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to terminate Anvil container: %w", err)
+		}
+		p.container = nil // Clear the reference after successful termination
+	}
+
+	return nil
+}
+
 // startContainer starts a CTF container for the Anvil EVM returning the HTTP URL of the node.
 //
 // This method handles the Docker container lifecycle including:
@@ -534,9 +585,26 @@ func (p *CTFAnvilChainProvider) startContainer(ctx context.Context, chainID stri
 			return "", fmt.Errorf("failed to create Anvil container: %w", rerr)
 		}
 
-		testcontainers.CleanupContainer(p.config.T, output.Container)
+		// Store container reference for manual cleanup
+		p.container = output.Container
 
-		return output.Nodes[0].ExternalHTTPUrl, nil
+		// Only register cleanup if T is available (for test cleanup)
+		if p.config.T != nil {
+			testcontainers.CleanupContainer(p.config.T, output.Container)
+		}
+
+		// Validate that the ExternalHTTPUrl is not empty
+		externalURL := output.Nodes[0].ExternalHTTPUrl
+		if externalURL == "" {
+			return "", errors.New("container started but ExternalHTTPUrl is empty")
+		}
+
+		// Perform health check to ensure Anvil is ready
+		if healthErr := p.waitForAnvilReady(ctx, externalURL); healthErr != nil {
+			return "", fmt.Errorf("anvil container started but health check failed: %w", healthErr)
+		}
+
+		return externalURL, nil
 	},
 		retry.Context(ctx),
 		retry.Attempts(attempts),
@@ -603,4 +671,45 @@ func (p *CTFAnvilChainProvider) getUserTransactors(chainID string) ([]*bind.Tran
 	}
 
 	return transactors, nil
+}
+
+// waitForAnvilReady performs a health check on the Anvil node to ensure it's ready to accept requests.
+// It sends a simple JSON-RPC request to check if the node is responding correctly.
+func (p *CTFAnvilChainProvider) waitForAnvilReady(ctx context.Context, httpURL string) error {
+	const (
+		maxAttempts = 30
+		retryDelay  = 1 * time.Second
+	)
+
+	// Simple JSON-RPC request to check if Anvil is ready
+	jsonRPCRequest := `{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}`
+
+	return retry.Do(func() error {
+		reqCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
+
+		req, err := http.NewRequestWithContext(reqCtx, http.MethodPost, httpURL, strings.NewReader(jsonRPCRequest))
+		if err != nil {
+			return fmt.Errorf("failed to create request: %w", err)
+		}
+		req.Header.Set("Content-Type", "application/json")
+
+		client := &http.Client{Timeout: 5 * time.Second}
+		resp, err := client.Do(req)
+		if err != nil {
+			return fmt.Errorf("failed to make request: %w", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("received non-200 status code: %d", resp.StatusCode)
+		}
+
+		return nil
+	},
+		retry.Context(ctx),
+		retry.Attempts(maxAttempts),
+		retry.Delay(retryDelay),
+		retry.DelayType(retry.FixedDelay),
+	)
 }

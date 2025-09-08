@@ -3,7 +3,7 @@ package network
 import (
 	"testing"
 
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -11,17 +11,17 @@ import (
 func Test_Network_ChainFamily(t *testing.T) {
 	t.Parallel()
 
-	network := Network{ChainSelector: chain_selectors.ETHEREUM_MAINNET.Selector}
+	network := Network{ChainSelector: chainsel.ETHEREUM_MAINNET.Selector}
 	got, err := network.ChainFamily()
 	require.NoError(t, err)
 
-	assert.Equal(t, chain_selectors.FamilyEVM, got)
+	assert.Equal(t, chainsel.FamilyEVM, got)
 }
 
 func Test_Network_ChainID(t *testing.T) {
 	t.Parallel()
 
-	network := Network{ChainSelector: chain_selectors.ETHEREUM_MAINNET.Selector}
+	network := Network{ChainSelector: chainsel.ETHEREUM_MAINNET.Selector}
 	got, err := network.ChainID()
 	require.NoError(t, err)
 
@@ -63,7 +63,7 @@ func Test_Network_Validate(t *testing.T) {
 
 			network := &Network{
 				Type:          NetworkTypeMainnet,
-				ChainSelector: chain_selectors.ETHEREUM_MAINNET.Selector,
+				ChainSelector: chainsel.ETHEREUM_MAINNET.Selector,
 				RPCs:          []RPC{{RPCName: "test_rpc", HTTPURL: "https://test.rpc", WSURL: "wss://test.rpc"}},
 			}
 

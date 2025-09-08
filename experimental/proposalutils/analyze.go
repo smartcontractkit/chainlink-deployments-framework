@@ -14,11 +14,11 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 
 	mcmslib "github.com/smartcontractkit/mcms"
 
-	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 )
 
 const (
@@ -65,7 +65,7 @@ func ContextGet[T any](ctx *ArgumentContext, key string) (T, error) {
 	return ctxElem, nil
 }
 
-func NewArgumentContext(addresses cldf.AddressesByChain) *ArgumentContext {
+func NewArgumentContext(addresses deployment.AddressesByChain) *ArgumentContext {
 	return &ArgumentContext{
 		Ctx: map[string]any{
 			"AddressesByChain": addresses,
@@ -184,7 +184,7 @@ type AddressArgument struct {
 
 // Annotation returns only the annotation if known, otherwise "".
 func (a AddressArgument) Annotation(ctx *ArgumentContext) string {
-	addresses, err := ContextGet[cldf.AddressesByChain](ctx, "AddressesByChain")
+	addresses, err := ContextGet[deployment.AddressesByChain](ctx, "AddressesByChain")
 	if err != nil {
 		return ""
 	}
@@ -443,15 +443,15 @@ func indentStringWith(s string, indent string) string {
 }
 
 func GetChainNameBySelector(selector uint64) (string, error) {
-	chainID, err := chain_selectors.GetChainIDFromSelector(selector)
+	chainID, err := chainsel.GetChainIDFromSelector(selector)
 	if err != nil {
 		return "", err
 	}
-	family, err := chain_selectors.GetSelectorFamily(selector)
+	family, err := chainsel.GetSelectorFamily(selector)
 	if err != nil {
 		return "", err
 	}
-	chainInfo, err := chain_selectors.GetChainDetailsByChainIDAndFamily(chainID, family)
+	chainInfo, err := chainsel.GetChainDetailsByChainIDAndFamily(chainID, family)
 	if err != nil {
 		return "", err
 	}

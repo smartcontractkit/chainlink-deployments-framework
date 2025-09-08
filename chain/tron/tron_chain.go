@@ -9,11 +9,11 @@ import (
 	"github.com/fbsobreira/gotron-sdk/pkg/http/soliditynode"
 	"github.com/smartcontractkit/chainlink-tron/relayer/sdk"
 
-	cld_common "github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/common"
+	chaincommon "github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/common"
 )
 
 // ChainMetadata = generic metadata from the framework
-type ChainMetadata = cld_common.ChainMetadata
+type ChainMetadata = chaincommon.ChainMetadata
 
 type ConfirmRetryOptions struct {
 	RetryAttempts uint          // Max number of retries for confirming a transaction.
@@ -42,7 +42,6 @@ type Chain struct {
 	SignHash      func(ctx context.Context, txHash []byte) ([]byte, error) // Function for signing transaction hashes
 	Address       address.Address                                          // Address of the account used for transactions
 	URL           string                                                   // Optional: Client URL
-	DeployerSeed  string                                                   // Optional: mnemonic or raw seed
 
 	// SendAndConfirm provides a utility function to send a transaction and waits for confirmation.
 	SendAndConfirm func(ctx context.Context, tx *common.Transaction, opts *ConfirmRetryOptions) (*soliditynode.TransactionInfo, error)

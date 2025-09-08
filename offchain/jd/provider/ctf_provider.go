@@ -9,7 +9,7 @@ import (
 
 	"github.com/avast/retry-go/v4"
 	csav1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/csa"
-	ctf_jd "github.com/smartcontractkit/chainlink-testing-framework/framework/components/jd"
+	ctfjd "github.com/smartcontractkit/chainlink-testing-framework/framework/components/jd"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/postgres"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/offchain"
@@ -102,7 +102,7 @@ func (p *CTFOffchainProvider) Initialize(ctx context.Context) (offchain.Client, 
 	}
 
 	// Create JD input configuration from provider config
-	jdInput := &ctf_jd.Input{
+	jdInput := &ctfjd.Input{
 		Image:            p.config.Image,
 		GRPCPort:         p.config.GRPCPort,
 		WSRPCPort:        p.config.WSRPCPort,
@@ -114,7 +114,7 @@ func (p *CTFOffchainProvider) Initialize(ctx context.Context) (offchain.Client, 
 	}
 
 	// Create the JD container using CTF
-	jdOutput, err := ctf_jd.NewJD(jdInput)
+	jdOutput, err := ctfjd.NewJD(jdInput)
 	if err != nil {
 		return nil, err
 	}

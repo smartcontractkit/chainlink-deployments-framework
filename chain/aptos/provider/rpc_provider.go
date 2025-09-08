@@ -7,7 +7,7 @@ import (
 	"strconv"
 
 	aptoslib "github.com/aptos-labs/aptos-go-sdk"
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos"
@@ -79,7 +79,7 @@ func (p *RPCChainProvider) Initialize(_ context.Context) (chain.BlockChain, erro
 	}
 
 	// Initialize the Aptos client with the provided RPC URL and chain ID
-	chainIDStr, err := chain_selectors.GetChainIDFromSelector(p.selector)
+	chainIDStr, err := chainsel.GetChainIDFromSelector(p.selector)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get chain ID from selector %d: %w", p.selector, err)
 	}

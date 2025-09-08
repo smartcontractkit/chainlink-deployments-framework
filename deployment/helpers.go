@@ -13,7 +13,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
 
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 
 	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
@@ -137,7 +137,7 @@ func IsValidChainSelector(cs uint64) error {
 	if cs == 0 {
 		return errors.New("chain selector must be set")
 	}
-	_, err := chain_selectors.GetSelectorFamily(cs)
+	_, err := chainsel.GetSelectorFamily(cs)
 	if err != nil {
 		return err
 	}

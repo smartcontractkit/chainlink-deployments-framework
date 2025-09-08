@@ -22,7 +22,7 @@ const (
 	// DarastoreDirName is the name of the directory containing the datastore files.
 	DatastoreDirName = "datastore"
 
-	// DataStoreFileName is the name of the file containing the datastore.
+	// DataStoreFileName is the name of the file containing the fdatastore.
 	DataStoreFileName = "datastore.json"
 
 	// AddressRefsFileName is the name of the file containing the address refs.
@@ -62,9 +62,9 @@ const (
 	// DecodedProposalsDirName is the name of the directory containing decoded proposals.
 	DecodedProposalsDirName = "decoded_proposals"
 
-	// DurablePipelinesFileName is the name of the file containing the durable pipelines for
+	// PipelinesFileName is the name of the file containing the pipelines initialization for
 	// the environment.
-	DurablePipelinesFileName = "durable_pipelines.go"
+	PipelinesFileName = "pipelines.go"
 
 	// OperationsReportsDirName is the name of the directory containing operations reports.[
 	OperationsReportsDirName = "operations_reports"

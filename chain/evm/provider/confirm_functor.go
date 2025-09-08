@@ -10,10 +10,10 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
-	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider/rpcclient"
 )
 
 // ConfirmFunctor is an interface for creating a confirmation function for transactions on the
@@ -113,13 +113,13 @@ func (g *confirmFuncSeth) Generate(
 ) (evm.ConfirmFunc, error) {
 	// Convert the client to a MultiClient because we need to use the multi-client's WaitMined
 	// method.
-	multiClient, ok := client.(*deployment.MultiClient)
+	multiClient, ok := client.(*rpcclient.MultiClient)
 	if !ok {
-		return nil, fmt.Errorf("expected client to be of type *deployment.MultiClient, got %T", client)
+		return nil, fmt.Errorf("expected client to be of type *rpcclient.MultiClient, got %T", client)
 	}
 
 	// Get the ChainID from the selector
-	chainIDStr, err := chain_selectors.GetChainIDFromSelector(selector)
+	chainIDStr, err := chainsel.GetChainIDFromSelector(selector)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get chain ID from selector %d: %w", selector, err)
 	}

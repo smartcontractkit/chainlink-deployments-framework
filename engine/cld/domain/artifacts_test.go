@@ -3,6 +3,7 @@ package domain
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -17,8 +18,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
-	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
+	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 )
 
@@ -461,12 +462,12 @@ func Test_Artifacts_SaveChangesetOutput_LoadChangesetOutput(t *testing.T) {
 		js1 = testJobSpec{A: "1", B: "2"}
 		js2 = testJobSpec{A: "3", B: "4"}
 
-		job1 = cldf.ProposedJob{
+		job1 = fdeployment.ProposedJob{
 			JobID: "job_123",
 			Node:  "node1",
 			Spec:  js1.MustMarshal(),
 		}
-		job2 = cldf.ProposedJob{
+		job2 = fdeployment.ProposedJob{
 			JobID: "job_234",
 			Node:  "node2",
 			Spec:  js2.MustMarshal(),
@@ -599,22 +600,22 @@ func Test_Artifacts_SaveChangesetOutput_LoadChangesetOutput(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		giveOutput cldf.ChangesetOutput
-		want       cldf.ChangesetOutput
+		giveOutput fdeployment.ChangesetOutput
+		want       fdeployment.ChangesetOutput
 	}{
 		{
 			name:       "empty changeset output",
-			giveOutput: cldf.ChangesetOutput{},
+			giveOutput: fdeployment.ChangesetOutput{},
 		},
 		{
 			name: "changeset output with job specs",
-			giveOutput: cldf.ChangesetOutput{
+			giveOutput: fdeployment.ChangesetOutput{
 				JobSpecs: map[string][]string{
 					"node1": {js1.MustMarshal()},
 					"node2": {js2.MustMarshal()},
 				},
 			},
-			want: cldf.ChangesetOutput{
+			want: fdeployment.ChangesetOutput{
 				JobSpecs: map[string][]string{
 					"node1": {js1.MustMarshal()},
 					"node2": {js2.MustMarshal()},
@@ -623,13 +624,13 @@ func Test_Artifacts_SaveChangesetOutput_LoadChangesetOutput(t *testing.T) {
 		},
 		{
 			name: "changeset output with addresses",
-			giveOutput: cldf.ChangesetOutput{
+			giveOutput: fdeployment.ChangesetOutput{
 				AddressBook: addrBook,
 			},
-			want: cldf.ChangesetOutput{
-				AddressBook: cldf.NewMemoryAddressBookFromMap(map[uint64]map[string]cldf.TypeAndVersion{
+			want: fdeployment.ChangesetOutput{
+				AddressBook: fdeployment.NewMemoryAddressBookFromMap(map[uint64]map[string]fdeployment.TypeAndVersion{
 					chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector: {
-						"0xAeeFF49471aB5B3d14D2FeA4079bF075d452E5F4": cldf.TypeAndVersion{
+						"0xAeeFF49471aB5B3d14D2FeA4079bF075d452E5F4": fdeployment.TypeAndVersion{
 							Type:    "Contract",
 							Version: version1_0_0,
 							Labels:  nil,
@@ -640,47 +641,47 @@ func Test_Artifacts_SaveChangesetOutput_LoadChangesetOutput(t *testing.T) {
 		},
 		{
 			name: "changeset output with datastore",
-			giveOutput: cldf.ChangesetOutput{
+			giveOutput: fdeployment.ChangesetOutput{
 				DataStore: dataStore,
 			},
-			want: cldf.ChangesetOutput{
+			want: fdeployment.ChangesetOutput{
 				DataStore: dataStore,
 			},
 		},
 		{
 			name: "changeset output with jobs",
-			giveOutput: cldf.ChangesetOutput{
-				Jobs: []cldf.ProposedJob{job1, job2},
+			giveOutput: fdeployment.ChangesetOutput{
+				Jobs: []fdeployment.ProposedJob{job1, job2},
 			},
-			want: cldf.ChangesetOutput{
-				Jobs: []cldf.ProposedJob{job1, job2},
+			want: fdeployment.ChangesetOutput{
+				Jobs: []fdeployment.ProposedJob{job1, job2},
 			},
 		},
 		{
 			name: "changeset output with mcms proposals",
-			giveOutput: cldf.ChangesetOutput{
+			giveOutput: fdeployment.ChangesetOutput{
 				MCMSProposals: mcmsProposals,
 			},
-			want: cldf.ChangesetOutput{
+			want: fdeployment.ChangesetOutput{
 				MCMSProposals: mcmsProposals,
 			},
 		},
 		{
 			name: "changeset output with mcms timelock proposals",
-			giveOutput: cldf.ChangesetOutput{
+			giveOutput: fdeployment.ChangesetOutput{
 				MCMSTimelockProposals: mcmsTimelockProposals,
 			},
-			want: cldf.ChangesetOutput{
+			want: fdeployment.ChangesetOutput{
 				MCMSTimelockProposals: mcmsTimelockProposals,
 			},
 		},
 		{
 			name: "changeset output with all proposals",
-			giveOutput: cldf.ChangesetOutput{
+			giveOutput: fdeployment.ChangesetOutput{
 				MCMSProposals:         mcmsProposals,
 				MCMSTimelockProposals: mcmsTimelockProposals,
 			},
-			want: cldf.ChangesetOutput{
+			want: fdeployment.ChangesetOutput{
 				MCMSProposals:         mcmsProposals,
 				MCMSTimelockProposals: mcmsTimelockProposals,
 			},
@@ -717,7 +718,7 @@ func Test_Artifacts_SaveChangesetOutput_LoadChangesetOutput(t *testing.T) {
 	}
 }
 
-func testArtifactSaveAndLoad(t *testing.T, artsDir *ArtifactsDir, giveOutput cldf.ChangesetOutput, want cldf.ChangesetOutput) {
+func testArtifactSaveAndLoad(t *testing.T, artsDir *ArtifactsDir, giveOutput fdeployment.ChangesetOutput, want fdeployment.ChangesetOutput) {
 	t.Helper()
 
 	// Save the changeset output as artifacts
@@ -744,7 +745,7 @@ func Test_Artifacts_LoadAddressBookByMigrationKey(t *testing.T) {
 		name       string
 		beforeFunc func(*testing.T, *ArtifactsDir)
 		giveMigKey string
-		want       cldf.AddressBook
+		want       fdeployment.AddressBook
 		wantErr    string
 	}{
 		{
@@ -752,15 +753,15 @@ func Test_Artifacts_LoadAddressBookByMigrationKey(t *testing.T) {
 			beforeFunc: func(t *testing.T, artsDir *ArtifactsDir) {
 				t.Helper()
 
-				err := artsDir.SaveChangesetOutput("0001_initial", cldf.ChangesetOutput{
+				err := artsDir.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{
 					AddressBook: addrBook,
 				})
 				require.NoError(t, err)
 			},
 			giveMigKey: "0001_initial",
-			want: cldf.NewMemoryAddressBookFromMap(map[uint64]map[string]cldf.TypeAndVersion{
+			want: fdeployment.NewMemoryAddressBookFromMap(map[uint64]map[string]fdeployment.TypeAndVersion{
 				chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector: {
-					"0xAeeFF49471aB5B3d14D2FeA4079bF075d452E5F4": cldf.TypeAndVersion{
+					"0xAeeFF49471aB5B3d14D2FeA4079bF075d452E5F4": fdeployment.TypeAndVersion{
 						Type:    "Contract",
 						Version: version1_0_0,
 						Labels:  nil,
@@ -778,7 +779,7 @@ func Test_Artifacts_LoadAddressBookByMigrationKey(t *testing.T) {
 			beforeFunc: func(t *testing.T, artsDir *ArtifactsDir) {
 				t.Helper()
 
-				err := artsDir.SaveChangesetOutput("0001_no_address_book", cldf.ChangesetOutput{})
+				err := artsDir.SaveChangesetOutput("0001_no_address_book", fdeployment.ChangesetOutput{})
 				require.NoError(t, err)
 			},
 			giveMigKey: "0001_no_address_book",
@@ -842,7 +843,7 @@ func Test_Artifacts_LoadDataStoreByMigrationKey(t *testing.T) {
 		name       string
 		beforeFunc func(*testing.T, *ArtifactsDir)
 		giveMigKey string
-		want       datastore.DataStore
+		want       fdatastore.DataStore
 		wantErr    string
 	}{
 		{
@@ -850,7 +851,7 @@ func Test_Artifacts_LoadDataStoreByMigrationKey(t *testing.T) {
 			beforeFunc: func(t *testing.T, artsDir *ArtifactsDir) {
 				t.Helper()
 
-				err := artsDir.SaveChangesetOutput("0001_initial", cldf.ChangesetOutput{
+				err := artsDir.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{
 					DataStore: dataStore,
 				})
 				require.NoError(t, err)
@@ -868,7 +869,7 @@ func Test_Artifacts_LoadDataStoreByMigrationKey(t *testing.T) {
 			beforeFunc: func(t *testing.T, artsDir *ArtifactsDir) {
 				t.Helper()
 
-				err := artsDir.SaveChangesetOutput("0001_no_datastore", cldf.ChangesetOutput{})
+				err := artsDir.SaveChangesetOutput("0001_no_datastore", fdeployment.ChangesetOutput{})
 				require.NoError(t, err)
 			},
 			giveMigKey: "0001_no_datastore",
@@ -1020,10 +1021,6 @@ func Test_Artifacts_SaveAndLoadOperationsReport(t *testing.T) {
 func Test_Artifacts_SaveAndLoadMultipleProposals(t *testing.T) {
 	t.Parallel()
 
-	fixture := setupTestDomainsFS(t)
-	migrationKey := "0001_initial"
-	artsDir := fixture.artifactsDir
-
 	validUntilUnixTime := uint32(time.Now().Add(time.Hour).Unix()) //nolint:gosec // This won't overflow until 7 Feb 2106, and would also cause MCMS to fail anyway
 
 	proposals := []mcmsv2.Proposal{
@@ -1071,38 +1068,103 @@ func Test_Artifacts_SaveAndLoadMultipleProposals(t *testing.T) {
 		},
 	}
 
-	// Save multiple proposals
-	require.NoError(t, artsDir.CreateMigrationDir(migrationKey))
-	for i, proposal := range proposals {
-		err := artsDir.saveProposalArtifact(migrationKey, ArtifactMCMSProposal, i, proposal)
-		require.NoError(t, err)
-		err = artsDir.saveDecodedProposalArtifact(migrationKey, ArtifactMCMSProposal, i, "some decoded proposal")
-		require.NoError(t, err)
+	tests := []struct {
+		name               string
+		migrationKey       string
+		setupFunc          func(t *testing.T, artsDir *ArtifactsDir)
+		expectedFilePrefix string
+		isDurablePipelines bool
+	}{
+		{
+			name:               "regular migration proposals",
+			migrationKey:       "0001_initial",
+			expectedFilePrefix: "",
+			isDurablePipelines: false,
+		},
+		{
+			name:         "durable pipelines proposals with timestamp prefix",
+			migrationKey: "0001_initial",
+			setupFunc: func(t *testing.T, artsDir *ArtifactsDir) {
+				t.Helper()
+				err := artsDir.SetDurablePipelines("1234567890123456789")
+				require.NoError(t, err)
+			},
+			expectedFilePrefix: "1234567890123456789-",
+			isDurablePipelines: true,
+		},
 	}
 
-	// Verify proposal files were created with correct indexes
-	files, err := os.ReadDir(artsDir.ProposalsDirPath())
-	sort.Slice(files, func(i, j int) bool { return files[i].Name() < files[j].Name() })
-	require.NoError(t, err)
-	assert.Len(t, files, len(proposals))
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	for i, file := range files {
-		assert.Contains(t, file.Name(), migrationKey)
-		assert.Contains(t, file.Name(), ArtifactMCMSProposal)
-		assert.Contains(t, file.Name(), "_"+strconv.Itoa(i))
-	}
+			fixture := setupTestDomainsFS(t)
+			artsDir := fixture.artifactsDir
 
-	// Load proposals and verify
-	exists, err := artsDir.MigrationDirExists(migrationKey)
-	require.NoError(t, err)
-	require.True(t, exists)
-	loadedProposals, err := artsDir.LoadChangesetOutput(migrationKey)
-	require.NoError(t, err)
-	assert.Len(t, loadedProposals.MCMSProposals, len(proposals))
+			if tt.setupFunc != nil {
+				tt.setupFunc(t, artsDir)
+			}
 
-	for i, proposal := range loadedProposals.MCMSProposals {
-		assert.Equal(t, proposals[i].Version, proposal.Version)
-		assert.Equal(t, proposals[i].ValidUntil, proposal.ValidUntil)
+			// Save multiple proposals
+			require.NoError(t, artsDir.CreateMigrationDir(tt.migrationKey))
+			for i, proposal := range proposals {
+				err := artsDir.saveProposalArtifact(tt.migrationKey, ArtifactMCMSProposal, i, proposal)
+				require.NoError(t, err)
+				err = artsDir.saveDecodedProposalArtifact(tt.migrationKey, ArtifactMCMSProposal, i, "some decoded proposal")
+				require.NoError(t, err)
+			}
+
+			// Verify proposal files were created with correct indexes and timestamp prefix
+			proposalFiles, err := os.ReadDir(artsDir.ProposalsDirPath())
+			require.NoError(t, err)
+			sort.Slice(proposalFiles, func(i, j int) bool { return proposalFiles[i].Name() < proposalFiles[j].Name() })
+			assert.Len(t, proposalFiles, len(proposals))
+
+			// Verify decoded proposal files were created
+			decodedFiles, err := os.ReadDir(artsDir.DecodedProposalsDirPath())
+			require.NoError(t, err)
+			sort.Slice(decodedFiles, func(i, j int) bool { return decodedFiles[i].Name() < decodedFiles[j].Name() })
+			assert.Len(t, decodedFiles, len(proposals))
+
+			// Check proposal file naming conventions
+			for i, file := range proposalFiles {
+				expectedFileName := fmt.Sprintf("%s%s-%s-%s_%s_%d.%s",
+					tt.expectedFilePrefix,
+					artsDir.DomainKey(),
+					artsDir.EnvKey(),
+					tt.migrationKey,
+					ArtifactMCMSProposal,
+					i,
+					JSONExt)
+				assert.Equal(t, expectedFileName, file.Name())
+			}
+
+			// Check decoded proposal file naming conventions
+			for i, file := range decodedFiles {
+				expectedFileName := fmt.Sprintf("%s%s-%s-%s_%s_%d_decoded.%s",
+					tt.expectedFilePrefix,
+					artsDir.DomainKey(),
+					artsDir.EnvKey(),
+					tt.migrationKey,
+					ArtifactMCMSProposal,
+					i,
+					TxtExt)
+				assert.Equal(t, expectedFileName, file.Name())
+			}
+
+			// Load proposals and verify
+			exists, err := artsDir.MigrationDirExists(tt.migrationKey)
+			require.NoError(t, err)
+			require.True(t, exists)
+			loadedProposals, err := artsDir.LoadChangesetOutput(tt.migrationKey)
+			require.NoError(t, err)
+			assert.Len(t, loadedProposals.MCMSProposals, len(proposals))
+
+			for i, proposal := range loadedProposals.MCMSProposals {
+				assert.Equal(t, proposals[i].Version, proposal.Version)
+				assert.Equal(t, proposals[i].ValidUntil, proposal.ValidUntil)
+			}
+		})
 	}
 }
 
@@ -1178,7 +1240,7 @@ func Test_Artifacts_SaveAddressBookInSortedOrder(t *testing.T) {
 
 	// Create address book with intentionally unsorted entries
 	// Higher chain selector first, unsorted addresses
-	addrBook := cldf.NewMemoryAddressBookFromMap(map[uint64]map[string]cldf.TypeAndVersion{
+	addrBook := fdeployment.NewMemoryAddressBookFromMap(map[uint64]map[string]fdeployment.TypeAndVersion{
 		// Chain selector 456 (should appear second)
 		456: {
 			"0xC3A1B2D4E5F6789012345678901234567890ABCD": {Type: "ContractC", Version: version1_0_0},
@@ -1194,7 +1256,7 @@ func Test_Artifacts_SaveAddressBookInSortedOrder(t *testing.T) {
 	})
 
 	// Save address book
-	err = artsDir.SaveChangesetOutput(migKey, cldf.ChangesetOutput{
+	err = artsDir.SaveChangesetOutput(migKey, fdeployment.ChangesetOutput{
 		AddressBook: addrBook,
 	})
 	require.NoError(t, err)

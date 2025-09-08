@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 )
 
 type testStruct struct {
@@ -29,11 +29,11 @@ func TestClone(t *testing.T) {
 	}{
 		{
 			name: "simple struct",
-			give: testStruct{A: chain_selectors.APTOS_MAINNET.Selector, B: "foo", C: []int{1, 2, 3}},
+			give: testStruct{A: chainsel.APTOS_MAINNET.Selector, B: "foo", C: []int{1, 2, 3}},
 		},
 		{
 			name:    "struct with channel",
-			give:    chanStruct{A: chain_selectors.APTOS_MAINNET.Selector, Ch: make(chan int)},
+			give:    chanStruct{A: chainsel.APTOS_MAINNET.Selector, Ch: make(chan int)},
 			wantErr: "json: unsupported type: chan int",
 		},
 	}

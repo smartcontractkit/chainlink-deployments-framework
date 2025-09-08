@@ -1,0 +1,11 @@
+environments:
+  dev:
+    network_types:
+      - testnet
+  staging:
+    network_types:
+      - testnet
+      - mainnet
+  prod:
+    network_types:
+      - invalid_network

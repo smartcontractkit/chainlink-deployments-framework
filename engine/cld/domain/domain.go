@@ -5,8 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
-	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
+	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 )
 
 // GetDomain returns a Domain for the specified key based on the available dirs in the domains root.
@@ -79,12 +79,12 @@ func (d Domain) EnvDir(env string) EnvDir {
 }
 
 // AddressBookByEnv returns the address book for the specified environment.
-func (d Domain) AddressBookByEnv(env string) (cldf.AddressBook, error) {
+func (d Domain) AddressBookByEnv(env string) (fdeployment.AddressBook, error) {
 	return d.EnvDir(env).AddressBook()
 }
 
 // DataStoreByEnv returns the datastore for the specified environment.
-func (d Domain) DataStoreByEnv(env string) (datastore.DataStore, error) {
+func (d Domain) DataStoreByEnv(env string) (fdatastore.DataStore, error) {
 	return d.EnvDir(env).DataStore()
 }
 
@@ -121,17 +121,37 @@ func (d Domain) ConfigLocalDirPath() string {
 	return filepath.Join(d.ConfigDirPath(), DomainConfigLocalDirName)
 }
 
-// ConfigLocalFileName returns the path to a domain environment's local execution config file.
-func (d Domain) ConfigLocalFileName(env string) string {
+// ConfigLocalFilePath returns the path to a domain environment's local execution config file.
+func (d Domain) ConfigLocalFilePath(env string) string {
 	return filepath.Join(d.ConfigLocalDirPath(), "config."+env+".yaml")
 }
 
-// ConfigNetworksFilePath returns the path where the domain's networks config files are stored.
-func (d Domain) ConfigNetworksFilePath() string {
+// ConfigNetworksDirPath returns the path where the domain's networks config files are stored.
+func (d Domain) ConfigNetworksDirPath() string {
 	return filepath.Join(d.ConfigDirPath(), DomainConfigNetworksDirName)
+}
+
+// ConfigNetworksFilePath returns the path to a domain environment's networks config file.
+func (d Domain) ConfigNetworksFilePath(filename string) string {
+	return filepath.Join(d.ConfigNetworksDirPath(), filename)
 }
 
 // ConfigCIDirPath returns the path where the domain's CI .env files are stored.
 func (d Domain) ConfigCIDirPath() string {
 	return filepath.Join(d.ConfigDirPath(), DomainConfigCIDirName)
+}
+
+// ConfigCICommonFilePath returns the path to the domain's CI common .env file.
+func (d Domain) ConfigCICommonFilePath() string {
+	return filepath.Join(d.ConfigCIDirPath(), "common.env")
+}
+
+// ConfigCIEnvFilePath returns the path to the domain's CI .env file for the specified environment.
+func (d Domain) ConfigCIEnvFilePath(env string) string {
+	return filepath.Join(d.ConfigCIDirPath(), env+".env")
+}
+
+// ConfigDomainFilePath returns the path to the domain's domain config file.
+func (d Domain) ConfigDomainFilePath() string {
+	return filepath.Join(d.ConfigDirPath(), "domain.yaml")
 }

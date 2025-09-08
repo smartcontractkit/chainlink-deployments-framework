@@ -10,11 +10,11 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient/simulated"
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
-	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider/rpcclient"
 )
 
 func Test_ConfirmFuncGeth_ConfirmFunc(t *testing.T) {
@@ -123,7 +123,7 @@ func Test_ConfirmFuncGeth_ConfirmFunc(t *testing.T) {
 			// Generate the confirm function
 			functor := ConfirmFuncGeth(1 * time.Second)
 			confirmFunc, err := functor.Generate(
-				t.Context(), chain_selectors.TEST_1000.Selector, client, adminTransactor.From,
+				t.Context(), chainsel.TEST_1000.Selector, client, adminTransactor.From,
 			)
 			require.NoError(t, err)
 
@@ -145,7 +145,7 @@ func Test_ConfirmFuncSeth_Generate(t *testing.T) {
 	rpcSrv := newFakeRPCServer(t)
 
 	var (
-		chainSelector = chain_selectors.TEST_1000.Selector
+		chainSelector = chainsel.TEST_1000.Selector
 		rpcURL        = rpcSrv.URL
 		fromAddr      = common.HexToAddress("0x1234567890abcdef1234567890abcdef12345678")
 
@@ -165,7 +165,7 @@ func Test_ConfirmFuncSeth_Generate(t *testing.T) {
 			name:           "valid generation confirmation function",
 			giveRPCURL:     rpcURL,
 			giveSelector:   chainSelector,
-			giveClient:     &deployment.MultiClient{},
+			giveClient:     &rpcclient.MultiClient{},
 			giveConfigPath: configPath,
 		},
 		{
@@ -174,13 +174,13 @@ func Test_ConfirmFuncSeth_Generate(t *testing.T) {
 			giveSelector:   chainSelector,
 			giveClient:     SimClient{},
 			giveConfigPath: configPath,
-			wantErr:        "expected client to be of type *deployment.MultiClient",
+			wantErr:        "expected client to be of type *rpcclient.MultiClient",
 		},
 		{
 			name:           "invalid chain ID",
 			giveRPCURL:     rpcURL,
 			giveSelector:   1,
-			giveClient:     &deployment.MultiClient{},
+			giveClient:     &rpcclient.MultiClient{},
 			giveConfigPath: configPath,
 			wantErr:        "failed to get chain ID from selector",
 		},
@@ -188,7 +188,7 @@ func Test_ConfirmFuncSeth_Generate(t *testing.T) {
 			name:           "failed to setup seth client",
 			giveRPCURL:     "http://invalid-url",
 			giveSelector:   chainSelector,
-			giveClient:     &deployment.MultiClient{},
+			giveClient:     &rpcclient.MultiClient{},
 			giveConfigPath: invalidConfigPath,
 			wantErr:        "failed to setup seth client",
 		},
