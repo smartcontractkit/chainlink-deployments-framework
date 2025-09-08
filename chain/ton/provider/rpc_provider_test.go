@@ -20,24 +20,24 @@ func Test_RPCChainProviderConfig_validate(t *testing.T) {
 		{
 			name: "valid config (empty wallet version uses default)",
 			giveConfigFunc: func(c *RPCChainProviderConfig) {
-				c.HTTPURL = "http://localhost:8080/config.json"
+				c.HTTPURL = "liteserver://publickey@localhost:8080"
 				c.WSURL = "ws://localhost:8080"
 				c.DeployerSignerGen = PrivateKeyRandom()
 				c.WalletVersion = ""
 			},
 		},
 		{
-			name: "missing http url",
+			name: "missing liteserver url",
 			giveConfigFunc: func(c *RPCChainProviderConfig) {
 				c.HTTPURL = ""
 				c.DeployerSignerGen = PrivateKeyRandom()
 			},
-			wantErr: "rpc url is required",
+			wantErr: "liteserver url is required",
 		},
 		{
 			name: "missing deployer signer generator",
 			giveConfigFunc: func(c *RPCChainProviderConfig) {
-				c.HTTPURL = "http://localhost:8080/config.json"
+				c.HTTPURL = "liteserver://publickey@localhost:8080"
 				c.DeployerSignerGen = nil
 			},
 			wantErr: "deployer signer generator is required",
@@ -45,7 +45,7 @@ func Test_RPCChainProviderConfig_validate(t *testing.T) {
 		{
 			name: "unsupported wallet version",
 			giveConfigFunc: func(c *RPCChainProviderConfig) {
-				c.HTTPURL = "http://localhost:8080/config.json"
+				c.HTTPURL = "liteserver://publickey@localhost:8080"
 				c.DeployerSignerGen = PrivateKeyRandom()
 				c.WalletVersion = "V9R9"
 			},
@@ -99,21 +99,21 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 				t.Helper()
 				return RPCChainProviderConfig{} // invalid
 			},
-			wantErr: "rpc url is required",
+			wantErr: "liteserver url is required",
 		},
 		{
-			name:         "fails to retrieve ton network config (bad URL)",
+			name:         "fails to connect to liteserver (bad URL)",
 			giveSelector: selector,
 			giveConfigFunc: func(t *testing.T) RPCChainProviderConfig {
 				t.Helper()
 				return RPCChainProviderConfig{
-					HTTPURL:           "http://127.0.0.1:0/not-a-config.json",
+					HTTPURL:           "liteserver://invalidkey@127.0.0.1:0",
 					WSURL:             "",
 					DeployerSignerGen: PrivateKeyRandom(),
 					WalletVersion:     "",
 				}
 			},
-			wantErr: "failed to retrieve ton network config",
+			wantErr: "failed to connect to liteserver",
 		},
 		{
 			name:         "fails to generate private key",
@@ -121,7 +121,7 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 			giveConfigFunc: func(t *testing.T) RPCChainProviderConfig {
 				t.Helper()
 				return RPCChainProviderConfig{
-					HTTPURL:           "https://ton-blockchain.github.io/testnet-global.config.json", // will fail before keygen if URL is good; keep bad URL to avoid network
+					HTTPURL:           "liteserver://validkey@127.0.0.1:0", // will fail before keygen if URL is good; keep bad URL to avoid network
 					DeployerSignerGen: PrivateKeyFromRaw("invalid-key"),
 				}
 			},
@@ -133,7 +133,7 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 			giveConfigFunc: func(t *testing.T) RPCChainProviderConfig {
 				t.Helper()
 				return RPCChainProviderConfig{
-					HTTPURL:           "https://ton-blockchain.github.io/testnet-global.config.json",
+					HTTPURL:           "liteserver://Pk9K5wQLvlFapDT6BVBuSXg3yh7GHjV5IFsAJqPGvxQ=@13.232.131.210:46995",
 					DeployerSignerGen: PrivateKeyFromRaw("0b1f7dbb19112fdac53344cf49731e41bfc420ac6a71d38c89fb38d04a6563d99aa3d1fa430550e8de5171ec55453b4e048c1701cadfa56726d489c56d67bab3"),
 				}
 			},

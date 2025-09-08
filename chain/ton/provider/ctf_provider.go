@@ -18,7 +18,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/xssnick/tonutils-go/address"
-	"github.com/xssnick/tonutils-go/liteclient"
 	"github.com/xssnick/tonutils-go/tlb"
 	"github.com/xssnick/tonutils-go/ton"
 	"github.com/xssnick/tonutils-go/ton/wallet"
@@ -121,7 +120,7 @@ func (p *CTFChainProvider) startContainer(chainID string) (string, *ton.APIClien
 			Type:    blockchain.TypeTon,
 			ChainID: chainID,
 			Port:    strconv.Itoa(port),
-			Image:   "ghcr.io/neodix42/mylocalton-docker:dev", // as of 11th Aug 2025, the tag 'latest' image used by default fails to startup. Override it with the 'dev' image
+			Image:   "ghcr.io/neodix42/mylocalton-docker:v3.7",
 		})
 		if rerr != nil {
 			// Return the ports to freeport to avoid leaking them during retries
@@ -144,19 +143,15 @@ func (p *CTFChainProvider) startContainer(chainID string) (string, *ton.APIClien
 	)
 	require.NoError(p.t, err, "Failed to start CTF Ton container after %d attempts", attempts)
 
-	// get local config from simple http server in genesis node
-	cfg, err := liteclient.GetConfigFromUrl(p.t.Context(), fmt.Sprintf("http://%s/localhost.global.config.json", url))
-	require.NoError(p.t, err)
+	connectionPool, err := getConnectionPoolFromLiteserverURL(p.t.Context(), url)
 
-	// establish connection to the TON node
-	connectionPool := liteclient.NewConnectionPool()
-	err = connectionPool.AddConnectionsFromConfig(p.t.Context(), cfg)
 	require.NoError(p.t, err)
 	client := ton.NewAPIClient(connectionPool, ton.ProofCheckPolicyFast)
-	client.SetTrustedBlockFromConfig(cfg)
 
 	// check connection, CTFv2 handles the readiness
-	checkConnection(p.t, client)
+	mb := checkConnection(p.t, client)
+	// set starting point to verify master block proofs chain
+	client.SetTrustedBlock(mb)
 
 	return url, client
 }
@@ -202,12 +197,15 @@ func fundTonWallets(t *testing.T, client ton.APIClientWrapped, recipients []*add
 	// we don't wait for the transaction to be confirmed here, as it may take some time
 }
 
-func checkConnection(t *testing.T, client *ton.APIClient) {
+func checkConnection(t *testing.T, client *ton.APIClient) *ton.BlockIDExt {
 	t.Helper()
 
+	var masterchainBlock *ton.BlockIDExt
 	err := retry.Do(func() error {
 		// check connection, CTFv2 handles the readiness
-		_, err := client.GetMasterchainInfo(t.Context())
+		var err error
+		masterchainBlock, err = client.GetMasterchainInfo(t.Context())
+
 		return err
 	},
 		retry.Context(t.Context()),
@@ -215,8 +213,10 @@ func checkConnection(t *testing.T, client *ton.APIClient) {
 		retry.Delay(1*time.Second),
 		retry.DelayType(retry.FixedDelay),
 	)
-
 	require.NoError(t, err, "TON network not ready")
+
+	// return masterchain block for setting trusted block
+	return masterchainBlock
 }
 
 // Name returns the name of the CTFChainProvider.
