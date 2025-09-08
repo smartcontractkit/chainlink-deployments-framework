@@ -9,6 +9,7 @@ import (
 	"time"
 
 	chainsel "github.com/smartcontractkit/chain-selectors"
+
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 
 	fchain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
@@ -496,6 +497,8 @@ func (l *chainLoaderEVM) isZkSyncVM(selector uint64) bool {
 		chainsel.ETHEREUM_TESTNET_SEPOLIA_LENS_1.Selector,
 		chainsel.CRONOS_ZKEVM_MAINNET.Selector,
 		chainsel.CRONOS_ZKEVM_TESTNET_SEPOLIA.Selector,
+		chainsel.MEMENTO_MAINNET.Selector,
+		chainsel.MEMENTO_TESTNET.Selector,
 	}
 
 	return slices.Contains(zkSyncchainsel, selector)
