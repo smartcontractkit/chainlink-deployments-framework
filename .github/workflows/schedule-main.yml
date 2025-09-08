@@ -132,7 +132,7 @@ jobs:
           fi
 
           echo "Final SonarQube args: $ARGS"
-          echo "SONARQUBE_ARGS=$ARGS" >> $GITHUB_ENV
+          echo "SONARQUBE_ARGS=\"$ARGS\"" >> "$GITHUB_ENV"
 
       - name: SonarQube Scan
         uses: sonarsource/sonarqube-scan-action@0c0f3958d90fc466625f1d1af1f47bddd4cc6bd1 # v3.0.0

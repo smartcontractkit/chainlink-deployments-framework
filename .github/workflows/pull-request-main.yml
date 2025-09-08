@@ -103,7 +103,6 @@ jobs:
         run: |
           # Find all coverage files from our artifacts
           sonarqube_coverage_report_paths=$(find coverage-reports -type f -name "coverage-*.txt" 2>/dev/null | tr '\n' ',' | sed 's/,$//')
-          sonarqube_golangci_report_paths=$(find . -type f -name 'golangci-lint-report.xml' 2>/dev/null | tr '\n' ',' | sed 's/,$//')
 
           ARGS=""
           if [ -n "$sonarqube_coverage_report_paths" ]; then
@@ -114,20 +113,13 @@ jobs:
             ls -la coverage-reports/ || echo "coverage-reports directory does not exist"
           fi
 
-          if [ -n "$sonarqube_golangci_report_paths" ]; then
-            ARGS="$ARGS -Dsonar.go.golangci-lint.reportPaths=$sonarqube_golangci_report_paths"
-            echo "Golangci-lint files found: $sonarqube_golangci_report_paths"
-          else
-            echo "No golangci-lint report files found"
-          fi
-
           echo "Final SonarQube args: $ARGS"
-          echo "SONARQUBE_ARGS=$ARGS" >> $GITHUB_ENV
+          echo "SONARQUBE_ARGS=\"$ARGS\"" >> "$GITHUB_ENV"
 
       - name: SonarQube Scan
         uses: sonarsource/sonarqube-scan-action@0c0f3958d90fc466625f1d1af1f47bddd4cc6bd1 # v3.0.0
         with:
           args: ${{ env.SONARQUBE_ARGS }}
         env:
-          sonar-token: ${{ secrets.SONAR_TOKEN }}
-          sonar-host-url: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
