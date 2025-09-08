@@ -31,20 +31,43 @@ jobs:
   ci-test:
     name: Tests
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     permissions:
       id-token: write
       contents: read
       actions: read
+    strategy:
+      fail-fast: false
+      matrix:
+        test-group:
+          - name: "core-operations"
+            display-name: "Core & Operations"
+            pattern: "./datastore/... ./deployment/... ./operations/... ./experimental/... ./internal/... ./offchain/..."
+            parallel: 4
+          - name: "evm-chains"
+            display-name: "EVM Chains"
+            pattern: "./chain/evm/..."
+            parallel: 2
+          - name: "solana-ton"
+            display-name: "Solana & TON"
+            pattern: "./chain/solana/... ./chain/ton/..."
+            parallel: 2
+          - name: "other-chains"
+            display-name: "Other Chains"
+            pattern: "./chain/aptos/... ./chain/tron/... ./chain/sui/... ./chain/utils/... ./chain/internal/..."
+            parallel: 2
+          - name: "engine-changeset"
+            display-name: "Engine & Changeset"
+            pattern: "./engine/... ./changeset/..."
+            parallel: 3
     steps:
-      - name: Build and test
+      - name: Build and test ${{ matrix.test-group.display-name }}
         uses: smartcontractkit/.github/actions/ci-test-go@eeb76b5870e3c17856d5a60fd064a053c023b5f5 # ci-test-go@1.0.0
         with:
           # disable the checkptr runtime check due a false positive in github.com/xssnick/tonutils-go
           # causing tests in ci to fail "fatal error: checkptr: pointer arithmetic result points to invalid allocation"
           # https://github.com/xssnick/tonutils-go/issues/310
-          # -p 2 -parallel 3 = 2 packages, 3 tests max = 6 containers max
-          go-test-cmd: go test -race -gcflags=all=-d=checkptr=0 -p 2 -parallel 3 -coverprofile=coverage.txt $(go list ./...)
+          go-test-cmd: go test -race -gcflags=all=-d=checkptr=0 -p 1 -parallel ${{ matrix.test-group.parallel }} -coverprofile=coverage-${{ matrix.test-group.name }}.txt ${{ matrix.test-group.pattern }}
           use-go-cache: true
 
   sonarqube:
