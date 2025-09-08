@@ -91,17 +91,43 @@ jobs:
           path: coverage-reports
           merge-multiple: true
 
-      - name: Merge coverage reports
+      - name: List coverage files
         run: |
-          echo "mode: atomic" > coverage.txt
-          find coverage-reports -name "coverage-*.txt" -exec tail -n +2 {} \; >> coverage.txt
-          echo "Merged coverage files:"
+          echo "Downloaded coverage files:"
           ls -la coverage-reports/
-          echo "Final coverage.txt size:"
-          wc -l coverage.txt
+          echo "Coverage files to be processed by SonarQube:"
+          find coverage-reports -name "coverage-*.txt" -type f
 
-      - name: Scan with Sonarqube
-        uses: smartcontractkit/.github/actions/ci-sonarqube-go@01d931b0455a754d12e7143cc54a5a3521a8f6f6 # ci-sonarqube-go@0.3.1
+      - name: Set SonarQube Report Paths
+        shell: bash
+        run: |
+          # Find all coverage files from our artifacts
+          sonarqube_coverage_report_paths=$(find coverage-reports -type f -name "coverage-*.txt" 2>/dev/null | tr '\n' ',' | sed 's/,$//')
+          sonarqube_golangci_report_paths=$(find . -type f -name 'golangci-lint-report.xml' 2>/dev/null | tr '\n' ',' | sed 's/,$//')
+
+          ARGS=""
+          if [ -n "$sonarqube_coverage_report_paths" ]; then
+            ARGS="$ARGS -Dsonar.go.coverage.reportPaths=$sonarqube_coverage_report_paths"
+            echo "Coverage files found: $sonarqube_coverage_report_paths"
+          else
+            echo "No coverage files found in coverage-reports/"
+            ls -la coverage-reports/ || echo "coverage-reports directory does not exist"
+          fi
+
+          if [ -n "$sonarqube_golangci_report_paths" ]; then
+            ARGS="$ARGS -Dsonar.go.golangci-lint.reportPaths=$sonarqube_golangci_report_paths"
+            echo "Golangci-lint files found: $sonarqube_golangci_report_paths"
+          else
+            echo "No golangci-lint report files found"
+          fi
+
+          echo "Final SonarQube args: $ARGS"
+          echo "SONARQUBE_ARGS=$ARGS" >> $GITHUB_ENV
+
+      - name: SonarQube Scan
+        uses: sonarsource/sonarqube-scan-action@0c0f3958d90fc466625f1d1af1f47bddd4cc6bd1 # v3.0.0
         with:
+          args: ${{ env.SONARQUBE_ARGS }}
+        env:
           sonar-token: ${{ secrets.SONAR_TOKEN }}
           sonar-host-url: ${{ secrets.SONAR_HOST_URL }}
