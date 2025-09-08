@@ -17,5 +17,4 @@ type Chain struct {
 	Wallet        *wallet.Wallet   // Wallet abstraction (signing, sending)
 	WalletAddress *address.Address // Address of deployer wallet
 	URL           string           // Liteserver URL
-	DeployerSeed  string           // Optional: mnemonic or raw seed
 }
