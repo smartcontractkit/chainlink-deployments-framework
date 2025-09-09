@@ -102,8 +102,9 @@ func Test_LoadChains(t *testing.T) {
 				{
 					RPCName:            "ton_rpc",
 					PreferredURLScheme: "http",
-					HTTPURL:            "liteserver://E7XwFSQzNkcRepUC23J2nRpASXpnsEKmyyHYV4u/FZY=@localhost:8100", // default localnet connection string
-					WSURL:              "",
+					// public testnet liteserver. ref: https://ton-blockchain.github.io/global.config.json
+					HTTPURL: "liteserver://n4VDnSCUuSpjnCyUk9e3QOOd6o0ItSWYbTnW3Wnn8wk=@5.9.10.47:19949",
+					WSURL:   "",
 				},
 			},
 		},
