@@ -28,6 +28,7 @@ require (
 	github.com/proullon/ramsql v0.1.4
 	github.com/rubenv/pgtest v1.1.0
 	github.com/segmentio/ksuid v1.0.4
+	github.com/smartcontractkit/ccip-owner-contracts v0.1.0
 	github.com/smartcontractkit/chain-selectors v1.0.67
 	github.com/smartcontractkit/chainlink-aptos v0.0.0-20250905094443-ac02b032b32b
 	github.com/smartcontractkit/chainlink-ccip v0.0.0-20250805210128-7f8a0f403c3a
