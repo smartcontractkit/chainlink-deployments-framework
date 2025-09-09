@@ -102,7 +102,7 @@ func Test_LoadChains(t *testing.T) {
 				{
 					RPCName:            "ton_rpc",
 					PreferredURLScheme: "http",
-					HTTPURL:            fakeSrv.URL + "/ton",
+					HTTPURL:            "liteserver://publickey@host:port",
 					WSURL:              "",
 				},
 			},
