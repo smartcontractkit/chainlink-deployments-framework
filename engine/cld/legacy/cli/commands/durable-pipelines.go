@@ -459,7 +459,7 @@ func (c Commands) newDurablePipelineInputGenerate(
 			}
 
 			if outputPath != "" {
-				if err := os.WriteFile(outputPath, outBytes, 0o644); err != nil {
+				if err := os.WriteFile(outputPath, outBytes, 0o644); err != nil { //nolint:gosec
 					return fmt.Errorf("write output file: %w", err)
 				}
 				format := "YAML"

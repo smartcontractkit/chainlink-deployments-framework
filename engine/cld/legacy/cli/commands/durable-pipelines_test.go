@@ -172,7 +172,7 @@ func TestNewDurablePipelineInputGenerateCmd(t *testing.T) {
 	require.NoError(t, os.MkdirAll(inputsDir, 0755))
 
 	// Mock workspace root discovery
-	require.NoError(t, os.WriteFile(filepath.Join(workspaceRoot, "go.mod"), []byte("module test"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(workspaceRoot, "go.mod"), []byte("module test"), 0644)) //nolint:gosec
 	require.NoError(t, os.MkdirAll(filepath.Join(workspaceRoot, "domains"), 0755))
 
 	// Set up the test to run from within the workspace
@@ -218,7 +218,7 @@ changesets:
 		t.Run(formatTest.name, func(t *testing.T) {
 			// Create input file for this format
 			inputsFilePath := filepath.Join(inputsDir, formatTest.inputsFileName)
-			require.NoError(t, os.WriteFile(inputsFilePath, []byte(formatTest.mockInputContent), 0644))
+			require.NoError(t, os.WriteFile(inputsFilePath, []byte(formatTest.mockInputContent), 0644)) //nolint:gosec
 
 			tests := []struct {
 				name        string
@@ -721,10 +721,10 @@ changesets:
       payload:
         chain: arbitrum_sepolia
 `
-	require.NoError(t, os.WriteFile(inputsFilePath, []byte(mockInputContent), 0644))
+	require.NoError(t, os.WriteFile(inputsFilePath, []byte(mockInputContent), 0644)) //nolint:gosec
 
 	// Mock workspace root discovery
-	require.NoError(t, os.WriteFile(filepath.Join(workspaceRoot, "go.mod"), []byte("module test"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(workspaceRoot, "go.mod"), []byte("module test"), 0644)) //nolint:gosec
 	require.NoError(t, os.MkdirAll(filepath.Join(workspaceRoot, "domains"), 0755))
 
 	// Set up the test to run from within the workspace
@@ -822,10 +822,10 @@ changesets:
 
 	yamlFileName := "test-pipeline.yaml"
 	yamlFilePath := filepath.Join(inputsDir, yamlFileName)
-	require.NoError(t, os.WriteFile(yamlFilePath, []byte(yamlContent), 0644))
+	require.NoError(t, os.WriteFile(yamlFilePath, []byte(yamlContent), 0644)) //nolint:gosec
 
 	// Mock workspace root discovery
-	require.NoError(t, os.WriteFile(filepath.Join(workspaceRoot, "go.mod"), []byte("module test"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(workspaceRoot, "go.mod"), []byte("module test"), 0644)) //nolint:gosec
 	require.NoError(t, os.MkdirAll(filepath.Join(workspaceRoot, "domains"), 0755))
 
 	// Set up the test to run from within the workspace
@@ -1027,10 +1027,10 @@ changesets:
 
 	yamlFileName := "test-pipeline-array.yaml"
 	yamlFilePath := filepath.Join(inputsDir, yamlFileName)
-	require.NoError(t, os.WriteFile(yamlFilePath, []byte(yamlContent), 0644))
+	require.NoError(t, os.WriteFile(yamlFilePath, []byte(yamlContent), 0644)) //nolint:gosec
 
 	// Mock workspace root discovery
-	require.NoError(t, os.WriteFile(filepath.Join(workspaceRoot, "go.mod"), []byte("module test"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(workspaceRoot, "go.mod"), []byte("module test"), 0644)) //nolint:gosec
 	require.NoError(t, os.MkdirAll(filepath.Join(workspaceRoot, "domains"), 0755))
 
 	// Set up the test to run from within the workspace
@@ -1109,7 +1109,7 @@ func TestSetDurablePipelineInputFromYAML_ChainOverrideTypes(t *testing.T) {
 	require.NoError(t, os.MkdirAll(inputsDir, 0755))
 
 	// Mock workspace root discovery
-	require.NoError(t, os.WriteFile(filepath.Join(workspaceRoot, "go.mod"), []byte("module test"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(workspaceRoot, "go.mod"), []byte("module test"), 0644)) //nolint:gosec
 	require.NoError(t, os.MkdirAll(filepath.Join(workspaceRoot, "domains"), 0755))
 
 	// Set up the test to run from within the workspace
@@ -1226,7 +1226,7 @@ changesets:
 			safeName := strings.ReplaceAll(strings.ReplaceAll(tt.name, " ", "-"), "/", "-")
 			yamlFileName := fmt.Sprintf("test-%s.yaml", safeName)
 			yamlFilePath := filepath.Join(inputsDir, yamlFileName)
-			require.NoError(t, os.WriteFile(yamlFilePath, []byte(tt.yamlContent), 0644))
+			require.NoError(t, os.WriteFile(yamlFilePath, []byte(tt.yamlContent), 0644)) //nolint:gosec
 
 			// Clear any previous DURABLE_PIPELINE_INPUT
 			os.Unsetenv("DURABLE_PIPELINE_INPUT")
@@ -1264,7 +1264,7 @@ func TestSetDurablePipelineInputFromYAML_ChainSelectorKeys(t *testing.T) {
 	require.NoError(t, os.MkdirAll(inputsDir, 0755))
 
 	// Mock workspace root discovery
-	require.NoError(t, os.WriteFile(filepath.Join(workspaceRoot, "go.mod"), []byte("module test"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(workspaceRoot, "go.mod"), []byte("module test"), 0644)) //nolint:gosec
 	require.NoError(t, os.MkdirAll(filepath.Join(workspaceRoot, "domains"), 0755))
 
 	// Change to the workspace root directory to test relative path resolution
@@ -1322,7 +1322,7 @@ changesets:
 			safeName := strings.ReplaceAll(strings.ReplaceAll(tt.name, " ", "-"), "/", "-")
 			yamlFileName := fmt.Sprintf("test-numeric-keys-%s.yaml", safeName)
 			yamlFilePath := filepath.Join(inputsDir, yamlFileName)
-			require.NoError(t, os.WriteFile(yamlFilePath, []byte(tt.yamlContent), 0644))
+			require.NoError(t, os.WriteFile(yamlFilePath, []byte(tt.yamlContent), 0644)) //nolint:gosec
 
 			// Clear any previous DURABLE_PIPELINE_INPUT
 			os.Unsetenv("DURABLE_PIPELINE_INPUT")
