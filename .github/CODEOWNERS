@@ -1,2 +1,6 @@
 # Root
 * @smartcontractkit/cld-team
+
+engine/cld/legacy/cli/mcmsv2 @smartcontractkit/devex-tooling
+experimental/analyzers @smartcontractkit/devex-tooling
+experimental/proposalutils @smartcontractkit/devex-tooling

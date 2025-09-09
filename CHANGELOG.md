@@ -1,5 +1,19 @@
 # chainlink-deployments-framework
 
+## 0.44.0
+
+### Minor Changes
+
+- [#391](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/391) [`35282b9`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/35282b99b3fbba58729ba47395f11c1adc682222) Thanks [@jadepark-dev](https://github.com/jadepark-dev)! - TON provider - liteserver connection string support
+
+- [#386](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/386) [`8102d0e`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/8102d0ef1c94e6a52421b8ce415094631c7770bc) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat(chain): add support for converting string address to bytes for each chain
+
+### Patch Changes
+
+- [#399](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/399) [`96b85a9`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/96b85a9918202e5b9ce577e75c73032e1a361a04) Thanks [@giogam](https://github.com/giogam)! - chore: moves durable-pipelines commands
+
+- [#397](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/397) [`90fe2a8`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/90fe2a8c29631bcd9599524f9540b3d03bc8578e) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat: migrate migration command from CLD
+
 ## 0.43.0
 
 ### Minor Changes
