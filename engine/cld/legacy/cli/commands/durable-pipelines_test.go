@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
-	mcmbindings "github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings/v0_1_0/mcm"
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 	"github.com/stretchr/testify/require"
 
@@ -622,7 +621,7 @@ func (m *mockProposalContext) GetSolanaDecoderRegistry() analyzer.SolanaDecoderR
 	registry, err := analyzer.NewEnvironmentSolanaRegistry(
 		cldf.Environment{}, // env unused by current methods
 		map[string]analyzer.DecodeInstructionFn{
-			"DummyProgram 1.0.0": analyzer.DIFn(mcmbindings.DecodeInstruction),
+			"DummyProgram 1.0.0": nil, // Use nil as a stand-in decoder for testing
 		},
 	)
 	require.NoError(m.t, err, "failed to create mock EVM registry")
