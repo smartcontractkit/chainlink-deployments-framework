@@ -163,12 +163,14 @@ func (p *CTFChainProvider) startContainer(
 
 	type containerResult struct {
 		url           string
+		fauceturl     string
 		containerName string
 	}
 
 	result, err := retry.DoWithData(func() (containerResult, error) {
-		ports := freeport.GetN(p.t, 1)
+		ports := freeport.GetN(p.t, 2)
 		port := ports[0]
+		faucetPort := ports[1]
 
 		image := ""
 		platform := ""
@@ -198,6 +200,7 @@ func (p *CTFChainProvider) startContainer(
 			ChainID:       chainID,
 			PublicKey:     address,
 			Port:          strconv.Itoa(port),
+			FaucetPort:    strconv.Itoa(faucetPort),
 		}
 
 		output, rerr := blockchain.NewBlockchainNetwork(input)
@@ -211,6 +214,7 @@ func (p *CTFChainProvider) startContainer(
 
 		return containerResult{
 			url:           output.Nodes[0].ExternalHTTPUrl,
+			fauceturl:     input.FaucetPort,
 			containerName: output.ContainerName,
 		}, nil
 	},
@@ -239,7 +243,7 @@ func (p *CTFChainProvider) startContainer(
 	}
 	require.True(p.t, ready, "Sui network not ready")
 
-	err = fundAccount(fmt.Sprintf("http://%s:%s", "127.0.0.1", "9123"), address)
+	err = fundAccount(fmt.Sprintf("http://%s:%s", "127.0.0.1", result.fauceturl), address)
 	require.NoError(p.t, err)
 
 	return url, client
