@@ -206,6 +206,7 @@ func (p *CTFChainProvider) startContainer(
 		output, rerr := blockchain.NewBlockchainNetwork(input)
 		if rerr != nil {
 			// Return the ports to freeport to avoid leaking them during retries
+			freeport.Return([]int{port, faucetPort})
 
 			return containerResult{}, rerr
 		}
