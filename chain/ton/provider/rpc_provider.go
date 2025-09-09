@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/xssnick/tonutils-go/liteclient"
 	tonlib "github.com/xssnick/tonutils-go/ton"
@@ -201,17 +200,7 @@ func createLiteclientConnectionPool(ctx context.Context, liteserverURL string) (
 	hostPort := parts[1]
 
 	pool := liteclient.NewConnectionPool()
-
-	// Setup connection timeout - mirrors tonutils-go AddConnectionsFromConfig logic
-	timeout := 3 * time.Second
-	if dl, ok := ctx.Deadline(); ok {
-		timeout = time.Until(dl)
-	}
-
-	connCtx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	err := pool.AddConnection(connCtx, hostPort, publicKey)
+	err := pool.AddConnection(ctx, hostPort, publicKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add liteserver connection: %w", err)
 	}

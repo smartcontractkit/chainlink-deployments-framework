@@ -72,7 +72,7 @@ func Test_RPCChainProviderConfig_validate(t *testing.T) {
 	}
 }
 
-func Test_RPCChainProvider_Initialize_AlreadyInitialized(t *testing.T) {
+func Test_RPCChainProvider_Initialize(t *testing.T) {
 	t.Parallel()
 
 	existingChain := &tonchain.Chain{ChainMetadata: tonchain.ChainMetadata{Selector: 123}}

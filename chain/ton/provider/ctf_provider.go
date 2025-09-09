@@ -149,7 +149,7 @@ func (p *CTFChainProvider) startContainer(chainID string) (string, *ton.APIClien
 	client := ton.NewAPIClient(connectionPool, ton.ProofCheckPolicyFast)
 
 	// check connection, CTFv2 handles the readiness
-	mb := checkConnection(p.t, client)
+	mb := getMasterchainBlockID(p.t, client)
 	// set starting point to verify master block proofs chain
 	client.SetTrustedBlock(mb)
 
@@ -159,7 +159,7 @@ func (p *CTFChainProvider) startContainer(chainID string) (string, *ton.APIClien
 // Note: this utility functions can be replaced once we have in the chainlink-ton utils package
 func createTonWallet(t *testing.T, client ton.APIClientWrapped, version wallet.Version, option wallet.Option) *wallet.Wallet {
 	t.Helper()
-	//
+
 	seed := wallet.NewSeed()
 	rw, err := wallet.FromSeed(client, seed, version)
 	require.NoError(t, err)
@@ -197,14 +197,14 @@ func fundTonWallets(t *testing.T, client ton.APIClientWrapped, recipients []*add
 	// we don't wait for the transaction to be confirmed here, as it may take some time
 }
 
-func checkConnection(t *testing.T, client *ton.APIClient) *ton.BlockIDExt {
+func getMasterchainBlockID(t *testing.T, client *ton.APIClient) *ton.BlockIDExt {
 	t.Helper()
 
-	var masterchainBlock *ton.BlockIDExt
+	var masterchainBlockID *ton.BlockIDExt
+	// check connection, CTFv2 handles the readiness
 	err := retry.Do(func() error {
-		// check connection, CTFv2 handles the readiness
 		var err error
-		masterchainBlock, err = client.GetMasterchainInfo(t.Context())
+		masterchainBlockID, err = client.GetMasterchainInfo(t.Context())
 
 		return err
 	},
@@ -216,7 +216,7 @@ func checkConnection(t *testing.T, client *ton.APIClient) *ton.BlockIDExt {
 	require.NoError(t, err, "TON network not ready")
 
 	// return masterchain block for setting trusted block
-	return masterchainBlock
+	return masterchainBlockID
 }
 
 // Name returns the name of the CTFChainProvider.
