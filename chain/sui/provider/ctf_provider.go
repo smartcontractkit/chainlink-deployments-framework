@@ -26,10 +26,6 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/sui"
 )
 
-const (
-	FAUCET_PORT = 9123
-)
-
 // CTFChainProviderConfig holds the configuration to initialize the CTFChainProvider.
 type CTFChainProviderConfig struct {
 	// Required: A generator for the deployer signer account. Use AccountGenPrivateKey to
@@ -115,16 +111,17 @@ func (p *CTFChainProvider) Initialize(_ context.Context) (chain.BlockChain, erro
 	}
 
 	// Start the CTF Container
-	url, client := p.startContainer(chainID, deployerSigner)
+	url, faucetUrl, client := p.startContainer(chainID, deployerSigner)
 
 	// Construct the chain
 	p.chain = &sui.Chain{
 		ChainMetadata: sui.ChainMetadata{
 			Selector: p.selector,
 		},
-		Client: client,
-		Signer: deployerSigner,
-		URL:    url,
+		Client:    client,
+		Signer:    deployerSigner,
+		URL:       url,
+		FaucetUrl: faucetUrl,
 		// TODO: Implement ConfirmTransaction when available
 	}
 
@@ -151,10 +148,11 @@ func (p *CTFChainProvider) BlockChain() chain.BlockChain {
 // It returns the URL of the Sui node and the client to interact with it.
 func (p *CTFChainProvider) startContainer(
 	chainID string, account sui.SuiSigner,
-) (string, sui_sdk.ISuiAPI) {
+) (string, string, sui_sdk.ISuiAPI) {
 	var (
-		attempts = uint(10)
-		url      string
+		attempts  = uint(10)
+		url       string
+		fauceturl string
 	)
 
 	// initialize the docker network used by CTF
@@ -172,8 +170,9 @@ func (p *CTFChainProvider) startContainer(
 	}
 
 	result, err := retry.DoWithData(func() (containerResult, error) {
-		ports := freeport.GetN(p.t, 1)
+		ports := freeport.GetN(p.t, 2)
 		port := ports[0]
+		faucetPort := ports[1]
 
 		image := ""
 		platform := ""
@@ -203,12 +202,13 @@ func (p *CTFChainProvider) startContainer(
 			ChainID:       chainID,
 			PublicKey:     address,
 			Port:          strconv.Itoa(port),
+			FaucetPort:    strconv.Itoa(faucetPort),
 		}
 
 		output, rerr := blockchain.NewBlockchainNetwork(input)
 		if rerr != nil {
 			// Return the ports to freeport to avoid leaking them during retries
-			freeport.Return([]int{port, FAUCET_PORT})
+			freeport.Return([]int{port, faucetPort})
 
 			return containerResult{}, rerr
 		}
@@ -217,6 +217,7 @@ func (p *CTFChainProvider) startContainer(
 
 		return containerResult{
 			url:           output.Nodes[0].ExternalHTTPUrl,
+			fauceturl:     input.FaucetPort,
 			containerName: output.ContainerName,
 		}, nil
 	},
@@ -231,6 +232,7 @@ func (p *CTFChainProvider) startContainer(
 	require.NoError(p.t, err, "Failed to start CTF Sui container after %d attempts", attempts)
 
 	url = result.url
+	fauceturl = fmt.Sprintf("http://%s:%s", "127.0.0.1", result.fauceturl)
 
 	client := sui_sdk.NewSuiClient(url)
 
@@ -245,10 +247,10 @@ func (p *CTFChainProvider) startContainer(
 	}
 	require.True(p.t, ready, "Sui network not ready")
 
-	err = fundAccount(fmt.Sprintf("http://%s:%s", "127.0.0.1", "9123"), address)
+	err = fundAccount(fauceturl, address)
 	require.NoError(p.t, err)
 
-	return url, client
+	return url, fauceturl, client
 }
 
 func fundAccount(url string, address string) error {
