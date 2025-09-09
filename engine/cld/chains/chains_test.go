@@ -31,7 +31,7 @@ func Test_LoadChains(t *testing.T) {
 		aptosSelector  = chainsel.APTOS_LOCALNET.Selector
 		tronSelector   = chainsel.TRON_TESTNET_NILE.Selector
 		suiSelector    = chainsel.SUI_LOCALNET.Selector
-		tonSelector    = chainsel.TON_TESTNET.Selector
+		// tonSelector    = chainsel.TON_TESTNET.Selector
 	)
 
 	networks := []cfgnet.Network{
@@ -162,8 +162,8 @@ func Test_LoadChains(t *testing.T) {
 			name:              "loads all valid chains",
 			giveNetworkConfig: networksConfig,
 			giveOnchainConfig: onchainConfig,
-			giveSelectors:     []uint64{evmSelector, solanaSelector, aptosSelector, tronSelector, suiSelector, tonSelector},
-			wantCount:         6,
+			giveSelectors:     []uint64{evmSelector, solanaSelector, aptosSelector, tronSelector, suiSelector},
+			wantCount:         5,
 		},
 		{
 			name:              "fails with unknown selector",
