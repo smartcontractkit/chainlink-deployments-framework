@@ -26,6 +26,10 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/sui"
 )
 
+const (
+	FAUCET_PORT = 9123
+)
+
 // CTFChainProviderConfig holds the configuration to initialize the CTFChainProvider.
 type CTFChainProviderConfig struct {
 	// Required: A generator for the deployer signer account. Use AccountGenPrivateKey to
@@ -168,9 +172,8 @@ func (p *CTFChainProvider) startContainer(
 	}
 
 	result, err := retry.DoWithData(func() (containerResult, error) {
-		ports := freeport.GetN(p.t, 2)
+		ports := freeport.GetN(p.t, 1)
 		port := ports[0]
-		faucetPort := ports[1]
 
 		image := ""
 		platform := ""
@@ -200,13 +203,12 @@ func (p *CTFChainProvider) startContainer(
 			ChainID:       chainID,
 			PublicKey:     address,
 			Port:          strconv.Itoa(port),
-			FaucetPort:    strconv.Itoa(faucetPort),
 		}
 
 		output, rerr := blockchain.NewBlockchainNetwork(input)
 		if rerr != nil {
 			// Return the ports to freeport to avoid leaking them during retries
-			freeport.Return([]int{port, faucetPort})
+			freeport.Return([]int{port, FAUCET_PORT})
 
 			return containerResult{}, rerr
 		}
@@ -215,7 +217,6 @@ func (p *CTFChainProvider) startContainer(
 
 		return containerResult{
 			url:           output.Nodes[0].ExternalHTTPUrl,
-			fauceturl:     input.FaucetPort,
 			containerName: output.ContainerName,
 		}, nil
 	},
@@ -244,7 +245,7 @@ func (p *CTFChainProvider) startContainer(
 	}
 	require.True(p.t, ready, "Sui network not ready")
 
-	err = fundAccount(fmt.Sprintf("http://%s:%s", "127.0.0.1", result.fauceturl), address)
+	err = fundAccount(fmt.Sprintf("http://%s:%s", "127.0.0.1", "9123"), address)
 	require.NoError(p.t, err)
 
 	return url, client
