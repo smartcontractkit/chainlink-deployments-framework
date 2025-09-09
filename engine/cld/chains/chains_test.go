@@ -102,7 +102,7 @@ func Test_LoadChains(t *testing.T) {
 				{
 					RPCName:            "ton_rpc",
 					PreferredURLScheme: "http",
-					HTTPURL:            "liteserver://publickey@host:port",
+					HTTPURL:            "liteserver://E7XwFSQzNkcRepUC23J2nRpASXpnsEKmyyHYV4u/FZY=@localhost:8100", // default localnet connection string
 					WSURL:              "",
 				},
 			},
