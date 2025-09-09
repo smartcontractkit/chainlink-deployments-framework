@@ -24,7 +24,7 @@ import (
 	cldf_changeset "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/changeset"
 	cldfenvironment "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
 
-	"github.com/smartcontractkit/chainlink-deployments/pkg/mcms"
+	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 )
 
 //nolint:paralleltest
@@ -104,7 +104,7 @@ func TestNewDurablePipelineRunCmd(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			decodeCalled := false
-			decodeProposalCtxProvider := func(env cldf.Environment) (mcms.ProposalContext, error) {
+			decodeProposalCtxProvider := func(env cldf.Environment) (analyzer.ProposalContext, error) {
 				decodeCalled = true
 				return &mockProposalContext{t: t}, nil
 			}
@@ -617,19 +617,19 @@ type mockProposalContext struct {
 func (m *mockProposalContext) ArgumentContext(chainSelector uint64) *proposalutils.ArgumentContext {
 	return &proposalutils.ArgumentContext{}
 }
-func (m *mockProposalContext) GetSolanaDecoderRegistry() mcms.SolanaDecoderRegistry {
+func (m *mockProposalContext) GetSolanaDecoderRegistry() analyzer.SolanaDecoderRegistry {
 	// Return a mock SolanaDecoderRegistry with a dummy decoder for testing
-	registry, err := mcms.NewEnvironmentSolanaRegistry(
+	registry, err := analyzer.NewEnvironmentSolanaRegistry(
 		cldf.Environment{}, // env unused by current methods
-		map[string]mcms.DecodeInstructionFn{
-			"DummyProgram 1.0.0": mcms.DIFn(mcmbindings.DecodeInstruction),
+		map[string]analyzer.DecodeInstructionFn{
+			"DummyProgram 1.0.0": analyzer.DIFn(mcmbindings.DecodeInstruction),
 		},
 	)
 	require.NoError(m.t, err, "failed to create mock EVM registry")
 
 	return registry
 }
-func (m *mockProposalContext) GetEVMRegistry() mcms.EVMABIRegistry {
+func (m *mockProposalContext) GetEVMRegistry() analyzer.EVMABIRegistry {
 	// Return a mock EVMRegistry with a dummy ABI for testing
 	abiJSON := `[
 		{
@@ -645,7 +645,7 @@ func (m *mockProposalContext) GetEVMRegistry() mcms.EVMABIRegistry {
 		return nil
 	}
 
-	registry, err := mcms.NewEnvironmentEVMRegistry(
+	registry, err := analyzer.NewEnvironmentEVMRegistry(
 		cldf.Environment{}, // env unused by current methods
 		map[string]string{
 			"DummyContract 1.0.0": abiJSON,

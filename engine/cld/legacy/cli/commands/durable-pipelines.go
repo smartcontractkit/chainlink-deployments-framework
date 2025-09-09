@@ -21,7 +21,7 @@ import (
 	cldfenvironment "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 
-	"github.com/smartcontractkit/chainlink-deployments/pkg/mcms"
+	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 )
 
 // a temporary workaround to allow test to mock the LoadEnvironment function
@@ -32,7 +32,7 @@ var loadEnv = cldfenvironment.Load
 func (c Commands) NewDurablePipelineCmds(
 	domain domain.Domain,
 	loadMigration func(envName string) (*cldf_changeset.ChangesetsRegistry, error),
-	decodeProposalCtxProvider func(env cldf.Environment) (mcms.ProposalContext, error),
+	decodeProposalCtxProvider func(env cldf.Environment) (analyzer.ProposalContext, error),
 	loadConfigResolvers *resolvers.ConfigResolverManager) *cobra.Command {
 	evmCmd := &cobra.Command{
 		Use:   "durable-pipeline",
@@ -77,7 +77,7 @@ var (
 func (c Commands) newDurablePipelineRun(
 	domain domain.Domain,
 	loadMigration func(envName string) (*cldf_changeset.ChangesetsRegistry, error),
-	decodeProposalCtxProvider func(env cldf.Environment) (mcms.ProposalContext, error),
+	decodeProposalCtxProvider func(env cldf.Environment) (analyzer.ProposalContext, error),
 	loadConfigResolvers *resolvers.ConfigResolverManager,
 ) *cobra.Command {
 	var (
@@ -175,7 +175,7 @@ func (c Commands) newDurablePipelineRun(
 					return err
 				}
 				for idx, proposal := range out.MCMSTimelockProposals {
-					describedProposal, err := mcms.DescribeTimelockProposal(proposalContext, &proposal)
+					describedProposal, err := analyzer.DescribeTimelockProposal(proposalContext, &proposal)
 					if err != nil {
 						c.lggr.Errorf("failed to describe time lock proposal %d: %w", idx, err)
 						continue
