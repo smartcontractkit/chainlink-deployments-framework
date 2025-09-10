@@ -1,0 +1,5 @@
+---
+"chainlink-deployments-framework": minor
+---
+
+Add CLI command to resync proposal
