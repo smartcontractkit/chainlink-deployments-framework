@@ -14,7 +14,7 @@ type Chain struct {
 	Client    sui.ISuiAPI
 	Signer    SuiSigner
 	URL       string
-	FaucetUrl string
+	FaucetURL string
 
 	// TODO: Implement ConfirmTransaction. Current tooling relies on node local execution
 }
