@@ -217,7 +217,7 @@ func (p *CTFChainProvider) startContainer(
 
 		return containerResult{
 			url:           output.Nodes[0].ExternalHTTPUrl,
-			fauceturl:     input.FaucetPort,
+			faucetPort:     input.FaucetPort,
 			containerName: output.ContainerName,
 		}, nil
 	},
