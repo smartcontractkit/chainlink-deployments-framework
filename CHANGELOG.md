@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.45.0
+
+### Minor Changes
+
+- [#403](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/403) [`ba78126`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/ba78126e1050c7d9a6a788d43e9a58e439eda07f) Thanks [@ecPablo](https://github.com/ecPablo)! - port MCMS v2 CLI commands from CLD repo
+
 ## 0.44.0
 
 ### Minor Changes
