@@ -102,13 +102,12 @@ func PublicKeyBytes(s SuiSigner) ([]byte, error) {
 	return pub, nil
 }
 
-// PrivateKey returns the underlying ed25519.PrivateKey (64 bytes = seed||pubkey)
-// from a SuiSigner created in this package.
-func PrivateKey(s SuiSigner) (ed25519.PrivateKey, error) {
+// GetSigner returns the signer in blockVision signer.Signer interface format
+func GetSigner(s SuiSigner) (*signer.Signer, error) {
 	impl, ok := s.(*suiSigner)
 	if !ok {
 		return nil, fmt.Errorf("unsupported signer type %T", s)
 	}
 
-	return impl.signer.PriKey, nil
+	return impl.signer, nil
 }
