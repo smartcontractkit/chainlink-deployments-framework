@@ -11,8 +11,10 @@ type ChainMetadata = common.ChainMetadata
 // Chain represents an Sui chain.
 type Chain struct {
 	ChainMetadata
-	Client sui.ISuiAPI
-	Signer SuiSigner
-	URL    string
+	Client    sui.ISuiAPI
+	Signer    SuiSigner
+	URL       string
+	FaucetURL string
+
 	// TODO: Implement ConfirmTransaction. Current tooling relies on node local execution
 }
