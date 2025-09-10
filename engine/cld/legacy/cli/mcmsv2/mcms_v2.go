@@ -816,9 +816,9 @@ func buildMCMSv2ResetProposalCmd(
 				if errInspect != nil {
 					return fmt.Errorf("error getting inspector from chain selector: %w", errInspect)
 				}
-				opCount, err := inspector.GetOpCount(cmd.Context(), timelockProposal.ChainMetadata[types.ChainSelector(cfgv2.chainSelector)].MCMAddress)
-				if err != nil {
-					return err
+				opCount, errOpCount := inspector.GetOpCount(cmd.Context(), timelockProposal.ChainMetadata[types.ChainSelector(cfgv2.chainSelector)].MCMAddress)
+				if errOpCount != nil {
+					return errOpCount
 				}
 				metadata := timelockProposal.ChainMetadata[types.ChainSelector(cfgv2.chainSelector)]
 				metadata.StartingOpCount = opCount
