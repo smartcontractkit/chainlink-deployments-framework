@@ -1,5 +1,39 @@
 # chainlink-deployments-framework
 
+## 0.45.1
+
+### Patch Changes
+
+- [#292](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/292) [`42dc440`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/42dc440931f27d2dffdf95f95048e155222d045e) Thanks [@stackman27](https://github.com/stackman27)! - fixes for sui provider
+
+## 0.45.0
+
+### Minor Changes
+
+- [#403](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/403) [`ba78126`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/ba78126e1050c7d9a6a788d43e9a58e439eda07f) Thanks [@ecPablo](https://github.com/ecPablo)! - port MCMS v2 CLI commands from CLD repo
+
+## 0.44.0
+
+### Minor Changes
+
+- [#391](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/391) [`35282b9`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/35282b99b3fbba58729ba47395f11c1adc682222) Thanks [@jadepark-dev](https://github.com/jadepark-dev)! - TON provider - liteserver connection string support
+
+- [#386](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/386) [`8102d0e`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/8102d0ef1c94e6a52421b8ce415094631c7770bc) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat(chain): add support for converting string address to bytes for each chain
+
+### Patch Changes
+
+- [#399](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/399) [`96b85a9`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/96b85a9918202e5b9ce577e75c73032e1a361a04) Thanks [@giogam](https://github.com/giogam)! - chore: moves durable-pipelines commands
+
+- [#397](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/397) [`90fe2a8`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/90fe2a8c29631bcd9599524f9540b3d03bc8578e) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat: migrate migration command from CLD
+
+## 0.43.0
+
+### Minor Changes
+
+- [#382](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/382) [`0de5d03`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/0de5d036ff3761856a7f5d61a48c01b7c7275ca9) Thanks [@jkongie](https://github.com/jkongie)! - Remove DeployerSeed field from Tron and Ton Chain
+
+- [#384](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/384) [`6a9e263`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/6a9e2636cc24690b0ec54be064c631756d4e02e7) Thanks [@ecPablo](https://github.com/ecPablo)! - Adds proposal analyzer package to experimental
+
 ## 0.42.0
 
 ### Minor Changes

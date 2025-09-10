@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 1 # fetch only the latest commit
       - name: Cache Go modules
@@ -19,6 +19,8 @@ jobs:
         with:
           use-go-cache: true # this will setup the go cache
           only-modules: true
+      - name: Run go mod download
+        run: go mod download
 
   cd-release:
     runs-on: ubuntu-latest

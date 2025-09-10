@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/xssnick/tonutils-go/liteclient"
 	tonlib "github.com/xssnick/tonutils-go/ton"
@@ -25,7 +26,7 @@ const (
 
 // RPCChainProviderConfig holds the configuration to initialize the RPCChainProvider.
 type RPCChainProviderConfig struct {
-	// Required: The HTTP RPC URL to connect to the Ton node.
+	// Required: The liteserver URL to connect to the Ton node (format: liteserver://publickey@host:port).
 	HTTPURL string
 	// Optional: The WebSocket URL to connect to the Ton node.
 	WSURL string
@@ -37,10 +38,43 @@ type RPCChainProviderConfig struct {
 	WalletVersion WalletVersion
 }
 
+// validateLiteserverURL validates the format of a liteserver URL
+func validateLiteserverURL(liteserverURL string) error {
+	if liteserverURL == "" {
+		return errors.New("liteserver url is required")
+	}
+
+	if !strings.HasPrefix(liteserverURL, "liteserver://") {
+		return errors.New("invalid liteserver URL format: expected liteserver:// prefix")
+	}
+
+	// Remove the liteserver:// prefix
+	urlPart := strings.TrimPrefix(liteserverURL, "liteserver://")
+
+	// Split by @ to separate publickey and host:port
+	parts := strings.Split(urlPart, "@")
+	if len(parts) != 2 {
+		return errors.New("invalid liteserver URL format: expected publickey@host:port")
+	}
+
+	publicKey := parts[0]
+	hostPort := parts[1]
+
+	if publicKey == "" {
+		return errors.New("invalid liteserver URL format: public key cannot be empty")
+	}
+
+	if hostPort == "" {
+		return errors.New("invalid liteserver URL format: host:port cannot be empty")
+	}
+
+	return nil
+}
+
 // validate checks if the RPCChainProviderConfig is valid.
 func (c RPCChainProviderConfig) validate() error {
-	if c.HTTPURL == "" {
-		return errors.New("rpc url is required")
+	if err := validateLiteserverURL(c.HTTPURL); err != nil {
+		return err
 	}
 	if c.DeployerSignerGen == nil {
 		return errors.New("deployer signer generator is required")
@@ -75,6 +109,42 @@ func NewRPCChainProvider(selector uint64, config RPCChainProviderConfig) *RPCCha
 	}
 }
 
+// setupConnection creates and tests a connection to the TON liteserver
+func setupConnection(ctx context.Context, liteserverURL string) (*tonlib.APIClient, error) {
+	connectionPool, err := createLiteclientConnectionPool(ctx, liteserverURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to liteserver: %w", err)
+	}
+
+	api := tonlib.NewAPIClient(connectionPool, tonlib.ProofCheckPolicyFast)
+
+	// Test connection and get current block
+	mb, err := api.GetMasterchainInfo(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get masterchain info: %w", err)
+	}
+
+	// Set starting point to verify master block proofs chain
+	api.SetTrustedBlock(mb)
+
+	return api, nil
+}
+
+// createWallet creates a TON wallet from the given private key and API client
+func createWallet(api *tonlib.APIClient, privateKey []byte, version WalletVersion) (*wallet.Wallet, error) {
+	walletConfig, err := getWalletVersionConfig(version)
+	if err != nil {
+		return nil, fmt.Errorf("unsupported wallet version: %w", err)
+	}
+
+	tonWallet, err := wallet.FromPrivateKeyWithOptions(api, privateKey, walletConfig, wallet.WithWorkchain(0))
+	if err != nil {
+		return nil, fmt.Errorf("failed to init TON wallet: %w", err)
+	}
+
+	return tonWallet, nil
+}
+
 // Initialize initializes the RPCChainProvider.
 func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, error) {
 	if p.chain != nil {
@@ -85,28 +155,22 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 		return nil, fmt.Errorf("failed to validate provider config: %w", err)
 	}
 
-	// Initialize TON client
-	connectionPool := liteclient.NewConnectionPool()
-	// Connect to public LiteServer config. We use the RPC URL to get the config
-	err := connectionPool.AddConnectionsFromConfigUrl(ctx, p.config.HTTPURL)
+	// Setup connection to TON network
+	api, err := setupConnection(ctx, p.config.HTTPURL)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve ton network config: %w", err)
+		return nil, err
 	}
 
-	api := tonlib.NewAPIClient(connectionPool, tonlib.ProofCheckPolicyFast)
-
-	// Wallet
+	// Generate private key for wallet
 	privateKey, err := p.config.DeployerSignerGen.Generate()
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate private key: %w", err)
 	}
 
-	// (No need to validate that the version is supported, already done by p.config.validate)
-	walletConfig, _ := getWalletVersionConfig(p.config.WalletVersion)
-	tonWallet, err := wallet.FromPrivateKeyWithOptions(api, privateKey, walletConfig, wallet.WithWorkchain(0))
-
+	// Create wallet
+	tonWallet, err := createWallet(api, privateKey, p.config.WalletVersion)
 	if err != nil {
-		return nil, fmt.Errorf("failed to init TON wallet: %w", err)
+		return nil, err
 	}
 
 	p.chain = &ton.Chain{
@@ -120,6 +184,28 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 	}
 
 	return *p.chain, nil
+}
+
+// createLiteclientConnectionPool creates connection pool returning concrete type for production use
+func createLiteclientConnectionPool(ctx context.Context, liteserverURL string) (*liteclient.ConnectionPool, error) {
+	// Validate URL format first
+	if err := validateLiteserverURL(liteserverURL); err != nil {
+		return nil, err
+	}
+
+	// Parse the URL
+	urlPart := strings.TrimPrefix(liteserverURL, "liteserver://")
+	parts := strings.Split(urlPart, "@")
+	publicKey := parts[0]
+	hostPort := parts[1]
+
+	pool := liteclient.NewConnectionPool()
+	err := pool.AddConnection(ctx, hostPort, publicKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to add liteserver connection: %w", err)
+	}
+
+	return pool, nil
 }
 
 // GetWalletVersionConfig returns the wallet version. V5R1 is the default if version is empty.

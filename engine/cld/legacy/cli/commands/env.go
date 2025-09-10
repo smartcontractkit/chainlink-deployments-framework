@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	domain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/legacy/cli"
 )

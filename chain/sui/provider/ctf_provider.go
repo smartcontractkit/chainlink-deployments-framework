@@ -10,7 +10,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-resty/resty/v2"
+
 	"github.com/avast/retry-go/v4"
+	"github.com/block-vision/sui-go-sdk/models"
 	sui_sdk "github.com/block-vision/sui-go-sdk/sui"
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
@@ -108,16 +111,17 @@ func (p *CTFChainProvider) Initialize(_ context.Context) (chain.BlockChain, erro
 	}
 
 	// Start the CTF Container
-	url, client := p.startContainer(chainID, deployerSigner)
+	url, faucetUrl, client := p.startContainer(chainID, deployerSigner)
 
 	// Construct the chain
 	p.chain = &sui.Chain{
 		ChainMetadata: sui.ChainMetadata{
 			Selector: p.selector,
 		},
-		Client: client,
-		Signer: deployerSigner,
-		URL:    url,
+		Client:    client,
+		Signer:    deployerSigner,
+		URL:       url,
+		FaucetURL: faucetUrl,
 		// TODO: Implement ConfirmTransaction when available
 	}
 
@@ -144,11 +148,11 @@ func (p *CTFChainProvider) BlockChain() chain.BlockChain {
 // It returns the URL of the Sui node and the client to interact with it.
 func (p *CTFChainProvider) startContainer(
 	chainID string, account sui.SuiSigner,
-) (string, sui_sdk.ISuiAPI) {
+) (string, string, sui_sdk.ISuiAPI) {
 	var (
-		attempts      = uint(10)
-		url           string
-		containerName string
+		attempts  = uint(10)
+		url       string
+		fauceturl string
 	)
 
 	// initialize the docker network used by CTF
@@ -161,6 +165,7 @@ func (p *CTFChainProvider) startContainer(
 
 	type containerResult struct {
 		url           string
+		faucetPort    string
 		containerName string
 	}
 
@@ -204,13 +209,15 @@ func (p *CTFChainProvider) startContainer(
 		if rerr != nil {
 			// Return the ports to freeport to avoid leaking them during retries
 			freeport.Return([]int{port, faucetPort})
+
 			return containerResult{}, rerr
 		}
 
 		testcontainers.CleanupContainer(p.t, output.Container)
 
 		return containerResult{
-			url:           output.Nodes[0].ExternalHTTPUrl + "/v1",
+			url:           output.Nodes[0].ExternalHTTPUrl,
+			faucetPort:    input.FaucetPort,
 			containerName: output.ContainerName,
 		}, nil
 	},
@@ -225,7 +232,7 @@ func (p *CTFChainProvider) startContainer(
 	require.NoError(p.t, err, "Failed to start CTF Sui container after %d attempts", attempts)
 
 	url = result.url
-	containerName = result.containerName
+	fauceturl = fmt.Sprintf("http://%s:%s", "127.0.0.1", result.faucetPort)
 
 	client := sui_sdk.NewSuiClient(url)
 
@@ -240,14 +247,24 @@ func (p *CTFChainProvider) startContainer(
 	}
 	require.True(p.t, ready, "Sui network not ready")
 
-	dc, err := framework.NewDockerClient()
+	err = fundAccount(fauceturl, address)
 	require.NoError(p.t, err)
 
-	_, err = dc.ExecContainer(containerName, []string{
-		"sui", "client", "faucet",
-		"--address", address,
-	})
-	require.NoError(p.t, err)
+	return url, fauceturl, client
+}
 
-	return url, client
+func fundAccount(url string, address string) error {
+	r := resty.New().SetBaseURL(url)
+	b := &models.FaucetRequest{
+		FixedAmountRequest: &models.FaucetFixedAmountRequest{
+			Recipient: address,
+		},
+	}
+	resp, err := r.R().SetBody(b).SetHeader("Content-Type", "application/json").Post("/gas")
+	if err != nil {
+		return err
+	}
+	framework.L.Info().Any("Resp", resp).Msg("Address is funded!")
+
+	return nil
 }
