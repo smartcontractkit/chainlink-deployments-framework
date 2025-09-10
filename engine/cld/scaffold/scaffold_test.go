@@ -168,3 +168,76 @@ func Test_getRepositoryName(t *testing.T) {
 	result := getRepositoryName(rootDir)
 	assert.Equal(t, "repo_name", result)
 }
+
+func Test_ScaffoldEnvDir_WithHyphens(t *testing.T) {
+	t.Parallel()
+
+	var (
+		rootDir = t.TempDir()
+		domKey  = "ccip"
+		envKey  = "my-test-env"
+	)
+
+	// First scaffold the domain
+	dom := domain.NewDomain(rootDir, domKey)
+	err := ScaffoldDomain(dom)
+	require.NoError(t, err)
+
+	// Then scaffold the environment
+	envdir := domain.NewEnvDir(rootDir, domKey, envKey)
+	err = ScaffoldEnvDir(envdir)
+	require.NoError(t, err)
+
+	// Check that pipelines.go uses sanitized package name
+	pipelinesPath := filepath.Join(envdir.DirPath(), "pipelines.go")
+	pipelinesContent, err := os.ReadFile(pipelinesPath)
+	require.NoError(t, err)
+
+	// Should contain sanitized package name (underscores instead of hyphens)
+	assert.Contains(t, string(pipelinesContent), "my_test_env")
+	assert.NotContains(t, string(pipelinesContent), "my-test-env")
+}
+
+func Test_sanitizePackageName(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "no hyphens",
+			input:    "mypackage",
+			expected: "mypackage",
+		},
+		{
+			name:     "single hyphen",
+			input:    "my-package",
+			expected: "my_package",
+		},
+		{
+			name:     "multiple hyphens",
+			input:    "my-complex-package-name",
+			expected: "my_complex_package_name",
+		},
+		{
+			name:     "empty string",
+			input:    "",
+			expected: "",
+		},
+		{
+			name:     "only hyphens",
+			input:    "---",
+			expected: "___",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			result := sanitizePackageName(tt.input)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
