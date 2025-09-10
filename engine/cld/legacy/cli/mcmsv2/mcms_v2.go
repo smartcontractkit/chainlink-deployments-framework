@@ -885,10 +885,6 @@ func buildMCMSv2ConvertUpf(
 				return errors.New("expected proposal to be a TimelockProposal")
 			}
 
-			if err != nil {
-				return fmt.Errorf("error loading environment: %w", err)
-			}
-
 			// Get signers for the proposal
 			signers, err := getProposalSigners(*cfgv2, cmd.Context(), &cfgv2.proposal)
 			if err != nil {
@@ -1081,7 +1077,8 @@ func newCfgv2(lggr logger.Logger, cmd *cobra.Command, domain cldf_domain.Domain,
 
 	if proposalCtxProvider != nil {
 		// Load Environment and proposal ctx (for error decoding and proposal analysis)
-		env, err := cldfenvironment.Load(cmd.Context, lggr, cfg.envStr, domain, true,
+		env, err := cldfenvironment.Load(cmd.Context(), domain, cfg.envStr,
+			cldfenvironment.WithLogger(lggr),
 			cldfenvironment.OnlyLoadChainsFor("analyze-proposal", chainSelectors), cldfenvironment.WithoutJD())
 		if err != nil {
 			return nil, fmt.Errorf("error loading environment: %w", err)
@@ -1097,12 +1094,12 @@ func newCfgv2(lggr logger.Logger, cmd *cobra.Command, domain cldf_domain.Domain,
 	if flags.fork {
 		// we should load the environment to get proper forked chain URLs
 		cfgSelectors := []uint64{cfg.chainSelector}
-		forkedEnv, err := cldfenvironment.LoadForkedEnvironment(
+		forkedEnv, err := cldfenvironment.LoadFork(
 			cmd.Context(),
-			lggr,
-			flags.environmentStr,
 			domain,
+			flags.environmentStr,
 			nil,
+			cldfenvironment.WithLogger(lggr),
 			cldfenvironment.OnlyLoadChainsFor("fork-test", cfgSelectors),
 			cldfenvironment.WithAnvilKeyAsDeployer(),
 		)

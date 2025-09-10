@@ -252,7 +252,9 @@ func (c Commands) newEvmNodesFund(domain domain.Domain) *cobra.Command {
 			envKey, _ := cmd.Flags().GetString("environment")
 			chainselector, _ := cmd.Flags().GetUint64("selector")
 
-			env, err := environment.Load(cmd.Context, c.lggr, envKey, domain, true /*useRealBackends*/)
+			env, err := environment.Load(cmd.Context(), domain, envKey,
+				environment.WithLogger(c.lggr),
+			)
 			if err != nil {
 				return fmt.Errorf("failed to load command environment: %w", err)
 			}

@@ -14,16 +14,13 @@ import (
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 	"github.com/stretchr/testify/require"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/proposalutils"
-
 	fresolvers "github.com/smartcontractkit/chainlink-deployments-framework/changeset/resolvers"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
-
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/changeset"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
-
 	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
+	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/proposalutils"
 )
 
 //nolint:paralleltest
@@ -34,8 +31,7 @@ func TestNewDurablePipelineRunCmd(t *testing.T) {
 
 	tempLoadEnv := environment.Load
 	// mock the loadEnv function to avoid loading a real environment
-	loadEnv = func(getCtx func() context.Context, lggr logger.Logger, envName string,
-		domain domain.Domain, writeArtifacts bool, options ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
+	loadEnv = func(ctx context.Context, domain domain.Domain, envName string, options ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
 		return fdeployment.Environment{}, nil
 	}
 	t.Cleanup(func() {
@@ -158,8 +154,7 @@ func TestNewDurablePipelineInputGenerateCmd(t *testing.T) {
 
 	tempLoadEnv := environment.Load
 	// mock the loadEnv function to avoid loading a real environment
-	loadEnv = func(getCtx func() context.Context, lggr logger.Logger, envName string,
-		domain domain.Domain, writeArtifacts bool, options ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
+	loadEnv = func(ctx context.Context, domain domain.Domain, envName string, options ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
 		return fdeployment.Environment{}, nil
 	}
 	t.Cleanup(func() {
@@ -408,8 +403,7 @@ func TestBuildListCmd(t *testing.T) {
 
 	tempLoadEnv := environment.Load
 	// mock the loadEnv function to avoid loading a real environment
-	loadEnv = func(getCtx func() context.Context, lggr logger.Logger, envName string,
-		domain domain.Domain, writeArtifacts bool, options ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
+	loadEnv = func(ctx context.Context, domain domain.Domain, envName string, options ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
 		return fdeployment.Environment{}, nil
 	}
 	t.Cleanup(func() {
@@ -692,8 +686,7 @@ func TestNewDurablePipelineInputGenerateCmd_WithDuplicates(t *testing.T) {
 
 	tempLoadEnv := environment.Load
 	// mock the loadEnv function to avoid loading a real environment
-	loadEnv = func(getCtx func() context.Context, lggr logger.Logger, envName string,
-		domain domain.Domain, writeArtifacts bool, options ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
+	loadEnv = func(ctx context.Context, domain domain.Domain, envName string, options ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
 		return fdeployment.Environment{}, nil
 	}
 	t.Cleanup(func() {
