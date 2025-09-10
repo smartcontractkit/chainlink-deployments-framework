@@ -812,9 +812,9 @@ func buildMCMSv2ResetProposalCmd(
 
 			for selector := range cfgv2.proposal.ChainMetadata {
 				cfgv2.chainSelector = uint64(selector)
-				inspector, err := getInspectorFromChainSelector(*cfgv2)
-				if err != nil {
-					return fmt.Errorf("error getting inspector from chain selector: %w", err)
+				inspector, errInspect := getInspectorFromChainSelector(*cfgv2)
+				if errInspect != nil {
+					return fmt.Errorf("error getting inspector from chain selector: %w", errInspect)
 				}
 				opCount, err := inspector.GetOpCount(cmd.Context(), timelockProposal.ChainMetadata[types.ChainSelector(cfgv2.chainSelector)].MCMAddress)
 				if err != nil {
@@ -841,7 +841,6 @@ func buildMCMSv2ResetProposalCmd(
 			w, err := os.Create(proposalPath)
 			if err != nil {
 				return fmt.Errorf("error creating proposal file: %w", err)
-
 			}
 
 			err = mcms.WriteTimelockProposal(w, timelockProposal)
@@ -849,6 +848,7 @@ func buildMCMSv2ResetProposalCmd(
 				return fmt.Errorf("error writing proposal to file: %w", err)
 			}
 			lggr.Infow("Successfully resynced proposal", "path", proposalPath)
+
 			return nil
 		},
 	}
