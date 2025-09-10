@@ -807,7 +807,7 @@ func buildMCMSv2ReSyncProposalCmd(
 			}
 			timelockProposal := cfgv2.timelockProposal
 			if timelockProposal == nil {
-				return errors.New("expected proposal to be have non-nil *TimelockProposal")
+				return errors.New("null TimelockProposal")
 			}
 
 			for selector := range cfgv2.proposal.ChainMetadata {
