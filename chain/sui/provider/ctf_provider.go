@@ -121,7 +121,7 @@ func (p *CTFChainProvider) Initialize(_ context.Context) (chain.BlockChain, erro
 		Client:    client,
 		Signer:    deployerSigner,
 		URL:       url,
-		FaucetUrl: faucetUrl,
+		FaucetURL: faucetUrl,
 		// TODO: Implement ConfirmTransaction when available
 	}
 
@@ -165,7 +165,7 @@ func (p *CTFChainProvider) startContainer(
 
 	type containerResult struct {
 		url           string
-		fauceturl     string
+		faucetPort    string
 		containerName string
 	}
 
@@ -217,7 +217,7 @@ func (p *CTFChainProvider) startContainer(
 
 		return containerResult{
 			url:           output.Nodes[0].ExternalHTTPUrl,
-			faucetPort:     input.FaucetPort,
+			faucetPort:    input.FaucetPort,
 			containerName: output.ContainerName,
 		}, nil
 	},
@@ -232,7 +232,7 @@ func (p *CTFChainProvider) startContainer(
 	require.NoError(p.t, err, "Failed to start CTF Sui container after %d attempts", attempts)
 
 	url = result.url
-	fauceturl = fmt.Sprintf("http://%s:%s", "127.0.0.1", result.fauceturl)
+	fauceturl = fmt.Sprintf("http://%s:%s", "127.0.0.1", result.faucetPort)
 
 	client := sui_sdk.NewSuiClient(url)
 
