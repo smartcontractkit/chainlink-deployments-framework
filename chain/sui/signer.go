@@ -101,13 +101,3 @@ func PublicKeyBytes(s SuiSigner) ([]byte, error) {
 
 	return pub, nil
 }
-
-// GetSigner returns the signer in blockVision signer.Signer interface format
-func GetSigner(s SuiSigner) (*signer.Signer, error) {
-	impl, ok := s.(*suiSigner)
-	if !ok {
-		return nil, fmt.Errorf("unsupported signer type %T", s)
-	}
-
-	return impl.signer, nil
-}
