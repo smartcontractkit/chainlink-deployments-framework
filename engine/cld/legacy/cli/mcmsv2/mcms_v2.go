@@ -114,7 +114,7 @@ func BuildMCMSv2Cmd(lggr logger.Logger, domain cldf_domain.Domain, proposalConte
 	cmd.AddCommand(buildTimelockExecuteOperationV2Cmd(lggr, domain, proposalContextProvider))
 	cmd.AddCommand(buildMCMSv2AnalyzeProposalCmd(stdErrLogger, domain, proposalContextProvider))
 	cmd.AddCommand(buildMCMSv2ConvertUpf(stdErrLogger, domain, proposalContextProvider))
-	cmd.AddCommand(buildMCMSv2ReSyncProposalCmd(stdErrLogger, domain, proposalContextProvider))
+	cmd.AddCommand(buildMCMSv2ResetProposalCmd(stdErrLogger, domain, proposalContextProvider))
 
 	// fork flag is only used internally by buildExecuteForkCommand
 	cmd.PersistentFlags().BoolP(forkFlag, "f", false, "Run the command on forked environment (EVM)")
@@ -783,13 +783,13 @@ func buildMCMSv2AnalyzeProposalCmd(
 	return cmd
 }
 
-func buildMCMSv2ReSyncProposalCmd(
+func buildMCMSv2ResetProposalCmd(
 	lggr logger.Logger, domain cldf_domain.Domain, proposalCtxProvider analyzer.ProposalContextProvider,
 ) *cobra.Command {
 	var overrideRoot bool
 	var proposalPath string
 	cmd := &cobra.Command{
-		Use:   "resync-proposal",
+		Use:   "reset-proposal",
 		Short: "Updates proposal with latest on-chain op counts and resets signatures",
 		Long:  ``,
 		PreRun: func(command *cobra.Command, args []string) {
