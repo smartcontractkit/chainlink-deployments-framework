@@ -117,7 +117,7 @@ func ScaffoldEnvDir(envdir enginedomain.EnvDir) error {
 
 	// Setup all the args for the templates
 	renderArgs := map[string]string{
-		"package": envdir.Key(),
+		"package": sanitizePackageName(envdir.Key()),
 	}
 
 	// Define the structure
@@ -288,4 +288,10 @@ func runGoModTidy(dir string) error {
 	}
 
 	return nil
+}
+
+// sanitizePackageName converts a string to a valid Go package name by replacing hyphens with underscores.
+// Go package names cannot contain hyphens, so this function ensures compatibility.
+func sanitizePackageName(name string) string {
+	return strings.ReplaceAll(name, "-", "_")
 }
