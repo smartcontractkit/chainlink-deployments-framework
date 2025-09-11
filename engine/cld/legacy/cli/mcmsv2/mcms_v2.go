@@ -652,7 +652,7 @@ func buildExecuteForkCommand(lggr logger.Logger, domain cldf_domain.Domain, prop
 				if lerr := layout.SetMCMSigner(
 					ctx,
 					lggr,
-					layout.MCMSLayoutFile,
+					layout.MCMSLayout,
 					blockchain.DefaultAnvilPrivateKey,
 					blockchain.DefaultAnvilPublicKey,
 					blockchain.DefaultAnvilPublicKey,
