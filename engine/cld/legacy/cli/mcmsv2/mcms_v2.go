@@ -114,6 +114,7 @@ func BuildMCMSv2Cmd(lggr logger.Logger, domain cldf_domain.Domain, proposalConte
 	cmd.AddCommand(buildTimelockExecuteOperationV2Cmd(lggr, domain, proposalContextProvider))
 	cmd.AddCommand(buildMCMSv2AnalyzeProposalCmd(stdErrLogger, domain, proposalContextProvider))
 	cmd.AddCommand(buildMCMSv2ConvertUpf(stdErrLogger, domain, proposalContextProvider))
+	cmd.AddCommand(buildMCMSv2ResetProposalCmd(stdErrLogger, domain, proposalContextProvider))
 
 	// fork flag is only used internally by buildExecuteForkCommand
 	cmd.PersistentFlags().BoolP(forkFlag, "f", false, "Run the command on forked environment (EVM)")
@@ -778,6 +779,85 @@ func buildMCMSv2AnalyzeProposalCmd(
 	})
 
 	cmd.Flags().StringVarP(&outputFile, "output", "o", "", "Output file to write analyze result")
+
+	return cmd
+}
+
+func buildMCMSv2ResetProposalCmd(
+	lggr logger.Logger, domain cldf_domain.Domain, proposalCtxProvider analyzer.ProposalContextProvider,
+) *cobra.Command {
+	var overrideRoot bool
+	var proposalPath string
+	cmd := &cobra.Command{
+		Use:   "reset-proposal",
+		Short: "Updates proposal with latest on-chain op counts and resets signatures",
+		Long:  ``,
+		PreRun: func(command *cobra.Command, args []string) {
+			// chainSelector is optional for reset proposal; trick cobra into thinking it's been set
+			command.InheritedFlags().Lookup(chainSelectorFlag).Changed = true
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cfgv2, err := newCfgv2(lggr, cmd, domain, proposalCtxProvider, acceptExpiredProposal)
+			if err != nil {
+				return fmt.Errorf("error creating config: %w", err)
+			}
+			overrideRoot, err = cmd.Flags().GetBool("override-root")
+			if err != nil {
+				return fmt.Errorf("error getting override-root flag: %w", err)
+			}
+			timelockProposal := cfgv2.timelockProposal
+			if timelockProposal == nil {
+				return errors.New("null TimelockProposal")
+			}
+
+			for selector := range cfgv2.proposal.ChainMetadata {
+				cfgv2.chainSelector = uint64(selector)
+				inspector, errInspect := getInspectorFromChainSelector(*cfgv2)
+				if errInspect != nil {
+					return fmt.Errorf("error getting inspector from chain selector: %w", errInspect)
+				}
+				opCount, errOpCount := inspector.GetOpCount(cmd.Context(), timelockProposal.ChainMetadata[types.ChainSelector(cfgv2.chainSelector)].MCMAddress)
+				if errOpCount != nil {
+					return errOpCount
+				}
+				metadata := timelockProposal.ChainMetadata[types.ChainSelector(cfgv2.chainSelector)]
+				metadata.StartingOpCount = opCount
+				timelockProposal.ChainMetadata[types.ChainSelector(cfgv2.chainSelector)] = metadata
+			}
+
+			timelockProposal.Signatures = nil
+			if overrideRoot {
+				timelockProposal.OverridePreviousRoot = true
+			}
+
+			// Write file to proposalPath
+			pathFromFlag, err := cmd.Flags().GetString("proposal")
+			if err == nil && pathFromFlag != "" {
+				proposalPath = pathFromFlag
+			}
+			if proposalPath == "" {
+				return errors.New("proposalPath flag is required (path to write the updated proposal)")
+			}
+			w, err := os.Create(proposalPath)
+			if err != nil {
+				return fmt.Errorf("error creating proposal file: %w", err)
+			}
+
+			err = mcms.WriteTimelockProposal(w, timelockProposal)
+			if err != nil {
+				return fmt.Errorf("error writing proposal to file: %w", err)
+			}
+			lggr.Infow("Successfully reset proposal", "path", proposalPath)
+
+			return nil
+		},
+	}
+	cmd.SetHelpFunc(func(command *cobra.Command, args []string) {
+		command.Flags().MarkHidden(chainSelectorFlag) //nolint:errcheck
+		command.Parent().HelpFunc()(command, args)
+	})
+
+	cmd.Flags().Bool("override-root", overrideRoot, "Override the root of the MCMs contracts in the proposal")
 
 	return cmd
 }
