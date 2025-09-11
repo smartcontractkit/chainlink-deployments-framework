@@ -1,5 +1,13 @@
 # chainlink-deployments-framework
 
+## 0.45.2
+
+### Patch Changes
+
+- [#409](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/409) [`b3bd891`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/b3bd8917d6d188c861cbefa36575647eb0d54849) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - fix: embed Anvil's MCMS layout file instead of loading it from the filesystem
+
+- [#396](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/396) [`d79b3c0`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/d79b3c080458ea41b6d69d6149dff37ecf791a9f) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(scaffold): sanitize env name for go package name
+
 ## 0.45.1
 
 ### Patch Changes
