@@ -228,9 +228,8 @@ func TestCTFGethChainProvider_Initialize_And_WS(t *testing.T) {
 	require.Empty(t, evmChain.Users)
 
 	// Idempotence: second init returns same chain instance behavior (no crash / no re-spin)
-	bc2, err2 := p.Initialize(ctx)
+	_, err2 := p.Initialize(ctx)
 	require.NoError(t, err2)
-	_ = bc2 // intentionally not asserting pointer identity to avoid brittle checks
 
 	// WS connectivity & subscription (CTF exposes WS on same host:port; swap scheme)
 	wsURL := strings.Replace(httpURL, "http://", "ws://", 1)
