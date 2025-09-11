@@ -6,14 +6,10 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/fbsobreira/gotron-sdk/pkg/address"
-	"github.com/fbsobreira/gotron-sdk/pkg/http/common"
-	"github.com/fbsobreira/gotron-sdk/pkg/http/soliditynode"
 	"github.com/smartcontractkit/chainlink-tron/relayer/sdk"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron"
-	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron/provider/rpcclient"
 )
 
 // RPCChainProviderConfig holds the configuration required to initialize a Tron RPC chain provider.
@@ -87,96 +83,14 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 		return nil, fmt.Errorf("failed to create combined client: %w", err)
 	}
 
-	// Get deployer address from the signer generator
-	deployerAddr, err := p.config.DeployerSignerGen.GetAddress()
+	// Create the Tron chain instance using the extracted function
+	chain, err := GetTronChain(p.selector, combinedClient, p.config.DeployerSignerGen)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get deployer address: %w", err)
+		return nil, fmt.Errorf("failed to create tron chain: %w", err)
 	}
 
-	// Initialize local RPC client wrapper that uses the signer generator's signing function
-	client := rpcclient.New(combinedClient, p.config.DeployerSignerGen.Sign)
-
-	// Construct and cache the Tron chain instance with helper methods for deploying and interacting with contracts
-	p.chain = &tron.Chain{
-		ChainMetadata: tron.ChainMetadata{
-			Selector: p.selector,
-		},
-		Client:   combinedClient,                  // Underlying client for Tron node communication
-		SignHash: p.config.DeployerSignerGen.Sign, // Function for signing transactions
-		Address:  deployerAddr,                    // Default "from" address for transactions
-		URL:      p.config.FullNodeURL,
-		// Helper for sending and confirming transactions
-		SendAndConfirm: func(ctx context.Context, tx *common.Transaction, opts *tron.ConfirmRetryOptions) (*soliditynode.TransactionInfo, error) {
-			options := tron.DefaultConfirmRetryOptions()
-			if opts != nil {
-				options = opts
-			}
-
-			// Send transaction and wait for confirmation
-			return client.SendAndConfirmTx(ctx, tx, options)
-		},
-		// Helper for deploying a contract and waiting for confirmation
-		DeployContractAndConfirm: func(
-			ctx context.Context, contractName string, abi string, bytecode string, params []interface{}, opts *tron.DeployOptions,
-		) (address.Address, *soliditynode.TransactionInfo, error) {
-			options := tron.DefaultDeployOptions()
-			if opts != nil {
-				options = opts
-			}
-
-			// Create deploy contract transaction
-			deployResponse, err := combinedClient.DeployContract(
-				deployerAddr, contractName, abi, bytecode, options.OeLimit, options.CurPercent, options.FeeLimit, params,
-			)
-			if err != nil {
-				return nil, nil, fmt.Errorf("failed to create deploy contract transaction: %w", err)
-			}
-
-			// Send transaction and wait for confirmation
-			txInfo, err := client.SendAndConfirmTx(ctx, &deployResponse.Transaction, options.ConfirmRetryOptions)
-			if err != nil {
-				return nil, nil, fmt.Errorf("failed to confirm deploy contract transaction: %w", err)
-			}
-
-			// Parse resulting contract address
-			contractAddr, err := address.StringToAddress(txInfo.ContractAddress)
-			if err != nil {
-				return nil, nil, fmt.Errorf("failed to parse contract address: %w", err)
-			}
-
-			// Ensure contract is actually deployed on-chain
-			if err := client.CheckContractDeployed(contractAddr); err != nil {
-				return nil, nil, fmt.Errorf("contract deployment check failed: %w", err)
-			}
-
-			return contractAddr, txInfo, nil
-		},
-		// Helper for triggering a contract method and waiting for confirmation
-		TriggerContractAndConfirm: func(
-			ctx context.Context, contractAddr address.Address, functionName string, params []interface{}, opts *tron.TriggerOptions,
-		) (*soliditynode.TransactionInfo, error) {
-			options := tron.DefaultTriggerOptions()
-			if opts != nil {
-				options = opts
-			}
-
-			// Ensure contract is actually deployed on-chain
-			if err := client.CheckContractDeployed(contractAddr); err != nil {
-				return nil, fmt.Errorf("contract deployment check failed: %w", err)
-			}
-
-			// Create trigger contract transaction
-			contractResponse, err := combinedClient.TriggerSmartContract(
-				deployerAddr, contractAddr, functionName, params, options.FeeLimit, options.TAmount,
-			)
-			if err != nil {
-				return nil, fmt.Errorf("failed to create trigger contract transaction: %w", err)
-			}
-
-			// Send transaction and wait for confirmation
-			return client.SendAndConfirmTx(ctx, contractResponse.Transaction, options.ConfirmRetryOptions)
-		},
-	}
+	// Cache the chain instance
+	p.chain = &chain
 
 	return *p.chain, nil
 }

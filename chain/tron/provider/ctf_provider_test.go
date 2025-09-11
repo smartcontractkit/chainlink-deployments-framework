@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/fbsobreira/gotron-sdk/pkg/address"
+	chain_selectors "github.com/smartcontractkit/chain-selectors"
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
