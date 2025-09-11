@@ -178,9 +178,8 @@ func TestCTFGethChainProvider_CustomConfigurations(t *testing.T) {
 		ConfirmFunctor:        ConfirmFuncGeth(2 * time.Minute),
 		DeployerTransactorGen: TransactorFromRaw(customKey),
 		DockerCmdParamsOverrides: []string{
-			"--block-time", "2", // Mine blocks every 2 seconds
-			"--gas-limit", "30000000", // Set gas limit to 30M
-			"--gas-price", "1000000000", // Set gas price to 1 gwei
+			"--miner.gasprice", "1000000000", // Set min gas price to 1 gwei
+			"--miner.threads", "1", // Use 1 mining thread
 		},
 		Port:  "8545",                      // Custom port
 		Image: "ethereum/client-go:stable", // Custom image
@@ -194,9 +193,8 @@ func TestCTFGethChainProvider_CustomConfigurations(t *testing.T) {
 	// Verify all custom configurations are stored correctly
 	require.Equal(t, TransactorFromRaw(customKey), config.DeployerTransactorGen)
 	require.Equal(t, []string{
-		"--block-time", "2",
-		"--gas-limit", "30000000",
-		"--gas-price", "1000000000",
+		"--miner.gasprice", "1000000000",
+		"--miner.threads", "1",
 	}, config.DockerCmdParamsOverrides)
 	require.Equal(t, "8545", config.Port)
 	require.Equal(t, "ethereum/client-go:stable", config.Image)
