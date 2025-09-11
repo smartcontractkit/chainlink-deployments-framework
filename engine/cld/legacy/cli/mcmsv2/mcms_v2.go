@@ -793,7 +793,7 @@ func buildMCMSv2ResetProposalCmd(
 		Short: "Updates proposal with latest on-chain op counts and resets signatures",
 		Long:  ``,
 		PreRun: func(command *cobra.Command, args []string) {
-			// chainSelector is optional for resync proposal; trick cobra into thinking it's been set
+			// chainSelector is optional for reset proposal; trick cobra into thinking it's been set
 			command.InheritedFlags().Lookup(chainSelectorFlag).Changed = true
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
