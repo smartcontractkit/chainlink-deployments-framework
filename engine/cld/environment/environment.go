@@ -162,7 +162,7 @@ func Load(
 		cfg.Env.Offchain.OCR.XSigners, cfg.Env.Offchain.OCR.XProposers,
 	)
 	if err != nil {
-		if errors.Is(err, fdeployment.ErrMnemonicRequired) {
+		if errors.Is(err, focr.ErrMnemonicRequired) {
 			lggr.Warn("No OCR secrets found in environment, proceeding without them")
 		} else {
 			return fdeployment.Environment{}, err
