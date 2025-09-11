@@ -847,7 +847,7 @@ func buildMCMSv2ResetProposalCmd(
 			if err != nil {
 				return fmt.Errorf("error writing proposal to file: %w", err)
 			}
-			lggr.Infow("Successfully resynced proposal", "path", proposalPath)
+			lggr.Infow("Successfully reset proposal", "path", proposalPath)
 
 			return nil
 		},
