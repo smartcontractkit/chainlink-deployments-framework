@@ -16,12 +16,12 @@ import (
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/proposalutils"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/changeset/resolvers"
+	fresolvers "github.com/smartcontractkit/chainlink-deployments-framework/changeset/resolvers"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 
-	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
-	cldf_changeset "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/changeset"
-	cldfenvironment "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
+	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/changeset"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 )
@@ -32,11 +32,11 @@ func TestNewDurablePipelineRunCmd(t *testing.T) {
 	changesetName := "0001_test_changeset"
 	testDomain := domain.NewDomain(t.TempDir(), "test")
 
-	tempLoadEnv := cldfenvironment.Load
+	tempLoadEnv := environment.Load
 	// mock the loadEnv function to avoid loading a real environment
 	loadEnv = func(getCtx func() context.Context, lggr logger.Logger, envName string,
-		domain domain.Domain, writeArtifacts bool, options ...cldfenvironment.LoadEnvironmentOption) (cldf.Environment, error) {
-		return cldf.Environment{}, nil
+		domain domain.Domain, writeArtifacts bool, options ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
+		return fdeployment.Environment{}, nil
 	}
 	t.Cleanup(func() {
 		loadEnv = tempLoadEnv
@@ -103,7 +103,7 @@ func TestNewDurablePipelineRunCmd(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			decodeCalled := false
-			decodeProposalCtxProvider := func(env cldf.Environment) (analyzer.ProposalContext, error) {
+			decodeProposalCtxProvider := func(env fdeployment.Environment) (analyzer.ProposalContext, error) {
 				decodeCalled = true
 				return &mockProposalContext{t: t}, nil
 			}
@@ -116,11 +116,11 @@ func TestNewDurablePipelineRunCmd(t *testing.T) {
 			sharedCommands := NewCommands(logger.Test(t))
 			rootCmd := sharedCommands.NewDurablePipelineCmds(
 				testDomain,
-				func(envName string) (*cldf_changeset.ChangesetsRegistry, error) {
+				func(envName string) (*changeset.ChangesetsRegistry, error) {
 					rp := migrationsRegistryProviderStub{
-						BaseRegistryProvider: cldf_changeset.NewBaseRegistryProvider(),
-						AddMigrationAction: func(registry *cldf_changeset.ChangesetsRegistry) {
-							registry.Add(changesetName, cldf_changeset.Configure(&changesetStub).With(1))
+						BaseRegistryProvider: changeset.NewBaseRegistryProvider(),
+						AddMigrationAction: func(registry *changeset.ChangesetsRegistry) {
+							registry.Add(changesetName, changeset.Configure(&changesetStub).With(1))
 						},
 					}
 
@@ -131,7 +131,7 @@ func TestNewDurablePipelineRunCmd(t *testing.T) {
 					return rp.Registry(), nil
 				},
 				decodeProposalCtxProvider,
-				resolvers.NewConfigResolverManager(),
+				fresolvers.NewConfigResolverManager(),
 			)
 
 			require.NotNil(t, rootCmd)
@@ -156,11 +156,11 @@ func TestNewDurablePipelineInputGenerateCmd(t *testing.T) {
 	env := "testnet"
 	testDomain := domain.NewDomain(t.TempDir(), "test")
 
-	tempLoadEnv := cldfenvironment.Load
+	tempLoadEnv := environment.Load
 	// mock the loadEnv function to avoid loading a real environment
 	loadEnv = func(getCtx func() context.Context, lggr logger.Logger, envName string,
-		domain domain.Domain, writeArtifacts bool, options ...cldfenvironment.LoadEnvironmentOption) (cldf.Environment, error) {
-		return cldf.Environment{}, nil
+		domain domain.Domain, writeArtifacts bool, options ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
+		return fdeployment.Environment{}, nil
 	}
 	t.Cleanup(func() {
 		loadEnv = tempLoadEnv
@@ -306,7 +306,7 @@ changesets:
 			for _, tt := range tests {
 				t.Run(tt.name, func(t *testing.T) {
 					// Use named resolver functions
-					var testResolver resolvers.ConfigResolver
+					var testResolver fresolvers.ConfigResolver
 					if tt.resolverErr != nil {
 						testResolver = InputGenerateErrorResolver
 					} else {
@@ -314,8 +314,8 @@ changesets:
 					}
 
 					// Create resolver manager
-					resolverManager := resolvers.NewConfigResolverManager()
-					resolverManager.Register(testResolver, resolvers.ResolverInfo{
+					resolverManager := fresolvers.NewConfigResolverManager()
+					resolverManager.Register(testResolver, fresolvers.ResolverInfo{
 						Description: "Test Resolver",
 						ExampleYAML: "chain: optimism_sepolia\nvalue: 100",
 					})
@@ -323,12 +323,12 @@ changesets:
 					sharedCommands := NewCommands(logger.Test(t))
 					rootCmd := sharedCommands.NewDurablePipelineCmds(
 						testDomain,
-						func(envName string) (*cldf_changeset.ChangesetsRegistry, error) {
+						func(envName string) (*changeset.ChangesetsRegistry, error) {
 							rp := migrationsRegistryProviderStub{
-								BaseRegistryProvider: cldf_changeset.NewBaseRegistryProvider(),
-								AddMigrationAction: func(registry *cldf_changeset.ChangesetsRegistry) {
+								BaseRegistryProvider: changeset.NewBaseRegistryProvider(),
+								AddMigrationAction: func(registry *changeset.ChangesetsRegistry) {
 									cs := &stubChangeset{resolver: testResolver}
-									registry.Add("0001_test_changeset", cldf_changeset.Configure(cs).WithConfigResolver(testResolver))
+									registry.Add("0001_test_changeset", changeset.Configure(cs).WithConfigResolver(testResolver))
 								},
 							}
 
@@ -407,11 +407,11 @@ func TestBuildListCmd(t *testing.T) {
 	env := "testnet"
 	testDomain := domain.NewDomain(t.TempDir(), "test")
 
-	tempLoadEnv := cldfenvironment.Load
+	tempLoadEnv := environment.Load
 	// mock the loadEnv function to avoid loading a real environment
 	loadEnv = func(getCtx func() context.Context, lggr logger.Logger, envName string,
-		domain domain.Domain, writeArtifacts bool, options ...cldfenvironment.LoadEnvironmentOption) (cldf.Environment, error) {
-		return cldf.Environment{}, nil
+		domain domain.Domain, writeArtifacts bool, options ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
+		return fdeployment.Environment{}, nil
 	}
 	t.Cleanup(func() {
 		loadEnv = tempLoadEnv
@@ -420,7 +420,7 @@ func TestBuildListCmd(t *testing.T) {
 	tests := []struct {
 		name                   string
 		args                   []string
-		setupMocks             func() (*cldf_changeset.ChangesetsRegistry, *resolvers.ConfigResolverManager, error)
+		setupMocks             func() (*changeset.ChangesetsRegistry, *fresolvers.ConfigResolverManager, error)
 		expectedErr            string
 		expectedOutputContains []string
 	}{
@@ -430,29 +430,29 @@ func TestBuildListCmd(t *testing.T) {
 				"list",
 				"--environment", env,
 			},
-			setupMocks: func() (*cldf_changeset.ChangesetsRegistry, *resolvers.ConfigResolverManager, error) {
+			setupMocks: func() (*changeset.ChangesetsRegistry, *fresolvers.ConfigResolverManager, error) {
 				// Create resolver manager first
-				resolverManager := resolvers.NewConfigResolverManager()
-				resolverManager.Register(MockTestResolver, resolvers.ResolverInfo{
+				resolverManager := fresolvers.NewConfigResolverManager()
+				resolverManager.Register(MockTestResolver, fresolvers.ResolverInfo{
 					Description: "Test Resolver",
 					ExampleYAML: "test: value",
 				})
 
 				// Create registry with mixed changeset types
 				rp := migrationsRegistryProviderStub{
-					BaseRegistryProvider: cldf_changeset.NewBaseRegistryProvider(),
-					AddMigrationAction: func(registry *cldf_changeset.ChangesetsRegistry) {
+					BaseRegistryProvider: changeset.NewBaseRegistryProvider(),
+					AddMigrationAction: func(registry *changeset.ChangesetsRegistry) {
 						// Static changeset (no resolver)
 						staticChangeset := &stubChangeset{}
-						registry.Add("0001_static_changeset", cldf_changeset.Configure(staticChangeset).With(1))
+						registry.Add("0001_static_changeset", changeset.Configure(staticChangeset).With(1))
 
 						// Dynamic changeset (with resolver)
 						dynamicChangeset := &stubChangeset{resolver: MockTestResolver}
-						registry.Add("0002_dynamic_changeset", cldf_changeset.Configure(dynamicChangeset).WithConfigResolver(MockTestResolver))
+						registry.Add("0002_dynamic_changeset", changeset.Configure(dynamicChangeset).WithConfigResolver(MockTestResolver))
 
 						// Error changeset (resolver not registered with manager)
 						errorChangeset := &stubChangeset{resolver: MockUnregisteredResolver}
-						registry.Add("0003_error_changeset", cldf_changeset.Configure(errorChangeset).WithConfigResolver(MockUnregisteredResolver))
+						registry.Add("0003_error_changeset", changeset.Configure(errorChangeset).WithConfigResolver(MockUnregisteredResolver))
 					},
 				}
 
@@ -473,15 +473,15 @@ func TestBuildListCmd(t *testing.T) {
 			},
 		},
 		{
-			name: "empty registry and no resolvers",
+			name: "empty registry and no fresolvers",
 			args: []string{
 				"list",
 				"--environment", env,
 			},
-			setupMocks: func() (*cldf_changeset.ChangesetsRegistry, *resolvers.ConfigResolverManager, error) {
+			setupMocks: func() (*changeset.ChangesetsRegistry, *fresolvers.ConfigResolverManager, error) {
 				rp := migrationsRegistryProviderStub{
-					BaseRegistryProvider: cldf_changeset.NewBaseRegistryProvider(),
-					AddMigrationAction: func(registry *cldf_changeset.ChangesetsRegistry) {
+					BaseRegistryProvider: changeset.NewBaseRegistryProvider(),
+					AddMigrationAction: func(registry *changeset.ChangesetsRegistry) {
 						// Add no changesets
 					},
 				}
@@ -490,7 +490,7 @@ func TestBuildListCmd(t *testing.T) {
 					return nil, nil, err
 				}
 
-				resolverManager := resolvers.NewConfigResolverManager()
+				resolverManager := fresolvers.NewConfigResolverManager()
 
 				return rp.Registry(), resolverManager, nil
 			},
@@ -501,30 +501,30 @@ func TestBuildListCmd(t *testing.T) {
 			},
 		},
 		{
-			name: "multiple resolvers listed",
+			name: "multiple fresolvers listed",
 			args: []string{
 				"list",
 				"--environment", env,
 			},
-			setupMocks: func() (*cldf_changeset.ChangesetsRegistry, *resolvers.ConfigResolverManager, error) {
-				// Create resolver manager with multiple resolvers
-				resolverManager := resolvers.NewConfigResolverManager()
+			setupMocks: func() (*changeset.ChangesetsRegistry, *fresolvers.ConfigResolverManager, error) {
+				// Create resolver manager with multiple fresolvers
+				resolverManager := fresolvers.NewConfigResolverManager()
 
-				resolverManager.Register(MockFirstResolver, resolvers.ResolverInfo{
+				resolverManager.Register(MockFirstResolver, fresolvers.ResolverInfo{
 					Description: "First Resolver",
 					ExampleYAML: "test: value1",
 				})
 
-				resolverManager.Register(MockSecondResolver, resolvers.ResolverInfo{
+				resolverManager.Register(MockSecondResolver, fresolvers.ResolverInfo{
 					Description: "Second Resolver",
 					ExampleYAML: "test: value2",
 				})
 
 				rp := migrationsRegistryProviderStub{
-					BaseRegistryProvider: cldf_changeset.NewBaseRegistryProvider(),
-					AddMigrationAction: func(registry *cldf_changeset.ChangesetsRegistry) {
+					BaseRegistryProvider: changeset.NewBaseRegistryProvider(),
+					AddMigrationAction: func(registry *changeset.ChangesetsRegistry) {
 						cs := &stubChangeset{resolver: MockFirstResolver}
-						registry.Add("0001_test_changeset", cldf_changeset.Configure(cs).WithConfigResolver(MockFirstResolver))
+						registry.Add("0001_test_changeset", changeset.Configure(cs).WithConfigResolver(MockFirstResolver))
 					},
 				}
 
@@ -547,8 +547,8 @@ func TestBuildListCmd(t *testing.T) {
 			args: []string{
 				"list",
 			},
-			setupMocks: func() (*cldf_changeset.ChangesetsRegistry, *resolvers.ConfigResolverManager, error) {
-				return cldf_changeset.NewChangesetsRegistry(), resolvers.NewConfigResolverManager(), nil
+			setupMocks: func() (*changeset.ChangesetsRegistry, *fresolvers.ConfigResolverManager, error) {
+				return changeset.NewChangesetsRegistry(), fresolvers.NewConfigResolverManager(), nil
 			},
 			expectedErr: "required flag(s) \"environment\" not set",
 		},
@@ -558,8 +558,8 @@ func TestBuildListCmd(t *testing.T) {
 				"list",
 				"--environment", env,
 			},
-			setupMocks: func() (*cldf_changeset.ChangesetsRegistry, *resolvers.ConfigResolverManager, error) {
-				return nil, resolvers.NewConfigResolverManager(), errors.New("registry load failed")
+			setupMocks: func() (*changeset.ChangesetsRegistry, *fresolvers.ConfigResolverManager, error) {
+				return nil, fresolvers.NewConfigResolverManager(), errors.New("registry load failed")
 			},
 			expectedErr: "failed to load migrations registry: registry load failed",
 		},
@@ -572,7 +572,7 @@ func TestBuildListCmd(t *testing.T) {
 			sharedCommands := NewCommands(logger.Test(t))
 			rootCmd := sharedCommands.NewDurablePipelineCmds(
 				testDomain,
-				func(envName string) (*cldf_changeset.ChangesetsRegistry, error) {
+				func(envName string) (*changeset.ChangesetsRegistry, error) {
 					require.Equal(t, env, envName)
 					if mockErr != nil {
 						return nil, mockErr
@@ -619,7 +619,7 @@ func (m *mockProposalContext) ArgumentContext(chainSelector uint64) *proposaluti
 func (m *mockProposalContext) GetSolanaDecoderRegistry() analyzer.SolanaDecoderRegistry {
 	// Return a mock SolanaDecoderRegistry with a dummy decoder for testing
 	registry, err := analyzer.NewEnvironmentSolanaRegistry(
-		cldf.Environment{}, // env unused by current methods
+		fdeployment.Environment{}, // env unused by current methods
 		map[string]analyzer.DecodeInstructionFn{
 			"DummyProgram 1.0.0": nil, // Use nil as a stand-in decoder for testing
 		},
@@ -645,7 +645,7 @@ func (m *mockProposalContext) GetEVMRegistry() analyzer.EVMABIRegistry {
 	}
 
 	registry, err := analyzer.NewEnvironmentEVMRegistry(
-		cldf.Environment{}, // env unused by current methods
+		fdeployment.Environment{}, // env unused by current methods
 		map[string]string{
 			"DummyContract 1.0.0": abiJSON,
 		},
@@ -656,8 +656,8 @@ func (m *mockProposalContext) GetEVMRegistry() analyzer.EVMABIRegistry {
 }
 
 type migrationsRegistryProviderStub struct {
-	*cldf_changeset.BaseRegistryProvider
-	AddMigrationAction func(registry *cldf_changeset.ChangesetsRegistry)
+	*changeset.BaseRegistryProvider
+	AddMigrationAction func(registry *changeset.ChangesetsRegistry)
 }
 
 func (p *migrationsRegistryProviderStub) Init() error {
@@ -668,20 +668,20 @@ func (p *migrationsRegistryProviderStub) Init() error {
 	return nil
 }
 
-var _ cldf.ChangeSetV2[any] = &stubChangeset{}
+var _ fdeployment.ChangeSetV2[any] = &stubChangeset{}
 
 type stubChangeset struct {
 	ApplyCalled bool
 	StubError   error
-	resolver    resolvers.ConfigResolver
+	resolver    fresolvers.ConfigResolver
 }
 
-func (s *stubChangeset) Apply(_ cldf.Environment, _ any) (cldf.ChangesetOutput, error) {
+func (s *stubChangeset) Apply(_ fdeployment.Environment, _ any) (fdeployment.ChangesetOutput, error) {
 	s.ApplyCalled = true
-	return cldf.ChangesetOutput{}, s.StubError
+	return fdeployment.ChangesetOutput{}, s.StubError
 }
 
-func (s *stubChangeset) VerifyPreconditions(_ cldf.Environment, _ any) error {
+func (s *stubChangeset) VerifyPreconditions(_ fdeployment.Environment, _ any) error {
 	return nil
 }
 
@@ -691,11 +691,11 @@ func TestNewDurablePipelineInputGenerateCmd_WithDuplicates(t *testing.T) {
 	testDomain := domain.NewDomain(t.TempDir(), "test")
 	inputsFileName := "test-inputs-array-duplicates.yaml"
 
-	tempLoadEnv := cldfenvironment.Load
+	tempLoadEnv := environment.Load
 	// mock the loadEnv function to avoid loading a real environment
 	loadEnv = func(getCtx func() context.Context, lggr logger.Logger, envName string,
-		domain domain.Domain, writeArtifacts bool, options ...cldfenvironment.LoadEnvironmentOption) (cldf.Environment, error) {
-		return cldf.Environment{}, nil
+		domain domain.Domain, writeArtifacts bool, options ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
+		return fdeployment.Environment{}, nil
 	}
 	t.Cleanup(func() {
 		loadEnv = tempLoadEnv
@@ -738,8 +738,8 @@ changesets:
 	testResolver := InputGenerateResolver
 
 	// Create resolver manager
-	resolverManager := resolvers.NewConfigResolverManager()
-	resolverManager.Register(testResolver, resolvers.ResolverInfo{
+	resolverManager := fresolvers.NewConfigResolverManager()
+	resolverManager.Register(testResolver, fresolvers.ResolverInfo{
 		Description: "Test Resolver",
 		ExampleYAML: "chain: optimism_sepolia\nvalue: 100",
 	})
@@ -747,13 +747,13 @@ changesets:
 	sharedCommands := NewCommands(logger.Test(t))
 	rootcmd := sharedCommands.NewDurablePipelineCmds(
 		testDomain,
-		func(envName string) (*cldf_changeset.ChangesetsRegistry, error) {
+		func(envName string) (*changeset.ChangesetsRegistry, error) {
 			rp := migrationsRegistryProviderStub{
-				BaseRegistryProvider: cldf_changeset.NewBaseRegistryProvider(),
-				AddMigrationAction: func(registry *cldf_changeset.ChangesetsRegistry) {
+				BaseRegistryProvider: changeset.NewBaseRegistryProvider(),
+				AddMigrationAction: func(registry *changeset.ChangesetsRegistry) {
 					cs := &stubChangeset{resolver: testResolver}
-					registry.Add("0001_test_changeset", cldf_changeset.Configure(cs).WithConfigResolver(testResolver))
-					registry.Add("0002_test_changeset", cldf_changeset.Configure(cs).WithConfigResolver(testResolver))
+					registry.Add("0001_test_changeset", changeset.Configure(cs).WithConfigResolver(testResolver))
+					registry.Add("0002_test_changeset", changeset.Configure(cs).WithConfigResolver(testResolver))
 				},
 			}
 
