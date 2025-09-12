@@ -154,25 +154,25 @@ func (d EnvDir) MutableDataStore() (fdatastore.MutableDataStore, error) {
 func (d EnvDir) loadDataStore() (fdatastore.MutableDataStore, error) {
 	addrRefsPath := d.AddressRefsFilePath()
 	refs, err := os.ReadFile(addrRefsPath)
-	if err != nil && !os.IsNotExist(err) {
+	if err != nil {
 		return nil, fmt.Errorf("failed to read address_refs file %s: %w", addrRefsPath, err)
 	}
 
 	chainMetaPath := d.ChainMetadataFilePath()
 	chainMeta, err := os.ReadFile(chainMetaPath)
-	if err != nil && !os.IsNotExist(err) {
+	if err != nil {
 		return nil, fmt.Errorf("failed to read chain_metadata file %s: %w", chainMetaPath, err)
 	}
 
 	ctrMetaPath := d.ContractMetadataFilePath()
 	ctrMeta, err := os.ReadFile(ctrMetaPath)
-	if err != nil && !os.IsNotExist(err) {
+	if err != nil {
 		return nil, fmt.Errorf("failed to read contract_metadata file %s: %w", ctrMetaPath, err)
 	}
 
 	envMetaPath := d.EnvMetadataFilePath()
 	envMeta, err := os.ReadFile(envMetaPath)
-	if err != nil && !os.IsNotExist(err) {
+	if err != nil {
 		return nil, fmt.Errorf("failed to read env_metadata file %s: %w", envMetaPath, err)
 	}
 

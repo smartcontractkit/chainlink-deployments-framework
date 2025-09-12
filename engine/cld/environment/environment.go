@@ -7,11 +7,8 @@ import (
 	"maps"
 	"slices"
 
-	"github.com/smartcontractkit/chainlink-common/pkg/logger"
-
 	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
-
 	fcatalog "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/catalog"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/chains"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config"
@@ -19,85 +16,27 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/offchain"
 	foffchain "github.com/smartcontractkit/chainlink-deployments-framework/offchain"
 	focr "github.com/smartcontractkit/chainlink-deployments-framework/offchain/ocr"
-
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 )
 
-// LoadEnvironmentOptions contains configuration options for LoadEnvironment.
-type LoadEnvironmentOptions struct {
-	reporter             operations.Reporter
-	migrationString      string
-	withoutJD            bool
-	chainSelectorsToLoad []uint64
-	operationRegistry    *operations.OperationRegistry
-	anvilKeyAsDeployer   bool
-}
-
-// LoadEnvironmentOption is a function that modifies LoadEnvironmentOptions.
-type LoadEnvironmentOption func(*LoadEnvironmentOptions)
-
-// WithAnvilKeyAsDeployer sets the private key of the forked environment to use the Anvil key as the deployer key.
-func WithAnvilKeyAsDeployer() LoadEnvironmentOption {
-	return func(o *LoadEnvironmentOptions) {
-		o.anvilKeyAsDeployer = true
-	}
-}
-
-// WithReporter sets the reporter for LoadEnvironment.
-func WithReporter(reporter operations.Reporter) LoadEnvironmentOption {
-	return func(o *LoadEnvironmentOptions) {
-		o.reporter = reporter
-	}
-}
-
-// WithoutJD will configure the environment to not load Job Distributor.
-// By default, if option is not specified, Job Distributor is loaded.
-// This is useful for migrations that do not require Job Distributor to be loaded.
-// WARNING: This will set env.Offchain to nil. Ensure that you do not use env.Offchain.
-func WithoutJD() LoadEnvironmentOption {
-	return func(o *LoadEnvironmentOptions) {
-		o.withoutJD = true
-	}
-}
-
-// OnlyLoadChainsFor will configure the environment to load only the specified chains
-// for the given migration key.
-// By default, if option is not specified, all chains are loaded.
-// This is useful for migrations that are only applicable to a subset of chains.
-func OnlyLoadChainsFor(migrationKey string, chainsSelectors []uint64) LoadEnvironmentOption {
-	return func(o *LoadEnvironmentOptions) {
-		o.migrationString = migrationKey
-		o.chainSelectorsToLoad = chainsSelectors
-	}
-}
-
-// WithOperationRegistry will configure the bundle in environment to use the specified operation registry.
-func WithOperationRegistry(registry *operations.OperationRegistry) LoadEnvironmentOption {
-	return func(o *LoadEnvironmentOptions) {
-		o.operationRegistry = registry
-	}
-}
-
 func Load(
-	getCtx func() context.Context,
-	lggr logger.Logger,
-	env string,
+	ctx context.Context,
 	domain fdomain.Domain,
-	useRealBackends bool,
+	envKey string,
 	opts ...LoadEnvironmentOption,
 ) (fdeployment.Environment, error) {
-	// Default options
-	options := &LoadEnvironmentOptions{
-		reporter:          operations.NewMemoryReporter(),
-		operationRegistry: operations.NewOperationRegistry(),
+	loadcfg, err := newLoadConfig()
+	if err != nil {
+		return fdeployment.Environment{}, err
 	}
-	for _, opt := range opts {
-		opt(options)
-	}
+	loadcfg.Configure(opts)
 
-	envdir := domain.EnvDir(env)
+	var (
+		lggr   = loadcfg.lggr
+		envdir = domain.EnvDir(envKey)
+	)
 
-	cfg, err := config.Load(domain, env, lggr)
+	cfg, err := config.Load(domain, envKey, lggr)
 	if err != nil {
 		return fdeployment.Environment{}, err
 	}
@@ -107,12 +46,20 @@ func Load(
 		return fdeployment.Environment{}, err
 	}
 
-	// Note: Currently, if no datastore is present in the envdir, no error is returned.
-	// This behavior is temporary and will be updated to return an error once all environments
-	// are guaranteed to have a fdatastore.
 	ds, err := envdir.DataStore()
 	if err != nil {
-		lggr.Warn("Unable to load datastore, skipping")
+		return fdeployment.Environment{}, err
+	}
+
+	var catalog fdatastore.CatalogStore
+	if cfg.Env.Catalog.GRPC != "" {
+		lggr.Infow("Initializing Catalog client", "url", cfg.Env.Catalog.GRPC)
+		catalog, err = fcatalog.LoadCatalog(ctx, envKey, cfg, domain)
+		if err != nil {
+			return fdeployment.Environment{}, err
+		}
+	} else {
+		lggr.Info("Skipping Catalog client initialization, no Catalog config found")
 	}
 
 	addressesByChain, err := ab.Addresses()
@@ -123,12 +70,12 @@ func Load(
 	// default - loads all chains
 	chainSelectorsToLoad := slices.Collect(maps.Keys(addressesByChain))
 
-	if options.migrationString != "" && len(options.chainSelectorsToLoad) > 0 {
-		lggr.Infow("Override: loading migration chains", "migration", options.migrationString, "chains", options.chainSelectorsToLoad)
-		chainSelectorsToLoad = options.chainSelectorsToLoad
+	if loadcfg.migrationString != "" && len(loadcfg.chainSelectorsToLoad) > 0 {
+		lggr.Infow("Override: loading migration chains", "migration", loadcfg.migrationString, "chains", loadcfg.chainSelectorsToLoad)
+		chainSelectorsToLoad = loadcfg.chainSelectorsToLoad
 	}
 
-	blockChains, err := chains.LoadChains(getCtx(), lggr, cfg, chainSelectorsToLoad)
+	blockChains, err := chains.LoadChains(ctx, lggr, cfg, chainSelectorsToLoad)
 	if err != nil {
 		return fdeployment.Environment{}, err
 	}
@@ -139,49 +86,40 @@ func Load(
 	}
 
 	var jd foffchain.Client
-	if !options.withoutJD {
+	if !loadcfg.withoutJD {
 		jd, err = offchain.LoadOffchainClient(
-			getCtx(),
+			ctx,
 			domain,
-			env,
+			envKey,
 			cfg.Env,
 			lggr,
-			useRealBackends,
+			loadcfg.useDryRunJobDistributor,
 		)
 		if err != nil {
 			return fdeployment.Environment{},
-				fmt.Errorf("failed to load offchain client for environment %s: %w", env, err)
+				fmt.Errorf("failed to load offchain client for environment %s: %w", envKey, err)
 		}
 	} else {
 		lggr.Info("Override: skipping JD initialization")
 	}
 
-	lggr.Debugw("Loaded environment", "env", env, "addressBook", ab)
+	lggr.Debugw("Loaded environment", "env", envKey, "addressBook", ab)
 
 	sharedSecrets, err := focr.GenerateSharedSecrets(
 		cfg.Env.Offchain.OCR.XSigners, cfg.Env.Offchain.OCR.XProposers,
 	)
 	if err != nil {
-		if errors.Is(err, fdeployment.ErrMnemonicRequired) {
+		if errors.Is(err, focr.ErrMnemonicRequired) {
 			lggr.Warn("No OCR secrets found in environment, proceeding without them")
 		} else {
 			return fdeployment.Environment{}, err
 		}
 	}
 
-	var catalogDataStore fdatastore.CatalogStore
-	if cfg.Env.Catalog.GRPC != "" {
-		lggr.Infow("Initializing Catalog client", "url", cfg.Env.Catalog.GRPC)
-		catalogDataStore, err = fcatalog.LoadCatalog(getCtx(), env, cfg, domain)
-		if err != nil {
-			return fdeployment.Environment{}, err
-		}
-	} else {
-		lggr.Info("Skipping Catalog client initialization, no Catalog config found")
-	}
+	getCtx := func() context.Context { return ctx }
 
 	return fdeployment.Environment{
-		Name:              env,
+		Name:              envKey,
 		Logger:            lggr,
 		ExistingAddresses: ab,
 		DataStore:         ds,
@@ -189,8 +127,8 @@ func Load(
 		Offchain:          jd,
 		GetContext:        getCtx,
 		OCRSecrets:        sharedSecrets,
-		OperationsBundle:  operations.NewBundle(getCtx, lggr, options.reporter, operations.WithOperationRegistry(options.operationRegistry)),
+		OperationsBundle:  operations.NewBundle(getCtx, lggr, loadcfg.reporter, operations.WithOperationRegistry(loadcfg.operationRegistry)),
 		BlockChains:       blockChains,
-		Catalog:           catalogDataStore,
+		Catalog:           catalog,
 	}, nil
 }

@@ -132,7 +132,7 @@ func (c Commands) newMigrationRun(
 				return err
 			}
 
-			envOptions, err := configureEnvironmentOptions(migration, migrationName)
+			envOptions, err := configureEnvironmentOptions(migration, migrationName, dryRun, c.lggr)
 			if err != nil {
 				return err
 			}
@@ -146,10 +146,7 @@ func (c Commands) newMigrationRun(
 			reporter := operations.NewMemoryReporter(operations.WithReports(reports))
 
 			envOptions = append(envOptions, environment.WithReporter(reporter))
-			env, err := environment.Load(
-				cmd.Context, c.lggr, envKey, domain, !dryRun,
-				envOptions...,
-			)
+			env, err := environment.Load(cmd.Context(), domain, envKey, envOptions...)
 			if err != nil {
 				return err
 			}

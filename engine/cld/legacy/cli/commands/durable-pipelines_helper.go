@@ -61,11 +61,9 @@ func findWorkspaceRoot() (string, error) {
 
 	// Walk up directories looking for the root go.mod
 	for {
-		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
-			// Check if this looks like the workspace root by looking for domains/
-			if _, err := os.Stat(filepath.Join(dir, "domains")); err == nil {
-				return dir, nil
-			}
+		// Check if this looks like the workspace root by looking for domains/
+		if _, err := os.Stat(filepath.Join(dir, "domains")); err == nil {
+			return dir, nil
 		}
 
 		parent := filepath.Dir(dir)

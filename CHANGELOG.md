@@ -1,5 +1,35 @@
 # chainlink-deployments-framework
 
+## 0.47.0
+
+### Minor Changes
+
+- [#410](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/410) [`deda430`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/deda430af37545dfee2c69618fa7931525411a49) Thanks [@ecPablo](https://github.com/ecPablo)! - Add CLI command to reset proposals
+
+- [#405](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/405) [`f8dab56`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/f8dab5616f77830495a12c318c4cd5a9017c1ca5) Thanks [@jkongie](https://github.com/jkongie)! - [BREAKING] Simplifies the function signature of `environment.Load` and `environment.LoadForkedEnvironment`
+
+## 0.46.0
+
+### Minor Changes
+
+- [#411](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/411) [`8d4e755`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/8d4e7550c77d7c321f4b7f07c62e78bc161d6b04) Thanks [@ajaskolski](https://github.com/ajaskolski)! - feat: add ctf geth provider
+
+### Patch Changes
+
+- [#417](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/417) [`c53af0e`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/c53af0e083223063e657c9911ded5fce11a9ab98) Thanks [@giogam](https://github.com/giogam)! - chore: removes ocr type aliases from deployment package
+
+- [#416](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/416) [`c72eaff`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/c72eaff8f972c030a90be15ec164d5992153ec2a) Thanks [@friedemannf](https://github.com/friedemannf)! - Bump CTF to v0.10.24
+
+- [#418](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/418) [`181501a`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/181501a738507fadd278158f0e6b8742cef2fd1d) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix: update findWorkspaceRoot to not check for root go.mod
+
+## 0.45.2
+
+### Patch Changes
+
+- [#409](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/409) [`b3bd891`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/b3bd8917d6d188c861cbefa36575647eb0d54849) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - fix: embed Anvil's MCMS layout file instead of loading it from the filesystem
+
+- [#396](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/396) [`d79b3c0`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/d79b3c080458ea41b6d69d6149dff37ecf791a9f) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(scaffold): sanitize env name for go package name
+
 ## 0.45.1
 
 ### Patch Changes

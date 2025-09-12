@@ -52,11 +52,7 @@ func (c Commands) newStateGenerate(dom domain.Domain, cfg StateConfig) *cobra.Co
 			ctx, cancel := context.WithTimeout(cmd.Context(), viewTimeout)
 			defer cancel()
 
-			ctxFunc := func() context.Context {
-				return ctx
-			}
-
-			env, err := environment.Load(ctxFunc, c.lggr, envKey, dom, true /*useRealBackends*/)
+			env, err := environment.Load(ctx, dom, envKey, environment.WithLogger(c.lggr))
 			if err != nil {
 				return fmt.Errorf("failed to load environment %w", err)
 			}
