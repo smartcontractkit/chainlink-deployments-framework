@@ -1,5 +1,13 @@
 # chainlink-deployments-framework
 
+## 0.47.0
+
+### Minor Changes
+
+- [#410](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/410) [`deda430`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/deda430af37545dfee2c69618fa7931525411a49) Thanks [@ecPablo](https://github.com/ecPablo)! - Add CLI command to reset proposals
+
+- [#405](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/405) [`f8dab56`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/f8dab5616f77830495a12c318c4cd5a9017c1ca5) Thanks [@jkongie](https://github.com/jkongie)! - [BREAKING] Simplifies the function signature of `environment.Load` and `environment.LoadForkedEnvironment`
+
 ## 0.46.0
 
 ### Minor Changes
