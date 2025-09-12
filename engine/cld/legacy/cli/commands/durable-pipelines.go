@@ -113,7 +113,7 @@ func (c Commands) newDurablePipelineRun(
 				return err
 			}
 
-			envOptions, err := configureEnvironmentOptions(migration, changesetStr)
+			envOptions, err := configureEnvironmentOptions(migration, changesetStr, dryRun, c.lggr)
 			if err != nil {
 				return err
 			}
@@ -141,10 +141,7 @@ func (c Commands) newDurablePipelineRun(
 			reporter := operations.NewMemoryReporter(operations.WithReports(reports))
 
 			envOptions = append(envOptions, fenvironment.WithReporter(reporter))
-			env, err := loadEnv(
-				cmd.Context, c.lggr, envKey, domain, !dryRun,
-				envOptions...,
-			)
+			env, err := loadEnv(cmd.Context(), domain, envKey, envOptions...)
 			if err != nil {
 				return err
 			}
