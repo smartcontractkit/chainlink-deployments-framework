@@ -46,12 +46,9 @@ func Load(
 		return fdeployment.Environment{}, err
 	}
 
-	// Note: Currently, if no datastore is present in the envdir, no error is returned.
-	// This behavior is temporary and will be updated to return an error once all environments
-	// are guaranteed to have a fdatastore.
 	ds, err := envdir.DataStore()
 	if err != nil {
-		lggr.Warn("Unable to load datastore, skipping")
+		return fdeployment.Environment{}, err
 	}
 
 	var catalog fdatastore.CatalogStore

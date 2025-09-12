@@ -33,11 +33,22 @@ func Test_Load_AddressBookFailure(t *testing.T) {
 	assert.Contains(t, err.Error(), "addresses.json: no such file or directory")
 }
 
-func Test_Load_LoadNodesFailure(t *testing.T) {
+func Test_Load_DataStoreFailure(t *testing.T) {
 	t.Parallel()
 
 	// Set up domain
 	domain := setupTest(t, setupTestConfig, setupAddressbook)
+
+	_, err := Load(t.Context(), domain, "staging")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "address_refs.json: no such file or directory")
+}
+
+func Test_Load_LoadNodesFailure(t *testing.T) {
+	t.Parallel()
+
+	// Set up domain
+	domain := setupTest(t, setupTestConfig, setupAddressbook, setupDataStore)
 
 	_, err := Load(t.Context(), domain, "staging")
 	require.Error(t, err)
@@ -48,7 +59,7 @@ func Test_Load_LoadOffchainClientFailure(t *testing.T) {
 	t.Parallel()
 
 	// Set up domain
-	domain := setupTest(t, setupTestConfig, setupAddressbook, setupNodes)
+	domain := setupTest(t, setupTestConfig, setupAddressbook, setupDataStore, setupNodes)
 
 	assert.Panics(t, func() {
 		_, err := Load(t.Context(), domain, "staging")
@@ -60,7 +71,7 @@ func Test_Load_NoError(t *testing.T) {
 	t.Parallel()
 
 	// Set up domain
-	domain := setupTest(t, setupTestConfig, setupAddressbook, setupNodes)
+	domain := setupTest(t, setupTestConfig, setupAddressbook, setupDataStore, setupNodes)
 
 	_, err := Load(t.Context(), domain, "staging", WithoutJD())
 	require.NoError(t, err)
@@ -136,6 +147,35 @@ func setupAddressbook(t *testing.T, domain fdomain.Domain) {
 	// Create address book file
 	addressBookPath := filepath.Join(env.DirPath(), "addresses.json")
 	require.NoError(t, os.WriteFile(addressBookPath, []byte(addressbookConfig), 0600))
+}
+
+func setupDataStore(t *testing.T, domain fdomain.Domain) {
+	t.Helper()
+
+	env := domain.EnvDir("staging")
+	addressRefsConfig := `[]`
+	chainMetadataConfig := `[]`
+	contractMetadataConfig := `[]`
+	envMetadataConfig := `null`
+
+	// Create datastore directory
+	require.NoError(t, os.MkdirAll(env.DataStoreDirPath(), 0755))
+
+	// Create address refs file
+	addressRefsPath := filepath.Join(env.DataStoreDirPath(), "address_refs.json")
+	require.NoError(t, os.WriteFile(addressRefsPath, []byte(addressRefsConfig), 0600))
+
+	// Create chain metadata file
+	chainMetadataPath := filepath.Join(env.DataStoreDirPath(), "chain_metadata.json")
+	require.NoError(t, os.WriteFile(chainMetadataPath, []byte(chainMetadataConfig), 0600))
+
+	// Create contract metadata file
+	contractMetadataPath := filepath.Join(env.DataStoreDirPath(), "contract_metadata.json")
+	require.NoError(t, os.WriteFile(contractMetadataPath, []byte(contractMetadataConfig), 0600))
+
+	// Create env metadata file
+	envMetadataPath := filepath.Join(env.DataStoreDirPath(), "env_metadata.json")
+	require.NoError(t, os.WriteFile(envMetadataPath, []byte(envMetadataConfig), 0600))
 }
 
 func setupNodes(t *testing.T, domain fdomain.Domain) {
