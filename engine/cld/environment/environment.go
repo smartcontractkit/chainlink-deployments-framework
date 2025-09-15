@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"maps"
-	"slices"
 
 	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
@@ -62,13 +60,8 @@ func Load(
 		lggr.Info("Skipping Catalog client initialization, no Catalog config found")
 	}
 
-	addressesByChain, err := ab.Addresses()
-	if err != nil {
-		return fdeployment.Environment{}, err
-	}
-
-	// default - loads all chains
-	chainSelectorsToLoad := slices.Collect(maps.Keys(addressesByChain))
+	// default - loads all chains from the networks config
+	chainSelectorsToLoad := cfg.Networks.ChainSelectors()
 
 	if loadcfg.migrationString != "" && len(loadcfg.chainSelectorsToLoad) > 0 {
 		lggr.Infow("Override: loading migration chains", "migration", loadcfg.migrationString, "chains", loadcfg.chainSelectorsToLoad)
