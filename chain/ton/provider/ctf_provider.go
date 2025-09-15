@@ -87,7 +87,7 @@ func (p *CTFChainProvider) Initialize(_ context.Context) (chain.BlockChain, erro
 	require.NoError(p.t, err, "failed to get chain ID from selector")
 
 	url, nodeClient := p.startContainer(chainID)
-	tonWallet := createTonWallet(p.t, nodeClient, wallet.V3R2, wallet.WithWorkchain(0))
+	tonWallet := createTonWallet(p.t, nodeClient, wallet.V5R1Final, wallet.WithWorkchain(0))
 	// airdrop the deployer wallet
 	fundTonWallets(p.t, nodeClient, []*address.Address{tonWallet.Address()}, []tlb.Coins{tlb.MustFromTON("1000")})
 	p.chain = &cldf_ton.Chain{
