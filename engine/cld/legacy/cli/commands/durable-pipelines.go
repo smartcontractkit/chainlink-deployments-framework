@@ -14,26 +14,26 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/changeset/resolvers"
-	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
-	cldf_changeset "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/changeset"
+	fresolvers "github.com/smartcontractkit/chainlink-deployments-framework/changeset/resolvers"
+	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	fchangeset "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/changeset"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
-	cldfenvironment "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
+	fenvironment "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 )
 
 // a temporary workaround to allow test to mock the LoadEnvironment function
-var loadEnv = cldfenvironment.Load
+var loadEnv = fenvironment.Load
 
 // TODO: envLoader needs to be refactored to an interface so we can mock it for testing
 // to avoid using real backends
 func (c Commands) NewDurablePipelineCmds(
 	domain domain.Domain,
-	loadMigration func(envName string) (*cldf_changeset.ChangesetsRegistry, error),
-	decodeProposalCtxProvider func(env cldf.Environment) (analyzer.ProposalContext, error),
-	loadConfigResolvers *resolvers.ConfigResolverManager) *cobra.Command {
+	loadMigration func(envName string) (*fchangeset.ChangesetsRegistry, error),
+	decodeProposalCtxProvider func(env fdeployment.Environment) (analyzer.ProposalContext, error),
+	loadConfigResolvers *fresolvers.ConfigResolverManager) *cobra.Command {
 	evmCmd := &cobra.Command{
 		Use:   "durable-pipeline",
 		Short: "Durable Pipeline commands",
@@ -76,9 +76,9 @@ var (
 // newDurablePipelineRun builds the 'run' subcommand for executing durable pipelines
 func (c Commands) newDurablePipelineRun(
 	domain domain.Domain,
-	loadMigration func(envName string) (*cldf_changeset.ChangesetsRegistry, error),
-	decodeProposalCtxProvider func(env cldf.Environment) (analyzer.ProposalContext, error),
-	loadConfigResolvers *resolvers.ConfigResolverManager,
+	loadMigration func(envName string) (*fchangeset.ChangesetsRegistry, error),
+	decodeProposalCtxProvider func(env fdeployment.Environment) (analyzer.ProposalContext, error),
+	loadConfigResolvers *fresolvers.ConfigResolverManager,
 ) *cobra.Command {
 	var (
 		changesetStr string
@@ -113,7 +113,7 @@ func (c Commands) newDurablePipelineRun(
 				return err
 			}
 
-			envOptions, err := configureEnvironmentOptions(migration, changesetStr)
+			envOptions, err := configureEnvironmentOptions(migration, changesetStr, dryRun, c.lggr)
 			if err != nil {
 				return err
 			}
@@ -140,11 +140,8 @@ func (c Commands) newDurablePipelineRun(
 			c.lggr.Infof("Loaded %d operations reports", originalReportsLen)
 			reporter := operations.NewMemoryReporter(operations.WithReports(reports))
 
-			envOptions = append(envOptions, cldfenvironment.WithReporter(reporter))
-			env, err := loadEnv(
-				cmd.Context, c.lggr, envKey, domain, !dryRun,
-				envOptions...,
-			)
+			envOptions = append(envOptions, fenvironment.WithReporter(reporter))
+			env, err := loadEnv(cmd.Context(), domain, envKey, envOptions...)
 			if err != nil {
 				return err
 			}
@@ -210,7 +207,7 @@ var (
 	inputGenerateLong = `
 		Generate durable-pipeline input configurations.
 
-		Reads an inputs file, resolves each changeset via registered config resolvers,
+		Reads an inputs file, resolves each changeset via registered config fresolvers,
 		and outputs the resulting config in YAML or JSON.
 `
 	inputGenerateExample = `
@@ -232,8 +229,8 @@ var (
 // durable pipeline configurations using config resolvers
 func (c Commands) newDurablePipelineInputGenerate(
 	domain domain.Domain,
-	loadMigrationsRegistry func(envName string) (*cldf_changeset.ChangesetsRegistry, error),
-	loadConfigResolvers *resolvers.ConfigResolverManager,
+	loadMigrationsRegistry func(envName string) (*fchangeset.ChangesetsRegistry, error),
+	loadConfigResolvers *fresolvers.ConfigResolverManager,
 ) *cobra.Command {
 	var (
 		inputsFileName string
@@ -249,7 +246,7 @@ func (c Commands) newDurablePipelineInputGenerate(
 
 	cmd := cobra.Command{
 		Use:     "input-generate",
-		Short:   "Generate durable-pipeline input using registered config resolvers",
+		Short:   "Generate durable-pipeline input using registered config fresolvers",
 		Long:    inputGenerateLong,
 		Example: inputGenerateExample,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -281,9 +278,9 @@ func (c Commands) newDurablePipelineInputGenerate(
 			}
 
 			// Build changeset to resolver map
-			resolverByKey := make(map[string]resolvers.ConfigResolver)
+			resolverByKey := make(map[string]fresolvers.ConfigResolver)
 			for _, key := range registry.ListKeys() {
-				var cfg cldf_changeset.Configurations
+				var cfg fchangeset.Configurations
 				cfg, err = registry.GetConfigurations(key)
 				if err != nil {
 					return fmt.Errorf("get configurations for %s: %w", key, err)
@@ -490,7 +487,7 @@ var (
 	listLong = `
 		List durable pipeline info.
 
-		Displays registered changesets (static vs dynamic) and available resolvers
+		Displays registered changesets (static vs dynamic) and available fresolvers
 		for the given environment.
 		`
 	listExample = `
@@ -499,8 +496,8 @@ var (
 `
 )
 
-// newDurablePipelineListBuild builds the list subcommand for listing durable pipeline info including registered changesets and config resolvers
-func (Commands) newDurablePipelineListBuild(domain domain.Domain, loadMigrationsRegistry func(envName string) (*cldf_changeset.ChangesetsRegistry, error), loadConfigResolvers *resolvers.ConfigResolverManager) *cobra.Command {
+// newDurablePipelineListBuild builds the list subcommand for listing durable pipeline info including registered changesets and config fresolvers
+func (Commands) newDurablePipelineListBuild(domain domain.Domain, loadMigrationsRegistry func(envName string) (*fchangeset.ChangesetsRegistry, error), loadConfigResolvers *fresolvers.ConfigResolverManager) *cobra.Command {
 	cmd := cobra.Command{
 		Use:     "list",
 		Short:   "List durable pipeline info",
@@ -553,7 +550,7 @@ func (Commands) newDurablePipelineListBuild(domain domain.Domain, loadMigrations
 
 			w.Flush()
 
-			// Available resolvers
+			// Available fresolvers
 			allResolvers := loadConfigResolvers.ListResolvers()
 			fmt.Fprintf(out, "\nAvailable Config Resolvers:\n")
 			for _, resolver := range allResolvers {

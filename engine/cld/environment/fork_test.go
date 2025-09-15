@@ -9,7 +9,6 @@ import (
 	"time"
 
 	chainsel "github.com/smartcontractkit/chain-selectors"
-	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 	"github.com/smartcontractkit/mcms"
 	"github.com/smartcontractkit/mcms/types"
 	"github.com/stretchr/testify/assert"
@@ -89,18 +88,16 @@ func Test_LoadForkedEnvironment(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			lggr := logger.Test(t)
-
 			if tt.expectPanic {
 				assert.Panics(t, func() {
-					_, err := LoadForkedEnvironment(t.Context(), lggr, tt.env, tt.domain, tt.blockNumbers, tt.options...)
+					_, err := LoadFork(t.Context(), tt.domain, tt.env, tt.blockNumbers, tt.options...)
 					require.NoError(t, err)
 				})
 
 				return
 			}
 
-			forkEnv, err := LoadForkedEnvironment(t.Context(), lggr, tt.env, tt.domain, tt.blockNumbers, tt.options...)
+			forkEnv, err := LoadFork(t.Context(), tt.domain, tt.env, tt.blockNumbers, tt.options...)
 
 			if tt.expectError != "" {
 				require.ErrorContains(t, err, tt.expectError)
@@ -227,10 +224,9 @@ func Test_ApplyChangesetOutput(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			lggr := logger.Test(t)
 			domain := setupTest(t, setupTestConfig, setupAddressbook, setupNodes)
 
-			forkEnv, err := LoadForkedEnvironment(t.Context(), lggr, "staging", domain, tt.blockNumbers, WithoutJD())
+			forkEnv, err := LoadFork(t.Context(), domain, "staging", tt.blockNumbers, WithoutJD())
 			require.NoError(t, err)
 
 			if tt.forkClients != nil {

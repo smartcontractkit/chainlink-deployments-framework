@@ -2,10 +2,10 @@ package layout
 
 import (
 	"context"
+	_ "embed"
+	"encoding/json"
 	"fmt"
 	"math/big"
-	"path/filepath"
-	"runtime"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -19,18 +19,19 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/rpc"
 )
 
-var (
-	_, b, _, _     = runtime.Caller(0)
-	MCMSLayoutFile = filepath.Join(filepath.Dir(b), "./mcms_layout.json")
-)
+//go:embed mcms_layout.json
+var MCMSLayout string
 
 // ChangeAddressSlot replaces address slot with a new public key (address)
-func ChangeAddressSlot(lggr logger.Logger, layoutFilePath string, url string, layoutField string, contractAddr, address string) error {
+func ChangeAddressSlot(lggr logger.Logger, layoutData string, url string, layoutField string, contractAddr, address string) error {
 	lggr.Infow("Changing address slot", "URL", url, "ContractAddr", contractAddr, "Address", address)
-	layout, err := evm_storage.New(layoutFilePath)
+
+	var layout evm_storage.StorageLayout
+	err := json.Unmarshal([]byte(layoutData), &layout)
 	if err != nil {
-		return fmt.Errorf("could not create contract storage layout: %w", err)
+		return fmt.Errorf("failed to unmarshal storage layout: %w", err)
 	}
+
 	slot := layout.MustSlot(layoutField)
 	data := evm_storage.MustEncodeStorageSlot("address", common.HexToAddress(address))
 	lggr.Infow("Setting data to slot", "Slot", slot, "Data", data)
@@ -45,10 +46,10 @@ func ChangeAddressSlot(lggr logger.Logger, layoutFilePath string, url string, la
 
 // SetMCMSigner is using gethwrappers.NewManyChainMultiSig to change the owner of MCM contract
 // and set test signer address so we can run MCM proposals with test signatures only
-func SetMCMSigner(ctx context.Context, lggr logger.Logger, layoutFilePath string, privateKeyHex, newOwnerAddr, signerAddr, rpcURL string, cID string, mcmsAddr string) error {
+func SetMCMSigner(ctx context.Context, lggr logger.Logger, layoutData string, privateKeyHex, newOwnerAddr, signerAddr, rpcURL string, cID string, mcmsAddr string) error {
 	lggr.Infow("Setting MCMS signer", "RPCURL", rpcURL, "MCMSContractAddress", mcmsAddr, "NewOwnerAddress", newOwnerAddr, "SignerAddress", signerAddr, "ChainID", cID)
 	mcmAddress := common.HexToAddress(mcmsAddr)
-	if err := ChangeAddressSlot(lggr, layoutFilePath, rpcURL, "_owner", mcmsAddr, newOwnerAddr); err != nil {
+	if err := ChangeAddressSlot(lggr, layoutData, rpcURL, "_owner", mcmsAddr, newOwnerAddr); err != nil {
 		return fmt.Errorf("could not change address slot: %w", err)
 	}
 	client, err := ethclient.Dial(rpcURL)

@@ -283,15 +283,6 @@ func Test_EnvDir_MutableDataStore(t *testing.T) {
 			want: fdatastore.NewMemoryDataStore(),
 		},
 		{
-			name: "missing file will return new empty datastore",
-			give: func(t *testing.T, fixture testDomainFS) EnvDir {
-				t.Helper()
-
-				return fixture.domain.EnvDir("invalid")
-			},
-			want: fdatastore.NewMemoryDataStore(),
-		},
-		{
 			name: "empty file will return new empty datastore",
 			give: func(t *testing.T, fixture testDomainFS) EnvDir {
 				t.Helper()
@@ -305,17 +296,25 @@ func Test_EnvDir_MutableDataStore(t *testing.T) {
 
 				ar, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), AddressRefsFileName))
 				require.NoError(t, err)
+				_, err = ar.WriteString("[]")
+				require.NoError(t, err)
 				defer ar.Close()
 
 				ch, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), ChainMetadataFileName))
+				require.NoError(t, err)
+				_, err = ch.WriteString("[]")
 				require.NoError(t, err)
 				defer ch.Close()
 
 				cm, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), ContractMetadataFileName))
 				require.NoError(t, err)
+				_, err = cm.WriteString("[]")
+				require.NoError(t, err)
 				defer cm.Close()
 
 				em, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), EnvMetadataFileName))
+				require.NoError(t, err)
+				_, err = em.WriteString("null")
 				require.NoError(t, err)
 				defer em.Close()
 
@@ -328,16 +327,36 @@ func Test_EnvDir_MutableDataStore(t *testing.T) {
 			give: func(t *testing.T, fixture testDomainFS) EnvDir {
 				t.Helper()
 
+				// Create empty files in a new environment to simulate a corrupted fdatastore.
 				err := os.Mkdir(filepath.Join(fixture.domain.DirPath(), "test"), 0755)
 				require.NoError(t, err)
+
 				err = os.Mkdir(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath()), 0755)
 				require.NoError(t, err)
+
 				ar, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), AddressRefsFileName))
 				require.NoError(t, err)
-				defer ar.Close()
-				// Write invalid JSON to the address_refs file
-				_, err = ar.WriteString("invalid json")
+				_, err = ar.WriteString("invalid")
 				require.NoError(t, err)
+				defer ar.Close()
+
+				ch, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), ChainMetadataFileName))
+				require.NoError(t, err)
+				_, err = ch.WriteString("[]")
+				require.NoError(t, err)
+				defer ch.Close()
+
+				cm, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), ContractMetadataFileName))
+				require.NoError(t, err)
+				_, err = cm.WriteString("[]")
+				require.NoError(t, err)
+				defer cm.Close()
+
+				em, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), EnvMetadataFileName))
+				require.NoError(t, err)
+				_, err = em.WriteString("null")
+				require.NoError(t, err)
+				defer em.Close()
 
 				return fixture.domain.EnvDir("test")
 			},
@@ -348,16 +367,36 @@ func Test_EnvDir_MutableDataStore(t *testing.T) {
 			give: func(t *testing.T, fixture testDomainFS) EnvDir {
 				t.Helper()
 
+				// Create empty files in a new environment to simulate a corrupted fdatastore.
 				err := os.Mkdir(filepath.Join(fixture.domain.DirPath(), "test"), 0755)
 				require.NoError(t, err)
+
 				err = os.Mkdir(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath()), 0755)
 				require.NoError(t, err)
+
+				ar, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), AddressRefsFileName))
+				require.NoError(t, err)
+				_, err = ar.WriteString("[]")
+				require.NoError(t, err)
+				defer ar.Close()
+
 				ch, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), ChainMetadataFileName))
 				require.NoError(t, err)
-				defer ch.Close()
-				// Write invalid JSON to the chain_metadata file
-				_, err = ch.WriteString("invalid json")
+				_, err = ch.WriteString("invalid")
 				require.NoError(t, err)
+				defer ch.Close()
+
+				cm, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), ContractMetadataFileName))
+				require.NoError(t, err)
+				_, err = cm.WriteString("[]")
+				require.NoError(t, err)
+				defer cm.Close()
+
+				em, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), EnvMetadataFileName))
+				require.NoError(t, err)
+				_, err = em.WriteString("null")
+				require.NoError(t, err)
+				defer em.Close()
 
 				return fixture.domain.EnvDir("test")
 			},
@@ -368,16 +407,36 @@ func Test_EnvDir_MutableDataStore(t *testing.T) {
 			give: func(t *testing.T, fixture testDomainFS) EnvDir {
 				t.Helper()
 
+				// Create empty files in a new environment to simulate a corrupted fdatastore.
 				err := os.Mkdir(filepath.Join(fixture.domain.DirPath(), "test"), 0755)
 				require.NoError(t, err)
+
 				err = os.Mkdir(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath()), 0755)
 				require.NoError(t, err)
+
+				ar, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), AddressRefsFileName))
+				require.NoError(t, err)
+				_, err = ar.WriteString("[]")
+				require.NoError(t, err)
+				defer ar.Close()
+
+				ch, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), ChainMetadataFileName))
+				require.NoError(t, err)
+				_, err = ch.WriteString("[]")
+				require.NoError(t, err)
+				defer ch.Close()
+
 				cm, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), ContractMetadataFileName))
 				require.NoError(t, err)
-				defer cm.Close()
-				// Write invalid JSON to the contract_metadata file
-				_, err = cm.WriteString("invalid json")
+				_, err = cm.WriteString("invalid")
 				require.NoError(t, err)
+				defer cm.Close()
+
+				em, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), EnvMetadataFileName))
+				require.NoError(t, err)
+				_, err = em.WriteString("null")
+				require.NoError(t, err)
+				defer em.Close()
 
 				return fixture.domain.EnvDir("test")
 			},
@@ -387,17 +446,36 @@ func Test_EnvDir_MutableDataStore(t *testing.T) {
 			name: "failed to unmarshal env metadata JSON",
 			give: func(t *testing.T, fixture testDomainFS) EnvDir {
 				t.Helper()
-
+				// Create empty files in a new environment to simulate a corrupted fdatastore.
 				err := os.Mkdir(filepath.Join(fixture.domain.DirPath(), "test"), 0755)
 				require.NoError(t, err)
+
 				err = os.Mkdir(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath()), 0755)
 				require.NoError(t, err)
+
+				ar, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), AddressRefsFileName))
+				require.NoError(t, err)
+				_, err = ar.WriteString("[]")
+				require.NoError(t, err)
+				defer ar.Close()
+
+				ch, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), ChainMetadataFileName))
+				require.NoError(t, err)
+				_, err = ch.WriteString("[]")
+				require.NoError(t, err)
+				defer ch.Close()
+
+				cm, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), ContractMetadataFileName))
+				require.NoError(t, err)
+				_, err = cm.WriteString("[]")
+				require.NoError(t, err)
+				defer cm.Close()
+
 				em, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), EnvMetadataFileName))
 				require.NoError(t, err)
-				defer em.Close()
-				// Write invalid JSON to the env_metadata file
-				_, err = em.WriteString("invalid json")
+				_, err = em.WriteString("invalid")
 				require.NoError(t, err)
+				defer em.Close()
 
 				return fixture.domain.EnvDir("test")
 			},
@@ -998,15 +1076,6 @@ func Test_EnvDir_DataStore(t *testing.T) {
 			want: fdatastore.NewMemoryDataStore().Seal(),
 		},
 		{
-			name: "missing file will return new empty datastore",
-			give: func(t *testing.T, fixture testDomainFS) EnvDir {
-				t.Helper()
-
-				return fixture.domain.EnvDir("invalid")
-			},
-			want: fdatastore.NewMemoryDataStore().Seal(),
-		},
-		{
 			name: "empty file will return new empty datastore",
 			give: func(t *testing.T, fixture testDomainFS) EnvDir {
 				t.Helper()
@@ -1020,17 +1089,25 @@ func Test_EnvDir_DataStore(t *testing.T) {
 
 				ar, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), AddressRefsFileName))
 				require.NoError(t, err)
+				_, err = ar.WriteString("[]")
+				require.NoError(t, err)
 				defer ar.Close()
 
 				ch, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), ChainMetadataFileName))
+				require.NoError(t, err)
+				_, err = ch.WriteString("[]")
 				require.NoError(t, err)
 				defer ch.Close()
 
 				cm, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), ContractMetadataFileName))
 				require.NoError(t, err)
+				_, err = cm.WriteString("[]")
+				require.NoError(t, err)
 				defer cm.Close()
 
 				em, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), EnvMetadataFileName))
+				require.NoError(t, err)
+				_, err = em.WriteString("null")
 				require.NoError(t, err)
 				defer em.Close()
 
@@ -1043,16 +1120,36 @@ func Test_EnvDir_DataStore(t *testing.T) {
 			give: func(t *testing.T, fixture testDomainFS) EnvDir {
 				t.Helper()
 
+				// Create empty files in a new environment to simulate a corrupted fdatastore.
 				err := os.Mkdir(filepath.Join(fixture.domain.DirPath(), "test"), 0755)
 				require.NoError(t, err)
+
 				err = os.Mkdir(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath()), 0755)
 				require.NoError(t, err)
+
 				ar, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), AddressRefsFileName))
 				require.NoError(t, err)
-				defer ar.Close()
-				// Write invalid JSON to the address_refs file
-				_, err = ar.WriteString("invalid json")
+				_, err = ar.WriteString("invalid")
 				require.NoError(t, err)
+				defer ar.Close()
+
+				ch, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), ChainMetadataFileName))
+				require.NoError(t, err)
+				_, err = ch.WriteString("[]")
+				require.NoError(t, err)
+				defer ch.Close()
+
+				cm, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), ContractMetadataFileName))
+				require.NoError(t, err)
+				_, err = cm.WriteString("[]")
+				require.NoError(t, err)
+				defer cm.Close()
+
+				em, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), EnvMetadataFileName))
+				require.NoError(t, err)
+				_, err = em.WriteString("null")
+				require.NoError(t, err)
+				defer em.Close()
 
 				return fixture.domain.EnvDir("test")
 			},
@@ -1063,16 +1160,36 @@ func Test_EnvDir_DataStore(t *testing.T) {
 			give: func(t *testing.T, fixture testDomainFS) EnvDir {
 				t.Helper()
 
+				// Create empty files in a new environment to simulate a corrupted fdatastore.
 				err := os.Mkdir(filepath.Join(fixture.domain.DirPath(), "test"), 0755)
 				require.NoError(t, err)
+
 				err = os.Mkdir(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath()), 0755)
 				require.NoError(t, err)
+
+				ar, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), AddressRefsFileName))
+				require.NoError(t, err)
+				_, err = ar.WriteString("[]")
+				require.NoError(t, err)
+				defer ar.Close()
+
 				ch, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), ChainMetadataFileName))
 				require.NoError(t, err)
-				defer ch.Close()
-				// Write invalid JSON to the chain_metadata file
-				_, err = ch.WriteString("invalid json")
+				_, err = ch.WriteString("invalid")
 				require.NoError(t, err)
+				defer ch.Close()
+
+				cm, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), ContractMetadataFileName))
+				require.NoError(t, err)
+				_, err = cm.WriteString("[]")
+				require.NoError(t, err)
+				defer cm.Close()
+
+				em, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), EnvMetadataFileName))
+				require.NoError(t, err)
+				_, err = em.WriteString("null")
+				require.NoError(t, err)
+				defer em.Close()
 
 				return fixture.domain.EnvDir("test")
 			},
@@ -1083,16 +1200,36 @@ func Test_EnvDir_DataStore(t *testing.T) {
 			give: func(t *testing.T, fixture testDomainFS) EnvDir {
 				t.Helper()
 
+				// Create empty files in a new environment to simulate a corrupted fdatastore.
 				err := os.Mkdir(filepath.Join(fixture.domain.DirPath(), "test"), 0755)
 				require.NoError(t, err)
+
 				err = os.Mkdir(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath()), 0755)
 				require.NoError(t, err)
+
+				ar, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), AddressRefsFileName))
+				require.NoError(t, err)
+				_, err = ar.WriteString("[]")
+				require.NoError(t, err)
+				defer ar.Close()
+
+				ch, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), ChainMetadataFileName))
+				require.NoError(t, err)
+				_, err = ch.WriteString("[]")
+				require.NoError(t, err)
+				defer ch.Close()
+
 				cm, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), ContractMetadataFileName))
 				require.NoError(t, err)
-				defer cm.Close()
-				// Write invalid JSON to the contract_metadata file
-				_, err = cm.WriteString("invalid json")
+				_, err = cm.WriteString("invalid")
 				require.NoError(t, err)
+				defer cm.Close()
+
+				em, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), EnvMetadataFileName))
+				require.NoError(t, err)
+				_, err = em.WriteString("null")
+				require.NoError(t, err)
+				defer em.Close()
 
 				return fixture.domain.EnvDir("test")
 			},
@@ -1103,16 +1240,36 @@ func Test_EnvDir_DataStore(t *testing.T) {
 			give: func(t *testing.T, fixture testDomainFS) EnvDir {
 				t.Helper()
 
+				// Create empty files in a new environment to simulate a corrupted fdatastore.
 				err := os.Mkdir(filepath.Join(fixture.domain.DirPath(), "test"), 0755)
 				require.NoError(t, err)
+
 				err = os.Mkdir(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath()), 0755)
 				require.NoError(t, err)
+
+				ar, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), AddressRefsFileName))
+				require.NoError(t, err)
+				_, err = ar.WriteString("[]")
+				require.NoError(t, err)
+				defer ar.Close()
+
+				ch, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), ChainMetadataFileName))
+				require.NoError(t, err)
+				_, err = ch.WriteString("[]")
+				require.NoError(t, err)
+				defer ch.Close()
+
+				cm, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), ContractMetadataFileName))
+				require.NoError(t, err)
+				_, err = cm.WriteString("[]")
+				require.NoError(t, err)
+				defer cm.Close()
+
 				em, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), EnvMetadataFileName))
 				require.NoError(t, err)
-				defer em.Close()
-				// Write invalid JSON to the env_metadata file
-				_, err = em.WriteString("invalid json")
+				_, err = em.WriteString("invalid")
 				require.NoError(t, err)
+				defer em.Close()
 
 				return fixture.domain.EnvDir("test")
 			},

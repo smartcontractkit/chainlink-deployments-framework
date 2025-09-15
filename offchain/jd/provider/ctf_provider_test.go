@@ -1,7 +1,6 @@
 package provider
 
 import (
-	"context"
 	"os"
 	"testing"
 
@@ -9,7 +8,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCTFOffchainProviderConfig_validate(t *testing.T) { //nolint:paralleltest // Cannot run in parallel due to global env var manipulation
+//nolint:paralleltest // Cannot run in parallel due to global env var manipulation
+func TestCTFOffchainProviderConfig_validate(t *testing.T) {
 	// Save original env var and restore at the end
 	originalEnv := os.Getenv("CTF_JD_IMAGE")
 	defer func() {
@@ -115,9 +115,8 @@ func TestCTFOffchainProvider_OffchainClient_BeforeInitialize(t *testing.T) {
 	assert.Nil(t, provider.OffchainClient())
 }
 
+//nolint:paralleltest // Cannot run in parallel due to global env var manipulation
 func TestCTFOffchainProvider_Initialize_ValidationError(t *testing.T) {
-	t.Parallel()
-
 	// Test that Initialize properly validates configuration
 	// Clear any existing CTF_JD_IMAGE environment variable
 	os.Unsetenv("CTF_JD_IMAGE")
@@ -127,8 +126,7 @@ func TestCTFOffchainProvider_Initialize_ValidationError(t *testing.T) {
 	}
 	provider := NewCTFOffchainProvider(t, config)
 
-	ctx := context.Background()
-	client, err := provider.Initialize(ctx)
+	client, err := provider.Initialize(t.Context())
 
 	require.Error(t, err)
 	assert.Nil(t, client)

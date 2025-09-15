@@ -1,13 +1,11 @@
 // Package provider contains EVM chain providers for the Chainlink Deployments Framework.
 //
-// This file implements CTFAnvilChainProvider, which provides Anvil EVM chain instances
-// running inside Chainlink Testing Framework (CTF) Docker containers.
+// This file implements CTFGethChainProvider, which provides Geth EVM chain instances
+// running inside Chainlink Testing Framework (CTF) Docker container.
 //
-// # Anvil Integration
+// # Geth Integration
 //
-// Anvil is a local Ethereum node designed for development and testing, part of the Foundry
-// toolkit. It provides fast, deterministic blockchain simulation with pre-funded accounts
-// and configurable mining behavior.
+// Geth is a local Ethereum node.
 //
 // # Usage Patterns
 //
@@ -15,13 +13,13 @@
 //
 //	func TestBasicContract(t *testing.T) {
 //		var once sync.Once
-//		config := CTFAnvilChainProviderConfig{
+//		config := CTFGethChainProviderConfig{
 //			Once:           &once,
 //			ConfirmFunctor: ConfirmFuncGeth(2 * time.Minute),
 //			T:              t, // Required when Port is not provided
 //		}
 //
-//		provider := NewCTFAnvilChainProvider(chainSelector, config)
+//		provider := NewCTFGethChainProvider(chainSelector, config)
 //		blockchain, err := provider.Initialize(context.Background())
 //		require.NoError(t, err)
 //
@@ -30,65 +28,65 @@
 //
 // Advanced usage with custom configuration:
 //
-//	func TestAdvancedScenario(t *testing.T) {
-//		var once sync.Once
-//		config := CTFAnvilChainProviderConfig{
-//			Once:                  &once,
-//			ConfirmFunctor:        ConfirmFuncGeth(30 * time.Second),
-//			NumAdditionalAccounts: 5, // Limit to 5 additional accounts + deployer
-//			T:                     t, // Required when Port is not provided
+//		func TestAdvancedScenario(t *testing.T) {
+//			var once sync.Once
+//	 	config := CTFGethChainProviderConfig{
+//	     Once:               &once,
+//	     ConfirmFunctor:     ConfirmFuncGeth(30 * time.Second),
+//	     AdditionalAccounts: true, // Create & auto-fund all extra users from the built-in pool
+//	     T:                  t,    // Required when Port is not provided
+//	 }
+//
+//			provider := NewCTFGethChainProvider(chainSelector, config)
+//			blockchain, err := provider.Initialize(context.Background())
+//			require.NoError(t, err)
+//
+//			// Run complex multi-account tests...
 //		}
-//
-//		provider := NewCTFAnvilChainProvider(chainSelector, config)
-//		blockchain, err := provider.Initialize(context.Background())
-//		require.NoError(t, err)
-//
-//		// Run complex multi-account tests...
-//	}
 //
 // Usage with custom deployer key (using TransactorFromRaw):
 //
 //	func TestWithCustomDeployer(t *testing.T) {
 //		var once sync.Once
-//		config := CTFAnvilChainProviderConfig{
+//		config := CTFGethChainProviderConfig{
 //			Once:                  &once,
 //			ConfirmFunctor:        ConfirmFuncGeth(2 * time.Minute),
 //			DeployerTransactorGen: TransactorFromRaw("your-custom-private-key-here"), // 64 chars hex, no 0x prefix
 //			T:                     t, // Required when Port is not provided
 //		}
 //
-//		provider := NewCTFAnvilChainProvider(chainSelector, config)
+//		provider := NewCTFGethChainProvider(chainSelector, config)
 //		blockchain, err := provider.Initialize(context.Background())
 //		require.NoError(t, err)
 //
-//		// The deployer account will use your custom key instead of Anvil's default
-//		// User accounts will still use Anvil's standard test accounts
+//		// The deployer account will use your custom key instead of Geth's default
+//		// User accounts will still use Geth's standard test accounts
 //	}
 //
 // Usage with KMS deployer key:
 //
 //	func TestWithKMSDeployer(t *testing.T) {
 //		var once sync.Once
-//		config := CTFAnvilChainProviderConfig{
+//		config := CTFGethChainProviderConfig{
 //			Once:                  &once,
 //			ConfirmFunctor:        ConfirmFuncGeth(2 * time.Minute),
 //			DeployerTransactorGen: TransactorFromKMS("your-kms-key-id"),
 //			T:                     t, // Required when Port is not provided
 //		}
 //
-//		provider := NewCTFAnvilChainProvider(chainSelector, config)
+//		provider := NewCTFGethChainProvider(chainSelector, config)
 //		blockchain, err := provider.Initialize(context.Background())
 //		require.NoError(t, err)
 //
 //		// The deployer account will use KMS for signing
-//		// User accounts will still use Anvil's standard test accounts
+//		// User accounts will still use Geth's standard test accounts
 //	}
 //
 // Usage with custom client options:
 //
 //	func TestWithCustomClientOpts(t *testing.T) {
 //		var once sync.Once
-//		config := CTFAnvilChainProviderConfig{
+//		config := CTFGethChainProviderConfig{
 //			Once:           &once,
 //			ConfirmFunctor: ConfirmFuncGeth(2 * time.Minute),
 //			ClientOpts: []func(client *rpcclient.MultiClient){
@@ -100,7 +98,7 @@
 //			T: t, // Required when Port is not provided
 //		}
 //
-//		provider := NewCTFAnvilChainProvider(chainSelector, config)
+//		provider := NewCTFGethChainProvider(chainSelector, config)
 //		blockchain, err := provider.Initialize(context.Background())
 //		require.NoError(t, err)
 //
@@ -109,42 +107,42 @@
 //
 // Usage with custom Docker command parameters:
 //
-//	func TestWithDockerCmdOverrides(t *testing.T) {
-//		var once sync.Once
-//		config := CTFAnvilChainProviderConfig{
-//			Once:           &once,
-//			ConfirmFunctor: ConfirmFuncGeth(2 * time.Minute),
-//			DockerCmdParamsOverrides: []string{
-//				"--block-time", "2",          // Mine blocks every 2 seconds
-//				"--gas-limit", "30000000",    // Set gas limit to 30M
-//				"--gas-price", "1000000000",  // Set gas price to 1 gwei
-//			},
-//			T: t, // Required when Port is not provided
+//		func TestWithDockerCmdOverrides(t *testing.T) {
+//			var once sync.Once
+//			config := CTFGethChainProviderConfig{
+//				Once:           &once,
+//				ConfirmFunctor: ConfirmFuncGeth(2 * time.Minute),
+//				DockerCmdParamsOverrides: []string{
+//	         "--miner.gasprice", "1000000000",  // Set min gas price to 1 gwei
+//	         "--miner.threads", "1",            // Use 1 mining thread
+//	         "--cache", "1024",                 // Allocate 1GB cache
+//				},
+//				T: t, // Required when Port is not provided
+//			}
+//
+//			provider := NewCTFGethChainProvider(chainSelector, config)
+//			blockchain, err := provider.Initialize(context.Background())
+//			require.NoError(t, err)
+//
+//			// Geth will run with the custom parameters
 //		}
-//
-//		provider := NewCTFAnvilChainProvider(chainSelector, config)
-//		blockchain, err := provider.Initialize(context.Background())
-//		require.NoError(t, err)
-//
-//		// Anvil will run with the custom parameters
-//	}
 //
 // Usage with custom Port and Image:
 //
 //	func TestWithCustomContainer(t *testing.T) {
 //		var once sync.Once
-//		config := CTFAnvilChainProviderConfig{
+//		config := CTFGethChainProviderConfig{
 //			Once:           &once,
 //			ConfirmFunctor: ConfirmFuncGeth(2 * time.Minute),
-//			Port:           "8545",                    // Use specific port (T not required when Port is provided)
-//			Image:          "ghcr.io/foundry-rs/foundry:latest", // Custom Anvil image
+//			Port:           "8546",                    // Use specific port (T not required when Port is provided)
+//			Image:          "ethereum/client-go:stable", // Custom Geth image/version if desired
 //		}
 //
-//		provider := NewCTFAnvilChainProvider(chainSelector, config)
+//		provider := NewCTFGethChainProvider(chainSelector, config)
 //		blockchain, err := provider.Initialize(context.Background())
 //		require.NoError(t, err)
 //
-//		// Anvil will run on port 8545, using the specified image
+//		// Geth will run on port 8546, using the specified image
 //		// Chain ID is automatically derived from the chainSelector
 //	}
 //
@@ -152,13 +150,13 @@
 //
 //	func main() {
 //		var once sync.Once
-//		config := CTFAnvilChainProviderConfig{
+//		config := CTFGethChainProviderConfig{
 //			Once:           &once,
 //			ConfirmFunctor: ConfirmFuncGeth(2 * time.Minute),
-//			Port:           "8545", // T not required when Port is provided
+//			Port:           "8546", // T not required when Port is provided
 //		}
 //
-//		provider := NewCTFAnvilChainProvider(chainSelector, config)
+//		provider := NewCTFGethChainProvider(chainSelector, config)
 //		blockchain, err := provider.Initialize(context.Background())
 //		if err != nil {
 //			log.Fatal(err)
@@ -176,16 +174,22 @@
 //
 // # Chain Selectors
 //
-// Common chain selectors for Anvil testing:
-//   - 13264668187771770619: Chain ID 31337 (default Anvil chain ID)
+// Common chain selectors for Geth testing:
+//   - 13264668187771770619: Chain ID 31337 (default Geth chain ID)
 //
 // # Standard Test Accounts
 //
-// The provider uses Anvil's standard test accounts:
+// This provider ships with a built-in pool of Geth-style test keys:
 //   - Account 0 (Deployer): 0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266
-//   - Account 1: 0x70997970c51812dc3a010c7d01b50e0d17dc79c8
-//   - Account 2: 0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc
-//   - ... up to 10 total pre-funded accounts
+//   - Account 1:            0x70997970c51812dc3a010c7d01b50e0d17dc79c8
+//   - Account 2:            0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc
+//   - Account 3:            0x90f79bf6eb2c4f870365e785982e1f101e93b906
+//   - Account 4:            0x15d34aaf54267db7d7c367839aaf71a00a2c6a65
+//
+// Behavior:
+//   - By default, only the deployer (Account 0) is created.
+//   - If config.AdditionalAccounts == true, *all* extra users (Accounts 1..N) from the pool
+//     are created and auto-funded during Initialize().
 //
 // # Port Management
 //
@@ -216,6 +220,7 @@ import (
 
 	"github.com/avast/retry-go/v4"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
@@ -229,9 +234,9 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider/rpcclient"
 )
 
-// anvilTestPrivateKeys contains the standard Anvil test accounts.
-// These are the well-known private keys that Anvil uses for its default accounts.
-var anvilTestPrivateKeys = []string{
+// gethTestPrivateKeys contains the standard Geth viable accounts.
+// By default, Geth creates only the first account (index 0) as the deployer account.
+var gethTestPrivateKeys = []string{
 	"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80", // Account 0: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
 	"59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d", // Account 1: 0x70997970C51812dc3A010C7d01b50e0d17dc79C8
 	"5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a", // Account 2: 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC
@@ -239,11 +244,11 @@ var anvilTestPrivateKeys = []string{
 	"47e179ec197488593b187f80a00eb0da91f1b9d0b13f8733639f19c30a34926a", // Account 4: 0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65
 }
 
-// CTFAnvilChainProviderConfig holds the configuration to initialize the CTFAnvilChainProvider.
+// CTFGethChainProviderConfig holds the configuration to initialize the CTFGethChainProvider.
 //
-// This configuration struct provides all necessary parameters to set up an Anvil EVM chain
+// This configuration struct provides all necessary parameters to set up an Geth EVM chain
 // instance running inside a Chainlink Testing Framework (CTF) Docker container.
-type CTFAnvilChainProviderConfig struct {
+type CTFGethChainProviderConfig struct {
 	// Required: A sync.Once instance to ensure that the CTF framework only sets up the new
 	// DefaultNetwork once
 	Once *sync.Once
@@ -257,34 +262,35 @@ type CTFAnvilChainProviderConfig struct {
 
 	// Optional: DeployerTransactorGen is a generator for the deployer key. Use TransactorFromRaw
 	// to create a deployer key from a private key, or TransactorFromKMS to create a deployer
-	// key from a KMS key. If not provided, the default Anvil deployer account will be used.
+	// key from a KMS key. If not provided, the default Geth deployer account will be used.
 	DeployerTransactorGen SignerGenerator
 
 	// Optional: ClientOpts are additional options to configure the MultiClient used by the
-	// CTFAnvilChainProvider. These options are applied to the MultiClient instance created by the
+	// CTFGethChainProvider. These options are applied to the MultiClient instance created by the
 	// provider. You can use this to set up custom HTTP clients, timeouts, or other
 	// configurations for the RPC connections.
 	ClientOpts []func(client *rpcclient.MultiClient)
 
 	// Optional: DockerCmdParamsOverrides allows customization of Docker command parameters
-	// for the Anvil container. These parameters are passed directly to the Docker container
-	// startup command, enabling advanced Anvil configurations such as custom block time,
-	// gas limits, or other Anvil-specific options.
+	// for the Geth container. These parameters are passed directly to the Docker container
+	// startup command, enabling advanced Geth configurations such as custom block time,
+	// gas limits, or other Geth-specific options.
 	DockerCmdParamsOverrides []string
 
-	// Optional: Port specifies the port for the Anvil container. If not provided,
-	// a free port will be automatically allocated. Use this when you need the Anvil
+	// Optional: Port specifies the port for the Geth container. If not provided,
+	// a free port will be automatically allocated. Use this when you need the Geth
 	// instance to run on a specific port.
 	Port string
 
-	// Optional: Image specifies the Docker image to use for the Anvil container.
-	// If not provided, the default Anvil image from the CTF framework will be used.
-	// This allows using custom Anvil builds or specific versions.
+	// Optional: Image specifies the Docker image to use for the Geth container.
+	// If not provided, the default Geth image from the CTF framework will be used.
+	// This allows using custom Geth builds or specific versions.
 	Image string
 
-	// Optional: Number of additional accounts to generate beyond the default Anvil accounts.
-	// If not specified, defaults to using all available default Anvil accounts.
-	NumAdditionalAccounts uint
+	// Optional: Whether to create and auto-fund additional user accounts from the built-in pool.
+	// When false (default), only the deployer is available.
+	// When true, ALL users from gethTestPrivateKeys (excluding the deployer) are created and auto-funded.
+	AdditionalAccounts bool
 
 	// Optional: This is only required when Port is not provided so we can use freeport to get a free port.
 	// This will be ignored when Port is provided.
@@ -292,7 +298,7 @@ type CTFAnvilChainProviderConfig struct {
 }
 
 // validate checks if the config fields are valid.
-func (c CTFAnvilChainProviderConfig) validate() error {
+func (c CTFGethChainProviderConfig) validate() error {
 	if c.Once == nil {
 		return errors.New("sync.Once instance is required")
 	}
@@ -316,7 +322,7 @@ func (c CTFAnvilChainProviderConfig) validate() error {
 		}
 	}
 
-	// DeployerTransactorGen is optional - if not provided, default Anvil account will be used
+	// DeployerTransactorGen is optional - if not provided, default Geth account will be used
 	// No additional validation needed since SignerGenerator interface handles validation internally
 
 	// Image is optional and doesn't need validation here
@@ -324,24 +330,25 @@ func (c CTFAnvilChainProviderConfig) validate() error {
 	return nil
 }
 
-var _ chain.Provider = (*CTFAnvilChainProvider)(nil)
+var _ chain.Provider = (*CTFGethChainProvider)(nil)
 
-// CTFAnvilChainProvider manages an Anvil EVM chain instance running inside a Chainlink Testing
+// CTFGethChainProvider manages an Geth EVM chain instance running inside a Chainlink Testing
 // Framework (CTF) Docker container.
 //
 // This provider requires Docker to be installed and operational. Spinning up a new container
 // can be slow, so it is recommended to initialize the provider only once per test suite or parent
 // test to optimize performance.
-type CTFAnvilChainProvider struct {
+type CTFGethChainProvider struct {
 	selector uint64
-	config   CTFAnvilChainProviderConfig
+	config   CTFGethChainProviderConfig
 
 	chain     *evm.Chain
 	httpURL   string
+	wsURL     string
 	container testcontainers.Container
 }
 
-// NewCTFAnvilChainProvider creates a new CTFAnvilChainProvider with the given selector and
+// NewCTFGethChainProvider creates a new CTFGethChainProvider with the given selector and
 // configuration.
 //
 // Parameters:
@@ -349,20 +356,20 @@ type CTFAnvilChainProvider struct {
 //   - config: Configuration struct containing all necessary setup parameters.
 //     Note: config.T is required when config.Port is not provided (for automatic port allocation)
 //
-// Returns a new CTFAnvilChainProvider instance ready for initialization.
-func NewCTFAnvilChainProvider(
-	selector uint64, config CTFAnvilChainProviderConfig,
-) *CTFAnvilChainProvider {
-	return &CTFAnvilChainProvider{
+// Returns a new CTFGethChainProvider instance ready for initialization.
+func NewCTFGethChainProvider(
+	selector uint64, config CTFGethChainProviderConfig,
+) *CTFGethChainProvider {
+	return &CTFGethChainProvider{
 		selector: selector,
 		config:   config,
 	}
 }
 
-// Initialize sets up the Anvil EVM chain instance managed by this provider. It starts a CTF
+// Initialize sets up the Geth EVM chain instance managed by this provider. It starts a CTF
 // container, initializes the Ethereum client, and sets up the chain instance with the necessary
-// transactors and deployer key gathered from the standard Anvil test accounts.
-func (p *CTFAnvilChainProvider) Initialize(ctx context.Context) (chain.BlockChain, error) {
+// transactors and deployer key gathered from the standard Geth test accounts.
+func (p *CTFGethChainProvider) Initialize(ctx context.Context) (chain.BlockChain, error) {
 	if p.chain != nil {
 		return *p.chain, nil // Already initialized
 	}
@@ -392,15 +399,15 @@ func (p *CTFAnvilChainProvider) Initialize(ctx context.Context) (chain.BlockChai
 		ChainSelector: p.selector,
 		RPCs: []rpcclient.RPC{
 			{
-				Name:               "anvil-local",
-				HTTPURL:            httpURL,
-				WSURL:              "", // Anvil typically doesn't provide WebSocket, only HTTP
+				Name:               "geth-local",
+				HTTPURL:            p.httpURL,
+				WSURL:              p.wsURL, // WS is exposed by the CTF container on the same port
 				PreferredURLScheme: rpcclient.URLSchemePreferenceHTTP,
 			},
 		},
 	}, p.config.ClientOpts...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create multiclient for Anvil at %s: %w", httpURL, err)
+		return nil, fmt.Errorf("failed to create multiclient for Geth at %s: %w", httpURL, err)
 	}
 
 	// Get the Chain ID as big.Int for transactor generation
@@ -409,7 +416,7 @@ func (p *CTFAnvilChainProvider) Initialize(ctx context.Context) (chain.BlockChai
 		return nil, fmt.Errorf("failed to parse chain ID into big.Int: %s", chainID)
 	}
 
-	// Generate deployer key using the provided transactor generator or default Anvil account
+	// Generate deployer key using the provided transactor generator or default Geth account
 	var deployerKey *bind.TransactOpts
 	var signHashFunc func([]byte) ([]byte, error)
 
@@ -424,8 +431,8 @@ func (p *CTFAnvilChainProvider) Initialize(ctx context.Context) (chain.BlockChai
 			return p.config.DeployerTransactorGen.SignHash(hash)
 		}
 	} else {
-		// Use default Anvil deployer account
-		deployerPrivateKey, parseErr := crypto.HexToECDSA(anvilTestPrivateKeys[0])
+		// Use default Geth deployer account
+		deployerPrivateKey, parseErr := crypto.HexToECDSA(gethTestPrivateKeys[0])
 		if parseErr != nil {
 			return nil, parseErr
 		}
@@ -445,10 +452,19 @@ func (p *CTFAnvilChainProvider) Initialize(ctx context.Context) (chain.BlockChai
 		}
 	}
 
-	// Build additional user transactors from the default Anvil accounts
+	// Build additional user transactors from the default Geth accounts
 	userTransactors, err := p.getUserTransactors(chainID)
 	if err != nil {
 		return nil, err
+	}
+
+	// Auto-fund created users so tests don't need to
+	if len(userTransactors) > 0 {
+		// 100 ETH in wei
+		amountWei := new(big.Int).Mul(big.NewInt(100), new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil))
+		if err = p.fundUsers(ctx, client, deployerKey, userTransactors, amountWei); err != nil {
+			return nil, fmt.Errorf("fund users: %w", err)
+		}
 	}
 
 	confirmFunc, err := p.config.ConfirmFunctor.Generate(
@@ -470,40 +486,40 @@ func (p *CTFAnvilChainProvider) Initialize(ctx context.Context) (chain.BlockChai
 	return *p.chain, nil
 }
 
-// Name returns the human-readable name of the CTFAnvilChainProvider.
+// Name returns the human-readable name of the CTFGethChainProvider.
 // This name is used for logging and identification purposes.
-func (*CTFAnvilChainProvider) Name() string {
-	return "Anvil EVM CTF Chain Provider"
+func (*CTFGethChainProvider) Name() string {
+	return "Geth EVM CTF Chain Provider"
 }
 
-// ChainSelector returns the chain selector of the Anvil EVM chain managed by this provider.
+// ChainSelector returns the chain selector of the Geth EVM chain managed by this provider.
 // The chain selector is a unique identifier that maps to a specific blockchain network.
-func (p *CTFAnvilChainProvider) ChainSelector() uint64 {
+func (p *CTFGethChainProvider) ChainSelector() uint64 {
 	return p.selector
 }
 
-// BlockChain returns the Anvil EVM chain instance managed by this provider.
+// BlockChain returns the Geth EVM chain instance managed by this provider.
 //
 // You must call Initialize before using this method to ensure the chain is properly set up.
 // Calling this method before initialization will return an uninitialized chain instance.
 //
 // Returns the chain.BlockChain interface that can be used for blockchain operations
 // such as deploying contracts, sending transactions, and querying blockchain state.
-func (p *CTFAnvilChainProvider) BlockChain() chain.BlockChain {
+func (p *CTFGethChainProvider) BlockChain() chain.BlockChain {
 	return *p.chain
 }
 
-// GetNodeHTTPURL returns the external HTTP URL of the first Anvil node.
+// GetNodeHTTPURL returns the external HTTP URL of the first Geth node.
 //
-// This URL can be used to connect to the Anvil node directly for RPC calls or other operations.
+// This URL can be used to connect to the Geth node directly for RPC calls or other operations.
 // You must call Initialize before using this method to ensure the container is started and the URL is available.
 //
 // Returns an empty string if the provider has not been initialized yet.
-func (p *CTFAnvilChainProvider) GetNodeHTTPURL() string {
+func (p *CTFGethChainProvider) GetNodeHTTPURL() string {
 	return p.httpURL
 }
 
-// Cleanup terminates the Anvil container and cleans up associated resources.
+// Cleanup terminates the Geth container and cleans up associated resources.
 //
 // This method provides explicit control over container lifecycle, which is especially
 // important when the provider is used outside of test contexts where automatic cleanup
@@ -513,11 +529,11 @@ func (p *CTFAnvilChainProvider) GetNodeHTTPURL() string {
 // the container has already been terminated.
 //
 // Returns an error if the container termination fails.
-func (p *CTFAnvilChainProvider) Cleanup(ctx context.Context) error {
+func (p *CTFGethChainProvider) Cleanup(ctx context.Context) error {
 	if p.container != nil {
 		err := p.container.Terminate(ctx)
 		if err != nil {
-			return fmt.Errorf("failed to terminate Anvil container: %w", err)
+			return fmt.Errorf("failed to terminate Geth container: %w", err)
 		}
 		p.container = nil // Clear the reference after successful termination
 	}
@@ -525,17 +541,17 @@ func (p *CTFAnvilChainProvider) Cleanup(ctx context.Context) error {
 	return nil
 }
 
-// startContainer starts a CTF container for the Anvil EVM returning the HTTP URL of the node.
+// startContainer starts a CTF container for the Geth EVM returning the HTTP URL of the node.
 //
 // This method handles the Docker container lifecycle including:
 //   - Setting up the CTF default network
 //   - Port allocation: uses config.Port if provided, otherwise allocates a free port via freeport
-//   - Creating and starting the Anvil container
+//   - Creating and starting the Geth container
 //   - Implementing retry logic for robust container startup
 //   - Registering container cleanup with the test framework
 //
-// Returns the external HTTP URL that can be used to connect to the Anvil node.
-func (p *CTFAnvilChainProvider) startContainer(ctx context.Context, chainID string) (string, error) {
+// Returns the external HTTP URL that can be used to connect to the Geth node.
+func (p *CTFGethChainProvider) startContainer(ctx context.Context, chainID string) (string, error) {
 	var (
 		attempts = uint(10)
 	)
@@ -565,16 +581,16 @@ func (p *CTFAnvilChainProvider) startContainer(ctx context.Context, chainID stri
 			portStr = strconv.Itoa(port)
 		}
 
-		// Create the input for the Anvil blockchain network
+		// Create the input for the Geth blockchain network
 		input := &blockchain.Input{
-			Type:                     blockchain.TypeAnvil,
+			Type:                     blockchain.TypeGeth,
 			ChainID:                  chainID,
 			Port:                     portStr,
 			Image:                    p.config.Image, // Use custom image if provided, empty string uses default
 			DockerCmdParamsOverrides: p.config.DockerCmdParamsOverrides,
 		}
 
-		// Create the CTF container for Anvil
+		// Create the CTF container for Geth
 		output, rerr := blockchain.NewBlockchainNetwork(input)
 		if rerr != nil {
 			// Return the port to freeport only if it was auto-allocated
@@ -582,7 +598,7 @@ func (p *CTFAnvilChainProvider) startContainer(ctx context.Context, chainID stri
 				freeport.Return([]int{port})
 			}
 
-			return "", fmt.Errorf("failed to create Anvil container: %w", rerr)
+			return "", fmt.Errorf("failed to create Geth container: %w", rerr)
 		}
 
 		// Store container reference for manual cleanup
@@ -599,10 +615,17 @@ func (p *CTFAnvilChainProvider) startContainer(ctx context.Context, chainID stri
 			return "", errors.New("container started but ExternalHTTPUrl is empty")
 		}
 
-		// Perform health check to ensure Anvil is ready
-		if healthErr := p.waitForAnvilReady(ctx, externalURL); healthErr != nil {
-			return "", fmt.Errorf("anvil container started but health check failed: %w", healthErr)
+		externalWS := output.Nodes[0].ExternalWSUrl
+		if externalWS == "" {
+			return "", errors.New("container started but ExternalWSUrl is empty")
 		}
+
+		// Perform health check to ensure Geth is ready
+		if healthErr := p.waitForGethReady(ctx, externalURL); healthErr != nil {
+			return "", fmt.Errorf("geth container started but health check failed: %w", healthErr)
+		}
+
+		p.wsURL = externalWS
 
 		return externalURL, nil
 	},
@@ -612,51 +635,47 @@ func (p *CTFAnvilChainProvider) startContainer(ctx context.Context, chainID stri
 		retry.DelayType(retry.FixedDelay),
 	)
 	if err != nil {
-		return "", fmt.Errorf("failed to start CTF Anvil container after %d attempts: %w", attempts, err)
+		return "", fmt.Errorf("failed to start CTF Geth container after %d attempts: %w", attempts, err)
 	}
 
 	return httpURL, nil
 }
 
-// getUserTransactors generates user transactors from the standard Anvil test accounts.
+// getUserTransactors generates user transactors for additional Geth accounts.
 //
-// This method creates bind.TransactOpts instances from the well-known Anvil test private keys
-// for user accounts (excluding the deployer). These accounts are pre-funded in Anvil and
-// provide deterministic addresses for testing.
+// Behavior:
+//   - If config.AdditionalAccounts == false, it returns nil (no extra users).
+//   - If config.AdditionalAccounts == true, it creates transactors for all accounts
+//     in gethTestPrivateKeys except index 0 (the deployer).
 //
-// The standard Anvil user accounts used are:
-//   - Account 1: 0x70997970C51812dc3A010C7d01b50e0d17dc79C8
-//   - Account 2: 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC
-//   - Account 3: 0x90F79bf6EB2c4f870365E785982E1f101E93b906
-//   - Account 4: 0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65
-//
-// The number of user accounts generated can be limited by the NumAdditionalAccounts configuration.
+// These users are auto-funded later in Initialize() via fundUsers().
 //
 // Parameters:
-//   - chainID: The chain ID as a string, used to create chain-specific transactors
+//   - chainID: The chain ID as a decimal string used to create chain-specific transactors.
 //
-// Returns a slice of bind.TransactOpts ready for use as user accounts.
-func (p *CTFAnvilChainProvider) getUserTransactors(chainID string) ([]*bind.TransactOpts, error) {
-	if len(anvilTestPrivateKeys) <= 1 {
-		return nil, errors.New("at least 2 anvil test private keys are required")
+// Returns a slice of *bind.TransactOpts for user accounts (or nil when disabled).
+func (p *CTFGethChainProvider) getUserTransactors(chainID string) ([]*bind.TransactOpts, error) {
+	if len(gethTestPrivateKeys) <= 1 {
+		return nil, errors.New("at least 2 geth test private keys are required")
 	}
 
+	// Parse chainID into big.Int for transactor generation
 	cid, ok := new(big.Int).SetString(chainID, 10)
 	if !ok {
 		return nil, fmt.Errorf("failed to parse chain ID into big.Int: %s", chainID)
 	}
 
-	// Determine how many user accounts to create (excluding deployer)
-	maxUserAccounts := uint(len(anvilTestPrivateKeys)) - 1 // -1 to exclude deployer account
-	if p.config.NumAdditionalAccounts > 0 && p.config.NumAdditionalAccounts < maxUserAccounts {
-		maxUserAccounts = p.config.NumAdditionalAccounts
+	// If flag is false, don't create any additional users
+	if !p.config.AdditionalAccounts {
+		return nil, nil
 	}
 
-	transactors := make([]*bind.TransactOpts, 0, maxUserAccounts)
+	// Create user transactors for all available keys except deployer (index 0)
+	totalUsers := len(gethTestPrivateKeys) - 1
+	transactors := make([]*bind.TransactOpts, 0, totalUsers)
 
-	// Create user account transactors from standard Anvil accounts (starting from index 1)
-	for i := uint(1); i <= maxUserAccounts && i < uint(len(anvilTestPrivateKeys)); i++ {
-		pk := anvilTestPrivateKeys[i]
+	for i := 1; i < len(gethTestPrivateKeys); i++ {
+		pk := gethTestPrivateKeys[i]
 		privateKey, err := crypto.HexToECDSA(pk)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse private key %d: %w", i, err)
@@ -673,15 +692,15 @@ func (p *CTFAnvilChainProvider) getUserTransactors(chainID string) ([]*bind.Tran
 	return transactors, nil
 }
 
-// waitForAnvilReady performs a health check on the Anvil node to ensure it's ready to accept requests.
+// waitForGethReady performs a health check on the Geth node to ensure it's ready to accept requests.
 // It sends a simple JSON-RPC request to check if the node is responding correctly.
-func (p *CTFAnvilChainProvider) waitForAnvilReady(ctx context.Context, httpURL string) error {
+func (p *CTFGethChainProvider) waitForGethReady(ctx context.Context, httpURL string) error {
 	const (
 		maxAttempts = 30
 		retryDelay  = 1 * time.Second
 	)
 
-	// Simple JSON-RPC request to check if Anvil is ready
+	// Simple JSON-RPC request to check if Geth is ready
 	jsonRPCRequest := `{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}`
 
 	return retry.Do(func() error {
@@ -712,4 +731,86 @@ func (p *CTFAnvilChainProvider) waitForAnvilReady(ctx context.Context, httpURL s
 		retry.Delay(retryDelay),
 		retry.DelayType(retry.FixedDelay),
 	)
+}
+
+// fundUsers transfers 'amountWei' from the deployer to each user. Only called when additional accounts are created.
+func (p *CTFGethChainProvider) fundUsers(
+	ctx context.Context,
+	cli *rpcclient.MultiClient,
+	deployer *bind.TransactOpts,
+	users []*bind.TransactOpts,
+	amountWei *big.Int,
+) error {
+	if len(users) == 0 {
+		return nil
+	}
+
+	from := deployer.From
+
+	// Get deployer nonce
+	nonce, err := cli.PendingNonceAt(ctx, from)
+	if err != nil {
+		return fmt.Errorf("get deployer nonce: %w", err)
+	}
+
+	// Try EIP-1559 first
+	var (
+		gasLimit uint64 = 21_000
+	)
+	tip, _ := cli.SuggestGasTipCap(ctx)
+	head, _ := cli.HeaderByNumber(ctx, nil)
+
+	for _, u := range users {
+		if u == nil {
+			continue
+		}
+		to := u.From
+
+		var tx *types.Transaction
+		if head != nil && head.BaseFee != nil && head.BaseFee.Sign() > 0 && tip != nil {
+			feeCap := new(big.Int).Add(head.BaseFee, new(big.Int).Mul(tip, big.NewInt(2)))
+			tx = types.NewTx(&types.DynamicFeeTx{
+				Nonce:     nonce,
+				To:        &to,
+				Value:     new(big.Int).Set(amountWei),
+				Gas:       gasLimit,
+				GasTipCap: tip,
+				GasFeeCap: feeCap,
+			})
+		} else {
+			gasPrice, err := cli.SuggestGasPrice(ctx)
+			if err != nil {
+				return fmt.Errorf("suggest gas price: %w", err)
+			}
+			tx = types.NewTransaction(nonce, to, new(big.Int).Set(amountWei), gasLimit, gasPrice, nil)
+		}
+
+		signed, err := deployer.Signer(from, tx)
+		if err != nil {
+			return fmt.Errorf("sign tx: %w", err)
+		}
+		if err := cli.SendTransaction(ctx, signed); err != nil {
+			return fmt.Errorf("send tx to %s: %w", to.Hex(), err)
+		}
+
+		txHash := signed.Hash()
+		// best-effort context for receipt polling
+		pollCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+		for {
+			receipt, rerr := cli.TransactionReceipt(pollCtx, txHash)
+			if rerr == nil && receipt != nil {
+				break
+			}
+			select {
+			case <-pollCtx.Done():
+				cancel()
+				return fmt.Errorf("timeout waiting receipt for %s", txHash.Hex())
+			case <-time.After(500 * time.Millisecond):
+			}
+		}
+		cancel() // ensure we cancel before next iteration
+		nonce++
+	}
+
+	return nil
 }
