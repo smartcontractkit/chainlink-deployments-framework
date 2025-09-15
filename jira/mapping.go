@@ -3,37 +3,99 @@ package jira
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 )
 
-// mapFieldsToStruct maps JIRA fields to a target struct using the field mappings
+// mapFieldsToStruct maps JIRA fields to a target struct using the field mappings.
 func mapFieldsToStruct[T any](issue *JiraIssue, config *JiraConfig) (T, error) {
 	var result T
 
-	// Create a remapped JSON object based on the schema
-	remappedData := make(map[string]interface{})
+	if issue == nil {
+		return result, fmt.Errorf("nil issue")
+	}
+	if config == nil {
+		return result, fmt.Errorf("nil config")
+	}
 
-	// Get all the struct field names we need to populate
-	// We'll iterate through the schema field_maps to build the remapped data
+	remappedData := make(map[string]interface{}, len(config.FieldMaps))
+
 	for configFieldName, fieldMapping := range config.FieldMaps {
-		// Extract value from JIRA issue
-		value, exists := issue.Fields[fieldMapping.JiraField]
-		if !exists || value == nil {
+		path := strings.TrimSpace(fieldMapping.JiraField)
+		if path == "" {
+			return result, fmt.Errorf("field %q has empty jira_field", configFieldName)
+		}
+
+		value, ok := getByPath(issue, path)
+		if !ok || value == nil {
 			return result, fmt.Errorf("field %s (JIRA field: %s) not found in issue - expected field specified in schema", configFieldName, fieldMapping.JiraField)
 		}
 
-		// Map the JIRA field to the config field name
 		remappedData[configFieldName] = value
 	}
 
-	// Convert to JSON and back to let Go handle all the type conversions
+	// JSON round-trip lets Go handle type conversions into T.
 	jsonBytes, err := json.Marshal(remappedData)
 	if err != nil {
 		return result, fmt.Errorf("failed to marshal remapped data: %w", err)
 	}
-
 	if err := json.Unmarshal(jsonBytes, &result); err != nil {
 		return result, fmt.Errorf("failed to unmarshal to target struct (type mismatch - user specified wrong type): %w", err)
 	}
 
 	return result, nil
+}
+
+// getByPath resolves a dotted path against the Jira issue.
+// If the path doesn't start with "fields." or "key", it's treated as "fields.<path>".
+func getByPath(issue *JiraIssue, path string) (interface{}, bool) {
+	if issue == nil || path == "" {
+		return nil, false
+	}
+
+	if !strings.HasPrefix(path, "fields.") && path != "key" && !strings.HasPrefix(path, "key.") {
+		path = "fields." + path
+	}
+
+	root := map[string]interface{}{
+		"key":    issue.Key,
+		"fields": issue.Fields,
+	}
+
+	cur := interface{}(root)
+	for _, seg := range strings.Split(path, ".") {
+		switch node := cur.(type) {
+		case map[string]interface{}:
+			v, ok := node[seg]
+			if !ok {
+				return nil, false
+			}
+			cur = v
+		case []interface{}:
+			// numeric array index
+			idx, ok := parseIndex(seg)
+			if !ok || idx < 0 || idx >= len(node) {
+				return nil, false
+			}
+			cur = node[idx]
+		default:
+			// trying to traverse deeper but current is a scalar
+			return nil, false
+		}
+	}
+	return cur, true
+}
+
+// parseIndex converts a dotted path segment to a non-negative int index.
+func parseIndex(s string) (int, bool) {
+	if s == "" {
+		return 0, false
+	}
+	n := 0
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			return 0, false
+		}
+		n = n*10 + int(r-'0')
+	}
+	return n, true
 }
