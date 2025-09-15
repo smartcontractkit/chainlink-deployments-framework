@@ -93,7 +93,7 @@ func Load(
 			envKey,
 			cfg.Env,
 			lggr,
-			loadcfg.useDryRunJobDistributor,
+			!loadcfg.useDryRunJobDistributor,
 		)
 		if err != nil {
 			return fdeployment.Environment{},
