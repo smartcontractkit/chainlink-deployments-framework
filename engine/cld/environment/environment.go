@@ -70,7 +70,7 @@ func Load(
 	// default - loads all chains
 	chainSelectorsToLoad := slices.Collect(maps.Keys(addressesByChain))
 
-	if loadcfg.migrationString != "" && len(loadcfg.chainSelectorsToLoad) > 0 {
+	if loadcfg.migrationString != "" && loadcfg.chainSelectorsToLoad != nil {
 		lggr.Infow("Override: loading migration chains", "migration", loadcfg.migrationString, "chains", loadcfg.chainSelectorsToLoad)
 		chainSelectorsToLoad = loadcfg.chainSelectorsToLoad
 	}

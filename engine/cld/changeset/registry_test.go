@@ -254,6 +254,17 @@ func Test_Changesets_GetChangesetOptions(t *testing.T) {
 			},
 		},
 		{
+			name: "a changeset with OnlyLoadChainsFor empty (load no chains)",
+			setup: func(r *ChangesetsRegistry) {
+				r.Add("0003_cap_reg", noopChangeset{}, OnlyLoadChainsFor())
+			},
+			giveKey: "0003_cap_reg",
+			want: ChangesetConfig{
+				ChainsToLoad: []uint64{},
+				WithoutJD:    false,
+			},
+		},
+		{
 			name: "a changeset with WithoutJD option",
 			setup: func(r *ChangesetsRegistry) {
 				r.Add("0003_cap_reg", noopChangeset{}, WithoutJD())
