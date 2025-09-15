@@ -25,7 +25,6 @@ func Test_NewContainerLoaderSolana(t *testing.T) {
 	assert.Equal(t, want, loader.selectors)
 
 	// Note: We can't actually call the factory without starting containers,
-	// but we can verify it exists and has the correct signature
+	// but we can verify it exists.
 	require.NotNil(t, loader.factory)
-	assert.IsType(t, ChainFactory(nil), loader.factory)
 }

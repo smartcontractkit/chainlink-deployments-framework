@@ -1,6 +1,7 @@
 package onchain
 
 import (
+	"errors"
 	"sync"
 	"testing"
 
@@ -72,9 +73,14 @@ func loadChainsParallel(t *testing.T, selectors []uint64, factory ChainFactory) 
 	wg.Wait()
 	close(errChan)
 
-	// Check if any errors occurred
+	// Collect and combine any errors that occurred during loading.
 	if len(errChan) > 0 {
-		return nil, <-errChan
+		var merr error
+		for err := range errChan {
+			merr = errors.Join(merr, err)
+		}
+
+		return nil, merr
 	}
 
 	return chains, nil

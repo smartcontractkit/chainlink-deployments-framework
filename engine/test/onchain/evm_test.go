@@ -21,9 +21,8 @@ func Test_NewEVMSimLoaderEVM(t *testing.T) {
 	assert.Equal(t, want, loader.selectors)
 
 	// Note: We can't actually call the factory without starting simulated backends,
-	// but we can verify it exists and has the correct signature
+	// but we can verify it exists.
 	require.NotNil(t, loader.factory)
-	assert.IsType(t, ChainFactory(nil), loader.factory)
 }
 
 func Test_NewEVMSimLoaderEVMWithConfig(t *testing.T) {
@@ -44,5 +43,4 @@ func Test_NewEVMSimLoaderEVMWithConfig(t *testing.T) {
 
 	// Factory should be configured with the provided config
 	require.NotNil(t, loader.factory)
-	assert.IsType(t, ChainFactory(nil), loader.factory)
 }

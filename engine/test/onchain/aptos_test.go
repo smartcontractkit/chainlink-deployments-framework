@@ -20,7 +20,6 @@ func Test_NewAptosContainerLoader(t *testing.T) {
 	assert.Equal(t, wantSelectors, loader.selectors)
 
 	// Note: We can't actually call the factory without starting containers,
-	// but we can verify it exists and has the correct signature
+	// but we can verify it exists.
 	require.NotNil(t, loader.factory)
-	assert.IsType(t, ChainFactory(nil), loader.factory)
 }

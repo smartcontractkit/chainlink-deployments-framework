@@ -22,5 +22,4 @@ func Test_NewContainerLoaderTon(t *testing.T) {
 	// Note: We can't actually call the factory without starting containers,
 	// but we can verify it exists and has the correct signature
 	require.NotNil(t, loader.factory)
-	assert.IsType(t, ChainFactory(nil), loader.factory)
 }
