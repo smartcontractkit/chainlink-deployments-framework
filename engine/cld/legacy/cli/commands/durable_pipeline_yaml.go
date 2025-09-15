@@ -71,9 +71,8 @@ func setDurablePipelineInputFromYAML(inputFileName, changesetName string, domain
 		return fmt.Errorf("failed to convert payload to JSON-safe format: %w", err)
 	}
 
-	// Extract chain overrides (optional)
-	var chainOverrides []uint64
-	if chainOverridesRaw, exists := changesetMap["chainOverrides"]; exists && chainOverridesRaw != nil {
+	chainOverridesRaw, exists := changesetMap["chainOverrides"]
+	if exists && chainOverridesRaw != nil {
 		if chainOverridesList, ok := chainOverridesRaw.([]any); ok {
 			for _, override := range chainOverridesList {
 				switch v := override.(type) {
@@ -81,14 +80,12 @@ func setDurablePipelineInputFromYAML(inputFileName, changesetName string, domain
 					if v < 0 {
 						return fmt.Errorf("chain override value must be non-negative, got: %d", v)
 					}
-					chainOverrides = append(chainOverrides, uint64(v))
 				case int64:
 					if v < 0 {
 						return fmt.Errorf("chain override value must be non-negative, got: %d", v)
 					}
-					chainOverrides = append(chainOverrides, uint64(v))
 				case uint64:
-					chainOverrides = append(chainOverrides, v)
+					// no need to do any checks here
 				default:
 					return fmt.Errorf("chain override value must be an integer, got type %T with value: %v", override, override)
 				}
@@ -100,8 +97,8 @@ func setDurablePipelineInputFromYAML(inputFileName, changesetName string, domain
 	inputJSON := map[string]any{
 		"payload": jsonSafePayload,
 	}
-	if len(chainOverrides) > 0 {
-		inputJSON["chainOverrides"] = chainOverrides
+	if exists {
+		inputJSON["chainOverrides"] = chainOverridesRaw
 	}
 
 	// Convert to JSON

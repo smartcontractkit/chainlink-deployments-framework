@@ -63,6 +63,18 @@ func Test_OnlyLoadChainsFor(t *testing.T) {
 
 	assert.Equal(t, migrationKey, opts.migrationString)
 	assert.Equal(t, chainSelectors, opts.chainSelectorsToLoad)
+
+	// Test with nil chainSelectors
+	opts = &LoadConfig{}
+	option = OnlyLoadChainsFor(migrationKey, nil)
+	option(opts)
+	assert.Equal(t, []uint64{}, opts.chainSelectorsToLoad)
+
+	// Test with empty chainSelectors
+	opts = &LoadConfig{}
+	option = OnlyLoadChainsFor(migrationKey, []uint64{})
+	option(opts)
+	assert.Equal(t, []uint64{}, opts.chainSelectorsToLoad)
 }
 
 func Test_WithOperationRegistry(t *testing.T) {

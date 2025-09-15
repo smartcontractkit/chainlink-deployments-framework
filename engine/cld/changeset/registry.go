@@ -164,17 +164,21 @@ type ChangesetOption func(*ChangesetConfig)
 
 // ChangesetConfig holds configuration options for a changeset
 type ChangesetConfig struct {
-	ChainsToLoad      []uint64
+	ChainsToLoad      []uint64 // nil = load all chains, empty = load no chains, populated = load specific chains
 	WithoutJD         bool
 	OperationRegistry *foperations.OperationRegistry
 }
 
 // OnlyLoadChainsFor will configure the environment to load only the specified chains.
-// By default, if option is not specified, all chains are loaded.
-// This is useful for changesets that are only applicable to a subset of chains.
+// By default, if this option is not specified, all chains are loaded.
+// If user provide empty or nil value, eg OnlyLoadChainsFor(), no chains will be loaded.
 func OnlyLoadChainsFor(chainselectors ...uint64) ChangesetOption {
 	return func(o *ChangesetConfig) {
-		o.ChainsToLoad = chainselectors
+		if chainselectors == nil {
+			o.ChainsToLoad = []uint64{} // Ensure we have an empty slice, not nil
+		} else {
+			o.ChainsToLoad = chainselectors
+		}
 	}
 }
 
