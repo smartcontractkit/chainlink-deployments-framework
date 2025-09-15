@@ -25,7 +25,8 @@ type LoadConfig struct {
 	migrationString string
 
 	// chainSelectorsToLoad specifies which chain selectors to load when using
-	// OnlyLoadChainsFor. If empty, all chains are loaded by default.
+	// OnlyLoadChainsFor.
+	// nil = load all chains, empty = load no chains, populated = load specific chains
 	chainSelectorsToLoad []uint64
 
 	// withoutJD determines whether to skip Job Distributor initialization.
@@ -121,12 +122,18 @@ func WithoutJD() LoadEnvironmentOption {
 // required for a specific migration. This can significantly reduce loading time
 // and resource usage when working with environments that support many chains.
 //
-// By default, all available chains in the environment are loaded. This option
-// allows you to specify exactly which chains are needed.
+// By default, if this option is not specified, all chains are loaded.
+// If chainsSelectors is set to nil or empty, no chains will be loaded.
 func OnlyLoadChainsFor(migrationKey string, chainsSelectors []uint64) LoadEnvironmentOption {
 	return func(o *LoadConfig) {
 		o.migrationString = migrationKey
-		o.chainSelectorsToLoad = chainsSelectors
+		if chainsSelectors == nil {
+			// Ensure we have an empty slice, not nil, this indicates option is provided but
+			// no chains should be loaded
+			o.chainSelectorsToLoad = []uint64{}
+		} else {
+			o.chainSelectorsToLoad = chainsSelectors
+		}
 	}
 }
 

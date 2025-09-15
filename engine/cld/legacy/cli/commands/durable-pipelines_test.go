@@ -1192,7 +1192,7 @@ changesets:
     chainOverrides: []`,
 			changesetName: "test_changeset",
 			expectError:   false,
-			expectedJSON:  `"message":"test"`, // chainOverrides should be omitted when empty
+			expectedJSON:  `{"chainOverrides":[],"payload":{"message":"test"}}`,
 		},
 		{
 			name: "missing chainOverrides should work",
