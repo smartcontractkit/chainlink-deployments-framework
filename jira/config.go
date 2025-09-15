@@ -27,6 +27,15 @@ type FieldMapping struct {
 	JiraField string `yaml:"jira_field"` // e.g., "customfield_10001"
 }
 
+// GetJiraFields extracts all JIRA field names from the field mappings for more efficient API calls
+func (c *JiraConfig) GetJiraFields() []string {
+	var fields []string
+	for _, fieldMapping := range c.FieldMaps {
+		fields = append(fields, fieldMapping.JiraField)
+	}
+	return fields
+}
+
 // loadDomainJiraConfig loads JIRA configuration for the detected domain
 func loadDomainJiraConfig() (*JiraConfig, error) {
 	domain, err := detectCurrentDomain()

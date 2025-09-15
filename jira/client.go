@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -41,11 +42,21 @@ func NewClient(baseURL, username string) (*Client, error) {
 	}, nil
 }
 
-// GetIssue fetches a JIRA issue by key
-func (c *Client) GetIssue(issueKey string) (*JiraIssue, error) {
-	url := fmt.Sprintf("%s/rest/api/2/issue/%s", c.baseURL, issueKey)
+// GetIssue fetches a JIRA issue by key. If fields is empty, Jira returns all default fields.
+func (c *Client) GetIssue(issueKey string, fields []string) (*JiraIssue, error) {
+	base, err := url.JoinPath(c.baseURL, "rest", "api", "2", "issue", url.PathEscape(issueKey))
+	if err != nil {
+		return nil, fmt.Errorf("failed to build request URL: %w", err)
+	}
 
-	req, err := http.NewRequest("GET", url, nil)
+	reqURL := base
+	if len(fields) > 0 {
+		q := url.Values{}
+		q.Set("fields", strings.Join(fields, ","))
+		reqURL = base + "?" + q.Encode()
+	}
+
+	req, err := http.NewRequest("GET", reqURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}

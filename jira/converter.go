@@ -19,6 +19,9 @@ func JiraToStruct[T any](issueKey string) (T, error) {
 		return zero, fmt.Errorf("failed to load domain JIRA config: %w", err)
 	}
 
+	// Extract all JIRA field names from the field maps
+	var fieldsToFetch = config.GetJiraFields()
+
 	// 2. Create JIRA client
 	client, err := NewClient(config.Connection.BaseURL, config.Connection.Username)
 	if err != nil {
@@ -26,7 +29,7 @@ func JiraToStruct[T any](issueKey string) (T, error) {
 	}
 
 	// 3. Fetch issue from JIRA
-	issue, err := client.GetIssue(issueKey)
+	issue, err := client.GetIssue(issueKey, fieldsToFetch)
 	if err != nil {
 		return zero, fmt.Errorf("failed to fetch JIRA issue %s: %w", issueKey, err)
 	}

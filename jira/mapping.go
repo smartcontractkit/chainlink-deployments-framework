@@ -24,7 +24,6 @@ func mapFieldsToStruct[T any](issue *JiraIssue, config *JiraConfig) (T, error) {
 		// Map the JIRA field to the config field name
 		remappedData[configFieldName] = value
 	}
-	fmt.Println("remappedData", remappedData)
 
 	// Convert to JSON and back to let Go handle all the type conversions
 	jsonBytes, err := json.Marshal(remappedData)
@@ -35,7 +34,6 @@ func mapFieldsToStruct[T any](issue *JiraIssue, config *JiraConfig) (T, error) {
 	if err := json.Unmarshal(jsonBytes, &result); err != nil {
 		return result, fmt.Errorf("failed to unmarshal to target struct (type mismatch - user specified wrong type): %w", err)
 	}
-	fmt.Println("result", result)
 
 	return result, nil
 }
