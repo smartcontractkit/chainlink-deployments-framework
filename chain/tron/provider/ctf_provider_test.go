@@ -1,7 +1,6 @@
 package provider
 
 import (
-	"context"
 	"sync"
 	"testing"
 
@@ -152,7 +151,7 @@ func TestCTFChainProvider_Initialize(t *testing.T) {
 
 			p := NewCTFChainProvider(t, tt.giveSelector, tt.giveConfig)
 
-			got, err := p.Initialize(context.Background())
+			got, err := p.Initialize(t.Context())
 			if tt.wantErr != "" {
 				require.ErrorContains(t, err, tt.wantErr)
 			} else {
@@ -170,31 +169,12 @@ func TestCTFChainProvider_Initialize(t *testing.T) {
 				require.NotEmpty(t, gotChain.SendAndConfirm)
 				require.NotEmpty(t, gotChain.DeployContractAndConfirm)
 				require.NotEmpty(t, gotChain.TriggerContractAndConfirm)
+
+				assert.Contains(t, gotChain.Client.FullNodeClient().BaseURL, "/wallet")
+				assert.Contains(t, gotChain.Client.SolidityClient().BaseURL, "/walletsolidity")
 			}
 		})
 	}
-}
-
-func TestCTFChainProvider_ContainerStartup(t *testing.T) {
-	t.Parallel()
-
-	signerGen, err := SignerGenCTFDefault()
-	require.NoError(t, err)
-
-	config := CTFChainProviderConfig{
-		DeployerSignerGen: signerGen,
-		Once:              &sync.Once{},
-	}
-
-	provider := NewCTFChainProvider(t, chainsel.TRON_TESTNET_NILE.Selector, config)
-
-	chainID, err := chainsel.GetChainIDFromSelector(chainsel.TRON_MAINNET.Selector)
-	require.NoError(t, err)
-	fullNodeURL, solidityNodeURL := provider.startContainer(chainID)
-	require.NotEmpty(t, fullNodeURL)
-	require.NotEmpty(t, solidityNodeURL)
-	require.Contains(t, fullNodeURL, "/wallet")
-	require.Contains(t, solidityNodeURL, "/walletsolidity")
 }
 
 func TestCTFProvider_SendAndConfirmTx_And_CheckContractDeployed(t *testing.T) {
@@ -212,7 +192,7 @@ func TestCTFProvider_SendAndConfirmTx_And_CheckContractDeployed(t *testing.T) {
 
 	// Create and initialize the CTF provider
 	ctfProvider := NewCTFChainProvider(t, chainSelector, config)
-	chainInstance, err := ctfProvider.Initialize(context.Background())
+	chainInstance, err := ctfProvider.Initialize(t.Context())
 	require.NoError(t, err, "Failed to initialize CTF provider")
 
 	// Extract the TRON chain from the interface
