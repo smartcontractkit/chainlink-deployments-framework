@@ -27,7 +27,7 @@ type JiraIssue struct {
 
 // NewClient creates a new JIRA client using environment variables for authentication
 func NewClient(baseURL, username string) (*Client, error) {
-	token := os.Getenv("JIRA_TOKEN")
+	token := os.Getenv("JIRA_TOKEN") //TODO: Ensure this is set from domain secrets
 	if token == "" {
 		return nil, fmt.Errorf("JIRA_TOKEN environment variable is required")
 	}
