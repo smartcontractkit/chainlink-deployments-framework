@@ -1,5 +1,15 @@
 # chainlink-deployments-framework
 
+## 0.48.0
+
+### Minor Changes
+
+- [#424](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/424) [`c241756`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/c2417566058ff4dd502a17d9b28242e26968406a) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat: enhance OnlyLoadChainsFor to support loading no chains when no chains is provided, eg OnlyLoadChainsFor()
+
+- [#408](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/408) [`2861467`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/286146723b3c9e1b5dccdebdf28eb67af8737cfd) Thanks [@jkongie](https://github.com/jkongie)! - Adds the ability to load an environment in a test engine. This is intended for use in unit and integration tests.
+
+- [#421](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/421) [`de7bd86`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/de7bd8630bba8aab219b8c7d46b37e8d546633f1) Thanks [@giogam](https://github.com/giogam)! - feat(datastore): require DataStore in environment Load
+
 ## 0.47.0
 
 ### Minor Changes
