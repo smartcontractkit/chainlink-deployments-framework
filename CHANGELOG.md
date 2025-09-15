@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.48.1
+
+### Patch Changes
+
+- [#430](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/430) [`b90b6e5`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/b90b6e5698be831cb2d36490ad268bd9eec9058a) Thanks [@jkongie](https://github.com/jkongie)! - Fixes dry run Job Distributor being used by default
+
 ## 0.48.0
 
 ### Minor Changes
