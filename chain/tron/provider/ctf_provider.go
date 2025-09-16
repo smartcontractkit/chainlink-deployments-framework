@@ -121,23 +121,34 @@ func (p *CTFChainProvider) Initialize(_ context.Context) (chain.BlockChain, erro
 		return nil, fmt.Errorf("failed to create combined client: %w", err)
 	}
 
-	// Get deployer address from the signer generator
-	deployerAddr, err := p.config.DeployerSignerGen.GetAddress()
+	// Construct and cache the Tron chain instance with helper methods for deploying and interacting with contracts
+	chain, err := GetTronChain(p.selector, combinedClient, p.config.DeployerSignerGen)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get deployer address: %w", err)
+		return nil, fmt.Errorf("failed to get tron chain: %w", err)
+	}
+	p.chain = &chain
+
+	return *p.chain, nil
+}
+
+// GetTronChain creates and returns a tron.Chain instance with the provided parameters.
+func GetTronChain(selector uint64, combinedClient sdk.CombinedClient, signerGen SignerGenerator) (tron.Chain, error) {
+	deployerAddr, err := signerGen.GetAddress()
+	if err != nil {
+		return tron.Chain{}, fmt.Errorf("failed to get deployer address: %w", err)
 	}
 
-	// Initialize local RPC client wrapper that uses the signer generator's signing function
-	client := rpcclient.New(combinedClient, p.config.DeployerSignerGen.Sign)
+	fullNodeURL := combinedClient.FullNodeClient().BaseURL
 
-	// Construct and cache the Tron chain instance with helper methods for deploying and interacting with contracts
-	p.chain = &tron.Chain{
+	client := rpcclient.New(combinedClient, signerGen.Sign)
+
+	return tron.Chain{
 		ChainMetadata: tron.ChainMetadata{
-			Selector: p.selector,
+			Selector: selector,
 		},
-		Client:   combinedClient,                  // Underlying client for Tron node communication
-		SignHash: p.config.DeployerSignerGen.Sign, // Function for signing transactions
-		Address:  deployerAddr,                    // Default "from" address for transactions
+		Client:   combinedClient, // Underlying client for Tron node communication
+		SignHash: signerGen.Sign, // Function for signing transactions
+		Address:  deployerAddr,   // Default "from" address for transactions
 		URL:      fullNodeURL,
 		// Helper for sending and confirming transactions
 		SendAndConfirm: func(ctx context.Context, tx *common.Transaction, opts *tron.ConfirmRetryOptions) (*soliditynode.TransactionInfo, error) {
@@ -210,9 +221,7 @@ func (p *CTFChainProvider) Initialize(_ context.Context) (chain.BlockChain, erro
 			// Send transaction and wait for confirmation
 			return client.SendAndConfirmTx(ctx, contractResponse.Transaction, options.ConfirmRetryOptions)
 		},
-	}
-
-	return *p.chain, nil
+	}, nil
 }
 
 // Name returns the name of the CTFChainProvider.
