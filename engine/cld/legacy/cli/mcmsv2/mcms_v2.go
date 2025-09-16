@@ -1079,7 +1079,7 @@ func newCfgv2(lggr logger.Logger, cmd *cobra.Command, domain cldf_domain.Domain,
 		// Load Environment and proposal ctx (for error decoding and proposal analysis)
 		env, err := cldfenvironment.Load(cmd.Context(), domain, cfg.envStr,
 			cldfenvironment.WithLogger(lggr),
-			cldfenvironment.OnlyLoadChainsFor("analyze-proposal", chainSelectors), cldfenvironment.WithoutJD())
+			cldfenvironment.OnlyLoadChainsFor(chainSelectors), cldfenvironment.WithoutJD())
 		if err != nil {
 			return nil, fmt.Errorf("error loading environment: %w", err)
 		}
@@ -1100,7 +1100,7 @@ func newCfgv2(lggr logger.Logger, cmd *cobra.Command, domain cldf_domain.Domain,
 			flags.environmentStr,
 			nil,
 			cldfenvironment.WithLogger(lggr),
-			cldfenvironment.OnlyLoadChainsFor("fork-test", cfgSelectors),
+			cldfenvironment.OnlyLoadChainsFor(cfgSelectors),
 			cldfenvironment.WithAnvilKeyAsDeployer(),
 		)
 		if err != nil {
