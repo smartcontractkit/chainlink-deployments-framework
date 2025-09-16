@@ -12,7 +12,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.38.1
 	github.com/aws/aws-sdk-go-v2/config v1.28.0
 	github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider v1.57.1
-	github.com/block-vision/sui-go-sdk v1.0.6
+	github.com/block-vision/sui-go-sdk v1.0.9
 	github.com/cosmos/go-bip39 v1.0.0
 	github.com/ethereum/go-ethereum v1.15.7
 	github.com/fbsobreira/gotron-sdk v0.0.0-20250403083053-2943ce8c759b
@@ -42,7 +42,8 @@ require (
 	github.com/smartcontractkit/chainlink-tron/relayer v0.0.11-0.20250815105909-75499abc4335
 	github.com/smartcontractkit/freeport v0.1.2
 	github.com/smartcontractkit/libocr v0.0.0-20250408131511-c90716988ee0
-	github.com/smartcontractkit/mcms v0.21.1
+	// TODO: Should be replaced with a versioned release
+	github.com/smartcontractkit/mcms v0.24.2-0.20250916132310-e2e05689491b
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
@@ -60,6 +61,12 @@ require (
 )
 
 require go.yaml.in/yaml/v3 v3.0.4 // indirect
+
+require (
+	github.com/jinzhu/copier v0.4.0 // indirect
+	github.com/samber/lo v1.49.1 // indirect
+	github.com/smartcontractkit/chainlink-sui v0.0.0-20250915131416-beb24f7fe9b9 // indirect
+)
 
 require (
 	dario.cat/mergo v1.0.1 // indirect
