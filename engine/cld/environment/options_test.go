@@ -52,27 +52,24 @@ func Test_OnlyLoadChainsFor(t *testing.T) {
 	t.Parallel()
 
 	opts := &LoadConfig{}
-	assert.Empty(t, opts.migrationString)
 	assert.Nil(t, opts.chainSelectorsToLoad)
 
-	migrationKey := "test_migration"
 	chainSelectors := []uint64{1, 2, 3}
 
-	option := OnlyLoadChainsFor(migrationKey, chainSelectors)
+	option := OnlyLoadChainsFor(chainSelectors)
 	option(opts)
 
-	assert.Equal(t, migrationKey, opts.migrationString)
 	assert.Equal(t, chainSelectors, opts.chainSelectorsToLoad)
 
 	// Test with nil chainSelectors
 	opts = &LoadConfig{}
-	option = OnlyLoadChainsFor(migrationKey, nil)
+	option = OnlyLoadChainsFor(nil)
 	option(opts)
 	assert.Equal(t, []uint64{}, opts.chainSelectorsToLoad)
 
 	// Test with empty chainSelectors
 	opts = &LoadConfig{}
-	option = OnlyLoadChainsFor(migrationKey, []uint64{})
+	option = OnlyLoadChainsFor([]uint64{})
 	option(opts)
 	assert.Equal(t, []uint64{}, opts.chainSelectorsToLoad)
 }
