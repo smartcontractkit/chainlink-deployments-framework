@@ -1,5 +1,27 @@
 # chainlink-deployments-framework
 
+## 0.48.2
+
+### Patch Changes
+
+- [#435](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/435) [`d8a740e`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/d8a740e8e9d044994d33158c7423091c3f45e137) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(OnlyLoadChainsFor)!: remove migration name parameter for environment option
+
+  BREAKING CHANGE: The `environment` option in `OnlyLoadChainsFor` no longer accepts a migration name parameter. The name parameter was only used for logging which is not necessary.
+
+  ### Usage Migration
+
+  **Before:**
+
+  ```go
+  environment.OnlyLoadChainsFor("analyze-proposal", chainSelectors), cldfenvironment.WithoutJD())
+  ```
+
+  **After:**
+
+  ```go
+  environment.OnlyLoadChainsFor(chainSelectors), cldfenvironment.WithoutJD())
+  ```
+
 ## 0.48.1
 
 ### Patch Changes
