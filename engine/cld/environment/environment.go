@@ -70,8 +70,8 @@ func Load(
 	// default - loads all chains
 	chainSelectorsToLoad := slices.Collect(maps.Keys(addressesByChain))
 
-	if loadcfg.migrationString != "" && loadcfg.chainSelectorsToLoad != nil {
-		lggr.Infow("Override: loading migration chains", "migration", loadcfg.migrationString, "chains", loadcfg.chainSelectorsToLoad)
+	if loadcfg.chainSelectorsToLoad != nil {
+		lggr.Infow("Override: loading chains", "chains", loadcfg.chainSelectorsToLoad)
 		chainSelectorsToLoad = loadcfg.chainSelectorsToLoad
 	}
 
@@ -93,7 +93,7 @@ func Load(
 			envKey,
 			cfg.Env,
 			lggr,
-			loadcfg.useDryRunJobDistributor,
+			!loadcfg.useDryRunJobDistributor,
 		)
 		if err != nil {
 			return fdeployment.Environment{},

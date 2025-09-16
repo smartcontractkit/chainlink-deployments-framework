@@ -1,5 +1,43 @@
 # chainlink-deployments-framework
 
+## 0.48.2
+
+### Patch Changes
+
+- [#435](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/435) [`d8a740e`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/d8a740e8e9d044994d33158c7423091c3f45e137) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(OnlyLoadChainsFor)!: remove migration name parameter for environment option
+
+  BREAKING CHANGE: The `environment` option in `OnlyLoadChainsFor` no longer accepts a migration name parameter. The name parameter was only used for logging which is not necessary.
+
+  ### Usage Migration
+
+  **Before:**
+
+  ```go
+  environment.OnlyLoadChainsFor("analyze-proposal", chainSelectors), cldfenvironment.WithoutJD())
+  ```
+
+  **After:**
+
+  ```go
+  environment.OnlyLoadChainsFor(chainSelectors), cldfenvironment.WithoutJD())
+  ```
+
+## 0.48.1
+
+### Patch Changes
+
+- [#430](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/430) [`b90b6e5`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/b90b6e5698be831cb2d36490ad268bd9eec9058a) Thanks [@jkongie](https://github.com/jkongie)! - Fixes dry run Job Distributor being used by default
+
+## 0.48.0
+
+### Minor Changes
+
+- [#424](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/424) [`c241756`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/c2417566058ff4dd502a17d9b28242e26968406a) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat: enhance OnlyLoadChainsFor to support loading no chains when no chains is provided, eg OnlyLoadChainsFor()
+
+- [#408](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/408) [`2861467`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/286146723b3c9e1b5dccdebdf28eb67af8737cfd) Thanks [@jkongie](https://github.com/jkongie)! - Adds the ability to load an environment in a test engine. This is intended for use in unit and integration tests.
+
+- [#421](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/421) [`de7bd86`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/de7bd8630bba8aab219b8c7d46b37e8d546633f1) Thanks [@giogam](https://github.com/giogam)! - feat(datastore): require DataStore in environment Load
+
 ## 0.47.0
 
 ### Minor Changes
