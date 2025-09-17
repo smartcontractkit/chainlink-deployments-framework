@@ -28,7 +28,6 @@ func Test_LoadForkedEnvironment(t *testing.T) {
 		blockNumbers map[uint64]*big.Int
 		options      []LoadEnvironmentOption
 		expectError  string
-		expectPanic  bool
 	}{
 		{
 			name:   "Invalid Environment",
@@ -71,7 +70,7 @@ func Test_LoadForkedEnvironment(t *testing.T) {
 			blockNumbers: map[uint64]*big.Int{
 				16015286601757825753: big.NewInt(1000),
 			},
-			expectPanic: true,
+			expectError: "failed to load offchain client",
 		},
 		{
 			name:   "No Error",
@@ -87,15 +86,6 @@ func Test_LoadForkedEnvironment(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-
-			if tt.expectPanic {
-				assert.Panics(t, func() {
-					_, err := LoadFork(t.Context(), tt.domain, tt.env, tt.blockNumbers, tt.options...)
-					require.NoError(t, err)
-				})
-
-				return
-			}
 
 			forkEnv, err := LoadFork(t.Context(), tt.domain, tt.env, tt.blockNumbers, tt.options...)
 

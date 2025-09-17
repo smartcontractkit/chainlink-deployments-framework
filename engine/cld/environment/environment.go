@@ -13,6 +13,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/chains"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config"
 	fdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/internal/credentials"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/offchain"
 	foffchain "github.com/smartcontractkit/chainlink-deployments-framework/offchain"
 	focr "github.com/smartcontractkit/chainlink-deployments-framework/offchain/ocr"
@@ -90,14 +91,18 @@ func Load(
 		jd, err = offchain.LoadOffchainClient(
 			ctx,
 			domain,
-			envKey,
-			cfg.Env,
-			lggr,
-			!loadcfg.useDryRunJobDistributor,
+			cfg.Env.Offchain.JobDistributor,
+			offchain.WithLogger(lggr),
+			offchain.WithDryRun(loadcfg.useDryRunJobDistributor),
+			offchain.WithCredentials(credentials.GetCredsForEnv(envKey)),
 		)
 		if err != nil {
-			return fdeployment.Environment{},
-				fmt.Errorf("failed to load offchain client for environment %s: %w", envKey, err)
+			if errors.Is(err, offchain.ErrEndpointsRequired) {
+				lggr.Warn("Skipping JD initialization: gRPC and wsRPC endpoints are not set in config")
+			} else {
+				return fdeployment.Environment{},
+					fmt.Errorf("failed to load offchain client for environment %s: %w", envKey, err)
+			}
 		}
 	} else {
 		lggr.Info("Override: skipping JD initialization")
