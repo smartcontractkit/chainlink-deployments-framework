@@ -1040,6 +1040,11 @@ func newCfgv2(lggr logger.Logger, cmd *cobra.Command, domain cldf_domain.Domain,
 				converter = solana.TimelockConverter{}
 			case chainsel.FamilyAptos:
 				converter = aptos.NewTimelockConverter()
+			case chainsel.FamilySui:
+				converter, err = sui.NewTimelockConverter()
+				if err != nil {
+					return nil, fmt.Errorf("error creating Sui timelock converter: %w", err)
+				}
 			default:
 				return nil, fmt.Errorf("unsupported chain family %s", fam)
 			}
@@ -1473,6 +1478,16 @@ var getInspectorFromChainSelector = func(cfg cfgv2) (sdk.Inspector, error) {
 		}
 		chain := cfg.blockchains.AptosChains()[cfg.chainSelector]
 		inspector = aptos.NewInspector(chain.Client, *role)
+	case chainsel.FamilySui:
+		metadata, err := suiMetadataFromProposal(types.ChainSelector(cfg.chainSelector), cfg.timelockProposal)
+		if err != nil {
+			return nil, fmt.Errorf("error getting sui metadata from proposal: %w", err)
+		}
+		chain := cfg.blockchains.SuiChains()[cfg.chainSelector]
+		inspector, err = sui.NewInspector(chain.Client, chain.Signer, metadata.McmsPackageID, metadata.Role)
+		if err != nil {
+			return nil, fmt.Errorf("error creating sui inspector: %w", err)
+		}
 	default:
 		return nil, fmt.Errorf("unsupported chain family %s", fam)
 	}
