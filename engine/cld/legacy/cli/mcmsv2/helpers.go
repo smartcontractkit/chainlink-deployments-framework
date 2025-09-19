@@ -1,10 +1,12 @@
 package mcmsv2
 
 import (
+	"encoding/json"
 	"errors"
 
 	"github.com/smartcontractkit/mcms"
 	"github.com/smartcontractkit/mcms/sdk/aptos"
+	"github.com/smartcontractkit/mcms/sdk/sui"
 	"github.com/smartcontractkit/mcms/types"
 )
 
@@ -39,4 +41,23 @@ func aptosRoleFromProposal(proposal *mcms.TimelockProposal) (*aptos.TimelockRole
 	default:
 		return nil, errors.New("unknown timelock action")
 	}
+}
+
+func suiMetadataFromProposal(selector types.ChainSelector, proposal *mcms.TimelockProposal) (sui.AdditionalFieldsMetadata, error) {
+	if proposal == nil {
+		return sui.AdditionalFieldsMetadata{}, errors.New("sui timelock proposal is needed")
+	}
+
+	var metadata sui.AdditionalFieldsMetadata
+	err := json.Unmarshal([]byte(proposal.ChainMetadata[selector].AdditionalFields), &metadata)
+	if err != nil {
+		return sui.AdditionalFieldsMetadata{}, err
+	}
+
+	err = metadata.Validate()
+	if err != nil {
+		return sui.AdditionalFieldsMetadata{}, err
+	}
+
+	return metadata, nil
 }

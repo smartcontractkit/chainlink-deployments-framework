@@ -24,6 +24,7 @@ import (
 	"github.com/smartcontractkit/mcms/sdk/evm"
 	"github.com/smartcontractkit/mcms/sdk/evm/bindings"
 	"github.com/smartcontractkit/mcms/sdk/solana"
+	"github.com/smartcontractkit/mcms/sdk/sui"
 	"github.com/smartcontractkit/mcms/types"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -1039,6 +1040,11 @@ func newCfgv2(lggr logger.Logger, cmd *cobra.Command, domain cldf_domain.Domain,
 				converter = solana.TimelockConverter{}
 			case chainsel.FamilyAptos:
 				converter = aptos.NewTimelockConverter()
+			case chainsel.FamilySui:
+				converter, err = sui.NewTimelockConverter()
+				if err != nil {
+					return nil, fmt.Errorf("error creating Sui timelock converter: %w", err)
+				}
 			default:
 				return nil, fmt.Errorf("unsupported chain family %s", fam)
 			}
@@ -1368,6 +1374,18 @@ func getExecutorWithChainOverride(cfg *cfgv2, chainSelector types.ChainSelector)
 
 		return aptos.NewExecutor(chain.Client, chain.DeployerSigner, encoder, *role), nil
 
+	case chainsel.FamilySui:
+		encoder, ok := encoder.(*sui.Encoder)
+		if !ok {
+			return nil, fmt.Errorf("error getting encoder for chain %d", cfg.chainSelector)
+		}
+		metadata, err := suiMetadataFromProposal(chainSelector, cfg.timelockProposal)
+		if err != nil {
+			return nil, fmt.Errorf("error getting sui metadata from proposal: %w", err)
+		}
+		chain := cfg.blockchains.SuiChains()[uint64(chainSelector)]
+
+		return sui.NewExecutor(chain.Client, chain.Signer, encoder, metadata.McmsPackageID, metadata.Role, cfg.timelockProposal.ChainMetadata[chainSelector].MCMAddress, metadata.AccountObj, metadata.RegistryObj, metadata.TimelockObj)
 	default:
 		return nil, fmt.Errorf("unsupported chain family %s", family)
 	}
@@ -1406,6 +1424,16 @@ func getTimelockExecutorWithChainOverride(cfg *cfgv2, chainSelector types.ChainS
 	case chainsel.FamilyAptos:
 		chain := cfg.blockchains.AptosChains()[uint64(chainSelector)]
 		executor = aptos.NewTimelockExecutor(chain.Client, chain.DeployerSigner)
+	case chainsel.FamilySui:
+		chain := cfg.blockchains.SuiChains()[uint64(chainSelector)]
+		metadata, err := suiMetadataFromProposal(chainSelector, cfg.timelockProposal)
+		if err != nil {
+			return nil, fmt.Errorf("error getting sui metadata from proposal: %w", err)
+		}
+		executor, err = sui.NewTimelockExecutor(chain.Client, chain.Signer, metadata.McmsPackageID, metadata.RegistryObj, metadata.AccountObj)
+		if err != nil {
+			return nil, fmt.Errorf("error creating sui timelock executor: %w", err)
+		}
 	default:
 		return nil, fmt.Errorf("unsupported chain family %s", family)
 	}
@@ -1450,6 +1478,16 @@ var getInspectorFromChainSelector = func(cfg cfgv2) (sdk.Inspector, error) {
 		}
 		chain := cfg.blockchains.AptosChains()[cfg.chainSelector]
 		inspector = aptos.NewInspector(chain.Client, *role)
+	case chainsel.FamilySui:
+		metadata, err := suiMetadataFromProposal(types.ChainSelector(cfg.chainSelector), cfg.timelockProposal)
+		if err != nil {
+			return nil, fmt.Errorf("error getting sui metadata from proposal: %w", err)
+		}
+		chain := cfg.blockchains.SuiChains()[cfg.chainSelector]
+		inspector, err = sui.NewInspector(chain.Client, chain.Signer, metadata.McmsPackageID, metadata.Role)
+		if err != nil {
+			return nil, fmt.Errorf("error creating sui inspector: %w", err)
+		}
 	default:
 		return nil, fmt.Errorf("unsupported chain family %s", fam)
 	}
