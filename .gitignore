@@ -21,9 +21,10 @@ go.work.sum
 # Editor config directories
 ## IntelliJ IDEA
 .idea/
-
 ## Visual Studio Code
 .vscode/
+## Cursor
+.cursor/
 
 # Node.js dependencies
 node_modules/
