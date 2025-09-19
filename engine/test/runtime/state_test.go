@@ -1,12 +1,15 @@
 package runtime
 
 import (
+	"encoding/json"
 	"fmt"
 	"sync"
 	"testing"
 
 	"github.com/Masterminds/semver/v3"
 	chainsel "github.com/smartcontractkit/chain-selectors"
+	mcmslib "github.com/smartcontractkit/mcms"
+	mcmstypes "github.com/smartcontractkit/mcms/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -70,16 +73,12 @@ func TestState_MergeChangesetOutput(t *testing.T) {
 		{
 			name: "successful merge with both datastore and address book",
 			stateFunc: func() *State {
-				return &State{
-					AddressBook: fdeployment.NewMemoryAddressBook(),
-					DataStore:   fdatastore.NewMemoryDataStore().Seal(),
-					Outputs:     make(map[string]fdeployment.ChangesetOutput),
-				}
+				return newState()
 			},
 			taskID: taskID,
 			output: fdeployment.ChangesetOutput{
 				DataStore:   stubTestDataStore(t),
-				AddressBook: stubTestAddressBook(t),
+				AddressBook: stubTestAddressBook(),
 			},
 			assertState: func(t *testing.T, s *State) {
 				t.Helper()
@@ -100,13 +99,50 @@ func TestState_MergeChangesetOutput(t *testing.T) {
 			},
 		},
 		{
+			name: "merge with proposals",
+			stateFunc: func() *State {
+				return newState()
+			},
+			taskID: taskID,
+			output: fdeployment.ChangesetOutput{
+				MCMSProposals:         stubTestMCMSProposals(),
+				MCMSTimelockProposals: stubTestTimelockProposals(),
+			},
+			assertState: func(t *testing.T, s *State) {
+				t.Helper()
+
+				// Verify the output was stored
+				assert.Contains(t, s.Outputs, taskID)
+
+				// Should have 3 proposals total (2 MCMS + 1 Timelock)
+				require.Len(t, s.Proposals, 3)
+
+				// Verify first proposal is standard MCMS proposal
+				var proposal1 map[string]any
+				err := json.Unmarshal([]byte(s.Proposals[0].JSON), &proposal1)
+				require.NoError(t, err)
+				assert.Equal(t, "Proposal", proposal1["kind"])
+				assert.Equal(t, "Test MCMS Proposal 1", proposal1["description"])
+
+				// Verify second proposal is standard MCMS proposal
+				var proposal2 map[string]any
+				err = json.Unmarshal([]byte(s.Proposals[1].JSON), &proposal2)
+				require.NoError(t, err)
+				assert.Equal(t, "Proposal", proposal2["kind"])
+				assert.Equal(t, "Test MCMS Proposal 2", proposal2["description"])
+
+				// Verify third proposal is timelock proposal
+				var timelockProposal map[string]any
+				err = json.Unmarshal([]byte(s.Proposals[2].JSON), &timelockProposal)
+				require.NoError(t, err)
+				assert.Equal(t, "TimelockProposal", timelockProposal["kind"])
+				assert.Equal(t, "Test Timelock Proposal", timelockProposal["description"])
+			},
+		},
+		{
 			name: "merge with nil datastore and address book",
 			stateFunc: func() *State {
-				return &State{
-					AddressBook: fdeployment.NewMemoryAddressBook(),
-					DataStore:   fdatastore.NewMemoryDataStore().Seal(),
-					Outputs:     make(map[string]fdeployment.ChangesetOutput),
-				}
+				return newState()
 			},
 			taskID: taskID,
 			output: fdeployment.ChangesetOutput{
@@ -130,15 +166,11 @@ func TestState_MergeChangesetOutput(t *testing.T) {
 		{
 			name: "fail to merge address book",
 			stateFunc: func() *State {
-				return &State{
-					AddressBook: fdeployment.NewMemoryAddressBook(),
-					DataStore:   fdatastore.NewMemoryDataStore().Seal(),
-					Outputs:     make(map[string]fdeployment.ChangesetOutput),
-				}
+				return newState()
 			},
 			taskID: taskID,
 			output: fdeployment.ChangesetOutput{
-				AddressBook: createTestAddressBook(t, 1, "0x1234567890123456789012345678901234567890"),
+				AddressBook: createTestAddressBook(1, "0x1234567890123456789012345678901234567890"),
 			},
 			wantErr: "failed to update address book state",
 		},
@@ -174,11 +206,7 @@ func TestState_MergeChangesetOutput_Concurrent(t *testing.T) {
 	t.Parallel()
 
 	// Setup initial state
-	state := &State{
-		AddressBook: fdeployment.NewMemoryAddressBook(),
-		DataStore:   fdatastore.NewMemoryDataStore().Seal(),
-		Outputs:     make(map[string]fdeployment.ChangesetOutput),
-	}
+	state := newState()
 
 	// Number of concurrent operations
 	numOps := 10
@@ -224,6 +252,75 @@ func TestState_MergeChangesetOutput_Concurrent(t *testing.T) {
 	}
 }
 
+func TestState_GetProposal(t *testing.T) {
+	t.Parallel()
+
+	state := newState()
+	propState := ProposalState{
+		ID:         "test-proposal",
+		JSON:       `{}`,
+		IsExecuted: false,
+	}
+
+	state.Proposals = append(state.Proposals, propState)
+
+	got, err := state.GetProposal(propState.ID)
+	require.NoError(t, err)
+	require.Equal(t, propState, got)
+
+	// Not found
+	got, err = state.GetProposal("test-proposal-2")
+	require.Error(t, err)
+	require.EqualError(t, err, "proposal not found: test-proposal-2")
+	require.Equal(t, ProposalState{}, got)
+}
+
+func TestState_UpdateProposalJSON(t *testing.T) {
+	t.Parallel()
+
+	state := newState()
+	proposalID := "test-proposal"
+	state.Proposals = append(state.Proposals, ProposalState{
+		ID:         proposalID,
+		JSON:       `{}`,
+		IsExecuted: false,
+	})
+
+	proposalJSON := `{"key": "value"}`
+
+	err := state.UpdateProposalJSON(proposalID, proposalJSON)
+	require.NoError(t, err)
+
+	state.Proposals[0].JSON = proposalJSON
+	require.JSONEq(t, proposalJSON, state.Proposals[0].JSON)
+
+	// Not found
+	err = state.UpdateProposalJSON("test-proposal-2", proposalJSON)
+	require.Error(t, err)
+	require.EqualError(t, err, "proposal not found: test-proposal-2")
+}
+
+func TestState_MarkProposalExecuted(t *testing.T) {
+	t.Parallel()
+
+	state := newState()
+	proposalID := "test-proposal"
+
+	state.Proposals = append(state.Proposals, ProposalState{
+		ID:         "test-proposal",
+		IsExecuted: false,
+	})
+
+	err := state.MarkProposalExecuted(proposalID)
+	require.NoError(t, err)
+	assert.True(t, state.Proposals[0].IsExecuted)
+
+	// Not found
+	err = state.MarkProposalExecuted("test-proposal-2")
+	require.EqualError(t, err, "proposal not found: test-proposal-2")
+	require.Error(t, err)
+}
+
 // Helper functions for creating test data
 
 // createTestDataStore creates a data store with the given address.
@@ -252,9 +349,7 @@ func stubTestDataStore(t *testing.T) fdatastore.MutableDataStore {
 }
 
 // createTestAddressBook creates an address book with the given selector and address.
-func createTestAddressBook(t *testing.T, selector uint64, addr string) fdeployment.AddressBook {
-	t.Helper()
-
+func createTestAddressBook(selector uint64, addr string) fdeployment.AddressBook {
 	tv := fdeployment.NewTypeAndVersion("TestContract", *semver.MustParse("1.0.0"))
 
 	return fdeployment.NewMemoryAddressBookFromMap(map[uint64]map[string]fdeployment.TypeAndVersion{
@@ -265,8 +360,43 @@ func createTestAddressBook(t *testing.T, selector uint64, addr string) fdeployme
 }
 
 // stubTestAddressBook creates an address book with a single default entry for testing.
-func stubTestAddressBook(t *testing.T) fdeployment.AddressBook {
-	t.Helper()
+func stubTestAddressBook() fdeployment.AddressBook {
+	return createTestAddressBook(chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector, "0x1234567890123456789012345678901234567890")
+}
 
-	return createTestAddressBook(t, chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector, "0x1234567890123456789012345678901234567890")
+// stubTestMCMSProposals stubs a slice of MCMS proposals for testing.
+func stubTestMCMSProposals() []mcmslib.Proposal {
+	return []mcmslib.Proposal{
+		createTestMCMSProposal("Test MCMS Proposal 1"),
+		createTestMCMSProposal("Test MCMS Proposal 2"),
+	}
+}
+
+// createTestMCMSProposal creates a MCMS proposal for testing.
+func createTestMCMSProposal(description string) mcmslib.Proposal {
+	return mcmslib.Proposal{
+		BaseProposal: mcmslib.BaseProposal{
+			Version:     "v1",
+			Kind:        mcmstypes.KindProposal,
+			Description: description,
+		},
+	}
+}
+
+// stubTestTimelockProposal stubs a timelock proposal for testing.
+func stubTestTimelockProposals() []mcmslib.TimelockProposal {
+	return []mcmslib.TimelockProposal{
+		createTestTimelockProposal(),
+	}
+}
+
+// createTestTimelockProposal creates a timelock proposal for testing.
+func createTestTimelockProposal() mcmslib.TimelockProposal {
+	return mcmslib.TimelockProposal{
+		BaseProposal: mcmslib.BaseProposal{
+			Version:     "v1",
+			Kind:        mcmstypes.KindTimelockProposal,
+			Description: "Test Timelock Proposal",
+		},
+	}
 }

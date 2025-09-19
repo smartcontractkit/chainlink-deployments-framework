@@ -41,12 +41,22 @@ packages:
       filename: "mock_{{.InterfaceName | snakecase}}.go"
     interfaces:
       TokenSource:
+  github.com/smartcontractkit/chainlink-deployments-framework/engine/test/internal/mcmsutils:
+    config:
+      all: false
+      filename: "mock_{{.InterfaceName | snakecase}}_test.go"
+      structname: '{{.Mock}}{{.InterfaceName | firstUpper }}'
+    interfaces:
+      mcmsExecutable:
+      timelockExecutable:
   github.com/smartcontractkit/chainlink-deployments-framework/engine/test/runtime:
     config:
       all: false
       filename: "mock_{{.InterfaceName | snakecase}}_test.go"
+      structname: '{{.Mock}}{{.InterfaceName | firstUpper }}'
     interfaces:
       Executable:
+      proposalExecutor:
   github.com/smartcontractkit/chainlink-protos/job-distributor/v1/job:
     config:
       all: false
