@@ -1,5 +1,54 @@
 # chainlink-deployments-framework
 
+## 0.49.0
+
+### Minor Changes
+
+- [#437](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/437) [`2224427`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/22244276bcb7c192a81530e6d4434f371684fbb6) Thanks [@jkongie](https://github.com/jkongie)! - **[BREAKING]** Refactored `LoadOffchainClient` to use functional options
+
+  ## Function Signature Changed
+
+  **Before:**
+
+  ```go
+  func LoadOffchainClient(ctx, domain, env, config, logger, useRealBackends)
+  ```
+
+  **After:**
+
+  ```go
+  func LoadOffchainClient(ctx, domain, cfg, ...opts)
+  ```
+
+  ## Migration Required
+
+  - `logger` → `WithLogger(logger)` option (optional, has default)
+  - `useRealBackends` → `WithDryRun(!useRealBackends)` ⚠️ **inverted logic**
+  - `env` → `WithCredentials(creds)` option (optional, defaults to TLS)
+  - `config` → `config.Offchain.JobDistributor`
+
+  **Example:**
+
+  ```go
+  // Old
+  LoadOffchainClient(ctx, domain, "testnet", config, logger, false)
+
+  // New
+  LoadOffchainClient(ctx, domain, config.Offchain.JobDistributor,
+      WithLogger(logger),
+      WithDryRun(true), // Note: inverted!
+  )
+
+  ```
+
+- [#428](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/428) [`e172683`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/e172683ff4f28c79ed865a4224e8e2e04b0953e8) Thanks [@jkongie](https://github.com/jkongie)! - Adds a test engine runtime for executing changesets in unit/integration tests
+
+- [#443](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/443) [`9e6bc1d`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/9e6bc1dcbb3803fc4c85794b194c08224a073ada) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat: introduce template-input command for generating YAML input
+
+  This commit introduces a new template-input command that generates YAML input templates from Go struct types for durable pipeline changesets. The command uses reflection to analyze changeset input types and produces well-formatted YAML templates with type comments to guide users in creating valid input files.
+
+- [#440](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/440) [`7f1af5d`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/7f1af5d0a3514f80aec08c3bab29a2ac4276b340) Thanks [@RodrigoAD](https://github.com/RodrigoAD)! - add support for sui in mcms commands
+
 ## 0.48.2
 
 ### Patch Changes
