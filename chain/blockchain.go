@@ -1,6 +1,7 @@
 package chain
 
 import (
+	"errors"
 	"iter"
 	"maps"
 	"reflect"
@@ -13,6 +14,8 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/ton"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron"
 )
+
+var ErrBlockChainNotFound = errors.New("blockchain not found")
 
 var _ BlockChain = evm.Chain{}
 var _ BlockChain = solana.Chain{}
@@ -68,6 +71,15 @@ func NewBlockChainsFromSlice(chains []BlockChain) BlockChains {
 	}
 
 	return NewBlockChains(chainsMap)
+}
+
+// GetBySelector returns a blockchain by its selector.
+func (b BlockChains) GetBySelector(selector uint64) (BlockChain, error) {
+	if chain, ok := b.chains[selector]; ok {
+		return chain, nil
+	}
+
+	return nil, ErrBlockChainNotFound
 }
 
 // Exists checks if a chain with the given selector exists.

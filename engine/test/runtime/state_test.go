@@ -1,12 +1,15 @@
 package runtime
 
 import (
+	"encoding/json"
 	"fmt"
 	"sync"
 	"testing"
 
 	"github.com/Masterminds/semver/v3"
 	chainsel "github.com/smartcontractkit/chain-selectors"
+	mcmslib "github.com/smartcontractkit/mcms"
+	mcmstypes "github.com/smartcontractkit/mcms/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -70,11 +73,7 @@ func TestState_MergeChangesetOutput(t *testing.T) {
 		{
 			name: "successful merge with both datastore and address book",
 			stateFunc: func() *State {
-				return &State{
-					AddressBook: fdeployment.NewMemoryAddressBook(),
-					DataStore:   fdatastore.NewMemoryDataStore().Seal(),
-					Outputs:     make(map[string]fdeployment.ChangesetOutput),
-				}
+				return newState()
 			},
 			taskID: taskID,
 			output: fdeployment.ChangesetOutput{
@@ -100,13 +99,54 @@ func TestState_MergeChangesetOutput(t *testing.T) {
 			},
 		},
 		{
+			name: "merge with proposals",
+			stateFunc: func() *State {
+				return newState()
+			},
+			taskID: taskID,
+			output: fdeployment.ChangesetOutput{
+				MCMSProposals:         stubTestMCMSProposals(t),
+				MCMSTimelockProposals: stubTestTimelockProposals(t),
+			},
+			assertState: func(t *testing.T, s *State) {
+				t.Helper()
+
+				// Verify the output was stored
+				assert.Contains(t, s.Outputs, taskID)
+
+				// Verify proposals were stored and serialized correctly
+				require.Contains(t, s.Proposals, taskID)
+				proposals := s.Proposals[taskID]
+
+				// Should have 3 proposals total (2 MCMS + 1 Timelock)
+				require.Len(t, proposals, 3)
+
+				// Verify first proposal is standard MCMS proposal
+				var proposal1 map[string]any
+				err := json.Unmarshal([]byte(proposals[0]), &proposal1)
+				require.NoError(t, err)
+				assert.Equal(t, "Proposal", proposal1["kind"])
+				assert.Equal(t, "Test MCMS Proposal 1", proposal1["description"])
+
+				// Verify second proposal is standard MCMS proposal
+				var proposal2 map[string]any
+				err = json.Unmarshal([]byte(proposals[1]), &proposal2)
+				require.NoError(t, err)
+				assert.Equal(t, "Proposal", proposal2["kind"])
+				assert.Equal(t, "Test MCMS Proposal 2", proposal2["description"])
+
+				// Verify third proposal is timelock proposal
+				var timelockProposal map[string]any
+				err = json.Unmarshal([]byte(proposals[2]), &timelockProposal)
+				require.NoError(t, err)
+				assert.Equal(t, "TimelockProposal", timelockProposal["kind"])
+				assert.Equal(t, "Test Timelock Proposal", timelockProposal["description"])
+			},
+		},
+		{
 			name: "merge with nil datastore and address book",
 			stateFunc: func() *State {
-				return &State{
-					AddressBook: fdeployment.NewMemoryAddressBook(),
-					DataStore:   fdatastore.NewMemoryDataStore().Seal(),
-					Outputs:     make(map[string]fdeployment.ChangesetOutput),
-				}
+				return newState()
 			},
 			taskID: taskID,
 			output: fdeployment.ChangesetOutput{
@@ -130,11 +170,7 @@ func TestState_MergeChangesetOutput(t *testing.T) {
 		{
 			name: "fail to merge address book",
 			stateFunc: func() *State {
-				return &State{
-					AddressBook: fdeployment.NewMemoryAddressBook(),
-					DataStore:   fdatastore.NewMemoryDataStore().Seal(),
-					Outputs:     make(map[string]fdeployment.ChangesetOutput),
-				}
+				return newState()
 			},
 			taskID: taskID,
 			output: fdeployment.ChangesetOutput{
@@ -174,11 +210,7 @@ func TestState_MergeChangesetOutput_Concurrent(t *testing.T) {
 	t.Parallel()
 
 	// Setup initial state
-	state := &State{
-		AddressBook: fdeployment.NewMemoryAddressBook(),
-		DataStore:   fdatastore.NewMemoryDataStore().Seal(),
-		Outputs:     make(map[string]fdeployment.ChangesetOutput),
-	}
+	state := newState()
 
 	// Number of concurrent operations
 	numOps := 10
@@ -269,4 +301,49 @@ func stubTestAddressBook(t *testing.T) fdeployment.AddressBook {
 	t.Helper()
 
 	return createTestAddressBook(t, chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector, "0x1234567890123456789012345678901234567890")
+}
+
+// stubTestMCMSProposals stubs a slice of MCMS proposals for testing.
+func stubTestMCMSProposals(t *testing.T) []mcmslib.Proposal {
+	t.Helper()
+
+	return []mcmslib.Proposal{
+		createTestMCMSProposal(t, "Test MCMS Proposal 1"),
+		createTestMCMSProposal(t, "Test MCMS Proposal 2"),
+	}
+}
+
+// createTestMCMSProposal creates a MCMS proposal for testing.
+func createTestMCMSProposal(t *testing.T, description string) mcmslib.Proposal {
+	t.Helper()
+
+	return mcmslib.Proposal{
+		BaseProposal: mcmslib.BaseProposal{
+			Version:     "v1",
+			Kind:        mcmstypes.KindProposal,
+			Description: description,
+		},
+	}
+}
+
+// stubTestTimelockProposal stubs a timelock proposal for testing.
+func stubTestTimelockProposals(t *testing.T) []mcmslib.TimelockProposal {
+	t.Helper()
+
+	return []mcmslib.TimelockProposal{
+		createTestTimelockProposal(t, "Test Timelock Proposal"),
+	}
+}
+
+// createTestTimelockProposal creates a timelock proposal for testing.
+func createTestTimelockProposal(t *testing.T, description string) mcmslib.TimelockProposal {
+	t.Helper()
+
+	return mcmslib.TimelockProposal{
+		BaseProposal: mcmslib.BaseProposal{
+			Version:     "v1",
+			Kind:        mcmstypes.KindTimelockProposal,
+			Description: description,
+		},
+	}
 }
