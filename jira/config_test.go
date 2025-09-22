@@ -9,6 +9,7 @@ import (
 )
 
 func TestJiraConfig_GetJiraFields(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		config   JiraConfig
@@ -65,6 +66,7 @@ func TestJiraConfig_GetJiraFields(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result := tt.config.GetJiraFields()
 
 			if len(result) != len(tt.expected) {
@@ -88,6 +90,7 @@ func TestJiraConfig_GetJiraFields(t *testing.T) {
 }
 
 func TestDetectCurrentDomain(t *testing.T) {
+	t.Parallel()
 	// Save original working directory
 	originalCwd, err := os.Getwd()
 	if err != nil {
@@ -160,6 +163,7 @@ func TestDetectCurrentDomain(t *testing.T) {
 	// Run the main tests
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			// Change to test working directory
 			if err := os.Chdir(tt.workingDir); err != nil {
 				t.Fatalf("Failed to change to test directory: %v", err)
@@ -171,6 +175,7 @@ func TestDetectCurrentDomain(t *testing.T) {
 				if err == nil {
 					t.Errorf("Expected error but got none, domain: %s", domain)
 				}
+
 				return
 			}
 
@@ -198,6 +203,7 @@ func TestDetectCurrentDomain(t *testing.T) {
 }
 
 func TestLoadDomainJiraConfig(t *testing.T) {
+	t.Parallel()
 	// Save original working directory
 	originalCwd, err := os.Getwd()
 	if err != nil {
@@ -238,7 +244,7 @@ jira:
 `
 
 	configPath := filepath.Join(configDir, "domain.yaml")
-	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+	if err := os.WriteFile(configPath, []byte(configContent), 0600); err != nil {
 		t.Fatalf("Failed to write config file: %v", err)
 	}
 
@@ -281,6 +287,7 @@ jira:
 				if len(config.FieldMaps) != 3 {
 					return fmt.Errorf("Expected 3 field maps, got %d", len(config.FieldMaps))
 				}
+
 				return nil
 			},
 		},
@@ -316,7 +323,8 @@ jira:
       jira_field: "customfield_10001"
 invalid: [unclosed
 `
-				return os.WriteFile(configPath, []byte(invalidContent), 0644)
+
+				return os.WriteFile(configPath, []byte(invalidContent), 0600)
 			},
 			expectError: true,
 		},
@@ -330,7 +338,8 @@ environments:
     network_types:
       - testnet
 `
-				return os.WriteFile(configPath, []byte(invalidContent), 0644)
+
+				return os.WriteFile(configPath, []byte(invalidContent), 0600)
 			},
 			expectError: true,
 		},
@@ -338,6 +347,7 @@ environments:
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			// Setup test
 			if err := tt.setup(); err != nil {
 				t.Fatalf("Test setup failed: %v", err)
@@ -352,6 +362,7 @@ environments:
 				if config != nil {
 					t.Errorf("Expected nil config but got %v", config)
 				}
+
 				return
 			}
 
@@ -380,6 +391,7 @@ environments:
 }
 
 func TestLoadDomainJiraConfig_NoDomain(t *testing.T) {
+	t.Parallel()
 	// Save original working directory
 	originalCwd, err := os.Getwd()
 	if err != nil {
@@ -388,7 +400,7 @@ func TestLoadDomainJiraConfig_NoDomain(t *testing.T) {
 
 	// Create a temporary directory without domains structure
 	tempDir := t.TempDir()
-	if err := os.Chdir(tempDir); err != nil {
+	if err = os.Chdir(tempDir); err != nil {
 		t.Fatalf("Failed to change to test directory: %v", err)
 	}
 

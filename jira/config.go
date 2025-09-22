@@ -1,6 +1,7 @@
 package jira
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -30,10 +31,11 @@ type FieldMapping struct {
 
 // GetJiraFields extracts all JIRA field names from the field mappings for more efficient API calls
 func (c *JiraConfig) GetJiraFields() []string {
-	var fields []string
+	fields := make([]string, 0, len(c.FieldMaps))
 	for _, fieldMapping := range c.FieldMaps {
 		fields = append(fields, fieldMapping.JiraField)
 	}
+
 	return fields
 }
 
@@ -53,7 +55,7 @@ func loadDomainJiraConfig() (*JiraConfig, error) {
 	configPath := filepath.Join(domain, ".config", "domain.yaml")
 
 	// Check if file exists
-	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+	if _, err = os.Stat(configPath); os.IsNotExist(err) {
 		return nil, fmt.Errorf("domain config not found at %s", configPath)
 	}
 
@@ -68,7 +70,7 @@ func loadDomainJiraConfig() (*JiraConfig, error) {
 	}
 
 	if domainConfig.Jira == nil {
-		return nil, fmt.Errorf("no JIRA configuration found in domain config")
+		return nil, errors.New("no JIRA configuration found in domain config")
 	}
 
 	// Populate the domain field with just the domain name (last part of the path)
@@ -113,7 +115,7 @@ func findDomainInPath(cwd, domainsPath string) (string, error) {
 
 	parts := strings.Split(relPath, string(filepath.Separator))
 	if len(parts) == 0 || parts[0] == "" {
-		return "", fmt.Errorf("not inside a domain directory")
+		return "", errors.New("not inside a domain directory")
 	}
 
 	domainName := parts[0]
