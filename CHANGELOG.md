@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.49.1
+
+### Patch Changes
+
+- [#425](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/425) [`5583eba`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/5583ebabf916d5188b6e21c4ae35c4ac44b2b462) Thanks [@giogam](https://github.com/giogam)! - feat(environment): use network config chains instead of addressbook
+
 ## 0.49.0
 
 ### Minor Changes
