@@ -37,6 +37,12 @@ func (c *JiraConfig) GetJiraFields() []string {
 	return fields
 }
 
+// DomainConfig represents the full domain configuration file
+type DomainConfig struct {
+	Environments map[string]interface{} `yaml:"environments"`
+	Jira         *JiraConfig            `yaml:"jira"`
+}
+
 // loadDomainJiraConfig loads JIRA configuration for the detected domain
 func loadDomainJiraConfig() (*JiraConfig, error) {
 	domain, err := detectCurrentDomain()
@@ -44,27 +50,31 @@ func loadDomainJiraConfig() (*JiraConfig, error) {
 		return nil, fmt.Errorf("failed to detect domain: %w", err)
 	}
 
-	configPath := fmt.Sprintf("%s/.config/jira-schema.yaml", domain)
+	configPath := filepath.Join(domain, ".config", "domain.yaml")
 
 	// Check if file exists
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		return nil, fmt.Errorf("JIRA config not found for domain at %s", configPath)
+		return nil, fmt.Errorf("domain config not found at %s", configPath)
 	}
 
 	data, err := os.ReadFile(configPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read JIRA config: %w", err)
+		return nil, fmt.Errorf("failed to read domain config: %w", err)
 	}
 
-	var config JiraConfig
-	if err := yaml.Unmarshal(data, &config); err != nil {
-		return nil, fmt.Errorf("failed to parse JIRA config: %w", err)
+	var domainConfig DomainConfig
+	if err := yaml.Unmarshal(data, &domainConfig); err != nil {
+		return nil, fmt.Errorf("failed to parse domain config: %w", err)
+	}
+
+	if domainConfig.Jira == nil {
+		return nil, fmt.Errorf("no JIRA configuration found in domain config")
 	}
 
 	// Populate the domain field with just the domain name (last part of the path)
-	config.Domain = filepath.Base(domain)
+	domainConfig.Jira.Domain = filepath.Base(domain)
 
-	return &config, nil
+	return domainConfig.Jira, nil
 }
 
 // detectCurrentDomain attempts to detect which domain we're operating in
