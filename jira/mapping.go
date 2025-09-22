@@ -2,6 +2,7 @@ package jira
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -11,10 +12,10 @@ func mapFieldsToStruct[T any](issue *JiraIssue, config *JiraConfig) (T, error) {
 	var result T
 
 	if issue == nil {
-		return result, fmt.Errorf("nil issue")
+		return result, errors.New("nil issue")
 	}
 	if config == nil {
-		return result, fmt.Errorf("nil config")
+		return result, errors.New("nil config")
 	}
 
 	remappedData := make(map[string]interface{}, len(config.FieldMaps))
@@ -82,6 +83,7 @@ func getByPath(issue *JiraIssue, path string) (interface{}, bool) {
 			return nil, false
 		}
 	}
+
 	return cur, true
 }
 
@@ -97,5 +99,6 @@ func parseIndex(s string) (int, bool) {
 		}
 		n = n*10 + int(r-'0')
 	}
+
 	return n, true
 }

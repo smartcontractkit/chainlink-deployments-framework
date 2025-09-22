@@ -7,6 +7,7 @@ import (
 )
 
 func TestParseIndex(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		input    string
@@ -65,6 +66,7 @@ func TestParseIndex(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result, valid := parseIndex(tt.input)
 
 			if valid != tt.valid {
@@ -79,6 +81,7 @@ func TestParseIndex(t *testing.T) {
 }
 
 func TestGetByPath(t *testing.T) {
+	t.Parallel()
 	issue := &JiraIssue{
 		Key: "TEST-123",
 		Fields: map[string]interface{}{
@@ -206,6 +209,7 @@ func TestGetByPath(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			var testIssue *JiraIssue
 			if tt.name == "nil issue" {
 				testIssue = nil
@@ -227,18 +231,11 @@ func TestGetByPath(t *testing.T) {
 }
 
 func TestMapFieldsToStruct(t *testing.T) {
+	t.Parallel()
 	// Define test structs
 	type SimpleStruct struct {
 		Summary string `json:"summary"`
 		Status  string `json:"status"`
-	}
-
-	type NestedStruct struct {
-		Summary string `json:"summary"`
-		Status  struct {
-			Name string `json:"name"`
-			ID   string `json:"id"`
-		} `json:"status"`
 	}
 
 	type ArrayStruct struct {
@@ -321,6 +318,7 @@ func TestMapFieldsToStruct(t *testing.T) {
 				if s.Status != "To Do" {
 					return fmt.Errorf("Expected Status 'To Do', got '%s'", s.Status)
 				}
+
 				return nil
 			},
 		},
@@ -345,6 +343,7 @@ func TestMapFieldsToStruct(t *testing.T) {
 				if s.Status != "To Do" {
 					return fmt.Errorf("Expected Status 'To Do', got '%s'", s.Status)
 				}
+
 				return nil
 			},
 		},
@@ -372,6 +371,7 @@ func TestMapFieldsToStruct(t *testing.T) {
 				if s.Labels[0] != "bug" {
 					return fmt.Errorf("Expected first label 'bug', got '%s'", s.Labels[0])
 				}
+
 				return nil
 			},
 		},
@@ -396,6 +396,7 @@ func TestMapFieldsToStruct(t *testing.T) {
 				if s.CustomField != "Custom Value" {
 					return fmt.Errorf("Expected CustomField 'Custom Value', got '%s'", s.CustomField)
 				}
+
 				return nil
 			},
 		},
@@ -478,6 +479,7 @@ func TestMapFieldsToStruct(t *testing.T) {
 				if s.EpicLink != "EPIC-123" {
 					return fmt.Errorf("Expected EpicLink 'EPIC-123', got '%s'", s.EpicLink)
 				}
+
 				return nil
 			},
 		},
@@ -485,6 +487,7 @@ func TestMapFieldsToStruct(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			var result interface{}
 			var err error
 
@@ -508,6 +511,7 @@ func TestMapFieldsToStruct(t *testing.T) {
 				if tt.errorContains != "" && !strings.Contains(err.Error(), tt.errorContains) {
 					t.Errorf("Expected error to contain '%s', got: %s", tt.errorContains, err.Error())
 				}
+
 				return
 			}
 
