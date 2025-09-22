@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 	"time"
 )
@@ -25,11 +24,10 @@ type JiraIssue struct {
 	Fields map[string]interface{} `json:"fields"`
 }
 
-// NewClient creates a new JIRA client using environment variables for authentication
-func NewClient(baseURL, username string) (*Client, error) {
-	token := os.Getenv("JIRA_TOKEN") //TODO: Ensure this is set from domain secrets
+// NewClient creates a new JIRA client with the provided authentication token
+func NewClient(baseURL, username, token string) (*Client, error) {
 	if token == "" {
-		return nil, fmt.Errorf("JIRA_TOKEN environment variable is required")
+		return nil, fmt.Errorf("JIRA token is required")
 	}
 
 	return &Client{

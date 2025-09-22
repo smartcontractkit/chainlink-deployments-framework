@@ -11,6 +11,7 @@ import (
 
 // JiraConfig represents the JIRA configuration for a domain
 type JiraConfig struct {
+	Domain     string                  `yaml:"-"` // Domain path (populated at runtime, not from YAML)
 	Connection JiraConnectionConfig    `yaml:"connection"`
 	FieldMaps  map[string]FieldMapping `yaml:"field_maps"`
 }
@@ -59,6 +60,9 @@ func loadDomainJiraConfig() (*JiraConfig, error) {
 	if err := yaml.Unmarshal(data, &config); err != nil {
 		return nil, fmt.Errorf("failed to parse JIRA config: %w", err)
 	}
+
+	// Populate the domain field with just the domain name (last part of the path)
+	config.Domain = filepath.Base(domain)
 
 	return &config, nil
 }
