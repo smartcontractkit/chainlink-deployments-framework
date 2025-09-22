@@ -75,19 +75,13 @@ func detectCurrentDomain() (string, error) {
 		return "", fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	// Look for domains directory in current path or parent paths
+	// Walk up the directory tree looking for domains directory
 	current := cwd
-	for i := 0; i < 10; i++ { // limit search depth
-		if strings.Contains(current, "domains") {
-			// Extract domain name from path like /path/to/domains/exemplar/...
-			parts := strings.Split(current, string(filepath.Separator))
-			for j, part := range parts {
-				if part == "domains" && j+1 < len(parts) {
-					domainName := parts[j+1]
-					// Return the full domain path
-					return filepath.Join(filepath.Dir(current)[:strings.LastIndex(filepath.Dir(current), "domains")+7], domainName), nil
-				}
-			}
+	for {
+		domainsPath := filepath.Join(current, "domains")
+		if info, err := os.Stat(domainsPath); err == nil && info.IsDir() {
+			// Found domains directory, now find which domain we're in
+			return findDomainInPath(cwd, domainsPath)
 		}
 
 		parent := filepath.Dir(current)
@@ -98,4 +92,27 @@ func detectCurrentDomain() (string, error) {
 	}
 
 	return "", fmt.Errorf("could not detect domain from current working directory: %s", cwd)
+}
+
+// findDomainInPath determines which domain directory the current path is within
+func findDomainInPath(cwd, domainsPath string) (string, error) {
+	relPath, err := filepath.Rel(domainsPath, cwd)
+	if err != nil {
+		return "", fmt.Errorf("failed to get relative path: %w", err)
+	}
+
+	parts := strings.Split(relPath, string(filepath.Separator))
+	if len(parts) == 0 || parts[0] == "" {
+		return "", fmt.Errorf("not inside a domain directory")
+	}
+
+	domainName := parts[0]
+	domainPath := filepath.Join(domainsPath, domainName)
+
+	// Verify the domain directory exists
+	if _, err := os.Stat(domainPath); err != nil {
+		return "", fmt.Errorf("domain directory does not exist: %s", domainPath)
+	}
+
+	return domainPath, nil
 }
