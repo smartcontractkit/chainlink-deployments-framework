@@ -10,6 +10,7 @@ import (
 )
 
 func TestNewClient(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		baseURL     string
@@ -42,6 +43,7 @@ func TestNewClient(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			client, err := NewClient(tt.baseURL, tt.username, tt.token)
 
 			if tt.expectError {
@@ -51,16 +53,19 @@ func TestNewClient(t *testing.T) {
 				if client != nil {
 					t.Errorf("Expected nil client but got %v", client)
 				}
+
 				return
 			}
 
 			if err != nil {
 				t.Errorf("Unexpected error: %v", err)
+
 				return
 			}
 
 			if client == nil {
 				t.Errorf("Expected client but got nil")
+
 				return
 			}
 
@@ -89,10 +94,11 @@ func TestNewClient(t *testing.T) {
 }
 
 func TestClient_GetIssue(t *testing.T) {
+	t.Parallel()
 	// Create a test server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Verify the request
-		if r.Method != "GET" {
+		if r.Method != http.MethodGet {
 			t.Errorf("Expected GET request, got %s", r.Method)
 		}
 
@@ -121,7 +127,8 @@ func TestClient_GetIssue(t *testing.T) {
 
 		// Check fields parameter if provided
 		fields := r.URL.Query().Get("fields")
-		if fields == "" {
+		switch fields {
+		case "":
 			// No fields specified, return all default fields
 			response := JiraIssue{
 				Key: "TEST-123",
@@ -149,8 +156,8 @@ func TestClient_GetIssue(t *testing.T) {
 				},
 			}
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(response)
-		} else if fields == "summary,status" {
+			_ = json.NewEncoder(w).Encode(response)
+		case "summary,status":
 			// Specific fields requested - return only those fields
 			response := JiraIssue{
 				Key: "TEST-123",
@@ -162,8 +169,8 @@ func TestClient_GetIssue(t *testing.T) {
 				},
 			}
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(response)
-		} else {
+			_ = json.NewEncoder(w).Encode(response)
+		default:
 			t.Errorf("Unexpected fields parameter: %s", fields)
 		}
 	}))
@@ -197,22 +204,26 @@ func TestClient_GetIssue(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			issue, err := client.GetIssue(tt.issueKey, tt.fields)
 
 			if tt.expectError {
 				if err == nil {
 					t.Errorf("Expected error but got none")
 				}
+
 				return
 			}
 
 			if err != nil {
 				t.Errorf("Unexpected error: %v", err)
+
 				return
 			}
 
 			if issue == nil {
 				t.Errorf("Expected issue but got nil")
+
 				return
 			}
 
@@ -222,6 +233,7 @@ func TestClient_GetIssue(t *testing.T) {
 
 			if issue.Fields == nil {
 				t.Errorf("Expected fields but got nil")
+
 				return
 			}
 
@@ -237,6 +249,7 @@ func TestClient_GetIssue(t *testing.T) {
 }
 
 func TestClient_GetIssue_ErrorCases(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name           string
 		issueKey       string
@@ -251,7 +264,7 @@ func TestClient_GetIssue_ErrorCases(t *testing.T) {
 			fields:   nil,
 			serverResponse: func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusNotFound)
-				w.Write([]byte("Issue not found"))
+				_, _ = w.Write([]byte("Issue not found"))
 			},
 			expectError:   true,
 			errorContains: "status 404",
@@ -262,7 +275,7 @@ func TestClient_GetIssue_ErrorCases(t *testing.T) {
 			fields:   nil,
 			serverResponse: func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte("Internal server error"))
+				_, _ = w.Write([]byte("Internal server error"))
 			},
 			expectError:   true,
 			errorContains: "status 500",
@@ -273,7 +286,7 @@ func TestClient_GetIssue_ErrorCases(t *testing.T) {
 			fields:   nil,
 			serverResponse: func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				w.Write([]byte("invalid json"))
+				_, _ = w.Write([]byte("invalid json"))
 			},
 			expectError:   true,
 			errorContains: "failed to parse JIRA response",
@@ -282,6 +295,7 @@ func TestClient_GetIssue_ErrorCases(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverResponse))
 			defer server.Close()
 

@@ -1,7 +1,9 @@
 package jira
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -27,7 +29,7 @@ type JiraIssue struct {
 // NewClient creates a new JIRA client with the provided authentication token
 func NewClient(baseURL, username, token string) (*Client, error) {
 	if token == "" {
-		return nil, fmt.Errorf("JIRA token is required")
+		return nil, errors.New("JIRA token is required")
 	}
 
 	return &Client{
@@ -54,7 +56,7 @@ func (c *Client) GetIssue(issueKey string, fields []string) (*JiraIssue, error) 
 		reqURL = base + "?" + q.Encode()
 	}
 
-	req, err := http.NewRequest("GET", reqURL, nil)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, reqURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
