@@ -28,7 +28,7 @@ func JiraToStruct[T any](issueKey string) (T, error) {
 	var domain = strings.ToUpper(config.Domain)
 
 	// 2. Get JIRA token from environment variable
-	token := os.Getenv(domain + "_JIRA_TOKEN")
+	token := os.Getenv("JIRA_TOKEN_" + domain)
 	if token == "" {
 		return zero, errors.New("JIRA_TOKEN environment variable is required")
 	}

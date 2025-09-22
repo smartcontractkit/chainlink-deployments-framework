@@ -67,13 +67,13 @@ jira:
 	}
 
 	// Set up environment variable
-	originalToken := os.Getenv("EXEMPLAR_JIRA_TOKEN")
-	os.Setenv("EXEMPLAR_JIRA_TOKEN", "test-token-123")
+	originalToken := os.Getenv("JIRA_TOKEN_EXEMPLAR")
+	os.Setenv("JIRA_TOKEN_EXEMPLAR", "test-token-123")
 	defer func() {
 		if originalToken == "" {
-			os.Unsetenv("EXEMPLAR_JIRA_TOKEN")
+			os.Unsetenv("JIRA_TOKEN_EXEMPLAR")
 		} else {
-			os.Setenv("EXEMPLAR_JIRA_TOKEN", originalToken)
+			os.Setenv("JIRA_TOKEN_EXEMPLAR", originalToken)
 		}
 	}()
 
@@ -253,13 +253,13 @@ func TestJiraToStruct_ErrorCases(t *testing.T) { //nolint:paralleltest // Cannot
 	}
 
 	// Set up environment variable
-	originalToken := os.Getenv("EXEMPLAR_JIRA_TOKEN")
-	os.Setenv("EXEMPLAR_JIRA_TOKEN", "test-token-123")
+	originalToken := os.Getenv("JIRA_TOKEN_EXEMPLAR")
+	os.Setenv("JIRA_TOKEN_EXEMPLAR", "test-token-123")
 	defer func() {
 		if originalToken == "" {
-			os.Unsetenv("EXEMPLAR_JIRA_TOKEN")
+			os.Unsetenv("JIRA_TOKEN_EXEMPLAR")
 		} else {
-			os.Setenv("EXEMPLAR_JIRA_TOKEN", originalToken)
+			os.Setenv("JIRA_TOKEN_EXEMPLAR", originalToken)
 		}
 	}()
 
@@ -300,7 +300,7 @@ jira:
 					return err
 				}
 				// Remove the token
-				os.Unsetenv("EXEMPLAR_JIRA_TOKEN")
+				os.Unsetenv("JIRA_TOKEN_EXEMPLAR")
 
 				return nil
 			},
@@ -312,7 +312,7 @@ jira:
 			issueKey: "TEST-123",
 			setup: func() error {
 				// Ensure token is set so we get the config error, not token error
-				os.Setenv("EXEMPLAR_JIRA_TOKEN", "test-token-123")
+				os.Setenv("JIRA_TOKEN_EXEMPLAR", "test-token-123")
 				// Remove any existing config file
 				configPath := filepath.Join(configDir, "domain.yaml")
 				os.Remove(configPath)
@@ -375,7 +375,7 @@ jira:
 					return err
 				}
 				// Ensure token is set
-				os.Setenv("EXEMPLAR_JIRA_TOKEN", "test-token-123")
+				os.Setenv("JIRA_TOKEN_EXEMPLAR", "test-token-123")
 
 				return nil
 			},
