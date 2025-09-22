@@ -30,7 +30,7 @@ func JiraToStruct[T any](issueKey string) (T, error) {
 	// 2. Get JIRA token from environment variable
 	token := os.Getenv("JIRA_TOKEN_" + domain)
 	if token == "" {
-		return zero, errors.New("JIRA_TOKEN environment variable is required")
+		return zero, fmt.Errorf("%s_JIRA_TOKEN environment variable is required", domain)
 	}
 
 	// 3. Create JIRA client
