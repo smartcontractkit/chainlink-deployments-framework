@@ -1,6 +1,7 @@
 package jira
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -12,7 +13,7 @@ func JiraToStruct[T any](issueKey string) (T, error) {
 	var zero T
 
 	if issueKey == "" {
-		return zero, fmt.Errorf("issue_key is required")
+		return zero, errors.New("issue_key is required")
 	}
 
 	// 1. Load domain's JIRA configuration
@@ -29,7 +30,7 @@ func JiraToStruct[T any](issueKey string) (T, error) {
 	// 2. Get JIRA token from environment variable
 	token := os.Getenv(domain + "_JIRA_TOKEN")
 	if token == "" {
-		return zero, fmt.Errorf("JIRA_TOKEN environment variable is required")
+		return zero, errors.New("JIRA_TOKEN environment variable is required")
 	}
 
 	// 3. Create JIRA client

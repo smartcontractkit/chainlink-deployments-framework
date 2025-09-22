@@ -12,6 +12,7 @@ import (
 )
 
 func TestJiraToStruct(t *testing.T) {
+	t.Parallel()
 	// Save original working directory and environment
 	originalCwd, err := os.Getwd()
 	if err != nil {
@@ -52,7 +53,7 @@ jira:
 `
 
 	configPath := filepath.Join(configDir, "domain.yaml")
-	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+	if err := os.WriteFile(configPath, []byte(configContent), 0600); err != nil {
 		t.Fatalf("Failed to write config file: %v", err)
 	}
 
@@ -87,7 +88,7 @@ jira:
 	// Create a test server that mocks JIRA API
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Verify the request
-		if r.Method != "GET" {
+		if r.Method != http.MethodGet {
 			t.Errorf("Expected GET request, got %s", r.Method)
 		}
 
@@ -145,13 +146,13 @@ jira:
 			},
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
+		_ = json.NewEncoder(w).Encode(response)
 	}))
 	defer server.Close()
 
 	// Override the base URL in the config by creating a new config file
 	configContentWithServer := strings.Replace(configContent, "https://example.atlassian.net", server.URL, 1)
-	if err := os.WriteFile(configPath, []byte(configContentWithServer), 0644); err != nil {
+	if err := os.WriteFile(configPath, []byte(configContentWithServer), 0600); err != nil {
 		t.Fatalf("Failed to write updated config file: %v", err)
 	}
 
@@ -176,6 +177,7 @@ jira:
 				if result.CustomField != "Custom Field Value" {
 					return fmt.Errorf("Expected CustomField 'Custom Field Value', got '%s'", result.CustomField)
 				}
+
 				return nil
 			},
 		},
@@ -189,6 +191,7 @@ jira:
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result, err := JiraToStruct[TestStruct](tt.issueKey)
 
 			if tt.expectError {
@@ -199,6 +202,7 @@ jira:
 				if tt.errorContains != "" && !strings.Contains(err.Error(), tt.errorContains) {
 					t.Errorf("Expected error to contain '%s', got: %s", tt.errorContains, err.Error())
 				}
+
 				return
 			}
 
@@ -222,6 +226,7 @@ jira:
 }
 
 func TestJiraToStruct_ErrorCases(t *testing.T) {
+	t.Parallel()
 	// Save original working directory and environment
 	originalCwd, err := os.Getwd()
 	if err != nil {
@@ -294,11 +299,12 @@ jira:
       jira_field: "summary"
 `
 				configPath := filepath.Join(configDir, "domain.yaml")
-				if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+				if err := os.WriteFile(configPath, []byte(configContent), 0600); err != nil {
 					return err
 				}
 				// Remove the token
 				os.Unsetenv("EXEMPLAR_JIRA_TOKEN")
+
 				return nil
 			},
 			expectError:   true,
@@ -313,6 +319,7 @@ jira:
 				// Remove any existing config file
 				configPath := filepath.Join(configDir, "domain.yaml")
 				os.Remove(configPath)
+
 				return nil
 			},
 			expectError:   true,
@@ -340,7 +347,8 @@ jira:
       jira_field: "summary"
 invalid: [unclosed
 `
-				return os.WriteFile(configPath, []byte(invalidContent), 0644)
+
+				return os.WriteFile(configPath, []byte(invalidContent), 0600)
 			},
 			expectError:   true,
 			errorContains: "failed to load domain JIRA config",
@@ -366,11 +374,12 @@ jira:
       jira_field: "summary"
 `
 				configPath := filepath.Join(configDir, "domain.yaml")
-				if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+				if err := os.WriteFile(configPath, []byte(configContent), 0600); err != nil {
 					return err
 				}
 				// Ensure token is set
 				os.Setenv("EXEMPLAR_JIRA_TOKEN", "test-token-123")
+
 				return nil
 			},
 			expectError:   true,
@@ -380,6 +389,7 @@ jira:
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			// Setup test
 			if err := tt.setup(); err != nil {
 				t.Fatalf("Test setup failed: %v", err)
@@ -416,6 +426,7 @@ jira:
 }
 
 func TestJiraToStruct_NoDomain(t *testing.T) {
+	t.Parallel()
 	// Save original working directory
 	originalCwd, err := os.Getwd()
 	if err != nil {
@@ -424,7 +435,7 @@ func TestJiraToStruct_NoDomain(t *testing.T) {
 
 	// Create a temporary directory without domains structure
 	tempDir := t.TempDir()
-	if err := os.Chdir(tempDir); err != nil {
+	if err = os.Chdir(tempDir); err != nil {
 		t.Fatalf("Failed to change to test directory: %v", err)
 	}
 
