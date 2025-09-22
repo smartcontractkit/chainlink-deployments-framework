@@ -24,14 +24,29 @@ packages:
       filename: "mock_{{.InterfaceName | snakecase}}.go"
     interfaces:
       Client:
-  github.com/smartcontractkit/chainlink-deployments-framework/offchain/jd:
+  github.com/smartcontractkit/chainlink-deployments-framework/offchain:
     config:
       all: false
       pkgname: "mocks"
-      dir: "offchain/jd/internal/mocks"
+      dir: "engine/cld/offchain/internal/mocks"
       filename: "mock_{{.InterfaceName | snakecase}}.go"
     interfaces:
-      CognitoClient:
+      Provider:
+      Client:
+  golang.org/x/oauth2:
+    config:
+      all: false
+      pkgname: "mocks"
+      dir: "engine/cld/offchain/internal/mocks"
+      filename: "mock_{{.InterfaceName | snakecase}}.go"
+    interfaces:
+      TokenSource:
+  github.com/smartcontractkit/chainlink-deployments-framework/engine/test/runtime:
+    config:
+      all: false
+      filename: "mock_{{.InterfaceName | snakecase}}_test.go"
+    interfaces:
+      Executable:
   github.com/smartcontractkit/chainlink-protos/job-distributor/v1/job:
     config:
       all: false

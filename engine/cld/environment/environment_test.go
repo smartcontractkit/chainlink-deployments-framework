@@ -50,21 +50,28 @@ func Test_Load_LoadNodesFailure(t *testing.T) {
 	// Set up domain
 	domain := setupTest(t, setupTestConfig, setupAddressbook, setupDataStore)
 
-	_, err := Load(t.Context(), domain, "staging", OnlyLoadChainsFor("staging", []uint64{}))
+	_, err := Load(t.Context(), domain, "staging", OnlyLoadChainsFor([]uint64{}))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "nodes.json: no such file or directory")
 }
 
-func Test_Load_LoadOffchainClientFailure(t *testing.T) {
-	t.Parallel()
+func Test_Load_LoadOffchainClientFailure(t *testing.T) { //nolint:paralleltest // This test is not parallel safe due to setting of env vars
+	// In CI mode, config is loaded from environment variables instead of files.
+	// We manually set the required env vars for this test and clean up afterward.
+	if os.Getenv("CI") == "true" {
+		os.Setenv("OFFCHAIN_JD_ENDPOINTS_WSRPC", "ws://localhost:8080")
+		os.Setenv("OFFCHAIN_JD_ENDPOINTS_GRPC", "localhost:9090")
+		t.Cleanup(func() {
+			os.Unsetenv("OFFCHAIN_JD_ENDPOINTS_WSRPC")
+			os.Unsetenv("OFFCHAIN_JD_ENDPOINTS_GRPC")
+		})
+	}
 
 	// Set up domain
 	domain := setupTest(t, setupTestConfig, setupAddressbook, setupDataStore, setupNodes)
 
-	assert.Panics(t, func() {
-		_, err := Load(t.Context(), domain, "staging", OnlyLoadChainsFor("staging", []uint64{}))
-		require.NoError(t, err)
-	})
+	_, err := Load(t.Context(), domain, "staging", OnlyLoadChainsFor([]uint64{}))
+	require.ErrorContains(t, err, "failed to load offchain client")
 }
 
 func Test_Load_NoError(t *testing.T) {
@@ -73,7 +80,7 @@ func Test_Load_NoError(t *testing.T) {
 	// Set up domain
 	domain := setupTest(t, setupTestConfig, setupAddressbook, setupDataStore, setupNodes)
 
-	_, err := Load(t.Context(), domain, "staging", WithoutJD(), OnlyLoadChainsFor("staging", []uint64{}))
+	_, err := Load(t.Context(), domain, "staging", WithoutJD(), OnlyLoadChainsFor([]uint64{}))
 	require.NoError(t, err)
 }
 

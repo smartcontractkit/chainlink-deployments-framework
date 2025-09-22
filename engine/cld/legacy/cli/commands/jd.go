@@ -20,6 +20,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/internal/credentials"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/legacy/cli"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/offchain"
 	foffchain "github.com/smartcontractkit/chainlink-deployments-framework/offchain"
@@ -1061,7 +1062,10 @@ func loadOffchainClient(
 		return nil, err
 	}
 
-	return offchain.LoadOffchainClient(ctx, domain, envKey, cfg, lggr, true)
+	return offchain.LoadOffchainClient(ctx, domain, cfg.Offchain.JobDistributor,
+		offchain.WithLogger(lggr),
+		offchain.WithCredentials(credentials.GetCredsForEnv(envKey)),
+	)
 }
 
 type NodeSet struct {

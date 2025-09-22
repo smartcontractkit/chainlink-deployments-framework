@@ -1,4 +1,4 @@
-package internal
+package credentials
 
 import (
 	"crypto/tls"

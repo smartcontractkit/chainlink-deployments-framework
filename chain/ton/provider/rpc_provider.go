@@ -216,9 +216,9 @@ func getWalletVersionConfig(version WalletVersion) (wallet.VersionConfig, error)
 	case WalletVersionV4R2:
 		return wallet.V4R2, nil
 	case WalletVersionV5R1:
-		return wallet.ConfigV5R1Final{NetworkGlobalID: -239, Workchain: 0}, nil
+		return wallet.ConfigV5R1Final{NetworkGlobalID: wallet.MainnetGlobalID, Workchain: 0}, nil
 	case WalletVersionDefault:
-		return wallet.ConfigV5R1Final{NetworkGlobalID: -239, Workchain: 0}, nil
+		return wallet.ConfigV5R1Final{NetworkGlobalID: wallet.MainnetGlobalID, Workchain: 0}, nil
 	default:
 		return nil, fmt.Errorf("unsupported wallet version: %s", version)
 	}
