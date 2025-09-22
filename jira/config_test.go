@@ -89,8 +89,8 @@ func TestJiraConfig_GetJiraFields(t *testing.T) {
 	}
 }
 
-func TestDetectCurrentDomain(t *testing.T) {
-	t.Parallel()
+func TestDetectCurrentDomain(t *testing.T) { //nolint:paralleltest // Cannot use t.Parallel() due to os.Chdir() usage
+	// Note: Cannot use t.Parallel() due to os.Chdir() usage
 	// Save original working directory
 	originalCwd, err := os.Getwd()
 	if err != nil {
@@ -161,9 +161,8 @@ func TestDetectCurrentDomain(t *testing.T) {
 	})
 
 	// Run the main tests
-	for _, tt := range tests {
+	for _, tt := range tests { //nolint:paralleltest // Cannot use t.Parallel() due to shared test server
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 			// Change to test working directory
 			if err := os.Chdir(tt.workingDir); err != nil {
 				t.Fatalf("Failed to change to test directory: %v", err)
@@ -202,8 +201,7 @@ func TestDetectCurrentDomain(t *testing.T) {
 	}
 }
 
-func TestLoadDomainJiraConfig(t *testing.T) {
-	t.Parallel()
+func TestLoadDomainJiraConfig(t *testing.T) { //nolint:paralleltest // Cannot use t.Parallel() due to os.Chdir() usage
 	// Save original working directory
 	originalCwd, err := os.Getwd()
 	if err != nil {
@@ -345,9 +343,8 @@ environments:
 		},
 	}
 
-	for _, tt := range tests {
+	for _, tt := range tests { //nolint:paralleltest // Cannot use t.Parallel() due to shared test server
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 			// Setup test
 			if err := tt.setup(); err != nil {
 				t.Fatalf("Test setup failed: %v", err)
@@ -390,8 +387,7 @@ environments:
 	}
 }
 
-func TestLoadDomainJiraConfig_NoDomain(t *testing.T) {
-	t.Parallel()
+func TestLoadDomainJiraConfig_NoDomain(t *testing.T) { //nolint:paralleltest // Cannot use t.Parallel() due to os.Chdir() usage
 	// Save original working directory
 	originalCwd, err := os.Getwd()
 	if err != nil {

@@ -202,9 +202,8 @@ func TestClient_GetIssue(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for _, tt := range tests { //nolint:paralleltest // Cannot use t.Parallel() due to shared test server
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 			issue, err := client.GetIssue(tt.issueKey, tt.fields)
 
 			if tt.expectError {
@@ -293,9 +292,8 @@ func TestClient_GetIssue_ErrorCases(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for _, tt := range tests { //nolint:paralleltest // Cannot use t.Parallel() due to shared test server
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(tt.serverResponse))
 			defer server.Close()
 

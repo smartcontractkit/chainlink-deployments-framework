@@ -11,8 +11,7 @@ import (
 	"testing"
 )
 
-func TestJiraToStruct(t *testing.T) {
-	t.Parallel()
+func TestJiraToStruct(t *testing.T) { //nolint:paralleltest // Cannot use t.Parallel() due to os.Chdir() usage
 	// Save original working directory and environment
 	originalCwd, err := os.Getwd()
 	if err != nil {
@@ -189,9 +188,8 @@ jira:
 		},
 	}
 
-	for _, tt := range tests {
+	for _, tt := range tests { //nolint:paralleltest // Cannot use t.Parallel() due to shared test server
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 			result, err := JiraToStruct[TestStruct](tt.issueKey)
 
 			if tt.expectError {
@@ -225,8 +223,7 @@ jira:
 	}
 }
 
-func TestJiraToStruct_ErrorCases(t *testing.T) {
-	t.Parallel()
+func TestJiraToStruct_ErrorCases(t *testing.T) { //nolint:paralleltest // Cannot use t.Parallel() due to os.Chdir() usage
 	// Save original working directory and environment
 	originalCwd, err := os.Getwd()
 	if err != nil {
@@ -387,15 +384,25 @@ jira:
 		},
 	}
 
-	for _, tt := range tests {
+	for _, tt := range tests { //nolint:paralleltest // Cannot use t.Parallel() due to shared test server
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
+			// Save original working directory
+			testCwd, err := os.Getwd()
+			if err != nil {
+				t.Fatalf("Failed to get current working directory: %v", err)
+			}
+
 			// Setup test
-			if err := tt.setup(); err != nil {
-				t.Fatalf("Test setup failed: %v", err)
+			if setupErr := tt.setup(); setupErr != nil {
+				t.Fatalf("Test setup failed: %v", setupErr)
 			}
 
 			result, err := JiraToStruct[TestStruct](tt.issueKey)
+
+			// Restore original working directory
+			if restoreErr := os.Chdir(testCwd); restoreErr != nil {
+				t.Errorf("Failed to restore original working directory: %v", restoreErr)
+			}
 
 			if !tt.expectError {
 				t.Errorf("Expected no error but got: %v", err)
@@ -425,8 +432,7 @@ jira:
 	}
 }
 
-func TestJiraToStruct_NoDomain(t *testing.T) {
-	t.Parallel()
+func TestJiraToStruct_NoDomain(t *testing.T) { //nolint:paralleltest // Cannot use t.Parallel() due to os.Chdir() usage
 	// Save original working directory
 	originalCwd, err := os.Getwd()
 	if err != nil {
