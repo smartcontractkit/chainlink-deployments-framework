@@ -41,8 +41,8 @@ func (c *JiraConfig) GetJiraFields() []string {
 
 // DomainConfig represents the full domain configuration file
 type DomainConfig struct {
-	Environments map[string]interface{} `yaml:"environments"`
-	Jira         *JiraConfig            `yaml:"jira"`
+	Environments map[string]any `yaml:"environments"`
+	Jira         *JiraConfig    `yaml:"jira"`
 }
 
 // loadDomainJiraConfig loads JIRA configuration for the detected domain

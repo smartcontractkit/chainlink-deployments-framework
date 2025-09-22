@@ -22,8 +22,8 @@ type Client struct {
 
 // JiraIssue represents a JIRA issue response
 type JiraIssue struct {
-	Key    string                 `json:"key"`
-	Fields map[string]interface{} `json:"fields"`
+	Key    string         `json:"key"`
+	Fields map[string]any `json:"fields"`
 }
 
 // NewClient creates a new JIRA client with the provided authentication token

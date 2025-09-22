@@ -84,17 +84,17 @@ func TestGetByPath(t *testing.T) {
 	t.Parallel()
 	issue := &JiraIssue{
 		Key: "TEST-123",
-		Fields: map[string]interface{}{
+		Fields: map[string]any{
 			"summary": "Test Issue",
-			"status": map[string]interface{}{
+			"status": map[string]any{
 				"name": "To Do",
 				"id":   "1",
 			},
-			"assignee": map[string]interface{}{
+			"assignee": map[string]any{
 				"displayName":  "John Doe",
 				"emailAddress": "john@example.com",
 			},
-			"labels": []interface{}{
+			"labels": []any{
 				"bug",
 				"urgent",
 				"frontend",
@@ -106,7 +106,7 @@ func TestGetByPath(t *testing.T) {
 	tests := []struct {
 		name     string
 		path     string
-		expected interface{}
+		expected any
 		found    bool
 	}{
 		{
@@ -257,13 +257,13 @@ func TestMapFieldsToStruct(t *testing.T) {
 
 	issue := &JiraIssue{
 		Key: "TEST-123",
-		Fields: map[string]interface{}{
+		Fields: map[string]any{
 			"summary": "Test Issue",
-			"status": map[string]interface{}{
+			"status": map[string]any{
 				"name": "To Do",
 				"id":   "1",
 			},
-			"labels": []interface{}{
+			"labels": []any{
 				"bug",
 				"urgent",
 			},
@@ -274,7 +274,7 @@ func TestMapFieldsToStruct(t *testing.T) {
 	// Issue with multiple custom fields for comprehensive testing
 	issueWithMultipleCustomFields := &JiraIssue{
 		Key: "TEST-456",
-		Fields: map[string]interface{}{
+		Fields: map[string]any{
 			"summary":           "Epic Story",
 			"customfield_10028": "5",        // Story Points
 			"customfield_10016": "High",     // Priority
@@ -295,7 +295,7 @@ func TestMapFieldsToStruct(t *testing.T) {
 		config        *JiraConfig
 		expectError   bool
 		errorContains string
-		validate      func(interface{}) error
+		validate      func(any) error
 	}{
 		{
 			name:  "successful mapping to simple struct",
@@ -307,7 +307,7 @@ func TestMapFieldsToStruct(t *testing.T) {
 				},
 			},
 			expectError: false,
-			validate: func(result interface{}) error {
+			validate: func(result any) error {
 				s, ok := result.(SimpleStruct)
 				if !ok {
 					return fmt.Errorf("Expected SimpleStruct, got %T", result)
@@ -332,7 +332,7 @@ func TestMapFieldsToStruct(t *testing.T) {
 				},
 			},
 			expectError: false,
-			validate: func(result interface{}) error {
+			validate: func(result any) error {
 				s, ok := result.(SimpleStruct)
 				if !ok {
 					return fmt.Errorf("Expected SimpleStruct, got %T", result)
@@ -357,7 +357,7 @@ func TestMapFieldsToStruct(t *testing.T) {
 				},
 			},
 			expectError: false,
-			validate: func(result interface{}) error {
+			validate: func(result any) error {
 				s, ok := result.(ArrayStruct)
 				if !ok {
 					return fmt.Errorf("Expected ArrayStruct, got %T", result)
@@ -385,7 +385,7 @@ func TestMapFieldsToStruct(t *testing.T) {
 				},
 			},
 			expectError: false,
-			validate: func(result interface{}) error {
+			validate: func(result any) error {
 				s, ok := result.(CustomFieldStruct)
 				if !ok {
 					return fmt.Errorf("Expected CustomFieldStruct, got %T", result)
@@ -462,7 +462,7 @@ func TestMapFieldsToStruct(t *testing.T) {
 				},
 			},
 			expectError: false,
-			validate: func(result interface{}) error {
+			validate: func(result any) error {
 				s, ok := result.(MultipleCustomFieldsStruct)
 				if !ok {
 					return fmt.Errorf("Expected MultipleCustomFieldsStruct, got %T", result)
@@ -488,7 +488,7 @@ func TestMapFieldsToStruct(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			var result interface{}
+			var result any
 			var err error
 
 			// Use the appropriate struct type based on the test

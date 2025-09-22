@@ -132,24 +132,24 @@ func TestClient_GetIssue(t *testing.T) {
 			// No fields specified, return all default fields
 			response := JiraIssue{
 				Key: "TEST-123",
-				Fields: map[string]interface{}{
+				Fields: map[string]any{
 					"summary":     "Test Issue",
 					"description": "This is a test issue description",
-					"status": map[string]interface{}{
+					"status": map[string]any{
 						"name": "To Do",
 						"id":   "1",
 					},
-					"assignee": map[string]interface{}{
+					"assignee": map[string]any{
 						"displayName":  "John Doe",
 						"emailAddress": "john@example.com",
 					},
-					"reporter": map[string]interface{}{
+					"reporter": map[string]any{
 						"displayName":  "Jane Smith",
 						"emailAddress": "jane@example.com",
 					},
 					"created": "2023-01-01T10:00:00.000+0000",
 					"updated": "2023-01-01T10:00:00.000+0000",
-					"labels": []interface{}{
+					"labels": []any{
 						"bug",
 						"urgent",
 					},
@@ -161,9 +161,9 @@ func TestClient_GetIssue(t *testing.T) {
 			// Specific fields requested - return only those fields
 			response := JiraIssue{
 				Key: "TEST-123",
-				Fields: map[string]interface{}{
+				Fields: map[string]any{
 					"summary": "Test Issue",
-					"status": map[string]interface{}{
+					"status": map[string]any{
 						"name": "To Do",
 					},
 				},

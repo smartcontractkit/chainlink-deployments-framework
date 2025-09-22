@@ -135,9 +135,9 @@ jira:
 		// Return mock JIRA response
 		response := JiraIssue{
 			Key: "TEST-123",
-			Fields: map[string]interface{}{
+			Fields: map[string]any{
 				"summary": "Test Issue Summary",
-				"status": map[string]interface{}{
+				"status": map[string]any{
 					"name": "In Progress",
 					"id":   "3",
 				},

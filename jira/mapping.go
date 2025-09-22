@@ -18,7 +18,7 @@ func mapFieldsToStruct[T any](issue *JiraIssue, config *JiraConfig) (T, error) {
 		return result, errors.New("nil config")
 	}
 
-	remappedData := make(map[string]interface{}, len(config.FieldMaps))
+	remappedData := make(map[string]any, len(config.FieldMaps))
 
 	for configFieldName, fieldMapping := range config.FieldMaps {
 		path := strings.TrimSpace(fieldMapping.JiraField)
@@ -48,7 +48,7 @@ func mapFieldsToStruct[T any](issue *JiraIssue, config *JiraConfig) (T, error) {
 
 // getByPath resolves a dotted path against the Jira issue.
 // If the path doesn't start with "fields." or "key", it's treated as "fields.<path>".
-func getByPath(issue *JiraIssue, path string) (interface{}, bool) {
+func getByPath(issue *JiraIssue, path string) (any, bool) {
 	if issue == nil || path == "" {
 		return nil, false
 	}
@@ -57,21 +57,21 @@ func getByPath(issue *JiraIssue, path string) (interface{}, bool) {
 		path = "fields." + path
 	}
 
-	root := map[string]interface{}{
+	root := map[string]any{
 		"key":    issue.Key,
 		"fields": issue.Fields,
 	}
 
-	cur := interface{}(root)
+	cur := any(root)
 	for _, seg := range strings.Split(path, ".") {
 		switch node := cur.(type) {
-		case map[string]interface{}:
+		case map[string]any:
 			v, ok := node[seg]
 			if !ok {
 				return nil, false
 			}
 			cur = v
-		case []interface{}:
+		case []any:
 			// numeric array index
 			idx, ok := parseIndex(seg)
 			if !ok || idx < 0 || idx >= len(node) {
