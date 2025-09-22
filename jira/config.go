@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -45,55 +44,53 @@ type DomainConfig struct {
 	Jira         *JiraConfig    `yaml:"jira"`
 }
 
-// loadDomainJiraConfig loads JIRA configuration for the detected domain
-func loadDomainJiraConfig() (*JiraConfig, error) {
-	domain, err := detectCurrentDomain()
+// loadDomainJiraConfig loads JIRA configuration for the specified domain
+func loadDomainJiraConfig(domainName string) (*JiraConfig, error) {
+	// Find the domains root by walking up from current directory
+	domainsRoot, err := findDomainsRoot()
 	if err != nil {
-		return nil, fmt.Errorf("failed to detect domain: %w", err)
+		return nil, fmt.Errorf("failed to find domains root: %w", err)
 	}
 
-	configPath := filepath.Join(domain, ".config", "domain.yaml")
+	configPath := filepath.Join(domainsRoot, domainName, ".config", "domain.yaml")
 
 	// Check if file exists
-	if _, err = os.Stat(configPath); os.IsNotExist(err) {
+	if _, statErr := os.Stat(configPath); os.IsNotExist(statErr) {
 		return nil, fmt.Errorf("domain config not found at %s", configPath)
 	}
 
-	data, err := os.ReadFile(configPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read domain config: %w", err)
+	data, readErr := os.ReadFile(configPath)
+	if readErr != nil {
+		return nil, fmt.Errorf("failed to read domain config: %w", readErr)
 	}
 
 	var domainConfig DomainConfig
-	if err := yaml.Unmarshal(data, &domainConfig); err != nil {
-		return nil, fmt.Errorf("failed to parse domain config: %w", err)
+	if unmarshalErr := yaml.Unmarshal(data, &domainConfig); unmarshalErr != nil {
+		return nil, fmt.Errorf("failed to parse domain config: %w", unmarshalErr)
 	}
 
 	if domainConfig.Jira == nil {
 		return nil, errors.New("no JIRA configuration found in domain config")
 	}
 
-	// Populate the domain field with just the domain name (last part of the path)
-	domainConfig.Jira.Domain = filepath.Base(domain)
+	// Populate the domain field with the domain name
+	domainConfig.Jira.Domain = domainName
 
 	return domainConfig.Jira, nil
 }
 
-// detectCurrentDomain attempts to detect which domain we're operating in
-// by analyzing the current working directory
-func detectCurrentDomain() (string, error) {
+// findDomainsRoot walks up from the current working directory to find the domains directory
+func findDomainsRoot() (string, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return "", fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	// Walk up the directory tree looking for domains directory
 	current := cwd
 	for {
 		domainsPath := filepath.Join(current, "domains")
 		if info, err := os.Stat(domainsPath); err == nil && info.IsDir() {
-			// Found domains directory, now find which domain we're in
-			return findDomainInPath(cwd, domainsPath)
+			return domainsPath, nil
 		}
 
 		parent := filepath.Dir(current)
@@ -103,28 +100,5 @@ func detectCurrentDomain() (string, error) {
 		current = parent
 	}
 
-	return "", fmt.Errorf("could not detect domain from current working directory: %s", cwd)
-}
-
-// findDomainInPath determines which domain directory the current path is within
-func findDomainInPath(cwd, domainsPath string) (string, error) {
-	relPath, err := filepath.Rel(domainsPath, cwd)
-	if err != nil {
-		return "", fmt.Errorf("failed to get relative path: %w", err)
-	}
-
-	parts := strings.Split(relPath, string(filepath.Separator))
-	if len(parts) == 0 || parts[0] == "" {
-		return "", errors.New("not inside a domain directory")
-	}
-
-	domainName := parts[0]
-	domainPath := filepath.Join(domainsPath, domainName)
-
-	// Verify the domain directory exists
-	if _, err := os.Stat(domainPath); err != nil {
-		return "", fmt.Errorf("domain directory does not exist: %s", domainPath)
-	}
-
-	return domainPath, nil
+	return "", fmt.Errorf("could not find domains directory from current working directory: %s", cwd)
 }

@@ -59,6 +59,9 @@ jira:
 		t.Fatalf("Failed to write config file: %v", err)
 	}
 
+	// Domain name for testing
+	domainName := "exemplar"
+
 	// Change to a directory within the exemplar domain
 	testDir := filepath.Join(exemplarDir, "test")
 	if err := os.MkdirAll(testDir, 0755); err != nil {
@@ -193,7 +196,7 @@ jira:
 
 	for _, tt := range tests { //nolint:paralleltest // Cannot use t.Parallel() due to shared test server
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := JiraToStruct[TestStruct](tt.issueKey)
+			result, err := JiraToStruct[TestStruct](domainName, tt.issueKey)
 
 			if tt.expectError {
 				require.Error(t, err)
@@ -236,6 +239,9 @@ func TestJiraToStruct_ErrorCases(t *testing.T) { //nolint:paralleltest // Cannot
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		t.Fatalf("Failed to create test directory structure: %v", err)
 	}
+
+	// Domain name for testing
+	domainName := "exemplar"
 
 	// Change to a directory within the exemplar domain
 	testDir := filepath.Join(exemplarDir, "test")
@@ -392,7 +398,7 @@ jira:
 				t.Fatalf("Test setup failed: %v", setupErr)
 			}
 
-			result, err := JiraToStruct[TestStruct](tt.issueKey)
+			result, err := JiraToStruct[TestStruct](domainName, tt.issueKey)
 
 			// Restore original working directory
 			if restoreErr := os.Chdir(testCwd); restoreErr != nil {
@@ -435,19 +441,22 @@ func TestJiraToStruct_NoDomain(t *testing.T) { //nolint:paralleltest // Cannot u
 		t.Fatalf("Failed to change to test directory: %v", err)
 	}
 
+	// Domain name for testing (non-existent)
+	domainName := "nonexistent"
+
 	// Define test struct
 	type TestStruct struct {
 		Summary string `json:"summary"`
 	}
 
-	result, err := JiraToStruct[TestStruct]("TEST-123")
+	result, err := JiraToStruct[TestStruct](domainName, "TEST-123")
 
 	require.Error(t, err)
 
 	// Check that result is zero value
 	var zero TestStruct
 	assert.Equal(t, zero, result)
-	assert.Contains(t, err.Error(), "failed to load domain JIRA config")
+	assert.Contains(t, err.Error(), "failed to find domains root")
 
 	// Restore original working directory
 	if err := os.Chdir(originalCwd); err != nil {

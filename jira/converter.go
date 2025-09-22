@@ -8,8 +8,8 @@ import (
 )
 
 // JiraToStruct is the main function that domains use to convert JIRA issues to config structs
-// It automatically loads the domain's JIRA schema and maps the issue fields
-func JiraToStruct[T any](issueKey string) (T, error) {
+// It loads the specified domain's JIRA schema and maps the issue fields
+func JiraToStruct[T any](domainName string, issueKey string) (T, error) {
 	var zero T
 
 	if issueKey == "" {
@@ -17,7 +17,7 @@ func JiraToStruct[T any](issueKey string) (T, error) {
 	}
 
 	// 1. Load domain's JIRA configuration
-	config, err := loadDomainJiraConfig()
+	config, err := loadDomainJiraConfig(domainName)
 	if err != nil {
 		return zero, fmt.Errorf("failed to load domain JIRA config: %w", err)
 	}
@@ -25,12 +25,12 @@ func JiraToStruct[T any](issueKey string) (T, error) {
 	// Extract all JIRA field names from the field maps
 	var fieldsToFetch = config.GetJiraFields()
 
-	var domain = strings.ToUpper(config.Domain)
+	var domainNameUpper = strings.ToUpper(domainName)
 
 	// 2. Get JIRA token from environment variable
-	token := os.Getenv("JIRA_TOKEN_" + domain)
+	token := os.Getenv("JIRA_TOKEN_" + domainNameUpper)
 	if token == "" {
-		return zero, fmt.Errorf("%s_JIRA_TOKEN environment variable is required", domain)
+		return zero, fmt.Errorf("%s_JIRA_TOKEN environment variable is required", domainNameUpper)
 	}
 
 	// 3. Create JIRA client

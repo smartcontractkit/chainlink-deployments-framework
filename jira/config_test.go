@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -87,102 +86,6 @@ func TestJiraConfig_GetJiraFields(t *testing.T) {
 	}
 }
 
-func TestDetectCurrentDomain(t *testing.T) { //nolint:paralleltest // Cannot use t.Parallel() due to os.Chdir() usage
-	// Note: Cannot use t.Parallel() due to os.Chdir() usage
-	// Save original working directory
-	originalCwd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("Failed to get current working directory: %v", err)
-	}
-
-	// Create a temporary directory structure
-	tempDir := t.TempDir()
-
-	// Create domains structure
-	domainsDir := filepath.Join(tempDir, "domains")
-	exemplarDir := filepath.Join(domainsDir, "exemplar")
-	nestedDir := filepath.Join(exemplarDir, "some", "nested", "path")
-
-	if err := os.MkdirAll(nestedDir, 0755); err != nil {
-		t.Fatalf("Failed to create test directory structure: %v", err)
-	}
-
-	// Create a directory structure that doesn't contain domains
-	otherDir := filepath.Join(tempDir, "some", "other", "path")
-	if err := os.MkdirAll(otherDir, 0755); err != nil {
-		t.Fatalf("Failed to create other directory structure: %v", err)
-	}
-
-	tests := []struct {
-		name           string
-		workingDir     string
-		expectError    bool
-		expectedDomain string
-	}{
-		{
-			name:           "detect domain from nested path",
-			workingDir:     nestedDir,
-			expectError:    false,
-			expectedDomain: "exemplar",
-		},
-		{
-			name:           "detect domain from direct domain path",
-			workingDir:     exemplarDir,
-			expectError:    false,
-			expectedDomain: "exemplar",
-		},
-	}
-
-	// Test case for no domains directory found - use a separate temp directory
-	t.Run("no domains directory found", func(t *testing.T) {
-		// Create a completely separate temporary directory without domains
-		separateTempDir := t.TempDir()
-		otherPath := filepath.Join(separateTempDir, "some", "other", "path")
-		if err := os.MkdirAll(otherPath, 0755); err != nil {
-			t.Fatalf("Failed to create separate directory structure: %v", err)
-		}
-
-		// Change to the separate directory
-		if err := os.Chdir(otherPath); err != nil {
-			t.Fatalf("Failed to change to separate test directory: %v", err)
-		}
-
-		_, err := detectCurrentDomain()
-
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "could not detect domain")
-	})
-
-	// Run the main tests
-	for _, tt := range tests { //nolint:paralleltest // Cannot use t.Parallel() due to shared test server
-		t.Run(tt.name, func(t *testing.T) {
-			// Change to test working directory
-			if err := os.Chdir(tt.workingDir); err != nil {
-				t.Fatalf("Failed to change to test directory: %v", err)
-			}
-
-			domain, err := detectCurrentDomain()
-
-			if tt.expectError {
-				assert.Error(t, err)
-				return
-			}
-
-			require.NoError(t, err)
-
-			// Check that the returned domain contains the expected domain name
-			assert.Contains(t, domain, tt.expectedDomain)
-			// Check that the returned path ends with the domain name
-			assert.True(t, strings.HasSuffix(domain, tt.expectedDomain), "Expected domain path to end with '%s', got '%s'", tt.expectedDomain, domain)
-		})
-	}
-
-	// Restore original working directory
-	if err := os.Chdir(originalCwd); err != nil {
-		t.Errorf("Failed to restore original working directory: %v", err)
-	}
-}
-
 func TestLoadDomainJiraConfig(t *testing.T) { //nolint:paralleltest // Cannot use t.Parallel() due to os.Chdir() usage
 	// Save original working directory
 	originalCwd, err := os.Getwd()
@@ -227,6 +130,9 @@ jira:
 	if err := os.WriteFile(configPath, []byte(configContent), 0600); err != nil {
 		t.Fatalf("Failed to write config file: %v", err)
 	}
+
+	// Domain name for testing
+	domainName := "exemplar"
 
 	// Change to a directory within the exemplar domain
 	testDir := filepath.Join(exemplarDir, "test")
@@ -332,7 +238,7 @@ environments:
 				t.Fatalf("Test setup failed: %v", err)
 			}
 
-			config, err := loadDomainJiraConfig()
+			config, err := loadDomainJiraConfig(domainName)
 
 			if tt.expectError {
 				require.Error(t, err)
@@ -369,11 +275,14 @@ func TestLoadDomainJiraConfig_NoDomain(t *testing.T) { //nolint:paralleltest // 
 		t.Fatalf("Failed to change to test directory: %v", err)
 	}
 
-	config, err := loadDomainJiraConfig()
+	// Domain name for testing (non-existent)
+	domainName := "nonexistent"
+
+	config, err := loadDomainJiraConfig(domainName)
 
 	require.Error(t, err)
 	assert.Nil(t, config)
-	assert.Contains(t, err.Error(), "failed to detect domain")
+	assert.Contains(t, err.Error(), "failed to find domains root")
 
 	// Restore original working directory
 	if err := os.Chdir(originalCwd); err != nil {
