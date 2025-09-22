@@ -50,7 +50,7 @@ func Test_Load_LoadNodesFailure(t *testing.T) {
 	// Set up domain
 	domain := setupTest(t, setupTestConfig, setupAddressbook, setupDataStore)
 
-	_, err := Load(t.Context(), domain, "staging")
+	_, err := Load(t.Context(), domain, "staging", OnlyLoadChainsFor([]uint64{}))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "nodes.json: no such file or directory")
 }
@@ -70,7 +70,7 @@ func Test_Load_LoadOffchainClientFailure(t *testing.T) { //nolint:paralleltest /
 	// Set up domain
 	domain := setupTest(t, setupTestConfig, setupAddressbook, setupDataStore, setupNodes)
 
-	_, err := Load(t.Context(), domain, "staging")
+	_, err := Load(t.Context(), domain, "staging", OnlyLoadChainsFor([]uint64{}))
 	require.ErrorContains(t, err, "failed to load offchain client")
 }
 
@@ -80,7 +80,7 @@ func Test_Load_NoError(t *testing.T) {
 	// Set up domain
 	domain := setupTest(t, setupTestConfig, setupAddressbook, setupDataStore, setupNodes)
 
-	_, err := Load(t.Context(), domain, "staging", WithoutJD())
+	_, err := Load(t.Context(), domain, "staging", WithoutJD(), OnlyLoadChainsFor([]uint64{}))
 	require.NoError(t, err)
 }
 
