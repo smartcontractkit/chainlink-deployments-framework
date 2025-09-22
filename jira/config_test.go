@@ -6,6 +6,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestJiraConfig_GetJiraFields(t *testing.T) {
@@ -69,10 +72,7 @@ func TestJiraConfig_GetJiraFields(t *testing.T) {
 			t.Parallel()
 			result := tt.config.GetJiraFields()
 
-			if len(result) != len(tt.expected) {
-				t.Errorf("Expected %d fields, got %d", len(tt.expected), len(result))
-				return
-			}
+			assert.Len(t, result, len(tt.expected))
 
 			// Convert to map for easier comparison
 			resultMap := make(map[string]bool)
@@ -81,9 +81,7 @@ func TestJiraConfig_GetJiraFields(t *testing.T) {
 			}
 
 			for _, expectedField := range tt.expected {
-				if !resultMap[expectedField] {
-					t.Errorf("Expected field %s not found in result", expectedField)
-				}
+				assert.True(t, resultMap[expectedField], "Expected field %s not found in result", expectedField)
 			}
 		})
 	}
@@ -149,15 +147,10 @@ func TestDetectCurrentDomain(t *testing.T) { //nolint:paralleltest // Cannot use
 			t.Fatalf("Failed to change to separate test directory: %v", err)
 		}
 
-		domain, err := detectCurrentDomain()
+		_, err := detectCurrentDomain()
 
-		if err == nil {
-			t.Errorf("Expected error but got none, domain: %s", domain)
-		}
-
-		if !strings.Contains(err.Error(), "could not detect domain") {
-			t.Errorf("Expected domain detection error, got: %s", err.Error())
-		}
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "could not detect domain")
 	})
 
 	// Run the main tests
@@ -171,27 +164,16 @@ func TestDetectCurrentDomain(t *testing.T) { //nolint:paralleltest // Cannot use
 			domain, err := detectCurrentDomain()
 
 			if tt.expectError {
-				if err == nil {
-					t.Errorf("Expected error but got none, domain: %s", domain)
-				}
-
+				assert.Error(t, err)
 				return
 			}
 
-			if err != nil {
-				t.Errorf("Unexpected error: %v", err)
-				return
-			}
+			require.NoError(t, err)
 
 			// Check that the returned domain contains the expected domain name
-			if !strings.Contains(domain, tt.expectedDomain) {
-				t.Errorf("Expected domain to contain '%s', got '%s'", tt.expectedDomain, domain)
-			}
-
+			assert.Contains(t, domain, tt.expectedDomain)
 			// Check that the returned path ends with the domain name
-			if !strings.HasSuffix(domain, tt.expectedDomain) {
-				t.Errorf("Expected domain path to end with '%s', got '%s'", tt.expectedDomain, domain)
-			}
+			assert.True(t, strings.HasSuffix(domain, tt.expectedDomain), "Expected domain path to end with '%s', got '%s'", tt.expectedDomain, domain)
 		})
 	}
 
@@ -353,30 +335,17 @@ environments:
 			config, err := loadDomainJiraConfig()
 
 			if tt.expectError {
-				if err == nil {
-					t.Errorf("Expected error but got none")
-				}
-				if config != nil {
-					t.Errorf("Expected nil config but got %v", config)
-				}
+				require.Error(t, err)
+				require.Nil(t, config)
 
 				return
 			}
 
-			if err != nil {
-				t.Errorf("Unexpected error: %v", err)
-				return
-			}
-
-			if config == nil {
-				t.Errorf("Expected config but got nil")
-				return
-			}
+			require.NoError(t, err)
+			require.NotNil(t, config)
 
 			if tt.checkConfig != nil {
-				if err := tt.checkConfig(config); err != nil {
-					t.Errorf("Config validation failed: %v", err)
-				}
+				require.NoError(t, tt.checkConfig(config))
 			}
 		})
 	}
@@ -402,17 +371,9 @@ func TestLoadDomainJiraConfig_NoDomain(t *testing.T) { //nolint:paralleltest // 
 
 	config, err := loadDomainJiraConfig()
 
-	if err == nil {
-		t.Errorf("Expected error but got none")
-	}
-
-	if config != nil {
-		t.Errorf("Expected nil config but got %v", config)
-	}
-
-	if !strings.Contains(err.Error(), "failed to detect domain") {
-		t.Errorf("Expected domain detection error, got: %s", err.Error())
-	}
+	require.Error(t, err)
+	assert.Nil(t, config)
+	assert.Contains(t, err.Error(), "failed to detect domain")
 
 	// Restore original working directory
 	if err := os.Chdir(originalCwd); err != nil {

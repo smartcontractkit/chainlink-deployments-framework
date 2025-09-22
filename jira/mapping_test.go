@@ -2,8 +2,10 @@ package jira
 
 import (
 	"fmt"
-	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestParseIndex(t *testing.T) {
@@ -69,12 +71,9 @@ func TestParseIndex(t *testing.T) {
 			t.Parallel()
 			result, valid := parseIndex(tt.input)
 
-			if valid != tt.valid {
-				t.Errorf("Expected valid=%v, got %v", tt.valid, valid)
-			}
-
-			if valid && result != tt.expected {
-				t.Errorf("Expected result=%d, got %d", tt.expected, result)
+			assert.Equal(t, tt.valid, valid)
+			if valid {
+				assert.Equal(t, tt.expected, result)
 			}
 		})
 	}
@@ -219,12 +218,9 @@ func TestGetByPath(t *testing.T) {
 
 			result, found := getByPath(testIssue, tt.path)
 
-			if found != tt.found {
-				t.Errorf("Expected found=%v, got %v", tt.found, found)
-			}
-
-			if found && result != tt.expected {
-				t.Errorf("Expected result=%v, got %v", tt.expected, result)
+			assert.Equal(t, tt.found, found)
+			if found {
+				assert.Equal(t, tt.expected, result)
 			}
 		})
 	}
@@ -504,26 +500,18 @@ func TestMapFieldsToStruct(t *testing.T) {
 			}
 
 			if tt.expectError {
-				if err == nil {
-					t.Errorf("Expected error but got none")
-					return
-				}
-				if tt.errorContains != "" && !strings.Contains(err.Error(), tt.errorContains) {
-					t.Errorf("Expected error to contain '%s', got: %s", tt.errorContains, err.Error())
+				require.Error(t, err)
+				if tt.errorContains != "" {
+					assert.Contains(t, err.Error(), tt.errorContains)
 				}
 
 				return
 			}
 
-			if err != nil {
-				t.Errorf("Unexpected error: %v", err)
-				return
-			}
+			require.NoError(t, err)
 
 			if tt.validate != nil {
-				if err := tt.validate(result); err != nil {
-					t.Errorf("Validation failed: %v", err)
-				}
+				require.NoError(t, tt.validate(result))
 			}
 		})
 	}

@@ -9,6 +9,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestJiraToStruct(t *testing.T) { //nolint:paralleltest // Cannot use t.Parallel() due to os.Chdir() usage
@@ -193,26 +196,18 @@ jira:
 			result, err := JiraToStruct[TestStruct](tt.issueKey)
 
 			if tt.expectError {
-				if err == nil {
-					t.Errorf("Expected error but got none")
-					return
-				}
-				if tt.errorContains != "" && !strings.Contains(err.Error(), tt.errorContains) {
-					t.Errorf("Expected error to contain '%s', got: %s", tt.errorContains, err.Error())
+				require.Error(t, err)
+				if tt.errorContains != "" {
+					assert.Contains(t, err.Error(), tt.errorContains)
 				}
 
 				return
 			}
 
-			if err != nil {
-				t.Errorf("Unexpected error: %v", err)
-				return
-			}
+			require.NoError(t, err)
 
 			if tt.validate != nil {
-				if err := tt.validate(result); err != nil {
-					t.Errorf("Validation failed: %v", err)
-				}
+				require.NoError(t, tt.validate(result))
 			}
 		})
 	}
@@ -405,24 +400,19 @@ jira:
 			}
 
 			if !tt.expectError {
-				t.Errorf("Expected no error but got: %v", err)
+				assert.NoError(t, err)
 				return
 			}
 
-			if err == nil {
-				t.Errorf("Expected error but got none")
-				return
-			}
+			require.Error(t, err)
 
-			if tt.errorContains != "" && !strings.Contains(err.Error(), tt.errorContains) {
-				t.Errorf("Expected error to contain '%s', got: %s", tt.errorContains, err.Error())
+			if tt.errorContains != "" {
+				assert.Contains(t, err.Error(), tt.errorContains)
 			}
 
 			// Check that result is zero value
 			var zero TestStruct
-			if result != zero {
-				t.Errorf("Expected zero value result, got %v", result)
-			}
+			assert.Equal(t, zero, result)
 		})
 	}
 
@@ -452,19 +442,12 @@ func TestJiraToStruct_NoDomain(t *testing.T) { //nolint:paralleltest // Cannot u
 
 	result, err := JiraToStruct[TestStruct]("TEST-123")
 
-	if err == nil {
-		t.Errorf("Expected error but got none")
-	}
+	require.Error(t, err)
 
 	// Check that result is zero value
 	var zero TestStruct
-	if result != zero {
-		t.Errorf("Expected zero value result, got %v", result)
-	}
-
-	if !strings.Contains(err.Error(), "failed to load domain JIRA config") {
-		t.Errorf("Expected domain config error, got: %s", err.Error())
-	}
+	assert.Equal(t, zero, result)
+	assert.Contains(t, err.Error(), "failed to load domain JIRA config")
 
 	// Restore original working directory
 	if err := os.Chdir(originalCwd); err != nil {

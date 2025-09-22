@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewClient(t *testing.T) {
@@ -47,48 +49,21 @@ func TestNewClient(t *testing.T) {
 			client, err := NewClient(tt.baseURL, tt.username, tt.token)
 
 			if tt.expectError {
-				if err == nil {
-					t.Errorf("Expected error but got none")
-				}
-				if client != nil {
-					t.Errorf("Expected nil client but got %v", client)
-				}
+				require.Error(t, err)
+				require.Nil(t, client)
 
 				return
 			}
 
-			if err != nil {
-				t.Errorf("Unexpected error: %v", err)
-
-				return
-			}
-
-			if client == nil {
-				t.Errorf("Expected client but got nil")
-
-				return
-			}
+			require.NoError(t, err)
+			require.NotNil(t, client)
 
 			expectedBaseURL := "https://example.atlassian.net"
-			if client.baseURL != expectedBaseURL {
-				t.Errorf("Expected baseURL %s, got %s", expectedBaseURL, client.baseURL)
-			}
-
-			if client.username != tt.username {
-				t.Errorf("Expected username %s, got %s", tt.username, client.username)
-			}
-
-			if client.token != tt.token {
-				t.Errorf("Expected token %s, got %s", tt.token, client.token)
-			}
-
-			if client.httpClient == nil {
-				t.Errorf("Expected httpClient to be set")
-			}
-
-			if client.httpClient.Timeout != 30*time.Second {
-				t.Errorf("Expected timeout 30s, got %v", client.httpClient.Timeout)
-			}
+			assert.Equal(t, expectedBaseURL, client.baseURL)
+			assert.Equal(t, tt.username, client.username)
+			assert.Equal(t, tt.token, client.token)
+			assert.NotNil(t, client.httpClient)
+			assert.Equal(t, 30*time.Second, client.httpClient.Timeout)
 		})
 	}
 }
@@ -178,9 +153,7 @@ func TestClient_GetIssue(t *testing.T) {
 
 	// Create client
 	client, err := NewClient(server.URL, "testuser", "testtoken")
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
+	require.NoError(t, err)
 
 	tests := []struct {
 		name        string
@@ -207,42 +180,19 @@ func TestClient_GetIssue(t *testing.T) {
 			issue, err := client.GetIssue(tt.issueKey, tt.fields)
 
 			if tt.expectError {
-				if err == nil {
-					t.Errorf("Expected error but got none")
-				}
+				require.Error(t, err)
 
 				return
 			}
 
-			if err != nil {
-				t.Errorf("Unexpected error: %v", err)
-
-				return
-			}
-
-			if issue == nil {
-				t.Errorf("Expected issue but got nil")
-
-				return
-			}
-
-			if issue.Key != "TEST-123" {
-				t.Errorf("Expected key 'TEST-123', got %s", issue.Key)
-			}
-
-			if issue.Fields == nil {
-				t.Errorf("Expected fields but got nil")
-
-				return
-			}
+			require.NoError(t, err)
+			require.NotNil(t, issue)
+			assert.Equal(t, "TEST-123", issue.Key)
+			assert.NotNil(t, issue.Fields)
 
 			summary, ok := issue.Fields["summary"]
-			if !ok {
-				t.Errorf("Expected summary field")
-			}
-			if summary != "Test Issue" {
-				t.Errorf("Expected summary 'Test Issue', got %v", summary)
-			}
+			assert.True(t, ok, "Expected summary field")
+			assert.Equal(t, "Test Issue", summary)
 		})
 	}
 }
@@ -298,29 +248,21 @@ func TestClient_GetIssue_ErrorCases(t *testing.T) {
 			defer server.Close()
 
 			client, err := NewClient(server.URL, "testuser", "testtoken")
-			if err != nil {
-				t.Fatalf("Failed to create client: %v", err)
-			}
+			require.NoError(t, err)
 
 			issue, err := client.GetIssue(tt.issueKey, tt.fields)
 
 			if !tt.expectError {
-				t.Errorf("Expected no error but got: %v", err)
+				assert.NoError(t, err)
 				return
 			}
 
-			if err == nil {
-				t.Errorf("Expected error but got none")
-				return
-			}
+			require.Error(t, err)
 
-			if tt.errorContains != "" && !strings.Contains(err.Error(), tt.errorContains) {
-				t.Errorf("Expected error to contain '%s', got: %s", tt.errorContains, err.Error())
+			if tt.errorContains != "" {
+				assert.Contains(t, err.Error(), tt.errorContains)
 			}
-
-			if issue != nil {
-				t.Errorf("Expected nil issue but got %v", issue)
-			}
+			assert.Nil(t, issue)
 		})
 	}
 }
