@@ -87,7 +87,9 @@ func (p *CTFChainProvider) Initialize(_ context.Context) (chain.BlockChain, erro
 	require.NoError(p.t, err, "failed to get chain ID from selector")
 
 	url, nodeClient := p.startContainer(chainID)
-	tonWallet := createTonWallet(p.t, nodeClient, wallet.V3R2, wallet.WithWorkchain(0))
+	// mylocalton uses a global_id of -217 by default
+	// https://github.com/neodix42/mylocalton-docker/blob/8f9c6ea27cd608dc6370c4191554b42b5a797905/docker/scripts/start-genesis.sh#L62
+	tonWallet := createTonWallet(p.t, nodeClient, wallet.ConfigV5R1Final{NetworkGlobalID: -217}, wallet.WithWorkchain(0))
 	// airdrop the deployer wallet
 	fundTonWallets(p.t, nodeClient, []*address.Address{tonWallet.Address()}, []tlb.Coins{tlb.MustFromTON("1000")})
 	p.chain = &cldf_ton.Chain{
@@ -157,13 +159,13 @@ func (p *CTFChainProvider) startContainer(chainID string) (string, *ton.APIClien
 }
 
 // Note: this utility functions can be replaced once we have in the chainlink-ton utils package
-func createTonWallet(t *testing.T, client ton.APIClientWrapped, version wallet.Version, option wallet.Option) *wallet.Wallet {
+func createTonWallet(t *testing.T, client ton.APIClientWrapped, versionConfig wallet.VersionConfig, option wallet.Option) *wallet.Wallet {
 	t.Helper()
 
 	seed := wallet.NewSeed()
-	rw, err := wallet.FromSeed(client, seed, version)
+	rw, err := wallet.FromSeed(client, seed, versionConfig)
 	require.NoError(t, err)
-	pw, perr := wallet.FromPrivateKeyWithOptions(client, rw.PrivateKey(), version, option)
+	pw, perr := wallet.FromPrivateKeyWithOptions(client, rw.PrivateKey(), versionConfig, option)
 	require.NoError(t, perr)
 
 	return pw

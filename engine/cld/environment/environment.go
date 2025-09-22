@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"maps"
-	"slices"
 
 	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
@@ -13,6 +11,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/chains"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config"
 	fdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/internal/credentials"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/offchain"
 	foffchain "github.com/smartcontractkit/chainlink-deployments-framework/offchain"
 	focr "github.com/smartcontractkit/chainlink-deployments-framework/offchain/ocr"
@@ -62,16 +61,11 @@ func Load(
 		lggr.Info("Skipping Catalog client initialization, no Catalog config found")
 	}
 
-	addressesByChain, err := ab.Addresses()
-	if err != nil {
-		return fdeployment.Environment{}, err
-	}
+	// default - loads all chains from the networks config
+	chainSelectorsToLoad := cfg.Networks.ChainSelectors()
 
-	// default - loads all chains
-	chainSelectorsToLoad := slices.Collect(maps.Keys(addressesByChain))
-
-	if loadcfg.migrationString != "" && loadcfg.chainSelectorsToLoad != nil {
-		lggr.Infow("Override: loading migration chains", "migration", loadcfg.migrationString, "chains", loadcfg.chainSelectorsToLoad)
+	if loadcfg.chainSelectorsToLoad != nil {
+		lggr.Infow("Override: loading chains", "chains", loadcfg.chainSelectorsToLoad)
 		chainSelectorsToLoad = loadcfg.chainSelectorsToLoad
 	}
 
@@ -90,14 +84,18 @@ func Load(
 		jd, err = offchain.LoadOffchainClient(
 			ctx,
 			domain,
-			envKey,
-			cfg.Env,
-			lggr,
-			loadcfg.useDryRunJobDistributor,
+			cfg.Env.Offchain.JobDistributor,
+			offchain.WithLogger(lggr),
+			offchain.WithDryRun(loadcfg.useDryRunJobDistributor),
+			offchain.WithCredentials(credentials.GetCredsForEnv(envKey)),
 		)
 		if err != nil {
-			return fdeployment.Environment{},
-				fmt.Errorf("failed to load offchain client for environment %s: %w", envKey, err)
+			if errors.Is(err, offchain.ErrEndpointsRequired) {
+				lggr.Warn("Skipping JD initialization: gRPC and wsRPC endpoints are not set in config")
+			} else {
+				return fdeployment.Environment{},
+					fmt.Errorf("failed to load offchain client for environment %s: %w", envKey, err)
+			}
 		}
 	} else {
 		lggr.Info("Override: skipping JD initialization")

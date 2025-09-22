@@ -45,7 +45,7 @@ func configureEnvironmentOptions(
 		return nil, err
 	}
 	if chainOverrides != nil {
-		envOptions = append(envOptions, environment.OnlyLoadChainsFor(migrationStr, chainOverrides))
+		envOptions = append(envOptions, environment.OnlyLoadChainsFor(chainOverrides))
 	}
 
 	if migrationOptions.WithoutJD {

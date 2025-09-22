@@ -19,11 +19,6 @@ type LoadConfig struct {
 	// Defaults to operations.NewOperationRegistry() if not specified.
 	operationRegistry *operations.OperationRegistry
 
-	// migrationString identifies a specific migration when using OnlyLoadChainsFor.
-	// Used in conjunction with chainSelectorsToLoad to limit environment loading
-	// to specific chains for a particular migration.
-	migrationString string
-
 	// chainSelectorsToLoad specifies which chain selectors to load when using
 	// OnlyLoadChainsFor.
 	// nil = load all chains, empty = load no chains, populated = load specific chains
@@ -124,9 +119,8 @@ func WithoutJD() LoadEnvironmentOption {
 //
 // By default, if this option is not specified, all chains are loaded.
 // If chainsSelectors is set to nil or empty, no chains will be loaded.
-func OnlyLoadChainsFor(migrationKey string, chainsSelectors []uint64) LoadEnvironmentOption {
+func OnlyLoadChainsFor(chainsSelectors []uint64) LoadEnvironmentOption {
 	return func(o *LoadConfig) {
-		o.migrationString = migrationKey
 		if chainsSelectors == nil {
 			// Ensure we have an empty slice, not nil, this indicates option is provided but
 			// no chains should be loaded
