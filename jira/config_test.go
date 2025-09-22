@@ -35,6 +35,19 @@ func TestJiraConfig_GetJiraFields(t *testing.T) {
 			expected: []string{"summary", "status", "customfield_10001"},
 		},
 		{
+			name: "custom field mappings",
+			config: JiraConfig{
+				FieldMaps: map[string]FieldMapping{
+					"summary":     {JiraField: "summary"},
+					"storyPoints": {JiraField: "customfield_10028"}, // Story Points
+					"priority":    {JiraField: "customfield_10016"}, // Priority
+					"epicLink":    {JiraField: "customfield_10014"}, // Epic Link
+					"description": {JiraField: "description"},
+				},
+			},
+			expected: []string{"summary", "customfield_10028", "customfield_10016", "customfield_10014", "description"},
+		},
+		{
 			name: "empty field mappings",
 			config: JiraConfig{
 				FieldMaps: map[string]FieldMapping{},
