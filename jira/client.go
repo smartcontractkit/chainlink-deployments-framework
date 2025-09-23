@@ -57,7 +57,7 @@ func NewClientFromDomain(dom fdomain.Domain) (*Client, error) {
 	domainNameUpper := strings.ToUpper(dom.Key())
 	token := os.Getenv("JIRA_TOKEN_" + domainNameUpper)
 	if token == "" {
-		return nil, fmt.Errorf("%s_JIRA_TOKEN environment variable is required", domainNameUpper)
+		return nil, fmt.Errorf("JIRA_TOKEN_%s environment variable is required", domainNameUpper)
 	}
 
 	client, err := NewClient(jiraConfig.Connection.BaseURL, jiraConfig.Connection.Username, token)
