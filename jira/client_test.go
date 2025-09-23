@@ -366,7 +366,7 @@ func TestNewClientFromDomain(t *testing.T) { //nolint:paralleltest // Cannot use
 				// Don't set the token
 			},
 			expectError:   true,
-			errorContains: "EXEMPLAR_JIRA_TOKEN environment variable is required",
+			errorContains: "JIRA_TOKEN_EXEMPLAR environment variable is required",
 		},
 		{
 			name: "missing config file",
