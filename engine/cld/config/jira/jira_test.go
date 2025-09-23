@@ -129,6 +129,7 @@ jira:
 				if len(config.FieldMaps) != 3 {
 					return assert.AnError
 				}
+
 				return nil
 			},
 		},
@@ -214,6 +215,7 @@ jira:
 			if tt.expectError {
 				require.Error(t, err)
 				require.Nil(t, config)
+
 				return
 			}
 
