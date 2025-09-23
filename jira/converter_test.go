@@ -12,65 +12,12 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	fdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 )
 
-func TestJiraToStruct(t *testing.T) { //nolint:paralleltest // Cannot use t.Parallel() due to os.Chdir() usage
-	// Save original working directory and environment
-	originalCwd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("Failed to get current working directory: %v", err)
-	}
-
-	// Create a temporary directory structure
-	tempDir := t.TempDir()
-
-	// Create domains structure
-	domainsDir := filepath.Join(tempDir, "domains")
-	exemplarDir := filepath.Join(domainsDir, "exemplar")
-	configDir := filepath.Join(exemplarDir, ".config")
-
-	if err := os.MkdirAll(configDir, 0755); err != nil {
-		t.Fatalf("Failed to create test directory structure: %v", err)
-	}
-
-	// Create a valid domain config file with JIRA configuration
-	configContent := `
-environments:
-  testnet:
-    network_types:
-      - testnet
-
-jira:
-  connection:
-    base_url: "https://example.atlassian.net"
-    project: "TEST"
-    username: "testuser"
-  field_maps:
-    summary:
-      jira_field: "summary"
-    status:
-      jira_field: "status.name"
-    custom_field:
-      jira_field: "customfield_10001"
-`
-
-	configPath := filepath.Join(configDir, "domain.yaml")
-	if err := os.WriteFile(configPath, []byte(configContent), 0600); err != nil {
-		t.Fatalf("Failed to write config file: %v", err)
-	}
-
-	// Domain name for testing
-	domainName := "exemplar"
-
-	// Change to a directory within the exemplar domain
-	testDir := filepath.Join(exemplarDir, "test")
-	if err := os.MkdirAll(testDir, 0755); err != nil {
-		t.Fatalf("Failed to create test directory: %v", err)
-	}
-
-	if err := os.Chdir(testDir); err != nil {
-		t.Fatalf("Failed to change to test directory: %v", err)
-	}
+func TestJiraToStruct(t *testing.T) {
+	// Cannot use t.Parallel() because we have a shared test server
 
 	// Set up environment variable
 	originalToken := os.Getenv("JIRA_TOKEN_EXEMPLAR")
@@ -155,12 +102,6 @@ jira:
 	}))
 	defer server.Close()
 
-	// Override the base URL in the config by creating a new config file
-	configContentWithServer := strings.Replace(configContent, "https://example.atlassian.net", server.URL, 1)
-	if err := os.WriteFile(configPath, []byte(configContentWithServer), 0600); err != nil {
-		t.Fatalf("Failed to write updated config file: %v", err)
-	}
-
 	tests := []struct {
 		name          string
 		issueKey      string
@@ -194,9 +135,15 @@ jira:
 		},
 	}
 
-	for _, tt := range tests { //nolint:paralleltest // Cannot use t.Parallel() due to shared test server
+	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := JiraToStruct[TestStruct](domainName, tt.issueKey)
+			// Cannot use t.Parallel() because of shared test server
+
+			// Set up test domain and config with the server URL
+			dom := setupTestDomain(t)
+			writeJiraDomainConfig(t, dom, server.URL)
+
+			result, err := JiraToStruct[TestStruct](dom, tt.issueKey)
 
 			if tt.expectError {
 				require.Error(t, err)
@@ -214,55 +161,10 @@ jira:
 			}
 		})
 	}
-
-	// Restore original working directory
-	if err := os.Chdir(originalCwd); err != nil {
-		t.Errorf("Failed to restore original working directory: %v", err)
-	}
 }
 
-func TestJiraToStruct_ErrorCases(t *testing.T) { //nolint:paralleltest // Cannot use t.Parallel() due to os.Chdir() usage
-	// Save original working directory and environment
-	originalCwd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("Failed to get current working directory: %v", err)
-	}
-
-	// Create a temporary directory structure
-	tempDir := t.TempDir()
-
-	// Create domains structure
-	domainsDir := filepath.Join(tempDir, "domains")
-	exemplarDir := filepath.Join(domainsDir, "exemplar")
-	configDir := filepath.Join(exemplarDir, ".config")
-
-	if err := os.MkdirAll(configDir, 0755); err != nil {
-		t.Fatalf("Failed to create test directory structure: %v", err)
-	}
-
-	// Domain name for testing
-	domainName := "exemplar"
-
-	// Change to a directory within the exemplar domain
-	testDir := filepath.Join(exemplarDir, "test")
-	if err := os.MkdirAll(testDir, 0755); err != nil {
-		t.Fatalf("Failed to create test directory: %v", err)
-	}
-
-	if err := os.Chdir(testDir); err != nil {
-		t.Fatalf("Failed to change to test directory: %v", err)
-	}
-
-	// Set up environment variable
-	originalToken := os.Getenv("JIRA_TOKEN_EXEMPLAR")
-	os.Setenv("JIRA_TOKEN_EXEMPLAR", "test-token-123")
-	defer func() {
-		if originalToken == "" {
-			os.Unsetenv("JIRA_TOKEN_EXEMPLAR")
-		} else {
-			os.Setenv("JIRA_TOKEN_EXEMPLAR", originalToken)
-		}
-	}()
+func TestJiraToStruct_ErrorCases(t *testing.T) {
+	t.Parallel()
 
 	// Define test struct
 	type TestStruct struct {
@@ -272,81 +174,35 @@ func TestJiraToStruct_ErrorCases(t *testing.T) { //nolint:paralleltest // Cannot
 	tests := []struct {
 		name          string
 		issueKey      string
-		setup         func() error
+		setupDomain   func(t *testing.T) fdomain.Domain
+		setupEnv      func(t *testing.T)
 		expectError   bool
 		errorContains string
 	}{
 		{
 			name:     "missing JIRA token",
 			issueKey: "TEST-123",
-			setup: func() error {
-				// Create valid config file first
-				configContent := `
-environments:
-  testnet:
-    network_types:
-      - testnet
-
-jira:
-  connection:
-    base_url: "https://example.atlassian.net"
-    project: "TEST"
-    username: "testuser"
-  field_maps:
-    summary:
-      jira_field: "summary"
-`
-				configPath := filepath.Join(configDir, "domain.yaml")
-				if err := os.WriteFile(configPath, []byte(configContent), 0600); err != nil {
-					return err
-				}
+			setupDomain: func(t *testing.T) fdomain.Domain {
+				dom := setupTestDomain(t)
+				writeJiraDomainConfig(t, dom, "https://example.atlassian.net")
+				return dom
+			},
+			setupEnv: func(t *testing.T) {
 				// Remove the token
 				os.Unsetenv("JIRA_TOKEN_EXEMPLAR")
-
-				return nil
 			},
 			expectError:   true,
-			errorContains: "JIRA_TOKEN environment variable is required",
+			errorContains: "EXEMPLAR_JIRA_TOKEN environment variable is required",
 		},
 		{
 			name:     "missing config file",
 			issueKey: "TEST-123",
-			setup: func() error {
-				// Ensure token is set so we get the config error, not token error
-				os.Setenv("JIRA_TOKEN_EXEMPLAR", "test-token-123")
-				// Remove any existing config file
-				configPath := filepath.Join(configDir, "domain.yaml")
-				os.Remove(configPath)
-
-				return nil
+			setupDomain: func(t *testing.T) fdomain.Domain {
+				// Don't write config file
+				return setupTestDomain(t)
 			},
-			expectError:   true,
-			errorContains: "failed to load domain JIRA config",
-		},
-		{
-			name:     "invalid config file",
-			issueKey: "TEST-123",
-			setup: func() error {
-				// Create invalid config file
-				configPath := filepath.Join(configDir, "domain.yaml")
-				invalidContent := `
-environments:
-  testnet:
-    network_types:
-      - testnet
-
-jira:
-  connection:
-    base_url: "https://example.atlassian.net"
-    project: "TEST"
-    username: "testuser"
-  field_maps:
-    summary:
-      jira_field: "summary"
-invalid: [unclosed
-`
-
-				return os.WriteFile(configPath, []byte(invalidContent), 0600)
+			setupEnv: func(t *testing.T) {
+				os.Setenv("JIRA_TOKEN_EXEMPLAR", "test-token-123")
 			},
 			expectError:   true,
 			errorContains: "failed to load domain JIRA config",
@@ -354,56 +210,42 @@ invalid: [unclosed
 		{
 			name:     "JIRA API error",
 			issueKey: "TEST-123",
-			setup: func() error {
-				// Create valid config file
-				configContent := `
-environments:
-  testnet:
-    network_types:
-      - testnet
-
-jira:
-  connection:
-    base_url: "https://example.atlassian.net"
-    project: "TEST"
-    username: "testuser"
-  field_maps:
-    summary:
-      jira_field: "summary"
-`
-				configPath := filepath.Join(configDir, "domain.yaml")
-				if err := os.WriteFile(configPath, []byte(configContent), 0600); err != nil {
-					return err
-				}
-				// Ensure token is set
+			setupDomain: func(t *testing.T) fdomain.Domain {
+				dom := setupTestDomain(t)
+				// Use invalid URL that will cause connection error
+				writeJiraDomainConfig(t, dom, "https://invalid-jira-url.example.com")
+				return dom
+			},
+			setupEnv: func(t *testing.T) {
 				os.Setenv("JIRA_TOKEN_EXEMPLAR", "test-token-123")
-
-				return nil
 			},
 			expectError:   true,
 			errorContains: "failed to fetch JIRA issue",
 		},
 	}
 
-	for _, tt := range tests { //nolint:paralleltest // Cannot use t.Parallel() due to shared test server
+	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Save original working directory
-			testCwd, err := os.Getwd()
-			if err != nil {
-				t.Fatalf("Failed to get current working directory: %v", err)
+			// Cannot use t.Parallel() due to shared environment variables
+
+			// Setup environment
+			originalToken := os.Getenv("JIRA_TOKEN_EXEMPLAR")
+			defer func() {
+				if originalToken == "" {
+					os.Unsetenv("JIRA_TOKEN_EXEMPLAR")
+				} else {
+					os.Setenv("JIRA_TOKEN_EXEMPLAR", originalToken)
+				}
+			}()
+
+			if tt.setupEnv != nil {
+				tt.setupEnv(t)
 			}
 
-			// Setup test
-			if setupErr := tt.setup(); setupErr != nil {
-				t.Fatalf("Test setup failed: %v", setupErr)
-			}
+			// Setup domain
+			dom := tt.setupDomain(t)
 
-			result, err := JiraToStruct[TestStruct](domainName, tt.issueKey)
-
-			// Restore original working directory
-			if restoreErr := os.Chdir(testCwd); restoreErr != nil {
-				t.Errorf("Failed to restore original working directory: %v", restoreErr)
-			}
+			result, err := JiraToStruct[TestStruct](dom, tt.issueKey)
 
 			if !tt.expectError {
 				assert.NoError(t, err)
@@ -421,45 +263,73 @@ jira:
 			assert.Equal(t, zero, result)
 		})
 	}
-
-	// Restore original working directory
-	if err := os.Chdir(originalCwd); err != nil {
-		t.Errorf("Failed to restore original working directory: %v", err)
-	}
 }
 
-func TestJiraToStruct_NoDomain(t *testing.T) { //nolint:paralleltest // Cannot use t.Parallel() due to os.Chdir() usage
-	// Save original working directory
-	originalCwd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("Failed to get current working directory: %v", err)
-	}
-
-	// Create a temporary directory without domains structure
-	tempDir := t.TempDir()
-	if err = os.Chdir(tempDir); err != nil {
-		t.Fatalf("Failed to change to test directory: %v", err)
-	}
-
-	// Domain name for testing (non-existent)
-	domainName := "nonexistent"
+func TestJiraToStruct_EmptyIssueKey(t *testing.T) {
+	t.Parallel()
 
 	// Define test struct
 	type TestStruct struct {
 		Summary string `json:"summary"`
 	}
 
-	result, err := JiraToStruct[TestStruct](domainName, "TEST-123")
+	// Set up test domain (doesn't matter since we'll error before using it)
+	dom := setupTestDomain(t)
+
+	result, err := JiraToStruct[TestStruct](dom, "")
 
 	require.Error(t, err)
 
 	// Check that result is zero value
 	var zero TestStruct
 	assert.Equal(t, zero, result)
-	assert.Contains(t, err.Error(), "failed to find domains root")
+	assert.Contains(t, err.Error(), "issue_key is required")
+}
 
-	// Restore original working directory
-	if err := os.Chdir(originalCwd); err != nil {
-		t.Errorf("Failed to restore original working directory: %v", err)
-	}
+// setupTestDomain sets up a minimal domain structure with a .config directory and returns the domain
+func setupTestDomain(t *testing.T) fdomain.Domain {
+	t.Helper()
+
+	// Create a temporary directory structure for testing
+	rootDir := t.TempDir()
+	domainKey := "exemplar"
+
+	// Set up minimal domain structure
+	domainDir := filepath.Join(rootDir, domainKey)
+	require.NoError(t, os.MkdirAll(domainDir, 0755))
+
+	// Create .config directory structure
+	configDir := filepath.Join(domainDir, ".config")
+	require.NoError(t, os.MkdirAll(configDir, 0755))
+
+	return fdomain.NewDomain(rootDir, domainKey)
+}
+
+// writeJiraDomainConfig writes a JIRA domain config file to the domain's .config directory
+func writeJiraDomainConfig(t *testing.T, dom fdomain.Domain, baseURL string) {
+	t.Helper()
+
+	configContent := fmt.Sprintf(`
+environments:
+  testnet:
+    network_types:
+      - testnet
+
+jira:
+  connection:
+    base_url: "%s"
+    project: "TEST"
+    username: "testuser"
+  field_maps:
+    summary:
+      jira_field: "summary"
+    status:
+      jira_field: "status.name"
+    custom_field:
+      jira_field: "customfield_10001"
+`, baseURL)
+
+	configPath := dom.ConfigDomainFilePath()
+	err := os.WriteFile(configPath, []byte(configContent), 0600)
+	require.NoError(t, err)
 }

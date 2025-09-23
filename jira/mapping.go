@@ -5,10 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	cfgjira "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/jira"
 )
 
 // mapFieldsToStruct maps JIRA fields to a target struct using the field mappings.
-func mapFieldsToStruct[T any](issue *JiraIssue, config *JiraConfig) (T, error) {
+func mapFieldsToStruct[T any](issue *JiraIssue, config *cfgjira.JiraConfig) (T, error) {
 	var result T
 
 	if issue == nil {

@@ -6,6 +6,7 @@ import (
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 
 	cfgenv "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/env"
+	cfgjira "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/jira"
 	cfgnet "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/network"
 	fdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 )
@@ -23,6 +24,10 @@ type Config struct {
 	// and deployment settings. This configuration varies between environments
 	// (development, staging, production) and contains sensitive data.
 	Env *cfgenv.Config
+
+	// Jira contains JIRA integration configuration including connection details
+	// and field mappings for using JIRA in resolvers.
+	Jira *cfgjira.JiraConfig
 }
 
 // Load loads and consolidates all configuration required for a domain environment, including
@@ -38,8 +43,16 @@ func Load(dom fdomain.Domain, env string, lggr logger.Logger) (*Config, error) {
 		return nil, fmt.Errorf("failed to load env config: %w", err)
 	}
 
+	jiraCfg, err := LoadJiraConfig(dom)
+	if err != nil {
+		// JIRA config is optional, so we only log the error and continue
+		lggr.Warnf("JIRA config not available: %v", err)
+		jiraCfg = nil
+	}
+
 	return &Config{
 		Networks: networks,
 		Env:      envCfg,
+		Jira:     jiraCfg,
 	}, nil
 }

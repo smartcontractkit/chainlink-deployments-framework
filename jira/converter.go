@@ -5,27 +5,29 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config"
+	fdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 )
 
 // JiraToStruct is the main function that domains use to convert JIRA issues to config structs
 // It loads the specified domain's JIRA schema and maps the issue fields
-func JiraToStruct[T any](domainName string, issueKey string) (T, error) {
+func JiraToStruct[T any](dom fdomain.Domain, issueKey string) (T, error) {
 	var zero T
 
 	if issueKey == "" {
 		return zero, errors.New("issue_key is required")
 	}
 
-	// 1. Load domain's JIRA configuration
-	config, err := loadDomainJiraConfig(domainName)
+	jiraConfig, err := config.LoadJiraConfig(dom)
 	if err != nil {
 		return zero, fmt.Errorf("failed to load domain JIRA config: %w", err)
 	}
 
 	// Extract all JIRA field names from the field maps
-	var fieldsToFetch = config.GetJiraFields()
+	var fieldsToFetch = jiraConfig.GetJiraFields()
 
-	var domainNameUpper = strings.ToUpper(domainName)
+	var domainNameUpper = strings.ToUpper(dom.Key())
 
 	// 2. Get JIRA token from environment variable
 	token := os.Getenv("JIRA_TOKEN_" + domainNameUpper)
@@ -34,7 +36,7 @@ func JiraToStruct[T any](domainName string, issueKey string) (T, error) {
 	}
 
 	// 3. Create JIRA client
-	client, err := NewClient(config.Connection.BaseURL, config.Connection.Username, token)
+	client, err := NewClient(jiraConfig.Connection.BaseURL, jiraConfig.Connection.Username, token)
 	if err != nil {
 		return zero, fmt.Errorf("failed to create JIRA client: %w", err)
 	}
@@ -46,7 +48,7 @@ func JiraToStruct[T any](domainName string, issueKey string) (T, error) {
 	}
 
 	// 5. Map JIRA fields to target struct
-	result, err := mapFieldsToStruct[T](issue, config)
+	result, err := mapFieldsToStruct[T](issue, jiraConfig)
 	if err != nil {
 		return zero, fmt.Errorf("failed to map JIRA fields to struct: %w", err)
 	}

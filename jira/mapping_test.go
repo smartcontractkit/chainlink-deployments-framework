@@ -6,6 +6,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	cfgjira "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/jira"
 )
 
 func TestParseIndex(t *testing.T) {
@@ -278,8 +280,8 @@ func TestMapFieldsToStruct(t *testing.T) {
 		},
 	}
 
-	config := &JiraConfig{
-		FieldMaps: map[string]FieldMapping{
+	config := &cfgjira.JiraConfig{
+		FieldMaps: map[string]cfgjira.FieldMapping{
 			"summary": {JiraField: "summary"},
 			"status":  {JiraField: "status"},
 		},
@@ -288,7 +290,7 @@ func TestMapFieldsToStruct(t *testing.T) {
 	tests := []struct {
 		name          string
 		issue         *JiraIssue
-		config        *JiraConfig
+		config        *cfgjira.JiraConfig
 		expectError   bool
 		errorContains string
 		validate      func(any) error
@@ -296,8 +298,8 @@ func TestMapFieldsToStruct(t *testing.T) {
 		{
 			name:  "successful mapping to simple struct",
 			issue: issue,
-			config: &JiraConfig{
-				FieldMaps: map[string]FieldMapping{
+			config: &cfgjira.JiraConfig{
+				FieldMaps: map[string]cfgjira.FieldMapping{
 					"summary": {JiraField: "summary"},
 					"status":  {JiraField: "status.name"},
 				},
@@ -321,8 +323,8 @@ func TestMapFieldsToStruct(t *testing.T) {
 		{
 			name:  "successful mapping with nested fields",
 			issue: issue,
-			config: &JiraConfig{
-				FieldMaps: map[string]FieldMapping{
+			config: &cfgjira.JiraConfig{
+				FieldMaps: map[string]cfgjira.FieldMapping{
 					"summary": {JiraField: "summary"},
 					"status":  {JiraField: "status.name"},
 				},
@@ -346,8 +348,8 @@ func TestMapFieldsToStruct(t *testing.T) {
 		{
 			name:  "successful mapping with array fields",
 			issue: issue,
-			config: &JiraConfig{
-				FieldMaps: map[string]FieldMapping{
+			config: &cfgjira.JiraConfig{
+				FieldMaps: map[string]cfgjira.FieldMapping{
 					"summary": {JiraField: "summary"},
 					"labels":  {JiraField: "labels"},
 				},
@@ -374,8 +376,8 @@ func TestMapFieldsToStruct(t *testing.T) {
 		{
 			name:  "successful mapping with custom fields",
 			issue: issue,
-			config: &JiraConfig{
-				FieldMaps: map[string]FieldMapping{
+			config: &cfgjira.JiraConfig{
+				FieldMaps: map[string]cfgjira.FieldMapping{
 					"summary":      {JiraField: "summary"},
 					"custom_field": {JiraField: "customfield_10001"},
 				},
@@ -413,8 +415,8 @@ func TestMapFieldsToStruct(t *testing.T) {
 		{
 			name:  "missing field in issue",
 			issue: issue,
-			config: &JiraConfig{
-				FieldMaps: map[string]FieldMapping{
+			config: &cfgjira.JiraConfig{
+				FieldMaps: map[string]cfgjira.FieldMapping{
 					"summary": {JiraField: "summary"},
 					"missing": {JiraField: "nonexistent_field"},
 				},
@@ -425,8 +427,8 @@ func TestMapFieldsToStruct(t *testing.T) {
 		{
 			name:  "empty jira_field",
 			issue: issue,
-			config: &JiraConfig{
-				FieldMaps: map[string]FieldMapping{
+			config: &cfgjira.JiraConfig{
+				FieldMaps: map[string]cfgjira.FieldMapping{
 					"summary": {JiraField: "summary"},
 					"empty":   {JiraField: ""},
 				},
@@ -437,8 +439,8 @@ func TestMapFieldsToStruct(t *testing.T) {
 		{
 			name:  "whitespace-only jira_field",
 			issue: issue,
-			config: &JiraConfig{
-				FieldMaps: map[string]FieldMapping{
+			config: &cfgjira.JiraConfig{
+				FieldMaps: map[string]cfgjira.FieldMapping{
 					"summary": {JiraField: "summary"},
 					"empty":   {JiraField: "   "},
 				},
@@ -449,8 +451,8 @@ func TestMapFieldsToStruct(t *testing.T) {
 		{
 			name:  "custom field mapping",
 			issue: issueWithMultipleCustomFields,
-			config: &JiraConfig{
-				FieldMaps: map[string]FieldMapping{
+			config: &cfgjira.JiraConfig{
+				FieldMaps: map[string]cfgjira.FieldMapping{
 					"summary":      {JiraField: "summary"},
 					"story_points": {JiraField: "customfield_10028"}, // Story Points field
 					"priority":     {JiraField: "customfield_10016"}, // Priority field
