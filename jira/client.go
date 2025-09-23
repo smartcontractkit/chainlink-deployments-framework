@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -67,8 +68,19 @@ func NewClientFromDomain(dom fdomain.Domain) (*Client, error) {
 	return client, nil
 }
 
+// jiraIssueKeyPattern matches standard JIRA issue keys (PROJECT-NUMBER format)
+var jiraIssueKeyPattern = regexp.MustCompile(`^[A-Z][A-Z0-9]*-[1-9][0-9]*$`)
+
 // GetIssue fetches a JIRA issue by key. If fields is empty, Jira returns all default fields.
 func (c *Client) GetIssue(issueKey string, fields []string) (*JiraIssue, error) {
+	// Validate JIRA issue key format
+	if issueKey == "" {
+		return nil, errors.New("issue key cannot be empty")
+	}
+	if !jiraIssueKeyPattern.MatchString(issueKey) {
+		return nil, fmt.Errorf("invalid JIRA issue key format: %q (expected format: PROJECT-NUMBER, e.g., ABC-123)", issueKey)
+	}
+
 	base, err := url.JoinPath(c.baseURL, "rest", "api", "2", "issue", url.PathEscape(issueKey))
 	if err != nil {
 		return nil, fmt.Errorf("failed to build request URL: %w", err)
@@ -99,6 +111,7 @@ func (c *Client) GetIssue(issueKey string, fields []string) (*JiraIssue, error) 
 	if resp.StatusCode != http.StatusOK {
 		const maxErrBody = 4096 // limit error body to 4KB
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, maxErrBody))
+
 		return nil, fmt.Errorf("JIRA API returned status %d: %s", resp.StatusCode, string(body))
 	}
 

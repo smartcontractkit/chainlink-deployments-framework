@@ -212,6 +212,41 @@ func TestClient_GetIssue_ErrorCases(t *testing.T) {
 		errorContains  string
 	}{
 		{
+			name:          "empty issue key",
+			issueKey:      "",
+			fields:        nil,
+			expectError:   true,
+			errorContains: "issue key cannot be empty",
+		},
+		{
+			name:          "invalid issue key format - no dash",
+			issueKey:      "ABC123",
+			fields:        nil,
+			expectError:   true,
+			errorContains: "invalid JIRA issue key format",
+		},
+		{
+			name:          "invalid issue key format - lowercase project",
+			issueKey:      "abc-123",
+			fields:        nil,
+			expectError:   true,
+			errorContains: "invalid JIRA issue key format",
+		},
+		{
+			name:          "invalid issue key format - zero number",
+			issueKey:      "ABC-0",
+			fields:        nil,
+			expectError:   true,
+			errorContains: "invalid JIRA issue key format",
+		},
+		{
+			name:          "invalid issue key format - leading zero",
+			issueKey:      "ABC-01",
+			fields:        nil,
+			expectError:   true,
+			errorContains: "invalid JIRA issue key format",
+		},
+		{
 			name:     "server returns 404",
 			issueKey: "NOTFOUND-123",
 			fields:   nil,
@@ -248,11 +283,20 @@ func TestClient_GetIssue_ErrorCases(t *testing.T) {
 
 	for _, tt := range tests { //nolint:paralleltest // Cannot use t.Parallel() due to shared test server
 		t.Run(tt.name, func(t *testing.T) {
-			server := httptest.NewServer(http.HandlerFunc(tt.serverResponse))
-			defer server.Close()
+			var client *Client
+			var err error
 
-			client, err := NewClient(server.URL, "testuser", "testtoken")
-			require.NoError(t, err)
+			// For validation tests, we don't need a server
+			if tt.serverResponse == nil {
+				client, err = NewClient("https://example.com", "testuser", "testtoken")
+				require.NoError(t, err)
+			} else {
+				server := httptest.NewServer(http.HandlerFunc(tt.serverResponse))
+				defer server.Close()
+
+				client, err = NewClient(server.URL, "testuser", "testtoken")
+				require.NoError(t, err)
+			}
 
 			issue, err := client.GetIssue(tt.issueKey, tt.fields)
 
