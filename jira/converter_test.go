@@ -200,7 +200,7 @@ func TestJiraToStruct_ErrorCases(t *testing.T) {
 				os.Unsetenv("JIRA_TOKEN_EXEMPLAR")
 			},
 			expectError:   true,
-			errorContains: "JIRA_TOKEN environment variable is required",
+			errorContains: "JIRA_TOKEN_EXEMPLAR environment variable is required",
 		},
 		{
 			name:     "missing config file",
