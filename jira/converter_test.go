@@ -288,9 +288,7 @@ func TestJiraToStruct_ErrorCases(t *testing.T) {
 	}
 }
 
-func TestJiraToStruct_EmptyIssueKey(t *testing.T) {
-	t.Parallel()
-
+func TestJiraToStruct_EmptyIssueKey(t *testing.T) { //nolint:paralleltest // Cannot use t.Parallel() because we manipulate environment variables
 	// Define test struct
 	type TestStruct struct {
 		Summary string `json:"summary"`
