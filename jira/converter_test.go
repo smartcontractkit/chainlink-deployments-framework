@@ -17,7 +17,6 @@ import (
 )
 
 func TestJiraToStruct(t *testing.T) { //nolint:paralleltest // Cannot use t.Parallel() because we have a shared test server
-
 	// Set up environment variable
 	originalToken := os.Getenv("JIRA_TOKEN_EXEMPLAR")
 	os.Setenv("JIRA_TOKEN_EXEMPLAR", "test-token-123")
