@@ -97,7 +97,8 @@ func (c *Client) GetIssue(issueKey string, fields []string) (*JiraIssue, error) 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
+		const maxErrBody = 4096 // limit error body to 4KB
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, maxErrBody))
 		return nil, fmt.Errorf("JIRA API returned status %d: %s", resp.StatusCode, string(body))
 	}
 
