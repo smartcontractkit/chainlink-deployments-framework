@@ -16,8 +16,7 @@ import (
 	fdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 )
 
-func TestJiraToStruct(t *testing.T) {
-	// Cannot use t.Parallel() because we have a shared test server
+func TestJiraToStruct(t *testing.T) { //nolint:paralleltest // Cannot use t.Parallel() because we have a shared test server
 
 	// Set up environment variable
 	originalToken := os.Getenv("JIRA_TOKEN_EXEMPLAR")
@@ -135,10 +134,8 @@ func TestJiraToStruct(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for _, tt := range tests { //nolint:paralleltest // Cannot use t.Parallel() because of shared test server
 		t.Run(tt.name, func(t *testing.T) {
-			// Cannot use t.Parallel() because of shared test server
-
 			// Set up test domain and config with the server URL
 			dom := setupTestDomain(t)
 			writeJiraDomainConfig(t, dom, server.URL)
@@ -183,11 +180,15 @@ func TestJiraToStruct_ErrorCases(t *testing.T) {
 			name:     "missing JIRA token",
 			issueKey: "TEST-123",
 			setupDomain: func(t *testing.T) fdomain.Domain {
+				t.Helper()
 				dom := setupTestDomain(t)
 				writeJiraDomainConfig(t, dom, "https://example.atlassian.net")
+
 				return dom
 			},
 			setupEnv: func(t *testing.T) {
+				t.Helper()
+
 				// Remove the token
 				os.Unsetenv("JIRA_TOKEN_EXEMPLAR")
 			},
@@ -199,9 +200,13 @@ func TestJiraToStruct_ErrorCases(t *testing.T) {
 			issueKey: "TEST-123",
 			setupDomain: func(t *testing.T) fdomain.Domain {
 				// Don't write config file
+				t.Helper()
+
 				return setupTestDomain(t)
 			},
 			setupEnv: func(t *testing.T) {
+				t.Helper()
+
 				os.Setenv("JIRA_TOKEN_EXEMPLAR", "test-token-123")
 			},
 			expectError:   true,
@@ -211,12 +216,17 @@ func TestJiraToStruct_ErrorCases(t *testing.T) {
 			name:     "JIRA API error",
 			issueKey: "TEST-123",
 			setupDomain: func(t *testing.T) fdomain.Domain {
+				t.Helper()
+
 				dom := setupTestDomain(t)
 				// Use invalid URL that will cause connection error
 				writeJiraDomainConfig(t, dom, "https://invalid-jira-url.example.com")
+
 				return dom
 			},
 			setupEnv: func(t *testing.T) {
+				t.Helper()
+
 				os.Setenv("JIRA_TOKEN_EXEMPLAR", "test-token-123")
 			},
 			expectError:   true,
@@ -224,10 +234,8 @@ func TestJiraToStruct_ErrorCases(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for _, tt := range tests { //nolint:paralleltest // Cannot use t.Parallel() due to shared environment variables
 		t.Run(tt.name, func(t *testing.T) {
-			// Cannot use t.Parallel() due to shared environment variables
-
 			// Setup environment
 			originalToken := os.Getenv("JIRA_TOKEN_EXEMPLAR")
 			defer func() {
