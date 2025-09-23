@@ -8,8 +8,12 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config"
+	fdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 )
 
 // Client represents a JIRA API client
@@ -40,6 +44,27 @@ func NewClient(baseURL, username, token string) (*Client, error) {
 			Timeout: 30 * time.Second,
 		},
 	}, nil
+}
+
+// NewClientFromDomain creates a JIRA client using domain configuration and environment variables
+func NewClientFromDomain(dom fdomain.Domain) (*Client, error) {
+	jiraConfig, err := config.LoadJiraConfig(dom)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load domain JIRA config: %w", err)
+	}
+
+	domainNameUpper := strings.ToUpper(dom.Key())
+	token := os.Getenv("JIRA_TOKEN_" + domainNameUpper)
+	if token == "" {
+		return nil, fmt.Errorf("%s_JIRA_TOKEN environment variable is required", domainNameUpper)
+	}
+
+	client, err := NewClient(jiraConfig.Connection.BaseURL, jiraConfig.Connection.Username, token)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create JIRA client: %w", err)
+	}
+
+	return client, nil
 }
 
 // GetIssue fetches a JIRA issue by key. If fields is empty, Jira returns all default fields.

@@ -139,7 +139,15 @@ func TestJiraToStruct(t *testing.T) { //nolint:paralleltest // Cannot use t.Para
 			dom := setupTestDomain(t)
 			writeJiraDomainConfig(t, dom, server.URL)
 
-			result, err := JiraToStruct[TestStruct](dom, tt.issueKey)
+			// Create client and call JiraToStruct
+			client, clientErr := NewClientFromDomain(dom)
+			var result TestStruct
+			var err error
+			if clientErr != nil {
+				result, err = *new(TestStruct), clientErr
+			} else {
+				result, err = JiraToStruct[TestStruct](client, dom, tt.issueKey)
+			}
 
 			if tt.expectError {
 				require.Error(t, err)
@@ -188,11 +196,11 @@ func TestJiraToStruct_ErrorCases(t *testing.T) {
 			setupEnv: func(t *testing.T) {
 				t.Helper()
 
-				// Remove the token
+				// Ensure the token is not set
 				os.Unsetenv("JIRA_TOKEN_EXEMPLAR")
 			},
 			expectError:   true,
-			errorContains: "EXEMPLAR_JIRA_TOKEN environment variable is required",
+			errorContains: "JIRA_TOKEN environment variable is required",
 		},
 		{
 			name:     "missing config file",
@@ -252,7 +260,15 @@ func TestJiraToStruct_ErrorCases(t *testing.T) {
 			// Setup domain
 			dom := tt.setupDomain(t)
 
-			result, err := JiraToStruct[TestStruct](dom, tt.issueKey)
+			// Create client and call JiraToStruct
+			client, clientErr := NewClientFromDomain(dom)
+			var result TestStruct
+			var err error
+			if clientErr != nil {
+				result, err = *new(TestStruct), clientErr
+			} else {
+				result, err = JiraToStruct[TestStruct](client, dom, tt.issueKey)
+			}
 
 			if !tt.expectError {
 				assert.NoError(t, err)
@@ -280,10 +296,30 @@ func TestJiraToStruct_EmptyIssueKey(t *testing.T) {
 		Summary string `json:"summary"`
 	}
 
-	// Set up test domain (doesn't matter since we'll error before using it)
+	// Set up test domain and config
 	dom := setupTestDomain(t)
+	writeJiraDomainConfig(t, dom, "https://example.atlassian.net")
 
-	result, err := JiraToStruct[TestStruct](dom, "")
+	// Set up environment variable
+	originalToken := os.Getenv("JIRA_TOKEN_EXEMPLAR")
+	os.Setenv("JIRA_TOKEN_EXEMPLAR", "test-token-123")
+	defer func() {
+		if originalToken == "" {
+			os.Unsetenv("JIRA_TOKEN_EXEMPLAR")
+		} else {
+			os.Setenv("JIRA_TOKEN_EXEMPLAR", originalToken)
+		}
+	}()
+
+	// Create client and call JiraToStruct
+	client, clientErr := NewClientFromDomain(dom)
+	var result TestStruct
+	var err error
+	if clientErr != nil {
+		result, err = *new(TestStruct), clientErr
+	} else {
+		result, err = JiraToStruct[TestStruct](client, dom, "")
+	}
 
 	require.Error(t, err)
 

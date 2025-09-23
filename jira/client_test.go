@@ -2,13 +2,17 @@ package jira
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	fdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 )
 
 func TestNewClient(t *testing.T) {
@@ -263,6 +267,117 @@ func TestClient_GetIssue_ErrorCases(t *testing.T) {
 				assert.Contains(t, err.Error(), tt.errorContains)
 			}
 			assert.Nil(t, issue)
+		})
+	}
+}
+
+func TestNewClientFromDomain(t *testing.T) { //nolint:paralleltest // Cannot use t.Parallel() because we manipulate environment variables
+	tests := []struct {
+		name          string
+		setupDomain   func(t *testing.T) fdomain.Domain
+		setupEnv      func(t *testing.T)
+		expectError   bool
+		errorContains string
+		validate      func(*Client) error
+	}{
+		{
+			name: "successful client creation",
+			setupDomain: func(t *testing.T) fdomain.Domain {
+				t.Helper()
+				dom := setupTestDomain(t)
+				writeJiraDomainConfig(t, dom, "https://example.atlassian.net")
+
+				return dom
+			},
+			setupEnv: func(t *testing.T) {
+				t.Helper()
+				os.Setenv("JIRA_TOKEN_EXEMPLAR", "test-token-123")
+			},
+			expectError: false,
+			validate: func(client *Client) error {
+				if client.baseURL != "https://example.atlassian.net" {
+					return fmt.Errorf("expected baseURL 'https://example.atlassian.net', got '%s'", client.baseURL)
+				}
+				if client.username != "testuser" {
+					return fmt.Errorf("expected username 'testuser', got '%s'", client.username)
+				}
+				if client.token != "test-token-123" {
+					return fmt.Errorf("expected token 'test-token-123', got '%s'", client.token)
+				}
+
+				return nil
+			},
+		},
+		{
+			name: "missing JIRA token",
+			setupDomain: func(t *testing.T) fdomain.Domain {
+				t.Helper()
+				dom := setupTestDomain(t)
+				writeJiraDomainConfig(t, dom, "https://example.atlassian.net")
+
+				return dom
+			},
+			setupEnv: func(t *testing.T) {
+				t.Helper()
+				// Don't set the token
+			},
+			expectError:   true,
+			errorContains: "EXEMPLAR_JIRA_TOKEN environment variable is required",
+		},
+		{
+			name: "missing config file",
+			setupDomain: func(t *testing.T) fdomain.Domain {
+				t.Helper()
+				// Don't write config file
+
+				return setupTestDomain(t)
+			},
+			setupEnv: func(t *testing.T) {
+				t.Helper()
+				os.Setenv("JIRA_TOKEN_EXEMPLAR", "test-token-123")
+			},
+			expectError:   true,
+			errorContains: "failed to load domain JIRA config",
+		},
+	}
+
+	for _, tt := range tests { //nolint:paralleltest // Cannot use t.Parallel() because we manipulate environment variables
+		t.Run(tt.name, func(t *testing.T) {
+			// Setup environment
+			originalToken := os.Getenv("JIRA_TOKEN_EXEMPLAR")
+			defer func() {
+				if originalToken == "" {
+					os.Unsetenv("JIRA_TOKEN_EXEMPLAR")
+				} else {
+					os.Setenv("JIRA_TOKEN_EXEMPLAR", originalToken)
+				}
+			}()
+
+			if tt.setupEnv != nil {
+				tt.setupEnv(t)
+			}
+
+			// Setup domain
+			dom := tt.setupDomain(t)
+
+			client, err := NewClientFromDomain(dom)
+
+			if tt.expectError {
+				require.Error(t, err)
+				if tt.errorContains != "" {
+					assert.Contains(t, err.Error(), tt.errorContains)
+				}
+				assert.Nil(t, client)
+
+				return
+			}
+
+			require.NoError(t, err)
+			require.NotNil(t, client)
+
+			if tt.validate != nil {
+				require.NoError(t, tt.validate(client))
+			}
 		})
 	}
 }
