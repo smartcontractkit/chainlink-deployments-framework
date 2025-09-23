@@ -2,8 +2,6 @@ package jira
 
 import (
 	"errors"
-
-	"github.com/spf13/viper"
 )
 
 // JiraConfig represents the JIRA configuration for a domain
@@ -34,8 +32,8 @@ func (c *JiraConfig) GetJiraFields() []string {
 	return fields
 }
 
-// validate validates the JIRA configuration.
-func (c *JiraConfig) validate() error {
+// Validate validates the JIRA configuration.
+func (c *JiraConfig) Validate() error {
 	if c.Connection.BaseURL == "" {
 		return errors.New("connection.base_url is required")
 	}
@@ -47,34 +45,4 @@ func (c *JiraConfig) validate() error {
 	}
 
 	return nil
-}
-
-// DomainConfig represents the domain configuration file with JIRA section
-type DomainConfig struct {
-	Jira *JiraConfig `mapstructure:"jira" yaml:"jira"`
-}
-
-// Load loads JIRA configuration from a domain YAML file.
-func Load(filePath string) (*JiraConfig, error) {
-	v := viper.New()
-	v.SetConfigFile(filePath)
-
-	if err := v.ReadInConfig(); err != nil {
-		return nil, err
-	}
-
-	cfg := &DomainConfig{}
-	if err := v.Unmarshal(cfg); err != nil {
-		return nil, err
-	}
-
-	if cfg.Jira == nil {
-		return nil, errors.New("no JIRA configuration found in domain config")
-	}
-
-	if err := cfg.Jira.validate(); err != nil {
-		return nil, err
-	}
-
-	return cfg.Jira, nil
 }
