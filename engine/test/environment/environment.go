@@ -6,9 +6,6 @@ import (
 	"context"
 	"errors"
 	"sync"
-	"testing"
-
-	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 
 	fchain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
@@ -21,28 +18,37 @@ const (
 	environmentName = "test_environment"
 )
 
+// New creates a new environment for testing.
+//
+// It loads the environment with the given options and returns the environment.
+//
+// If the environment fails to load, it returns an error.
+func New(ctx context.Context, opts ...LoadOpt) (*deployment.Environment, error) {
+	return NewLoader().Load(ctx, opts...)
+}
+
+// Loader instantiates a new environment with the given options.
 type Loader struct{}
 
+// NewLoader creates a new Loader instance.
 func NewLoader() *Loader {
 	return &Loader{}
 }
 
-func (l *Loader) Load(t *testing.T, opts ...LoadOpt) (*deployment.Environment, error) {
-	t.Helper()
-
+// Load loads the environment with the given options.
+func (l *Loader) Load(ctx context.Context, opts ...LoadOpt) (*deployment.Environment, error) {
 	var (
-		lggr   = logger.Test(t)
-		getCtx = func() context.Context { return t.Context() }
+		getCtx = func() context.Context { return ctx }
 		cmps   = newComponents()
 	)
 
-	if err := applyOptions(t, cmps, opts); err != nil {
+	if err := applyOptions(cmps, opts); err != nil {
 		return nil, err
 	}
 
 	return &deployment.Environment{
 		Name:              environmentName,
-		Logger:            lggr,
+		Logger:            cmps.Logger,
 		BlockChains:       fchain.NewBlockChainsFromSlice(cmps.Chains),
 		ExistingAddresses: deployment.NewMemoryAddressBook(),
 		DataStore:         fdatastore.NewMemoryDataStore().Seal(),
@@ -51,16 +57,14 @@ func (l *Loader) Load(t *testing.T, opts ...LoadOpt) (*deployment.Environment, e
 		Offchain:          nil,        // Unimplemented for now
 		GetContext:        getCtx,
 		OCRSecrets:        focr.XXXGenerateTestOCRSecrets(),
-		OperationsBundle:  foperations.NewBundle(getCtx, lggr, foperations.NewMemoryReporter()),
+		OperationsBundle:  foperations.NewBundle(getCtx, cmps.Logger, foperations.NewMemoryReporter()),
 	}, nil
 }
 
 // applyOptions applies the given options to load various components for the environment.
 // It executes all options concurrently and returns a combined error if any option fails.
 // If multiple options fail, all errors are joined using errors.Join.
-func applyOptions(t *testing.T, cmps *components, opts []LoadOpt) error {
-	t.Helper()
-
+func applyOptions(cmps *components, opts []LoadOpt) error {
 	// Handle empty options case
 	if len(opts) == 0 {
 		return nil
