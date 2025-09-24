@@ -15,7 +15,22 @@ import (
 
 	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/environment"
 )
+
+func TestNew(t *testing.T) {
+	t.Parallel()
+
+	lggr := logger.Test(t)
+
+	runtime, err := New(t.Context(), WithEnvOpts(
+		environment.WithLogger(lggr),
+	))
+	require.NoError(t, err)
+	require.NotNil(t, runtime)
+
+	require.Equal(t, lggr, runtime.currentEnv.Logger)
+}
 
 func TestNewFromEnvironment(t *testing.T) {
 	t.Parallel()
