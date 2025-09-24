@@ -1,9 +1,12 @@
 package runtime
 
 import (
+	"context"
+	"fmt"
 	"sync"
 
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/environment"
 )
 
 // Runtime provides an execution environment for running tasks in tests.
@@ -20,6 +23,21 @@ type Runtime struct {
 
 	state      *State                  // Accumulated state from task executions
 	currentEnv fdeployment.Environment // Current environment with latest state applied
+}
+
+// New creates a new Runtime instance initialized with the given options.
+func New(ctx context.Context, opts ...RuntimeOption) (*Runtime, error) {
+	var cfg runtimeConfig
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+
+	env, err := environment.New(ctx, cfg.envOpts...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create environment: %w", err)
+	}
+
+	return NewFromEnvironment(*env), nil
 }
 
 // NewFromEnvironment creates a new Runtime instance initialized with the given environment.
