@@ -9,6 +9,8 @@ jobs:
   cache-gomod:
     name: Cache Go modules
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout repo
         uses: actions/checkout@v5
