@@ -181,11 +181,7 @@ func TestChangeTask_Run(t *testing.T) {
 			task := ChangesetTask(changeset, config)
 
 			env := fdeployment.Environment{}
-			state := &State{
-				AddressBook: fdeployment.NewMemoryAddressBook(),
-				DataStore:   fdatastore.NewMemoryDataStore().Seal(),
-				Outputs:     make(map[string]fdeployment.ChangesetOutput),
-			}
+			state := newState()
 
 			// Execute
 			err := task.Run(env, state)

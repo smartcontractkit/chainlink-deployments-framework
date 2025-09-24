@@ -50,6 +50,21 @@ func TestNewBlockChains(t *testing.T) {
 	})
 }
 
+func TestBlockChainsGetBySelector(t *testing.T) {
+	t.Parallel()
+
+	chains := buildBlockChains()
+
+	got, err := chains.GetBySelector(evmChain1.Selector)
+	require.NoError(t, err)
+	assert.Equal(t, evmChain1, got)
+
+	got, err = chains.GetBySelector(99999999)
+	require.Error(t, err)
+	assert.Nil(t, got)
+	assert.ErrorIs(t, err, chain.ErrBlockChainNotFound)
+}
+
 func TestNewBlockChainsFromSlice(t *testing.T) {
 	t.Parallel()
 
