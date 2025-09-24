@@ -3,6 +3,8 @@ package environment
 import (
 	"testing"
 
+	"github.com/smartcontractkit/chainlink-common/pkg/logger"
+
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/onchain"
 )
 
@@ -110,6 +112,14 @@ func WithZKSyncContainerN(t *testing.T, n int) LoadOpt {
 	t.Helper()
 
 	return withChainLoaderN(t, newZKSyncContainerLoader(), n)
+}
+
+// WithLogger sets the logger for the environment.
+func WithLogger(lggr logger.Logger) LoadOpt {
+	return func(cmps *components) error {
+		cmps.Logger = lggr
+		return nil
+	}
 }
 
 // withChainLoader creates a LoadOpt that loads chains using the provided loader and selectors.

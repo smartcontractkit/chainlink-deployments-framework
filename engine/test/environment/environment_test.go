@@ -7,6 +7,7 @@ import (
 	"time"
 
 	chainselectors "github.com/smartcontractkit/chain-selectors"
+	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 	"github.com/stretchr/testify/require"
 
 	fchain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
@@ -16,6 +17,14 @@ import (
 	fchainton "github.com/smartcontractkit/chainlink-deployments-framework/chain/ton"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/onchain"
 )
+
+func TestNew(t *testing.T) {
+	t.Parallel()
+
+	env, err := New(t.Context(), WithLogger(logger.Test(t)))
+	require.NoError(t, err)
+	require.NotNil(t, env)
+}
 
 func TestLoader_Load_Options(t *testing.T) {
 	t.Parallel()
@@ -70,7 +79,7 @@ func TestLoader_Load_Options(t *testing.T) {
 			t.Parallel()
 
 			loader := NewLoader()
-			env, err := loader.Load(t, tt.opts...)
+			env, err := loader.Load(t.Context(), tt.opts...)
 
 			if len(tt.wantErrContains) > 0 {
 				require.Error(t, err)
@@ -84,6 +93,17 @@ func TestLoader_Load_Options(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestLoader_Load_LoggerOption(t *testing.T) {
+	t.Parallel()
+	lggr := logger.Test(t)
+
+	loader := NewLoader()
+	env, err := loader.Load(t.Context(), WithLogger(lggr))
+	require.NoError(t, err)
+	require.NotNil(t, env)
+	require.Equal(t, lggr, env.Logger)
 }
 
 func TestLoader_Load_ChainOptions(t *testing.T) { //nolint:paralleltest // We are replacing local variables here, so we can't run tests in parallel.
@@ -189,7 +209,7 @@ func TestLoader_Load_ChainOptions(t *testing.T) { //nolint:paralleltest // We ar
 	for _, tt := range tests { //nolint:paralleltest // We are replacing local variables here, so we can't run tests in parallel.
 		t.Run(tt.name, func(t *testing.T) {
 			loader := NewLoader()
-			env, err := loader.Load(t, tt.opts...)
+			env, err := loader.Load(t.Context(), tt.opts...)
 			require.NoError(t, err)
 			require.NotNil(t, env)
 			require.Len(t, maps.Collect(env.BlockChains.All()), tt.wantBlockChainsLen)

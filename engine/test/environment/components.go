@@ -3,6 +3,8 @@ package environment
 import (
 	"sync"
 
+	"github.com/smartcontractkit/chainlink-common/pkg/logger"
+
 	fchain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
 )
 
@@ -11,12 +13,14 @@ type components struct {
 	mu sync.Mutex
 
 	Chains []fchain.BlockChain
+	Logger logger.Logger
 }
 
 // newComponents creates a new components instance.
 func newComponents() *components {
 	return &components{
 		Chains: make([]fchain.BlockChain, 0),
+		Logger: logger.Nop(),
 	}
 }
 
