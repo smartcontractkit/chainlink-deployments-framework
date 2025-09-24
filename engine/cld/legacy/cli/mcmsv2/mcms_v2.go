@@ -810,6 +810,8 @@ func buildMCMSv2ResetProposalCmd(
 				return errors.New("null TimelockProposal")
 			}
 
+			timelockProposal.ValidUntil = uint32(time.Now().Add(72 * time.Hour).Unix()) //nolint:gosec // G404: time-based validity is acceptable for test signatures
+
 			for selector := range cfgv2.proposal.ChainMetadata {
 				cfgv2.chainSelector = uint64(selector)
 				inspector, errInspect := getInspectorFromChainSelector(*cfgv2)
