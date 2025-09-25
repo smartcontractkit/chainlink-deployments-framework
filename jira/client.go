@@ -17,6 +17,8 @@ import (
 	fdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 )
 
+const maxErrBodySize = 4096 // limit error body to 4KB for JIRA API response
+
 // Client represents a JIRA API client
 type Client struct {
 	baseURL    string
@@ -109,8 +111,10 @@ func (c *Client) GetIssue(issueKey string, fields []string) (*JiraIssue, error) 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		const maxErrBody = 4096 // limit error body to 4KB
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, maxErrBody))
+		body, readErr := io.ReadAll(io.LimitReader(resp.Body, maxErrBodySize))
+		if readErr != nil {
+			return nil, fmt.Errorf("failed to read response body: %w", readErr)
+		}
 
 		return nil, fmt.Errorf("JIRA API returned status %d: %s", resp.StatusCode, string(body))
 	}
