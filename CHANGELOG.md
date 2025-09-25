@@ -1,5 +1,33 @@
 # chainlink-deployments-framework
 
+## 0.50.0
+
+### Minor Changes
+
+- [#452](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/452) [`41464d4`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/41464d42dae680365ae303f8b75ed5483abd30a2) Thanks [@jkongie](https://github.com/jkongie)! - Add `runtime.New()` convenience function for runtime initialization
+
+  Provides a simpler way to create runtime instances using functional options for environment configuration.
+
+- [#445](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/445) [`967a01b`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/967a01b612f313b6dadf9defc8d1cafad9cb9927) Thanks [@jkongie](https://github.com/jkongie)! - Adds tasks to the test engine runtime to sign and execute MCMS proposals
+
+- [#451](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/451) [`0e64684`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/0e646842a1b0b2d65d06d649b3893d1508dfe223) Thanks [@jkongie](https://github.com/jkongie)! - Adds new convenience method `environment.New` to the test engine to bring up a new test environment
+
+  The `environment.New` method is a wrapper around the environment loading struct and allows the user
+  to load a new environment without having to instantiate the `Loader` struct themselves.
+
+  The `testing.T` argument has been removed and it's dependencies have been replaced with:
+
+  - A `context.Context` argument to the `Load` and `New` functions
+  - A new functional option `WithLogger` which overrides the default noop logger.
+
+  While this is a breaking change, the test environment is still in development and is not in actual usage yet.
+
+### Patch Changes
+
+- [#454](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/454) [`d87d8ef`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/d87d8ef1a5bfc9b20ee981636ea8e7ea7992922a) Thanks [@DimitriosNaikopoulos](https://github.com/DimitriosNaikopoulos)! - Bump CTF to fix docker security dependency
+
+- [#455](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/455) [`4788ba4`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/4788ba47adabdf3de0a89d44dbcf14440fc4feec) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - fix: update ValidUntil when running "mcmsv2 reset-proposal"
+
 ## 0.49.1
 
 ### Patch Changes
