@@ -28,7 +28,7 @@ type Config struct {
 
 	// Jira contains JIRA integration configuration including connection details
 	// and field mappings for using JIRA in resolvers.
-	Jira *cfgjira.JiraConfig
+	Jira *cfgjira.Config
 }
 
 // Load loads and consolidates all configuration required for a domain environment, including

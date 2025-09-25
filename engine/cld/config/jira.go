@@ -12,7 +12,7 @@ import (
 var ErrJiraConfigNotFound = errors.New("no Jira configuration found in domain config")
 
 // LoadJiraConfig retrieves the JIRA configuration for a given domain.
-func LoadJiraConfig(dom fdomain.Domain) (*cfgjira.JiraConfig, error) {
+func LoadJiraConfig(dom fdomain.Domain) (*cfgjira.Config, error) {
 	domainConfigPath := dom.ConfigDomainFilePath()
 
 	// Load the full domain config (this handles validation including JIRA)

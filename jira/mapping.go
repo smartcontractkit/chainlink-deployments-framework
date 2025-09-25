@@ -10,7 +10,7 @@ import (
 )
 
 // mapFieldsToStruct maps JIRA fields to a target struct using the field mappings.
-func mapFieldsToStruct[T any](issue *JiraIssue, config *cfgjira.JiraConfig) (T, error) {
+func mapFieldsToStruct[T any](issue *JiraIssue, config *cfgjira.Config) (T, error) {
 	var result T
 
 	if issue == nil {

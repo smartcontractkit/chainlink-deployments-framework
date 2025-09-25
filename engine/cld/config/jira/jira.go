@@ -4,8 +4,8 @@ import (
 	"errors"
 )
 
-// JiraConfig represents the JIRA configuration for a domain
-type JiraConfig struct {
+// Config represents the JIRA configuration for a domain
+type Config struct {
 	Connection JiraConnectionConfig    `mapstructure:"connection" yaml:"connection"`
 	FieldMaps  map[string]FieldMapping `mapstructure:"field_maps" yaml:"field_maps"`
 }
@@ -23,7 +23,7 @@ type FieldMapping struct {
 }
 
 // GetJiraFields extracts all JIRA field names from the field mappings for more efficient API calls
-func (c *JiraConfig) GetJiraFields() []string {
+func (c *Config) GetJiraFields() []string {
 	fields := make([]string, 0, len(c.FieldMaps))
 	for _, fieldMapping := range c.FieldMaps {
 		fields = append(fields, fieldMapping.JiraField)
@@ -33,7 +33,7 @@ func (c *JiraConfig) GetJiraFields() []string {
 }
 
 // Validate validates the JIRA configuration.
-func (c *JiraConfig) Validate() error {
+func (c *Config) Validate() error {
 	if c.Connection.BaseURL == "" {
 		return errors.New("connection.base_url is required")
 	}

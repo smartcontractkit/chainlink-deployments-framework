@@ -11,12 +11,12 @@ func TestJiraConfig_GetJiraFields(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name     string
-		config   JiraConfig
+		config   Config
 		expected []string
 	}{
 		{
 			name: "single field mapping",
-			config: JiraConfig{
+			config: Config{
 				FieldMaps: map[string]FieldMapping{
 					"summary": {JiraField: "summary"},
 				},
@@ -25,7 +25,7 @@ func TestJiraConfig_GetJiraFields(t *testing.T) {
 		},
 		{
 			name: "multiple field mappings",
-			config: JiraConfig{
+			config: Config{
 				FieldMaps: map[string]FieldMapping{
 					"summary":      {JiraField: "summary"},
 					"status":       {JiraField: "status"},
@@ -36,14 +36,14 @@ func TestJiraConfig_GetJiraFields(t *testing.T) {
 		},
 		{
 			name: "empty field mappings",
-			config: JiraConfig{
+			config: Config{
 				FieldMaps: map[string]FieldMapping{},
 			},
 			expected: []string{},
 		},
 		{
 			name: "nil field mappings",
-			config: JiraConfig{
+			config: Config{
 				FieldMaps: nil,
 			},
 			expected: []string{},
@@ -76,13 +76,13 @@ func TestJiraConfig_Validate(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		config      JiraConfig
+		config      Config
 		expectError bool
 		errorMsg    string
 	}{
 		{
 			name: "valid config",
-			config: JiraConfig{
+			config: Config{
 				Connection: JiraConnectionConfig{
 					BaseURL:  "https://example.atlassian.net",
 					Project:  "TEST",
@@ -93,7 +93,7 @@ func TestJiraConfig_Validate(t *testing.T) {
 		},
 		{
 			name: "missing base_url",
-			config: JiraConfig{
+			config: Config{
 				Connection: JiraConnectionConfig{
 					Project:  "TEST",
 					Username: "testuser",
@@ -104,7 +104,7 @@ func TestJiraConfig_Validate(t *testing.T) {
 		},
 		{
 			name: "missing project",
-			config: JiraConfig{
+			config: Config{
 				Connection: JiraConnectionConfig{
 					BaseURL:  "https://example.atlassian.net",
 					Username: "testuser",
@@ -115,7 +115,7 @@ func TestJiraConfig_Validate(t *testing.T) {
 		},
 		{
 			name: "missing username",
-			config: JiraConfig{
+			config: Config{
 				Connection: JiraConnectionConfig{
 					BaseURL: "https://example.atlassian.net",
 					Project: "TEST",

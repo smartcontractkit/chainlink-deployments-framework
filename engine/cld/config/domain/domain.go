@@ -47,7 +47,7 @@ func isValidNetworkType(networkType string) bool {
 // DomainConfig represents the parsed and validated domain configuration.
 type DomainConfig struct {
 	Environments map[string]Environment `mapstructure:"environments" yaml:"environments"`
-	Jira         *jira.JiraConfig       `mapstructure:"jira" yaml:"jira"`
+	Jira         *jira.Config           `mapstructure:"jira" yaml:"jira"`
 }
 
 // validate validates all environments in the domain configuration.
