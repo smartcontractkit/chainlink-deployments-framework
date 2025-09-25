@@ -1108,6 +1108,7 @@ func newCfgv2(lggr logger.Logger, cmd *cobra.Command, domain cldf_domain.Domain,
 			cldfenvironment.WithLogger(lggr),
 			cldfenvironment.OnlyLoadChainsFor(cfgSelectors),
 			cldfenvironment.WithAnvilKeyAsDeployer(),
+			cldfenvironment.WithoutJD(),
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load forked environment: %w", err)
