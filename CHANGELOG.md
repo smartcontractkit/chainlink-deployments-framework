@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.51.0
+
+### Minor Changes
+
+- [#429](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/429) [`1703535`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/17035351f97836c3ac9b21bc9aa08c68be602c1f) Thanks [@bytesizedroll](https://github.com/bytesizedroll)! - Adding Jira package
+
 ## 0.50.1
 
 ### Patch Changes
