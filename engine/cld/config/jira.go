@@ -8,6 +8,9 @@ import (
 	fdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 )
 
+// ErrJiraConfigNotFound is returned when no JIRA configuration is found in the domain config.
+var ErrJiraConfigNotFound = errors.New("no Jira configuration found in domain config")
+
 // LoadJiraConfig retrieves the JIRA configuration for a given domain.
 func LoadJiraConfig(dom fdomain.Domain) (*cfgjira.JiraConfig, error) {
 	domainConfigPath := dom.ConfigDomainFilePath()
@@ -20,7 +23,7 @@ func LoadJiraConfig(dom fdomain.Domain) (*cfgjira.JiraConfig, error) {
 
 	// Extract the JIRA config (validation already done by domain.Load)
 	if domainConfig.Jira == nil {
-		return nil, errors.New("no JIRA configuration found in domain config")
+		return nil, ErrJiraConfigNotFound
 	}
 
 	return domainConfig.Jira, nil
