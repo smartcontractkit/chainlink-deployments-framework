@@ -45,10 +45,11 @@ import (
 )
 
 const (
-	proposalKindFlag   = "proposalKind"
-	indexFlag          = "index"
-	forkFlag           = "fork"
-	defaultAdvanceTime = 36000 // In seconds - defaulting to 10 hours
+	proposalKindFlag        = "proposalKind"
+	indexFlag               = "index"
+	forkFlag                = "fork"
+	defaultAdvanceTime      = 36000 // In seconds - defaulting to 10 hours
+	defaultProposalValidity = 72 * time.Hour
 )
 
 type commonFlagsv2 struct {
@@ -765,7 +766,7 @@ func buildMCMSv2AnalyzeProposalCmd(
 			if outputFile == "" {
 				fmt.Println(analyzedProposal)
 			} else {
-				err := os.WriteFile(outputFile, []byte(analyzedProposal), 0600)
+				err := os.WriteFile(outputFile, []byte(analyzedProposal), 0o600)
 				if err != nil {
 					return err
 				}
@@ -810,6 +811,8 @@ func buildMCMSv2ResetProposalCmd(
 			if timelockProposal == nil {
 				return errors.New("null TimelockProposal")
 			}
+
+			timelockProposal.ValidUntil = uint32(time.Now().Add(defaultProposalValidity).Unix()) //nolint:gosec // G404: time-based validity is acceptable for test signatures
 
 			for selector := range cfgv2.proposal.ChainMetadata {
 				cfgv2.chainSelector = uint64(selector)
@@ -906,7 +909,7 @@ func buildMCMSv2ConvertUpf(
 			if outputFile == "" {
 				fmt.Println(convertedProposal)
 			} else {
-				err := os.WriteFile(outputFile, []byte(convertedProposal), 0600)
+				err := os.WriteFile(outputFile, []byte(convertedProposal), 0o600)
 				if err != nil {
 					return err
 				}
