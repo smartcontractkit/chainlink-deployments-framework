@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.50.1
+
+### Patch Changes
+
+- [#456](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/456) [`4b10eea`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/4b10eea297fbf759da9c3b1586bd2bc58a78387c) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - disable jd in fork env
+
 ## 0.50.0
 
 ### Minor Changes
