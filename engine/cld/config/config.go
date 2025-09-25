@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
@@ -45,9 +46,12 @@ func Load(dom fdomain.Domain, env string, lggr logger.Logger) (*Config, error) {
 
 	jiraCfg, err := LoadJiraConfig(dom)
 	if err != nil {
-		// JIRA config is optional, so we only log the error and continue
-		lggr.Warnf("JIRA config not available: %v", err)
-		jiraCfg = nil
+		if errors.Is(err, ErrJiraConfigNotFound) {
+			lggr.Infof("JIRA config not available: %v", err)
+			jiraCfg = nil
+		} else {
+			return nil, fmt.Errorf("failed to load JIRA config: %w", err)
+		}
 	}
 
 	return &Config{
