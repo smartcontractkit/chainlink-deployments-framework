@@ -2,6 +2,7 @@ package domain
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/spf13/viper"
 
@@ -58,14 +59,14 @@ func (cfg *DomainConfig) validate() error {
 	// Validate each environment in the domain configuration.
 	for name, env := range cfg.Environments {
 		if err := env.validate(); err != nil {
-			return errors.Join(errors.New("invalid config for environment "+name), err)
+			return fmt.Errorf("invalid config for environment %s: %w", name, err)
 		}
 	}
 
 	// Validate JIRA config if present (it's optional)
 	if cfg.Jira != nil {
 		if err := cfg.Jira.Validate(); err != nil {
-			return errors.Join(errors.New("invalid JIRA configuration"), err)
+			return fmt.Errorf("invalid JIRA configuration: %w", err)
 		}
 	}
 
