@@ -6,7 +6,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 
-	pb "github.com/smartcontractkit/chainlink-protos/chainlink-catalog/v1/datastore"
+	pb "github.com/smartcontractkit/chainlink-protos/op-catalog/v1/datastore"
 )
 
 type CatalogDataStoreConfig struct {
