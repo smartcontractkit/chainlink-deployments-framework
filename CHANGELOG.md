@@ -1,5 +1,25 @@
 # chainlink-deployments-framework
 
+## 0.51.0
+
+### Minor Changes
+
+- [#429](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/429) [`1703535`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/17035351f97836c3ac9b21bc9aa08c68be602c1f) Thanks [@bytesizedroll](https://github.com/bytesizedroll)! - Adding Jira package
+
+### Patch Changes
+
+- [#459](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/459) [`98c0ebc`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/98c0ebcd969a96c8026df5f4328040026ae8051b) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix: preserve large integers in YAML to JSON conversion
+
+  Fixes TestSetDurablePipelineInputFromYAML_WithPathResolution by preventing
+  large integers from being converted to scientific notation during JSON
+  marshaling, which causes issues when unmarshaling to big.Int.
+
+  **Problem:**
+
+  - YAML parsing converts large numbers like `2000000000000000000000` to `float64(2e+21)`
+  - JSON marshaling converts `float64(2e+21)` to scientific notation `"2e+21"`
+  - big.Int cannot unmarshal scientific notation, causing errors
+
 ## 0.50.1
 
 ### Patch Changes
