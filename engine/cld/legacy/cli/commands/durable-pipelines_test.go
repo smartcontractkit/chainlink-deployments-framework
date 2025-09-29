@@ -809,7 +809,8 @@ changesets:
   test_changeset:
     payload:
       value: 123
-      message: "hello world"`
+      message: "hello world"
+      bigInt: 2000000000000000000000`
 
 	yamlFileName := "test-pipeline.yaml"
 	yamlFilePath := filepath.Join(inputsDir, yamlFileName)
@@ -872,6 +873,7 @@ changesets:
 				// Verify the JSON structure
 				require.Contains(t, durablePipelineInput, `"value":123`, "Should contain the expected payload")
 				require.Contains(t, durablePipelineInput, `"message":"hello world"`, "Should contain the expected payload")
+				require.Contains(t, durablePipelineInput, `"bigInt":2000000000000000000000`, "Should contain the expected payload")
 			}
 		})
 	}

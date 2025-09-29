@@ -3,6 +3,7 @@ package commands
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"strconv"
 
@@ -214,6 +215,22 @@ func convertToJSONSafe(data any) (any, error) {
 		}
 
 		return result, nil
+
+	case float64:
+		// Convert large numbers that would become scientific notation to json.Number
+		// as it can cause issues to big.Int when it tries to unmarshal it.
+		// Only convert if it's actually an integer (no fractional part)
+		if v >= 1e15 || v <= -1e15 {
+			// Check if this is truly an integer (no fractional part)
+			if v == math.Trunc(v) {
+				// This is a large integer that would be in scientific notation
+				// Convert to json.Number to preserve exact representation
+				formatted := strconv.FormatFloat(v, 'f', 0, 64)
+				return json.Number(formatted), nil
+			}
+		}
+
+		return v, nil
 
 	default:
 		// For primitive types (string, int, bool, etc.), return as-is
