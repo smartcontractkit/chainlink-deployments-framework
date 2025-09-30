@@ -24,11 +24,11 @@ import (
 //   - privateKey: The ECDSA private key to use for signing the proposal
 //
 // Returns a signProposalTask that can be executed within the runtime framework.
-func SignProposalTask(proposalID string, privateKey *ecdsa.PrivateKey) signProposalTask {
+func SignProposalTask(proposalID string, signingKeys ...*ecdsa.PrivateKey) signProposalTask {
 	return signProposalTask{
-		id:         ksuid.New().String(),
-		proposalID: proposalID,
-		privateKey: privateKey,
+		id:          ksuid.New().String(),
+		proposalID:  proposalID,
+		signingKeys: signingKeys,
 	}
 }
 
@@ -36,9 +36,9 @@ func SignProposalTask(proposalID string, privateKey *ecdsa.PrivateKey) signPropo
 // using a provided private key. The task automatically detects the proposal
 // type and applies the appropriate signing logic.
 type signProposalTask struct {
-	id         string            // Unique identifier for this task
-	proposalID string            // ID of the proposal to sign
-	privateKey *ecdsa.PrivateKey // Private key for signing
+	id          string              // Unique identifier for this task
+	proposalID  string              // ID of the proposal to sign
+	signingKeys []*ecdsa.PrivateKey // Private keys for signing
 }
 
 // ID returns the unique identifier for this task instance.
@@ -48,12 +48,12 @@ func (t signProposalTask) ID() string {
 
 // Run executes the proposal signing task within the provided environment and state.
 // This method retrieves the proposal from the state, determines its type, signs it
-// with the provided private key, and updates the proposal state with the signed version.
+// with the provided private keys, and updates the proposal state with the signed version.
 //
 // The signing process supports both MCMS proposals and Timelock proposals, automatically
 // detecting the proposal type and applying the appropriate signing logic. Multiple
-// signatures can be accumulated on the same proposal by running this task multiple
-// times with different private keys.
+// signatures may be provided to sign the proposal, or they can be accumulated on the same proposal
+// by running this task multiple times with different keys.
 //
 // Returns an error if:
 //   - The proposal cannot be found in the state
@@ -80,17 +80,19 @@ func (t signProposalTask) Run(e fdeployment.Environment, state *State) error {
 		return fmt.Errorf("failed to create new signer: %w", err)
 	}
 
-	var propJSON string
-	switch kind {
-	case mcmstypes.KindProposal:
-		propJSON, err = signProposal(ctx, propState, t.privateKey, signer)
-	case mcmstypes.KindTimelockProposal:
-		propJSON, err = signTimelockProposal(ctx, propState, t.privateKey, signer)
-	default:
-		return fmt.Errorf("unsupported proposal kind: %s", kind)
-	}
-	if err != nil {
-		return err
+	propJSON := propState.JSON
+	for _, signingKey := range t.signingKeys {
+		switch kind {
+		case mcmstypes.KindProposal:
+			propJSON, err = signProposal(ctx, propJSON, signingKey, signer)
+		case mcmstypes.KindTimelockProposal:
+			propJSON, err = signTimelockProposal(ctx, propJSON, signingKey, signer)
+		default:
+			return fmt.Errorf("unsupported proposal kind: %s", kind)
+		}
+		if err != nil {
+			return err
+		}
 	}
 
 	// Update the proposal state with the signed proposal
@@ -197,6 +199,54 @@ func (t executeProposalTask) Run(e fdeployment.Environment, state *State) error 
 	return nil
 }
 
+// SignAndExecuteProposalsTask creates a new task for signing and executing all pending proposals.
+func SignAndExecuteProposalsTask(signingKeys []*ecdsa.PrivateKey) signAndExecuteProposalTask {
+	return signAndExecuteProposalTask{
+		id:          ksuid.New().String(),
+		signingKeys: signingKeys,
+		newExecutor: newDefaultExecutor,
+	}
+}
+
+// signAndExecuteProposalTask represents a task that signs and executes all pending proposals.
+type signAndExecuteProposalTask struct {
+	id          string              // Unique identifier for this task
+	signingKeys []*ecdsa.PrivateKey // Private keys for signing
+	newExecutor func(e fdeployment.Environment) proposalExecutor
+}
+
+// ID returns the unique identifier for this task instance.
+func (t signAndExecuteProposalTask) ID() string {
+	return t.id
+}
+
+// Run executes the sign and execute proposal task within the provided environment and state.
+// This method retrieves all pending proposals from the state, signs them with the provided private keys,
+// and executes them on the appropriate blockchain networks.
+//
+// Returns an error if:
+//   - The proposal cannot be signed
+//   - The proposal cannot be executed
+func (t signAndExecuteProposalTask) Run(e fdeployment.Environment, state *State) error {
+	for _, p := range state.GetPendingProposals() {
+		signTask := SignProposalTask(p.ID, t.signingKeys...)
+		if err := signTask.Run(e, state); err != nil {
+			return fmt.Errorf("failed to sign proposal: %w", err)
+		}
+
+		execTask := ExecuteProposalTask(p.ID)
+		if t.newExecutor != nil { // Override the default executor if provided. Used for testing only.
+			execTask.newExecutor = t.newExecutor
+		}
+
+		if err := execTask.Run(e, state); err != nil {
+			return fmt.Errorf("failed to execute proposal: %w", err)
+		}
+	}
+
+	return nil
+}
+
 // signProposal is a helper function that signs an MCMS proposal and returns the signed proposal
 // as JSON.
 //
@@ -207,11 +257,11 @@ func (t executeProposalTask) Run(e fdeployment.Environment, state *State) error 
 // multiple signers to incrementally add their signatures to the same proposal.
 func signProposal(
 	ctx context.Context,
-	propState ProposalState,
+	propJSON string,
 	privateKey *ecdsa.PrivateKey,
 	signer *mcmsutils.Signer,
 ) (string, error) {
-	p, err := mcmsutils.DecodeProposal(propState.JSON)
+	p, err := mcmsutils.DecodeProposal(propJSON)
 	if err != nil {
 		return "", fmt.Errorf("failed to decode proposal: %w", err)
 	}
@@ -220,7 +270,7 @@ func signProposal(
 		return "", fmt.Errorf("failed to sign proposal: %w", err)
 	}
 
-	propJSON, err := mcmsutils.EncodeProposal(p)
+	propJSON, err = mcmsutils.EncodeProposal(p)
 	if err != nil {
 		return "", fmt.Errorf("failed to encode proposal: %w", err)
 	}
@@ -239,11 +289,11 @@ func signProposal(
 // multiple signers to incrementally add their signatures to the same timelock proposal.
 func signTimelockProposal(
 	ctx context.Context,
-	propState ProposalState,
+	propJSON string,
 	privateKey *ecdsa.PrivateKey,
 	signer *mcmsutils.Signer,
 ) (string, error) {
-	p, err := mcmsutils.DecodeTimelockProposal(propState.JSON)
+	p, err := mcmsutils.DecodeTimelockProposal(propJSON)
 	if err != nil {
 		return "", fmt.Errorf("failed to decode timelock proposal: %w", err)
 	}
@@ -252,7 +302,7 @@ func signTimelockProposal(
 		return "", fmt.Errorf("failed to sign timelock proposal: %w", err)
 	}
 
-	propJSON, err := mcmsutils.EncodeTimelockProposal(p)
+	propJSON, err = mcmsutils.EncodeTimelockProposal(p)
 	if err != nil {
 		return "", fmt.Errorf("failed to encode timelock proposal: %w", err)
 	}
