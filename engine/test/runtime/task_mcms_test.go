@@ -9,6 +9,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/crypto"
 	chainselectors "github.com/smartcontractkit/chain-selectors"
 	mcmslib "github.com/smartcontractkit/mcms"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
@@ -40,12 +41,16 @@ func TestSignProposalTask_Run(t *testing.T) {
 	t.Parallel()
 
 	// Generate a test private key
-	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	privateKey1, err := crypto.GenerateKey()
+	require.NoError(t, err)
+
+	privateKey2, err := crypto.GenerateKey()
 	require.NoError(t, err)
 
 	tests := []struct {
 		name           string
 		setupState     func(t *testing.T) (*State, string)
+		signingKeys    []*ecdsa.PrivateKey
 		wantErr        string
 		validateResult func(t *testing.T, state *State, taskID string)
 	}{
@@ -64,6 +69,7 @@ func TestSignProposalTask_Run(t *testing.T) {
 
 				return state, propState.ID
 			},
+			signingKeys: []*ecdsa.PrivateKey{privateKey1},
 			validateResult: func(t *testing.T, state *State, taskID string) {
 				t.Helper()
 
@@ -75,6 +81,38 @@ func TestSignProposalTask_Run(t *testing.T) {
 				prop, err := mcmsutils.DecodeProposal(updatedProp.JSON)
 				require.NoError(t, err)
 				assert.Len(t, prop.Signatures, 1)
+			},
+		},
+		{
+			name: "successfully signs MCMS proposal with multiple signing keys",
+			setupState: func(t *testing.T) (*State, string) {
+				t.Helper()
+
+				// Create a test MCMS proposal
+				proposal := createTestMCMSProposalForSigning(t)
+				propState, err := newMCMSProposalState(&proposal)
+				require.NoError(t, err)
+
+				state := newState()
+				state.Proposals = []ProposalState{propState}
+
+				return state, propState.ID
+			},
+			signingKeys: []*ecdsa.PrivateKey{privateKey1, privateKey2},
+			validateResult: func(t *testing.T, state *State, taskID string) {
+				t.Helper()
+
+				// Find the updated proposal
+				require.Len(t, state.Proposals, 1)
+				updatedProp := state.Proposals[0]
+
+				// Decode and verify the proposal was signed
+				prop, err := mcmsutils.DecodeProposal(updatedProp.JSON)
+				require.NoError(t, err)
+				assert.Len(t, prop.Signatures, 2)
+				// Ensure the signatures are different
+				assert.NotEqual(t, prop.Signatures[0].R, prop.Signatures[1].R)
+				assert.NotEqual(t, prop.Signatures[0].S, prop.Signatures[1].S)
 			},
 		},
 		{
@@ -92,6 +130,7 @@ func TestSignProposalTask_Run(t *testing.T) {
 
 				return state, propState.ID
 			},
+			signingKeys: []*ecdsa.PrivateKey{privateKey1},
 			validateResult: func(t *testing.T, state *State, taskID string) {
 				t.Helper()
 
@@ -115,7 +154,8 @@ func TestSignProposalTask_Run(t *testing.T) {
 
 				return state, ""
 			},
-			wantErr: "proposal not found",
+			signingKeys: []*ecdsa.PrivateKey{privateKey1},
+			wantErr:     "proposal not found",
 		},
 		{
 			name: "fails with invalid proposal JSON",
@@ -133,7 +173,8 @@ func TestSignProposalTask_Run(t *testing.T) {
 
 				return state, propState.ID
 			},
-			wantErr: "invalid character", // JSON parsing error
+			signingKeys: []*ecdsa.PrivateKey{privateKey1},
+			wantErr:     "invalid character", // JSON parsing error
 		},
 		{
 			name: "fails with unsupported proposal kind",
@@ -158,7 +199,8 @@ func TestSignProposalTask_Run(t *testing.T) {
 
 				return state, propState.ID
 			},
-			wantErr: "unsupported proposal kind",
+			signingKeys: []*ecdsa.PrivateKey{privateKey1},
+			wantErr:     "unsupported proposal kind",
 		},
 	}
 
@@ -169,7 +211,7 @@ func TestSignProposalTask_Run(t *testing.T) {
 			state, proposalID := tt.setupState(t)
 			env := createTestEnvironment(t)
 
-			task := SignProposalTask(proposalID, privateKey)
+			task := SignProposalTask(proposalID, tt.signingKeys...)
 			taskID := task.ID()
 
 			err := task.Run(env, state)
@@ -250,7 +292,7 @@ func TestSignProposal(t *testing.T) {
 			signer, err := mcmsutils.NewSigner()
 			require.NoError(t, err)
 
-			result, err := signProposal(t.Context(), propState, privateKey, signer)
+			result, err := signProposal(t.Context(), propState.JSON, privateKey, signer)
 
 			if tt.wantErr != "" {
 				require.Error(t, err)
@@ -334,7 +376,7 @@ func TestSignTimelockProposal(t *testing.T) {
 			signer, err := mcmsutils.NewSigner()
 			require.NoError(t, err)
 
-			result, err := signTimelockProposal(t.Context(), propState, privateKey, signer)
+			result, err := signTimelockProposal(t.Context(), propState.JSON, privateKey, signer)
 
 			if tt.wantErr != "" {
 				require.Error(t, err)
@@ -549,6 +591,134 @@ func TestExecuteProposalTask_Run(t *testing.T) {
 				updatedProp, err := state.GetProposal(tt.givePropStateID)
 				require.NoError(t, err)
 				assert.True(t, updatedProp.IsExecuted)
+			}
+		})
+	}
+}
+
+func TestSignAndExecuteProposalsTask_ID(t *testing.T) {
+	t.Parallel()
+
+	task := SignAndExecuteProposalsTask([]*ecdsa.PrivateKey{})
+	assert.NotEmpty(t, task.ID())
+}
+
+func TestSignAndExecuteProposalsTask_Run(t *testing.T) {
+	t.Parallel()
+
+	privateKey, err := crypto.GenerateKey()
+	require.NoError(t, err)
+
+	tests := []struct {
+		name           string
+		before         func(executor *mockProposalExecutor)
+		setupState     func(t *testing.T) *State
+		signingKeys    []*ecdsa.PrivateKey
+		wantErr        string
+		validateResult func(t *testing.T, state *State)
+	}{
+		{
+			name: "successfully signs and executes MCMS proposal",
+			before: func(executor *mockProposalExecutor) {
+				executor.EXPECT().ExecuteMCMS(mock.Anything, mock.Anything).Return(nil)
+			},
+			setupState: func(t *testing.T) *State {
+				t.Helper()
+
+				// Create a test MCMS proposal
+				proposal := createTestMCMSProposalForSigning(t)
+				propState, err := newMCMSProposalState(&proposal)
+				require.NoError(t, err)
+
+				state := newState()
+				state.Proposals = []ProposalState{
+					propState,
+					{
+						ID:         "test-proposal-id-2",
+						IsExecuted: true,
+					},
+				}
+
+				return state
+			},
+			signingKeys: []*ecdsa.PrivateKey{privateKey},
+			validateResult: func(t *testing.T, state *State) {
+				t.Helper()
+
+				require.Len(t, state.Proposals, 2)
+				assert.Empty(t, state.GetPendingProposals())
+			},
+		},
+		{
+			name: "fails to sign MCMS proposal",
+			setupState: func(t *testing.T) *State {
+				t.Helper()
+
+				state := newState()
+				state.Proposals = []ProposalState{
+					{
+						ID:   "test-proposal-id",
+						JSON: "invalid-json-content",
+					},
+				}
+
+				return state
+			},
+			signingKeys: []*ecdsa.PrivateKey{privateKey},
+			wantErr:     "failed to sign proposal",
+		},
+		{
+			name: "fails to execute MCMS proposal",
+			before: func(executor *mockProposalExecutor) {
+				executor.EXPECT().ExecuteMCMS(mock.Anything, mock.Anything).Return(
+					errors.New("failed to execute MCMS proposal"),
+				)
+			},
+			setupState: func(t *testing.T) *State {
+				t.Helper()
+
+				proposal := createTestMCMSProposalForSigning(t)
+				propState, err := newMCMSProposalState(&proposal)
+				require.NoError(t, err)
+
+				state := newState()
+				state.Proposals = []ProposalState{propState}
+
+				return state
+			},
+			signingKeys: []*ecdsa.PrivateKey{privateKey},
+			wantErr:     "failed to execute MCMS proposal",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			state := tt.setupState(t)
+			env := createTestEnvironment(t)
+			executor := newMockProposalExecutor(t)
+
+			if tt.before != nil {
+				tt.before(executor)
+			}
+
+			task := SignAndExecuteProposalsTask(tt.signingKeys)
+			task.newExecutor = func(e fdeployment.Environment) proposalExecutor {
+				return executor
+			}
+
+			err := task.Run(env, state)
+
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				require.ErrorContains(t, err, tt.wantErr)
+			} else {
+				require.NoError(t, err, "Task should succeed")
+
+				if tt.validateResult != nil {
+					tt.validateResult(t, state)
+				}
 			}
 		})
 	}

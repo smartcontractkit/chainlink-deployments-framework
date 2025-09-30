@@ -128,6 +128,21 @@ func (s *State) MarkProposalExecuted(id string) error {
 	return errProposalNotFound(id)
 }
 
+// GetPendingProposals returns all proposals that are not executed.
+func (s *State) GetPendingProposals() []ProposalState {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	pendingProposals := make([]ProposalState, 0)
+	for _, p := range s.Proposals {
+		if !p.IsExecuted {
+			pendingProposals = append(pendingProposals, p)
+		}
+	}
+
+	return pendingProposals
+}
+
 // mergeAddressBook merges address book changes from a changeset output into the current state.
 // This is a legacy operation as AddressBook is deprecated in favor of DataStore.
 //

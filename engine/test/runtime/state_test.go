@@ -321,6 +321,28 @@ func TestState_MarkProposalExecuted(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestState_GetPendingProposals(t *testing.T) {
+	t.Parallel()
+
+	state := newState()
+	proposals := []ProposalState{
+		{
+			ID:         "test-proposal",
+			IsExecuted: false,
+		},
+		{
+			ID:         "test-proposal-2",
+			IsExecuted: true,
+		},
+	}
+
+	state.Proposals = proposals
+
+	got := state.GetPendingProposals()
+	require.Len(t, got, 1)
+	require.Equal(t, proposals[0], got[0])
+}
+
 // Helper functions for creating test data
 
 // createTestDataStore creates a data store with the given address.

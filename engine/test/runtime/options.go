@@ -1,6 +1,8 @@
 package runtime
 
-import "github.com/smartcontractkit/chainlink-deployments-framework/engine/test/environment"
+import (
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/environment"
+)
 
 // runtimeConfig is the configuration for initializing the runtime.
 type runtimeConfig struct {
