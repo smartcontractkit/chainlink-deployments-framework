@@ -24,6 +24,7 @@ type Client struct {
 	baseURL    string
 	username   string
 	token      string
+	domainName string
 	httpClient *http.Client
 }
 
@@ -33,23 +34,23 @@ type JiraIssue struct {
 	Fields map[string]any `json:"fields"`
 }
 
-// NewClient creates a new JIRA client with the provided authentication token
-func NewClient(baseURL, username, token string) (*Client, error) {
-	if token == "" {
-		return nil, errors.New("JIRA token is required")
-	}
-
+// NewClient creates a new JIRA client with the provided authentication token.
+// The token can be empty to support lazy initialization - validation occurs when making API calls.
+func NewClient(baseURL, username, token, domainName string) (*Client, error) {
 	return &Client{
-		baseURL:  strings.TrimSuffix(baseURL, "/"),
-		username: username,
-		token:    token,
+		baseURL:    strings.TrimSuffix(baseURL, "/"),
+		username:   username,
+		token:      token,
+		domainName: domainName,
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
 	}, nil
 }
 
-// NewClientFromDomain creates a JIRA client using domain configuration and environment variables
+// NewClientFromDomain creates a JIRA client using domain configuration and environment variables.
+// The JIRA_TOKEN_{DOMAIN} environment variable is optional to support lazy initialization.
+// Token validation occurs when making API calls via GetIssue().
 func NewClientFromDomain(dom fdomain.Domain) (*Client, error) {
 	jiraConfig, err := config.LoadJiraConfig(dom)
 	if err != nil {
@@ -58,11 +59,8 @@ func NewClientFromDomain(dom fdomain.Domain) (*Client, error) {
 
 	domainNameUpper := strings.ToUpper(dom.Key())
 	token := os.Getenv("JIRA_TOKEN_" + domainNameUpper)
-	if token == "" {
-		return nil, fmt.Errorf("JIRA_TOKEN_%s environment variable is required", domainNameUpper)
-	}
 
-	client, err := NewClient(jiraConfig.Connection.BaseURL, jiraConfig.Connection.Username, token)
+	client, err := NewClient(jiraConfig.Connection.BaseURL, jiraConfig.Connection.Username, token, domainNameUpper)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create JIRA client: %w", err)
 	}
@@ -75,6 +73,15 @@ var jiraIssueKeyPattern = regexp.MustCompile(`^[A-Z][A-Z0-9]*-[1-9][0-9]*$`)
 
 // GetIssue fetches a JIRA issue by key. If fields is empty, Jira returns all default fields.
 func (c *Client) GetIssue(issueKey string, fields []string) (*JiraIssue, error) {
+	// Validate token is set before making API call
+	if c.token == "" {
+		if c.domainName != "" {
+			return nil, fmt.Errorf("JIRA token is required but not set. Please set JIRA_TOKEN_%s environment variable", c.domainName)
+		}
+
+		return nil, errors.New("JIRA token is required but not set")
+	}
+
 	// Validate JIRA issue key format
 	if issueKey == "" {
 		return nil, errors.New("issue key cannot be empty")

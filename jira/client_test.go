@@ -32,11 +32,11 @@ func TestNewClient(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name:        "empty token should fail",
+			name:        "empty token allowed for lazy initialization",
 			baseURL:     "https://example.atlassian.net",
 			username:    "user@example.com",
 			token:       "",
-			expectError: true,
+			expectError: false,
 		},
 		{
 			name:        "baseURL with trailing slash should be trimmed",
@@ -50,7 +50,7 @@ func TestNewClient(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			client, err := NewClient(tt.baseURL, tt.username, tt.token)
+			client, err := NewClient(tt.baseURL, tt.username, tt.token, "")
 
 			if tt.expectError {
 				require.Error(t, err)
@@ -156,7 +156,7 @@ func TestClient_GetIssue(t *testing.T) {
 	defer server.Close()
 
 	// Create client
-	client, err := NewClient(server.URL, "testuser", "testtoken")
+	client, err := NewClient(server.URL, "testuser", "testtoken", "")
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -210,7 +210,27 @@ func TestClient_GetIssue_ErrorCases(t *testing.T) {
 		serverResponse func(w http.ResponseWriter, r *http.Request)
 		expectError    bool
 		errorContains  string
+		emptyToken     bool
+		domainName     string
 	}{
+		{
+			name:          "empty token without domain name",
+			issueKey:      "TEST-123",
+			fields:        nil,
+			expectError:   true,
+			errorContains: "JIRA token is required but not set",
+			emptyToken:    true,
+			domainName:    "",
+		},
+		{
+			name:          "empty token with domain name",
+			issueKey:      "TEST-123",
+			fields:        nil,
+			expectError:   true,
+			errorContains: "Please set JIRA_TOKEN_TESTDOMAIN environment variable",
+			emptyToken:    true,
+			domainName:    "TESTDOMAIN",
+		},
 		{
 			name:          "empty issue key",
 			issueKey:      "",
@@ -288,13 +308,21 @@ func TestClient_GetIssue_ErrorCases(t *testing.T) {
 
 			// For validation tests, we don't need a server
 			if tt.serverResponse == nil {
-				client, err = NewClient("https://example.com", "testuser", "testtoken")
+				token := "testtoken"
+				if tt.emptyToken {
+					token = ""
+				}
+				client, err = NewClient("https://example.com", "testuser", token, tt.domainName)
 				require.NoError(t, err)
 			} else {
 				server := httptest.NewServer(http.HandlerFunc(tt.serverResponse))
 				defer server.Close()
 
-				client, err = NewClient(server.URL, "testuser", "testtoken")
+				token := "testtoken"
+				if tt.emptyToken {
+					token = ""
+				}
+				client, err = NewClient(server.URL, "testuser", token, tt.domainName)
 				require.NoError(t, err)
 			}
 
@@ -353,7 +381,7 @@ func TestNewClientFromDomain(t *testing.T) { //nolint:paralleltest // Cannot use
 			},
 		},
 		{
-			name: "missing JIRA token",
+			name: "missing JIRA token allowed for lazy initialization",
 			setupDomain: func(t *testing.T) fdomain.Domain {
 				t.Helper()
 				dom := setupTestDomain(t)
@@ -365,8 +393,23 @@ func TestNewClientFromDomain(t *testing.T) { //nolint:paralleltest // Cannot use
 				t.Helper()
 				// Don't set the token
 			},
-			expectError:   true,
-			errorContains: "JIRA_TOKEN_EXEMPLAR environment variable is required",
+			expectError: false,
+			validate: func(client *Client) error {
+				if client.baseURL != "https://example.atlassian.net" {
+					return fmt.Errorf("expected baseURL 'https://example.atlassian.net', got '%s'", client.baseURL)
+				}
+				if client.username != "testuser" {
+					return fmt.Errorf("expected username 'testuser', got '%s'", client.username)
+				}
+				if client.token != "" {
+					return fmt.Errorf("expected empty token, got '%s'", client.token)
+				}
+				if client.domainName != "EXEMPLAR" {
+					return fmt.Errorf("expected domainName 'EXEMPLAR', got '%s'", client.domainName)
+				}
+
+				return nil
+			},
 		},
 		{
 			name: "missing config file",
