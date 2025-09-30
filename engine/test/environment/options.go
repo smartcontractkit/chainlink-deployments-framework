@@ -10,9 +10,11 @@ import (
 
 // Assign the chain container loader constructors to local variables to allow for stubbing in tests.
 var (
-	newTonContainerLoader    = onchain.NewTonContainerLoader
 	newAptosContainerLoader  = onchain.NewAptosContainerLoader
 	newSolanaContainerLoader = onchain.NewSolanaContainerLoader
+	newSuiContainerLoader    = onchain.NewSuiContainerLoader
+	newTonContainerLoader    = onchain.NewTonContainerLoader
+	newTronContainerLoader   = onchain.NewTronContainerLoader
 	newZKSyncContainerLoader = onchain.NewZKSyncContainerLoader
 )
 
@@ -112,6 +114,34 @@ func WithZKSyncContainerN(t *testing.T, n int) LoadOpt {
 	t.Helper()
 
 	return withChainLoaderN(t, newZKSyncContainerLoader(), n)
+}
+
+// WithTronContainer loads Tron blockchain container instances for specified chain selectors.
+func WithTronContainer(t *testing.T, selectors []uint64) LoadOpt {
+	t.Helper()
+
+	return withChainLoader(t, newTronContainerLoader(), selectors)
+}
+
+// WithTronContainerN loads n Tron blockchain container instances.
+func WithTronContainerN(t *testing.T, n int) LoadOpt {
+	t.Helper()
+
+	return withChainLoaderN(t, newTronContainerLoader(), n)
+}
+
+// WithSuiContainer loads Sui blockchain container instances for specified chain selectors.
+func WithSuiContainer(t *testing.T, selectors []uint64) LoadOpt {
+	t.Helper()
+
+	return withChainLoader(t, newSuiContainerLoader(), selectors)
+}
+
+// WithSuiContainerN loads n Sui blockchain container instances.
+func WithSuiContainerN(t *testing.T, n int) LoadOpt {
+	t.Helper()
+
+	return withChainLoaderN(t, newSuiContainerLoader(), n)
 }
 
 // WithLogger sets the logger for the environment.

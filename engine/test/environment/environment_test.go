@@ -14,7 +14,9 @@ import (
 	fchainaptos "github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos"
 	fchainevm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	fchainsolana "github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
+	fchainsui "github.com/smartcontractkit/chainlink-deployments-framework/chain/sui"
 	fchainton "github.com/smartcontractkit/chainlink-deployments-framework/chain/ton"
+	fchaintron "github.com/smartcontractkit/chainlink-deployments-framework/chain/tron"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/onchain"
 )
 
@@ -175,8 +177,10 @@ func TestLoader_Load_ChainOptions(t *testing.T) { //nolint:paralleltest // We ar
 				WithSolanaContainer(t, []uint64{chainselectors.TEST_22222222222222222222222222222222222222222222.Selector}, t.TempDir(), map[string]string{}),
 				WithAptosContainer(t, []uint64{chainselectors.APTOS_LOCALNET.Selector}),
 				WithTonContainer(t, []uint64{chainselectors.TON_LOCALNET.Selector}),
+				WithTronContainer(t, []uint64{chainselectors.TRON_DEVNET.Selector}),
+				WithSuiContainer(t, []uint64{chainselectors.SUI_LOCALNET.Selector}),
 			},
-			wantBlockChainsLen: 4,
+			wantBlockChainsLen: 6,
 			assert: func(t *testing.T, BlockChains fchain.BlockChains) {
 				t.Helper()
 
@@ -184,6 +188,8 @@ func TestLoader_Load_ChainOptions(t *testing.T) { //nolint:paralleltest // We ar
 				require.Len(t, BlockChains.SolanaChains(), 1)
 				require.Len(t, BlockChains.AptosChains(), 1)
 				require.Len(t, BlockChains.TonChains(), 1)
+				require.Len(t, BlockChains.TronChains(), 1)
+				require.Len(t, BlockChains.SuiChains(), 1)
 			},
 		},
 		{
@@ -193,8 +199,10 @@ func TestLoader_Load_ChainOptions(t *testing.T) { //nolint:paralleltest // We ar
 				WithSolanaContainerN(t, 1, t.TempDir(), map[string]string{}),
 				WithAptosContainerN(t, 1),
 				WithTonContainerN(t, 1),
+				WithTronContainerN(t, 1),
+				WithSuiContainerN(t, 1),
 			},
-			wantBlockChainsLen: 4,
+			wantBlockChainsLen: 6,
 			assert: func(t *testing.T, BlockChains fchain.BlockChains) {
 				t.Helper()
 
@@ -202,6 +210,8 @@ func TestLoader_Load_ChainOptions(t *testing.T) { //nolint:paralleltest // We ar
 				require.Len(t, BlockChains.SolanaChains(), 1)
 				require.Len(t, BlockChains.AptosChains(), 1)
 				require.Len(t, BlockChains.TonChains(), 1)
+				require.Len(t, BlockChains.TronChains(), 1)
+				require.Len(t, BlockChains.SuiChains(), 1)
 			},
 		},
 	}
@@ -231,6 +241,8 @@ func stubContainerLoaders() func() {
 		oldAptosContainerLoader  = newAptosContainerLoader
 		oldSolanaContainerLoader = newSolanaContainerLoader
 		oldZKSyncContainerLoader = newZKSyncContainerLoader
+		oldTronContainerLoader   = newTronContainerLoader
+		oldSuiContainerLoader    = newSuiContainerLoader
 	)
 
 	newTonContainerLoader = makeChainLoaderStub([]uint64{chainselectors.TON_LOCALNET.Selector}, fchainton.Chain{
@@ -256,12 +268,24 @@ func stubContainerLoaders() func() {
 		Selector:   chainselectors.TEST_90000051.Selector,
 		IsZkSyncVM: true,
 	})
+	newTronContainerLoader = makeChainLoaderStub([]uint64{chainselectors.TRON_DEVNET.Selector}, fchaintron.Chain{
+		ChainMetadata: fchaintron.ChainMetadata{
+			Selector: chainselectors.TRON_DEVNET.Selector,
+		},
+	})
+	newSuiContainerLoader = makeChainLoaderStub([]uint64{chainselectors.SUI_LOCALNET.Selector}, fchainsui.Chain{
+		ChainMetadata: fchainsui.ChainMetadata{
+			Selector: chainselectors.SUI_LOCALNET.Selector,
+		},
+	})
 
 	return func() {
 		newTonContainerLoader = oldTonContainerLoader
 		newAptosContainerLoader = oldAptosContainerLoader
 		newSolanaContainerLoader = oldSolanaContainerLoader
 		newZKSyncContainerLoader = oldZKSyncContainerLoader
+		newTronContainerLoader = oldTronContainerLoader
+		newSuiContainerLoader = oldSuiContainerLoader
 	}
 }
 
