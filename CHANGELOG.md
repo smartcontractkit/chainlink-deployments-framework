@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.52.0
+
+### Minor Changes
+
+- [#463](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/463) [`aba39dc`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/aba39dcef98a36a296ae8794c5cbdd3cf1763225) Thanks [@finleydecker](https://github.com/finleydecker)! - Bump chain-selectors
+
 ## 0.51.0
 
 ### Minor Changes
