@@ -16,6 +16,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
+	mcmsencoder "github.com/smartcontractkit/chainlink-sui/bindings"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/rpc"
 	"github.com/smartcontractkit/mcms"
@@ -1388,8 +1389,9 @@ func getExecutorWithChainOverride(cfg *cfgv2, chainSelector types.ChainSelector)
 			return nil, fmt.Errorf("error getting sui metadata from proposal: %w", err)
 		}
 		chain := cfg.blockchains.SuiChains()[uint64(chainSelector)]
+		ccipEntrypointEncoder := mcmsencoder.NewCCIPEntrypointArgEncoder()
 
-		return sui.NewExecutor(chain.Client, chain.Signer, encoder, metadata.McmsPackageID, metadata.Role, cfg.timelockProposal.ChainMetadata[chainSelector].MCMAddress, metadata.AccountObj, metadata.RegistryObj, metadata.TimelockObj)
+		return sui.NewExecutor(chain.Client, chain.Signer, encoder, ccipEntrypointEncoder, metadata.McmsPackageID, metadata.Role, cfg.timelockProposal.ChainMetadata[chainSelector].MCMAddress, metadata.AccountObj, metadata.RegistryObj, metadata.TimelockObj)
 	default:
 		return nil, fmt.Errorf("unsupported chain family %s", family)
 	}
@@ -1434,7 +1436,8 @@ func getTimelockExecutorWithChainOverride(cfg *cfgv2, chainSelector types.ChainS
 		if err != nil {
 			return nil, fmt.Errorf("error getting sui metadata from proposal: %w", err)
 		}
-		executor, err = sui.NewTimelockExecutor(chain.Client, chain.Signer, metadata.McmsPackageID, metadata.RegistryObj, metadata.AccountObj)
+		ccipEntrypointEncoder := mcmsencoder.NewCCIPEntrypointArgEncoder()
+		executor, err = sui.NewTimelockExecutor(chain.Client, chain.Signer, ccipEntrypointEncoder, metadata.McmsPackageID, metadata.RegistryObj, metadata.AccountObj)
 		if err != nil {
 			return nil, fmt.Errorf("error creating sui timelock executor: %w", err)
 		}
