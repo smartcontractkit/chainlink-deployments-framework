@@ -3,7 +3,7 @@ package remote
 import (
 	"fmt"
 
-	pb "github.com/smartcontractkit/chainlink-protos/chainlink-catalog/v1/datastore"
+	pb "github.com/smartcontractkit/chainlink-protos/op-catalog/v1/datastore"
 )
 
 func ThrowAndCatch(

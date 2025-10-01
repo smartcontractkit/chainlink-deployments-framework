@@ -14,26 +14,26 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/changeset/resolvers"
-	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
-	cldf_changeset "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/changeset"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
-	cldfenvironment "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
+	fresolvers "github.com/smartcontractkit/chainlink-deployments-framework/changeset/resolvers"
+	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	cs "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/changeset"
+	dom "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
+	cldenv "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 )
 
 // a temporary workaround to allow test to mock the LoadEnvironment function
-var loadEnv = cldfenvironment.Load
+var loadEnv = cldenv.Load
 
 // TODO: envLoader needs to be refactored to an interface so we can mock it for testing
 // to avoid using real backends
 func (c Commands) NewDurablePipelineCmds(
-	domain domain.Domain,
-	loadMigration func(envName string) (*cldf_changeset.ChangesetsRegistry, error),
-	decodeProposalCtxProvider func(env cldf.Environment) (analyzer.ProposalContext, error),
-	loadConfigResolvers *resolvers.ConfigResolverManager) *cobra.Command {
+	domain dom.Domain,
+	loadMigration func(envName string) (*cs.ChangesetsRegistry, error),
+	decodeProposalCtxProvider func(env fdeployment.Environment) (analyzer.ProposalContext, error),
+	loadConfigResolvers *fresolvers.ConfigResolverManager) *cobra.Command {
 	evmCmd := &cobra.Command{
 		Use:   "durable-pipeline",
 		Short: "Durable Pipeline commands",
@@ -42,7 +42,8 @@ func (c Commands) NewDurablePipelineCmds(
 	evmCmd.AddCommand(
 		c.newDurablePipelineRun(domain, loadMigration, decodeProposalCtxProvider, loadConfigResolvers),
 		c.newDurablePipelineInputGenerate(domain, loadMigration, loadConfigResolvers),
-		c.newDurablePipelineListBuild(domain, loadMigration, loadConfigResolvers))
+		c.newDurablePipelineListBuild(domain, loadMigration, loadConfigResolvers),
+		c.newDurablePipelineTemplateInput(domain, loadMigration, loadConfigResolvers))
 
 	evmCmd.PersistentFlags().StringP("environment", "e", "", "Deployment environment (required)")
 	_ = evmCmd.MarkPersistentFlagRequired("environment")
@@ -75,10 +76,10 @@ var (
 
 // newDurablePipelineRun builds the 'run' subcommand for executing durable pipelines
 func (c Commands) newDurablePipelineRun(
-	domain domain.Domain,
-	loadMigration func(envName string) (*cldf_changeset.ChangesetsRegistry, error),
-	decodeProposalCtxProvider func(env cldf.Environment) (analyzer.ProposalContext, error),
-	loadConfigResolvers *resolvers.ConfigResolverManager,
+	domain dom.Domain,
+	loadMigration func(envName string) (*cs.ChangesetsRegistry, error),
+	decodeProposalCtxProvider func(env fdeployment.Environment) (analyzer.ProposalContext, error),
+	loadConfigResolvers *fresolvers.ConfigResolverManager,
 ) *cobra.Command {
 	var (
 		changesetStr string
@@ -113,7 +114,7 @@ func (c Commands) newDurablePipelineRun(
 				return err
 			}
 
-			envOptions, err := configureEnvironmentOptions(migration, changesetStr)
+			envOptions, err := configureEnvironmentOptions(migration, changesetStr, dryRun, c.lggr)
 			if err != nil {
 				return err
 			}
@@ -140,11 +141,8 @@ func (c Commands) newDurablePipelineRun(
 			c.lggr.Infof("Loaded %d operations reports", originalReportsLen)
 			reporter := operations.NewMemoryReporter(operations.WithReports(reports))
 
-			envOptions = append(envOptions, cldfenvironment.WithReporter(reporter))
-			env, err := loadEnv(
-				cmd.Context, c.lggr, envKey, domain, !dryRun,
-				envOptions...,
-			)
+			envOptions = append(envOptions, cldenv.WithReporter(reporter))
+			env, err := loadEnv(cmd.Context(), domain, envKey, envOptions...)
 			if err != nil {
 				return err
 			}
@@ -210,7 +208,7 @@ var (
 	inputGenerateLong = `
 		Generate durable-pipeline input configurations.
 
-		Reads an inputs file, resolves each changeset via registered config resolvers,
+		Reads an inputs file, resolves each changeset via registered config fresolvers,
 		and outputs the resulting config in YAML or JSON.
 `
 	inputGenerateExample = `
@@ -231,9 +229,9 @@ var (
 // newDurablePipelineInputGenerate builds the config-generate subcommand for generating
 // durable pipeline configurations using config resolvers
 func (c Commands) newDurablePipelineInputGenerate(
-	domain domain.Domain,
-	loadMigrationsRegistry func(envName string) (*cldf_changeset.ChangesetsRegistry, error),
-	loadConfigResolvers *resolvers.ConfigResolverManager,
+	domain dom.Domain,
+	loadMigrationsRegistry func(envName string) (*cs.ChangesetsRegistry, error),
+	loadConfigResolvers *fresolvers.ConfigResolverManager,
 ) *cobra.Command {
 	var (
 		inputsFileName string
@@ -249,7 +247,7 @@ func (c Commands) newDurablePipelineInputGenerate(
 
 	cmd := cobra.Command{
 		Use:     "input-generate",
-		Short:   "Generate durable-pipeline input using registered config resolvers",
+		Short:   "Generate durable-pipeline input using registered config fresolvers",
 		Long:    inputGenerateLong,
 		Example: inputGenerateExample,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -281,9 +279,9 @@ func (c Commands) newDurablePipelineInputGenerate(
 			}
 
 			// Build changeset to resolver map
-			resolverByKey := make(map[string]resolvers.ConfigResolver)
+			resolverByKey := make(map[string]fresolvers.ConfigResolver)
 			for _, key := range registry.ListKeys() {
-				var cfg cldf_changeset.Configurations
+				var cfg cs.Configurations
 				cfg, err = registry.GetConfigurations(key)
 				if err != nil {
 					return fmt.Errorf("get configurations for %s: %w", key, err)
@@ -490,7 +488,7 @@ var (
 	listLong = `
 		List durable pipeline info.
 
-		Displays registered changesets (static vs dynamic) and available resolvers
+		Displays registered changesets (static vs dynamic) and available fresolvers
 		for the given environment.
 		`
 	listExample = `
@@ -499,8 +497,8 @@ var (
 `
 )
 
-// newDurablePipelineListBuild builds the list subcommand for listing durable pipeline info including registered changesets and config resolvers
-func (Commands) newDurablePipelineListBuild(domain domain.Domain, loadMigrationsRegistry func(envName string) (*cldf_changeset.ChangesetsRegistry, error), loadConfigResolvers *resolvers.ConfigResolverManager) *cobra.Command {
+// newDurablePipelineListBuild builds the list subcommand for listing durable pipeline info including registered changesets and config fresolvers
+func (Commands) newDurablePipelineListBuild(domain dom.Domain, loadMigrationsRegistry func(envName string) (*cs.ChangesetsRegistry, error), loadConfigResolvers *fresolvers.ConfigResolverManager) *cobra.Command {
 	cmd := cobra.Command{
 		Use:     "list",
 		Short:   "List durable pipeline info",
@@ -553,7 +551,7 @@ func (Commands) newDurablePipelineListBuild(domain domain.Domain, loadMigrations
 
 			w.Flush()
 
-			// Available resolvers
+			// Available fresolvers
 			allResolvers := loadConfigResolvers.ListResolvers()
 			fmt.Fprintf(out, "\nAvailable Config Resolvers:\n")
 			for _, resolver := range allResolvers {
@@ -565,6 +563,91 @@ func (Commands) newDurablePipelineListBuild(domain domain.Domain, loadMigrations
 			return nil
 		},
 	}
+
+	return &cmd
+}
+
+// Long and Example for 'template-input' subcommand
+var (
+	longDescription = `
+		Generate YAML input templates from Changeset input Go struct types.
+
+		This command helps create YAML input files by analyzing Go struct types
+		from changesets and generating properly formatted YAML templates with
+		example values and comments.
+`
+	example = `
+		# Generate YAML template for a single changeset
+		chainlink-deployments durable-pipeline template-input \
+		  --environment testnet \
+		  --changeset test_migration_dynamic_inputs
+
+		# Generate YAML template for multiple changesets
+		chainlink-deployments durable-pipeline template-input \
+		  --environment testnet \
+		  --changeset changeset1,changeset2,changeset3
+
+		# Configure depth limit for nested structures
+		chainlink-deployments durable-pipeline template-input \
+		  --environment testnet \
+		  --changeset test_migration_dynamic_inputs \
+		  --depth 3
+
+		# Save output to file
+		chainlink-deployments durable-pipeline template-input \
+		  --environment testnet \
+		  --changeset test_migration_dynamic_inputs > example.yaml
+		`
+)
+
+// newDurablePipelineTemplateInput builds the template-input subcommand for generating
+// YAML input templates from Go struct types
+func (c Commands) newDurablePipelineTemplateInput(
+	domain dom.Domain,
+	loadRegistry func(envName string) (*cs.ChangesetsRegistry, error),
+	loadConfigResolvers *fresolvers.ConfigResolverManager,
+) *cobra.Command {
+	var (
+		changesetList string
+		depthLimit    int
+	)
+
+	cmd := cobra.Command{
+		Use:     "template-input",
+		Short:   "Generate YAML input templates from Changesets",
+		Long:    longDescription,
+		Example: example,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			envKey, _ := cmd.Flags().GetString("environment")
+
+			registry, err := loadRegistry(envKey)
+			if err != nil {
+				return fmt.Errorf("load registry: %w", err)
+			}
+
+			// Parse changeset names (comma-separated)
+			changesetNames := strings.Split(strings.TrimSpace(changesetList), ",")
+			for i, name := range changesetNames {
+				changesetNames[i] = strings.TrimSpace(name)
+			}
+
+			yamlTemplate, err := generateMultiChangesetYAMLTemplate(domain.String(), envKey, changesetNames, registry, loadConfigResolvers, depthLimit)
+			if err != nil {
+				return fmt.Errorf("generate YAML template: %w", err)
+			}
+
+			// Use fmt.Fprint with cmd.OutOrStdout() to ensure output goes to stdout
+			// and can be properly redirected to files and captured in tests
+			fmt.Fprint(cmd.OutOrStdout(), yamlTemplate)
+
+			return nil
+		},
+	}
+
+	cmd.Flags().StringVarP(&changesetList, "changeset", "c", "", "Changeset name(s) to generate YAML template for - comma-separated for multiple (required)")
+	cmd.Flags().IntVarP(&depthLimit, "depth", "d", 5, "Maximum recursion depth generation for nested struct, configure this based on your struct complexity")
+
+	_ = cmd.MarkFlagRequired("changeset")
 
 	return &cmd
 }

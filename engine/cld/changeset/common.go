@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"reflect"
 
 	fresolvers "github.com/smartcontractkit/chainlink-deployments-framework/changeset/resolvers"
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
@@ -17,6 +18,10 @@ type Configurations struct {
 	// Present only when the migration was wired with
 	// Configure(...).WithConfigResolver(...)
 	ConfigResolver fresolvers.ConfigResolver
+
+	// InputType contains the reflect.Type of the input struct for this changeset
+	// This is useful for tools that need to generate templates or analyze the expected input
+	InputType reflect.Type
 }
 
 // internalChangeSet provides an opaque type, to force the usage of only the ChangeSetImpl
@@ -269,18 +274,24 @@ func (ccs ChangeSetImpl[C]) Apply(env fdeployment.Environment) (fdeployment.Chan
 }
 
 func (ccs ChangeSetImpl[C]) Configurations() (Configurations, error) {
-	if ccs.inputChainOverrides == nil {
-		// If no inputChainOverrides function is provided, return an empty Configurations
-		return Configurations{}, nil
-	}
-	overrides, err := ccs.inputChainOverrides()
-	if err != nil {
-		return Configurations{}, err
+	var chainOverrides []uint64
+	var err error
+
+	if ccs.inputChainOverrides != nil {
+		chainOverrides, err = ccs.inputChainOverrides()
+		if err != nil {
+			return Configurations{}, err
+		}
 	}
 
+	// Get the type of C (the input struct type)
+	var zero C
+	inputType := reflect.TypeOf(zero)
+
 	return Configurations{
-		InputChainOverrides: overrides,
+		InputChainOverrides: chainOverrides,
 		ConfigResolver:      ccs.ConfigResolver,
+		InputType:           inputType,
 	}, nil
 }
 

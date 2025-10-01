@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	chainsel "github.com/smartcontractkit/chain-selectors"
-	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 
 	fchain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
@@ -16,10 +15,10 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config"
 	cfgnet "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/network"
 	fdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/internal/credentials"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/offchain"
 	foffchain "github.com/smartcontractkit/chainlink-deployments-framework/offchain"
 	focr "github.com/smartcontractkit/chainlink-deployments-framework/offchain/ocr"
-	foperations "github.com/smartcontractkit/chainlink-deployments-framework/operations"
 )
 
 // ForkedOnchainClient is a client for a fork of a blockchain node.
@@ -38,20 +37,26 @@ type ForkedEnvironment struct {
 	ForkClients  map[uint64]ForkedOnchainClient
 }
 
-// LoadForkedEnvironment loads a deployment environment in which the chains are forks of real networks.
+// LoadFork loads a deployment environment in which the chains are forks of real networks.
 // Provides access to a forking client per chain that allows users to send transactions without signatures.
 //
 // Limitations:
 // - EVM only
-func LoadForkedEnvironment(ctx context.Context, lggr logger.Logger, env string, domain fdomain.Domain, blockNumbers map[uint64]*big.Int, opts ...LoadEnvironmentOption) (ForkedEnvironment, error) {
-	// Default options
-	options := &LoadEnvironmentOptions{
-		reporter:          foperations.NewMemoryReporter(),
-		operationRegistry: foperations.NewOperationRegistry(),
+func LoadFork(
+	ctx context.Context,
+	domain fdomain.Domain,
+	env string,
+	blockNumbers map[uint64]*big.Int,
+	opts ...LoadEnvironmentOption,
+) (ForkedEnvironment, error) {
+	loadcfg, err := newLoadConfig()
+	if err != nil {
+		return ForkedEnvironment{}, err
 	}
-	for _, opt := range opts {
-		opt(options)
-	}
+	loadcfg.Configure(opts)
+
+	lggr := loadcfg.lggr
+
 	cfg, err := config.Load(domain, env, lggr)
 	if err != nil {
 		return ForkedEnvironment{}, fmt.Errorf("failed to load config: %w", err)
@@ -75,8 +80,8 @@ func LoadForkedEnvironment(ctx context.Context, lggr logger.Logger, env string, 
 		blockNumbers,
 		cfg.Env.Onchain,
 		cfg.Env.Onchain.KMS,
-		options.chainSelectorsToLoad,
-		options.anvilKeyAsDeployer,
+		loadcfg.chainSelectorsToLoad,
+		loadcfg.anvilKeyAsDeployer,
 	)
 	if err != nil {
 		if strings.Contains(err.Error(), "context deadline exceeded") {
@@ -97,9 +102,19 @@ func LoadForkedEnvironment(ctx context.Context, lggr logger.Logger, env string, 
 
 	var oc foffchain.Client
 
-	if !options.withoutJD {
-		oc, err = offchain.LoadOffchainClient(ctx, domain, env, config, lggr, false)
+	if !loadcfg.withoutJD {
+		oc, err = offchain.LoadOffchainClient(ctx, domain, config.Offchain.JobDistributor,
+			offchain.WithLogger(lggr),
+			offchain.WithDryRun(true),
+			offchain.WithCredentials(credentials.GetCredsForEnv(env)),
+		)
 		if err != nil {
+			if errors.Is(err, offchain.ErrEndpointsRequired) {
+				lggr.Warn("Skipping JD initialization: gRPC and wsRPC endpoints are not set in config")
+			} else {
+				return ForkedEnvironment{}, fmt.Errorf("failed to load offchain client: %w", err)
+			}
+
 			return ForkedEnvironment{}, fmt.Errorf("failed to load offchain client: %w", err)
 		}
 	} else {

@@ -2,8 +2,11 @@ package domain
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/spf13/viper"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/jira"
 )
 
 // Environment represents a single environment configuration.
@@ -44,6 +47,7 @@ func isValidNetworkType(networkType string) bool {
 // DomainConfig represents the parsed and validated domain configuration.
 type DomainConfig struct {
 	Environments map[string]Environment `mapstructure:"environments" yaml:"environments"`
+	Jira         *jira.Config           `mapstructure:"jira" yaml:"jira"`
 }
 
 // validate validates all environments in the domain configuration.
@@ -55,7 +59,14 @@ func (cfg *DomainConfig) validate() error {
 	// Validate each environment in the domain configuration.
 	for name, env := range cfg.Environments {
 		if err := env.validate(); err != nil {
-			return errors.Join(errors.New("invalid config for environment "+name), err)
+			return fmt.Errorf("invalid config for environment %s: %w", name, err)
+		}
+	}
+
+	// Validate JIRA config if present (it's optional)
+	if cfg.Jira != nil {
+		if err := cfg.Jira.Validate(); err != nil {
+			return fmt.Errorf("invalid JIRA configuration: %w", err)
 		}
 	}
 

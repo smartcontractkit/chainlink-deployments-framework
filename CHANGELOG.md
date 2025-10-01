@@ -1,5 +1,188 @@
 # chainlink-deployments-framework
 
+## 0.52.0
+
+### Minor Changes
+
+- [#463](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/463) [`aba39dc`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/aba39dcef98a36a296ae8794c5cbdd3cf1763225) Thanks [@finleydecker](https://github.com/finleydecker)! - Bump chain-selectors
+
+## 0.51.0
+
+### Minor Changes
+
+- [#429](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/429) [`1703535`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/17035351f97836c3ac9b21bc9aa08c68be602c1f) Thanks [@bytesizedroll](https://github.com/bytesizedroll)! - Adding Jira package
+
+### Patch Changes
+
+- [#459](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/459) [`98c0ebc`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/98c0ebcd969a96c8026df5f4328040026ae8051b) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix: preserve large integers in YAML to JSON conversion
+
+  Fixes TestSetDurablePipelineInputFromYAML_WithPathResolution by preventing
+  large integers from being converted to scientific notation during JSON
+  marshaling, which causes issues when unmarshaling to big.Int.
+
+  **Problem:**
+
+  - YAML parsing converts large numbers like `2000000000000000000000` to `float64(2e+21)`
+  - JSON marshaling converts `float64(2e+21)` to scientific notation `"2e+21"`
+  - big.Int cannot unmarshal scientific notation, causing errors
+
+## 0.50.1
+
+### Patch Changes
+
+- [#456](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/456) [`4b10eea`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/4b10eea297fbf759da9c3b1586bd2bc58a78387c) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - disable jd in fork env
+
+## 0.50.0
+
+### Minor Changes
+
+- [#452](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/452) [`41464d4`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/41464d42dae680365ae303f8b75ed5483abd30a2) Thanks [@jkongie](https://github.com/jkongie)! - Add `runtime.New()` convenience function for runtime initialization
+
+  Provides a simpler way to create runtime instances using functional options for environment configuration.
+
+- [#445](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/445) [`967a01b`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/967a01b612f313b6dadf9defc8d1cafad9cb9927) Thanks [@jkongie](https://github.com/jkongie)! - Adds tasks to the test engine runtime to sign and execute MCMS proposals
+
+- [#451](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/451) [`0e64684`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/0e646842a1b0b2d65d06d649b3893d1508dfe223) Thanks [@jkongie](https://github.com/jkongie)! - Adds new convenience method `environment.New` to the test engine to bring up a new test environment
+
+  The `environment.New` method is a wrapper around the environment loading struct and allows the user
+  to load a new environment without having to instantiate the `Loader` struct themselves.
+
+  The `testing.T` argument has been removed and it's dependencies have been replaced with:
+
+  - A `context.Context` argument to the `Load` and `New` functions
+  - A new functional option `WithLogger` which overrides the default noop logger.
+
+  While this is a breaking change, the test environment is still in development and is not in actual usage yet.
+
+### Patch Changes
+
+- [#454](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/454) [`d87d8ef`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/d87d8ef1a5bfc9b20ee981636ea8e7ea7992922a) Thanks [@DimitriosNaikopoulos](https://github.com/DimitriosNaikopoulos)! - Bump CTF to fix docker security dependency
+
+- [#455](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/455) [`4788ba4`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/4788ba47adabdf3de0a89d44dbcf14440fc4feec) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - fix: update ValidUntil when running "mcmsv2 reset-proposal"
+
+## 0.49.1
+
+### Patch Changes
+
+- [#425](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/425) [`5583eba`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/5583ebabf916d5188b6e21c4ae35c4ac44b2b462) Thanks [@giogam](https://github.com/giogam)! - feat(environment): use network config chains instead of addressbook
+
+## 0.49.0
+
+### Minor Changes
+
+- [#437](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/437) [`2224427`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/22244276bcb7c192a81530e6d4434f371684fbb6) Thanks [@jkongie](https://github.com/jkongie)! - **[BREAKING]** Refactored `LoadOffchainClient` to use functional options
+
+  ## Function Signature Changed
+
+  **Before:**
+
+  ```go
+  func LoadOffchainClient(ctx, domain, env, config, logger, useRealBackends)
+  ```
+
+  **After:**
+
+  ```go
+  func LoadOffchainClient(ctx, domain, cfg, ...opts)
+  ```
+
+  ## Migration Required
+
+  - `logger` → `WithLogger(logger)` option (optional, has default)
+  - `useRealBackends` → `WithDryRun(!useRealBackends)` ⚠️ **inverted logic**
+  - `env` → `WithCredentials(creds)` option (optional, defaults to TLS)
+  - `config` → `config.Offchain.JobDistributor`
+
+  **Example:**
+
+  ```go
+  // Old
+  LoadOffchainClient(ctx, domain, "testnet", config, logger, false)
+
+  // New
+  LoadOffchainClient(ctx, domain, config.Offchain.JobDistributor,
+      WithLogger(logger),
+      WithDryRun(true), // Note: inverted!
+  )
+
+  ```
+
+- [#428](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/428) [`e172683`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/e172683ff4f28c79ed865a4224e8e2e04b0953e8) Thanks [@jkongie](https://github.com/jkongie)! - Adds a test engine runtime for executing changesets in unit/integration tests
+
+- [#443](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/443) [`9e6bc1d`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/9e6bc1dcbb3803fc4c85794b194c08224a073ada) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat: introduce template-input command for generating YAML input
+
+  This commit introduces a new template-input command that generates YAML input templates from Go struct types for durable pipeline changesets. The command uses reflection to analyze changeset input types and produces well-formatted YAML templates with type comments to guide users in creating valid input files.
+
+- [#440](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/440) [`7f1af5d`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/7f1af5d0a3514f80aec08c3bab29a2ac4276b340) Thanks [@RodrigoAD](https://github.com/RodrigoAD)! - add support for sui in mcms commands
+
+## 0.48.2
+
+### Patch Changes
+
+- [#435](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/435) [`d8a740e`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/d8a740e8e9d044994d33158c7423091c3f45e137) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(OnlyLoadChainsFor)!: remove migration name parameter for environment option
+
+  BREAKING CHANGE: The `environment` option in `OnlyLoadChainsFor` no longer accepts a migration name parameter. The name parameter was only used for logging which is not necessary.
+
+  ### Usage Migration
+
+  **Before:**
+
+  ```go
+  environment.OnlyLoadChainsFor("analyze-proposal", chainSelectors), cldfenvironment.WithoutJD())
+  ```
+
+  **After:**
+
+  ```go
+  environment.OnlyLoadChainsFor(chainSelectors), cldfenvironment.WithoutJD())
+  ```
+
+## 0.48.1
+
+### Patch Changes
+
+- [#430](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/430) [`b90b6e5`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/b90b6e5698be831cb2d36490ad268bd9eec9058a) Thanks [@jkongie](https://github.com/jkongie)! - Fixes dry run Job Distributor being used by default
+
+## 0.48.0
+
+### Minor Changes
+
+- [#424](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/424) [`c241756`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/c2417566058ff4dd502a17d9b28242e26968406a) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat: enhance OnlyLoadChainsFor to support loading no chains when no chains is provided, eg OnlyLoadChainsFor()
+
+- [#408](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/408) [`2861467`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/286146723b3c9e1b5dccdebdf28eb67af8737cfd) Thanks [@jkongie](https://github.com/jkongie)! - Adds the ability to load an environment in a test engine. This is intended for use in unit and integration tests.
+
+- [#421](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/421) [`de7bd86`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/de7bd8630bba8aab219b8c7d46b37e8d546633f1) Thanks [@giogam](https://github.com/giogam)! - feat(datastore): require DataStore in environment Load
+
+## 0.47.0
+
+### Minor Changes
+
+- [#410](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/410) [`deda430`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/deda430af37545dfee2c69618fa7931525411a49) Thanks [@ecPablo](https://github.com/ecPablo)! - Add CLI command to reset proposals
+
+- [#405](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/405) [`f8dab56`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/f8dab5616f77830495a12c318c4cd5a9017c1ca5) Thanks [@jkongie](https://github.com/jkongie)! - [BREAKING] Simplifies the function signature of `environment.Load` and `environment.LoadForkedEnvironment`
+
+## 0.46.0
+
+### Minor Changes
+
+- [#411](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/411) [`8d4e755`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/8d4e7550c77d7c321f4b7f07c62e78bc161d6b04) Thanks [@ajaskolski](https://github.com/ajaskolski)! - feat: add ctf geth provider
+
+### Patch Changes
+
+- [#417](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/417) [`c53af0e`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/c53af0e083223063e657c9911ded5fce11a9ab98) Thanks [@giogam](https://github.com/giogam)! - chore: removes ocr type aliases from deployment package
+
+- [#416](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/416) [`c72eaff`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/c72eaff8f972c030a90be15ec164d5992153ec2a) Thanks [@friedemannf](https://github.com/friedemannf)! - Bump CTF to v0.10.24
+
+- [#418](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/418) [`181501a`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/181501a738507fadd278158f0e6b8742cef2fd1d) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix: update findWorkspaceRoot to not check for root go.mod
+
+## 0.45.2
+
+### Patch Changes
+
+- [#409](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/409) [`b3bd891`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/b3bd8917d6d188c861cbefa36575647eb0d54849) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - fix: embed Anvil's MCMS layout file instead of loading it from the filesystem
+
+- [#396](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/396) [`d79b3c0`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/d79b3c080458ea41b6d69d6149dff37ecf791a9f) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(scaffold): sanitize env name for go package name
+
 ## 0.45.1
 
 ### Patch Changes

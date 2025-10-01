@@ -34,6 +34,10 @@ func LoadChains(
 	cfg *config.Config,
 	chainselToLoad []uint64,
 ) (fchain.BlockChains, error) {
+	if len(chainselToLoad) == 0 {
+		lggr.Info("No chain selectors provided, skipping chain loading")
+		return fchain.NewBlockChains(map[uint64]fchain.BlockChain{}), nil
+	}
 	chainLoaders := newChainLoaders(lggr, cfg.Networks, cfg.Env.Onchain)
 
 	// Define a result struct to hold chain loading results

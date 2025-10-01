@@ -1,85 +1,15 @@
 package environment
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	fdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
-	foperations "github.com/smartcontractkit/chainlink-deployments-framework/operations"
 )
-
-func Test_WithAnvilKeyAsDeployer(t *testing.T) {
-	t.Parallel()
-
-	opts := &LoadEnvironmentOptions{}
-	require.False(t, opts.anvilKeyAsDeployer)
-
-	option := WithAnvilKeyAsDeployer()
-	option(opts)
-
-	assert.True(t, opts.anvilKeyAsDeployer)
-}
-
-func Test_WithReporter(t *testing.T) {
-	t.Parallel()
-
-	opts := &LoadEnvironmentOptions{}
-	assert.Nil(t, opts.reporter)
-
-	reporter := foperations.NewMemoryReporter()
-	option := WithReporter(reporter)
-	option(opts)
-
-	assert.Equal(t, reporter, opts.reporter)
-}
-
-func Test_WithOutJD(t *testing.T) {
-	t.Parallel()
-
-	opts := &LoadEnvironmentOptions{}
-	require.False(t, opts.withoutJD)
-
-	option := WithoutJD()
-	option(opts)
-
-	assert.True(t, opts.withoutJD)
-}
-
-func Test_OnlyLoadChainsFor(t *testing.T) {
-	t.Parallel()
-
-	opts := &LoadEnvironmentOptions{}
-	assert.Empty(t, opts.migrationString)
-	assert.Nil(t, opts.chainSelectorsToLoad)
-
-	migrationKey := "test_migration"
-	chainSelectors := []uint64{1, 2, 3}
-
-	option := OnlyLoadChainsFor(migrationKey, chainSelectors)
-	option(opts)
-
-	assert.Equal(t, migrationKey, opts.migrationString)
-	assert.Equal(t, chainSelectors, opts.chainSelectorsToLoad)
-}
-
-func Test_WithOperationRegistry(t *testing.T) {
-	t.Parallel()
-
-	opts := &LoadEnvironmentOptions{}
-	assert.Nil(t, opts.operationRegistry)
-
-	registry := foperations.NewOperationRegistry()
-	option := WithOperationRegistry(registry)
-	option(opts)
-
-	assert.Equal(t, registry, opts.operationRegistry)
-}
 
 func Test_Load_InvalidEnvironment(t *testing.T) {
 	t.Parallel()
@@ -87,10 +17,7 @@ func Test_Load_InvalidEnvironment(t *testing.T) {
 	// Set up domain
 	domain := fdomain.NewDomain("dummy", "test")
 
-	lggr := logger.Test(t)
-	getCtx := func() context.Context { return context.Background() }
-
-	_, err := Load(getCtx, lggr, "non_existent_env", domain, false)
+	_, err := Load(t.Context(), domain, "non_existent_env")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to load networks")
 }
@@ -101,53 +28,59 @@ func Test_Load_AddressBookFailure(t *testing.T) {
 	// Set up domain
 	domain := setupTest(t, setupTestConfig)
 
-	lggr := logger.Test(t)
-	getCtx := func() context.Context { return context.Background() }
-
-	_, err := Load(getCtx, lggr, "staging", domain, false)
+	_, err := Load(t.Context(), domain, "staging")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "addresses.json: no such file or directory")
+}
+
+func Test_Load_DataStoreFailure(t *testing.T) {
+	t.Parallel()
+
+	// Set up domain
+	domain := setupTest(t, setupTestConfig, setupAddressbook)
+
+	_, err := Load(t.Context(), domain, "staging")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "address_refs.json: no such file or directory")
 }
 
 func Test_Load_LoadNodesFailure(t *testing.T) {
 	t.Parallel()
 
 	// Set up domain
-	domain := setupTest(t, setupTestConfig, setupAddressbook)
+	domain := setupTest(t, setupTestConfig, setupAddressbook, setupDataStore)
 
-	lggr := logger.Test(t)
-	getCtx := func() context.Context { return context.Background() }
-
-	_, err := Load(getCtx, lggr, "staging", domain, false)
+	_, err := Load(t.Context(), domain, "staging", OnlyLoadChainsFor([]uint64{}))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "nodes.json: no such file or directory")
 }
 
-func Test_Load_LoadOffchainClientFailure(t *testing.T) {
-	t.Parallel()
+func Test_Load_LoadOffchainClientFailure(t *testing.T) { //nolint:paralleltest // This test is not parallel safe due to setting of env vars
+	// In CI mode, config is loaded from environment variables instead of files.
+	// We manually set the required env vars for this test and clean up afterward.
+	if os.Getenv("CI") == "true" {
+		os.Setenv("OFFCHAIN_JD_ENDPOINTS_WSRPC", "ws://localhost:8080")
+		os.Setenv("OFFCHAIN_JD_ENDPOINTS_GRPC", "localhost:9090")
+		t.Cleanup(func() {
+			os.Unsetenv("OFFCHAIN_JD_ENDPOINTS_WSRPC")
+			os.Unsetenv("OFFCHAIN_JD_ENDPOINTS_GRPC")
+		})
+	}
 
 	// Set up domain
-	domain := setupTest(t, setupTestConfig, setupAddressbook, setupNodes)
+	domain := setupTest(t, setupTestConfig, setupAddressbook, setupDataStore, setupNodes)
 
-	lggr := logger.Test(t)
-	getCtx := func() context.Context { return context.Background() }
-
-	assert.Panics(t, func() {
-		_, err := Load(getCtx, lggr, "staging", domain, false)
-		require.NoError(t, err)
-	})
+	_, err := Load(t.Context(), domain, "staging", OnlyLoadChainsFor([]uint64{}))
+	require.ErrorContains(t, err, "failed to load offchain client")
 }
 
 func Test_Load_NoError(t *testing.T) {
 	t.Parallel()
 
 	// Set up domain
-	domain := setupTest(t, setupTestConfig, setupAddressbook, setupNodes)
+	domain := setupTest(t, setupTestConfig, setupAddressbook, setupDataStore, setupNodes)
 
-	lggr := logger.Test(t)
-	getCtx := func() context.Context { return context.Background() }
-
-	_, err := Load(getCtx, lggr, "staging", domain, false, WithoutJD())
+	_, err := Load(t.Context(), domain, "staging", WithoutJD(), OnlyLoadChainsFor([]uint64{}))
 	require.NoError(t, err)
 }
 
@@ -221,6 +154,35 @@ func setupAddressbook(t *testing.T, domain fdomain.Domain) {
 	// Create address book file
 	addressBookPath := filepath.Join(env.DirPath(), "addresses.json")
 	require.NoError(t, os.WriteFile(addressBookPath, []byte(addressbookConfig), 0600))
+}
+
+func setupDataStore(t *testing.T, domain fdomain.Domain) {
+	t.Helper()
+
+	env := domain.EnvDir("staging")
+	addressRefsConfig := `[]`
+	chainMetadataConfig := `[]`
+	contractMetadataConfig := `[]`
+	envMetadataConfig := `null`
+
+	// Create datastore directory
+	require.NoError(t, os.MkdirAll(env.DataStoreDirPath(), 0755))
+
+	// Create address refs file
+	addressRefsPath := filepath.Join(env.DataStoreDirPath(), "address_refs.json")
+	require.NoError(t, os.WriteFile(addressRefsPath, []byte(addressRefsConfig), 0600))
+
+	// Create chain metadata file
+	chainMetadataPath := filepath.Join(env.DataStoreDirPath(), "chain_metadata.json")
+	require.NoError(t, os.WriteFile(chainMetadataPath, []byte(chainMetadataConfig), 0600))
+
+	// Create contract metadata file
+	contractMetadataPath := filepath.Join(env.DataStoreDirPath(), "contract_metadata.json")
+	require.NoError(t, os.WriteFile(contractMetadataPath, []byte(contractMetadataConfig), 0600))
+
+	// Create env metadata file
+	envMetadataPath := filepath.Join(env.DataStoreDirPath(), "env_metadata.json")
+	require.NoError(t, os.WriteFile(envMetadataPath, []byte(envMetadataConfig), 0600))
 }
 
 func setupNodes(t *testing.T, domain fdomain.Domain) {

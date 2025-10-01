@@ -3,6 +3,7 @@ package commands
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"strconv"
 
@@ -71,9 +72,8 @@ func setDurablePipelineInputFromYAML(inputFileName, changesetName string, domain
 		return fmt.Errorf("failed to convert payload to JSON-safe format: %w", err)
 	}
 
-	// Extract chain overrides (optional)
-	var chainOverrides []uint64
-	if chainOverridesRaw, exists := changesetMap["chainOverrides"]; exists && chainOverridesRaw != nil {
+	chainOverridesRaw, exists := changesetMap["chainOverrides"]
+	if exists && chainOverridesRaw != nil {
 		if chainOverridesList, ok := chainOverridesRaw.([]any); ok {
 			for _, override := range chainOverridesList {
 				switch v := override.(type) {
@@ -81,14 +81,12 @@ func setDurablePipelineInputFromYAML(inputFileName, changesetName string, domain
 					if v < 0 {
 						return fmt.Errorf("chain override value must be non-negative, got: %d", v)
 					}
-					chainOverrides = append(chainOverrides, uint64(v))
 				case int64:
 					if v < 0 {
 						return fmt.Errorf("chain override value must be non-negative, got: %d", v)
 					}
-					chainOverrides = append(chainOverrides, uint64(v))
 				case uint64:
-					chainOverrides = append(chainOverrides, v)
+					// no need to do any checks here
 				default:
 					return fmt.Errorf("chain override value must be an integer, got type %T with value: %v", override, override)
 				}
@@ -100,8 +98,8 @@ func setDurablePipelineInputFromYAML(inputFileName, changesetName string, domain
 	inputJSON := map[string]any{
 		"payload": jsonSafePayload,
 	}
-	if len(chainOverrides) > 0 {
-		inputJSON["chainOverrides"] = chainOverrides
+	if exists {
+		inputJSON["chainOverrides"] = chainOverridesRaw
 	}
 
 	// Convert to JSON
@@ -217,6 +215,22 @@ func convertToJSONSafe(data any) (any, error) {
 		}
 
 		return result, nil
+
+	case float64:
+		// Convert large numbers that would become scientific notation to json.Number
+		// as it can cause issues to big.Int when it tries to unmarshal it.
+		// Only convert if it's actually an integer (no fractional part)
+		if v >= 1e15 || v <= -1e15 {
+			// Check if this is truly an integer (no fractional part)
+			if v == math.Trunc(v) {
+				// This is a large integer that would be in scientific notation
+				// Convert to json.Number to preserve exact representation
+				formatted := strconv.FormatFloat(v, 'f', 0, 64)
+				return json.Number(formatted), nil
+			}
+		}
+
+		return v, nil
 
 	default:
 		// For primitive types (string, int, bool, etc.), return as-is

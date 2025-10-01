@@ -91,8 +91,8 @@
 //		config := CTFAnvilChainProviderConfig{
 //			Once:           &once,
 //			ConfirmFunctor: ConfirmFuncGeth(2 * time.Minute),
-//			ClientOpts: []func(client *evm.MultiClient){
-//				func(client *evm.MultiClient) {
+//			ClientOpts: []func(client *rpcclient.MultiClient){
+//				func(client *rpcclient.MultiClient) {
 //					// Custom client configuration
 //					client.SetTimeout(30 * time.Second)
 //				},

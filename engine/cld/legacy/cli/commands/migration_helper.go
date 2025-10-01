@@ -6,7 +6,6 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/changeset"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
-
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 )
 
@@ -29,8 +28,12 @@ func saveReports(
 	return nil
 }
 
-func configureEnvironmentOptions(changeset *changeset.ChangesetsRegistry, migrationStr string) ([]environment.LoadEnvironmentOption, error) {
+func configureEnvironmentOptions(
+	changeset *changeset.ChangesetsRegistry, migrationStr string, dryRun bool, lggr logger.Logger,
+) ([]environment.LoadEnvironmentOption, error) {
 	var envOptions []environment.LoadEnvironmentOption
+
+	envOptions = append(envOptions, environment.WithLogger(lggr))
 
 	migrationOptions, err := changeset.GetChangesetOptions(migrationStr)
 	if err != nil {
@@ -42,14 +45,19 @@ func configureEnvironmentOptions(changeset *changeset.ChangesetsRegistry, migrat
 		return nil, err
 	}
 	if chainOverrides != nil {
-		envOptions = append(envOptions, environment.OnlyLoadChainsFor(migrationStr, chainOverrides))
+		envOptions = append(envOptions, environment.OnlyLoadChainsFor(chainOverrides))
 	}
 
 	if migrationOptions.WithoutJD {
 		envOptions = append(envOptions, environment.WithoutJD())
 	}
+
 	if migrationOptions.OperationRegistry != nil {
 		envOptions = append(envOptions, environment.WithOperationRegistry(migrationOptions.OperationRegistry))
+	}
+
+	if dryRun {
+		envOptions = append(envOptions, environment.WithDryRunJobDistributor())
 	}
 
 	return envOptions, nil

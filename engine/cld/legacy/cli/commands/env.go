@@ -51,11 +51,10 @@ func (c Commands) newEnvLoad(domain domain.Domain) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			envKey, _ := cmd.Flags().GetString("environment")
 			_, err := environment.Load(
-				cmd.Context,
-				c.lggr,
-				envKey,
+				cmd.Context(),
 				domain,
-				true,
+				envKey,
+				environment.WithLogger(c.lggr),
 			)
 			if err != nil {
 				return fmt.Errorf("LoadEnvironment failed: %w", err)

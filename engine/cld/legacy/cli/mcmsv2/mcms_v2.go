@@ -24,6 +24,7 @@ import (
 	"github.com/smartcontractkit/mcms/sdk/evm"
 	"github.com/smartcontractkit/mcms/sdk/evm/bindings"
 	"github.com/smartcontractkit/mcms/sdk/solana"
+	"github.com/smartcontractkit/mcms/sdk/sui"
 	"github.com/smartcontractkit/mcms/types"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -44,10 +45,11 @@ import (
 )
 
 const (
-	proposalKindFlag   = "proposalKind"
-	indexFlag          = "index"
-	forkFlag           = "fork"
-	defaultAdvanceTime = 36000 // In seconds - defaulting to 10 hours
+	proposalKindFlag        = "proposalKind"
+	indexFlag               = "index"
+	forkFlag                = "fork"
+	defaultAdvanceTime      = 36000 // In seconds - defaulting to 10 hours
+	defaultProposalValidity = 72 * time.Hour
 )
 
 type commonFlagsv2 struct {
@@ -114,6 +116,7 @@ func BuildMCMSv2Cmd(lggr logger.Logger, domain cldf_domain.Domain, proposalConte
 	cmd.AddCommand(buildTimelockExecuteOperationV2Cmd(lggr, domain, proposalContextProvider))
 	cmd.AddCommand(buildMCMSv2AnalyzeProposalCmd(stdErrLogger, domain, proposalContextProvider))
 	cmd.AddCommand(buildMCMSv2ConvertUpf(stdErrLogger, domain, proposalContextProvider))
+	cmd.AddCommand(buildMCMSv2ResetProposalCmd(stdErrLogger, domain, proposalContextProvider))
 
 	// fork flag is only used internally by buildExecuteForkCommand
 	cmd.PersistentFlags().BoolP(forkFlag, "f", false, "Run the command on forked environment (EVM)")
@@ -652,7 +655,7 @@ func buildExecuteForkCommand(lggr logger.Logger, domain cldf_domain.Domain, prop
 				if lerr := layout.SetMCMSigner(
 					ctx,
 					lggr,
-					layout.MCMSLayoutFile,
+					layout.MCMSLayout,
 					blockchain.DefaultAnvilPrivateKey,
 					blockchain.DefaultAnvilPublicKey,
 					blockchain.DefaultAnvilPublicKey,
@@ -763,7 +766,7 @@ func buildMCMSv2AnalyzeProposalCmd(
 			if outputFile == "" {
 				fmt.Println(analyzedProposal)
 			} else {
-				err := os.WriteFile(outputFile, []byte(analyzedProposal), 0600)
+				err := os.WriteFile(outputFile, []byte(analyzedProposal), 0o600)
 				if err != nil {
 					return err
 				}
@@ -778,6 +781,87 @@ func buildMCMSv2AnalyzeProposalCmd(
 	})
 
 	cmd.Flags().StringVarP(&outputFile, "output", "o", "", "Output file to write analyze result")
+
+	return cmd
+}
+
+func buildMCMSv2ResetProposalCmd(
+	lggr logger.Logger, domain cldf_domain.Domain, proposalCtxProvider analyzer.ProposalContextProvider,
+) *cobra.Command {
+	var overrideRoot bool
+	var proposalPath string
+	cmd := &cobra.Command{
+		Use:   "reset-proposal",
+		Short: "Updates proposal with latest on-chain op counts and resets signatures",
+		Long:  ``,
+		PreRun: func(command *cobra.Command, args []string) {
+			// chainSelector is optional for reset proposal; trick cobra into thinking it's been set
+			command.InheritedFlags().Lookup(chainSelectorFlag).Changed = true
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cfgv2, err := newCfgv2(lggr, cmd, domain, proposalCtxProvider, acceptExpiredProposal)
+			if err != nil {
+				return fmt.Errorf("error creating config: %w", err)
+			}
+			overrideRoot, err = cmd.Flags().GetBool("override-root")
+			if err != nil {
+				return fmt.Errorf("error getting override-root flag: %w", err)
+			}
+			timelockProposal := cfgv2.timelockProposal
+			if timelockProposal == nil {
+				return errors.New("null TimelockProposal")
+			}
+
+			timelockProposal.ValidUntil = uint32(time.Now().Add(defaultProposalValidity).Unix()) //nolint:gosec // G404: time-based validity is acceptable for test signatures
+
+			for selector := range cfgv2.proposal.ChainMetadata {
+				cfgv2.chainSelector = uint64(selector)
+				inspector, errInspect := getInspectorFromChainSelector(*cfgv2)
+				if errInspect != nil {
+					return fmt.Errorf("error getting inspector from chain selector: %w", errInspect)
+				}
+				opCount, errOpCount := inspector.GetOpCount(cmd.Context(), timelockProposal.ChainMetadata[types.ChainSelector(cfgv2.chainSelector)].MCMAddress)
+				if errOpCount != nil {
+					return errOpCount
+				}
+				metadata := timelockProposal.ChainMetadata[types.ChainSelector(cfgv2.chainSelector)]
+				metadata.StartingOpCount = opCount
+				timelockProposal.ChainMetadata[types.ChainSelector(cfgv2.chainSelector)] = metadata
+			}
+
+			timelockProposal.Signatures = nil
+			if overrideRoot {
+				timelockProposal.OverridePreviousRoot = true
+			}
+
+			// Write file to proposalPath
+			pathFromFlag, err := cmd.Flags().GetString("proposal")
+			if err == nil && pathFromFlag != "" {
+				proposalPath = pathFromFlag
+			}
+			if proposalPath == "" {
+				return errors.New("proposalPath flag is required (path to write the updated proposal)")
+			}
+			w, err := os.Create(proposalPath)
+			if err != nil {
+				return fmt.Errorf("error creating proposal file: %w", err)
+			}
+
+			err = mcms.WriteTimelockProposal(w, timelockProposal)
+			if err != nil {
+				return fmt.Errorf("error writing proposal to file: %w", err)
+			}
+			lggr.Infow("Successfully reset proposal", "path", proposalPath)
+
+			return nil
+		},
+	}
+	cmd.SetHelpFunc(func(command *cobra.Command, args []string) {
+		command.Flags().MarkHidden(chainSelectorFlag) //nolint:errcheck
+		command.Parent().HelpFunc()(command, args)
+	})
+
+	cmd.Flags().Bool("override-root", overrideRoot, "Override the root of the MCMs contracts in the proposal")
 
 	return cmd
 }
@@ -805,10 +889,6 @@ func buildMCMSv2ConvertUpf(
 				return errors.New("expected proposal to be a TimelockProposal")
 			}
 
-			if err != nil {
-				return fmt.Errorf("error loading environment: %w", err)
-			}
-
 			// Get signers for the proposal
 			signers, err := getProposalSigners(*cfgv2, cmd.Context(), &cfgv2.proposal)
 			if err != nil {
@@ -829,7 +909,7 @@ func buildMCMSv2ConvertUpf(
 			if outputFile == "" {
 				fmt.Println(convertedProposal)
 			} else {
-				err := os.WriteFile(outputFile, []byte(convertedProposal), 0600)
+				err := os.WriteFile(outputFile, []byte(convertedProposal), 0o600)
 				if err != nil {
 					return err
 				}
@@ -963,6 +1043,11 @@ func newCfgv2(lggr logger.Logger, cmd *cobra.Command, domain cldf_domain.Domain,
 				converter = solana.TimelockConverter{}
 			case chainsel.FamilyAptos:
 				converter = aptos.NewTimelockConverter()
+			case chainsel.FamilySui:
+				converter, err = sui.NewTimelockConverter()
+				if err != nil {
+					return nil, fmt.Errorf("error creating Sui timelock converter: %w", err)
+				}
 			default:
 				return nil, fmt.Errorf("unsupported chain family %s", fam)
 			}
@@ -1001,8 +1086,9 @@ func newCfgv2(lggr logger.Logger, cmd *cobra.Command, domain cldf_domain.Domain,
 
 	if proposalCtxProvider != nil {
 		// Load Environment and proposal ctx (for error decoding and proposal analysis)
-		env, err := cldfenvironment.Load(cmd.Context, lggr, cfg.envStr, domain, true,
-			cldfenvironment.OnlyLoadChainsFor("analyze-proposal", chainSelectors), cldfenvironment.WithoutJD())
+		env, err := cldfenvironment.Load(cmd.Context(), domain, cfg.envStr,
+			cldfenvironment.WithLogger(lggr),
+			cldfenvironment.OnlyLoadChainsFor(chainSelectors), cldfenvironment.WithoutJD())
 		if err != nil {
 			return nil, fmt.Errorf("error loading environment: %w", err)
 		}
@@ -1017,14 +1103,15 @@ func newCfgv2(lggr logger.Logger, cmd *cobra.Command, domain cldf_domain.Domain,
 	if flags.fork {
 		// we should load the environment to get proper forked chain URLs
 		cfgSelectors := []uint64{cfg.chainSelector}
-		forkedEnv, err := cldfenvironment.LoadForkedEnvironment(
+		forkedEnv, err := cldfenvironment.LoadFork(
 			cmd.Context(),
-			lggr,
-			flags.environmentStr,
 			domain,
+			flags.environmentStr,
 			nil,
-			cldfenvironment.OnlyLoadChainsFor("fork-test", cfgSelectors),
+			cldfenvironment.WithLogger(lggr),
+			cldfenvironment.OnlyLoadChainsFor(cfgSelectors),
 			cldfenvironment.WithAnvilKeyAsDeployer(),
+			cldfenvironment.WithoutJD(),
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load forked environment: %w", err)
@@ -1291,6 +1378,18 @@ func getExecutorWithChainOverride(cfg *cfgv2, chainSelector types.ChainSelector)
 
 		return aptos.NewExecutor(chain.Client, chain.DeployerSigner, encoder, *role), nil
 
+	case chainsel.FamilySui:
+		encoder, ok := encoder.(*sui.Encoder)
+		if !ok {
+			return nil, fmt.Errorf("error getting encoder for chain %d", cfg.chainSelector)
+		}
+		metadata, err := suiMetadataFromProposal(chainSelector, cfg.timelockProposal)
+		if err != nil {
+			return nil, fmt.Errorf("error getting sui metadata from proposal: %w", err)
+		}
+		chain := cfg.blockchains.SuiChains()[uint64(chainSelector)]
+
+		return sui.NewExecutor(chain.Client, chain.Signer, encoder, metadata.McmsPackageID, metadata.Role, cfg.timelockProposal.ChainMetadata[chainSelector].MCMAddress, metadata.AccountObj, metadata.RegistryObj, metadata.TimelockObj)
 	default:
 		return nil, fmt.Errorf("unsupported chain family %s", family)
 	}
@@ -1329,6 +1428,16 @@ func getTimelockExecutorWithChainOverride(cfg *cfgv2, chainSelector types.ChainS
 	case chainsel.FamilyAptos:
 		chain := cfg.blockchains.AptosChains()[uint64(chainSelector)]
 		executor = aptos.NewTimelockExecutor(chain.Client, chain.DeployerSigner)
+	case chainsel.FamilySui:
+		chain := cfg.blockchains.SuiChains()[uint64(chainSelector)]
+		metadata, err := suiMetadataFromProposal(chainSelector, cfg.timelockProposal)
+		if err != nil {
+			return nil, fmt.Errorf("error getting sui metadata from proposal: %w", err)
+		}
+		executor, err = sui.NewTimelockExecutor(chain.Client, chain.Signer, metadata.McmsPackageID, metadata.RegistryObj, metadata.AccountObj)
+		if err != nil {
+			return nil, fmt.Errorf("error creating sui timelock executor: %w", err)
+		}
 	default:
 		return nil, fmt.Errorf("unsupported chain family %s", family)
 	}
@@ -1373,6 +1482,16 @@ var getInspectorFromChainSelector = func(cfg cfgv2) (sdk.Inspector, error) {
 		}
 		chain := cfg.blockchains.AptosChains()[cfg.chainSelector]
 		inspector = aptos.NewInspector(chain.Client, *role)
+	case chainsel.FamilySui:
+		metadata, err := suiMetadataFromProposal(types.ChainSelector(cfg.chainSelector), cfg.timelockProposal)
+		if err != nil {
+			return nil, fmt.Errorf("error getting sui metadata from proposal: %w", err)
+		}
+		chain := cfg.blockchains.SuiChains()[cfg.chainSelector]
+		inspector, err = sui.NewInspector(chain.Client, chain.Signer, metadata.McmsPackageID, metadata.Role)
+		if err != nil {
+			return nil, fmt.Errorf("error creating sui inspector: %w", err)
+		}
 	default:
 		return nil, fmt.Errorf("unsupported chain family %s", fam)
 	}
