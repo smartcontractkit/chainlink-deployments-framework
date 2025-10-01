@@ -1,5 +1,29 @@
 # chainlink-deployments-framework
 
+## 0.53.0
+
+### Minor Changes
+
+- [#469](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/469) [`a24665b`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/a24665bd8fdf430e66ba5157902826e05002e080) Thanks [@jkongie](https://github.com/jkongie)! - Adds support for Sui and Tron chains in the test engine
+
+- [#473](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/473) [`d2bdd22`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/d2bdd22c0f0948c8c2c00707d20e7f0f634e5d91) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat: add --changeset-index flag for array format YAML files
+
+  Add support for running changesets by index position to handle duplicate
+  changeset names in array format input files.
+
+- [#467](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/467) [`fe7e75b`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/fe7e75b20c5369e2566408848c387d40efa56a6d) Thanks [@jkongie](https://github.com/jkongie)! - Adds a new test engine task to sign and execute all pending proposals
+
+  A new test engine runtime task has been added to improve the experience
+  of signing and executing MCMS proposals. This new task will sign and
+  execute all pending proposals that previous ChangesetTasks have generated.
+
+  ```
+  signingKey, _ := crypto.GenerateKey() // Use your actual MCMS signing key here instead
+  runtime.Exec(
+      SignAndExecuteProposalsTask([]*ecdsa.PrivateKey{signingKey},
+  )
+  ```
+
 ## 0.52.0
 
 ### Minor Changes
