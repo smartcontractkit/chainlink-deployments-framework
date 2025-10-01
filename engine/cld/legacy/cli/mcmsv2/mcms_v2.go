@@ -1170,8 +1170,8 @@ func isNonceError(rawErr error, selector uint64) (bool, error) {
 		}
 
 	case chainsel.FamilySolana:
-		// Check if the error contains WrongNonce
-		if strings.Contains(rawErr.Error(), "WrongNonce") {
+		// Check if the error contains WrongNonce or PostOpCountReached
+		if strings.Contains(rawErr.Error(), "WrongNonce") || strings.Contains(rawErr.Error(), "PostOpCountReached") {
 			return true, nil
 		}
 	default:
