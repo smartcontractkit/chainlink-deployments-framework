@@ -21,6 +21,7 @@ require (
 	github.com/go-resty/resty/v2 v2.16.3
 	github.com/goccy/go-yaml v1.12.0
 	github.com/google/go-cmp v0.7.0
+	github.com/google/go-github/v71 v71.0.0
 	github.com/google/uuid v1.6.0
 	github.com/lib/pq v1.10.9
 	github.com/olekukonko/tablewriter v0.0.5
@@ -59,7 +60,10 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 )
 
-require go.yaml.in/yaml/v3 v3.0.4 // indirect
+require (
+	github.com/google/go-querystring v1.1.0 // indirect
+	go.yaml.in/yaml/v3 v3.0.4 // indirect
+)
 
 require (
 	dario.cat/mergo v1.0.1 // indirect
