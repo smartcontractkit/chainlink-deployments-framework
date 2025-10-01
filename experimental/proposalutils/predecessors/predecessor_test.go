@@ -295,7 +295,7 @@ func newTimelockProposal(t *testing.T, start uint64, ops int) *mcms.TimelockProp
 	b := mcms.
 		NewTimelockProposalBuilder().
 		SetVersion("v1").
-		SetValidUntil(uint32(time.Now().Add(24*time.Hour).Unix())).
+		SetValidUntil(uint32(time.Now().Add(24*time.Hour).Unix())). //nolint:gosec // test code, overflow acceptable
 		SetDescription("unit test proposal").
 		AddTimelockAddress(chain, "0xTimelock").
 		AddChainMetadata(chain, mcmstypes.ChainMetadata{
@@ -306,7 +306,7 @@ func newTimelockProposal(t *testing.T, start uint64, ops int) *mcms.TimelockProp
 		SetDelay(mcmstypes.NewDuration(2 * time.Second))
 
 	// add N no-op transactions so OperationCounts == ops
-	for i := 0; i < ops; i++ {
+	for range ops {
 		_ = b.AddOperation(mcmstypes.BatchOperation{
 			ChainSelector: chain,
 			Transactions: []mcmstypes.Transaction{
@@ -317,6 +317,7 @@ func newTimelockProposal(t *testing.T, start uint64, ops int) *mcms.TimelockProp
 
 	prop, err := b.Build()
 	require.NoError(t, err)
+
 	return prop
 }
 
@@ -335,6 +336,7 @@ func writeProposal(t *testing.T, p *mcms.TimelockProposal) (string, mcmstypes.Ch
 		sel = cs
 		break
 	}
+
 	return path, sel
 }
 
