@@ -5,10 +5,15 @@ import (
 	"math/big"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/google/go-github/v71/github"
+	chainsel "github.com/smartcontractkit/chain-selectors"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 	"github.com/smartcontractkit/mcms"
@@ -280,4 +285,152 @@ func TestMatchesProposalPath_PositiveAndNegative(t *testing.T) {
 	require.False(t, matchesProposalPath(domain, env, "domains/foo/bar/proposals/abc.yaml"))
 	// wrong prefix
 	require.False(t, matchesProposalPath(domain, env, "something/domains/foo/bar/proposals/abc.json"))
+}
+
+func newTimelockProposal(t *testing.T, start uint64, ops int) *mcms.TimelockProposal {
+	t.Helper()
+
+	chain := mcmstypes.ChainSelector(chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector)
+
+	b := mcms.
+		NewTimelockProposalBuilder().
+		SetVersion("v1").
+		SetValidUntil(uint32(time.Now().Add(24*time.Hour).Unix())).
+		SetDescription("unit test proposal").
+		AddTimelockAddress(chain, "0xTimelock").
+		AddChainMetadata(chain, mcmstypes.ChainMetadata{
+			StartingOpCount: start,
+			MCMAddress:      "0xMCM",
+		}).
+		SetAction(mcmstypes.TimelockActionSchedule).
+		SetDelay(mcmstypes.NewDuration(2 * time.Second))
+
+	// add N no-op transactions so OperationCounts == ops
+	for i := 0; i < ops; i++ {
+		_ = b.AddOperation(mcmstypes.BatchOperation{
+			ChainSelector: chain,
+			Transactions: []mcmstypes.Transaction{
+				evm.NewTransaction(common.Address{}, []byte{}, big.NewInt(0), "test", nil),
+			},
+		})
+	}
+
+	prop, err := b.Build()
+	require.NoError(t, err)
+	return prop
+}
+
+func writeProposal(t *testing.T, p *mcms.TimelockProposal) (string, mcmstypes.ChainSelector) {
+	t.Helper()
+	dir := t.TempDir()
+	path := filepath.Join(dir, "p.json")
+	fh, err := os.OpenFile(path, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0o600)
+	require.NoError(t, err)
+	require.NoError(t, mcms.WriteTimelockProposal(fh, p))
+	_ = fh.Close()
+
+	// Return the chain we used
+	var sel mcmstypes.ChainSelector
+	for cs := range p.ChainMetadatas() {
+		sel = cs
+		break
+	}
+	return path, sel
+}
+
+func TestApplyHighestOpCountsToProposal(t *testing.T) {
+	t.Parallel()
+
+	lggr := logger.Test(t)
+
+	t.Run("updates when proposed is higher", func(t *testing.T) {
+		t.Parallel()
+
+		prop := newTimelockProposal(t, 1, 2) // start=1, ops=2
+		path, sel := writeProposal(t, prop)
+
+		err := ApplyHighestOpCountsToProposal(lggr, path, map[mcmstypes.ChainSelector]uint64{
+			sel: 5, // higher than current 1
+		})
+		require.NoError(t, err)
+
+		// Reload and assert StartingOpCount bumped to 5
+		loaded, err := mcms.LoadProposal(mcmstypes.KindTimelockProposal, path)
+		require.NoError(t, err)
+		tp := loaded.(*mcms.TimelockProposal)
+		got := tp.ChainMetadatas()[sel].StartingOpCount
+		assert.Equal(t, uint64(5), got)
+	})
+
+	t.Run("no change when proposed <= current", func(t *testing.T) {
+		t.Parallel()
+
+		prop := newTimelockProposal(t, 3, 1) // start=3
+		path, sel := writeProposal(t, prop)
+
+		err := ApplyHighestOpCountsToProposal(lggr, path, map[mcmstypes.ChainSelector]uint64{
+			sel: 3, // equal to current
+		})
+		require.NoError(t, err)
+
+		loaded, err := mcms.LoadProposal(mcmstypes.KindTimelockProposal, path)
+		require.NoError(t, err)
+		tp := loaded.(*mcms.TimelockProposal)
+		assert.Equal(t, uint64(3), tp.ChainMetadatas()[sel].StartingOpCount)
+	})
+
+	t.Run("ignores unknown chains", func(t *testing.T) {
+		t.Parallel()
+
+		prop := newTimelockProposal(t, 2, 1)
+		path, sel := writeProposal(t, prop)
+
+		otherChain := mcmstypes.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector)
+		require.NotEqual(t, sel, otherChain)
+
+		err := ApplyHighestOpCountsToProposal(lggr, path, map[mcmstypes.ChainSelector]uint64{
+			otherChain: 999,
+		})
+		require.NoError(t, err)
+
+		loaded, err := mcms.LoadProposal(mcmstypes.KindTimelockProposal, path)
+		require.NoError(t, err)
+		tp := loaded.(*mcms.TimelockProposal)
+		assert.Equal(t, uint64(2), tp.ChainMetadatas()[sel].StartingOpCount)
+	})
+
+	t.Run("error when file does not exist", func(t *testing.T) {
+		t.Parallel()
+
+		err := ApplyHighestOpCountsToProposal(lggr, "does/not/exist.json", nil)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "load proposal")
+	})
+}
+
+func TestParseProposalOpsData(t *testing.T) {
+	t.Run("success returns correct op data", func(t *testing.T) {
+		t.Parallel()
+
+		prop := newTimelockProposal(t, 4, 3) // start=4, 3 ops
+		path, sel := writeProposal(t, prop)
+
+		got, err := ParseProposalOpsData(t.Context(), path)
+		require.NoError(t, err)
+
+		// Must contain exactly the chain we wrote
+		require.Contains(t, got, sel)
+		entry := got[sel]
+		assert.Equal(t, "0xMCM", entry.MCMAddress)
+		assert.Equal(t, uint64(4), entry.StartingOpCount)
+		assert.Equal(t, uint64(3), entry.OpsCount) // 3 transactions added above
+	})
+
+	t.Run("error when file missing", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := ParseProposalOpsData(t.Context(), "missing.json")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "load proposal from")
+	})
 }

@@ -279,3 +279,38 @@ func TestFindPredecessorPRs(t *testing.T) {
 		require.Empty(t, preds)
 	})
 }
+
+func TestNewGithubProposalPRFinder(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		lggr logger.Logger
+	}{
+		{
+			name: "with nil logger",
+			lggr: nil,
+		},
+		{
+			name: "with test logger",
+			lggr: logger.Test(t), // replace with the correct helper for your logger
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt // capture range var
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			client := github.NewClient(nil)
+			var cldCtx CLDContext // use a real init if needed
+
+			got := NewGithubProposalPRFinder(tt.lggr, client, cldCtx)
+
+			require.NotNil(t, got)
+			require.Equal(t, tt.lggr, got.lggr)
+			require.Same(t, client, got.client)
+			require.Equal(t, cldCtx, got.cldCtx)
+		})
+	}
+}
