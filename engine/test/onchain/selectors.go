@@ -34,6 +34,12 @@ var (
 		chainselectors.FamilyTon: {
 			chainselectors.TON_LOCALNET.Selector,
 		},
+		chainselectors.FamilyTron: {
+			chainselectors.TRON_DEVNET.Selector,
+		},
+		chainselectors.FamilySui: {
+			chainselectors.SUI_LOCALNET.Selector,
+		},
 	}
 
 	// ZKSync selectors are defined here rather than in testSelectors to avoid adding more
