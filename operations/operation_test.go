@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/goccy/go-yaml"
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -95,7 +96,7 @@ func Test_Operation_AsUntyped(t *testing.T) {
 	typedOp := NewOperation("sum", version, description, handler1)
 
 	untypedOp := typedOp.AsUntyped()
-	bundle := NewBundle(context.Background, logger.Test(t), nil)
+	bundle := NewBundle(t.Context, logger.Test(t), nil)
 
 	assert.Equal(t, "sum", untypedOp.ID())
 	assert.Equal(t, version.String(), untypedOp.Version())
@@ -130,6 +131,16 @@ func Test_Operation_AsUntyped(t *testing.T) {
 			wantErr:     true,
 			errContains: "dependencies type mismatch",
 		},
+		{
+			name: "input from YAML unmarshaling (map[string]interface{}) - should fail with AsUntyped",
+			deps: OpDeps{},
+			input: map[string]interface{}{
+				"A": 5,
+				"B": 3,
+			},
+			wantErr:     true,
+			errContains: "input type mismatch",
+		},
 	}
 
 	for _, tt := range tests {
@@ -146,4 +157,29 @@ func Test_Operation_AsUntyped(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_Operation_AsUntypedRelaxed_WithYAMLUnmarshaling(t *testing.T) {
+	t.Parallel()
+
+	handler := func(b Bundle, deps OpDeps, input OpInput) (int, error) {
+		return input.A + input.B, nil
+	}
+	typedOp := NewOperation("sum", semver.MustParse("1.0.0"), "test operation", handler)
+	untypedOp := typedOp.AsUntypedRelaxed()
+	bundle := NewBundle(t.Context, logger.Test(t), nil)
+
+	// Simulate YAML unmarshaling scenario
+	yamlData := `
+A: 10
+B: 20
+`
+	var yamlInput interface{}
+	err := yaml.Unmarshal([]byte(yamlData), &yamlInput)
+	require.NoError(t, err)
+
+	// The yamlInput is now a map[string]interface{}, which should work with AsUntypedRelaxed
+	result, err := untypedOp.handler(bundle, OpDeps{}, yamlInput)
+	require.NoError(t, err)
+	assert.Equal(t, 30, result)
 }
