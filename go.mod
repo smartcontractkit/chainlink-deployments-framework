@@ -36,7 +36,7 @@ require (
 	github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings v0.0.0-20250805210128-7f8a0f403c3a
 	github.com/smartcontractkit/chainlink-common v0.9.1-0.20250815142532-64e0a7965958
 	github.com/smartcontractkit/chainlink-protos/job-distributor v0.12.0
-	github.com/smartcontractkit/chainlink-protos/op-catalog v0.0.1
+	github.com/smartcontractkit/chainlink-protos/op-catalog v0.0.3
 	github.com/smartcontractkit/chainlink-testing-framework/framework v0.10.30
 	github.com/smartcontractkit/chainlink-testing-framework/seth v1.51.2
 	github.com/smartcontractkit/chainlink-tron/relayer v0.0.11-0.20250815105909-75499abc4335
