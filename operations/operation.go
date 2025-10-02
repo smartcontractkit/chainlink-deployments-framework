@@ -2,7 +2,9 @@ package operations
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"reflect"
 	"sync"
 
 	"github.com/Masterminds/semver/v3"
@@ -108,16 +110,18 @@ func (o *Operation[IN, OUT, DEP]) AsUntyped() *Operation[any, any, any] {
 		handler: func(b Bundle, deps any, input any) (any, error) {
 			var typedInput IN
 			if input != nil {
-				var ok bool
-				if typedInput, ok = input.(IN); !ok {
+				if converted, err := convertToType[IN](input); err == nil {
+					typedInput = converted
+				} else {
 					return nil, errors.New("input type mismatch")
 				}
 			}
 
 			var typedDeps DEP
 			if deps != nil {
-				var ok bool
-				if typedDeps, ok = deps.(DEP); !ok {
+				if converted, err := convertToType[DEP](deps); err == nil {
+					typedDeps = converted
+				} else {
 					return nil, errors.New("dependencies type mismatch")
 				}
 			}
@@ -145,3 +149,39 @@ func NewOperation[IN, OUT, DEP any](
 
 // EmptyInput is a placeholder for operations that do not require input.
 type EmptyInput struct{}
+
+// Helper function for robust type conversion
+func convertToType[T any](input any) (T, error) {
+	var zero T
+
+	// Strategy 1: Direct type assertion
+	if converted, ok := input.(T); ok {
+		return converted, nil
+	}
+
+	// Strategy 2: Reflection-based conversion
+	inputValue := reflect.ValueOf(input)
+	targetType := reflect.TypeOf((*T)(nil)).Elem()
+
+	if inputValue.Type().AssignableTo(targetType) {
+		return input.(T), nil
+	}
+
+	if inputValue.Type().ConvertibleTo(targetType) {
+		converted := inputValue.Convert(targetType)
+		return converted.Interface().(T), nil
+	}
+
+	// Strategy 3: JSON marshaling/unmarshaling for complex type compatibility
+	jsonBytes, err := json.Marshal(input)
+	if err != nil {
+		return zero, err
+	}
+
+	var result T
+	if err := json.Unmarshal(jsonBytes, &result); err != nil {
+		return zero, err
+	}
+
+	return result, nil
+}
