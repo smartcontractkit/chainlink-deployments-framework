@@ -267,17 +267,6 @@ func ExecuteSequence[IN, OUT, DEP any](
 		return SequenceReport[IN, OUT]{}, fmt.Errorf("sequence %s input: %w", sequence.def.ID, ErrNotSerializable)
 	}
 
-	if previousReport, ok := loadPreviousSuccessfulReport[IN, OUT](b, sequence.def, input); ok {
-		executionReports, err := b.reporter.GetExecutionReports(previousReport.ID)
-		if err != nil {
-			return SequenceReport[IN, OUT]{}, err
-		}
-		b.Logger.Infow("Sequence already executed. Returning previous result", "id", sequence.def.ID,
-			"version", sequence.def.Version, "description", sequence.def.Description)
-
-		return SequenceReport[IN, OUT]{previousReport, executionReports}, nil
-	}
-
 	b.Logger.Infow("Executing sequence", "id", sequence.def.ID,
 		"version", sequence.def.Version, "description", sequence.def.Description)
 	recentReporter := NewRecentMemoryReporter(b.reporter)
