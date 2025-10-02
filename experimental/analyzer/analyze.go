@@ -72,6 +72,14 @@ func describeBatchOperations(ctx ProposalContext, batches []types.BatchOperation
 			for callIdx, decodedCall := range describedTxs {
 				describedBatches[batchIdx][callIdx] = decodedCall.Describe(ctx.ArgumentContext(chainSel))
 			}
+		case chainsel.FamilySui:
+			describedTxs, err := AnalyzeSuiTransactions(ctx, chainSel, batch.Transactions)
+			if err != nil {
+				return nil, err
+			}
+			for callIdx, decodedCall := range describedTxs {
+				describedBatches[batchIdx][callIdx] = decodedCall.Describe(ctx.ArgumentContext(chainSel))
+			}
 		default:
 			for callIdx := range batch.Transactions {
 				describedBatches[batchIdx][callIdx] = family + " transaction decoding is not supported"
@@ -108,6 +116,12 @@ func describeOperations(ctx ProposalContext, operations []types.Operation) ([]st
 
 		case chainsel.FamilyAptos:
 			describedTransaction, err := AnalyzeAptosTransactions(ctx, uint64(operation.ChainSelector), []types.Transaction{operation.Transaction})
+			if err != nil {
+				return nil, err
+			}
+			describedOperations[callIdx] = describedTransaction[0].Describe(ctx.ArgumentContext(uint64(operation.ChainSelector)))
+		case chainsel.FamilySui:
+			describedTransaction, err := AnalyzeSuiTransactions(ctx, uint64(operation.ChainSelector), []types.Transaction{operation.Transaction})
 			if err != nil {
 				return nil, err
 			}

@@ -13,21 +13,7 @@ import (
 )
 
 const testAddress = "0xe86f0e5a8b9cb6ab31b656baa83a0d2eb761b32eb31b9a9c74abb7d0cffd26fa"
-
-// Helper function to create expected output strings in a readable format
-func expectedOutput(method string, inputs [][]string) string {
-	result := fmt.Sprintf("**Address:** `%s` <sub><i>address of TestCCIP 1.0.0 from aptos-testnet</i></sub>\n**Method:** `%s`\n\n", testAddress, method)
-
-	if len(inputs) > 0 {
-		result += "**Inputs:**\n\n| Name | Value | Annotation |\n|------|-------|------------|\n"
-		for _, input := range inputs {
-			result += fmt.Sprintf("| `%s` | `%s` |  |\n", input[0], input[1])
-		}
-	}
-	result += "\n"
-
-	return result
-}
+const addressTitle = "address of TestCCIP 1.0.0 from aptos-testnet"
 
 // Helper function for error cases where method contains an error message
 func expectedErrorOutput(errorMessage string) string {
@@ -56,7 +42,7 @@ func TestDescribeBatchOperations(t *testing.T) {
 			operations: getOperations(1),
 			want: [][]string{
 				{
-					expectedOutput("ccip_onramp::onramp::initialize", [][]string{
+					expectedOutput("ccip_onramp::onramp::initialize", testAddress, addressTitle, [][]string{
 						{"chain_selector", "4457093679053095497"},
 						{"fee_aggregator", "0x13a9f1a109368730f2e355d831ba8fbf5942fb82321863d55de54cb4ebe5d18f"},
 						{"allowlist_admin", "0x13a9f1a109368730f2e355d831ba8fbf5942fb82321863d55de54cb4ebe5d18f"},
@@ -64,7 +50,7 @@ func TestDescribeBatchOperations(t *testing.T) {
 						{"dest_chain_routers", "[]"},
 						{"dest_chain_allowlist_enabled", "[]"},
 					}),
-					expectedOutput("ccip_offramp::offramp::initialize", [][]string{
+					expectedOutput("ccip_offramp::offramp::initialize", testAddress, addressTitle, [][]string{
 						{"chain_selector", "4457093679053095497"},
 						{"permissionless_execution_threshold_seconds", "28800"},
 						{"source_chains_selector", "[11155111]"},
@@ -72,14 +58,14 @@ func TestDescribeBatchOperations(t *testing.T) {
 						{"source_chains_is_rmn_verification_disabled", "[false]"},
 						{"source_chains_on_ramp", "[0x0bf3de8c5d3e8a2b34d2beeb17abfcebaf363a59]"},
 					}),
-					expectedOutput("ccip::rmn_remote::initialize", [][]string{
+					expectedOutput("ccip::rmn_remote::initialize", testAddress, addressTitle, [][]string{
 						{"local_chain_selector", "4457093679053095497"},
 					}),
-					expectedOutput("ccip_token_pool::token_pool::initialize", [][]string{
+					expectedOutput("ccip_token_pool::token_pool::initialize", testAddress, addressTitle, [][]string{
 						{"local_token", "0x0000000000000000000000000000000000000000000000000000000000000003"},
 						{"allowlist", "[0x0000000000000000000000000000000000000000000000000000000000000001,0x0000000000000000000000000000000000000000000000000000000000000002]"},
 					}),
-					expectedOutput("ccip_offramp::offramp::apply_source_chain_config_updates", [][]string{
+					expectedOutput("ccip_offramp::offramp::apply_source_chain_config_updates", testAddress, addressTitle, [][]string{
 						{"source_chains_selector", "[743186221051783445,16015286601757825753]"},
 						{"source_chains_is_enabled", "[true,false]"},
 						{"source_chains_is_rmn_verification_disabled", "[true,true]"},
@@ -94,7 +80,7 @@ func TestDescribeBatchOperations(t *testing.T) {
 			operations: getOperations(2),
 			want: [][]string{
 				{
-					expectedOutput("ccip_onramp::onramp::initialize", [][]string{
+					expectedOutput("ccip_onramp::onramp::initialize", testAddress, addressTitle, [][]string{
 						{"chain_selector", "4457093679053095497"},
 						{"fee_aggregator", "0x13a9f1a109368730f2e355d831ba8fbf5942fb82321863d55de54cb4ebe5d18f"},
 						{"allowlist_admin", "0x13a9f1a109368730f2e355d831ba8fbf5942fb82321863d55de54cb4ebe5d18f"},
@@ -102,7 +88,7 @@ func TestDescribeBatchOperations(t *testing.T) {
 						{"dest_chain_routers", "[]"},
 						{"dest_chain_allowlist_enabled", "[]"},
 					}),
-					expectedOutput("ccip_offramp::offramp::initialize", [][]string{
+					expectedOutput("ccip_offramp::offramp::initialize", testAddress, addressTitle, [][]string{
 						{"chain_selector", "4457093679053095497"},
 						{"permissionless_execution_threshold_seconds", "28800"},
 						{"source_chains_selector", "[11155111]"},
@@ -112,14 +98,14 @@ func TestDescribeBatchOperations(t *testing.T) {
 					}),
 				},
 				{
-					expectedOutput("ccip::rmn_remote::initialize", [][]string{
+					expectedOutput("ccip::rmn_remote::initialize", testAddress, addressTitle, [][]string{
 						{"local_chain_selector", "4457093679053095497"},
 					}),
-					expectedOutput("ccip_token_pool::token_pool::initialize", [][]string{
+					expectedOutput("ccip_token_pool::token_pool::initialize", testAddress, addressTitle, [][]string{
 						{"local_token", "0x0000000000000000000000000000000000000000000000000000000000000003"},
 						{"allowlist", "[0x0000000000000000000000000000000000000000000000000000000000000001,0x0000000000000000000000000000000000000000000000000000000000000002]"},
 					}),
-					expectedOutput("ccip_offramp::offramp::apply_source_chain_config_updates", [][]string{
+					expectedOutput("ccip_offramp::offramp::apply_source_chain_config_updates", testAddress, addressTitle, [][]string{
 						{"source_chains_selector", "[743186221051783445,16015286601757825753]"},
 						{"source_chains_is_enabled", "[true,false]"},
 						{"source_chains_is_rmn_verification_disabled", "[true,true]"},
@@ -136,7 +122,7 @@ func TestDescribeBatchOperations(t *testing.T) {
 				{
 					expectedErrorOutput(
 						"failed to decode Aptos transaction: could not find function info for ccip_offramp::bad_module::initialize"),
-					expectedOutput("ccip::rmn_remote::initialize", [][]string{
+					expectedOutput("ccip::rmn_remote::initialize", testAddress, addressTitle, [][]string{
 						{"local_chain_selector", "4457093679053095497"},
 					}),
 				},
