@@ -105,13 +105,6 @@ func ExecuteOperation[IN, OUT, DEP any](
 		return Report[IN, OUT]{}, fmt.Errorf("operation %s input: %w", operation.def.ID, ErrNotSerializable)
 	}
 
-	if previousReport, ok := loadPreviousSuccessfulReport[IN, OUT](b, operation.def, input); ok {
-		b.Logger.Infow("Operation already executed. Returning previous result", "id", operation.def.ID,
-			"version", operation.def.Version, "description", operation.def.Description)
-
-		return previousReport, nil
-	}
-
 	executeConfig := &ExecuteConfig[IN, DEP]{
 		retryConfig: newDisabledRetryConfig[IN, DEP](),
 	}
