@@ -68,9 +68,9 @@ func ComputeHighestOpCountsFromPredecessors(
 			if !ok || !sameMCM(cur.MCMAddress, other.MCMAddress) {
 				continue
 			}
-			newStart := latestPredecessor.ProposalData[sel].StartingOpCount + latestPredecessor.ProposalData[sel].OpsCount
+			newStart := other.StartingOpCount + other.OpsCount
 			if newStart > out[sel] {
-				lggr.Warnf("sum of predecessors' ops on chain %d is %d, but latest predecessor PR#%d has ops=%d, adjusting new start from %d to %d. This can happen when a predecessor gets merged while this action is running, but is not executed on-chain", uint64(sel), out[sel]-cur.StartingOpCount, latestPredecessor.Number, latestPredecessor.ProposalData[sel].OpsCount, out[sel], newStart)
+				lggr.Warnf("sum of predecessors' ops on chain %d is %d, but latest predecessor PR#%d has ops=%d, adjusting new start from %d to %d. This can happen when a predecessor gets merged while this action is running, but is not executed on-chain", uint64(sel), out[sel]-cur.StartingOpCount, latestPredecessor.Number, other.OpsCount, out[sel], newStart)
 				out[sel] = newStart
 			}
 		}
