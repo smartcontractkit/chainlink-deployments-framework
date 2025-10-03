@@ -17,7 +17,8 @@ import (
 // and for each chain present in 'newProposalData', computes the new starting
 // op count as: current StartingOpCount (from the new proposal) + SUM of the
 // number of ops across ALL predecessors that share the same chain selector
-// AND the same MCM address.
+// AND the same MCM address. We assume that the predecessors are sorted
+// from oldest to newest, so we can log them in that order.
 // Returns:
 //   - newStartPerChain: map[chain] = baseline + sum(ops)
 func ComputeHighestOpCountsFromPredecessors(
