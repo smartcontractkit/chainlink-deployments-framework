@@ -3,10 +3,8 @@ package runtime
 import (
 	"context"
 	"crypto/ecdsa"
-	"crypto/rand"
 	"fmt"
 
-	"github.com/ethereum/go-ethereum/common"
 	mcmslib "github.com/smartcontractkit/mcms"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 
@@ -181,9 +179,6 @@ func (t executeProposalTask) Run(e fdeployment.Environment, state *State) error 
 			return fmt.Errorf("failed to decode Timelock proposal (id: %s): %w", t.proposalID, err)
 		}
 
-		// This is causing MCMS Execution Set Root to fail. Need to investigate why.
-		// prop.SaltOverride = randomHash()
-
 		if err = executor.ExecuteTimelock(ctx, prop); err != nil {
 			return fmt.Errorf("failed to execute Timelock proposal (id: %s): %w", t.proposalID, err)
 		}
@@ -301,24 +296,6 @@ func signTimelockProposal(
 	}
 
 	return propJSON, nil
-}
-
-// randomHash generates a random 32-byte hash to use as a salt override for timelock proposals.
-// This function is specifically used to prevent scheduling conflicts in test environments
-// where multiple timelock proposals might be created with identical timestamps.
-//
-// In production, timelock proposals use their validUntil timestamp to generate operation IDs.
-// However, in tests where proposals are often created within the same second, this can lead
-// to "AlreadyScheduled" errors when multiple proposals have the same generated ID.
-//
-// Note: This function is designed for test use only. The error from rand.Read is intentionally
-// ignored as cryptographic randomness is not critical for test salt generation.
-func randomHash() *common.Hash { //nolint:unused // We will come back to this when we have a solution for the salt override.
-	b := make([]byte, 32)
-	_, _ = rand.Read(b) // Assignment for errcheck. Only used in tests so we can ignore.
-	h := common.BytesToHash(b)
-
-	return &h
 }
 
 // proposalExecutor is an interface that defines the methods for executing MCMS and timelock
