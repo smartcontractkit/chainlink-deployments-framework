@@ -1,5 +1,23 @@
 # chainlink-deployments-framework
 
+## 0.54.0
+
+### Minor Changes
+
+- [#481](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/481) [`1f7f6bc`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/1f7f6bc9be80a9522680022868448847b62ba20a) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat(operations): introduce AsUntypedRelaxed
+
+### Patch Changes
+
+- [#484](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/484) [`fb9d9bf`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/fb9d9bfef7456052e4c07fc4bba3c9b16e5b4bd5) Thanks [@jkongie](https://github.com/jkongie)! - Fixes test engine MCMS execution when multiple proposals have the same `validUntil` timestamp.
+
+  A salt override is added to each timelock proposal persisted to the state to ensure unique operation
+  IDs in test environments where multiple proposals may have identical timestamps. This salt is used
+  in the hashing algorithm to determine the root of the merkle tree.
+
+- [#479](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/479) [`930e469`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/930e469560608b9ec32a398393862b9fbc4d663a) Thanks [@jkongie](https://github.com/jkongie)! - Fixes MCMS Execution failing to Set Root in the test engine
+
+- [#475](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/475) [`8d9ded3`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/8d9ded34541c2f47211832cfbbb7906b40c5746f) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - fix(mcms): check for PostOpCountReached errors in Solana as well
+
 ## 0.53.0
 
 ### Minor Changes
