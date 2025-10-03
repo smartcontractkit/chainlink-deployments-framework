@@ -706,8 +706,8 @@ github.com/smartcontractkit/chainlink-common/pkg/values v0.0.0-20250806152407-15
 github.com/smartcontractkit/chainlink-common/pkg/values v0.0.0-20250806152407-159881c7589c/go.mod h1:U1UAbPhy6D7Qz0wHKGPoQO+dpR0hsYjgUz8xwRrmKwI=
 github.com/smartcontractkit/chainlink-protos/job-distributor v0.12.0 h1:/bhoALRzNXZkdzxBkNM505pMofNy0K0eW1nCzXw+AUI=
 github.com/smartcontractkit/chainlink-protos/job-distributor v0.12.0/go.mod h1:/dVVLXrsp+V0AbcYGJo3XMzKg3CkELsweA/TTopCsKE=
-github.com/smartcontractkit/chainlink-protos/op-catalog v0.0.1 h1:YIj/UUb+4nLWuR1A4oeVJFKS+oLIdyvwmKpg1m4lHiY=
-github.com/smartcontractkit/chainlink-protos/op-catalog v0.0.1/go.mod h1:kYKweMUUgAL+JfW+4WV5FoQuoTKj7RbTC9J+2abq0Pw=
+github.com/smartcontractkit/chainlink-protos/op-catalog v0.0.3 h1:SMY7IlrOmsjonbx9YzmLPYa65vuUyVep67zFtSwMiuI=
+github.com/smartcontractkit/chainlink-protos/op-catalog v0.0.3/go.mod h1:kYKweMUUgAL+JfW+4WV5FoQuoTKj7RbTC9J+2abq0Pw=
 github.com/smartcontractkit/chainlink-sui v0.0.0-20250916193659-4becc28a467f h1:7saUNbu+edzDgRPedNFfTsx5+5RL40r1r0pgISoh8Hs=
 github.com/smartcontractkit/chainlink-sui v0.0.0-20250916193659-4becc28a467f/go.mod h1:CTR5agBB07sCpRltBkHmnkCZ+g8sXRafCJge/Hqr7aM=
 github.com/smartcontractkit/chainlink-testing-framework/framework v0.10.30 h1:mDxJnEl5jKs3FLHKIjwtCFEP4ihKhFS6yuPDNcC0EDM=

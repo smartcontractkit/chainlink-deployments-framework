@@ -29,6 +29,32 @@ func TestNewDurablePipelineRunCmd(t *testing.T) {
 	changesetName := "0001_test_changeset"
 	testDomain := domain.NewDomain(t.TempDir(), "test")
 
+	// Create workspace structure and test input file
+	workspaceRoot := t.TempDir()
+	inputsDir := filepath.Join(workspaceRoot, "domains", testDomain.String(), env, "durable_pipelines", "inputs")
+	require.NoError(t, os.MkdirAll(inputsDir, 0755))
+
+	// Create test YAML file
+	yamlContent := `environment: testnet
+domain: test
+changesets:
+  - 0001_test_changeset:
+      payload:
+        chain: optimism_sepolia
+        value: 100`
+
+	yamlFileName := "test-input.yaml"
+	yamlFilePath := filepath.Join(inputsDir, yamlFileName)
+	require.NoError(t, os.WriteFile(yamlFilePath, []byte(yamlContent), 0644)) //nolint:gosec
+
+	// Set up the test to run from within the workspace
+	originalWd, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(workspaceRoot))
+	t.Cleanup(func() {
+		require.NoError(t, os.Chdir(originalWd))
+	})
+
 	tempLoadEnv := environment.Load
 	// mock the loadEnv function to avoid loading a real environment
 	loadEnv = func(ctx context.Context, domain domain.Domain, envName string, options ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
@@ -52,6 +78,7 @@ func TestNewDurablePipelineRunCmd(t *testing.T) {
 				"execute",
 				"--environment", env,
 				"--changeset", changesetName,
+				"--input-file", yamlFileName,
 				"--dry-run",
 			},
 			shouldCallApplyChanges:   true,
@@ -63,6 +90,7 @@ func TestNewDurablePipelineRunCmd(t *testing.T) {
 				"execute",
 				"--environment", env,
 				"--changeset", changesetName,
+				"--input-file", yamlFileName,
 				"--dry-run",
 			},
 			applyErr:                 errors.New("changeset error"),
@@ -76,6 +104,7 @@ func TestNewDurablePipelineRunCmd(t *testing.T) {
 				"execute",
 				"--environment", env,
 				"--changeset", changesetName,
+				"--input-file", yamlFileName,
 				"--fake-flag",
 				"--dry-run",
 			},
@@ -89,6 +118,7 @@ func TestNewDurablePipelineRunCmd(t *testing.T) {
 				"execute",
 				"--environment", env,
 				"--changeset", changesetName,
+				"--input-file", yamlFileName,
 				"--dry-run",
 			},
 			shouldCallApplyChanges:   true,
@@ -1341,4 +1371,453 @@ changesets:
 			}
 		})
 	}
+}
+
+//nolint:paralleltest
+func TestSetDurablePipelineInputFromYAMLByIndex(t *testing.T) {
+	testDomain := domain.NewDomain(t.TempDir(), "test")
+	env := "testnet"
+
+	// Create workspace structure
+	workspaceRoot := t.TempDir()
+	inputsDir := filepath.Join(workspaceRoot, "domains", testDomain.String(), env, "durable_pipelines", "inputs")
+	require.NoError(t, os.MkdirAll(inputsDir, 0755))
+
+	tests := []struct {
+		name          string
+		yamlContent   string
+		index         int
+		expectedName  string
+		expectedJSON  string
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name: "array format - select first changeset",
+			yamlContent: `environment: testnet
+domain: test
+changesets:
+  - 0001_test_changeset:
+      payload:
+        chain: optimism_sepolia
+        value: 120
+  - 0001_test_changeset:
+      payload:
+        chain: optimism_sepolia
+        value: 100`,
+			index:        0,
+			expectedName: "0001_test_changeset",
+			expectedJSON: `{"payload":{"chain":"optimism_sepolia","value":120}}`,
+		},
+		{
+			name: "array format - select second changeset",
+			yamlContent: `environment: testnet
+domain: test
+changesets:
+  - 0001_test_changeset:
+      payload:
+        chain: optimism_sepolia
+        value: 120
+  - 0001_test_changeset:
+      payload:
+        chain: optimism_sepolia
+        value: 100`,
+			index:        1,
+			expectedName: "0001_test_changeset",
+			expectedJSON: `{"payload":{"chain":"optimism_sepolia","value":100}}`,
+		},
+		{
+			name: "object format - should return error",
+			yamlContent: `environment: testnet
+domain: test
+changesets:
+  first_changeset:
+    payload:
+      value: 42
+  second_changeset:
+    payload:
+      value: 84`,
+			index:         0,
+			expectError:   true,
+			errorContains: "--changeset-index can only be used with array format YAML files",
+		},
+		{
+			name: "array format with chainOverrides",
+			yamlContent: `environment: testnet
+domain: test
+changesets:
+  - test_changeset:
+      payload:
+        value: 123
+      chainOverrides: [1, 2, 3]`,
+			index:        0,
+			expectedName: "test_changeset",
+			expectedJSON: `{"payload":{"value":123},"chainOverrides":[1,2,3]}`,
+		},
+		{
+			name: "index out of range - too high",
+			yamlContent: `environment: testnet
+domain: test
+changesets:
+  - test_changeset:
+      payload:
+        value: 123`,
+			index:         5,
+			expectError:   true,
+			errorContains: "changeset index 5 is out of range",
+		},
+		{
+			name: "index out of range - negative",
+			yamlContent: `environment: testnet
+domain: test
+changesets:
+  - test_changeset:
+      payload:
+        value: 123`,
+			index:         -1,
+			expectError:   true,
+			errorContains: "changeset index -1 is out of range",
+		},
+		{
+			name: "empty changesets array",
+			yamlContent: `environment: testnet
+domain: test
+changesets: []`,
+			index:         0,
+			expectError:   true,
+			errorContains: "changeset index 0 is out of range (found 0 changesets",
+		},
+		{
+			name: "missing payload field",
+			yamlContent: `environment: testnet
+domain: test
+changesets:
+  - test_changeset:
+      notPayload: 123`,
+			index:         0,
+			expectError:   true,
+			errorContains: "is missing required 'payload' field",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Set up the test to run from within the workspace first
+			originalWd, err := os.Getwd()
+			require.NoError(t, err)
+			require.NoError(t, os.Chdir(workspaceRoot))
+			t.Cleanup(func() {
+				require.NoError(t, os.Chdir(originalWd))
+			})
+
+			// Create unique YAML file for this test
+			yamlFileName := fmt.Sprintf("test-pipeline-%s.yaml", strings.ReplaceAll(tt.name, " ", "-"))
+			yamlFilePath := filepath.Join(inputsDir, yamlFileName)
+			require.NoError(t, os.WriteFile(yamlFilePath, []byte(tt.yamlContent), 0644)) //nolint:gosec
+			t.Cleanup(func() {
+				os.Remove(yamlFilePath)
+			})
+
+			// Clear environment variable before test
+			os.Unsetenv("DURABLE_PIPELINE_INPUT")
+
+			// Test the function
+			actualName, err := setDurablePipelineInputFromYAMLByIndex(yamlFileName, tt.index, testDomain, env)
+
+			if tt.expectError {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.errorContains)
+
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, tt.expectedName, actualName)
+
+			// Verify environment variable was set correctly
+			envValue := os.Getenv("DURABLE_PIPELINE_INPUT")
+			require.NotEmpty(t, envValue, "DURABLE_PIPELINE_INPUT should be set")
+
+			// Parse and compare JSON
+			require.JSONEq(t, tt.expectedJSON, envValue)
+
+			// Clean up
+			os.Unsetenv("DURABLE_PIPELINE_INPUT")
+		})
+	}
+}
+
+func TestGetAllChangesetsInOrder(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name          string
+		changesets    any
+		expectedNames []string
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name: "object format - should return error",
+			changesets: map[string]any{
+				"first":  map[string]any{"payload": map[string]any{"value": 1}},
+				"second": map[string]any{"payload": map[string]any{"value": 2}},
+			},
+			expectError:   true,
+			errorContains: "expected array format",
+		},
+		{
+			name: "array format",
+			changesets: []any{
+				map[string]any{
+					"first": map[string]any{"payload": map[string]any{"value": 1}},
+				},
+				map[string]any{
+					"second": map[string]any{"payload": map[string]any{"value": 2}},
+				},
+			},
+			expectedNames: []string{"first", "second"},
+		},
+		{
+			name:          "invalid format - string",
+			changesets:    "invalid",
+			expectError:   true,
+			errorContains: "has invalid 'changesets' format",
+		},
+		{
+			name:          "invalid format - number",
+			changesets:    123,
+			expectError:   true,
+			errorContains: "has invalid 'changesets' format",
+		},
+		{
+			name: "array with invalid item",
+			changesets: []any{
+				"not a map",
+			},
+			expectedNames: []string{}, // Should skip invalid items
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			result, err := getAllChangesetsInOrder(tt.changesets, "test-file.yaml")
+
+			if tt.expectError {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.errorContains)
+
+				return
+			}
+
+			require.NoError(t, err)
+
+			// Extract names from result
+			var actualNames []string
+			for _, changeset := range result {
+				actualNames = append(actualNames, changeset.name)
+			}
+
+			// Check if the expected names match
+			if len(tt.expectedNames) > 0 {
+				require.Equal(t, tt.expectedNames, actualNames)
+			} else {
+				require.Empty(t, actualNames)
+			}
+		})
+	}
+}
+
+//nolint:paralleltest // This test uses os.Chdir which changes global state
+func TestParseDurablePipelineYAML(t *testing.T) {
+	testDomain := domain.NewDomain(t.TempDir(), "test")
+	env := "testnet"
+
+	// Create workspace structure
+	workspaceRoot := t.TempDir()
+	inputsDir := filepath.Join(workspaceRoot, "domains", testDomain.String(), env, "durable_pipelines", "inputs")
+	require.NoError(t, os.MkdirAll(inputsDir, 0755))
+
+	tests := []struct {
+		name          string
+		yamlContent   string
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name: "valid YAML",
+			yamlContent: `environment: testnet
+domain: test
+changesets:
+  - test_changeset:
+      payload:
+        value: 123`,
+		},
+		{
+			name: "missing environment",
+			yamlContent: `domain: test
+changesets:
+  - test_changeset:
+      payload:
+        value: 123`,
+			expectError:   true,
+			errorContains: "missing required 'environment' field",
+		},
+		{
+			name: "missing domain",
+			yamlContent: `environment: testnet
+changesets:
+  - test_changeset:
+      payload:
+        value: 123`,
+			expectError:   true,
+			errorContains: "missing required 'domain' field",
+		},
+		{
+			name: "missing changesets",
+			yamlContent: `environment: testnet
+domain: test`,
+			expectError:   true,
+			errorContains: "missing required 'changesets' field",
+		},
+		{
+			name: "invalid YAML",
+			yamlContent: `environment: testnet
+domain: test
+changesets: [
+  invalid yaml structure`,
+			expectError:   true,
+			errorContains: "failed to parse input file",
+		},
+	}
+
+	//nolint:paralleltest // This test uses os.Chdir which changes global state
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Set up the test to run from within the workspace first
+			originalWd, err := os.Getwd()
+			require.NoError(t, err)
+			require.NoError(t, os.Chdir(workspaceRoot))
+			t.Cleanup(func() {
+				require.NoError(t, os.Chdir(originalWd))
+			})
+
+			// Create unique YAML file for this test
+			yamlFileName := fmt.Sprintf("test-parse-%s.yaml", strings.ReplaceAll(tt.name, " ", "-"))
+			yamlFilePath := filepath.Join(inputsDir, yamlFileName)
+			require.NoError(t, os.WriteFile(yamlFilePath, []byte(tt.yamlContent), 0644)) //nolint:gosec
+			t.Cleanup(func() {
+				os.Remove(yamlFilePath)
+			})
+
+			// Test the function
+			result, err := parseDurablePipelineYAML(yamlFileName, testDomain, env)
+
+			if tt.expectError {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.errorContains)
+				require.Nil(t, result)
+
+				return
+			}
+
+			require.NoError(t, err)
+			require.NotNil(t, result)
+			require.Equal(t, "testnet", result.Environment)
+			require.Equal(t, "test", result.Domain)
+			require.NotNil(t, result.Changesets)
+		})
+	}
+}
+
+//nolint:paralleltest
+func TestDurablePipelineRunWithObjectFormatError(t *testing.T) {
+	env := "testnet"
+	testDomain := domain.NewDomain(t.TempDir(), "test")
+
+	// Create workspace structure
+	workspaceRoot := t.TempDir()
+	inputsDir := filepath.Join(workspaceRoot, "domains", testDomain.String(), env, "durable_pipelines", "inputs")
+	require.NoError(t, os.MkdirAll(inputsDir, 0755))
+
+	// Create test YAML file with OBJECT format (should fail with --changeset-index)
+	yamlContent := `environment: testnet
+domain: test
+changesets:
+  0001_test_changeset:
+    payload:
+      chain: optimism_sepolia
+      value: 120
+  0002_test_changeset:
+    payload:
+      chain: optimism_sepolia
+      value: 100`
+
+	yamlFileName := "test-object-format.yaml"
+	yamlFilePath := filepath.Join(inputsDir, yamlFileName)
+	require.NoError(t, os.WriteFile(yamlFilePath, []byte(yamlContent), 0644)) //nolint:gosec
+
+	// Set up the test to run from within the workspace
+	originalWd, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(workspaceRoot))
+	t.Cleanup(func() {
+		require.NoError(t, os.Chdir(originalWd))
+	})
+
+	tempLoadEnv := environment.Load
+	// mock the loadEnv function to avoid loading a real environment
+	loadEnv = func(ctx context.Context, domain domain.Domain, envName string, options ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
+		return fdeployment.Environment{}, nil
+	}
+	t.Cleanup(func() {
+		loadEnv = tempLoadEnv
+	})
+
+	// Create a changeset stub
+	changesetStub := stubChangeset{
+		ApplyCalled: false,
+		StubError:   nil,
+	}
+
+	// Create a registry with the changeset
+	sharedCommands := NewCommands(logger.Test(t))
+	rootCmd := sharedCommands.NewDurablePipelineCmds(
+		testDomain,
+		func(envName string) (*changeset.ChangesetsRegistry, error) {
+			rp := migrationsRegistryProviderStub{
+				BaseRegistryProvider: changeset.NewBaseRegistryProvider(),
+				AddMigrationAction: func(registry *changeset.ChangesetsRegistry) {
+					registry.Add("0001_test_changeset", changeset.Configure(&changesetStub).With(1))
+				},
+			}
+
+			if initErr := rp.Init(); initErr != nil {
+				return nil, fmt.Errorf("failed to init migrations %w", initErr)
+			}
+
+			return rp.Registry(), nil
+		},
+		func(env fdeployment.Environment) (analyzer.ProposalContext, error) {
+			return &mockProposalContext{t: t}, nil
+		},
+		fresolvers.NewConfigResolverManager(),
+	)
+
+	// Test using --changeset-index with object format (should fail)
+	args := []string{
+		"run",
+		"--environment", env,
+		"--input-file", yamlFileName,
+		"--changeset-index", "0",
+	}
+
+	rootCmd.SetArgs(args)
+	err = rootCmd.Execute()
+
+	// Should get an error about object format not being supported
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "--changeset-index can only be used with array format YAML files")
 }

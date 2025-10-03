@@ -137,6 +137,7 @@ func TestState_MergeChangesetOutput(t *testing.T) {
 				require.NoError(t, err)
 				assert.Equal(t, "TimelockProposal", timelockProposal["kind"])
 				assert.Equal(t, "Test Timelock Proposal", timelockProposal["description"])
+				assert.NotNil(t, timelockProposal["salt"])
 			},
 		},
 		{

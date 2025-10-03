@@ -24,29 +24,9 @@ type durablePipelineYAML struct {
 // If inputFileName is just a filename (no path separators), it will be resolved relative to the
 // appropriate durable_pipelines/inputs directory based on the domain and environment.
 func setDurablePipelineInputFromYAML(inputFileName, changesetName string, domain domain.Domain, envKey string) error {
-	resolvedPath, err := resolveDurablePipelineYamlPath(inputFileName, domain, envKey)
+	dpYAML, err := parseDurablePipelineYAML(inputFileName, domain, envKey)
 	if err != nil {
-		return fmt.Errorf("failed to resolve input file path: %w", err)
-	}
-
-	yamlData, err := os.ReadFile(resolvedPath)
-	if err != nil {
-		return fmt.Errorf("failed to read input file %s: %w", resolvedPath, err)
-	}
-
-	var dpYAML durablePipelineYAML
-	if err = yaml.Unmarshal(yamlData, &dpYAML); err != nil {
-		return fmt.Errorf("failed to parse input file %s: %w", inputFileName, err)
-	}
-
-	if dpYAML.Environment == "" {
-		return fmt.Errorf("input file %s is missing required 'environment' field", inputFileName)
-	}
-	if dpYAML.Domain == "" {
-		return fmt.Errorf("input file %s is missing required 'domain' field", inputFileName)
-	}
-	if dpYAML.Changesets == nil {
-		return fmt.Errorf("input file %s is missing required 'changesets' field", inputFileName)
+		return err
 	}
 
 	// Find the changeset - handle both object and array formats
@@ -55,65 +35,8 @@ func setDurablePipelineInputFromYAML(inputFileName, changesetName string, domain
 		return err
 	}
 
-	// Convert changeset data to map to access fields
-	changesetMap, ok := changesetData.(map[string]any)
-	if !ok {
-		return fmt.Errorf("changeset '%s' in input file %s is not a valid object", changesetName, inputFileName)
-	}
-
-	payload, payloadExists := changesetMap["payload"]
-	if !payloadExists || payload == nil {
-		return fmt.Errorf("changeset '%s' in input file %s is missing required 'payload' field", changesetName, inputFileName)
-	}
-
-	// Convert payload to JSON-safe format to handle map[interface{}]interface{} types
-	jsonSafePayload, err := convertToJSONSafe(payload)
-	if err != nil {
-		return fmt.Errorf("failed to convert payload to JSON-safe format: %w", err)
-	}
-
-	chainOverridesRaw, exists := changesetMap["chainOverrides"]
-	if exists && chainOverridesRaw != nil {
-		if chainOverridesList, ok := chainOverridesRaw.([]any); ok {
-			for _, override := range chainOverridesList {
-				switch v := override.(type) {
-				case int:
-					if v < 0 {
-						return fmt.Errorf("chain override value must be non-negative, got: %d", v)
-					}
-				case int64:
-					if v < 0 {
-						return fmt.Errorf("chain override value must be non-negative, got: %d", v)
-					}
-				case uint64:
-					// no need to do any checks here
-				default:
-					return fmt.Errorf("chain override value must be an integer, got type %T with value: %v", override, override)
-				}
-			}
-		}
-	}
-
-	// Create the JSON structure that WithEnvInput expects
-	inputJSON := map[string]any{
-		"payload": jsonSafePayload,
-	}
-	if exists {
-		inputJSON["chainOverrides"] = chainOverridesRaw
-	}
-
-	// Convert to JSON
-	jsonData, err := json.Marshal(inputJSON)
-	if err != nil {
-		return fmt.Errorf("failed to marshal payload to JSON: %w", err)
-	}
-
-	// Set the environment variable
-	if err := os.Setenv("DURABLE_PIPELINE_INPUT", string(jsonData)); err != nil {
-		return fmt.Errorf("failed to set DURABLE_PIPELINE_INPUT environment variable: %w", err)
-	}
-
-	return nil
+	// Use the shared logic to set the environment variable
+	return setChangesetEnvironmentVariable(changesetName, changesetData, inputFileName)
 }
 
 // findChangesetInData finds a changeset in either object or array format
@@ -236,4 +159,164 @@ func convertToJSONSafe(data any) (any, error) {
 		// For primitive types (string, int, bool, etc.), return as-is
 		return v, nil
 	}
+}
+
+// setDurablePipelineInputFromYAMLByIndex sets the DURABLE_PIPELINE_INPUT environment variable
+// by selecting the changeset at the specified index position in the input file.
+// This function only works with array format YAML files, not object format.
+func setDurablePipelineInputFromYAMLByIndex(inputFileName string, index int, domain domain.Domain, envKey string) (string, error) {
+	dpYAML, err := parseDurablePipelineYAML(inputFileName, domain, envKey)
+	if err != nil {
+		return "", err
+	}
+
+	// Validate that the changesets are in array format (required for index-based access)
+	if _, isArray := dpYAML.Changesets.([]any); !isArray {
+		return "", fmt.Errorf("--changeset-index can only be used with array format YAML files. Input file %s uses object format. Use --changeset instead", inputFileName)
+	}
+
+	// Get all changesets in order
+	changesets, err := getAllChangesetsInOrder(dpYAML.Changesets, inputFileName)
+	if err != nil {
+		return "", err
+	}
+
+	if index < 0 || index >= len(changesets) {
+		return "", fmt.Errorf("changeset index %d is out of range (found %d changesets in %s)", index, len(changesets), inputFileName)
+	}
+
+	selectedChangeset := changesets[index]
+
+	// Use the existing logic to set the environment variable
+	if err := setChangesetEnvironmentVariable(selectedChangeset.name, selectedChangeset.data, inputFileName); err != nil {
+		return "", err
+	}
+
+	return selectedChangeset.name, nil
+}
+
+// setChangesetEnvironmentVariable sets the DURABLE_PIPELINE_INPUT environment variable
+// from changeset data (shared logic for both by-name and by-index approaches)
+func setChangesetEnvironmentVariable(changesetName string, changesetData any, inputFileName string) error {
+	// Convert changeset data to map to access fields
+	changesetMap, ok := changesetData.(map[string]any)
+	if !ok {
+		return fmt.Errorf("changeset '%s' in input file %s is not a valid object", changesetName, inputFileName)
+	}
+
+	payload, payloadExists := changesetMap["payload"]
+	if !payloadExists || payload == nil {
+		return fmt.Errorf("changeset '%s' in input file %s is missing required 'payload' field", changesetName, inputFileName)
+	}
+
+	// Convert payload to JSON-safe format to handle map[interface{}]interface{} types
+	jsonSafePayload, err := convertToJSONSafe(payload)
+	if err != nil {
+		return fmt.Errorf("failed to convert payload to JSON-safe format: %w", err)
+	}
+
+	chainOverridesRaw, exists := changesetMap["chainOverrides"]
+	if exists && chainOverridesRaw != nil {
+		if chainOverridesList, ok := chainOverridesRaw.([]any); ok {
+			for _, override := range chainOverridesList {
+				switch v := override.(type) {
+				case int:
+					if v < 0 {
+						return fmt.Errorf("chain override value must be non-negative, got: %d", v)
+					}
+				case int64:
+					if v < 0 {
+						return fmt.Errorf("chain override value must be non-negative, got: %d", v)
+					}
+				case uint64:
+					// no need to do any checks here
+				default:
+					return fmt.Errorf("chain override value must be an integer, got type %T with value: %v", override, override)
+				}
+			}
+		}
+	}
+
+	// Create the JSON structure that WithEnvInput expects
+	inputJSON := map[string]any{
+		"payload": jsonSafePayload,
+	}
+	if exists {
+		inputJSON["chainOverrides"] = chainOverridesRaw
+	}
+
+	// Convert to JSON
+	jsonData, err := json.Marshal(inputJSON)
+	if err != nil {
+		return fmt.Errorf("failed to marshal payload to JSON: %w", err)
+	}
+
+	// Set the environment variable
+	if err := os.Setenv("DURABLE_PIPELINE_INPUT", string(jsonData)); err != nil {
+		return fmt.Errorf("failed to set DURABLE_PIPELINE_INPUT environment variable: %w", err)
+	}
+
+	return nil
+}
+
+// parseDurablePipelineYAML parses and validates a durable pipeline YAML file (shared logic)
+func parseDurablePipelineYAML(inputFileName string, domain domain.Domain, envKey string) (*durablePipelineYAML, error) {
+	resolvedPath, err := resolveDurablePipelineYamlPath(inputFileName, domain, envKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve input file path: %w", err)
+	}
+
+	yamlData, err := os.ReadFile(resolvedPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read input file %s: %w", resolvedPath, err)
+	}
+
+	var dpYAML durablePipelineYAML
+	if err = yaml.Unmarshal(yamlData, &dpYAML); err != nil {
+		return nil, fmt.Errorf("failed to parse input file %s: %w", inputFileName, err)
+	}
+
+	if dpYAML.Environment == "" {
+		return nil, fmt.Errorf("input file %s is missing required 'environment' field", inputFileName)
+	}
+	if dpYAML.Domain == "" {
+		return nil, fmt.Errorf("input file %s is missing required 'domain' field", inputFileName)
+	}
+	if dpYAML.Changesets == nil {
+		return nil, fmt.Errorf("input file %s is missing required 'changesets' field", inputFileName)
+	}
+
+	return &dpYAML, nil
+}
+
+// getAllChangesetsInOrder returns all changesets in order from array format changesets data
+// This function only supports array format, not object format
+func getAllChangesetsInOrder(changesets any, inputFileName string) ([]struct {
+	name string
+	data any
+}, error) {
+	var result []struct {
+		name string
+		data any
+	}
+
+	// Only support array format for index-based access
+	data, ok := changesets.([]any)
+	if !ok {
+		return nil, fmt.Errorf("input file %s has invalid 'changesets' format for index access, expected array format", inputFileName)
+	}
+
+	// Array format: [{"changeset1": {...}}, {"changeset2": {...}}]
+	for _, item := range data {
+		if itemMap, ok := item.(map[string]any); ok {
+			for name, changesetData := range itemMap {
+				result = append(result, struct {
+					name string
+					data any
+				}{name, changesetData})
+			}
+		}
+	}
+
+	return result, nil
 }

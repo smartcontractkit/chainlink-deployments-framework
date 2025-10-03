@@ -11,7 +11,7 @@ import (
 )
 
 type CatalogClient struct {
-	protoClient pb.DeploymentsDatastoreClient
+	protoClient pb.DatastoreClient
 	// ctx is cached here, because we need the context that created the client, not the current
 	// call stack context. This is different than the go norm, but because we need a long-lived
 	// comms session to the gRPC server, anything cancelling that context (such as a test ending)
@@ -63,7 +63,7 @@ func NewCatalogClient(ctx context.Context, cfg CatalogConfig) (*CatalogClient, e
 	}
 	client := CatalogClient{
 		ctx:         ctx,
-		protoClient: pb.NewDeploymentsDatastoreClient(conn),
+		protoClient: pb.NewDatastoreClient(conn),
 	}
 
 	return &client, err

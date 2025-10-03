@@ -1,6 +1,7 @@
 package archive
 
 import (
+	"context"
 	"errors"
 	"go/ast"
 	"go/format"
@@ -370,7 +371,7 @@ type MainBranchSHAGetter struct{}
 
 // Get returns the SHA of the main branch
 func (m MainBranchSHAGetter) Get() (string, error) {
-	cmd := exec.Command("git", "rev-parse", "origin/main")
+	cmd := exec.CommandContext(context.TODO(), "git", "rev-parse", "origin/main")
 	output, err := cmd.Output()
 	if err != nil {
 		return "", err
