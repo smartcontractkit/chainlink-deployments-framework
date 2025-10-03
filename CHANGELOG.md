@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.54.1
+
+### Patch Changes
+
+- [#478](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/478) [`f318c97`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/f318c973efa79278e12d2fa3c1b4eb52daa178bf) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - fix: restore owner after mcm.SetConfig() in fork tests with --test-signer
+
 ## 0.54.0
 
 ### Minor Changes
