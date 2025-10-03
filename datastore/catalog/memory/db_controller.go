@@ -1,6 +1,7 @@
 package memory
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 
@@ -24,19 +25,21 @@ type dbController struct {
 }
 
 func (d *dbController) Query(q string, args ...any) (*sql.Rows, error) {
+	ctx := context.TODO()
 	if d.tx != nil {
-		return d.tx.Query(q, args...)
+		return d.tx.QueryContext(ctx, q, args...)
 	}
 
-	return d.base.Query(q, args...)
+	return d.base.QueryContext(ctx, q, args...)
 }
 
 func (d *dbController) Exec(q string, args ...any) (sql.Result, error) {
+	ctx := context.TODO()
 	if d.tx != nil {
-		return d.tx.Exec(q, args...)
+		return d.tx.ExecContext(ctx, q, args...)
 	}
 
-	return d.base.Exec(q, args...)
+	return d.base.ExecContext(ctx, q, args...)
 }
 
 // Fixture performs an Exec but ignores the result, and is intended for test setup
@@ -49,7 +52,7 @@ func (d *dbController) Begin() error {
 	if d.tx != nil {
 		return errors.New("transaction already started")
 	}
-	tx, err := d.base.Begin()
+	tx, err := d.base.BeginTx(context.TODO(), nil)
 	if err != nil {
 		return err
 	}

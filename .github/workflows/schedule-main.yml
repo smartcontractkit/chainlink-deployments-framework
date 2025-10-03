@@ -3,7 +3,7 @@ name: schedule-main
 on:
   schedule:
     # Runs once a day at 1:00 UTC on main branch to collect statistics
-    - cron: '0 1 * * *'
+    - cron: "0 1 * * *"
   workflow_dispatch:
 
 jobs:
@@ -19,7 +19,7 @@ jobs:
         uses: smartcontractkit/.github/actions/ci-lint-go@ci-lint-go/v2 # ci-lint-go@2.0.0
         with:
           only-new-issues: "false"
-          golangci-lint-version: v2.1.6
+          golangci-lint-version: v2.5.0
 
   ci-lint-misc:
     name: Lint GH Actions and scripts
@@ -52,7 +52,7 @@ jobs:
   sonarqube:
     name: Sonar Scan
     runs-on: ubuntu-24.04
-    needs: [ ci-test, ci-lint-misc,  ci-lint ]
+    needs: [ci-test, ci-lint-misc, ci-lint]
     permissions:
       contents: read
       actions: read
