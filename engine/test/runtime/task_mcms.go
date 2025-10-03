@@ -181,7 +181,8 @@ func (t executeProposalTask) Run(e fdeployment.Environment, state *State) error 
 			return fmt.Errorf("failed to decode Timelock proposal (id: %s): %w", t.proposalID, err)
 		}
 
-		prop.SaltOverride = randomHash()
+		// This is causing MCMS Execution Set Root to fail. Need to investigate why.
+		// prop.SaltOverride = randomHash()
 
 		if err = executor.ExecuteTimelock(ctx, prop); err != nil {
 			return fmt.Errorf("failed to execute Timelock proposal (id: %s): %w", t.proposalID, err)
@@ -312,7 +313,7 @@ func signTimelockProposal(
 //
 // Note: This function is designed for test use only. The error from rand.Read is intentionally
 // ignored as cryptographic randomness is not critical for test salt generation.
-func randomHash() *common.Hash {
+func randomHash() *common.Hash { //nolint:unused // We will come back to this when we have a solution for the salt override.
 	b := make([]byte, 32)
 	_, _ = rand.Read(b) // Assignment for errcheck. Only used in tests so we can ignore.
 	h := common.BytesToHash(b)
