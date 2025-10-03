@@ -286,7 +286,10 @@ func (f *GithubProposalPRFinder) iterPRFiles(
 			}
 		}
 		// go-github v71: Response has field NextPage (int), no getter.
-		if resp == nil || resp.NextPage == 0 {
+		if resp == nil {
+			return false
+		}
+		if resp.NextPage == 0 {
 			return false
 		}
 		opts.Page = resp.NextPage
