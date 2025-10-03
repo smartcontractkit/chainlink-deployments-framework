@@ -15,7 +15,7 @@ import (
 
 // ProposalPRFinder defines methods to find open proposal PRs and their predecessors.
 type ProposalPRFinder interface {
-	SearchOpen(ctx context.Context, title string) ([]*github.Issue, error)
+	FindOpenPRs(ctx context.Context, title string) ([]*github.Issue, error)
 	FindPredecessors(ctx context.Context, newPRViewData PRView, excludePRs []PRNum) ([]PRView, error)
 	GetProposalPRViews(ctx context.Context, proposalPRs []*github.Issue) []PRView
 }
@@ -37,20 +37,8 @@ func NewGithubProposalPRFinder(lggr logger.Logger, client *github.Client, cldCtx
 	}
 }
 
-func ProposalPRTitle(fileName string, cldCtx CLDContext) string {
-	title := "Proposal for " + cldCtx.Domain + " - " + cldCtx.Environment
-	if cldCtx.QueueID != "" {
-		title += " - queue:" + cldCtx.QueueID
-	}
-	if fileName != "" {
-		title += ": " + fileName
-	}
-
-	return title
-}
-
-// SearchOpen filter for open mcms proposals in the given domain/environment using Search API.
-func (f *GithubProposalPRFinder) SearchOpen(ctx context.Context, title string) ([]*github.Issue, error) {
+// FindOpenPRs filter for open mcms proposals in the given domain/environment using Search API.
+func (f *GithubProposalPRFinder) FindOpenPRs(ctx context.Context, title string) ([]*github.Issue, error) {
 	cldCtx := f.cldCtx
 	client := f.client
 	q := fmt.Sprintf(`repo:%s/%s is:pr is:open in:title "%s" label:SIGNED,proposal,CREATED,PARTIALLY_SIGNED,PENDING_SIGNATURES -label:WAITING_FOR_TIMELOCK,executed`,
@@ -78,7 +66,7 @@ func (f *GithubProposalPRFinder) SearchOpen(ctx context.Context, title string) (
 	return out, nil
 }
 
-// FindPredecessors returns the most recently created open proposal PRs that have dependencies on
+// FindPredecessors returns the open proposal PRs sorted by most recently created that have dependencies on
 // the same mcms addresses as the current proposal, or nil if none found.
 func (f *GithubProposalPRFinder) FindPredecessors(
 	ctx context.Context,
@@ -94,7 +82,7 @@ func (f *GithubProposalPRFinder) FindPredecessors(
 	}
 	lggr := f.lggr
 
-	proposalPRs, err := f.SearchOpen(ctx, ProposalPRTitle("", cldCtx))
+	proposalPRs, err := f.FindOpenPRs(ctx, ProposalPRTitle("", cldCtx))
 	if err != nil {
 		return nil, fmt.Errorf("search open proposal PRs: %w", err)
 	}
@@ -326,6 +314,19 @@ func (f *GithubProposalPRFinder) fetchContentAtRef(
 	}
 
 	return str, nil
+}
+
+// ProposalPRTitle constructs a PR title for the given domain/environment/queue/file.
+func ProposalPRTitle(fileName string, cldCtx CLDContext) string {
+	title := "Proposal for " + cldCtx.Domain + " - " + cldCtx.Environment
+	if cldCtx.QueueID != "" {
+		title += " - queue:" + cldCtx.QueueID
+	}
+	if fileName != "" {
+		title += ": " + fileName
+	}
+
+	return title
 }
 
 // filterSlice iterates over elements of collection, returning an array of all elements predicate returns truthy for.
