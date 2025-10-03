@@ -17,7 +17,7 @@ import (
 type ProposalPRFinder interface {
 	SearchOpen(ctx context.Context, title string) ([]*github.Issue, error)
 	FindPredecessors(ctx context.Context, newPRViewData PRView, excludePRs []PRNum) ([]PRView, error)
-	GetPRViews(ctx context.Context, proposalPRs []*github.Issue) []PRView
+	GetProposalPRViews(ctx context.Context, proposalPRs []*github.Issue) []PRView
 }
 
 // GithubProposalPRFinder implements ProposalPRFinder using GitHub API.
@@ -103,7 +103,7 @@ func (f *GithubProposalPRFinder) FindPredecessors(
 		return nil, nil
 	}
 
-	prViews := f.GetPRViews(ctx, proposalPRs)
+	prViews := f.GetProposalPRViews(ctx, proposalPRs)
 	prViews = filterSlice(prViews, func(prView PRView, _ int) bool { return !slices.Contains(excludePRs, prView.Number) })
 	prViews = append(prViews, newPRViewData) // include the new PR
 
@@ -120,8 +120,8 @@ func (f *GithubProposalPRFinder) FindPredecessors(
 	return predViews, nil
 }
 
-// GetPRViews fetches PR details and proposal op count data for the given issues.
-func (f *GithubProposalPRFinder) GetPRViews(
+// GetProposalPRViews fetches PR details and proposal op count data for the given issues.
+func (f *GithubProposalPRFinder) GetProposalPRViews(
 	ctx context.Context,
 	proposalPRs []*github.Issue,
 ) []PRView {

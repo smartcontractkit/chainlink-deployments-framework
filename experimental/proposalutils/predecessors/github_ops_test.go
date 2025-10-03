@@ -119,7 +119,7 @@ func TestGetPRViews(t *testing.T) {
 		CreatedAt: &github.Timestamp{Time: created},
 	}
 
-	views := finder.GetPRViews(t.Context(), []*github.Issue{issue})
+	views := finder.GetProposalPRViews(t.Context(), []*github.Issue{issue})
 	require.Len(t, views, 1)
 	require.Equal(t, PRNum(10), views[0].Number)
 	require.Equal(t, created.UTC().Truncate(time.Second), views[0].CreatedAt.UTC().Truncate(time.Second))
