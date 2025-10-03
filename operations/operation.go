@@ -2,6 +2,7 @@ package operations
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"sync"
 
@@ -111,6 +112,41 @@ func (o *Operation[IN, OUT, DEP]) AsUntyped() *Operation[any, any, any] {
 				var ok bool
 				if typedInput, ok = input.(IN); !ok {
 					return nil, errors.New("input type mismatch")
+				}
+			}
+
+			var typedDeps DEP
+			if deps != nil {
+				var ok bool
+				if typedDeps, ok = deps.(DEP); !ok {
+					return nil, errors.New("dependencies type mismatch")
+				}
+			}
+
+			return o.handler(b, typedDeps, typedInput)
+		},
+	}
+}
+
+// AsUntypedRelaxed converts the operation to an untyped operation with relaxed input type checking.
+// This is useful when inputs come from YAML unmarshaling and result in map[string]any.
+// It uses JSON marshaling/unmarshaling to convert compatible types when direct type assertion fails.
+// Warning: The input and output types will be converted to `any`, so type safety is lost.
+func (o *Operation[IN, OUT, DEP]) AsUntypedRelaxed() *Operation[any, any, any] {
+	return &Operation[any, any, any]{
+		def: o.def,
+		handler: func(b Bundle, deps any, input any) (any, error) {
+			var typedInput IN
+			if input != nil {
+				var ok bool
+				if typedInput, ok = input.(IN); !ok {
+					inputBytes, err := json.Marshal(input)
+					if err != nil {
+						return nil, errors.New("input type mismatch: failed to marshal input for conversion")
+					}
+					if err := json.Unmarshal(inputBytes, &typedInput); err != nil {
+						return nil, errors.New("input type mismatch: failed to convert input to expected type")
+					}
 				}
 			}
 
