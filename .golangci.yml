@@ -73,6 +73,10 @@ linters:
               desc: Use github.com/smartcontractkit/chainlink-common/pkg/logger instead
             - pkg: github.com/pkg/errors
               desc: Use the standard library instead, for example https://pkg.go.dev/fmt#Errorf
+            - pkg: github.com/smartcontractkit/chainlink/v2
+              desc: You must not import this package. There is no alternative.
+            - pkg: github.com/smartcontractkit/chainlink/deployment
+              desc: You must not import this package. There is no alternative.
     goconst:
       min-len: 5
     govet:
