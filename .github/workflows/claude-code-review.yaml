@@ -1,0 +1,179 @@
+name: Claude PR Review
+
+on:
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened]
+
+jobs:
+  review-pr:
+    name: Analyze Pull Request with Claude
+    runs-on: ubuntu-24.04
+
+    permissions:
+      contents: read
+      pull-requests: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v2.1.2
+        with:
+          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+          create_credentials_file: true
+          export_environment_variables: true
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS_FILE_PATH: /tmp/gcp-credentials.json
+
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2.1.0
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4.0.3
+        with:
+          node-version: '22'
+
+      - name: Install Claude Code
+        run: |
+          npm install -g @anthropic-ai/claude-code
+          echo "Claude Code installed successfully"
+
+      - name: Configure Claude Code for Vertex AI
+        run: |
+          {
+            echo "CLAUDE_CODE_USE_VERTEX=1"
+            echo "CLOUD_ML_REGION=us-east5"
+            echo "ANTHROPIC_VERTEX_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}"
+            echo "DISABLE_PROMPT_CACHING=1"
+            echo "DISABLE_TELEMETRY=1"
+            echo "DISABLE_ERROR_REPORTING=1"
+            echo "DISABLE_BUG_COMMAND=1"
+            echo "CI=true"
+            echo "TERM=dumb"
+            echo "NO_COLOR=1"
+            echo "FORCE_COLOR=0"
+            echo "DEBIAN_FRONTEND=noninteractive"
+            echo "ANTHROPIC_MODEL=claude-sonnet-4@20250514"
+          } >> "$GITHUB_ENV"
+
+      - name: Analyze Current Pull Request with Claude
+        shell: bash
+        env:
+          REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          DRAFT: ${{ github.event.pull_request.draft }}
+        run: |
+          set -euo pipefail
+
+          echo "=== Claude PR Analysis ==="
+          echo "Repository: $REPOSITORY"
+          echo "Generated at: $(date -u)"
+          echo
+
+          echo "------------------------------------------------------------"
+          echo "PR #$PR_NUMBER: $PR_TITLE"
+          echo "Author: @$PR_AUTHOR"
+          echo "URL: $PR_URL"
+          if [ "$DRAFT" = "true" ]; then
+            echo "Status: DRAFT"
+          else
+            echo "Status: Ready for Review"
+          fi
+          echo
+
+          # Get files changed in this PR
+          curl -s \
+            -H "Authorization: Bearer ${{ github.token }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/$REPOSITORY/pulls/$PR_NUMBER/files" \
+            > "pr_files.json"
+
+          FILES_COUNT="$(jq length < pr_files.json)"
+
+          # Create analysis prompt for Claude
+          {
+            echo "Please analyze Pull Request #$PR_NUMBER from the chainlink-deployments-framework repository and provide a concise summary."
+            echo ""
+            echo "PR Details:"
+            echo "- Number: #$PR_NUMBER"
+            echo "- Title: $PR_TITLE"
+            echo "- Author: @$PR_AUTHOR"
+            echo "- Status: $([ "$DRAFT" = "true" ] && echo "DRAFT" || echo "Ready for Review")"
+            echo "- URL: $PR_URL"
+            echo ""
+            echo "Description:"
+            if [ -n "$PR_BODY" ] && [ "$PR_BODY" != "null" ]; then
+              echo "$PR_BODY" | head -20
+            else
+              echo "No description provided by the author."
+            fi
+            echo ""
+            echo "Files Analysis:"
+            echo "- Total files changed: $FILES_COUNT"
+            if [ "$FILES_COUNT" -gt 0 ]; then
+              echo "- Key files modified:"
+              jq -r '.[] | "  • \(.filename) (\(.status)) +\(.additions)/-\(.deletions) lines"' pr_files.json | head -10
+            fi
+            echo ""
+            echo "Please provide a focused analysis with:"
+            echo "1. A brief summary of what this PR accomplishes (2-3 sentences)"
+            echo "2. The main technical changes or features introduced"
+            echo "3. Any potential impact, risks, or considerations"
+            echo "4. Overall category (bug fix, feature, refactor, documentation, etc.)"
+            echo ""
+            echo "Focus on the actual changes made in this specific PR."
+          } > "claude_prompt.txt"
+
+          # Debug: Show first few lines of prompt to verify content
+          echo "Debug - Prompt preview:"
+          head -8 "claude_prompt.txt" | sed 's/^/  /'
+          echo
+
+          echo "Claude Analysis:"
+
+          TEMP_DIR="$(mktemp -d "/tmp/claude-pr-XXXXXX")"
+          cp "claude_prompt.txt" "$TEMP_DIR/claude_prompt.txt"
+
+          pushd "$TEMP_DIR" >/dev/null
+          if CLAUDE_RESPONSE="$(claude -p "$(cat claude_prompt.txt)" 2>/tmp/claude_error.log)"; then
+            echo "$CLAUDE_RESPONSE" | sed 's/^/  /' | head -50
+          else
+            echo "  Claude analysis failed."
+            if [ -s /tmp/claude_error.log ]; then
+              echo "  Error details:"
+              head -5 /tmp/claude_error.log | sed 's/^/    /'
+            fi
+            echo
+            echo "  Fallback: Basic analysis based on file changes"
+            echo "  This PR modifies $FILES_COUNT file(s) in the repository."
+            echo "  Manual review recommended for detailed assessment."
+          fi
+          popd >/dev/null
+
+          rm -rf "$TEMP_DIR"
+          rm -f /tmp/claude_error.log
+
+          echo
+          echo "Files Summary: $FILES_COUNT file(s) changed"
+          if [ "$FILES_COUNT" -gt 0 ]; then
+            jq -r '.[] | "  • \(.filename) (\(.status))"' pr_files.json | head -5
+            if [ "$FILES_COUNT" -gt 5 ]; then
+              echo "  ... and $((FILES_COUNT - 5)) more files"
+            fi
+          fi
+
+          echo
+          echo "------------------------------------------------------------"
+          echo "Analysis complete for PR #$PR_NUMBER"
+
+          rm -f pr_files.json claude_prompt.txt
