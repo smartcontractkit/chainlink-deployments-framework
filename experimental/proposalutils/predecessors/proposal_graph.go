@@ -1,7 +1,7 @@
 package predecessors
 
 import (
-	"fmt"
+	"errors"
 	"sort"
 )
 
@@ -80,6 +80,7 @@ func buildPRDependencyGraph(views []PRView) (*proposalsPRGraph, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return g, nil
 }
 
@@ -136,7 +137,7 @@ func topoOrderStable(sorted []PRView, nodes map[PRNum]*prNode) ([]PRNum, error) 
 
 	if len(order) != len(nodes) {
 		// should never happen as we built a DAG
-		return nil, fmt.Errorf("topological sort failed: graph has a cycle")
+		return nil, errors.New("topological sort failed: graph has a cycle")
 	}
 
 	return order, nil

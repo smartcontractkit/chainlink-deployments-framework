@@ -1,17 +1,13 @@
 package predecessors
 
 import (
-	"bytes"
 	"math/big"
-	"net/http/httptest"
-	"net/url"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/google/go-github/v71/github"
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/stretchr/testify/assert"
 
@@ -20,6 +16,8 @@ import (
 	"github.com/smartcontractkit/mcms/sdk/evm"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 	"github.com/stretchr/testify/require"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/proposalutils"
 )
 
 // -- helpers for tests --
@@ -54,58 +52,6 @@ func mkPRView(num PRNum, ts time.Time, pod ProposalsOpData) PRView {
 		CreatedAt:    ts,
 		ProposalData: pod,
 	}
-}
-
-// makeTimelockProposalBytes builds a valid MCMS Timelock proposal and returns JSON bytes.
-func makeTimelockProposalBytes(t *testing.T, chain mcmstypes.ChainSelector, mcmAddr string, startOpCount uint64) []byte {
-	t.Helper()
-	prop, err := mcms.NewTimelockProposalBuilder().
-		SetVersion("v1").
-		SetValidUntil(uint32(time.Now().Add(24*time.Hour).Unix())). //nolint:gosec // test code, overflow acceptable
-		SetDescription("test").
-		AddTimelockAddress(chain, mcmAddr).
-		AddChainMetadata(chain, mcmstypes.ChainMetadata{
-			StartingOpCount: startOpCount,
-			MCMAddress:      mcmAddr,
-		}).
-		AddOperation(mcmstypes.BatchOperation{
-			ChainSelector: chain,
-			Transactions: []mcmstypes.Transaction{
-				evm.NewTransaction([20]byte{}, []byte{}, big.NewInt(0), "noop", nil),
-			},
-		}).
-		AddOperation(mcmstypes.BatchOperation{
-			ChainSelector: chain,
-			Transactions: []mcmstypes.Transaction{
-				evm.NewTransaction([20]byte{}, []byte{}, big.NewInt(0), "noop", nil),
-			},
-		}).
-		AddOperation(mcmstypes.BatchOperation{
-			ChainSelector: chain,
-			Transactions: []mcmstypes.Transaction{
-				evm.NewTransaction([20]byte{}, []byte{}, big.NewInt(0), "noop", nil),
-			},
-		}).
-		SetAction(mcmstypes.TimelockActionSchedule).
-		SetDelay(mcmstypes.NewDuration(time.Second)).
-		Build()
-	require.NoError(t, err)
-
-	var buf bytes.Buffer
-	require.NoError(t, mcms.WriteTimelockProposal(&buf, prop))
-
-	return buf.Bytes()
-}
-
-// ghClientToServer wires a go-github client to the provided httptest.Server.
-func ghClientToServer(t *testing.T, srv *httptest.Server) *github.Client {
-	t.Helper()
-	baseURL, _ := url.Parse(srv.URL + "/")
-	cli := github.NewClient(nil)
-	cli.BaseURL = baseURL
-	cli.UploadURL = baseURL
-
-	return cli
 }
 
 // -- unit tests --
@@ -274,17 +220,17 @@ func TestMatchesProposalPath_PositiveAndNegative(t *testing.T) {
 	env := "bar"
 
 	// positive
-	ok := matchesProposalPath(domain, env, "domains/foo/bar/proposals/abc.json")
+	ok := proposalutils.MatchesProposalPath(domain, env, "domains/foo/bar/proposals/abc.json")
 	require.True(t, ok)
 
 	// wrong domain
-	require.False(t, matchesProposalPath(domain, env, "domains/wrong/bar/proposals/abc.json"))
+	require.False(t, proposalutils.MatchesProposalPath(domain, env, "domains/wrong/bar/proposals/abc.json"))
 	// wrong env
-	require.False(t, matchesProposalPath(domain, env, "domains/foo/wrong/proposals/abc.json"))
+	require.False(t, proposalutils.MatchesProposalPath(domain, env, "domains/foo/wrong/proposals/abc.json"))
 	// wrong suffix
-	require.False(t, matchesProposalPath(domain, env, "domains/foo/bar/proposals/abc.yaml"))
+	require.False(t, proposalutils.MatchesProposalPath(domain, env, "domains/foo/bar/proposals/abc.yaml"))
 	// wrong prefix
-	require.False(t, matchesProposalPath(domain, env, "something/domains/foo/bar/proposals/abc.json"))
+	require.False(t, proposalutils.MatchesProposalPath(domain, env, "something/domains/foo/bar/proposals/abc.json"))
 }
 
 func newTimelockProposal(t *testing.T, start uint64, ops int) *mcms.TimelockProposal {
