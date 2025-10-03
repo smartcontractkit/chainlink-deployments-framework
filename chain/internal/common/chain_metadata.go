@@ -1,4 +1,4 @@
-package common
+package common //nolint:revive // var-naming: This is an internal package for common code that is shared between chains.
 
 import (
 	"fmt"

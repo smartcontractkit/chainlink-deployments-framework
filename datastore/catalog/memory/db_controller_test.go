@@ -39,7 +39,7 @@ func TestNewControllerCommit(t *testing.T) {
 	})
 
 	t.Run("Check inserted values (outside of tx, so fail)", func(t *testing.T) { //nolint:paralleltest // Cannot run in parallel due to shared database state
-		_, err2 := ctrl.base.Query(`SELECT * FROM test`)
+		_, err2 := ctrl.base.QueryContext(t.Context(), `SELECT * FROM test`)
 		require.ErrorContains(t, err2, `"test" does not exist`)
 	})
 
@@ -96,7 +96,7 @@ func TestNewControllerRollback(t *testing.T) {
 	})
 
 	t.Run("Check inserted values (outside of tx, so fail)", func(t *testing.T) { //nolint:paralleltest // Cannot run in parallel due to shared database state
-		_, err2 := ctrl.base.Query("SELECT * FROM test")
+		_, err2 := ctrl.base.QueryContext(t.Context(), `SELECT * FROM test`)
 		require.ErrorContains(t, err2, `"test" does not exist`)
 	})
 
