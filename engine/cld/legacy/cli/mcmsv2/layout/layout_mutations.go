@@ -49,9 +49,7 @@ func ChangeAddressSlot(lggr logger.Logger, layoutData string, url string, layout
 func SetMCMSigner(ctx context.Context, lggr logger.Logger, layoutData string, privateKeyHex, newOwnerAddr, signerAddr, rpcURL string, cID string, mcmsAddr string) error {
 	lggr.Infow("Setting MCMS signer", "RPCURL", rpcURL, "MCMSContractAddress", mcmsAddr, "NewOwnerAddress", newOwnerAddr, "SignerAddress", signerAddr, "ChainID", cID)
 	mcmAddress := common.HexToAddress(mcmsAddr)
-	if err := ChangeAddressSlot(lggr, layoutData, rpcURL, "_owner", mcmsAddr, newOwnerAddr); err != nil {
-		return fmt.Errorf("could not change address slot: %w", err)
-	}
+
 	client, err := ethclient.Dial(rpcURL)
 	if err != nil {
 		return fmt.Errorf("failed to connect to %s: %w", rpcURL, err)
@@ -68,10 +66,33 @@ func SetMCMSigner(ctx context.Context, lggr logger.Logger, layoutData string, pr
 	if err != nil {
 		return fmt.Errorf("failed to create transactor: %w", err)
 	}
+
 	contract, err := gethwrappers.NewManyChainMultiSig(mcmAddress, client)
 	if err != nil {
 		return fmt.Errorf("failed to create contract wrapper from address %s: %w", mcmAddress, err)
 	}
+
+	origOwnerAddr, err := contract.Owner(&bind.CallOpts{Context: ctx})
+	if err != nil {
+		return fmt.Errorf("failed to get mcm owner: %w", err)
+	}
+	lggr.Infow("mcm original owner", "mcm address", mcmAddress, "owner", origOwnerAddr)
+
+	err = ChangeAddressSlot(lggr, layoutData, rpcURL, "_owner", mcmsAddr, newOwnerAddr)
+	if err != nil {
+		return fmt.Errorf("could not change address slot: %w", err)
+	}
+	lggr.Infow("changed mcm owner", "mcm address", mcmAddress, "new owner", newOwnerAddr)
+
+	defer func() {
+		cerr := ChangeAddressSlot(lggr, layoutData, rpcURL, "_owner", mcmsAddr, origOwnerAddr.Hex())
+		if cerr != nil {
+			lggr.Errorw("failed to restore the mcm owner", "mcm address", mcmAddress, "orig owner", origOwnerAddr.Hex())
+		} else {
+			lggr.Infow("restored mcm owner", "mcm address", mcmAddress, "orig owner", origOwnerAddr.Hex())
+		}
+	}()
+
 	singleSigners := []common.Address{
 		common.HexToAddress(signerAddr),
 	}

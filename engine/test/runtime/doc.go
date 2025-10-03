@@ -37,38 +37,35 @@
 //
 // Here's a simple example of using the runtime to execute a changeset:
 //
-//	import (
-//		"testing"
+//		import (
+//			"testing"
 //
-//		"github.com/stretchr/testify/require"
+//			"github.com/stretchr/testify/require"
 //
-//		testenv "github.com/smartcontractkit/chainlink-deployments-framework/engine/test/environment"
-//		"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/runtime"
-//	)
+//			testenv "github.com/smartcontractkit/chainlink-deployments-framework/engine/test/environment"
+//			"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/runtime"
+//		)
 //
-//	func TestMyDeployment(t *testing.T) {
-//		// Test environment with a simulated EVM blockchain
-//		loader := testenv.NewLoader()
-//		env, err := loader.Load(t, testenv.WithEVMSimulatedN(t, 1))
-//		require.NoError(t, err)
+//		func TestMyDeployment(t *testing.T) {
+//			// Create runtime instance with a simulated EVM blockchain
+//			runtime := New(t.Context(), WithEnvOpts(
+//	        	testenv.WithEVMSimulatedN(t, 1)
+//	     	))
 //
-//		// Create runtime instance
-//		runtime := NewFromEnvironment(*env)
+//			// Execute a changeset
+//			task := ChangesetTask(myChangeset, MyChangesetConfig{
+//				Parameter1: "value1",
+//				Parameter2: 42,
+//			})
 //
-//		// Execute a changeset
-//		task := ChangesetTask(myChangeset, MyChangesetConfig{
-//			Parameter1: "value1",
-//			Parameter2: 42,
-//		})
+//			err := runtime.Exec(task)
+//			require.NoError(t, err)
 //
-//		err := runtime.Exec(task)
-//		require.NoError(t, err)
-//
-//		// Verify deployment results
-//		addrs, err := runtime.State().DataStore.Addresses().Fetch()
-//		require.NoError(t, err)
-//		assert.Len(t, addrs, 1)
-//	}
+//			// Verify deployment results
+//			addrs, err := runtime.State().DataStore.Addresses().Fetch()
+//			require.NoError(t, err)
+//			assert.Len(t, addrs, 1)
+//		}
 //
 // # Sequential Changeset Execution
 //
@@ -77,12 +74,10 @@
 // will include the data of the previous changesets execution.
 //
 //	func TestMultiStepDeployment(t *testing.T) {
-//		// Load test environment with multiple EVM chains
-//		loader := testenv.NewLoader()
-//		env, err := loader.Load(t, testenv.WithEVMSimulatedN(t, 1))
-//		require.NoError(t, err)
-//
-//		runtime := NewFromEnvironment(*env)
+//		// Create runtime instance with a simulated EVM blockchain
+//		runtime := New(t.Context(), WithEnvOpts(
+//			testenv.WithEVMSimulatedN(t, 1)
+//	    ))
 //
 //		// Define the first changeset
 //		coreTask := ChangesetTask(coreChangeset, CoreConfig{})
@@ -106,16 +101,16 @@
 // The engine/test/environment package provides various blockchain loading options:
 //
 //	// EVM simulated blockchains (fast, in-memory)
-//	env, err := loader.Load(t, testenv.WithEVMSimulatedN(t, 2))
+//	env, err := testenv.New(ctx, testenv.WithEVMSimulatedN(t, 2))
 //
 //	// Specific chain selectors
-//	env, err := loader.Load(t, testenv.WithEVMSimulated(t, []uint64{
+//	env, err := testenv.New(ctx, testenv.WithEVMSimulated(t, []uint64{
 //		chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector,
 //		chainsel.POLYGON_TESTNET_MUMBAI.Selector,
 //	}))
 //
 //	// Multiple blockchain types
-//	env, err := loader.Load(t,
+//	env, err := testenv.New(ctx,
 //		testenv.WithEVMSimulatedN(t, 1),
 //		testenv.WithSolanaContainerN(t, 1, "/path/to/programs", programIDs),
 //		testenv.WithTonContainerN(t, 1),
@@ -126,7 +121,7 @@
 //		ChainID:    1337,
 //		BlockTime:  time.Second,
 //	}
-//	env, err := loader.Load(t, testenv.WithEVMSimulatedWithConfigN(t, 1, cfg))
+//	env, err := testenv.New(t, testenv.WithEVMSimulatedWithConfigN(t, 1, cfg))
 //
 // # Error Handling
 //
@@ -135,8 +130,7 @@
 //
 //	func TestErrorHandling(t *testing.T) {
 //		// Load test environment
-//		loader := testenv.NewLoader()
-//		env, err := loader.Load(t, testenv.WithEVMSimulatedN(t, 1))
+//		env, err := testenv.New(t, testenv.WithEVMSimulatedN(t, 1))
 //		require.NoError(t, err)
 //
 //		runtime := NewFromEnvironment(*env)
@@ -162,8 +156,7 @@
 //
 //	func TestStateInspection(t *testing.T) {
 //		// Load test environment
-//		loader := testenv.NewLoader()
-//		env, err := loader.Load(t, testenv.WithEVMSimulatedN(t, 1))
+//		env, err := testenv.New(t, testenv.WithEVMSimulatedN(t, 1))
 //		require.NoError(t, err)
 //
 //		runtime := NewFromEnvironment(*env)
@@ -205,8 +198,7 @@
 //
 //		// Subtests can each have their own runtime instance
 //		t.Run("deployment_scenario_1", func(t *testing.T) {
-//			loader := testenv.NewLoader()
-//			env, err := loader.Load(t, testenv.WithEVMSimulatedN(t, 1))
+//			env, err := testenv.New(ctx, testenv.WithEVMSimulatedN(t, 1))
 //			require.NoError(t, err)
 //
 //			runtime := NewFromEnvironment(*env)
@@ -216,8 +208,7 @@
 //		})
 //
 //		t.Run("deployment_scenario_2", func(t *testing.T) {
-//			loader := testenv.NewLoader()
-//			env, err := loader.Load(t, testenv.WithEVMSimulatedN(t, 2))
+//			env, err := testenv.New(t, testenv.WithEVMSimulatedN(t, 2))
 //			require.NoError(t, err)
 //
 //			runtime := NewFromEnvironment(*env)
@@ -227,6 +218,38 @@
 //		})
 //	}
 //
+// # MCMS Proposals
+//
+// The runtime provides specialized tasks for handling Multi-Chain Multi-Sig (MCMS) proposals.
+//
+// ## Available MCMS Tasks
+//
+// **SignProposalTask(proposalID, signingKeys...)** - Signs MCMS or Timelock proposals with
+// one or more private keys. The task automatically detects the proposal type and applies
+// the appropriate signing logic. Multiple signatures can be added in a single operation
+// or accumulated across multiple signing tasks.
+//
+// **ExecuteProposalTask(proposalID)** - Executes a signed MCMS or Timelock proposal on
+// the target blockchain networks. The task handles chain-specific configurations, sets
+// merkle roots, executes operations sequentially, and confirms all transactions. For
+// Timelock proposals, it manages scheduling and delay mechanisms.
+//
+// **SignAndExecuteProposalsTask(signingKeys)** - Processes all pending proposals in the
+// runtime state by signing them with the provided keys and executing them in batch.
+// This is useful for scenarios where multiple changesets generate proposals that need
+// to be processed together or you want to just execute all pending proposals.
+//
+// ## Usage Pattern
+//
+// MCMS proposals follow a three-phase workflow:
+//  1. **Generation**: Changesets create proposals and store them in runtime state. This is done by running a ChangesetTask.
+//  2. **Signing**: Use SignProposalTask to add cryptographic signatures
+//  3. **Execution**: Use ExecuteProposalTask to apply changes on target chains
+//
+// The runtime automatically manages proposal state, tracking which proposals are pending,
+// signed, or executed. Both standard MCMS proposals and Timelock proposals are supported
+// through the same task interface.
+//
 // # Best Practices
 //
 //   - Create a new runtime instance for each test to ensure isolation.
@@ -234,6 +257,7 @@
 //     longer test with a single containerized chain than to write a shorter test with multiple containerized chains.
 //   - Verify both intermediate and final state in multi-step tests
 //   - Leverage the runtime's error handling for negative test cases
+//   - Use SignAndExecuteProposalsTask for processing, avoiding the need to fetch the proposal ID from state.
 //
 // # Common Patterns
 //
