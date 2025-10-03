@@ -59,7 +59,8 @@ func ComputeHighestOpCountsFromPredecessors(
 		out[sel] = baseline + extra
 	}
 
-	// Safety check for race conditions: get the latest predecessor and add their ops, it should be the same as out[sel]
+	// Handle case where a predecessor PR is merged between PR creation and execution:
+	// If the latest predecessor's op count is higher than the computed sum, adjust to match.
 	if len(predecessors) > 0 {
 		for sel, cur := range newProposalData {
 			// get most recent predecessor with same MCM address
