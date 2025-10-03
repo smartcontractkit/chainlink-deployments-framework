@@ -72,7 +72,8 @@ func TestBuildPRDependencyGraph_BasicEdges(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			g := buildPRDependencyGraph(tc.views)
+			g, err := buildPRDependencyGraph(tc.views)
+			require.NoError(t, err)
 			tc.assert(t, g)
 		})
 	}
@@ -112,8 +113,9 @@ func TestGraph_MultiChain_CrossDependencies(t *testing.T) {
 		3: "0xQ2",
 	}))
 
-	g := buildPRDependencyGraph([]PRView{p1, p2, p3, p4, p5})
+	g, err := buildPRDependencyGraph([]PRView{p1, p2, p3, p4, p5})
 
+	require.NoError(t, err)
 	require.Len(t, g.Nodes, 5)
 
 	// Pred/Succ expectations:

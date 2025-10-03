@@ -108,7 +108,10 @@ func (f *GithubProposalPRFinder) FindPredecessors(
 	prViews = append(prViews, newPRViewData) // include the new PR
 
 	// Build graph to get predecessors
-	prsGraph := buildPRDependencyGraph(prViews)
+	prsGraph, err := buildPRDependencyGraph(prViews)
+	if err != nil {
+		return nil, fmt.Errorf("build PR dependency graph: %w", err)
+	}
 	predecessors := prsGraph.Nodes[newPRViewData.Number].Pred
 	predViews := make([]PRView, 0, len(predecessors))
 	for _, p := range predecessors {

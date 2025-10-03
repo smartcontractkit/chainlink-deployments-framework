@@ -1,6 +1,9 @@
 package predecessors
 
-import "sort"
+import (
+	"fmt"
+	"sort"
+)
 
 // proposalsPRGraph is a dependency graph of proposals where an edge u -> v means:
 // "u must precede v" (they share at least one MCM on some chain and u is older).
@@ -34,14 +37,14 @@ func relatedByMCMOnAnyChain(x, y ProposalsOpData) bool {
 // buildPRDependencyGraph creates a DAG with edges ONLY from older -> newer,
 // and only when relatedByMCMOnAnyChain(...) is true.
 // Ties on CreatedAt are broken by PR number (smaller = older).
-func buildPRDependencyGraph(views []PRView) *proposalsPRGraph {
+func buildPRDependencyGraph(views []PRView) (*proposalsPRGraph, error) {
 	n := len(views)
 	g := &proposalsPRGraph{
 		Nodes: make(map[PRNum]*prNode, n),
 	}
 
 	if n == 0 {
-		return g
+		return g, nil
 	}
 
 	// stable time order: older first
@@ -72,16 +75,18 @@ func buildPRDependencyGraph(views []PRView) *proposalsPRGraph {
 			}
 		}
 	}
-
-	g.Topo = topoOrderStable(sorted, g.Nodes)
-
-	return g
+	var err error
+	g.Topo, err = topoOrderStable(sorted, g.Nodes)
+	if err != nil {
+		return nil, err
+	}
+	return g, nil
 }
 
 // topoOrderStable apply topological sort to the graph.
 // using Kahn's algorithm https://www.geeksforgeeks.org/dsa/topological-sorting-indegree-based-solution/
 // with a min-PQ tie-breaker based on the PR time order
-func topoOrderStable(sorted []PRView, nodes map[PRNum]*prNode) []PRNum {
+func topoOrderStable(sorted []PRView, nodes map[PRNum]*prNode) ([]PRNum, error) {
 	// indegree
 	indeg := make(map[PRNum]int, len(nodes))
 	for id, nd := range nodes {
@@ -129,5 +134,10 @@ func topoOrderStable(sorted []PRView, nodes map[PRNum]*prNode) []PRNum {
 		}
 	}
 
-	return order
+	if len(order) != len(nodes) {
+		// should never happen as we built a DAG
+		return nil, fmt.Errorf("topological sort failed: graph has a cycle")
+	}
+
+	return order, nil
 }
