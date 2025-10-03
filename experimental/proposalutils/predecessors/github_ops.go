@@ -203,7 +203,7 @@ func (f *GithubProposalPRFinder) getPRHeadInfo(
 		SHA:   pr.GetHead().GetSHA(),
 		Ref:   pr.GetHead().GetRef(),
 	}
-	lggr.Infof("[DEBUG] PR#%d head: %s/%s @ %s (%s)", number, head.Owner, head.Repo, head.SHA, head.Ref)
+	lggr.Debugf("PR#%d head: %s/%s @ %s (%s)", number, head.Owner, head.Repo, head.SHA, head.Ref)
 
 	return head, nil
 }
