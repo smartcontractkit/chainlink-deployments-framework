@@ -6,11 +6,13 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"math/big"
 	"os"
 	"slices"
 	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind/v2"
 	"github.com/ethereum/go-ethereum/common"
 	gethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -32,6 +34,7 @@ import (
 	"go.uber.org/zap/zapcore"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
+	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	cldf_chains "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/chains"
 	cldf_config "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config"
@@ -563,40 +566,12 @@ func buildTimelockExecuteOperationV2Cmd(lggr logger.Logger, domain cldf_domain.D
 				return fmt.Errorf("failed to create TimelockExecutable: %w", err)
 			}
 
-			// Get AddressBook
-			envdir := domain.EnvDir(cfgv2.envStr)
-			ab, err := envdir.AddressBook()
+			executeOptions, err := timelockExecuteOptions(cmd.Context(), lggr, domain, cfgv2)
 			if err != nil {
-				return fmt.Errorf("failed to load address book: %w", err)
+				return fmt.Errorf("failed to get timelock execute options: %w", err)
 			}
 
-			// Get Chain Contracts
-			contracts, err := ab.AddressesForChain(cfgv2.chainSelector)
-			if err != nil {
-				return fmt.Errorf("failed to get contracts for chain %d: %w", cfgv2.chainSelector, err)
-			}
-
-			// Get CallProxy address
-			callProxyAddress := ""
-			for address, contract := range contracts {
-				if contract.Type == analyzer.CallProxy {
-					// TODO: this assumes there is only one CallProxy per chain.
-					// What happens if there are multiple? I think its safe to assume
-					// there is only one for now but that might not always be the case.
-					// Maybe we can do a check on the timelock to see if the found CallProxy
-					// has the executor role?
-					callProxyAddress = address
-					break
-				}
-			}
-
-			// If there is no CallProxy, we don't need to pass it to the executor
-			opts := []mcms.Option{}
-			if callProxyAddress != "" {
-				opts = append(opts, mcms.WithCallProxy(callProxyAddress))
-			}
-
-			result, err := executable.Execute(context.Background(), index, opts...)
+			result, err := executable.Execute(cmd.Context(), index, executeOptions...)
 			if err != nil {
 				return fmt.Errorf("failed to execute operation %d: %w", index, err)
 			}
@@ -1267,37 +1242,9 @@ func timelockExecuteChainCommand(ctx context.Context, lggr logger.Logger, cfg *c
 		return fmt.Errorf("failed to create TimelockExecutable: %w", err)
 	}
 
-	// Get AddressBook
-	envdir := domain.EnvDir(cfg.envStr)
-	ab, err := envdir.AddressBook()
+	executeOptions, err := timelockExecuteOptions(ctx, lggr, domain, cfg)
 	if err != nil {
-		return fmt.Errorf("failed to load address book: %w", err)
-	}
-
-	// Get Chain Contracts
-	contracts, err := ab.AddressesForChain(cfg.chainSelector)
-	if err != nil {
-		return fmt.Errorf("failed to get contracts for chain %d: %w", cfg.chainSelector, err)
-	}
-
-	// Get CallProxy address
-	callProxyAddress := ""
-	for address, contract := range contracts {
-		if contract.Type == analyzer.CallProxy {
-			// TODO: this assumes there is only one CallProxy per chain.
-			// What happens if there are multiple? I think its safe to assume
-			// there is only one for now but that might not always be the case.
-			// Maybe we can do a check on the timelock to see if the found CallProxy
-			// has the executor role?
-			callProxyAddress = address
-			break
-		}
-	}
-
-	// If there is no CallProxy, we don't need to pass it to the executor
-	opts := []mcms.Option{}
-	if callProxyAddress != "" {
-		opts = append(opts, mcms.WithCallProxy(callProxyAddress))
+		return fmt.Errorf("failed to get timelock execute options: %w", err)
 	}
 
 	for i := range cfg.timelockProposal.Operations {
@@ -1312,7 +1259,7 @@ func timelockExecuteChainCommand(ctx context.Context, lggr logger.Logger, cfg *c
 				return fmt.Errorf("operation %d is not ready to be executed: %w", i, err)
 			}
 
-			result, err := executable.Execute(ctx, i, opts...)
+			result, err := executable.Execute(ctx, i, executeOptions...)
 			if err != nil {
 				return fmt.Errorf("failed to execute operation %d: %w", i, err)
 			}
@@ -1568,4 +1515,85 @@ func getProposalSigners(
 	}
 
 	return addresses, nil
+}
+
+func timelockExecuteOptions(
+	ctx context.Context, lggr logger.Logger, _ cldf_domain.Domain, cfg *cfgv2,
+) ([]mcms.Option, error) {
+	options := []mcms.Option{}
+
+	family, err := chainsel.GetSelectorFamily(cfg.chainSelector)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get selector family: %w", err)
+	}
+	if family == chainsel.FamilyEVM {
+		err := addCallProxyOption(ctx, lggr, cfg, &options)
+		if err != nil {
+			return options, fmt.Errorf("failed to add CallProxy option: %w", err)
+		}
+	}
+
+	return options, nil
+}
+
+func addCallProxyOption(
+	ctx context.Context, lggr logger.Logger, cfg *cfgv2, options *[]mcms.Option,
+) error {
+	timelockAddress, ok := cfg.timelockProposal.TimelockAddresses[types.ChainSelector(cfg.chainSelector)]
+	if !ok {
+		return fmt.Errorf("failed to find timelock address for chain selector %d", cfg.chainSelector)
+	}
+
+	chain, ok := cfg.blockchains.EVMChains()[cfg.chainSelector]
+	if !ok {
+		return fmt.Errorf("failed to find evm chain for selector %d", cfg.chainSelector)
+	}
+
+	timelockContract, err := bindings.NewRBACTimelock(common.HexToAddress(timelockAddress), chain.Client)
+	if err != nil {
+		return fmt.Errorf("failed to create timelock contract with address %v: %w", timelockAddress, err)
+	}
+
+	callOpts := &bind.CallOpts{Context: ctx}
+
+	role, err := timelockContract.EXECUTORROLE(callOpts)
+	if err != nil {
+		return fmt.Errorf("failed to get executor role from timelock contract: %w", err)
+	}
+	memberCount, err := timelockContract.GetRoleMemberCount(callOpts, role)
+	if err != nil {
+		return fmt.Errorf("failed to get executor member count from timelock contract: %w", err)
+	}
+	for i := range memberCount.Int64() {
+		executorAddress, ierr := timelockContract.GetRoleMember(callOpts, role, big.NewInt(i))
+		if ierr != nil {
+			return fmt.Errorf("failed to get executor address from timelock contract: %w", ierr)
+		}
+
+		// search for executor address in the datastore
+		callProxyRefs := cfg.env.DataStore.Addresses().Filter(
+			datastore.AddressRefByAddress(executorAddress.Hex()),
+			datastore.AddressRefByChainSelector(cfg.chainSelector),
+			datastore.AddressRefByType("CallProxy"))
+
+		if len(callProxyRefs) > 0 {
+			*options = append(*options, mcms.WithCallProxy(executorAddress.Hex()))
+			return nil
+		}
+
+		// if not found, search in the addressbook
+		addressesForChain, ierr := cfg.env.ExistingAddresses.AddressesForChain(cfg.chainSelector) //nolint:staticcheck
+		if ierr != nil {
+			lggr.Infof("unable to get addresses for chain %d in addressbook: %s", cfg.chainSelector, ierr.Error())
+			continue // ignore error; some domains don't use the addressbook anymore
+		}
+		for address, typeAndVersion := range addressesForChain {
+			if address == executorAddress.Hex() && typeAndVersion.Type == "CallProxy" {
+				*options = append(*options, mcms.WithCallProxy(executorAddress.Hex()))
+				return nil
+			}
+		}
+	}
+
+	return fmt.Errorf("failed to find call proxy contract for timelock %v", timelockAddress)
 }
