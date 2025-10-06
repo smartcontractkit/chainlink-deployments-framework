@@ -5,9 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 	"sync"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
@@ -141,12 +142,8 @@ func (s *catalogEnvMetadataStore) get(ignoreTransaction bool) (datastore.EnvMeta
 	}
 
 	// Check for errors in the response
-	if resp.Status != nil && !resp.Status.Succeeded {
-		if strings.Contains(resp.Status.GetError(), "No records found") {
-			return datastore.EnvMetadata{}, datastore.ErrEnvMetadataNotSet
-		}
-
-		return datastore.EnvMetadata{}, fmt.Errorf("request failed: %s", resp.Status.Error)
+	if err := checkResponseStatus(resp.Status); err != nil {
+		return datastore.EnvMetadata{}, fmt.Errorf("get environment metadata failed: %w", err)
 	}
 
 	findResp := resp.GetEnvironmentMetadataFindResponse()
@@ -247,14 +244,18 @@ func (s *catalogEnvMetadataStore) editRecord(record datastore.EnvMetadata) error
 	}
 
 	// Check for errors in the edit response
-	if resp.Status != nil && !resp.Status.Succeeded {
-		errorMsg := resp.Status.GetError()
-		// Check for version conflicts
-		if strings.Contains(errorMsg, "incorrect row version") {
-			return datastore.ErrEnvMetadataStale
-		}
+	if err := checkResponseStatus(resp.Status); err != nil {
+		st, _ := status.FromError(err)
 
-		return fmt.Errorf("edit request failed: %s", resp.Status.Error)
+		// Check for specific error conditions
+		switch st.Code() {
+		case codes.NotFound:
+			return fmt.Errorf("no record found to update: %w", err)
+		case codes.Aborted:
+			return fmt.Errorf("incorrect row version: %w", err)
+		default:
+			return fmt.Errorf("edit request failed: %w", err)
+		}
 	}
 
 	editResp := resp.GetEnvironmentMetadataEditResponse()
