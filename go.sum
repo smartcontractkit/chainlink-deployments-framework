@@ -29,8 +29,8 @@ github.com/allegro/bigcache v1.2.1 h1:hg1sY1raCwic3Vnsvje6TT7/pnZba83LeFck5NrFKS
 github.com/allegro/bigcache v1.2.1/go.mod h1:Cb/ax3seSYIx7SuZdm2G2xzfwmv3TPSk2ucNfQESPXM=
 github.com/apache/arrow-go/v18 v18.3.0 h1:Xq4A6dZj9Nu33sqZibzn012LNnewkTUlfKVUFD/RX/I=
 github.com/apache/arrow-go/v18 v18.3.0/go.mod h1:eEM1DnUTHhgGAjf/ChvOAQbUQ+EPohtDrArffvUjPg8=
-github.com/aptos-labs/aptos-go-sdk v1.7.1-0.20250602153733-bb1facae1d43 h1:Mn2LI+fa8QzVmXQ/30MT76GYTQIxpSB3lzos0hat4qc=
-github.com/aptos-labs/aptos-go-sdk v1.7.1-0.20250602153733-bb1facae1d43/go.mod h1:vYm/yHr6cQpoUBMw/Q93SRR1IhP0mPTBrEGjShwUvXc=
+github.com/aptos-labs/aptos-go-sdk v1.9.1-0.20250613185448-581cb03acb8f h1:O1DCxTmT8XEHJd8jEbNTrFh4zFD9/oIDB1EzUgEYkI8=
+github.com/aptos-labs/aptos-go-sdk v1.9.1-0.20250613185448-581cb03acb8f/go.mod h1:vYm/yHr6cQpoUBMw/Q93SRR1IhP0mPTBrEGjShwUvXc=
 github.com/avast/retry-go v3.0.0+incompatible h1:4SOWQ7Qs+oroOTQOYnAHqelpCO0biHSxpiH9JdtuBj0=
 github.com/avast/retry-go v3.0.0+incompatible/go.mod h1:XtSnn+n/sHqQIpZ10K1qAevBhOOCWBLXXy3hyiqqBrY=
 github.com/avast/retry-go/v4 v4.6.1 h1:VkOLRubHdisGrHnTu89g08aQEWEgRU7LVEop3GbIcMk=
