@@ -410,8 +410,6 @@ func Test_timelockExecuteOptions(t *testing.T) {
 		name   string
 		cfg    *cfgv2
 		assert func(t *testing.T, opts []mcms.Option, err error)
-		// want    []mcms.Option
-		// wantErr string
 	}{
 		{
 			name: "empty options for Solana",
