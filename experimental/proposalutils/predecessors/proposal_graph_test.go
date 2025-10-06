@@ -16,7 +16,7 @@ func TestBuildPRDependencyGraph_BasicEdges(t *testing.T) {
 	tests := []struct {
 		name   string
 		views  []PRView
-		assert func(t *testing.T, g *proposalsPRGraph)
+		assert func(t *testing.T, g *ProposalsPRGraph)
 	}{
 		{
 			name: "edge when same chain+MCM; direction older->newer",
@@ -25,7 +25,7 @@ func TestBuildPRDependencyGraph_BasicEdges(t *testing.T) {
 				mkPR(11, now.Add(-2*time.Hour), mcmData(1, "0xABC")), // same chain+MCM -> edge 10->11
 				mkPR(12, now.Add(-1*time.Hour), mcmData(1, "0xDEF")), // different MCM -> no edge from 10/11
 			},
-			assert: func(t *testing.T, g *proposalsPRGraph) {
+			assert: func(t *testing.T, g *ProposalsPRGraph) {
 				t.Helper()
 				require.Len(t, g.Nodes, 3)
 				// 10 -> 11
@@ -45,7 +45,7 @@ func TestBuildPRDependencyGraph_BasicEdges(t *testing.T) {
 				mkPR(20, now.Add(-3*time.Hour), mcmData(1, "0xMCM")),
 				mkPR(21, now.Add(-2*time.Hour), mcmData(2, "0xMCM")), // same MCM, different chain -> no edge
 			},
-			assert: func(t *testing.T, g *proposalsPRGraph) {
+			assert: func(t *testing.T, g *ProposalsPRGraph) {
 				t.Helper()
 				require.Empty(t, g.Nodes[20].Succ)
 				require.Empty(t, g.Nodes[21].Pred)
@@ -61,7 +61,7 @@ func TestBuildPRDependencyGraph_BasicEdges(t *testing.T) {
 					mkPR(100, ts, mcmData(3, "0xB")),
 				}
 			}(),
-			assert: func(t *testing.T, g *proposalsPRGraph) {
+			assert: func(t *testing.T, g *ProposalsPRGraph) {
 				t.Helper()
 				// No edges (different chains/MCMs). Order falls back to time+number -> 100 then 101.
 				require.Equal(t, []PRNum{100, 101}, g.Topo)
@@ -72,7 +72,7 @@ func TestBuildPRDependencyGraph_BasicEdges(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			g, err := buildPRDependencyGraph(tc.views)
+			g, err := BuildPRDependencyGraph(tc.views)
 			require.NoError(t, err)
 			tc.assert(t, g)
 		})
@@ -113,7 +113,7 @@ func TestGraph_MultiChain_CrossDependencies(t *testing.T) {
 		3: "0xQ2",
 	}))
 
-	g, err := buildPRDependencyGraph([]PRView{p1, p2, p3, p4, p5})
+	g, err := BuildPRDependencyGraph([]PRView{p1, p2, p3, p4, p5})
 
 	require.NoError(t, err)
 	require.Len(t, g.Nodes, 5)

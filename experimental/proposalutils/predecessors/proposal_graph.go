@@ -5,9 +5,9 @@ import (
 	"sort"
 )
 
-// proposalsPRGraph is a dependency graph of proposals where an edge u -> v means:
+// ProposalsPRGraph is a dependency graph of proposals where an edge u -> v means:
 // "u must precede v" (they share at least one MCM on some chain and u is older).
-type proposalsPRGraph struct {
+type ProposalsPRGraph struct {
 	Nodes map[PRNum]*prNode // node lookup by PR number
 	Topo  []PRNum           // topologically sorted PR numbers (older -> newer respecting deps)
 }
@@ -34,12 +34,12 @@ func relatedByMCMOnAnyChain(x, y ProposalsOpData) bool {
 	return false
 }
 
-// buildPRDependencyGraph creates a DAG with edges ONLY from older -> newer,
+// BuildPRDependencyGraph creates a DAG with edges ONLY from older -> newer,
 // and only when relatedByMCMOnAnyChain(...) is true.
 // Ties on CreatedAt are broken by PR number (smaller = older).
-func buildPRDependencyGraph(views []PRView) (*proposalsPRGraph, error) {
+func BuildPRDependencyGraph(views []PRView) (*ProposalsPRGraph, error) {
 	n := len(views)
-	g := &proposalsPRGraph{
+	g := &ProposalsPRGraph{
 		Nodes: make(map[PRNum]*prNode, n),
 	}
 
