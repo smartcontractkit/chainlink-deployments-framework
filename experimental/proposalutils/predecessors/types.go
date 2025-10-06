@@ -22,15 +22,15 @@ type PRView struct {
 	Number           PRNum
 	CreatedAt        time.Time
 	Body             string
-	Head             prHead
+	Head             PRHead
 	Proposal         *mcms.TimelockProposal
 	ProposalData     ProposalsOpData
 	ProposalFilename string
 	ProposalContent  string
 }
 
-// prHead holds the repo/owner/SHA for the PR head.
-type prHead struct {
+// PRHead holds the repo/owner/SHA for the PR head.
+type PRHead struct {
 	Owner string
 	Repo  string
 	SHA   string
