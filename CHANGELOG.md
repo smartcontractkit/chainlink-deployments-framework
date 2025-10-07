@@ -1,5 +1,23 @@
 # chainlink-deployments-framework
 
+## 0.55.0
+
+### Minor Changes
+
+- [#492](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/492) [`7243af8`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/7243af8be1d93101d0655c3424d60f6dcdcd883e) Thanks [@jkongie](https://github.com/jkongie)! - update aptos dep to v1.9.1
+
+- [#474](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/474) [`fdcf28d`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/fdcf28d6dfaa06c3bdfd92acae2c5e414479c4af) Thanks [@ecPablo](https://github.com/ecPablo)! - add predecessors and opcount calculation logic to proposalutils package.
+
+### Patch Changes
+
+- [#496](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/496) [`fea372c`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/fea372c81f6cd0a49c1793cd3f87686842669a1d) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix: update db controller to accept context
+
+- [#498](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/498) [`ce51cbe`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/ce51cbefa3d92af9fa91bb5a6dcb531d69b76f54) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - fix: anvil env should check for addresses from DataStore as well
+
+- [#495](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/495) [`126609e`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/126609e1400ac56142d751291ec9cab83d716216) Thanks [@ecPablo](https://github.com/ecPablo)! - get delay for advancing time from the proposal instead of constant value
+
+- [#497](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/497) [`976d232`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/976d232b8ea5263f743f2885d50cbd18a5712b48) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(catalog/memory): remove dependency on testing.T
+
 ## 0.54.1
 
 ### Patch Changes
