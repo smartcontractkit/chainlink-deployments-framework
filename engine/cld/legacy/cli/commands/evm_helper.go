@@ -329,7 +329,7 @@ func verifyContract(
 		}
 	}()
 
-	forgeCmd := exec.Command(cmdStrs[0], cmdStrs[1:]...) //nolint:gosec // This is passed on from the cobra command flags
+	forgeCmd := exec.CommandContext(ctx, cmdStrs[0], cmdStrs[1:]...) //nolint:gosec // This is passed on from the cobra command flags
 	forgeCmd.Dir = contractDirectory
 
 	lggr.Infof("Executing...")
@@ -347,7 +347,7 @@ func verifyContract(
 }
 
 func checkoutCommit(dirPath, commitHash string) error {
-	cmd := exec.Command("git", "-C", dirPath, "checkout", commitHash)
+	cmd := exec.CommandContext(context.TODO(), "git", "-C", dirPath, "checkout", commitHash)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
@@ -364,7 +364,7 @@ func appendEtherscanInfoToFoundryToml(
 	foundryBackupToml := filepath.Join(dirPath, "foundry.backup.toml")
 
 	// copy foundry.toml file, to the backup file, for recovery initial state after execution.
-	cmd := exec.Command("cp", foundryToml, foundryBackupToml)
+	cmd := exec.CommandContext(context.TODO(), "cp", foundryToml, foundryBackupToml)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
@@ -394,7 +394,7 @@ func appendEtherscanInfoToFoundryToml(
 
 	return func() error {
 		// remove changed file
-		cmdFileRm := exec.Command("rm", foundryToml)
+		cmdFileRm := exec.CommandContext(context.TODO(), "rm", foundryToml)
 		cmdFileRm.Stdout = os.Stdout
 		cmdFileRm.Stderr = os.Stderr
 		if err := cmdFileRm.Run(); err != nil {
@@ -402,7 +402,7 @@ func appendEtherscanInfoToFoundryToml(
 		}
 
 		// recover backup file
-		cmdFileMv := exec.Command("mv", foundryBackupToml, foundryToml)
+		cmdFileMv := exec.CommandContext(context.TODO(), "mv", foundryBackupToml, foundryToml)
 		cmdFileMv.Stdout = os.Stdout
 		cmdFileMv.Stderr = os.Stderr
 		if err := cmdFileMv.Run(); err != nil {

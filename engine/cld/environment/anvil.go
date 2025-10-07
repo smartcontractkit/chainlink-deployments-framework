@@ -23,6 +23,7 @@ import (
 	fchain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	fevm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	evmprov "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider"
+	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	cfgenv "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/env"
 	cfgnet "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/network"
@@ -129,6 +130,7 @@ func newAnvilChains(
 	ctx context.Context,
 	lggr logger.Logger,
 	addressBook fdeployment.AddressBook,
+	dataStore datastore.DataStore,
 	evmNetworks *cfgnet.Config,
 	blockNumbers map[uint64]*big.Int,
 	onchainConfig cfgenv.OnchainConfig,
@@ -162,6 +164,13 @@ func newAnvilChains(
 	addressesByChain, err1 := addressBook.Addresses()
 	if err1 != nil {
 		return nil, fmt.Errorf("failed to get addresses by chain selector: %w", err1)
+	}
+	dataStoreAddresses, err1 := dataStore.Addresses().Fetch()
+	if err1 != nil {
+		return nil, fmt.Errorf("failed to get addresses from data store: %w", err1)
+	}
+	for _, address := range dataStoreAddresses {
+		addressesByChain[address.ChainSelector] = map[string]fdeployment.TypeAndVersion{}
 	}
 
 	var once sync.Once

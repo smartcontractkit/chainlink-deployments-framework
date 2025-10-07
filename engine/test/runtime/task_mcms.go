@@ -3,16 +3,19 @@ package runtime
 import (
 	"context"
 	"crypto/ecdsa"
-	"crypto/rand"
 	"fmt"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/segmentio/ksuid"
 	mcmslib "github.com/smartcontractkit/mcms"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/internal/mcmsutils"
+)
+
+var (
+	_ Executable = &signProposalTask{}
+	_ Executable = &executeProposalTask{}
+	_ Executable = &signAndExecuteProposalTask{}
 )
 
 // SignProposalTask creates a new task for signing MCMS or Timelock proposals.
@@ -26,7 +29,7 @@ import (
 // Returns a signProposalTask that can be executed within the runtime framework.
 func SignProposalTask(proposalID string, signingKeys ...*ecdsa.PrivateKey) signProposalTask {
 	return signProposalTask{
-		id:          ksuid.New().String(),
+		baseTask:    newBaseTask(),
 		proposalID:  proposalID,
 		signingKeys: signingKeys,
 	}
@@ -36,14 +39,10 @@ func SignProposalTask(proposalID string, signingKeys ...*ecdsa.PrivateKey) signP
 // using a provided private key. The task automatically detects the proposal
 // type and applies the appropriate signing logic.
 type signProposalTask struct {
-	id          string              // Unique identifier for this task
+	*baseTask
+
 	proposalID  string              // ID of the proposal to sign
 	signingKeys []*ecdsa.PrivateKey // Private keys for signing
-}
-
-// ID returns the unique identifier for this task instance.
-func (t signProposalTask) ID() string {
-	return t.id
 }
 
 // Run executes the proposal signing task within the provided environment and state.
@@ -116,7 +115,7 @@ func (t signProposalTask) Run(e fdeployment.Environment, state *State) error {
 // will fail during the execution process.
 func ExecuteProposalTask(proposalID string) executeProposalTask {
 	return executeProposalTask{
-		id:          ksuid.New().String(),
+		baseTask:    newBaseTask(),
 		proposalID:  proposalID,
 		newExecutor: newDefaultExecutor,
 	}
@@ -126,14 +125,10 @@ func ExecuteProposalTask(proposalID string) executeProposalTask {
 // on the target blockchain networks. The task automatically detects the proposal type
 // and applies the appropriate execution logic.
 type executeProposalTask struct {
-	id          string // Unique identifier for this task
+	*baseTask
+
 	proposalID  string // ID of the proposal to execute
 	newExecutor func(e fdeployment.Environment) proposalExecutor
-}
-
-// ID returns the unique identifier for this task instance.
-func (t executeProposalTask) ID() string {
-	return t.id
 }
 
 // Run executes the proposal execution task within the provided environment and state.
@@ -184,8 +179,6 @@ func (t executeProposalTask) Run(e fdeployment.Environment, state *State) error 
 			return fmt.Errorf("failed to decode Timelock proposal (id: %s): %w", t.proposalID, err)
 		}
 
-		prop.SaltOverride = randomHash()
-
 		if err = executor.ExecuteTimelock(ctx, prop); err != nil {
 			return fmt.Errorf("failed to execute Timelock proposal (id: %s): %w", t.proposalID, err)
 		}
@@ -202,7 +195,7 @@ func (t executeProposalTask) Run(e fdeployment.Environment, state *State) error 
 // SignAndExecuteProposalsTask creates a new task for signing and executing all pending proposals.
 func SignAndExecuteProposalsTask(signingKeys []*ecdsa.PrivateKey) signAndExecuteProposalTask {
 	return signAndExecuteProposalTask{
-		id:          ksuid.New().String(),
+		baseTask:    newBaseTask(),
 		signingKeys: signingKeys,
 		newExecutor: newDefaultExecutor,
 	}
@@ -210,14 +203,9 @@ func SignAndExecuteProposalsTask(signingKeys []*ecdsa.PrivateKey) signAndExecute
 
 // signAndExecuteProposalTask represents a task that signs and executes all pending proposals.
 type signAndExecuteProposalTask struct {
-	id          string              // Unique identifier for this task
+	*baseTask
 	signingKeys []*ecdsa.PrivateKey // Private keys for signing
 	newExecutor func(e fdeployment.Environment) proposalExecutor
-}
-
-// ID returns the unique identifier for this task instance.
-func (t signAndExecuteProposalTask) ID() string {
-	return t.id
 }
 
 // Run executes the sign and execute proposal task within the provided environment and state.
@@ -308,24 +296,6 @@ func signTimelockProposal(
 	}
 
 	return propJSON, nil
-}
-
-// randomHash generates a random 32-byte hash to use as a salt override for timelock proposals.
-// This function is specifically used to prevent scheduling conflicts in test environments
-// where multiple timelock proposals might be created with identical timestamps.
-//
-// In production, timelock proposals use their validUntil timestamp to generate operation IDs.
-// However, in tests where proposals are often created within the same second, this can lead
-// to "AlreadyScheduled" errors when multiple proposals have the same generated ID.
-//
-// Note: This function is designed for test use only. The error from rand.Read is intentionally
-// ignored as cryptographic randomness is not critical for test salt generation.
-func randomHash() *common.Hash {
-	b := make([]byte, 32)
-	_, _ = rand.Read(b) // Assignment for errcheck. Only used in tests so we can ignore.
-	h := common.BytesToHash(b)
-
-	return &h
 }
 
 // proposalExecutor is an interface that defines the methods for executing MCMS and timelock

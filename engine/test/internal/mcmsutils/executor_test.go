@@ -3,9 +3,11 @@ package mcmsutils
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
+	"github.com/Masterminds/semver/v3"
 	gethtypes "github.com/ethereum/go-ethereum/core/types"
 	mcmslib "github.com/smartcontractkit/mcms"
 	mcmssdk "github.com/smartcontractkit/mcms/sdk"
@@ -378,6 +380,46 @@ func TestExecutor_ExecuteTimelock(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestFindCallProxyAddress(t *testing.T) {
+	t.Parallel()
+
+	selector := uint64(909606746561742123)
+	typeName := fdatastore.ContractType("CallProxy")
+	ds := fdatastore.NewMemoryDataStore()
+
+	addr, err := findCallProxyAddress(ds.Addresses(), selector)
+	require.Error(t, err)
+	require.EqualError(t, err, fmt.Sprintf("CallProxy address not found in datastore (chain selector: %d, version: 1.0.0)", selector))
+	require.Empty(t, addr)
+
+	err = ds.Addresses().Add(fdatastore.AddressRef{
+		ChainSelector: selector,
+		Type:          typeName,
+		Version:       semver.MustParse("1.0.0"),
+		Address:       "0x123",
+		Qualifier:     "qual",
+	})
+	require.NoError(t, err)
+
+	addr, err = findCallProxyAddress(ds.Addresses(), selector)
+	require.NoError(t, err)
+	require.Equal(t, "0x123", addr)
+
+	err = ds.Addresses().Add(fdatastore.AddressRef{
+		ChainSelector: selector,
+		Type:          typeName,
+		Version:       semver.MustParse("1.0.0"),
+		Address:       "0x234",
+		Qualifier:     "other",
+	})
+	require.NoError(t, err)
+
+	addr, err = findCallProxyAddress(ds.Addresses(), selector)
+	require.Error(t, err)
+	require.EqualError(t, err, fmt.Sprintf("multiple CallProxy addresses found in datastore (chain selector: %d, version: 1.0.0)", selector))
+	require.Empty(t, addr)
 }
 
 // newMockedExecutor creates a new Executor with the mock executables by overriding the

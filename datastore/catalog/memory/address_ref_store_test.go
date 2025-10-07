@@ -450,10 +450,11 @@ func setupTestStore(t *testing.T) (*memoryAddressRefStore, func()) {
 		Domain:      "test_domain",
 		Environment: "catalog_testing",
 	}
-	store := NewMemoryDataStore(t, config)
+	store, err := NewMemoryDataStore(config)
+	require.NoError(t, err)
 
 	return store.Addresses().(*memoryAddressRefStore), func() {
-		store.Close()
+		require.NoError(t, store.Close())
 	}
 }
 

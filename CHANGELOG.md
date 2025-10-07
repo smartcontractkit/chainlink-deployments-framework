@@ -1,5 +1,49 @@
 # chainlink-deployments-framework
 
+## 0.55.0
+
+### Minor Changes
+
+- [#492](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/492) [`7243af8`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/7243af8be1d93101d0655c3424d60f6dcdcd883e) Thanks [@jkongie](https://github.com/jkongie)! - update aptos dep to v1.9.1
+
+- [#474](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/474) [`fdcf28d`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/fdcf28d6dfaa06c3bdfd92acae2c5e414479c4af) Thanks [@ecPablo](https://github.com/ecPablo)! - add predecessors and opcount calculation logic to proposalutils package.
+
+### Patch Changes
+
+- [#496](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/496) [`fea372c`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/fea372c81f6cd0a49c1793cd3f87686842669a1d) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix: update db controller to accept context
+
+- [#498](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/498) [`ce51cbe`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/ce51cbefa3d92af9fa91bb5a6dcb531d69b76f54) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - fix: anvil env should check for addresses from DataStore as well
+
+- [#495](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/495) [`126609e`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/126609e1400ac56142d751291ec9cab83d716216) Thanks [@ecPablo](https://github.com/ecPablo)! - get delay for advancing time from the proposal instead of constant value
+
+- [#497](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/497) [`976d232`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/976d232b8ea5263f743f2885d50cbd18a5712b48) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(catalog/memory): remove dependency on testing.T
+
+## 0.54.1
+
+### Patch Changes
+
+- [#489](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/489) [`63fda69`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/63fda69d0c909cbb4cc6104a68cb03a92f4b12be) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - feat(mcms): query Timelock contract for CallProxy address
+
+- [#478](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/478) [`f318c97`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/f318c973efa79278e12d2fa3c1b4eb52daa178bf) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - fix: restore owner after mcm.SetConfig() in fork tests with --test-signer
+
+## 0.54.0
+
+### Minor Changes
+
+- [#481](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/481) [`1f7f6bc`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/1f7f6bc9be80a9522680022868448847b62ba20a) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat(operations): introduce AsUntypedRelaxed
+
+### Patch Changes
+
+- [#484](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/484) [`fb9d9bf`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/fb9d9bfef7456052e4c07fc4bba3c9b16e5b4bd5) Thanks [@jkongie](https://github.com/jkongie)! - Fixes test engine MCMS execution when multiple proposals have the same `validUntil` timestamp.
+
+  A salt override is added to each timelock proposal persisted to the state to ensure unique operation
+  IDs in test environments where multiple proposals may have identical timestamps. This salt is used
+  in the hashing algorithm to determine the root of the merkle tree.
+
+- [#479](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/479) [`930e469`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/930e469560608b9ec32a398393862b9fbc4d663a) Thanks [@jkongie](https://github.com/jkongie)! - Fixes MCMS Execution failing to Set Root in the test engine
+
+- [#475](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/475) [`8d9ded3`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/8d9ded34541c2f47211832cfbbb7906b40c5746f) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - fix(mcms): check for PostOpCountReached errors in Solana as well
+
 ## 0.53.0
 
 ### Minor Changes

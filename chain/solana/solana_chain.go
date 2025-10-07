@@ -64,7 +64,7 @@ func (c Chain) CloseBuffers(logger logger.Logger, buffer string) error {
 		"--bypass-warning",
 	}
 
-	cmd := exec.Command("solana", baseArgs...) // #nosec G204
+	cmd := exec.CommandContext(context.TODO(), "solana", baseArgs...) // #nosec G204
 	logger.Infof("Closing buffers with command: %s", cmd.String())
 
 	// Capture the command output
@@ -133,12 +133,12 @@ func (c Chain) DeployProgram(logger logger.Logger, programInfo ProgramInfo, isUp
 		if overallocate && programBytes > 0 {
 			baseArgs = append(baseArgs, "--max-len", strconv.Itoa(programBytes))
 		}
-		cmd = exec.Command("solana", baseArgs...) // #nosec G204
+		cmd = exec.CommandContext(context.TODO(), "solana", baseArgs...) // #nosec G204
 	} else {
 		// Keypairs wont be created for devenvs
 		logger.Infow("Deploying new program",
 			"programFile", programFile)
-		cmd = exec.Command("solana", baseArgs...) // #nosec G204
+		cmd = exec.CommandContext(context.TODO(), "solana", baseArgs...) // #nosec G204
 	}
 
 	// Capture the command output

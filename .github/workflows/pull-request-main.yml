@@ -19,7 +19,7 @@ jobs:
         uses: smartcontractkit/.github/actions/ci-lint-go@ci-lint-go/v2 # ci-lint-go@2.0.0
         with:
           only-new-issues: "false"
-          golangci-lint-version: v2.1.6
+          golangci-lint-version: v2.5.0
 
   ci-lint-misc:
     name: Lint GH Actions and scripts

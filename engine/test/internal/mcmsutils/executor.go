@@ -47,6 +47,8 @@ type Executor struct {
 	retryAttempts uint
 	// retryDelay is the delay between retry attempts.
 	retryDelay time.Duration
+	// isEVMSim is a flag indicating whether to use simulated EVM backends.
+	isEVMSim bool
 }
 
 // NewExecutor creates a new Executor with default configuration.
@@ -62,6 +64,7 @@ func NewExecutor(e fdeployment.Environment) *Executor {
 		newTimelockExecutable: newDefaultTimelockExecutable,
 		retryAttempts:         50,
 		retryDelay:            100 * time.Millisecond,
+		isEVMSim:              true, // This is always true until we can find a way to allow the user to specify the type of EVM backend they are using.
 	}
 }
 
@@ -79,6 +82,8 @@ func (e *Executor) ExecuteMCMS(ctx context.Context, proposal *mcmslib.Proposal) 
 	if err := proposal.Validate(); err != nil {
 		return fmt.Errorf("failed to validate MCMS proposal: %w", err)
 	}
+
+	proposal.UseSimulatedBackend(e.isEVMSim)
 
 	// Determine the blockchains to use for the operations ensuring the environment has the
 	// necessary chains configured in the proposal's ChainMetadata.
@@ -274,14 +279,19 @@ func (e *Executor) ExecuteTimelock(ctx context.Context, timelockProposal *mcmsli
 // It looks up the address in the datastore using version 1.0.0 with no qualifier.
 // Currently only supports datastore-based address resolution.
 func findCallProxyAddress(ds datastore.AddressRefStore, selector uint64) (string, error) {
-	ref, err := ds.Get(
-		datastore.NewAddressRefKey(selector, "CallProxy", semver.MustParse("1.0.0"), ""),
+	ref := ds.Filter(
+		datastore.AddressRefByChainSelector(selector),
+		datastore.AddressRefByType("CallProxy"),
+		datastore.AddressRefByVersion(semver.MustParse("1.0.0")),
 	)
-	if err != nil {
-		return "", fmt.Errorf("CallProxy address not found in datastore (chain selector: %d, version: 1.0.0): %w", selector, err)
+	if len(ref) == 0 {
+		return "", fmt.Errorf("CallProxy address not found in datastore (chain selector: %d, version: 1.0.0)", selector)
+	}
+	if len(ref) > 1 {
+		return "", fmt.Errorf("multiple CallProxy addresses found in datastore (chain selector: %d, version: 1.0.0)", selector)
 	}
 
-	return ref.Address, nil
+	return ref[0].Address, nil
 }
 
 // confirmTransaction confirms a transaction on the appropriate blockchain based on its type.

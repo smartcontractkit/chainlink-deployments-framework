@@ -1,6 +1,7 @@
 package scaffold
 
 import (
+	"context"
 	"embed"
 	"fmt"
 	"os"
@@ -278,7 +279,7 @@ func checkDirExists(path string) error {
 
 // runGoModTidy runs 'go mod tidy' in the specified directory.
 func runGoModTidy(dir string) error {
-	cmd := exec.Command("go", "mod", "tidy")
+	cmd := exec.CommandContext(context.TODO(), "go", "mod", "tidy")
 	cmd.Dir = dir
 
 	// Capture both stdout and stderr

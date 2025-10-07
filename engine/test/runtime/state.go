@@ -1,10 +1,12 @@
 package runtime
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"sync"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/segmentio/ksuid"
 	mcmslib "github.com/smartcontractkit/mcms"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
@@ -211,6 +213,11 @@ func (s *State) mergeProposals(out fdeployment.ChangesetOutput) error {
 	}
 
 	for _, p := range out.MCMSTimelockProposals {
+		// We add a random salt override to the timelock proposal to ensure unique operation IDs in test environments
+		// where multiple proposals may have identical timestamps. This salt is used in the hashing algorithm to
+		// determine the root of the merkle tree.
+		p.SaltOverride = randomHash()
+
 		propState, err := newTimelockProposalState(&p)
 		if err != nil {
 			return err
@@ -276,4 +283,22 @@ func (p ProposalState) Kind() (mcmstypes.ProposalKind, error) {
 	}
 
 	return prop.Kind, nil
+}
+
+// randomHash generates a random 32-byte hash to use as a salt override for timelock proposals.
+// This function is specifically used to prevent scheduling conflicts in test environments
+// where multiple timelock proposals might be created with identical timestamps.
+//
+// In production, timelock proposals use their validUntil timestamp to generate operation IDs.
+// However, in tests where proposals are often created within the same second, this can lead
+// to "AlreadyScheduled" errors when multiple proposals have the same generated ID.
+//
+// Note: This function is designed for test use only. The error from rand.Read is intentionally
+// ignored as cryptographic randomness is not critical for test salt generation.
+func randomHash() *common.Hash { //nolint:unused // We will come back to this when we have a solution for the salt override.
+	b := make([]byte, 32)
+	_, _ = rand.Read(b) // Assignment for errcheck. Only used in tests so we can ignore.
+	h := common.BytesToHash(b)
+
+	return &h
 }
