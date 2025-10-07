@@ -14,15 +14,15 @@ func TestNewControllerCommit(t *testing.T) {
 	defer stop()
 
 	ctrl := newDbController(db)
-	err := ctrl.Begin()
+	err := ctrl.Begin(t.Context())
 	require.NoError(t, err)
-	_, err = ctrl.Exec("CREATE TABLE IF NOT EXISTS test(a int)")
+	_, err = ctrl.ExecContext(t.Context(), "CREATE TABLE IF NOT EXISTS test(a int)")
 	require.NoError(t, err)
-	_, err = ctrl.Exec("INSERT INTO test (a) VALUES (1)")
+	_, err = ctrl.ExecContext(t.Context(), "INSERT INTO test (a) VALUES (1)")
 	require.NoError(t, err)
 
 	t.Run("Check inserted values", func(t *testing.T) { //nolint:paralleltest // Cannot run in parallel due to shared database state
-		rows, err2 := ctrl.Query("SELECT * FROM test")
+		rows, err2 := ctrl.QueryContext(t.Context(), "SELECT * FROM test")
 		defer func(rows *sql.Rows) {
 			if rows != nil {
 				assert.NoError(t, rows.Close())
@@ -48,7 +48,7 @@ func TestNewControllerCommit(t *testing.T) {
 	assert.Nil(t, ctrl.tx)
 
 	t.Run("Check inserted values (post-commit)", func(t *testing.T) { //nolint:paralleltest // Cannot run in parallel due to shared database state
-		rows, err2 := ctrl.Query("SELECT * FROM test")
+		rows, err2 := ctrl.QueryContext(t.Context(), "SELECT * FROM test")
 		defer func(rows *sql.Rows) {
 			if rows != nil {
 				assert.NoError(t, rows.Close())
@@ -71,15 +71,15 @@ func TestNewControllerRollback(t *testing.T) {
 	defer stop()
 
 	ctrl := newDbController(db)
-	err := ctrl.Begin()
+	err := ctrl.Begin(t.Context())
 	require.NoError(t, err)
-	_, err = ctrl.Exec("CREATE TABLE IF NOT EXISTS test(a int)")
+	_, err = ctrl.ExecContext(t.Context(), "CREATE TABLE IF NOT EXISTS test(a int)")
 	require.NoError(t, err)
-	_, err = ctrl.Exec("INSERT INTO test (a) VALUES (1)")
+	_, err = ctrl.ExecContext(t.Context(), "INSERT INTO test (a) VALUES (1)")
 	require.NoError(t, err)
 
 	t.Run("Check inserted values", func(t *testing.T) { //nolint:paralleltest // Cannot run in parallel due to shared database state
-		rows, err2 := ctrl.Query("SELECT * FROM test")
+		rows, err2 := ctrl.QueryContext(t.Context(), "SELECT * FROM test")
 		defer func(rows *sql.Rows) {
 			if rows != nil {
 				assert.NoError(t, rows.Close())
@@ -105,7 +105,7 @@ func TestNewControllerRollback(t *testing.T) {
 	assert.Nil(t, ctrl.tx)
 
 	t.Run("Check inserted values (post-rollback)", func(t *testing.T) { //nolint:paralleltest // Cannot run in parallel due to shared database state
-		_, err2 := ctrl.Query("SELECT * FROM test")
+		_, err2 := ctrl.QueryContext(t.Context(), "SELECT * FROM test")
 		require.ErrorContains(t, err2, `"test" does not exist`)
 	})
 }

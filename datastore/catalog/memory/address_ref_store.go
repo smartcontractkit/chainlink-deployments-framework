@@ -57,7 +57,7 @@ func newCatalogAddressRefStore(t *testing.T, config MemoryDataStoreConfig, db *d
 	}
 }
 
-func (s *memoryAddressRefStore) Get(_ context.Context, key datastore.AddressRefKey, options ...datastore.GetOption) (datastore.AddressRef, error) {
+func (s *memoryAddressRefStore) Get(ctx context.Context, key datastore.AddressRefKey, options ...datastore.GetOption) (datastore.AddressRef, error) {
 	ignoreTransactions := false
 	for _, option := range options {
 		switch option {
@@ -71,7 +71,7 @@ func (s *memoryAddressRefStore) Get(_ context.Context, key datastore.AddressRefK
 	} else {
 		db = s.db
 	}
-	rows, err := db.Query(query_ADDRESS_REFERENCE_BY_ID, key.ChainSelector(), key.Type().String(), key.Version().String(), key.Qualifier())
+	rows, err := db.QueryContext(ctx, query_ADDRESS_REFERENCE_BY_ID, key.ChainSelector(), key.Type().String(), key.Version().String(), key.Qualifier())
 	defer func(rows *sql.Rows) {
 		if rows != nil {
 			_ = rows.Close()
@@ -107,8 +107,8 @@ func (s *memoryAddressRefStore) Get(_ context.Context, key datastore.AddressRefK
 }
 
 // Fetch returns a copy of all AddressRefs in the catalog.
-func (s *memoryAddressRefStore) Fetch(_ context.Context) ([]datastore.AddressRef, error) {
-	rows, err := s.db.Query(query_ALL_ADDRESS_REFERENCES)
+func (s *memoryAddressRefStore) Fetch(ctx context.Context) ([]datastore.AddressRef, error) {
+	rows, err := s.db.QueryContext(ctx, query_ALL_ADDRESS_REFERENCES)
 	defer func(rows *sql.Rows) {
 		if rows != nil {
 			_ = rows.Close()
@@ -171,8 +171,9 @@ func (s *memoryAddressRefStore) Update(ctx context.Context, r datastore.AddressR
 	return s.edit(ctx, query_UPDATE_ADDRESS_REFERENCE, r)
 }
 
-func (s *memoryAddressRefStore) edit(_ context.Context, qry string, r datastore.AddressRef) error {
-	result, err := s.db.Exec(
+func (s *memoryAddressRefStore) edit(ctx context.Context, qry string, r datastore.AddressRef) error {
+	result, err := s.db.ExecContext(
+		ctx,
 		qry,
 		r.ChainSelector,
 		r.Type.String(),

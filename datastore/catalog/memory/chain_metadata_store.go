@@ -50,7 +50,7 @@ func newCatalogChainMetadataStore(t *testing.T, config MemoryDataStoreConfig, db
 	}
 }
 
-func (s *memoryChainMetadataStore) Get(_ context.Context, key datastore.ChainMetadataKey, options ...datastore.GetOption) (datastore.ChainMetadata, error) {
+func (s *memoryChainMetadataStore) Get(ctx context.Context, key datastore.ChainMetadataKey, options ...datastore.GetOption) (datastore.ChainMetadata, error) {
 	ignoreTransactions := false
 	for _, option := range options {
 		switch option {
@@ -65,7 +65,7 @@ func (s *memoryChainMetadataStore) Get(_ context.Context, key datastore.ChainMet
 		db = s.db
 	}
 
-	rows, err := db.Query(query_CHAIN_METADATA_BY_ID, key.ChainSelector())
+	rows, err := db.QueryContext(ctx, query_CHAIN_METADATA_BY_ID, key.ChainSelector())
 	defer func(rows *sql.Rows) {
 		if rows != nil {
 			_ = rows.Close()
@@ -107,8 +107,8 @@ func (s *memoryChainMetadataStore) Get(_ context.Context, key datastore.ChainMet
 }
 
 // Fetch returns a copy of all ChainMetadata in the catalog.
-func (s *memoryChainMetadataStore) Fetch(_ context.Context) ([]datastore.ChainMetadata, error) {
-	rows, err := s.db.Query(query_ALL_CHAIN_METADATA)
+func (s *memoryChainMetadataStore) Fetch(ctx context.Context) ([]datastore.ChainMetadata, error) {
+	rows, err := s.db.QueryContext(ctx, query_ALL_CHAIN_METADATA)
 	defer func(rows *sql.Rows) {
 		if rows != nil {
 			_ = rows.Close()
@@ -249,7 +249,7 @@ func (s *memoryChainMetadataStore) Delete(_ context.Context, _ datastore.ChainMe
 	return errors.New("delete operation not supported for catalog chain metadata store")
 }
 
-func (s *memoryChainMetadataStore) edit(_ context.Context, qry string, r datastore.ChainMetadata) error {
+func (s *memoryChainMetadataStore) edit(ctx context.Context, qry string, r datastore.ChainMetadata) error {
 	// Serialize metadata to JSON
 	var metadataJSON string
 	if r.Metadata != nil {
@@ -260,7 +260,7 @@ func (s *memoryChainMetadataStore) edit(_ context.Context, qry string, r datasto
 		metadataJSON = string(metadataBytes)
 	}
 
-	result, err := s.db.Exec(qry, r.ChainSelector, metadataJSON)
+	result, err := s.db.ExecContext(ctx, qry, r.ChainSelector, metadataJSON)
 	if err != nil {
 		return err
 	}

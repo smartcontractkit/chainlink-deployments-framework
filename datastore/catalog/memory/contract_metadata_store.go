@@ -50,7 +50,7 @@ func newCatalogContractMetadataStore(t *testing.T, config MemoryDataStoreConfig,
 	}
 }
 
-func (s *memoryContractMetadataStore) Get(_ context.Context, key datastore.ContractMetadataKey, options ...datastore.GetOption) (datastore.ContractMetadata, error) {
+func (s *memoryContractMetadataStore) Get(ctx context.Context, key datastore.ContractMetadataKey, options ...datastore.GetOption) (datastore.ContractMetadata, error) {
 	ignoreTransactions := false
 	for _, option := range options {
 		switch option {
@@ -65,7 +65,7 @@ func (s *memoryContractMetadataStore) Get(_ context.Context, key datastore.Contr
 		db = s.db
 	}
 
-	rows, err := db.Query(query_CONTRACT_METADATA_BY_ID, key.ChainSelector(), key.Address())
+	rows, err := db.QueryContext(ctx, query_CONTRACT_METADATA_BY_ID, key.ChainSelector(), key.Address())
 	defer func(rows *sql.Rows) {
 		if rows != nil {
 			_ = rows.Close()
@@ -107,8 +107,8 @@ func (s *memoryContractMetadataStore) Get(_ context.Context, key datastore.Contr
 }
 
 // Fetch returns a copy of all ContractMetadata in the catalog.
-func (s *memoryContractMetadataStore) Fetch(_ context.Context) ([]datastore.ContractMetadata, error) {
-	rows, err := s.db.Query(query_ALL_CONTRACT_METADATA)
+func (s *memoryContractMetadataStore) Fetch(ctx context.Context) ([]datastore.ContractMetadata, error) {
+	rows, err := s.db.QueryContext(ctx, query_ALL_CONTRACT_METADATA)
 	defer func(rows *sql.Rows) {
 		if rows != nil {
 			_ = rows.Close()
@@ -251,7 +251,7 @@ func (s *memoryContractMetadataStore) Delete(_ context.Context, _ datastore.Cont
 	return errors.New("delete operation not supported for catalog contract metadata store")
 }
 
-func (s *memoryContractMetadataStore) edit(_ context.Context, qry string, r datastore.ContractMetadata) error {
+func (s *memoryContractMetadataStore) edit(ctx context.Context, qry string, r datastore.ContractMetadata) error {
 	// Serialize metadata to JSON
 	var metadataJSON string
 	if r.Metadata != nil {
@@ -262,7 +262,7 @@ func (s *memoryContractMetadataStore) edit(_ context.Context, qry string, r data
 		metadataJSON = string(metadataBytes)
 	}
 
-	result, err := s.db.Exec(qry, r.ChainSelector, r.Address, metadataJSON)
+	result, err := s.db.ExecContext(ctx, qry, r.ChainSelector, r.Address, metadataJSON)
 	if err != nil {
 		return err
 	}
