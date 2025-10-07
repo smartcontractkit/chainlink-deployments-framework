@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"testing"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 )
@@ -26,7 +25,6 @@ const (
 )
 
 type memoryEnvMetadataStore struct {
-	t      *testing.T
 	config MemoryDataStoreConfig
 	db     *dbController
 }
@@ -34,11 +32,8 @@ type memoryEnvMetadataStore struct {
 // Ensure memoryEnvMetadataStore implements the V2 interface
 var _ datastore.MutableUnaryStoreV2[datastore.EnvMetadata] = &memoryEnvMetadataStore{}
 
-func newCatalogEnvMetadataStore(t *testing.T, config MemoryDataStoreConfig, db *dbController) *memoryEnvMetadataStore {
-	t.Helper()
-
+func newCatalogEnvMetadataStore(config MemoryDataStoreConfig, db *dbController) *memoryEnvMetadataStore {
 	return &memoryEnvMetadataStore{
-		t:      t,
 		config: config,
 		db:     db,
 	}
