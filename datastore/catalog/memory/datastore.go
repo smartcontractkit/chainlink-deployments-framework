@@ -48,10 +48,10 @@ func NewMemoryDataStore(t *testing.T, config MemoryDataStoreConfig) *memoryDataS
 	require.NoError(t, err)
 	ctrl := newDbController(pg.DB)
 
-	require.NoError(t, ctrl.Fixture(sCHEMA_ADDRESS_REFERENCES))
-	require.NoError(t, ctrl.Fixture(sCHEMA_CONTRACT_METADATA))
-	require.NoError(t, ctrl.Fixture(sCHEMA_CHAIN_METADATA))
-	require.NoError(t, ctrl.Fixture(sCHEMA_ENVIRONMENT_METADATA))
+	require.NoError(t, ctrl.Fixture(t.Context(), sCHEMA_ADDRESS_REFERENCES))
+	require.NoError(t, ctrl.Fixture(t.Context(), sCHEMA_CONTRACT_METADATA))
+	require.NoError(t, ctrl.Fixture(t.Context(), sCHEMA_CHAIN_METADATA))
+	require.NoError(t, ctrl.Fixture(t.Context(), sCHEMA_ENVIRONMENT_METADATA))
 
 	return &memoryDataStore{
 		t:                     t,
@@ -71,7 +71,7 @@ func (m *memoryDataStore) Close() {
 }
 
 func (m memoryDataStore) WithTransaction(ctx context.Context, fn datastore.TransactionLogic) (err error) {
-	err = m.db.Begin()
+	err = m.db.Begin(ctx)
 	require.NoError(m.t, err)
 
 	var txerr error
