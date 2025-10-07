@@ -67,15 +67,25 @@ func LoadFork(
 		cfgnet.ChainFamilyFilter(chainsel.FamilyEVM),
 	)
 
-	envdir := domain.EnvDir(env)
-	ab, err := envdir.AddressBook()
+	addressBook, err := domain.AddressBookByEnv(env)
 	if err != nil {
 		return ForkedEnvironment{}, fmt.Errorf("failed to load address book for domain %s and environment %s: %w", domain.Key(), env, err)
 	}
+
+	// TODO: once all products are on the new datastore, we can remove this default
+	dataStore := fdatastore.NewMemoryDataStore().Seal()
+	envDataStore, err := domain.DataStoreByEnv(env)
+	if err == nil {
+		dataStore = envDataStore
+	} else {
+		lggr.Warnf("failed to load data store for domain %s and environment %s: %w", domain.Key(), env, err)
+	}
+
 	anvilOutput, err := newAnvilChains(
 		ctx,
 		lggr,
-		ab,
+		addressBook,
+		dataStore,
 		networks,
 		blockNumbers,
 		cfg.Env.Onchain,
@@ -90,6 +100,8 @@ func LoadFork(
 
 		return ForkedEnvironment{}, fmt.Errorf("failed to create anvil chains: %w", err)
 	}
+
+	envdir := domain.EnvDir(env)
 	nodes, err := envdir.LoadNodes()
 	if err != nil {
 		return ForkedEnvironment{}, fmt.Errorf("failed to load nodes: %w", err)
@@ -121,14 +133,6 @@ func LoadFork(
 		lggr.Info("Override: skipping JD initialization")
 	}
 
-	// TODO: once all products are on the new datastore, we can remove this default
-	ds := fdatastore.NewMemoryDataStore().Seal()
-	if s, err := envdir.DataStore(); err == nil {
-		ds = s
-	} else {
-		lggr.Warnf("failed to load datastore: %v", err)
-	}
-
 	blockChains := map[uint64]fchain.BlockChain{}
 	for selector, ch := range anvilOutput.Chains {
 		blockChains[selector] = ch
@@ -138,8 +142,8 @@ func LoadFork(
 	environment := fdeployment.NewEnvironment(
 		"fork",
 		lggr,
-		ab,
-		ds,
+		addressBook,
+		dataStore,
 		nodes.Keys(),
 		oc,
 		func() context.Context { return ctx },
