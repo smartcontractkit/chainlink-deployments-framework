@@ -3,10 +3,9 @@ package memory
 import (
 	"context"
 	"errors"
-	"testing"
+	"fmt"
 
 	"github.com/rubenv/pgtest"
-	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 
@@ -16,7 +15,6 @@ import (
 var _ datastore.CatalogStore = &memoryDataStore{}
 
 type memoryDataStore struct {
-	t                     *testing.T
 	config                MemoryDataStoreConfig
 	db                    *dbController
 	pg                    *pgtest.PG
@@ -31,48 +29,67 @@ type MemoryDataStoreConfig struct {
 	Environment string
 }
 
-// NewMemoryDataStore creates an in-memory version of the catalog datastore, which can be used
-// in tests of changesets which require use of the catalog. This implementation does not store
-// data, and any fixture must be provided to it at the start of the test. A new call to this
-// function will create an entirely separate and new in-memory store, so changes will not be
+// NewMemoryDataStore creates an in-memory version of the catalog datastore.
+// This implementation does not store data persistently, and any fixture must be provided to it at the start.
+// A new call to this function will create an entirely separate and new in-memory store, so changes will not be
 // persisted.
 //
 // # You should call `store.Close()` between usages, unless you need to refer to shared test state
 //
 // This version is not threadsafe and could result in races when using transactions from multiple
 // threads.
-func NewMemoryDataStore(t *testing.T, config MemoryDataStoreConfig) *memoryDataStore {
-	t.Helper()
+func NewMemoryDataStore(config MemoryDataStoreConfig) (*memoryDataStore, error) {
 	pgcfg := pgtest.New()
 	pg, err := pgcfg.Start()
-	require.NoError(t, err)
-	ctrl := newDbController(pg.DB)
+	if err != nil {
+		return nil, fmt.Errorf("failed to start postgres: %w", err)
+	}
 
-	require.NoError(t, ctrl.Fixture(t.Context(), sCHEMA_ADDRESS_REFERENCES))
-	require.NoError(t, ctrl.Fixture(t.Context(), sCHEMA_CONTRACT_METADATA))
-	require.NoError(t, ctrl.Fixture(t.Context(), sCHEMA_CHAIN_METADATA))
-	require.NoError(t, ctrl.Fixture(t.Context(), sCHEMA_ENVIRONMENT_METADATA))
+	ctrl := newDbController(pg.DB)
+	ctx := context.Background()
+	if err = ctrl.Fixture(ctx, sCHEMA_ADDRESS_REFERENCES); err != nil {
+		_ = pg.Stop()
+		return nil, fmt.Errorf("failed to create address references schema: %w", err)
+	}
+	if err = ctrl.Fixture(ctx, sCHEMA_CONTRACT_METADATA); err != nil {
+		_ = pg.Stop()
+		return nil, fmt.Errorf("failed to create contract metadata schema: %w", err)
+	}
+	if err = ctrl.Fixture(ctx, sCHEMA_CHAIN_METADATA); err != nil {
+		_ = pg.Stop()
+		return nil, fmt.Errorf("failed to create chain metadata schema: %w", err)
+	}
+	if err = ctrl.Fixture(ctx, sCHEMA_ENVIRONMENT_METADATA); err != nil {
+		_ = pg.Stop()
+		return nil, fmt.Errorf("failed to create environment metadata schema: %w", err)
+	}
+
+	addressRefStore := newCatalogAddressRefStore(config, ctrl)
+	chainMetadataStore := newCatalogChainMetadataStore(config, ctrl)
+	contractMetadataStore := newCatalogContractMetadataStore(config, ctrl)
+	envMetadataStore := newCatalogEnvMetadataStore(config, ctrl)
 
 	return &memoryDataStore{
-		t:                     t,
 		config:                config,
 		db:                    ctrl,
 		pg:                    pg,
-		addressReferenceStore: newCatalogAddressRefStore(t, config, ctrl),
-		chainMetadataStore:    newCatalogChainMetadataStore(t, config, ctrl),
-		contractMetadataStore: newCatalogContractMetadataStore(t, config, ctrl),
-		envMetadataStore:      newCatalogEnvMetadataStore(t, config, ctrl),
-	}
+		addressReferenceStore: addressRefStore,
+		chainMetadataStore:    chainMetadataStore,
+		contractMetadataStore: contractMetadataStore,
+		envMetadataStore:      envMetadataStore,
+	}, nil
 }
 
 // Close shuts down the in-process postgress instance.
-func (m *memoryDataStore) Close() {
-	require.NoError(m.t, m.pg.Stop())
+func (m *memoryDataStore) Close() error {
+	return m.pg.Stop()
 }
 
 func (m memoryDataStore) WithTransaction(ctx context.Context, fn datastore.TransactionLogic) (err error) {
 	err = m.db.Begin(ctx)
-	require.NoError(m.t, err)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
 
 	var txerr error
 	defer func() {

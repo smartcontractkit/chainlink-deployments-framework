@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"testing"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 )
@@ -32,7 +31,6 @@ const (
 )
 
 type memoryChainMetadataStore struct {
-	t      *testing.T
 	config MemoryDataStoreConfig
 	db     *dbController
 }
@@ -40,11 +38,8 @@ type memoryChainMetadataStore struct {
 // Ensure memoryChainMetadataStore implements the V2 interface
 var _ datastore.MutableStoreV2[datastore.ChainMetadataKey, datastore.ChainMetadata] = &memoryChainMetadataStore{}
 
-func newCatalogChainMetadataStore(t *testing.T, config MemoryDataStoreConfig, db *dbController) *memoryChainMetadataStore {
-	t.Helper()
-
+func newCatalogChainMetadataStore(config MemoryDataStoreConfig, db *dbController) *memoryChainMetadataStore {
 	return &memoryChainMetadataStore{
-		t:      t,
 		config: config,
 		db:     db,
 	}

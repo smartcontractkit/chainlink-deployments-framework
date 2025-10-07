@@ -20,10 +20,11 @@ func setupContractMetadataTestStore(t *testing.T) (*memoryDataStore, func()) {
 		Domain:      "test_domain",
 		Environment: "catalog_testing",
 	}
-	store := NewMemoryDataStore(t, config)
+	store, err := NewMemoryDataStore(config)
+	require.NoError(t, err)
 
 	return store, func() {
-		store.Close()
+		require.NoError(t, store.Close())
 	}
 }
 

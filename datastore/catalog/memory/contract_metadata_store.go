@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"testing"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 )
@@ -32,7 +31,6 @@ const (
 )
 
 type memoryContractMetadataStore struct {
-	t      *testing.T
 	config MemoryDataStoreConfig
 	db     *dbController
 }
@@ -40,11 +38,8 @@ type memoryContractMetadataStore struct {
 // Ensure memoryContractMetadataStore implements the V2 interface
 var _ datastore.MutableStoreV2[datastore.ContractMetadataKey, datastore.ContractMetadata] = &memoryContractMetadataStore{}
 
-func newCatalogContractMetadataStore(t *testing.T, config MemoryDataStoreConfig, db *dbController) *memoryContractMetadataStore {
-	t.Helper()
-
+func newCatalogContractMetadataStore(config MemoryDataStoreConfig, db *dbController) *memoryContractMetadataStore {
 	return &memoryContractMetadataStore{
-		t:      t,
 		config: config,
 		db:     db,
 	}

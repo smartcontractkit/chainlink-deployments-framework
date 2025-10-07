@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"testing"
 
 	"github.com/lib/pq"
 
@@ -39,7 +38,6 @@ const (
 )
 
 type memoryAddressRefStore struct {
-	t      *testing.T
 	config MemoryDataStoreConfig
 	db     *dbController
 }
@@ -47,11 +45,8 @@ type memoryAddressRefStore struct {
 // Ensure memoryAddressRefStore implements the V2 interface
 var _ datastore.MutableRefStoreV2[datastore.AddressRefKey, datastore.AddressRef] = &memoryAddressRefStore{}
 
-func newCatalogAddressRefStore(t *testing.T, config MemoryDataStoreConfig, db *dbController) *memoryAddressRefStore {
-	t.Helper()
-
+func newCatalogAddressRefStore(config MemoryDataStoreConfig, db *dbController) *memoryAddressRefStore {
 	return &memoryAddressRefStore{
-		t:      t,
 		config: config,
 		db:     db,
 	}
