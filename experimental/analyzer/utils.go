@@ -6,8 +6,9 @@ import (
 
 	"github.com/aptos-labs/aptos-go-sdk"
 	"github.com/block-vision/sui-go-sdk/models"
-	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/proposalutils"
 	mcmssdk "github.com/smartcontractkit/mcms/sdk"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/proposalutils"
 )
 
 func toNamedArguments(decodedOp mcmssdk.DecodedOperation) ([]proposalutils.NamedArgument, error) {

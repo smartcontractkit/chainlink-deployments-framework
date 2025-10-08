@@ -6,12 +6,15 @@ import (
 	"testing"
 
 	chainsel "github.com/smartcontractkit/chain-selectors"
-	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/mcms/types"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 )
 
 func TestAnalyzeSuiTransactions(t *testing.T) {
-	var testAddress = "0xe86f0e5a8b9cb6ab31b656baa83a0d2eb761b32eb31b9a9c74abb7d0cffd26fa"
+	t.Parallel()
+
+	var testAddress = "0x4e825a4758064df713762e431c3a16b8105857195214469db0d6985b7d70266d"
 	var addressTitle = "address of MCMSUser 1.0.0 from sui-testnet"
 
 	defaultProposalCtx := &DefaultProposalContext{
@@ -61,12 +64,12 @@ func TestAnalyzeSuiTransactions(t *testing.T) {
 				if !tt.wantErr {
 					t.Errorf("AnalyzeSuiTransactions() failed: %v", gotErr)
 				}
+
 				return
 			}
 			if tt.wantErr {
 				t.Fatal("AnalyzeSuiTransactions() succeeded unexpectedly")
 			}
-			// TODO: update the condition below to compare got with tt.want.
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("AnalyzeSuiTransactions() = %v, want %v", got, tt.want)
 			}
