@@ -31,17 +31,15 @@ const (
 )
 
 type memoryChainMetadataStore struct {
-	config MemoryDataStoreConfig
-	db     *dbController
+	db *dbController
 }
 
 // Ensure memoryChainMetadataStore implements the V2 interface
 var _ datastore.MutableStoreV2[datastore.ChainMetadataKey, datastore.ChainMetadata] = &memoryChainMetadataStore{}
 
-func newCatalogChainMetadataStore(config MemoryDataStoreConfig, db *dbController) *memoryChainMetadataStore {
+func newCatalogChainMetadataStore(db *dbController) *memoryChainMetadataStore {
 	return &memoryChainMetadataStore{
-		config: config,
-		db:     db,
+		db: db,
 	}
 }
 

@@ -15,18 +15,12 @@ import (
 var _ datastore.CatalogStore = &memoryDataStore{}
 
 type memoryDataStore struct {
-	config                MemoryDataStoreConfig
 	db                    *dbController
 	pg                    *pgtest.PG
 	addressReferenceStore *memoryAddressRefStore
 	chainMetadataStore    *memoryChainMetadataStore
 	contractMetadataStore *memoryContractMetadataStore
 	envMetadataStore      *memoryEnvMetadataStore
-}
-
-type MemoryDataStoreConfig struct {
-	Domain      string
-	Environment string
 }
 
 // NewMemoryDataStore creates an in-memory version of the catalog datastore.
@@ -38,7 +32,7 @@ type MemoryDataStoreConfig struct {
 //
 // This version is not threadsafe and could result in races when using transactions from multiple
 // threads.
-func NewMemoryDataStore(config MemoryDataStoreConfig) (*memoryDataStore, error) {
+func NewMemoryDataStore() (*memoryDataStore, error) {
 	pgcfg := pgtest.New()
 	pg, err := pgcfg.Start()
 	if err != nil {
@@ -64,13 +58,12 @@ func NewMemoryDataStore(config MemoryDataStoreConfig) (*memoryDataStore, error) 
 		return nil, fmt.Errorf("failed to create environment metadata schema: %w", err)
 	}
 
-	addressRefStore := newCatalogAddressRefStore(config, ctrl)
-	chainMetadataStore := newCatalogChainMetadataStore(config, ctrl)
-	contractMetadataStore := newCatalogContractMetadataStore(config, ctrl)
-	envMetadataStore := newCatalogEnvMetadataStore(config, ctrl)
+	addressRefStore := newCatalogAddressRefStore(ctrl)
+	chainMetadataStore := newCatalogChainMetadataStore(ctrl)
+	contractMetadataStore := newCatalogContractMetadataStore(ctrl)
+	envMetadataStore := newCatalogEnvMetadataStore(ctrl)
 
 	return &memoryDataStore{
-		config:                config,
 		db:                    ctrl,
 		pg:                    pg,
 		addressReferenceStore: addressRefStore,

@@ -38,17 +38,15 @@ const (
 )
 
 type memoryAddressRefStore struct {
-	config MemoryDataStoreConfig
-	db     *dbController
+	db *dbController
 }
 
 // Ensure memoryAddressRefStore implements the V2 interface
 var _ datastore.MutableRefStoreV2[datastore.AddressRefKey, datastore.AddressRef] = &memoryAddressRefStore{}
 
-func newCatalogAddressRefStore(config MemoryDataStoreConfig, db *dbController) *memoryAddressRefStore {
+func newCatalogAddressRefStore(db *dbController) *memoryAddressRefStore {
 	return &memoryAddressRefStore{
-		config: config,
-		db:     db,
+		db: db,
 	}
 }
 

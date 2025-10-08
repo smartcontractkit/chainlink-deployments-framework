@@ -25,17 +25,15 @@ const (
 )
 
 type memoryEnvMetadataStore struct {
-	config MemoryDataStoreConfig
-	db     *dbController
+	db *dbController
 }
 
 // Ensure memoryEnvMetadataStore implements the V2 interface
 var _ datastore.MutableUnaryStoreV2[datastore.EnvMetadata] = &memoryEnvMetadataStore{}
 
-func newCatalogEnvMetadataStore(config MemoryDataStoreConfig, db *dbController) *memoryEnvMetadataStore {
+func newCatalogEnvMetadataStore(db *dbController) *memoryEnvMetadataStore {
 	return &memoryEnvMetadataStore{
-		config: config,
-		db:     db,
+		db: db,
 	}
 }
 

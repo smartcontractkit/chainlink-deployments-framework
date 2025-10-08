@@ -31,17 +31,15 @@ const (
 )
 
 type memoryContractMetadataStore struct {
-	config MemoryDataStoreConfig
-	db     *dbController
+	db *dbController
 }
 
 // Ensure memoryContractMetadataStore implements the V2 interface
 var _ datastore.MutableStoreV2[datastore.ContractMetadataKey, datastore.ContractMetadata] = &memoryContractMetadataStore{}
 
-func newCatalogContractMetadataStore(config MemoryDataStoreConfig, db *dbController) *memoryContractMetadataStore {
+func newCatalogContractMetadataStore(db *dbController) *memoryContractMetadataStore {
 	return &memoryContractMetadataStore{
-		config: config,
-		db:     db,
+		db: db,
 	}
 }
 
