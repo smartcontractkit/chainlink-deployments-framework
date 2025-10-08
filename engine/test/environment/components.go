@@ -6,14 +6,18 @@ import (
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 
 	fchain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
+	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
+	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 )
 
 // components is a struct that contains the components of the environment.
 type components struct {
 	mu sync.Mutex
 
-	Chains []fchain.BlockChain
-	Logger logger.Logger
+	Chains      []fchain.BlockChain
+	AddressBook fdeployment.AddressBook
+	Datastore   fdatastore.DataStore
+	Logger      logger.Logger
 }
 
 // newComponents creates a new components instance.

@@ -5,6 +5,8 @@ import (
 
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 
+	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
+	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/onchain"
 )
 
@@ -148,6 +150,22 @@ func WithSuiContainerN(t *testing.T, n int) LoadOpt {
 func WithLogger(lggr logger.Logger) LoadOpt {
 	return func(cmps *components) error {
 		cmps.Logger = lggr
+		return nil
+	}
+}
+
+// WithDatastore sets a custom datastore for the environment.
+func WithDatastore(ds fdatastore.DataStore) LoadOpt {
+	return func(cmps *components) error {
+		cmps.Datastore = ds
+		return nil
+	}
+}
+
+// WithAddressBook sets a custom address book for the environment.
+func WithAddressBook(ab fdeployment.AddressBook) LoadOpt {
+	return func(cmps *components) error {
+		cmps.AddressBook = ab
 		return nil
 	}
 }
