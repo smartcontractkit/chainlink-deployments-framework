@@ -101,6 +101,7 @@ var (
 		"SOLANA_WALLET_KEY":                 "0x123",
 		"SOLANA_PROGRAM_PATH":               "/tmp",
 		"APTOS_DEPLOYER_KEY":                "0x123",
+		"SUI_DEPLOYER_KEY":                  "0x123",
 		"TRON_DEPLOYER_KEY":                 "0x123",
 		"JD_AUTH_COGNITO_APP_CLIENT_ID":     "123",
 		"JD_AUTH_COGNITO_APP_CLIENT_SECRET": "123",
@@ -113,7 +114,6 @@ var (
 		"OCR_X_PROPOSERS":                   "caring deer",
 		"CATALOG_SERVICE_GRPC":              "http://localhost:8080",
 		// These values do not have a legacy equivalent
-		"ONCHAIN_SUI_DEPLOYER_KEY":   "0x123",
 		"ONCHAIN_TON_DEPLOYER_KEY":   "0x123",
 		"ONCHAIN_TON_WALLET_VERSION": "V5R1",
 	}
