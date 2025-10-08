@@ -64,6 +64,48 @@ func NewErrDecoder(registry analyzer.EVMABIRegistry) (*ErrDecoder, error) {
 	return &ErrDecoder{bySelector: idx, registry: registry}, nil
 }
 
+// funcNameFromABI returns "Name(type1,type2,...)" if selector exists in abiJSON.
+func funcNameFromABI(abiJSON string, sel4 []byte) (string, bool) {
+	if abiJSON == "" || len(sel4) < 4 {
+		return "", false
+	}
+	a, err := abi.JSON(strings.NewReader(abiJSON))
+	if err != nil {
+		return "", false
+	}
+	for name, m := range a.Methods {
+		if len(m.ID) >= 4 && bytes.Equal(m.ID[:4], sel4[:4]) {
+			// build canonical signature "name(type1,type2,...)"
+			argTypes := make([]string, len(m.Inputs))
+			for i, in := range m.Inputs {
+				argTypes[i] = in.Type.String()
+			}
+			return fmt.Sprintf("%s(%s)", name, strings.Join(argTypes, ",")), true
+		}
+	}
+	return "", false
+}
+
+func first4(data []byte) []byte {
+	if len(data) < 4 {
+		return data
+	}
+	return data[:4]
+}
+
+// funcNameFromRegistry searches the whole registry and returns "Type@Version: name(sig)" if found.
+func funcNameFromRegistry(reg analyzer.EVMABIRegistry, sel4 []byte) (string, bool) {
+	if len(sel4) < 4 {
+		return "", false
+	}
+	for tv, jsonABI := range reg.GetAllABIs() {
+		if sig, ok := funcNameFromABI(jsonABI, sel4); ok {
+			return fmt.Sprintf("%s: %s", tv, sig), true
+		}
+	}
+	return "", false
+}
+
 // decodeRecursive tries preferred ABI first (with recursive unwrap),
 // then the global ABI registry (also with recursive unwrap).
 func (d *ErrDecoder) decodeRecursive(revertData []byte, preferredABIJSON string) (string, bool) {
@@ -141,6 +183,26 @@ func (d *ErrDecoder) decodeRecursive(revertData []byte, preferredABIJSON string)
 	}
 
 	return "", false
+}
+
+// prettyFromBytes tries Error(string), then custom errors (pref ABI -> registry)
+func prettyFromBytes(data []byte, preferredABIJSON string, dec *ErrDecoder) (string, bool) {
+	if len(data) == 0 {
+		return "", false
+	}
+	// 1) standard Error(string)
+	if reason, derr := abi.UnpackRevert(data); derr == nil {
+		return reason, true
+	}
+	// 2) custom errors (preferred ABI -> registry, recursive unwrap)
+	if pretty, ok := dec.decodeRecursive(data, preferredABIJSON); ok {
+		return pretty, true
+	}
+	// 3) fallback on selector
+	if len(data) >= 4 {
+		return "custom error 0x" + hex.EncodeToString(data[:4]), true
+	}
+	return "(no revert data)", true
 }
 
 // decodeWithABI decodes the revert data using a specific ABI JSON.
@@ -240,19 +302,78 @@ func diagnoseTimelockRevert(
 				continue
 			}
 
+			if data, ok := extractRevertData(callErr); ok {
+				lggr.Warnf("raw revert data len=%d hex=%s", len(data), hex.EncodeToString(data))
+			}
+
+			calldataHex := "0x" + hex.EncodeToString(tx.Data)
+			lggr.Infof("Calldata : %s", calldataHex)
+
+			sel := first4(tx.Data)
+			selHex := "0x" + hex.EncodeToString(sel)
+
+			// Try to resolve function name from registry (fallback if AddressBook is empty)
+			if fn, ok := funcNameFromRegistry(errDec.registry, sel); ok {
+				lggr.Infof("batch %d - tx #%d selector %s was not found on addresbook, but looks like ABI from %s", bi, ti, selHex, fn)
+			} else {
+				lggr.Infof("batch %d - tx #%d selector %s (unknown to registry)", bi, ti, selHex)
+			}
+
 			// Prefer the target contract ABI (if known in AddressBook/Registry)
 			prefABI := preferredABIForAddress(errDec, addressBook, selector, tx.To)
 
-			if pretty, ok := prettyRevertFromError(callErr, prefABI, errDec); ok {
-				msg := fmt.Sprintf("batch %d - tx #%d reverted: %s", bi, ti, pretty)
-				lggr.Error(msg)
-				errLogs = append(errLogs, msg)
-			} else {
-				// Could not extract EVM-style revert data, print raw error
-				msg := fmt.Sprintf("batch %d - tx #%d reverted (raw): %v", bi, ti, callErr)
-				lggr.Error(msg)
-				errLogs = append(errLogs, msg)
+			// If the target ABI is known but doesn’t contain the selector, call it out up front.
+			if prefABI != "" {
+				if _, ok := funcNameFromABI(prefABI, sel); !ok {
+					// Try to guess the name from the global registry (often enough to identify the intent)
+					fn, okFn := funcNameFromRegistry(errDec.registry, sel)
+					if okFn {
+						lggr.Warnf("batch %d - tx #%d: target %s does NOT implement selector %s (%s) — likely ABI/version mismatch",
+							bi, ti, to.Hex(), selHex, fn)
+					} else {
+						lggr.Warnf("batch %d - tx #%d: target %s does NOT implement selector %s — likely ABI/version mismatch",
+							bi, ti, to.Hex(), selHex)
+					}
+				}
 			}
+
+			pretty, got := prettyRevertFromError(callErr, prefABI, errDec)
+
+			// (A) We decoded a *useful* reason → log it, no trace.
+			if got && pretty != "" && pretty != "(no revert data)" {
+				m := fmt.Sprintf("batch %d - tx #%d reverted: %s", bi, ti, pretty)
+				lggr.Warnf(m)
+				errLogs = append(errLogs, m)
+				continue
+			}
+
+			// (B) We either got nothing or just "(no revert data)" → try trace now.
+			if traceBytes, traceTxt, terr := debugTraceCall(ctx, rpcClient, msg); terr == nil {
+				if len(traceBytes) > 0 {
+					if p2, ok2 := prettyFromBytes(traceBytes, prefABI, errDec); ok2 && p2 != "" && p2 != "(no revert data)" {
+						m := fmt.Sprintf("batch %d - tx #%d reverted (trace): %s", bi, ti, p2)
+						lggr.Error(m)
+						errLogs = append(errLogs, m)
+						continue
+					}
+					m := fmt.Sprintf("batch %d - tx #%d reverted (trace bytes, %d): 0x%s",
+						bi, ti, len(traceBytes), hex.EncodeToString(traceBytes))
+					lggr.Warnf(m)
+					errLogs = append(errLogs, m)
+					continue
+				}
+				if traceTxt != "" {
+					m := fmt.Sprintf("batch %d - tx #%d reverted (trace text): %s", bi, ti, traceTxt)
+					lggr.Warnf(m)
+					errLogs = append(errLogs, m)
+					continue
+				}
+			}
+
+			// (C) Still nothing helpful → raw error.
+			m := fmt.Sprintf("batch %d - tx #%d reverted (raw): %v", bi, ti, callErr)
+			lggr.Error(m)
+			errLogs = append(errLogs, m)
 		}
 	}
 
@@ -282,43 +403,71 @@ func parseEVMValue(additional json.RawMessage) (*big.Int, error) {
 	return fields.Value, nil
 }
 
-// extractRevertData attempts to extract revert data from an error.
 func extractRevertData(err error) ([]byte, bool) {
 	if err == nil {
 		return nil, false
 	}
 
-	// go-ethereum exposes error data via an ErrorData() method on some errors (e.g. rpc errors)
 	type dataErr interface{ ErrorData() interface{} }
+
+	decodeHex := func(s string) ([]byte, bool) {
+		if strings.HasPrefix(s, "0x") {
+			if b, e := hexutil.Decode(s); e == nil {
+				return b, true
+			}
+		}
+		return nil, false
+	}
+
+	var scan func(v interface{}) ([]byte, bool)
+	scan = func(v interface{}) ([]byte, bool) {
+		switch t := v.(type) {
+		case string:
+			return decodeHex(t)
+		case []byte:
+			return t, true
+		case hexutil.Bytes:
+			return t, true
+		case map[string]interface{}:
+			if s, ok := t["data"].(string); ok {
+				if b, ok := decodeHex(s); ok {
+					return b, true
+				}
+			}
+			if orig, ok := t["originalError"].(map[string]interface{}); ok {
+				if s, ok := orig["data"].(string); ok {
+					if b, ok := decodeHex(s); ok {
+						return b, true
+					}
+				}
+			}
+			if s, ok := t["return"].(string); ok {
+				if b, ok := decodeHex(s); ok {
+					return b, true
+				}
+			}
+			if s, ok := t["returnValue"].(string); ok {
+				if b, ok := decodeHex(s); ok {
+					return b, true
+				}
+			}
+			for _, vv := range t {
+				if b, ok := scan(vv); ok {
+					return b, true
+				}
+			}
+		}
+		return nil, false
+	}
 
 	for e := err; e != nil; e = errors.Unwrap(e) {
 		var de dataErr
 		if errors.As(e, &de) {
-			switch v := de.ErrorData().(type) {
-			case string:
-				if strings.HasPrefix(v, "0x") {
-					bytes, err := hexutil.Decode(v)
-					if err == nil {
-						return bytes, true
-					}
-				}
-			case []byte:
-				return v, true
-			case hexutil.Bytes:
-				return v, true
-			case map[string]interface{}:
-				if data, ok := v["data"].(string); ok {
-					if strings.HasPrefix(data, "0x") {
-						bytes, err := hexutil.Decode(data)
-						if err == nil {
-							return bytes, true
-						}
-					}
-				}
+			if b, ok := scan(de.ErrorData()); ok {
+				return b, true
 			}
 		}
 	}
-
 	return nil, false
 }
 
@@ -339,30 +488,89 @@ func preferredABIForAddress(errDec *ErrDecoder, ab cldf.AddressBook, selector ui
 	return ""
 }
 
-// prettyRevertFromError extracts revert data from an error and pretty-prints it.
-// It tries Error(string), then custom errors (with recursion), else selector fallback.
+// debugTraceCall recovers revert bytes or textual reason via debug_traceCall.
+func debugTraceCall(ctx context.Context, rpcClient *rpc.Client, msg ethereum.CallMsg) (revertBytes []byte, reason string, _ error) {
+	type callArg struct {
+		From  string `json:"from,omitempty"`
+		To    string `json:"to,omitempty"`
+		Gas   string `json:"gas,omitempty"`
+		Value string `json:"value,omitempty"`
+		Data  string `json:"data,omitempty"`
+	}
+	arg := callArg{
+		From: msg.From.Hex(),
+		Data: "0x" + hex.EncodeToString(msg.Data),
+	}
+	if msg.To != nil {
+		arg.To = msg.To.Hex()
+	}
+	if msg.Gas > 0 {
+		arg.Gas = hexutil.EncodeUint64(msg.Gas)
+	}
+	if msg.Value != nil {
+		arg.Value = hexutil.EncodeBig(msg.Value)
+	}
+
+	cfg := map[string]any{"disableStorage": true, "disableMemory": true, "disableStack": false}
+
+	var res map[string]any
+	if err := rpcClient.CallContext(ctx, &res, "debug_traceCall", arg, "latest", cfg); err != nil {
+		return nil, "", err
+	}
+	if s, ok := res["returnValue"].(string); ok && strings.HasPrefix(s, "0x") {
+		if b, err := hexutil.Decode(s); err == nil {
+			return b, "", nil
+		}
+	}
+	if s, ok := res["return"].(string); ok && strings.HasPrefix(s, "0x") {
+		if b, err := hexutil.Decode(s); err == nil {
+			return b, "", nil
+		}
+	}
+	if s, ok := res["error"].(string); ok && s != "" {
+		return nil, s, nil
+	}
+
+	if m, _ := json.Marshal(res); len(m) > 0 {
+		return nil, string(m), nil
+	}
+	return nil, "", nil
+}
+
+// prettyRevertFromError tries to extract and decode revert data from an error.
 func prettyRevertFromError(err error, preferredABIJSON string, dec *ErrDecoder) (string, bool) {
-	data, ok := extractRevertData(err)
-	if !ok {
+	if err == nil {
 		return "", false
 	}
 
-	// 1) standard Error(string)
-	if reason, derr := abi.UnpackRevert(data); derr == nil {
-		return reason, true
+	if data, ok := extractRevertData(err); ok {
+		// 1) standard Error(string)
+		if reason, derr := abi.UnpackRevert(data); derr == nil {
+			return reason, true
+		}
+		// 2) custom errors (preferred ABI -> registry, recursive unwrap)
+		if pretty, ok := dec.decodeRecursive(data, preferredABIJSON); ok {
+			return pretty, true
+		}
+		// 3) fallback on selector
+		if len(data) >= 4 {
+			return "custom error 0x" + hex.EncodeToString(data[:4]), true
+		}
+		// data present but <4 bytes
+		return "(no revert data)", true
 	}
 
-	// 2) custom errors (preferred ABI -> registry, recursive unwrap)
-	if pretty, ok := dec.decodeRecursive(data, preferredABIJSON); ok {
-		return pretty, true
+	// 4) textual fallback in message
+	if s := err.Error(); strings.Contains(s, "execution reverted:") {
+		parts := strings.SplitN(s, "execution reverted:", 2)
+		if len(parts) == 2 {
+			txt := strings.TrimSpace(parts[1])
+			if txt != "" {
+				return txt, true
+			}
+		}
 	}
-
-	// 3) fallback
-	if len(data) >= 4 {
-		return "custom error 0x" + hex.EncodeToString(data[:4]), true
-	}
-
-	return "(no revert data)", true
+	return "", false
 }
 
 type callContractClient interface {
@@ -396,7 +604,6 @@ func tryDecodeTxRevertEVM(
 		To:    tx.To(),
 		Value: tx.Value(),
 		Data:  tx.Data(),
-		// Gas/GasPrice not needed for reverting calls; omit to avoid "intrinsic gas too low"
 	}
 	_, callErr := evmClient.CallContract(ctx, msg, blockNum)
 	if callErr == nil {
