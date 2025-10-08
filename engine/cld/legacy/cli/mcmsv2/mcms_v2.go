@@ -33,6 +33,8 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
+	suibindings "github.com/smartcontractkit/chainlink-sui/bindings"
+
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
@@ -40,7 +42,6 @@ import (
 	cldf_config "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config"
 	cldf_domain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	cldfenvironment "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
-	suibindings "github.com/smartcontractkit/chainlink-sui/bindings"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer/upf"
@@ -1337,6 +1338,7 @@ func getExecutorWithChainOverride(cfg *cfgv2, chainSelector types.ChainSelector)
 		}
 		chain := cfg.blockchains.SuiChains()[uint64(chainSelector)]
 		entrypointEncoder := suibindings.NewCCIPEntrypointArgEncoder()
+
 		return sui.NewExecutor(chain.Client, chain.Signer, encoder, entrypointEncoder, metadata.McmsPackageID, metadata.Role, cfg.timelockProposal.ChainMetadata[chainSelector].MCMAddress, metadata.AccountObj, metadata.RegistryObj, metadata.TimelockObj)
 	default:
 		return nil, fmt.Errorf("unsupported chain family %s", family)
