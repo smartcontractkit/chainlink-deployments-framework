@@ -446,11 +446,7 @@ func TestCatalogAddressRefStore_FetchAndFilter(t *testing.T) {
 // setupTestStore creates a real gRPC client connection to a local service
 func setupTestStore(t *testing.T) (*memoryAddressRefStore, func()) {
 	t.Helper()
-	config := MemoryDataStoreConfig{
-		Domain:      "test_domain",
-		Environment: "catalog_testing",
-	}
-	store, err := NewMemoryDataStore(config)
+	store, err := NewMemoryDataStore()
 	require.NoError(t, err)
 
 	return store.Addresses().(*memoryAddressRefStore), func() {

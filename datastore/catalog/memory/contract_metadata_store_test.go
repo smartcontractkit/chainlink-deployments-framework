@@ -16,11 +16,7 @@ import (
 // setupContractMetadataTestStore creates a new memory datastore for testing contract metadata
 func setupContractMetadataTestStore(t *testing.T) (*memoryDataStore, func()) {
 	t.Helper()
-	config := MemoryDataStoreConfig{
-		Domain:      "test_domain",
-		Environment: "catalog_testing",
-	}
-	store, err := NewMemoryDataStore(config)
+	store, err := NewMemoryDataStore()
 	require.NoError(t, err)
 
 	return store, func() {
