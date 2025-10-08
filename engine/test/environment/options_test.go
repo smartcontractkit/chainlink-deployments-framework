@@ -125,3 +125,30 @@ func Test_withChainLoaderN(t *testing.T) {
 		})
 	}
 }
+
+func TestWithCatalog(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		want bool
+	}{
+		{
+			name: "sets catalogEnabled to true",
+			want: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			components := newComponents()
+			option := WithCatalog()
+			err := option(components)
+
+			require.NoError(t, err)
+			require.Equal(t, tt.want, components.catalogEnabled)
+		})
+	}
+}
