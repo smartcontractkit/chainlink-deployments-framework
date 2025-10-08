@@ -40,6 +40,7 @@ import (
 	cldf_config "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config"
 	cldf_domain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	cldfenvironment "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
+	suibindings "github.com/smartcontractkit/chainlink-sui/bindings"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer/upf"
@@ -1335,8 +1336,8 @@ func getExecutorWithChainOverride(cfg *cfgv2, chainSelector types.ChainSelector)
 			return nil, fmt.Errorf("error getting sui metadata from proposal: %w", err)
 		}
 		chain := cfg.blockchains.SuiChains()[uint64(chainSelector)]
-
-		return sui.NewExecutor(chain.Client, chain.Signer, encoder, metadata.McmsPackageID, metadata.Role, cfg.timelockProposal.ChainMetadata[chainSelector].MCMAddress, metadata.AccountObj, metadata.RegistryObj, metadata.TimelockObj)
+		entrypointEncoder := suibindings.NewCCIPEntrypointArgEncoder()
+		return sui.NewExecutor(chain.Client, chain.Signer, encoder, entrypointEncoder, metadata.McmsPackageID, metadata.Role, cfg.timelockProposal.ChainMetadata[chainSelector].MCMAddress, metadata.AccountObj, metadata.RegistryObj, metadata.TimelockObj)
 	default:
 		return nil, fmt.Errorf("unsupported chain family %s", family)
 	}
@@ -1381,7 +1382,8 @@ func getTimelockExecutorWithChainOverride(cfg *cfgv2, chainSelector types.ChainS
 		if err != nil {
 			return nil, fmt.Errorf("error getting sui metadata from proposal: %w", err)
 		}
-		executor, err = sui.NewTimelockExecutor(chain.Client, chain.Signer, metadata.McmsPackageID, metadata.RegistryObj, metadata.AccountObj)
+		entrypointEncoder := suibindings.NewCCIPEntrypointArgEncoder()
+		executor, err = sui.NewTimelockExecutor(chain.Client, chain.Signer, entrypointEncoder, metadata.McmsPackageID, metadata.RegistryObj, metadata.AccountObj)
 		if err != nil {
 			return nil, fmt.Errorf("error creating sui timelock executor: %w", err)
 		}
