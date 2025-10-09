@@ -10,7 +10,7 @@ import (
 func TestMemoryDatastore(t *testing.T) {
 	t.Parallel()
 
-	store, err := NewMemoryDataStore()
+	store, err := NewMemoryCatalogDataStore()
 	require.NoError(t, err)
 	defer func() {
 		require.NoError(t, store.Close())
