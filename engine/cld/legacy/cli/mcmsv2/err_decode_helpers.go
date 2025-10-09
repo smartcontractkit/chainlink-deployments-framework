@@ -398,6 +398,9 @@ func parseEVMValue(additional json.RawMessage) (*big.Int, error) {
 	return fields.Value, nil
 }
 
+// maxScanDepth limits the recursive scanning depth for revert data to prevent infinite loops
+// and stack overflows. The value 16 was chosen as a safe upper bound based on expected error
+// nesting complexity in EVM transaction data. Adjust if deeper nesting is encountered in practice.
 const maxScanDepth = 16
 
 func scanRevertData(v interface{}) ([]byte, bool) {
