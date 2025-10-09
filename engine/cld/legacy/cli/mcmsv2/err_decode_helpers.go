@@ -574,7 +574,7 @@ func debugTraceCall(ctx context.Context, rpcClient *rpc.Client, msg ethereum.Cal
 	if err != nil {
 		return nil, "", err
 	}
-	if len(m) > 0 {
+	if !bytes.Equal(m, []byte("{}")) {
 		return nil, string(m), nil
 	}
 
