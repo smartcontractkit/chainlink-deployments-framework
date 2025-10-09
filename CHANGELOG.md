@@ -1,5 +1,13 @@
 # chainlink-deployments-framework
 
+## 0.55.1
+
+### Patch Changes
+
+- [#499](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/499) [`57c4e9b`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/57c4e9b919e37d36950e111e9d5a0fa4b7c59cd9) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(catalog/memory): remove unused MemoryDataStoreConfig
+
+- [#502](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/502) [`5abc4df`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/5abc4dfca2f8556bc9bf737c1961f8b1accbddf3) Thanks [@RodrigoAD](https://github.com/RodrigoAD)! - Add extra alias for Sui deployer key env var
+
 ## 0.55.0
 
 ### Minor Changes
