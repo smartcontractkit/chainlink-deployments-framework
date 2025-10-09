@@ -17,6 +17,8 @@ import (
 	fchainsui "github.com/smartcontractkit/chainlink-deployments-framework/chain/sui"
 	fchainton "github.com/smartcontractkit/chainlink-deployments-framework/chain/ton"
 	fchaintron "github.com/smartcontractkit/chainlink-deployments-framework/chain/tron"
+	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
+	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/onchain"
 )
 
@@ -106,6 +108,30 @@ func TestLoader_Load_LoggerOption(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, env)
 	require.Equal(t, lggr, env.Logger)
+}
+
+func TestLoader_Load_DatastoreOption(t *testing.T) {
+	t.Parallel()
+
+	ds := fdatastore.NewMemoryDataStore().Seal()
+
+	loader := NewLoader()
+	env, err := loader.Load(t.Context(), WithDatastore(ds))
+	require.NoError(t, err)
+	require.NotNil(t, env)
+	require.Equal(t, ds, env.DataStore)
+}
+
+func TestLoader_Load_AddressBookOption(t *testing.T) {
+	t.Parallel()
+
+	ab := fdeployment.NewMemoryAddressBook()
+
+	loader := NewLoader()
+	env, err := loader.Load(t.Context(), WithAddressBook(ab))
+	require.NoError(t, err)
+	require.NotNil(t, env)
+	require.Equal(t, ab, env.ExistingAddresses) //nolint:staticcheck // SA1019 (Deprecated): We still need to support AddressBook for now
 }
 
 func TestLoader_Load_ChainOptions(t *testing.T) { //nolint:paralleltest // We are replacing local variables here, so we can't run tests in parallel.
