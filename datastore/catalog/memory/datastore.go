@@ -12,9 +12,9 @@ import (
 	_ "github.com/proullon/ramsql/driver"
 )
 
-var _ datastore.CatalogStore = &memoryDataStore{}
+var _ datastore.CatalogStore = &memoryCatalogDataStore{}
 
-type memoryDataStore struct {
+type memoryCatalogDataStore struct {
 	db                    *dbController
 	pg                    *pgtest.PG
 	addressReferenceStore *memoryAddressRefStore
@@ -23,7 +23,7 @@ type memoryDataStore struct {
 	envMetadataStore      *memoryEnvMetadataStore
 }
 
-// NewMemoryDataStore creates an in-memory version of the catalog datastore.
+// NewMemoryCatalogDataStore creates an in-memory version of the catalog datastore.
 // This implementation does not store data persistently, and any fixture must be provided to it at the start.
 // A new call to this function will create an entirely separate and new in-memory store, so changes will not be
 // persisted.
@@ -32,7 +32,7 @@ type memoryDataStore struct {
 //
 // This version is not threadsafe and could result in races when using transactions from multiple
 // threads.
-func NewMemoryDataStore() (*memoryDataStore, error) {
+func NewMemoryCatalogDataStore() (*memoryCatalogDataStore, error) {
 	pgcfg := pgtest.New()
 	pg, err := pgcfg.Start()
 	if err != nil {
@@ -63,7 +63,7 @@ func NewMemoryDataStore() (*memoryDataStore, error) {
 	contractMetadataStore := newCatalogContractMetadataStore(ctrl)
 	envMetadataStore := newCatalogEnvMetadataStore(ctrl)
 
-	return &memoryDataStore{
+	return &memoryCatalogDataStore{
 		db:                    ctrl,
 		pg:                    pg,
 		addressReferenceStore: addressRefStore,
@@ -74,11 +74,11 @@ func NewMemoryDataStore() (*memoryDataStore, error) {
 }
 
 // Close shuts down the in-process postgress instance.
-func (m *memoryDataStore) Close() error {
+func (m *memoryCatalogDataStore) Close() error {
 	return m.pg.Stop()
 }
 
-func (m memoryDataStore) WithTransaction(ctx context.Context, fn datastore.TransactionLogic) (err error) {
+func (m memoryCatalogDataStore) WithTransaction(ctx context.Context, fn datastore.TransactionLogic) (err error) {
 	err = m.db.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
@@ -104,18 +104,18 @@ func (m memoryDataStore) WithTransaction(ctx context.Context, fn datastore.Trans
 	return txerr
 }
 
-func (m memoryDataStore) Addresses() datastore.MutableRefStoreV2[datastore.AddressRefKey, datastore.AddressRef] {
+func (m memoryCatalogDataStore) Addresses() datastore.MutableRefStoreV2[datastore.AddressRefKey, datastore.AddressRef] {
 	return m.addressReferenceStore
 }
 
-func (m memoryDataStore) ChainMetadata() datastore.MutableStoreV2[datastore.ChainMetadataKey, datastore.ChainMetadata] {
+func (m memoryCatalogDataStore) ChainMetadata() datastore.MutableStoreV2[datastore.ChainMetadataKey, datastore.ChainMetadata] {
 	return m.chainMetadataStore
 }
 
-func (m memoryDataStore) ContractMetadata() datastore.MutableStoreV2[datastore.ContractMetadataKey, datastore.ContractMetadata] {
+func (m memoryCatalogDataStore) ContractMetadata() datastore.MutableStoreV2[datastore.ContractMetadataKey, datastore.ContractMetadata] {
 	return m.contractMetadataStore
 }
 
-func (m memoryDataStore) EnvMetadata() datastore.MutableUnaryStoreV2[datastore.EnvMetadata] {
+func (m memoryCatalogDataStore) EnvMetadata() datastore.MutableUnaryStoreV2[datastore.EnvMetadata] {
 	return m.envMetadataStore
 }
