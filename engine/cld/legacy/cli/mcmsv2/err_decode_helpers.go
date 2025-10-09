@@ -314,7 +314,7 @@ func diagnoseTimelockRevert(
 
 			// Try to resolve function name from registry (fallback if AddressBook is empty)
 			if fn, ok := funcNameFromRegistry(errDec.registry, sel); ok {
-				lggr.Infof("batch %d - tx #%d selector %s was not found on addresbook, but looks like ABI from %s", bi, ti, selHex, fn)
+				lggr.Infof("batch %d - tx #%d selector %s was not found on addressbook, but looks like ABI from %s", bi, ti, selHex, fn)
 			} else {
 				lggr.Infof("batch %d - tx #%d selector %s (unknown to registry)", bi, ti, selHex)
 			}
