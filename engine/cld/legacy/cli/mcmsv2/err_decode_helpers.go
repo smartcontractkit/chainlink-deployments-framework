@@ -27,6 +27,30 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 )
 
+const noRevertData = "(no revert data)"
+
+type traceConfig struct {
+	DisableStorage bool `json:"disableStorage,omitempty"`
+	DisableMemory  bool `json:"disableMemory,omitempty"`
+	DisableStack   bool `json:"disableStack,omitempty"`
+}
+
+// toMap converts traceConfig to a map for RPC call.
+func (c traceConfig) toMap() map[string]any {
+	m := map[string]any{}
+	if c.DisableStorage {
+		m["disableStorage"] = true
+	}
+	if c.DisableMemory {
+		m["disableMemory"] = true
+	}
+	if c.DisableStack {
+		m["disableStack"] = true
+	}
+
+	return m
+}
+
 // ErrSig describes a resolved custom error.
 type ErrSig struct {
 	TypeVer string
@@ -80,9 +104,11 @@ func funcNameFromABI(abiJSON string, sel4 []byte) (string, bool) {
 			for i, in := range m.Inputs {
 				argTypes[i] = in.Type.String()
 			}
+
 			return fmt.Sprintf("%s(%s)", name, strings.Join(argTypes, ",")), true
 		}
 	}
+
 	return "", false
 }
 
@@ -90,6 +116,7 @@ func first4(data []byte) []byte {
 	if len(data) < 4 {
 		return data
 	}
+
 	return data[:4]
 }
 
@@ -103,6 +130,7 @@ func funcNameFromRegistry(reg analyzer.EVMABIRegistry, sel4 []byte) (string, boo
 			return fmt.Sprintf("%s: %s", tv, sig), true
 		}
 	}
+
 	return "", false
 }
 
@@ -202,7 +230,8 @@ func prettyFromBytes(data []byte, preferredABIJSON string, dec *ErrDecoder) (str
 	if len(data) >= 4 {
 		return "custom error 0x" + hex.EncodeToString(data[:4]), true
 	}
-	return "(no revert data)", true
+
+	return noRevertData, true
 }
 
 // decodeWithABI decodes the revert data using a specific ABI JSON.
@@ -335,32 +364,36 @@ func diagnoseTimelockRevert(
 			pretty, got := prettyRevertFromError(callErr, prefABI, errDec)
 
 			// (A) We decoded a *useful* reason → log it, no trace.
-			if got && pretty != "" && pretty != "(no revert data)" {
+			if got && pretty != "" && pretty != noRevertData {
 				m := fmt.Sprintf("batch %d - tx #%d reverted: %s", bi, ti, pretty)
-				lggr.Warnf(m)
+				lggr.Warn(m)
 				errLogs = append(errLogs, m)
+
 				continue
 			}
 
 			// (B) We either got nothing or just "(no revert data)" → try trace now.
 			if traceBytes, traceTxt, terr := debugTraceCall(ctx, rpcClient, msg); terr == nil {
 				if len(traceBytes) > 0 {
-					if p2, ok2 := prettyFromBytes(traceBytes, prefABI, errDec); ok2 && p2 != "" && p2 != "(no revert data)" {
+					if p2, ok2 := prettyFromBytes(traceBytes, prefABI, errDec); ok2 && p2 != "" && p2 != noRevertData {
 						m := fmt.Sprintf("batch %d - tx #%d reverted (trace): %s", bi, ti, p2)
 						lggr.Error(m)
 						errLogs = append(errLogs, m)
+
 						continue
 					}
 					m := fmt.Sprintf("batch %d - tx #%d reverted (trace bytes, %d): 0x%s",
 						bi, ti, len(traceBytes), hex.EncodeToString(traceBytes))
-					lggr.Warnf(m)
+					lggr.Warn(m)
 					errLogs = append(errLogs, m)
+
 					continue
 				}
 				if traceTxt != "" {
 					m := fmt.Sprintf("batch %d - tx #%d reverted (trace text): %s", bi, ti, traceTxt)
-					lggr.Warnf(m)
+					lggr.Warn(m)
 					errLogs = append(errLogs, m)
+
 					continue
 				}
 			}
@@ -418,6 +451,7 @@ func scanRevertDataDepth(v interface{}, depth int) ([]byte, bool) {
 				return b, true
 			}
 		}
+
 		return nil, false
 	}
 
@@ -453,6 +487,7 @@ func scanRevertDataDepth(v interface{}, depth int) ([]byte, bool) {
 			}
 		}
 	}
+
 	return nil, false
 }
 
@@ -488,6 +523,7 @@ func extractRevertData(err error) ([]byte, bool) {
 			}
 		}
 	}
+
 	return nil, false
 }
 
@@ -514,10 +550,10 @@ func debugTraceCall(ctx context.Context, rpcClient *rpc.Client, msg ethereum.Cal
 		arg.Value = hexutil.EncodeBig(msg.Value)
 	}
 
-	cfg := map[string]any{"disableStorage": true, "disableMemory": true, "disableStack": false}
+	cfg := traceConfig{DisableStorage: true, DisableMemory: true, DisableStack: false}
 
 	var res map[string]any
-	if err := rpcClient.CallContext(ctx, &res, "debug_traceCall", arg, "latest", cfg); err != nil {
+	if err := rpcClient.CallContext(ctx, &res, "debug_traceCall", arg, "latest", cfg.toMap()); err != nil {
 		return nil, "", err
 	}
 	if s, ok := res["returnValue"].(string); ok && strings.HasPrefix(s, "0x") {
@@ -534,9 +570,14 @@ func debugTraceCall(ctx context.Context, rpcClient *rpc.Client, msg ethereum.Cal
 		return nil, s, nil
 	}
 
-	if m, _ := json.Marshal(res); len(m) > 0 {
+	m, err := json.Marshal(res)
+	if err != nil {
+		return nil, "", err
+	}
+	if len(m) > 0 {
 		return nil, string(m), nil
 	}
+
 	return nil, "", nil
 }
 
@@ -560,7 +601,7 @@ func prettyRevertFromError(err error, preferredABIJSON string, dec *ErrDecoder) 
 			return "custom error 0x" + hex.EncodeToString(data[:4]), true
 		}
 		// data present but <4 bytes
-		return "(no revert data)", true
+		return noRevertData, true
 	}
 
 	// 4) textual fallback in message
@@ -573,6 +614,7 @@ func prettyRevertFromError(err error, preferredABIJSON string, dec *ErrDecoder) 
 			}
 		}
 	}
+
 	return "", false
 }
 
