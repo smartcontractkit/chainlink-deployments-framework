@@ -322,7 +322,7 @@ func Test_extractRevertData(t *testing.T) {
 		{"plain error without data", errors.New("no data"), nil, false},
 		{"string without 0x prefix", strDataError{"deadbeef"}, nil, false},
 		{"invalid hex string", strDataError{"0xnot-hex"}, nil, false},
-		{"map with wrong key", mapDataError{map[string]interface{}{"reason": hexStd}}, nil, false},
+		{"map with reason key", mapDataError{map[string]interface{}{"reason": hexStd}}, std, true},
 		{"map with wrong value type", mapDataError{map[string]interface{}{"data": 12345}}, nil, false},
 	}
 
