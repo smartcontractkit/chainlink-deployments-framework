@@ -12,8 +12,9 @@ import (
 type components struct {
 	mu sync.Mutex
 
-	Chains []fchain.BlockChain
-	Logger logger.Logger
+	Chains         []fchain.BlockChain
+	Logger         logger.Logger
+	catalogEnabled bool
 }
 
 // newComponents creates a new components instance.

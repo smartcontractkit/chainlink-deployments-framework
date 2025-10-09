@@ -196,6 +196,14 @@ func TestNewComponents(t *testing.T) {
 				assert.Equal(t, 0, initialLen)
 			},
 		},
+		{
+			name: "initializes catalogEnabled to false",
+			assert: func(t *testing.T, c *components) {
+				t.Helper()
+
+				assert.False(t, c.catalogEnabled, "catalogEnabled should be initialized to false")
+			},
+		},
 	}
 
 	for _, tt := range tests {

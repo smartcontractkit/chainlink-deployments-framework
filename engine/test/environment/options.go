@@ -152,6 +152,14 @@ func WithLogger(lggr logger.Logger) LoadOpt {
 	}
 }
 
+// WithCatalog indicates that the environment should be loaded with a catalog.
+func WithCatalog() LoadOpt {
+	return func(cmps *components) error {
+		cmps.catalogEnabled = true
+		return nil
+	}
+}
+
 // withChainLoader creates a LoadOpt that loads chains using the provided loader and selectors.
 func withChainLoader(t *testing.T, loader *onchain.ChainLoader, selectors []uint64) LoadOpt {
 	t.Helper()

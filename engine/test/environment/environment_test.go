@@ -108,6 +108,54 @@ func TestLoader_Load_LoggerOption(t *testing.T) {
 	require.Equal(t, lggr, env.Logger)
 }
 
+func TestLoader_Load_WithCatalogOption(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		opts        []LoadOpt
+		wantCatalog bool
+	}{
+		{
+			name:        "does not create catalog by default",
+			opts:        []LoadOpt{},
+			wantCatalog: false,
+		},
+		{
+			name:        "does not create catalog with other options",
+			opts:        []LoadOpt{WithLogger(logger.Test(t))},
+			wantCatalog: false,
+		},
+		{
+			name:        "creates catalog when WithCatalog is used",
+			opts:        []LoadOpt{WithCatalog()},
+			wantCatalog: true,
+		},
+		{
+			name:        "creates catalog when WithCatalog is used with other options",
+			opts:        []LoadOpt{WithLogger(logger.Test(t)), WithCatalog()},
+			wantCatalog: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			loader := NewLoader()
+			env, err := loader.Load(t.Context(), tt.opts...)
+			require.NoError(t, err)
+			require.NotNil(t, env)
+
+			if tt.wantCatalog {
+				require.NotNil(t, env.Catalog, "Expected catalog to be created when WithCatalog is used")
+			} else {
+				require.Nil(t, env.Catalog, "Expected catalog to be nil by default")
+			}
+		})
+	}
+}
+
 func TestLoader_Load_ChainOptions(t *testing.T) { //nolint:paralleltest // We are replacing local variables here, so we can't run tests in parallel.
 	// Stub out the container loaders to avoid having to spin up containers for each test
 	resetLoadersFunc := stubContainerLoaders()

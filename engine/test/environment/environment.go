@@ -9,6 +9,7 @@ import (
 
 	fchain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
+	fcatalog "github.com/smartcontractkit/chainlink-deployments-framework/datastore/catalog/memory"
 	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	focr "github.com/smartcontractkit/chainlink-deployments-framework/offchain/ocr"
 	foperations "github.com/smartcontractkit/chainlink-deployments-framework/operations"
@@ -46,13 +47,22 @@ func (l *Loader) Load(ctx context.Context, opts ...LoadOpt) (*deployment.Environ
 		return nil, err
 	}
 
+	var catalog fdatastore.CatalogStore
+	if cmps.catalogEnabled {
+		var err error
+		catalog, err = fcatalog.NewMemoryDataStore()
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return &deployment.Environment{
 		Name:              environmentName,
 		Logger:            cmps.Logger,
 		BlockChains:       fchain.NewBlockChainsFromSlice(cmps.Chains),
 		ExistingAddresses: deployment.NewMemoryAddressBook(),
 		DataStore:         fdatastore.NewMemoryDataStore().Seal(),
-		Catalog:           nil,        // Unimplemented for now
+		Catalog:           catalog,
 		NodeIDs:           []string{}, // Unimplemented for now
 		Offchain:          nil,        // Unimplemented for now
 		GetContext:        getCtx,
