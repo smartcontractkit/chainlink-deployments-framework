@@ -326,14 +326,9 @@ func diagnoseTimelockRevert(
 			if prefABI != "" {
 				if _, ok := funcNameFromABI(prefABI, sel); !ok {
 					// Try to guess the name from the global registry (often enough to identify the intent)
-					fn, okFn := funcNameFromRegistry(errDec.registry, sel)
-					if okFn {
-						lggr.Warnf("batch %d - tx #%d: target %s does NOT implement selector %s (%s) — likely ABI/version mismatch",
-							bi, ti, to.Hex(), selHex, fn)
-					} else {
-						lggr.Warnf("batch %d - tx #%d: target %s does NOT implement selector %s — likely ABI/version mismatch",
-							bi, ti, to.Hex(), selHex)
-					}
+					fn, _ := funcNameFromRegistry(errDec.registry, sel)
+					lggr.Warnf("batch %d - tx #%d: target %s does NOT implement selector %s (%s) — likely ABI/version mismatch",
+						bi, ti, to.Hex(), selHex, fn)
 				}
 			}
 
@@ -403,12 +398,16 @@ func parseEVMValue(additional json.RawMessage) (*big.Int, error) {
 	return fields.Value, nil
 }
 
-func extractRevertData(err error) ([]byte, bool) {
-	if err == nil {
+const maxScanDepth = 16
+
+func scanRevertData(v interface{}) ([]byte, bool) {
+	return scanRevertDataDepth(v, maxScanDepth)
+}
+
+func scanRevertDataDepth(v interface{}, depth int) ([]byte, bool) {
+	if depth <= 0 || v == nil {
 		return nil, false
 	}
-
-	type dataErr interface{ ErrorData() interface{} }
 
 	decodeHex := func(s string) ([]byte, bool) {
 		if strings.HasPrefix(s, "0x") {
@@ -419,51 +418,34 @@ func extractRevertData(err error) ([]byte, bool) {
 		return nil, false
 	}
 
-	var scan func(v interface{}) ([]byte, bool)
-	scan = func(v interface{}) ([]byte, bool) {
-		switch t := v.(type) {
-		case string:
-			return decodeHex(t)
-		case []byte:
-			return t, true
-		case hexutil.Bytes:
-			return t, true
-		case map[string]interface{}:
-			if s, ok := t["data"].(string); ok {
+	switch t := v.(type) {
+	case string:
+		return decodeHex(t)
+	case []byte:
+		return t, true
+	case hexutil.Bytes:
+		return t, true
+	case map[string]interface{}:
+		for _, key := range []string{"data", "return", "returnValue"} {
+			if s, ok := t[key].(string); ok {
 				if b, ok := decodeHex(s); ok {
-					return b, true
-				}
-			}
-			if orig, ok := t["originalError"].(map[string]interface{}); ok {
-				if s, ok := orig["data"].(string); ok {
-					if b, ok := decodeHex(s); ok {
-						return b, true
-					}
-				}
-			}
-			if s, ok := t["return"].(string); ok {
-				if b, ok := decodeHex(s); ok {
-					return b, true
-				}
-			}
-			if s, ok := t["returnValue"].(string); ok {
-				if b, ok := decodeHex(s); ok {
-					return b, true
-				}
-			}
-			for _, vv := range t {
-				if b, ok := scan(vv); ok {
 					return b, true
 				}
 			}
 		}
-		return nil, false
-	}
-
-	for e := err; e != nil; e = errors.Unwrap(e) {
-		var de dataErr
-		if errors.As(e, &de) {
-			if b, ok := scan(de.ErrorData()); ok {
+		if orig, ok := t["originalError"].(map[string]interface{}); ok {
+			if s, ok := orig["data"].(string); ok {
+				if b, ok := decodeHex(s); ok {
+					return b, true
+				}
+			}
+			// continue into originalError
+			if b, ok := scanRevertDataDepth(orig, depth-1); ok {
+				return b, true
+			}
+		}
+		for _, vv := range t {
+			if b, ok := scanRevertDataDepth(vv, depth-1); ok {
 				return b, true
 			}
 		}
@@ -486,6 +468,24 @@ func preferredABIForAddress(errDec *ErrDecoder, ab cldf.AddressBook, selector ui
 	}
 
 	return ""
+}
+
+// extractRevertData recursively unwraps the error chain to find revert data.
+func extractRevertData(err error) ([]byte, bool) {
+	if err == nil {
+		return nil, false
+	}
+	type dataErr interface{ ErrorData() interface{} }
+
+	for e := err; e != nil; e = errors.Unwrap(e) {
+		var de dataErr
+		if errors.As(e, &de) {
+			if b, ok := scanRevertData(de.ErrorData()); ok {
+				return b, true
+			}
+		}
+	}
+	return nil, false
 }
 
 // debugTraceCall recovers revert bytes or textual reason via debug_traceCall.
