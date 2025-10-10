@@ -31,7 +31,17 @@ func AnalyzeSuiTransaction(ctx ProposalContext, decoder *mcmssuisdk.Decoder, cha
 		return nil, fmt.Errorf("failed to unmarshal Sui additional fields: %w", err)
 	}
 
-	functionInfo := generated.FunctionInfoByModule[additionalFields.ModuleName]
+	functionInfo, ok := generated.FunctionInfoByModule[additionalFields.ModuleName]
+	if !ok {
+		// Don't return an error to not block the whole proposal decoding because of a single missing method
+		errStr := fmt.Errorf("no function info found for module %s on chain selector %d", additionalFields.ModuleName, chainSelector)
+
+		return &proposalutils.DecodedCall{
+			Address: mcmsTx.To,
+			Method:  errStr.Error(),
+		}, nil
+	}
+
 	decodedOp, err := decoder.Decode(mcmsTx, functionInfo)
 	if err != nil {
 		// Don't return an error to not block the whole proposal decoding because of a single missing method
