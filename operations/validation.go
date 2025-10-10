@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"reflect"
 
+	"google.golang.org/grpc/encoding/proto"
+
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 )
 
@@ -31,13 +33,21 @@ func isValueSerializable(lggr logger.Logger, v reflect.Value) bool {
 		return true
 	}
 
-	// Check if type implements json.Marshaler and json.Unmarshaler
+	// Check if type implements json.Marshaler and json.Unmarshaler or proto
 	t := v.Type()
-	marshalType := reflect.TypeOf((*json.Marshaler)(nil)).Elem()
-	unmarshalType := reflect.TypeOf((*json.Unmarshaler)(nil)).Elem()
+	jsonMarshalType := reflect.TypeOf((*json.Marshaler)(nil)).Elem()
+	jsonUnmarshalType := reflect.TypeOf((*json.Unmarshaler)(nil)).Elem()
 
 	// If it implements both interfaces, assume it's serializable
-	if t.Implements(marshalType) && t.Implements(unmarshalType) {
+	if t.Implements(jsonMarshalType) && t.Implements(jsonUnmarshalType) {
+		return true
+	}
+
+	protoMarshalType := reflect.TypeOf((*proto.Marshaler)(nil)).Elem()
+	jsonUnmarshalType := reflect.TypeOf((*json.Unmarshaler)(nil)).Elem()
+
+	// If it implements both interfaces, assume it's serializable
+	if t.Implements(jsonMarshalType) && t.Implements(jsonUnmarshalType) {
 		return true
 	}
 

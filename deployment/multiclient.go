@@ -356,7 +356,12 @@ func (mc *MultiClient) retryWithBackups(ctx context.Context, opName string, op f
 	for i, client := range append([]*ethclient.Client{mc.Client}, mc.Backups...) {
 		retryCount := 0
 		err2 := retry.Do(func() error {
-			timeoutCtx, cancel := ensureTimeout(ctx, mc.RetryConfig.Timeout)
+			to := mc.RetryConfig.Timeout
+			if opName == "CallContract" {
+				to = 3 * mc.RetryConfig.Timeout
+				fmt.Println("CallContract timeout set to 3x")
+			}
+			timeoutCtx, cancel := ensureTimeout(ctx, to)
 			defer cancel()
 
 			err = op(timeoutCtx, client)
@@ -366,7 +371,7 @@ func (mc *MultiClient) retryWithBackups(ctx context.Context, opName string, op f
 			}
 
 			return nil
-		}, retry.Attempts(mc.RetryConfig.Attempts), retry.Delay(mc.RetryConfig.Delay),
+		}, retry.Attempts(3), retry.Delay(mc.RetryConfig.Delay),
 			retry.OnRetry(func(n uint, err error) { retryCount++ }))
 		if err2 == nil {
 			if retryCount > 0 {
