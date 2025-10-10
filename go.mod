@@ -42,7 +42,7 @@ require (
 	github.com/smartcontractkit/chainlink-tron/relayer v0.0.11-0.20250815105909-75499abc4335
 	github.com/smartcontractkit/freeport v0.1.2
 	github.com/smartcontractkit/libocr v0.0.0-20250408131511-c90716988ee0
-	github.com/smartcontractkit/mcms v0.26.1-0.20251006170308-1f5269eb306f
+	github.com/smartcontractkit/mcms v0.26.1-0.20251009182503-22a4319a7bf4
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
@@ -239,7 +239,7 @@ require (
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/smartcontractkit/chainlink-common/pkg/chipingress v0.0.1 // indirect
 	github.com/smartcontractkit/chainlink-common/pkg/values v0.0.0-20250806152407-159881c7589c // indirect
-	github.com/smartcontractkit/chainlink-sui v0.0.0-20251008191547-93894c7ea641
+	github.com/smartcontractkit/chainlink-sui v0.0.0-20251010084921-051f91e632b1
 	github.com/smartcontractkit/grpc-proxy v0.0.0-20240830132753-a7e17fec5ab7 // indirect
 	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
