@@ -56,6 +56,10 @@ func (l *Loader) Load(ctx context.Context, opts ...LoadOpt) (*fdeployment.Enviro
 		ab = fdeployment.NewMemoryAddressBook()
 	}
 
+	// We do not set any default offchain client as it is not required for all tests.
+	// We may want to set a default memory based offchain client in the future.
+	oc := cmps.OffchainClient
+
 	return &fdeployment.Environment{
 		Name:              environmentName,
 		Logger:            cmps.Logger,
@@ -64,7 +68,7 @@ func (l *Loader) Load(ctx context.Context, opts ...LoadOpt) (*fdeployment.Enviro
 		DataStore:         ds,
 		Catalog:           nil,        // Unimplemented for now
 		NodeIDs:           []string{}, // Unimplemented for now
-		Offchain:          nil,        // Unimplemented for now
+		Offchain:          oc,
 		GetContext:        getCtx,
 		OCRSecrets:        focr.XXXGenerateTestOCRSecrets(),
 		OperationsBundle:  foperations.NewBundle(getCtx, cmps.Logger, foperations.NewMemoryReporter()),
