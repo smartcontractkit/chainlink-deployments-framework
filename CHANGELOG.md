@@ -1,5 +1,26 @@
 # chainlink-deployments-framework
 
+## 0.56.0
+
+### Minor Changes
+
+- [#503](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/503) [`08dcbfb`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/08dcbfb55c4f98a887194435cb9b353fa4e79f1c) Thanks [@jkongie](https://github.com/jkongie)! - Loading the test engine environment now accepts two new options
+
+  - `WithDatastore` - Allows setting a custom datastore for the environment.
+  - `WithAddressBook` - Allows setting a custom address book for the environment.
+
+- [#505](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/505) [`602bf03`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/602bf03fc196692616dd90a5861bf69326b50781) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - refactor(catalog): rename MemoryDatastore
+
+  NewMemoryDataStore -> NewMemoryCatalogDataStore
+
+- [#508](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/508) [`5761e5a`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/5761e5aa9264d8bed071a65be03c1b364d8d4932) Thanks [@jkongie](https://github.com/jkongie)! - Adds a new option to test engine environment loading for setting an offchain client.
+
+  - `WithOffchainClient` option to set an offchain client into the test environment
+
+### Patch Changes
+
+- [#504](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/504) [`4a11d81`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/4a11d81939b8f465dce99626002a683cfd082c65) Thanks [@ecPablo](https://github.com/ecPablo)! - improve error display for cases where revert has no data using tracing with anvil and searching for revert reasons on abi registry
+
 ## 0.55.1
 
 ### Patch Changes
