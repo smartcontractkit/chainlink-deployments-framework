@@ -154,9 +154,19 @@ func Test_IsSerializable(t *testing.T) {
 			want: true,
 		},
 		{
-			name: "should serialize proto message",
+			name: "should serialize proto message pointer",
 			// this is arbitrary proto message just to test the code path
 			v: &pb.AddressReferenceEditResponse{
+				Record: &pb.AddressReference{
+					Domain: "anything",
+				},
+			},
+			want: true,
+		},
+		{
+			name: "should serialize proto message value",
+			// this is arbitrary proto message just to test the code path
+			v: pb.AddressReferenceEditResponse{
 				Record: &pb.AddressReference{
 					Domain: "anything",
 				},

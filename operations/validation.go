@@ -30,7 +30,7 @@ func IsSerializable(lggr logger.Logger, v any) bool {
 
 func isProtoMessage(v reflect.Value) bool {
 	protoMsgType := reflect.TypeOf((*proto.Message)(nil)).Elem()
-	return v.Type().Implements(protoMsgType)
+	return v.Type().Implements(protoMsgType) || reflect.PointerTo(v.Type()).Implements(protoMsgType)
 }
 
 func isValueSerializable(lggr logger.Logger, v reflect.Value) bool {
