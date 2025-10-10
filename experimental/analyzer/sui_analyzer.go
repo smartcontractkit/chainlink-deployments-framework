@@ -4,10 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/proposalutils"
 	"github.com/smartcontractkit/chainlink-sui/bindings/generated"
 	mcmssuisdk "github.com/smartcontractkit/mcms/sdk/sui"
 	"github.com/smartcontractkit/mcms/types"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/proposalutils"
 )
 
 func AnalyzeSuiTransactions(ctx ProposalContext, chainSelector uint64, txs []types.Transaction) ([]*proposalutils.DecodedCall, error) {
