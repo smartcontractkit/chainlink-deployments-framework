@@ -5,9 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 	"sync"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
@@ -145,12 +146,8 @@ func (s *catalogChainMetadataStore) get(ignoreTransaction bool, key datastore.Ch
 	}
 
 	// Check for errors in the response
-	if resp.Status != nil && !resp.Status.Succeeded {
-		if strings.Contains(resp.Status.GetError(), "No records found") {
-			return datastore.ChainMetadata{}, datastore.ErrChainMetadataNotFound
-		}
-
-		return datastore.ChainMetadata{}, fmt.Errorf("request failed: %s", resp.Status.Error)
+	if err := checkResponseStatus(resp.Status); err != nil {
+		return datastore.ChainMetadata{}, fmt.Errorf("get chain metadata failed: %w", err)
 	}
 
 	findResp := resp.GetChainMetadataFindResponse()
@@ -204,8 +201,8 @@ func (s *catalogChainMetadataStore) Fetch(_ context.Context) ([]datastore.ChainM
 	}
 
 	// Check for errors in the response
-	if resp.Status != nil && !resp.Status.Succeeded {
-		return nil, fmt.Errorf("request failed: %s", resp.Status.Error)
+	if err := checkResponseStatus(resp.Status); err != nil {
+		return nil, fmt.Errorf("fetch chain metadata failed: %w", err)
 	}
 
 	findResp := resp.GetChainMetadataFindResponse()
@@ -363,17 +360,18 @@ func (s *catalogChainMetadataStore) editRecord(record datastore.ChainMetadata, s
 	}
 
 	// Check for errors in the edit response
-	if resp.Status != nil && !resp.Status.Succeeded {
-		errorMsg := resp.Status.GetError()
+	if err := checkResponseStatus(resp.Status); err != nil {
+		st, _ := status.FromError(err)
 
 		// Check for specific error conditions
-		if strings.Contains(errorMsg, "no record found to update for") && semantics == pb.EditSemantics_SEMANTICS_UPDATE {
-			return datastore.ErrChainMetadataNotFound
-		} else if strings.Contains(errorMsg, "incorrect row version") && (semantics == pb.EditSemantics_SEMANTICS_UPDATE || semantics == pb.EditSemantics_SEMANTICS_UPSERT) {
-			return datastore.ErrChainMetadataStale
+		switch st.Code() {
+		case codes.NotFound:
+			return fmt.Errorf("no record found to update: %w", err)
+		case codes.Aborted:
+			return fmt.Errorf("incorrect row version: %w", err)
+		default:
+			return fmt.Errorf("edit request failed: %w", err)
 		}
-
-		return fmt.Errorf("edit request failed: %s", resp.Status.Error)
 	}
 
 	editResp := resp.GetChainMetadataEditResponse()
