@@ -3,20 +3,17 @@ package memory
 import (
 	"context"
 	"errors"
-	"fmt"
-
-	"github.com/rubenv/pgtest"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
-
-	_ "github.com/proullon/ramsql/driver"
 )
+
+// transactionKey is a custom type for context keys to avoid collisions
+type transactionKey struct{}
 
 var _ datastore.CatalogStore = &memoryCatalogDataStore{}
 
 type memoryCatalogDataStore struct {
-	db                    *dbController
-	pg                    *pgtest.PG
+	storage               *memoryStorage
 	addressReferenceStore *memoryAddressRefStore
 	chainMetadataStore    *memoryChainMetadataStore
 	contractMetadataStore *memoryContractMetadataStore
@@ -24,48 +21,22 @@ type memoryCatalogDataStore struct {
 }
 
 // NewMemoryCatalogDataStore creates an in-memory version of the catalog datastore.
-// This implementation does not store data persistently, and any fixture must be provided to it at the start.
+// This implementation does not store data persistently.
 // A new call to this function will create an entirely separate and new in-memory store, so changes will not be
 // persisted.
-//
-// # You should call `store.Close()` between usages, unless you need to refer to shared test state
 //
 // This version is not threadsafe and could result in races when using transactions from multiple
 // threads.
 func NewMemoryCatalogDataStore() (*memoryCatalogDataStore, error) {
-	pgcfg := pgtest.New()
-	pg, err := pgcfg.Start()
-	if err != nil {
-		return nil, fmt.Errorf("failed to start postgres: %w", err)
-	}
+	storage := newMemoryStorage()
 
-	ctrl := newDbController(pg.DB)
-	ctx := context.Background()
-	if err = ctrl.Fixture(ctx, sCHEMA_ADDRESS_REFERENCES); err != nil {
-		_ = pg.Stop()
-		return nil, fmt.Errorf("failed to create address references schema: %w", err)
-	}
-	if err = ctrl.Fixture(ctx, sCHEMA_CONTRACT_METADATA); err != nil {
-		_ = pg.Stop()
-		return nil, fmt.Errorf("failed to create contract metadata schema: %w", err)
-	}
-	if err = ctrl.Fixture(ctx, sCHEMA_CHAIN_METADATA); err != nil {
-		_ = pg.Stop()
-		return nil, fmt.Errorf("failed to create chain metadata schema: %w", err)
-	}
-	if err = ctrl.Fixture(ctx, sCHEMA_ENVIRONMENT_METADATA); err != nil {
-		_ = pg.Stop()
-		return nil, fmt.Errorf("failed to create environment metadata schema: %w", err)
-	}
-
-	addressRefStore := newCatalogAddressRefStore(ctrl)
-	chainMetadataStore := newCatalogChainMetadataStore(ctrl)
-	contractMetadataStore := newCatalogContractMetadataStore(ctrl)
-	envMetadataStore := newCatalogEnvMetadataStore(ctrl)
+	addressRefStore := newCatalogAddressRefStore(storage)
+	chainMetadataStore := newCatalogChainMetadataStore(storage)
+	contractMetadataStore := newCatalogContractMetadataStore(storage)
+	envMetadataStore := newCatalogEnvMetadataStore(storage)
 
 	return &memoryCatalogDataStore{
-		db:                    ctrl,
-		pg:                    pg,
+		storage:               storage,
 		addressReferenceStore: addressRefStore,
 		chainMetadataStore:    chainMetadataStore,
 		contractMetadataStore: contractMetadataStore,
@@ -73,49 +44,49 @@ func NewMemoryCatalogDataStore() (*memoryCatalogDataStore, error) {
 	}, nil
 }
 
-// Close shuts down the in-process postgress instance.
-func (m *memoryCatalogDataStore) Close() error {
-	return m.pg.Stop()
-}
-
+// WithTransaction wraps the provided function in a transaction.
 func (m memoryCatalogDataStore) WithTransaction(ctx context.Context, fn datastore.TransactionLogic) (err error) {
-	err = m.db.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
+	tx := m.storage.beginTransaction()
+
+	// Create a new context with the transaction
+	txCtx := context.WithValue(ctx, transactionKey{}, tx)
 
 	var txerr error
 	defer func() {
 		if r := recover(); r != nil {
 			// rollback before re-panicking
-			_ = m.db.Rollback()
+			_ = m.storage.rollbackTransaction(tx)
 			panic(r)
 		} else if txerr != nil {
 			// non panic error from the transaction logic itself
-			err = errors.Join(err, m.db.Rollback())
+			err = errors.Join(err, m.storage.rollbackTransaction(tx))
 		} else {
 			// everything went fine
-			err = m.db.Commit()
+			err = m.storage.commitTransaction(tx)
 		}
 	}()
 
-	txerr = fn(ctx, m)
+	txerr = fn(txCtx, m)
 
 	return txerr
 }
 
+// Addresses returns the address reference store.
 func (m memoryCatalogDataStore) Addresses() datastore.MutableRefStoreV2[datastore.AddressRefKey, datastore.AddressRef] {
 	return m.addressReferenceStore
 }
 
+// ChainMetadata returns the chain metadata store.
 func (m memoryCatalogDataStore) ChainMetadata() datastore.MutableStoreV2[datastore.ChainMetadataKey, datastore.ChainMetadata] {
 	return m.chainMetadataStore
 }
 
+// ContractMetadata returns the contract metadata store.
 func (m memoryCatalogDataStore) ContractMetadata() datastore.MutableStoreV2[datastore.ContractMetadataKey, datastore.ContractMetadata] {
 	return m.contractMetadataStore
 }
 
+// EnvMetadata returns the environment metadata store.
 func (m memoryCatalogDataStore) EnvMetadata() datastore.MutableUnaryStoreV2[datastore.EnvMetadata] {
 	return m.envMetadataStore
 }
