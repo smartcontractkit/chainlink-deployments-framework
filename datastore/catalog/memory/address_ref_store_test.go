@@ -14,11 +14,11 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 )
 
-//nolint:paralleltest // Subtests share database instance, cannot run in parallel
 func TestCatalogAddressRefStore_Get(t *testing.T) {
-	store, closer := setupTestStore(t)
-
+	t.Parallel()
 	t.Run("not found", func(t *testing.T) {
+		t.Parallel()
+		store := setupTestStore(t)
 		version := semver.MustParse("99.99.99")
 		key := datastore.NewAddressRefKey(99999999, "NonExistentContract", version, "nonexistent")
 		_, err := store.Get(t.Context(), key)
@@ -27,6 +27,8 @@ func TestCatalogAddressRefStore_Get(t *testing.T) {
 	})
 
 	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+		store := setupTestStore(t)
 		addressRef := newRandomAddressRef()
 		err := store.Add(t.Context(), addressRef)
 		require.NoError(t, err)
@@ -40,11 +42,10 @@ func TestCatalogAddressRefStore_Get(t *testing.T) {
 		require.Equal(t, addressRef.Address, result.Address)
 		require.Equal(t, addressRef.Labels, result.Labels)
 	})
-	defer closer()
 }
 
-//nolint:paralleltest // Subtests share database instance, cannot run in parallel
 func TestCatalogAddressRefStore_Add(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		setup       func(store *memoryAddressRefStore) datastore.AddressRef
@@ -74,9 +75,8 @@ func TestCatalogAddressRefStore_Add(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create a fresh store for each test case to avoid concurrency issues
-			store, closer := setupTestStore(t)
-			defer closer()
+			t.Parallel()
+			store := setupTestStore(t)
 
 			addressRef := tt.setup(store)
 
@@ -108,8 +108,8 @@ func TestCatalogAddressRefStore_Add(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // Subtests share database instance, cannot run in parallel
 func TestCatalogAddressRefStore_Update(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		setup       func(store *memoryAddressRefStore) datastore.AddressRef
@@ -155,9 +155,8 @@ func TestCatalogAddressRefStore_Update(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create a fresh store for each test case to avoid concurrency issues
-			store, closer := setupTestStore(t)
-			defer closer()
+			t.Parallel()
+			store := setupTestStore(t)
 
 			addressRef := tt.setup(store)
 
@@ -180,8 +179,8 @@ func TestCatalogAddressRefStore_Update(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // Subtests share database instance, cannot run in parallel
 func TestCatalogAddressRefStore_Upsert(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		setup  func(store *memoryAddressRefStore) datastore.AddressRef
@@ -230,9 +229,8 @@ func TestCatalogAddressRefStore_Upsert(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create a fresh store for each test case to avoid concurrency issues
-			store, closer := setupTestStore(t)
-			defer closer()
+			t.Parallel()
+			store := setupTestStore(t)
 
 			addressRef := tt.setup(store)
 
@@ -246,10 +244,9 @@ func TestCatalogAddressRefStore_Upsert(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // Subtests share database instance, cannot run in parallel
 func TestCatalogAddressRefStore_Delete(t *testing.T) {
-	store, closer := setupTestStore(t)
-	defer closer()
+	t.Parallel()
+	store := setupTestStore(t)
 
 	version := semver.MustParse("1.0.0")
 	key := datastore.NewAddressRefKey(12345, "LinkToken", version, "test")
@@ -262,8 +259,8 @@ func TestCatalogAddressRefStore_Delete(t *testing.T) {
 	require.Contains(t, err.Error(), "delete operation not supported")
 }
 
-//nolint:paralleltest // Subtests share database instance, cannot run in parallel
 func TestCatalogAddressRefStore_FetchAndFilter(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name         string
 		operation    string
@@ -412,9 +409,8 @@ func TestCatalogAddressRefStore_FetchAndFilter(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create a fresh store for each test case to avoid concurrency issues
-			store, closer := setupTestStore(t)
-			defer closer()
+			t.Parallel()
+			store := setupTestStore(t)
 
 			addressRef1, addressRef2 := tt.setup(store)
 
@@ -444,14 +440,12 @@ func TestCatalogAddressRefStore_FetchAndFilter(t *testing.T) {
 }
 
 // setupTestStore creates a real gRPC client connection to a local service
-func setupTestStore(t *testing.T) (*memoryAddressRefStore, func()) {
+func setupTestStore(t *testing.T) *memoryAddressRefStore {
 	t.Helper()
 	store, err := NewMemoryCatalogDataStore()
 	require.NoError(t, err)
 
-	return store.Addresses().(*memoryAddressRefStore), func() {
-		require.NoError(t, store.Close())
-	}
+	return store.Addresses().(*memoryAddressRefStore)
 }
 
 // randomHex generates a random hex string of specified length

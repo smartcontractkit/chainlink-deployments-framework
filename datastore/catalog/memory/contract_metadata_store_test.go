@@ -14,22 +14,21 @@ import (
 )
 
 // setupContractMetadataTestStore creates a new memory datastore for testing contract metadata
-func setupContractMetadataTestStore(t *testing.T) (*memoryCatalogDataStore, func()) {
+func setupContractMetadataTestStore(t *testing.T) *memoryCatalogDataStore {
 	t.Helper()
 	store, err := NewMemoryCatalogDataStore()
 	require.NoError(t, err)
 
-	return store, func() {
-		require.NoError(t, store.Close())
-	}
+	return store
 }
 
-//nolint:paralleltest // Subtests share database instance, cannot run in parallel
 func TestCatalogContractMetadataStore_Get(t *testing.T) {
-	store, closer := setupContractMetadataTestStore(t)
-	defer closer()
+	t.Parallel()
 
 	t.Run("not found", func(t *testing.T) {
+		t.Parallel()
+		store := setupContractMetadataTestStore(t)
+
 		key := datastore.NewContractMetadataKey(99999999, "0x1234567890123456789012345678901234567890")
 		_, err := store.ContractMetadata().Get(t.Context(), key)
 		require.Error(t, err)
@@ -37,6 +36,9 @@ func TestCatalogContractMetadataStore_Get(t *testing.T) {
 	})
 
 	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+		store := setupContractMetadataTestStore(t)
+
 		contractMetadata := newRandomContractMetadata()
 		err := store.ContractMetadata().Add(t.Context(), contractMetadata)
 		require.NoError(t, err)
@@ -50,6 +52,9 @@ func TestCatalogContractMetadataStore_Get(t *testing.T) {
 	})
 
 	t.Run("success with nil metadata", func(t *testing.T) {
+		t.Parallel()
+		store := setupContractMetadataTestStore(t)
+
 		contractMetadata := datastore.ContractMetadata{
 			ChainSelector: newRandomChainSelector(),
 			Address:       newRandomAddress(),
@@ -67,8 +72,9 @@ func TestCatalogContractMetadataStore_Get(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest // Subtests share database instance, cannot run in parallel
 func TestCatalogContractMetadataStore_Add(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name        string
 		setup       func(store *memoryCatalogDataStore) datastore.ContractMetadata
@@ -116,9 +122,8 @@ func TestCatalogContractMetadataStore_Add(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create a fresh store for each test case to avoid concurrency issues
-			store, closer := setupContractMetadataTestStore(t)
-			defer closer()
+			t.Parallel()
+			store := setupContractMetadataTestStore(t)
 
 			contractMetadata := tt.setup(store)
 
@@ -146,12 +151,13 @@ func TestCatalogContractMetadataStore_Add(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // Subtests share database instance, cannot run in parallel
 func TestCatalogContractMetadataStore_Update(t *testing.T) {
-	store, closer := setupContractMetadataTestStore(t)
-	defer closer()
+	t.Parallel()
 
 	t.Run("not found", func(t *testing.T) {
+		t.Parallel()
+		store := setupContractMetadataTestStore(t)
+
 		key := datastore.NewContractMetadataKey(99999999, "0x1234567890123456789012345678901234567890")
 		err := store.ContractMetadata().Update(t.Context(), key, map[string]string{"test": "value"})
 		require.Error(t, err)
@@ -159,6 +165,9 @@ func TestCatalogContractMetadataStore_Update(t *testing.T) {
 	})
 
 	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+		store := setupContractMetadataTestStore(t)
+
 		// Add initial record
 		contractMetadata := newRandomContractMetadata()
 		err := store.ContractMetadata().Add(t.Context(), contractMetadata)
@@ -182,6 +191,9 @@ func TestCatalogContractMetadataStore_Update(t *testing.T) {
 	})
 
 	t.Run("success with custom updater", func(t *testing.T) {
+		t.Parallel()
+		store := setupContractMetadataTestStore(t)
+
 		// Add initial record with map metadata
 		initialMetadata := map[string]any{
 			"name":    "Test Contract",
@@ -238,12 +250,12 @@ func TestCatalogContractMetadataStore_Update(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest // Subtests share database instance, cannot run in parallel
 func TestCatalogContractMetadataStore_Upsert(t *testing.T) {
-	store, closer := setupContractMetadataTestStore(t)
-	defer closer()
+	t.Parallel()
 
 	t.Run("insert new record", func(t *testing.T) {
+		t.Parallel()
+		store := setupContractMetadataTestStore(t)
 		key := datastore.NewContractMetadataKey(newRandomChainSelector(), newRandomAddress())
 		metadata := map[string]any{
 			"name":     "New Contract",
@@ -262,6 +274,8 @@ func TestCatalogContractMetadataStore_Upsert(t *testing.T) {
 	})
 
 	t.Run("update existing record", func(t *testing.T) {
+		t.Parallel()
+		store := setupContractMetadataTestStore(t)
 		// Add initial record
 		contractMetadata := newRandomContractMetadata()
 		err := store.ContractMetadata().Add(t.Context(), contractMetadata)
@@ -285,10 +299,9 @@ func TestCatalogContractMetadataStore_Upsert(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest // Subtests share database instance, cannot run in parallel
 func TestCatalogContractMetadataStore_Delete(t *testing.T) {
-	store, closer := setupContractMetadataTestStore(t)
-	defer closer()
+	t.Parallel()
+	store := setupContractMetadataTestStore(t)
 
 	key := datastore.NewContractMetadataKey(12345, "0x1234567890123456789012345678901234567890")
 
@@ -300,18 +313,20 @@ func TestCatalogContractMetadataStore_Delete(t *testing.T) {
 	require.Contains(t, err.Error(), "delete operation not supported")
 }
 
-//nolint:paralleltest // Subtests share database instance, cannot run in parallel
 func TestCatalogContractMetadataStore_Fetch(t *testing.T) {
-	store, closer := setupContractMetadataTestStore(t)
-	defer closer()
+	t.Parallel()
 
 	t.Run("empty store", func(t *testing.T) {
+		t.Parallel()
+		store := setupContractMetadataTestStore(t)
 		results, err := store.ContractMetadata().Fetch(t.Context())
 		require.NoError(t, err)
 		require.Empty(t, results)
 	})
 
 	t.Run("multiple records", func(t *testing.T) {
+		t.Parallel()
+		store := setupContractMetadataTestStore(t)
 		// Add multiple records
 		records := []datastore.ContractMetadata{
 			newRandomContractMetadata(),
@@ -347,10 +362,9 @@ func TestCatalogContractMetadataStore_Fetch(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest // Subtests share database instance, cannot run in parallel
 func TestCatalogContractMetadataStore_Filter(t *testing.T) {
-	store, closer := setupContractMetadataTestStore(t)
-	defer closer()
+	t.Parallel()
+	store := setupContractMetadataTestStore(t)
 
 	// Add test records
 	usdcAddress := "0xA0b86a33E6441b8Fa0eBe6C8D96fc6d3E0B74Acb"
@@ -386,12 +400,14 @@ func TestCatalogContractMetadataStore_Filter(t *testing.T) {
 	}
 
 	t.Run("no filters", func(t *testing.T) {
+		t.Parallel()
 		results, err := store.ContractMetadata().Filter(t.Context())
 		require.NoError(t, err)
 		require.Len(t, results, len(records))
 	})
 
 	t.Run("filter by chain selector", func(t *testing.T) {
+		t.Parallel()
 		filter := func(records []datastore.ContractMetadata) []datastore.ContractMetadata {
 			var filtered []datastore.ContractMetadata
 			for _, record := range records {
@@ -414,6 +430,7 @@ func TestCatalogContractMetadataStore_Filter(t *testing.T) {
 	})
 
 	t.Run("filter by contract address", func(t *testing.T) {
+		t.Parallel()
 		filter := func(records []datastore.ContractMetadata) []datastore.ContractMetadata {
 			var filtered []datastore.ContractMetadata
 			for _, record := range records {
@@ -436,6 +453,7 @@ func TestCatalogContractMetadataStore_Filter(t *testing.T) {
 	})
 
 	t.Run("filter by metadata field", func(t *testing.T) {
+		t.Parallel()
 		filter := func(records []datastore.ContractMetadata) []datastore.ContractMetadata {
 			var filtered []datastore.ContractMetadata
 			for _, record := range records {
@@ -462,6 +480,7 @@ func TestCatalogContractMetadataStore_Filter(t *testing.T) {
 	})
 
 	t.Run("multiple filters", func(t *testing.T) {
+		t.Parallel()
 		// First filter: only Ethereum
 		ethereumFilter := func(records []datastore.ContractMetadata) []datastore.ContractMetadata {
 			var filtered []datastore.ContractMetadata
@@ -502,12 +521,13 @@ func TestCatalogContractMetadataStore_Filter(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest // Subtests share database instance, cannot run in parallel
 func TestCatalogContractMetadataStore_Transactions(t *testing.T) {
-	store, closer := setupContractMetadataTestStore(t)
-	defer closer()
+	t.Parallel()
 
 	t.Run("transaction rollback", func(t *testing.T) {
+		t.Parallel()
+		store := setupContractMetadataTestStore(t)
+
 		contractMetadata := newRandomContractMetadata()
 
 		err := store.WithTransaction(t.Context(), func(ctx context.Context, txStore datastore.BaseCatalogStore) error {
@@ -534,6 +554,9 @@ func TestCatalogContractMetadataStore_Transactions(t *testing.T) {
 	})
 
 	t.Run("transaction commit", func(t *testing.T) {
+		t.Parallel()
+		store := setupContractMetadataTestStore(t)
+
 		contractMetadata := newRandomContractMetadata()
 
 		err := store.WithTransaction(t.Context(), func(ctx context.Context, txStore datastore.BaseCatalogStore) error {
@@ -552,6 +575,8 @@ func TestCatalogContractMetadataStore_Transactions(t *testing.T) {
 	})
 
 	t.Run("ignore transactions option", func(t *testing.T) {
+		t.Parallel()
+		store := setupContractMetadataTestStore(t)
 		contractMetadata := newRandomContractMetadata()
 
 		// Add record outside transaction
