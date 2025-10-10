@@ -9,8 +9,8 @@ import (
 )
 
 type DB interface {
-	Query(q string, args ...any) (*sql.Rows, error)
-	Exec(q string, args ...any) (sql.Result, error)
+	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
 }
 
 var _ DB = &dbController{}
@@ -24,35 +24,33 @@ type dbController struct {
 	base *sql.DB
 }
 
-func (d *dbController) Query(q string, args ...any) (*sql.Rows, error) {
-	ctx := context.TODO()
+func (d *dbController) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
 	if d.tx != nil {
-		return d.tx.QueryContext(ctx, q, args...)
+		return d.tx.QueryContext(ctx, query, args...)
 	}
 
-	return d.base.QueryContext(ctx, q, args...)
+	return d.base.QueryContext(ctx, query, args...)
 }
 
-func (d *dbController) Exec(q string, args ...any) (sql.Result, error) {
-	ctx := context.TODO()
+func (d *dbController) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
 	if d.tx != nil {
-		return d.tx.ExecContext(ctx, q, args...)
+		return d.tx.ExecContext(ctx, query, args...)
 	}
 
-	return d.base.ExecContext(ctx, q, args...)
+	return d.base.ExecContext(ctx, query, args...)
 }
 
-// Fixture performs an Exec but ignores the result, and is intended for test setup
-func (d *dbController) Fixture(q string, args ...any) error {
-	_, err := d.Exec(q, args...)
+// Fixture performs an ExecContext but ignores the result, and is intended for test setup
+func (d *dbController) Fixture(ctx context.Context, query string, args ...any) error {
+	_, err := d.ExecContext(ctx, query, args...)
 	return err
 }
 
-func (d *dbController) Begin() error {
+func (d *dbController) Begin(ctx context.Context) error {
 	if d.tx != nil {
 		return errors.New("transaction already started")
 	}
-	tx, err := d.base.BeginTx(context.TODO(), nil)
+	tx, err := d.base.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}

@@ -11,16 +11,13 @@ import (
 )
 
 // setupEnvMetadataTestStore creates a new memory datastore for testing environment metadata
-func setupEnvMetadataTestStore(t *testing.T) (*memoryDataStore, func()) {
+func setupEnvMetadataTestStore(t *testing.T) (*memoryCatalogDataStore, func()) {
 	t.Helper()
-	config := MemoryDataStoreConfig{
-		Domain:      "test_domain",
-		Environment: "catalog_testing",
-	}
-	store := NewMemoryDataStore(t, config)
+	store, err := NewMemoryCatalogDataStore()
+	require.NoError(t, err)
 
 	return store, func() {
-		store.Close()
+		require.NoError(t, store.Close())
 	}
 }
 

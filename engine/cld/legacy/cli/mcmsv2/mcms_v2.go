@@ -51,7 +51,6 @@ const (
 	proposalKindFlag        = "proposalKind"
 	indexFlag               = "index"
 	forkFlag                = "fork"
-	defaultAdvanceTime      = 36000 // In seconds - defaulting to 10 hours
 	defaultProposalValidity = 72 * time.Hour
 )
 
@@ -666,7 +665,8 @@ func buildExecuteForkCommand(lggr logger.Logger, domain cldf_domain.Domain, prop
 			}
 			lggr.Info("MCMs execute() success")
 			lggr.Info("Waiting for the chain to be mined before executing timelock chain command")
-			if err = anvilClient.EVMIncreaseTime(defaultAdvanceTime); err != nil {
+
+			if err = anvilClient.EVMIncreaseTime(uint64(cfg.timelockProposal.Delay.Seconds())); err != nil {
 				return fmt.Errorf("failed to increase time: %w", err)
 			}
 			if err = anvilClient.AnvilMine([]interface{}{1}); err != nil {

@@ -14,16 +14,13 @@ import (
 )
 
 // setupChainMetadataTestStore creates a new memory datastore for testing chain metadata
-func setupChainMetadataTestStore(t *testing.T) (*memoryDataStore, func()) {
+func setupChainMetadataTestStore(t *testing.T) (*memoryCatalogDataStore, func()) {
 	t.Helper()
-	config := MemoryDataStoreConfig{
-		Domain:      "test_domain",
-		Environment: "catalog_testing",
-	}
-	store := NewMemoryDataStore(t, config)
+	store, err := NewMemoryCatalogDataStore()
+	require.NoError(t, err)
 
 	return store, func() {
-		store.Close()
+		require.NoError(t, store.Close())
 	}
 }
 
@@ -71,20 +68,20 @@ func TestCatalogChainMetadataStore_Get(t *testing.T) {
 func TestCatalogChainMetadataStore_Add(t *testing.T) {
 	tests := []struct {
 		name        string
-		setup       func(store *memoryDataStore) datastore.ChainMetadata
+		setup       func(store *memoryCatalogDataStore) datastore.ChainMetadata
 		expectError bool
 		errorCheck  func(error) bool
 	}{
 		{
 			name: "success",
-			setup: func(store *memoryDataStore) datastore.ChainMetadata {
+			setup: func(store *memoryCatalogDataStore) datastore.ChainMetadata {
 				return newRandomChainMetadata()
 			},
 			expectError: false,
 		},
 		{
 			name: "success with complex metadata",
-			setup: func(store *memoryDataStore) datastore.ChainMetadata {
+			setup: func(store *memoryCatalogDataStore) datastore.ChainMetadata {
 				return datastore.ChainMetadata{
 					ChainSelector: newRandomChainSelector(),
 					Metadata: map[string]any{
@@ -99,7 +96,7 @@ func TestCatalogChainMetadataStore_Add(t *testing.T) {
 		},
 		{
 			name: "duplicate_error",
-			setup: func(store *memoryDataStore) datastore.ChainMetadata {
+			setup: func(store *memoryCatalogDataStore) datastore.ChainMetadata {
 				// Create and add a record first
 				metadata := newRandomChainMetadata()
 				err := store.ChainMetadata().Add(t.Context(), metadata)

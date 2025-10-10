@@ -217,7 +217,7 @@ var (
 		"onchain.solana.programs_dir_path":                        {"ONCHAIN_SOLANA_PROGRAMS_DIR_PATH", "SOLANA_PROGRAM_PATH"},
 		"onchain.aptos.deployer_key":                              {"ONCHAIN_APTOS_DEPLOYER_KEY", "APTOS_DEPLOYER_KEY"},
 		"onchain.tron.deployer_key":                               {"ONCHAIN_TRON_DEPLOYER_KEY", "TRON_DEPLOYER_KEY"},
-		"onchain.sui.deployer_key":                                {"ONCHAIN_SUI_DEPLOYER_KEY"},
+		"onchain.sui.deployer_key":                                {"ONCHAIN_SUI_DEPLOYER_KEY", "SUI_DEPLOYER_KEY"},
 		"onchain.ton.deployer_key":                                {"ONCHAIN_TON_DEPLOYER_KEY"},
 		"onchain.ton.wallet_version":                              {"ONCHAIN_TON_WALLET_VERSION"},
 		"offchain.job_distributor.auth.cognito_app_client_id":     {"OFFCHAIN_JD_AUTH_COGNITO_APP_CLIENT_ID", "JD_AUTH_COGNITO_APP_CLIENT_ID"},

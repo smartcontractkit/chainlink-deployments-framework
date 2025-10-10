@@ -14,16 +14,13 @@ import (
 )
 
 // setupContractMetadataTestStore creates a new memory datastore for testing contract metadata
-func setupContractMetadataTestStore(t *testing.T) (*memoryDataStore, func()) {
+func setupContractMetadataTestStore(t *testing.T) (*memoryCatalogDataStore, func()) {
 	t.Helper()
-	config := MemoryDataStoreConfig{
-		Domain:      "test_domain",
-		Environment: "catalog_testing",
-	}
-	store := NewMemoryDataStore(t, config)
+	store, err := NewMemoryCatalogDataStore()
+	require.NoError(t, err)
 
 	return store, func() {
-		store.Close()
+		require.NoError(t, store.Close())
 	}
 }
 
@@ -74,20 +71,20 @@ func TestCatalogContractMetadataStore_Get(t *testing.T) {
 func TestCatalogContractMetadataStore_Add(t *testing.T) {
 	tests := []struct {
 		name        string
-		setup       func(store *memoryDataStore) datastore.ContractMetadata
+		setup       func(store *memoryCatalogDataStore) datastore.ContractMetadata
 		expectError bool
 		errorCheck  func(error) bool
 	}{
 		{
 			name: "success",
-			setup: func(store *memoryDataStore) datastore.ContractMetadata {
+			setup: func(store *memoryCatalogDataStore) datastore.ContractMetadata {
 				return newRandomContractMetadata()
 			},
 			expectError: false,
 		},
 		{
 			name: "success with complex metadata",
-			setup: func(store *memoryDataStore) datastore.ContractMetadata {
+			setup: func(store *memoryCatalogDataStore) datastore.ContractMetadata {
 				return datastore.ContractMetadata{
 					ChainSelector: newRandomChainSelector(),
 					Address:       newRandomAddress(),
@@ -105,7 +102,7 @@ func TestCatalogContractMetadataStore_Add(t *testing.T) {
 		},
 		{
 			name: "duplicate_error",
-			setup: func(store *memoryDataStore) datastore.ContractMetadata {
+			setup: func(store *memoryCatalogDataStore) datastore.ContractMetadata {
 				// Create and add a record first
 				metadata := newRandomContractMetadata()
 				err := store.ContractMetadata().Add(t.Context(), metadata)

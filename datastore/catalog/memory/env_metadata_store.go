@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"testing"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 )
@@ -26,25 +25,19 @@ const (
 )
 
 type memoryEnvMetadataStore struct {
-	t      *testing.T
-	config MemoryDataStoreConfig
-	db     *dbController
+	db *dbController
 }
 
 // Ensure memoryEnvMetadataStore implements the V2 interface
 var _ datastore.MutableUnaryStoreV2[datastore.EnvMetadata] = &memoryEnvMetadataStore{}
 
-func newCatalogEnvMetadataStore(t *testing.T, config MemoryDataStoreConfig, db *dbController) *memoryEnvMetadataStore {
-	t.Helper()
-
+func newCatalogEnvMetadataStore(db *dbController) *memoryEnvMetadataStore {
 	return &memoryEnvMetadataStore{
-		t:      t,
-		config: config,
-		db:     db,
+		db: db,
 	}
 }
 
-func (s *memoryEnvMetadataStore) Get(_ context.Context, options ...datastore.GetOption) (datastore.EnvMetadata, error) {
+func (s *memoryEnvMetadataStore) Get(ctx context.Context, options ...datastore.GetOption) (datastore.EnvMetadata, error) {
 	ignoreTransactions := false
 	for _, option := range options {
 		switch option {
@@ -59,7 +52,7 @@ func (s *memoryEnvMetadataStore) Get(_ context.Context, options ...datastore.Get
 		db = s.db
 	}
 
-	rows, err := db.Query(query_ENV_METADATA_GET, envMetadataID)
+	rows, err := db.QueryContext(ctx, query_ENV_METADATA_GET, envMetadataID)
 	defer func(rows *sql.Rows) {
 		if rows != nil {
 			_ = rows.Close()
@@ -137,7 +130,7 @@ func (s *memoryEnvMetadataStore) Set(ctx context.Context, metadata any, opts ...
 	return s.edit(ctx, record)
 }
 
-func (s *memoryEnvMetadataStore) edit(_ context.Context, r datastore.EnvMetadata) error {
+func (s *memoryEnvMetadataStore) edit(ctx context.Context, r datastore.EnvMetadata) error {
 	// Serialize metadata to JSON
 	var metadataJSON string
 	if r.Metadata != nil {
@@ -148,7 +141,7 @@ func (s *memoryEnvMetadataStore) edit(_ context.Context, r datastore.EnvMetadata
 		metadataJSON = string(metadataBytes)
 	}
 
-	result, err := s.db.Exec(query_ENV_METADATA_SET, envMetadataID, metadataJSON)
+	result, err := s.db.ExecContext(ctx, query_ENV_METADATA_SET, envMetadataID, metadataJSON)
 	if err != nil {
 		return err
 	}

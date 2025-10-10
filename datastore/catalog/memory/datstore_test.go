@@ -4,13 +4,16 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMemoryDatastore(t *testing.T) {
 	t.Parallel()
 
-	config := MemoryDataStoreConfig{}
-	store := NewMemoryDataStore(t, config)
-	defer store.Close()
+	store, err := NewMemoryCatalogDataStore()
+	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, store.Close())
+	}()
 	assert.NotNil(t, store)
 }

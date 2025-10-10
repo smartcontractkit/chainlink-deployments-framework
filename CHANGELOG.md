@@ -1,5 +1,52 @@
 # chainlink-deployments-framework
 
+## 0.56.0
+
+### Minor Changes
+
+- [#503](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/503) [`08dcbfb`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/08dcbfb55c4f98a887194435cb9b353fa4e79f1c) Thanks [@jkongie](https://github.com/jkongie)! - Loading the test engine environment now accepts two new options
+
+  - `WithDatastore` - Allows setting a custom datastore for the environment.
+  - `WithAddressBook` - Allows setting a custom address book for the environment.
+
+- [#505](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/505) [`602bf03`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/602bf03fc196692616dd90a5861bf69326b50781) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - refactor(catalog): rename MemoryDatastore
+
+  NewMemoryDataStore -> NewMemoryCatalogDataStore
+
+- [#508](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/508) [`5761e5a`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/5761e5aa9264d8bed071a65be03c1b364d8d4932) Thanks [@jkongie](https://github.com/jkongie)! - Adds a new option to test engine environment loading for setting an offchain client.
+
+  - `WithOffchainClient` option to set an offchain client into the test environment
+
+### Patch Changes
+
+- [#504](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/504) [`4a11d81`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/4a11d81939b8f465dce99626002a683cfd082c65) Thanks [@ecPablo](https://github.com/ecPablo)! - improve error display for cases where revert has no data using tracing with anvil and searching for revert reasons on abi registry
+
+## 0.55.1
+
+### Patch Changes
+
+- [#499](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/499) [`57c4e9b`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/57c4e9b919e37d36950e111e9d5a0fa4b7c59cd9) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(catalog/memory): remove unused MemoryDataStoreConfig
+
+- [#502](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/502) [`5abc4df`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/5abc4dfca2f8556bc9bf737c1961f8b1accbddf3) Thanks [@RodrigoAD](https://github.com/RodrigoAD)! - Add extra alias for Sui deployer key env var
+
+## 0.55.0
+
+### Minor Changes
+
+- [#492](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/492) [`7243af8`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/7243af8be1d93101d0655c3424d60f6dcdcd883e) Thanks [@jkongie](https://github.com/jkongie)! - update aptos dep to v1.9.1
+
+- [#474](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/474) [`fdcf28d`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/fdcf28d6dfaa06c3bdfd92acae2c5e414479c4af) Thanks [@ecPablo](https://github.com/ecPablo)! - add predecessors and opcount calculation logic to proposalutils package.
+
+### Patch Changes
+
+- [#496](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/496) [`fea372c`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/fea372c81f6cd0a49c1793cd3f87686842669a1d) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix: update db controller to accept context
+
+- [#498](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/498) [`ce51cbe`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/ce51cbefa3d92af9fa91bb5a6dcb531d69b76f54) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - fix: anvil env should check for addresses from DataStore as well
+
+- [#495](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/495) [`126609e`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/126609e1400ac56142d751291ec9cab83d716216) Thanks [@ecPablo](https://github.com/ecPablo)! - get delay for advancing time from the proposal instead of constant value
+
+- [#497](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/497) [`976d232`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/976d232b8ea5263f743f2885d50cbd18a5712b48) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(catalog/memory): remove dependency on testing.T
+
 ## 0.54.1
 
 ### Patch Changes

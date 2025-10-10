@@ -9,7 +9,7 @@ import (
 
 	fchain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
-	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	focr "github.com/smartcontractkit/chainlink-deployments-framework/offchain/ocr"
 	foperations "github.com/smartcontractkit/chainlink-deployments-framework/operations"
 )
@@ -23,7 +23,7 @@ const (
 // It loads the environment with the given options and returns the environment.
 //
 // If the environment fails to load, it returns an error.
-func New(ctx context.Context, opts ...LoadOpt) (*deployment.Environment, error) {
+func New(ctx context.Context, opts ...LoadOpt) (*fdeployment.Environment, error) {
 	return NewLoader().Load(ctx, opts...)
 }
 
@@ -36,7 +36,7 @@ func NewLoader() *Loader {
 }
 
 // Load loads the environment with the given options.
-func (l *Loader) Load(ctx context.Context, opts ...LoadOpt) (*deployment.Environment, error) {
+func (l *Loader) Load(ctx context.Context, opts ...LoadOpt) (*fdeployment.Environment, error) {
 	var (
 		getCtx = func() context.Context { return ctx }
 		cmps   = newComponents()
@@ -46,15 +46,29 @@ func (l *Loader) Load(ctx context.Context, opts ...LoadOpt) (*deployment.Environ
 		return nil, err
 	}
 
-	return &deployment.Environment{
+	ds := cmps.Datastore
+	if ds == nil {
+		ds = fdatastore.NewMemoryDataStore().Seal()
+	}
+
+	ab := cmps.AddressBook
+	if ab == nil {
+		ab = fdeployment.NewMemoryAddressBook()
+	}
+
+	// We do not set any default offchain client as it is not required for all tests.
+	// We may want to set a default memory based offchain client in the future.
+	oc := cmps.OffchainClient
+
+	return &fdeployment.Environment{
 		Name:              environmentName,
 		Logger:            cmps.Logger,
 		BlockChains:       fchain.NewBlockChainsFromSlice(cmps.Chains),
-		ExistingAddresses: deployment.NewMemoryAddressBook(),
-		DataStore:         fdatastore.NewMemoryDataStore().Seal(),
+		ExistingAddresses: ab,
+		DataStore:         ds,
 		Catalog:           nil,        // Unimplemented for now
 		NodeIDs:           []string{}, // Unimplemented for now
-		Offchain:          nil,        // Unimplemented for now
+		Offchain:          oc,
 		GetContext:        getCtx,
 		OCRSecrets:        focr.XXXGenerateTestOCRSecrets(),
 		OperationsBundle:  foperations.NewBundle(getCtx, cmps.Logger, foperations.NewMemoryReporter()),
