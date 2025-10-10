@@ -20,6 +20,7 @@ import (
 	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/onchain"
+	foffchainjd "github.com/smartcontractkit/chainlink-deployments-framework/offchain/jd"
 )
 
 func TestNew(t *testing.T) {
@@ -120,6 +121,18 @@ func TestLoader_Load_DatastoreOption(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, env)
 	require.Equal(t, ds, env.DataStore)
+}
+
+func TestLoader_Load_OffchainClientOption(t *testing.T) {
+	t.Parallel()
+
+	oc := &foffchainjd.JobDistributor{}
+
+	loader := NewLoader()
+	env, err := loader.Load(t.Context(), WithOffchainClient(oc))
+	require.NoError(t, err)
+	require.NotNil(t, env)
+	require.Equal(t, oc, env.Offchain)
 }
 
 func TestLoader_Load_AddressBookOption(t *testing.T) {

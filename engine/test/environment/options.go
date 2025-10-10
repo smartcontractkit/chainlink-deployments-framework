@@ -8,6 +8,7 @@ import (
 	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/onchain"
+	"github.com/smartcontractkit/chainlink-deployments-framework/offchain"
 )
 
 // Assign the chain container loader constructors to local variables to allow for stubbing in tests.
@@ -166,6 +167,14 @@ func WithDatastore(ds fdatastore.DataStore) LoadOpt {
 func WithAddressBook(ab fdeployment.AddressBook) LoadOpt {
 	return func(cmps *components) error {
 		cmps.AddressBook = ab
+		return nil
+	}
+}
+
+// WithOffchainClient sets a custom offchain client for the environment.
+func WithOffchainClient(oc offchain.Client) LoadOpt {
+	return func(cmps *components) error {
+		cmps.OffchainClient = oc
 		return nil
 	}
 }
