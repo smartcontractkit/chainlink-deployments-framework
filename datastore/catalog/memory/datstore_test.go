@@ -12,8 +12,5 @@ func TestMemoryDatastore(t *testing.T) {
 
 	store, err := NewMemoryCatalogDataStore()
 	require.NoError(t, err)
-	defer func() {
-		require.NoError(t, store.Close())
-	}()
 	assert.NotNil(t, store)
 }

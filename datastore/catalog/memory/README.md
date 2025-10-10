@@ -4,4 +4,3 @@ This implementation maintains the Catalog stores in-memory as simple tables,
 for use in tests. It is test-only, and should not be used in any changeset
 execution into a deployed environment.
 
-> TODO: Implement the in-memory catalog.
