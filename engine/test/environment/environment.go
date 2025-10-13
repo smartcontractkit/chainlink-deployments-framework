@@ -56,6 +56,11 @@ func (l *Loader) Load(ctx context.Context, opts ...LoadOpt) (*fdeployment.Enviro
 		ab = fdeployment.NewMemoryAddressBook()
 	}
 
+	nodeIDs := cmps.NodeIDs
+	if len(nodeIDs) == 0 {
+		nodeIDs = []string{}
+	}
+
 	// We do not set any default offchain client as it is not required for all tests.
 	// We may want to set a default memory based offchain client in the future.
 	oc := cmps.OffchainClient
@@ -66,8 +71,8 @@ func (l *Loader) Load(ctx context.Context, opts ...LoadOpt) (*fdeployment.Enviro
 		BlockChains:       fchain.NewBlockChainsFromSlice(cmps.Chains),
 		ExistingAddresses: ab,
 		DataStore:         ds,
-		Catalog:           nil,        // Unimplemented for now
-		NodeIDs:           []string{}, // Unimplemented for now
+		Catalog:           nil, // Unimplemented for now
+		NodeIDs:           nodeIDs,
 		Offchain:          oc,
 		GetContext:        getCtx,
 		OCRSecrets:        focr.XXXGenerateTestOCRSecrets(),

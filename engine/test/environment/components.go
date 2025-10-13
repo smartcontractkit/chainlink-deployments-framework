@@ -19,6 +19,7 @@ type components struct {
 	AddressBook    fdeployment.AddressBook
 	Datastore      fdatastore.DataStore
 	OffchainClient foffchain.Client
+	NodeIDs        []string
 	Logger         logger.Logger
 }
 
