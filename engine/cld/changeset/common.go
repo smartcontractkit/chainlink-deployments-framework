@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"strings"
 
 	fresolvers "github.com/smartcontractkit/chainlink-deployments-framework/changeset/resolvers"
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
@@ -104,8 +105,10 @@ func (f WrappedChangeSet[C]) WithJSON(_ C, inputStr string) ConfiguredChangeSet 
 			return config, errors.New("'payload' field is required and cannot be empty")
 		}
 
-		if err := json.Unmarshal([]byte(inputObject.Payload), &config); err != nil {
-			return config, fmt.Errorf("failed to unmarshal input: %w", err)
+		payloadDecoder := json.NewDecoder(strings.NewReader(string(inputObject.Payload)))
+		payloadDecoder.DisallowUnknownFields()
+		if err := payloadDecoder.Decode(&config); err != nil {
+			return config, fmt.Errorf("failed to unmarshal payload: %w", err)
 		}
 
 		return config, nil
@@ -161,8 +164,10 @@ func (f WrappedChangeSet[C]) WithEnvInput(opts ...EnvInputOption[C]) ConfiguredC
 			return config, errors.New("'payload' field is required and cannot be empty")
 		}
 
-		if err := json.Unmarshal(inputObject.Payload, &config); err != nil {
-			return config, fmt.Errorf("failed to unmarshal input: %w", err)
+		payloadDecoder := json.NewDecoder(strings.NewReader(string(inputObject.Payload)))
+		payloadDecoder.DisallowUnknownFields()
+		if err := payloadDecoder.Decode(&config); err != nil {
+			return config, fmt.Errorf("failed to unmarshal payload: %w", err)
 		}
 
 		if options.inputModifier != nil {
