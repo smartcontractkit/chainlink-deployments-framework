@@ -83,8 +83,8 @@ func (s *catalogAddressRefStore) get(
 	}
 
 	// Check for errors in the response
-	if err := checkResponseStatus(response.Status); err != nil {
-		return datastore.AddressRef{}, fmt.Errorf("get address ref failed: %w", err)
+	if statusErr := checkResponseStatus(response.Status); statusErr != nil {
+		return datastore.AddressRef{}, fmt.Errorf("%w: %w", datastore.ErrAddressRefNotFound, statusErr)
 	}
 
 	// Extract the address find response

@@ -146,8 +146,20 @@ func (s *catalogChainMetadataStore) get(ignoreTransaction bool, key datastore.Ch
 	}
 
 	// Check for errors in the response
-	if err := checkResponseStatus(resp.Status); err != nil {
-		return datastore.ChainMetadata{}, fmt.Errorf("get chain metadata failed: %w", err)
+	if statusErr := checkResponseStatus(resp.Status); statusErr != nil {
+		st, _ := status.FromError(statusErr)
+
+		switch st.Code() {
+		case codes.NotFound:
+			return datastore.ChainMetadata{}, fmt.Errorf("%w: %w", datastore.ErrChainMetadataNotFound, statusErr)
+		case codes.OK, codes.Canceled, codes.Unknown, codes.InvalidArgument, codes.DeadlineExceeded,
+			codes.AlreadyExists, codes.PermissionDenied, codes.ResourceExhausted, codes.FailedPrecondition,
+			codes.Aborted, codes.OutOfRange, codes.Unimplemented, codes.Internal, codes.Unavailable,
+			codes.DataLoss, codes.Unauthenticated:
+			return datastore.ChainMetadata{}, fmt.Errorf("get chain metadata failed: %w", statusErr)
+		default:
+			return datastore.ChainMetadata{}, fmt.Errorf("get chain metadata failed: %w", statusErr)
+		}
 	}
 
 	findResp := resp.GetChainMetadataFindResponse()
@@ -360,20 +372,24 @@ func (s *catalogChainMetadataStore) editRecord(record datastore.ChainMetadata, s
 	}
 
 	// Check for errors in the edit response
-	if err := checkResponseStatus(resp.Status); err != nil {
-		st, _ := status.FromError(err)
+	if statusErr := checkResponseStatus(resp.Status); statusErr != nil {
+		st, _ := status.FromError(statusErr)
 
 		// Check for specific error conditions
 		switch st.Code() {
 		case codes.NotFound:
-			return fmt.Errorf("no record found to update: %w", err)
+			return fmt.Errorf("%w: %w", datastore.ErrChainMetadataNotFound, statusErr)
 		case codes.Aborted:
-			return fmt.Errorf("incorrect row version: %w", err)
+			return fmt.Errorf("%w: %w", datastore.ErrChainMetadataStale, statusErr)
+		case codes.OK, codes.Canceled, codes.Unknown, codes.InvalidArgument, codes.DeadlineExceeded,
+			codes.AlreadyExists, codes.PermissionDenied, codes.ResourceExhausted, codes.FailedPrecondition,
+			codes.OutOfRange, codes.Unimplemented, codes.Internal, codes.Unavailable,
+			codes.DataLoss, codes.Unauthenticated:
+			return fmt.Errorf("edit request failed: %w", statusErr)
 		default:
-			return fmt.Errorf("edit request failed: %w", err)
+			return fmt.Errorf("edit request failed: %w", statusErr)
 		}
 	}
-
 	editResp := resp.GetChainMetadataEditResponse()
 	if editResp == nil {
 		return errors.New("unexpected response type")

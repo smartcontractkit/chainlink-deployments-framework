@@ -150,8 +150,20 @@ func (s *catalogContractMetadataStore) get(ignoreTransaction bool, key datastore
 	}
 
 	// Check for errors in the response
-	if err := checkResponseStatus(resp.Status); err != nil {
-		return datastore.ContractMetadata{}, fmt.Errorf("get contract metadata failed: %w", err)
+	if statusErr := checkResponseStatus(resp.Status); statusErr != nil {
+		st, _ := status.FromError(statusErr)
+
+		switch st.Code() {
+		case codes.NotFound:
+			return datastore.ContractMetadata{}, fmt.Errorf("%w: %w", datastore.ErrContractMetadataNotFound, statusErr)
+		case codes.OK, codes.Canceled, codes.Unknown, codes.InvalidArgument, codes.DeadlineExceeded,
+			codes.AlreadyExists, codes.PermissionDenied, codes.ResourceExhausted, codes.FailedPrecondition,
+			codes.Aborted, codes.OutOfRange, codes.Unimplemented, codes.Internal, codes.Unavailable,
+			codes.DataLoss, codes.Unauthenticated:
+			return datastore.ContractMetadata{}, fmt.Errorf("get contract metadata failed: %w", statusErr)
+		default:
+			return datastore.ContractMetadata{}, fmt.Errorf("get contract metadata failed: %w", statusErr)
+		}
 	}
 
 	findResp := resp.GetContractMetadataFindResponse()
@@ -205,8 +217,8 @@ func (s *catalogContractMetadataStore) Fetch(_ context.Context) ([]datastore.Con
 	}
 
 	// Check for errors in the response
-	if err := checkResponseStatus(resp.Status); err != nil {
-		return nil, fmt.Errorf("fetch contract metadata failed: %w", err)
+	if statusErr := checkResponseStatus(resp.Status); statusErr != nil {
+		return nil, fmt.Errorf("fetch contract metadata failed: %w", statusErr)
 	}
 
 	findResp := resp.GetContractMetadataFindResponse()
@@ -371,17 +383,21 @@ func (s *catalogContractMetadataStore) editRecord(record datastore.ContractMetad
 	}
 
 	// Check for errors in the edit response
-	if err := checkResponseStatus(resp.Status); err != nil {
-		st, _ := status.FromError(err)
+	if statusErr := checkResponseStatus(resp.Status); statusErr != nil {
+		st, _ := status.FromError(statusErr)
 
-		// Check for specific error conditions
 		switch st.Code() {
 		case codes.NotFound:
-			return fmt.Errorf("no record found to update: %w", err)
+			return fmt.Errorf("%w: %w", datastore.ErrContractMetadataNotFound, statusErr)
 		case codes.Aborted:
-			return fmt.Errorf("incorrect row version: %w", err)
+			return fmt.Errorf("%w: %w", datastore.ErrContractMetadataStale, statusErr)
+		case codes.OK, codes.Canceled, codes.Unknown, codes.InvalidArgument, codes.DeadlineExceeded,
+			codes.AlreadyExists, codes.PermissionDenied, codes.ResourceExhausted, codes.FailedPrecondition,
+			codes.OutOfRange, codes.Unimplemented, codes.Internal, codes.Unavailable,
+			codes.DataLoss, codes.Unauthenticated:
+			return fmt.Errorf("edit request failed: %w", statusErr)
 		default:
-			return fmt.Errorf("edit request failed: %w", err)
+			return fmt.Errorf("edit request failed: %w", statusErr)
 		}
 	}
 

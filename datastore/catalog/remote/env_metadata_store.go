@@ -142,8 +142,19 @@ func (s *catalogEnvMetadataStore) get(ignoreTransaction bool) (datastore.EnvMeta
 	}
 
 	// Check for errors in the response
-	if err := checkResponseStatus(resp.Status); err != nil {
-		return datastore.EnvMetadata{}, fmt.Errorf("get environment metadata failed: %w", err)
+	if statusErr := checkResponseStatus(resp.Status); statusErr != nil {
+		st, _ := status.FromError(statusErr)
+		switch st.Code() {
+		case codes.NotFound:
+			return datastore.EnvMetadata{}, fmt.Errorf("%w: %w", datastore.ErrEnvMetadataNotSet, statusErr)
+		case codes.OK, codes.Canceled, codes.Unknown, codes.InvalidArgument, codes.DeadlineExceeded,
+			codes.AlreadyExists, codes.PermissionDenied, codes.ResourceExhausted, codes.FailedPrecondition,
+			codes.Aborted, codes.OutOfRange, codes.Unimplemented, codes.Internal, codes.Unavailable,
+			codes.DataLoss, codes.Unauthenticated:
+			return datastore.EnvMetadata{}, fmt.Errorf("get environment metadata failed: %w", statusErr)
+		default:
+			return datastore.EnvMetadata{}, fmt.Errorf("get environment metadata failed: %w", statusErr)
+		}
 	}
 
 	findResp := resp.GetEnvironmentMetadataFindResponse()
@@ -244,17 +255,19 @@ func (s *catalogEnvMetadataStore) editRecord(record datastore.EnvMetadata) error
 	}
 
 	// Check for errors in the edit response
-	if err := checkResponseStatus(resp.Status); err != nil {
-		st, _ := status.FromError(err)
+	if statusErr := checkResponseStatus(resp.Status); statusErr != nil {
+		st, _ := status.FromError(statusErr)
 
-		// Check for specific error conditions
 		switch st.Code() {
-		case codes.NotFound:
-			return fmt.Errorf("no record found to update: %w", err)
 		case codes.Aborted:
-			return fmt.Errorf("incorrect row version: %w", err)
+			return fmt.Errorf("%w: %w", datastore.ErrEnvMetadataStale, statusErr)
+		case codes.OK, codes.Canceled, codes.Unknown, codes.InvalidArgument, codes.DeadlineExceeded,
+			codes.NotFound, codes.AlreadyExists, codes.PermissionDenied, codes.ResourceExhausted,
+			codes.FailedPrecondition, codes.OutOfRange, codes.Unimplemented, codes.Internal,
+			codes.Unavailable, codes.DataLoss, codes.Unauthenticated:
+			return fmt.Errorf("edit request failed: %w", statusErr)
 		default:
-			return fmt.Errorf("edit request failed: %w", err)
+			return fmt.Errorf("edit request failed: %w", statusErr)
 		}
 	}
 
