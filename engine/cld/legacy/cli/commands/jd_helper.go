@@ -170,12 +170,17 @@ func writeNodeTable(nodes []*nodev1.Node) {
 			{"ID", node.Id},
 			{"Name", node.Name},
 			{"CSA", node.PublicKey},
-			{"Enabled", strconv.FormatBool(node.IsEnabled)},
-			{"Connected", strconv.FormatBool(node.IsConnected)},
-			{"Labels", labelsString.String()},
-			{"Created at", node.CreatedAt.AsTime().Format(time.RFC3339)},
-			{"Updated at", node.UpdatedAt.AsTime().Format(time.RFC3339)},
 		}
+		if node.WorkflowKey != nil {
+			data = append(data, []string{"WorkflowKey", *node.WorkflowKey})
+		}
+		data = append(data,
+			[]string{"Enabled", strconv.FormatBool(node.IsEnabled)},
+			[]string{"Connected", strconv.FormatBool(node.IsConnected)},
+			[]string{"Labels", labelsString.String()},
+			[]string{"Created at", node.CreatedAt.AsTime().Format(time.RFC3339)},
+			[]string{"Updated at", node.UpdatedAt.AsTime().Format(time.RFC3339)},
+		)
 		table := tablewriter.NewWriter(os.Stdout)
 		table.SetAutoWrapText(false)
 		table.AppendBulk(data)
