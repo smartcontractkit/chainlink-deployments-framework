@@ -597,17 +597,12 @@ func setupTestStore(t *testing.T) *catalogAddressRefStore {
 		GRPC:  address,
 		Creds: insecure.NewCredentials(),
 	})
-	if err != nil {
-		t.Skipf("Failed to connect to gRPC server at %s: %v. Skipping integration tests.", address, err)
-		return nil
-	}
+	require.NoError(t, err, "Failed to connect to gRPC server at %s: %v.", address, err)
 
 	// Test if the service is actually available by making a simple call
 	_, err = catalogClient.DataAccess()
-	if err != nil {
-		t.Skipf("gRPC service not available at %s: %v. Skipping integration tests.", address, err)
-		return nil
-	}
+	require.NoError(t, err, "gRPC service not available at %s: %v.", address, err)
+
 	t.Cleanup(func() {
 		_ = catalogClient.CloseStream() // Close the test stream at the end of the test.
 	})
