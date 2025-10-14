@@ -89,7 +89,7 @@ func (s *catalogAddressRefStore) get(
 		st, _ := status.FromError(statusErr)
 
 		if st.Code() == codes.NotFound {
-			return datastore.AddressRef{}, fmt.Errorf("%w: %w", datastore.ErrAddressRefNotFound, statusErr)
+			return datastore.AddressRef{}, fmt.Errorf("%w: %s", datastore.ErrAddressRefNotFound, statusErr.Error())
 		}
 
 		return datastore.AddressRef{}, fmt.Errorf("get address ref failed: %w", statusErr)

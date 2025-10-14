@@ -154,7 +154,7 @@ func (s *catalogContractMetadataStore) get(ignoreTransaction bool, key datastore
 		st, _ := status.FromError(statusErr)
 
 		if st.Code() == codes.NotFound {
-			return datastore.ContractMetadata{}, fmt.Errorf("%w: %w", datastore.ErrContractMetadataNotFound, statusErr)
+			return datastore.ContractMetadata{}, fmt.Errorf("%w: %s", datastore.ErrContractMetadataNotFound, statusErr.Error())
 		}
 
 		return datastore.ContractMetadata{}, fmt.Errorf("get contract metadata failed: %w", statusErr)
@@ -382,9 +382,9 @@ func (s *catalogContractMetadataStore) editRecord(record datastore.ContractMetad
 
 		switch st.Code() { //nolint:exhaustive // We don't need to handle all codes here
 		case codes.NotFound:
-			return fmt.Errorf("%w: %w", datastore.ErrContractMetadataNotFound, statusErr)
+			return fmt.Errorf("%w: %s", datastore.ErrContractMetadataNotFound, statusErr.Error())
 		case codes.Aborted:
-			return fmt.Errorf("%w: %w", datastore.ErrContractMetadataStale, statusErr)
+			return fmt.Errorf("%w: %s", datastore.ErrContractMetadataStale, statusErr.Error())
 		default:
 			return fmt.Errorf("edit request failed: %w", statusErr)
 		}

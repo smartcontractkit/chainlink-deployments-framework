@@ -146,7 +146,7 @@ func (s *catalogEnvMetadataStore) get(ignoreTransaction bool) (datastore.EnvMeta
 		st, _ := status.FromError(statusErr)
 
 		if st.Code() == codes.NotFound {
-			return datastore.EnvMetadata{}, fmt.Errorf("%w: %w", datastore.ErrEnvMetadataNotSet, statusErr)
+			return datastore.EnvMetadata{}, fmt.Errorf("%w: %s", datastore.ErrEnvMetadataNotSet, statusErr.Error())
 		}
 
 		return datastore.EnvMetadata{}, fmt.Errorf("get environment metadata failed: %w", statusErr)
@@ -254,7 +254,7 @@ func (s *catalogEnvMetadataStore) editRecord(record datastore.EnvMetadata) error
 		st, _ := status.FromError(statusErr)
 
 		if st.Code() == codes.Aborted {
-			return fmt.Errorf("%w: %w", datastore.ErrEnvMetadataStale, statusErr)
+			return fmt.Errorf("%w: %s", datastore.ErrEnvMetadataStale, statusErr.Error())
 		}
 
 		return fmt.Errorf("edit request failed: %w", statusErr)

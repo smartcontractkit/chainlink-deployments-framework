@@ -150,7 +150,7 @@ func (s *catalogChainMetadataStore) get(ignoreTransaction bool, key datastore.Ch
 		st, _ := status.FromError(statusErr)
 
 		if st.Code() == codes.NotFound {
-			return datastore.ChainMetadata{}, fmt.Errorf("%w: %w", datastore.ErrChainMetadataNotFound, statusErr)
+			return datastore.ChainMetadata{}, fmt.Errorf("%w: %s", datastore.ErrChainMetadataNotFound, statusErr.Error())
 		}
 
 		return datastore.ChainMetadata{}, fmt.Errorf("get chain metadata failed: %w", statusErr)
@@ -371,9 +371,9 @@ func (s *catalogChainMetadataStore) editRecord(record datastore.ChainMetadata, s
 
 		switch st.Code() { //nolint:exhaustive // We don't need to handle all codes here
 		case codes.NotFound:
-			return fmt.Errorf("%w: %w", datastore.ErrChainMetadataNotFound, statusErr)
+			return fmt.Errorf("%w: %s", datastore.ErrChainMetadataNotFound, statusErr.Error())
 		case codes.Aborted:
-			return fmt.Errorf("%w: %w", datastore.ErrChainMetadataStale, statusErr)
+			return fmt.Errorf("%w: %s", datastore.ErrChainMetadataStale, statusErr.Error())
 		default:
 			return fmt.Errorf("edit request failed: %w", statusErr)
 		}

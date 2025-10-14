@@ -28,7 +28,6 @@ func checkResponseStatus(rs *pb.ResponseStatus) error {
 	}
 
 	// Convert to google.rpc.Status, then to gRPC status
-	// This preserves the details field!
 	st := status.FromProto(&rpb.Status{
 		Code:    rs.Code,
 		Message: rs.Message,
