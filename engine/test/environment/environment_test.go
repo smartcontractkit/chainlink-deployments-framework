@@ -135,6 +135,18 @@ func TestLoader_Load_OffchainClientOption(t *testing.T) {
 	require.Equal(t, oc, env.Offchain)
 }
 
+func TestLoader_Load_NodeIDsOption(t *testing.T) {
+	t.Parallel()
+
+	nodeIDs := []string{"1", "2", "3"}
+
+	loader := NewLoader()
+	env, err := loader.Load(t.Context(), WithNodeIDs(nodeIDs))
+	require.NoError(t, err)
+	require.NotNil(t, env)
+	require.Equal(t, nodeIDs, env.NodeIDs)
+}
+
 func TestLoader_Load_AddressBookOption(t *testing.T) {
 	t.Parallel()
 

@@ -179,6 +179,14 @@ func WithOffchainClient(oc offchain.Client) LoadOpt {
 	}
 }
 
+// WithNodeIDs sets a custom node IDs for the environment.
+func WithNodeIDs(nodeIDs []string) LoadOpt {
+	return func(cmps *components) error {
+		cmps.NodeIDs = nodeIDs
+		return nil
+	}
+}
+
 // withChainLoader creates a LoadOpt that loads chains using the provided loader and selectors.
 func withChainLoader(t *testing.T, loader *onchain.ChainLoader, selectors []uint64) LoadOpt {
 	t.Helper()

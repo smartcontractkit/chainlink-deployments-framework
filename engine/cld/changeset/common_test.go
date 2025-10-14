@@ -88,6 +88,70 @@ func TestChangesets_WithJSON_EmptyInput(t *testing.T) {
 	require.Nil(t, configs.InputChainOverrides) // Chain overrides should be nil when input is missing
 }
 
+func TestChangesets_WithJSON_StrictPayloadUnmarshaling(t *testing.T) {
+	t.Parallel()
+
+	type TestConfig struct {
+		Value string `json:"value"`
+		Count int    `json:"count"`
+	}
+
+	tests := []struct {
+		name        string
+		inputJSON   string
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name:        "valid payload with only known fields",
+			inputJSON:   `{"payload":{"value":"test","count":42}}`,
+			expectError: false,
+		},
+		{
+			name:        "invalid payload with unknown field",
+			inputJSON:   `{"payload":{"value":"test","count":42,"unknownField":"value"}}`,
+			expectError: true,
+			errorMsg:    "failed to unmarshal payload: json: unknown field \"unknownField\"",
+		},
+		{
+			name:        "invalid payload with multiple unknown fields",
+			inputJSON:   `{"payload":{"value":"test","count":42,"unknownField1":"value1","unknownField2":"value2"}}`,
+			expectError: true,
+			errorMsg:    "failed to unmarshal payload: json: unknown field \"unknownField1\"",
+		},
+		{
+			name:        "invalid payload with nested unknown field",
+			inputJSON:   `{"payload":{"value":"test","count":42,"nested":{"unknown":"field"}}}`,
+			expectError: true,
+			errorMsg:    "failed to unmarshal payload: json: unknown field \"nested\"",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			cs := deployment.CreateChangeSet(
+				func(e deployment.Environment, config TestConfig) (deployment.ChangesetOutput, error) {
+					return deployment.ChangesetOutput{}, nil
+				},
+				func(e deployment.Environment, config TestConfig) error { return nil },
+			)
+			env := deployment.Environment{Logger: logger.Test(t)}
+			configured := Configure(cs).WithJSON(TestConfig{}, tt.inputJSON)
+
+			_, err := configured.Apply(env)
+
+			if tt.expectError {
+				require.Error(t, err, "Expected error for test case: %s", tt.name)
+				require.ErrorContains(t, err, tt.errorMsg, "Error message should contain expected text")
+			} else {
+				require.NoError(t, err, "Expected no error for test case: %s", tt.name)
+			}
+		})
+	}
+}
+
 func TestChangesets_WithEnvInput(t *testing.T) {
 	expectedConfig := "config from env"
 	t.Setenv("DURABLE_PIPELINE_INPUT", `{"payload":"`+expectedConfig+`"}`)
@@ -498,6 +562,138 @@ func TestWithConfigResolver_ChainOverrides(t *testing.T) {
 
 	// Explicit chain overrides should take precedence
 	assert.Equal(t, []uint64{10, 20, 30}, configs.InputChainOverrides)
+}
+
+func TestWithConfigResolver_StrictPayloadUnmarshaling(t *testing.T) {
+	type TestInput struct {
+		Value string `json:"value"`
+		Count int    `json:"count"`
+	}
+
+	type TestOutput struct {
+		Result string
+	}
+
+	resolver := func(input TestInput) (TestOutput, error) {
+		return TestOutput{Result: fmt.Sprintf("%s_%d", input.Value, input.Count)}, nil
+	}
+
+	tests := []struct {
+		name        string
+		inputJSON   string
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name:        "valid payload with only known fields",
+			inputJSON:   `{"payload":{"value":"test","count":42}}`,
+			expectError: false,
+		},
+		{
+			name:        "invalid payload with unknown field",
+			inputJSON:   `{"payload":{"value":"test","count":42,"unknownField":"value"}}`,
+			expectError: true,
+			errorMsg:    "config resolver failed: unmarshal payload into changeset.TestInput: json: unknown field \"unknownField\"",
+		},
+		{
+			name:        "invalid payload with multiple unknown fields",
+			inputJSON:   `{"payload":{"value":"test","count":42,"unknownField1":"value1","unknownField2":"value2"}}`,
+			expectError: true,
+			errorMsg:    "config resolver failed: unmarshal payload into changeset.TestInput: json: unknown field \"unknownField1\"",
+		},
+		{
+			name:        "invalid payload with nested unknown field",
+			inputJSON:   `{"payload":{"value":"test","count":42,"nested":{"unknown":"field"}}}`,
+			expectError: true,
+			errorMsg:    "config resolver failed: unmarshal payload into changeset.TestInput: json: unknown field \"nested\"",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("DURABLE_PIPELINE_INPUT", tt.inputJSON)
+
+			cs := deployment.CreateChangeSet(
+				func(e deployment.Environment, config TestOutput) (deployment.ChangesetOutput, error) {
+					return deployment.ChangesetOutput{}, nil
+				},
+				func(e deployment.Environment, config TestOutput) error { return nil },
+			)
+			env := deployment.Environment{Logger: logger.Test(t)}
+			configured := Configure(cs).WithConfigResolver(resolver)
+
+			_, err := configured.Apply(env)
+
+			if tt.expectError {
+				require.Error(t, err, "Expected error for test case: %s", tt.name)
+				require.ErrorContains(t, err, tt.errorMsg, "Error message should contain expected text")
+			} else {
+				require.NoError(t, err, "Expected no error for test case: %s", tt.name)
+			}
+		})
+	}
+}
+
+func TestWithEnvInput_StrictPayloadUnmarshaling(t *testing.T) {
+	type TestConfig struct {
+		Value string `json:"value"`
+		Count int    `json:"count"`
+	}
+
+	tests := []struct {
+		name        string
+		inputJSON   string
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name:        "valid payload with only known fields",
+			inputJSON:   `{"payload":{"value":"test","count":42}}`,
+			expectError: false,
+		},
+		{
+			name:        "invalid payload with unknown field",
+			inputJSON:   `{"payload":{"value":"test","count":42,"unknownField":"value"}}`,
+			expectError: true,
+			errorMsg:    "failed to unmarshal payload: json: unknown field \"unknownField\"",
+		},
+		{
+			name:        "invalid payload with multiple unknown fields",
+			inputJSON:   `{"payload":{"value":"test","count":42,"unknownField1":"value1","unknownField2":"value2"}}`,
+			expectError: true,
+			errorMsg:    "failed to unmarshal payload: json: unknown field \"unknownField1\"",
+		},
+		{
+			name:        "invalid payload with nested unknown field",
+			inputJSON:   `{"payload":{"value":"test","count":42,"nested":{"unknown":"field"}}}`,
+			expectError: true,
+			errorMsg:    "failed to unmarshal payload: json: unknown field \"nested\"",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("DURABLE_PIPELINE_INPUT", tt.inputJSON)
+
+			cs := deployment.CreateChangeSet(
+				func(e deployment.Environment, config TestConfig) (deployment.ChangesetOutput, error) {
+					return deployment.ChangesetOutput{}, nil
+				},
+				func(e deployment.Environment, config TestConfig) error { return nil },
+			)
+			env := deployment.Environment{Logger: logger.Test(t)}
+			configured := Configure(cs).WithEnvInput()
+
+			_, err := configured.Apply(env)
+
+			if tt.expectError {
+				require.Error(t, err, "Expected error for test case: %s", tt.name)
+				require.ErrorContains(t, err, tt.errorMsg, "Error message should contain expected text")
+			} else {
+				require.NoError(t, err, "Expected no error for test case: %s", tt.name)
+			}
+		})
+	}
 }
 
 func TestConfigurations_ConfigResolverInfo(t *testing.T) {
