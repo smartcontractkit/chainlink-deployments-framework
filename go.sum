@@ -705,8 +705,8 @@ github.com/smartcontractkit/chainlink-protos/job-distributor v0.12.0 h1:/bhoALRz
 github.com/smartcontractkit/chainlink-protos/job-distributor v0.12.0/go.mod h1:/dVVLXrsp+V0AbcYGJo3XMzKg3CkELsweA/TTopCsKE=
 github.com/smartcontractkit/chainlink-protos/op-catalog v0.0.3 h1:SMY7IlrOmsjonbx9YzmLPYa65vuUyVep67zFtSwMiuI=
 github.com/smartcontractkit/chainlink-protos/op-catalog v0.0.3/go.mod h1:kYKweMUUgAL+JfW+4WV5FoQuoTKj7RbTC9J+2abq0Pw=
-github.com/smartcontractkit/chainlink-sui v0.0.0-20251010084921-051f91e632b1 h1:nEnisuZwxk8UC5ETErRdHH0gJTAOUP+7H3yRPvxtju0=
-github.com/smartcontractkit/chainlink-sui v0.0.0-20251010084921-051f91e632b1/go.mod h1:VlyZhVw+a93Sk8rVHOIH6tpiXrMzuWLZrjs1eTIExW8=
+github.com/smartcontractkit/chainlink-sui v0.0.0-20251013155034-5f85c5f450ab h1:raRTzzR96QW9F+NdHXfF/fgaKUcdXEcN+xPO461XCFY=
+github.com/smartcontractkit/chainlink-sui v0.0.0-20251013155034-5f85c5f450ab/go.mod h1:VlyZhVw+a93Sk8rVHOIH6tpiXrMzuWLZrjs1eTIExW8=
 github.com/smartcontractkit/chainlink-testing-framework/framework v0.10.30 h1:mDxJnEl5jKs3FLHKIjwtCFEP4ihKhFS6yuPDNcC0EDM=
 github.com/smartcontractkit/chainlink-testing-framework/framework v0.10.30/go.mod h1:SoCjdzeZHP500QtKAjJ9I6rHD03SkQmRL4dNkOoe6yk=
 github.com/smartcontractkit/chainlink-testing-framework/seth v1.51.2 h1:ZJ/8Jx6Be5//TyjPi1pS1uotnmcYq5vVkSyISIymSj8=
@@ -721,8 +721,8 @@ github.com/smartcontractkit/grpc-proxy v0.0.0-20240830132753-a7e17fec5ab7 h1:12i
 github.com/smartcontractkit/grpc-proxy v0.0.0-20240830132753-a7e17fec5ab7/go.mod h1:FX7/bVdoep147QQhsOPkYsPEXhGZjeYx6lBSaSXtZOA=
 github.com/smartcontractkit/libocr v0.0.0-20250408131511-c90716988ee0 h1:yGD0bRNoIQ9vOILzlYg4AiGKMKpJNqi7eIMpW7QIO9Y=
 github.com/smartcontractkit/libocr v0.0.0-20250408131511-c90716988ee0/go.mod h1:lzZ0Hq8zK1FfPb7aHuKQKrsWlrsCtBs6gNRNXh59H7Q=
-github.com/smartcontractkit/mcms v0.26.1-0.20251009182503-22a4319a7bf4 h1:Vt13oeOTFZ8IMQQTuWi9MbvR5wl/a1v4BRIV0GyJj7Q=
-github.com/smartcontractkit/mcms v0.26.1-0.20251009182503-22a4319a7bf4/go.mod h1:g8Ot7s0gVJrJWvH1qib2jC7u6Npos1gTlKpoFSbJVI8=
+github.com/smartcontractkit/mcms v0.26.1 h1:nDj2OTeF8B8Xv7QcY1oVbe/sEIkPlc8iSLsBvGHqXqo=
+github.com/smartcontractkit/mcms v0.26.1/go.mod h1:HtE4xd/4UlB1UQiOtAML5MZL7DqVKqsmh4CN5SGvcd0=
 github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 h1:+jumHNA0Wrelhe64i8F6HNlS8pkoyMv5sreGx2Ry5Rw=
 github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8/go.mod h1:3n1Cwaq1E1/1lhQhtRK2ts/ZwZEhjcQeJQ1RuC6Q/8U=
 github.com/spf13/afero v1.15.0 h1:b/YBCLWAJdFWJTN9cLhiXXcD7mzKn9Dm86dNnfyQw1I=

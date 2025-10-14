@@ -44,7 +44,7 @@ func AnalyzeSuiTransaction(ctx ProposalContext, decoder *mcmssuisdk.Decoder, cha
 
 	decodedOp, err := decoder.Decode(mcmsTx, functionInfo)
 	if err != nil {
-		// Don't return an error to not block the whole proposal decoding because of a single missing method
+		// Don't return an error to not block the whole proposal decoding because of a single transaction decode failure
 		errStr := fmt.Errorf("failed to decode Sui transaction: %w", err)
 
 		return &proposalutils.DecodedCall{
