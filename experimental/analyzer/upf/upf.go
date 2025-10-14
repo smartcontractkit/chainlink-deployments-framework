@@ -12,6 +12,7 @@ import (
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/mcms"
 	mcmsaptossdk "github.com/smartcontractkit/mcms/sdk/aptos"
+	mcmssuisdk "github.com/smartcontractkit/mcms/sdk/sui"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/proposalutils"
@@ -235,6 +236,8 @@ func encodeTransactionData(mcmsOp mcmstypes.Operation) (string, error) {
 		return base64.StdEncoding.EncodeToString(mcmsOp.Transaction.Data), nil
 	case chainsel.FamilyAptos:
 		return base64.StdEncoding.EncodeToString(mcmsOp.Transaction.Data), nil
+	case chainsel.FamilySui:
+		return base64.StdEncoding.EncodeToString(mcmsOp.Transaction.Data), nil
 	default:
 		return "0x" + hex.EncodeToString(mcmsOp.Transaction.Data), nil
 	}
@@ -279,6 +282,18 @@ func batchOperationsToUpfDecodedCalls(ctx mcmsanalyzer.ProposalContext, batches 
 
 		case chainsel.FamilyAptos:
 			describedTxs, err := mcmsanalyzer.AnalyzeAptosTransactions(ctx, chainSel, batch.Transactions)
+			if err != nil {
+				return nil, err
+			}
+			for callIdx, tx := range describedTxs {
+				decodedCalls[batchIdx][callIdx] = &DecodedInnerCall{
+					To:   tx.Address,
+					Data: cldDecodedCallToUpfDecodedCallData(tx),
+				}
+			}
+
+		case chainsel.FamilySui:
+			describedTxs, err := mcmsanalyzer.AnalyzeSuiTransactions(ctx, chainSel, batch.Transactions)
 			if err != nil {
 				return nil, err
 			}
@@ -342,6 +357,15 @@ func analyzeTransaction(
 	case chainsel.FamilyAptos:
 		decoder := mcmsaptossdk.NewDecoder()
 		analyzeResult, err := mcmsanalyzer.AnalyzeAptosTransaction(proposalCtx, decoder, uint64(mcmsOp.ChainSelector), mcmsOp.Transaction)
+		if err != nil {
+			return nil, "", err
+		}
+
+		return analyzeResult, "", nil
+
+	case chainsel.FamilySui:
+		decoder := mcmssuisdk.NewDecoder()
+		analyzeResult, err := mcmsanalyzer.AnalyzeSuiTransaction(proposalCtx, decoder, uint64(mcmsOp.ChainSelector), mcmsOp.Transaction)
 		if err != nil {
 			return nil, "", err
 		}
