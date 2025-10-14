@@ -598,7 +598,7 @@ func setupTestStore(t *testing.T) *catalogAddressRefStore {
 		Creds: insecure.NewCredentials(),
 	})
 	if err != nil {
-		t.Errorf("Failed to connect to gRPC server at %s: %v. Skipping integration tests.", address, err)
+		t.Skipf("Failed to connect to gRPC server at %s: %v. Skipping integration tests.", address, err)
 		return nil
 	}
 
