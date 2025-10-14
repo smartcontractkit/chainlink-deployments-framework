@@ -6,6 +6,8 @@ import (
 	"fmt"
 
 	"github.com/Masterminds/semver/v3"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
@@ -84,7 +86,13 @@ func (s *catalogAddressRefStore) get(
 
 	// Check for errors in the response
 	if statusErr := checkResponseStatus(response.Status); statusErr != nil {
-		return datastore.AddressRef{}, fmt.Errorf("%w: %w", datastore.ErrAddressRefNotFound, statusErr)
+		st, _ := status.FromError(statusErr)
+
+		if st.Code() == codes.NotFound {
+			return datastore.AddressRef{}, fmt.Errorf("%w: %w", datastore.ErrAddressRefNotFound, statusErr)
+		}
+
+		return datastore.AddressRef{}, fmt.Errorf("get address ref failed: %w", statusErr)
 	}
 
 	// Extract the address find response
