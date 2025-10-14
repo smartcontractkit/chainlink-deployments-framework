@@ -144,17 +144,12 @@ func (s *catalogEnvMetadataStore) get(ignoreTransaction bool) (datastore.EnvMeta
 	// Check for errors in the response
 	if statusErr := checkResponseStatus(resp.Status); statusErr != nil {
 		st, _ := status.FromError(statusErr)
-		switch st.Code() {
-		case codes.NotFound:
+
+		if st.Code() == codes.NotFound {
 			return datastore.EnvMetadata{}, fmt.Errorf("%w: %w", datastore.ErrEnvMetadataNotSet, statusErr)
-		case codes.OK, codes.Canceled, codes.Unknown, codes.InvalidArgument, codes.DeadlineExceeded,
-			codes.AlreadyExists, codes.PermissionDenied, codes.ResourceExhausted, codes.FailedPrecondition,
-			codes.Aborted, codes.OutOfRange, codes.Unimplemented, codes.Internal, codes.Unavailable,
-			codes.DataLoss, codes.Unauthenticated:
-			return datastore.EnvMetadata{}, fmt.Errorf("get environment metadata failed: %w", statusErr)
-		default:
-			return datastore.EnvMetadata{}, fmt.Errorf("get environment metadata failed: %w", statusErr)
 		}
+
+		return datastore.EnvMetadata{}, fmt.Errorf("get environment metadata failed: %w", statusErr)
 	}
 
 	findResp := resp.GetEnvironmentMetadataFindResponse()
@@ -258,17 +253,11 @@ func (s *catalogEnvMetadataStore) editRecord(record datastore.EnvMetadata) error
 	if statusErr := checkResponseStatus(resp.Status); statusErr != nil {
 		st, _ := status.FromError(statusErr)
 
-		switch st.Code() {
-		case codes.Aborted:
+		if st.Code() == codes.Aborted {
 			return fmt.Errorf("%w: %w", datastore.ErrEnvMetadataStale, statusErr)
-		case codes.OK, codes.Canceled, codes.Unknown, codes.InvalidArgument, codes.DeadlineExceeded,
-			codes.NotFound, codes.AlreadyExists, codes.PermissionDenied, codes.ResourceExhausted,
-			codes.FailedPrecondition, codes.OutOfRange, codes.Unimplemented, codes.Internal,
-			codes.Unavailable, codes.DataLoss, codes.Unauthenticated:
-			return fmt.Errorf("edit request failed: %w", statusErr)
-		default:
-			return fmt.Errorf("edit request failed: %w", statusErr)
 		}
+
+		return fmt.Errorf("edit request failed: %w", statusErr)
 	}
 
 	editResp := resp.GetEnvironmentMetadataEditResponse()

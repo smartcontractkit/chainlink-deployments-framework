@@ -149,17 +149,11 @@ func (s *catalogChainMetadataStore) get(ignoreTransaction bool, key datastore.Ch
 	if statusErr := checkResponseStatus(resp.Status); statusErr != nil {
 		st, _ := status.FromError(statusErr)
 
-		switch st.Code() {
-		case codes.NotFound:
+		if st.Code() == codes.NotFound {
 			return datastore.ChainMetadata{}, fmt.Errorf("%w: %w", datastore.ErrChainMetadataNotFound, statusErr)
-		case codes.OK, codes.Canceled, codes.Unknown, codes.InvalidArgument, codes.DeadlineExceeded,
-			codes.AlreadyExists, codes.PermissionDenied, codes.ResourceExhausted, codes.FailedPrecondition,
-			codes.Aborted, codes.OutOfRange, codes.Unimplemented, codes.Internal, codes.Unavailable,
-			codes.DataLoss, codes.Unauthenticated:
-			return datastore.ChainMetadata{}, fmt.Errorf("get chain metadata failed: %w", statusErr)
-		default:
-			return datastore.ChainMetadata{}, fmt.Errorf("get chain metadata failed: %w", statusErr)
 		}
+
+		return datastore.ChainMetadata{}, fmt.Errorf("get chain metadata failed: %w", statusErr)
 	}
 
 	findResp := resp.GetChainMetadataFindResponse()
@@ -375,17 +369,11 @@ func (s *catalogChainMetadataStore) editRecord(record datastore.ChainMetadata, s
 	if statusErr := checkResponseStatus(resp.Status); statusErr != nil {
 		st, _ := status.FromError(statusErr)
 
-		// Check for specific error conditions
-		switch st.Code() {
+		switch st.Code() { //nolint:exhaustive // We don't need to handle all codes here
 		case codes.NotFound:
 			return fmt.Errorf("%w: %w", datastore.ErrChainMetadataNotFound, statusErr)
 		case codes.Aborted:
 			return fmt.Errorf("%w: %w", datastore.ErrChainMetadataStale, statusErr)
-		case codes.OK, codes.Canceled, codes.Unknown, codes.InvalidArgument, codes.DeadlineExceeded,
-			codes.AlreadyExists, codes.PermissionDenied, codes.ResourceExhausted, codes.FailedPrecondition,
-			codes.OutOfRange, codes.Unimplemented, codes.Internal, codes.Unavailable,
-			codes.DataLoss, codes.Unauthenticated:
-			return fmt.Errorf("edit request failed: %w", statusErr)
 		default:
 			return fmt.Errorf("edit request failed: %w", statusErr)
 		}

@@ -153,17 +153,11 @@ func (s *catalogContractMetadataStore) get(ignoreTransaction bool, key datastore
 	if statusErr := checkResponseStatus(resp.Status); statusErr != nil {
 		st, _ := status.FromError(statusErr)
 
-		switch st.Code() {
-		case codes.NotFound:
+		if st.Code() == codes.NotFound {
 			return datastore.ContractMetadata{}, fmt.Errorf("%w: %w", datastore.ErrContractMetadataNotFound, statusErr)
-		case codes.OK, codes.Canceled, codes.Unknown, codes.InvalidArgument, codes.DeadlineExceeded,
-			codes.AlreadyExists, codes.PermissionDenied, codes.ResourceExhausted, codes.FailedPrecondition,
-			codes.Aborted, codes.OutOfRange, codes.Unimplemented, codes.Internal, codes.Unavailable,
-			codes.DataLoss, codes.Unauthenticated:
-			return datastore.ContractMetadata{}, fmt.Errorf("get contract metadata failed: %w", statusErr)
-		default:
-			return datastore.ContractMetadata{}, fmt.Errorf("get contract metadata failed: %w", statusErr)
 		}
+
+		return datastore.ContractMetadata{}, fmt.Errorf("get contract metadata failed: %w", statusErr)
 	}
 
 	findResp := resp.GetContractMetadataFindResponse()
@@ -386,16 +380,11 @@ func (s *catalogContractMetadataStore) editRecord(record datastore.ContractMetad
 	if statusErr := checkResponseStatus(resp.Status); statusErr != nil {
 		st, _ := status.FromError(statusErr)
 
-		switch st.Code() {
+		switch st.Code() { //nolint:exhaustive // We don't need to handle all codes here
 		case codes.NotFound:
 			return fmt.Errorf("%w: %w", datastore.ErrContractMetadataNotFound, statusErr)
 		case codes.Aborted:
 			return fmt.Errorf("%w: %w", datastore.ErrContractMetadataStale, statusErr)
-		case codes.OK, codes.Canceled, codes.Unknown, codes.InvalidArgument, codes.DeadlineExceeded,
-			codes.AlreadyExists, codes.PermissionDenied, codes.ResourceExhausted, codes.FailedPrecondition,
-			codes.OutOfRange, codes.Unimplemented, codes.Internal, codes.Unavailable,
-			codes.DataLoss, codes.Unauthenticated:
-			return fmt.Errorf("edit request failed: %w", statusErr)
 		default:
 			return fmt.Errorf("edit request failed: %w", statusErr)
 		}
