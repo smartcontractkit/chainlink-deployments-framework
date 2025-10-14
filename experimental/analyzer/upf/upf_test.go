@@ -18,6 +18,7 @@ import (
 	mcmssdk "github.com/smartcontractkit/mcms/sdk"
 	mcmsevmsdk "github.com/smartcontractkit/mcms/sdk/evm"
 	mcmssolanasdk "github.com/smartcontractkit/mcms/sdk/solana"
+	mcmssuisdk "github.com/smartcontractkit/mcms/sdk/sui"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
@@ -145,6 +146,10 @@ func convertTimelockProposal(ctx context.Context, t *testing.T, timelockProposal
 			converters[chain] = &mcmsevmsdk.TimelockConverter{}
 		case chainsel.FamilySolana:
 			converters[chain] = mcmssolanasdk.TimelockConverter{}
+		case chainsel.FamilySui:
+			converter, err := mcmssuisdk.NewTimelockConverter()
+			require.NoError(t, err)
+			converters[chain] = converter
 		default:
 			t.Fatalf("unsupported chain family %s", chainFamily)
 		}
@@ -471,3 +476,178 @@ signers:
   - "0x9A60462e4CA802E3E945663930Be0d162e662091"
   - "0x5f077BCeE6e285154473F65699d6F46Fd03D105A"
 `
+
+var timelockProposalSui = `{
+  "version": "v1",
+  "kind": "TimelockProposal",
+  "validUntil": 1999999999,
+  "signatures": [],
+  "overridePreviousRoot": false,
+  "chainMetadata": {
+    "9762610643973837292": {
+      "startingOpCount": 1,
+      "mcmAddress": "0x4e825a4758064df713762e431c3a16b8105857195214469db0d6985b7d70266d",
+      "additionalFields": null
+    }
+  },
+  "description": "simple Sui proposal",
+  "action": "schedule",
+  "delay": "5m0s",
+  "timelockAddresses": {
+    "9762610643973837292": "0x4e825a4758064df713762e431c3a16b8105857195214469db0d6985b7d70266d"
+  },
+  "operations": [
+    {
+      "chainSelector": 9762610643973837292,
+      "transactions": [
+        {
+          "contractType": "MCMSUser",
+          "tags": [],
+          "to": "0x4e825a4758064df713762e431c3a16b8105857195214469db0d6985b7d70266d",
+          "data": "i8WcKEL0NsEiFpGjWdxClBwfJeyhP0ut55f7Dg2PS2W5dbWeXl19LUYyEaeuZRHbtJS9IbqY1GNZHOkUhofVcGRhdGVkIEZpZWxkIEEKAQIDBAUGBwgJCg==",
+          "additionalFields": {
+            "module_name": "mcms_user",
+            "function": "function_one",
+            "state_obj": "0x8bc59c2842f436c1221691a359dc42941c1f25eca13f4bad79f7b00e8df4b968"
+          }
+        }
+      ]
+    }
+  ]
+}`
+
+var timelockProposalSuiUnknownModule = `{
+  "version": "v1",
+  "kind": "TimelockProposal",
+  "validUntil": 1999999999,
+  "signatures": [],
+  "overridePreviousRoot": false,
+  "chainMetadata": {
+    "9762610643973837292": {
+      "startingOpCount": 1,
+      "mcmAddress": "0x4e825a4758064df713762e431c3a16b8105857195214469db0d6985b7d70266d",
+      "additionalFields": null
+    }
+  },
+  "description": "Sui proposal with unknown module",
+  "action": "schedule",
+  "delay": "5m0s",  
+  "timelockAddresses": {
+    "9762610643973837292": "0x4e825a4758064df713762e431c3a16b8105857195214469db0d6985b7d70266d"
+  },
+  "operations": [
+    {
+      "chainSelector": 9762610643973837292,
+      "transactions": [
+        {
+          "contractType": "MCMSUser",
+          "tags": [],
+          "to": "0x4e825a4758064df713762e431c3a16b8105857195214469db0d6985b7d70266d",
+          "data": "c29tZSBkYXRh",
+          "additionalFields": {
+            "module_name": "unknown_module",
+            "function": "some_function",
+            "state_obj": "0x123"
+          }
+        }
+      ]
+    }
+  ]
+}`
+
+func TestUpfConvertTimelockProposalWithSui(t *testing.T) {
+	t.Parallel()
+	ds := datastore.NewMemoryDataStore()
+
+	mustAdd := func(chain uint64, addr, typeAndVersion string) {
+		tv := deployment.MustTypeAndVersionFromString(typeAndVersion)
+		storeAddr := addr
+		if strings.HasPrefix(addr, "0x") {
+			storeAddr = addr
+		}
+		ref := datastore.AddressRef{
+			ChainSelector: chain,
+			Address:       storeAddr,
+			Type:          datastore.ContractType(tv.Type),
+			Version:       &tv.Version,
+			// Use address+type as a unique Qualifier (avoids clashes)
+			Qualifier: fmt.Sprintf("%s-%s", addr, tv.Type),
+		}
+		if !tv.Labels.IsEmpty() {
+			ref.Labels = datastore.NewLabelSet(tv.Labels.List()...)
+		}
+		require.NoError(t, ds.Addresses().Add(ref))
+	}
+
+	// ---- Sui: testnet
+	mustAdd(chainsel.SUI_TESTNET.Selector, "0x4e825a4758064df713762e431c3a16b8105857195214469db0d6985b7d70266d", "MCMSUser 1.0.0")
+
+	env := deployment.Environment{
+		DataStore:         ds.Seal(),
+		ExistingAddresses: deployment.NewMemoryAddressBook(),
+	}
+
+	proposalCtx, err := mcmsanalyzer.NewDefaultProposalContext(env)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name             string
+		timelockProposal string
+		signers          map[mcmstypes.ChainSelector][]common.Address
+		want             string
+		wantErr          string
+	}{
+		{
+			name:             "Sui proposal with valid transaction",
+			timelockProposal: timelockProposalSui,
+			want:             "", // We'll just verify it doesn't error and contains expected content
+			signers: map[mcmstypes.ChainSelector][]common.Address{
+				mcmstypes.ChainSelector(chainsel.SUI_TESTNET.Selector): {
+					common.HexToAddress("0xA5D5B0B844c8f11B61F28AC98BBA84dEA9b80953"),
+				},
+			},
+		},
+		{
+			name:             "Sui proposal with unknown module",
+			timelockProposal: timelockProposalSuiUnknownModule,
+			signers: map[mcmstypes.ChainSelector][]common.Address{
+				mcmstypes.ChainSelector(chainsel.SUI_TESTNET.Selector): {
+					common.HexToAddress("0xA5D5B0B844c8f11B61F28AC98BBA84dEA9b80953"),
+				},
+			},
+			wantErr: "", // Should not error but will have error message in function name
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			timelockProposal, err := mcms.NewTimelockProposal(strings.NewReader(tt.timelockProposal))
+			require.NoError(t, err)
+			mcmProposal := convertTimelockProposal(t.Context(), t, timelockProposal)
+
+			got, err := UpfConvertTimelockProposal(proposalCtx, timelockProposal, mcmProposal, tt.signers)
+
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+				return
+			}
+
+			require.NoError(t, err)
+			if tt.want != "" {
+				require.Empty(t, cmp.Diff(tt.want, got))
+			} else {
+				// For test cases without specific expected output, just verify it contains expected content
+				switch tt.name {
+				case "Sui proposal with valid transaction":
+					require.Contains(t, got, "chainFamily: sui")
+					require.Contains(t, got, "chainName: sui-testnet")
+				case "Sui proposal with unknown module":
+					// This should contain some error indication
+					require.Contains(t, got, "failed to decode Sui transaction")
+				}
+			}
+		})
+	}
+}
