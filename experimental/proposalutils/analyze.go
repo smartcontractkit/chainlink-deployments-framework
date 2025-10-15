@@ -450,6 +450,7 @@ func summarizeArgument(name string, arg Argument, ctx *ArgumentContext) (summary
 		preview := hexPreview(v.Value, 16)
 		sum := fmt.Sprintf("bytes(len=%d): %s", n, preview)
 		det := fmt.Sprintf("<details><summary>%s</summary>\n\n```\n%s\n```\n</details>\n", name, hexutil.Encode(v.Value))
+
 		return sum, det
 	case ArrayArgument:
 		n := len(v.Elements)
@@ -458,18 +459,22 @@ func summarizeArgument(name string, arg Argument, ctx *ArgumentContext) (summary
 		}
 		sum := fmt.Sprintf("array[%d]%s", n, arrayPreview(v.Elements, ctx, 3))
 		det := fmt.Sprintf("<details><summary>%s</summary>\n\n```\n%s\n```\n</details>\n", name, v.Describe(ctx))
+
 		return sum, det
 	case StructArgument:
 		sum := fmt.Sprintf("struct{%d fields}", len(v.Fields))
 		det := fmt.Sprintf("<details><summary>%s</summary>\n\n```\n%s\n```\n</details>\n", name, v.Describe(ctx))
+
 		return sum, det
 	case SimpleArgument:
 		s := v.Value
 		if len(s) > 80 {
 			sum := fmt.Sprintf("`%s` (len=%d)", truncateMiddle(s, 80), len(s))
 			det := fmt.Sprintf("<details><summary>%s</summary>\n\n```\n%s\n```\n</details>\n", name, s)
+
 			return sum, det
 		}
+
 		return fmt.Sprintf("`%s`", s), ""
 	default:
 		// Fallback to Describe and decide based on size/newlines
@@ -477,8 +482,10 @@ func summarizeArgument(name string, arg Argument, ctx *ArgumentContext) (summary
 		if strings.Contains(s, "\n") || len(s) > 120 {
 			sum := truncateMiddle(strings.ReplaceAll(s, "\n", " "), 80)
 			det := fmt.Sprintf("<details><summary>%s</summary>\n\n```\n%s\n```\n</details>\n", name, s)
+
 			return sum, det
 		}
+
 		return fmt.Sprintf("`%s`", s), ""
 	}
 }
@@ -489,17 +496,17 @@ func arrayPreview(elems []Argument, ctx *ArgumentContext, limit int) string {
 	if n == 0 {
 		return ""
 	}
-	max := limit
-	if n < max {
-		max = n
+	maxVal := limit
+	if n < maxVal {
+		maxVal = n
 	}
-	parts := make([]string, 0, max)
-	for i := 0; i < max; i++ {
+	parts := make([]string, 0, maxVal)
+	for i := range maxVal {
 		parts = append(parts, compactValue(elems[i], ctx))
 	}
 	more := ""
-	if n > max {
-		more = fmt.Sprintf(", … (+%d)", n-max)
+	if n > maxVal {
+		more = fmt.Sprintf(", … (+%d)", n-maxVal)
 	}
 
 	return fmt.Sprintf(": [%s%s]", strings.Join(parts, ", "), more)
@@ -544,15 +551,15 @@ func hexPreview(b []byte, maxBytes int) string {
 }
 
 // truncateMiddle shortens a string to at most max characters by keeping the start and end.
-func truncateMiddle(s string, max int) string {
-	if len(s) <= max {
+func truncateMiddle(s string, maxLen int) string {
+	if len(s) <= maxLen {
 		return s
 	}
-	if max <= 3 {
-		return s[:max]
+	if maxLen <= 3 {
+		return s[:maxLen]
 	}
 	// split budget roughly in half around an ellipsis
-	keep := (max - 1) / 2
+	keep := (maxLen - 1) / 2
 	left := s[:keep]
 	right := s[len(s)-keep:]
 
