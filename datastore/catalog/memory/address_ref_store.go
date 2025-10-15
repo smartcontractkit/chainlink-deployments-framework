@@ -2,51 +2,22 @@ package memory
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
-
-	"github.com/lib/pq"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 )
 
-const (
-	query_ADDRESS_REFERENCE_BY_ID = `
-		SELECT * from address_references
-		WHERE chain_selector = $1
-		  AND contract_type = $2
-		  AND version = $3
-		  AND qualifier = $4`
-	query_ALL_ADDRESS_REFERENCES = `
-		SELECT chain_selector, contract_type, version, qualifier, address, label_set
-          FROM address_references`
-	query_ADD_ADDRESS_REFERENCE = `
-		INSERT INTO address_references (chain_selector, contract_type, version, qualifier, address, label_set)
-		VALUES ($1, $2, $3, $4, $5, $6)`
-	query_UPSERT_ADDRESS_REFERENCE = query_ADD_ADDRESS_REFERENCE + `
-		ON CONFLICT ON CONSTRAINT address_references_pkey
-			DO UPDATE SET address = excluded.address, label_set = excluded.label_set`
-	query_UPDATE_ADDRESS_REFERENCE = `
-		UPDATE address_references SET
-			address = $5,
-			label_set = $6
-        WHERE chain_selector = $1
-			AND contract_type = $2
-			AND version = $3
-			AND qualifier = $4`
-)
-
 type memoryAddressRefStore struct {
-	db *dbController
+	storage *memoryStorage
 }
 
 // Ensure memoryAddressRefStore implements the V2 interface
 var _ datastore.MutableRefStoreV2[datastore.AddressRefKey, datastore.AddressRef] = &memoryAddressRefStore{}
 
-func newCatalogAddressRefStore(db *dbController) *memoryAddressRefStore {
+func newCatalogAddressRefStore(storage *memoryStorage) *memoryAddressRefStore {
 	return &memoryAddressRefStore{
-		db: db,
+		storage: storage,
 	}
 }
 
@@ -58,75 +29,15 @@ func (s *memoryAddressRefStore) Get(ctx context.Context, key datastore.AddressRe
 			ignoreTransactions = true
 		}
 	}
-	var db DB
-	if ignoreTransactions {
-		db = s.db.base
-	} else {
-		db = s.db
-	}
-	rows, err := db.QueryContext(ctx, query_ADDRESS_REFERENCE_BY_ID, key.ChainSelector(), key.Type().String(), key.Version().String(), key.Qualifier())
-	defer func(rows *sql.Rows) {
-		if rows != nil {
-			_ = rows.Close()
-		}
-	}(rows)
-	if err != nil {
-		return datastore.AddressRef{}, err
-	}
 
-	count := 0
-	row := &datastore.AddressRef{}
-	for rows.Next() {
-		count++
-		array := pq.StringArray{}
-		err = rows.Scan(&row.ChainSelector, &row.Type, &row.Version, &row.Qualifier, &row.Address, &array)
-		for _, label := range array {
-			row.Labels.Add(label)
-		}
-		if err != nil {
-			return datastore.AddressRef{}, err
-		}
-	}
+	compositeKey := addressRefKey(key.ChainSelector(), key.Type().String(), key.Version().String(), key.Qualifier())
 
-	switch count {
-	case 0:
-		return *row, datastore.ErrAddressRefNotFound
-	case 1:
-		return *row, nil
-	default:
-		err = fmt.Errorf("expected a single row, got %d", count)
-		return *row, err
-	}
+	return s.storage.getAddressRef(ctx, compositeKey, ignoreTransactions)
 }
 
 // Fetch returns a copy of all AddressRefs in the catalog.
 func (s *memoryAddressRefStore) Fetch(ctx context.Context) ([]datastore.AddressRef, error) {
-	rows, err := s.db.QueryContext(ctx, query_ALL_ADDRESS_REFERENCES)
-	defer func(rows *sql.Rows) {
-		if rows != nil {
-			_ = rows.Close()
-		}
-	}(rows)
-
-	if err != nil {
-		return nil, err
-	}
-	var refs []datastore.AddressRef
-
-	for rows.Next() {
-		row := &datastore.AddressRef{}
-		array := pq.StringArray{}
-		err = rows.Scan(&row.ChainSelector, &row.Type, &row.Version, &row.Qualifier, &row.Address, &array)
-		for _, label := range array {
-			row.Labels.Add(label)
-		}
-		if err != nil {
-			return refs, err
-		}
-		refs = append(refs, *row)
-	}
-
-	return refs, nil
+	return s.storage.getAllAddressRefs(ctx)
 }
 
 // Filter returns a copy of all AddressRef in the catalog that match the provided filter.
@@ -153,45 +64,35 @@ func (s *memoryAddressRefStore) Filter(
 }
 
 func (s *memoryAddressRefStore) Add(ctx context.Context, r datastore.AddressRef) error {
-	return s.edit(ctx, query_ADD_ADDRESS_REFERENCE, r)
+	compositeKey := addressRefKey(r.ChainSelector, r.Type.String(), r.Version.String(), r.Qualifier)
+
+	// Check if the record already exists
+	_, err := s.storage.getAddressRef(ctx, compositeKey, false)
+	if err == nil {
+		return errors.New("address reference already exists")
+	}
+	if !errors.Is(err, datastore.ErrAddressRefNotFound) {
+		return err
+	}
+
+	return s.storage.setAddressRef(ctx, compositeKey, r)
 }
 
 func (s *memoryAddressRefStore) Upsert(ctx context.Context, r datastore.AddressRef) error {
-	return s.edit(ctx, query_UPSERT_ADDRESS_REFERENCE, r)
+	compositeKey := addressRefKey(r.ChainSelector, r.Type.String(), r.Version.String(), r.Qualifier)
+	return s.storage.setAddressRef(ctx, compositeKey, r)
 }
 
 func (s *memoryAddressRefStore) Update(ctx context.Context, r datastore.AddressRef) error {
-	return s.edit(ctx, query_UPDATE_ADDRESS_REFERENCE, r)
-}
+	compositeKey := addressRefKey(r.ChainSelector, r.Type.String(), r.Version.String(), r.Qualifier)
 
-func (s *memoryAddressRefStore) edit(ctx context.Context, qry string, r datastore.AddressRef) error {
-	result, err := s.db.ExecContext(
-		ctx,
-		qry,
-		r.ChainSelector,
-		r.Type.String(),
-		r.Version.String(),
-		r.Qualifier,
-		r.Address,
-		pq.StringArray(r.Labels.List()),
-	)
+	// Check if the record exists first
+	_, err := s.storage.getAddressRef(ctx, compositeKey, false)
 	if err != nil {
 		return err
 	}
-	count, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if count != 1 {
-		switch qry {
-		case query_UPDATE_ADDRESS_REFERENCE:
-			return datastore.ErrAddressRefNotFound
-		default:
-			return fmt.Errorf("expected 1 row affected, got %d", count)
-		}
-	}
 
-	return nil
+	return s.storage.setAddressRef(ctx, compositeKey, r)
 }
 
 func (s *memoryAddressRefStore) Delete(_ context.Context, _ datastore.AddressRefKey) error {

@@ -2,44 +2,22 @@ package memory
 
 import (
 	"context"
-	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 )
 
-const (
-	query_CHAIN_METADATA_BY_ID = `
-		SELECT chain_selector, metadata FROM chain_metadata
-		WHERE chain_selector = $1`
-	query_ALL_CHAIN_METADATA = `
-		SELECT chain_selector, metadata FROM chain_metadata`
-	query_ADD_CHAIN_METADATA = `
-		INSERT INTO chain_metadata (chain_selector, metadata)
-		VALUES ($1, $2)`
-	query_UPSERT_CHAIN_METADATA = query_ADD_CHAIN_METADATA + `
-		ON CONFLICT ON CONSTRAINT chain_metadata_pkey
-			DO UPDATE SET metadata = excluded.metadata`
-	query_UPDATE_CHAIN_METADATA = `
-		UPDATE chain_metadata SET metadata = $2
-		WHERE chain_selector = $1`
-	query_DELETE_CHAIN_METADATA = `
-		DELETE FROM chain_metadata
-		WHERE chain_selector = $1`
-)
-
 type memoryChainMetadataStore struct {
-	db *dbController
+	storage *memoryStorage
 }
 
 // Ensure memoryChainMetadataStore implements the V2 interface
 var _ datastore.MutableStoreV2[datastore.ChainMetadataKey, datastore.ChainMetadata] = &memoryChainMetadataStore{}
 
-func newCatalogChainMetadataStore(db *dbController) *memoryChainMetadataStore {
+func newCatalogChainMetadataStore(storage *memoryStorage) *memoryChainMetadataStore {
 	return &memoryChainMetadataStore{
-		db: db,
+		storage: storage,
 	}
 }
 
@@ -51,89 +29,13 @@ func (s *memoryChainMetadataStore) Get(ctx context.Context, key datastore.ChainM
 			ignoreTransactions = true
 		}
 	}
-	var db DB
-	if ignoreTransactions {
-		db = s.db.base
-	} else {
-		db = s.db
-	}
 
-	rows, err := db.QueryContext(ctx, query_CHAIN_METADATA_BY_ID, key.ChainSelector())
-	defer func(rows *sql.Rows) {
-		if rows != nil {
-			_ = rows.Close()
-		}
-	}(rows)
-	if err != nil {
-		return datastore.ChainMetadata{}, err
-	}
-
-	count := 0
-	row := &datastore.ChainMetadata{}
-	for rows.Next() {
-		count++
-		var metadataJSON sql.NullString
-		err = rows.Scan(&row.ChainSelector, &metadataJSON)
-		if err != nil {
-			return datastore.ChainMetadata{}, err
-		}
-
-		// Parse metadata JSON if present
-		if metadataJSON.Valid && metadataJSON.String != "" {
-			var metadata any
-			if unmarshalErr := json.Unmarshal([]byte(metadataJSON.String), &metadata); unmarshalErr != nil {
-				return datastore.ChainMetadata{}, fmt.Errorf("failed to unmarshal metadata JSON: %w", unmarshalErr)
-			}
-			row.Metadata = metadata
-		}
-	}
-
-	switch count {
-	case 0:
-		return *row, datastore.ErrChainMetadataNotFound
-	case 1:
-		return *row, nil
-	default:
-		err = fmt.Errorf("expected a single row, got %d", count)
-		return *row, err
-	}
+	return s.storage.getChainMetadata(ctx, key.ChainSelector(), ignoreTransactions)
 }
 
 // Fetch returns a copy of all ChainMetadata in the catalog.
 func (s *memoryChainMetadataStore) Fetch(ctx context.Context) ([]datastore.ChainMetadata, error) {
-	rows, err := s.db.QueryContext(ctx, query_ALL_CHAIN_METADATA)
-	defer func(rows *sql.Rows) {
-		if rows != nil {
-			_ = rows.Close()
-		}
-	}(rows)
-
-	if err != nil {
-		return nil, err
-	}
-	var records []datastore.ChainMetadata
-
-	for rows.Next() {
-		row := &datastore.ChainMetadata{}
-		var metadataJSON sql.NullString
-		err = rows.Scan(&row.ChainSelector, &metadataJSON)
-		if err != nil {
-			return records, err
-		}
-
-		// Parse metadata JSON if present
-		if metadataJSON.Valid && metadataJSON.String != "" {
-			var metadata any
-			if err := json.Unmarshal([]byte(metadataJSON.String), &metadata); err != nil {
-				return records, fmt.Errorf("failed to unmarshal metadata JSON: %w", err)
-			}
-			row.Metadata = metadata
-		}
-
-		records = append(records, *row)
-	}
-
-	return records, nil
+	return s.storage.getAllChainMetadata(ctx)
 }
 
 // Filter returns a copy of all ChainMetadata in the catalog that match the provided filter.
@@ -159,7 +61,16 @@ func (s *memoryChainMetadataStore) Filter(
 }
 
 func (s *memoryChainMetadataStore) Add(ctx context.Context, r datastore.ChainMetadata) error {
-	return s.edit(ctx, query_ADD_CHAIN_METADATA, r)
+	// Check if the record already exists
+	_, err := s.storage.getChainMetadata(ctx, r.ChainSelector, false)
+	if err == nil {
+		return errors.New("chain metadata already exists")
+	}
+	if !errors.Is(err, datastore.ErrChainMetadataNotFound) {
+		return err
+	}
+
+	return s.storage.setChainMetadata(ctx, r.ChainSelector, r)
 }
 
 func (s *memoryChainMetadataStore) Upsert(ctx context.Context, key datastore.ChainMetadataKey, metadata any, opts ...datastore.UpdateOption) error {
@@ -197,7 +108,7 @@ func (s *memoryChainMetadataStore) Upsert(ctx context.Context, key datastore.Cha
 		Metadata:      finalMetadata,
 	}
 
-	return s.edit(ctx, query_UPSERT_CHAIN_METADATA, record)
+	return s.storage.setChainMetadata(ctx, key.ChainSelector(), record)
 }
 
 func (s *memoryChainMetadataStore) Update(ctx context.Context, key datastore.ChainMetadataKey, metadata any, opts ...datastore.UpdateOption) error {
@@ -233,42 +144,11 @@ func (s *memoryChainMetadataStore) Update(ctx context.Context, key datastore.Cha
 		Metadata:      finalMetadata,
 	}
 
-	return s.edit(ctx, query_UPDATE_CHAIN_METADATA, record)
+	return s.storage.setChainMetadata(ctx, key.ChainSelector(), record)
 }
 
 func (s *memoryChainMetadataStore) Delete(_ context.Context, _ datastore.ChainMetadataKey) error {
 	// The catalog API does not support delete operations
 	// This is intentional as catalogs are typically immutable reference stores
 	return errors.New("delete operation not supported for catalog chain metadata store")
-}
-
-func (s *memoryChainMetadataStore) edit(ctx context.Context, qry string, r datastore.ChainMetadata) error {
-	// Serialize metadata to JSON
-	var metadataJSON string
-	if r.Metadata != nil {
-		metadataBytes, err := json.Marshal(r.Metadata)
-		if err != nil {
-			return fmt.Errorf("failed to marshal metadata to JSON: %w", err)
-		}
-		metadataJSON = string(metadataBytes)
-	}
-
-	result, err := s.db.ExecContext(ctx, qry, r.ChainSelector, metadataJSON)
-	if err != nil {
-		return err
-	}
-	count, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if count != 1 {
-		switch qry {
-		case query_UPDATE_CHAIN_METADATA:
-			return datastore.ErrChainMetadataNotFound
-		default:
-			return fmt.Errorf("expected 1 row affected, got %d", count)
-		}
-	}
-
-	return nil
 }

@@ -14,22 +14,21 @@ import (
 )
 
 // setupChainMetadataTestStore creates a new memory datastore for testing chain metadata
-func setupChainMetadataTestStore(t *testing.T) (*memoryCatalogDataStore, func()) {
+func setupChainMetadataTestStore(t *testing.T) *memoryCatalogDataStore {
 	t.Helper()
 	store, err := NewMemoryCatalogDataStore()
 	require.NoError(t, err)
 
-	return store, func() {
-		require.NoError(t, store.Close())
-	}
+	return store
 }
 
-//nolint:paralleltest // Subtests share database instance, cannot run in parallel
 func TestCatalogChainMetadataStore_Get(t *testing.T) {
-	store, closer := setupChainMetadataTestStore(t)
-	defer closer()
+	t.Parallel()
 
 	t.Run("not found", func(t *testing.T) {
+		t.Parallel()
+		store := setupChainMetadataTestStore(t)
+
 		key := datastore.NewChainMetadataKey(99999999)
 		_, err := store.ChainMetadata().Get(t.Context(), key)
 		require.Error(t, err)
@@ -37,6 +36,9 @@ func TestCatalogChainMetadataStore_Get(t *testing.T) {
 	})
 
 	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+		store := setupChainMetadataTestStore(t)
+
 		chainMetadata := newRandomChainMetadata()
 		err := store.ChainMetadata().Add(t.Context(), chainMetadata)
 		require.NoError(t, err)
@@ -49,6 +51,9 @@ func TestCatalogChainMetadataStore_Get(t *testing.T) {
 	})
 
 	t.Run("success with nil metadata", func(t *testing.T) {
+		t.Parallel()
+		store := setupChainMetadataTestStore(t)
+
 		chainMetadata := datastore.ChainMetadata{
 			ChainSelector: newRandomChainSelector(),
 			Metadata:      nil,
@@ -64,8 +69,8 @@ func TestCatalogChainMetadataStore_Get(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest // Subtests share database instance, cannot run in parallel
 func TestCatalogChainMetadataStore_Add(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		setup       func(store *memoryCatalogDataStore) datastore.ChainMetadata
@@ -110,9 +115,8 @@ func TestCatalogChainMetadataStore_Add(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create a fresh store for each test case to avoid concurrency issues
-			store, closer := setupChainMetadataTestStore(t)
-			defer closer()
+			t.Parallel()
+			store := setupChainMetadataTestStore(t)
 
 			chainMetadata := tt.setup(store)
 
@@ -139,12 +143,12 @@ func TestCatalogChainMetadataStore_Add(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // Subtests share database instance, cannot run in parallel
 func TestCatalogChainMetadataStore_Update(t *testing.T) {
-	store, closer := setupChainMetadataTestStore(t)
-	defer closer()
+	t.Parallel()
 
 	t.Run("not found", func(t *testing.T) {
+		t.Parallel()
+		store := setupChainMetadataTestStore(t)
 		key := datastore.NewChainMetadataKey(99999999)
 		err := store.ChainMetadata().Update(t.Context(), key, map[string]string{"test": "value"})
 		require.Error(t, err)
@@ -152,6 +156,8 @@ func TestCatalogChainMetadataStore_Update(t *testing.T) {
 	})
 
 	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+		store := setupChainMetadataTestStore(t)
 		// Add initial record
 		chainMetadata := newRandomChainMetadata()
 		err := store.ChainMetadata().Add(t.Context(), chainMetadata)
@@ -174,6 +180,8 @@ func TestCatalogChainMetadataStore_Update(t *testing.T) {
 	})
 
 	t.Run("success with custom updater", func(t *testing.T) {
+		t.Parallel()
+		store := setupChainMetadataTestStore(t)
 		// Add initial record with map metadata
 		initialMetadata := map[string]any{
 			"name":    "Test Chain",
@@ -228,12 +236,12 @@ func TestCatalogChainMetadataStore_Update(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest // Subtests share database instance, cannot run in parallel
 func TestCatalogChainMetadataStore_Upsert(t *testing.T) {
-	store, closer := setupChainMetadataTestStore(t)
-	defer closer()
+	t.Parallel()
 
 	t.Run("insert new record", func(t *testing.T) {
+		t.Parallel()
+		store := setupChainMetadataTestStore(t)
 		key := datastore.NewChainMetadataKey(newRandomChainSelector())
 		metadata := map[string]any{
 			"name": "New Chain",
@@ -251,6 +259,8 @@ func TestCatalogChainMetadataStore_Upsert(t *testing.T) {
 	})
 
 	t.Run("update existing record", func(t *testing.T) {
+		t.Parallel()
+		store := setupChainMetadataTestStore(t)
 		// Add initial record
 		chainMetadata := newRandomChainMetadata()
 		err := store.ChainMetadata().Add(t.Context(), chainMetadata)
@@ -273,10 +283,9 @@ func TestCatalogChainMetadataStore_Upsert(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest // Subtests share database instance, cannot run in parallel
 func TestCatalogChainMetadataStore_Delete(t *testing.T) {
-	store, closer := setupChainMetadataTestStore(t)
-	defer closer()
+	t.Parallel()
+	store := setupChainMetadataTestStore(t)
 
 	key := datastore.NewChainMetadataKey(12345)
 
@@ -288,18 +297,20 @@ func TestCatalogChainMetadataStore_Delete(t *testing.T) {
 	require.Contains(t, err.Error(), "delete operation not supported")
 }
 
-//nolint:paralleltest // Subtests share database instance, cannot run in parallel
 func TestCatalogChainMetadataStore_Fetch(t *testing.T) {
-	store, closer := setupChainMetadataTestStore(t)
-	defer closer()
+	t.Parallel()
 
 	t.Run("empty store", func(t *testing.T) {
+		t.Parallel()
+		store := setupChainMetadataTestStore(t)
 		results, err := store.ChainMetadata().Fetch(t.Context())
 		require.NoError(t, err)
 		require.Empty(t, results)
 	})
 
 	t.Run("multiple records", func(t *testing.T) {
+		t.Parallel()
+		store := setupChainMetadataTestStore(t)
 		// Add multiple records
 		records := []datastore.ChainMetadata{
 			newRandomChainMetadata(),
@@ -332,10 +343,9 @@ func TestCatalogChainMetadataStore_Fetch(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest // Subtests share database instance, cannot run in parallel
 func TestCatalogChainMetadataStore_Filter(t *testing.T) {
-	store, closer := setupChainMetadataTestStore(t)
-	defer closer()
+	t.Parallel()
+	store := setupChainMetadataTestStore(t)
 
 	// Add test records
 	records := []datastore.ChainMetadata{
@@ -359,12 +369,14 @@ func TestCatalogChainMetadataStore_Filter(t *testing.T) {
 	}
 
 	t.Run("no filters", func(t *testing.T) {
+		t.Parallel()
 		results, err := store.ChainMetadata().Filter(t.Context())
 		require.NoError(t, err)
 		require.Len(t, results, len(records))
 	})
 
 	t.Run("filter by chain selector", func(t *testing.T) {
+		t.Parallel()
 		filter := func(records []datastore.ChainMetadata) []datastore.ChainMetadata {
 			var filtered []datastore.ChainMetadata
 			for _, record := range records {
@@ -383,6 +395,7 @@ func TestCatalogChainMetadataStore_Filter(t *testing.T) {
 	})
 
 	t.Run("filter by metadata field", func(t *testing.T) {
+		t.Parallel()
 		filter := func(records []datastore.ChainMetadata) []datastore.ChainMetadata {
 			var filtered []datastore.ChainMetadata
 			for _, record := range records {
@@ -410,6 +423,7 @@ func TestCatalogChainMetadataStore_Filter(t *testing.T) {
 	})
 
 	t.Run("multiple filters", func(t *testing.T) {
+		t.Parallel()
 		// First filter: only mainnet
 		mainnetFilter := func(records []datastore.ChainMetadata) []datastore.ChainMetadata {
 			var filtered []datastore.ChainMetadata
@@ -443,12 +457,12 @@ func TestCatalogChainMetadataStore_Filter(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest // Subtests share database instance, cannot run in parallel
 func TestCatalogChainMetadataStore_Transactions(t *testing.T) {
-	store, closer := setupChainMetadataTestStore(t)
-	defer closer()
+	t.Parallel()
 
 	t.Run("transaction rollback", func(t *testing.T) {
+		t.Parallel()
+		store := setupChainMetadataTestStore(t)
 		chainMetadata := newRandomChainMetadata()
 
 		err := store.WithTransaction(t.Context(), func(ctx context.Context, txStore datastore.BaseCatalogStore) error {
@@ -475,6 +489,8 @@ func TestCatalogChainMetadataStore_Transactions(t *testing.T) {
 	})
 
 	t.Run("transaction commit", func(t *testing.T) {
+		t.Parallel()
+		store := setupChainMetadataTestStore(t)
 		chainMetadata := newRandomChainMetadata()
 
 		err := store.WithTransaction(t.Context(), func(ctx context.Context, txStore datastore.BaseCatalogStore) error {
@@ -492,6 +508,8 @@ func TestCatalogChainMetadataStore_Transactions(t *testing.T) {
 	})
 
 	t.Run("ignore transactions option", func(t *testing.T) {
+		t.Parallel()
+		store := setupChainMetadataTestStore(t)
 		chainMetadata := newRandomChainMetadata()
 
 		// Add record outside transaction
