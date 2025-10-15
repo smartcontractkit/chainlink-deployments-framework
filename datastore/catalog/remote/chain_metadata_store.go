@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 	"sync"
 
+	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
@@ -145,12 +145,17 @@ func (s *catalogChainMetadataStore) get(ignoreTransaction bool, key datastore.Ch
 	}
 
 	// Check for errors in the response
-	if resp.Status != nil && !resp.Status.Succeeded {
-		if strings.Contains(resp.Status.GetError(), "No records found") {
-			return datastore.ChainMetadata{}, datastore.ErrChainMetadataNotFound
+	if statusErr := parseResponseStatus(resp.Status); statusErr != nil {
+		st, sterr := parseStatusError(statusErr)
+		if sterr != nil {
+			return datastore.ChainMetadata{}, sterr
 		}
 
-		return datastore.ChainMetadata{}, fmt.Errorf("request failed: %s", resp.Status.Error)
+		if st.Code() == codes.NotFound {
+			return datastore.ChainMetadata{}, fmt.Errorf("%w: %s", datastore.ErrChainMetadataNotFound, statusErr.Error())
+		}
+
+		return datastore.ChainMetadata{}, fmt.Errorf("get chain metadata failed: %w", statusErr)
 	}
 
 	findResp := resp.GetChainMetadataFindResponse()
@@ -204,8 +209,8 @@ func (s *catalogChainMetadataStore) Fetch(_ context.Context) ([]datastore.ChainM
 	}
 
 	// Check for errors in the response
-	if resp.Status != nil && !resp.Status.Succeeded {
-		return nil, fmt.Errorf("request failed: %s", resp.Status.Error)
+	if err := parseResponseStatus(resp.Status); err != nil {
+		return nil, fmt.Errorf("fetch chain metadata failed: %w", err)
 	}
 
 	findResp := resp.GetChainMetadataFindResponse()
@@ -363,19 +368,21 @@ func (s *catalogChainMetadataStore) editRecord(record datastore.ChainMetadata, s
 	}
 
 	// Check for errors in the edit response
-	if resp.Status != nil && !resp.Status.Succeeded {
-		errorMsg := resp.Status.GetError()
-
-		// Check for specific error conditions
-		if strings.Contains(errorMsg, "no record found to update for") && semantics == pb.EditSemantics_SEMANTICS_UPDATE {
-			return datastore.ErrChainMetadataNotFound
-		} else if strings.Contains(errorMsg, "incorrect row version") && (semantics == pb.EditSemantics_SEMANTICS_UPDATE || semantics == pb.EditSemantics_SEMANTICS_UPSERT) {
-			return datastore.ErrChainMetadataStale
+	if statusErr := parseResponseStatus(resp.Status); statusErr != nil {
+		st, err := parseStatusError(statusErr)
+		if err != nil {
+			return err
 		}
 
-		return fmt.Errorf("edit request failed: %s", resp.Status.Error)
+		switch st.Code() { //nolint:exhaustive // We don't need to handle all codes here
+		case codes.NotFound:
+			return fmt.Errorf("%w: %s", datastore.ErrChainMetadataNotFound, statusErr.Error())
+		case codes.Aborted:
+			return fmt.Errorf("%w: %s", datastore.ErrChainMetadataStale, statusErr.Error())
+		default:
+			return fmt.Errorf("edit request failed: %w", statusErr)
+		}
 	}
-
 	editResp := resp.GetChainMetadataEditResponse()
 	if editResp == nil {
 		return errors.New("unexpected response type")

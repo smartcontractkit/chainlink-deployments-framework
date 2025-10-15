@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/Masterminds/semver/v3"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
@@ -84,12 +84,17 @@ func (s *catalogAddressRefStore) get(
 	}
 
 	// Check for errors in the response
-	if response.Status != nil && !response.Status.Succeeded {
-		if strings.Contains(response.Status.GetError(), "No records found") {
-			return datastore.AddressRef{}, datastore.ErrAddressRefNotFound
+	if statusErr := parseResponseStatus(response.Status); statusErr != nil {
+		st, sterr := parseStatusError(statusErr)
+		if sterr != nil {
+			return datastore.AddressRef{}, sterr
 		}
 
-		return datastore.AddressRef{}, fmt.Errorf("request failed: %s", response.Status.Error)
+		if st.Code() == codes.NotFound {
+			return datastore.AddressRef{}, fmt.Errorf("%w: %s", datastore.ErrAddressRefNotFound, statusErr.Error())
+		}
+
+		return datastore.AddressRef{}, fmt.Errorf("get address ref failed: %w", statusErr)
 	}
 
 	// Extract the address find response
@@ -151,8 +156,8 @@ func (s *catalogAddressRefStore) Fetch(_ context.Context) ([]datastore.AddressRe
 	}
 
 	// Check for errors in the response
-	if response.Status != nil && !response.Status.Succeeded {
-		return nil, fmt.Errorf("request failed: %s", response.Status.Error)
+	if err := parseResponseStatus(response.Status); err != nil {
+		return nil, fmt.Errorf("fetch address refs failed: %w", err)
 	}
 
 	// Extract the address find response
@@ -231,8 +236,8 @@ func (s *catalogAddressRefStore) Add(_ context.Context, record datastore.Address
 	}
 
 	// Check for errors in the edit response
-	if editResponse.Status != nil && !editResponse.Status.Succeeded {
-		return fmt.Errorf("edit request failed: %s", editResponse.Status.Error)
+	if err := parseResponseStatus(editResponse.Status); err != nil {
+		return fmt.Errorf("add address ref failed: %w", err)
 	}
 
 	// Extract the edit response to validate it
@@ -278,8 +283,8 @@ func (s *catalogAddressRefStore) Upsert(_ context.Context, record datastore.Addr
 	}
 
 	// Check for errors in the response
-	if response.Status != nil && !response.Status.Succeeded {
-		return fmt.Errorf("request failed: %s", response.Status.Error)
+	if err := parseResponseStatus(response.Status); err != nil {
+		return fmt.Errorf("upsert address ref failed: %w", err)
 	}
 
 	// Extract the edit response to validate it
@@ -338,8 +343,8 @@ func (s *catalogAddressRefStore) Update(ctx context.Context, record datastore.Ad
 	}
 
 	// Check for errors in the edit response
-	if editResponse.Status != nil && !editResponse.Status.Succeeded {
-		return fmt.Errorf("edit request failed: %s", editResponse.Status.Error)
+	if err := parseResponseStatus(editResponse.Status); err != nil {
+		return fmt.Errorf("update address ref failed: %w", err)
 	}
 
 	// Extract the edit response to validate it

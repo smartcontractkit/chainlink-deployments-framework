@@ -63,9 +63,8 @@ func TestGetCredsForEnv(t *testing.T) {
 				})
 				expectedInfo := expectedCreds.Info()
 
-				// Both should have the same security protocol and server name behavior
+				// Both should have the same security protocol
 				assert.Equal(t, expectedInfo.SecurityProtocol, info.SecurityProtocol)
-				assert.Equal(t, expectedInfo.ServerName, info.ServerName)
 			}
 		})
 	}
