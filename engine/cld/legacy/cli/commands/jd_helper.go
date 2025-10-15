@@ -153,7 +153,7 @@ func writeNodeTable(nodes []*nodev1.Node) {
 	for _, node := range nodes {
 		labelsString := &strings.Builder{}
 		labelsTable := tablewriter.NewWriter(labelsString)
-		labels := [][]string{}
+		var labels [][]string
 		for _, label := range node.Labels {
 			labels = append(labels, []string{label.Key, *label.Value})
 		}
@@ -174,6 +174,26 @@ func writeNodeTable(nodes []*nodev1.Node) {
 		if node.WorkflowKey != nil {
 			data = append(data, []string{"WorkflowKey", *node.WorkflowKey})
 		}
+
+		if len(node.P2PKeyBundles) > 0 {
+			p2pBuilder := &strings.Builder{}
+			p2pTable := tablewriter.NewWriter(p2pBuilder)
+			var p2pData [][]string
+			for _, p2p := range node.P2PKeyBundles {
+				p2pData = append(p2pData, []string{"Peer ID", p2p.PeerId})
+				p2pData = append(p2pData, []string{"Public Key", p2p.PublicKey})
+			}
+			p2pTable.SetBorders(tablewriter.Border{
+				Left:   false,
+				Right:  false,
+				Top:    true,
+				Bottom: true,
+			})
+			p2pTable.AppendBulk(p2pData)
+			p2pTable.Render()
+			data = append(data, []string{"P2P Key Bundles", p2pBuilder.String()})
+		}
+
 		data = append(data,
 			[]string{"Enabled", strconv.FormatBool(node.IsEnabled)},
 			[]string{"Connected", strconv.FormatBool(node.IsConnected)},
