@@ -9,7 +9,6 @@ import (
 	"sync"
 
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
@@ -150,8 +149,11 @@ func (s *catalogContractMetadataStore) get(ignoreTransaction bool, key datastore
 	}
 
 	// Check for errors in the response
-	if statusErr := checkResponseStatus(resp.Status); statusErr != nil {
-		st, _ := status.FromError(statusErr)
+	if statusErr := parseResponseStatus(resp.Status); statusErr != nil {
+		st, sterr := parseStatusError(statusErr)
+		if sterr != nil {
+			return datastore.ContractMetadata{}, sterr
+		}
 
 		if st.Code() == codes.NotFound {
 			return datastore.ContractMetadata{}, fmt.Errorf("%w: %s", datastore.ErrContractMetadataNotFound, statusErr.Error())
@@ -211,7 +213,7 @@ func (s *catalogContractMetadataStore) Fetch(_ context.Context) ([]datastore.Con
 	}
 
 	// Check for errors in the response
-	if statusErr := checkResponseStatus(resp.Status); statusErr != nil {
+	if statusErr := parseResponseStatus(resp.Status); statusErr != nil {
 		return nil, fmt.Errorf("fetch contract metadata failed: %w", statusErr)
 	}
 
@@ -377,8 +379,11 @@ func (s *catalogContractMetadataStore) editRecord(record datastore.ContractMetad
 	}
 
 	// Check for errors in the edit response
-	if statusErr := checkResponseStatus(resp.Status); statusErr != nil {
-		st, _ := status.FromError(statusErr)
+	if statusErr := parseResponseStatus(resp.Status); statusErr != nil {
+		st, err := parseStatusError(statusErr)
+		if err != nil {
+			return err
+		}
 
 		switch st.Code() { //nolint:exhaustive // We don't need to handle all codes here
 		case codes.NotFound:

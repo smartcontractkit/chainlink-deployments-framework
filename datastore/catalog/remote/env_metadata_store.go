@@ -8,7 +8,6 @@ import (
 	"sync"
 
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
@@ -142,8 +141,11 @@ func (s *catalogEnvMetadataStore) get(ignoreTransaction bool) (datastore.EnvMeta
 	}
 
 	// Check for errors in the response
-	if statusErr := checkResponseStatus(resp.Status); statusErr != nil {
-		st, _ := status.FromError(statusErr)
+	if statusErr := parseResponseStatus(resp.Status); statusErr != nil {
+		st, sterr := parseStatusError(statusErr)
+		if sterr != nil {
+			return datastore.EnvMetadata{}, sterr
+		}
 
 		if st.Code() == codes.NotFound {
 			return datastore.EnvMetadata{}, fmt.Errorf("%w: %s", datastore.ErrEnvMetadataNotSet, statusErr.Error())
@@ -250,8 +252,11 @@ func (s *catalogEnvMetadataStore) editRecord(record datastore.EnvMetadata) error
 	}
 
 	// Check for errors in the edit response
-	if statusErr := checkResponseStatus(resp.Status); statusErr != nil {
-		st, _ := status.FromError(statusErr)
+	if statusErr := parseResponseStatus(resp.Status); statusErr != nil {
+		st, err := parseStatusError(statusErr)
+		if err != nil {
+			return err
+		}
 
 		if st.Code() == codes.Aborted {
 			return fmt.Errorf("%w: %s", datastore.ErrEnvMetadataStale, statusErr.Error())

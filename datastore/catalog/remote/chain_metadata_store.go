@@ -8,7 +8,6 @@ import (
 	"sync"
 
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
@@ -146,8 +145,11 @@ func (s *catalogChainMetadataStore) get(ignoreTransaction bool, key datastore.Ch
 	}
 
 	// Check for errors in the response
-	if statusErr := checkResponseStatus(resp.Status); statusErr != nil {
-		st, _ := status.FromError(statusErr)
+	if statusErr := parseResponseStatus(resp.Status); statusErr != nil {
+		st, sterr := parseStatusError(statusErr)
+		if sterr != nil {
+			return datastore.ChainMetadata{}, sterr
+		}
 
 		if st.Code() == codes.NotFound {
 			return datastore.ChainMetadata{}, fmt.Errorf("%w: %s", datastore.ErrChainMetadataNotFound, statusErr.Error())
@@ -207,7 +209,7 @@ func (s *catalogChainMetadataStore) Fetch(_ context.Context) ([]datastore.ChainM
 	}
 
 	// Check for errors in the response
-	if err := checkResponseStatus(resp.Status); err != nil {
+	if err := parseResponseStatus(resp.Status); err != nil {
 		return nil, fmt.Errorf("fetch chain metadata failed: %w", err)
 	}
 
@@ -366,8 +368,11 @@ func (s *catalogChainMetadataStore) editRecord(record datastore.ChainMetadata, s
 	}
 
 	// Check for errors in the edit response
-	if statusErr := checkResponseStatus(resp.Status); statusErr != nil {
-		st, _ := status.FromError(statusErr)
+	if statusErr := parseResponseStatus(resp.Status); statusErr != nil {
+		st, err := parseStatusError(statusErr)
+		if err != nil {
+			return err
+		}
 
 		switch st.Code() { //nolint:exhaustive // We don't need to handle all codes here
 		case codes.NotFound:

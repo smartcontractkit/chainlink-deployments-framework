@@ -7,7 +7,6 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
@@ -85,8 +84,11 @@ func (s *catalogAddressRefStore) get(
 	}
 
 	// Check for errors in the response
-	if statusErr := checkResponseStatus(response.Status); statusErr != nil {
-		st, _ := status.FromError(statusErr)
+	if statusErr := parseResponseStatus(response.Status); statusErr != nil {
+		st, sterr := parseStatusError(statusErr)
+		if sterr != nil {
+			return datastore.AddressRef{}, sterr
+		}
 
 		if st.Code() == codes.NotFound {
 			return datastore.AddressRef{}, fmt.Errorf("%w: %s", datastore.ErrAddressRefNotFound, statusErr.Error())
@@ -154,7 +156,7 @@ func (s *catalogAddressRefStore) Fetch(_ context.Context) ([]datastore.AddressRe
 	}
 
 	// Check for errors in the response
-	if err := checkResponseStatus(response.Status); err != nil {
+	if err := parseResponseStatus(response.Status); err != nil {
 		return nil, fmt.Errorf("fetch address refs failed: %w", err)
 	}
 
@@ -234,7 +236,7 @@ func (s *catalogAddressRefStore) Add(_ context.Context, record datastore.Address
 	}
 
 	// Check for errors in the edit response
-	if err := checkResponseStatus(editResponse.Status); err != nil {
+	if err := parseResponseStatus(editResponse.Status); err != nil {
 		return fmt.Errorf("add address ref failed: %w", err)
 	}
 
@@ -281,7 +283,7 @@ func (s *catalogAddressRefStore) Upsert(_ context.Context, record datastore.Addr
 	}
 
 	// Check for errors in the response
-	if err := checkResponseStatus(response.Status); err != nil {
+	if err := parseResponseStatus(response.Status); err != nil {
 		return fmt.Errorf("upsert address ref failed: %w", err)
 	}
 
@@ -341,7 +343,7 @@ func (s *catalogAddressRefStore) Update(ctx context.Context, record datastore.Ad
 	}
 
 	// Check for errors in the edit response
-	if err := checkResponseStatus(editResponse.Status); err != nil {
+	if err := parseResponseStatus(editResponse.Status); err != nil {
 		return fmt.Errorf("update address ref failed: %w", err)
 	}
 

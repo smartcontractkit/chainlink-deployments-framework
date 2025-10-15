@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCheckResponseStatus(t *testing.T) {
+func TestParseResponseStatus(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -57,7 +57,7 @@ func TestCheckResponseStatus(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			err := checkResponseStatus(tt.responseStatus)
+			err := parseResponseStatus(tt.responseStatus)
 
 			if tt.expectedCode != codes.OK {
 				require.Error(t, err)
