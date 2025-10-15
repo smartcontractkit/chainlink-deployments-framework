@@ -240,34 +240,29 @@ func (d *DecodedCall) describeArguments(arguments []NamedArgument, context *Argu
 	}
 	var description strings.Builder
 	description.WriteString(fmt.Sprintf("**%s:**\n\n", label))
-	// Table header
-	description.WriteString("| Name | Value | Annotation |\n")
-	description.WriteString("|------|-------|------------|\n")
 
-	var multiLineDetails []string
-
+	// Render compact bullet list with per-argument summaries, and push verbose content into collapsible blocks.
+	var details []string
 	for _, argument := range arguments {
-		val := argument.Value.Describe(context)
 		annot := ""
 		if addr, ok := argument.Value.(AddressArgument); ok {
-			a := addr.Annotation(context)
-			annot = a // may be ""
+			annot = addr.Annotation(context)
 		}
-		val = strings.ReplaceAll(val, "|", "\\|")
-		annot = strings.ReplaceAll(annot, "|", "\\|")
 
-		if strings.Contains(val, "\n") {
-			ref := fmt.Sprintf("See below: `%s`", argument.Name)
-			description.WriteString(fmt.Sprintf("| `%s` | %s | %s |\n", argument.Name, ref, annot))
-			multiLineDetails = append(multiLineDetails, fmt.Sprintf("<details><summary>%s</summary>\n\n```\n%s\n```\n</details>\n", argument.Name, val))
+		summary, detail := summarizeArgument(argument.Name, argument.Value, context)
+		if annot != "" {
+			description.WriteString(fmt.Sprintf("- `%s`: %s <sub><i>%s</i></sub>\n", argument.Name, summary, annot))
 		} else {
-			description.WriteString(fmt.Sprintf("| `%s` | `%s` | %s |\n", argument.Name, val, annot))
+			description.WriteString(fmt.Sprintf("- `%s`: %s\n", argument.Name, summary))
+		}
+		if detail != "" {
+			details = append(details, detail)
 		}
 	}
-	description.WriteString("\n") // Blank line after table for spacing
+	description.WriteString("\n")
 
-	for _, detail := range multiLineDetails {
-		description.WriteString(detail)
+	for _, d := range details {
+		description.WriteString(d)
 		description.WriteString("\n")
 	}
 
@@ -440,6 +435,128 @@ func indentStringWith(s string, indent string) string {
 	}
 
 	return result.String()
+}
+
+// summarizeArgument builds a short, single-line summary for an argument and, when appropriate,
+// returns a collapsible details section containing the full, verbose rendering.
+func summarizeArgument(name string, arg Argument, ctx *ArgumentContext) (summary string, details string) {
+	switch v := arg.(type) {
+	case AddressArgument:
+		return fmt.Sprintf("`%s`", v.Value), ""
+	case ChainSelectorArgument:
+		return fmt.Sprintf("`%s`", v.Describe(ctx)), ""
+	case BytesArgument:
+		n := len(v.Value)
+		preview := hexPreview(v.Value, 16)
+		sum := fmt.Sprintf("bytes(len=%d): %s", n, preview)
+		det := fmt.Sprintf("<details><summary>%s</summary>\n\n```\n%s\n```\n</details>\n", name, hexutil.Encode(v.Value))
+		return sum, det
+	case ArrayArgument:
+		n := len(v.Elements)
+		if n == 0 {
+			return "[]", ""
+		}
+		sum := fmt.Sprintf("array[%d]%s", n, arrayPreview(v.Elements, ctx, 3))
+		det := fmt.Sprintf("<details><summary>%s</summary>\n\n```\n%s\n```\n</details>\n", name, v.Describe(ctx))
+		return sum, det
+	case StructArgument:
+		sum := fmt.Sprintf("struct{%d fields}", len(v.Fields))
+		det := fmt.Sprintf("<details><summary>%s</summary>\n\n```\n%s\n```\n</details>\n", name, v.Describe(ctx))
+		return sum, det
+	case SimpleArgument:
+		s := v.Value
+		if len(s) > 80 {
+			sum := fmt.Sprintf("`%s` (len=%d)", truncateMiddle(s, 80), len(s))
+			det := fmt.Sprintf("<details><summary>%s</summary>\n\n```\n%s\n```\n</details>\n", name, s)
+			return sum, det
+		}
+		return fmt.Sprintf("`%s`", s), ""
+	default:
+		// Fallback to Describe and decide based on size/newlines
+		s := arg.Describe(ctx)
+		if strings.Contains(s, "\n") || len(s) > 120 {
+			sum := truncateMiddle(strings.ReplaceAll(s, "\n", " "), 80)
+			det := fmt.Sprintf("<details><summary>%s</summary>\n\n```\n%s\n```\n</details>\n", name, s)
+			return sum, det
+		}
+		return fmt.Sprintf("`%s`", s), ""
+	}
+}
+
+// arrayPreview renders a compact inline preview of the first few elements of an array.
+func arrayPreview(elems []Argument, ctx *ArgumentContext, limit int) string {
+	n := len(elems)
+	if n == 0 {
+		return ""
+	}
+	max := limit
+	if n < max {
+		max = n
+	}
+	parts := make([]string, 0, max)
+	for i := 0; i < max; i++ {
+		parts = append(parts, compactValue(elems[i], ctx))
+	}
+	more := ""
+	if n > max {
+		more = fmt.Sprintf(", … (+%d)", n-max)
+	}
+
+	return fmt.Sprintf(": [%s%s]", strings.Join(parts, ", "), more)
+}
+
+// compactValue produces a very short representation for an argument, suitable for inline previews.
+func compactValue(arg Argument, ctx *ArgumentContext) string {
+	switch v := arg.(type) {
+	case AddressArgument:
+		return v.Value
+	case ChainSelectorArgument:
+		return v.Describe(ctx)
+	case BytesArgument:
+		return hexPreview(v.Value, 4)
+	case SimpleArgument:
+		return truncateMiddle(v.Value, 24)
+	case StructArgument:
+		return "struct"
+	case ArrayArgument:
+		return fmt.Sprintf("array[%d]", len(v.Elements))
+	default:
+		s := arg.Describe(ctx)
+		return truncateMiddle(strings.ReplaceAll(s, "\n", " "), 24)
+	}
+}
+
+// hexPreview returns a hex string for the first maxBytes of b (or full if shorter),
+// using middle truncation when needed and always including the 0x prefix.
+func hexPreview(b []byte, maxBytes int) string {
+	if len(b) <= maxBytes {
+		return hexutil.Encode(b)
+	}
+	// encode both ends for clearer preview when data is large
+	head := hexutil.Encode(b[:maxBytes])
+	tailLen := maxBytes
+	if len(b) >= maxBytes {
+		tail := hexutil.Encode(b[len(b)-tailLen:])
+		return fmt.Sprintf("%s…%s", head, tail)
+	}
+
+	return head + "…"
+}
+
+// truncateMiddle shortens a string to at most max characters by keeping the start and end.
+func truncateMiddle(s string, max int) string {
+	if len(s) <= max {
+		return s
+	}
+	if max <= 3 {
+		return s[:max]
+	}
+	// split budget roughly in half around an ellipsis
+	keep := (max - 1) / 2
+	left := s[:keep]
+	right := s[len(s)-keep:]
+
+	return left + "…" + right
 }
 
 func GetChainNameBySelector(selector uint64) (string, error) {
