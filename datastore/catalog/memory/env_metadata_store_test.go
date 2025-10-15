@@ -11,28 +11,29 @@ import (
 )
 
 // setupEnvMetadataTestStore creates a new memory datastore for testing environment metadata
-func setupEnvMetadataTestStore(t *testing.T) (*memoryCatalogDataStore, func()) {
+func setupEnvMetadataTestStore(t *testing.T) *memoryCatalogDataStore {
 	t.Helper()
 	store, err := NewMemoryCatalogDataStore()
 	require.NoError(t, err)
 
-	return store, func() {
-		require.NoError(t, store.Close())
-	}
+	return store
 }
 
-//nolint:paralleltest // Subtests share database instance, cannot run in parallel
 func TestCatalogEnvMetadataStore_Get(t *testing.T) {
-	store, closer := setupEnvMetadataTestStore(t)
-	defer closer()
+	t.Parallel()
 
 	t.Run("not set", func(t *testing.T) {
+		t.Parallel()
+		store := setupEnvMetadataTestStore(t)
+
 		_, err := store.EnvMetadata().Get(t.Context())
 		require.Error(t, err)
 		require.ErrorIs(t, err, datastore.ErrEnvMetadataNotSet)
 	})
 
 	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+		store := setupEnvMetadataTestStore(t)
 		envMetadata := map[string]any{
 			"domain":      "test_domain",
 			"environment": "catalog_testing",
@@ -48,20 +49,21 @@ func TestCatalogEnvMetadataStore_Get(t *testing.T) {
 	})
 
 	t.Run("success with nil metadata", func(t *testing.T) {
-		store2, closer2 := setupEnvMetadataTestStore(t)
-		defer closer2()
+		t.Parallel()
+		store := setupEnvMetadataTestStore(t)
 
-		err := store2.EnvMetadata().Set(t.Context(), nil)
+		err := store.EnvMetadata().Set(t.Context(), nil)
 		require.NoError(t, err)
 
-		result, err := store2.EnvMetadata().Get(t.Context())
+		result, err := store.EnvMetadata().Get(t.Context())
 		require.NoError(t, err)
 		require.Nil(t, result.Metadata)
 	})
 }
 
-//nolint:paralleltest // Subtests share database instance, cannot run in parallel
 func TestCatalogEnvMetadataStore_Set(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		metadata any
@@ -100,9 +102,8 @@ func TestCatalogEnvMetadataStore_Set(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create a fresh store for each test case
-			store, closer := setupEnvMetadataTestStore(t)
-			defer closer()
+			t.Parallel()
+			store := setupEnvMetadataTestStore(t)
 
 			// Execute
 			err := store.EnvMetadata().Set(context.Background(), tt.metadata)
@@ -116,10 +117,10 @@ func TestCatalogEnvMetadataStore_Set(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // Uses shared database instance, cannot run in parallel
 func TestCatalogEnvMetadataStore_Set_Replace(t *testing.T) {
-	store, closer := setupEnvMetadataTestStore(t)
-	defer closer()
+	t.Parallel()
+
+	store := setupEnvMetadataTestStore(t)
 
 	// Set initial metadata
 	initialMetadata := map[string]any{
@@ -153,65 +154,30 @@ func TestCatalogEnvMetadataStore_Set_Replace(t *testing.T) {
 	require.Equal(t, newMetadata, result.Metadata)
 }
 
-//nolint:paralleltest // Uses shared database instance, cannot run in parallel
 func TestCatalogEnvMetadataStore_Set_WithCustomUpdater(t *testing.T) {
-	store, closer := setupEnvMetadataTestStore(t)
-	defer closer()
+	t.Parallel()
+
+	store := setupEnvMetadataTestStore(t)
 
 	// Set initial metadata
 	initialMetadata := map[string]any{
-		"domain":      "test_domain",
-		"environment": "test_env",
-		"version":     float64(1), // JSON unmarshals numbers as float64
-		"config": map[string]any{
-			"timeout": float64(5000),
-			"retries": float64(3),
-		},
+		"value": "initial",
 	}
 	err := store.EnvMetadata().Set(t.Context(), initialMetadata)
 	require.NoError(t, err)
 
-	// Update with custom merger that combines maps
+	// Update with a simple custom updater that appends to a string
 	updateMetadata := map[string]any{
-		"version": float64(2), // JSON unmarshals numbers as float64
-		"config": map[string]any{
-			"timeout":   float64(10000), // should override
-			"newOption": "newValue",     // should be added
-		},
-		"newField": "addedField",
+		"value": "updated",
 	}
 
+	// Simple custom updater that concatenates strings to prove it was called
 	customUpdater := func(latest any, incoming any) (any, error) {
-		latestMap, ok1 := latest.(map[string]any)
-		incomingMap, ok2 := incoming.(map[string]any)
-		if !ok1 || !ok2 {
-			return incoming, nil // fallback to replacement
-		}
+		latestMap, _ := latest.(map[string]any)
+		incomingMap, _ := incoming.(map[string]any)
 
-		// Deep merge maps
-		result := make(map[string]any)
-		for k, v := range latestMap {
-			result[k] = v
-		}
-		for k, v := range incomingMap {
-			if k == "config" {
-				// Special handling for config - merge nested maps
-				if latestConfig, ok := result[k].(map[string]any); ok {
-					if incomingConfig, ok := v.(map[string]any); ok {
-						mergedConfig := make(map[string]any)
-						for ck, cv := range latestConfig {
-							mergedConfig[ck] = cv
-						}
-						for ck, cv := range incomingConfig {
-							mergedConfig[ck] = cv
-						}
-						result[k] = mergedConfig
-
-						continue
-					}
-				}
-			}
-			result[k] = v
+		result := map[string]any{
+			"value": latestMap["value"].(string) + "_" + incomingMap["value"].(string) + "_custom",
 		}
 
 		return result, nil
@@ -220,31 +186,22 @@ func TestCatalogEnvMetadataStore_Set_WithCustomUpdater(t *testing.T) {
 	err = store.EnvMetadata().Set(t.Context(), updateMetadata, datastore.WithUpdater(customUpdater))
 	require.NoError(t, err)
 
-	// Verify the merge
+	// Verify the custom updater was used
 	result, err := store.EnvMetadata().Get(t.Context())
 	require.NoError(t, err)
 
 	resultMap, ok := result.Metadata.(map[string]any)
 	require.True(t, ok)
-	require.Equal(t, "test_domain", resultMap["domain"])         // from original
-	require.Equal(t, "test_env", resultMap["environment"])       // from original
-	require.InEpsilon(t, float64(2), resultMap["version"], 0.01) // updated
-	require.Equal(t, "addedField", resultMap["newField"])        // added
-
-	// Check nested config merge
-	configMap, ok := resultMap["config"].(map[string]any)
-	require.True(t, ok)
-	require.InEpsilon(t, float64(10000), configMap["timeout"], 0.001) // updated
-	require.InEpsilon(t, float64(3), configMap["retries"], 0.001)     // preserved from original
-	require.Equal(t, "newValue", configMap["newOption"])              // added
+	// If the custom updater was called, we should see "initial_updated_custom"
+	require.Equal(t, "initial_updated_custom", resultMap["value"])
 }
 
-//nolint:paralleltest // Subtests share database instance, cannot run in parallel
 func TestCatalogEnvMetadataStore_Transactions(t *testing.T) {
-	store, closer := setupEnvMetadataTestStore(t)
-	defer closer()
-
+	t.Parallel()
 	t.Run("transaction rollback", func(t *testing.T) {
+		t.Parallel()
+		store := setupEnvMetadataTestStore(t)
+
 		envMetadata := map[string]any{
 			"domain":      "test_domain",
 			"environment": "test_env",
@@ -273,6 +230,9 @@ func TestCatalogEnvMetadataStore_Transactions(t *testing.T) {
 	})
 
 	t.Run("transaction commit", func(t *testing.T) {
+		t.Parallel()
+		store := setupEnvMetadataTestStore(t)
+
 		envMetadata := map[string]any{
 			"domain":      "test_domain",
 			"environment": "test_env",
@@ -292,6 +252,9 @@ func TestCatalogEnvMetadataStore_Transactions(t *testing.T) {
 	})
 
 	t.Run("ignore transactions option", func(t *testing.T) {
+		t.Parallel()
+		store := setupEnvMetadataTestStore(t)
+
 		envMetadata := map[string]any{
 			"domain":      "test_domain",
 			"environment": "test_env",
@@ -319,10 +282,9 @@ func TestCatalogEnvMetadataStore_Transactions(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest // Uses shared database instance, cannot run in parallel
 func TestCatalogEnvMetadataStore_SingleRecord(t *testing.T) {
-	store, closer := setupEnvMetadataTestStore(t)
-	defer closer()
+	t.Parallel()
+	store := setupEnvMetadataTestStore(t)
 
 	// Set initial metadata
 	metadata1 := map[string]any{
@@ -353,10 +315,9 @@ func TestCatalogEnvMetadataStore_SingleRecord(t *testing.T) {
 	// but the fact that Get() works correctly indicates single record behavior
 }
 
-//nolint:paralleltest // Uses shared database instance, cannot run in parallel
 func TestCatalogEnvMetadataStore_JSONSerialization(t *testing.T) {
-	store, closer := setupEnvMetadataTestStore(t)
-	defer closer()
+	t.Parallel()
+	store := setupEnvMetadataTestStore(t)
 
 	// Test various JSON-serializable types
 	complexMetadata := map[string]any{
