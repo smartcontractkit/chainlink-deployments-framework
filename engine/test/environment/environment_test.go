@@ -95,6 +95,7 @@ func TestLoader_Load_Options(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				require.NotNil(t, env)
+				require.NotNil(t, env.Catalog) // Catalog should always be initialized
 			}
 		})
 	}
