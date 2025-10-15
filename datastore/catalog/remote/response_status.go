@@ -1,6 +1,7 @@
 package remote
 
 import (
+	"errors"
 	"fmt"
 
 	pb "github.com/smartcontractkit/chainlink-protos/op-catalog/v1/datastore"
@@ -39,7 +40,12 @@ func parseResponseStatus(rs *pb.ResponseStatus) error {
 	return st.Err()
 }
 
+// parseStatusError converts a gRPC error to a standard gRPC status.
 func parseStatusError(err error) (*status.Status, error) {
+	if err == nil {
+		return nil, errors.New("nil error provided")
+	}
+
 	st, ok := status.FromError(err)
 	if !ok {
 		return nil, fmt.Errorf("failed to parse error: %s", err.Error())
