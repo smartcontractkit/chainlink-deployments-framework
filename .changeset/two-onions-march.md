@@ -2,4 +2,4 @@
 "chainlink-deployments-framework": minor
 ---
 
-Implement SUI proposal analyzer
+feat(engine/test): support memory catalog
