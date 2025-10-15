@@ -1,5 +1,27 @@
 # chainlink-deployments-framework
 
+## 0.57.0
+
+### Minor Changes
+
+- [#482](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/482) [`62ed5d0`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/62ed5d05c11f7307e58c7dc1cc057ea22188229e) Thanks [@rodrigombsoares](https://github.com/rodrigombsoares)! - Implement SUI proposal analyzer
+
+- [#510](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/510) [`8fd65fe`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/8fd65fe3e8e7964cd95b00b077ab32e5175552c6) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat: enable strict yaml unmarshalling
+
+  When unmarshalling from yaml input for pipelines, if there is a field not defined in the struct, an error will be returned. This helps catch typos and misconfigurations early.
+
+- [#512](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/512) [`c035859`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/c03585984f44c1a9e4adea94770844c3e6defbfd) Thanks [@jkongie](https://github.com/jkongie)! - Adds a new option to test engine environment loading for setting NodeIDs
+
+  `WithNodeIDs` - option to set NodeIDs into the test environment
+
+### Patch Changes
+
+- [#507](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/507) [`3ba8202`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/3ba820224cce3188b32fa4ff14653761fb5033c7) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(catalog/memory): convert to true inmemory implementation
+
+  Remove dependency on pgtest
+
+- [#515](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/515) [`e458ad5`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/e458ad5956c9bcae29b2c1628dfd43e630276041) Thanks [@vyzaldysanchez](https://github.com/vyzaldysanchez)! - Add extra info(workflow key and p2p key bundles) when logging JD nodes on a table format.
+
 ## 0.56.0
 
 ### Minor Changes
