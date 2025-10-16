@@ -12,6 +12,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
+	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/require"
 
 	fresolvers "github.com/smartcontractkit/chainlink-deployments-framework/changeset/resolvers"
@@ -1820,4 +1821,136 @@ changesets:
 	// Should get an error about object format not being supported
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "--changeset-index can only be used with array format YAML files")
+}
+
+func TestNewDurablePipelineCmds_Structure(t *testing.T) {
+	t.Parallel()
+	c := NewCommands(nil)
+	var testDomain domain.Domain
+	root := c.NewDurablePipelineCmds(testDomain, fakeLoadRegistry, fakeDecodeCtx, nil)
+
+	require.Equal(t, "durable-pipeline", root.Use)
+
+	subs := root.Commands()
+	require.Len(t, subs, 6, "expected 6 subcommands under 'durable-pipeline'")
+
+	uses := make([]string, len(subs))
+	for i, sc := range subs {
+		uses[i] = sc.Use
+	}
+	require.ElementsMatch(t,
+		[]string{"run", "input-generate", "list", "template-input", "address-book", "datastore"},
+		uses,
+	)
+
+	// The "environment" flag is persistent on root
+	flag := root.PersistentFlags().Lookup("environment")
+	require.NotNil(t, flag, "persistent flag 'environment' should exist")
+
+	// address-book group
+	abIdx := indexOf(subs, "address-book")
+	require.NotEqual(t, -1, abIdx)
+	abSubs := subs[abIdx].Commands()
+	abUses := make([]string, len(abSubs))
+	for i, sc := range abSubs {
+		abUses[i] = sc.Use
+	}
+	require.ElementsMatch(t,
+		[]string{"merge", "migrate"},
+		abUses,
+	)
+
+	// datastore group
+	dsIdx := indexOf(subs, "datastore")
+	require.NotEqual(t, -1, dsIdx)
+	dsSubs := subs[dsIdx].Commands()
+	dsUses := make([]string, len(dsSubs))
+	for i, sc := range dsSubs {
+		dsUses[i] = sc.Use
+	}
+	require.ElementsMatch(t,
+		[]string{"merge"},
+		dsUses,
+	)
+}
+
+func TestDurablePipelineCommandMetadata(t *testing.T) {
+	t.Parallel()
+	c := NewCommands(nil)
+	testDomain := domain.Domain{}
+
+	tests := []struct {
+		name                string
+		cmdKey              string
+		wantUse             string
+		wantShort           string
+		wantLongPrefix      string
+		wantExampleContains string
+		wantFlags           []string
+	}{
+		{
+			name:                "address-book merge",
+			cmdKey:              "address-book merge",
+			wantUse:             "merge",
+			wantShort:           "Merge the address book",
+			wantLongPrefix:      "Merges the address book artifact",
+			wantExampleContains: "address-book merge --environment staging --name",
+			wantFlags: []string{
+				"name", "timestamp",
+			},
+		},
+		{
+			name:                "address-book migrate",
+			cmdKey:              "address-book migrate",
+			wantUse:             "migrate",
+			wantShort:           "Migrate address book to the new datastore format",
+			wantLongPrefix:      "Converts the address book artifact format",
+			wantExampleContains: "address-book migrate --environment staging",
+			wantFlags:           []string{},
+		},
+		{
+			name:                "datastore merge",
+			cmdKey:              "datastore merge",
+			wantUse:             "merge",
+			wantShort:           "Merge data stores",
+			wantLongPrefix:      "Merge the data store for a changeset",
+			wantExampleContains: "datastore merge --environment staging --name",
+			wantFlags: []string{
+				"name", "timestamp",
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Give each subtest its own fresh command tree
+			root := c.NewDurablePipelineCmds(testDomain, fakeLoadRegistry, fakeDecodeCtx, nil)
+
+			t.Parallel()
+
+			parts := strings.Split(tc.cmdKey, " ")
+			cmd, _, err := root.Find(parts)
+			require.NoError(t, err)
+			require.NotNil(t, cmd, "command not found: %s", tc.cmdKey)
+
+			require.Equal(t, tc.wantUse, cmd.Use)
+			require.Contains(t, cmd.Short, tc.wantShort)
+			require.Contains(t, cmd.Long, tc.wantLongPrefix)
+			require.Contains(t, cmd.Example, tc.wantExampleContains)
+
+			for _, flagName := range tc.wantFlags {
+				var flag *pflag.Flag
+				if flagName == "environment" {
+					// persistent flag lives on root
+					flag = root.PersistentFlags().Lookup("environment")
+				} else {
+					flag = cmd.Flags().Lookup(flagName)
+					if flag == nil {
+						flag = cmd.PersistentFlags().Lookup(flagName)
+					}
+				}
+				require.NotNil(t, flag, "flag %q not found on %s", flagName, tc.name)
+			}
+		})
+	}
 }
