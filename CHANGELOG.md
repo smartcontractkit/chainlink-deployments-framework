@@ -1,5 +1,17 @@
 # chainlink-deployments-framework
 
+## 0.58.0
+
+### Minor Changes
+
+- [#514](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/514) [`406cb82`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/406cb82e83841d6bd59ea51f30dd42d9c063b5e8) Thanks [@DimitriosNaikopoulos](https://github.com/DimitriosNaikopoulos)! - Handle Catalog ResponseStatus errors as grpc errors
+
+- [#518](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/518) [`99ee634`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/99ee634219c860412cbcbb1c72ee54665591fe8d) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat(offchain): new JD in memory client
+
+- [#522](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/522) [`0cbed61`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/0cbed61c14a6e42259251908584d0cf072a19a8c) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat(engine): integrate memory JD to test runtime
+
+- [#517](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/517) [`5220e9a`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/5220e9ac21cdeea6b9e1bb67e8a0e5f96118d30e) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat(engine/test): support memory catalog
+
 ## 0.57.0
 
 ### Minor Changes
