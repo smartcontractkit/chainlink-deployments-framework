@@ -39,11 +39,27 @@ func (c Commands) NewDurablePipelineCmds(
 		Short: "Durable Pipeline commands",
 	}
 
+	addressBookCmd := &cobra.Command{
+		Use:   "address-book",
+		Short: "Address book operations",
+	}
+	addressBookCmd.AddCommand(c.newDurablePipelineAddressBookMerge(domain))
+	addressBookCmd.AddCommand(c.newDurablePipelineAddressBookMigrate(domain))
+
+	datastoreCmd := &cobra.Command{
+		Use:   "datastore",
+		Short: "Datastore operations",
+	}
+	datastoreCmd.AddCommand(c.newDurablePipelineDataStoreMerge(domain))
+
 	evmCmd.AddCommand(
 		c.newDurablePipelineRun(domain, loadMigration, decodeProposalCtxProvider, loadConfigResolvers),
 		c.newDurablePipelineInputGenerate(domain, loadMigration, loadConfigResolvers),
 		c.newDurablePipelineListBuild(domain, loadMigration, loadConfigResolvers),
-		c.newDurablePipelineTemplateInput(domain, loadMigration, loadConfigResolvers))
+		c.newDurablePipelineTemplateInput(domain, loadMigration, loadConfigResolvers),
+		addressBookCmd,
+		datastoreCmd,
+	)
 
 	evmCmd.PersistentFlags().StringP("environment", "e", "", "Deployment environment (required)")
 	_ = evmCmd.MarkPersistentFlagRequired("environment")
@@ -674,6 +690,150 @@ func (c Commands) newDurablePipelineTemplateInput(
 	cmd.Flags().IntVarP(&depthLimit, "depth", "d", 5, "Maximum recursion depth generation for nested struct, configure this based on your struct complexity")
 
 	_ = cmd.MarkFlagRequired("changeset")
+
+	return &cmd
+}
+
+var (
+	durablePipelineMergeAddressBookLong = `
+		Merges the address book artifact of a specific durable pipeline changeset to the main address book within a
+		given Domain Environment. This is to ensure that the address book is up-to-date with the
+		latest changeset changes.
+	`
+
+	durablePipelineMergeAddressBookExample = `
+		# Merge the address book for the 0001_deploy_cap changeset in the staging environment
+		ccip durable-pipeline address-book merge --environment staging --name 0001_deploy_cap
+
+		# Merge with a specific timestamp
+		ccip durable-pipeline address-book merge --environment staging --name 0001_deploy_cap --timestamp 1234567890
+	`
+)
+
+// newDurablePipelineAddressBookMerge creates a command to merge the address books for a durable pipeline changeset to
+// the main address book within a given domain environment.
+func (Commands) newDurablePipelineAddressBookMerge(domain dom.Domain) *cobra.Command {
+	var (
+		changesetName string
+		timestamp     string
+	)
+
+	cmd := cobra.Command{
+		Use:     "merge",
+		Short:   "Merge the address book",
+		Long:    durablePipelineMergeAddressBookLong,
+		Example: durablePipelineMergeAddressBookExample,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			envKey, _ := cmd.Flags().GetString("environment")
+			envDir := domain.EnvDir(envKey)
+
+			if err := envDir.MergeMigrationAddressBook(changesetName, timestamp); err != nil {
+				return fmt.Errorf("error during address book merge for %s %s %s: %w",
+					domain, envKey, changesetName, err,
+				)
+			}
+
+			cmd.Printf("Merged address books for %s %s %s",
+				domain, envKey, changesetName,
+			)
+
+			return nil
+		},
+	}
+
+	cmd.Flags().StringVarP(&changesetName, "name", "n", "", "name (required)")
+	cmd.Flags().StringVarP(&timestamp, "timestamp", "t", "", "Durable Pipeline timestamp (optional)")
+
+	_ = cmd.MarkFlagRequired("name")
+
+	return &cmd
+}
+
+var (
+	durablePipelineMigrateAddressBookLong = `
+		Converts the address book artifact format to the new datastore schema within a
+		given Domain Environment. This updates your on-chain address book to the latest storage format.
+	`
+
+	durablePipelineMigrateAddressBookExample = `
+		# Migrate the address book for the staging domain to the new datastore format
+		ccip durable-pipeline address-book migrate --environment staging
+	`
+)
+
+// newDurablePipelineAddressBookMigrate creates a command to convert the address book
+// artifact to the new datastore format within a given domain environment.
+func (Commands) newDurablePipelineAddressBookMigrate(domain dom.Domain) *cobra.Command {
+	cmd := cobra.Command{
+		Use:     "migrate",
+		Short:   "Migrate address book to the new datastore format",
+		Long:    durablePipelineMigrateAddressBookLong,
+		Example: durablePipelineMigrateAddressBookExample,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			envKey, _ := cmd.Flags().GetString("environment")
+			envDir := domain.EnvDir(envKey)
+
+			if err := envDir.MigrateAddressBook(); err != nil {
+				return fmt.Errorf("error during address book conversion for %s %s: %w",
+					domain, envKey, err,
+				)
+			}
+
+			cmd.Printf("Address book for %s %s successfully migrated to the new datastore format",
+				domain, envKey,
+			)
+
+			return nil
+		},
+	}
+
+	return &cmd
+}
+
+var (
+	durablePipelineDataStoreMergeExample = `
+		# Merge the data store for the 0001_deploy_cap changeset in the staging domain
+		ccip durable-pipeline datastore merge --environment staging --name 0001_deploy_cap
+
+		# Merge with a specific timestamp
+		ccip durable-pipeline datastore merge --environment staging --name 0001_deploy_cap --timestamp 1234567890
+	`
+)
+
+// newDurablePipelineDataStoreMerge creates a command to merge the data store for a durable pipeline changeset
+func (Commands) newDurablePipelineDataStoreMerge(domain dom.Domain) *cobra.Command {
+	var (
+		changesetName string
+		timestamp     string
+	)
+
+	cmd := cobra.Command{
+		Use:     "merge",
+		Short:   "Merge data stores",
+		Long:    "Merge the data store for a changeset to the main data store",
+		Example: durablePipelineDataStoreMergeExample,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			envKey, _ := cmd.Flags().GetString("environment")
+			envDir := domain.EnvDir(envKey)
+
+			if err := envDir.MergeMigrationDataStore(changesetName, timestamp); err != nil {
+				return fmt.Errorf("error during data store merge for %s %s %s: %w",
+					domain, envKey, changesetName, err,
+				)
+			}
+
+			cmd.Printf("Merged data stores for %s %s %s",
+				domain, envKey, changesetName,
+			)
+
+			return nil
+		},
+	}
+
+	cmd.Flags().StringVarP(&changesetName, "name", "n", "", "name (required)")
+	cmd.Flags().StringVarP(&timestamp, "timestamp", "t", "", "Durable Pipeline timestamp (optional)")
+
+	_ = cmd.MarkFlagRequired("name")
 
 	return &cmd
 }
