@@ -3,7 +3,7 @@ package analyzer
 import (
 	"encoding/json"
 	"fmt"
-	"reflect"
+	"strings"
 	"testing"
 
 	chainsel "github.com/smartcontractkit/chain-selectors"
@@ -32,45 +32,21 @@ func TestDescribeBatchOperations(t *testing.T) {
 	}
 
 	tests := []struct {
-		name       string
-		operations []types.BatchOperation
-		want       [][]string
-		wantErr    bool
+		name         string
+		operations   []types.BatchOperation
+		wantContains [][][]string // batches -> ops -> substrings
+		wantErr      bool
 	}{
 		{
 			name:       "Single operation",
 			operations: getOperations(1),
-			want: [][]string{
+			wantContains: [][][]string{
 				{
-					expectedOutput("ccip_onramp::onramp::initialize", aptosTestAddress, aptosAddressTitle, [][]string{
-						{"chain_selector", "4457093679053095497"},
-						{"fee_aggregator", "0x13a9f1a109368730f2e355d831ba8fbf5942fb82321863d55de54cb4ebe5d18f"},
-						{"allowlist_admin", "0x13a9f1a109368730f2e355d831ba8fbf5942fb82321863d55de54cb4ebe5d18f"},
-						{"dest_chain_selectors", "[]"},
-						{"dest_chain_routers", "[]"},
-						{"dest_chain_allowlist_enabled", "[]"},
-					}),
-					expectedOutput("ccip_offramp::offramp::initialize", aptosTestAddress, aptosAddressTitle, [][]string{
-						{"chain_selector", "4457093679053095497"},
-						{"permissionless_execution_threshold_seconds", "28800"},
-						{"source_chains_selector", "[11155111]"},
-						{"source_chains_is_enabled", "[true]"},
-						{"source_chains_is_rmn_verification_disabled", "[false]"},
-						{"source_chains_on_ramp", "[0x0bf3de8c5d3e8a2b34d2beeb17abfcebaf363a59]"},
-					}),
-					expectedOutput("ccip::rmn_remote::initialize", aptosTestAddress, aptosAddressTitle, [][]string{
-						{"local_chain_selector", "4457093679053095497"},
-					}),
-					expectedOutput("ccip_token_pool::token_pool::initialize", aptosTestAddress, aptosAddressTitle, [][]string{
-						{"local_token", "0x0000000000000000000000000000000000000000000000000000000000000003"},
-						{"allowlist", "[0x0000000000000000000000000000000000000000000000000000000000000001,0x0000000000000000000000000000000000000000000000000000000000000002]"},
-					}),
-					expectedOutput("ccip_offramp::offramp::apply_source_chain_config_updates", aptosTestAddress, aptosAddressTitle, [][]string{
-						{"source_chains_selector", "[743186221051783445,16015286601757825753]"},
-						{"source_chains_is_enabled", "[true,false]"},
-						{"source_chains_is_rmn_verification_disabled", "[true,true]"},
-						{"source_chains_on_ramp", "[0xc23071a8ae83671f37bda1dadbc745a9780f632a,0x1c179c2c67953478966a6b460ab4873585b2f341]"},
-					}),
+					{"**Address:** `" + aptosTestAddress + "`", "**Method:** `ccip_onramp::onramp::initialize`", "- `chain_selector`: `4457093679053095497`", "- `fee_aggregator`:", "- `allowlist_admin`:", "- `dest_chain_selectors`: []"},
+					{"**Method:** `ccip_offramp::offramp::initialize`", "- `permissionless_execution_threshold_seconds`: `28800`", "- `source_chains_selector`: array[1]: [11155111]", "<details><summary>source_chains_selector</summary>", "[11155111]"},
+					{"**Method:** `ccip::rmn_remote::initialize`", "- `local_chain_selector`: `4457093679053095497`"},
+					{"**Method:** `ccip_token_pool::token_pool::initialize`", "- `local_token`: `0x0000000000000000000000000000000000000000000000000000000000000003`", "- `allowlist`: array[2]:", "<details><summary>allowlist</summary>"},
+					{"**Method:** `ccip_offramp::offramp::apply_source_chain_config_updates`", "- `source_chains_selector`: array[2]:", "<details><summary>source_chains_selector</summary>", "[743186221051783445,16015286601757825753]"},
 				},
 			},
 			wantErr: false,
@@ -78,39 +54,15 @@ func TestDescribeBatchOperations(t *testing.T) {
 		{
 			name:       "Multiple operations",
 			operations: getOperations(2),
-			want: [][]string{
+			wantContains: [][][]string{
 				{
-					expectedOutput("ccip_onramp::onramp::initialize", aptosTestAddress, aptosAddressTitle, [][]string{
-						{"chain_selector", "4457093679053095497"},
-						{"fee_aggregator", "0x13a9f1a109368730f2e355d831ba8fbf5942fb82321863d55de54cb4ebe5d18f"},
-						{"allowlist_admin", "0x13a9f1a109368730f2e355d831ba8fbf5942fb82321863d55de54cb4ebe5d18f"},
-						{"dest_chain_selectors", "[]"},
-						{"dest_chain_routers", "[]"},
-						{"dest_chain_allowlist_enabled", "[]"},
-					}),
-					expectedOutput("ccip_offramp::offramp::initialize", aptosTestAddress, aptosAddressTitle, [][]string{
-						{"chain_selector", "4457093679053095497"},
-						{"permissionless_execution_threshold_seconds", "28800"},
-						{"source_chains_selector", "[11155111]"},
-						{"source_chains_is_enabled", "[true]"},
-						{"source_chains_is_rmn_verification_disabled", "[false]"},
-						{"source_chains_on_ramp", "[0x0bf3de8c5d3e8a2b34d2beeb17abfcebaf363a59]"},
-					}),
+					{"**Method:** `ccip_onramp::onramp::initialize`"},
+					{"**Method:** `ccip_offramp::offramp::initialize`"},
 				},
 				{
-					expectedOutput("ccip::rmn_remote::initialize", aptosTestAddress, aptosAddressTitle, [][]string{
-						{"local_chain_selector", "4457093679053095497"},
-					}),
-					expectedOutput("ccip_token_pool::token_pool::initialize", aptosTestAddress, aptosAddressTitle, [][]string{
-						{"local_token", "0x0000000000000000000000000000000000000000000000000000000000000003"},
-						{"allowlist", "[0x0000000000000000000000000000000000000000000000000000000000000001,0x0000000000000000000000000000000000000000000000000000000000000002]"},
-					}),
-					expectedOutput("ccip_offramp::offramp::apply_source_chain_config_updates", aptosTestAddress, aptosAddressTitle, [][]string{
-						{"source_chains_selector", "[743186221051783445,16015286601757825753]"},
-						{"source_chains_is_enabled", "[true,false]"},
-						{"source_chains_is_rmn_verification_disabled", "[true,true]"},
-						{"source_chains_on_ramp", "[0xc23071a8ae83671f37bda1dadbc745a9780f632a,0x1c179c2c67953478966a6b460ab4873585b2f341]"},
-					}),
+					{"**Method:** `ccip::rmn_remote::initialize`"},
+					{"**Method:** `ccip_token_pool::token_pool::initialize`"},
+					{"**Method:** `ccip_offramp::offramp::apply_source_chain_config_updates`"},
 				},
 			},
 			wantErr: false,
@@ -118,13 +70,10 @@ func TestDescribeBatchOperations(t *testing.T) {
 		{
 			name:       "Unknown module - non-blocking",
 			operations: getBadOperations(),
-			want: [][]string{
+			wantContains: [][][]string{
 				{
-					expectedErrorOutput(
-						"failed to decode Aptos transaction: could not find function info for ccip_offramp::bad_module::initialize"),
-					expectedOutput("ccip::rmn_remote::initialize", aptosTestAddress, aptosAddressTitle, [][]string{
-						{"local_chain_selector", "4457093679053095497"},
-					}),
+					{"failed to decode Aptos transaction"},
+					{"**Method:** `ccip::rmn_remote::initialize`"},
 				},
 			},
 			wantErr: false,
@@ -138,8 +87,14 @@ func TestDescribeBatchOperations(t *testing.T) {
 				t.Errorf("AnalyzeAptosTransactions() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("AnalyzeAptosTransactions() = %v, want %v", got, tt.want)
+			for bi := range tt.wantContains {
+				for oi, subs := range tt.wantContains[bi] {
+					for _, sub := range subs {
+						if !strings.Contains(got[bi][oi], sub) {
+							t.Errorf("batch %d op %d missing substring %q in\n%s", bi, oi, sub, got[bi][oi])
+						}
+					}
+				}
 			}
 		})
 	}

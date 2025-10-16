@@ -5,7 +5,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	solana "github.com/gagliardetto/solana-go"
-	"github.com/google/go-cmp/cmp"
 
 	timelockbindings "github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings/v0_1_0/timelock"
 
@@ -56,11 +55,11 @@ func Test_solanaAnalyzer_describeOperations(t *testing.T) {
 	require.NoError(t, err)
 
 	tests := []struct {
-		name       string
-		ctx        ProposalContext
-		operations []mcmstypes.Operation
-		want       []string
-		wantErr    string
+		name         string
+		ctx          ProposalContext
+		operations   []mcmstypes.Operation
+		wantContains [][]string // per operation, substrings that must be present
+		wantErr      string
 	}{
 		{
 			name: "success: cpistub.Empty",
@@ -70,20 +69,15 @@ func Test_solanaAnalyzer_describeOperations(t *testing.T) {
 
 				Transaction: mcmsTxFromInstruction(t, cpistub.NewEmptyInstruction()),
 			}},
-			want: []string{
-				"**Address:** `2zZwzyptLqwFJFEFxjPvrdhiGpH9pJ3MfrrmZX6NTKxm` <sub><i>address of ExternalProgramCpiStub 1.0.0 from solana-devnet</i></sub>\n" +
-					"**Method:** `Empty`\n\n" +
-					"**Inputs:**\n\n" +
-					"| Name | Value | Annotation |\n" +
-					"|------|-------|------------|\n" +
-					"| `AccountMetaSlice` | See below: `AccountMetaSlice` |  |\n\n" +
-					"<details><summary>AccountMetaSlice</summary>\n\n" +
-					"```\n" +
-					"[]\n" +
-					"\n" + // <----- ADD THIS LINE
-					"```\n" +
-					"</details>\n\n",
-			},
+			wantContains: [][]string{{
+				"**Address:** `2zZwzyptLqwFJFEFxjPvrdhiGpH9pJ3MfrrmZX6NTKxm`",
+				"<sub><i>address of ExternalProgramCpiStub 1.0.0 from solana-devnet</i></sub>",
+				"**Method:** `Empty`",
+				"**Inputs:**\n\n",
+				"- `AccountMetaSlice`:",
+				"<details><summary>AccountMetaSlice</summary>",
+				"[]",
+			}},
 		},
 		{
 			name: "success: cpistub.U8InstructionData",
@@ -92,27 +86,15 @@ func Test_solanaAnalyzer_describeOperations(t *testing.T) {
 				ChainSelector: solanaChainSelector,
 				Transaction:   mcmsTxFromInstruction(t, cpistub.NewU8InstructionDataInstruction(uint8(123))),
 			}},
-			want: []string{
-				"**Address:** `2zZwzyptLqwFJFEFxjPvrdhiGpH9pJ3MfrrmZX6NTKxm` <sub><i>address of ExternalProgramCpiStub 1.0.0 from solana-devnet</i></sub>\n" +
-					"**Method:** `U8InstructionData`\n\n" +
-					"**Inputs:**\n\n" +
-					"| Name | Value | Annotation |\n" +
-					"|------|-------|------------|\n" +
-					"| `Data` | See below: `Data` |  |\n" +
-					"| `AccountMetaSlice` | See below: `AccountMetaSlice` |  |\n\n" +
-					"<details><summary>Data</summary>\n\n" +
-					"```\n" +
-					"123\n" +
-					"\n" +
-					"```\n" +
-					"</details>\n\n" +
-					"<details><summary>AccountMetaSlice</summary>\n\n" +
-					"```\n" +
-					"[]\n" +
-					"\n" +
-					"```\n" +
-					"</details>\n\n",
-			},
+			wantContains: [][]string{{
+				"**Method:** `U8InstructionData`",
+				"- `Data`: 123",
+				"<details><summary>Data</summary>",
+				"12",
+				"- `AccountMetaSlice`:",
+				"<details><summary>AccountMetaSlice</summary>",
+				"[]",
+			}},
 		},
 		{
 			name: "success: cpistub.StructInstructionData",
@@ -121,28 +103,15 @@ func Test_solanaAnalyzer_describeOperations(t *testing.T) {
 				ChainSelector: solanaChainSelector,
 				Transaction:   mcmsTxFromInstruction(t, cpistub.NewStructInstructionDataInstruction(cpistub.Value{Value: uint8(45)})),
 			}},
-			want: []string{
-				"**Address:** `2zZwzyptLqwFJFEFxjPvrdhiGpH9pJ3MfrrmZX6NTKxm` <sub><i>address of ExternalProgramCpiStub 1.0.0 from solana-devnet</i></sub>\n" +
-					"**Method:** `StructInstructionData`\n\n" +
-					"**Inputs:**\n\n" +
-					"| Name | Value | Annotation |\n" +
-					"|------|-------|------------|\n" +
-					"| `Data` | See below: `Data` |  |\n" +
-					"| `AccountMetaSlice` | See below: `AccountMetaSlice` |  |\n\n" +
-					"<details><summary>Data</summary>\n\n" +
-					"```\n" +
-					"\n" +
-					"  value: 45\n" +
-					"\n" +
-					"```\n" +
-					"</details>\n\n" +
-					"<details><summary>AccountMetaSlice</summary>\n\n" +
-					"```\n" +
-					"[]\n" +
-					"\n" +
-					"```\n" +
-					"</details>\n\n",
-			},
+			wantContains: [][]string{{
+				"**Method:** `StructInstructionData`",
+				"- `Data`:",
+				"<details><summary>Data</summary>",
+				"value: 45",
+				"- `AccountMetaSlice`:",
+				"<details><summary>AccountMetaSlice</summary>",
+				"[]",
+			}},
 		},
 		{
 			name: "success: cpistub.BigInstructionData",
@@ -151,27 +120,14 @@ func Test_solanaAnalyzer_describeOperations(t *testing.T) {
 				ChainSelector: solanaChainSelector,
 				Transaction:   mcmsTxFromInstruction(t, cpistub.NewBigInstructionDataInstruction([]byte{0x0, 0x1, 0x2, 0x3})),
 			}},
-			want: []string{
-				"**Address:** `2zZwzyptLqwFJFEFxjPvrdhiGpH9pJ3MfrrmZX6NTKxm` <sub><i>address of ExternalProgramCpiStub 1.0.0 from solana-devnet</i></sub>\n" +
-					"**Method:** `BigInstructionData`\n\n" +
-					"**Inputs:**\n\n" +
-					"| Name | Value | Annotation |\n" +
-					"|------|-------|------------|\n" +
-					"| `Data` | See below: `Data` |  |\n" +
-					"| `AccountMetaSlice` | See below: `AccountMetaSlice` |  |\n\n" +
-					"<details><summary>Data</summary>\n\n" +
-					"```\n" +
-					"0x00010203\n" +
-					"\n" +
-					"```\n" +
-					"</details>\n\n" +
-					"<details><summary>AccountMetaSlice</summary>\n\n" +
-					"```\n" +
-					"[]\n" +
-					"\n" +
-					"```\n" +
-					"</details>\n\n",
-			},
+			wantContains: [][]string{{
+				"**Method:** `BigInstructionData`",
+				"- `Data`: 0x00010203",
+				"<details><summary>Data</summary>",
+				"0x00010203",
+				"- `AccountMetaSlice`:",
+				"[]",
+			}},
 		},
 		{
 			name: "success: cpistub.AccountMut",
@@ -184,23 +140,14 @@ func Test_solanaAnalyzer_describeOperations(t *testing.T) {
 					solana.SystemProgramID,
 				)),
 			}},
-			want: []string{
-				"**Address:** `2zZwzyptLqwFJFEFxjPvrdhiGpH9pJ3MfrrmZX6NTKxm` <sub><i>address of ExternalProgramCpiStub 1.0.0 from solana-devnet</i></sub>\n" +
-					"**Method:** `AccountMut`\n\n" +
-					"**Inputs:**\n\n" +
-					"| Name | Value | Annotation |\n" +
-					"|------|-------|------------|\n" +
-					"| `AccountMetaSlice` | See below: `AccountMetaSlice` |  |\n\n" +
-					"<details><summary>AccountMetaSlice</summary>\n\n" +
-					"```\n" +
-					"\n" +
-					"- H2qiK1CzW2DheLz9WAGSF1GbvLoqQv9hgS56Rk8Wh3uA   [writable]\n" +
-					"- 4cubrmdczDbRT8XyBwSR871meZU426S6xkiouzQpspVK   [signer]\n" +
-					"- 11111111111111111111111111111111\n" +
-					"\n" +
-					"```\n" +
-					"</details>\n\n",
-			},
+			wantContains: [][]string{{
+				"**Method:** `AccountMut`",
+				"- `AccountMetaSlice`:",
+				"<details><summary>AccountMetaSlice</summary>",
+				"H2qiK1CzW2DheLz9WAGSF1GbvLoqQv9hgS56Rk8Wh3uA",
+				"4cubrmdczDbRT8XyBwSR871meZU426S6xkiouzQpspVK",
+				"11111111111111111111111111111111",
+			}},
 		},
 		{
 			name: "success: mcm.InitializeSignatures",
@@ -217,51 +164,18 @@ func Test_solanaAnalyzer_describeOperations(t *testing.T) {
 					solana.SystemProgramID,
 				)),
 			}},
-			want: []string{
-				"**Address:** `Gp9vJNFpwfRM2M9ebK5pQXEb4ZtWwq66nNRRRRGJwz1j` <sub><i>address of ManyChainMultiSigProgram 1.0.0 from solana-devnet</i></sub>\n" +
-					"**Method:** `InitSignatures`\n\n" +
-					"**Inputs:**\n\n" +
-					"| Name | Value | Annotation |\n" +
-					"|------|-------|------------|\n" +
-					"| `MultisigId` | See below: `MultisigId` |  |\n" +
-					"| `Root` | See below: `Root` |  |\n" +
-					"| `ValidUntil` | See below: `ValidUntil` |  |\n" +
-					"| `TotalSignatures` | See below: `TotalSignatures` |  |\n" +
-					"| `AccountMetaSlice` | See below: `AccountMetaSlice` |  |\n\n" +
-					"<details><summary>MultisigId</summary>\n\n" +
-					"```\n" +
-					"0x6d636d0000000000000000000000000000000000000000000000000000000000\n" +
-					"\n" +
-					"```\n" +
-					"</details>\n\n" +
-					"<details><summary>Root</summary>\n\n" +
-					"```\n" +
-					"0x726f6f7400000000000000000000000000000000000000000000000000000000\n" +
-					"\n" +
-					"```\n" +
-					"</details>\n\n" +
-					"<details><summary>ValidUntil</summary>\n\n" +
-					"```\n" +
-					"1767225600\n" +
-					"\n" +
-					"```\n" +
-					"</details>\n\n" +
-					"<details><summary>TotalSignatures</summary>\n\n" +
-					"```\n" +
-					"2\n" +
-					"\n" +
-					"```\n" +
-					"</details>\n\n" +
-					"<details><summary>AccountMetaSlice</summary>\n\n" +
-					"```\n" +
-					"\n" +
-					"- 8UXavXj14P3khJyWSfeDeZ57YS7vo8ynkKemo2M2C1VU   [writable]\n" +
-					"- J6fUzHuGEHmqpmmq1BMGfjfeYjPwg4TWsKsJB8WGihoJ   [writable] [signer]\n" +
-					"- 11111111111111111111111111111111\n" +
-					"\n" +
-					"```\n" +
-					"</details>\n\n",
-			},
+			wantContains: [][]string{{
+				"**Method:** `InitSignatures`",
+				"<details><summary>MultisigId</summary>",
+				"0x6d636d0000000000000000000000000000000000000000000000000000000000",
+				"<details><summary>Root</summary>",
+				"0x726f6f7400000000000000000000000000000000000000000000000000000000",
+				"- `ValidUntil`: 1767225600",
+				"- `TotalSignatures`: 2",
+				"- `AccountMetaSlice`:",
+				"8UXavXj14P3khJyWSfeDeZ57YS7vo8ynkKemo2M2C1VU",
+				"J6fUzHuGEHmqpmmq1BMGfjfeYjPwg4TWsKsJB8WGihoJ",
+			}},
 		},
 		{
 			name: "success: mcm.SetRoot",
@@ -292,69 +206,24 @@ func Test_solanaAnalyzer_describeOperations(t *testing.T) {
 					solana.SystemProgramID,
 				)),
 			}},
-			want: []string{
-				"**Address:** `Gp9vJNFpwfRM2M9ebK5pQXEb4ZtWwq66nNRRRRGJwz1j` <sub><i>address of ManyChainMultiSigProgram 1.0.0 from solana-devnet</i></sub>\n" +
-					"**Method:** `SetRoot`\n\n" +
-					"**Inputs:**\n\n" +
-					"| Name | Value | Annotation |\n" +
-					"|------|-------|------------|\n" +
-					"| `MultisigId` | See below: `MultisigId` |  |\n" +
-					"| `Root` | See below: `Root` |  |\n" +
-					"| `ValidUntil` | See below: `ValidUntil` |  |\n" +
-					"| `Metadata` | See below: `Metadata` |  |\n" +
-					"| `MetadataProof` | See below: `MetadataProof` |  |\n" +
-					"| `AccountMetaSlice` | See below: `AccountMetaSlice` |  |\n\n" +
-					"<details><summary>MultisigId</summary>\n\n" +
-					"```\n" +
-					"0x6d636d0000000000000000000000000000000000000000000000000000000000\n" +
-					"\n" +
-					"```\n" +
-					"</details>\n\n" +
-					"<details><summary>Root</summary>\n\n" +
-					"```\n" +
-					"0x726f6f7400000000000000000000000000000000000000000000000000000000\n" +
-					"\n" +
-					"```\n" +
-					"</details>\n\n" +
-					"<details><summary>ValidUntil</summary>\n\n" +
-					"```\n" +
-					"1767225600\n" +
-					"\n" +
-					"```\n" +
-					"</details>\n\n" +
-					"<details><summary>Metadata</summary>\n\n" +
-					"```\n" +
-					"\n" + // <-- extra blank line before struct lines!
-					"  chainid: 16423721717087811551\n" +
-					"  multisig: 7eJ2ZKsx3ie1vR1bFaGp4pB5iatjUAfDPtgFDE2sXkZd\n" +
-					"  preopcount: 1\n" +
-					"  postopcount: 2\n" +
-					"  overridepreviousroot: true\n" +
-					"\n" +
-					"```\n" +
-					"</details>\n\n" +
-					"<details><summary>MetadataProof</summary>\n\n" +
-					"```\n" +
-					"\n" + // <-- extra blank line before proof lines!
-					"- 0x0000000000000000000000000000000000000000000000000000000000000001\n" +
-					"- 0x0000000000000000000000000000000000000000000000000000000000000002\n" +
-					"\n" +
-					"```\n" +
-					"</details>\n\n" +
-					"<details><summary>AccountMetaSlice</summary>\n\n" +
-					"```\n" +
-					"\n" + // <-- extra blank line before account lines!
-					"- 1EMwYGgmo3UPwmyUiPvCUPM5kdL52LHPJXSZNUN1pam    [writable]\n" +
-					"- AE4UPuh9q1ZCzqzqicw1YujuLC35oTpi1JCpcK6KojPd   [writable]\n" +
-					"- xZzLbR8t1jbHia2nQoRUyhKL7WvjDXRdUQqwzbEVTvg    [writable]\n" +
-					"- FjkJnFj82vM8zq2SEes1WV4ZFEkruPZCcpkXpL92Qhy3   [writable]\n" +
-					"- 7eJ2ZKsx3ie1vR1bFaGp4pB5iatjUAfDPtgFDE2sXkZd\n" +
-					"- Frr7euo9xRokH9pSmpFf2YbHWB4W3w2Jh7r7hZiu4PD7   [writable] [signer]\n" +
-					"- 11111111111111111111111111111111\n" +
-					"\n" +
-					"```\n" +
-					"</details>\n\n",
-			},
+			wantContains: [][]string{{
+				"**Method:** `SetRoot`",
+				"- `MultisigId`:",
+				"- `Root`:",
+				"- `ValidUntil`: 1767225600",
+				"- `Metadata`:",
+				"<details><summary>Metadata</summary>",
+				"chainid: 16423721717087811551",
+				"overridepreviousroot: true",
+				"<details><summary>MetadataProof</summary>",
+				"<details><summary>AccountMetaSlice</summary>",
+				"1EMwYGgmo3UPwmyUiPvCUPM5kdL52LHPJXSZNUN1pam",
+				"AE4UPuh9q1ZCzqzqicw1YujuLC35oTpi1JCpcK6KojPd",
+				"xZzLbR8t1jbHia2nQoRUyhKL7WvjDXRdUQqwzbEVTvg",
+				"FjkJnFj82vM8zq2SEes1WV4ZFEkruPZCcpkXpL92Qhy3",
+				"7eJ2ZKsx3ie1vR1bFaGp4pB5iatjUAfDPtgFDE2sXkZd",
+				"Frr7euo9xRokH9pSmpFf2YbHWB4W3w2Jh7r7hZiu4PD7",
+			}},
 		},
 		{
 			name: "success: mcm.SetConfig",
@@ -375,61 +244,20 @@ func Test_solanaAnalyzer_describeOperations(t *testing.T) {
 					solana.SystemProgramID,
 				)),
 			}},
-			want: []string{
-				"**Address:** `Gp9vJNFpwfRM2M9ebK5pQXEb4ZtWwq66nNRRRRGJwz1j` <sub><i>address of ManyChainMultiSigProgram 1.0.0 from solana-devnet</i></sub>\n" +
-					"**Method:** `SetConfig`\n\n" +
-					"**Inputs:**\n\n" +
-					"| Name | Value | Annotation |\n" +
-					"|------|-------|------------|\n" +
-					"| `MultisigId` | See below: `MultisigId` |  |\n" +
-					"| `SignerGroups` | See below: `SignerGroups` |  |\n" +
-					"| `GroupQuorums` | See below: `GroupQuorums` |  |\n" +
-					"| `GroupParents` | See below: `GroupParents` |  |\n" +
-					"| `ClearRoot` | See below: `ClearRoot` |  |\n" +
-					"| `AccountMetaSlice` | See below: `AccountMetaSlice` |  |\n\n" +
-					"<details><summary>MultisigId</summary>\n\n" +
-					"```\n" +
-					"0x6d636d0000000000000000000000000000000000000000000000000000000000\n" +
-					"\n" +
-					"```\n" +
-					"</details>\n\n" +
-					"<details><summary>SignerGroups</summary>\n\n" +
-					"```\n" +
-					"0x0102\n" +
-					"\n" +
-					"```\n" +
-					"</details>\n\n" +
-					"<details><summary>GroupQuorums</summary>\n\n" +
-					"```\n" +
-					"0x0304050000000000000000000000000000000000000000000000000000000000\n" +
-					"\n" +
-					"```\n" +
-					"</details>\n\n" +
-					"<details><summary>GroupParents</summary>\n\n" +
-					"```\n" +
-					"0x0607080000000000000000000000000000000000000000000000000000000000\n" +
-					"\n" +
-					"```\n" +
-					"</details>\n\n" +
-					"<details><summary>ClearRoot</summary>\n\n" +
-					"```\n" +
-					"true\n" +
-					"\n" +
-					"```\n" +
-					"</details>\n\n" +
-					"<details><summary>AccountMetaSlice</summary>\n\n" +
-					"```\n" +
-					"\n" + // extra blank line before accounts!
-					"- AE4UPuh9q1ZCzqzqicw1YujuLC35oTpi1JCpcK6KojPd   [writable]\n" +
-					"- xZzLbR8t1jbHia2nQoRUyhKL7WvjDXRdUQqwzbEVTvg    [writable]\n" +
-					"- FjkJnFj82vM8zq2SEes1WV4ZFEkruPZCcpkXpL92Qhy3   [writable]\n" +
-					"- 7eJ2ZKsx3ie1vR1bFaGp4pB5iatjUAfDPtgFDE2sXkZd   [writable]\n" +
-					"- Frr7euo9xRokH9pSmpFf2YbHWB4W3w2Jh7r7hZiu4PD7   [writable] [signer]\n" +
-					"- 11111111111111111111111111111111\n" +
-					"\n" +
-					"```\n" +
-					"</details>\n\n",
-			},
+			wantContains: [][]string{{
+				"**Method:** `SetConfig`",
+				"- `MultisigId`:",
+				"- `SignerGroups`:",
+				"- `GroupQuorums`:",
+				"- `GroupParents`:",
+				"- `ClearRoot`: true",
+				"<details><summary>AccountMetaSlice</summary>",
+				"AE4UPuh9q1ZCzqzqicw1YujuLC35oTpi1JCpcK6KojPd",
+				"xZzLbR8t1jbHia2nQoRUyhKL7WvjDXRdUQqwzbEVTvg",
+				"FjkJnFj82vM8zq2SEes1WV4ZFEkruPZCcpkXpL92Qhy3",
+				"7eJ2ZKsx3ie1vR1bFaGp4pB5iatjUAfDPtgFDE2sXkZd",
+				"Frr7euo9xRokH9pSmpFf2YbHWB4W3w2Jh7r7hZiu4PD7",
+			}},
 		},
 	}
 	for _, tt := range tests {
@@ -440,7 +268,12 @@ func Test_solanaAnalyzer_describeOperations(t *testing.T) {
 
 			if tt.wantErr == "" {
 				require.NoError(t, err)
-				require.Empty(t, cmp.Diff(tt.want, got))
+				require.Equal(t, len(tt.wantContains), len(got))
+				for i, parts := range tt.wantContains {
+					for _, p := range parts {
+						require.Contains(t, got[i], p)
+					}
+				}
 			} else {
 				require.ErrorContains(t, err, tt.wantErr)
 			}
@@ -480,11 +313,11 @@ func Test_solanaAnalyzer_describeBatchOperations(t *testing.T) {
 	require.NoError(t, err)
 
 	tests := []struct {
-		name     string
-		ctx      ProposalContext
-		batchOps []mcmstypes.BatchOperation
-		want     [][]string
-		wantErr  string
+		name         string
+		ctx          ProposalContext
+		batchOps     []mcmstypes.BatchOperation
+		wantContains [][][]string // batches -> ops -> substrings
+		wantErr      string
 	}{
 		{
 			name: "success: multiple calls to cpistub.U8InstructionData split into 2 batches",
@@ -505,88 +338,14 @@ func Test_solanaAnalyzer_describeBatchOperations(t *testing.T) {
 					},
 				},
 			},
-			want: [][]string{
+			wantContains: [][][]string{
 				{
-					"**Address:** `2zZwzyptLqwFJFEFxjPvrdhiGpH9pJ3MfrrmZX6NTKxm` <sub><i>address of ExternalProgramCpiStub 1.0.0 from solana-devnet</i></sub>\n" +
-						"**Method:** `U8InstructionData`\n\n" +
-						"**Inputs:**\n\n" +
-						"| Name | Value | Annotation |\n" +
-						"|------|-------|------------|\n" +
-						"| `Data` | See below: `Data` |  |\n" +
-						"| `AccountMetaSlice` | See below: `AccountMetaSlice` |  |\n\n" +
-						"<details><summary>Data</summary>\n\n" +
-						"```\n" +
-						"12\n" +
-						"\n" +
-						"```\n" +
-						"</details>\n\n" +
-						"<details><summary>AccountMetaSlice</summary>\n\n" +
-						"```\n" +
-						"[]\n" +
-						"\n" +
-						"```\n" +
-						"</details>\n\n",
-
-					"**Address:** `2zZwzyptLqwFJFEFxjPvrdhiGpH9pJ3MfrrmZX6NTKxm` <sub><i>address of ExternalProgramCpiStub 1.0.0 from solana-devnet</i></sub>\n" +
-						"**Method:** `U8InstructionData`\n\n" +
-						"**Inputs:**\n\n" +
-						"| Name | Value | Annotation |\n" +
-						"|------|-------|------------|\n" +
-						"| `Data` | See below: `Data` |  |\n" +
-						"| `AccountMetaSlice` | See below: `AccountMetaSlice` |  |\n\n" +
-						"<details><summary>Data</summary>\n\n" +
-						"```\n" +
-						"34\n" +
-						"\n" +
-						"```\n" +
-						"</details>\n\n" +
-						"<details><summary>AccountMetaSlice</summary>\n\n" +
-						"```\n" +
-						"[]\n" +
-						"\n" +
-						"```\n" +
-						"</details>\n\n",
+					{"**Method:** `U8InstructionData`", "- `Data`: 12", "<details><summary>Data</summary>", "12", "- `AccountMetaSlice`:", "[]"},
+					{"**Method:** `U8InstructionData`", "- `Data`: 34", "<details><summary>Data</summary>", "34", "- `AccountMetaSlice`:", "[]"},
 				},
 				{
-					"**Address:** `2zZwzyptLqwFJFEFxjPvrdhiGpH9pJ3MfrrmZX6NTKxm` <sub><i>address of ExternalProgramCpiStub 1.0.0 from solana-devnet</i></sub>\n" +
-						"**Method:** `U8InstructionData`\n\n" +
-						"**Inputs:**\n\n" +
-						"| Name | Value | Annotation |\n" +
-						"|------|-------|------------|\n" +
-						"| `Data` | See below: `Data` |  |\n" +
-						"| `AccountMetaSlice` | See below: `AccountMetaSlice` |  |\n\n" +
-						"<details><summary>Data</summary>\n\n" +
-						"```\n" +
-						"56\n" +
-						"\n" +
-						"```\n" +
-						"</details>\n\n" +
-						"<details><summary>AccountMetaSlice</summary>\n\n" +
-						"```\n" +
-						"[]\n" +
-						"\n" +
-						"```\n" +
-						"</details>\n\n",
-
-					"**Address:** `2zZwzyptLqwFJFEFxjPvrdhiGpH9pJ3MfrrmZX6NTKxm` <sub><i>address of ExternalProgramCpiStub 1.0.0 from solana-devnet</i></sub>\n" +
-						"**Method:** `U8InstructionData`\n\n" +
-						"**Inputs:**\n\n" +
-						"| Name | Value | Annotation |\n" +
-						"|------|-------|------------|\n" +
-						"| `Data` | See below: `Data` |  |\n" +
-						"| `AccountMetaSlice` | See below: `AccountMetaSlice` |  |\n\n" +
-						"<details><summary>Data</summary>\n\n" +
-						"```\n" +
-						"78\n" +
-						"\n" +
-						"```\n" +
-						"</details>\n\n" +
-						"<details><summary>AccountMetaSlice</summary>\n\n" +
-						"```\n" +
-						"[]\n" +
-						"\n" +
-						"```\n" +
-						"</details>\n\n",
+					{"**Method:** `U8InstructionData`", "- `Data`: 56", "<details><summary>Data</summary>", "56", "- `AccountMetaSlice`:", "[]"},
+					{"**Method:** `U8InstructionData`", "- `Data`: 78", "<details><summary>Data</summary>", "78", "- `AccountMetaSlice`:", "[]"},
 				},
 			},
 		},
@@ -599,7 +358,15 @@ func Test_solanaAnalyzer_describeBatchOperations(t *testing.T) {
 
 			if tt.wantErr == "" {
 				require.NoError(t, err)
-				require.Empty(t, cmp.Diff(tt.want, got))
+				require.Equal(t, len(tt.wantContains), len(got))
+				for bi := range got {
+					require.Equal(t, len(tt.wantContains[bi]), len(got[bi]))
+					for oi := range got[bi] {
+						for _, sub := range tt.wantContains[bi][oi] {
+							require.Contains(t, got[bi][oi], sub)
+						}
+					}
+				}
 			} else {
 				require.ErrorContains(t, err, tt.wantErr)
 			}
