@@ -12,6 +12,7 @@ import (
 	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	fcatalog "github.com/smartcontractkit/chainlink-deployments-framework/datastore/catalog/memory"
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	foffchain "github.com/smartcontractkit/chainlink-deployments-framework/offchain/jd/memory"
 	focr "github.com/smartcontractkit/chainlink-deployments-framework/offchain/ocr"
 	foperations "github.com/smartcontractkit/chainlink-deployments-framework/operations"
 )
@@ -63,9 +64,10 @@ func (l *Loader) Load(ctx context.Context, opts ...LoadOpt) (*fdeployment.Enviro
 		nodeIDs = []string{}
 	}
 
-	// We do not set any default offchain client as it is not required for all tests.
-	// We may want to set a default memory based offchain client in the future.
 	oc := cmps.OffchainClient
+	if oc == nil {
+		oc = foffchain.NewMemoryJobDistributor()
+	}
 
 	catalog, err := fcatalog.NewMemoryCatalogDataStore()
 	if err != nil {
