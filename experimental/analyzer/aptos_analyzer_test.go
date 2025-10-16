@@ -2,7 +2,6 @@ package analyzer
 
 import (
 	"encoding/json"
-	"fmt"
 	"strings"
 	"testing"
 
@@ -13,12 +12,6 @@ import (
 )
 
 const aptosTestAddress = "0xe86f0e5a8b9cb6ab31b656baa83a0d2eb761b32eb31b9a9c74abb7d0cffd26fa"
-const aptosAddressTitle = "address of TestCCIP 1.0.0 from aptos-testnet"
-
-// Helper function for error cases where method contains an error message
-func expectedErrorOutput(errorMessage string) string {
-	return fmt.Sprintf("**Address:** `%s` <sub><i>address of TestCCIP 1.0.0 from aptos-testnet</i></sub>\n**Method:** `%s`\n\n", aptosTestAddress, errorMessage)
-}
 
 func TestDescribeBatchOperations(t *testing.T) {
 	t.Parallel()

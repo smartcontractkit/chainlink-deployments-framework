@@ -34,6 +34,7 @@ func expectedOutput(method, address, addressTitle string, inputs [][]string) str
 					result += fmt.Sprintf("- `%s`: array[%d]: %s\n", name, count, val)
 					details = append(details, fmt.Sprintf("<details><summary>%s</summary>\n\n```\n%s\n```\n</details>\n", name, val))
 				}
+
 				continue
 			}
 			if isHexString(val) {
@@ -45,6 +46,7 @@ func expectedOutput(method, address, addressTitle string, inputs [][]string) str
 					result += fmt.Sprintf("- `%s`: bytes(len=%d): %s\n", name, byteLen, val)
 					details = append(details, fmt.Sprintf("<details><summary>%s</summary>\n\n```\n%s\n```\n</details>\n", name, val))
 				}
+
 				continue
 			}
 			result += fmt.Sprintf("- `%s`: `%s`\n", name, val)
@@ -78,5 +80,6 @@ func isHexString(s string) bool {
 	}
 	// even number of hex chars after 0x
 	n := len(s) - 2
+
 	return n > 0 && n%2 == 0
 }

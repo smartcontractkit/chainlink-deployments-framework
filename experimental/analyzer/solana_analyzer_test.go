@@ -268,7 +268,7 @@ func Test_solanaAnalyzer_describeOperations(t *testing.T) {
 
 			if tt.wantErr == "" {
 				require.NoError(t, err)
-				require.Equal(t, len(tt.wantContains), len(got))
+				require.Len(t, got, len(tt.wantContains))
 				for i, parts := range tt.wantContains {
 					for _, p := range parts {
 						require.Contains(t, got[i], p)
@@ -358,9 +358,9 @@ func Test_solanaAnalyzer_describeBatchOperations(t *testing.T) {
 
 			if tt.wantErr == "" {
 				require.NoError(t, err)
-				require.Equal(t, len(tt.wantContains), len(got))
+				require.Len(t, got, len(tt.wantContains))
 				for bi := range got {
-					require.Equal(t, len(tt.wantContains[bi]), len(got[bi]))
+					require.Len(t, got[bi], len(tt.wantContains[bi]))
 					for oi := range got[bi] {
 						for _, sub := range tt.wantContains[bi][oi] {
 							require.Contains(t, got[bi][oi], sub)
