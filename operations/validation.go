@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"reflect"
 
+	"github.com/gogo/protobuf/proto"
+
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 )
 
@@ -11,6 +13,7 @@ import (
 // For idempotency and reporting purposes, we need to ensure that the value can be marshaled and unmarshaled
 // without losing information.
 // If the value implements json.Marshaler and json.Unmarshaler, it is assumed to be serializable.
+// If the value is a protobuf message, it is also considered serializable.
 func IsSerializable(lggr logger.Logger, v any) bool {
 	if !isValueSerializable(lggr, reflect.ValueOf(v)) {
 		return false
@@ -25,9 +28,17 @@ func IsSerializable(lggr logger.Logger, v any) bool {
 	return true
 }
 
+func isProtoMessage(v reflect.Value) bool {
+	protoMsgType := reflect.TypeOf((*proto.Message)(nil)).Elem()
+	return v.Type().Implements(protoMsgType) || reflect.PointerTo(v.Type()).Implements(protoMsgType)
+}
+
 func isValueSerializable(lggr logger.Logger, v reflect.Value) bool {
 	// Handle nil values
 	if !v.IsValid() {
+		return true
+	}
+	if isProtoMessage(v) {
 		return true
 	}
 
