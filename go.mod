@@ -1,6 +1,6 @@
 module github.com/smartcontractkit/chainlink-deployments-framework
 
-go 1.24.4
+go 1.25.3
 
 replace github.com/fbsobreira/gotron-sdk => github.com/smartcontractkit/chainlink-tron/relayer/gotron-sdk v0.0.4
 
@@ -22,11 +22,8 @@ require (
 	github.com/goccy/go-yaml v1.12.0
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
-	github.com/lib/pq v1.10.9
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pelletier/go-toml/v2 v2.2.4
-	github.com/proullon/ramsql v0.1.4
-	github.com/rubenv/pgtest v1.1.0
 	github.com/segmentio/ksuid v1.0.4
 	github.com/smartcontractkit/ccip-owner-contracts v0.1.0
 	github.com/smartcontractkit/chain-selectors v1.0.72
@@ -61,6 +58,7 @@ require (
 
 require (
 	github.com/btcsuite/btcutil v1.0.2 // indirect
+	github.com/lib/pq v1.10.9 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 )
 
