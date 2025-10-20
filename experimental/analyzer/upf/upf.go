@@ -15,8 +15,6 @@ import (
 	mcmssuisdk "github.com/smartcontractkit/mcms/sdk/sui"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/proposalutils"
-
 	mcmsanalyzer "github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 )
 
@@ -317,7 +315,7 @@ func batchOperationsToUpfDecodedCalls(ctx mcmsanalyzer.ProposalContext, batches 
 	return decodedCalls, nil
 }
 
-func cldDecodedCallToUpfDecodedCallData(cldDecodedCall *proposalutils.DecodedCall) *DecodedCallData {
+func cldDecodedCallToUpfDecodedCallData(cldDecodedCall *mcmsanalyzer.DecodedCall) *DecodedCallData {
 	upfFunctionArgs := make(DecodedCalldataFunctionArgs, len(cldDecodedCall.Inputs))
 	for _, arg := range cldDecodedCall.Inputs {
 		upfFunctionArgs[arg.Name] = arg.Value
@@ -328,7 +326,7 @@ func cldDecodedCallToUpfDecodedCallData(cldDecodedCall *proposalutils.DecodedCal
 
 func analyzeTransaction(
 	proposalCtx mcmsanalyzer.ProposalContext, mcmsOp mcmstypes.Operation,
-) (*proposalutils.DecodedCall, string, error) {
+) (*mcmsanalyzer.DecodedCall, string, error) {
 	chainFamily, err := chainsel.GetSelectorFamily(uint64(mcmsOp.ChainSelector))
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to get chain family for selector %v: %w", mcmsOp.ChainSelector, err)
@@ -336,7 +334,7 @@ func analyzeTransaction(
 
 	switch chainFamily {
 	case chainsel.FamilyEVM:
-		decoder := proposalutils.NewTxCallDecoder(nil) // FIXME: reuse instance
+		decoder := mcmsanalyzer.NewTxCallDecoder(nil) // FIXME: reuse instance
 		analyzeResult, _, abi, err := mcmsanalyzer.AnalyzeEVMTransaction(proposalCtx, decoder, uint64(mcmsOp.ChainSelector), mcmsOp.Transaction)
 		if err != nil {
 			return nil, "", fmt.Errorf("failed to analyze EVM transaction: %w", err)
@@ -379,16 +377,16 @@ func analyzeTransaction(
 
 func upfYamlMarshallers() []yaml.EncodeOption {
 	return []yaml.EncodeOption{
-		yaml.CustomMarshaler(func(arg proposalutils.SimpleArgument) ([]byte, error) {
+		yaml.CustomMarshaler(func(arg mcmsanalyzer.SimpleDescriptor) ([]byte, error) {
 			return yaml.Marshal(arg.Value)
 		}),
-		yaml.CustomMarshaler(func(arg proposalutils.NamedArgument) ([]byte, error) {
+		yaml.CustomMarshaler(func(arg mcmsanalyzer.NamedDescriptor) ([]byte, error) {
 			return yaml.MarshalWithOptions(map[string]any{arg.Name: arg.Value}, upfYamlMarshallers()...)
 		}),
-		yaml.CustomMarshaler(func(arg proposalutils.ArrayArgument) ([]byte, error) {
+		yaml.CustomMarshaler(func(arg mcmsanalyzer.ArrayDescriptor) ([]byte, error) {
 			return yaml.MarshalWithOptions(arg.Elements, upfYamlMarshallers()...)
 		}),
-		yaml.CustomMarshaler(func(arg proposalutils.StructArgument) ([]byte, error) {
+		yaml.CustomMarshaler(func(arg mcmsanalyzer.StructDescriptor) ([]byte, error) {
 			argMap := map[string]any{}
 			for _, field := range arg.Fields {
 				argMap[field.Name] = field.Value
@@ -396,28 +394,28 @@ func upfYamlMarshallers() []yaml.EncodeOption {
 
 			return yaml.MarshalWithOptions(argMap, upfYamlMarshallers()...)
 		}),
-		yaml.CustomMarshaler(func(arg proposalutils.ChainSelectorArgument) ([]byte, error) {
+		yaml.CustomMarshaler(func(arg mcmsanalyzer.ChainSelectorDescriptor) ([]byte, error) {
 			return yaml.Marshal(arg.Value)
 		}),
-		yaml.CustomMarshaler(func(arg proposalutils.AddressArgument) ([]byte, error) {
+		yaml.CustomMarshaler(func(arg mcmsanalyzer.AddressDescriptor) ([]byte, error) {
 			return yaml.Marshal(arg.Value)
 		}),
-		yaml.CustomMarshaler(func(arg proposalutils.BytesArgument) ([]byte, error) {
+		yaml.CustomMarshaler(func(arg mcmsanalyzer.BytesDescriptor) ([]byte, error) {
 			return yaml.Marshal(fmt.Sprintf("0x%x", arg.Value))
 		}),
 	}
 }
 
 func describeInputs(
-	proposalCtx mcmsanalyzer.ProposalContext, inputs []proposalutils.NamedArgument, chainSelector mcmstypes.ChainSelector,
-) []proposalutils.NamedArgument {
-	argCtx := proposalCtx.ArgumentContext(uint64(chainSelector))
-	describedInputs := make([]proposalutils.NamedArgument, len(inputs))
+	proposalCtx mcmsanalyzer.ProposalContext, inputs []mcmsanalyzer.NamedDescriptor, chainSelector mcmstypes.ChainSelector,
+) []mcmsanalyzer.NamedDescriptor {
+	argCtx := proposalCtx.DescriptorContext(uint64(chainSelector))
+	describedInputs := make([]mcmsanalyzer.NamedDescriptor, len(inputs))
 
 	for i, arg := range inputs {
-		describedInputs[i] = proposalutils.NamedArgument{
+		describedInputs[i] = mcmsanalyzer.NamedDescriptor{
 			Name:  arg.Name,
-			Value: proposalutils.SimpleArgument{Value: arg.Value.Describe(argCtx)},
+			Value: mcmsanalyzer.SimpleDescriptor{Value: arg.Value.Describe(argCtx)},
 		}
 	}
 

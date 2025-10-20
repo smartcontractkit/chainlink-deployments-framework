@@ -12,14 +12,12 @@ import (
 	"github.com/goccy/go-yaml"
 	mcmssolanasdk "github.com/smartcontractkit/mcms/sdk/solana"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
-
-	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/proposalutils"
 )
 
 func AnalyzeSolanaTransactions(
 	ctx ProposalContext, chainSelector uint64, txs []mcmstypes.Transaction,
-) ([]*proposalutils.DecodedCall, error) {
-	decodedTxs := make([]*proposalutils.DecodedCall, len(txs))
+) ([]*DecodedCall, error) {
+	decodedTxs := make([]*DecodedCall, len(txs))
 	for i, op := range txs {
 		analyzedTransaction, err := AnalyzeSolanaTransaction(ctx, chainSelector, op)
 		if err != nil {
@@ -34,12 +32,15 @@ func AnalyzeSolanaTransactions(
 
 func AnalyzeSolanaTransaction(
 	ctx ProposalContext, chainSelector uint64, mcmsTx mcmstypes.Transaction,
-) (*proposalutils.DecodedCall, error) {
-	decodedTx := &proposalutils.DecodedCall{
-		Inputs:  []proposalutils.NamedArgument{},
-		Outputs: []proposalutils.NamedArgument{},
+) (*DecodedCall, error) {
+	decodedTx := &DecodedCall{
+		Inputs:  []NamedDescriptor{},
+		Outputs: []NamedDescriptor{},
 	}
 	solReg := ctx.GetSolanaDecoderRegistry()
+	if solReg == nil {
+		return nil, errors.New("solana decoder registry is not available")
+	}
 	decodeFn, err := solReg.GetSolanaInstructionDecoderByAddress(chainSelector, mcmsTx.To)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get solana program: %w", err)
@@ -85,7 +86,7 @@ type AnchorInstruction interface {
 	Name() string
 	TypeID() (binary.TypeID, error)
 	Impl() (any, error)
-	Inputs() []proposalutils.NamedArgument
+	Inputs() []NamedDescriptor
 }
 
 func (w *anchorInstructionWrapper) Name() string {
@@ -140,40 +141,40 @@ func (w *anchorInstructionWrapper) Impl() (any, error) {
 	return baseVariant.Impl, nil
 }
 
-func (w *anchorInstructionWrapper) Inputs() []proposalutils.NamedArgument {
+func (w *anchorInstructionWrapper) Inputs() []NamedDescriptor {
 	impl, err := w.Impl()
 	if err != nil {
-		return []proposalutils.NamedArgument{{
+		return []NamedDescriptor{{
 			Name:  "error",
-			Value: proposalutils.SimpleArgument{Value: err.Error()},
+			Value: SimpleDescriptor{Value: err.Error()},
 		}}
 	}
 	if reflect.ValueOf(impl).Elem().Kind() != reflect.Struct {
-		return []proposalutils.NamedArgument{{
+		return []NamedDescriptor{{
 			Name:  "error",
-			Value: proposalutils.SimpleArgument{Value: "unxpected BaseVariant.Impl element type (not a struct)"},
+			Value: SimpleDescriptor{Value: "unxpected BaseVariant.Impl element type (not a struct)"},
 		}}
 	}
 
 	rImpl := reflect.ValueOf(impl)
 	if rImpl.Kind() != reflect.Ptr {
-		return []proposalutils.NamedArgument{{
+		return []NamedDescriptor{{
 			Name:  "error",
-			Value: proposalutils.SimpleArgument{Value: "unxpected BaseVariant.Impl type (not a pointer)"},
+			Value: SimpleDescriptor{Value: "unxpected BaseVariant.Impl type (not a pointer)"},
 		}}
 	}
 	if rImpl.Elem().Kind() != reflect.Struct {
-		return []proposalutils.NamedArgument{{
+		return []NamedDescriptor{{
 			Name:  "error",
-			Value: proposalutils.SimpleArgument{Value: "unxpected BaseVariant.Impl element type (not a struct)"},
+			Value: SimpleDescriptor{Value: "unxpected BaseVariant.Impl element type (not a struct)"},
 		}}
 	}
 	rImpl = rImpl.Elem()
 
-	inputs := make([]proposalutils.NamedArgument, rImpl.NumField())
+	inputs := make([]NamedDescriptor, rImpl.NumField())
 	for i := range rImpl.NumField() {
 		inputs[i].Name = rImpl.Type().Field(i).Name
-		inputs[i].Value = YamlArgument{value: rImpl.Field(i).Interface()}
+		inputs[i].Value = YamlDescriptor{value: rImpl.Field(i).Interface()}
 	}
 
 	return inputs
@@ -191,11 +192,11 @@ func (w *anchorInstructionWrapper) Data() ([]byte, error) {
 	return w.anchorInstruction.(solana.Instruction).Data()
 }
 
-type YamlArgument struct {
+type YamlDescriptor struct {
 	value any
 }
 
-func (y YamlArgument) Describe(_ *proposalutils.ArgumentContext) string {
+func (y YamlDescriptor) Describe(_ *DescriptorContext) string {
 	wrappedValue := map[string]any{"__key__": y.value}
 	marshaled, err := yaml.MarshalWithOptions(wrappedValue, customMarshallers...)
 	if err != nil {
@@ -205,7 +206,7 @@ func (y YamlArgument) Describe(_ *proposalutils.ArgumentContext) string {
 	return strings.Trim(string(marshaled)[8:], " ") // [8:] drops the "__key__:" prefix
 }
 
-func (y YamlArgument) MarshalYAML() ([]byte, error) {
+func (y YamlDescriptor) MarshalYAML() ([]byte, error) {
 	return yaml.MarshalWithOptions(y.value, customMarshallers...)
 }
 

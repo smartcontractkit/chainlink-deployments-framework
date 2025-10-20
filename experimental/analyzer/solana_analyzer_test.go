@@ -3,6 +3,7 @@ package analyzer
 import (
 	"testing"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/ethereum/go-ethereum/common"
 	solana "github.com/gagliardetto/solana-go"
 
@@ -21,6 +22,8 @@ import (
 	mcmssolanasdk "github.com/smartcontractkit/mcms/sdk/solana"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 )
+
+var Version1_0_0 = *semver.MustParse("1.0.0")
 
 //nolint:paralleltest // call to SetProgramID is not thread-safe
 func Test_solanaAnalyzer_describeOperations(t *testing.T) {

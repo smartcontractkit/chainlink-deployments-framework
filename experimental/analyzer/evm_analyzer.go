@@ -1,17 +1,16 @@
 package analyzer
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/mcms/types"
-
-	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/proposalutils"
 )
 
-func AnalyzeEVMTransactions(ctx ProposalContext, chainSelector uint64, txs []types.Transaction) ([]*proposalutils.DecodedCall, error) {
+func AnalyzeEVMTransactions(ctx ProposalContext, chainSelector uint64, txs []types.Transaction) ([]*DecodedCall, error) {
 	chainFamily, err := chainsel.GetSelectorFamily(chainSelector)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get chain family for selector %v: %w", chainSelector, err)
@@ -20,9 +19,9 @@ func AnalyzeEVMTransactions(ctx ProposalContext, chainSelector uint64, txs []typ
 		return nil, fmt.Errorf("unsupported chain family (%v)", chainFamily)
 	}
 
-	decoder := proposalutils.NewTxCallDecoder(nil)
+	decoder := NewTxCallDecoder(nil)
 
-	decodedTxs := make([]*proposalutils.DecodedCall, len(txs))
+	decodedTxs := make([]*DecodedCall, len(txs))
 	for i, op := range txs {
 		decodedTxs[i], _, _, err = AnalyzeEVMTransaction(ctx, decoder, chainSelector, op)
 		if err != nil {
@@ -34,15 +33,18 @@ func AnalyzeEVMTransactions(ctx ProposalContext, chainSelector uint64, txs []typ
 }
 
 func AnalyzeEVMTransaction(
-	ctx ProposalContext, decoder *proposalutils.TxCallDecoder, chainSelector uint64, mcmsTx types.Transaction,
-) (*proposalutils.DecodedCall, *abi.ABI, string, error) {
+	ctx ProposalContext, decoder *EVMTxCallDecoder, chainSelector uint64, mcmsTx types.Transaction,
+) (*DecodedCall, *abi.ABI, string, error) {
 	evmRegistry := ctx.GetEVMRegistry()
+	if evmRegistry == nil {
+		return nil, nil, "", errors.New("EVM registry is not available")
+	}
 	abi, abiStr, err := evmRegistry.GetABIByAddress(chainSelector, mcmsTx.To)
 	if err != nil {
 		return nil, nil, "", err
 	}
 
-	analyzeResult, err := decoder.Analyze(mcmsTx.To, abi, mcmsTx.Data)
+	analyzeResult, err := decoder.Decode(mcmsTx.To, abi, mcmsTx.Data)
 	if err != nil {
 		return nil, nil, "", fmt.Errorf("error analyzing operation: %w", err)
 	}
