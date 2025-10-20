@@ -128,5 +128,5 @@ func (c *DefaultProposalContext) DescriptorContext(chainSelector uint64) *Descri
 	chainAddresses := deployment.AddressesByChain{}
 	chainAddresses[chainSelector] = c.AddressesByChain[chainSelector]
 
-	return NewArgumentContext(chainAddresses)
+	return NewDescriptorContext(chainAddresses)
 }

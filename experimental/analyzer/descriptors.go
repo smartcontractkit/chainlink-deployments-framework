@@ -35,7 +35,7 @@ func ContextGet[T any](ctx *DescriptorContext, key string) (T, error) {
 	return ctxElem, nil
 }
 
-func NewArgumentContext(addresses deployment.AddressesByChain) *DescriptorContext {
+func NewDescriptorContext(addresses deployment.AddressesByChain) *DescriptorContext {
 	return &DescriptorContext{
 		Ctx: map[string]any{
 			"AddressesByChain": addresses,

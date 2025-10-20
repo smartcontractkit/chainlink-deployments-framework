@@ -28,7 +28,7 @@ func TestMarkdownRenderer_RenderDecodedCall_SimpleCall(t *testing.T) {
 		Outputs: []NamedDescriptor{},
 	}
 
-	ctx := NewArgumentContext(nil)
+	ctx := NewDescriptorContext(nil)
 	output := renderer.RenderDecodedCall(call, ctx)
 
 	assert.Contains(t, output, "**Address:** `0x1234567890123456789012345678901234567890`")
@@ -60,7 +60,7 @@ func TestMarkdownRenderer_RenderDecodedCall_WithOutputs(t *testing.T) {
 		},
 	}
 
-	ctx := NewArgumentContext(nil)
+	ctx := NewDescriptorContext(nil)
 	output := renderer.RenderDecodedCall(call, ctx)
 
 	assert.Contains(t, output, "**Inputs:**")
@@ -86,7 +86,7 @@ func TestMarkdownRenderer_RenderDecodedCall_WithAddressAnnotation(t *testing.T) 
 			"0x1234567890123456789012345678901234567890": deployment.MustTypeAndVersionFromString("Token 1.0.0"),
 		},
 	}
-	ctx := NewArgumentContext(addresses)
+	ctx := NewDescriptorContext(addresses)
 	output := renderer.RenderDecodedCall(call, ctx)
 
 	assert.Contains(t, output, "**Address:** `0x1234567890123456789012345678901234567890`")
@@ -104,7 +104,7 @@ func TestMarkdownRenderer_RenderDecodedCall_EmptyInputsOutputs(t *testing.T) {
 		Outputs: []NamedDescriptor{},
 	}
 
-	ctx := NewArgumentContext(nil)
+	ctx := NewDescriptorContext(nil)
 	output := renderer.RenderDecodedCall(call, ctx)
 
 	assert.Contains(t, output, "**Address:** `0x1234567890123456789012345678901234567890`")
@@ -119,7 +119,7 @@ func TestMarkdownRenderer_SummarizeArgument_SimpleDescriptor(t *testing.T) {
 	t.Parallel()
 
 	renderer := NewMarkdownRenderer()
-	ctx := NewArgumentContext(nil)
+	ctx := NewDescriptorContext(nil)
 
 	// Short string
 	summary, details := renderer.summarizeDescriptor("name", SimpleDescriptor{Value: "short"}, ctx)
@@ -139,7 +139,7 @@ func TestMarkdownRenderer_SummarizeArgument_AddressDescriptor(t *testing.T) {
 	t.Parallel()
 
 	renderer := NewMarkdownRenderer()
-	ctx := NewArgumentContext(nil)
+	ctx := NewDescriptorContext(nil)
 
 	summary, details := renderer.summarizeDescriptor("addr", AddressDescriptor{Value: "0x1234567890123456789012345678901234567890"}, ctx)
 	assert.Equal(t, "`0x1234567890123456789012345678901234567890`", summary)
@@ -150,7 +150,7 @@ func TestMarkdownRenderer_SummarizeArgument_ChainSelectorDescriptor(t *testing.T
 	t.Parallel()
 
 	renderer := NewMarkdownRenderer()
-	ctx := NewArgumentContext(nil)
+	ctx := NewDescriptorContext(nil)
 
 	summary, details := renderer.summarizeDescriptor("chain", ChainSelectorDescriptor{Value: 1}, ctx)
 	assert.Contains(t, summary, "`1 (<chain unknown>)`")
@@ -161,7 +161,7 @@ func TestMarkdownRenderer_SummarizeArgument_BytesDescriptor(t *testing.T) {
 	t.Parallel()
 
 	renderer := NewMarkdownRenderer()
-	ctx := NewArgumentContext(nil)
+	ctx := NewDescriptorContext(nil)
 
 	// Small bytes
 	smallBytes := []byte{0x01, 0x02, 0x03}
@@ -185,7 +185,7 @@ func TestMarkdownRenderer_SummarizeArgument_ArrayDescriptor(t *testing.T) {
 	t.Parallel()
 
 	renderer := NewMarkdownRenderer()
-	ctx := NewArgumentContext(nil)
+	ctx := NewDescriptorContext(nil)
 
 	// Empty array
 	summary, details := renderer.summarizeDescriptor("empty", ArrayDescriptor{Elements: []Descriptor{}}, ctx)
@@ -208,7 +208,7 @@ func TestMarkdownRenderer_SummarizeArgument_StructDescriptor(t *testing.T) {
 	t.Parallel()
 
 	renderer := NewMarkdownRenderer()
-	ctx := NewArgumentContext(nil)
+	ctx := NewDescriptorContext(nil)
 
 	fields := []NamedDescriptor{
 		{Name: "field1", Value: SimpleDescriptor{Value: "value1"}},
@@ -224,7 +224,7 @@ func TestMarkdownRenderer_SummarizeArgument_NamedDescriptor(t *testing.T) {
 	t.Parallel()
 
 	renderer := NewMarkdownRenderer()
-	ctx := NewArgumentContext(nil)
+	ctx := NewDescriptorContext(nil)
 
 	named := NamedDescriptor{
 		Name:  "param",
@@ -239,7 +239,7 @@ func TestMarkdownRenderer_SummarizeArgument_DefaultCase(t *testing.T) {
 	t.Parallel()
 
 	renderer := NewMarkdownRenderer()
-	ctx := NewArgumentContext(nil)
+	ctx := NewDescriptorContext(nil)
 
 	// Test with a descriptor that doesn't match any specific case
 	// This should fall through to the default case
@@ -263,7 +263,7 @@ func (c *customDescriptor) Describe(ctx *DescriptorContext) string {
 func TestArrayPreview(t *testing.T) {
 	t.Parallel()
 
-	ctx := NewArgumentContext(nil)
+	ctx := NewDescriptorContext(nil)
 
 	// Empty array
 	elements := []Descriptor{}
@@ -293,7 +293,7 @@ func TestArrayPreview(t *testing.T) {
 func TestCompactValue(t *testing.T) {
 	t.Parallel()
 
-	ctx := NewArgumentContext(nil)
+	ctx := NewDescriptorContext(nil)
 
 	// Test different descriptor types
 	assert.Equal(t, "0x1234567890123456789012345678901234567890", compactValue(AddressDescriptor{Value: "0x1234567890123456789012345678901234567890"}, ctx))

@@ -15,7 +15,7 @@ import (
 func TestDescriptorContext(t *testing.T) {
 	t.Parallel()
 
-	t.Run("NewArgumentContext", func(t *testing.T) {
+	t.Run("NewDescriptorContext", func(t *testing.T) {
 		t.Parallel()
 		addresses := deployment.AddressesByChain{
 			1: map[string]deployment.TypeAndVersion{
@@ -26,7 +26,7 @@ func TestDescriptorContext(t *testing.T) {
 			},
 		}
 
-		ctx := NewArgumentContext(addresses)
+		ctx := NewDescriptorContext(addresses)
 		require.NotNil(t, ctx)
 		require.NotNil(t, ctx.Ctx)
 
@@ -176,7 +176,7 @@ func TestNamedDescriptor(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			ctx := NewArgumentContext(deployment.AddressesByChain{})
+			ctx := NewDescriptorContext(deployment.AddressesByChain{})
 			result := tt.descriptor.Describe(ctx)
 			require.Equal(t, tt.expected, result)
 		})
@@ -236,7 +236,7 @@ func TestArrayDescriptor(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			ctx := NewArgumentContext(deployment.AddressesByChain{})
+			ctx := NewDescriptorContext(deployment.AddressesByChain{})
 			result := tt.descriptor.Describe(ctx)
 			if tt.name == "MultipleElements_Indented" {
 				// For indented arrays, check that it contains the expected structure
@@ -298,7 +298,7 @@ func TestStructDescriptor(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			ctx := NewArgumentContext(deployment.AddressesByChain{})
+			ctx := NewDescriptorContext(deployment.AddressesByChain{})
 			result := tt.descriptor.Describe(ctx)
 			require.Equal(t, tt.expected, result)
 		})
@@ -343,7 +343,7 @@ func TestSimpleDescriptor(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			ctx := NewArgumentContext(deployment.AddressesByChain{})
+			ctx := NewDescriptorContext(deployment.AddressesByChain{})
 			result := tt.descriptor.Describe(ctx)
 			require.Equal(t, tt.expected, result)
 		})
@@ -388,7 +388,7 @@ func TestChainSelectorDescriptor(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			ctx := NewArgumentContext(deployment.AddressesByChain{})
+			ctx := NewDescriptorContext(deployment.AddressesByChain{})
 			result := tt.descriptor.Describe(ctx)
 			for _, expected := range tt.expectedContains {
 				require.Contains(t, result, expected)
@@ -440,7 +440,7 @@ func TestBytesDescriptor(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			ctx := NewArgumentContext(deployment.AddressesByChain{})
+			ctx := NewDescriptorContext(deployment.AddressesByChain{})
 			result := tt.descriptor.Describe(ctx)
 			require.Equal(t, tt.expected, result)
 		})
@@ -448,7 +448,7 @@ func TestBytesDescriptor(t *testing.T) {
 
 	t.Run("LargeBytes", func(t *testing.T) {
 		t.Parallel()
-		ctx := NewArgumentContext(deployment.AddressesByChain{})
+		ctx := NewDescriptorContext(deployment.AddressesByChain{})
 
 		// Create a large byte array
 		largeBytes := make([]byte, 100)
@@ -494,7 +494,7 @@ func TestAddressDescriptor(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				t.Parallel()
-				ctx := NewArgumentContext(deployment.AddressesByChain{})
+				ctx := NewDescriptorContext(deployment.AddressesByChain{})
 				result := tt.descriptor.Describe(ctx)
 				require.Equal(t, tt.expected, result)
 			})
@@ -565,7 +565,7 @@ func TestAddressDescriptor(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				t.Parallel()
-				ctx := NewArgumentContext(tt.addresses)
+				ctx := NewDescriptorContext(tt.addresses)
 				result := tt.descriptor.Annotation(ctx)
 				for _, expected := range tt.expectedContains {
 					if expected == "" {
@@ -638,7 +638,7 @@ func TestDescriptorIntegration(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			ctx := NewArgumentContext(deployment.AddressesByChain{})
+			ctx := NewDescriptorContext(deployment.AddressesByChain{})
 			result := tt.descriptor.Describe(ctx)
 			for _, expected := range tt.expectedContains {
 				require.Contains(t, result, expected)
