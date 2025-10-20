@@ -248,7 +248,7 @@ affecting real Job Distributor operations:
 
 	import (
 		"github.com/smartcontractkit/chainlink-deployments-framework/offchain/jd"
-		"github.com/smartcontractkit/chainlink-common/pkg/logger"
+		"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 	)
 
 	// Create a real client for read operations
@@ -279,7 +279,7 @@ For a cleaner approach, use the provider's functional option:
 
 	import (
 		"github.com/smartcontractkit/chainlink-deployments-framework/offchain/jd/provider"
-		"github.com/smartcontractkit/chainlink-common/pkg/logger"
+		"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 	)
 
 	// Create provider with dry run mode enabled

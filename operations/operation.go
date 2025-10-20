@@ -7,7 +7,8 @@ import (
 	"sync"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/smartcontractkit/chainlink-common/pkg/logger"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
 // Bundle contains the dependencies required by Operations API and is passed to the OperationHandler and SequenceHandler.

@@ -7,9 +7,10 @@ import (
 	"math/big"
 
 	chainsel "github.com/smartcontractkit/chain-selectors"
-	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 	zkAccounts "github.com/zksync-sdk/zksync2-go/accounts"
 	zkClients "github.com/zksync-sdk/zksync2-go/clients"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"

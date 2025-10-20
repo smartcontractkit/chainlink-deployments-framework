@@ -9,7 +9,8 @@ import (
 	"time"
 
 	chainsel "github.com/smartcontractkit/chain-selectors"
-	"github.com/smartcontractkit/chainlink-common/pkg/logger"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
 	fchain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	aptosprov "github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos/provider"

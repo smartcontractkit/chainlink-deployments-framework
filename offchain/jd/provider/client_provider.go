@@ -8,7 +8,7 @@ import (
 	"golang.org/x/oauth2"
 	"google.golang.org/grpc/credentials"
 
-	"github.com/smartcontractkit/chainlink-common/pkg/logger"
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/offchain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/offchain/jd"

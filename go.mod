@@ -22,11 +22,8 @@ require (
 	github.com/goccy/go-yaml v1.12.0
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
-	github.com/lib/pq v1.10.9
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pelletier/go-toml/v2 v2.2.4
-	github.com/proullon/ramsql v0.1.4
-	github.com/rubenv/pgtest v1.1.0
 	github.com/segmentio/ksuid v1.0.4
 	github.com/smartcontractkit/ccip-owner-contracts v0.1.0
 	github.com/smartcontractkit/chain-selectors v1.0.72
@@ -34,7 +31,6 @@ require (
 	github.com/smartcontractkit/chainlink-ccip v0.0.0-20250805210128-7f8a0f403c3a
 	github.com/smartcontractkit/chainlink-ccip/chains/solana v0.0.0-20250805210128-7f8a0f403c3a
 	github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings v0.0.0-20250805210128-7f8a0f403c3a
-	github.com/smartcontractkit/chainlink-common v0.9.1-0.20250815142532-64e0a7965958
 	github.com/smartcontractkit/chainlink-protos/job-distributor v0.12.0
 	github.com/smartcontractkit/chainlink-protos/op-catalog v0.0.4
 	github.com/smartcontractkit/chainlink-testing-framework/framework v0.10.30
@@ -61,6 +57,10 @@ require (
 
 require (
 	github.com/btcsuite/btcutil v1.0.2 // indirect
+	github.com/lib/pq v1.10.9 // indirect
+	github.com/smartcontractkit/chainlink-common v0.9.1-0.20250815142532-64e0a7965958 // indirect
+	github.com/smartcontractkit/chainlink-common/pkg/chipingress v0.0.1 // indirect
+	github.com/smartcontractkit/chainlink-common/pkg/values v0.0.0-20250806152407-159881c7589c // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 )
 
@@ -237,8 +237,6 @@ require (
 	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/sigurn/crc16 v0.0.0-20211026045750-20ab5afb07e3 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
-	github.com/smartcontractkit/chainlink-common/pkg/chipingress v0.0.1 // indirect
-	github.com/smartcontractkit/chainlink-common/pkg/values v0.0.0-20250806152407-159881c7589c // indirect
 	github.com/smartcontractkit/chainlink-sui v0.0.0-20251013155034-5f85c5f450ab
 	github.com/smartcontractkit/grpc-proxy v0.0.0-20240830132753-a7e17fec5ab7 // indirect
 	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect

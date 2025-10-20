@@ -1,9 +1,10 @@
 package cli
 
 import (
-	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
 func NewCLILogger(logLevel zapcore.Level) (logger.Logger, error) {

@@ -3,9 +3,10 @@ package changeset
 import (
 	"testing"
 
-	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 )
