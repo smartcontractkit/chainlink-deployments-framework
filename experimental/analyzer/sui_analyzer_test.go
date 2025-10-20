@@ -69,8 +69,6 @@ func TestAnalyzeSuiTransactions(t *testing.T) {
 			}
 
 			require.NoError(t, gotErr, "DescribeTimelockProposal() should not have failed")
-			// Since DescribeTimelockProposal returns a string, we can't directly compare with the expected array
-			// Instead, we'll check that the output is not empty
 			require.NotEmpty(t, got, "DescribeTimelockProposal() should return non-empty output")
 		})
 	}
