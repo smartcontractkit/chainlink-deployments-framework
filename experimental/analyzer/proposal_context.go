@@ -9,6 +9,7 @@ type ProposalContext interface {
 	GetEVMRegistry() EVMABIRegistry
 	GetSolanaDecoderRegistry() SolanaDecoderRegistry
 	DescriptorContext(chainSelector uint64) *DescriptorContext
+	GetRenderer() Renderer
 }
 
 type ProposalContextProvider func(env deployment.Environment) (ProposalContext, error)
@@ -19,6 +20,7 @@ type DefaultProposalContext struct {
 	AddressesByChain deployment.AddressesByChain
 	evmRegistry      EVMABIRegistry
 	solanaRegistry   SolanaDecoderRegistry
+	renderer         Renderer
 }
 
 func (c *DefaultProposalContext) GetEVMRegistry() EVMABIRegistry {
@@ -29,11 +31,20 @@ func (c *DefaultProposalContext) GetSolanaDecoderRegistry() SolanaDecoderRegistr
 	return c.solanaRegistry
 }
 
+func (c *DefaultProposalContext) GetRenderer() Renderer {
+	if c.renderer == nil {
+		c.renderer = NewMarkdownRenderer() // Default fallback
+	}
+
+	return c.renderer
+}
+
 type proposalCtxOption func(*proposalCtxOptions) error
 
 type proposalCtxOptions struct {
 	evmABIMappings map[string]string
 	solanaDecoders map[string]DecodeInstructionFn
+	renderer       Renderer
 }
 
 func WithEVMABIMappings(mappings map[string]string) proposalCtxOption {
@@ -46,6 +57,13 @@ func WithEVMABIMappings(mappings map[string]string) proposalCtxOption {
 func WithSolanaDecoders(decoders map[string]DecodeInstructionFn) proposalCtxOption {
 	return func(o *proposalCtxOptions) error {
 		o.solanaDecoders = decoders
+		return nil
+	}
+}
+
+func WithRenderer(renderer Renderer) proposalCtxOption {
+	return func(o *proposalCtxOptions) error {
+		o.renderer = renderer
 		return nil
 	}
 }
@@ -102,6 +120,7 @@ func NewDefaultProposalContext(env deployment.Environment, opts ...proposalCtxOp
 		evmRegistry:      evmRegistry,
 		solanaRegistry:   solanaRegistry,
 		AddressesByChain: addressesByChain,
+		renderer:         options.renderer,
 	}, nil
 }
 

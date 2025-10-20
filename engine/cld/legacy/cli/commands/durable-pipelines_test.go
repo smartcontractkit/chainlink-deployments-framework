@@ -635,6 +635,10 @@ type mockProposalContext struct {
 	t *testing.T
 }
 
+func (m *mockProposalContext) GetRenderer() analyzer.Renderer {
+	return analyzer.NewMarkdownRenderer()
+}
+
 func (m *mockProposalContext) DescriptorContext(chainSelector uint64) *analyzer.DescriptorContext {
 	return &analyzer.DescriptorContext{}
 }

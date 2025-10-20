@@ -189,7 +189,7 @@ func TestBuildProposalReport_FamilyBranches(t *testing.T) {
 		{
 			name:          "Solana_missing_registry",
 			selector:      chainsel.SOLANA_DEVNET.Selector,
-			expectedError: "Solana decoder registry is not available",
+			expectedError: "failed to analyze solana transaction 0: solana decoder registry is not available",
 		},
 		{
 			name:          "Aptos_unmarshal_additional_fields",
@@ -243,7 +243,7 @@ func TestBuildTimelockReport_FamilyBranches(t *testing.T) {
 		{
 			name:          "Solana_missing_registry",
 			selector:      chainsel.SOLANA_DEVNET.Selector,
-			expectedError: "Solana decoder registry is not available",
+			expectedError: "failed to analyze solana transaction 0: solana decoder registry is not available",
 		},
 		{
 			name:          "Aptos_unmarshal_additional_fields",

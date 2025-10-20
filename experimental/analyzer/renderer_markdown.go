@@ -34,14 +34,14 @@ const (
 const (
 	proposalTemplate = `{{range $i, $op := .Operations}}Operation #{{$i}}
 Chain selector: {{$op.ChainSelector}} ({{$op.ChainName}})
-{{range $call := $op.Calls}}{{indent (renderCall $call)}}{{end}}
+{{range $call := $op.Calls}}{{indent (renderCall $call $.Context)}}{{end}}
 {{end}}`
 
 	timelockTemplate = `{{range $i, $batch := .Batches}}### Batch {{$i}}
 **Chain selector:** ` + "`{{$batch.ChainSelector}}`" + ` ({{$batch.ChainName}})
 
 {{range $j, $op := $batch.Operations}}#### Operation {{$j}}
-{{range $call := $op.Calls}}{{renderCall $call}}
+{{range $call := $op.Calls}}{{renderCall $call $.Context}}
 
 {{end}}{{end}}---
 
@@ -78,6 +78,7 @@ Chain selector: {{$op.ChainSelector}} ({{$op.ChainName}})
 
 type ProposalTemplateData struct {
 	Operations []OperationTemplateData
+	Context    *DescriptorContext
 }
 
 type OperationTemplateData struct {
@@ -88,6 +89,7 @@ type OperationTemplateData struct {
 
 type TimelockTemplateData struct {
 	Batches []BatchTemplateData
+	Context *DescriptorContext
 }
 
 type BatchTemplateData struct {
@@ -134,9 +136,10 @@ func NewMarkdownRenderer() *MarkdownRenderer {
 }
 
 // RenderProposal renders a ProposalReport as Markdown.
-func (r *MarkdownRenderer) RenderProposal(rep *ProposalReport) string {
+func (r *MarkdownRenderer) RenderProposal(rep *ProposalReport, ctx *DescriptorContext) string {
 	data := ProposalTemplateData{
 		Operations: make([]OperationTemplateData, len(rep.Operations)),
+		Context:    ctx,
 	}
 
 	for i, op := range rep.Operations {
@@ -156,9 +159,10 @@ func (r *MarkdownRenderer) RenderProposal(rep *ProposalReport) string {
 }
 
 // RenderTimelock renders a Timelock ProposalReport as Markdown.
-func (r *MarkdownRenderer) RenderTimelock(rep *ProposalReport) string {
+func (r *MarkdownRenderer) RenderTimelock(rep *ProposalReport, ctx *DescriptorContext) string {
 	data := TimelockTemplateData{
 		Batches: make([]BatchTemplateData, len(rep.Batches)),
+		Context: ctx,
 	}
 
 	for i, batch := range rep.Batches {
@@ -269,8 +273,8 @@ func (r *MarkdownRenderer) initTemplates() {
 }
 
 // renderCallHelper is a template helper function to render a DecodedCall.
-func (r *MarkdownRenderer) renderCallHelper(call *DecodedCall) string {
-	return r.RenderDecodedCall(call, NewArgumentContext(nil))
+func (r *MarkdownRenderer) renderCallHelper(call *DecodedCall, ctx *DescriptorContext) string {
+	return r.RenderDecodedCall(call, ctx)
 }
 
 // renderSummary renders a summary using the summary template.

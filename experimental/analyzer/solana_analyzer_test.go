@@ -19,6 +19,7 @@ import (
 	cpistub "github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings/v0_1_0/external_program_cpi_stub"
 	"github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings/v0_1_0/mcm"
 
+	"github.com/smartcontractkit/mcms"
 	mcmssolanasdk "github.com/smartcontractkit/mcms/sdk/solana"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 )
@@ -76,7 +77,7 @@ func Test_solanaAnalyzer_describeOperations(t *testing.T) {
 				"**Address:** `2zZwzyptLqwFJFEFxjPvrdhiGpH9pJ3MfrrmZX6NTKxm`",
 				"<sub><i>address of ExternalProgramCpiStub 1.0.0 from solana-devnet</i></sub>",
 				"**Method:** `Empty`",
-				"**Inputs:**\n\n",
+				"**Inputs:**",
 				"- `AccountMetaSlice`:",
 				"<details><summary>AccountMetaSlice</summary>",
 				"[]",
@@ -267,14 +268,14 @@ func Test_solanaAnalyzer_describeOperations(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := describeOperations(tt.ctx, tt.operations)
+			got, err := DescribeProposal(tt.ctx, &mcms.Proposal{Operations: tt.operations})
 
 			if tt.wantErr == "" {
 				require.NoError(t, err)
-				require.Len(t, got, len(tt.wantContains))
-				for i, parts := range tt.wantContains {
+				// Check that the output contains all expected patterns
+				for _, parts := range tt.wantContains {
 					for _, p := range parts {
-						require.Contains(t, got[i], p)
+						require.Contains(t, got, p)
 					}
 				}
 			} else {
@@ -357,16 +358,15 @@ func Test_solanaAnalyzer_describeBatchOperations(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := describeBatchOperations(tt.ctx, tt.batchOps)
+			got, err := DescribeTimelockProposal(tt.ctx, &mcms.TimelockProposal{Operations: tt.batchOps})
 
 			if tt.wantErr == "" {
 				require.NoError(t, err)
-				require.Len(t, got, len(tt.wantContains))
-				for bi := range got {
-					require.Len(t, got[bi], len(tt.wantContains[bi]))
-					for oi := range got[bi] {
-						for _, sub := range tt.wantContains[bi][oi] {
-							require.Contains(t, got[bi][oi], sub)
+				// Check that the output contains all expected patterns
+				for _, batchContains := range tt.wantContains {
+					for _, operationContains := range batchContains {
+						for _, sub := range operationContains {
+							require.Contains(t, got, sub)
 						}
 					}
 				}

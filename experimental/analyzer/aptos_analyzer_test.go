@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	chainsel "github.com/smartcontractkit/chain-selectors"
+	"github.com/smartcontractkit/mcms"
 	"github.com/smartcontractkit/mcms/types"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
@@ -75,16 +76,16 @@ func TestDescribeBatchOperations(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			got, err := describeBatchOperations(defaultProposalCtx, tt.operations)
+			got, err := DescribeTimelockProposal(defaultProposalCtx, &mcms.TimelockProposal{Operations: tt.operations})
 			if (err != nil) != tt.wantErr {
-				t.Errorf("AnalyzeAptosTransactions() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("DescribeTimelockProposal() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			for bi := range tt.wantContains {
-				for oi, subs := range tt.wantContains[bi] {
-					for _, sub := range subs {
-						if !strings.Contains(got[bi][oi], sub) {
-							t.Errorf("batch %d op %d missing substring %q in\n%s", bi, oi, sub, got[bi][oi])
+			for _, batchContains := range tt.wantContains {
+				for _, operationContains := range batchContains {
+					for _, sub := range operationContains {
+						if !strings.Contains(got, sub) {
+							t.Errorf("missing substring %q in output:\n%s", sub, got)
 						}
 					}
 				}

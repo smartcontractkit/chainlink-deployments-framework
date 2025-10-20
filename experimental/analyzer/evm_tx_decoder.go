@@ -3,8 +3,10 @@ package analyzer
 import (
 	"fmt"
 	"reflect"
+	"regexp"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 )
 
@@ -136,4 +138,35 @@ func (p *EVMTxCallDecoder) decodeArray(argName string, argAbi *abi.Type, argVal 
 	return ArrayDescriptor{
 		Elements: elements,
 	}
+}
+
+var (
+	chainSelectorRegex = regexp.MustCompile(`[cC]hain([sS]el)?.*$`)
+)
+
+// BytesAndAddressAnalyzer is an EVM-specific analyzer that handles bytes and address types.
+func BytesAndAddressAnalyzer(_ string, argAbi *abi.Type, argVal any, _ []Analyzer) Descriptor {
+	if argAbi.T == abi.FixedBytesTy || argAbi.T == abi.BytesTy || argAbi.T == abi.AddressTy {
+		argArrTyp := reflect.ValueOf(argVal)
+		argArr := make([]byte, argArrTyp.Len())
+		for i := range argArrTyp.Len() {
+			argArr[i] = byte(argArrTyp.Index(i).Uint())
+		}
+		if argAbi.T == abi.AddressTy {
+			return AddressDescriptor{Value: common.BytesToAddress(argArr).Hex()}
+		}
+
+		return BytesDescriptor{Value: argArr}
+	}
+
+	return nil
+}
+
+// ChainSelectorAnalyzer is an EVM-specific analyzer that handles chain selector parameters.
+func ChainSelectorAnalyzer(argName string, argAbi *abi.Type, argVal any, _ []Analyzer) Descriptor {
+	if argAbi.GetType().Kind() == reflect.Uint64 && chainSelectorRegex.MatchString(argName) {
+		return ChainSelectorDescriptor{Value: argVal.(uint64)}
+	}
+
+	return nil
 }

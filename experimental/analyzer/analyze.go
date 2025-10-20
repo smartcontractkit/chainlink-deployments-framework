@@ -1,11 +1,10 @@
 package analyzer
 
 import (
-	"reflect"
-	"regexp"
+	"fmt"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/ethereum/go-ethereum/common"
 )
 
 const (
@@ -13,12 +12,6 @@ const (
 	MinStructFieldsForPrettyFormat = 2
 	MinDataLengthForMethodID       = 4
 	DefaultAnalyzersCount          = 2
-)
-
-var (
-	_                  Analyzer = BytesAndAddressAnalyzer
-	_                  Analyzer = ChainSelectorAnalyzer
-	chainSelectorRegex          = regexp.MustCompile(`[cC]hain([sS]el)?.*$`)
 )
 
 // Analyzer is an extension point of proposal decoding.
@@ -32,33 +25,27 @@ type DecodedCall struct {
 	Outputs []NamedDescriptor
 }
 
-// Describe renders a human-readable representation of the decoded call,
-// delegating to the Markdown renderer for consistency.
+// Describe renders a human-readable representation of the decoded call in a format-neutral way.
+// This method returns a simple string representation that can be used by any renderer.
 func (d *DecodedCall) Describe(context *DescriptorContext) string {
-	return NewMarkdownRenderer().RenderDecodedCall(d, context)
-}
+	var result strings.Builder
 
-func BytesAndAddressAnalyzer(_ string, argAbi *abi.Type, argVal any, _ []Analyzer) Descriptor {
-	if argAbi.T == abi.FixedBytesTy || argAbi.T == abi.BytesTy || argAbi.T == abi.AddressTy {
-		argArrTyp := reflect.ValueOf(argVal)
-		argArr := make([]byte, argArrTyp.Len())
-		for i := range argArrTyp.Len() {
-			argArr[i] = byte(argArrTyp.Index(i).Uint())
-		}
-		if argAbi.T == abi.AddressTy {
-			return AddressDescriptor{Value: common.BytesToAddress(argArr).Hex()}
-		}
+	result.WriteString(fmt.Sprintf("Address: %s\n", d.Address))
+	result.WriteString(fmt.Sprintf("Method: %s\n", d.Method))
 
-		return BytesDescriptor{Value: argArr}
+	if len(d.Inputs) > 0 {
+		result.WriteString("Inputs:\n")
+		for _, input := range d.Inputs {
+			result.WriteString(fmt.Sprintf("  %s: %s\n", input.Name, input.Value.Describe(context)))
+		}
 	}
 
-	return nil
-}
-
-func ChainSelectorAnalyzer(argName string, argAbi *abi.Type, argVal any, _ []Analyzer) Descriptor {
-	if argAbi.GetType().Kind() == reflect.Uint64 && chainSelectorRegex.MatchString(argName) {
-		return ChainSelectorDescriptor{Value: argVal.(uint64)}
+	if len(d.Outputs) > 0 {
+		result.WriteString("Outputs:\n")
+		for _, output := range d.Outputs {
+			result.WriteString(fmt.Sprintf("  %s: %s\n", output.Name, output.Value.Describe(context)))
+		}
 	}
 
-	return nil
+	return result.String()
 }
