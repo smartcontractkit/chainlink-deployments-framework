@@ -2,12 +2,12 @@ package analyzer
 
 import (
 	"encoding/json"
-	"strings"
 	"testing"
 
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/mcms"
 	"github.com/smartcontractkit/mcms/types"
+	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 )
@@ -28,7 +28,7 @@ func TestDescribeBatchOperations(t *testing.T) {
 	tests := []struct {
 		name         string
 		operations   []types.BatchOperation
-		wantContains [][][]string // batches -> ops -> substrings
+		wantContains [][][]string
 		wantErr      bool
 	}{
 		{
@@ -77,16 +77,17 @@ func TestDescribeBatchOperations(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			got, err := DescribeTimelockProposal(defaultProposalCtx, &mcms.TimelockProposal{Operations: tt.operations})
-			if (err != nil) != tt.wantErr {
-				t.Errorf("DescribeTimelockProposal() error = %v, wantErr %v", err, tt.wantErr)
-				return
+
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
+
 			for _, batchContains := range tt.wantContains {
 				for _, operationContains := range batchContains {
 					for _, sub := range operationContains {
-						if !strings.Contains(got, sub) {
-							t.Errorf("missing substring %q in output:\n%s", sub, got)
-						}
+						require.Contains(t, got, sub, "missing substring %q in output", sub)
 					}
 				}
 			}
