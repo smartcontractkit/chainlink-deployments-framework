@@ -52,8 +52,6 @@ type Environment struct {
 	ExistingAddresses AddressBook
 	DataStore         datastore.DataStore
 
-	Catalog datastore.CatalogStore
-
 	NodeIDs    []string
 	Offchain   offchain.Client
 	GetContext func() context.Context
@@ -66,13 +64,6 @@ type Environment struct {
 
 // EnvironmentOption is a functional option for configuring an Environment
 type EnvironmentOption func(*Environment)
-
-// WithCatalog sets the catalog store for the environment
-func WithCatalog(catalog datastore.CatalogStore) EnvironmentOption {
-	return func(e *Environment) {
-		e.Catalog = catalog
-	}
-}
 
 // NewEnvironment creates a new environment for CLDF.
 func NewEnvironment(
@@ -128,7 +119,6 @@ func (e Environment) Clone() Environment {
 		Logger:            e.Logger,
 		ExistingAddresses: ab,
 		DataStore:         ds.Seal(),
-		Catalog:           e.Catalog, // Preserve the catalog reference
 		NodeIDs:           e.NodeIDs,
 		Offchain:          e.Offchain,
 		GetContext:        e.GetContext,

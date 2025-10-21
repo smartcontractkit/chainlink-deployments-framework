@@ -5,12 +5,10 @@ package environment
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sync"
 
 	fchain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
-	fcatalog "github.com/smartcontractkit/chainlink-deployments-framework/datastore/catalog/memory"
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	foffchain "github.com/smartcontractkit/chainlink-deployments-framework/offchain/jd/memory"
 	focr "github.com/smartcontractkit/chainlink-deployments-framework/offchain/ocr"
@@ -69,18 +67,12 @@ func (l *Loader) Load(ctx context.Context, opts ...LoadOpt) (*fdeployment.Enviro
 		oc = foffchain.NewMemoryJobDistributor()
 	}
 
-	catalog, err := fcatalog.NewMemoryCatalogDataStore()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create in-memory catalog: %w", err)
-	}
-
 	return &fdeployment.Environment{
 		Name:              environmentName,
 		Logger:            cmps.Logger,
 		BlockChains:       fchain.NewBlockChainsFromSlice(cmps.Chains),
 		ExistingAddresses: ab,
 		DataStore:         ds,
-		Catalog:           catalog,
 		NodeIDs:           nodeIDs,
 		Offchain:          oc,
 		GetContext:        getCtx,
