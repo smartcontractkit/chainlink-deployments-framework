@@ -194,6 +194,8 @@ func (m *mockSolanaInstruction) Inputs() []NamedDescriptor {
 }
 
 func Test_solanaAnalyzer_describeOperations(t *testing.T) {
+	t.Parallel()
+
 	cpistub.SetProgramID(solana.MPK(cpiStubProgramID))
 	mcm.SetProgramID(solana.MPK(mcmProgramID))
 	solanaChainSelector := mcmstypes.ChainSelector(chainsel.SOLANA_DEVNET.Selector)
