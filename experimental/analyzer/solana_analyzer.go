@@ -152,7 +152,7 @@ func (w *anchorInstructionWrapper) Inputs() []NamedDescriptor {
 	if reflect.ValueOf(impl).Elem().Kind() != reflect.Struct {
 		return []NamedDescriptor{{
 			Name:  "error",
-			Value: SimpleDescriptor{Value: "unxpected BaseVariant.Impl element type (not a struct)"},
+			Value: SimpleDescriptor{Value: "unexpected BaseVariant.Impl element type (not a struct)"},
 		}}
 	}
 
@@ -160,13 +160,13 @@ func (w *anchorInstructionWrapper) Inputs() []NamedDescriptor {
 	if rImpl.Kind() != reflect.Ptr {
 		return []NamedDescriptor{{
 			Name:  "error",
-			Value: SimpleDescriptor{Value: "unxpected BaseVariant.Impl type (not a pointer)"},
+			Value: SimpleDescriptor{Value: "unexpected BaseVariant.Impl type (not a pointer)"},
 		}}
 	}
 	if rImpl.Elem().Kind() != reflect.Struct {
 		return []NamedDescriptor{{
 			Name:  "error",
-			Value: SimpleDescriptor{Value: "unxpected BaseVariant.Impl element type (not a struct)"},
+			Value: SimpleDescriptor{Value: "unexpected BaseVariant.Impl element type (not a struct)"},
 		}}
 	}
 	rImpl = rImpl.Elem()
