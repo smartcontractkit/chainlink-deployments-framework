@@ -19,7 +19,6 @@ import (
 	cpistub "github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings/v0_1_0/external_program_cpi_stub"
 	"github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings/v0_1_0/mcm"
 
-	"github.com/smartcontractkit/mcms"
 	mcmssolanasdk "github.com/smartcontractkit/mcms/sdk/solana"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 )
@@ -59,28 +58,26 @@ func Test_solanaAnalyzer_describeOperations(t *testing.T) {
 	require.NoError(t, err)
 
 	tests := []struct {
-		name         string
-		ctx          ProposalContext
-		operations   []mcmstypes.Operation
-		wantContains [][]string // per operation, substrings that must be present
-		wantErr      string
+		name       string
+		ctx        ProposalContext
+		operations []mcmstypes.Operation
+		want       []*DecodedCall // expected DecodedCall results
+		wantErr    string
 	}{
 		{
 			name: "success: cpistub.Empty",
 			ctx:  defaultProposalCtx,
 			operations: []mcmstypes.Operation{{
 				ChainSelector: solanaChainSelector,
-
-				Transaction: mcmsTxFromInstruction(t, cpistub.NewEmptyInstruction()),
+				Transaction:   mcmsTxFromInstruction(t, cpistub.NewEmptyInstruction()),
 			}},
-			wantContains: [][]string{{
-				"**Address:** `2zZwzyptLqwFJFEFxjPvrdhiGpH9pJ3MfrrmZX6NTKxm`",
-				"<sub><i>address of ExternalProgramCpiStub 1.0.0 from solana-devnet</i></sub>",
-				"**Method:** `Empty`",
-				"**Inputs:**",
-				"- `AccountMetaSlice`:",
-				"<details><summary>AccountMetaSlice</summary>",
-				"[]",
+			want: []*DecodedCall{{
+				Address: "2zZwzyptLqwFJFEFxjPvrdhiGpH9pJ3MfrrmZX6NTKxm",
+				Method:  "Empty",
+				Inputs: []NamedDescriptor{{
+					Name:  "AccountMetaSlice",
+					Value: YamlDescriptor{value: []string{}},
+				}},
 			}},
 		},
 		{
@@ -90,14 +87,19 @@ func Test_solanaAnalyzer_describeOperations(t *testing.T) {
 				ChainSelector: solanaChainSelector,
 				Transaction:   mcmsTxFromInstruction(t, cpistub.NewU8InstructionDataInstruction(uint8(123))),
 			}},
-			wantContains: [][]string{{
-				"**Method:** `U8InstructionData`",
-				"- `Data`: 123",
-				"<details><summary>Data</summary>",
-				"12",
-				"- `AccountMetaSlice`:",
-				"<details><summary>AccountMetaSlice</summary>",
-				"[]",
+			want: []*DecodedCall{{
+				Address: "2zZwzyptLqwFJFEFxjPvrdhiGpH9pJ3MfrrmZX6NTKxm",
+				Method:  "U8InstructionData",
+				Inputs: []NamedDescriptor{
+					{
+						Name:  "Data",
+						Value: SimpleDescriptor{Value: "123\n"},
+					},
+					{
+						Name:  "AccountMetaSlice",
+						Value: YamlDescriptor{value: []string{}},
+					},
+				},
 			}},
 		},
 		{
@@ -107,14 +109,19 @@ func Test_solanaAnalyzer_describeOperations(t *testing.T) {
 				ChainSelector: solanaChainSelector,
 				Transaction:   mcmsTxFromInstruction(t, cpistub.NewStructInstructionDataInstruction(cpistub.Value{Value: uint8(45)})),
 			}},
-			wantContains: [][]string{{
-				"**Method:** `StructInstructionData`",
-				"- `Data`:",
-				"<details><summary>Data</summary>",
-				"value: 45",
-				"- `AccountMetaSlice`:",
-				"<details><summary>AccountMetaSlice</summary>",
-				"[]",
+			want: []*DecodedCall{{
+				Address: "2zZwzyptLqwFJFEFxjPvrdhiGpH9pJ3MfrrmZX6NTKxm",
+				Method:  "StructInstructionData",
+				Inputs: []NamedDescriptor{
+					{
+						Name:  "Data",
+						Value: YamlDescriptor{value: cpistub.Value{Value: uint8(45)}},
+					},
+					{
+						Name:  "AccountMetaSlice",
+						Value: YamlDescriptor{value: []string{}},
+					},
+				},
 			}},
 		},
 		{
@@ -124,13 +131,19 @@ func Test_solanaAnalyzer_describeOperations(t *testing.T) {
 				ChainSelector: solanaChainSelector,
 				Transaction:   mcmsTxFromInstruction(t, cpistub.NewBigInstructionDataInstruction([]byte{0x0, 0x1, 0x2, 0x3})),
 			}},
-			wantContains: [][]string{{
-				"**Method:** `BigInstructionData`",
-				"- `Data`: 0x00010203",
-				"<details><summary>Data</summary>",
-				"0x00010203",
-				"- `AccountMetaSlice`:",
-				"[]",
+			want: []*DecodedCall{{
+				Address: "2zZwzyptLqwFJFEFxjPvrdhiGpH9pJ3MfrrmZX6NTKxm",
+				Method:  "BigInstructionData",
+				Inputs: []NamedDescriptor{
+					{
+						Name:  "Data",
+						Value: YamlDescriptor{value: []byte{0x0, 0x1, 0x2, 0x3}},
+					},
+					{
+						Name:  "AccountMetaSlice",
+						Value: YamlDescriptor{value: []string{}},
+					},
+				},
 			}},
 		},
 		{
@@ -144,13 +157,17 @@ func Test_solanaAnalyzer_describeOperations(t *testing.T) {
 					solana.SystemProgramID,
 				)),
 			}},
-			wantContains: [][]string{{
-				"**Method:** `AccountMut`",
-				"- `AccountMetaSlice`:",
-				"<details><summary>AccountMetaSlice</summary>",
-				"H2qiK1CzW2DheLz9WAGSF1GbvLoqQv9hgS56Rk8Wh3uA",
-				"4cubrmdczDbRT8XyBwSR871meZU426S6xkiouzQpspVK",
-				"11111111111111111111111111111111",
+			want: []*DecodedCall{{
+				Address: "2zZwzyptLqwFJFEFxjPvrdhiGpH9pJ3MfrrmZX6NTKxm",
+				Method:  "AccountMut",
+				Inputs: []NamedDescriptor{{
+					Name: "AccountMetaSlice",
+					Value: YamlDescriptor{value: []solana.AccountMeta{
+						{PublicKey: solana.MPK("H2qiK1CzW2DheLz9WAGSF1GbvLoqQv9hgS56Rk8Wh3uA"), IsWritable: true},
+						{PublicKey: solana.MPK("4cubrmdczDbRT8XyBwSR871meZU426S6xkiouzQpspVK"), IsSigner: true},
+						{PublicKey: solana.SystemProgramID},
+					}},
+				}},
 			}},
 		},
 		{
@@ -168,17 +185,35 @@ func Test_solanaAnalyzer_describeOperations(t *testing.T) {
 					solana.SystemProgramID,
 				)),
 			}},
-			wantContains: [][]string{{
-				"**Method:** `InitSignatures`",
-				"<details><summary>MultisigId</summary>",
-				"0x6d636d0000000000000000000000000000000000000000000000000000000000",
-				"<details><summary>Root</summary>",
-				"0x726f6f7400000000000000000000000000000000000000000000000000000000",
-				"- `ValidUntil`: 1767225600",
-				"- `TotalSignatures`: 2",
-				"- `AccountMetaSlice`:",
-				"8UXavXj14P3khJyWSfeDeZ57YS7vo8ynkKemo2M2C1VU",
-				"J6fUzHuGEHmqpmmq1BMGfjfeYjPwg4TWsKsJB8WGihoJ",
+			want: []*DecodedCall{{
+				Address: "Gp9vJNFpwfRM2M9ebK5pQXEb4ZtWwq66nNRRRRGJwz1j",
+				Method:  "InitSignatures",
+				Inputs: []NamedDescriptor{
+					{
+						Name:  "MultisigId",
+						Value: YamlDescriptor{value: [32]uint8{'m', 'c', 'm'}},
+					},
+					{
+						Name:  "Root",
+						Value: YamlDescriptor{value: [32]uint8{'r', 'o', 'o', 't'}},
+					},
+					{
+						Name:  "ValidUntil",
+						Value: YamlDescriptor{value: uint32(1767225600)},
+					},
+					{
+						Name:  "TotalSignatures",
+						Value: YamlDescriptor{value: uint8(2)},
+					},
+					{
+						Name: "AccountMetaSlice",
+						Value: YamlDescriptor{value: []solana.AccountMeta{
+							{PublicKey: solana.MPK("8UXavXj14P3khJyWSfeDeZ57YS7vo8ynkKemo2M2C1VU"), IsWritable: true},
+							{PublicKey: solana.MPK("J6fUzHuGEHmqpmmq1BMGfjfeYjPwg4TWsKsJB8WGihoJ"), IsWritable: true, IsSigner: true},
+							{PublicKey: solana.SystemProgramID},
+						}},
+					},
+				},
 			}},
 		},
 		{
@@ -210,23 +245,52 @@ func Test_solanaAnalyzer_describeOperations(t *testing.T) {
 					solana.SystemProgramID,
 				)),
 			}},
-			wantContains: [][]string{{
-				"**Method:** `SetRoot`",
-				"- `MultisigId`:",
-				"- `Root`:",
-				"- `ValidUntil`: 1767225600",
-				"- `Metadata`:",
-				"<details><summary>Metadata</summary>",
-				"chainid: 16423721717087811551",
-				"overridepreviousroot: true",
-				"<details><summary>MetadataProof</summary>",
-				"<details><summary>AccountMetaSlice</summary>",
-				"1EMwYGgmo3UPwmyUiPvCUPM5kdL52LHPJXSZNUN1pam",
-				"AE4UPuh9q1ZCzqzqicw1YujuLC35oTpi1JCpcK6KojPd",
-				"xZzLbR8t1jbHia2nQoRUyhKL7WvjDXRdUQqwzbEVTvg",
-				"FjkJnFj82vM8zq2SEes1WV4ZFEkruPZCcpkXpL92Qhy3",
-				"7eJ2ZKsx3ie1vR1bFaGp4pB5iatjUAfDPtgFDE2sXkZd",
-				"Frr7euo9xRokH9pSmpFf2YbHWB4W3w2Jh7r7hZiu4PD7",
+			want: []*DecodedCall{{
+				Address: "Gp9vJNFpwfRM2M9ebK5pQXEb4ZtWwq66nNRRRRGJwz1j",
+				Method:  "SetRoot",
+				Inputs: []NamedDescriptor{
+					{
+						Name:  "MultisigId",
+						Value: YamlDescriptor{value: [32]uint8{'m', 'c', 'm'}},
+					},
+					{
+						Name:  "Root",
+						Value: YamlDescriptor{value: [32]uint8{'r', 'o', 'o', 't'}},
+					},
+					{
+						Name:  "ValidUntil",
+						Value: YamlDescriptor{value: uint32(1767225600)},
+					},
+					{
+						Name: "Metadata",
+						Value: YamlDescriptor{value: mcm.RootMetadataInput{
+							ChainId:              chainsel.SOLANA_DEVNET.Selector,
+							Multisig:             solana.MPK("7eJ2ZKsx3ie1vR1bFaGp4pB5iatjUAfDPtgFDE2sXkZd"),
+							PreOpCount:           1,
+							PostOpCount:          2,
+							OverridePreviousRoot: true,
+						}},
+					},
+					{
+						Name: "MetadataProof",
+						Value: YamlDescriptor{value: [][32]uint8{
+							common.HexToHash("0x0000000000000000000000000000000000000001"),
+							common.HexToHash("0x0000000000000000000000000000000000000002"),
+						}},
+					},
+					{
+						Name: "AccountMetaSlice",
+						Value: YamlDescriptor{value: []solana.AccountMeta{
+							{PublicKey: solana.MPK("1EMwYGgmo3UPwmyUiPvCUPM5kdL52LHPJXSZNUN1pam"), IsWritable: true},
+							{PublicKey: solana.MPK("AE4UPuh9q1ZCzqzqicw1YujuLC35oTpi1JCpcK6KojPd"), IsWritable: true},
+							{PublicKey: solana.MPK("xZzLbR8t1jbHia2nQoRUyhKL7WvjDXRdUQqwzbEVTvg"), IsWritable: true},
+							{PublicKey: solana.MPK("FjkJnFj82vM8zq2SEes1WV4ZFEkruPZCcpkXpL92Qhy3"), IsWritable: true},
+							{PublicKey: solana.MPK("7eJ2ZKsx3ie1vR1bFaGp4pB5iatjUAfDPtgFDE2sXkZd")},
+							{PublicKey: solana.MPK("Frr7euo9xRokH9pSmpFf2YbHWB4W3w2Jh7r7hZiu4PD7"), IsWritable: true, IsSigner: true},
+							{PublicKey: solana.SystemProgramID},
+						}},
+					},
+				},
 			}},
 		},
 		{
@@ -248,19 +312,42 @@ func Test_solanaAnalyzer_describeOperations(t *testing.T) {
 					solana.SystemProgramID,
 				)),
 			}},
-			wantContains: [][]string{{
-				"**Method:** `SetConfig`",
-				"- `MultisigId`:",
-				"- `SignerGroups`:",
-				"- `GroupQuorums`:",
-				"- `GroupParents`:",
-				"- `ClearRoot`: true",
-				"<details><summary>AccountMetaSlice</summary>",
-				"AE4UPuh9q1ZCzqzqicw1YujuLC35oTpi1JCpcK6KojPd",
-				"xZzLbR8t1jbHia2nQoRUyhKL7WvjDXRdUQqwzbEVTvg",
-				"FjkJnFj82vM8zq2SEes1WV4ZFEkruPZCcpkXpL92Qhy3",
-				"7eJ2ZKsx3ie1vR1bFaGp4pB5iatjUAfDPtgFDE2sXkZd",
-				"Frr7euo9xRokH9pSmpFf2YbHWB4W3w2Jh7r7hZiu4PD7",
+			want: []*DecodedCall{{
+				Address: "Gp9vJNFpwfRM2M9ebK5pQXEb4ZtWwq66nNRRRRGJwz1j",
+				Method:  "SetConfig",
+				Inputs: []NamedDescriptor{
+					{
+						Name:  "MultisigId",
+						Value: YamlDescriptor{value: [32]uint8{'m', 'c', 'm'}},
+					},
+					{
+						Name:  "SignerGroups",
+						Value: YamlDescriptor{value: []byte{1, 2}},
+					},
+					{
+						Name:  "GroupQuorums",
+						Value: YamlDescriptor{value: [32]uint8{3, 4, 5}},
+					},
+					{
+						Name:  "GroupParents",
+						Value: YamlDescriptor{value: [32]uint8{6, 7, 8}},
+					},
+					{
+						Name:  "ClearRoot",
+						Value: YamlDescriptor{value: true},
+					},
+					{
+						Name: "AccountMetaSlice",
+						Value: YamlDescriptor{value: []solana.AccountMeta{
+							{PublicKey: solana.MPK("AE4UPuh9q1ZCzqzqicw1YujuLC35oTpi1JCpcK6KojPd"), IsWritable: true},
+							{PublicKey: solana.MPK("xZzLbR8t1jbHia2nQoRUyhKL7WvjDXRdUQqwzbEVTvg"), IsWritable: true},
+							{PublicKey: solana.MPK("FjkJnFj82vM8zq2SEes1WV4ZFEkruPZCcpkXpL92Qhy3"), IsWritable: true},
+							{PublicKey: solana.MPK("7eJ2ZKsx3ie1vR1bFaGp4pB5iatjUAfDPtgFDE2sXkZd"), IsWritable: true},
+							{PublicKey: solana.MPK("Frr7euo9xRokH9pSmpFf2YbHWB4W3w2Jh7r7hZiu4PD7"), IsWritable: true, IsSigner: true},
+							{PublicKey: solana.SystemProgramID},
+						}},
+					},
+				},
 			}},
 		},
 	}
@@ -268,14 +355,25 @@ func Test_solanaAnalyzer_describeOperations(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := DescribeProposal(tt.ctx, &mcms.Proposal{Operations: tt.operations})
+			// Test the core analysis function directly instead of the high-level report function
+			results, err := AnalyzeSolanaTransactions(tt.ctx, uint64(solanaChainSelector), []mcmstypes.Transaction{tt.operations[0].Transaction})
 
 			if tt.wantErr == "" {
 				require.NoError(t, err)
-				// Check that the output contains all expected patterns
-				for _, parts := range tt.wantContains {
-					for _, p := range parts {
-						require.Contains(t, got, p)
+				require.Len(t, results, len(tt.want), "Number of results should match expected")
+
+				// Compare each DecodedCall
+				for i, result := range results {
+					expected := tt.want[i]
+					require.Equal(t, expected.Address, result.Address, "Address mismatch for result %d", i)
+					require.Equal(t, expected.Method, result.Method, "Method mismatch for result %d", i)
+					require.Len(t, result.Inputs, len(expected.Inputs), "Number of inputs should match for result %d", i)
+
+					// Compare each input
+					for j, input := range result.Inputs {
+						expectedInput := expected.Inputs[j]
+						require.Equal(t, expectedInput.Name, input.Name, "Input name mismatch for result %d, input %d", i, j)
+						require.Equal(t, expectedInput.Value.Describe(nil), input.Value.Describe(nil), "Input value mismatch for result %d, input %d", i, j)
 					}
 				}
 			} else {
@@ -317,11 +415,11 @@ func Test_solanaAnalyzer_describeBatchOperations(t *testing.T) {
 	require.NoError(t, err)
 
 	tests := []struct {
-		name         string
-		ctx          ProposalContext
-		batchOps     []mcmstypes.BatchOperation
-		wantContains [][][]string // batches -> ops -> substrings
-		wantErr      string
+		name     string
+		ctx      ProposalContext
+		batchOps []mcmstypes.BatchOperation
+		want     []*DecodedCall // expected DecodedCall results
+		wantErr  string
 	}{
 		{
 			name: "success: multiple calls to cpistub.U8InstructionData split into 2 batches",
@@ -342,14 +440,62 @@ func Test_solanaAnalyzer_describeBatchOperations(t *testing.T) {
 					},
 				},
 			},
-			wantContains: [][][]string{
+			want: []*DecodedCall{
 				{
-					{"**Method:** `U8InstructionData`", "- `Data`: 12", "<details><summary>Data</summary>", "12", "- `AccountMetaSlice`:", "[]"},
-					{"**Method:** `U8InstructionData`", "- `Data`: 34", "<details><summary>Data</summary>", "34", "- `AccountMetaSlice`:", "[]"},
+					Address: "2zZwzyptLqwFJFEFxjPvrdhiGpH9pJ3MfrrmZX6NTKxm",
+					Method:  "U8InstructionData",
+					Inputs: []NamedDescriptor{
+						{
+							Name:  "Data",
+							Value: SimpleDescriptor{Value: "12\n"},
+						},
+						{
+							Name:  "AccountMetaSlice",
+							Value: YamlDescriptor{value: []string{}},
+						},
+					},
 				},
 				{
-					{"**Method:** `U8InstructionData`", "- `Data`: 56", "<details><summary>Data</summary>", "56", "- `AccountMetaSlice`:", "[]"},
-					{"**Method:** `U8InstructionData`", "- `Data`: 78", "<details><summary>Data</summary>", "78", "- `AccountMetaSlice`:", "[]"},
+					Address: "2zZwzyptLqwFJFEFxjPvrdhiGpH9pJ3MfrrmZX6NTKxm",
+					Method:  "U8InstructionData",
+					Inputs: []NamedDescriptor{
+						{
+							Name:  "Data",
+							Value: SimpleDescriptor{Value: "34\n"},
+						},
+						{
+							Name:  "AccountMetaSlice",
+							Value: YamlDescriptor{value: []string{}},
+						},
+					},
+				},
+				{
+					Address: "2zZwzyptLqwFJFEFxjPvrdhiGpH9pJ3MfrrmZX6NTKxm",
+					Method:  "U8InstructionData",
+					Inputs: []NamedDescriptor{
+						{
+							Name:  "Data",
+							Value: SimpleDescriptor{Value: "56\n"},
+						},
+						{
+							Name:  "AccountMetaSlice",
+							Value: YamlDescriptor{value: []string{}},
+						},
+					},
+				},
+				{
+					Address: "2zZwzyptLqwFJFEFxjPvrdhiGpH9pJ3MfrrmZX6NTKxm",
+					Method:  "U8InstructionData",
+					Inputs: []NamedDescriptor{
+						{
+							Name:  "Data",
+							Value: SimpleDescriptor{Value: "78\n"},
+						},
+						{
+							Name:  "AccountMetaSlice",
+							Value: YamlDescriptor{value: []string{}},
+						},
+					},
 				},
 			},
 		},
@@ -358,16 +504,36 @@ func Test_solanaAnalyzer_describeBatchOperations(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := DescribeTimelockProposal(tt.ctx, &mcms.TimelockProposal{Operations: tt.batchOps})
+			// Test the core analysis function directly instead of the high-level report function
+			var allResults []*DecodedCall
+			var err error
+
+			// Analyze all transactions from all batches
+			for _, batch := range tt.batchOps {
+				results, batchErr := AnalyzeSolanaTransactions(tt.ctx, uint64(batch.ChainSelector), batch.Transactions)
+				if batchErr != nil {
+					err = batchErr
+					break
+				}
+				allResults = append(allResults, results...)
+			}
 
 			if tt.wantErr == "" {
 				require.NoError(t, err)
-				// Check that the output contains all expected patterns
-				for _, batchContains := range tt.wantContains {
-					for _, operationContains := range batchContains {
-						for _, sub := range operationContains {
-							require.Contains(t, got, sub)
-						}
+				require.Len(t, allResults, len(tt.want), "Number of results should match expected")
+
+				// Compare each DecodedCall
+				for i, result := range allResults {
+					expected := tt.want[i]
+					require.Equal(t, expected.Address, result.Address, "Address mismatch for result %d", i)
+					require.Equal(t, expected.Method, result.Method, "Method mismatch for result %d", i)
+					require.Len(t, result.Inputs, len(expected.Inputs), "Number of inputs should match for result %d", i)
+
+					// Compare each input
+					for j, input := range result.Inputs {
+						expectedInput := expected.Inputs[j]
+						require.Equal(t, expectedInput.Name, input.Name, "Input name mismatch for result %d, input %d", i, j)
+						require.Equal(t, expectedInput.Value.Describe(nil), input.Value.Describe(nil), "Input value mismatch for result %d, input %d", i, j)
 					}
 				}
 			} else {

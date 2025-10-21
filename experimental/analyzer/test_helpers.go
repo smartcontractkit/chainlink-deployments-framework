@@ -1,9 +1,6 @@
 package analyzer
 
 import (
-	"fmt"
-	"strings"
-
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 )
 
@@ -13,73 +10,4 @@ var RBACTimelockMetaDataTesting = &bind.MetaData{
 
 var ManyChainMultiSigMetaData = &bind.MetaData{
 	ABI: "[{\"type\":\"receive\",\"stateMutability\":\"payable\"},{\"type\":\"function\",\"name\":\"MAX_NUM_SIGNERS\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint8\",\"internalType\":\"uint8\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"NUM_GROUPS\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint8\",\"internalType\":\"uint8\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"acceptOwnership\",\"inputs\":[],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"execute\",\"inputs\":[{\"name\":\"op\",\"type\":\"tuple\",\"internalType\":\"structManyChainMultiSig.Op\",\"components\":[{\"name\":\"chainId\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"multiSig\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"nonce\",\"type\":\"uint40\",\"internalType\":\"uint40\"},{\"name\":\"to\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"value\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"data\",\"type\":\"bytes\",\"internalType\":\"bytes\"}]},{\"name\":\"proof\",\"type\":\"bytes32[]\",\"internalType\":\"bytes32[]\"}],\"outputs\":[],\"stateMutability\":\"payable\"},{\"type\":\"function\",\"name\":\"getConfig\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"tuple\",\"internalType\":\"structManyChainMultiSig.Config\",\"components\":[{\"name\":\"signers\",\"type\":\"tuple[]\",\"internalType\":\"structManyChainMultiSig.Signer[]\",\"components\":[{\"name\":\"addr\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"index\",\"type\":\"uint8\",\"internalType\":\"uint8\"},{\"name\":\"group\",\"type\":\"uint8\",\"internalType\":\"uint8\"}]},{\"name\":\"groupQuorums\",\"type\":\"uint8[32]\",\"internalType\":\"uint8[32]\"},{\"name\":\"groupParents\",\"type\":\"uint8[32]\",\"internalType\":\"uint8[32]\"}]}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getOpCount\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint40\",\"internalType\":\"uint40\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getRoot\",\"inputs\":[],\"outputs\":[{\"name\":\"root\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"},{\"name\":\"validUntil\",\"type\":\"uint32\",\"internalType\":\"uint32\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getRootMetadata\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"tuple\",\"internalType\":\"structManyChainMultiSig.RootMetadata\",\"components\":[{\"name\":\"chainId\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"multiSig\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"preOpCount\",\"type\":\"uint40\",\"internalType\":\"uint40\"},{\"name\":\"postOpCount\",\"type\":\"uint40\",\"internalType\":\"uint40\"},{\"name\":\"overridePreviousRoot\",\"type\":\"bool\",\"internalType\":\"bool\"}]}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"owner\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"address\",\"internalType\":\"address\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"pendingOwner\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"address\",\"internalType\":\"address\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"renounceOwnership\",\"inputs\":[],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"setConfig\",\"inputs\":[{\"name\":\"signerAddresses\",\"type\":\"address[]\",\"internalType\":\"address[]\"},{\"name\":\"signerGroups\",\"type\":\"uint8[]\",\"internalType\":\"uint8[]\"},{\"name\":\"groupQuorums\",\"type\":\"uint8[32]\",\"internalType\":\"uint8[32]\"},{\"name\":\"groupParents\",\"type\":\"uint8[32]\",\"internalType\":\"uint8[32]\"},{\"name\":\"clearRoot\",\"type\":\"bool\",\"internalType\":\"bool\"}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"setRoot\",\"inputs\":[{\"name\":\"root\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"},{\"name\":\"validUntil\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"metadata\",\"type\":\"tuple\",\"internalType\":\"structManyChainMultiSig.RootMetadata\",\"components\":[{\"name\":\"chainId\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"multiSig\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"preOpCount\",\"type\":\"uint40\",\"internalType\":\"uint40\"},{\"name\":\"postOpCount\",\"type\":\"uint40\",\"internalType\":\"uint40\"},{\"name\":\"overridePreviousRoot\",\"type\":\"bool\",\"internalType\":\"bool\"}]},{\"name\":\"metadataProof\",\"type\":\"bytes32[]\",\"internalType\":\"bytes32[]\"},{\"name\":\"signatures\",\"type\":\"tuple[]\",\"internalType\":\"structManyChainMultiSig.Signature[]\",\"components\":[{\"name\":\"v\",\"type\":\"uint8\",\"internalType\":\"uint8\"},{\"name\":\"r\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"},{\"name\":\"s\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}]}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"transferOwnership\",\"inputs\":[{\"name\":\"newOwner\",\"type\":\"address\",\"internalType\":\"address\"}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"event\",\"name\":\"ConfigSet\",\"inputs\":[{\"name\":\"config\",\"type\":\"tuple\",\"indexed\":false,\"internalType\":\"structManyChainMultiSig.Config\",\"components\":[{\"name\":\"signers\",\"type\":\"tuple[]\",\"internalType\":\"structManyChainMultiSig.Signer[]\",\"components\":[{\"name\":\"addr\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"index\",\"type\":\"uint8\",\"internalType\":\"uint8\"},{\"name\":\"group\",\"type\":\"uint8\",\"internalType\":\"uint8\"}]},{\"name\":\"groupQuorums\",\"type\":\"uint8[32]\",\"internalType\":\"uint8[32]\"},{\"name\":\"groupParents\",\"type\":\"uint8[32]\",\"internalType\":\"uint8[32]\"}]},{\"name\":\"isRootCleared\",\"type\":\"bool\",\"indexed\":false,\"internalType\":\"bool\"}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"NewRoot\",\"inputs\":[{\"name\":\"root\",\"type\":\"bytes32\",\"indexed\":true,\"internalType\":\"bytes32\"},{\"name\":\"validUntil\",\"type\":\"uint32\",\"indexed\":false,\"internalType\":\"uint32\"},{\"name\":\"metadata\",\"type\":\"tuple\",\"indexed\":false,\"internalType\":\"structManyChainMultiSig.RootMetadata\",\"components\":[{\"name\":\"chainId\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"multiSig\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"preOpCount\",\"type\":\"uint40\",\"internalType\":\"uint40\"},{\"name\":\"postOpCount\",\"type\":\"uint40\",\"internalType\":\"uint40\"},{\"name\":\"overridePreviousRoot\",\"type\":\"bool\",\"internalType\":\"bool\"}]}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"OpExecuted\",\"inputs\":[{\"name\":\"nonce\",\"type\":\"uint40\",\"indexed\":true,\"internalType\":\"uint40\"},{\"name\":\"to\",\"type\":\"address\",\"indexed\":false,\"internalType\":\"address\"},{\"name\":\"data\",\"type\":\"bytes\",\"indexed\":false,\"internalType\":\"bytes\"},{\"name\":\"value\",\"type\":\"uint256\",\"indexed\":false,\"internalType\":\"uint256\"}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"OwnershipTransferStarted\",\"inputs\":[{\"name\":\"previousOwner\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"newOwner\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"OwnershipTransferred\",\"inputs\":[{\"name\":\"previousOwner\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"newOwner\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"}],\"anonymous\":false},{\"type\":\"error\",\"name\":\"CallReverted\",\"inputs\":[{\"name\":\"error\",\"type\":\"bytes\",\"internalType\":\"bytes\"}]},{\"type\":\"error\",\"name\":\"GroupTreeNotWellFormed\",\"inputs\":[]},{\"type\":\"error\",\"name\":\"InsufficientSigners\",\"inputs\":[]},{\"type\":\"error\",\"name\":\"InvalidSigner\",\"inputs\":[]},{\"type\":\"error\",\"name\":\"MissingConfig\",\"inputs\":[]},{\"type\":\"error\",\"name\":\"OutOfBoundsGroup\",\"inputs\":[]},{\"type\":\"error\",\"name\":\"OutOfBoundsGroupQuorum\",\"inputs\":[]},{\"type\":\"error\",\"name\":\"OutOfBoundsNumOfSigners\",\"inputs\":[]},{\"type\":\"error\",\"name\":\"PendingOps\",\"inputs\":[]},{\"type\":\"error\",\"name\":\"PostOpCountReached\",\"inputs\":[]},{\"type\":\"error\",\"name\":\"ProofCannotBeVerified\",\"inputs\":[]},{\"type\":\"error\",\"name\":\"RootExpired\",\"inputs\":[]},{\"type\":\"error\",\"name\":\"SignedHashAlreadySeen\",\"inputs\":[]},{\"type\":\"error\",\"name\":\"SignerGroupsLengthMismatch\",\"inputs\":[]},{\"type\":\"error\",\"name\":\"SignerInDisabledGroup\",\"inputs\":[]},{\"type\":\"error\",\"name\":\"SignersAddressesMustBeStrictlyIncreasing\",\"inputs\":[]},{\"type\":\"error\",\"name\":\"ValidUntilHasAlreadyPassed\",\"inputs\":[]},{\"type\":\"error\",\"name\":\"WrongChainId\",\"inputs\":[]},{\"type\":\"error\",\"name\":\"WrongMultiSig\",\"inputs\":[]},{\"type\":\"error\",\"name\":\"WrongNonce\",\"inputs\":[]},{\"type\":\"error\",\"name\":\"WrongPostOpCount\",\"inputs\":[]},{\"type\":\"error\",\"name\":\"WrongPreOpCount\",\"inputs\":[]}]",
-}
-
-// expectedOutput helper function to create expected output strings in a readable format
-func expectedOutput(method, address, addressTitle string, inputs [][]string) string {
-	result := fmt.Sprintf("**Address:** `%s` <sub><i>%s</i></sub>\n**Method:** `%s`\n\n", address, addressTitle, method)
-
-	if len(inputs) > 0 {
-		result += "**Inputs:**\n\n"
-		var details []string
-		for _, input := range inputs {
-			name := input[0]
-			val := input[1]
-			if isArrayString(val) {
-				// For empty arrays, just render [] with no details block to match renderer
-				if strings.TrimSpace(val) == "[]" {
-					result += fmt.Sprintf("- `%s`: []\n", name)
-				} else {
-					count := arrayCount(val)
-					result += fmt.Sprintf("- `%s`: array[%d]: %s\n", name, count, val)
-					details = append(details, fmt.Sprintf("<details><summary>%s</summary>\n\n```\n%s\n```\n</details>\n", name, val))
-				}
-
-				continue
-			}
-			if isHexString(val) {
-				// Treat common address hex lengths as plain strings to mirror renderer behavior.
-				if len(val) == 42 || len(val) == 66 {
-					result += fmt.Sprintf("- `%s`: `%s`\n", name, val)
-				} else {
-					byteLen := (len(val) - 2) / 2
-					result += fmt.Sprintf("- `%s`: bytes(len=%d): %s\n", name, byteLen, val)
-					details = append(details, fmt.Sprintf("<details><summary>%s</summary>\n\n```\n%s\n```\n</details>\n", name, val))
-				}
-
-				continue
-			}
-			result += fmt.Sprintf("- `%s`: `%s`\n", name, val)
-		}
-		result += "\n"
-		for _, d := range details {
-			result += d + "\n"
-		}
-	}
-
-	return result
-}
-
-func isArrayString(s string) bool {
-	s = strings.TrimSpace(s)
-	return strings.HasPrefix(s, "[") && strings.HasSuffix(s, "]")
-}
-
-func arrayCount(s string) int {
-	s = strings.TrimSpace(s)
-	if s == "[]" {
-		return 0
-	}
-	// crude count: commas + 1
-	return strings.Count(s, ",") + 1
-}
-
-func isHexString(s string) bool {
-	if !strings.HasPrefix(s, "0x") {
-		return false
-	}
-	// even number of hex chars after 0x
-	n := len(s) - 2
-
-	return n > 0 && n%2 == 0
 }
