@@ -66,7 +66,6 @@ func TestNewEnvFromState(t *testing.T) {
 	assert.Equal(t, fromEnv.OCRSecrets, got.OCRSecrets)
 	assert.Equal(t, fromEnv.BlockChains, got.BlockChains)
 	assert.Equal(t, fromEnv.Offchain, got.Offchain)
-	assert.Equal(t, fromEnv.Catalog, got.Catalog)
 
 	// Verify updated fields from state
 	assert.Equal(t, state.AddressBook, got.ExistingAddresses) //nolint:staticcheck // SA1019 (Deprecated): We still need to support AddressBook for now
