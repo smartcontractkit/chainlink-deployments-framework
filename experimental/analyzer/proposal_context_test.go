@@ -10,6 +10,27 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 )
 
+func TestWithRenderer(t *testing.T) {
+	t.Parallel()
+
+	// Create a proper environment
+	ds := datastore.NewMemoryDataStore()
+	env := deployment.Environment{
+		ExistingAddresses: deployment.NewMemoryAddressBook(),
+		DataStore:         ds.Seal(),
+	}
+
+	customRenderer := NewMarkdownRenderer()
+
+	ctx, err := NewDefaultProposalContext(env, WithRenderer(customRenderer))
+	require.NoError(t, err)
+	require.NotNil(t, ctx)
+
+	// Verify that the custom renderer is set
+	retrievedRenderer := ctx.GetRenderer()
+	require.Equal(t, customRenderer, retrievedRenderer)
+}
+
 func TestNewDefaultProposalContext(t *testing.T) {
 	t.Parallel()
 

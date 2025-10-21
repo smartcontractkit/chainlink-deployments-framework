@@ -5,6 +5,7 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/ethereum/go-ethereum/common"
+	binary "github.com/gagliardetto/binary"
 	solana "github.com/gagliardetto/solana-go"
 
 	timelockbindings "github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings/v0_1_0/timelock"
@@ -26,6 +27,172 @@ import (
 var Version1_0_0 = *semver.MustParse("1.0.0")
 
 //nolint:paralleltest // call to SetProgramID is not thread-safe
+func TestAnchorInstructionWrapper_TypeID(t *testing.T) {
+	t.Parallel()
+
+	// Create a mock instruction that doesn't have BaseVariant field to test error case
+	mockInstruction := &mockSolanaInstruction{
+		programID: solana.PublicKeyFromBytes([]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32}),
+		accounts:  []*solana.AccountMeta{},
+		data:      []byte{1, 2, 3, 4},
+		typeID:    binary.TypeID{1, 2, 3, 4},
+		impl:      "test",
+	}
+
+	wrapper := &anchorInstructionWrapper{
+		anchorInstruction: mockInstruction,
+	}
+
+	_, err := wrapper.TypeID()
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "failed to get BaseVariant field")
+}
+
+func TestAnchorInstructionWrapper_ProgramID(t *testing.T) {
+	t.Parallel()
+
+	expectedProgramID := solana.PublicKeyFromBytes([]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32})
+	mockInstruction := &mockSolanaInstruction{
+		programID: expectedProgramID,
+		accounts:  []*solana.AccountMeta{},
+		data:      []byte{1, 2, 3, 4},
+	}
+
+	wrapper := &anchorInstructionWrapper{
+		anchorInstruction: mockInstruction,
+	}
+
+	programID := wrapper.ProgramID()
+	require.Equal(t, expectedProgramID, programID)
+}
+
+func TestAnchorInstructionWrapper_Accounts(t *testing.T) {
+	t.Parallel()
+
+	expectedAccounts := []*solana.AccountMeta{
+		{PublicKey: solana.PublicKeyFromBytes([]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32}), IsWritable: true},
+		{PublicKey: solana.PublicKeyFromBytes([]byte{2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33}), IsWritable: false},
+	}
+
+	mockInstruction := &mockSolanaInstruction{
+		programID: solana.PublicKeyFromBytes([]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32}),
+		accounts:  expectedAccounts,
+		data:      []byte{1, 2, 3, 4},
+	}
+
+	wrapper := &anchorInstructionWrapper{
+		anchorInstruction: mockInstruction,
+	}
+
+	accounts := wrapper.Accounts()
+	require.Equal(t, expectedAccounts, accounts)
+}
+
+func TestAnchorInstructionWrapper_Data(t *testing.T) {
+	t.Parallel()
+
+	expectedData := []byte{1, 2, 3, 4, 5, 6, 7, 8}
+	mockInstruction := &mockSolanaInstruction{
+		programID: solana.PublicKeyFromBytes([]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32}),
+		accounts:  []*solana.AccountMeta{},
+		data:      expectedData,
+	}
+
+	wrapper := &anchorInstructionWrapper{
+		anchorInstruction: mockInstruction,
+	}
+
+	data, err := wrapper.Data()
+	require.NoError(t, err)
+	require.Equal(t, expectedData, data)
+}
+
+func TestYamlDescriptor_MarshalYAML(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		value any
+		want  string
+	}{
+		{
+			name:  "Simple string",
+			value: "test value",
+			want:  "test value\n",
+		},
+		{
+			name:  "Number",
+			value: 42,
+			want:  "42\n",
+		},
+		{
+			name:  "Boolean",
+			value: true,
+			want:  "true\n",
+		},
+		{
+			name:  "Array",
+			value: []string{"item1", "item2"},
+			want:  "- item1\n- item2\n",
+		},
+		{
+			name:  "Map",
+			value: map[string]any{"key": "value"},
+			want:  "key: value\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			desc := YamlDescriptor{value: tt.value}
+			result, err := desc.MarshalYAML()
+			require.NoError(t, err)
+			require.Equal(t, tt.want, string(result))
+		})
+	}
+}
+
+// Mock implementation for testing
+type mockSolanaInstruction struct {
+	programID solana.PublicKey
+	accounts  []*solana.AccountMeta
+	data      []byte
+	typeID    binary.TypeID
+	impl      any
+}
+
+func (m *mockSolanaInstruction) ProgramID() solana.PublicKey {
+	return m.programID
+}
+
+func (m *mockSolanaInstruction) Accounts() []*solana.AccountMeta {
+	return m.accounts
+}
+
+func (m *mockSolanaInstruction) Data() ([]byte, error) {
+	return m.data, nil
+}
+
+func (m *mockSolanaInstruction) Name() string {
+	return "MockInstruction"
+}
+
+func (m *mockSolanaInstruction) TypeID() (binary.TypeID, error) {
+	return m.typeID, nil
+}
+
+func (m *mockSolanaInstruction) Impl() (any, error) {
+	return m.impl, nil
+}
+
+func (m *mockSolanaInstruction) Inputs() []NamedDescriptor {
+	return []NamedDescriptor{
+		{Name: "test", Value: SimpleDescriptor{Value: "test"}},
+	}
+}
+
 func Test_solanaAnalyzer_describeOperations(t *testing.T) {
 	cpistub.SetProgramID(solana.MPK(cpiStubProgramID))
 	mcm.SetProgramID(solana.MPK(mcmProgramID))
