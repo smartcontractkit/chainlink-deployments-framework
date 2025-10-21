@@ -17,7 +17,10 @@ func Test_NewEVMSimLoaderEVM(t *testing.T) {
 
 	// Should have the same selectors as getTestSelectorsByFamily returns
 	require.NotNil(t, loader.selectors)
-	want := getTestSelectorsByFamily(chainselectors.FamilyEVM)
+	want := append(
+		[]uint64{chainselectors.GETH_TESTNET.Selector},
+		getTestSelectorsByFamily(chainselectors.FamilyEVM)...,
+	)
 	assert.Equal(t, want, loader.selectors)
 
 	// Note: We can't actually call the factory without starting simulated backends,
@@ -38,7 +41,10 @@ func Test_NewEVMSimLoaderEVMWithConfig(t *testing.T) {
 
 	// Should have the same selectors as getTestSelectorsByFamily returns
 	require.NotNil(t, loader.selectors)
-	want := getTestSelectorsByFamily(chainselectors.FamilyEVM)
+	want := append(
+		[]uint64{chainselectors.GETH_TESTNET.Selector},
+		getTestSelectorsByFamily(chainselectors.FamilyEVM)...,
+	)
 	assert.Equal(t, want, loader.selectors)
 
 	// Factory should be configured with the provided config
