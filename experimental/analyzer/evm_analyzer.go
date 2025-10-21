@@ -1,8 +1,10 @@
 package analyzer
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 
@@ -35,6 +37,11 @@ func AnalyzeEVMTransactions(ctx ProposalContext, chainSelector uint64, txs []typ
 func AnalyzeEVMTransaction(
 	ctx ProposalContext, decoder *EVMTxCallDecoder, chainSelector uint64, mcmsTx types.Transaction,
 ) (*DecodedCall, *abi.ABI, string, error) {
+	// Check if this is a native token transfer
+	if isNativeTokenTransfer(mcmsTx) {
+		return createNativeTransferCall(mcmsTx), nil, "", nil
+	}
+
 	evmRegistry := ctx.GetEVMRegistry()
 	if evmRegistry == nil {
 		return nil, nil, "", errors.New("EVM registry is not available")
@@ -50,4 +57,48 @@ func AnalyzeEVMTransaction(
 	}
 
 	return analyzeResult, abi, abiStr, nil
+}
+
+// isNativeTokenTransfer checks if a transaction is a native token transfer
+func isNativeTokenTransfer(mcmsTx types.Transaction) bool {
+	// Native transfers have empty data and non-zero value
+	return len(mcmsTx.Data) == 0 && getTransactionValue(mcmsTx) > 0
+}
+
+// getTransactionValue extracts the value from AdditionalFields
+func getTransactionValue(mcmsTx types.Transaction) int64 {
+	var additionalFields struct{ Value int64 }
+	if err := json.Unmarshal(mcmsTx.AdditionalFields, &additionalFields); err != nil {
+		return 0
+	}
+
+	return additionalFields.Value
+}
+
+// createNativeTransferCall creates a DecodedCall for native token transfers
+func createNativeTransferCall(mcmsTx types.Transaction) *DecodedCall {
+	value := getTransactionValue(mcmsTx)
+
+	// Convert wei to ETH (assuming 18 decimals)
+	ethValue := float64(value) / 1e18
+
+	return &DecodedCall{
+		Address: mcmsTx.To,
+		Method:  "native_transfer",
+		Inputs: []NamedDescriptor{
+			{
+				Name:  "recipient",
+				Value: AddressDescriptor{Value: mcmsTx.To},
+			},
+			{
+				Name:  "amount_wei",
+				Value: SimpleDescriptor{Value: strconv.FormatInt(value, 10)},
+			},
+			{
+				Name:  "amount_eth",
+				Value: SimpleDescriptor{Value: fmt.Sprintf("%.18f", ethValue)},
+			},
+		},
+		Outputs: []NamedDescriptor{},
+	}
 }
