@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 	"strconv"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -79,8 +80,9 @@ func getTransactionValue(mcmsTx types.Transaction) int64 {
 func createNativeTransferCall(mcmsTx types.Transaction) *DecodedCall {
 	value := getTransactionValue(mcmsTx)
 
-	// Convert wei to ETH (assuming 18 decimals)
-	ethValue := float64(value) / 1e18
+	// Convert wei to ETH using big.Rat for precise decimal representation
+	wei := big.NewInt(value)
+	eth := new(big.Rat).SetFrac(wei, big.NewInt(1e18))
 
 	return &DecodedCall{
 		Address: mcmsTx.To,
@@ -96,7 +98,7 @@ func createNativeTransferCall(mcmsTx types.Transaction) *DecodedCall {
 			},
 			{
 				Name:  "amount_eth",
-				Value: SimpleDescriptor{Value: fmt.Sprintf("%.18f", ethValue)},
+				Value: SimpleDescriptor{Value: eth.FloatString(18)},
 			},
 		},
 		Outputs: []NamedDescriptor{},
