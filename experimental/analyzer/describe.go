@@ -18,7 +18,7 @@ func DescribeTimelockProposal(ctx ProposalContext, proposal *mcms.TimelockPropos
 	}
 	descriptorCtx := ctx.DescriptorContext(chainSelector)
 
-	return ctx.GetRenderer().RenderTimelock(report, descriptorCtx), nil
+	return ctx.GetRenderer().RenderTimelockProposal(report, descriptorCtx), nil
 }
 
 func DescribeProposal(ctx ProposalContext, proposal *mcms.Proposal) (string, error) {
