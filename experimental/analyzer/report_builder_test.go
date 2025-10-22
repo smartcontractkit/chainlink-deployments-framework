@@ -298,8 +298,8 @@ func TestBuildProposalReport_NativeTransfer(t *testing.T) {
 				ChainSelector: types.ChainSelector(chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector),
 				Transaction: types.Transaction{
 					To:               "0xeE5E8f8Be22101d26084e90053695E2088a01a24",
-					Data:             []byte{},                                            // Empty data for native transfer
-					AdditionalFields: json.RawMessage(`{"value": "1000000000000000000"}`), // 1 ETH
+					Data:             []byte{},                                          // Empty data for native transfer
+					AdditionalFields: json.RawMessage(`{"value": 1000000000000000000}`), // 1 ETH
 				},
 			},
 		},

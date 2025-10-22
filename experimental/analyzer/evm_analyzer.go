@@ -68,17 +68,26 @@ func isNativeTokenTransfer(mcmsTx types.Transaction) bool {
 
 // getTransactionValue extracts the value from AdditionalFields
 func getTransactionValue(mcmsTx types.Transaction) *big.Int {
-	var additionalFields struct{ Value string }
-	if err := json.Unmarshal(mcmsTx.AdditionalFields, &additionalFields); err != nil {
-		return big.NewInt(0)
+	// Try to unmarshal as a number first (most common case)
+	var additionalFields struct{ Value json.Number }
+	if err := json.Unmarshal(mcmsTx.AdditionalFields, &additionalFields); err == nil {
+		value, ok := new(big.Int).SetString(string(additionalFields.Value), 10)
+		if ok {
+			return value
+		}
 	}
 
-	value, ok := new(big.Int).SetString(additionalFields.Value, 10)
-	if !ok {
-		return big.NewInt(0)
+	// Fallback: try to unmarshal as a string
+	var additionalFieldsStr struct{ Value string }
+	if err := json.Unmarshal(mcmsTx.AdditionalFields, &additionalFieldsStr); err == nil {
+		value, ok := new(big.Int).SetString(additionalFieldsStr.Value, 10)
+		if ok {
+			return value
+		}
 	}
 
-	return value
+	// If both fail, return 0
+	return big.NewInt(0)
 }
 
 // createNativeTransferCall creates a DecodedCall for native token transfers

@@ -249,7 +249,7 @@ func TestIsNativeTokenTransfer(t *testing.T) {
 			tx: types.Transaction{
 				To:               "0xeE5E8f8Be22101d26084e90053695E2088a01a24",
 				Data:             []byte{},
-				AdditionalFields: json.RawMessage(`{"value": "1000000000000000000"}`), // 1 ETH in wei
+				AdditionalFields: json.RawMessage(`{"value": 1000000000000000000}`), // 1 ETH in wei
 			},
 			expected: true,
 		},
@@ -258,7 +258,7 @@ func TestIsNativeTokenTransfer(t *testing.T) {
 			tx: types.Transaction{
 				To:               "0xeE5E8f8Be22101d26084e90053695E2088a01a24",
 				Data:             []byte{0xa9, 0x05, 0x9c, 0xbb}, // Some method call
-				AdditionalFields: json.RawMessage(`{"value": "0"}`),
+				AdditionalFields: json.RawMessage(`{"value": 0}`),
 			},
 			expected: false,
 		},
@@ -267,7 +267,7 @@ func TestIsNativeTokenTransfer(t *testing.T) {
 			tx: types.Transaction{
 				To:               "0xeE5E8f8Be22101d26084e90053695E2088a01a24",
 				Data:             []byte{0xa9, 0x05, 0x9c, 0xbb}, // Some method call
-				AdditionalFields: json.RawMessage(`{"value": "1000000000000000000"}`),
+				AdditionalFields: json.RawMessage(`{"value": 1000000000000000000}`),
 			},
 			expected: false,
 		},
@@ -276,7 +276,7 @@ func TestIsNativeTokenTransfer(t *testing.T) {
 			tx: types.Transaction{
 				To:               "0xeE5E8f8Be22101d26084e90053695E2088a01a24",
 				Data:             []byte{},
-				AdditionalFields: json.RawMessage(`{"value": "0"}`),
+				AdditionalFields: json.RawMessage(`{"value": 0}`),
 			},
 			expected: false,
 		},
@@ -309,23 +309,44 @@ func TestGetTransactionValue(t *testing.T) {
 		expectedValue string
 	}{
 		{
-			name: "Valid value - 1 ETH",
+			name: "Valid value - 1 ETH (string)",
 			tx: types.Transaction{
 				AdditionalFields: json.RawMessage(`{"value": "1000000000000000000"}`),
 			},
 			expectedValue: "1000000000000000000",
 		},
 		{
-			name: "Valid value - 0.5 ETH",
+			name: "Valid value - 1 ETH (number)",
+			tx: types.Transaction{
+				AdditionalFields: json.RawMessage(`{"value": 1000000000000000000}`),
+			},
+			expectedValue: "1000000000000000000",
+		},
+		{
+			name: "Valid value - 0.5 ETH (string)",
 			tx: types.Transaction{
 				AdditionalFields: json.RawMessage(`{"value": "500000000000000000"}`),
 			},
 			expectedValue: "500000000000000000",
 		},
 		{
-			name: "Zero value",
+			name: "Valid value - 0.5 ETH (number)",
+			tx: types.Transaction{
+				AdditionalFields: json.RawMessage(`{"value": 500000000000000000}`),
+			},
+			expectedValue: "500000000000000000",
+		},
+		{
+			name: "Zero value (string)",
 			tx: types.Transaction{
 				AdditionalFields: json.RawMessage(`{"value": "0"}`),
+			},
+			expectedValue: "0",
+		},
+		{
+			name: "Zero value (number)",
+			tx: types.Transaction{
+				AdditionalFields: json.RawMessage(`{"value": 0}`),
 			},
 			expectedValue: "0",
 		},
