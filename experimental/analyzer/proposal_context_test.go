@@ -34,8 +34,6 @@ func TestWithRenderer(t *testing.T) {
 func TestNewDefaultProposalContext(t *testing.T) {
 	t.Parallel()
 
-	// --- arrange ---
-
 	ds := datastore.NewMemoryDataStore()
 	err := ds.Addresses().Add(datastore.AddressRef{
 		ChainSelector: 9012,
@@ -52,10 +50,8 @@ func TestNewDefaultProposalContext(t *testing.T) {
 		DataStore:         ds.Seal(),
 	}
 
-	// --- act ---
 	got, err := NewDefaultProposalContext(env)
 
-	// --- assert ---
 	require.NoError(t, err)
 	require.IsType(t, &DefaultProposalContext{}, got)
 	require.Equal(t, got.(*DefaultProposalContext).AddressesByChain, deployment.AddressesByChain{ //nolint:testifylint
