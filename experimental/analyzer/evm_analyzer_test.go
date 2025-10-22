@@ -249,7 +249,7 @@ func TestIsNativeTokenTransfer(t *testing.T) {
 			tx: types.Transaction{
 				To:               "0xeE5E8f8Be22101d26084e90053695E2088a01a24",
 				Data:             []byte{},
-				AdditionalFields: json.RawMessage(`{"value": 1000000000000000000}`), // 1 ETH in wei
+				AdditionalFields: json.RawMessage(`{"value": "1000000000000000000"}`), // 1 ETH in wei
 			},
 			expected: true,
 		},
@@ -258,7 +258,7 @@ func TestIsNativeTokenTransfer(t *testing.T) {
 			tx: types.Transaction{
 				To:               "0xeE5E8f8Be22101d26084e90053695E2088a01a24",
 				Data:             []byte{0xa9, 0x05, 0x9c, 0xbb}, // Some method call
-				AdditionalFields: json.RawMessage(`{"value": 0}`),
+				AdditionalFields: json.RawMessage(`{"value": "0"}`),
 			},
 			expected: false,
 		},
@@ -267,7 +267,7 @@ func TestIsNativeTokenTransfer(t *testing.T) {
 			tx: types.Transaction{
 				To:               "0xeE5E8f8Be22101d26084e90053695E2088a01a24",
 				Data:             []byte{0xa9, 0x05, 0x9c, 0xbb}, // Some method call
-				AdditionalFields: json.RawMessage(`{"value": 1000000000000000000}`),
+				AdditionalFields: json.RawMessage(`{"value": "1000000000000000000"}`),
 			},
 			expected: false,
 		},
@@ -276,7 +276,7 @@ func TestIsNativeTokenTransfer(t *testing.T) {
 			tx: types.Transaction{
 				To:               "0xeE5E8f8Be22101d26084e90053695E2088a01a24",
 				Data:             []byte{},
-				AdditionalFields: json.RawMessage(`{"value": 0}`),
+				AdditionalFields: json.RawMessage(`{"value": "0"}`),
 			},
 			expected: false,
 		},
@@ -306,42 +306,49 @@ func TestGetTransactionValue(t *testing.T) {
 	tests := []struct {
 		name          string
 		tx            types.Transaction
-		expectedValue int64
+		expectedValue string
 	}{
 		{
 			name: "Valid value - 1 ETH",
 			tx: types.Transaction{
-				AdditionalFields: json.RawMessage(`{"value": 1000000000000000000}`),
+				AdditionalFields: json.RawMessage(`{"value": "1000000000000000000"}`),
 			},
-			expectedValue: 1000000000000000000,
+			expectedValue: "1000000000000000000",
 		},
 		{
 			name: "Valid value - 0.5 ETH",
 			tx: types.Transaction{
-				AdditionalFields: json.RawMessage(`{"value": 500000000000000000}`),
+				AdditionalFields: json.RawMessage(`{"value": "500000000000000000"}`),
 			},
-			expectedValue: 500000000000000000,
+			expectedValue: "500000000000000000",
 		},
 		{
 			name: "Zero value",
 			tx: types.Transaction{
-				AdditionalFields: json.RawMessage(`{"value": 0}`),
+				AdditionalFields: json.RawMessage(`{"value": "0"}`),
 			},
-			expectedValue: 0,
+			expectedValue: "0",
 		},
 		{
 			name: "Invalid JSON - should return 0",
 			tx: types.Transaction{
 				AdditionalFields: json.RawMessage(`{"invalid": "json"}`),
 			},
-			expectedValue: 0,
+			expectedValue: "0",
 		},
 		{
 			name: "Missing value field - should return 0",
 			tx: types.Transaction{
 				AdditionalFields: json.RawMessage(`{"other": "field"}`),
 			},
-			expectedValue: 0,
+			expectedValue: "0",
+		},
+		{
+			name: "Large value - exceeds int64",
+			tx: types.Transaction{
+				AdditionalFields: json.RawMessage(`{"value": "115792089237316195423570985008687907853269984665640564039457584007913129639935"}`), // 2^256-1
+			},
+			expectedValue: "115792089237316195423570985008687907853269984665640564039457584007913129639935",
 		},
 	}
 
@@ -349,7 +356,7 @@ func TestGetTransactionValue(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			result := getTransactionValue(tt.tx)
-			require.Equal(t, tt.expectedValue, result)
+			require.Equal(t, tt.expectedValue, result.String())
 		})
 	}
 }
@@ -367,7 +374,7 @@ func TestCreateNativeTransferCall(t *testing.T) {
 			tx: types.Transaction{
 				To:               "0xeE5E8f8Be22101d26084e90053695E2088a01a24",
 				Data:             []byte{},
-				AdditionalFields: json.RawMessage(`{"value": 1000000000000000000}`),
+				AdditionalFields: json.RawMessage(`{"value": "1000000000000000000"}`),
 			},
 			expectedCall: &DecodedCall{
 				Address: "0xeE5E8f8Be22101d26084e90053695E2088a01a24",
@@ -394,7 +401,7 @@ func TestCreateNativeTransferCall(t *testing.T) {
 			tx: types.Transaction{
 				To:               "0x1234567890123456789012345678901234567890",
 				Data:             []byte{},
-				AdditionalFields: json.RawMessage(`{"value": 500000000000000000}`),
+				AdditionalFields: json.RawMessage(`{"value": "500000000000000000"}`),
 			},
 			expectedCall: &DecodedCall{
 				Address: "0x1234567890123456789012345678901234567890",
@@ -421,7 +428,7 @@ func TestCreateNativeTransferCall(t *testing.T) {
 			tx: types.Transaction{
 				To:               "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd",
 				Data:             []byte{},
-				AdditionalFields: json.RawMessage(`{"value": 1}`),
+				AdditionalFields: json.RawMessage(`{"value": "1"}`),
 			},
 			expectedCall: &DecodedCall{
 				Address: "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd",
@@ -476,7 +483,7 @@ func TestAnalyzeEVMTransaction_NativeTransfer(t *testing.T) {
 			tx: types.Transaction{
 				To:               "0xeE5E8f8Be22101d26084e90053695E2088a01a24",
 				Data:             []byte{},
-				AdditionalFields: json.RawMessage(`{"value": 1000000000000000000}`),
+				AdditionalFields: json.RawMessage(`{"value": "1000000000000000000"}`),
 			},
 			expectedCall: &DecodedCall{
 				Address: "0xeE5E8f8Be22101d26084e90053695E2088a01a24",
@@ -504,7 +511,7 @@ func TestAnalyzeEVMTransaction_NativeTransfer(t *testing.T) {
 			tx: types.Transaction{
 				To:               "0xeE5E8f8Be22101d26084e90053695E2088a01a24",
 				Data:             []byte{0xa9, 0x05, 0x9c, 0xbb}, // Some method call
-				AdditionalFields: json.RawMessage(`{"value": 0}`),
+				AdditionalFields: json.RawMessage(`{"value": "0"}`),
 			},
 			expectedCall:  nil,
 			expectedError: true,
@@ -552,7 +559,7 @@ func TestAnalyzeEVMTransactions_NativeTransfer(t *testing.T) {
 				{
 					To:               "0xeE5E8f8Be22101d26084e90053695E2088a01a24",
 					Data:             []byte{},
-					AdditionalFields: json.RawMessage(`{"value": 1000000000000000000}`),
+					AdditionalFields: json.RawMessage(`{"value": "1000000000000000000"}`),
 				},
 			},
 			expectedCalls: []*DecodedCall{
@@ -584,12 +591,12 @@ func TestAnalyzeEVMTransactions_NativeTransfer(t *testing.T) {
 				{
 					To:               "0xeE5E8f8Be22101d26084e90053695E2088a01a24",
 					Data:             []byte{},
-					AdditionalFields: json.RawMessage(`{"value": 1000000000000000000}`),
+					AdditionalFields: json.RawMessage(`{"value": "1000000000000000000"}`),
 				},
 				{
 					To:               "0x1234567890123456789012345678901234567890",
 					Data:             []byte{},
-					AdditionalFields: json.RawMessage(`{"value": 500000000000000000}`),
+					AdditionalFields: json.RawMessage(`{"value": "500000000000000000"}`),
 				},
 			},
 			expectedCalls: []*DecodedCall{
@@ -640,12 +647,12 @@ func TestAnalyzeEVMTransactions_NativeTransfer(t *testing.T) {
 				{
 					To:               "0xeE5E8f8Be22101d26084e90053695E2088a01a24",
 					Data:             []byte{},
-					AdditionalFields: json.RawMessage(`{"value": 1000000000000000000}`),
+					AdditionalFields: json.RawMessage(`{"value": "1000000000000000000"}`),
 				},
 				{
 					To:               "0x1234567890123456789012345678901234567890",
 					Data:             []byte{0xa9, 0x05, 0x9c, 0xbb}, // Contract call
-					AdditionalFields: json.RawMessage(`{"value": 0}`),
+					AdditionalFields: json.RawMessage(`{"value": "0"}`),
 				},
 			},
 			expectedCalls: nil,

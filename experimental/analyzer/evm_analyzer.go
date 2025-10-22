@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"strconv"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 
@@ -63,17 +62,23 @@ func AnalyzeEVMTransaction(
 // isNativeTokenTransfer checks if a transaction is a native token transfer
 func isNativeTokenTransfer(mcmsTx types.Transaction) bool {
 	// Native transfers have empty data and non-zero value
-	return len(mcmsTx.Data) == 0 && getTransactionValue(mcmsTx) > 0
+	value := getTransactionValue(mcmsTx)
+	return len(mcmsTx.Data) == 0 && value.Cmp(big.NewInt(0)) > 0
 }
 
 // getTransactionValue extracts the value from AdditionalFields
-func getTransactionValue(mcmsTx types.Transaction) int64 {
-	var additionalFields struct{ Value int64 }
+func getTransactionValue(mcmsTx types.Transaction) *big.Int {
+	var additionalFields struct{ Value string }
 	if err := json.Unmarshal(mcmsTx.AdditionalFields, &additionalFields); err != nil {
-		return 0
+		return big.NewInt(0)
 	}
 
-	return additionalFields.Value
+	value, ok := new(big.Int).SetString(additionalFields.Value, 10)
+	if !ok {
+		return big.NewInt(0)
+	}
+
+	return value
 }
 
 // createNativeTransferCall creates a DecodedCall for native token transfers
@@ -81,8 +86,7 @@ func createNativeTransferCall(mcmsTx types.Transaction) *DecodedCall {
 	value := getTransactionValue(mcmsTx)
 
 	// Convert wei to ETH using big.Rat for precise decimal representation
-	wei := big.NewInt(value)
-	eth := new(big.Rat).SetFrac(wei, big.NewInt(1e18))
+	eth := new(big.Rat).SetFrac(value, big.NewInt(1e18))
 
 	return &DecodedCall{
 		Address: mcmsTx.To,
@@ -94,7 +98,7 @@ func createNativeTransferCall(mcmsTx types.Transaction) *DecodedCall {
 			},
 			{
 				Name:  "amount_wei",
-				Value: SimpleDescriptor{Value: strconv.FormatInt(value, 10)},
+				Value: SimpleDescriptor{Value: value.String()},
 			},
 			{
 				Name:  "amount_eth",
