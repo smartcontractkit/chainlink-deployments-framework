@@ -20,7 +20,6 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
-	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/proposalutils"
 )
 
 //nolint:paralleltest
@@ -636,8 +635,12 @@ type mockProposalContext struct {
 	t *testing.T
 }
 
-func (m *mockProposalContext) ArgumentContext(chainSelector uint64) *proposalutils.ArgumentContext {
-	return &proposalutils.ArgumentContext{}
+func (m *mockProposalContext) GetRenderer() analyzer.Renderer {
+	return analyzer.NewMarkdownRenderer()
+}
+
+func (m *mockProposalContext) DescriptorContext(chainSelector uint64) *analyzer.DescriptorContext {
+	return &analyzer.DescriptorContext{}
 }
 func (m *mockProposalContext) GetSolanaDecoderRegistry() analyzer.SolanaDecoderRegistry {
 	// Return a mock SolanaDecoderRegistry with a dummy decoder for testing

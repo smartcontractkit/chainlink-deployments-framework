@@ -2,25 +2,18 @@ package analyzer
 
 import (
 	"encoding/json"
-	"fmt"
-	"reflect"
 	"testing"
 
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/mcms/types"
+	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 )
 
 const aptosTestAddress = "0xe86f0e5a8b9cb6ab31b656baa83a0d2eb761b32eb31b9a9c74abb7d0cffd26fa"
-const aptosAddressTitle = "address of TestCCIP 1.0.0 from aptos-testnet"
 
-// Helper function for error cases where method contains an error message
-func expectedErrorOutput(errorMessage string) string {
-	return fmt.Sprintf("**Address:** `%s` <sub><i>address of TestCCIP 1.0.0 from aptos-testnet</i></sub>\n**Method:** `%s`\n\n", aptosTestAddress, errorMessage)
-}
-
-func TestDescribeBatchOperations(t *testing.T) {
+func TestAnalyzeAptosTransactions(t *testing.T) {
 	t.Parallel()
 
 	defaultProposalCtx := &DefaultProposalContext{
@@ -31,46 +24,66 @@ func TestDescribeBatchOperations(t *testing.T) {
 		},
 	}
 
+	chainSelector := chainsel.APTOS_TESTNET.Selector
+
 	tests := []struct {
 		name       string
 		operations []types.BatchOperation
-		want       [][]string
+		want       []*DecodedCall
 		wantErr    bool
 	}{
 		{
 			name:       "Single operation",
 			operations: getOperations(1),
-			want: [][]string{
+			want: []*DecodedCall{
 				{
-					expectedOutput("ccip_onramp::onramp::initialize", aptosTestAddress, aptosAddressTitle, [][]string{
-						{"chain_selector", "4457093679053095497"},
-						{"fee_aggregator", "0x13a9f1a109368730f2e355d831ba8fbf5942fb82321863d55de54cb4ebe5d18f"},
-						{"allowlist_admin", "0x13a9f1a109368730f2e355d831ba8fbf5942fb82321863d55de54cb4ebe5d18f"},
-						{"dest_chain_selectors", "[]"},
-						{"dest_chain_routers", "[]"},
-						{"dest_chain_allowlist_enabled", "[]"},
-					}),
-					expectedOutput("ccip_offramp::offramp::initialize", aptosTestAddress, aptosAddressTitle, [][]string{
-						{"chain_selector", "4457093679053095497"},
-						{"permissionless_execution_threshold_seconds", "28800"},
-						{"source_chains_selector", "[11155111]"},
-						{"source_chains_is_enabled", "[true]"},
-						{"source_chains_is_rmn_verification_disabled", "[false]"},
-						{"source_chains_on_ramp", "[0x0bf3de8c5d3e8a2b34d2beeb17abfcebaf363a59]"},
-					}),
-					expectedOutput("ccip::rmn_remote::initialize", aptosTestAddress, aptosAddressTitle, [][]string{
-						{"local_chain_selector", "4457093679053095497"},
-					}),
-					expectedOutput("ccip_token_pool::token_pool::initialize", aptosTestAddress, aptosAddressTitle, [][]string{
-						{"local_token", "0x0000000000000000000000000000000000000000000000000000000000000003"},
-						{"allowlist", "[0x0000000000000000000000000000000000000000000000000000000000000001,0x0000000000000000000000000000000000000000000000000000000000000002]"},
-					}),
-					expectedOutput("ccip_offramp::offramp::apply_source_chain_config_updates", aptosTestAddress, aptosAddressTitle, [][]string{
-						{"source_chains_selector", "[743186221051783445,16015286601757825753]"},
-						{"source_chains_is_enabled", "[true,false]"},
-						{"source_chains_is_rmn_verification_disabled", "[true,true]"},
-						{"source_chains_on_ramp", "[0xc23071a8ae83671f37bda1dadbc745a9780f632a,0x1c179c2c67953478966a6b460ab4873585b2f341]"},
-					}),
+					Address: aptosTestAddress,
+					Method:  "ccip_onramp::onramp::initialize",
+					Inputs: []NamedDescriptor{
+						{Name: "chain_selector", Value: SimpleDescriptor{Value: "4457093679053095497"}},
+						{Name: "fee_aggregator", Value: SimpleDescriptor{Value: "0x13a9f1a109368730f2e355d831ba8fbf5942fb82321863d55de54cb4ebe5d18f"}},
+						{Name: "allowlist_admin", Value: SimpleDescriptor{Value: "0x13a9f1a109368730f2e355d831ba8fbf5942fb82321863d55de54cb4ebe5d18f"}},
+						{Name: "dest_chain_selectors", Value: SimpleDescriptor{Value: "[]"}},
+						{Name: "dest_chain_routers", Value: SimpleDescriptor{Value: "[]"}},
+						{Name: "dest_chain_allowlist_enabled", Value: SimpleDescriptor{Value: "[]"}},
+					},
+				},
+				{
+					Address: aptosTestAddress,
+					Method:  "ccip_offramp::offramp::initialize",
+					Inputs: []NamedDescriptor{
+						{Name: "chain_selector", Value: SimpleDescriptor{Value: "4457093679053095497"}},
+						{Name: "permissionless_execution_threshold_seconds", Value: SimpleDescriptor{Value: "28800"}},
+						{Name: "source_chains_selector", Value: SimpleDescriptor{Value: "[11155111]"}},
+						{Name: "source_chains_is_enabled", Value: SimpleDescriptor{Value: "[true]"}},
+						{Name: "source_chains_is_rmn_verification_disabled", Value: SimpleDescriptor{Value: "[false]"}},
+						{Name: "source_chains_on_ramp", Value: SimpleDescriptor{Value: "[0x0bf3de8c5d3e8a2b34d2beeb17abfcebaf363a59]"}},
+					},
+				},
+				{
+					Address: aptosTestAddress,
+					Method:  "ccip::rmn_remote::initialize",
+					Inputs: []NamedDescriptor{
+						{Name: "local_chain_selector", Value: SimpleDescriptor{Value: "4457093679053095497"}},
+					},
+				},
+				{
+					Address: aptosTestAddress,
+					Method:  "ccip_token_pool::token_pool::initialize",
+					Inputs: []NamedDescriptor{
+						{Name: "local_token", Value: SimpleDescriptor{Value: "0x0000000000000000000000000000000000000000000000000000000000000003"}},
+						{Name: "allowlist", Value: SimpleDescriptor{Value: "[0x0000000000000000000000000000000000000000000000000000000000000001,0x0000000000000000000000000000000000000000000000000000000000000002]"}},
+					},
+				},
+				{
+					Address: aptosTestAddress,
+					Method:  "ccip_offramp::offramp::apply_source_chain_config_updates",
+					Inputs: []NamedDescriptor{
+						{Name: "source_chains_selector", Value: SimpleDescriptor{Value: "[743186221051783445,16015286601757825753]"}},
+						{Name: "source_chains_is_enabled", Value: SimpleDescriptor{Value: "[true,false]"}},
+						{Name: "source_chains_is_rmn_verification_disabled", Value: SimpleDescriptor{Value: "[true,true]"}},
+						{Name: "source_chains_on_ramp", Value: SimpleDescriptor{Value: "[0xc23071a8ae83671f37bda1dadbc745a9780f632a,0x1c179c2c67953478966a6b460ab4873585b2f341]"}},
+					},
 				},
 			},
 			wantErr: false,
@@ -78,39 +91,55 @@ func TestDescribeBatchOperations(t *testing.T) {
 		{
 			name:       "Multiple operations",
 			operations: getOperations(2),
-			want: [][]string{
+			want: []*DecodedCall{
 				{
-					expectedOutput("ccip_onramp::onramp::initialize", aptosTestAddress, aptosAddressTitle, [][]string{
-						{"chain_selector", "4457093679053095497"},
-						{"fee_aggregator", "0x13a9f1a109368730f2e355d831ba8fbf5942fb82321863d55de54cb4ebe5d18f"},
-						{"allowlist_admin", "0x13a9f1a109368730f2e355d831ba8fbf5942fb82321863d55de54cb4ebe5d18f"},
-						{"dest_chain_selectors", "[]"},
-						{"dest_chain_routers", "[]"},
-						{"dest_chain_allowlist_enabled", "[]"},
-					}),
-					expectedOutput("ccip_offramp::offramp::initialize", aptosTestAddress, aptosAddressTitle, [][]string{
-						{"chain_selector", "4457093679053095497"},
-						{"permissionless_execution_threshold_seconds", "28800"},
-						{"source_chains_selector", "[11155111]"},
-						{"source_chains_is_enabled", "[true]"},
-						{"source_chains_is_rmn_verification_disabled", "[false]"},
-						{"source_chains_on_ramp", "[0x0bf3de8c5d3e8a2b34d2beeb17abfcebaf363a59]"},
-					}),
+					Address: aptosTestAddress,
+					Method:  "ccip_onramp::onramp::initialize",
+					Inputs: []NamedDescriptor{
+						{Name: "chain_selector", Value: SimpleDescriptor{Value: "4457093679053095497"}},
+						{Name: "fee_aggregator", Value: SimpleDescriptor{Value: "0x13a9f1a109368730f2e355d831ba8fbf5942fb82321863d55de54cb4ebe5d18f"}},
+						{Name: "allowlist_admin", Value: SimpleDescriptor{Value: "0x13a9f1a109368730f2e355d831ba8fbf5942fb82321863d55de54cb4ebe5d18f"}},
+						{Name: "dest_chain_selectors", Value: SimpleDescriptor{Value: "[]"}},
+						{Name: "dest_chain_routers", Value: SimpleDescriptor{Value: "[]"}},
+						{Name: "dest_chain_allowlist_enabled", Value: SimpleDescriptor{Value: "[]"}},
+					},
 				},
 				{
-					expectedOutput("ccip::rmn_remote::initialize", aptosTestAddress, aptosAddressTitle, [][]string{
-						{"local_chain_selector", "4457093679053095497"},
-					}),
-					expectedOutput("ccip_token_pool::token_pool::initialize", aptosTestAddress, aptosAddressTitle, [][]string{
-						{"local_token", "0x0000000000000000000000000000000000000000000000000000000000000003"},
-						{"allowlist", "[0x0000000000000000000000000000000000000000000000000000000000000001,0x0000000000000000000000000000000000000000000000000000000000000002]"},
-					}),
-					expectedOutput("ccip_offramp::offramp::apply_source_chain_config_updates", aptosTestAddress, aptosAddressTitle, [][]string{
-						{"source_chains_selector", "[743186221051783445,16015286601757825753]"},
-						{"source_chains_is_enabled", "[true,false]"},
-						{"source_chains_is_rmn_verification_disabled", "[true,true]"},
-						{"source_chains_on_ramp", "[0xc23071a8ae83671f37bda1dadbc745a9780f632a,0x1c179c2c67953478966a6b460ab4873585b2f341]"},
-					}),
+					Address: aptosTestAddress,
+					Method:  "ccip_offramp::offramp::initialize",
+					Inputs: []NamedDescriptor{
+						{Name: "chain_selector", Value: SimpleDescriptor{Value: "4457093679053095497"}},
+						{Name: "permissionless_execution_threshold_seconds", Value: SimpleDescriptor{Value: "28800"}},
+						{Name: "source_chains_selector", Value: SimpleDescriptor{Value: "[11155111]"}},
+						{Name: "source_chains_is_enabled", Value: SimpleDescriptor{Value: "[true]"}},
+						{Name: "source_chains_is_rmn_verification_disabled", Value: SimpleDescriptor{Value: "[false]"}},
+						{Name: "source_chains_on_ramp", Value: SimpleDescriptor{Value: "[0x0bf3de8c5d3e8a2b34d2beeb17abfcebaf363a59]"}},
+					},
+				},
+				{
+					Address: aptosTestAddress,
+					Method:  "ccip::rmn_remote::initialize",
+					Inputs: []NamedDescriptor{
+						{Name: "local_chain_selector", Value: SimpleDescriptor{Value: "4457093679053095497"}},
+					},
+				},
+				{
+					Address: aptosTestAddress,
+					Method:  "ccip_token_pool::token_pool::initialize",
+					Inputs: []NamedDescriptor{
+						{Name: "local_token", Value: SimpleDescriptor{Value: "0x0000000000000000000000000000000000000000000000000000000000000003"}},
+						{Name: "allowlist", Value: SimpleDescriptor{Value: "[0x0000000000000000000000000000000000000000000000000000000000000001,0x0000000000000000000000000000000000000000000000000000000000000002]"}},
+					},
+				},
+				{
+					Address: aptosTestAddress,
+					Method:  "ccip_offramp::offramp::apply_source_chain_config_updates",
+					Inputs: []NamedDescriptor{
+						{Name: "source_chains_selector", Value: SimpleDescriptor{Value: "[743186221051783445,16015286601757825753]"}},
+						{Name: "source_chains_is_enabled", Value: SimpleDescriptor{Value: "[true,false]"}},
+						{Name: "source_chains_is_rmn_verification_disabled", Value: SimpleDescriptor{Value: "[true,true]"}},
+						{Name: "source_chains_on_ramp", Value: SimpleDescriptor{Value: "[0xc23071a8ae83671f37bda1dadbc745a9780f632a,0x1c179c2c67953478966a6b460ab4873585b2f341]"}},
+					},
 				},
 			},
 			wantErr: false,
@@ -118,28 +147,60 @@ func TestDescribeBatchOperations(t *testing.T) {
 		{
 			name:       "Unknown module - non-blocking",
 			operations: getBadOperations(),
-			want: [][]string{
+			want: []*DecodedCall{
 				{
-					expectedErrorOutput(
-						"failed to decode Aptos transaction: could not find function info for ccip_offramp::bad_module::initialize"),
-					expectedOutput("ccip::rmn_remote::initialize", aptosTestAddress, aptosAddressTitle, [][]string{
-						{"local_chain_selector", "4457093679053095497"},
-					}),
+					Address: aptosTestAddress,
+					Method:  "failed to decode Aptos transaction: could not find function info for ccip_offramp::bad_module::initialize",
+					Inputs:  []NamedDescriptor{},
+				},
+				{
+					Address: aptosTestAddress,
+					Method:  "ccip::rmn_remote::initialize",
+					Inputs: []NamedDescriptor{
+						{Name: "local_chain_selector", Value: SimpleDescriptor{Value: "4457093679053095497"}},
+					},
 				},
 			},
 			wantErr: false,
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			got, err := describeBatchOperations(defaultProposalCtx, tt.operations)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("AnalyzeAptosTransactions() error = %v, wantErr %v", err, tt.wantErr)
+
+			var allResults []*DecodedCall
+			var hasError bool
+			for _, operation := range tt.operations {
+				results, err := AnalyzeAptosTransactions(defaultProposalCtx, chainSelector, operation.Transactions)
+				if err != nil {
+					// For unknown modules, we expect some transactions to fail but others to succeed
+					hasError = true
+					continue
+				}
+				allResults = append(allResults, results...)
+			}
+
+			if tt.wantErr {
+				require.True(t, hasError, "AnalyzeAptosTransactions() should have failed")
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("AnalyzeAptosTransactions() = %v, want %v", got, tt.want)
+
+			require.Len(t, allResults, len(tt.want), "Number of decoded calls should match")
+
+			// Compare each DecodedCall
+			for i, result := range allResults {
+				expected := tt.want[i]
+				require.Equal(t, expected.Address, result.Address, "Address mismatch for call %d", i)
+				require.Equal(t, expected.Method, result.Method, "Method mismatch for call %d", i)
+				require.Len(t, result.Inputs, len(expected.Inputs), "Number of inputs should match for call %d", i)
+
+				// Compare each input
+				for j, input := range result.Inputs {
+					expectedInput := expected.Inputs[j]
+					require.Equal(t, expectedInput.Name, input.Name, "Input name mismatch for call %d, input %d", i, j)
+					require.Equal(t, expectedInput.Value.Describe(nil), input.Value.Describe(nil), "Input value mismatch for call %d, input %d", i, j)
+				}
 			}
 		})
 	}

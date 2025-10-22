@@ -3,75 +3,126 @@ package analyzer
 import (
 	"testing"
 
-	"github.com/Masterminds/semver/v3"
 	"github.com/stretchr/testify/require"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/proposalutils"
-
-	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 )
 
-func TestNewDefaultProposalContext(t *testing.T) {
+func TestDecodedCall_Describe(t *testing.T) {
 	t.Parallel()
-
-	// --- arrange ---
-
-	ds := datastore.NewMemoryDataStore()
-	err := ds.Addresses().Add(datastore.AddressRef{
-		ChainSelector: 9012,
-		Address:       "0xcallproxyaddress",
-		Type:          "CallProxy",
-		Version:       semver.MustParse("9.0.1"),
-		Qualifier:     "",
-		Labels:        datastore.NewLabelSet("call-proxy-label"),
-	})
-	require.NoError(t, err)
-
-	env := deployment.Environment{
-		ExistingAddresses: deployment.NewMemoryAddressBook(),
-		DataStore:         ds.Seal(),
-	}
-
-	// --- act ---
-	got, err := NewDefaultProposalContext(env)
-
-	// --- assert ---
-	require.NoError(t, err)
-	require.IsType(t, &DefaultProposalContext{}, got)
-	require.Equal(t, got.(*DefaultProposalContext).AddressesByChain, deployment.AddressesByChain{ //nolint:testifylint
-		9012: {
-			"0xcallproxyaddress": deployment.TypeAndVersion{
-				Type:    deployment.ContractType("CallProxy"),
-				Version: *semver.MustParse("9.0.1"),
-				Labels:  deployment.NewLabelSet("call-proxy-label"),
-			},
-		},
-	})
-}
-
-func Test_DefaultProposalContext_ArgumentContext(t *testing.T) {
-	t.Parallel()
-
-	addresses := deployment.AddressesByChain{
-		1234: {
-			"0xrbacTimelockAddress": deployment.MustTypeAndVersionFromString("RBACTimelock 1.0.0"),
-		},
-		5678: {
-			"0xmanyChainMultisigAddress": deployment.MustTypeAndVersionFromString("ManyChainMultisig 1.0.0"),
-		},
-	}
-	proposalContext := &DefaultProposalContext{AddressesByChain: addresses}
-
-	got := proposalContext.ArgumentContext(5678)
-
-	require.Equal(t, got, &proposalutils.ArgumentContext{ //nolint:testifylint
-		Ctx: map[string]any{
-			"AddressesByChain": deployment.AddressesByChain{
-				5678: {
-					"0xmanyChainMultisigAddress": deployment.MustTypeAndVersionFromString("ManyChainMultisig 1.0.0"),
+	addressesByChain := map[uint64]map[string]deployment.TypeAndVersion{}
+	tests := []struct {
+		name    string
+		call    *DecodedCall
+		context *DescriptorContext
+		want    string
+	}{
+		{
+			name: "Complete call with inputs and outputs",
+			call: &DecodedCall{
+				Address: "0x1234567890123456789012345678901234567890",
+				Method:  "transfer",
+				Inputs: []NamedDescriptor{
+					{Name: "to", Value: SimpleDescriptor{Value: "0x0000000000000000000000000000000000000001"}},
+					{Name: "amount", Value: SimpleDescriptor{Value: "100"}},
+				},
+				Outputs: []NamedDescriptor{
+					{Name: "success", Value: SimpleDescriptor{Value: "true"}},
 				},
 			},
+			context: NewDescriptorContext(addressesByChain),
+			want: `Address: 0x1234567890123456789012345678901234567890
+Method: transfer
+Inputs:
+  to: 0x0000000000000000000000000000000000000001
+  amount: 100
+Outputs:
+  success: true
+`,
 		},
-	})
+		{
+			name: "Call with only inputs",
+			call: &DecodedCall{
+				Address: "0x1234567890123456789012345678901234567890",
+				Method:  "setValue",
+				Inputs: []NamedDescriptor{
+					{Name: "value", Value: SimpleDescriptor{Value: "42"}},
+				},
+				Outputs: []NamedDescriptor{},
+			},
+			context: NewDescriptorContext(addressesByChain),
+			want: `Address: 0x1234567890123456789012345678901234567890
+Method: setValue
+Inputs:
+  value: 42
+`,
+		},
+		{
+			name: "Call with only outputs",
+			call: &DecodedCall{
+				Address: "0x1234567890123456789012345678901234567890",
+				Method:  "getValue",
+				Inputs:  []NamedDescriptor{},
+				Outputs: []NamedDescriptor{
+					{Name: "value", Value: SimpleDescriptor{Value: "42"}},
+				},
+			},
+			context: NewDescriptorContext(addressesByChain),
+			want: `Address: 0x1234567890123456789012345678901234567890
+Method: getValue
+Outputs:
+  value: 42
+`,
+		},
+		{
+			name: "Empty call",
+			call: &DecodedCall{
+				Address: "0x1234567890123456789012345678901234567890",
+				Method:  "fallback",
+				Inputs:  []NamedDescriptor{},
+				Outputs: []NamedDescriptor{},
+			},
+			context: NewDescriptorContext(addressesByChain),
+			want: `Address: 0x1234567890123456789012345678901234567890
+Method: fallback
+`,
+		},
+		{
+			name: "Call with complex descriptors",
+			call: &DecodedCall{
+				Address: "0x1234567890123456789012345678901234567890",
+				Method:  "complexCall",
+				Inputs: []NamedDescriptor{
+					{Name: "address", Value: AddressDescriptor{Value: "0x0000000000000000000000000000000000000001"}},
+					{Name: "chain", Value: ChainSelectorDescriptor{Value: 1}},
+					{Name: "data", Value: BytesDescriptor{Value: []byte{0x01, 0x02, 0x03}}},
+				},
+				Outputs: []NamedDescriptor{
+					{Name: "result", Value: ArrayDescriptor{Elements: []Descriptor{
+						SimpleDescriptor{Value: "item1"},
+						SimpleDescriptor{Value: "item2"},
+					}}},
+				},
+			},
+			context: NewDescriptorContext(addressesByChain),
+			want: `Address: 0x1234567890123456789012345678901234567890
+Method: complexCall
+Inputs:
+  address: 0x0000000000000000000000000000000000000001
+  chain: 1 (<chain unknown>)
+  data: 0x010203
+Outputs:
+  result: [item1,item2]
+`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			result := tt.call.Describe(tt.context)
+			require.Equal(t, tt.want, result)
+		})
+	}
 }
