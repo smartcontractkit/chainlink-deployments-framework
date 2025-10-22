@@ -16,14 +16,14 @@ type Descriptor interface {
 	Describe(ctx *DescriptorContext) string
 }
 
-// DescriptorContext is a storage for context that may need to Descriptor during its description.
+// DescriptorContext is a storage for context that may be needed the Describe call.
 // Refer to BytesAndAddressAnalyzer and ChainSelectorAnalyzer for usage examples
 type DescriptorContext struct {
 	Ctx map[string]any
 }
 
-func ContextGet[T any](ctx *DescriptorContext, key string) (T, error) {
-	ctxElemRaw, ok := ctx.Ctx[key]
+func ContextGet[T any](descCtx *DescriptorContext, key string) (T, error) {
+	ctxElemRaw, ok := descCtx.Ctx[key]
 	if !ok {
 		return *new(T), fmt.Errorf("context element %s not found", key)
 	}

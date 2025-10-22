@@ -12,6 +12,7 @@ import (
 // Environment represents a single environment configuration.
 type Environment struct {
 	NetworkTypes []string `mapstructure:"network_types" yaml:"network_types"`
+	Datastore    string   `mapstructure:"datastore" yaml:"datastore"`
 }
 
 // validate validates the environment configuration.
@@ -36,12 +37,22 @@ func (e *Environment) validate() error {
 		seen[networkType] = true
 	}
 
+	// Validate datastore field if provided
+	if e.Datastore != "" && !isValidDatastore(e.Datastore) {
+		return errors.New("invalid datastore value: " + e.Datastore + " (must be 'file' or 'catalog')")
+	}
+
 	return nil
 }
 
 // isValidNetworkType checks if the network type value is valid.
 func isValidNetworkType(networkType string) bool {
 	return networkType == "mainnet" || networkType == "testnet"
+}
+
+// isValidDatastore checks if the datastore value is valid.
+func isValidDatastore(datastore string) bool {
+	return datastore == "file" || datastore == "catalog"
 }
 
 // DomainConfig represents the parsed and validated domain configuration.
@@ -85,6 +96,14 @@ func Load(filePath string) (*DomainConfig, error) {
 	cfg := &DomainConfig{}
 	if err := v.Unmarshal(cfg); err != nil {
 		return nil, err
+	}
+
+	// Apply defaults to environments
+	for name, env := range cfg.Environments {
+		if env.Datastore == "" {
+			env.Datastore = "file" // Default to file if not specified
+			cfg.Environments[name] = env
+		}
 	}
 
 	if err := cfg.validate(); err != nil {

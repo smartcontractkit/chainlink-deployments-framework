@@ -159,7 +159,7 @@ func (r *MarkdownRenderer) RenderProposal(rep *ProposalReport, ctx *DescriptorCo
 }
 
 // RenderTimelock renders a Timelock ProposalReport as Markdown.
-func (r *MarkdownRenderer) RenderTimelock(rep *ProposalReport, ctx *DescriptorContext) string {
+func (r *MarkdownRenderer) RenderTimelockProposal(rep *ProposalReport, ctx *DescriptorContext) string {
 	data := TimelockTemplateData{
 		Batches: make([]BatchTemplateData, len(rep.Batches)),
 		Context: ctx,

@@ -17,7 +17,6 @@ func newEnvFromState(fromEnv fdeployment.Environment, state *State) fdeployment.
 		Offchain:    fromEnv.Offchain,
 		BlockChains: fromEnv.BlockChains,
 		NodeIDs:     fromEnv.NodeIDs,
-		Catalog:     fromEnv.Catalog,
 
 		// These fields are updated by changesets and are pulled from state
 		ExistingAddresses: state.AddressBook,
