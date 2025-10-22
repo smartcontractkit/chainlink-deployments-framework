@@ -5,9 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
-	fcatalog "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/catalog"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/chains"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config"
 	fdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
@@ -48,17 +46,6 @@ func Load(
 	ds, err := envdir.DataStore()
 	if err != nil {
 		return fdeployment.Environment{}, err
-	}
-
-	var catalog fdatastore.CatalogStore
-	if cfg.Env.Catalog.GRPC != "" {
-		lggr.Infow("Initializing Catalog client", "url", cfg.Env.Catalog.GRPC)
-		catalog, err = fcatalog.LoadCatalog(ctx, envKey, cfg, domain)
-		if err != nil {
-			return fdeployment.Environment{}, err
-		}
-	} else {
-		lggr.Info("Skipping Catalog client initialization, no Catalog config found")
 	}
 
 	// default - loads all chains from the networks config
@@ -127,6 +114,5 @@ func Load(
 		OCRSecrets:        sharedSecrets,
 		OperationsBundle:  operations.NewBundle(getCtx, lggr, loadcfg.reporter, operations.WithOperationRegistry(loadcfg.operationRegistry)),
 		BlockChains:       blockChains,
-		Catalog:           catalog,
 	}, nil
 }
