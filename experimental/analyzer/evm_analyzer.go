@@ -1,6 +1,7 @@
 package analyzer
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -36,6 +37,11 @@ func AnalyzeEVMTransactions(ctx ProposalContext, chainSelector uint64, txs []typ
 func AnalyzeEVMTransaction(
 	ctx ProposalContext, decoder *EVMTxCallDecoder, chainSelector uint64, mcmsTx types.Transaction,
 ) (*DecodedCall, *abi.ABI, string, error) {
+	// Check if this is a native token transfer
+	if isNativeTokenTransfer(mcmsTx) {
+		return createNativeTransferCall(mcmsTx), nil, "", nil
+	}
+
 	evmRegistry := ctx.GetEVMRegistry()
 	if evmRegistry == nil {
 		return nil, nil, "", errors.New("EVM registry is not available")
