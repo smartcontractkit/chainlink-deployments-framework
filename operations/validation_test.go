@@ -8,12 +8,14 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	chainsel "github.com/smartcontractkit/chain-selectors"
-	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 	mcmslib "github.com/smartcontractkit/mcms"
 	"github.com/smartcontractkit/mcms/types"
 	"github.com/stretchr/testify/require"
 
+	"github.com/smartcontractkit/chainlink-common/pkg/logger"
+
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
+	pb "github.com/smartcontractkit/chainlink-protos/op-catalog/v1/datastore"
 )
 
 func Test_IsSerializable(t *testing.T) {
@@ -149,6 +151,26 @@ func Test_IsSerializable(t *testing.T) {
 		{
 			name: "should serialize Datastore AddressRef",
 			v:    datastore.AddressRef{},
+			want: true,
+		},
+		{
+			name: "should serialize proto message pointer",
+			// this is arbitrary proto message just to test the code path
+			v: &pb.AddressReferenceEditResponse{
+				Record: &pb.AddressReference{
+					Domain: "anything",
+				},
+			},
+			want: true,
+		},
+		{
+			name: "should serialize proto message value",
+			// this is arbitrary proto message just to test the code path
+			v: pb.AddressReferenceEditResponse{
+				Record: &pb.AddressReference{
+					Domain: "anything",
+				},
+			},
 			want: true,
 		},
 	}
