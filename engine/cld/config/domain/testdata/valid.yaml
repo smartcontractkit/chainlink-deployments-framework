@@ -2,19 +2,24 @@ environments:
   development:
     network_types:
       - testnet
+    datastore: file
   staging:
     network_types:
       - testnet
       - mainnet
-  production: 
+    datastore: catalog
+  production:
     network_types:
       - mainnet
+    datastore: catalog
   local:
     network_types:
       - testnet
+    datastore: file
   dudeenv:
     network_types:
       - testnet
   testtest:
     network_types:
       - mainnet
+    datastore: catalog
