@@ -619,6 +619,13 @@ func buildExecuteForkCommand(lggr logger.Logger, domain cldf_domain.Domain, prop
 			if err != nil {
 				return fmt.Errorf("error creating config: %w", err)
 			}
+			defer func() {
+				for _, chainConfig := range cfg.forkedEnv.ChainConfigs {
+					if chainConfig.Provider != nil {
+						chainConfig.Provider.Cleanup(cmd.Context())
+					}
+				}
+			}()
 
 			// get the chain URL, chain ID and MCM contract address
 			url := cfg.forkedEnv.ChainConfigs[cfg.chainSelector].HTTPRPCs[0].External

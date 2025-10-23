@@ -7,12 +7,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider/rpcclient"
 	"github.com/smartcontractkit/freeport"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
-	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider/rpcclient"
 )
 
 func TestCTFAnvilChainProvider_Initialize(t *testing.T) {
@@ -516,4 +515,33 @@ func TestCTFAnvilChainProvider_Cleanup(t *testing.T) {
 		require.NoError(t, err, "Second cleanup should succeed (no-op)")
 		assert.Nil(t, provider.container, "Container reference should remain nil after second cleanup")
 	})
+}
+
+func Test_shouldSaveCtfContainerLogs(t *testing.T) {
+	tests := []struct {
+		name           string
+		envvar         string
+		wantShouldSave bool
+		wantPath       string
+		assertion      assert.ErrorAssertionFunc
+	}{
+		{
+			name:           "environment variable not set",
+			envvar:         "",
+			wantShouldSave: false,
+			wantPath:       "",
+			assertion:      assert.NoError,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv(saveContainerLogsEnvVar, tt.envvar)
+
+			gotShouldSave, gotPath, err := shouldSaveCtfContainerLogs()
+
+			tt.assertion(t, err)
+			assert.Equal(t, tt.wantShouldSave, gotShouldSave)
+			assert.Equal(t, tt.wantPath, gotPath)
+		})
+	}
 }
