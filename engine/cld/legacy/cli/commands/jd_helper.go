@@ -198,6 +198,7 @@ func writeNodeTable(nodes []*nodev1.Node) {
 			[]string{"Enabled", strconv.FormatBool(node.IsEnabled)},
 			[]string{"Connected", strconv.FormatBool(node.IsConnected)},
 			[]string{"Labels", labelsString.String()},
+			[]string{"Version", node.Version},
 			[]string{"Created at", node.CreatedAt.AsTime().Format(time.RFC3339)},
 			[]string{"Updated at", node.UpdatedAt.AsTime().Format(time.RFC3339)},
 		)
