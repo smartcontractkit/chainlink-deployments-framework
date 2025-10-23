@@ -3,7 +3,7 @@
 package commands
 
 import (
-	"github.com/smartcontractkit/chainlink-common/pkg/logger"
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
 // Commands provides a set of common commands that can be integrated into Domain-specific CLIs.

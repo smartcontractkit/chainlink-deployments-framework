@@ -6,10 +6,11 @@ package cli
 import (
 	"os"
 
-	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
 // Base is a base struct for creating CLI applications using Cobra. This should be embedded into

@@ -14,9 +14,9 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 
 	chainsel "github.com/smartcontractkit/chain-selectors"
-	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 
 	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
 // SimTransactOpts is useful to generate just the calldata for a given gethwrapper method.

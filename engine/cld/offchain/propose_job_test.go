@@ -8,10 +8,11 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 	jobv1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/job"
 	nodev1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/node"
 	"github.com/smartcontractkit/chainlink-protos/job-distributor/v1/shared/ptypes"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
 	fdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	fpointer "github.com/smartcontractkit/chainlink-deployments-framework/internal/pointer"

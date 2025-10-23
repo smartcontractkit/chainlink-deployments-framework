@@ -8,8 +8,9 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/credentials/insecure"
 
-	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 	csav1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/csa"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
 	cfgenv "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/env"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
