@@ -208,6 +208,8 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
+	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -217,9 +219,11 @@ import (
 	"github.com/avast/retry-go/v4"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/rs/zerolog"
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
+	ctfdocker "github.com/smartcontractkit/chainlink-testing-framework/lib/docker"
 	"github.com/smartcontractkit/freeport"
 	"github.com/testcontainers/testcontainers-go"
 
@@ -516,6 +520,14 @@ func (p *CTFAnvilChainProvider) GetNodeHTTPURL() string {
 // Returns an error if the container termination fails.
 func (p *CTFAnvilChainProvider) Cleanup(ctx context.Context) error {
 	if p.container != nil {
+		if shouldSaveCtfContainerLogs() {
+			zlogger := zerolog.New(os.Stdout)
+			ctfdocker.WriteAllContainersLogs(zlogger, "logs")
+			wd, _ := os.Getwd()
+			zlogger.Info().Msgf("container logs saved to \"%s/logs\"", wd)
+		}
+
+		// if slices.Contains([]string{}, strconv.ToLower(os.GetEnv("CTF_CONTAINER_LOGS")) {
 		err := p.container.Terminate(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to terminate Anvil container: %w", err)
@@ -713,4 +725,9 @@ func (p *CTFAnvilChainProvider) waitForAnvilReady(ctx context.Context, httpURL s
 		retry.Delay(retryDelay),
 		retry.DelayType(retry.FixedDelay),
 	)
+}
+
+func shouldSaveCtfContainerLogs() bool {
+	trueValues := []string{"1", "true", "on", "enabled"}
+	return slices.Contains(trueValues, strings.ToLower(os.Getenv("CTF_CONTAINER_LOGS")))
 }
