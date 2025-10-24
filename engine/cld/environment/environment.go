@@ -5,10 +5,13 @@ import (
 	"errors"
 	"fmt"
 
+	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	cldcatalog "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/catalog"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/chains"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config"
-	fdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
+	cfgdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/domain"
+	clddomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/internal/credentials"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/offchain"
 	foffchain "github.com/smartcontractkit/chainlink-deployments-framework/offchain"
@@ -18,7 +21,7 @@ import (
 
 func Load(
 	ctx context.Context,
-	domain fdomain.Domain,
+	domain clddomain.Domain,
 	envKey string,
 	opts ...LoadEnvironmentOption,
 ) (fdeployment.Environment, error) {
@@ -43,9 +46,33 @@ func Load(
 		return fdeployment.Environment{}, err
 	}
 
-	ds, err := envdir.DataStore()
-	if err != nil {
-		return fdeployment.Environment{}, err
+	var ds fdatastore.DataStore
+
+	if cfg.DatastoreType == cfgdomain.DatastoreTypeCatalog {
+		if cfg.Env.Catalog.GRPC != "" {
+			lggr.Infow("Fetching data from Catalog", "url", cfg.Env.Catalog.GRPC)
+			catalogStore, catalogErr := cldcatalog.LoadCatalog(ctx, envKey, cfg, domain)
+			if catalogErr != nil {
+				return fdeployment.Environment{}, catalogErr
+			}
+
+			// Load all data from the catalog into a local datastore
+			// After this, all operations happen locally without remote calls
+			ds, err = fdatastore.LoadDataStoreFromCatalog(ctx, catalogStore)
+			if err != nil {
+				return fdeployment.Environment{}, fmt.Errorf("failed to load data from catalog: %w", err)
+			}
+			lggr.Infow("Loaded catalog data into local datastore for deployment operations")
+		} else {
+			return fdeployment.Environment{}, fmt.Errorf("catalog GRPC endpoint is required when datastore location is set to '%s'", cfgdomain.DatastoreTypeCatalog)
+		}
+	} else {
+		// Load datastore from file system (default behavior)
+		ds, err = envdir.DataStore()
+		if err != nil {
+			return fdeployment.Environment{}, err
+		}
+		lggr.Infow("Using file-based datastore")
 	}
 
 	// default - loads all chains from the networks config
