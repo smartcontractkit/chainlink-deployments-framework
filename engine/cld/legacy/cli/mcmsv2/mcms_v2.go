@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind/v2"
 	"github.com/ethereum/go-ethereum/common"
 	gethtypes "github.com/ethereum/go-ethereum/core/types"
@@ -19,7 +20,7 @@ import (
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework/rpc"
+	frameworkrpc "github.com/smartcontractkit/chainlink-testing-framework/framework/rpc"
 	"github.com/smartcontractkit/mcms"
 	"github.com/smartcontractkit/mcms/sdk"
 	"github.com/smartcontractkit/mcms/sdk/aptos"
@@ -621,7 +622,7 @@ func buildExecuteForkCommand(lggr logger.Logger, domain cldf_domain.Domain, prop
 
 			// get the chain URL, chain ID and MCM contract address
 			url := cfg.forkedEnv.ChainConfigs[cfg.chainSelector].HTTPRPCs[0].External
-			anvilClient := rpc.New(url, nil)
+			anvilClient := frameworkrpc.New(url, nil)
 			chainID := cfg.forkedEnv.ChainConfigs[cfg.chainSelector].ChainID
 			mcmsAddr := cfg.proposal.ChainMetadata[types.ChainSelector(cfg.chainSelector)].MCMAddress
 
@@ -1263,6 +1264,31 @@ func timelockExecuteChainCommand(ctx context.Context, lggr logger.Logger, cfg *c
 
 			result, err := executable.Execute(ctx, i, executeOptions...)
 			if err != nil {
+				// Try to extract revert reason from the error for better debugging
+				// Extract revert reason from the error
+				revertReason := extractRevertReason(err)
+
+				// If it's an RBACTimelock error, try to get the real revert reason by simulating the calls
+				if strings.Contains(err.Error(), "RBACTimelock: underlying transaction reverted") {
+					if realReason := simulateTimelockCalls(ctx, lggr, cfg, i); realReason != "" {
+						revertReason = realReason
+					}
+				}
+
+				if revertReason != "" {
+					lggr.Errorw("Operation execution failed with revert",
+						"operationIndex", i,
+						"revertReason", revertReason,
+						"originalError", err.Error())
+				} else {
+					lggr.Errorw("Operation execution failed",
+						"operationIndex", i,
+						"error", err.Error())
+				}
+				// Return error with revert reason if available
+				if revertReason != "" {
+					return fmt.Errorf("failed to execute operation %d: %s (original error: %w)", i, revertReason, err)
+				}
 				return fmt.Errorf("failed to execute operation %d: %w", i, err)
 			}
 

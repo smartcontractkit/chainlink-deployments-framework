@@ -14,6 +14,7 @@ import (
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/common"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	gethtypes "github.com/ethereum/go-ethereum/core/types"
@@ -464,4 +465,181 @@ func Test_DiagnoseTimelockRevert(t *testing.T) {
 	assert.Contains(t, es, "timelock diagnosis found issues:")
 	assert.Contains(t, es, "first revert")
 	assert.Contains(t, es, "second revert")
+}
+
+// extractRevertReason attempts to extract a human-readable revert reason from an error
+func extractRevertReason(err error) string {
+	if err == nil {
+		return ""
+	}
+
+	// Handle errors.Join by unwrapping and looking for revert reasons in individual errors
+	if joinedErr, ok := err.(interface{ Unwrap() []error }); ok {
+		for _, e := range joinedErr.Unwrap() {
+			if reason := extractRevertReason(e); reason != "" {
+				return reason
+			}
+		}
+	}
+
+	// Handle single wrapped errors
+	if wrappedErr := errors.Unwrap(err); wrappedErr != nil {
+		if reason := extractRevertReason(wrappedErr); reason != "" {
+			return reason
+		}
+	}
+
+	errStr := err.Error()
+
+	// Look for common revert patterns
+	if strings.Contains(errStr, "execution reverted:") {
+		parts := strings.SplitN(errStr, "execution reverted:", 2)
+		if len(parts) > 1 {
+			revertPart := strings.TrimSpace(parts[1])
+
+			// Handle cases where the revert part might be followed by additional text
+			// Split on newlines to get just the revert part
+			if newlineIndex := strings.Index(revertPart, "\n"); newlineIndex != -1 {
+				revertPart = revertPart[:newlineIndex]
+			}
+
+			// Return the revert part as-is if it looks like readable text
+			if len(revertPart) > 0 && !strings.HasPrefix(revertPart, "0x") {
+				return revertPart
+			}
+		}
+	}
+
+	// Look for RBACTimelock specific errors
+	if strings.Contains(errStr, "RBACTimelock:") {
+		parts := strings.SplitN(errStr, "RBACTimelock:", 2)
+		if len(parts) > 1 {
+			revertPart := strings.TrimSpace(parts[1])
+			// Handle cases where the revert part might be followed by additional text
+			if newlineIndex := strings.Index(revertPart, "\n"); newlineIndex != -1 {
+				revertPart = revertPart[:newlineIndex]
+			}
+			return "RBACTimelock: " + revertPart
+		}
+	}
+
+	return ""
+}
+
+// simulateTimelockCalls simulates the actual contract calls that RBACTimelock would make
+// to get the real revert reason from the target contracts
+func simulateTimelockCalls(ctx context.Context, lggr logger.Logger, cfg *cfgv2, operationIndex int) string {
+	if cfg.blockchains.EVMChains() == nil {
+		return ""
+	}
+
+	// Get the EVM chain client
+	evmChains := cfg.blockchains.EVMChains()
+	if evmChains == nil {
+		return ""
+	}
+
+	chain, exists := evmChains[cfg.chainSelector]
+	if !exists || chain.Client == nil {
+		return ""
+	}
+
+	// Find the batch operation for this chain
+	var targetBatchOperation *types.BatchOperation
+	for _, bop := range cfg.timelockProposal.Operations {
+		if uint64(bop.ChainSelector) == cfg.chainSelector {
+			targetBatchOperation = &bop
+			break
+		}
+	}
+
+	if targetBatchOperation == nil {
+		return ""
+	}
+
+	// Get the timelock address
+	timelockAddress := common.HexToAddress(cfg.timelockProposal.TimelockAddresses[types.ChainSelector(cfg.chainSelector)])
+
+	lggr.Debugw("Simulating timelock calls to get real revert reason",
+		"operationIndex", operationIndex,
+		"timelockAddress", timelockAddress.Hex(),
+		"numTransactions", len(targetBatchOperation.Transactions))
+
+	// Initialize ABI ErrDecoder from proposal context (if available)
+	var errDec *ErrDecoder
+	if cfg.proposalCtx != nil {
+		var derr error
+		errDec, derr = NewErrDecoder(cfg.proposalCtx.GetEVMRegistry())
+		if derr != nil {
+			lggr.Debugw("ErrDecoder initialization failed", "error", derr)
+		}
+	}
+
+	var reasons []string
+
+	// Try to simulate each transaction in the batch operation
+	for ti, tx := range targetBatchOperation.Transactions {
+		// Parse transaction value using the existing function from err_decode_helpers.go
+		value, valErr := parseEVMValue(tx.AdditionalFields)
+		if valErr != nil {
+			lggr.Debugw("Failed to parse transaction value", "txIndex", ti, "error", valErr)
+			continue
+		}
+
+		// Create call message for simulation - call directly to the target contract
+		toAddress := common.HexToAddress(tx.To)
+		msg := ethereum.CallMsg{
+			From:  timelockAddress, // Use timelock as sender (same as RBACTimelock would)
+			To:    &toAddress,
+			Value: value,
+			Data:  tx.Data,
+		}
+
+		// Try to call the contract to see if it would revert
+		_, callErr := chain.Client.CallContract(ctx, msg, nil)
+		if callErr == nil {
+			continue
+		}
+
+		// Prefer ABI-aware decoding if we have a decoder
+		if errDec != nil {
+			if pretty, ok := prettyRevertFromError(callErr, "", errDec); ok && pretty != "" && pretty != noRevertData {
+				lggr.Debugw("Decoded revert via ABI registry",
+					"txIndex", ti,
+					"target", tx.To,
+					"reason", pretty)
+				reasons = append(reasons, fmt.Sprintf("%s: %s", tx.To, pretty))
+				continue
+			}
+		}
+
+		// Textual fallback from error message
+		s := callErr.Error()
+		if strings.Contains(s, "execution reverted:") {
+			parts := strings.SplitN(s, "execution reverted:", 2)
+			if len(parts) == 2 {
+				txt := strings.TrimSpace(parts[1])
+				if idx := strings.Index(txt, "\n"); idx >= 0 {
+					txt = txt[:idx]
+				}
+				if txt != "" {
+					reasons = append(reasons, fmt.Sprintf("%s: %s", tx.To, txt))
+					continue
+				}
+			}
+		}
+
+		// Last resort: generic marker
+		reasons = append(reasons, fmt.Sprintf("%s: execution reverted", tx.To))
+	}
+
+	if len(reasons) > 0 {
+		// If only one, keep it concise; otherwise join with semicolons
+		if len(reasons) == 1 {
+			return "Target contract " + reasons[0]
+		}
+		return "Targets reverted: " + strings.Join(reasons, "; ")
+	}
+
+	return ""
 }
