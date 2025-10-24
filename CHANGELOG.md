@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.58.1
+
+### Patch Changes
+
+- [#532](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/532) [`f2a3b3e`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/f2a3b3e574c1e01c83013cd4704b9b5773e95481) Thanks [@vyzaldysanchez](https://github.com/vyzaldysanchez)! - Display nodes versions when running the `jd node list` command.
+
 ## 0.58.0
 
 ### Minor Changes
