@@ -15,7 +15,10 @@ import (
 
 func TestBuildProposalReport_EmptyProposal(t *testing.T) {
 	t.Parallel()
-	ctx := &DefaultProposalContext{AddressesByChain: deployment.AddressesByChain{}}
+	ctx := &DefaultProposalContext{
+		AddressesByChain: deployment.AddressesByChain{},
+		renderer:         NewMarkdownRenderer(),
+	}
 	proposal := &mcms.Proposal{
 		Operations: []types.Operation{},
 	}
@@ -29,7 +32,10 @@ func TestBuildProposalReport_EmptyProposal(t *testing.T) {
 
 func TestBuildProposalReport_SingleOperation(t *testing.T) {
 	t.Parallel()
-	ctx := &DefaultProposalContext{AddressesByChain: deployment.AddressesByChain{}}
+	ctx := &DefaultProposalContext{
+		AddressesByChain: deployment.AddressesByChain{},
+		renderer:         NewMarkdownRenderer(),
+	}
 	proposal := &mcms.Proposal{
 		Operations: []types.Operation{
 			{
@@ -50,7 +56,10 @@ func TestBuildProposalReport_SingleOperation(t *testing.T) {
 
 func TestBuildProposalReport_MultipleOperations(t *testing.T) {
 	t.Parallel()
-	ctx := &DefaultProposalContext{AddressesByChain: deployment.AddressesByChain{}}
+	ctx := &DefaultProposalContext{
+		AddressesByChain: deployment.AddressesByChain{},
+		renderer:         NewMarkdownRenderer(),
+	}
 	proposal := &mcms.Proposal{
 		Operations: []types.Operation{
 			{
@@ -78,7 +87,10 @@ func TestBuildProposalReport_MultipleOperations(t *testing.T) {
 
 func TestBuildTimelockReport_EmptyProposal(t *testing.T) {
 	t.Parallel()
-	ctx := &DefaultProposalContext{AddressesByChain: deployment.AddressesByChain{}}
+	ctx := &DefaultProposalContext{
+		AddressesByChain: deployment.AddressesByChain{},
+		renderer:         NewMarkdownRenderer(),
+	}
 	proposal := &mcms.TimelockProposal{
 		Operations: []types.BatchOperation{},
 	}
@@ -92,7 +104,10 @@ func TestBuildTimelockReport_EmptyProposal(t *testing.T) {
 
 func TestBuildTimelockReport_SingleBatch(t *testing.T) {
 	t.Parallel()
-	ctx := &DefaultProposalContext{AddressesByChain: deployment.AddressesByChain{}}
+	ctx := &DefaultProposalContext{
+		AddressesByChain: deployment.AddressesByChain{},
+		renderer:         NewMarkdownRenderer(),
+	}
 	proposal := &mcms.TimelockProposal{
 		Operations: []types.BatchOperation{
 			{
@@ -115,7 +130,10 @@ func TestBuildTimelockReport_SingleBatch(t *testing.T) {
 
 func TestBuildTimelockReport_MultipleBatches(t *testing.T) {
 	t.Parallel()
-	ctx := &DefaultProposalContext{AddressesByChain: deployment.AddressesByChain{}}
+	ctx := &DefaultProposalContext{
+		AddressesByChain: deployment.AddressesByChain{},
+		renderer:         NewMarkdownRenderer(),
+	}
 	proposal := &mcms.TimelockProposal{
 		Operations: []types.BatchOperation{
 			{
@@ -147,7 +165,10 @@ func TestBuildTimelockReport_MultipleBatches(t *testing.T) {
 
 func TestBuildProposalReport_UnsupportedChainFamily(t *testing.T) {
 	t.Parallel()
-	ctx := &DefaultProposalContext{AddressesByChain: deployment.AddressesByChain{}}
+	ctx := &DefaultProposalContext{
+		AddressesByChain: deployment.AddressesByChain{},
+		renderer:         NewMarkdownRenderer(),
+	}
 	proposal := &mcms.Proposal{
 		Operations: []types.Operation{
 			{
@@ -207,7 +228,10 @@ func TestBuildProposalReport_FamilyBranches(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx := &DefaultProposalContext{AddressesByChain: deployment.AddressesByChain{}}
+			ctx := &DefaultProposalContext{
+				AddressesByChain: deployment.AddressesByChain{},
+				renderer:         NewMarkdownRenderer(),
+			}
 			proposal := &mcms.Proposal{
 				Operations: []types.Operation{
 					{
@@ -261,7 +285,10 @@ func TestBuildTimelockReport_FamilyBranches(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx := &DefaultProposalContext{AddressesByChain: deployment.AddressesByChain{}}
+			ctx := &DefaultProposalContext{
+				AddressesByChain: deployment.AddressesByChain{},
+				renderer:         NewMarkdownRenderer(),
+			}
 			proposal := &mcms.TimelockProposal{
 				Operations: []types.BatchOperation{
 					{

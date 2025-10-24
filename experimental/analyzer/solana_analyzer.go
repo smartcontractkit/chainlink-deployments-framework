@@ -5,11 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
-	"strings"
 
 	binary "github.com/gagliardetto/binary"
 	"github.com/gagliardetto/solana-go"
-	"github.com/goccy/go-yaml"
 	mcmssolanasdk "github.com/smartcontractkit/mcms/sdk/solana"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 )
@@ -34,8 +32,8 @@ func AnalyzeSolanaTransaction(
 	ctx ProposalContext, chainSelector uint64, mcmsTx mcmstypes.Transaction,
 ) (*DecodedCall, error) {
 	decodedTx := &DecodedCall{
-		Inputs:  []NamedDescriptor{},
-		Outputs: []NamedDescriptor{},
+		Inputs:  []NamedField{},
+		Outputs: []NamedField{},
 	}
 	solReg := ctx.GetSolanaDecoderRegistry()
 	if solReg == nil {
@@ -86,7 +84,7 @@ type AnchorInstruction interface {
 	Name() string
 	TypeID() (binary.TypeID, error)
 	Impl() (any, error)
-	Inputs() []NamedDescriptor
+	Inputs() []NamedField
 }
 
 func (w *anchorInstructionWrapper) Name() string {
@@ -141,40 +139,40 @@ func (w *anchorInstructionWrapper) Impl() (any, error) {
 	return baseVariant.Impl, nil
 }
 
-func (w *anchorInstructionWrapper) Inputs() []NamedDescriptor {
+func (w *anchorInstructionWrapper) Inputs() []NamedField {
 	impl, err := w.Impl()
 	if err != nil {
-		return []NamedDescriptor{{
+		return []NamedField{{
 			Name:  "error",
-			Value: SimpleDescriptor{Value: err.Error()},
+			Value: SimpleField{Value: err.Error()},
 		}}
 	}
 	if reflect.ValueOf(impl).Elem().Kind() != reflect.Struct {
-		return []NamedDescriptor{{
+		return []NamedField{{
 			Name:  "error",
-			Value: SimpleDescriptor{Value: "unexpected BaseVariant.Impl element type (not a struct)"},
+			Value: SimpleField{Value: "unexpected BaseVariant.Impl element type (not a struct)"},
 		}}
 	}
 
 	rImpl := reflect.ValueOf(impl)
 	if rImpl.Kind() != reflect.Ptr {
-		return []NamedDescriptor{{
+		return []NamedField{{
 			Name:  "error",
-			Value: SimpleDescriptor{Value: "unexpected BaseVariant.Impl type (not a pointer)"},
+			Value: SimpleField{Value: "unexpected BaseVariant.Impl type (not a pointer)"},
 		}}
 	}
 	if rImpl.Elem().Kind() != reflect.Struct {
-		return []NamedDescriptor{{
+		return []NamedField{{
 			Name:  "error",
-			Value: SimpleDescriptor{Value: "unexpected BaseVariant.Impl element type (not a struct)"},
+			Value: SimpleField{Value: "unexpected BaseVariant.Impl element type (not a struct)"},
 		}}
 	}
 	rImpl = rImpl.Elem()
 
-	inputs := make([]NamedDescriptor, rImpl.NumField())
+	inputs := make([]NamedField, rImpl.NumField())
 	for i := range rImpl.NumField() {
 		inputs[i].Name = rImpl.Type().Field(i).Name
-		inputs[i].Value = YamlDescriptor{value: rImpl.Field(i).Interface()}
+		inputs[i].Value = YamlField{Value: rImpl.Field(i).Interface()}
 	}
 
 	return inputs
@@ -190,42 +188,4 @@ func (w *anchorInstructionWrapper) Accounts() []*solana.AccountMeta {
 
 func (w *anchorInstructionWrapper) Data() ([]byte, error) {
 	return w.anchorInstruction.(solana.Instruction).Data()
-}
-
-type YamlDescriptor struct {
-	value any
-}
-
-func (y YamlDescriptor) Describe(_ *DescriptorContext) string {
-	wrappedValue := map[string]any{"__key__": y.value}
-	marshaled, err := yaml.MarshalWithOptions(wrappedValue, customMarshallers...)
-	if err != nil {
-		return fmt.Sprintf("%#v", y.value)
-	}
-
-	return strings.Trim(string(marshaled)[8:], " ") // [8:] drops the "__key__:" prefix
-}
-
-func (y YamlDescriptor) MarshalYAML() ([]byte, error) {
-	return yaml.MarshalWithOptions(y.value, customMarshallers...)
-}
-
-var customMarshallers = []yaml.EncodeOption{
-	yaml.CustomMarshaler(func(value []byte) ([]byte, error) { return fmt.Appendf(nil, "0x%x", value), nil }),
-	yaml.CustomMarshaler(func(value []uint8) ([]byte, error) { return fmt.Appendf(nil, "0x%x", value), nil }),
-	yaml.CustomMarshaler(func(value [16]uint8) ([]byte, error) { return fmt.Appendf(nil, "0x%x", value), nil }),
-	yaml.CustomMarshaler(func(value [20]uint8) ([]byte, error) { return fmt.Appendf(nil, "0x%x", value), nil }),
-	yaml.CustomMarshaler(func(value [32]byte) ([]byte, error) { return fmt.Appendf(nil, "0x%x", value), nil }),
-	yaml.CustomMarshaler(func(value [32]uint8) ([]byte, error) { return fmt.Appendf(nil, "0x%x", value), nil }),
-	yaml.CustomMarshaler(func(value solana.AccountMeta) ([]byte, error) {
-		out := fmt.Appendf(nil, "%-46s", value.PublicKey)
-		if value.IsWritable {
-			out = fmt.Appendf(out, " [writable]")
-		}
-		if value.IsSigner {
-			out = fmt.Appendf(out, " [signer]")
-		}
-
-		return out, nil
-	}),
 }

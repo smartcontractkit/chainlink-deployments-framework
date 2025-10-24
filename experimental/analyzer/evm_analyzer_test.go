@@ -93,7 +93,26 @@ func TestAnalyzeEVMTransactions(t *testing.T) {
 				for j, input := range decodedCall.Inputs {
 					expectedInput := expected.Inputs[j]
 					require.Equal(t, expectedInput.Name, input.Name, "Input name mismatch for call %d, input %d", i, j)
-					require.Equal(t, expectedInput.Value.Describe(nil), input.Value.Describe(nil), "Input value mismatch for call %d, input %d", i, j)
+					require.Equal(t, expectedInput.Value.GetType(), input.Value.GetType(), "Input value type mismatch for call %d, input %d", i, j)
+
+					// Compare field values based on type
+					switch expectedField := expectedInput.Value.(type) {
+					case SimpleField:
+						if actualField, ok := input.Value.(SimpleField); ok {
+							require.Equal(t, expectedField.GetValue(), actualField.GetValue(), "SimpleField value mismatch for call %d, input %d", i, j)
+						} else {
+							t.Errorf("Expected SimpleField but got %T for call %d, input %d", input.Value, i, j)
+						}
+					case AddressField:
+						if actualField, ok := input.Value.(AddressField); ok {
+							require.Equal(t, expectedField.GetValue(), actualField.GetValue(), "AddressField value mismatch for call %d, input %d", i, j)
+						} else {
+							t.Errorf("Expected AddressField but got %T for call %d, input %d", input.Value, i, j)
+						}
+					default:
+						// For other field types, we can add more specific comparisons as needed
+						require.Equal(t, expectedInput.Value, input.Value, "Field value mismatch for call %d, input %d", i, j)
+					}
 				}
 			}
 		})
@@ -176,7 +195,26 @@ func TestAnalyzeEVMTransaction(t *testing.T) {
 			for i, input := range result.Inputs {
 				expectedInput := tt.want.Inputs[i]
 				require.Equal(t, expectedInput.Name, input.Name, "Input name mismatch for input %d", i)
-				require.Equal(t, expectedInput.Value.Describe(nil), input.Value.Describe(nil), "Input value mismatch for input %d", i)
+				require.Equal(t, expectedInput.Value.GetType(), input.Value.GetType(), "Input value type mismatch for input %d", i)
+
+				// Compare field values based on type
+				switch expectedField := expectedInput.Value.(type) {
+				case SimpleField:
+					if actualField, ok := input.Value.(SimpleField); ok {
+						require.Equal(t, expectedField.GetValue(), actualField.GetValue(), "SimpleField value mismatch for input %d", i)
+					} else {
+						t.Errorf("Expected SimpleField but got %T for input %d", input.Value, i)
+					}
+				case AddressField:
+					if actualField, ok := input.Value.(AddressField); ok {
+						require.Equal(t, expectedField.GetValue(), actualField.GetValue(), "AddressField value mismatch for input %d", i)
+					} else {
+						t.Errorf("Expected AddressField but got %T for input %d", input.Value, i)
+					}
+				default:
+					// For other field types, we can add more specific comparisons as needed
+					require.Equal(t, expectedInput.Value, input.Value, "Field value mismatch for input %d", i)
+				}
 			}
 		})
 	}

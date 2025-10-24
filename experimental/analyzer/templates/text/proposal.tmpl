@@ -1,0 +1,6 @@
+{{range $i, $op := .Operations}}{{if $i}}
+
+{{end}}Chain: {{$op.ChainName}} ({{$op.ChainSelector}})
+{{range $j, $call := $op.Calls}}{{if $j}}
+
+{{end}}{{renderCall $call $.Context}}{{end}}{{end}}

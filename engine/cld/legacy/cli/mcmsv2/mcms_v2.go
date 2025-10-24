@@ -710,6 +710,7 @@ func buildMCMSv2AnalyzeProposalCmd(
 	lggr logger.Logger, domain cldf_domain.Domain, proposalCtxProvider analyzer.ProposalContextProvider,
 ) *cobra.Command {
 	var outputFile string
+	var format string
 
 	cmd := &cobra.Command{
 		Use:   "analyze-proposal",
@@ -729,6 +730,10 @@ func buildMCMSv2AnalyzeProposalCmd(
 			if cfgv2.timelockProposal == nil {
 				return errors.New("expected proposal to be have non-nil *TimelockProposal")
 			}
+
+			// Set renderer based on format flag
+			renderer := createRendererFromFormat(format)
+			cfgv2.proposalCtx.SetRenderer(renderer)
 
 			var analyzedProposal string
 			if cfgv2.timelockProposal != nil {
@@ -758,6 +763,7 @@ func buildMCMSv2AnalyzeProposalCmd(
 	})
 
 	cmd.Flags().StringVarP(&outputFile, "output", "o", "", "Output file to write analyze result")
+	cmd.Flags().StringVar(&format, "format", "markdown", "Output format: markdown (default), text")
 
 	return cmd
 }
@@ -1600,4 +1606,18 @@ func addCallProxyOption(
 	}
 
 	return fmt.Errorf("failed to find call proxy contract for timelock %v", timelockAddress)
+}
+
+// createRendererFromFormat creates an appropriate renderer based on the format string.
+// Defaults to markdown renderer for unknown formats.
+func createRendererFromFormat(format string) analyzer.Renderer {
+	switch format {
+	case "text", "txt":
+		return analyzer.NewTextRenderer()
+	case "markdown", "md":
+		return analyzer.NewMarkdownRenderer()
+	default:
+		// Default to markdown if format is not specified or invalid
+		return analyzer.NewMarkdownRenderer()
+	}
 }

@@ -8,13 +8,13 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 )
 
-func TestDecodedCall_Describe(t *testing.T) {
+func TestDecodedCall_String(t *testing.T) {
 	t.Parallel()
 	addressesByChain := map[uint64]map[string]deployment.TypeAndVersion{}
 	tests := []struct {
 		name    string
 		call    *DecodedCall
-		context *DescriptorContext
+		context *FieldContext
 		want    string
 	}{
 		{
@@ -22,22 +22,22 @@ func TestDecodedCall_Describe(t *testing.T) {
 			call: &DecodedCall{
 				Address: "0x1234567890123456789012345678901234567890",
 				Method:  "transfer",
-				Inputs: []NamedDescriptor{
-					{Name: "to", Value: SimpleDescriptor{Value: "0x0000000000000000000000000000000000000001"}},
-					{Name: "amount", Value: SimpleDescriptor{Value: "100"}},
+				Inputs: []NamedField{
+					{Name: "to", Value: SimpleField{Value: "0x0000000000000000000000000000000000000001"}},
+					{Name: "amount", Value: SimpleField{Value: "100"}},
 				},
-				Outputs: []NamedDescriptor{
-					{Name: "success", Value: SimpleDescriptor{Value: "true"}},
+				Outputs: []NamedField{
+					{Name: "success", Value: SimpleField{Value: "true"}},
 				},
 			},
-			context: NewDescriptorContext(addressesByChain),
+			context: NewFieldContext(addressesByChain),
 			want: `Address: 0x1234567890123456789012345678901234567890
 Method: transfer
 Inputs:
-  to: 0x0000000000000000000000000000000000000001
-  amount: 100
+  to: <field value>
+  amount: <field value>
 Outputs:
-  success: true
+  success: <field value>
 `,
 		},
 		{
@@ -45,16 +45,16 @@ Outputs:
 			call: &DecodedCall{
 				Address: "0x1234567890123456789012345678901234567890",
 				Method:  "setValue",
-				Inputs: []NamedDescriptor{
-					{Name: "value", Value: SimpleDescriptor{Value: "42"}},
+				Inputs: []NamedField{
+					{Name: "value", Value: SimpleField{Value: "42"}},
 				},
-				Outputs: []NamedDescriptor{},
+				Outputs: []NamedField{},
 			},
-			context: NewDescriptorContext(addressesByChain),
+			context: NewFieldContext(addressesByChain),
 			want: `Address: 0x1234567890123456789012345678901234567890
 Method: setValue
 Inputs:
-  value: 42
+  value: <field value>
 `,
 		},
 		{
@@ -62,16 +62,16 @@ Inputs:
 			call: &DecodedCall{
 				Address: "0x1234567890123456789012345678901234567890",
 				Method:  "getValue",
-				Inputs:  []NamedDescriptor{},
-				Outputs: []NamedDescriptor{
-					{Name: "value", Value: SimpleDescriptor{Value: "42"}},
+				Inputs:  []NamedField{},
+				Outputs: []NamedField{
+					{Name: "value", Value: SimpleField{Value: "42"}},
 				},
 			},
-			context: NewDescriptorContext(addressesByChain),
+			context: NewFieldContext(addressesByChain),
 			want: `Address: 0x1234567890123456789012345678901234567890
 Method: getValue
 Outputs:
-  value: 42
+  value: <field value>
 `,
 		},
 		{
@@ -79,10 +79,10 @@ Outputs:
 			call: &DecodedCall{
 				Address: "0x1234567890123456789012345678901234567890",
 				Method:  "fallback",
-				Inputs:  []NamedDescriptor{},
-				Outputs: []NamedDescriptor{},
+				Inputs:  []NamedField{},
+				Outputs: []NamedField{},
 			},
-			context: NewDescriptorContext(addressesByChain),
+			context: NewFieldContext(addressesByChain),
 			want: `Address: 0x1234567890123456789012345678901234567890
 Method: fallback
 `,
@@ -92,27 +92,27 @@ Method: fallback
 			call: &DecodedCall{
 				Address: "0x1234567890123456789012345678901234567890",
 				Method:  "complexCall",
-				Inputs: []NamedDescriptor{
-					{Name: "address", Value: AddressDescriptor{Value: "0x0000000000000000000000000000000000000001"}},
-					{Name: "chain", Value: ChainSelectorDescriptor{Value: 1}},
-					{Name: "data", Value: BytesDescriptor{Value: []byte{0x01, 0x02, 0x03}}},
+				Inputs: []NamedField{
+					{Name: "address", Value: AddressField{Value: "0x0000000000000000000000000000000000000001"}},
+					{Name: "chain", Value: ChainSelectorField{Value: 1}},
+					{Name: "data", Value: BytesField{Value: []byte{0x01, 0x02, 0x03}}},
 				},
-				Outputs: []NamedDescriptor{
-					{Name: "result", Value: ArrayDescriptor{Elements: []Descriptor{
-						SimpleDescriptor{Value: "item1"},
-						SimpleDescriptor{Value: "item2"},
+				Outputs: []NamedField{
+					{Name: "result", Value: ArrayField{Elements: []FieldValue{
+						SimpleField{Value: "item1"},
+						SimpleField{Value: "item2"},
 					}}},
 				},
 			},
-			context: NewDescriptorContext(addressesByChain),
+			context: NewFieldContext(addressesByChain),
 			want: `Address: 0x1234567890123456789012345678901234567890
 Method: complexCall
 Inputs:
-  address: 0x0000000000000000000000000000000000000001
-  chain: 1 (<chain unknown>)
-  data: 0x010203
+  address: <field value>
+  chain: <field value>
+  data: <field value>
 Outputs:
-  result: [item1,item2]
+  result: <field value>
 `,
 		},
 	}
@@ -121,7 +121,7 @@ Outputs:
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			result := tt.call.Describe(tt.context)
+			result := tt.call.String(tt.context)
 			require.Equal(t, tt.want, result)
 		})
 	}
