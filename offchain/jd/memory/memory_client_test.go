@@ -10,6 +10,8 @@ import (
 	jobv1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/job"
 	nodev1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/node"
 	"github.com/smartcontractkit/chainlink-protos/job-distributor/v1/shared/ptypes"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/internal/pointer"
 )
 
 func TestMemoryJobDistributor_ProposeJob(t *testing.T) {
@@ -466,22 +468,26 @@ func TestMemoryJobDistributor_GetNode(t *testing.T) {
 func TestMemoryJobDistributor_ListNodes(t *testing.T) {
 	t.Parallel()
 
+	client := NewMemoryJobDistributor()
+	ctx := t.Context()
+	// Register multiple nodes
+	_, err := client.RegisterNode(ctx, &nodev1.RegisterNodeRequest{
+		Name:      "Node 1",
+		PublicKey: "key-1",
+		Labels: []*ptypes.Label{
+			{Key: "environment", Value: pointer.To("prod")},
+		},
+	})
+	require.NoError(t, err)
+
+	_, err = client.RegisterNode(ctx, &nodev1.RegisterNodeRequest{
+		Name:      "Node 2",
+		PublicKey: "key-2",
+	})
+	require.NoError(t, err)
+
 	t.Run("list nodes returns all nodes", func(t *testing.T) {
 		t.Parallel()
-		client := NewMemoryJobDistributor()
-		ctx := t.Context()
-		// Register multiple nodes
-		_, err := client.RegisterNode(ctx, &nodev1.RegisterNodeRequest{
-			Name:      "Node 1",
-			PublicKey: "key-1",
-		})
-		require.NoError(t, err)
-
-		_, err = client.RegisterNode(ctx, &nodev1.RegisterNodeRequest{
-			Name:      "Node 2",
-			PublicKey: "key-2",
-		})
-		require.NoError(t, err)
 
 		// List all nodes
 		listResp, err := client.ListNodes(ctx, &nodev1.ListNodesRequest{})
@@ -489,6 +495,26 @@ func TestMemoryJobDistributor_ListNodes(t *testing.T) {
 		require.NotNil(t, listResp)
 
 		assert.Len(t, listResp.Nodes, 2)
+	})
+
+	t.Run("filter nodes by label", func(t *testing.T) {
+		t.Parallel()
+
+		listResp, err := client.ListNodes(ctx, &nodev1.ListNodesRequest{
+			Filter: &nodev1.ListNodesRequest_Filter{
+				Selectors: []*ptypes.Selector{
+					{
+						Key:   "environment",
+						Op:    ptypes.SelectorOp_EQ,
+						Value: pointer.To("prod"),
+					},
+				},
+			},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, listResp)
+		assert.Len(t, listResp.Nodes, 1)
+		assert.Equal(t, "Node 1", listResp.Nodes[0].Name)
 	})
 }
 
