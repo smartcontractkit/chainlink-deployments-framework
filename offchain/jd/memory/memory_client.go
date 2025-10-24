@@ -349,14 +349,22 @@ func (m *MemoryJobDistributor) GetNode(ctx context.Context, in *nodev1.GetNodeRe
 // ListNodes returns all nodes stored in memory.
 func (m *MemoryJobDistributor) ListNodes(ctx context.Context, in *nodev1.ListNodesRequest, opts ...grpc.CallOption) (*nodev1.ListNodesResponse, error) {
 	m.mu.RLock()
-	nodes := make([]*nodev1.Node, 0, len(m.nodes))
+	allNodes := make([]*nodev1.Node, 0, len(m.nodes))
 	for _, node := range m.nodes {
-		nodes = append(nodes, node)
+		allNodes = append(allNodes, node)
 	}
 	m.mu.RUnlock()
 
+	// Apply filtering if filter is provided
+	var filteredNodes []*nodev1.Node
+	if in.Filter != nil {
+		filteredNodes = applyNodeFilter(allNodes, in.Filter)
+	} else {
+		filteredNodes = allNodes
+	}
+
 	return &nodev1.ListNodesResponse{
-		Nodes: nodes,
+		Nodes: filteredNodes,
 	}, nil
 }
 
