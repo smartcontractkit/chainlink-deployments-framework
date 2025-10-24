@@ -326,7 +326,7 @@ func (r *MarkdownRenderer) summarizeField(name string, field FieldValue, ctx *Fi
 		summary = r.renderTemplate(r.arrayFieldTmpl, data)
 		// Only generate details for non-empty arrays
 		if f.GetLength() > 0 {
-			details = r.renderDetails(name, r.renderFieldDetails(f, ctx, ""))
+			details = r.renderDetails(name, r.renderFieldDetails(f, ""))
 		}
 
 		return summary, details
@@ -334,7 +334,7 @@ func (r *MarkdownRenderer) summarizeField(name string, field FieldValue, ctx *Fi
 	case StructField:
 		data := StructFieldData{FieldCount: f.GetFieldCount()}
 		summary = r.renderTemplate(r.structFieldTmpl, data)
-		details = r.renderDetails(name, r.renderFieldDetails(f, ctx, ""))
+		details = r.renderDetails(name, r.renderFieldDetails(f, ""))
 
 		return summary, details
 
@@ -350,7 +350,7 @@ func (r *MarkdownRenderer) summarizeField(name string, field FieldValue, ctx *Fi
 	case YamlField:
 		data := YamlFieldData{Value: f.GetValue()}
 		summary = r.renderTemplate(r.yamlFieldTmpl, data)
-		details = r.renderDetails(name, r.renderFieldDetails(f, ctx, ""))
+		details = r.renderDetails(name, r.renderFieldDetails(f, ""))
 
 		return summary, details
 
@@ -373,7 +373,7 @@ func (r *MarkdownRenderer) summarizeField(name string, field FieldValue, ctx *Fi
 }
 
 // renderFieldDetails renders the full content for details sections with proper formatting
-func (r *MarkdownRenderer) renderFieldDetails(field FieldValue, ctx *FieldContext, indent string) string {
+func (r *MarkdownRenderer) renderFieldDetails(field FieldValue, indent string) string {
 	switch f := field.(type) {
 	case ArrayField:
 		// Render each element in the array with proper indentation
@@ -382,7 +382,7 @@ func (r *MarkdownRenderer) renderFieldDetails(field FieldValue, ctx *FieldContex
 		}
 		var parts []string
 		for i, elem := range f.GetElements() {
-			elemStr := r.renderFieldDetails(elem, ctx, indent+"  ")
+			elemStr := r.renderFieldDetails(elem, indent+"  ")
 			parts = append(parts, fmt.Sprintf("%s%d: %s", indent+"  ", i, elemStr))
 		}
 
@@ -397,7 +397,7 @@ func (r *MarkdownRenderer) renderFieldDetails(field FieldValue, ctx *FieldContex
 		var parts []string
 		for _, field := range fields {
 			// For NamedField, render as "name: value" format
-			valueStr := r.renderFieldDetails(field.Value, ctx, indent+"  ")
+			valueStr := r.renderFieldDetails(field.Value, indent+"  ")
 			parts = append(parts, fmt.Sprintf("%s%s: %s", indent+"  ", field.Name, valueStr))
 		}
 
@@ -455,7 +455,7 @@ func (r *MarkdownRenderer) renderFieldDetails(field FieldValue, ctx *FieldContex
 
 	case NamedField:
 		// For named fields, render as "name: value" format
-		valueStr := r.renderFieldDetails(f.Value, ctx, indent+"  ")
+		valueStr := r.renderFieldDetails(f.Value, indent+"  ")
 		return fmt.Sprintf("%s: %s", f.Name, valueStr)
 
 	default:
