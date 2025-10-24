@@ -33,11 +33,13 @@ func TestDecodedCall_String(t *testing.T) {
 			context: NewFieldContext(addressesByChain),
 			want: `Address: 0x1234567890123456789012345678901234567890
 Method: transfer
+
 Inputs:
-  to: <field value>
-  amount: <field value>
+  to: 0x0000000000000000000000000000000000000001
+  amount: 100
+
 Outputs:
-  success: <field value>
+  success: true
 `,
 		},
 		{
@@ -53,8 +55,9 @@ Outputs:
 			context: NewFieldContext(addressesByChain),
 			want: `Address: 0x1234567890123456789012345678901234567890
 Method: setValue
+
 Inputs:
-  value: <field value>
+  value: 42
 `,
 		},
 		{
@@ -71,7 +74,7 @@ Inputs:
 			want: `Address: 0x1234567890123456789012345678901234567890
 Method: getValue
 Outputs:
-  value: <field value>
+  value: 42
 `,
 		},
 		{
@@ -107,12 +110,14 @@ Method: fallback
 			context: NewFieldContext(addressesByChain),
 			want: `Address: 0x1234567890123456789012345678901234567890
 Method: complexCall
+
 Inputs:
-  address: <field value>
-  chain: <field value>
-  data: <field value>
+  address: 0x0000000000000000000000000000000000000001
+  chain: ` + "`" + `1 (<chain unknown>)` + "`" + `
+  data: 0x010203
+
 Outputs:
-  result: <field value>
+  result: item1, item2
 `,
 		},
 	}
