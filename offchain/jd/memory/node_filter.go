@@ -2,7 +2,6 @@ package memory
 
 import (
 	"slices"
-	"strings"
 
 	nodev1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/node"
 	"github.com/smartcontractkit/chainlink-protos/job-distributor/v1/shared/ptypes"
@@ -76,81 +75,10 @@ func nodeMatchesEnabledState(node *nodev1.Node, enabled nodev1.EnableState) bool
 // nodeMatchesSelector checks if a node matches a specific selector.
 func nodeMatchesSelector(node *nodev1.Node, selector *ptypes.Selector) bool {
 	// Get the node's labels as a map for easier lookup
-	nodeLabels := make(map[string]string)
+	nodeLabels := make(map[string]*string)
 	for _, label := range node.Labels {
-		if label.Value != nil {
-			nodeLabels[label.Key] = *label.Value
-		}
+		nodeLabels[label.Key] = label.Value
 	}
 
-	// Check if the selector key exists in the node's labels
-	nodeValue, hasKey := nodeLabels[selector.Key]
-
-	switch selector.Op {
-	case ptypes.SelectorOp_EQ:
-		// Equality check
-		if selector.Value == nil {
-			return false
-		}
-
-		return hasKey && nodeValue == *selector.Value
-
-	case ptypes.SelectorOp_NOT_EQ:
-		// Not equal check
-		if selector.Value == nil {
-			return false
-		}
-
-		return hasKey && nodeValue != *selector.Value
-
-	case ptypes.SelectorOp_IN:
-		// IN operation - check if node value is in the selector values
-		if selector.Value == nil {
-			return false
-		}
-		if !hasKey {
-			return false
-		}
-
-		// Parse comma-separated values
-		values := strings.Split(*selector.Value, ",")
-		for _, value := range values {
-			if strings.TrimSpace(value) == nodeValue {
-				return true
-			}
-		}
-
-		return false
-
-	case ptypes.SelectorOp_NOT_IN:
-		// NOT IN operation - check if node value is not in the selector values
-		if selector.Value == nil {
-			return false
-		}
-		if !hasKey {
-			return true // Key doesn't exist, so it's not in the list
-		}
-
-		// Parse comma-separated values
-		values := strings.Split(*selector.Value, ",")
-		for _, value := range values {
-			if strings.TrimSpace(value) == nodeValue {
-				return false // Found in the list, so NOT_IN is false
-			}
-		}
-
-		return true // Not found in the list, so NOT_IN is true
-
-	case ptypes.SelectorOp_EXIST:
-		// Check if the key exists (regardless of value)
-		return hasKey
-
-	case ptypes.SelectorOp_NOT_EXIST:
-		// Check if the key does not exist
-		return !hasKey
-
-	default:
-		// Unknown operation, default to false
-		return false
-	}
+	return matchesSelector(nodeLabels, selector)
 }
