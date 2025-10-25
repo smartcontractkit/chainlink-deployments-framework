@@ -28,6 +28,7 @@ type TextRenderer struct {
 	yamlFieldTmpl          *template.Template
 	arrayFieldTmpl         *template.Template
 	structFieldTmpl        *template.Template
+	namedFieldTmpl         *template.Template
 }
 
 // NewTextRenderer creates a new TextRenderer
@@ -43,10 +44,11 @@ func NewTextRenderer() *TextRenderer {
 // initTemplates compiles all templates with their helper functions
 func (r *TextRenderer) initTemplates() {
 	funcMap := template.FuncMap{
-		"renderField":  r.renderFieldHelper,
-		"renderCall":   r.renderCallHelper,
-		"getChainName": GetChainNameBySelector,
-		"hexEncode":    hexutil.Encode,
+		"renderField":      r.renderFieldHelper,
+		"renderCall":       r.renderCallHelper,
+		"getChainName":     GetChainNameBySelector,
+		"getChainNameSafe": r.getChainNameOrEmpty,
+		"hexEncode":        hexutil.Encode,
 	}
 
 	// Load templates from filesystem
@@ -60,6 +62,7 @@ func (r *TextRenderer) initTemplates() {
 	r.yamlFieldTmpl = template.Must(template.New("yaml_field.tmpl").Funcs(funcMap).ParseFS(textTemplateFS, "templates/text/yaml_field.tmpl"))
 	r.arrayFieldTmpl = template.Must(template.New("array_field.tmpl").Funcs(funcMap).ParseFS(textTemplateFS, "templates/text/array_field.tmpl"))
 	r.structFieldTmpl = template.Must(template.New("struct_field.tmpl").Funcs(funcMap).ParseFS(textTemplateFS, "templates/text/struct_field.tmpl"))
+	r.namedFieldTmpl = template.Must(template.New("named_field.tmpl").Funcs(funcMap).ParseFS(textTemplateFS, "templates/text/named_field.tmpl"))
 }
 
 // Template data structures
@@ -203,6 +206,16 @@ func (r *TextRenderer) renderCallHelper(call *DecodedCall, ctx *FieldContext) st
 	return r.RenderDecodedCall(call, ctx)
 }
 
+// getChainNameOrEmpty is a template helper function that safely gets chain name, returning empty string on error
+func (r *TextRenderer) getChainNameOrEmpty(selector uint64) string {
+	chainName, err := GetChainNameBySelector(selector)
+	if err != nil || chainName == "" {
+		return ""
+	}
+
+	return chainName
+}
+
 // renderFieldValue renders any field value as plain text using templates
 func (r *TextRenderer) renderFieldValue(field FieldValue) string {
 	var buf bytes.Buffer
@@ -217,12 +230,11 @@ func (r *TextRenderer) renderFieldValue(field FieldValue) string {
 		return buf.String()
 
 	case ChainSelectorField:
-		chainName, err := GetChainNameBySelector(f.GetValue())
-		if err != nil || chainName == "" {
-			return fmt.Sprintf("`%d (<chain unknown>)`", f.GetValue())
+		if err := r.chainSelectorFieldTmpl.Execute(&buf, f); err != nil {
+			return fmt.Sprintf("Error rendering chain selector field: %v", err)
 		}
 
-		return fmt.Sprintf("%d (%s)", f.GetValue(), chainName)
+		return buf.String()
 
 	case BytesField:
 		if err := r.bytesFieldTmpl.Execute(&buf, f); err != nil {
@@ -260,7 +272,11 @@ func (r *TextRenderer) renderFieldValue(field FieldValue) string {
 		return buf.String()
 
 	case NamedField:
-		return fmt.Sprintf("%s: %s", f.Name, r.renderFieldValue(f.Value))
+		if err := r.namedFieldTmpl.Execute(&buf, f); err != nil {
+			return fmt.Sprintf("Error rendering named field: %v", err)
+		}
+
+		return buf.String()
 
 	default:
 		return fmt.Sprintf("<unknown field type: %s>", field.GetType())

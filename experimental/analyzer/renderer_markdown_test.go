@@ -550,6 +550,7 @@ func TestTruncateMiddle(t *testing.T) {
 
 // Additional tests for functions with 0% coverage
 func TestMarkdownRenderer_renderCallHelper(t *testing.T) {
+	t.Parallel()
 	renderer := NewMarkdownRenderer()
 	ctx := NewFieldContext(nil)
 
@@ -572,6 +573,7 @@ func TestMarkdownRenderer_renderCallHelper(t *testing.T) {
 }
 
 func TestMarkdownRenderer_renderFieldHelper(t *testing.T) {
+	t.Parallel()
 	renderer := NewMarkdownRenderer()
 	ctx := NewFieldContext(nil)
 
@@ -583,6 +585,7 @@ func TestMarkdownRenderer_renderFieldHelper(t *testing.T) {
 }
 
 func TestMarkdownRenderer_isSimpleValue(t *testing.T) {
+	t.Parallel()
 	renderer := NewMarkdownRenderer()
 
 	tests := []struct {
@@ -605,6 +608,7 @@ func TestMarkdownRenderer_isSimpleValue(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result := renderer.isSimpleValue(tt.value)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -612,6 +616,7 @@ func TestMarkdownRenderer_isSimpleValue(t *testing.T) {
 }
 
 func TestMarkdownRenderer_indentString(t *testing.T) {
+	t.Parallel()
 	input := "line1\nline2\nline3"
 	result := indentString(input)
 
@@ -622,6 +627,7 @@ func TestMarkdownRenderer_indentString(t *testing.T) {
 }
 
 func TestMarkdownRenderer_indentStringWith(t *testing.T) {
+	t.Parallel()
 	input := "line1\nline2"
 	customIndent := "  "
 	result := indentStringWith(input, customIndent)

@@ -483,6 +483,7 @@ func TestTextRenderer_EdgeCases(t *testing.T) {
 
 // Additional tests for functions with 0% coverage
 func TestTextRenderer_RenderProposal(t *testing.T) {
+	t.Parallel()
 	renderer := NewTextRenderer()
 	ctx := NewFieldContext(nil)
 
@@ -516,6 +517,7 @@ func TestTextRenderer_RenderProposal(t *testing.T) {
 }
 
 func TestTextRenderer_RenderTimelockProposal(t *testing.T) {
+	t.Parallel()
 	renderer := NewTextRenderer()
 	ctx := NewFieldContext(nil)
 
@@ -552,6 +554,7 @@ func TestTextRenderer_RenderTimelockProposal(t *testing.T) {
 }
 
 func TestTextRenderer_renderCallHelper(t *testing.T) {
+	t.Parallel()
 	renderer := NewTextRenderer()
 	ctx := NewFieldContext(nil)
 
