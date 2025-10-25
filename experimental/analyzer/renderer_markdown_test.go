@@ -547,3 +547,86 @@ func TestTruncateMiddle(t *testing.T) {
 	// Very short max length
 	assert.Equal(t, "ab", truncateMiddle("abcdef", 2))
 }
+
+// Additional tests for functions with 0% coverage
+func TestMarkdownRenderer_renderCallHelper(t *testing.T) {
+	renderer := NewMarkdownRenderer()
+	ctx := NewFieldContext(nil)
+
+	call := &DecodedCall{
+		Address: "0x1234567890123456789012345678901234567890",
+		Method:  "testMethod()",
+		Inputs: []NamedField{
+			{Name: "param", Value: SimpleField{Value: "value"}},
+		},
+		Outputs: []NamedField{},
+	}
+
+	result := renderer.renderCallHelper(call, ctx)
+
+	// Should contain call details
+	assert.Contains(t, result, "0x1234567890123456789012345678901234567890")
+	assert.Contains(t, result, "testMethod()")
+	assert.Contains(t, result, "param")
+	assert.Contains(t, result, "value")
+}
+
+func TestMarkdownRenderer_renderFieldHelper(t *testing.T) {
+	renderer := NewMarkdownRenderer()
+	ctx := NewFieldContext(nil)
+
+	field := SimpleField{Value: "test value"}
+	result := renderer.renderFieldHelper(field, ctx)
+
+	// Should contain field value
+	assert.Contains(t, result, "test value")
+}
+
+func TestMarkdownRenderer_isSimpleValue(t *testing.T) {
+	renderer := NewMarkdownRenderer()
+
+	tests := []struct {
+		name     string
+		value    string
+		expected bool
+	}{
+		{"empty", "", false},
+		{"backticks", "`test`", false},
+		{"newlines", "test\nvalue", false},
+		{"too_long", "this is a very long string that exceeds the maximum simple value length threshold", false},
+		{"colon_space", "name: value", false},
+		{"multiple_words", "multiple words here", false},
+		{"long_hex", "0x6d636d0000000000000000000000000000000000000000000000000000000000", false},
+		{"short_hex", "0x1234", true},
+		{"number", "123", true},
+		{"single_word", "test", true},
+		{"short_value", "short", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := renderer.isSimpleValue(tt.value)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestMarkdownRenderer_indentString(t *testing.T) {
+	input := "line1\nline2\nline3"
+	result := indentString(input)
+
+	// Should indent each line
+	assert.Contains(t, result, "    line1")
+	assert.Contains(t, result, "    line2")
+	assert.Contains(t, result, "    line3")
+}
+
+func TestMarkdownRenderer_indentStringWith(t *testing.T) {
+	input := "line1\nline2"
+	customIndent := "  "
+	result := indentStringWith(input, customIndent)
+
+	// Should use custom indent
+	assert.Contains(t, result, "  line1")
+	assert.Contains(t, result, "  line2")
+}

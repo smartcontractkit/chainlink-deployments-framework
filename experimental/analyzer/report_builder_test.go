@@ -362,3 +362,41 @@ func TestBuildProposalReport_NativeTransfer(t *testing.T) {
 	require.IsType(t, SimpleField{}, call.Inputs[2].Value)
 	require.Equal(t, "1.000000000000000000", call.Inputs[2].Value.(SimpleField).Value)
 }
+
+func TestBuildProposalReport_DefaultCase(t *testing.T) {
+	t.Parallel()
+
+	// Create a context with a mock chain selector that doesn't match any known family
+	ctx := &DefaultProposalContext{
+		AddressesByChain: deployment.AddressesByChain{},
+		renderer:         NewMarkdownRenderer(),
+	}
+
+	// Use a TON chain selector - TON family is not handled in the switch statement
+	// so it will trigger the default case
+	tonChainSelector := chainsel.TON_LOCALNET.Selector
+
+	proposal := &mcms.Proposal{
+		Operations: []types.Operation{
+			{
+				ChainSelector: types.ChainSelector(tonChainSelector),
+				Transaction: types.Transaction{
+					To:   "0x1234567890123456789012345678901234567890",
+					Data: []byte{0x01, 0x02, 0x03, 0x04},
+				},
+			},
+		},
+	}
+
+	// This should trigger the default case in the switch statement
+	report, err := BuildProposalReport(ctx, proposal)
+	require.NoError(t, err)
+	require.NotNil(t, report)
+	require.Len(t, report.Operations, 1)
+
+	operation := report.Operations[0]
+	require.Equal(t, tonChainSelector, operation.ChainSelector)
+	require.Equal(t, "ton-localnet", operation.ChainName) // TON chain has a known name
+	require.Equal(t, "ton", operation.Family)             // TON family
+	require.Empty(t, operation.Calls)                     // Default case sets calls to empty slice
+}

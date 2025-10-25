@@ -480,3 +480,94 @@ func TestTextRenderer_EdgeCases(t *testing.T) {
 		assert.Equal(t, "unicode: 测试 🚀 émojis", result)
 	})
 }
+
+// Additional tests for functions with 0% coverage
+func TestTextRenderer_RenderProposal(t *testing.T) {
+	renderer := NewTextRenderer()
+	ctx := NewFieldContext(nil)
+
+	// Test with a simple proposal
+	proposal := &ProposalReport{
+		Operations: []OperationReport{
+			{
+				ChainSelector: chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector,
+				ChainName:     "ethereum-testnet-sepolia",
+				Calls: []*DecodedCall{
+					{
+						Address: "0x1234567890123456789012345678901234567890",
+						Method:  "transfer(address,uint256)",
+						Inputs: []NamedField{
+							{Name: "to", Value: AddressField{Value: "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd"}},
+							{Name: "amount", Value: SimpleField{Value: "1000000000000000000"}},
+						},
+						Outputs: []NamedField{},
+					},
+				},
+			},
+		},
+	}
+
+	result := renderer.RenderProposal(proposal, ctx)
+
+	// Should contain chain name and call details
+	assert.Contains(t, result, "ethereum-testnet-sepolia")
+	assert.Contains(t, result, "0x1234567890123456789012345678901234567890")
+	assert.Contains(t, result, "transfer(address,uint256)")
+}
+
+func TestTextRenderer_RenderTimelockProposal(t *testing.T) {
+	renderer := NewTextRenderer()
+	ctx := NewFieldContext(nil)
+
+	// Test with a timelock proposal
+	timelockProposal := &ProposalReport{
+		Batches: []BatchReport{
+			{
+				ChainSelector: chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector,
+				ChainName:     "ethereum-testnet-sepolia",
+				Operations: []OperationReport{
+					{
+						ChainSelector: chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector,
+						ChainName:     "ethereum-testnet-sepolia",
+						Calls: []*DecodedCall{
+							{
+								Address: "0x1234567890123456789012345678901234567890",
+								Method:  "execute()",
+								Inputs:  []NamedField{},
+								Outputs: []NamedField{},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	result := renderer.RenderTimelockProposal(timelockProposal, ctx)
+
+	// Should contain chain name and call details
+	assert.Contains(t, result, "ethereum-testnet-sepolia")
+	assert.Contains(t, result, "0x1234567890123456789012345678901234567890")
+	assert.Contains(t, result, "execute()")
+}
+
+func TestTextRenderer_renderCallHelper(t *testing.T) {
+	renderer := NewTextRenderer()
+	ctx := NewFieldContext(nil)
+
+	call := &DecodedCall{
+		Address: "0x1234567890123456789012345678901234567890",
+		Method:  "testMethod()",
+		Inputs: []NamedField{
+			{Name: "param", Value: SimpleField{Value: "value"}},
+		},
+		Outputs: []NamedField{},
+	}
+
+	result := renderer.renderCallHelper(call, ctx)
+
+	// Should contain call details
+	assert.Contains(t, result, "0x1234567890123456789012345678901234567890")
+	assert.Contains(t, result, "testMethod()")
+	assert.Contains(t, result, "param: value")
+}
