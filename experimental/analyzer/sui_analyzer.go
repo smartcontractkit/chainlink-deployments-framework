@@ -50,7 +50,7 @@ func AnalyzeSuiTransaction(ctx ProposalContext, decoder *mcmssuisdk.Decoder, cha
 			Method:  errStr.Error(),
 		}, nil
 	}
-	namedArgs, err := toNamedDescriptors(decodedOp)
+	namedArgs, err := toNamedFields(decodedOp)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert decoded operation to named arguments: %w", err)
 	}
@@ -59,6 +59,6 @@ func AnalyzeSuiTransaction(ctx ProposalContext, decoder *mcmssuisdk.Decoder, cha
 		Address: mcmsTx.To,
 		Method:  decodedOp.MethodName(),
 		Inputs:  namedArgs,
-		Outputs: []NamedDescriptor{},
+		Outputs: []NamedField{},
 	}, nil
 }

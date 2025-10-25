@@ -28,45 +28,45 @@ func Test_AnalyzeRmnHomeSetConfig(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, _abi.Methods["setCandidate"].String(), analyzeResult.Method)
 	assert.Equal(t, "staticConfig", analyzeResult.Inputs[0].Name)
-	assert.Equal(t, StructDescriptor{
-		Fields: []NamedDescriptor{
+	assert.Equal(t, StructField{
+		Fields: []NamedField{
 			{
 				Name: "Nodes",
-				Value: ArrayDescriptor{
-					Elements: []Descriptor{
-						StructDescriptor{
-							Fields: []NamedDescriptor{
+				Value: ArrayField{
+					Elements: []FieldValue{
+						StructField{
+							Fields: []NamedField{
 								{
 									Name:  "PeerId",
-									Value: BytesDescriptor{Value: hexutil.MustDecode("0xe98702d28f71e1d61ec514fe067781b4144aac68519488e80d70b2e7ccb53d43")},
+									Value: BytesField{Value: hexutil.MustDecode("0xe98702d28f71e1d61ec514fe067781b4144aac68519488e80d70b2e7ccb53d43")},
 								},
 								{
 									Name:  "OffchainPublicKey",
-									Value: BytesDescriptor{Value: hexutil.MustDecode("0xb34944857a42444d1b285d7940d6e06682309e0781e43a69676ee9f85c73c2d1")},
+									Value: BytesField{Value: hexutil.MustDecode("0xb34944857a42444d1b285d7940d6e06682309e0781e43a69676ee9f85c73c2d1")},
 								},
 							},
 						},
-						StructDescriptor{
-							Fields: []NamedDescriptor{
+						StructField{
+							Fields: []NamedField{
 								{
 									Name:  "PeerId",
-									Value: BytesDescriptor{Value: hexutil.MustDecode("0x49978bab3172a2740e5e63c2521d53ed2358786624cec1b714c788eedade101b")},
+									Value: BytesField{Value: hexutil.MustDecode("0x49978bab3172a2740e5e63c2521d53ed2358786624cec1b714c788eedade101b")},
 								},
 								{
 									Name:  "OffchainPublicKey",
-									Value: BytesDescriptor{Value: hexutil.MustDecode("0x68d9f3f274e3985528a923a9bace3d39c55dd778b187b4120b384cc48c892859")},
+									Value: BytesField{Value: hexutil.MustDecode("0x68d9f3f274e3985528a923a9bace3d39c55dd778b187b4120b384cc48c892859")},
 								},
 							},
 						},
-						StructDescriptor{
-							Fields: []NamedDescriptor{
+						StructField{
+							Fields: []NamedField{
 								{
 									Name:  "PeerId",
-									Value: BytesDescriptor{Value: hexutil.MustDecode("0x8001e4afa8fa061833dfee29d286f7dfe0b78a767f1fa1f152bcda4d53415061")},
+									Value: BytesField{Value: hexutil.MustDecode("0x8001e4afa8fa061833dfee29d286f7dfe0b78a767f1fa1f152bcda4d53415061")},
 								},
 								{
 									Name:  "OffchainPublicKey",
-									Value: BytesDescriptor{Value: hexutil.MustDecode("0x5af8ee32316a6427f169a45fdc1b3a91a85ac459e3c1cb91c69e1c51f0c1fc21")},
+									Value: BytesField{Value: hexutil.MustDecode("0x5af8ee32316a6427f169a45fdc1b3a91a85ac459e3c1cb91c69e1c51f0c1fc21")},
 								},
 							},
 						},
@@ -75,62 +75,62 @@ func Test_AnalyzeRmnHomeSetConfig(t *testing.T) {
 			},
 			{
 				Name:  "OffchainConfig",
-				Value: BytesDescriptor{Value: hexutil.MustDecode("0x")},
+				Value: BytesField{Value: hexutil.MustDecode("0x")},
 			},
 		},
 	}, analyzeResult.Inputs[0].Value)
 	assert.Equal(t, "dynamicConfig", analyzeResult.Inputs[1].Name)
-	assert.Equal(t, StructDescriptor{
-		Fields: []NamedDescriptor{
+	assert.Equal(t, StructField{
+		Fields: []NamedField{
 			{
 				Name: "SourceChains",
-				Value: ArrayDescriptor{
-					Elements: []Descriptor{
-						StructDescriptor{
-							Fields: []NamedDescriptor{
+				Value: ArrayField{
+					Elements: []FieldValue{
+						StructField{
+							Fields: []NamedField{
 								{
 									Name:  "ChainSelector",
-									Value: ChainSelectorDescriptor{Value: 16015286601757825753},
+									Value: ChainSelectorField{Value: 16015286601757825753},
 								},
 								{
 									Name:  "FObserve",
-									Value: SimpleDescriptor{Value: "1"},
+									Value: SimpleField{Value: "1"},
 								},
 								{
 									Name:  "ObserverNodesBitmap",
-									Value: SimpleDescriptor{Value: "7"},
+									Value: SimpleField{Value: "7"},
 								},
 							},
 						},
-						StructDescriptor{
-							Fields: []NamedDescriptor{
+						StructField{
+							Fields: []NamedField{
 								{
 									Name:  "ChainSelector",
-									Value: ChainSelectorDescriptor{Value: 14767482510784806043},
+									Value: ChainSelectorField{Value: 14767482510784806043},
 								},
 								{
 									Name:  "FObserve",
-									Value: SimpleDescriptor{Value: "1"},
+									Value: SimpleField{Value: "1"},
 								},
 								{
 									Name:  "ObserverNodesBitmap",
-									Value: SimpleDescriptor{Value: "7"},
+									Value: SimpleField{Value: "7"},
 								},
 							},
 						},
-						StructDescriptor{
-							Fields: []NamedDescriptor{
+						StructField{
+							Fields: []NamedField{
 								{
 									Name:  "ChainSelector",
-									Value: ChainSelectorDescriptor{Value: 3478487238524512106},
+									Value: ChainSelectorField{Value: 3478487238524512106},
 								},
 								{
 									Name:  "FObserve",
-									Value: SimpleDescriptor{Value: "1"},
+									Value: SimpleField{Value: "1"},
 								},
 								{
 									Name:  "ObserverNodesBitmap",
-									Value: SimpleDescriptor{Value: "7"},
+									Value: SimpleField{Value: "7"},
 								},
 							},
 						},
@@ -139,12 +139,12 @@ func Test_AnalyzeRmnHomeSetConfig(t *testing.T) {
 			},
 			{
 				Name:  "OffchainConfig",
-				Value: BytesDescriptor{Value: hexutil.MustDecode("0x")},
+				Value: BytesField{Value: hexutil.MustDecode("0x")},
 			},
 		},
 	}, analyzeResult.Inputs[1].Value)
 	assert.Equal(t, "digestToOverwrite", analyzeResult.Inputs[2].Name)
-	assert.Equal(t, BytesDescriptor{Value: hexutil.MustDecode("0x0000000000000000000000000000000000000000000000000000000000000000")}, analyzeResult.Inputs[2].Value)
+	assert.Equal(t, BytesField{Value: hexutil.MustDecode("0x0000000000000000000000000000000000000000000000000000000000000000")}, analyzeResult.Inputs[2].Value)
 	assert.Equal(t, "newConfigDigest", analyzeResult.Outputs[0].Name)
-	assert.Equal(t, BytesDescriptor{Value: hexutil.MustDecode("0x0000000000000000000000000000000000000000000000000000000000000060")}, analyzeResult.Outputs[0].Value)
+	assert.Equal(t, BytesField{Value: hexutil.MustDecode("0x0000000000000000000000000000000000000000000000000000000000000060")}, analyzeResult.Outputs[0].Value)
 }

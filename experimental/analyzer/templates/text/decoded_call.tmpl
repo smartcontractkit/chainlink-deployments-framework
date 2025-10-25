@@ -1,0 +1,9 @@
+Address: {{.Address}}
+Method: {{.Method}}
+{{if .Inputs}}
+Inputs:
+{{range .Inputs}}  {{.Name}}: {{.Summary}}{{if .Details}} {{.Details}}{{end}}
+{{end}}{{end}}{{if .Outputs}}{{if .Inputs}}
+{{end}}Outputs:
+{{range .Outputs}}  {{.Name}}: {{.Summary}}{{if .Details}} {{.Details}}{{end}}
+{{end}}{{end}}

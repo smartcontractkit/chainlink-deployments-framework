@@ -1,0 +1,1 @@
+{{range $i, $field := .GetFields}}{{if $i}}, {{end}}{{.GetName}}: {{renderField .GetValue}}{{end}}

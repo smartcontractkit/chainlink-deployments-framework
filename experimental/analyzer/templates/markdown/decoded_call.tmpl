@@ -1,0 +1,12 @@
+**Address:** `{{.Address}}`{{if .AddressAnnotation}} <sub><i>{{.AddressAnnotation}}</i></sub>{{end}}
+**Method:** `{{.Method}}`
+
+{{if .Inputs}}**Inputs:**
+
+{{range .Inputs}}  - `{{.Name}}`: {{.Summary}}{{if .Annotation}} <sub><i>{{.Annotation}}</i></sub>{{end}}{{if .Details}}
+    - {{.Details}}{{end}}
+{{end}}{{end}}{{if .Outputs}}**Outputs:**
+
+{{range .Outputs}}  - `{{.Name}}`: {{.Summary}}{{if .Annotation}} <sub><i>{{.Annotation}}</i></sub>{{end}}{{if .Details}}
+    - {{.Details}}{{end}}
+{{end}}{{end}}

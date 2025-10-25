@@ -1,0 +1,1 @@
+{{if .Type}}{{.Type}}{{if .Length}}(len={{.Length}}){{end}}{{if .Preview}}{{if hasPrefix .Preview ":"}}{{.Preview}}{{else}}: {{.Preview}}{{end}}{{end}}{{else}}`{{.Value}}`{{end}}

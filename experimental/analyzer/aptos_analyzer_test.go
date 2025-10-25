@@ -39,50 +39,50 @@ func TestAnalyzeAptosTransactions(t *testing.T) {
 				{
 					Address: aptosTestAddress,
 					Method:  "ccip_onramp::onramp::initialize",
-					Inputs: []NamedDescriptor{
-						{Name: "chain_selector", Value: SimpleDescriptor{Value: "4457093679053095497"}},
-						{Name: "fee_aggregator", Value: SimpleDescriptor{Value: "0x13a9f1a109368730f2e355d831ba8fbf5942fb82321863d55de54cb4ebe5d18f"}},
-						{Name: "allowlist_admin", Value: SimpleDescriptor{Value: "0x13a9f1a109368730f2e355d831ba8fbf5942fb82321863d55de54cb4ebe5d18f"}},
-						{Name: "dest_chain_selectors", Value: SimpleDescriptor{Value: "[]"}},
-						{Name: "dest_chain_routers", Value: SimpleDescriptor{Value: "[]"}},
-						{Name: "dest_chain_allowlist_enabled", Value: SimpleDescriptor{Value: "[]"}},
+					Inputs: []NamedField{
+						{Name: "chain_selector", Value: SimpleField{Value: "4457093679053095497"}},
+						{Name: "fee_aggregator", Value: AddressField{Value: "0x13a9f1a109368730f2e355d831ba8fbf5942fb82321863d55de54cb4ebe5d18f"}},
+						{Name: "allowlist_admin", Value: AddressField{Value: "0x13a9f1a109368730f2e355d831ba8fbf5942fb82321863d55de54cb4ebe5d18f"}},
+						{Name: "dest_chain_selectors", Value: ArrayField{Elements: nil}},
+						{Name: "dest_chain_routers", Value: ArrayField{Elements: nil}},
+						{Name: "dest_chain_allowlist_enabled", Value: ArrayField{Elements: nil}},
 					},
 				},
 				{
 					Address: aptosTestAddress,
 					Method:  "ccip_offramp::offramp::initialize",
-					Inputs: []NamedDescriptor{
-						{Name: "chain_selector", Value: SimpleDescriptor{Value: "4457093679053095497"}},
-						{Name: "permissionless_execution_threshold_seconds", Value: SimpleDescriptor{Value: "28800"}},
-						{Name: "source_chains_selector", Value: SimpleDescriptor{Value: "[11155111]"}},
-						{Name: "source_chains_is_enabled", Value: SimpleDescriptor{Value: "[true]"}},
-						{Name: "source_chains_is_rmn_verification_disabled", Value: SimpleDescriptor{Value: "[false]"}},
-						{Name: "source_chains_on_ramp", Value: SimpleDescriptor{Value: "[0x0bf3de8c5d3e8a2b34d2beeb17abfcebaf363a59]"}},
+					Inputs: []NamedField{
+						{Name: "chain_selector", Value: SimpleField{Value: "4457093679053095497"}},
+						{Name: "permissionless_execution_threshold_seconds", Value: SimpleField{Value: "28800"}},
+						{Name: "source_chains_selector", Value: ArrayField{Elements: []FieldValue{SimpleField{Value: "11155111"}}}},
+						{Name: "source_chains_is_enabled", Value: ArrayField{Elements: []FieldValue{SimpleField{Value: "true"}}}},
+						{Name: "source_chains_is_rmn_verification_disabled", Value: ArrayField{Elements: []FieldValue{SimpleField{Value: "false"}}}},
+						{Name: "source_chains_on_ramp", Value: ArrayField{Elements: []FieldValue{BytesField{Value: []byte{0xb, 0xf3, 0xde, 0x8c, 0x5d, 0x3e, 0x8a, 0x2b, 0x34, 0xd2, 0xbe, 0xeb, 0x17, 0xab, 0xfc, 0xeb, 0xaf, 0x36, 0x3a, 0x59}}}}},
 					},
 				},
 				{
 					Address: aptosTestAddress,
 					Method:  "ccip::rmn_remote::initialize",
-					Inputs: []NamedDescriptor{
-						{Name: "local_chain_selector", Value: SimpleDescriptor{Value: "4457093679053095497"}},
+					Inputs: []NamedField{
+						{Name: "local_chain_selector", Value: SimpleField{Value: "4457093679053095497"}},
 					},
 				},
 				{
 					Address: aptosTestAddress,
 					Method:  "ccip_token_pool::token_pool::initialize",
-					Inputs: []NamedDescriptor{
-						{Name: "local_token", Value: SimpleDescriptor{Value: "0x0000000000000000000000000000000000000000000000000000000000000003"}},
-						{Name: "allowlist", Value: SimpleDescriptor{Value: "[0x0000000000000000000000000000000000000000000000000000000000000001,0x0000000000000000000000000000000000000000000000000000000000000002]"}},
+					Inputs: []NamedField{
+						{Name: "local_token", Value: AddressField{Value: "0x0000000000000000000000000000000000000000000000000000000000000003"}},
+						{Name: "allowlist", Value: ArrayField{Elements: []FieldValue{AddressField{Value: "0x0000000000000000000000000000000000000000000000000000000000000001"}, AddressField{Value: "0x0000000000000000000000000000000000000000000000000000000000000002"}}}},
 					},
 				},
 				{
 					Address: aptosTestAddress,
 					Method:  "ccip_offramp::offramp::apply_source_chain_config_updates",
-					Inputs: []NamedDescriptor{
-						{Name: "source_chains_selector", Value: SimpleDescriptor{Value: "[743186221051783445,16015286601757825753]"}},
-						{Name: "source_chains_is_enabled", Value: SimpleDescriptor{Value: "[true,false]"}},
-						{Name: "source_chains_is_rmn_verification_disabled", Value: SimpleDescriptor{Value: "[true,true]"}},
-						{Name: "source_chains_on_ramp", Value: SimpleDescriptor{Value: "[0xc23071a8ae83671f37bda1dadbc745a9780f632a,0x1c179c2c67953478966a6b460ab4873585b2f341]"}},
+					Inputs: []NamedField{
+						{Name: "source_chains_selector", Value: ArrayField{Elements: []FieldValue{SimpleField{Value: "743186221051783445"}, SimpleField{Value: "16015286601757825753"}}}},
+						{Name: "source_chains_is_enabled", Value: ArrayField{Elements: []FieldValue{SimpleField{Value: "true"}, SimpleField{Value: "false"}}}},
+						{Name: "source_chains_is_rmn_verification_disabled", Value: ArrayField{Elements: []FieldValue{SimpleField{Value: "true"}, SimpleField{Value: "true"}}}},
+						{Name: "source_chains_on_ramp", Value: ArrayField{Elements: []FieldValue{BytesField{Value: []byte{0xc2, 0x30, 0x71, 0xa8, 0xae, 0x83, 0x67, 0x1f, 0x37, 0xbd, 0xa1, 0xda, 0xdb, 0xc7, 0x45, 0xa9, 0x78, 0xf, 0x63, 0x2a}}, BytesField{Value: []byte{0x1c, 0x17, 0x9c, 0x2c, 0x67, 0x95, 0x34, 0x78, 0x96, 0x6a, 0x6b, 0x46, 0xa, 0xb4, 0x87, 0x35, 0x85, 0xb2, 0xf3, 0x41}}}}},
 					},
 				},
 			},
@@ -95,50 +95,50 @@ func TestAnalyzeAptosTransactions(t *testing.T) {
 				{
 					Address: aptosTestAddress,
 					Method:  "ccip_onramp::onramp::initialize",
-					Inputs: []NamedDescriptor{
-						{Name: "chain_selector", Value: SimpleDescriptor{Value: "4457093679053095497"}},
-						{Name: "fee_aggregator", Value: SimpleDescriptor{Value: "0x13a9f1a109368730f2e355d831ba8fbf5942fb82321863d55de54cb4ebe5d18f"}},
-						{Name: "allowlist_admin", Value: SimpleDescriptor{Value: "0x13a9f1a109368730f2e355d831ba8fbf5942fb82321863d55de54cb4ebe5d18f"}},
-						{Name: "dest_chain_selectors", Value: SimpleDescriptor{Value: "[]"}},
-						{Name: "dest_chain_routers", Value: SimpleDescriptor{Value: "[]"}},
-						{Name: "dest_chain_allowlist_enabled", Value: SimpleDescriptor{Value: "[]"}},
+					Inputs: []NamedField{
+						{Name: "chain_selector", Value: SimpleField{Value: "4457093679053095497"}},
+						{Name: "fee_aggregator", Value: AddressField{Value: "0x13a9f1a109368730f2e355d831ba8fbf5942fb82321863d55de54cb4ebe5d18f"}},
+						{Name: "allowlist_admin", Value: AddressField{Value: "0x13a9f1a109368730f2e355d831ba8fbf5942fb82321863d55de54cb4ebe5d18f"}},
+						{Name: "dest_chain_selectors", Value: ArrayField{Elements: nil}},
+						{Name: "dest_chain_routers", Value: ArrayField{Elements: nil}},
+						{Name: "dest_chain_allowlist_enabled", Value: ArrayField{Elements: nil}},
 					},
 				},
 				{
 					Address: aptosTestAddress,
 					Method:  "ccip_offramp::offramp::initialize",
-					Inputs: []NamedDescriptor{
-						{Name: "chain_selector", Value: SimpleDescriptor{Value: "4457093679053095497"}},
-						{Name: "permissionless_execution_threshold_seconds", Value: SimpleDescriptor{Value: "28800"}},
-						{Name: "source_chains_selector", Value: SimpleDescriptor{Value: "[11155111]"}},
-						{Name: "source_chains_is_enabled", Value: SimpleDescriptor{Value: "[true]"}},
-						{Name: "source_chains_is_rmn_verification_disabled", Value: SimpleDescriptor{Value: "[false]"}},
-						{Name: "source_chains_on_ramp", Value: SimpleDescriptor{Value: "[0x0bf3de8c5d3e8a2b34d2beeb17abfcebaf363a59]"}},
+					Inputs: []NamedField{
+						{Name: "chain_selector", Value: SimpleField{Value: "4457093679053095497"}},
+						{Name: "permissionless_execution_threshold_seconds", Value: SimpleField{Value: "28800"}},
+						{Name: "source_chains_selector", Value: ArrayField{Elements: []FieldValue{SimpleField{Value: "11155111"}}}},
+						{Name: "source_chains_is_enabled", Value: ArrayField{Elements: []FieldValue{SimpleField{Value: "true"}}}},
+						{Name: "source_chains_is_rmn_verification_disabled", Value: ArrayField{Elements: []FieldValue{SimpleField{Value: "false"}}}},
+						{Name: "source_chains_on_ramp", Value: ArrayField{Elements: []FieldValue{BytesField{Value: []byte{0xb, 0xf3, 0xde, 0x8c, 0x5d, 0x3e, 0x8a, 0x2b, 0x34, 0xd2, 0xbe, 0xeb, 0x17, 0xab, 0xfc, 0xeb, 0xaf, 0x36, 0x3a, 0x59}}}}},
 					},
 				},
 				{
 					Address: aptosTestAddress,
 					Method:  "ccip::rmn_remote::initialize",
-					Inputs: []NamedDescriptor{
-						{Name: "local_chain_selector", Value: SimpleDescriptor{Value: "4457093679053095497"}},
+					Inputs: []NamedField{
+						{Name: "local_chain_selector", Value: SimpleField{Value: "4457093679053095497"}},
 					},
 				},
 				{
 					Address: aptosTestAddress,
 					Method:  "ccip_token_pool::token_pool::initialize",
-					Inputs: []NamedDescriptor{
-						{Name: "local_token", Value: SimpleDescriptor{Value: "0x0000000000000000000000000000000000000000000000000000000000000003"}},
-						{Name: "allowlist", Value: SimpleDescriptor{Value: "[0x0000000000000000000000000000000000000000000000000000000000000001,0x0000000000000000000000000000000000000000000000000000000000000002]"}},
+					Inputs: []NamedField{
+						{Name: "local_token", Value: AddressField{Value: "0x0000000000000000000000000000000000000000000000000000000000000003"}},
+						{Name: "allowlist", Value: ArrayField{Elements: []FieldValue{AddressField{Value: "0x0000000000000000000000000000000000000000000000000000000000000001"}, AddressField{Value: "0x0000000000000000000000000000000000000000000000000000000000000002"}}}},
 					},
 				},
 				{
 					Address: aptosTestAddress,
 					Method:  "ccip_offramp::offramp::apply_source_chain_config_updates",
-					Inputs: []NamedDescriptor{
-						{Name: "source_chains_selector", Value: SimpleDescriptor{Value: "[743186221051783445,16015286601757825753]"}},
-						{Name: "source_chains_is_enabled", Value: SimpleDescriptor{Value: "[true,false]"}},
-						{Name: "source_chains_is_rmn_verification_disabled", Value: SimpleDescriptor{Value: "[true,true]"}},
-						{Name: "source_chains_on_ramp", Value: SimpleDescriptor{Value: "[0xc23071a8ae83671f37bda1dadbc745a9780f632a,0x1c179c2c67953478966a6b460ab4873585b2f341]"}},
+					Inputs: []NamedField{
+						{Name: "source_chains_selector", Value: ArrayField{Elements: []FieldValue{SimpleField{Value: "743186221051783445"}, SimpleField{Value: "16015286601757825753"}}}},
+						{Name: "source_chains_is_enabled", Value: ArrayField{Elements: []FieldValue{SimpleField{Value: "true"}, SimpleField{Value: "false"}}}},
+						{Name: "source_chains_is_rmn_verification_disabled", Value: ArrayField{Elements: []FieldValue{SimpleField{Value: "true"}, SimpleField{Value: "true"}}}},
+						{Name: "source_chains_on_ramp", Value: ArrayField{Elements: []FieldValue{BytesField{Value: []byte{0xc2, 0x30, 0x71, 0xa8, 0xae, 0x83, 0x67, 0x1f, 0x37, 0xbd, 0xa1, 0xda, 0xdb, 0xc7, 0x45, 0xa9, 0x78, 0xf, 0x63, 0x2a}}, BytesField{Value: []byte{0x1c, 0x17, 0x9c, 0x2c, 0x67, 0x95, 0x34, 0x78, 0x96, 0x6a, 0x6b, 0x46, 0xa, 0xb4, 0x87, 0x35, 0x85, 0xb2, 0xf3, 0x41}}}}},
 					},
 				},
 			},
@@ -151,13 +151,13 @@ func TestAnalyzeAptosTransactions(t *testing.T) {
 				{
 					Address: aptosTestAddress,
 					Method:  "failed to decode Aptos transaction: could not find function info for ccip_offramp::bad_module::initialize",
-					Inputs:  []NamedDescriptor{},
+					Inputs:  []NamedField{},
 				},
 				{
 					Address: aptosTestAddress,
 					Method:  "ccip::rmn_remote::initialize",
-					Inputs: []NamedDescriptor{
-						{Name: "local_chain_selector", Value: SimpleDescriptor{Value: "4457093679053095497"}},
+					Inputs: []NamedField{
+						{Name: "local_chain_selector", Value: SimpleField{Value: "4457093679053095497"}},
 					},
 				},
 			},
@@ -199,7 +199,18 @@ func TestAnalyzeAptosTransactions(t *testing.T) {
 				for j, input := range result.Inputs {
 					expectedInput := expected.Inputs[j]
 					require.Equal(t, expectedInput.Name, input.Name, "Input name mismatch for call %d, input %d", i, j)
-					require.Equal(t, expectedInput.Value.Describe(nil), input.Value.Describe(nil), "Input value mismatch for call %d, input %d", i, j)
+					require.Equal(t, expectedInput.Value.GetType(), input.Value.GetType(), "Input value type mismatch for call %d, input %d", i, j)
+
+					switch expectedField := expectedInput.Value.(type) {
+					case SimpleField:
+						if actualField, ok := input.Value.(SimpleField); ok {
+							require.Equal(t, expectedField.GetValue(), actualField.GetValue(), "SimpleField value mismatch for call %d, input %d", i, j)
+						} else {
+							t.Errorf("Expected SimpleField but got %T for call %d, input %d", input.Value, i, j)
+						}
+					default:
+						require.Equal(t, expectedInput.Value, input.Value, "Field value mismatch for call %d, input %d", i, j)
+					}
 				}
 			}
 		})
