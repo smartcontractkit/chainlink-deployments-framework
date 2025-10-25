@@ -1,5 +1,36 @@
 # chainlink-deployments-framework
 
+## 0.58.1
+
+### Patch Changes
+
+- [#532](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/532) [`f2a3b3e`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/f2a3b3e574c1e01c83013cd4704b9b5773e95481) Thanks [@vyzaldysanchez](https://github.com/vyzaldysanchez)! - Display nodes versions when running the `jd node list` command.
+
+## 0.58.0
+
+### Minor Changes
+
+- [#514](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/514) [`406cb82`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/406cb82e83841d6bd59ea51f30dd42d9c063b5e8) Thanks [@DimitriosNaikopoulos](https://github.com/DimitriosNaikopoulos)! - Handle Catalog ResponseStatus errors as grpc errors
+
+- [#518](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/518) [`99ee634`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/99ee634219c860412cbcbb1c72ee54665591fe8d) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat(offchain): new JD in memory client
+
+- [#522](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/522) [`0cbed61`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/0cbed61c14a6e42259251908584d0cf072a19a8c) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat(engine): integrate memory JD to test runtime
+
+- [#529](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/529) [`4bb40fa`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/4bb40fa07966170287ca272bb4b3f8f30eefeb99) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat(catalog): new datastore field in domain.yaml
+
+  Field `datastore` is introduced to configure in future where should the data be written to, either file(json) - current behaviour or remote on the catalog service.
+  By default, this field will be set to file for backwards compatibility.
+
+- [#520](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/520) [`2cc6462`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/2cc6462f255a46ab560bb2f2c26e29c2da59f378) Thanks [@ecPablo](https://github.com/ecPablo)! - improve decoded proposal error to use bullets instead of tables
+
+- [#517](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/517) [`5220e9a`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/5220e9ac21cdeea6b9e1bb67e8a0e5f96118d30e) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat(engine/test): support memory catalog
+
+### Patch Changes
+
+- [#527](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/527) [`8041f81`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/8041f810b501341e0b0650ad266079acf11b79e3) Thanks [@giogam](https://github.com/giogam)! - chore: remove Catalog field from Environment struct
+
+- [#524](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/524) [`41b8c65`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/41b8c65ad3f443f8591f9be842c090a888305fce) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix: remove dep on chainlink-common
+
 ## 0.57.0
 
 ### Minor Changes

@@ -1,6 +1,7 @@
 package analyzer
 
 import (
+	"encoding/json"
 	"testing"
 
 	chainsel "github.com/smartcontractkit/chain-selectors"
@@ -306,4 +307,58 @@ func TestBuildTimelockReport_FamilyBranches(t *testing.T) {
 			require.Contains(t, err.Error(), tt.expectedError)
 		})
 	}
+}
+
+// Test native token transfer integration with report builder
+func TestBuildProposalReport_NativeTransfer(t *testing.T) {
+	t.Parallel()
+
+	// Create a context without EVM registry to test native transfers
+	ctx := &DefaultProposalContext{
+		AddressesByChain: deployment.AddressesByChain{},
+		evmRegistry:      nil, // No registry - native transfers should work
+	}
+
+	proposal := &mcms.Proposal{
+		Operations: []types.Operation{
+			{
+				ChainSelector: types.ChainSelector(chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector),
+				Transaction: types.Transaction{
+					To:               "0xeE5E8f8Be22101d26084e90053695E2088a01a24",
+					Data:             []byte{},                                          // Empty data for native transfer
+					AdditionalFields: json.RawMessage(`{"value": 1000000000000000000}`), // 1 ETH
+				},
+			},
+		},
+	}
+
+	report, err := BuildProposalReport(ctx, proposal)
+	require.NoError(t, err)
+	require.NotNil(t, report)
+	require.Len(t, report.Operations, 1)
+
+	operation := report.Operations[0]
+	require.Equal(t, chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector, operation.ChainSelector)
+	require.Equal(t, chainsel.FamilyEVM, operation.Family)
+	require.Len(t, operation.Calls, 1)
+
+	call := operation.Calls[0]
+	require.Equal(t, "0xeE5E8f8Be22101d26084e90053695E2088a01a24", call.Address)
+	require.Equal(t, "native_transfer", call.Method)
+	require.Len(t, call.Inputs, 3)
+
+	// Check recipient
+	require.Equal(t, "recipient", call.Inputs[0].Name)
+	require.IsType(t, AddressDescriptor{}, call.Inputs[0].Value)
+	require.Equal(t, "0xeE5E8f8Be22101d26084e90053695E2088a01a24", call.Inputs[0].Value.(AddressDescriptor).Value)
+
+	// Check amount in wei
+	require.Equal(t, "amount_wei", call.Inputs[1].Name)
+	require.IsType(t, SimpleDescriptor{}, call.Inputs[1].Value)
+	require.Equal(t, "1000000000000000000", call.Inputs[1].Value.(SimpleDescriptor).Value)
+
+	// Check amount in ETH
+	require.Equal(t, "amount_eth", call.Inputs[2].Name)
+	require.IsType(t, SimpleDescriptor{}, call.Inputs[2].Value)
+	require.Equal(t, "1.000000000000000000", call.Inputs[2].Value.(SimpleDescriptor).Value)
 }

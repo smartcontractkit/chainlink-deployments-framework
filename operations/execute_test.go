@@ -10,9 +10,10 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
 func Test_ExecuteOperation(t *testing.T) {

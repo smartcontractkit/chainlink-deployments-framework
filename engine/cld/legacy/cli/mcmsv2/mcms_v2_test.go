@@ -14,13 +14,14 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	chainsel "github.com/smartcontractkit/chain-selectors"
-	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 	"github.com/smartcontractkit/mcms"
 	"github.com/smartcontractkit/mcms/sdk"
 	mcmsevmbindings "github.com/smartcontractkit/mcms/sdk/evm/bindings"
 	mocksdk "github.com/smartcontractkit/mcms/sdk/mocks"
 	"github.com/smartcontractkit/mcms/types"
 	"github.com/stretchr/testify/require"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
 	datastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"

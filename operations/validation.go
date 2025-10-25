@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"reflect"
 
-	"github.com/smartcontractkit/chainlink-common/pkg/logger"
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
 // IsSerializable returns true if the value can be marshaled and unmarshaled without losing information, false otherwise.

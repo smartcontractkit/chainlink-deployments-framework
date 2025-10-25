@@ -3,7 +3,7 @@ package environment
 import (
 	"sync"
 
-	"github.com/smartcontractkit/chainlink-common/pkg/logger"
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
 	fchain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"

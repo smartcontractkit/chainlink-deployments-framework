@@ -3,8 +3,9 @@ package config
 import (
 	"testing"
 
-	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 	"github.com/stretchr/testify/require"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
 	fdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 )

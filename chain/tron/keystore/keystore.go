@@ -7,7 +7,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/fbsobreira/gotron-sdk/pkg/address"
-	"github.com/smartcontractkit/chainlink-common/pkg/types/core"
 )
 
 // Keystore is a simple in-memory key store that holds private keys for signing.
@@ -16,11 +15,7 @@ import (
 //   - value (*ecdsa.PrivateKey): the private key associated with that address
 type Keystore struct {
 	Keys map[string]*ecdsa.PrivateKey
-	core.UnimplementedKeystore
 }
-
-// Assert that *Keystore implements the loop.Keystore interface
-var _ core.Keystore = &Keystore{}
 
 // NewKeystore initializes a new Keystore with a single ECDSA private key.
 // The key is stored using the derived Tron address as the map key.

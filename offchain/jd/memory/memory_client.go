@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	csav1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/csa"
@@ -12,6 +13,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/offchain"
 )
@@ -66,6 +68,7 @@ func (m *MemoryJobDistributor) ProposeJob(ctx context.Context, in *jobv1.Propose
 	// Also create a job based on the proposal
 	job := &jobv1.Job{
 		Id:     jobID,
+		Uuid:   uuid.New().String(),
 		NodeId: in.NodeId,
 		Labels: in.Labels,
 	}
@@ -109,14 +112,26 @@ func (m *MemoryJobDistributor) GetJob(ctx context.Context, in *jobv1.GetJobReque
 // ListJobs returns all jobs stored in memory.
 func (m *MemoryJobDistributor) ListJobs(ctx context.Context, in *jobv1.ListJobsRequest, opts ...grpc.CallOption) (*jobv1.ListJobsResponse, error) {
 	m.mu.RLock()
-	jobs := make([]*jobv1.Job, 0, len(m.jobs))
+	allJobs := make([]*jobv1.Job, 0, len(m.jobs))
 	for _, job := range m.jobs {
-		jobs = append(jobs, job)
+		allJobs = append(allJobs, job)
 	}
 	m.mu.RUnlock()
 
+	// Apply filtering - always filter out soft-deleted jobs by default
+	var filteredJobs []*jobv1.Job
+	if in.Filter != nil {
+		filteredJobs = applyJobFilter(allJobs, in.Filter)
+	} else {
+		// Create a default filter that excludes soft-deleted jobs
+		defaultFilter := &jobv1.ListJobsRequest_Filter{
+			IncludeDeleted: false,
+		}
+		filteredJobs = applyJobFilter(allJobs, defaultFilter)
+	}
+
 	return &jobv1.ListJobsResponse{
-		Jobs: jobs,
+		Jobs: filteredJobs,
 	}, nil
 }
 
@@ -250,16 +265,13 @@ func (m *MemoryJobDistributor) DeleteJob(ctx context.Context, in *jobv1.DeleteJo
 	}
 
 	m.mu.Lock()
-	job := m.jobs[jobID]
-	delete(m.jobs, jobID)
+	defer m.mu.Unlock()
 
-	// Also remove any associated proposals
-	for id, proposal := range m.proposals {
-		if proposal.JobId == jobID {
-			delete(m.proposals, id)
-		}
+	job, ok := m.jobs[jobID]
+	if !ok {
+		return nil, status.Errorf(codes.NotFound, "job with id %s not found", jobID)
 	}
-	m.mu.Unlock()
+	job.DeletedAt = &timestamppb.Timestamp{Seconds: time.Now().Unix()}
 
 	return &jobv1.DeleteJobResponse{
 		Job: job,
@@ -349,14 +361,22 @@ func (m *MemoryJobDistributor) GetNode(ctx context.Context, in *nodev1.GetNodeRe
 // ListNodes returns all nodes stored in memory.
 func (m *MemoryJobDistributor) ListNodes(ctx context.Context, in *nodev1.ListNodesRequest, opts ...grpc.CallOption) (*nodev1.ListNodesResponse, error) {
 	m.mu.RLock()
-	nodes := make([]*nodev1.Node, 0, len(m.nodes))
+	allNodes := make([]*nodev1.Node, 0, len(m.nodes))
 	for _, node := range m.nodes {
-		nodes = append(nodes, node)
+		allNodes = append(allNodes, node)
 	}
 	m.mu.RUnlock()
 
+	// Apply filtering if filter is provided
+	var filteredNodes []*nodev1.Node
+	if in.Filter != nil {
+		filteredNodes = applyNodeFilter(allNodes, in.Filter)
+	} else {
+		filteredNodes = allNodes
+	}
+
 	return &nodev1.ListNodesResponse{
-		Nodes: nodes,
+		Nodes: filteredNodes,
 	}, nil
 }
 

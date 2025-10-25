@@ -11,7 +11,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/smartcontractkit/chainlink-common/pkg/logger"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
 	"github.com/smartcontractkit/ccip-owner-contracts/pkg/gethwrappers"
 

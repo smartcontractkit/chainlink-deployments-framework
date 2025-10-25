@@ -7,9 +7,10 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/changeset/resolvers"
 	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"

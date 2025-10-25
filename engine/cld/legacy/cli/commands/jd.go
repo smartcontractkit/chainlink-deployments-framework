@@ -12,11 +12,12 @@ import (
 	"time"
 
 	"github.com/pelletier/go-toml/v2"
-	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 	jobv1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/job"
 	nodev1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/node"
 	"github.com/smartcontractkit/chainlink-protos/job-distributor/v1/shared/ptypes"
 	"github.com/spf13/cobra"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"

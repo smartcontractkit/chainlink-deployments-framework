@@ -21,8 +21,9 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/pelletier/go-toml/v2"
-	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 	"github.com/spf13/cobra"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"

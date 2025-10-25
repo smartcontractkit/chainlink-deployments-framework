@@ -7,8 +7,9 @@ import (
 	"time"
 
 	chainselectors "github.com/smartcontractkit/chain-selectors"
-	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 	"github.com/stretchr/testify/require"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
 	fchain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	fchainaptos "github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos"

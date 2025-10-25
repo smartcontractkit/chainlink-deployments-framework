@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/smartcontractkit/chainlink-common/pkg/logger"
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
 	cfgenv "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/env"
 	cfgjira "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/jira"

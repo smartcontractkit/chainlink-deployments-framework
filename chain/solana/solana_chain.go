@@ -15,7 +15,8 @@ import (
 	sollib "github.com/gagliardetto/solana-go"
 	solrpc "github.com/gagliardetto/solana-go/rpc"
 	solCommonUtil "github.com/smartcontractkit/chainlink-ccip/chains/solana/utils/common"
-	"github.com/smartcontractkit/chainlink-common/pkg/logger"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/common"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/solana/provider/rpcclient"

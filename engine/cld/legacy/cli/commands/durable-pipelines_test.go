@@ -11,8 +11,9 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 	"github.com/stretchr/testify/require"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
 	fresolvers "github.com/smartcontractkit/chainlink-deployments-framework/changeset/resolvers"
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"

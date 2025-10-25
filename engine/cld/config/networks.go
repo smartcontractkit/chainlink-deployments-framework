@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/smartcontractkit/chainlink-common/pkg/logger"
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
 	cfgdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/domain"
 	cfgnet "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/network"

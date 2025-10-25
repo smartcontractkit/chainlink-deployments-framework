@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/smartcontractkit/chainlink-common/pkg/logger"
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
 	"github.com/smartcontractkit/mcms"
 

@@ -10,6 +10,8 @@ import (
 	jobv1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/job"
 	nodev1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/node"
 	"github.com/smartcontractkit/chainlink-protos/job-distributor/v1/shared/ptypes"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/internal/pointer"
 )
 
 func TestMemoryJobDistributor_ProposeJob(t *testing.T) {
@@ -104,14 +106,19 @@ func TestMemoryJobDistributor_GetJob(t *testing.T) {
 func TestMemoryJobDistributor_ListJobs(t *testing.T) {
 	t.Parallel()
 
-	t.Run("list jobs returns all jobs", func(t *testing.T) {
+	t.Run("list jobs", func(t *testing.T) {
 		t.Parallel()
+
 		client := NewMemoryJobDistributor()
 		ctx := t.Context()
+
 		// Create multiple jobs
 		_, err := client.ProposeJob(ctx, &jobv1.ProposeJobRequest{
 			NodeId: "test-node-1",
 			Spec:   "job spec 1",
+			Labels: []*ptypes.Label{
+				{Key: "environment", Value: pointer.To("prod")},
+			},
 		})
 		require.NoError(t, err)
 
@@ -121,16 +128,71 @@ func TestMemoryJobDistributor_ListJobs(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		// List all jobs
+		t.Run("list all jobs", func(t *testing.T) {
+			t.Parallel()
+
+			listResp, err := client.ListJobs(ctx, &jobv1.ListJobsRequest{})
+			require.NoError(t, err)
+			require.NotNil(t, listResp)
+			assert.Len(t, listResp.Jobs, 2)
+		})
+
+		t.Run("filter jobs by label", func(t *testing.T) {
+			t.Parallel()
+			listResp, err := client.ListJobs(ctx, &jobv1.ListJobsRequest{
+				Filter: &jobv1.ListJobsRequest_Filter{
+					Selectors: []*ptypes.Selector{
+						{Key: "environment", Op: ptypes.SelectorOp_EQ, Value: pointer.To("prod")},
+					},
+				},
+			})
+			require.NoError(t, err)
+			require.NotNil(t, listResp)
+			assert.Len(t, listResp.Jobs, 1)
+		})
+	})
+
+	t.Run("list jobs excludes soft-deleted jobs by default", func(t *testing.T) {
+		t.Parallel()
+
+		client := NewMemoryJobDistributor()
+		ctx := t.Context()
+
+		// Create a job
+		proposeResp, err := client.ProposeJob(ctx, &jobv1.ProposeJobRequest{
+			NodeId: "test-node-1",
+			Spec:   "job spec 1",
+		})
+		require.NoError(t, err)
+		jobID := proposeResp.Proposal.JobId
+
+		// Soft delete the job
+		_, err = client.DeleteJob(ctx, &jobv1.DeleteJobRequest{
+			IdOneof: &jobv1.DeleteJobRequest_Id{Id: jobID},
+		})
+		require.NoError(t, err)
+
+		// List jobs should exclude the soft-deleted job
 		listResp, err := client.ListJobs(ctx, &jobv1.ListJobsRequest{})
 		require.NoError(t, err)
 		require.NotNil(t, listResp)
+		assert.Empty(t, listResp.Jobs)
 
-		assert.Len(t, listResp.Jobs, 2)
+		// But when IncludeDeleted is true, it should include the soft-deleted job
+		listRespWithDeleted, err := client.ListJobs(ctx, &jobv1.ListJobsRequest{
+			Filter: &jobv1.ListJobsRequest_Filter{
+				IncludeDeleted: true,
+			},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, listRespWithDeleted)
+		assert.Len(t, listRespWithDeleted.Jobs, 1)
+		assert.Equal(t, jobID, listRespWithDeleted.Jobs[0].Id)
 	})
 
 	t.Run("list jobs on empty store returns empty list", func(t *testing.T) {
 		t.Parallel()
+
 		emptyClient := NewMemoryJobDistributor()
 		ctx := t.Context()
 		listResp, err := emptyClient.ListJobs(ctx, &jobv1.ListJobsRequest{})
@@ -299,7 +361,6 @@ func TestMemoryJobDistributor_DeleteJob(t *testing.T) {
 		})
 		require.NoError(t, err)
 		jobID := proposeResp.Proposal.JobId
-		proposalID := proposeResp.Proposal.Id
 
 		// Delete the job
 		deleteResp, err := client.DeleteJob(ctx, &jobv1.DeleteJobRequest{
@@ -312,24 +373,19 @@ func TestMemoryJobDistributor_DeleteJob(t *testing.T) {
 		getResp, err := client.GetJob(ctx, &jobv1.GetJobRequest{
 			IdOneof: &jobv1.GetJobRequest_Id{Id: jobID},
 		})
-		require.ErrorContains(t, err, "not found")
-		assert.Nil(t, getResp)
+		require.NoError(t, err)
 
-		// Verify proposal is also deleted
-		getProposalResp, err := client.GetProposal(ctx, &jobv1.GetProposalRequest{Id: proposalID})
-		require.ErrorContains(t, err, "not found")
-		assert.Nil(t, getProposalResp)
+		assert.NotNil(t, getResp.Job.DeletedAt)
 	})
 
-	t.Run("delete non-existent job succeeds", func(t *testing.T) {
+	t.Run("delete non-existent job does errors", func(t *testing.T) {
 		t.Parallel()
 		client := NewMemoryJobDistributor()
 		ctx := t.Context()
-		resp, err := client.DeleteJob(ctx, &jobv1.DeleteJobRequest{
+		_, err := client.DeleteJob(ctx, &jobv1.DeleteJobRequest{
 			IdOneof: &jobv1.DeleteJobRequest_Id{Id: "non-existent"},
 		})
-		require.NoError(t, err)
-		require.NotNil(t, resp)
+		require.Error(t, err)
 	})
 }
 
@@ -466,22 +522,26 @@ func TestMemoryJobDistributor_GetNode(t *testing.T) {
 func TestMemoryJobDistributor_ListNodes(t *testing.T) {
 	t.Parallel()
 
+	client := NewMemoryJobDistributor()
+	ctx := t.Context()
+	// Register multiple nodes
+	_, err := client.RegisterNode(ctx, &nodev1.RegisterNodeRequest{
+		Name:      "Node 1",
+		PublicKey: "key-1",
+		Labels: []*ptypes.Label{
+			{Key: "environment", Value: pointer.To("prod")},
+		},
+	})
+	require.NoError(t, err)
+
+	_, err = client.RegisterNode(ctx, &nodev1.RegisterNodeRequest{
+		Name:      "Node 2",
+		PublicKey: "key-2",
+	})
+	require.NoError(t, err)
+
 	t.Run("list nodes returns all nodes", func(t *testing.T) {
 		t.Parallel()
-		client := NewMemoryJobDistributor()
-		ctx := t.Context()
-		// Register multiple nodes
-		_, err := client.RegisterNode(ctx, &nodev1.RegisterNodeRequest{
-			Name:      "Node 1",
-			PublicKey: "key-1",
-		})
-		require.NoError(t, err)
-
-		_, err = client.RegisterNode(ctx, &nodev1.RegisterNodeRequest{
-			Name:      "Node 2",
-			PublicKey: "key-2",
-		})
-		require.NoError(t, err)
 
 		// List all nodes
 		listResp, err := client.ListNodes(ctx, &nodev1.ListNodesRequest{})
@@ -489,6 +549,26 @@ func TestMemoryJobDistributor_ListNodes(t *testing.T) {
 		require.NotNil(t, listResp)
 
 		assert.Len(t, listResp.Nodes, 2)
+	})
+
+	t.Run("filter nodes by label", func(t *testing.T) {
+		t.Parallel()
+
+		listResp, err := client.ListNodes(ctx, &nodev1.ListNodesRequest{
+			Filter: &nodev1.ListNodesRequest_Filter{
+				Selectors: []*ptypes.Selector{
+					{
+						Key:   "environment",
+						Op:    ptypes.SelectorOp_EQ,
+						Value: pointer.To("prod"),
+					},
+				},
+			},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, listResp)
+		assert.Len(t, listResp.Nodes, 1)
+		assert.Equal(t, "Node 1", listResp.Nodes[0].Name)
 	})
 }
 
