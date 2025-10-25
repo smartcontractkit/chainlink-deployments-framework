@@ -71,6 +71,7 @@ func Test_Load(t *testing.T) {
 				require.NoError(t, err)
 				require.NotEmpty(t, got.Networks)
 				require.NotNil(t, got.Env)
+				require.NotEmpty(t, got.DatastoreType, "DatastoreType should be loaded")
 			}
 		})
 	}
