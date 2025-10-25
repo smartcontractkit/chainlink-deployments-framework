@@ -142,7 +142,7 @@ func TestTextRenderer_RenderField_ChainSelectorField(t *testing.T) {
 		field := ChainSelectorField{Value: 999999}
 		result := renderer.RenderField(NamedField{Name: "chain", Value: field}, ctx)
 
-		assert.Equal(t, "chain: `999999 (<chain unknown>)`", result)
+		assert.Equal(t, "chain: `999999 (<chain unknown>)`\n", result)
 	})
 }
 

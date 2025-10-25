@@ -44,11 +44,11 @@ func NewTextRenderer() *TextRenderer {
 // initTemplates compiles all templates with their helper functions
 func (r *TextRenderer) initTemplates() {
 	funcMap := template.FuncMap{
-		"renderField":      r.renderFieldHelper,
-		"renderCall":       r.renderCallHelper,
-		"getChainName":     GetChainNameBySelector,
-		"getChainNameSafe": r.getChainNameOrEmpty,
-		"hexEncode":        hexutil.Encode,
+		"renderField":         r.renderFieldHelper,
+		"renderCall":          r.renderCallHelper,
+		"getChainName":        GetChainNameBySelector,
+		"getChainNameOrEmpty": r.getChainNameOrEmpty,
+		"hexEncode":           hexutil.Encode,
 	}
 
 	// Load templates from filesystem
