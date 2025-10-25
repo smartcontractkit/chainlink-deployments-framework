@@ -100,20 +100,20 @@ func createNativeTransferCall(mcmsTx types.Transaction) *DecodedCall {
 	return &DecodedCall{
 		Address: mcmsTx.To,
 		Method:  "native_transfer",
-		Inputs: []NamedDescriptor{
+		Inputs: []NamedField{
 			{
 				Name:  "recipient",
-				Value: AddressDescriptor{Value: mcmsTx.To},
+				Value: AddressField{Value: mcmsTx.To},
 			},
 			{
 				Name:  "amount_wei",
-				Value: SimpleDescriptor{Value: value.String()},
+				Value: SimpleField{Value: value.String()},
 			},
 			{
 				Name:  "amount_eth",
-				Value: SimpleDescriptor{Value: eth.FloatString(18)},
+				Value: SimpleField{Value: eth.FloatString(18)},
 			},
 		},
-		Outputs: []NamedDescriptor{},
+		Outputs: []NamedField{},
 	}
 }

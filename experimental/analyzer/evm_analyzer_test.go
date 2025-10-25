@@ -438,21 +438,21 @@ func TestCreateNativeTransferCall(t *testing.T) {
 			expectedCall: &DecodedCall{
 				Address: "0xeE5E8f8Be22101d26084e90053695E2088a01a24",
 				Method:  "native_transfer",
-				Inputs: []NamedDescriptor{
+				Inputs: []NamedField{
 					{
 						Name:  "recipient",
-						Value: AddressDescriptor{Value: "0xeE5E8f8Be22101d26084e90053695E2088a01a24"},
+						Value: AddressField{Value: "0xeE5E8f8Be22101d26084e90053695E2088a01a24"},
 					},
 					{
 						Name:  "amount_wei",
-						Value: SimpleDescriptor{Value: "1000000000000000000"},
+						Value: SimpleField{Value: "1000000000000000000"},
 					},
 					{
 						Name:  "amount_eth",
-						Value: SimpleDescriptor{Value: "1.000000000000000000"},
+						Value: SimpleField{Value: "1.000000000000000000"},
 					},
 				},
-				Outputs: []NamedDescriptor{},
+				Outputs: []NamedField{},
 			},
 		},
 		{
@@ -465,21 +465,21 @@ func TestCreateNativeTransferCall(t *testing.T) {
 			expectedCall: &DecodedCall{
 				Address: "0x1234567890123456789012345678901234567890",
 				Method:  "native_transfer",
-				Inputs: []NamedDescriptor{
+				Inputs: []NamedField{
 					{
 						Name:  "recipient",
-						Value: AddressDescriptor{Value: "0x1234567890123456789012345678901234567890"},
+						Value: AddressField{Value: "0x1234567890123456789012345678901234567890"},
 					},
 					{
 						Name:  "amount_wei",
-						Value: SimpleDescriptor{Value: "500000000000000000"},
+						Value: SimpleField{Value: "500000000000000000"},
 					},
 					{
 						Name:  "amount_eth",
-						Value: SimpleDescriptor{Value: "0.500000000000000000"},
+						Value: SimpleField{Value: "0.500000000000000000"},
 					},
 				},
-				Outputs: []NamedDescriptor{},
+				Outputs: []NamedField{},
 			},
 		},
 		{
@@ -492,21 +492,21 @@ func TestCreateNativeTransferCall(t *testing.T) {
 			expectedCall: &DecodedCall{
 				Address: "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd",
 				Method:  "native_transfer",
-				Inputs: []NamedDescriptor{
+				Inputs: []NamedField{
 					{
 						Name:  "recipient",
-						Value: AddressDescriptor{Value: "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd"},
+						Value: AddressField{Value: "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd"},
 					},
 					{
 						Name:  "amount_wei",
-						Value: SimpleDescriptor{Value: "1"},
+						Value: SimpleField{Value: "1"},
 					},
 					{
 						Name:  "amount_eth",
-						Value: SimpleDescriptor{Value: "0.000000000000000001"},
+						Value: SimpleField{Value: "0.000000000000000001"},
 					},
 				},
-				Outputs: []NamedDescriptor{},
+				Outputs: []NamedField{},
 			},
 		},
 	}
@@ -547,21 +547,21 @@ func TestAnalyzeEVMTransaction_NativeTransfer(t *testing.T) {
 			expectedCall: &DecodedCall{
 				Address: "0xeE5E8f8Be22101d26084e90053695E2088a01a24",
 				Method:  "native_transfer",
-				Inputs: []NamedDescriptor{
+				Inputs: []NamedField{
 					{
 						Name:  "recipient",
-						Value: AddressDescriptor{Value: "0xeE5E8f8Be22101d26084e90053695E2088a01a24"},
+						Value: AddressField{Value: "0xeE5E8f8Be22101d26084e90053695E2088a01a24"},
 					},
 					{
 						Name:  "amount_wei",
-						Value: SimpleDescriptor{Value: "1000000000000000000"},
+						Value: SimpleField{Value: "1000000000000000000"},
 					},
 					{
 						Name:  "amount_eth",
-						Value: SimpleDescriptor{Value: "1.000000000000000000"},
+						Value: SimpleField{Value: "1.000000000000000000"},
 					},
 				},
-				Outputs: []NamedDescriptor{},
+				Outputs: []NamedField{},
 			},
 			expectedError: false,
 		},
@@ -625,21 +625,21 @@ func TestAnalyzeEVMTransactions_NativeTransfer(t *testing.T) {
 				{
 					Address: "0xeE5E8f8Be22101d26084e90053695E2088a01a24",
 					Method:  "native_transfer",
-					Inputs: []NamedDescriptor{
+					Inputs: []NamedField{
 						{
 							Name:  "recipient",
-							Value: AddressDescriptor{Value: "0xeE5E8f8Be22101d26084e90053695E2088a01a24"},
+							Value: AddressField{Value: "0xeE5E8f8Be22101d26084e90053695E2088a01a24"},
 						},
 						{
 							Name:  "amount_wei",
-							Value: SimpleDescriptor{Value: "1000000000000000000"},
+							Value: SimpleField{Value: "1000000000000000000"},
 						},
 						{
 							Name:  "amount_eth",
-							Value: SimpleDescriptor{Value: "1.000000000000000000"},
+							Value: SimpleField{Value: "1.000000000000000000"},
 						},
 					},
-					Outputs: []NamedDescriptor{},
+					Outputs: []NamedField{},
 				},
 			},
 			expectedError: false,
@@ -662,40 +662,40 @@ func TestAnalyzeEVMTransactions_NativeTransfer(t *testing.T) {
 				{
 					Address: "0xeE5E8f8Be22101d26084e90053695E2088a01a24",
 					Method:  "native_transfer",
-					Inputs: []NamedDescriptor{
+					Inputs: []NamedField{
 						{
 							Name:  "recipient",
-							Value: AddressDescriptor{Value: "0xeE5E8f8Be22101d26084e90053695E2088a01a24"},
+							Value: AddressField{Value: "0xeE5E8f8Be22101d26084e90053695E2088a01a24"},
 						},
 						{
 							Name:  "amount_wei",
-							Value: SimpleDescriptor{Value: "1000000000000000000"},
+							Value: SimpleField{Value: "1000000000000000000"},
 						},
 						{
 							Name:  "amount_eth",
-							Value: SimpleDescriptor{Value: "1.000000000000000000"},
+							Value: SimpleField{Value: "1.000000000000000000"},
 						},
 					},
-					Outputs: []NamedDescriptor{},
+					Outputs: []NamedField{},
 				},
 				{
 					Address: "0x1234567890123456789012345678901234567890",
 					Method:  "native_transfer",
-					Inputs: []NamedDescriptor{
+					Inputs: []NamedField{
 						{
 							Name:  "recipient",
-							Value: AddressDescriptor{Value: "0x1234567890123456789012345678901234567890"},
+							Value: AddressField{Value: "0x1234567890123456789012345678901234567890"},
 						},
 						{
 							Name:  "amount_wei",
-							Value: SimpleDescriptor{Value: "500000000000000000"},
+							Value: SimpleField{Value: "500000000000000000"},
 						},
 						{
 							Name:  "amount_eth",
-							Value: SimpleDescriptor{Value: "0.500000000000000000"},
+							Value: SimpleField{Value: "0.500000000000000000"},
 						},
 					},
-					Outputs: []NamedDescriptor{},
+					Outputs: []NamedField{},
 				},
 			},
 			expectedError: false,

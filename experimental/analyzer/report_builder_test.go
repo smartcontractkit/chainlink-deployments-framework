@@ -349,16 +349,16 @@ func TestBuildProposalReport_NativeTransfer(t *testing.T) {
 
 	// Check recipient
 	require.Equal(t, "recipient", call.Inputs[0].Name)
-	require.IsType(t, AddressDescriptor{}, call.Inputs[0].Value)
-	require.Equal(t, "0xeE5E8f8Be22101d26084e90053695E2088a01a24", call.Inputs[0].Value.(AddressDescriptor).Value)
+	require.IsType(t, AddressField{}, call.Inputs[0].Value)
+	require.Equal(t, "0xeE5E8f8Be22101d26084e90053695E2088a01a24", call.Inputs[0].Value.(AddressField).Value)
 
 	// Check amount in wei
 	require.Equal(t, "amount_wei", call.Inputs[1].Name)
-	require.IsType(t, SimpleDescriptor{}, call.Inputs[1].Value)
-	require.Equal(t, "1000000000000000000", call.Inputs[1].Value.(SimpleDescriptor).Value)
+	require.IsType(t, SimpleField{}, call.Inputs[1].Value)
+	require.Equal(t, "1000000000000000000", call.Inputs[1].Value.(SimpleField).Value)
 
 	// Check amount in ETH
 	require.Equal(t, "amount_eth", call.Inputs[2].Name)
-	require.IsType(t, SimpleDescriptor{}, call.Inputs[2].Value)
-	require.Equal(t, "1.000000000000000000", call.Inputs[2].Value.(SimpleDescriptor).Value)
+	require.IsType(t, SimpleField{}, call.Inputs[2].Value)
+	require.Equal(t, "1.000000000000000000", call.Inputs[2].Value.(SimpleField).Value)
 }
