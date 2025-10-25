@@ -117,6 +117,7 @@ type RPCs struct {
 type ChainConfig struct {
 	ChainID  string // chain id as per EIP-155
 	HTTPRPCs []RPCs // http rpcs to connect to the chain
+	Provider *evmprov.CTFAnvilChainProvider
 }
 
 // AnvilChainsOutput represents the output of the newAnvilChains function.
@@ -287,6 +288,7 @@ func newAnvilChains(
 
 		chainConfigsBySelector[chainSelector] = ChainConfig{
 			ChainID: chainIDStr,
+			Provider: provider,
 			HTTPRPCs: []RPCs{
 				{
 					External: provider.GetNodeHTTPURL(),
