@@ -44,7 +44,7 @@ jobs:
         with:
           # disable the checkptr runtime check due a false positive in github.com/xssnick/tonutils-go
           # Exclude provider packages which use Docker containers and remote catalog tests
-          go-test-cmd: go test -race -gcflags=all=-d=checkptr=0 -coverprofile=coverage.txt $(go list ./... | grep -v '/provider' | grep -v '/remote')
+          go-test-cmd: go test -race -gcflags=all=-d=checkptr=0 -coverprofile=coverage.txt $(go list ./... | grep -v '/provider' | grep -v '/catalog/remote')
           use-go-cache: true
           artifact-name: unit-tests
 

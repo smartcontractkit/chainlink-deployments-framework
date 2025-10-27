@@ -46,7 +46,7 @@ jobs:
           # causing tests in ci to fail "fatal error: checkptr: pointer arithmetic result points to invalid allocation"
           # https://github.com/xssnick/tonutils-go/issues/310
           # Exclude provider packages which use Docker containers and remote catalog tests
-          go-test-cmd: go test -race -gcflags=all=-d=checkptr=0 -coverprofile=coverage.txt $(go list ./... | grep -v '/provider' | grep -v '/remote')
+          go-test-cmd: go test -race -gcflags=all=-d=checkptr=0 -coverprofile=coverage.txt $(go list ./... | grep -v '/provider' | grep -v '/catalog/remote')
           use-go-cache: true
           artifact-name: unit-tests
 

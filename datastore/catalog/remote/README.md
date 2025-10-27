@@ -16,8 +16,12 @@ The tests in this package use **testcontainers** to automatically start the requ
 - Database migration
 
 **Important:** Testcontainers uses images from your local Docker daemon. You must either:
-1. Build the image locally: `docker build -t op-catalog-service:latest .`
-2. Pull from ECR with a specific tag: `docker pull 123123123123.dkr.ecr.us-east-1.amazonaws.com/chainlink-catalog-service:TAG`
+1. Build the image locally from the `op-catalog` directory:
+   ```bash
+   cd op-catalog
+   docker build -t op-catalog-service:latest .
+   ```
+2. Pull from ECR with a specific tag: `docker pull 123123123123.dkr.ecr.us-east-1.amazonaws.com/op-catalog-service:TAG`
    - Use `aws ecr describe-images` to find available tags
    - Common patterns: version tags (v0.0.1)
 

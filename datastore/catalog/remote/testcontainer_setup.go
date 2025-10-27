@@ -138,7 +138,7 @@ func (s *TestContainerSetup) startCatalogService(ctx context.Context) error {
 		postgresUser,
 		postgresPassword,
 		postgresContainerName,
-		"5432", // Internal postgres port (not the mapped host port)
+		postgresPort,
 		postgresDB,
 	)
 
