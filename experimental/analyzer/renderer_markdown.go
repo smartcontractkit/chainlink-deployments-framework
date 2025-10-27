@@ -305,65 +305,25 @@ func (r *MarkdownRenderer) renderDetails(name, content string) string {
 func (r *MarkdownRenderer) summarizeField(name string, field FieldValue, ctx *FieldContext) (summary string, details string) {
 	switch f := field.(type) {
 	case AddressField:
-		data := AddressFieldData{Value: f.GetValue()}
-		summary = r.renderTemplate(r.addressFieldTmpl, data)
-
-		return summary, ""
+		return r.summarizeAddressField(f)
 
 	case BytesField:
-		data := BytesFieldData{Value: f.GetValue(), Length: f.GetLength()}
-		summary = r.renderTemplate(r.bytesFieldTmpl, data)
-		details = r.renderDetails(name, hexutil.Encode(f.GetValue()))
-
-		return summary, details
+		return r.summarizeBytesField(name, f)
 
 	case ArrayField:
-		data := ArrayFieldData{
-			Elements: f.GetElements(),
-			Length:   f.GetLength(),
-			Context:  ctx,
-		}
-		summary = r.renderTemplate(r.arrayFieldTmpl, data)
-		// Only generate details for non-empty arrays
-		if f.GetLength() > 0 {
-			details = r.renderDetails(name, r.renderFieldDetails(f, ""))
-		}
-
-		return summary, details
+		return r.summarizeArrayField(name, f, ctx)
 
 	case StructField:
-		data := StructFieldData{FieldCount: f.GetFieldCount()}
-		summary = r.renderTemplate(r.structFieldTmpl, data)
-		details = r.renderDetails(name, r.renderFieldDetails(f, ""))
-
-		return summary, details
+		return r.summarizeStructField(name, f)
 
 	case SimpleField:
-		data := SimpleFieldData{Value: f.GetValue()}
-		summary = r.renderTemplate(r.simpleFieldTmpl, data)
-		if len(f.GetValue()) > MaxSummaryLength {
-			details = r.renderDetails(name, f.GetValue())
-		}
-
-		return summary, details
+		return r.summarizeSimpleField(name, f)
 
 	case YamlField:
-		data := YamlFieldData{Value: f.GetValue()}
-		summary = r.renderTemplate(r.yamlFieldTmpl, data)
-		details = r.renderDetails(name, r.renderFieldDetails(f, ""))
-
-		return summary, details
+		return r.summarizeYamlField(name, f)
 
 	case NamedField:
-		// Render as "name: value" format
-		valueStr := r.renderFieldValueDirect(f.Value, ctx)
-		// Remove backticks if the value already has them
-		if strings.HasPrefix(valueStr, "`") && strings.HasSuffix(valueStr, "`") && len(valueStr) > 1 {
-			valueStr = valueStr[1 : len(valueStr)-1]
-		}
-		summary = fmt.Sprintf("`%s: %s`", f.Name, valueStr)
-
-		return summary, ""
+		return r.summarizeNamedField(f, ctx)
 
 	default:
 		// Fallback to text renderer
@@ -372,91 +332,101 @@ func (r *MarkdownRenderer) summarizeField(name string, field FieldValue, ctx *Fi
 	}
 }
 
+// Helper methods for field summarization
+
+func (r *MarkdownRenderer) summarizeAddressField(f AddressField) (string, string) {
+	data := AddressFieldData{Value: f.GetValue()}
+	summary := r.renderTemplate(r.addressFieldTmpl, data)
+
+	return summary, ""
+}
+
+func (r *MarkdownRenderer) summarizeBytesField(name string, f BytesField) (string, string) {
+	data := BytesFieldData{Value: f.GetValue(), Length: f.GetLength()}
+	summary := r.renderTemplate(r.bytesFieldTmpl, data)
+	details := r.renderDetails(name, hexutil.Encode(f.GetValue()))
+
+	return summary, details
+}
+
+func (r *MarkdownRenderer) summarizeArrayField(name string, f ArrayField, ctx *FieldContext) (string, string) {
+	data := ArrayFieldData{
+		Elements: f.GetElements(),
+		Length:   f.GetLength(),
+		Context:  ctx,
+	}
+	summary := r.renderTemplate(r.arrayFieldTmpl, data)
+	var details string
+	if f.GetLength() > 0 {
+		details = r.renderDetails(name, r.renderFieldDetails(f, ""))
+	}
+
+	return summary, details
+}
+
+func (r *MarkdownRenderer) summarizeStructField(name string, f StructField) (string, string) {
+	data := StructFieldData{FieldCount: f.GetFieldCount()}
+	summary := r.renderTemplate(r.structFieldTmpl, data)
+	details := r.renderDetails(name, r.renderFieldDetails(f, ""))
+
+	return summary, details
+}
+
+func (r *MarkdownRenderer) summarizeSimpleField(name string, f SimpleField) (string, string) {
+	data := SimpleFieldData{Value: f.GetValue()}
+	summary := r.renderTemplate(r.simpleFieldTmpl, data)
+	var details string
+	if len(f.GetValue()) > MaxSummaryLength {
+		details = r.renderDetails(name, f.GetValue())
+	}
+
+	return summary, details
+}
+
+func (r *MarkdownRenderer) summarizeYamlField(name string, f YamlField) (string, string) {
+	data := YamlFieldData{Value: f.GetValue()}
+	summary := r.renderTemplate(r.yamlFieldTmpl, data)
+	details := r.renderDetails(name, r.renderFieldDetails(f, ""))
+
+	return summary, details
+}
+
+func (r *MarkdownRenderer) summarizeNamedField(f NamedField, ctx *FieldContext) (string, string) {
+	valueStr := r.renderFieldValueDirect(f.Value, ctx)
+	if strings.HasPrefix(valueStr, "`") && strings.HasSuffix(valueStr, "`") && len(valueStr) > 1 {
+		valueStr = valueStr[1 : len(valueStr)-1]
+	}
+	summary := fmt.Sprintf("`%s: %s`", f.Name, valueStr)
+
+	return summary, ""
+}
+
 // renderFieldDetails renders the full content for details sections with proper formatting
 func (r *MarkdownRenderer) renderFieldDetails(field FieldValue, indent string) string {
 	switch f := field.(type) {
 	case ArrayField:
-		// Render each element in the array with proper indentation
-		if f.GetLength() == 0 {
-			return "[]"
-		}
-		var parts []string
-		for i, elem := range f.GetElements() {
-			elemStr := r.renderFieldDetails(elem, indent+"  ")
-			parts = append(parts, fmt.Sprintf("%s%d: %s", indent+"  ", i, elemStr))
-		}
-
-		return fmt.Sprintf("[\n%s\n%s]", strings.Join(parts, "\n"), indent)
+		return r.renderArrayFieldDetails(f, indent)
 
 	case StructField:
-		// For structs, render each field with proper indentation
-		fields := f.GetFields()
-		if len(fields) == 0 {
-			return fmt.Sprintf("struct with %d fields (no field data available)", f.GetFieldCount())
-		}
-		var parts []string
-		for _, field := range fields {
-			// For NamedField, render as "name: value" format
-			valueStr := r.renderFieldDetails(field.Value, indent+"  ")
-			parts = append(parts, fmt.Sprintf("%s%s: %s", indent+"  ", field.Name, valueStr))
-		}
-
-		return fmt.Sprintf("{\n%s\n%s}", strings.Join(parts, "\n"), indent)
+		return r.renderStructFieldDetails(f, indent)
 
 	case BytesField:
-		// For bytes, show the hex representation
-		return hexutil.Encode(f.GetValue())
+		return r.renderBytesFieldDetails(f)
 
 	case SimpleField:
-		// For simple fields, just return the value without backticks
-		return f.GetValue()
+		return r.renderSimpleFieldDetails(f)
 
 	case YamlField:
-		// For YAML fields, marshal with proper indentation for pretty-printing
-		if str, ok := f.Value.(string); ok {
-			// If it's already a string, try to parse and re-marshal it for pretty-printing
-			var data interface{}
-			if err := yaml.Unmarshal([]byte(str), &data); err == nil {
-				if pretty, err := yaml.Marshal(data); err == nil {
-					content := strings.TrimRight(string(pretty), "\n")
-					// Replace YAML array indicators (-) with HTML entity to prevent markdown interpretation
-					content = strings.ReplaceAll(content, "- ", "&#45; ")
-
-					return content
-				}
-			}
-
-			return str
-		}
-
-		// For non-string values, marshal with proper indentation
-		if pretty, err := yaml.Marshal(f.Value); err == nil {
-			content := strings.TrimRight(string(pretty), "\n")
-			// Replace YAML array indicators (-) with HTML entity to prevent markdown interpretation
-			content = strings.ReplaceAll(content, "- ", "&#45; ")
-
-			return content
-		}
-
-		return f.GetValue()
+		return r.renderYamlFieldDetails(f)
 
 	case AddressField:
-		// For addresses, return the value without backticks
-		return f.GetValue()
+		return r.renderAddressFieldDetails(f)
 
 	case ChainSelectorField:
-		// For chain selectors, return the formatted value
-		chainName, err := GetChainNameBySelector(f.GetValue())
-		if err != nil || chainName == "" {
-			return fmt.Sprintf("%d (<chain unknown>)", f.GetValue())
-		}
-
-		return fmt.Sprintf("%d (%s)", f.GetValue(), chainName)
+		return r.renderChainSelectorFieldDetails(f)
 
 	case NamedField:
-		// For named fields, render as "name: value" format
-		valueStr := r.renderFieldDetails(f.Value, indent+"  ")
-		return fmt.Sprintf("%s: %s", f.Name, valueStr)
+		return r.renderNamedFieldDetails(f, indent)
 
 	default:
 		// Fallback to string representation without backticks
@@ -464,59 +434,171 @@ func (r *MarkdownRenderer) renderFieldDetails(field FieldValue, indent string) s
 	}
 }
 
+// Helper methods for field details rendering
+
+func (r *MarkdownRenderer) renderArrayFieldDetails(f ArrayField, indent string) string {
+	if f.GetLength() == 0 {
+		return "[]"
+	}
+	parts := make([]string, 0, f.GetLength())
+	for i, elem := range f.GetElements() {
+		elemStr := r.renderFieldDetails(elem, indent+"  ")
+		parts = append(parts, fmt.Sprintf("%s%d: %s", indent+"  ", i, elemStr))
+	}
+
+	return fmt.Sprintf("[\n%s\n%s]", strings.Join(parts, "\n"), indent)
+}
+
+func (r *MarkdownRenderer) renderStructFieldDetails(f StructField, indent string) string {
+	fields := f.GetFields()
+	if len(fields) == 0 {
+		return fmt.Sprintf("struct with %d fields (no field data available)", f.GetFieldCount())
+	}
+	parts := make([]string, 0, len(fields))
+	for _, field := range fields {
+		valueStr := r.renderFieldDetails(field.Value, indent+"  ")
+		parts = append(parts, fmt.Sprintf("%s%s: %s", indent+"  ", field.Name, valueStr))
+	}
+
+	return fmt.Sprintf("{\n%s\n%s}", strings.Join(parts, "\n"), indent)
+}
+
+func (r *MarkdownRenderer) renderBytesFieldDetails(f BytesField) string {
+	return hexutil.Encode(f.GetValue())
+}
+
+func (r *MarkdownRenderer) renderSimpleFieldDetails(f SimpleField) string {
+	return f.GetValue()
+}
+
+func (r *MarkdownRenderer) renderYamlFieldDetails(f YamlField) string {
+	if str, ok := f.Value.(string); ok {
+		var data interface{}
+		if err := yaml.Unmarshal([]byte(str), &data); err == nil {
+			if pretty, err := yaml.Marshal(data); err == nil {
+				content := strings.TrimRight(string(pretty), "\n")
+				content = strings.ReplaceAll(content, "- ", "&#45; ")
+
+				return content
+			}
+		}
+
+		return str
+	}
+
+	if pretty, err := yaml.Marshal(f.Value); err == nil {
+		content := strings.TrimRight(string(pretty), "\n")
+		content = strings.ReplaceAll(content, "- ", "&#45; ")
+
+		return content
+	}
+
+	return f.GetValue()
+}
+
+func (r *MarkdownRenderer) renderAddressFieldDetails(f AddressField) string {
+	return f.GetValue()
+}
+
+func (r *MarkdownRenderer) renderChainSelectorFieldDetails(f ChainSelectorField) string {
+	chainName, err := GetChainNameBySelector(f.GetValue())
+	if err != nil || chainName == "" {
+		return fmt.Sprintf("%d (<chain unknown>)", f.GetValue())
+	}
+
+	return fmt.Sprintf("%d (%s)", f.GetValue(), chainName)
+}
+
+func (r *MarkdownRenderer) renderNamedFieldDetails(f NamedField, indent string) string {
+	valueStr := r.renderFieldDetails(f.Value, indent+"  ")
+	return fmt.Sprintf("%s: %s", f.Name, valueStr)
+}
+
 // renderFieldValueDirect renders a field value directly without causing recursion
 func (r *MarkdownRenderer) renderFieldValueDirect(field FieldValue, ctx *FieldContext) string {
 	switch f := field.(type) {
 	case AddressField:
-		data := AddressFieldData{Value: f.GetValue()}
-		return r.renderTemplate(r.addressFieldTmpl, data)
+		return r.renderAddressFieldDirect(f)
 
 	case BytesField:
-		data := BytesFieldData{Value: f.GetValue(), Length: f.GetLength()}
-		return r.renderTemplate(r.bytesFieldTmpl, data)
+		return r.renderBytesFieldDirect(f)
 
 	case ArrayField:
-		data := ArrayFieldData{
-			Elements: f.GetElements(),
-			Length:   f.GetLength(),
-			Context:  ctx,
-		}
-
-		return r.renderTemplate(r.arrayFieldTmpl, data)
+		return r.renderArrayFieldDirect(f, ctx)
 
 	case StructField:
-		data := StructFieldData{FieldCount: f.GetFieldCount()}
-		return r.renderTemplate(r.structFieldTmpl, data)
+		return r.renderStructFieldDirect(f)
 
 	case SimpleField:
-		data := SimpleFieldData{Value: f.GetValue()}
-		return r.renderTemplate(r.simpleFieldTmpl, data)
+		return r.renderSimpleFieldDirect(f)
 
 	case ChainSelectorField:
-		chainName, err := GetChainNameBySelector(f.GetValue())
-		if err != nil || chainName == "" {
-			return fmt.Sprintf("`%d (<chain unknown>)`", f.GetValue())
-		}
-
-		return fmt.Sprintf("`%d (%s)`", f.GetValue(), chainName)
+		return r.renderChainSelectorFieldDirect(f)
 
 	case YamlField:
-		return fmt.Sprintf("`%s`", f.GetValue())
+		return r.renderYamlFieldDirect(f)
 
 	case NamedField:
-		// Render as "name: value" format
-		valueStr := r.renderFieldValueDirect(f.Value, ctx)
-		// Remove backticks if the value already has them
-		if strings.HasPrefix(valueStr, "`") && strings.HasSuffix(valueStr, "`") && len(valueStr) > 1 {
-			valueStr = valueStr[1 : len(valueStr)-1]
-		}
-
-		return fmt.Sprintf("`%s: %s`", f.Name, valueStr)
+		return r.renderNamedFieldDirect(f, ctx)
 
 	default:
 		// Fallback to string representation
 		return fmt.Sprintf("`%v`", field)
 	}
+}
+
+// Helper methods for direct field value rendering
+
+func (r *MarkdownRenderer) renderAddressFieldDirect(f AddressField) string {
+	data := AddressFieldData{Value: f.GetValue()}
+	return r.renderTemplate(r.addressFieldTmpl, data)
+}
+
+func (r *MarkdownRenderer) renderBytesFieldDirect(f BytesField) string {
+	data := BytesFieldData{Value: f.GetValue(), Length: f.GetLength()}
+	return r.renderTemplate(r.bytesFieldTmpl, data)
+}
+
+func (r *MarkdownRenderer) renderArrayFieldDirect(f ArrayField, ctx *FieldContext) string {
+	data := ArrayFieldData{
+		Elements: f.GetElements(),
+		Length:   f.GetLength(),
+		Context:  ctx,
+	}
+
+	return r.renderTemplate(r.arrayFieldTmpl, data)
+}
+
+func (r *MarkdownRenderer) renderStructFieldDirect(f StructField) string {
+	data := StructFieldData{FieldCount: f.GetFieldCount()}
+	return r.renderTemplate(r.structFieldTmpl, data)
+}
+
+func (r *MarkdownRenderer) renderSimpleFieldDirect(f SimpleField) string {
+	data := SimpleFieldData{Value: f.GetValue()}
+	return r.renderTemplate(r.simpleFieldTmpl, data)
+}
+
+func (r *MarkdownRenderer) renderChainSelectorFieldDirect(f ChainSelectorField) string {
+	chainName, err := GetChainNameBySelector(f.GetValue())
+	if err != nil || chainName == "" {
+		return fmt.Sprintf("`%d (<chain unknown>)`", f.GetValue())
+	}
+
+	return fmt.Sprintf("`%d (%s)`", f.GetValue(), chainName)
+}
+
+func (r *MarkdownRenderer) renderYamlFieldDirect(f YamlField) string {
+	return fmt.Sprintf("`%s`", f.GetValue())
+}
+
+func (r *MarkdownRenderer) renderNamedFieldDirect(f NamedField, ctx *FieldContext) string {
+	valueStr := r.renderFieldValueDirect(f.Value, ctx)
+	if strings.HasPrefix(valueStr, "`") && strings.HasSuffix(valueStr, "`") && len(valueStr) > 1 {
+		valueStr = valueStr[1 : len(valueStr)-1]
+	}
+
+	return fmt.Sprintf("`%s: %s`", f.Name, valueStr)
 }
 
 // renderTemplate is a helper to execute a template with data

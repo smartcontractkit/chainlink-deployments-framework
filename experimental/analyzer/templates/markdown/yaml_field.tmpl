@@ -1,1 +1,7 @@
-{{if or (contains .Value "\n") (gt (len .Value) 120)}}`{{truncateMiddle (replace .Value "\n" " ") 80}}`{{else if isSimpleValue .Value}}{{.Value}}{{else}}`{{.Value}}`{{end}}
+{{- if or (contains .Value "\n") (gt (len .Value) 120) -}}
+`{{truncateMiddle (replace .Value "\n" " ") 80}}`
+{{- else if isSimpleValue .Value -}}
+{{.Value}}
+{{- else -}}
+`{{.Value}}`
+{{- end -}}

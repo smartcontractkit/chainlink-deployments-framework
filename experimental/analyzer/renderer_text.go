@@ -196,6 +196,12 @@ func (r *TextRenderer) RenderField(field NamedField, ctx *FieldContext) string {
 	return fmt.Sprintf("%s: %s", field.Name, r.renderFieldValue(field.Value))
 }
 
+// RenderFieldValue renders just the value portion of a field without the name prefix.
+// This is useful when you need the field value for embedding in other contexts.
+func (r *TextRenderer) RenderFieldValue(field FieldValue) string {
+	return r.renderFieldValue(field)
+}
+
 // renderFieldHelper is a template helper function for rendering fields
 func (r *TextRenderer) renderFieldHelper(field FieldValue) string {
 	return r.renderFieldValue(field)

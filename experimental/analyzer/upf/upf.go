@@ -376,7 +376,9 @@ func analyzeTransaction(
 }
 
 func upfYamlMarshallers() []yaml.EncodeOption {
-	// TODO: this could be refactored into a Renderer object
+	// This function provides custom YAML marshaling for UPF format.
+	// It could be refactored into a dedicated Renderer object to improve code organization
+	// and make the marshaling logic more reusable across different output formats.
 	return []yaml.EncodeOption{
 		yaml.CustomMarshaler(func(arg mcmsanalyzer.SimpleField) ([]byte, error) {
 			return yaml.Marshal(arg.Value)
@@ -411,17 +413,15 @@ func upfYamlMarshallers() []yaml.EncodeOption {
 }
 
 func describeInputs(
-	proposalCtx mcmsanalyzer.ProposalContext, inputs []mcmsanalyzer.NamedField, chainSelector mcmstypes.ChainSelector,
+	_ mcmsanalyzer.ProposalContext, inputs []mcmsanalyzer.NamedField, _ mcmstypes.ChainSelector,
 ) []mcmsanalyzer.NamedField {
 	renderer := mcmsanalyzer.NewTextRenderer()
-	fieldsContext := proposalCtx.FieldsContext(uint64(chainSelector))
 	describedInputs := make([]mcmsanalyzer.NamedField, len(inputs))
 
 	for i, arg := range inputs {
-		// Use TextRenderer to produce string representation
-		valueStr := renderer.RenderField(arg, fieldsContext)
-		// Remove the "name: " prefix that RenderField adds
-		valueStr = strings.TrimPrefix(valueStr, arg.Name+": ")
+		// Use RenderFieldValue to get just the value without the "name: " prefix
+		// This is more efficient and less fragile than calling RenderField and stripping the prefix
+		valueStr := renderer.RenderFieldValue(arg.Value)
 		describedInputs[i] = mcmsanalyzer.NamedField{
 			Name:  arg.Name,
 			Value: mcmsanalyzer.SimpleField{Value: valueStr},
