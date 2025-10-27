@@ -1,8 +1,11 @@
 package memory
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -14,34 +17,132 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/internal/pointer"
 )
 
+var (
+	// A unique spec external job id for testing
+	spec1UUID = uuid.New().String()
+	// A minimally viable spec1 for testing with an external job id
+	spec1 = fmt.Sprintf("externalJobID = '%s'", spec1UUID)
+
+	// An additional spec with a different external job id for testing
+	spec2UUID = uuid.New().String()
+	// A minimally viable spec2 for testing with an external job id
+	spec2 = fmt.Sprintf("externalJobID = '%s'", spec2UUID)
+)
+
 func TestMemoryJobDistributor_ProposeJob(t *testing.T) {
 	t.Parallel()
 
+	var (
+		labels = []*ptypes.Label{
+			{Key: "environment", Value: pointer.To("prod")},
+		}
+	)
+
 	t.Run("successfully propose a job", func(t *testing.T) {
 		t.Parallel()
+
+		client := NewMemoryJobDistributor()
+		req := &jobv1.ProposeJobRequest{
+			NodeId: "test-node-1",
+			Spec:   spec1,
+			Labels: labels,
+		}
+
+		resp, err := client.ProposeJob(t.Context(), req)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.NotNil(t, resp.Proposal)
+		assertProposalEquals(t, &jobv1.Proposal{
+			Revision:       1,
+			Status:         jobv1.ProposalStatus_PROPOSAL_STATUS_PROPOSED,
+			DeliveryStatus: jobv1.ProposalDeliveryStatus_PROPOSAL_DELIVERY_STATUS_DELIVERED,
+			JobId:          resp.Proposal.JobId,
+			Spec:           spec1,
+		}, resp.Proposal)
+
+		// Check the job
+		getResp, err := client.GetJob(t.Context(), &jobv1.GetJobRequest{
+			IdOneof: &jobv1.GetJobRequest_Id{Id: resp.Proposal.JobId},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, getResp)
+		require.NotNil(t, getResp.Job)
+		assertJobEquals(t, &jobv1.Job{
+			Id:          resp.Proposal.JobId,
+			Uuid:        spec1UUID,
+			NodeId:      req.NodeId,
+			ProposalIds: []string{resp.Proposal.Id},
+			Labels:      labels,
+		}, getResp.Job)
+	})
+
+	t.Run("propose job with same external job id returns same job id", func(t *testing.T) {
+		t.Parallel()
+
 		client := NewMemoryJobDistributor()
 		ctx := t.Context()
 		req := &jobv1.ProposeJobRequest{
 			NodeId: "test-node-1",
-			Spec:   "test job spec",
+			Spec:   spec1,
+			Labels: labels,
 		}
 
-		resp, err := client.ProposeJob(ctx, req)
+		resp1, err := client.ProposeJob(ctx, req)
 		require.NoError(t, err)
-		require.NotNil(t, resp)
-		require.NotNil(t, resp.Proposal)
+		require.NotNil(t, resp1)
+		assertProposalEquals(t, &jobv1.Proposal{
+			Revision:       1,
+			Status:         jobv1.ProposalStatus_PROPOSAL_STATUS_PROPOSED,
+			DeliveryStatus: jobv1.ProposalDeliveryStatus_PROPOSAL_DELIVERY_STATUS_DELIVERED,
+			JobId:          resp1.Proposal.JobId,
+			Spec:           spec1,
+		}, resp1.Proposal)
 
-		assert.NotEmpty(t, resp.Proposal.Id)
-		assert.NotEmpty(t, resp.Proposal.JobId)
-		assert.Equal(t, "test job spec", resp.Proposal.Spec)
-		assert.Equal(t, jobv1.ProposalStatus_PROPOSAL_STATUS_APPROVED, resp.Proposal.Status)
+		resp2, err := client.ProposeJob(ctx, req)
+		require.NoError(t, err)
+		require.NotNil(t, resp2)
+		assertProposalEquals(t, &jobv1.Proposal{
+			Revision:       2,
+			Status:         jobv1.ProposalStatus_PROPOSAL_STATUS_PROPOSED,
+			DeliveryStatus: jobv1.ProposalDeliveryStatus_PROPOSAL_DELIVERY_STATUS_DELIVERED,
+			JobId:          resp1.Proposal.JobId,
+			Spec:           spec1,
+		}, resp2.Proposal)
+
+		// Check the job
+		getResp, err := client.GetJob(t.Context(), &jobv1.GetJobRequest{
+			IdOneof: &jobv1.GetJobRequest_Id{Id: resp1.Proposal.JobId},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, getResp)
+		require.NotNil(t, getResp.Job)
+		assertJobEquals(t, &jobv1.Job{
+			Id:          resp1.Proposal.JobId,
+			Uuid:        spec1UUID,
+			NodeId:      req.NodeId,
+			ProposalIds: []string{resp1.Proposal.Id, resp2.Proposal.Id},
+			Labels:      labels,
+		}, getResp.Job)
+	})
+
+	t.Run("spec is invalid", func(t *testing.T) {
+		t.Parallel()
+
+		client := NewMemoryJobDistributor()
+		ctx := t.Context()
+		_, err := client.ProposeJob(ctx, &jobv1.ProposeJobRequest{
+			NodeId: "test-node-1",
+			Spec:   "invalid spec",
+		})
+
+		require.ErrorContains(t, err, "invalid spec")
 	})
 
 	t.Run("nil request returns error", func(t *testing.T) {
 		t.Parallel()
+
 		client := NewMemoryJobDistributor()
-		ctx := t.Context()
-		resp, err := client.ProposeJob(ctx, nil)
+		resp, err := client.ProposeJob(t.Context(), nil)
 		require.ErrorContains(t, err, "request cannot be nil")
 		assert.Nil(t, resp)
 	})
@@ -57,7 +158,7 @@ func TestMemoryJobDistributor_GetJob(t *testing.T) {
 		// First create a job via proposal
 		proposeResp, err := client.ProposeJob(ctx, &jobv1.ProposeJobRequest{
 			NodeId: "test-node-1",
-			Spec:   "test job spec",
+			Spec:   spec1,
 		})
 		require.NoError(t, err)
 		jobID := proposeResp.Proposal.JobId
@@ -68,9 +169,13 @@ func TestMemoryJobDistributor_GetJob(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.NotNil(t, getResp)
-		require.NotNil(t, getResp.Job)
 
-		assert.Equal(t, jobID, getResp.Job.Id)
+		assertJobEquals(t, &jobv1.Job{
+			Id:          jobID,
+			Uuid:        spec1UUID,
+			NodeId:      "test-node-1",
+			ProposalIds: []string{proposeResp.Proposal.Id},
+		}, getResp.Job)
 	})
 
 	t.Run("get non-existent job returns error", func(t *testing.T) {
@@ -115,7 +220,7 @@ func TestMemoryJobDistributor_ListJobs(t *testing.T) {
 		// Create multiple jobs
 		_, err := client.ProposeJob(ctx, &jobv1.ProposeJobRequest{
 			NodeId: "test-node-1",
-			Spec:   "job spec 1",
+			Spec:   spec1,
 			Labels: []*ptypes.Label{
 				{Key: "environment", Value: pointer.To("prod")},
 			},
@@ -124,7 +229,7 @@ func TestMemoryJobDistributor_ListJobs(t *testing.T) {
 
 		_, err = client.ProposeJob(ctx, &jobv1.ProposeJobRequest{
 			NodeId: "test-node-2",
-			Spec:   "job spec 2",
+			Spec:   spec2,
 		})
 		require.NoError(t, err)
 
@@ -161,7 +266,7 @@ func TestMemoryJobDistributor_ListJobs(t *testing.T) {
 		// Create a job
 		proposeResp, err := client.ProposeJob(ctx, &jobv1.ProposeJobRequest{
 			NodeId: "test-node-1",
-			Spec:   "job spec 1",
+			Spec:   spec1,
 		})
 		require.NoError(t, err)
 		jobID := proposeResp.Proposal.JobId
@@ -207,12 +312,13 @@ func TestMemoryJobDistributor_GetProposal(t *testing.T) {
 
 	t.Run("get existing proposal", func(t *testing.T) {
 		t.Parallel()
+
 		client := NewMemoryJobDistributor()
 		ctx := t.Context()
 		// Create a proposal
 		proposeResp, err := client.ProposeJob(ctx, &jobv1.ProposeJobRequest{
 			NodeId: "test-node-1",
-			Spec:   "test job spec",
+			Spec:   spec1,
 		})
 		require.NoError(t, err)
 		proposalID := proposeResp.Proposal.Id
@@ -221,14 +327,19 @@ func TestMemoryJobDistributor_GetProposal(t *testing.T) {
 		getResp, err := client.GetProposal(ctx, &jobv1.GetProposalRequest{Id: proposalID})
 		require.NoError(t, err)
 		require.NotNil(t, getResp)
-		require.NotNil(t, getResp.Proposal)
-
-		assert.Equal(t, proposalID, getResp.Proposal.Id)
-		assert.Equal(t, "test job spec", getResp.Proposal.Spec)
+		assertProposalEquals(t, &jobv1.Proposal{
+			Id:             proposalID,
+			Revision:       1,
+			Status:         jobv1.ProposalStatus_PROPOSAL_STATUS_PROPOSED,
+			DeliveryStatus: jobv1.ProposalDeliveryStatus_PROPOSAL_DELIVERY_STATUS_DELIVERED,
+			JobId:          proposeResp.Proposal.JobId,
+			Spec:           spec1,
+		}, getResp.Proposal)
 	})
 
 	t.Run("get non-existent proposal returns error", func(t *testing.T) {
 		t.Parallel()
+
 		client := NewMemoryJobDistributor()
 		ctx := t.Context()
 		resp, err := client.GetProposal(ctx, &jobv1.GetProposalRequest{Id: "non-existent"})
@@ -242,18 +353,19 @@ func TestMemoryJobDistributor_ListProposals(t *testing.T) {
 
 	t.Run("list proposals returns all proposals", func(t *testing.T) {
 		t.Parallel()
+
 		client := NewMemoryJobDistributor()
 		ctx := t.Context()
 		// Create multiple proposals
 		_, err := client.ProposeJob(ctx, &jobv1.ProposeJobRequest{
 			NodeId: "test-node-1",
-			Spec:   "job spec 1",
+			Spec:   spec1,
 		})
 		require.NoError(t, err)
 
 		_, err = client.ProposeJob(ctx, &jobv1.ProposeJobRequest{
 			NodeId: "test-node-2",
-			Spec:   "job spec 2",
+			Spec:   spec1,
 		})
 		require.NoError(t, err)
 
@@ -275,21 +387,26 @@ func TestMemoryJobDistributor_BatchProposeJob(t *testing.T) {
 		ctx := t.Context()
 		req := &jobv1.BatchProposeJobRequest{
 			NodeIds: []string{"node-1", "node-2", "node-3"},
-			Spec:    "shared spec",
+			Spec:    spec1,
 		}
 
 		resp, err := client.BatchProposeJob(ctx, req)
 		require.NoError(t, err)
 		require.NotNil(t, resp)
 
-		assert.Len(t, resp.SuccessResponses, 3)
+		require.Len(t, resp.SuccessResponses, 3)
 		for _, nodeID := range req.NodeIds {
 			propResp, exists := resp.SuccessResponses[nodeID]
 			assert.True(t, exists, "missing response for node %s", nodeID)
-			assert.NotNil(t, propResp.Proposal)
-			assert.NotEmpty(t, propResp.Proposal.Id)
-			assert.NotEmpty(t, propResp.Proposal.JobId)
-			assert.Equal(t, "shared spec", propResp.Proposal.Spec)
+
+			assertProposalEquals(t, &jobv1.Proposal{
+				Id:             propResp.Proposal.Id,
+				Revision:       1,
+				Status:         jobv1.ProposalStatus_PROPOSAL_STATUS_PROPOSED,
+				DeliveryStatus: jobv1.ProposalDeliveryStatus_PROPOSAL_DELIVERY_STATUS_DELIVERED,
+				JobId:          propResp.Proposal.JobId,
+				Spec:           spec1,
+			}, propResp.Proposal)
 		}
 
 		// Verify jobs were created
@@ -300,6 +417,7 @@ func TestMemoryJobDistributor_BatchProposeJob(t *testing.T) {
 
 	t.Run("nil request returns error", func(t *testing.T) {
 		t.Parallel()
+
 		client := NewMemoryJobDistributor()
 		ctx := t.Context()
 		resp, err := client.BatchProposeJob(ctx, nil)
@@ -311,18 +429,29 @@ func TestMemoryJobDistributor_BatchProposeJob(t *testing.T) {
 func TestMemoryJobDistributor_RevokeJob(t *testing.T) {
 	t.Parallel()
 
-	t.Run("revoke existing job", func(t *testing.T) {
-		t.Parallel()
+	// Setup a job and proposal and return the client, proposal id, and job id
+	setup := func(t *testing.T) (*MemoryJobDistributor, string, string) {
+		t.Helper()
+
 		client := NewMemoryJobDistributor()
-		ctx := t.Context()
-		// Create a job
-		proposeResp, err := client.ProposeJob(ctx, &jobv1.ProposeJobRequest{
+
+		proposeResp, err := client.ProposeJob(t.Context(), &jobv1.ProposeJobRequest{
 			NodeId: "test-node-1",
-			Spec:   "test job spec",
+			Spec:   spec1,
 		})
 		require.NoError(t, err)
+
 		jobID := proposeResp.Proposal.JobId
-		proposalID := proposeResp.Proposal.Id
+		propID := proposeResp.Proposal.Id
+
+		return client, propID, jobID
+	}
+
+	t.Run("revoke existing job", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		client, propID, jobID := setup(t)
 
 		// Revoke the job
 		revokeResp, err := client.RevokeJob(ctx, &jobv1.RevokeJobRequest{
@@ -332,13 +461,109 @@ func TestMemoryJobDistributor_RevokeJob(t *testing.T) {
 		require.NotNil(t, revokeResp)
 
 		// Verify proposal status changed
-		getResp, err := client.GetProposal(ctx, &jobv1.GetProposalRequest{Id: proposalID})
+		getResp, err := client.GetProposal(ctx, &jobv1.GetProposalRequest{Id: propID})
 		require.NoError(t, err)
 		assert.Equal(t, jobv1.ProposalStatus_PROPOSAL_STATUS_REVOKED, getResp.Proposal.Status)
 	})
 
+	t.Run("revoke with UUID is not supported", func(t *testing.T) {
+		t.Parallel()
+
+		client, _, _ := setup(t)
+		ctx := t.Context()
+		_, err := client.RevokeJob(ctx, &jobv1.RevokeJobRequest{
+			IdOneof: &jobv1.RevokeJobRequest_Uuid{Uuid: uuid.New().String()},
+		})
+		require.ErrorContains(t, err, "uuid is not supported")
+	})
+
+	t.Run("revoke non-existent job returns error", func(t *testing.T) {
+		t.Parallel()
+
+		client, _, _ := setup(t)
+		ctx := t.Context()
+		_, err := client.RevokeJob(ctx, &jobv1.RevokeJobRequest{
+			IdOneof: &jobv1.RevokeJobRequest_Id{Id: "non-existent"},
+		})
+		require.ErrorContains(t, err, "not found")
+	})
+
+	t.Run("revoke job with invalid id returns error", func(t *testing.T) {
+		t.Parallel()
+
+		client, _, _ := setup(t)
+		ctx := t.Context()
+		_, err := client.RevokeJob(ctx, &jobv1.RevokeJobRequest{
+			IdOneof: &jobv1.RevokeJobRequest_Id{Id: ""},
+		})
+		require.ErrorContains(t, err, "job id must be provided")
+	})
+
+	t.Run("highest revision proposal is revoked", func(t *testing.T) {
+		t.Parallel()
+
+		client, prop1ID, jobID := setup(t)
+		ctx := t.Context()
+
+		// Propose another job with the same job id to get a new proposal with a higher revision
+		// number
+		proposeResp, err := client.ProposeJob(ctx, &jobv1.ProposeJobRequest{
+			NodeId: "test-node-1",
+			Spec:   spec1,
+		})
+		require.NoError(t, err)
+
+		// Revoke the job
+		revokeResp, err := client.RevokeJob(ctx, &jobv1.RevokeJobRequest{
+			IdOneof: &jobv1.RevokeJobRequest_Id{Id: jobID},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, revokeResp)
+
+		// Verify original proposal status is not revoked
+		getResp, err := client.GetProposal(ctx, &jobv1.GetProposalRequest{Id: prop1ID})
+		require.NoError(t, err)
+		assert.Equal(t, jobv1.ProposalStatus_PROPOSAL_STATUS_PROPOSED, getResp.Proposal.Status)
+
+		// Verify proposal status changed
+		getResp2, err := client.GetProposal(ctx, &jobv1.GetProposalRequest{Id: proposeResp.Proposal.Id})
+		require.NoError(t, err)
+		assert.Equal(t, jobv1.ProposalStatus_PROPOSAL_STATUS_REVOKED, getResp2.Proposal.Status)
+	})
+
+	t.Run("job has no proposals (should never happen) returns error", func(t *testing.T) {
+		t.Parallel()
+
+		client, propID, jobID := setup(t)
+		ctx := t.Context()
+
+		// Delete the proposal by accessing the map directly
+		delete(client.proposals, propID)
+
+		_, err := client.RevokeJob(ctx, &jobv1.RevokeJobRequest{
+			IdOneof: &jobv1.RevokeJobRequest_Id{Id: jobID},
+		})
+		require.ErrorContains(t, err, "not found")
+	})
+
+	t.Run("job is not in the correct state to be revoked returns error", func(t *testing.T) {
+		t.Parallel()
+
+		client, propID, jobID := setup(t)
+		ctx := t.Context()
+
+		// Update the proposal status to a state that is not allowed to be revoked
+		client.proposals[propID].Status = jobv1.ProposalStatus_PROPOSAL_STATUS_APPROVED
+
+		_, err := client.RevokeJob(ctx, &jobv1.RevokeJobRequest{
+			IdOneof: &jobv1.RevokeJobRequest_Id{Id: jobID},
+		})
+		require.ErrorContains(t, err, "job cannot be revoked")
+	})
+
 	t.Run("nil request returns error", func(t *testing.T) {
 		t.Parallel()
+
 		client := NewMemoryJobDistributor()
 		ctx := t.Context()
 		resp, err := client.RevokeJob(ctx, nil)
@@ -352,12 +577,13 @@ func TestMemoryJobDistributor_DeleteJob(t *testing.T) {
 
 	t.Run("delete existing job", func(t *testing.T) {
 		t.Parallel()
+
 		client := NewMemoryJobDistributor()
 		ctx := t.Context()
 		// Create a job
 		proposeResp, err := client.ProposeJob(ctx, &jobv1.ProposeJobRequest{
 			NodeId: "test-node-1",
-			Spec:   "test job spec",
+			Spec:   spec1,
 		})
 		require.NoError(t, err)
 		jobID := proposeResp.Proposal.JobId
@@ -374,12 +600,12 @@ func TestMemoryJobDistributor_DeleteJob(t *testing.T) {
 			IdOneof: &jobv1.GetJobRequest_Id{Id: jobID},
 		})
 		require.NoError(t, err)
-
 		assert.NotNil(t, getResp.Job.DeletedAt)
 	})
 
 	t.Run("delete non-existent job does errors", func(t *testing.T) {
 		t.Parallel()
+
 		client := NewMemoryJobDistributor()
 		ctx := t.Context()
 		_, err := client.DeleteJob(ctx, &jobv1.DeleteJobRequest{
@@ -400,7 +626,7 @@ func TestMemoryJobDistributor_UpdateJob(t *testing.T) {
 		value := "testvalue"
 		proposeResp, err := client.ProposeJob(ctx, &jobv1.ProposeJobRequest{
 			NodeId: "test-node-1",
-			Spec:   "original spec",
+			Spec:   spec1,
 			Labels: []*ptypes.Label{
 				{Key: "env", Value: &value},
 			},
@@ -807,4 +1033,31 @@ func TestMemoryJobDistributor_ListKeypairs(t *testing.T) {
 		require.NotNil(t, listResp)
 		assert.Empty(t, listResp.Keypairs)
 	})
+}
+
+// assertJobEquals asserts that two jobv1.Job objects are functionally equal.
+func assertJobEquals(t *testing.T, want *jobv1.Job, actual *jobv1.Job) {
+	t.Helper()
+
+	assert.True(t, strings.HasPrefix(actual.Id, "job_"))
+	assert.ElementsMatch(t, want.ProposalIds, actual.ProposalIds)
+	assert.Equal(t, want.NodeId, actual.NodeId)
+	assert.Equal(t, want.Uuid, actual.Uuid)
+	assert.ElementsMatch(t, want.Labels, actual.Labels)
+	assert.NotNil(t, actual.CreatedAt)
+	assert.NotNil(t, actual.UpdatedAt)
+}
+
+// assertProposalEquals asserts that two jobv1.Proposal objects are functionally equal.
+func assertProposalEquals(t *testing.T, want *jobv1.Proposal, actual *jobv1.Proposal) {
+	t.Helper()
+
+	assert.True(t, strings.HasPrefix(actual.Id, "prop_"))
+	assert.Equal(t, want.Revision, actual.Revision)
+	assert.Equal(t, want.Status, actual.Status)
+	assert.Equal(t, want.DeliveryStatus, actual.DeliveryStatus)
+	assert.Equal(t, want.JobId, actual.JobId)
+	assert.Equal(t, want.Spec, actual.Spec)
+	assert.NotNil(t, actual.CreatedAt)
+	assert.NotNil(t, actual.UpdatedAt)
 }
