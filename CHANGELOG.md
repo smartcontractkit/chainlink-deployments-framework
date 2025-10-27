@@ -1,5 +1,15 @@
 # chainlink-deployments-framework
 
+## 0.59.0
+
+### Minor Changes
+
+- [#536](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/536) [`d35d8de`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/d35d8dee7937065b91945995b9f19c621d4111d5) Thanks [@jkongie](https://github.com/jkongie)! - JD Memory Client now supports filtering in `ListNodes`
+
+- [#542](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/542) [`5b3a421`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/5b3a4215b61ff2c4abdfe8da449a21cedb23f87e) Thanks [@jkongie](https://github.com/jkongie)! - Aligns MemoryJobDistributor `ProposeJob` and `RevokeJob` to have the same functionality as the JobDistributor service
+
+- [#540](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/540) [`35d9189`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/35d9189e56bcf6ebfbecd91d5f482b48fa2555a3) Thanks [@jkongie](https://github.com/jkongie)! - JD Memory Client now supports filtering in `ListJobs`
+
 ## 0.58.1
 
 ### Patch Changes
