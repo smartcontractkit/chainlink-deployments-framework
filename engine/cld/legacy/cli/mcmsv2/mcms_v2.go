@@ -733,7 +733,10 @@ func buildMCMSv2AnalyzeProposalCmd(
 			}
 
 			// Set renderer based on format flag
-			renderer := createRendererFromFormat(format)
+			renderer, err := createRendererFromFormat(format)
+			if err != nil {
+				return fmt.Errorf("failed to create renderer: %w", err)
+			}
 			cfgv2.proposalCtx.SetRenderer(renderer)
 
 			var analyzedProposal string
@@ -1611,14 +1614,16 @@ func addCallProxyOption(
 
 // createRendererFromFormat creates an appropriate renderer based on the format string.
 // Defaults to markdown renderer for unknown formats.
-func createRendererFromFormat(format string) analyzer.Renderer {
+func createRendererFromFormat(format string) (analyzer.Renderer, error) {
 	switch format {
 	case "text", "txt":
-		return analyzer.NewTextRenderer()
+		return analyzer.NewTextRenderer(), nil
 	case "markdown", "md":
-		return analyzer.NewMarkdownRenderer()
+		return analyzer.NewMarkdownRenderer(), nil
+	case "":
+		return analyzer.NewMarkdownRenderer(), nil
 	default:
 		// Default to markdown if format is not specified or invalid
-		return analyzer.NewMarkdownRenderer()
+		return nil, fmt.Errorf("unknown format '%s'", format)
 	}
 }

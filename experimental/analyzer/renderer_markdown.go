@@ -608,7 +608,12 @@ func (r *MarkdownRenderer) renderTemplate(tmpl *template.Template, data interfac
 		return fmt.Sprintf("Error rendering template: %v", err)
 	}
 
-	return buf.String()
+	out := buf.String()
+	if !strings.HasSuffix(out, "\n\n") { // assuming double newline means intentional spacing
+		out = strings.TrimSuffix(out, "\n")
+	}
+	return out
+
 }
 
 // isSimpleValue determines if a string represents a simple value that should be displayed without backticks.
