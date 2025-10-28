@@ -30,7 +30,7 @@ func TestDescribeProposal(t *testing.T) {
 			name:           "Empty proposal",
 			operations:     []types.Operation{},
 			expectError:    false,
-			outputContains: []string{""},
+			outputContains: []string{"\n"},
 		},
 		{
 			name: "Single operation - unsupported chain",
@@ -128,7 +128,7 @@ func TestDescribeTimelockProposal(t *testing.T) {
 			name:           "Empty proposal",
 			operations:     []types.BatchOperation{},
 			expectError:    false,
-			outputContains: []string{""},
+			outputContains: []string{"\n"},
 		},
 		{
 			name: "Single batch - unsupported chain",

@@ -114,7 +114,6 @@ Method: complexCall
 Inputs:
   address: 0x0000000000000000000000000000000000000001
   chain: ` + "`" + `1 (<chain unknown>)` + "`" + `
-
   data: 0x010203
 
 Outputs:
