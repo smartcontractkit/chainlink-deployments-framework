@@ -10,12 +10,16 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 )
 
+// FieldAnalyzer is an extension point of proposal decoding.
+// You can implement your own FieldAnalyzer which returns your own FieldValue instance.
+type FieldAnalyzer func(argName string, argAbi *abi.Type, argVal any, analyzers []FieldAnalyzer) FieldValue
+
 type EVMTxCallDecoder struct {
-	Analyzers []Analyzer
+	Analyzers []FieldAnalyzer
 }
 
-func NewTxCallDecoder(extraAnalyzers []Analyzer) *EVMTxCallDecoder {
-	analyzers := make([]Analyzer, 0, len(extraAnalyzers)+DefaultAnalyzersCount)
+func NewTxCallDecoder(extraAnalyzers []FieldAnalyzer) *EVMTxCallDecoder {
+	analyzers := make([]FieldAnalyzer, 0, len(extraAnalyzers)+DefaultAnalyzersCount)
 	analyzers = append(analyzers, extraAnalyzers...)
 	analyzers = append(analyzers, BytesAndAddressAnalyzer)
 	analyzers = append(analyzers, ChainSelectorAnalyzer)
@@ -49,24 +53,24 @@ func (p *EVMTxCallDecoder) Decode(address string, contractABI *abi.ABI, data []b
 
 // decodeMethodCall decodes a method call with the given arguments and outputs.
 func (p *EVMTxCallDecoder) decodeMethodCall(address string, method *abi.Method, args map[string]any, outs map[string]any) (*DecodedCall, error) {
-	inputs := make([]NamedDescriptor, len(method.Inputs))
+	inputs := make([]NamedField, len(method.Inputs))
 	for i, input := range method.Inputs {
 		arg, ok := args[input.Name]
 		if !ok {
 			return nil, fmt.Errorf("missing argument '%s'", input.Name)
 		}
-		inputs[i] = NamedDescriptor{
+		inputs[i] = NamedField{
 			Name:  input.Name,
 			Value: p.decodeArg(input.Name, &input.Type, arg),
 		}
 	}
-	outputs := make([]NamedDescriptor, len(method.Outputs))
+	outputs := make([]NamedField, len(method.Outputs))
 	for i, output := range method.Outputs {
 		out, ok := outs[output.Name]
 		if !ok {
 			return nil, fmt.Errorf("missing output '%s'", output.Name)
 		}
-		outputs[i] = NamedDescriptor{
+		outputs[i] = NamedField{
 			Name:  output.Name,
 			Value: p.decodeArg(output.Name, &output.Type, out),
 		}
@@ -81,7 +85,7 @@ func (p *EVMTxCallDecoder) decodeMethodCall(address string, method *abi.Method, 
 }
 
 // decodeArg decodes a single argument using the provided ABI type and value.
-func (p *EVMTxCallDecoder) decodeArg(argName string, argAbi *abi.Type, argVal any) Descriptor {
+func (p *EVMTxCallDecoder) decodeArg(argName string, argAbi *abi.Type, argVal any) FieldValue {
 	if len(p.Analyzers) > 0 {
 		for _, analyzer := range p.Analyzers {
 			arg := analyzer(argName, argAbi, argVal, p.Analyzers)
@@ -99,13 +103,13 @@ func (p *EVMTxCallDecoder) decodeArg(argName string, argAbi *abi.Type, argVal an
 		return p.decodeArray(argName, argAbi, argVal)
 	}
 	// Fallback
-	return SimpleDescriptor{Value: fmt.Sprintf("%v", argVal)}
+	return SimpleField{Value: fmt.Sprintf("%v", argVal)}
 }
 
 // decodeStruct decodes a struct argument using the provided ABI type and value.
-func (p *EVMTxCallDecoder) decodeStruct(argAbi *abi.Type, argVal any) StructDescriptor {
+func (p *EVMTxCallDecoder) decodeStruct(argAbi *abi.Type, argVal any) StructField {
 	argTyp := argAbi.GetType()
-	fields := make([]NamedDescriptor, argTyp.NumField())
+	fields := make([]NamedField, argTyp.NumField())
 	for i := range argTyp.NumField() {
 		if !argTyp.Field(i).IsExported() {
 			continue
@@ -114,28 +118,28 @@ func (p *EVMTxCallDecoder) decodeStruct(argAbi *abi.Type, argVal any) StructDesc
 		argFieldAbi := argAbi.TupleElems[i]
 		argFieldTyp := reflect.ValueOf(argVal).FieldByName(argFieldName)
 		argument := p.decodeArg(argFieldName, argFieldAbi, argFieldTyp.Interface())
-		fields[i] = NamedDescriptor{
+		fields[i] = NamedField{
 			Name:  argFieldName,
 			Value: argument,
 		}
 	}
 
-	return StructDescriptor{
+	return StructField{
 		Fields: fields,
 	}
 }
 
 // decodeArray decodes an array argument using the provided ABI type and value.
-func (p *EVMTxCallDecoder) decodeArray(argName string, argAbi *abi.Type, argVal any) ArrayDescriptor {
+func (p *EVMTxCallDecoder) decodeArray(argName string, argAbi *abi.Type, argVal any) ArrayField {
 	argTyp := reflect.ValueOf(argVal)
-	elements := make([]Descriptor, argTyp.Len())
+	elements := make([]FieldValue, argTyp.Len())
 	for i := range argTyp.Len() {
 		argElemTyp := argTyp.Index(i)
 		argument := p.decodeArg(argName, argAbi.Elem, argElemTyp.Interface())
 		elements[i] = argument
 	}
 
-	return ArrayDescriptor{
+	return ArrayField{
 		Elements: elements,
 	}
 }
@@ -145,7 +149,7 @@ var (
 )
 
 // BytesAndAddressAnalyzer is an EVM-specific analyzer that handles bytes and address types.
-func BytesAndAddressAnalyzer(_ string, argAbi *abi.Type, argVal any, _ []Analyzer) Descriptor {
+func BytesAndAddressAnalyzer(_ string, argAbi *abi.Type, argVal any, _ []FieldAnalyzer) FieldValue {
 	if argAbi.T == abi.FixedBytesTy || argAbi.T == abi.BytesTy || argAbi.T == abi.AddressTy {
 		argArrTyp := reflect.ValueOf(argVal)
 		argArr := make([]byte, argArrTyp.Len())
@@ -153,19 +157,19 @@ func BytesAndAddressAnalyzer(_ string, argAbi *abi.Type, argVal any, _ []Analyze
 			argArr[i] = byte(argArrTyp.Index(i).Uint())
 		}
 		if argAbi.T == abi.AddressTy {
-			return AddressDescriptor{Value: common.BytesToAddress(argArr).Hex()}
+			return AddressField{Value: common.BytesToAddress(argArr).Hex()}
 		}
 
-		return BytesDescriptor{Value: argArr}
+		return BytesField{Value: argArr}
 	}
 
 	return nil
 }
 
 // ChainSelectorAnalyzer is an EVM-specific analyzer that handles chain selector parameters.
-func ChainSelectorAnalyzer(argName string, argAbi *abi.Type, argVal any, _ []Analyzer) Descriptor {
+func ChainSelectorAnalyzer(argName string, argAbi *abi.Type, argVal any, _ []FieldAnalyzer) FieldValue {
 	if argAbi.GetType().Kind() == reflect.Uint64 && chainSelectorRegex.MatchString(argName) {
-		return ChainSelectorDescriptor{Value: argVal.(uint64)}
+		return ChainSelectorField{Value: argVal.(uint64)}
 	}
 
 	return nil

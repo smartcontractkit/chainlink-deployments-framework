@@ -9,50 +9,50 @@ import (
 	mcmssdk "github.com/smartcontractkit/mcms/sdk"
 )
 
-func toNamedDescriptors(decodedOp mcmssdk.DecodedOperation) ([]NamedDescriptor, error) {
+func toNamedFields(decodedOp mcmssdk.DecodedOperation) ([]NamedField, error) {
 	args := decodedOp.Args()
 	keys := decodedOp.Keys()
 	if len(keys) != len(args) {
 		return nil, fmt.Errorf("mismatched keys and arguments length: %d keys, %d arguments", len(keys), len(args))
 	}
-	namedArgs := make([]NamedDescriptor, len(args))
+	namedArgs := make([]NamedField, len(args))
 	for i := range args {
-		namedArgs[i] = NamedDescriptor{
+		namedArgs[i] = NamedField{
 			Name:  keys[i],
-			Value: getDescriptor(args[i]),
+			Value: getFieldValue(args[i]),
 		}
 	}
 
 	return namedArgs, nil
 }
 
-func getDescriptor(argument any) Descriptor {
-	var value Descriptor
+func getFieldValue(argument any) FieldValue {
+	var value FieldValue
 
 	switch arg := argument.(type) {
 	// Pretty-print byte arrays and addresses
 	case []byte:
-		value = BytesDescriptor{Value: arg}
+		value = BytesField{Value: arg}
 	case aptos.AccountAddress:
-		value = AddressDescriptor{Value: arg.StringLong()}
+		value = AddressField{Value: arg.StringLong()}
 	case *aptos.AccountAddress:
-		value = AddressDescriptor{Value: arg.StringLong()}
+		value = AddressField{Value: arg.StringLong()}
 	case models.SuiAddress:
-		value = AddressDescriptor{Value: string(arg)}
+		value = AddressField{Value: string(arg)}
 	default:
 		//nolint:exhaustive // default case covers everything else
 		switch reflect.TypeOf(arg).Kind() {
-		// If the descriptor is a slice or array, iterate over every element individually
+		// If the field is a slice or array, iterate over every element individually
 		case reflect.Array, reflect.Slice:
-			array := ArrayDescriptor{}
+			array := ArrayField{}
 			v := reflect.ValueOf(arg)
 			for i := range v.Len() {
-				array.Elements = append(array.Elements, getDescriptor(v.Index(i).Interface()))
+				array.Elements = append(array.Elements, getFieldValue(v.Index(i).Interface()))
 			}
 			value = array
 		default:
-			// Simply print the descriptor as-is
-			value = SimpleDescriptor{Value: fmt.Sprintf("%v", arg)}
+			// Simply print the field as-is
+			value = SimpleField{Value: fmt.Sprintf("%v", arg)}
 		}
 	}
 

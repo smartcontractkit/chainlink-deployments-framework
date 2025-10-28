@@ -107,38 +107,38 @@ func TestAnchorInstructionWrapper_Data(t *testing.T) {
 	require.Equal(t, expectedData, data)
 }
 
-func TestYamlDescriptor_MarshalYAML(t *testing.T) {
+func TestYamlField_GetValue(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
 		name  string
-		value any
+		Value string
 		want  string
 	}{
 		{
 			name:  "Simple string",
-			value: "test value",
-			want:  "test value\n",
+			Value: "test value",
+			want:  "test value",
 		},
 		{
-			name:  "Number",
-			value: 42,
-			want:  "42\n",
+			name:  "Number as string",
+			Value: "42",
+			want:  "42",
 		},
 		{
-			name:  "Boolean",
-			value: true,
-			want:  "true\n",
+			name:  "Boolean as string",
+			Value: "true",
+			want:  "true",
 		},
 		{
-			name:  "Array",
-			value: []string{"item1", "item2"},
-			want:  "- item1\n- item2\n",
+			name:  "Array as string",
+			Value: "[\"item1\", \"item2\"]",
+			want:  "[\"item1\", \"item2\"]",
 		},
 		{
-			name:  "Map",
-			value: map[string]any{"key": "value"},
-			want:  "key: value\n",
+			name:  "Map as string",
+			Value: "{\"key\": \"value\"}",
+			want:  "{\"key\": \"value\"}",
 		},
 	}
 
@@ -146,10 +146,9 @@ func TestYamlDescriptor_MarshalYAML(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			desc := YamlDescriptor{value: tt.value}
-			result, err := desc.MarshalYAML()
-			require.NoError(t, err)
-			require.Equal(t, tt.want, string(result))
+			desc := YamlField{Value: tt.Value}
+			result := desc.GetValue()
+			require.Equal(t, tt.want, result)
 		})
 	}
 }
@@ -187,9 +186,9 @@ func (m *mockSolanaInstruction) Impl() (any, error) {
 	return m.impl, nil
 }
 
-func (m *mockSolanaInstruction) Inputs() []NamedDescriptor {
-	return []NamedDescriptor{
-		{Name: "test", Value: SimpleDescriptor{Value: "test"}},
+func (m *mockSolanaInstruction) Inputs() []NamedField {
+	return []NamedField{
+		{Name: "test", Value: SimpleField{Value: "test"}},
 	}
 }
 
@@ -243,9 +242,9 @@ func Test_solanaAnalyzer_describeOperations(t *testing.T) {
 			want: []*DecodedCall{{
 				Address: "2zZwzyptLqwFJFEFxjPvrdhiGpH9pJ3MfrrmZX6NTKxm",
 				Method:  "Empty",
-				Inputs: []NamedDescriptor{{
+				Inputs: []NamedField{{
 					Name:  "AccountMetaSlice",
-					Value: YamlDescriptor{value: []string{}},
+					Value: YamlField{Value: []string{}},
 				}},
 			}},
 		},
@@ -259,14 +258,14 @@ func Test_solanaAnalyzer_describeOperations(t *testing.T) {
 			want: []*DecodedCall{{
 				Address: "2zZwzyptLqwFJFEFxjPvrdhiGpH9pJ3MfrrmZX6NTKxm",
 				Method:  "U8InstructionData",
-				Inputs: []NamedDescriptor{
+				Inputs: []NamedField{
 					{
 						Name:  "Data",
-						Value: SimpleDescriptor{Value: "123\n"},
+						Value: YamlField{Value: uint8(123)},
 					},
 					{
 						Name:  "AccountMetaSlice",
-						Value: YamlDescriptor{value: []string{}},
+						Value: YamlField{Value: []string{}},
 					},
 				},
 			}},
@@ -281,14 +280,14 @@ func Test_solanaAnalyzer_describeOperations(t *testing.T) {
 			want: []*DecodedCall{{
 				Address: "2zZwzyptLqwFJFEFxjPvrdhiGpH9pJ3MfrrmZX6NTKxm",
 				Method:  "StructInstructionData",
-				Inputs: []NamedDescriptor{
+				Inputs: []NamedField{
 					{
 						Name:  "Data",
-						Value: YamlDescriptor{value: cpistub.Value{Value: uint8(45)}},
+						Value: YamlField{Value: cpistub.Value{Value: uint8(45)}},
 					},
 					{
 						Name:  "AccountMetaSlice",
-						Value: YamlDescriptor{value: []string{}},
+						Value: YamlField{Value: []string{}},
 					},
 				},
 			}},
@@ -303,14 +302,14 @@ func Test_solanaAnalyzer_describeOperations(t *testing.T) {
 			want: []*DecodedCall{{
 				Address: "2zZwzyptLqwFJFEFxjPvrdhiGpH9pJ3MfrrmZX6NTKxm",
 				Method:  "BigInstructionData",
-				Inputs: []NamedDescriptor{
+				Inputs: []NamedField{
 					{
 						Name:  "Data",
-						Value: YamlDescriptor{value: []byte{0x0, 0x1, 0x2, 0x3}},
+						Value: YamlField{Value: []byte{0x0, 0x1, 0x2, 0x3}},
 					},
 					{
 						Name:  "AccountMetaSlice",
-						Value: YamlDescriptor{value: []string{}},
+						Value: YamlField{Value: []string{}},
 					},
 				},
 			}},
@@ -329,9 +328,9 @@ func Test_solanaAnalyzer_describeOperations(t *testing.T) {
 			want: []*DecodedCall{{
 				Address: "2zZwzyptLqwFJFEFxjPvrdhiGpH9pJ3MfrrmZX6NTKxm",
 				Method:  "AccountMut",
-				Inputs: []NamedDescriptor{{
+				Inputs: []NamedField{{
 					Name: "AccountMetaSlice",
-					Value: YamlDescriptor{value: []solana.AccountMeta{
+					Value: YamlField{Value: []solana.AccountMeta{
 						{PublicKey: solana.MPK("H2qiK1CzW2DheLz9WAGSF1GbvLoqQv9hgS56Rk8Wh3uA"), IsWritable: true},
 						{PublicKey: solana.MPK("4cubrmdczDbRT8XyBwSR871meZU426S6xkiouzQpspVK"), IsSigner: true},
 						{PublicKey: solana.SystemProgramID},
@@ -357,26 +356,26 @@ func Test_solanaAnalyzer_describeOperations(t *testing.T) {
 			want: []*DecodedCall{{
 				Address: "Gp9vJNFpwfRM2M9ebK5pQXEb4ZtWwq66nNRRRRGJwz1j",
 				Method:  "InitSignatures",
-				Inputs: []NamedDescriptor{
+				Inputs: []NamedField{
 					{
 						Name:  "MultisigId",
-						Value: YamlDescriptor{value: [32]uint8{'m', 'c', 'm'}},
+						Value: YamlField{Value: [32]uint8{'m', 'c', 'm'}},
 					},
 					{
 						Name:  "Root",
-						Value: YamlDescriptor{value: [32]uint8{'r', 'o', 'o', 't'}},
+						Value: YamlField{Value: [32]uint8{'r', 'o', 'o', 't'}},
 					},
 					{
 						Name:  "ValidUntil",
-						Value: YamlDescriptor{value: uint32(1767225600)},
+						Value: YamlField{Value: uint32(1767225600)},
 					},
 					{
 						Name:  "TotalSignatures",
-						Value: YamlDescriptor{value: uint8(2)},
+						Value: YamlField{Value: uint8(2)},
 					},
 					{
 						Name: "AccountMetaSlice",
-						Value: YamlDescriptor{value: []solana.AccountMeta{
+						Value: YamlField{Value: []solana.AccountMeta{
 							{PublicKey: solana.MPK("8UXavXj14P3khJyWSfeDeZ57YS7vo8ynkKemo2M2C1VU"), IsWritable: true},
 							{PublicKey: solana.MPK("J6fUzHuGEHmqpmmq1BMGfjfeYjPwg4TWsKsJB8WGihoJ"), IsWritable: true, IsSigner: true},
 							{PublicKey: solana.SystemProgramID},
@@ -417,39 +416,33 @@ func Test_solanaAnalyzer_describeOperations(t *testing.T) {
 			want: []*DecodedCall{{
 				Address: "Gp9vJNFpwfRM2M9ebK5pQXEb4ZtWwq66nNRRRRGJwz1j",
 				Method:  "SetRoot",
-				Inputs: []NamedDescriptor{
+				Inputs: []NamedField{
 					{
 						Name:  "MultisigId",
-						Value: YamlDescriptor{value: [32]uint8{'m', 'c', 'm'}},
+						Value: YamlField{Value: [32]uint8{'m', 'c', 'm'}},
 					},
 					{
 						Name:  "Root",
-						Value: YamlDescriptor{value: [32]uint8{'r', 'o', 'o', 't'}},
+						Value: YamlField{Value: [32]uint8{'r', 'o', 'o', 't'}},
 					},
 					{
 						Name:  "ValidUntil",
-						Value: YamlDescriptor{value: uint32(1767225600)},
+						Value: YamlField{Value: uint32(1767225600)},
 					},
 					{
-						Name: "Metadata",
-						Value: YamlDescriptor{value: mcm.RootMetadataInput{
-							ChainId:              chainsel.SOLANA_DEVNET.Selector,
-							Multisig:             solana.MPK("7eJ2ZKsx3ie1vR1bFaGp4pB5iatjUAfDPtgFDE2sXkZd"),
-							PreOpCount:           1,
-							PostOpCount:          2,
-							OverridePreviousRoot: true,
-						}},
+						Name:  "Metadata",
+						Value: YamlField{Value: "chainid: 16423721717087811551  multisig: 7eJ2ZKsx3ie1vR1bFaGp4pB5iatjUAfDPtgFDE2sXkZd  preopcount: 1  postopcount: 2  overridepreviousroot: true"},
 					},
 					{
 						Name: "MetadataProof",
-						Value: YamlDescriptor{value: [][32]uint8{
+						Value: YamlField{Value: [][32]uint8{
 							common.HexToHash("0x0000000000000000000000000000000000000001"),
 							common.HexToHash("0x0000000000000000000000000000000000000002"),
 						}},
 					},
 					{
 						Name: "AccountMetaSlice",
-						Value: YamlDescriptor{value: []solana.AccountMeta{
+						Value: YamlField{Value: []solana.AccountMeta{
 							{PublicKey: solana.MPK("1EMwYGgmo3UPwmyUiPvCUPM5kdL52LHPJXSZNUN1pam"), IsWritable: true},
 							{PublicKey: solana.MPK("AE4UPuh9q1ZCzqzqicw1YujuLC35oTpi1JCpcK6KojPd"), IsWritable: true},
 							{PublicKey: solana.MPK("xZzLbR8t1jbHia2nQoRUyhKL7WvjDXRdUQqwzbEVTvg"), IsWritable: true},
@@ -484,30 +477,30 @@ func Test_solanaAnalyzer_describeOperations(t *testing.T) {
 			want: []*DecodedCall{{
 				Address: "Gp9vJNFpwfRM2M9ebK5pQXEb4ZtWwq66nNRRRRGJwz1j",
 				Method:  "SetConfig",
-				Inputs: []NamedDescriptor{
+				Inputs: []NamedField{
 					{
 						Name:  "MultisigId",
-						Value: YamlDescriptor{value: [32]uint8{'m', 'c', 'm'}},
+						Value: YamlField{Value: [32]uint8{'m', 'c', 'm'}},
 					},
 					{
 						Name:  "SignerGroups",
-						Value: YamlDescriptor{value: []byte{1, 2}},
+						Value: YamlField{Value: "0x0102"},
 					},
 					{
 						Name:  "GroupQuorums",
-						Value: YamlDescriptor{value: [32]uint8{3, 4, 5}},
+						Value: YamlField{Value: [32]uint8{3, 4, 5}},
 					},
 					{
 						Name:  "GroupParents",
-						Value: YamlDescriptor{value: [32]uint8{6, 7, 8}},
+						Value: YamlField{Value: [32]uint8{6, 7, 8}},
 					},
 					{
 						Name:  "ClearRoot",
-						Value: YamlDescriptor{value: true},
+						Value: YamlField{Value: true},
 					},
 					{
 						Name: "AccountMetaSlice",
-						Value: YamlDescriptor{value: []solana.AccountMeta{
+						Value: YamlField{Value: []solana.AccountMeta{
 							{PublicKey: solana.MPK("AE4UPuh9q1ZCzqzqicw1YujuLC35oTpi1JCpcK6KojPd"), IsWritable: true},
 							{PublicKey: solana.MPK("xZzLbR8t1jbHia2nQoRUyhKL7WvjDXRdUQqwzbEVTvg"), IsWritable: true},
 							{PublicKey: solana.MPK("FjkJnFj82vM8zq2SEes1WV4ZFEkruPZCcpkXpL92Qhy3"), IsWritable: true},
@@ -542,7 +535,26 @@ func Test_solanaAnalyzer_describeOperations(t *testing.T) {
 					for j, input := range result.Inputs {
 						expectedInput := expected.Inputs[j]
 						require.Equal(t, expectedInput.Name, input.Name, "Input name mismatch for result %d, input %d", i, j)
-						require.Equal(t, expectedInput.Value.Describe(nil), input.Value.Describe(nil), "Input value mismatch for result %d, input %d", i, j)
+						require.Equal(t, expectedInput.Value.GetType(), input.Value.GetType(), "Input value type mismatch for result %d, input %d", i, j)
+
+						// Compare field values based on type
+						switch expectedField := expectedInput.Value.(type) {
+						case YamlField:
+							if actualField, ok := input.Value.(YamlField); ok {
+								require.Equal(t, expectedField.GetValue(), actualField.GetValue(), "YamlField value mismatch for result %d, input %d", i, j)
+							} else {
+								t.Errorf("Expected YamlField but got %T for result %d, input %d", input.Value, i, j)
+							}
+						case SimpleField:
+							if actualField, ok := input.Value.(SimpleField); ok {
+								require.Equal(t, expectedField.GetValue(), actualField.GetValue(), "SimpleField value mismatch for result %d, input %d", i, j)
+							} else {
+								t.Errorf("Expected SimpleField but got %T for result %d, input %d", input.Value, i, j)
+							}
+						default:
+							// For other field types, we can add more specific comparisons as needed
+							require.Equal(t, expectedInput.Value, input.Value, "Field value mismatch for result %d, input %d", i, j)
+						}
 					}
 				}
 			} else {
@@ -613,56 +625,56 @@ func Test_solanaAnalyzer_describeBatchOperations(t *testing.T) {
 				{
 					Address: "2zZwzyptLqwFJFEFxjPvrdhiGpH9pJ3MfrrmZX6NTKxm",
 					Method:  "U8InstructionData",
-					Inputs: []NamedDescriptor{
+					Inputs: []NamedField{
 						{
 							Name:  "Data",
-							Value: SimpleDescriptor{Value: "12\n"},
+							Value: YamlField{Value: uint8(12)},
 						},
 						{
 							Name:  "AccountMetaSlice",
-							Value: YamlDescriptor{value: []string{}},
+							Value: YamlField{Value: []string{}},
 						},
 					},
 				},
 				{
 					Address: "2zZwzyptLqwFJFEFxjPvrdhiGpH9pJ3MfrrmZX6NTKxm",
 					Method:  "U8InstructionData",
-					Inputs: []NamedDescriptor{
+					Inputs: []NamedField{
 						{
 							Name:  "Data",
-							Value: SimpleDescriptor{Value: "34\n"},
+							Value: YamlField{Value: uint8(34)},
 						},
 						{
 							Name:  "AccountMetaSlice",
-							Value: YamlDescriptor{value: []string{}},
+							Value: YamlField{Value: []string{}},
 						},
 					},
 				},
 				{
 					Address: "2zZwzyptLqwFJFEFxjPvrdhiGpH9pJ3MfrrmZX6NTKxm",
 					Method:  "U8InstructionData",
-					Inputs: []NamedDescriptor{
+					Inputs: []NamedField{
 						{
 							Name:  "Data",
-							Value: SimpleDescriptor{Value: "56\n"},
+							Value: YamlField{Value: uint8(56)},
 						},
 						{
 							Name:  "AccountMetaSlice",
-							Value: YamlDescriptor{value: []string{}},
+							Value: YamlField{Value: []string{}},
 						},
 					},
 				},
 				{
 					Address: "2zZwzyptLqwFJFEFxjPvrdhiGpH9pJ3MfrrmZX6NTKxm",
 					Method:  "U8InstructionData",
-					Inputs: []NamedDescriptor{
+					Inputs: []NamedField{
 						{
 							Name:  "Data",
-							Value: SimpleDescriptor{Value: "78\n"},
+							Value: YamlField{Value: uint8(78)},
 						},
 						{
 							Name:  "AccountMetaSlice",
-							Value: YamlDescriptor{value: []string{}},
+							Value: YamlField{Value: []string{}},
 						},
 					},
 				},
@@ -702,7 +714,26 @@ func Test_solanaAnalyzer_describeBatchOperations(t *testing.T) {
 					for j, input := range result.Inputs {
 						expectedInput := expected.Inputs[j]
 						require.Equal(t, expectedInput.Name, input.Name, "Input name mismatch for result %d, input %d", i, j)
-						require.Equal(t, expectedInput.Value.Describe(nil), input.Value.Describe(nil), "Input value mismatch for result %d, input %d", i, j)
+						require.Equal(t, expectedInput.Value.GetType(), input.Value.GetType(), "Input value type mismatch for result %d, input %d", i, j)
+
+						// Compare field values based on type
+						switch expectedField := expectedInput.Value.(type) {
+						case YamlField:
+							if actualField, ok := input.Value.(YamlField); ok {
+								require.Equal(t, expectedField.GetValue(), actualField.GetValue(), "YamlField value mismatch for result %d, input %d", i, j)
+							} else {
+								t.Errorf("Expected YamlField but got %T for result %d, input %d", input.Value, i, j)
+							}
+						case SimpleField:
+							if actualField, ok := input.Value.(SimpleField); ok {
+								require.Equal(t, expectedField.GetValue(), actualField.GetValue(), "SimpleField value mismatch for result %d, input %d", i, j)
+							} else {
+								t.Errorf("Expected SimpleField but got %T for result %d, input %d", input.Value, i, j)
+							}
+						default:
+							// For other field types, we can add more specific comparisons as needed
+							require.Equal(t, expectedInput.Value, input.Value, "Field value mismatch for result %d, input %d", i, j)
+						}
 					}
 				}
 			} else {

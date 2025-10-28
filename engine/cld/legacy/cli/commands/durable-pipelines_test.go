@@ -636,12 +636,16 @@ type mockProposalContext struct {
 	t *testing.T
 }
 
+func (m *mockProposalContext) SetRenderer(r analyzer.Renderer) {
+	// No-op for mock
+}
+
 func (m *mockProposalContext) GetRenderer() analyzer.Renderer {
 	return analyzer.NewMarkdownRenderer()
 }
 
-func (m *mockProposalContext) DescriptorContext(chainSelector uint64) *analyzer.DescriptorContext {
-	return &analyzer.DescriptorContext{}
+func (m *mockProposalContext) FieldsContext(chainSelector uint64) *analyzer.FieldContext {
+	return &analyzer.FieldContext{}
 }
 func (m *mockProposalContext) GetSolanaDecoderRegistry() analyzer.SolanaDecoderRegistry {
 	// Return a mock SolanaDecoderRegistry with a dummy decoder for testing

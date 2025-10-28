@@ -52,22 +52,22 @@ func TestAnalyzeSuiTransactions(t *testing.T) {
 			want: &DecodedCall{
 				Address: suiTestAddress,
 				Method:  "mcms_user::function_one",
-				Inputs: []NamedDescriptor{
+				Inputs: []NamedField{
 					{
 						Name:  "user_data",
-						Value: SimpleDescriptor{Value: "0x8bc59c2842f436c1221691a359dc42941c1f25eca13f4bad79f7b00e8df4b968"},
+						Value: AddressField{Value: "0x8bc59c2842f436c1221691a359dc42941c1f25eca13f4bad79f7b00e8df4b968"},
 					},
 					{
 						Name:  "owner_cap",
-						Value: SimpleDescriptor{Value: "0x5b97db59e5e5d7d2d5e0421173aaee6511dbb494bd23ba98d463591c5e8e4887"},
+						Value: AddressField{Value: "0x5b97db59e5e5d7d2d5e0421173aaee6511dbb494bd23ba98d463591c5e8e4887"},
 					},
 					{
 						Name:  "arg1",
-						Value: SimpleDescriptor{Value: "Updated Field A"},
+						Value: SimpleField{Value: "Updated Field A"},
 					},
 					{
 						Name:  "arg2",
-						Value: SimpleDescriptor{Value: "0x0102030405060708090a"},
+						Value: BytesField{Value: []byte{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a}},
 					},
 				},
 			},
@@ -92,22 +92,22 @@ func TestAnalyzeSuiTransactions(t *testing.T) {
 			want: &DecodedCall{
 				Address: suiTestAddress,
 				Method:  "mcms_user::function_two",
-				Inputs: []NamedDescriptor{
+				Inputs: []NamedField{
 					{
 						Name:  "user_data",
-						Value: SimpleDescriptor{Value: "0x8bc59c2842f436c1221691a359dc42941c1f25eca13f4bad79f7b00e8df4b968"},
+						Value: AddressField{Value: "0x8bc59c2842f436c1221691a359dc42941c1f25eca13f4bad79f7b00e8df4b968"},
 					},
 					{
 						Name:  "owner_cap",
-						Value: SimpleDescriptor{Value: "0x5b97db59e5e5d7d2d5e0421173aaee6511dbb494bd23ba98d463591c5e8e4887"},
+						Value: AddressField{Value: "0x5b97db59e5e5d7d2d5e0421173aaee6511dbb494bd23ba98d463591c5e8e4887"},
 					},
 					{
 						Name:  "arg1",
-						Value: SimpleDescriptor{Value: "0x5b97db59e5e5d7d2d5e0421173aaee6511dbb494bd23ba98d463591c5e8e4887"},
+						Value: AddressField{Value: "0x5b97db59e5e5d7d2d5e0421173aaee6511dbb494bd23ba98d463591c5e8e4887"},
 					},
 					{
 						Name:  "arg2",
-						Value: SimpleDescriptor{Value: "2048"},
+						Value: SimpleField{Value: "2048"},
 					},
 				},
 			},
@@ -138,7 +138,25 @@ func TestAnalyzeSuiTransactions(t *testing.T) {
 			for i, input := range result.Inputs {
 				expectedInput := tt.want.Inputs[i]
 				require.Equal(t, expectedInput.Name, input.Name, "Input name mismatch for input %d", i)
-				require.Equal(t, expectedInput.Value.Describe(nil), input.Value.Describe(nil), "Input value mismatch for input %d", i)
+				require.Equal(t, expectedInput.Value.GetType(), input.Value.GetType(), "Input value type mismatch for input %d", i)
+
+				// Compare field values based on type
+				switch expectedField := expectedInput.Value.(type) {
+				case SimpleField:
+					if actualField, ok := input.Value.(SimpleField); ok {
+						require.Equal(t, expectedField.GetValue(), actualField.GetValue(), "SimpleField value mismatch for input %d", i)
+					} else {
+						t.Errorf("Expected SimpleField but got %T for input %d", input.Value, i)
+					}
+				case AddressField:
+					if actualField, ok := input.Value.(AddressField); ok {
+						require.Equal(t, expectedField.GetValue(), actualField.GetValue(), "AddressField value mismatch for input %d", i)
+					} else {
+						t.Errorf("Expected AddressField but got %T for input %d", input.Value, i)
+					}
+				default:
+					require.Equal(t, expectedInput.Value, input.Value, "Field value mismatch for input %d", i)
+				}
 			}
 		})
 	}

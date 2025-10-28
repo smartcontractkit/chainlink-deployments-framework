@@ -2,20 +2,36 @@ package analyzer
 
 import (
 	"bytes"
+	"embed"
 	"fmt"
+	"strconv"
 	"strings"
 	"text/template"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"gopkg.in/yaml.v3"
 )
 
-// MarkdownRenderer renders ProposalReport and Descriptors as Markdown using templates.
+//go:embed templates/markdown/*.tmpl
+var templateFS embed.FS
+
+// Verify MarkdownRenderer implements Renderer interface
+var _ Renderer = (*MarkdownRenderer)(nil)
+
+// MarkdownRenderer extends TextRenderer with markdown-specific formatting
 type MarkdownRenderer struct {
-	proposalTmpl    *template.Template
-	timelockTmpl    *template.Template
-	decodedCallTmpl *template.Template
-	detailsTmpl     *template.Template
-	summaryTmpl     *template.Template
+	*TextRenderer
+	proposalTmpl     *template.Template
+	timelockTmpl     *template.Template
+	decodedCallTmpl  *template.Template
+	detailsTmpl      *template.Template
+	summaryTmpl      *template.Template
+	addressFieldTmpl *template.Template
+	bytesFieldTmpl   *template.Template
+	arrayFieldTmpl   *template.Template
+	structFieldTmpl  *template.Template
+	simpleFieldTmpl  *template.Template
+	yamlFieldTmpl    *template.Template
 }
 
 const (
@@ -30,55 +46,9 @@ const (
 	MaxCompactHexBytes    = 4   // Maximum bytes for compact hex previews
 )
 
-// Template constants for Markdown rendering
-const (
-	proposalTemplate = `{{range $i, $op := .Operations}}Operation #{{$i}}
-Chain selector: {{$op.ChainSelector}} ({{$op.ChainName}})
-{{range $call := $op.Calls}}{{indent (renderCall $call $.Context)}}{{end}}
-{{end}}`
-
-	timelockTemplate = `{{range $i, $batch := .Batches}}### Batch {{$i}}
-**Chain selector:** ` + "`{{$batch.ChainSelector}}`" + ` ({{$batch.ChainName}})
-
-{{range $j, $op := $batch.Operations}}#### Operation {{$j}}
-{{range $call := $op.Calls}}{{renderCall $call $.Context}}
-
-{{end}}{{end}}---
-
-{{end}}`
-
-	decodedCallTemplate = `**Address:** ` + "`{{.Address}}`" + `{{if .AddressAnnotation}} <sub><i>{{.AddressAnnotation}}</i></sub>{{end}}
-**Method:** ` + "`{{.Method}}`" + `
-
-{{if .Inputs}}**Inputs:**
-
-{{range .Inputs}}- ` + "`{{.Name}}`" + `: {{.Summary}}{{if .Annotation}} <sub><i>{{.Annotation}}</i></sub>{{end}}
-{{end}}
-{{range .InputDetails}}{{.}}
-{{end}}{{end}}{{if .Outputs}}**Outputs:**
-
-{{range .Outputs}}- ` + "`{{.Name}}`" + `: {{.Summary}}{{if .Annotation}} <sub><i>{{.Annotation}}</i></sub>{{end}}
-{{end}}
-{{range .OutputDetails}}{{.}}
-{{end}}{{end}}`
-
-	detailsTemplate = `<details><summary>{{.Name}}</summary>
-
-` + "```" + `
-{{.Content}}
-` + "```" + `
-</details>
-`
-
-	summaryTemplate = `{{if .Type}}` +
-		`{{.Type}}{{if .Length}}(len={{.Length}}){{end}}` +
-		`{{if .Preview}}{{if hasPrefix .Preview ":"}}{{.Preview}}{{else}}: {{.Preview}}{{end}}{{end}}` +
-		`{{else}}` + "`{{.Value}}`" + `{{end}}`
-)
-
 type ProposalTemplateData struct {
 	Operations []OperationTemplateData
-	Context    *DescriptorContext
+	Context    *FieldContext
 }
 
 type OperationTemplateData struct {
@@ -89,7 +59,7 @@ type OperationTemplateData struct {
 
 type TimelockTemplateData struct {
 	Batches []BatchTemplateData
-	Context *DescriptorContext
+	Context *FieldContext
 }
 
 type BatchTemplateData struct {
@@ -103,9 +73,7 @@ type DecodedCallTemplateData struct {
 	AddressAnnotation string
 	Method            string
 	Inputs            []ArgumentTemplateData
-	InputDetails      []string
 	Outputs           []ArgumentTemplateData
-	OutputDetails     []string
 }
 
 type ArgumentTemplateData struct {
@@ -127,16 +95,46 @@ type DetailsTemplateData struct {
 	Content string
 }
 
-// NewMarkdownRenderer creates a new MarkdownRenderer with compiled templates.
+// Field-specific template data structures
+type AddressFieldData struct {
+	Value string
+}
+
+type BytesFieldData struct {
+	Value  []byte
+	Length int
+}
+
+type ArrayFieldData struct {
+	Elements []FieldValue
+	Length   int
+	Context  *FieldContext
+}
+
+type StructFieldData struct {
+	FieldCount int
+}
+
+type SimpleFieldData struct {
+	Value string
+}
+
+type YamlFieldData struct {
+	Value string
+}
+
+// NewMarkdownRenderer creates a new MarkdownRenderer with compiled templates
 func NewMarkdownRenderer() *MarkdownRenderer {
-	r := &MarkdownRenderer{}
+	r := &MarkdownRenderer{
+		TextRenderer: NewTextRenderer(),
+	}
 	r.initTemplates()
 
 	return r
 }
 
 // RenderProposal renders a ProposalReport as Markdown.
-func (r *MarkdownRenderer) RenderProposal(rep *ProposalReport, ctx *DescriptorContext) string {
+func (r *MarkdownRenderer) RenderProposal(rep *ProposalReport, ctx *FieldContext) string {
 	data := ProposalTemplateData{
 		Operations: make([]OperationTemplateData, len(rep.Operations)),
 		Context:    ctx,
@@ -159,7 +157,7 @@ func (r *MarkdownRenderer) RenderProposal(rep *ProposalReport, ctx *DescriptorCo
 }
 
 // RenderTimelock renders a Timelock ProposalReport as Markdown.
-func (r *MarkdownRenderer) RenderTimelockProposal(rep *ProposalReport, ctx *DescriptorContext) string {
+func (r *MarkdownRenderer) RenderTimelockProposal(rep *ProposalReport, ctx *FieldContext) string {
 	data := TimelockTemplateData{
 		Batches: make([]BatchTemplateData, len(rep.Batches)),
 		Context: ctx,
@@ -190,25 +188,23 @@ func (r *MarkdownRenderer) RenderTimelockProposal(rep *ProposalReport, ctx *Desc
 	return buf.String()
 }
 
-// RenderDecodedCall renders a DecodedCall as Markdown.
-func (r *MarkdownRenderer) RenderDecodedCall(d *DecodedCall, ctx *DescriptorContext) string {
-	addrAnn := AddressDescriptor{Value: d.Address}.Annotation(ctx)
+// RenderDecodedCall renders a DecodedCall as Markdown using templates.
+func (r *MarkdownRenderer) RenderDecodedCall(d *DecodedCall, ctx *FieldContext) string {
+	addrAnn := AddressField{Value: d.Address}.Annotation(ctx)
 
 	data := DecodedCallTemplateData{
 		Address:           d.Address,
 		AddressAnnotation: addrAnn,
 		Method:            d.Method,
 		Inputs:            make([]ArgumentTemplateData, len(d.Inputs)),
-		InputDetails:      []string{},
 		Outputs:           make([]ArgumentTemplateData, len(d.Outputs)),
-		OutputDetails:     []string{},
 	}
 
 	// Process inputs
 	for i, input := range d.Inputs {
-		summary, details := r.summarizeDescriptor(input.Name, input.Value, ctx)
+		summary, details := r.summarizeField(input.Name, input.Value, ctx)
 		annotation := ""
-		if addr, ok := input.Value.(AddressDescriptor); ok {
+		if addr, ok := input.Value.(AddressField); ok {
 			annotation = addr.Annotation(ctx)
 		}
 
@@ -218,17 +214,13 @@ func (r *MarkdownRenderer) RenderDecodedCall(d *DecodedCall, ctx *DescriptorCont
 			Annotation: annotation,
 			Details:    details,
 		}
-
-		if details != "" {
-			data.InputDetails = append(data.InputDetails, details)
-		}
 	}
 
 	// Process outputs
 	for i, output := range d.Outputs {
-		summary, details := r.summarizeDescriptor(output.Name, output.Value, ctx)
+		summary, details := r.summarizeField(output.Name, output.Value, ctx)
 		annotation := ""
-		if addr, ok := output.Value.(AddressDescriptor); ok {
+		if addr, ok := output.Value.(AddressField); ok {
 			annotation = addr.Annotation(ctx)
 		}
 
@@ -237,10 +229,6 @@ func (r *MarkdownRenderer) RenderDecodedCall(d *DecodedCall, ctx *DescriptorCont
 			Summary:    summary,
 			Annotation: annotation,
 			Details:    details,
-		}
-
-		if details != "" {
-			data.OutputDetails = append(data.OutputDetails, details)
 		}
 	}
 
@@ -254,37 +242,49 @@ func (r *MarkdownRenderer) RenderDecodedCall(d *DecodedCall, ctx *DescriptorCont
 
 // Helper functions for Markdown rendering
 
-// initTemplates compiles all templates with their helper functions.
+// initTemplates compiles all templates with their helper functions
 func (r *MarkdownRenderer) initTemplates() {
 	funcMap := template.FuncMap{
 		"indent":         indentString,
 		"renderCall":     r.renderCallHelper,
+		"renderField":    r.renderFieldHelper,
 		"hexPreview":     hexPreview,
 		"compactValue":   compactValue,
 		"truncateMiddle": truncateMiddle,
 		"hasPrefix":      func(s, prefix string) bool { return strings.HasPrefix(s, prefix) },
+		"contains":       strings.Contains,
+		"replace":        strings.ReplaceAll,
+		"len":            func(s string) int { return len(s) },
+		"gt":             func(a, b int) bool { return a > b },
+		"sub":            func(a, b int) int { return a - b },
+		"isSimpleValue":  r.isSimpleValue,
 	}
 
-	r.proposalTmpl = template.Must(template.New("proposal").Funcs(funcMap).Parse(proposalTemplate))
-	r.timelockTmpl = template.Must(template.New("timelock").Funcs(funcMap).Parse(timelockTemplate))
-	r.decodedCallTmpl = template.Must(template.New("decodedCall").Funcs(funcMap).Parse(decodedCallTemplate))
-	r.detailsTmpl = template.Must(template.New("details").Funcs(funcMap).Parse(detailsTemplate))
-	r.summaryTmpl = template.Must(template.New("summary").Funcs(funcMap).Parse(summaryTemplate))
+	// Load templates from filesystem
+	r.proposalTmpl = template.Must(template.New("proposal.tmpl").Funcs(funcMap).ParseFS(templateFS, "templates/markdown/proposal.tmpl"))
+	r.timelockTmpl = template.Must(template.New("timelock_proposal.tmpl").Funcs(funcMap).ParseFS(templateFS, "templates/markdown/timelock_proposal.tmpl"))
+	r.decodedCallTmpl = template.Must(template.New("decoded_call.tmpl").Funcs(funcMap).ParseFS(templateFS, "templates/markdown/decoded_call.tmpl"))
+	r.detailsTmpl = template.Must(template.New("details.tmpl").Funcs(funcMap).ParseFS(templateFS, "templates/markdown/details.tmpl"))
+	r.summaryTmpl = template.Must(template.New("summary.tmpl").Funcs(funcMap).ParseFS(templateFS, "templates/markdown/summary.tmpl"))
+
+	// Field-specific templates
+	r.addressFieldTmpl = template.Must(template.New("address_field.tmpl").Funcs(funcMap).ParseFS(templateFS, "templates/markdown/address_field.tmpl"))
+	r.bytesFieldTmpl = template.Must(template.New("bytes_field.tmpl").Funcs(funcMap).ParseFS(templateFS, "templates/markdown/bytes_field.tmpl"))
+	r.arrayFieldTmpl = template.Must(template.New("array_field.tmpl").Funcs(funcMap).ParseFS(templateFS, "templates/markdown/array_field.tmpl"))
+	r.structFieldTmpl = template.Must(template.New("struct_field.tmpl").Funcs(funcMap).ParseFS(templateFS, "templates/markdown/struct_field.tmpl"))
+	r.simpleFieldTmpl = template.Must(template.New("simple_field.tmpl").Funcs(funcMap).ParseFS(templateFS, "templates/markdown/simple_field.tmpl"))
+	r.yamlFieldTmpl = template.Must(template.New("yaml_field.tmpl").Funcs(funcMap).ParseFS(templateFS, "templates/markdown/yaml_field.tmpl"))
 }
 
-// renderCallHelper is a template helper function to render a DecodedCall.
-func (r *MarkdownRenderer) renderCallHelper(call *DecodedCall, ctx *DescriptorContext) string {
+// renderCallHelper is a template helper function to render a DecodedCall
+func (r *MarkdownRenderer) renderCallHelper(call *DecodedCall, ctx *FieldContext) string {
 	return r.RenderDecodedCall(call, ctx)
 }
 
-// renderSummary renders a summary using the summary template.
-func (r *MarkdownRenderer) renderSummary(data SummaryTemplateData) string {
-	var buf bytes.Buffer
-	if err := r.summaryTmpl.Execute(&buf, data); err != nil {
-		return fmt.Sprintf("Error rendering summary: %v", err)
-	}
-
-	return buf.String()
+// renderFieldHelper is a template helper function to render a FieldValue
+func (r *MarkdownRenderer) renderFieldHelper(field FieldValue, ctx *FieldContext) string {
+	summary, _ := r.summarizeField("", field, ctx)
+	return summary
 }
 
 // renderDetails renders details HTML using the details template.
@@ -301,98 +301,314 @@ func (r *MarkdownRenderer) renderDetails(name, content string) string {
 	return buf.String()
 }
 
-// summarizeDescriptor produces a short summary and optional detailed description for an argument.
-func (r *MarkdownRenderer) summarizeDescriptor(name string, descriptor Descriptor, ctx *DescriptorContext) (summary string, details string) {
-	switch v := descriptor.(type) {
-	case AddressDescriptor:
-		return fmt.Sprintf("`%s`", v.Value), ""
-	case ChainSelectorDescriptor:
-		return fmt.Sprintf("`%s`", v.Describe(ctx)), ""
-	case BytesDescriptor:
-		n := len(v.Value)
-		preview := hexPreview(v.Value, MaxHexPreviewBytes)
-		summary = fmt.Sprintf("bytes(len=%d): %s", n, preview)
-		details = r.renderDetails(name, hexutil.Encode(v.Value))
+// summarizeField uses templates for rendering different field types
+func (r *MarkdownRenderer) summarizeField(name string, field FieldValue, ctx *FieldContext) (summary string, details string) {
+	switch f := field.(type) {
+	case AddressField:
+		return r.summarizeAddressField(f)
 
-		return summary, details
-	case ArrayDescriptor:
-		n := len(v.Elements)
-		if n == 0 {
-			return "[]", ""
-		}
-		preview := arrayPreview(v.Elements, ctx)
-		summaryData := SummaryTemplateData{
-			Type:    fmt.Sprintf("array[%d]", n),
-			Preview: preview,
-		}
-		summary = r.renderSummary(summaryData)
-		details = r.renderDetails(name, v.Describe(ctx))
+	case BytesField:
+		return r.summarizeBytesField(name, f)
 
-		return summary, details
-	case StructDescriptor:
-		summaryData := SummaryTemplateData{
-			Type: fmt.Sprintf("struct{%d fields}", len(v.Fields)),
-		}
-		summary = r.renderSummary(summaryData)
-		details = r.renderDetails(name, v.Describe(ctx))
+	case ArrayField:
+		return r.summarizeArrayField(name, f, ctx)
 
-		return summary, details
-	case SimpleDescriptor:
-		s := v.Value
-		if len(s) > MaxSummaryLength {
-			summary = fmt.Sprintf("`%s` (len=%d)", truncateMiddle(s, MaxSummaryLength), len(s))
-			details = r.renderDetails(name, s)
+	case StructField:
+		return r.summarizeStructField(name, f)
 
-			return summary, details
-		}
+	case SimpleField:
+		return r.summarizeSimpleField(name, f)
 
-		return fmt.Sprintf("`%s`", s), ""
-	case YamlDescriptor:
-		// YamlDescriptor values should always generate details since they're complex YAML-marshaled values
-		s := v.Describe(ctx)
-		s = strings.TrimRight(s, " \t\n\r")
-		if strings.Contains(s, "\n") || len(s) > MaxLongValueLength {
-			summary = fmt.Sprintf("`%s`", truncateMiddle(strings.ReplaceAll(s, "\n", " "), MaxSummaryLength))
-			details = r.renderDetails(name, s)
+	case YamlField:
+		return r.summarizeYamlField(name, f)
 
-			return summary, details
-		}
-		// Check if this is a simple value that should be displayed without backticks
-		if r.isSimpleValue(s) {
-			summary = s
-			details = r.renderDetails(name, s)
+	case NamedField:
+		return r.summarizeNamedField(f, ctx)
 
-			return summary, details
-		}
-		// Complex value - display with backticks and details
-		summary = fmt.Sprintf("`%s`", s)
-		details = r.renderDetails(name, s)
-
-		return summary, details
 	default:
-		// Mixed case - template for details, fmt.Sprintf for summary
-		s := descriptor.Describe(ctx)
-		// Trim trailing whitespace
-		s = strings.TrimRight(s, " \t\n\r")
-
-		if strings.Contains(s, "\n") || len(s) > MaxLongValueLength {
-			summary = fmt.Sprintf("`%s`", truncateMiddle(strings.ReplaceAll(s, "\n", " "), MaxSummaryLength))
-			details = r.renderDetails(name, s)
-
-			return summary, details
-		}
-
-		// Determine if this is a simple value that should be displayed without backticks
-		if r.isSimpleValue(s) {
-			summary = s
-			details = r.renderDetails(name, s)
-
-			return summary, details
-		}
-
-		// Complex value - display with backticks, no details for default case
-		return fmt.Sprintf("`%s`", s), ""
+		// Fallback to text renderer
+		summary = r.renderFieldValueDirect(field, ctx)
+		return summary, ""
 	}
+}
+
+// Helper methods for field summarization
+
+func (r *MarkdownRenderer) summarizeAddressField(f AddressField) (string, string) {
+	data := AddressFieldData{Value: f.GetValue()}
+	summary := r.renderTemplate(r.addressFieldTmpl, data)
+
+	return summary, ""
+}
+
+func (r *MarkdownRenderer) summarizeBytesField(name string, f BytesField) (string, string) {
+	data := BytesFieldData{Value: f.GetValue(), Length: f.GetLength()}
+	summary := r.renderTemplate(r.bytesFieldTmpl, data)
+	details := r.renderDetails(name, hexutil.Encode(f.GetValue()))
+
+	return summary, details
+}
+
+func (r *MarkdownRenderer) summarizeArrayField(name string, f ArrayField, ctx *FieldContext) (string, string) {
+	data := ArrayFieldData{
+		Elements: f.GetElements(),
+		Length:   f.GetLength(),
+		Context:  ctx,
+	}
+	summary := r.renderTemplate(r.arrayFieldTmpl, data)
+	var details string
+	if f.GetLength() > 0 {
+		details = r.renderDetails(name, r.renderFieldDetails(f, ""))
+	}
+
+	return summary, details
+}
+
+func (r *MarkdownRenderer) summarizeStructField(name string, f StructField) (string, string) {
+	data := StructFieldData{FieldCount: f.GetFieldCount()}
+	summary := r.renderTemplate(r.structFieldTmpl, data)
+	details := r.renderDetails(name, r.renderFieldDetails(f, ""))
+
+	return summary, details
+}
+
+func (r *MarkdownRenderer) summarizeSimpleField(name string, f SimpleField) (string, string) {
+	data := SimpleFieldData{Value: f.GetValue()}
+	summary := r.renderTemplate(r.simpleFieldTmpl, data)
+	var details string
+	if len(f.GetValue()) > MaxSummaryLength {
+		details = r.renderDetails(name, f.GetValue())
+	}
+
+	return summary, details
+}
+
+func (r *MarkdownRenderer) summarizeYamlField(name string, f YamlField) (string, string) {
+	data := YamlFieldData{Value: f.GetValue()}
+	summary := r.renderTemplate(r.yamlFieldTmpl, data)
+	details := r.renderDetails(name, r.renderFieldDetails(f, ""))
+
+	return summary, details
+}
+
+func (r *MarkdownRenderer) summarizeNamedField(f NamedField, ctx *FieldContext) (string, string) {
+	valueStr := r.renderFieldValueDirect(f.Value, ctx)
+	if strings.HasPrefix(valueStr, "`") && strings.HasSuffix(valueStr, "`") && len(valueStr) > 1 {
+		valueStr = valueStr[1 : len(valueStr)-1]
+	}
+	summary := fmt.Sprintf("`%s: %s`", f.Name, valueStr)
+
+	return summary, ""
+}
+
+// renderFieldDetails renders the full content for details sections with proper formatting
+func (r *MarkdownRenderer) renderFieldDetails(field FieldValue, indent string) string {
+	switch f := field.(type) {
+	case ArrayField:
+		return r.renderArrayFieldDetails(f, indent)
+
+	case StructField:
+		return r.renderStructFieldDetails(f, indent)
+
+	case BytesField:
+		return r.renderBytesFieldDetails(f)
+
+	case SimpleField:
+		return r.renderSimpleFieldDetails(f)
+
+	case YamlField:
+		return r.renderYamlFieldDetails(f)
+
+	case AddressField:
+		return r.renderAddressFieldDetails(f)
+
+	case ChainSelectorField:
+		return r.renderChainSelectorFieldDetails(f)
+
+	case NamedField:
+		return r.renderNamedFieldDetails(f, indent)
+
+	default:
+		// Fallback to string representation without backticks
+		return fmt.Sprintf("%v", field)
+	}
+}
+
+// Helper methods for field details rendering
+
+func (r *MarkdownRenderer) renderArrayFieldDetails(f ArrayField, indent string) string {
+	if f.GetLength() == 0 {
+		return "[]"
+	}
+	parts := make([]string, 0, f.GetLength())
+	for i, elem := range f.GetElements() {
+		elemStr := r.renderFieldDetails(elem, indent+"  ")
+		parts = append(parts, fmt.Sprintf("%s%d: %s", indent+"  ", i, elemStr))
+	}
+
+	return fmt.Sprintf("[\n%s\n%s]", strings.Join(parts, "\n"), indent)
+}
+
+func (r *MarkdownRenderer) renderStructFieldDetails(f StructField, indent string) string {
+	fields := f.GetFields()
+	if len(fields) == 0 {
+		return fmt.Sprintf("struct with %d fields (no field data available)", f.GetFieldCount())
+	}
+	parts := make([]string, 0, len(fields))
+	for _, field := range fields {
+		valueStr := r.renderFieldDetails(field.Value, indent+"  ")
+		parts = append(parts, fmt.Sprintf("%s%s: %s", indent+"  ", field.Name, valueStr))
+	}
+
+	return fmt.Sprintf("{\n%s\n%s}", strings.Join(parts, "\n"), indent)
+}
+
+func (r *MarkdownRenderer) renderBytesFieldDetails(f BytesField) string {
+	return hexutil.Encode(f.GetValue())
+}
+
+func (r *MarkdownRenderer) renderSimpleFieldDetails(f SimpleField) string {
+	return f.GetValue()
+}
+
+func (r *MarkdownRenderer) renderYamlFieldDetails(f YamlField) string {
+	if str, ok := f.Value.(string); ok {
+		var data interface{}
+		if err := yaml.Unmarshal([]byte(str), &data); err == nil {
+			if pretty, err := yaml.Marshal(data); err == nil {
+				content := strings.TrimRight(string(pretty), "\n")
+				content = strings.ReplaceAll(content, "- ", "&#45; ")
+
+				return content
+			}
+		}
+
+		return str
+	}
+
+	if pretty, err := yaml.Marshal(f.Value); err == nil {
+		content := strings.TrimRight(string(pretty), "\n")
+		content = strings.ReplaceAll(content, "- ", "&#45; ")
+
+		return content
+	}
+
+	return f.GetValue()
+}
+
+func (r *MarkdownRenderer) renderAddressFieldDetails(f AddressField) string {
+	return f.GetValue()
+}
+
+func (r *MarkdownRenderer) renderChainSelectorFieldDetails(f ChainSelectorField) string {
+	chainName, err := GetChainNameBySelector(f.GetValue())
+	if err != nil || chainName == "" {
+		return fmt.Sprintf("%d (<chain unknown>)", f.GetValue())
+	}
+
+	return fmt.Sprintf("%d (%s)", f.GetValue(), chainName)
+}
+
+func (r *MarkdownRenderer) renderNamedFieldDetails(f NamedField, indent string) string {
+	valueStr := r.renderFieldDetails(f.Value, indent+"  ")
+	return fmt.Sprintf("%s: %s", f.Name, valueStr)
+}
+
+// renderFieldValueDirect renders a field value directly without causing recursion
+func (r *MarkdownRenderer) renderFieldValueDirect(field FieldValue, ctx *FieldContext) string {
+	switch f := field.(type) {
+	case AddressField:
+		return r.renderAddressFieldDirect(f)
+
+	case BytesField:
+		return r.renderBytesFieldDirect(f)
+
+	case ArrayField:
+		return r.renderArrayFieldDirect(f, ctx)
+
+	case StructField:
+		return r.renderStructFieldDirect(f)
+
+	case SimpleField:
+		return r.renderSimpleFieldDirect(f)
+
+	case ChainSelectorField:
+		return r.renderChainSelectorFieldDirect(f)
+
+	case YamlField:
+		return r.renderYamlFieldDirect(f)
+
+	case NamedField:
+		return r.renderNamedFieldDirect(f, ctx)
+
+	default:
+		// Fallback to string representation
+		return fmt.Sprintf("`%v`", field)
+	}
+}
+
+// Helper methods for direct field value rendering
+
+func (r *MarkdownRenderer) renderAddressFieldDirect(f AddressField) string {
+	data := AddressFieldData{Value: f.GetValue()}
+	return r.renderTemplate(r.addressFieldTmpl, data)
+}
+
+func (r *MarkdownRenderer) renderBytesFieldDirect(f BytesField) string {
+	data := BytesFieldData{Value: f.GetValue(), Length: f.GetLength()}
+	return r.renderTemplate(r.bytesFieldTmpl, data)
+}
+
+func (r *MarkdownRenderer) renderArrayFieldDirect(f ArrayField, ctx *FieldContext) string {
+	data := ArrayFieldData{
+		Elements: f.GetElements(),
+		Length:   f.GetLength(),
+		Context:  ctx,
+	}
+
+	return r.renderTemplate(r.arrayFieldTmpl, data)
+}
+
+func (r *MarkdownRenderer) renderStructFieldDirect(f StructField) string {
+	data := StructFieldData{FieldCount: f.GetFieldCount()}
+	return r.renderTemplate(r.structFieldTmpl, data)
+}
+
+func (r *MarkdownRenderer) renderSimpleFieldDirect(f SimpleField) string {
+	data := SimpleFieldData{Value: f.GetValue()}
+	return r.renderTemplate(r.simpleFieldTmpl, data)
+}
+
+func (r *MarkdownRenderer) renderChainSelectorFieldDirect(f ChainSelectorField) string {
+	chainName, err := GetChainNameBySelector(f.GetValue())
+	if err != nil || chainName == "" {
+		return fmt.Sprintf("`%d (<chain unknown>)`", f.GetValue())
+	}
+
+	return fmt.Sprintf("`%d (%s)`", f.GetValue(), chainName)
+}
+
+func (r *MarkdownRenderer) renderYamlFieldDirect(f YamlField) string {
+	return fmt.Sprintf("`%s`", f.GetValue())
+}
+
+func (r *MarkdownRenderer) renderNamedFieldDirect(f NamedField, ctx *FieldContext) string {
+	valueStr := r.renderFieldValueDirect(f.Value, ctx)
+	if strings.HasPrefix(valueStr, "`") && strings.HasSuffix(valueStr, "`") && len(valueStr) > 1 {
+		valueStr = valueStr[1 : len(valueStr)-1]
+	}
+
+	return fmt.Sprintf("`%s: %s`", f.Name, valueStr)
+}
+
+// renderTemplate is a helper to execute a template with data
+func (r *MarkdownRenderer) renderTemplate(tmpl *template.Template, data interface{}) string {
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
+		return fmt.Sprintf("Error rendering template: %v", err)
+	}
+
+	return buf.String()
 }
 
 // isSimpleValue determines if a string represents a simple value that should be displayed without backticks.
@@ -463,7 +679,7 @@ func indentStringWith(s string, indent string) string {
 	return result.String()
 }
 
-func arrayPreview(elems []Descriptor, ctx *DescriptorContext) string {
+func arrayPreview(elems []FieldValue, ctx *FieldContext) string {
 	n := len(elems)
 	if n == 0 {
 		return ""
@@ -484,24 +700,28 @@ func arrayPreview(elems []Descriptor, ctx *DescriptorContext) string {
 	return fmt.Sprintf(": [%s%s]", strings.Join(parts, ", "), more)
 }
 
-// compactValue produces a very short representation for an argument, suitable for inline previews.
-func compactValue(arg Descriptor, ctx *DescriptorContext) string {
-	switch v := arg.(type) {
-	case AddressDescriptor:
-		return v.Value
-	case ChainSelectorDescriptor:
-		return v.Describe(ctx)
-	case BytesDescriptor:
-		return hexPreview(v.Value, MaxCompactHexBytes)
-	case SimpleDescriptor:
-		return truncateMiddle(v.Value, MaxCompactValueLength)
-	case StructDescriptor:
+// compactValue produces a very short representation for a field, suitable for inline previews
+func compactValue(field FieldValue, ctx *FieldContext) string {
+	switch f := field.(type) {
+	case AddressField:
+		return f.GetValue()
+	case ChainSelectorField:
+		chainName, err := GetChainNameBySelector(f.GetValue())
+		if err != nil || chainName == "" {
+			return strconv.FormatUint(f.GetValue(), 10)
+		}
+
+		return chainName
+	case BytesField:
+		return hexPreview(f.GetValue(), MaxCompactHexBytes)
+	case SimpleField:
+		return truncateMiddle(f.GetValue(), MaxCompactValueLength)
+	case StructField:
 		return "struct"
-	case ArrayDescriptor:
-		return fmt.Sprintf("array[%d]", len(v.Elements))
+	case ArrayField:
+		return fmt.Sprintf("array[%d]", f.GetLength())
 	default:
-		s := arg.Describe(ctx)
-		return truncateMiddle(strings.ReplaceAll(s, "\n", " "), MaxCompactValueLength)
+		return truncateMiddle(fmt.Sprintf("<%s>", f.GetType()), MaxCompactValueLength)
 	}
 }
 

@@ -65,7 +65,7 @@ func TestNewDefaultProposalContext(t *testing.T) {
 	})
 }
 
-func Test_DefaultProposalContext_ArgumentContext(t *testing.T) {
+func Test_DefaultProposalContext_FieldContext(t *testing.T) {
 	t.Parallel()
 
 	addresses := deployment.AddressesByChain{
@@ -76,11 +76,14 @@ func Test_DefaultProposalContext_ArgumentContext(t *testing.T) {
 			"0xmanyChainMultisigAddress": deployment.MustTypeAndVersionFromString("ManyChainMultisig 1.0.0"),
 		},
 	}
-	proposalContext := &DefaultProposalContext{AddressesByChain: addresses}
+	proposalContext := &DefaultProposalContext{
+		AddressesByChain: addresses,
+		renderer:         NewMarkdownRenderer(),
+	}
 
-	got := proposalContext.DescriptorContext(5678)
+	got := proposalContext.FieldsContext(5678)
 
-	require.Equal(t, got, &DescriptorContext{ //nolint:testifylint
+	require.Equal(t, got, &FieldContext{ //nolint:testifylint
 		Ctx: map[string]any{
 			"AddressesByChain": deployment.AddressesByChain{
 				5678: {

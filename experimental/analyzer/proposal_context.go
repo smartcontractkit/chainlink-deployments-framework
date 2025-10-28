@@ -8,8 +8,9 @@ import (
 type ProposalContext interface {
 	GetEVMRegistry() EVMABIRegistry
 	GetSolanaDecoderRegistry() SolanaDecoderRegistry
-	DescriptorContext(chainSelector uint64) *DescriptorContext
+	FieldsContext(chainSelector uint64) *FieldContext
 	GetRenderer() Renderer
+	SetRenderer(renderer Renderer)
 }
 
 type ProposalContextProvider func(env deployment.Environment) (ProposalContext, error)
@@ -37,6 +38,10 @@ func (c *DefaultProposalContext) GetRenderer() Renderer {
 	}
 
 	return c.renderer
+}
+
+func (c *DefaultProposalContext) SetRenderer(renderer Renderer) {
+	c.renderer = renderer
 }
 
 type proposalCtxOption func(*proposalCtxOptions) error
@@ -124,9 +129,9 @@ func NewDefaultProposalContext(env deployment.Environment, opts ...proposalCtxOp
 	}, nil
 }
 
-func (c *DefaultProposalContext) DescriptorContext(chainSelector uint64) *DescriptorContext {
+func (c *DefaultProposalContext) FieldsContext(chainSelector uint64) *FieldContext {
 	chainAddresses := deployment.AddressesByChain{}
 	chainAddresses[chainSelector] = c.AddressesByChain[chainSelector]
 
-	return NewDescriptorContext(chainAddresses)
+	return NewFieldContext(chainAddresses)
 }

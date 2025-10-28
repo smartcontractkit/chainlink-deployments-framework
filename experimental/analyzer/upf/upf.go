@@ -376,17 +376,20 @@ func analyzeTransaction(
 }
 
 func upfYamlMarshallers() []yaml.EncodeOption {
+	// This function provides custom YAML marshaling for UPF format.
+	// It could be refactored into a dedicated Renderer object to improve code organization
+	// and make the marshaling logic more reusable across different output formats.
 	return []yaml.EncodeOption{
-		yaml.CustomMarshaler(func(arg mcmsanalyzer.SimpleDescriptor) ([]byte, error) {
+		yaml.CustomMarshaler(func(arg mcmsanalyzer.SimpleField) ([]byte, error) {
 			return yaml.Marshal(arg.Value)
 		}),
-		yaml.CustomMarshaler(func(arg mcmsanalyzer.NamedDescriptor) ([]byte, error) {
+		yaml.CustomMarshaler(func(arg mcmsanalyzer.NamedField) ([]byte, error) {
 			return yaml.MarshalWithOptions(map[string]any{arg.Name: arg.Value}, upfYamlMarshallers()...)
 		}),
-		yaml.CustomMarshaler(func(arg mcmsanalyzer.ArrayDescriptor) ([]byte, error) {
+		yaml.CustomMarshaler(func(arg mcmsanalyzer.ArrayField) ([]byte, error) {
 			return yaml.MarshalWithOptions(arg.Elements, upfYamlMarshallers()...)
 		}),
-		yaml.CustomMarshaler(func(arg mcmsanalyzer.StructDescriptor) ([]byte, error) {
+		yaml.CustomMarshaler(func(arg mcmsanalyzer.StructField) ([]byte, error) {
 			argMap := map[string]any{}
 			for _, field := range arg.Fields {
 				argMap[field.Name] = field.Value
@@ -394,28 +397,34 @@ func upfYamlMarshallers() []yaml.EncodeOption {
 
 			return yaml.MarshalWithOptions(argMap, upfYamlMarshallers()...)
 		}),
-		yaml.CustomMarshaler(func(arg mcmsanalyzer.ChainSelectorDescriptor) ([]byte, error) {
+		yaml.CustomMarshaler(func(arg mcmsanalyzer.ChainSelectorField) ([]byte, error) {
 			return yaml.Marshal(arg.Value)
 		}),
-		yaml.CustomMarshaler(func(arg mcmsanalyzer.AddressDescriptor) ([]byte, error) {
+		yaml.CustomMarshaler(func(arg mcmsanalyzer.AddressField) ([]byte, error) {
 			return yaml.Marshal(arg.Value)
 		}),
-		yaml.CustomMarshaler(func(arg mcmsanalyzer.BytesDescriptor) ([]byte, error) {
+		yaml.CustomMarshaler(func(arg mcmsanalyzer.BytesField) ([]byte, error) {
 			return yaml.Marshal(fmt.Sprintf("0x%x", arg.Value))
+		}),
+		yaml.CustomMarshaler(func(field mcmsanalyzer.YamlField) ([]byte, error) {
+			return field.MarshalYAML()
 		}),
 	}
 }
 
 func describeInputs(
-	proposalCtx mcmsanalyzer.ProposalContext, inputs []mcmsanalyzer.NamedDescriptor, chainSelector mcmstypes.ChainSelector,
-) []mcmsanalyzer.NamedDescriptor {
-	argCtx := proposalCtx.DescriptorContext(uint64(chainSelector))
-	describedInputs := make([]mcmsanalyzer.NamedDescriptor, len(inputs))
+	_ mcmsanalyzer.ProposalContext, inputs []mcmsanalyzer.NamedField, _ mcmstypes.ChainSelector,
+) []mcmsanalyzer.NamedField {
+	renderer := mcmsanalyzer.NewTextRenderer()
+	describedInputs := make([]mcmsanalyzer.NamedField, len(inputs))
 
 	for i, arg := range inputs {
-		describedInputs[i] = mcmsanalyzer.NamedDescriptor{
+		// Use RenderFieldValue to get just the value without the "name: " prefix
+		// This is more efficient and less fragile than calling RenderField and stripping the prefix
+		valueStr := renderer.RenderFieldValue(arg.Value)
+		describedInputs[i] = mcmsanalyzer.NamedField{
 			Name:  arg.Name,
-			Value: mcmsanalyzer.SimpleDescriptor{Value: arg.Value.Describe(argCtx)},
+			Value: mcmsanalyzer.SimpleField{Value: valueStr},
 		}
 	}
 

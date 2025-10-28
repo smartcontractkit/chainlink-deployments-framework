@@ -1,0 +1,1 @@
+array[{{.Length}}]: {{if eq .Length 0}}[]{{else}}[{{range $i, $elem := .Elements}}{{if $i}}, {{end}}{{compactValue $elem $.Context}}{{end}}{{if gt .Length 3}}, … (+{{sub .Length 3}}){{end}}]{{end}}

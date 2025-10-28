@@ -14,7 +14,10 @@ import (
 func TestDescribeProposal(t *testing.T) {
 	t.Parallel()
 
-	ctx := &DefaultProposalContext{AddressesByChain: deployment.AddressesByChain{}}
+	ctx := &DefaultProposalContext{
+		AddressesByChain: deployment.AddressesByChain{},
+		renderer:         NewMarkdownRenderer(),
+	}
 
 	tests := []struct {
 		name           string
@@ -109,7 +112,10 @@ func TestDescribeProposal(t *testing.T) {
 func TestDescribeTimelockProposal(t *testing.T) {
 	t.Parallel()
 
-	ctx := &DefaultProposalContext{AddressesByChain: deployment.AddressesByChain{}}
+	ctx := &DefaultProposalContext{
+		AddressesByChain: deployment.AddressesByChain{},
+		renderer:         NewMarkdownRenderer(),
+	}
 
 	tests := []struct {
 		name           string
