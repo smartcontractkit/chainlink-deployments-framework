@@ -1623,7 +1623,7 @@ func createRendererFromFormat(format string) (analyzer.Renderer, error) {
 	case "":
 		return analyzer.NewMarkdownRenderer(), nil
 	default:
-		// Default to markdown if format is not specified or invalid
+		// error if format is not specified or invalid
 		return nil, fmt.Errorf("unknown format '%s'", format)
 	}
 }
