@@ -116,6 +116,7 @@ func Load(filePath string) (*DomainConfig, error) {
 	// Apply defaults to environments
 	for name, env := range cfg.Environments {
 		if env.Datastore == "" {
+			// todo: remove this default when catalog is fully enabled for domains
 			env.Datastore = DatastoreTypeFile // Default to file if not specified
 			cfg.Environments[name] = env
 		}
