@@ -84,8 +84,14 @@ func startSolanaContainer(
 	ports := freeport.GetN(t, 2)
 
 	image := ""
+	// TODO: workaround on linux
 	if runtime.GOOS == "linux" {
-		image = "solanalabs/solana:v1.18.26" // TODO: workaround on linux
+		switch runtime.GOARCH {
+		case "amd64":
+			image = "solanalabs/solana:v1.18.26"
+		case "arm64":
+			image = "f4hrenh9it/solana"
+		}
 	}
 
 	bcInput := &blockchain.Input{
