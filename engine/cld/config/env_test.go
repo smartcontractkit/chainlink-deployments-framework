@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	cfgenv "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/env"
+	fdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 )
 
 func Test_LoadEnvConfig(t *testing.T) { //nolint:paralleltest // These tests are not parallel safe due to setting of env vars
@@ -188,6 +189,107 @@ func Test_LoadEnvConfig(t *testing.T) { //nolint:paralleltest // These tests are
 				}
 
 				tt.wantFunc(t, got)
+			}
+		})
+	}
+}
+
+func Test_LoadDatastoreType(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		beforeFunc func(t *testing.T, dom fdomain.Domain, envKey string)
+		wantValue  string
+		wantErr    string
+	}{
+		{
+			name: "successfully loads datastore type - file",
+			beforeFunc: func(t *testing.T, dom fdomain.Domain, envKey string) {
+				t.Helper()
+
+				writeConfigDomainFile(t, dom, "domain.yaml")
+			},
+			wantValue: "file",
+		},
+		{
+			name: "successfully loads datastore type - catalog",
+			beforeFunc: func(t *testing.T, dom fdomain.Domain, envKey string) {
+				t.Helper()
+
+				// Create a custom domain.yaml with catalog datastore
+				domainYAML := `environments:
+  staging_testnet:
+    network_types:
+      - testnet
+    datastore: catalog
+`
+				err := os.WriteFile(dom.ConfigDomainFilePath(), []byte(domainYAML), filePerms)
+				require.NoError(t, err)
+			},
+			wantValue: "catalog",
+		},
+		{
+			name: "successfully loads datastore type - defaults to file when not specified",
+			beforeFunc: func(t *testing.T, dom fdomain.Domain, envKey string) {
+				t.Helper()
+
+				// Create a domain.yaml without datastore field
+				domainYAML := `environments:
+  staging_testnet:
+    network_types:
+      - testnet
+`
+				err := os.WriteFile(dom.ConfigDomainFilePath(), []byte(domainYAML), filePerms)
+				require.NoError(t, err)
+			},
+			wantValue: "file",
+		},
+		{
+			name: "fails when domain config file does not exist",
+			beforeFunc: func(t *testing.T, dom fdomain.Domain, envKey string) {
+				t.Helper()
+				// Don't create domain.yaml file
+			},
+			wantErr: "failed to load domain config",
+		},
+		{
+			name: "fails when environment not found in domain config",
+			beforeFunc: func(t *testing.T, dom fdomain.Domain, envKey string) {
+				t.Helper()
+
+				// Create a domain.yaml with a different environment
+				domainYAML := `environments:
+  production:
+    network_types:
+      - mainnet
+    datastore: file
+`
+				err := os.WriteFile(dom.ConfigDomainFilePath(), []byte(domainYAML), filePerms)
+				require.NoError(t, err)
+			},
+			wantErr: "environment staging_testnet not found in domain config",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			dom, envKey := setupConfigDirs(t)
+
+			if tt.beforeFunc != nil {
+				tt.beforeFunc(t, dom, envKey)
+			}
+
+			got, err := LoadDatastoreType(dom, envKey)
+
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				require.ErrorContains(t, err, tt.wantErr)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.wantValue, got.String())
 			}
 		})
 	}
