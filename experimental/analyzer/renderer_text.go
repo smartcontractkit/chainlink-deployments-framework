@@ -135,6 +135,7 @@ func (r *TextRenderer) RenderDecodedCall(d *DecodedCall, ctx *FieldContext) stri
 	}
 	out := buf.String()
 	out = strings.TrimSuffix(out, "\n")
+
 	return out
 }
 
@@ -162,6 +163,7 @@ func (r *TextRenderer) RenderProposal(rep *ProposalReport, ctx *FieldContext) st
 	if !strings.HasSuffix(out, "\n\n") { // assuming double newline means intentional spacing
 		out = strings.TrimSuffix(out, "\n")
 	}
+
 	return out
 }
 
@@ -198,6 +200,7 @@ func (r *TextRenderer) RenderTimelockProposal(rep *ProposalReport, ctx *FieldCon
 	if !strings.HasSuffix(out, "\n\n") { // assuming double newline means intentional spacing
 		out = strings.TrimSuffix(out, "\n")
 	}
+
 	return out
 }
 
@@ -301,5 +304,6 @@ func (r *TextRenderer) renderFieldValue(field FieldValue) string {
 	if !strings.HasSuffix(out, "\n\n") { // assuming double newline means intentional spacing
 		out = strings.TrimSuffix(out, "\n")
 	}
+
 	return out
 }
