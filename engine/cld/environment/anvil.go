@@ -204,7 +204,6 @@ func newAnvilChains(
 			}
 			network.Metadata = cfgnet.EVMMetadata{
 				AnvilConfig: &cfgnet.AnvilConfig{
-					Image:          "f4hrenh9it/foundry:latest",
 					Port:           uint64(ports[0]), //nolint:gosec // G115: int to uint64 conversion is safe here (port numbers are always in valid range)
 					ArchiveHTTPURL: network.RPCs[0].HTTPURL,
 				},
