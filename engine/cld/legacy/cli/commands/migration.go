@@ -5,20 +5,25 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
+	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	cldcatalog "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/catalog"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/changeset"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config"
+	cfgdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/domain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/legacy/cli"
 	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
-	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
+	foperations "github.com/smartcontractkit/chainlink-deployments-framework/operations"
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
 // LoadRegistryFunc is a function type that loads the migrations registry for a given environment key.
 type LoadRegistryFunc func(envKey string) (*changeset.ChangesetsRegistry, error)
 
 // DecodeProposalCtxProvider is a function type that adds decoding context based on the environment.
-type DecodeProposalCtxProvider func(env deployment.Environment) (analyzer.ProposalContext, error)
+type DecodeProposalCtxProvider func(env fdeployment.Environment) (analyzer.ProposalContext, error)
 
 // NewMigrationCmds creates a new set of commands for managing migrations.
 func (c Commands) NewMigrationCmds(
@@ -84,7 +89,7 @@ var (
 func (c Commands) newMigrationRun(
 	domain domain.Domain,
 	loadMigration func(envName string) (*changeset.ChangesetsRegistry, error),
-	decodeProposalContext func(env deployment.Environment) (analyzer.ProposalContext, error),
+	decodeProposalContext func(env fdeployment.Environment) (analyzer.ProposalContext, error),
 ) *cobra.Command {
 	var (
 		migrationName string
@@ -143,7 +148,7 @@ func (c Commands) newMigrationRun(
 			}
 			originalReportsLen := len(reports)
 			cmd.Printf("Loaded %d operations reports", originalReportsLen)
-			reporter := operations.NewMemoryReporter(operations.WithReports(reports))
+			reporter := foperations.NewMemoryReporter(foperations.WithReports(reports))
 
 			envOptions = append(envOptions, environment.WithReporter(reporter))
 			env, err := environment.Load(cmd.Context(), domain, envKey, envOptions...)
@@ -482,10 +487,26 @@ func (Commands) newMigrationDataStoreMerge(domain domain.Domain) *cobra.Command 
 		Long:    "Merge the data store for a migration to the main data store",
 		Example: migrationDataStoreMergeExample,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
 			envKey, _ := cmd.Flags().GetString("environment")
 			envDir := domain.EnvDir(envKey)
 
-			if err := envDir.MergeMigrationDataStore(migrationName, timestamp); err != nil {
+			// Attempt to load catalog if configured, but proceed with local files if not available
+			var catalog fdatastore.CatalogStore = nil
+
+			// Try to load config to check if catalog is configured
+			cfg, err := config.Load(domain, envKey, logger.Nop())
+			if err == nil && cfg.DatastoreType == cfgdomain.DatastoreTypeCatalog && cfg.Env.Catalog.GRPC != "" {
+				cmd.Printf("📡 Catalog configured, will sync to %s\n", cfg.Env.Catalog.GRPC)
+				catalogStore, catalogErr := cldcatalog.LoadCatalog(ctx, envKey, cfg, domain)
+				if catalogErr == nil {
+					catalog = catalogStore
+				} else {
+					cmd.Printf("⚠️  Warning: Failed to load catalog, will only update local files: %v\n", catalogErr)
+				}
+			}
+
+			if err := envDir.MergeMigrationDataStore(ctx, migrationName, timestamp, catalog); err != nil {
 				return fmt.Errorf("error during data store merge for %s %s %s: %w",
 					domain, envKey, migrationName, err,
 				)
