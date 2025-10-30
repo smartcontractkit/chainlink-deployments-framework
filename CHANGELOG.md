@@ -1,5 +1,19 @@
 # chainlink-deployments-framework
 
+## 0.60.0
+
+### Minor Changes
+
+- [#541](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/541) [`909e6f4`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/909e6f4f60f7bf96feff049550ec43fbcf31bd73) Thanks [@ecPablo](https://github.com/ecPablo)! - refactor proposal analyzer to add a text renderer and move templates to separate files
+
+- [#535](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/535) [`b7c8d06`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/b7c8d06de2e0ccc1918fb2c5195a9ea7e78833b4) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat(engine): load catalog into datastore
+
+### Patch Changes
+
+- [#547](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/547) [`2229818`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/2229818268aaf0d37346b54f464708259b48578d) Thanks [@jkongie](https://github.com/jkongie)! - Bump chain-selectors to v1.0.77
+
+- [#534](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/534) [`9572077`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/95720772c2866478571b1550f4eb557a7b6e2264) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(catalog): use enum instead of string
+
 ## 0.59.1
 
 ### Patch Changes
