@@ -492,7 +492,7 @@ func (Commands) newMigrationDataStoreMerge(domain domain.Domain) *cobra.Command 
 			envDir := domain.EnvDir(envKey)
 
 			// Attempt to load catalog if configured, but proceed with local files if not available
-			var catalog fdatastore.CatalogStore = nil
+			var catalog fdatastore.CatalogStore
 
 			// Try to load config to check if catalog is configured
 			cfg, err := config.Load(domain, envKey, logger.Nop())
