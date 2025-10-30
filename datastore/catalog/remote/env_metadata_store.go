@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
@@ -131,6 +132,11 @@ func (s *catalogEnvMetadataStore) get(ignoreTransaction bool) (datastore.EnvMeta
 	}
 
 	if sendErr := stream.Send(findReq); sendErr != nil {
+		st, _ := status.FromError(sendErr)
+		if st.Code() == codes.NotFound {
+			return datastore.EnvMetadata{}, datastore.ErrEnvMetadataNotSet
+		}
+
 		return datastore.EnvMetadata{}, fmt.Errorf("failed to send find request: %w", sendErr)
 	}
 
