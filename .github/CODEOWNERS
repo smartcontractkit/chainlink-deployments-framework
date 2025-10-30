@@ -1,6 +1,13 @@
 # Root
 * @smartcontractkit/cld-team
 
+# Release Management
+.changeset @smartcontractkit/cld-team @smartcontractkit/devex-tooling
+CHANGELOG.md @smartcontractkit/cld-team @smartcontractkit/devex-tooling
+package.json @smartcontractkit/cld-team @smartcontractkit/devex-tooling
+pnpm-lock.yaml @smartcontractkit/cld-team @smartcontractkit/devex-tooling
+
+# MCMS
 engine/cld/legacy/cli/mcmsv2 @smartcontractkit/devex-tooling @smartcontractkit/cld-team
 experimental/analyzers @smartcontractkit/devex-tooling @smartcontractkit/cld-team
 experimental/proposalutils @smartcontractkit/devex-tooling @smartcontractkit/cld-team
