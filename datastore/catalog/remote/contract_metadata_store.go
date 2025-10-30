@@ -9,7 +9,6 @@ import (
 	"sync"
 
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
@@ -215,9 +214,13 @@ func (s *catalogContractMetadataStore) Fetch(_ context.Context) ([]datastore.Con
 
 	// Check for errors in the response
 	if statusErr := parseResponseStatus(resp.Status); statusErr != nil {
-		st, _ := status.FromError(statusErr)
+		st, sterr := parseStatusError(statusErr)
+		if sterr != nil {
+			return nil, sterr
+		}
+
 		if st.Code() == codes.NotFound {
-			return nil, datastore.ErrContractMetadataNotFound
+			return nil, fmt.Errorf("%w: %s", datastore.ErrContractMetadataNotFound, statusErr.Error())
 		}
 
 		return nil, fmt.Errorf("fetch contract metadata failed: %w", statusErr)

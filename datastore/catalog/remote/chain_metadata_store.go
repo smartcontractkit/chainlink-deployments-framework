@@ -8,7 +8,6 @@ import (
 	"sync"
 
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
@@ -210,13 +209,17 @@ func (s *catalogChainMetadataStore) Fetch(_ context.Context) ([]datastore.ChainM
 	}
 
 	// Check for errors in the response
-	if err := parseResponseStatus(resp.Status); err != nil {
-		st, _ := status.FromError(err)
-		if st.Code() == codes.NotFound {
-			return nil, datastore.ErrChainMetadataNotFound
+	if statusErr := parseResponseStatus(resp.Status); statusErr != nil {
+		st, sterr := parseStatusError(statusErr)
+		if sterr != nil {
+			return nil, sterr
 		}
 
-		return nil, fmt.Errorf("fetch chain metadata failed: %w", err)
+		if st.Code() == codes.NotFound {
+			return nil, fmt.Errorf("%w: %s", datastore.ErrChainMetadataNotFound, statusErr.Error())
+		}
+
+		return nil, fmt.Errorf("fetch chain metadata failed: %w", statusErr)
 	}
 
 	findResp := resp.GetChainMetadataFindResponse()

@@ -7,7 +7,6 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
@@ -157,13 +156,17 @@ func (s *catalogAddressRefStore) Fetch(_ context.Context) ([]datastore.AddressRe
 	}
 
 	// Check for errors in the response
-	if err := parseResponseStatus(response.Status); err != nil {
-		st, _ := status.FromError(err)
+	if statusErr := parseResponseStatus(response.Status); statusErr != nil {
+		st, sterr := parseStatusError(statusErr)
+		if sterr != nil {
+			return nil, sterr
+		}
+
 		if st.Code() == codes.NotFound {
 			return nil, datastore.ErrAddressRefNotFound
 		}
 
-		return nil, fmt.Errorf("fetch address refs failed: %w", err)
+		return nil, fmt.Errorf("fetch address refs failed: %w", statusErr)
 	}
 
 	// Extract the address find response
