@@ -100,6 +100,7 @@ func (s *catalogEnvMetadataStore) envMetadataToProto(record datastore.EnvMetadat
 		RowVersion:  version,
 	}
 }
+
 func (s *catalogEnvMetadataStore) Get(
 	_ context.Context,
 	options ...datastore.GetOption,
@@ -114,6 +115,7 @@ func (s *catalogEnvMetadataStore) Get(
 
 	return s.get(ignoreTransactions)
 }
+
 func (s *catalogEnvMetadataStore) get(ignoreTransaction bool) (datastore.EnvMetadata, error) {
 	stream, err := s.client.DataAccess()
 	if err != nil {
