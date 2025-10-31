@@ -754,7 +754,7 @@ func Test_EnvDir_MergeMigrationDataStore(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				err = envdir.MergeMigrationDataStore("0001_initial", "")
+				err = envdir.MergeMigrationDataStore(t.Context(), "0001_initial", "", nil)
 				require.NoError(t, err)
 
 				// Create a migration with another datastore
@@ -778,7 +778,7 @@ func Test_EnvDir_MergeMigrationDataStore(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				err = envdir.MergeMigrationDataStore("0001_initial", "")
+				err = envdir.MergeMigrationDataStore(t.Context(), "0001_initial", "", nil)
 				require.NoError(t, err)
 
 				// Create a durable pipeline artifact with another address book and merge to the address book
@@ -790,7 +790,7 @@ func Test_EnvDir_MergeMigrationDataStore(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				err = envdir.MergeMigrationDataStore("durable_pipeline", arts.timestamp)
+				err = envdir.MergeMigrationDataStore(t.Context(), "durable_pipeline", arts.timestamp, nil)
 				require.NoError(t, err)
 			},
 			giveMigrationName: "durable_pipeline",
@@ -829,7 +829,7 @@ func Test_EnvDir_MergeMigrationDataStore(t *testing.T) {
 			}
 
 			// Merge the migration's address book into the existing address book
-			err := envDir.MergeMigrationDataStore(tt.giveMigrationName, "")
+			err := envDir.MergeMigrationDataStore(t.Context(), tt.giveMigrationName, "", nil)
 
 			if tt.wantErr != "" {
 				require.Error(t, err)
