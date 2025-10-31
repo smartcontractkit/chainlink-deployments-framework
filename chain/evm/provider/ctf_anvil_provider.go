@@ -208,6 +208,9 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
+	"os"
+	"path"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -217,9 +220,11 @@ import (
 	"github.com/avast/retry-go/v4"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/rs/zerolog"
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
+	ctfdocker "github.com/smartcontractkit/chainlink-testing-framework/lib/docker"
 	"github.com/smartcontractkit/freeport"
 	"github.com/testcontainers/testcontainers-go"
 
@@ -516,7 +521,18 @@ func (p *CTFAnvilChainProvider) GetNodeHTTPURL() string {
 // Returns an error if the container termination fails.
 func (p *CTFAnvilChainProvider) Cleanup(ctx context.Context) error {
 	if p.container != nil {
-		err := p.container.Terminate(ctx)
+		shouldSave, path, err := shouldSaveCtfContainerLogs(os.Getenv(saveContainerLogsEnvVar))
+		if err != nil {
+			return fmt.Errorf("failed to check if we should save the container logs: %w", err)
+		}
+
+		if shouldSave {
+			zlogger := zerolog.New(os.Stdout)
+			ctfdocker.WriteAllContainersLogs(zlogger, path)
+			zlogger.Info().Msgf("container logs saved to %q", path)
+		}
+
+		err = p.container.Terminate(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to terminate Anvil container: %w", err)
 		}
@@ -713,4 +729,42 @@ func (p *CTFAnvilChainProvider) waitForAnvilReady(ctx context.Context, httpURL s
 		retry.Delay(retryDelay),
 		retry.DelayType(retry.FixedDelay),
 	)
+}
+
+const saveContainerLogsEnvVar = "CLDF_CONTAINER_LOGS"
+
+func shouldSaveCtfContainerLogs(envVarValue string) (bool, string, error) {
+	if envVarValue == "" {
+		return false, "", nil
+	}
+
+	if path.IsAbs(envVarValue) {
+		if isDirectory(envVarValue) {
+			return true, envVarValue, nil
+		}
+
+		err := os.MkdirAll(envVarValue, 0o700)
+		if err != nil {
+			return false, "", fmt.Errorf("failed to create container logs dir: %w", err)
+		}
+
+		return true, envVarValue, nil
+	}
+
+	trueValues := []string{"1", "true", "on", "enabled"}
+	if slices.Contains(trueValues, strings.ToLower(envVarValue)) {
+		tmpDirPath, err := os.MkdirTemp("", "cldf-container-logs-*")
+		if err != nil {
+			return false, "", fmt.Errorf("failed to create temporary dir: %w", err)
+		}
+
+		return true, tmpDirPath, nil
+	}
+
+	return false, "", fmt.Errorf("invalid value for %s variable: %v", saveContainerLogsEnvVar, envVarValue)
+}
+
+func isDirectory(path string) bool {
+	fileInfo, err := os.Stat(path)
+	return err == nil && fileInfo.IsDir()
 }
