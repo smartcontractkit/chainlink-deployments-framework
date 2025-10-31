@@ -90,7 +90,7 @@ func startSolanaContainer(
 		case "amd64":
 			image = "solanalabs/solana:v1.18.26"
 		case "arm64":
-			image = "f4hrenh9it/solana"
+			image = "public.ecr.aws/w0i8p0z9/solana-validator:main-1dcdbc4"
 		}
 	}
 
