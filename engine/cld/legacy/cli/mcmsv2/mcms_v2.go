@@ -620,6 +620,10 @@ func buildExecuteForkCommand(lggr logger.Logger, domain cldf_domain.Domain, prop
 				return fmt.Errorf("error creating config: %w", err)
 			}
 
+			if len(cfg.forkedEnv.ChainConfigs[cfg.chainSelector].HTTPRPCs) == 0 {
+				return fmt.Errorf("no rpcs loaded in forked environment for chain %d (fork tests require public RPCs)", cfg.chainSelector)
+			}
+
 			// get the chain URL, chain ID and MCM contract address
 			url := cfg.forkedEnv.ChainConfigs[cfg.chainSelector].HTTPRPCs[0].External
 			anvilClient := rpc.New(url, nil)

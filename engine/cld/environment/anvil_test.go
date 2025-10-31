@@ -11,6 +11,9 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	cfgnet "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/network"
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
 // JSONRPCRequest represents a JSON-RPC request
@@ -122,6 +125,105 @@ func Test_AnvilClient_SendTransaction(t *testing.T) {
 				require.NoError(t, err)
 			} else {
 				require.ErrorContains(t, err, tc.expectedError)
+			}
+		})
+	}
+}
+
+func Test_isPublicRPC(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		url  string
+		want bool
+	}{
+		{"http://rpcs.cldev.sh/", false},
+		{"https://rpcs.cldev.sh/", false},
+		{"https://rpcs.cldev.sh/anything", false},
+		{"https://gap-rpcs.stage.cldev.sh/anything", false},
+		{"https://gap-rpcs.prod.cldev.sh/anything", false},
+		{"https://gap-other.prod.cldev.sh/anything", false},
+		{"https://gap-other.stage.cldev.sh/anything", false},
+		{"https://gap-other.stage.cldev.sh/anything", false},
+		{"https://gap-grpc-job-distributor.public.main.prod.cldev.sh/", false},
+		{"https://gap-ws-job-distributor.public.main.prod.cldev.sh/", false},
+		{"https://gap-rpc-proxy.public.main.prod.cldev.sh/", false},
+		{"https://gap-grpc-job-distributor.public.main.stage.cldev.sh/", false},
+		{"https://gap-ws-job-distributor.public.main.stage.cldev.sh/", false},
+		{"https://gap-grpc-chainlink-catalog.public.main.stage.cldev.sh/", false},
+		{"", true},
+		{"http://", true},
+		{"https://", true},
+		{"https://rpcs.cldev.sh", true},
+		{"https://rpcs.prod.cldev.sh/anything", true},
+		{"https://rpcs.stage.cldev.sh/anything", true},
+		{"https://gap.stage.cldev.sh/anything", true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.url, func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, tt.want, isPublicRPC(tt.url))
+		})
+	}
+}
+
+func Test_selectPublicRPC(t *testing.T) {
+	t.Parallel()
+
+	lggr := logger.Test(t)
+	tests := []struct {
+		name          string
+		metadata      *cfgnet.EVMMetadata
+		chainSelector uint64
+		rpcs          []cfgnet.RPC
+		want          *cfgnet.EVMMetadata
+		wantErr       string
+	}{
+		{
+			name: "success: metadata has url",
+			metadata: &cfgnet.EVMMetadata{AnvilConfig: &cfgnet.AnvilConfig{
+				ArchiveHTTPURL: "http://metadata.url",
+			}},
+			rpcs: []cfgnet.RPC{
+				{HTTPURL: "http://other.url"},
+			},
+			want: &cfgnet.EVMMetadata{AnvilConfig: &cfgnet.AnvilConfig{
+				ArchiveHTTPURL: "http://metadata.url",
+			}},
+		},
+		{
+			name: "success: private rpc in metadata is replaced public url from parameters",
+			metadata: &cfgnet.EVMMetadata{AnvilConfig: &cfgnet.AnvilConfig{
+				ArchiveHTTPURL: "http://gap-rpc.prod.cldev.sh/ethereum/sepolia",
+			}},
+			rpcs: []cfgnet.RPC{
+				{HTTPURL: "http://rpcs.cldev.sh/ethereum/sepolia"},
+				{HTTPURL: "http://public.rpc.url"},
+			},
+			want: &cfgnet.EVMMetadata{AnvilConfig: &cfgnet.AnvilConfig{
+				ArchiveHTTPURL: "http://public.rpc.url",
+			}},
+		},
+		{
+			name: "failure: no public rpcs found",
+			metadata: &cfgnet.EVMMetadata{AnvilConfig: &cfgnet.AnvilConfig{
+				ArchiveHTTPURL: "http://gap-rpc.prod.cldev.sh/ethereum/sepolia",
+			}},
+			rpcs: []cfgnet.RPC{
+				{HTTPURL: "http://rpcs.cldev.sh/ethereum/sepolia"},
+			},
+			wantErr: "no public RPCs found for chain 0",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			err := selectPublicRPC(lggr, tt.metadata, tt.chainSelector, tt.rpcs)
+			if tt.wantErr == "" {
+				require.NoError(t, err)
+				require.Equal(t, tt.want, tt.metadata)
+			} else {
+				require.ErrorContains(t, err, tt.wantErr)
 			}
 		})
 	}
