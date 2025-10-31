@@ -1,5 +1,13 @@
 # chainlink-deployments-framework
 
+## 0.60.1
+
+### Patch Changes
+
+- [#553](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/553) [`8d6a9f7`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/8d6a9f72b7a32dabf41e744b8f90fcfd55d0c960) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - fix(mcms): select public rpc for fork tests
+
+- [#551](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/551) [`cf4de66`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/cf4de6687f910b5d2c9f02094414902be4d55644) Thanks [@giogam](https://github.com/giogam)! - fix(catalog): updates errors in remote implementation
+
 ## 0.60.0
 
 ### Minor Changes
