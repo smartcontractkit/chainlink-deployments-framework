@@ -210,8 +210,14 @@ func (p *CTFChainProvider) startContainer(
 		ports := freeport.GetN(p.t, 2)
 
 		image := ""
+		// workaround on linux to load a separate image
 		if runtime.GOOS == "linux" {
-			image = "solanalabs/solana:v1.18.26" // workaround on linux to load a separate image
+			switch runtime.GOARCH {
+			case "amd64":
+				image = "solanalabs/solana:v1.18.26"
+			case "arm64":
+				image = "public.ecr.aws/w0i8p0z9/solana-validator:main-1dcdbc4"
+			}
 		}
 
 		input := &blockchain.Input{
