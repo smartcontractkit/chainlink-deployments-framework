@@ -20,7 +20,12 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/smartcontractkit/chainlink-deployments-framework/internal/pointer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/offchain"
+)
+
+const (
+	NodeVersion = "0.0.0.fake-node"
 )
 
 var _ offchain.Client = (*MemoryJobDistributor)(nil)
@@ -57,7 +62,7 @@ func (m *MemoryJobDistributor) ProposeJob(
 	ctx context.Context, in *jobv1.ProposeJobRequest, opts ...grpc.CallOption,
 ) (*jobv1.ProposeJobResponse, error) {
 	if in == nil {
-		return nil, status.Error(codes.InvalidArgument, "request cannot be nil")
+		return nil, errNilRequest()
 	}
 
 	m.mu.Lock()
@@ -76,37 +81,38 @@ func (m *MemoryJobDistributor) ProposeJob(
 // GetJob retrieves a job by its ID.
 func (m *MemoryJobDistributor) GetJob(ctx context.Context, in *jobv1.GetJobRequest, opts ...grpc.CallOption) (*jobv1.GetJobResponse, error) {
 	if in == nil {
-		return nil, status.Error(codes.InvalidArgument, "request cannot be nil")
-	}
-
-	// Use GetId() method to access the oneof field
-	jobID := in.GetId()
-
-	if jobID == "" {
-		return nil, status.Error(codes.InvalidArgument, "job id must be provided")
+		return nil, errNilRequest()
 	}
 
 	m.mu.RLock()
-	job, exists := m.jobs[jobID]
-	m.mu.RUnlock()
+	defer m.mu.RUnlock()
 
-	if !exists {
-		return nil, status.Errorf(codes.NotFound, "job with id %s not found", jobID)
+	switch idOneof := in.GetIdOneof().(type) {
+	case *jobv1.GetJobRequest_Id:
+		job, ok := m.jobs[idOneof.Id]
+		if !ok {
+			return nil, errNotFoundID("job", idOneof.Id)
+		}
+
+		return &jobv1.GetJobResponse{
+			Job: job,
+		}, nil
+	case *jobv1.GetJobRequest_Uuid:
+		return nil, errUUIDLookupNotSupported()
+	default:
+		return nil, status.Error(codes.InvalidArgument, "must provide id")
 	}
-
-	return &jobv1.GetJobResponse{
-		Job: job,
-	}, nil
 }
 
 // ListJobs returns all jobs stored in memory.
 func (m *MemoryJobDistributor) ListJobs(ctx context.Context, in *jobv1.ListJobsRequest, opts ...grpc.CallOption) (*jobv1.ListJobsResponse, error) {
 	m.mu.RLock()
+	defer m.mu.RUnlock()
+
 	allJobs := make([]*jobv1.Job, 0, len(m.jobs))
 	for _, job := range m.jobs {
 		allJobs = append(allJobs, job)
 	}
-	m.mu.RUnlock()
 
 	// Apply filtering - always filter out soft-deleted jobs by default
 	var filteredJobs []*jobv1.Job
@@ -128,15 +134,15 @@ func (m *MemoryJobDistributor) ListJobs(ctx context.Context, in *jobv1.ListJobsR
 // GetProposal retrieves a proposal by its ID.
 func (m *MemoryJobDistributor) GetProposal(ctx context.Context, in *jobv1.GetProposalRequest, opts ...grpc.CallOption) (*jobv1.GetProposalResponse, error) {
 	if in == nil {
-		return nil, status.Error(codes.InvalidArgument, "request cannot be nil")
+		return nil, errNilRequest()
 	}
 
 	m.mu.RLock()
-	proposal, exists := m.proposals[in.GetId()]
-	m.mu.RUnlock()
+	defer m.mu.RUnlock()
 
-	if !exists {
-		return nil, status.Errorf(codes.NotFound, "proposal with id %s not found", in.GetId())
+	proposal, ok := m.proposals[in.GetId()]
+	if !ok {
+		return nil, errNotFoundID("proposal", in.GetId())
 	}
 
 	return &jobv1.GetProposalResponse{
@@ -147,11 +153,12 @@ func (m *MemoryJobDistributor) GetProposal(ctx context.Context, in *jobv1.GetPro
 // ListProposals returns all proposals stored in memory.
 func (m *MemoryJobDistributor) ListProposals(ctx context.Context, in *jobv1.ListProposalsRequest, opts ...grpc.CallOption) (*jobv1.ListProposalsResponse, error) {
 	m.mu.RLock()
+	defer m.mu.RUnlock()
+
 	proposals := make([]*jobv1.Proposal, 0, len(m.proposals))
 	for _, proposal := range m.proposals {
 		proposals = append(proposals, proposal)
 	}
-	m.mu.RUnlock()
 
 	return &jobv1.ListProposalsResponse{
 		Proposals: proposals,
@@ -161,12 +168,14 @@ func (m *MemoryJobDistributor) ListProposals(ctx context.Context, in *jobv1.List
 // BatchProposeJob creates multiple job proposals in a batch.
 func (m *MemoryJobDistributor) BatchProposeJob(ctx context.Context, in *jobv1.BatchProposeJobRequest, opts ...grpc.CallOption) (*jobv1.BatchProposeJobResponse, error) {
 	if in == nil {
-		return nil, status.Error(codes.InvalidArgument, "request cannot be nil")
+		return nil, errNilRequest()
 	}
 
 	successResponses := make(map[string]*jobv1.ProposeJobResponse)
 
 	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	// Create a proposal for each node
 	for _, nodeID := range in.GetNodeIds() {
 		proposal, err := m.upsertProposal(nodeID, in.GetSpec(), in.GetLabels())
@@ -179,7 +188,6 @@ func (m *MemoryJobDistributor) BatchProposeJob(ctx context.Context, in *jobv1.Ba
 			Proposal: proposal,
 		}
 	}
-	m.mu.Unlock()
 
 	return &jobv1.BatchProposeJobResponse{
 		SuccessResponses: successResponses,
@@ -189,7 +197,7 @@ func (m *MemoryJobDistributor) BatchProposeJob(ctx context.Context, in *jobv1.Ba
 // RevokeJob revokes an existing job proposal.
 func (m *MemoryJobDistributor) RevokeJob(ctx context.Context, in *jobv1.RevokeJobRequest, opts ...grpc.CallOption) (*jobv1.RevokeJobResponse, error) {
 	if in == nil {
-		return nil, status.Error(codes.InvalidArgument, "request cannot be nil")
+		return nil, errNilRequest()
 	}
 
 	var jobID string
@@ -201,7 +209,7 @@ func (m *MemoryJobDistributor) RevokeJob(ctx context.Context, in *jobv1.RevokeJo
 
 		jobID = idOneof.Id
 	case *jobv1.RevokeJobRequest_Uuid:
-		return nil, status.Error(codes.InvalidArgument, "uuid is not supported")
+		return nil, errUUIDLookupNotSupported()
 	}
 
 	m.mu.Lock()
@@ -227,23 +235,33 @@ func (m *MemoryJobDistributor) RevokeJob(ctx context.Context, in *jobv1.RevokeJo
 // DeleteJob soft deletes a job, setting the DeletedAt field to the current time.
 func (m *MemoryJobDistributor) DeleteJob(ctx context.Context, in *jobv1.DeleteJobRequest, opts ...grpc.CallOption) (*jobv1.DeleteJobResponse, error) {
 	if in == nil {
-		return nil, status.Error(codes.InvalidArgument, "request cannot be nil")
-	}
-
-	// Use GetId() method to access the oneof field
-	jobID := in.GetId()
-
-	if jobID == "" {
-		return nil, status.Error(codes.InvalidArgument, "job id must be provided")
+		return nil, errNilRequest()
 	}
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	job, ok := m.jobs[jobID]
-	if !ok {
-		return nil, status.Errorf(codes.NotFound, "job with id %s not found", jobID)
+	var job *jobv1.Job
+	switch idOneof := in.GetIdOneof().(type) {
+	case *jobv1.DeleteJobRequest_Id:
+		jobID := idOneof.Id
+
+		if jobID == "" {
+			return nil, status.Error(codes.InvalidArgument, "job id must be provided")
+		}
+
+		var ok bool
+		job, ok = m.jobs[jobID]
+		if !ok {
+			return nil, errNotFoundID("job", jobID)
+		}
+	case *jobv1.DeleteJobRequest_Uuid:
+		return nil, errUUIDLookupNotSupported()
+	default:
+		return nil, status.Error(codes.InvalidArgument, "must provide id")
 	}
+
+	// Mark the job as deleted
 	job.DeletedAt = &timestamppb.Timestamp{Seconds: time.Now().Unix()}
 
 	return &jobv1.DeleteJobResponse{
@@ -254,28 +272,39 @@ func (m *MemoryJobDistributor) DeleteJob(ctx context.Context, in *jobv1.DeleteJo
 // UpdateJob updates an existing job in memory.
 func (m *MemoryJobDistributor) UpdateJob(ctx context.Context, in *jobv1.UpdateJobRequest, opts ...grpc.CallOption) (*jobv1.UpdateJobResponse, error) {
 	if in == nil {
-		return nil, status.Error(codes.InvalidArgument, "request cannot be nil")
-	}
-
-	// Use GetId() method to access the oneof field
-	jobID := in.GetId()
-
-	if jobID == "" {
-		return nil, status.Error(codes.InvalidArgument, "job id must be provided")
+		return nil, errNilRequest()
 	}
 
 	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	var jobID string
+	switch idOneof := in.GetIdOneof().(type) {
+	case *jobv1.UpdateJobRequest_Id:
+		jobID = idOneof.Id
+		if jobID == "" {
+			return nil, status.Error(codes.InvalidArgument, "job id must be provided")
+		}
+	case *jobv1.UpdateJobRequest_Uuid:
+		return nil, errUUIDLookupNotSupported()
+	default:
+		return nil, status.Error(codes.InvalidArgument, "must provide id")
+	}
+
 	job, exists := m.jobs[jobID]
 	if !exists {
-		m.mu.Unlock()
-		return nil, status.Errorf(codes.NotFound, "job with id %s not found", jobID)
+		return nil, errNotFoundID("job", jobID)
 	}
 
 	// Update the job labels if provided
 	if in.GetLabels() != nil {
 		job.Labels = in.GetLabels()
 	}
-	m.mu.Unlock()
+
+	// Update the job rollback policy id if provided
+	if in.GetRollbackPolicyId() != 0 {
+		job.RollbackPolicyId = pointer.To(in.GetRollbackPolicyId())
+	}
 
 	return &jobv1.UpdateJobResponse{
 		Job: job,
@@ -287,11 +316,12 @@ func (m *MemoryJobDistributor) UpdateJob(ctx context.Context, in *jobv1.UpdateJo
 // RegisterNode registers a new node in memory.
 func (m *MemoryJobDistributor) RegisterNode(ctx context.Context, in *nodev1.RegisterNodeRequest, opts ...grpc.CallOption) (*nodev1.RegisterNodeResponse, error) {
 	if in == nil {
-		return nil, status.Error(codes.InvalidArgument, "request cannot be nil")
+		return nil, errNilRequest()
 	}
 
 	// Generate a new ID for the node
 	nodeID := newNodeID()
+	now := timestamppb.Now()
 
 	// Create the node
 	node := &nodev1.Node{
@@ -301,11 +331,15 @@ func (m *MemoryJobDistributor) RegisterNode(ctx context.Context, in *nodev1.Regi
 		IsEnabled:   true,
 		IsConnected: false,
 		Labels:      in.Labels,
+		Version:     NodeVersion,
+		CreatedAt:   now,
+		UpdatedAt:   now,
 	}
 
 	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	m.nodes[nodeID] = node
-	m.mu.Unlock()
 
 	return &nodev1.RegisterNodeResponse{
 		Node: node,
@@ -315,15 +349,15 @@ func (m *MemoryJobDistributor) RegisterNode(ctx context.Context, in *nodev1.Regi
 // GetNode retrieves a node by its ID.
 func (m *MemoryJobDistributor) GetNode(ctx context.Context, in *nodev1.GetNodeRequest, opts ...grpc.CallOption) (*nodev1.GetNodeResponse, error) {
 	if in == nil {
-		return nil, status.Error(codes.InvalidArgument, "request cannot be nil")
+		return nil, errNilRequest()
 	}
 
 	m.mu.RLock()
-	node, exists := m.nodes[in.Id]
-	m.mu.RUnlock()
+	defer m.mu.RUnlock()
 
-	if !exists {
-		return nil, status.Errorf(codes.NotFound, "node with id %s not found", in.Id)
+	node, ok := m.nodes[in.Id]
+	if !ok {
+		return nil, errNotFoundID("node", in.Id)
 	}
 
 	return &nodev1.GetNodeResponse{
@@ -356,14 +390,15 @@ func (m *MemoryJobDistributor) ListNodes(ctx context.Context, in *nodev1.ListNod
 // UpdateNode updates an existing node in memory.
 func (m *MemoryJobDistributor) UpdateNode(ctx context.Context, in *nodev1.UpdateNodeRequest, opts ...grpc.CallOption) (*nodev1.UpdateNodeResponse, error) {
 	if in == nil {
-		return nil, status.Error(codes.InvalidArgument, "request cannot be nil")
+		return nil, errNilRequest()
 	}
 
 	m.mu.Lock()
-	node, exists := m.nodes[in.Id]
-	if !exists {
-		m.mu.Unlock()
-		return nil, status.Errorf(codes.NotFound, "node with id %s not found", in.Id)
+	defer m.mu.Unlock()
+
+	node, ok := m.nodes[in.Id]
+	if !ok {
+		return nil, errNotFoundID("node", in.Id)
 	}
 
 	// Update fields if provided
@@ -376,7 +411,6 @@ func (m *MemoryJobDistributor) UpdateNode(ctx context.Context, in *nodev1.Update
 	if in.Labels != nil {
 		node.Labels = in.Labels
 	}
-	m.mu.Unlock()
 
 	return &nodev1.UpdateNodeResponse{
 		Node: node,
@@ -386,18 +420,18 @@ func (m *MemoryJobDistributor) UpdateNode(ctx context.Context, in *nodev1.Update
 // EnableNode enables a disabled node.
 func (m *MemoryJobDistributor) EnableNode(ctx context.Context, in *nodev1.EnableNodeRequest, opts ...grpc.CallOption) (*nodev1.EnableNodeResponse, error) {
 	if in == nil {
-		return nil, status.Error(codes.InvalidArgument, "request cannot be nil")
+		return nil, errNilRequest()
 	}
 
 	m.mu.Lock()
-	node, exists := m.nodes[in.Id]
-	if !exists {
-		m.mu.Unlock()
-		return nil, status.Errorf(codes.NotFound, "node with id %s not found", in.Id)
+	defer m.mu.Unlock()
+
+	node, ok := m.nodes[in.Id]
+	if !ok {
+		return nil, errNotFoundID("node", in.Id)
 	}
 
 	node.IsEnabled = true
-	m.mu.Unlock()
 
 	return &nodev1.EnableNodeResponse{
 		Node: node,
@@ -407,18 +441,18 @@ func (m *MemoryJobDistributor) EnableNode(ctx context.Context, in *nodev1.Enable
 // DisableNode disables a node.
 func (m *MemoryJobDistributor) DisableNode(ctx context.Context, in *nodev1.DisableNodeRequest, opts ...grpc.CallOption) (*nodev1.DisableNodeResponse, error) {
 	if in == nil {
-		return nil, status.Error(codes.InvalidArgument, "request cannot be nil")
+		return nil, errNilRequest()
 	}
 
 	m.mu.Lock()
-	node, exists := m.nodes[in.Id]
-	if !exists {
-		m.mu.Unlock()
-		return nil, status.Errorf(codes.NotFound, "node with id %s not found", in.Id)
+	defer m.mu.Unlock()
+
+	node, ok := m.nodes[in.Id]
+	if !ok {
+		return nil, errNotFoundID("node", in.Id)
 	}
 
 	node.IsEnabled = false
-	m.mu.Unlock()
 
 	return &nodev1.DisableNodeResponse{
 		Node: node,
@@ -428,6 +462,8 @@ func (m *MemoryJobDistributor) DisableNode(ctx context.Context, in *nodev1.Disab
 // ListNodeChainConfigs returns chain configurations for nodes.
 func (m *MemoryJobDistributor) ListNodeChainConfigs(ctx context.Context, in *nodev1.ListNodeChainConfigsRequest, opts ...grpc.CallOption) (*nodev1.ListNodeChainConfigsResponse, error) {
 	m.mu.RLock()
+	defer m.mu.RUnlock()
+
 	chainConfigs := make([]*nodev1.ChainConfig, 0)
 
 	// If a specific node is requested, return its configs
@@ -443,7 +479,6 @@ func (m *MemoryJobDistributor) ListNodeChainConfigs(ctx context.Context, in *nod
 			chainConfigs = append(chainConfigs, configs...)
 		}
 	}
-	m.mu.RUnlock()
 
 	return &nodev1.ListNodeChainConfigsResponse{
 		ChainConfigs: chainConfigs,
@@ -457,7 +492,7 @@ func (m *MemoryJobDistributor) AddChainConfig(nodeID string, config *nodev1.Chai
 	defer m.mu.Unlock()
 
 	if _, exists := m.nodes[nodeID]; !exists {
-		return fmt.Errorf("node with id %s not found", nodeID)
+		return errNotFoundID("node", nodeID)
 	}
 
 	m.chainConfigs[nodeID] = append(m.chainConfigs[nodeID], config)
@@ -470,7 +505,7 @@ func (m *MemoryJobDistributor) AddChainConfig(nodeID string, config *nodev1.Chai
 // GetKeypair retrieves the first CSA keypair (simulates getting the active keypair).
 func (m *MemoryJobDistributor) GetKeypair(ctx context.Context, in *csav1.GetKeypairRequest, opts ...grpc.CallOption) (*csav1.GetKeypairResponse, error) {
 	if in == nil {
-		return nil, status.Error(codes.InvalidArgument, "request cannot be nil")
+		return nil, errNilRequest()
 	}
 
 	m.mu.RLock()
@@ -489,11 +524,12 @@ func (m *MemoryJobDistributor) GetKeypair(ctx context.Context, in *csav1.GetKeyp
 // ListKeypairs returns all CSA keypairs stored in memory.
 func (m *MemoryJobDistributor) ListKeypairs(ctx context.Context, in *csav1.ListKeypairsRequest, opts ...grpc.CallOption) (*csav1.ListKeypairsResponse, error) {
 	m.mu.RLock()
+	defer m.mu.RUnlock()
+
 	keypairs := make([]*csav1.Keypair, 0, len(m.keypairs))
 	for _, keypair := range m.keypairs {
 		keypairs = append(keypairs, keypair)
 	}
-	m.mu.RUnlock()
 
 	return &csav1.ListKeypairsResponse{
 		Keypairs: keypairs,
