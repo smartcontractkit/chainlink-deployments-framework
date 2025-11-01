@@ -168,10 +168,20 @@ func LoadChains(
 func newChainLoaders(
 	lggr logger.Logger, networks *cfgnet.Config, cfg cfgenv.OnchainConfig,
 ) map[string]ChainLoader {
-	// EVM chains are always loaded.
-	loaders := map[string]ChainLoader{
-		chainsel.FamilyEVM:  newChainLoaderEVM(networks, cfg, lggr),
-		chainsel.FamilyTron: newChainLoaderTron(networks, cfg),
+	loaders := map[string]ChainLoader{}
+
+	// EVM chains are loaded if either KMS or deployer key is configured.
+	if useKMS(cfg.KMS) || cfg.EVM.DeployerKey != "" {
+		loaders[chainsel.FamilyEVM] = newChainLoaderEVM(networks, cfg, lggr)
+	} else {
+		lggr.Warn("Skipping EVM chains, no private key or KMS config found in secrets")
+	}
+
+	// Tron chains are loaded if either KMS or deployer key is configured.
+	if useKMS(cfg.KMS) || cfg.Tron.DeployerKey != "" {
+		loaders[chainsel.FamilyTron] = newChainLoaderTron(networks, cfg)
+	} else {
+		lggr.Warn("Skipping Tron chains, no private key or KMS config found in secrets")
 	}
 
 	if cfg.Solana.ProgramsDirPath != "" && cfg.Solana.WalletKey != "" {

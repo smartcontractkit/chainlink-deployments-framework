@@ -21,6 +21,114 @@ import (
 	cfgnet "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/network"
 )
 
+func Test_newChainLoaders(t *testing.T) {
+	t.Parallel()
+
+	lggr := logger.Test(t)
+	networks := &cfgnet.Config{}
+
+	tests := []struct {
+		name          string
+		onchainConfig cfgenv.OnchainConfig
+		wantLoaders   []string // Expected chain families with loaders
+	}{
+		{
+			name: "All credentials provided",
+			onchainConfig: cfgenv.OnchainConfig{
+				EVM: cfgenv.EVMConfig{
+					DeployerKey: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+				},
+				Tron: cfgenv.TronConfig{
+					DeployerKey: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+				},
+				Solana: cfgenv.SolanaConfig{
+					WalletKey:       "test-key",
+					ProgramsDirPath: "/tmp/programs",
+				},
+				Aptos: cfgenv.AptosConfig{
+					DeployerKey: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+				},
+				Sui: cfgenv.SuiConfig{
+					DeployerKey: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+				},
+				Ton: cfgenv.TonConfig{
+					DeployerKey: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+				},
+			},
+			wantLoaders: []string{
+				chainsel.FamilyEVM,
+				chainsel.FamilyTron,
+				chainsel.FamilySolana,
+				chainsel.FamilyAptos,
+				chainsel.FamilySui,
+				chainsel.FamilyTon,
+			},
+		},
+		{
+			name: "No EVM credentials - EVM skipped",
+			onchainConfig: cfgenv.OnchainConfig{
+				Tron: cfgenv.TronConfig{
+					DeployerKey: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+				},
+			},
+			wantLoaders: []string{
+				chainsel.FamilyTron,
+			},
+		},
+		{
+			name: "KMS configured - EVM and Tron loaded",
+			onchainConfig: cfgenv.OnchainConfig{
+				KMS: cfgenv.KMSConfig{
+					KeyID:     "test-key-id",
+					KeyRegion: "us-west-2",
+				},
+			},
+			wantLoaders: []string{
+				chainsel.FamilyEVM,
+				chainsel.FamilyTron,
+			},
+		},
+		{
+			name:          "No credentials - all chains skipped",
+			onchainConfig: cfgenv.OnchainConfig{},
+			wantLoaders:   []string{},
+		},
+		{
+			name: "Only EVM deployer key",
+			onchainConfig: cfgenv.OnchainConfig{
+				EVM: cfgenv.EVMConfig{
+					DeployerKey: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+				},
+			},
+			wantLoaders: []string{
+				chainsel.FamilyEVM,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			loaders := newChainLoaders(lggr, networks, tt.onchainConfig)
+
+			// Check that we got the expected number of loaders
+			assert.Len(t, loaders, len(tt.wantLoaders),
+				"Expected %d loaders but got %d", len(tt.wantLoaders), len(loaders))
+
+			// Check that each expected family has a loader
+			for _, family := range tt.wantLoaders {
+				assert.Contains(t, loaders, family, "Expected loader for family %s", family)
+			}
+
+			// Check that we don't have unexpected loaders
+			for family := range loaders {
+				assert.Contains(t, tt.wantLoaders, family, "Unexpected loader for family %s", family)
+			}
+		})
+	}
+}
+
 func Test_LoadChains(t *testing.T) {
 	t.Parallel()
 

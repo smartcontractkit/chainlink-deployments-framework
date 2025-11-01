@@ -38,14 +38,14 @@ func Test_Load(t *testing.T) {
 			wantErr: "failed to load networks",
 		},
 		{
-			name: "fails to load env config",
+			name: "loads config without local config file (falls back to env vars)",
 			beforeFunc: func(t *testing.T, dom fdomain.Domain, envKey string) {
 				t.Helper()
 
 				writeConfigNetworksFile(t, dom, "networks.yaml", "networks-testnet.yaml")
 				writeConfigDomainFile(t, dom, "domain.yaml")
+				// Note: not creating a local config file - it should fall back to env vars
 			},
-			wantErr: "failed to load env config",
 		},
 	}
 
