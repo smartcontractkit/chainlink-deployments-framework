@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.62.0
+
+### Minor Changes
+
+- [#555](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/555) [`844d9d3`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/844d9d31b29fbc6122a9ef23e7216bdebc2a1bbe) Thanks [@amit-momin](https://github.com/amit-momin)! - Specified Solana image to enable arm64 runtime architecture
+
 ## 0.61.0
 
 ### Minor Changes
