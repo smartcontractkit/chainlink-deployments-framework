@@ -14,7 +14,7 @@ import (
 func TestDescribeProposal(t *testing.T) {
 	t.Parallel()
 
-	ctx := &DefaultProposalContext{
+	proposalCtx := &DefaultProposalContext{
 		AddressesByChain: deployment.AddressesByChain{},
 		renderer:         NewMarkdownRenderer(),
 	}
@@ -88,7 +88,7 @@ func TestDescribeProposal(t *testing.T) {
 			t.Parallel()
 
 			proposal := &mcms.Proposal{Operations: tt.operations}
-			output, err := DescribeProposal(ctx, proposal)
+			output, err := DescribeProposal(t.Context(), proposalCtx, deployment.Environment{}, proposal)
 
 			if tt.expectError {
 				require.Error(t, err)
@@ -112,7 +112,7 @@ func TestDescribeProposal(t *testing.T) {
 func TestDescribeTimelockProposal(t *testing.T) {
 	t.Parallel()
 
-	ctx := &DefaultProposalContext{
+	proposalCtx := &DefaultProposalContext{
 		AddressesByChain: deployment.AddressesByChain{},
 		renderer:         NewMarkdownRenderer(),
 	}
@@ -194,7 +194,7 @@ func TestDescribeTimelockProposal(t *testing.T) {
 			t.Parallel()
 
 			proposal := &mcms.TimelockProposal{Operations: tt.operations}
-			output, err := DescribeTimelockProposal(ctx, proposal)
+			output, err := DescribeTimelockProposal(t.Context(), proposalCtx, deployment.Environment{}, proposal)
 
 			if tt.expectError {
 				require.Error(t, err)

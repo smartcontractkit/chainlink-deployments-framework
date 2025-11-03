@@ -118,7 +118,7 @@ func TestUpfConvertTimelockProposal(t *testing.T) {
 			require.NoError(t, err)
 			mcmProposal := convertTimelockProposal(t.Context(), t, timelockProposal)
 
-			got, err := UpfConvertTimelockProposal(proposalCtx, timelockProposal, mcmProposal, tt.signers)
+			got, err := UpfConvertTimelockProposal(t.Context(), proposalCtx, env, timelockProposal, mcmProposal, tt.signers)
 			// err2 := os.WriteFile("/tmp/got.yaml", []byte(got), 0600)
 			// require.NoError(t, err2)
 			if tt.wantErr == "" {
@@ -531,7 +531,7 @@ var timelockProposalSuiUnknownModule = `{
   },
   "description": "Sui proposal with unknown module",
   "action": "schedule",
-  "delay": "5m0s",  
+  "delay": "5m0s",
   "timelockAddresses": {
     "9762610643973837292": "0x4e825a4758064df713762e431c3a16b8105857195214469db0d6985b7d70266d"
   },
@@ -627,7 +627,7 @@ func TestUpfConvertTimelockProposalWithSui(t *testing.T) {
 			require.NoError(t, err)
 			mcmProposal := convertTimelockProposal(t.Context(), t, timelockProposal)
 
-			got, err := UpfConvertTimelockProposal(proposalCtx, timelockProposal, mcmProposal, tt.signers)
+			got, err := UpfConvertTimelockProposal(t.Context(), proposalCtx, env, timelockProposal, mcmProposal, tt.signers)
 
 			if tt.wantErr != "" {
 				require.ErrorContains(t, err, tt.wantErr)

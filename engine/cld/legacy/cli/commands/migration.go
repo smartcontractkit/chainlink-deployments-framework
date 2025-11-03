@@ -179,7 +179,7 @@ func (c Commands) newMigrationRun(
 					return err
 				}
 				for idx, proposal := range out.MCMSTimelockProposals {
-					describedProposal, err := analyzer.DescribeTimelockProposal(proposalContext, &proposal)
+					describedProposal, err := analyzer.DescribeTimelockProposal(cmd.Context(), proposalContext, env, &proposal)
 					if err != nil {
 						cmd.PrintErrf("failed to describe time lock proposal %d: %v\n", idx, err)
 						continue
