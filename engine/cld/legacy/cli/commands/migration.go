@@ -5,7 +5,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	cldcatalog "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/catalog"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/changeset"
@@ -49,6 +48,7 @@ func (c Commands) NewMigrationCmds(
 		Short: "Datastore operations",
 	}
 	datastoreCmd.AddCommand(c.newMigrationDataStoreMerge(domain))
+	datastoreCmd.AddCommand(c.newMigrationDataStoreSyncToCatalog(domain))
 
 	migrationsCmd.AddCommand(
 		c.newMigrationRun(domain, loadFunc, decodeProposalContext),
@@ -487,34 +487,49 @@ func (Commands) newMigrationDataStoreMerge(domain domain.Domain) *cobra.Command 
 		Long:    "Merge the data store for a migration to the main data store",
 		Example: migrationDataStoreMergeExample,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := cmd.Context()
 			envKey, _ := cmd.Flags().GetString("environment")
 			envDir := domain.EnvDir(envKey)
 
-			// Attempt to load catalog if configured, but proceed with local files if not available
-			var catalog fdatastore.CatalogStore
-
-			// Try to load config to check if catalog is configured
+			// Load config to check datastore type
 			cfg, err := config.Load(domain, envKey, logger.Nop())
-			if err == nil && cfg.DatastoreType == cfgdomain.DatastoreTypeCatalog && cfg.Env.Catalog.GRPC != "" {
-				cmd.Printf("📡 Catalog configured, will sync to %s\n", cfg.Env.Catalog.GRPC)
-				catalogStore, catalogErr := cldcatalog.LoadCatalog(ctx, envKey, cfg, domain)
-				if catalogErr == nil {
-					catalog = catalogStore
-				} else {
-					cmd.Printf("⚠️  Warning: Failed to load catalog, will only update local files: %v\n", catalogErr)
-				}
+			if err != nil {
+				return fmt.Errorf("failed to load config: %w", err)
 			}
 
-			if err := envDir.MergeMigrationDataStore(ctx, migrationName, timestamp, catalog); err != nil {
-				return fmt.Errorf("error during data store merge for %s %s %s: %w",
-					domain, envKey, migrationName, err,
+			// Determine which merge method to use based on datastore configuration
+			if cfg.DatastoreType == cfgdomain.DatastoreTypeCatalog {
+				ctx := cmd.Context()
+				// Catalog mode - merge to catalog service
+				cmd.Printf("📡 Using catalog datastore mode (endpoint: %s)\n", cfg.Env.Catalog.GRPC)
+
+				catalog, catalogErr := cldcatalog.LoadCatalog(ctx, envKey, cfg, domain)
+				if catalogErr != nil {
+					return fmt.Errorf("failed to load catalog: %w", catalogErr)
+				}
+
+				if err := envDir.MergeMigrationDataStoreCatalog(ctx, migrationName, timestamp, catalog); err != nil {
+					return fmt.Errorf("error during data store merge to catalog for %s %s %s: %w",
+						domain, envKey, migrationName, err,
+					)
+				}
+
+				cmd.Printf("✅ Merged data stores to catalog for %s %s %s\n",
+					domain, envKey, migrationName,
+				)
+			} else {
+				// File mode - merge to local files
+				cmd.Printf("📁 Using file-based datastore mode\n")
+
+				if err := envDir.MergeMigrationDataStore(migrationName, timestamp); err != nil {
+					return fmt.Errorf("error during data store merge to file for %s %s %s: %w",
+						domain, envKey, migrationName, err,
+					)
+				}
+
+				cmd.Printf("✅ Merged data stores to local files for %s %s %s\n",
+					domain, envKey, migrationName,
 				)
 			}
-
-			cmd.Printf("Merged data stores for %s %s %s",
-				domain, envKey, migrationName,
-			)
 
 			return nil
 		},
@@ -525,6 +540,60 @@ func (Commands) newMigrationDataStoreMerge(domain domain.Domain) *cobra.Command 
 	cmd.Flags().StringVarP(&timestamp, "timestamp", "t", "", "Durable Pipeline timestamp (optional)")
 	cmd.MarkFlagsMutuallyExclusive("changeset", "name")
 	cmd.MarkFlagsOneRequired("changeset", "name")
+
+	return &cmd
+}
+
+var (
+	migrationDataStoreSyncToCatalogExample = cli.Examples(`
+		# Sync the entire local datastore to catalog for initial migration
+		ccip migration datastore sync-to-catalog --environment staging
+	`)
+)
+
+// newMigrationDataStoreSyncToCatalog creates a command to sync the entire local datastore to catalog
+func (Commands) newMigrationDataStoreSyncToCatalog(domain domain.Domain) *cobra.Command {
+	cmd := cobra.Command{
+		Use:     "sync-to-catalog",
+		Short:   "Sync local datastore to catalog",
+		Long:    "Sync the entire local datastore to the catalog service. This is used for initial migration from file-based to catalog-based datastore.",
+		Example: migrationDataStoreSyncToCatalogExample,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			envKey, _ := cmd.Flags().GetString("environment")
+			envDir := domain.EnvDir(envKey)
+
+			// Load config to get catalog connection details
+			cfg, err := config.Load(domain, envKey, logger.Nop())
+			if err != nil {
+				return fmt.Errorf("failed to load config: %w", err)
+			}
+
+			// Verify catalog is configured
+			if cfg.DatastoreType != cfgdomain.DatastoreTypeCatalog {
+				return fmt.Errorf("catalog is not configured for environment %s (datastore type: %s)", envKey, cfg.DatastoreType)
+			}
+
+			cmd.Printf("📡 Syncing local datastore to catalog (endpoint: %s)\n", cfg.Env.Catalog.GRPC)
+
+			catalog, catalogErr := cldcatalog.LoadCatalog(ctx, envKey, cfg, domain)
+			if catalogErr != nil {
+				return fmt.Errorf("failed to load catalog: %w", catalogErr)
+			}
+
+			if err := envDir.SyncDataStoreToCatalog(ctx, catalog); err != nil {
+				return fmt.Errorf("error syncing datastore to catalog for %s %s: %w",
+					domain, envKey, err,
+				)
+			}
+
+			cmd.Printf("✅ Successfully synced entire datastore to catalog for %s %s\n",
+				domain, envKey,
+			)
+
+			return nil
+		},
+	}
 
 	return &cmd
 }

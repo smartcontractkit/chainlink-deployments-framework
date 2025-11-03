@@ -15,8 +15,8 @@ import (
 )
 
 // Temporary on demand local tests for catalog syncer - these can be converted to proper testcontainers later
-// TestSyncDataStoreToCatalog_Integration tests the full sync workflow with a real catalog service
-func TestSyncDataStoreToCatalog_Integration(t *testing.T) {
+// TestMergeDataStoreToCatalog_FullSync tests syncing entire local datastore to catalog (initial migration use case)
+func TestMergeDataStoreToCatalog_FullSync(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
@@ -151,11 +151,11 @@ func TestSyncDataStoreToCatalog_Integration(t *testing.T) {
 	t.Log("   - 2 contract metadata")
 	t.Log("   - 1 environment metadata")
 
-	// Step 2: Sync datastore to catalog
-	t.Log("Step 2: Syncing local datastore to catalog...")
-	err = datastore.SyncDataStoreToCatalog(ctx, sealedDS, catalogStore)
-	require.NoError(t, err, "Failed to sync datastore to catalog")
-	t.Log("✅ Sync completed successfully!")
+	// Step 2: Merge datastore to catalog (full sync for initial migration)
+	t.Log("Step 2: Merging local datastore to catalog...")
+	err = datastore.MergeDataStoreToCatalog(ctx, sealedDS, catalogStore)
+	require.NoError(t, err, "Failed to merge datastore to catalog")
+	t.Log("✅ Merge completed successfully!")
 
 	// Step 3: Verify data was synced correctly by reading back from catalog
 	t.Log("Step 3: Verifying data in catalog...")
@@ -230,8 +230,8 @@ func TestSyncDataStoreToCatalog_Integration(t *testing.T) {
 	t.Logf("ℹ️  Data is stored in catalog under domain='%s', environment='%s'", testDomain, testEnv)
 }
 
-// TestMergeDataStoreToCatalog_Integration tests merging migration data to catalog
-func TestMergeDataStoreToCatalog_Integration(t *testing.T) {
+// TestMergeDataStoreToCatalog_Incremental tests merging migration data to catalog (ongoing operations use case)
+func TestMergeDataStoreToCatalog_Incremental(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
@@ -297,10 +297,10 @@ func TestMergeDataStoreToCatalog_Integration(t *testing.T) {
 	err = initialDS.Addresses().Add(initialAddr)
 	require.NoError(t, err)
 
-	// Sync initial state
-	err = datastore.SyncDataStoreToCatalog(ctx, initialDS.Seal(), catalogStore)
+	// Merge initial state to catalog
+	err = datastore.MergeDataStoreToCatalog(ctx, initialDS.Seal(), catalogStore)
 	require.NoError(t, err)
-	t.Log("✅ Initial state synced")
+	t.Log("✅ Initial state merged")
 
 	// Step 2: Create a migration datastore with new contracts
 	t.Log("Step 2: Creating migration datastore...")
@@ -377,8 +377,8 @@ func TestMergeDataStoreToCatalog_Integration(t *testing.T) {
 	t.Logf("ℹ️  Catalog now contains both original and migrated data under domain='%s', environment='%s'", testDomain, testEnv)
 }
 
-// TestSyncDataStoreToCatalog_TransactionRollback tests that failed syncs rollback properly
-func TestSyncDataStoreToCatalog_TransactionRollback(t *testing.T) {
+// TestMergeDataStoreToCatalog_TransactionRollback tests that failed merges rollback properly
+func TestMergeDataStoreToCatalog_TransactionRollback(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
@@ -443,8 +443,8 @@ func TestSyncDataStoreToCatalog_TransactionRollback(t *testing.T) {
 	err = localDS.Addresses().Add(testAddr)
 	require.NoError(t, err)
 
-	// Sync should succeed
-	err = datastore.SyncDataStoreToCatalog(ctx, localDS.Seal(), catalogStore)
+	// Merge should succeed
+	err = datastore.MergeDataStoreToCatalog(ctx, localDS.Seal(), catalogStore)
 	require.NoError(t, err)
 
 	// Verify data was written
@@ -458,7 +458,7 @@ func TestSyncDataStoreToCatalog_TransactionRollback(t *testing.T) {
 			break
 		}
 	}
-	assert.True(t, found, "Data should be committed after successful sync")
+	assert.True(t, found, "Data should be committed after successful merge")
 
-	t.Log("✅ Transaction semantics verified - data committed after successful sync")
+	t.Log("✅ Transaction semantics verified - data committed after successful merge")
 }

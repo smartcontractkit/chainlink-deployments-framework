@@ -1,7 +1,9 @@
 package domain
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -754,7 +756,7 @@ func Test_EnvDir_MergeMigrationDataStore(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				err = envdir.MergeMigrationDataStore(t.Context(), "0001_initial", "", nil)
+				err = envdir.MergeMigrationDataStore("0001_initial", "")
 				require.NoError(t, err)
 
 				// Create a migration with another datastore
@@ -778,7 +780,7 @@ func Test_EnvDir_MergeMigrationDataStore(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				err = envdir.MergeMigrationDataStore(t.Context(), "0001_initial", "", nil)
+				err = envdir.MergeMigrationDataStore("0001_initial", "")
 				require.NoError(t, err)
 
 				// Create a durable pipeline artifact with another address book and merge to the address book
@@ -790,7 +792,7 @@ func Test_EnvDir_MergeMigrationDataStore(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				err = envdir.MergeMigrationDataStore(t.Context(), "durable_pipeline", arts.timestamp, nil)
+				err = envdir.MergeMigrationDataStore("durable_pipeline", arts.timestamp)
 				require.NoError(t, err)
 			},
 			giveMigrationName: "durable_pipeline",
@@ -829,7 +831,7 @@ func Test_EnvDir_MergeMigrationDataStore(t *testing.T) {
 			}
 
 			// Merge the migration's address book into the existing address book
-			err := envDir.MergeMigrationDataStore(t.Context(), tt.giveMigrationName, "", nil)
+			err := envDir.MergeMigrationDataStore(tt.giveMigrationName, "")
 
 			if tt.wantErr != "" {
 				require.Error(t, err)
@@ -843,6 +845,220 @@ func Test_EnvDir_MergeMigrationDataStore(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_EnvDir_MergeMigrationDataStoreCatalog(t *testing.T) {
+	t.Parallel()
+
+	var (
+		dataStore1 = createDataStore(t,
+			"Contract", version1_0_0,
+			chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector,
+			"0x5B5BBb15ECE0a4Ed8cDab22F902e83F66aBe848f",
+			"qtest1",
+		)
+	)
+
+	tests := []struct {
+		name              string
+		beforeFunc        func(*testing.T, EnvDir)
+		giveMigrationName string
+		mockTransaction   func(ctx context.Context, fn fdatastore.TransactionLogic) error
+		wantErr           string
+	}{
+		{
+			name: "success with merging to catalog",
+			beforeFunc: func(t *testing.T, envdir EnvDir) {
+				t.Helper()
+
+				// Create the artifacts for the migration
+				arts := envdir.ArtifactsDir()
+				err := arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{
+					DataStore: dataStore1,
+				})
+				require.NoError(t, err)
+			},
+			giveMigrationName: "0001_initial",
+			mockTransaction: func(ctx context.Context, fn fdatastore.TransactionLogic) error {
+				// Simulate successful transaction by returning nil
+				return nil
+			},
+		},
+		{
+			name:              "failure when no migration artifacts directory exists",
+			giveMigrationName: "0001_invalid",
+			wantErr:           "error finding files",
+			mockTransaction: func(ctx context.Context, fn fdatastore.TransactionLogic) error {
+				return nil
+			},
+		},
+		{
+			name: "failure when catalog merge fails",
+			beforeFunc: func(t *testing.T, envdir EnvDir) {
+				t.Helper()
+
+				// Create the artifacts for the migration
+				arts := envdir.ArtifactsDir()
+				err := arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{
+					DataStore: dataStore1,
+				})
+				require.NoError(t, err)
+			},
+			giveMigrationName: "0001_initial",
+			mockTransaction: func(ctx context.Context, fn fdatastore.TransactionLogic) error {
+				return errors.New("catalog transaction error")
+			},
+			wantErr: "failed to merge datastore to catalog",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var (
+				fixture     = setupTestDomainsFS(t)
+				envDir      = fixture.envDir
+				mockCatalog = &mockCatalogStoreForTest{
+					withTransactionFn: tt.mockTransaction,
+				}
+			)
+
+			if tt.beforeFunc != nil {
+				tt.beforeFunc(t, envDir)
+			}
+
+			// Merge the migration's datastore to catalog
+			err := envDir.MergeMigrationDataStoreCatalog(context.Background(), tt.giveMigrationName, "", mockCatalog)
+
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				assert.ErrorContains(t, err, tt.wantErr)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func Test_EnvDir_SyncDataStoreToCatalog(t *testing.T) {
+	t.Parallel()
+
+	var (
+		dataStore1 = createDataStore(t,
+			"Contract", version1_0_0,
+			chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector,
+			"0x5B5BBb15ECE0a4Ed8cDab22F902e83F66aBe848f",
+			"qtest1",
+		)
+	)
+
+	tests := []struct {
+		name            string
+		beforeFunc      func(*testing.T, EnvDir)
+		mockTransaction func(ctx context.Context, fn fdatastore.TransactionLogic) error
+		wantErr         string
+	}{
+		{
+			name: "success syncing datastore to catalog",
+			beforeFunc: func(t *testing.T, envdir EnvDir) {
+				t.Helper()
+
+				// Create local datastore files
+				arts := envdir.ArtifactsDir()
+				err := arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{
+					DataStore: dataStore1,
+				})
+				require.NoError(t, err)
+
+				// Merge to local files first
+				err = envdir.MergeMigrationDataStore("0001_initial", "")
+				require.NoError(t, err)
+			},
+			mockTransaction: func(ctx context.Context, fn fdatastore.TransactionLogic) error {
+				// Simulate successful transaction
+				return nil
+			},
+		},
+		{
+			name: "failure when catalog sync fails",
+			beforeFunc: func(t *testing.T, envdir EnvDir) {
+				t.Helper()
+
+				// Create local datastore files
+				arts := envdir.ArtifactsDir()
+				err := arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{
+					DataStore: dataStore1,
+				})
+				require.NoError(t, err)
+
+				// Merge to local files first
+				err = envdir.MergeMigrationDataStore("0001_initial", "")
+				require.NoError(t, err)
+			},
+			mockTransaction: func(ctx context.Context, fn fdatastore.TransactionLogic) error {
+				return errors.New("catalog sync error")
+			},
+			wantErr: "failed to sync datastore to catalog",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var (
+				fixture     = setupTestDomainsFS(t)
+				envDir      = fixture.envDir
+				mockCatalog = &mockCatalogStoreForTest{
+					withTransactionFn: tt.mockTransaction,
+				}
+			)
+
+			if tt.beforeFunc != nil {
+				tt.beforeFunc(t, envDir)
+			}
+
+			// Sync the datastore to catalog
+			err := envDir.SyncDataStoreToCatalog(context.Background(), mockCatalog)
+
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				assert.ErrorContains(t, err, tt.wantErr)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+// mockCatalogStoreForTest is a minimal mock for testing catalog operations
+type mockCatalogStoreForTest struct {
+	withTransactionFn func(ctx context.Context, fn fdatastore.TransactionLogic) error
+}
+
+func (m *mockCatalogStoreForTest) WithTransaction(ctx context.Context, fn fdatastore.TransactionLogic) error {
+	if m.withTransactionFn != nil {
+		return m.withTransactionFn(ctx, fn)
+	}
+
+	return nil
+}
+
+func (m *mockCatalogStoreForTest) Addresses() fdatastore.MutableRefStoreV2[fdatastore.AddressRefKey, fdatastore.AddressRef] {
+	return nil
+}
+
+func (m *mockCatalogStoreForTest) ChainMetadata() fdatastore.MutableStoreV2[fdatastore.ChainMetadataKey, fdatastore.ChainMetadata] {
+	return nil
+}
+
+func (m *mockCatalogStoreForTest) ContractMetadata() fdatastore.MutableStoreV2[fdatastore.ContractMetadataKey, fdatastore.ContractMetadata] {
+	return nil
+}
+
+func (m *mockCatalogStoreForTest) EnvMetadata() fdatastore.MutableUnaryStoreV2[fdatastore.EnvMetadata] {
+	return nil
 }
 
 func Test_EnvDir_DataStoreDirPath(t *testing.T) {

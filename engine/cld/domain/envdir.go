@@ -210,14 +210,11 @@ func (d EnvDir) ArtifactsDir() *ArtifactsDir {
 	return NewArtifactsDir(d.rootPath, d.domainKey, d.key)
 }
 
-// MergeMigrationDataStore merges a migration's datastore into the existing datastore for the
-// given domain environment. It can work in two modes:
-//  1. File mode (default): Merges with local file-based datastore
-//  2. Catalog mode: Merges with remote catalog service (when catalog is provided)
-//
-// The catalog parameter is optional. If nil, only local files are updated.
-// If provided, data is synced to catalog within a transaction for atomicity.
-func (d EnvDir) MergeMigrationDataStore(ctx context.Context, migkey, timestamp string, catalog fdatastore.CatalogStore) error {
+// MergeMigrationDataStore merges a migration's DataStore into the local file-based datastore.
+// This method is used when the environment is configured to use file-based datastore persistence.
+// It loads the migration artifacts, merges them into the existing datastore, and writes the
+// updated datastore back to local JSON files.
+func (d EnvDir) MergeMigrationDataStore(migkey, timestamp string) error {
 	// Get the artifacts directory for the environment
 	artDir := d.ArtifactsDir()
 
@@ -237,14 +234,6 @@ func (d EnvDir) MergeMigrationDataStore(ctx context.Context, migkey, timestamp s
 		return err
 	}
 
-	// If catalog is provided, sync the merged datastore to catalog within a transaction
-	if catalog != nil {
-		if err = fdatastore.MergeDataStoreToCatalog(ctx, migrDataStore, catalog); err != nil {
-			return fmt.Errorf("failed to merge datastore to catalog: %w", err)
-		}
-	}
-
-	// Always update local files for backup/fallback purposes
 	// Cast the datastore to the concrete type and write it to the file
 	dataStoreConcrete, ok := dataStore.(*fdatastore.MemoryDataStore)
 	if !ok {
@@ -274,6 +263,28 @@ func (d EnvDir) MergeMigrationDataStore(ctx context.Context, migkey, timestamp s
 	return nil
 }
 
+// MergeMigrationDataStoreCatalog merges a migration's DataStore directly into the remote catalog service.
+// This method is used when the environment is configured to use catalog-based datastore persistence.
+// It loads the migration artifacts and syncs them to the catalog within a transaction.
+// Local files are NOT updated when using catalog mode.
+func (d EnvDir) MergeMigrationDataStoreCatalog(ctx context.Context, migkey, timestamp string, catalog fdatastore.CatalogStore) error {
+	// Get the artifacts directory for the environment
+	artDir := d.ArtifactsDir()
+
+	// Load the migration datastore for the migration key and timestamp
+	migrDataStore, err := loadDataStoreByMigrationKey(artDir, migkey, timestamp)
+	if err != nil {
+		return err
+	}
+
+	// Merge the migration datastore to catalog within a transaction
+	if err = fdatastore.MergeDataStoreToCatalog(ctx, migrDataStore, catalog); err != nil {
+		return fmt.Errorf("failed to merge datastore to catalog: %w", err)
+	}
+
+	return nil
+}
+
 // SyncDataStoreToCatalog syncs the entire local datastore state to the catalog service.
 // This is useful for migrating from file-based datastore to catalog service.
 // The operation is performed within a transaction for atomicity.
@@ -285,7 +296,7 @@ func (d EnvDir) SyncDataStoreToCatalog(ctx context.Context, catalog fdatastore.C
 	}
 
 	// Sync entire datastore to catalog within a transaction
-	if err = fdatastore.SyncDataStoreToCatalog(ctx, dataStore, catalog); err != nil {
+	if err = fdatastore.MergeDataStoreToCatalog(ctx, dataStore, catalog); err != nil {
 		return fmt.Errorf("failed to sync datastore to catalog: %w", err)
 	}
 
