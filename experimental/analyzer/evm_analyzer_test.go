@@ -885,6 +885,8 @@ func TestTryEIP1967ProxyFallback(t *testing.T) {
 		{
 			name: "chain not available",
 			setupCtx: func(t *testing.T) (ProposalContext, deployment.Environment) {
+				t.Helper()
+
 				return &DefaultProposalContext{
 					AddressesByChain: deployment.AddressesByChain{
 						chainSelector: {
@@ -912,6 +914,8 @@ func TestTryEIP1967ProxyFallback(t *testing.T) {
 		{
 			name: "not an EIP-1967 proxy - zero implementation address",
 			setupCtx: func(t *testing.T) (ProposalContext, deployment.Environment) {
+				t.Helper()
+
 				testEnv, err := testenv.New(t.Context(), testenv.WithEVMSimulated(t, []uint64{chainSelector}))
 				require.NoError(t, err)
 
@@ -945,6 +949,8 @@ func TestTryEIP1967ProxyFallback(t *testing.T) {
 		{
 			name: "implementation not found in address book",
 			setupCtx: func(t *testing.T) (ProposalContext, deployment.Environment) {
+				t.Helper()
+
 				testEnv, err := testenv.New(t.Context(), testenv.WithEVMSimulated(t, []uint64{chainSelector}))
 				require.NoError(t, err)
 
@@ -966,7 +972,8 @@ func TestTryEIP1967ProxyFallback(t *testing.T) {
 				testEnv.BlockChains = chain.NewBlockChainsFromSlice(allChains)
 
 				// Add proxy address to ExistingAddresses so getAllAddressesByChain can find it
-				testEnv.ExistingAddresses.Save(chainSelector, proxyAddress, deployment.MustTypeAndVersionFromString("TransparentUpgradeableProxy 1.0.0"))
+				err = testEnv.ExistingAddresses.Save(chainSelector, proxyAddress, deployment.MustTypeAndVersionFromString("TransparentUpgradeableProxy 1.0.0")) // nolint
+				require.NoError(t, err)
 				// Note: Implementation address NOT added to address book (this is the test case)
 
 				return &DefaultProposalContext{
@@ -997,6 +1004,8 @@ func TestTryEIP1967ProxyFallback(t *testing.T) {
 		{
 			name: "implementation ABI not found",
 			setupCtx: func(t *testing.T) (ProposalContext, deployment.Environment) {
+				t.Helper()
+
 				testEnv, err := testenv.New(t.Context(), testenv.WithEVMSimulated(t, []uint64{chainSelector}))
 				require.NoError(t, err)
 
@@ -1018,8 +1027,10 @@ func TestTryEIP1967ProxyFallback(t *testing.T) {
 				testEnv.BlockChains = chain.NewBlockChainsFromSlice(allChains)
 
 				// Add addresses to ExistingAddresses so getAllAddressesByChain can find them
-				testEnv.ExistingAddresses.Save(chainSelector, proxyAddress, deployment.MustTypeAndVersionFromString("TransparentUpgradeableProxy 1.0.0"))
-				testEnv.ExistingAddresses.Save(chainSelector, implAddress.Hex(), deployment.MustTypeAndVersionFromString("ImplementationContract 1.0.0"))
+				err = testEnv.ExistingAddresses.Save(chainSelector, proxyAddress, deployment.MustTypeAndVersionFromString("TransparentUpgradeableProxy 1.0.0")) // nolint
+				require.NoError(t, err)
+				err = testEnv.ExistingAddresses.Save(chainSelector, implAddress.Hex(), deployment.MustTypeAndVersionFromString("ImplementationContract 1.0.0")) // nolint
+				require.NoError(t, err)
 
 				return &DefaultProposalContext{
 					AddressesByChain: deployment.AddressesByChain{
@@ -1051,6 +1062,8 @@ func TestTryEIP1967ProxyFallback(t *testing.T) {
 		{
 			name: "empty environment - no EVM chains",
 			setupCtx: func(t *testing.T) (ProposalContext, deployment.Environment) {
+				t.Helper()
+
 				return &mockProposalContext{}, deployment.Environment{}
 			},
 			chainSelector: chainSelector,
@@ -1062,6 +1075,8 @@ func TestTryEIP1967ProxyFallback(t *testing.T) {
 		{
 			name: "success - EIP-1967 proxy fallback succeeds (from ExistingAddresses)",
 			setupCtx: func(t *testing.T) (ProposalContext, deployment.Environment) {
+				t.Helper()
+
 				testEnv, err := testenv.New(t.Context(), testenv.WithEVMSimulated(t, []uint64{chainSelector}))
 				require.NoError(t, err)
 
@@ -1086,7 +1101,8 @@ func TestTryEIP1967ProxyFallback(t *testing.T) {
 				implABI := `[{"type":"function","name":"transfer","stateMutability":"nonpayable","inputs":[{"type":"address","name":"to"},{"type":"uint256","name":"amount"}],"outputs":[{"type":"bool"}]}]`
 
 				// Add implementation address to ExistingAddresses
-				testEnv.ExistingAddresses.Save(chainSelector, implAddress.Hex(), deployment.MustTypeAndVersionFromString("ImplementationContract 1.0.0"))
+				err = testEnv.ExistingAddresses.Save(chainSelector, implAddress.Hex(), deployment.MustTypeAndVersionFromString("ImplementationContract 1.0.0")) // nolint
+				require.NoError(t, err)
 
 				return &DefaultProposalContext{
 					AddressesByChain: deployment.AddressesByChain{
@@ -1113,6 +1129,8 @@ func TestTryEIP1967ProxyFallback(t *testing.T) {
 			txData:        txData,
 			expectedError: false,
 			verifyResult: func(t *testing.T, result *DecodedCall, abiObj *abi.ABI, abiStr string) {
+				t.Helper()
+
 				require.NotNil(t, result)
 				require.NotNil(t, abiObj)
 				require.NotEmpty(t, abiStr)
@@ -1124,6 +1142,8 @@ func TestTryEIP1967ProxyFallback(t *testing.T) {
 		{
 			name: "success - EIP-1967 proxy fallback succeeds (implementation from DataStore)",
 			setupCtx: func(t *testing.T) (ProposalContext, deployment.Environment) {
+				t.Helper()
+
 				testEnv, err := testenv.New(t.Context(), testenv.WithEVMSimulated(t, []uint64{chainSelector}))
 				require.NoError(t, err)
 
@@ -1188,6 +1208,8 @@ func TestTryEIP1967ProxyFallback(t *testing.T) {
 			txData:        txData,
 			expectedError: false,
 			verifyResult: func(t *testing.T, result *DecodedCall, abiObj *abi.ABI, abiStr string) {
+				t.Helper()
+
 				require.NotNil(t, result)
 				require.NotNil(t, abiObj)
 				require.NotEmpty(t, abiStr)
@@ -1253,6 +1275,7 @@ func (m *mockStorageClient) StorageAt(ctx context.Context, account common.Addres
 		// Return the address as 32 bytes (right-padded)
 		result := make([]byte, 32)
 		copy(result[12:], m.implAddr.Bytes())
+
 		return result, nil
 	}
 	// Otherwise, delegate to the underlying client
@@ -1351,6 +1374,8 @@ func TestAnalyzeEVMTransaction_EIP1967ProxyFallback(t *testing.T) {
 				Data: txData,
 			},
 			setupCtx: func(t *testing.T) (ProposalContext, deployment.Environment) {
+				t.Helper()
+
 				testEnv, err := testenv.New(t.Context(), testenv.WithEVMSimulated(t, []uint64{chainSelector}))
 				require.NoError(t, err)
 
@@ -1372,8 +1397,10 @@ func TestAnalyzeEVMTransaction_EIP1967ProxyFallback(t *testing.T) {
 				testEnv.BlockChains = chain.NewBlockChainsFromSlice(allChains)
 
 				// Add addresses to ExistingAddresses so getAllAddressesByChain can find them
-				testEnv.ExistingAddresses.Save(chainSelector, proxyAddress, deployment.MustTypeAndVersionFromString("TransparentUpgradeableProxy 1.0.0"))
-				testEnv.ExistingAddresses.Save(chainSelector, implAddressStr, deployment.MustTypeAndVersionFromString("ImplementationContract 1.0.0"))
+				err = testEnv.ExistingAddresses.Save(chainSelector, proxyAddress, deployment.MustTypeAndVersionFromString("TransparentUpgradeableProxy 1.0.0")) // nolint
+				require.NoError(t, err)
+				err = testEnv.ExistingAddresses.Save(chainSelector, implAddressStr, deployment.MustTypeAndVersionFromString("ImplementationContract 1.0.0")) // nolint
+				require.NoError(t, err)
 
 				return &DefaultProposalContext{
 					AddressesByChain: deployment.AddressesByChain{
@@ -1398,6 +1425,8 @@ func TestAnalyzeEVMTransaction_EIP1967ProxyFallback(t *testing.T) {
 			},
 			expectedError: false,
 			verifyResult: func(t *testing.T, result *DecodedCall, abiObj *abi.ABI, abiStr string) {
+				t.Helper()
+
 				require.NotNil(t, result)
 				require.NotNil(t, abiObj)
 				require.Contains(t, abiStr, "transfer")
@@ -1411,6 +1440,8 @@ func TestAnalyzeEVMTransaction_EIP1967ProxyFallback(t *testing.T) {
 				Data: []byte{0x12, 0x34}, // Too short, will fail before method lookup
 			},
 			setupCtx: func(t *testing.T) (ProposalContext, deployment.Environment) {
+				t.Helper()
+
 				return &DefaultProposalContext{
 					AddressesByChain: deployment.AddressesByChain{
 						chainSelector: {
@@ -1432,6 +1463,8 @@ func TestAnalyzeEVMTransaction_EIP1967ProxyFallback(t *testing.T) {
 			expectedError: true,
 			errorContains: "error analyzing operation",
 			verifyResult: func(t *testing.T, result *DecodedCall, abiObj *abi.ABI, abiStr string) {
+				t.Helper()
+
 				require.Nil(t, result)
 				require.Nil(t, abiObj)
 				require.Empty(t, abiStr)
@@ -1444,6 +1477,8 @@ func TestAnalyzeEVMTransaction_EIP1967ProxyFallback(t *testing.T) {
 				Data: []byte{0x88, 0x61, 0xcc, 0x77, 0x00, 0x00}, // Method ID that doesn't exist in either ABI
 			},
 			setupCtx: func(t *testing.T) (ProposalContext, deployment.Environment) {
+				t.Helper()
+
 				testEnv, err := testenv.New(t.Context(), testenv.WithEVMSimulated(t, []uint64{chainSelector}))
 				require.NoError(t, err)
 
@@ -1495,6 +1530,8 @@ func TestAnalyzeEVMTransaction_EIP1967ProxyFallback(t *testing.T) {
 				Data: txData,
 			},
 			setupCtx: func(t *testing.T) (ProposalContext, deployment.Environment) {
+				t.Helper()
+
 				return &DefaultProposalContext{
 					AddressesByChain: deployment.AddressesByChain{
 						chainSelector: {
