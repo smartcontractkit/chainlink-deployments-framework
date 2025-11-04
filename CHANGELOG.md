@@ -1,5 +1,15 @@
 # chainlink-deployments-framework
 
+## 0.63.0
+
+### Minor Changes
+
+- [#560](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/560) [`ed679a7`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/ed679a72ab740098c18ad1750c80d81782e12d95) Thanks [@huangzhen1997](https://github.com/huangzhen1997)! - bump sui binding version
+
+### Patch Changes
+
+- [#561](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/561) [`280ce37`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/280ce37cdcc0981e55168ba099f909720d5912e1) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - fix: computation of the txNonce attribute in the upf converter
+
 ## 0.62.0
 
 ### Minor Changes
