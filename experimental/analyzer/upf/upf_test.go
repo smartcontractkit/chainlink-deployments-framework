@@ -31,45 +31,25 @@ func TestUpfConvertTimelockProposal(t *testing.T) {
 	t.Parallel()
 	ds := datastore.NewMemoryDataStore()
 
-	mustAdd := func(chain uint64, addr, typeAndVersion string) {
-		tv := deployment.MustTypeAndVersionFromString(typeAndVersion)
-		storeAddr := addr
-		if strings.HasPrefix(addr, "0x") {
-			storeAddr = addr
-		}
-		ref := datastore.AddressRef{
-			ChainSelector: chain,
-			Address:       storeAddr,
-			Type:          datastore.ContractType(tv.Type),
-			Version:       &tv.Version,
-			// Use address+type as a unique Qualifier (avoids clashes)
-			Qualifier: fmt.Sprintf("%s-%s", addr, tv.Type),
-		}
-		if !tv.Labels.IsEmpty() {
-			ref.Labels = datastore.NewLabelSet(tv.Labels.List()...)
-		}
-		require.NoError(t, ds.Addresses().Add(ref))
-	}
-
 	// ---- EVM: ethereum-testnet-sepolia-base-1
-	mustAdd(10344971235874465080, "0x5f077BCeE6e285154473F65699d6F46Fd03D105A", "RBACTimelock 1.0.0")
-	mustAdd(10344971235874465080, "0xA5D5B0B844c8f11B61F28AC98BBA84dEA9b80953", "ProposerManyChainMultisig 1.0.0")
-	mustAdd(10344971235874465080, "0x76B12C4f3672aA613F1b2302327827B7B74064E1", "RMNRemote 1.6.0")
+	dsAddContract(t, ds, 10344971235874465080, "0x5f077BCeE6e285154473F65699d6F46Fd03D105A", "RBACTimelock 1.0.0")
+	dsAddContract(t, ds, 10344971235874465080, "0xA5D5B0B844c8f11B61F28AC98BBA84dEA9b80953", "ProposerManyChainMultisig 1.0.0")
+	dsAddContract(t, ds, 10344971235874465080, "0x76B12C4f3672aA613F1b2302327827B7B74064E1", "RMNRemote 1.6.0")
 
 	// ---- EVM: bsc-testnet
-	mustAdd(13264668187771770619, "0x804759c9bdd258A810987FDe21c9E24C5383b722", "RBACTimelock 1.0.0")
-	mustAdd(13264668187771770619, "0x9A60462e4CA802E3E945663930Be0d162e662091", "ProposerManyChainMultisig 1.0.0")
-	mustAdd(13264668187771770619, "0x76B12C4f3672aA613F1b2302327827B7B74064E1", "RMNRemote 1.6.0")
+	dsAddContract(t, ds, 13264668187771770619, "0x804759c9bdd258A810987FDe21c9E24C5383b722", "RBACTimelock 1.0.0")
+	dsAddContract(t, ds, 13264668187771770619, "0x9A60462e4CA802E3E945663930Be0d162e662091", "ProposerManyChainMultisig 1.0.0")
+	dsAddContract(t, ds, 13264668187771770619, "0x76B12C4f3672aA613F1b2302327827B7B74064E1", "RMNRemote 1.6.0")
 
 	// ---- Solana: devnet
-	mustAdd(16423721717087811551, "5vNJx78mz7KVMjhuipyr9jKBKcMrKYGdjGkgE4LUmjKk", "ManyChainMultiSigProgram 1.0.0")
-	mustAdd(16423721717087811551, "5vNJx78mz7KVMjhuipyr9jKBKcMrKYGdjGkgE4LUmjKk.ID6xwqkfFkH6dx2LF0O2NKfHKwHywEB0", "ProposerManyChainMultiSig 1.0.0")
-	mustAdd(16423721717087811551, "DoajfR5tK24xVw51fWcawUZWhAXD8yrBJVacc13neVQA", "RBACTimelockProgram 1.0.0")
-	mustAdd(16423721717087811551, "DoajfR5tK24xVw51fWcawUZWhAXD8yrBJVacc13neVQA.E4R6Nwg1K8Zvi6McLdkaGDD5ClX1KkyV", "RBACTimelock 1.0.0")
-	mustAdd(16423721717087811551, "FTDusxFg9NmmFGRg5jfA9nHCiCpZ7dJktawfRBcUBhq", "ProposerAccessControllerAccount 1.0.0")
-	mustAdd(16423721717087811551, "2hABoxD9U5A4j4x3kNDf4dBJ7ZP384Zbs3TuFn9QUTSs", "CancellerAccessControllerAccount 1.0.0")
-	mustAdd(16423721717087811551, "68ds9kDfB6rJfC4zzeeQ8E9ZMwqSzFQEie1886VAPn68", "BypasserAccessControllerAccount 1.0.0")
-	mustAdd(16423721717087811551, "RmnXLft1mSEwDgMKu2okYuHkiazxntFFcZFrrcXxYg7", "RMNRemote 1.0.0")
+	dsAddContract(t, ds, 16423721717087811551, "5vNJx78mz7KVMjhuipyr9jKBKcMrKYGdjGkgE4LUmjKk", "ManyChainMultiSigProgram 1.0.0")
+	dsAddContract(t, ds, 16423721717087811551, "5vNJx78mz7KVMjhuipyr9jKBKcMrKYGdjGkgE4LUmjKk.ID6xwqkfFkH6dx2LF0O2NKfHKwHywEB0", "ProposerManyChainMultiSig 1.0.0")
+	dsAddContract(t, ds, 16423721717087811551, "DoajfR5tK24xVw51fWcawUZWhAXD8yrBJVacc13neVQA", "RBACTimelockProgram 1.0.0")
+	dsAddContract(t, ds, 16423721717087811551, "DoajfR5tK24xVw51fWcawUZWhAXD8yrBJVacc13neVQA.E4R6Nwg1K8Zvi6McLdkaGDD5ClX1KkyV", "RBACTimelock 1.0.0")
+	dsAddContract(t, ds, 16423721717087811551, "FTDusxFg9NmmFGRg5jfA9nHCiCpZ7dJktawfRBcUBhq", "ProposerAccessControllerAccount 1.0.0")
+	dsAddContract(t, ds, 16423721717087811551, "2hABoxD9U5A4j4x3kNDf4dBJ7ZP384Zbs3TuFn9QUTSs", "CancellerAccessControllerAccount 1.0.0")
+	dsAddContract(t, ds, 16423721717087811551, "68ds9kDfB6rJfC4zzeeQ8E9ZMwqSzFQEie1886VAPn68", "BypasserAccessControllerAccount 1.0.0")
+	dsAddContract(t, ds, 16423721717087811551, "RmnXLft1mSEwDgMKu2okYuHkiazxntFFcZFrrcXxYg7", "RMNRemote 1.0.0")
 
 	env := deployment.Environment{
 		DataStore:         ds.Seal(),
@@ -280,7 +260,7 @@ transactions:
   to: "0x5f077BCeE6e285154473F65699d6F46Fd03D105A"
   value: 0
   data: "0xa944142d00000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000000773593ff00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000012c0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000002000000000000000000000000076b12c4f3672aa613f1b2302327827b7b74064e1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000064f8bb876e000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000010000000000000000b8159170038f96fb0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
-  txNonce: 2
+  txNonce: 1
   metadata:
     contractType: RBACTimelock
     decodedCalldata:
@@ -307,7 +287,7 @@ transactions:
   to: "0x804759c9bdd258A810987FDe21c9E24C5383b722"
   value: 0
   data: "0xa944142d00000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000000773593ff00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000012c0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000002000000000000000000000000076b12c4f3672aa613f1b2302327827b7b74064e1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000064f8bb876e0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000100000000000000008f90b8876dee65380000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
-  txNonce: 3
+  txNonce: 2
   metadata:
     contractType: RBACTimelock
     decodedCalldata:
@@ -334,7 +314,7 @@ transactions:
   to: DoajfR5tK24xVw51fWcawUZWhAXD8yrBJVacc13neVQA
   value: 0
   data: D2DZq3wEcfNFNFI2TndnMUs4WnZpNk1jTGRrYUdERDVDbFgxS2t5VpAXlZ2LYPhZ+p8F9JucBPQaESwj/lQ3CwCjnNzLdfsEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB3NZP/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAA=
-  txNonce: 4
+  txNonce: 3
   metadata:
     contractType: RBACTimelock
     decodedCalldata:
@@ -361,7 +341,7 @@ transactions:
   to: DoajfR5tK24xVw51fWcawUZWhAXD8yrBJVacc13neVQA
   value: 0
   data: w+bVh5CUjlVFNFI2TndnMUs4WnZpNk1jTGRrYUdERDVDbFgxS2t5VpAXlZ2LYPhZ+p8F9JucBPQaESwj/lQ3CwCjnNzLdfsEBliT7ZWrhugwWyiYp2G+HCHNv7C39ebv1T6DsoMrGlAEAAAA569Vk65pFF7HVjX5akNsLQQfz9+AaloAzqNrzzoGc1AAAB74fnS+SLFE6OvgAxbo+S+KqA2nm/gNrv6H0f98BW1YAAGvogYtczqE0C5vP92khgtsL3GSUtW9S5XWTvA81tlPygABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
-  txNonce: 5
+  txNonce: 4
   metadata:
     contractType: RBACTimelock
     decodedCalldata:
@@ -394,7 +374,7 @@ transactions:
   to: DoajfR5tK24xVw51fWcawUZWhAXD8yrBJVacc13neVQA
   value: 0
   data: TE1mg4gMLQVFNFI2TndnMUs4WnZpNk1jTGRrYUdERDVDbFgxS2t5VpAXlZ2LYPhZ+p8F9JucBPQaESwj/lQ3CwCjnNzLdfsEAAAAABgAAAAKf+LjigPASfuWjwNwkRW4AAAAAAAAAAA=
-  txNonce: 6
+  txNonce: 5
   metadata:
     contractType: RBACTimelock
     decodedCalldata:
@@ -420,7 +400,7 @@ transactions:
   to: DoajfR5tK24xVw51fWcawUZWhAXD8yrBJVacc13neVQA
   value: 0
   data: P9AgYlW27IxFNFI2TndnMUs4WnZpNk1jTGRrYUdERDVDbFgxS2t5VpAXlZ2LYPhZ+p8F9JucBPQaESwj/lQ3CwCjnNzLdfsE
-  txNonce: 7
+  txNonce: 6
   metadata:
     contractType: RBACTimelock
     decodedCalldata:
@@ -443,7 +423,7 @@ transactions:
   to: DoajfR5tK24xVw51fWcawUZWhAXD8yrBJVacc13neVQA
   value: 0
   data: 8oxXakfiViBFNFI2TndnMUs4WnZpNk1jTGRrYUdERDVDbFgxS2t5VpAXlZ2LYPhZ+p8F9JucBPQaESwj/lQ3CwCjnNzLdfsELAEAAAAAAAA=
-  txNonce: 8
+  txNonce: 7
   metadata:
     contractType: RBACTimelock
     decodedCalldata:
@@ -516,6 +496,36 @@ var timelockProposalSui = `{
   ]
 }`
 
+var upfProposalSui = `---
+msigType: mcms
+proposalHash: "0x1c733d9d09e9d41e1651596078df88b00c68e085cc6bf14b8f346866b1741a28"
+mcmsParams:
+  validUntil: 1999999999
+  merkleRoot: "0xeeaa854482fdd28dec1ca358c4ba9c7399560b580683c7fa372e9a69eab8ba1d"
+  asciiProposalHash: '\x93>\x07\xb8>\xce3\xfa\xa7\xccZ\x1e\xea\xf8|\xb39\x9c\x10s\xd7\x98\xc8\xa6\x1d\xe13\x99\xa1u\xe2.'
+  overridePreviousRoot: false
+transactions:
+- index: 0
+  chainFamily: sui
+  chainId: "2"
+  chainName: sui-testnet
+  chainShortName: sui-testnet
+  msigAddress: "0x4e825a4758064df713762e431c3a16b8105857195214469db0d6985b7d70266d"
+  timelockAddress: "0x4e825a4758064df713762e431c3a16b8105857195214469db0d6985b7d70266d"
+  to: ""
+  value: 0
+  data: AU6CWkdYBk33E3YuQxw6FrgQWFcZUhRGnbDWmFt9cCZtAQltY21zX3VzZXIBDGZ1bmN0aW9uX29uZQFYi8WcKEL0NsEiFpGjWdxClBwfJeyhP0ut55f7Dg2PS2W5dbWeXl19LUYyEaeuZRHbtJS9IbqY1GNZHOkUhofVcGRhdGVkIEZpZWxkIEEKAQIDBAUGBwgJCiAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACB3NZP/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACwBAAAAAAAA
+  txNonce: 1
+  metadata:
+    contractType: MCMS
+    decodedCalldata:
+      functionName: "failed to decode Sui transaction: could not find function in contractInterfaces for mcms::timelock_schedule_batch"
+      functionArgs: {}
+signers:
+  "9762610643973837292":
+  - "0xA5D5B0B844c8f11B61F28AC98BBA84dEA9b80953"
+`
+
 var timelockProposalSuiUnknownModule = `{
   "version": "v1",
   "kind": "TimelockProposal",
@@ -531,7 +541,7 @@ var timelockProposalSuiUnknownModule = `{
   },
   "description": "Sui proposal with unknown module",
   "action": "schedule",
-  "delay": "5m0s",  
+  "delay": "5m0s",
   "timelockAddresses": {
     "9762610643973837292": "0x4e825a4758064df713762e431c3a16b8105857195214469db0d6985b7d70266d"
   },
@@ -555,32 +565,42 @@ var timelockProposalSuiUnknownModule = `{
   ]
 }`
 
+var upfProposalSuiUnknownModule = `---
+msigType: mcms
+proposalHash: "0x5433c70ce0b94602235ae03d5485a3ff991b90d35b90f3474af5455f1105c198"
+mcmsParams:
+  validUntil: 1999999999
+  merkleRoot: "0x0104cddb47805604d82eeab0e02cb33c4374c1e635ab038d2a1ed9038c48e4a9"
+  asciiProposalHash: 'L\xb9E\x9d\xfeMY\x83\xec3\xba\x00\xa6F0@\x82 \xd4\xc0\x9bj-"C\xcb\xf6\xb6v\xc0B\xbc'
+  overridePreviousRoot: false
+transactions:
+- index: 0
+  chainFamily: sui
+  chainId: "2"
+  chainName: sui-testnet
+  chainShortName: sui-testnet
+  msigAddress: "0x4e825a4758064df713762e431c3a16b8105857195214469db0d6985b7d70266d"
+  timelockAddress: "0x4e825a4758064df713762e431c3a16b8105857195214469db0d6985b7d70266d"
+  to: ""
+  value: 0
+  data: AU6CWkdYBk33E3YuQxw6FrgQWFcZUhRGnbDWmFt9cCZtAQ51bmtub3duX21vZHVsZQENc29tZV9mdW5jdGlvbgEJc29tZSBkYXRhIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIHc1k/8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAALAEAAAAAAAA=
+  txNonce: 1
+  metadata:
+    contractType: MCMS
+    decodedCalldata:
+      functionName: "failed to decode Sui transaction: could not find function in contractInterfaces for mcms::timelock_schedule_batch"
+      functionArgs: {}
+signers:
+  "9762610643973837292":
+  - "0xA5D5B0B844c8f11B61F28AC98BBA84dEA9b80953"
+`
+
 func TestUpfConvertTimelockProposalWithSui(t *testing.T) {
 	t.Parallel()
 	ds := datastore.NewMemoryDataStore()
 
-	mustAdd := func(chain uint64, addr, typeAndVersion string) {
-		tv := deployment.MustTypeAndVersionFromString(typeAndVersion)
-		storeAddr := addr
-		if strings.HasPrefix(addr, "0x") {
-			storeAddr = addr
-		}
-		ref := datastore.AddressRef{
-			ChainSelector: chain,
-			Address:       storeAddr,
-			Type:          datastore.ContractType(tv.Type),
-			Version:       &tv.Version,
-			// Use address+type as a unique Qualifier (avoids clashes)
-			Qualifier: fmt.Sprintf("%s-%s", addr, tv.Type),
-		}
-		if !tv.Labels.IsEmpty() {
-			ref.Labels = datastore.NewLabelSet(tv.Labels.List()...)
-		}
-		require.NoError(t, ds.Addresses().Add(ref))
-	}
-
 	// ---- Sui: testnet
-	mustAdd(chainsel.SUI_TESTNET.Selector, "0x4e825a4758064df713762e431c3a16b8105857195214469db0d6985b7d70266d", "MCMSUser 1.0.0")
+	dsAddContract(t, ds, chainsel.SUI_TESTNET.Selector, "0x4e825a4758064df713762e431c3a16b8105857195214469db0d6985b7d70266d", "MCMSUser 1.0.0")
 
 	env := deployment.Environment{
 		DataStore:         ds.Seal(),
@@ -594,17 +614,20 @@ func TestUpfConvertTimelockProposalWithSui(t *testing.T) {
 		name             string
 		timelockProposal string
 		signers          map[mcmstypes.ChainSelector][]common.Address
-		want             string
-		wantErr          string
+		assertion        func(*testing.T, string, error)
 	}{
 		{
 			name:             "Sui proposal with valid transaction",
 			timelockProposal: timelockProposalSui,
-			want:             "", // We'll just verify it doesn't error and contains expected content
 			signers: map[mcmstypes.ChainSelector][]common.Address{
 				mcmstypes.ChainSelector(chainsel.SUI_TESTNET.Selector): {
 					common.HexToAddress("0xA5D5B0B844c8f11B61F28AC98BBA84dEA9b80953"),
 				},
+			},
+			assertion: func(t *testing.T, gotUpf string, err error) {
+				t.Helper()
+				require.NoError(t, err)
+				require.Equal(t, upfProposalSui, gotUpf)
 			},
 		},
 		{
@@ -615,7 +638,11 @@ func TestUpfConvertTimelockProposalWithSui(t *testing.T) {
 					common.HexToAddress("0xA5D5B0B844c8f11B61F28AC98BBA84dEA9b80953"),
 				},
 			},
-			wantErr: "", // Should not error but will have error message in function name
+			assertion: func(t *testing.T, gotUpf string, err error) {
+				t.Helper()
+				require.NoError(t, err)
+				require.Equal(t, upfProposalSuiUnknownModule, gotUpf)
+			},
 		},
 	}
 
@@ -629,25 +656,32 @@ func TestUpfConvertTimelockProposalWithSui(t *testing.T) {
 
 			got, err := UpfConvertTimelockProposal(proposalCtx, timelockProposal, mcmProposal, tt.signers)
 
-			if tt.wantErr != "" {
-				require.ErrorContains(t, err, tt.wantErr)
-				return
-			}
-
-			require.NoError(t, err)
-			if tt.want != "" {
-				require.Empty(t, cmp.Diff(tt.want, got))
-			} else {
-				// For test cases without specific expected output, just verify it contains expected content
-				switch tt.name {
-				case "Sui proposal with valid transaction":
-					require.Contains(t, got, "chainFamily: sui")
-					require.Contains(t, got, "chainName: sui-testnet")
-				case "Sui proposal with unknown module":
-					// This should contain some error indication
-					require.Contains(t, got, "failed to decode Sui transaction")
-				}
-			}
+			tt.assertion(t, got, err)
 		})
 	}
+}
+
+// ----- helpers -----
+
+func dsAddContract(t *testing.T, ds datastore.MutableDataStore, chain uint64, addr, typeAndVersion string) {
+	t.Helper()
+
+	tv := deployment.MustTypeAndVersionFromString(typeAndVersion)
+	storeAddr := addr
+	if strings.HasPrefix(addr, "0x") {
+		storeAddr = addr
+	}
+	ref := datastore.AddressRef{
+		ChainSelector: chain,
+		Address:       storeAddr,
+		Type:          datastore.ContractType(tv.Type),
+		Version:       &tv.Version,
+		// Use address+type as a unique Qualifier (avoids clashes)
+		Qualifier: fmt.Sprintf("%s-%s", addr, tv.Type),
+	}
+	if !tv.Labels.IsEmpty() {
+		ref.Labels = datastore.NewLabelSet(tv.Labels.List()...)
+	}
+
+	require.NoError(t, ds.Addresses().Add(ref))
 }
