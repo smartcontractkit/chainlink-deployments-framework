@@ -1,5 +1,15 @@
 # chainlink-deployments-framework
 
+## 0.64.0
+
+### Minor Changes
+
+- [#556](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/556) [`0e60a11`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/0e60a11bcc6dee70dfd01d3cf89027935f53082c) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - feat(mcms): check MCM state before calling SetRoot or Execute
+
+### Patch Changes
+
+- [#565](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/565) [`ba781b4`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/ba781b4ba8a7744546f4b6132b18f0162aca3cad) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - fix(mcms): check if anvil config is valid after selecting the rpc
+
 ## 0.63.0
 
 ### Minor Changes
