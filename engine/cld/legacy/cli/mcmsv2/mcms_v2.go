@@ -200,6 +200,11 @@ func buildExecuteOperationv2Cmd(lggr logger.Logger, domain cldf_domain.Domain, p
 			if err != nil {
 				return fmt.Errorf("error converting proposal to executable: %w", err)
 			}
+			inspector, err := getInspectorFromChainSelector(*cfg)
+			if err != nil {
+				return fmt.Errorf("failed to get inspector: %w", err)
+			}
+
 			if cfg.fork {
 				lggr.Info("Fork mode is on, all transactions will be executed on a forked chain")
 			}
@@ -211,6 +216,23 @@ func buildExecuteOperationv2Cmd(lggr logger.Logger, domain cldf_domain.Domain, p
 			op := cfg.proposal.Operations[index]
 			if op.ChainSelector != types.ChainSelector(cfg.chainSelector) {
 				return fmt.Errorf("operation %d is not for chain %d", index, cfg.chainSelector)
+			}
+
+			opCount, err := inspector.GetOpCount(cmd.Context(), cfg.proposal.ChainMetadata[types.ChainSelector(cfg.chainSelector)].MCMAddress)
+			if err != nil {
+				return fmt.Errorf("failed to get opcount for chain %d: %w", cfg.chainSelector, err)
+			}
+			txNonce, err := executable.TxNonce(index)
+			if err != nil {
+				return fmt.Errorf("failed to get TxNonce for chain %d: %w", cfg.chainSelector, err)
+			}
+			if txNonce < opCount {
+				lggr.Infow("operation already executed", "index", index, "txNonce", txNonce, "opCount", opCount)
+				return nil
+			}
+			if txNonce > opCount {
+				lggr.Warnw("txNonce too large", "index", index, "txNonce", txNonce, "opCount", opCount)
+				return fmt.Errorf("txNonce too large (%d; expected %d)", txNonce, opCount)
 			}
 
 			tx, err := executable.Execute(cmd.Context(), index)
@@ -1177,6 +1199,11 @@ func executeChainCommand(ctx context.Context, lggr logger.Logger, cfg *cfgv2, sk
 	if err != nil {
 		return fmt.Errorf("error converting proposal to executable: %w", err)
 	}
+	inspector, err := getInspectorFromChainSelector(*cfg)
+	if err != nil {
+		return fmt.Errorf("failed to get inspector: %w", err)
+	}
+
 	if cfg.fork {
 		lggr.Info("Fork mode is on, all transactions will be executed on a forked chain")
 	}
@@ -1185,6 +1212,23 @@ func executeChainCommand(ctx context.Context, lggr logger.Logger, cfg *cfgv2, sk
 		// TODO; consider multi-chain support
 		if op.ChainSelector != types.ChainSelector(cfg.chainSelector) {
 			continue
+		}
+
+		opCount, err := inspector.GetOpCount(ctx, cfg.proposal.ChainMetadata[types.ChainSelector(cfg.chainSelector)].MCMAddress)
+		if err != nil {
+			return fmt.Errorf("failed to get opcount for chain %d: %w", cfg.chainSelector, err)
+		}
+		txNonce, err := executable.TxNonce(i)
+		if err != nil {
+			return fmt.Errorf("failed to get TxNonce for chain %d: %w", cfg.chainSelector, err)
+		}
+		if txNonce < opCount {
+			lggr.Infow("operation already executed", "index", i, "txNonce", txNonce, "opCount", opCount)
+			continue
+		}
+		if txNonce > opCount {
+			lggr.Warnw("txNonce too large", "index", i, "txNonce", txNonce, "opCount", opCount)
+			break
 		}
 
 		tx, err := executable.Execute(ctx, i)
@@ -1227,6 +1271,27 @@ func executeChainCommand(ctx context.Context, lggr logger.Logger, cfg *cfgv2, sk
 func setRootCommand(ctx context.Context, lggr logger.Logger, cfg *cfgv2) error {
 	if cfg.fork {
 		lggr.Info("Fork mode is on, all transactions will be executed on a forked chain")
+	}
+
+	inspector, err := getInspectorFromChainSelector(*cfg)
+	if err != nil {
+		return fmt.Errorf("failed to get inspector: %w", err)
+	}
+
+	proposalMerkleTree, err := cfg.proposal.MerkleTree()
+	if err != nil {
+		return fmt.Errorf("failed to compute the proposal's merkle tree: %w", err)
+	}
+
+	mcmAddress := cfg.proposal.ChainMetadata[types.ChainSelector(cfg.chainSelector)].MCMAddress
+	mcmRoot, _, err := inspector.GetRoot(ctx, mcmAddress)
+	if err != nil {
+		return fmt.Errorf("failed to get the merkle tree root from the MCM contract (%v): %w", mcmAddress, err)
+	}
+
+	if mcmRoot == proposalMerkleTree.Root {
+		lggr.Infof("Root %v already set in MCM contract %v", mcmRoot, mcmAddress)
+		return nil
 	}
 
 	executable, err := createExecutable(cfg)
