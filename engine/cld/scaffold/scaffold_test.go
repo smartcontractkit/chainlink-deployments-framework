@@ -69,7 +69,6 @@ func Test_ScaffoldDomain(t *testing.T) {
 	repoName := filepath.Base(filepath.Dir(rootDir))
 	expectedModuleLine := fmt.Sprintf("module github.com/smartcontractkit/%s/domains/%s", repoName, domKey)
 	assert.Contains(t, string(goModContent), expectedModuleLine)
-	assert.Contains(t, string(goModContent), fmt.Sprintf("github.com/smartcontractkit/%s => ../../", repoName))
 
 	err = ScaffoldDomain(dom)
 	require.Error(t, err)

@@ -221,11 +221,11 @@ func asciiHash(data [32]byte) rawBytes {
 func calculateOpCount(opCount uint64, opIndex int, operations []mcmstypes.Operation) uint64 {
 	chainSelector := operations[opIndex].ChainSelector
 	for i, op := range operations {
-		if op.ChainSelector == chainSelector {
-			opCount += 1
-		}
 		if i == opIndex {
 			break
+		}
+		if op.ChainSelector == chainSelector {
+			opCount += 1
 		}
 	}
 

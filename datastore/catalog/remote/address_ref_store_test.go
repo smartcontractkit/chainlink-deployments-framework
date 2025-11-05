@@ -59,7 +59,7 @@ func TestCatalogAddressRefStore_Get(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			// Create a fresh store for each test case to avoid concurrency issues
-			store := setupTestStore(t)
+			store := setupTestStore(t, "test-domain", "catalog_testing")
 
 			key := tt.setup(store)
 
@@ -116,7 +116,7 @@ func TestCatalogAddressRefStore_Add(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			// Create a fresh store for each test case to avoid concurrency issues
-			store := setupTestStore(t)
+			store := setupTestStore(t, "test-domain", "catalog_testing")
 
 			addressRef := tt.setup(store)
 
@@ -197,7 +197,7 @@ func TestCatalogAddressRefStore_Update(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			// Create a fresh store for each test case to avoid concurrency issues
-			store := setupTestStore(t)
+			store := setupTestStore(t, "test-domain", "catalog_testing")
 
 			addressRef := tt.setup(store)
 
@@ -272,7 +272,7 @@ func TestCatalogAddressRefStore_Upsert(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			// Create a fresh store for each test case to avoid concurrency issues
-			store := setupTestStore(t)
+			store := setupTestStore(t, "test-domain", "catalog_testing")
 
 			addressRef := tt.setup(store)
 
@@ -288,7 +288,7 @@ func TestCatalogAddressRefStore_Upsert(t *testing.T) {
 
 func TestCatalogAddressRefStore_Delete(t *testing.T) {
 	t.Parallel()
-	store := setupTestStore(t)
+	store := setupTestStore(t, "", "")
 
 	version := semver.MustParse("1.0.0")
 	key := datastore.NewAddressRefKey(12345, "LinkToken", version, "test")
@@ -309,11 +309,17 @@ func TestCatalogAddressRefStore_FetchAndFilter(t *testing.T) {
 		setup        func(store *catalogAddressRefStore) (datastore.AddressRef, datastore.AddressRef)
 		createFilter func(addressRef1, addressRef2 datastore.AddressRef) datastore.FilterFunc[datastore.AddressRefKey, datastore.AddressRef]
 		minExpected  int
+		expectError  bool
+		errorType    error
+		domain       string
+		environment  string
 		verify       func(t *testing.T, results []datastore.AddressRef, addressRef1, addressRef2 datastore.AddressRef)
 	}{
 		{
-			name:      "fetch_all",
-			operation: "fetch",
+			name:        "fetch_all",
+			operation:   "fetch",
+			domain:      "test-domain",
+			environment: "catalog_testing",
 			setup: func(store *catalogAddressRefStore) (datastore.AddressRef, datastore.AddressRef) {
 				// Setup test data with unique chain selectors
 				addressRef1 := newRandomAddressRef()
@@ -354,8 +360,10 @@ func TestCatalogAddressRefStore_FetchAndFilter(t *testing.T) {
 			},
 		},
 		{
-			name:      "filter_by_chain_selector",
-			operation: "filter",
+			name:        "filter_by_chain_selector",
+			operation:   "filter",
+			domain:      "test-domain",
+			environment: "catalog_testing",
 			setup: func(store *catalogAddressRefStore) (datastore.AddressRef, datastore.AddressRef) {
 				// Setup test data with unique chain selectors
 				addressRef1 := newRandomAddressRef()
@@ -390,8 +398,10 @@ func TestCatalogAddressRefStore_FetchAndFilter(t *testing.T) {
 			},
 		},
 		{
-			name:      "filter_by_address",
-			operation: "filter",
+			name:        "filter_by_address",
+			operation:   "filter",
+			domain:      "test-domain",
+			environment: "catalog_testing",
 			setup: func(store *catalogAddressRefStore) (datastore.AddressRef, datastore.AddressRef) {
 				// Setup test data with unique addresses
 				addressRef1 := newRandomAddressRef()
@@ -418,8 +428,10 @@ func TestCatalogAddressRefStore_FetchAndFilter(t *testing.T) {
 			},
 		},
 		{
-			name:      "filter_by_contract_type",
-			operation: "filter",
+			name:        "filter_by_contract_type",
+			operation:   "filter",
+			domain:      "test-domain",
+			environment: "catalog_testing",
 			setup: func(store *catalogAddressRefStore) (datastore.AddressRef, datastore.AddressRef) {
 				// Setup test data with different contract types
 				addressRef1 := newRandomAddressRef()
@@ -447,14 +459,27 @@ func TestCatalogAddressRefStore_FetchAndFilter(t *testing.T) {
 				}
 			},
 		},
+		{
+			name:      "fetch_not_found",
+			operation: "fetch",
+			setup: func(store *catalogAddressRefStore) (datastore.AddressRef, datastore.AddressRef) {
+				return datastore.AddressRef{}, datastore.AddressRef{}
+			},
+			createFilter: nil,
+			minExpected:  0,
+			expectError:  true,
+			errorType:    datastore.ErrAddressRefNotFound,
+			domain:       "empty-domain-for-testing",
+			environment:  "empty-env-for-testing",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			// Create a fresh store for each test case to avoid concurrency issues
-			store := setupTestStore(t)
 
+			// Create a fresh store for each test case to avoid concurrency issues
+			store := setupTestStore(t, tt.domain, tt.environment)
 			addressRef1, addressRef2 := tt.setup(store)
 
 			var results []datastore.AddressRef
@@ -473,10 +498,18 @@ func TestCatalogAddressRefStore_FetchAndFilter(t *testing.T) {
 			}
 
 			// Verify
-			require.NoError(t, err)
-			require.GreaterOrEqual(t, len(results), tt.minExpected)
-			if tt.verify != nil {
-				tt.verify(t, results, addressRef1, addressRef2)
+			if tt.expectError {
+				require.Error(t, err)
+				if tt.errorType != nil {
+					require.ErrorIs(t, err, tt.errorType)
+				}
+				require.Nil(t, results)
+			} else {
+				require.NoError(t, err)
+				require.GreaterOrEqual(t, len(results), tt.minExpected)
+				if tt.verify != nil {
+					tt.verify(t, results, addressRef1, addressRef2)
+				}
 			}
 		})
 	}
@@ -576,7 +609,7 @@ func TestCatalogAddressRefStore_ConversionHelpers(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			// Create a fresh store for each test case to avoid concurrency issues
-			store := setupTestStore(t)
+			store := setupTestStore(t, "test-domain", "catalog_testing")
 
 			tt.test(t, store)
 		})
@@ -584,8 +617,9 @@ func TestCatalogAddressRefStore_ConversionHelpers(t *testing.T) {
 }
 
 // setupTestStore creates a real gRPC client connection to a local service
-func setupTestStore(t *testing.T) *catalogAddressRefStore {
+func setupTestStore(t *testing.T, domain, environment string) *catalogAddressRefStore {
 	t.Helper()
+
 	// Get gRPC address from environment or use default
 	address := os.Getenv("CATALOG_GRPC_ADDRESS")
 	if address == "" {
@@ -614,8 +648,8 @@ func setupTestStore(t *testing.T) *catalogAddressRefStore {
 
 	// Create store
 	store := newCatalogAddressRefStore(catalogAddressRefStoreConfig{
-		Domain:      "test-domain",
-		Environment: "catalog_testing",
+		Domain:      domain,
+		Environment: environment,
 		Client:      catalogClient,
 	})
 

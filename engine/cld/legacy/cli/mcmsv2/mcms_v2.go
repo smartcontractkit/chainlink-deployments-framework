@@ -200,6 +200,11 @@ func buildExecuteOperationv2Cmd(lggr logger.Logger, domain cldf_domain.Domain, p
 			if err != nil {
 				return fmt.Errorf("error converting proposal to executable: %w", err)
 			}
+			inspector, err := getInspectorFromChainSelector(*cfg)
+			if err != nil {
+				return fmt.Errorf("failed to get inspector: %w", err)
+			}
+
 			if cfg.fork {
 				lggr.Info("Fork mode is on, all transactions will be executed on a forked chain")
 			}
@@ -211,6 +216,23 @@ func buildExecuteOperationv2Cmd(lggr logger.Logger, domain cldf_domain.Domain, p
 			op := cfg.proposal.Operations[index]
 			if op.ChainSelector != types.ChainSelector(cfg.chainSelector) {
 				return fmt.Errorf("operation %d is not for chain %d", index, cfg.chainSelector)
+			}
+
+			opCount, err := inspector.GetOpCount(cmd.Context(), cfg.proposal.ChainMetadata[types.ChainSelector(cfg.chainSelector)].MCMAddress)
+			if err != nil {
+				return fmt.Errorf("failed to get opcount for chain %d: %w", cfg.chainSelector, err)
+			}
+			txNonce, err := executable.TxNonce(index)
+			if err != nil {
+				return fmt.Errorf("failed to get TxNonce for chain %d: %w", cfg.chainSelector, err)
+			}
+			if txNonce < opCount {
+				lggr.Infow("operation already executed", "index", index, "txNonce", txNonce, "opCount", opCount)
+				return nil
+			}
+			if txNonce > opCount {
+				lggr.Warnw("txNonce too large", "index", index, "txNonce", txNonce, "opCount", opCount)
+				return fmt.Errorf("txNonce too large (%d; expected %d)", txNonce, opCount)
 			}
 
 			tx, err := executable.Execute(cmd.Context(), index)
@@ -620,6 +642,10 @@ func buildExecuteForkCommand(lggr logger.Logger, domain cldf_domain.Domain, prop
 				return fmt.Errorf("error creating config: %w", err)
 			}
 
+			if len(cfg.forkedEnv.ChainConfigs[cfg.chainSelector].HTTPRPCs) == 0 {
+				return fmt.Errorf("no rpcs loaded in forked environment for chain %d (fork tests require public RPCs)", cfg.chainSelector)
+			}
+
 			// get the chain URL, chain ID and MCM contract address
 			url := cfg.forkedEnv.ChainConfigs[cfg.chainSelector].HTTPRPCs[0].External
 			anvilClient := rpc.New(url, nil)
@@ -733,7 +759,10 @@ func buildMCMSv2AnalyzeProposalCmd(
 			}
 
 			// Set renderer based on format flag
-			renderer := createRendererFromFormat(format)
+			renderer, err := createRendererFromFormat(format)
+			if err != nil {
+				return fmt.Errorf("failed to create renderer: %w", err)
+			}
 			cfgv2.proposalCtx.SetRenderer(renderer)
 
 			var analyzedProposal string
@@ -1170,6 +1199,11 @@ func executeChainCommand(ctx context.Context, lggr logger.Logger, cfg *cfgv2, sk
 	if err != nil {
 		return fmt.Errorf("error converting proposal to executable: %w", err)
 	}
+	inspector, err := getInspectorFromChainSelector(*cfg)
+	if err != nil {
+		return fmt.Errorf("failed to get inspector: %w", err)
+	}
+
 	if cfg.fork {
 		lggr.Info("Fork mode is on, all transactions will be executed on a forked chain")
 	}
@@ -1178,6 +1212,23 @@ func executeChainCommand(ctx context.Context, lggr logger.Logger, cfg *cfgv2, sk
 		// TODO; consider multi-chain support
 		if op.ChainSelector != types.ChainSelector(cfg.chainSelector) {
 			continue
+		}
+
+		opCount, err := inspector.GetOpCount(ctx, cfg.proposal.ChainMetadata[types.ChainSelector(cfg.chainSelector)].MCMAddress)
+		if err != nil {
+			return fmt.Errorf("failed to get opcount for chain %d: %w", cfg.chainSelector, err)
+		}
+		txNonce, err := executable.TxNonce(i)
+		if err != nil {
+			return fmt.Errorf("failed to get TxNonce for chain %d: %w", cfg.chainSelector, err)
+		}
+		if txNonce < opCount {
+			lggr.Infow("operation already executed", "index", i, "txNonce", txNonce, "opCount", opCount)
+			continue
+		}
+		if txNonce > opCount {
+			lggr.Warnw("txNonce too large", "index", i, "txNonce", txNonce, "opCount", opCount)
+			break
 		}
 
 		tx, err := executable.Execute(ctx, i)
@@ -1220,6 +1271,27 @@ func executeChainCommand(ctx context.Context, lggr logger.Logger, cfg *cfgv2, sk
 func setRootCommand(ctx context.Context, lggr logger.Logger, cfg *cfgv2) error {
 	if cfg.fork {
 		lggr.Info("Fork mode is on, all transactions will be executed on a forked chain")
+	}
+
+	inspector, err := getInspectorFromChainSelector(*cfg)
+	if err != nil {
+		return fmt.Errorf("failed to get inspector: %w", err)
+	}
+
+	proposalMerkleTree, err := cfg.proposal.MerkleTree()
+	if err != nil {
+		return fmt.Errorf("failed to compute the proposal's merkle tree: %w", err)
+	}
+
+	mcmAddress := cfg.proposal.ChainMetadata[types.ChainSelector(cfg.chainSelector)].MCMAddress
+	mcmRoot, _, err := inspector.GetRoot(ctx, mcmAddress)
+	if err != nil {
+		return fmt.Errorf("failed to get the merkle tree root from the MCM contract (%v): %w", mcmAddress, err)
+	}
+
+	if mcmRoot == proposalMerkleTree.Root {
+		lggr.Infof("Root %v already set in MCM contract %v", mcmRoot, mcmAddress)
+		return nil
 	}
 
 	executable, err := createExecutable(cfg)
@@ -1344,7 +1416,7 @@ func getExecutorWithChainOverride(cfg *cfgv2, chainSelector types.ChainSelector)
 			return nil, fmt.Errorf("error getting sui metadata from proposal: %w", err)
 		}
 		chain := cfg.blockchains.SuiChains()[uint64(chainSelector)]
-		entrypointEncoder := suibindings.NewCCIPEntrypointArgEncoder(metadata.RegistryObj)
+		entrypointEncoder := suibindings.NewCCIPEntrypointArgEncoder(metadata.RegistryObj, "") // FIXME: metadata current does not have deployer account obj https://smartcontract-it.atlassian.net/browse/NONEVM-2954
 
 		return sui.NewExecutor(chain.Client, chain.Signer, encoder, entrypointEncoder, metadata.McmsPackageID, metadata.Role, cfg.timelockProposal.ChainMetadata[chainSelector].MCMAddress, metadata.AccountObj, metadata.RegistryObj, metadata.TimelockObj)
 	default:
@@ -1391,7 +1463,7 @@ func getTimelockExecutorWithChainOverride(cfg *cfgv2, chainSelector types.ChainS
 		if err != nil {
 			return nil, fmt.Errorf("error getting sui metadata from proposal: %w", err)
 		}
-		entrypointEncoder := suibindings.NewCCIPEntrypointArgEncoder(metadata.AccountObj)
+		entrypointEncoder := suibindings.NewCCIPEntrypointArgEncoder(metadata.AccountObj, "") // FIXME: metadata current does not have deployer state obj https://smartcontract-it.atlassian.net/browse/NONEVM-2954
 		executor, err = sui.NewTimelockExecutor(chain.Client, chain.Signer, entrypointEncoder, metadata.McmsPackageID, metadata.RegistryObj, metadata.AccountObj)
 		if err != nil {
 			return nil, fmt.Errorf("error creating sui timelock executor: %w", err)
@@ -1611,14 +1683,16 @@ func addCallProxyOption(
 
 // createRendererFromFormat creates an appropriate renderer based on the format string.
 // Defaults to markdown renderer for unknown formats.
-func createRendererFromFormat(format string) analyzer.Renderer {
+func createRendererFromFormat(format string) (analyzer.Renderer, error) {
 	switch format {
 	case "text", "txt":
-		return analyzer.NewTextRenderer()
+		return analyzer.NewTextRenderer(), nil
 	case "markdown", "md":
-		return analyzer.NewMarkdownRenderer()
+		return analyzer.NewMarkdownRenderer(), nil
+	case "":
+		return analyzer.NewMarkdownRenderer(), nil
 	default:
-		// Default to markdown if format is not specified or invalid
-		return analyzer.NewMarkdownRenderer()
+		// error if format is not specified or invalid
+		return nil, fmt.Errorf("unknown format '%s'", format)
 	}
 }

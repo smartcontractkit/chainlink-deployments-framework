@@ -1,5 +1,80 @@
 # chainlink-deployments-framework
 
+## 0.64.0
+
+### Minor Changes
+
+- [#556](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/556) [`0e60a11`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/0e60a11bcc6dee70dfd01d3cf89027935f53082c) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - feat(mcms): check MCM state before calling SetRoot or Execute
+
+### Patch Changes
+
+- [#565](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/565) [`ba781b4`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/ba781b4ba8a7744546f4b6132b18f0162aca3cad) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - fix(mcms): check if anvil config is valid after selecting the rpc
+
+## 0.63.0
+
+### Minor Changes
+
+- [#560](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/560) [`ed679a7`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/ed679a72ab740098c18ad1750c80d81782e12d95) Thanks [@huangzhen1997](https://github.com/huangzhen1997)! - bump sui binding version
+
+### Patch Changes
+
+- [#561](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/561) [`280ce37`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/280ce37cdcc0981e55168ba099f909720d5912e1) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - fix: computation of the txNonce attribute in the upf converter
+
+## 0.62.0
+
+### Minor Changes
+
+- [#555](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/555) [`844d9d3`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/844d9d31b29fbc6122a9ef23e7216bdebc2a1bbe) Thanks [@amit-momin](https://github.com/amit-momin)! - Specified Solana image to enable arm64 runtime architecture
+
+## 0.61.0
+
+### Minor Changes
+
+- [#552](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/552) [`32b13c5`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/32b13c5964a6d9234bb0342140ff8ca14c36da79) Thanks [@ajaskolski](https://github.com/ajaskolski)! - feat: add catalog service integration for datastore operations
+
+  Features:
+
+  - Add catalog service support for datastore management as alternative to local file storage
+  - Add `MergeMigrationDataStoreCatalog` method for catalog-based datastore persistence
+  - Existing `MergeMigrationDataStore` method continues to work for file-based storage (no breaking changes)
+  - Add unified `MergeDataStoreToCatalog` function for both initial migration and ongoing merge operations
+  - All catalog operations are transactional to prevent data inconsistencies
+  - Add `DatastoreType` configuration option (`file`/`catalog`) in domain.yaml to control storage backend
+  - Add new CLI command `datastore sync-to-catalog` for initial migration from file-based to catalog storage in CI
+  - Add `SyncDataStoreToCatalog` method to sync entire local datastore to catalog
+  - CLI automatically selects the appropriate merge method based on domain.yaml configuration
+  - Catalog mode does not modify local files - all updates go directly to the catalog service
+
+  Configuration:
+
+  - Set `datastore: catalog` in domain.yaml to enable catalog mode
+  - Set `datastore: file` or omit the setting to use traditional file-based storage
+  - CLI commands automatically detect the configuration and use the appropriate storage backend
+
+- [#549](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/549) [`3e33b93`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/3e33b93b9b99f25dfb25ad38f0baf4815245da2d) Thanks [@jkongie](https://github.com/jkongie)! - Improve JD Memory client to be aligned with the Job Distributor implementation
+
+## 0.60.1
+
+### Patch Changes
+
+- [#553](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/553) [`8d6a9f7`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/8d6a9f72b7a32dabf41e744b8f90fcfd55d0c960) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - fix(mcms): select public rpc for fork tests
+
+- [#551](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/551) [`cf4de66`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/cf4de6687f910b5d2c9f02094414902be4d55644) Thanks [@giogam](https://github.com/giogam)! - fix(catalog): updates errors in remote implementation
+
+## 0.60.0
+
+### Minor Changes
+
+- [#541](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/541) [`909e6f4`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/909e6f4f60f7bf96feff049550ec43fbcf31bd73) Thanks [@ecPablo](https://github.com/ecPablo)! - refactor proposal analyzer to add a text renderer and move templates to separate files
+
+- [#535](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/535) [`b7c8d06`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/b7c8d06de2e0ccc1918fb2c5195a9ea7e78833b4) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat(engine): load catalog into datastore
+
+### Patch Changes
+
+- [#547](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/547) [`2229818`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/2229818268aaf0d37346b54f464708259b48578d) Thanks [@jkongie](https://github.com/jkongie)! - Bump chain-selectors to v1.0.77
+
+- [#534](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/534) [`9572077`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/95720772c2866478571b1550f4eb557a7b6e2264) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(catalog): use enum instead of string
+
 ## 0.59.1
 
 ### Patch Changes

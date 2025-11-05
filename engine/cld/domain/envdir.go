@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -209,6 +210,10 @@ func (d EnvDir) ArtifactsDir() *ArtifactsDir {
 	return NewArtifactsDir(d.rootPath, d.domainKey, d.key)
 }
 
+// MergeMigrationDataStore merges a migration's DataStore into the local file-based datastore.
+// This method is used when the environment is configured to use file-based datastore persistence.
+// It loads the migration artifacts, merges them into the existing datastore, and writes the
+// updated datastore back to local JSON files.
 func (d EnvDir) MergeMigrationDataStore(migkey, timestamp string) error {
 	// Get the artifacts directory for the environment
 	artDir := d.ArtifactsDir()
@@ -253,6 +258,46 @@ func (d EnvDir) MergeMigrationDataStore(migkey, timestamp string) error {
 	err = jsonutils.WriteFile(d.EnvMetadataFilePath(), dataStoreConcrete.EnvMetadataStore.Record)
 	if err != nil {
 		return errors.New("failed to write environment datastore file")
+	}
+
+	return nil
+}
+
+// MergeMigrationDataStoreCatalog merges a migration's DataStore directly into the remote catalog service.
+// This method is used when the environment is configured to use catalog-based datastore persistence.
+// It loads the migration artifacts and syncs them to the catalog within a transaction.
+// Local files are NOT updated when using catalog mode.
+func (d EnvDir) MergeMigrationDataStoreCatalog(ctx context.Context, migkey, timestamp string, catalog fdatastore.CatalogStore) error {
+	// Get the artifacts directory for the environment
+	artDir := d.ArtifactsDir()
+
+	// Load the migration datastore for the migration key and timestamp
+	migrDataStore, err := loadDataStoreByMigrationKey(artDir, migkey, timestamp)
+	if err != nil {
+		return err
+	}
+
+	// Merge the migration datastore to catalog within a transaction
+	if err = fdatastore.MergeDataStoreToCatalog(ctx, migrDataStore, catalog); err != nil {
+		return fmt.Errorf("failed to merge datastore to catalog: %w", err)
+	}
+
+	return nil
+}
+
+// SyncDataStoreToCatalog syncs the entire local datastore state to the catalog service.
+// This is useful for migrating from file-based datastore to catalog service.
+// The operation is performed within a transaction for atomicity.
+func (d EnvDir) SyncDataStoreToCatalog(ctx context.Context, catalog fdatastore.CatalogStore) error {
+	// Load the current datastore from local files
+	dataStore, err := d.DataStore()
+	if err != nil {
+		return fmt.Errorf("failed to load local datastore: %w", err)
+	}
+
+	// Sync entire datastore to catalog within a transaction
+	if err = fdatastore.MergeDataStoreToCatalog(ctx, dataStore, catalog); err != nil {
+		return fmt.Errorf("failed to sync datastore to catalog: %w", err)
 	}
 
 	return nil

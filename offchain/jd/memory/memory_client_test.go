@@ -151,11 +151,13 @@ func TestMemoryJobDistributor_ProposeJob(t *testing.T) {
 func TestMemoryJobDistributor_GetJob(t *testing.T) {
 	t.Parallel()
 
-	t.Run("get existing job by id", func(t *testing.T) {
+	t.Run("get job by id", func(t *testing.T) {
 		t.Parallel()
+
 		client := NewMemoryJobDistributor()
 		ctx := t.Context()
-		// First create a job via proposal
+
+		// Create the job
 		proposeResp, err := client.ProposeJob(ctx, &jobv1.ProposeJobRequest{
 			NodeId: "test-node-1",
 			Spec:   spec1,
@@ -163,48 +165,53 @@ func TestMemoryJobDistributor_GetJob(t *testing.T) {
 		require.NoError(t, err)
 		jobID := proposeResp.Proposal.JobId
 
-		// Now get the job
-		getResp, err := client.GetJob(ctx, &jobv1.GetJobRequest{
-			IdOneof: &jobv1.GetJobRequest_Id{Id: jobID},
+		t.Run("get job by id", func(t *testing.T) {
+			t.Parallel()
+
+			getResp, err := client.GetJob(ctx, &jobv1.GetJobRequest{
+				IdOneof: &jobv1.GetJobRequest_Id{Id: jobID},
+			})
+			require.NoError(t, err)
+			require.NotNil(t, getResp)
 		})
-		require.NoError(t, err)
-		require.NotNil(t, getResp)
 
-		assertJobEquals(t, &jobv1.Job{
-			Id:          jobID,
-			Uuid:        spec1UUID,
-			NodeId:      "test-node-1",
-			ProposalIds: []string{proposeResp.Proposal.Id},
-		}, getResp.Job)
-	})
+		t.Run("job not found", func(t *testing.T) {
+			t.Parallel()
 
-	t.Run("get non-existent job returns error", func(t *testing.T) {
-		t.Parallel()
-		client := NewMemoryJobDistributor()
-		ctx := t.Context()
-		resp, err := client.GetJob(ctx, &jobv1.GetJobRequest{
-			IdOneof: &jobv1.GetJobRequest_Id{Id: "non-existent"},
+			_, err := client.GetJob(ctx, &jobv1.GetJobRequest{
+				IdOneof: &jobv1.GetJobRequest_Id{Id: "non-existent"},
+			})
+			require.ErrorContains(t, err, "not found")
 		})
-		require.ErrorContains(t, err, "not found")
-		assert.Nil(t, resp)
 	})
 
-	t.Run("nil request returns error", func(t *testing.T) {
+	t.Run("invalid request", func(t *testing.T) {
 		t.Parallel()
-		client := NewMemoryJobDistributor()
-		ctx := t.Context()
-		resp, err := client.GetJob(ctx, nil)
-		require.ErrorContains(t, err, "request cannot be nil")
-		assert.Nil(t, resp)
-	})
 
-	t.Run("missing id returns error", func(t *testing.T) {
-		t.Parallel()
 		client := NewMemoryJobDistributor()
-		ctx := t.Context()
-		resp, err := client.GetJob(ctx, &jobv1.GetJobRequest{})
-		require.ErrorContains(t, err, "job id must be provided")
-		assert.Nil(t, resp)
+
+		t.Run("nil request", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := client.GetJob(t.Context(), nil)
+			require.ErrorContains(t, err, "request cannot be nil")
+		})
+
+		t.Run("invalid id oneof", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := client.GetJob(t.Context(), &jobv1.GetJobRequest{})
+			require.ErrorContains(t, err, "must provide id")
+		})
+
+		t.Run("uuid lookup is not supported", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := client.GetJob(t.Context(), &jobv1.GetJobRequest{
+				IdOneof: &jobv1.GetJobRequest_Uuid{Uuid: spec1UUID},
+			})
+			require.ErrorContains(t, err, "uuid lookup is deprecated and not supported by this implementation")
+		})
 	})
 }
 
@@ -244,6 +251,7 @@ func TestMemoryJobDistributor_ListJobs(t *testing.T) {
 
 		t.Run("filter jobs by label", func(t *testing.T) {
 			t.Parallel()
+
 			listResp, err := client.ListJobs(ctx, &jobv1.ListJobsRequest{
 				Filter: &jobv1.ListJobsRequest_Filter{
 					Selectors: []*ptypes.Selector{
@@ -474,7 +482,7 @@ func TestMemoryJobDistributor_RevokeJob(t *testing.T) {
 		_, err := client.RevokeJob(ctx, &jobv1.RevokeJobRequest{
 			IdOneof: &jobv1.RevokeJobRequest_Uuid{Uuid: uuid.New().String()},
 		})
-		require.ErrorContains(t, err, "uuid is not supported")
+		require.ErrorContains(t, err, "uuid lookup is deprecated and not supported by this implementation")
 	})
 
 	t.Run("revoke non-existent job returns error", func(t *testing.T) {
@@ -580,92 +588,173 @@ func TestMemoryJobDistributor_DeleteJob(t *testing.T) {
 
 		client := NewMemoryJobDistributor()
 		ctx := t.Context()
-		// Create a job
-		proposeResp, err := client.ProposeJob(ctx, &jobv1.ProposeJobRequest{
-			NodeId: "test-node-1",
-			Spec:   spec1,
-		})
-		require.NoError(t, err)
-		jobID := proposeResp.Proposal.JobId
 
-		// Delete the job
-		deleteResp, err := client.DeleteJob(ctx, &jobv1.DeleteJobRequest{
-			IdOneof: &jobv1.DeleteJobRequest_Id{Id: jobID},
-		})
-		require.NoError(t, err)
-		require.NotNil(t, deleteResp)
+		t.Run("delete job by id", func(t *testing.T) {
+			t.Parallel()
 
-		// Verify job is deleted
-		getResp, err := client.GetJob(ctx, &jobv1.GetJobRequest{
-			IdOneof: &jobv1.GetJobRequest_Id{Id: jobID},
+			// Create a job
+			proposeResp, err := client.ProposeJob(ctx, &jobv1.ProposeJobRequest{
+				NodeId: "test-node-1",
+				Spec:   spec1,
+			})
+			require.NoError(t, err)
+			jobID := proposeResp.Proposal.JobId
+
+			// Delete the job
+			deleteResp, err := client.DeleteJob(ctx, &jobv1.DeleteJobRequest{
+				IdOneof: &jobv1.DeleteJobRequest_Id{Id: jobID},
+			})
+			require.NoError(t, err)
+			require.NotNil(t, deleteResp)
+
+			// Verify job is deleted
+			getResp, err := client.GetJob(ctx, &jobv1.GetJobRequest{
+				IdOneof: &jobv1.GetJobRequest_Id{Id: jobID},
+			})
+			require.NoError(t, err)
+			assert.NotNil(t, getResp.Job.DeletedAt)
 		})
-		require.NoError(t, err)
-		assert.NotNil(t, getResp.Job.DeletedAt)
+
+		t.Run("job not found", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := client.DeleteJob(t.Context(), &jobv1.DeleteJobRequest{
+				IdOneof: &jobv1.DeleteJobRequest_Id{Id: "non-existent"},
+			})
+			require.ErrorContains(t, err, "not found")
+		})
 	})
 
-	t.Run("delete non-existent job does errors", func(t *testing.T) {
+	t.Run("invalid requests", func(t *testing.T) {
 		t.Parallel()
 
 		client := NewMemoryJobDistributor()
-		ctx := t.Context()
-		_, err := client.DeleteJob(ctx, &jobv1.DeleteJobRequest{
-			IdOneof: &jobv1.DeleteJobRequest_Id{Id: "non-existent"},
+
+		t.Run("nil request", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := client.DeleteJob(t.Context(), nil)
+			require.ErrorContains(t, err, "request cannot be nil")
 		})
-		require.Error(t, err)
+
+		t.Run("invalid id oneof", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := client.DeleteJob(t.Context(), &jobv1.DeleteJobRequest{})
+			require.ErrorContains(t, err, "must provide id")
+		})
+
+		t.Run("empty id", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := client.DeleteJob(t.Context(), &jobv1.DeleteJobRequest{
+				IdOneof: &jobv1.DeleteJobRequest_Id{Id: ""},
+			})
+			require.ErrorContains(t, err, "job id must be provided")
+		})
+
+		t.Run("delete job by uuid is not supported", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := client.DeleteJob(t.Context(), &jobv1.DeleteJobRequest{
+				IdOneof: &jobv1.DeleteJobRequest_Uuid{Uuid: uuid.New().String()},
+			})
+			require.ErrorContains(t, err, "uuid lookup is deprecated and not supported by this implementation")
+		})
 	})
 }
 
 func TestMemoryJobDistributor_UpdateJob(t *testing.T) {
 	t.Parallel()
 
-	t.Run("update existing job labels", func(t *testing.T) {
-		t.Parallel()
-		client := NewMemoryJobDistributor()
-		ctx := t.Context()
-		// Create a job
-		value := "testvalue"
-		proposeResp, err := client.ProposeJob(ctx, &jobv1.ProposeJobRequest{
-			NodeId: "test-node-1",
-			Spec:   spec1,
-			Labels: []*ptypes.Label{
-				{Key: "env", Value: &value},
-			},
-		})
-		require.NoError(t, err)
-		jobID := proposeResp.Proposal.JobId
+	client := NewMemoryJobDistributor()
 
-		// Update the job
-		updatedValue := "production"
-		updateResp, err := client.UpdateJob(ctx, &jobv1.UpdateJobRequest{
-			IdOneof: &jobv1.UpdateJobRequest_Id{Id: jobID},
-			Labels: []*ptypes.Label{
-				{Key: "env", Value: &updatedValue},
-			},
-		})
-		require.NoError(t, err)
-		require.NotNil(t, updateResp)
-		require.Len(t, updateResp.Job.Labels, 1)
-		assert.Equal(t, "env", updateResp.Job.Labels[0].Key)
-		assert.Equal(t, "production", *updateResp.Job.Labels[0].Value)
+	t.Run("update by id", func(t *testing.T) {
+		t.Run("update existing job", func(t *testing.T) {
+			t.Parallel()
 
-		// Verify job was updated
-		getResp, err := client.GetJob(ctx, &jobv1.GetJobRequest{
-			IdOneof: &jobv1.GetJobRequest_Id{Id: jobID},
+			ctx := t.Context()
+
+			// Create a job
+			value := "testvalue"
+			proposeResp, err := client.ProposeJob(ctx, &jobv1.ProposeJobRequest{
+				NodeId: "test-node-1",
+				Spec:   spec1,
+				Labels: []*ptypes.Label{
+					{Key: "env", Value: &value},
+				},
+			})
+			require.NoError(t, err)
+			jobID := proposeResp.Proposal.JobId
+
+			// Update the job
+			updatedValue := "production"
+			updateResp, err := client.UpdateJob(ctx, &jobv1.UpdateJobRequest{
+				IdOneof: &jobv1.UpdateJobRequest_Id{Id: jobID},
+				Labels: []*ptypes.Label{
+					{Key: "env", Value: &updatedValue},
+				},
+				RollbackPolicyId: pointer.To(int64(100)),
+			})
+			require.NoError(t, err)
+			require.NotNil(t, updateResp)
+			require.Len(t, updateResp.Job.Labels, 1)
+			assert.Equal(t, "env", updateResp.Job.Labels[0].Key)
+			assert.Equal(t, "production", *updateResp.Job.Labels[0].Value)
+
+			// Verify job was updated
+			getResp, err := client.GetJob(ctx, &jobv1.GetJobRequest{
+				IdOneof: &jobv1.GetJobRequest_Id{Id: jobID},
+			})
+			require.NoError(t, err)
+			require.Len(t, getResp.Job.Labels, 1)
+			assert.Equal(t, "production", *getResp.Job.Labels[0].Value)
+			assert.EqualValues(t, 100, *getResp.Job.RollbackPolicyId)
 		})
-		require.NoError(t, err)
-		require.Len(t, getResp.Job.Labels, 1)
-		assert.Equal(t, "production", *getResp.Job.Labels[0].Value)
+
+		t.Run("job not found", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := client.UpdateJob(t.Context(), &jobv1.UpdateJobRequest{
+				IdOneof: &jobv1.UpdateJobRequest_Id{Id: "non-existent"},
+			})
+			require.ErrorContains(t, err, "not found")
+		})
 	})
 
-	t.Run("update non-existent job returns error", func(t *testing.T) {
+	t.Run("invalid requests", func(t *testing.T) {
 		t.Parallel()
+
 		client := NewMemoryJobDistributor()
 		ctx := t.Context()
-		resp, err := client.UpdateJob(ctx, &jobv1.UpdateJobRequest{
-			IdOneof: &jobv1.UpdateJobRequest_Id{Id: "non-existent"},
+
+		t.Run("nil request", func(t *testing.T) {
+			t.Parallel()
+			_, err := client.UpdateJob(ctx, nil)
+			require.ErrorContains(t, err, "request cannot be nil")
 		})
-		require.ErrorContains(t, err, "not found")
-		assert.Nil(t, resp)
+
+		t.Run("invalid id oneof", func(t *testing.T) {
+			t.Parallel()
+			_, err := client.UpdateJob(ctx, &jobv1.UpdateJobRequest{})
+			require.ErrorContains(t, err, "must provide id")
+		})
+
+		t.Run("empty id", func(t *testing.T) {
+			t.Parallel()
+			_, err := client.UpdateJob(ctx, &jobv1.UpdateJobRequest{
+				IdOneof: &jobv1.UpdateJobRequest_Id{Id: ""},
+			})
+			require.ErrorContains(t, err, "job id must be provided")
+		})
+
+		t.Run("update job by uuid is not supported", func(t *testing.T) {
+			t.Parallel()
+			_, err := client.UpdateJob(ctx, &jobv1.UpdateJobRequest{
+				IdOneof: &jobv1.UpdateJobRequest_Uuid{Uuid: uuid.New().String()},
+			})
+			require.ErrorContains(t, err, "uuid lookup is deprecated and not supported by this implementation")
+		})
 	})
 }
 
@@ -698,6 +787,9 @@ func TestMemoryJobDistributor_RegisterNode(t *testing.T) {
 		require.Len(t, resp.Node.Labels, 1)
 		assert.Equal(t, "env", resp.Node.Labels[0].Key)
 		assert.Equal(t, "test", *resp.Node.Labels[0].Value)
+		assert.Equal(t, NodeVersion, resp.Node.Version)
+		assert.NotNil(t, resp.Node.CreatedAt)
+		assert.NotNil(t, resp.Node.UpdatedAt)
 	})
 
 	t.Run("nil request returns error", func(t *testing.T) {
@@ -715,33 +807,49 @@ func TestMemoryJobDistributor_GetNode(t *testing.T) {
 
 	t.Run("get existing node", func(t *testing.T) {
 		t.Parallel()
+
 		client := NewMemoryJobDistributor()
-		ctx := t.Context()
-		// Register a node
-		registerResp, err := client.RegisterNode(ctx, &nodev1.RegisterNodeRequest{
-			Name:      "Test Node",
-			PublicKey: "test-public-key",
+
+		t.Run("get node by id", func(t *testing.T) {
+			t.Parallel()
+
+			ctx := t.Context()
+			// Register a node
+			registerResp, err := client.RegisterNode(ctx, &nodev1.RegisterNodeRequest{
+				Name:      "Test Node",
+				PublicKey: "test-public-key",
+			})
+			require.NoError(t, err)
+			nodeID := registerResp.Node.Id
+
+			// Get the node
+			getResp, err := client.GetNode(ctx, &nodev1.GetNodeRequest{Id: nodeID})
+			require.NoError(t, err)
+			require.NotNil(t, getResp)
+			require.NotNil(t, getResp.Node)
+
+			assert.Equal(t, nodeID, getResp.Node.Id)
+			assert.Equal(t, "Test Node", getResp.Node.Name)
 		})
-		require.NoError(t, err)
-		nodeID := registerResp.Node.Id
 
-		// Get the node
-		getResp, err := client.GetNode(ctx, &nodev1.GetNodeRequest{Id: nodeID})
-		require.NoError(t, err)
-		require.NotNil(t, getResp)
-		require.NotNil(t, getResp.Node)
-
-		assert.Equal(t, nodeID, getResp.Node.Id)
-		assert.Equal(t, "Test Node", getResp.Node.Name)
+		t.Run("node not found", func(t *testing.T) {
+			t.Parallel()
+			_, err := client.GetNode(t.Context(), &nodev1.GetNodeRequest{Id: "non-existent"})
+			require.ErrorContains(t, err, "not found")
+		})
 	})
 
-	t.Run("get non-existent node returns error", func(t *testing.T) {
+	t.Run("invalid requests", func(t *testing.T) {
 		t.Parallel()
 		client := NewMemoryJobDistributor()
-		ctx := t.Context()
-		resp, err := client.GetNode(ctx, &nodev1.GetNodeRequest{Id: "non-existent"})
-		require.ErrorContains(t, err, "not found")
-		assert.Nil(t, resp)
+
+		t.Run("get non-existent node returns error", func(t *testing.T) {
+			t.Parallel()
+
+			resp, err := client.GetNode(t.Context(), &nodev1.GetNodeRequest{Id: "non-existent"})
+			require.ErrorContains(t, err, "not found")
+			assert.Nil(t, resp)
+		})
 	})
 }
 
@@ -804,45 +912,60 @@ func TestMemoryJobDistributor_UpdateNode(t *testing.T) {
 	t.Run("update existing node", func(t *testing.T) {
 		t.Parallel()
 		client := NewMemoryJobDistributor()
-		ctx := t.Context()
-		// Register a node
-		registerResp, err := client.RegisterNode(ctx, &nodev1.RegisterNodeRequest{
-			Name:      "Original Name",
-			PublicKey: "original-key",
-		})
-		require.NoError(t, err)
-		nodeID := registerResp.Node.Id
 
-		// Update the node
-		updatedValue := "true"
-		updateResp, err := client.UpdateNode(ctx, &nodev1.UpdateNodeRequest{
-			Id:        nodeID,
-			Name:      "Updated Name",
-			PublicKey: "updated-key",
-			Labels: []*ptypes.Label{
-				{Key: "updated", Value: &updatedValue},
-			},
-		})
-		require.NoError(t, err)
-		require.NotNil(t, updateResp)
+		t.Run("update node by id", func(t *testing.T) {
+			t.Parallel()
 
-		assert.Equal(t, "Updated Name", updateResp.Node.Name)
-		assert.Equal(t, "updated-key", updateResp.Node.PublicKey)
-		require.Len(t, updateResp.Node.Labels, 1)
-		assert.Equal(t, "updated", updateResp.Node.Labels[0].Key)
-		assert.Equal(t, "true", *updateResp.Node.Labels[0].Value)
+			ctx := t.Context()
+
+			// Register a node
+			registerResp, err := client.RegisterNode(ctx, &nodev1.RegisterNodeRequest{
+				Name:      "Original Name",
+				PublicKey: "original-key",
+			})
+			require.NoError(t, err)
+			nodeID := registerResp.Node.Id
+
+			// Update the node
+			updatedValue := "true"
+			updateResp, err := client.UpdateNode(ctx, &nodev1.UpdateNodeRequest{
+				Id:        nodeID,
+				Name:      "Updated Name",
+				PublicKey: "updated-key",
+				Labels: []*ptypes.Label{
+					{Key: "updated", Value: &updatedValue},
+				},
+			})
+			require.NoError(t, err)
+			require.NotNil(t, updateResp)
+
+			assert.Equal(t, "Updated Name", updateResp.Node.Name)
+			assert.Equal(t, "updated-key", updateResp.Node.PublicKey)
+			require.Len(t, updateResp.Node.Labels, 1)
+			assert.Equal(t, "updated", updateResp.Node.Labels[0].Key)
+			assert.Equal(t, "true", *updateResp.Node.Labels[0].Value)
+		})
+
+		t.Run("node not found", func(t *testing.T) {
+			t.Parallel()
+			_, err := client.UpdateNode(t.Context(), &nodev1.UpdateNodeRequest{
+				Id: "non-existent",
+			})
+			require.ErrorContains(t, err, "not found")
+		})
 	})
 
-	t.Run("update non-existent node returns error", func(t *testing.T) {
+	t.Run("invalid requests", func(t *testing.T) {
 		t.Parallel()
+
 		client := NewMemoryJobDistributor()
-		ctx := t.Context()
-		resp, err := client.UpdateNode(ctx, &nodev1.UpdateNodeRequest{
-			Id:   "non-existent",
-			Name: "Updated Name",
+
+		t.Run("nil request", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := client.UpdateNode(t.Context(), nil)
+			require.ErrorContains(t, err, "request cannot be nil")
 		})
-		require.ErrorContains(t, err, "not found")
-		assert.Nil(t, resp)
 	})
 }
 
@@ -883,6 +1006,36 @@ func TestMemoryJobDistributor_EnableDisableNode(t *testing.T) {
 		getResp, err = client.GetNode(ctx, &nodev1.GetNodeRequest{Id: nodeID})
 		require.NoError(t, err)
 		assert.True(t, getResp.Node.IsEnabled)
+
+		t.Run("node not found: enable", func(t *testing.T) {
+			t.Parallel()
+			_, err := client.EnableNode(t.Context(), &nodev1.EnableNodeRequest{Id: "non-existent"})
+			require.ErrorContains(t, err, "not found")
+		})
+
+		t.Run("node not found: disable", func(t *testing.T) {
+			t.Parallel()
+			_, err := client.DisableNode(t.Context(), &nodev1.DisableNodeRequest{Id: "non-existent"})
+			require.ErrorContains(t, err, "not found")
+		})
+	})
+
+	t.Run("invalid requests", func(t *testing.T) {
+		t.Parallel()
+
+		client := NewMemoryJobDistributor()
+
+		t.Run("nil request: enable", func(t *testing.T) {
+			t.Parallel()
+			_, err := client.EnableNode(t.Context(), nil)
+			require.ErrorContains(t, err, "request cannot be nil")
+		})
+
+		t.Run("nil request: disable", func(t *testing.T) {
+			t.Parallel()
+			_, err := client.DisableNode(t.Context(), nil)
+			require.ErrorContains(t, err, "request cannot be nil")
+		})
 	})
 }
 
@@ -966,6 +1119,48 @@ func TestMemoryJobDistributor_ListNodeChainConfigs(t *testing.T) {
 	t.Run("add chain config to non-existent node returns error", func(t *testing.T) {
 		t.Parallel()
 		client := NewMemoryJobDistributor()
+		err := client.AddChainConfig("non-existent", &nodev1.ChainConfig{
+			Chain: &nodev1.Chain{Id: "chain-1", Type: nodev1.ChainType_CHAIN_TYPE_EVM},
+		})
+		require.ErrorContains(t, err, "not found")
+	})
+}
+
+func TestMemoryJobDistributor_AddChainConfig(t *testing.T) {
+	t.Parallel()
+
+	client := NewMemoryJobDistributor()
+	ctx := t.Context()
+
+	t.Run("add chain config to node", func(t *testing.T) {
+		t.Parallel()
+
+		registerResp, err := client.RegisterNode(ctx, &nodev1.RegisterNodeRequest{
+			Name:      "Test Node",
+			PublicKey: "test-key",
+		})
+		require.NoError(t, err)
+		nodeID := registerResp.Node.Id
+
+		err = client.AddChainConfig(nodeID, &nodev1.ChainConfig{
+			Chain: &nodev1.Chain{Id: "chain-1", Type: nodev1.ChainType_CHAIN_TYPE_EVM},
+		})
+		require.NoError(t, err)
+
+		listResp, err := client.ListNodeChainConfigs(ctx, &nodev1.ListNodeChainConfigsRequest{
+			Filter: &nodev1.ListNodeChainConfigsRequest_Filter{
+				NodeIds: []string{nodeID},
+			},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, listResp)
+		assert.Len(t, listResp.ChainConfigs, 1)
+		assert.Equal(t, "chain-1", listResp.ChainConfigs[0].Chain.Id)
+		assert.Equal(t, nodev1.ChainType_CHAIN_TYPE_EVM, listResp.ChainConfigs[0].Chain.Type)
+	})
+
+	t.Run("add chain config to non-existent node returns error", func(t *testing.T) {
+		t.Parallel()
 		err := client.AddChainConfig("non-existent", &nodev1.ChainConfig{
 			Chain: &nodev1.Chain{Id: "chain-1", Type: nodev1.ChainType_CHAIN_TYPE_EVM},
 		})

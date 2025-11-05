@@ -72,7 +72,7 @@ func TestNewMigrationCmds_Structure(t *testing.T) {
 		dsUses[i] = sc.Use
 	}
 	require.ElementsMatch(t,
-		[]string{"merge"},
+		[]string{"merge", "sync-to-catalog"},
 		dsUses,
 	)
 }

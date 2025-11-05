@@ -29,9 +29,16 @@ type TestEnvMetadata struct {
 	Tags        []string `json:"tags,omitempty"`
 }
 
+// generateRandomDomain generates a random domain name for test isolation
+func generateRandomDomain() string {
+	random, _ := rand.Int(rand.Reader, big.NewInt(1000000000))
+	return fmt.Sprintf("test-domain-%d", random)
+}
+
 // setupTestEnvStore creates a test environment metadata store and gRPC connection
-func setupTestEnvStore(t *testing.T, overrideDomain string) *catalogEnvMetadataStore {
+func setupTestEnvStore(t *testing.T, domain, environment string) *catalogEnvMetadataStore {
 	t.Helper()
+
 	address := os.Getenv("CATALOG_GRPC_ADDRESS")
 	if address == "" {
 		address = defaultEnvGRPCAddress
@@ -54,19 +61,9 @@ func setupTestEnvStore(t *testing.T, overrideDomain string) *catalogEnvMetadataS
 		return nil
 	}
 
-	// Create store with a unique domain name per test to ensure isolation
-	random, err := rand.Int(rand.Reader, big.NewInt(1000000000))
-	require.NoError(t, err)
-	var domain string
-	if overrideDomain != "" {
-		domain = overrideDomain
-	} else {
-		domain = fmt.Sprintf("test-domain-%d", random)
-	}
-
 	store := newCatalogEnvMetadataStore(catalogEnvMetadataStoreConfig{
 		Domain:      domain,
-		Environment: "catalog_testing", // Use static environment name
+		Environment: environment,
 		Client:      catalogClient,
 	})
 	t.Cleanup(func() {
@@ -118,6 +115,8 @@ func TestCatalogEnvMetadataStore_Get(t *testing.T) {
 		setupRecords []datastore.EnvMetadata
 		wantRecord   datastore.EnvMetadata
 		wantErr      error
+		domain       string
+		environment  string
 	}{
 		{
 			name: "success",
@@ -135,15 +134,26 @@ func TestCatalogEnvMetadataStore_Get(t *testing.T) {
 					Version:     "1.0.0",
 				},
 			},
-			wantErr: nil,
+			wantErr:     nil,
+			domain:      generateRandomDomain(),
+			environment: "catalog_testing",
+		},
+		{
+			name:         "not_found",
+			setupRecords: []datastore.EnvMetadata{},
+			wantRecord:   datastore.EnvMetadata{},
+			wantErr:      datastore.ErrEnvMetadataNotSet,
+			domain:       "empty-domain-for-testing",
+			environment:  "empty-env-for-testing",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+
 			// Create store for testing
-			store := setupTestEnvStore(t, "")
+			store := setupTestEnvStore(t, tt.domain, tt.environment)
 
 			// Setup test data if needed
 			for _, record := range tt.setupRecords {
@@ -156,14 +166,8 @@ func TestCatalogEnvMetadataStore_Get(t *testing.T) {
 
 			// Verify error
 			if tt.wantErr != nil {
-				if err == nil {
-					t.Errorf("Expected error %v, got nil", tt.wantErr)
-					return
-				}
-				if err.Error() != tt.wantErr.Error() {
-					t.Errorf("Expected error %v, got %v", tt.wantErr, err)
-					return
-				}
+				require.Error(t, err)
+				require.ErrorIs(t, err, tt.wantErr)
 
 				return
 			}
@@ -198,7 +202,7 @@ func TestCatalogEnvMetadataStore_Set(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			store := setupTestEnvStore(t, "")
+			store := setupTestEnvStore(t, generateRandomDomain(), "catalog_testing")
 
 			// Test Set operation
 			err := store.Set(t.Context(), tt.record.Metadata)
@@ -230,7 +234,7 @@ func TestCatalogEnvMetadataStore_Set(t *testing.T) {
 
 func TestCatalogEnvMetadataStore_Set_Update(t *testing.T) {
 	t.Parallel()
-	store := setupTestEnvStore(t, "")
+	store := setupTestEnvStore(t, "", "")
 
 	// Set initial record
 	initialMetadata := TestEnvMetadata{
@@ -285,8 +289,8 @@ func TestCatalogEnvMetadataStore_Set_ConcurrentUpdates(t *testing.T) {
 	random, err := rand.Int(rand.Reader, big.NewInt(1000000000))
 	require.NoError(t, err)
 	domain := fmt.Sprintf("test-domain-%d", random)
-	store1 := setupTestEnvStore(t, domain)
-	store2 := setupTestEnvStore(t, domain)
+	store1 := setupTestEnvStore(t, domain, "")
+	store2 := setupTestEnvStore(t, domain, "")
 
 	// Set initial record with store1
 	initialMetadata := TestEnvMetadata{
@@ -429,7 +433,7 @@ func TestCatalogEnvMetadataStore_ConversionHelpers(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			// Create a fresh store for each test case to avoid concurrency issues
-			store := setupTestEnvStore(t, "")
+			store := setupTestEnvStore(t, generateRandomDomain(), "catalog_testing")
 
 			tt.test(t, store)
 		})

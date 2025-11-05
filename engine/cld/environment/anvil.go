@@ -8,6 +8,7 @@ import (
 	"math/big"
 	"math/rand/v2"
 	"os"
+	"regexp"
 	"slices"
 	"strconv"
 	"sync"
@@ -30,9 +31,7 @@ import (
 	cfgnet "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/network"
 )
 
-var (
-	oneEth = big.NewInt(0).Exp(big.NewInt(10), big.NewInt(18), nil)
-)
+var oneEth = big.NewInt(0).Exp(big.NewInt(10), big.NewInt(18), nil)
 
 // anvilClient operates the methods exposed by the Anvil node related to forking.
 // For more information, see https://book.getfoundry.sh/reference/anvil/#custom-methods.
@@ -203,9 +202,8 @@ func newAnvilChains(
 			}
 			network.Metadata = cfgnet.EVMMetadata{
 				AnvilConfig: &cfgnet.AnvilConfig{
-					Image:          "f4hrenh9it/foundry:latest",
-					Port:           uint64(ports[0]), //nolint:gosec // G115: int to uint64 conversion is safe here (port numbers are always in valid range)
-					ArchiveHTTPURL: network.RPCs[0].HTTPURL,
+					Image: "f4hrenh9it/foundry:latest",
+					Port:  uint64(ports[0]), //nolint:gosec // G115: int to uint64 conversion is safe here (port numbers are always in valid range)
 				},
 			}
 		}
@@ -216,9 +214,12 @@ func newAnvilChains(
 				"failed to decode network metadata for chain selector %d: %w", chainSelector, errMeta,
 			)
 		}
+		if err := selectPublicRPC(lggr, &metadata, network.ChainSelector, network.RPCs); err != nil {
+			lggr.Infof("Excluding chain with ID %d from environment: %s", chainID, err.Error())
+			continue
+		}
 		if err := metadata.AnvilConfig.Validate(); err != nil {
 			lggr.Infof("Excluding chain with ID %d from environment due to failed anvil config validation: %s", chainID, err.Error())
-
 			continue
 		}
 
@@ -300,4 +301,29 @@ func newAnvilChains(
 		ForkClients:  anvilClients,
 		ChainConfigs: chainConfigsBySelector,
 	}, nil
+}
+
+func selectPublicRPC(
+	lggr logger.Logger, metadata *cfgnet.EVMMetadata, chainSelector uint64, rpcs []cfgnet.RPC,
+) error {
+	if metadata.AnvilConfig.ArchiveHTTPURL != "" && isPublicRPC(metadata.AnvilConfig.ArchiveHTTPURL) {
+		return nil
+	}
+
+	for _, rpc := range rpcs {
+		if isPublicRPC(rpc.HTTPURL) {
+			metadata.AnvilConfig.ArchiveHTTPURL = rpc.HTTPURL
+			lggr.Infow("selected rpc for fork environment", "url", rpc.HTTPURL, "chainSelector", chainSelector)
+
+			return nil
+		}
+	}
+
+	return fmt.Errorf("no public RPCs found for chain %d", chainSelector)
+}
+
+var privateRpcRegexp = regexp.MustCompile(`^https?://(rpcs|gap\-.*\.(prod|stage))\.cldev\.sh/`)
+
+func isPublicRPC(url string) bool {
+	return !privateRpcRegexp.MatchString(url)
 }

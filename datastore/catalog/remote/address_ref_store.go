@@ -156,8 +156,17 @@ func (s *catalogAddressRefStore) Fetch(_ context.Context) ([]datastore.AddressRe
 	}
 
 	// Check for errors in the response
-	if err := parseResponseStatus(response.Status); err != nil {
-		return nil, fmt.Errorf("fetch address refs failed: %w", err)
+	if statusErr := parseResponseStatus(response.Status); statusErr != nil {
+		st, sterr := parseStatusError(statusErr)
+		if sterr != nil {
+			return nil, sterr
+		}
+
+		if st.Code() == codes.NotFound {
+			return nil, datastore.ErrAddressRefNotFound
+		}
+
+		return nil, fmt.Errorf("fetch address refs failed: %w", statusErr)
 	}
 
 	// Extract the address find response

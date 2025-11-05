@@ -81,6 +81,16 @@ packages:
       filename: "mock_{{.InterfaceName | snakecase}}.go"
     interfaces:
       NodeServiceClient:
+  github.com/smartcontractkit/chainlink-deployments-framework/datastore:
+    config:
+      all: false
+      filename: "mock_{{.InterfaceName | snakecase}}_test.go"
+      structname: "{{.Mock}}{{.InterfaceName | firstUpper }}"
+    interfaces:
+      CatalogStore:
+      MutableRefStoreV2:
+      MutableStoreV2:
+      MutableUnaryStoreV2:
   github.com/smartcontractkit/chainlink-deployments-framework/chain/evm:
     config:
       all: false

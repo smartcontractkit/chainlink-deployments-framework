@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"embed"
 	"fmt"
+	"strings"
 	"text/template"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -132,8 +133,10 @@ func (r *TextRenderer) RenderDecodedCall(d *DecodedCall, ctx *FieldContext) stri
 	if err := r.decodedCallTmpl.Execute(&buf, data); err != nil {
 		return fmt.Sprintf("Error rendering decoded call: %v", err)
 	}
+	out := buf.String()
+	out = strings.TrimSuffix(out, "\n")
 
-	return buf.String()
+	return out
 }
 
 // RenderProposal renders a ProposalReport as plain text using templates
@@ -156,7 +159,12 @@ func (r *TextRenderer) RenderProposal(rep *ProposalReport, ctx *FieldContext) st
 		return fmt.Sprintf("Error rendering proposal: %v", err)
 	}
 
-	return buf.String()
+	out := buf.String()
+	if !strings.HasSuffix(out, "\n\n") { // assuming double newline means intentional spacing
+		out = strings.TrimSuffix(out, "\n")
+	}
+
+	return out
 }
 
 // RenderTimelockProposal renders a Timelock ProposalReport as plain text using templates
@@ -188,7 +196,12 @@ func (r *TextRenderer) RenderTimelockProposal(rep *ProposalReport, ctx *FieldCon
 		return fmt.Sprintf("Error rendering timelock: %v", err)
 	}
 
-	return buf.String()
+	out := buf.String()
+	if !strings.HasSuffix(out, "\n\n") { // assuming double newline means intentional spacing
+		out = strings.TrimSuffix(out, "\n")
+	}
+
+	return out
 }
 
 // RenderField renders a NamedField as plain text
@@ -225,7 +238,7 @@ func (r *TextRenderer) getChainNameOrEmpty(selector uint64) string {
 // renderFieldValue renders any field value as plain text using templates
 func (r *TextRenderer) renderFieldValue(field FieldValue) string {
 	var buf bytes.Buffer
-
+	var out string
 	switch f := field.(type) {
 	case AddressField:
 		data := AddressFieldData{Value: f.GetValue()}
@@ -233,58 +246,64 @@ func (r *TextRenderer) renderFieldValue(field FieldValue) string {
 			return fmt.Sprintf("Error rendering address field: %v", err)
 		}
 
-		return buf.String()
+		out = buf.String()
 
 	case ChainSelectorField:
 		if err := r.chainSelectorFieldTmpl.Execute(&buf, f); err != nil {
 			return fmt.Sprintf("Error rendering chain selector field: %v", err)
 		}
 
-		return buf.String()
+		out = buf.String()
 
 	case BytesField:
 		if err := r.bytesFieldTmpl.Execute(&buf, f); err != nil {
 			return fmt.Sprintf("Error rendering bytes field: %v", err)
 		}
 
-		return buf.String()
+		out = buf.String()
 
 	case ArrayField:
 		if err := r.arrayFieldTmpl.Execute(&buf, f); err != nil {
 			return fmt.Sprintf("Error rendering array field: %v", err)
 		}
 
-		return buf.String()
+		out = buf.String()
 
 	case StructField:
 		if err := r.structFieldTmpl.Execute(&buf, f); err != nil {
 			return fmt.Sprintf("Error rendering struct field: %v", err)
 		}
 
-		return buf.String()
+		out = buf.String()
 
 	case SimpleField:
 		if err := r.simpleFieldTmpl.Execute(&buf, f); err != nil {
 			return fmt.Sprintf("Error rendering simple field: %v", err)
 		}
 
-		return buf.String()
+		out = buf.String()
 
 	case YamlField:
 		if err := r.yamlFieldTmpl.Execute(&buf, f); err != nil {
 			return fmt.Sprintf("Error rendering yaml field: %v", err)
 		}
 
-		return buf.String()
+		out = buf.String()
 
 	case NamedField:
 		if err := r.namedFieldTmpl.Execute(&buf, f); err != nil {
 			return fmt.Sprintf("Error rendering named field: %v", err)
 		}
 
-		return buf.String()
+		out = buf.String()
 
 	default:
 		return fmt.Sprintf("<unknown field type: %s>", field.GetType())
 	}
+
+	if !strings.HasSuffix(out, "\n\n") { // assuming double newline means intentional spacing
+		out = strings.TrimSuffix(out, "\n")
+	}
+
+	return out
 }
