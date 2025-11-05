@@ -14,6 +14,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
+	testifymock "github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
@@ -1064,7 +1065,7 @@ func TestTryEIP1967ProxyFallback(t *testing.T) {
 			setupCtx: func(t *testing.T) (ProposalContext, deployment.Environment) {
 				t.Helper()
 
-				return &mockProposalContext{}, deployment.Environment{}
+				return mockProposalContext(t), deployment.Environment{}
 			},
 			chainSelector: chainSelector,
 			proxyAddress:  proxyAddress,
@@ -1260,6 +1261,7 @@ func TestTryEIP1967ProxyFallback(t *testing.T) {
 
 // mockStorageClient wraps an OnchainClient and intercepts StorageAt calls
 // to return a mock value for the EIP-1967 storage slot.
+// This is a special wrapper that delegates all calls to the real client except StorageAt.
 type mockStorageClient struct {
 	evm.OnchainClient
 	proxyAddr   common.Address
@@ -1316,30 +1318,18 @@ func setEIP1967StorageOnSimulatedChain(t *testing.T, evmChain evm.Chain, proxyAd
 	return mockChain, nil
 }
 
-// TestTryEIP1967ProxyFallback_WithSimulatedChains was removed - all tests now use simulated chains
-// from the runtime engine via testenv.New() with WithEVMSimulated().
-// The remaining tests in TestTryEIP1967ProxyFallback already use simulated chains.
+// mockProposalContext creates a MockProposalContext with all methods returning nil/empty values.
+func mockProposalContext(t *testing.T) *MockProposalContext {
+	t.Helper()
+	mock := NewMockProposalContext(t)
+	mock.On("GetEVMRegistry").Return(nil).Maybe()
+	mock.On("GetSolanaDecoderRegistry").Return(nil).Maybe()
+	mock.On("FieldsContext", testifymock.Anything).Return(nil).Maybe()
+	mock.On("GetRenderer").Return(nil).Maybe()
+	mock.On("SetRenderer", testifymock.Anything).Return().Maybe()
 
-// mockProposalContext is a minimal mock for testing non-DefaultProposalContext types
-type mockProposalContext struct{}
-
-func (m *mockProposalContext) GetEVMRegistry() EVMABIRegistry {
-	return nil
+	return mock
 }
-
-func (m *mockProposalContext) GetSolanaDecoderRegistry() SolanaDecoderRegistry {
-	return nil
-}
-
-func (m *mockProposalContext) FieldsContext(chainSelector uint64) *FieldContext {
-	return nil
-}
-
-func (m *mockProposalContext) GetRenderer() Renderer {
-	return nil
-}
-
-func (m *mockProposalContext) SetRenderer(renderer Renderer) {}
 
 // TestAnalyzeEVMTransaction_EIP1967ProxyFallback tests the EIP-1967 proxy fallback mechanism
 // through the full AnalyzeEVMTransaction flow.

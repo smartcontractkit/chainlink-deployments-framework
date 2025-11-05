@@ -884,7 +884,7 @@ func buildMCMSv2ConvertUpf(
 			if cfgv2.timelockProposal != nil {
 				convertedProposal, err = upf.UpfConvertTimelockProposal(cmd.Context(), cfgv2.proposalCtx, cfgv2.env, cfgv2.timelockProposal, &cfgv2.proposal, signers)
 			} else {
-				convertedProposal, err = upf.UpfConvertProposal(cfgv2.proposalCtx, cfgv2.env, &cfgv2.proposal, signers)
+				convertedProposal, err = upf.UpfConvertProposal(cmd.Context(), cfgv2.proposalCtx, cfgv2.env, &cfgv2.proposal, signers)
 			}
 			if err != nil {
 				return fmt.Errorf("failed to convert proposal to UPF format: %w", err)

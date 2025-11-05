@@ -81,3 +81,19 @@ packages:
       filename: "mock_{{.InterfaceName | snakecase}}.go"
     interfaces:
       NodeServiceClient:
+  github.com/smartcontractkit/chainlink-deployments-framework/chain/evm:
+    config:
+      all: false
+      dir: "{{.InterfaceDir}}"
+      filename: "mock_{{.InterfaceName | snakecase}}.go"
+      structname: "{{.Mock}}{{.InterfaceName}}"
+    interfaces:
+      OnchainClient:
+  github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer:
+    config:
+      all: false
+      dir: "{{.InterfaceDir}}"
+      filename: "mock_{{.InterfaceName | snakecase}}.go"
+      structname: "{{.Mock}}{{.InterfaceName}}"
+    interfaces:
+      ProposalContext:

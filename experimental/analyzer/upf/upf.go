@@ -29,7 +29,7 @@ func UpfConvertTimelockProposal(
 	mcmProposal *mcms.Proposal,
 	signers map[mcmstypes.ChainSelector][]common.Address,
 ) (string, error) {
-	upfProposal, err := mcmsProposalToUpfProposal(proposalCtx, env, mcmProposal, timelockProposal.TimelockAddresses, signers)
+	upfProposal, err := mcmsProposalToUpfProposal(ctx, proposalCtx, env, mcmProposal, timelockProposal.TimelockAddresses, signers)
 	if err != nil {
 		return "", fmt.Errorf("failed to convert proposal to upf format: %w", err)
 	}
@@ -64,12 +64,13 @@ func UpfConvertTimelockProposal(
 
 // UpfConvertProposal converts a standard MCMS proposal to a UPF proposal format.
 func UpfConvertProposal(
+	ctx context.Context,
 	proposalCtx mcmsanalyzer.ProposalContext,
 	env deployment.Environment,
 	proposal *mcms.Proposal,
 	signers map[mcmstypes.ChainSelector][]common.Address,
 ) (string, error) {
-	upfProposal, err := mcmsProposalToUpfProposal(proposalCtx, env, proposal, map[mcmstypes.ChainSelector]string{}, signers)
+	upfProposal, err := mcmsProposalToUpfProposal(ctx, proposalCtx, env, proposal, map[mcmstypes.ChainSelector]string{}, signers)
 	if err != nil {
 		return "", fmt.Errorf("failed to convert proposal to upf format: %w", err)
 	}
@@ -83,6 +84,7 @@ func UpfConvertProposal(
 }
 
 func mcmsProposalToUpfProposal(
+	ctx context.Context,
 	proposalCtx mcmsanalyzer.ProposalContext,
 	env deployment.Environment,
 	proposal *mcms.Proposal,
@@ -104,7 +106,7 @@ func mcmsProposalToUpfProposal(
 
 	transactions := make([]Transaction, len(proposal.Operations))
 	for i, op := range proposal.Operations {
-		transactions[i], err = mcmsOperationToUpfTransaction(proposalCtx, env, op, i, proposal, timelockAddresses)
+		transactions[i], err = mcmsOperationToUpfTransaction(ctx, proposalCtx, env, op, i, proposal, timelockAddresses)
 		if err != nil {
 			return UPFProposal{}, fmt.Errorf("failed to convert mcms operation to upf transaction %d: %w", i, err)
 		}
@@ -133,6 +135,7 @@ func mcmsProposalToUpfProposal(
 }
 
 func mcmsOperationToUpfTransaction(
+	ctx context.Context,
 	proposalCtx mcmsanalyzer.ProposalContext, env deployment.Environment, mcmsOp mcmstypes.Operation, idx int, proposal *mcms.Proposal,
 	timelockAddresses map[mcmstypes.ChainSelector]string,
 ) (Transaction, error) {
@@ -157,7 +160,7 @@ func mcmsOperationToUpfTransaction(
 		return Transaction{}, fmt.Errorf("failed to unmarshal \"additionalFields\" attribute: %w", err)
 	}
 
-	analyzeResult, _, err := analyzeTransaction(proposalCtx, env, mcmsOp)
+	analyzeResult, _, err := analyzeTransaction(ctx, proposalCtx, env, mcmsOp)
 	if err != nil {
 		return Transaction{}, err
 	}
@@ -331,7 +334,7 @@ func cldDecodedCallToUpfDecodedCallData(cldDecodedCall *mcmsanalyzer.DecodedCall
 }
 
 func analyzeTransaction(
-	proposalCtx mcmsanalyzer.ProposalContext, env deployment.Environment, mcmsOp mcmstypes.Operation,
+	ctx context.Context, proposalCtx mcmsanalyzer.ProposalContext, env deployment.Environment, mcmsOp mcmstypes.Operation,
 ) (*mcmsanalyzer.DecodedCall, string, error) {
 	chainFamily, err := chainsel.GetSelectorFamily(uint64(mcmsOp.ChainSelector))
 	if err != nil {
@@ -341,7 +344,7 @@ func analyzeTransaction(
 	switch chainFamily {
 	case chainsel.FamilyEVM:
 		decoder := mcmsanalyzer.NewTxCallDecoder(nil) // FIXME: reuse instance
-		analyzeResult, _, abi, err := mcmsanalyzer.AnalyzeEVMTransaction(context.Background(), proposalCtx, env, decoder, uint64(mcmsOp.ChainSelector), mcmsOp.Transaction)
+		analyzeResult, _, abi, err := mcmsanalyzer.AnalyzeEVMTransaction(ctx, proposalCtx, env, decoder, uint64(mcmsOp.ChainSelector), mcmsOp.Transaction)
 		if err != nil {
 			return nil, "", fmt.Errorf("failed to analyze EVM transaction: %w", err)
 		}
