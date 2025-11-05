@@ -200,7 +200,7 @@ func tryEIP1967ProxyFallback(
 	}
 
 	// Check if implementation address is zero (not an EIP-1967 proxy)
-	if implAddress == (common.Address{}) || implAddress == common.HexToAddress("0x0") {
+	if implAddress == (common.Address{}) {
 		return nil, nil, "", errors.New("EIP-1967 slot contains zero address (not a proxy)")
 	}
 
