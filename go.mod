@@ -26,7 +26,7 @@ require (
 	github.com/pelletier/go-toml/v2 v2.2.4
 	github.com/segmentio/ksuid v1.0.4
 	github.com/smartcontractkit/ccip-owner-contracts v0.1.0
-	github.com/smartcontractkit/chain-selectors v1.0.77
+	github.com/smartcontractkit/chain-selectors v1.0.78
 	github.com/smartcontractkit/chainlink-aptos v0.0.0-20251024142440-51f2ad2652a2
 	github.com/smartcontractkit/chainlink-ccip v0.1.1-solana.0.20250903115155-a68d8c28ae1d
 	github.com/smartcontractkit/chainlink-ccip/chains/solana v0.0.0-20250805210128-7f8a0f403c3a
@@ -38,7 +38,7 @@ require (
 	github.com/smartcontractkit/chainlink-tron/relayer v0.0.11-0.20250815105909-75499abc4335
 	github.com/smartcontractkit/freeport v0.1.3-0.20250716200817-cb5dfd0e369e
 	github.com/smartcontractkit/libocr v0.0.0-20250707144819-babe0ec4e358
-	github.com/smartcontractkit/mcms v0.30.2-0.20251105142805-988f5319936f
+	github.com/smartcontractkit/mcms v0.30.2
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
