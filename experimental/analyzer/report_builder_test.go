@@ -16,7 +16,7 @@ import (
 
 func TestBuildProposalReport_EmptyProposal(t *testing.T) {
 	t.Parallel()
-	ctx := &DefaultProposalContext{
+	proposalCtx := &DefaultProposalContext{
 		AddressesByChain: deployment.AddressesByChain{},
 		renderer:         NewMarkdownRenderer(),
 	}
@@ -24,7 +24,7 @@ func TestBuildProposalReport_EmptyProposal(t *testing.T) {
 		Operations: []types.Operation{},
 	}
 
-	report, err := BuildProposalReport(ctx, proposal)
+	report, err := BuildProposalReport(t.Context(), proposalCtx, deployment.Environment{}, proposal)
 	require.NoError(t, err)
 	require.NotNil(t, report)
 	require.Empty(t, report.Operations)
@@ -33,7 +33,7 @@ func TestBuildProposalReport_EmptyProposal(t *testing.T) {
 
 func TestBuildProposalReport_SingleOperation(t *testing.T) {
 	t.Parallel()
-	ctx := &DefaultProposalContext{
+	proposalCtx := &DefaultProposalContext{
 		AddressesByChain: deployment.AddressesByChain{},
 		renderer:         NewMarkdownRenderer(),
 	}
@@ -50,14 +50,14 @@ func TestBuildProposalReport_SingleOperation(t *testing.T) {
 	}
 
 	// This should return an error because chain selector 1 is not recognized in test environment
-	_, err := BuildProposalReport(ctx, proposal)
+	_, err := BuildProposalReport(t.Context(), proposalCtx, deployment.Environment{}, proposal)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "unknown chain selector 1")
 }
 
 func TestBuildProposalReport_MultipleOperations(t *testing.T) {
 	t.Parallel()
-	ctx := &DefaultProposalContext{
+	proposalCtx := &DefaultProposalContext{
 		AddressesByChain: deployment.AddressesByChain{},
 		renderer:         NewMarkdownRenderer(),
 	}
@@ -81,14 +81,14 @@ func TestBuildProposalReport_MultipleOperations(t *testing.T) {
 	}
 
 	// This should return an error because chain selector 1 is not recognized in test environment
-	_, err := BuildProposalReport(ctx, proposal)
+	_, err := BuildProposalReport(t.Context(), proposalCtx, deployment.Environment{}, proposal)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "unknown chain selector 1")
 }
 
 func TestBuildTimelockReport_EmptyProposal(t *testing.T) {
 	t.Parallel()
-	ctx := &DefaultProposalContext{
+	proposalCtx := &DefaultProposalContext{
 		AddressesByChain: deployment.AddressesByChain{},
 		renderer:         NewMarkdownRenderer(),
 	}
@@ -96,7 +96,7 @@ func TestBuildTimelockReport_EmptyProposal(t *testing.T) {
 		Operations: []types.BatchOperation{},
 	}
 
-	report, err := BuildTimelockReport(ctx, proposal)
+	report, err := BuildTimelockReport(t.Context(), proposalCtx, deployment.Environment{}, proposal)
 	require.NoError(t, err)
 	require.NotNil(t, report)
 	require.Empty(t, report.Operations)
@@ -105,7 +105,7 @@ func TestBuildTimelockReport_EmptyProposal(t *testing.T) {
 
 func TestBuildTimelockReport_SingleBatch(t *testing.T) {
 	t.Parallel()
-	ctx := &DefaultProposalContext{
+	proposalCtx := &DefaultProposalContext{
 		AddressesByChain: deployment.AddressesByChain{},
 		renderer:         NewMarkdownRenderer(),
 	}
@@ -124,14 +124,14 @@ func TestBuildTimelockReport_SingleBatch(t *testing.T) {
 	}
 
 	// This should return an error because chain selector 1 is not recognized in test environment
-	_, err := BuildTimelockReport(ctx, proposal)
+	_, err := BuildTimelockReport(t.Context(), proposalCtx, deployment.Environment{}, proposal)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "unknown chain selector 1")
 }
 
 func TestBuildTimelockReport_MultipleBatches(t *testing.T) {
 	t.Parallel()
-	ctx := &DefaultProposalContext{
+	proposalCtx := &DefaultProposalContext{
 		AddressesByChain: deployment.AddressesByChain{},
 		renderer:         NewMarkdownRenderer(),
 	}
@@ -159,14 +159,14 @@ func TestBuildTimelockReport_MultipleBatches(t *testing.T) {
 	}
 
 	// This should return an error because chain selector 1 is not recognized in test environment
-	_, err := BuildTimelockReport(ctx, proposal)
+	_, err := BuildTimelockReport(t.Context(), proposalCtx, deployment.Environment{}, proposal)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "unknown chain selector 1")
 }
 
 func TestBuildProposalReport_UnsupportedChainFamily(t *testing.T) {
 	t.Parallel()
-	ctx := &DefaultProposalContext{
+	proposalCtx := &DefaultProposalContext{
 		AddressesByChain: deployment.AddressesByChain{},
 		renderer:         NewMarkdownRenderer(),
 	}
@@ -183,7 +183,7 @@ func TestBuildProposalReport_UnsupportedChainFamily(t *testing.T) {
 	}
 
 	// This should return an error because the chain selector is unknown
-	_, err := BuildProposalReport(ctx, proposal)
+	_, err := BuildProposalReport(t.Context(), proposalCtx, deployment.Environment{}, proposal)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "unknown chain selector 999999")
 }
@@ -245,7 +245,7 @@ func TestBuildProposalReport_FamilyBranches(t *testing.T) {
 				},
 			}
 
-			_, err := BuildProposalReport(ctx, proposal)
+			_, err := BuildProposalReport(t.Context(), ctx, deployment.Environment{}, proposal)
 			require.Error(t, err)
 			require.Contains(t, err.Error(), tt.expectedError)
 		})
@@ -286,7 +286,7 @@ func TestBuildTimelockReport_FamilyBranches(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx := &DefaultProposalContext{
+			proposalCtx := &DefaultProposalContext{
 				AddressesByChain: deployment.AddressesByChain{},
 				renderer:         NewMarkdownRenderer(),
 			}
@@ -302,7 +302,7 @@ func TestBuildTimelockReport_FamilyBranches(t *testing.T) {
 				},
 			}
 
-			_, err := BuildTimelockReport(ctx, proposal)
+			_, err := BuildTimelockReport(t.Context(), proposalCtx, deployment.Environment{}, proposal)
 			require.Error(t, err)
 			require.Contains(t, err.Error(), tt.expectedError)
 		})
@@ -314,7 +314,7 @@ func TestBuildProposalReport_NativeTransfer(t *testing.T) {
 	t.Parallel()
 
 	// Create a context without EVM registry to test native transfers
-	ctx := &DefaultProposalContext{
+	proposalCtx := &DefaultProposalContext{
 		AddressesByChain: deployment.AddressesByChain{},
 		evmRegistry:      nil, // No registry - native transfers should work
 	}
@@ -332,7 +332,7 @@ func TestBuildProposalReport_NativeTransfer(t *testing.T) {
 		},
 	}
 
-	report, err := BuildProposalReport(ctx, proposal)
+	report, err := BuildProposalReport(t.Context(), proposalCtx, deployment.Environment{}, proposal)
 	require.NoError(t, err)
 	require.NotNil(t, report)
 	require.Len(t, report.Operations, 1)
@@ -367,7 +367,7 @@ func TestBuildProposalReport_DefaultCase(t *testing.T) {
 	t.Parallel()
 
 	// Create a context with a mock chain selector that doesn't match any known family
-	ctx := &DefaultProposalContext{
+	proposalCtx := &DefaultProposalContext{
 		AddressesByChain: deployment.AddressesByChain{},
 		renderer:         NewMarkdownRenderer(),
 	}
@@ -389,7 +389,7 @@ func TestBuildProposalReport_DefaultCase(t *testing.T) {
 	}
 
 	// This should trigger the default case in the switch statement
-	report, err := BuildProposalReport(ctx, proposal)
+	report, err := BuildProposalReport(t.Context(), proposalCtx, deployment.Environment{}, proposal)
 	require.NoError(t, err)
 	require.NotNil(t, report)
 	require.Len(t, report.Operations, 1)

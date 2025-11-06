@@ -767,9 +767,9 @@ func buildMCMSv2AnalyzeProposalCmd(
 
 			var analyzedProposal string
 			if cfgv2.timelockProposal != nil {
-				analyzedProposal, err = analyzer.DescribeTimelockProposal(cfgv2.proposalCtx, cfgv2.timelockProposal)
+				analyzedProposal, err = analyzer.DescribeTimelockProposal(cmd.Context(), cfgv2.proposalCtx, cfgv2.env, cfgv2.timelockProposal)
 			} else {
-				analyzedProposal, err = analyzer.DescribeProposal(cfgv2.proposalCtx, &cfgv2.proposal)
+				analyzedProposal, err = analyzer.DescribeProposal(cmd.Context(), cfgv2.proposalCtx, cfgv2.env, &cfgv2.proposal)
 			}
 			if err != nil {
 				return fmt.Errorf("failed to describe proposal: %w", err)
@@ -911,9 +911,9 @@ func buildMCMSv2ConvertUpf(
 			var convertedProposal string
 
 			if cfgv2.timelockProposal != nil {
-				convertedProposal, err = upf.UpfConvertTimelockProposal(cfgv2.proposalCtx, cfgv2.timelockProposal, &cfgv2.proposal, signers)
+				convertedProposal, err = upf.UpfConvertTimelockProposal(cmd.Context(), cfgv2.proposalCtx, cfgv2.env, cfgv2.timelockProposal, &cfgv2.proposal, signers)
 			} else {
-				convertedProposal, err = upf.UpfConvertProposal(cfgv2.proposalCtx, &cfgv2.proposal, signers)
+				convertedProposal, err = upf.UpfConvertProposal(cmd.Context(), cfgv2.proposalCtx, cfgv2.env, &cfgv2.proposal, signers)
 			}
 			if err != nil {
 				return fmt.Errorf("failed to convert proposal to UPF format: %w", err)
