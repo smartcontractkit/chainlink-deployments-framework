@@ -98,7 +98,7 @@ func TestUpfConvertTimelockProposal(t *testing.T) {
 			require.NoError(t, err)
 			mcmProposal := convertTimelockProposal(t.Context(), t, timelockProposal)
 
-			got, err := UpfConvertTimelockProposal(proposalCtx, timelockProposal, mcmProposal, tt.signers)
+			got, err := UpfConvertTimelockProposal(t.Context(), proposalCtx, env, timelockProposal, mcmProposal, tt.signers)
 			// err2 := os.WriteFile("/tmp/got.yaml", []byte(got), 0600)
 			// require.NoError(t, err2)
 			if tt.wantErr == "" {
@@ -654,7 +654,7 @@ func TestUpfConvertTimelockProposalWithSui(t *testing.T) {
 			require.NoError(t, err)
 			mcmProposal := convertTimelockProposal(t.Context(), t, timelockProposal)
 
-			got, err := UpfConvertTimelockProposal(proposalCtx, timelockProposal, mcmProposal, tt.signers)
+			got, err := UpfConvertTimelockProposal(t.Context(), proposalCtx, env, timelockProposal, mcmProposal, tt.signers)
 
 			tt.assertion(t, got, err)
 		})

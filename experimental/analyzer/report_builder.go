@@ -1,15 +1,18 @@
 package analyzer
 
 import (
+	"context"
 	"strings"
 
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/mcms"
 	"github.com/smartcontractkit/mcms/types"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 )
 
 // BuildProposalReport assembles a ProposalReport from a single-proposal input.
-func BuildProposalReport(ctx ProposalContext, p *mcms.Proposal) (*ProposalReport, error) {
+func BuildProposalReport(ctx context.Context, proposalContext ProposalContext, env deployment.Environment, p *mcms.Proposal) (*ProposalReport, error) {
 	rpt := &ProposalReport{Operations: make([]OperationReport, len(p.Operations))}
 	for i, op := range p.Operations {
 		chainSel := uint64(op.ChainSelector)
@@ -22,25 +25,25 @@ func BuildProposalReport(ctx ProposalContext, p *mcms.Proposal) (*ProposalReport
 		var calls []*DecodedCall
 		switch family {
 		case chainsel.FamilyEVM:
-			dec, err := AnalyzeEVMTransactions(ctx, chainSel, []types.Transaction{op.Transaction})
+			dec, err := AnalyzeEVMTransactions(ctx, proposalContext, env, chainSel, []types.Transaction{op.Transaction})
 			if err != nil {
 				return nil, err
 			}
 			calls = dec
 		case chainsel.FamilySolana:
-			dec, err := AnalyzeSolanaTransactions(ctx, chainSel, []types.Transaction{op.Transaction})
+			dec, err := AnalyzeSolanaTransactions(proposalContext, chainSel, []types.Transaction{op.Transaction})
 			if err != nil {
 				return nil, err
 			}
 			calls = dec
 		case chainsel.FamilyAptos:
-			dec, err := AnalyzeAptosTransactions(ctx, chainSel, []types.Transaction{op.Transaction})
+			dec, err := AnalyzeAptosTransactions(proposalContext, chainSel, []types.Transaction{op.Transaction})
 			if err != nil {
 				return nil, err
 			}
 			calls = dec
 		case chainsel.FamilySui:
-			dec, err := AnalyzeSuiTransactions(ctx, chainSel, []types.Transaction{op.Transaction})
+			dec, err := AnalyzeSuiTransactions(proposalContext, chainSel, []types.Transaction{op.Transaction})
 			if err != nil {
 				return nil, err
 			}
@@ -61,7 +64,7 @@ func BuildProposalReport(ctx ProposalContext, p *mcms.Proposal) (*ProposalReport
 }
 
 // BuildTimelockReport assembles a ProposalReport for timelock-style proposals with batches.
-func BuildTimelockReport(ctx ProposalContext, p *mcms.TimelockProposal) (*ProposalReport, error) {
+func BuildTimelockReport(ctx context.Context, proposalCtx ProposalContext, env deployment.Environment, p *mcms.TimelockProposal) (*ProposalReport, error) {
 	rpt := &ProposalReport{Batches: make([]BatchReport, len(p.Operations))}
 	for i, batch := range p.Operations {
 		chainSel := uint64(batch.ChainSelector)
@@ -74,7 +77,7 @@ func BuildTimelockReport(ctx ProposalContext, p *mcms.TimelockProposal) (*Propos
 		ops := make([]OperationReport, len(batch.Transactions))
 		switch family {
 		case chainsel.FamilyEVM:
-			dec, err := AnalyzeEVMTransactions(ctx, chainSel, batch.Transactions)
+			dec, err := AnalyzeEVMTransactions(ctx, proposalCtx, env, chainSel, batch.Transactions)
 			if err != nil {
 				return nil, err
 			}
@@ -87,7 +90,7 @@ func BuildTimelockReport(ctx ProposalContext, p *mcms.TimelockProposal) (*Propos
 				}
 			}
 		case chainsel.FamilySolana:
-			dec, err := AnalyzeSolanaTransactions(ctx, chainSel, batch.Transactions)
+			dec, err := AnalyzeSolanaTransactions(proposalCtx, chainSel, batch.Transactions)
 			if err != nil {
 				return nil, err
 			}
@@ -100,7 +103,7 @@ func BuildTimelockReport(ctx ProposalContext, p *mcms.TimelockProposal) (*Propos
 				}
 			}
 		case chainsel.FamilyAptos:
-			dec, err := AnalyzeAptosTransactions(ctx, chainSel, batch.Transactions)
+			dec, err := AnalyzeAptosTransactions(proposalCtx, chainSel, batch.Transactions)
 			if err != nil {
 				return nil, err
 			}
@@ -113,7 +116,7 @@ func BuildTimelockReport(ctx ProposalContext, p *mcms.TimelockProposal) (*Propos
 				}
 			}
 		case chainsel.FamilySui:
-			dec, err := AnalyzeSuiTransactions(ctx, chainSel, batch.Transactions)
+			dec, err := AnalyzeSuiTransactions(proposalCtx, chainSel, batch.Transactions)
 			if err != nil {
 				return nil, err
 			}

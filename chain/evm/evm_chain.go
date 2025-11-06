@@ -25,6 +25,9 @@ type OnchainClient interface {
 
 	BalanceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error)
 	NonceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (uint64, error)
+	// StorageAt reads a storage slot from the given account at the specified block number.
+	// This is needed for operations like EIP-1967 proxy detection.
+	StorageAt(ctx context.Context, account common.Address, key common.Hash, blockNumber *big.Int) ([]byte, error)
 }
 
 // Chain represents an EVM chain.

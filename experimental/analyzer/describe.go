@@ -1,11 +1,15 @@
 package analyzer
 
 import (
+	"context"
+
 	"github.com/smartcontractkit/mcms"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 )
 
-func DescribeTimelockProposal(ctx ProposalContext, proposal *mcms.TimelockProposal) (string, error) {
-	report, err := BuildTimelockReport(ctx, proposal)
+func DescribeTimelockProposal(ctx context.Context, proposalCtx ProposalContext, env deployment.Environment, proposal *mcms.TimelockProposal) (string, error) {
+	report, err := BuildTimelockReport(ctx, proposalCtx, env, proposal)
 	if err != nil {
 		return "", err
 	}
@@ -16,13 +20,13 @@ func DescribeTimelockProposal(ctx ProposalContext, proposal *mcms.TimelockPropos
 	if len(proposal.Operations) > 0 {
 		chainSelector = uint64(proposal.Operations[0].ChainSelector)
 	}
-	fieldCtx := ctx.FieldsContext(chainSelector)
+	fieldCtx := proposalCtx.FieldsContext(chainSelector)
 
-	return ctx.GetRenderer().RenderTimelockProposal(report, fieldCtx), nil
+	return proposalCtx.GetRenderer().RenderTimelockProposal(report, fieldCtx), nil
 }
 
-func DescribeProposal(ctx ProposalContext, proposal *mcms.Proposal) (string, error) {
-	report, err := BuildProposalReport(ctx, proposal)
+func DescribeProposal(ctx context.Context, proposalContext ProposalContext, env deployment.Environment, proposal *mcms.Proposal) (string, error) {
+	report, err := BuildProposalReport(ctx, proposalContext, env, proposal)
 	if err != nil {
 		return "", err
 	}
@@ -33,7 +37,7 @@ func DescribeProposal(ctx ProposalContext, proposal *mcms.Proposal) (string, err
 	if len(proposal.Operations) > 0 {
 		chainSelector = uint64(proposal.Operations[0].ChainSelector)
 	}
-	fieldCtx := ctx.FieldsContext(chainSelector)
+	fieldCtx := proposalContext.FieldsContext(chainSelector)
 
-	return ctx.GetRenderer().RenderProposal(report, fieldCtx), nil
+	return proposalContext.GetRenderer().RenderProposal(report, fieldCtx), nil
 }
