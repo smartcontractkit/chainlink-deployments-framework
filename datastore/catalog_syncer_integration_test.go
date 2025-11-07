@@ -3,9 +3,11 @@ package datastore_test
 import (
 	"context"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/Masterminds/semver/v3"
+	pb "github.com/smartcontractkit/chainlink-protos/op-catalog/v1/datastore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/credentials/insecure"
@@ -34,11 +36,19 @@ func TestMergeDataStoreToCatalog_FullSync(t *testing.T) {
 	})
 	if err != nil {
 		t.Skipf("Catalog service not available at %s: %v. Start with: cd op-catalog && docker-compose up -d", catalogAddr, err)
+
 		return
 	}
-	testStream, streamErr := testClient.DataAccess()
+	testStream, streamErr := testClient.DataAccess(&pb.DataAccessRequest{})
 	if streamErr != nil {
+		// Check if it's an auth error
+		if strings.Contains(streamErr.Error(), "Unauthenticated") || strings.Contains(streamErr.Error(), "HMAC") {
+			t.Skipf("Catalog service at %s requires HMAC authentication. Skipping integration test.", catalogAddr)
+
+			return
+		}
 		t.Skipf("Cannot connect to catalog service at %s: %v. Start with: cd op-catalog && docker-compose up -d", catalogAddr, streamErr)
+
 		return
 	}
 	_ = testStream.CloseSend()
@@ -154,7 +164,14 @@ func TestMergeDataStoreToCatalog_FullSync(t *testing.T) {
 	// Step 2: Merge datastore to catalog (full sync for initial migration)
 	t.Log("Step 2: Merging local datastore to catalog...")
 	err = datastore.MergeDataStoreToCatalog(ctx, sealedDS, catalogStore)
-	require.NoError(t, err, "Failed to merge datastore to catalog")
+	if err != nil {
+		// Check if it's an auth error and skip if so
+		if strings.Contains(err.Error(), "Unauthenticated") || strings.Contains(err.Error(), "HMAC") {
+			t.Skipf("Catalog service requires HMAC authentication: %v", err)
+			return
+		}
+		require.NoError(t, err, "Failed to merge datastore to catalog")
+	}
 	t.Log("✅ Merge completed successfully!")
 
 	// Step 3: Verify data was synced correctly by reading back from catalog
@@ -249,11 +266,19 @@ func TestMergeDataStoreToCatalog_Incremental(t *testing.T) {
 	})
 	if err != nil {
 		t.Skipf("Catalog service not available at %s: %v. Start with: cd op-catalog && docker-compose up -d", catalogAddr, err)
+
 		return
 	}
-	testStream, streamErr := testClient.DataAccess()
+	testStream, streamErr := testClient.DataAccess(&pb.DataAccessRequest{})
 	if streamErr != nil {
+		// Check if it's an auth error
+		if strings.Contains(streamErr.Error(), "Unauthenticated") || strings.Contains(streamErr.Error(), "HMAC") {
+			t.Skipf("Catalog service at %s requires HMAC authentication. Skipping integration test.", catalogAddr)
+
+			return
+		}
 		t.Skipf("Cannot connect to catalog service at %s: %v. Start with: cd op-catalog && docker-compose up -d", catalogAddr, streamErr)
+
 		return
 	}
 	_ = testStream.CloseSend()
@@ -299,7 +324,14 @@ func TestMergeDataStoreToCatalog_Incremental(t *testing.T) {
 
 	// Merge initial state to catalog
 	err = datastore.MergeDataStoreToCatalog(ctx, initialDS.Seal(), catalogStore)
-	require.NoError(t, err)
+	if err != nil {
+		// Check if it's an auth error and skip if so
+		if strings.Contains(err.Error(), "Unauthenticated") || strings.Contains(err.Error(), "HMAC") {
+			t.Skipf("Catalog service requires HMAC authentication: %v", err)
+			return
+		}
+		require.NoError(t, err)
+	}
 	t.Log("✅ Initial state merged")
 
 	// Step 2: Create a migration datastore with new contracts
@@ -396,11 +428,19 @@ func TestMergeDataStoreToCatalog_TransactionRollback(t *testing.T) {
 	})
 	if err != nil {
 		t.Skipf("Catalog service not available at %s: %v. Start with: cd op-catalog && docker-compose up -d", catalogAddr, err)
+
 		return
 	}
-	testStream, streamErr := testClient.DataAccess()
+	testStream, streamErr := testClient.DataAccess(&pb.DataAccessRequest{})
 	if streamErr != nil {
+		// Check if it's an auth error
+		if strings.Contains(streamErr.Error(), "Unauthenticated") || strings.Contains(streamErr.Error(), "HMAC") {
+			t.Skipf("Catalog service at %s requires HMAC authentication. Skipping integration test.", catalogAddr)
+
+			return
+		}
 		t.Skipf("Cannot connect to catalog service at %s: %v. Start with: cd op-catalog && docker-compose up -d", catalogAddr, streamErr)
+
 		return
 	}
 	_ = testStream.CloseSend()
@@ -445,7 +485,14 @@ func TestMergeDataStoreToCatalog_TransactionRollback(t *testing.T) {
 
 	// Merge should succeed
 	err = datastore.MergeDataStoreToCatalog(ctx, localDS.Seal(), catalogStore)
-	require.NoError(t, err)
+	if err != nil {
+		// Check if it's an auth error and skip if so
+		if strings.Contains(err.Error(), "Unauthenticated") || strings.Contains(err.Error(), "HMAC") {
+			t.Skipf("Catalog service requires HMAC authentication: %v", err)
+			return
+		}
+		require.NoError(t, err)
+	}
 
 	// Verify data was written
 	addressRefs, err := catalogStore.Addresses().Fetch(ctx)

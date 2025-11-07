@@ -53,12 +53,6 @@ func (s *catalogAddressRefStore) get(
 	ignoreTransaction bool,
 	key datastore.AddressRefKey,
 ) (datastore.AddressRef, error) {
-	// Create a bidirectional stream
-	stream, err := s.client.DataAccess()
-	if err != nil {
-		return datastore.AddressRef{}, fmt.Errorf("failed to create data access stream: %w", err)
-	}
-
 	// Create the find request with the key converted to a filter
 	filter := s.keyToFilter(key)
 	findRequest := &pb.AddressReferenceFindRequest{
@@ -66,11 +60,17 @@ func (s *catalogAddressRefStore) get(
 		IgnoreTransaction: ignoreTransaction,
 	}
 
-	// Send the request
+	// Create the request
 	request := &pb.DataAccessRequest{
 		Operation: &pb.DataAccessRequest_AddressReferenceFindRequest{
 			AddressReferenceFindRequest: findRequest,
 		},
+	}
+
+	// Create a bidirectional stream with the initial request for HMAC
+	stream, err := s.client.DataAccess(request)
+	if err != nil {
+		return datastore.AddressRef{}, fmt.Errorf("failed to create data access stream: %w", err)
 	}
 
 	if sendErr := stream.Send(request); sendErr != nil {
@@ -120,12 +120,6 @@ func (s *catalogAddressRefStore) get(
 
 // Fetch returns a copy of all AddressRef in the catalog.
 func (s *catalogAddressRefStore) Fetch(_ context.Context) ([]datastore.AddressRef, error) {
-	// Create a bidirectional stream
-	stream, err := s.client.DataAccess()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create data access stream: %w", err)
-	}
-
 	// Create the find request with an empty filter to get all records
 	// We only filter by domain and environment to get all records for this store's scope
 	filter := &pb.AddressReferenceKeyFilter{
@@ -138,11 +132,17 @@ func (s *catalogAddressRefStore) Fetch(_ context.Context) ([]datastore.AddressRe
 		KeyFilter: filter,
 	}
 
-	// Send the request
+	// Create the request
 	request := &pb.DataAccessRequest{
 		Operation: &pb.DataAccessRequest_AddressReferenceFindRequest{
 			AddressReferenceFindRequest: findRequest,
 		},
+	}
+
+	// Create a bidirectional stream with the initial request for HMAC
+	stream, err := s.client.DataAccess(request)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create data access stream: %w", err)
 	}
 
 	if sendErr := stream.Send(request); sendErr != nil {
@@ -212,12 +212,6 @@ func (s *catalogAddressRefStore) Filter(
 }
 
 func (s *catalogAddressRefStore) Add(_ context.Context, record datastore.AddressRef) error {
-	// Create a bidirectional stream
-	stream, err := s.client.DataAccess()
-	if err != nil {
-		return fmt.Errorf("failed to create data access stream: %w", err)
-	}
-
 	// Convert the datastore record to protobuf
 	protoRef := s.addressRefToProto(record)
 
@@ -227,11 +221,17 @@ func (s *catalogAddressRefStore) Add(_ context.Context, record datastore.Address
 		Semantics: pb.EditSemantics_SEMANTICS_INSERT,
 	}
 
-	// Send the edit request
+	// Create the request
 	editReq := &pb.DataAccessRequest{
 		Operation: &pb.DataAccessRequest_AddressReferenceEditRequest{
 			AddressReferenceEditRequest: editRequest,
 		},
+	}
+
+	// Create a bidirectional stream with the initial request for HMAC
+	stream, err := s.client.DataAccess(editReq)
+	if err != nil {
+		return fmt.Errorf("failed to create data access stream: %w", err)
 	}
 
 	if sendErr := stream.Send(editReq); sendErr != nil {
@@ -259,12 +259,6 @@ func (s *catalogAddressRefStore) Add(_ context.Context, record datastore.Address
 }
 
 func (s *catalogAddressRefStore) Upsert(_ context.Context, record datastore.AddressRef) error {
-	// Create a bidirectional stream
-	stream, err := s.client.DataAccess()
-	if err != nil {
-		return fmt.Errorf("failed to create data access stream: %w", err)
-	}
-
 	// Convert the datastore record to protobuf
 	protoRef := s.addressRefToProto(record)
 
@@ -274,11 +268,17 @@ func (s *catalogAddressRefStore) Upsert(_ context.Context, record datastore.Addr
 		Semantics: pb.EditSemantics_SEMANTICS_UPSERT,
 	}
 
-	// Send the edit request
+	// Create the request
 	request := &pb.DataAccessRequest{
 		Operation: &pb.DataAccessRequest_AddressReferenceEditRequest{
 			AddressReferenceEditRequest: editRequest,
 		},
+	}
+
+	// Create a bidirectional stream with the initial request for HMAC
+	stream, err := s.client.DataAccess(request)
+	if err != nil {
+		return fmt.Errorf("failed to create data access stream: %w", err)
 	}
 
 	if sendErr := stream.Send(request); sendErr != nil {
@@ -319,12 +319,6 @@ func (s *catalogAddressRefStore) Update(ctx context.Context, record datastore.Ad
 	}
 
 	// Record exists, proceed with updating it
-	// Create a bidirectional stream
-	stream, streamErr := s.client.DataAccess()
-	if streamErr != nil {
-		return fmt.Errorf("failed to create data access stream: %w", streamErr)
-	}
-
 	// Convert the datastore record to protobuf
 	protoRef := s.addressRefToProto(record)
 
@@ -334,11 +328,17 @@ func (s *catalogAddressRefStore) Update(ctx context.Context, record datastore.Ad
 		Semantics: pb.EditSemantics_SEMANTICS_UPDATE,
 	}
 
-	// Send the edit request
+	// Create the request
 	editReq := &pb.DataAccessRequest{
 		Operation: &pb.DataAccessRequest_AddressReferenceEditRequest{
 			AddressReferenceEditRequest: editRequest,
 		},
+	}
+
+	// Create a bidirectional stream with the initial request for HMAC
+	stream, streamErr := s.client.DataAccess(editReq)
+	if streamErr != nil {
+		return fmt.Errorf("failed to create data access stream: %w", streamErr)
 	}
 
 	if sendErr := stream.Send(editReq); sendErr != nil {

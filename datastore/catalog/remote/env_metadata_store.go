@@ -117,12 +117,7 @@ func (s *catalogEnvMetadataStore) Get(
 }
 
 func (s *catalogEnvMetadataStore) get(ignoreTransaction bool) (datastore.EnvMetadata, error) {
-	stream, err := s.client.DataAccess()
-	if err != nil {
-		return datastore.EnvMetadata{}, fmt.Errorf("failed to create gRPC stream: %w", err)
-	}
-
-	// Send find request
+	// Create find request
 	findReq := &pb.DataAccessRequest{
 		Operation: &pb.DataAccessRequest_EnvironmentMetadataFindRequest{
 			EnvironmentMetadataFindRequest: &pb.EnvironmentMetadataFindRequest{
@@ -130,6 +125,12 @@ func (s *catalogEnvMetadataStore) get(ignoreTransaction bool) (datastore.EnvMeta
 				IgnoreTransaction: ignoreTransaction,
 			},
 		},
+	}
+
+	// Create stream with the initial request for HMAC
+	stream, err := s.client.DataAccess(findReq)
+	if err != nil {
+		return datastore.EnvMetadata{}, fmt.Errorf("failed to create gRPC stream: %w", err)
 	}
 
 	if sendErr := stream.Send(findReq); sendErr != nil {
@@ -224,12 +225,7 @@ func (s *catalogEnvMetadataStore) editRecord(record datastore.EnvMetadata) error
 	// Create the protobuf record
 	protoRecord := s.envMetadataToProto(record, version)
 
-	// Send edit request with UPSERT semantics (since Set should always work)
-	stream, err := s.client.DataAccess()
-	if err != nil {
-		return fmt.Errorf("failed to create gRPC stream: %w", err)
-	}
-
+	// Create edit request with UPSERT semantics (since Set should always work)
 	editReq := &pb.DataAccessRequest{
 		Operation: &pb.DataAccessRequest_EnvironmentMetadataEditRequest{
 			EnvironmentMetadataEditRequest: &pb.EnvironmentMetadataEditRequest{
@@ -237,6 +233,12 @@ func (s *catalogEnvMetadataStore) editRecord(record datastore.EnvMetadata) error
 				Semantics: pb.EditSemantics_SEMANTICS_UPSERT,
 			},
 		},
+	}
+
+	// Create stream with the initial request for HMAC
+	stream, err := s.client.DataAccess(editReq)
+	if err != nil {
+		return fmt.Errorf("failed to create gRPC stream: %w", err)
 	}
 
 	if sendErr := stream.Send(editReq); sendErr != nil {
