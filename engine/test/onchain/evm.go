@@ -20,8 +20,11 @@ type EVMSimLoaderConfig struct {
 // NewEVMSimLoader creates a new EVM chain loader with default simulated backend configuration.
 // Uses go-ethereum's simulated backend with default settings for fast test execution.
 func NewEVMSimLoader() *ChainLoader {
+	selectors := getTestSelectorsByFamily(chainselectors.FamilyEVM)
+	selectors = append([]uint64{chainselectors.GETH_TESTNET.Selector}, selectors...)
+
 	return &ChainLoader{
-		selectors: getTestSelectorsByFamily(chainselectors.FamilyEVM),
+		selectors: selectors,
 		factory: func(t *testing.T, selector uint64) (fchain.BlockChain, error) {
 			t.Helper()
 

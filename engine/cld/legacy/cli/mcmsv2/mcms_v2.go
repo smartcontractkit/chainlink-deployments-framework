@@ -200,6 +200,11 @@ func buildExecuteOperationv2Cmd(lggr logger.Logger, domain cldf_domain.Domain, p
 			if err != nil {
 				return fmt.Errorf("error converting proposal to executable: %w", err)
 			}
+			inspector, err := getInspectorFromChainSelector(*cfg)
+			if err != nil {
+				return fmt.Errorf("failed to get inspector: %w", err)
+			}
+
 			if cfg.fork {
 				lggr.Info("Fork mode is on, all transactions will be executed on a forked chain")
 			}
@@ -211,6 +216,23 @@ func buildExecuteOperationv2Cmd(lggr logger.Logger, domain cldf_domain.Domain, p
 			op := cfg.proposal.Operations[index]
 			if op.ChainSelector != types.ChainSelector(cfg.chainSelector) {
 				return fmt.Errorf("operation %d is not for chain %d", index, cfg.chainSelector)
+			}
+
+			opCount, err := inspector.GetOpCount(cmd.Context(), cfg.proposal.ChainMetadata[types.ChainSelector(cfg.chainSelector)].MCMAddress)
+			if err != nil {
+				return fmt.Errorf("failed to get opcount for chain %d: %w", cfg.chainSelector, err)
+			}
+			txNonce, err := executable.TxNonce(index)
+			if err != nil {
+				return fmt.Errorf("failed to get TxNonce for chain %d: %w", cfg.chainSelector, err)
+			}
+			if txNonce < opCount {
+				lggr.Infow("operation already executed", "index", index, "txNonce", txNonce, "opCount", opCount)
+				return nil
+			}
+			if txNonce > opCount {
+				lggr.Warnw("txNonce too large", "index", index, "txNonce", txNonce, "opCount", opCount)
+				return fmt.Errorf("txNonce too large (%d; expected %d)", txNonce, opCount)
 			}
 
 			tx, err := executable.Execute(cmd.Context(), index)
@@ -745,9 +767,9 @@ func buildMCMSv2AnalyzeProposalCmd(
 
 			var analyzedProposal string
 			if cfgv2.timelockProposal != nil {
-				analyzedProposal, err = analyzer.DescribeTimelockProposal(cfgv2.proposalCtx, cfgv2.timelockProposal)
+				analyzedProposal, err = analyzer.DescribeTimelockProposal(cmd.Context(), cfgv2.proposalCtx, cfgv2.env, cfgv2.timelockProposal)
 			} else {
-				analyzedProposal, err = analyzer.DescribeProposal(cfgv2.proposalCtx, &cfgv2.proposal)
+				analyzedProposal, err = analyzer.DescribeProposal(cmd.Context(), cfgv2.proposalCtx, cfgv2.env, &cfgv2.proposal)
 			}
 			if err != nil {
 				return fmt.Errorf("failed to describe proposal: %w", err)
@@ -889,9 +911,9 @@ func buildMCMSv2ConvertUpf(
 			var convertedProposal string
 
 			if cfgv2.timelockProposal != nil {
-				convertedProposal, err = upf.UpfConvertTimelockProposal(cfgv2.proposalCtx, cfgv2.timelockProposal, &cfgv2.proposal, signers)
+				convertedProposal, err = upf.UpfConvertTimelockProposal(cmd.Context(), cfgv2.proposalCtx, cfgv2.env, cfgv2.timelockProposal, &cfgv2.proposal, signers)
 			} else {
-				convertedProposal, err = upf.UpfConvertProposal(cfgv2.proposalCtx, &cfgv2.proposal, signers)
+				convertedProposal, err = upf.UpfConvertProposal(cmd.Context(), cfgv2.proposalCtx, cfgv2.env, &cfgv2.proposal, signers)
 			}
 			if err != nil {
 				return fmt.Errorf("failed to convert proposal to UPF format: %w", err)
@@ -1177,6 +1199,11 @@ func executeChainCommand(ctx context.Context, lggr logger.Logger, cfg *cfgv2, sk
 	if err != nil {
 		return fmt.Errorf("error converting proposal to executable: %w", err)
 	}
+	inspector, err := getInspectorFromChainSelector(*cfg)
+	if err != nil {
+		return fmt.Errorf("failed to get inspector: %w", err)
+	}
+
 	if cfg.fork {
 		lggr.Info("Fork mode is on, all transactions will be executed on a forked chain")
 	}
@@ -1185,6 +1212,23 @@ func executeChainCommand(ctx context.Context, lggr logger.Logger, cfg *cfgv2, sk
 		// TODO; consider multi-chain support
 		if op.ChainSelector != types.ChainSelector(cfg.chainSelector) {
 			continue
+		}
+
+		opCount, err := inspector.GetOpCount(ctx, cfg.proposal.ChainMetadata[types.ChainSelector(cfg.chainSelector)].MCMAddress)
+		if err != nil {
+			return fmt.Errorf("failed to get opcount for chain %d: %w", cfg.chainSelector, err)
+		}
+		txNonce, err := executable.TxNonce(i)
+		if err != nil {
+			return fmt.Errorf("failed to get TxNonce for chain %d: %w", cfg.chainSelector, err)
+		}
+		if txNonce < opCount {
+			lggr.Infow("operation already executed", "index", i, "txNonce", txNonce, "opCount", opCount)
+			continue
+		}
+		if txNonce > opCount {
+			lggr.Warnw("txNonce too large", "index", i, "txNonce", txNonce, "opCount", opCount)
+			break
 		}
 
 		tx, err := executable.Execute(ctx, i)
@@ -1227,6 +1271,27 @@ func executeChainCommand(ctx context.Context, lggr logger.Logger, cfg *cfgv2, sk
 func setRootCommand(ctx context.Context, lggr logger.Logger, cfg *cfgv2) error {
 	if cfg.fork {
 		lggr.Info("Fork mode is on, all transactions will be executed on a forked chain")
+	}
+
+	inspector, err := getInspectorFromChainSelector(*cfg)
+	if err != nil {
+		return fmt.Errorf("failed to get inspector: %w", err)
+	}
+
+	proposalMerkleTree, err := cfg.proposal.MerkleTree()
+	if err != nil {
+		return fmt.Errorf("failed to compute the proposal's merkle tree: %w", err)
+	}
+
+	mcmAddress := cfg.proposal.ChainMetadata[types.ChainSelector(cfg.chainSelector)].MCMAddress
+	mcmRoot, _, err := inspector.GetRoot(ctx, mcmAddress)
+	if err != nil {
+		return fmt.Errorf("failed to get the merkle tree root from the MCM contract (%v): %w", mcmAddress, err)
+	}
+
+	if mcmRoot == proposalMerkleTree.Root {
+		lggr.Infof("Root %v already set in MCM contract %v", mcmRoot, mcmAddress)
+		return nil
 	}
 
 	executable, err := createExecutable(cfg)
@@ -1351,7 +1416,7 @@ func getExecutorWithChainOverride(cfg *cfgv2, chainSelector types.ChainSelector)
 			return nil, fmt.Errorf("error getting sui metadata from proposal: %w", err)
 		}
 		chain := cfg.blockchains.SuiChains()[uint64(chainSelector)]
-		entrypointEncoder := suibindings.NewCCIPEntrypointArgEncoder(metadata.RegistryObj)
+		entrypointEncoder := suibindings.NewCCIPEntrypointArgEncoder(metadata.RegistryObj, metadata.DeployerStateObj)
 
 		return sui.NewExecutor(chain.Client, chain.Signer, encoder, entrypointEncoder, metadata.McmsPackageID, metadata.Role, cfg.timelockProposal.ChainMetadata[chainSelector].MCMAddress, metadata.AccountObj, metadata.RegistryObj, metadata.TimelockObj)
 	default:
@@ -1398,7 +1463,7 @@ func getTimelockExecutorWithChainOverride(cfg *cfgv2, chainSelector types.ChainS
 		if err != nil {
 			return nil, fmt.Errorf("error getting sui metadata from proposal: %w", err)
 		}
-		entrypointEncoder := suibindings.NewCCIPEntrypointArgEncoder(metadata.AccountObj)
+		entrypointEncoder := suibindings.NewCCIPEntrypointArgEncoder(metadata.AccountObj, metadata.DeployerStateObj)
 		executor, err = sui.NewTimelockExecutor(chain.Client, chain.Signer, entrypointEncoder, metadata.McmsPackageID, metadata.RegistryObj, metadata.AccountObj)
 		if err != nil {
 			return nil, fmt.Errorf("error creating sui timelock executor: %w", err)

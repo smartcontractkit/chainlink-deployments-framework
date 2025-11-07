@@ -214,14 +214,12 @@ func newAnvilChains(
 				"failed to decode network metadata for chain selector %d: %w", chainSelector, errMeta,
 			)
 		}
-		if err := metadata.AnvilConfig.Validate(); err != nil {
-			lggr.Infof("Excluding chain with ID %d from environment due to failed anvil config validation: %s", chainID, err.Error())
-
-			continue
-		}
-
 		if err := selectPublicRPC(lggr, &metadata, network.ChainSelector, network.RPCs); err != nil {
 			lggr.Infof("Excluding chain with ID %d from environment: %s", chainID, err.Error())
+			continue
+		}
+		if err := metadata.AnvilConfig.Validate(); err != nil {
+			lggr.Infof("Excluding chain with ID %d from environment due to failed anvil config validation: %s", chainID, err.Error())
 			continue
 		}
 
@@ -308,7 +306,7 @@ func newAnvilChains(
 func selectPublicRPC(
 	lggr logger.Logger, metadata *cfgnet.EVMMetadata, chainSelector uint64, rpcs []cfgnet.RPC,
 ) error {
-	if isPublicRPC(metadata.AnvilConfig.ArchiveHTTPURL) {
+	if metadata.AnvilConfig.ArchiveHTTPURL != "" && isPublicRPC(metadata.AnvilConfig.ArchiveHTTPURL) {
 		return nil
 	}
 
