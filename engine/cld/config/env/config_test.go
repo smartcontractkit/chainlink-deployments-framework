@@ -90,6 +90,8 @@ var (
 		"OFFCHAIN_OCR_X_SIGNERS":                     "awkward bat",
 		"OFFCHAIN_OCR_X_PROPOSERS":                   "caring deer",
 		"CATALOG_GRPC":                               "http://localhost:8080",
+		"CATALOG_AUTH_KMS_KEY_ID":                    "123",
+		"CATALOG_AUTH_KMS_KEY_REGION":                "us-east-1",
 	}
 
 	legacyEnvVars = map[string]string{
@@ -114,8 +116,10 @@ var (
 		"OCR_X_PROPOSERS":                   "caring deer",
 		"CATALOG_SERVICE_GRPC":              "http://localhost:8080",
 		// These values do not have a legacy equivalent
-		"ONCHAIN_TON_DEPLOYER_KEY":   "0x123",
-		"ONCHAIN_TON_WALLET_VERSION": "V5R1",
+		"ONCHAIN_TON_DEPLOYER_KEY":            "0x123",
+		"ONCHAIN_TON_WALLET_VERSION":          "V5R1",
+		"CATALOG_SERVICE_AUTH_KMS_KEY_ID":     "123",
+		"CATALOG_SERVICE_AUTH_KMS_KEY_REGION": "us-east-1",
 	}
 
 	// envCfg is the config that is loaded from the environment variables.
@@ -171,6 +175,10 @@ var (
 		},
 		Catalog: CatalogConfig{
 			GRPC: "http://localhost:8080",
+			Auth: &CatalogAuthConfig{
+				KMSKeyID:     "123",
+				KMSKeyRegion: "us-east-1",
+			},
 		},
 	}
 )
