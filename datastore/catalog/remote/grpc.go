@@ -111,8 +111,10 @@ func newCatalogConnection(cfg CatalogConfig) (*grpc.ClientConn, error) {
 	}
 
 	if cfg.HMACConfig != nil {
-		// Force authority header to be set to match what's used in the HMAC signature.
-		// This ensures the server verifies against the same authority we signed with.
+		// Force authority header to be set to match what's used in the HMAC signature, this ensures the server verifies against the
+		// same authority we signed with. If not set explicitly, the authority is derived from the grpc URL, which may not match the
+		// authority used in the HMAC signature since gRPC clients take some liberties with the authority header like removing the port
+		// E.g. if it is default 443, the authority header will be "grpc.example.com" instead of "grpc.example.com:443"
 		// see: https://github.com/grpc/grpc-go/blob/7472d578b15f718cbe8ca0f5f5a3713093c47b03/internal/transport/http2_client.go#L653
 		// see: https://github.com/grpc/grpc-go/blob/7472d578b15f718cbe8ca0f5f5a3713093c47b03/internal/transport/http2_client.go#L533
 		opts = append(opts, grpc.WithAuthority(cfg.HMACConfig.Authority))
