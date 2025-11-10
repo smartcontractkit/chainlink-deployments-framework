@@ -36,6 +36,19 @@ func TestNewCatalogClient_Success(t *testing.T) {
 			expectError:   true,
 			errorContains: "no transport security set",
 		},
+		{
+			name: "config_with_hmac_auth",
+			config: remote.CatalogConfig{
+				GRPC:  "localhost:9090",
+				Creds: insecure.NewCredentials(),
+				HMACConfig: &remote.HMACAuthConfig{
+					KeyID:     "test-key-id",
+					KeyRegion: "us-west-2",
+					Authority: "catalog.example.com",
+				},
+			},
+			expectError: false,
+		},
 	}
 
 	for _, tt := range tests {
