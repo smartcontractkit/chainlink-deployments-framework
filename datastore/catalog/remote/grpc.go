@@ -86,20 +86,19 @@ type CatalogConfig struct {
 //	}
 //	client, err := NewCatalogClient(ctx, cfg)
 func NewCatalogClient(ctx context.Context, cfg CatalogConfig) (*CatalogClient, error) {
-	client := &CatalogClient{
-		ctx:        ctx,
-		hmacConfig: cfg.HMACConfig,
-	}
-
-	// Create connection with the configured options
+	// Create connection with the configured options.
 	conn, err := newCatalogConnection(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect Catalog service. Err: %w", err)
+		return &CatalogClient{}, fmt.Errorf("failed to connect Catalog service. Err: %w", err)
 	}
 
-	client.protoClient = pb.NewDatastoreClient(conn)
+	client := CatalogClient{
+		ctx:         ctx,
+		hmacConfig:  cfg.HMACConfig,
+		protoClient: pb.NewDatastoreClient(conn),
+	}
 
-	return client, nil
+	return &client, nil
 }
 
 // newCatalogConnection creates a new gRPC connection to the Catalog service.
