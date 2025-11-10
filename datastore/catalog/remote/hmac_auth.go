@@ -39,6 +39,7 @@ func (c *CatalogClient) getKMSClient(ctx context.Context) (kmsClient, error) {
 		}
 		c.kmsClient = kms.NewFromConfig(cfg)
 	})
+
 	return c.kmsClient, c.kmsClientErr
 }
 
@@ -47,12 +48,12 @@ func (c *CatalogClient) getKMSClient(ctx context.Context) (kmsClient, error) {
 // and attaches it to the outgoing gRPC metadata.
 func (c *CatalogClient) prepareHMACContext(ctx context.Context, req proto.Message) (context.Context, error) {
 	// Get or initialize KMS client (cached via sync.Once)
-	kmsClient, err := c.getKMSClient(ctx)
+	client, err := c.getKMSClient(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	return c.prepareHMACContextWithClient(ctx, req, kmsClient)
+	return c.prepareHMACContextWithClient(ctx, req, client)
 }
 
 // prepareHMACContextWithClient prepares the context with HMAC authentication metadata using the provided KMS client.
