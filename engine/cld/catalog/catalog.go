@@ -2,7 +2,6 @@ package catalog
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
@@ -45,7 +44,6 @@ func loadCatalogClient(
 	if cfg.Auth != nil && cfg.Auth.KMSKeyID != "" {
 		// Extract authority from GRPC URL (hostname without port)
 		authority := extractAuthority(cfg.GRPC)
-		fmt.Println("Authority:", authority)
 
 		catalogCfg.HMACConfig = &catalogremote.HMACAuthConfig{
 			KeyID:     cfg.Auth.KMSKeyID,
