@@ -3,6 +3,7 @@ package remote
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	pb "github.com/smartcontractkit/chainlink-protos/op-catalog/v1/datastore"
 	"google.golang.org/grpc"
@@ -21,31 +22,34 @@ type CatalogClient struct {
 	// passing context down the call-stack.
 	//
 	//nolint:containedctx
-	ctx          context.Context
-	cachedStream grpc.BidiStreamingClient[pb.DataAccessRequest, pb.DataAccessResponse]
-	hmacConfig   *HMACAuthConfig
+	ctx            context.Context
+	cachedStream   grpc.BidiStreamingClient[pb.DataAccessRequest, pb.DataAccessResponse]
+	hmacConfig     *HMACAuthConfig
+	streamInitOnce sync.Once
+	streamInitErr  error
 }
 
 func (c *CatalogClient) DataAccess(req proto.Message) (grpc.BidiStreamingClient[pb.DataAccessRequest, pb.DataAccessResponse], error) {
-	if c.cachedStream == nil {
-		// Apply HMAC signature if enabled
+	c.streamInitOnce.Do(func() {
 		ctx := c.ctx
 		if c.hmacConfig != nil {
 			var err error
 			ctx, err = c.prepareHMACContext(c.ctx, req)
 			if err != nil {
-				return nil, fmt.Errorf("failed to prepare HMAC context: %w", err)
+				c.streamInitErr = fmt.Errorf("failed to prepare HMAC context: %w", err)
+				return
 			}
 		}
 
 		stream, err := c.protoClient.DataAccess(ctx)
 		if err != nil {
-			return nil, err
+			c.streamInitErr = err
+			return
 		}
 		c.cachedStream = stream
-	}
+	})
 
-	return c.cachedStream, nil
+	return c.cachedStream, c.streamInitErr
 }
 
 func (c *CatalogClient) CloseStream() error {
