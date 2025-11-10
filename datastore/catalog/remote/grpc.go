@@ -27,6 +27,9 @@ type CatalogClient struct {
 	hmacConfig     *HMACAuthConfig
 	streamInitOnce sync.Once
 	streamInitErr  error
+	kmsClient      kmsClient
+	kmsClientOnce  sync.Once
+	kmsClientErr   error
 }
 
 func (c *CatalogClient) DataAccess(req proto.Message) (grpc.BidiStreamingClient[pb.DataAccessRequest, pb.DataAccessResponse], error) {
@@ -89,7 +92,7 @@ func NewCatalogClient(ctx context.Context, cfg CatalogConfig) (*CatalogClient, e
 	// Create connection with the configured options.
 	conn, err := newCatalogConnection(cfg)
 	if err != nil {
-		return &CatalogClient{}, fmt.Errorf("failed to connect Catalog service. Err: %w", err)
+		return nil, fmt.Errorf("failed to connect Catalog service. Err: %w", err)
 	}
 
 	client := CatalogClient{

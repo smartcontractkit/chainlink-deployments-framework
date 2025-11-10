@@ -28,18 +28,29 @@ type HMACAuthConfig struct {
 	Authority string // The gRPC authority (hostname without port) used for HMAC signing
 }
 
+// getKMSClient initializes and returns the KMS client, using sync.Once to ensure
+// the AWS config is loaded only once per CatalogClient instance.
+func (c *CatalogClient) getKMSClient(ctx context.Context) (kmsClient, error) {
+	c.kmsClientOnce.Do(func() {
+		cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(c.hmacConfig.KeyRegion))
+		if err != nil {
+			c.kmsClientErr = fmt.Errorf("failed to load AWS config: %w", err)
+			return
+		}
+		c.kmsClient = kms.NewFromConfig(cfg)
+	})
+	return c.kmsClient, c.kmsClientErr
+}
+
 // prepareHMACContext prepares the context with HMAC authentication metadata.
 // It loads AWS KMS configuration, creates a KMS client, generates an HMAC signature,
 // and attaches it to the outgoing gRPC metadata.
 func (c *CatalogClient) prepareHMACContext(ctx context.Context, req proto.Message) (context.Context, error) {
-	// Load AWS configuration
-	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(c.hmacConfig.KeyRegion))
+	// Get or initialize KMS client (cached via sync.Once)
+	kmsClient, err := c.getKMSClient(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load AWS config: %w", err)
+		return nil, err
 	}
-
-	// Create KMS client
-	kmsClient := kms.NewFromConfig(cfg)
 
 	return c.prepareHMACContextWithClient(ctx, req, kmsClient)
 }
