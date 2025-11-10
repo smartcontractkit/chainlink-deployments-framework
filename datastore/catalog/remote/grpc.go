@@ -107,7 +107,6 @@ func NewCatalogClient(ctx context.Context, cfg CatalogConfig) (*CatalogClient, e
 // newCatalogConnection creates a new gRPC connection to the Catalog service.
 func newCatalogConnection(cfg CatalogConfig) (*grpc.ClientConn, error) {
 	var opts []grpc.DialOption
-	var interceptors []grpc.UnaryClientInterceptor
 
 	if cfg.Creds != nil {
 		opts = append(opts, grpc.WithTransportCredentials(cfg.Creds))
@@ -121,10 +120,6 @@ func newCatalogConnection(cfg CatalogConfig) (*grpc.ClientConn, error) {
 	//	see: https://github.com/grpc/grpc-go/blob/7472d578b15f718cbe8ca0f5f5a3713093c47b03/internal/transport/http2_client.go#L533
 	if cfg.HMACConfig != nil {
 		opts = append(opts, grpc.WithAuthority(cfg.HMACConfig.Authority))
-	}
-
-	if len(interceptors) > 0 {
-		opts = append(opts, grpc.WithChainUnaryInterceptor(interceptors...))
 	}
 
 	conn, err := grpc.NewClient(cfg.GRPC, opts...)
