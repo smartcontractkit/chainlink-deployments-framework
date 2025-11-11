@@ -75,23 +75,40 @@ func TestLoadCatalogClient(t *testing.T) {
 	tests := []struct {
 		name    string
 		env     string
-		url     string
+		cfg     *cfgenv.CatalogConfig
 		wantErr string
 	}{
 		{
 			name: "successful client creation with local env",
 			env:  "local",
-			url:  "localhost:50051",
+			cfg: &cfgenv.CatalogConfig{
+				GRPC: "localhost:50051",
+			},
 		},
 		{
 			name: "successful client creation with non-local env",
 			env:  "testnet",
-			url:  "grpc.example.com:443",
+			cfg: &cfgenv.CatalogConfig{
+				GRPC: "grpc.example.com:443",
+			},
 		},
 		{
 			name: "empty url - should still create client",
 			env:  "testnet",
-			url:  "",
+			cfg: &cfgenv.CatalogConfig{
+				GRPC: "",
+			},
+		},
+		{
+			name: "client with HMAC authentication",
+			env:  "testnet",
+			cfg: &cfgenv.CatalogConfig{
+				GRPC: "grpc.example.com:443",
+				Auth: &cfgenv.CatalogAuthConfig{
+					KMSKeyID:     "test-key-id",
+					KMSKeyRegion: "us-west-2",
+				},
+			},
 		},
 	}
 
@@ -101,7 +118,7 @@ func TestLoadCatalogClient(t *testing.T) {
 
 			ctx := t.Context()
 
-			result, err := loadCatalogClient(ctx, tt.env, tt.url)
+			result, err := loadCatalogClient(ctx, tt.env, tt.cfg)
 
 			if tt.wantErr != "" {
 				require.Error(t, err)
@@ -114,6 +131,56 @@ func TestLoadCatalogClient(t *testing.T) {
 				require.NotNil(t, result)
 				require.IsType(t, &catalogremote.CatalogClient{}, result)
 			}
+		})
+	}
+}
+
+func TestExtractAuthority(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		grpcURL  string
+		expected string
+	}{
+		{
+			name:     "hostname with port",
+			grpcURL:  "grpc.example.com:443",
+			expected: "grpc.example.com",
+		},
+		{
+			name:     "hostname without port",
+			grpcURL:  "grpc.example.com",
+			expected: "grpc.example.com",
+		},
+		{
+			name:     "https scheme with port",
+			grpcURL:  "https://grpc.example.com:443",
+			expected: "grpc.example.com",
+		},
+		{
+			name:     "http scheme with port",
+			grpcURL:  "http://grpc.example.com:8080",
+			expected: "grpc.example.com",
+		},
+		{
+			name:     "localhost with port",
+			grpcURL:  "localhost:50051",
+			expected: "localhost",
+		},
+		{
+			name:     "localhost without port",
+			grpcURL:  "localhost",
+			expected: "localhost",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			result := extractAuthority(tt.grpcURL)
+			require.Equal(t, tt.expected, result)
 		})
 	}
 }

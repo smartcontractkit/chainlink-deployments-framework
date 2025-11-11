@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
 	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore/catalog/remote"
@@ -35,6 +36,19 @@ func TestNewCatalogClient_Success(t *testing.T) {
 			expectError:   true,
 			errorContains: "no transport security set",
 		},
+		{
+			name: "config_with_hmac_auth",
+			config: remote.CatalogConfig{
+				GRPC:  "localhost:9090",
+				Creds: insecure.NewCredentials(),
+				HMACConfig: &remote.HMACAuthConfig{
+					KeyID:     "test-key-id",
+					KeyRegion: "us-west-2",
+					Authority: "catalog.example.com",
+				},
+			},
+			expectError: false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -48,7 +62,7 @@ func TestNewCatalogClient_Success(t *testing.T) {
 			if tt.expectError {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tt.errorContains)
-				require.Equal(t, &remote.CatalogClient{}, client)
+				require.Nil(t, client)
 			} else {
 				require.NoError(t, err)
 				require.NotNil(t, client)

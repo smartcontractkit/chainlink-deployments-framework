@@ -11,9 +11,12 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
+
+	pb "github.com/smartcontractkit/chainlink-protos/op-catalog/v1/datastore"
 )
 
 //nolint:paralleltest
@@ -448,7 +451,7 @@ func setupStore(t *testing.T, ctx context.Context) (*catalogDataStore, error) {
 		return nil, fmt.Errorf("failed to connect to gRPC server at %s: %w. Skipping integration tests", address, err)
 	}
 	// Test if the service is actually available by making a simple call
-	_, err = catalogClient.DataAccess()
+	_, err = catalogClient.DataAccess(&pb.DataAccessRequest{})
 	if err != nil {
 		return nil, fmt.Errorf("gRPC service not available at %s: %w. Skipping integration tests", address, err)
 	}

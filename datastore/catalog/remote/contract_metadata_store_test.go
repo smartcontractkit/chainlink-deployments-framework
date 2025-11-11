@@ -60,7 +60,7 @@ func setupTestContractStore(t *testing.T, domain, environment string) *catalogCo
 	}
 
 	// Test if the gRPC service is actually available by making a simple call
-	_, err = catalogClient.DataAccess()
+	_, err = catalogClient.DataAccess(&pb.DataAccessRequest{})
 	if err != nil {
 		t.Skipf("gRPC service not available at %s: %v. Skipping integration tests.", address, err)
 		return nil

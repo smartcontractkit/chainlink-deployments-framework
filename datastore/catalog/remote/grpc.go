@@ -3,11 +3,12 @@ package remote
 import (
 	"context"
 	"fmt"
-
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
+	"sync"
 
 	pb "github.com/smartcontractkit/chainlink-protos/op-catalog/v1/datastore"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/protobuf/proto"
 )
 
 type CatalogClient struct {
@@ -21,20 +22,37 @@ type CatalogClient struct {
 	// passing context down the call-stack.
 	//
 	//nolint:containedctx
-	ctx          context.Context
-	cachedStream grpc.BidiStreamingClient[pb.DataAccessRequest, pb.DataAccessResponse]
+	ctx            context.Context
+	cachedStream   grpc.BidiStreamingClient[pb.DataAccessRequest, pb.DataAccessResponse]
+	hmacConfig     *HMACAuthConfig
+	streamInitOnce sync.Once
+	streamInitErr  error
+	kmsClient      kmsClient
+	kmsClientOnce  sync.Once
+	kmsClientErr   error
 }
 
-func (c *CatalogClient) DataAccess() (grpc.BidiStreamingClient[pb.DataAccessRequest, pb.DataAccessResponse], error) {
-	if c.cachedStream == nil {
-		stream, err := c.protoClient.DataAccess(c.ctx)
+func (c *CatalogClient) DataAccess(req proto.Message) (grpc.BidiStreamingClient[pb.DataAccessRequest, pb.DataAccessResponse], error) {
+	c.streamInitOnce.Do(func() {
+		ctx := c.ctx
+		if c.hmacConfig != nil {
+			var err error
+			ctx, err = c.prepareHMACContext(c.ctx, req)
+			if err != nil {
+				c.streamInitErr = fmt.Errorf("failed to prepare HMAC context: %w", err)
+				return
+			}
+		}
+
+		stream, err := c.protoClient.DataAccess(ctx)
 		if err != nil {
-			return nil, err
+			c.streamInitErr = err
+			return
 		}
 		c.cachedStream = stream
-	}
+	})
 
-	return c.cachedStream, nil
+	return c.cachedStream, c.streamInitErr
 }
 
 func (c *CatalogClient) CloseStream() error {
@@ -51,35 +69,57 @@ func (c *CatalogClient) CloseStream() error {
 }
 
 type CatalogConfig struct {
-	GRPC  string
-	Creds credentials.TransportCredentials
+	GRPC       string
+	Creds      credentials.TransportCredentials
+	HMACConfig *HMACAuthConfig
 }
 
 // NewCatalogClient creates a new CatalogClient with the provided configuration.
+//
+// Example usage:
+//
+//	cfg := CatalogConfig{
+//		GRPC:  "op-catalog.example.com:443",
+//		Creds: credentials.NewTLS(&tls.Config{}),
+//		HMACConfig: &HMACAuthConfig{
+//			KeyID:     "kms-key-id",
+//			KeyRegion: "us-west-2",
+//			Authority: "op-catalog.example.com",
+//		},
+//	}
+//	client, err := NewCatalogClient(ctx, cfg)
 func NewCatalogClient(ctx context.Context, cfg CatalogConfig) (*CatalogClient, error) {
+	// Create connection with the configured options.
 	conn, err := newCatalogConnection(cfg)
 	if err != nil {
-		return &CatalogClient{}, fmt.Errorf("failed to connect Catalog service. Err: %w", err)
+		return nil, fmt.Errorf("failed to connect Catalog service. Err: %w", err)
 	}
+
 	client := CatalogClient{
 		ctx:         ctx,
+		hmacConfig:  cfg.HMACConfig,
 		protoClient: pb.NewDatastoreClient(conn),
 	}
 
-	return &client, err
+	return &client, nil
 }
 
 // newCatalogConnection creates a new gRPC connection to the Catalog service.
 func newCatalogConnection(cfg CatalogConfig) (*grpc.ClientConn, error) {
 	var opts []grpc.DialOption
-	var interceptors []grpc.UnaryClientInterceptor
 
 	if cfg.Creds != nil {
 		opts = append(opts, grpc.WithTransportCredentials(cfg.Creds))
 	}
 
-	if len(interceptors) > 0 {
-		opts = append(opts, grpc.WithChainUnaryInterceptor(interceptors...))
+	//	Force authority header to be set to match what's used in the HMAC signature, this ensures the server verifies against the
+	//	same authority we signed with. If not set explicitly, the authority is derived from the grpc URL, which may not match the
+	//	authority used in the HMAC signature since gRPC clients take some liberties with the authority header like removing the port
+	//	E.g. if it is default 443, the authority header will be "grpc.example.com" instead of "grpc.example.com:443"
+	//	see: https://github.com/grpc/grpc-go/blob/7472d578b15f718cbe8ca0f5f5a3713093c47b03/internal/transport/http2_client.go#L653
+	//	see: https://github.com/grpc/grpc-go/blob/7472d578b15f718cbe8ca0f5f5a3713093c47b03/internal/transport/http2_client.go#L533
+	if cfg.HMACConfig != nil {
+		opts = append(opts, grpc.WithAuthority(cfg.HMACConfig.Authority))
 	}
 
 	conn, err := grpc.NewClient(cfg.GRPC, opts...)

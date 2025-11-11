@@ -637,7 +637,7 @@ func setupTestStore(t *testing.T, domain, environment string) *catalogAddressRef
 	}
 
 	// Test if the service is actually available by making a simple call
-	_, err = catalogClient.DataAccess()
+	_, err = catalogClient.DataAccess(&pb.DataAccessRequest{})
 	if err != nil {
 		t.Skipf("gRPC service not available at %s: %v. Skipping integration tests.", address, err)
 		return nil

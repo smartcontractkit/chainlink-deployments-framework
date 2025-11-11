@@ -38,3 +38,6 @@ offchain:
     x_proposers: "furious fox"
 catalog:
   grpc: "http://localhost:1000"
+  auth:
+    kms_key_id: "123"
+    kms_key_region: "us-east-1"

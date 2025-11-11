@@ -10,8 +10,8 @@ func ThrowAndCatch(
 	catalog *catalogDataStore,
 	request *pb.DataAccessRequest,
 ) (*pb.DataAccessResponse, error) {
-	// Create a bidirectional stream
-	stream, err := catalog.client.DataAccess()
+	// Create a bidirectional stream with the initial request for HMAC
+	stream, err := catalog.client.DataAccess(request)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create data access stream: %w", err)
 	}
