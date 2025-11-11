@@ -236,9 +236,9 @@ var (
 		"offchain.job_distributor.endpoints.grpc":                 {"OFFCHAIN_JD_ENDPOINTS_GRPC", "JD_GRPC"},
 		"offchain.ocr.x_signers":                                  {"OFFCHAIN_OCR_X_SIGNERS", "OCR_X_SIGNERS"},
 		"offchain.ocr.x_proposers":                                {"OFFCHAIN_OCR_X_PROPOSERS", "OCR_X_PROPOSERS"},
-		"catalog.grpc":                                            {"CATALOG_GRPC", "CATALOG_SERVICE_GRPC"},
-		"catalog.auth.kms_key_id":                                 {"CATALOG_AUTH_KMS_KEY_ID", "CATALOG_SERVICE_AUTH_KMS_KEY_ID"},
-		"catalog.auth.kms_key_region":                             {"CATALOG_AUTH_KMS_KEY_REGION", "CATALOG_SERVICE_AUTH_KMS_KEY_REGION"},
+		"catalog.grpc":                                            {"CATALOG_GRPC"},
+		"catalog.auth.kms_key_id":                                 {"CATALOG_AUTH_KMS_KEY_ID"},
+		"catalog.auth.kms_key_region":                             {"CATALOG_AUTH_KMS_KEY_REGION"},
 	}
 )
 

@@ -67,7 +67,6 @@ func Test_LoadEnvConfig(t *testing.T) { //nolint:paralleltest // These tests are
 				"SOLANA_PROGRAM_PATH":               "0xcde",
 				"APTOS_DEPLOYER_KEY":                "0x345",
 				"TRON_DEPLOYER_KEY":                 "0x456",
-				"CATALOG_SERVICE_GRPC":              "http://localhost:2000",
 			},
 			wantFunc: func(t *testing.T, cfg *cfgenv.Config) {
 				t.Helper()
@@ -92,7 +91,6 @@ func Test_LoadEnvConfig(t *testing.T) { //nolint:paralleltest // These tests are
 				assert.Equal(t, "0x234", cfg.Onchain.Solana.WalletKey)
 				assert.Equal(t, "0x345", cfg.Onchain.Aptos.DeployerKey)
 				assert.Equal(t, "0x456", cfg.Onchain.Tron.DeployerKey)
-				assert.Equal(t, "http://localhost:2000", cfg.Catalog.GRPC)
 			},
 		},
 		{
@@ -114,6 +112,8 @@ func Test_LoadEnvConfig(t *testing.T) { //nolint:paralleltest // These tests are
 				"ONCHAIN_EVM_SETH_CONFIG_FILE_PATH":          "/tmp/config",
 				"ONCHAIN_EVM_SETH_GETH_WRAPPER_DIRS":         "dir1,dir2",
 				"CATALOG_GRPC":                               "http://localhost:2000",
+				"CATALOG_AUTH_KMS_KEY_ID":                    "c4f1a2b3",
+				"CATALOG_AUTH_KMS_KEY_REGION":                "us-east-1",
 				"ONCHAIN_SOLANA_WALLET_KEY":                  "0x234",
 				"ONCHAIN_SOLANA_PROGRAM_PATH":                "0xcde",
 				"ONCHAIN_APTOS_DEPLOYER_KEY":                 "0x345",
@@ -147,6 +147,8 @@ func Test_LoadEnvConfig(t *testing.T) { //nolint:paralleltest // These tests are
 				assert.Equal(t, "0x456", cfg.Onchain.Tron.DeployerKey)
 				assert.Equal(t, "0x567", cfg.Onchain.Sui.DeployerKey)
 				assert.Equal(t, "http://localhost:2000", cfg.Catalog.GRPC)
+				assert.Equal(t, "c4f1a2b3", cfg.Catalog.Auth.KMSKeyID)
+				assert.Equal(t, "us-east-1", cfg.Catalog.Auth.KMSKeyRegion)
 			},
 		},
 	}
