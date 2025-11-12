@@ -34,6 +34,7 @@ func ConfirmFuncGeth(waitMinedTimeout time.Duration, opts ...func(*confirmFuncGe
 	for _, o := range opts {
 		o(cf)
 	}
+
 	return cf
 }
 

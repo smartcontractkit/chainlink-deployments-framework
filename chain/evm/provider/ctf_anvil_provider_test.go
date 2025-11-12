@@ -295,7 +295,7 @@ func TestCTFAnvilChainProvider_InitializeErrors(t *testing.T) {
 
 func TestCTFAnvilChainProvider_SignerIntegration(t *testing.T) {
 	t.Parallel()
-	
+
 	t.Run("custom tick interval", func(t *testing.T) {
 		t.Parallel()
 		customKey := "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
@@ -303,7 +303,7 @@ func TestCTFAnvilChainProvider_SignerIntegration(t *testing.T) {
 		var once sync.Once
 		config := CTFAnvilChainProviderConfig{
 			Once:                  &once,
-			ConfirmFunctor:        ConfirmFuncGeth(2 * time.Minute, WithTickInterval(100*time.Millisecond)),
+			ConfirmFunctor:        ConfirmFuncGeth(2*time.Minute, WithTickInterval(100*time.Millisecond)),
 			DeployerTransactorGen: TransactorFromRaw(customKey),
 			T:                     t,
 		}
