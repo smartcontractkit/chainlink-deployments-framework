@@ -39,39 +39,47 @@ func Test_ConfirmFuncGeth_ConfirmFunc(t *testing.T) {
 		adminTransactor.From: {Balance: prefundAmountWei},
 	}
 
+	defaultGiveTxFunc := func(t *testing.T, client *SimClient) *types.Transaction {
+		t.Helper()
+
+		// Get the nonce
+		nonce, err := client.PendingNonceAt(t.Context(), adminTransactor.From)
+		require.NoError(t, err)
+
+		gasPrice, err := client.SuggestGasPrice(t.Context())
+		require.NoError(t, err)
+
+		// Create a transaction to send tokens. This will be used to test the confirmation function.
+		tx := types.NewTransaction(
+			nonce, userTransactor.From, big.NewInt(10000000000000000), 21000, gasPrice, nil,
+		)
+
+		signedTx, err := types.SignTx(tx, types.NewCancunSigner(simChainID), adminKey)
+		require.NoError(t, err, "failed to sign transaction")
+
+		// Send the transaction
+		err = client.SendTransaction(t.Context(), signedTx)
+		require.NoError(t, err)
+
+		client.Commit() // Commit the transaction to the simulated backend
+
+		return signedTx
+	}
+
 	tests := []struct {
-		name    string
-		giveTx  func(*testing.T, *SimClient) *types.Transaction
-		wantErr string
+		name          string
+		giveTx        func(*testing.T, *SimClient) *types.Transaction
+		confirmerOpts []func(*confirmFuncGeth)
+		wantErr       string
 	}{
 		{
-			name: "successful confirmation",
-			giveTx: func(t *testing.T, client *SimClient) *types.Transaction {
-				t.Helper()
-
-				// Get the nonce
-				nonce, err := client.PendingNonceAt(t.Context(), adminTransactor.From)
-				require.NoError(t, err)
-
-				gasPrice, err := client.SuggestGasPrice(t.Context())
-				require.NoError(t, err)
-
-				// Create a transaction to send tokens. This will be used to test the confirmation function.
-				tx := types.NewTransaction(
-					nonce, userTransactor.From, big.NewInt(10000000000000000), 21000, gasPrice, nil,
-				)
-
-				signedTx, err := types.SignTx(tx, types.NewCancunSigner(simChainID), adminKey)
-				require.NoError(t, err, "failed to sign transaction")
-
-				// Send the transaction
-				err = client.SendTransaction(t.Context(), signedTx)
-				require.NoError(t, err)
-
-				client.Commit() // Commit the transaction to the simulated backend
-
-				return signedTx
-			},
+			name:   "successful confirmation",
+			giveTx: defaultGiveTxFunc,
+		},
+		{
+			name:          "successful confirmation with custom WaitMined ticker",
+			confirmerOpts: []func(*confirmFuncGeth){WithTickInterval(10 * time.Millisecond)},
+			giveTx:        defaultGiveTxFunc,
 		},
 		{
 			name: "failed with nil tx",
@@ -121,7 +129,7 @@ func Test_ConfirmFuncGeth_ConfirmFunc(t *testing.T) {
 			tx := tt.giveTx(t, client)
 
 			// Generate the confirm function
-			functor := ConfirmFuncGeth(1 * time.Second)
+			functor := ConfirmFuncGeth(1*time.Second, tt.confirmerOpts...)
 			confirmFunc, err := functor.Generate(
 				t.Context(), chainsel.TEST_1000.Selector, client, adminTransactor.From,
 			)

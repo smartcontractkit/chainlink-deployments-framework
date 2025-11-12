@@ -26,15 +26,29 @@ type ConfirmFunctor interface {
 }
 
 // ConfirmFuncGeth returns a ConfirmFunctor that uses the Geth client to confirm transactions.
-func ConfirmFuncGeth(waitMinedTimeout time.Duration) ConfirmFunctor {
-	return &confirmFuncGeth{
+func ConfirmFuncGeth(waitMinedTimeout time.Duration, opts ...func(*confirmFuncGeth)) ConfirmFunctor {
+	cf := &confirmFuncGeth{
+		tickInterval:     1 * time.Second, // the same value we have in bind.WaitMined hardcoded in "go-ethereum"
 		waitMinedTimeout: waitMinedTimeout,
+	}
+	for _, o := range opts {
+		o(cf)
+	}
+
+	return cf
+}
+
+// WithTickInterval specifies tick interval to confirm transaction is mined
+func WithTickInterval(interval time.Duration) func(*confirmFuncGeth) {
+	return func(o *confirmFuncGeth) {
+		o.tickInterval = interval
 	}
 }
 
 // confirmFuncGeth implements the ConfirmFunctor interface which generates a confirmation function
 // for transactions using the Geth client.
 type confirmFuncGeth struct {
+	tickInterval     time.Duration
 	waitMinedTimeout time.Duration
 }
 
@@ -51,7 +65,7 @@ func (g *confirmFuncGeth) Generate(
 		ctxTimeout, cancel := context.WithTimeout(ctx, g.waitMinedTimeout)
 		defer cancel()
 
-		receipt, err := bind.WaitMined(ctxTimeout, client, tx)
+		receipt, err := waitMinedWithInterval(ctxTimeout, g.tickInterval, client, tx.Hash())
 		if err != nil {
 			return 0, fmt.Errorf("tx %s failed to confirm for selector %d: %w",
 				tx.Hash().Hex(), selector, err,
@@ -156,4 +170,21 @@ func (g *confirmFuncSeth) Generate(
 
 		return decoded.Receipt.BlockNumber.Uint64(), nil
 	}, nil
+}
+
+// waitMinedWithInterval is a custom function that allows to get receipts faster for networks with instant blocks
+func waitMinedWithInterval(ctx context.Context, tick time.Duration, b bind.DeployBackend, txHash common.Hash) (*types.Receipt, error) {
+	queryTicker := time.NewTicker(tick)
+	defer queryTicker.Stop()
+	for {
+		receipt, err := b.TransactionReceipt(ctx, txHash)
+		if err == nil {
+			return receipt, nil
+		}
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-queryTicker.C:
+		}
+	}
 }
