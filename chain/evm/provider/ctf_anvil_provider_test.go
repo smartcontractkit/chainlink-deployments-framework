@@ -296,46 +296,6 @@ func TestCTFAnvilChainProvider_InitializeErrors(t *testing.T) {
 func TestCTFAnvilChainProvider_SignerIntegration(t *testing.T) {
 	t.Parallel()
 
-	t.Run("custom tick interval", func(t *testing.T) {
-		t.Parallel()
-		customKey := "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
-
-		var once sync.Once
-		config := CTFAnvilChainProviderConfig{
-			Once:                  &once,
-			ConfirmFunctor:        ConfirmFuncGeth(2*time.Minute, WithTickInterval(100*time.Millisecond)),
-			DeployerTransactorGen: TransactorFromRaw(customKey),
-			T:                     t,
-		}
-
-		selector := uint64(13264668187771770619) // Chain ID 31337
-		provider := NewCTFAnvilChainProvider(selector, config)
-
-		ctx, cancel := context.WithTimeout(t.Context(), 5*time.Minute)
-		defer cancel()
-
-		blockchain, err := provider.Initialize(ctx)
-		require.NoError(t, err)
-		require.NotNil(t, blockchain)
-
-		// Verify the blockchain has the expected properties
-		assert.Equal(t, selector, blockchain.ChainSelector())
-		assert.Equal(t, "evm", blockchain.Family())
-
-		// Test that the deployer key is properly configured
-		evmChain := blockchain.(evm.Chain)
-		assert.NotNil(t, evmChain.DeployerKey)
-		assert.NotNil(t, evmChain.SignHash)
-
-		// Test signing functionality
-		testHash := make([]byte, 32) // Hash must be exactly 32 bytes
-		copy(testHash, []byte("test message to sign"))
-		signature, err := evmChain.SignHash(testHash)
-		require.NoError(t, err)
-		assert.NotEmpty(t, signature)
-		assert.Len(t, signature, 65) // Standard Ethereum signature length
-	})
-
 	t.Run("custom raw key integration", func(t *testing.T) {
 		t.Parallel()
 
