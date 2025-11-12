@@ -157,3 +157,75 @@ func (g *confirmFuncSeth) Generate(
 		return decoded.Receipt.BlockNumber.Uint64(), nil
 	}, nil
 }
+
+// ConfirmFuncGethCustomWaitMined specific confirmer for blocks faster than one second.
+func ConfirmFuncGethCustomWaitMined(tickInterval, waitMinedTimeout time.Duration) ConfirmFunctor {
+	return &confirmFuncGethCustom{
+		TickInterval:     tickInterval,
+		WaitMinedTimeout: waitMinedTimeout,
+	}
+}
+
+type confirmFuncGethCustom struct {
+	TickInterval     time.Duration
+	WaitMinedTimeout time.Duration
+}
+
+func (g *confirmFuncGethCustom) Generate(
+	ctx context.Context, selector uint64, client evm.OnchainClient, from common.Address,
+) (evm.ConfirmFunc, error) {
+	return func(tx *types.Transaction) (uint64, error) {
+		var blockNum uint64
+		if tx == nil {
+			return 0, fmt.Errorf("tx was nil, nothing to confirm for selector: %d", selector)
+		}
+
+		ctxTimeout, cancel := context.WithTimeout(ctx, g.WaitMinedTimeout)
+		defer cancel()
+
+		receipt, err := WaitMinedWithInterval(ctxTimeout, g.TickInterval, client, tx.Hash())
+		if err != nil {
+			return 0, fmt.Errorf("tx %s failed to confirm for selector %d: %w",
+				tx.Hash().Hex(), selector, err,
+			)
+		}
+		if receipt == nil {
+			return blockNum, fmt.Errorf("receipt was nil for tx %s for selector %d",
+				tx.Hash().Hex(), selector,
+			)
+		}
+
+		blockNum = receipt.BlockNumber.Uint64()
+
+		if receipt.Status == 0 {
+			reason, err := getErrorReasonFromTx(ctxTimeout, client, from, tx, receipt)
+			if err == nil && reason != "" {
+				return 0, fmt.Errorf("tx %s reverted for selector %d: %s",
+					tx.Hash().Hex(), selector, reason,
+				)
+			}
+
+			return blockNum, fmt.Errorf("tx %s reverted, could not decode error reason for selector %d",
+				tx.Hash().Hex(), selector,
+			)
+		}
+
+		return blockNum, nil
+	}, nil
+}
+
+func WaitMinedWithInterval(ctx context.Context, tick time.Duration, b bind.DeployBackend, txHash common.Hash) (*types.Receipt, error) {
+	queryTicker := time.NewTicker(tick)
+	defer queryTicker.Stop()
+	for {
+		receipt, err := b.TransactionReceipt(ctx, txHash)
+		if err == nil {
+			return receipt, nil
+		}
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-queryTicker.C:
+		}
+	}
+}
