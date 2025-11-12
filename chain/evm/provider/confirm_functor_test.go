@@ -39,7 +39,7 @@ func Test_ConfirmFuncGeth_ConfirmFunc(t *testing.T) {
 		adminTransactor.From: {Balance: prefundAmountWei},
 	}
 
-	defaultConfirmFunc := func(t *testing.T, client *SimClient) *types.Transaction {
+	defaultGiveTxFunc := func(t *testing.T, client *SimClient) *types.Transaction {
 		t.Helper()
 
 		// Get the nonce
@@ -74,12 +74,12 @@ func Test_ConfirmFuncGeth_ConfirmFunc(t *testing.T) {
 	}{
 		{
 			name:   "successful confirmation",
-			giveTx: defaultConfirmFunc,
+			giveTx: defaultGiveTxFunc,
 		},
 		{
 			name:          "successful confirmation with custom WaitMined ticker",
 			confirmerOpts: []func(*confirmFuncGeth){WithTickInterval(10 * time.Millisecond)},
-			giveTx:        defaultConfirmFunc,
+			giveTx:        defaultGiveTxFunc,
 		},
 		{
 			name: "failed with nil tx",
