@@ -4,12 +4,32 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	pb "github.com/smartcontractkit/chainlink-protos/op-catalog/v1/datastore"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/keepalive"
 	"google.golang.org/protobuf/proto"
 )
+
+const retryPolicy = `{
+	"methodConfig": [{
+		"name": [{"service": "op_catalog.v1.datastore.Datastore"}],
+		"retryPolicy": {
+			"maxAttempts": 5,
+			"initialBackoff": "0.1s",
+			"maxBackoff": "1s",
+			"backoffMultiplier": 2,
+			"retryableStatusCodes": [
+				"UNAVAILABLE",
+				"DEADLINE_EXCEEDED",
+				"INTERNAL",
+				"RESOURCE_EXHAUSTED"
+			]
+		}
+	}]
+}`
 
 type CatalogClient struct {
 	protoClient pb.DatastoreClient
@@ -23,6 +43,7 @@ type CatalogClient struct {
 	//
 	//nolint:containedctx
 	ctx            context.Context
+	conn           *grpc.ClientConn
 	cachedStream   grpc.BidiStreamingClient[pb.DataAccessRequest, pb.DataAccessResponse]
 	hmacConfig     *HMACAuthConfig
 	streamInitOnce sync.Once
@@ -55,6 +76,7 @@ func (c *CatalogClient) DataAccess(req proto.Message) (grpc.BidiStreamingClient[
 	return c.cachedStream, c.streamInitErr
 }
 
+// CloseStream closes the current stream.
 func (c *CatalogClient) CloseStream() error {
 	if c.cachedStream == nil {
 		return nil
@@ -65,6 +87,18 @@ func (c *CatalogClient) CloseStream() error {
 	}
 	c.cachedStream = nil
 
+	return nil
+}
+
+// Close closes the underlying gRPC connection.
+func (c *CatalogClient) Close() error {
+	if c.cachedStream != nil {
+		return fmt.Errorf("stream is not closed")
+	}
+
+	if c.conn != nil {
+		return c.conn.Close()
+	}
 	return nil
 }
 
@@ -98,6 +132,7 @@ func NewCatalogClient(ctx context.Context, cfg CatalogConfig) (*CatalogClient, e
 	client := CatalogClient{
 		ctx:         ctx,
 		hmacConfig:  cfg.HMACConfig,
+		conn:        conn,
 		protoClient: pb.NewDatastoreClient(conn),
 	}
 
@@ -121,6 +156,16 @@ func newCatalogConnection(cfg CatalogConfig) (*grpc.ClientConn, error) {
 	if cfg.HMACConfig != nil {
 		opts = append(opts, grpc.WithAuthority(cfg.HMACConfig.Authority))
 	}
+
+	// Keepalive for long-lived bidirectional streams
+	// Ping every 20 seconds, wait up to 10 seconds for a response
+	opts = append(opts, grpc.WithKeepaliveParams(keepalive.ClientParameters{
+		Time:                20 * time.Second,
+		Timeout:             10 * time.Second,
+		PermitWithoutStream: true,
+	}))
+
+	opts = append(opts, grpc.WithDefaultServiceConfig(retryPolicy))
 
 	conn, err := grpc.NewClient(cfg.GRPC, opts...)
 	if err != nil {
