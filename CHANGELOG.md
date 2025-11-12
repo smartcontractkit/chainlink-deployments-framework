@@ -1,5 +1,40 @@
 # chainlink-deployments-framework
 
+## 0.66.0
+
+### Minor Changes
+
+- [#571](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/571) [`8db262d`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/8db262d0549378a3565e5445c5180baf8d72b3d0) Thanks [@jkongie](https://github.com/jkongie)! - Bump chain-selectors package to v1.0.81
+
+### Patch Changes
+
+- [#570](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/570) [`eb74395`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/eb743959612d2506ba0888f6e2d0996744ec657b) Thanks [@skudasov](https://github.com/skudasov)! - Adds a new EVM Confirm Functor which allows the user to specify a custom wait interval for checking confirmation.
+  Example
+
+  ```golang
+  		p, err := cldf_evm_provider.NewRPCChainProvider(
+  			d.ChainSelector,
+  			cldf_evm_provider.RPCChainProviderConfig{
+  				DeployerTransactorGen: cldf_evm_provider.TransactorFromRaw(
+  					getNetworkPrivateKey(),
+  				),
+  				RPCs: []rpcclient.RPC{
+  					{
+  						Name:               "default",
+  						WSURL:              rpcWSURL,
+  						HTTPURL:            rpcHTTPURL,
+  						PreferredURLScheme: rpcclient.URLSchemePreferenceHTTP,
+  					},
+  				},
+  				ConfirmFunctor: cldf_evm_provider.ConfirmFuncGeth(
+  					30*time.Second,
+  					// set custom confirm ticker time because Anvil's blocks are instant
+  					cldf_evm_provider.WithTickInterval(5*time.Millisecond),
+  				),
+  			},
+  		).Initialize(context.Background())
+  ```
+
 ## 0.65.0
 
 ### Minor Changes
