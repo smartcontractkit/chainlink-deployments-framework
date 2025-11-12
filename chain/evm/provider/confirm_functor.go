@@ -38,6 +38,7 @@ func ConfirmFuncGeth(waitMinedTimeout time.Duration, opts ...func(*confirmFuncGe
 	return cf
 }
 
+// WithTickInterval specifies tick interval to confirm transaction is mined
 func WithTickInterval(interval time.Duration) func(*confirmFuncGeth) {
 	return func(o *confirmFuncGeth) {
 		o.tickInterval = interval
