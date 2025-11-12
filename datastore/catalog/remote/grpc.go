@@ -2,6 +2,7 @@ package remote
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -93,12 +94,13 @@ func (c *CatalogClient) CloseStream() error {
 // Close closes the underlying gRPC connection.
 func (c *CatalogClient) Close() error {
 	if c.cachedStream != nil {
-		return fmt.Errorf("stream is not closed")
+		return errors.New("stream is not closed")
 	}
 
 	if c.conn != nil {
 		return c.conn.Close()
 	}
+
 	return nil
 }
 
