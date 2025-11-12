@@ -52,7 +52,7 @@ changesets:
 		if err != nil {
 			return "", fmt.Errorf("generate section for changeset %s: %w", changesetName, err)
 		}
-		
+
 		yamlTemplate += changesetSection
 	}
 
