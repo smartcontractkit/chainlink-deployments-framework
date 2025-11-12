@@ -12,6 +12,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.39.6
 	github.com/aws/aws-sdk-go-v2/config v1.31.17
 	github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider v1.57.1
+	github.com/aws/aws-sdk-go-v2/service/kms v1.47.1
 	github.com/block-vision/sui-go-sdk v1.1.2
 	github.com/cosmos/go-bip39 v1.0.0
 	github.com/ethereum/go-ethereum v1.15.7
@@ -26,7 +27,7 @@ require (
 	github.com/pelletier/go-toml/v2 v2.2.4
 	github.com/segmentio/ksuid v1.0.4
 	github.com/smartcontractkit/ccip-owner-contracts v0.1.0
-	github.com/smartcontractkit/chain-selectors v1.0.78
+	github.com/smartcontractkit/chain-selectors v1.0.81
 	github.com/smartcontractkit/chainlink-aptos v0.0.0-20251024142440-51f2ad2652a2
 	github.com/smartcontractkit/chainlink-ccip v0.1.1-solana.0.20250903115155-a68d8c28ae1d
 	github.com/smartcontractkit/chainlink-ccip/chains/solana v0.0.0-20250805210128-7f8a0f403c3a
@@ -57,7 +58,6 @@ require (
 )
 
 require (
-	github.com/aws/aws-sdk-go-v2/service/kms v1.47.1 // indirect
 	github.com/btcsuite/btcutil v1.0.2 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.2 // indirect
 	github.com/lib/pq v1.10.9 // indirect
