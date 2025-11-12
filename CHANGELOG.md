@@ -1,5 +1,21 @@
 # chainlink-deployments-framework
 
+## 0.65.0
+
+### Minor Changes
+
+- [#568](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/568) [`109b6f8`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/109b6f83cf7363665f02bba420fc149d677fccc0) Thanks [@giogam](https://github.com/giogam)! - feat: adds HMAC authentication support for catalog remote
+
+- [#559](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/559) [`57ee135`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/57ee135753c5e7cabb5c14777d8fdf043f8b90a0) Thanks [@ecPablo](https://github.com/ecPablo)! - Add support to decode proposals that use EIP-1967 proxies
+
+- [#562](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/562) [`aa38817`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/aa38817cb9b737abbc0af8de275521f8b5e5ee06) Thanks [@jkongie](https://github.com/jkongie)! - Removes the import of a root `go.mod` from a scaffolded domain
+
+- [#567](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/567) [`d06057a`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/d06057a020107659cf0b0e3697b43006bdb784f6) Thanks [@JohnChangUK](https://github.com/JohnChangUK)! - Sui MCMS upgrade
+
+### Patch Changes
+
+- [#530](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/530) [`dc2c113`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/dc2c113025c1c22f1384e33b1a10535df4ccfa30) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix: make config files and chain credentials optional
+
 ## 0.64.0
 
 ### Minor Changes
