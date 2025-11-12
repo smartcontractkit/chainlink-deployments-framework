@@ -63,7 +63,7 @@ func (g *confirmFuncGeth) Generate(
 		ctxTimeout, cancel := context.WithTimeout(ctx, g.waitMinedTimeout)
 		defer cancel()
 
-		receipt, err := WaitMinedWithInterval(ctxTimeout, g.tickInterval, client, tx.Hash())
+		receipt, err := waitMinedWithInterval(ctxTimeout, g.tickInterval, client, tx.Hash())
 		if err != nil {
 			return 0, fmt.Errorf("tx %s failed to confirm for selector %d: %w",
 				tx.Hash().Hex(), selector, err,
@@ -170,8 +170,8 @@ func (g *confirmFuncSeth) Generate(
 	}, nil
 }
 
-// WaitMinedWithInterval is a custom function that allows to get receipts faster for networks with instant blocks
-func WaitMinedWithInterval(ctx context.Context, tick time.Duration, b bind.DeployBackend, txHash common.Hash) (*types.Receipt, error) {
+// waitMinedWithInterval is a custom function that allows to get receipts faster for networks with instant blocks
+func waitMinedWithInterval(ctx context.Context, tick time.Duration, b bind.DeployBackend, txHash common.Hash) (*types.Receipt, error) {
 	queryTicker := time.NewTicker(tick)
 	defer queryTicker.Stop()
 	for {
