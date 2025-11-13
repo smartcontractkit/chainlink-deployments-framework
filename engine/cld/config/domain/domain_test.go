@@ -67,6 +67,11 @@ func TestDatastoreType_IsValid(t *testing.T) {
 			expected:  true,
 		},
 		{
+			name:      "all is valid",
+			datastore: DatastoreTypeAll,
+			expected:  true,
+		},
+		{
 			name:      "invalid value",
 			datastore: DatastoreType("invalid"),
 			expected:  false,
@@ -130,6 +135,14 @@ func TestEnvironment_Validate(t *testing.T) {
 			environment: Environment{
 				NetworkTypes: []string{"mainnet"},
 				Datastore:    DatastoreTypeCatalog,
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid environment with all datastore",
+			environment: Environment{
+				NetworkTypes: []string{"testnet"},
+				Datastore:    DatastoreTypeAll,
 			},
 			wantErr: false,
 		},
