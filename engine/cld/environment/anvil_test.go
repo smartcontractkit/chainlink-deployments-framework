@@ -150,6 +150,8 @@ func Test_isPublicRPC(t *testing.T) {
 		{"https://gap-grpc-job-distributor.public.main.stage.cldev.sh/", false},
 		{"https://gap-ws-job-distributor.public.main.stage.cldev.sh/", false},
 		{"https://gap-grpc-chainlink-catalog.public.main.stage.cldev.sh/", false},
+		{"https://gap-rpc-proxy.public.main.prod.cldev.sh:4443/ethereum/sepolia/archive", false},
+		{"https://gap-rpc-proxy.public.main.prod.cldev.sh:9443/ethereum/sepolia/archive", false},
 		{"", true},
 		{"http://", true},
 		{"https://", true},
