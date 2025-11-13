@@ -93,23 +93,15 @@ jobs:
         id: get-catalog-tag
         run: |
           # Fetch the latest image tag from ECR based on push date
-          # Get the most recently pushed image's tags and find the highest semver tag
+          # Get images sorted by push date (latest first) and take the first semver tag
           LATEST_TAG=$(aws ecr describe-images \
             --repository-name op-catalog-service \
             --region ${{ secrets.AWS_REGION }} \
             --registry-id ${{ secrets.AWS_ACCOUNT_NUMBER_PROD }} \
-            --query 'reverse(sort_by(imageDetails,& imagePushedAt))' \
+            --query 'reverse(sort_by(imageDetails,& imagePushedAt))[0].imageTags' \
             --output json | \
-            jq -r '
-              .[] |
-              select(.imageTags != null) |
-              .imageTags[] |
-              select(test("^v[0-9]+\\.[0-9]+\\.[0-9]+$"))
-            ' | \
-            sed 's/^v//' | \
-            sort -t. -k1,1n -k2,2n -k3,3n | \
-            tail -1 | \
-            sed 's/^/v/')
+            jq -r '.[] | select(test("^v[0-9]+\\.[0-9]+\\.[0-9]+$"))' | \
+            head -1)
           
           if [[ -z "${LATEST_TAG}" ]]; then
             echo "::error::Could not find a valid semantic version tag in ECR"
