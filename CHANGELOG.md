@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.66.1
+
+### Patch Changes
+
+- [#574](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/574) [`2077cd6`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/2077cd61f5f18d6d9c5c009d30394b4269d1663e) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - fix: handle ports in regexp used to identify public rpc urls
+
 ## 0.66.0
 
 ### Minor Changes
