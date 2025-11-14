@@ -17,6 +17,9 @@ const (
 	DatastoreTypeFile DatastoreType = "file"
 	// DatastoreTypeCatalog indicates data should be persisted to the remote catalog service.
 	DatastoreTypeCatalog DatastoreType = "catalog"
+	// DatastoreTypeAll indicates data should be persisted to both local JSON files and the remote catalog service.
+	// This is useful to keep backward compatibility during the transition period from file-based to remote catalog.
+	DatastoreTypeAll DatastoreType = "all"
 )
 
 // String returns the string representation of the DatastoreType.
@@ -26,7 +29,7 @@ func (d DatastoreType) String() string {
 
 // IsValid checks if the DatastoreType is a valid value.
 func (d DatastoreType) IsValid() bool {
-	return d == DatastoreTypeFile || d == DatastoreTypeCatalog
+	return d == DatastoreTypeFile || d == DatastoreTypeCatalog || d == DatastoreTypeAll
 }
 
 // Environment represents a single environment configuration.
@@ -59,7 +62,7 @@ func (e *Environment) validate() error {
 
 	// Validate datastore field if provided
 	if e.Datastore != "" && !e.Datastore.IsValid() {
-		return fmt.Errorf("invalid datastore value: %s (must be 'file' or 'catalog')", e.Datastore)
+		return fmt.Errorf("invalid datastore value: %s (must be 'file', 'catalog', or 'all')", e.Datastore)
 	}
 
 	return nil
