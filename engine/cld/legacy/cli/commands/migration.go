@@ -497,17 +497,17 @@ func (Commands) newMigrationDataStoreMerge(domain domain.Domain) *cobra.Command 
 			}
 
 			// Determine which merge method to use based on datastore configuration
-			if cfg.DatastoreType == cfgdomain.DatastoreTypeCatalog {
-				ctx := cmd.Context()
+			switch cfg.DatastoreType {
+			case cfgdomain.DatastoreTypeCatalog:
 				// Catalog mode - merge to catalog service
 				cmd.Printf("📡 Using catalog datastore mode (endpoint: %s)\n", cfg.Env.Catalog.GRPC)
 
-				catalog, catalogErr := cldcatalog.LoadCatalog(ctx, envKey, cfg, domain)
+				catalog, catalogErr := cldcatalog.LoadCatalog(cmd.Context(), envKey, cfg, domain)
 				if catalogErr != nil {
 					return fmt.Errorf("failed to load catalog: %w", catalogErr)
 				}
 
-				if err := envDir.MergeMigrationDataStoreCatalog(ctx, migrationName, timestamp, catalog); err != nil {
+				if err := envDir.MergeMigrationDataStoreCatalog(cmd.Context(), migrationName, timestamp, catalog); err != nil {
 					return fmt.Errorf("error during data store merge to catalog for %s %s %s: %w",
 						domain, envKey, migrationName, err,
 					)
@@ -516,7 +516,7 @@ func (Commands) newMigrationDataStoreMerge(domain domain.Domain) *cobra.Command 
 				cmd.Printf("✅ Merged data stores to catalog for %s %s %s\n",
 					domain, envKey, migrationName,
 				)
-			} else {
+			case cfgdomain.DatastoreTypeFile:
 				// File mode - merge to local files
 				cmd.Printf("📁 Using file-based datastore mode\n")
 
@@ -529,6 +529,32 @@ func (Commands) newMigrationDataStoreMerge(domain domain.Domain) *cobra.Command 
 				cmd.Printf("✅ Merged data stores to local files for %s %s %s\n",
 					domain, envKey, migrationName,
 				)
+			case cfgdomain.DatastoreTypeAll:
+				// All mode - merge to both catalog and local files
+				cmd.Printf("📡 Using all datastore mode (catalog: %s, file: %s)\n", cfg.Env.Catalog.GRPC, envDir.DataStoreDirPath())
+
+				catalog, catalogErr := cldcatalog.LoadCatalog(cmd.Context(), envKey, cfg, domain)
+				if catalogErr != nil {
+					return fmt.Errorf("failed to load catalog: %w", catalogErr)
+				}
+
+				if err := envDir.MergeMigrationDataStoreCatalog(cmd.Context(), migrationName, timestamp, catalog); err != nil {
+					return fmt.Errorf("error during data store merge to catalog for %s %s %s: %w",
+						domain, envKey, migrationName, err,
+					)
+				}
+
+				if err := envDir.MergeMigrationDataStore(migrationName, timestamp); err != nil {
+					return fmt.Errorf("error during data store merge to file for %s %s %s: %w",
+						domain, envKey, migrationName, err,
+					)
+				}
+
+				cmd.Printf("✅ Merged data stores to both catalog and local files for %s %s %s\n",
+					domain, envKey, migrationName,
+				)
+			default:
+				return fmt.Errorf("invalid datastore type: %s", cfg.DatastoreType)
 			}
 
 			return nil
