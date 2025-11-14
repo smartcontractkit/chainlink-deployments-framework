@@ -1178,7 +1178,7 @@ func isNonceError(rawErr error, selector uint64) (bool, error) {
 	case chainsel.FamilyEVM:
 		decodedErr := cldf.DecodeErr(bindings.ManyChainMultiSigABI, rawErr)
 		// Check if the error contains PostOpCountReached
-		if strings.Contains(decodedErr.Error(), "PostOpCountReached") {
+		if strings.Contains(decodedErr.Error(), "WrongNonce") || strings.Contains(decodedErr.Error(), "PostOpCountReached") {
 			return true, nil
 		}
 
