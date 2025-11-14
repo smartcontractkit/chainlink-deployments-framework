@@ -1,5 +1,13 @@
 # chainlink-deployments-framework
 
+## 0.67.0
+
+### Minor Changes
+
+- [#577](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/577) [`a1074b1`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/a1074b15fe62936ebd4b19e2941cc9a144416c1d) Thanks [@jkongie](https://github.com/jkongie)! - Updates `go-ethereum` to v1.16.7
+
+- [#579](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/579) [`5d15395`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/5d153955f7b8b48f8f36d1585eda337940aaff01) Thanks [@giogam](https://github.com/giogam)! - feat: adds 'all' datastore config option
+
 ## 0.66.1
 
 ### Patch Changes
