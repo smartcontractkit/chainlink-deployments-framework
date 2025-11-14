@@ -70,3 +70,17 @@ func TestNewCatalogClient_Success(t *testing.T) {
 		})
 	}
 }
+
+func TestCatalogClient_Close(t *testing.T) {
+	t.Parallel()
+
+	client, err := remote.NewCatalogClient(t.Context(), remote.CatalogConfig{
+		GRPC:  "localhost:9090",
+		Creds: insecure.NewCredentials(),
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, client)
+
+	require.NoError(t, client.Close())
+}
