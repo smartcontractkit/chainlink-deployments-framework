@@ -172,6 +172,7 @@ func (p *CTFChainProvider) startContainer(chainID string) (string, ton.APIClient
 	client.SetTrustedBlock(mb)
 
 	retryCount := p.getRetryCount()
+
 	return url, client.WithRetry(retryCount)
 }
 
@@ -224,6 +225,7 @@ func getMasterchainBlockID(t *testing.T, client *ton.APIClient) *ton.BlockIDExt 
 	err := retry.Do(func() error {
 		var err error
 		masterchainBlockID, err = client.GetMasterchainInfo(t.Context())
+
 		return err
 	},
 		retry.Context(t.Context()),
@@ -257,6 +259,7 @@ func (p *CTFChainProvider) getRetryCount() int {
 	if p.config.RetryCount > 0 {
 		return p.config.RetryCount
 	}
+
 	return cldf_ton.RetryCountDefault
 }
 
