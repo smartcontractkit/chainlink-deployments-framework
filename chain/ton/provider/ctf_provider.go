@@ -11,16 +11,17 @@ import (
 	"time"
 
 	"github.com/avast/retry-go/v4"
-	chainsel "github.com/smartcontractkit/chain-selectors"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
-	"github.com/smartcontractkit/freeport"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/xssnick/tonutils-go/address"
 	"github.com/xssnick/tonutils-go/tlb"
 	"github.com/xssnick/tonutils-go/ton"
 	"github.com/xssnick/tonutils-go/ton/wallet"
+
+	chainsel "github.com/smartcontractkit/chain-selectors"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
+	"github.com/smartcontractkit/freeport"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	cldf_ton "github.com/smartcontractkit/chainlink-deployments-framework/chain/ton"
@@ -35,6 +36,9 @@ type CTFChainProviderConfig struct {
 	// Optional: Docker image to use for the TON localnet. If empty, defaults to ghcr.io/neodix42/mylocalton-docker:v3.7
 	Image string
 
+	// Optional: Retry count for APIClient, if empty, defaults to {retryCountDefault}
+	RetryCount int
+
 	// Optional: Custom environment variables to pass to the TON container.
 	// Example: map[string]string{"NEXT_BLOCK_GENERATION_DELAY": "0.5"}
 	CustomEnv map[string]string
@@ -44,6 +48,10 @@ type CTFChainProviderConfig struct {
 func (c CTFChainProviderConfig) validate() error {
 	if c.Once == nil {
 		return errors.New("sync.Once instance is required")
+	}
+
+	if c.Image != "" && !strings.Contains(c.Image, "ghcr.io/neodix42/mylocalton-docker") {
+		return errors.New("supported image must be from ghcr.io/neodix42/mylocalton-docker")
 	}
 
 	return nil
@@ -110,7 +118,7 @@ func (p *CTFChainProvider) Initialize(_ context.Context) (chain.BlockChain, erro
 	return *p.chain, nil
 }
 
-func (p *CTFChainProvider) startContainer(chainID string) (string, *ton.APIClient) {
+func (p *CTFChainProvider) startContainer(chainID string) (string, ton.APIClientWrapped) {
 	var (
 		attempts = uint(10)
 		url      string
@@ -153,7 +161,7 @@ func (p *CTFChainProvider) startContainer(chainID string) (string, *ton.APIClien
 	)
 	require.NoError(p.t, err, "Failed to start CTF Ton container after %d attempts", attempts)
 
-	connectionPool, err := createLiteclientConnectionPool(p.t.Context(), url)
+	connectionPool, err := CreateLiteclientConnectionPool(p.t.Context(), url)
 	require.NoError(p.t, err)
 
 	client := ton.NewAPIClient(connectionPool, ton.ProofCheckPolicyFast)
@@ -163,7 +171,8 @@ func (p *CTFChainProvider) startContainer(chainID string) (string, *ton.APIClien
 	// set starting point to verify master block proofs chain
 	client.SetTrustedBlock(mb)
 
-	return url, client
+	retryCount := p.getRetryCount()
+	return url, client.WithRetry(retryCount)
 }
 
 // Note: this utility functions can be replaced once we have in the chainlink-ton utils package
@@ -242,6 +251,13 @@ func (p *CTFChainProvider) ChainSelector() uint64 {
 // before using this method to ensure the chain is properly set up.
 func (p *CTFChainProvider) BlockChain() chain.BlockChain {
 	return *p.chain
+}
+
+func (p *CTFChainProvider) getRetryCount() int {
+	if p.config.RetryCount > 0 {
+		return p.config.RetryCount
+	}
+	return cldf_ton.RetryCountDefault
 }
 
 // getImage returns the configured Docker image, or the default if not specified.

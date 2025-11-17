@@ -8,13 +8,17 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/common"
 )
 
+const (
+	RetryCountDefault = 5
+)
+
 type ChainMetadata = common.ChainMetadata
 
 // Chain represents a TON chain.
 type Chain struct {
-	ChainMetadata                  // Contains canonical chain identifier
-	Client        *ton.APIClient   // APIClient for Lite Server connection
-	Wallet        *wallet.Wallet   // Wallet abstraction (signing, sending)
-	WalletAddress *address.Address // Address of deployer wallet
-	URL           string           // Liteserver URL
+	ChainMetadata                      // Contains canonical chain identifier
+	Client        ton.APIClientWrapped // APIClient for Lite Server connection
+	Wallet        *wallet.Wallet       // Wallet abstraction (signing, sending)
+	WalletAddress *address.Address     // Address of deployer wallet
+	URL           string               // Liteserver URL
 }

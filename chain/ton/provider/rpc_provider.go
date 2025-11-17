@@ -36,6 +36,8 @@ type RPCChainProviderConfig struct {
 	// Optional: The TON wallet version to use. Supported versions are: V1R1, V1R2, V1R3, V2R1,
 	// V2R2, V3R1, V3R2, V4R1, V4R2 and V5R1. If no value provided, V5R1 is used as default.
 	WalletVersion WalletVersion
+	// Optional: Retry count for APIClient, if empty, defaults to 5
+	RetryCount int
 }
 
 // validateLiteserverURL validates the format of a liteserver URL
@@ -110,8 +112,8 @@ func NewRPCChainProvider(selector uint64, config RPCChainProviderConfig) *RPCCha
 }
 
 // setupConnection creates and tests a connection to the TON liteserver
-func setupConnection(ctx context.Context, liteserverURL string) (*tonlib.APIClient, error) {
-	connectionPool, err := createLiteclientConnectionPool(ctx, liteserverURL)
+func setupConnection(ctx context.Context, liteserverURL string, retryCount int) (tonlib.APIClientWrapped, error) {
+	connectionPool, err := CreateLiteclientConnectionPool(ctx, liteserverURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to liteserver: %w", err)
 	}
@@ -127,11 +129,11 @@ func setupConnection(ctx context.Context, liteserverURL string) (*tonlib.APIClie
 	// Set starting point to verify master block proofs chain
 	api.SetTrustedBlock(mb)
 
-	return api, nil
+	return api.WithRetry(retryCount), nil
 }
 
 // createWallet creates a TON wallet from the given private key and API client
-func createWallet(api *tonlib.APIClient, privateKey []byte, version WalletVersion) (*wallet.Wallet, error) {
+func createWallet(api tonlib.APIClientWrapped, privateKey []byte, version WalletVersion) (*wallet.Wallet, error) {
 	walletConfig, err := getWalletVersionConfig(version)
 	if err != nil {
 		return nil, fmt.Errorf("unsupported wallet version: %w", err)
@@ -156,7 +158,7 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 	}
 
 	// Setup connection to TON network
-	api, err := setupConnection(ctx, p.config.HTTPURL)
+	api, err := setupConnection(ctx, p.config.HTTPURL, p.getRetryCount())
 	if err != nil {
 		return nil, err
 	}
@@ -186,8 +188,8 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 	return *p.chain, nil
 }
 
-// createLiteclientConnectionPool creates connection pool returning concrete type for production use
-func createLiteclientConnectionPool(ctx context.Context, liteserverURL string) (*liteclient.ConnectionPool, error) {
+// CreateLiteclientConnectionPool creates connection pool returning concrete type for production use
+func CreateLiteclientConnectionPool(ctx context.Context, liteserverURL string) (*liteclient.ConnectionPool, error) {
 	// Validate URL format first
 	if err := validateLiteserverURL(liteserverURL); err != nil {
 		return nil, err
@@ -238,4 +240,11 @@ func (p *RPCChainProvider) ChainSelector() uint64 {
 // before using this method to ensure the chain is properly set up.
 func (p *RPCChainProvider) BlockChain() chain.BlockChain {
 	return *p.chain
+}
+
+func (p *RPCChainProvider) getRetryCount() int {
+	if p.config.RetryCount > 0 {
+		return p.config.RetryCount
+	}
+	return ton.RetryCountDefault
 }
