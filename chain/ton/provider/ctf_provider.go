@@ -31,6 +31,13 @@ type CTFChainProviderConfig struct {
 	// Required: A sync.Once instance to ensure that the CTF framework only sets up the new
 	// DefaultNetwork once
 	Once *sync.Once
+
+	// Optional: Docker image to use for the TON localnet. If empty, defaults to ghcr.io/neodix42/mylocalton-docker:v3.7
+	Image string
+
+	// Optional: Custom environment variables to pass to the TON container.
+	// Example: map[string]string{"NEXT_BLOCK_GENERATION_DELAY": "0.5"}
+	CustomEnv map[string]string
 }
 
 // validate checks if the CTFChainProviderConfig is valid.
@@ -119,10 +126,11 @@ func (p *CTFChainProvider) startContainer(chainID string) (string, *ton.APIClien
 
 		// spin up mylocalton with CTFv2
 		output, rerr := blockchain.NewBlockchainNetwork(&blockchain.Input{
-			Type:    blockchain.TypeTon,
-			ChainID: chainID,
-			Port:    strconv.Itoa(port),
-			Image:   "ghcr.io/neodix42/mylocalton-docker:v3.7",
+			Type:      blockchain.TypeTon,
+			ChainID:   chainID,
+			Port:      strconv.Itoa(port),
+			Image:     p.getImage(),
+			CustomEnv: p.config.CustomEnv,
 		})
 		if rerr != nil {
 			// Return the ports to freeport to avoid leaking them during retries
@@ -207,7 +215,6 @@ func getMasterchainBlockID(t *testing.T, client *ton.APIClient) *ton.BlockIDExt 
 	err := retry.Do(func() error {
 		var err error
 		masterchainBlockID, err = client.GetMasterchainInfo(t.Context())
-
 		return err
 	},
 		retry.Context(t.Context()),
@@ -235,4 +242,12 @@ func (p *CTFChainProvider) ChainSelector() uint64 {
 // before using this method to ensure the chain is properly set up.
 func (p *CTFChainProvider) BlockChain() chain.BlockChain {
 	return *p.chain
+}
+
+// getImage returns the configured Docker image, or the default if not specified.
+func (p *CTFChainProvider) getImage() string {
+	if p.config.Image != "" {
+		return p.config.Image
+	}
+	return "ghcr.io/neodix42/mylocalton-docker:v3.7" // backwards compatibility with old version
 }
