@@ -113,7 +113,7 @@ func NewRPCChainProvider(selector uint64, config RPCChainProviderConfig) *RPCCha
 
 // setupConnection creates and tests a connection to the TON liteserver
 func setupConnection(ctx context.Context, liteserverURL string, retryCount int) (tonlib.APIClientWrapped, error) {
-	connectionPool, err := CreateLiteclientConnectionPool(ctx, liteserverURL)
+	connectionPool, err := createLiteclientConnectionPool(ctx, liteserverURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to liteserver: %w", err)
 	}
@@ -188,8 +188,8 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 	return *p.chain, nil
 }
 
-// CreateLiteclientConnectionPool creates connection pool returning concrete type for production use
-func CreateLiteclientConnectionPool(ctx context.Context, liteserverURL string) (*liteclient.ConnectionPool, error) {
+// createLiteclientConnectionPool creates connection pool returning concrete type for production use
+func createLiteclientConnectionPool(ctx context.Context, liteserverURL string) (*liteclient.ConnectionPool, error) {
 	// Validate URL format first
 	if err := validateLiteserverURL(liteserverURL); err != nil {
 		return nil, err
