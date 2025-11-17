@@ -222,3 +222,44 @@ func Test_getWalletVersionConfig(t *testing.T) {
 		})
 	}
 }
+
+func Test_RPCChainProvider_getRetryCount(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		retryCount int
+		want       int
+	}{
+		{
+			name:       "returns configured retry count when greater than zero",
+			retryCount: 10,
+			want:       10,
+		},
+		{
+			name:       "returns default retry count when config is zero",
+			retryCount: 0,
+			want:       tonchain.RetryCountDefault,
+		},
+		{
+			name:       "returns default retry count when config is negative",
+			retryCount: -1,
+			want:       tonchain.RetryCountDefault,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			p := &RPCChainProvider{
+				config: RPCChainProviderConfig{
+					RetryCount: tt.retryCount,
+				},
+			}
+
+			got := p.getRetryCount()
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
