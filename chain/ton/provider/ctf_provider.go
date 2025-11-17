@@ -36,7 +36,8 @@ type CTFChainProviderConfig struct {
 	// Optional: Docker image to use for the TON localnet. If empty, defaults to ghcr.io/neodix42/mylocalton-docker:v3.7
 	Image string
 
-	// Optional: Retry count for APIClient, if empty, defaults to {retryCountDefault}
+	// Optional: Retry count for APIClient. Default is 0 (unlimited retries).
+	// Set to positive value for specific retry count.
 	RetryCount int
 
 	// Optional: Custom environment variables to pass to the TON container.
@@ -256,11 +257,7 @@ func (p *CTFChainProvider) BlockChain() chain.BlockChain {
 }
 
 func (p *CTFChainProvider) getRetryCount() int {
-	if p.config.RetryCount > 0 {
-		return p.config.RetryCount
-	}
-
-	return cldf_ton.RetryCountDefault
+	return p.config.RetryCount
 }
 
 // getImage returns the configured Docker image, or the default if not specified.

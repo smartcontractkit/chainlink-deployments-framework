@@ -232,19 +232,14 @@ func Test_RPCChainProvider_getRetryCount(t *testing.T) {
 		want       int
 	}{
 		{
-			name:       "returns configured retry count when greater than zero",
+			name:       "returns configured retry count",
 			retryCount: 10,
 			want:       10,
 		},
 		{
-			name:       "returns default retry count when config is zero",
+			name:       "returns zero for unlimited retries",
 			retryCount: 0,
-			want:       tonchain.RetryCountDefault,
-		},
-		{
-			name:       "returns default retry count when config is negative",
-			retryCount: -1,
-			want:       tonchain.RetryCountDefault,
+			want:       0,
 		},
 	}
 
@@ -269,9 +264,10 @@ func Test_NewRPCChainProvider(t *testing.T) {
 
 	selector := uint64(12345)
 	config := RPCChainProviderConfig{
-		HTTPURL:       "liteserver://publickey@localhost:8080",
-		WalletVersion: WalletVersionV5R1,
-		RetryCount:    10,
+		HTTPURL:           "liteserver://publickey@localhost:8080",
+		DeployerSignerGen: PrivateKeyRandom(),
+		WalletVersion:     WalletVersionV5R1,
+		RetryCount:        10,
 	}
 
 	p := NewRPCChainProvider(selector, config)

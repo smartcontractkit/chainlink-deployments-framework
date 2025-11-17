@@ -36,7 +36,8 @@ type RPCChainProviderConfig struct {
 	// Optional: The TON wallet version to use. Supported versions are: V1R1, V1R2, V1R3, V2R1,
 	// V2R2, V3R1, V3R2, V4R1, V4R2 and V5R1. If no value provided, V5R1 is used as default.
 	WalletVersion WalletVersion
-	// Optional: Retry count for APIClient, if empty, defaults to 5
+	// Optional: Retry count for APIClient. Default is 0 (unlimited retries).
+	// Set to positive value for specific retry count.
 	RetryCount int
 }
 
@@ -243,9 +244,5 @@ func (p *RPCChainProvider) BlockChain() chain.BlockChain {
 }
 
 func (p *RPCChainProvider) getRetryCount() int {
-	if p.config.RetryCount > 0 {
-		return p.config.RetryCount
-	}
-
-	return ton.RetryCountDefault
+	return p.config.RetryCount
 }
