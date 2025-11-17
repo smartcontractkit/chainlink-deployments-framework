@@ -246,5 +246,6 @@ func (p *RPCChainProvider) getRetryCount() int {
 	if p.config.RetryCount > 0 {
 		return p.config.RetryCount
 	}
+
 	return ton.RetryCountDefault
 }

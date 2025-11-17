@@ -268,5 +268,6 @@ func (p *CTFChainProvider) getImage() string {
 	if p.config.Image != "" {
 		return p.config.Image
 	}
+
 	return "ghcr.io/neodix42/mylocalton-docker:v3.7" // backwards compatibility with old version
 }
