@@ -28,12 +28,12 @@ import (
 )
 
 const (
-	// DefaultTONImage is the default Docker image used for TON localnet.
+	// defaultTONImage is the default Docker image used for TON localnet.
 	// Only images from this repository are supported.
-	DefaultTONImage = "ghcr.io/neodix42/mylocalton-docker:v3.7"
+	defaultTONImage = "ghcr.io/neodix42/mylocalton-docker:v3.7"
 
-	// SupportedTONImageRepository is the only supported Docker image repository for TON localnet.
-	SupportedTONImageRepository = "ghcr.io/neodix42/mylocalton-docker"
+	// supportedTONImageRepository is the only supported Docker image repository for TON localnet.
+	supportedTONImageRepository = "ghcr.io/neodix42/mylocalton-docker"
 )
 
 // CTFChainProviderConfig holds the configuration to initialize the CTFChainProvider.
@@ -42,8 +42,8 @@ type CTFChainProviderConfig struct {
 	// DefaultNetwork once
 	Once *sync.Once
 
-	// Optional: Docker image to use for the TON localnet. If empty, defaults to DefaultTONImage.
-	// Note: Only images from SupportedTONImageRepository are supported.
+	// Optional: Docker image to use for the TON localnet. If empty, defaults to defaultTONImage.
+	// Note: Only images from supportedTONImageRepository are supported.
 	Image string
 
 	// Optional: Retry count for APIClient. Default is 0 (unlimited retries).
@@ -61,8 +61,8 @@ func (c CTFChainProviderConfig) validate() error {
 		return errors.New("sync.Once instance is required")
 	}
 
-	if c.Image != "" && !strings.Contains(c.Image, SupportedTONImageRepository) {
-		return fmt.Errorf("unsupported image %q: must be from %s", c.Image, SupportedTONImageRepository)
+	if c.Image != "" && !strings.Contains(c.Image, supportedTONImageRepository) {
+		return fmt.Errorf("unsupported image %q: must be from %s", c.Image, supportedTONImageRepository)
 	}
 
 	return nil
@@ -276,5 +276,5 @@ func (p *CTFChainProvider) getImage() string {
 		return p.config.Image
 	}
 
-	return DefaultTONImage
+	return defaultTONImage
 }
