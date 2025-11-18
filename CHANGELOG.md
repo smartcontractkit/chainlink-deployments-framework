@@ -1,5 +1,17 @@
 # chainlink-deployments-framework
 
+## 0.67.0
+
+### Minor Changes
+
+- [#573](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/573) [`f7a31c2`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/f7a31c2b79a846f36b4b6116222c5498b5b3742f) Thanks [@DimitriosNaikopoulos](https://github.com/DimitriosNaikopoulos)! - add grpc keepalive, retries and connection closure functionality
+
+- [#580](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/580) [`0baab99`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/0baab9933ad267632f44ef0ec928cfb25b50481e) Thanks [@jadepark-dev](https://github.com/jadepark-dev)! - expose TON CTF configs to caller
+
+- [#577](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/577) [`a1074b1`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/a1074b15fe62936ebd4b19e2941cc9a144416c1d) Thanks [@jkongie](https://github.com/jkongie)! - Updates `go-ethereum` to v1.16.7
+
+- [#579](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/579) [`5d15395`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/5d153955f7b8b48f8f36d1585eda337940aaff01) Thanks [@giogam](https://github.com/giogam)! - feat: adds 'all' datastore config option
+
 ## 0.66.1
 
 ### Patch Changes
