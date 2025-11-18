@@ -27,13 +27,23 @@ import (
 	cldf_ton "github.com/smartcontractkit/chainlink-deployments-framework/chain/ton"
 )
 
+const (
+	// DefaultTONImage is the default Docker image used for TON localnet.
+	// Only images from this repository are supported.
+	DefaultTONImage = "ghcr.io/neodix42/mylocalton-docker:v3.7"
+
+	// SupportedTONImageRepository is the only supported Docker image repository for TON localnet.
+	SupportedTONImageRepository = "ghcr.io/neodix42/mylocalton-docker"
+)
+
 // CTFChainProviderConfig holds the configuration to initialize the CTFChainProvider.
 type CTFChainProviderConfig struct {
 	// Required: A sync.Once instance to ensure that the CTF framework only sets up the new
 	// DefaultNetwork once
 	Once *sync.Once
 
-	// Optional: Docker image to use for the TON localnet. If empty, defaults to ghcr.io/neodix42/mylocalton-docker:v3.7
+	// Optional: Docker image to use for the TON localnet. If empty, defaults to DefaultTONImage.
+	// Note: Only images from SupportedTONImageRepository are supported.
 	Image string
 
 	// Optional: Retry count for APIClient. Default is 0 (unlimited retries).
@@ -51,8 +61,8 @@ func (c CTFChainProviderConfig) validate() error {
 		return errors.New("sync.Once instance is required")
 	}
 
-	if c.Image != "" && !strings.Contains(c.Image, "ghcr.io/neodix42/mylocalton-docker") {
-		return errors.New("supported image must be from ghcr.io/neodix42/mylocalton-docker")
+	if c.Image != "" && !strings.Contains(c.Image, SupportedTONImageRepository) {
+		return fmt.Errorf("supported image must be from %s", SupportedTONImageRepository)
 	}
 
 	return nil
@@ -266,5 +276,5 @@ func (p *CTFChainProvider) getImage() string {
 		return p.config.Image
 	}
 
-	return "ghcr.io/neodix42/mylocalton-docker:v3.7" // backwards compatibility with old version
+	return DefaultTONImage
 }

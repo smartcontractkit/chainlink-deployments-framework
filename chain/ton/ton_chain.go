@@ -8,10 +8,6 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/common"
 )
 
-const (
-	RetryCountDefault = 5
-)
-
 type ChainMetadata = common.ChainMetadata
 
 // Chain represents a TON chain.
