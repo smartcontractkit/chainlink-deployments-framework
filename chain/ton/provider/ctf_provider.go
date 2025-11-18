@@ -11,10 +11,6 @@ import (
 	"time"
 
 	"github.com/avast/retry-go/v4"
-	chainsel "github.com/smartcontractkit/chain-selectors"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
-	"github.com/smartcontractkit/freeport"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/xssnick/tonutils-go/address"
@@ -22,8 +18,22 @@ import (
 	"github.com/xssnick/tonutils-go/ton"
 	"github.com/xssnick/tonutils-go/ton/wallet"
 
+	chainsel "github.com/smartcontractkit/chain-selectors"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
+	"github.com/smartcontractkit/freeport"
+
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	cldf_ton "github.com/smartcontractkit/chainlink-deployments-framework/chain/ton"
+)
+
+const (
+	// defaultTONImage is the default Docker image used for TON localnet.
+	// Only images from this repository are supported.
+	defaultTONImage = "ghcr.io/neodix42/mylocalton-docker:v3.7"
+
+	// supportedTONImageRepository is the only supported Docker image repository for TON localnet.
+	supportedTONImageRepository = "ghcr.io/neodix42/mylocalton-docker"
 )
 
 // CTFChainProviderConfig holds the configuration to initialize the CTFChainProvider.
@@ -31,12 +41,28 @@ type CTFChainProviderConfig struct {
 	// Required: A sync.Once instance to ensure that the CTF framework only sets up the new
 	// DefaultNetwork once
 	Once *sync.Once
+
+	// Optional: Docker image to use for the TON localnet. If empty, defaults to defaultTONImage.
+	// Note: Only images from supportedTONImageRepository are supported.
+	Image string
+
+	// Optional: Retry count for APIClient. Default is 0 (unlimited retries).
+	// Set to positive value for specific retry count.
+	RetryCount int
+
+	// Optional: Custom environment variables to pass to the TON container.
+	// Example: map[string]string{"NEXT_BLOCK_GENERATION_DELAY": "0.5"}
+	CustomEnv map[string]string
 }
 
 // validate checks if the CTFChainProviderConfig is valid.
 func (c CTFChainProviderConfig) validate() error {
 	if c.Once == nil {
 		return errors.New("sync.Once instance is required")
+	}
+
+	if c.Image != "" && !strings.Contains(c.Image, supportedTONImageRepository) {
+		return fmt.Errorf("unsupported image %q: must be from %s", c.Image, supportedTONImageRepository)
 	}
 
 	return nil
@@ -103,7 +129,7 @@ func (p *CTFChainProvider) Initialize(_ context.Context) (chain.BlockChain, erro
 	return *p.chain, nil
 }
 
-func (p *CTFChainProvider) startContainer(chainID string) (string, *ton.APIClient) {
+func (p *CTFChainProvider) startContainer(chainID string) (string, ton.APIClientWrapped) {
 	var (
 		attempts = uint(10)
 		url      string
@@ -119,10 +145,11 @@ func (p *CTFChainProvider) startContainer(chainID string) (string, *ton.APIClien
 
 		// spin up mylocalton with CTFv2
 		output, rerr := blockchain.NewBlockchainNetwork(&blockchain.Input{
-			Type:    blockchain.TypeTon,
-			ChainID: chainID,
-			Port:    strconv.Itoa(port),
-			Image:   "ghcr.io/neodix42/mylocalton-docker:v3.7",
+			Type:      blockchain.TypeTon,
+			ChainID:   chainID,
+			Port:      strconv.Itoa(port),
+			Image:     p.getImage(),
+			CustomEnv: p.config.CustomEnv,
 		})
 		if rerr != nil {
 			// Return the ports to freeport to avoid leaking them during retries
@@ -155,7 +182,9 @@ func (p *CTFChainProvider) startContainer(chainID string) (string, *ton.APIClien
 	// set starting point to verify master block proofs chain
 	client.SetTrustedBlock(mb)
 
-	return url, client
+	retryCount := p.getRetryCount()
+
+	return url, client.WithRetry(retryCount)
 }
 
 // Note: this utility functions can be replaced once we have in the chainlink-ton utils package
@@ -235,4 +264,17 @@ func (p *CTFChainProvider) ChainSelector() uint64 {
 // before using this method to ensure the chain is properly set up.
 func (p *CTFChainProvider) BlockChain() chain.BlockChain {
 	return *p.chain
+}
+
+func (p *CTFChainProvider) getRetryCount() int {
+	return p.config.RetryCount
+}
+
+// getImage returns the configured Docker image, or the default if not specified.
+func (p *CTFChainProvider) getImage() string {
+	if p.config.Image != "" {
+		return p.config.Image
+	}
+
+	return defaultTONImage
 }
