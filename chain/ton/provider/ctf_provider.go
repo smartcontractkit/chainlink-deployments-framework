@@ -62,7 +62,7 @@ func (c CTFChainProviderConfig) validate() error {
 	}
 
 	if c.Image != "" && !strings.Contains(c.Image, SupportedTONImageRepository) {
-		return fmt.Errorf("supported image must be from %s", SupportedTONImageRepository)
+		return fmt.Errorf("unsupported image %q: must be from %s", c.Image, SupportedTONImageRepository)
 	}
 
 	return nil
