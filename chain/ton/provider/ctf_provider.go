@@ -274,6 +274,7 @@ func getMasterchainBlockID(ctx context.Context, client ton.APIClientWrapped) (*t
 	err := retry.Do(func() error {
 		var err error
 		masterchainBlockID, err = client.GetMasterchainInfo(ctx)
+
 		return err
 	},
 		retry.Context(ctx),
