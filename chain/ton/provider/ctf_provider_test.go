@@ -99,7 +99,7 @@ func Test_CTFChainProvider_Name(t *testing.T) {
 	t.Parallel()
 
 	p := &CTFChainProvider{}
-	assert.Equal(t, "Ton CTF Chain Provider", p.Name())
+	assert.Equal(t, "TON CTF Chain Provider", p.Name())
 }
 
 func Test_CTFChainProvider_ChainSelector(t *testing.T) {
