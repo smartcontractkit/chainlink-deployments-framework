@@ -223,42 +223,6 @@ func Test_getWalletVersionConfig(t *testing.T) {
 	}
 }
 
-func Test_RPCChainProvider_getRetryCount(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name       string
-		retryCount int
-		want       int
-	}{
-		{
-			name:       "returns configured retry count",
-			retryCount: 10,
-			want:       10,
-		},
-		{
-			name:       "returns zero for unlimited retries",
-			retryCount: 0,
-			want:       0,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			p := &RPCChainProvider{
-				config: RPCChainProviderConfig{
-					RetryCount: tt.retryCount,
-				},
-			}
-
-			got := p.getRetryCount()
-			assert.Equal(t, tt.want, got)
-		})
-	}
-}
-
 func Test_NewRPCChainProvider(t *testing.T) {
 	t.Parallel()
 
@@ -267,7 +231,6 @@ func Test_NewRPCChainProvider(t *testing.T) {
 		HTTPURL:           "liteserver://publickey@localhost:8080",
 		DeployerSignerGen: PrivateKeyRandom(),
 		WalletVersion:     WalletVersionV5R1,
-		RetryCount:        10,
 	}
 
 	p := NewRPCChainProvider(selector, config)
@@ -276,7 +239,6 @@ func Test_NewRPCChainProvider(t *testing.T) {
 	assert.Equal(t, selector, p.selector)
 	assert.Equal(t, config.HTTPURL, p.config.HTTPURL)
 	assert.Equal(t, config.WalletVersion, p.config.WalletVersion)
-	assert.Equal(t, config.RetryCount, p.config.RetryCount)
 	assert.Nil(t, p.chain)
 }
 
