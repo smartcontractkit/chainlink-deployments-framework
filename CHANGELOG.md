@@ -1,5 +1,15 @@
 # chainlink-deployments-framework
 
+## 0.68.0
+
+### Minor Changes
+
+- [#586](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/586) [`f3a2a36`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/f3a2a36fa860430ae86bfe692824205c36b9200c) Thanks [@jkongie](https://github.com/jkongie)! - Updates Test Engine Sui container to use a specific devnet image and generate different deploy keys for each container
+
+### Patch Changes
+
+- [#585](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/585) [`7760d13`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/7760d1301f777545f8bbe5a86eb4200d8a34e26c) Thanks [@jadepark-dev](https://github.com/jadepark-dev)! - Clean up TON CTF Provider, update test infra methods
+
 ## 0.67.0
 
 ### Minor Changes
