@@ -87,6 +87,13 @@ func BuildMCMSv2Cmd(lggr logger.Logger, domain cldf_domain.Domain, proposalConte
 		validProposalKinds = []string{string(types.KindProposal), string(types.KindTimelockProposal)}
 	)
 
+	if lggr == nil {
+		panic("nil logger received")
+	}
+	if proposalContextProvider == nil {
+		panic("nil proposal context provider received")
+	}
+
 	cmd := cobra.Command{
 		Use:   "mcmsv2",
 		Short: "Manage MCMS proposals",
@@ -1097,20 +1104,16 @@ func newCfgv2(lggr logger.Logger, cmd *cobra.Command, domain cldf_domain.Domain,
 		}
 	}
 
-	if proposalCtxProvider != nil {
-		// Load Environment and proposal ctx (for error decoding and proposal analysis)
-		env, err := cldfenvironment.Load(cmd.Context(), domain, cfg.envStr,
-			cldfenvironment.WithLogger(lggr),
-			cldfenvironment.OnlyLoadChainsFor(chainSelectors), cldfenvironment.WithoutJD())
-		if err != nil {
-			return nil, fmt.Errorf("error loading environment: %w", err)
-		}
-		cfg.env = env
-		proposalCtx, err := proposalCtxProvider(env)
-		if err != nil {
-			return nil, fmt.Errorf("failed to provide proposal analysis context: %w", err)
-		}
-		cfg.proposalCtx = proposalCtx
+	// Load Environment and proposal ctx (for error decoding and proposal analysis)
+	cfg.env, err = cldfenvironment.Load(cmd.Context(), domain, cfg.envStr,
+		cldfenvironment.WithLogger(lggr),
+		cldfenvironment.OnlyLoadChainsFor(chainSelectors), cldfenvironment.WithoutJD())
+	if err != nil {
+		return nil, fmt.Errorf("error loading environment: %w", err)
+	}
+	cfg.proposalCtx, err = proposalCtxProvider(cfg.env)
+	if err != nil {
+		return nil, fmt.Errorf("failed to provide proposal analysis context: %w", err)
 	}
 
 	if flags.fork {
