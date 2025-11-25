@@ -1565,7 +1565,7 @@ func confirmTransaction(ctx context.Context, lggr logger.Logger, tx types.Transa
 			}
 		}
 
-		return fmt.Errorf("transaction %x failed (block number %v): %w", tx.Hash, rcpt.BlockNumber, err)
+		return fmt.Errorf("transaction %s failed (block number %v): %w", tx.Hash, rcpt.BlockNumber, err)
 	}
 
 	if family == chainsel.FamilyAptos {
