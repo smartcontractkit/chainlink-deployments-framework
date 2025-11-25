@@ -21,11 +21,6 @@ func NewSuiContainerLoader() *ChainLoader {
 	seed := seeded[:32]                               // or: seeded.Seed() if available
 	testPrivateKey := hex.EncodeToString(seed)        // 64 hex chars
 
-	var (
-		suiContainerImage    = "mysten/sui-tools:devnet-v1.61.0"
-		suiContainerPlatform = "linux/amd64"
-	)
-
 	return &ChainLoader{
 		selectors: getTestSelectorsByFamily(chainselectors.FamilySui),
 		factory: func(t *testing.T, selector uint64) (fchain.BlockChain, error) {
@@ -34,8 +29,6 @@ func NewSuiContainerLoader() *ChainLoader {
 			return suiprov.NewCTFChainProvider(t, selector, suiprov.CTFChainProviderConfig{
 				Once:              once,
 				DeployerSignerGen: suiprov.AccountGenPrivateKey(testPrivateKey),
-				Image:             &suiContainerImage,
-				Platform:          &suiContainerPlatform,
 			}).Initialize(t.Context())
 		},
 	}
