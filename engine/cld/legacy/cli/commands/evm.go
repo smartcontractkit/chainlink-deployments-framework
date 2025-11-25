@@ -233,15 +233,22 @@ var (
 `)
 
 	evmNodesFundExample = cli.Examples(`
-	# Fund all nodes with at least 0.5 ETH on chain 1 in staging
-	exemplar evm nodes fund --environment staging --selector 1 --amount 0.5 --1559
+	# Fund all nodes with at least 0.5 ETH on chain 1 in staging (using --eth flag)
+	exemplar evm nodes fund --environment staging --selector 1 --eth 0.5 --1559
+	
+	# Fund all nodes with 100 ETH
+	exemplar evm nodes fund --environment staging --selector 1 --eth 100
+	
+	# Fund all nodes with specific wei amount (using --amount flag)
+	exemplar evm nodes fund --environment staging --selector 1 --amount 10000000000000000000
 `)
 )
 
 func (c Commands) newEvmNodesFund(domain domain.Domain) *cobra.Command {
 	var (
-		amountStr string
-		use1559   bool
+		ethAmount   string
+		weiAmount   string
+		use1559     bool
 	)
 
 	cmd := cobra.Command{
@@ -252,6 +259,15 @@ func (c Commands) newEvmNodesFund(domain domain.Domain) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			envKey, _ := cmd.Flags().GetString("environment")
 			chainselector, _ := cmd.Flags().GetUint64("selector")
+			
+			// Check that exactly one of --eth or --amount is provided
+			if ethAmount != "" && weiAmount != "" {
+				return errors.New("cannot use both --eth and --amount flags. Use --eth for ETH amounts (e.g., --eth 10) or --amount for wei amounts")
+			}
+			
+			if ethAmount == "" && weiAmount == "" {
+				return errors.New("either --eth or --amount flag is required. Use --eth for ETH amounts (e.g., --eth 10) or --amount for wei amounts")
+			}
 
 			env, err := environment.Load(cmd.Context(), domain, envKey,
 				environment.WithLogger(c.lggr),
@@ -264,13 +280,24 @@ func (c Commands) newEvmNodesFund(domain domain.Domain) *cobra.Command {
 				return fmt.Errorf("chain not found for selector %d", chainselector)
 			}
 			chain := env.BlockChains.EVMChains()[cs.Selector]
-			// Parse amount as ETH and convert to wei
-			targetAmountEth, success := big.NewFloat(0).SetString(amountStr)
-			if !success {
-				return errors.New("invalid amount")
+			
+			var targetAmount *big.Int
+			if ethAmount != "" {
+				// Parse amount as ETH and convert to wei
+				targetAmountEth, success := big.NewFloat(0).SetString(ethAmount)
+				if !success {
+					return errors.New("invalid ETH amount")
+				}
+				targetAmountWei := new(big.Float).Mul(targetAmountEth, big.NewFloat(params.Ether))
+				targetAmount, _ = targetAmountWei.Int(nil)
+			} else {
+				// Parse amount as wei
+				var success bool
+				targetAmount, success = big.NewInt(0).SetString(weiAmount, 10)
+				if !success {
+					return errors.New("invalid wei amount")
+				}
 			}
-			targetAmountWei := new(big.Float).Mul(targetAmountEth, big.NewFloat(params.Ether))
-			targetAmount, _ := targetAmountWei.Int(nil)
 			for _, node := range env.NodeIDs {
 				chainConfigs, err := env.Offchain.ListNodeChainConfigs(cmd.Context(),
 					&nodev1.ListNodeChainConfigsRequest{
@@ -314,7 +341,8 @@ func (c Commands) newEvmNodesFund(domain domain.Domain) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&amountStr, "amount", "a", "", "Target amount in ETH to ensure for each node (e.g., 10 for 10 ETH)")
+	cmd.Flags().StringVar(&ethAmount, "eth", "", "Target amount in ETH to ensure for each node (e.g., 10 for 10 ETH)")
+	cmd.Flags().StringVarP(&weiAmount, "amount", "a", "", "Target amount in wei to ensure for each node (e.g., 10000000000000000000 for 10 ETH)")
 	cmd.Flags().BoolVar(&use1559, "1559", false, "Use EIP-1559 transaction")
 
 	return &cmd

@@ -122,13 +122,17 @@ func TestNewEvmNodesFund_Metadata(t *testing.T) {
 	require.Contains(t, cmd.Short, "Ensure all nodes have a certain amount of gas")
 	require.Contains(t, cmd.Long, "Ensure all OCR2 nodes have a target amount of gas in their account on an EVM chain.")
 	require.Contains(t, cmd.Example, "--amount")
+	require.Contains(t, cmd.Example, "--eth")
 
-	// Local flags
+	// Local flags - both --eth and --amount should exist
+	require.NotNil(t, cmd.Flags().Lookup("eth"), "eth flag should exist")
 	require.NotNil(t, cmd.Flags().Lookup("amount"), "amount flag should exist")
 	require.NotNil(t, cmd.Flags().Lookup("1559"), "1559 flag should exist")
 
-	// The local 'amount' flag should be required
-	_, err := cmd.Flags().GetString("amount")
+	// Both flags should be retrievable
+	_, err := cmd.Flags().GetString("eth")
+	require.NoError(t, err)
+	_, err = cmd.Flags().GetString("amount")
 	require.NoError(t, err)
 	// Persistent flags live on the parent
 	parent := &cobra.Command{}
