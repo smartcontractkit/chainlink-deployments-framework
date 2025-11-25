@@ -9,6 +9,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/params"
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	nodev1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/node"
 	"github.com/spf13/cobra"
@@ -232,8 +233,8 @@ var (
 `)
 
 	evmNodesFundExample = cli.Examples(`
-	# Fund all nodes with at least 0.5 ETH (in wei) on chain 1 in staging
-	exemplar evm nodes fund --environment staging --selector 1 --amount 500000000000000000 --1559
+	# Fund all nodes with at least 0.5 ETH on chain 1 in staging
+	exemplar evm nodes fund --environment staging --selector 1 --amount 0.5 --1559
 `)
 )
 
@@ -263,10 +264,13 @@ func (c Commands) newEvmNodesFund(domain domain.Domain) *cobra.Command {
 				return fmt.Errorf("chain not found for selector %d", chainselector)
 			}
 			chain := env.BlockChains.EVMChains()[cs.Selector]
-			targetAmount, success := big.NewInt(0).SetString(amountStr, 10)
+			// Parse amount as ETH and convert to wei
+			targetAmountEth, success := big.NewFloat(0).SetString(amountStr)
 			if !success {
 				return errors.New("invalid amount")
 			}
+			targetAmountWei := new(big.Float).Mul(targetAmountEth, big.NewFloat(params.Ether))
+			targetAmount, _ := targetAmountWei.Int(nil)
 			for _, node := range env.NodeIDs {
 				chainConfigs, err := env.Offchain.ListNodeChainConfigs(cmd.Context(),
 					&nodev1.ListNodeChainConfigsRequest{
@@ -289,15 +293,15 @@ func (c Commands) newEvmNodesFund(domain domain.Domain) *cobra.Command {
 						cmd.Println("Skipping bootstrap node", node)
 						continue
 					}
-					b, err := chain.Client.BalanceAt(cmd.Context(), common.HexToAddress(chainConfig.AccountAddress), nil)
-					if err != nil {
-						return fmt.Errorf("failed to get balance: %w", err)
-					}
-					cmd.Printf("Current balance %d for %s on node %s", b, chainConfig.AccountAddress, node)
-					// Let's fund the difference.
+				b, err := chain.Client.BalanceAt(cmd.Context(), common.HexToAddress(chainConfig.AccountAddress), nil)
+				if err != nil {
+					return fmt.Errorf("failed to get balance: %w", err)
+				}
+				cmd.Printf("Current balance %d for %s on node %s\n", b, chainConfig.AccountAddress, node)
+				// Let's fund the difference.
 					if b.Cmp(targetAmount) < 0 {
 						amount := big.NewInt(0).Sub(targetAmount, b)
-						cmd.Printf("Current balance insufficient, funding node %s's address %s with %d", node, chainConfig.AccountAddress, amount)
+						cmd.Printf("Current balance insufficient, funding node %s's address %s with %d\n", node, chainConfig.AccountAddress, amount)
 						err = sendGas(cmd.Context(), c.lggr, chain, amount.String(), chainConfig.AccountAddress, use1559)
 						if err != nil {
 							return fmt.Errorf("failed to send gas: %w", err)
@@ -310,7 +314,7 @@ func (c Commands) newEvmNodesFund(domain domain.Domain) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&amountStr, "amount", "a", "", "Target amount of gas to ensure for each node")
+	cmd.Flags().StringVarP(&amountStr, "amount", "a", "", "Target amount in ETH to ensure for each node (e.g., 10 for 10 ETH)")
 	cmd.Flags().BoolVar(&use1559, "1559", false, "Use EIP-1559 transaction")
 
 	return &cmd
