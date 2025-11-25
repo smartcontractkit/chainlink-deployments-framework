@@ -246,9 +246,9 @@ var (
 
 func (c Commands) newEvmNodesFund(domain domain.Domain) *cobra.Command {
 	var (
-		ethAmount   string
-		weiAmount   string
-		use1559     bool
+		ethAmount string
+		weiAmount string
+		use1559   bool
 	)
 
 	cmd := cobra.Command{
@@ -259,12 +259,12 @@ func (c Commands) newEvmNodesFund(domain domain.Domain) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			envKey, _ := cmd.Flags().GetString("environment")
 			chainselector, _ := cmd.Flags().GetUint64("selector")
-			
+
 			// Check that exactly one of --eth or --amount is provided
 			if ethAmount != "" && weiAmount != "" {
 				return errors.New("cannot use both --eth and --amount flags. Use --eth for ETH amounts (e.g., --eth 10) or --amount for wei amounts")
 			}
-			
+
 			if ethAmount == "" && weiAmount == "" {
 				return errors.New("either --eth or --amount flag is required. Use --eth for ETH amounts (e.g., --eth 10) or --amount for wei amounts")
 			}
@@ -280,7 +280,7 @@ func (c Commands) newEvmNodesFund(domain domain.Domain) *cobra.Command {
 				return fmt.Errorf("chain not found for selector %d", chainselector)
 			}
 			chain := env.BlockChains.EVMChains()[cs.Selector]
-			
+
 			var targetAmount *big.Int
 			if ethAmount != "" {
 				// Parse amount as ETH and convert to wei
@@ -320,12 +320,12 @@ func (c Commands) newEvmNodesFund(domain domain.Domain) *cobra.Command {
 						cmd.Println("Skipping bootstrap node", node)
 						continue
 					}
-				b, err := chain.Client.BalanceAt(cmd.Context(), common.HexToAddress(chainConfig.AccountAddress), nil)
-				if err != nil {
-					return fmt.Errorf("failed to get balance: %w", err)
-				}
-				cmd.Printf("Current balance %d for %s on node %s\n", b, chainConfig.AccountAddress, node)
-				// Let's fund the difference.
+					b, err := chain.Client.BalanceAt(cmd.Context(), common.HexToAddress(chainConfig.AccountAddress), nil)
+					if err != nil {
+						return fmt.Errorf("failed to get balance: %w", err)
+					}
+					cmd.Printf("Current balance %d for %s on node %s\n", b, chainConfig.AccountAddress, node)
+					// Let's fund the difference.
 					if b.Cmp(targetAmount) < 0 {
 						amount := big.NewInt(0).Sub(targetAmount, b)
 						cmd.Printf("Current balance insufficient, funding node %s's address %s with %d\n", node, chainConfig.AccountAddress, amount)
