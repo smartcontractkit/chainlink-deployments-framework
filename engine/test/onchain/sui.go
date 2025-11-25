@@ -22,7 +22,7 @@ func NewSuiContainerLoader() *ChainLoader {
 	testPrivateKey := hex.EncodeToString(seed)        // 64 hex chars
 
 	var (
-		suiContainerImage    = "mysten/sui-tools:devnet"
+		suiContainerImage    = "mysten/sui-tools:devnet-v1.61.0"
 		suiContainerPlatform = "linux/amd64"
 	)
 
