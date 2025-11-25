@@ -1,5 +1,13 @@
 # chainlink-deployments-framework
 
+## 0.68.1
+
+### Patch Changes
+
+- [#596](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/596) [`2d45dcc`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/2d45dccaa26f3d88654c018f4c88398f6e15b893) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix: set sui default image to mysten/sui-tools:devnet-v1.61.0
+
+- [#598](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/598) [`c38ded5`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/c38ded56a3edeab59e780ea6c390b0d1680d3a32) Thanks [@FelixFan1992](https://github.com/FelixFan1992)! - fix(engine/test): default SUI image to CTF Provider
+
 ## 0.68.0
 
 ### Minor Changes
