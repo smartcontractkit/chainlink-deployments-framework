@@ -174,8 +174,8 @@ func (p *CTFChainProvider) startContainer(
 		port := ports[0]
 		faucetPort := ports[1]
 
-		image := ""
-		platform := ""
+		var image string
+		var platform string
 
 		// by default, if image and platform are empty, they are set to amd64 by CTF
 		// to support running locally on macos arm64, we set the image and platform to ci-arm64 and linux/arm64 respectively
@@ -184,6 +184,8 @@ func (p *CTFChainProvider) startContainer(
 		} else {
 			if runtime.GOARCH == "arm64" {
 				image = "mysten/sui-tools:ci-arm64"
+			} else {
+				image = "mysten/sui-tools:devnet-v1.61.0"
 			}
 		}
 
