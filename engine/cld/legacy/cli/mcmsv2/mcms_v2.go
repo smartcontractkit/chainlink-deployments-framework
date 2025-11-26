@@ -1545,24 +1545,27 @@ func confirmTransaction(ctx context.Context, lggr logger.Logger, tx types.Transa
 			lggr.Infof("Transaction %s confirmed in block %d", tx.Hash, block)
 			return nil
 		}
-		rcpt, err := chain.Client.TransactionReceipt(ctx, common.HexToHash(tx.Hash))
-		if err != nil {
-			return fmt.Errorf("error getting transaction receipt for %s: %w", tx.Hash, err)
+		lggr.Errorf("failed to confirm transaction %s: %s", tx.Hash, err)
+		rcpt, rerr := chain.Client.TransactionReceipt(ctx, common.HexToHash(tx.Hash))
+		if rerr != nil {
+			return fmt.Errorf("failed to get transaction receipt for %s: %w", tx.Hash, rerr)
 		}
-		if rcpt != nil && rcpt.Status == 0 && cfg.proposalCtx != nil {
+		if rcpt == nil {
+			return fmt.Errorf("got nil receipt for %s", tx.Hash)
+		}
+		if rcpt.Status == gethtypes.ReceiptStatusSuccessful {
+			return nil
+		}
+		if cfg.proposalCtx != nil {
 			// Decode via simulation to recover revert bytes
-			if pretty, ok := tryDecodeTxRevertEVM(
-				ctx,
-				chain.Client,
-				tx.RawData.(*gethtypes.Transaction),
-				bindings.ManyChainMultiSigABI,
-				rcpt.BlockNumber,
-				cfg.proposalCtx); ok {
+			pretty, ok := tryDecodeTxRevertEVM(ctx, chain.Client, tx.RawData.(*gethtypes.Transaction),
+				bindings.ManyChainMultiSigABI, rcpt.BlockNumber, cfg.proposalCtx)
+			if ok {
 				return fmt.Errorf("tx %s reverted: %s", tx.Hash, pretty)
 			}
 		}
 
-		return err
+		return fmt.Errorf("transaction %s failed (block number %v): %w", tx.Hash, rcpt.BlockNumber, err)
 	}
 
 	if family == chainsel.FamilyAptos {
