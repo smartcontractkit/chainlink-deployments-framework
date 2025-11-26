@@ -234,14 +234,14 @@ func buildMCMSErrorDecode(lggr logger.Logger, domain cldf_domain.Domain, proposa
 
 			// Output decoded revert reason
 			if decoded.RevertReasonDecoded {
-				fmt.Print("%s", fmt.Sprintf("Revert Reason: %s - decoded: %s\n", execErr.RawRevertReason.Selector, decoded.UnderlyingReason))
+				fmt.Printf("Revert Reason: %s - decoded: %s\n", execErr.RawRevertReason.Selector, decoded.UnderlyingReason)
 			} else {
 				fmt.Println("Revert Reason: (could not decode)")
 			}
 
 			// Output decoded underlying reason if available
 			if decoded.UnderlyingReasonDecoded {
-				fmt.Print("%s", fmt.Sprintf("Underlying Reason: %s - decoded: %s\n", execErr.UnderlyingReason, decoded.UnderlyingReason))
+				fmt.Printf("Underlying Reason: %s - decoded: %s\n", execErr.UnderlyingReason, decoded.UnderlyingReason)
 			}
 
 			return nil
