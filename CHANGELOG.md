@@ -1,5 +1,15 @@
 # chainlink-deployments-framework
 
+## 0.68.2
+
+### Patch Changes
+
+- [#588](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/588) [`d1febae`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/d1febae4f3ac585643b4e42c38ac0bed0b05f7e8) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - fix(mcms): make proposalContextProvider a required param of BuildMCMSv2Cmd
+
+- [#595](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/595) [`95f96d9`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/95f96d9b2cd55a6fbbadd0728f2dd072d6fb88c2) Thanks [@finleydecker](https://github.com/finleydecker)! - Added -eth flag to the evm nodes fund command. Example: users can now use "-eth 10" to fund nodes up to 10 eth. Also added a new line separator to the current balance log to improve readability.
+
+- [#594](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/594) [`5936b3b`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/5936b3b6c1bde3f9b4ec9ed85e0adfe8b3fd84e4) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - fix(mcms): improve error handling in confirmTransaction
+
 ## 0.68.1
 
 ### Patch Changes
