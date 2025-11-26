@@ -186,7 +186,7 @@ func buildMCMSErrorDecode(lggr logger.Logger, domain cldf_domain.Domain, proposa
 
 			execErrData, ok := jsonData["execution_error"]
 			if !ok {
-				return errors.New("JSON file must contain an 'execution_error' field at the root level")
+				return errors.New("no execution error to decode, json file must contain an 'execution_error' key to get revert reasons decoded")
 			}
 
 			execErrBytes, err := json.Marshal(execErrData)

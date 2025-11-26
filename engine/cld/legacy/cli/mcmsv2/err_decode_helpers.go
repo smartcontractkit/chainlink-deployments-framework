@@ -621,10 +621,10 @@ func prettyRevertFromError(err error, preferredABIJSON string, dec *ErrDecoder) 
 
 // DecodedExecutionError contains the decoded revert reasons from an ExecutionError.
 type DecodedExecutionError struct {
-	RevertReason            string // Decoded main revert reason
-	RevertReasonDecoded     bool   // Whether revert reason was successfully decoded
-	UnderlyingReason        string // Decoded underlying revert reason
-	UnderlyingReasonDecoded bool   // Whether underlying reason was successfully decoded
+	RevertReason            string
+	RevertReasonDecoded     bool
+	UnderlyingReason        string
+	UnderlyingReasonDecoded bool
 }
 
 // tryDecodeExecutionError decodes an evm.ExecutionError into human-readable strings.

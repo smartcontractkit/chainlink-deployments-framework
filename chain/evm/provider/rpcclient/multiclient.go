@@ -513,6 +513,7 @@ func (mc *MultiClient) clients() []*ethclient.Client {
 
 // maybeDataErr is a helper function to check if the error is a data error.
 func maybeDataErr(err error) error {
+	//revive:disable
 	var d rpc.DataError
 	ok := errors.As(err, &d)
 	if ok {
