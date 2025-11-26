@@ -1,5 +1,14 @@
 # chainlink-deployments-framework
 
+## 0.69.0
+
+### Minor Changes
+
+- [#600](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/600) [`bf1ed32`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/bf1ed32d94eb4e5d600b114b992098bafd09983b) Thanks [@jkongie](https://github.com/jkongie)! - Adds a new load option `WithChains` for loading the test engine environment
+
+  This option is useful if you want to manually construct and configure chains before adding
+  them to the environment instead of using the existing predefined chain loader options.
+
 ## 0.68.2
 
 ### Patch Changes
