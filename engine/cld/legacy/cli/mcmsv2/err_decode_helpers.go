@@ -619,6 +619,83 @@ func prettyRevertFromError(err error, preferredABIJSON string, dec *ErrDecoder) 
 	return "", false
 }
 
+// DecodedExecutionError contains the decoded revert reasons from an ExecutionError.
+type DecodedExecutionError struct {
+	RevertReason            string // Decoded main revert reason
+	RevertReasonDecoded     bool   // Whether revert reason was successfully decoded
+	UnderlyingReason        string // Decoded underlying revert reason
+	UnderlyingReasonDecoded bool   // Whether underlying reason was successfully decoded
+}
+
+// tryDecodeExecutionError decodes an evm.ExecutionError into human-readable strings.
+// It first checks for DecodedRevertReason and DecodedUnderlyingReason fields.
+// If those are not available, it extracts RawRevertReason and UnderlyingReason from the struct
+// and decodes them using the provided ErrDecoder to match error selectors against the ABI registry.
+func tryDecodeExecutionError(execError *evm.ExecutionError, dec *ErrDecoder) DecodedExecutionError {
+	result := DecodedExecutionError{}
+
+	if execError == nil {
+		return result
+	}
+
+	// Check if DecodedRevertReason is already available
+	if execError.DecodedRevertReason != "" {
+		result.RevertReason = execError.DecodedRevertReason
+		result.RevertReasonDecoded = true
+	} else if execError.RawRevertReason != nil {
+		// Use Combined() method which returns selector + data, or just Data if available
+		if combined := execError.RawRevertReason.Combined(); len(combined) > 0 {
+			result.RevertReason, result.RevertReasonDecoded = decodeRevertDataFromBytes(combined, dec, "")
+		} else if execError.RawRevertReason.Selector != [4]byte{} {
+			// Fallback: use selector only if no data
+			selectorHex := "0x" + hex.EncodeToString(execError.RawRevertReason.Selector[:])
+			result.RevertReason, result.RevertReasonDecoded = decodeRevertData(selectorHex, dec, "")
+		}
+	}
+
+	// Check if DecodedUnderlyingReason is already available
+	if execError.DecodedUnderlyingReason != "" {
+		result.UnderlyingReason = execError.DecodedUnderlyingReason
+		result.UnderlyingReasonDecoded = true
+	} else if execError.UnderlyingReason != "" {
+		// Decode underlying reason (it's a hex string)
+		result.UnderlyingReason, result.UnderlyingReasonDecoded = decodeRevertData(execError.UnderlyingReason, dec, "")
+	}
+
+	return result
+}
+
+// decodeRevertData decodes a hex string containing revert data into a human-readable error message.
+func decodeRevertData(hexStr string, dec *ErrDecoder, preferredABIJSON string) (string, bool) {
+	if hexStr == "" {
+		return "", false
+	}
+
+	data, err := hexutil.Decode(hexStr)
+	if err != nil || len(data) == 0 {
+		return "", false
+	}
+
+	return decodeRevertDataFromBytes(data, dec, preferredABIJSON)
+}
+
+// decodeRevertDataFromBytes decodes revert data bytes into a human-readable error message.
+func decodeRevertDataFromBytes(data []byte, dec *ErrDecoder, preferredABIJSON string) (string, bool) {
+	if len(data) == 0 {
+		return "", false
+	}
+
+	if dec == nil {
+		if len(data) >= 4 {
+			return "custom error 0x" + hex.EncodeToString(data[:4]), true
+		}
+
+		return "", false
+	}
+
+	return prettyFromBytes(data, preferredABIJSON, dec)
+}
+
 type callContractClient interface {
 	CallContract(context.Context, ethereum.CallMsg, *big.Int) ([]byte, error)
 }

@@ -401,7 +401,10 @@ func (mc *MultiClient) retryWithBackups(ctx context.Context, opName string, op f
 
 			err = op(timeoutCtx, client)
 			if err != nil {
-				mc.lggr.Warnf("traceID %q: chain %q: op: %q: client index %d: failed execution - retryable error '%s'", traceID.String(), mc.chainName, opName, rpcIndex, maybeDataErr(err))
+				detailedErr := maybeDataErr(err)
+				mc.lggr.Warnf("traceID %q: chain %q: op: %q: client index %d: failed execution - retryable error '%s'", traceID.String(), mc.chainName, opName, rpcIndex, detailedErr)
+				err = errors.Join(err, detailedErr)
+
 				return err
 			}
 
@@ -510,7 +513,6 @@ func (mc *MultiClient) clients() []*ethclient.Client {
 
 // maybeDataErr is a helper function to check if the error is a data error.
 func maybeDataErr(err error) error {
-	//revive:disable
 	var d rpc.DataError
 	ok := errors.As(err, &d)
 	if ok {
