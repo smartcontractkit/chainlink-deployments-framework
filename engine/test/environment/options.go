@@ -14,12 +14,13 @@ import (
 
 // Assign the chain container loader constructors to local variables to allow for stubbing in tests.
 var (
-	newAptosContainerLoader  = onchain.NewAptosContainerLoader
-	newSolanaContainerLoader = onchain.NewSolanaContainerLoader
-	newSuiContainerLoader    = onchain.NewSuiContainerLoader
-	newTonContainerLoader    = onchain.NewTonContainerLoader
-	newTronContainerLoader   = onchain.NewTronContainerLoader
-	newZKSyncContainerLoader = onchain.NewZKSyncContainerLoader
+	newAptosContainerLoader         = onchain.NewAptosContainerLoader
+	newSolanaContainerLoader        = onchain.NewSolanaContainerLoader
+	newSuiContainerLoader           = onchain.NewSuiContainerLoader
+	newTonContainerLoader           = onchain.NewTonContainerLoader
+	newTonContainerLoaderWithConfig = onchain.NewTonContainerLoaderWithConfig
+	newTronContainerLoader          = onchain.NewTronContainerLoader
+	newZKSyncContainerLoader        = onchain.NewZKSyncContainerLoader
 )
 
 // LoadOpt is a configuration function that sets environment components during loading.
@@ -50,7 +51,7 @@ func WithTonContainer(t *testing.T, selectors []uint64) LoadOpt {
 func WithTonContainerWithConfig(t *testing.T, selectors []uint64, cfg onchain.TonContainerConfig) LoadOpt {
 	t.Helper()
 
-	return withChainLoader(t, onchain.NewTonContainerLoaderWithConfig(cfg), selectors)
+	return withChainLoader(t, newTonContainerLoaderWithConfig(cfg), selectors)
 }
 
 // WithTonContainerN loads n TON blockchain container instances.
@@ -64,7 +65,7 @@ func WithTonContainerN(t *testing.T, n int) LoadOpt {
 func WithTonContainerNWithConfig(t *testing.T, n int, cfg onchain.TonContainerConfig) LoadOpt {
 	t.Helper()
 
-	return withChainLoaderN(t, onchain.NewTonContainerLoaderWithConfig(cfg), n)
+	return withChainLoaderN(t, newTonContainerLoaderWithConfig(cfg), n)
 }
 
 // WithEVMSimulated loads simulated EVM blockchain instances for specified chain selectors.

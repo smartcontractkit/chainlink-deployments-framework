@@ -285,6 +285,32 @@ func TestLoader_Load_ChainOptions(t *testing.T) { //nolint:paralleltest // We ar
 				require.Len(t, BlockChains.SuiChains(), 1)
 			},
 		},
+		{
+			name: "TON container with custom config by selectors",
+			opts: []LoadOpt{
+				WithTonContainerWithConfig(t, []uint64{chainselectors.TON_LOCALNET.Selector}, onchain.TonContainerConfig{
+					Image: "custom-image:v1",
+				}),
+			},
+			wantBlockChainsLen: 1,
+			assert: func(t *testing.T, BlockChains fchain.BlockChains) {
+				t.Helper()
+				require.Len(t, BlockChains.TonChains(), 1)
+			},
+		},
+		{
+			name: "TON container with custom config by n count",
+			opts: []LoadOpt{
+				WithTonContainerNWithConfig(t, 1, onchain.TonContainerConfig{
+					Image: "custom-image:v1",
+				}),
+			},
+			wantBlockChainsLen: 1,
+			assert: func(t *testing.T, BlockChains fchain.BlockChains) {
+				t.Helper()
+				require.Len(t, BlockChains.TonChains(), 1)
+			},
+		},
 	}
 
 	for _, tt := range tests { //nolint:paralleltest // We are replacing local variables here, so we can't run tests in parallel.
@@ -308,12 +334,13 @@ func TestLoader_Load_ChainOptions(t *testing.T) { //nolint:paralleltest // We ar
 // Returns a function that can be used to reset the loaders to their original values.
 func stubContainerLoaders() func() {
 	var (
-		oldTonContainerLoader    = newTonContainerLoader
-		oldAptosContainerLoader  = newAptosContainerLoader
-		oldSolanaContainerLoader = newSolanaContainerLoader
-		oldZKSyncContainerLoader = newZKSyncContainerLoader
-		oldTronContainerLoader   = newTronContainerLoader
-		oldSuiContainerLoader    = newSuiContainerLoader
+		oldTonContainerLoader           = newTonContainerLoader
+		oldTonContainerLoaderWithConfig = newTonContainerLoaderWithConfig
+		oldAptosContainerLoader         = newAptosContainerLoader
+		oldSolanaContainerLoader        = newSolanaContainerLoader
+		oldZKSyncContainerLoader        = newZKSyncContainerLoader
+		oldTronContainerLoader          = newTronContainerLoader
+		oldSuiContainerLoader           = newSuiContainerLoader
 	)
 
 	newTonContainerLoader = makeChainLoaderStub([]uint64{chainselectors.TON_LOCALNET.Selector}, fchainton.Chain{
@@ -321,6 +348,18 @@ func stubContainerLoaders() func() {
 			Selector: chainselectors.TON_LOCALNET.Selector,
 		},
 	})
+	newTonContainerLoaderWithConfig = func(cfg onchain.TonContainerConfig) *onchain.ChainLoader {
+		return onchain.NewChainLoader(
+			[]uint64{chainselectors.TON_LOCALNET.Selector},
+			func(t *testing.T, selector uint64) (fchain.BlockChain, error) {
+				t.Helper()
+				return fchainton.Chain{
+					ChainMetadata: fchainton.ChainMetadata{
+						Selector: chainselectors.TON_LOCALNET.Selector,
+					},
+				}, nil
+			})
+	}
 	newAptosContainerLoader = makeChainLoaderStub([]uint64{chainselectors.APTOS_LOCALNET.Selector}, fchainaptos.Chain{
 		Selector: chainselectors.APTOS_LOCALNET.Selector,
 	})
@@ -352,6 +391,7 @@ func stubContainerLoaders() func() {
 
 	return func() {
 		newTonContainerLoader = oldTonContainerLoader
+		newTonContainerLoaderWithConfig = oldTonContainerLoaderWithConfig
 		newAptosContainerLoader = oldAptosContainerLoader
 		newSolanaContainerLoader = oldSolanaContainerLoader
 		newZKSyncContainerLoader = oldZKSyncContainerLoader
