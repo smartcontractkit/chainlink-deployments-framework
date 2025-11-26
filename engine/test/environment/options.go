@@ -45,11 +45,26 @@ func WithTonContainer(t *testing.T, selectors []uint64) LoadOpt {
 	return withChainLoader(t, newTonContainerLoader(), selectors)
 }
 
+// WithTonContainerWithConfig loads TON blockchain container instances with custom configuration
+// for specified chain selectors.
+func WithTonContainerWithConfig(t *testing.T, selectors []uint64, cfg onchain.TonContainerConfig) LoadOpt {
+	t.Helper()
+
+	return withChainLoader(t, onchain.NewTonContainerLoaderWithConfig(cfg), selectors)
+}
+
 // WithTonContainerN loads n TON blockchain container instances.
 func WithTonContainerN(t *testing.T, n int) LoadOpt {
 	t.Helper()
 
 	return withChainLoaderN(t, newTonContainerLoader(), n)
+}
+
+// WithTonContainerNWithConfig loads n TON blockchain container instances with custom configuration.
+func WithTonContainerNWithConfig(t *testing.T, n int, cfg onchain.TonContainerConfig) LoadOpt {
+	t.Helper()
+
+	return withChainLoaderN(t, onchain.NewTonContainerLoaderWithConfig(cfg), n)
 }
 
 // WithEVMSimulated loads simulated EVM blockchain instances for specified chain selectors.
