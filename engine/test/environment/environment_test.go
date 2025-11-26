@@ -3,6 +3,7 @@ package environment
 import (
 	"errors"
 	"maps"
+	"slices"
 	"testing"
 	"time"
 
@@ -20,6 +21,7 @@ import (
 	fchaintron "github.com/smartcontractkit/chainlink-deployments-framework/chain/tron"
 	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/internal/testutils"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/onchain"
 	foffchainjd "github.com/smartcontractkit/chainlink-deployments-framework/offchain/jd"
 )
@@ -159,6 +161,22 @@ func TestLoader_Load_AddressBookOption(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, env)
 	require.Equal(t, ab, env.ExistingAddresses) //nolint:staticcheck // SA1019 (Deprecated): We still need to support AddressBook for now
+}
+
+func TestLoader_Load_ChainsOption(t *testing.T) {
+	t.Parallel()
+
+	chains := []fchain.BlockChain{
+		testutils.NewStubChain(uint64(1)),
+	}
+
+	loader := NewLoader()
+	env, err := loader.Load(t.Context(), WithChains(chains...))
+	require.NoError(t, err)
+	require.NotNil(t, env)
+
+	blockchains := slices.Collect(maps.Values(maps.Collect(env.BlockChains.All())))
+	require.ElementsMatch(t, chains, blockchains)
 }
 
 func TestLoader_Load_ChainOptions(t *testing.T) { //nolint:paralleltest // We are replacing local variables here, so we can't run tests in parallel.

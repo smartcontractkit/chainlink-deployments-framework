@@ -3,6 +3,7 @@ package environment
 import (
 	"testing"
 
+	fchain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
 	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
@@ -23,6 +24,19 @@ var (
 
 // LoadOpt is a configuration function that sets environment components during loading.
 type LoadOpt func(*components) error
+
+// WithChains adds pre-constructed blockchain instances to the environment.
+//
+// Use this option when you need to manually construct and configure chains before adding
+// them to the environment. For most test scenarios, prefer using chain-specific loaders
+// like WithEVMSimulated, WithSolanaContainer, etc., which handle chain setup automatically.
+func WithChains(chains ...fchain.BlockChain) LoadOpt {
+	return func(cmps *components) error {
+		cmps.AddChains(chains...)
+
+		return nil
+	}
+}
 
 // WithTonContainer loads TON blockchain container instances for specified chain selectors.
 func WithTonContainer(t *testing.T, selectors []uint64) LoadOpt {
