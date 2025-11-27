@@ -204,10 +204,10 @@ func setChangesetEnvironmentVariable(changesetName string, changesetData any, in
 		return fmt.Errorf("changeset '%s' in input file %s is not a valid object", changesetName, inputFileName)
 	}
 
-	payload, _ := changesetMap["payload"]
-	// if !payloadExists || payload == nil {
-	// 	return fmt.Errorf("changeset '%s' in input file %s is missing required 'payload' field", changesetName, inputFileName)
-	// }
+	payload, payloadExists := changesetMap["payload"]
+	if !payloadExists {
+		return fmt.Errorf("changeset '%s' in input file %s is missing required 'payload' field", changesetName, inputFileName)
+	}
 
 	// Convert payload to JSON-safe format to handle map[interface{}]interface{} types
 	jsonSafePayload, err := convertToJSONSafe(payload)

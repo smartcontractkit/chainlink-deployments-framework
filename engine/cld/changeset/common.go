@@ -100,6 +100,11 @@ func (f WrappedChangeSet[C]) WithJSON(_ C, inputStr string) ConfiguredChangeSet 
 			return config, fmt.Errorf("JSON must be in JSON format with 'payload' fields: %w", err)
 		}
 
+		// If payload is empty, return an error
+		if len(inputObject.Payload) == 0 {
+			return config, errors.New("'payload' field is required and cannot be empty")
+		}
+
 		payloadDecoder := json.NewDecoder(strings.NewReader(string(inputObject.Payload)))
 		payloadDecoder.DisallowUnknownFields()
 		if err := payloadDecoder.Decode(&config); err != nil {
@@ -152,6 +157,11 @@ func (f WrappedChangeSet[C]) WithEnvInput(opts ...EnvInputOption[C]) ConfiguredC
 		var inputObject TypedJSON
 		if err := json.Unmarshal([]byte(inputStr), &inputObject); err != nil {
 			return config, fmt.Errorf("JSON must be in JSON format with 'payload' fields: %w", err)
+		}
+
+		// If payload is empty, return an error
+		if len(inputObject.Payload) == 0 {
+			return config, errors.New("'payload' field is required and cannot be empty")
 		}
 
 		payloadDecoder := json.NewDecoder(strings.NewReader(string(inputObject.Payload)))
@@ -217,6 +227,11 @@ func (f WrappedChangeSet[C]) WithConfigResolver(resolver fresolvers.ConfigResolv
 		var inputObject TypedJSON
 		if err := json.Unmarshal([]byte(inputStr), &inputObject); err != nil {
 			return zero, fmt.Errorf("failed to parse resolver input as JSON: %w", err)
+		}
+
+		// If payload is empty, return an error
+		if len(inputObject.Payload) == 0 {
+			return zero, errors.New("'payload' field is required and cannot be empty")
 		}
 
 		// Call resolver – automatically unmarshal into its expected input type.
