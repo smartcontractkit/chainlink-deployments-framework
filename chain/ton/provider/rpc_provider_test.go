@@ -222,3 +222,96 @@ func Test_getWalletVersionConfig(t *testing.T) {
 		})
 	}
 }
+
+func Test_NewRPCChainProvider(t *testing.T) {
+	t.Parallel()
+
+	selector := uint64(12345)
+	config := RPCChainProviderConfig{
+		HTTPURL:           "liteserver://publickey@localhost:8080",
+		DeployerSignerGen: PrivateKeyRandom(),
+		WalletVersion:     WalletVersionV5R1,
+	}
+
+	p := NewRPCChainProvider(selector, config)
+
+	require.NotNil(t, p)
+	assert.Equal(t, selector, p.selector)
+	assert.Equal(t, config.HTTPURL, p.config.HTTPURL)
+	assert.Equal(t, config.WalletVersion, p.config.WalletVersion)
+	assert.Nil(t, p.chain)
+}
+
+func Test_createWallet(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name          string
+		version       WalletVersion
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name:          "unsupported wallet version returns error",
+			version:       "V9R9",
+			expectError:   true,
+			errorContains: "unsupported wallet version",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			privateKey := make([]byte, 32)
+			wallet, err := createWallet(nil, privateKey, tt.version)
+
+			if tt.expectError {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errorContains)
+				assert.Nil(t, wallet)
+			} else {
+				require.NoError(t, err)
+				assert.NotNil(t, wallet)
+			}
+		})
+	}
+}
+
+func Test_createLiteclientConnectionPool_InvalidURL(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name          string
+		url           string
+		errorContains string
+	}{
+		{
+			name:          "empty URL returns error",
+			url:           "",
+			errorContains: "liteserver url is required",
+		},
+		{
+			name:          "invalid prefix returns error",
+			url:           "http://example.com",
+			errorContains: "invalid liteserver URL format",
+		},
+		{
+			name:          "missing @ returns error",
+			url:           "liteserver://invalidurl",
+			errorContains: "invalid liteserver URL format",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			pool, err := createLiteclientConnectionPool(t.Context(), tt.url)
+
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tt.errorContains)
+			assert.Nil(t, pool)
+		})
+	}
+}

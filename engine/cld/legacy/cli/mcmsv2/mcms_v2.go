@@ -88,6 +88,13 @@ func BuildMCMSv2Cmd(lggr logger.Logger, domain cldf_domain.Domain, proposalConte
 		validProposalKinds = []string{string(types.KindProposal), string(types.KindTimelockProposal)}
 	)
 
+	if lggr == nil {
+		panic("nil logger received")
+	}
+	if proposalContextProvider == nil {
+		panic("nil proposal context provider received")
+	}
+
 	cmd := cobra.Command{
 		Use:   "mcmsv2",
 		Short: "Manage MCMS proposals",
@@ -1211,20 +1218,16 @@ func newCfgv2(lggr logger.Logger, cmd *cobra.Command, domain cldf_domain.Domain,
 		}
 	}
 
-	if proposalCtxProvider != nil {
-		// Load Environment and proposal ctx (for error decoding and proposal analysis)
-		env, err := cldfenvironment.Load(cmd.Context(), domain, cfg.envStr,
-			cldfenvironment.WithLogger(lggr),
-			cldfenvironment.OnlyLoadChainsFor(chainSelectors), cldfenvironment.WithoutJD())
-		if err != nil {
-			return nil, fmt.Errorf("error loading environment: %w", err)
-		}
-		cfg.env = env
-		proposalCtx, err := proposalCtxProvider(env)
-		if err != nil {
-			return nil, fmt.Errorf("failed to provide proposal analysis context: %w", err)
-		}
-		cfg.proposalCtx = proposalCtx
+	// Load Environment and proposal ctx (for error decoding and proposal analysis)
+	cfg.env, err = cldfenvironment.Load(cmd.Context(), domain, cfg.envStr,
+		cldfenvironment.WithLogger(lggr),
+		cldfenvironment.OnlyLoadChainsFor(chainSelectors), cldfenvironment.WithoutJD())
+	if err != nil {
+		return nil, fmt.Errorf("error loading environment: %w", err)
+	}
+	cfg.proposalCtx, err = proposalCtxProvider(cfg.env)
+	if err != nil {
+		return nil, fmt.Errorf("failed to provide proposal analysis context: %w", err)
 	}
 
 	if flags.fork {
@@ -1656,24 +1659,27 @@ func confirmTransaction(ctx context.Context, lggr logger.Logger, tx types.Transa
 			lggr.Infof("Transaction %s confirmed in block %d", tx.Hash, block)
 			return nil
 		}
-		rcpt, err := chain.Client.TransactionReceipt(ctx, common.HexToHash(tx.Hash))
-		if err != nil {
-			return fmt.Errorf("error getting transaction receipt for %s: %w", tx.Hash, err)
+		lggr.Errorf("failed to confirm transaction %s: %s", tx.Hash, err)
+		rcpt, rerr := chain.Client.TransactionReceipt(ctx, common.HexToHash(tx.Hash))
+		if rerr != nil {
+			return fmt.Errorf("failed to get transaction receipt for %s: %w", tx.Hash, rerr)
 		}
-		if rcpt != nil && rcpt.Status == 0 && cfg.proposalCtx != nil {
+		if rcpt == nil {
+			return fmt.Errorf("got nil receipt for %s", tx.Hash)
+		}
+		if rcpt.Status == gethtypes.ReceiptStatusSuccessful {
+			return nil
+		}
+		if cfg.proposalCtx != nil {
 			// Decode via simulation to recover revert bytes
-			if pretty, ok := tryDecodeTxRevertEVM(
-				ctx,
-				chain.Client,
-				tx.RawData.(*gethtypes.Transaction),
-				bindings.ManyChainMultiSigABI,
-				rcpt.BlockNumber,
-				cfg.proposalCtx); ok {
+			pretty, ok := tryDecodeTxRevertEVM(ctx, chain.Client, tx.RawData.(*gethtypes.Transaction),
+				bindings.ManyChainMultiSigABI, rcpt.BlockNumber, cfg.proposalCtx)
+			if ok {
 				return fmt.Errorf("tx %s reverted: %s", tx.Hash, pretty)
 			}
 		}
 
-		return err
+		return fmt.Errorf("transaction %s failed (block number %v): %w", tx.Hash, rcpt.BlockNumber, err)
 	}
 
 	if family == chainsel.FamilyAptos {

@@ -3,6 +3,7 @@ package environment
 import (
 	"errors"
 	"maps"
+	"slices"
 	"testing"
 	"time"
 
@@ -20,6 +21,7 @@ import (
 	fchaintron "github.com/smartcontractkit/chainlink-deployments-framework/chain/tron"
 	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/internal/testutils"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/onchain"
 	foffchainjd "github.com/smartcontractkit/chainlink-deployments-framework/offchain/jd"
 )
@@ -161,6 +163,22 @@ func TestLoader_Load_AddressBookOption(t *testing.T) {
 	require.Equal(t, ab, env.ExistingAddresses) //nolint:staticcheck // SA1019 (Deprecated): We still need to support AddressBook for now
 }
 
+func TestLoader_Load_ChainsOption(t *testing.T) {
+	t.Parallel()
+
+	chains := []fchain.BlockChain{
+		testutils.NewStubChain(uint64(1)),
+	}
+
+	loader := NewLoader()
+	env, err := loader.Load(t.Context(), WithChains(chains...))
+	require.NoError(t, err)
+	require.NotNil(t, env)
+
+	blockchains := slices.Collect(maps.Values(maps.Collect(env.BlockChains.All())))
+	require.ElementsMatch(t, chains, blockchains)
+}
+
 func TestLoader_Load_ChainOptions(t *testing.T) { //nolint:paralleltest // We are replacing local variables here, so we can't run tests in parallel.
 	// Stub out the container loaders to avoid having to spin up containers for each test
 	resetLoadersFunc := stubContainerLoaders()
@@ -267,6 +285,32 @@ func TestLoader_Load_ChainOptions(t *testing.T) { //nolint:paralleltest // We ar
 				require.Len(t, BlockChains.SuiChains(), 1)
 			},
 		},
+		{
+			name: "TON container with custom config by selectors",
+			opts: []LoadOpt{
+				WithTonContainerWithConfig(t, []uint64{chainselectors.TON_LOCALNET.Selector}, onchain.TonContainerConfig{
+					Image: "custom-image:v1",
+				}),
+			},
+			wantBlockChainsLen: 1,
+			assert: func(t *testing.T, BlockChains fchain.BlockChains) {
+				t.Helper()
+				require.Len(t, BlockChains.TonChains(), 1)
+			},
+		},
+		{
+			name: "TON container with custom config by n count",
+			opts: []LoadOpt{
+				WithTonContainerNWithConfig(t, 1, onchain.TonContainerConfig{
+					Image: "custom-image:v1",
+				}),
+			},
+			wantBlockChainsLen: 1,
+			assert: func(t *testing.T, BlockChains fchain.BlockChains) {
+				t.Helper()
+				require.Len(t, BlockChains.TonChains(), 1)
+			},
+		},
 	}
 
 	for _, tt := range tests { //nolint:paralleltest // We are replacing local variables here, so we can't run tests in parallel.
@@ -290,12 +334,13 @@ func TestLoader_Load_ChainOptions(t *testing.T) { //nolint:paralleltest // We ar
 // Returns a function that can be used to reset the loaders to their original values.
 func stubContainerLoaders() func() {
 	var (
-		oldTonContainerLoader    = newTonContainerLoader
-		oldAptosContainerLoader  = newAptosContainerLoader
-		oldSolanaContainerLoader = newSolanaContainerLoader
-		oldZKSyncContainerLoader = newZKSyncContainerLoader
-		oldTronContainerLoader   = newTronContainerLoader
-		oldSuiContainerLoader    = newSuiContainerLoader
+		oldTonContainerLoader           = newTonContainerLoader
+		oldTonContainerLoaderWithConfig = newTonContainerLoaderWithConfig
+		oldAptosContainerLoader         = newAptosContainerLoader
+		oldSolanaContainerLoader        = newSolanaContainerLoader
+		oldZKSyncContainerLoader        = newZKSyncContainerLoader
+		oldTronContainerLoader          = newTronContainerLoader
+		oldSuiContainerLoader           = newSuiContainerLoader
 	)
 
 	newTonContainerLoader = makeChainLoaderStub([]uint64{chainselectors.TON_LOCALNET.Selector}, fchainton.Chain{
@@ -303,6 +348,18 @@ func stubContainerLoaders() func() {
 			Selector: chainselectors.TON_LOCALNET.Selector,
 		},
 	})
+	newTonContainerLoaderWithConfig = func(cfg onchain.TonContainerConfig) *onchain.ChainLoader {
+		return onchain.NewChainLoader(
+			[]uint64{chainselectors.TON_LOCALNET.Selector},
+			func(t *testing.T, selector uint64) (fchain.BlockChain, error) {
+				t.Helper()
+				return fchainton.Chain{
+					ChainMetadata: fchainton.ChainMetadata{
+						Selector: chainselectors.TON_LOCALNET.Selector,
+					},
+				}, nil
+			})
+	}
 	newAptosContainerLoader = makeChainLoaderStub([]uint64{chainselectors.APTOS_LOCALNET.Selector}, fchainaptos.Chain{
 		Selector: chainselectors.APTOS_LOCALNET.Selector,
 	})
@@ -334,6 +391,7 @@ func stubContainerLoaders() func() {
 
 	return func() {
 		newTonContainerLoader = oldTonContainerLoader
+		newTonContainerLoaderWithConfig = oldTonContainerLoaderWithConfig
 		newAptosContainerLoader = oldAptosContainerLoader
 		newSolanaContainerLoader = oldSolanaContainerLoader
 		newZKSyncContainerLoader = oldZKSyncContainerLoader

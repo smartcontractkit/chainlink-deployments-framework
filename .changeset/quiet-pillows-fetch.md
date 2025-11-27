@@ -2,4 +2,4 @@
 "chainlink-deployments-framework": minor
 ---
 
-feat: adds 'all' datastore config option
+add TON container with config option
