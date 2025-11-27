@@ -515,7 +515,7 @@ func Test_tryDecodeExecutionError(t *testing.T) {
 		t.Parallel()
 
 		execErr := &evm.ExecutionError{
-			RawRevertReason: &evm.CustomErrorData{
+			RevertReasonRaw: &evm.CustomErrorData{
 				Data: customRevert,
 			},
 		}
@@ -535,7 +535,7 @@ func Test_tryDecodeExecutionError(t *testing.T) {
 		copy(selector[:], customRevert[:4])
 
 		execErr := &evm.ExecutionError{
-			RawRevertReason: &evm.CustomErrorData{
+			RevertReasonRaw: &evm.CustomErrorData{
 				Selector: selector,
 			},
 		}
@@ -550,7 +550,7 @@ func Test_tryDecodeExecutionError(t *testing.T) {
 
 		stdRevert := buildStdErrorRevert(t, "test error message")
 		execErr := &evm.ExecutionError{
-			RawRevertReason: &evm.CustomErrorData{
+			RevertReasonRaw: &evm.CustomErrorData{
 				Data: stdRevert,
 			},
 		}
@@ -567,10 +567,10 @@ func Test_tryDecodeExecutionError(t *testing.T) {
 		underlyingHex := "0x" + hex.EncodeToString(underlyingRevert)
 
 		execErr := &evm.ExecutionError{
-			RawRevertReason: &evm.CustomErrorData{
+			RevertReasonRaw: &evm.CustomErrorData{
 				Data: customRevert,
 			},
-			UnderlyingReason: underlyingHex,
+			UnderlyingReasonRaw: underlyingHex,
 		}
 
 		result := tryDecodeExecutionError(execErr, dec)
@@ -586,7 +586,7 @@ func Test_tryDecodeExecutionError(t *testing.T) {
 		copy(selector[:], customRevert[:4])
 
 		execErr := &evm.ExecutionError{
-			RawRevertReason: &evm.CustomErrorData{
+			RevertReasonRaw: &evm.CustomErrorData{
 				Selector: selector,
 			},
 		}
@@ -601,7 +601,7 @@ func Test_tryDecodeExecutionError(t *testing.T) {
 		t.Parallel()
 
 		execErr := &evm.ExecutionError{
-			RawRevertReason: &evm.CustomErrorData{},
+			RevertReasonRaw: &evm.CustomErrorData{},
 		}
 
 		result := tryDecodeExecutionError(execErr, dec)
@@ -613,8 +613,8 @@ func Test_tryDecodeExecutionError(t *testing.T) {
 		t.Parallel()
 
 		execErr := &evm.ExecutionError{
-			RawRevertReason:  nil,
-			UnderlyingReason: "0x12345678",
+			RevertReasonRaw:     nil,
+			UnderlyingReasonRaw: "0x12345678",
 		}
 
 		result := tryDecodeExecutionError(execErr, dec)

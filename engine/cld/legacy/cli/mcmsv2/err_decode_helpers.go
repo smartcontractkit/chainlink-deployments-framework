@@ -628,8 +628,8 @@ type DecodedExecutionError struct {
 }
 
 // tryDecodeExecutionError decodes an evm.ExecutionError into human-readable strings.
-// It first checks for DecodedRevertReason and DecodedUnderlyingReason fields.
-// If those are not available, it extracts RawRevertReason and UnderlyingReason from the struct
+// It first checks for RevertReasonDecoded and UnderlyingReasonDecoded fields.
+// If those are not available, it extracts RevertReasonRaw and UnderlyingReasonRaw from the struct
 // and decodes them using the provided ErrDecoder to match error selectors against the ABI registry.
 func tryDecodeExecutionError(execError *evm.ExecutionError, dec *ErrDecoder) DecodedExecutionError {
 	result := DecodedExecutionError{}
@@ -638,28 +638,35 @@ func tryDecodeExecutionError(execError *evm.ExecutionError, dec *ErrDecoder) Dec
 		return result
 	}
 
-	// Check if DecodedRevertReason is already available
-	if execError.DecodedRevertReason != "" {
-		result.RevertReason = execError.DecodedRevertReason
+	// Check if RevertReasonDecoded is already available
+	if execError.RevertReasonDecoded != "" {
+		result.RevertReason = execError.RevertReasonDecoded
 		result.RevertReasonDecoded = true
-	} else if execError.RawRevertReason != nil {
-		// Use Combined() method which returns selector + data, or just Data if available
-		if combined := execError.RawRevertReason.Combined(); len(combined) > 0 {
-			result.RevertReason, result.RevertReasonDecoded = decodeRevertDataFromBytes(combined, dec, "")
-		} else if execError.RawRevertReason.Selector != [4]byte{} {
-			// Fallback: use selector only if no data
-			selectorHex := "0x" + hex.EncodeToString(execError.RawRevertReason.Selector[:])
+	} else if execError.RevertReasonRaw != nil {
+		// If Data is present and has at least 4 bytes, it might already include the selector
+		if len(execError.RevertReasonRaw.Data) >= 4 {
+			result.RevertReason, result.RevertReasonDecoded = decodeRevertDataFromBytes(execError.RevertReasonRaw.Data, dec, "")
+		}
+		// If decoding from Data didn't work, try Combined() (selector + data)
+		if !result.RevertReasonDecoded {
+			if combined := execError.RevertReasonRaw.Combined(); len(combined) > 4 || (len(combined) == 4 && execError.RevertReasonRaw.Selector != [4]byte{}) {
+				result.RevertReason, result.RevertReasonDecoded = decodeRevertDataFromBytes(combined, dec, "")
+			}
+		}
+		// If still not decoded and we have a selector, try selector only
+		if !result.RevertReasonDecoded && execError.RevertReasonRaw.Selector != [4]byte{} {
+			selectorHex := "0x" + hex.EncodeToString(execError.RevertReasonRaw.Selector[:])
 			result.RevertReason, result.RevertReasonDecoded = decodeRevertData(selectorHex, dec, "")
 		}
 	}
 
-	// Check if DecodedUnderlyingReason is already available
-	if execError.DecodedUnderlyingReason != "" {
-		result.UnderlyingReason = execError.DecodedUnderlyingReason
+	// Check if UnderlyingReasonDecoded is already available
+	if execError.UnderlyingReasonDecoded != "" {
+		result.UnderlyingReason = execError.UnderlyingReasonDecoded
 		result.UnderlyingReasonDecoded = true
-	} else if execError.UnderlyingReason != "" {
+	} else if execError.UnderlyingReasonRaw != "" {
 		// Decode underlying reason (it's a hex string)
-		result.UnderlyingReason, result.UnderlyingReasonDecoded = decodeRevertData(execError.UnderlyingReason, dec, "")
+		result.UnderlyingReason, result.UnderlyingReasonDecoded = decodeRevertData(execError.UnderlyingReasonRaw, dec, "")
 	}
 
 	return result
