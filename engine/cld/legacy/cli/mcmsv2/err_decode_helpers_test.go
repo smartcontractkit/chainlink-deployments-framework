@@ -44,7 +44,7 @@ func mustType(t *testing.T, typ string) abi.Type {
 	return ty
 }
 
-func errorSelector(name string, args abi.Arguments) []byte {
+func getErrorSelector(name string, args abi.Arguments) []byte {
 	ts := make([]string, len(args))
 	for i, a := range args {
 		ts[i] = a.Type.String()
@@ -60,7 +60,7 @@ func buildCustomErrorRevert(t *testing.T, name string, args abi.Arguments, vals 
 	enc, err := args.Pack(vals...)
 	require.NoError(t, err)
 
-	return append(errorSelector(name, args), enc...)
+	return append(getErrorSelector(name, args), enc...)
 }
 
 func buildStdErrorRevert(t *testing.T, msg string) []byte {
