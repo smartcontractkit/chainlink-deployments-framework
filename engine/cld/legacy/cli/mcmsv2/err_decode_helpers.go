@@ -32,6 +32,8 @@ const noRevertData = "(no revert data)"
 
 type errorSelector [4]byte
 
+var emptySelector = errorSelector{}
+
 type traceConfig struct {
 	DisableStorage bool `json:"disableStorage,omitempty"`
 	DisableMemory  bool `json:"disableMemory,omitempty"`
@@ -660,7 +662,7 @@ func decodeRevertReasonWithStatus(execError *evm.ExecutionError, dec *ErrDecoder
 	}
 
 	hasData := len(execError.RevertReasonRaw.Data) > 0
-	hasSelector := execError.RevertReasonRaw.Selector != errorSelector{}
+	hasSelector := execError.RevertReasonRaw.Selector != emptySelector
 
 	if hasData {
 		if reason, decoded := tryDecodeFromData(execError.RevertReasonRaw, dec); decoded {
@@ -684,7 +686,7 @@ func tryDecodeFromData(raw *evm.CustomErrorData, dec *ErrDecoder) (string, bool)
 		}
 	}
 
-	if raw.Selector != errorSelector{} {
+	if raw.Selector != emptySelector {
 		if combined := raw.Combined(); len(combined) > 4 {
 			return decodeRevertDataFromBytes(combined, dec, "")
 		}
