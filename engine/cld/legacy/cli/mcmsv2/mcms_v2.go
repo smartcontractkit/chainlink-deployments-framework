@@ -187,7 +187,7 @@ func buildMCMSErrorDecode(lggr logger.Logger, domain cldf_domain.Domain, proposa
 
 			// Unmarshal JSON and extract execution_error field
 			var jsonData map[string]any
-			if errUnmarshal := json.Unmarshal(data, &jsonData); err != nil {
+			if errUnmarshal := json.Unmarshal(data, &jsonData); errUnmarshal != nil {
 				return fmt.Errorf("error unmarshaling JSON: %w", errUnmarshal)
 			}
 
