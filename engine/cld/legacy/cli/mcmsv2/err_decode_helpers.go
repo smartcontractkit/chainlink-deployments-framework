@@ -684,7 +684,7 @@ func tryDecodeFromData(raw *evm.CustomErrorData, dec *ErrDecoder) (string, bool)
 		}
 	}
 
-	if raw.Selector != [4]byte{} {
+	if raw.Selector != errorSelector{} {
 		if combined := raw.Combined(); len(combined) > 4 {
 			return decodeRevertDataFromBytes(combined, dec, "")
 		}
