@@ -202,7 +202,7 @@ func buildMCMSErrorDecode(lggr logger.Logger, domain cldf_domain.Domain, proposa
 			}
 
 			var execErr evm.ExecutionError
-			if errUnmarshal := json.Unmarshal(execErrBytes, &execErr); err != nil {
+			if errUnmarshal := json.Unmarshal(execErrBytes, &execErr); errUnmarshal != nil {
 				return fmt.Errorf("error unmarshaling execution_error: %w", errUnmarshal)
 			}
 
