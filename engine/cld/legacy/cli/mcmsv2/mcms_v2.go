@@ -258,8 +258,8 @@ func buildMCMSErrorDecode(lggr logger.Logger, domain cldf_domain.Domain, proposa
 	panicErr(cmd.MarkFlagRequired("error-file"))
 	cmd.SetHelpFunc(func(command *cobra.Command, args []string) {
 		// Hide flags that aren't needed for this command
-		command.Flags().MarkHidden(proposalPathFlag)  //nolint:errcheck
-		command.Flags().MarkHidden(chainSelectorFlag) //nolint:errcheck
+		panicErr(command.Flags().MarkHidden(proposalPathFlag))
+		panicErr(command.Flags().MarkHidden(chainSelectorFlag))
 		command.Parent().HelpFunc()(command, args)
 	})
 
