@@ -632,44 +632,96 @@ type DecodedExecutionError struct {
 // If those are not available, it extracts RevertReasonRaw and UnderlyingReasonRaw from the struct
 // and decodes them using the provided ErrDecoder to match error selectors against the ABI registry.
 func tryDecodeExecutionError(execError *evm.ExecutionError, dec *ErrDecoder) DecodedExecutionError {
-	result := DecodedExecutionError{}
-
 	if execError == nil {
-		return result
+		return DecodedExecutionError{}
 	}
 
-	// Check if RevertReasonDecoded is already available
+	revertReason, revertDecoded := decodeRevertReasonWithStatus(execError, dec)
+	underlyingReason, underlyingDecoded := decodeUnderlyingReasonWithStatus(execError, dec)
+
+	return DecodedExecutionError{
+		RevertReason:            revertReason,
+		RevertReasonDecoded:     revertDecoded,
+		UnderlyingReason:        underlyingReason,
+		UnderlyingReasonDecoded: underlyingDecoded,
+	}
+}
+
+// decodeRevertReasonWithStatus decodes the revert reason and returns both the reason and decoded status.
+func decodeRevertReasonWithStatus(execError *evm.ExecutionError, dec *ErrDecoder) (string, bool) {
 	if execError.RevertReasonDecoded != "" {
-		result.RevertReason = execError.RevertReasonDecoded
-		result.RevertReasonDecoded = true
-	} else if execError.RevertReasonRaw != nil {
-		// If Data is present and has at least 4 bytes, it might already include the selector
-		if len(execError.RevertReasonRaw.Data) >= 4 {
-			result.RevertReason, result.RevertReasonDecoded = decodeRevertDataFromBytes(execError.RevertReasonRaw.Data, dec, "")
-		}
-		// If decoding from Data didn't work, try Combined() (selector + data)
-		if !result.RevertReasonDecoded {
-			if combined := execError.RevertReasonRaw.Combined(); len(combined) > 4 || (len(combined) == 4 && execError.RevertReasonRaw.Selector != [4]byte{}) {
-				result.RevertReason, result.RevertReasonDecoded = decodeRevertDataFromBytes(combined, dec, "")
-			}
-		}
-		// If still not decoded and we have a selector, try selector only
-		if !result.RevertReasonDecoded && execError.RevertReasonRaw.Selector != [4]byte{} {
-			selectorHex := "0x" + hex.EncodeToString(execError.RevertReasonRaw.Selector[:])
-			result.RevertReason, result.RevertReasonDecoded = decodeRevertData(selectorHex, dec, "")
+		return execError.RevertReasonDecoded, true
+	}
+
+	if execError.RevertReasonRaw == nil {
+		return "", false
+	}
+
+	hasData := len(execError.RevertReasonRaw.Data) > 0
+	hasSelector := execError.RevertReasonRaw.Selector != [4]byte{}
+
+	if hasData {
+		if reason, decoded := tryDecodeFromData(execError.RevertReasonRaw, dec); decoded {
+			return reason, true
 		}
 	}
 
-	// Check if UnderlyingReasonDecoded is already available
+	if hasSelector && !hasData {
+		reason := decodeSelectorOnly(execError.RevertReasonRaw.Selector, dec)
+		return reason, reason != ""
+	}
+
+	return "", false
+}
+
+// tryDecodeFromData attempts to decode revert data from the CustomErrorData.
+func tryDecodeFromData(raw *evm.CustomErrorData, dec *ErrDecoder) (string, bool) {
+	if len(raw.Data) >= 4 {
+		if reason, decoded := decodeRevertDataFromBytes(raw.Data, dec, ""); decoded {
+			return reason, true
+		}
+	}
+
+	if raw.Selector != [4]byte{} {
+		if combined := raw.Combined(); len(combined) > 4 {
+			return decodeRevertDataFromBytes(combined, dec, "")
+		}
+	}
+
+	return "", false
+}
+
+// decodeSelectorOnly decodes an error when only the selector is available.
+func decodeSelectorOnly(selector [4]byte, dec *ErrDecoder) string {
+	if dec == nil {
+		return formatSelectorHex(selector)
+	}
+
+	if matched, ok := dec.matchErrorSelector(selector); ok {
+		return matched
+	}
+
+	return formatSelectorHex(selector)
+}
+
+// formatSelectorHex formats a selector as a hex string.
+func formatSelectorHex(selector [4]byte) string {
+	return "custom error 0x" + hex.EncodeToString(selector[:])
+}
+
+// decodeUnderlyingReasonWithStatus decodes the underlying reason and returns both the reason and decoded status.
+func decodeUnderlyingReasonWithStatus(execError *evm.ExecutionError, dec *ErrDecoder) (string, bool) {
 	if execError.UnderlyingReasonDecoded != "" {
-		result.UnderlyingReason = execError.UnderlyingReasonDecoded
-		result.UnderlyingReasonDecoded = true
-	} else if execError.UnderlyingReasonRaw != "" {
-		// Decode underlying reason (it's a hex string)
-		result.UnderlyingReason, result.UnderlyingReasonDecoded = decodeRevertData(execError.UnderlyingReasonRaw, dec, "")
+		return execError.UnderlyingReasonDecoded, true
 	}
 
-	return result
+	if execError.UnderlyingReasonRaw == "" {
+		return "", false
+	}
+
+	reason, decoded := decodeRevertData(execError.UnderlyingReasonRaw, dec, "")
+
+	return reason, decoded
 }
 
 // decodeRevertData decodes a hex string containing revert data into a human-readable error message.
@@ -684,6 +736,24 @@ func decodeRevertData(hexStr string, dec *ErrDecoder, preferredABIJSON string) (
 	}
 
 	return decodeRevertDataFromBytes(data, dec, preferredABIJSON)
+}
+
+// matchErrorSelector tries to resolve a 4-byte selector to an error name.
+// Returns "ErrorName(...) @Type@Version" if found in registry, or empty string if not found.
+func (d *ErrDecoder) matchErrorSelector(sel4 [4]byte) (string, bool) {
+	if d == nil || d.bySelector == nil {
+		return "", false
+	}
+
+	cands, ok := d.bySelector[sel4]
+	if !ok || len(cands) == 0 {
+		return "", false
+	}
+
+	// If multiple ABIs define the same selector, pick the first.
+	c := cands[0]
+
+	return fmt.Sprintf("%s(...) @%s", c.Name, c.TypeVer), true
 }
 
 // decodeRevertDataFromBytes decodes revert data bytes into a human-readable error message.
