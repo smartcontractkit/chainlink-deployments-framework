@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"crypto/rand"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -118,6 +119,7 @@ func BuildMCMSv2Cmd(lggr logger.Logger, domain cldf_domain.Domain, proposalConte
 	cmd.AddCommand(buildExecuteOperationv2Cmd(lggr, domain, proposalContextProvider))
 	cmd.AddCommand(buildSetRootv2Cmd(lggr, domain, proposalContextProvider))
 	cmd.AddCommand(buildGetOpCountV2Cmd(lggr, domain))
+	cmd.AddCommand(buildMCMSErrorDecode(lggr, domain, proposalContextProvider))
 	cmd.AddCommand(buildRunTimelockIsPendingV2Cmd(lggr, domain))
 	cmd.AddCommand(buildRunTimelockIsReadyToExecuteV2Cmd(lggr, domain))
 	cmd.AddCommand(buildRunTimelockIsDoneV2Cmd(lggr, domain))
@@ -150,6 +152,118 @@ func newCLIStdErrLogger() (logger.Logger, error) {
 	}
 
 	return lggr, nil
+}
+
+func buildMCMSErrorDecode(lggr logger.Logger, domain cldf_domain.Domain, proposalCtxProvider analyzer.ProposalContextProvider) *cobra.Command {
+	var filePath string
+
+	cmd := &cobra.Command{
+		Use:   "error-decode-evm",
+		Short: "Decodes the provided tx error data using the domain ABI registry",
+		PreRun: func(command *cobra.Command, args []string) {
+			// proposalPath and chainSelector are not needed for this command
+			command.InheritedFlags().Lookup(proposalPathFlag).Changed = true
+			command.InheritedFlags().Lookup(chainSelectorFlag).Changed = true
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if filePath == "" {
+				return errors.New("error-file flag is required")
+			}
+
+			// Get environment from persistent flag
+			environmentStr, err := cmd.Flags().GetString(environmentFlag)
+			if err != nil {
+				return fmt.Errorf("error getting environment flag: %w", err)
+			}
+			if environmentStr == "" {
+				return errors.New("environment flag is required")
+			}
+
+			// Read the failed transaction data file
+			data, err := os.ReadFile(filePath)
+			if err != nil {
+				return fmt.Errorf("error reading file %s: %w", filePath, err)
+			}
+
+			// Unmarshal JSON and extract execution_error field
+			var jsonData map[string]any
+			if errUnmarshal := json.Unmarshal(data, &jsonData); errUnmarshal != nil {
+				return fmt.Errorf("error unmarshaling JSON: %w", errUnmarshal)
+			}
+
+			execErrData, ok := jsonData["execution_error"]
+			if !ok {
+				return errors.New("no execution error to decode, json file must contain an 'execution_error' key to get revert reasons decoded")
+			}
+
+			execErrBytes, err := json.Marshal(execErrData)
+			if err != nil {
+				return fmt.Errorf("error marshaling execution_error: %w", err)
+			}
+
+			var execErr evm.ExecutionError
+			if errUnmarshal := json.Unmarshal(execErrBytes, &execErr); errUnmarshal != nil {
+				return fmt.Errorf("error unmarshaling execution_error: %w", errUnmarshal)
+			}
+
+			// Load environment to get ABI registry (no chains needed to decode)
+			env, err := cldfenvironment.Load(cmd.Context(), domain, environmentStr,
+				cldfenvironment.OnlyLoadChainsFor([]uint64{}),
+				cldfenvironment.WithLogger(lggr),
+				cldfenvironment.WithoutJD())
+			if err != nil {
+				return fmt.Errorf("error loading environment: %w", err)
+			}
+
+			// Create ProposalContext to get EVM registry
+			proposalCtx, err := analyzer.NewDefaultProposalContext(env)
+			if err != nil {
+				lggr.Warnf("Failed to create default proposal context: %v. Proceeding without ABI registry.", err)
+			}
+			if proposalCtxProvider != nil {
+				proposalCtx, err = proposalCtxProvider(env)
+				if err != nil {
+					return fmt.Errorf("failed to create proposal context: %w", err)
+				}
+			}
+
+			// Create error decoder from EVM registry
+			var errDec *ErrDecoder
+			if proposalCtx != nil && proposalCtx.GetEVMRegistry() != nil {
+				errDec, err = NewErrDecoder(proposalCtx.GetEVMRegistry())
+				if err != nil {
+					return fmt.Errorf("error creating error decoder: %w", err)
+				}
+			}
+
+			// Decode the error
+			decoded := tryDecodeExecutionError(&execErr, errDec)
+
+			// Output decoded revert reason
+			if decoded.RevertReasonDecoded {
+				fmt.Printf("Revert Reason: %s - decoded: %s\n", execErr.RevertReasonRaw.Selector, decoded.RevertReason)
+			} else {
+				fmt.Println("Revert Reason: (could not decode)")
+			}
+
+			// Output decoded underlying reason if available
+			if decoded.UnderlyingReasonDecoded {
+				fmt.Printf("Underlying Reason: %s - decoded: %s\n", execErr.UnderlyingReasonRaw, decoded.UnderlyingReason)
+			}
+
+			return nil
+		},
+	}
+	cmd.Flags().StringVar(&filePath, "error-file", "", "path to the json file containing tx error")
+	panicErr(cmd.MarkFlagRequired("error-file"))
+	cmd.SetHelpFunc(func(command *cobra.Command, args []string) {
+		// Hide flags that aren't needed for this command
+		panicErr(command.Flags().MarkHidden(proposalPathFlag))
+		panicErr(command.Flags().MarkHidden(chainSelectorFlag))
+		command.Parent().HelpFunc()(command, args)
+	})
+
+	return cmd
 }
 
 func buildMCMSCheckQuorumv2Cmd(lggr logger.Logger, domain cldf_domain.Domain) *cobra.Command {
