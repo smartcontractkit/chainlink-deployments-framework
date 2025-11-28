@@ -30,7 +30,7 @@ import (
 
 const noRevertData = "(no revert data)"
 
-type selectorErr [4]byte
+type errorSelector [4]byte
 
 type traceConfig struct {
 	DisableStorage bool `json:"disableStorage,omitempty"`
@@ -59,25 +59,25 @@ type ErrSig struct {
 	TypeVer string
 	Name    string
 	Inputs  abi.Arguments
-	id      selectorErr
+	id      errorSelector
 }
 
 // ErrDecoder indexes custom-error selectors across many ABIs.
 type ErrDecoder struct {
-	bySelector map[selectorErr][]ErrSig
+	bySelector map[errorSelector][]ErrSig
 	registry   analyzer.EVMABIRegistry
 }
 
 // NewErrDecoder builds an index from EVM ABI registry.
 func NewErrDecoder(registry analyzer.EVMABIRegistry) (*ErrDecoder, error) {
-	idx := make(map[selectorErr][]ErrSig)
+	idx := make(map[errorSelector][]ErrSig)
 	for tv, jsonABI := range registry.GetAllABIs() {
 		a, err := abi.JSON(strings.NewReader(jsonABI))
 		if err != nil {
 			return nil, fmt.Errorf("parse ABI for %s: %w", tv, err)
 		}
 		for name, e := range a.Errors {
-			var key selectorErr
+			var key errorSelector
 			copy(key[:], e.ID[:4]) // selector is first 4 bytes of the keccak(sig)
 			idx[key] = append(idx[key], ErrSig{
 				TypeVer: tv,
@@ -183,7 +183,7 @@ func (d *ErrDecoder) decodeRecursive(revertData []byte, preferredABIJSON string)
 	}
 
 	// --- B) Registry lookup
-	var key selectorErr
+	var key errorSelector
 	copy(key[:], sel)
 	cands, ok := d.bySelector[key]
 	if !ok {
@@ -660,7 +660,7 @@ func decodeRevertReasonWithStatus(execError *evm.ExecutionError, dec *ErrDecoder
 	}
 
 	hasData := len(execError.RevertReasonRaw.Data) > 0
-	hasSelector := execError.RevertReasonRaw.Selector != selectorErr{}
+	hasSelector := execError.RevertReasonRaw.Selector != errorSelector{}
 
 	if hasData {
 		if reason, decoded := tryDecodeFromData(execError.RevertReasonRaw, dec); decoded {
@@ -694,7 +694,7 @@ func tryDecodeFromData(raw *evm.CustomErrorData, dec *ErrDecoder) (string, bool)
 }
 
 // decodeSelectorOnly decodes an error when only the selector is available.
-func decodeSelectorOnly(selector selectorErr, dec *ErrDecoder) string {
+func decodeSelectorOnly(selector errorSelector, dec *ErrDecoder) string {
 	if dec == nil {
 		return formatSelectorHex(selector)
 	}
@@ -707,7 +707,7 @@ func decodeSelectorOnly(selector selectorErr, dec *ErrDecoder) string {
 }
 
 // formatSelectorHex formats a selector as a hex string.
-func formatSelectorHex(selector selectorErr) string {
+func formatSelectorHex(selector errorSelector) string {
 	return "custom error 0x" + hex.EncodeToString(selector[:])
 }
 
@@ -742,7 +742,7 @@ func decodeRevertData(hexStr string, dec *ErrDecoder, preferredABIJSON string) (
 
 // matchErrorSelector tries to resolve a 4-byte selector to an error name.
 // Returns "ErrorName(...) @Type@Version" if found in registry, or empty string if not found.
-func (d *ErrDecoder) matchErrorSelector(sel4 selectorErr) (string, bool) {
+func (d *ErrDecoder) matchErrorSelector(sel4 errorSelector) (string, bool) {
 	if d == nil || d.bySelector == nil {
 		return "", false
 	}
