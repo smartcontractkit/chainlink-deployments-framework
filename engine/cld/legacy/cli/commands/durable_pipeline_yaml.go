@@ -205,7 +205,7 @@ func setChangesetEnvironmentVariable(changesetName string, changesetData any, in
 	}
 
 	payload, payloadExists := changesetMap["payload"]
-	if !payloadExists || payload == nil {
+	if !payloadExists {
 		return fmt.Errorf("changeset '%s' in input file %s is missing required 'payload' field", changesetName, inputFileName)
 	}
 
