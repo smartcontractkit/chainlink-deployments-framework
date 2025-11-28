@@ -1,5 +1,15 @@
 # chainlink-deployments-framework
 
+## 0.70.0
+
+### Minor Changes
+
+- [#605](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/605) [`49d9309`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/49d9309e2d629466172547a13ec3f0bb066ac024) Thanks [@jadepark-dev](https://github.com/jadepark-dev)! - add TON container with config option
+
+### Patch Changes
+
+- [#607](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/607) [`b56241c`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/b56241c94059bba6f1074ba1a2ccc2b7cb2eb5a3) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix: allow empty payload field in input file
+
 ## 0.69.0
 
 ### Minor Changes
