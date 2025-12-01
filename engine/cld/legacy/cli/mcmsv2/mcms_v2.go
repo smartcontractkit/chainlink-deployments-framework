@@ -18,8 +18,6 @@ import (
 	gethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	chainsel "github.com/smartcontractkit/chain-selectors"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework/rpc"
 	"github.com/smartcontractkit/mcms"
 	"github.com/smartcontractkit/mcms/sdk"
 	"github.com/smartcontractkit/mcms/sdk/aptos"
@@ -32,6 +30,9 @@ import (
 	"github.com/spf13/pflag"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/rpc"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
@@ -1294,7 +1295,7 @@ func isNonceError(rawErr error, selector uint64) (bool, error) {
 	switch family {
 	case chainsel.FamilyEVM:
 		decodedErr := cldf.DecodeErr(bindings.ManyChainMultiSigABI, rawErr)
-		// Check if the error contains PostOpCountReached
+		// Check if the error contains PostOpCountReached / WrongNonce
 		if strings.Contains(decodedErr.Error(), "WrongNonce") || strings.Contains(decodedErr.Error(), "PostOpCountReached") {
 			return true, nil
 		}
