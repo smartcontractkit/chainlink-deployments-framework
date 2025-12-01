@@ -30,6 +30,10 @@ import (
 
 const noRevertData = "(no revert data)"
 
+type errorSelector [4]byte
+
+var emptySelector = errorSelector{}
+
 type traceConfig struct {
 	DisableStorage bool `json:"disableStorage,omitempty"`
 	DisableMemory  bool `json:"disableMemory,omitempty"`
@@ -57,25 +61,25 @@ type ErrSig struct {
 	TypeVer string
 	Name    string
 	Inputs  abi.Arguments
-	id      [4]byte
+	id      errorSelector
 }
 
 // ErrDecoder indexes custom-error selectors across many ABIs.
 type ErrDecoder struct {
-	bySelector map[[4]byte][]ErrSig
+	bySelector map[errorSelector][]ErrSig
 	registry   analyzer.EVMABIRegistry
 }
 
 // NewErrDecoder builds an index from EVM ABI registry.
 func NewErrDecoder(registry analyzer.EVMABIRegistry) (*ErrDecoder, error) {
-	idx := make(map[[4]byte][]ErrSig)
+	idx := make(map[errorSelector][]ErrSig)
 	for tv, jsonABI := range registry.GetAllABIs() {
 		a, err := abi.JSON(strings.NewReader(jsonABI))
 		if err != nil {
 			return nil, fmt.Errorf("parse ABI for %s: %w", tv, err)
 		}
 		for name, e := range a.Errors {
-			var key [4]byte
+			var key errorSelector
 			copy(key[:], e.ID[:4]) // selector is first 4 bytes of the keccak(sig)
 			idx[key] = append(idx[key], ErrSig{
 				TypeVer: tv,
@@ -181,7 +185,7 @@ func (d *ErrDecoder) decodeRecursive(revertData []byte, preferredABIJSON string)
 	}
 
 	// --- B) Registry lookup
-	var key [4]byte
+	var key errorSelector
 	copy(key[:], sel)
 	cands, ok := d.bySelector[key]
 	if !ok {
@@ -617,6 +621,160 @@ func prettyRevertFromError(err error, preferredABIJSON string, dec *ErrDecoder) 
 	}
 
 	return "", false
+}
+
+// DecodedExecutionError contains the decoded revert reasons from an ExecutionError.
+type DecodedExecutionError struct {
+	RevertReason            string
+	RevertReasonDecoded     bool
+	UnderlyingReason        string
+	UnderlyingReasonDecoded bool
+}
+
+// tryDecodeExecutionError decodes an evm.ExecutionError into human-readable strings.
+// It first checks for RevertReasonDecoded and UnderlyingReasonDecoded fields.
+// If those are not available, it extracts RevertReasonRaw and UnderlyingReasonRaw from the struct
+// and decodes them using the provided ErrDecoder to match error selectors against the ABI registry.
+func tryDecodeExecutionError(execError *evm.ExecutionError, dec *ErrDecoder) DecodedExecutionError {
+	if execError == nil {
+		return DecodedExecutionError{}
+	}
+
+	revertReason, revertDecoded := decodeRevertReasonWithStatus(execError, dec)
+	underlyingReason, underlyingDecoded := decodeUnderlyingReasonWithStatus(execError, dec)
+
+	return DecodedExecutionError{
+		RevertReason:            revertReason,
+		RevertReasonDecoded:     revertDecoded,
+		UnderlyingReason:        underlyingReason,
+		UnderlyingReasonDecoded: underlyingDecoded,
+	}
+}
+
+// decodeRevertReasonWithStatus decodes the revert reason and returns both the reason and decoded status.
+func decodeRevertReasonWithStatus(execError *evm.ExecutionError, dec *ErrDecoder) (string, bool) {
+	if execError.RevertReasonDecoded != "" {
+		return execError.RevertReasonDecoded, true
+	}
+
+	if execError.RevertReasonRaw == nil {
+		return "", false
+	}
+
+	hasData := len(execError.RevertReasonRaw.Data) > 0
+	hasSelector := execError.RevertReasonRaw.Selector != emptySelector
+
+	if hasData {
+		if reason, decoded := tryDecodeFromData(execError.RevertReasonRaw, dec); decoded {
+			return reason, true
+		}
+	}
+
+	if hasSelector && !hasData {
+		reason := decodeSelectorOnly(execError.RevertReasonRaw.Selector, dec)
+		return reason, reason != ""
+	}
+
+	return "", false
+}
+
+// tryDecodeFromData attempts to decode revert data from the CustomErrorData.
+func tryDecodeFromData(raw *evm.CustomErrorData, dec *ErrDecoder) (string, bool) {
+	if len(raw.Data) >= 4 {
+		if reason, decoded := decodeRevertDataFromBytes(raw.Data, dec, ""); decoded {
+			return reason, true
+		}
+	}
+
+	if raw.Selector != emptySelector {
+		if combined := raw.Combined(); len(combined) > 4 {
+			return decodeRevertDataFromBytes(combined, dec, "")
+		}
+	}
+
+	return "", false
+}
+
+// decodeSelectorOnly decodes an error when only the selector is available.
+func decodeSelectorOnly(selector errorSelector, dec *ErrDecoder) string {
+	if dec == nil {
+		return formatSelectorHex(selector)
+	}
+
+	if matched, ok := dec.matchErrorSelector(selector); ok {
+		return matched
+	}
+
+	return formatSelectorHex(selector)
+}
+
+// formatSelectorHex formats a selector as a hex string.
+func formatSelectorHex(selector errorSelector) string {
+	return "custom error 0x" + hex.EncodeToString(selector[:])
+}
+
+// decodeUnderlyingReasonWithStatus decodes the underlying reason and returns both the reason and decoded status.
+func decodeUnderlyingReasonWithStatus(execError *evm.ExecutionError, dec *ErrDecoder) (string, bool) {
+	if execError.UnderlyingReasonDecoded != "" {
+		return execError.UnderlyingReasonDecoded, true
+	}
+
+	if execError.UnderlyingReasonRaw == "" {
+		return "", false
+	}
+
+	reason, decoded := decodeRevertData(execError.UnderlyingReasonRaw, dec, "")
+
+	return reason, decoded
+}
+
+// decodeRevertData decodes a hex string containing revert data into a human-readable error message.
+func decodeRevertData(hexStr string, dec *ErrDecoder, preferredABIJSON string) (string, bool) {
+	if hexStr == "" {
+		return "", false
+	}
+
+	data, err := hexutil.Decode(hexStr)
+	if err != nil || len(data) == 0 {
+		return "", false
+	}
+
+	return decodeRevertDataFromBytes(data, dec, preferredABIJSON)
+}
+
+// matchErrorSelector tries to resolve a 4-byte selector to an error name.
+// Returns "ErrorName(...) @Type@Version" if found in registry, or empty string if not found.
+func (d *ErrDecoder) matchErrorSelector(sel4 errorSelector) (string, bool) {
+	if d == nil || d.bySelector == nil {
+		return "", false
+	}
+
+	cands, ok := d.bySelector[sel4]
+	if !ok || len(cands) == 0 {
+		return "", false
+	}
+
+	// If multiple ABIs define the same selector, pick the first.
+	c := cands[0]
+
+	return fmt.Sprintf("%s(...) @%s", c.Name, c.TypeVer), true
+}
+
+// decodeRevertDataFromBytes decodes revert data bytes into a human-readable error message.
+func decodeRevertDataFromBytes(data []byte, dec *ErrDecoder, preferredABIJSON string) (string, bool) {
+	if len(data) == 0 {
+		return "", false
+	}
+
+	if dec == nil {
+		if len(data) >= 4 {
+			return "custom error 0x" + hex.EncodeToString(data[:4]), true
+		}
+
+		return "", false
+	}
+
+	return prettyFromBytes(data, preferredABIJSON, dec)
 }
 
 type callContractClient interface {

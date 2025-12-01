@@ -131,7 +131,7 @@ func setupConnection(ctx context.Context, liteserverURL string) (*tonlib.APIClie
 }
 
 // createWallet creates a TON wallet from the given private key and API client
-func createWallet(api *tonlib.APIClient, privateKey []byte, version WalletVersion) (*wallet.Wallet, error) {
+func createWallet(api tonlib.APIClientWrapped, privateKey []byte, version WalletVersion) (*wallet.Wallet, error) {
 	walletConfig, err := getWalletVersionConfig(version)
 	if err != nil {
 		return nil, fmt.Errorf("unsupported wallet version: %w", err)

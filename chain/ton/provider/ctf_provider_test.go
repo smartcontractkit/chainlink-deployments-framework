@@ -99,7 +99,7 @@ func Test_CTFChainProvider_Name(t *testing.T) {
 	t.Parallel()
 
 	p := &CTFChainProvider{}
-	assert.Equal(t, "Ton CTF Chain Provider", p.Name())
+	assert.Equal(t, "TON CTF Chain Provider", p.Name())
 }
 
 func Test_CTFChainProvider_ChainSelector(t *testing.T) {
@@ -119,4 +119,16 @@ func Test_CTFChainProvider_BlockChain(t *testing.T) {
 	}
 
 	assert.Equal(t, *chain, p.BlockChain())
+}
+
+func Test_CTFChainProvider_getImage(t *testing.T) {
+	t.Parallel()
+
+	// Test default image
+	p1 := &CTFChainProvider{config: CTFChainProviderConfig{}}
+	assert.Equal(t, "ghcr.io/neodix42/mylocalton-docker:v3.7", p1.getImage())
+
+	// Test custom image
+	p2 := &CTFChainProvider{config: CTFChainProviderConfig{Image: "ghcr.io/neodix42/mylocalton-docker:latest"}}
+	assert.Equal(t, "ghcr.io/neodix42/mylocalton-docker:latest", p2.getImage())
 }

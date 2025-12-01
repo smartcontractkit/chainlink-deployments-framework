@@ -1,0 +1,1 @@
+{{$chainName := getChainNameOrEmpty .GetValue}}{{if $chainName}}{{.GetValue}} ({{$chainName}}){{else}}`{{.GetValue}} (<chain unknown>)`{{end}}

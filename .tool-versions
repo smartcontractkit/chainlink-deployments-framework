@@ -1,4 +1,4 @@
-golang        1.24.4
+golang        1.24.5
 golangci-lint 2.5.0
 mockery       3.3.4
 nodejs        20.16.0

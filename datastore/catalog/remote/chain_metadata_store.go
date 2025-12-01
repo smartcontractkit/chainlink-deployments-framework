@@ -119,12 +119,7 @@ func (s *catalogChainMetadataStore) Get(
 }
 
 func (s *catalogChainMetadataStore) get(ignoreTransaction bool, key datastore.ChainMetadataKey) (datastore.ChainMetadata, error) {
-	stream, err := s.client.DataAccess()
-	if err != nil {
-		return datastore.ChainMetadata{}, fmt.Errorf("failed to create gRPC stream: %w", err)
-	}
-
-	// Send find request
+	// Create find request
 	findReq := &pb.DataAccessRequest{
 		Operation: &pb.DataAccessRequest_ChainMetadataFindRequest{
 			ChainMetadataFindRequest: &pb.ChainMetadataFindRequest{
@@ -132,6 +127,12 @@ func (s *catalogChainMetadataStore) get(ignoreTransaction bool, key datastore.Ch
 				IgnoreTransaction: ignoreTransaction,
 			},
 		},
+	}
+
+	// Create stream with the initial request for HMAC
+	stream, err := s.client.DataAccess(findReq)
+	if err != nil {
+		return datastore.ChainMetadata{}, fmt.Errorf("failed to create gRPC stream: %w", err)
 	}
 
 	if sendErr := stream.Send(findReq); sendErr != nil {
@@ -181,12 +182,7 @@ func (s *catalogChainMetadataStore) get(ignoreTransaction bool, key datastore.Ch
 
 // Fetch returns a copy of all ChainMetadata in the catalog.
 func (s *catalogChainMetadataStore) Fetch(_ context.Context) ([]datastore.ChainMetadata, error) {
-	stream, err := s.client.DataAccess()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create gRPC stream: %w", err)
-	}
-
-	// Send find request with domain and environment filter only (fetch all)
+	// Create find request with domain and environment filter only (fetch all)
 	findReq := &pb.DataAccessRequest{
 		Operation: &pb.DataAccessRequest_ChainMetadataFindRequest{
 			ChainMetadataFindRequest: &pb.ChainMetadataFindRequest{
@@ -196,6 +192,12 @@ func (s *catalogChainMetadataStore) Fetch(_ context.Context) ([]datastore.ChainM
 				},
 			},
 		},
+	}
+
+	// Create stream with the initial request for HMAC
+	stream, err := s.client.DataAccess(findReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create gRPC stream: %w", err)
 	}
 
 	if sendErr := stream.Send(findReq); sendErr != nil {
@@ -209,8 +211,17 @@ func (s *catalogChainMetadataStore) Fetch(_ context.Context) ([]datastore.ChainM
 	}
 
 	// Check for errors in the response
-	if err := parseResponseStatus(resp.Status); err != nil {
-		return nil, fmt.Errorf("fetch chain metadata failed: %w", err)
+	if statusErr := parseResponseStatus(resp.Status); statusErr != nil {
+		st, sterr := parseStatusError(statusErr)
+		if sterr != nil {
+			return nil, sterr
+		}
+
+		if st.Code() == codes.NotFound {
+			return nil, fmt.Errorf("%w: %s", datastore.ErrChainMetadataNotFound, statusErr.Error())
+		}
+
+		return nil, fmt.Errorf("fetch chain metadata failed: %w", statusErr)
 	}
 
 	findResp := resp.GetChainMetadataFindResponse()
@@ -338,16 +349,11 @@ func (s *catalogChainMetadataStore) Delete(_ context.Context, _ datastore.ChainM
 
 // editRecord is a helper method that handles Add, Upsert, and Update operations
 func (s *catalogChainMetadataStore) editRecord(record datastore.ChainMetadata, semantics pb.EditSemantics) error {
-	stream, err := s.client.DataAccess()
-	if err != nil {
-		return fmt.Errorf("failed to create gRPC stream: %w", err)
-	}
-
 	// Get the current version for this record
 	key := record.Key()
 	version := s.getVersion(key)
 
-	// Send edit request
+	// Create edit request
 	editReq := &pb.DataAccessRequest{
 		Operation: &pb.DataAccessRequest_ChainMetadataEditRequest{
 			ChainMetadataEditRequest: &pb.ChainMetadataEditRequest{
@@ -355,6 +361,12 @@ func (s *catalogChainMetadataStore) editRecord(record datastore.ChainMetadata, s
 				Semantics: semantics,
 			},
 		},
+	}
+
+	// Create stream with the initial request for HMAC
+	stream, err := s.client.DataAccess(editReq)
+	if err != nil {
+		return fmt.Errorf("failed to create gRPC stream: %w", err)
 	}
 
 	if sendErr := stream.Send(editReq); sendErr != nil {

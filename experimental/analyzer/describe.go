@@ -1,39 +1,43 @@
 package analyzer
 
 import (
+	"context"
+
 	"github.com/smartcontractkit/mcms"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 )
 
-func DescribeTimelockProposal(ctx ProposalContext, proposal *mcms.TimelockProposal) (string, error) {
-	report, err := BuildTimelockReport(ctx, proposal)
+func DescribeTimelockProposal(ctx context.Context, proposalCtx ProposalContext, env deployment.Environment, proposal *mcms.TimelockProposal) (string, error) {
+	report, err := BuildTimelockReport(ctx, proposalCtx, env, proposal)
 	if err != nil {
 		return "", err
 	}
 
-	// Create descriptor context for address annotations
+	// Create fields context for address annotations
 	// For timelock proposals with multiple batches, we'll use the first batch's chain selector
 	var chainSelector uint64
 	if len(proposal.Operations) > 0 {
 		chainSelector = uint64(proposal.Operations[0].ChainSelector)
 	}
-	descriptorCtx := ctx.DescriptorContext(chainSelector)
+	fieldCtx := proposalCtx.FieldsContext(chainSelector)
 
-	return ctx.GetRenderer().RenderTimelockProposal(report, descriptorCtx), nil
+	return proposalCtx.GetRenderer().RenderTimelockProposal(report, fieldCtx), nil
 }
 
-func DescribeProposal(ctx ProposalContext, proposal *mcms.Proposal) (string, error) {
-	report, err := BuildProposalReport(ctx, proposal)
+func DescribeProposal(ctx context.Context, proposalContext ProposalContext, env deployment.Environment, proposal *mcms.Proposal) (string, error) {
+	report, err := BuildProposalReport(ctx, proposalContext, env, proposal)
 	if err != nil {
 		return "", err
 	}
 
-	// Create descriptor context for address annotations
+	// Create fields context for address annotations
 	// For proposals with multiple operations, we'll use the first operation's chain selector
 	var chainSelector uint64
 	if len(proposal.Operations) > 0 {
 		chainSelector = uint64(proposal.Operations[0].ChainSelector)
 	}
-	descriptorCtx := ctx.DescriptorContext(chainSelector)
+	fieldCtx := proposalContext.FieldsContext(chainSelector)
 
-	return ctx.GetRenderer().RenderProposal(report, descriptorCtx), nil
+	return proposalContext.GetRenderer().RenderProposal(report, fieldCtx), nil
 }

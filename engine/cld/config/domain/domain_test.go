@@ -48,32 +48,37 @@ func TestIsValidNetworkType(t *testing.T) {
 	}
 }
 
-func TestIsValidDatastore(t *testing.T) {
+func TestDatastoreType_IsValid(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
 		name      string
-		datastore string
+		datastore DatastoreType
 		expected  bool
 	}{
 		{
 			name:      "file is valid",
-			datastore: "file",
+			datastore: DatastoreTypeFile,
 			expected:  true,
 		},
 		{
 			name:      "catalog is valid",
-			datastore: "catalog",
+			datastore: DatastoreTypeCatalog,
+			expected:  true,
+		},
+		{
+			name:      "all is valid",
+			datastore: DatastoreTypeAll,
 			expected:  true,
 		},
 		{
 			name:      "invalid value",
-			datastore: "invalid",
+			datastore: DatastoreType("invalid"),
 			expected:  false,
 		},
 		{
 			name:      "empty value",
-			datastore: "",
+			datastore: DatastoreType(""),
 			expected:  false,
 		},
 	}
@@ -82,7 +87,7 @@ func TestIsValidDatastore(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			assert.Equal(t, tt.expected, isValidDatastore(tt.datastore))
+			assert.Equal(t, tt.expected, tt.datastore.IsValid())
 		})
 	}
 }
@@ -121,7 +126,7 @@ func TestEnvironment_Validate(t *testing.T) {
 			name: "valid environment with file datastore",
 			environment: Environment{
 				NetworkTypes: []string{"testnet"},
-				Datastore:    "file",
+				Datastore:    DatastoreTypeFile,
 			},
 			wantErr: false,
 		},
@@ -129,7 +134,15 @@ func TestEnvironment_Validate(t *testing.T) {
 			name: "valid environment with catalog datastore",
 			environment: Environment{
 				NetworkTypes: []string{"mainnet"},
-				Datastore:    "catalog",
+				Datastore:    DatastoreTypeCatalog,
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid environment with all datastore",
+			environment: Environment{
+				NetworkTypes: []string{"testnet"},
+				Datastore:    DatastoreTypeAll,
 			},
 			wantErr: false,
 		},
@@ -177,7 +190,7 @@ func TestEnvironment_Validate(t *testing.T) {
 			name: "invalid datastore value",
 			environment: Environment{
 				NetworkTypes: []string{"testnet"},
-				Datastore:    "invalid",
+				Datastore:    DatastoreType("invalid"),
 			},
 			wantErr:     true,
 			errContains: "invalid datastore value: invalid",
@@ -231,27 +244,27 @@ func TestLoad(t *testing.T) {
 				// Test specific environment configurations
 				dev := config.Environments["development"]
 				assert.Equal(t, []string{"testnet"}, dev.NetworkTypes)
-				assert.Equal(t, "file", dev.Datastore)
+				assert.Equal(t, DatastoreTypeFile, dev.Datastore)
 
 				staging := config.Environments["staging"]
 				assert.ElementsMatch(t, []string{"testnet", "mainnet"}, staging.NetworkTypes)
-				assert.Equal(t, "catalog", staging.Datastore)
+				assert.Equal(t, DatastoreTypeCatalog, staging.Datastore)
 
 				prod := config.Environments["production"]
 				assert.Equal(t, []string{"mainnet"}, prod.NetworkTypes)
-				assert.Equal(t, "catalog", prod.Datastore)
+				assert.Equal(t, DatastoreTypeCatalog, prod.Datastore)
 
 				local := config.Environments["local"]
 				assert.Equal(t, []string{"testnet"}, local.NetworkTypes)
-				assert.Equal(t, "file", local.Datastore)
+				assert.Equal(t, DatastoreTypeFile, local.Datastore)
 
 				dudeenv := config.Environments["dudeenv"]
 				assert.Equal(t, []string{"testnet"}, dudeenv.NetworkTypes)
-				assert.Equal(t, "file", dudeenv.Datastore) // Not set in YAML, should default to "file"
+				assert.Equal(t, DatastoreTypeFile, dudeenv.Datastore) // Not set in YAML, should default to "file"
 
 				testtest := config.Environments["testtest"]
 				assert.Equal(t, []string{"mainnet"}, testtest.NetworkTypes)
-				assert.Equal(t, "catalog", testtest.Datastore)
+				assert.Equal(t, DatastoreTypeCatalog, testtest.Datastore)
 			},
 		},
 		{
@@ -283,7 +296,7 @@ func TestLoad(t *testing.T) {
 
 				// dudeenv doesn't have datastore specified in YAML, should default to "file"
 				dudeenv := config.Environments["dudeenv"]
-				assert.Equal(t, "file", dudeenv.Datastore)
+				assert.Equal(t, DatastoreTypeFile, dudeenv.Datastore)
 			},
 		},
 	}

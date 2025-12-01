@@ -123,12 +123,7 @@ func (s *catalogContractMetadataStore) Get(
 }
 
 func (s *catalogContractMetadataStore) get(ignoreTransaction bool, key datastore.ContractMetadataKey) (datastore.ContractMetadata, error) {
-	stream, err := s.client.DataAccess()
-	if err != nil {
-		return datastore.ContractMetadata{}, fmt.Errorf("failed to create gRPC stream: %w", err)
-	}
-
-	// Send find request
+	// Create find request
 	findReq := &pb.DataAccessRequest{
 		Operation: &pb.DataAccessRequest_ContractMetadataFindRequest{
 			ContractMetadataFindRequest: &pb.ContractMetadataFindRequest{
@@ -136,6 +131,12 @@ func (s *catalogContractMetadataStore) get(ignoreTransaction bool, key datastore
 				IgnoreTransaction: ignoreTransaction,
 			},
 		},
+	}
+
+	// Create stream with the initial request for HMAC
+	stream, err := s.client.DataAccess(findReq)
+	if err != nil {
+		return datastore.ContractMetadata{}, fmt.Errorf("failed to create gRPC stream: %w", err)
 	}
 
 	if sendErr := stream.Send(findReq); sendErr != nil {
@@ -185,12 +186,7 @@ func (s *catalogContractMetadataStore) get(ignoreTransaction bool, key datastore
 
 // Fetch returns a copy of all ContractMetadata in the catalog.
 func (s *catalogContractMetadataStore) Fetch(_ context.Context) ([]datastore.ContractMetadata, error) {
-	stream, err := s.client.DataAccess()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create gRPC stream: %w", err)
-	}
-
-	// Send find request with domain and environment filter only (fetch all)
+	// Create find request with domain and environment filter only (fetch all)
 	findReq := &pb.DataAccessRequest{
 		Operation: &pb.DataAccessRequest_ContractMetadataFindRequest{
 			ContractMetadataFindRequest: &pb.ContractMetadataFindRequest{
@@ -200,6 +196,12 @@ func (s *catalogContractMetadataStore) Fetch(_ context.Context) ([]datastore.Con
 				},
 			},
 		},
+	}
+
+	// Create stream with the initial request for HMAC
+	stream, err := s.client.DataAccess(findReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create gRPC stream: %w", err)
 	}
 
 	if sendErr := stream.Send(findReq); sendErr != nil {
@@ -214,6 +216,15 @@ func (s *catalogContractMetadataStore) Fetch(_ context.Context) ([]datastore.Con
 
 	// Check for errors in the response
 	if statusErr := parseResponseStatus(resp.Status); statusErr != nil {
+		st, sterr := parseStatusError(statusErr)
+		if sterr != nil {
+			return nil, sterr
+		}
+
+		if st.Code() == codes.NotFound {
+			return nil, fmt.Errorf("%w: %s", datastore.ErrContractMetadataNotFound, statusErr.Error())
+		}
+
 		return nil, fmt.Errorf("fetch contract metadata failed: %w", statusErr)
 	}
 
@@ -345,16 +356,11 @@ func (s *catalogContractMetadataStore) Delete(_ context.Context, _ datastore.Con
 
 // editRecord is a helper method that handles Add, Upsert, and Update operations
 func (s *catalogContractMetadataStore) editRecord(record datastore.ContractMetadata, semantics pb.EditSemantics) error {
-	stream, err := s.client.DataAccess()
-	if err != nil {
-		return fmt.Errorf("failed to create gRPC stream: %w", err)
-	}
-
 	// Get the current version for this record
 	key := record.Key()
 	version := s.getVersion(key)
 
-	// Send edit request
+	// Create edit request
 	editReq := &pb.DataAccessRequest{
 		Operation: &pb.DataAccessRequest_ContractMetadataEditRequest{
 			ContractMetadataEditRequest: &pb.ContractMetadataEditRequest{
@@ -362,6 +368,12 @@ func (s *catalogContractMetadataStore) editRecord(record datastore.ContractMetad
 				Semantics: semantics,
 			},
 		},
+	}
+
+	// Create stream with the initial request for HMAC
+	stream, err := s.client.DataAccess(editReq)
+	if err != nil {
+		return fmt.Errorf("failed to create gRPC stream: %w", err)
 	}
 
 	if sendErr := stream.Send(editReq); sendErr != nil {

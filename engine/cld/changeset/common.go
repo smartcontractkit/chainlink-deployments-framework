@@ -100,9 +100,10 @@ func (f WrappedChangeSet[C]) WithJSON(_ C, inputStr string) ConfiguredChangeSet 
 			return config, fmt.Errorf("JSON must be in JSON format with 'payload' fields: %w", err)
 		}
 
-		// If payload is null or empty, return an error
-		if len(inputObject.Payload) == 0 || string(inputObject.Payload) == "null" {
-			return config, errors.New("'payload' field is required and cannot be empty")
+		// If payload is null, decode it as null (which will give zero value)
+		// If payload is missing, return an error
+		if len(inputObject.Payload) == 0 {
+			return config, errors.New("'payload' field is required")
 		}
 
 		payloadDecoder := json.NewDecoder(strings.NewReader(string(inputObject.Payload)))
@@ -159,9 +160,10 @@ func (f WrappedChangeSet[C]) WithEnvInput(opts ...EnvInputOption[C]) ConfiguredC
 			return config, fmt.Errorf("JSON must be in JSON format with 'payload' fields: %w", err)
 		}
 
-		// If payload is null or empty, return an error
-		if len(inputObject.Payload) == 0 || string(inputObject.Payload) == "null" {
-			return config, errors.New("'payload' field is required and cannot be empty")
+		// If payload is null, decode it as null (which will give zero value)
+		// If payload is missing, return an error
+		if len(inputObject.Payload) == 0 {
+			return config, errors.New("'payload' field is required")
 		}
 
 		payloadDecoder := json.NewDecoder(strings.NewReader(string(inputObject.Payload)))
@@ -229,9 +231,10 @@ func (f WrappedChangeSet[C]) WithConfigResolver(resolver fresolvers.ConfigResolv
 			return zero, fmt.Errorf("failed to parse resolver input as JSON: %w", err)
 		}
 
-		// If payload is null or empty, return an error
-		if len(inputObject.Payload) == 0 || string(inputObject.Payload) == "null" {
-			return zero, errors.New("'payload' field is required and cannot be empty")
+		// If payload is null, pass it to the resolver (which will receive null)
+		// If payload field is missing, return an error
+		if len(inputObject.Payload) == 0 {
+			return zero, errors.New("'payload' field is required")
 		}
 
 		// Call resolver – automatically unmarshal into its expected input type.

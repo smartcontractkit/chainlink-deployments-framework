@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	cfgenv "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/env"
+	fdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 )
 
 func Test_LoadEnvConfig(t *testing.T) { //nolint:paralleltest // These tests are not parallel safe due to setting of env vars
@@ -66,7 +67,6 @@ func Test_LoadEnvConfig(t *testing.T) { //nolint:paralleltest // These tests are
 				"SOLANA_PROGRAM_PATH":               "0xcde",
 				"APTOS_DEPLOYER_KEY":                "0x345",
 				"TRON_DEPLOYER_KEY":                 "0x456",
-				"CATALOG_SERVICE_GRPC":              "http://localhost:2000",
 			},
 			wantFunc: func(t *testing.T, cfg *cfgenv.Config) {
 				t.Helper()
@@ -91,7 +91,6 @@ func Test_LoadEnvConfig(t *testing.T) { //nolint:paralleltest // These tests are
 				assert.Equal(t, "0x234", cfg.Onchain.Solana.WalletKey)
 				assert.Equal(t, "0x345", cfg.Onchain.Aptos.DeployerKey)
 				assert.Equal(t, "0x456", cfg.Onchain.Tron.DeployerKey)
-				assert.Equal(t, "http://localhost:2000", cfg.Catalog.GRPC)
 			},
 		},
 		{
@@ -113,6 +112,8 @@ func Test_LoadEnvConfig(t *testing.T) { //nolint:paralleltest // These tests are
 				"ONCHAIN_EVM_SETH_CONFIG_FILE_PATH":          "/tmp/config",
 				"ONCHAIN_EVM_SETH_GETH_WRAPPER_DIRS":         "dir1,dir2",
 				"CATALOG_GRPC":                               "http://localhost:2000",
+				"CATALOG_AUTH_KMS_KEY_ID":                    "c4f1a2b3",
+				"CATALOG_AUTH_KMS_KEY_REGION":                "us-east-1",
 				"ONCHAIN_SOLANA_WALLET_KEY":                  "0x234",
 				"ONCHAIN_SOLANA_PROGRAM_PATH":                "0xcde",
 				"ONCHAIN_APTOS_DEPLOYER_KEY":                 "0x345",
@@ -146,6 +147,8 @@ func Test_LoadEnvConfig(t *testing.T) { //nolint:paralleltest // These tests are
 				assert.Equal(t, "0x456", cfg.Onchain.Tron.DeployerKey)
 				assert.Equal(t, "0x567", cfg.Onchain.Sui.DeployerKey)
 				assert.Equal(t, "http://localhost:2000", cfg.Catalog.GRPC)
+				assert.Equal(t, "c4f1a2b3", cfg.Catalog.Auth.KMSKeyID)
+				assert.Equal(t, "us-east-1", cfg.Catalog.Auth.KMSKeyRegion)
 			},
 		},
 	}
@@ -188,6 +191,107 @@ func Test_LoadEnvConfig(t *testing.T) { //nolint:paralleltest // These tests are
 				}
 
 				tt.wantFunc(t, got)
+			}
+		})
+	}
+}
+
+func Test_LoadDatastoreType(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		beforeFunc func(t *testing.T, dom fdomain.Domain, envKey string)
+		wantValue  string
+		wantErr    string
+	}{
+		{
+			name: "successfully loads datastore type - file",
+			beforeFunc: func(t *testing.T, dom fdomain.Domain, envKey string) {
+				t.Helper()
+
+				writeConfigDomainFile(t, dom, "domain.yaml")
+			},
+			wantValue: "file",
+		},
+		{
+			name: "successfully loads datastore type - catalog",
+			beforeFunc: func(t *testing.T, dom fdomain.Domain, envKey string) {
+				t.Helper()
+
+				// Create a custom domain.yaml with catalog datastore
+				domainYAML := `environments:
+  staging_testnet:
+    network_types:
+      - testnet
+    datastore: catalog
+`
+				err := os.WriteFile(dom.ConfigDomainFilePath(), []byte(domainYAML), filePerms)
+				require.NoError(t, err)
+			},
+			wantValue: "catalog",
+		},
+		{
+			name: "successfully loads datastore type - defaults to file when not specified",
+			beforeFunc: func(t *testing.T, dom fdomain.Domain, envKey string) {
+				t.Helper()
+
+				// Create a domain.yaml without datastore field
+				domainYAML := `environments:
+  staging_testnet:
+    network_types:
+      - testnet
+`
+				err := os.WriteFile(dom.ConfigDomainFilePath(), []byte(domainYAML), filePerms)
+				require.NoError(t, err)
+			},
+			wantValue: "file",
+		},
+		{
+			name: "fails when domain config file does not exist",
+			beforeFunc: func(t *testing.T, dom fdomain.Domain, envKey string) {
+				t.Helper()
+				// Don't create domain.yaml file
+			},
+			wantErr: "failed to load domain config",
+		},
+		{
+			name: "fails when environment not found in domain config",
+			beforeFunc: func(t *testing.T, dom fdomain.Domain, envKey string) {
+				t.Helper()
+
+				// Create a domain.yaml with a different environment
+				domainYAML := `environments:
+  production:
+    network_types:
+      - mainnet
+    datastore: file
+`
+				err := os.WriteFile(dom.ConfigDomainFilePath(), []byte(domainYAML), filePerms)
+				require.NoError(t, err)
+			},
+			wantErr: "environment staging_testnet not found in domain config",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			dom, envKey := setupConfigDirs(t)
+
+			if tt.beforeFunc != nil {
+				tt.beforeFunc(t, dom, envKey)
+			}
+
+			got, err := LoadDatastoreType(dom, envKey)
+
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				require.ErrorContains(t, err, tt.wantErr)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.wantValue, got.String())
 			}
 		})
 	}

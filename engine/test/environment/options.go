@@ -3,6 +3,7 @@ package environment
 import (
 	"testing"
 
+	fchain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
 	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
@@ -13,16 +14,30 @@ import (
 
 // Assign the chain container loader constructors to local variables to allow for stubbing in tests.
 var (
-	newAptosContainerLoader  = onchain.NewAptosContainerLoader
-	newSolanaContainerLoader = onchain.NewSolanaContainerLoader
-	newSuiContainerLoader    = onchain.NewSuiContainerLoader
-	newTonContainerLoader    = onchain.NewTonContainerLoader
-	newTronContainerLoader   = onchain.NewTronContainerLoader
-	newZKSyncContainerLoader = onchain.NewZKSyncContainerLoader
+	newAptosContainerLoader         = onchain.NewAptosContainerLoader
+	newSolanaContainerLoader        = onchain.NewSolanaContainerLoader
+	newSuiContainerLoader           = onchain.NewSuiContainerLoader
+	newTonContainerLoader           = onchain.NewTonContainerLoader
+	newTonContainerLoaderWithConfig = onchain.NewTonContainerLoaderWithConfig
+	newTronContainerLoader          = onchain.NewTronContainerLoader
+	newZKSyncContainerLoader        = onchain.NewZKSyncContainerLoader
 )
 
 // LoadOpt is a configuration function that sets environment components during loading.
 type LoadOpt func(*components) error
+
+// WithChains adds pre-constructed blockchain instances to the environment.
+//
+// Use this option when you need to manually construct and configure chains before adding
+// them to the environment. For most test scenarios, prefer using chain-specific loaders
+// like WithEVMSimulated, WithSolanaContainer, etc., which handle chain setup automatically.
+func WithChains(chains ...fchain.BlockChain) LoadOpt {
+	return func(cmps *components) error {
+		cmps.AddChains(chains...)
+
+		return nil
+	}
+}
 
 // WithTonContainer loads TON blockchain container instances for specified chain selectors.
 func WithTonContainer(t *testing.T, selectors []uint64) LoadOpt {
@@ -31,11 +46,26 @@ func WithTonContainer(t *testing.T, selectors []uint64) LoadOpt {
 	return withChainLoader(t, newTonContainerLoader(), selectors)
 }
 
+// WithTonContainerWithConfig loads TON blockchain container instances with custom configuration
+// for specified chain selectors.
+func WithTonContainerWithConfig(t *testing.T, selectors []uint64, cfg onchain.TonContainerConfig) LoadOpt {
+	t.Helper()
+
+	return withChainLoader(t, newTonContainerLoaderWithConfig(cfg), selectors)
+}
+
 // WithTonContainerN loads n TON blockchain container instances.
 func WithTonContainerN(t *testing.T, n int) LoadOpt {
 	t.Helper()
 
 	return withChainLoaderN(t, newTonContainerLoader(), n)
+}
+
+// WithTonContainerNWithConfig loads n TON blockchain container instances with custom configuration.
+func WithTonContainerNWithConfig(t *testing.T, n int, cfg onchain.TonContainerConfig) LoadOpt {
+	t.Helper()
+
+	return withChainLoaderN(t, newTonContainerLoaderWithConfig(cfg), n)
 }
 
 // WithEVMSimulated loads simulated EVM blockchain instances for specified chain selectors.

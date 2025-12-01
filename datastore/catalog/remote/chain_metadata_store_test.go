@@ -40,8 +40,9 @@ func newTestChainMetadata(name string) TestChainMetadata {
 }
 
 // setupTestChainStore creates a real gRPC client connection to a local service
-func setupTestChainStore(t *testing.T) *catalogChainMetadataStore {
+func setupTestChainStore(t *testing.T, domain, environment string) *catalogChainMetadataStore {
 	t.Helper()
+
 	// Get gRPC address from environment or use default
 	address := os.Getenv("CATALOG_GRPC_ADDRESS")
 	if address == "" {
@@ -59,7 +60,7 @@ func setupTestChainStore(t *testing.T) *catalogChainMetadataStore {
 	}
 
 	// Test if the service is actually available by making a simple call
-	_, err = catalogClient.DataAccess()
+	_, err = catalogClient.DataAccess(&pb.DataAccessRequest{})
 	if err != nil {
 		t.Skipf("gRPC service not available at %s: %v. Skipping integration tests.", address, err)
 		return nil
@@ -70,8 +71,8 @@ func setupTestChainStore(t *testing.T) *catalogChainMetadataStore {
 
 	// Create store
 	store := newCatalogChainMetadataStore(catalogChainMetadataStoreConfig{
-		Domain:      "test-domain",
-		Environment: "catalog_testing",
+		Domain:      domain,
+		Environment: environment,
 		Client:      catalogClient,
 	})
 
@@ -133,7 +134,7 @@ func TestCatalogChainMetadataStore_Get(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			// Create a fresh store for each test case to avoid concurrency issues
-			store := setupTestChainStore(t)
+			store := setupTestChainStore(t, "test-domain", "catalog_testing")
 
 			key := tt.setup(store)
 
@@ -188,7 +189,7 @@ func TestCatalogChainMetadataStore_Add(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			// Create a fresh store for each test case to avoid concurrency issues
-			store := setupTestChainStore(t)
+			store := setupTestChainStore(t, "test-domain", "catalog_testing")
 
 			metadata := tt.setup(store)
 
@@ -277,7 +278,7 @@ func TestCatalogChainMetadataStore_Update(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			// Create a fresh store for each test case to avoid concurrency issues
-			store := setupTestChainStore(t)
+			store := setupTestChainStore(t, "test-domain", "catalog_testing")
 
 			metadata := tt.setup(store)
 
@@ -370,7 +371,7 @@ func TestCatalogChainMetadataStore_Update_WithCustomUpdater(t *testing.T) {
 			t.Parallel()
 
 			// Create a fresh store and data for each test case
-			store := setupTestChainStore(t)
+			store := setupTestChainStore(t, "test-domain", "catalog_testing")
 
 			// Create and add initial chain metadata
 			original := newRandomChainMetadata()
@@ -470,7 +471,7 @@ func TestCatalogChainMetadataStore_Upsert_WithCustomUpdater(t *testing.T) {
 			t.Parallel()
 
 			// Create a fresh store for each test case
-			store := setupTestChainStore(t)
+			store := setupTestChainStore(t, "test-domain", "catalog_testing")
 
 			var original *datastore.ChainMetadata
 			var key datastore.ChainMetadataKey
@@ -525,9 +526,9 @@ func TestCatalogChainMetadataStore_Upsert_WithCustomUpdater(t *testing.T) {
 func TestCatalogChainMetadataStore_Update_StaleVersion(t *testing.T) {
 	t.Parallel()
 	// Create two separate stores to simulate concurrent access
-	store1 := setupTestChainStore(t)
+	store1 := setupTestChainStore(t, "", "")
 
-	store2 := setupTestChainStore(t)
+	store2 := setupTestChainStore(t, "", "")
 
 	// Add a chain metadata record using store1
 	original := newRandomChainMetadata()
@@ -637,7 +638,7 @@ func TestCatalogChainMetadataStore_Upsert(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			// Create a fresh store for each test case to avoid concurrency issues
-			store := setupTestChainStore(t)
+			store := setupTestChainStore(t, "test-domain", "catalog_testing")
 
 			metadata := tt.setup(store)
 
@@ -663,9 +664,9 @@ func TestCatalogChainMetadataStore_Upsert(t *testing.T) {
 func TestCatalogChainMetadataStore_Upsert_StaleVersion(t *testing.T) {
 	t.Parallel()
 	// Create two separate stores to simulate concurrent access
-	store1 := setupTestChainStore(t)
+	store1 := setupTestChainStore(t, "", "")
 
-	store2 := setupTestChainStore(t)
+	store2 := setupTestChainStore(t, "", "")
 
 	// Add a chain metadata record using store1
 	original := newRandomChainMetadata()
@@ -713,7 +714,7 @@ func TestCatalogChainMetadataStore_Upsert_StaleVersion(t *testing.T) {
 
 func TestCatalogChainMetadataStore_Delete(t *testing.T) {
 	t.Parallel()
-	store := setupTestChainStore(t)
+	store := setupTestChainStore(t, "", "")
 
 	key := datastore.NewChainMetadataKey(12345)
 
@@ -733,11 +734,17 @@ func TestCatalogChainMetadataStore_FetchAndFilter(t *testing.T) {
 		setup        func(store *catalogChainMetadataStore) (datastore.ChainMetadata, datastore.ChainMetadata)
 		createFilter func(metadata1, metadata2 datastore.ChainMetadata) datastore.FilterFunc[datastore.ChainMetadataKey, datastore.ChainMetadata]
 		minExpected  int
+		expectError  bool
+		errorType    error
+		domain       string
+		environment  string
 		verify       func(t *testing.T, results []datastore.ChainMetadata, metadata1, metadata2 datastore.ChainMetadata)
 	}{
 		{
-			name:      "fetch_all",
-			operation: "fetch",
+			name:        "fetch_all",
+			operation:   "fetch",
+			domain:      "test-domain",
+			environment: "catalog_testing",
 			setup: func(store *catalogChainMetadataStore) (datastore.ChainMetadata, datastore.ChainMetadata) {
 				// Setup test data with unique chain selectors
 				metadata1 := newRandomChainMetadata()
@@ -778,8 +785,10 @@ func TestCatalogChainMetadataStore_FetchAndFilter(t *testing.T) {
 			},
 		},
 		{
-			name:      "filter_by_chain_selector",
-			operation: "filter",
+			name:        "filter_by_chain_selector",
+			operation:   "filter",
+			domain:      "test-domain",
+			environment: "catalog_testing",
 			setup: func(store *catalogChainMetadataStore) (datastore.ChainMetadata, datastore.ChainMetadata) {
 				// Setup test data with unique chain selectors
 				metadata1 := newRandomChainMetadata()
@@ -813,14 +822,27 @@ func TestCatalogChainMetadataStore_FetchAndFilter(t *testing.T) {
 				}
 			},
 		},
+		{
+			name:      "fetch_not_found",
+			operation: "fetch",
+			setup: func(store *catalogChainMetadataStore) (datastore.ChainMetadata, datastore.ChainMetadata) {
+				return datastore.ChainMetadata{}, datastore.ChainMetadata{}
+			},
+			createFilter: nil,
+			minExpected:  0,
+			expectError:  true,
+			errorType:    datastore.ErrChainMetadataNotFound,
+			domain:       "empty-domain-for-testing",
+			environment:  "empty-env-for-testing",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			// Create a fresh store for each test case to avoid concurrency issues
-			store := setupTestChainStore(t)
 
+			// Create a fresh store for each test case to avoid concurrency issues
+			store := setupTestChainStore(t, tt.domain, tt.environment)
 			metadata1, metadata2 := tt.setup(store)
 
 			var results []datastore.ChainMetadata
@@ -839,10 +861,18 @@ func TestCatalogChainMetadataStore_FetchAndFilter(t *testing.T) {
 			}
 
 			// Verify
-			require.NoError(t, err)
-			require.GreaterOrEqual(t, len(results), tt.minExpected)
-			if tt.verify != nil {
-				tt.verify(t, results, metadata1, metadata2)
+			if tt.expectError {
+				require.Error(t, err)
+				if tt.errorType != nil {
+					require.ErrorIs(t, err, tt.errorType)
+				}
+				require.Nil(t, results)
+			} else {
+				require.NoError(t, err)
+				require.GreaterOrEqual(t, len(results), tt.minExpected)
+				if tt.verify != nil {
+					tt.verify(t, results, metadata1, metadata2)
+				}
 			}
 		})
 	}
@@ -1047,7 +1077,7 @@ func TestCatalogChainMetadataStore_ConversionHelpers(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			// Create a fresh store for each test case to avoid concurrency issues
-			store := setupTestChainStore(t)
+			store := setupTestChainStore(t, "test-domain", "catalog_testing")
 
 			tt.test(t, store)
 		})

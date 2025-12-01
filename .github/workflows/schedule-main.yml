@@ -40,19 +40,101 @@ jobs:
       actions: read
     steps:
       - name: Build and test
-        uses: smartcontractkit/.github/actions/ci-test-go@eeb76b5870e3c17856d5a60fd064a053c023b5f5 # ci-test-go@1.0.0
+        uses: smartcontractkit/.github/actions/ci-test-go@dfcba48f05933158428bce867d790e3d5a9baa6b # ci-test-go@1.1.0
         with:
           # disable the checkptr runtime check due a false positive in github.com/xssnick/tonutils-go
-          # causing tests in ci to fail "fatal error: checkptr: pointer arithmetic result points to invalid allocation"
-          # https://github.com/xssnick/tonutils-go/issues/310
-          # -p 2 -parallel 3 = 2 packages, 3 tests max = 6 containers max
-          go-test-cmd: go test -race -gcflags=all=-d=checkptr=0 -p 2 -parallel 3 -coverprofile=coverage.txt $(go list ./...)
+          # Exclude provider packages which use Docker containers and remote catalog tests
+          go-test-cmd: go test -race -gcflags=all=-d=checkptr=0 -coverprofile=coverage.txt $(go list ./... | grep -v '/provider' | grep -v '/catalog/remote')
           use-go-cache: true
+          artifact-name: unit-tests
+
+  ci-test-provider:
+    name: Provider Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      id-token: write
+      contents: read
+      actions: read
+    steps:
+      - name: Build and test provider packages
+        uses: smartcontractkit/.github/actions/ci-test-go@dfcba48f05933158428bce867d790e3d5a9baa6b # ci-test-go@1.1.0
+        with:
+          # disable the checkptr runtime check due a false positive in github.com/xssnick/tonutils-go
+          # -p 2 -parallel 3 = 2 packages, 3 tests max = 6 containers max
+          # Only run provider packages which use Docker containers
+          go-test-cmd: go test -race -gcflags=all=-d=checkptr=0 -p 2 -parallel 3 -coverprofile=coverage.txt $(go list ./... | grep '/provider')
+          use-go-cache: true
+          artifact-name: provider-tests
+
+  ci-test-catalog-remote:
+    name: Catalog Remote Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      id-token: write
+      contents: read
+      actions: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Configure AWS credentials for ECR
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2
+        with:
+          role-to-assume: ${{ secrets.ECR_READ_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Get latest catalog service tag from ECR
+        id: get-catalog-tag
+        run: |
+          # Fetch the latest semantic version tag from ECR
+          # Sort images by push date (latest first) and find the first semver tag
+          LATEST_TAG=$(aws ecr describe-images \
+            --repository-name op-catalog-service \
+            --region ${{ secrets.AWS_REGION }} \
+            --registry-id ${{ secrets.AWS_ACCOUNT_NUMBER_PROD }} \
+            --query 'reverse(sort_by(imageDetails,& imagePushedAt))' \
+            --output json | \
+            jq -r '
+              [.[] | 
+               select(.imageTags != null) | 
+               .imageTags[] | 
+               select(test("^v[0-9]+\\.[0-9]+\\.[0-9]+$"))
+              ] | first
+            ')
+          
+          if [[ -z "${LATEST_TAG}" ]] || [[ "${LATEST_TAG}" == "null" ]]; then
+            echo "::error::Could not find a valid semantic version tag in ECR"
+            exit 1
+          fi
+          
+          echo "Latest catalog service tag from ECR: ${LATEST_TAG}"
+          echo "tag=${LATEST_TAG}" >> "${GITHUB_OUTPUT}"
+
+      - name: Pull Catalog Service ECR Image
+        uses: smartcontractkit/.github/actions/pull-private-ecr-image@2f8f0baf38e46140c6a119eb551a56eaaabcc09e # pull-private-ecr-image@1.0.0
+        with:
+          aws-account-number: ${{ secrets.AWS_ACCOUNT_NUMBER_PROD }}
+          aws-region: ${{ secrets.AWS_REGION }}
+          aws-role-arn: ${{ secrets.ECR_READ_ROLE_ARN }}
+          ecr-repository: "op-catalog-service"
+          image-tag: ${{ steps.get-catalog-tag.outputs.tag }}
+
+      - name: Run Catalog Remote Integration Tests
+        uses: smartcontractkit/.github/actions/ci-test-go@dfcba48f05933158428bce867d790e3d5a9baa6b # ci-test-go@1.1.0
+        with:
+          # Must cd into datastore/catalog/remote because TestMain only runs from package directory
+          go-test-cmd: cd datastore/catalog/remote && go test -v -race -timeout 10m -gcflags=all=-d=checkptr=0 -coverprofile=../../../coverage.txt
+          use-go-cache: true
+          artifact-name: catalog-remote-tests
+        env:
+          CATALOG_SERVICE_IMAGE: ${{ secrets.AWS_ACCOUNT_NUMBER_PROD }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/op-catalog-service:${{ steps.get-catalog-tag.outputs.tag }}
 
   sonarqube:
     name: Sonar Scan
     runs-on: ubuntu-24.04
-    needs: [ci-test, ci-lint-misc, ci-lint]
+    needs: [ci-test, ci-test-provider, ci-test-catalog-remote, ci-lint-misc, ci-lint]
     permissions:
       contents: read
       actions: read

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"crypto/rand"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -87,6 +88,13 @@ func BuildMCMSv2Cmd(lggr logger.Logger, domain cldf_domain.Domain, proposalConte
 		validProposalKinds = []string{string(types.KindProposal), string(types.KindTimelockProposal)}
 	)
 
+	if lggr == nil {
+		panic("nil logger received")
+	}
+	if proposalContextProvider == nil {
+		panic("nil proposal context provider received")
+	}
+
 	cmd := cobra.Command{
 		Use:   "mcmsv2",
 		Short: "Manage MCMS proposals",
@@ -111,6 +119,7 @@ func BuildMCMSv2Cmd(lggr logger.Logger, domain cldf_domain.Domain, proposalConte
 	cmd.AddCommand(buildExecuteOperationv2Cmd(lggr, domain, proposalContextProvider))
 	cmd.AddCommand(buildSetRootv2Cmd(lggr, domain, proposalContextProvider))
 	cmd.AddCommand(buildGetOpCountV2Cmd(lggr, domain))
+	cmd.AddCommand(buildMCMSErrorDecode(lggr, domain, proposalContextProvider))
 	cmd.AddCommand(buildRunTimelockIsPendingV2Cmd(lggr, domain))
 	cmd.AddCommand(buildRunTimelockIsReadyToExecuteV2Cmd(lggr, domain))
 	cmd.AddCommand(buildRunTimelockIsDoneV2Cmd(lggr, domain))
@@ -143,6 +152,118 @@ func newCLIStdErrLogger() (logger.Logger, error) {
 	}
 
 	return lggr, nil
+}
+
+func buildMCMSErrorDecode(lggr logger.Logger, domain cldf_domain.Domain, proposalCtxProvider analyzer.ProposalContextProvider) *cobra.Command {
+	var filePath string
+
+	cmd := &cobra.Command{
+		Use:   "error-decode-evm",
+		Short: "Decodes the provided tx error data using the domain ABI registry",
+		PreRun: func(command *cobra.Command, args []string) {
+			// proposalPath and chainSelector are not needed for this command
+			command.InheritedFlags().Lookup(proposalPathFlag).Changed = true
+			command.InheritedFlags().Lookup(chainSelectorFlag).Changed = true
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if filePath == "" {
+				return errors.New("error-file flag is required")
+			}
+
+			// Get environment from persistent flag
+			environmentStr, err := cmd.Flags().GetString(environmentFlag)
+			if err != nil {
+				return fmt.Errorf("error getting environment flag: %w", err)
+			}
+			if environmentStr == "" {
+				return errors.New("environment flag is required")
+			}
+
+			// Read the failed transaction data file
+			data, err := os.ReadFile(filePath)
+			if err != nil {
+				return fmt.Errorf("error reading file %s: %w", filePath, err)
+			}
+
+			// Unmarshal JSON and extract execution_error field
+			var jsonData map[string]any
+			if errUnmarshal := json.Unmarshal(data, &jsonData); errUnmarshal != nil {
+				return fmt.Errorf("error unmarshaling JSON: %w", errUnmarshal)
+			}
+
+			execErrData, ok := jsonData["execution_error"]
+			if !ok {
+				return errors.New("no execution error to decode, json file must contain an 'execution_error' key to get revert reasons decoded")
+			}
+
+			execErrBytes, err := json.Marshal(execErrData)
+			if err != nil {
+				return fmt.Errorf("error marshaling execution_error: %w", err)
+			}
+
+			var execErr evm.ExecutionError
+			if errUnmarshal := json.Unmarshal(execErrBytes, &execErr); errUnmarshal != nil {
+				return fmt.Errorf("error unmarshaling execution_error: %w", errUnmarshal)
+			}
+
+			// Load environment to get ABI registry (no chains needed to decode)
+			env, err := cldfenvironment.Load(cmd.Context(), domain, environmentStr,
+				cldfenvironment.OnlyLoadChainsFor([]uint64{}),
+				cldfenvironment.WithLogger(lggr),
+				cldfenvironment.WithoutJD())
+			if err != nil {
+				return fmt.Errorf("error loading environment: %w", err)
+			}
+
+			// Create ProposalContext to get EVM registry
+			proposalCtx, err := analyzer.NewDefaultProposalContext(env)
+			if err != nil {
+				lggr.Warnf("Failed to create default proposal context: %v. Proceeding without ABI registry.", err)
+			}
+			if proposalCtxProvider != nil {
+				proposalCtx, err = proposalCtxProvider(env)
+				if err != nil {
+					return fmt.Errorf("failed to create proposal context: %w", err)
+				}
+			}
+
+			// Create error decoder from EVM registry
+			var errDec *ErrDecoder
+			if proposalCtx != nil && proposalCtx.GetEVMRegistry() != nil {
+				errDec, err = NewErrDecoder(proposalCtx.GetEVMRegistry())
+				if err != nil {
+					return fmt.Errorf("error creating error decoder: %w", err)
+				}
+			}
+
+			// Decode the error
+			decoded := tryDecodeExecutionError(&execErr, errDec)
+
+			// Output decoded revert reason
+			if decoded.RevertReasonDecoded {
+				fmt.Printf("Revert Reason: %s - decoded: %s\n", execErr.RevertReasonRaw.Selector, decoded.RevertReason)
+			} else {
+				fmt.Println("Revert Reason: (could not decode)")
+			}
+
+			// Output decoded underlying reason if available
+			if decoded.UnderlyingReasonDecoded {
+				fmt.Printf("Underlying Reason: %s - decoded: %s\n", execErr.UnderlyingReasonRaw, decoded.UnderlyingReason)
+			}
+
+			return nil
+		},
+	}
+	cmd.Flags().StringVar(&filePath, "error-file", "", "path to the json file containing tx error")
+	panicErr(cmd.MarkFlagRequired("error-file"))
+	cmd.SetHelpFunc(func(command *cobra.Command, args []string) {
+		// Hide flags that aren't needed for this command
+		panicErr(command.Flags().MarkHidden(proposalPathFlag))
+		panicErr(command.Flags().MarkHidden(chainSelectorFlag))
+		command.Parent().HelpFunc()(command, args)
+	})
+
+	return cmd
 }
 
 func buildMCMSCheckQuorumv2Cmd(lggr logger.Logger, domain cldf_domain.Domain) *cobra.Command {
@@ -200,6 +321,11 @@ func buildExecuteOperationv2Cmd(lggr logger.Logger, domain cldf_domain.Domain, p
 			if err != nil {
 				return fmt.Errorf("error converting proposal to executable: %w", err)
 			}
+			inspector, err := getInspectorFromChainSelector(*cfg)
+			if err != nil {
+				return fmt.Errorf("failed to get inspector: %w", err)
+			}
+
 			if cfg.fork {
 				lggr.Info("Fork mode is on, all transactions will be executed on a forked chain")
 			}
@@ -211,6 +337,23 @@ func buildExecuteOperationv2Cmd(lggr logger.Logger, domain cldf_domain.Domain, p
 			op := cfg.proposal.Operations[index]
 			if op.ChainSelector != types.ChainSelector(cfg.chainSelector) {
 				return fmt.Errorf("operation %d is not for chain %d", index, cfg.chainSelector)
+			}
+
+			opCount, err := inspector.GetOpCount(cmd.Context(), cfg.proposal.ChainMetadata[types.ChainSelector(cfg.chainSelector)].MCMAddress)
+			if err != nil {
+				return fmt.Errorf("failed to get opcount for chain %d: %w", cfg.chainSelector, err)
+			}
+			txNonce, err := executable.TxNonce(index)
+			if err != nil {
+				return fmt.Errorf("failed to get TxNonce for chain %d: %w", cfg.chainSelector, err)
+			}
+			if txNonce < opCount {
+				lggr.Infow("operation already executed", "index", index, "txNonce", txNonce, "opCount", opCount)
+				return nil
+			}
+			if txNonce > opCount {
+				lggr.Warnw("txNonce too large", "index", index, "txNonce", txNonce, "opCount", opCount)
+				return fmt.Errorf("txNonce too large (%d; expected %d)", txNonce, opCount)
 			}
 
 			tx, err := executable.Execute(cmd.Context(), index)
@@ -620,6 +763,10 @@ func buildExecuteForkCommand(lggr logger.Logger, domain cldf_domain.Domain, prop
 				return fmt.Errorf("error creating config: %w", err)
 			}
 
+			if len(cfg.forkedEnv.ChainConfigs[cfg.chainSelector].HTTPRPCs) == 0 {
+				return fmt.Errorf("no rpcs loaded in forked environment for chain %d (fork tests require public RPCs)", cfg.chainSelector)
+			}
+
 			// get the chain URL, chain ID and MCM contract address
 			url := cfg.forkedEnv.ChainConfigs[cfg.chainSelector].HTTPRPCs[0].External
 			anvilClient := rpc.New(url, nil)
@@ -711,6 +858,7 @@ func buildMCMSv2AnalyzeProposalCmd(
 	lggr logger.Logger, domain cldf_domain.Domain, proposalCtxProvider analyzer.ProposalContextProvider,
 ) *cobra.Command {
 	var outputFile string
+	var format string
 
 	cmd := &cobra.Command{
 		Use:   "analyze-proposal",
@@ -731,11 +879,18 @@ func buildMCMSv2AnalyzeProposalCmd(
 				return errors.New("expected proposal to be have non-nil *TimelockProposal")
 			}
 
+			// Set renderer based on format flag
+			renderer, err := createRendererFromFormat(format)
+			if err != nil {
+				return fmt.Errorf("failed to create renderer: %w", err)
+			}
+			cfgv2.proposalCtx.SetRenderer(renderer)
+
 			var analyzedProposal string
 			if cfgv2.timelockProposal != nil {
-				analyzedProposal, err = analyzer.DescribeTimelockProposal(cfgv2.proposalCtx, cfgv2.timelockProposal)
+				analyzedProposal, err = analyzer.DescribeTimelockProposal(cmd.Context(), cfgv2.proposalCtx, cfgv2.env, cfgv2.timelockProposal)
 			} else {
-				analyzedProposal, err = analyzer.DescribeProposal(cfgv2.proposalCtx, &cfgv2.proposal)
+				analyzedProposal, err = analyzer.DescribeProposal(cmd.Context(), cfgv2.proposalCtx, cfgv2.env, &cfgv2.proposal)
 			}
 			if err != nil {
 				return fmt.Errorf("failed to describe proposal: %w", err)
@@ -759,6 +914,7 @@ func buildMCMSv2AnalyzeProposalCmd(
 	})
 
 	cmd.Flags().StringVarP(&outputFile, "output", "o", "", "Output file to write analyze result")
+	cmd.Flags().StringVar(&format, "format", "markdown", "Output format: markdown (default), text")
 
 	return cmd
 }
@@ -876,9 +1032,9 @@ func buildMCMSv2ConvertUpf(
 			var convertedProposal string
 
 			if cfgv2.timelockProposal != nil {
-				convertedProposal, err = upf.UpfConvertTimelockProposal(cfgv2.proposalCtx, cfgv2.timelockProposal, &cfgv2.proposal, signers)
+				convertedProposal, err = upf.UpfConvertTimelockProposal(cmd.Context(), cfgv2.proposalCtx, cfgv2.env, cfgv2.timelockProposal, &cfgv2.proposal, signers)
 			} else {
-				convertedProposal, err = upf.UpfConvertProposal(cfgv2.proposalCtx, &cfgv2.proposal, signers)
+				convertedProposal, err = upf.UpfConvertProposal(cmd.Context(), cfgv2.proposalCtx, cfgv2.env, &cfgv2.proposal, signers)
 			}
 			if err != nil {
 				return fmt.Errorf("failed to convert proposal to UPF format: %w", err)
@@ -1062,20 +1218,16 @@ func newCfgv2(lggr logger.Logger, cmd *cobra.Command, domain cldf_domain.Domain,
 		}
 	}
 
-	if proposalCtxProvider != nil {
-		// Load Environment and proposal ctx (for error decoding and proposal analysis)
-		env, err := cldfenvironment.Load(cmd.Context(), domain, cfg.envStr,
-			cldfenvironment.WithLogger(lggr),
-			cldfenvironment.OnlyLoadChainsFor(chainSelectors), cldfenvironment.WithoutJD())
-		if err != nil {
-			return nil, fmt.Errorf("error loading environment: %w", err)
-		}
-		cfg.env = env
-		proposalCtx, err := proposalCtxProvider(env)
-		if err != nil {
-			return nil, fmt.Errorf("failed to provide proposal analysis context: %w", err)
-		}
-		cfg.proposalCtx = proposalCtx
+	// Load Environment and proposal ctx (for error decoding and proposal analysis)
+	cfg.env, err = cldfenvironment.Load(cmd.Context(), domain, cfg.envStr,
+		cldfenvironment.WithLogger(lggr),
+		cldfenvironment.OnlyLoadChainsFor(chainSelectors), cldfenvironment.WithoutJD())
+	if err != nil {
+		return nil, fmt.Errorf("error loading environment: %w", err)
+	}
+	cfg.proposalCtx, err = proposalCtxProvider(cfg.env)
+	if err != nil {
+		return nil, fmt.Errorf("failed to provide proposal analysis context: %w", err)
 	}
 
 	if flags.fork {
@@ -1164,6 +1316,11 @@ func executeChainCommand(ctx context.Context, lggr logger.Logger, cfg *cfgv2, sk
 	if err != nil {
 		return fmt.Errorf("error converting proposal to executable: %w", err)
 	}
+	inspector, err := getInspectorFromChainSelector(*cfg)
+	if err != nil {
+		return fmt.Errorf("failed to get inspector: %w", err)
+	}
+
 	if cfg.fork {
 		lggr.Info("Fork mode is on, all transactions will be executed on a forked chain")
 	}
@@ -1172,6 +1329,23 @@ func executeChainCommand(ctx context.Context, lggr logger.Logger, cfg *cfgv2, sk
 		// TODO; consider multi-chain support
 		if op.ChainSelector != types.ChainSelector(cfg.chainSelector) {
 			continue
+		}
+
+		opCount, err := inspector.GetOpCount(ctx, cfg.proposal.ChainMetadata[types.ChainSelector(cfg.chainSelector)].MCMAddress)
+		if err != nil {
+			return fmt.Errorf("failed to get opcount for chain %d: %w", cfg.chainSelector, err)
+		}
+		txNonce, err := executable.TxNonce(i)
+		if err != nil {
+			return fmt.Errorf("failed to get TxNonce for chain %d: %w", cfg.chainSelector, err)
+		}
+		if txNonce < opCount {
+			lggr.Infow("operation already executed", "index", i, "txNonce", txNonce, "opCount", opCount)
+			continue
+		}
+		if txNonce > opCount {
+			lggr.Warnw("txNonce too large", "index", i, "txNonce", txNonce, "opCount", opCount)
+			break
 		}
 
 		tx, err := executable.Execute(ctx, i)
@@ -1214,6 +1388,27 @@ func executeChainCommand(ctx context.Context, lggr logger.Logger, cfg *cfgv2, sk
 func setRootCommand(ctx context.Context, lggr logger.Logger, cfg *cfgv2) error {
 	if cfg.fork {
 		lggr.Info("Fork mode is on, all transactions will be executed on a forked chain")
+	}
+
+	inspector, err := getInspectorFromChainSelector(*cfg)
+	if err != nil {
+		return fmt.Errorf("failed to get inspector: %w", err)
+	}
+
+	proposalMerkleTree, err := cfg.proposal.MerkleTree()
+	if err != nil {
+		return fmt.Errorf("failed to compute the proposal's merkle tree: %w", err)
+	}
+
+	mcmAddress := cfg.proposal.ChainMetadata[types.ChainSelector(cfg.chainSelector)].MCMAddress
+	mcmRoot, _, err := inspector.GetRoot(ctx, mcmAddress)
+	if err != nil {
+		return fmt.Errorf("failed to get the merkle tree root from the MCM contract (%v): %w", mcmAddress, err)
+	}
+
+	if mcmRoot == proposalMerkleTree.Root {
+		lggr.Infof("Root %v already set in MCM contract %v", mcmRoot, mcmAddress)
+		return nil
 	}
 
 	executable, err := createExecutable(cfg)
@@ -1338,7 +1533,7 @@ func getExecutorWithChainOverride(cfg *cfgv2, chainSelector types.ChainSelector)
 			return nil, fmt.Errorf("error getting sui metadata from proposal: %w", err)
 		}
 		chain := cfg.blockchains.SuiChains()[uint64(chainSelector)]
-		entrypointEncoder := suibindings.NewCCIPEntrypointArgEncoder(metadata.RegistryObj)
+		entrypointEncoder := suibindings.NewCCIPEntrypointArgEncoder(metadata.RegistryObj, metadata.DeployerStateObj)
 
 		return sui.NewExecutor(chain.Client, chain.Signer, encoder, entrypointEncoder, metadata.McmsPackageID, metadata.Role, cfg.timelockProposal.ChainMetadata[chainSelector].MCMAddress, metadata.AccountObj, metadata.RegistryObj, metadata.TimelockObj)
 	default:
@@ -1385,7 +1580,7 @@ func getTimelockExecutorWithChainOverride(cfg *cfgv2, chainSelector types.ChainS
 		if err != nil {
 			return nil, fmt.Errorf("error getting sui metadata from proposal: %w", err)
 		}
-		entrypointEncoder := suibindings.NewCCIPEntrypointArgEncoder(metadata.AccountObj)
+		entrypointEncoder := suibindings.NewCCIPEntrypointArgEncoder(metadata.AccountObj, metadata.DeployerStateObj)
 		executor, err = sui.NewTimelockExecutor(chain.Client, chain.Signer, entrypointEncoder, metadata.McmsPackageID, metadata.RegistryObj, metadata.AccountObj)
 		if err != nil {
 			return nil, fmt.Errorf("error creating sui timelock executor: %w", err)
@@ -1464,24 +1659,27 @@ func confirmTransaction(ctx context.Context, lggr logger.Logger, tx types.Transa
 			lggr.Infof("Transaction %s confirmed in block %d", tx.Hash, block)
 			return nil
 		}
-		rcpt, err := chain.Client.TransactionReceipt(ctx, common.HexToHash(tx.Hash))
-		if err != nil {
-			return fmt.Errorf("error getting transaction receipt for %s: %w", tx.Hash, err)
+		lggr.Errorf("failed to confirm transaction %s: %s", tx.Hash, err)
+		rcpt, rerr := chain.Client.TransactionReceipt(ctx, common.HexToHash(tx.Hash))
+		if rerr != nil {
+			return fmt.Errorf("failed to get transaction receipt for %s: %w", tx.Hash, rerr)
 		}
-		if rcpt != nil && rcpt.Status == 0 && cfg.proposalCtx != nil {
+		if rcpt == nil {
+			return fmt.Errorf("got nil receipt for %s", tx.Hash)
+		}
+		if rcpt.Status == gethtypes.ReceiptStatusSuccessful {
+			return nil
+		}
+		if cfg.proposalCtx != nil {
 			// Decode via simulation to recover revert bytes
-			if pretty, ok := tryDecodeTxRevertEVM(
-				ctx,
-				chain.Client,
-				tx.RawData.(*gethtypes.Transaction),
-				bindings.ManyChainMultiSigABI,
-				rcpt.BlockNumber,
-				cfg.proposalCtx); ok {
+			pretty, ok := tryDecodeTxRevertEVM(ctx, chain.Client, tx.RawData.(*gethtypes.Transaction),
+				bindings.ManyChainMultiSigABI, rcpt.BlockNumber, cfg.proposalCtx)
+			if ok {
 				return fmt.Errorf("tx %s reverted: %s", tx.Hash, pretty)
 			}
 		}
 
-		return err
+		return fmt.Errorf("transaction %s failed (block number %v): %w", tx.Hash, rcpt.BlockNumber, err)
 	}
 
 	if family == chainsel.FamilyAptos {
@@ -1601,4 +1799,20 @@ func addCallProxyOption(
 	}
 
 	return fmt.Errorf("failed to find call proxy contract for timelock %v", timelockAddress)
+}
+
+// createRendererFromFormat creates an appropriate renderer based on the format string.
+// Defaults to markdown renderer for unknown formats.
+func createRendererFromFormat(format string) (analyzer.Renderer, error) {
+	switch format {
+	case "text", "txt":
+		return analyzer.NewTextRenderer(), nil
+	case "markdown", "md":
+		return analyzer.NewMarkdownRenderer(), nil
+	case "":
+		return analyzer.NewMarkdownRenderer(), nil
+	default:
+		// error if format is not specified or invalid
+		return nil, fmt.Errorf("unknown format '%s'", format)
+	}
 }

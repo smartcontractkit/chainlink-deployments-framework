@@ -636,12 +636,16 @@ type mockProposalContext struct {
 	t *testing.T
 }
 
+func (m *mockProposalContext) SetRenderer(r analyzer.Renderer) {
+	// No-op for mock
+}
+
 func (m *mockProposalContext) GetRenderer() analyzer.Renderer {
 	return analyzer.NewMarkdownRenderer()
 }
 
-func (m *mockProposalContext) DescriptorContext(chainSelector uint64) *analyzer.DescriptorContext {
-	return &analyzer.DescriptorContext{}
+func (m *mockProposalContext) FieldsContext(chainSelector uint64) *analyzer.FieldContext {
+	return &analyzer.FieldContext{}
 }
 func (m *mockProposalContext) GetSolanaDecoderRegistry() analyzer.SolanaDecoderRegistry {
 	// Return a mock SolanaDecoderRegistry with a dummy decoder for testing
@@ -1502,6 +1506,17 @@ changesets:
 			expectError:   true,
 			errorContains: "is missing required 'payload' field",
 		},
+		{
+			name: "null payload field - should be valid",
+			yamlContent: `environment: testnet
+domain: test
+changesets:
+  - test_changeset:
+      payload: null`,
+			index:        0,
+			expectedName: "test_changeset",
+			expectedJSON: `{"payload":null}`,
+		},
 	}
 
 	for _, tt := range tests {
@@ -1732,6 +1747,114 @@ changesets: [
 			require.Equal(t, "testnet", result.Environment)
 			require.Equal(t, "test", result.Domain)
 			require.NotNil(t, result.Changesets)
+		})
+	}
+}
+
+//nolint:paralleltest
+func TestSetDurablePipelineInputFromYAML_NullPayload(t *testing.T) {
+	testDomain := domain.NewDomain(t.TempDir(), "test")
+	env := "testnet"
+
+	// Create workspace structure
+	workspaceRoot := t.TempDir()
+	inputsDir := filepath.Join(workspaceRoot, "domains", testDomain.String(), env, "durable_pipelines", "inputs")
+	require.NoError(t, os.MkdirAll(inputsDir, 0755))
+
+	// Mock workspace root discovery
+	require.NoError(t, os.MkdirAll(filepath.Join(workspaceRoot, "domains"), 0755))
+
+	// Set up the test to run from within the workspace
+	originalWd, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(workspaceRoot))
+	t.Cleanup(func() {
+		require.NoError(t, os.Chdir(originalWd))
+	})
+
+	tests := []struct {
+		name          string
+		yamlContent   string
+		changesetName string
+		expectError   bool
+		expectedJSON  string
+		description   string
+	}{
+		{
+			name: "object format with null payload - should be valid",
+			yamlContent: `environment: testnet
+domain: test
+changesets:
+  deploy_link_token:
+    payload: null`,
+			changesetName: "deploy_link_token",
+			expectError:   false,
+			expectedJSON:  `{"payload":null}`,
+			description:   "Should allow explicit null payload in object format",
+		},
+		{
+			name: "array format with null payload - should be valid",
+			yamlContent: `environment: testnet
+domain: test
+changesets:
+  - deploy_link_token:
+      payload: null`,
+			changesetName: "deploy_link_token",
+			expectError:   false,
+			expectedJSON:  `{"payload":null}`,
+			description:   "Should allow explicit null payload in array format",
+		},
+		{
+			name: "object format with missing payload - should error",
+			yamlContent: `environment: testnet
+domain: test
+changesets:
+  deploy_link_token:
+    notPayload: 123`,
+			changesetName: "deploy_link_token",
+			expectError:   true,
+			description:   "Should error when payload field is completely missing",
+		},
+		{
+			name: "object format with empty payload object - should be valid",
+			yamlContent: `environment: testnet
+domain: test
+changesets:
+  deploy_link_token:
+    payload: {}`,
+			changesetName: "deploy_link_token",
+			expectError:   false,
+			expectedJSON:  `{"payload":{}}`,
+			description:   "Should allow empty object as payload",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create unique YAML file for this test
+			safeName := strings.ReplaceAll(strings.ReplaceAll(tt.name, " ", "-"), "/", "-")
+			yamlFileName := fmt.Sprintf("test-null-payload-%s.yaml", safeName)
+			yamlFilePath := filepath.Join(inputsDir, yamlFileName)
+			require.NoError(t, os.WriteFile(yamlFilePath, []byte(tt.yamlContent), 0644)) //nolint:gosec
+
+			// Clear any previous DURABLE_PIPELINE_INPUT
+			os.Unsetenv("DURABLE_PIPELINE_INPUT")
+
+			err := setDurablePipelineInputFromYAML(yamlFileName, tt.changesetName, testDomain, env)
+
+			if tt.expectError {
+				require.Error(t, err, tt.description)
+				require.Contains(t, err.Error(), "is missing required 'payload' field", tt.description)
+			} else {
+				require.NoError(t, err, tt.description)
+
+				// Verify that DURABLE_PIPELINE_INPUT was set
+				durablePipelineInput := os.Getenv("DURABLE_PIPELINE_INPUT")
+				require.NotEmpty(t, durablePipelineInput, "DURABLE_PIPELINE_INPUT should be set")
+
+				// Verify the JSON structure
+				require.JSONEq(t, tt.expectedJSON, durablePipelineInput, tt.description)
+			}
 		})
 	}
 }

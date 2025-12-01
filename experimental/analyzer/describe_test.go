@@ -14,7 +14,10 @@ import (
 func TestDescribeProposal(t *testing.T) {
 	t.Parallel()
 
-	ctx := &DefaultProposalContext{AddressesByChain: deployment.AddressesByChain{}}
+	proposalCtx := &DefaultProposalContext{
+		AddressesByChain: deployment.AddressesByChain{},
+		renderer:         NewMarkdownRenderer(),
+	}
 
 	tests := []struct {
 		name           string
@@ -27,7 +30,7 @@ func TestDescribeProposal(t *testing.T) {
 			name:           "Empty proposal",
 			operations:     []types.Operation{},
 			expectError:    false,
-			outputContains: []string{""},
+			outputContains: []string{"\n"},
 		},
 		{
 			name: "Single operation - unsupported chain",
@@ -85,7 +88,7 @@ func TestDescribeProposal(t *testing.T) {
 			t.Parallel()
 
 			proposal := &mcms.Proposal{Operations: tt.operations}
-			output, err := DescribeProposal(ctx, proposal)
+			output, err := DescribeProposal(t.Context(), proposalCtx, deployment.Environment{}, proposal)
 
 			if tt.expectError {
 				require.Error(t, err)
@@ -109,7 +112,10 @@ func TestDescribeProposal(t *testing.T) {
 func TestDescribeTimelockProposal(t *testing.T) {
 	t.Parallel()
 
-	ctx := &DefaultProposalContext{AddressesByChain: deployment.AddressesByChain{}}
+	proposalCtx := &DefaultProposalContext{
+		AddressesByChain: deployment.AddressesByChain{},
+		renderer:         NewMarkdownRenderer(),
+	}
 
 	tests := []struct {
 		name           string
@@ -122,7 +128,7 @@ func TestDescribeTimelockProposal(t *testing.T) {
 			name:           "Empty proposal",
 			operations:     []types.BatchOperation{},
 			expectError:    false,
-			outputContains: []string{""},
+			outputContains: []string{"\n"},
 		},
 		{
 			name: "Single batch - unsupported chain",
@@ -188,7 +194,7 @@ func TestDescribeTimelockProposal(t *testing.T) {
 			t.Parallel()
 
 			proposal := &mcms.TimelockProposal{Operations: tt.operations}
-			output, err := DescribeTimelockProposal(ctx, proposal)
+			output, err := DescribeTimelockProposal(t.Context(), proposalCtx, deployment.Environment{}, proposal)
 
 			if tt.expectError {
 				require.Error(t, err)

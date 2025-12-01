@@ -449,6 +449,127 @@ func TestWithConfigResolver_InvalidJSON(t *testing.T) {
 	assert.Contains(t, err.Error(), "failed to parse resolver input as JSON")
 }
 
+func TestWithConfigResolver_NullPayload(t *testing.T) {
+	manager := resolvers.NewConfigResolverManager()
+	resolver := func(input map[string]any) (any, error) {
+		// When payload is null, input will be nil
+		if input == nil {
+			return "resolved_from_null", nil
+		}
+
+		return "should_not_reach_here", nil
+	}
+	manager.Register(resolver, resolvers.ResolverInfo{Description: "Test"})
+
+	t.Setenv("DURABLE_PIPELINE_INPUT", `{"payload": null}`)
+
+	cs := deployment.CreateChangeSet(
+		func(e deployment.Environment, config string) (deployment.ChangesetOutput, error) {
+			assert.Equal(t, "resolved_from_null", config)
+			return deployment.ChangesetOutput{}, nil
+		},
+		func(e deployment.Environment, config string) error { return nil },
+	)
+
+	configured := Configure(cs).WithConfigResolver(resolver)
+	env := deployment.Environment{Logger: logger.Test(t)}
+
+	_, err := configured.Apply(env)
+	require.NoError(t, err, "null payload should be valid and passed to resolver")
+}
+
+func TestWithJSON_NullPayload(t *testing.T) {
+	t.Parallel()
+
+	type TestConfig struct {
+		Value string `json:"value"`
+		Count int    `json:"count"`
+	}
+
+	cs := deployment.CreateChangeSet(
+		func(e deployment.Environment, config TestConfig) (deployment.ChangesetOutput, error) {
+			// When payload is null, config should be zero value
+			assert.Empty(t, config.Value)
+			assert.Equal(t, 0, config.Count)
+
+			return deployment.ChangesetOutput{}, nil
+		},
+		func(e deployment.Environment, config TestConfig) error { return nil },
+	)
+	env := deployment.Environment{Logger: logger.Test(t)}
+	configured := Configure(cs).WithJSON(TestConfig{}, `{"payload":null}`)
+
+	_, err := configured.Apply(env)
+	require.NoError(t, err, "null payload should be valid")
+}
+
+func TestWithJSON_MissingPayload(t *testing.T) {
+	t.Parallel()
+
+	type TestConfig struct {
+		Value string `json:"value"`
+	}
+
+	cs := deployment.CreateChangeSet(
+		func(e deployment.Environment, config TestConfig) (deployment.ChangesetOutput, error) {
+			return deployment.ChangesetOutput{}, nil
+		},
+		func(e deployment.Environment, config TestConfig) error { return nil },
+	)
+	env := deployment.Environment{Logger: logger.Test(t)}
+	configured := Configure(cs).WithJSON(TestConfig{}, `{"notPayload":"value"}`)
+
+	_, err := configured.Apply(env)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "'payload' field is required")
+}
+
+func TestWithEnvInput_NullPayload(t *testing.T) {
+	type TestConfig struct {
+		Value string `json:"value"`
+		Count int    `json:"count"`
+	}
+
+	t.Setenv("DURABLE_PIPELINE_INPUT", `{"payload":null}`)
+
+	cs := deployment.CreateChangeSet(
+		func(e deployment.Environment, config TestConfig) (deployment.ChangesetOutput, error) {
+			// When payload is null, config should be zero value
+			assert.Empty(t, config.Value)
+			assert.Equal(t, 0, config.Count)
+
+			return deployment.ChangesetOutput{}, nil
+		},
+		func(e deployment.Environment, config TestConfig) error { return nil },
+	)
+	env := deployment.Environment{Logger: logger.Test(t)}
+	configured := Configure(cs).WithEnvInput()
+
+	_, err := configured.Apply(env)
+	require.NoError(t, err, "null payload should be valid")
+}
+
+func TestWithEnvInput_MissingPayload(t *testing.T) {
+	type TestConfig struct {
+		Value string
+	}
+
+	t.Setenv("DURABLE_PIPELINE_INPUT", `{"notPayload":"value"}`)
+
+	cs := deployment.CreateChangeSet(
+		func(e deployment.Environment, config TestConfig) (deployment.ChangesetOutput, error) {
+			return deployment.ChangesetOutput{}, nil
+		},
+		func(e deployment.Environment, config TestConfig) error { return nil },
+	)
+	env := deployment.Environment{Logger: logger.Test(t)}
+	configured := Configure(cs).WithEnvInput()
+
+	_, err := configured.Apply(env)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "'payload' field is required")
+}
+
 func TestWithConfigResolver_MissingPayload(t *testing.T) {
 	manager := resolvers.NewConfigResolverManager()
 	resolver := func(input map[string]any) (any, error) {
@@ -456,7 +577,7 @@ func TestWithConfigResolver_MissingPayload(t *testing.T) {
 	}
 	manager.Register(resolver, resolvers.ResolverInfo{Description: "Test"})
 
-	t.Setenv("DURABLE_PIPELINE_INPUT", `{"payload": null}`)
+	t.Setenv("DURABLE_PIPELINE_INPUT", `{"notPayload":"value"}`)
 
 	cs := deployment.CreateChangeSet(
 		func(e deployment.Environment, config string) (deployment.ChangesetOutput, error) {
@@ -470,7 +591,7 @@ func TestWithConfigResolver_MissingPayload(t *testing.T) {
 
 	_, err := configured.Apply(env)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "'payload' field is required and cannot be empty")
+	assert.Contains(t, err.Error(), "'payload' field is required")
 }
 
 func TestWithConfigResolver_ResolverError(t *testing.T) {

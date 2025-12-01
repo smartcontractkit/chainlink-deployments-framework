@@ -1,0 +1,9 @@
+{{range $i, $batch := .Batches}}### Batch {{$i}}
+**Chain selector:** `{{$batch.ChainSelector}}` ({{$batch.ChainName}})
+
+{{range $j, $op := $batch.Operations}}#### Operation {{$j}}
+{{range $call := $op.Calls}}{{renderCall $call $.Context}}
+
+{{end}}{{end}}---
+
+{{end}}

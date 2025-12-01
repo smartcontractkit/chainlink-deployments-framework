@@ -309,6 +309,19 @@ func (mc *MultiClient) BalanceAt(ctx context.Context, account common.Address, bl
 	return balance, err
 }
 
+// StorageAt is a wrapper around the ethclient.StorageAt method that retries on failure.
+func (mc *MultiClient) StorageAt(ctx context.Context, account common.Address, key common.Hash, blockNumber *big.Int) ([]byte, error) {
+	var storage []byte
+	err := mc.retryWithBackups(ctx, "StorageAt", func(ct context.Context, client *ethclient.Client) error {
+		var err error
+		storage, err = client.StorageAt(ct, account, key, blockNumber)
+
+		return err
+	})
+
+	return storage, err
+}
+
 // FilterLogs is a wrapper around the ethclient.FilterLogs method that retries on failure.
 func (mc *MultiClient) FilterLogs(ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error) {
 	var logs []types.Log
@@ -388,7 +401,10 @@ func (mc *MultiClient) retryWithBackups(ctx context.Context, opName string, op f
 
 			err = op(timeoutCtx, client)
 			if err != nil {
-				mc.lggr.Warnf("traceID %q: chain %q: op: %q: client index %d: failed execution - retryable error '%s'", traceID.String(), mc.chainName, opName, rpcIndex, maybeDataErr(err))
+				detailedErr := maybeDataErr(err)
+				mc.lggr.Warnf("traceID %q: chain %q: op: %q: client index %d: failed execution - retryable error '%s'", traceID.String(), mc.chainName, opName, rpcIndex, detailedErr)
+				err = errors.Join(err, detailedErr)
+
 				return err
 			}
 

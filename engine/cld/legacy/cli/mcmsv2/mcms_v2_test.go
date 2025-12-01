@@ -2,6 +2,7 @@ package mcmsv2
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"maps"
@@ -13,16 +14,18 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/mcms"
 	"github.com/smartcontractkit/mcms/sdk"
+	mcmsevmsdk "github.com/smartcontractkit/mcms/sdk/evm"
 	mcmsevmbindings "github.com/smartcontractkit/mcms/sdk/evm/bindings"
 	mocksdk "github.com/smartcontractkit/mcms/sdk/mocks"
 	"github.com/smartcontractkit/mcms/types"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap/zapcore"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
-
+	evmchain "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	datastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
@@ -30,6 +33,7 @@ import (
 	testruntime "github.com/smartcontractkit/chainlink-deployments-framework/engine/test/runtime"
 	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 	fpointer "github.com/smartcontractkit/chainlink-deployments-framework/internal/pointer"
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
 // nolint:paralleltest // uses and modifies files
@@ -337,68 +341,15 @@ func Test_timelockExecuteOptions(t *testing.T) {
 	loader := testenv.NewLoader()
 	env, err := loader.Load(t.Context(), testenv.WithEVMSimulatedN(t, 1))
 	require.NoError(t, err)
+	lggr := logger.Test(t)
 
 	err = os.MkdirAll("domains/exemplar", 0o700)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = os.RemoveAll("domains") })
-
-	lggr := logger.Test(t)
 	exemplarDomain := domain.MustGetDomain("exemplar")
+
 	chain := slices.Collect(maps.Values(env.BlockChains.EVMChains()))[0]
-	callProxyAddress := common.Address{}
-	timelockAddress := common.Address{}
-
-	changeset := cldf.CreateChangeSet(
-		func(e cldf.Environment, config struct{}) (cldf.ChangesetOutput, error) {
-			ds := datastore.NewMemoryDataStore()
-			ab := cldf.NewMemoryAddressBook()
-			var tx *ethtypes.Transaction
-
-			// deploy call proxy
-			callProxyAddress, tx, _, err = mcmsevmbindings.DeployCallProxy(chain.DeployerKey, chain.Client, common.Address{})
-			require.NoError(t, err)
-			err = ds.Addresses().Add(datastore.AddressRef{
-				Address:       callProxyAddress.Hex(),
-				ChainSelector: chain.Selector,
-				Type:          "CallProxy",
-				Version:       semver.MustParse("1.0.0"),
-			})
-			require.NoError(t, err)
-			err = ab.Save(chain.Selector, callProxyAddress.Hex(), cldf.MustTypeAndVersionFromString("CallProxy 1.0.0"))
-			require.NoError(t, err)
-			_, err = chain.Confirm(tx)
-			require.NoError(t, err)
-
-			// deploy timelock
-			timelockAddress, tx, _, err = mcmsevmbindings.DeployRBACTimelock(chain.DeployerKey, chain.Client, big.NewInt(0),
-				chain.DeployerKey.From,
-				nil,                                // proposers
-				[]common.Address{callProxyAddress}, // executors
-				nil,                                // bypassers
-				nil,                                // cancellers
-			)
-			require.NoError(t, err)
-			err = ds.Addresses().Add(datastore.AddressRef{
-				Address:       timelockAddress.Hex(),
-				ChainSelector: chain.Selector,
-				Type:          "RBACTimelock",
-				Version:       semver.MustParse("1.0.0"),
-			})
-			require.NoError(t, err)
-			err = ab.Save(chain.Selector, timelockAddress.Hex(), cldf.MustTypeAndVersionFromString("RBACTimelock 1.0.0"))
-			require.NoError(t, err)
-			_, err = chain.Confirm(tx)
-			require.NoError(t, err)
-
-			return cldf.ChangesetOutput{AddressBook: ab, DataStore: ds}, nil
-		},
-		func(e cldf.Environment, config struct{}) error { return nil }, // verify,
-	)
-	task := testruntime.ChangesetTask(changeset, struct{}{})
-	runtime := testruntime.NewFromEnvironment(*env)
-	err = runtime.Exec(task)
-	require.NoError(t, err)
-	env = fpointer.To(runtime.Environment())
+	timelockAddress, _, env := deployTimelockAndCallProxy(t, env, chain)
 
 	errorContains := func(msg string) func(t *testing.T, opts []mcms.Option, err error) {
 		return func(t *testing.T, opts []mcms.Option, err error) {
@@ -447,7 +398,7 @@ func Test_timelockExecuteOptions(t *testing.T) {
 				blockchains:   env.BlockChains,
 				timelockProposal: &mcms.TimelockProposal{
 					TimelockAddresses: map[types.ChainSelector]string{
-						types.ChainSelector(chain.Selector): timelockAddress.Hex(),
+						types.ChainSelector(chain.Selector): timelockAddress,
 					},
 				},
 			},
@@ -470,7 +421,7 @@ func Test_timelockExecuteOptions(t *testing.T) {
 				}(),
 				timelockProposal: &mcms.TimelockProposal{
 					TimelockAddresses: map[types.ChainSelector]string{
-						types.ChainSelector(chain.Selector): timelockAddress.Hex(),
+						types.ChainSelector(chain.Selector): timelockAddress,
 					},
 				},
 			},
@@ -488,7 +439,7 @@ func Test_timelockExecuteOptions(t *testing.T) {
 				blockchains:   env.BlockChains,
 				timelockProposal: &mcms.TimelockProposal{
 					TimelockAddresses: map[types.ChainSelector]string{
-						types.ChainSelector(1): timelockAddress.Hex(),
+						types.ChainSelector(1): timelockAddress,
 					},
 				},
 			},
@@ -508,11 +459,11 @@ func Test_timelockExecuteOptions(t *testing.T) {
 				}(),
 				timelockProposal: &mcms.TimelockProposal{
 					TimelockAddresses: map[types.ChainSelector]string{
-						types.ChainSelector(chain.Selector): timelockAddress.Hex(),
+						types.ChainSelector(chain.Selector): timelockAddress,
 					},
 				},
 			},
-			assert: errorContains(fmt.Sprintf("failed to find call proxy contract for timelock %v", timelockAddress.Hex())),
+			assert: errorContains(fmt.Sprintf("failed to find call proxy contract for timelock %v", timelockAddress)),
 		},
 	}
 	for _, tt := range tests {
@@ -523,4 +474,388 @@ func Test_timelockExecuteOptions(t *testing.T) {
 			tt.assert(t, got, err)
 		})
 	}
+}
+
+func Test_setRootCommand(t *testing.T) {
+	t.Parallel()
+
+	ctx := t.Context()
+	lggr, logs := logger.TestObserved(t, zapcore.InfoLevel)
+
+	loader := testenv.NewLoader()
+	env, err := loader.Load(t.Context(), testenv.WithEVMSimulatedN(t, 1))
+	require.NoError(t, err)
+	err = os.MkdirAll("domains/exemplar", 0o700)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = os.RemoveAll("domains") })
+
+	chain := slices.Collect(maps.Values(env.BlockChains.EVMChains()))[0]
+	inspector := mcmsevmsdk.NewInspector(chain.Client)
+
+	privateKey, err := crypto.HexToECDSA("ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80")
+	require.NoError(t, err)
+	signer := mcms.NewPrivateKeySigner(privateKey)
+	signerAddress := crypto.PubkeyToAddress(privateKey.PublicKey)
+
+	tests := []struct {
+		name            string
+		cfg             *cfgv2
+		setup           func(t *testing.T, cfg *cfgv2) (mcmAddress string)
+		skipNonceErrors bool
+		assertion       func(t require.TestingT, mcmAddress string, cfg *cfgv2, err error, args ...any)
+	}{
+		{
+			name: "success",
+			cfg: &cfgv2{
+				kind:          types.KindTimelockProposal,
+				chainSelector: chain.Selector,
+				envStr:        env.Name,
+				env:           *env,
+				blockchains:   env.BlockChains,
+			},
+			setup: func(t *testing.T, cfg *cfgv2) string {
+				t.Helper()
+				mcmAddress, uenv := deployMcm(t, env, chain, signerAddress)
+				cfg.env = *uenv
+				cfg.proposal = testMcmProposal(t, chain, mcmAddress)
+				signProposal(t, &cfg.proposal, signer, chain)
+
+				return mcmAddress
+			},
+			assertion: func(t require.TestingT, mcmAddress string, cfg *cfgv2, err error, args ...any) {
+				require.NoError(t, err)
+
+				root, _, err := inspector.GetRoot(ctx, mcmAddress)
+				require.NoError(t, err)
+
+				merkleTree, err := cfg.proposal.MerkleTree()
+				require.NoError(t, err)
+				require.Equal(t, merkleTree.Root, root)
+			},
+		},
+		{
+			name: "success on retry",
+			cfg: &cfgv2{
+				kind:          types.KindTimelockProposal,
+				chainSelector: chain.Selector,
+				envStr:        env.Name,
+				env:           *env,
+				blockchains:   env.BlockChains,
+			},
+			setup: func(t *testing.T, cfg *cfgv2) string {
+				t.Helper()
+
+				mcmAddress, uenv := deployMcm(t, env, chain, signerAddress)
+				cfg.env = *uenv
+				cfg.proposal = testMcmProposal(t, chain, mcmAddress)
+				signProposal(t, &cfg.proposal, signer, chain)
+
+				// call SetRoot the first time
+				err := setRootCommand(ctx, lggr, cfg)
+				require.NoError(t, err)
+
+				root, _, err := inspector.GetRoot(ctx, mcmAddress)
+				require.NoError(t, err)
+				merkleTree, err := cfg.proposal.MerkleTree()
+				require.NoError(t, err)
+				require.Equal(t, merkleTree.Root, root)
+
+				return mcmAddress
+			},
+			assertion: func(t require.TestingT, mcmAddress string, cfg *cfgv2, err error, args ...any) {
+				require.NoError(t, err)
+
+				root, _, err := inspector.GetRoot(ctx, mcmAddress)
+				require.NoError(t, err)
+				merkleTree, err := cfg.proposal.MerkleTree()
+				require.NoError(t, err)
+				require.Equal(t, merkleTree.Root, root)
+
+				require.Equal(t, 1, logs.FilterMessage(fmt.Sprintf("Root %v already set in MCM contract %v", root, mcmAddress)).Len())
+			},
+		},
+	}
+	for _, tt := range tests { //nolint:paralleltest
+		t.Run(tt.name, func(t *testing.T) {
+			mcmAddress := tt.setup(t, tt.cfg)
+			err := setRootCommand(ctx, lggr, tt.cfg)
+			tt.assertion(t, mcmAddress, tt.cfg, err)
+		})
+	}
+}
+
+func Test_executeChainCommand(t *testing.T) {
+	t.Parallel()
+
+	ctx := t.Context()
+	lggr, logs := logger.TestObserved(t, zapcore.InfoLevel)
+
+	loader := testenv.NewLoader()
+	env, err := loader.Load(t.Context(), testenv.WithEVMSimulatedN(t, 1))
+	require.NoError(t, err)
+	err = os.MkdirAll("domains/exemplar", 0o700)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = os.RemoveAll("domains") })
+
+	chain := slices.Collect(maps.Values(env.BlockChains.EVMChains()))[0]
+	inspector := mcmsevmsdk.NewInspector(chain.Client)
+
+	privateKey, err := crypto.HexToECDSA("ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80")
+	require.NoError(t, err)
+	signer := mcms.NewPrivateKeySigner(privateKey)
+	signerAddress := crypto.PubkeyToAddress(privateKey.PublicKey)
+
+	tests := []struct {
+		name            string
+		cfg             *cfgv2
+		setup           func(t *testing.T, cfg *cfgv2) (mcmAddress string)
+		skipNonceErrors bool
+		assertion       func(t require.TestingT, mcmAddress string, cfg *cfgv2, err error, args ...any)
+	}{
+		{
+			name: "success",
+			cfg: &cfgv2{
+				kind:          types.KindTimelockProposal,
+				chainSelector: chain.Selector,
+				envStr:        env.Name,
+				env:           *env,
+				blockchains:   env.BlockChains,
+			},
+			setup: func(t *testing.T, cfg *cfgv2) string {
+				t.Helper()
+				mcmAddress, uenv := deployMcm(t, env, chain, signerAddress)
+				cfg.env = *uenv
+				cfg.proposal = testMcmProposal(t, chain, mcmAddress)
+
+				signProposal(t, &cfg.proposal, signer, chain)
+
+				err := setRootCommand(ctx, lggr, cfg)
+				require.NoError(t, err)
+
+				return mcmAddress
+			},
+			assertion: func(t require.TestingT, mcmAddress string, cfg *cfgv2, err error, args ...any) {
+				require.NoError(t, err)
+
+				opCount, err := inspector.GetOpCount(ctx, mcmAddress)
+				require.NoError(t, err)
+				require.Equal(t, uint64(1), opCount)
+			},
+		},
+		{
+			name: "success on retry",
+			cfg: &cfgv2{
+				kind:          types.KindTimelockProposal,
+				chainSelector: chain.Selector,
+				envStr:        env.Name,
+				env:           *env,
+				blockchains:   env.BlockChains,
+			},
+			setup: func(t *testing.T, cfg *cfgv2) string {
+				t.Helper()
+
+				mcmAddress, uenv := deployMcm(t, env, chain, signerAddress)
+				cfg.env = *uenv
+				cfg.proposal = testMcmProposal(t, chain, mcmAddress)
+
+				signProposal(t, &cfg.proposal, signer, chain)
+
+				err := setRootCommand(ctx, lggr, cfg)
+				require.NoError(t, err)
+
+				err = executeChainCommand(ctx, lggr, cfg, false)
+				require.NoError(t, err)
+
+				opCount, err := inspector.GetOpCount(ctx, mcmAddress)
+				require.NoError(t, err)
+				require.Equal(t, uint64(1), opCount)
+
+				return mcmAddress
+			},
+			assertion: func(t require.TestingT, mcmAddress string, cfg *cfgv2, err error, args ...any) {
+				require.NoError(t, err)
+
+				opCount, err := inspector.GetOpCount(ctx, mcmAddress)
+				require.NoError(t, err)
+				require.Equal(t, uint64(1), opCount)
+				require.Equal(t, logs.FilterMessage("operation already executed").All()[0].ContextMap(), map[string]any{ //nolint:testifylint
+					"index":   int64(0),
+					"opCount": uint64(1),
+					"txNonce": uint64(0),
+				})
+			},
+		},
+	}
+	for _, tt := range tests { //nolint:paralleltest
+		t.Run(tt.name, func(t *testing.T) {
+			mcmAddress := tt.setup(t, tt.cfg)
+			err := setRootCommand(ctx, lggr, tt.cfg)
+			require.NoError(t, err)
+			err = executeChainCommand(ctx, lggr, tt.cfg, tt.skipNonceErrors)
+			tt.assertion(t, mcmAddress, tt.cfg, err)
+		})
+	}
+}
+
+// ----- helpers and fixtures -----
+
+func deployMcm(
+	t *testing.T, env *cldf.Environment, chain evmchain.Chain, signerAddress common.Address,
+) (string, *cldf.Environment) {
+	t.Helper()
+
+	mcmAddress := common.Address{}
+	changeset := cldf.CreateChangeSet(
+		func(e cldf.Environment, config struct{}) (cldf.ChangesetOutput, error) {
+			ds := datastore.NewMemoryDataStore()
+			var tx *ethtypes.Transaction
+
+			// deploy mcm
+			var mcmContract *mcmsevmbindings.ManyChainMultiSig
+			var err error
+			mcmAddress, tx, mcmContract, err = mcmsevmbindings.DeployManyChainMultiSig(chain.DeployerKey, chain.Client)
+			require.NoError(t, err)
+			_, err = chain.Confirm(tx)
+			require.NoError(t, err)
+			err = ds.Addresses().Add(datastore.AddressRef{
+				Address:       mcmAddress.Hex(),
+				ChainSelector: chain.Selector,
+				Type:          "ManyChainMultiSig",
+				Version:       semver.MustParse("1.0.0"),
+			})
+			require.NoError(t, err)
+
+			// set config
+			tx, err = mcmContract.SetConfig(chain.DeployerKey,
+				[]common.Address{signerAddress}, // signerAddresses
+				[]uint8{0},                      // signerGroups
+				[32]uint8{1},                    // groupQuorums
+				[32]uint8{0},                    // groupParents
+				true,
+			)
+			require.NoError(t, err)
+			_, err = chain.Confirm(tx)
+			require.NoError(t, err)
+
+			return cldf.ChangesetOutput{DataStore: ds}, nil
+		},
+		func(e cldf.Environment, config struct{}) error { return nil }, // verify,
+	)
+
+	task := testruntime.ChangesetTask(changeset, struct{}{})
+	runtime := testruntime.NewFromEnvironment(*env)
+	err := runtime.Exec(task)
+	require.NoError(t, err)
+	env = fpointer.To(runtime.Environment())
+
+	return mcmAddress.Hex(), env
+}
+
+func deployTimelockAndCallProxy(
+	t *testing.T, env *cldf.Environment, chain evmchain.Chain,
+) (string, string, *cldf.Environment) {
+	t.Helper()
+
+	callProxyAddress := common.Address{}
+	timelockAddress := common.Address{}
+	changeset := cldf.CreateChangeSet(
+		func(e cldf.Environment, config struct{}) (cldf.ChangesetOutput, error) {
+			ds := datastore.NewMemoryDataStore()
+			ab := cldf.NewMemoryAddressBook()
+			var tx *ethtypes.Transaction
+			var err error
+
+			// deploy call proxy
+			callProxyAddress, tx, _, err = mcmsevmbindings.DeployCallProxy(chain.DeployerKey, chain.Client, common.Address{})
+			require.NoError(t, err)
+			err = ds.Addresses().Add(datastore.AddressRef{
+				Address:       callProxyAddress.Hex(),
+				ChainSelector: chain.Selector,
+				Type:          "CallProxy",
+				Version:       semver.MustParse("1.0.0"),
+			})
+			require.NoError(t, err)
+			err = ab.Save(chain.Selector, callProxyAddress.Hex(), cldf.MustTypeAndVersionFromString("CallProxy 1.0.0"))
+			require.NoError(t, err)
+			_, err = chain.Confirm(tx)
+			require.NoError(t, err)
+
+			// deploy timelock
+			timelockAddress, tx, _, err = mcmsevmbindings.DeployRBACTimelock(chain.DeployerKey, chain.Client, big.NewInt(0),
+				chain.DeployerKey.From,
+				nil,                                // proposers
+				[]common.Address{callProxyAddress}, // executors
+				nil,                                // bypassers
+				nil,                                // cancellers
+			)
+			require.NoError(t, err)
+			err = ds.Addresses().Add(datastore.AddressRef{
+				Address:       timelockAddress.Hex(),
+				ChainSelector: chain.Selector,
+				Type:          "RBACTimelock",
+				Version:       semver.MustParse("1.0.0"),
+			})
+			require.NoError(t, err)
+			err = ab.Save(chain.Selector, timelockAddress.Hex(), cldf.MustTypeAndVersionFromString("RBACTimelock 1.0.0"))
+			require.NoError(t, err)
+			_, err = chain.Confirm(tx)
+			require.NoError(t, err)
+
+			return cldf.ChangesetOutput{AddressBook: ab, DataStore: ds}, nil
+		},
+		func(e cldf.Environment, config struct{}) error { return nil }, // verify,
+	)
+
+	task := testruntime.ChangesetTask(changeset, struct{}{})
+	runtime := testruntime.NewFromEnvironment(*env)
+	err := runtime.Exec(task)
+	require.NoError(t, err)
+	env = fpointer.To(runtime.Environment())
+
+	return timelockAddress.Hex(), callProxyAddress.Hex(), env
+}
+
+func testMcmProposal(
+	t *testing.T,
+	chain evmchain.Chain,
+	mcmAddress string,
+) mcms.Proposal {
+	t.Helper()
+
+	proposal, err := mcms.NewProposalBuilder().
+		SetVersion("v1").
+		SetValidUntil(2082758399).
+		SetDescription("test proposal").
+		SetOverridePreviousRoot(true).
+		AddChainMetadata(
+			types.ChainSelector(chain.Selector),
+			types.ChainMetadata{MCMAddress: mcmAddress},
+		).
+		AddOperation(types.Operation{
+			ChainSelector: types.ChainSelector(chain.Selector),
+			Transaction: types.Transaction{
+				To:               chain.DeployerKey.From.Hex(),
+				Data:             []byte("0x"),
+				AdditionalFields: json.RawMessage(`{"value": 0}`),
+			},
+		}).Build()
+	require.NoError(t, err)
+
+	return *proposal
+}
+
+func signProposal(
+	t *testing.T, proposal *mcms.Proposal, signer *mcms.PrivateKeySigner, chain evmchain.Chain,
+) {
+	t.Helper()
+
+	inspector := mcmsevmsdk.NewInspector(chain.Client)
+
+	signable, err := mcms.NewSignable(proposal, map[types.ChainSelector]sdk.Inspector{
+		types.ChainSelector(chain.Selector): inspector,
+	})
+	require.NoError(t, err)
+
+	_, err = signable.SignAndAppend(signer)
+	require.NoError(t, err)
 }

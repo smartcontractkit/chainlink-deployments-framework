@@ -111,9 +111,16 @@ type OCRConfig struct {
 	XProposers string `mapstructure:"x_proposers" yaml:"x_proposers"` // Secret: BIP39 mnemonic phrase for the OCR proposer.
 }
 
+// CatalogAuthConfig is the configuration for the Catalog authentication.
+type CatalogAuthConfig struct {
+	KMSKeyID     string `mapstructure:"kms_key_id" yaml:"kms_key_id"`         // AWS KMS Key ID (arn or alias)
+	KMSKeyRegion string `mapstructure:"kms_key_region" yaml:"kms_key_region"` // AWS KMS Key Region (e.g. us-west-1)
+}
+
 // CatalogConfig is the configuration to connect to the Catalog.
 type CatalogConfig struct {
-	GRPC string `mapstructure:"grpc" yaml:"grpc"` // The gRPC URL for the Catalog. Used to interact with the Catalog API.
+	GRPC string             `mapstructure:"grpc" yaml:"grpc"`           // The gRPC URL for the Catalog. Used to interact with the Catalog API.
+	Auth *CatalogAuthConfig `mapstructure:"auth" yaml:"auth,omitempty"` // The authentication configuration for the Catalog.
 }
 
 // OnchainConfig wraps the configuration for the onchain components.
@@ -229,7 +236,9 @@ var (
 		"offchain.job_distributor.endpoints.grpc":                 {"OFFCHAIN_JD_ENDPOINTS_GRPC", "JD_GRPC"},
 		"offchain.ocr.x_signers":                                  {"OFFCHAIN_OCR_X_SIGNERS", "OCR_X_SIGNERS"},
 		"offchain.ocr.x_proposers":                                {"OFFCHAIN_OCR_X_PROPOSERS", "OCR_X_PROPOSERS"},
-		"catalog.grpc":                                            {"CATALOG_GRPC", "CATALOG_SERVICE_GRPC"},
+		"catalog.grpc":                                            {"CATALOG_GRPC"},
+		"catalog.auth.kms_key_id":                                 {"CATALOG_AUTH_KMS_KEY_ID"},
+		"catalog.auth.kms_key_region":                             {"CATALOG_AUTH_KMS_KEY_REGION"},
 	}
 )
 

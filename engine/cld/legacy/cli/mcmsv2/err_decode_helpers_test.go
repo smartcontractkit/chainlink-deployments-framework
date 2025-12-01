@@ -20,6 +20,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	mcmsbindings "github.com/smartcontractkit/ccip-owner-contracts/pkg/gethwrappers"
 	timelockbindings "github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings/v0_1_0/timelock"
+	"github.com/smartcontractkit/mcms/sdk/evm"
 	"github.com/smartcontractkit/mcms/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -43,7 +44,7 @@ func mustType(t *testing.T, typ string) abi.Type {
 	return ty
 }
 
-func errorSelector(name string, args abi.Arguments) []byte {
+func getErrorSelector(name string, args abi.Arguments) []byte {
 	ts := make([]string, len(args))
 	for i, a := range args {
 		ts[i] = a.Type.String()
@@ -59,7 +60,7 @@ func buildCustomErrorRevert(t *testing.T, name string, args abi.Arguments, vals 
 	enc, err := args.Pack(vals...)
 	require.NoError(t, err)
 
-	return append(errorSelector(name, args), enc...)
+	return append(getErrorSelector(name, args), enc...)
 }
 
 func buildStdErrorRevert(t *testing.T, msg string) []byte {
@@ -465,4 +466,160 @@ func Test_DiagnoseTimelockRevert(t *testing.T) {
 	assert.Contains(t, es, "timelock diagnosis found issues:")
 	assert.Contains(t, es, "first revert")
 	assert.Contains(t, es, "second revert")
+}
+
+func Test_tryDecodeExecutionError(t *testing.T) {
+	t.Parallel()
+
+	// Create test ABI with custom error
+	abiJSON := `[
+		{"type":"error","name":"InsufficientBalance","inputs":[
+			{"name":"required","type":"uint256"},
+			{"name":"available","type":"uint256"}]}
+	]`
+
+	// Build custom error revert data
+	u256Ty := mustType(t, "uint256")
+	errArgs := abi.Arguments{
+		{Name: "required", Type: u256Ty},
+		{Name: "available", Type: u256Ty},
+	}
+	required := big.NewInt(100)
+	available := big.NewInt(50)
+	customRevert := buildCustomErrorRevert(t, "InsufficientBalance", errArgs, required, available)
+
+	// Create registry with the ABI
+	ds := cldfds.NewMemoryDataStore()
+	reg, err := analyzer.NewEnvironmentEVMRegistry(cldf.Environment{
+		ExistingAddresses: cldf.NewMemoryAddressBook(),
+		DataStore:         ds.Seal(),
+	}, map[string]string{
+		"TestContract@1.0.0": abiJSON,
+	})
+	require.NoError(t, err)
+
+	dec, err := NewErrDecoder(reg)
+	require.NoError(t, err)
+
+	t.Run("nil error returns empty result", func(t *testing.T) {
+		t.Parallel()
+
+		result := tryDecodeExecutionError(nil, dec)
+		assert.False(t, result.RevertReasonDecoded)
+		assert.False(t, result.UnderlyingReasonDecoded)
+		assert.Empty(t, result.RevertReason)
+		assert.Empty(t, result.UnderlyingReason)
+	})
+
+	t.Run("decodes revert reason from Data field", func(t *testing.T) {
+		t.Parallel()
+
+		execErr := &evm.ExecutionError{
+			RevertReasonRaw: &evm.CustomErrorData{
+				Data: customRevert,
+			},
+		}
+
+		result := tryDecodeExecutionError(execErr, dec)
+		require.True(t, result.RevertReasonDecoded, "should decode revert reason")
+		assert.Contains(t, result.RevertReason, "InsufficientBalance")
+		assert.Contains(t, result.RevertReason, "@TestContract@1.0.0")
+		assert.Contains(t, result.RevertReason, required.String())
+		assert.Contains(t, result.RevertReason, available.String())
+	})
+
+	t.Run("decodes revert reason from Selector field", func(t *testing.T) {
+		t.Parallel()
+
+		var selector [4]byte
+		copy(selector[:], customRevert[:4])
+
+		execErr := &evm.ExecutionError{
+			RevertReasonRaw: &evm.CustomErrorData{
+				Selector: selector,
+			},
+		}
+
+		result := tryDecodeExecutionError(execErr, dec)
+		require.True(t, result.RevertReasonDecoded, "should decode revert reason from selector")
+		assert.Contains(t, result.RevertReason, "InsufficientBalance")
+	})
+
+	t.Run("decodes standard Error(string)", func(t *testing.T) {
+		t.Parallel()
+
+		stdRevert := buildStdErrorRevert(t, "test error message")
+		execErr := &evm.ExecutionError{
+			RevertReasonRaw: &evm.CustomErrorData{
+				Data: stdRevert,
+			},
+		}
+
+		result := tryDecodeExecutionError(execErr, dec)
+		require.True(t, result.RevertReasonDecoded, "should decode standard error")
+		assert.Equal(t, "test error message", result.RevertReason)
+	})
+
+	t.Run("decodes underlying reason", func(t *testing.T) {
+		t.Parallel()
+
+		underlyingRevert := buildStdErrorRevert(t, "underlying error")
+		underlyingHex := "0x" + hex.EncodeToString(underlyingRevert)
+
+		execErr := &evm.ExecutionError{
+			RevertReasonRaw: &evm.CustomErrorData{
+				Data: customRevert,
+			},
+			UnderlyingReasonRaw: underlyingHex,
+		}
+
+		result := tryDecodeExecutionError(execErr, dec)
+		require.True(t, result.RevertReasonDecoded)
+		require.True(t, result.UnderlyingReasonDecoded, "should decode underlying reason")
+		assert.Equal(t, "underlying error", result.UnderlyingReason)
+	})
+
+	t.Run("handles nil decoder", func(t *testing.T) {
+		t.Parallel()
+
+		var selector [4]byte
+		copy(selector[:], customRevert[:4])
+
+		execErr := &evm.ExecutionError{
+			RevertReasonRaw: &evm.CustomErrorData{
+				Selector: selector,
+			},
+		}
+
+		result := tryDecodeExecutionError(execErr, nil)
+		require.True(t, result.RevertReasonDecoded, "should return selector even without decoder")
+		assert.Contains(t, result.RevertReason, "custom error 0x")
+		assert.Contains(t, result.RevertReason, hex.EncodeToString(selector[:]))
+	})
+
+	t.Run("handles empty RawRevertReason", func(t *testing.T) {
+		t.Parallel()
+
+		execErr := &evm.ExecutionError{
+			RevertReasonRaw: &evm.CustomErrorData{},
+		}
+
+		result := tryDecodeExecutionError(execErr, dec)
+		assert.False(t, result.RevertReasonDecoded)
+		assert.Empty(t, result.RevertReason)
+	})
+
+	t.Run("handles nil RawRevertReason", func(t *testing.T) {
+		t.Parallel()
+
+		execErr := &evm.ExecutionError{
+			RevertReasonRaw:     nil,
+			UnderlyingReasonRaw: "0x12345678",
+		}
+
+		result := tryDecodeExecutionError(execErr, dec)
+		assert.False(t, result.RevertReasonDecoded)
+		// Underlying reason should still be attempted
+		assert.NotEmpty(t, result.UnderlyingReason)
+	})
 }

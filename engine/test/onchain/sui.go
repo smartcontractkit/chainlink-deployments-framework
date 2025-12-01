@@ -2,6 +2,10 @@
 package onchain
 
 import (
+	"crypto/ed25519"
+	"crypto/rand"
+	"encoding/hex"
+	"fmt"
 	"testing"
 
 	chainselectors "github.com/smartcontractkit/chain-selectors"
@@ -12,8 +16,10 @@ import (
 
 // NewSuiContainerLoader creates a new Sui chain loader with default configuration using CTF.
 func NewSuiContainerLoader() *ChainLoader {
-	// testPrivateKey is a valid Sui Ed25519 private key for testing purposes (32 bytes, 64 hex chars)
-	testPrivateKey := "E4FD0E90D32CB98DC6AD64516A421E8C2731870217CDBA64203CEB158A866304"
+	// Generate a random Sui Ed25519 private key for testing
+	seeded := ed25519.NewKeyFromSeed(suiRandomSeed()) // 64 bytes: seed||pub
+	seed := seeded[:32]                               // or: seeded.Seed() if available
+	testPrivateKey := hex.EncodeToString(seed)        // 64 hex chars
 
 	return &ChainLoader{
 		selectors: getTestSelectorsByFamily(chainselectors.FamilySui),
@@ -26,4 +32,15 @@ func NewSuiContainerLoader() *ChainLoader {
 			}).Initialize(t.Context())
 		},
 	}
+}
+
+// randomSeed generates a random seed for the Sui Ed25519 private key.
+func suiRandomSeed() []byte {
+	seed := make([]byte, ed25519.SeedSize)
+	_, err := rand.Read(seed)
+	if err != nil {
+		panic(fmt.Sprintf("failed to generate random seed: %+v", err)) // This should never happen unless using a legacy Linux system
+	}
+
+	return seed
 }
