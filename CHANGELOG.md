@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.71.0
+
+### Minor Changes
+
+- [#604](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/604) [`c0b7401`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/c0b740129be9c1c5f20f38899a7afd154dc75eed) Thanks [@ecPablo](https://github.com/ecPablo)! - add error decode command
+
 ## 0.70.0
 
 ### Minor Changes
