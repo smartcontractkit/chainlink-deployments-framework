@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.71.2
+
+### Patch Changes
+
+- [#618](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/618) [`e67e1e0`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/e67e1e0a1ae228445a2534d61035623b29aa5426) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - fix: abort execute-chain if an operation fails due to txNonce too large
+
 ## 0.71.1
 
 ### Patch Changes
