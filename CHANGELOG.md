@@ -1,5 +1,13 @@
 # chainlink-deployments-framework
 
+## 0.71.1
+
+### Patch Changes
+
+- [#615](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/615) [`8045d1f`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/8045d1f47dd99c4d7cc5fba253c2ea5aeab4ac6a) Thanks [@jkongie](https://github.com/jkongie)! - Bump `golang.org/x/crypto` to v0.45.0
+
+- [#616](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/616) [`4430663`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/4430663c1c2e93bbb88ff74f26edb5de42405946) Thanks [@jkongie](https://github.com/jkongie)! - Override `js-yaml` to use version v3.14.2
+
 ## 0.71.0
 
 ### Minor Changes
