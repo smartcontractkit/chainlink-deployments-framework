@@ -1345,7 +1345,7 @@ func executeChainCommand(ctx context.Context, lggr logger.Logger, cfg *cfgv2, sk
 		}
 		if txNonce > opCount {
 			lggr.Warnw("txNonce too large", "index", i, "txNonce", txNonce, "opCount", opCount)
-			break
+			return fmt.Errorf("txNonce too large for op %d (%d; expected %d)", i, txNonce, opCount)
 		}
 
 		tx, err := executable.Execute(ctx, i)
