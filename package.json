@@ -10,7 +10,12 @@
   "author": "@smartcontractkit",
   "devDependencies": {
     "@changesets/changelog-github": "^0.5.2",
-    "@changesets/cli": "^2.29.7"
+    "@changesets/cli": "^2.29.8"
   },
-  "repository": "https://github.com/smartcontractkit/chainlink-deployments-framework"
+  "repository": "https://github.com/smartcontractkit/chainlink-deployments-framework",
+  "pnpm": {
+    "overrides": {
+      "js-yaml": ">=3.14.2"
+    }
+  }
 }
