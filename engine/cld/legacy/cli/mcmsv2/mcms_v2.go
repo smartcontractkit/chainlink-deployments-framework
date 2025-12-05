@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/avast/retry-go/v4"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind/v2"
 	"github.com/ethereum/go-ethereum/common"
 	gethtypes "github.com/ethereum/go-ethereum/core/types"
@@ -1331,21 +1332,12 @@ func executeChainCommand(ctx context.Context, lggr logger.Logger, cfg *cfgv2, sk
 			continue
 		}
 
-		opCount, err := inspector.GetOpCount(ctx, cfg.proposal.ChainMetadata[types.ChainSelector(cfg.chainSelector)].MCMAddress)
+		err := checkTxNonce(ctx, lggr, cfg, executable, inspector, i)
+		if errors.Is(err, ErrOperationAlreadyExecuted) {
+			return nil
+		}
 		if err != nil {
-			return fmt.Errorf("failed to get opcount for chain %d: %w", cfg.chainSelector, err)
-		}
-		txNonce, err := executable.TxNonce(i)
-		if err != nil {
-			return fmt.Errorf("failed to get TxNonce for chain %d: %w", cfg.chainSelector, err)
-		}
-		if txNonce < opCount {
-			lggr.Infow("operation already executed", "index", i, "txNonce", txNonce, "opCount", opCount)
-			continue
-		}
-		if txNonce > opCount {
-			lggr.Warnw("txNonce too large", "index", i, "txNonce", txNonce, "opCount", opCount)
-			return fmt.Errorf("txNonce too large for op %d (%d; expected %d)", i, txNonce, opCount)
+			return err
 		}
 
 		tx, err := executable.Execute(ctx, i)
@@ -1815,4 +1807,47 @@ func createRendererFromFormat(format string) (analyzer.Renderer, error) {
 		// error if format is not specified or invalid
 		return nil, fmt.Errorf("unknown format '%s'", format)
 	}
+}
+
+var ErrOperationAlreadyExecuted = errors.New("operation already executed")
+
+func checkTxNonce(
+	ctx context.Context, lggr logger.Logger, cfg *cfgv2, executable *mcms.Executable, inspector sdk.Inspector, i int,
+) error {
+	mcmAddress := cfg.proposal.ChainMetadata[types.ChainSelector(cfg.chainSelector)].MCMAddress
+
+	txNonce, err := executable.TxNonce(i)
+	if err != nil {
+		return fmt.Errorf("failed to get TxNonce for chain %d: %w", cfg.chainSelector, err)
+	}
+
+	compareOpCountWithTxNonce := func(rctx context.Context) (uint64, error) {
+		opCount, rerr := inspector.GetOpCount(rctx, mcmAddress)
+		if rerr != nil {
+			return 0, fmt.Errorf("failed to get opcount for chain %d: %w", cfg.chainSelector, rerr)
+		}
+		if txNonce < opCount {
+			lggr.Infow("operation already executed", "index", i, "txNonce", txNonce, "opCount", opCount)
+			return txNonce, ErrOperationAlreadyExecuted
+		}
+		if txNonce > opCount {
+			lggr.Warnw("txNonce too large", "index", i, "txNonce", txNonce, "opCount", opCount)
+			return txNonce, fmt.Errorf("txNonce too large for op %d (%d; expected %d)", i, txNonce, opCount)
+		}
+
+		return txNonce, nil
+	}
+
+	retryIfTxNonceTooLarge := retry.RetryIf(func(err error) bool {
+		if strings.Contains(err.Error(), "txNonce too large") {
+			lggr.Info("txNonce too large; re-fetching OpCount after delay")
+			return true
+		}
+
+		return false
+	})
+
+	_, err = Retry(ctx, compareOpCountWithTxNonce, retryIfTxNonceTooLarge)
+
+	return err
 }
