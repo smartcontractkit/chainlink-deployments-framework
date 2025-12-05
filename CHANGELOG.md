@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.71.3
+
+### Patch Changes
+
+- [#620](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/620) [`ac4ad05`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/ac4ad054866ef21d77ac457fa0bc1b4606621ba7) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - fix(mcms): re-fetch mcm opCount on "txNonce too large" error
+
 ## 0.71.2
 
 ### Patch Changes
