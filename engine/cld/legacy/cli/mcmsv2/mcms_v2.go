@@ -28,6 +28,7 @@ import (
 	"github.com/smartcontractkit/mcms/sdk/evm/bindings"
 	"github.com/smartcontractkit/mcms/sdk/solana"
 	"github.com/smartcontractkit/mcms/sdk/sui"
+	"github.com/smartcontractkit/mcms/sdk/ton"
 	"github.com/smartcontractkit/mcms/types"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -1183,6 +1184,8 @@ func newCfgv2(lggr logger.Logger, cmd *cobra.Command, domain cldf_domain.Domain,
 				if err != nil {
 					return nil, fmt.Errorf("error creating Sui timelock converter: %w", err)
 				}
+			case chainsel.FamilyTon:
+				converter = ton.NewTimelockConverter()
 			default:
 				return nil, fmt.Errorf("unsupported chain family %s", fam)
 			}
@@ -1489,18 +1492,18 @@ func getExecutorWithChainOverride(cfg *cfgv2, chainSelector types.ChainSelector)
 		if !ok {
 			return nil, fmt.Errorf("invalid encoder type: %T", encoder)
 		}
-		chain := cfg.blockchains.EVMChains()[uint64(chainSelector)]
+		c := cfg.blockchains.EVMChains()[uint64(chainSelector)]
 
-		return evm.NewExecutor(evmEncoder, chain.Client, chain.DeployerKey), nil
+		return evm.NewExecutor(evmEncoder, c.Client, c.DeployerKey), nil
 
 	case chainsel.FamilySolana:
 		solanaEncoder, ok := encoder.(*solana.Encoder)
 		if !ok {
 			return nil, fmt.Errorf("invalid encoder type: %T", encoder)
 		}
-		chain := cfg.blockchains.SolanaChains()[uint64(chainSelector)]
+		c := cfg.blockchains.SolanaChains()[uint64(chainSelector)]
 
-		return solana.NewExecutor(solanaEncoder, chain.Client, *chain.DeployerKey), nil
+		return solana.NewExecutor(solanaEncoder, c.Client, *c.DeployerKey), nil
 
 	case chainsel.FamilyAptos:
 		encoder, ok := encoder.(*aptos.Encoder)
@@ -1511,9 +1514,9 @@ func getExecutorWithChainOverride(cfg *cfgv2, chainSelector types.ChainSelector)
 		if err != nil {
 			return nil, fmt.Errorf("error getting aptos role from proposal: %w", err)
 		}
-		chain := cfg.blockchains.AptosChains()[uint64(chainSelector)]
+		c := cfg.blockchains.AptosChains()[uint64(chainSelector)]
 
-		return aptos.NewExecutor(chain.Client, chain.DeployerSigner, encoder, *role), nil
+		return aptos.NewExecutor(c.Client, c.DeployerSigner, encoder, *role), nil
 
 	case chainsel.FamilySui:
 		encoder, ok := encoder.(*sui.Encoder)
@@ -1524,10 +1527,18 @@ func getExecutorWithChainOverride(cfg *cfgv2, chainSelector types.ChainSelector)
 		if err != nil {
 			return nil, fmt.Errorf("error getting sui metadata from proposal: %w", err)
 		}
-		chain := cfg.blockchains.SuiChains()[uint64(chainSelector)]
+		c := cfg.blockchains.SuiChains()[uint64(chainSelector)]
 		entrypointEncoder := suibindings.NewCCIPEntrypointArgEncoder(metadata.RegistryObj, metadata.DeployerStateObj)
 
-		return sui.NewExecutor(chain.Client, chain.Signer, encoder, entrypointEncoder, metadata.McmsPackageID, metadata.Role, cfg.timelockProposal.ChainMetadata[chainSelector].MCMAddress, metadata.AccountObj, metadata.RegistryObj, metadata.TimelockObj)
+		return sui.NewExecutor(c.Client, c.Signer, encoder, entrypointEncoder, metadata.McmsPackageID, metadata.Role, cfg.timelockProposal.ChainMetadata[chainSelector].MCMAddress, metadata.AccountObj, metadata.RegistryObj, metadata.TimelockObj)
+	case chainsel.FamilyTon:
+		encoder, ok := encoder.(*ton.Encoder)
+		if !ok {
+			return nil, fmt.Errorf("error getting encoder for chain %d", cfg.chainSelector)
+		}
+		c := cfg.blockchains.TonChains()[uint64(chainSelector)]
+
+		return ton.NewExecutor(encoder, c.Client, c.TxOps.Wallet, c.TxOps.Amount)
 	default:
 		return nil, fmt.Errorf("unsupported chain family %s", family)
 	}
@@ -1557,26 +1568,29 @@ func getTimelockExecutorWithChainOverride(cfg *cfgv2, chainSelector types.ChainS
 	var executor sdk.TimelockExecutor
 	switch family {
 	case chainsel.FamilyEVM:
-		chain := cfg.blockchains.EVMChains()[uint64(chainSelector)]
+		c := cfg.blockchains.EVMChains()[uint64(chainSelector)]
 
-		executor = evm.NewTimelockExecutor(chain.Client, chain.DeployerKey)
+		executor = evm.NewTimelockExecutor(c.Client, c.DeployerKey)
 	case chainsel.FamilySolana:
-		chain := cfg.blockchains.SolanaChains()[uint64(chainSelector)]
-		executor = solana.NewTimelockExecutor(chain.Client, *chain.DeployerKey)
+		c := cfg.blockchains.SolanaChains()[uint64(chainSelector)]
+		executor = solana.NewTimelockExecutor(c.Client, *c.DeployerKey)
 	case chainsel.FamilyAptos:
-		chain := cfg.blockchains.AptosChains()[uint64(chainSelector)]
-		executor = aptos.NewTimelockExecutor(chain.Client, chain.DeployerSigner)
+		c := cfg.blockchains.AptosChains()[uint64(chainSelector)]
+		executor = aptos.NewTimelockExecutor(c.Client, c.DeployerSigner)
 	case chainsel.FamilySui:
-		chain := cfg.blockchains.SuiChains()[uint64(chainSelector)]
+		c := cfg.blockchains.SuiChains()[uint64(chainSelector)]
 		metadata, err := suiMetadataFromProposal(chainSelector, cfg.timelockProposal)
 		if err != nil {
 			return nil, fmt.Errorf("error getting sui metadata from proposal: %w", err)
 		}
 		entrypointEncoder := suibindings.NewCCIPEntrypointArgEncoder(metadata.AccountObj, metadata.DeployerStateObj)
-		executor, err = sui.NewTimelockExecutor(chain.Client, chain.Signer, entrypointEncoder, metadata.McmsPackageID, metadata.RegistryObj, metadata.AccountObj)
+		executor, err = sui.NewTimelockExecutor(c.Client, c.Signer, entrypointEncoder, metadata.McmsPackageID, metadata.RegistryObj, metadata.AccountObj)
 		if err != nil {
 			return nil, fmt.Errorf("error creating sui timelock executor: %w", err)
 		}
+	case chainsel.FamilyTon:
+		c := cfg.blockchains.TonChains()[uint64(chainSelector)]
+		return ton.NewTimelockExecutor(c.Client, c.TxOps.Wallet, c.TxOps.Amount)
 	default:
 		return nil, fmt.Errorf("unsupported chain family %s", family)
 	}
@@ -1631,6 +1645,9 @@ var getInspectorFromChainSelector = func(cfg cfgv2) (sdk.Inspector, error) {
 		if err != nil {
 			return nil, fmt.Errorf("error creating sui inspector: %w", err)
 		}
+	case chainsel.FamilyTon:
+		chain := cfg.blockchains.TonChains()[cfg.chainSelector]
+		inspector = ton.NewInspector(chain.Client)
 	default:
 		return nil, fmt.Errorf("unsupported chain family %s", fam)
 	}

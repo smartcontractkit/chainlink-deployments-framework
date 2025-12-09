@@ -88,7 +88,7 @@ func Test_CTFChainProvider_Initialize(t *testing.T) {
 				require.True(t, ok, "expected got to be of type ton.Chain")
 				assert.Equal(t, tt.giveSelector, gotChain.Selector)
 				assert.NotEmpty(t, gotChain.Client)
-				assert.NotEmpty(t, gotChain.Wallet)
+				assert.NotEmpty(t, gotChain.TxOps)
 				assert.NotEmpty(t, gotChain.WalletAddress)
 			}
 		})
