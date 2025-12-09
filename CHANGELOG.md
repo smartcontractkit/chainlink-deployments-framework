@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.71.4
+
+### Patch Changes
+
+- [#625](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/625) [`ea28b23`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/ea28b239855994124c1b44a7fe3073fee364cb82) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(catalog): load from catalog when mode is all
+
 ## 0.71.3
 
 ### Patch Changes
