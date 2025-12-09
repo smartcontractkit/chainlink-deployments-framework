@@ -48,7 +48,7 @@ func Load(
 
 	var ds fdatastore.DataStore
 
-	if cfg.DatastoreType == cfgdomain.DatastoreTypeCatalog {
+	if cfg.DatastoreType == cfgdomain.DatastoreTypeCatalog || cfg.DatastoreType == cfgdomain.DatastoreTypeAll {
 		if cfg.Env.Catalog.GRPC != "" {
 			lggr.Infow("Fetching data from Catalog", "url", cfg.Env.Catalog.GRPC)
 			catalogStore, catalogErr := cldcatalog.LoadCatalog(ctx, envKey, cfg, domain)
