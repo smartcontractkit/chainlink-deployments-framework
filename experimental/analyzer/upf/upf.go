@@ -256,66 +256,36 @@ func batchOperationsToUpfDecodedCalls(ctx context.Context, proposalContext mcmsa
 		}
 
 		decodedCalls[batchIdx] = make([]*DecodedInnerCall, len(batch.Transactions))
-
+		var describedTxs []*mcmsanalyzer.DecodedCall
 		switch family {
 		case chainsel.FamilyEVM:
-			describedTxs, err := mcmsanalyzer.AnalyzeEVMTransactions(ctx, proposalContext, env, chainSel, batch.Transactions)
+			describedTxs, err = mcmsanalyzer.AnalyzeEVMTransactions(ctx, proposalContext, env, chainSel, batch.Transactions)
 			if err != nil {
 				return nil, err
-			}
-			for callIdx, tx := range describedTxs {
-				decodedCalls[batchIdx][callIdx] = &DecodedInnerCall{
-					To:   tx.Address,
-					Data: cldDecodedCallToUpfDecodedCallData(tx),
-				}
 			}
 
 		case chainsel.FamilySolana:
-			describedTxs, err := mcmsanalyzer.AnalyzeSolanaTransactions(proposalContext, chainSel, batch.Transactions)
+			describedTxs, err = mcmsanalyzer.AnalyzeSolanaTransactions(proposalContext, chainSel, batch.Transactions)
 			if err != nil {
 				return nil, err
-			}
-			for callIdx, tx := range describedTxs {
-				decodedCalls[batchIdx][callIdx] = &DecodedInnerCall{
-					To:   tx.Address,
-					Data: cldDecodedCallToUpfDecodedCallData(tx),
-				}
 			}
 
 		case chainsel.FamilyAptos:
-			describedTxs, err := mcmsanalyzer.AnalyzeAptosTransactions(proposalContext, chainSel, batch.Transactions)
+			describedTxs, err = mcmsanalyzer.AnalyzeAptosTransactions(proposalContext, chainSel, batch.Transactions)
 			if err != nil {
 				return nil, err
-			}
-			for callIdx, tx := range describedTxs {
-				decodedCalls[batchIdx][callIdx] = &DecodedInnerCall{
-					To:   tx.Address,
-					Data: cldDecodedCallToUpfDecodedCallData(tx),
-				}
 			}
 
 		case chainsel.FamilySui:
-			describedTxs, err := mcmsanalyzer.AnalyzeSuiTransactions(proposalContext, chainSel, batch.Transactions)
+			describedTxs, err = mcmsanalyzer.AnalyzeSuiTransactions(proposalContext, chainSel, batch.Transactions)
 			if err != nil {
 				return nil, err
-			}
-			for callIdx, tx := range describedTxs {
-				decodedCalls[batchIdx][callIdx] = &DecodedInnerCall{
-					To:   tx.Address,
-					Data: cldDecodedCallToUpfDecodedCallData(tx),
-				}
 			}
 
 		case chainsel.FamilyTon:
-			describedTxs, err := mcmsanalyzer.AnalyzeTONTransactions(proposalContext, batch.Transactions)
+			describedTxs, err = mcmsanalyzer.AnalyzeTONTransactions(proposalContext, batch.Transactions)
 			if err != nil {
 				return nil, err
-			}
-			for callIdx, tx := range describedTxs {
-				decodedCalls[batchIdx][callIdx] = &DecodedInnerCall{
-					To:   tx.Address,
-					Data: cldDecodedCallToUpfDecodedCallData(tx),
-				}
 			}
 
 		default:
@@ -324,6 +294,14 @@ func batchOperationsToUpfDecodedCalls(ctx context.Context, proposalContext mcmsa
 					To:   mcmsTx.To,
 					Data: &DecodedCallData{FunctionName: family + " transaction decoding is not supported"},
 				}
+			}
+			continue
+		}
+
+		for callIdx, tx := range describedTxs {
+			decodedCalls[batchIdx][callIdx] = &DecodedInnerCall{
+				To:   tx.Address,
+				Data: cldDecodedCallToUpfDecodedCallData(tx),
 			}
 		}
 	}
