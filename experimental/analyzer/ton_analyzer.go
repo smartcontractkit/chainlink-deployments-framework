@@ -14,7 +14,7 @@ func AnalyzeTONTransactions(ctx ProposalContext, chainSelector uint64, txs []typ
 	for i, op := range txs {
 		analyzedTransaction, err := AnalyzeTONTransaction(ctx, decoder, chainSelector, op)
 		if err != nil {
-			return nil, fmt.Errorf("failed to analyze Sui transaction %d: %w", i, err)
+			return nil, fmt.Errorf("failed to analyze TON transaction %d: %w", i, err)
 		}
 		decodedTxs[i] = analyzedTransaction
 	}
@@ -26,7 +26,7 @@ func AnalyzeTONTransaction(ctx ProposalContext, decoder sdk.Decoder, chainSelect
 	decodedOp, err := decoder.Decode(mcmsTx, mcmsTx.ContractType)
 	if err != nil {
 		// Don't return an error to not block the whole proposal decoding because of a single transaction decode failure
-		errStr := fmt.Errorf("failed to decode Sui transaction: %w", err)
+		errStr := fmt.Errorf("failed to decode TON transaction: %w", err)
 
 		return &DecodedCall{
 			Address: mcmsTx.To,
