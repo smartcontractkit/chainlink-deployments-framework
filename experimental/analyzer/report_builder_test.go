@@ -372,14 +372,14 @@ func TestBuildProposalReport_DefaultCase(t *testing.T) {
 		renderer:         NewMarkdownRenderer(),
 	}
 
-	// Use a TON chain selector - TON family is not handled in the switch statement
+	// Use a TRON chain selector - TRON family is not handled in the switch statement
 	// so it will trigger the default case
-	tonChainSelector := chainsel.TON_LOCALNET.Selector
+	tronChainSelector := chainsel.TRON_DEVNET.Selector
 
 	proposal := &mcms.Proposal{
 		Operations: []types.Operation{
 			{
-				ChainSelector: types.ChainSelector(tonChainSelector),
+				ChainSelector: types.ChainSelector(tronChainSelector),
 				Transaction: types.Transaction{
 					To:   "0x1234567890123456789012345678901234567890",
 					Data: []byte{0x01, 0x02, 0x03, 0x04},
@@ -395,8 +395,8 @@ func TestBuildProposalReport_DefaultCase(t *testing.T) {
 	require.Len(t, report.Operations, 1)
 
 	operation := report.Operations[0]
-	require.Equal(t, tonChainSelector, operation.ChainSelector)
-	require.Equal(t, "ton-localnet", operation.ChainName) // TON chain has a known name
-	require.Equal(t, "ton", operation.Family)             // TON family
-	require.Empty(t, operation.Calls)                     // Default case sets calls to empty slice
+	require.Equal(t, tronChainSelector, operation.ChainSelector)
+	require.Equal(t, chainsel.TRON_DEVNET.Name, operation.ChainName) // TRON chain has a known name
+	require.Equal(t, chainsel.FamilyTron, operation.Family)          // TRON family
+	require.Empty(t, operation.Calls)                                // Default case sets calls to empty slice
 }
