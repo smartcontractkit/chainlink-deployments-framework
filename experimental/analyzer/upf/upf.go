@@ -295,6 +295,7 @@ func batchOperationsToUpfDecodedCalls(ctx context.Context, proposalContext mcmsa
 					Data: &DecodedCallData{FunctionName: family + " transaction decoding is not supported"},
 				}
 			}
+
 			continue
 		}
 
