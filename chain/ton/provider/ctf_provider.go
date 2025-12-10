@@ -125,12 +125,6 @@ func (p *CTFChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 		return nil, fmt.Errorf("failed to create wallet: %w", err)
 	}
 
-	// airdrop the deployer wallet
-	err = fundTonWallets(ctx, nodeClient, []*address.Address{tonWallet.WalletAddress()}, []tlb.Coins{tlb.MustFromTON("1000")}) // TODO does 1000 here make sense?
-	if err != nil {
-		return nil, fmt.Errorf("failed to fund wallet: %w", err)
-	}
-
 	p.chain = &cldf_ton.Chain{
 		ChainMetadata: cldf_ton.ChainMetadata{Selector: p.selector},
 		Client:        nodeClient,
