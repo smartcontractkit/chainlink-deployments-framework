@@ -14,6 +14,7 @@ import (
 	"github.com/smartcontractkit/mcms"
 	mcmsaptossdk "github.com/smartcontractkit/mcms/sdk/aptos"
 	mcmssuisdk "github.com/smartcontractkit/mcms/sdk/sui"
+	mcmstonsdk "github.com/smartcontractkit/mcms/sdk/ton"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
@@ -239,14 +240,10 @@ func encodeTransactionData(mcmsOp mcmstypes.Operation) (string, error) {
 	}
 
 	switch chainFamily {
-	case chainsel.FamilySolana:
-		return base64.StdEncoding.EncodeToString(mcmsOp.Transaction.Data), nil
-	case chainsel.FamilyAptos:
-		return base64.StdEncoding.EncodeToString(mcmsOp.Transaction.Data), nil
-	case chainsel.FamilySui:
-		return base64.StdEncoding.EncodeToString(mcmsOp.Transaction.Data), nil
-	default:
+	case chainsel.FamilyEVM:
 		return "0x" + hex.EncodeToString(mcmsOp.Transaction.Data), nil
+	default:
+		return base64.StdEncoding.EncodeToString(mcmsOp.Transaction.Data), nil
 	}
 }
 
@@ -301,6 +298,18 @@ func batchOperationsToUpfDecodedCalls(ctx context.Context, proposalContext mcmsa
 
 		case chainsel.FamilySui:
 			describedTxs, err := mcmsanalyzer.AnalyzeSuiTransactions(proposalContext, chainSel, batch.Transactions)
+			if err != nil {
+				return nil, err
+			}
+			for callIdx, tx := range describedTxs {
+				decodedCalls[batchIdx][callIdx] = &DecodedInnerCall{
+					To:   tx.Address,
+					Data: cldDecodedCallToUpfDecodedCallData(tx),
+				}
+			}
+
+		case chainsel.FamilyTon:
+			describedTxs, err := mcmsanalyzer.AnalyzeTONTransactions(proposalContext, chainSel, batch.Transactions)
 			if err != nil {
 				return nil, err
 			}
@@ -379,6 +388,14 @@ func analyzeTransaction(
 
 		return analyzeResult, "", nil
 
+	case chainsel.FamilyTon:
+		decoder := mcmstonsdk.NewDecoder()
+		analyzeResult, err := mcmsanalyzer.AnalyzeTONTransaction(proposalCtx, decoder, uint64(mcmsOp.ChainSelector), mcmsOp.Transaction)
+		if err != nil {
+			return nil, "", err
+		}
+
+		return analyzeResult, "", nil
 	default:
 		return nil, "", fmt.Errorf("unsupported chain family: %s", chainFamily)
 	}

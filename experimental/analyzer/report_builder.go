@@ -48,6 +48,12 @@ func BuildProposalReport(ctx context.Context, proposalContext ProposalContext, e
 				return nil, err
 			}
 			calls = dec
+		case chainsel.FamilyTon:
+			dec, err := AnalyzeTONTransactions(proposalContext, chainSel, []types.Transaction{op.Transaction})
+			if err != nil {
+				return nil, err
+			}
+			calls = dec
 		default:
 			calls = []*DecodedCall{}
 		}
@@ -117,6 +123,19 @@ func BuildTimelockReport(ctx context.Context, proposalCtx ProposalContext, env d
 			}
 		case chainsel.FamilySui:
 			dec, err := AnalyzeSuiTransactions(proposalCtx, chainSel, batch.Transactions)
+			if err != nil {
+				return nil, err
+			}
+			for j := range dec {
+				ops[j] = OperationReport{
+					ChainSelector: chainSel,
+					ChainName:     chainNameOrUnknown(chainName),
+					Family:        family,
+					Calls:         []*DecodedCall{dec[j]},
+				}
+			}
+		case chainsel.FamilyTon:
+			dec, err := AnalyzeTONTransactions(proposalCtx, chainSel, batch.Transactions)
 			if err != nil {
 				return nil, err
 			}
