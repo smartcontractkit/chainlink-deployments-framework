@@ -5,8 +5,9 @@ import (
 	"github.com/xssnick/tonutils-go/ton"
 	"github.com/xssnick/tonutils-go/ton/wallet"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/common"
 	"github.com/xssnick/tonutils-go/tlb"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/common"
 )
 
 type ChainMetadata = common.ChainMetadata
