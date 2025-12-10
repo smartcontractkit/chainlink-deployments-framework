@@ -3,31 +3,24 @@ package datastore
 import "errors"
 
 var ErrEnvMetadataNotSet = errors.New("no environment metadata set")
+var ErrEnvMetadataStale = errors.New("environment metadata version is stale")
 
-// EnvMetadata implements the Record interface
-var _ Record[EnvMetadataKey, EnvMetadata[DefaultMetadata]] = EnvMetadata[DefaultMetadata]{}
-
-type EnvMetadata[M Cloneable[M]] struct {
-	// Domain is the domain to which the metadata belongs.
-	Domain string `json:"domain"`
-	// Environment is the environment to which the metadata belongs.
-	Environment string `json:"environment"`
+// EnvMetadata is a struct that holds the metadata for a domain and environment.
+// NOTE: Metadata can be of any type. To convert from any to a specific type, use the utility method As.
+type EnvMetadata struct {
 	// Metadata is the metadata associated with the domain and environment.
-	// It is a generic type that can be of any type that implements the Cloneable interface.
-	Metadata M `json:"metadata"`
+	Metadata any `json:"metadata"`
 }
 
 // Clone creates a copy of the EnvMetadata.
-// The Metadata field is cloned using the Clone method of the Cloneable interface.
-func (r EnvMetadata[M]) Clone() EnvMetadata[M] {
-	return EnvMetadata[M]{
-		Domain:      r.Domain,
-		Environment: r.Environment,
-		Metadata:    r.Metadata.Clone(),
+func (r EnvMetadata) Clone() (EnvMetadata, error) {
+	metaClone, err := clone(r.Metadata)
+	if err != nil {
+		// If cloning fails, we return an empty EnvMetadata with the error.
+		return EnvMetadata{}, err
 	}
-}
 
-// Key returns the EnvMetadataKey for the EnvMetadata.
-func (r EnvMetadata[M]) Key() EnvMetadataKey {
-	return NewEnvMetadataKey(r.Domain, r.Environment)
+	return EnvMetadata{
+		Metadata: metaClone,
+	}, nil
 }

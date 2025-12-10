@@ -10,19 +10,17 @@ func TestMemoryEnvMetadataStore_Get(t *testing.T) {
 	t.Parallel()
 
 	var (
-		recordOne = EnvMetadata[DefaultMetadata]{
-			Domain:      "example.com",
-			Environment: "test",
-			Metadata:    DefaultMetadata{Data: "data1"},
+		recordOne = EnvMetadata{
+			Metadata: testMetadata{Field: "data1", ChainSelector: 0},
 		}
 	)
 
 	tests := []struct {
 		name              string
-		givenState        *EnvMetadata[DefaultMetadata]
+		givenState        *EnvMetadata
 		domain            string
 		recordShouldExist bool
-		expectedRecord    EnvMetadata[DefaultMetadata]
+		expectedRecord    EnvMetadata
 		expectedError     error
 	}{
 		{
@@ -36,7 +34,7 @@ func TestMemoryEnvMetadataStore_Get(t *testing.T) {
 			name:              "env metadata not set",
 			domain:            "nonexistent.com",
 			recordShouldExist: false,
-			expectedRecord:    EnvMetadata[DefaultMetadata]{},
+			expectedRecord:    EnvMetadata{},
 			expectedError:     ErrEnvMetadataNotSet,
 		},
 	}
@@ -45,15 +43,16 @@ func TestMemoryEnvMetadataStore_Get(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			store := MemoryEnvMetadataStore[DefaultMetadata]{Record: tt.givenState}
+			store := MemoryEnvMetadataStore{Record: tt.givenState}
 
 			record, err := store.Get()
 			if tt.recordShouldExist {
 				require.NoError(t, err)
-				require.Equal(t, tt.expectedRecord, record)
+				concrete, convErr := As[testMetadata](record.Metadata)
+				require.NoError(t, convErr, "As should not return an error for CustomMetadata")
+				require.Equal(t, tt.givenState.Metadata, concrete)
 			} else {
 				require.Equal(t, tt.expectedError, err)
-				require.Equal(t, tt.expectedRecord, record)
 			}
 		})
 	}
@@ -63,23 +62,19 @@ func TestMemoryEnvMetadataStore_Set(t *testing.T) {
 	t.Parallel()
 
 	var (
-		recordOne = EnvMetadata[DefaultMetadata]{
-			Domain:      "example.com",
-			Environment: "test",
-			Metadata:    DefaultMetadata{Data: "data1"},
+		recordOne = EnvMetadata{
+			Metadata: testMetadata{Field: "data1", ChainSelector: 0},
 		}
-		recordTwo = EnvMetadata[DefaultMetadata]{
-			Domain:      "example2.com",
-			Environment: "test2",
-			Metadata:    DefaultMetadata{Data: "data2"},
+		recordTwo = EnvMetadata{
+			Metadata: testMetadata{Field: "data2", ChainSelector: 0},
 		}
 	)
 
 	tests := []struct {
 		name           string
-		initialState   *EnvMetadata[DefaultMetadata]
-		updateRecord   EnvMetadata[DefaultMetadata]
-		expectedRecord EnvMetadata[DefaultMetadata]
+		initialState   *EnvMetadata
+		updateRecord   EnvMetadata
+		expectedRecord EnvMetadata
 	}{
 		{
 			name:           "update existing record",
@@ -98,14 +93,17 @@ func TestMemoryEnvMetadataStore_Set(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			store := MemoryEnvMetadataStore[DefaultMetadata]{Record: tt.initialState}
+			store := MemoryEnvMetadataStore{Record: tt.initialState}
 
 			err := store.Set(tt.updateRecord)
 			require.NoError(t, err)
 
 			record, err := store.Get()
 			require.NoError(t, err)
-			require.Equal(t, tt.expectedRecord, record)
+
+			concrete, err := As[testMetadata](record.Metadata)
+			require.NoError(t, err, "As should not return an error for CustomMetadata")
+			require.Equal(t, tt.updateRecord.Metadata, concrete)
 		})
 	}
 }

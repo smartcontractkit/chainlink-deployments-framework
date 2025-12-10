@@ -19,6 +19,7 @@ var (
 )
 
 func TestAddressBook_Save(t *testing.T) {
+	t.Parallel()
 	ab := NewMemoryAddressBook()
 	onRamp100 := NewTypeAndVersion("OnRamp", Version1_0_0)
 	onRamp110 := NewTypeAndVersion("OnRamp", Version1_1_0)
@@ -35,6 +36,11 @@ func TestAddressBook_Save(t *testing.T) {
 	// Valid chain but not present.
 	_, err = ab.AddressesForChain(chainsel.TEST_90000002.Selector)
 	require.ErrorIs(t, err, ErrChainNotFound)
+	require.ErrorContains(t, err, "chain selector 5548718428018410741: chain not found")
+
+	// invalid chain
+	_, err = ab.AddressesForChain(0)
+	require.ErrorContains(t, err, "chain selector 0: invalid chain selector")
 
 	// Invalid selector
 	err = ab.Save(0, addr1, onRamp100)
@@ -74,9 +80,22 @@ func TestAddressBook_Save(t *testing.T) {
 			addr2: onRamp110,
 		},
 	}, addresses)
+
+	// save with bad chain selector
+	err = ab.Save(0, addr1, onRamp100)
+	require.ErrorContains(t, err, "chain selector 0: invalid chain selector")
+
+	// save with empty address
+	err = ab.Save(chainsel.TEST_90000001.Selector, "", onRamp100)
+	require.ErrorContains(t, err, "address cannot be empty: invalid address")
+
+	// save with bad address
+	err = ab.Save(chainsel.TEST_90000001.Selector, "bad address", onRamp100)
+	require.ErrorContains(t, err, "address bad address is not a valid Ethereum address, only Ethereum addresses supported for EVM chains: invalid address")
 }
 
 func TestAddressBook_Merge(t *testing.T) {
+	t.Parallel()
 	onRamp100 := NewTypeAndVersion("OnRamp", Version1_0_0)
 	onRamp110 := NewTypeAndVersion("OnRamp", Version1_1_0)
 	addr1 := common.HexToAddress("0x1").String()
@@ -130,6 +149,7 @@ func TestAddressBook_Merge(t *testing.T) {
 }
 
 func TestAddressBook_Remove(t *testing.T) {
+	t.Parallel()
 	onRamp100 := NewTypeAndVersion("OnRamp", Version1_0_0)
 	onRamp110 := NewTypeAndVersion("OnRamp", Version1_1_0)
 	addr1 := common.HexToAddress("0x1").String()
@@ -157,7 +177,7 @@ func TestAddressBook_Remove(t *testing.T) {
 		},
 	})
 	require.Error(t, baseAB.Remove(failAB))
-	require.EqualValues(t, baseAB, copyOfBaseAB)
+	require.Equal(t, baseAB, copyOfBaseAB)
 
 	// this Address book should be removed without error
 	successAB := NewMemoryAddressBookFromMap(map[uint64]map[string]TypeAndVersion{
@@ -178,10 +198,11 @@ func TestAddressBook_Remove(t *testing.T) {
 	})
 
 	require.NoError(t, baseAB.Remove(successAB))
-	require.EqualValues(t, baseAB, expectingAB)
+	require.Equal(t, baseAB, expectingAB)
 }
 
 func TestAddressBook_ConcurrencyAndDeadlock(t *testing.T) {
+	t.Parallel()
 	onRamp100 := NewTypeAndVersion("OnRamp", Version1_0_0)
 	onRamp110 := NewTypeAndVersion("OnRamp", Version1_1_0)
 
@@ -207,9 +228,9 @@ func TestAddressBook_ConcurrencyAndDeadlock(t *testing.T) {
 	}
 
 	// concurrent reads
-	for i = 0; i < 100; i++ {
+	for range 100 {
 		wg.Add(1)
-		go func(input int64) {
+		go func() {
 			addresses, err := baseAB.Addresses()
 			if !assert.NoError(t, err) {
 				return
@@ -229,7 +250,7 @@ func TestAddressBook_ConcurrencyAndDeadlock(t *testing.T) {
 				}
 			}
 			wg.Done()
-		}(i)
+		}()
 	}
 
 	// concurrent merges, starts from 1001 to avoid address conflicts
@@ -270,7 +291,7 @@ func Test_EnsureDeduped(t *testing.T) {
 	tests := []struct {
 		name       string
 		addrs      map[string]TypeAndVersion // input address map
-		wantTypes  []TypeAndVersion          // the “bundle” we want
+		wantTypes  []TypeAndVersion          // the "bundle" we want
 		wantErr    bool
 		wantErrMsg string
 		wantResult bool // expected boolean return when no error
@@ -338,7 +359,6 @@ func Test_EnsureDeduped(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt // capture range variable
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -349,6 +369,7 @@ func Test_EnsureDeduped(t *testing.T) {
 				if tt.wantErrMsg != "" {
 					require.Contains(t, gotErr.Error(), tt.wantErrMsg)
 				}
+
 				return
 			}
 			require.NoError(t, gotErr, "did not expect an error but got one")
@@ -410,7 +431,6 @@ func TestTypeAndVersionFromString(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt // capture range variable
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -470,7 +490,6 @@ func TestTypeAndVersion_AddLabels(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt // capture range variable
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -499,6 +518,7 @@ func TestTypeAndVersion_AddLabels(t *testing.T) {
 }
 
 func Test_toTypeAndVersionMap(t *testing.T) {
+	t.Parallel()
 	v100 := semver.MustParse("1.0.0")
 
 	tests := []struct {
@@ -540,8 +560,9 @@ func Test_toTypeAndVersionMap(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			got := toTypeAndVersionMap(tt.addrs)
-			require.Equal(t, len(tt.want), len(got))
+			require.Len(t, got, len(tt.want))
 			for k, gotAddresses := range got {
 				wantAddresses, ok := tt.want[k]
 				require.True(t, ok)

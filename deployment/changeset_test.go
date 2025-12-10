@@ -5,8 +5,11 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
-	"github.com/smartcontractkit/chainlink-common/pkg/logger"
+	focr "github.com/smartcontractkit/chainlink-deployments-framework/offchain/ocr"
 )
 
 type MyChangeSet struct{}
@@ -93,20 +96,17 @@ func TestChangeSetLegacyFunction(t *testing.T) {
 }
 
 func NewNoopEnvironment(t *testing.T) Environment {
+	t.Helper()
+
 	return *NewEnvironment(
 		"noop",
 		logger.Test(t),
 		NewMemoryAddressBook(),
-		datastore.NewMemoryDataStore[
-			datastore.DefaultMetadata,
-			datastore.DefaultMetadata,
-		]().Seal(),
-		map[uint64]Chain{},
-		map[uint64]SolChain{},
-		map[uint64]AptosChain{},
+		datastore.NewMemoryDataStore().Seal(),
 		[]string{},
 		nil,
 		t.Context,
-		XXXGenerateTestOCRSecrets(),
+		focr.XXXGenerateTestOCRSecrets(),
+		chain.NewBlockChains(map[uint64]chain.BlockChain{}),
 	)
 }

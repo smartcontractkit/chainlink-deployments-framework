@@ -18,16 +18,59 @@ type ExecuteConfig[IN, DEP any] struct {
 type ExecuteOption[IN, DEP any] func(*ExecuteConfig[IN, DEP])
 
 type RetryConfig[IN, DEP any] struct {
-	// DisableRetry disables the retry mechanism if set to true.
-	DisableRetry bool
+	// Enabled determines if the retry is enabled for the operation.
+	Enabled bool
+
+	// Policy is the retry policy to control the behavior of the retry.
+	Policy RetryPolicy
+
 	// InputHook is a function that returns an updated input before retrying the operation.
 	// The operation when retried will use the input returned by this function.
 	// This is useful for scenarios like updating the gas limit.
-	// This will be ignored if DisableRetry is set to true.
-	InputHook func(input IN, deps DEP) IN
+	InputHook func(attempt uint, err error, input IN, deps DEP) IN
 }
 
-// WithRetryConfig is an ExecuteOption that sets the retry configuration.
+// newDisabledRetryConfig returns a default retry configuration that is initially disabled.
+func newDisabledRetryConfig[IN, DEP any]() RetryConfig[IN, DEP] {
+	return RetryConfig[IN, DEP]{
+		Enabled: false,
+		Policy: RetryPolicy{
+			MaxAttempts: 10,
+		},
+	}
+}
+
+// RetryPolicy defines the arguments to control the retry behavior.
+type RetryPolicy struct {
+	MaxAttempts uint
+}
+
+// options returns the 'avast/retry' functional options for the retry policy.
+func (p RetryPolicy) options() []retry.Option {
+	return []retry.Option{
+		retry.Attempts(p.MaxAttempts),
+	}
+}
+
+// WithRetry is an ExecuteOption that enables the default retry for the operation.
+func WithRetry[IN, DEP any]() ExecuteOption[IN, DEP] {
+	return func(c *ExecuteConfig[IN, DEP]) {
+		c.retryConfig.Enabled = true
+	}
+}
+
+// WithRetryInput is an ExecuteOption that enables the default retry and provide an input
+// transform function which will modify the input on each retry attempt.
+func WithRetryInput[IN, DEP any](inputHookFunc func(uint, error, IN, DEP) IN) ExecuteOption[IN, DEP] {
+	return func(c *ExecuteConfig[IN, DEP]) {
+		c.retryConfig.Enabled = true
+		c.retryConfig.InputHook = inputHookFunc
+	}
+}
+
+// WithRetryConfig is an ExecuteOption that sets the retry configuration. This provides a way to
+// customize the retry behavior specific to the needs of the operation. Use this for the most
+// flexibility and control over the retry behavior.
 func WithRetryConfig[IN, DEP any](config RetryConfig[IN, DEP]) ExecuteOption[IN, DEP] {
 	return func(c *ExecuteConfig[IN, DEP]) {
 		c.retryConfig = config
@@ -62,14 +105,16 @@ func ExecuteOperation[IN, OUT, DEP any](
 		return Report[IN, OUT]{}, fmt.Errorf("operation %s input: %w", operation.def.ID, ErrNotSerializable)
 	}
 
-	if previousReport, found := loadPreviousSuccessfulReport[IN, OUT](b, operation.def, input); found {
+	if previousReport, ok := loadPreviousSuccessfulReport[IN, OUT](b, operation.def, input); ok {
 		b.Logger.Infow("Operation already executed. Returning previous result", "id", operation.def.ID,
 			"version", operation.def.Version, "description", operation.def.Description)
 
 		return previousReport, nil
 	}
 
-	executeConfig := &ExecuteConfig[IN, DEP]{retryConfig: RetryConfig[IN, DEP]{}}
+	executeConfig := &ExecuteConfig[IN, DEP]{
+		retryConfig: newDisabledRetryConfig[IN, DEP](),
+	}
 	for _, opt := range opts {
 		opt(executeConfig)
 	}
@@ -77,20 +122,10 @@ func ExecuteOperation[IN, OUT, DEP any](
 	var output OUT
 	var err error
 
-	if executeConfig.retryConfig.DisableRetry {
-		output, err = operation.execute(b, deps, input)
+	if executeConfig.retryConfig.Enabled {
+		output, err = executeWithRetry(b, operation, deps, input, executeConfig)
 	} else {
-		var inputTemp = input
-		output, err = retry.DoWithData(func() (OUT, error) {
-			return operation.execute(b, deps, inputTemp)
-		}, retry.OnRetry(func(attempt uint, err error) {
-			b.Logger.Infow("Operation failed. Retrying...",
-				"operation", operation.def.ID, "attempt", attempt, "error", err)
-
-			if executeConfig.retryConfig.InputHook != nil {
-				inputTemp = executeConfig.retryConfig.InputHook(inputTemp, deps)
-			}
-		}))
+		output, err = operation.execute(b, deps, input)
 	}
 
 	if err == nil && !IsSerializable(b.Logger, output) {
@@ -98,15 +133,122 @@ func ExecuteOperation[IN, OUT, DEP any](
 	}
 
 	report := NewReport(operation.def, input, output, err)
-	err = b.reporter.AddReport(genericReport(report))
-	if err != nil {
+	if err = b.reporter.AddReport(genericReport(report)); err != nil {
 		return Report[IN, OUT]{}, err
 	}
+
 	if report.Err != nil {
 		return report, report.Err
 	}
 
 	return report, nil
+}
+
+// ExecuteOperationN executes the given operation multiple n times with the given input and dependencies.
+// Execution will return the previous successful execution results and skip execution if there were
+// previous successful runs found in the Reports.
+// executionSeriesID is used to identify the multiple executions as a single unit.
+// It is important to use a unique executionSeriesID for different sets of multiple executions.
+func ExecuteOperationN[IN, OUT, DEP any](
+	b Bundle, operation *Operation[IN, OUT, DEP], deps DEP, input IN, seriesID string, n uint,
+	opts ...ExecuteOption[IN, DEP],
+) ([]Report[IN, OUT], error) {
+	if !IsSerializable(b.Logger, input) {
+		return []Report[IN, OUT]{}, fmt.Errorf("operation %s input: %w", operation.def.ID, ErrNotSerializable)
+	}
+
+	results, ok := loadSuccessfulExecutionSeriesReports[IN, OUT](b, operation.def, input, seriesID)
+	resultsLen := uint(len(results))
+	if ok {
+		// if there are more reports than n, we return only the first n reports
+		if resultsLen >= n {
+			b.Logger.Infow("Operations already executed in an execution series. Returning previous results", "id", operation.def.ID,
+				"version", operation.def.Version, "description", operation.def.Description, "executionSeriesID", seriesID)
+
+			return results[:n], nil
+		}
+	}
+	remainingTimesToRun := n - resultsLen
+
+	b.Logger.Infow("Executing operation multiple times",
+		"executionSeriesID", seriesID,
+		"n", n,
+		"remainingTimesToRun", remainingTimesToRun)
+
+	executeConfig := &ExecuteConfig[IN, DEP]{
+		retryConfig: newDisabledRetryConfig[IN, DEP](),
+	}
+	for _, opt := range opts {
+		opt(executeConfig)
+	}
+
+	order := resultsLen
+	for range remainingTimesToRun {
+		var output OUT
+		var err error
+
+		if executeConfig.retryConfig.Enabled {
+			output, err = executeWithRetry(b, operation, deps, input, executeConfig)
+		} else {
+			output, err = operation.execute(b, deps, input)
+		}
+
+		if err == nil && !IsSerializable(b.Logger, output) {
+			return []Report[IN, OUT]{}, fmt.Errorf("operation %s output: %w", operation.def.ID, ErrNotSerializable)
+		}
+
+		report := NewReport(operation.def, input, output, err)
+		report.ExecutionSeries = &ExecutionSeries{
+			ID:    seriesID,
+			Order: order,
+		}
+		order++
+		if err = b.reporter.AddReport(genericReport(report)); err != nil {
+			return []Report[IN, OUT]{}, err
+		}
+
+		if report.Err != nil {
+			return []Report[IN, OUT]{}, report.Err
+		}
+
+		results = append(results, report)
+	}
+
+	return results, nil
+}
+
+func executeWithRetry[IN, OUT, DEP any](
+	b Bundle,
+	operation *Operation[IN, OUT, DEP],
+	deps DEP,
+	input IN,
+	executeConfig *ExecuteConfig[IN, DEP],
+) (OUT, error) {
+	var inputTemp = input
+
+	// Generate the configurable options for the retry
+	retryOpts := executeConfig.retryConfig.Policy.options()
+	// Use the operation context in the retry
+	retryOpts = append(retryOpts, retry.Context(b.GetContext()))
+	// Append the retry logic which will log the retry and attempt to transform the input
+	// if the user provided a custom input hook.
+	retryOpts = append(retryOpts, retry.OnRetry(func(attempt uint, err error) {
+		b.Logger.Infow("Operation failed. Retrying...",
+			"operation", operation.def.ID, "attempt", attempt, "error", err)
+
+		if executeConfig.retryConfig.InputHook != nil {
+			inputTemp = executeConfig.retryConfig.InputHook(attempt, err, inputTemp, deps)
+		}
+	}))
+
+	output, err := retry.DoWithData(
+		func() (OUT, error) {
+			return operation.execute(b, deps, inputTemp)
+		},
+		retryOpts...,
+	)
+
+	return output, err
 }
 
 // ExecuteSequence executes a Sequence and returns a SequenceReport.
@@ -132,7 +274,7 @@ func ExecuteSequence[IN, OUT, DEP any](
 		return SequenceReport[IN, OUT]{}, fmt.Errorf("sequence %s input: %w", sequence.def.ID, ErrNotSerializable)
 	}
 
-	if previousReport, found := loadPreviousSuccessfulReport[IN, OUT](b, sequence.def, input); found {
+	if previousReport, ok := loadPreviousSuccessfulReport[IN, OUT](b, sequence.def, input); ok {
 		executionReports, err := b.reporter.GetExecutionReports(previousReport.ID)
 		if err != nil {
 			return SequenceReport[IN, OUT]{}, err
@@ -147,10 +289,11 @@ func ExecuteSequence[IN, OUT, DEP any](
 		"version", sequence.def.Version, "description", sequence.def.Description)
 	recentReporter := NewRecentMemoryReporter(b.reporter)
 	newBundle := Bundle{
-		Logger:          b.Logger,
-		GetContext:      b.GetContext,
-		reporter:        recentReporter,
-		reportHashCache: b.reportHashCache,
+		Logger:            b.Logger,
+		GetContext:        b.GetContext,
+		reporter:          recentReporter,
+		reportHashCache:   b.reportHashCache,
+		OperationRegistry: b.OperationRegistry,
 	}
 	ret, err := sequence.handler(newBundle, deps, input)
 	if errors.Is(err, ErrNotSerializable) {
@@ -175,14 +318,15 @@ func ExecuteSequence[IN, OUT, DEP any](
 		childReports...,
 	)
 
-	err = b.reporter.AddReport(genericReport(report))
-	if err != nil {
+	if err = b.reporter.AddReport(genericReport(report)); err != nil {
 		return SequenceReport[IN, OUT]{}, err
 	}
+
 	executionReports, err := b.reporter.GetExecutionReports(report.ID)
 	if err != nil {
 		return SequenceReport[IN, OUT]{}, err
 	}
+
 	if report.Err != nil {
 		return SequenceReport[IN, OUT]{report, executionReports}, report.Err
 	}
@@ -229,6 +373,60 @@ func loadPreviousSuccessfulReport[IN, OUT any](
 			return typedReport, true
 		}
 	}
+
 	// No previous execution was found
 	return Report[IN, OUT]{}, false
+}
+
+// loadSuccessfulExecutionSeriesReports loads all successful reports for an operation in an execution series.
+func loadSuccessfulExecutionSeriesReports[IN, OUT any](
+	b Bundle, def Definition, input IN, seriesID string,
+) ([]Report[IN, OUT], bool) {
+	prevReports, err := b.reporter.GetReports()
+	if err != nil {
+		b.Logger.Errorw("Failed to get reports", "error", err)
+		return []Report[IN, OUT]{}, false
+	}
+	currentHash, err := constructUniqueHashFrom(b.reportHashCache, def, input)
+	if err != nil {
+		b.Logger.Errorw("Failed to construct unique hash", "error", err)
+		return []Report[IN, OUT]{}, false
+	}
+
+	var foundReports []Report[IN, OUT]
+	for _, report := range prevReports {
+		// if the report is not part of the same execution series, skip it
+		if report.ExecutionSeries == nil || report.ExecutionSeries.ID != seriesID {
+			continue
+		}
+		reportHash, err := constructUniqueHashFrom(b.reportHashCache, report.Def, report.Input)
+		if err != nil {
+			b.Logger.Errorw("Failed to construct unique hash for previous report", "error", err)
+			continue
+		}
+		if reportHash == currentHash && report.Err == nil {
+			typedReport, ok := typeReport[IN, OUT](report)
+			if !ok {
+				b.Logger.Debugw(fmt.Sprintf("Previous %s execution found but couldn't find its matching Report", def.ID), "report_id", report.ID)
+				continue
+			}
+
+			b.Logger.Debugw(fmt.Sprintf("Previous %s execution found", def.ID), "report_id", report.ID)
+
+			foundReports = append(foundReports, typedReport)
+		}
+	}
+
+	b.Logger.Infof("Found %d reports for ExecutionSeriesID %q", len(foundReports), seriesID)
+
+	if len(foundReports) == 0 {
+		return []Report[IN, OUT]{}, false
+	}
+
+	results := make([]Report[IN, OUT], len(foundReports))
+	for _, foundReport := range foundReports {
+		results[foundReport.ExecutionSeries.Order] = foundReport
+	}
+
+	return results, true
 }

@@ -75,9 +75,23 @@ func AddressRefByQualifier(qualifier string) FilterFunc[AddressRefKey, AddressRe
 }
 
 // ContractMetadataByChainSelector returns a filter that only includes records with the provided chain.
-func ContractMetadataByChainSelector[M Cloneable[M]](chainSelector uint64) FilterFunc[ContractMetadataKey, ContractMetadata[M]] {
-	return func(records []ContractMetadata[M]) []ContractMetadata[M] {
-		filtered := make([]ContractMetadata[M], 0, len(records)) // Pre-allocate capacity
+func ContractMetadataByChainSelector(chainSelector uint64) FilterFunc[ContractMetadataKey, ContractMetadata] {
+	return func(records []ContractMetadata) []ContractMetadata {
+		filtered := make([]ContractMetadata, 0, len(records)) // Pre-allocate capacity
+		for _, record := range records {
+			if record.ChainSelector == chainSelector {
+				filtered = append(filtered, record)
+			}
+		}
+
+		return filtered
+	}
+}
+
+// ChainMetadataByChainSelector returns a filter that only includes records with the provided chain selector.
+func ChainMetadataByChainSelector(chainSelector uint64) FilterFunc[ChainMetadataKey, ChainMetadata] {
+	return func(records []ChainMetadata) []ChainMetadata {
+		filtered := make([]ChainMetadata, 0, len(records)) // Pre-allocate capacity
 		for _, record := range records {
 			if record.ChainSelector == chainSelector {
 				filtered = append(filtered, record)

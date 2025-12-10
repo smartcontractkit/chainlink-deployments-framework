@@ -19,7 +19,22 @@ go.work
 go.work.sum
 
 # Editor config directories
+## IntelliJ IDEA
 .idea/
+## Visual Studio Code
 .vscode/
+## Cursor
+.cursor/
+
+# Node.js dependencies
 node_modules/
+package-lock.json
+
+# Log output
 *.log
+
+# OS generated files
+.DS_Store
+
+# Tron wallet folder generated
+*/tron/provider/wallet/

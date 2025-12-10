@@ -1,0 +1,16 @@
+networks:
+  # Ethereum Sepolia Testnet
+  - type: "testnet"
+    chain_selector: 16015286601757825753
+    rpcs:
+      - rpc_name: "sepolia-rpc"
+        preferred_url_scheme: "http"
+        http_url: "https://sepolia.infura.io/v3/test"
+        ws_url: "wss://sepolia.infura.io/ws/v3/test"
+  - type: "mainnet"
+    chain_selector: 5009297550715157269
+    rpcs:
+      - rpc_name: "mainnet-rpc"
+        preferred_url_scheme: "http"
+        http_url: "https://mainnet.infura.io/v3/test"
+        ws_url: "wss://mainnet.infura.io/ws/v3/test"

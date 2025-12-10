@@ -24,8 +24,8 @@ func (ct ContractType) String() string {
 	return string(ct)
 }
 
-// AddressRef implements the Record interface
-var _ Record[AddressRefKey, AddressRef] = AddressRef{}
+// AddressRef implements the UniqueRecord interface
+var _ UniqueRecord[AddressRefKey, AddressRef] = AddressRef{}
 
 type AddressRef struct {
 	// Address is the address of the contract on the chain.

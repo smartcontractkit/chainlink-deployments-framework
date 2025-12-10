@@ -61,3 +61,11 @@ func TestContractMetadataKey(t *testing.T) {
 	require.Equal(t, chainSelector, key.ChainSelector(), "ChainSelector should return the correct chain selector")
 	require.Equal(t, address, key.Address(), "Address should return the correct address")
 }
+
+func TestContractMetadataKey_String(t *testing.T) {
+	t.Parallel()
+
+	key := NewContractMetadataKey(99, "0xabc")
+	expected := "99_0xabc"
+	require.Equal(t, expected, key.String())
+}

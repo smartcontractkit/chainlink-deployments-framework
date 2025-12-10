@@ -1,0 +1,12 @@
+environments:
+  dev:
+    network_types:
+      - testnet
+    datastore: invalid_datastore
+  staging:
+    network_types:
+      - testnet
+      - mainnet
+  prod:
+    network_types:
+      - invalid_network

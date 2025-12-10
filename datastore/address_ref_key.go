@@ -1,6 +1,8 @@
 package datastore
 
 import (
+	"fmt"
+
 	"github.com/Masterminds/semver/v3"
 )
 
@@ -8,6 +10,7 @@ import (
 // It is used to uniquely identify a record in the AddressRefStore.
 type AddressRefKey interface {
 	Comparable[AddressRefKey]
+	fmt.Stringer
 
 	// ChainSelector returns the chain-selector selector of the chain where the contract is deployed.
 	ChainSelector() uint64
@@ -52,6 +55,16 @@ func (a addressRefKey) Equals(other AddressRefKey) bool {
 		a.contractType == other.Type() &&
 		a.version.Equal(other.Version()) &&
 		a.qualifier == other.Qualifier()
+}
+
+// String returns a string representation of the addressRefKey.
+func (a addressRefKey) String() string {
+	return fmt.Sprintf("%d_%s_%s_%s",
+		a.chainSelector,
+		a.contractType,
+		a.version.String(),
+		a.qualifier,
+	)
 }
 
 // NewAddressRefKey creates a new AddressRefKey instance.

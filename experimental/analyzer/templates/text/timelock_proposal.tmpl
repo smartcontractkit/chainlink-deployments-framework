@@ -1,0 +1,11 @@
+{{range $i, $batch := .Batches}}{{if $i}}
+
+{{end}}Batch - Chain: {{$batch.ChainName}} ({{$batch.ChainSelector}})
+{{range $j, $op := $batch.Operations}}{{if $j}}
+
+{{end}}
+Operation - Chain: {{$op.ChainName}} ({{$op.ChainSelector}})
+{{range $k, $call := $op.Calls}}{{if $k}}
+
+{{end}}
+{{renderCall $call $.Context}}{{end}}{{end}}{{end}}

@@ -3,13 +3,17 @@ package operations
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
 func Test_ExecuteOperation(t *testing.T) {
@@ -24,22 +28,53 @@ func Test_ExecuteOperation(t *testing.T) {
 		wantErr           string
 	}{
 		{
-			name:              "DefaultRetry",
+			name:              "no retry",
+			wantOpCalledTimes: 1,
+			wantErr:           "test error",
+		},
+		{
+			name: "with default retry",
+			options: []ExecuteOption[int, any]{
+				WithRetry[int, any](),
+			},
 			wantOpCalledTimes: 3,
 			wantOutput:        2,
 		},
 		{
-			name:              "NoRetry",
-			options:           []ExecuteOption[int, any]{WithRetryConfig[int, any](RetryConfig[int, any]{DisableRetry: true})},
+			name: "with custom retry eventual success",
+			options: []ExecuteOption[int, any]{
+				WithRetryConfig(RetryConfig[int, any]{
+					Enabled: true,
+					Policy: RetryPolicy{
+						MaxAttempts: 10,
+					},
+				}),
+			},
+			wantOpCalledTimes: 3,
+			wantOutput:        2,
+		},
+		{
+			name: "with custom retry eventual failure",
+			options: []ExecuteOption[int, any]{
+				WithRetryConfig(RetryConfig[int, any]{
+					Enabled: true,
+					Policy: RetryPolicy{
+						MaxAttempts: 1,
+					},
+				}),
+			},
 			wantOpCalledTimes: 1,
 			wantErr:           "test error",
 		},
 		{
 			name: "NewInputHook",
-			options: []ExecuteOption[int, any]{WithRetryConfig[int, any](RetryConfig[int, any]{InputHook: func(input int, deps any) int {
-				// update input to 5 after first failed attempt
-				return 5
-			}})},
+			options: []ExecuteOption[int, any]{
+				WithRetryInput(func(attempt uint, err error, input int, deps any) int {
+					require.ErrorContains(t, err, "test error")
+					// update input to 5 after first failed attempt
+					return 5
+				}),
+			},
 			wantOpCalledTimes: 3,
 			wantOutput:        6,
 		},
@@ -58,6 +93,10 @@ func Test_ExecuteOperation(t *testing.T) {
 			failTimes := 2
 			handlerCalledTimes := 0
 			handler := func(b Bundle, deps any, input int) (output int, err error) {
+				assert.NotNil(t, b.OperationRegistry)
+				assert.NotNil(t, b.Logger)
+				assert.NotNil(t, b.GetContext)
+
 				handlerCalledTimes++
 				if tt.IsUnrecoverable {
 					return 0, NewUnrecoverableError(errors.New("fatal error"))
@@ -271,8 +310,11 @@ func Test_ExecuteSequence(t *testing.T) {
 
 			var opID string
 			sequence := NewSequence("seq-plus1", version, "plus 1",
-				func(env Bundle, deps any, input int) (int, error) {
-					res, err := ExecuteOperation(env, op, OpDeps{}, input)
+				func(b Bundle, deps any, input int) (int, error) {
+					assert.NotNil(t, b.OperationRegistry)
+					assert.NotNil(t, b.Logger)
+					assert.NotNil(t, b.GetContext)
+					res, err := ExecuteOperation(b, op, OpDeps{}, input)
 					// capture for verification later
 					opID = res.ID
 					if err != nil {
@@ -631,6 +673,617 @@ func Test_loadPreviousSuccessfulReport(t *testing.T) {
 			if tt.wantFound {
 				assert.Equal(t, tt.wantDef, report.Def)
 				assert.InDelta(t, tt.wantInput, report.Input, 0)
+			}
+		})
+	}
+}
+
+func Test_ExecuteSequence_Concurrent(t *testing.T) {
+	t.Parallel()
+
+	version := semver.MustParse("1.0.0")
+
+	op := NewOperation("increment", version, "increment by 1",
+		func(b Bundle, deps any, input int) (output int, err error) {
+			return input + 1, nil
+		})
+
+	sequence := NewSequence("concurrent-seq", version, "concurrent sequence test",
+		func(b Bundle, deps any, input int) (int, error) {
+			res, err := ExecuteOperation(b, op, nil, input)
+			if err != nil {
+				return 0, err
+			}
+
+			// Introduce a small delay to increase chance of race conditions
+			time.Sleep(time.Millisecond)
+
+			return res.Output, nil
+		})
+
+	reporter := NewMemoryReporter()
+	bundle := NewBundle(context.Background, logger.Test(t), reporter)
+
+	const numGoroutines = 10
+	var wg sync.WaitGroup
+	wg.Add(numGoroutines)
+
+	// Channel to collect results
+	type result struct {
+		report SequenceReport[int, int]
+		err    error
+	}
+	results := make(chan result, numGoroutines)
+
+	for i := range numGoroutines {
+		go func(input int) {
+			defer wg.Done()
+
+			report, err := ExecuteSequence(bundle, sequence, nil, input)
+			results <- result{report, err}
+		}(i) // Each goroutine uses its index as input
+	}
+
+	wg.Wait()
+	close(results)
+
+	// Collect and verify results
+	for res := range results {
+		require.NoError(t, res.err, "ExecuteSequence should not return an error")
+		require.Nil(t, res.report.Err, "Report error should be nil")
+
+		// Output should be input + 1
+		input := res.report.Input
+		expectedOutput := input + 1
+		assert.Equal(t, expectedOutput, res.report.Output,
+			"Output should be input + 1 for input %d", input)
+
+		// Verify execution reports
+		assert.Len(t, res.report.ExecutionReports, 2,
+			"Should have 2 execution reports (sequence + operation)")
+	}
+
+	// Verify reporter has all reports
+	allReports, err := reporter.GetReports()
+	require.NoError(t, err)
+
+	// We expect 2*numGoroutines reports (1 sequence + 1 operation per goroutine)
+	assert.Len(t, allReports, numGoroutines*2,
+		"Reporter should have %d reports", numGoroutines*2)
+}
+
+func Test_ExecuteOperation_Concurrent(t *testing.T) {
+	t.Parallel()
+
+	version := semver.MustParse("1.0.0")
+
+	op := NewOperation("increment", version, "increment by 1",
+		func(b Bundle, deps any, input int) (output int, err error) {
+			// Introduce a small delay to increase chance of race conditions
+			time.Sleep(time.Millisecond)
+			return input + 1, nil
+		})
+
+	reporter := NewMemoryReporter()
+	bundle := NewBundle(context.Background, logger.Test(t), reporter)
+
+	const numGoroutines = 10
+	var wg sync.WaitGroup
+	wg.Add(numGoroutines)
+
+	// Channel to collect results
+	type result struct {
+		report Report[int, int]
+		err    error
+	}
+	results := make(chan result, numGoroutines)
+
+	for i := range numGoroutines {
+		go func(input int) {
+			defer wg.Done()
+
+			report, err := ExecuteOperation(bundle, op, nil, input)
+			results <- result{report, err}
+		}(i) // Each goroutine uses its index as input
+	}
+
+	wg.Wait()
+	close(results)
+
+	for res := range results {
+		require.NoError(t, res.err, "ExecuteOperation should not return an error")
+		require.Nil(t, res.report.Err, "Report error should be nil")
+
+		// Output should be input + 1
+		input := res.report.Input
+		expectedOutput := input + 1
+		assert.Equal(t, expectedOutput, res.report.Output,
+			"Output should be input + 1 for input %d", input)
+	}
+
+	// Verify reporter has all reports
+	allReports, err := reporter.GetReports()
+	require.NoError(t, err)
+
+	// We expect numGoroutines reports (1 per goroutine)
+	assert.Len(t, allReports, numGoroutines,
+		"Reporter should have %d reports", numGoroutines)
+}
+
+func Test_ExecuteOperationN(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name              string
+		n                 uint
+		seriesID          string
+		setupReporter     func() Reporter
+		options           []ExecuteOption[int, any]
+		simulateOpError   bool
+		input             int
+		wantOpCalledTimes int
+		wantReportsCount  int
+		wantErr           string
+	}{
+		{
+			name:              "execute operation multiple times",
+			n:                 3,
+			seriesID:          "test-multiple-1",
+			wantOpCalledTimes: 3,
+			wantReportsCount:  3,
+		},
+		{
+			name:              "execute operation with error",
+			n:                 2,
+			seriesID:          "test-multiple-2",
+			simulateOpError:   true,
+			wantOpCalledTimes: 1,
+			wantReportsCount:  0,
+			wantErr:           "fatal error",
+		},
+		{
+			name:     "reuse previous executions",
+			n:        3,
+			seriesID: "test-multiple-3",
+			setupReporter: func() Reporter {
+				r := NewMemoryReporter()
+				// Add two existing reports with the same seriesID
+				for i := range 2 {
+					report := NewReport(
+						Definition{ID: "plus1", Version: semver.MustParse("1.0.0"), Description: "test operation"},
+						1, 2, nil)
+					report.ExecutionSeries = &ExecutionSeries{
+						ID:    "test-multiple-3",
+						Order: uint(i), // #nosec G115
+					}
+					err := r.AddReport(genericReport(report))
+					if err != nil {
+						t.Fatalf("Failed to add report: %v", err)
+					}
+				}
+
+				return r
+			},
+			wantOpCalledTimes: 1, // Should only execute once more to get to n=3
+			wantReportsCount:  3,
+		},
+		{
+			name:     "all previous executions exist",
+			n:        2,
+			seriesID: "test-multiple-4",
+			setupReporter: func() Reporter {
+				r := NewMemoryReporter()
+				// Add two existing reports with the same seriesID
+				for i := range 2 {
+					report := NewReport(
+						Definition{ID: "plus1", Version: semver.MustParse("1.0.0"), Description: "test operation"},
+						1, 2, nil)
+					report.ExecutionSeries = &ExecutionSeries{
+						ID:    "test-multiple-4",
+						Order: uint(i), // #nosec G115
+					}
+					err := r.AddReport(genericReport(report))
+					if err != nil {
+						t.Fatalf("Failed to add report: %v", err)
+					}
+				}
+
+				return r
+			},
+			wantOpCalledTimes: 0, // Should skip all executions
+			wantReportsCount:  2,
+		},
+		{
+			name:     "all previous executions exist - more reports than n",
+			n:        2,
+			seriesID: "test-multiple-4",
+			setupReporter: func() Reporter {
+				r := NewMemoryReporter()
+				// Add two existing reports with the same seriesID
+				for i := range 4 {
+					report := NewReport(
+						Definition{ID: "plus1", Version: semver.MustParse("1.0.0"), Description: "test operation"},
+						1, 2, nil)
+					report.ExecutionSeries = &ExecutionSeries{
+						ID:    "test-multiple-4",
+						Order: uint(i), // #nosec G115
+					}
+					err := r.AddReport(genericReport(report))
+					if err != nil {
+						t.Fatalf("Failed to add report: %v", err)
+					}
+				}
+
+				return r
+			},
+			wantOpCalledTimes: 0, // Should skip all executions
+			wantReportsCount:  2,
+		},
+		{
+			name:     "error from reporter",
+			n:        2,
+			seriesID: "test-multiple-5",
+			setupReporter: func() Reporter {
+				return errorReporter{
+					Reporter:       NewMemoryReporter(),
+					AddReportError: errors.New("add report error"),
+				}
+			},
+			wantOpCalledTimes: 1,
+			wantReportsCount:  0,
+			wantErr:           "add report error",
+		},
+		{
+			name:              "with retry option",
+			n:                 1,
+			seriesID:          "test-multiple-6",
+			options:           []ExecuteOption[int, any]{WithRetry[int, any]()},
+			wantOpCalledTimes: 3, // 2 attempts with default retry
+			wantReportsCount:  1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			handlerCalledTimes := 0
+			failTimes := 2 // First two calls will fail if retrying
+
+			handler := func(b Bundle, deps any, input int) (output int, err error) {
+				assert.NotNil(t, b.OperationRegistry)
+				assert.NotNil(t, b.Logger)
+				assert.NotNil(t, b.GetContext)
+
+				handlerCalledTimes++
+				if tt.simulateOpError {
+					return 0, NewUnrecoverableError(errors.New("fatal error"))
+				}
+
+				if failTimes > 0 && len(tt.options) > 0 {
+					failTimes--
+					return 0, errors.New("test error")
+				}
+
+				return input + 1, nil
+			}
+
+			op := NewOperation("plus1", semver.MustParse("1.0.0"), "test operation", handler)
+
+			var reporter Reporter
+			if tt.setupReporter != nil {
+				reporter = tt.setupReporter()
+			} else {
+				reporter = NewMemoryReporter()
+			}
+
+			bundle := NewBundle(context.Background, logger.Test(t), reporter)
+
+			reports, err := ExecuteOperationN(bundle, op, nil, 1, tt.seriesID, tt.n, tt.options...)
+
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				require.ErrorContains(t, err, tt.wantErr)
+				assert.Equal(t, tt.wantOpCalledTimes, handlerCalledTimes)
+
+				return
+			}
+
+			require.NoError(t, err)
+			assert.Len(t, reports, tt.wantReportsCount)
+			assert.Equal(t, tt.wantOpCalledTimes, handlerCalledTimes)
+
+			// Verify each report has the correct multipleExecution info
+			for i, report := range reports {
+				assert.Equal(t, tt.seriesID, report.ExecutionSeries.ID)
+				assert.Equal(t, uint(i), report.ExecutionSeries.Order) // #nosec G115
+				assert.Equal(t, 2, report.Output)                      // input + 1
+			}
+		})
+	}
+}
+
+func Test_ExecuteOperationN_Unserializable_Data(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		input     any
+		output    any
+		wantError string
+	}{
+		{
+			name:   "both input and output are serializable",
+			input:  1,
+			output: 2,
+		},
+		{
+			name:      "input is not serializable",
+			input:     func() {},
+			wantError: "operation plus1 input: data cannot be safely written to disk without data lost",
+		},
+		{
+			name:      "output is not serializable",
+			input:     1,
+			output:    func() {},
+			wantError: "operation plus1 output: data cannot be safely written to disk without data lost",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			handler := func(b Bundle, deps any, input any) (output any, err error) {
+				return tt.output, nil
+			}
+
+			op := NewOperation("plus1", semver.MustParse("1.0.0"), "test operation", handler)
+			bundle := NewBundle(context.Background, logger.Test(t), NewMemoryReporter())
+
+			_, err := ExecuteOperationN(bundle, op, nil, tt.input, "test-multiple", 2)
+
+			if tt.wantError != "" {
+				require.Error(t, err)
+				require.ErrorContains(t, err, tt.wantError)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func Test_ExecuteOperationN_Concurrent(t *testing.T) {
+	t.Parallel()
+
+	op := NewOperation("increment", semver.MustParse("1.0.0"), "increment by 1",
+		func(b Bundle, deps any, input int) (output int, err error) {
+			// Introduce a small delay to increase chance of race conditions
+			time.Sleep(time.Millisecond)
+			return input + 1, nil
+		})
+
+	reporter := NewMemoryReporter()
+	bundle := NewBundle(context.Background, logger.Test(t), reporter)
+
+	const numGoroutines = 5
+	const execsPerGoroutine = 3
+	var wg sync.WaitGroup
+	wg.Add(numGoroutines)
+
+	// Channel to collect results
+	type result struct {
+		reports []Report[int, int]
+		err     error
+	}
+	results := make(chan result, numGoroutines)
+
+	for i := range numGoroutines {
+		go func(i int) {
+			defer wg.Done()
+
+			executionSeriesID := fmt.Sprintf("concurrent-test-%d", i)
+			reports, err := ExecuteOperationN(bundle, op, nil, i, executionSeriesID, execsPerGoroutine)
+			results <- result{reports, err}
+		}(i)
+	}
+
+	wg.Wait()
+	close(results)
+
+	for res := range results {
+		require.NoError(t, res.err, "ExecuteOperationN should not return an error")
+		require.Len(t, res.reports, execsPerGoroutine)
+
+		// Verify each report in the result
+		for i, report := range res.reports {
+			assert.Equal(t, uint(i), report.ExecutionSeries.Order) // #nosec G115
+			assert.Equal(t, report.Input+1, report.Output)
+		}
+	}
+
+	// Verify reporter has all reports
+	allReports, err := reporter.GetReports()
+	require.NoError(t, err)
+	assert.Len(t, allReports, numGoroutines*int(execsPerGoroutine))
+}
+
+func Test_loadSuccessfulMultipleExecutionReports(t *testing.T) {
+	t.Parallel()
+
+	version := semver.MustParse("1.0.0")
+	definition := Definition{
+		ID:          "plus1",
+		Version:     version,
+		Description: "plus 1",
+	}
+	executionSeriesID := "test-multiple-execution"
+
+	tests := []struct {
+		name          string
+		setupReporter func() Reporter
+		input         float64
+		seriesID      string
+		wantFound     bool
+		wantReports   int
+	}{
+		{
+			name: "Failed to GetReports",
+			setupReporter: func() Reporter {
+				return errorReporter{
+					GetReportsError: errors.New("failed to get reports"),
+				}
+			},
+			input:     1,
+			seriesID:  executionSeriesID,
+			wantFound: false,
+		},
+		{
+			name: "Reports found with matching ExecutionSeriesID",
+			setupReporter: func() Reporter {
+				r := NewMemoryReporter()
+				// Add three reports with the same ExecutionSeriesID
+				for i := range 3 {
+					report := NewReport(definition, 1, 2, nil)
+					report.ExecutionSeries = &ExecutionSeries{
+						ID:    executionSeriesID,
+						Order: uint(i), // #nosec G115
+					}
+					err := r.AddReport(genericReport(report))
+					require.NoError(t, err)
+				}
+
+				return r
+			},
+			input:       1,
+			seriesID:    executionSeriesID,
+			wantFound:   true,
+			wantReports: 3,
+		},
+		{
+			name: "No reports found with matching ExecutionSeriesID",
+			setupReporter: func() Reporter {
+				r := NewMemoryReporter()
+				// Add reports with a different ExecutionSeriesID
+				for i := range 2 {
+					report := NewReport(definition, 1, 2, nil)
+					report.ExecutionSeries = &ExecutionSeries{
+						ID:    "different-id",
+						Order: uint(i), // #nosec G115
+					}
+					err := r.AddReport(genericReport(report))
+					require.NoError(t, err)
+				}
+
+				// Add one report with no ExecutionSeries
+				report := NewReport(definition, 1, 2, nil)
+				err := r.AddReport(genericReport(report))
+				require.NoError(t, err)
+
+				return r
+			},
+			input:     1,
+			seriesID:  executionSeriesID,
+			wantFound: false,
+		},
+		{
+			name: "Reports found but with errors",
+			setupReporter: func() Reporter {
+				r := NewMemoryReporter()
+				// Add reports with errors
+				for i := range 2 {
+					report := NewReport(definition, 1, 2, errors.New("execution error"))
+					report.ExecutionSeries = &ExecutionSeries{
+						ID:    executionSeriesID,
+						Order: uint(i), // #nosec G115
+					}
+					err := r.AddReport(genericReport(report))
+					require.NoError(t, err)
+				}
+
+				return r
+			},
+			input:     1,
+			seriesID:  executionSeriesID,
+			wantFound: false,
+		},
+		{
+			name:      "Current report with bad hash",
+			input:     math.NaN(),
+			seriesID:  executionSeriesID,
+			wantFound: false,
+		},
+		{
+			name: "Previous reports with bad hash",
+			setupReporter: func() Reporter {
+				r := NewMemoryReporter()
+				// Add reports with NaN input (which will cause hash calculation to fail)
+				for i := range 2 {
+					report := NewReport(definition, math.NaN(), 2, nil)
+					report.ExecutionSeries = &ExecutionSeries{
+						ID:    executionSeriesID,
+						Order: uint(i), // #nosec G115
+					}
+					err := r.AddReport(genericReport(report))
+					require.NoError(t, err)
+				}
+
+				return r
+			},
+			input:     1,
+			seriesID:  executionSeriesID,
+			wantFound: false,
+		},
+		{
+			name: "Reports found with mixed order",
+			setupReporter: func() Reporter {
+				r := NewMemoryReporter()
+				// Add reports in non-sequential order
+				orders := []uint{2, 0, 1}
+				for _, order := range orders {
+					report := NewReport(definition, 1, 2, nil)
+					report.ExecutionSeries = &ExecutionSeries{
+						ID:    executionSeriesID,
+						Order: order,
+					}
+					err := r.AddReport(genericReport(report))
+					require.NoError(t, err)
+				}
+
+				return r
+			},
+			input:       1,
+			seriesID:    executionSeriesID,
+			wantFound:   true,
+			wantReports: 3,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			bundle := NewBundle(context.Background, logger.Test(t), NewMemoryReporter())
+			if tt.setupReporter != nil {
+				bundle.reporter = tt.setupReporter()
+			}
+
+			reports, found := loadSuccessfulExecutionSeriesReports[float64, int](
+				bundle, definition, tt.input, tt.seriesID)
+
+			assert.Equal(t, tt.wantFound, found)
+
+			if tt.wantFound {
+				assert.Len(t, reports, tt.wantReports)
+
+				// Verify reports are properly ordered
+				for i, report := range reports {
+					assert.Equal(t, tt.seriesID, report.ExecutionSeries.ID)
+					assert.Equal(t, uint(i), report.ExecutionSeries.Order) // #nosec G115
+					assert.Equal(t, definition, report.Def)
+				}
+			} else {
+				assert.Empty(t, reports)
 			}
 		})
 	}

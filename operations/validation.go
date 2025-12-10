@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"reflect"
 
-	"github.com/smartcontractkit/chainlink-common/pkg/logger"
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
 // IsSerializable returns true if the value can be marshaled and unmarshaled without losing information, false otherwise.
@@ -32,12 +32,17 @@ func isValueSerializable(lggr logger.Logger, v reflect.Value) bool {
 	}
 
 	// Check if type implements json.Marshaler and json.Unmarshaler
-	t := v.Type()
+	fieldTypeRef := v.Type()
+	ptrFieldTypeRef := reflect.PointerTo(fieldTypeRef)
+
 	marshalType := reflect.TypeOf((*json.Marshaler)(nil)).Elem()
 	unmarshalType := reflect.TypeOf((*json.Unmarshaler)(nil)).Elem()
 
+	implementsMarshaler := fieldTypeRef.Implements(marshalType) || ptrFieldTypeRef.Implements(marshalType)
+	implementsUnmarshaler := fieldTypeRef.Implements(unmarshalType) || ptrFieldTypeRef.Implements(unmarshalType)
+
 	// If it implements both interfaces, assume it's serializable
-	if t.Implements(marshalType) && t.Implements(unmarshalType) {
+	if implementsMarshaler && implementsUnmarshaler {
 		return true
 	}
 
@@ -51,7 +56,8 @@ func isValueSerializable(lggr logger.Logger, v reflect.Value) bool {
 	}
 
 	// Rest of implementation for other types...
-	switch v.Kind() { //nolint:exhaustive // Exhaustive check is not needed here as we don't support all types
+	//nolint:exhaustive // Exhaustive check is not needed here as we don't support all types
+	switch v.Kind() {
 	case reflect.Struct:
 		// Check if each field is serializable
 		for i := range v.NumField() {

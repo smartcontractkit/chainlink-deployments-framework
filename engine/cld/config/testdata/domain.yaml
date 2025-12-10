@@ -1,0 +1,11 @@
+environments:
+  staging_testnet:
+    network_types:
+      - testnet
+  prod_mainnet:
+    network_types:
+      - mainnet
+  staging:
+    network_types:
+      - testnet
+      - mainnet

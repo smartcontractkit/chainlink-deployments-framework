@@ -1,16 +1,15 @@
 package deployment
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
 
-	"golang.org/x/exp/maps"
-
 	"github.com/Masterminds/semver/v3"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/pkg/errors"
 	chainsel "github.com/smartcontractkit/chain-selectors"
+	"golang.org/x/exp/maps"
 )
 
 var (
@@ -39,6 +38,7 @@ func (tv TypeAndVersion) String() string {
 
 	// Use the LabelSet's String method for sorted labels
 	sortedLabels := tv.Labels.String()
+
 	return fmt.Sprintf("%s %s %s",
 		tv.Type,
 		tv.Version.String(),
@@ -64,6 +64,7 @@ func MustTypeAndVersionFromString(s string) TypeAndVersion {
 	if err != nil {
 		panic(err)
 	}
+
 	return tv
 }
 
@@ -82,6 +83,7 @@ func TypeAndVersionFromString(s string) (TypeAndVersion, error) {
 	if len(parts) > 2 {
 		labels = NewLabelSet(parts[2:]...)
 	}
+
 	return TypeAndVersion{
 		Type:    ContractType(parts[0]),
 		Version: *v,
@@ -121,17 +123,17 @@ type AddressBookMap struct {
 func (m *AddressBookMap) save(chainSelector uint64, address string, typeAndVersion TypeAndVersion) error {
 	family, err := chainsel.GetSelectorFamily(chainSelector)
 	if err != nil {
-		return errors.Wrapf(ErrInvalidChainSelector, "chain selector %d", chainSelector)
+		return fmt.Errorf("chain selector %d: %w", chainSelector, ErrInvalidChainSelector)
 	}
 	if family == chainsel.FamilyEVM {
 		if address == "" || address == common.HexToAddress("0x0").Hex() {
-			return errors.Wrap(ErrInvalidAddress, "address cannot be empty")
+			return fmt.Errorf("address cannot be empty: %w", ErrInvalidAddress)
 		}
 		if common.IsHexAddress(address) {
 			// IMPORTANT: WE ALWAYS STANDARDIZE ETHEREUM ADDRESS STRINGS TO EIP55
 			address = common.HexToAddress(address).Hex()
 		} else {
-			return errors.Wrapf(ErrInvalidAddress, "address %s is not a valid Ethereum address, only Ethereum addresses supported for EVM chains", address)
+			return fmt.Errorf("address %s is not a valid Ethereum address, only Ethereum addresses supported for EVM chains: %w", address, ErrInvalidAddress)
 		}
 	}
 
@@ -149,6 +151,7 @@ func (m *AddressBookMap) save(chainSelector uint64, address string, typeAndVersi
 		return fmt.Errorf("address %s already exists for chain %d", address, chainSelector)
 	}
 	m.addressesByChain[chainSelector][address] = typeAndVersion
+
 	return nil
 }
 
@@ -157,6 +160,7 @@ func (m *AddressBookMap) save(chainSelector uint64, address string, typeAndVersi
 func (m *AddressBookMap) Save(chainSelector uint64, address string, typeAndVersion TypeAndVersion) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
+
 	return m.save(chainSelector, address, typeAndVersion)
 }
 
@@ -173,14 +177,14 @@ func (m *AddressBookMap) Addresses() (map[uint64]map[string]TypeAndVersion, erro
 func (m *AddressBookMap) AddressesForChain(chainSelector uint64) (map[string]TypeAndVersion, error) {
 	_, err := chainsel.GetChainIDFromSelector(chainSelector)
 	if err != nil {
-		return nil, errors.Wrapf(ErrInvalidChainSelector, "chain selector %d", chainSelector)
+		return nil, fmt.Errorf("chain selector %d: %w", chainSelector, ErrInvalidChainSelector)
 	}
 
 	m.mtx.RLock()
 	defer m.mtx.RUnlock()
 
 	if _, exists := m.addressesByChain[chainSelector]; !exists {
-		return nil, errors.Wrapf(ErrChainNotFound, "chain selector %d", chainSelector)
+		return nil, fmt.Errorf("chain selector %d: %w", chainSelector, ErrChainNotFound)
 	}
 
 	// maps are mutable and pass via a pointer
@@ -207,6 +211,7 @@ func (m *AddressBookMap) Merge(ab AddressBook) error {
 			}
 		}
 	}
+
 	return nil
 }
 
@@ -246,6 +251,7 @@ func (m *AddressBookMap) cloneAddresses(input map[uint64]map[string]TypeAndVersi
 	for chainSelector, chainAddresses := range input {
 		result[chainSelector] = maps.Clone(chainAddresses)
 	}
+
 	return result
 }
 
@@ -340,6 +346,7 @@ func toTypeAndVersionMap(addrs map[string]TypeAndVersion) map[typeVersionKey][]s
 	for k, v := range addrs {
 		tvkMap[tvKey(v)] = append(tvkMap[tvKey(v)], k)
 	}
+
 	return tvkMap
 }
 

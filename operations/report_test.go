@@ -69,7 +69,7 @@ func Test_NewReport(t *testing.T) {
 
 	testErr := errors.New("test error")
 	childOperationID := uuid.New().String()
-	report := NewReport[int, int](op.def, 1, 2, testErr, childOperationID)
+	report := NewReport(op.def, 1, 2, testErr, childOperationID)
 	assert.NotEmpty(t, report.ID)
 	assert.Equal(t, op.def, report.Def)
 	assert.Equal(t, 1, report.Input)
@@ -133,8 +133,16 @@ func Test_typeReport(t *testing.T) {
 		ChildOperationReports: []string{uuid.New().String()},
 	}
 
-	_, ok := typeReport[map[string]interface{}, float64](report)
+	res, ok := typeReport[map[string]interface{}, float64](report)
 	assert.True(t, ok)
+	assert.Equal(t, "1", res.ID)
+	assert.Equal(t, Definition{}, res.Def)
+	assert.Equal(t, map[string]interface{}{"a": float64(1)}, res.Input)
+	assert.InEpsilon(t, float64(2), res.Output, 0)
+	assert.Equal(t, &now, res.Timestamp)
+	assert.Nil(t, res.Err)
+	assert.Len(t, res.ChildOperationReports, 1)
+	assert.Equal(t, report.ChildOperationReports[0], res.ChildOperationReports[0])
 
 	// supports unmarshalling into a different type as long it is compatible
 	_, ok = typeReport[Input, int](report)
@@ -151,19 +159,23 @@ func Test_typeReport(t *testing.T) {
 
 var reportJSON = `
 {
-	"id": "6c5d66ad-f1e8-45b6-b83b-4f289b04045f",
-	"definition": {
-	  "id": "op1",
-	  "version": "1.0.0",
-	  "description": "test operation"
-	},
-	"output": "2",
-	"input": 1,
-	"timestamp": "2025-04-03T17:24:27.079966+11:00",
-	"error": {
-      "message": "test error"
-    },
-	"childOperationReports": ["157b4a77-bdcb-497d-899d-1e8bb44ced58"]
+  "id" : "6c5d66ad-f1e8-45b6-b83b-4f289b04045f",
+  "definition" : {
+    "id" : "op1",
+    "version" : "1.0.0",
+    "description" : "test operation"
+  },
+  "output" : "2",
+  "input" : 1,
+  "timestamp" : "2025-04-03T17:24:27.079966+11:00",
+  "error" : {
+    "message" : "test error"
+  },
+  "childOperationReports" : [ "157b4a77-bdcb-497d-899d-1e8bb44ced58" ],
+  "executionSeries" : {
+    "id" : "deploy-multiple-contracts",
+    "order" : 1
+  }
 }`
 
 func Test_Report_Marshal(t *testing.T) {
@@ -184,6 +196,10 @@ func Test_Report_Marshal(t *testing.T) {
 		Timestamp:             &timestamp,
 		Err:                   &ReportError{Message: "test error"},
 		ChildOperationReports: []string{"157b4a77-bdcb-497d-899d-1e8bb44ced58"},
+		ExecutionSeries: &ExecutionSeries{
+			ID:    "deploy-multiple-contracts",
+			Order: 1,
+		},
 	}
 
 	bytes, err := json.MarshalIndent(report, "", "  ")
@@ -211,6 +227,8 @@ func Test_Report_Unmarshal(t *testing.T) {
 	assert.Len(t, report.ChildOperationReports, 1)
 	assert.Equal(t, "157b4a77-bdcb-497d-899d-1e8bb44ced58", report.ChildOperationReports[0])
 	assert.NotNil(t, report.Timestamp)
+	assert.Equal(t, "deploy-multiple-contracts", report.ExecutionSeries.ID)
+	assert.Equal(t, uint(1), report.ExecutionSeries.Order)
 }
 
 func Test_Report_ToGenericReport(t *testing.T) {
@@ -225,6 +243,10 @@ func Test_Report_ToGenericReport(t *testing.T) {
 		Timestamp:             &now,
 		Err:                   nil,
 		ChildOperationReports: []string{uuid.New().String()},
+		ExecutionSeries: &ExecutionSeries{
+			ID:    "deploy-multiple-contracts",
+			Order: 1,
+		},
 	}
 
 	r := report.ToGenericReport()
@@ -235,6 +257,8 @@ func Test_Report_ToGenericReport(t *testing.T) {
 	assert.Equal(t, report.Timestamp, r.Timestamp)
 	assert.Equal(t, report.Err, r.Err)
 	assert.Equal(t, report.ChildOperationReports, r.ChildOperationReports)
+	assert.Equal(t, report.ExecutionSeries.ID, r.ExecutionSeries.ID)
+	assert.Equal(t, report.ExecutionSeries.Order, r.ExecutionSeries.Order)
 }
 
 func Test_SequenceReport_ToGenericReport(t *testing.T) {

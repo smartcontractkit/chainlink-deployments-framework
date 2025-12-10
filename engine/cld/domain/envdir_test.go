@@ -1,0 +1,1748 @@
+package domain
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	chainsel "github.com/smartcontractkit/chain-selectors"
+
+	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
+	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/nodes"
+)
+
+func Test_EnvDir_RemoveMigrationAddressBook(t *testing.T) {
+	t.Parallel()
+
+	var (
+		addrBook1 = createAddressBookMap(t,
+			"Contract", version1_0_0,
+			chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector, "0x5B5BBb15ECE0a4Ed8cDab22F902e83F66aBe848f",
+		)
+		timestamp = "1234567890123456789"
+	)
+
+	tests := []struct {
+		name              string
+		beforeFunc        func(*testing.T, EnvDir)
+		giveMigrationName string
+		timestamp         string
+		want              *fdeployment.AddressBookMap
+		wantErr           string
+	}{
+		{
+			name: "success with removing an address book",
+			beforeFunc: func(t *testing.T, envdir EnvDir) {
+				t.Helper()
+
+				// Create the artifacts for the migration
+				arts := envdir.ArtifactsDir()
+				err := arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{
+					AddressBook: addrBook1,
+				})
+				require.NoError(t, err)
+
+				err = envdir.MergeMigrationAddressBook("0001_initial", "")
+				require.NoError(t, err)
+			},
+			giveMigrationName: "0001_initial",
+			want: fdeployment.NewMemoryAddressBookFromMap(map[uint64]map[string]fdeployment.TypeAndVersion{
+				chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector: {},
+			}),
+		},
+		{
+			name: "success with removing a durable pipeline address book",
+			beforeFunc: func(t *testing.T, envdir EnvDir) {
+				t.Helper()
+
+				// Create the artifacts for the migration
+				arts := envdir.ArtifactsDir()
+				err := arts.SetDurablePipelines(timestamp)
+				require.NoError(t, err)
+
+				err = arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{
+					AddressBook: addrBook1,
+				})
+				require.NoError(t, err)
+
+				err = envdir.MergeMigrationAddressBook("0001_initial", arts.timestamp)
+				require.NoError(t, err)
+			},
+			giveMigrationName: "0001_initial",
+			timestamp:         timestamp,
+			want: fdeployment.NewMemoryAddressBookFromMap(map[uint64]map[string]fdeployment.TypeAndVersion{
+				chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector: {},
+			}),
+		},
+		{
+			name: "success skips with no migration address book found",
+			beforeFunc: func(t *testing.T, envdir EnvDir) {
+				t.Helper()
+
+				arts := envdir.ArtifactsDir()
+				err := arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{})
+				require.NoError(t, err)
+			},
+			giveMigrationName: "0001_initial",
+			want:              fdeployment.NewMemoryAddressBookFromMap(map[uint64]map[string]fdeployment.TypeAndVersion{}),
+		},
+		{
+			name:              "failure when no migration artifacts directory exists",
+			giveMigrationName: "0001_invalid",
+			wantErr:           "error finding files",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var (
+				fixture = setupTestDomainsFS(t)
+				envDir  = fixture.envDir
+			)
+
+			if tt.beforeFunc != nil {
+				tt.beforeFunc(t, envDir)
+			}
+
+			// Merge the migration's address book into the existing address book
+			err := envDir.RemoveMigrationAddressBook(tt.giveMigrationName, tt.timestamp)
+
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				assert.ErrorContains(t, err, tt.wantErr)
+			} else {
+				// Check the merged address book
+				got, err := envDir.AddressBook()
+
+				require.NoError(t, err)
+				assert.Equal(t, tt.want, got)
+			}
+		})
+	}
+}
+
+func Test_EnvDir_MigrateAddressBook(t *testing.T) {
+	t.Parallel()
+
+	var (
+		addr1 = "0x5B5BBb15ECE0a4Ed8cDab22F902e83F66aBe848f"
+		addr2 = "0x6619Bad7fadbc282B1EF2F6cC078fCbE61478792"
+
+		chainsel1 = chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector
+		chainsel2 = chainsel.ETHEREUM_TESTNET_SEPOLIA_ARBITRUM_1.Selector
+
+		ctype = fdatastore.ContractType("Contract")
+
+		addrBook1 = createAddressBookMap(t,
+			"Contract",
+			version1_0_0,
+			chainsel1,
+			addr1,
+		)
+		addrBook2 = createAddressBookMap(t,
+			"Contract",
+			version1_0_0,
+			chainsel2,
+			addr2,
+		)
+	)
+	addrs, err := addrBook1.Addresses()
+	require.NoError(t, err)
+
+	addrs[chainsel1][addr1].Labels.Add("label1")
+	addrBook1 = fdeployment.NewMemoryAddressBookFromMap(addrs)
+
+	convDataStore := fdatastore.NewMemoryDataStore()
+
+	err = convDataStore.Addresses().Add(
+		fdatastore.AddressRef{
+			Address:       addr1,
+			ChainSelector: chainsel1,
+			Type:          ctype,
+			Version:       &version1_0_0,
+			Qualifier:     fmt.Sprintf("%s-%s", addr1, "Contract"),
+			Labels:        fdatastore.NewLabelSet("label1"),
+		},
+	)
+	require.NoError(t, err)
+
+	err = convDataStore.Addresses().Add(
+		fdatastore.AddressRef{
+			Address:       addr2,
+			ChainSelector: chainsel2,
+			Type:          ctype,
+			Version:       &version1_0_0,
+			Qualifier:     fmt.Sprintf("%s-%s", addr2, "Contract"),
+			Labels:        fdatastore.NewLabelSet(),
+		},
+	)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name              string
+		beforeFunc        func(*testing.T, EnvDir)
+		giveMigrationName string
+		want              fdatastore.DataStore
+	}{
+		{
+			name: "success when converting empty address book",
+			beforeFunc: func(t *testing.T, envdir EnvDir) {
+				t.Helper()
+
+				// Create the artifacts for the migration
+				arts := envdir.ArtifactsDir()
+				err := arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{})
+				require.NoError(t, err)
+			},
+			giveMigrationName: "0001_initial",
+			want:              fdatastore.NewMemoryDataStore().Seal(),
+		},
+		{
+			name: "success when converting non empty address book",
+			beforeFunc: func(t *testing.T, envdir EnvDir) {
+				t.Helper()
+
+				// Create the artifacts for the migration
+				arts := envdir.ArtifactsDir()
+				err := arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{
+					AddressBook: addrBook1,
+				})
+				require.NoError(t, err)
+
+				err = envdir.MergeMigrationAddressBook("0001_initial", "")
+				require.NoError(t, err)
+
+				err = arts.SaveChangesetOutput("0002_second", fdeployment.ChangesetOutput{
+					AddressBook: addrBook2,
+				})
+				require.NoError(t, err)
+			},
+			giveMigrationName: "0002_second",
+			want:              convDataStore.Seal(),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var (
+				fixture = setupTestDomainsFS(t)
+				envDir  = fixture.envDir
+			)
+
+			if tt.beforeFunc != nil {
+				tt.beforeFunc(t, envDir)
+			}
+
+			err := envDir.MergeMigrationAddressBook(tt.giveMigrationName, "")
+			require.NoError(t, err)
+			// convert the address book to a datastore
+			err = envDir.MigrateAddressBook()
+			require.NoError(t, err)
+
+			// load the datastore
+			got, err := envDir.DataStore()
+			require.NoError(t, err)
+
+			gotRefs, err := got.Addresses().Fetch()
+			require.NoError(t, err)
+
+			wantRefs, err := tt.want.Addresses().Fetch()
+			require.NoError(t, err)
+
+			require.ElementsMatch(t, wantRefs, gotRefs)
+		})
+	}
+}
+
+func Test_EnvDir_MutableDataStore(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		give    func(*testing.T, testDomainFS) EnvDir
+		want    fdatastore.MutableDataStore
+		wantErr string
+	}{
+		{
+			name: "success",
+			give: func(t *testing.T, fixture testDomainFS) EnvDir {
+				t.Helper()
+
+				return fixture.envDir
+			},
+			want: fdatastore.NewMemoryDataStore(),
+		},
+		{
+			name: "empty file will return new empty datastore",
+			give: func(t *testing.T, fixture testDomainFS) EnvDir {
+				t.Helper()
+
+				// Create empty files in a new environment to simulate a corrupted fdatastore.
+				err := os.Mkdir(filepath.Join(fixture.domain.DirPath(), "test"), 0755)
+				require.NoError(t, err)
+
+				err = os.Mkdir(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath()), 0755)
+				require.NoError(t, err)
+
+				ar, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), AddressRefsFileName))
+				require.NoError(t, err)
+				_, err = ar.WriteString("[]")
+				require.NoError(t, err)
+				defer ar.Close()
+
+				ch, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), ChainMetadataFileName))
+				require.NoError(t, err)
+				_, err = ch.WriteString("[]")
+				require.NoError(t, err)
+				defer ch.Close()
+
+				cm, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), ContractMetadataFileName))
+				require.NoError(t, err)
+				_, err = cm.WriteString("[]")
+				require.NoError(t, err)
+				defer cm.Close()
+
+				em, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), EnvMetadataFileName))
+				require.NoError(t, err)
+				_, err = em.WriteString("null")
+				require.NoError(t, err)
+				defer em.Close()
+
+				return fixture.domain.EnvDir("test")
+			},
+			want: fdatastore.NewMemoryDataStore(),
+		},
+		{
+			name: "failed to unmarshal address ref JSON",
+			give: func(t *testing.T, fixture testDomainFS) EnvDir {
+				t.Helper()
+
+				// Create empty files in a new environment to simulate a corrupted fdatastore.
+				err := os.Mkdir(filepath.Join(fixture.domain.DirPath(), "test"), 0755)
+				require.NoError(t, err)
+
+				err = os.Mkdir(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath()), 0755)
+				require.NoError(t, err)
+
+				ar, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), AddressRefsFileName))
+				require.NoError(t, err)
+				_, err = ar.WriteString("invalid")
+				require.NoError(t, err)
+				defer ar.Close()
+
+				ch, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), ChainMetadataFileName))
+				require.NoError(t, err)
+				_, err = ch.WriteString("[]")
+				require.NoError(t, err)
+				defer ch.Close()
+
+				cm, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), ContractMetadataFileName))
+				require.NoError(t, err)
+				_, err = cm.WriteString("[]")
+				require.NoError(t, err)
+				defer cm.Close()
+
+				em, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), EnvMetadataFileName))
+				require.NoError(t, err)
+				_, err = em.WriteString("null")
+				require.NoError(t, err)
+				defer em.Close()
+
+				return fixture.domain.EnvDir("test")
+			},
+			wantErr: "failed to unmarshal address refs JSON",
+		},
+		{
+			name: "failed to unmarshal chain metadata JSON",
+			give: func(t *testing.T, fixture testDomainFS) EnvDir {
+				t.Helper()
+
+				// Create empty files in a new environment to simulate a corrupted fdatastore.
+				err := os.Mkdir(filepath.Join(fixture.domain.DirPath(), "test"), 0755)
+				require.NoError(t, err)
+
+				err = os.Mkdir(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath()), 0755)
+				require.NoError(t, err)
+
+				ar, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), AddressRefsFileName))
+				require.NoError(t, err)
+				_, err = ar.WriteString("[]")
+				require.NoError(t, err)
+				defer ar.Close()
+
+				ch, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), ChainMetadataFileName))
+				require.NoError(t, err)
+				_, err = ch.WriteString("invalid")
+				require.NoError(t, err)
+				defer ch.Close()
+
+				cm, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), ContractMetadataFileName))
+				require.NoError(t, err)
+				_, err = cm.WriteString("[]")
+				require.NoError(t, err)
+				defer cm.Close()
+
+				em, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), EnvMetadataFileName))
+				require.NoError(t, err)
+				_, err = em.WriteString("null")
+				require.NoError(t, err)
+				defer em.Close()
+
+				return fixture.domain.EnvDir("test")
+			},
+			wantErr: "failed to unmarshal chain metadata JSON",
+		},
+		{
+			name: "failed to unmarshal contract metadata JSON",
+			give: func(t *testing.T, fixture testDomainFS) EnvDir {
+				t.Helper()
+
+				// Create empty files in a new environment to simulate a corrupted fdatastore.
+				err := os.Mkdir(filepath.Join(fixture.domain.DirPath(), "test"), 0755)
+				require.NoError(t, err)
+
+				err = os.Mkdir(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath()), 0755)
+				require.NoError(t, err)
+
+				ar, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), AddressRefsFileName))
+				require.NoError(t, err)
+				_, err = ar.WriteString("[]")
+				require.NoError(t, err)
+				defer ar.Close()
+
+				ch, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), ChainMetadataFileName))
+				require.NoError(t, err)
+				_, err = ch.WriteString("[]")
+				require.NoError(t, err)
+				defer ch.Close()
+
+				cm, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), ContractMetadataFileName))
+				require.NoError(t, err)
+				_, err = cm.WriteString("invalid")
+				require.NoError(t, err)
+				defer cm.Close()
+
+				em, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), EnvMetadataFileName))
+				require.NoError(t, err)
+				_, err = em.WriteString("null")
+				require.NoError(t, err)
+				defer em.Close()
+
+				return fixture.domain.EnvDir("test")
+			},
+			wantErr: "failed to unmarshal contract metadata JSON",
+		},
+		{
+			name: "failed to unmarshal env metadata JSON",
+			give: func(t *testing.T, fixture testDomainFS) EnvDir {
+				t.Helper()
+				// Create empty files in a new environment to simulate a corrupted fdatastore.
+				err := os.Mkdir(filepath.Join(fixture.domain.DirPath(), "test"), 0755)
+				require.NoError(t, err)
+
+				err = os.Mkdir(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath()), 0755)
+				require.NoError(t, err)
+
+				ar, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), AddressRefsFileName))
+				require.NoError(t, err)
+				_, err = ar.WriteString("[]")
+				require.NoError(t, err)
+				defer ar.Close()
+
+				ch, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), ChainMetadataFileName))
+				require.NoError(t, err)
+				_, err = ch.WriteString("[]")
+				require.NoError(t, err)
+				defer ch.Close()
+
+				cm, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), ContractMetadataFileName))
+				require.NoError(t, err)
+				_, err = cm.WriteString("[]")
+				require.NoError(t, err)
+				defer cm.Close()
+
+				em, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), EnvMetadataFileName))
+				require.NoError(t, err)
+				_, err = em.WriteString("invalid")
+				require.NoError(t, err)
+				defer em.Close()
+
+				return fixture.domain.EnvDir("test")
+			},
+			wantErr: "failed to unmarshal env metadata JSON",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			require.NotNil(t, tt.give)
+
+			fixture := setupTestDomainsFS(t)
+			envdir := tt.give(t, fixture)
+
+			got, err := envdir.MutableDataStore()
+
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				assert.ErrorContains(t, err, tt.wantErr)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.want, got)
+			}
+		})
+	}
+}
+
+func Test_EnvDir_Artifacts(t *testing.T) {
+	t.Parallel()
+
+	fixture := setupTestDomainsFS(t)
+
+	got := fixture.envDir.ArtifactsDir()
+
+	assert.Equal(t, fixture.artifactsDir, got)
+}
+
+func Test_EnvDir_MergeMigrationAddressBook(t *testing.T) {
+	t.Parallel()
+
+	var (
+		addrBook1 = createAddressBookMap(t,
+			"Contract", version1_0_0,
+			chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector, "0x5B5BBb15ECE0a4Ed8cDab22F902e83F66aBe848f",
+		)
+
+		addrBook2 = createAddressBookMap(t,
+			"Contract", version1_0_0,
+			chainsel.ETHEREUM_TESTNET_SEPOLIA_ARBITRUM_1.Selector, "0x7719BAd7FadbC282B1Ef2f6cC078FcbE61478792",
+		)
+	)
+
+	tests := []struct {
+		name              string
+		beforeFunc        func(*testing.T, EnvDir)
+		giveMigrationName string
+		want              *fdeployment.AddressBookMap
+		wantErr           string
+	}{
+		{
+			name: "success with merging to empty address book",
+			beforeFunc: func(t *testing.T, envdir EnvDir) {
+				t.Helper()
+
+				// Create the artifacts for the migration
+				arts := envdir.ArtifactsDir()
+				err := arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{
+					AddressBook: addrBook1,
+				})
+				require.NoError(t, err)
+			},
+			giveMigrationName: "0001_initial",
+			want: fdeployment.NewMemoryAddressBookFromMap(map[uint64]map[string]fdeployment.TypeAndVersion{
+				chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector: {
+					"0x5B5BBb15ECE0a4Ed8cDab22F902e83F66aBe848f": fdeployment.TypeAndVersion{
+						Type:    "Contract",
+						Version: version1_0_0,
+						Labels:  nil,
+					},
+				},
+			}),
+		},
+		{
+			name: "success with merging to non-empty address book",
+			beforeFunc: func(t *testing.T, envdir EnvDir) {
+				t.Helper()
+
+				// Create the artifacts for the migration and merge to the address book
+				arts := envdir.ArtifactsDir()
+				err := arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{
+					AddressBook: addrBook1,
+				})
+				require.NoError(t, err)
+
+				err = envdir.MergeMigrationAddressBook("0001_initial", "")
+				require.NoError(t, err)
+
+				// Create a migration with another address book
+				err = arts.SaveChangesetOutput("0002_second", fdeployment.ChangesetOutput{
+					AddressBook: addrBook2,
+				})
+				require.NoError(t, err)
+			},
+			giveMigrationName: "0002_second",
+			want: fdeployment.NewMemoryAddressBookFromMap(map[uint64]map[string]fdeployment.TypeAndVersion{
+				chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector: {
+					"0x5B5BBb15ECE0a4Ed8cDab22F902e83F66aBe848f": {
+						Type:    "Contract",
+						Version: version1_0_0,
+						Labels:  nil,
+					},
+				},
+				chainsel.ETHEREUM_TESTNET_SEPOLIA_ARBITRUM_1.Selector: {
+					"0x7719BAd7FadbC282B1Ef2f6cC078FcbE61478792": {
+						Type:    "Contract",
+						Version: version1_0_0,
+						Labels:  nil,
+					},
+				},
+			}),
+		},
+		{
+			name: "success with merging non-empty durable pipeline address book",
+			beforeFunc: func(t *testing.T, envdir EnvDir) {
+				t.Helper()
+
+				// Create the artifacts for the migration and merge to the address book
+				arts := envdir.ArtifactsDir()
+				err := arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{
+					AddressBook: addrBook1,
+				})
+				require.NoError(t, err)
+
+				err = envdir.MergeMigrationAddressBook("0001_initial", "")
+				require.NoError(t, err)
+
+				// Create a durable pipeline artifact with another address book and merge to the address book
+				err = arts.SetDurablePipelines("1742316304198171000")
+				require.NoError(t, err)
+
+				err = arts.SaveChangesetOutput("durable_pipeline", fdeployment.ChangesetOutput{
+					AddressBook: addrBook2,
+				})
+				require.NoError(t, err)
+
+				err = envdir.MergeMigrationAddressBook("durable_pipeline", arts.timestamp)
+				require.NoError(t, err)
+			},
+			giveMigrationName: "durable_pipeline",
+			want: fdeployment.NewMemoryAddressBookFromMap(map[uint64]map[string]fdeployment.TypeAndVersion{
+				chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector: {
+					"0x5B5BBb15ECE0a4Ed8cDab22F902e83F66aBe848f": {
+						Type:    "Contract",
+						Version: version1_0_0,
+						Labels:  nil,
+					},
+				},
+				chainsel.ETHEREUM_TESTNET_SEPOLIA_ARBITRUM_1.Selector: {
+					"0x7719BAd7FadbC282B1Ef2f6cC078FcbE61478792": {
+						Type:    "Contract",
+						Version: version1_0_0,
+						Labels:  nil,
+					},
+				},
+			}),
+		},
+		{
+			name: "success skips with no migration address book found",
+			beforeFunc: func(t *testing.T, envdir EnvDir) {
+				t.Helper()
+
+				arts := envdir.ArtifactsDir()
+				err := arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{})
+				require.NoError(t, err)
+			},
+			giveMigrationName: "0001_initial",
+			want:              fdeployment.NewMemoryAddressBookFromMap(map[uint64]map[string]fdeployment.TypeAndVersion{}),
+		},
+		{
+			name:              "failure when no migration artifacts directory exists",
+			giveMigrationName: "0001_invalid",
+			wantErr:           "error finding files",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var (
+				fixture = setupTestDomainsFS(t)
+				envDir  = fixture.envDir
+			)
+
+			if tt.beforeFunc != nil {
+				tt.beforeFunc(t, envDir)
+			}
+
+			// Merge the migration's address book into the existing address book
+			err := envDir.MergeMigrationAddressBook(tt.giveMigrationName, "")
+
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				assert.ErrorContains(t, err, tt.wantErr)
+			} else {
+				// Check the merged address book
+				got, err := envDir.AddressBook()
+
+				require.NoError(t, err)
+				assert.Equal(t, tt.want, got)
+			}
+		})
+	}
+}
+
+func Test_EnvDir_MergeMigrationDataStore(t *testing.T) {
+	t.Parallel()
+
+	var (
+		dataStore1 = createDataStore(t,
+			"Contract", version1_0_0,
+			chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector,
+			"0x5B5BBb15ECE0a4Ed8cDab22F902e83F66aBe848f",
+			"qtest1",
+		)
+
+		dataStore2 = createDataStore(t,
+			"Contract", version1_0_0,
+			chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector,
+			"0x5B5BBb15ECE0a4Ed8cDab22F902e83F66aBe848f",
+			"qtest2",
+		)
+	)
+
+	mergeDatastore := fdatastore.NewMemoryDataStore()
+
+	err := mergeDatastore.Merge(dataStore1.Seal())
+	require.NoError(t, err)
+
+	err = mergeDatastore.Merge(dataStore2.Seal())
+	require.NoError(t, err)
+
+	tests := []struct {
+		name              string
+		beforeFunc        func(*testing.T, EnvDir)
+		giveMigrationName string
+		want              fdatastore.DataStore
+		wantErr           string
+	}{
+		{
+			name: "success with merging to empty datastore",
+			beforeFunc: func(t *testing.T, envdir EnvDir) {
+				t.Helper()
+
+				// Create the artifacts for the migration
+				arts := envdir.ArtifactsDir()
+				err := arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{
+					DataStore: dataStore1,
+				})
+				require.NoError(t, err)
+			},
+			giveMigrationName: "0001_initial",
+			want:              dataStore1.Seal(),
+		},
+		{
+			name: "success with merging to non-empty datastore",
+			beforeFunc: func(t *testing.T, envdir EnvDir) {
+				t.Helper()
+
+				// Create the artifacts for the migration and merge to the address book
+				arts := envdir.ArtifactsDir()
+				err := arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{
+					DataStore: dataStore1,
+				})
+				require.NoError(t, err)
+
+				err = envdir.MergeMigrationDataStore("0001_initial", "")
+				require.NoError(t, err)
+
+				// Create a migration with another datastore
+				err = arts.SaveChangesetOutput("0002_second", fdeployment.ChangesetOutput{
+					DataStore: dataStore2,
+				})
+				require.NoError(t, err)
+			},
+			giveMigrationName: "0002_second",
+			want:              mergeDatastore.Seal(),
+		},
+		{
+			name: "success with merging non-empty durable pipeline datastore",
+			beforeFunc: func(t *testing.T, envdir EnvDir) {
+				t.Helper()
+
+				// Create the artifacts for the migration and merge to the address book
+				arts := envdir.ArtifactsDir()
+				err := arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{
+					DataStore: dataStore1,
+				})
+				require.NoError(t, err)
+
+				err = envdir.MergeMigrationDataStore("0001_initial", "")
+				require.NoError(t, err)
+
+				// Create a durable pipeline artifact with another address book and merge to the address book
+				err = arts.SetDurablePipelines("1742316304198171000")
+				require.NoError(t, err)
+
+				err = arts.SaveChangesetOutput("durable_pipeline", fdeployment.ChangesetOutput{
+					DataStore: dataStore2,
+				})
+				require.NoError(t, err)
+
+				err = envdir.MergeMigrationDataStore("durable_pipeline", arts.timestamp)
+				require.NoError(t, err)
+			},
+			giveMigrationName: "durable_pipeline",
+			want:              mergeDatastore.Seal(),
+		},
+		{
+			name: "success skips with no migration datastore found",
+			beforeFunc: func(t *testing.T, envdir EnvDir) {
+				t.Helper()
+
+				arts := envdir.ArtifactsDir()
+				err := arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{})
+				require.NoError(t, err)
+			},
+			giveMigrationName: "0001_initial",
+			want:              fdatastore.NewMemoryDataStore().Seal(),
+		},
+		{
+			name:              "failure when no migration artifacts directory exists",
+			giveMigrationName: "0001_invalid",
+			wantErr:           "error finding files",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var (
+				fixture = setupTestDomainsFS(t)
+				envDir  = fixture.envDir
+			)
+
+			if tt.beforeFunc != nil {
+				tt.beforeFunc(t, envDir)
+			}
+
+			// Merge the migration's address book into the existing address book
+			err := envDir.MergeMigrationDataStore(tt.giveMigrationName, "")
+
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				assert.ErrorContains(t, err, tt.wantErr)
+			} else {
+				// Check the merged address book
+				got, err := envDir.DataStore()
+
+				require.NoError(t, err)
+				assert.Equal(t, tt.want, got)
+			}
+		})
+	}
+}
+
+func Test_EnvDir_MergeMigrationDataStoreCatalog(t *testing.T) {
+	t.Parallel()
+
+	var (
+		dataStore1 = createDataStore(t,
+			"Contract", version1_0_0,
+			chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector,
+			"0x5B5BBb15ECE0a4Ed8cDab22F902e83F66aBe848f",
+			"qtest1",
+		)
+	)
+
+	tests := []struct {
+		name              string
+		beforeFunc        func(*testing.T, EnvDir)
+		giveMigrationName string
+		mockTransaction   func(ctx context.Context, fn fdatastore.TransactionLogic) error
+		wantErr           string
+	}{
+		{
+			name: "success with merging to catalog",
+			beforeFunc: func(t *testing.T, envdir EnvDir) {
+				t.Helper()
+
+				// Create the artifacts for the migration
+				arts := envdir.ArtifactsDir()
+				err := arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{
+					DataStore: dataStore1,
+				})
+				require.NoError(t, err)
+			},
+			giveMigrationName: "0001_initial",
+			mockTransaction: func(ctx context.Context, fn fdatastore.TransactionLogic) error {
+				// Simulate successful transaction by returning nil
+				return nil
+			},
+		},
+		{
+			name:              "failure when no migration artifacts directory exists",
+			giveMigrationName: "0001_invalid",
+			wantErr:           "error finding files",
+			mockTransaction: func(ctx context.Context, fn fdatastore.TransactionLogic) error {
+				return nil
+			},
+		},
+		{
+			name: "failure when catalog merge fails",
+			beforeFunc: func(t *testing.T, envdir EnvDir) {
+				t.Helper()
+
+				// Create the artifacts for the migration
+				arts := envdir.ArtifactsDir()
+				err := arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{
+					DataStore: dataStore1,
+				})
+				require.NoError(t, err)
+			},
+			giveMigrationName: "0001_initial",
+			mockTransaction: func(ctx context.Context, fn fdatastore.TransactionLogic) error {
+				return errors.New("catalog transaction error")
+			},
+			wantErr: "failed to merge datastore to catalog",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var (
+				fixture     = setupTestDomainsFS(t)
+				envDir      = fixture.envDir
+				mockCatalog = &mockCatalogStoreForTest{
+					withTransactionFn: tt.mockTransaction,
+				}
+			)
+
+			if tt.beforeFunc != nil {
+				tt.beforeFunc(t, envDir)
+			}
+
+			// Merge the migration's datastore to catalog
+			err := envDir.MergeMigrationDataStoreCatalog(context.Background(), tt.giveMigrationName, "", mockCatalog)
+
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				assert.ErrorContains(t, err, tt.wantErr)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func Test_EnvDir_SyncDataStoreToCatalog(t *testing.T) {
+	t.Parallel()
+
+	var (
+		dataStore1 = createDataStore(t,
+			"Contract", version1_0_0,
+			chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector,
+			"0x5B5BBb15ECE0a4Ed8cDab22F902e83F66aBe848f",
+			"qtest1",
+		)
+	)
+
+	tests := []struct {
+		name            string
+		beforeFunc      func(*testing.T, EnvDir)
+		mockTransaction func(ctx context.Context, fn fdatastore.TransactionLogic) error
+		wantErr         string
+	}{
+		{
+			name: "success syncing datastore to catalog",
+			beforeFunc: func(t *testing.T, envdir EnvDir) {
+				t.Helper()
+
+				// Create local datastore files
+				arts := envdir.ArtifactsDir()
+				err := arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{
+					DataStore: dataStore1,
+				})
+				require.NoError(t, err)
+
+				// Merge to local files first
+				err = envdir.MergeMigrationDataStore("0001_initial", "")
+				require.NoError(t, err)
+			},
+			mockTransaction: func(ctx context.Context, fn fdatastore.TransactionLogic) error {
+				// Simulate successful transaction
+				return nil
+			},
+		},
+		{
+			name: "failure when catalog sync fails",
+			beforeFunc: func(t *testing.T, envdir EnvDir) {
+				t.Helper()
+
+				// Create local datastore files
+				arts := envdir.ArtifactsDir()
+				err := arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{
+					DataStore: dataStore1,
+				})
+				require.NoError(t, err)
+
+				// Merge to local files first
+				err = envdir.MergeMigrationDataStore("0001_initial", "")
+				require.NoError(t, err)
+			},
+			mockTransaction: func(ctx context.Context, fn fdatastore.TransactionLogic) error {
+				return errors.New("catalog sync error")
+			},
+			wantErr: "failed to sync datastore to catalog",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var (
+				fixture     = setupTestDomainsFS(t)
+				envDir      = fixture.envDir
+				mockCatalog = &mockCatalogStoreForTest{
+					withTransactionFn: tt.mockTransaction,
+				}
+			)
+
+			if tt.beforeFunc != nil {
+				tt.beforeFunc(t, envDir)
+			}
+
+			// Sync the datastore to catalog
+			err := envDir.SyncDataStoreToCatalog(context.Background(), mockCatalog)
+
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				assert.ErrorContains(t, err, tt.wantErr)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+// mockCatalogStoreForTest is a minimal mock for testing catalog operations
+type mockCatalogStoreForTest struct {
+	withTransactionFn func(ctx context.Context, fn fdatastore.TransactionLogic) error
+}
+
+func (m *mockCatalogStoreForTest) WithTransaction(ctx context.Context, fn fdatastore.TransactionLogic) error {
+	if m.withTransactionFn != nil {
+		return m.withTransactionFn(ctx, fn)
+	}
+
+	return nil
+}
+
+func (m *mockCatalogStoreForTest) Addresses() fdatastore.MutableRefStoreV2[fdatastore.AddressRefKey, fdatastore.AddressRef] {
+	return nil
+}
+
+func (m *mockCatalogStoreForTest) ChainMetadata() fdatastore.MutableStoreV2[fdatastore.ChainMetadataKey, fdatastore.ChainMetadata] {
+	return nil
+}
+
+func (m *mockCatalogStoreForTest) ContractMetadata() fdatastore.MutableStoreV2[fdatastore.ContractMetadataKey, fdatastore.ContractMetadata] {
+	return nil
+}
+
+func (m *mockCatalogStoreForTest) EnvMetadata() fdatastore.MutableUnaryStoreV2[fdatastore.EnvMetadata] {
+	return nil
+}
+
+func Test_EnvDir_DataStoreDirPath(t *testing.T) {
+	t.Parallel()
+
+	envdir := NewEnvDir("domains", "ccip", "staging")
+
+	assert.Equal(t, "domains/ccip/staging/datastore", envdir.DataStoreDirPath())
+}
+
+func Test_EnvDir_DurablePipelinesDirPath(t *testing.T) {
+	t.Parallel()
+
+	envdir := NewEnvDir("domains", "ccip", "staging")
+
+	assert.Equal(t, "domains/ccip/staging/durable_pipelines", envdir.DurablePipelinesDirPath())
+}
+
+func Test_EnvDir_DurablePipelinesInputsDirPath(t *testing.T) {
+	t.Parallel()
+
+	envdir := NewEnvDir("domains", "ccip", "staging")
+
+	assert.Equal(t, "domains/ccip/staging/durable_pipelines/inputs", envdir.DurablePipelinesInputsDirPath())
+}
+
+func Test_EnvDir_CreateDurablePipelinesDir(t *testing.T) {
+	t.Parallel()
+
+	fixture := setupTestDomainsFS(t)
+	envdir := fixture.envDir
+
+	err := envdir.CreateDurablePipelinesDir()
+	require.NoError(t, err)
+
+	// Check if the directories exist
+	_, err = os.Stat(envdir.DurablePipelinesDirPath())
+	require.NoError(t, err)
+
+	_, err = os.Stat(envdir.DurablePipelinesInputsDirPath())
+	require.NoError(t, err)
+
+	// Check if .gitkeep files exist
+	_, err = os.Stat(filepath.Join(envdir.DurablePipelinesDirPath(), ".gitkeep"))
+	require.NoError(t, err)
+
+	_, err = os.Stat(filepath.Join(envdir.DurablePipelinesInputsDirPath(), ".gitkeep"))
+	require.NoError(t, err)
+}
+
+func Test_EnvDir_String(t *testing.T) {
+	t.Parallel()
+
+	envdir := NewEnvDir("domains", "ccip", "staging")
+
+	assert.Equal(t, "ccip/staging", envdir.String())
+}
+
+func Test_EnvDir_DirPath(t *testing.T) {
+	t.Parallel()
+
+	envdir := NewEnvDir("domains", "ccip", "staging")
+
+	assert.Equal(t, "domains/ccip/staging", envdir.DirPath())
+}
+
+func Test_EnvDir_DomainDirPath(t *testing.T) {
+	t.Parallel()
+
+	envdir := NewEnvDir("domains", "ccip", "staging")
+
+	assert.Equal(t, "domains/ccip", envdir.DomainDirPath())
+}
+
+func Test_EnvDir_Key(t *testing.T) {
+	t.Parallel()
+
+	envdir := NewEnvDir("domains", "ccip", "staging")
+
+	assert.Equal(t, "staging", envdir.Key())
+}
+
+func Test_EnvDir_PipelinesFilePath(t *testing.T) {
+	t.Parallel()
+
+	envdir := NewEnvDir("domains", "ccip", "staging")
+
+	assert.Equal(t, "domains/ccip/staging/pipelines.go", envdir.PipelinesFilePath())
+}
+
+func Test_EnvDir_AddressRefsFilePath(t *testing.T) {
+	t.Parallel()
+
+	envdir := NewEnvDir("domains", "ccip", "staging")
+
+	assert.Equal(t, "domains/ccip/staging/datastore/address_refs.json", envdir.AddressRefsFilePath())
+}
+
+func Test_EnvDir_ChainMetadataFilePath(t *testing.T) {
+	t.Parallel()
+
+	envdir := NewEnvDir("domains", "ccip", "staging")
+
+	assert.Equal(t, "domains/ccip/staging/datastore/chain_metadata.json", envdir.ChainMetadataFilePath())
+}
+
+func Test_EnvDir_ContractMetadataFilePath(t *testing.T) {
+	t.Parallel()
+
+	envdir := NewEnvDir("domains", "ccip", "staging")
+
+	assert.Equal(t, "domains/ccip/staging/datastore/contract_metadata.json", envdir.ContractMetadataFilePath())
+}
+
+func Test_EnvDir_EnvMetadataFilePath(t *testing.T) {
+	t.Parallel()
+
+	envdir := NewEnvDir("domains", "ccip", "staging")
+
+	assert.Equal(t, "domains/ccip/staging/datastore/env_metadata.json", envdir.EnvMetadataFilePath())
+}
+
+func Test_EnvDir_MigrationsFilePath(t *testing.T) {
+	t.Parallel()
+
+	envdir := NewEnvDir("domains", "ccip", "staging")
+
+	assert.Equal(t, "domains/ccip/staging/migrations.go", envdir.MigrationsFilePath())
+}
+
+func Test_EnvDir_MigrationsArchiveFilePath(t *testing.T) {
+	t.Parallel()
+
+	envdir := NewEnvDir("domains", "ccip", "staging")
+
+	assert.Equal(t, "domains/ccip/staging/migrations_archive.go", envdir.MigrationsArchiveFilePath())
+}
+
+func Test_EnvDir_InputsDirPath(t *testing.T) {
+	t.Parallel()
+
+	envdir := NewEnvDir("domains", "ccip", "staging")
+
+	assert.Equal(t, "domains/ccip/staging/inputs", envdir.InputsDirPath())
+}
+
+func Test_EnvDir_AddressBook(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		give    func(*testing.T, testDomainFS) EnvDir
+		want    fdeployment.AddressBook
+		wantErr string
+	}{
+		{
+			name: "success",
+			give: func(t *testing.T, fixture testDomainFS) EnvDir {
+				t.Helper()
+
+				return fixture.envDir
+			},
+			want: fdeployment.NewMemoryAddressBookFromMap(map[uint64]map[string]fdeployment.TypeAndVersion{}),
+		},
+		{
+			name: "failed to read file: missing file",
+			give: func(t *testing.T, fixture testDomainFS) EnvDir {
+				t.Helper()
+
+				return fixture.domain.EnvDir("invalid")
+			},
+			wantErr: "failed to read file",
+		},
+		{
+			name: "failed to unmarshal JSON",
+			give: func(t *testing.T, fixture testDomainFS) EnvDir {
+				t.Helper()
+
+				// Create an empty file in a new environment to simulate a corrupted address book.
+				err := os.Mkdir(filepath.Join(fixture.domain.DirPath(), "test"), 0755)
+				require.NoError(t, err)
+
+				ab, err := os.Create(filepath.Join(fixture.domain.DirPath(), "test", AddressBookFileName))
+				require.NoError(t, err)
+				defer ab.Close()
+
+				return fixture.domain.EnvDir("test")
+			},
+			wantErr: "failed to unmarshal JSON",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			require.NotNil(t, tt.give)
+
+			fixture := setupTestDomainsFS(t)
+			envdir := tt.give(t, fixture)
+
+			got, err := envdir.AddressBook()
+
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				assert.ErrorContains(t, err, tt.wantErr)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.want, got)
+			}
+		})
+	}
+}
+
+func Test_EnvDir_DataStore(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		give    func(*testing.T, testDomainFS) EnvDir
+		want    fdatastore.DataStore
+		wantErr string
+	}{
+		{
+			name: "success",
+			give: func(t *testing.T, fixture testDomainFS) EnvDir {
+				t.Helper()
+
+				return fixture.envDir
+			},
+			want: fdatastore.NewMemoryDataStore().Seal(),
+		},
+		{
+			name: "empty file will return new empty datastore",
+			give: func(t *testing.T, fixture testDomainFS) EnvDir {
+				t.Helper()
+
+				// Create empty files in a new environment to simulate a corrupted fdatastore.
+				err := os.Mkdir(filepath.Join(fixture.domain.DirPath(), "test"), 0755)
+				require.NoError(t, err)
+
+				err = os.Mkdir(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath()), 0755)
+				require.NoError(t, err)
+
+				ar, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), AddressRefsFileName))
+				require.NoError(t, err)
+				_, err = ar.WriteString("[]")
+				require.NoError(t, err)
+				defer ar.Close()
+
+				ch, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), ChainMetadataFileName))
+				require.NoError(t, err)
+				_, err = ch.WriteString("[]")
+				require.NoError(t, err)
+				defer ch.Close()
+
+				cm, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), ContractMetadataFileName))
+				require.NoError(t, err)
+				_, err = cm.WriteString("[]")
+				require.NoError(t, err)
+				defer cm.Close()
+
+				em, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), EnvMetadataFileName))
+				require.NoError(t, err)
+				_, err = em.WriteString("null")
+				require.NoError(t, err)
+				defer em.Close()
+
+				return fixture.domain.EnvDir("test")
+			},
+			want: fdatastore.NewMemoryDataStore().Seal(),
+		},
+		{
+			name: "failed to unmarshal address ref JSON",
+			give: func(t *testing.T, fixture testDomainFS) EnvDir {
+				t.Helper()
+
+				// Create empty files in a new environment to simulate a corrupted fdatastore.
+				err := os.Mkdir(filepath.Join(fixture.domain.DirPath(), "test"), 0755)
+				require.NoError(t, err)
+
+				err = os.Mkdir(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath()), 0755)
+				require.NoError(t, err)
+
+				ar, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), AddressRefsFileName))
+				require.NoError(t, err)
+				_, err = ar.WriteString("invalid")
+				require.NoError(t, err)
+				defer ar.Close()
+
+				ch, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), ChainMetadataFileName))
+				require.NoError(t, err)
+				_, err = ch.WriteString("[]")
+				require.NoError(t, err)
+				defer ch.Close()
+
+				cm, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), ContractMetadataFileName))
+				require.NoError(t, err)
+				_, err = cm.WriteString("[]")
+				require.NoError(t, err)
+				defer cm.Close()
+
+				em, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), EnvMetadataFileName))
+				require.NoError(t, err)
+				_, err = em.WriteString("null")
+				require.NoError(t, err)
+				defer em.Close()
+
+				return fixture.domain.EnvDir("test")
+			},
+			wantErr: "failed to unmarshal address refs JSON",
+		},
+		{
+			name: "failed to unmarshal chain metadata JSON",
+			give: func(t *testing.T, fixture testDomainFS) EnvDir {
+				t.Helper()
+
+				// Create empty files in a new environment to simulate a corrupted fdatastore.
+				err := os.Mkdir(filepath.Join(fixture.domain.DirPath(), "test"), 0755)
+				require.NoError(t, err)
+
+				err = os.Mkdir(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath()), 0755)
+				require.NoError(t, err)
+
+				ar, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), AddressRefsFileName))
+				require.NoError(t, err)
+				_, err = ar.WriteString("[]")
+				require.NoError(t, err)
+				defer ar.Close()
+
+				ch, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), ChainMetadataFileName))
+				require.NoError(t, err)
+				_, err = ch.WriteString("invalid")
+				require.NoError(t, err)
+				defer ch.Close()
+
+				cm, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), ContractMetadataFileName))
+				require.NoError(t, err)
+				_, err = cm.WriteString("[]")
+				require.NoError(t, err)
+				defer cm.Close()
+
+				em, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), EnvMetadataFileName))
+				require.NoError(t, err)
+				_, err = em.WriteString("null")
+				require.NoError(t, err)
+				defer em.Close()
+
+				return fixture.domain.EnvDir("test")
+			},
+			wantErr: "failed to unmarshal chain metadata JSON",
+		},
+		{
+			name: "failed to unmarshal contract metadata JSON",
+			give: func(t *testing.T, fixture testDomainFS) EnvDir {
+				t.Helper()
+
+				// Create empty files in a new environment to simulate a corrupted fdatastore.
+				err := os.Mkdir(filepath.Join(fixture.domain.DirPath(), "test"), 0755)
+				require.NoError(t, err)
+
+				err = os.Mkdir(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath()), 0755)
+				require.NoError(t, err)
+
+				ar, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), AddressRefsFileName))
+				require.NoError(t, err)
+				_, err = ar.WriteString("[]")
+				require.NoError(t, err)
+				defer ar.Close()
+
+				ch, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), ChainMetadataFileName))
+				require.NoError(t, err)
+				_, err = ch.WriteString("[]")
+				require.NoError(t, err)
+				defer ch.Close()
+
+				cm, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), ContractMetadataFileName))
+				require.NoError(t, err)
+				_, err = cm.WriteString("invalid")
+				require.NoError(t, err)
+				defer cm.Close()
+
+				em, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), EnvMetadataFileName))
+				require.NoError(t, err)
+				_, err = em.WriteString("null")
+				require.NoError(t, err)
+				defer em.Close()
+
+				return fixture.domain.EnvDir("test")
+			},
+			wantErr: "failed to unmarshal contract metadata JSON",
+		},
+		{
+			name: "failed to unmarshal env metadata JSON",
+			give: func(t *testing.T, fixture testDomainFS) EnvDir {
+				t.Helper()
+
+				// Create empty files in a new environment to simulate a corrupted fdatastore.
+				err := os.Mkdir(filepath.Join(fixture.domain.DirPath(), "test"), 0755)
+				require.NoError(t, err)
+
+				err = os.Mkdir(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath()), 0755)
+				require.NoError(t, err)
+
+				ar, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), AddressRefsFileName))
+				require.NoError(t, err)
+				_, err = ar.WriteString("[]")
+				require.NoError(t, err)
+				defer ar.Close()
+
+				ch, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), ChainMetadataFileName))
+				require.NoError(t, err)
+				_, err = ch.WriteString("[]")
+				require.NoError(t, err)
+				defer ch.Close()
+
+				cm, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), ContractMetadataFileName))
+				require.NoError(t, err)
+				_, err = cm.WriteString("[]")
+				require.NoError(t, err)
+				defer cm.Close()
+
+				em, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), EnvMetadataFileName))
+				require.NoError(t, err)
+				_, err = em.WriteString("invalid")
+				require.NoError(t, err)
+				defer em.Close()
+
+				return fixture.domain.EnvDir("test")
+			},
+			wantErr: "failed to unmarshal env metadata JSON",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			require.NotNil(t, tt.give)
+
+			fixture := setupTestDomainsFS(t)
+			envdir := tt.give(t, fixture)
+
+			got, err := envdir.DataStore()
+
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				assert.ErrorContains(t, err, tt.wantErr)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.want, got)
+			}
+		})
+	}
+}
+
+func Test_EnvDir_LoadNodes(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		beforeFunc func(*testing.T, testDomainFS)
+		want       *nodes.Nodes
+		wantErr    string
+	}{
+		{
+			name: "success with no nodes in file",
+			want: nodes.NewNodes([]string{}),
+		},
+		{
+			name: "success with nodes in file",
+			beforeFunc: func(t *testing.T, fixture testDomainFS) {
+				t.Helper()
+
+				nodesFile, err := os.Create(fixture.envDir.NodesFilePath())
+				require.NoError(t, err)
+				defer nodesFile.Close()
+
+				_, err = nodesFile.WriteString(`{
+					"nodes": {
+						"node1": {},
+						"node2": {}
+					}
+				}`)
+				require.NoError(t, err)
+
+				err = nodesFile.Sync()
+				require.NoError(t, err)
+			},
+			want: nodes.NewNodes([]string{"node1", "node2"}),
+		},
+		{
+			name: "failure with file read error",
+			beforeFunc: func(t *testing.T, fixture testDomainFS) {
+				t.Helper()
+
+				err := os.Remove(fixture.envDir.NodesFilePath())
+				require.NoError(t, err)
+			},
+			wantErr: "failed to read",
+		},
+		{
+			name: "failure with file unmarshal error",
+			beforeFunc: func(t *testing.T, fixture testDomainFS) {
+				t.Helper()
+
+				// Truncates the file
+				nodesFile, err := os.Create(fixture.envDir.NodesFilePath())
+				require.NoError(t, err)
+				defer nodesFile.Close()
+			},
+			wantErr: "failed to unmarshal",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			fixture := setupTestDomainsFS(t)
+
+			if tt.beforeFunc != nil {
+				tt.beforeFunc(t, fixture)
+			}
+
+			nodes, err := fixture.envDir.LoadNodes()
+
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				assert.ErrorContains(t, err, tt.wantErr)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.want, nodes)
+			}
+		})
+	}
+}
+
+func Test_EnvDir_SaveFile(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		beforeFunc  func(*testing.T, testDomainFS)
+		giveNodeIDs []string
+		want        *nodes.Nodes
+		wantErr     string
+	}{
+		{
+			name:        "success with all new nodes",
+			giveNodeIDs: []string{"node1", "node2"},
+			want:        nodes.NewNodes([]string{"node1", "node2"}),
+		},
+		{
+			name: "success with all adding and overwriting nodes",
+			beforeFunc: func(t *testing.T, fixture testDomainFS) {
+				t.Helper()
+
+				nodesFile, err := os.Create(fixture.envDir.NodesFilePath())
+				require.NoError(t, err)
+				defer nodesFile.Close()
+
+				_, err = nodesFile.WriteString(`{
+					"nodes": {
+						"node1": {},
+						"node3": {}
+					}
+				}`)
+				require.NoError(t, err)
+
+				err = nodesFile.Sync()
+				require.NoError(t, err)
+			},
+			giveNodeIDs: []string{"node1", "node2"},
+			want:        nodes.NewNodes([]string{"node1", "node2", "node3"}),
+		},
+		{
+			name: "success with non existent nodes file",
+			beforeFunc: func(t *testing.T, fixture testDomainFS) {
+				t.Helper()
+
+				err := os.Remove(fixture.envDir.NodesFilePath())
+				require.NoError(t, err)
+			},
+			giveNodeIDs: []string{"node1", "node2"},
+			want:        nodes.NewNodes([]string{"node1", "node2"}),
+		},
+		{
+			name: "failure with loading existing file",
+			beforeFunc: func(t *testing.T, fixture testDomainFS) {
+				t.Helper()
+
+				nodesFile, err := os.Create(fixture.envDir.NodesFilePath())
+				require.NoError(t, err)
+				defer nodesFile.Close()
+
+				_, err = nodesFile.Write([]byte{})
+				require.NoError(t, err)
+
+				err = nodesFile.Sync()
+				require.NoError(t, err)
+			},
+			giveNodeIDs: []string{"node1", "node2"},
+			wantErr:     "failed to unmarshal JSON",
+		},
+		{
+			name: "failure with writing file due to permissions",
+			beforeFunc: func(t *testing.T, fixture testDomainFS) {
+				t.Helper()
+
+				err := os.Chmod(fixture.envDir.NodesFilePath(), 0400)
+				require.NoError(t, err)
+			},
+			giveNodeIDs: []string{"node1", "node2"},
+			wantErr:     "permission denied",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			fixture := setupTestDomainsFS(t)
+
+			if tt.beforeFunc != nil {
+				tt.beforeFunc(t, fixture)
+			}
+
+			err := fixture.envDir.SaveNodes(tt.giveNodeIDs)
+
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				assert.ErrorContains(t, err, tt.wantErr)
+			} else {
+				nodes, err := fixture.envDir.LoadNodes()
+
+				require.NoError(t, err)
+				assert.Equal(t, tt.want, nodes)
+			}
+		})
+	}
+}
+
+func Test_EnvDir_SaveViewState(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		giveState json.Marshaler
+		want      string
+		wantErr   string
+	}{
+		{
+			name: "success",
+			giveState: &testMarshaler{
+				Name: "test",
+			},
+			want: `{"Name":"test"}`,
+		},
+		{
+			name:      "save error",
+			giveState: &failedMarshaler{},
+			wantErr:   "unable to marshal state",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			fixture := setupTestDomainsFS(t)
+
+			err := fixture.envDir.SaveViewState(tt.giveState)
+
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				assert.ErrorContains(t, err, tt.wantErr)
+			} else {
+				require.NoError(t, err)
+				b, err := os.ReadFile(fixture.envDir.ViewStateFilePath())
+				require.NoError(t, err)
+
+				assert.JSONEq(t, tt.want, string(b))
+			}
+		})
+	}
+}

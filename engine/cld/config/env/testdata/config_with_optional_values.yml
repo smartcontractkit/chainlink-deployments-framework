@@ -1,0 +1,29 @@
+# This is a test config file for the config package.
+onchain:
+  kms:
+    key_id: "f1a2b3c4"
+    key_region: "us-west-1"
+  evm:
+    deployer_key: "0xabc"
+  solana:
+    wallet_key: "0xbcd"
+    programs_dir_path: "/tmp/program"
+  aptos:
+    deployer_key: "0xcde"
+  tron:
+    deployer_key: "0xdef"
+  sui:
+    deployer_key: "0xefg"
+  ton:
+    deployer_key: "0xedd"
+    wallet_version: "V5R1"
+offchain:
+  job_distributor:
+    endpoints:
+      wsrpc: "ws://localhost:1234"
+      grpc: "grpc://localhost:4567"
+  ocr:
+    x_signers: "rabid mouse"
+    x_proposers: "furious fox"
+catalog:
+  grpc: "http://localhost:1000"
