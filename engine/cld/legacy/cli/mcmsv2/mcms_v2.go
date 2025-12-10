@@ -119,7 +119,7 @@ func BuildMCMSv2Cmd(lggr logger.Logger, domain cldf_domain.Domain, proposalConte
 	cmd.AddCommand(buildExecuteChainv2Cmd(lggr, domain, proposalContextProvider))
 	cmd.AddCommand(buildExecuteOperationv2Cmd(lggr, domain, proposalContextProvider))
 	cmd.AddCommand(buildSetRootv2Cmd(lggr, domain, proposalContextProvider))
-	cmd.AddCommand(buildGetOpCountV2Cmd(lggr, domain))
+	cmd.AddCommand(buildGetOpCountV2Cmd(lggr, domain, proposalContextProvider))
 	cmd.AddCommand(buildMCMSErrorDecode(lggr, domain, proposalContextProvider))
 	cmd.AddCommand(buildRunTimelockIsPendingV2Cmd(lggr, domain))
 	cmd.AddCommand(buildRunTimelockIsReadyToExecuteV2Cmd(lggr, domain))
@@ -414,13 +414,13 @@ func buildExecuteChainv2Cmd(lggr logger.Logger, domain cldf_domain.Domain, propo
 	return cmd
 }
 
-func buildGetOpCountV2Cmd(lggr logger.Logger, domain cldf_domain.Domain) *cobra.Command {
+func buildGetOpCountV2Cmd(lggr logger.Logger, domain cldf_domain.Domain, proposalCtxProvider analyzer.ProposalContextProvider) *cobra.Command {
 	return &cobra.Command{
 		Use:   "get-op-count",
 		Short: "Gets op count",
 		Long:  ``,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := newCfgv2(lggr, cmd, domain, nil, acceptExpiredProposal)
+			cfg, err := newCfgv2(lggr, cmd, domain, proposalCtxProvider, acceptExpiredProposal)
 			if err != nil {
 				return fmt.Errorf("error creating config: %w", err)
 			}
