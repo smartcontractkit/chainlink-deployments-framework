@@ -13,7 +13,6 @@ import (
 	"github.com/avast/retry-go/v4"
 	"github.com/testcontainers/testcontainers-go"
 
-	"github.com/xssnick/tonutils-go/address"
 	"github.com/xssnick/tonutils-go/tlb"
 	"github.com/xssnick/tonutils-go/ton"
 	"github.com/xssnick/tonutils-go/ton/wallet"
@@ -218,54 +217,6 @@ func createTonWallet(client ton.APIClientWrapped, versionConfig wallet.VersionCo
 	}
 
 	return pw, nil
-}
-
-func fundTonWallets(ctx context.Context, client ton.APIClientWrapped, recipients []*address.Address, amounts []tlb.Coins) error {
-	if len(amounts) != len(recipients) {
-		return errors.New("recipients and amounts must have the same length")
-	}
-
-	// initialize the prefunded wallet(Highload-V2), for other wallets, see https://github.com/neodix42/mylocalton-docker#pre-installed-wallets
-	version := wallet.HighloadV2Verified //nolint:staticcheck // SA1019: only available option in mylocalton-docker
-	rawHlWallet, err := wallet.FromSeed(client, strings.Fields(blockchain.DefaultTonHlWalletMnemonic), version)
-	if err != nil {
-		return fmt.Errorf("failed to create wallet from seed: %w", err)
-	}
-
-	mcFunderWallet, err := wallet.FromPrivateKeyWithOptions(client, rawHlWallet.PrivateKey(), version, wallet.WithWorkchain(-1))
-	if err != nil {
-		return fmt.Errorf("failed to create wallet from private key: %w", err)
-	}
-
-	funder, err := mcFunderWallet.GetSubwallet(uint32(42))
-	if err != nil {
-		return fmt.Errorf("failed to get subwallet: %w", err)
-	}
-
-	// double check funder address
-	if funder.Address().StringRaw() != blockchain.DefaultTonHlWalletAddress {
-		return fmt.Errorf("funder address mismatch: %s != %s", funder.Address().StringRaw(), blockchain.DefaultTonHlWalletAddress)
-	}
-
-	// create transfer messages for each recipient
-	messages := make([]*wallet.Message, len(recipients))
-	for i, addr := range recipients {
-		transfer, terr := funder.BuildTransfer(addr, amounts[i], false, "")
-		if terr != nil {
-			return fmt.Errorf("failed to build transfer: %w", terr)
-		}
-		messages[i] = transfer
-	}
-
-	// we don't wait for the transaction to be confirmed here, as it may take some time
-	// the name SendManyWaitTransaction is misleading, it doesn't wait for the transaction to be confirmed,
-	// it just sends the transactions(TON has asynchronous transactions)
-	_, _, txerr := funder.SendManyWaitTransaction(ctx, messages)
-	if txerr != nil {
-		return fmt.Errorf("failed to send many wait transaction: %w", txerr)
-	}
-
-	return nil
 }
 
 func getMasterchainBlockID(ctx context.Context, client ton.APIClientWrapped) (*ton.BlockIDExt, error) {
