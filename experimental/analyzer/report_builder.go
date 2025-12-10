@@ -49,7 +49,7 @@ func BuildProposalReport(ctx context.Context, proposalContext ProposalContext, e
 			}
 			calls = dec
 		case chainsel.FamilyTon:
-			dec, err := AnalyzeTONTransactions(proposalContext, chainSel, []types.Transaction{op.Transaction})
+			dec, err := AnalyzeTONTransactions(proposalContext, []types.Transaction{op.Transaction})
 			if err != nil {
 				return nil, err
 			}
@@ -135,7 +135,7 @@ func BuildTimelockReport(ctx context.Context, proposalCtx ProposalContext, env d
 				}
 			}
 		case chainsel.FamilyTon:
-			dec, err := AnalyzeTONTransactions(proposalCtx, chainSel, batch.Transactions)
+			dec, err := AnalyzeTONTransactions(proposalCtx, batch.Transactions)
 			if err != nil {
 				return nil, err
 			}

@@ -13,8 +13,6 @@ import (
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/mcms"
 	mcmsaptossdk "github.com/smartcontractkit/mcms/sdk/aptos"
-	mcmssuisdk "github.com/smartcontractkit/mcms/sdk/sui"
-	mcmstonsdk "github.com/smartcontractkit/mcms/sdk/ton"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
@@ -309,7 +307,7 @@ func batchOperationsToUpfDecodedCalls(ctx context.Context, proposalContext mcmsa
 			}
 
 		case chainsel.FamilyTon:
-			describedTxs, err := mcmsanalyzer.AnalyzeTONTransactions(proposalContext, chainSel, batch.Transactions)
+			describedTxs, err := mcmsanalyzer.AnalyzeTONTransactions(proposalContext, batch.Transactions)
 			if err != nil {
 				return nil, err
 			}
@@ -380,8 +378,7 @@ func analyzeTransaction(
 		return analyzeResult, "", nil
 
 	case chainsel.FamilySui:
-		decoder := mcmssuisdk.NewDecoder()
-		analyzeResult, err := mcmsanalyzer.AnalyzeSuiTransaction(proposalCtx, decoder, uint64(mcmsOp.ChainSelector), mcmsOp.Transaction)
+		analyzeResult, err := mcmsanalyzer.AnalyzeSuiTransaction(proposalCtx, uint64(mcmsOp.ChainSelector), mcmsOp.Transaction)
 		if err != nil {
 			return nil, "", err
 		}
@@ -389,8 +386,7 @@ func analyzeTransaction(
 		return analyzeResult, "", nil
 
 	case chainsel.FamilyTon:
-		decoder := mcmstonsdk.NewDecoder()
-		analyzeResult, err := mcmsanalyzer.AnalyzeTONTransaction(proposalCtx, decoder, uint64(mcmsOp.ChainSelector), mcmsOp.Transaction)
+		analyzeResult, err := mcmsanalyzer.AnalyzeTONTransaction(proposalCtx, mcmsOp.Transaction)
 		if err != nil {
 			return nil, "", err
 		}

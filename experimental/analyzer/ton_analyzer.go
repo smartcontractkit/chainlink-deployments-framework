@@ -3,16 +3,14 @@ package analyzer
 import (
 	"fmt"
 
-	"github.com/smartcontractkit/mcms/sdk"
 	"github.com/smartcontractkit/mcms/sdk/ton"
 	"github.com/smartcontractkit/mcms/types"
 )
 
-func AnalyzeTONTransactions(ctx ProposalContext, chainSelector uint64, txs []types.Transaction) ([]*DecodedCall, error) {
-	decoder := ton.NewDecoder()
+func AnalyzeTONTransactions(ctx ProposalContext, txs []types.Transaction) ([]*DecodedCall, error) {
 	decodedTxs := make([]*DecodedCall, len(txs))
 	for i, op := range txs {
-		analyzedTransaction, err := AnalyzeTONTransaction(ctx, decoder, chainSelector, op)
+		analyzedTransaction, err := AnalyzeTONTransaction(ctx, op)
 		if err != nil {
 			return nil, fmt.Errorf("failed to analyze TON transaction %d: %w", i, err)
 		}
@@ -22,7 +20,8 @@ func AnalyzeTONTransactions(ctx ProposalContext, chainSelector uint64, txs []typ
 	return decodedTxs, nil
 }
 
-func AnalyzeTONTransaction(ctx ProposalContext, decoder sdk.Decoder, chainSelector uint64, mcmsTx types.Transaction) (*DecodedCall, error) {
+func AnalyzeTONTransaction(_ ProposalContext, mcmsTx types.Transaction) (*DecodedCall, error) {
+	decoder := ton.NewDecoder()
 	decodedOp, err := decoder.Decode(mcmsTx, mcmsTx.ContractType)
 	if err != nil {
 		// Don't return an error to not block the whole proposal decoding because of a single transaction decode failure
