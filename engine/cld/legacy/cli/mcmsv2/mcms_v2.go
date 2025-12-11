@@ -8,8 +8,11 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"net/url"
 	"os"
+	"os/exec"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -18,6 +21,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	gethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/go-viper/mapstructure/v2"
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/rpc"
@@ -43,6 +47,7 @@ import (
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	cldf_chains "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/chains"
 	cldf_config "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config"
+	cldf_config_domain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/domain"
 	cldf_domain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	cldfenvironment "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
 
@@ -880,6 +885,11 @@ func buildMCMSv2AnalyzeProposalCmd(
 				return errors.New("expected proposal to be have non-nil *TimelockProposal")
 			}
 
+			err = fetchPipelinePRData(cmd.Context(), lggr, domain, cfgv2, proposalCtxProvider, &commandRunner{})
+			if err != nil {
+				return fmt.Errorf("failed to fetch pipeline PR data: %w", err)
+			}
+
 			// Set renderer based on format flag
 			renderer, err := createRendererFromFormat(format)
 			if err != nil {
@@ -1022,6 +1032,11 @@ func buildMCMSv2ConvertUpf(
 
 			if cfgv2.timelockProposal == nil {
 				return errors.New("expected proposal to be a TimelockProposal")
+			}
+
+			err = fetchPipelinePRData(cmd.Context(), lggr, domain, cfgv2, proposalCtxProvider, &commandRunner{})
+			if err != nil {
+				return fmt.Errorf("failed to fetch pipeline PR data: %w", err)
 			}
 
 			// Get signers for the proposal
@@ -1850,4 +1865,141 @@ func checkTxNonce(
 	_, err = Retry(ctx, compareOpCountWithTxNonce, retryIfTxNonceTooLarge)
 
 	return err
+}
+
+type pipelinePullRequestMetadata struct {
+	PRNumber int    `mapstructure:"prNumber"`
+	Branch   string `mapstructure:"branch"`
+}
+
+type commandRunnerI interface {
+	Run(ctx context.Context, command string, args ...string) ([]byte, error)
+}
+
+type commandRunner struct{}
+
+func (commandRunner) Run(ctx context.Context, command string, args ...string) ([]byte, error) {
+	return exec.CommandContext(ctx, command, args...).Output()
+}
+
+func fetchPipelinePRData(
+	ctx context.Context, lggr logger.Logger, domain cldf_domain.Domain, cfg *cfgv2,
+	proposalCtxProvider analyzer.ProposalContextProvider, execCommand commandRunnerI,
+) error {
+	lggr.Debug("fetching pipeline PR data")
+
+	if cfg.timelockProposal.Metadata == nil {
+		lggr.Info("proposal does not contain metadata; skipping pipeline PR data fetch")
+		return nil
+	}
+
+	value, exists := cfg.timelockProposal.Metadata["pipelinePullRequest"]
+	if !exists {
+		lggr.Info("pipeline PR metadata not found in proposal; skipping pipeline PR data fetch")
+		return nil
+	}
+
+	domainCfg, err := cldf_config.Load(domain, cfg.env.Name, lggr)
+	if err != nil {
+		return fmt.Errorf("failed to load domain config: %w", err)
+	}
+	usingFileDataStore := domainCfg.DatastoreType != cldf_config_domain.DatastoreTypeCatalog &&
+		domainCfg.DatastoreType != cldf_config_domain.DatastoreTypeAll
+
+	var pipelinePRMetadata pipelinePullRequestMetadata
+	err = mapstructure.Decode(value, &pipelinePRMetadata)
+	if err != nil {
+		return fmt.Errorf("error decoding pipeline PR metadata: %w", err)
+	}
+
+	output, err := execCommand.Run(ctx, "gh", "pr", "view", strconv.Itoa(pipelinePRMetadata.PRNumber), //nolint:gosec
+		"--json", "files", "--jq", ".files[].path")
+	if err != nil {
+		lggr.Warn("failed to fetch PR files from Github; skipping pipeline PR data fetch")
+		return nil //nolint:nilerr
+	}
+
+	envDir := domain.EnvDir(cfg.env.Name)
+	envUpdated := false
+
+	updateAddressBook := func(fileContent []byte) error {
+		addressesByChain := make(map[uint64]map[string]cldf.TypeAndVersion)
+		uerr := json.Unmarshal(fileContent, &addressesByChain)
+		if uerr != nil {
+			return fmt.Errorf("failed to unmarshal address book JSON: %w", uerr)
+		}
+
+		cfg.env.ExistingAddresses = cldf.NewMemoryAddressBookFromMap(addressesByChain) //nolint:staticcheck
+		envUpdated = true
+		lggr.Infof("updated AddressBook with entries from pipeline PR %d", pipelinePRMetadata.PRNumber)
+
+		return nil
+	}
+
+	updateDataStore := func(fileContent []byte) error {
+		envDataStore, uerr := envDir.MutableDataStore()
+		if uerr != nil {
+			return fmt.Errorf("failed to load datastore from environment %s: %w", envDir.DomainKey(), uerr)
+		}
+
+		newDataStore := datastore.NewMemoryDataStore()
+		uerr = json.Unmarshal(fileContent, &newDataStore.AddressRefStore.Records)
+		if uerr != nil {
+			return fmt.Errorf("failed to unmarshal address refs JSON: %w", uerr)
+		}
+
+		uerr = envDataStore.Merge(newDataStore.Seal())
+		if uerr != nil {
+			return fmt.Errorf("failed to load merge datastore: %w", uerr)
+		}
+
+		cfg.env.DataStore = envDataStore.Seal()
+		envUpdated = true
+		lggr.Infof("updated DataStore with entries from pipeline PR %d", pipelinePRMetadata.PRNumber)
+
+		return nil
+	}
+
+	prFiles := strings.FieldsFunc(string(output), func(s rune) bool { return s == '\n' || s == '\r' })
+	for _, prFilePath := range prFiles {
+		// REVIEW: do we need to fetch other datastore files, such as chainMetadata or contractMetadata?
+		var localFilePath string
+		var updateEnv func(fileContent []byte) error
+		if strings.HasSuffix(envDir.AddressBookFilePath(), prFilePath) {
+			localFilePath = envDir.AddressBookFilePath()
+			updateEnv = updateAddressBook
+		}
+		if strings.HasSuffix(envDir.AddressRefsFilePath(), prFilePath) && usingFileDataStore {
+			localFilePath = envDir.AddressRefsFilePath()
+			updateEnv = updateDataStore
+		}
+		if localFilePath == "" || updateEnv == nil {
+			lggr.Debugf("skipping file %q\n", prFilePath)
+			continue
+		}
+
+		escapedFilePath := url.PathEscape(strings.TrimSuffix(prFilePath, "/"))
+		contentPath := fmt.Sprintf("/repos/smartcontractkit/chainlink-deployments/contents/%s?ref=%s",
+			escapedFilePath, pipelinePRMetadata.Branch)
+		output, perr := execCommand.Run(ctx, "gh", "api", "-H", "Accept: application/vnd.github.v3.raw+json", contentPath)
+		if perr != nil {
+			lggr.Warnf("failed to fetch PR files from Github (%s); skipping pipeline PR data fetch", perr)
+			return nil
+		}
+
+		perr = updateEnv(output)
+		if perr != nil {
+			lggr.Warnf("failed to update environment: %s", perr)
+			return nil
+		}
+	}
+
+	if envUpdated {
+		cfg.proposalCtx, err = proposalCtxProvider(cfg.env)
+		if err != nil {
+			return fmt.Errorf("failed to create proposal context after updating environment: %w", err)
+		}
+	}
+
+	return nil
 }
