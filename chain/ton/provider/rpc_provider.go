@@ -39,7 +39,6 @@ type RPCChainProviderConfig struct {
 	// Optional: The TON wallet version to use. Supported versions are: V1R1, V1R2, V1R3, V2R1,
 	// V2R2, V3R1, V3R2, V4R1, V4R2 and V5R1. If no value provided, V5R1 is used as default.
 	WalletVersion WalletVersion
-	Amount        string
 }
 
 // validateLiteserverURL validates the format of a liteserver URL
