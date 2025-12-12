@@ -147,6 +147,7 @@ func TestAnalyzeTONTransaction(t *testing.T) {
 			if tt.wantErrContain != "" {
 				require.Contains(t, result.Method, tt.wantErrContain)
 				require.Nil(t, result.Inputs)
+
 				return
 			}
 
@@ -227,6 +228,7 @@ func TestAnalyzeTONTransactions(t *testing.T) {
 				if len(tt.wantErrContains) > i && tt.wantErrContains[i] != "" {
 					require.Contains(t, result.Method, tt.wantErrContains[i], "call %d", i)
 					require.Nil(t, result.Inputs, "call %d", i)
+
 					continue
 				}
 
