@@ -632,7 +632,10 @@ var timelockProposalTon = func() string {
 	)
 
 	// Marshal the transaction data
-	txData, _ := json.Marshal(tx)
+	txData, err := json.Marshal(tx)
+	if err != nil {
+		panic(fmt.Sprintf("failed to marshal transaction: %v", err))
+	}
 	var txMap map[string]interface{}
 	_ = json.Unmarshal(txData, &txMap)
 
