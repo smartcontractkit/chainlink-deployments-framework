@@ -120,11 +120,11 @@ func BuildMCMSv2Cmd(lggr logger.Logger, domain cldf_domain.Domain, proposalConte
 	cmd.AddCommand(buildExecuteChainv2Cmd(lggr, domain, proposalContextProvider))
 	cmd.AddCommand(buildExecuteOperationv2Cmd(lggr, domain, proposalContextProvider))
 	cmd.AddCommand(buildSetRootv2Cmd(lggr, domain, proposalContextProvider))
-	cmd.AddCommand(buildGetOpCountV2Cmd(lggr, domain))
+	cmd.AddCommand(buildGetOpCountV2Cmd(lggr, domain, proposalContextProvider))
 	cmd.AddCommand(buildMCMSErrorDecode(lggr, domain, proposalContextProvider))
 	cmd.AddCommand(buildRunTimelockIsPendingV2Cmd(lggr, domain))
 	cmd.AddCommand(buildRunTimelockIsReadyToExecuteV2Cmd(lggr, domain))
-	cmd.AddCommand(buildRunTimelockIsDoneV2Cmd(lggr, domain))
+	cmd.AddCommand(buildRunTimelockIsDoneV2Cmd(lggr, domain, proposalContextProvider))
 	cmd.AddCommand(buildRunTimelockIsOperationPendingV2Cmd(lggr, domain))
 	cmd.AddCommand(buildRunTimelockIsOperationReadyToExecuteV2Cmd(lggr, domain))
 	cmd.AddCommand(buildRunTimelockIsOperationDoneV2Cmd(lggr, domain))
@@ -415,13 +415,13 @@ func buildExecuteChainv2Cmd(lggr logger.Logger, domain cldf_domain.Domain, propo
 	return cmd
 }
 
-func buildGetOpCountV2Cmd(lggr logger.Logger, domain cldf_domain.Domain) *cobra.Command {
+func buildGetOpCountV2Cmd(lggr logger.Logger, domain cldf_domain.Domain, proposalCtxProvider analyzer.ProposalContextProvider) *cobra.Command {
 	return &cobra.Command{
 		Use:   "get-op-count",
 		Short: "Gets op count",
 		Long:  ``,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := newCfgv2(lggr, cmd, domain, nil, acceptExpiredProposal)
+			cfg, err := newCfgv2(lggr, cmd, domain, proposalCtxProvider, acceptExpiredProposal)
 			if err != nil {
 				return fmt.Errorf("error creating config: %w", err)
 			}
@@ -511,13 +511,13 @@ func buildRunTimelockIsReadyToExecuteV2Cmd(lggr logger.Logger, domain cldf_domai
 	return cmd
 }
 
-func buildRunTimelockIsDoneV2Cmd(lggr logger.Logger, domain cldf_domain.Domain) *cobra.Command {
+func buildRunTimelockIsDoneV2Cmd(lggr logger.Logger, domain cldf_domain.Domain, proposalContextProvider analyzer.ProposalContextProvider) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "is-timelock-done",
 		Short: "Checks if all operations in a timelock proposal are done executing for the given chain",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create config
-			cfgv2, err := newCfgv2(lggr, cmd, domain, nil, acceptExpiredProposal)
+			cfgv2, err := newCfgv2(lggr, cmd, domain, proposalContextProvider, acceptExpiredProposal)
 			if err != nil {
 				return fmt.Errorf("error creating config: %w", err)
 			}
