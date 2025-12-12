@@ -84,7 +84,7 @@ func makeInvalidTx(contractType string) types.Transaction {
 		OperationMetadata: types.OperationMetadata{ContractType: contractType},
 		To:                tonTestAddress,
 		Data:              []byte{0xFF, 0xFF},
-		AdditionalFields:  json.RawMessage(`{"value":"0"}`),
+		AdditionalFields:  json.RawMessage(`{"value":0}`),
 	}
 }
 
@@ -117,7 +117,7 @@ func TestAnalyzeTONTransaction(t *testing.T) {
 				OperationMetadata: types.OperationMetadata{ContractType: "unknown.type"},
 				To:                tonTestAddress,
 				Data:              []byte{0x01, 0x02},
-				AdditionalFields:  json.RawMessage(`{"value":"0"}`),
+				AdditionalFields:  json.RawMessage(`{"value":0}`),
 			},
 			want:           &DecodedCall{Address: tonTestAddress},
 			wantErrContain: "unknown contract interface: unknown.type",
@@ -128,7 +128,7 @@ func TestAnalyzeTONTransaction(t *testing.T) {
 				OperationMetadata: types.OperationMetadata{ContractType: "com.chainlink.ton.mcms.MCMS"},
 				To:                tonTestAddress,
 				Data:              []byte{},
-				AdditionalFields:  json.RawMessage(`{"value":"0"}`),
+				AdditionalFields:  json.RawMessage(`{"value":0}`),
 			},
 			want:           &DecodedCall{Address: tonTestAddress},
 			wantErrContain: "invalid cell BOC data",

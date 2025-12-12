@@ -195,33 +195,44 @@ func TestChainNameOrUnknown(t *testing.T) {
 	require.Equal(t, "<chain unknown>", chainNameOrUnknown(" "))
 }
 
-func TestBuildProposalReport_FamilyBranches(t *testing.T) {
+func TestBuildProposalReport_FamilyErrors(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name          string
-		selector      uint64
-		expectedError string
+		name        string
+		selector    uint64
+		expectedMsg string
+		wantErr     bool // if true, expect returned error; if false, error is in Method field (TON behavior)
 	}{
 		{
-			name:          "EVM_missing_registry",
-			selector:      chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector,
-			expectedError: "EVM registry is not available",
+			name:        "EVM_missing_registry",
+			selector:    chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector,
+			expectedMsg: "EVM registry is not available",
+			wantErr:     true,
 		},
 		{
-			name:          "Solana_missing_registry",
-			selector:      chainsel.SOLANA_DEVNET.Selector,
-			expectedError: "failed to analyze solana transaction 0: solana decoder registry is not available",
+			name:        "Solana_missing_registry",
+			selector:    chainsel.SOLANA_DEVNET.Selector,
+			expectedMsg: "failed to analyze solana transaction 0: solana decoder registry is not available",
+			wantErr:     true,
 		},
 		{
-			name:          "Aptos_unmarshal_additional_fields",
-			selector:      chainsel.APTOS_TESTNET.Selector,
-			expectedError: "failed to unmarshal Aptos additional fields: unexpected end of JSON input",
+			name:        "Aptos_unmarshal_additional_fields",
+			selector:    chainsel.APTOS_TESTNET.Selector,
+			expectedMsg: "failed to unmarshal Aptos additional fields: unexpected end of JSON input",
+			wantErr:     true,
 		},
 		{
-			name:          "Sui_unmarshal_additional_fields",
-			selector:      chainsel.SUI_TESTNET.Selector,
-			expectedError: "failed to unmarshal Sui additional fields: unexpected end of JSON input",
+			name:        "Sui_unmarshal_additional_fields",
+			selector:    chainsel.SUI_TESTNET.Selector,
+			expectedMsg: "failed to unmarshal Sui additional fields: unexpected end of JSON input",
+			wantErr:     true,
+		},
+		{
+			name:        "TON_decode_failure",
+			selector:    chainsel.TON_TESTNET.Selector,
+			expectedMsg: "failed to decode TON transaction",
+			wantErr:     false, // TON doesn't unmarshal AdditionalFields, so decode errors go to Method field
 		},
 	}
 
@@ -245,40 +256,56 @@ func TestBuildProposalReport_FamilyBranches(t *testing.T) {
 				},
 			}
 
-			_, err := BuildProposalReport(t.Context(), ctx, deployment.Environment{}, proposal)
-			require.Error(t, err)
-			require.Contains(t, err.Error(), tt.expectedError)
+			report, err := BuildProposalReport(t.Context(), ctx, deployment.Environment{}, proposal)
+			if tt.wantErr {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.expectedMsg)
+			} else {
+				require.NoError(t, err)
+				require.Contains(t, report.Operations[0].Calls[0].Method, tt.expectedMsg)
+			}
 		})
 	}
 }
 
-func TestBuildTimelockReport_FamilyBranches(t *testing.T) {
+func TestBuildTimelockReport_FamilyErrors(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name          string
-		selector      uint64
-		expectedError string
+		name        string
+		selector    uint64
+		expectedMsg string
+		wantErr     bool // if true, expect returned error; if false, error is in Method field (TON behavior)
 	}{
 		{
-			name:          "EVM_missing_registry",
-			selector:      chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector,
-			expectedError: "EVM registry is not available",
+			name:        "EVM_missing_registry",
+			selector:    chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector,
+			expectedMsg: "EVM registry is not available",
+			wantErr:     true,
 		},
 		{
-			name:          "Solana_missing_registry",
-			selector:      chainsel.SOLANA_DEVNET.Selector,
-			expectedError: "failed to analyze solana transaction 0: solana decoder registry is not available",
+			name:        "Solana_missing_registry",
+			selector:    chainsel.SOLANA_DEVNET.Selector,
+			expectedMsg: "failed to analyze solana transaction 0: solana decoder registry is not available",
+			wantErr:     true,
 		},
 		{
-			name:          "Aptos_unmarshal_additional_fields",
-			selector:      chainsel.APTOS_TESTNET.Selector,
-			expectedError: "failed to unmarshal Aptos additional fields: unexpected end of JSON input",
+			name:        "Aptos_unmarshal_additional_fields",
+			selector:    chainsel.APTOS_TESTNET.Selector,
+			expectedMsg: "failed to unmarshal Aptos additional fields: unexpected end of JSON input",
+			wantErr:     true,
 		},
 		{
-			name:          "Sui_unmarshal_additional_fields",
-			selector:      chainsel.SUI_TESTNET.Selector,
-			expectedError: "failed to unmarshal Sui additional fields: unexpected end of JSON input",
+			name:        "Sui_unmarshal_additional_fields",
+			selector:    chainsel.SUI_TESTNET.Selector,
+			expectedMsg: "failed to unmarshal Sui additional fields: unexpected end of JSON input",
+			wantErr:     true,
+		},
+		{
+			name:        "TON_decode_failure",
+			selector:    chainsel.TON_TESTNET.Selector,
+			expectedMsg: "failed to decode TON transaction",
+			wantErr:     false, // TON doesn't unmarshal AdditionalFields, so decode errors go to Method field
 		},
 	}
 
@@ -302,9 +329,16 @@ func TestBuildTimelockReport_FamilyBranches(t *testing.T) {
 				},
 			}
 
-			_, err := BuildTimelockReport(t.Context(), proposalCtx, deployment.Environment{}, proposal)
-			require.Error(t, err)
-			require.Contains(t, err.Error(), tt.expectedError)
+			report, err := BuildTimelockReport(t.Context(), proposalCtx, deployment.Environment{}, proposal)
+			if tt.wantErr {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.expectedMsg)
+			} else {
+				require.NoError(t, err)
+				for _, op := range report.Batches[0].Operations {
+					require.Contains(t, op.Calls[0].Method, tt.expectedMsg)
+				}
+			}
 		})
 	}
 }

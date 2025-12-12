@@ -43,11 +43,7 @@ func UpfConvertTimelockProposal(
 		if batch.Metadata == nil || batch.Metadata.DecodedCalldata == nil {
 			continue
 		}
-		if batch.Metadata.ContractType == "RBACTimelock" &&
-			(batch.Metadata.DecodedCalldata.FunctionName == "function scheduleBatch((address,uint256,bytes)[] calls, bytes32 predecessor, bytes32 salt, uint256 delay) returns()" ||
-				batch.Metadata.DecodedCalldata.FunctionName == "function bypasserExecuteBatch((address,uint256,bytes)[] calls) payable returns()" ||
-				batch.Metadata.DecodedCalldata.FunctionName == "BypasserExecuteBatch" ||
-				batch.Metadata.DecodedCalldata.FunctionName == "ScheduleBatch") {
+		if batch.Metadata.ContractType == "RBACTimelock" && isTimelockBatchFunction(batch.Metadata.DecodedCalldata.FunctionName) {
 			batch.Metadata.DecodedCalldata.FunctionArgs["calls"] = decodedBatches[decodedBatchesIndex]
 			decodedBatchesIndex++
 		}
@@ -215,6 +211,33 @@ func asciiHash(data [32]byte) rawBytes {
 	}
 
 	return rawBytes(sb.String())
+}
+
+// isTimelockBatchFunction checks if the function name corresponds to a timelock batch operation
+// across different chain families (EVM, Solana, Sui, Aptos, TON).
+func isTimelockBatchFunction(functionName string) bool {
+	// EVM function signatures
+	if functionName == "function scheduleBatch((address,uint256,bytes)[] calls, bytes32 predecessor, bytes32 salt, uint256 delay) returns()" ||
+		functionName == "function bypasserExecuteBatch((address,uint256,bytes)[] calls) payable returns()" {
+		return true
+	}
+
+	// Solana function names
+	if functionName == "ScheduleBatch" || functionName == "BypasserExecuteBatch" {
+		return true
+	}
+
+	// Sui: mcms::timelock_schedule_batch, mcms::timelock_bypasser_execute_batch
+	// Aptos: package::module::timelock_schedule_batch, package::module::timelock_bypasser_execute_batch
+	// TON: ContractType::ScheduleBatch(0x...), ContractType::BypasserExecuteBatch(0x...)
+	if strings.Contains(functionName, "::timelock_schedule_batch") ||
+		strings.Contains(functionName, "::timelock_bypasser_execute_batch") ||
+		strings.Contains(functionName, "::ScheduleBatch(") ||
+		strings.Contains(functionName, "::BypasserExecuteBatch(") {
+		return true
+	}
+
+	return false
 }
 
 func calculateOpCount(opCount uint64, opIndex int, operations []mcmstypes.Operation) uint64 {

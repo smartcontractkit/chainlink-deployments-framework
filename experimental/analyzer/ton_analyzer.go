@@ -7,6 +7,7 @@ import (
 	"github.com/smartcontractkit/mcms/types"
 )
 
+// AnalyzeTONTransactions decodes a slice of TON transactions and returns their decoded representations.
 func AnalyzeTONTransactions(ctx ProposalContext, txs []types.Transaction) ([]*DecodedCall, error) {
 	decodedTxs := make([]*DecodedCall, len(txs))
 	for i, op := range txs {
@@ -20,11 +21,21 @@ func AnalyzeTONTransactions(ctx ProposalContext, txs []types.Transaction) ([]*De
 	return decodedTxs, nil
 }
 
+// AnalyzeTONTransaction decodes a single TON transaction using the MCMS TON decoder.
+//
+// Unlike Aptos/Sui analyzers, this function does not unmarshal AdditionalFields because
+// the TON decoder only requires tx.Data (BOC cell) and tx.ContractType (metadata).
+// AdditionalFields in TON is only used by the encoder/timelock_converter for the Value field.
+//
+// On decode failure, this function returns a DecodedCall with the error in the Method field
+// instead of returning an error. This allows the proposal to continue processing even if
+// a single transaction fails to decode.
 func AnalyzeTONTransaction(_ ProposalContext, mcmsTx types.Transaction) (*DecodedCall, error) {
 	decoder := ton.NewDecoder()
 	decodedOp, err := decoder.Decode(mcmsTx, mcmsTx.ContractType)
 	if err != nil {
-		// Don't return an error to not block the whole proposal decoding because of a single transaction decode failure
+		// Don't return an error to not block the whole proposal decoding because of a single transaction decode failure.
+		// Instead, put the error message in the Method field so it's visible in the report.
 		errStr := fmt.Errorf("failed to decode TON transaction: %w", err)
 
 		return &DecodedCall{
@@ -32,6 +43,7 @@ func AnalyzeTONTransaction(_ ProposalContext, mcmsTx types.Transaction) (*Decode
 			Method:  errStr.Error(),
 		}, nil
 	}
+
 	namedArgs, err := toNamedFields(decodedOp)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert decoded operation to named arguments: %w", err)
