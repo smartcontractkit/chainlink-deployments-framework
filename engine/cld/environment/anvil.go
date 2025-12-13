@@ -322,7 +322,7 @@ func selectPublicRPC(
 	return fmt.Errorf("no public RPCs found for chain %d", chainSelector)
 }
 
-var privateRpcRegexp = regexp.MustCompile(`^https?://(rpcs|gap\-.*\.(prod|stage))\.cldev\.sh(?::\d+)?/`)
+var privateRpcRegexp = regexp.MustCompile(`^https?://(rpcs\.cldev\.sh|gap\-.*\.(prod|stage)\.cldev\.sh|.*\.tail[a-z0-9]+\.ts\.net)(?::\d+)?/`)
 
 func isPublicRPC(url string) bool {
 	return !privateRpcRegexp.MatchString(url)
