@@ -13,7 +13,6 @@ import (
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/mcms"
 	mcmsaptossdk "github.com/smartcontractkit/mcms/sdk/aptos"
-	mcmssuisdk "github.com/smartcontractkit/mcms/sdk/sui"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
@@ -44,11 +43,7 @@ func UpfConvertTimelockProposal(
 		if batch.Metadata == nil || batch.Metadata.DecodedCalldata == nil {
 			continue
 		}
-		if batch.Metadata.ContractType == "RBACTimelock" &&
-			(batch.Metadata.DecodedCalldata.FunctionName == "function scheduleBatch((address,uint256,bytes)[] calls, bytes32 predecessor, bytes32 salt, uint256 delay) returns()" ||
-				batch.Metadata.DecodedCalldata.FunctionName == "function bypasserExecuteBatch((address,uint256,bytes)[] calls) payable returns()" ||
-				batch.Metadata.DecodedCalldata.FunctionName == "BypasserExecuteBatch" ||
-				batch.Metadata.DecodedCalldata.FunctionName == "ScheduleBatch") {
+		if batch.Metadata.ContractType == "RBACTimelock" && isTimelockBatchFunction(batch.Metadata.DecodedCalldata.FunctionName) {
 			batch.Metadata.DecodedCalldata.FunctionArgs["calls"] = decodedBatches[decodedBatchesIndex]
 			decodedBatchesIndex++
 		}
@@ -218,6 +213,33 @@ func asciiHash(data [32]byte) rawBytes {
 	return rawBytes(sb.String())
 }
 
+// isTimelockBatchFunction checks if the function name corresponds to a timelock batch operation
+// across different chain families (EVM, Solana, Sui, Aptos, TON).
+func isTimelockBatchFunction(functionName string) bool {
+	// EVM function signatures
+	if functionName == "function scheduleBatch((address,uint256,bytes)[] calls, bytes32 predecessor, bytes32 salt, uint256 delay) returns()" ||
+		functionName == "function bypasserExecuteBatch((address,uint256,bytes)[] calls) payable returns()" {
+		return true
+	}
+
+	// Solana function names
+	if functionName == "ScheduleBatch" || functionName == "BypasserExecuteBatch" {
+		return true
+	}
+
+	// Sui: mcms::timelock_schedule_batch, mcms::timelock_bypasser_execute_batch
+	// Aptos: package::module::timelock_schedule_batch, package::module::timelock_bypasser_execute_batch
+	// TON: ContractType::ScheduleBatch(0x...), ContractType::BypasserExecuteBatch(0x...)
+	if strings.Contains(functionName, "::timelock_schedule_batch") ||
+		strings.Contains(functionName, "::timelock_bypasser_execute_batch") ||
+		strings.Contains(functionName, "::ScheduleBatch(") ||
+		strings.Contains(functionName, "::BypasserExecuteBatch(") {
+		return true
+	}
+
+	return false
+}
+
 func calculateOpCount(opCount uint64, opIndex int, operations []mcmstypes.Operation) uint64 {
 	chainSelector := operations[opIndex].ChainSelector
 	for i, op := range operations {
@@ -239,14 +261,10 @@ func encodeTransactionData(mcmsOp mcmstypes.Operation) (string, error) {
 	}
 
 	switch chainFamily {
-	case chainsel.FamilySolana:
-		return base64.StdEncoding.EncodeToString(mcmsOp.Transaction.Data), nil
-	case chainsel.FamilyAptos:
-		return base64.StdEncoding.EncodeToString(mcmsOp.Transaction.Data), nil
-	case chainsel.FamilySui:
-		return base64.StdEncoding.EncodeToString(mcmsOp.Transaction.Data), nil
-	default:
+	case chainsel.FamilyEVM:
 		return "0x" + hex.EncodeToString(mcmsOp.Transaction.Data), nil
+	default:
+		return base64.StdEncoding.EncodeToString(mcmsOp.Transaction.Data), nil
 	}
 }
 
@@ -261,54 +279,36 @@ func batchOperationsToUpfDecodedCalls(ctx context.Context, proposalContext mcmsa
 		}
 
 		decodedCalls[batchIdx] = make([]*DecodedInnerCall, len(batch.Transactions))
-
+		var describedTxs []*mcmsanalyzer.DecodedCall
 		switch family {
 		case chainsel.FamilyEVM:
-			describedTxs, err := mcmsanalyzer.AnalyzeEVMTransactions(ctx, proposalContext, env, chainSel, batch.Transactions)
+			describedTxs, err = mcmsanalyzer.AnalyzeEVMTransactions(ctx, proposalContext, env, chainSel, batch.Transactions)
 			if err != nil {
 				return nil, err
-			}
-			for callIdx, tx := range describedTxs {
-				decodedCalls[batchIdx][callIdx] = &DecodedInnerCall{
-					To:   tx.Address,
-					Data: cldDecodedCallToUpfDecodedCallData(tx),
-				}
 			}
 
 		case chainsel.FamilySolana:
-			describedTxs, err := mcmsanalyzer.AnalyzeSolanaTransactions(proposalContext, chainSel, batch.Transactions)
+			describedTxs, err = mcmsanalyzer.AnalyzeSolanaTransactions(proposalContext, chainSel, batch.Transactions)
 			if err != nil {
 				return nil, err
-			}
-			for callIdx, tx := range describedTxs {
-				decodedCalls[batchIdx][callIdx] = &DecodedInnerCall{
-					To:   tx.Address,
-					Data: cldDecodedCallToUpfDecodedCallData(tx),
-				}
 			}
 
 		case chainsel.FamilyAptos:
-			describedTxs, err := mcmsanalyzer.AnalyzeAptosTransactions(proposalContext, chainSel, batch.Transactions)
+			describedTxs, err = mcmsanalyzer.AnalyzeAptosTransactions(proposalContext, chainSel, batch.Transactions)
 			if err != nil {
 				return nil, err
-			}
-			for callIdx, tx := range describedTxs {
-				decodedCalls[batchIdx][callIdx] = &DecodedInnerCall{
-					To:   tx.Address,
-					Data: cldDecodedCallToUpfDecodedCallData(tx),
-				}
 			}
 
 		case chainsel.FamilySui:
-			describedTxs, err := mcmsanalyzer.AnalyzeSuiTransactions(proposalContext, chainSel, batch.Transactions)
+			describedTxs, err = mcmsanalyzer.AnalyzeSuiTransactions(proposalContext, chainSel, batch.Transactions)
 			if err != nil {
 				return nil, err
 			}
-			for callIdx, tx := range describedTxs {
-				decodedCalls[batchIdx][callIdx] = &DecodedInnerCall{
-					To:   tx.Address,
-					Data: cldDecodedCallToUpfDecodedCallData(tx),
-				}
+
+		case chainsel.FamilyTon:
+			describedTxs, err = mcmsanalyzer.AnalyzeTONTransactions(proposalContext, batch.Transactions)
+			if err != nil {
+				return nil, err
 			}
 
 		default:
@@ -317,6 +317,15 @@ func batchOperationsToUpfDecodedCalls(ctx context.Context, proposalContext mcmsa
 					To:   mcmsTx.To,
 					Data: &DecodedCallData{FunctionName: family + " transaction decoding is not supported"},
 				}
+			}
+
+			continue
+		}
+
+		for callIdx, tx := range describedTxs {
+			decodedCalls[batchIdx][callIdx] = &DecodedInnerCall{
+				To:   tx.Address,
+				Data: cldDecodedCallToUpfDecodedCallData(tx),
 			}
 		}
 	}
@@ -371,14 +380,20 @@ func analyzeTransaction(
 		return analyzeResult, "", nil
 
 	case chainsel.FamilySui:
-		decoder := mcmssuisdk.NewDecoder()
-		analyzeResult, err := mcmsanalyzer.AnalyzeSuiTransaction(proposalCtx, decoder, uint64(mcmsOp.ChainSelector), mcmsOp.Transaction)
+		analyzeResult, err := mcmsanalyzer.AnalyzeSuiTransaction(proposalCtx, uint64(mcmsOp.ChainSelector), mcmsOp.Transaction)
 		if err != nil {
 			return nil, "", err
 		}
 
 		return analyzeResult, "", nil
 
+	case chainsel.FamilyTon:
+		analyzeResult, err := mcmsanalyzer.AnalyzeTONTransaction(proposalCtx, mcmsOp.Transaction)
+		if err != nil {
+			return nil, "", err
+		}
+
+		return analyzeResult, "", nil
 	default:
 		return nil, "", fmt.Errorf("unsupported chain family: %s", chainFamily)
 	}

@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	chainsel "github.com/smartcontractkit/chain-selectors"
-	mcmssuisdk "github.com/smartcontractkit/mcms/sdk/sui"
 	"github.com/smartcontractkit/mcms/types"
 	"github.com/stretchr/testify/require"
 
@@ -25,7 +24,6 @@ func TestAnalyzeSuiTransactions(t *testing.T) {
 		},
 	}
 
-	decoder := mcmssuisdk.NewDecoder()
 	chainSelector := chainsel.SUI_TESTNET.Selector
 
 	tests := []struct {
@@ -119,7 +117,7 @@ func TestAnalyzeSuiTransactions(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			result, err := AnalyzeSuiTransaction(defaultProposalCtx, decoder, chainSelector, tt.mcmsTx)
+			result, err := AnalyzeSuiTransaction(defaultProposalCtx, chainSelector, tt.mcmsTx)
 
 			if tt.wantErr {
 				require.Error(t, err, "AnalyzeSuiTransaction() should have failed")
@@ -173,7 +171,6 @@ func TestAnalyzeSuiTransactionWithErrors(t *testing.T) {
 		},
 	}
 
-	decoder := mcmssuisdk.NewDecoder()
 	chainSelector := chainsel.SUI_TESTNET.Selector
 
 	tests := []struct {
@@ -251,7 +248,7 @@ func TestAnalyzeSuiTransactionWithErrors(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			result, err := AnalyzeSuiTransaction(defaultProposalCtx, decoder, chainSelector, tt.mcmsTx)
+			result, err := AnalyzeSuiTransaction(defaultProposalCtx, chainSelector, tt.mcmsTx)
 
 			if tt.wantError {
 				require.Error(t, err, "AnalyzeSuiTransaction() should have failed")
