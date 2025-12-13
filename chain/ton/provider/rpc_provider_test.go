@@ -5,6 +5,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/xssnick/tonutils-go/tlb"
+	"github.com/xssnick/tonutils-go/ton/wallet"
 
 	tonchain "github.com/smartcontractkit/chainlink-deployments-framework/chain/ton"
 )
@@ -87,6 +89,22 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 	gotChain, ok := got.(tonchain.Chain)
 	require.True(t, ok)
 	assert.Equal(t, existingChain.Selector, gotChain.Selector)
+}
+
+func Test_RPCChainProvider_Initialize_InvalidConfig(t *testing.T) {
+	t.Parallel()
+
+	p := &RPCChainProvider{
+		selector: 123,
+		config: RPCChainProviderConfig{
+			HTTPURL:           "", // invalid - missing URL
+			DeployerSignerGen: PrivateKeyRandom(),
+		},
+	}
+
+	_, err := p.Initialize(t.Context())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to validate provider config")
 }
 
 func Test_RPCChainProvider_Name(t *testing.T) {
@@ -276,6 +294,35 @@ func Test_createWallet(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_buildChain(t *testing.T) {
+	t.Parallel()
+
+	// Create a test wallet using a fixed private key
+	privateKey := make([]byte, 32)
+	for i := range privateKey {
+		privateKey[i] = byte(i)
+	}
+	testWallet, err := wallet.FromPrivateKeyWithOptions(nil, privateKey, wallet.V4R2, wallet.WithWorkchain(0))
+	require.NoError(t, err)
+
+	selector := uint64(789)
+	httpURL := "liteserver://publickey@localhost:8080"
+
+	chain := buildChain(selector, nil, testWallet, httpURL)
+
+	require.NotNil(t, chain)
+	assert.Equal(t, selector, chain.Selector)
+	assert.Equal(t, httpURL, chain.URL)
+	assert.Nil(t, chain.Client)
+	assert.Equal(t, testWallet, chain.Wallet)
+	assert.Equal(t, testWallet.WalletAddress(), chain.WalletAddress)
+
+	// Verify TxOps uses the default amount (0.1 TON)
+	expectedAmount := tlb.MustFromTON("0.1")
+	assert.Equal(t, expectedAmount, chain.TxOps.Amount)
+	assert.Equal(t, testWallet, chain.TxOps.Wallet)
 }
 
 func Test_createLiteclientConnectionPool_InvalidURL(t *testing.T) {
