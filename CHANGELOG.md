@@ -1,5 +1,15 @@
 # chainlink-deployments-framework
 
+## 0.72.0
+
+### Minor Changes
+
+- [#633](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/633) [`006c70a`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/006c70afd9aa8fd5f6e7cb66bea41740e5f0d9b2) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - feat(mcms): fetch pipeline PR data before decoding a proposal
+
+### Patch Changes
+
+- [#630](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/630) [`f0ede8e`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/f0ede8ef3fb91f4cdec1c2061ae478093314c84f) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - fix(mcms): use proposalContextProvider in mcmsv2's get-op-count and is-timelock-done commands
+
 ## 0.71.4
 
 ### Patch Changes
