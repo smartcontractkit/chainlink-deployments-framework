@@ -25,37 +25,25 @@ func BuildProposalReport(ctx context.Context, proposalContext ProposalContext, e
 		var calls []*DecodedCall
 		switch family {
 		case chainsel.FamilyEVM:
-			dec, err := AnalyzeEVMTransactions(ctx, proposalContext, env, chainSel, []types.Transaction{op.Transaction})
-			if err != nil {
-				return nil, err
-			}
-			calls = dec
+			calls, err = AnalyzeEVMTransactions(ctx, proposalContext, env, chainSel, []types.Transaction{op.Transaction})
+
 		case chainsel.FamilySolana:
-			dec, err := AnalyzeSolanaTransactions(proposalContext, chainSel, []types.Transaction{op.Transaction})
-			if err != nil {
-				return nil, err
-			}
-			calls = dec
+			calls, err = AnalyzeSolanaTransactions(proposalContext, chainSel, []types.Transaction{op.Transaction})
+
 		case chainsel.FamilyAptos:
-			dec, err := AnalyzeAptosTransactions(proposalContext, chainSel, []types.Transaction{op.Transaction})
-			if err != nil {
-				return nil, err
-			}
-			calls = dec
+			calls, err = AnalyzeAptosTransactions(proposalContext, chainSel, []types.Transaction{op.Transaction})
+
 		case chainsel.FamilySui:
-			dec, err := AnalyzeSuiTransactions(proposalContext, chainSel, []types.Transaction{op.Transaction})
-			if err != nil {
-				return nil, err
-			}
-			calls = dec
+			calls, err = AnalyzeSuiTransactions(proposalContext, chainSel, []types.Transaction{op.Transaction})
+
 		case chainsel.FamilyTon:
-			dec, err := AnalyzeTONTransactions(proposalContext, []types.Transaction{op.Transaction})
-			if err != nil {
-				return nil, err
-			}
-			calls = dec
+			calls, err = AnalyzeTONTransactions(proposalContext, []types.Transaction{op.Transaction})
 		default:
 			calls = []*DecodedCall{}
+		}
+
+		if err != nil {
+			return nil, err
 		}
 
 		rpt.Operations[i] = OperationReport{

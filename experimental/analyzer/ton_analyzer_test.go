@@ -8,6 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-ton/pkg/bindings/lib/access/rbac"
+	"github.com/smartcontractkit/chainlink-ton/pkg/ton/tlbe"
 	"github.com/smartcontractkit/mcms/sdk/ton"
 	"github.com/smartcontractkit/mcms/types"
 	"github.com/stretchr/testify/require"
@@ -46,7 +47,7 @@ func (s *testTONSetup) makeGrantRoleTx(t *testing.T, queryID uint64) types.Trans
 
 	grantRoleData, err := tlb.ToCell(rbac.GrantRole{
 		QueryID: queryID,
-		Role:    s.exampleRoleBig,
+		Role:    tlbe.NewUint256(s.exampleRoleBig),
 		Account: s.targetAddr,
 	})
 	require.NoError(t, err)
@@ -72,6 +73,7 @@ func (s *testTONSetup) expectedGrantRoleCall(queryID uint64) *DecodedCall {
 			{Name: "Role", Value: SimpleField{Value: s.exampleRoleBig.String()}},
 			{Name: "Account", Value: SimpleField{Value: s.targetAddr.String()}},
 		},
+		Outputs: []NamedField{},
 	}
 }
 
@@ -151,7 +153,7 @@ func TestAnalyzeTONTransaction(t *testing.T) {
 				return
 			}
 
-			assertDecodedCallEqual(t, tt.want, result)
+			require.Equal(t, tt.want, result)
 		})
 	}
 }
@@ -232,7 +234,7 @@ func TestAnalyzeTONTransactions(t *testing.T) {
 					continue
 				}
 
-				assertDecodedCallEqual(t, tt.want[i], result)
+				require.Equal(t, tt.want[i], result)
 			}
 		})
 	}
@@ -286,28 +288,7 @@ func TestAnalyzeTONTransactions_BatchOperations(t *testing.T) {
 			require.Contains(t, result.Method, wantErrContains[i], "call %d", i)
 			require.Nil(t, result.Inputs, "call %d", i)
 		} else {
-			assertDecodedCallEqual(t, want[i], result)
+			require.Equal(t, want[i], result)
 		}
-	}
-}
-
-// assertDecodedCallEqual compares two DecodedCall structs for equality.
-func assertDecodedCallEqual(t *testing.T, expected, actual *DecodedCall) {
-	t.Helper()
-
-	require.Equal(t, expected.Method, actual.Method)
-	require.Len(t, actual.Inputs, len(expected.Inputs))
-
-	for j, input := range actual.Inputs {
-		expectedInput := expected.Inputs[j]
-		require.Equal(t, expectedInput.Name, input.Name, "input %d", j)
-
-		expectedField, ok := expectedInput.Value.(SimpleField)
-		require.True(t, ok, "expected SimpleField for input %d", j)
-
-		actualField, ok := input.Value.(SimpleField)
-		require.True(t, ok, "expected SimpleField but got %T for input %d", input.Value, j)
-
-		require.Equal(t, expectedField.GetValue(), actualField.GetValue(), "input %d", j)
 	}
 }

@@ -3,9 +3,19 @@ package analyzer
 import (
 	"fmt"
 
+	"github.com/smartcontractkit/chainlink-ton/pkg/bindings/lib/access/rbac"
+	"github.com/smartcontractkit/chainlink-ton/pkg/bindings/mcms/mcms"
+	"github.com/smartcontractkit/chainlink-ton/pkg/bindings/mcms/timelock"
+	"github.com/smartcontractkit/chainlink-ton/pkg/ton/debug/lib"
 	"github.com/smartcontractkit/mcms/sdk/ton"
 	"github.com/smartcontractkit/mcms/types"
 )
+
+var typeToTLBMap = map[string]lib.TLBMap{
+	"com.chainlink.ton.lib.access.RBAC": rbac.TLBs,
+	"com.chainlink.ton.mcms.MCMS":       mcms.TLBs,
+	"RBACTimelock":                      timelock.TLBs,
+}
 
 // AnalyzeTONTransactions decodes a slice of TON transactions and returns their decoded representations.
 func AnalyzeTONTransactions(ctx ProposalContext, txs []types.Transaction) ([]*DecodedCall, error) {
@@ -31,7 +41,7 @@ func AnalyzeTONTransactions(ctx ProposalContext, txs []types.Transaction) ([]*De
 // instead of returning an error. This allows the proposal to continue processing even if
 // a single transaction fails to decode.
 func AnalyzeTONTransaction(_ ProposalContext, mcmsTx types.Transaction) (*DecodedCall, error) {
-	decoder := ton.NewDecoder()
+	decoder := ton.NewDecoder(typeToTLBMap)
 	decodedOp, err := decoder.Decode(mcmsTx, mcmsTx.ContractType)
 	if err != nil {
 		// Don't return an error to not block the whole proposal decoding because of a single transaction decode failure.

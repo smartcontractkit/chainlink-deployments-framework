@@ -11,16 +11,12 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/google/go-cmp/cmp"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-ccip/chains/evm/gobindings/generated/v1_6_0/rmn_remote"
 	rmnremotebindings "github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings/v0_1_0/rmn_remote"
 	timelockbindings "github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings/v0_1_0/timelock"
 	"github.com/smartcontractkit/chainlink-ton/pkg/bindings/lib/access/rbac"
-	"github.com/stretchr/testify/require"
-	"github.com/xssnick/tonutils-go/address"
-	"github.com/xssnick/tonutils-go/tlb"
-	"github.com/xssnick/tonutils-go/tvm/cell"
-
-	chainsel "github.com/smartcontractkit/chain-selectors"
+	"github.com/smartcontractkit/chainlink-ton/pkg/ton/tlbe"
 	"github.com/smartcontractkit/mcms"
 	mcmssdk "github.com/smartcontractkit/mcms/sdk"
 	mcmsevmsdk "github.com/smartcontractkit/mcms/sdk/evm"
@@ -28,6 +24,9 @@ import (
 	mcmssuisdk "github.com/smartcontractkit/mcms/sdk/sui"
 	mcmstonsdk "github.com/smartcontractkit/mcms/sdk/ton"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
+	"github.com/stretchr/testify/require"
+	"github.com/xssnick/tonutils-go/address"
+	"github.com/xssnick/tonutils-go/tlb"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
@@ -605,21 +604,14 @@ signers:
   - "0xA5D5B0B844c8f11B61F28AC98BBA84dEA9b80953"
 `
 
-// timelockProposalTon is generated using makeTONGrantRoleTx helper
-var timelockProposalTon = func() string {
+// timelockProposalTON is generated using makeTONGrantRoleTx helper
+var timelockProposalTON = func(t *testing.T) string {
 	// Create a GrantRole transaction for the test
 	targetAddr := address.MustParseAddr("EQADa3W6G0nSiTV4a6euRA42fU9QxSEnb-WeDpcrtWzA2jM8")
 	exampleRole := crypto.Keccak256Hash([]byte("EXAMPLE_ROLE"))
-	exampleRoleBig, _ := cell.BeginCell().
-		MustStoreBigInt(new(big.Int).SetBytes(exampleRole[:]), 257).
-		EndCell().
-		ToBuilder().
-		ToSlice().
-		LoadBigInt(256)
-
 	grantRoleData, _ := tlb.ToCell(rbac.GrantRole{
 		QueryID: 1,
-		Role:    exampleRoleBig,
+		Role:    tlbe.NewUint256(new(big.Int).SetBytes(exampleRole[:])),
 		Account: targetAddr,
 	})
 
@@ -633,9 +625,7 @@ var timelockProposalTon = func() string {
 
 	// Marshal the transaction data
 	txData, err := json.Marshal(tx)
-	if err != nil {
-		panic(fmt.Sprintf("failed to marshal transaction: %v", err))
-	}
+	require.NoError(t, err)
 	var txMap map[string]interface{}
 	_ = json.Unmarshal(txData, &txMap)
 
@@ -665,7 +655,7 @@ var timelockProposalTon = func() string {
     }
   ]
 }`, string(txData))
-}()
+}
 
 func TestUpfConvertTimelockProposalWithSui(t *testing.T) {
 	t.Parallel()
@@ -756,7 +746,7 @@ func TestUpfConvertTimelockProposalWithTon(t *testing.T) {
 	}{
 		{
 			name:             "TON proposal with GrantRole transaction",
-			timelockProposal: timelockProposalTon,
+			timelockProposal: timelockProposalTON(t),
 			signers: map[mcmstypes.ChainSelector][]common.Address{
 				mcmstypes.ChainSelector(chainsel.TON_TESTNET.Selector): {
 					common.HexToAddress("0xA5D5B0B844c8f11B61F28AC98BBA84dEA9b80953"),

@@ -283,33 +283,18 @@ func batchOperationsToUpfDecodedCalls(ctx context.Context, proposalContext mcmsa
 		switch family {
 		case chainsel.FamilyEVM:
 			describedTxs, err = mcmsanalyzer.AnalyzeEVMTransactions(ctx, proposalContext, env, chainSel, batch.Transactions)
-			if err != nil {
-				return nil, err
-			}
 
 		case chainsel.FamilySolana:
 			describedTxs, err = mcmsanalyzer.AnalyzeSolanaTransactions(proposalContext, chainSel, batch.Transactions)
-			if err != nil {
-				return nil, err
-			}
 
 		case chainsel.FamilyAptos:
 			describedTxs, err = mcmsanalyzer.AnalyzeAptosTransactions(proposalContext, chainSel, batch.Transactions)
-			if err != nil {
-				return nil, err
-			}
 
 		case chainsel.FamilySui:
 			describedTxs, err = mcmsanalyzer.AnalyzeSuiTransactions(proposalContext, chainSel, batch.Transactions)
-			if err != nil {
-				return nil, err
-			}
 
 		case chainsel.FamilyTon:
 			describedTxs, err = mcmsanalyzer.AnalyzeTONTransactions(proposalContext, batch.Transactions)
-			if err != nil {
-				return nil, err
-			}
 
 		default:
 			for callIdx, mcmsTx := range batch.Transactions {
@@ -320,6 +305,10 @@ func batchOperationsToUpfDecodedCalls(ctx context.Context, proposalContext mcmsa
 			}
 
 			continue
+		}
+
+		if err != nil {
+			return nil, err
 		}
 
 		for callIdx, tx := range describedTxs {
