@@ -606,6 +606,7 @@ signers:
 
 // timelockProposalTON is generated using makeTONGrantRoleTx helper
 var timelockProposalTON = func(t *testing.T) string {
+	t.Helper()
 	// Create a GrantRole transaction for the test
 	targetAddr := address.MustParseAddr("EQADa3W6G0nSiTV4a6euRA42fU9QxSEnb-WeDpcrtWzA2jM8")
 	exampleRole := crypto.Keccak256Hash([]byte("EXAMPLE_ROLE"))

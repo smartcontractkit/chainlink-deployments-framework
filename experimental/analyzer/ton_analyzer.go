@@ -14,6 +14,7 @@ import (
 var typeToTLBMap = map[string]lib.TLBMap{
 	"com.chainlink.ton.lib.access.RBAC": rbac.TLBs,
 	"com.chainlink.ton.mcms.MCMS":       mcms.TLBs,
+	"com.chainlink.ton.mcms.Timelock":   timelock.TLBs,
 	"RBACTimelock":                      timelock.TLBs,
 }
 
