@@ -159,6 +159,10 @@ func Test_isPublicRPC(t *testing.T) {
 		{"https://rpcs.prod.cldev.sh/anything", true},
 		{"https://rpcs.stage.cldev.sh/anything", true},
 		{"https://gap.stage.cldev.sh/anything", true},
+		{"https://rpcs-test.tailec123.ts.net/", false},
+		{"https://rpcs-test.tail123abc.ts.net/anything", false},
+		{"http://rpc-proxy-some-env.tailec123.ts.net/anything", false},
+		{"http://tail.publicrpc.ts.net/anything", true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.url, func(t *testing.T) {
