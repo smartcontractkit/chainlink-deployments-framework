@@ -8,6 +8,7 @@ import (
 	"maps"
 	"math/big"
 	"os"
+	"path/filepath"
 	"slices"
 	"testing"
 
@@ -22,13 +23,17 @@ import (
 	mcmsevmbindings "github.com/smartcontractkit/mcms/sdk/evm/bindings"
 	mocksdk "github.com/smartcontractkit/mcms/sdk/mocks"
 	"github.com/smartcontractkit/mcms/types"
+	mock "github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zapcore"
+	"go.uber.org/zap/zaptest/observer"
 
 	evmchain "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
-	datastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
+	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
+	cldf_domain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
+	cldf_env "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
+	cldf_scaffold "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/scaffold"
 	testenv "github.com/smartcontractkit/chainlink-deployments-framework/engine/test/environment"
 	testruntime "github.com/smartcontractkit/chainlink-deployments-framework/engine/test/runtime"
 	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
@@ -217,7 +222,7 @@ func TestMCMSv2CommandFlagParsing(t *testing.T) {
 				return analyzer.NewDefaultProposalContext(environment)
 			}
 
-			cmd := BuildMCMSv2Cmd(lggr, domain.MustGetDomain("exemplar"), proposalCtxProvider)
+			cmd := BuildMCMSv2Cmd(lggr, cldf_domain.MustGetDomain("exemplar"), proposalCtxProvider)
 			cmd.SilenceUsage = true
 			subcmd, args, err := cmd.Traverse(test.args)
 			require.NoError(t, err)
@@ -243,7 +248,7 @@ func TestMCMSv2CommandFlagParsing(t *testing.T) {
 
 				// // TODO RE-3333: remove this once we have a way to load secrets in the test environment
 				t.Skipf("RE-3333: skipping execution of %s because it requires loading secrets", test.name)
-				execCmd := BuildMCMSv2Cmd(lggr, domain.MustGetDomain("exemplar"), proposalCtxProvider)
+				execCmd := BuildMCMSv2Cmd(lggr, cldf_domain.MustGetDomain("exemplar"), proposalCtxProvider)
 				execCmd.SilenceUsage = true
 				execCmd.SetArgs(test.args)
 				if !test.expected.fork { // skip running the command if it's not a fork test
@@ -346,7 +351,7 @@ func Test_timelockExecuteOptions(t *testing.T) {
 	err = os.MkdirAll("domains/exemplar", 0o700)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = os.RemoveAll("domains") })
-	exemplarDomain := domain.MustGetDomain("exemplar")
+	exemplarDomain := cldf_domain.MustGetDomain("exemplar")
 
 	chain := slices.Collect(maps.Values(env.BlockChains.EVMChains()))[0]
 	timelockAddress, _, env := deployTimelockAndCallProxy(t, env, chain)
@@ -706,6 +711,236 @@ func Test_executeChainCommand(t *testing.T) {
 	}
 }
 
+func Test_fetchPipelinePRData(t *testing.T) {
+	t.Parallel()
+
+	proposalCtxProvider := func(env cldf.Environment) (analyzer.ProposalContext, error) {
+		return analyzer.NewDefaultProposalContext(env)
+	}
+	defaultProposal := &mcms.TimelockProposal{
+		BaseProposal: mcms.BaseProposal{
+			Metadata: map[string]any{
+				"pipelinePullRequest": map[string]any{
+					"prNumber": 123,
+					"branch":   "test-branch",
+				},
+			},
+		},
+	}
+
+	tests := []struct {
+		name          string
+		setupEnv      func(t *testing.T, tempDir string) (cldf_domain.Domain, *cfgv2)
+		setupMocks    func(t *testing.T) commandRunnerI
+		expectedError bool
+		assert        func(t *testing.T, cfg *cfgv2, err error, logs *observer.ObservedLogs)
+	}{
+		{
+			name: "success: address book update",
+			setupEnv: func(t *testing.T, tempDir string) (cldf_domain.Domain, *cfgv2) {
+				t.Helper()
+				env, domain := createTestEnv(t, tempDir)
+				cfg := &cfgv2{timelockProposal: defaultProposal, env: env}
+
+				return domain, cfg
+			},
+			setupMocks: func(t *testing.T) commandRunnerI {
+				t.Helper()
+				commandRunner := newMockcommandRunnerI(t)
+
+				commandRunner.EXPECT().
+					Run(mock.Anything, "gh", []string{"pr", "view", "123", "--json", "files", "--jq", ".files[].path"}).
+					Return([]byte("domains/testdomain/testnet/addresses.json\ndomains/testdomain/testnet/nodes.json\n"), nil).
+					Once()
+
+				commandRunner.EXPECT().
+					Run(mock.Anything, "gh", []string{"api", "-H", "Accept: application/vnd.github.v3.raw+json", "/repos/smartcontractkit/chainlink-deployments/contents/domains%2Ftestdomain%2Ftestnet%2Faddresses.json?ref=test-branch"}).
+					Return([]byte(`{"3379446385462418246":{"0xc74182Dbb1f1d7f0DBB092Ce1aD0d321a6911B3b":{"Type":"LinkToken","Version":"1.0.0"}}}`), nil).
+					Once()
+
+				return commandRunner
+			},
+			expectedError: false,
+			assert: func(t *testing.T, cfg *cfgv2, err error, logs *observer.ObservedLogs) {
+				t.Helper()
+				addresses, aerr := cfg.env.ExistingAddresses.AddressesForChain(chainsel.GETH_TESTNET.Selector) //nolint:staticcheck
+				require.NoError(t, aerr)
+				require.Contains(t, addresses, "0xc74182Dbb1f1d7f0DBB092Ce1aD0d321a6911B3b")
+			},
+		},
+		{
+			name: "success: datastore update with file datastore",
+			setupEnv: func(t *testing.T, tempDir string) (cldf_domain.Domain, *cfgv2) {
+				t.Helper()
+				env, domain := createTestEnv(t, tempDir)
+				cfg := &cfgv2{timelockProposal: defaultProposal, env: env}
+
+				return domain, cfg
+			},
+			setupMocks: func(t *testing.T) commandRunnerI {
+				t.Helper()
+				commandRunner := newMockcommandRunnerI(t)
+
+				commandRunner.EXPECT().
+					Run(mock.Anything, "gh", []string{"pr", "view", "123", "--json", "files", "--jq", ".files[].path"}).
+					Return([]byte("domains/testdomain/testnet/datastore/address_refs.json\ndomains/testdomain/testnet/nodes.json\n"), nil).
+					Once()
+
+				commandRunner.EXPECT().
+					Run(mock.Anything, "gh", []string{"api", "-H", "Accept: application/vnd.github.v3.raw+json", "/repos/smartcontractkit/chainlink-deployments/contents/domains%2Ftestdomain%2Ftestnet%2Fdatastore%2Faddress_refs.json?ref=test-branch"}).
+					Return([]byte(`[{"address":"0x18557992f55e7E53118af1ee8Ef1134C478f3426","chainSelector":3379446385462418246,"labels":[],"type":"LinkToken","version":"1.0.0"}]`), nil).
+					Once()
+
+				return commandRunner
+			},
+			assert: func(t *testing.T, cfg *cfgv2, err error, logs *observer.ObservedLogs) {
+				t.Helper()
+				refs := cfg.env.DataStore.Addresses().Filter(
+					datastore.AddressRefByChainSelector(chainsel.GETH_TESTNET.Selector),
+					datastore.AddressRefByAddress("0x18557992f55e7E53118af1ee8Ef1134C478f3426"),
+				)
+				require.Len(t, refs, 1)
+			},
+		},
+		{
+			name: "failure: no metadata in proposal",
+			setupEnv: func(t *testing.T, tempDir string) (cldf_domain.Domain, *cfgv2) {
+				t.Helper()
+				env, domain := createTestEnv(t, tempDir)
+				cfg := &cfgv2{
+					timelockProposal: &mcms.TimelockProposal{BaseProposal: mcms.BaseProposal{Metadata: nil}},
+					env:              env,
+				}
+
+				return domain, cfg
+			},
+			setupMocks: func(t *testing.T) commandRunnerI { return nil }, //nolint:thelper
+			assert: func(t *testing.T, cfg *cfgv2, err error, logs *observer.ObservedLogs) {
+				t.Helper()
+				require.Equal(t, 1, logs.FilterMessage("proposal does not contain metadata; skipping pipeline PR data fetch").Len())
+			},
+		},
+		{
+			name: "failure: no pipeline PR metadata",
+			setupEnv: func(t *testing.T, tempDir string) (cldf_domain.Domain, *cfgv2) {
+				t.Helper()
+				env, domain := createTestEnv(t, tempDir)
+				cfg := &cfgv2{
+					timelockProposal: &mcms.TimelockProposal{
+						BaseProposal: mcms.BaseProposal{Metadata: map[string]any{"someOtherKey": "value"}},
+					},
+					env: env,
+				}
+
+				return domain, cfg
+			},
+			setupMocks: func(t *testing.T) commandRunnerI { return nil }, //nolint:thelper
+			assert: func(t *testing.T, cfg *cfgv2, err error, logs *observer.ObservedLogs) {
+				t.Helper()
+				require.Equal(t, 1, logs.FilterMessage("pipeline PR metadata not found in proposal; skipping pipeline PR data fetch").Len())
+			},
+		},
+		{
+			name: "failure: invalid pipeline PR metadata format",
+			setupEnv: func(t *testing.T, tempDir string) (cldf_domain.Domain, *cfgv2) {
+				t.Helper()
+				env, domain := createTestEnv(t, tempDir)
+				cfg := &cfgv2{
+					timelockProposal: &mcms.TimelockProposal{
+						BaseProposal: mcms.BaseProposal{Metadata: map[string]any{"pipelinePullRequest": "invalid-format"}},
+					},
+					env: env,
+				}
+
+				return domain, cfg
+			},
+			setupMocks: func(t *testing.T) commandRunnerI { return nil }, //nolint:thelper
+			assert: func(t *testing.T, cfg *cfgv2, err error, logs *observer.ObservedLogs) {
+				t.Helper()
+				require.ErrorContains(t, err, "error decoding pipeline PR metadata:")
+			},
+		},
+		{
+			name: "failure: invalid JSON in address book response",
+			setupEnv: func(t *testing.T, tempDir string) (cldf_domain.Domain, *cfgv2) {
+				t.Helper()
+				env, domain := createTestEnv(t, tempDir)
+				cfg := &cfgv2{timelockProposal: defaultProposal, env: env}
+
+				return domain, cfg
+			},
+			setupMocks: func(t *testing.T) commandRunnerI {
+				t.Helper()
+				commandRunner := newMockcommandRunnerI(t)
+
+				commandRunner.EXPECT().
+					Run(mock.Anything, "gh", []string{"pr", "view", "123", "--json", "files", "--jq", ".files[].path"}).
+					Return([]byte("domains/testdomain/testnet/addresses.json\ndomains/testdomain/testnet/nodes.json\n"), nil).
+					Once()
+
+				commandRunner.EXPECT().
+					Run(mock.Anything, "gh", []string{"api", "-H", "Accept: application/vnd.github.v3.raw+json", "/repos/smartcontractkit/chainlink-deployments/contents/domains%2Ftestdomain%2Ftestnet%2Faddresses.json?ref=test-branch"}).
+					Return([]byte(`invalid`), nil).
+					Once()
+
+				return commandRunner
+			},
+			assert: func(t *testing.T, cfg *cfgv2, err error, logs *observer.ObservedLogs) {
+				t.Helper()
+				require.Equal(t, 1, logs.FilterMessageSnippet("failed to update environment: failed to unmarshal address book JSON: ").Len())
+			},
+		},
+		{
+			name: "failure: invalid JSON in address refs response",
+			setupEnv: func(t *testing.T, tempDir string) (cldf_domain.Domain, *cfgv2) {
+				t.Helper()
+				env, domain := createTestEnv(t, tempDir)
+				cfg := &cfgv2{timelockProposal: defaultProposal, env: env}
+
+				return domain, cfg
+			},
+			setupMocks: func(t *testing.T) commandRunnerI {
+				t.Helper()
+				commandRunner := newMockcommandRunnerI(t)
+
+				commandRunner.EXPECT().
+					Run(mock.Anything, "gh", []string{"pr", "view", "123", "--json", "files", "--jq", ".files[].path"}).
+					Return([]byte("domains/testdomain/testnet/datastore/address_refs.json\ndomains/testdomain/testnet/nodes.json\n"), nil).
+					Once()
+
+				commandRunner.EXPECT().
+					Run(mock.Anything, "gh", []string{"api", "-H", "Accept: application/vnd.github.v3.raw+json", "/repos/smartcontractkit/chainlink-deployments/contents/domains%2Ftestdomain%2Ftestnet%2Fdatastore%2Faddress_refs.json?ref=test-branch"}).
+					Return([]byte(`invalid`), nil).
+					Once()
+
+				return commandRunner
+			},
+			assert: func(t *testing.T, cfg *cfgv2, err error, logs *observer.ObservedLogs) {
+				t.Helper()
+				require.Equal(t, 1, logs.FilterMessageSnippet("failed to update environment: failed to unmarshal address refs JSON").Len())
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			domainsDir := filepath.Join(t.TempDir(), "domains")
+			err := os.MkdirAll(domainsDir, 0o700)
+			require.NoError(t, err)
+
+			lggr, logs := logger.TestObserved(t, zapcore.DebugLevel)
+			domain, cfg := tt.setupEnv(t, domainsDir)
+			commandRunner := tt.setupMocks(t)
+
+			err = fetchPipelinePRData(t.Context(), lggr, domain, cfg, proposalCtxProvider, commandRunner)
+
+			tt.assert(t, cfg, err, logs)
+		})
+	}
+}
+
 // ----- helpers and fixtures -----
 
 func deployMcm(
@@ -867,4 +1102,20 @@ func signProposal(
 
 	_, err = signable.SignAndAppend(signer)
 	require.NoError(t, err)
+}
+
+func createTestEnv(t *testing.T, tempDir string) (cldf.Environment, cldf_domain.Domain) {
+	t.Helper()
+
+	domain := cldf_domain.NewDomain(tempDir, "testdomain")
+	err := cldf_scaffold.ScaffoldDomain(domain)
+	require.NoError(t, err)
+
+	err = cldf_scaffold.ScaffoldEnvDir(domain.EnvDir("testnet"))
+	require.NoError(t, err)
+
+	env, err := cldf_env.Load(t.Context(), domain, "testnet")
+	require.NoError(t, err)
+
+	return env, domain
 }
