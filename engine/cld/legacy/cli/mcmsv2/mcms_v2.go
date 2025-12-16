@@ -1185,7 +1185,7 @@ func newCfgv2(lggr logger.Logger, cmd *cobra.Command, domain cldf_domain.Domain,
 					return nil, fmt.Errorf("error creating Sui timelock converter: %w", err)
 				}
 			case chainsel.FamilyTon:
-				converter = ton.NewTimelockConverter()
+				converter = ton.NewTimelockConverter(ton.DefaultSendAmount)
 			default:
 				return nil, fmt.Errorf("unsupported chain family %s", fam)
 			}
