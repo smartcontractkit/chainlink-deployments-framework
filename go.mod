@@ -39,7 +39,7 @@ require (
 	github.com/smartcontractkit/chainlink-tron/relayer v0.0.11-0.20250815105909-75499abc4335
 	github.com/smartcontractkit/freeport v0.1.3-0.20250716200817-cb5dfd0e369e
 	github.com/smartcontractkit/libocr v0.0.0-20250905115425-2785a5cee79d
-	github.com/smartcontractkit/mcms v0.31.2-0.20251215091707-34ad98fc250c
+	github.com/smartcontractkit/mcms v0.31.2-0.20251216193316-af713b02477f
 	github.com/spf13/cobra v1.10.1
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
@@ -73,7 +73,7 @@ require (
 	github.com/smartcontractkit/chainlink-common v0.9.6-0.20251003171904-99a82a53b142 // indirect
 	github.com/smartcontractkit/chainlink-common/pkg/chipingress v0.0.4 // indirect
 	github.com/smartcontractkit/chainlink-protos/cre/go v0.0.0-20250911124514-5874cc6d62b2 // indirect
-	github.com/smartcontractkit/chainlink-ton v0.0.0-20251215075716-5098cfecb0d2 // indirect
+	github.com/smartcontractkit/chainlink-ton v0.0.0-20251216164546-5c01294e67f0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
