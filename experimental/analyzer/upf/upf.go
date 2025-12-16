@@ -229,10 +229,15 @@ func isTimelockBatchFunction(functionName string) bool {
 
 	// Sui: mcms::timelock_schedule_batch, mcms::timelock_bypasser_execute_batch
 	// Aptos: package::module::timelock_schedule_batch, package::module::timelock_bypasser_execute_batch
+	// Use HasSuffix to prevent false positives like "::timelock_schedule_batch_helper"
+	if strings.HasSuffix(functionName, "::timelock_schedule_batch") ||
+		strings.HasSuffix(functionName, "::timelock_bypasser_execute_batch") {
+		return true
+	}
+
 	// TON: ContractType::ScheduleBatch(0x...), ContractType::BypasserExecuteBatch(0x...)
-	if strings.Contains(functionName, "::timelock_schedule_batch") ||
-		strings.Contains(functionName, "::timelock_bypasser_execute_batch") ||
-		strings.Contains(functionName, "::ScheduleBatch(") ||
+	// Use Contains because the opcode suffix (0x...) varies
+	if strings.Contains(functionName, "::ScheduleBatch(") ||
 		strings.Contains(functionName, "::BypasserExecuteBatch(") {
 		return true
 	}

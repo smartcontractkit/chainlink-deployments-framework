@@ -138,7 +138,7 @@ func convertTimelockProposal(ctx context.Context, t *testing.T, timelockProposal
 			require.NoError(t, err)
 			converters[chain] = converter
 		case chainsel.FamilyTon:
-			converters[chain] = mcmstonsdk.NewTimelockConverter()
+			converters[chain] = mcmstonsdk.NewTimelockConverter(mcmstonsdk.DefaultSendAmount)
 		default:
 			t.Fatalf("unsupported chain family %s", chainFamily)
 		}
@@ -604,8 +604,8 @@ signers:
   - "0xA5D5B0B844c8f11B61F28AC98BBA84dEA9b80953"
 `
 
-// timelockProposalTON is generated using makeTONGrantRoleTx helper
-var timelockProposalTON = func(t *testing.T) string {
+// timelockProposalTon is generated using makeTONGrantRoleTx helper
+var timelockProposalTon = func(t *testing.T) string {
 	t.Helper()
 	// Create a GrantRole transaction for the test
 	targetAddr := address.MustParseAddr("EQADa3W6G0nSiTV4a6euRA42fU9QxSEnb-WeDpcrtWzA2jM8")
@@ -747,7 +747,7 @@ func TestUpfConvertTimelockProposalWithTon(t *testing.T) {
 	}{
 		{
 			name:             "TON proposal with GrantRole transaction",
-			timelockProposal: timelockProposalTON(t),
+			timelockProposal: timelockProposalTon(t),
 			signers: map[mcmstypes.ChainSelector][]common.Address{
 				mcmstypes.ChainSelector(chainsel.TON_TESTNET.Selector): {
 					common.HexToAddress("0xA5D5B0B844c8f11B61F28AC98BBA84dEA9b80953"),

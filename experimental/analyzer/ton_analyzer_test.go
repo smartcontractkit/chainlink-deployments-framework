@@ -17,7 +17,7 @@ import (
 	"github.com/xssnick/tonutils-go/tvm/cell"
 )
 
-const tonTestAddress = "EQDtFpEwcFAEcRe5mLVh2N6C0x-_hJEM7W61_JLnSF74p4q2"
+const testAddress = "EQDtFpEwcFAEcRe5mLVh2N6C0x-_hJEM7W61_JLnSF74p4q2"
 
 // testTONSetup contains common test fixtures for TON analyzer tests.
 type testTONSetup struct {
@@ -84,7 +84,7 @@ func bigIntStr(v uint64) string {
 func makeInvalidTx(contractType string) types.Transaction {
 	return types.Transaction{
 		OperationMetadata: types.OperationMetadata{ContractType: contractType},
-		To:                tonTestAddress,
+		To:                testAddress,
 		Data:              []byte{0xFF, 0xFF},
 		AdditionalFields:  json.RawMessage(`{"value":0}`),
 	}
@@ -110,29 +110,29 @@ func TestAnalyzeTONTransaction(t *testing.T) {
 		{
 			name:           "invalid data",
 			mcmsTx:         makeInvalidTx("com.chainlink.ton.mcms.MCMS"),
-			want:           &DecodedCall{Address: tonTestAddress},
+			want:           &DecodedCall{Address: testAddress},
 			wantErrContain: "invalid cell BOC data",
 		},
 		{
 			name: "unknown contract type",
 			mcmsTx: types.Transaction{
 				OperationMetadata: types.OperationMetadata{ContractType: "unknown.type"},
-				To:                tonTestAddress,
+				To:                testAddress,
 				Data:              []byte{0x01, 0x02},
 				AdditionalFields:  json.RawMessage(`{"value":0}`),
 			},
-			want:           &DecodedCall{Address: tonTestAddress},
+			want:           &DecodedCall{Address: testAddress},
 			wantErrContain: "unknown contract interface: unknown.type",
 		},
 		{
 			name: "empty data",
 			mcmsTx: types.Transaction{
 				OperationMetadata: types.OperationMetadata{ContractType: "com.chainlink.ton.mcms.MCMS"},
-				To:                tonTestAddress,
+				To:                testAddress,
 				Data:              []byte{},
 				AdditionalFields:  json.RawMessage(`{"value":0}`),
 			},
-			want:           &DecodedCall{Address: tonTestAddress},
+			want:           &DecodedCall{Address: testAddress},
 			wantErrContain: "invalid cell BOC data",
 		},
 	}
@@ -191,9 +191,9 @@ func TestAnalyzeTONTransactions(t *testing.T) {
 				makeInvalidTx("com.chainlink.ton.mcms.Timelock"),
 			},
 			want: []*DecodedCall{
-				{Address: tonTestAddress},
+				{Address: testAddress},
 				setup.expectedGrantRoleCall(1),
-				{Address: tonTestAddress},
+				{Address: testAddress},
 			},
 			wantErrContains: []string{"invalid cell BOC data", "", "invalid cell BOC data"},
 		},
@@ -204,8 +204,8 @@ func TestAnalyzeTONTransactions(t *testing.T) {
 				makeInvalidTx("com.chainlink.ton.mcms.Timelock"),
 			},
 			want: []*DecodedCall{
-				{Address: tonTestAddress},
-				{Address: tonTestAddress},
+				{Address: testAddress},
+				{Address: testAddress},
 			},
 			wantErrContains: []string{"invalid cell BOC data", "invalid cell BOC data"},
 		},
@@ -268,7 +268,7 @@ func TestAnalyzeTONTransactions_BatchOperations(t *testing.T) {
 		setup.expectedGrantRoleCall(1),
 		setup.expectedGrantRoleCall(2),
 		setup.expectedGrantRoleCall(3),
-		{Address: tonTestAddress},
+		{Address: testAddress},
 	}
 	wantErrContains := []string{"", "", "", "invalid cell BOC data"}
 
