@@ -36,11 +36,11 @@ require (
 	github.com/smartcontractkit/chainlink-protos/op-catalog v0.0.4
 	github.com/smartcontractkit/chainlink-testing-framework/framework v0.12.1
 	github.com/smartcontractkit/chainlink-testing-framework/seth v1.51.2
-	github.com/smartcontractkit/chainlink-ton v0.0.0-20251215075716-5098cfecb0d2
+	github.com/smartcontractkit/chainlink-ton v0.0.0-20251216164546-5c01294e67f0
 	github.com/smartcontractkit/chainlink-tron/relayer v0.0.11-0.20250815105909-75499abc4335
 	github.com/smartcontractkit/freeport v0.1.3-0.20250716200817-cb5dfd0e369e
 	github.com/smartcontractkit/libocr v0.0.0-20250905115425-2785a5cee79d
-	github.com/smartcontractkit/mcms v0.31.2-0.20251215091707-34ad98fc250c
+	github.com/smartcontractkit/mcms v0.31.2-0.20251216193316-af713b02477f
 	github.com/spf13/cobra v1.10.1
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
