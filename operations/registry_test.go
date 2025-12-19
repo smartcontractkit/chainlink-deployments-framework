@@ -160,3 +160,202 @@ func TestOperationRegistry_Retrieve(t *testing.T) {
 		})
 	}
 }
+
+func TestRegisterOperation(t *testing.T) {
+	t.Parallel()
+
+	op1 := NewOperation(
+		"test-op-1",
+		semver.MustParse("1.0.0"),
+		"Operation 1",
+		func(e Bundle, deps OpDeps, input string) (string, error) { return input, nil },
+	)
+	op2 := NewOperation(
+		"test-op-2",
+		semver.MustParse("2.0.0"),
+		"Operation 2",
+		func(e Bundle, deps OpDeps, input int) (int, error) { return input * 2, nil },
+	)
+
+	t.Run("register single operation", func(t *testing.T) {
+		t.Parallel()
+
+		registry := NewOperationRegistry()
+		RegisterOperation(registry, op1)
+
+		retrievedOp, err := registry.Retrieve(op1.Def())
+		require.NoError(t, err)
+		assert.Equal(t, "test-op-1", retrievedOp.ID())
+		assert.Equal(t, "1.0.0", retrievedOp.Version())
+	})
+
+	t.Run("register multiple operations with different types", func(t *testing.T) {
+		t.Parallel()
+
+		registry := NewOperationRegistry()
+		// Register operations separately since they have different type parameters
+		RegisterOperation(registry, op1)
+		RegisterOperation(registry, op2)
+
+		retrievedOp1, err := registry.Retrieve(op1.Def())
+		require.NoError(t, err)
+		assert.Equal(t, "test-op-1", retrievedOp1.ID())
+
+		retrievedOp2, err := registry.Retrieve(op2.Def())
+		require.NoError(t, err)
+		assert.Equal(t, "test-op-2", retrievedOp2.ID())
+	})
+
+	t.Run("overwrite existing operation", func(t *testing.T) {
+		t.Parallel()
+
+		op1Updated := NewOperation(
+			"test-op-1",
+			semver.MustParse("1.0.0"),
+			"Operation 1 Updated",
+			func(e Bundle, deps OpDeps, input string) (string, error) { return input + "-updated", nil },
+		)
+
+		registry := NewOperationRegistry()
+		RegisterOperation(registry, op1)
+		RegisterOperation(registry, op1Updated)
+
+		retrievedOp, err := registry.Retrieve(op1.Def())
+		require.NoError(t, err)
+		assert.Equal(t, "Operation 1 Updated", retrievedOp.Description())
+	})
+}
+
+func TestRegisterOperationRelaxed(t *testing.T) {
+	t.Parallel()
+
+	type TestInput struct {
+		A int `json:"a"`
+		B int `json:"b"`
+	}
+
+	op1 := NewOperation(
+		"sum-op",
+		semver.MustParse("1.0.0"),
+		"Sum operation with struct input",
+		func(e Bundle, deps OpDeps, input TestInput) (int, error) {
+			return input.A + input.B, nil
+		},
+	)
+
+	op2 := NewOperation(
+		"multiply-op",
+		semver.MustParse("1.0.0"),
+		"Multiply operation",
+		func(e Bundle, deps OpDeps, input int) (int, error) {
+			return input * 2, nil
+		},
+	)
+
+	t.Run("register and execute with map input from YAML", func(t *testing.T) {
+		t.Parallel()
+
+		registry := NewOperationRegistry()
+		RegisterOperationRelaxed(registry, op1)
+
+		retrievedOp, err := registry.Retrieve(op1.Def())
+		require.NoError(t, err)
+
+		// Simulate input from YAML unmarshaling
+		yamlInput := map[string]any{
+			"a": 10,
+			"b": 20,
+		}
+
+		bundle := NewBundle(context.Background, logger.Nop(), nil)
+		result, err := retrievedOp.handler(bundle, OpDeps{}, yamlInput)
+		require.NoError(t, err)
+		assert.Equal(t, 30, result)
+	})
+
+	t.Run("register multiple operations with relaxed typing", func(t *testing.T) {
+		t.Parallel()
+
+		registry := NewOperationRegistry()
+		// Register operations separately since they have different type parameters
+		RegisterOperationRelaxed(registry, op1)
+		RegisterOperationRelaxed(registry, op2)
+
+		// Verify both operations are registered
+		retrievedOp1, err := registry.Retrieve(op1.Def())
+		require.NoError(t, err)
+		assert.Equal(t, "sum-op", retrievedOp1.ID())
+
+		retrievedOp2, err := registry.Retrieve(op2.Def())
+		require.NoError(t, err)
+		assert.Equal(t, "multiply-op", retrievedOp2.ID())
+	})
+
+	t.Run("overwrite operation with relaxed version", func(t *testing.T) {
+		t.Parallel()
+
+		op1Strict := NewOperation(
+			"sum-op",
+			semver.MustParse("1.0.0"),
+			"Sum operation strict",
+			func(e Bundle, deps OpDeps, input TestInput) (int, error) {
+				return input.A + input.B + 1, nil
+			},
+		)
+
+		registry := NewOperationRegistry()
+		RegisterOperation(registry, op1Strict)
+		RegisterOperationRelaxed(registry, op1) // Should overwrite
+
+		retrievedOp, err := registry.Retrieve(op1.Def())
+		require.NoError(t, err)
+
+		// Use map input which would fail with strict version
+		yamlInput := map[string]any{
+			"a": 10,
+			"b": 20,
+		}
+
+		bundle := NewBundle(context.Background, logger.Nop(), nil)
+		result, err := retrievedOp.handler(bundle, OpDeps{}, yamlInput)
+		require.NoError(t, err)
+		// If it was the strict version, result would be 31
+		assert.Equal(t, 30, result)
+	})
+
+	t.Run("handle type conversion errors gracefully", func(t *testing.T) {
+		t.Parallel()
+
+		registry := NewOperationRegistry()
+		RegisterOperationRelaxed(registry, op1)
+
+		retrievedOp, err := registry.Retrieve(op1.Def())
+		require.NoError(t, err)
+
+		// Provide input that cannot be converted
+		invalidInput := "not a struct"
+
+		bundle := NewBundle(context.Background, logger.Nop(), nil)
+		_, err = retrievedOp.handler(bundle, OpDeps{}, invalidInput)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "input type mismatch")
+	})
+
+	t.Run("execute operation with direct struct input", func(t *testing.T) {
+		t.Parallel()
+
+		registry := NewOperationRegistry()
+		RegisterOperationRelaxed(registry, op1)
+
+		retrievedOp, err := registry.Retrieve(op1.Def())
+		require.NoError(t, err)
+
+		// Even with relaxed typing, direct struct input should work
+		directInput := TestInput{A: 5, B: 15}
+
+		bundle := NewBundle(context.Background, logger.Nop(), nil)
+		result, err := retrievedOp.handler(bundle, OpDeps{}, directInput)
+		require.NoError(t, err)
+		assert.Equal(t, 20, result)
+	})
+}
