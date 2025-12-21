@@ -23,7 +23,7 @@ func TestAnalyzeTONTransaction(t *testing.T) {
 
 	setup := newTestTONSetup(t)
 	ctx := &DefaultProposalContext{}
-	deocder := ton.NewDecoder(typeToTLBMap)
+	decoder := ton.NewDecoder(typeToTLBMap)
 
 	tests := []struct {
 		name           string
@@ -70,7 +70,7 @@ func TestAnalyzeTONTransaction(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			result, err := AnalyzeTONTransaction(ctx, deocder, tt.mcmsTx)
+			result, err := AnalyzeTONTransaction(ctx, decoder, tt.mcmsTx)
 			require.NoError(t, err)
 			require.NotNil(t, result)
 			require.Equal(t, tt.want.Address, result.Address)
