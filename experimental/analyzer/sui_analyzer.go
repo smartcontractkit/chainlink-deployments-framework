@@ -10,9 +10,10 @@ import (
 )
 
 func AnalyzeSuiTransactions(ctx ProposalContext, chainSelector uint64, txs []types.Transaction) ([]*DecodedCall, error) {
+	decoder := mcmssuisdk.NewDecoder()
 	decodedTxs := make([]*DecodedCall, len(txs))
 	for i, op := range txs {
-		analyzedTransaction, err := AnalyzeSuiTransaction(ctx, chainSelector, op)
+		analyzedTransaction, err := AnalyzeSuiTransaction(ctx, decoder, chainSelector, op)
 		if err != nil {
 			return nil, fmt.Errorf("failed to analyze Sui transaction %d: %w", i, err)
 		}
@@ -22,8 +23,7 @@ func AnalyzeSuiTransactions(ctx ProposalContext, chainSelector uint64, txs []typ
 	return decodedTxs, nil
 }
 
-func AnalyzeSuiTransaction(_ ProposalContext, chainSelector uint64, mcmsTx types.Transaction) (*DecodedCall, error) {
-	decoder := mcmssuisdk.NewDecoder()
+func AnalyzeSuiTransaction(ctx ProposalContext, decoder *mcmssuisdk.Decoder, chainSelector uint64, mcmsTx types.Transaction) (*DecodedCall, error) {
 	var additionalFields mcmssuisdk.AdditionalFields
 	if err := json.Unmarshal(mcmsTx.AdditionalFields, &additionalFields); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal Sui additional fields: %w", err)

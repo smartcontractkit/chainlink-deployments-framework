@@ -11,13 +11,27 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/goccy/go-yaml"
 	chainsel "github.com/smartcontractkit/chain-selectors"
+	"github.com/smartcontractkit/chainlink-ton/pkg/bindings/lib/access/rbac"
+	tonmcms "github.com/smartcontractkit/chainlink-ton/pkg/bindings/mcms/mcms"
+	"github.com/smartcontractkit/chainlink-ton/pkg/bindings/mcms/timelock"
+	"github.com/smartcontractkit/chainlink-ton/pkg/ton/debug/lib"
 	"github.com/smartcontractkit/mcms"
 	mcmsaptossdk "github.com/smartcontractkit/mcms/sdk/aptos"
+	mcmssuisdk "github.com/smartcontractkit/mcms/sdk/sui"
+	mcmstonsdk "github.com/smartcontractkit/mcms/sdk/ton"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	mcmsanalyzer "github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 )
+
+// TODO should imported from sdk
+var typeToTLBMap = map[string]lib.TLBMap{
+	"com.chainlink.ton.lib.access.RBAC": rbac.TLBs,
+	"com.chainlink.ton.mcms.MCMS":       tonmcms.TLBs,
+	"com.chainlink.ton.mcms.Timelock":   timelock.TLBs,
+	"RBACTimelock":                      timelock.TLBs,
+}
 
 // UpfConvertTimelockProposal converts a TimelockProposal to a UPF proposal format.
 func UpfConvertTimelockProposal(
@@ -374,7 +388,8 @@ func analyzeTransaction(
 		return analyzeResult, "", nil
 
 	case chainsel.FamilySui:
-		analyzeResult, err := mcmsanalyzer.AnalyzeSuiTransaction(proposalCtx, uint64(mcmsOp.ChainSelector), mcmsOp.Transaction)
+		decoder := mcmssuisdk.NewDecoder()
+		analyzeResult, err := mcmsanalyzer.AnalyzeSuiTransaction(proposalCtx, decoder, uint64(mcmsOp.ChainSelector), mcmsOp.Transaction)
 		if err != nil {
 			return nil, "", err
 		}
@@ -382,7 +397,8 @@ func analyzeTransaction(
 		return analyzeResult, "", nil
 
 	case chainsel.FamilyTon:
-		analyzeResult, err := mcmsanalyzer.AnalyzeTONTransaction(proposalCtx, mcmsOp.Transaction)
+		decoder := mcmstonsdk.NewDecoder(typeToTLBMap)
+		analyzeResult, err := mcmsanalyzer.AnalyzeTONTransaction(proposalCtx, decoder, mcmsOp.Transaction)
 		if err != nil {
 			return nil, "", err
 		}
