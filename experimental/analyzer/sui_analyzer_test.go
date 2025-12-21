@@ -4,10 +4,11 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	mcmssuisdk "github.com/smartcontractkit/mcms/sdk/sui"
 	"github.com/smartcontractkit/mcms/types"
-	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 )
@@ -172,7 +173,7 @@ func TestAnalyzeSuiTransactionWithErrors(t *testing.T) {
 			},
 		},
 	}
-	
+
 	decoder := mcmssuisdk.NewDecoder()
 	chainSelector := chainsel.SUI_TESTNET.Selector
 
