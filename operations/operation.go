@@ -104,6 +104,7 @@ func (o *Operation[IN, OUT, DEP]) execute(b Bundle, deps DEP, input IN) (output 
 // AsUntyped converts the operation to an untyped operation.
 // This is useful for storing operations in a slice or passing them around without type constraints.
 // Warning: The input and output types will be converted to `any`, so type safety is lost.
+// Use AsUntypedRelaxed if the input is from YAML unmarshaling and result in map[string]any.
 func (o *Operation[IN, OUT, DEP]) AsUntyped() *Operation[any, any, any] {
 	return &Operation[any, any, any]{
 		def: o.def,

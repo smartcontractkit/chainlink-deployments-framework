@@ -51,6 +51,18 @@ func RegisterOperation[D, I, O any](r *OperationRegistry, op ...*Operation[D, I,
 	}
 }
 
+// RegisterOperationRelaxed registers new operations in the registry with relaxed input type checking.
+// This is useful when inputs come from YAML unmarshaling and result in map[string]any.
+// It uses JSON marshaling/unmarshaling to convert compatible types when direct type assertion fails.
+// Warning: The input and output types will be converted to `any`, so type safety is lost.
+// If the same operation is registered multiple times, it will overwrite the previous one.
+func RegisterOperationRelaxed[D, I, O any](r *OperationRegistry, op ...*Operation[D, I, O]) {
+	for _, o := range op {
+		key := generateRegistryKey(o.Def())
+		r.ops[key] = o.AsUntypedRelaxed()
+	}
+}
+
 // generateRegistryKey creates a unique key for the operation registry based on the operation's ID and version.
 // This key is used to store and retrieve operations in the registry.
 func generateRegistryKey(def Definition) string {
