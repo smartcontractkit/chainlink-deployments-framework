@@ -25,31 +25,25 @@ func BuildProposalReport(ctx context.Context, proposalContext ProposalContext, e
 		var calls []*DecodedCall
 		switch family {
 		case chainsel.FamilyEVM:
-			dec, err := AnalyzeEVMTransactions(ctx, proposalContext, env, chainSel, []types.Transaction{op.Transaction})
-			if err != nil {
-				return nil, err
-			}
-			calls = dec
+			calls, err = AnalyzeEVMTransactions(ctx, proposalContext, env, chainSel, []types.Transaction{op.Transaction})
+
 		case chainsel.FamilySolana:
-			dec, err := AnalyzeSolanaTransactions(proposalContext, chainSel, []types.Transaction{op.Transaction})
-			if err != nil {
-				return nil, err
-			}
-			calls = dec
+			calls, err = AnalyzeSolanaTransactions(proposalContext, chainSel, []types.Transaction{op.Transaction})
+
 		case chainsel.FamilyAptos:
-			dec, err := AnalyzeAptosTransactions(proposalContext, chainSel, []types.Transaction{op.Transaction})
-			if err != nil {
-				return nil, err
-			}
-			calls = dec
+			calls, err = AnalyzeAptosTransactions(proposalContext, chainSel, []types.Transaction{op.Transaction})
+
 		case chainsel.FamilySui:
-			dec, err := AnalyzeSuiTransactions(proposalContext, chainSel, []types.Transaction{op.Transaction})
-			if err != nil {
-				return nil, err
-			}
-			calls = dec
+			calls, err = AnalyzeSuiTransactions(proposalContext, chainSel, []types.Transaction{op.Transaction})
+
+		case chainsel.FamilyTon:
+			calls, err = AnalyzeTONTransactions(proposalContext, []types.Transaction{op.Transaction})
 		default:
 			calls = []*DecodedCall{}
+		}
+
+		if err != nil {
+			return nil, err
 		}
 
 		rpt.Operations[i] = OperationReport{
@@ -117,6 +111,19 @@ func BuildTimelockReport(ctx context.Context, proposalCtx ProposalContext, env d
 			}
 		case chainsel.FamilySui:
 			dec, err := AnalyzeSuiTransactions(proposalCtx, chainSel, batch.Transactions)
+			if err != nil {
+				return nil, err
+			}
+			for j := range dec {
+				ops[j] = OperationReport{
+					ChainSelector: chainSel,
+					ChainName:     chainNameOrUnknown(chainName),
+					Family:        family,
+					Calls:         []*DecodedCall{dec[j]},
+				}
+			}
+		case chainsel.FamilyTon:
+			dec, err := AnalyzeTONTransactions(proposalCtx, batch.Transactions)
 			if err != nil {
 				return nil, err
 			}
