@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.73.0
+
+### Minor Changes
+
+- [#637](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/637) [`fba3c78`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/fba3c78eee1ace74883373a114e202dc65ca7063) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat(operations): introduce RegisterOperationRelaxed
+
 ## 0.72.0
 
 ### Minor Changes
