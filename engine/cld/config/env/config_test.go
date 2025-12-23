@@ -52,8 +52,7 @@ var (
 					Password:               "password1",
 				},
 				Endpoints: JobDistributorEndpoints{
-					WSRPC: "ws://localhost:1234",
-					GRPC:  "grpc://localhost:4567",
+					GRPC: "grpc://localhost:4567",
 				},
 			},
 			OCR: OCRConfig{
@@ -89,7 +88,6 @@ var (
 		"OFFCHAIN_JD_AUTH_AWS_REGION":                "us-east-1",
 		"OFFCHAIN_JD_AUTH_USERNAME":                  "123",
 		"OFFCHAIN_JD_AUTH_PASSWORD":                  "123",
-		"OFFCHAIN_JD_ENDPOINTS_WSRPC":                "WSRPC2",
 		"OFFCHAIN_JD_ENDPOINTS_GRPC":                 "GRPC2",
 		"OFFCHAIN_OCR_X_SIGNERS":                     "awkward bat",
 		"OFFCHAIN_OCR_X_PROPOSERS":                   "caring deer",
@@ -114,7 +112,6 @@ var (
 		"JD_AUTH_AWS_REGION":                "us-east-1",
 		"JD_AUTH_USERNAME":                  "123",
 		"JD_AUTH_PASSWORD":                  "123",
-		"JD_WS_RPC":                         "WSRPC2",
 		"JD_GRPC":                           "GRPC2",
 		"OCR_X_SIGNERS":                     "awkward bat",
 		"OCR_X_PROPOSERS":                   "caring deer",
@@ -168,8 +165,7 @@ var (
 					Password:               "123",
 				},
 				Endpoints: JobDistributorEndpoints{
-					WSRPC: "WSRPC2",
-					GRPC:  "GRPC2",
+					GRPC: "GRPC2",
 				},
 			},
 			OCR: OCRConfig{

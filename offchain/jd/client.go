@@ -17,7 +17,6 @@ import (
 // JDConfig is the configuration for the Job Distributor client.
 type JDConfig struct {
 	GRPC  string
-	WSRPC string
 	Creds credentials.TransportCredentials
 	Auth  oauth2.TokenSource
 }
@@ -27,8 +26,6 @@ type JobDistributor struct {
 	nodev1.NodeServiceClient
 	jobv1.JobServiceClient
 	csav1.CSAServiceClient
-
-	WSRPC string
 }
 
 // NewJDClient creates a new Job Distributor client
@@ -38,7 +35,6 @@ func NewJDClient(cfg JDConfig) (*JobDistributor, error) {
 		return nil, fmt.Errorf("failed to connect Job Distributor service. Err: %w", err)
 	}
 	jd := &JobDistributor{
-		WSRPC:             cfg.WSRPC,
 		NodeServiceClient: nodev1.NewNodeServiceClient(conn),
 		JobServiceClient:  jobv1.NewJobServiceClient(conn),
 		CSAServiceClient:  csav1.NewCSAServiceClient(conn),
