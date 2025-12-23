@@ -219,9 +219,11 @@ func (p *CTFChainProvider) startContainer(
 				image = "public.ecr.aws/w0i8p0z9/solana-validator:main-1dcdbc4"
 			}
 		}
+		platform := fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH)
 
 		input := &blockchain.Input{
 			Image:          image,
+			ImagePlatform:  &platform,
 			Type:           blockchain.TypeSolana,
 			ChainID:        chainID,
 			PublicKey:      adminPubKey.String(),
