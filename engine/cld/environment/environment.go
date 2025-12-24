@@ -75,15 +75,9 @@ func Load(
 		lggr.Infow("Using file-based datastore")
 	}
 
-	// default - loads all chains from the networks config
-	chainSelectorsToLoad := cfg.Networks.ChainSelectors()
-
-	if loadcfg.chainSelectorsToLoad != nil {
-		lggr.Infow("Override: loading chains", "chains", loadcfg.chainSelectorsToLoad)
-		chainSelectorsToLoad = loadcfg.chainSelectorsToLoad
-	}
-
-	blockChains, err := chains.LoadChains(ctx, lggr, cfg, chainSelectorsToLoad)
+	// Use lazy loading for chains - they will be initialized on first access
+	// All chains from the network config are made available, but only loaded when accessed
+	lazyBlockChains, err := chains.NewLazyBlockChains(ctx, lggr, cfg)
 	if err != nil {
 		return fdeployment.Environment{}, err
 	}
@@ -140,6 +134,6 @@ func Load(
 		GetContext:        getCtx,
 		OCRSecrets:        sharedSecrets,
 		OperationsBundle:  operations.NewBundle(getCtx, lggr, loadcfg.reporter, operations.WithOperationRegistry(loadcfg.operationRegistry)),
-		BlockChains:       blockChains,
+		BlockChains:       lazyBlockChains,
 	}, nil
 }

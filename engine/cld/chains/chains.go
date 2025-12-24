@@ -160,6 +160,63 @@ func LoadChains(
 	return fchain.NewBlockChainsFromSlice(loadedChains), nil
 }
 
+// NewLazyBlockChains creates a LazyBlockChains instance that defers chain loading until first access.
+// This improves environment initialization performance by avoiding unnecessary chain connections.
+// Chains are loaded on-demand when accessed via GetBySelector, EVMChains, SolanaChains, etc.
+// All chains defined in the network config are made available for lazy loading.
+//
+// If a chain fails to load during access, the error is logged and the failing chain is skipped.
+// This ensures graceful degradation - successfully loaded chains remain accessible while failures
+// are visible in logs.
+func NewLazyBlockChains(
+	ctx context.Context,
+	lggr logger.Logger,
+	cfg *config.Config,
+) (*fchain.LazyBlockChains, error) {
+	chainLoaders := newChainLoaders(lggr, cfg.Networks, cfg.Env.Onchain)
+
+	// Get all chain selectors from the network config
+	allChainSelectors := cfg.Networks.ChainSelectors()
+
+	// Build a map of available chains (selector -> family)
+	availableChains := make(map[uint64]string)
+
+	for _, selector := range allChainSelectors {
+		// Get the chain family for this selector
+		chainFamily, err := chainsel.GetSelectorFamily(selector)
+		if err != nil {
+			lggr.Warnw("Unable to get chain family for selector",
+				"selector", selector, "error", err,
+			)
+
+			return nil, fmt.Errorf("unable to get chain family for selector %d", selector)
+		}
+
+		// Check if we have a loader for this chain family
+		if _, exists := chainLoaders[chainFamily]; !exists {
+			lggr.Debugw("No chain loader available for chain family, skipping",
+				"selector", selector, "family", chainFamily,
+			)
+
+			continue
+		}
+
+		availableChains[selector] = chainFamily
+	}
+
+	lggr.Infow("Created lazy blockchain collection",
+		"available_chains", len(availableChains),
+		"families", len(chainLoaders),
+	)
+
+	fchainLoaders := make(map[string]fchain.ChainLoader, len(chainLoaders))
+	for family, loader := range chainLoaders {
+		fchainLoaders[family] = loader
+	}
+
+	return fchain.NewLazyBlockChains(ctx, availableChains, fchainLoaders, lggr), nil
+}
+
 // newChainLoaders returns a map of chain loaders for each supported chain family, based on the provided
 // network config and secrets. Only chain loaders for which all required secrets are present will be created;
 // if any required secret is missing for a chain family, its loader is omitted and a warning is logged.
