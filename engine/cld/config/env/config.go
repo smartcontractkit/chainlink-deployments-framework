@@ -98,8 +98,7 @@ type JobDistributorAuth struct {
 
 // JobDistributorEndpoints is the configuration for the URL endpoints for the Job Distributor.
 type JobDistributorEndpoints struct {
-	WSRPC string `mapstructure:"wsrpc" yaml:"wsrpc"` // The WebSocket RPC URL for the Job Distributor. Used to connect Job Distributor to CL nodes.
-	GRPC  string `mapstructure:"grpc" yaml:"grpc"`   // The gRPC URL for the Job Distributor. Used to interact with the Job Distributor API.
+	GRPC string `mapstructure:"grpc" yaml:"grpc"` // The gRPC URL for the Job Distributor. Used to interact with the Job Distributor API.
 }
 
 // OCRConfig is the configuration for the OCR.
@@ -232,7 +231,6 @@ var (
 		"offchain.job_distributor.auth.aws_region":                {"OFFCHAIN_JD_AUTH_AWS_REGION", "JD_AUTH_AWS_REGION"},
 		"offchain.job_distributor.auth.username":                  {"OFFCHAIN_JD_AUTH_USERNAME", "JD_AUTH_USERNAME"},
 		"offchain.job_distributor.auth.password":                  {"OFFCHAIN_JD_AUTH_PASSWORD", "JD_AUTH_PASSWORD"},
-		"offchain.job_distributor.endpoints.wsrpc":                {"OFFCHAIN_JD_ENDPOINTS_WSRPC", "JD_WS_RPC"},
 		"offchain.job_distributor.endpoints.grpc":                 {"OFFCHAIN_JD_ENDPOINTS_GRPC", "JD_GRPC"},
 		"offchain.ocr.x_signers":                                  {"OFFCHAIN_OCR_X_SIGNERS", "OCR_X_SIGNERS"},
 		"offchain.ocr.x_proposers":                                {"OFFCHAIN_OCR_X_PROPOSERS", "OCR_X_PROPOSERS"},
