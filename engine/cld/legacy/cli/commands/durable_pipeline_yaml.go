@@ -16,7 +16,7 @@ import (
 type durablePipelineYAML struct {
 	Environment string `yaml:"environment"`
 	Domain      string `yaml:"domain"`
-	Changesets  any    `yaml:"changesets"` // Can be either map[string]any or []any
+	Changesets  any    `yaml:"changesets"` // Must be []any (array format)
 }
 
 // setDurablePipelineInputFromYAML reads a YAML file, extracts the payload for the specified changeset,
@@ -29,7 +29,6 @@ func setDurablePipelineInputFromYAML(inputFileName, changesetName string, domain
 		return err
 	}
 
-	// Find the changeset - handle both object and array formats
 	changesetData, err := findChangesetInData(dpYAML.Changesets, changesetName, inputFileName)
 	if err != nil {
 		return err
@@ -39,42 +38,28 @@ func setDurablePipelineInputFromYAML(inputFileName, changesetName string, domain
 	return setChangesetEnvironmentVariable(changesetName, changesetData, inputFileName)
 }
 
-// findChangesetInData finds a changeset in either object or array format
+// findChangesetInData finds a changeset in array format
 func findChangesetInData(changesets any, changesetName, inputFileName string) (any, error) {
-	switch data := changesets.(type) {
-	case map[string]any:
-		// Object format: {"changeset1": {...}, "changeset2": {...}}
-		if len(data) == 0 {
-			return nil, fmt.Errorf("input file %s has empty 'changesets' object", inputFileName)
-		}
+	// Array format: [{"changeset1": {...}}, {"changeset2": {...}}]
+	data, ok := changesets.([]any)
+	if !ok {
+		return nil, fmt.Errorf("input file %s has invalid 'changesets' format, expected array format", inputFileName)
+	}
 
-		changesetData, exists := data[changesetName]
-		if !exists {
-			return nil, fmt.Errorf("changeset '%s' not found in input file %s", changesetName, inputFileName)
-		}
+	if len(data) == 0 {
+		return nil, fmt.Errorf("input file %s has empty 'changesets' array", inputFileName)
+	}
 
-		return changesetData, nil
-
-	case []any:
-		// Array format: [{"changeset1": {...}}, {"changeset2": {...}}]
-		if len(data) == 0 {
-			return nil, fmt.Errorf("input file %s has empty 'changesets' array", inputFileName)
-		}
-
-		// Search through array items for the changeset
-		for _, item := range data {
-			if itemMap, ok := item.(map[string]any); ok {
-				if changesetData, exists := itemMap[changesetName]; exists {
-					return changesetData, nil
-				}
+	// Search through array items for the changeset
+	for _, item := range data {
+		if itemMap, ok := item.(map[string]any); ok {
+			if changesetData, exists := itemMap[changesetName]; exists {
+				return changesetData, nil
 			}
 		}
-
-		return nil, fmt.Errorf("changeset '%s' not found in input file %s", changesetName, inputFileName)
-
-	default:
-		return nil, fmt.Errorf("input file %s has invalid 'changesets' format, expected object or array", inputFileName)
 	}
+
+	return nil, fmt.Errorf("changeset '%s' not found in input file %s", changesetName, inputFileName)
 }
 
 // convertToJSONSafe recursively converts map[interface{}]interface{} to map[string]any

@@ -844,11 +844,11 @@ func TestSetDurablePipelineInputFromYAML_WithPathResolution(t *testing.T) {
 	yamlContent := `environment: testnet
 domain: test
 changesets:
-  test_changeset:
-    payload:
-      value: 123
-      message: "hello world"
-      bigInt: 2000000000000000000000`
+  - test_changeset:
+      payload:
+        value: 123
+        message: "hello world"
+        bigInt: 2000000000000000000000`
 
 	yamlFileName := "test-pipeline.yaml"
 	yamlFilePath := filepath.Join(inputsDir, yamlFileName)
@@ -925,40 +925,9 @@ func TestFindChangesetInData(t *testing.T) {
 		changesetName string
 		expectError   bool
 		expectedData  any
+		errorContains string
 		description   string
 	}{
-		{
-			name: "object format - changeset found",
-			changesets: map[string]any{
-				"test_changeset": map[string]any{
-					"payload": map[string]any{"value": 123},
-				},
-			},
-			changesetName: "test_changeset",
-			expectError:   false,
-			expectedData: map[string]any{
-				"payload": map[string]any{"value": 123},
-			},
-			description: "Should find changeset in object format",
-		},
-		{
-			name: "object format - changeset not found",
-			changesets: map[string]any{
-				"other_changeset": map[string]any{
-					"payload": map[string]any{"value": 123},
-				},
-			},
-			changesetName: "test_changeset",
-			expectError:   true,
-			description:   "Should return error when changeset not found in object format",
-		},
-		{
-			name:          "object format - empty",
-			changesets:    map[string]any{},
-			changesetName: "test_changeset",
-			expectError:   true,
-			description:   "Should return error for empty object",
-		},
 		{
 			name: "array format - changeset found",
 			changesets: []any{
@@ -1001,6 +970,18 @@ func TestFindChangesetInData(t *testing.T) {
 			description:   "Should return error for empty array",
 		},
 		{
+			name: "object format - should be rejected",
+			changesets: map[string]any{
+				"test_changeset": map[string]any{
+					"payload": map[string]any{"value": 123},
+				},
+			},
+			changesetName: "test_changeset",
+			expectError:   true,
+			errorContains: "expected array format",
+			description:   "Should return error when object format is provided (no longer supported)",
+		},
+		{
 			name:          "invalid format - string",
 			changesets:    "invalid",
 			changesetName: "test_changeset",
@@ -1023,6 +1004,9 @@ func TestFindChangesetInData(t *testing.T) {
 
 			if tt.expectError {
 				require.Error(t, err, tt.description)
+				if tt.errorContains != "" {
+					require.ErrorContains(t, err, tt.errorContains, tt.description)
+				}
 			} else {
 				require.NoError(t, err, tt.description)
 				require.Equal(t, tt.expectedData, result, tt.description)
@@ -1161,10 +1145,10 @@ func TestSetDurablePipelineInputFromYAML_ChainOverrideTypes(t *testing.T) {
 			yamlContent: `environment: testnet
 domain: test
 changesets:
-  test_changeset:
-    payload:
-      message: "test"
-    chainOverrides: [1, 2, 3]`,
+  - test_changeset:
+      payload:
+        message: "test"
+      chainOverrides: [1, 2, 3]`,
 			changesetName: "test_changeset",
 			expectError:   false,
 			expectedJSON:  `"chainOverrides":[1,2,3]`,
@@ -1174,10 +1158,10 @@ changesets:
 			yamlContent: `environment: testnet
 domain: test
 changesets:
-  test_changeset:
-    payload:
-      message: "test"
-    chainOverrides: [1, 5224473277236331295, 18446744073709551615]`,
+  - test_changeset:
+      payload:
+        message: "test"
+      chainOverrides: [1, 5224473277236331295, 18446744073709551615]`,
 			changesetName: "test_changeset",
 			expectError:   false,
 			expectedJSON:  `"chainOverrides":[1,5224473277236331295,18446744073709551615]`,
@@ -1187,10 +1171,10 @@ changesets:
 			yamlContent: `environment: testnet
 domain: test
 changesets:
-  test_changeset:
-    payload:
-      message: "test"
-    chainOverrides: [1, -2, 3]`,
+  - test_changeset:
+      payload:
+        message: "test"
+      chainOverrides: [1, -2, 3]`,
 			changesetName: "test_changeset",
 			expectError:   true,
 			expectedError: "chain override value must be non-negative, got: -2",
@@ -1200,10 +1184,10 @@ changesets:
 			yamlContent: `environment: testnet
 domain: test
 changesets:
-  test_changeset:
-    payload:
-      message: "test"
-    chainOverrides: [1, "invalid", 3]`,
+  - test_changeset:
+      payload:
+        message: "test"
+      chainOverrides: [1, "invalid", 3]`,
 			changesetName: "test_changeset",
 			expectError:   true,
 			expectedError: "chain override value must be an integer, got type string",
@@ -1213,10 +1197,10 @@ changesets:
 			yamlContent: `environment: testnet
 domain: test
 changesets:
-  test_changeset:
-    payload:
-      message: "test"
-    chainOverrides: [1, 2.5, 3]`,
+  - test_changeset:
+      payload:
+        message: "test"
+      chainOverrides: [1, 2.5, 3]`,
 			changesetName: "test_changeset",
 			expectError:   true,
 			expectedError: "chain override value must be an integer, got type float64",
@@ -1226,10 +1210,10 @@ changesets:
 			yamlContent: `environment: testnet
 domain: test
 changesets:
-  test_changeset:
-    payload:
-      message: "test"
-    chainOverrides: []`,
+  - test_changeset:
+      payload:
+        message: "test"
+      chainOverrides: []`,
 			changesetName: "test_changeset",
 			expectError:   false,
 			expectedJSON:  `{"chainOverrides":[],"payload":{"message":"test"}}`,
@@ -1239,9 +1223,9 @@ changesets:
 			yamlContent: `environment: testnet
 domain: test
 changesets:
-  test_changeset:
-    payload:
-      message: "test"`,
+  - test_changeset:
+      payload:
+        message: "test"`,
 			changesetName: "test_changeset",
 			expectError:   false,
 			expectedJSON:  `"message":"test"`, // chainOverrides should be omitted when missing
@@ -1325,21 +1309,6 @@ changesets:
 			expectError:   false,
 			expectedJSON:  `{"payload":{"13264668187771770619":"bsc-testnet","16015286601757825753":"ethereum-sepolia","5009297550715157269":"optimism-sepolia"}}`,
 			description:   "Should handle multiple chain selectors as keys in array format YAML",
-		},
-		{
-			name: "object format with multiple chain selectors",
-			yamlContent: `environment: testnet
-domain: test
-changesets:
-  deploy_timelock:
-    payload:
-      16015286601757825753: "ethereum-sepolia"
-      13264668187771770619: "bsc-testnet"
-      5009297550715157269: "optimism-sepolia"`,
-			changesetName: "deploy_timelock",
-			expectError:   false,
-			expectedJSON:  `{"payload":{"13264668187771770619":"bsc-testnet","16015286601757825753":"ethereum-sepolia","5009297550715157269":"optimism-sepolia"}}`,
-			description:   "Should handle multiple chain selectors as keys in object format YAML",
 		},
 	}
 
@@ -1781,18 +1750,6 @@ func TestSetDurablePipelineInputFromYAML_NullPayload(t *testing.T) {
 		description   string
 	}{
 		{
-			name: "object format with null payload - should be valid",
-			yamlContent: `environment: testnet
-domain: test
-changesets:
-  deploy_link_token:
-    payload: null`,
-			changesetName: "deploy_link_token",
-			expectError:   false,
-			expectedJSON:  `{"payload":null}`,
-			description:   "Should allow explicit null payload in object format",
-		},
-		{
 			name: "array format with null payload - should be valid",
 			yamlContent: `environment: testnet
 domain: test
@@ -1805,23 +1762,23 @@ changesets:
 			description:   "Should allow explicit null payload in array format",
 		},
 		{
-			name: "object format with missing payload - should error",
+			name: "array format with missing payload - should error",
 			yamlContent: `environment: testnet
 domain: test
 changesets:
-  deploy_link_token:
-    notPayload: 123`,
+  - deploy_link_token:
+      notPayload: 123`,
 			changesetName: "deploy_link_token",
 			expectError:   true,
 			description:   "Should error when payload field is completely missing",
 		},
 		{
-			name: "object format with empty payload object - should be valid",
+			name: "array format with empty payload object - should be valid",
 			yamlContent: `environment: testnet
 domain: test
 changesets:
-  deploy_link_token:
-    payload: {}`,
+  - deploy_link_token:
+      payload: {}`,
 			changesetName: "deploy_link_token",
 			expectError:   false,
 			expectedJSON:  `{"payload":{}}`,
