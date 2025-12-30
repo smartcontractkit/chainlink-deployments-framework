@@ -19,9 +19,9 @@ import (
 	fjdprov "github.com/smartcontractkit/chainlink-deployments-framework/offchain/jd/provider"
 )
 
-// ErrEndpointsRequired is returned during loading of the offchain client when both gRPC and wsRPC
-// endpoints are required.
-var ErrEndpointsRequired = errors.New("both gRPC and wsRPC endpoints are required")
+// ErrEndpointsRequired is returned during loading of the offchain client when gRPC endpoint is
+// required.
+var ErrEndpointsRequired = errors.New("gRPC endpoint is required")
 
 // loadConfig contains the configuration for loading an offchain client.
 type loadConfig struct {
@@ -123,13 +123,13 @@ func LoadOffchainClient(
 	)
 
 	// TODO: Remove this domain specific check
-	if dom.Key() == "keystone" && endpoints.WSRPC == "" {
+	if dom.Key() == "keystone" && endpoints.GRPC == "" {
 		lggr.Warn("Skipping JD initialization for Keystone, fallback to CLO data")
 
 		return nil, nil //nolint:nilnil // We want to return nil if the JD is not initialized for now.
 	}
 
-	if endpoints.WSRPC == "" || endpoints.GRPC == "" {
+	if endpoints.GRPC == "" {
 		return nil, ErrEndpointsRequired
 	}
 
@@ -162,7 +162,6 @@ func LoadOffchainClient(
 	} else {
 		provider = fjdprov.NewClientOffchainProvider(fjdprov.ClientOffchainProviderConfig{
 			GRPC:  endpoints.GRPC,
-			WSRPC: endpoints.WSRPC,
 			Creds: loadCfg.creds,
 			Auth:  oauth,
 		}, provOpts...)

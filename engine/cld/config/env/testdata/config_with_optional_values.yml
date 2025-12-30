@@ -20,7 +20,6 @@ onchain:
 offchain:
   job_distributor:
     endpoints:
-      wsrpc: "ws://localhost:1234"
       grpc: "grpc://localhost:4567"
   ocr:
     x_signers: "rabid mouse"

@@ -25,7 +25,6 @@ onchain:
 offchain:
   job_distributor:
     endpoints:
-      wsrpc: "ws://localhost:1234"
       grpc: "grpc://localhost:4567"
     auth:
       cognito_app_client_id: "af1a2b3c"
