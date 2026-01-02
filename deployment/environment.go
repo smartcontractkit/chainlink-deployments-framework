@@ -59,7 +59,8 @@ type Environment struct {
 	// OperationsBundle contains dependencies required by the operations API.
 	OperationsBundle operations.Bundle
 	// BlockChains is the container of all chains in the environment.
-	BlockChains chain.BlockChains
+	// This can be either an eagerly-loaded BlockChains or a LazyBlockChains that loads chains on-demand.
+	BlockChains chain.BlockChainCollection
 }
 
 // EnvironmentOption is a functional option for configuring an Environment
@@ -75,7 +76,7 @@ func NewEnvironment(
 	offchain offchain.Client,
 	ctx func() context.Context,
 	secrets ocr.OCRSecrets,
-	blockChains chain.BlockChains,
+	blockChains chain.BlockChainCollection,
 	opts ...EnvironmentOption,
 ) *Environment {
 	env := &Environment{
