@@ -1,0 +1,12 @@
+- type: testnet
+  chain_selector: 3379446385462418246
+  block_explorer:
+    type: ""
+    api_key: ""
+    url: ""
+  rpcs:
+    - rpc_name: Local RPC
+      preferred_url_scheme: http
+      http_url: http://127.0.0.1:61509
+      ws_url: wss://localhost:9999/
+  metadata: null

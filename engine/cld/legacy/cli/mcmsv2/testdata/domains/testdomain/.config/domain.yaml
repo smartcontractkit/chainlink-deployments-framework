@@ -1,0 +1,7 @@
+environments:
+  local:
+    network_types:
+      - testnet
+  testnet:
+    network_types:
+      - testnet

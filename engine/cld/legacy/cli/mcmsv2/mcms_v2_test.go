@@ -16,6 +16,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/samber/lo"
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/mcms"
 	"github.com/smartcontractkit/mcms/sdk"
@@ -348,13 +349,13 @@ func Test_timelockExecuteOptions(t *testing.T) {
 	require.NoError(t, err)
 	lggr := logger.Test(t)
 
+	// FIXME: do we need to setup this folder?
 	err = os.MkdirAll("domains/exemplar", 0o700)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = os.RemoveAll("domains") })
-	exemplarDomain := cldf_domain.MustGetDomain("exemplar")
 
 	chain := slices.Collect(maps.Values(env.BlockChains.EVMChains()))[0]
-	timelockAddress, _, env := deployTimelockAndCallProxy(t, env, chain)
+	timelockAddress, _, env := deployTimelockAndCallProxy(t, env, chain, nil, nil, nil)
 
 	errorContains := func(msg string) func(t *testing.T, opts []mcms.Option, err error) {
 		return func(t *testing.T, opts []mcms.Option, err error) {
@@ -475,7 +476,7 @@ func Test_timelockExecuteOptions(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := timelockExecuteOptions(t.Context(), lggr, exemplarDomain, tt.cfg)
+			got, err := timelockExecuteOptions(t.Context(), lggr, tt.cfg)
 			tt.assert(t, got, err)
 		})
 	}
@@ -987,7 +988,7 @@ func deployMcm(
 }
 
 func deployTimelockAndCallProxy(
-	t *testing.T, env *cldf.Environment, chain evmchain.Chain,
+	t *testing.T, env *cldf.Environment, chain evmchain.Chain, proposers []string, bypassers []string, cancellers []string,
 ) (string, string, *cldf.Environment) {
 	t.Helper()
 
@@ -1018,10 +1019,10 @@ func deployTimelockAndCallProxy(
 			// deploy timelock
 			timelockAddress, tx, _, err = mcmsevmbindings.DeployRBACTimelock(chain.DeployerKey, chain.Client, big.NewInt(0),
 				chain.DeployerKey.From,
-				nil,                                // proposers
-				[]common.Address{callProxyAddress}, // executors
-				nil,                                // bypassers
-				nil,                                // cancellers
+				lo.Map(proposers, func(p string, _ int) common.Address { return common.HexToAddress(p) }),
+				[]common.Address{callProxyAddress},
+				lo.Map(bypassers, func(p string, _ int) common.Address { return common.HexToAddress(p) }),
+				lo.Map(cancellers, func(p string, _ int) common.Address { return common.HexToAddress(p) }),
 			)
 			require.NoError(t, err)
 			err = ds.Addresses().Add(datastore.AddressRef{
@@ -1073,6 +1074,34 @@ func testMcmProposal(
 				Data:             []byte("0x"),
 				AdditionalFields: json.RawMessage(`{"value": 0}`),
 			},
+		}).Build()
+	require.NoError(t, err)
+
+	return *proposal
+}
+
+func testTimelockProposal(
+	t *testing.T,
+	chain evmchain.Chain,
+	timelockAddress string,
+	mcmAddress string,
+) mcms.TimelockProposal {
+	t.Helper()
+
+	proposal, err := mcms.NewTimelockProposalBuilder().
+		SetVersion("v1").
+		SetValidUntil(2082758399).
+		SetDescription("test timelock proposal").
+		SetOverridePreviousRoot(true).
+		AddTimelockAddress(types.ChainSelector(chain.Selector), timelockAddress).
+		AddChainMetadata(types.ChainSelector(chain.Selector), types.ChainMetadata{MCMAddress: mcmAddress}).
+		AddOperation(types.BatchOperation{
+			ChainSelector: types.ChainSelector(chain.Selector),
+			Transactions: []types.Transaction{{
+				To:               chain.DeployerKey.From.Hex(),
+				Data:             []byte("0x"),
+				AdditionalFields: json.RawMessage(`{"value": 0}`),
+			}},
 		}).Build()
 	require.NoError(t, err)
 

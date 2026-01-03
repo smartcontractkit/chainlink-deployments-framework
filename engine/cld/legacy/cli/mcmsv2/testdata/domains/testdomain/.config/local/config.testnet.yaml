@@ -1,0 +1,28 @@
+onchain:
+  kms:
+    key_id: ""
+    key_region: ""
+  evm:
+    deployer_key: "c4a07ce3bd71783bee3bd9d662d95e11d285f978f00dc9fa59ab8ff481bc325b"
+  solana:
+    wallet_key: ""
+    programs_dir_path: ""
+  aptos:
+    deployer_key: ""
+  sui:
+    deployer_key: ""
+  tron:
+    deployer_key: ""
+  ton:
+    deployer_key: ""
+    wallet_version: ""
+offchain:
+  job_distributor:
+    endpoints:
+      wsrpc: ""
+      grpc: ""
+  ocr:
+    x_signers: guide expose ramp punch candy bike slender remove mutual spice canal joy parent begin rely bone tunnel oppose boil faith image layer carpet danger
+    x_proposers: season retire portion toddler rabbit extra pizza green tape dirt claim grief notable turkey layer valve focus begin problem media grid empty reduce enhance
+catalog:
+  grpc: ""
