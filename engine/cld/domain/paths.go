@@ -87,4 +87,8 @@ const (
 	// DurablePipelineInputsDirName is the name of the directory containing the inputs
 	// for the durable pipelines.
 	DurablePipelineInputsDirName = "inputs"
+
+	// ExceptionsFileName is the name of the file containing exceptions.
+	// At the moment, this is only used for CCIP domain.
+	ExceptionsFileName = "exceptions.yaml"
 )

@@ -128,6 +128,11 @@ func Load(
 		}
 	}
 
+	exceptions, err := envdir.LoadExceptions()
+	if err != nil {
+		return fdeployment.Environment{}, fmt.Errorf("failed to load exceptions: %w", err)
+	}
+
 	getCtx := func() context.Context { return ctx }
 
 	return fdeployment.Environment{
@@ -141,5 +146,6 @@ func Load(
 		OCRSecrets:        sharedSecrets,
 		OperationsBundle:  operations.NewBundle(getCtx, lggr, loadcfg.reporter, operations.WithOperationRegistry(loadcfg.operationRegistry)),
 		BlockChains:       blockChains,
+		Exceptions:        exceptions,
 	}, nil
 }
