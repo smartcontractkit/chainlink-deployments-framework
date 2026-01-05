@@ -1,5 +1,19 @@
 # chainlink-deployments-framework
 
+## 0.73.0
+
+### Minor Changes
+
+- [#647](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/647) [`e76e685`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/e76e685b8885108f6de1cd2e1d0aed9aa238a2d4) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat(jd): new mapper function for chain family
+
+  Maps JD proto ChainType to the chain selector family string
+
+- [#637](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/637) [`fba3c78`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/fba3c78eee1ace74883373a114e202dc65ca7063) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat(operations): introduce RegisterOperationRelaxed
+
+### Patch Changes
+
+- [#639](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/639) [`724f6f9`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/724f6f9d9d38a534c4b6ca386db506c3b4ec1fc6) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(pipeline): remove support for object format for payload in input yaml file
+
 ## 0.72.0
 
 ### Minor Changes
