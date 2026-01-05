@@ -121,8 +121,7 @@ func (p *CTFOffchainProvider) Initialize(ctx context.Context) (offchain.Client, 
 
 	// Create JD configuration from the CTF output
 	jdConfig := jd.JDConfig{
-		GRPC:  jdOutput.ExternalGRPCUrl,
-		WSRPC: jdOutput.ExternalWSRPCUrl,
+		GRPC: jdOutput.ExternalGRPCUrl,
 		// Note: Using insecure credentials for testing
 		Creds: nil,
 		Auth:  nil,
