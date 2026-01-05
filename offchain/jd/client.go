@@ -16,7 +16,9 @@ import (
 
 // JDConfig is the configuration for the Job Distributor client.
 type JDConfig struct {
-	GRPC  string
+	GRPC string
+	// DEPRECATED: WSRPC is no longer used and will be removed in a future version.
+	WSRPC string
 	Creds credentials.TransportCredentials
 	Auth  oauth2.TokenSource
 }
@@ -26,6 +28,9 @@ type JobDistributor struct {
 	nodev1.NodeServiceClient
 	jobv1.JobServiceClient
 	csav1.CSAServiceClient
+
+	// DEPRECATED: WSRPC is no longer used and will be removed in a future version.
+	WSRPC string
 }
 
 // NewJDClient creates a new Job Distributor client
