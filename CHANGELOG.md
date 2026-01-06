@@ -1,5 +1,17 @@
 # chainlink-deployments-framework
 
+## 0.74.0
+
+### Minor Changes
+
+- [#643](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/643) [`ade5b2c`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/ade5b2cc3ed79cd28903da8a7c9e507db977a479) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(JD): remove WSRPC field from JDConfig
+
+  The WSRPC in JDConfig was never needed as it was never used. Only GRPC field is needed.
+
+### Patch Changes
+
+- [#649](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/649) [`fea4ff3`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/fea4ff3d632cb2ec0f5affeb61a13240c8a0736e) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(JD): restore WSRPC field to help with graceful migration in chainlink repo and CLD repo
+
 ## 0.73.0
 
 ### Minor Changes
