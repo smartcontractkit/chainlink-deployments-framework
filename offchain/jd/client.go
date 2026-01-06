@@ -43,6 +43,9 @@ func NewJDClient(cfg JDConfig) (*JobDistributor, error) {
 		NodeServiceClient: nodev1.NewNodeServiceClient(conn),
 		JobServiceClient:  jobv1.NewJobServiceClient(conn),
 		CSAServiceClient:  csav1.NewCSAServiceClient(conn),
+		// DEPRECATED: WSRPC is no longer used and will be removed in a future version in CLD.
+		// This is kept here for backwards compatibility as Chainlink repo uses it to remember the value of WSRPC.
+		WSRPC: cfg.WSRPC,
 	}
 
 	return jd, err
