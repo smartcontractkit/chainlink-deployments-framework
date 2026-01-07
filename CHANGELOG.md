@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.74.2
+
+### Patch Changes
+
+- [#656](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/656) [`bdf4104`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/bdf410480189a3d2e568478d61c57b7bc45d1b5a) Thanks [@friedemannf](https://github.com/friedemannf)! - Bump CTF to v0.12.6
+
 ## 0.74.1
 
 ### Patch Changes
