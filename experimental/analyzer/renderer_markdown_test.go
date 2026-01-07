@@ -170,7 +170,7 @@ func TestMarkdownRenderer_RenderDecodedCall_TopLevelBlocks_NoListIndentation(t *
 	assert.Contains(t, output, "\n<details>")
 	assert.NotContains(t, output, "\n    <details>")
 
-	// Sanity: key inputs should be present and use top-level blocks.
+	// key inputs should be present and use top-level blocks.
 	assert.Contains(t, output, "**`signerAddresses`**:")
 	assert.Contains(t, output, "**`groupQuorums`**:")
 
