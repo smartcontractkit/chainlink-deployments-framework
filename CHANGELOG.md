@@ -1,5 +1,63 @@
 # chainlink-deployments-framework
 
+## 0.74.2
+
+### Patch Changes
+
+- [#656](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/656) [`bdf4104`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/bdf410480189a3d2e568478d61c57b7bc45d1b5a) Thanks [@friedemannf](https://github.com/friedemannf)! - Bump CTF to v0.12.6
+
+## 0.74.1
+
+### Patch Changes
+
+- [#653](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/653) [`173d35e`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/173d35ed67760c432bbd4d9886b28089be05aa4f) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(jd): keep wsrpc field as storage
+
+  Looks like WSRPC field cant be removed completely for now as Chainlink repo uses WSRPC field of the JDConfig as temporary storage for lookup later, it requires a refactor on the Chainlink side to address this, in the mean time to unblock the removal of wsrpc in the CLD, we temporary restore the storage functionality of the field.
+
+## 0.74.0
+
+### Minor Changes
+
+- [#643](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/643) [`ade5b2c`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/ade5b2cc3ed79cd28903da8a7c9e507db977a479) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(JD): remove WSRPC field from JDConfig
+
+  The WSRPC in JDConfig was never needed as it was never used. Only GRPC field is needed.
+
+### Patch Changes
+
+- [#649](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/649) [`fea4ff3`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/fea4ff3d632cb2ec0f5affeb61a13240c8a0736e) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(JD): restore WSRPC field to help with graceful migration in chainlink repo and CLD repo
+
+## 0.73.0
+
+### Minor Changes
+
+- [#647](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/647) [`e76e685`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/e76e685b8885108f6de1cd2e1d0aed9aa238a2d4) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat(jd): new mapper function for chain family
+
+  Maps JD proto ChainType to the chain selector family string
+
+- [#637](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/637) [`fba3c78`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/fba3c78eee1ace74883373a114e202dc65ca7063) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat(operations): introduce RegisterOperationRelaxed
+
+### Patch Changes
+
+- [#639](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/639) [`724f6f9`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/724f6f9d9d38a534c4b6ca386db506c3b4ec1fc6) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(pipeline): remove support for object format for payload in input yaml file
+
+## 0.72.0
+
+### Minor Changes
+
+- [#633](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/633) [`006c70a`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/006c70afd9aa8fd5f6e7cb66bea41740e5f0d9b2) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - feat(mcms): fetch pipeline PR data before decoding a proposal
+
+### Patch Changes
+
+- [#634](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/634) [`143bdc3`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/143bdc3f1cc3fe707b6427cc64d8fc447812c4e2) Thanks [@DimitriosNaikopoulos](https://github.com/DimitriosNaikopoulos)! - patch: update rpc regex for anvil to include tailscale urls
+
+- [#630](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/630) [`f0ede8e`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/f0ede8ef3fb91f4cdec1c2061ae478093314c84f) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - fix(mcms): use proposalContextProvider in mcmsv2's get-op-count and is-timelock-done commands
+
+## 0.71.4
+
+### Patch Changes
+
+- [#625](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/625) [`ea28b23`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/ea28b239855994124c1b44a7fe3073fee364cb82) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(catalog): load from catalog when mode is all
+
 ## 0.71.3
 
 ### Patch Changes

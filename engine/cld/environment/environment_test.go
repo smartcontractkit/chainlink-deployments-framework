@@ -59,10 +59,8 @@ func Test_Load_LoadOffchainClientFailure(t *testing.T) { //nolint:paralleltest /
 	// In CI mode, config is loaded from environment variables instead of files.
 	// We manually set the required env vars for this test and clean up afterward.
 	if os.Getenv("CI") == "true" {
-		os.Setenv("OFFCHAIN_JD_ENDPOINTS_WSRPC", "ws://localhost:8080")
 		os.Setenv("OFFCHAIN_JD_ENDPOINTS_GRPC", "localhost:9090")
 		t.Cleanup(func() {
-			os.Unsetenv("OFFCHAIN_JD_ENDPOINTS_WSRPC")
 			os.Unsetenv("OFFCHAIN_JD_ENDPOINTS_GRPC")
 		})
 	}

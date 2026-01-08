@@ -114,8 +114,7 @@ func TestLoadOffchainClient(t *testing.T) {
 		testDomain     = domain.NewDomain("/tmp", "test")
 		keystoneDomain = domain.NewDomain("/tmp", "keystone")
 		endpoints      = cfgenv.JobDistributorEndpoints{
-			WSRPC: "ws://localhost:8080",
-			GRPC:  "localhost:9090",
+			GRPC: "localhost:9090",
 		}
 	)
 
@@ -188,8 +187,7 @@ func TestLoadOffchainClient(t *testing.T) {
 			domain: testDomain,
 			cfg: cfgenv.JobDistributorConfig{
 				Endpoints: cfgenv.JobDistributorEndpoints{
-					WSRPC: "ws://localhost:8080",
-					GRPC:  "localhost:9090",
+					GRPC: "localhost:9090",
 				},
 			},
 			opts: []LoadOffchainClientOpt{
@@ -197,36 +195,22 @@ func TestLoadOffchainClient(t *testing.T) {
 			},
 		},
 		{
-			name:   "missing WSRPC endpoint",
-			domain: testDomain,
-			cfg: cfgenv.JobDistributorConfig{
-				Endpoints: cfgenv.JobDistributorEndpoints{
-					WSRPC: "", // Missing
-					GRPC:  "localhost:9090",
-				},
-			},
-			opts:    []LoadOffchainClientOpt{},
-			wantErr: "both gRPC and wsRPC endpoints are required",
-		},
-		{
 			name:   "missing GRPC endpoint",
 			domain: testDomain,
 			cfg: cfgenv.JobDistributorConfig{
 				Endpoints: cfgenv.JobDistributorEndpoints{
-					WSRPC: "ws://localhost:8080",
-					GRPC:  "", // Missing
+					GRPC: "", // Missing
 				},
 			},
 			opts:    []LoadOffchainClientOpt{},
-			wantErr: "both gRPC and wsRPC endpoints are required",
+			wantErr: "gRPC endpoint is required",
 		},
 		{
-			name:   "keystone domain with missing WSRPC",
+			name:   "keystone domain with missing GRPC",
 			domain: keystoneDomain,
 			cfg: cfgenv.JobDistributorConfig{
 				Endpoints: cfgenv.JobDistributorEndpoints{
-					WSRPC: "", // Missing for keystone
-					GRPC:  "localhost:9090",
+					GRPC: "", // Missing for keystone
 				},
 			},
 			opts:    []LoadOffchainClientOpt{},
