@@ -133,6 +133,7 @@ func addMCMSv2DeprecationWarning(cmd *cobra.Command) *cobra.Command {
 			printBanner(c)
 			err := origRunE(c, args)
 			printBanner(c)
+
 			return err
 		}
 	}
@@ -181,11 +182,11 @@ func BuildMCMSv2Cmd(lggr logger.Logger, domain cldf_domain.Domain, proposalConte
 	cmd.AddCommand(addMCMSv2DeprecationWarning(buildExecuteChainv2Cmd(lggr, domain, proposalContextProvider)))
 	cmd.AddCommand(addMCMSv2DeprecationWarning(buildExecuteOperationv2Cmd(lggr, domain, proposalContextProvider)))
 	cmd.AddCommand(addMCMSv2DeprecationWarning(buildSetRootv2Cmd(lggr, domain, proposalContextProvider)))
-	cmd.AddCommand(addMCMSv2DeprecationWarning(buildGetOpCountV2Cmd(lggr, domain)))
+	cmd.AddCommand(addMCMSv2DeprecationWarning(buildGetOpCountV2Cmd(lggr, domain, proposalContextProvider)))
 	cmd.AddCommand(buildMCMSErrorDecode(lggr, domain, proposalContextProvider)) // not deprecated (yet)
 	cmd.AddCommand(addMCMSv2DeprecationWarning(buildRunTimelockIsPendingV2Cmd(lggr, domain)))
 	cmd.AddCommand(addMCMSv2DeprecationWarning(buildRunTimelockIsReadyToExecuteV2Cmd(lggr, domain)))
-	cmd.AddCommand(addMCMSv2DeprecationWarning(buildRunTimelockIsDoneV2Cmd(lggr, domain)))
+	cmd.AddCommand(addMCMSv2DeprecationWarning(buildRunTimelockIsDoneV2Cmd(lggr, domain, proposalContextProvider)))
 	cmd.AddCommand(addMCMSv2DeprecationWarning(buildRunTimelockIsOperationPendingV2Cmd(lggr, domain)))
 	cmd.AddCommand(addMCMSv2DeprecationWarning(buildRunTimelockIsOperationReadyToExecuteV2Cmd(lggr, domain)))
 	cmd.AddCommand(addMCMSv2DeprecationWarning(buildRunTimelockIsOperationDoneV2Cmd(lggr, domain)))
