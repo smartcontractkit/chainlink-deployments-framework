@@ -1226,9 +1226,12 @@ func newCfgv2(lggr logger.Logger, cmd *cobra.Command, domain cldf_domain.Domain,
 	if err != nil {
 		return nil, fmt.Errorf("error loading environment: %w", err)
 	}
-	cfg.proposalCtx, err = proposalCtxProvider(cfg.env)
-	if err != nil {
-		return nil, fmt.Errorf("failed to provide proposal analysis context: %w", err)
+
+	if proposalCtxProvider != nil {
+		cfg.proposalCtx, err = proposalCtxProvider(cfg.env)
+		if err != nil {
+			return nil, fmt.Errorf("failed to provide proposal analysis context: %w", err)
+		}
 	}
 
 	if flags.fork {
