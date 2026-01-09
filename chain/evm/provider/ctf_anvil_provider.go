@@ -339,7 +339,7 @@ type CTFAnvilChainProvider struct {
 
 	chain     *evm.Chain
 	httpURL   string
-	container testcontainers.Container
+	Container testcontainers.Container
 }
 
 // NewCTFAnvilChainProvider creates a new CTFAnvilChainProvider with the given selector and
@@ -370,23 +370,23 @@ func (p *CTFAnvilChainProvider) Initialize(ctx context.Context) (chain.BlockChai
 
 	err := p.config.validate()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to validate config: %w", err)
 	}
 
 	chainID, err := chainsel.GetChainIDFromSelector(p.selector)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get chain id from selector: %w", err)
 	}
 
 	httpURL, err := p.startContainer(ctx, chainID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to start container: %w", err)
 	}
 	p.httpURL = httpURL
 
 	lggr, err := logger.New()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create new logger: %w", err)
 	}
 
 	client, err := rpcclient.NewMultiClient(lggr, rpcclient.RPCConfig{
@@ -418,7 +418,7 @@ func (p *CTFAnvilChainProvider) Initialize(ctx context.Context) (chain.BlockChai
 		// Use custom deployer transactor generator
 		deployerKey, err = p.config.DeployerTransactorGen.Generate(chainIDBigInt)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to generate deployer transactor: %w", err)
 		}
 
 		signHashFunc = func(hash []byte) ([]byte, error) {
@@ -426,14 +426,14 @@ func (p *CTFAnvilChainProvider) Initialize(ctx context.Context) (chain.BlockChai
 		}
 	} else {
 		// Use default Anvil deployer account
-		deployerPrivateKey, parseErr := crypto.HexToECDSA(anvilTestPrivateKeys[0])
-		if parseErr != nil {
-			return nil, parseErr
+		deployerPrivateKey, perr := crypto.HexToECDSA(anvilTestPrivateKeys[0])
+		if perr != nil {
+			return nil, fmt.Errorf("failed to parse anvil test private key: %w", perr)
 		}
 
-		deployerKey, err = bind.NewKeyedTransactorWithChainID(deployerPrivateKey, chainIDBigInt)
-		if err != nil {
-			return nil, err
+		deployerKey, perr = bind.NewKeyedTransactorWithChainID(deployerPrivateKey, chainIDBigInt)
+		if perr != nil {
+			return nil, fmt.Errorf("failed to create eth transactor: %w", perr)
 		}
 
 		signHashFunc = func(hash []byte) ([]byte, error) {
@@ -449,14 +449,14 @@ func (p *CTFAnvilChainProvider) Initialize(ctx context.Context) (chain.BlockChai
 	// Build additional user transactors from the default Anvil accounts
 	userTransactors, err := p.getUserTransactors(chainID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get user transactors: %w", err)
 	}
 
 	confirmFunc, err := p.config.ConfirmFunctor.Generate(
 		ctx, p.selector, client, deployerKey.From,
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to generate confirm function: %w", err)
 	}
 
 	p.chain = &evm.Chain{
@@ -515,12 +515,12 @@ func (p *CTFAnvilChainProvider) GetNodeHTTPURL() string {
 //
 // Returns an error if the container termination fails.
 func (p *CTFAnvilChainProvider) Cleanup(ctx context.Context) error {
-	if p.container != nil {
-		err := p.container.Terminate(ctx)
+	if p.Container != nil {
+		err := p.Container.Terminate(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to terminate Anvil container: %w", err)
 		}
-		p.container = nil // Clear the reference after successful termination
+		p.Container = nil // Clear the reference after successful termination
 	}
 
 	return nil
@@ -537,9 +537,7 @@ func (p *CTFAnvilChainProvider) Cleanup(ctx context.Context) error {
 //
 // Returns the external HTTP URL that can be used to connect to the Anvil node.
 func (p *CTFAnvilChainProvider) startContainer(ctx context.Context, chainID string) (string, error) {
-	var (
-		attempts = uint(10)
-	)
+	attempts := uint(10)
 
 	err := framework.DefaultNetwork(p.config.Once)
 	if err != nil {
@@ -587,7 +585,7 @@ func (p *CTFAnvilChainProvider) startContainer(ctx context.Context, chainID stri
 		}
 
 		// Store container reference for manual cleanup
-		p.container = output.Container
+		p.Container = output.Container
 
 		// Only register cleanup if T is available (for test cleanup)
 		if p.config.T != nil {

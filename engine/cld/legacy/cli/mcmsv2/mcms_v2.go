@@ -2,7 +2,6 @@ package mcmsv2
 
 import (
 	"context"
-	"crypto/ecdsa"
 	"crypto/rand"
 	"encoding/json"
 	"errors"
@@ -20,11 +19,8 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind/v2"
 	"github.com/ethereum/go-ethereum/common"
 	gethtypes "github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/go-viper/mapstructure/v2"
 	chainsel "github.com/smartcontractkit/chain-selectors"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework/rpc"
 	"github.com/smartcontractkit/mcms"
 	"github.com/smartcontractkit/mcms/sdk"
 	"github.com/smartcontractkit/mcms/sdk/aptos"
@@ -53,8 +49,6 @@ import (
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer/upf"
-
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/legacy/cli/mcmsv2/layout"
 )
 
 const (
@@ -747,7 +741,7 @@ func buildTimelockExecuteChainV2Cmd(lggr logger.Logger, domain cldf_domain.Domai
 				return fmt.Errorf("error creating config: %w", err)
 			}
 
-			return timelockExecuteChainCommand(cmd.Context(), lggr, cfgv2, domain)
+			return timelockExecuteChainCommand(cmd.Context(), lggr, cfgv2)
 		},
 	}
 }
@@ -775,7 +769,7 @@ func buildTimelockExecuteOperationV2Cmd(lggr logger.Logger, domain cldf_domain.D
 				return fmt.Errorf("failed to create TimelockExecutable: %w", err)
 			}
 
-			executeOptions, err := timelockExecuteOptions(cmd.Context(), lggr, domain, cfgv2)
+			executeOptions, err := timelockExecuteOptions(cmd.Context(), lggr, cfgv2)
 			if err != nil {
 				return fmt.Errorf("failed to get timelock execute options: %w", err)
 			}
@@ -810,107 +804,12 @@ func buildExecuteForkCommand(lggr logger.Logger, domain cldf_domain.Domain, prop
 			if err := cmd.Flags().Set(forkFlag, "true"); err != nil {
 				return fmt.Errorf("failed to set fork flag for buildExecuteForkCommand command: %w", err)
 			}
-			chainSelector, err := cmd.Flags().GetUint64(chainSelectorFlag)
-			if err != nil {
-				return fmt.Errorf("error getting selector flag: %w", err)
-			}
-			family, err := chainsel.GetSelectorFamily(chainSelector)
-			if err != nil {
-				return fmt.Errorf("failed to get selector family: %w", err)
-			}
-			if family != chainsel.FamilyEVM {
-				lggr.Infof("Skipping fork execution: chain selector %d is not EVM. Family is %s", chainSelector, family)
-				return nil // don’t fail, just exit cleanly
-			}
 			cfg, err := newCfgv2(lggr, cmd, domain, proposalCtxProvider, acceptExpiredProposal)
 			if err != nil {
 				return fmt.Errorf("error creating config: %w", err)
 			}
 
-			if len(cfg.forkedEnv.ChainConfigs[cfg.chainSelector].HTTPRPCs) == 0 {
-				return fmt.Errorf("no rpcs loaded in forked environment for chain %d (fork tests require public RPCs)", cfg.chainSelector)
-			}
-
-			// get the chain URL, chain ID and MCM contract address
-			url := cfg.forkedEnv.ChainConfigs[cfg.chainSelector].HTTPRPCs[0].External
-			anvilClient := rpc.New(url, nil)
-			chainID := cfg.forkedEnv.ChainConfigs[cfg.chainSelector].ChainID
-			mcmsAddr := cfg.proposal.ChainMetadata[types.ChainSelector(cfg.chainSelector)].MCMAddress
-
-			ctx, cancel := context.WithTimeout(cmd.Context(), 300*time.Second)
-			defer cancel()
-			if testSigner {
-				if lerr := layout.SetMCMSigner(
-					ctx,
-					lggr,
-					layout.MCMSLayout,
-					blockchain.DefaultAnvilPrivateKey,
-					blockchain.DefaultAnvilPublicKey,
-					blockchain.DefaultAnvilPublicKey,
-					url,
-					chainID,
-					mcmsAddr,
-				); lerr != nil {
-					return fmt.Errorf("failed to set signer: %w", lerr)
-				}
-			}
-			// Override signatures for proposal
-			privKey, err := crypto.HexToECDSA(blockchain.DefaultAnvilPrivateKey)
-			if err != nil {
-				return fmt.Errorf("failed to create private key: %w", err)
-			}
-			timelockAddress := common.HexToAddress(cfg.timelockProposal.TimelockAddresses[types.ChainSelector(cfg.chainSelector)])
-
-			if err = overwriteProposalSignatureWithTestKey(cfg, privKey); err != nil {
-				return fmt.Errorf("failed to overwrite proposal signature: %w", err)
-			}
-
-			// set root
-			// TODO: improve error decoding on the mcms lib for set root.
-			err = setRootCommand(ctx, lggr, cfg)
-			if err != nil {
-				return fmt.Errorf("failed to set root: %w", err)
-			}
-			lggr.Info("Root set successfully")
-			// TODO: improve error decoding on the mcms lib for set root.
-			err = executeChainCommand(ctx, lggr, cfg, true)
-			if err != nil {
-				return fmt.Errorf("failed to execute chain: %w", err)
-			}
-			lggr.Info("MCMs execute() success")
-			lggr.Info("Waiting for the chain to be mined before executing timelock chain command")
-
-			if err = anvilClient.EVMIncreaseTime(uint64(cfg.timelockProposal.Delay.Seconds())); err != nil {
-				return fmt.Errorf("failed to increase time: %w", err)
-			}
-			if err = anvilClient.AnvilMine([]interface{}{1}); err != nil {
-				return fmt.Errorf("failed to mine block: %w", err)
-			}
-
-			if cfg.timelockProposal.Action != types.TimelockActionSchedule {
-				lggr.Infof("Proposal has type %s, skipping executing timelock chain command", cfg.timelockProposal.Action)
-				return nil
-			}
-
-			lggr.Info("Executing timelock chain command")
-			err = timelockExecuteChainCommand(ctx, lggr, cfg, domain)
-			if err != nil {
-				lggr.Warnw("Timelock execute failed, starting calling individual ops for debugging", "err", err)
-				envdir := domain.EnvDir(cfg.envStr)
-				ab, errAb := envdir.AddressBook()
-				if errAb != nil {
-					return fmt.Errorf("failed to load address book: %w", err)
-				}
-				if derr := diagnoseTimelockRevert(ctx, lggr, anvilClient.URL, cfg.chainSelector, cfg.timelockProposal.Operations, timelockAddress, ab, cfg.proposalCtx); derr != nil {
-					lggr.Errorw("Diagnosis results", "err", derr)
-					return fmt.Errorf("failed to timelock execute chain: %w", derr)
-				}
-
-				return fmt.Errorf("failed to timelock execute chain: %w", err)
-			}
-			lggr.Info("Timelock execute chain success")
-
-			return nil
+			return executeFork(cmd.Context(), lggr, cfg, testSigner)
 		},
 	}
 	cmd.Flags().BoolVar(&testSigner, "test-signer", false, "Use a test signer key")
@@ -1134,35 +1033,6 @@ func buildMCMSv2ConvertUpf(
 	cmd.Flags().StringVarP(&outputFile, "output", "o", "", "File path where the converted file will be saved")
 
 	return cmd
-}
-
-// overwriteProposalSignatureWithTestKey overwrites the proposal's signature with a test key signature.
-func overwriteProposalSignatureWithTestKey(cfg *cfgv2, testKey *ecdsa.PrivateKey) error {
-	p := &cfg.proposal
-	// Override the proposal fields that are used in the signing hash to ensure no errors occur related to those.
-	p.ValidUntil = uint32(time.Now().Add(5 * time.Hour).Unix()) //nolint:gosec // G404: time-based validity is acceptable for test signatures
-	p.Signatures = nil
-
-	p.OverridePreviousRoot = true
-
-	inspector, err := getInspectorFromChainSelector(*cfg)
-	if err != nil {
-		return fmt.Errorf("error getting inspector from chain selector: %w", err)
-	}
-	signable, errSignable := mcms.NewSignable(p, map[types.ChainSelector]sdk.Inspector{
-		types.ChainSelector(cfg.chainSelector): inspector,
-	})
-	if errSignable != nil {
-		return fmt.Errorf("error creating signable: %w", errSignable)
-	}
-
-	signature, err := signable.SignAndAppend(mcms.NewPrivateKeySigner(testKey))
-	p.Signatures = []types.Signature{signature}
-	if err != nil {
-		return fmt.Errorf("error creating signable: %w", err)
-	}
-
-	return nil
 }
 
 func newRandomSalt() *common.Hash {
@@ -1498,7 +1368,7 @@ func setRootCommand(ctx context.Context, lggr logger.Logger, cfg *cfgv2) error {
 	return nil
 }
 
-func timelockExecuteChainCommand(ctx context.Context, lggr logger.Logger, cfg *cfgv2, domain cldf_domain.Domain) error {
+func timelockExecuteChainCommand(ctx context.Context, lggr logger.Logger, cfg *cfgv2) error {
 	if cfg.timelockProposal == nil {
 		return errors.New("expected proposal to be have non-nil *TimelockProposal")
 	}
@@ -1508,7 +1378,7 @@ func timelockExecuteChainCommand(ctx context.Context, lggr logger.Logger, cfg *c
 		return fmt.Errorf("failed to create TimelockExecutable: %w", err)
 	}
 
-	executeOptions, err := timelockExecuteOptions(ctx, lggr, domain, cfg)
+	executeOptions, err := timelockExecuteOptions(ctx, lggr, cfg)
 	if err != nil {
 		return fmt.Errorf("failed to get timelock execute options: %w", err)
 	}
@@ -1789,7 +1659,7 @@ func getProposalSigners(
 }
 
 func timelockExecuteOptions(
-	ctx context.Context, lggr logger.Logger, _ cldf_domain.Domain, cfg *cfgv2,
+	ctx context.Context, lggr logger.Logger, cfg *cfgv2,
 ) ([]mcms.Option, error) {
 	options := []mcms.Option{}
 
