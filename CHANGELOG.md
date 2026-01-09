@@ -1,5 +1,16 @@
 # chainlink-deployments-framework
 
+## 0.74.3
+
+### Patch Changes
+
+- [#660](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/660) [`a8928d5`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/a8928d583390d89d496eb20269ca949bb55a59db) Thanks [@ecPablo](https://github.com/ecPablo)! - fix: avoid loading proposal ctx if the provider is nil
+  chore: add deprecation warning to mcmsv2 commands
+
+- [#655](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/655) [`3791c84`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/3791c84cfd90e75e3b60261750e982ea5ac1a22d) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - feat: log from, to and raw data in forktests
+
+- [#658](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/658) [`504cfaa`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/504cfaa183399c6d86ee4b36d71239518322c8f3) Thanks [@ecPablo](https://github.com/ecPablo)! - fix proposal analyzer render issues with array details
+
 ## 0.74.2
 
 ### Patch Changes
