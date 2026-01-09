@@ -34,6 +34,9 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/rpc"
+
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
 	suibindings "github.com/smartcontractkit/chainlink-sui/bindings"
@@ -1241,8 +1244,8 @@ func isNonceError(rawErr error, selector uint64) (bool, error) {
 	switch family {
 	case chainsel.FamilyEVM:
 		decodedErr := cldf.DecodeErr(bindings.ManyChainMultiSigABI, rawErr)
-		// Check if the error contains PostOpCountReached
-		if strings.Contains(decodedErr.Error(), "PostOpCountReached") {
+		// Check if the error contains PostOpCountReached / WrongNonce
+		if strings.Contains(decodedErr.Error(), "WrongNonce") || strings.Contains(decodedErr.Error(), "PostOpCountReached") {
 			return true, nil
 		}
 
