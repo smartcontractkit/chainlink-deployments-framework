@@ -64,6 +64,21 @@ const (
 	defaultProposalValidity = 72 * time.Hour
 )
 
+const mcmsv2DeprecatedWarning = `
+==============================  WARNING  ==============================
+The legacy "mcmsv2" CLI commands are being DEPRECATED.
+
+Most functionality has moved to the "mcms-tools" repository:
+https://github.com/smartcontractkit/mcms-tools
+
+This command may be removed in a future release. Please migrate.
+=======================================================================`
+
+const (
+	ansiYellow = "\x1b[33m"
+	ansiReset  = "\x1b[0m"
+)
+
 type commonFlagsv2 struct {
 	proposalPath    string
 	proposalKindStr string
@@ -83,6 +98,47 @@ type cfgv2 struct {
 	forkedEnv        cldfenvironment.ForkedEnvironment
 	fork             bool
 	proposalCtx      analyzer.ProposalContext
+}
+
+// addMCMSv2DeprecationWarning decorates a command to:
+// - show a large deprecation banner in help output
+// - print the same banner to stderr at runtime before execution
+//
+// NOTE: Certain mcmsv2 commands are intentionally excluded from this warning
+// like proposal analysis and fork testing because they remain supported for now due to dependencies on domain code.
+func addMCMSv2DeprecationWarning(cmd *cobra.Command) *cobra.Command {
+	if cmd == nil {
+		return cmd
+	}
+
+	// Prepend banner to help text.
+	banner := strings.TrimSpace(mcmsv2DeprecatedWarning)
+	if !strings.HasPrefix(strings.TrimSpace(cmd.Long), banner) {
+		cmd.Long = banner + "\n\n" + cmd.Long
+	}
+
+	if cmd.Short != "" && !strings.HasPrefix(cmd.Short, "DEPRECATED:") {
+		cmd.Short = "DEPRECATED: " + cmd.Short
+	}
+
+	printBanner := func(c *cobra.Command) {
+		_, _ = fmt.Fprintln(c.ErrOrStderr(), ansiYellow+banner+ansiReset)
+		_, _ = fmt.Fprintln(c.ErrOrStderr())
+	}
+
+	// Wrap RunE to print banner at runtime (start + end).
+	if cmd.RunE != nil {
+		origRunE := cmd.RunE
+		cmd.RunE = func(c *cobra.Command, args []string) error {
+			printBanner(c)
+			err := origRunE(c, args)
+			printBanner(c)
+
+			return err
+		}
+	}
+
+	return cmd
 }
 
 func BuildMCMSv2Cmd(lggr logger.Logger, domain cldf_domain.Domain, proposalContextProvider analyzer.ProposalContextProvider) *cobra.Command {
@@ -120,27 +176,29 @@ func BuildMCMSv2Cmd(lggr logger.Logger, domain cldf_domain.Domain, proposalConte
 	panicErr(cmd.MarkPersistentFlagRequired(environmentFlag))
 	panicErr(cmd.MarkPersistentFlagRequired(chainSelectorFlag))
 
-	cmd.AddCommand(buildMCMSCheckQuorumv2Cmd(lggr, domain))
-	cmd.AddCommand(buildExecuteChainv2Cmd(lggr, domain, proposalContextProvider))
-	cmd.AddCommand(buildExecuteOperationv2Cmd(lggr, domain, proposalContextProvider))
-	cmd.AddCommand(buildSetRootv2Cmd(lggr, domain, proposalContextProvider))
-	cmd.AddCommand(buildGetOpCountV2Cmd(lggr, domain, proposalContextProvider))
-	cmd.AddCommand(buildMCMSErrorDecode(lggr, domain, proposalContextProvider))
-	cmd.AddCommand(buildRunTimelockIsPendingV2Cmd(lggr, domain))
-	cmd.AddCommand(buildRunTimelockIsReadyToExecuteV2Cmd(lggr, domain))
-	cmd.AddCommand(buildRunTimelockIsDoneV2Cmd(lggr, domain, proposalContextProvider))
-	cmd.AddCommand(buildRunTimelockIsOperationPendingV2Cmd(lggr, domain))
-	cmd.AddCommand(buildRunTimelockIsOperationReadyToExecuteV2Cmd(lggr, domain))
-	cmd.AddCommand(buildRunTimelockIsOperationDoneV2Cmd(lggr, domain))
-	cmd.AddCommand(buildTimelockExecuteChainV2Cmd(lggr, domain, proposalContextProvider))
-	cmd.AddCommand(buildTimelockExecuteOperationV2Cmd(lggr, domain, proposalContextProvider))
-	cmd.AddCommand(buildMCMSv2AnalyzeProposalCmd(stdErrLogger, domain, proposalContextProvider))
-	cmd.AddCommand(buildMCMSv2ConvertUpf(stdErrLogger, domain, proposalContextProvider))
-	cmd.AddCommand(buildMCMSv2ResetProposalCmd(stdErrLogger, domain, proposalContextProvider))
+	// Everything under mcmsv2 is being deprecated, except a small set of commands
+	// that remain supported for now.
+	cmd.AddCommand(addMCMSv2DeprecationWarning(buildMCMSCheckQuorumv2Cmd(lggr, domain)))
+	cmd.AddCommand(addMCMSv2DeprecationWarning(buildExecuteChainv2Cmd(lggr, domain, proposalContextProvider)))
+	cmd.AddCommand(addMCMSv2DeprecationWarning(buildExecuteOperationv2Cmd(lggr, domain, proposalContextProvider)))
+	cmd.AddCommand(addMCMSv2DeprecationWarning(buildSetRootv2Cmd(lggr, domain, proposalContextProvider)))
+	cmd.AddCommand(addMCMSv2DeprecationWarning(buildGetOpCountV2Cmd(lggr, domain, proposalContextProvider)))
+	cmd.AddCommand(buildMCMSErrorDecode(lggr, domain, proposalContextProvider)) // not deprecated (yet)
+	cmd.AddCommand(addMCMSv2DeprecationWarning(buildRunTimelockIsPendingV2Cmd(lggr, domain)))
+	cmd.AddCommand(addMCMSv2DeprecationWarning(buildRunTimelockIsReadyToExecuteV2Cmd(lggr, domain)))
+	cmd.AddCommand(addMCMSv2DeprecationWarning(buildRunTimelockIsDoneV2Cmd(lggr, domain, proposalContextProvider)))
+	cmd.AddCommand(addMCMSv2DeprecationWarning(buildRunTimelockIsOperationPendingV2Cmd(lggr, domain)))
+	cmd.AddCommand(addMCMSv2DeprecationWarning(buildRunTimelockIsOperationReadyToExecuteV2Cmd(lggr, domain)))
+	cmd.AddCommand(addMCMSv2DeprecationWarning(buildRunTimelockIsOperationDoneV2Cmd(lggr, domain)))
+	cmd.AddCommand(addMCMSv2DeprecationWarning(buildTimelockExecuteChainV2Cmd(lggr, domain, proposalContextProvider)))
+	cmd.AddCommand(addMCMSv2DeprecationWarning(buildTimelockExecuteOperationV2Cmd(lggr, domain, proposalContextProvider)))
+	cmd.AddCommand(buildMCMSv2AnalyzeProposalCmd(stdErrLogger, domain, proposalContextProvider)) // not deprecated (yet)
+	cmd.AddCommand(buildMCMSv2ConvertUpf(stdErrLogger, domain, proposalContextProvider))         // not deprecated (yet)
+	cmd.AddCommand(addMCMSv2DeprecationWarning(buildMCMSv2ResetProposalCmd(stdErrLogger, domain, proposalContextProvider)))
 
 	// fork flag is only used internally by buildExecuteForkCommand
 	cmd.PersistentFlags().BoolP(forkFlag, "f", false, "Run the command on forked environment (EVM)")
-	cmd.AddCommand(buildExecuteForkCommand(lggr, domain, proposalContextProvider))
+	cmd.AddCommand(buildExecuteForkCommand(lggr, domain, proposalContextProvider)) // not deprecated (yet)
 
 	return &cmd
 }
@@ -1241,9 +1299,12 @@ func newCfgv2(lggr logger.Logger, cmd *cobra.Command, domain cldf_domain.Domain,
 	if err != nil {
 		return nil, fmt.Errorf("error loading environment: %w", err)
 	}
-	cfg.proposalCtx, err = proposalCtxProvider(cfg.env)
-	if err != nil {
-		return nil, fmt.Errorf("failed to provide proposal analysis context: %w", err)
+
+	if proposalCtxProvider != nil {
+		cfg.proposalCtx, err = proposalCtxProvider(cfg.env)
+		if err != nil {
+			return nil, fmt.Errorf("failed to provide proposal analysis context: %w", err)
+		}
 	}
 
 	if flags.fork {
