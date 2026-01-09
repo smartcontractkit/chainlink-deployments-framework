@@ -833,6 +833,9 @@ func buildMCMSv2AnalyzeProposalCmd(
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create config
+			if proposalCtxProvider == nil {
+				return errors.New("proposalCtxProvider is required, please provide one in the domain cli constructor")
+			}
 			cfgv2, err := newCfgv2(lggr, cmd, domain, proposalCtxProvider, acceptExpiredProposal)
 			if err != nil {
 				return fmt.Errorf("error creating config: %w", err)
@@ -1174,6 +1177,9 @@ func newCfgv2(lggr logger.Logger, cmd *cobra.Command, domain cldf_domain.Domain,
 		cfg.proposalCtx, err = proposalCtxProvider(cfg.env)
 		if err != nil {
 			return nil, fmt.Errorf("failed to provide proposal analysis context: %w", err)
+		}
+		if cfg.proposalCtx == nil {
+			return nil, errors.New("proposal analysis context provider returned nil context, make sure the ProposalContextProvider is correctly initialized in your domain CLI on BuildMCMSv2Cmd()")
 		}
 	}
 
