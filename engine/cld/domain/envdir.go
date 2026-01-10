@@ -13,6 +13,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/internal/fileutils"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/internal/jsonutils"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/nodes"
+	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/exceptions"
 )
 
 // EnvDir represents a specific environment directory within a domain.
@@ -468,4 +469,14 @@ func (d EnvDir) CreateDurablePipelinesDir() error {
 // SaveViewState saves the view state of the domain's environment with the default filename.
 func (d EnvDir) SaveViewState(v json.Marshaler) error {
 	return SaveViewState(d.ViewStateFilePath(), v)
+}
+
+// ExceptionsFilePath returns the path to the exceptions file for the domain's environment directory.
+func (d EnvDir) ExceptionsFilePath() string {
+	return filepath.Join(d.DirPath(), ExceptionsFileName)
+}
+
+// LoadExceptions loads the exceptions from the exceptions file for the domain's environment directory.
+func (d EnvDir) LoadExceptions() (*exceptions.Exceptions, error) {
+	return exceptions.Load(d.ExceptionsFilePath())
 }

@@ -7,6 +7,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/exceptions"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
@@ -60,6 +61,8 @@ type Environment struct {
 	OperationsBundle operations.Bundle
 	// BlockChains is the container of all chains in the environment.
 	BlockChains chain.BlockChains
+
+	Exceptions *exceptions.Exceptions
 }
 
 // EnvironmentOption is a functional option for configuring an Environment
