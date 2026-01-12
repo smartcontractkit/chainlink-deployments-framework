@@ -34,7 +34,7 @@ func LoadChains(
 	lggr logger.Logger,
 	cfg *config.Config,
 	chainselToLoad []uint64,
-) (fchain.BlockChains, error) {
+) (*fchain.BlockChains, error) {
 	if len(chainselToLoad) == 0 {
 		lggr.Info("No chain selectors provided, skipping chain loading")
 		return fchain.NewBlockChains(map[uint64]fchain.BlockChain{}), nil
@@ -64,7 +64,7 @@ func LoadChains(
 				"selector", selector, "error", err,
 			)
 
-			return fchain.BlockChains{}, fmt.Errorf("unable to get chain family for selector %d", selector)
+			return nil, fmt.Errorf("unable to get chain family for selector %d", selector)
 		}
 
 		// Check if we have a loader for this chain family
@@ -147,7 +147,7 @@ func LoadChains(
 
 	// If any chains failed to load, return an error
 	if len(failedChains) > 0 {
-		return fchain.BlockChains{}, fmt.Errorf("failed to load %d out of %d chains: %v",
+		return nil, fmt.Errorf("failed to load %d out of %d chains: %v",
 			len(failedChains), len(validSelectors), failedChains)
 	}
 
@@ -172,7 +172,7 @@ func NewLazyBlockChains(
 	ctx context.Context,
 	lggr logger.Logger,
 	cfg *config.Config,
-) (fchain.BlockChains, error) {
+) (*fchain.BlockChains, error) {
 	chainLoaders := newChainLoaders(lggr, cfg.Networks, cfg.Env.Onchain)
 
 	// Get all chain selectors from the network config
@@ -189,7 +189,7 @@ func NewLazyBlockChains(
 				"selector", selector, "error", err,
 			)
 
-			return fchain.BlockChains{}, fmt.Errorf("unable to get chain family for selector %d", selector)
+			return nil, fmt.Errorf("unable to get chain family for selector %d", selector)
 		}
 
 		// Check if we have a loader for this chain family

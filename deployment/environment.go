@@ -61,7 +61,7 @@ type Environment struct {
 	// BlockChains is the container of all chains in the environment.
 	// It supports both eager and lazy loading modes transparently.
 	// Use NewBlockChains() for eager loading or NewLazyBlockChains() for lazy loading.
-	BlockChains chain.BlockChains
+	BlockChains *chain.BlockChains
 }
 
 // EnvironmentOption is a functional option for configuring an Environment
@@ -77,7 +77,7 @@ func NewEnvironment(
 	offchain offchain.Client,
 	ctx func() context.Context,
 	secrets ocr.OCRSecrets,
-	blockChains chain.BlockChains,
+	blockChains *chain.BlockChains,
 	opts ...EnvironmentOption,
 ) *Environment {
 	env := &Environment{

@@ -188,7 +188,7 @@ func TestLoader_Load_ChainOptions(t *testing.T) { //nolint:paralleltest // We ar
 		name               string
 		opts               []LoadOpt
 		wantBlockChainsLen int
-		assert             func(t *testing.T, BlockChains fchain.BlockChains)
+		assert             func(t *testing.T, BlockChains *fchain.BlockChains)
 	}{
 		{
 			name:               "succeeds with no options resulting in no block chains",
@@ -199,7 +199,7 @@ func TestLoader_Load_ChainOptions(t *testing.T) { //nolint:paralleltest // We ar
 			name:               "EVMSimulated with selectors",
 			opts:               []LoadOpt{WithEVMSimulated(t, []uint64{chainselectors.TEST_90000001.Selector})},
 			wantBlockChainsLen: 1,
-			assert: func(t *testing.T, BlockChains fchain.BlockChains) {
+			assert: func(t *testing.T, BlockChains *fchain.BlockChains) {
 				t.Helper()
 
 				require.Len(t, BlockChains.EVMChains(), 1)
@@ -209,7 +209,7 @@ func TestLoader_Load_ChainOptions(t *testing.T) { //nolint:paralleltest // We ar
 			name:               "EVMSimulatedN",
 			opts:               []LoadOpt{WithEVMSimulatedN(t, 1)},
 			wantBlockChainsLen: 1,
-			assert: func(t *testing.T, BlockChains fchain.BlockChains) {
+			assert: func(t *testing.T, BlockChains *fchain.BlockChains) {
 				t.Helper()
 
 				require.Len(t, BlockChains.EVMChains(), 1)
@@ -222,7 +222,7 @@ func TestLoader_Load_ChainOptions(t *testing.T) { //nolint:paralleltest // We ar
 				BlockTime:             1 * time.Second,
 			})},
 			wantBlockChainsLen: 1,
-			assert: func(t *testing.T, BlockChains fchain.BlockChains) {
+			assert: func(t *testing.T, BlockChains *fchain.BlockChains) {
 				t.Helper()
 
 				require.Len(t, BlockChains.EVMChains(), 1)
@@ -235,7 +235,7 @@ func TestLoader_Load_ChainOptions(t *testing.T) { //nolint:paralleltest // We ar
 				BlockTime:             1 * time.Second,
 			})},
 			wantBlockChainsLen: 1,
-			assert: func(t *testing.T, BlockChains fchain.BlockChains) {
+			assert: func(t *testing.T, BlockChains *fchain.BlockChains) {
 				t.Helper()
 
 				require.Len(t, BlockChains.EVMChains(), 1)
@@ -252,7 +252,7 @@ func TestLoader_Load_ChainOptions(t *testing.T) { //nolint:paralleltest // We ar
 				WithSuiContainer(t, []uint64{chainselectors.SUI_LOCALNET.Selector}),
 			},
 			wantBlockChainsLen: 6,
-			assert: func(t *testing.T, BlockChains fchain.BlockChains) {
+			assert: func(t *testing.T, BlockChains *fchain.BlockChains) {
 				t.Helper()
 
 				require.Len(t, BlockChains.EVMChains(), 1) // zksync is an EVM chain
@@ -274,7 +274,7 @@ func TestLoader_Load_ChainOptions(t *testing.T) { //nolint:paralleltest // We ar
 				WithSuiContainerN(t, 1),
 			},
 			wantBlockChainsLen: 6,
-			assert: func(t *testing.T, BlockChains fchain.BlockChains) {
+			assert: func(t *testing.T, BlockChains *fchain.BlockChains) {
 				t.Helper()
 
 				require.Len(t, BlockChains.EVMChains(), 1) // zksync is an EVM chain
@@ -293,7 +293,7 @@ func TestLoader_Load_ChainOptions(t *testing.T) { //nolint:paralleltest // We ar
 				}),
 			},
 			wantBlockChainsLen: 1,
-			assert: func(t *testing.T, BlockChains fchain.BlockChains) {
+			assert: func(t *testing.T, BlockChains *fchain.BlockChains) {
 				t.Helper()
 				require.Len(t, BlockChains.TonChains(), 1)
 			},
@@ -306,7 +306,7 @@ func TestLoader_Load_ChainOptions(t *testing.T) { //nolint:paralleltest // We ar
 				}),
 			},
 			wantBlockChainsLen: 1,
-			assert: func(t *testing.T, BlockChains fchain.BlockChains) {
+			assert: func(t *testing.T, BlockChains *fchain.BlockChains) {
 				t.Helper()
 				require.Len(t, BlockChains.TonChains(), 1)
 			},

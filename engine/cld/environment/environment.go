@@ -77,7 +77,7 @@ func Load(
 		lggr.Infow("Using file-based datastore")
 	}
 
-	var blockChains fchain.BlockChains
+	var blockChains *fchain.BlockChains
 	if os.Getenv("CLD_LAZY_BLOCKCHAINS") == "true" {
 		lggr.Infow("Using lazy blockchains")
 		// Use lazy loading for chains - they will be initialized on first access
