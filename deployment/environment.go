@@ -59,6 +59,8 @@ type Environment struct {
 	// OperationsBundle contains dependencies required by the operations API.
 	OperationsBundle operations.Bundle
 	// BlockChains is the container of all chains in the environment.
+	// It supports both eager and lazy loading modes transparently.
+	// Use NewBlockChains() for eager loading or NewLazyBlockChains() for lazy loading.
 	BlockChains chain.BlockChains
 }
 

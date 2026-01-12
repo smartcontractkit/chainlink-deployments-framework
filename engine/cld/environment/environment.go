@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 
+	fchain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	cldcatalog "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/catalog"
@@ -75,17 +77,29 @@ func Load(
 		lggr.Infow("Using file-based datastore")
 	}
 
-	// default - loads all chains from the networks config
-	chainSelectorsToLoad := cfg.Networks.ChainSelectors()
+	var blockChains fchain.BlockChains
+	if os.Getenv("CLD_LAZY_BLOCKCHAINS") == "true" {
+		lggr.Infow("Using lazy blockchains")
+		// Use lazy loading for chains - they will be initialized on first access
+		// All chains from the network config are made available, but only loaded when accessed
+		blockChains, err = chains.NewLazyBlockChains(ctx, lggr, cfg)
+		if err != nil {
+			return fdeployment.Environment{}, err
+		}
+	} else {
+		lggr.Infow("Using eager blockchains")
+		// default - loads all chains from the networks config
+		chainSelectorsToLoad := cfg.Networks.ChainSelectors()
 
-	if loadcfg.chainSelectorsToLoad != nil {
-		lggr.Infow("Override: loading chains", "chains", loadcfg.chainSelectorsToLoad)
-		chainSelectorsToLoad = loadcfg.chainSelectorsToLoad
-	}
+		if loadcfg.chainSelectorsToLoad != nil {
+			lggr.Infow("Override: loading chains", "chains", loadcfg.chainSelectorsToLoad)
+			chainSelectorsToLoad = loadcfg.chainSelectorsToLoad
+		}
 
-	blockChains, err := chains.LoadChains(ctx, lggr, cfg, chainSelectorsToLoad)
-	if err != nil {
-		return fdeployment.Environment{}, err
+		blockChains, err = chains.LoadChains(ctx, lggr, cfg, chainSelectorsToLoad)
+		if err != nil {
+			return fdeployment.Environment{}, err
+		}
 	}
 
 	nodes, err := envdir.LoadNodes()
