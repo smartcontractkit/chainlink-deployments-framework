@@ -1179,7 +1179,7 @@ func newCfgv2(lggr logger.Logger, cmd *cobra.Command, domain cldf_domain.Domain,
 			return nil, fmt.Errorf("failed to provide proposal analysis context: %w", err)
 		}
 		if cfg.proposalCtx == nil {
-			return nil, errors.New("proposal analysis context provider returned nil context, make sure the ProposalContextProvider is correctly initialized in your domain CLI on BuildMCMSv2Cmd()")
+			return nil, errors.New("proposal analysis context provider returned nil context. Make sure the ProposalContextProvider is correctly initialized in your domain CLI on BuildMCMSv2Cmd()")
 		}
 	}
 
