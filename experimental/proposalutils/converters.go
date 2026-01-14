@@ -18,7 +18,7 @@ func BuildConvertersForTimelockProposal(proposal mcms.TimelockProposal) (map[typ
 	for chainMeta := range proposal.ChainMetadata {
 		fam, err := types.GetChainSelectorFamily(chainMeta)
 		if err != nil {
-			return nil, fmt.Errorf("error getting chainMeta family: %w", err)
+			return nil, fmt.Errorf("error getting chain family: %w", err)
 		}
 
 		var converter sdk.TimelockConverter
@@ -30,7 +30,7 @@ func BuildConvertersForTimelockProposal(proposal mcms.TimelockProposal) (map[typ
 		case chainsel.FamilyAptos:
 			converter = aptos.NewTimelockConverter()
 		default:
-			return nil, fmt.Errorf("unsupported chainMeta family %s", fam)
+			return nil, fmt.Errorf("unsupported chain family %s", fam)
 		}
 
 		converters[chainMeta] = converter

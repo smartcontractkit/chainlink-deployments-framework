@@ -68,7 +68,7 @@ func GetInspectorFromChainSelector(chains cldfChain.BlockChains, selector uint64
 		chainClient := chains.AptosChains()[selector]
 		inspector = aptos.NewInspector(chainClient.Client, role)
 	default:
-		return nil, fmt.Errorf("unsupported chainClient family %s", fam)
+		return nil, fmt.Errorf("unsupported chain family %s", fam)
 	}
 
 	return inspector, nil

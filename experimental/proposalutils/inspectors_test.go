@@ -47,7 +47,6 @@ func TestMCMInspectorBuilder_BuildInspectors(t *testing.T) {
 			chainMetadata: map[mcmsTypes.ChainSelector]mcmsTypes.ChainMetadata{
 				mcmsTypes.ChainSelector(chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector): {MCMAddress: "0xabc", StartingOpCount: 0},
 				mcmsTypes.ChainSelector(chainsel.SOLANA_DEVNET.Selector):            {MCMAddress: "0xabc", StartingOpCount: 0},
-				mcmsTypes.ChainSelector(chainsel.SOLANA_DEVNET.Selector):            {MCMAddress: "0xabc", StartingOpCount: 0},
 			},
 			chainClientsEVM: map[uint64]cldfevm.Chain{
 				chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector: {Selector: chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector},
