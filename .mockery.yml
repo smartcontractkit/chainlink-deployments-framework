@@ -107,6 +107,14 @@ packages:
       structname: "{{.Mock}}{{.InterfaceName}}"
     interfaces:
       ProposalContext:
+  github.com/smartcontractkit/chainlink-deployments-framework/experimental/proposalutils:
+    config:
+      all: false
+      dir: "{{.InterfaceDir}}/mocks"
+      filename: "mock_{{.InterfaceName | snakecase}}.go"
+      structname: "{{.Mock}}{{.InterfaceName}}"
+    interfaces:
+      InspectorFetcher:
   github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/legacy/cli/mcmsv2:
     interfaces:
       commandRunnerI:
