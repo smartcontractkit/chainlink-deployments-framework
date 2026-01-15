@@ -125,7 +125,46 @@ type ChangesetOutput struct {
 // the on and offchain state of the environment.
 type ViewState func(e Environment) (json.Marshaler, error)
 
-type ViewStateV2 func(e Environment, previousView json.Marshaler) (json.Marshaler, error)
+// ViewStateConfig contains configuration options for ViewStateV2.
+type ViewStateConfig struct {
+	// ChainSelectorsToLoad specifies which chains to load/update in the state snapshot.
+	// If nil or empty, all chains in the environment should be included.
+	ChainSelectorsToLoad []uint64
+}
+
+// ViewStateOption is a functional option for configuring ViewStateV2.
+type ViewStateOption func(*ViewStateConfig)
+
+// WithChainSelectorsToLoad sets the chain selectors to load/update in the state snapshot.
+//
+// Example usage:
+//
+//	state, err := viewStateFunc(env, prevState, deployment.WithChainSelectorsToLoad([]uint64{1, 2, 3}))
+func WithChainSelectorsToLoad(chainSelectorsToUpdate []uint64) ViewStateOption {
+	return func(cfg *ViewStateConfig) {
+		cfg.ChainSelectorsToLoad = chainSelectorsToUpdate
+	}
+}
+
+// ViewStateV2 produces a product specific JSON representation of the on and offchain
+// state of the environment, with optional configuration via functional options.
+//
+// The function receives:
+//   - e: The environment to snapshot
+//   - previousView: The previous state (if any) for incremental updates
+//   - opts: Optional configuration options (e.g., ChainSelectorsToLoad)
+//
+// To parse options in your implementation:
+//
+//	func MyViewState(e Environment, previousView json.Marshaler, opts ...ViewStateOption) (json.Marshaler, error) {
+//	    cfg := &ViewStateConfig{}
+//	    for _, opt := range opts {
+//	        opt(cfg)
+//	    }
+//	    // Use cfg.ChainSelectorsToLoad to determine which chains to load
+//	    // ...
+//	}
+type ViewStateV2 func(e Environment, previousView json.Marshaler, opts ...ViewStateOption) (json.Marshaler, error)
 
 // MergeChangesetOutput merges the source ChangesetOutput into the destination ChangesetOutput.
 // It is useful to combine multiple ChangesetOutput objects into one to create one consolidated changeset from multiple granular changesets.
