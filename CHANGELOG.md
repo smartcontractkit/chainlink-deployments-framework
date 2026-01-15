@@ -1,5 +1,15 @@
 # chainlink-deployments-framework
 
+## 0.75.0
+
+### Minor Changes
+
+- [#670](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/670) [`0a320ef`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/0a320efc8afe4d52f6569b46ac81aa95ba7a14e4) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat(engine): allow configuration for SUI chain in test engine
+
+### Patch Changes
+
+- [#668](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/668) [`ff9c85a`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/ff9c85a1c09ec9ba78e3073758e64502381e7a58) Thanks [@jkongie](https://github.com/jkongie)! - Bump `go-ethereum` to v1.16.8
+
 ## 0.74.3
 
 ### Patch Changes
