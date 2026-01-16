@@ -5,8 +5,9 @@ import (
 	"github.com/block-vision/sui-go-sdk/sui"
 	solrpc "github.com/gagliardetto/solana-go/rpc"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	mcmssdk "github.com/smartcontractkit/mcms/sdk"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 )
 
 // ChainAccess adapts CLDF's chain.BlockChains into a selector + lookup style API.

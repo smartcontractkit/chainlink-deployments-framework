@@ -14,6 +14,8 @@ import (
 )
 
 func TestChainAccess_UnknownSelector(t *testing.T) {
+	t.Parallel()
+
 	a := Wrap(chain.NewBlockChains(nil))
 
 	evmClient, ok := a.EVMClient(999)
@@ -35,6 +37,8 @@ func TestChainAccess_UnknownSelector(t *testing.T) {
 }
 
 func TestChainAccess_SelectorsAndLookups(t *testing.T) {
+	t.Parallel()
+
 	const (
 		evmSel   = uint64(111)
 		solSel   = uint64(222)
