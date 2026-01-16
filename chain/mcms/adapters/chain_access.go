@@ -1,33 +1,33 @@
-package mcms
+package adapters
 
 import (
 	aptoslib "github.com/aptos-labs/aptos-go-sdk"
 	"github.com/block-vision/sui-go-sdk/sui"
 	solrpc "github.com/gagliardetto/solana-go/rpc"
-
-	mcmssdk "github.com/smartcontractkit/mcms/sdk"
+	"github.com/smartcontractkit/mcms/sdk/evm"
+	mcmssui "github.com/smartcontractkit/mcms/sdk/sui"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 )
 
-// ChainAccess adapts CLDF's chain.BlockChains into a selector + lookup style API.
+// ChainAccessAdapter adapts CLDF's chain.BlockChains into a selector + lookup style API.
 // It used to make compatible with mcms lib chain access interface.
-type ChainAccess struct {
+type ChainAccessAdapter struct {
 	inner chain.BlockChains
 }
 
-// Wrap returns a ChainAccess adapter around the given CLDF BlockChains.
-func Wrap(inner chain.BlockChains) ChainAccess {
-	return ChainAccess{inner: inner}
+// Wrap returns a ChainAccessAdapter adapter around the given CLDF BlockChains.
+func Wrap(inner chain.BlockChains) ChainAccessAdapter {
+	return ChainAccessAdapter{inner: inner}
 }
 
 // Selectors returns all known chain selectors (sorted by CLDF).
-func (a ChainAccess) Selectors() []uint64 {
+func (a ChainAccessAdapter) Selectors() []uint64 {
 	return a.inner.ListChainSelectors()
 }
 
 // EVMClient returns a EVM client for the given selector.
-func (a ChainAccess) EVMClient(selector uint64) (mcmssdk.ContractDeployBackend, bool) {
+func (a ChainAccessAdapter) EVMClient(selector uint64) (evm.ContractDeployBackend, bool) {
 	ch, ok := a.inner.EVMChains()[selector]
 	if !ok {
 		return nil, false
@@ -37,7 +37,7 @@ func (a ChainAccess) EVMClient(selector uint64) (mcmssdk.ContractDeployBackend, 
 }
 
 // SolanaClient returns the Solana RPC client for the given selector.
-func (a ChainAccess) SolanaClient(selector uint64) (*solrpc.Client, bool) {
+func (a ChainAccessAdapter) SolanaClient(selector uint64) (*solrpc.Client, bool) {
 	ch, ok := a.inner.SolanaChains()[selector]
 	if !ok {
 		return nil, false
@@ -47,7 +47,7 @@ func (a ChainAccess) SolanaClient(selector uint64) (*solrpc.Client, bool) {
 }
 
 // AptosClient returns the Aptos RPC client for the given selector.
-func (a ChainAccess) AptosClient(selector uint64) (aptoslib.AptosRpcClient, bool) {
+func (a ChainAccessAdapter) AptosClient(selector uint64) (aptoslib.AptosRpcClient, bool) {
 	ch, ok := a.inner.AptosChains()[selector]
 	if !ok {
 		return nil, false
@@ -57,7 +57,7 @@ func (a ChainAccess) AptosClient(selector uint64) (aptoslib.AptosRpcClient, bool
 }
 
 // Sui returns the Sui API client and signer for the given selector.
-func (a ChainAccess) Sui(selector uint64) (sui.ISuiAPI, mcmssdk.SuiSigner, bool) {
+func (a ChainAccessAdapter) Sui(selector uint64) (sui.ISuiAPI, mcmssui.SuiSigner, bool) {
 	ch, ok := a.inner.SuiChains()[selector]
 	if !ok {
 		return nil, nil, false

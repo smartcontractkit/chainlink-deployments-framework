@@ -1,4 +1,4 @@
-package mcms
+package adapters
 
 import (
 	"testing"
