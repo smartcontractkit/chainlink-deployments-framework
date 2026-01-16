@@ -833,6 +833,9 @@ func buildMCMSv2AnalyzeProposalCmd(
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create config
+			if proposalCtxProvider == nil {
+				return errors.New("proposalCtxProvider is required, please provide one in the domain cli constructor")
+			}
 			cfgv2, err := newCfgv2(lggr, cmd, domain, proposalCtxProvider, acceptExpiredProposal)
 			if err != nil {
 				return fmt.Errorf("error creating config: %w", err)
@@ -1174,6 +1177,9 @@ func newCfgv2(lggr logger.Logger, cmd *cobra.Command, domain cldf_domain.Domain,
 		cfg.proposalCtx, err = proposalCtxProvider(cfg.env)
 		if err != nil {
 			return nil, fmt.Errorf("failed to provide proposal analysis context: %w", err)
+		}
+		if cfg.proposalCtx == nil {
+			return nil, errors.New("proposal analysis context provider returned nil context. Make sure the ProposalContextProvider is correctly initialized in your domain CLI on BuildMCMSv2Cmd()")
 		}
 	}
 
@@ -1518,7 +1524,7 @@ func getTimelockExecutorWithChainOverride(cfg *cfgv2, chainSelector types.ChainS
 		if err != nil {
 			return nil, fmt.Errorf("error getting sui metadata from proposal: %w", err)
 		}
-		entrypointEncoder := suibindings.NewCCIPEntrypointArgEncoder(metadata.AccountObj, metadata.DeployerStateObj)
+		entrypointEncoder := suibindings.NewCCIPEntrypointArgEncoder(metadata.RegistryObj, metadata.DeployerStateObj)
 		executor, err = sui.NewTimelockExecutor(chain.Client, chain.Signer, entrypointEncoder, metadata.McmsPackageID, metadata.RegistryObj, metadata.AccountObj)
 		if err != nil {
 			return nil, fmt.Errorf("error creating sui timelock executor: %w", err)

@@ -1,5 +1,28 @@
 # chainlink-deployments-framework
 
+## 0.75.0
+
+### Minor Changes
+
+- [#670](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/670) [`0a320ef`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/0a320efc8afe4d52f6569b46ac81aa95ba7a14e4) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat(engine): allow configuration for SUI chain in test engine
+
+### Patch Changes
+
+- [#668](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/668) [`ff9c85a`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/ff9c85a1c09ec9ba78e3073758e64502381e7a58) Thanks [@jkongie](https://github.com/jkongie)! - Bump `go-ethereum` to v1.16.8
+
+## 0.74.3
+
+### Patch Changes
+
+- [#660](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/660) [`a8928d5`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/a8928d583390d89d496eb20269ca949bb55a59db) Thanks [@ecPablo](https://github.com/ecPablo)! - fix: avoid loading proposal ctx if the provider is nil
+  chore: add deprecation warning to mcmsv2 commands
+
+- [#666](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/666) [`d5bcb7c`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/d5bcb7cdf936230ddfa5f1cbff7774b3e4864ea5) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(jd): remove wsrpc from error message
+
+- [#655](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/655) [`3791c84`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/3791c84cfd90e75e3b60261750e982ea5ac1a22d) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - feat: log from, to and raw data in forktests
+
+- [#658](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/658) [`504cfaa`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/504cfaa183399c6d86ee4b36d71239518322c8f3) Thanks [@ecPablo](https://github.com/ecPablo)! - fix proposal analyzer render issues with array details
+
 ## 0.74.2
 
 ### Patch Changes

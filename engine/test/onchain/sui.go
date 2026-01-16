@@ -14,6 +14,9 @@ import (
 	suiprov "github.com/smartcontractkit/chainlink-deployments-framework/chain/sui/provider"
 )
 
+// SuiContainerConfig is the configuration for the Sui container loader.
+type SuiContainerConfig = suiprov.CTFChainProviderConfig
+
 // NewSuiContainerLoader creates a new Sui chain loader with default configuration using CTF.
 func NewSuiContainerLoader() *ChainLoader {
 	// Generate a random Sui Ed25519 private key for testing
@@ -30,6 +33,18 @@ func NewSuiContainerLoader() *ChainLoader {
 				Once:              once,
 				DeployerSignerGen: suiprov.AccountGenPrivateKey(testPrivateKey),
 			}).Initialize(t.Context())
+		},
+	}
+}
+
+// NewSuiContainerLoaderWithConfig creates a new Sui chain loader with the given configuration using CTF.
+func NewSuiContainerLoaderWithConfig(cfg SuiContainerConfig) *ChainLoader {
+	return &ChainLoader{
+		selectors: getTestSelectorsByFamily(chainselectors.FamilySui),
+		factory: func(t *testing.T, selector uint64) (fchain.BlockChain, error) {
+			t.Helper()
+
+			return suiprov.NewCTFChainProvider(t, selector, cfg).Initialize(t.Context())
 		},
 	}
 }
