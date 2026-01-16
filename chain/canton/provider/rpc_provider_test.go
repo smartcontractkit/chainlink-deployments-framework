@@ -70,7 +70,7 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 			t.Parallel()
 
 			provider := NewRPCChainProvider(tt.giveSelector, tt.giveConfig)
-			chain, err := provider.Initialize(nil)
+			chain, err := provider.Initialize(t.Context())
 			if tt.wantErr != "" {
 				if err == nil || err.Error() != tt.wantErr {
 					t.Errorf("Initialize() error = %v, wantErr %v", err, tt.wantErr)

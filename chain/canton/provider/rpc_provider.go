@@ -42,7 +42,11 @@ func NewRPCChainProvider(selector uint64, config RPCChainProviderConfig) *RPCCha
 	}
 }
 
-func (p RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, error) {
+func (p RPCChainProvider) Initialize(_ context.Context) (chain.BlockChain, error) {
+	if p.chain != nil {
+		return p.chain, nil // already initialized
+	}
+
 	p.chain = &canton.Chain{
 		Selector:     p.selector,
 		Participants: make([]canton.Participant, len(p.config.Participants)),
