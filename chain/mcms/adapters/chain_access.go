@@ -56,8 +56,8 @@ func (a ChainAccessAdapter) AptosClient(selector uint64) (aptoslib.AptosRpcClien
 	return ch.Client, true
 }
 
-// Sui returns the Sui API client and signer for the given selector.
-func (a ChainAccessAdapter) Sui(selector uint64) (sui.ISuiAPI, mcmssui.SuiSigner, bool) {
+// SuiClient returns the Sui API client and signer for the given selector.
+func (a ChainAccessAdapter) SuiClient(selector uint64) (sui.ISuiAPI, mcmssui.SuiSigner, bool) {
 	ch, ok := a.inner.SuiChains()[selector]
 	if !ok {
 		return nil, nil, false

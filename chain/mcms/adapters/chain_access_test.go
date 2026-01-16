@@ -30,7 +30,7 @@ func TestChainAccess_UnknownSelector(t *testing.T) {
 	require.False(t, ok)
 	require.Nil(t, aptosClient)
 
-	suiClient, suiSigner, ok := a.Sui(999)
+	suiClient, suiSigner, ok := a.SuiClient(999)
 	require.False(t, ok)
 	require.Nil(t, suiClient)
 	require.Nil(t, suiSigner)
@@ -77,7 +77,7 @@ func TestChainAccess_SelectorsAndLookups(t *testing.T) {
 	require.True(t, ok)
 	require.Nil(t, gotAptos)
 
-	gotSuiClient, gotSuiSigner, ok := a.Sui(suiSel)
+	gotSuiClient, gotSuiSigner, ok := a.SuiClient(suiSel)
 	require.True(t, ok)
 	require.Nil(t, gotSuiClient)
 	require.Equal(t, suiSigner, gotSuiSigner)
