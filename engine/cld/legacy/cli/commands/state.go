@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -37,6 +39,7 @@ func (c Commands) newStateGenerate(dom domain.Domain, cfg StateConfig) *cobra.Co
 		persist       bool
 		outputPath    string
 		prevStatePath string
+		chainsStr     string
 	)
 
 	cmd := cobra.Command{
@@ -52,7 +55,35 @@ func (c Commands) newStateGenerate(dom domain.Domain, cfg StateConfig) *cobra.Co
 			ctx, cancel := context.WithTimeout(cmd.Context(), viewTimeout)
 			defer cancel()
 
-			env, err := environment.Load(ctx, dom, envKey, environment.WithLogger(c.lggr))
+			// Parse chain selectors from the comma-separated string
+			var chains []uint64
+			if chainsStr != "" {
+				chainParts := strings.Split(chainsStr, ",")
+				for _, part := range chainParts {
+					part = strings.TrimSpace(part)
+					if part == "" {
+						continue
+					}
+					selector, parseErr := strconv.ParseUint(part, 10, 64)
+					if parseErr != nil {
+						return fmt.Errorf("invalid chain selector '%s': %w", part, parseErr)
+					}
+					chains = append(chains, selector)
+				}
+			}
+
+			// Prepare environment load options
+			envOpts := []environment.LoadEnvironmentOption{environment.WithLogger(c.lggr)}
+
+			// If specific chains are requested, only load those chains
+			if len(chains) > 0 {
+				cmd.Printf("Loading state for specific chains: %v\n", chains)
+				envOpts = append(envOpts, environment.OnlyLoadChainsFor(chains))
+			} else {
+				cmd.Println("Loading state for all chains")
+			}
+
+			env, err := environment.Load(ctx, dom, envKey, envOpts...)
 			if err != nil {
 				return fmt.Errorf("failed to load environment %w", err)
 			}
@@ -62,7 +93,13 @@ func (c Commands) newStateGenerate(dom domain.Domain, cfg StateConfig) *cobra.Co
 				return fmt.Errorf("failed to load previous state: %w", err)
 			}
 
-			state, err := cfg.ViewState(env, prevState)
+			// Generate state using ViewStateV2 with optional chain selectors
+			var opts []deployment.ViewStateOption
+			if len(chains) > 0 {
+				opts = append(opts, deployment.WithChainSelectorsToLoad(chains))
+			}
+
+			state, err := cfg.ViewState(env, prevState, opts...)
 			if err != nil {
 				return fmt.Errorf("unable to snapshot state: %w", err)
 			}
@@ -95,6 +132,7 @@ func (c Commands) newStateGenerate(dom domain.Domain, cfg StateConfig) *cobra.Co
 	cmd.Flags().BoolVarP(&persist, "persist", "p", false, "Persist state to disk")
 	cmd.Flags().StringVarP(&outputPath, "outputPath", "o", "", "Output path. Default is <product>/<environment>/state.json")
 	cmd.Flags().StringVarP(&prevStatePath, "previousState", "s", "", "Previous state's path. Default is <product>/<environment>/state.json")
+	cmd.Flags().StringVarP(&chainsStr, "chains", "c", "", "Chain selectors to fetch state for (comma-separated). If not specified, all chains will be loaded")
 
 	return &cmd
 }

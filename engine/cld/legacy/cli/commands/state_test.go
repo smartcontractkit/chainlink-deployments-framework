@@ -54,6 +54,11 @@ func TestNewStateGenerateCmd_Metadata(t *testing.T) {
 	require.NotNil(t, s)
 	require.Equal(t, "s", s.Shorthand)
 	require.Empty(t, s.Value.String())
+
+	c := cmd.Flags().Lookup("chains")
+	require.NotNil(t, c)
+	require.Equal(t, "c", c.Shorthand)
+	require.Empty(t, c.Value.String())
 }
 
 func TestStateGenerate_MissingEnvFails(t *testing.T) {
