@@ -889,22 +889,24 @@ func TestTryEIP1967ProxyFallback(t *testing.T) {
 				t.Helper()
 
 				return &DefaultProposalContext{
-					AddressesByChain: deployment.AddressesByChain{
-						chainSelector: {
-							proxyAddress: deployment.MustTypeAndVersionFromString("TransparentUpgradeableProxy 1.0.0"),
-						},
-					},
-					evmRegistry: &mockEVMRegistry{
-						abis: map[string]string{
-							"TransparentUpgradeableProxy 1.0.0": proxyABI,
-						},
-						addressesByChain: deployment.AddressesByChain{
+						AddressesByChain: deployment.AddressesByChain{
 							chainSelector: {
 								proxyAddress: deployment.MustTypeAndVersionFromString("TransparentUpgradeableProxy 1.0.0"),
 							},
 						},
-					},
-				}, deployment.Environment{}
+						evmRegistry: &mockEVMRegistry{
+							abis: map[string]string{
+								"TransparentUpgradeableProxy 1.0.0": proxyABI,
+							},
+							addressesByChain: deployment.AddressesByChain{
+								chainSelector: {
+									proxyAddress: deployment.MustTypeAndVersionFromString("TransparentUpgradeableProxy 1.0.0"),
+								},
+							},
+						},
+					}, deployment.Environment{
+						BlockChains: chain.NewBlockChainsFromSlice([]chain.BlockChain{}),
+					}
 			},
 			chainSelector: chainSelector,
 			proxyAddress:  proxyAddress,
@@ -1538,7 +1540,7 @@ func TestAnalyzeEVMTransaction_EIP1967ProxyFallback(t *testing.T) {
 							},
 						},
 					},
-				}, deployment.Environment{}
+				}, deployment.Environment{BlockChains: chain.NewBlockChainsFromSlice([]chain.BlockChain{})}
 			},
 			expectedError: true,
 			errorContains: "error analyzing operation", // Original error, not chain error

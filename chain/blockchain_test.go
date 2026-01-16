@@ -181,12 +181,12 @@ func TestBlockChainsGetters(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		runTest     func(t *testing.T, chains chain.BlockChains)
+		runTest     func(t *testing.T, chains *chain.BlockChains)
 		description string
 	}{
 		{
 			name: "EVMChains",
-			runTest: func(t *testing.T, chains chain.BlockChains) {
+			runTest: func(t *testing.T, chains *chain.BlockChains) {
 				t.Helper()
 				evmChains := chains.EVMChains()
 				expectedSelectors := []uint64{evmChain1.Selector, evmChain2.Selector}
@@ -202,7 +202,7 @@ func TestBlockChainsGetters(t *testing.T) {
 		},
 		{
 			name: "SolanaChains",
-			runTest: func(t *testing.T, chains chain.BlockChains) {
+			runTest: func(t *testing.T, chains *chain.BlockChains) {
 				t.Helper()
 				solanaChains := chains.SolanaChains()
 				expectedSelectors := []uint64{solanaChain1.Selector}
@@ -218,7 +218,7 @@ func TestBlockChainsGetters(t *testing.T) {
 		},
 		{
 			name: "AptosChains",
-			runTest: func(t *testing.T, chains chain.BlockChains) {
+			runTest: func(t *testing.T, chains *chain.BlockChains) {
 				t.Helper()
 				aptosChains := chains.AptosChains()
 				expectedSelectors := []uint64{aptosChain1.Selector}
@@ -234,7 +234,7 @@ func TestBlockChainsGetters(t *testing.T) {
 		},
 		{
 			name: "SuiChains",
-			runTest: func(t *testing.T, chains chain.BlockChains) {
+			runTest: func(t *testing.T, chains *chain.BlockChains) {
 				t.Helper()
 				suiChains := chains.SuiChains()
 				expectedSelectors := []uint64{suiChain1.Selector}
@@ -250,7 +250,7 @@ func TestBlockChainsGetters(t *testing.T) {
 		},
 		{
 			name: "TonChains",
-			runTest: func(t *testing.T, chains chain.BlockChains) {
+			runTest: func(t *testing.T, chains *chain.BlockChains) {
 				t.Helper()
 				tonChains := chains.TonChains()
 				expectedSelectors := []uint64{tonChain1.Selector}
@@ -266,7 +266,7 @@ func TestBlockChainsGetters(t *testing.T) {
 		},
 		{
 			name: "TronChains",
-			runTest: func(t *testing.T, chains chain.BlockChains) {
+			runTest: func(t *testing.T, chains *chain.BlockChains) {
 				t.Helper()
 				tronChains := chains.TronChains()
 				expectedSelectors := []uint64{tronChain1.Selector}
@@ -285,7 +285,7 @@ func TestBlockChainsGetters(t *testing.T) {
 	// Run tests for both value and pointer chains
 	chainTypes := []struct {
 		name   string
-		chains chain.BlockChains
+		chains *chain.BlockChains
 	}{
 		{"value chains", valueChains},
 		{"pointer chains", pointerChains},
@@ -396,7 +396,7 @@ func TestBlockChainsListChainSelectors(t *testing.T) {
 
 // buildBlockChains creates a new BlockChains instance with the test chains.
 // 2 evm chains, 1 solana chain, 1 aptos chain, 1 sui chain, 1 ton chain, 1 tron chain.
-func buildBlockChains() chain.BlockChains {
+func buildBlockChains() *chain.BlockChains {
 	chains := chain.NewBlockChains(map[uint64]chain.BlockChain{
 		evmChain1.ChainSelector():    evmChain1,
 		solanaChain1.ChainSelector(): solanaChain1,
@@ -411,7 +411,7 @@ func buildBlockChains() chain.BlockChains {
 }
 
 // buildBlockChainsPointers creates a new BlockChains instance with the test chains as pointers.
-func buildBlockChainsPointers() chain.BlockChains {
+func buildBlockChainsPointers() *chain.BlockChains {
 	chains := buildBlockChains()
 	pointerChains := make(map[uint64]chain.BlockChain)
 	for selector, c := range chains.All() {

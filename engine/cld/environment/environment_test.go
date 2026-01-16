@@ -82,6 +82,40 @@ func Test_Load_NoError(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func Test_Load_WithLazyBlockchains(t *testing.T) { //nolint:paralleltest // Test sets environment variable
+	// Set the feature flag to enable lazy loading
+	t.Setenv("CLD_LAZY_BLOCKCHAINS", "true")
+
+	// Set up domain
+	domain := setupTest(t, setupTestConfig, setupAddressbook, setupDataStore, setupNodes)
+
+	env, err := Load(t.Context(), domain, "staging", WithoutJD(), OnlyLoadChainsFor([]uint64{}))
+	require.NoError(t, err)
+
+	// Verify environment was created successfully with lazy blockchains
+	require.NotNil(t, env.BlockChains)
+
+	// Verify we got a BlockChains instance with lazy loading enabled
+	assert.True(t, env.BlockChains.IsLazy(), "Expected lazy loading to be enabled")
+}
+
+func Test_Load_WithEagerBlockchains(t *testing.T) {
+	t.Parallel()
+
+	// Explicitly don't set the feature flag - this tests the default eager loading behavior
+	// Set up domain
+	domain := setupTest(t, setupTestConfig, setupAddressbook, setupDataStore, setupNodes)
+
+	env, err := Load(t.Context(), domain, "staging", WithoutJD(), OnlyLoadChainsFor([]uint64{}))
+	require.NoError(t, err)
+
+	// Verify environment was created successfully with eager blockchains
+	require.NotNil(t, env.BlockChains)
+
+	// Verify we got a BlockChains instance with eager loading (not lazy)
+	assert.False(t, env.BlockChains.IsLazy(), "Expected eager loading to be enabled")
+}
+
 func setupTest(t *testing.T, setupFnc ...func(t *testing.T, domain fdomain.Domain)) fdomain.Domain {
 	t.Helper()
 

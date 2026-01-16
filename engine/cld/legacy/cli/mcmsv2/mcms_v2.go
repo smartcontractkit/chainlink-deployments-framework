@@ -86,7 +86,7 @@ type cfgv2 struct {
 	proposal         mcms.Proposal
 	timelockProposal *mcms.TimelockProposal // nil if not a timelock proposal
 	chainSelector    uint64
-	blockchains      chain.BlockChains
+	blockchains      *chain.BlockChains
 	envStr           string
 	env              cldf.Environment
 	forkedEnv        cldfenvironment.ForkedEnvironment

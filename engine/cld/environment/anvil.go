@@ -296,8 +296,10 @@ func newAnvilChains(
 		}
 	}
 
+	blockChainsValue := fchain.NewBlockChainsFromSlice(blockChains)
+
 	return &AnvilChainsOutput{
-		Chains:       fchain.NewBlockChainsFromSlice(blockChains).EVMChains(),
+		Chains:       blockChainsValue.EVMChains(),
 		ForkClients:  anvilClients,
 		ChainConfigs: chainConfigsBySelector,
 	}, nil

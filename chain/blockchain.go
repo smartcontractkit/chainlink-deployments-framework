@@ -1,11 +1,14 @@
 package chain
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"iter"
 	"maps"
 	"reflect"
 	"slices"
+	"sync"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
@@ -13,6 +16,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/sui"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/ton"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron"
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
 var ErrBlockChainNotFound = errors.New("blockchain not found")
@@ -35,14 +39,31 @@ type BlockChain interface {
 	Family() string
 }
 
-// BlockChains represents a collection of chains.
+// BlockChains represents a collection of chains that supports both eager and lazy loading.
 // It provides querying capabilities for different types of chains.
+// The struct can operate in two modes:
+// - Eager mode: All chains are loaded upfront (original behavior)
+// - Lazy mode: Chains are loaded on-demand when first accessed (new feature)
+//
+// BlockChains should always be used as a pointer (*BlockChains) to ensure proper
+// thread-safety when using lazy loading.
 type BlockChains struct {
+	// Eager loading fields (used when isLazy = false)
 	chains map[uint64]BlockChain
+
+	// Lazy loading fields (used when isLazy = true)
+	isLazy             bool
+	mu                 sync.RWMutex
+	loadedChains       map[uint64]BlockChain
+	loaders            map[string]ChainLoader // keyed by chain family
+	supportedSelectors map[uint64]string      // maps selector to chain family
+	ctx                context.Context        //nolint:containedctx // Context is needed for lazy loading operations
+	lggr               logger.Logger
 }
 
-// NewBlockChains initializes a new BlockChains instance
-func NewBlockChains(chains map[uint64]BlockChain) BlockChains {
+// NewBlockChains initializes a new BlockChains instance with eager loading.
+// All chains are fully loaded and available immediately.
+func NewBlockChains(chains map[uint64]BlockChain) *BlockChains {
 	// perform a copy of chains
 	// to avoid mutating the original map
 	if chains == nil {
@@ -55,13 +76,43 @@ func NewBlockChains(chains map[uint64]BlockChain) BlockChains {
 		chains = newChains
 	}
 
-	return BlockChains{
+	return &BlockChains{
 		chains: chains,
+		isLazy: false,
+	}
+}
+
+// NewLazyBlockChains creates a BlockChains instance that defers chain loading until first access.
+// This improves initialization performance by avoiding unnecessary chain connections.
+// Chains are loaded on-demand when accessed via GetBySelector, EVMChains, SolanaChains, etc.
+//
+// Parameters:
+//   - ctx: Context for chain loading operations
+//   - supportedSelectors: Maps chain selectors to their family (e.g., "evm", "solana", "aptos")
+//   - loaders: Provides the ChainLoader for each family
+//   - lggr: Logger for recording chain loading events and errors
+//
+// If a chain fails to load during access, the error is logged and the failing chain is skipped.
+// This ensures graceful degradation - successfully loaded chains remain accessible while failures
+// are visible in logs.
+func NewLazyBlockChains(
+	ctx context.Context,
+	supportedSelectors map[uint64]string,
+	loaders map[string]ChainLoader,
+	lggr logger.Logger,
+) *BlockChains {
+	return &BlockChains{
+		isLazy:             true,
+		loadedChains:       make(map[uint64]BlockChain),
+		loaders:            loaders,
+		supportedSelectors: supportedSelectors,
+		ctx:                ctx,
+		lggr:               lggr,
 	}
 }
 
 // NewBlockChainsFromSlice initializes a new BlockChains instance from a slice of BlockChain.
-func NewBlockChainsFromSlice(chains []BlockChain) BlockChains {
+func NewBlockChainsFromSlice(chains []BlockChain) *BlockChains {
 	// Create a new map to hold the chains
 	chainsMap := make(map[uint64]BlockChain, len(chains))
 
@@ -74,7 +125,18 @@ func NewBlockChainsFromSlice(chains []BlockChain) BlockChains {
 }
 
 // GetBySelector returns a blockchain by its selector.
-func (b BlockChains) GetBySelector(selector uint64) (BlockChain, error) {
+// In eager mode, returns the pre-loaded chain immediately.
+// In lazy mode, loads the chain on-demand if not already loaded.
+func (b *BlockChains) GetBySelector(selector uint64) (BlockChain, error) {
+	if b.isLazy {
+		return b.getBySelectorLazy(selector)
+	}
+
+	return b.getBySelectorEager(selector)
+}
+
+// getBySelectorEager returns a pre-loaded chain (eager mode).
+func (b *BlockChains) getBySelectorEager(selector uint64) (BlockChain, error) {
 	if chain, ok := b.chains[selector]; ok {
 		return chain, nil
 	}
@@ -82,15 +144,62 @@ func (b BlockChains) GetBySelector(selector uint64) (BlockChain, error) {
 	return nil, ErrBlockChainNotFound
 }
 
-// Exists checks if a chain with the given selector exists.
-func (b BlockChains) Exists(selector uint64) bool {
+// getBySelectorLazy loads and returns a chain on-demand (lazy mode).
+func (b *BlockChains) getBySelectorLazy(selector uint64) (BlockChain, error) {
+	// Fast path: check if already loaded
+	b.mu.RLock()
+	if chain, ok := b.loadedChains[selector]; ok {
+		b.mu.RUnlock()
+		return chain, nil
+	}
+	b.mu.RUnlock()
+
+	// Slow path: need to load the chain
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	// Double-check after acquiring write lock
+	if chain, ok := b.loadedChains[selector]; ok {
+		return chain, nil
+	}
+
+	// Check if the chain is available
+	family, ok := b.supportedSelectors[selector]
+	if !ok {
+		return nil, ErrBlockChainNotFound
+	}
+
+	// Get the loader for this family
+	loader, ok := b.loaders[family]
+	if !ok {
+		return nil, ErrBlockChainNotFound
+	}
+
+	// Load the chain
+	chain, err := loader.Load(b.ctx, selector)
+	if err != nil {
+		return nil, err
+	}
+
+	// Cache the loaded chain
+	b.loadedChains[selector] = chain
+
+	return chain, nil
+}
+
+// Exists checks if a chain with the given selector exists (not necessarily loaded).
+func (b *BlockChains) Exists(selector uint64) bool {
+	if b.isLazy {
+		_, ok := b.supportedSelectors[selector]
+		return ok
+	}
 	_, ok := b.chains[selector]
 
 	return ok
 }
 
 // ExistsN checks if all chains with the given selectors exist.
-func (b BlockChains) ExistsN(selectors ...uint64) bool {
+func (b *BlockChains) ExistsN(selectors ...uint64) bool {
 	for _, selector := range selectors {
 		if !b.Exists(selector) {
 			return false
@@ -101,37 +210,139 @@ func (b BlockChains) ExistsN(selectors ...uint64) bool {
 }
 
 // All returns an iterator over all chains with their selectors.
-func (b BlockChains) All() iter.Seq2[uint64, BlockChain] {
+// In eager mode, iterates over pre-loaded chains immediately.
+// In lazy mode, loads chains on-demand during iteration. If a chain fails to load,
+// the error is logged and the chain is skipped.
+//
+// Note: For lazy mode, this method loads chains sequentially during iteration.
+// For faster loading when iterating over all chains, consider converting to eager mode first
+// using ToEagerBlockChains(), which loads all chains in parallel.
+func (b *BlockChains) All() iter.Seq2[uint64, BlockChain] {
+	if b.isLazy {
+		return b.allLazy()
+	}
+
 	return maps.All(b.chains)
 }
 
+// allLazy returns an iterator that loads chains on-demand.
+func (b *BlockChains) allLazy() iter.Seq2[uint64, BlockChain] {
+	return func(yield func(uint64, BlockChain) bool) {
+		selectors := slices.Collect(maps.Keys(b.supportedSelectors))
+
+		// Sort for consistent iteration order
+		slices.Sort(selectors)
+
+		for _, selector := range selectors {
+			chain, err := b.GetBySelector(selector)
+			if err != nil {
+				b.lggr.Errorw("Failed to load chain during iteration",
+					"selector", selector,
+					"error", err,
+				)
+				// Skip chains that fail to load
+				continue
+			}
+			if !yield(selector, chain) {
+				return
+			}
+		}
+	}
+}
+
 // EVMChains returns a map of all EVM chains with their selectors.
-func (b BlockChains) EVMChains() map[uint64]evm.Chain {
+// In lazy mode, chains are loaded on-demand. If a chain fails to load,
+// the error is logged and the chain is skipped.
+func (b *BlockChains) EVMChains() map[uint64]evm.Chain {
+	if b.isLazy {
+		chains, err := tryChainsByFamily[evm.Chain, *evm.Chain](b, "evm")
+		if err != nil {
+			b.lggr.Errorw("Failed to load one or more EVM chains", "error", err)
+		}
+
+		return chains
+	}
+
 	return getChainsByType[evm.Chain, *evm.Chain](b)
 }
 
 // SolanaChains returns a map of all Solana chains with their selectors.
-func (b BlockChains) SolanaChains() map[uint64]solana.Chain {
+// In lazy mode, chains are loaded on-demand. If a chain fails to load,
+// the error is logged and the chain is skipped.
+func (b *BlockChains) SolanaChains() map[uint64]solana.Chain {
+	if b.isLazy {
+		chains, err := tryChainsByFamily[solana.Chain, *solana.Chain](b, "solana")
+		if err != nil {
+			b.lggr.Errorw("Failed to load one or more Solana chains", "error", err)
+		}
+
+		return chains
+	}
+
 	return getChainsByType[solana.Chain, *solana.Chain](b)
 }
 
 // AptosChains returns a map of all Aptos chains with their selectors.
-func (b BlockChains) AptosChains() map[uint64]aptos.Chain {
+// In lazy mode, chains are loaded on-demand. If a chain fails to load,
+// the error is logged and the chain is skipped.
+func (b *BlockChains) AptosChains() map[uint64]aptos.Chain {
+	if b.isLazy {
+		chains, err := tryChainsByFamily[aptos.Chain, *aptos.Chain](b, "aptos")
+		if err != nil {
+			b.lggr.Errorw("Failed to load one or more Aptos chains", "error", err)
+		}
+
+		return chains
+	}
+
 	return getChainsByType[aptos.Chain, *aptos.Chain](b)
 }
 
 // SuiChains returns a map of all Sui chains with their selectors.
-func (b BlockChains) SuiChains() map[uint64]sui.Chain {
+// In lazy mode, chains are loaded on-demand. If a chain fails to load,
+// the error is logged and the chain is skipped.
+func (b *BlockChains) SuiChains() map[uint64]sui.Chain {
+	if b.isLazy {
+		chains, err := tryChainsByFamily[sui.Chain, *sui.Chain](b, "sui")
+		if err != nil {
+			b.lggr.Errorw("Failed to load one or more Sui chains", "error", err)
+		}
+
+		return chains
+	}
+
 	return getChainsByType[sui.Chain, *sui.Chain](b)
 }
 
 // TonChains returns a map of all Ton chains with their selectors.
-func (b BlockChains) TonChains() map[uint64]ton.Chain {
+// In lazy mode, chains are loaded on-demand. If a chain fails to load,
+// the error is logged and the chain is skipped.
+func (b *BlockChains) TonChains() map[uint64]ton.Chain {
+	if b.isLazy {
+		chains, err := tryChainsByFamily[ton.Chain, *ton.Chain](b, "ton")
+		if err != nil {
+			b.lggr.Errorw("Failed to load one or more Ton chains", "error", err)
+		}
+
+		return chains
+	}
+
 	return getChainsByType[ton.Chain, *ton.Chain](b)
 }
 
 // TronChains returns a map of all Tron chains with their selectors.
-func (b BlockChains) TronChains() map[uint64]tron.Chain {
+// In lazy mode, chains are loaded on-demand. If a chain fails to load,
+// the error is logged and the chain is skipped.
+func (b *BlockChains) TronChains() map[uint64]tron.Chain {
+	if b.isLazy {
+		chains, err := tryChainsByFamily[tron.Chain, *tron.Chain](b, "tron")
+		if err != nil {
+			b.lggr.Errorw("Failed to load one or more Tron chains", "error", err)
+		}
+
+		return chains
+	}
+
 	return getChainsByType[tron.Chain, *tron.Chain](b)
 }
 
@@ -172,7 +383,7 @@ func WithChainSelectorsExclusion(chainSelectors []uint64) ChainSelectorsOption {
 // Options:
 // - WithFamily: filter by family eg WithFamily(chainsel.FamilySolana)
 // - WithChainSelectorsExclusion: exclude specific chain selectors
-func (b BlockChains) ListChainSelectors(options ...ChainSelectorsOption) []uint64 {
+func (b *BlockChains) ListChainSelectors(options ...ChainSelectorsOption) []uint64 {
 	opts := chainSelectorsOptions{}
 
 	// Apply all provided options
@@ -180,21 +391,38 @@ func (b BlockChains) ListChainSelectors(options ...ChainSelectorsOption) []uint6
 		option(&opts)
 	}
 
-	selectors := make([]uint64, 0, len(b.chains))
+	var selectors []uint64
 
-	for selector, chain := range b.chains {
-		if opts.excludedChainSels != nil {
-			if _, excluded := opts.excludedChainSels[selector]; excluded {
-				continue
+	if b.isLazy {
+		selectors = make([]uint64, 0, len(b.supportedSelectors))
+		for selector, family := range b.supportedSelectors {
+			if opts.excludedChainSels != nil {
+				if _, excluded := opts.excludedChainSels[selector]; excluded {
+					continue
+				}
 			}
-		}
-		if opts.includedFamilies != nil {
-			if _, ok := opts.includedFamilies[chain.Family()]; !ok {
-				continue
+			if opts.includedFamilies != nil {
+				if _, ok := opts.includedFamilies[family]; !ok {
+					continue
+				}
 			}
+			selectors = append(selectors, selector)
 		}
-
-		selectors = append(selectors, selector)
+	} else {
+		selectors = make([]uint64, 0, len(b.chains))
+		for selector, chain := range b.chains {
+			if opts.excludedChainSels != nil {
+				if _, excluded := opts.excludedChainSels[selector]; excluded {
+					continue
+				}
+			}
+			if opts.includedFamilies != nil {
+				if _, ok := opts.includedFamilies[chain.Family()]; !ok {
+					continue
+				}
+			}
+			selectors = append(selectors, selector)
+		}
 	}
 
 	// Sort for consistent output
@@ -203,11 +431,143 @@ func (b BlockChains) ListChainSelectors(options ...ChainSelectorsOption) []uint6
 	return selectors
 }
 
-// getChainsByType is a helper function to extract chains of a specific type from BlockChains.
+// IsLazy returns true if the BlockChains instance uses lazy loading.
+func (b *BlockChains) IsLazy() bool {
+	return b.isLazy
+}
+
+// ToEagerBlockChains converts lazy-loaded chains to eagerly-loaded chains.
+// This loads all available chains in parallel and returns a new BlockChains instance.
+// If already using eager loading, returns a copy of the current instance.
+// This is useful for operations that need all chains loaded upfront.
+func (b *BlockChains) ToEagerBlockChains() (*BlockChains, error) {
+	if !b.isLazy {
+		// Already eager, return a copy
+		return NewBlockChains(b.chains), nil
+	}
+
+	// Get all selectors
+	selectors := make([]uint64, 0, len(b.supportedSelectors))
+	for selector := range b.supportedSelectors {
+		selectors = append(selectors, selector)
+	}
+
+	if len(selectors) == 0 {
+		return NewBlockChains(make(map[uint64]BlockChain)), nil
+	}
+
+	// Load chains in parallel
+	results := b.loadChainsParallel(selectors)
+
+	// Collect results
+	chains := make(map[uint64]BlockChain)
+	for res := range results {
+		if res.err != nil {
+			return nil, fmt.Errorf("failed to load chain %d: %w", res.selector, res.err)
+		}
+		chains[res.selector] = res.chain
+	}
+
+	return NewBlockChains(chains), nil
+}
+
+// chainLoadResult represents the result of loading a single chain.
+type chainLoadResult struct {
+	selector uint64
+	chain    BlockChain
+	err      error
+}
+
+// loadChainsParallel loads multiple chains in parallel and returns a channel of results.
+// The channel is closed when all chains have been loaded.
+func (b *BlockChains) loadChainsParallel(selectors []uint64) <-chan chainLoadResult {
+	results := make(chan chainLoadResult, len(selectors))
+	var wg sync.WaitGroup
+
+	for _, selector := range selectors {
+		wg.Add(1)
+		go func(sel uint64) {
+			defer wg.Done()
+			chain, err := b.GetBySelector(sel)
+			results <- chainLoadResult{
+				selector: sel,
+				chain:    chain,
+				err:      err,
+			}
+		}(selector)
+	}
+
+	// Close results channel when all goroutines are done
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	return results
+}
+
+// tryChainsByFamily loads all chains of a specific family in parallel (lazy mode only).
+// It returns a map of successfully loaded chains and an error containing all failures.
+// This is a standalone function because Go doesn't support generic methods.
+func tryChainsByFamily[T any, PT interface {
+	*T
+}](b *BlockChains, family string) (map[uint64]T, error) {
+	// Get all selectors for this chain family
+	selectors := make([]uint64, 0)
+	for selector, f := range b.supportedSelectors {
+		if f == family {
+			selectors = append(selectors, selector)
+		}
+	}
+
+	if len(selectors) == 0 {
+		return make(map[uint64]T), nil
+	}
+
+	// Load chains in parallel
+	results := b.loadChainsParallel(selectors)
+
+	// Collect results
+	chains := make(map[uint64]T)
+	var errs []error
+
+	for res := range results {
+		if res.err != nil {
+			errs = append(errs, fmt.Errorf("failed to load %s chain %d: %w", family, res.selector, res.err))
+			continue
+		}
+
+		// Type assertion to convert BlockChain to the specific chain type
+		switch c := res.chain.(type) {
+		case T:
+			chains[res.selector] = c
+		case PT:
+			if c != nil {
+				val := reflect.ValueOf(c)
+				if val.Kind() == reflect.Ptr && !val.IsNil() {
+					elem := val.Elem()
+					if elem.CanInterface() {
+						if v, ok := elem.Interface().(T); ok {
+							chains[res.selector] = v
+						}
+					}
+				}
+			}
+		}
+	}
+
+	if len(errs) > 0 {
+		return chains, errors.Join(errs...)
+	}
+
+	return chains, nil
+}
+
+// getChainsByType is a helper function to extract chains of a specific type from BlockChains (eager mode).
 // It accepts two type parameters: VT for the target type and PT for pointer types of the same chain type.
-// eg getChainsByType[evm.Chain, *evm.Chain](b BlockChains) returns a map of uint64 to evm.Chain.
+// eg getChainsByType[evm.Chain, *evm.Chain](b *BlockChains) returns a map of uint64 to evm.Chain.
 // It handles both value and pointer types, allowing for flexibility in how chains are stored.
-func getChainsByType[VT any, PT any](b BlockChains) map[uint64]VT {
+func getChainsByType[VT any, PT any](b *BlockChains) map[uint64]VT {
 	chains := make(map[uint64]VT, len(b.chains))
 	for sel, chain := range b.chains {
 		switch c := any(chain).(type) {

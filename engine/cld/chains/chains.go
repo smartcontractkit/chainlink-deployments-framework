@@ -34,7 +34,7 @@ func LoadChains(
 	lggr logger.Logger,
 	cfg *config.Config,
 	chainselToLoad []uint64,
-) (fchain.BlockChains, error) {
+) (*fchain.BlockChains, error) {
 	if len(chainselToLoad) == 0 {
 		lggr.Info("No chain selectors provided, skipping chain loading")
 		return fchain.NewBlockChains(map[uint64]fchain.BlockChain{}), nil
@@ -64,7 +64,7 @@ func LoadChains(
 				"selector", selector, "error", err,
 			)
 
-			return fchain.BlockChains{}, fmt.Errorf("unable to get chain family for selector %d", selector)
+			return nil, fmt.Errorf("unable to get chain family for selector %d", selector)
 		}
 
 		// Check if we have a loader for this chain family
@@ -147,7 +147,7 @@ func LoadChains(
 
 	// If any chains failed to load, return an error
 	if len(failedChains) > 0 {
-		return fchain.BlockChains{}, fmt.Errorf("failed to load %d out of %d chains: %v",
+		return nil, fmt.Errorf("failed to load %d out of %d chains: %v",
 			len(failedChains), len(validSelectors), failedChains)
 	}
 
@@ -158,6 +158,63 @@ func LoadChains(
 	)
 
 	return fchain.NewBlockChainsFromSlice(loadedChains), nil
+}
+
+// NewLazyBlockChains creates a BlockChains instance with lazy loading that defers chain loading until first access.
+// This improves environment initialization performance by avoiding unnecessary chain connections.
+// Chains are loaded on-demand when accessed via GetBySelector, EVMChains, SolanaChains, etc.
+// All chains defined in the network config are made available for lazy loading.
+//
+// If a chain fails to load during access, the error is logged and the failing chain is skipped.
+// This ensures graceful degradation - successfully loaded chains remain accessible while failures
+// are visible in logs.
+func NewLazyBlockChains(
+	ctx context.Context,
+	lggr logger.Logger,
+	cfg *config.Config,
+) (*fchain.BlockChains, error) {
+	chainLoaders := newChainLoaders(lggr, cfg.Networks, cfg.Env.Onchain)
+
+	// Get all chain selectors from the network config
+	allChainSelectors := cfg.Networks.ChainSelectors()
+
+	// Build a map of supported selectors (selector -> family)
+	supportedSelectors := make(map[uint64]string)
+
+	for _, selector := range allChainSelectors {
+		// Get the chain family for this selector
+		chainFamily, err := chainsel.GetSelectorFamily(selector)
+		if err != nil {
+			lggr.Warnw("Unable to get chain family for selector",
+				"selector", selector, "error", err,
+			)
+
+			return nil, fmt.Errorf("unable to get chain family for selector %d", selector)
+		}
+
+		// Check if we have a loader for this chain family
+		if _, exists := chainLoaders[chainFamily]; !exists {
+			lggr.Debugw("No chain loader available for chain family, skipping",
+				"selector", selector, "family", chainFamily,
+			)
+
+			continue
+		}
+
+		supportedSelectors[selector] = chainFamily
+	}
+
+	lggr.Infow("Created lazy blockchain collection",
+		"supported_selectors", len(supportedSelectors),
+		"families", len(chainLoaders),
+	)
+
+	fchainLoaders := make(map[string]ChainLoader, len(chainLoaders))
+	for family, loader := range chainLoaders {
+		fchainLoaders[family] = loader
+	}
+
+	return fchain.NewLazyBlockChains(ctx, supportedSelectors, fchainLoaders, lggr), nil
 }
 
 // newChainLoaders returns a map of chain loaders for each supported chain family, based on the provided
@@ -211,6 +268,10 @@ func newChainLoaders(
 	return loaders
 }
 
+// ChainLoader is an alias for fchain.ChainLoader.
+// This alias maintains backward compatibility for code that references chains.ChainLoader.
+type ChainLoader = fchain.ChainLoader
+
 var (
 	_ ChainLoader = &chainLoaderAptos{}
 	_ ChainLoader = &chainLoaderSolana{}
@@ -218,11 +279,6 @@ var (
 	_ ChainLoader = &chainLoaderTron{}
 	_ ChainLoader = &chainLoaderSui{}
 )
-
-// ChainLoader is an interface that defines the methods for loading a chain.
-type ChainLoader interface {
-	Load(ctx context.Context, selector uint64) (fchain.BlockChain, error)
-}
 
 // baseChainLoader is a base implementation of the ChainLoader interface. It contains the common
 // fields for all chain loaders.
