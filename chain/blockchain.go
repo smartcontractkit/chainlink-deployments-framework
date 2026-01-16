@@ -8,6 +8,7 @@ import (
 	"slices"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/canton"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/sui"
@@ -133,6 +134,10 @@ func (b BlockChains) TonChains() map[uint64]ton.Chain {
 // TronChains returns a map of all Tron chains with their selectors.
 func (b BlockChains) TronChains() map[uint64]tron.Chain {
 	return getChainsByType[tron.Chain, *tron.Chain](b)
+}
+
+func (b BlockChains) CantonChains() map[uint64]canton.Chain {
+	return getChainsByType[canton.Chain, *canton.Chain](b)
 }
 
 // ChainSelectorsOption defines a function type for configuring ChainSelectors

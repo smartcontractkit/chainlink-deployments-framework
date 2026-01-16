@@ -11,6 +11,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/canton"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/sui"
@@ -25,6 +26,7 @@ var aptosChain1 = aptos.Chain{Selector: chainsel.APTOS_LOCALNET.Selector}
 var suiChain1 = sui.Chain{ChainMetadata: sui.ChainMetadata{Selector: chainsel.SUI_LOCALNET.Selector}}
 var tonChain1 = ton.Chain{ChainMetadata: ton.ChainMetadata{Selector: chainsel.TON_LOCALNET.Selector}}
 var tronChain1 = tron.Chain{ChainMetadata: tron.ChainMetadata{Selector: chainsel.TRON_MAINNET.Selector}}
+var cantonChain1 = canton.Chain{Selector: chainsel.CANTON_LOCALNET.Selector}
 
 func TestNewBlockChains(t *testing.T) {
 	t.Parallel()
@@ -162,7 +164,7 @@ func TestBlockChainsAllChains(t *testing.T) {
 		evmChain1.Selector, evmChain2.Selector,
 		solanaChain1.Selector, aptosChain1.Selector,
 		suiChain1.Selector, tonChain1.Selector,
-		tronChain1.Selector,
+		tronChain1.Selector, cantonChain1.Selector,
 	}
 
 	assert.Len(t, allChains, len(expectedSelectors))
@@ -280,6 +282,21 @@ func TestBlockChainsGetters(t *testing.T) {
 			},
 			description: "should return all Tron chains",
 		},
+		{
+			name: "CantonChains",
+			runTest: func(t *testing.T, chains chain.BlockChains) {
+				t.Helper()
+				cantonChains := chains.CantonChains()
+				expectedSelectors := []uint64{cantonChain1.Selector}
+
+				assert.Len(t, cantonChains, len(expectedSelectors), "unexpected number of Canton chains")
+
+				for _, selector := range expectedSelectors {
+					_, exists := cantonChains[selector]
+					assert.True(t, exists, "expected Canton chain with selector %d", selector)
+				}
+			},
+		},
 	}
 
 	// Run tests for both value and pointer chains
@@ -319,7 +336,7 @@ func TestBlockChainsListChainSelectors(t *testing.T) {
 				evmChain1.ChainSelector(), evmChain2.ChainSelector(),
 				solanaChain1.ChainSelector(), aptosChain1.ChainSelector(),
 				suiChain1.ChainSelector(), tonChain1.ChainSelector(),
-				tronChain1.ChainSelector(),
+				tronChain1.ChainSelector(), cantonChain1.ChainSelector(),
 			},
 			description: "expected all chain selectors",
 		},
@@ -360,6 +377,12 @@ func TestBlockChainsListChainSelectors(t *testing.T) {
 			description: "expected Tron chain selectors",
 		},
 		{
+			name:        "with family filter - Canton",
+			options:     []chain.ChainSelectorsOption{chain.WithFamily(chainsel.FamilyCanton)},
+			expectedIDs: []uint64{cantonChain1.Selector},
+			description: "expected Canton chain selectors",
+		},
+		{
 			name:        "with multiple families",
 			options:     []chain.ChainSelectorsOption{chain.WithFamily(chainsel.FamilyEVM), chain.WithFamily(chainsel.FamilySolana)},
 			expectedIDs: []uint64{evmChain1.Selector, evmChain2.Selector, solanaChain1.Selector},
@@ -370,7 +393,7 @@ func TestBlockChainsListChainSelectors(t *testing.T) {
 			options: []chain.ChainSelectorsOption{chain.WithChainSelectorsExclusion(
 				[]uint64{evmChain1.Selector, aptosChain1.Selector}),
 			},
-			expectedIDs: []uint64{evmChain2.Selector, solanaChain1.Selector, suiChain1.Selector, tonChain1.Selector, tronChain1.Selector},
+			expectedIDs: []uint64{evmChain2.Selector, solanaChain1.Selector, suiChain1.Selector, tonChain1.Selector, tronChain1.Selector, cantonChain1.Selector},
 			description: "expected chain selectors excluding 1 and 4",
 		},
 		{
@@ -405,6 +428,7 @@ func buildBlockChains() chain.BlockChains {
 		suiChain1.ChainSelector():    suiChain1,
 		tonChain1.ChainSelector():    tonChain1,
 		tronChain1.ChainSelector():   tronChain1,
+		cantonChain1.ChainSelector(): cantonChain1,
 	})
 
 	return chains
@@ -427,6 +451,8 @@ func buildBlockChainsPointers() chain.BlockChains {
 		case ton.Chain:
 			pointerChains[selector] = &c
 		case tron.Chain:
+			pointerChains[selector] = &c
+		case canton.Chain:
 			pointerChains[selector] = &c
 		default:
 			continue // skip unsupported chains
