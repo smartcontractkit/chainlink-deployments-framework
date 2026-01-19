@@ -28,7 +28,7 @@ func Test_CTFChainProviderConfig_validate(t *testing.T) {
 			wantErr: "",
 		},
 		{
-			name: "valid config",
+			name: "missing sync.Once",
 			config: CTFChainProviderConfig{
 				NumberOfValidators: 3,
 				Once:               nil,
@@ -96,7 +96,7 @@ func Test_CTFChainProvider_Initialize(t *testing.T) {
 				assert.Len(t, gotChain.Participants, tt.giveConfig.NumberOfValidators)
 				// Test that we can retrieve JWTs for each participant
 				for _, participant := range gotChain.Participants {
-					jwt, err := participant.JWT(t.Context())
+					jwt, err := participant.JWTProvider.Token(t.Context())
 					require.NoError(t, err)
 					assert.NotEmpty(t, jwt)
 				}

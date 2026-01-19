@@ -1,10 +1,7 @@
 package canton
 
 import (
-	"context"
-
 	chaincommon "github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/common"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 )
 
 type Chain struct {
@@ -30,7 +27,14 @@ func (c Chain) Family() string {
 }
 
 type Participant struct {
-	Name      string
-	Endpoints blockchain.CantonParticipantEndpoints
-	JWT       func(ctx context.Context) (string, error)
+	Name        string
+	Endpoints   ParticipantEndpoints
+	JWTProvider JWTProvider
+}
+
+type ParticipantEndpoints struct {
+	JSONLedgerAPIURL string // https://docs.digitalasset.com/build/3.5/reference/json-api/json-api.html
+	GRPCLedgerAPIURL string // https://docs.digitalasset.com/build/3.5/reference/lapi-proto-docs.html
+	AdminAPIURL      string // https://docs.digitalasset.com/operate/3.5/howtos/configure/apis/admin_api.html
+	ValidatorAPIURL  string // https://docs.sync.global/app_dev/validator_api/index.html
 }

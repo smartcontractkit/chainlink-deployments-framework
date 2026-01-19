@@ -8,9 +8,7 @@ import (
 	"strconv"
 	"sync"
 	"testing"
-	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/smartcontractkit/freeport"
 	"github.com/stretchr/testify/require"
 
@@ -18,7 +16,6 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/canton"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
-	ctfCanton "github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain/canton"
 )
 
 type CTFChainProviderConfig struct {
@@ -106,19 +103,14 @@ func (p CTFChainProvider) Initialize(ctx context.Context) (chain.BlockChain, err
 
 	for i, participantEndpoints := range output.NetworkSpecificData.CantonEndpoints.Participants {
 		p.chain.Participants[i] = canton.Participant{
-			Name:      fmt.Sprintf("Participant %v", i+1),
-			Endpoints: participantEndpoints,
-			JWT: func(_ context.Context) (string, error) {
-				return jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.RegisteredClaims{
-					Issuer:    "",
-					Subject:   fmt.Sprintf("user-participant%v", i+1),
-					Audience:  []string{ctfCanton.AuthProviderAudience},
-					ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 24)),
-					NotBefore: jwt.NewNumericDate(time.Now()),
-					IssuedAt:  jwt.NewNumericDate(time.Now()),
-					ID:        "",
-				}).SignedString([]byte(ctfCanton.AuthProviderSecret))
+			Name: fmt.Sprintf("Participant %v", i+1),
+			Endpoints: canton.ParticipantEndpoints{
+				JSONLedgerAPIURL: participantEndpoints.JSONLedgerAPIURL,
+				GRPCLedgerAPIURL: participantEndpoints.GRPCLedgerAPIURL,
+				AdminAPIURL:      participantEndpoints.AdminAPIURL,
+				ValidatorAPIURL:  participantEndpoints.ValidatorAPIURL,
 			},
+			JWTProvider: canton.NewStaticJWTProvider(participantEndpoints.JWT),
 		}
 	}
 

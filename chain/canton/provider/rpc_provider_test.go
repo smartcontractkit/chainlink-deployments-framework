@@ -4,8 +4,9 @@ import (
 	"testing"
 
 	chainsel "github.com/smartcontractkit/chain-selectors"
+	"github.com/stretchr/testify/require"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/canton"
 )
 
 func Test_RPCChainProviderConfig_validate(t *testing.T) {
@@ -19,8 +20,16 @@ func Test_RPCChainProviderConfig_validate(t *testing.T) {
 		{
 			name: "valid config",
 			config: RPCChainProviderConfig{
-				Participants: []blockchain.CantonParticipantEndpoints{
-					{},
+				Endpoints: []canton.ParticipantEndpoints{
+					{
+						JSONLedgerAPIURL: "",
+						GRPCLedgerAPIURL: "",
+						AdminAPIURL:      "",
+						ValidatorAPIURL:  "",
+					},
+				},
+				JWTProviders: []canton.JWTProvider{
+					canton.NewStaticJWTProvider("token"),
 				},
 			},
 		},
@@ -58,8 +67,16 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 			name:         "valid initialization",
 			giveSelector: chainsel.CANTON_LOCALNET.Selector,
 			giveConfig: RPCChainProviderConfig{
-				Participants: []blockchain.CantonParticipantEndpoints{
-					{},
+				Endpoints: []canton.ParticipantEndpoints{
+					{
+						JSONLedgerAPIURL: "",
+						GRPCLedgerAPIURL: "",
+						AdminAPIURL:      "",
+						ValidatorAPIURL:  "",
+					},
+				},
+				JWTProviders: []canton.JWTProvider{
+					canton.NewStaticJWTProvider("testToken"),
 				},
 			},
 		},
@@ -72,17 +89,23 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 			provider := NewRPCChainProvider(tt.giveSelector, tt.giveConfig)
 			chain, err := provider.Initialize(t.Context())
 			if tt.wantErr != "" {
-				if err == nil || err.Error() != tt.wantErr {
-					t.Errorf("Initialize() error = %v, wantErr %v", err, tt.wantErr)
+				require.ErrorContains(t, err, tt.wantErr)
+			} else {
+				require.NoError(t, err)
+				require.NotNil(t, chain)
+
+				gotChain, ok := chain.(*canton.Chain)
+				require.True(t, ok, "expected chain to be of type *canton.Chain")
+				require.Equal(t, tt.giveSelector, gotChain.Selector)
+				require.Len(t, gotChain.Participants, len(tt.giveConfig.Endpoints))
+
+				for i, participant := range gotChain.Participants {
+					jwt, err := participant.JWTProvider.Token(t.Context())
+					require.NoError(t, err)
+					require.NotEmpty(t, jwt)
+					require.Equal(t, "testToken", jwt)
+					require.Equal(t, tt.giveConfig.Endpoints[i], participant.Endpoints)
 				}
-				return
-			}
-			if err != nil {
-				t.Errorf("Initialize() error = %v, wantErr nil", err)
-				return
-			}
-			if chain == nil {
-				t.Errorf("Initialize() returned nil chain, want non-nil")
 			}
 		})
 	}
