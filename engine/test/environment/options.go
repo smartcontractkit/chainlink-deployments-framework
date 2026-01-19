@@ -17,6 +17,7 @@ var (
 	newAptosContainerLoader         = onchain.NewAptosContainerLoader
 	newSolanaContainerLoader        = onchain.NewSolanaContainerLoader
 	newSuiContainerLoader           = onchain.NewSuiContainerLoader
+	newSuiContainerLoaderWithConfig = onchain.NewSuiContainerLoaderWithConfig
 	newTonContainerLoader           = onchain.NewTonContainerLoader
 	newTonContainerLoaderWithConfig = onchain.NewTonContainerLoaderWithConfig
 	newTronContainerLoader          = onchain.NewTronContainerLoader
@@ -170,11 +171,26 @@ func WithSuiContainer(t *testing.T, selectors []uint64) LoadOpt {
 	return withChainLoader(t, newSuiContainerLoader(), selectors)
 }
 
+// WithSuiContainerWithConfig loads Sui blockchain container instances with custom configuration
+// for specified chain selectors.
+func WithSuiContainerWithConfig(t *testing.T, selectors []uint64, cfg onchain.SuiContainerConfig) LoadOpt {
+	t.Helper()
+
+	return withChainLoader(t, newSuiContainerLoaderWithConfig(cfg), selectors)
+}
+
 // WithSuiContainerN loads n Sui blockchain container instances.
 func WithSuiContainerN(t *testing.T, n int) LoadOpt {
 	t.Helper()
 
 	return withChainLoaderN(t, newSuiContainerLoader(), n)
+}
+
+// WithSuiContainerNWithConfig loads n Sui blockchain container instances with custom configuration.
+func WithSuiContainerNWithConfig(t *testing.T, n int, cfg onchain.SuiContainerConfig) LoadOpt {
+	t.Helper()
+
+	return withChainLoaderN(t, newSuiContainerLoaderWithConfig(cfg), n)
 }
 
 // WithLogger sets the logger for the environment.

@@ -52,7 +52,7 @@ func (s *MemoryAddressRefStore) Fetch() ([]AddressRef, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	records := []AddressRef{}
+	records := make([]AddressRef, 0, len(s.Records))
 	for _, record := range s.Records {
 		records = append(records, record.Clone())
 	}
