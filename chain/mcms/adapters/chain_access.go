@@ -26,7 +26,7 @@ func (a ChainAccessAdapter) Selectors() []uint64 {
 	return a.inner.ListChainSelectors()
 }
 
-// EVMClient returns a EVM client for the given selector.
+// EVMClient returns an EVM client for the given selector.
 func (a ChainAccessAdapter) EVMClient(selector uint64) (evm.ContractDeployBackend, bool) {
 	ch, ok := a.inner.EVMChains()[selector]
 	if !ok {
