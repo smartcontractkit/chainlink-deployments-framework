@@ -12,10 +12,11 @@ import (
 	"github.com/smartcontractkit/freeport"
 	"github.com/stretchr/testify/require"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
-	"github.com/smartcontractkit/chainlink-deployments-framework/chain/canton"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/canton"
 )
 
 type CTFChainProviderConfig struct {
@@ -85,15 +86,18 @@ func (p CTFChainProvider) Initialize(ctx context.Context) (chain.BlockChain, err
 	if err != nil {
 		p.t.Logf("Error creating Canton blockchain network: %v", err)
 		freeport.Return([]int{port})
+
 		return nil, err
 	}
 
 	// Test HTTP health endpoint
 	for i, participant := range output.NetworkSpecificData.CantonEndpoints.Participants {
-		resp, err := http.Get(fmt.Sprintf("%s/health", participant.HTTPHealthCheckURL))
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, participant.HTTPHealthCheckURL+"/health", nil)
+		require.NoError(p.t, err)
+		resp, err := http.DefaultClient.Do(req)
 		require.NoErrorf(p.t, err, "Error reaching Canton participant %d health endpoint", i+1)
 		_ = resp.Body.Close()
-		require.EqualValues(p.t, http.StatusOK, resp.StatusCode, "Unexpected status code from Canton participant %d health endpoint", i+1)
+		require.Equal(p.t, http.StatusOK, resp.StatusCode, "Unexpected status code from Canton participant %d health endpoint", i+1)
 	}
 
 	p.chain = &canton.Chain{

@@ -42,6 +42,7 @@ func Test_RPCChainProviderConfig_validate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			err := tt.config.validate()
 			if tt.wantErr != "" {
 				if err == nil || err.Error() != tt.wantErr {
