@@ -70,7 +70,7 @@ func listProposalsByNodeId(
 
 // toNodeIDs maps nodes into slice of IDs.
 func toNodeIDs(nodes []*nodev1.Node) []string {
-	nodeIDs := make([]string, 0)
+	nodeIDs := make([]string, 0, len(nodes))
 	for _, ni := range nodes {
 		nodeIDs = append(nodeIDs, ni.Id)
 	}
@@ -80,7 +80,7 @@ func toNodeIDs(nodes []*nodev1.Node) []string {
 
 // toJobIDs maps job slice into slice of IDs.
 func toJobIDs(jobs []*jobv1.Job) []string {
-	ids := make([]string, 0)
+	ids := make([]string, 0, len(jobs))
 	for _, j := range jobs {
 		ids = append(ids, j.Id)
 	}
@@ -94,7 +94,7 @@ func toNodeViews(
 	nidToProposals map[string][]*jobv1.Proposal,
 	nidToJobs map[string][]*jobv1.Job,
 ) []NodeView {
-	nvs := make([]NodeView, 0)
+	nvs := make([]NodeView, 0, len(ns))
 	for _, n := range ns {
 		jobsView := toJobsView(n, nidToProposals, nidToJobs)
 		nvs = append(nvs, NodeView{
@@ -153,7 +153,7 @@ func writeNodeTable(nodes []*nodev1.Node) {
 	for _, node := range nodes {
 		labelsString := &strings.Builder{}
 		labelsTable := tablewriter.NewWriter(labelsString)
-		var labels [][]string
+		labels := make([][]string, 0, len(node.Labels))
 		for _, label := range node.Labels {
 			labels = append(labels, []string{label.Key, *label.Value})
 		}
@@ -178,7 +178,7 @@ func writeNodeTable(nodes []*nodev1.Node) {
 		if len(node.P2PKeyBundles) > 0 {
 			p2pBuilder := &strings.Builder{}
 			p2pTable := tablewriter.NewWriter(p2pBuilder)
-			var p2pData [][]string
+			p2pData := make([][]string, 0, len(node.P2PKeyBundles)*2)
 			for _, p2p := range node.P2PKeyBundles {
 				p2pData = append(p2pData, []string{"Peer ID", p2p.PeerId})
 				p2pData = append(p2pData, []string{"Public Key", p2p.PublicKey})
