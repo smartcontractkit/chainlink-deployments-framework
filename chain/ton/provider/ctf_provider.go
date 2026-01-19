@@ -156,13 +156,7 @@ func (p *CTFChainProvider) startContainer(ctx context.Context, chainID string) (
 	}
 
 	url, err = retry.DoWithData(func() (string, error) {
-		// Use configured port if specified, otherwise get a free port
-		port := p.config.Port
-		usedFreeport := false
-		if port == 0 {
-			port = freeport.GetOne(p.t)
-			usedFreeport = true
-		}
+		port, usedFreeport := p.getPort()
 
 		// spin up mylocalton with CTFv2
 		output, rerr := blockchain.NewBlockchainNetwork(&blockchain.Input{
@@ -325,4 +319,14 @@ func (p *CTFChainProvider) getImage() string {
 	}
 
 	return defaultTONImage
+}
+
+// getPort returns the configured port if specified, otherwise gets a free port using freeport.
+// The second return value indicates whether the port was obtained from freeport.
+func (p *CTFChainProvider) getPort() (port int, usedFreeport bool) {
+	if p.config.Port != 0 {
+		return p.config.Port, false
+	}
+
+	return freeport.GetOne(p.t), true
 }
