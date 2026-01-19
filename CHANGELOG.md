@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.75.1
+
+### Patch Changes
+
+- [#675](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/675) [`595b463`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/595b463ebb1834a97f99cf2c7559f0a0d0f09f28) Thanks [@ajaskolski](https://github.com/ajaskolski)! - fix(migration):include configuration check for datastore type all
+
 ## 0.75.0
 
 ### Minor Changes
