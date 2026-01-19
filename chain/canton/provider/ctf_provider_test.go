@@ -83,14 +83,14 @@ func Test_CTFChainProvider_Initialize(t *testing.T) {
 			t.Parallel()
 
 			provider := NewCTFChainProvider(t, tt.giveSelector, tt.giveConfig)
-			got, err := provider.Initialize(t.Context())
+			chain, err := provider.Initialize(t.Context())
 			if tt.wantErr != "" {
 				require.ErrorContains(t, err, tt.wantErr)
 			} else {
 				require.NoError(t, err)
-				require.NotNil(t, got)
+				require.NotNil(t, chain)
 
-				gotChain, ok := got.(*canton.Chain)
+				gotChain, ok := chain.(*canton.Chain)
 				require.True(t, ok, "expected chain to be of type *canton.Chain")
 				assert.Equal(t, tt.giveSelector, gotChain.Selector)
 				assert.Len(t, gotChain.Participants, tt.giveConfig.NumberOfValidators)
@@ -100,7 +100,55 @@ func Test_CTFChainProvider_Initialize(t *testing.T) {
 					require.NoError(t, err)
 					assert.NotEmpty(t, jwt)
 				}
+
+				// Check that subsequent calls to Initialize don't re-initialize the chain
+				chainBefore := provider.chain
+				chain2, err := provider.Initialize(t.Context())
+				require.NoError(t, err)
+				require.Equal(t, chain, chain2)
+				require.Same(t, chainBefore, provider.chain)
 			}
 		})
 	}
+}
+
+func Test_CTFChainProvider_Name(t *testing.T) {
+	t.Parallel()
+
+	provider := NewCTFChainProvider(t, chainsel.CANTON_LOCALNET.Selector, CTFChainProviderConfig{
+		NumberOfValidators: 3,
+		Once:               testutils.DefaultNetworkOnce,
+	})
+
+	require.Equal(t, "Canton CTF Chain Provider", provider.Name())
+}
+
+func Test_CTFChainProvider_ChainSelector(t *testing.T) {
+	t.Parallel()
+
+	selector := chainsel.CANTON_LOCALNET.Selector
+	provider := NewCTFChainProvider(t, selector, CTFChainProviderConfig{
+		NumberOfValidators: 3,
+		Once:               testutils.DefaultNetworkOnce,
+	})
+
+	require.Equal(t, selector, provider.ChainSelector())
+}
+
+func Test_CTFChainProvider_BlockChain(t *testing.T) {
+	t.Parallel()
+
+	chain := &canton.Chain{
+		Selector: chainsel.CANTON_LOCALNET.Selector,
+		Participants: []canton.Participant{
+			{Name: "Participant 1"},
+			{Name: "Participant 2"},
+		},
+	}
+
+	provider := &CTFChainProvider{
+		chain: chain,
+	}
+
+	require.Equal(t, *chain, provider.BlockChain())
 }

@@ -41,9 +41,13 @@ func NewRPCChainProvider(selector uint64, config RPCChainProviderConfig) *RPCCha
 	}
 }
 
-func (p RPCChainProvider) Initialize(_ context.Context) (chain.BlockChain, error) {
+func (p *RPCChainProvider) Initialize(_ context.Context) (chain.BlockChain, error) {
 	if p.chain != nil {
 		return p.chain, nil // already initialized
+	}
+
+	if err := p.config.validate(); err != nil {
+		return nil, err
 	}
 
 	p.chain = &canton.Chain{
@@ -62,14 +66,14 @@ func (p RPCChainProvider) Initialize(_ context.Context) (chain.BlockChain, error
 	return p.chain, nil
 }
 
-func (p RPCChainProvider) Name() string {
+func (p *RPCChainProvider) Name() string {
 	return "Canton RPC Chain Provider"
 }
 
-func (p RPCChainProvider) ChainSelector() uint64 {
+func (p *RPCChainProvider) ChainSelector() uint64 {
 	return p.selector
 }
 
-func (p RPCChainProvider) BlockChain() chain.BlockChain {
-	return p.chain
+func (p *RPCChainProvider) BlockChain() chain.BlockChain {
+	return *p.chain
 }

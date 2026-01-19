@@ -60,7 +60,7 @@ func NewCTFChainProvider(t *testing.T, selector uint64, config CTFChainProviderC
 	return p
 }
 
-func (p CTFChainProvider) Initialize(ctx context.Context) (chain.BlockChain, error) {
+func (p *CTFChainProvider) Initialize(ctx context.Context) (chain.BlockChain, error) {
 	if p.chain != nil {
 		return p.chain, nil // already initialized
 	}
@@ -121,14 +121,14 @@ func (p CTFChainProvider) Initialize(ctx context.Context) (chain.BlockChain, err
 	return p.chain, nil
 }
 
-func (p CTFChainProvider) Name() string {
+func (p *CTFChainProvider) Name() string {
 	return "Canton CTF Chain Provider"
 }
 
-func (p CTFChainProvider) ChainSelector() uint64 {
+func (p *CTFChainProvider) ChainSelector() uint64 {
 	return p.selector
 }
 
-func (p CTFChainProvider) BlockChain() chain.BlockChain {
-	return p.chain
+func (p *CTFChainProvider) BlockChain() chain.BlockChain {
+	return *p.chain
 }
