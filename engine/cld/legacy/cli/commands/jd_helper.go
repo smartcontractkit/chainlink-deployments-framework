@@ -178,6 +178,8 @@ func writeNodeTable(nodes []*nodev1.Node) {
 		if len(node.P2PKeyBundles) > 0 {
 			p2pBuilder := &strings.Builder{}
 			p2pTable := tablewriter.NewWriter(p2pBuilder)
+			// Pre-allocate capacity for 2 rows per P2PKeyBundle (Peer ID and Public Key).
+			// If the number of rows per bundle changes, update this multiplier accordingly.
 			p2pData := make([][]string, 0, len(node.P2PKeyBundles)*2)
 			for _, p2p := range node.P2PKeyBundles {
 				p2pData = append(p2pData, []string{"Peer ID", p2p.PeerId})
