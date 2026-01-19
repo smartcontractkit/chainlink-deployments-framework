@@ -11,9 +11,9 @@ func TestStaticJWTProvider(t *testing.T) {
 
 	provider := NewStaticJWTProvider("test-jwt-token")
 
-	assert.Equal(t, provider.Name(), "StaticJWTProvider")
+	assert.Equal(t, "StaticJWTProvider", provider.Name())
 
-	token, err := provider.Token(nil)
+	token, err := provider.Token(t.Context())
 	assert.NoError(t, err)
-	assert.Equal(t, token, "test-jwt-token")
+	assert.Equal(t, "test-jwt-token", token)
 }
