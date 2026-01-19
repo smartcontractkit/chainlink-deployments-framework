@@ -596,7 +596,7 @@ func (Commands) newMigrationDataStoreSyncToCatalog(domain domain.Domain) *cobra.
 			}
 
 			// Verify catalog is configured
-			if cfg.DatastoreType != cfgdomain.DatastoreTypeCatalog {
+			if cfg.DatastoreType != cfgdomain.DatastoreTypeCatalog && cfg.DatastoreType != cfgdomain.DatastoreTypeAll {
 				return fmt.Errorf("catalog is not configured for environment %s (datastore type: %s)", envKey, cfg.DatastoreType)
 			}
 
