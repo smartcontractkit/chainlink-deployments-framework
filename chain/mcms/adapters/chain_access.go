@@ -11,7 +11,7 @@ import (
 )
 
 // ChainAccessAdapter adapts CLDF's chain.BlockChains into a selector + lookup style API.
-// It used to make compatible with mcms lib chain access interface.
+// It is used to make it compatible with the mcms lib chain access interface.
 type ChainAccessAdapter struct {
 	inner chain.BlockChains
 }
