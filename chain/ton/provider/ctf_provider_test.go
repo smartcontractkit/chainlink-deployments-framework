@@ -136,11 +136,27 @@ func Test_CTFChainProvider_getImage(t *testing.T) {
 func Test_CTFChainProvider_getPort(t *testing.T) {
 	t.Parallel()
 
-	// Test custom port - when Port is specified, it should return that port and usedFreeport=false
-	customPort := 8080
-	p := &CTFChainProvider{config: CTFChainProviderConfig{Port: customPort}}
+	t.Run("custom port specified", func(t *testing.T) {
+		t.Parallel()
 
-	port, usedFreeport := p.getPort()
-	assert.Equal(t, customPort, port)
-	assert.False(t, usedFreeport, "usedFreeport should be false when custom port is specified")
+		customPort := 8080
+		p := &CTFChainProvider{config: CTFChainProviderConfig{Port: customPort}}
+
+		port, usedFreeport := p.getPort()
+		assert.Equal(t, customPort, port)
+		assert.False(t, usedFreeport, "usedFreeport should be false when custom port is specified")
+	})
+
+	t.Run("default port uses freeport", func(t *testing.T) {
+		t.Parallel()
+
+		p := &CTFChainProvider{
+			t:      t,
+			config: CTFChainProviderConfig{Port: 0},
+		}
+
+		port, usedFreeport := p.getPort()
+		assert.NotZero(t, port, "port should be assigned by freeport")
+		assert.True(t, usedFreeport, "usedFreeport should be true when no custom port is specified")
+	})
 }
