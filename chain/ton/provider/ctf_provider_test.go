@@ -132,3 +132,31 @@ func Test_CTFChainProvider_getImage(t *testing.T) {
 	p2 := &CTFChainProvider{config: CTFChainProviderConfig{Image: "ghcr.io/neodix42/mylocalton-docker:latest"}}
 	assert.Equal(t, "ghcr.io/neodix42/mylocalton-docker:latest", p2.getImage())
 }
+
+func Test_CTFChainProvider_getPort(t *testing.T) {
+	t.Parallel()
+
+	t.Run("custom port specified", func(t *testing.T) {
+		t.Parallel()
+
+		customPort := 8080
+		p := &CTFChainProvider{config: CTFChainProviderConfig{Port: customPort}}
+
+		port, usedFreeport := p.getPort()
+		assert.Equal(t, customPort, port)
+		assert.False(t, usedFreeport, "usedFreeport should be false when custom port is specified")
+	})
+
+	t.Run("default port uses freeport", func(t *testing.T) {
+		t.Parallel()
+
+		p := &CTFChainProvider{
+			t:      t,
+			config: CTFChainProviderConfig{Port: 0},
+		}
+
+		port, usedFreeport := p.getPort()
+		assert.NotZero(t, port, "port should be assigned by freeport")
+		assert.True(t, usedFreeport, "usedFreeport should be true when no custom port is specified")
+	})
+}
