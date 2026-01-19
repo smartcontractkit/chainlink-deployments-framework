@@ -167,7 +167,7 @@ func Test_RPCChainProvider_BlockChain(t *testing.T) {
 		},
 	}
 
-	provider := &CTFChainProvider{
+	provider := &RPCChainProvider{
 		chain: chain,
 	}
 
