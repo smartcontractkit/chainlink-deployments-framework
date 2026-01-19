@@ -49,6 +49,10 @@ type CTFChainProviderConfig struct {
 	// Optional: Custom environment variables to pass to the TON container.
 	// Example: map[string]string{"NEXT_BLOCK_GENERATION_DELAY": "0.5"}
 	CustomEnv map[string]string
+
+	// Optional: Port to expose the TON container on. If 0 or not specified, a free port will be
+	// automatically selected using freeport.
+	Port int
 }
 
 // validate checks if the CTFChainProviderConfig is valid.
@@ -152,8 +156,13 @@ func (p *CTFChainProvider) startContainer(ctx context.Context, chainID string) (
 	}
 
 	url, err = retry.DoWithData(func() (string, error) {
-		// Initialize a port for the container
-		port := freeport.GetOne(p.t)
+		// Use configured port if specified, otherwise get a free port
+		port := p.config.Port
+		usedFreeport := false
+		if port == 0 {
+			port = freeport.GetOne(p.t)
+			usedFreeport = true
+		}
 
 		// spin up mylocalton with CTFv2
 		output, rerr := blockchain.NewBlockchainNetwork(&blockchain.Input{
@@ -165,7 +174,10 @@ func (p *CTFChainProvider) startContainer(ctx context.Context, chainID string) (
 		})
 		if rerr != nil {
 			// Return the ports to freeport to avoid leaking them during retries
-			freeport.Return([]int{port})
+			// Only return if we obtained the port from freeport
+			if usedFreeport {
+				freeport.Return([]int{port})
+			}
 
 			return "", rerr
 		}
