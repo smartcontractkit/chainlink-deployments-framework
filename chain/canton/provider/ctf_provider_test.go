@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/canton"
+	chaincommon "github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/common"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/testutils"
 )
 
@@ -139,7 +140,7 @@ func Test_CTFChainProvider_BlockChain(t *testing.T) {
 	t.Parallel()
 
 	chain := &canton.Chain{
-		Selector: chainsel.CANTON_LOCALNET.Selector,
+		ChainMetadata: chaincommon.ChainMetadata{Selector: chainsel.CANTON_LOCALNET.Selector},
 		Participants: []canton.Participant{
 			{Name: "Participant 1"},
 			{Name: "Participant 2"},

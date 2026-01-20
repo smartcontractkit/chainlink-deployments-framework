@@ -5,6 +5,8 @@ import (
 
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/stretchr/testify/assert"
+
+	chaincommon "github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/common"
 )
 
 func TestChain_ChainInfo(t *testing.T) {
@@ -31,7 +33,7 @@ func TestChain_ChainInfo(t *testing.T) {
 			t.Parallel()
 
 			c := Chain{
-				Selector: test.selector,
+				ChainMetadata: chaincommon.ChainMetadata{Selector: test.selector},
 			}
 
 			assert.Equal(t, test.selector, c.ChainSelector())

@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/canton"
+	chaincommon "github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/common"
 )
 
 func Test_RPCChainProviderConfig_validate(t *testing.T) {
@@ -68,11 +69,9 @@ func Test_RPCChainProviderConfig_validate(t *testing.T) {
 			t.Parallel()
 			err := tt.config.validate()
 			if tt.wantErr != "" {
-				if err == nil || err.Error() != tt.wantErr {
-					t.Errorf("validate() error = %v, wantErr %v", err, tt.wantErr)
-				}
-			} else if err != nil {
-				t.Errorf("validate() error = %v, wantErr nil", err)
+				require.ErrorContains(t, err, tt.wantErr)
+			} else {
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -160,7 +159,7 @@ func Test_RPCChainProvider_BlockChain(t *testing.T) {
 	t.Parallel()
 
 	chain := &canton.Chain{
-		Selector: chainsel.CANTON_LOCALNET.Selector,
+		ChainMetadata: chaincommon.ChainMetadata{Selector: chainsel.CANTON_LOCALNET.Selector},
 		Participants: []canton.Participant{
 			{Name: "Participant 1"},
 			{Name: "Participant 2"},

@@ -17,10 +17,15 @@ import (
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/canton"
+	chaincommon "github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/common"
 )
 
+// CTFChainProviderConfig is the configuration for the CTFChainProvider.
 type CTFChainProviderConfig struct {
+	// Required: The number of Canton validators to start in the CTF network; must be > 0
 	NumberOfValidators int
+	// Optional: The Canton Docker image to use; if empty, the default CTF image will be used
+	Image string
 
 	// Required: A sync.Once instance to ensure that the CTF framework only sets up the new
 	// DefaultNetwork once
@@ -40,6 +45,8 @@ func (c CTFChainProviderConfig) validate() error {
 
 var _ chain.Provider = (*CTFChainProvider)(nil)
 
+// CTFChainProvider initializes a Canton chain instance using the Chainlink Testing Framework (CTF).
+// It will spin up a local Canton instance inside Docker containers, with the specified number of validators.
 type CTFChainProvider struct {
 	t        *testing.T
 	selector uint64
@@ -75,10 +82,9 @@ func (p *CTFChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 	}
 
 	port := freeport.GetOne(p.t)
-	fmt.Println("Port for Canton CTF:", port)
 	input := &blockchain.Input{
 		Type:                     blockchain.TypeCanton,
-		Image:                    "",
+		Image:                    p.config.Image,
 		Port:                     strconv.Itoa(port),
 		NumberOfCantonValidators: p.config.NumberOfValidators,
 	}
@@ -101,8 +107,8 @@ func (p *CTFChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 	}
 
 	p.chain = &canton.Chain{
-		Selector:     p.selector,
-		Participants: make([]canton.Participant, len(output.NetworkSpecificData.CantonEndpoints.Participants)),
+		ChainMetadata: chaincommon.ChainMetadata{Selector: p.selector},
+		Participants:  make([]canton.Participant, len(output.NetworkSpecificData.CantonEndpoints.Participants)),
 	}
 
 	for i, participantEndpoints := range output.NetworkSpecificData.CantonEndpoints.Participants {

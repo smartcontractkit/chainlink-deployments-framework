@@ -7,10 +7,17 @@ import (
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/canton"
+	chaincommon "github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/common"
 )
 
+// RPCChainProviderConfig is the configuration for the RPCChainProvider.
+// The number of provided endpoints must match the number of provided JWT providers
+// The order of endpoints must correspond to the order of JWT providers
+// At least one participant must be provided
 type RPCChainProviderConfig struct {
-	Endpoints    []canton.ParticipantEndpoints
+	// Required: List of participant endpoints to connect to
+	Endpoints []canton.ParticipantEndpoints
+	// Required: List of JWT providers for authentication with the participants
 	JWTProviders []canton.JWTProvider
 }
 
@@ -27,6 +34,8 @@ func (c RPCChainProviderConfig) validate() error {
 
 var _ chain.Provider = (*RPCChainProvider)(nil)
 
+// RPCChainProvider initializes a Canton chain instance connecting to existing Canton participants
+// via their RPC endpoints.
 type RPCChainProvider struct {
 	selector uint64
 	config   RPCChainProviderConfig
@@ -51,8 +60,8 @@ func (p *RPCChainProvider) Initialize(_ context.Context) (chain.BlockChain, erro
 	}
 
 	p.chain = &canton.Chain{
-		Selector:     p.selector,
-		Participants: make([]canton.Participant, len(p.config.Endpoints)),
+		ChainMetadata: chaincommon.ChainMetadata{Selector: p.selector},
+		Participants:  make([]canton.Participant, len(p.config.Endpoints)),
 	}
 
 	for i, participantEndpoints := range p.config.Endpoints {

@@ -5,36 +5,34 @@ import (
 )
 
 type Chain struct {
-	Selector uint64
+	chaincommon.ChainMetadata
 
+	// List of participants in the Canton network
+	// The number of participants depends on the config the provider has been initialized with
 	Participants []Participant
 }
 
-func (c Chain) ChainSelector() uint64 {
-	return c.Selector
-}
-
-func (c Chain) String() string {
-	return chaincommon.ChainMetadata{Selector: c.Selector}.String()
-}
-
-func (c Chain) Name() string {
-	return chaincommon.ChainMetadata{Selector: c.Selector}.Name()
-}
-
-func (c Chain) Family() string {
-	return chaincommon.ChainMetadata{Selector: c.Selector}.Family()
-}
-
 type Participant struct {
-	Name        string
-	Endpoints   ParticipantEndpoints
+	// A human-readable name for the participant
+	Name string
+	// The endpoints to interact with the participant's APIs
+	Endpoints ParticipantEndpoints
+	// A JWT provider instance to generate JWTs for authentication with the participant's APIs
 	JWTProvider JWTProvider
 }
 
+// ParticipantEndpoints holds all available API endpoints for a Canton participant
 type ParticipantEndpoints struct {
-	JSONLedgerAPIURL string // https://docs.digitalasset.com/build/3.5/reference/json-api/json-api.html
-	GRPCLedgerAPIURL string // https://docs.digitalasset.com/build/3.5/reference/lapi-proto-docs.html
-	AdminAPIURL      string // https://docs.digitalasset.com/operate/3.5/howtos/configure/apis/admin_api.html
-	ValidatorAPIURL  string // https://docs.sync.global/app_dev/validator_api/index.html
+	// (HTTP) The URL to access the participant's JSON Ledger API
+	// https://docs.digitalasset.com/build/3.5/reference/json-api/json-api.html
+	JSONLedgerAPIURL string
+	// (gRPC) The URL to access the participant's gRPC Ledger API
+	// https://docs.digitalasset.com/build/3.5/reference/lapi-proto-docs.html
+	GRPCLedgerAPIURL string
+	// (gRPC) The URL to access the participant's Admin API
+	// https://docs.digitalasset.com/operate/3.5/howtos/configure/apis/admin_api.html
+	AdminAPIURL string
+	// (HTTP) The URL to access the participant's Validator API
+	// https://docs.sync.global/app_dev/validator_api/index.html
+	ValidatorAPIURL string
 }

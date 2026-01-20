@@ -4,8 +4,14 @@ import (
 	"context"
 )
 
+// JWTProvider defines an interface for obtaining JWT tokens.
+// Implementations can provide tokens from various sources such as static configuration,
+// OAuth flows, or other authentication mechanisms.
 type JWTProvider interface {
+	// Name returns the identifier of this JWT provider.
 	Name() string
+
+	// Token retrieves a JWT token from the provider's source.
 	Token(ctx context.Context) (string, error)
 }
 
@@ -14,6 +20,7 @@ type StaticJWTProvider struct {
 	jwt string
 }
 
+// NewStaticJWTProvider creates a new StaticJWTProvider with the given JWT token.
 func NewStaticJWTProvider(jwt string) *StaticJWTProvider {
 	return &StaticJWTProvider{jwt: jwt}
 }
