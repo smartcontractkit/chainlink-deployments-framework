@@ -24,6 +24,7 @@ var _ BlockChain = aptos.Chain{}
 var _ BlockChain = sui.Chain{}
 var _ BlockChain = ton.Chain{}
 var _ BlockChain = tron.Chain{}
+var _ BlockChain = canton.Chain{}
 
 // BlockChain is an interface that represents a chain.
 // A chain can be an EVM chain, Solana chain Aptos chain or others.
