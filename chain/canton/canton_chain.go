@@ -4,6 +4,11 @@ import (
 	chaincommon "github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/common"
 )
 
+// Chain represents a Canton network instance used CLDF.
+// It embeds generic chain metadata (such as network name, IDs, and configuration)
+// via chaincommon.ChainMetadata and augments it with Canton-specific information.
+// In particular, it tracks all known Canton participants and their connection
+// details so that callers can discover and interact with the network's APIs.
 type Chain struct {
 	chaincommon.ChainMetadata
 
@@ -12,6 +17,12 @@ type Chain struct {
 	Participants []Participant
 }
 
+// Participant represents a single Canton participant node in the network.
+// A participant hosts parties and their local ledger state, and mediates all
+// interactions with the Canton ledger for those parties via its exposed APIs
+// (ledger, admin, validator, etc.). It is identified by a human-readable
+// name, provides a set of API endpoints, and uses a JWT provider to issue
+// authentication tokens for secure access to those endpoints.
 type Participant struct {
 	// A human-readable name for the participant
 	Name string
