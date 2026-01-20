@@ -17,7 +17,6 @@ import (
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/canton"
-	chaincommon "github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/common"
 )
 
 // CTFChainProviderConfig is the configuration for the CTFChainProvider.
@@ -107,7 +106,7 @@ func (p *CTFChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 	}
 
 	p.chain = &canton.Chain{
-		ChainMetadata: chaincommon.ChainMetadata{Selector: p.selector},
+		ChainMetadata: canton.ChainMetadata{Selector: p.selector},
 		Participants:  make([]canton.Participant, len(output.NetworkSpecificData.CantonEndpoints.Participants)),
 	}
 

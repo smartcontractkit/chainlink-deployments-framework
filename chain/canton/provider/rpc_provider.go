@@ -7,7 +7,6 @@ import (
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/canton"
-	chaincommon "github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/common"
 )
 
 // RPCChainProviderConfig is the configuration for the RPCChainProvider.
@@ -60,7 +59,7 @@ func (p *RPCChainProvider) Initialize(_ context.Context) (chain.BlockChain, erro
 	}
 
 	p.chain = &canton.Chain{
-		ChainMetadata: chaincommon.ChainMetadata{Selector: p.selector},
+		ChainMetadata: canton.ChainMetadata{Selector: p.selector},
 		Participants:  make([]canton.Participant, len(p.config.Endpoints)),
 	}
 

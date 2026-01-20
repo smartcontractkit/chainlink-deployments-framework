@@ -26,7 +26,7 @@ var aptosChain1 = aptos.Chain{Selector: chainsel.APTOS_LOCALNET.Selector}
 var suiChain1 = sui.Chain{ChainMetadata: sui.ChainMetadata{Selector: chainsel.SUI_LOCALNET.Selector}}
 var tonChain1 = ton.Chain{ChainMetadata: ton.ChainMetadata{Selector: chainsel.TON_LOCALNET.Selector}}
 var tronChain1 = tron.Chain{ChainMetadata: tron.ChainMetadata{Selector: chainsel.TRON_MAINNET.Selector}}
-var cantonChain1 = canton.Chain{Selector: chainsel.CANTON_LOCALNET.Selector}
+var cantonChain1 = canton.Chain{ChainMetadata: canton.ChainMetadata{Selector: chainsel.CANTON_LOCALNET.Selector}}
 
 func TestNewBlockChains(t *testing.T) {
 	t.Parallel()
