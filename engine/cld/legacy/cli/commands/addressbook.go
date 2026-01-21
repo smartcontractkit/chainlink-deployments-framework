@@ -68,7 +68,7 @@ func (Commands) newAddressBookMerge(domain domain.Domain) *cobra.Command {
 				)
 			}
 
-			cmd.Printf("Merged address books for %s %s %s",
+			cmd.Printf("Merged address books for %s %s %s\n",
 				domain, envKey, name,
 			)
 
