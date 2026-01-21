@@ -164,7 +164,7 @@ func (Commands) newAddressBookRemove(domain domain.Domain) *cobra.Command {
 				)
 			}
 
-			cmd.Printf("Removed address books for %s %s %s",
+			cmd.Printf("Removed address books for %s %s %s\n",
 				domain, envKey, name,
 			)
 
