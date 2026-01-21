@@ -14,7 +14,7 @@ import (
 	cldfsui "github.com/smartcontractkit/chainlink-deployments-framework/chain/sui"
 )
 
-type ChainClientsFetcher interface {
+type ChainsFetcher interface {
 	ListChainSelectors(options ...chain.ChainSelectorsOption) []uint64
 	EVMChains() map[uint64]cldfevm.Chain
 	SolanaChains() map[uint64]cldfsol.Chain
@@ -25,11 +25,11 @@ type ChainClientsFetcher interface {
 // ChainAccessAdapter adapts CLDF's chain.BlockChains into a selector + lookup style API.
 // It is used to make it compatible with the mcms lib chain access interface.
 type ChainAccessAdapter struct {
-	inner ChainClientsFetcher
+	inner ChainsFetcher
 }
 
 // Wrap returns a ChainAccessAdapter adapter around the given CLDF BlockChains.
-func Wrap(inner ChainClientsFetcher) ChainAccessAdapter {
+func Wrap(inner ChainsFetcher) ChainAccessAdapter {
 	return ChainAccessAdapter{inner: inner}
 }
 
