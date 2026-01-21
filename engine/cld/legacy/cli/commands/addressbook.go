@@ -117,7 +117,7 @@ func (Commands) newAddressBookMigrate(domain domain.Domain) *cobra.Command {
 				)
 			}
 
-			cmd.Printf("Address book for %s %s successfully migrated to the new datastore format",
+			cmd.Printf("Address book for %s %s successfully migrated to the new datastore format\n",
 				domain, envKey,
 			)
 
