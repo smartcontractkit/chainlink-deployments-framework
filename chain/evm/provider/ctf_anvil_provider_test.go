@@ -452,7 +452,7 @@ func TestCTFAnvilChainProvider_Cleanup(t *testing.T) {
 		require.NoError(t, err, "Cleanup should succeed even when no container exists")
 
 		// Verify container is still nil
-		assert.Nil(t, provider.container, "Container reference should remain nil")
+		assert.Nil(t, provider.Container, "Container reference should remain nil")
 
 		ctx, cancel := context.WithTimeout(t.Context(), 5*time.Minute)
 		defer cancel()
@@ -461,12 +461,12 @@ func TestCTFAnvilChainProvider_Cleanup(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, blockchain)
 
-		assert.NotNil(t, provider.container, "Container reference should be stored after initialization")
+		assert.NotNil(t, provider.Container, "Container reference should be stored after initialization")
 
 		err = provider.Cleanup(ctx)
 		require.NoError(t, err, "Cleanup should succeed")
 
-		assert.Nil(t, provider.container, "Container reference should be cleared after cleanup")
+		assert.Nil(t, provider.Container, "Container reference should be cleared after cleanup")
 	})
 
 	t.Run("cleanup after initialization with fixed port (T=nil)", func(t *testing.T) {
@@ -504,16 +504,16 @@ func TestCTFAnvilChainProvider_Cleanup(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, blockchain)
 
-		assert.NotNil(t, provider.container, "Container reference should be stored after initialization")
+		assert.NotNil(t, provider.Container, "Container reference should be stored after initialization")
 
 		err = provider.Cleanup(ctx)
 		require.NoError(t, err, "Cleanup should succeed even when T is nil")
 
-		assert.Nil(t, provider.container, "Container reference should be cleared after cleanup")
+		assert.Nil(t, provider.Container, "Container reference should be cleared after cleanup")
 
 		// Second cleanup - should be a no-op
 		err = provider.Cleanup(ctx)
 		require.NoError(t, err, "Second cleanup should succeed (no-op)")
-		assert.Nil(t, provider.container, "Container reference should remain nil after second cleanup")
+		assert.Nil(t, provider.Container, "Container reference should remain nil after second cleanup")
 	})
 }

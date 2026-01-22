@@ -29,8 +29,7 @@ func TestClientOffchainProviderConfig_validate(t *testing.T) {
 		{
 			name: "valid config with all fields",
 			config: ClientOffchainProviderConfig{
-				GRPC:  "localhost:9090",
-				WSRPC: "ws://localhost:9091",
+				GRPC: "localhost:9090",
 			},
 			wantErr: false,
 		},

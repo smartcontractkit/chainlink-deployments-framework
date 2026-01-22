@@ -55,7 +55,7 @@ func AnalyzeEVMTransaction(
 
 	evmRegistry := proposalCtx.GetEVMRegistry()
 	if evmRegistry == nil {
-		return nil, nil, "", errors.New("EVM registry is not available")
+		return nil, nil, "", errors.New("EVM registry is not available: ensure you have provided one in the ProposalContextProvider via the WithEVMABIMappings() option")
 	}
 	abi, abiStr, err := evmRegistry.GetABIByAddress(chainSelector, mcmsTx.To)
 	if err != nil {
