@@ -319,10 +319,10 @@ func Test_buildChain(t *testing.T) {
 	assert.Equal(t, testWallet, chain.Wallet)
 	assert.Equal(t, testWallet.WalletAddress(), chain.WalletAddress)
 
-	// Verify TxOps uses the default amount (0.1 TON)
-	expectedAmount := tlb.MustFromTON("0.1")
-	assert.Equal(t, expectedAmount, chain.TxOps.Amount)
-	assert.Equal(t, testWallet, chain.TxOps.Wallet)
+	// Verify the default amount (0.25 TON)
+	expectedAmount := tlb.MustFromTON("0.25")
+	assert.Equal(t, expectedAmount, chain.Amount)
+	assert.Equal(t, testWallet, chain.Wallet)
 }
 
 func Test_createLiteclientConnectionPool_InvalidURL(t *testing.T) {

@@ -24,7 +24,7 @@ const (
 	WalletVersionV5R1    WalletVersion = "V5R1"
 	WalletVersionDefault WalletVersion = ""
 
-	defaultAmountTonString = "0.1" // Default amount in TON for transactions
+	defaultAmountTonString = "0.25" // Default amount in TON for transactions
 )
 
 // RPCChainProviderConfig holds the configuration to initialize the RPCChainProvider.
@@ -181,7 +181,7 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 	return *p.chain, nil
 }
 
-// buildChain creates a ton.Chain with the given parameters and default TxOps amount.
+// buildChain creates a ton.Chain with the given parameters and default amount.
 func buildChain(selector uint64, api *tonlib.APIClient, tonWallet *wallet.Wallet, httpURL string) *ton.Chain {
 	return &ton.Chain{
 		ChainMetadata: ton.ChainMetadata{
@@ -191,10 +191,7 @@ func buildChain(selector uint64, api *tonlib.APIClient, tonWallet *wallet.Wallet
 		Wallet:        tonWallet,
 		WalletAddress: tonWallet.WalletAddress(),
 		URL:           httpURL,
-		TxOps: ton.TxOps{
-			Wallet: tonWallet,
-			Amount: tlb.MustFromTON(defaultAmountTonString),
-		},
+		Amount:        tlb.MustFromTON(defaultAmountTonString),
 	}
 }
 

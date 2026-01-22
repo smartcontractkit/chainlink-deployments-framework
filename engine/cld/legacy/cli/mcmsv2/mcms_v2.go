@@ -1492,9 +1492,10 @@ func getExecutorWithChainOverride(cfg *cfgv2, chainSelector types.ChainSelector)
 		opts := ton.ExecutorOpts{
 			Encoder: encoder,
 			Client:  c.Client,
-			Wallet:  c.TxOps.Wallet,
-			Amount:  c.TxOps.Amount,
+			Wallet:  c.Wallet,
+			Amount:  c.Amount,
 		}
+
 		return ton.NewExecutor(opts)
 	default:
 		return nil, fmt.Errorf("unsupported chain family %s", family)
@@ -1549,9 +1550,10 @@ func getTimelockExecutorWithChainOverride(cfg *cfgv2, chainSelector types.ChainS
 		c := cfg.blockchains.TonChains()[uint64(chainSelector)]
 		opts := ton.TimelockExecutorOpts{
 			Client: c.Client,
-			Wallet: c.TxOps.Wallet,
-			Amount: c.TxOps.Amount,
+			Wallet: c.Wallet,
+			Amount: c.Amount,
 		}
+
 		return ton.NewTimelockExecutor(opts)
 	default:
 		return nil, fmt.Errorf("unsupported chain family %s", family)

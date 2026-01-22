@@ -35,7 +35,7 @@ const (
 	supportedTONImageRepository = "ghcr.io/neodix42/mylocalton-docker"
 
 	// defaultTxTONAmount is the default amount of TON to use for transactions.
-	defaultTxTONAmount = "0.1"
+	defaultTxTONAmount = "0.25"
 )
 
 // CTFChainProviderConfig holds the configuration to initialize the CTFChainProvider.
@@ -133,10 +133,7 @@ func (p *CTFChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 		Client:        nodeClient,
 		WalletAddress: tonWallet.WalletAddress(),
 		URL:           url,
-		TxOps: cldf_ton.TxOps{
-			Wallet: tonWallet,
-			Amount: tlb.MustFromTON(defaultTxTONAmount), // default amount for transactions
-		},
+		Amount:        tlb.MustFromTON(defaultTxTONAmount), // default amount for transactions
 	}
 
 	return *p.chain, nil
