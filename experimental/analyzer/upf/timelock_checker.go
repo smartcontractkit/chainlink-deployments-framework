@@ -61,5 +61,6 @@ func isTimelockBatchFunction(functionName string) bool {
 			return true
 		}
 	}
+
 	return false
 }
