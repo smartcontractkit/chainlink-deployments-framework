@@ -1,5 +1,22 @@
 # chainlink-deployments-framework
 
+## 0.76.0
+
+### Minor Changes
+
+- [#682](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/682) [`66c13fc`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/66c13fce85df13a41edd8fff5875a3f771e38fed) Thanks [@jkongie](https://github.com/jkongie)! - Bumps the go version to 1.25.5 in the scaffolded `go.mod`
+
+- [#681](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/681) [`c83e6ba`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/c83e6ba1e8275285215d4555e3f4a9e77aaa68d5) Thanks [@pavel-raykov](https://github.com/pavel-raykov)! - [CRE-491] Bump ccip deps.
+
+- [#673](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/673) [`70e4478`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/70e4478e137a02da802bf77b324fefd26b101d47) Thanks [@friedemannf](https://github.com/friedemannf)! - feat: add Canton support
+
+  Adds a Canton RPC and CTF provider implementation
+  Adds a Canton JWT Provider interface as well as a StaticJWTProvider implementation to be used with non-expiring JWTs
+
+### Patch Changes
+
+- [#674](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/674) [`2f6f512`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/2f6f512566f86e9eed502f1f4991844bf397a0fb) Thanks [@jadepark-dev](https://github.com/jadepark-dev)! - add optional port field in ton ctf provider
+
 ## 0.75.1
 
 ### Patch Changes
