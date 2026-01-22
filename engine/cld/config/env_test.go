@@ -49,7 +49,6 @@ func Test_LoadEnvConfig(t *testing.T) { //nolint:paralleltest // These tests are
 			envvars: map[string]string{
 				"CI":                                "true",
 				"NEW_CONFIG_ENABLED":                "true",
-				"JD_WS_RPC":                         "ws://localhost:1234",
 				"JD_GRPC":                           "grpc://localhost:4567",
 				"JD_AUTH_COGNITO_APP_CLIENT_ID":     "2b3caf1a",
 				"JD_AUTH_COGNITO_APP_CLIENT_SECRET": "22222222",
@@ -74,7 +73,6 @@ func Test_LoadEnvConfig(t *testing.T) { //nolint:paralleltest // These tests are
 				require.NotNil(t, cfg)
 
 				// Validate environment configuration
-				assert.Equal(t, "ws://localhost:1234", cfg.Offchain.JobDistributor.Endpoints.WSRPC)
 				assert.Equal(t, "grpc://localhost:4567", cfg.Offchain.JobDistributor.Endpoints.GRPC)
 				assert.Equal(t, "2b3caf1a", cfg.Offchain.JobDistributor.Auth.CognitoAppClientID)
 				assert.Equal(t, "22222222", cfg.Offchain.JobDistributor.Auth.CognitoAppClientSecret)
@@ -96,10 +94,9 @@ func Test_LoadEnvConfig(t *testing.T) { //nolint:paralleltest // These tests are
 		{
 			name: "Load config with new config enabled (loads from env vars)",
 			envvars: map[string]string{
-				"CI":                                         "true",
-				"OFFCHAIN_JD_ENDPOINTS_WSRPC":                "ws://localhost:1234",
-				"OFFCHAIN_JD_ENDPOINTS_GRPC":                 "grpc://localhost:4567",
-				"OFFCHAIN_JD_AUTH_COGNITO_APP_CLIENT_ID":     "2b3caf1a",
+				"CI":                                     "true",
+				"OFFCHAIN_JD_ENDPOINTS_GRPC":             "grpc://localhost:4567",
+				"OFFCHAIN_JD_AUTH_COGNITO_APP_CLIENT_ID": "2b3caf1a",
 				"OFFCHAIN_JD_AUTH_COGNITO_APP_CLIENT_SECRET": "22222222",
 				"OFFCHAIN_JD_AUTH_AWS_REGION":                "us-east-1",
 				"OFFCHAIN_JD_AUTH_USERNAME":                  "testuser2",
@@ -128,7 +125,6 @@ func Test_LoadEnvConfig(t *testing.T) { //nolint:paralleltest // These tests are
 				require.NotNil(t, cfg)
 
 				// Validate environment configuration
-				assert.Equal(t, "ws://localhost:1234", cfg.Offchain.JobDistributor.Endpoints.WSRPC)
 				assert.Equal(t, "grpc://localhost:4567", cfg.Offchain.JobDistributor.Endpoints.GRPC)
 				assert.Equal(t, "2b3caf1a", cfg.Offchain.JobDistributor.Auth.CognitoAppClientID)
 				assert.Equal(t, "22222222", cfg.Offchain.JobDistributor.Auth.CognitoAppClientSecret)

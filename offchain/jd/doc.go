@@ -29,8 +29,7 @@ For basic connectivity without authentication:
 	)
 
 	config := jd.JDConfig{
-		GRPC:  "localhost:9090",
-		WSRPC: "ws://localhost:9091"
+		GRPC: "localhost:9090",
 	}
 
 	client, err := jd.NewJDClient(config)
@@ -50,7 +49,6 @@ For basic connectivity without authentication:
 
 	providerConfig := provider.ClientOffchainProviderConfig{
 		GRPC:  "localhost:9090",
-		WSRPC: "ws://localhost:9091",
 		Creds: insecure.NewCredentials(),
 	}
 
@@ -164,10 +162,9 @@ For services requiring OAuth2 Bearer tokens:
 	})
 
 	config := jd.JDConfig{
-		GRPC:        "secure.jobdistributor.com:443",
-		WSRPC:       "wss://secure.jobdistributor.com:443/ws",
-		OAuth2:      tokenSource,
-		Creds:       credentials.NewTLS(&tls.Config{}),
+		GRPC:  "secure.jobdistributor.com:443",
+		Auth:  tokenSource,
+		Creds: credentials.NewTLS(&tls.Config{}),
 	}
 
 # Client Operations

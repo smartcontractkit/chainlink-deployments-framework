@@ -31,6 +31,7 @@ changesets:
 `, envKey, domainName)
 
 	// Generate each changeset section
+	var yamlTemplateSb34 strings.Builder
 	for i, changesetName := range changesetNames {
 		if changesetName == "" {
 			continue
@@ -38,7 +39,7 @@ changesets:
 
 		// Add separator between changesets
 		if i > 0 {
-			yamlTemplate += "\n  # ----------------------------------------\n"
+			yamlTemplateSb34.WriteString("\n  # ----------------------------------------\n")
 		}
 
 		// Get changeset configuration
@@ -53,8 +54,9 @@ changesets:
 			return "", fmt.Errorf("generate section for changeset %s: %w", changesetName, err)
 		}
 
-		yamlTemplate += changesetSection
+		yamlTemplateSb34.WriteString(changesetSection)
 	}
+	yamlTemplate += yamlTemplateSb34.String()
 
 	return yamlTemplate, nil
 }
