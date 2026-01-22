@@ -207,7 +207,7 @@ func TestUpfConvertTimelockProposalWithTon(t *testing.T) {
 	}{
 		{
 			name:             "TON proposal with GrantRole transaction",
-			timelockProposal: timelockProposalTon(t),
+			timelockProposal: timelockProposalTON(t),
 			signers: map[mcmstypes.ChainSelector][]common.Address{
 				mcmstypes.ChainSelector(chainsel.TON_TESTNET.Selector): {
 					common.HexToAddress("0xA5D5B0B844c8f11B61F28AC98BBA84dEA9b80953"),
@@ -726,7 +726,7 @@ signers:
   - "0xA5D5B0B844c8f11B61F28AC98BBA84dEA9b80953"
 `
 
-// timelockProposalTon is generated using makeTONGrantRoleTx helper
+// timelockProposalTON is generated using makeTONGrantRoleTx helper
 var timelockProposalTON = func(t *testing.T) string {
 	t.Helper()
 	// Create a GrantRole transaction for the test

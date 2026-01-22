@@ -216,38 +216,6 @@ func asciiHash(data [32]byte) rawBytes {
 	return rawBytes(sb.String())
 }
 
-// isTimelockBatchFunction checks if the function name corresponds to a timelock batch operation
-// across different chain families (EVM, Solana, Sui, Aptos, TON).
-func isTimelockBatchFunction(functionName string) bool {
-	// EVM function signatures
-	if functionName == "function scheduleBatch((address,uint256,bytes)[] calls, bytes32 predecessor, bytes32 salt, uint256 delay) returns()" ||
-		functionName == "function bypasserExecuteBatch((address,uint256,bytes)[] calls) payable returns()" {
-		return true
-	}
-
-	// Solana function names
-	if functionName == "ScheduleBatch" || functionName == "BypasserExecuteBatch" {
-		return true
-	}
-
-	// Sui: mcms::timelock_schedule_batch, mcms::timelock_bypasser_execute_batch
-	// Aptos: package::module::timelock_schedule_batch, package::module::timelock_bypasser_execute_batch
-	// Use HasSuffix to prevent false positives like "::timelock_schedule_batch_helper"
-	if strings.HasSuffix(functionName, "::timelock_schedule_batch") ||
-		strings.HasSuffix(functionName, "::timelock_bypasser_execute_batch") {
-		return true
-	}
-
-	// TON: ContractType::ScheduleBatch(0x...), ContractType::BypasserExecuteBatch(0x...)
-	// Use Contains because the opcode suffix (0x...) varies
-	if strings.Contains(functionName, "::ScheduleBatch(") ||
-		strings.Contains(functionName, "::BypasserExecuteBatch(") {
-		return true
-	}
-
-	return false
-}
-
 func calculateOpCount(opCount uint64, opIndex int, operations []mcmstypes.Operation) uint64 {
 	chainSelector := operations[opIndex].ChainSelector
 	for i, op := range operations {
