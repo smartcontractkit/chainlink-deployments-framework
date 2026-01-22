@@ -1489,8 +1489,13 @@ func getExecutorWithChainOverride(cfg *cfgv2, chainSelector types.ChainSelector)
 			return nil, fmt.Errorf("error getting encoder for chain %d", cfg.chainSelector)
 		}
 		c := cfg.blockchains.TonChains()[uint64(chainSelector)]
-
-		return ton.NewExecutor(encoder, c.Client, c.TxOps.Wallet, c.TxOps.Amount)
+		opts := ton.ExecutorOpts{
+			Encoder: encoder,
+			Client:  c.Client,
+			Wallet:  c.TxOps.Wallet,
+			Amount:  c.TxOps.Amount,
+		}
+		return ton.NewExecutor(opts)
 	default:
 		return nil, fmt.Errorf("unsupported chain family %s", family)
 	}
@@ -1536,13 +1541,18 @@ func getTimelockExecutorWithChainOverride(cfg *cfgv2, chainSelector types.ChainS
 			return nil, fmt.Errorf("error getting sui metadata from proposal: %w", err)
 		}
 		entrypointEncoder := suibindings.NewCCIPEntrypointArgEncoder(metadata.RegistryObj, metadata.DeployerStateObj)
-		executor, err = sui.NewTimelockExecutor(chain.Client, chain.Signer, entrypointEncoder, metadata.McmsPackageID, metadata.RegistryObj, metadata.AccountObj)
+		executor, err = sui.NewTimelockExecutor(c.Client, c.Signer, entrypointEncoder, metadata.McmsPackageID, metadata.RegistryObj, metadata.AccountObj)
 		if err != nil {
 			return nil, fmt.Errorf("error creating sui timelock executor: %w", err)
 		}
 	case chainsel.FamilyTon:
 		c := cfg.blockchains.TonChains()[uint64(chainSelector)]
-		return ton.NewTimelockExecutor(c.Client, c.TxOps.Wallet, c.TxOps.Amount)
+		opts := ton.TimelockExecutorOpts{
+			Client: c.Client,
+			Wallet: c.TxOps.Wallet,
+			Amount: c.TxOps.Amount,
+		}
+		return ton.NewTimelockExecutor(opts)
 	default:
 		return nil, fmt.Errorf("unsupported chain family %s", family)
 	}
