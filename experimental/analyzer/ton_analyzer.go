@@ -3,26 +3,15 @@ package analyzer
 import (
 	"fmt"
 
-	"github.com/smartcontractkit/chainlink-ton/pkg/bindings/lib/access/rbac"
-	"github.com/smartcontractkit/chainlink-ton/pkg/bindings/mcms/mcms"
-	"github.com/smartcontractkit/chainlink-ton/pkg/bindings/mcms/timelock"
-	"github.com/smartcontractkit/chainlink-ton/pkg/ton/debug/lib"
+	"github.com/smartcontractkit/chainlink-ton/pkg/bindings"
 	"github.com/smartcontractkit/mcms/sdk"
 	"github.com/smartcontractkit/mcms/sdk/ton"
 	"github.com/smartcontractkit/mcms/types"
 )
 
-// TODO should imported from sdk
-var typeToTLBMap = map[string]lib.TLBMap{
-	"com.chainlink.ton.lib.access.RBAC": rbac.TLBs,
-	"com.chainlink.ton.mcms.MCMS":       mcms.TLBs,
-	"com.chainlink.ton.mcms.Timelock":   timelock.TLBs,
-	"RBACTimelock":                      timelock.TLBs,
-}
-
 // AnalyzeTONTransactions decodes a slice of TON transactions and returns their decoded representations.
 func AnalyzeTONTransactions(ctx ProposalContext, txs []types.Transaction) ([]*DecodedCall, error) {
-	decoder := ton.NewDecoder(typeToTLBMap)
+	decoder := ton.NewDecoder(bindings.Registry)
 	decodedTxs := make([]*DecodedCall, len(txs))
 	for i, op := range txs {
 		analyzedTransaction, err := AnalyzeTONTransaction(ctx, decoder, op)

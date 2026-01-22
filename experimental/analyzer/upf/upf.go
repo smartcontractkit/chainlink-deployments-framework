@@ -11,10 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/goccy/go-yaml"
 	chainsel "github.com/smartcontractkit/chain-selectors"
-	"github.com/smartcontractkit/chainlink-ton/pkg/bindings/lib/access/rbac"
-	tonmcms "github.com/smartcontractkit/chainlink-ton/pkg/bindings/mcms/mcms"
-	"github.com/smartcontractkit/chainlink-ton/pkg/bindings/mcms/timelock"
-	"github.com/smartcontractkit/chainlink-ton/pkg/ton/debug/lib"
+	"github.com/smartcontractkit/chainlink-ton/pkg/bindings"
 	"github.com/smartcontractkit/mcms"
 	mcmsaptossdk "github.com/smartcontractkit/mcms/sdk/aptos"
 	mcmssuisdk "github.com/smartcontractkit/mcms/sdk/sui"
@@ -24,14 +21,6 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	mcmsanalyzer "github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 )
-
-// TODO should imported from sdk
-var typeToTLBMap = map[string]lib.TLBMap{
-	"com.chainlink.ton.lib.access.RBAC": rbac.TLBs,
-	"com.chainlink.ton.mcms.MCMS":       tonmcms.TLBs,
-	"com.chainlink.ton.mcms.Timelock":   timelock.TLBs,
-	"RBACTimelock":                      timelock.TLBs,
-}
 
 // UpfConvertTimelockProposal converts a TimelockProposal to a UPF proposal format.
 func UpfConvertTimelockProposal(
@@ -397,7 +386,7 @@ func analyzeTransaction(
 		return analyzeResult, "", nil
 
 	case chainsel.FamilyTon:
-		decoder := mcmstonsdk.NewDecoder(typeToTLBMap)
+		decoder := mcmstonsdk.NewDecoder(bindings.Registry)
 		analyzeResult, err := mcmsanalyzer.AnalyzeTONTransaction(proposalCtx, decoder, mcmsOp.Transaction)
 		if err != nil {
 			return nil, "", err

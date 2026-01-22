@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/smartcontractkit/chainlink-ton/pkg/bindings"
 	"github.com/smartcontractkit/chainlink-ton/pkg/bindings/lib/access/rbac"
 	"github.com/smartcontractkit/chainlink-ton/pkg/ton/tlbe"
 	"github.com/smartcontractkit/mcms/sdk/ton"
@@ -23,7 +24,7 @@ func TestAnalyzeTONTransaction(t *testing.T) {
 
 	setup := newTestTONSetup(t)
 	ctx := &DefaultProposalContext{}
-	decoder := ton.NewDecoder(typeToTLBMap)
+	decoder := ton.NewDecoder(bindings.Registry)
 
 	tests := []struct {
 		name           string
