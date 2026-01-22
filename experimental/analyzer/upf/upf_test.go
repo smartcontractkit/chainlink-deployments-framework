@@ -727,7 +727,7 @@ signers:
 `
 
 // timelockProposalTon is generated using makeTONGrantRoleTx helper
-var timelockProposalTon = func(t *testing.T) string {
+var timelockProposalTON = func(t *testing.T) string {
 	t.Helper()
 	// Create a GrantRole transaction for the test
 	targetAddr := address.MustParseAddr("EQADa3W6G0nSiTV4a6euRA42fU9QxSEnb-WeDpcrtWzA2jM8")
