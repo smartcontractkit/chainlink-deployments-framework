@@ -14,6 +14,7 @@ import (
 	nodev1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/node"
 
 	foffchain "github.com/smartcontractkit/chainlink-deployments-framework/offchain"
+	"github.com/smartcontractkit/chainlink-deployments-framework/offchain/jd"
 )
 
 // listJobsByNodeId fetches jobs for a slice of node IDs and returns a map of job slices for each node ID.
@@ -215,26 +216,9 @@ func writeChainConfigTable(configsByNode map[string][]*nodev1.ChainConfig) {
 	for nodeID, configs := range configsByNode {
 		fmt.Printf("Node ID: %v\n", nodeID)
 		for _, config := range configs {
-			var family string
-			switch config.Chain.Type {
-			case nodev1.ChainType_CHAIN_TYPE_EVM:
-				family = chainsel.FamilyEVM
-			case nodev1.ChainType_CHAIN_TYPE_APTOS:
-				family = chainsel.FamilyAptos
-			case nodev1.ChainType_CHAIN_TYPE_SOLANA:
-				family = chainsel.FamilySolana
-			case nodev1.ChainType_CHAIN_TYPE_STARKNET:
-				family = chainsel.FamilyStarknet
-			case nodev1.ChainType_CHAIN_TYPE_TRON:
-				family = chainsel.FamilyTron
-			case nodev1.ChainType_CHAIN_TYPE_TON:
-				family = chainsel.FamilyTon
-			case nodev1.ChainType_CHAIN_TYPE_SUI:
-				family = chainsel.FamilySui
-			case nodev1.ChainType_CHAIN_TYPE_UNSPECIFIED:
-				panic("chain type must be specified")
-			default:
-				panic(fmt.Sprintf("unsupported chain type %s", config.Chain.Type))
+			family, err := jd.ChainTypeToFamily(config.Chain.Type)
+			if err != nil {
+				panic(err)
 			}
 
 			details, err := chainsel.GetChainDetailsByChainIDAndFamily(config.Chain.Id, family)
