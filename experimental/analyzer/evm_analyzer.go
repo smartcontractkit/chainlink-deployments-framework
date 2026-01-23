@@ -187,7 +187,7 @@ func tryEIP1967ProxyFallback(
 	decoder *EVMTxCallDecoder,
 ) (*DecodedCall, *abi.ABI, string, error) {
 	// Lazily get EVM chain from environment (only when fallback is needed)
-	evmChains := env.BlockChains.EVMChains()
+	evmChains := env.Chains().EVMChains()
 	evmChain, exists := evmChains[chainSelector]
 	if !exists {
 		return nil, nil, "", fmt.Errorf("EVM chain not available for selector %d", chainSelector)

@@ -235,10 +235,10 @@ var (
 	evmNodesFundExample = cli.Examples(`
 	# Fund all nodes with at least 0.5 ETH on chain 1 in staging (using --eth flag)
 	exemplar evm nodes fund --environment staging --selector 1 --eth 0.5 --1559
-	
+
 	# Fund all nodes with 100 ETH
 	exemplar evm nodes fund --environment staging --selector 1 --eth 100
-	
+
 	# Fund all nodes with specific wei amount (using --amount flag)
 	exemplar evm nodes fund --environment staging --selector 1 --amount 10000000000000000000
 `)
@@ -279,7 +279,7 @@ func (c Commands) newEvmNodesFund(domain domain.Domain) *cobra.Command {
 			if !exists {
 				return fmt.Errorf("chain not found for selector %d", chainselector)
 			}
-			chain := env.BlockChains.EVMChains()[cs.Selector]
+			chain := env.Chains().EVMChains()[cs.Selector]
 
 			var targetAmount *big.Int
 			if ethAmount != "" {

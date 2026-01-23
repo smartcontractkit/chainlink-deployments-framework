@@ -71,7 +71,7 @@ func Test_executeFork(t *testing.T) { //nolint:paralleltest
 	env.BlockChains = cldfchain.NewBlockChains(map[uint64]cldfchain.BlockChain{
 		chainsel.GETH_TESTNET.Selector: evmChain,
 	})
-	chain := slices.Collect(maps.Values(env.BlockChains.EVMChains()))[0]
+	chain := slices.Collect(maps.Values(env.Chains().EVMChains()))[0]
 
 	mcmAddress, timelockAddress, callProxyAddress, env := deployMCMS(t, env)
 	saveChangesetOutputs(t, domain, env, "deploy-mcms")
@@ -176,7 +176,7 @@ func deployMCMS(t *testing.T, env cldf.Environment) (string, string, string, cld
 	require.NoError(t, err)
 	signerAddress := crypto.PubkeyToAddress(privateKey.PublicKey)
 
-	chain := slices.Collect(maps.Values(env.BlockChains.EVMChains()))[0]
+	chain := slices.Collect(maps.Values(env.Chains().EVMChains()))[0]
 	mcmAddress, env := deployMcm(t, env, chain, signerAddress)
 	timelockAddress, callProxyAddress, env := deployTimelockAndCallProxy(t, env, chain, []string{mcmAddress}, nil, nil)
 

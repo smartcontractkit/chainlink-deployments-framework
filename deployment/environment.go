@@ -58,14 +58,58 @@ type Environment struct {
 	OCRSecrets ocr.OCRSecrets
 	// OperationsBundle contains dependencies required by the operations API.
 	OperationsBundle operations.Bundle
-	// BlockChains is the container of all chains in the environment.
+	// blockChains is the internal field that holds different blockchain implementations
+	blockChains chain.BlockChainCollection
+
+	// Use Chains() method instead. This field may be removed in a future major version. Migration: env.BlockChains.EVMChains() → env.Chains().EVMChains()
 	BlockChains chain.BlockChains
 }
 
 // EnvironmentOption is a functional option for configuring an Environment
 type EnvironmentOption func(*Environment)
 
+// NewEnvironmentWithChains creates a new environment with support for lazy blockchain loading.
+func NewEnvironmentWithChains(
+	name string,
+	logger logger.Logger,
+	existingAddrs AddressBook,
+	dataStore datastore.DataStore,
+	nodeIDs []string,
+	offchain offchain.Client,
+	ctx func() context.Context,
+	secrets ocr.OCRSecrets,
+	operationsBundle operations.Bundle,
+	blockChains chain.BlockChainCollection,
+	opts ...EnvironmentOption,
+) *Environment {
+	env := &Environment{
+		Name:              name,
+		Logger:            logger,
+		ExistingAddresses: existingAddrs,
+		DataStore:         dataStore,
+		NodeIDs:           nodeIDs,
+		Offchain:          offchain,
+		GetContext:        ctx,
+		OCRSecrets:        secrets,
+		OperationsBundle:  operationsBundle,
+		blockChains:       blockChains,
+	}
+
+	// Backward compatibility: populate deprecated BlockChains field if using eager loading
+	if bc, ok := blockChains.(chain.BlockChains); ok {
+		env.BlockChains = bc
+	}
+
+	// Apply functional options
+	for _, opt := range opts {
+		opt(env)
+	}
+
+	return env
+}
+
 // NewEnvironment creates a new environment for CLDF.
+// For lazy blockchain loading support, use NewEnvironmentWithChains instead.
 func NewEnvironment(
 	name string,
 	logger logger.Logger,
@@ -89,7 +133,8 @@ func NewEnvironment(
 		OCRSecrets:        secrets,
 		// default to memory reporter as that is the only reporter available for now
 		OperationsBundle: operations.NewBundle(ctx, logger, operations.NewMemoryReporter()),
-		BlockChains:      blockChains,
+		blockChains:      blockChains,
+		BlockChains:      blockChains, // Populate deprecated field for backward compatibility
 	}
 
 	// Apply functional options
@@ -98,6 +143,21 @@ func NewEnvironment(
 	}
 
 	return env
+}
+
+// Chains returns the blockchain collection for this environment.
+// Use this method instead of accessing the BlockChains field directly.
+//
+// Migration guide:
+//
+//	Old: env.BlockChains.EVMChains()   (field access)
+//	New: env.Chains().EVMChains()      (method call)
+func (e *Environment) Chains() chain.BlockChainCollection {
+	if e.blockChains != nil {
+		return e.blockChains
+	}
+	// Fallback for backward compatibility with old code that set the field directly
+	return e.BlockChains
 }
 
 // Clone creates a copy of the environment with a new reference to the address book.
@@ -114,7 +174,7 @@ func (e Environment) Clone() Environment {
 		}
 	}
 
-	return Environment{
+	cloned := Environment{
 		Name:              e.Name,
 		Logger:            e.Logger,
 		ExistingAddresses: ab,
@@ -124,8 +184,20 @@ func (e Environment) Clone() Environment {
 		GetContext:        e.GetContext,
 		OCRSecrets:        e.OCRSecrets,
 		OperationsBundle:  e.OperationsBundle,
-		BlockChains:       e.BlockChains,
+		blockChains:       e.blockChains,
 	}
+
+	// Backward compatibility: populate deprecated BlockChains field if using eager loading
+	if e.blockChains != nil {
+		if bc, ok := e.blockChains.(chain.BlockChains); ok {
+			cloned.BlockChains = bc
+		}
+	} else {
+		// Fallback: clone from the deprecated field
+		cloned.BlockChains = e.BlockChains
+	}
+
+	return cloned
 }
 
 // ConfirmIfNoError confirms the transaction if no error occurred.

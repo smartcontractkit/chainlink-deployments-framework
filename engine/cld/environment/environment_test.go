@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	fchain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	fdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 )
 
@@ -80,6 +81,40 @@ func Test_Load_NoError(t *testing.T) {
 
 	_, err := Load(t.Context(), domain, "staging", WithoutJD(), OnlyLoadChainsFor([]uint64{}))
 	require.NoError(t, err)
+}
+
+func Test_Load_WithLazyBlockchains(t *testing.T) { //nolint:paralleltest // Test sets environment variable
+	// Set the feature flag to enable lazy loading
+	t.Setenv("CLD_LAZY_BLOCKCHAINS", "true")
+
+	// Set up domain
+	domain := setupTest(t, setupTestConfig, setupAddressbook, setupDataStore, setupNodes)
+
+	env, err := Load(t.Context(), domain, "staging", WithoutJD(), OnlyLoadChainsFor([]uint64{}))
+	require.NoError(t, err)
+
+	// Verify environment was created successfully with lazy blockchains
+	require.NotNil(t, env.Chains())
+
+	// Verify we got a LazyBlockChains instance
+	assert.IsType(t, &fchain.LazyBlockChains{}, env.Chains(), "Expected LazyBlockChains instance")
+}
+
+func Test_Load_WithEagerBlockchains(t *testing.T) {
+	t.Parallel()
+
+	// Explicitly don't set the feature flag - this tests the default eager loading behavior
+	// Set up domain
+	domain := setupTest(t, setupTestConfig, setupAddressbook, setupDataStore, setupNodes)
+
+	env, err := Load(t.Context(), domain, "staging", WithoutJD(), OnlyLoadChainsFor([]uint64{}))
+	require.NoError(t, err)
+
+	// Verify environment was created successfully with eager blockchains
+	require.NotNil(t, env.Chains())
+
+	// Verify we got a BlockChains instance (not LazyBlockChains)
+	assert.IsType(t, fchain.BlockChains{}, env.Chains(), "Expected BlockChains instance")
 }
 
 func setupTest(t *testing.T, setupFnc ...func(t *testing.T, domain fdomain.Domain)) fdomain.Domain {
