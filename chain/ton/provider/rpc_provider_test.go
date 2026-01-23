@@ -318,7 +318,7 @@ func Test_buildChain(t *testing.T) {
 	assert.Equal(t, testWallet, chain.Wallet)
 	assert.Equal(t, testWallet.WalletAddress(), chain.WalletAddress)
 
-	assert.Equal(t, defaultAmountTonString, chain.Amount)
+	assert.Equal(t, defaultAmountTonString, chain.Amount.String())
 	assert.Equal(t, testWallet, chain.Wallet)
 }
 
