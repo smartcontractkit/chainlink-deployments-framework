@@ -302,3 +302,53 @@ func Test_RPCChainProvider_Initialize_FailedPrivateKeyGeneration(t *testing.T) {
 	_, err := p.Initialize(t.Context())
 	require.Error(t, err)
 }
+
+func Test_createWallet(t *testing.T) {
+	t.Parallel()
+
+	t.Run("success with valid private key and version", func(t *testing.T) {
+		t.Parallel()
+
+		privateKey := make([]byte, 32)
+		for i := range privateKey {
+			privateKey[i] = byte(i)
+		}
+
+		w, err := createWallet(nil, privateKey, WalletVersionV4R2)
+		require.NoError(t, err)
+		require.NotNil(t, w)
+	})
+
+	t.Run("error with unsupported wallet version", func(t *testing.T) {
+		t.Parallel()
+
+		privateKey := make([]byte, 32)
+
+		w, err := createWallet(nil, privateKey, "UNSUPPORTED")
+		require.Error(t, err)
+		assert.Nil(t, w)
+		assert.Contains(t, err.Error(), "unsupported wallet version")
+	})
+
+	t.Run("success with default wallet version", func(t *testing.T) {
+		t.Parallel()
+
+		privateKey := make([]byte, 32)
+		for i := range privateKey {
+			privateKey[i] = byte(i + 10)
+		}
+
+		w, err := createWallet(nil, privateKey, WalletVersionDefault)
+		require.NoError(t, err)
+		require.NotNil(t, w)
+	})
+}
+
+func Test_setupConnection_invalidURL(t *testing.T) {
+	t.Parallel()
+
+	// Test that setupConnection fails with invalid URL
+	_, err := setupConnection(t.Context(), "invalid-url")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to connect to liteserver")
+}
