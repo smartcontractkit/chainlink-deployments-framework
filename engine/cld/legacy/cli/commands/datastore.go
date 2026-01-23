@@ -24,9 +24,8 @@ func (c Commands) NewDatastoreCmds(domain domain.Domain) *cobra.Command {
 	datastoreCmd.AddCommand(c.newDatastoreSyncToCatalog(domain))
 
 	datastoreCmd.PersistentFlags().StringP("environment", "e", "", "Deployment environment (required)")
-	err := datastoreCmd.MarkPersistentFlagRequired("environment")
-	if err != nil {
-		return nil
+	if err := datastoreCmd.MarkPersistentFlagRequired("environment"); err != nil {
+		panic(fmt.Sprintf("failed to mark environment flag as required: %v", err))
 	}
 
 	return datastoreCmd
@@ -139,10 +138,8 @@ func (Commands) newDatastoreMerge(domain domain.Domain) *cobra.Command {
 
 	cmd.Flags().StringVarP(&name, "name", "n", "", "name (required)")
 	cmd.Flags().StringVarP(&timestamp, "timestamp", "t", "", "Durable Pipeline timestamp (optional)")
-
-	err := cmd.MarkFlagRequired("name")
-	if err != nil {
-		return nil
+	if err := cmd.MarkFlagRequired("name"); err != nil {
+		panic(fmt.Sprintf("failed to mark name flag as required: %v", err))
 	}
 
 	return &cmd

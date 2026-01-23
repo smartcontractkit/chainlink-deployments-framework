@@ -21,9 +21,8 @@ func (c Commands) NewAddressBookCmds(domain domain.Domain) *cobra.Command {
 	addressBookCmd.AddCommand(c.newAddressBookRemove(domain))
 
 	addressBookCmd.PersistentFlags().StringP("environment", "e", "", "Deployment environment (required)")
-	err := addressBookCmd.MarkPersistentFlagRequired("environment")
-	if err != nil {
-		return nil
+	if err := addressBookCmd.MarkPersistentFlagRequired("environment"); err != nil {
+		panic(fmt.Sprintf("failed to mark environment flag as required: %v", err))
 	}
 
 	return addressBookCmd
@@ -78,10 +77,8 @@ func (Commands) newAddressBookMerge(domain domain.Domain) *cobra.Command {
 
 	cmd.Flags().StringVarP(&name, "name", "n", "", "name (required)")
 	cmd.Flags().StringVarP(&timestamp, "timestamp", "t", "", "Durable Pipeline timestamp (optional)")
-
-	err := cmd.MarkFlagRequired("name")
-	if err != nil {
-		return nil
+	if err := cmd.MarkFlagRequired("name"); err != nil {
+		panic(fmt.Sprintf("failed to mark name flag as required: %v", err))
 	}
 
 	return &cmd
@@ -174,10 +171,8 @@ func (Commands) newAddressBookRemove(domain domain.Domain) *cobra.Command {
 
 	cmd.Flags().StringVarP(&name, "name", "n", "", "name (required)")
 	cmd.Flags().StringVarP(&timestamp, "timestamp", "t", "", "Durable Pipeline timestamp (optional)")
-
-	err := cmd.MarkFlagRequired("name")
-	if err != nil {
-		return nil
+	if err := cmd.MarkFlagRequired("name"); err != nil {
+		panic(fmt.Sprintf("failed to mark name flag as required: %v", err))
 	}
 
 	return &cmd
