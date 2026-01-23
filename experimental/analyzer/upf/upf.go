@@ -200,7 +200,9 @@ func mcmsOperationToUpfTransaction(
 
 func asciiHash(data [32]byte) rawBytes {
 	var sb strings.Builder
-
+	if len(data) == 0 {
+		return rawBytes("")
+	}
 	for _, byteVal := range data {
 		// Check if the byte is a printable ASCII character (32 to 126 are printable)
 		if byteVal >= 32 && byteVal <= 126 {
