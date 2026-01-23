@@ -131,6 +131,7 @@ func (p *CTFChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 	p.chain = &cldf_ton.Chain{
 		ChainMetadata: cldf_ton.ChainMetadata{Selector: p.selector},
 		Client:        nodeClient,
+		Wallet:        tonWallet,
 		WalletAddress: tonWallet.WalletAddress(),
 		URL:           url,
 		Amount:        tlb.MustFromTON(defaultTxTONAmount), // default amount for transactions
