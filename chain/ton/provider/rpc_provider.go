@@ -158,16 +158,16 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 		return nil, fmt.Errorf("failed to validate provider config: %w", err)
 	}
 
-	// Generate private key for wallet
-	privateKey, err := p.config.DeployerSignerGen.Generate()
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate private key: %w", err)
-	}
-
 	// Setup connection to TON network
 	api, err := setupConnection(ctx, p.config.HTTPURL)
 	if err != nil {
 		return nil, err
+	}
+
+	// Generate private key for wallet
+	privateKey, err := p.config.DeployerSignerGen.Generate()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate private key: %w", err)
 	}
 
 	// Create wallet
