@@ -5,7 +5,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/xssnick/tonutils-go/tlb"
 	"github.com/xssnick/tonutils-go/ton/wallet"
 
 	tonchain "github.com/smartcontractkit/chainlink-deployments-framework/chain/ton"
@@ -319,9 +318,7 @@ func Test_buildChain(t *testing.T) {
 	assert.Equal(t, testWallet, chain.Wallet)
 	assert.Equal(t, testWallet.WalletAddress(), chain.WalletAddress)
 
-	// Verify the default amount (0.25 TON)
-	expectedAmount := tlb.MustFromTON("0.25")
-	assert.Equal(t, expectedAmount, chain.Amount)
+	assert.Equal(t, defaultAmountTonString, chain.Amount)
 	assert.Equal(t, testWallet, chain.Wallet)
 }
 
