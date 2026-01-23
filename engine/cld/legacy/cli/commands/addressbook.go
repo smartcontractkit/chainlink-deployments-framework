@@ -67,7 +67,7 @@ func (Commands) newAddressBookMerge(domain domain.Domain) *cobra.Command {
 				)
 			}
 
-			cmd.Printf("Merged address books for %s %s %s",
+			cmd.Printf("Merged address books for %s %s %s\n",
 				domain, envKey, name,
 			)
 
@@ -114,7 +114,7 @@ func (Commands) newAddressBookMigrate(domain domain.Domain) *cobra.Command {
 				)
 			}
 
-			cmd.Printf("Address book for %s %s successfully migrated to the new datastore format",
+			cmd.Printf("Address book for %s %s successfully migrated to the new datastore format\n",
 				domain, envKey,
 			)
 
@@ -161,7 +161,7 @@ func (Commands) newAddressBookRemove(domain domain.Domain) *cobra.Command {
 				)
 			}
 
-			cmd.Printf("Removed address books for %s %s %s",
+			cmd.Printf("Removed address books for %s %s %s\n",
 				domain, envKey, name,
 			)
 
