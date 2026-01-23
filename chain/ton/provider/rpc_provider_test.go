@@ -285,7 +285,7 @@ func Test_WalletVersionConstants(t *testing.T) {
 	assert.Equal(t, WalletVersionV3R2, WalletVersion("V3R2"))
 	assert.Equal(t, WalletVersionV4R2, WalletVersion("V4R2"))
 	assert.Equal(t, WalletVersionV5R1, WalletVersion("V5R1"))
-	assert.Equal(t, WalletVersion(""), WalletVersionDefault)
+	assert.Equal(t, WalletVersionDefault, WalletVersion(""))
 }
 
 func Test_RPCChainProvider_Initialize_FailedPrivateKeyGeneration(t *testing.T) {
@@ -302,6 +302,4 @@ func Test_RPCChainProvider_Initialize_FailedPrivateKeyGeneration(t *testing.T) {
 
 	_, err := p.Initialize(t.Context())
 	require.Error(t, err)
-	// The error will be about connection since we can't actually connect,
-	// but this exercises the code path
 }
