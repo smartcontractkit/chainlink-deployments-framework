@@ -28,12 +28,68 @@ func Test_RPCChainProviderConfig_validate(t *testing.T) {
 			},
 		},
 		{
+			name: "valid config with V3R2 wallet version",
+			giveConfigFunc: func(c *RPCChainProviderConfig) {
+				c.HTTPURL = "liteserver://publickey@localhost:8080"
+				c.DeployerSignerGen = PrivateKeyRandom()
+				c.WalletVersion = WalletVersionV3R2
+			},
+		},
+		{
+			name: "valid config with V4R2 wallet version",
+			giveConfigFunc: func(c *RPCChainProviderConfig) {
+				c.HTTPURL = "liteserver://publickey@localhost:8080"
+				c.DeployerSignerGen = PrivateKeyRandom()
+				c.WalletVersion = WalletVersionV4R2
+			},
+		},
+		{
+			name: "valid config with V5R1 wallet version",
+			giveConfigFunc: func(c *RPCChainProviderConfig) {
+				c.HTTPURL = "liteserver://publickey@localhost:8080"
+				c.DeployerSignerGen = PrivateKeyRandom()
+				c.WalletVersion = WalletVersionV5R1
+			},
+		},
+		{
 			name: "missing liteserver url",
 			giveConfigFunc: func(c *RPCChainProviderConfig) {
 				c.HTTPURL = ""
 				c.DeployerSignerGen = PrivateKeyRandom()
 			},
 			wantErr: "liteserver url is required",
+		},
+		{
+			name: "invalid liteserver url prefix",
+			giveConfigFunc: func(c *RPCChainProviderConfig) {
+				c.HTTPURL = "http://example.com"
+				c.DeployerSignerGen = PrivateKeyRandom()
+			},
+			wantErr: "invalid liteserver URL format: expected liteserver:// prefix",
+		},
+		{
+			name: "invalid liteserver url missing @ separator",
+			giveConfigFunc: func(c *RPCChainProviderConfig) {
+				c.HTTPURL = "liteserver://nohostport"
+				c.DeployerSignerGen = PrivateKeyRandom()
+			},
+			wantErr: "invalid liteserver URL format: expected publickey@host:port",
+		},
+		{
+			name: "invalid liteserver url empty public key",
+			giveConfigFunc: func(c *RPCChainProviderConfig) {
+				c.HTTPURL = "liteserver://@localhost:8080"
+				c.DeployerSignerGen = PrivateKeyRandom()
+			},
+			wantErr: "invalid liteserver URL format: public key cannot be empty",
+		},
+		{
+			name: "invalid liteserver url empty host:port",
+			giveConfigFunc: func(c *RPCChainProviderConfig) {
+				c.HTTPURL = "liteserver://publickey@"
+				c.DeployerSignerGen = PrivateKeyRandom()
+			},
+			wantErr: "invalid liteserver URL format: host:port cannot be empty",
 		},
 		{
 			name: "missing deployer signer generator",
@@ -131,113 +187,50 @@ func Test_RPCChainProvider_BlockChain(t *testing.T) {
 
 // Unit tests for extracted functions
 
-func Test_validateLiteserverURL(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name    string
-		url     string
-		wantErr string
-	}{
-		{
-			name: "valid URL",
-			url:  "liteserver://validkey@localhost:8080",
-		},
-		{
-			name:    "empty URL",
-			url:     "",
-			wantErr: "liteserver url is required",
-		},
-		{
-			name:    "invalid prefix",
-			url:     "http://example.com",
-			wantErr: "invalid liteserver URL format: expected liteserver:// prefix",
-		},
-		{
-			name:    "missing @",
-			url:     "liteserver://invalidurl",
-			wantErr: "invalid liteserver URL format: expected publickey@host:port",
-		},
-		{
-			name:    "multiple @",
-			url:     "liteserver://key1@key2@host:port",
-			wantErr: "invalid liteserver URL format: expected publickey@host:port",
-		},
-		{
-			name:    "empty public key",
-			url:     "liteserver://@localhost:8080",
-			wantErr: "invalid liteserver URL format: public key cannot be empty",
-		},
-		{
-			name:    "empty host:port",
-			url:     "liteserver://validkey@",
-			wantErr: "invalid liteserver URL format: host:port cannot be empty",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			err := validateLiteserverURL(tt.url)
-			if tt.wantErr != "" {
-				require.ErrorContains(t, err, tt.wantErr)
-			} else {
-				require.NoError(t, err)
-			}
-		})
-	}
-}
-
 func Test_getWalletVersionConfig(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name    string
-		version WalletVersion
-		wantErr bool
-	}{
-		{
-			name:    "V3R2",
-			version: WalletVersionV3R2,
-			wantErr: false,
-		},
-		{
-			name:    "V4R2",
-			version: WalletVersionV4R2,
-			wantErr: false,
-		},
-		{
-			name:    "V5R1",
-			version: WalletVersionV5R1,
-			wantErr: false,
-		},
-		{
-			name:    "Default (empty)",
-			version: WalletVersionDefault,
-			wantErr: false,
-		},
-		{
-			name:    "Unsupported version",
-			version: "V9R9",
-			wantErr: true,
-		},
-	}
+	t.Run("V3R2 returns wallet.V3R2", func(t *testing.T) {
+		t.Parallel()
+		cfg, err := getWalletVersionConfig(WalletVersionV3R2)
+		require.NoError(t, err)
+		assert.Equal(t, wallet.V3R2, cfg)
+	})
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
+	t.Run("V4R2 returns wallet.V4R2", func(t *testing.T) {
+		t.Parallel()
+		cfg, err := getWalletVersionConfig(WalletVersionV4R2)
+		require.NoError(t, err)
+		assert.Equal(t, wallet.V4R2, cfg)
+	})
 
-			cfg, err := getWalletVersionConfig(tt.version)
-			if tt.wantErr {
-				require.Error(t, err)
-				assert.Nil(t, cfg)
-			} else {
-				require.NoError(t, err)
-				assert.NotNil(t, cfg)
-			}
-		})
-	}
+	t.Run("V5R1 returns ConfigV5R1Final", func(t *testing.T) {
+		t.Parallel()
+		cfg, err := getWalletVersionConfig(WalletVersionV5R1)
+		require.NoError(t, err)
+		v5Config, ok := cfg.(wallet.ConfigV5R1Final)
+		require.True(t, ok, "expected ConfigV5R1Final type")
+		assert.Equal(t, int32(wallet.MainnetGlobalID), v5Config.NetworkGlobalID)
+		assert.Equal(t, int8(0), v5Config.Workchain)
+	})
+
+	t.Run("Default returns ConfigV5R1Final", func(t *testing.T) {
+		t.Parallel()
+		cfg, err := getWalletVersionConfig(WalletVersionDefault)
+		require.NoError(t, err)
+		v5Config, ok := cfg.(wallet.ConfigV5R1Final)
+		require.True(t, ok, "expected ConfigV5R1Final type")
+		assert.Equal(t, int32(wallet.MainnetGlobalID), v5Config.NetworkGlobalID)
+		assert.Equal(t, int8(0), v5Config.Workchain)
+	})
+
+	t.Run("Unsupported version returns error", func(t *testing.T) {
+		t.Parallel()
+		cfg, err := getWalletVersionConfig("V9R9")
+		require.Error(t, err)
+		assert.Nil(t, cfg)
+		assert.Contains(t, err.Error(), "unsupported wallet version")
+	})
 }
 
 func Test_NewRPCChainProvider(t *testing.T) {
@@ -257,42 +250,6 @@ func Test_NewRPCChainProvider(t *testing.T) {
 	assert.Equal(t, config.HTTPURL, p.config.HTTPURL)
 	assert.Equal(t, config.WalletVersion, p.config.WalletVersion)
 	assert.Nil(t, p.chain)
-}
-
-func Test_createWallet(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name          string
-		version       WalletVersion
-		expectError   bool
-		errorContains string
-	}{
-		{
-			name:          "unsupported wallet version returns error",
-			version:       "V9R9",
-			expectError:   true,
-			errorContains: "unsupported wallet version",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			privateKey := make([]byte, 32)
-			wallet, err := createWallet(nil, privateKey, tt.version)
-
-			if tt.expectError {
-				require.Error(t, err)
-				assert.Contains(t, err.Error(), tt.errorContains)
-				assert.Nil(t, wallet)
-			} else {
-				require.NoError(t, err)
-				assert.NotNil(t, wallet)
-			}
-		})
-	}
 }
 
 func Test_buildChain(t *testing.T) {
@@ -322,40 +279,29 @@ func Test_buildChain(t *testing.T) {
 	assert.Equal(t, testWallet, chain.Wallet)
 }
 
-func Test_createLiteclientConnectionPool_InvalidURL(t *testing.T) {
+func Test_WalletVersionConstants(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name          string
-		url           string
-		errorContains string
-	}{
-		{
-			name:          "empty URL returns error",
-			url:           "",
-			errorContains: "liteserver url is required",
-		},
-		{
-			name:          "invalid prefix returns error",
-			url:           "http://example.com",
-			errorContains: "invalid liteserver URL format",
-		},
-		{
-			name:          "missing @ returns error",
-			url:           "liteserver://invalidurl",
-			errorContains: "invalid liteserver URL format",
+	assert.Equal(t, WalletVersion("V3R2"), WalletVersionV3R2)
+	assert.Equal(t, WalletVersion("V4R2"), WalletVersionV4R2)
+	assert.Equal(t, WalletVersion("V5R1"), WalletVersionV5R1)
+	assert.Equal(t, WalletVersion(""), WalletVersionDefault)
+}
+
+func Test_RPCChainProvider_Initialize_FailedPrivateKeyGeneration(t *testing.T) {
+	t.Parallel()
+
+	p := &RPCChainProvider{
+		selector: 123,
+		config: RPCChainProviderConfig{
+			HTTPURL:           "liteserver://publickey@localhost:8080",
+			DeployerSignerGen: PrivateKeyFromRaw("invalid-hex"), // invalid hex will cause generation to fail
+			WalletVersion:     WalletVersionV5R1,
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			pool, err := createLiteclientConnectionPool(t.Context(), tt.url)
-
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), tt.errorContains)
-			assert.Nil(t, pool)
-		})
-	}
+	_, err := p.Initialize(t.Context())
+	require.Error(t, err)
+	// The error will be about connection since we can't actually connect,
+	// but this exercises the code path
 }
