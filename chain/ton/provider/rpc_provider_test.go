@@ -282,9 +282,9 @@ func Test_buildChain(t *testing.T) {
 func Test_WalletVersionConstants(t *testing.T) {
 	t.Parallel()
 
-	assert.Equal(t, WalletVersion("V3R2"), WalletVersionV3R2)
-	assert.Equal(t, WalletVersion("V4R2"), WalletVersionV4R2)
-	assert.Equal(t, WalletVersion("V5R1"), WalletVersionV5R1)
+	assert.Equal(t, WalletVersionV3R2, WalletVersion("V3R2"))
+	assert.Equal(t, WalletVersionV4R2, WalletVersion("V4R2"))
+	assert.Equal(t, WalletVersionV5R1, WalletVersion("V5R1"))
 	assert.Equal(t, WalletVersion(""), WalletVersionDefault)
 }
 
