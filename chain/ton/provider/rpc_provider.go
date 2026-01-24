@@ -23,8 +23,6 @@ const (
 	WalletVersionV4R2    WalletVersion = "V4R2"
 	WalletVersionV5R1    WalletVersion = "V5R1"
 	WalletVersionDefault WalletVersion = ""
-
-	defaultAmountTonString = "0.25" // Default amount in TON for transactions
 )
 
 // RPCChainProviderConfig holds the configuration to initialize the RPCChainProvider.
@@ -191,7 +189,7 @@ func buildChain(selector uint64, api *tonlib.APIClient, tonWallet *wallet.Wallet
 		Wallet:        tonWallet,
 		WalletAddress: tonWallet.WalletAddress(),
 		URL:           httpURL,
-		Amount:        tlb.MustFromTON(defaultAmountTonString),
+		Amount:        tlb.MustFromTON(defaultTxTONAmount),
 	}
 }
 

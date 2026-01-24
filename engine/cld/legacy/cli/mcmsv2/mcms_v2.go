@@ -1486,7 +1486,7 @@ func getExecutorWithChainOverride(cfg *cfgv2, chainSelector types.ChainSelector)
 	case chainsel.FamilyTon:
 		encoder, ok := encoder.(*ton.Encoder)
 		if !ok {
-			return nil, fmt.Errorf("invalid encoder type for TON chain %d: expected *ton.Encoder, got %T", cfg.chainSelector, encoder)
+			return nil, fmt.Errorf("invalid encoder type for TON chain %d: expected *ton.Encoder, got %T", chainSelector, encoder)
 		}
 		c := cfg.blockchains.TonChains()[uint64(chainSelector)]
 		opts := ton.ExecutorOpts{
