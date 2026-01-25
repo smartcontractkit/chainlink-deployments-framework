@@ -73,10 +73,10 @@ func TestDatastoreCommandMetadata(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Give each subtest its own fresh command tree
 			root := c.NewDatastoreCmds(dom)
-
-			t.Parallel()
 
 			parts := strings.Split(tc.cmdKey, " ")
 			cmd, _, err := root.Find(parts)
