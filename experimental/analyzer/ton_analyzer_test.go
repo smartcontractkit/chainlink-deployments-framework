@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/xssnick/tonutils-go/address"
 	"github.com/xssnick/tonutils-go/tlb"
-	"github.com/xssnick/tonutils-go/tvm/cell"
 )
 
 const testAddress = "EQDtFpEwcFAEcRe5mLVh2N6C0x-_hJEM7W61_JLnSF74p4q2"
@@ -180,16 +179,11 @@ func newTestTONSetup(t *testing.T) *testTONSetup {
 	t.Helper()
 
 	exampleRole := crypto.Keccak256Hash([]byte("EXAMPLE_ROLE"))
-	exampleRoleBig, _ := cell.BeginCell().
-		MustStoreBigInt(new(big.Int).SetBytes(exampleRole[:]), 257).
-		EndCell().
-		ToBuilder().
-		ToSlice().
-		LoadBigInt(256)
+	exampleRoleBig := tlbe.NewUint256(new(big.Int).SetBytes(exampleRole[:]))
 
 	return &testTONSetup{
 		targetAddr:     address.MustParseAddr("EQADa3W6G0nSiTV4a6euRA42fU9QxSEnb-WeDpcrtWzA2jM8"),
-		exampleRoleBig: exampleRoleBig,
+		exampleRoleBig: exampleRoleBig.Value(),
 	}
 }
 
