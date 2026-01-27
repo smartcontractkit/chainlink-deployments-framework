@@ -39,31 +39,31 @@ func LoadNetworks(
 	return cfg.FilterWith(cfgnet.TypesFilter(networkTypes...)), nil
 }
 
-// loadNetworkConfig loads the network config from the .config directory in the given fdomain.
+// loadNetworkConfig loads the network config from the .config/networks directory in the given fdomain.
 func loadNetworkConfig(domain fdomain.Domain) (*cfgnet.Config, error) {
-	// Check if the .config directory exists in the domain
-	configDir := filepath.Join(domain.DirPath(), ".config")
-	if _, err := os.Stat(configDir); err != nil {
+	// Check if the .config/networks directory exists in the domain
+	configNetworkDir := domain.ConfigNetworksDirPath()
+	if _, err := os.Stat(configNetworkDir); err != nil {
 		return nil, fmt.Errorf("cannot find config directory: %w", err)
 	}
 
-	// Find all yaml config files in the .config directory and any subdirectories
+	// Find all yaml config files in the .config/networks directory
 	var configFiles []string
 
-	yamlFiles, err := filepath.Glob(filepath.Join(configDir, "**", "*.yaml"))
+	yamlFiles, err := filepath.Glob(filepath.Join(configNetworkDir, "*.yaml"))
 	if err != nil {
 		return nil, fmt.Errorf("failed to find config files: %w", err)
 	}
 	configFiles = append(configFiles, yamlFiles...)
 
-	ymlFiles, err := filepath.Glob(filepath.Join(configDir, "**", "*.yml"))
+	ymlFiles, err := filepath.Glob(filepath.Join(configNetworkDir, "*.yml"))
 	if err != nil {
 		return nil, fmt.Errorf("failed to find config files: %w", err)
 	}
 	configFiles = append(configFiles, ymlFiles...)
 
 	if len(configFiles) == 0 {
-		return nil, fmt.Errorf("no config files found in %s", configDir)
+		return nil, fmt.Errorf("no config files found in %s", configNetworkDir)
 	}
 
 	cfg, err := cfgnet.Load(configFiles)
