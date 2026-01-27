@@ -71,9 +71,10 @@ func TestNewCommand_GenerateFlags(t *testing.T) {
 	})
 
 	// Find the generate subcommand
-	var generateCmd *struct{}
+	var found bool
 	for _, sub := range cmd.Commands() {
 		if sub.Use == "generate" {
+			found = true
 			// Check local flags
 			p := sub.Flags().Lookup("persist")
 			require.NotNil(t, p)
@@ -90,12 +91,10 @@ func TestNewCommand_GenerateFlags(t *testing.T) {
 			assert.Equal(t, "s", s.Shorthand)
 			assert.Empty(t, s.Value.String())
 
-			return
+			break
 		}
 	}
-	if generateCmd == nil {
-		t.Fatal("generate subcommand not found")
-	}
+	require.True(t, found, "generate subcommand not found")
 }
 
 // TestGenerate_MissingEnvironmentFlagFails verifies required flag validation.
@@ -114,8 +113,7 @@ func TestGenerate_MissingEnvironmentFlagFails(t *testing.T) {
 	cmd.SetArgs([]string{"generate"})
 	err := cmd.Execute()
 
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), `required flag(s) "environment" not set`)
+	require.ErrorContains(t, err, `required flag(s) "environment" not set`)
 }
 
 // TestGenerate_Success verifies successful state generation with mocks.
@@ -145,7 +143,7 @@ func TestGenerate_Success(t *testing.T) {
 
 			return expectedState, nil
 		},
-		Deps: &Deps{
+		Deps: Deps{
 			EnvironmentLoader: func(ctx context.Context, dom domain.Domain, envKey string, opts ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
 				environmentLoaderCalled = true
 				assert.Equal(t, "staging", envKey)
@@ -198,7 +196,7 @@ func TestGenerate_WithPreviousState(t *testing.T) {
 			receivedPrevState = prev
 			return newState, nil
 		},
-		Deps: &Deps{
+		Deps: Deps{
 			EnvironmentLoader: func(ctx context.Context, dom domain.Domain, envKey string, opts ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
 				return fdeployment.Environment{Name: envKey}, nil
 			},
@@ -236,7 +234,7 @@ func TestGenerate_WithPersist(t *testing.T) {
 		ViewState: func(env fdeployment.Environment, prev json.Marshaler) (json.Marshaler, error) {
 			return expectedState, nil
 		},
-		Deps: &Deps{
+		Deps: Deps{
 			EnvironmentLoader: func(ctx context.Context, dom domain.Domain, envKey string, opts ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
 				return fdeployment.Environment{Name: envKey}, nil
 			},
@@ -277,7 +275,7 @@ func TestGenerate_WithCustomOutputPath(t *testing.T) {
 		ViewState: func(env fdeployment.Environment, prev json.Marshaler) (json.Marshaler, error) {
 			return &mockState{Data: map[string]any{}}, nil
 		},
-		Deps: &Deps{
+		Deps: Deps{
 			EnvironmentLoader: func(ctx context.Context, dom domain.Domain, envKey string, opts ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
 				return fdeployment.Environment{Name: envKey}, nil
 			},
@@ -316,7 +314,7 @@ func TestGenerate_EnvironmentLoadError(t *testing.T) {
 
 			return json.RawMessage(`{}`), nil
 		},
-		Deps: &Deps{
+		Deps: Deps{
 			EnvironmentLoader: func(_ context.Context, _ domain.Domain, _ string, _ ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
 				return fdeployment.Environment{}, expectedError
 			},
@@ -347,7 +345,7 @@ func TestGenerate_ViewStateError(t *testing.T) {
 		ViewState: func(env fdeployment.Environment, prev json.Marshaler) (json.Marshaler, error) {
 			return nil, expectedError
 		},
-		Deps: &Deps{
+		Deps: Deps{
 			EnvironmentLoader: func(ctx context.Context, dom domain.Domain, envKey string, opts ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
 				return fdeployment.Environment{Name: envKey}, nil
 			},
@@ -381,7 +379,7 @@ func TestGenerate_StateSaveError(t *testing.T) {
 		ViewState: func(env fdeployment.Environment, prev json.Marshaler) (json.Marshaler, error) {
 			return &mockState{Data: map[string]any{}}, nil
 		},
-		Deps: &Deps{
+		Deps: Deps{
 			EnvironmentLoader: func(ctx context.Context, dom domain.Domain, envKey string, opts ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
 				return fdeployment.Environment{Name: envKey}, nil
 			},
@@ -414,7 +412,7 @@ func TestGenerate_NilViewStateFails(t *testing.T) {
 		Logger:    logger.Nop(),
 		Domain:    domain.NewDomain("/tmp", "testdomain"),
 		ViewState: nil, // Not provided
-		Deps: &Deps{
+		Deps: Deps{
 			EnvironmentLoader: func(ctx context.Context, dom domain.Domain, envKey string, opts ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
 				return fdeployment.Environment{Name: envKey}, nil
 			},
@@ -449,7 +447,7 @@ func TestGenerate_StateLoadErrorNonNotExist(t *testing.T) {
 
 			return json.RawMessage(`{}`), nil
 		},
-		Deps: &Deps{
+		Deps: Deps{
 			EnvironmentLoader: func(_ context.Context, _ domain.Domain, envKey string, _ ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
 				return fdeployment.Environment{Name: envKey}, nil
 			},
@@ -488,7 +486,7 @@ func TestGenerate_OutputFormat(t *testing.T) {
 		ViewState: func(env fdeployment.Environment, prev json.Marshaler) (json.Marshaler, error) {
 			return expectedState, nil
 		},
-		Deps: &Deps{
+		Deps: Deps{
 			EnvironmentLoader: func(ctx context.Context, dom domain.Domain, envKey string, opts ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
 				return fdeployment.Environment{Name: envKey}, nil
 			},

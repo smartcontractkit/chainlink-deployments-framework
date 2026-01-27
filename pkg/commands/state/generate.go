@@ -22,7 +22,7 @@ func newGenerateCmd(cfg Config) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "generate",
-		Short: "Generate latest state. Nodes must be present in the `nodes.json` to be included.",
+		Short: "Generate latest state from the environment.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runGenerate(cmd, cfg, persist, outputPath, prevStatePath)
 		},
@@ -67,11 +67,11 @@ func runGenerate(cmd *cobra.Command, cfg Config, persist bool, outputPath, _ str
 		return fmt.Errorf("failed to load previous state: %w", err)
 	}
 
-	// Generate the new state using the provided ViewState function
 	if cfg.ViewState == nil {
 		return errors.New("ViewState function is required but not provided")
 	}
 
+	// Generate the new state using the provided ViewState function
 	state, err := cfg.ViewState(env, prevState)
 	if err != nil {
 		return fmt.Errorf("unable to snapshot state: %w", err)

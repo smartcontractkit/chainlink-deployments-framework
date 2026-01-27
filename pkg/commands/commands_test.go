@@ -49,24 +49,3 @@ func TestCommands_State(t *testing.T) {
 	require.Len(t, subs, 1)
 	assert.Equal(t, "generate", subs[0].Use)
 }
-
-func TestCommands_MultipleCommands_ShareLogger(t *testing.T) {
-	t.Parallel()
-
-	// This test verifies the key benefit: logger is set once and shared
-	lggr := logger.Nop()
-	cmds := New(lggr)
-	dom := domain.NewDomain("/tmp", "testdomain")
-
-	viewState := func(_ fdeployment.Environment, _ json.Marshaler) (json.Marshaler, error) {
-		return json.RawMessage(`{}`), nil
-	}
-
-	// Create multiple commands - logger is NOT repeated
-	stateCmd1 := cmds.State(dom, StateConfig{ViewState: viewState})
-	stateCmd2 := cmds.State(dom, StateConfig{ViewState: viewState})
-
-	// Both commands should work
-	require.NotNil(t, stateCmd1)
-	require.NotNil(t, stateCmd2)
-}

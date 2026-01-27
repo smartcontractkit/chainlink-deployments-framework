@@ -8,7 +8,6 @@ import (
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
-	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
 // EnvironmentLoaderFunc loads a deployment environment for the given domain and environment key.
@@ -59,6 +58,7 @@ func defaultStateSaver(envdir domain.EnvDir, outputPath string, state json.Marsh
 
 // Deps holds the injectable dependencies for state commands.
 // All fields are optional; nil values will use production defaults.
+// Users can override these to provide custom implementations for their domain.
 type Deps struct {
 	// EnvironmentLoader loads a deployment environment.
 	// Default: environment.Load
@@ -84,31 +84,4 @@ func (d *Deps) applyDefaults() {
 	if d.StateSaver == nil {
 		d.StateSaver = defaultStateSaver
 	}
-}
-
-// Config holds the configuration for state commands.
-type Config struct {
-	// Logger is the logger to use for command output. Required.
-	Logger logger.Logger
-
-	// Domain is the domain context for the commands. Required.
-	Domain domain.Domain
-
-	// ViewState is the function that generates state from an environment.
-	// This is domain-specific and must be provided by the user.
-	ViewState ViewStateFunc
-
-	// Deps holds optional dependencies for testing.
-	// If nil or fields are nil, production defaults are used.
-	Deps *Deps
-}
-
-// deps returns the Deps with defaults applied.
-func (c *Config) deps() *Deps {
-	if c.Deps == nil {
-		c.Deps = &Deps{}
-	}
-	c.Deps.applyDefaults()
-
-	return c.Deps
 }

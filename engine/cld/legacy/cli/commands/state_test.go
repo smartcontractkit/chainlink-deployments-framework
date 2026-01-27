@@ -41,9 +41,10 @@ func TestNewStateGenerateCmd_Metadata(t *testing.T) {
 	root := c.NewStateCmds(dom, cfg)
 
 	// Find generate subcommand
-	var cmd *struct{}
+	var found bool
 	for _, sub := range root.Commands() {
 		if sub.Use == "generate" {
+			found = true
 			require.Contains(t, sub.Short, "Generate latest state")
 
 			// local flags
@@ -62,12 +63,10 @@ func TestNewStateGenerateCmd_Metadata(t *testing.T) {
 			require.Equal(t, "s", s.Shorthand)
 			require.Empty(t, s.Value.String())
 
-			return
+			break
 		}
 	}
-	if cmd == nil {
-		t.Fatal("generate subcommand not found")
-	}
+	require.True(t, found, "generate subcommand not found")
 }
 
 func TestStateGenerate_MissingEnvFails(t *testing.T) {
@@ -82,6 +81,5 @@ func TestStateGenerate_MissingEnvFails(t *testing.T) {
 	root.SetArgs([]string{"generate"})
 	err := root.Execute()
 
-	require.Error(t, err)
-	require.Contains(t, err.Error(), `required flag(s) "environment" not set`)
+	require.ErrorContains(t, err, `required flag(s) "environment" not set`)
 }
