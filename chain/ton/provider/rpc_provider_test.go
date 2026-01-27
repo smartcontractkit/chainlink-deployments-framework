@@ -3,9 +3,10 @@ package provider
 import (
 	"testing"
 
-	tonchain "github.com/smartcontractkit/chainlink-deployments-framework/chain/ton"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	tonchain "github.com/smartcontractkit/chainlink-deployments-framework/chain/ton"
 )
 
 func Test_RPCChainProviderConfig_validate(t *testing.T) {
