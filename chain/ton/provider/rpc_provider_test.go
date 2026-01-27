@@ -281,8 +281,6 @@ func Test_buildChain(t *testing.T) {
 	assert.Nil(t, chain.Client)
 	assert.Equal(t, testWallet, chain.Wallet)
 	assert.Equal(t, testWallet.WalletAddress(), chain.WalletAddress)
-
-	assert.Equal(t, defaultTxTONAmount, chain.Amount.String())
 }
 
 func Test_createWallet(t *testing.T) {

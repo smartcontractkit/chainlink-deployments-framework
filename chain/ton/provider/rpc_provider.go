@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/xssnick/tonutils-go/liteclient"
-	"github.com/xssnick/tonutils-go/tlb"
 	tonlib "github.com/xssnick/tonutils-go/ton"
 	"github.com/xssnick/tonutils-go/ton/wallet"
 
@@ -179,7 +178,7 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 	return *p.chain, nil
 }
 
-// buildChain creates a ton.Chain with the given parameters and default amount.
+// buildChain creates a ton.Chain with the given parameters.
 func buildChain(selector uint64, api *tonlib.APIClient, tonWallet *wallet.Wallet, httpURL string) *ton.Chain {
 	return &ton.Chain{
 		ChainMetadata: ton.ChainMetadata{
@@ -189,7 +188,6 @@ func buildChain(selector uint64, api *tonlib.APIClient, tonWallet *wallet.Wallet
 		Wallet:        tonWallet,
 		WalletAddress: tonWallet.WalletAddress(),
 		URL:           httpURL,
-		Amount:        tlb.MustFromTON(defaultTxTONAmount),
 	}
 }
 

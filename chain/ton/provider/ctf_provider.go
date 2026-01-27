@@ -13,7 +13,6 @@ import (
 	"github.com/avast/retry-go/v4"
 	"github.com/testcontainers/testcontainers-go"
 
-	"github.com/xssnick/tonutils-go/tlb"
 	"github.com/xssnick/tonutils-go/ton"
 	"github.com/xssnick/tonutils-go/ton/wallet"
 
@@ -33,9 +32,6 @@ const (
 
 	// supportedTONImageRepository is the only supported Docker image repository for TON localnet.
 	supportedTONImageRepository = "ghcr.io/neodix42/mylocalton-docker"
-
-	// defaultTxTONAmount is the default amount of TON to use for transactions.
-	defaultTxTONAmount = "0.25"
 )
 
 // CTFChainProviderConfig holds the configuration to initialize the CTFChainProvider.
@@ -134,7 +130,6 @@ func (p *CTFChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 		Wallet:        tonWallet,
 		WalletAddress: tonWallet.WalletAddress(),
 		URL:           url,
-		Amount:        tlb.MustFromTON(defaultTxTONAmount), // default amount for transactions
 	}
 
 	return *p.chain, nil

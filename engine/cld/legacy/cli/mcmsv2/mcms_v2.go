@@ -32,6 +32,7 @@ import (
 	"github.com/smartcontractkit/mcms/types"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"github.com/xssnick/tonutils-go/tlb"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
@@ -57,6 +58,11 @@ const (
 	indexFlag               = "index"
 	forkFlag                = "fork"
 	defaultProposalValidity = 72 * time.Hour
+
+	// defaultTONExecutorAmount is the default amount of TON for MCMS/Timelock executor transactions.
+	// This is a static estimate that should be sufficient for most operations.
+	// TODO: Replace with gas estimator component when implemented. NONEVM-3482
+	defaultTONExecutorAmount = "0.1"
 )
 
 const mcmsv2DeprecatedWarning = `
@@ -1493,7 +1499,7 @@ func getExecutorWithChainOverride(cfg *cfgv2, chainSelector types.ChainSelector)
 			Encoder: encoder,
 			Client:  c.Client,
 			Wallet:  c.Wallet,
-			Amount:  c.Amount,
+			Amount:  tlb.MustFromTON(defaultTONExecutorAmount),
 		}
 
 		return ton.NewExecutor(opts)
@@ -1551,7 +1557,7 @@ func getTimelockExecutorWithChainOverride(cfg *cfgv2, chainSelector types.ChainS
 		opts := ton.TimelockExecutorOpts{
 			Client: c.Client,
 			Wallet: c.Wallet,
-			Amount: c.Amount,
+			Amount: tlb.MustFromTON(defaultTONExecutorAmount),
 		}
 
 		return ton.NewTimelockExecutor(opts)

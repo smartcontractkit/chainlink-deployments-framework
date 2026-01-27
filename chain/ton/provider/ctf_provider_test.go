@@ -90,7 +90,6 @@ func Test_CTFChainProvider_Initialize(t *testing.T) {
 				assert.NotEmpty(t, gotChain.Client)
 				assert.NotEmpty(t, gotChain.Wallet)
 				require.False(t, gotChain.WalletAddress.IsAddrNone())
-				require.Equal(t, defaultTxTONAmount, gotChain.Amount.String())
 			}
 		})
 	}
