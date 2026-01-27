@@ -97,7 +97,7 @@ func GetContractCreationTx(ctx context.Context, endpoint string, addressStr stri
 	}
 	// If API call failed due to reasons other than action unsupported, there is no fallback.
 	if !strings.Contains(errMsg, "invalid Action name") {
-		return "", err
+		return "", fmt.Errorf("failed to get contract creation tx: %s", errMsg)
 	}
 
 	return GetContractCreationTxFallback(ctx, endpoint, addressStr, apiKey)
