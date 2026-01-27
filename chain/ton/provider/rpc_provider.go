@@ -173,22 +173,17 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 		return nil, err
 	}
 
-	p.chain = buildChain(p.selector, api, tonWallet, p.config.HTTPURL)
-
-	return *p.chain, nil
-}
-
-// buildChain creates a ton.Chain with the given parameters.
-func buildChain(selector uint64, api *tonlib.APIClient, tonWallet *wallet.Wallet, httpURL string) *ton.Chain {
-	return &ton.Chain{
+	p.chain = &ton.Chain{
 		ChainMetadata: ton.ChainMetadata{
-			Selector: selector,
+			Selector: p.selector,
 		},
 		Client:        api,
 		Wallet:        tonWallet,
 		WalletAddress: tonWallet.WalletAddress(),
-		URL:           httpURL,
+		URL:           p.config.HTTPURL,
 	}
+
+	return *p.chain, nil
 }
 
 // createLiteclientConnectionPool creates connection pool returning concrete type for production use
