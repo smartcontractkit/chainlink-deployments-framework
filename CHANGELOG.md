@@ -1,5 +1,13 @@
 # chainlink-deployments-framework
 
+## 0.76.1
+
+### Patch Changes
+
+- [#686](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/686) [`1c0ef79`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/1c0ef79a820f2f15f67917073230914cde13a46a) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(network): stop loading all yamls in .config
+
+- [#687](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/687) [`4f51470`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/4f5147096fe6eb583225637a20987ffec0f07820) Thanks [@friedemannf](https://github.com/friedemannf)! - Bump CTF to v0.13.9
+
 ## 0.76.0
 
 ### Minor Changes
