@@ -195,44 +195,36 @@ func TestChainNameOrUnknown(t *testing.T) {
 	require.Equal(t, "<chain unknown>", chainNameOrUnknown(" "))
 }
 
-func TestBuildProposalReport_FamilyErrors(t *testing.T) {
+// TestBuildProposalReport_FamilyErrors tests error handling when analyzers fail during
+// preprocessing (e.g., missing registry, invalid AdditionalFields). These are hard errors
+// that prevent the analyzer from proceeding.
+func TestBuildProposalReport_FamilyBranches(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name        string
-		selector    uint64
-		expectedMsg string
-		wantErr     bool // if true, expect returned error; if false, error is in Method field (TON behavior)
+		name          string
+		selector      uint64
+		expectedError string
 	}{
 		{
-			name:        "EVM_missing_registry",
-			selector:    chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector,
-			expectedMsg: "EVM registry is not available",
-			wantErr:     true,
+			name:          "EVM_missing_registry",
+			selector:      chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector,
+			expectedError: "EVM registry is not available",
 		},
 		{
-			name:        "Solana_missing_registry",
-			selector:    chainsel.SOLANA_DEVNET.Selector,
-			expectedMsg: "failed to analyze solana transaction 0: solana decoder registry is not available",
-			wantErr:     true,
+			name:          "Solana_missing_registry",
+			selector:      chainsel.SOLANA_DEVNET.Selector,
+			expectedError: "failed to analyze solana transaction 0: solana decoder registry is not available",
 		},
 		{
-			name:        "Aptos_unmarshal_additional_fields",
-			selector:    chainsel.APTOS_TESTNET.Selector,
-			expectedMsg: "failed to unmarshal Aptos additional fields: unexpected end of JSON input",
-			wantErr:     true,
+			name:          "Aptos_unmarshal_additional_fields",
+			selector:      chainsel.APTOS_TESTNET.Selector,
+			expectedError: "failed to unmarshal Aptos additional fields: unexpected end of JSON input",
 		},
 		{
-			name:        "Sui_unmarshal_additional_fields",
-			selector:    chainsel.SUI_TESTNET.Selector,
-			expectedMsg: "failed to unmarshal Sui additional fields: unexpected end of JSON input",
-			wantErr:     true,
-		},
-		{
-			name:        "TON_decode_failure",
-			selector:    chainsel.TON_TESTNET.Selector,
-			expectedMsg: "failed to decode TON transaction",
-			wantErr:     false, // TON doesn't unmarshal AdditionalFields, so decode errors go to Method field
+			name:          "Sui_unmarshal_additional_fields",
+			selector:      chainsel.SUI_TESTNET.Selector,
+			expectedError: "failed to unmarshal Sui additional fields: unexpected end of JSON input",
 		},
 	}
 
@@ -256,56 +248,72 @@ func TestBuildProposalReport_FamilyErrors(t *testing.T) {
 				},
 			}
 
-			report, err := BuildProposalReport(t.Context(), ctx, deployment.Environment{}, proposal)
-			if tt.wantErr {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), tt.expectedMsg)
-			} else {
-				require.NoError(t, err)
-				require.Contains(t, report.Operations[0].Calls[0].Method, tt.expectedMsg)
-			}
+			_, err := BuildProposalReport(t.Context(), ctx, deployment.Environment{}, proposal)
+			require.Error(t, err)
+			require.Contains(t, err.Error(), tt.expectedError)
 		})
 	}
 }
 
-func TestBuildTimelockReport_FamilyErrors(t *testing.T) {
+// TestBuildProposalReport_TONDecodeFailure tests TON's graceful decode error handling.
+// Unlike other analyzers, TON doesn't require AdditionalFields for decoding (it only needs
+// tx.Data and tx.ContractType), so it proceeds directly to the decode stage. Decode failures
+// are handled gracefully by placing the error in the Method field rather than returning an error,
+// allowing the proposal to continue processing.
+func TestBuildProposalReport_TONDecodeFailure(t *testing.T) {
+	t.Parallel()
+
+	ctx := &DefaultProposalContext{
+		AddressesByChain: deployment.AddressesByChain{},
+		renderer:         NewMarkdownRenderer(),
+	}
+	proposal := &mcms.Proposal{
+		Operations: []types.Operation{
+			{
+				ChainSelector: types.ChainSelector(chainsel.TON_TESTNET.Selector),
+				Transaction: types.Transaction{
+					To:   "0x1234567890123456789012345678901234567890",
+					Data: []byte{0x01, 0x02, 0x03, 0x04},
+				},
+			},
+		},
+	}
+
+	report, err := BuildProposalReport(t.Context(), ctx, deployment.Environment{}, proposal)
+	require.NoError(t, err)
+	require.Contains(t, report.Operations[0].Calls[0].Method, "failed to decode TON transaction")
+}
+
+// TestBuildTimelockReport_FamilyErrors tests error handling when analyzers fail during
+// preprocessing (e.g., missing registry, invalid AdditionalFields). These are hard errors
+// that prevent the analyzer from proceeding.
+func TestBuildTimelockReport_FamilyBranches(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name        string
-		selector    uint64
-		expectedMsg string
-		wantErr     bool // if true, expect returned error; if false, error is in Method field (TON behavior)
+		name          string
+		selector      uint64
+		expectedError string
 	}{
 		{
-			name:        "EVM_missing_registry",
-			selector:    chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector,
-			expectedMsg: "EVM registry is not available",
-			wantErr:     true,
+			name:          "EVM_missing_registry",
+			selector:      chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector,
+			expectedError: "EVM registry is not available",
 		},
 		{
-			name:        "Solana_missing_registry",
-			selector:    chainsel.SOLANA_DEVNET.Selector,
-			expectedMsg: "failed to analyze solana transaction 0: solana decoder registry is not available",
-			wantErr:     true,
+			name:          "Solana_missing_registry",
+			selector:      chainsel.SOLANA_DEVNET.Selector,
+			expectedError: "failed to analyze solana transaction 0: solana decoder registry is not available",
 		},
 		{
-			name:        "Aptos_unmarshal_additional_fields",
-			selector:    chainsel.APTOS_TESTNET.Selector,
-			expectedMsg: "failed to unmarshal Aptos additional fields: unexpected end of JSON input",
-			wantErr:     true,
+			name:          "Aptos_unmarshal_additional_fields",
+			selector:      chainsel.APTOS_TESTNET.Selector,
+			expectedError: "failed to unmarshal Aptos additional fields: unexpected end of JSON input",
 		},
 		{
-			name:        "Sui_unmarshal_additional_fields",
-			selector:    chainsel.SUI_TESTNET.Selector,
-			expectedMsg: "failed to unmarshal Sui additional fields: unexpected end of JSON input",
-			wantErr:     true,
-		},
-		{
-			name:        "TON_decode_failure",
-			selector:    chainsel.TON_TESTNET.Selector,
-			expectedMsg: "failed to decode TON transaction",
-			wantErr:     false, // TON doesn't unmarshal AdditionalFields, so decode errors go to Method field
+			name:          "Sui_unmarshal_additional_fields",
+			selector:      chainsel.SUI_TESTNET.Selector,
+			expectedError: "failed to unmarshal Sui additional fields: unexpected end of JSON input",
 		},
 	}
 
@@ -329,17 +337,41 @@ func TestBuildTimelockReport_FamilyErrors(t *testing.T) {
 				},
 			}
 
-			report, err := BuildTimelockReport(t.Context(), proposalCtx, deployment.Environment{}, proposal)
-			if tt.wantErr {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), tt.expectedMsg)
-			} else {
-				require.NoError(t, err)
-				for _, op := range report.Batches[0].Operations {
-					require.Contains(t, op.Calls[0].Method, tt.expectedMsg)
-				}
-			}
+			_, err := BuildTimelockReport(t.Context(), proposalCtx, deployment.Environment{}, proposal)
+			require.Error(t, err)
+			require.Contains(t, err.Error(), tt.expectedError)
 		})
+	}
+}
+
+// TestBuildTimelockReport_TONDecodeFailure tests TON's graceful decode error handling.
+// Unlike other analyzers, TON doesn't require AdditionalFields for decoding (it only needs
+// tx.Data and tx.ContractType), so it proceeds directly to the decode stage. Decode failures
+// are handled gracefully by placing the error in the Method field rather than returning an error,
+// allowing the proposal to continue processing.
+func TestBuildTimelockReport_TONDecodeFailure(t *testing.T) {
+	t.Parallel()
+
+	proposalCtx := &DefaultProposalContext{
+		AddressesByChain: deployment.AddressesByChain{},
+		renderer:         NewMarkdownRenderer(),
+	}
+	proposal := &mcms.TimelockProposal{
+		Operations: []types.BatchOperation{
+			{
+				ChainSelector: types.ChainSelector(chainsel.TON_TESTNET.Selector),
+				Transactions: []types.Transaction{
+					{To: "0x1111111111111111111111111111111111111111", Data: []byte{0x01, 0x02, 0x03, 0x04}},
+					{To: "0x2222222222222222222222222222222222222222", Data: []byte{0x05, 0x06, 0x07, 0x08}},
+				},
+			},
+		},
+	}
+
+	report, err := BuildTimelockReport(t.Context(), proposalCtx, deployment.Environment{}, proposal)
+	require.NoError(t, err)
+	for _, op := range report.Batches[0].Operations {
+		require.Contains(t, op.Calls[0].Method, "failed to decode TON transaction")
 	}
 }
 
