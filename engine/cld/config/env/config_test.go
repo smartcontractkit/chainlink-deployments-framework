@@ -115,9 +115,9 @@ var (
 		"JD_GRPC":                           "GRPC2",
 		"OCR_X_SIGNERS":                     "awkward bat",
 		"OCR_X_PROPOSERS":                   "caring deer",
+		"TON_DEPLOYER_KEY":                  "0x123",
+		"TON_WALLET_VERSION":                "V5R1",
 		// These values do not have a legacy equivalent
-		"ONCHAIN_TON_DEPLOYER_KEY":    "0x123",
-		"ONCHAIN_TON_WALLET_VERSION":  "V5R1",
 		"CATALOG_GRPC":                "http://localhost:8080",
 		"CATALOG_AUTH_KMS_KEY_ID":     "123",
 		"CATALOG_AUTH_KMS_KEY_REGION": "us-east-1",
