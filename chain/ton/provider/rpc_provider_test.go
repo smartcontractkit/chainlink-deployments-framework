@@ -89,6 +89,22 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 	assert.Equal(t, existingChain.Selector, gotChain.Selector)
 }
 
+func Test_RPCChainProvider_Initialize_InvalidConfig(t *testing.T) {
+	t.Parallel()
+
+	p := &RPCChainProvider{
+		selector: 123,
+		config: RPCChainProviderConfig{
+			HTTPURL:           "", // invalid - missing URL
+			DeployerSignerGen: PrivateKeyRandom(),
+		},
+	}
+
+	_, err := p.Initialize(t.Context())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to validate provider config")
+}
+
 func Test_RPCChainProvider_Name(t *testing.T) {
 	t.Parallel()
 
