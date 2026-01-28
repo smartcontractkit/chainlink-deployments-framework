@@ -1,5 +1,15 @@
 # chainlink-deployments-framework
 
+## 0.77.0
+
+### Minor Changes
+
+- [#683](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/683) [`324fe82`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/324fe82d8a9a21b289801ee4bf5d83a7718a8d55) Thanks [@bytesizedroll](https://github.com/bytesizedroll)! - Add top-level address-book and datastore CLI commands
+
+### Patch Changes
+
+- [#693](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/693) [`8bd9ada`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/8bd9ada1b84f30e3443acc8a2a80b0cde9bf393c) Thanks [@bytesizedroll](https://github.com/bytesizedroll)! - Add legacy env var support for TON
+
 ## 0.76.1
 
 ### Patch Changes
