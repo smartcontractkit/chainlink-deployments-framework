@@ -26,6 +26,10 @@ var _ BlockChain = ton.Chain{}
 var _ BlockChain = tron.Chain{}
 var _ BlockChain = canton.Chain{}
 
+// Compile-time checks that both BlockChains and LazyBlockChains implement BlockChainCollection
+var _ BlockChainCollection = BlockChains{}
+var _ BlockChainCollection = (*LazyBlockChains)(nil)
+
 // BlockChain is an interface that represents a chain.
 // A chain can be an EVM chain, Solana chain Aptos chain or others.
 type BlockChain interface {
@@ -35,6 +39,22 @@ type BlockChain interface {
 	Name() string
 	ChainSelector() uint64
 	Family() string
+}
+
+// BlockChainCollection defines the common interface for accessing blockchain instances.
+// Both BlockChains and LazyBlockChains implement this interface.
+type BlockChainCollection interface {
+	GetBySelector(selector uint64) (BlockChain, error)
+	Exists(selector uint64) bool
+	ExistsN(selectors ...uint64) bool
+	All() iter.Seq2[uint64, BlockChain]
+	EVMChains() map[uint64]evm.Chain
+	SolanaChains() map[uint64]solana.Chain
+	AptosChains() map[uint64]aptos.Chain
+	SuiChains() map[uint64]sui.Chain
+	TonChains() map[uint64]ton.Chain
+	TronChains() map[uint64]tron.Chain
+	ListChainSelectors(options ...ChainSelectorsOption) []uint64
 }
 
 // BlockChains represents a collection of chains.

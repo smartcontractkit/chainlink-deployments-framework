@@ -340,7 +340,7 @@ func getBlockchainsForProposal(
 			continue
 		}
 
-		b, err := env.BlockChains.GetBySelector(uint64(selector))
+		b, err := env.Chains().GetBySelector(uint64(selector))
 		if err != nil {
 			return nil, fmt.Errorf(
 				"blockchain not found for chain selector %d: ensure the chain is configured in the provided environment: %w",
@@ -368,7 +368,7 @@ func getBlockchainsForTimelockProposal(
 			continue
 		}
 
-		b, err := env.BlockChains.GetBySelector(uint64(selector))
+		b, err := env.Chains().GetBySelector(uint64(selector))
 		if err != nil {
 			return nil, fmt.Errorf(
 				"blockchain not found for chain selector %d: ensure the chain is configured in the provided environment: %w",

@@ -353,7 +353,7 @@ func Test_timelockExecuteOptions(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = os.RemoveAll("domains") })
 
-	chain := slices.Collect(maps.Values(envp.BlockChains.EVMChains()))[0]
+	chain := slices.Collect(maps.Values(envp.Chains().EVMChains()))[0]
 	timelockAddress, _, env := deployTimelockAndCallProxy(t, *envp, chain, nil, nil, nil)
 
 	errorContains := func(msg string) func(t *testing.T, opts []mcms.Option, err error) {
@@ -400,7 +400,7 @@ func Test_timelockExecuteOptions(t *testing.T) {
 			cfg: &cfgv2{
 				chainSelector: chain.Selector,
 				env:           env,
-				blockchains:   env.BlockChains,
+				blockchains:   env.Chains(),
 				timelockProposal: &mcms.TimelockProposal{
 					TimelockAddresses: map[types.ChainSelector]string{
 						types.ChainSelector(chain.Selector): timelockAddress,
@@ -417,7 +417,7 @@ func Test_timelockExecuteOptions(t *testing.T) {
 			name: "CallProxy option added when addresses is in AddressBook",
 			cfg: &cfgv2{
 				chainSelector: chain.Selector,
-				blockchains:   env.BlockChains,
+				blockchains:   env.Chains(),
 				env: func() cldf.Environment {
 					modifiedEnv := env
 					modifiedEnv.DataStore = datastore.NewMemoryDataStore().Seal()
@@ -441,7 +441,7 @@ func Test_timelockExecuteOptions(t *testing.T) {
 			cfg: &cfgv2{
 				chainSelector: chain.Selector,
 				env:           env,
-				blockchains:   env.BlockChains,
+				blockchains:   env.Chains(),
 				timelockProposal: &mcms.TimelockProposal{
 					TimelockAddresses: map[types.ChainSelector]string{
 						types.ChainSelector(1): timelockAddress,
@@ -454,7 +454,7 @@ func Test_timelockExecuteOptions(t *testing.T) {
 			name: "failure: address not found in DataStore or AddressBook",
 			cfg: &cfgv2{
 				chainSelector: chain.Selector,
-				blockchains:   env.BlockChains,
+				blockchains:   env.Chains(),
 				env: func() cldf.Environment {
 					modifiedEnv := env
 					modifiedEnv.DataStore = datastore.NewMemoryDataStore().Seal()
@@ -494,7 +494,7 @@ func Test_setRootCommand(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = os.RemoveAll("domains") })
 
-	chain := slices.Collect(maps.Values(env.BlockChains.EVMChains()))[0]
+	chain := slices.Collect(maps.Values(env.Chains().EVMChains()))[0]
 	inspector := mcmsevmsdk.NewInspector(chain.Client)
 
 	privateKey, err := crypto.HexToECDSA("ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80")
@@ -516,7 +516,7 @@ func Test_setRootCommand(t *testing.T) {
 				chainSelector: chain.Selector,
 				envStr:        env.Name,
 				env:           *env,
-				blockchains:   env.BlockChains,
+				blockchains:   env.Chains(),
 			},
 			setup: func(t *testing.T, cfg *cfgv2) string {
 				t.Helper()
@@ -545,7 +545,7 @@ func Test_setRootCommand(t *testing.T) {
 				chainSelector: chain.Selector,
 				envStr:        env.Name,
 				env:           *env,
-				blockchains:   env.BlockChains,
+				blockchains:   env.Chains(),
 			},
 			setup: func(t *testing.T, cfg *cfgv2) string {
 				t.Helper()
@@ -602,7 +602,7 @@ func Test_executeChainCommand(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = os.RemoveAll("domains") })
 
-	chain := slices.Collect(maps.Values(env.BlockChains.EVMChains()))[0]
+	chain := slices.Collect(maps.Values(env.Chains().EVMChains()))[0]
 	inspector := mcmsevmsdk.NewInspector(chain.Client)
 
 	privateKey, err := crypto.HexToECDSA("ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80")
@@ -624,7 +624,7 @@ func Test_executeChainCommand(t *testing.T) {
 				chainSelector: chain.Selector,
 				envStr:        env.Name,
 				env:           *env,
-				blockchains:   env.BlockChains,
+				blockchains:   env.Chains(),
 			},
 			setup: func(t *testing.T, cfg *cfgv2) string {
 				t.Helper()
@@ -654,7 +654,7 @@ func Test_executeChainCommand(t *testing.T) {
 				chainSelector: chain.Selector,
 				envStr:        env.Name,
 				env:           *env,
-				blockchains:   env.BlockChains,
+				blockchains:   env.Chains(),
 			},
 			setup: func(t *testing.T, cfg *cfgv2) string {
 				t.Helper()
