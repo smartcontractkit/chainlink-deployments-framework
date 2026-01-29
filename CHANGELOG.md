@@ -1,5 +1,24 @@
 # chainlink-deployments-framework
 
+## 0.78.0
+
+### Minor Changes
+
+- [#695](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/695) [`36b8a3d`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/36b8a3de5b4718fd9239c8b550c148b793c1a200) Thanks [@jkongie](https://github.com/jkongie)! - Adds methods to determine the network type of a Chain
+
+  - `chain.NetworkType()` - Returns the network type determined by delegating to the `chain-selectors` package
+  - `chain.IsNetworkType(chainsel.NetworkTypeMainnet)` - Returns a boolean if the network type matches
+
+### Patch Changes
+
+- [#694](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/694) [`b00e038`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/b00e038c1f196308b7df363427ac93efe2ec5c54) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(engine/test): support multiple mcms deployments
+
+  Fix MCMS test helpers to support multiple deployments on same chain
+
+  This resolves an issue where MCMS test helpers failed when multiple MCMS
+  instances were deployed on the same chain, causing "multiple CallProxy
+  addresses found in datastore" errors.
+
 ## 0.77.0
 
 ### Minor Changes
