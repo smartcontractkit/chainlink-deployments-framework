@@ -1,5 +1,17 @@
 # chainlink-deployments-framework
 
+## 0.77.1
+
+### Patch Changes
+
+- [#694](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/694) [`b00e038`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/b00e038c1f196308b7df363427ac93efe2ec5c54) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(engine/test): support multiple mcms deployments
+
+  Fix MCMS test helpers to support multiple deployments on same chain
+
+  This resolves an issue where MCMS test helpers failed when multiple MCMS
+  instances were deployed on the same chain, causing "multiple CallProxy
+  addresses found in datastore" errors.
+
 ## 0.77.0
 
 ### Minor Changes
