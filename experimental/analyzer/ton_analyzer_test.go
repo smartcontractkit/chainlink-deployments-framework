@@ -212,7 +212,7 @@ func (s *testTONSetup) makeGrantRoleTx(t *testing.T, queryID uint64) types.Trans
 func (s *testTONSetup) expectedGrantRoleCall(queryID uint64) *DecodedCall {
 	return &DecodedCall{
 		Address: s.targetAddr.String(),
-		Method:  "com.chainlink.ton.lib.access.RBAC::GrantRole(0x0)",
+		Method:  "com.chainlink.ton.lib.access.RBAC::GrantRole(0x95cd540f)",
 		Inputs: []NamedField{
 			{Name: "QueryID", Value: SimpleField{Value: bigIntStr(queryID)}},
 			{Name: "Role", Value: SimpleField{Value: s.exampleRoleBig.String()}},
