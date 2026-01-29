@@ -10,11 +10,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-resty/resty/v2"
-
 	"github.com/avast/retry-go/v4"
 	"github.com/block-vision/sui-go-sdk/models"
 	sui_sdk "github.com/block-vision/sui-go-sdk/sui"
+	"github.com/go-resty/resty/v2"
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
