@@ -7,6 +7,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/zksync-sdk/zksync2-go/accounts"
 	"github.com/zksync-sdk/zksync2-go/clients"
 
@@ -73,4 +74,14 @@ func (c Chain) Name() string {
 // Family returns the family of the chain
 func (c Chain) Family() string {
 	return chaincommon.ChainMetadata{Selector: c.Selector}.Family()
+}
+
+// NetworkType returns the type of network the chain is on (e.g. mainnet, testnet)
+func (c Chain) NetworkType() (chainsel.NetworkType, error) {
+	return chaincommon.ChainMetadata{Selector: c.Selector}.NetworkType()
+}
+
+// IsNetworkType checks if the chain is on the given network type
+func (c Chain) IsNetworkType(networkType chainsel.NetworkType) bool {
+	return chaincommon.ChainMetadata{Selector: c.Selector}.IsNetworkType(networkType)
 }
