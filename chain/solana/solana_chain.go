@@ -14,12 +14,12 @@ import (
 
 	sollib "github.com/gagliardetto/solana-go"
 	solrpc "github.com/gagliardetto/solana-go/rpc"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 	solCommonUtil "github.com/smartcontractkit/chainlink-ccip/chains/solana/utils/common"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
-
-	"github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/common"
+	chaincommon "github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/common"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/solana/provider/rpcclient"
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
 const (
@@ -197,15 +197,25 @@ func (c Chain) ChainSelector() uint64 {
 
 // String returns chain name and selector "<name> (<selector>)"
 func (c Chain) String() string {
-	return common.ChainMetadata{Selector: c.Selector}.String()
+	return chaincommon.ChainMetadata{Selector: c.Selector}.String()
 }
 
 // Name returns the name of the chain
 func (c Chain) Name() string {
-	return common.ChainMetadata{Selector: c.Selector}.Name()
+	return chaincommon.ChainMetadata{Selector: c.Selector}.Name()
 }
 
 // Family returns the family of the chain
 func (c Chain) Family() string {
-	return common.ChainMetadata{Selector: c.Selector}.Family()
+	return chaincommon.ChainMetadata{Selector: c.Selector}.Family()
+}
+
+// NetworkType returns the type of network the chain is on (e.g. mainnet, testnet)
+func (c Chain) NetworkType() (chainsel.NetworkType, error) {
+	return chaincommon.ChainMetadata{Selector: c.Selector}.NetworkType()
+}
+
+// IsNetworkType checks if the chain is on the given network type
+func (c Chain) IsNetworkType(networkType chainsel.NetworkType) bool {
+	return chaincommon.ChainMetadata{Selector: c.Selector}.IsNetworkType(networkType)
 }

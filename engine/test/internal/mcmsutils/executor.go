@@ -221,7 +221,13 @@ func (e *Executor) ExecuteTimelock(ctx context.Context, timelockProposal *mcmsli
 		// Don't love that we are putting chain specific logic here.
 		if b.Family() == chainselectors.FamilyEVM {
 			var proxyAddr string
-			proxyAddr, err = findCallProxyAddress(e.env.DataStore.Addresses(), uint64(op.ChainSelector))
+			timelockAddress, ok := timelockProposal.TimelockAddresses[op.ChainSelector]
+			if !ok {
+				return fmt.Errorf(
+					"timelock address not found in proposal for chain selector %d", op.ChainSelector,
+				)
+			}
+			proxyAddr, err = findCallProxyAddressForTimelock(e.env.DataStore.Addresses(), uint64(op.ChainSelector), timelockAddress)
 			if err != nil {
 				return fmt.Errorf(
 					"ensure CallProxy is deployed and configured in datastore: %w", err,
@@ -275,23 +281,74 @@ func (e *Executor) ExecuteTimelock(ctx context.Context, timelockProposal *mcmsli
 	return nil
 }
 
-// findCallProxyAddress retrieves the CallProxy contract address for a given chain selector.
-// It looks up the address in the datastore using version 1.0.0 with no qualifier.
-// Currently only supports datastore-based address resolution.
-func findCallProxyAddress(ds datastore.AddressRefStore, selector uint64) (string, error) {
-	ref := ds.Filter(
+// findCallProxyAddressForTimelock retrieves the CallProxy contract address for a given
+// chain selector and timelock address. This function supports multiple MCMS deployments
+// on the same chain by using the timelock address to determine which CallProxy to use.
+//
+// The function works by:
+// 1. Finding the RBACTimelock in the datastore by address to get its qualifier
+// 2. Using that qualifier to find the associated CallProxy (version 1.0.0)
+//
+// This ensures that the correct CallProxy is selected when multiple MCMS instances
+// exist on the same chain, each with different qualifiers.
+func findCallProxyAddressForTimelock(
+	ds datastore.AddressRefStore,
+	selector uint64,
+	timelockAddress string,
+) (string, error) {
+	// First, find the RBACTimelock's qualifier by looking up the timelock address
+	timelockRefs := ds.Filter(
+		datastore.AddressRefByChainSelector(selector),
+		datastore.AddressRefByType("RBACTimelock"),
+		datastore.AddressRefByAddress(timelockAddress),
+	)
+
+	if len(timelockRefs) == 0 {
+		return "", fmt.Errorf(
+			"RBACTimelock address %s not found in datastore for chain selector %d",
+			timelockAddress, selector,
+		)
+	}
+
+	if len(timelockRefs) > 1 {
+		return "", fmt.Errorf(
+			"multiple RBACTimelock entries found for address %s on chain selector %d",
+			timelockAddress, selector,
+		)
+	}
+
+	qualifier := timelockRefs[0].Qualifier
+
+	// Now find the CallProxy with the same qualifier (or any qualifier if empty)
+	// Build filters dynamically - when qualifier is empty, match any CallProxy
+	filters := []datastore.FilterFunc[datastore.AddressRefKey, datastore.AddressRef]{
 		datastore.AddressRefByChainSelector(selector),
 		datastore.AddressRefByType("CallProxy"),
 		datastore.AddressRefByVersion(semver.MustParse("1.0.0")),
-	)
-	if len(ref) == 0 {
-		return "", fmt.Errorf("CallProxy address not found in datastore (chain selector: %d, version: 1.0.0)", selector)
-	}
-	if len(ref) > 1 {
-		return "", fmt.Errorf("multiple CallProxy addresses found in datastore (chain selector: %d, version: 1.0.0)", selector)
 	}
 
-	return ref[0].Address, nil
+	// Only filter by qualifier if it's not empty (empty = no qualifier filter applied, matches all)
+	if qualifier != "" {
+		filters = append(filters, datastore.AddressRefByQualifier(qualifier))
+	}
+
+	callProxyRefs := ds.Filter(filters...)
+
+	if len(callProxyRefs) == 0 {
+		return "", fmt.Errorf(
+			"CallProxy not found for qualifier %q on chain selector %d (version: 1.0.0)",
+			qualifier, selector,
+		)
+	}
+
+	if len(callProxyRefs) > 1 {
+		return "", fmt.Errorf(
+			"multiple CallProxy addresses found for qualifier %q on chain selector %d (version: 1.0.0)",
+			qualifier, selector,
+		)
+	}
+
+	return callProxyRefs[0].Address, nil
 }
 
 // confirmTransaction confirms a transaction on the appropriate blockchain based on its type.
