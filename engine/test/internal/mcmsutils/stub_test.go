@@ -52,6 +52,12 @@ func stubSolanaChain() fchainsolana.Chain {
 	}
 }
 
+const (
+	// Test fixture addresses for stubbed MCMS environment
+	testTimelockAddress  = "0x1111111111111111111111111111111111111111"
+	testCallProxyAddress = "0x1234567890123456789012345678901234567890"
+)
+
 // stubEnvironment creates a stubbed environment with a single EVM chain
 func stubEnvironment() fdeployment.Environment {
 	chain := stubEVMChain()
@@ -59,9 +65,17 @@ func stubEnvironment() fdeployment.Environment {
 	ds := fdatastore.NewMemoryDataStore()
 	ds.Addresses().Add(fdatastore.AddressRef{ //nolint:errcheck // This will not fail in the test
 		ChainSelector: chain.Selector,
-		Address:       "0x1234567890123456789012345678901234567890",
+		Address:       testTimelockAddress,
+		Type:          "RBACTimelock",
+		Version:       semver.MustParse("1.0.0"),
+		Qualifier:     "",
+	})
+	ds.Addresses().Add(fdatastore.AddressRef{ //nolint:errcheck // This will not fail in the test
+		ChainSelector: chain.Selector,
+		Address:       testCallProxyAddress,
 		Type:          "CallProxy",
 		Version:       semver.MustParse("1.0.0"),
+		Qualifier:     "",
 	})
 
 	return fdeployment.Environment{
@@ -83,7 +97,7 @@ func stubMCMSProposal() *mcmslib.Proposal {
 			ChainMetadata: map[mcmstypes.ChainSelector]mcmstypes.ChainMetadata{
 				mcmstypes.ChainSelector(stubEVMChain().Selector): {
 					StartingOpCount: 0,
-					MCMAddress:      "0x0000000000000000000000000000000000000000",
+					MCMAddress:      testTimelockAddress,
 				},
 			},
 		},
@@ -119,13 +133,13 @@ func stubTimelockProposal(
 			ChainMetadata: map[mcmstypes.ChainSelector]mcmstypes.ChainMetadata{
 				selector: {
 					StartingOpCount: 0,
-					MCMAddress:      "0x0000000000000000000000000000000000000000",
+					MCMAddress:      testTimelockAddress,
 				},
 			},
 		},
 		Action: action,
 		TimelockAddresses: map[mcmstypes.ChainSelector]string{
-			selector: "0x0000000000000000000000000000000000000000",
+			selector: testTimelockAddress,
 		},
 		Operations: []mcmstypes.BatchOperation{
 			{

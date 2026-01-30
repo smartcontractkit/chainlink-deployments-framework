@@ -7,6 +7,8 @@ import (
 	"reflect"
 	"slices"
 
+	chainsel "github.com/smartcontractkit/chain-selectors"
+
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/canton"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
@@ -26,15 +28,37 @@ var _ BlockChain = ton.Chain{}
 var _ BlockChain = tron.Chain{}
 var _ BlockChain = canton.Chain{}
 
+// NetworkType represents the type of network, which can either be mainnet or testnet.
+type NetworkType string
+
+var (
+	// NetworkTypeMainnet represents the 'mainnet' network type
+	NetworkTypeMainnet NetworkType = "mainnet"
+
+	// NetworkTypeTestnet represents the 'testnet' network type
+	NetworkTypeTestnet NetworkType = "testnet"
+)
+
 // BlockChain is an interface that represents a chain.
 // A chain can be an EVM chain, Solana chain Aptos chain or others.
 type BlockChain interface {
 	// String returns chain name and selector "<name> (<selector>)"
 	String() string
-	// Name returns the name of the chain
+
+	// Name returns the name of the chain (e.g. Ethereum Mainnet, Solana Mainnet, Aptos Mainnet, etc.)
 	Name() string
+
+	// ChainSelector returns the chain's selector
 	ChainSelector() uint64
+
+	// Family returns the family of the chain (e.g. evm, solana, aptos, etc.)
 	Family() string
+
+	// NetworkType returns the type of network the chain is on (e.g. mainnet, testnet)
+	NetworkType() (chainsel.NetworkType, error)
+
+	// IsNetworkType checks if the chain is on the given network type
+	IsNetworkType(networkType chainsel.NetworkType) bool
 }
 
 // BlockChains represents a collection of chains.

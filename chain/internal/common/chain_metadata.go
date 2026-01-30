@@ -51,3 +51,24 @@ func (c ChainMetadata) Family() string {
 
 	return family
 }
+
+// NetworkType returns the type of network the chain represents.
+func (c ChainMetadata) NetworkType() (chainsel.NetworkType, error) {
+	networkType, err := chainsel.GetNetworkType(c.Selector)
+	if err != nil {
+		return "", err
+	}
+
+	return networkType, nil
+}
+
+// IsNetworkType checks if the chain is on the given network type
+func (c ChainMetadata) IsNetworkType(networkType chainsel.NetworkType) bool {
+	// Get the network type of the chain
+	t, err := c.NetworkType()
+	if err != nil {
+		return false
+	}
+
+	return t == networkType
+}
