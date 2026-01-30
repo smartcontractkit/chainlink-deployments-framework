@@ -2,24 +2,31 @@ package upf
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"math/big"
 	"strings"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/google/go-cmp/cmp"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-ccip/chains/evm/gobindings/generated/v1_6_0/rmn_remote"
 	rmnremotebindings "github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings/v0_1_0/rmn_remote"
 	timelockbindings "github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings/v0_1_0/timelock"
-	"github.com/stretchr/testify/require"
-
-	chainsel "github.com/smartcontractkit/chain-selectors"
+	"github.com/smartcontractkit/chainlink-ton/pkg/bindings/lib/access/rbac"
+	"github.com/smartcontractkit/chainlink-ton/pkg/ton/tlbe"
 	"github.com/smartcontractkit/mcms"
 	mcmssdk "github.com/smartcontractkit/mcms/sdk"
 	mcmsevmsdk "github.com/smartcontractkit/mcms/sdk/evm"
 	mcmssolanasdk "github.com/smartcontractkit/mcms/sdk/solana"
 	mcmssuisdk "github.com/smartcontractkit/mcms/sdk/sui"
+	mcmstonsdk "github.com/smartcontractkit/mcms/sdk/ton"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
+	"github.com/stretchr/testify/require"
+	"github.com/xssnick/tonutils-go/address"
+	"github.com/xssnick/tonutils-go/tlb"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
@@ -111,6 +118,128 @@ func TestUpfConvertTimelockProposal(t *testing.T) {
 	}
 }
 
+func TestUpfConvertTimelockProposalWithSui(t *testing.T) {
+	t.Parallel()
+	ds := datastore.NewMemoryDataStore()
+
+	// ---- Sui: testnet
+	dsAddContract(t, ds, chainsel.SUI_TESTNET.Selector, "0x4e825a4758064df713762e431c3a16b8105857195214469db0d6985b7d70266d", "MCMSUser 1.0.0")
+
+	env := deployment.Environment{
+		DataStore:         ds.Seal(),
+		ExistingAddresses: deployment.NewMemoryAddressBook(),
+	}
+
+	proposalCtx, err := mcmsanalyzer.NewDefaultProposalContext(env)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name             string
+		timelockProposal string
+		signers          map[mcmstypes.ChainSelector][]common.Address
+		assertion        func(*testing.T, string, error)
+	}{
+		{
+			name:             "Sui proposal with valid transaction",
+			timelockProposal: timelockProposalSui,
+			signers: map[mcmstypes.ChainSelector][]common.Address{
+				mcmstypes.ChainSelector(chainsel.SUI_TESTNET.Selector): {
+					common.HexToAddress("0xA5D5B0B844c8f11B61F28AC98BBA84dEA9b80953"),
+				},
+			},
+			assertion: func(t *testing.T, gotUpf string, err error) {
+				t.Helper()
+				require.NoError(t, err)
+				require.Equal(t, upfProposalSui, gotUpf)
+			},
+		},
+		{
+			name:             "Sui proposal with unknown module",
+			timelockProposal: timelockProposalSuiUnknownModule,
+			signers: map[mcmstypes.ChainSelector][]common.Address{
+				mcmstypes.ChainSelector(chainsel.SUI_TESTNET.Selector): {
+					common.HexToAddress("0xA5D5B0B844c8f11B61F28AC98BBA84dEA9b80953"),
+				},
+			},
+			assertion: func(t *testing.T, gotUpf string, err error) {
+				t.Helper()
+				require.NoError(t, err)
+				require.Equal(t, upfProposalSuiUnknownModule, gotUpf)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			timelockProposal, err := mcms.NewTimelockProposal(strings.NewReader(tt.timelockProposal))
+			require.NoError(t, err)
+			mcmProposal := convertTimelockProposal(t.Context(), t, timelockProposal)
+
+			got, err := UpfConvertTimelockProposal(t.Context(), proposalCtx, env, timelockProposal, mcmProposal, tt.signers)
+
+			tt.assertion(t, got, err)
+		})
+	}
+}
+
+func TestUpfConvertTimelockProposalWithTon(t *testing.T) {
+	t.Parallel()
+	ds := datastore.NewMemoryDataStore()
+
+	// ---- TON: testnet
+	dsAddContract(t, ds, chainsel.TON_TESTNET.Selector, "EQADa3W6G0nSiTV4a6euRA42fU9QxSEnb-WeDpcrtWzA2jM8", "MCMS 1.0.0")
+
+	env := deployment.Environment{
+		DataStore:         ds.Seal(),
+		ExistingAddresses: deployment.NewMemoryAddressBook(),
+	}
+
+	proposalCtx, err := mcmsanalyzer.NewDefaultProposalContext(env)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name             string
+		timelockProposal string
+		signers          map[mcmstypes.ChainSelector][]common.Address
+		assertion        func(*testing.T, string, error)
+	}{
+		{
+			name:             "TON proposal with GrantRole transaction",
+			timelockProposal: timelockProposalTON(t),
+			signers: map[mcmstypes.ChainSelector][]common.Address{
+				mcmstypes.ChainSelector(chainsel.TON_TESTNET.Selector): {
+					common.HexToAddress("0xA5D5B0B844c8f11B61F28AC98BBA84dEA9b80953"),
+				},
+			},
+			assertion: func(t *testing.T, gotUpf string, err error) {
+				t.Helper()
+				require.NoError(t, err)
+				// Verify it contains TON-specific content
+				require.Contains(t, gotUpf, "chainFamily: ton")
+				require.Contains(t, gotUpf, "chainName: ton-testnet")
+				require.Contains(t, gotUpf, "msigAddress: EQADa3W6G0nSiTV4a6euRA42fU9QxSEnb-WeDpcrtWzA2jM8")
+				require.Contains(t, gotUpf, "contractType: RBACTimelock")
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			timelockProposal, err := mcms.NewTimelockProposal(strings.NewReader(tt.timelockProposal))
+			require.NoError(t, err)
+			mcmProposal := convertTimelockProposal(t.Context(), t, timelockProposal)
+
+			got, err := UpfConvertTimelockProposal(t.Context(), proposalCtx, env, timelockProposal, mcmProposal, tt.signers)
+
+			tt.assertion(t, got, err)
+		})
+	}
+}
+
 // ----- helpers -----
 
 func convertTimelockProposal(ctx context.Context, t *testing.T, timelockProposal *mcms.TimelockProposal) *mcms.Proposal {
@@ -130,6 +259,8 @@ func convertTimelockProposal(ctx context.Context, t *testing.T, timelockProposal
 			converter, err := mcmssuisdk.NewTimelockConverter()
 			require.NoError(t, err)
 			converters[chain] = converter
+		case chainsel.FamilyTon:
+			converters[chain] = mcmstonsdk.NewTimelockConverter(mcmstonsdk.DefaultSendAmount)
 		default:
 			t.Fatalf("unsupported chain family %s", chainFamily)
 		}
@@ -595,68 +726,144 @@ signers:
   - "0xA5D5B0B844c8f11B61F28AC98BBA84dEA9b80953"
 `
 
-func TestUpfConvertTimelockProposalWithSui(t *testing.T) {
-	t.Parallel()
-	ds := datastore.NewMemoryDataStore()
+// timelockProposalTON is generated using makeTONGrantRoleTx helper
+var timelockProposalTON = func(t *testing.T) string {
+	t.Helper()
+	// Create a GrantRole transaction for the test
+	targetAddr := address.MustParseAddr("EQADa3W6G0nSiTV4a6euRA42fU9QxSEnb-WeDpcrtWzA2jM8")
+	exampleRole := crypto.Keccak256Hash([]byte("EXAMPLE_ROLE"))
+	grantRoleData, _ := tlb.ToCell(rbac.GrantRole{
+		QueryID: 1,
+		Role:    tlbe.NewUint256(new(big.Int).SetBytes(exampleRole[:])),
+		Account: targetAddr,
+	})
 
-	// ---- Sui: testnet
-	dsAddContract(t, ds, chainsel.SUI_TESTNET.Selector, "0x4e825a4758064df713762e431c3a16b8105857195214469db0d6985b7d70266d", "MCMSUser 1.0.0")
+	tx, _ := mcmstonsdk.NewTransaction(
+		targetAddr,
+		grantRoleData.ToBuilder().ToSlice(),
+		big.NewInt(0),
+		"com.chainlink.ton.lib.access.RBAC",
+		[]string{"grantRole"},
+	)
 
-	env := deployment.Environment{
-		DataStore:         ds.Seal(),
-		ExistingAddresses: deployment.NewMemoryAddressBook(),
-	}
-
-	proposalCtx, err := mcmsanalyzer.NewDefaultProposalContext(env)
+	// Marshal the transaction data
+	txData, err := json.Marshal(tx)
 	require.NoError(t, err)
 
+	return fmt.Sprintf(`{
+  "version": "v1",
+  "kind": "TimelockProposal",
+  "validUntil": 1999999999,
+  "signatures": [],
+  "overridePreviousRoot": false,
+  "chainMetadata": {
+    "1399300952838017768": {
+      "startingOpCount": 1,
+      "mcmAddress": "EQADa3W6G0nSiTV4a6euRA42fU9QxSEnb-WeDpcrtWzA2jM8",
+      "additionalFields": null
+    }
+  },
+  "description": "simple TON proposal with GrantRole",
+  "action": "schedule",
+  "delay": "5m0s",
+  "timelockAddresses": {
+    "1399300952838017768": "EQADa3W6G0nSiTV4a6euRA42fU9QxSEnb-WeDpcrtWzA2jM8"
+  },
+  "operations": [
+    {
+      "chainSelector": 1399300952838017768,
+      "transactions": [%s]
+    }
+  ]
+}`, string(txData))
+}
+
+func TestIsTimelockBatchFunction(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
-		name             string
-		timelockProposal string
-		signers          map[mcmstypes.ChainSelector][]common.Address
-		assertion        func(*testing.T, string, error)
+		name         string
+		functionName string
+		want         bool
 	}{
+		// EVM
 		{
-			name:             "Sui proposal with valid transaction",
-			timelockProposal: timelockProposalSui,
-			signers: map[mcmstypes.ChainSelector][]common.Address{
-				mcmstypes.ChainSelector(chainsel.SUI_TESTNET.Selector): {
-					common.HexToAddress("0xA5D5B0B844c8f11B61F28AC98BBA84dEA9b80953"),
-				},
-			},
-			assertion: func(t *testing.T, gotUpf string, err error) {
-				t.Helper()
-				require.NoError(t, err)
-				require.Equal(t, upfProposalSui, gotUpf)
-			},
+			name:         "EVM scheduleBatch",
+			functionName: "function scheduleBatch((address,uint256,bytes)[] calls, bytes32 predecessor, bytes32 salt, uint256 delay) returns()",
+			want:         true,
 		},
 		{
-			name:             "Sui proposal with unknown module",
-			timelockProposal: timelockProposalSuiUnknownModule,
-			signers: map[mcmstypes.ChainSelector][]common.Address{
-				mcmstypes.ChainSelector(chainsel.SUI_TESTNET.Selector): {
-					common.HexToAddress("0xA5D5B0B844c8f11B61F28AC98BBA84dEA9b80953"),
-				},
-			},
-			assertion: func(t *testing.T, gotUpf string, err error) {
-				t.Helper()
-				require.NoError(t, err)
-				require.Equal(t, upfProposalSuiUnknownModule, gotUpf)
-			},
+			name:         "EVM bypasserExecuteBatch",
+			functionName: "function bypasserExecuteBatch((address,uint256,bytes)[] calls) payable returns()",
+			want:         true,
+		},
+		// Solana
+		{
+			name:         "Solana ScheduleBatch",
+			functionName: "ScheduleBatch",
+			want:         true,
+		},
+		{
+			name:         "Solana BypasserExecuteBatch",
+			functionName: "BypasserExecuteBatch",
+			want:         true,
+		},
+		// Sui
+		{
+			name:         "Sui timelock_schedule_batch",
+			functionName: "mcms::timelock_schedule_batch",
+			want:         true,
+		},
+		{
+			name:         "Sui timelock_bypasser_execute_batch",
+			functionName: "mcms::timelock_bypasser_execute_batch",
+			want:         true,
+		},
+		// Aptos
+		{
+			name:         "Aptos timelock_schedule_batch",
+			functionName: "package::module::timelock_schedule_batch",
+			want:         true,
+		},
+		{
+			name:         "Aptos timelock_bypasser_execute_batch",
+			functionName: "package::module::timelock_bypasser_execute_batch",
+			want:         true,
+		},
+		// TON
+		{
+			name:         "TON ScheduleBatch",
+			functionName: "com.chainlink.ton.mcms.RBACTimelock::ScheduleBatch(0x12345678)",
+			want:         true,
+		},
+		{
+			name:         "TON BypasserExecuteBatch",
+			functionName: "com.chainlink.ton.mcms.RBACTimelock::BypasserExecuteBatch(0xabcdef)",
+			want:         true,
+		},
+		// Non-matching
+		{
+			name:         "unrelated function",
+			functionName: "function transfer(address to, uint256 amount) returns(bool)",
+			want:         false,
+		},
+		{
+			name:         "empty string",
+			functionName: "",
+			want:         false,
+		},
+		{
+			name:         "partial match without colon",
+			functionName: "timelock_schedule_batch",
+			want:         false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-
-			timelockProposal, err := mcms.NewTimelockProposal(strings.NewReader(tt.timelockProposal))
-			require.NoError(t, err)
-			mcmProposal := convertTimelockProposal(t.Context(), t, timelockProposal)
-
-			got, err := UpfConvertTimelockProposal(t.Context(), proposalCtx, env, timelockProposal, mcmProposal, tt.signers)
-
-			tt.assertion(t, got, err)
+			got := isTimelockBatchFunction(tt.functionName)
+			require.Equal(t, tt.want, got)
 		})
 	}
 }

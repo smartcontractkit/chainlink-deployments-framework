@@ -22,34 +22,9 @@ func BuildProposalReport(ctx context.Context, proposalContext ProposalContext, e
 		}
 		chainName, _ := GetChainNameBySelector(chainSel)
 
-		var calls []*DecodedCall
-		switch family {
-		case chainsel.FamilyEVM:
-			dec, err := AnalyzeEVMTransactions(ctx, proposalContext, env, chainSel, []types.Transaction{op.Transaction})
-			if err != nil {
-				return nil, err
-			}
-			calls = dec
-		case chainsel.FamilySolana:
-			dec, err := AnalyzeSolanaTransactions(proposalContext, chainSel, []types.Transaction{op.Transaction})
-			if err != nil {
-				return nil, err
-			}
-			calls = dec
-		case chainsel.FamilyAptos:
-			dec, err := AnalyzeAptosTransactions(proposalContext, chainSel, []types.Transaction{op.Transaction})
-			if err != nil {
-				return nil, err
-			}
-			calls = dec
-		case chainsel.FamilySui:
-			dec, err := AnalyzeSuiTransactions(proposalContext, chainSel, []types.Transaction{op.Transaction})
-			if err != nil {
-				return nil, err
-			}
-			calls = dec
-		default:
-			calls = []*DecodedCall{}
+		calls, err := analyzeTransactions(ctx, proposalContext, env, family, chainSel, []types.Transaction{op.Transaction})
+		if err != nil {
+			return nil, err
 		}
 
 		rpt.Operations[i] = OperationReport{
@@ -74,68 +49,22 @@ func BuildTimelockReport(ctx context.Context, proposalCtx ProposalContext, env d
 		}
 		chainName, _ := GetChainNameBySelector(chainSel)
 
+		dec, err := analyzeTransactions(ctx, proposalCtx, env, family, chainSel, batch.Transactions)
+		if err != nil {
+			return nil, err
+		}
+
 		ops := make([]OperationReport, len(batch.Transactions))
-		switch family {
-		case chainsel.FamilyEVM:
-			dec, err := AnalyzeEVMTransactions(ctx, proposalCtx, env, chainSel, batch.Transactions)
-			if err != nil {
-				return nil, err
+		for j := range batch.Transactions {
+			var calls []*DecodedCall
+			if j < len(dec) && dec[j] != nil {
+				calls = []*DecodedCall{dec[j]}
 			}
-			for j := range dec {
-				ops[j] = OperationReport{
-					ChainSelector: chainSel,
-					ChainName:     chainNameOrUnknown(chainName),
-					Family:        family,
-					Calls:         []*DecodedCall{dec[j]},
-				}
-			}
-		case chainsel.FamilySolana:
-			dec, err := AnalyzeSolanaTransactions(proposalCtx, chainSel, batch.Transactions)
-			if err != nil {
-				return nil, err
-			}
-			for j := range dec {
-				ops[j] = OperationReport{
-					ChainSelector: chainSel,
-					ChainName:     chainNameOrUnknown(chainName),
-					Family:        family,
-					Calls:         []*DecodedCall{dec[j]},
-				}
-			}
-		case chainsel.FamilyAptos:
-			dec, err := AnalyzeAptosTransactions(proposalCtx, chainSel, batch.Transactions)
-			if err != nil {
-				return nil, err
-			}
-			for j := range dec {
-				ops[j] = OperationReport{
-					ChainSelector: chainSel,
-					ChainName:     chainNameOrUnknown(chainName),
-					Family:        family,
-					Calls:         []*DecodedCall{dec[j]},
-				}
-			}
-		case chainsel.FamilySui:
-			dec, err := AnalyzeSuiTransactions(proposalCtx, chainSel, batch.Transactions)
-			if err != nil {
-				return nil, err
-			}
-			for j := range dec {
-				ops[j] = OperationReport{
-					ChainSelector: chainSel,
-					ChainName:     chainNameOrUnknown(chainName),
-					Family:        family,
-					Calls:         []*DecodedCall{dec[j]},
-				}
-			}
-		default:
-			for j := range batch.Transactions {
-				ops[j] = OperationReport{
-					ChainSelector: chainSel,
-					ChainName:     chainNameOrUnknown(chainName),
-					Family:        family,
-					Calls:         nil,
-				}
+			ops[j] = OperationReport{
+				ChainSelector: chainSel,
+				ChainName:     chainNameOrUnknown(chainName),
+				Family:        family,
+				Calls:         calls,
 			}
 		}
 
@@ -148,6 +77,24 @@ func BuildTimelockReport(ctx context.Context, proposalCtx ProposalContext, env d
 	}
 
 	return rpt, nil
+}
+
+// analyzeTransactions dispatches to the appropriate chain-family analyzer.
+func analyzeTransactions(ctx context.Context, proposalCtx ProposalContext, env deployment.Environment, family string, chainSel uint64, txs []types.Transaction) ([]*DecodedCall, error) {
+	switch family {
+	case chainsel.FamilyEVM:
+		return AnalyzeEVMTransactions(ctx, proposalCtx, env, chainSel, txs)
+	case chainsel.FamilySolana:
+		return AnalyzeSolanaTransactions(proposalCtx, chainSel, txs)
+	case chainsel.FamilyAptos:
+		return AnalyzeAptosTransactions(proposalCtx, chainSel, txs)
+	case chainsel.FamilySui:
+		return AnalyzeSuiTransactions(proposalCtx, chainSel, txs)
+	case chainsel.FamilyTon:
+		return AnalyzeTONTransactions(proposalCtx, txs)
+	default:
+		return []*DecodedCall{}, nil
+	}
 }
 
 func chainNameOrUnknown(n string) string {

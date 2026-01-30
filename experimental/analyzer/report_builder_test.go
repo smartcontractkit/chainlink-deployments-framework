@@ -195,6 +195,9 @@ func TestChainNameOrUnknown(t *testing.T) {
 	require.Equal(t, "<chain unknown>", chainNameOrUnknown(" "))
 }
 
+// TestBuildProposalReport_FamilyErrors tests error handling when analyzers fail during
+// preprocessing (e.g., missing registry, invalid AdditionalFields). These are hard errors
+// that prevent the analyzer from proceeding.
 func TestBuildProposalReport_FamilyBranches(t *testing.T) {
 	t.Parallel()
 
@@ -252,6 +255,38 @@ func TestBuildProposalReport_FamilyBranches(t *testing.T) {
 	}
 }
 
+// TestBuildProposalReport_TONDecodeFailure tests TON's graceful decode error handling.
+// Unlike other analyzers, TON doesn't require AdditionalFields for decoding (it only needs
+// tx.Data and tx.ContractType), so it proceeds directly to the decode stage. Decode failures
+// are handled gracefully by placing the error in the Method field rather than returning an error,
+// allowing the proposal to continue processing.
+func TestBuildProposalReport_TONDecodeFailure(t *testing.T) {
+	t.Parallel()
+
+	ctx := &DefaultProposalContext{
+		AddressesByChain: deployment.AddressesByChain{},
+		renderer:         NewMarkdownRenderer(),
+	}
+	proposal := &mcms.Proposal{
+		Operations: []types.Operation{
+			{
+				ChainSelector: types.ChainSelector(chainsel.TON_TESTNET.Selector),
+				Transaction: types.Transaction{
+					To:   "0x1234567890123456789012345678901234567890",
+					Data: []byte{0x01, 0x02, 0x03, 0x04},
+				},
+			},
+		},
+	}
+
+	report, err := BuildProposalReport(t.Context(), ctx, deployment.Environment{}, proposal)
+	require.NoError(t, err)
+	require.Contains(t, report.Operations[0].Calls[0].Method, "failed to decode TON transaction")
+}
+
+// TestBuildTimelockReport_FamilyErrors tests error handling when analyzers fail during
+// preprocessing (e.g., missing registry, invalid AdditionalFields). These are hard errors
+// that prevent the analyzer from proceeding.
 func TestBuildTimelockReport_FamilyBranches(t *testing.T) {
 	t.Parallel()
 
@@ -306,6 +341,37 @@ func TestBuildTimelockReport_FamilyBranches(t *testing.T) {
 			require.Error(t, err)
 			require.Contains(t, err.Error(), tt.expectedError)
 		})
+	}
+}
+
+// TestBuildTimelockReport_TONDecodeFailure tests TON's graceful decode error handling.
+// Unlike other analyzers, TON doesn't require AdditionalFields for decoding (it only needs
+// tx.Data and tx.ContractType), so it proceeds directly to the decode stage. Decode failures
+// are handled gracefully by placing the error in the Method field rather than returning an error,
+// allowing the proposal to continue processing.
+func TestBuildTimelockReport_TONDecodeFailure(t *testing.T) {
+	t.Parallel()
+
+	proposalCtx := &DefaultProposalContext{
+		AddressesByChain: deployment.AddressesByChain{},
+		renderer:         NewMarkdownRenderer(),
+	}
+	proposal := &mcms.TimelockProposal{
+		Operations: []types.BatchOperation{
+			{
+				ChainSelector: types.ChainSelector(chainsel.TON_TESTNET.Selector),
+				Transactions: []types.Transaction{
+					{To: "0x1111111111111111111111111111111111111111", Data: []byte{0x01, 0x02, 0x03, 0x04}},
+					{To: "0x2222222222222222222222222222222222222222", Data: []byte{0x05, 0x06, 0x07, 0x08}},
+				},
+			},
+		},
+	}
+
+	report, err := BuildTimelockReport(t.Context(), proposalCtx, deployment.Environment{}, proposal)
+	require.NoError(t, err)
+	for _, op := range report.Batches[0].Operations {
+		require.Contains(t, op.Calls[0].Method, "failed to decode TON transaction")
 	}
 }
 
@@ -372,14 +438,14 @@ func TestBuildProposalReport_DefaultCase(t *testing.T) {
 		renderer:         NewMarkdownRenderer(),
 	}
 
-	// Use a TON chain selector - TON family is not handled in the switch statement
+	// Use a TRON chain selector - TRON family is not handled in the switch statement
 	// so it will trigger the default case
-	tonChainSelector := chainsel.TON_LOCALNET.Selector
+	tronChainSelector := chainsel.TRON_DEVNET.Selector
 
 	proposal := &mcms.Proposal{
 		Operations: []types.Operation{
 			{
-				ChainSelector: types.ChainSelector(tonChainSelector),
+				ChainSelector: types.ChainSelector(tronChainSelector),
 				Transaction: types.Transaction{
 					To:   "0x1234567890123456789012345678901234567890",
 					Data: []byte{0x01, 0x02, 0x03, 0x04},
@@ -395,8 +461,8 @@ func TestBuildProposalReport_DefaultCase(t *testing.T) {
 	require.Len(t, report.Operations, 1)
 
 	operation := report.Operations[0]
-	require.Equal(t, tonChainSelector, operation.ChainSelector)
-	require.Equal(t, "ton-localnet", operation.ChainName) // TON chain has a known name
-	require.Equal(t, "ton", operation.Family)             // TON family
-	require.Empty(t, operation.Calls)                     // Default case sets calls to empty slice
+	require.Equal(t, tronChainSelector, operation.ChainSelector)
+	require.Equal(t, chainsel.TRON_DEVNET.Name, operation.ChainName) // TRON chain has a known name
+	require.Equal(t, chainsel.FamilyTron, operation.Family)          // TRON family
+	require.Empty(t, operation.Calls)                                // Default case sets calls to empty slice
 }
