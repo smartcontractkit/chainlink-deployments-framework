@@ -396,6 +396,15 @@ func Test_timelockExecuteOptions(t *testing.T) {
 			},
 		},
 		{
+			name: "empty options for TON",
+			cfg:  &cfgv2{chainSelector: chainsel.TON_MAINNET.Selector},
+			assert: func(t *testing.T, opts []mcms.Option, err error) {
+				t.Helper()
+				require.NoError(t, err)
+				require.Empty(t, opts)
+			},
+		},
+		{
 			name: "CallProxy option added for EVM when addresses is in DataStore",
 			cfg: &cfgv2{
 				chainSelector: chain.Selector,
