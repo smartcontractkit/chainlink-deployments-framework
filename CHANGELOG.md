@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.79.0
+
+### Minor Changes
+
+- [#629](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/629) [`ff9bb14`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/ff9bb14c5ed31ad86470b7ddb085ab6a3292c5da) Thanks [@huangzhen1997](https://github.com/huangzhen1997)! - Adds TON blockchain analyzer support
+
 ## 0.78.0
 
 ### Minor Changes
