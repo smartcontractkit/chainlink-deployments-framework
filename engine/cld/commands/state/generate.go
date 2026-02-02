@@ -40,6 +40,11 @@ func newGenerateCmd(cfg Config) *cobra.Command {
 // This is separated from the RunE closure to improve testability.
 // Note: prevStatePath is currently unused but kept for future implementation.
 func runGenerate(cmd *cobra.Command, cfg Config, persist bool, outputPath, _ string) error {
+	// Fail fast if ViewState is not provided
+	if cfg.ViewState == nil {
+		return errors.New("ViewState function is required but not provided")
+	}
+
 	deps := cfg.deps()
 
 	// Get environment flag from parent command (persistent flag)
@@ -65,10 +70,6 @@ func runGenerate(cmd *cobra.Command, cfg Config, persist bool, outputPath, _ str
 	prevState, err := deps.StateLoader(envdir)
 	if err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("failed to load previous state: %w", err)
-	}
-
-	if cfg.ViewState == nil {
-		return errors.New("ViewState function is required but not provided")
 	}
 
 	// Generate the new state using the provided ViewState function
