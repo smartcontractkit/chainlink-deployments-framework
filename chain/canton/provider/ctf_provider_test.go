@@ -72,7 +72,7 @@ func Test_CTFChainProvider_Initialize(t *testing.T) {
 			name:         "valid initialization",
 			giveSelector: chainsel.CANTON_LOCALNET.Selector,
 			giveConfig: CTFChainProviderConfig{
-				NumberOfValidators: 5,
+				NumberOfValidators: 1,
 				Once:               testutils.DefaultNetworkOnce,
 			},
 		},
