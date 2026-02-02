@@ -13,21 +13,21 @@
 //
 // 2. Via direct package imports (for advanced DI/testing):
 //
-//	import "github.com/smartcontractkit/chainlink-deployments-framework/pkg/commands/state"
+//	import "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/state"
 //
 //	app.AddCommand(state.NewCommand(state.Config{
 //	    Logger:    lggr,
 //	    Domain:    domain,
 //	    ViewState: myViewState,
-//	    Deps:      &state.Deps{...},  // inject mocks for testing
+//	    Deps:      state.Deps{...},  // inject mocks for testing
 //	}))
 package commands
 
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/state"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
-	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/commands/state"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
