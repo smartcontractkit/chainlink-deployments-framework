@@ -379,11 +379,11 @@ func confirmTransaction(ctx context.Context, blockchain fchain.BlockChain, tx mc
 			return fmt.Errorf("failed to confirm Aptos transaction %s on chain %s: %w", aptosTx.Hash, chain.Name(), err)
 		}
 	case fchainton.Chain:
-		_tx, ok := tx.RawData.(*tlb.Transaction)
+		tonTX, ok := tx.RawData.(*tlb.Transaction)
 		if !ok {
 			return fmt.Errorf("invalid transaction raw data type: %T", tx.RawData)
 		}
-		err := chain.Confirm(ctx, _tx)
+		err := chain.Confirm(ctx, tonTX)
 		if err != nil {
 			return fmt.Errorf("failed to confirm TON transaction %s on chain %s: %w", tx.Hash, chain.Name(), err)
 		}

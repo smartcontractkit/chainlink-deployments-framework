@@ -1667,18 +1667,20 @@ func confirmTransaction(ctx context.Context, lggr logger.Logger, tx types.Transa
 			return fmt.Errorf("failed to confirm transaction %s: %w", tx.Hash, err)
 		}
 		lggr.Infof("Transaction %s confirmed", tx.Hash)
+
 		return nil
 	case chainsel.FamilyTon:
 		chain := cfg.blockchains.TonChains()[cfg.chainSelector]
-		_tx, ok := tx.RawData.(*tlb.Transaction)
+		tonTx, ok := tx.RawData.(*tlb.Transaction)
 		if !ok {
 			return fmt.Errorf("invalid transaction raw data type: %T", tx.RawData)
 		}
-		err := chain.Confirm(ctx, _tx)
+		err := chain.Confirm(ctx, tonTx)
 		if err != nil {
 			return fmt.Errorf("failed to confirm transaction %s: %w", tx.Hash, err)
 		}
 		lggr.Infof("Transaction %s confirmed", tx.Hash)
+
 		return nil
 	default:
 		return nil
