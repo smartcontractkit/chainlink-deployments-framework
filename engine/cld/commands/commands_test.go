@@ -37,15 +37,20 @@ func TestCommands_State(t *testing.T) {
 
 	require.NotNil(t, cmd)
 	assert.Equal(t, "state", cmd.Use)
-	assert.Equal(t, "State commands", cmd.Short)
+	assert.NotEmpty(t, cmd.Short)
+	assert.NotEmpty(t, cmd.Long, "state command should have Long description")
 
-	// Verify environment flag is present
+	// Verify NO persistent flags on parent (all flags are local to subcommands)
 	envFlag := cmd.PersistentFlags().Lookup("environment")
-	require.NotNil(t, envFlag)
-	assert.Equal(t, "e", envFlag.Shorthand)
+	assert.Nil(t, envFlag, "environment flag should NOT be persistent")
 
-	// Verify generate subcommand exists
+	// Verify generate subcommand exists with local flags
 	subs := cmd.Commands()
 	require.Len(t, subs, 1)
 	assert.Equal(t, "generate", subs[0].Use)
+
+	// Environment flag should be on generate subcommand (local)
+	genEnvFlag := subs[0].Flags().Lookup("environment")
+	require.NotNil(t, genEnvFlag)
+	assert.Equal(t, "e", genEnvFlag.Shorthand)
 }

@@ -19,17 +19,22 @@ func TestNewStateCmds_Structure(t *testing.T) {
 
 	// root command
 	require.Equal(t, "state", root.Use)
-	require.Equal(t, "State commands", root.Short)
+	require.NotEmpty(t, root.Short)
+	require.NotEmpty(t, root.Long, "state command should have Long description")
 
 	// one subcommand: generate
 	subs := root.Commands()
 	require.Len(t, subs, 1)
 	require.Equal(t, "generate", subs[0].Use)
 
-	// persistent 'environment' flag on root
+	// NO persistent flags on root (all flags are local to subcommands)
 	f := root.PersistentFlags().Lookup("environment")
-	require.NotNil(t, f)
-	require.Equal(t, "e", f.Shorthand)
+	require.Nil(t, f, "environment flag should NOT be persistent")
+
+	// environment flag is local to generate subcommand
+	genEnvFlag := subs[0].Flags().Lookup("environment")
+	require.NotNil(t, genEnvFlag)
+	require.Equal(t, "e", genEnvFlag.Shorthand)
 }
 
 func TestNewStateGenerateCmd_Metadata(t *testing.T) {
@@ -45,7 +50,9 @@ func TestNewStateGenerateCmd_Metadata(t *testing.T) {
 	for _, sub := range root.Commands() {
 		if sub.Use == "generate" {
 			found = true
-			require.Contains(t, sub.Short, "Generate latest state")
+			require.NotEmpty(t, sub.Short)
+			require.NotEmpty(t, sub.Long, "generate should have Long description")
+			require.NotEmpty(t, sub.Example, "generate should have Example")
 
 			// local flags
 			p := sub.Flags().Lookup("persist")
@@ -53,15 +60,28 @@ func TestNewStateGenerateCmd_Metadata(t *testing.T) {
 			require.Equal(t, "p", p.Shorthand)
 			require.Equal(t, "false", p.Value.String())
 
-			o := sub.Flags().Lookup("outputPath")
+			// New flag names
+			o := sub.Flags().Lookup("out")
 			require.NotNil(t, o)
 			require.Equal(t, "o", o.Shorthand)
 			require.Empty(t, o.Value.String())
 
-			s := sub.Flags().Lookup("previousState")
+			s := sub.Flags().Lookup("prev")
 			require.NotNil(t, s)
 			require.Equal(t, "s", s.Shorthand)
 			require.Empty(t, s.Value.String())
+
+			// Deprecated aliases for backwards compatibility
+			oOld := sub.Flags().Lookup("outputPath")
+			require.NotNil(t, oOld, "deprecated --outputPath alias should exist")
+
+			sOld := sub.Flags().Lookup("previousState")
+			require.NotNil(t, sOld, "deprecated --previousState alias should exist")
+
+			// Print flag
+			pr := sub.Flags().Lookup("print")
+			require.NotNil(t, pr)
+			require.Equal(t, "false", pr.Value.String())
 
 			break
 		}

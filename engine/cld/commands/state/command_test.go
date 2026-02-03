@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -38,19 +37,19 @@ func TestNewCommand_Structure(t *testing.T) {
 	cmd := NewCommand(Config{
 		Logger: logger.Nop(),
 		Domain: domain.NewDomain("/tmp", "testdomain"),
-		ViewState: func(env fdeployment.Environment, prev json.Marshaler) (json.Marshaler, error) {
+		ViewState: func(_ fdeployment.Environment, _ json.Marshaler) (json.Marshaler, error) {
 			return &mockState{Data: map[string]any{}}, nil
 		},
 	})
 
 	// Verify root command
 	assert.Equal(t, "state", cmd.Use)
-	assert.Equal(t, "State commands", cmd.Short)
+	assert.Equal(t, stateShort, cmd.Short)
+	assert.NotEmpty(t, cmd.Long, "state command should have a Long description")
 
-	// Verify environment flag is persistent
+	// Verify NO persistent flags on parent (all flags are local to subcommands)
 	envFlag := cmd.PersistentFlags().Lookup("environment")
-	require.NotNil(t, envFlag)
-	assert.Equal(t, "e", envFlag.Shorthand)
+	assert.Nil(t, envFlag, "environment flag should NOT be persistent")
 
 	// Verify subcommands
 	subs := cmd.Commands()
@@ -58,14 +57,14 @@ func TestNewCommand_Structure(t *testing.T) {
 	assert.Equal(t, "generate", subs[0].Use)
 }
 
-// TestNewCommand_GenerateFlags verifies the generate subcommand has correct flags.
+// TestNewCommand_GenerateFlags verifies the generate subcommand has correct local flags.
 func TestNewCommand_GenerateFlags(t *testing.T) {
 	t.Parallel()
 
 	cmd := NewCommand(Config{
 		Logger: logger.Nop(),
 		Domain: domain.NewDomain("/tmp", "testdomain"),
-		ViewState: func(env fdeployment.Environment, prev json.Marshaler) (json.Marshaler, error) {
+		ViewState: func(_ fdeployment.Environment, _ json.Marshaler) (json.Marshaler, error) {
 			return &mockState{Data: map[string]any{}}, nil
 		},
 	})
@@ -75,21 +74,42 @@ func TestNewCommand_GenerateFlags(t *testing.T) {
 	for _, sub := range cmd.Commands() {
 		if sub.Use == "generate" {
 			found = true
-			// Check local flags
+
+			// Environment flag - local to generate (not persistent)
+			e := sub.Flags().Lookup("environment")
+			require.NotNil(t, e, "environment flag should be on generate")
+			assert.Equal(t, "e", e.Shorthand)
+
+			// Persist flag
 			p := sub.Flags().Lookup("persist")
 			require.NotNil(t, p)
 			assert.Equal(t, "p", p.Shorthand)
 			assert.Equal(t, "false", p.Value.String())
 
-			o := sub.Flags().Lookup("outputPath")
+			// Output flag (new: --out, deprecated alias: --outputPath)
+			o := sub.Flags().Lookup("out")
 			require.NotNil(t, o)
 			assert.Equal(t, "o", o.Shorthand)
 			assert.Empty(t, o.Value.String())
 
-			s := sub.Flags().Lookup("previousState")
+			// Deprecated alias should also exist
+			oOld := sub.Flags().Lookup("outputPath")
+			require.NotNil(t, oOld, "deprecated --outputPath alias should exist")
+
+			// Previous state flag (new: --prev, deprecated alias: --previousState)
+			s := sub.Flags().Lookup("prev")
 			require.NotNil(t, s)
 			assert.Equal(t, "s", s.Shorthand)
 			assert.Empty(t, s.Value.String())
+
+			// Deprecated alias should also exist
+			sOld := sub.Flags().Lookup("previousState")
+			require.NotNil(t, sOld, "deprecated --previousState alias should exist")
+
+			// Print flag (new)
+			pr := sub.Flags().Lookup("print")
+			require.NotNil(t, pr)
+			assert.Equal(t, "false", pr.Value.String())
 
 			break
 		}
@@ -104,7 +124,7 @@ func TestGenerate_MissingEnvironmentFlagFails(t *testing.T) {
 	cmd := NewCommand(Config{
 		Logger: logger.Nop(),
 		Domain: domain.NewDomain("/tmp", "testdomain"),
-		ViewState: func(env fdeployment.Environment, prev json.Marshaler) (json.Marshaler, error) {
+		ViewState: func(_ fdeployment.Environment, _ json.Marshaler) (json.Marshaler, error) {
 			return &mockState{Data: map[string]any{}}, nil
 		},
 	})
@@ -129,7 +149,6 @@ func TestGenerate_Success(t *testing.T) {
 		},
 	}
 
-	// Track what was called
 	var environmentLoaderCalled bool
 	var stateLoaderCalled bool
 	var viewStateCalled bool
@@ -137,22 +156,22 @@ func TestGenerate_Success(t *testing.T) {
 	cmd := NewCommand(Config{
 		Logger: logger.Nop(),
 		Domain: domain.NewDomain("/tmp", "testdomain"),
-		ViewState: func(env fdeployment.Environment, prev json.Marshaler) (json.Marshaler, error) {
+		ViewState: func(env fdeployment.Environment, _ json.Marshaler) (json.Marshaler, error) {
 			viewStateCalled = true
 			assert.Equal(t, "staging", env.Name)
 
 			return expectedState, nil
 		},
 		Deps: Deps{
-			EnvironmentLoader: func(ctx context.Context, dom domain.Domain, envKey string, opts ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
+			EnvironmentLoader: func(_ context.Context, _ domain.Domain, envKey string, _ ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
 				environmentLoaderCalled = true
 				assert.Equal(t, "staging", envKey)
 
 				return fdeployment.Environment{Name: envKey}, nil
 			},
-			StateLoader: func(envdir domain.EnvDir) (domain.JSONSerializer, error) {
+			StateLoader: func(_ domain.EnvDir) (domain.JSONSerializer, error) {
 				stateLoaderCalled = true
-				// Return "file not found" to simulate no previous state
+
 				return nil, os.ErrNotExist
 			},
 		},
@@ -170,38 +189,31 @@ func TestGenerate_Success(t *testing.T) {
 	assert.True(t, stateLoaderCalled, "state loader should be called")
 	assert.True(t, viewStateCalled, "view state should be called")
 
-	// Verify output contains expected state data
+	// Without --print flag, state should NOT be in output
 	output := out.String()
-	assert.Contains(t, output, "router")
-	assert.Contains(t, output, "0x1234567890abcdef")
+	assert.NotContains(t, output, "router")
 }
 
-// TestGenerate_WithPreviousState verifies state generation with existing previous state.
-func TestGenerate_WithPreviousState(t *testing.T) {
+// TestGenerate_WithPrint verifies state is printed when --print flag is set.
+func TestGenerate_WithPrint(t *testing.T) {
 	t.Parallel()
 
-	prevState := &mockState{
-		Data: map[string]any{"existing": "data"},
+	expectedState := &mockState{
+		Data: map[string]any{"key": "value"},
 	}
-	newState := &mockState{
-		Data: map[string]any{"existing": "data", "new": "value"},
-	}
-
-	var receivedPrevState json.Marshaler
 
 	cmd := NewCommand(Config{
 		Logger: logger.Nop(),
 		Domain: domain.NewDomain("/tmp", "testdomain"),
-		ViewState: func(env fdeployment.Environment, prev json.Marshaler) (json.Marshaler, error) {
-			receivedPrevState = prev
-			return newState, nil
+		ViewState: func(_ fdeployment.Environment, _ json.Marshaler) (json.Marshaler, error) {
+			return expectedState, nil
 		},
 		Deps: Deps{
-			EnvironmentLoader: func(ctx context.Context, dom domain.Domain, envKey string, opts ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
+			EnvironmentLoader: func(_ context.Context, _ domain.Domain, envKey string, _ ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
 				return fdeployment.Environment{Name: envKey}, nil
 			},
-			StateLoader: func(envdir domain.EnvDir) (domain.JSONSerializer, error) {
-				return prevState, nil
+			StateLoader: func(_ domain.EnvDir) (domain.JSONSerializer, error) {
+				return nil, os.ErrNotExist
 			},
 		},
 	})
@@ -209,15 +221,18 @@ func TestGenerate_WithPreviousState(t *testing.T) {
 	out := new(bytes.Buffer)
 	cmd.SetOut(out)
 	cmd.SetErr(out)
-	cmd.SetArgs([]string{"generate", "-e", "mainnet"})
+	cmd.SetArgs([]string{"generate", "-e", "staging", "--print"})
 
 	err := cmd.Execute()
 
 	require.NoError(t, err)
-	assert.NotNil(t, receivedPrevState, "previous state should be passed to ViewState")
+	// With --print flag, state should be in output
+	output := out.String()
+	assert.Contains(t, output, "key")
+	assert.Contains(t, output, "value")
 }
 
-// TestGenerate_WithPersist verifies state is saved when --persist flag is set.
+// TestGenerate_WithPersist verifies state is saved and path is printed.
 func TestGenerate_WithPersist(t *testing.T) {
 	t.Parallel()
 
@@ -231,17 +246,17 @@ func TestGenerate_WithPersist(t *testing.T) {
 	cmd := NewCommand(Config{
 		Logger: logger.Nop(),
 		Domain: domain.NewDomain("/tmp", "testdomain"),
-		ViewState: func(env fdeployment.Environment, prev json.Marshaler) (json.Marshaler, error) {
+		ViewState: func(_ fdeployment.Environment, _ json.Marshaler) (json.Marshaler, error) {
 			return expectedState, nil
 		},
 		Deps: Deps{
-			EnvironmentLoader: func(ctx context.Context, dom domain.Domain, envKey string, opts ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
+			EnvironmentLoader: func(_ context.Context, _ domain.Domain, envKey string, _ ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
 				return fdeployment.Environment{Name: envKey}, nil
 			},
-			StateLoader: func(envdir domain.EnvDir) (domain.JSONSerializer, error) {
+			StateLoader: func(_ domain.EnvDir) (domain.JSONSerializer, error) {
 				return nil, os.ErrNotExist
 			},
-			StateSaver: func(envdir domain.EnvDir, outputPath string, state json.Marshaler) error {
+			StateSaver: func(_ domain.EnvDir, outputPath string, state json.Marshaler) error {
 				savedState = state
 				savedOutputPath = outputPath
 
@@ -253,13 +268,18 @@ func TestGenerate_WithPersist(t *testing.T) {
 	out := new(bytes.Buffer)
 	cmd.SetOut(out)
 	cmd.SetErr(out)
-	cmd.SetArgs([]string{"generate", "-e", "staging", "--persist"})
+	cmd.SetArgs([]string{"generate", "-e", "staging", "-p"})
 
 	err := cmd.Execute()
 
 	require.NoError(t, err)
 	assert.Equal(t, expectedState, savedState, "state should be saved")
 	assert.Empty(t, savedOutputPath, "default output path should be empty")
+
+	// Should print path, not state content
+	output := out.String()
+	assert.Contains(t, output, "State saved to:")
+	assert.NotContains(t, output, `"key"`) // JSON should not be printed
 }
 
 // TestGenerate_WithCustomOutputPath verifies custom output path is used.
@@ -272,18 +292,19 @@ func TestGenerate_WithCustomOutputPath(t *testing.T) {
 	cmd := NewCommand(Config{
 		Logger: logger.Nop(),
 		Domain: domain.NewDomain("/tmp", "testdomain"),
-		ViewState: func(env fdeployment.Environment, prev json.Marshaler) (json.Marshaler, error) {
+		ViewState: func(_ fdeployment.Environment, _ json.Marshaler) (json.Marshaler, error) {
 			return &mockState{Data: map[string]any{}}, nil
 		},
 		Deps: Deps{
-			EnvironmentLoader: func(ctx context.Context, dom domain.Domain, envKey string, opts ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
+			EnvironmentLoader: func(_ context.Context, _ domain.Domain, envKey string, _ ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
 				return fdeployment.Environment{Name: envKey}, nil
 			},
-			StateLoader: func(envdir domain.EnvDir) (domain.JSONSerializer, error) {
+			StateLoader: func(_ domain.EnvDir) (domain.JSONSerializer, error) {
 				return nil, os.ErrNotExist
 			},
-			StateSaver: func(envdir domain.EnvDir, outputPath string, state json.Marshaler) error {
+			StateSaver: func(_ domain.EnvDir, outputPath string, _ json.Marshaler) error {
 				savedOutputPath = outputPath
+
 				return nil
 			},
 		},
@@ -298,9 +319,13 @@ func TestGenerate_WithCustomOutputPath(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, expectedOutputPath, savedOutputPath, "custom output path should be used")
+
+	// Should print custom path
+	output := out.String()
+	assert.Contains(t, output, expectedOutputPath)
 }
 
-// TestGenerate_EnvironmentLoadError verifies error handling for environment load failures.
+// TestGenerate_EnvironmentLoadError verifies error handling.
 func TestGenerate_EnvironmentLoadError(t *testing.T) {
 	t.Parallel()
 
@@ -333,7 +358,7 @@ func TestGenerate_EnvironmentLoadError(t *testing.T) {
 	assert.Contains(t, err.Error(), expectedError.Error())
 }
 
-// TestGenerate_ViewStateError verifies error handling for ViewState failures.
+// TestGenerate_ViewStateError verifies error handling.
 func TestGenerate_ViewStateError(t *testing.T) {
 	t.Parallel()
 
@@ -342,14 +367,14 @@ func TestGenerate_ViewStateError(t *testing.T) {
 	cmd := NewCommand(Config{
 		Logger: logger.Nop(),
 		Domain: domain.NewDomain("/tmp", "testdomain"),
-		ViewState: func(env fdeployment.Environment, prev json.Marshaler) (json.Marshaler, error) {
+		ViewState: func(_ fdeployment.Environment, _ json.Marshaler) (json.Marshaler, error) {
 			return nil, expectedError
 		},
 		Deps: Deps{
-			EnvironmentLoader: func(ctx context.Context, dom domain.Domain, envKey string, opts ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
+			EnvironmentLoader: func(_ context.Context, _ domain.Domain, envKey string, _ ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
 				return fdeployment.Environment{Name: envKey}, nil
 			},
-			StateLoader: func(envdir domain.EnvDir) (domain.JSONSerializer, error) {
+			StateLoader: func(_ domain.EnvDir) (domain.JSONSerializer, error) {
 				return nil, os.ErrNotExist
 			},
 		},
@@ -367,7 +392,7 @@ func TestGenerate_ViewStateError(t *testing.T) {
 	assert.Contains(t, err.Error(), expectedError.Error())
 }
 
-// TestGenerate_StateSaveError verifies error handling for state save failures.
+// TestGenerate_StateSaveError verifies error handling.
 func TestGenerate_StateSaveError(t *testing.T) {
 	t.Parallel()
 
@@ -376,17 +401,17 @@ func TestGenerate_StateSaveError(t *testing.T) {
 	cmd := NewCommand(Config{
 		Logger: logger.Nop(),
 		Domain: domain.NewDomain("/tmp", "testdomain"),
-		ViewState: func(env fdeployment.Environment, prev json.Marshaler) (json.Marshaler, error) {
+		ViewState: func(_ fdeployment.Environment, _ json.Marshaler) (json.Marshaler, error) {
 			return &mockState{Data: map[string]any{}}, nil
 		},
 		Deps: Deps{
-			EnvironmentLoader: func(ctx context.Context, dom domain.Domain, envKey string, opts ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
+			EnvironmentLoader: func(_ context.Context, _ domain.Domain, envKey string, _ ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
 				return fdeployment.Environment{Name: envKey}, nil
 			},
-			StateLoader: func(envdir domain.EnvDir) (domain.JSONSerializer, error) {
+			StateLoader: func(_ domain.EnvDir) (domain.JSONSerializer, error) {
 				return nil, os.ErrNotExist
 			},
-			StateSaver: func(envdir domain.EnvDir, outputPath string, state json.Marshaler) error {
+			StateSaver: func(_ domain.EnvDir, _ string, _ json.Marshaler) error {
 				return expectedError
 			},
 		},
@@ -395,7 +420,7 @@ func TestGenerate_StateSaveError(t *testing.T) {
 	out := new(bytes.Buffer)
 	cmd.SetOut(out)
 	cmd.SetErr(out)
-	cmd.SetArgs([]string{"generate", "-e", "staging", "--persist"})
+	cmd.SetArgs([]string{"generate", "-e", "staging", "-p"})
 
 	err := cmd.Execute()
 
@@ -411,12 +436,12 @@ func TestGenerate_NilViewStateFails(t *testing.T) {
 	cmd := NewCommand(Config{
 		Logger:    logger.Nop(),
 		Domain:    domain.NewDomain("/tmp", "testdomain"),
-		ViewState: nil, // Not provided
+		ViewState: nil,
 		Deps: Deps{
-			EnvironmentLoader: func(ctx context.Context, dom domain.Domain, envKey string, opts ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
+			EnvironmentLoader: func(_ context.Context, _ domain.Domain, envKey string, _ ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
 				return fdeployment.Environment{Name: envKey}, nil
 			},
-			StateLoader: func(envdir domain.EnvDir) (domain.JSONSerializer, error) {
+			StateLoader: func(_ domain.EnvDir) (domain.JSONSerializer, error) {
 				return nil, os.ErrNotExist
 			},
 		},
@@ -431,100 +456,4 @@ func TestGenerate_NilViewStateFails(t *testing.T) {
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "ViewState function is required but not provided")
-}
-
-// TestGenerate_StateLoadErrorNonNotExist verifies error handling for non-NotExist state load errors.
-func TestGenerate_StateLoadErrorNonNotExist(t *testing.T) {
-	t.Parallel()
-
-	expectedError := errors.New("corrupted state file")
-
-	cmd := NewCommand(Config{
-		Logger: logger.Nop(),
-		Domain: domain.NewDomain("/tmp", "testdomain"),
-		ViewState: func(_ fdeployment.Environment, _ json.Marshaler) (json.Marshaler, error) {
-			t.Fatal("ViewState should not be called on state load error")
-
-			return json.RawMessage(`{}`), nil
-		},
-		Deps: Deps{
-			EnvironmentLoader: func(_ context.Context, _ domain.Domain, envKey string, _ ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
-				return fdeployment.Environment{Name: envKey}, nil
-			},
-			StateLoader: func(_ domain.EnvDir) (domain.JSONSerializer, error) {
-				return nil, expectedError // Non-NotExist error
-			},
-		},
-	})
-
-	out := new(bytes.Buffer)
-	cmd.SetOut(out)
-	cmd.SetErr(out)
-	cmd.SetArgs([]string{"generate", "-e", "staging"})
-
-	err := cmd.Execute()
-
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to load previous state")
-	assert.Contains(t, err.Error(), expectedError.Error())
-}
-
-// TestGenerate_OutputFormat verifies the output format is valid JSON.
-func TestGenerate_OutputFormat(t *testing.T) {
-	t.Parallel()
-
-	expectedState := &mockState{
-		Data: map[string]any{
-			"chain":    "ethereum",
-			"blockNum": 12345,
-		},
-	}
-
-	cmd := NewCommand(Config{
-		Logger: logger.Nop(),
-		Domain: domain.NewDomain("/tmp", "testdomain"),
-		ViewState: func(env fdeployment.Environment, prev json.Marshaler) (json.Marshaler, error) {
-			return expectedState, nil
-		},
-		Deps: Deps{
-			EnvironmentLoader: func(ctx context.Context, dom domain.Domain, envKey string, opts ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
-				return fdeployment.Environment{Name: envKey}, nil
-			},
-			StateLoader: func(envdir domain.EnvDir) (domain.JSONSerializer, error) {
-				return nil, os.ErrNotExist
-			},
-		},
-	})
-
-	out := new(bytes.Buffer)
-	cmd.SetOut(out)
-	cmd.SetErr(out)
-	cmd.SetArgs([]string{"generate", "-e", "staging"})
-
-	err := cmd.Execute()
-	require.NoError(t, err)
-
-	// Extract just the JSON part from output (skip informational messages)
-	output := out.String()
-
-	// The state JSON should be parseable
-	var parsed map[string]any
-	// Find the JSON in the output (starts with {)
-	jsonStart := strings.Index(output, "{")
-	require.GreaterOrEqual(t, jsonStart, 0, "output should contain JSON")
-
-	jsonStr := output[jsonStart:]
-	// Find end of JSON
-	jsonEnd := strings.LastIndex(jsonStr, "}")
-	require.GreaterOrEqual(t, jsonEnd, 0)
-	jsonStr = jsonStr[:jsonEnd+1]
-
-	err = json.Unmarshal([]byte(jsonStr), &parsed)
-	require.NoError(t, err, "output should be valid JSON")
-
-	assert.Equal(t, "ethereum", parsed["chain"])
-	// Use type assertion for numeric comparison
-	blockNum, ok := parsed["blockNum"].(float64)
-	require.True(t, ok, "blockNum should be a number")
-	assert.Equal(t, 12345, int(blockNum))
 }
