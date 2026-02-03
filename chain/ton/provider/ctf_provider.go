@@ -130,6 +130,7 @@ func (p *CTFChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 		Wallet:        tonWallet,
 		WalletAddress: tonWallet.WalletAddress(),
 		URL:           url,
+		Confirm:       cldf_ton.MakeDefaultConfirmFunc(nodeClient),
 	}
 
 	return *p.chain, nil

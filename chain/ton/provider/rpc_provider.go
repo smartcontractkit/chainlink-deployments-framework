@@ -181,6 +181,7 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 		Wallet:        tonWallet,
 		WalletAddress: tonWallet.WalletAddress(),
 		URL:           p.config.HTTPURL,
+		Confirm:       ton.MakeDefaultConfirmFunc(api),
 	}
 
 	return *p.chain, nil

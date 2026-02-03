@@ -218,4 +218,3 @@ func (_c *MockDataStore_EnvMetadata_Call) RunAndReturn(run func() EnvMetadataSto
 	_c.Call.Return(run)
 	return _c
 }
-
