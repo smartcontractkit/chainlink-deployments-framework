@@ -1683,7 +1683,7 @@ func confirmTransaction(ctx context.Context, lggr logger.Logger, tx types.Transa
 
 		return nil
 	default:
-		return nil
+		return nil // not supported yet, pass through
 	}
 }
 
