@@ -1,6 +1,9 @@
 package state
 
 import (
+	"errors"
+	"strings"
+
 	"github.com/spf13/cobra"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
@@ -37,6 +40,28 @@ type Config struct {
 	Deps Deps
 }
 
+// Validate checks that all required configuration fields are set.
+// Returns an error describing which fields are missing.
+func (c Config) Validate() error {
+	var missing []string
+
+	if c.Logger == nil {
+		missing = append(missing, "Logger")
+	}
+	if c.Domain.RootPath() == "" {
+		missing = append(missing, "Domain")
+	}
+	if c.ViewState == nil {
+		missing = append(missing, "ViewState")
+	}
+
+	if len(missing) > 0 {
+		return errors.New("state.Config: missing required fields: " + strings.Join(missing, ", "))
+	}
+
+	return nil
+}
+
 // deps returns the Deps with defaults applied.
 func (c *Config) deps() *Deps {
 	c.Deps.applyDefaults()
@@ -54,6 +79,17 @@ func (c *Config) deps() *Deps {
 //	    ViewState: myViewStateFunc,
 //	}))
 func NewCommand(cfg Config) *cobra.Command {
+	if err := cfg.Validate(); err != nil {
+		return &cobra.Command{
+			Use:   "state",
+			Short: stateShort,
+			Long:  stateLong,
+			RunE: func(cmd *cobra.Command, args []string) error {
+				return err
+			},
+		}
+	}
+
 	cfg.deps()
 
 	cmd := &cobra.Command{

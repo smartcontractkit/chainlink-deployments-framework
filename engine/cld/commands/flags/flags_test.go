@@ -11,32 +11,29 @@ import (
 func TestEnvironment(t *testing.T) {
 	t.Parallel()
 
-	t.Run("required flag", func(t *testing.T) {
+	t.Run("flag properties", func(t *testing.T) {
 		t.Parallel()
 
 		cmd := &cobra.Command{Use: "test"}
 		var env string
-		Environment(cmd, &env, true)
+		Environment(cmd, &env)
 
 		f := cmd.Flags().Lookup("environment")
 		require.NotNil(t, f)
 		assert.Equal(t, "e", f.Shorthand)
 		assert.Empty(t, f.DefValue)
-
-		err := cmd.ValidateRequiredFlags()
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "environment")
 	})
 
-	t.Run("optional flag", func(t *testing.T) {
+	t.Run("is required", func(t *testing.T) {
 		t.Parallel()
 
 		cmd := &cobra.Command{Use: "test"}
 		var env string
-		Environment(cmd, &env, false)
+		Environment(cmd, &env)
 
 		err := cmd.ValidateRequiredFlags()
-		require.NoError(t, err)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "environment")
 	})
 
 	t.Run("value binding", func(t *testing.T) {
@@ -44,7 +41,7 @@ func TestEnvironment(t *testing.T) {
 
 		cmd := &cobra.Command{Use: "test", Run: func(cmd *cobra.Command, args []string) {}}
 		var env string
-		Environment(cmd, &env, false)
+		Environment(cmd, &env)
 
 		cmd.SetArgs([]string{"-e", "staging"})
 		err := cmd.Execute()
@@ -139,11 +136,11 @@ func TestOutput(t *testing.T) {
 func TestFlagsAreLocal(t *testing.T) {
 	t.Parallel()
 
-	parent := &cobra.Command{Use: "parent"}
+	parent := &cobra.Command{Use: "parent", Run: func(cmd *cobra.Command, args []string) {}}
 	child := &cobra.Command{Use: "child", Run: func(cmd *cobra.Command, args []string) {}}
 
 	var env string
-	Environment(parent, &env, false)
+	Environment(parent, &env)
 	parent.AddCommand(child)
 
 	// Child should NOT have the environment flag

@@ -7,16 +7,15 @@ package flags
 
 import "github.com/spf13/cobra"
 
-// Environment adds the --environment/-e flag to a command.
+// Environment adds the required --environment/-e flag to a command.
 //
 // Usage:
 //
 //	var env string
-func Environment(cmd *cobra.Command, dest *string, required bool) {
-	cmd.Flags().StringVarP(dest, "environment", "e", "", "Deployment environment")
-	if required {
-		_ = cmd.MarkFlagRequired("environment")
-	}
+//	flags.Environment(cmd, &env)
+func Environment(cmd *cobra.Command, dest *string) {
+	cmd.Flags().StringVarP(dest, "environment", "e", "", "Deployment environment (required)")
+	_ = cmd.MarkFlagRequired("environment")
 }
 
 // Print adds the --print flag for explicitly printing output to stdout.

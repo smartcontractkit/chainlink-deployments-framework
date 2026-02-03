@@ -429,31 +429,66 @@ func TestGenerate_StateSaveError(t *testing.T) {
 	assert.Contains(t, err.Error(), expectedError.Error())
 }
 
-// TestGenerate_NilViewStateFails verifies error when ViewState is not provided.
-func TestGenerate_NilViewStateFails(t *testing.T) {
+// TestConfig_Validate verifies validation catches missing required fields.
+func TestConfig_Validate(t *testing.T) {
+	t.Parallel()
+
+	t.Run("missing all required fields", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := Config{}
+		err := cfg.Validate()
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "Logger")
+		assert.Contains(t, err.Error(), "Domain")
+		assert.Contains(t, err.Error(), "ViewState")
+	})
+
+	t.Run("missing ViewState only", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := Config{
+			Logger: logger.Nop(),
+			Domain: domain.NewDomain("/tmp", "test"),
+		}
+		err := cfg.Validate()
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "ViewState")
+		assert.NotContains(t, err.Error(), "Logger")
+		assert.NotContains(t, err.Error(), "Domain")
+	})
+
+	t.Run("valid config", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := Config{
+			Logger: logger.Nop(),
+			Domain: domain.NewDomain("/tmp", "test"),
+			ViewState: func(_ fdeployment.Environment, _ json.Marshaler) (json.Marshaler, error) {
+				return json.RawMessage(`{}`), nil
+			},
+		}
+		err := cfg.Validate()
+
+		require.NoError(t, err)
+	})
+}
+
+// TestNewCommand_InvalidConfigReturnsError verifies command returns error for invalid config.
+func TestNewCommand_InvalidConfigReturnsError(t *testing.T) {
 	t.Parallel()
 
 	cmd := NewCommand(Config{
 		Logger:    logger.Nop(),
 		Domain:    domain.NewDomain("/tmp", "testdomain"),
-		ViewState: nil,
-		Deps: Deps{
-			EnvironmentLoader: func(_ context.Context, _ domain.Domain, envKey string, _ ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
-				return fdeployment.Environment{Name: envKey}, nil
-			},
-			StateLoader: func(_ domain.EnvDir) (domain.JSONSerializer, error) {
-				return nil, os.ErrNotExist
-			},
-		},
+		ViewState: nil, // Missing required field
 	})
 
-	out := new(bytes.Buffer)
-	cmd.SetOut(out)
-	cmd.SetErr(out)
-	cmd.SetArgs([]string{"generate", "-e", "staging"})
-
+	// Command should be created but return error when executed
 	err := cmd.Execute()
 
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "ViewState function is required but not provided")
+	assert.Contains(t, err.Error(), "ViewState")
 }

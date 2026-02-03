@@ -2,7 +2,6 @@ package state
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -67,7 +66,7 @@ func newGenerateCmd(cfg Config) *cobra.Command {
 	}
 
 	// Shared flags
-	flags.Environment(cmd, &f.environment, true)
+	flags.Environment(cmd, &f.environment)
 	flags.Print(cmd, &f.print)
 	flags.Output(cmd, &f.output, "")
 
@@ -82,14 +81,11 @@ func newGenerateCmd(cfg Config) *cobra.Command {
 
 // runGenerate executes the generate command logic.
 func runGenerate(cmd *cobra.Command, cfg Config, f generateFlags) error {
-	if cfg.ViewState == nil {
-		return errors.New("ViewState function is required but not provided")
-	}
-
 	deps := cfg.deps()
 	envdir := cfg.Domain.EnvDir(f.environment)
-
 	viewTimeout := 10 * time.Minute
+
+	// --- Load all data first ---
 
 	cmd.Printf("Generate latest state for %s in environment: %s\n", cfg.Domain, f.environment)
 	cmd.Printf("This command may take a while to complete, please be patient. Timeout set to %v\n", viewTimeout)
@@ -111,6 +107,8 @@ func runGenerate(cmd *cobra.Command, cfg Config, f generateFlags) error {
 	if err != nil {
 		return fmt.Errorf("unable to snapshot state: %w", err)
 	}
+
+	// --- Execute logic with loaded data ---
 
 	if f.persist {
 		if err := deps.StateSaver(envdir, f.output, state); err != nil {
