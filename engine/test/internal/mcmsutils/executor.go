@@ -6,10 +6,13 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver/v3"
-	aptosapi "github.com/aptos-labs/aptos-go-sdk/api"
 	"github.com/avast/retry-go/v4"
+	"github.com/xssnick/tonutils-go/tlb"
+
+	aptosapi "github.com/aptos-labs/aptos-go-sdk/api"
 	gethtypes "github.com/ethereum/go-ethereum/core/types"
 	chainselectors "github.com/smartcontractkit/chain-selectors"
+
 	mcmslib "github.com/smartcontractkit/mcms"
 	mcmssdk "github.com/smartcontractkit/mcms/sdk"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
@@ -18,6 +21,7 @@ import (
 	fchainaptos "github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos"
 	fchainevm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	fchainsolana "github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
+	fchainton "github.com/smartcontractkit/chainlink-deployments-framework/chain/ton"
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 )
@@ -129,7 +133,7 @@ func (e *Executor) ExecuteMCMS(ctx context.Context, proposal *mcmslib.Proposal) 
 
 		b := blockchains[selector]
 
-		if err := confirmTransaction(b, txResult); err != nil {
+		if err := confirmTransaction(ctx, b, txResult); err != nil {
 			return fmt.Errorf("failed to confirm SetRoot transaction for chain selector %d (%s): %w", selector, b.Name(), err)
 		}
 	}
@@ -143,7 +147,7 @@ func (e *Executor) ExecuteMCMS(ctx context.Context, proposal *mcmslib.Proposal) 
 
 		b := blockchains[op.ChainSelector]
 
-		if err := confirmTransaction(b, txResult); err != nil {
+		if err := confirmTransaction(ctx, b, txResult); err != nil {
 			return fmt.Errorf(
 				"failed to confirm execute transaction for operation %d on chain selector %d (%s): %w",
 				i, op.ChainSelector, b.Name(), err,
@@ -270,7 +274,7 @@ func (e *Executor) ExecuteTimelock(ctx context.Context, timelockProposal *mcmsli
 		}
 
 		// Confirm the transaction on the chain
-		if err = confirmTransaction(b, tx); err != nil {
+		if err = confirmTransaction(ctx, b, tx); err != nil {
 			return fmt.Errorf(
 				"failed to confirm timelock execution transaction for operation %d on chain selector %d (%s): %w",
 				i, op.ChainSelector, b.Name(), err,
@@ -354,7 +358,7 @@ func findCallProxyAddressForTimelock(
 // confirmTransaction confirms a transaction on the appropriate blockchain based on its type.
 // Supports EVM, Aptos, and Solana chains with chain-specific confirmation logic.
 // For Solana chains, confirmation is handled internally by the MCMS SDK.
-func confirmTransaction(blockchain fchain.BlockChain, tx mcmstypes.TransactionResult) error {
+func confirmTransaction(ctx context.Context, blockchain fchain.BlockChain, tx mcmstypes.TransactionResult) error {
 	switch chain := blockchain.(type) {
 	case fchainevm.Chain:
 		evmTx, ok := tx.RawData.(*gethtypes.Transaction)
@@ -373,6 +377,15 @@ func confirmTransaction(blockchain fchain.BlockChain, tx mcmstypes.TransactionRe
 
 		if err := chain.Confirm(aptosTx.Hash); err != nil {
 			return fmt.Errorf("failed to confirm Aptos transaction %s on chain %s: %w", aptosTx.Hash, chain.Name(), err)
+		}
+	case fchainton.Chain:
+		tonTX, ok := tx.RawData.(*tlb.Transaction)
+		if !ok {
+			return fmt.Errorf("invalid transaction raw data type: %T", tx.RawData)
+		}
+		err := chain.Confirm(ctx, tonTX)
+		if err != nil {
+			return fmt.Errorf("failed to confirm TON transaction %s on chain %s: %w", tx.Hash, chain.Name(), err)
 		}
 	case fchainsolana.Chain:
 		// NOOP: no need to confirm transaction on solana as the MCMS sdk confirms it internally

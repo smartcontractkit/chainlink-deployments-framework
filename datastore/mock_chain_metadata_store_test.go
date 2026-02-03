@@ -198,4 +198,3 @@ func (_c *MockChainMetadataStore_Filter_Call) RunAndReturn(run func(...FilterFun
 	_c.Call.Return(run)
 	return _c
 }
-

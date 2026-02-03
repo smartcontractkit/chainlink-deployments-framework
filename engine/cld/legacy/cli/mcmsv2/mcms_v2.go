@@ -1631,7 +1631,8 @@ func confirmTransaction(ctx context.Context, lggr logger.Logger, tx types.Transa
 		return fmt.Errorf("error getting chain family: %w", err)
 	}
 
-	if family == chainsel.FamilyEVM {
+	switch family {
+	case chainsel.FamilyEVM:
 		chain := cfg.blockchains.EVMChains()[cfg.chainSelector]
 		block, err := chain.Confirm(tx.RawData.(*gethtypes.Transaction))
 		if err == nil {
@@ -1659,18 +1660,31 @@ func confirmTransaction(ctx context.Context, lggr logger.Logger, tx types.Transa
 		}
 
 		return fmt.Errorf("transaction %s failed (block number %v): %w", tx.Hash, rcpt.BlockNumber, err)
-	}
-
-	if family == chainsel.FamilyAptos {
+	case chainsel.FamilyAptos:
 		chain := cfg.blockchains.AptosChains()[cfg.chainSelector]
 		err := chain.Confirm(tx.Hash)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to confirm transaction %s: %w", tx.Hash, err)
 		}
 		lggr.Infof("Transaction %s confirmed", tx.Hash)
-	}
 
-	return nil
+		return nil
+	case chainsel.FamilyTon:
+		chain := cfg.blockchains.TonChains()[cfg.chainSelector]
+		tonTx, ok := tx.RawData.(*tlb.Transaction)
+		if !ok {
+			return fmt.Errorf("invalid transaction raw data type: %T", tx.RawData)
+		}
+		err := chain.Confirm(ctx, tonTx)
+		if err != nil {
+			return fmt.Errorf("failed to confirm transaction %s: %w", tx.Hash, err)
+		}
+		lggr.Infof("Transaction %s confirmed", tx.Hash)
+
+		return nil
+	default:
+		return nil // not supported yet, pass through
+	}
 }
 
 func getProposalSigners(

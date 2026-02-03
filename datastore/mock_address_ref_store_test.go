@@ -198,4 +198,3 @@ func (_c *MockAddressRefStore_Filter_Call) RunAndReturn(run func(...FilterFunc[A
 	_c.Call.Return(run)
 	return _c
 }
-
