@@ -67,12 +67,6 @@ func TestNewStateGenerateCmd_Metadata(t *testing.T) {
 			require.NotNil(t, s)
 			require.Equal(t, "s", s.Shorthand)
 
-			oOld := sub.Flags().Lookup("outputPath")
-			require.NotNil(t, oOld)
-
-			sOld := sub.Flags().Lookup("previousState")
-			require.NotNil(t, sOld)
-
 			pr := sub.Flags().Lookup("print")
 			require.NotNil(t, pr)
 

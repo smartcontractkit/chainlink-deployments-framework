@@ -92,30 +92,22 @@ func TestNewCommand_GenerateFlags(t *testing.T) {
 			assert.Equal(t, "p", p.Shorthand)
 			assert.Equal(t, "false", p.Value.String())
 
-			// Output flag (new: --out, deprecated alias: --outputPath)
+			// Output flag (--out/-o, with --outputPath as normalized alias)
 			o := sub.Flags().Lookup("out")
 			require.NotNil(t, o)
 			assert.Equal(t, "o", o.Shorthand)
 			assert.Empty(t, o.Value.String())
 
-			// Deprecated alias should also exist
-			oOld := sub.Flags().Lookup("outputPath")
-			require.NotNil(t, oOld, "deprecated --outputPath alias should exist")
-
-			// Previous state flag (new: --prev, deprecated alias: --previousState)
+			// Previous state flag (--prev/-s, with --previousState as normalized alias)
 			s := sub.Flags().Lookup("prev")
 			require.NotNil(t, s)
 			assert.Equal(t, "s", s.Shorthand)
 			assert.Empty(t, s.Value.String())
 
-			// Deprecated alias should also exist
-			sOld := sub.Flags().Lookup("previousState")
-			require.NotNil(t, sOld, "deprecated --previousState alias should exist")
-
-			// Print flag (new)
+			// Print flag (default true)
 			pr := sub.Flags().Lookup("print")
 			require.NotNil(t, pr)
-			assert.Equal(t, "false", pr.Value.String())
+			assert.Equal(t, "true", pr.Value.String())
 
 			break
 		}
@@ -199,13 +191,13 @@ func TestGenerate_Success(t *testing.T) {
 	assert.True(t, stateLoaderCalled, "state loader should be called")
 	assert.True(t, viewStateCalled, "view state should be called")
 
-	// Without --print flag, state should NOT be in output
+	// Default --print=true, so state should be in output
 	output := out.String()
-	assert.NotContains(t, output, "router")
+	assert.Contains(t, output, "router")
 }
 
-// TestGenerate_WithPrint verifies state is printed when --print flag is set.
-func TestGenerate_WithPrint(t *testing.T) {
+// TestGenerate_WithPrintFalse verifies state is NOT printed when --print=false.
+func TestGenerate_WithPrintFalse(t *testing.T) {
 	t.Parallel()
 
 	expectedState := &mockState{
@@ -233,15 +225,15 @@ func TestGenerate_WithPrint(t *testing.T) {
 	out := new(bytes.Buffer)
 	cmd.SetOut(out)
 	cmd.SetErr(out)
-	cmd.SetArgs([]string{"generate", "-e", "staging", "--print"})
+	cmd.SetArgs([]string{"generate", "-e", "staging", "--print=false"})
 
 	execErr := cmd.Execute()
 
 	require.NoError(t, execErr)
-	// With --print flag, state should be in output
+	// With --print=false, state should NOT be in output
 	output := out.String()
-	assert.Contains(t, output, "key")
-	assert.Contains(t, output, "value")
+	assert.NotContains(t, output, "key")
+	assert.NotContains(t, output, "value")
 }
 
 // TestGenerate_WithPersist verifies state is saved and path is printed.
@@ -282,7 +274,7 @@ func TestGenerate_WithPersist(t *testing.T) {
 	out := new(bytes.Buffer)
 	cmd.SetOut(out)
 	cmd.SetErr(out)
-	cmd.SetArgs([]string{"generate", "-e", "staging", "-p"})
+	cmd.SetArgs([]string{"generate", "-e", "staging", "-p", "--print=false"})
 
 	execErr := cmd.Execute()
 
@@ -290,7 +282,7 @@ func TestGenerate_WithPersist(t *testing.T) {
 	assert.Equal(t, expectedState, savedState, "state should be saved")
 	assert.Empty(t, savedOutputPath, "default output path should be empty")
 
-	// Should print path, not state content
+	// Should print path, not state content (--print=false)
 	output := out.String()
 	assert.Contains(t, output, "State saved to:")
 	assert.NotContains(t, output, `"key"`) // JSON should not be printed

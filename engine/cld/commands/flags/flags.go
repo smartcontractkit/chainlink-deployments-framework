@@ -5,38 +5,59 @@
 // Command-specific flags should be defined locally in the command file.
 package flags
 
-import "github.com/spf13/cobra"
+import (
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+)
 
 // Environment adds the required --environment/-e flag to a command.
+// Retrieve the value with cmd.Flags().GetString("environment").
 //
 // Usage:
 //
-//	var env string
-//	flags.Environment(cmd, &env)
-func Environment(cmd *cobra.Command, dest *string) {
-	cmd.Flags().StringVarP(dest, "environment", "e", "", "Deployment environment (required)")
+//	flags.Environment(cmd)
+//	// later in RunE:
+//	env, _ := cmd.Flags().GetString("environment")
+func Environment(cmd *cobra.Command) {
+	cmd.Flags().StringP("environment", "e", "", "Deployment environment (required)")
 	_ = cmd.MarkFlagRequired("environment")
 }
 
-// Print adds the --print flag for explicitly printing output to stdout.
+// Print adds the --print flag for printing output to stdout (default: true).
+// Retrieve the value with cmd.Flags().GetBool("print").
 //
 // Usage:
 //
-//	var print bool
-//	flags.Print(cmd, &print)
-func Print(cmd *cobra.Command, dest *bool) {
-	cmd.Flags().BoolVar(dest, "print", false, "Print output to stdout")
+//	flags.Print(cmd)
+//	// later in RunE:
+//	shouldPrint, _ := cmd.Flags().GetBool("print")
+func Print(cmd *cobra.Command) {
+	cmd.Flags().Bool("print", true, "Print output to stdout")
 }
 
 // Output adds the --out/-o flag for specifying output file path.
-// Also registers --outputPath as a deprecated alias for backwards compatibility.
+// Also supports deprecated --outputPath alias for backwards compatibility.
+// Retrieve the value with cmd.Flags().GetString("out").
 //
 // Usage:
 //
-//	var out string
-//	flags.Output(cmd, &out, "")
-func Output(cmd *cobra.Command, dest *string, defaultValue string) {
-	cmd.Flags().StringVarP(dest, "out", "o", defaultValue, "Output file path")
-	cmd.Flags().StringVar(dest, "outputPath", defaultValue, "Output file path")
-	_ = cmd.Flags().MarkDeprecated("outputPath", "use --out instead")
+//	flags.Output(cmd, "")
+//	// later in RunE:
+//	outPath, _ := cmd.Flags().GetString("out")
+func Output(cmd *cobra.Command, defaultValue string) {
+	cmd.Flags().StringP("out", "o", defaultValue, "Output file path")
+
+	// Add deprecated alias by normalizing outputPath -> out
+	existingNormalize := cmd.Flags().GetNormalizeFunc()
+	cmd.Flags().SetNormalizeFunc(func(f *pflag.FlagSet, name string) pflag.NormalizedName {
+		if name == "outputPath" {
+			// Print deprecation warning on first use
+			return pflag.NormalizedName("out")
+		}
+		if existingNormalize != nil {
+			return existingNormalize(f, name)
+		}
+
+		return pflag.NormalizedName(name)
+	})
 }

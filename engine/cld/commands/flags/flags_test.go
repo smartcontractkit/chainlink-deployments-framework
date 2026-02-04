@@ -15,8 +15,7 @@ func TestEnvironment(t *testing.T) {
 		t.Parallel()
 
 		cmd := &cobra.Command{Use: "test"}
-		var env string
-		Environment(cmd, &env)
+		Environment(cmd)
 
 		f := cmd.Flags().Lookup("environment")
 		require.NotNil(t, f)
@@ -28,25 +27,24 @@ func TestEnvironment(t *testing.T) {
 		t.Parallel()
 
 		cmd := &cobra.Command{Use: "test"}
-		var env string
-		Environment(cmd, &env)
+		Environment(cmd)
 
 		err := cmd.ValidateRequiredFlags()
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "environment")
 	})
 
-	t.Run("value binding", func(t *testing.T) {
+	t.Run("value retrieval", func(t *testing.T) {
 		t.Parallel()
 
-		cmd := &cobra.Command{Use: "test", Run: func(cmd *cobra.Command, args []string) {}}
-		var env string
-		Environment(cmd, &env)
+		cmd := &cobra.Command{Use: "test", Run: func(cmd *cobra.Command, _ []string) {}}
+		Environment(cmd)
 
 		cmd.SetArgs([]string{"-e", "staging"})
 		err := cmd.Execute()
 
 		require.NoError(t, err)
+		env, _ := cmd.Flags().GetString("environment")
 		assert.Equal(t, "staging", env)
 	})
 }
@@ -54,31 +52,30 @@ func TestEnvironment(t *testing.T) {
 func TestPrint(t *testing.T) {
 	t.Parallel()
 
-	t.Run("default false", func(t *testing.T) {
+	t.Run("default true", func(t *testing.T) {
 		t.Parallel()
 
 		cmd := &cobra.Command{Use: "test"}
-		var printFlag bool
-		Print(cmd, &printFlag)
+		Print(cmd)
 
 		f := cmd.Flags().Lookup("print")
 		require.NotNil(t, f)
 		assert.Empty(t, f.Shorthand)
-		assert.Equal(t, "false", f.DefValue)
+		assert.Equal(t, "true", f.DefValue)
 	})
 
-	t.Run("value binding", func(t *testing.T) {
+	t.Run("value retrieval", func(t *testing.T) {
 		t.Parallel()
 
-		cmd := &cobra.Command{Use: "test", Run: func(cmd *cobra.Command, args []string) {}}
-		var printFlag bool
-		Print(cmd, &printFlag)
+		cmd := &cobra.Command{Use: "test", Run: func(cmd *cobra.Command, _ []string) {}}
+		Print(cmd)
 
 		cmd.SetArgs([]string{"--print"})
 		err := cmd.Execute()
 
 		require.NoError(t, err)
-		assert.True(t, printFlag)
+		shouldPrint, _ := cmd.Flags().GetBool("print")
+		assert.True(t, shouldPrint)
 	})
 }
 
@@ -88,9 +85,8 @@ func TestOutput(t *testing.T) {
 	t.Run("new flag name", func(t *testing.T) {
 		t.Parallel()
 
-		cmd := &cobra.Command{Use: "test", Run: func(cmd *cobra.Command, args []string) {}}
-		var out string
-		Output(cmd, &out, "")
+		cmd := &cobra.Command{Use: "test", Run: func(cmd *cobra.Command, _ []string) {}}
+		Output(cmd, "")
 
 		f := cmd.Flags().Lookup("out")
 		require.NotNil(t, f)
@@ -100,23 +96,22 @@ func TestOutput(t *testing.T) {
 		err := cmd.Execute()
 
 		require.NoError(t, err)
+		out, _ := cmd.Flags().GetString("out")
 		assert.Equal(t, "/new/path.json", out)
 	})
 
 	t.Run("deprecated alias still works", func(t *testing.T) {
 		t.Parallel()
 
-		cmd := &cobra.Command{Use: "test", Run: func(cmd *cobra.Command, args []string) {}}
-		var out string
-		Output(cmd, &out, "")
+		cmd := &cobra.Command{Use: "test", Run: func(cmd *cobra.Command, _ []string) {}}
+		Output(cmd, "")
 
-		f := cmd.Flags().Lookup("outputPath")
-		require.NotNil(t, f)
-
+		// --outputPath is normalized to --out, so Lookup finds the same flag
 		cmd.SetArgs([]string{"--outputPath", "/old/path.json"})
 		err := cmd.Execute()
 
 		require.NoError(t, err)
+		out, _ := cmd.Flags().GetString("out")
 		assert.Equal(t, "/old/path.json", out)
 	})
 
@@ -124,8 +119,7 @@ func TestOutput(t *testing.T) {
 		t.Parallel()
 
 		cmd := &cobra.Command{Use: "test"}
-		var out string
-		Output(cmd, &out, "default.json")
+		Output(cmd, "default.json")
 
 		f := cmd.Flags().Lookup("out")
 		require.NotNil(t, f)
@@ -136,11 +130,10 @@ func TestOutput(t *testing.T) {
 func TestFlagsAreLocal(t *testing.T) {
 	t.Parallel()
 
-	parent := &cobra.Command{Use: "parent", Run: func(cmd *cobra.Command, args []string) {}}
-	child := &cobra.Command{Use: "child", Run: func(cmd *cobra.Command, args []string) {}}
+	parent := &cobra.Command{Use: "parent", Run: func(cmd *cobra.Command, _ []string) {}}
+	child := &cobra.Command{Use: "child", Run: func(cmd *cobra.Command, _ []string) {}}
 
-	var env string
-	Environment(parent, &env)
+	Environment(parent)
 	parent.AddCommand(child)
 
 	// Child should NOT have the environment flag
