@@ -2,34 +2,76 @@ package analyzer
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/smartcontractkit/mcms"
-	mcmstypes "github.com/smartcontractkit/mcms/types"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
+	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
+	cldfdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 )
+
+// ----- annotation -----
 
 type Annotation interface {
 	Name() string
+	Type() string // TODO: replace with enum
 	Value() any
 }
 
 type Annotations []Annotation
 
 type Annotated interface {
-	AddAnnotation(annotation Annotation)
+	AddAnnotations(annotations ...Annotation)
 	Annotations() Annotations
 }
 
-type AnalyzedProposal interface {
-	Annotated
-	Operations() AnalyzedOperations
+// ----- decoded -----
+
+type DecodedTimelockProposal interface {
+	BatchOperations() DecodedBatchOperations
 }
 
-type AnalyzedOperation interface {
+type DecodedBatchOperations []DecodedBatchOperation
+
+type DecodedBatchOperation interface {
+	ChainSelector() uint64
+	Calls() DecodedCalls
+}
+
+type DecodedCalls []DecodedCall
+
+type DecodedCall interface { // DecodedCall or DecodedTransaction?
+	To() string   // review: current analyzer uses "Address"
+	Name() string // review: current analyzer uses "Method"
+	Inputs() DecodedParameters
+	Outputs() DecodedParameters
+	Data() []byte
+	AdditionalFields() json.RawMessage
+}
+
+type DecodedParameters []DecodedParameter
+
+type DecodedParameter interface {
+	Name() string
+	Value() any
+}
+
+// ----- analyzed -----
+
+type AnalyzedProposal interface {
+	Annotated
+	BatchOperations() AnalyzedBatchOperations
+}
+
+type AnalyzedBatchOperation interface {
 	Annotated
 	Calls() AnalyzedCalls
 }
 
-type AnalyzedOperations []AnalyzedOperation
+type AnalyzedBatchOperations []AnalyzedBatchOperation
+
+type AnalyzedCalls []AnalyzedCall
 
 type AnalyzedCall interface {
 	Annotated
@@ -38,7 +80,7 @@ type AnalyzedCall interface {
 	Outputs() AnalyzedParameters
 }
 
-type AnalyzedCalls []AnalyzedCall
+type AnalyzedParameters []AnalyzedParameter
 
 type AnalyzedParameter interface {
 	Annotated
@@ -47,11 +89,23 @@ type AnalyzedParameter interface {
 	Value() any   // reflect.Value?
 }
 
-type AnalyzedParameters []AnalyzedParameter
+// ----- contexts -----
 
-type AnalyzerContext interface{}
+type AnalyzerContext interface {
+	Proposal() AnalyzedProposal
+	BatchOperation() AnalyzedBatchOperation
+	Call() AnalyzedCall
+}
 
-type ExecutionContext interface{} // domain, environment, etc.
+type ExecutionContext interface {
+	Domain() cldfdomain.Domain
+	EnvironmentName() string
+	BlockChains() chain.BlockChains
+	DataStore() datastore.DataStore
+	// Environment() Environment
+}
+
+// ----- analyzers -----
 
 type BaseAnalyzer interface {
 	ID() string
@@ -60,27 +114,30 @@ type BaseAnalyzer interface {
 
 type ProposalAnalyzer interface {
 	BaseAnalyzer
-	// can we merge the contexts? can we replace the ExecutionContext with cldf's Environment?
-	// should the "TimelockProposal be a "DecodeProposal" instead?
-	Analyze(ctx *context.Context, actx AnalyzerContext, ectx ExecutionContext, proposal *mcms.TimelockProposal) (AnalyzedProposal, error)
+	Analyze(ctx context.Context, actx AnalyzerContext, ectx ExecutionContext, proposal DecodedTimelockProposal) (Annotations, error)
 }
 
-type OperationAnalyzer interface {
+type BatchOperationAnalyzer interface {
 	BaseAnalyzer
-	Analyze(ctx *context.Context, actx AnalyzerContext, ectx ExecutionContext, operation mcmstypes.Operation) (AnalyzedOperation, error)
+	Analyze(ctx context.Context, actx AnalyzerContext, ectx ExecutionContext, operation DecodedBatchOperation) (Annotations, error)
 }
 
 type CallAnalyzer interface {
 	BaseAnalyzer
-	Analyze(ctx *context.Context, actx AnalyzerContext, ectx ExecutionContext, call any /*???*/) (AnalyzedOperation, error)
+	Analyze(ctx context.Context, actx AnalyzerContext, ectx ExecutionContext, call DecodedCall) (Annotations, error)
 }
 
 type ParameterAnalyzer interface {
 	BaseAnalyzer
-	Analyze(ctx *context.Context, actx AnalyzerContext, ectx ExecutionContext, param any /*???*/) (AnalyzedParameter, error)
+	Analyze(ctx context.Context, actx AnalyzerContext, ectx ExecutionContext, param DecodedParameter) (Annotations, error)
 }
 
+// ----- engine -----
+
 type AnalyzerEngine interface {
-	Run(ctx *context.Context, actx AnalyzerContext, ectx ExecutionContext, proposal *mcms.TimelockProposal) (AnalyzedProposal, error)
+	Run(ctx context.Context, domain cldfdomain.Domain, environmentName string, proposal *mcms.TimelockProposal) (AnalyzedProposal, error)
+
 	RegisterAnalyzer(analyzer BaseAnalyzer) error // do we need to add a method for each type? like RegisterProposalAnalyzer?
+
+	RegisterFormatter( /* tbd */ ) error
 }
