@@ -60,6 +60,14 @@ var (
 	`)
 )
 
+type generateFlags struct {
+	environment   string
+	persist       bool
+	output        string
+	previousState string
+	print         bool
+}
+
 // newGenerateCmd creates the "generate" subcommand for generating state.
 func newGenerateCmd(cfg Config) *cobra.Command {
 	cmd := &cobra.Command{
@@ -68,11 +76,19 @@ func newGenerateCmd(cfg Config) *cobra.Command {
 		Long:    generateLong,
 		Example: generateExample,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return runGenerate(cmd, cfg)
+			f := generateFlags{
+				environment:   flags.MustString(cmd.Flags().GetString("environment")),
+				persist:       flags.MustBool(cmd.Flags().GetBool("persist")),
+				output:        flags.MustString(cmd.Flags().GetString("out")),
+				previousState: flags.MustString(cmd.Flags().GetString("prev")),
+				print:         flags.MustBool(cmd.Flags().GetBool("print")),
+			}
+
+			return runGenerate(cmd, cfg, f)
 		},
 	}
 
-	// Shared flags (use GetString/GetBool to retrieve)
+	// Shared flags
 	flags.Environment(cmd)
 	flags.Print(cmd)
 	flags.Output(cmd, "")
@@ -88,13 +104,13 @@ func newGenerateCmd(cfg Config) *cobra.Command {
 }
 
 // runGenerate executes the generate command logic.
-func runGenerate(cmd *cobra.Command, cfg Config) error {
-	// Get flag values
-	envKey, _ := cmd.Flags().GetString("environment")
-	persist, _ := cmd.Flags().GetBool("persist")
-	output, _ := cmd.Flags().GetString("out")
-	previousState, _ := cmd.Flags().GetString("prev")
-	shouldPrint, _ := cmd.Flags().GetBool("print")
+// It takes parsed flags as a struct for cleaner separation and easier testing.
+func runGenerate(cmd *cobra.Command, cfg Config, f generateFlags) error {
+	envKey := f.environment
+	persist := f.persist
+	output := f.output
+	previousState := f.previousState
+	shouldPrint := f.print
 
 	deps := cfg.deps()
 	envdir := cfg.Domain.EnvDir(envKey)

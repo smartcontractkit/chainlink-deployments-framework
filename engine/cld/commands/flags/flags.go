@@ -10,6 +10,14 @@ import (
 	"github.com/spf13/pflag"
 )
 
+// MustString returns the string value, ignoring the error.
+// Safe to use with registered flags where GetString cannot fail.
+func MustString(s string, _ error) string { return s }
+
+// MustBool returns the bool value, ignoring the error.
+// Safe to use with registered flags where GetBool cannot fail.
+func MustBool(b bool, _ error) bool { return b }
+
 // Environment adds the required --environment/-e flag to a command.
 // Retrieve the value with cmd.Flags().GetString("environment").
 //
