@@ -11,7 +11,11 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/changeset/resolvers"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/changeset"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
+	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
 // resolveChangesetConfig resolves the configuration for a changeset using either a registered resolver or keeping the original payload
@@ -97,4 +101,84 @@ func resolveDurablePipelineYamlPath(inputFileName string, domain domain.Domain, 
 	)
 
 	return resolvedPath, nil
+}
+
+// saveReports saves any new operations reports generated during changeset execution
+// to the artifacts directory. It compares the current report count against the original
+// count to determine which reports are new and need to be persisted.
+func saveReports(
+	reporter operations.Reporter, originalReportsLen int, lggr logger.Logger, artdir *domain.ArtifactsDir, changesetStr string,
+) error {
+	latestReports, err := reporter.GetReports()
+	if err != nil {
+		return err
+	}
+	newReports := len(latestReports) - originalReportsLen
+	if newReports > 0 {
+		lggr.Infof("Saving %d new operations reports...", newReports)
+		if err := artdir.SaveOperationsReports(changesetStr, latestReports); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// configureEnvironmentOptions builds the environment loading options for a changeset execution.
+// It configures the logger, chain overrides, JD settings, operation registry, and dry-run mode
+// based on the changeset's registered options and the provided flags.
+func configureEnvironmentOptions(
+	cs *changeset.ChangesetsRegistry, changesetStr string, dryRun bool, lggr logger.Logger,
+) ([]environment.LoadEnvironmentOption, error) {
+	var envOptions []environment.LoadEnvironmentOption
+
+	envOptions = append(envOptions, environment.WithLogger(lggr))
+
+	changesetOptions, err := cs.GetChangesetOptions(changesetStr)
+	if err != nil {
+		return nil, err
+	}
+
+	chainOverrides, err := getChainOverrides(cs, changesetStr)
+	if err != nil {
+		return nil, err
+	}
+	if chainOverrides != nil {
+		envOptions = append(envOptions, environment.OnlyLoadChainsFor(chainOverrides))
+	}
+
+	if changesetOptions.WithoutJD {
+		envOptions = append(envOptions, environment.WithoutJD())
+	}
+
+	if changesetOptions.OperationRegistry != nil {
+		envOptions = append(envOptions, environment.WithOperationRegistry(changesetOptions.OperationRegistry))
+	}
+
+	if dryRun {
+		envOptions = append(envOptions, environment.WithDryRunJobDistributor())
+	}
+
+	return envOptions, nil
+}
+
+// getChainOverrides retrieves the chain overrides for a given changeset.
+// It first checks for changeset options, and if not found, it retrieves input chain overrides.
+func getChainOverrides(cs *changeset.ChangesetsRegistry, changesetStr string) ([]uint64, error) {
+	changesetOptions, err := cs.GetChangesetOptions(changesetStr)
+	if err != nil {
+		return nil, err
+	}
+
+	if changesetOptions.ChainsToLoad != nil {
+		return changesetOptions.ChainsToLoad, nil
+	}
+
+	// this is only applicable to durable pipelines
+	configs, err := cs.GetConfigurations(changesetStr)
+	if err != nil {
+		return nil, err
+	}
+
+	return configs.InputChainOverrides, nil
 }
