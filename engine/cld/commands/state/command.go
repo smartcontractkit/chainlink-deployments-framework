@@ -70,24 +70,22 @@ func (c *Config) deps() *Deps {
 }
 
 // NewCommand creates a new state command with all subcommands.
+// Returns an error if required configuration is missing.
 //
 // Usage:
 //
-//	rootCmd.AddCommand(state.NewCommand(state.Config{
+//	cmd, err := state.NewCommand(state.Config{
 //	    Logger:    lggr,
 //	    Domain:    myDomain,
 //	    ViewState: myViewStateFunc,
-//	}))
-func NewCommand(cfg Config) *cobra.Command {
+//	})
+//	if err != nil {
+//	    return err
+//	}
+//	rootCmd.AddCommand(cmd)
+func NewCommand(cfg Config) (*cobra.Command, error) {
 	if err := cfg.Validate(); err != nil {
-		return &cobra.Command{
-			Use:   "state",
-			Short: stateShort,
-			Long:  stateLong,
-			RunE: func(cmd *cobra.Command, args []string) error {
-				return err
-			},
-		}
+		return nil, err
 	}
 
 	cfg.deps()
@@ -100,5 +98,5 @@ func NewCommand(cfg Config) *cobra.Command {
 
 	cmd.AddCommand(newGenerateCmd(cfg))
 
-	return cmd
+	return cmd, nil
 }

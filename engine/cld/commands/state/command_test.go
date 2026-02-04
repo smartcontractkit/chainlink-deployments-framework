@@ -34,13 +34,16 @@ func (m *mockState) UnmarshalJSON(data []byte) error {
 func TestNewCommand_Structure(t *testing.T) {
 	t.Parallel()
 
-	cmd := NewCommand(Config{
+	cmd, err := NewCommand(Config{
 		Logger: logger.Nop(),
 		Domain: domain.NewDomain("/tmp", "testdomain"),
 		ViewState: func(_ fdeployment.Environment, _ json.Marshaler) (json.Marshaler, error) {
 			return &mockState{Data: map[string]any{}}, nil
 		},
 	})
+
+	require.NoError(t, err)
+	require.NotNil(t, cmd)
 
 	// Verify root command
 	assert.Equal(t, "state", cmd.Use)
@@ -61,13 +64,16 @@ func TestNewCommand_Structure(t *testing.T) {
 func TestNewCommand_GenerateFlags(t *testing.T) {
 	t.Parallel()
 
-	cmd := NewCommand(Config{
+	cmd, err := NewCommand(Config{
 		Logger: logger.Nop(),
 		Domain: domain.NewDomain("/tmp", "testdomain"),
 		ViewState: func(_ fdeployment.Environment, _ json.Marshaler) (json.Marshaler, error) {
 			return &mockState{Data: map[string]any{}}, nil
 		},
 	})
+
+	require.NoError(t, err)
+	require.NotNil(t, cmd)
 
 	// Find the generate subcommand
 	var found bool
@@ -121,7 +127,7 @@ func TestNewCommand_GenerateFlags(t *testing.T) {
 func TestGenerate_MissingEnvironmentFlagFails(t *testing.T) {
 	t.Parallel()
 
-	cmd := NewCommand(Config{
+	cmd, err := NewCommand(Config{
 		Logger: logger.Nop(),
 		Domain: domain.NewDomain("/tmp", "testdomain"),
 		ViewState: func(_ fdeployment.Environment, _ json.Marshaler) (json.Marshaler, error) {
@@ -129,11 +135,13 @@ func TestGenerate_MissingEnvironmentFlagFails(t *testing.T) {
 		},
 	})
 
+	require.NoError(t, err)
+
 	// Execute without --environment flag
 	cmd.SetArgs([]string{"generate"})
-	err := cmd.Execute()
+	execErr := cmd.Execute()
 
-	require.ErrorContains(t, err, `required flag(s) "environment" not set`)
+	require.ErrorContains(t, execErr, `required flag(s) "environment" not set`)
 }
 
 // TestGenerate_Success verifies successful state generation with mocks.
@@ -153,7 +161,7 @@ func TestGenerate_Success(t *testing.T) {
 	var stateLoaderCalled bool
 	var viewStateCalled bool
 
-	cmd := NewCommand(Config{
+	cmd, err := NewCommand(Config{
 		Logger: logger.Nop(),
 		Domain: domain.NewDomain("/tmp", "testdomain"),
 		ViewState: func(env fdeployment.Environment, _ json.Marshaler) (json.Marshaler, error) {
@@ -177,14 +185,16 @@ func TestGenerate_Success(t *testing.T) {
 		},
 	})
 
+	require.NoError(t, err)
+
 	out := new(bytes.Buffer)
 	cmd.SetOut(out)
 	cmd.SetErr(out)
 	cmd.SetArgs([]string{"generate", "-e", "staging"})
 
-	err := cmd.Execute()
+	execErr := cmd.Execute()
 
-	require.NoError(t, err)
+	require.NoError(t, execErr)
 	assert.True(t, environmentLoaderCalled, "environment loader should be called")
 	assert.True(t, stateLoaderCalled, "state loader should be called")
 	assert.True(t, viewStateCalled, "view state should be called")
@@ -202,7 +212,7 @@ func TestGenerate_WithPrint(t *testing.T) {
 		Data: map[string]any{"key": "value"},
 	}
 
-	cmd := NewCommand(Config{
+	cmd, err := NewCommand(Config{
 		Logger: logger.Nop(),
 		Domain: domain.NewDomain("/tmp", "testdomain"),
 		ViewState: func(_ fdeployment.Environment, _ json.Marshaler) (json.Marshaler, error) {
@@ -218,14 +228,16 @@ func TestGenerate_WithPrint(t *testing.T) {
 		},
 	})
 
+	require.NoError(t, err)
+
 	out := new(bytes.Buffer)
 	cmd.SetOut(out)
 	cmd.SetErr(out)
 	cmd.SetArgs([]string{"generate", "-e", "staging", "--print"})
 
-	err := cmd.Execute()
+	execErr := cmd.Execute()
 
-	require.NoError(t, err)
+	require.NoError(t, execErr)
 	// With --print flag, state should be in output
 	output := out.String()
 	assert.Contains(t, output, "key")
@@ -243,7 +255,7 @@ func TestGenerate_WithPersist(t *testing.T) {
 	var savedState json.Marshaler
 	var savedOutputPath string
 
-	cmd := NewCommand(Config{
+	cmd, err := NewCommand(Config{
 		Logger: logger.Nop(),
 		Domain: domain.NewDomain("/tmp", "testdomain"),
 		ViewState: func(_ fdeployment.Environment, _ json.Marshaler) (json.Marshaler, error) {
@@ -265,14 +277,16 @@ func TestGenerate_WithPersist(t *testing.T) {
 		},
 	})
 
+	require.NoError(t, err)
+
 	out := new(bytes.Buffer)
 	cmd.SetOut(out)
 	cmd.SetErr(out)
 	cmd.SetArgs([]string{"generate", "-e", "staging", "-p"})
 
-	err := cmd.Execute()
+	execErr := cmd.Execute()
 
-	require.NoError(t, err)
+	require.NoError(t, execErr)
 	assert.Equal(t, expectedState, savedState, "state should be saved")
 	assert.Empty(t, savedOutputPath, "default output path should be empty")
 
@@ -289,7 +303,7 @@ func TestGenerate_WithCustomOutputPath(t *testing.T) {
 	expectedOutputPath := "/custom/path/state.json"
 	var savedOutputPath string
 
-	cmd := NewCommand(Config{
+	cmd, err := NewCommand(Config{
 		Logger: logger.Nop(),
 		Domain: domain.NewDomain("/tmp", "testdomain"),
 		ViewState: func(_ fdeployment.Environment, _ json.Marshaler) (json.Marshaler, error) {
@@ -310,14 +324,16 @@ func TestGenerate_WithCustomOutputPath(t *testing.T) {
 		},
 	})
 
+	require.NoError(t, err)
+
 	out := new(bytes.Buffer)
 	cmd.SetOut(out)
 	cmd.SetErr(out)
 	cmd.SetArgs([]string{"generate", "-e", "staging", "-p", "-o", expectedOutputPath})
 
-	err := cmd.Execute()
+	execErr := cmd.Execute()
 
-	require.NoError(t, err)
+	require.NoError(t, execErr)
 	assert.Equal(t, expectedOutputPath, savedOutputPath, "custom output path should be used")
 
 	// Should print custom path
@@ -331,7 +347,7 @@ func TestGenerate_EnvironmentLoadError(t *testing.T) {
 
 	expectedError := errors.New("failed to connect to RPC")
 
-	cmd := NewCommand(Config{
+	cmd, err := NewCommand(Config{
 		Logger: logger.Nop(),
 		Domain: domain.NewDomain("/tmp", "testdomain"),
 		ViewState: func(_ fdeployment.Environment, _ json.Marshaler) (json.Marshaler, error) {
@@ -346,16 +362,18 @@ func TestGenerate_EnvironmentLoadError(t *testing.T) {
 		},
 	})
 
+	require.NoError(t, err)
+
 	out := new(bytes.Buffer)
 	cmd.SetOut(out)
 	cmd.SetErr(out)
 	cmd.SetArgs([]string{"generate", "-e", "staging"})
 
-	err := cmd.Execute()
+	execErr := cmd.Execute()
 
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to load environment")
-	assert.Contains(t, err.Error(), expectedError.Error())
+	require.Error(t, execErr)
+	assert.Contains(t, execErr.Error(), "failed to load environment")
+	assert.Contains(t, execErr.Error(), expectedError.Error())
 }
 
 // TestGenerate_ViewStateError verifies error handling.
@@ -364,7 +382,7 @@ func TestGenerate_ViewStateError(t *testing.T) {
 
 	expectedError := errors.New("contract read failed")
 
-	cmd := NewCommand(Config{
+	cmd, err := NewCommand(Config{
 		Logger: logger.Nop(),
 		Domain: domain.NewDomain("/tmp", "testdomain"),
 		ViewState: func(_ fdeployment.Environment, _ json.Marshaler) (json.Marshaler, error) {
@@ -380,16 +398,18 @@ func TestGenerate_ViewStateError(t *testing.T) {
 		},
 	})
 
+	require.NoError(t, err)
+
 	out := new(bytes.Buffer)
 	cmd.SetOut(out)
 	cmd.SetErr(out)
 	cmd.SetArgs([]string{"generate", "-e", "staging"})
 
-	err := cmd.Execute()
+	execErr := cmd.Execute()
 
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "unable to snapshot state")
-	assert.Contains(t, err.Error(), expectedError.Error())
+	require.Error(t, execErr)
+	assert.Contains(t, execErr.Error(), "unable to snapshot state")
+	assert.Contains(t, execErr.Error(), expectedError.Error())
 }
 
 // TestGenerate_StateSaveError verifies error handling.
@@ -398,7 +418,7 @@ func TestGenerate_StateSaveError(t *testing.T) {
 
 	expectedError := errors.New("permission denied")
 
-	cmd := NewCommand(Config{
+	cmd, err := NewCommand(Config{
 		Logger: logger.Nop(),
 		Domain: domain.NewDomain("/tmp", "testdomain"),
 		ViewState: func(_ fdeployment.Environment, _ json.Marshaler) (json.Marshaler, error) {
@@ -417,16 +437,18 @@ func TestGenerate_StateSaveError(t *testing.T) {
 		},
 	})
 
+	require.NoError(t, err)
+
 	out := new(bytes.Buffer)
 	cmd.SetOut(out)
 	cmd.SetErr(out)
 	cmd.SetArgs([]string{"generate", "-e", "staging", "-p"})
 
-	err := cmd.Execute()
+	execErr := cmd.Execute()
 
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to save state")
-	assert.Contains(t, err.Error(), expectedError.Error())
+	require.Error(t, execErr)
+	assert.Contains(t, execErr.Error(), "failed to save state")
+	assert.Contains(t, execErr.Error(), expectedError.Error())
 }
 
 // TestConfig_Validate verifies validation catches missing required fields.
@@ -476,19 +498,34 @@ func TestConfig_Validate(t *testing.T) {
 	})
 }
 
-// TestNewCommand_InvalidConfigReturnsError verifies command returns error for invalid config.
+// TestNewCommand_InvalidConfigReturnsError verifies NewCommand returns error for invalid config.
 func TestNewCommand_InvalidConfigReturnsError(t *testing.T) {
 	t.Parallel()
 
-	cmd := NewCommand(Config{
+	cmd, err := NewCommand(Config{
 		Logger:    logger.Nop(),
 		Domain:    domain.NewDomain("/tmp", "testdomain"),
 		ViewState: nil, // Missing required field
 	})
 
-	// Command should be created but return error when executed
-	err := cmd.Execute()
+	require.Error(t, err)
+	assert.Nil(t, cmd)
+	assert.Contains(t, err.Error(), "ViewState")
+}
+
+// TestNewCommand_MissingLogger verifies NewCommand returns error for missing logger.
+func TestNewCommand_MissingLogger(t *testing.T) {
+	t.Parallel()
+
+	cmd, err := NewCommand(Config{
+		Logger: nil, // Missing required field
+		Domain: domain.NewDomain("/tmp", "testdomain"),
+		ViewState: func(_ fdeployment.Environment, _ json.Marshaler) (json.Marshaler, error) {
+			return json.RawMessage(`{}`), nil
+		},
+	})
 
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "ViewState")
+	assert.Nil(t, cmd)
+	assert.Contains(t, err.Error(), "Logger")
 }
