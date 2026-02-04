@@ -1,5 +1,26 @@
 # chainlink-deployments-framework
 
+## 0.79.0
+
+### Minor Changes
+
+- [#629](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/629) [`ff9bb14`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/ff9bb14c5ed31ad86470b7ddb085ab6a3292c5da) Thanks [@huangzhen1997](https://github.com/huangzhen1997)! - Adds TON blockchain analyzer support
+
+- [#704](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/704) [`d4a24a9`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/d4a24a9fff8c3894eca94521dd2c9ad487b75bd2) Thanks [@bytesizedroll](https://github.com/bytesizedroll)! - - Removed legacy migration CLI commands that have been superseded by durable pipelines:
+
+  - `migration run` - Use `durable-pipeline run` instead
+  - `migration list` - Use `durable-pipeline list` instead
+  - `migration latest` - No longer supported
+  - `migration address-book` - Use top-level `address-book` command instead
+  - `migration datastore` - Use top-level `datastore` command instead
+
+  - Removed the following files:
+    - `engine/cld/legacy/cli/commands/migration.go`
+    - `engine/cld/legacy/cli/commands/migration_test.go`
+    - `engine/cld/legacy/cli/commands/migration_helper.go`
+
+- [#701](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/701) [`78d475f`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/78d475feb2a4f9de969cfa283fd514df272a1166) Thanks [@krebernisak](https://github.com/krebernisak)! - Add TON chain.Confirm fn
+
 ## 0.78.0
 
 ### Minor Changes
