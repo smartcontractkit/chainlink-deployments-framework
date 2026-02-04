@@ -14,8 +14,6 @@
   },
   "repository": "https://github.com/smartcontractkit/chainlink-deployments-framework",
   "pnpm": {
-    "overrides": {
-      "js-yaml": ">=3.14.2"
-    }
+    "overrides": {}
   }
 }
