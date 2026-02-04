@@ -116,17 +116,18 @@ func runGenerate(cmd *cobra.Command, cfg Config) error {
 	var prevState domain.JSONSerializer
 	if previousState != "" {
 		// Load from custom path specified by --prev flag
-		data, err := os.ReadFile(previousState)
-		if err != nil {
-			return fmt.Errorf("failed to load previous state from %s: %w", previousState, err)
+		data, readErr := os.ReadFile(previousState)
+		if readErr != nil {
+			return fmt.Errorf("failed to load previous state from %s: %w", previousState, readErr)
 		}
 		raw := json.RawMessage(data)
 		prevState = &raw
 	} else {
 		// Load from default envdir location
-		prevState, err = deps.StateLoader(envdir)
-		if err != nil && !os.IsNotExist(err) {
-			return fmt.Errorf("failed to load previous state: %w", err)
+		var loadErr error
+		prevState, loadErr = deps.StateLoader(envdir)
+		if loadErr != nil && !os.IsNotExist(loadErr) {
+			return fmt.Errorf("failed to load previous state: %w", loadErr)
 		}
 	}
 

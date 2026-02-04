@@ -47,11 +47,10 @@ func Print(cmd *cobra.Command) {
 func Output(cmd *cobra.Command, defaultValue string) {
 	cmd.Flags().StringP("out", "o", defaultValue, "Output file path")
 
-	// Add deprecated alias by normalizing outputPath -> out
+	// Normalize --outputPath to --out for backward compatibility (silent)
 	existingNormalize := cmd.Flags().GetNormalizeFunc()
 	cmd.Flags().SetNormalizeFunc(func(f *pflag.FlagSet, name string) pflag.NormalizedName {
 		if name == "outputPath" {
-			// Print deprecation warning on first use
 			return pflag.NormalizedName("out")
 		}
 		if existingNormalize != nil {
