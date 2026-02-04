@@ -103,6 +103,9 @@ func resolveDurablePipelineYamlPath(inputFileName string, domain domain.Domain, 
 	return resolvedPath, nil
 }
 
+// saveReports saves any new operations reports generated during changeset execution
+// to the artifacts directory. It compares the current report count against the original
+// count to determine which reports are new and need to be persisted.
 func saveReports(
 	reporter operations.Reporter, originalReportsLen int, lggr logger.Logger, artdir *domain.ArtifactsDir, changesetStr string,
 ) error {
@@ -121,6 +124,9 @@ func saveReports(
 	return nil
 }
 
+// configureEnvironmentOptions builds the environment loading options for a changeset execution.
+// It configures the logger, chain overrides, JD settings, operation registry, and dry-run mode
+// based on the changeset's registered options and the provided flags.
 func configureEnvironmentOptions(
 	cs *changeset.ChangesetsRegistry, changesetStr string, dryRun bool, lggr logger.Logger,
 ) ([]environment.LoadEnvironmentOption, error) {
