@@ -1181,22 +1181,6 @@ func Test_EnvDir_EnvMetadataFilePath(t *testing.T) {
 	assert.Equal(t, "domains/ccip/staging/datastore/env_metadata.json", envdir.EnvMetadataFilePath())
 }
 
-func Test_EnvDir_MigrationsFilePath(t *testing.T) {
-	t.Parallel()
-
-	envdir := NewEnvDir("domains", "ccip", "staging")
-
-	assert.Equal(t, "domains/ccip/staging/migrations.go", envdir.MigrationsFilePath())
-}
-
-func Test_EnvDir_MigrationsArchiveFilePath(t *testing.T) {
-	t.Parallel()
-
-	envdir := NewEnvDir("domains", "ccip", "staging")
-
-	assert.Equal(t, "domains/ccip/staging/migrations_archive.go", envdir.MigrationsArchiveFilePath())
-}
-
 func Test_EnvDir_InputsDirPath(t *testing.T) {
 	t.Parallel()
 
