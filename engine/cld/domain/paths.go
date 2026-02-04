@@ -73,14 +73,6 @@ const (
 	// environment.
 	ViewStateFileName = "state.json"
 
-	// MigrationsFileName is the name of the file containing the migrations for the
-	// environment.
-	MigrationsFileName = "migrations.go"
-
-	// MigrationsArchiveFileName is the name of the file containing the archived
-	// migrations for the environment.
-	MigrationsArchiveFileName = "migrations_archive.go"
-
 	// DurablePipelineDirName is the name of the directory containing durable pipelines.
 	DurablePipelineDirName = "durable_pipelines"
 

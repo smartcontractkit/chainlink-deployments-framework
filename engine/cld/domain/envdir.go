@@ -72,18 +72,6 @@ func (d EnvDir) PipelinesFilePath() string {
 	return filepath.Join(d.DirPath(), PipelinesFileName)
 }
 
-// MigrationsFilePath returns the path to the migrations file for the domain's environment
-// directory.
-func (d EnvDir) MigrationsFilePath() string {
-	return filepath.Join(d.DirPath(), MigrationsFileName)
-}
-
-// MigrationsArchiveFilePath returns the path to the migrations archive file for the domain's
-// environment directory.
-func (d EnvDir) MigrationsArchiveFilePath() string {
-	return filepath.Join(d.DirPath(), MigrationsArchiveFileName)
-}
-
 // AddressBookFilePath returns the path to the address book file for the domain's environment
 // directory.
 func (d EnvDir) AddressBookFilePath() string {
