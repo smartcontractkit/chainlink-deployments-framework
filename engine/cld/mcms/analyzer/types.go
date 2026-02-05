@@ -42,6 +42,8 @@ type DecodedBatchOperation interface {
 type DecodedCalls []DecodedCall
 
 type DecodedCall interface { // DecodedCall or DecodedTransaction?
+	ContractType() string
+	ContractVersion() string
 	To() string   // review: current analyzer uses "Address"
 	Name() string // review: current analyzer uses "Method"
 	Inputs() DecodedParameters
@@ -54,7 +56,8 @@ type DecodedParameters []DecodedParameter
 
 type DecodedParameter interface {
 	Name() string
-	Value() any
+	Type() string // reflect.Type?
+	Value() any   // reflect.Value?
 }
 
 // ----- analyzed -----
@@ -114,27 +117,31 @@ type BaseAnalyzer interface {
 
 type ProposalAnalyzer interface {
 	BaseAnalyzer
+	Matches(ctx context.Context, actx AnalyzerContext, proposal DecodedTimelockProposal) bool // TODO: is there a better name? AppliesTo? ShouldAnalyze?
 	Analyze(ctx context.Context, actx AnalyzerContext, ectx ExecutionContext, proposal DecodedTimelockProposal) (Annotations, error)
 }
 
 type BatchOperationAnalyzer interface {
 	BaseAnalyzer
+	Matches(ctx context.Context, actx AnalyzerContext, operation DecodedBatchOperation) bool
 	Analyze(ctx context.Context, actx AnalyzerContext, ectx ExecutionContext, operation DecodedBatchOperation) (Annotations, error)
 }
 
 type CallAnalyzer interface {
 	BaseAnalyzer
+	Matches(ctx context.Context, actx AnalyzerContext, call DecodedCall) bool
 	Analyze(ctx context.Context, actx AnalyzerContext, ectx ExecutionContext, call DecodedCall) (Annotations, error)
 }
 
 type ParameterAnalyzer interface {
 	BaseAnalyzer
+	Matches(ctx context.Context, actx AnalyzerContext, param DecodedParameter) bool
 	Analyze(ctx context.Context, actx AnalyzerContext, ectx ExecutionContext, param DecodedParameter) (Annotations, error)
 }
 
-// ----- engine -----
+// ----- engine/runtime -----
 
-type AnalyzerEngine interface {
+type AnalyzerEngine interface { // review: rename to AnalyzerRuntime? AnalyzerService? ...?
 	Run(ctx context.Context, domain cldfdomain.Domain, environmentName string, proposal *mcms.TimelockProposal) (AnalyzedProposal, error)
 
 	RegisterAnalyzer(analyzer BaseAnalyzer) error // do we need to add a method for each type? like RegisterProposalAnalyzer?

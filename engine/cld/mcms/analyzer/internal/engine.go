@@ -14,6 +14,7 @@ import (
 	cldfdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	cldfenvironment "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/analyzer"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/analyzer/internal/logger"
 )
 
 type analyzerEngine struct {
@@ -101,32 +102,36 @@ func (ae *analyzerEngine) analyzeProposal(
 	ectx *executionContext,
 	decodedProposal analyzer.DecodedTimelockProposal,
 ) (analyzer.AnalyzedProposal, error) {
-	actx.proposal = &analyzedProposal{decodedProposal: decodedProposal}
+	lggr := logger.FromContext(ctx)
+	analyzedProposal := &analyzedProposal{decodedProposal: decodedProposal}
+	actx.proposal = analyzedProposal
 
 	for _, proposalAnalyzer := range ae.proposalAnalyzers {
-		// TODO: pre and post execution Analyze calls
+		// TODO: pre and post execution Analyze
+		if !proposalAnalyzer.Matches(ctx, actx, decodedProposal) {
+			continue
+		}
 
 		annotations, err := proposalAnalyzer.Analyze(ctx, actx, ectx, decodedProposal)
 		if err != nil {
-			// log error
+			lggr.Warnf("proposal analyzer %q failed: %w", proposalAnalyzer.ID(), err)
 			continue
 		}
 		actx.proposal.AddAnnotations(annotations...)
 	}
 
 	for _, batchOp := range decodedProposal.BatchOperations() {
-		/*analyzedBatchOperation*/ _, err := ae.analyzeBatchOperation(ctx, actx, ectx, batchOp)
+		analyzedBatchOperation, err := ae.analyzeBatchOperation(ctx, actx, ectx, batchOp)
 		if err != nil {
-			// log error
+			lggr.Warnf("failed to analyze batch operation: %w", err)
 			continue
 		}
-		// TODO: add analyzed batch operation to analyzed proposal
+		analyzedProposal.batchOperations = append(analyzedProposal.batchOperations, analyzedBatchOperation)
 	}
 
-	proposal := actx.proposal
-	actx.proposal = nil
+	actx.proposal = nil // clear context
 
-	return proposal, errors.New("not implemented")
+	return analyzedProposal, errors.New("not implemented")
 }
 
 func (ae *analyzerEngine) analyzeBatchOperation(
@@ -135,32 +140,36 @@ func (ae *analyzerEngine) analyzeBatchOperation(
 	ectx *executionContext,
 	decodedBatchOperation analyzer.DecodedBatchOperation,
 ) (analyzer.AnalyzedBatchOperation, error) {
-	actx.batchOperation = &analyzedBatchOperation{decodedBatchOperation: decodedBatchOperation}
+	lggr := logger.FromContext(ctx)
+	analyzedBatchOp := &analyzedBatchOperation{decodedBatchOperation: decodedBatchOperation}
+	actx.batchOperation = analyzedBatchOp
 
 	for _, batchOperationAnalyzer := range ae.batchOperationAnalyzers {
-		// TODO: pre and post execution Analyze calls
+		// TODO: pre and post execution Analyze
+		if !batchOperationAnalyzer.Matches(ctx, actx, decodedBatchOperation) {
+			continue
+		}
 
 		annotations, err := batchOperationAnalyzer.Analyze(ctx, actx, ectx, decodedBatchOperation)
 		if err != nil {
-			// log error
+			lggr.Warnf("batch operation analyzer %q failed: %w", batchOperationAnalyzer.ID(), err)
 			continue
 		}
-		actx.batchOperation.AddAnnotations(annotations...)
+		analyzedBatchOp.AddAnnotations(annotations...)
 	}
 
 	for _, call := range decodedBatchOperation.Calls() {
-		/*call*/ _, err := ae.analyzeCall(ctx, actx, ectx, call)
+		analyzedCall, err := ae.analyzeCall(ctx, actx, ectx, call)
 		if err != nil {
-			// log error
+			lggr.Warnf("failed to analyze call: %w", err)
 			continue
 		}
-		// TODO: add analyzed call to analyzed batch operation
+		analyzedBatchOp.calls = append(analyzedBatchOp.calls, analyzedCall)
 	}
 
-	batchOperation := actx.batchOperation
-	actx.batchOperation = nil
+	actx.batchOperation = nil // clear context
 
-	return batchOperation, errors.New("not implemented")
+	return analyzedBatchOp, errors.New("not implemented")
 }
 
 func (ae *analyzerEngine) analyzeCall(
@@ -169,8 +178,44 @@ func (ae *analyzerEngine) analyzeCall(
 	ectx *executionContext,
 	decodedCall analyzer.DecodedCall,
 ) (analyzer.AnalyzedCall, error) {
-	// TODO
-	return nil, errors.New("not implemented")
+	lggr := logger.FromContext(ctx)
+	analyzedCall := &analyzedCall{decodedCall: decodedCall}
+	actx.call = analyzedCall
+
+	for _, callAnalyzer := range ae.callAnalyzers {
+		// TODO: pre and post execution Analyze
+		if !callAnalyzer.Matches(ctx, actx, decodedCall) {
+			continue
+		}
+
+		annotations, err := callAnalyzer.Analyze(ctx, actx, ectx, decodedCall)
+		if err != nil {
+			lggr.Warnf("call analyzer %q failed: %w", callAnalyzer.ID(), err)
+			continue
+		}
+		analyzedCall.AddAnnotations(annotations...)
+	}
+
+	for _, input := range decodedCall.Inputs() {
+		analyzedInput, err := ae.analyzeParameter(ctx, actx, ectx, input)
+		if err != nil {
+			lggr.Warnf("failed to analyze method input: %w", err)
+			continue
+		}
+		analyzedCall.inputs = append(analyzedCall.inputs, analyzedInput)
+	}
+	for _, output := range decodedCall.Outputs() {
+		analyzedOutput, err := ae.analyzeParameter(ctx, actx, ectx, output)
+		if err != nil {
+			lggr.Warnf("failed to analyze method output: %w", err)
+			continue
+		}
+		analyzedCall.outputs = append(analyzedCall.outputs, analyzedOutput)
+	}
+
+	actx.call = nil // clear context
+
+	return analyzedCall, nil
 }
 
 // TODO: analyzeParameter or (analyzeInput + analyzeOutput)?
@@ -180,8 +225,24 @@ func (ae *analyzerEngine) analyzeParameter(
 	ectx *executionContext,
 	decodedParameter analyzer.DecodedParameter,
 ) (analyzer.AnalyzedParameter, error) {
-	// TODO
-	return nil, errors.New("not implemented")
+	lggr := logger.FromContext(ctx)
+	analyzedParam := &analyzedParameter{decodedParameter: decodedParameter}
+
+	for _, parameterAnalyzer := range ae.parameterAnalyzers {
+		// TODO: pre and post execution Analyze
+		if !parameterAnalyzer.Matches(ctx, actx, decodedParameter) {
+			continue
+		}
+
+		annotations, err := parameterAnalyzer.Analyze(ctx, actx, ectx, decodedParameter)
+		if err != nil {
+			lggr.Warnf("parameter analyzer %q failed: %w", parameterAnalyzer.ID(), err)
+			continue
+		}
+		analyzedParam.AddAnnotations(annotations...)
+	}
+
+	return analyzedParam, nil
 }
 
 // ---------------------------------------------------------------------
@@ -236,4 +297,22 @@ func (a analyzedCall) Outputs() analyzer.AnalyzedParameters {
 }
 
 // ---------------------------------------------------------------------
-// TODO: analyzedParameter
+
+var _ analyzer.AnalyzedParameter = &analyzedParameter{}
+
+type analyzedParameter struct {
+	*annotated
+	decodedParameter analyzer.DecodedParameter
+}
+
+func (a analyzedParameter) Name() string {
+	return a.decodedParameter.Name()
+}
+
+func (a analyzedParameter) Type() string {
+	return a.decodedParameter.Type()
+}
+
+func (a analyzedParameter) Value() any {
+	return a.decodedParameter.Value()
+}
