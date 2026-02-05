@@ -174,38 +174,38 @@ func newChainLoaders(
 	if useKMS(cfg.KMS) || cfg.EVM.DeployerKey != "" {
 		loaders[chainsel.FamilyEVM] = newChainLoaderEVM(networks, cfg, lggr)
 	} else {
-		lggr.Debug("Skipping EVM chains, no private key or KMS config found in secrets")
+		lggr.Info("Skipping EVM chains, no private key or KMS config found in secrets")
 	}
 
 	// Tron chains are loaded if either KMS or deployer key is configured.
 	if useKMS(cfg.KMS) || cfg.Tron.DeployerKey != "" {
 		loaders[chainsel.FamilyTron] = newChainLoaderTron(networks, cfg)
 	} else {
-		lggr.Debug("Skipping Tron chains, no private key or KMS config found in secrets")
+		lggr.Info("Skipping Tron chains, no private key or KMS config found in secrets")
 	}
 
 	if cfg.Solana.ProgramsDirPath != "" && cfg.Solana.WalletKey != "" {
 		loaders[chainsel.FamilySolana] = newChainLoaderSolana(networks, cfg)
 	} else {
-		lggr.Debug("Skipping Solana chains, no private key or program path found in secrets")
+		lggr.Info("Skipping Solana chains, no private key or program path found in secrets")
 	}
 
 	if cfg.Aptos.DeployerKey != "" {
 		loaders[chainsel.FamilyAptos] = newChainLoaderAptos(networks, cfg)
 	} else {
-		lggr.Debug("Skipping Aptos chains, no private key found in secrets")
+		lggr.Info("Skipping Aptos chains, no private key found in secrets")
 	}
 
 	if cfg.Sui.DeployerKey != "" {
 		loaders[chainsel.FamilySui] = newChainLoaderSui(networks, cfg)
 	} else {
-		lggr.Debug("Skipping Sui chains, no private key found in secrets")
+		lggr.Info("Skipping Sui chains, no private key found in secrets")
 	}
 
 	if cfg.Ton.DeployerKey != "" {
 		loaders[chainsel.FamilyTon] = newChainLoaderTon(networks, cfg)
 	} else {
-		lggr.Debug("Skipping Ton chains, no private key found in secrets")
+		lggr.Info("Skipping Ton chains, no private key found in secrets")
 	}
 
 	return loaders
