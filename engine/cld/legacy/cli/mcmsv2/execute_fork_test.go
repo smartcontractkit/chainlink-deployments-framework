@@ -236,9 +236,9 @@ func saveChangesetOutputs(t *testing.T, domain cldfdomain.Domain, env cldf.Envir
 		DataStore:   mutableDataStore(t, env.DataStore),
 	})
 	require.NoError(t, err)
-	err = envDir.MergeMigrationAddressBook(changesetName, "")
+	err = envDir.MergeChangesetAddressBook(changesetName, "")
 	require.NoError(t, err)
-	err = envDir.MergeMigrationDataStore(changesetName, "")
+	err = envDir.MergeChangesetDataStore(changesetName, "")
 	require.NoError(t, err)
 
 	t.Cleanup(func() {

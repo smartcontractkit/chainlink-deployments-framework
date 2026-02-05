@@ -176,35 +176,35 @@ func (a *ArtifactsDir) EnvKey() string {
 	return a.envKey
 }
 
-// MigrationDirPath returns the path to the directory containing the artifacts for the specified
-// migration key.
-func (a *ArtifactsDir) MigrationDirPath(migKey string) string {
-	return filepath.Join(a.ArtifactsDirPath(), migKey, a.timestamp)
+// ChangesetDirPath returns the path to the directory containing the artifacts for the specified
+// changeset key.
+func (a *ArtifactsDir) ChangesetDirPath(csKey string) string {
+	return filepath.Join(a.ArtifactsDirPath(), csKey, a.timestamp)
 }
 
-// CreateMigrationDir creates a new directory within the artifacts directory with the specified
-// migration key. If the directory already exists, it will return nil.
-func (a *ArtifactsDir) CreateMigrationDir(migKey string) error {
-	migDirPath := a.MigrationDirPath(migKey)
-	if err := os.MkdirAll(migDirPath, 0755); err != nil {
+// CreateChangesetDir creates a new directory within the artifacts directory with the specified
+// changeset key. If the directory already exists, it will return nil.
+func (a *ArtifactsDir) CreateChangesetDir(csKey string) error {
+	csDirPath := a.ChangesetDirPath(csKey)
+	if err := os.MkdirAll(csDirPath, 0755); err != nil {
 		return err
 	}
 
-	_, err := os.Create(filepath.Join(migDirPath, ".gitkeep"))
+	_, err := os.Create(filepath.Join(csDirPath, ".gitkeep"))
 
 	return err
 }
 
-// RemoveMigrationDir removes the directory containing the artifacts for the specified migration
+// RemoveChangesetDir removes the directory containing the artifacts for the specified changeset
 // key.
-func (a *ArtifactsDir) RemoveMigrationDir(migKey string) error {
-	return os.RemoveAll(a.MigrationDirPath(migKey))
+func (a *ArtifactsDir) RemoveChangesetDir(csKey string) error {
+	return os.RemoveAll(a.ChangesetDirPath(csKey))
 }
 
-// MigrationDirExists checks if the migration directory containing the artifacts for the specified
-// migration key exists.
-func (a *ArtifactsDir) MigrationDirExists(migKey string) (bool, error) {
-	info, err := os.Stat(a.MigrationDirPath(migKey))
+// ChangesetDirExists checks if the changeset directory containing the artifacts for the specified
+// changeset key exists.
+func (a *ArtifactsDir) ChangesetDirExists(csKey string) (bool, error) {
+	info, err := os.Stat(a.ChangesetDirPath(csKey))
 	if os.IsNotExist(err) {
 		return false, nil
 	}
@@ -236,9 +236,9 @@ func (a *ArtifactsDir) OperationsReportsDirExists() (bool, error) {
 	return true, nil
 }
 
-// MigrationOperationsReportsFileExists checks if the operations reports file exists for the specified migration key.
-func (a *ArtifactsDir) MigrationOperationsReportsFileExists(migKey string) (bool, error) {
-	info, err := os.Stat(a.getOperationsReportsFilePath(migKey))
+// ChangesetOperationsReportsFileExists checks if the operations reports file exists for the specified changeset key.
+func (a *ArtifactsDir) ChangesetOperationsReportsFileExists(csKey string) (bool, error) {
+	info, err := os.Stat(a.getOperationsReportsFilePath(csKey))
 	if os.IsNotExist(err) {
 		return false, nil
 	}
@@ -287,12 +287,12 @@ func (a *ArtifactsDir) ArchiveProposalsDirExists() (bool, error) {
 	return true, nil
 }
 
-// SaveChangesetOutput writes the ChangesetOutput as artifacts to the specified migration directory.
-func (a *ArtifactsDir) SaveChangesetOutput(migKey string, output fdeployment.ChangesetOutput) error {
+// SaveChangesetOutput writes the ChangesetOutput as artifacts to the specified changeset directory.
+func (a *ArtifactsDir) SaveChangesetOutput(csKey string, output fdeployment.ChangesetOutput) error {
 	id := ksuid.New()
 
-	// Create the migration directory if it doesn't exist
-	if err := a.CreateMigrationDir(migKey); err != nil {
+	// Create the changeset directory if it doesn't exist
+	if err := a.CreateChangesetDir(csKey); err != nil {
 		return err
 	}
 
@@ -315,13 +315,13 @@ func (a *ArtifactsDir) SaveChangesetOutput(migKey string, output fdeployment.Cha
 	//nolint:staticcheck
 	if len(output.JobSpecs) > 0 {
 		//nolint:staticcheck
-		if err := a.saveArtifact(id, migKey, ArtifactJobSpec, output.JobSpecs); err != nil {
+		if err := a.saveArtifact(id, csKey, ArtifactJobSpec, output.JobSpecs); err != nil {
 			return err
 		}
 	}
 
 	if len(output.Jobs) > 0 {
-		if err := a.saveArtifact(id, migKey, ArtifactJobs, output.Jobs); err != nil {
+		if err := a.saveArtifact(id, csKey, ArtifactJobs, output.Jobs); err != nil {
 			return err
 		}
 	}
@@ -329,7 +329,7 @@ func (a *ArtifactsDir) SaveChangesetOutput(migKey string, output fdeployment.Cha
 	// Write MCMS proposal to proposals directory
 	if len(output.MCMSProposals) > 0 {
 		for i, p := range output.MCMSProposals {
-			if err := a.saveProposalArtifact(migKey, ArtifactMCMSProposal, i, p); err != nil {
+			if err := a.saveProposalArtifact(csKey, ArtifactMCMSProposal, i, p); err != nil {
 				return err
 			}
 		}
@@ -342,11 +342,11 @@ func (a *ArtifactsDir) SaveChangesetOutput(migKey string, output fdeployment.Cha
 			// until product is ready to switch to the new MCMS proposal format
 			hasDecoded := len(output.DescribedTimelockProposals) > i && output.DescribedTimelockProposals[i] != ""
 
-			if err := a.saveProposalArtifact(migKey, ArtifactsMCMSTimelockProposal, i, p); err != nil {
+			if err := a.saveProposalArtifact(csKey, ArtifactsMCMSTimelockProposal, i, p); err != nil {
 				return err
 			}
 			if hasDecoded {
-				if err := a.saveDecodedProposalArtifact(migKey, ArtifactsMCMSTimelockProposal, i, output.DescribedTimelockProposals[i]); err != nil {
+				if err := a.saveDecodedProposalArtifact(csKey, ArtifactsMCMSTimelockProposal, i, output.DescribedTimelockProposals[i]); err != nil {
 					return err
 				}
 			}
@@ -367,7 +367,7 @@ func (a *ArtifactsDir) SaveChangesetOutput(migKey string, output fdeployment.Cha
 			if err != nil {
 				return err
 			}
-			if err := a.saveArtifact(id, migKey, ArtifactAddress, json.RawMessage(sortedBytes)); err != nil {
+			if err := a.saveArtifact(id, csKey, ArtifactAddress, json.RawMessage(sortedBytes)); err != nil {
 				return err
 			}
 		}
@@ -375,7 +375,7 @@ func (a *ArtifactsDir) SaveChangesetOutput(migKey string, output fdeployment.Cha
 
 	// Write data store artifact
 	if output.DataStore != nil {
-		if err := a.saveArtifact(id, migKey, ArtifactDataStore, output.DataStore); err != nil {
+		if err := a.saveArtifact(id, csKey, ArtifactDataStore, output.DataStore); err != nil {
 			return err
 		}
 	}
@@ -383,12 +383,12 @@ func (a *ArtifactsDir) SaveChangesetOutput(migKey string, output fdeployment.Cha
 	return nil
 }
 
-// LoadChangesetOutput reads the artifacts from the specified migration directory and returns the ChangesetOutput.
-func (a *ArtifactsDir) LoadChangesetOutput(migKey string) (fdeployment.ChangesetOutput, error) {
-	migrationsDir := a.MigrationDirPath(migKey)
+// LoadChangesetOutput reads the artifacts from the specified changeset directory and returns the ChangesetOutput.
+func (a *ArtifactsDir) LoadChangesetOutput(csKey string) (fdeployment.ChangesetOutput, error) {
+	changesetDir := a.ChangesetDirPath(csKey)
 	proposalsDir := a.getProposalDir()
 
-	artifactEntries, err := os.ReadDir(migrationsDir)
+	artifactEntries, err := os.ReadDir(changesetDir)
 	if err != nil {
 		return fdeployment.ChangesetOutput{}, err
 	}
@@ -417,7 +417,7 @@ func (a *ArtifactsDir) LoadChangesetOutput(migKey string) (fdeployment.Changeset
 		}
 
 		// Determine the path of the artifact file
-		entryPath := filepath.Join(migrationsDir, entry.Name())
+		entryPath := filepath.Join(changesetDir, entry.Name())
 
 		switch name := entry.Name(); {
 		case jobSpecsRgx.MatchString(name):
@@ -479,21 +479,21 @@ func (a *ArtifactsDir) LoadChangesetOutput(migKey string) (fdeployment.Changeset
 	return output, nil
 }
 
-// LoadAddressBookByMigrationKey searches for an address book file in the migration directory and
+// LoadAddressBookByChangesetKey searches for an address book file in the changeset directory and
 // returns the address book as an AddressBookMap.
 //
 // The search will look for a address book file with a matching name as the domain, env and
-// migration key, returning the first matching file. An error is returned if no matches are found
+// changeset key, returning the first matching file. An error is returned if no matches are found
 // or if an error occurs during the search.
 //
-// Pattern format: "*-<domain>-<env>-<migKey>_addresses.json".
-func (a *ArtifactsDir) LoadAddressBookByMigrationKey(migKey string) (*fdeployment.AddressBookMap, error) {
-	migDirPath := a.MigrationDirPath(migKey)
+// Pattern format: "*-<domain>-<env>-<csKey>_addresses.json".
+func (a *ArtifactsDir) LoadAddressBookByChangesetKey(csKey string) (*fdeployment.AddressBookMap, error) {
+	csDirPath := a.ChangesetDirPath(csKey)
 	pattern := fmt.Sprintf("*-%s-%s-%s_%s",
-		a.DomainKey(), a.EnvKey(), migKey, AddressBookFileName,
+		a.DomainKey(), a.EnvKey(), csKey, AddressBookFileName,
 	)
 
-	addrBookPath, err := a.findArtifactPath(migDirPath, pattern)
+	addrBookPath, err := a.findArtifactPath(csDirPath, pattern)
 	if err != nil {
 		return nil, err
 	}
@@ -501,9 +501,9 @@ func (a *ArtifactsDir) LoadAddressBookByMigrationKey(migKey string) (*fdeploymen
 	return a.loadAddressBook(addrBookPath)
 }
 
-// LoadOperationsReports reads the reports from the operations reports directory for the specified migration key.
-func (a *ArtifactsDir) LoadOperationsReports(migKey string) ([]foperations.Report[any, any], error) {
-	exists, err := a.MigrationOperationsReportsFileExists(migKey)
+// LoadOperationsReports reads the reports from the operations reports directory for the specified changeset key.
+func (a *ArtifactsDir) LoadOperationsReports(csKey string) ([]foperations.Report[any, any], error) {
+	exists, err := a.ChangesetOperationsReportsFileExists(csKey)
 	if err != nil {
 		return nil, err
 	}
@@ -512,7 +512,7 @@ func (a *ArtifactsDir) LoadOperationsReports(migKey string) ([]foperations.Repor
 		return []foperations.Report[any, any]{}, nil
 	}
 
-	file, err := os.ReadFile(a.getOperationsReportsFilePath(migKey))
+	file, err := os.ReadFile(a.getOperationsReportsFilePath(csKey))
 	if err != nil {
 		return nil, err
 	}
@@ -532,10 +532,10 @@ func (a *ArtifactsDir) LoadOperationsReports(migKey string) ([]foperations.Repor
 }
 
 // SaveOperationsReports writes an operations report as JSON to the operations reports directory for
-// the specified migration key.
+// the specified changeset key.
 // if the directory does not exist, it will be created.
 // if the file already exists, it will be overwritten.
-func (a *ArtifactsDir) SaveOperationsReports(migKey string, reports []foperations.Report[any, any]) error {
+func (a *ArtifactsDir) SaveOperationsReports(csKey string, reports []foperations.Report[any, any]) error {
 	found, err := a.OperationsReportsDirExists()
 	if err != nil {
 		return err
@@ -547,11 +547,11 @@ func (a *ArtifactsDir) SaveOperationsReports(migKey string, reports []foperation
 		}
 	}
 
-	return jsonutils.WriteFile(filepath.Join(a.getOperationsReportsFilePath(migKey)), reports)
+	return jsonutils.WriteFile(filepath.Join(a.getOperationsReportsFilePath(csKey)), reports)
 }
 
-func (a *ArtifactsDir) getOperationsReportsFilePath(migKey string) string {
-	fileName := fmt.Sprintf("%s-reports.%s", migKey, JSONExt)
+func (a *ArtifactsDir) getOperationsReportsFilePath(csKey string) string {
+	fileName := fmt.Sprintf("%s-reports.%s", csKey, JSONExt)
 
 	return filepath.Join(a.OperationsReportsDirPath(), fileName)
 }
@@ -664,18 +664,18 @@ func (a *ArtifactsDir) loadMutableDataStore(dataStorePath string) (fdatastore.Mu
 	return &dataStore, nil
 }
 
-// saveArtifact writes an artifact as JSON to the specified migration directory.
-func (a *ArtifactsDir) saveArtifact(k ksuid.KSUID, migKey, name string, v any) error {
+// saveArtifact writes an artifact as JSON to the specified changeset directory.
+func (a *ArtifactsDir) saveArtifact(k ksuid.KSUID, csKey, name string, v any) error {
 	filename := fmt.Sprintf("%s-%s-%s-%s_%s.%s",
-		k.String(), a.DomainKey(), a.EnvKey(), migKey, name, JSONExt,
+		k.String(), a.DomainKey(), a.EnvKey(), csKey, name, JSONExt,
 	)
 
-	return jsonutils.WriteFile(filepath.Join(a.MigrationDirPath(migKey), filename), v)
+	return jsonutils.WriteFile(filepath.Join(a.ChangesetDirPath(csKey), filename), v)
 }
 
-// saveProposalArtifact writes a proposal artifact as JSON to the specified migration directory.
-func (a *ArtifactsDir) saveProposalArtifact(migkey string, name string, index int, v any) error {
-	filename := fmt.Sprintf("%s-%s-%s_%s_%d.%s", a.DomainKey(), a.EnvKey(), migkey, name, index, JSONExt)
+// saveProposalArtifact writes a proposal artifact as JSON to the proposals directory.
+func (a *ArtifactsDir) saveProposalArtifact(csKey string, name string, index int, v any) error {
+	filename := fmt.Sprintf("%s-%s-%s_%s_%d.%s", a.DomainKey(), a.EnvKey(), csKey, name, index, JSONExt)
 	if a.timestamp != "" {
 		filename = fmt.Sprintf("%s-%s", a.timestamp, filename)
 	}
@@ -683,9 +683,9 @@ func (a *ArtifactsDir) saveProposalArtifact(migkey string, name string, index in
 	return jsonutils.WriteFile(filepath.Join(a.getProposalDir(), filename), v)
 }
 
-// saveDecodedProposalArtifact writes a decoded proposal artifact as JSON to the specified migration directory.
-func (a *ArtifactsDir) saveDecodedProposalArtifact(migkey string, name string, index int, data string) error {
-	filename := fmt.Sprintf("%s-%s-%s_%s_%d_decoded.%s", a.DomainKey(), a.EnvKey(), migkey, name, index, TxtExt)
+// saveDecodedProposalArtifact writes a decoded proposal artifact as JSON to the decoded proposals directory.
+func (a *ArtifactsDir) saveDecodedProposalArtifact(csKey string, name string, index int, data string) error {
+	filename := fmt.Sprintf("%s-%s-%s_%s_%d_decoded.%s", a.DomainKey(), a.EnvKey(), csKey, name, index, TxtExt)
 	if a.timestamp != "" {
 		filename = fmt.Sprintf("%s-%s", a.timestamp, filename)
 	}
@@ -693,7 +693,7 @@ func (a *ArtifactsDir) saveDecodedProposalArtifact(migkey string, name string, i
 	return os.WriteFile(filepath.Join(a.getDecodedProposalDir(), filename), []byte(data), 0600)
 }
 
-// getDirectoryPath returns the directory path for migrations and durable pipelines.
+// getDirectoryPath returns the directory path for changesets and durable pipelines.
 func (a *ArtifactsDir) getDirectoryPath(basePathFunc func() string) string {
 	return basePathFunc()
 }
