@@ -373,10 +373,7 @@ func upfYamlMarshallers() []yaml.EncodeOption {
 	return []yaml.EncodeOption{
 		// Custom marshaler for rawBytes - goccy/go-yaml doesn't use MarshalYAML method
 		yaml.CustomMarshaler(func(arg rawBytes) ([]byte, error) {
-			if arg == nil {
-				return yaml.Marshal(nil)
-			}
-			return yaml.Marshal(string(arg))
+			return arg.MarshalYAML()
 		}),
 		yaml.CustomMarshaler(func(arg mcmsanalyzer.SimpleField) ([]byte, error) {
 			return yaml.Marshal(arg.Value)
