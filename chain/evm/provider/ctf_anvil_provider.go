@@ -553,8 +553,6 @@ func (p *CTFAnvilChainProvider) startContainer(ctx context.Context, chainID stri
 		return "", fmt.Errorf("failed to set up CTF default network: %w", err)
 	}
 
-	dockerCmdOverrides := p.config.DockerCmdParamsOverrides
-
 	httpURL, err := retry.DoWithData(func() (string, error) {
 		var port int
 		var portStr string
@@ -575,6 +573,7 @@ func (p *CTFAnvilChainProvider) startContainer(ctx context.Context, chainID stri
 			portStr = strconv.Itoa(port)
 		}
 
+		dockerCmdOverrides := p.config.DockerCmdParamsOverrides
 		if len(p.config.ForkURLs) > 0 {
 			url := p.config.ForkURLs[attempt%uint(len(p.config.ForkURLs))]
 			dockerCmdOverrides = append(dockerCmdOverrides, "--fork-url", url)
