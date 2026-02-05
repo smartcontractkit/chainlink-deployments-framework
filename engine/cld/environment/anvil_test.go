@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/go-resty/resty/v2"
+	"github.com/jarcoal/httpmock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -174,14 +175,18 @@ func Test_isPublicRPC(t *testing.T) {
 
 func Test_selectPublicRPC(t *testing.T) {
 	t.Parallel()
+	httpmock.Activate(t)
 
 	lggr := logger.Test(t)
+	nosetup := func(t *testing.T) { t.Helper() }
+
 	tests := []struct {
 		name          string
 		metadata      *cfgnet.EVMMetadata
 		chainSelector uint64
 		rpcs          []cfgnet.RPC
-		want          *cfgnet.EVMMetadata
+		setup         func(t *testing.T)
+		want          []string
 		wantErr       string
 	}{
 		{
@@ -192,31 +197,39 @@ func Test_selectPublicRPC(t *testing.T) {
 			rpcs: []cfgnet.RPC{
 				{HTTPURL: "http://other.url"},
 			},
-			want: &cfgnet.EVMMetadata{AnvilConfig: &cfgnet.AnvilConfig{
-				ArchiveHTTPURL: "http://metadata.url",
-			}},
+			setup: nosetup,
+			want:  []string{"http://metadata.url"},
 		},
 		{
-			name: "success: private rpc in metadata is replaced public url from parameters",
+			name: "success: selects only health public rpcs",
 			metadata: &cfgnet.EVMMetadata{AnvilConfig: &cfgnet.AnvilConfig{
 				ArchiveHTTPURL: "http://gap-rpc.prod.cldev.sh/ethereum/sepolia",
 			}},
 			rpcs: []cfgnet.RPC{
 				{HTTPURL: "http://rpcs.cldev.sh/ethereum/sepolia"},
-				{HTTPURL: "http://public.rpc.url"},
+				{HTTPURL: "http://public.rpc1.url"},
+				{HTTPURL: "http://public.rpc2.url"},
+				{HTTPURL: "http://public.rpc3.url"},
 			},
-			want: &cfgnet.EVMMetadata{AnvilConfig: &cfgnet.AnvilConfig{
-				ArchiveHTTPURL: "http://public.rpc.url",
-			}},
+			setup: func(t *testing.T) {
+				t.Helper()
+				httpmock.RegisterResponder("POST", "http://public.rpc1.url",
+					httpmock.NewStringResponder(200, `{"jsonrpc":"2.0","id":1,"result":"0x123"}`))
+				httpmock.RegisterResponder("POST", "http://public.rpc3.url",
+					httpmock.NewStringResponder(200, `{"jsonrpc":"2.0","id":1,"result":"0x456"}`))
+			},
+			want: []string{"http://public.rpc1.url", "http://public.rpc3.url"},
 		},
 		{
-			name: "failure: no public rpcs found",
+			name: "failure: no public or healthy rpcs found",
 			metadata: &cfgnet.EVMMetadata{AnvilConfig: &cfgnet.AnvilConfig{
 				ArchiveHTTPURL: "http://gap-rpc.prod.cldev.sh/ethereum/sepolia",
 			}},
 			rpcs: []cfgnet.RPC{
 				{HTTPURL: "http://rpcs.cldev.sh/ethereum/sepolia"},
+				{HTTPURL: "http://unhealthy.rpc.url"},
 			},
+			setup:   nosetup,
 			wantErr: "no public RPCs found for chain 0",
 		},
 	}
@@ -224,10 +237,12 @@ func Test_selectPublicRPC(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			err := selectPublicRPC(lggr, tt.metadata, tt.chainSelector, tt.rpcs)
+			tt.setup(t)
+			urls, err := selectPublicRPC(t.Context(), lggr, tt.metadata, tt.chainSelector, tt.rpcs)
+
 			if tt.wantErr == "" {
 				require.NoError(t, err)
-				require.Equal(t, tt.want, tt.metadata)
+				require.Equal(t, tt.want, urls)
 			} else {
 				require.ErrorContains(t, err, tt.wantErr)
 			}
