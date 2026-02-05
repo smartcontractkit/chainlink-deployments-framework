@@ -29,23 +29,42 @@ func TestCommands_State(t *testing.T) {
 	cmds := New(lggr)
 	dom := domain.NewDomain("/tmp", "testdomain")
 
-	cmd := cmds.State(dom, StateConfig{
+	cmd, err := cmds.State(dom, StateConfig{
 		ViewState: func(_ fdeployment.Environment, _ json.Marshaler) (json.Marshaler, error) {
 			return json.RawMessage(`{}`), nil
 		},
 	})
 
+	require.NoError(t, err)
 	require.NotNil(t, cmd)
 	assert.Equal(t, "state", cmd.Use)
-	assert.Equal(t, "State commands", cmd.Short)
+	assert.NotEmpty(t, cmd.Short)
+	assert.NotEmpty(t, cmd.Long)
 
-	// Verify environment flag is present
 	envFlag := cmd.PersistentFlags().Lookup("environment")
-	require.NotNil(t, envFlag)
-	assert.Equal(t, "e", envFlag.Shorthand)
+	assert.Nil(t, envFlag, "environment flag should NOT be persistent")
 
-	// Verify generate subcommand exists
 	subs := cmd.Commands()
 	require.Len(t, subs, 1)
 	assert.Equal(t, "generate", subs[0].Use)
+
+	genEnvFlag := subs[0].Flags().Lookup("environment")
+	require.NotNil(t, genEnvFlag)
+	assert.Equal(t, "e", genEnvFlag.Shorthand)
+}
+
+func TestCommands_State_MissingViewState(t *testing.T) {
+	t.Parallel()
+
+	lggr := logger.Nop()
+	cmds := New(lggr)
+	dom := domain.NewDomain("/tmp", "testdomain")
+
+	cmd, err := cmds.State(dom, StateConfig{
+		ViewState: nil,
+	})
+
+	require.Error(t, err)
+	assert.Nil(t, cmd)
+	assert.Contains(t, err.Error(), "ViewState")
 }

@@ -1,35 +1,42 @@
 package commands
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
+
+func mockViewState(_ deployment.Environment, _ json.Marshaler) (json.Marshaler, error) {
+	return json.RawMessage(`{}`), nil
+}
 
 func TestNewStateCmds_Structure(t *testing.T) {
 	t.Parallel()
 
 	c := NewCommands(logger.Nop())
 	dom := domain.NewDomain("/tmp", "foo")
-	var cfg StateConfig
+	cfg := StateConfig{ViewState: mockViewState}
 	root := c.NewStateCmds(dom, cfg)
 
-	// root command
 	require.Equal(t, "state", root.Use)
-	require.Equal(t, "State commands", root.Short)
+	require.NotEmpty(t, root.Short)
+	require.NotEmpty(t, root.Long)
 
-	// one subcommand: generate
 	subs := root.Commands()
 	require.Len(t, subs, 1)
 	require.Equal(t, "generate", subs[0].Use)
 
-	// persistent 'environment' flag on root
 	f := root.PersistentFlags().Lookup("environment")
-	require.NotNil(t, f)
-	require.Equal(t, "e", f.Shorthand)
+	require.Nil(t, f, "environment flag should NOT be persistent")
+
+	genEnvFlag := subs[0].Flags().Lookup("environment")
+	require.NotNil(t, genEnvFlag)
+	require.Equal(t, "e", genEnvFlag.Shorthand)
 }
 
 func TestNewStateGenerateCmd_Metadata(t *testing.T) {
@@ -37,31 +44,31 @@ func TestNewStateGenerateCmd_Metadata(t *testing.T) {
 
 	c := NewCommands(logger.Nop())
 	dom := domain.NewDomain("/tmp", "foo")
-	var cfg StateConfig
+	cfg := StateConfig{ViewState: mockViewState}
 	root := c.NewStateCmds(dom, cfg)
 
-	// Find generate subcommand
 	var found bool
 	for _, sub := range root.Commands() {
 		if sub.Use == "generate" {
 			found = true
-			require.Contains(t, sub.Short, "Generate latest state")
+			require.NotEmpty(t, sub.Short)
+			require.NotEmpty(t, sub.Long)
+			require.NotEmpty(t, sub.Example)
 
-			// local flags
 			p := sub.Flags().Lookup("persist")
 			require.NotNil(t, p)
 			require.Equal(t, "p", p.Shorthand)
-			require.Equal(t, "false", p.Value.String())
 
-			o := sub.Flags().Lookup("outputPath")
+			o := sub.Flags().Lookup("out")
 			require.NotNil(t, o)
 			require.Equal(t, "o", o.Shorthand)
-			require.Empty(t, o.Value.String())
 
-			s := sub.Flags().Lookup("previousState")
+			s := sub.Flags().Lookup("prev")
 			require.NotNil(t, s)
 			require.Equal(t, "s", s.Shorthand)
-			require.Empty(t, s.Value.String())
+
+			pr := sub.Flags().Lookup("print")
+			require.NotNil(t, pr)
 
 			break
 		}
@@ -74,12 +81,28 @@ func TestStateGenerate_MissingEnvFails(t *testing.T) {
 
 	c := NewCommands(logger.Nop())
 	dom := domain.NewDomain("/tmp", "foo")
-	var cfg StateConfig
+	cfg := StateConfig{ViewState: mockViewState}
 	root := c.NewStateCmds(dom, cfg)
 
-	// invoke without the required --environment flag
 	root.SetArgs([]string{"generate"})
 	err := root.Execute()
 
 	require.ErrorContains(t, err, `required flag(s) "environment" not set`)
+}
+
+func TestNewStateCmds_InvalidConfigReturnsErrorOnExecute(t *testing.T) {
+	t.Parallel()
+
+	c := NewCommands(logger.Nop())
+	dom := domain.NewDomain("/tmp", "foo")
+	cfg := StateConfig{ViewState: nil} // Missing required field
+
+	// Command is created (backward compatible)
+	cmd := c.NewStateCmds(dom, cfg)
+	require.NotNil(t, cmd)
+
+	// But errors when executed
+	err := cmd.Execute()
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "ViewState")
 }

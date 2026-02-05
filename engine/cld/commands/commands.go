@@ -5,22 +5,26 @@
 // 1. Via the Commands factory (recommended for most use cases):
 //
 //	commands := commands.New(lggr)
-//	app.AddCommand(
-//	    commands.State(domain, stateConfig),
-//	    commands.EVM(domain),
-//	    commands.JD(domain),
-//	)
+//	stateCmd, err := commands.State(domain, stateConfig)
+//	if err != nil {
+//	    return err
+//	}
+//	app.AddCommand(stateCmd)
 //
 // 2. Via direct package imports (for advanced DI/testing):
 //
 //	import "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/state"
 //
-//	app.AddCommand(state.NewCommand(state.Config{
+//	cmd, err := state.NewCommand(state.Config{
 //	    Logger:    lggr,
 //	    Domain:    domain,
 //	    ViewState: myViewState,
 //	    Deps:      state.Deps{...},  // inject mocks for testing
-//	}))
+//	})
+//	if err != nil {
+//	    return err
+//	}
+//	app.AddCommand(cmd)
 package commands
 
 import (
@@ -51,14 +55,19 @@ type StateConfig struct {
 }
 
 // State creates the state command group for managing environment state.
+// Returns an error if required configuration is missing.
 //
 // Usage:
 //
 //	cmds := commands.New(lggr)
-//	rootCmd.AddCommand(cmds.State(domain, commands.StateConfig{
+//	stateCmd, err := cmds.State(domain, commands.StateConfig{
 //	    ViewState: myViewStateFunc,
-//	}))
-func (c *Commands) State(dom domain.Domain, cfg StateConfig) *cobra.Command {
+//	})
+//	if err != nil {
+//	    return err
+//	}
+//	rootCmd.AddCommand(stateCmd)
+func (c *Commands) State(dom domain.Domain, cfg StateConfig) (*cobra.Command, error) {
 	return state.NewCommand(state.Config{
 		Logger:    c.lggr,
 		Domain:    dom,

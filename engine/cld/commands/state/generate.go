@@ -2,57 +2,121 @@ package state
 
 import (
 	"context"
-	"errors"
+	"encoding/json"
 	"fmt"
 	"os"
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/flags"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/legacy/cli"
 )
+
+// addPreviousStateAlias adds --previousState as deprecated alias for --prev.
+func addPreviousStateAlias(cmd *cobra.Command) {
+	existingNormalize := cmd.Flags().GetNormalizeFunc()
+	cmd.Flags().SetNormalizeFunc(func(f *pflag.FlagSet, name string) pflag.NormalizedName {
+		if name == "previousState" {
+			return pflag.NormalizedName("prev")
+		}
+		if existingNormalize != nil {
+			return existingNormalize(f, name)
+		}
+
+		return pflag.NormalizedName(name)
+	})
+}
+
+var (
+	generateShort = "Generate latest state from the environment"
+
+	generateLong = cli.LongDesc(`
+		Generate the latest deployment state by reading on-chain data.
+
+		This command connects to the configured RPC endpoints for the environment,
+		reads contract state, and produces a JSON representation of the current
+		deployment. The operation may take several minutes for large deployments.
+
+		By default, the generated state is not saved. Use --persist to save
+		to disk, or --print to output the full JSON to stdout.
+	`)
+
+	generateExample = cli.Examples(`
+		# Generate and print state for staging environment
+		myapp state generate -e staging
+
+		# Generate and save state to default location (also prints)
+		myapp state generate -e staging --persist
+
+		# Generate and save to custom path without printing
+		myapp state generate -e staging -p -o /path/to/state.json --print=false
+
+		# Generate using previous state for incremental updates
+		myapp state generate -e mainnet -p --prev /path/to/old-state.json
+	`)
+)
+
+type generateFlags struct {
+	environment   string
+	persist       bool
+	output        string
+	previousState string
+	print         bool
+}
 
 // newGenerateCmd creates the "generate" subcommand for generating state.
 func newGenerateCmd(cfg Config) *cobra.Command {
-	var (
-		persist       bool
-		outputPath    string
-		prevStatePath string // NOTE: This flag is defined but not currently used in the original code.
-	)
-
 	cmd := &cobra.Command{
-		Use:   "generate",
-		Short: "Generate latest state from the environment.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return runGenerate(cmd, cfg, persist, outputPath, prevStatePath)
+		Use:     "generate",
+		Short:   generateShort,
+		Long:    generateLong,
+		Example: generateExample,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			f := generateFlags{
+				environment:   flags.MustString(cmd.Flags().GetString("environment")),
+				persist:       flags.MustBool(cmd.Flags().GetBool("persist")),
+				output:        flags.MustString(cmd.Flags().GetString("out")),
+				previousState: flags.MustString(cmd.Flags().GetString("prev")),
+				print:         flags.MustBool(cmd.Flags().GetBool("print")),
+			}
+
+			return runGenerate(cmd, cfg, f)
 		},
 	}
 
-	// These flags are local to the generate command only.
-	cmd.Flags().BoolVarP(&persist, "persist", "p", false, "Persist state to disk")
-	cmd.Flags().StringVarP(&outputPath, "outputPath", "o", "", "Output path. Default is <product>/<environment>/state.json")
-	cmd.Flags().StringVarP(&prevStatePath, "previousState", "s", "", "Previous state's path. Default is <product>/<environment>/state.json")
+	// Shared flags
+	flags.Environment(cmd)
+	flags.Print(cmd)
+	flags.Output(cmd, "")
+
+	// Local flags specific to this command
+	cmd.Flags().BoolP("persist", "p", false, "Persist state to disk")
+	cmd.Flags().StringP("prev", "s", "", "Previous state file path")
+
+	// Deprecated alias: --previousState -> --prev
+	addPreviousStateAlias(cmd)
 
 	return cmd
 }
 
 // runGenerate executes the generate command logic.
-// This is separated from the RunE closure to improve testability.
-// Note: prevStatePath is currently unused but kept for future implementation.
-func runGenerate(cmd *cobra.Command, cfg Config, persist bool, outputPath, _ string) error {
-	// Fail fast if ViewState is not provided
-	if cfg.ViewState == nil {
-		return errors.New("ViewState function is required but not provided")
-	}
+// It takes parsed flags as a struct for cleaner separation and easier testing.
+func runGenerate(cmd *cobra.Command, cfg Config, f generateFlags) error {
+	envKey := f.environment
+	persist := f.persist
+	output := f.output
+	previousState := f.previousState
+	shouldPrint := f.print
 
 	deps := cfg.deps()
-
-	// Get environment flag from parent command (persistent flag)
-	envKey, _ := cmd.Flags().GetString("environment")
 	envdir := cfg.Domain.EnvDir(envKey)
-
-	// Set a timeout for the view operation as it may take a while
 	viewTimeout := 10 * time.Minute
+
+	// --- Load all data first ---
 
 	cmd.Printf("Generate latest state for %s in environment: %s\n", cfg.Domain, envKey)
 	cmd.Printf("This command may take a while to complete, please be patient. Timeout set to %v\n", viewTimeout)
@@ -60,39 +124,55 @@ func runGenerate(cmd *cobra.Command, cfg Config, persist bool, outputPath, _ str
 	ctx, cancel := context.WithTimeout(cmd.Context(), viewTimeout)
 	defer cancel()
 
-	// Load the environment using the injected loader
 	env, err := deps.EnvironmentLoader(ctx, cfg.Domain, envKey, environment.WithLogger(cfg.Logger))
 	if err != nil {
 		return fmt.Errorf("failed to load environment: %w", err)
 	}
 
-	// Load the previous state using the injected loader
-	prevState, err := deps.StateLoader(envdir)
-	if err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("failed to load previous state: %w", err)
+	var prevState domain.JSONSerializer
+	if previousState != "" {
+		// Load from custom path specified by --prev flag
+		data, readErr := os.ReadFile(previousState)
+		if readErr != nil {
+			return fmt.Errorf("failed to load previous state from %s: %w", previousState, readErr)
+		}
+		raw := json.RawMessage(data)
+		prevState = &raw
+	} else {
+		// Load from default envdir location
+		var loadErr error
+		prevState, loadErr = deps.StateLoader(envdir)
+		if loadErr != nil && !os.IsNotExist(loadErr) {
+			return fmt.Errorf("failed to load previous state: %w", loadErr)
+		}
 	}
 
-	// Generate the new state using the provided ViewState function
 	state, err := cfg.ViewState(env, prevState)
 	if err != nil {
 		return fmt.Errorf("unable to snapshot state: %w", err)
 	}
 
-	// Marshal state for output
-	b, err := state.MarshalJSON()
-	if err != nil {
-		return fmt.Errorf("unable to marshal state: %w", err)
-	}
+	// --- Execute logic with loaded data ---
 
-	// Persist state if requested
 	if persist {
-		if err := deps.StateSaver(envdir, outputPath, state); err != nil {
+		if err := deps.StateSaver(envdir, output, state); err != nil {
 			return fmt.Errorf("failed to save state: %w", err)
 		}
+
+		outputPath := output
+		if outputPath == "" {
+			outputPath = envdir.ViewStateFilePath()
+		}
+		cmd.Printf("State saved to: %s\n", outputPath)
 	}
 
-	// Output the state to stdout
-	cmd.Println(string(b))
+	if shouldPrint {
+		b, err := state.MarshalJSON()
+		if err != nil {
+			return fmt.Errorf("unable to marshal state: %w", err)
+		}
+		cmd.Println(string(b))
+	}
 
 	return nil
 }
