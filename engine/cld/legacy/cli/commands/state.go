@@ -19,16 +19,33 @@ type StateConfig struct {
 //
 // Deprecated: Use the modular commands package for new integrations:
 //
-//	import "github.com/smartcontractkit/chainlink-deployments-framework/pkg/commands"
+//	import "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands"
 //
 //	cmds := commands.New(lggr)
-//	rootCmd.AddCommand(cmds.State(myDomain, commands.StateConfig{
+//	stateCmd, err := cmds.State(myDomain, commands.StateConfig{
 //	    ViewState: myViewStateFunc,
-//	}))
+//	})
+//	if err != nil {
+//	    return err
+//	}
+//	rootCmd.AddCommand(stateCmd)
 func (c Commands) NewStateCmds(dom domain.Domain, config StateConfig) *cobra.Command {
-	return state.NewCommand(state.Config{
+	cmd, err := state.NewCommand(state.Config{
 		Logger:    c.lggr,
 		Domain:    dom,
 		ViewState: config.ViewState,
 	})
+	if err != nil {
+		// Return a command that errors on execution to maintain backward compatibility.
+		// The new API (state.NewCommand) returns error directly for proper handling.
+		return &cobra.Command{
+			Use:   "state",
+			Short: "State commands (misconfigured)",
+			RunE: func(_ *cobra.Command, _ []string) error {
+				return err
+			},
+		}
+	}
+
+	return cmd
 }

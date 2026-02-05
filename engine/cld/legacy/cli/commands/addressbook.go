@@ -61,7 +61,7 @@ func (Commands) newAddressBookMerge(domain domain.Domain) *cobra.Command {
 			envKey, _ := cmd.Flags().GetString("environment")
 			envDir := domain.EnvDir(envKey)
 
-			if err := envDir.MergeMigrationAddressBook(name, timestamp); err != nil {
+			if err := envDir.MergeChangesetAddressBook(name, timestamp); err != nil {
 				return fmt.Errorf("error during address book merge for %s %s %s: %w",
 					domain, envKey, name, err,
 				)
@@ -155,7 +155,7 @@ func (Commands) newAddressBookRemove(domain domain.Domain) *cobra.Command {
 			envKey, _ := cmd.Flags().GetString("environment")
 			envDir := domain.EnvDir(envKey)
 
-			if err := envDir.RemoveMigrationAddressBook(name, timestamp); err != nil {
+			if err := envDir.RemoveChangesetAddressBook(name, timestamp); err != nil {
 				return fmt.Errorf("error during address book remove for %s %s %s: %w",
 					domain, envKey, name, err,
 				)

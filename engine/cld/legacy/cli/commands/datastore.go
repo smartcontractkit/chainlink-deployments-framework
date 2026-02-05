@@ -82,7 +82,7 @@ func (Commands) newDatastoreMerge(domain domain.Domain) *cobra.Command {
 					return fmt.Errorf("failed to load catalog: %w", catalogErr)
 				}
 
-				if err := envDir.MergeMigrationDataStoreCatalog(cmd.Context(), name, timestamp, catalog); err != nil {
+				if err := envDir.MergeChangesetDataStoreCatalog(cmd.Context(), name, timestamp, catalog); err != nil {
 					return fmt.Errorf("error during datastore merge to catalog for %s %s %s: %w",
 						domain, envKey, name, err,
 					)
@@ -95,7 +95,7 @@ func (Commands) newDatastoreMerge(domain domain.Domain) *cobra.Command {
 				// File mode - merge to local files
 				cmd.Printf("📁 Using file-based datastore mode\n")
 
-				if err := envDir.MergeMigrationDataStore(name, timestamp); err != nil {
+				if err := envDir.MergeChangesetDataStore(name, timestamp); err != nil {
 					return fmt.Errorf("error during datastore merge to file for %s %s %s: %w",
 						domain, envKey, name, err,
 					)
@@ -113,13 +113,13 @@ func (Commands) newDatastoreMerge(domain domain.Domain) *cobra.Command {
 					return fmt.Errorf("failed to load catalog: %w", catalogErr)
 				}
 
-				if err := envDir.MergeMigrationDataStoreCatalog(cmd.Context(), name, timestamp, catalog); err != nil {
+				if err := envDir.MergeChangesetDataStoreCatalog(cmd.Context(), name, timestamp, catalog); err != nil {
 					return fmt.Errorf("error during datastore merge to catalog for %s %s %s: %w",
 						domain, envKey, name, err,
 					)
 				}
 
-				if err := envDir.MergeMigrationDataStore(name, timestamp); err != nil {
+				if err := envDir.MergeChangesetDataStore(name, timestamp); err != nil {
 					return fmt.Errorf("error during datastore merge to file for %s %s %s: %w",
 						domain, envKey, name, err,
 					)

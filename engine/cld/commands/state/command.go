@@ -1,10 +1,26 @@
 package state
 
 import (
+	"errors"
+	"strings"
+
 	"github.com/spf13/cobra"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/legacy/cli"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
+)
+
+var (
+	stateShort = "State commands for managing environment state"
+
+	stateLong = cli.LongDesc(`
+		Commands for generating and managing deployment state.
+
+		State represents a snapshot of all deployed contracts and their configurations
+		for a given environment. Use these commands to generate fresh state from
+		on-chain data or manage existing state files.
+	`)
 )
 
 // Config holds the configuration for state commands.
@@ -24,6 +40,28 @@ type Config struct {
 	Deps Deps
 }
 
+// Validate checks that all required configuration fields are set.
+// Returns an error describing which fields are missing.
+func (c Config) Validate() error {
+	var missing []string
+
+	if c.Logger == nil {
+		missing = append(missing, "Logger")
+	}
+	if c.Domain.RootPath() == "" {
+		missing = append(missing, "Domain")
+	}
+	if c.ViewState == nil {
+		missing = append(missing, "ViewState")
+	}
+
+	if len(missing) > 0 {
+		return errors.New("state.Config: missing required fields: " + strings.Join(missing, ", "))
+	}
+
+	return nil
+}
+
 // deps returns the Deps with defaults applied.
 func (c *Config) deps() *Deps {
 	c.Deps.applyDefaults()
@@ -32,33 +70,33 @@ func (c *Config) deps() *Deps {
 }
 
 // NewCommand creates a new state command with all subcommands.
-// The command requires an environment flag (-e) which is used by all subcommands.
+// Returns an error if required configuration is missing.
 //
 // Usage:
 //
-//	rootCmd.AddCommand(state.NewCommand(state.Config{
+//	cmd, err := state.NewCommand(state.Config{
 //	    Logger:    lggr,
 //	    Domain:    myDomain,
 //	    ViewState: myViewStateFunc,
-//	}))
-func NewCommand(cfg Config) *cobra.Command {
-	// Apply defaults for optional dependencies
+//	})
+//	if err != nil {
+//	    return err
+//	}
+//	rootCmd.AddCommand(cmd)
+func NewCommand(cfg Config) (*cobra.Command, error) {
+	if err := cfg.Validate(); err != nil {
+		return nil, err
+	}
+
 	cfg.deps()
 
 	cmd := &cobra.Command{
 		Use:   "state",
-		Short: "State commands",
+		Short: stateShort,
+		Long:  stateLong,
 	}
 
-	// Add subcommands
 	cmd.AddCommand(newGenerateCmd(cfg))
 
-	// The environment flag is persistent because all subcommands require it.
-	// Currently there's only "generate", but this pattern supports future subcommands
-	// that also need the environment context.
-	cmd.PersistentFlags().
-		StringP("environment", "e", "", "Deployment environment (required)")
-	_ = cmd.MarkPersistentFlagRequired("environment")
-
-	return cmd
+	return cmd, nil
 }

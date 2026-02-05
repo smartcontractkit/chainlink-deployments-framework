@@ -198,27 +198,27 @@ func (d EnvDir) ArtifactsDir() *ArtifactsDir {
 	return NewArtifactsDir(d.rootPath, d.domainKey, d.key)
 }
 
-// MergeMigrationDataStore merges a migration's DataStore into the local file-based datastore.
+// MergeChangesetDataStore merges a changeset's DataStore into the local file-based datastore.
 // This method is used when the environment is configured to use file-based datastore persistence.
-// It loads the migration artifacts, merges them into the existing datastore, and writes the
+// It loads the changeset artifacts, merges them into the existing datastore, and writes the
 // updated datastore back to local JSON files.
-func (d EnvDir) MergeMigrationDataStore(migkey, timestamp string) error {
+func (d EnvDir) MergeChangesetDataStore(csKey, timestamp string) error {
 	// Get the artifacts directory for the environment
 	artDir := d.ArtifactsDir()
 
-	// Load the migration datastore for the migration key and timestamp
-	migrDataStore, err := loadDataStoreByMigrationKey(artDir, migkey, timestamp)
+	// Load the changeset datastore for the changeset key and timestamp
+	csDataStore, err := loadDataStoreByChangesetKey(artDir, csKey, timestamp)
 	if err != nil {
 		return err
 	}
 
-	// Merge the migration datastore into the existing datastore
+	// Merge the changeset datastore into the existing datastore
 	dataStore, err := d.MutableDataStore()
 	if err != nil {
 		return err
 	}
 
-	if err = dataStore.Merge(migrDataStore); err != nil {
+	if err = dataStore.Merge(csDataStore); err != nil {
 		return err
 	}
 
@@ -251,22 +251,22 @@ func (d EnvDir) MergeMigrationDataStore(migkey, timestamp string) error {
 	return nil
 }
 
-// MergeMigrationDataStoreCatalog merges a migration's DataStore directly into the remote catalog service.
+// MergeChangesetDataStoreCatalog merges a changeset's DataStore directly into the remote catalog service.
 // This method is used when the environment is configured to use catalog-based datastore persistence.
-// It loads the migration artifacts and syncs them to the catalog within a transaction.
+// It loads the changeset artifacts and syncs them to the catalog within a transaction.
 // Local files are NOT updated when using catalog mode.
-func (d EnvDir) MergeMigrationDataStoreCatalog(ctx context.Context, migkey, timestamp string, catalog fdatastore.CatalogStore) error {
+func (d EnvDir) MergeChangesetDataStoreCatalog(ctx context.Context, csKey, timestamp string, catalog fdatastore.CatalogStore) error {
 	// Get the artifacts directory for the environment
 	artDir := d.ArtifactsDir()
 
-	// Load the migration datastore for the migration key and timestamp
-	migrDataStore, err := loadDataStoreByMigrationKey(artDir, migkey, timestamp)
+	// Load the changeset datastore for the changeset key and timestamp
+	csDataStore, err := loadDataStoreByChangesetKey(artDir, csKey, timestamp)
 	if err != nil {
 		return err
 	}
 
-	// Merge the migration datastore to catalog within a transaction
-	if err = fdatastore.MergeDataStoreToCatalog(ctx, migrDataStore, catalog); err != nil {
+	// Merge the changeset datastore to catalog within a transaction
+	if err = fdatastore.MergeDataStoreToCatalog(ctx, csDataStore, catalog); err != nil {
 		return fmt.Errorf("failed to merge datastore to catalog: %w", err)
 	}
 
@@ -291,11 +291,11 @@ func (d EnvDir) SyncDataStoreToCatalog(ctx context.Context, catalog fdatastore.C
 	return nil
 }
 
-// MergeMigrationAddressBook merges a migration's address book into an existing address book for
-// the given domain environment. It reads the existing address book and the migration's address
+// MergeChangesetAddressBook merges a changeset's address book into an existing address book for
+// the given domain environment. It reads the existing address book and the changeset's address
 // book, merges the latter into the former, and then writes the updated address book back to the
 // domain environment address book.
-func (d EnvDir) MergeMigrationAddressBook(migKey, timestamp string) error {
+func (d EnvDir) MergeChangesetAddressBook(csKey, timestamp string) error {
 	addrBook, err := d.AddressBook()
 	if err != nil {
 		return err
@@ -304,13 +304,13 @@ func (d EnvDir) MergeMigrationAddressBook(migKey, timestamp string) error {
 	// Get the artifacts directory for the environment
 	artDir := d.ArtifactsDir()
 
-	// Load the migration address book for the migration key and timestamp
-	migAddrBook, err := loadAddressBookByMigrationKey(artDir, migKey, timestamp)
+	// Load the changeset address book for the changeset key and timestamp
+	csAddrBook, err := loadAddressBookByChangesetKey(artDir, csKey, timestamp)
 	if err != nil {
 		return err
 	}
 
-	if err = addrBook.Merge(migAddrBook); err != nil {
+	if err = addrBook.Merge(csAddrBook); err != nil {
 		return err
 	}
 
@@ -328,13 +328,13 @@ func (d EnvDir) MergeMigrationAddressBook(migKey, timestamp string) error {
 	return os.WriteFile(d.AddressBookFilePath(), sortedBytes, 0600)
 }
 
-// RemoveAddressBooks removes a migration's address book from an existing address book for a given
-// domain environment. It reads the existing address book and the migration's address book, removes
+// RemoveChangesetAddressBook removes a changeset's address book from an existing address book for a given
+// domain environment. It reads the existing address book and the changeset's address book, removes
 // the latter from the former, and then writes the updated address book back to the domain
 // environment address book.
 //
-// This can rollback MergeAddressBooks changes.
-func (d EnvDir) RemoveMigrationAddressBook(migKey, timestamp string) error {
+// This can rollback MergeChangesetAddressBook changes.
+func (d EnvDir) RemoveChangesetAddressBook(csKey, timestamp string) error {
 	addrBook, err := d.AddressBook()
 	if err != nil {
 		return err
@@ -343,13 +343,13 @@ func (d EnvDir) RemoveMigrationAddressBook(migKey, timestamp string) error {
 	// Get the artifacts directory for the environment
 	artDir := d.ArtifactsDir()
 
-	// Load the migration address book for the migration key and timestamp
-	migAddrBook, err := loadAddressBookByMigrationKey(artDir, migKey, timestamp)
+	// Load the changeset address book for the changeset key and timestamp
+	csAddrBook, err := loadAddressBookByChangesetKey(artDir, csKey, timestamp)
 	if err != nil {
 		return err
 	}
 
-	if err = addrBook.Remove(migAddrBook); err != nil {
+	if err = addrBook.Remove(csAddrBook); err != nil {
 		return err
 	}
 
