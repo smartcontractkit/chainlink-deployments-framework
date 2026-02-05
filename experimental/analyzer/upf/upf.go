@@ -371,6 +371,10 @@ func upfYamlMarshallers() []yaml.EncodeOption {
 	// It could be refactored into a dedicated Renderer object to improve code organization
 	// and make the marshaling logic more reusable across different output formats.
 	return []yaml.EncodeOption{
+		// Custom marshaler for rawBytes - goccy/go-yaml doesn't use MarshalYAML method
+		yaml.CustomMarshaler(func(arg rawBytes) ([]byte, error) {
+			return arg.MarshalYAML()
+		}),
 		yaml.CustomMarshaler(func(arg mcmsanalyzer.SimpleField) ([]byte, error) {
 			return yaml.Marshal(arg.Value)
 		}),
