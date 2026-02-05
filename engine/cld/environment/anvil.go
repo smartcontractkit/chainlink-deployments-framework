@@ -341,6 +341,7 @@ func runHealthCheck(ctx context.Context, rpcURL string) error {
 	if err != nil {
 		return fmt.Errorf("failed to connect to rpc %v: %w", rpcURL, err)
 	}
+	defer client.Close()
 
 	_, err = client.BlockNumber(ctx)
 	if err != nil {
