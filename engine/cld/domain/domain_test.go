@@ -258,4 +258,3 @@ func Test_Domain_ConfigDomainFilePath(t *testing.T) {
 	d := NewDomain("domains", "ccip")
 	assert.Equal(t, "domains/ccip/.config/domain.yaml", d.ConfigDomainFilePath())
 }
-
