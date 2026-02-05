@@ -91,19 +91,19 @@ func Test_Artifacts_EnvKey(t *testing.T) {
 	assert.Equal(t, "staging", arts.EnvKey())
 }
 
-func Test_Artifacts_MigrationDirPath(t *testing.T) {
+func Test_Artifacts_ChangesetDirPath(t *testing.T) {
 	t.Parallel()
 
 	timestamp := "1234567890123456789"
 
 	arts := NewArtifactsDir("domains", "ccip", "staging")
 
-	assert.Equal(t, "domains/ccip/staging/artifacts/0001_initial", arts.MigrationDirPath("0001_initial"))
+	assert.Equal(t, "domains/ccip/staging/artifacts/0001_initial", arts.ChangesetDirPath("0001_initial"))
 
 	err := arts.SetDurablePipelines(timestamp)
 	require.NoError(t, err)
 
-	assert.Equal(t, "domains/ccip/staging/artifacts/durable_pipelines/0001_initial/"+arts.timestamp, arts.MigrationDirPath("0001_initial"))
+	assert.Equal(t, "domains/ccip/staging/artifacts/durable_pipelines/0001_initial/"+arts.timestamp, arts.ChangesetDirPath("0001_initial"))
 }
 
 func Test_Artifacts_ProposalDirPath(t *testing.T) {
@@ -132,17 +132,17 @@ func Test_Artifacts_ArchivedProposalDirPath(t *testing.T) {
 	assert.Equal(t, "domains/ccip/staging/archived_proposals", arts.ArchivedProposalsDirPath())
 }
 
-func Test_Artifacts_CreateMigrationDir(t *testing.T) {
+func Test_Artifacts_CreateChangesetDir(t *testing.T) {
 	t.Parallel()
 
 	fixture := setupTestDomainsFS(t)
 
 	arts := fixture.artifactsDir
 
-	err := arts.CreateMigrationDir("0001_initial")
+	err := arts.CreateChangesetDir("0001_initial")
 	require.NoError(t, err)
 
-	got, err := arts.MigrationDirExists("0001_initial")
+	got, err := arts.ChangesetDirExists("0001_initial")
 	require.NoError(t, err)
 	assert.True(t, got)
 }
@@ -156,15 +156,15 @@ func Test_Artifacts_CreateProposalsDir(t *testing.T) {
 
 	tests := []struct {
 		name         string
-		migrationKey string
+		changesetKey string
 	}{
 		{
 			name:         "create proposals dir",
-			migrationKey: "0001_initial",
+			changesetKey: "0001_initial",
 		},
 		{
 			name:         "create proposals dir for durable pipelines",
-			migrationKey: "initial",
+			changesetKey: "initial",
 		},
 	}
 
@@ -246,34 +246,34 @@ func Test_Artifacts_CreateOperationsReportsDir(t *testing.T) {
 	}
 }
 
-func Test_Artifacts_RemoveMigrationDir(t *testing.T) {
+func Test_Artifacts_RemoveChangesetDir(t *testing.T) {
 	t.Parallel()
 
 	fixture := setupTestDomainsFS(t)
 	arts := fixture.artifactsDir
 
-	err := arts.CreateMigrationDir("0001_initial")
+	err := arts.CreateChangesetDir("0001_initial")
 	require.NoError(t, err)
 
-	got, err := arts.MigrationDirExists("0001_initial")
+	got, err := arts.ChangesetDirExists("0001_initial")
 	require.NoError(t, err)
 	assert.True(t, got)
 
-	err = arts.RemoveMigrationDir("0001_initial")
+	err = arts.RemoveChangesetDir("0001_initial")
 	require.NoError(t, err)
 
-	got, err = arts.MigrationDirExists("0001_initial")
+	got, err = arts.ChangesetDirExists("0001_initial")
 	require.NoError(t, err)
 	assert.False(t, got)
 }
 
-func Test_Artifacts_MigrationDirExists(t *testing.T) {
+func Test_Artifacts_ChangesetDirExists(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
 		name             string
 		beforeFunc       func(*testing.T, *ArtifactsDir)
-		giveMigrationKey string
+		giveChangesetKey string
 		want             bool
 		wantErr          string
 	}{
@@ -282,15 +282,15 @@ func Test_Artifacts_MigrationDirExists(t *testing.T) {
 			beforeFunc: func(t *testing.T, artsDir *ArtifactsDir) {
 				t.Helper()
 
-				err := artsDir.CreateMigrationDir("0001_initial")
+				err := artsDir.CreateChangesetDir("0001_initial")
 				require.NoError(t, err)
 			},
-			giveMigrationKey: "0001_initial",
+			giveChangesetKey: "0001_initial",
 			want:             true,
 		},
 		{
 			name:             "does not exist",
-			giveMigrationKey: "0001_initial",
+			giveChangesetKey: "0001_initial",
 			want:             false,
 		},
 		{
@@ -302,7 +302,7 @@ func Test_Artifacts_MigrationDirExists(t *testing.T) {
 				require.NoError(t, err)
 				defer f.Close()
 			},
-			giveMigrationKey: "0001_initial",
+			giveChangesetKey: "0001_initial",
 			want:             false,
 			wantErr:          "expected directory, got file",
 		},
@@ -319,7 +319,7 @@ func Test_Artifacts_MigrationDirExists(t *testing.T) {
 				tt.beforeFunc(t, artsDir)
 			}
 
-			got, err := artsDir.MigrationDirExists(tt.giveMigrationKey)
+			got, err := artsDir.ChangesetDirExists(tt.giveChangesetKey)
 			assert.Equal(t, tt.want, got)
 
 			if tt.wantErr != "" {
@@ -387,13 +387,13 @@ func Test_Artifacts_OperationsReportsDirExists(t *testing.T) {
 	}
 }
 
-func Test_Artifacts_MigrationOperationsReportsFileExists(t *testing.T) {
+func Test_Artifacts_ChangesetOperationsReportsFileExists(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
 		name             string
 		beforeFunc       func(*testing.T, *ArtifactsDir)
-		giveMigrationKey string
+		giveChangesetKey string
 		want             bool
 		wantErr          string
 	}{
@@ -410,12 +410,12 @@ func Test_Artifacts_MigrationOperationsReportsFileExists(t *testing.T) {
 				)
 				require.NoError(t, err)
 			},
-			giveMigrationKey: "0001_initial",
+			giveChangesetKey: "0001_initial",
 			want:             true,
 		},
 		{
 			name:             "does not exist",
-			giveMigrationKey: "0001_initial",
+			giveChangesetKey: "0001_initial",
 			want:             false,
 		},
 		{
@@ -426,7 +426,7 @@ func Test_Artifacts_MigrationOperationsReportsFileExists(t *testing.T) {
 				err := os.Mkdir(filepath.Join(artsDir.OperationsReportsDirPath(), "0001_initial-reports.json"), 0755)
 				require.NoError(t, err)
 			},
-			giveMigrationKey: "0001_initial",
+			giveChangesetKey: "0001_initial",
 			want:             false,
 			wantErr:          "expected file, got directory",
 		},
@@ -443,7 +443,7 @@ func Test_Artifacts_MigrationOperationsReportsFileExists(t *testing.T) {
 				tt.beforeFunc(t, artsDir)
 			}
 
-			got, err := artsDir.MigrationOperationsReportsFileExists(tt.giveMigrationKey)
+			got, err := artsDir.ChangesetOperationsReportsFileExists(tt.giveChangesetKey)
 			if tt.wantErr != "" {
 				require.Error(t, err)
 				assert.ErrorContains(t, err, tt.wantErr)
@@ -733,7 +733,7 @@ func testArtifactSaveAndLoad(t *testing.T, artsDir *ArtifactsDir, giveOutput fde
 	assert.Equal(t, want, got)
 }
 
-func Test_Artifacts_LoadAddressBookByMigrationKey(t *testing.T) {
+func Test_Artifacts_LoadAddressBookByChangesetKey(t *testing.T) {
 	t.Parallel()
 
 	addrBook := createAddressBookMap(t,
@@ -744,7 +744,7 @@ func Test_Artifacts_LoadAddressBookByMigrationKey(t *testing.T) {
 	tests := []struct {
 		name       string
 		beforeFunc func(*testing.T, *ArtifactsDir)
-		giveMigKey string
+		giveCsKey  string
 		want       fdeployment.AddressBook
 		wantErr    string
 	}{
@@ -758,7 +758,7 @@ func Test_Artifacts_LoadAddressBookByMigrationKey(t *testing.T) {
 				})
 				require.NoError(t, err)
 			},
-			giveMigKey: "0001_initial",
+			giveCsKey: "0001_initial",
 			want: fdeployment.NewMemoryAddressBookFromMap(map[uint64]map[string]fdeployment.TypeAndVersion{
 				chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector: {
 					"0xAeeFF49471aB5B3d14D2FeA4079bF075d452E5F4": fdeployment.TypeAndVersion{
@@ -770,9 +770,9 @@ func Test_Artifacts_LoadAddressBookByMigrationKey(t *testing.T) {
 			}),
 		},
 		{
-			name:       "migration dir does not exist",
-			giveMigKey: "invalid",
-			wantErr:    "error finding files",
+			name:      "migration dir does not exist",
+			giveCsKey: "invalid",
+			wantErr:   "error finding files",
 		},
 		{
 			name: "artifact does not exist",
@@ -782,26 +782,26 @@ func Test_Artifacts_LoadAddressBookByMigrationKey(t *testing.T) {
 				err := artsDir.SaveChangesetOutput("0001_no_address_book", fdeployment.ChangesetOutput{})
 				require.NoError(t, err)
 			},
-			giveMigKey: "0001_no_address_book",
-			wantErr:    "no files found matching pattern",
+			giveCsKey: "0001_no_address_book",
+			wantErr:   "no files found matching pattern",
 		},
 		{
 			name: "address book is malformed JSON",
 			beforeFunc: func(t *testing.T, artsDir *ArtifactsDir) {
 				t.Helper()
 
-				err := artsDir.CreateMigrationDir("0001_malformed")
+				err := artsDir.CreateChangesetDir("0001_malformed")
 				require.NoError(t, err)
 
 				err = os.WriteFile(
-					filepath.Join(artsDir.MigrationDirPath("0001_malformed"), "xxx-ccip-staging-0001_malformed_addresses.json"),
+					filepath.Join(artsDir.ChangesetDirPath("0001_malformed"), "xxx-ccip-staging-0001_malformed_addresses.json"),
 					[]byte("malformed"),
 					0600,
 				)
 				require.NoError(t, err)
 			},
-			giveMigKey: "0001_malformed",
-			wantErr:    "failed to unmarshal JSON",
+			giveCsKey: "0001_malformed",
+			wantErr:   "failed to unmarshal JSON",
 		},
 	}
 
@@ -816,7 +816,7 @@ func Test_Artifacts_LoadAddressBookByMigrationKey(t *testing.T) {
 				tt.beforeFunc(t, artsDir)
 			}
 
-			got, err := artsDir.LoadAddressBookByMigrationKey(tt.giveMigKey)
+			got, err := artsDir.LoadAddressBookByChangesetKey(tt.giveCsKey)
 
 			if tt.wantErr != "" {
 				require.Error(t, err)
@@ -829,7 +829,7 @@ func Test_Artifacts_LoadAddressBookByMigrationKey(t *testing.T) {
 	}
 }
 
-func Test_Artifacts_LoadDataStoreByMigrationKey(t *testing.T) {
+func Test_Artifacts_LoadDataStoreByChangesetKey(t *testing.T) {
 	t.Parallel()
 
 	dataStore := createDataStore(t,
@@ -842,7 +842,7 @@ func Test_Artifacts_LoadDataStoreByMigrationKey(t *testing.T) {
 	tests := []struct {
 		name       string
 		beforeFunc func(*testing.T, *ArtifactsDir)
-		giveMigKey string
+		giveCsKey  string
 		want       fdatastore.DataStore
 		wantErr    string
 	}{
@@ -856,13 +856,13 @@ func Test_Artifacts_LoadDataStoreByMigrationKey(t *testing.T) {
 				})
 				require.NoError(t, err)
 			},
-			giveMigKey: "0001_initial",
-			want:       dataStore.Seal(),
+			giveCsKey: "0001_initial",
+			want:      dataStore.Seal(),
 		},
 		{
-			name:       "migration dir does not exist",
-			giveMigKey: "invalid",
-			wantErr:    "error finding files",
+			name:      "migration dir does not exist",
+			giveCsKey: "invalid",
+			wantErr:   "error finding files",
 		},
 		{
 			name: "artifact does not exist",
@@ -872,26 +872,26 @@ func Test_Artifacts_LoadDataStoreByMigrationKey(t *testing.T) {
 				err := artsDir.SaveChangesetOutput("0001_no_datastore", fdeployment.ChangesetOutput{})
 				require.NoError(t, err)
 			},
-			giveMigKey: "0001_no_datastore",
-			wantErr:    "no files found matching pattern",
+			giveCsKey: "0001_no_datastore",
+			wantErr:   "no files found matching pattern",
 		},
 		{
 			name: "address book is malformed JSON",
 			beforeFunc: func(t *testing.T, artsDir *ArtifactsDir) {
 				t.Helper()
 
-				err := artsDir.CreateMigrationDir("0001_malformed")
+				err := artsDir.CreateChangesetDir("0001_malformed")
 				require.NoError(t, err)
 
 				err = os.WriteFile(
-					filepath.Join(artsDir.MigrationDirPath("0001_malformed"), "xxx-ccip-staging-0001_malformed_datastore.json"),
+					filepath.Join(artsDir.ChangesetDirPath("0001_malformed"), "xxx-ccip-staging-0001_malformed_datastore.json"),
 					[]byte("malformed"),
 					0600,
 				)
 				require.NoError(t, err)
 			},
-			giveMigKey: "0001_malformed",
-			wantErr:    "failed to unmarshal JSON",
+			giveCsKey: "0001_malformed",
+			wantErr:   "failed to unmarshal JSON",
 		},
 	}
 
@@ -906,7 +906,7 @@ func Test_Artifacts_LoadDataStoreByMigrationKey(t *testing.T) {
 				tt.beforeFunc(t, artsDir)
 			}
 
-			got, err := artsDir.LoadDataStoreByMigrationKey(tt.giveMigKey)
+			got, err := artsDir.LoadDataStoreByChangesetKey(tt.giveCsKey)
 
 			if tt.wantErr != "" {
 				require.Error(t, err)
@@ -922,7 +922,7 @@ func Test_Artifacts_LoadDataStoreByMigrationKey(t *testing.T) {
 func Test_Artifacts_SaveAndLoadOperationsReport(t *testing.T) {
 	t.Parallel()
 
-	migrationKey := "0001_initial"
+	changesetKey := "0001_initial"
 
 	report := operations.NewReport[any, any](
 		operations.Definition{
@@ -939,19 +939,19 @@ func Test_Artifacts_SaveAndLoadOperationsReport(t *testing.T) {
 	tests := []struct {
 		name        string
 		beforeFunc  func(*testing.T, *ArtifactsDir)
-		giveMigKey  string
+		giveCsKey   string
 		want        []operations.Report[any, any]
 		wantLoadErr string
 		wantSaveErr string
 	}{
 		{
-			name:       "success save and load",
-			giveMigKey: migrationKey,
-			want:       []operations.Report[any, any]{report},
+			name:      "success save and load",
+			giveCsKey: changesetKey,
+			want:      []operations.Report[any, any]{report},
 		},
 		{
-			name:       "success save and load - durable pipelines",
-			giveMigKey: migrationKey,
+			name:      "success save and load - durable pipelines",
+			giveCsKey: changesetKey,
 			beforeFunc: func(t *testing.T, artsDir *ArtifactsDir) {
 				t.Helper()
 				err := artsDir.SetDurablePipelines("1749186682460987000")
@@ -960,12 +960,12 @@ func Test_Artifacts_SaveAndLoadOperationsReport(t *testing.T) {
 			want: []operations.Report[any, any]{report},
 		},
 		{
-			name:       "report does not exist - return empty slice",
-			giveMigKey: "invalid",
-			want:       []operations.Report[any, any]{},
+			name:      "report does not exist - return empty slice",
+			giveCsKey: "invalid",
+			want:      []operations.Report[any, any]{},
 		}, {
-			name:       "success - directory does not exist - should create it",
-			giveMigKey: migrationKey,
+			name:      "success - directory does not exist - should create it",
+			giveCsKey: changesetKey,
 			beforeFunc: func(t *testing.T, artsDir *ArtifactsDir) {
 				t.Helper()
 				err := os.RemoveAll(artsDir.OperationsReportsDirPath())
@@ -986,7 +986,7 @@ func Test_Artifacts_SaveAndLoadOperationsReport(t *testing.T) {
 				tt.beforeFunc(t, artsDir)
 			}
 
-			err := artsDir.SaveOperationsReports(migrationKey, []operations.Report[any, any]{report})
+			err := artsDir.SaveOperationsReports(changesetKey, []operations.Report[any, any]{report})
 			if tt.wantSaveErr != "" {
 				require.Error(t, err)
 				require.ErrorContains(t, err, tt.wantSaveErr)
@@ -994,7 +994,7 @@ func Test_Artifacts_SaveAndLoadOperationsReport(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			got, err := artsDir.LoadOperationsReports(tt.giveMigKey)
+			got, err := artsDir.LoadOperationsReports(tt.giveCsKey)
 
 			if tt.wantLoadErr != "" {
 				require.Error(t, err)
@@ -1070,20 +1070,20 @@ func Test_Artifacts_SaveAndLoadMultipleProposals(t *testing.T) {
 
 	tests := []struct {
 		name               string
-		migrationKey       string
+		changesetKey       string
 		setupFunc          func(t *testing.T, artsDir *ArtifactsDir)
 		expectedFilePrefix string
 		isDurablePipelines bool
 	}{
 		{
 			name:               "regular migration proposals",
-			migrationKey:       "0001_initial",
+			changesetKey:       "0001_initial",
 			expectedFilePrefix: "",
 			isDurablePipelines: false,
 		},
 		{
 			name:         "durable pipelines proposals with timestamp prefix",
-			migrationKey: "0001_initial",
+			changesetKey: "0001_initial",
 			setupFunc: func(t *testing.T, artsDir *ArtifactsDir) {
 				t.Helper()
 				err := artsDir.SetDurablePipelines("1234567890123456789")
@@ -1106,11 +1106,11 @@ func Test_Artifacts_SaveAndLoadMultipleProposals(t *testing.T) {
 			}
 
 			// Save multiple proposals
-			require.NoError(t, artsDir.CreateMigrationDir(tt.migrationKey))
+			require.NoError(t, artsDir.CreateChangesetDir(tt.changesetKey))
 			for i, proposal := range proposals {
-				err := artsDir.saveProposalArtifact(tt.migrationKey, ArtifactMCMSProposal, i, proposal)
+				err := artsDir.saveProposalArtifact(tt.changesetKey, ArtifactMCMSProposal, i, proposal)
 				require.NoError(t, err)
-				err = artsDir.saveDecodedProposalArtifact(tt.migrationKey, ArtifactMCMSProposal, i, "some decoded proposal")
+				err = artsDir.saveDecodedProposalArtifact(tt.changesetKey, ArtifactMCMSProposal, i, "some decoded proposal")
 				require.NoError(t, err)
 			}
 
@@ -1132,7 +1132,7 @@ func Test_Artifacts_SaveAndLoadMultipleProposals(t *testing.T) {
 					tt.expectedFilePrefix,
 					artsDir.DomainKey(),
 					artsDir.EnvKey(),
-					tt.migrationKey,
+					tt.changesetKey,
 					ArtifactMCMSProposal,
 					i,
 					JSONExt)
@@ -1145,7 +1145,7 @@ func Test_Artifacts_SaveAndLoadMultipleProposals(t *testing.T) {
 					tt.expectedFilePrefix,
 					artsDir.DomainKey(),
 					artsDir.EnvKey(),
-					tt.migrationKey,
+					tt.changesetKey,
 					ArtifactMCMSProposal,
 					i,
 					TxtExt)
@@ -1153,10 +1153,10 @@ func Test_Artifacts_SaveAndLoadMultipleProposals(t *testing.T) {
 			}
 
 			// Load proposals and verify
-			exists, err := artsDir.MigrationDirExists(tt.migrationKey)
+			exists, err := artsDir.ChangesetDirExists(tt.changesetKey)
 			require.NoError(t, err)
 			require.True(t, exists)
-			loadedProposals, err := artsDir.LoadChangesetOutput(tt.migrationKey)
+			loadedProposals, err := artsDir.LoadChangesetOutput(tt.changesetKey)
 			require.NoError(t, err)
 			assert.Len(t, loadedProposals.MCMSProposals, len(proposals))
 
@@ -1236,7 +1236,7 @@ func Test_Artifacts_SaveAddressBookInSortedOrder(t *testing.T) {
 	err := artsDir.SetDurablePipelines("1234567890123456789")
 	require.NoError(t, err)
 
-	migKey := "0001_sorted_addresses"
+	csKey := "0001_sorted_addresses"
 
 	// Create address book with intentionally unsorted entries
 	// Higher chain selector first, unsorted addresses
@@ -1256,14 +1256,14 @@ func Test_Artifacts_SaveAddressBookInSortedOrder(t *testing.T) {
 	})
 
 	// Save address book
-	err = artsDir.SaveChangesetOutput(migKey, fdeployment.ChangesetOutput{
+	err = artsDir.SaveChangesetOutput(csKey, fdeployment.ChangesetOutput{
 		AddressBook: addrBook,
 	})
 	require.NoError(t, err)
 
 	// Find the address book file
 	pattern := "*_" + ArtifactAddress + "." + JSONExt
-	addrBookPath, err := artsDir.findArtifactPath(artsDir.MigrationDirPath(migKey), pattern)
+	addrBookPath, err := artsDir.findArtifactPath(artsDir.ChangesetDirPath(csKey), pattern)
 	require.NoError(t, err)
 
 	// Read the file contents directly
@@ -1309,7 +1309,7 @@ func Test_Artifacts_SaveAddressBookInSortedOrder(t *testing.T) {
 	assert.Equal(t, expected, fileStr)
 
 	// Also verify the saved file can be loaded back correctly
-	loadedOutput, err := artsDir.LoadChangesetOutput(migKey)
+	loadedOutput, err := artsDir.LoadChangesetOutput(csKey)
 	require.NoError(t, err)
 	//nolint:staticcheck
 	require.NotNil(t, loadedOutput.AddressBook)
@@ -1320,18 +1320,18 @@ func Test_getOperationsReportsFilePath(t *testing.T) {
 
 	tests := []struct {
 		name               string
-		migKey             string
+		csKey              string
 		wantFileName       string
 		isDurablePipelines bool
 	}{
 		{
 			name:         "migration",
-			migKey:       "0001_initial",
+			csKey:        "0001_initial",
 			wantFileName: "0001_initial-reports.json",
 		},
 		{
 			name:               "durable pipelines",
-			migKey:             "0001_initial",
+			csKey:              "0001_initial",
 			isDurablePipelines: true,
 			wantFileName:       "0001_initial-reports.json",
 		},
@@ -1349,7 +1349,7 @@ func Test_getOperationsReportsFilePath(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			got := artsDir.getOperationsReportsFilePath(tt.migKey)
+			got := artsDir.getOperationsReportsFilePath(tt.csKey)
 			assert.Equal(t, filepath.Join(artsDir.OperationsReportsDirPath(), tt.wantFileName), got)
 		})
 	}

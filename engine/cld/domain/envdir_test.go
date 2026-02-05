@@ -19,7 +19,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/nodes"
 )
 
-func Test_EnvDir_RemoveMigrationAddressBook(t *testing.T) {
+func Test_EnvDir_RemoveChangesetAddressBook(t *testing.T) {
 	t.Parallel()
 
 	var (
@@ -33,7 +33,7 @@ func Test_EnvDir_RemoveMigrationAddressBook(t *testing.T) {
 	tests := []struct {
 		name              string
 		beforeFunc        func(*testing.T, EnvDir)
-		giveMigrationName string
+		giveChangesetName string
 		timestamp         string
 		want              *fdeployment.AddressBookMap
 		wantErr           string
@@ -50,10 +50,10 @@ func Test_EnvDir_RemoveMigrationAddressBook(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				err = envdir.MergeMigrationAddressBook("0001_initial", "")
+				err = envdir.MergeChangesetAddressBook("0001_initial", "")
 				require.NoError(t, err)
 			},
-			giveMigrationName: "0001_initial",
+			giveChangesetName: "0001_initial",
 			want: fdeployment.NewMemoryAddressBookFromMap(map[uint64]map[string]fdeployment.TypeAndVersion{
 				chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector: {},
 			}),
@@ -73,10 +73,10 @@ func Test_EnvDir_RemoveMigrationAddressBook(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				err = envdir.MergeMigrationAddressBook("0001_initial", arts.timestamp)
+				err = envdir.MergeChangesetAddressBook("0001_initial", arts.timestamp)
 				require.NoError(t, err)
 			},
-			giveMigrationName: "0001_initial",
+			giveChangesetName: "0001_initial",
 			timestamp:         timestamp,
 			want: fdeployment.NewMemoryAddressBookFromMap(map[uint64]map[string]fdeployment.TypeAndVersion{
 				chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector: {},
@@ -91,12 +91,12 @@ func Test_EnvDir_RemoveMigrationAddressBook(t *testing.T) {
 				err := arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{})
 				require.NoError(t, err)
 			},
-			giveMigrationName: "0001_initial",
+			giveChangesetName: "0001_initial",
 			want:              fdeployment.NewMemoryAddressBookFromMap(map[uint64]map[string]fdeployment.TypeAndVersion{}),
 		},
 		{
 			name:              "failure when no migration artifacts directory exists",
-			giveMigrationName: "0001_invalid",
+			giveChangesetName: "0001_invalid",
 			wantErr:           "error finding files",
 		},
 	}
@@ -115,7 +115,7 @@ func Test_EnvDir_RemoveMigrationAddressBook(t *testing.T) {
 			}
 
 			// Merge the migration's address book into the existing address book
-			err := envDir.RemoveMigrationAddressBook(tt.giveMigrationName, tt.timestamp)
+			err := envDir.RemoveChangesetAddressBook(tt.giveChangesetName, tt.timestamp)
 
 			if tt.wantErr != "" {
 				require.Error(t, err)
@@ -191,7 +191,7 @@ func Test_EnvDir_MigrateAddressBook(t *testing.T) {
 	tests := []struct {
 		name              string
 		beforeFunc        func(*testing.T, EnvDir)
-		giveMigrationName string
+		giveChangesetName string
 		want              fdatastore.DataStore
 	}{
 		{
@@ -204,7 +204,7 @@ func Test_EnvDir_MigrateAddressBook(t *testing.T) {
 				err := arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{})
 				require.NoError(t, err)
 			},
-			giveMigrationName: "0001_initial",
+			giveChangesetName: "0001_initial",
 			want:              fdatastore.NewMemoryDataStore().Seal(),
 		},
 		{
@@ -219,7 +219,7 @@ func Test_EnvDir_MigrateAddressBook(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				err = envdir.MergeMigrationAddressBook("0001_initial", "")
+				err = envdir.MergeChangesetAddressBook("0001_initial", "")
 				require.NoError(t, err)
 
 				err = arts.SaveChangesetOutput("0002_second", fdeployment.ChangesetOutput{
@@ -227,7 +227,7 @@ func Test_EnvDir_MigrateAddressBook(t *testing.T) {
 				})
 				require.NoError(t, err)
 			},
-			giveMigrationName: "0002_second",
+			giveChangesetName: "0002_second",
 			want:              convDataStore.Seal(),
 		},
 	}
@@ -245,7 +245,7 @@ func Test_EnvDir_MigrateAddressBook(t *testing.T) {
 				tt.beforeFunc(t, envDir)
 			}
 
-			err := envDir.MergeMigrationAddressBook(tt.giveMigrationName, "")
+			err := envDir.MergeChangesetAddressBook(tt.giveChangesetName, "")
 			require.NoError(t, err)
 			// convert the address book to a datastore
 			err = envDir.MigrateAddressBook()
@@ -517,7 +517,7 @@ func Test_EnvDir_Artifacts(t *testing.T) {
 	assert.Equal(t, fixture.artifactsDir, got)
 }
 
-func Test_EnvDir_MergeMigrationAddressBook(t *testing.T) {
+func Test_EnvDir_MergeChangesetAddressBook(t *testing.T) {
 	t.Parallel()
 
 	var (
@@ -535,7 +535,7 @@ func Test_EnvDir_MergeMigrationAddressBook(t *testing.T) {
 	tests := []struct {
 		name              string
 		beforeFunc        func(*testing.T, EnvDir)
-		giveMigrationName string
+		giveChangesetName string
 		want              *fdeployment.AddressBookMap
 		wantErr           string
 	}{
@@ -551,7 +551,7 @@ func Test_EnvDir_MergeMigrationAddressBook(t *testing.T) {
 				})
 				require.NoError(t, err)
 			},
-			giveMigrationName: "0001_initial",
+			giveChangesetName: "0001_initial",
 			want: fdeployment.NewMemoryAddressBookFromMap(map[uint64]map[string]fdeployment.TypeAndVersion{
 				chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector: {
 					"0x5B5BBb15ECE0a4Ed8cDab22F902e83F66aBe848f": fdeployment.TypeAndVersion{
@@ -574,7 +574,7 @@ func Test_EnvDir_MergeMigrationAddressBook(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				err = envdir.MergeMigrationAddressBook("0001_initial", "")
+				err = envdir.MergeChangesetAddressBook("0001_initial", "")
 				require.NoError(t, err)
 
 				// Create a migration with another address book
@@ -583,7 +583,7 @@ func Test_EnvDir_MergeMigrationAddressBook(t *testing.T) {
 				})
 				require.NoError(t, err)
 			},
-			giveMigrationName: "0002_second",
+			giveChangesetName: "0002_second",
 			want: fdeployment.NewMemoryAddressBookFromMap(map[uint64]map[string]fdeployment.TypeAndVersion{
 				chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector: {
 					"0x5B5BBb15ECE0a4Ed8cDab22F902e83F66aBe848f": {
@@ -613,7 +613,7 @@ func Test_EnvDir_MergeMigrationAddressBook(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				err = envdir.MergeMigrationAddressBook("0001_initial", "")
+				err = envdir.MergeChangesetAddressBook("0001_initial", "")
 				require.NoError(t, err)
 
 				// Create a durable pipeline artifact with another address book and merge to the address book
@@ -625,10 +625,10 @@ func Test_EnvDir_MergeMigrationAddressBook(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				err = envdir.MergeMigrationAddressBook("durable_pipeline", arts.timestamp)
+				err = envdir.MergeChangesetAddressBook("durable_pipeline", arts.timestamp)
 				require.NoError(t, err)
 			},
-			giveMigrationName: "durable_pipeline",
+			giveChangesetName: "durable_pipeline",
 			want: fdeployment.NewMemoryAddressBookFromMap(map[uint64]map[string]fdeployment.TypeAndVersion{
 				chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector: {
 					"0x5B5BBb15ECE0a4Ed8cDab22F902e83F66aBe848f": {
@@ -655,12 +655,12 @@ func Test_EnvDir_MergeMigrationAddressBook(t *testing.T) {
 				err := arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{})
 				require.NoError(t, err)
 			},
-			giveMigrationName: "0001_initial",
+			giveChangesetName: "0001_initial",
 			want:              fdeployment.NewMemoryAddressBookFromMap(map[uint64]map[string]fdeployment.TypeAndVersion{}),
 		},
 		{
 			name:              "failure when no migration artifacts directory exists",
-			giveMigrationName: "0001_invalid",
+			giveChangesetName: "0001_invalid",
 			wantErr:           "error finding files",
 		},
 	}
@@ -679,7 +679,7 @@ func Test_EnvDir_MergeMigrationAddressBook(t *testing.T) {
 			}
 
 			// Merge the migration's address book into the existing address book
-			err := envDir.MergeMigrationAddressBook(tt.giveMigrationName, "")
+			err := envDir.MergeChangesetAddressBook(tt.giveChangesetName, "")
 
 			if tt.wantErr != "" {
 				require.Error(t, err)
@@ -695,7 +695,7 @@ func Test_EnvDir_MergeMigrationAddressBook(t *testing.T) {
 	}
 }
 
-func Test_EnvDir_MergeMigrationDataStore(t *testing.T) {
+func Test_EnvDir_MergeChangesetDataStore(t *testing.T) {
 	t.Parallel()
 
 	var (
@@ -725,7 +725,7 @@ func Test_EnvDir_MergeMigrationDataStore(t *testing.T) {
 	tests := []struct {
 		name              string
 		beforeFunc        func(*testing.T, EnvDir)
-		giveMigrationName string
+		giveChangesetName string
 		want              fdatastore.DataStore
 		wantErr           string
 	}{
@@ -741,7 +741,7 @@ func Test_EnvDir_MergeMigrationDataStore(t *testing.T) {
 				})
 				require.NoError(t, err)
 			},
-			giveMigrationName: "0001_initial",
+			giveChangesetName: "0001_initial",
 			want:              dataStore1.Seal(),
 		},
 		{
@@ -756,7 +756,7 @@ func Test_EnvDir_MergeMigrationDataStore(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				err = envdir.MergeMigrationDataStore("0001_initial", "")
+				err = envdir.MergeChangesetDataStore("0001_initial", "")
 				require.NoError(t, err)
 
 				// Create a migration with another datastore
@@ -765,7 +765,7 @@ func Test_EnvDir_MergeMigrationDataStore(t *testing.T) {
 				})
 				require.NoError(t, err)
 			},
-			giveMigrationName: "0002_second",
+			giveChangesetName: "0002_second",
 			want:              mergeDatastore.Seal(),
 		},
 		{
@@ -780,7 +780,7 @@ func Test_EnvDir_MergeMigrationDataStore(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				err = envdir.MergeMigrationDataStore("0001_initial", "")
+				err = envdir.MergeChangesetDataStore("0001_initial", "")
 				require.NoError(t, err)
 
 				// Create a durable pipeline artifact with another address book and merge to the address book
@@ -792,10 +792,10 @@ func Test_EnvDir_MergeMigrationDataStore(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				err = envdir.MergeMigrationDataStore("durable_pipeline", arts.timestamp)
+				err = envdir.MergeChangesetDataStore("durable_pipeline", arts.timestamp)
 				require.NoError(t, err)
 			},
-			giveMigrationName: "durable_pipeline",
+			giveChangesetName: "durable_pipeline",
 			want:              mergeDatastore.Seal(),
 		},
 		{
@@ -807,12 +807,12 @@ func Test_EnvDir_MergeMigrationDataStore(t *testing.T) {
 				err := arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{})
 				require.NoError(t, err)
 			},
-			giveMigrationName: "0001_initial",
+			giveChangesetName: "0001_initial",
 			want:              fdatastore.NewMemoryDataStore().Seal(),
 		},
 		{
 			name:              "failure when no migration artifacts directory exists",
-			giveMigrationName: "0001_invalid",
+			giveChangesetName: "0001_invalid",
 			wantErr:           "error finding files",
 		},
 	}
@@ -831,7 +831,7 @@ func Test_EnvDir_MergeMigrationDataStore(t *testing.T) {
 			}
 
 			// Merge the migration's address book into the existing address book
-			err := envDir.MergeMigrationDataStore(tt.giveMigrationName, "")
+			err := envDir.MergeChangesetDataStore(tt.giveChangesetName, "")
 
 			if tt.wantErr != "" {
 				require.Error(t, err)
@@ -847,7 +847,7 @@ func Test_EnvDir_MergeMigrationDataStore(t *testing.T) {
 	}
 }
 
-func Test_EnvDir_MergeMigrationDataStoreCatalog(t *testing.T) {
+func Test_EnvDir_MergeChangesetDataStoreCatalog(t *testing.T) {
 	t.Parallel()
 
 	var (
@@ -862,7 +862,7 @@ func Test_EnvDir_MergeMigrationDataStoreCatalog(t *testing.T) {
 	tests := []struct {
 		name              string
 		beforeFunc        func(*testing.T, EnvDir)
-		giveMigrationName string
+		giveChangesetName string
 		mockTransaction   func(ctx context.Context, fn fdatastore.TransactionLogic) error
 		wantErr           string
 	}{
@@ -878,7 +878,7 @@ func Test_EnvDir_MergeMigrationDataStoreCatalog(t *testing.T) {
 				})
 				require.NoError(t, err)
 			},
-			giveMigrationName: "0001_initial",
+			giveChangesetName: "0001_initial",
 			mockTransaction: func(ctx context.Context, fn fdatastore.TransactionLogic) error {
 				// Simulate successful transaction by returning nil
 				return nil
@@ -886,7 +886,7 @@ func Test_EnvDir_MergeMigrationDataStoreCatalog(t *testing.T) {
 		},
 		{
 			name:              "failure when no migration artifacts directory exists",
-			giveMigrationName: "0001_invalid",
+			giveChangesetName: "0001_invalid",
 			wantErr:           "error finding files",
 			mockTransaction: func(ctx context.Context, fn fdatastore.TransactionLogic) error {
 				return nil
@@ -904,7 +904,7 @@ func Test_EnvDir_MergeMigrationDataStoreCatalog(t *testing.T) {
 				})
 				require.NoError(t, err)
 			},
-			giveMigrationName: "0001_initial",
+			giveChangesetName: "0001_initial",
 			mockTransaction: func(ctx context.Context, fn fdatastore.TransactionLogic) error {
 				return errors.New("catalog transaction error")
 			},
@@ -929,7 +929,7 @@ func Test_EnvDir_MergeMigrationDataStoreCatalog(t *testing.T) {
 			}
 
 			// Merge the migration's datastore to catalog
-			err := envDir.MergeMigrationDataStoreCatalog(context.Background(), tt.giveMigrationName, "", mockCatalog)
+			err := envDir.MergeChangesetDataStoreCatalog(context.Background(), tt.giveChangesetName, "", mockCatalog)
 
 			if tt.wantErr != "" {
 				require.Error(t, err)
@@ -972,7 +972,7 @@ func Test_EnvDir_SyncDataStoreToCatalog(t *testing.T) {
 				require.NoError(t, err)
 
 				// Merge to local files first
-				err = envdir.MergeMigrationDataStore("0001_initial", "")
+				err = envdir.MergeChangesetDataStore("0001_initial", "")
 				require.NoError(t, err)
 			},
 			mockTransaction: func(ctx context.Context, fn fdatastore.TransactionLogic) error {
@@ -993,7 +993,7 @@ func Test_EnvDir_SyncDataStoreToCatalog(t *testing.T) {
 				require.NoError(t, err)
 
 				// Merge to local files first
-				err = envdir.MergeMigrationDataStore("0001_initial", "")
+				err = envdir.MergeChangesetDataStore("0001_initial", "")
 				require.NoError(t, err)
 			},
 			mockTransaction: func(ctx context.Context, fn fdatastore.TransactionLogic) error {
