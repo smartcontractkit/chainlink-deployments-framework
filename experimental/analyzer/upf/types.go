@@ -67,5 +67,6 @@ func (m rawBytes) MarshalYAML() ([]byte, error) {
 	}
 	// In YAML single-quoted strings, single quotes are escaped by doubling them
 	escaped := bytes.ReplaceAll(m, []byte{'\''}, []byte{'\'', '\''})
+
 	return slices.Concat([]byte{'\''}, escaped, []byte{'\''}), nil
 }
