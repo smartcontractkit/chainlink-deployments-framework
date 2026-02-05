@@ -173,8 +173,7 @@ func Test_isPublicRPC(t *testing.T) {
 	}
 }
 
-func Test_selectPublicRPC(t *testing.T) {
-	t.Parallel()
+func Test_selectPublicRPC(t *testing.T) { //nolint:paralleltest
 	httpmock.Activate(t)
 
 	lggr := logger.Test(t)
@@ -233,10 +232,8 @@ func Test_selectPublicRPC(t *testing.T) {
 			wantErr: "no public RPCs found for chain 0",
 		},
 	}
-	for _, tt := range tests {
+	for _, tt := range tests { //nolint:paralleltest
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
 			tt.setup(t)
 			urls, err := selectPublicRPC(t.Context(), lggr, tt.metadata, tt.chainSelector, tt.rpcs)
 

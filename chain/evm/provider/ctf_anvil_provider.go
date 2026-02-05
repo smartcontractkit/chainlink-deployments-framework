@@ -273,6 +273,12 @@ type CTFAnvilChainProviderConfig struct {
 	// gas limits, or other Anvil-specific options.
 	DockerCmdParamsOverrides []string
 
+	// Optional: ForkURLs is a list of RPC URLs to fork from when starting Anvil.
+	// If provided, Anvil will start in fork mode, allowing you to test against
+	// a forked state of an existing blockchain. When multiple URLs are provided,
+	// they are used in round-robin fashion on retry attempts. This is useful for
+	// load balancing across multiple RPC endpoints or providing fallback URLs.
+	// Example: []string{"https://rpc.blockchain.com/your-api-key"}
 	ForkURLs []string
 
 	// Optional: Port specifies the port for the Anvil container. If not provided,
@@ -547,6 +553,8 @@ func (p *CTFAnvilChainProvider) startContainer(ctx context.Context, chainID stri
 		return "", fmt.Errorf("failed to set up CTF default network: %w", err)
 	}
 
+	dockerCmdOverrides := p.config.DockerCmdParamsOverrides
+
 	httpURL, err := retry.DoWithData(func() (string, error) {
 		var port int
 		var portStr string
@@ -569,7 +577,7 @@ func (p *CTFAnvilChainProvider) startContainer(ctx context.Context, chainID stri
 
 		if len(p.config.ForkURLs) > 0 {
 			url := p.config.ForkURLs[attempt%uint(len(p.config.ForkURLs))]
-			p.config.DockerCmdParamsOverrides = append(p.config.DockerCmdParamsOverrides, "--fork-url", url)
+			dockerCmdOverrides = append(dockerCmdOverrides, "--fork-url", url)
 		}
 
 		// Create the input for the Anvil blockchain network
@@ -578,7 +586,7 @@ func (p *CTFAnvilChainProvider) startContainer(ctx context.Context, chainID stri
 			ChainID:                  chainID,
 			Port:                     portStr,
 			Image:                    p.config.Image, // Use custom image if provided, empty string uses default
-			DockerCmdParamsOverrides: p.config.DockerCmdParamsOverrides,
+			DockerCmdParamsOverrides: dockerCmdOverrides,
 		}
 
 		// Create the CTF container for Anvil
