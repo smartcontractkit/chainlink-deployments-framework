@@ -26,7 +26,7 @@ type LoadConfig struct {
 
 	// withoutJD determines whether to skip Job Distributor initialization.
 	// When true, the Environment's Offchain field will be nil.
-	// Useful for migrations that don't require Job Distributor functionality.
+	// Useful for changesets that don't require Job Distributor functionality.
 	withoutJD bool
 
 	// anvilKeyAsDeployer determines whether to use Anvil's default private key
@@ -103,7 +103,7 @@ func WithReporter(reporter operations.Reporter) LoadEnvironmentOption {
 //   - Testing scenarios where JD dependencies are not available
 //
 // WARNING: When this option is used, env.Offchain will be nil. Any code that
-// attempts to use env.Offchain will panic. Ensure your migration or operation
+// attempts to use env.Offchain will panic. Ensure your changeset or operation
 // does not depend on Job Distributor functionality.
 func WithoutJD() LoadEnvironmentOption {
 	return func(o *LoadConfig) {
@@ -111,10 +111,10 @@ func WithoutJD() LoadEnvironmentOption {
 	}
 }
 
-// OnlyLoadChainsFor configures the environment to load only specified chains for a migration.
+// OnlyLoadChainsFor configures the environment to load only specified chains for a changeset.
 //
 // This option optimizes environment loading by restricting it to only the chains
-// required for a specific migration. This can significantly reduce loading time
+// required for a specific changeset. This can significantly reduce loading time
 // and resource usage when working with environments that support many chains.
 //
 // By default, if this option is not specified, all chains are loaded.
@@ -165,11 +165,11 @@ func WithLogger(lggr logger.Logger) LoadEnvironmentOption {
 // that would normally modify the Job Distributor state. In this mode:
 //   - Read operations are forwarded to the real Job Distributor backend
 //   - Write operations are stubbed out and logged but not executed
-//   - This allows testing of migration logic without affecting production systems
+//   - This allows testing of changeset logic without affecting production systems
 //
 // This option is particularly useful for:
 //   - Running fork tests without affecting the production environment
-//   - Testing migrations against production environments safely
+//   - Testing changesets against production environments safely
 //   - Validating operation logic before actual deployment
 //   - Debugging issues without side effects
 func WithDryRunJobDistributor() LoadEnvironmentOption {

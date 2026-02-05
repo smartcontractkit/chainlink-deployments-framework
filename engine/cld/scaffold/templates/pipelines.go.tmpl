@@ -25,10 +25,10 @@ func (*PipelinesRegistryProvider) Archive() {}
 
 // Init is used to register Durable Pipelines with the registry
 //
-// Add your Durable Pipeline migration to the registry here.
+// Add your Durable Pipeline changeset to the registry here.
 func (p *PipelinesRegistryProvider) Init() error {
 	// Uncomment this line to start adding new Pipelines to the registry
-	// lint:ignore Intentionally unused for future migrations
+	// lint:ignore Intentionally unused for future changesets
 	// registry := p.Registry()
 
 	return nil

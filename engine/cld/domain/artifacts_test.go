@@ -689,14 +689,14 @@ func Test_Artifacts_SaveChangesetOutput_LoadChangesetOutput(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run("migrations "+tt.name, func(t *testing.T) {
+		t.Run("changesets "+tt.name, func(t *testing.T) {
 			t.Parallel()
 
 			fixture := setupTestDomainsFS(t)
 
 			artsDir := fixture.artifactsDir
 
-			// Test saving and loading artifacts for migrations
+			// Test saving and loading artifacts for changesets
 			testArtifactSaveAndLoad(t, artsDir, tt.giveOutput, tt.want)
 		})
 	}
@@ -770,7 +770,7 @@ func Test_Artifacts_LoadAddressBookByChangesetKey(t *testing.T) {
 			}),
 		},
 		{
-			name:      "migration dir does not exist",
+			name:      "changeset dir does not exist",
 			giveCsKey: "invalid",
 			wantErr:   "error finding files",
 		},
@@ -860,7 +860,7 @@ func Test_Artifacts_LoadDataStoreByChangesetKey(t *testing.T) {
 			want:      dataStore.Seal(),
 		},
 		{
-			name:      "migration dir does not exist",
+			name:      "changeset dir does not exist",
 			giveCsKey: "invalid",
 			wantErr:   "error finding files",
 		},
@@ -1076,7 +1076,7 @@ func Test_Artifacts_SaveAndLoadMultipleProposals(t *testing.T) {
 		isDurablePipelines bool
 	}{
 		{
-			name:               "regular migration proposals",
+			name:               "regular changeset proposals",
 			changesetKey:       "0001_initial",
 			expectedFilePrefix: "",
 			isDurablePipelines: false,
@@ -1325,7 +1325,7 @@ func Test_getOperationsReportsFilePath(t *testing.T) {
 		isDurablePipelines bool
 	}{
 		{
-			name:         "migration",
+			name:         "changeset",
 			csKey:        "0001_initial",
 			wantFileName: "0001_initial-reports.json",
 		},

@@ -16,7 +16,7 @@ import (
 type Configurations struct {
 	InputChainOverrides []uint64
 
-	// Present only when the migration was wired with
+	// Present only when the changeset was wired with
 	// Configure(...).WithConfigResolver(...)
 	ConfigResolver fresolvers.ConfigResolver
 
@@ -49,7 +49,7 @@ type WrappedChangeSet[C any] struct {
 }
 
 // ConfigureLegacy begins a chain of functions that pairs a legacy (pure function) fdeployment.ChangeSet to a config,
-// for registration as a migration.
+// for registration as a changeset.
 //
 // Deprecated: This wraps the deprecated fdeployment.ChangeSet. Should use fdeployment.ChangeSetV2
 func ConfigureLegacy[C any](operation fdeployment.ChangeSet[C]) WrappedChangeSet[C] {
@@ -57,7 +57,7 @@ func ConfigureLegacy[C any](operation fdeployment.ChangeSet[C]) WrappedChangeSet
 }
 
 // Configure begins a chain of functions that pairs a fdeployment.ChangeSetV2 to a config, for registration as a
-// migration.
+// changeset.
 func Configure[C any](operation fdeployment.ChangeSetV2[C]) WrappedChangeSet[C] {
 	return WrappedChangeSet[C]{operation: operation}
 }
@@ -261,7 +261,7 @@ type ChangeSetImpl[C any] struct {
 	configProvider      func() (C, error)
 	inputChainOverrides func() ([]uint64, error)
 
-	// Present only when the migration was wired with
+	// Present only when the changeset was wired with
 	// Configure(...).WithConfigResolver(...)
 	ConfigResolver fresolvers.ConfigResolver
 }
