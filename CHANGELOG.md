@@ -1,5 +1,70 @@
 # chainlink-deployments-framework
 
+## 0.80.0
+
+### Minor Changes
+
+- [#713](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/713) [`643bbb7`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/643bbb7a5399676c7464016865da838f12568820) Thanks [@bytesizedroll](https://github.com/bytesizedroll)! - refactor: update stale migration terminology to changeset
+
+  Replace legacy "migration" terminology with "changeset" throughout
+  comments, variable names, and error messages for consistency with
+  durable pipelines.
+
+  Changes include:
+
+  - Rename function params: loadMigration → loadChangesets
+  - Rename variables: migDirPath → dirPath, migration → registry
+  - Rename test mocks: mockMigrationDS → mockSourceDS
+  - Update doc comments and error messages
+  - Remove dead commented-out migration test code
+
+### Patch Changes
+
+- [#707](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/707) [`52eb9f5`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/52eb9f5c03669ec1dd3f5ed47a91e88580e2d42a) Thanks [@patricios-space](https://github.com/patricios-space)! - bump chainlink-ton and mcms to bring latest version that uses new exit code interface
+
+- [#705](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/705) [`50640db`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/50640db4e54fc2db5ba3f3c85a1972a39bb43a4e) Thanks [@bytesizedroll](https://github.com/bytesizedroll)! - remove migration archive functionality
+
+- [#709](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/709) [`461acc5`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/461acc5d01dce2746612f4257351fffeb4fd4388) Thanks [@ajaskolski](https://github.com/ajaskolski)! - refactor: adds modular cmd for datastore
+
+- [#715](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/715) [`124dfef`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/124dfefcbdab4560180576f43a7188c5825880b8) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - chore: add ton to mcms chain access adapter
+
+- [#712](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/712) [`3584647`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/3584647f6d4beb977e1d2a6be329b2a5002d6603) Thanks [@ecPablo](https://github.com/ecPablo)! - reduce log level of skipping chains logs from WARN to INFO
+
+- [#710](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/710) [`3c33586`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/3c335869163771fb1888c0fc96840b1dc6de94f2) Thanks [@ecPablo](https://github.com/ecPablo)! - fix nil values handling during upf yaml marshalling
+
+- [#708](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/708) [`d357cb6`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/d357cb66da774a6ce3c4cbff6e5455ffa28cf517) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - fix: run health check and try multiple RPCs in fork tests
+
+- [#711](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/711) [`a72317e`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/a72317e5f6cc0e9c7fe50e027dfbd73602fd653b) Thanks [@bytesizedroll](https://github.com/bytesizedroll)! - Rename all "Migration" terminology in domain layer methods to
+  "Changeset" for consistency with durable pipelines terminology.
+
+  EnvDir:
+
+  - MergeMigrationDataStore -> MergeChangesetDataStore
+  - MergeMigrationDataStoreCatalog -> MergeChangesetDataStoreCatalog
+  - MergeMigrationAddressBook -> MergeChangesetAddressBook
+  - RemoveMigrationAddressBook -> RemoveChangesetAddressBook
+
+  ArtifactsDir:
+
+  - MigrationDirPath -> ChangesetDirPath
+  - CreateMigrationDir -> CreateChangesetDir
+  - RemoveMigrationDir -> RemoveChangesetDir
+  - MigrationDirExists -> ChangesetDirExists
+  - MigrationOperationsReportsFileExists -> ChangesetOperationsReportsFileExists
+  - LoadAddressBookByMigrationKey -> LoadAddressBookByChangesetKey
+  - LoadDataStoreByMigrationKey -> LoadDataStoreByChangesetKey
+
+  Internal helpers:
+
+  - loadDataStoreByMigrationKey -> loadDataStoreByChangesetKey
+  - loadAddressBookByMigrationKey -> loadAddressBookByChangesetKey
+
+  Parameter renames: migKey/migkey -> csKey
+
+  BREAKING CHANGE: All public domain layer methods with "Migration" in
+  their name have been renamed to use "Changeset" instead. Update all
+  callers to use the new method names.
+
 ## 0.79.0
 
 ### Minor Changes
