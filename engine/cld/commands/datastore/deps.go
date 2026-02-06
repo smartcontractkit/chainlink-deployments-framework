@@ -62,12 +62,12 @@ type Deps struct {
 	// Default: cldcatalog.LoadCatalog
 	CatalogLoader CatalogLoaderFunc
 
-	// FileMerger merges migration datastore to local files.
-	// Default: envDir.MergeMigrationDataStore
+	// FileMerger merges changeset datastore to local files.
+	// Default: envDir.MergeChangesetDataStore
 	FileMerger FileMergerFunc
 
-	// CatalogMerger merges migration datastore to catalog.
-	// Default: envDir.MergeMigrationDataStoreCatalog
+	// CatalogMerger merges changeset datastore to catalog.
+	// Default: envDir.MergeChangesetDataStoreCatalog
 	CatalogMerger CatalogMergerFunc
 
 	// CatalogSyncer syncs the entire local datastore to catalog.

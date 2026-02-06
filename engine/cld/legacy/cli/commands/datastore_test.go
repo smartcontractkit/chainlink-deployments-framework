@@ -4,7 +4,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
@@ -93,12 +92,8 @@ func TestDatastoreCommandMetadata(t *testing.T) {
 			require.Contains(t, cmd.Example, tc.wantExampleContains)
 
 			for _, flagName := range tc.wantFlags {
-				var flag *pflag.Flag
-				// All flags are now local to subcommands
-				flag = cmd.Flags().Lookup(flagName)
-				if flag == nil {
-					flag = cmd.PersistentFlags().Lookup(flagName)
-				}
+				// All flags are local to subcommands
+				flag := cmd.Flags().Lookup(flagName)
 				require.NotNil(t, flag, "flag %q not found on %s", flagName, tc.name)
 			}
 		})
