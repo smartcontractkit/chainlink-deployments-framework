@@ -157,7 +157,7 @@ func createAddressBookMap(
 ) *fdeployment.AddressBookMap {
 	t.Helper()
 
-	// Create a new migration with an address book
+	// Create a new changeset with an address book
 	var (
 		addrBook = fdeployment.NewMemoryAddressBook()
 		tv       = fdeployment.NewTypeAndVersion(cType, ver)
@@ -175,7 +175,7 @@ func createDataStore(
 ) *fdatastore.MemoryDataStore {
 	t.Helper()
 
-	// Create a new migration with an address book
+	// Create a new changeset with an address book
 	ds := fdatastore.NewMemoryDataStore()
 
 	// Save data to the address book

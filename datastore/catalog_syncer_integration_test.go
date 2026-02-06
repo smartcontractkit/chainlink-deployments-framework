@@ -247,7 +247,7 @@ func TestMergeDataStoreToCatalog_FullSync(t *testing.T) {
 	t.Logf("ℹ️  Data is stored in catalog under domain='%s', environment='%s'", testDomain, testEnv)
 }
 
-// TestMergeDataStoreToCatalog_Incremental tests merging migration data to catalog (ongoing operations use case)
+// TestMergeDataStoreToCatalog_Incremental tests merging changeset data to catalog (ongoing operations use case)
 func TestMergeDataStoreToCatalog_Incremental(t *testing.T) {
 	t.Parallel()
 
@@ -334,39 +334,39 @@ func TestMergeDataStoreToCatalog_Incremental(t *testing.T) {
 	}
 	t.Log("✅ Initial state merged")
 
-	// Step 2: Create a migration datastore with new contracts
-	t.Log("Step 2: Creating migration datastore...")
-	migrationDS := datastore.NewMemoryDataStore()
+	// Step 2: Create a changeset datastore with new contracts
+	t.Log("Step 2: Creating changeset datastore...")
+	changesetDS := datastore.NewMemoryDataStore()
 
-	// Add new contract from migration
+	// Add new contract from changeset
 	version2, _ := semver.NewVersion("2.0.0")
 	newAddr := datastore.AddressRef{
 		ChainSelector: 789012,
 		Address:       "0x4444444444444444444444444444444444444444",
 		Type:          "NewContract",
 		Version:       version2,
-		Labels:        datastore.NewLabelSet("status:deployed", "migration:0001_deploy"),
+		Labels:        datastore.NewLabelSet("status:deployed", "changeset:0001_deploy"),
 	}
-	err = migrationDS.Addresses().Add(newAddr)
+	err = changesetDS.Addresses().Add(newAddr)
 	require.NoError(t, err)
 
 	// Add chain metadata
 	chainMeta := datastore.ChainMetadata{
 		ChainSelector: 789012,
 		Metadata: map[string]interface{}{
-			"name": "Migration Chain",
+			"name": "Test Chain",
 			"type": "evm",
 		},
 	}
-	err = migrationDS.ChainMetadata().Add(chainMeta)
+	err = changesetDS.ChainMetadata().Add(chainMeta)
 	require.NoError(t, err)
 
-	t.Log("✅ Migration datastore created with new contract")
+	t.Log("✅ Changeset datastore created with new contract")
 
-	// Step 3: Merge migration data to catalog
-	t.Log("Step 3: Merging migration datastore to catalog...")
-	err = datastore.MergeDataStoreToCatalog(ctx, migrationDS.Seal(), catalogStore)
-	require.NoError(t, err, "Failed to merge migration datastore to catalog")
+	// Step 3: Merge changeset data to catalog
+	t.Log("Step 3: Merging changeset datastore to catalog...")
+	err = datastore.MergeDataStoreToCatalog(ctx, changesetDS.Seal(), catalogStore)
+	require.NoError(t, err, "Failed to merge changeset datastore to catalog")
 	t.Log("✅ Merge completed successfully!")
 
 	// Step 4: Verify both old and new data exist
@@ -387,24 +387,24 @@ func TestMergeDataStoreToCatalog_Incremental(t *testing.T) {
 		if ref.Address == newAddr.Address {
 			foundNew = true
 			assert.True(t, ref.Labels.Contains("status:deployed"))
-			assert.True(t, ref.Labels.Contains("migration:0001_deploy"))
-			t.Log("   ✅ Found new contract from migration")
+			assert.True(t, ref.Labels.Contains("changeset:0001_deploy"))
+			t.Log("   ✅ Found new contract from changeset")
 		}
 	}
 
 	assert.True(t, foundExisting, "Original address should still exist after merge")
-	assert.True(t, foundNew, "New address from migration should be added")
+	assert.True(t, foundNew, "New address from changeset should be added")
 
 	// Verify chain metadata was added
 	chainMetaResult, err := catalogStore.ChainMetadata().Get(ctx, datastore.NewChainMetadataKey(789012))
 	require.NoError(t, err)
 	chainMetaMap, ok := chainMetaResult.Metadata.(map[string]interface{})
 	require.True(t, ok)
-	assert.Equal(t, "Migration Chain", chainMetaMap["name"])
-	t.Log("   ✅ Chain metadata from migration verified")
+	assert.Equal(t, "Test Chain", chainMetaMap["name"])
+	t.Log("   ✅ Chain metadata from changeset verified")
 
 	t.Log("")
-	t.Log("🎉 Migration merge completed successfully!")
+	t.Log("🎉 Changeset merge completed successfully!")
 	t.Log("")
 	t.Logf("ℹ️  Catalog now contains both original and migrated data under domain='%s', environment='%s'", testDomain, testEnv)
 }

@@ -258,36 +258,3 @@ func Test_Domain_ConfigDomainFilePath(t *testing.T) {
 	d := NewDomain("domains", "ccip")
 	assert.Equal(t, "domains/ccip/.config/domain.yaml", d.ConfigDomainFilePath())
 }
-
-// todo: uncomment after moving migration registry over to cldf
-// func Test_EnvDir_LatestExecutedMigration(t *testing.T) {
-// 	t.Parallel()
-//
-// 	var (
-// 		fixture = setupTestDomainsFS(t)
-// 		envdir  = fixture.envDir
-// 		reg     = NewMigrationsRegistry()
-// 	)
-//
-// 	reg.Add("0001_initial", nil)
-// 	reg.Add("0002_second", nil)
-//
-// 	_, err := envdir.LatestExecutedMigration(reg)
-// 	require.EqualError(t, err, "no migrations have been executed")
-//
-// 	// Simulate a migration being executed by creating a migration artifacts group
-// 	err = envdir.ArtifactsDir().CreateMigrationDir("0001_initial")
-// 	require.NoError(t, err)
-//
-// 	got, err := envdir.LatestExecutedMigration(reg)
-// 	require.NoError(t, err)
-// 	require.Equal(t, "0001_initial", got)
-//
-// 	// Create another migration artifacts group
-// 	err = envdir.ArtifactsDir().CreateMigrationDir("0002_second")
-// 	require.NoError(t, err)
-//
-// 	got, err = envdir.LatestExecutedMigration(reg)
-// 	require.NoError(t, err)
-// 	require.Equal(t, "0002_second", got)
-// }

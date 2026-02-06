@@ -46,7 +46,7 @@ type PreconditionVerifier[C any] func(e Environment, config C) error
 // proposing TOML job-specs and interacting with the Job Distributor, and creating MCMS proposals.
 //
 // ChangeSetV2 has a pre-validation function which is optional (can be implemented as a no-op), which execution
-// environments (such as the migrations infrastructure in chainlink-deployments) should execute before invoking the
+// environments (such as the durable pipelines infrastructure in chainlink-deployments) should execute before invoking the
 // Apply method.
 //
 // > Note: ChangeSetV2 replaces ChangeSet, though its Apply method is identical in signature to a ChangeSet function.

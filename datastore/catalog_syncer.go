@@ -6,13 +6,13 @@ import (
 	"fmt"
 )
 
-// MergeDataStoreToCatalog merges data from a source DataStore (either full local state or migration-specific)
+// MergeDataStoreToCatalog merges data from a source DataStore (either full local state or changeset-specific)
 // into a remote CatalogStore within a transaction. This ensures atomic updates - either all data is
 // successfully merged or the entire operation is rolled back on failure.
 //
 // This function serves two purposes:
-// 1. Initial migration: sync entire local datastore to catalog (full state push)
-// 2. Ongoing operations: merge migration/changeset artifacts into catalog (incremental updates)
+// 1. Initial sync: sync entire local datastore to catalog (full state push)
+// 2. Ongoing operations: merge changeset artifacts into catalog (incremental updates)
 //
 // The operation is transactional to prevent partial failures that could lead to data inconsistencies.
 func MergeDataStoreToCatalog(ctx context.Context, sourceDS DataStore, catalog CatalogStore) error {
