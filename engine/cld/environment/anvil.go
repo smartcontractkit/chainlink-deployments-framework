@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/go-resty/resty/v2"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/freeport"
@@ -214,11 +215,12 @@ func newAnvilChains(
 				"failed to decode network metadata for chain selector %d: %w", chainSelector, errMeta,
 			)
 		}
-		if err := selectPublicRPC(lggr, &metadata, network.ChainSelector, network.RPCs); err != nil {
+		forkURLs, err := selectPublicRPC(ctx, lggr, &metadata, network.ChainSelector, network.RPCs)
+		if err != nil {
 			lggr.Infof("Excluding chain with ID %d from environment: %s", chainID, err.Error())
 			continue
 		}
-		if err := metadata.AnvilConfig.Validate(); err != nil {
+		if err = metadata.AnvilConfig.Validate(); err != nil {
 			lggr.Infof("Excluding chain with ID %d from environment due to failed anvil config validation: %s", chainID, err.Error())
 			continue
 		}
@@ -232,10 +234,10 @@ func newAnvilChains(
 
 		var signerGenerator evmprov.SignerGenerator
 		if kmsConfig.KeyID != "" {
-			var err error
-			signerGenerator, err = evmprov.TransactorFromKMS(kmsConfig.KeyID, kmsConfig.KeyRegion, "")
-			if err != nil {
-				return nil, fmt.Errorf("failed to create transactor from KMS: %w", err)
+			var terr error
+			signerGenerator, terr = evmprov.TransactorFromKMS(kmsConfig.KeyID, kmsConfig.KeyRegion, "")
+			if terr != nil {
+				return nil, fmt.Errorf("failed to create transactor from KMS: %w", terr)
 			}
 		} else {
 			signerGenerator = evmprov.TransactorFromRaw(onchainConfig.EVM.DeployerKey)
@@ -252,16 +254,14 @@ func newAnvilChains(
 		}
 
 		config := evmprov.CTFAnvilChainProviderConfig{
-			Once:           &once,
-			ConfirmFunctor: evmprov.ConfirmFuncGeth(3 * time.Minute),
-			DockerCmdParamsOverrides: []string{
-				"--fork-url", metadata.AnvilConfig.ArchiveHTTPURL,
-				"--auto-impersonate",
-			},
-			Image:                 metadata.AnvilConfig.Image,
-			Port:                  strconv.FormatUint(metadata.AnvilConfig.Port, 10),
-			DeployerTransactorGen: signerGenerator,
-			T:                     testing.TB(&testing.T{}),
+			Once:                     &once,
+			ConfirmFunctor:           evmprov.ConfirmFuncGeth(3 * time.Minute),
+			DockerCmdParamsOverrides: []string{"--auto-impersonate"},
+			Image:                    metadata.AnvilConfig.Image,
+			ForkURLs:                 forkURLs,
+			DeployerTransactorGen:    signerGenerator,
+			T:                        testing.TB(&testing.T{}),
+			Port:                     "", // let the provider choose a free port; this ensures retries are handled properly
 		}
 
 		if blockNumber, ok := blockNumbers[chainSelector]; ok {
@@ -304,26 +304,49 @@ func newAnvilChains(
 }
 
 func selectPublicRPC(
-	lggr logger.Logger, metadata *cfgnet.EVMMetadata, chainSelector uint64, rpcs []cfgnet.RPC,
-) error {
+	ctx context.Context, lggr logger.Logger, metadata *cfgnet.EVMMetadata, chainSelector uint64, rpcs []cfgnet.RPC,
+) ([]string, error) {
 	if metadata.AnvilConfig.ArchiveHTTPURL != "" && isPublicRPC(metadata.AnvilConfig.ArchiveHTTPURL) {
-		return nil
+		return []string{metadata.AnvilConfig.ArchiveHTTPURL}, nil
 	}
 
+	urls := []string{}
 	for _, rpc := range rpcs {
 		if isPublicRPC(rpc.HTTPURL) {
-			metadata.AnvilConfig.ArchiveHTTPURL = rpc.HTTPURL
-			lggr.Infow("selected rpc for fork environment", "url", rpc.HTTPURL, "chainSelector", chainSelector)
-
-			return nil
+			err := runHealthCheck(ctx, rpc.HTTPURL)
+			if err != nil {
+				lggr.Infow("rpc failed health check", "url", rpc.HTTPURL, "chainSelector", chainSelector)
+			} else {
+				lggr.Infow("selected rpc for fork environment", "url", rpc.HTTPURL, "chainSelector", chainSelector)
+				urls = append(urls, rpc.HTTPURL)
+			}
 		}
 	}
 
-	return fmt.Errorf("no public RPCs found for chain %d", chainSelector)
+	if len(urls) == 0 {
+		return []string{}, fmt.Errorf("no public RPCs found for chain %d", chainSelector)
+	}
+
+	return urls, nil
 }
 
 var privateRpcRegexp = regexp.MustCompile(`^https?://(rpcs\.cldev\.sh|gap\-.*\.(prod|stage)\.cldev\.sh|.*\.tail[a-z0-9]+\.ts\.net)(?::\d+)?/`)
 
 func isPublicRPC(url string) bool {
 	return !privateRpcRegexp.MatchString(url)
+}
+
+func runHealthCheck(ctx context.Context, rpcURL string) error {
+	client, err := ethclient.DialContext(ctx, rpcURL)
+	if err != nil {
+		return fmt.Errorf("failed to connect to rpc %v: %w", rpcURL, err)
+	}
+	defer client.Close()
+
+	_, err = client.BlockNumber(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to retrieve block number: %w", err)
+	}
+
+	return nil
 }
