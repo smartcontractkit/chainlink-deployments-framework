@@ -11,6 +11,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
 	chainsui "github.com/smartcontractkit/chainlink-deployments-framework/chain/sui"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/ton"
 )
 
 func TestChainAccess_UnknownSelector(t *testing.T) {
@@ -34,6 +35,10 @@ func TestChainAccess_UnknownSelector(t *testing.T) {
 	require.False(t, ok)
 	require.Nil(t, suiClient)
 	require.Nil(t, suiSigner)
+
+	tonClient, ok := a.TonClient(999)
+	require.False(t, ok)
+	require.Nil(t, tonClient)
 }
 
 func TestChainAccess_SelectorsAndLookups(t *testing.T) {
@@ -44,6 +49,7 @@ func TestChainAccess_SelectorsAndLookups(t *testing.T) {
 		solSel   = uint64(222)
 		aptosSel = uint64(333)
 		suiSel   = uint64(444)
+		tonSel   = uint64(555)
 	)
 
 	evmOnchain := evm.NewMockOnchainClient(t)
@@ -60,6 +66,7 @@ func TestChainAccess_SelectorsAndLookups(t *testing.T) {
 			Client:        nil,
 			Signer:        suiSigner,
 		},
+		tonSel: ton.Chain{ChainMetadata: ton.ChainMetadata{Selector: tonSel}, Client: nil},
 	})
 
 	a := Wrap(chains)
@@ -81,4 +88,8 @@ func TestChainAccess_SelectorsAndLookups(t *testing.T) {
 	require.True(t, ok)
 	require.Nil(t, gotSuiClient)
 	require.Equal(t, suiSigner, gotSuiSigner)
+
+	gotTon, ok := a.TonClient(tonSel)
+	require.True(t, ok)
+	require.Nil(t, gotTon)
 }
