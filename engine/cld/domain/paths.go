@@ -16,7 +16,7 @@ const (
 	// ArchivedProposalsDirName is the name of the directory containing archived proposals.
 	ArchivedProposalsDirName = "archived_proposals"
 
-	// ArtifactsDirName is the name of the directory containing migration artifacts.
+	// ArtifactsDirName is the name of the directory containing changeset artifacts.
 	ArtifactsDirName = "artifacts"
 
 	// DarastoreDirName is the name of the directory containing the datastore files.

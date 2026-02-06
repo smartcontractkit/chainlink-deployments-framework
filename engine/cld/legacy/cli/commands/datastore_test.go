@@ -4,16 +4,16 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
 func TestNewDatastoreCmds_Structure(t *testing.T) {
 	t.Parallel()
-	c := NewCommands(nil)
-	var dom domain.Domain
+	c := NewCommands(logger.Nop())
+	dom := domain.NewDomain("/tmp", "testdomain")
 	root := c.NewDatastoreCmds(dom)
 
 	require.Equal(t, "datastore", root.Use)
@@ -30,15 +30,18 @@ func TestNewDatastoreCmds_Structure(t *testing.T) {
 		uses,
 	)
 
-	// The "environment" flag is persistent on root
-	flag := root.PersistentFlags().Lookup("environment")
-	require.NotNil(t, flag, "persistent flag 'environment' should exist")
+	// Environment flag is now local to each subcommand (not persistent on root)
+	// Verify it exists on the merge subcommand
+	mergeCmd, _, _ := root.Find([]string{"merge"})
+	require.NotNil(t, mergeCmd)
+	flag := mergeCmd.Flags().Lookup("environment")
+	require.NotNil(t, flag, "flag 'environment' should exist on merge subcommand")
 }
 
 func TestDatastoreCommandMetadata(t *testing.T) {
 	t.Parallel()
-	c := NewCommands(nil)
-	dom := domain.Domain{}
+	c := NewCommands(logger.Nop())
+	dom := domain.NewDomain("/tmp", "testdomain")
 
 	tests := []struct {
 		name                string
@@ -89,16 +92,8 @@ func TestDatastoreCommandMetadata(t *testing.T) {
 			require.Contains(t, cmd.Example, tc.wantExampleContains)
 
 			for _, flagName := range tc.wantFlags {
-				var flag *pflag.Flag
-				if flagName == "environment" {
-					// persistent flag lives on root
-					flag = root.PersistentFlags().Lookup("environment")
-				} else {
-					flag = cmd.Flags().Lookup(flagName)
-					if flag == nil {
-						flag = cmd.PersistentFlags().Lookup(flagName)
-					}
-				}
+				// All flags are local to subcommands
+				flag := cmd.Flags().Lookup(flagName)
 				require.NotNil(t, flag, "flag %q not found on %s", flagName, tc.name)
 			}
 		})

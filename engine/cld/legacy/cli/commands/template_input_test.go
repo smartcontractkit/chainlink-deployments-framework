@@ -143,9 +143,9 @@ func TestNewDurablePipelineTemplateInputCmd(t *testing.T) {
 			setupMocks: func() (*changeset.ChangesetsRegistry, *fresolvers.ConfigResolverManager, error) {
 				resolverManager := fresolvers.NewConfigResolverManager()
 
-				rp := migrationsRegistryProviderStub{
+				rp := changesetsRegistryProviderStub{
 					BaseRegistryProvider: changeset.NewBaseRegistryProvider(),
-					AddMigrationAction: func(registry *changeset.ChangesetsRegistry) {
+					AddChangesetAction: func(registry *changeset.ChangesetsRegistry) {
 						cs := &SimpleInputChangeset{}
 						registry.Add("0001_simple_changeset", changeset.Configure(cs).With(SimpleInput{}))
 					},
@@ -187,9 +187,9 @@ changesets:
 					ExampleYAML: "test: value",
 				})
 
-				rp := migrationsRegistryProviderStub{
+				rp := changesetsRegistryProviderStub{
 					BaseRegistryProvider: changeset.NewBaseRegistryProvider(),
-					AddMigrationAction: func(registry *changeset.ChangesetsRegistry) {
+					AddChangesetAction: func(registry *changeset.ChangesetsRegistry) {
 						cs := &stubChangeset{resolver: MockTemplateResolver}
 						registry.Add("0002_resolver_changeset", changeset.Configure(cs).WithConfigResolver(MockTemplateResolver))
 					},
@@ -227,9 +227,9 @@ changesets:
 			setupMocks: func() (*changeset.ChangesetsRegistry, *fresolvers.ConfigResolverManager, error) {
 				resolverManager := fresolvers.NewConfigResolverManager()
 
-				rp := migrationsRegistryProviderStub{
+				rp := changesetsRegistryProviderStub{
 					BaseRegistryProvider: changeset.NewBaseRegistryProvider(),
-					AddMigrationAction: func(registry *changeset.ChangesetsRegistry) {
+					AddChangesetAction: func(registry *changeset.ChangesetsRegistry) {
 						cs := &ComplexInputChangeset{}
 						registry.Add("0003_complex_changeset", changeset.Configure(cs).With(ComplexInput{}))
 					},
@@ -279,9 +279,9 @@ changesets:
 			setupMocks: func() (*changeset.ChangesetsRegistry, *fresolvers.ConfigResolverManager, error) {
 				resolverManager := fresolvers.NewConfigResolverManager()
 
-				rp := migrationsRegistryProviderStub{
+				rp := changesetsRegistryProviderStub{
 					BaseRegistryProvider: changeset.NewBaseRegistryProvider(),
-					AddMigrationAction: func(registry *changeset.ChangesetsRegistry) {
+					AddChangesetAction: func(registry *changeset.ChangesetsRegistry) {
 						cs1 := &SimpleInputChangeset{}
 						registry.Add("0004_changeset1", changeset.Configure(cs1).With(SimpleInput{}))
 
@@ -335,9 +335,9 @@ changesets:
 			setupMocks: func() (*changeset.ChangesetsRegistry, *fresolvers.ConfigResolverManager, error) {
 				resolverManager := fresolvers.NewConfigResolverManager()
 
-				rp := migrationsRegistryProviderStub{
+				rp := changesetsRegistryProviderStub{
 					BaseRegistryProvider: changeset.NewBaseRegistryProvider(),
-					AddMigrationAction: func(registry *changeset.ChangesetsRegistry) {
+					AddChangesetAction: func(registry *changeset.ChangesetsRegistry) {
 						cs := &DeepNestedInputChangeset{}
 						registry.Add("0006_deep_changeset", changeset.Configure(cs).With(DeepNestedInput{}))
 					},
@@ -374,9 +374,9 @@ changesets:
 			setupMocks: func() (*changeset.ChangesetsRegistry, *fresolvers.ConfigResolverManager, error) {
 				resolverManager := fresolvers.NewConfigResolverManager()
 
-				rp := migrationsRegistryProviderStub{
+				rp := changesetsRegistryProviderStub{
 					BaseRegistryProvider: changeset.NewBaseRegistryProvider(),
-					AddMigrationAction: func(registry *changeset.ChangesetsRegistry) {
+					AddChangesetAction: func(registry *changeset.ChangesetsRegistry) {
 						cs := &SliceInputChangeset{}
 						registry.Add("0008_slice_changeset", changeset.Configure(cs).With([]uint64{}))
 					},
@@ -413,9 +413,9 @@ changesets:
 			setupMocks: func() (*changeset.ChangesetsRegistry, *fresolvers.ConfigResolverManager, error) {
 				resolverManager := fresolvers.NewConfigResolverManager()
 
-				rp := migrationsRegistryProviderStub{
+				rp := changesetsRegistryProviderStub{
 					BaseRegistryProvider: changeset.NewBaseRegistryProvider(),
-					AddMigrationAction: func(registry *changeset.ChangesetsRegistry) {
+					AddChangesetAction: func(registry *changeset.ChangesetsRegistry) {
 						cs := &MapInputChangeset{}
 						registry.Add("0009_map_changeset", changeset.Configure(cs).With(map[string]int{}))
 					},
@@ -452,9 +452,9 @@ changesets:
 			setupMocks: func() (*changeset.ChangesetsRegistry, *fresolvers.ConfigResolverManager, error) {
 				resolverManager := fresolvers.NewConfigResolverManager()
 
-				rp := migrationsRegistryProviderStub{
+				rp := changesetsRegistryProviderStub{
 					BaseRegistryProvider: changeset.NewBaseRegistryProvider(),
-					AddMigrationAction: func(registry *changeset.ChangesetsRegistry) {
+					AddChangesetAction: func(registry *changeset.ChangesetsRegistry) {
 						cs := &IgnoredFieldsChangeset{}
 						registry.Add("0010_ignored_fields_changeset", changeset.Configure(cs).With(IgnoredFieldsInput{}))
 					},
@@ -511,9 +511,9 @@ changesets:
 				"--changeset", "nonexistent_changeset",
 			},
 			setupMocks: func() (*changeset.ChangesetsRegistry, *fresolvers.ConfigResolverManager, error) {
-				rp := migrationsRegistryProviderStub{
+				rp := changesetsRegistryProviderStub{
 					BaseRegistryProvider: changeset.NewBaseRegistryProvider(),
-					AddMigrationAction: func(registry *changeset.ChangesetsRegistry) {
+					AddChangesetAction: func(registry *changeset.ChangesetsRegistry) {
 						// Don't add the changeset
 					},
 				}
@@ -537,9 +537,9 @@ changesets:
 				resolverManager := fresolvers.NewConfigResolverManager()
 				// Don't register the resolver
 
-				rp := migrationsRegistryProviderStub{
+				rp := changesetsRegistryProviderStub{
 					BaseRegistryProvider: changeset.NewBaseRegistryProvider(),
-					AddMigrationAction: func(registry *changeset.ChangesetsRegistry) {
+					AddChangesetAction: func(registry *changeset.ChangesetsRegistry) {
 						cs := &stubChangeset{resolver: MockTemplateResolver}
 						registry.Add("0007_unregistered_resolver_changeset", changeset.Configure(cs).WithConfigResolver(MockTemplateResolver))
 					},

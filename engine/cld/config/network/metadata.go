@@ -27,9 +27,6 @@ func (a AnvilConfig) Validate() error {
 	if a.Port == 0 {
 		return errors.New("port is not defined")
 	}
-	if a.ArchiveHTTPURL == "" {
-		return errors.New("archive_http_url is not defined")
-	}
 
 	return nil
 }

@@ -273,6 +273,14 @@ type CTFAnvilChainProviderConfig struct {
 	// gas limits, or other Anvil-specific options.
 	DockerCmdParamsOverrides []string
 
+	// Optional: ForkURLs is a list of RPC URLs to fork from when starting Anvil.
+	// If provided, Anvil will start in fork mode, allowing you to test against
+	// a forked state of an existing blockchain. When multiple URLs are provided,
+	// they are used in round-robin fashion on retry attempts. This is useful for
+	// load balancing across multiple RPC endpoints or providing fallback URLs.
+	// Example: []string{"https://rpc.blockchain.com/your-api-key"}
+	ForkURLs []string
+
 	// Optional: Port specifies the port for the Anvil container. If not provided,
 	// a free port will be automatically allocated. Use this when you need the Anvil
 	// instance to run on a specific port.
@@ -538,6 +546,7 @@ func (p *CTFAnvilChainProvider) Cleanup(ctx context.Context) error {
 // Returns the external HTTP URL that can be used to connect to the Anvil node.
 func (p *CTFAnvilChainProvider) startContainer(ctx context.Context, chainID string) (string, error) {
 	attempts := uint(10)
+	attempt := uint(0)
 
 	err := framework.DefaultNetwork(p.config.Once)
 	if err != nil {
@@ -564,13 +573,19 @@ func (p *CTFAnvilChainProvider) startContainer(ctx context.Context, chainID stri
 			portStr = strconv.Itoa(port)
 		}
 
+		dockerCmdOverrides := p.config.DockerCmdParamsOverrides
+		if len(p.config.ForkURLs) > 0 {
+			url := p.config.ForkURLs[attempt%uint(len(p.config.ForkURLs))]
+			dockerCmdOverrides = append(dockerCmdOverrides, "--fork-url", url)
+		}
+
 		// Create the input for the Anvil blockchain network
 		input := &blockchain.Input{
 			Type:                     blockchain.TypeAnvil,
 			ChainID:                  chainID,
 			Port:                     portStr,
 			Image:                    p.config.Image, // Use custom image if provided, empty string uses default
-			DockerCmdParamsOverrides: p.config.DockerCmdParamsOverrides,
+			DockerCmdParamsOverrides: dockerCmdOverrides,
 		}
 
 		// Create the CTF container for Anvil
@@ -609,6 +624,7 @@ func (p *CTFAnvilChainProvider) startContainer(ctx context.Context, chainID stri
 		retry.Attempts(attempts),
 		retry.Delay(1*time.Second),
 		retry.DelayType(retry.FixedDelay),
+		retry.OnRetry(func(a uint, err error) { attempt = a + 1 }),
 	)
 	if err != nil {
 		return "", fmt.Errorf("failed to start CTF Anvil container after %d attempts: %w", attempts, err)

@@ -106,9 +106,9 @@ func ProposeJob(ctx context.Context, req ProposeJobRequest) error {
 }
 
 // ProposeJobs proposes job specs to nodes using jobspecs file
-// TODO remove when all migrations use Jobs instead of JobSpecs
+// TODO remove when all changesets use Jobs instead of JobSpecs
 func ProposeJobs(ctx context.Context, lggr logger.Logger, oc foffchain.Client, jobSpecFilePath string) error {
-	jobSpecToNodes, err := fdomain.LoadJobSpecs(jobSpecFilePath) //nolint:staticcheck // TODO: remove when all migrations use Jobs instead of JobSpecs
+	jobSpecToNodes, err := fdomain.LoadJobSpecs(jobSpecFilePath) //nolint:staticcheck // TODO: remove when all changesets use Jobs instead of JobSpecs
 	if err != nil {
 		return err
 	}

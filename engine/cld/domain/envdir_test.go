@@ -43,7 +43,7 @@ func Test_EnvDir_RemoveChangesetAddressBook(t *testing.T) {
 			beforeFunc: func(t *testing.T, envdir EnvDir) {
 				t.Helper()
 
-				// Create the artifacts for the migration
+				// Create the artifacts for the changeset
 				arts := envdir.ArtifactsDir()
 				err := arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{
 					AddressBook: addrBook1,
@@ -63,7 +63,7 @@ func Test_EnvDir_RemoveChangesetAddressBook(t *testing.T) {
 			beforeFunc: func(t *testing.T, envdir EnvDir) {
 				t.Helper()
 
-				// Create the artifacts for the migration
+				// Create the artifacts for the changeset
 				arts := envdir.ArtifactsDir()
 				err := arts.SetDurablePipelines(timestamp)
 				require.NoError(t, err)
@@ -83,7 +83,7 @@ func Test_EnvDir_RemoveChangesetAddressBook(t *testing.T) {
 			}),
 		},
 		{
-			name: "success skips with no migration address book found",
+			name: "success skips with no changeset address book found",
 			beforeFunc: func(t *testing.T, envdir EnvDir) {
 				t.Helper()
 
@@ -95,7 +95,7 @@ func Test_EnvDir_RemoveChangesetAddressBook(t *testing.T) {
 			want:              fdeployment.NewMemoryAddressBookFromMap(map[uint64]map[string]fdeployment.TypeAndVersion{}),
 		},
 		{
-			name:              "failure when no migration artifacts directory exists",
+			name:              "failure when no changeset artifacts directory exists",
 			giveChangesetName: "0001_invalid",
 			wantErr:           "error finding files",
 		},
@@ -114,7 +114,7 @@ func Test_EnvDir_RemoveChangesetAddressBook(t *testing.T) {
 				tt.beforeFunc(t, envDir)
 			}
 
-			// Merge the migration's address book into the existing address book
+			// Merge the changeset's address book into the existing address book
 			err := envDir.RemoveChangesetAddressBook(tt.giveChangesetName, tt.timestamp)
 
 			if tt.wantErr != "" {
@@ -199,7 +199,7 @@ func Test_EnvDir_MigrateAddressBook(t *testing.T) {
 			beforeFunc: func(t *testing.T, envdir EnvDir) {
 				t.Helper()
 
-				// Create the artifacts for the migration
+				// Create the artifacts for the changeset
 				arts := envdir.ArtifactsDir()
 				err := arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{})
 				require.NoError(t, err)
@@ -212,7 +212,7 @@ func Test_EnvDir_MigrateAddressBook(t *testing.T) {
 			beforeFunc: func(t *testing.T, envdir EnvDir) {
 				t.Helper()
 
-				// Create the artifacts for the migration
+				// Create the artifacts for the changeset
 				arts := envdir.ArtifactsDir()
 				err := arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{
 					AddressBook: addrBook1,
@@ -544,7 +544,7 @@ func Test_EnvDir_MergeChangesetAddressBook(t *testing.T) {
 			beforeFunc: func(t *testing.T, envdir EnvDir) {
 				t.Helper()
 
-				// Create the artifacts for the migration
+				// Create the artifacts for the changeset
 				arts := envdir.ArtifactsDir()
 				err := arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{
 					AddressBook: addrBook1,
@@ -567,7 +567,7 @@ func Test_EnvDir_MergeChangesetAddressBook(t *testing.T) {
 			beforeFunc: func(t *testing.T, envdir EnvDir) {
 				t.Helper()
 
-				// Create the artifacts for the migration and merge to the address book
+				// Create the changeset artifacts and merge to the address book
 				arts := envdir.ArtifactsDir()
 				err := arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{
 					AddressBook: addrBook1,
@@ -577,7 +577,7 @@ func Test_EnvDir_MergeChangesetAddressBook(t *testing.T) {
 				err = envdir.MergeChangesetAddressBook("0001_initial", "")
 				require.NoError(t, err)
 
-				// Create a migration with another address book
+				// Create a changeset with another address book
 				err = arts.SaveChangesetOutput("0002_second", fdeployment.ChangesetOutput{
 					AddressBook: addrBook2,
 				})
@@ -606,7 +606,7 @@ func Test_EnvDir_MergeChangesetAddressBook(t *testing.T) {
 			beforeFunc: func(t *testing.T, envdir EnvDir) {
 				t.Helper()
 
-				// Create the artifacts for the migration and merge to the address book
+				// Create the changeset artifacts and merge to the address book
 				arts := envdir.ArtifactsDir()
 				err := arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{
 					AddressBook: addrBook1,
@@ -647,7 +647,7 @@ func Test_EnvDir_MergeChangesetAddressBook(t *testing.T) {
 			}),
 		},
 		{
-			name: "success skips with no migration address book found",
+			name: "success skips with no changeset address book found",
 			beforeFunc: func(t *testing.T, envdir EnvDir) {
 				t.Helper()
 
@@ -659,7 +659,7 @@ func Test_EnvDir_MergeChangesetAddressBook(t *testing.T) {
 			want:              fdeployment.NewMemoryAddressBookFromMap(map[uint64]map[string]fdeployment.TypeAndVersion{}),
 		},
 		{
-			name:              "failure when no migration artifacts directory exists",
+			name:              "failure when no changeset artifacts directory exists",
 			giveChangesetName: "0001_invalid",
 			wantErr:           "error finding files",
 		},
@@ -678,7 +678,7 @@ func Test_EnvDir_MergeChangesetAddressBook(t *testing.T) {
 				tt.beforeFunc(t, envDir)
 			}
 
-			// Merge the migration's address book into the existing address book
+			// Merge the changeset's address book into the existing address book
 			err := envDir.MergeChangesetAddressBook(tt.giveChangesetName, "")
 
 			if tt.wantErr != "" {
@@ -734,7 +734,7 @@ func Test_EnvDir_MergeChangesetDataStore(t *testing.T) {
 			beforeFunc: func(t *testing.T, envdir EnvDir) {
 				t.Helper()
 
-				// Create the artifacts for the migration
+				// Create the artifacts for the changeset
 				arts := envdir.ArtifactsDir()
 				err := arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{
 					DataStore: dataStore1,
@@ -749,7 +749,7 @@ func Test_EnvDir_MergeChangesetDataStore(t *testing.T) {
 			beforeFunc: func(t *testing.T, envdir EnvDir) {
 				t.Helper()
 
-				// Create the artifacts for the migration and merge to the address book
+				// Create the changeset artifacts and merge to the address book
 				arts := envdir.ArtifactsDir()
 				err := arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{
 					DataStore: dataStore1,
@@ -759,7 +759,7 @@ func Test_EnvDir_MergeChangesetDataStore(t *testing.T) {
 				err = envdir.MergeChangesetDataStore("0001_initial", "")
 				require.NoError(t, err)
 
-				// Create a migration with another datastore
+				// Create a changeset with another datastore
 				err = arts.SaveChangesetOutput("0002_second", fdeployment.ChangesetOutput{
 					DataStore: dataStore2,
 				})
@@ -773,7 +773,7 @@ func Test_EnvDir_MergeChangesetDataStore(t *testing.T) {
 			beforeFunc: func(t *testing.T, envdir EnvDir) {
 				t.Helper()
 
-				// Create the artifacts for the migration and merge to the address book
+				// Create the changeset artifacts and merge to the address book
 				arts := envdir.ArtifactsDir()
 				err := arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{
 					DataStore: dataStore1,
@@ -799,7 +799,7 @@ func Test_EnvDir_MergeChangesetDataStore(t *testing.T) {
 			want:              mergeDatastore.Seal(),
 		},
 		{
-			name: "success skips with no migration datastore found",
+			name: "success skips with no changeset datastore found",
 			beforeFunc: func(t *testing.T, envdir EnvDir) {
 				t.Helper()
 
@@ -811,7 +811,7 @@ func Test_EnvDir_MergeChangesetDataStore(t *testing.T) {
 			want:              fdatastore.NewMemoryDataStore().Seal(),
 		},
 		{
-			name:              "failure when no migration artifacts directory exists",
+			name:              "failure when no changeset artifacts directory exists",
 			giveChangesetName: "0001_invalid",
 			wantErr:           "error finding files",
 		},
@@ -830,7 +830,7 @@ func Test_EnvDir_MergeChangesetDataStore(t *testing.T) {
 				tt.beforeFunc(t, envDir)
 			}
 
-			// Merge the migration's address book into the existing address book
+			// Merge the changeset's address book into the existing address book
 			err := envDir.MergeChangesetDataStore(tt.giveChangesetName, "")
 
 			if tt.wantErr != "" {
@@ -871,7 +871,7 @@ func Test_EnvDir_MergeChangesetDataStoreCatalog(t *testing.T) {
 			beforeFunc: func(t *testing.T, envdir EnvDir) {
 				t.Helper()
 
-				// Create the artifacts for the migration
+				// Create the artifacts for the changeset
 				arts := envdir.ArtifactsDir()
 				err := arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{
 					DataStore: dataStore1,
@@ -885,7 +885,7 @@ func Test_EnvDir_MergeChangesetDataStoreCatalog(t *testing.T) {
 			},
 		},
 		{
-			name:              "failure when no migration artifacts directory exists",
+			name:              "failure when no changeset artifacts directory exists",
 			giveChangesetName: "0001_invalid",
 			wantErr:           "error finding files",
 			mockTransaction: func(ctx context.Context, fn fdatastore.TransactionLogic) error {
@@ -897,7 +897,7 @@ func Test_EnvDir_MergeChangesetDataStoreCatalog(t *testing.T) {
 			beforeFunc: func(t *testing.T, envdir EnvDir) {
 				t.Helper()
 
-				// Create the artifacts for the migration
+				// Create the artifacts for the changeset
 				arts := envdir.ArtifactsDir()
 				err := arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{
 					DataStore: dataStore1,
@@ -928,7 +928,7 @@ func Test_EnvDir_MergeChangesetDataStoreCatalog(t *testing.T) {
 				tt.beforeFunc(t, envDir)
 			}
 
-			// Merge the migration's datastore to catalog
+			// Merge the changeset's datastore to catalog
 			err := envDir.MergeChangesetDataStoreCatalog(context.Background(), tt.giveChangesetName, "", mockCatalog)
 
 			if tt.wantErr != "" {
