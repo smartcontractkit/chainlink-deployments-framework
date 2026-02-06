@@ -18,7 +18,7 @@ var (
 		Commands for managing datastore artifacts.
 
 		The datastore contains contract addresses and metadata for deployed contracts.
-		These commands allow merging migration artifacts and syncing to the catalog service.
+		These commands allow merging changeset artifacts and syncing to the catalog service.
 	`)
 )
 
