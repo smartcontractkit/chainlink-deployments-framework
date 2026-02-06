@@ -17,10 +17,10 @@ type ConfigLoaderFunc func(dom domain.Domain, envKey string, lggr logger.Logger)
 // CatalogLoaderFunc loads the catalog store for a given environment.
 type CatalogLoaderFunc func(ctx context.Context, envKey string, cfg *config.Config, dom domain.Domain) (fdatastore.CatalogStore, error)
 
-// FileMergerFunc merges migration datastore to local files.
+// FileMergerFunc merges changeset datastore to local files.
 type FileMergerFunc func(envDir domain.EnvDir, name, timestamp string) error
 
-// CatalogMergerFunc merges migration datastore to catalog.
+// CatalogMergerFunc merges changeset datastore to catalog.
 type CatalogMergerFunc func(ctx context.Context, envDir domain.EnvDir, name, timestamp string, catalog fdatastore.CatalogStore) error
 
 // CatalogSyncerFunc syncs the entire local datastore to catalog.
