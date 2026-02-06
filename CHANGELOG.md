@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.80.1
+
+### Patch Changes
+
+- [#716](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/716) [`8c0cc40`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/8c0cc40200a596209a6fb96034e70e0f355c29d1) Thanks [@bytesizedroll](https://github.com/bytesizedroll)! - Migration reference fix
+
 ## 0.80.0
 
 ### Minor Changes
