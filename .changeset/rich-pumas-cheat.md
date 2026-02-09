@@ -2,4 +2,4 @@
 "chainlink-deployments-framework": patch
 ---
 
-add a Stellar RPC provider and chain
+add Stellar support for mcms adapters, RPC provider, chain config, and blockchain
