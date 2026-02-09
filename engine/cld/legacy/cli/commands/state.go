@@ -36,15 +36,21 @@ func (c Commands) NewStateCmds(dom domain.Domain, config StateConfig) *cobra.Com
 		ViewState: config.ViewState,
 	})
 	if err != nil {
-		// Return a command that errors on execution to maintain backward compatibility.
-		// The new API (state.NewCommand) returns error directly for proper handling.
-		return &cobra.Command{
+		// Return an error command that surfaces the configuration error on any invocation.
+		// PersistentPreRunE ensures subcommands also return the real error.
+		// RunE handles direct invocation of the root command.
+		errCmd := &cobra.Command{
 			Use:   "state",
 			Short: "State commands (misconfigured)",
 			RunE: func(_ *cobra.Command, _ []string) error {
 				return err
 			},
 		}
+		errCmd.PersistentPreRunE = func(_ *cobra.Command, _ []string) error {
+			return err
+		}
+
+		return errCmd
 	}
 
 	return cmd

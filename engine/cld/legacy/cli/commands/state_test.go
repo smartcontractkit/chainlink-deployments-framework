@@ -19,7 +19,7 @@ func TestNewStateCmds_Structure(t *testing.T) {
 	t.Parallel()
 
 	c := NewCommands(logger.Nop())
-	dom := domain.NewDomain("/tmp", "foo")
+	dom := domain.NewDomain(t.TempDir(), "foo")
 	cfg := StateConfig{ViewState: mockViewState}
 	root := c.NewStateCmds(dom, cfg)
 
@@ -43,7 +43,7 @@ func TestNewStateGenerateCmd_Metadata(t *testing.T) {
 	t.Parallel()
 
 	c := NewCommands(logger.Nop())
-	dom := domain.NewDomain("/tmp", "foo")
+	dom := domain.NewDomain(t.TempDir(), "foo")
 	cfg := StateConfig{ViewState: mockViewState}
 	root := c.NewStateCmds(dom, cfg)
 
@@ -80,7 +80,7 @@ func TestStateGenerate_MissingEnvFails(t *testing.T) {
 	t.Parallel()
 
 	c := NewCommands(logger.Nop())
-	dom := domain.NewDomain("/tmp", "foo")
+	dom := domain.NewDomain(t.TempDir(), "foo")
 	cfg := StateConfig{ViewState: mockViewState}
 	root := c.NewStateCmds(dom, cfg)
 
@@ -94,7 +94,7 @@ func TestNewStateCmds_InvalidConfigReturnsErrorOnExecute(t *testing.T) {
 	t.Parallel()
 
 	c := NewCommands(logger.Nop())
-	dom := domain.NewDomain("/tmp", "foo")
+	dom := domain.NewDomain(t.TempDir(), "foo")
 	cfg := StateConfig{ViewState: nil} // Missing required field
 
 	// Command is created (backward compatible)

@@ -37,8 +37,9 @@ func (s normalizer) trim() normalizer {
 }
 
 func (s normalizer) indent() normalizer {
-	indentedLines := make([]string, 0, strings.Count(s.string, "\n")+1)
-	for line := range strings.SplitSeq(s.string, "\n") {
+	lines := strings.Split(s.string, "\n")
+	indentedLines := make([]string, 0, len(lines))
+	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
 		indented := Indentation + trimmed
 		indentedLines = append(indentedLines, indented)

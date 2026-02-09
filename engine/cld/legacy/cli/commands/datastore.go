@@ -26,13 +26,21 @@ func (c Commands) NewDatastoreCmds(dom domain.Domain) *cobra.Command {
 		Domain: dom,
 	})
 	if err != nil {
-		return &cobra.Command{
+		// Return an error command that surfaces the configuration error on any invocation.
+		// PersistentPreRunE ensures subcommands also return the real error.
+		// RunE handles direct invocation of the root command.
+		errCmd := &cobra.Command{
 			Use:   "datastore",
-			Short: "Datastore operations",
+			Short: "Datastore operations (misconfigured)",
 			RunE: func(_ *cobra.Command, _ []string) error {
 				return err
 			},
 		}
+		errCmd.PersistentPreRunE = func(_ *cobra.Command, _ []string) error {
+			return err
+		}
+
+		return errCmd
 	}
 
 	return cmd

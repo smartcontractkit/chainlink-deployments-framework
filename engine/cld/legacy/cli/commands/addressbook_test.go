@@ -13,7 +13,7 @@ import (
 func TestNewAddressBookCmds_Structure(t *testing.T) {
 	t.Parallel()
 	c := NewCommands(logger.Nop())
-	dom := domain.NewDomain("/tmp", "testdomain")
+	dom := domain.NewDomain(t.TempDir(), "testdomain")
 	root := c.NewAddressBookCmds(dom)
 
 	require.Equal(t, "address-book", root.Use)
@@ -41,7 +41,7 @@ func TestNewAddressBookCmds_Structure(t *testing.T) {
 func TestAddressBookCommandMetadata(t *testing.T) {
 	t.Parallel()
 	c := NewCommands(logger.Nop())
-	dom := domain.NewDomain("/tmp", "testdomain")
+	dom := domain.NewDomain(t.TempDir(), "testdomain")
 
 	tests := []struct {
 		name                string

@@ -13,7 +13,7 @@ import (
 func TestNewDatastoreCmds_Structure(t *testing.T) {
 	t.Parallel()
 	c := NewCommands(logger.Nop())
-	dom := domain.NewDomain("/tmp", "testdomain")
+	dom := domain.NewDomain(t.TempDir(), "testdomain")
 	root := c.NewDatastoreCmds(dom)
 
 	require.Equal(t, "datastore", root.Use)
@@ -41,7 +41,7 @@ func TestNewDatastoreCmds_Structure(t *testing.T) {
 func TestDatastoreCommandMetadata(t *testing.T) {
 	t.Parallel()
 	c := NewCommands(logger.Nop())
-	dom := domain.NewDomain("/tmp", "testdomain")
+	dom := domain.NewDomain(t.TempDir(), "testdomain")
 
 	tests := []struct {
 		name                string
