@@ -6,6 +6,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -41,14 +42,23 @@ func (m *mockCatalogStore) EnvMetadata() fdatastore.MutableUnaryStoreV2[fdatasto
 	return nil
 }
 
+// newTestCommand creates a new command with a test domain rooted in a temp directory.
+// This helper reduces boilerplate and ensures portability across platforms.
+func newTestCommand(t *testing.T, deps Deps) (*cobra.Command, error) {
+	t.Helper()
+
+	return NewCommand(Config{
+		Logger: logger.Nop(),
+		Domain: domain.NewDomain(t.TempDir(), "testdomain"),
+		Deps:   deps,
+	})
+}
+
 // TestNewCommand_Structure verifies the command structure is correct.
 func TestNewCommand_Structure(t *testing.T) {
 	t.Parallel()
 
-	cmd, err := NewCommand(Config{
-		Logger: logger.Nop(),
-		Domain: domain.NewDomain("/tmp", "testdomain"),
-	})
+	cmd, err := newTestCommand(t, Deps{})
 
 	require.NoError(t, err)
 	require.NotNil(t, cmd)
@@ -77,11 +87,7 @@ func TestNewCommand_Structure(t *testing.T) {
 func TestNewCommand_MergeFlags(t *testing.T) {
 	t.Parallel()
 
-	cmd, err := NewCommand(Config{
-		Logger: logger.Nop(),
-		Domain: domain.NewDomain("/tmp", "testdomain"),
-	})
-
+	cmd, err := newTestCommand(t, Deps{})
 	require.NoError(t, err)
 
 	// Find the merge subcommand
@@ -115,11 +121,7 @@ func TestNewCommand_MergeFlags(t *testing.T) {
 func TestNewCommand_SyncToCatalogFlags(t *testing.T) {
 	t.Parallel()
 
-	cmd, err := NewCommand(Config{
-		Logger: logger.Nop(),
-		Domain: domain.NewDomain("/tmp", "testdomain"),
-	})
-
+	cmd, err := newTestCommand(t, Deps{})
 	require.NoError(t, err)
 
 	// Find the sync-to-catalog subcommand
@@ -143,11 +145,7 @@ func TestNewCommand_SyncToCatalogFlags(t *testing.T) {
 func TestMerge_MissingEnvironmentFlagFails(t *testing.T) {
 	t.Parallel()
 
-	cmd, err := NewCommand(Config{
-		Logger: logger.Nop(),
-		Domain: domain.NewDomain("/tmp", "testdomain"),
-	})
-
+	cmd, err := newTestCommand(t, Deps{})
 	require.NoError(t, err)
 
 	cmd.SetArgs([]string{"merge", "--name", "test"})
@@ -160,11 +158,7 @@ func TestMerge_MissingEnvironmentFlagFails(t *testing.T) {
 func TestMerge_MissingNameFlagFails(t *testing.T) {
 	t.Parallel()
 
-	cmd, err := NewCommand(Config{
-		Logger: logger.Nop(),
-		Domain: domain.NewDomain("/tmp", "testdomain"),
-	})
-
+	cmd, err := newTestCommand(t, Deps{})
 	require.NoError(t, err)
 
 	cmd.SetArgs([]string{"merge", "-e", "staging"})
@@ -180,25 +174,20 @@ func TestMerge_FileMode_Success(t *testing.T) {
 	var fileMergerCalled bool
 	var mergedName, mergedTimestamp string
 
-	cmd, err := NewCommand(Config{
-		Logger: logger.Nop(),
-		Domain: domain.NewDomain("/tmp", "testdomain"),
-		Deps: Deps{
-			ConfigLoader: func(_ domain.Domain, _ string, _ logger.Logger) (*config.Config, error) {
-				return &config.Config{
-					DatastoreType: cfgdomain.DatastoreTypeFile,
-				}, nil
-			},
-			FileMerger: func(_ domain.EnvDir, name, timestamp string) error {
-				fileMergerCalled = true
-				mergedName = name
-				mergedTimestamp = timestamp
+	cmd, err := newTestCommand(t, Deps{
+		ConfigLoader: func(_ domain.Domain, _ string, _ logger.Logger) (*config.Config, error) {
+			return &config.Config{
+				DatastoreType: cfgdomain.DatastoreTypeFile,
+			}, nil
+		},
+		FileMerger: func(_ domain.EnvDir, name, timestamp string) error {
+			fileMergerCalled = true
+			mergedName = name
+			mergedTimestamp = timestamp
 
-				return nil
-			},
+			return nil
 		},
 	})
-
 	require.NoError(t, err)
 
 	out := new(bytes.Buffer)
@@ -222,23 +211,18 @@ func TestMerge_FileMode_WithTimestamp(t *testing.T) {
 
 	var mergedTimestamp string
 
-	cmd, err := NewCommand(Config{
-		Logger: logger.Nop(),
-		Domain: domain.NewDomain("/tmp", "testdomain"),
-		Deps: Deps{
-			ConfigLoader: func(_ domain.Domain, _ string, _ logger.Logger) (*config.Config, error) {
-				return &config.Config{
-					DatastoreType: cfgdomain.DatastoreTypeFile,
-				}, nil
-			},
-			FileMerger: func(_ domain.EnvDir, _, timestamp string) error {
-				mergedTimestamp = timestamp
+	cmd, err := newTestCommand(t, Deps{
+		ConfigLoader: func(_ domain.Domain, _ string, _ logger.Logger) (*config.Config, error) {
+			return &config.Config{
+				DatastoreType: cfgdomain.DatastoreTypeFile,
+			}, nil
+		},
+		FileMerger: func(_ domain.EnvDir, _, timestamp string) error {
+			mergedTimestamp = timestamp
 
-				return nil
-			},
+			return nil
 		},
 	})
-
 	require.NoError(t, err)
 
 	out := new(bytes.Buffer)
@@ -258,29 +242,24 @@ func TestMerge_CatalogMode_Success(t *testing.T) {
 
 	var catalogMergerCalled bool
 
-	cmd, err := NewCommand(Config{
-		Logger: logger.Nop(),
-		Domain: domain.NewDomain("/tmp", "testdomain"),
-		Deps: Deps{
-			ConfigLoader: func(_ domain.Domain, _ string, _ logger.Logger) (*config.Config, error) {
-				return &config.Config{
-					DatastoreType: cfgdomain.DatastoreTypeCatalog,
-					Env: &cfgenv.Config{
-						Catalog: cfgenv.CatalogConfig{GRPC: "grpc.example.com:443"},
-					},
-				}, nil
-			},
-			CatalogLoader: func(_ context.Context, _ string, _ *config.Config, _ domain.Domain) (fdatastore.CatalogStore, error) {
-				return &mockCatalogStore{}, nil
-			},
-			CatalogMerger: func(_ context.Context, _ domain.EnvDir, _, _ string, _ fdatastore.CatalogStore) error {
-				catalogMergerCalled = true
+	cmd, err := newTestCommand(t, Deps{
+		ConfigLoader: func(_ domain.Domain, _ string, _ logger.Logger) (*config.Config, error) {
+			return &config.Config{
+				DatastoreType: cfgdomain.DatastoreTypeCatalog,
+				Env: &cfgenv.Config{
+					Catalog: cfgenv.CatalogConfig{GRPC: "grpc.example.com:443"},
+				},
+			}, nil
+		},
+		CatalogLoader: func(_ context.Context, _ string, _ *config.Config, _ domain.Domain) (fdatastore.CatalogStore, error) {
+			return &mockCatalogStore{}, nil
+		},
+		CatalogMerger: func(_ context.Context, _ domain.EnvDir, _, _ string, _ fdatastore.CatalogStore) error {
+			catalogMergerCalled = true
 
-				return nil
-			},
+			return nil
 		},
 	})
-
 	require.NoError(t, err)
 
 	out := new(bytes.Buffer)
@@ -302,34 +281,29 @@ func TestMerge_AllMode_Success(t *testing.T) {
 
 	var fileMergerCalled, catalogMergerCalled bool
 
-	cmd, err := NewCommand(Config{
-		Logger: logger.Nop(),
-		Domain: domain.NewDomain("/tmp", "testdomain"),
-		Deps: Deps{
-			ConfigLoader: func(_ domain.Domain, _ string, _ logger.Logger) (*config.Config, error) {
-				return &config.Config{
-					DatastoreType: cfgdomain.DatastoreTypeAll,
-					Env: &cfgenv.Config{
-						Catalog: cfgenv.CatalogConfig{GRPC: "grpc.example.com:443"},
-					},
-				}, nil
-			},
-			CatalogLoader: func(_ context.Context, _ string, _ *config.Config, _ domain.Domain) (fdatastore.CatalogStore, error) {
-				return &mockCatalogStore{}, nil
-			},
-			CatalogMerger: func(_ context.Context, _ domain.EnvDir, _, _ string, _ fdatastore.CatalogStore) error {
-				catalogMergerCalled = true
+	cmd, err := newTestCommand(t, Deps{
+		ConfigLoader: func(_ domain.Domain, _ string, _ logger.Logger) (*config.Config, error) {
+			return &config.Config{
+				DatastoreType: cfgdomain.DatastoreTypeAll,
+				Env: &cfgenv.Config{
+					Catalog: cfgenv.CatalogConfig{GRPC: "grpc.example.com:443"},
+				},
+			}, nil
+		},
+		CatalogLoader: func(_ context.Context, _ string, _ *config.Config, _ domain.Domain) (fdatastore.CatalogStore, error) {
+			return &mockCatalogStore{}, nil
+		},
+		CatalogMerger: func(_ context.Context, _ domain.EnvDir, _, _ string, _ fdatastore.CatalogStore) error {
+			catalogMergerCalled = true
 
-				return nil
-			},
-			FileMerger: func(_ domain.EnvDir, _, _ string) error {
-				fileMergerCalled = true
+			return nil
+		},
+		FileMerger: func(_ domain.EnvDir, _, _ string) error {
+			fileMergerCalled = true
 
-				return nil
-			},
+			return nil
 		},
 	})
-
 	require.NoError(t, err)
 
 	out := new(bytes.Buffer)
@@ -352,16 +326,11 @@ func TestMerge_ConfigLoadError(t *testing.T) {
 
 	expectedError := errors.New("config not found")
 
-	cmd, err := NewCommand(Config{
-		Logger: logger.Nop(),
-		Domain: domain.NewDomain("/tmp", "testdomain"),
-		Deps: Deps{
-			ConfigLoader: func(_ domain.Domain, _ string, _ logger.Logger) (*config.Config, error) {
-				return nil, expectedError
-			},
+	cmd, err := newTestCommand(t, Deps{
+		ConfigLoader: func(_ domain.Domain, _ string, _ logger.Logger) (*config.Config, error) {
+			return nil, expectedError
 		},
 	})
-
 	require.NoError(t, err)
 
 	out := new(bytes.Buffer)
@@ -382,24 +351,19 @@ func TestMerge_CatalogLoadError(t *testing.T) {
 
 	expectedError := errors.New("catalog connection failed")
 
-	cmd, err := NewCommand(Config{
-		Logger: logger.Nop(),
-		Domain: domain.NewDomain("/tmp", "testdomain"),
-		Deps: Deps{
-			ConfigLoader: func(_ domain.Domain, _ string, _ logger.Logger) (*config.Config, error) {
-				return &config.Config{
-					DatastoreType: cfgdomain.DatastoreTypeCatalog,
-					Env: &cfgenv.Config{
-						Catalog: cfgenv.CatalogConfig{GRPC: "grpc.example.com:443"},
-					},
-				}, nil
-			},
-			CatalogLoader: func(_ context.Context, _ string, _ *config.Config, _ domain.Domain) (fdatastore.CatalogStore, error) {
-				return nil, expectedError
-			},
+	cmd, err := newTestCommand(t, Deps{
+		ConfigLoader: func(_ domain.Domain, _ string, _ logger.Logger) (*config.Config, error) {
+			return &config.Config{
+				DatastoreType: cfgdomain.DatastoreTypeCatalog,
+				Env: &cfgenv.Config{
+					Catalog: cfgenv.CatalogConfig{GRPC: "grpc.example.com:443"},
+				},
+			}, nil
+		},
+		CatalogLoader: func(_ context.Context, _ string, _ *config.Config, _ domain.Domain) (fdatastore.CatalogStore, error) {
+			return nil, expectedError
 		},
 	})
-
 	require.NoError(t, err)
 
 	out := new(bytes.Buffer)
@@ -420,21 +384,16 @@ func TestMerge_FileMergerError(t *testing.T) {
 
 	expectedError := errors.New("merge failed")
 
-	cmd, err := NewCommand(Config{
-		Logger: logger.Nop(),
-		Domain: domain.NewDomain("/tmp", "testdomain"),
-		Deps: Deps{
-			ConfigLoader: func(_ domain.Domain, _ string, _ logger.Logger) (*config.Config, error) {
-				return &config.Config{
-					DatastoreType: cfgdomain.DatastoreTypeFile,
-				}, nil
-			},
-			FileMerger: func(_ domain.EnvDir, _, _ string) error {
-				return expectedError
-			},
+	cmd, err := newTestCommand(t, Deps{
+		ConfigLoader: func(_ domain.Domain, _ string, _ logger.Logger) (*config.Config, error) {
+			return &config.Config{
+				DatastoreType: cfgdomain.DatastoreTypeFile,
+			}, nil
+		},
+		FileMerger: func(_ domain.EnvDir, _, _ string) error {
+			return expectedError
 		},
 	})
-
 	require.NoError(t, err)
 
 	out := new(bytes.Buffer)
@@ -453,11 +412,7 @@ func TestMerge_FileMergerError(t *testing.T) {
 func TestSyncToCatalog_MissingEnvironmentFlagFails(t *testing.T) {
 	t.Parallel()
 
-	cmd, err := NewCommand(Config{
-		Logger: logger.Nop(),
-		Domain: domain.NewDomain("/tmp", "testdomain"),
-	})
-
+	cmd, err := newTestCommand(t, Deps{})
 	require.NoError(t, err)
 
 	cmd.SetArgs([]string{"sync-to-catalog"})
@@ -472,29 +427,24 @@ func TestSyncToCatalog_Success(t *testing.T) {
 
 	var catalogSyncerCalled bool
 
-	cmd, err := NewCommand(Config{
-		Logger: logger.Nop(),
-		Domain: domain.NewDomain("/tmp", "testdomain"),
-		Deps: Deps{
-			ConfigLoader: func(_ domain.Domain, _ string, _ logger.Logger) (*config.Config, error) {
-				return &config.Config{
-					DatastoreType: cfgdomain.DatastoreTypeCatalog,
-					Env: &cfgenv.Config{
-						Catalog: cfgenv.CatalogConfig{GRPC: "grpc.example.com:443"},
-					},
-				}, nil
-			},
-			CatalogLoader: func(_ context.Context, _ string, _ *config.Config, _ domain.Domain) (fdatastore.CatalogStore, error) {
-				return &mockCatalogStore{}, nil
-			},
-			CatalogSyncer: func(_ context.Context, _ domain.EnvDir, _ fdatastore.CatalogStore) error {
-				catalogSyncerCalled = true
+	cmd, err := newTestCommand(t, Deps{
+		ConfigLoader: func(_ domain.Domain, _ string, _ logger.Logger) (*config.Config, error) {
+			return &config.Config{
+				DatastoreType: cfgdomain.DatastoreTypeCatalog,
+				Env: &cfgenv.Config{
+					Catalog: cfgenv.CatalogConfig{GRPC: "grpc.example.com:443"},
+				},
+			}, nil
+		},
+		CatalogLoader: func(_ context.Context, _ string, _ *config.Config, _ domain.Domain) (fdatastore.CatalogStore, error) {
+			return &mockCatalogStore{}, nil
+		},
+		CatalogSyncer: func(_ context.Context, _ domain.EnvDir, _ fdatastore.CatalogStore) error {
+			catalogSyncerCalled = true
 
-				return nil
-			},
+			return nil
 		},
 	})
-
 	require.NoError(t, err)
 
 	out := new(bytes.Buffer)
@@ -514,18 +464,13 @@ func TestSyncToCatalog_Success(t *testing.T) {
 func TestSyncToCatalog_CatalogNotConfigured(t *testing.T) {
 	t.Parallel()
 
-	cmd, err := NewCommand(Config{
-		Logger: logger.Nop(),
-		Domain: domain.NewDomain("/tmp", "testdomain"),
-		Deps: Deps{
-			ConfigLoader: func(_ domain.Domain, _ string, _ logger.Logger) (*config.Config, error) {
-				return &config.Config{
-					DatastoreType: cfgdomain.DatastoreTypeFile,
-				}, nil
-			},
+	cmd, err := newTestCommand(t, Deps{
+		ConfigLoader: func(_ domain.Domain, _ string, _ logger.Logger) (*config.Config, error) {
+			return &config.Config{
+				DatastoreType: cfgdomain.DatastoreTypeFile,
+			}, nil
 		},
 	})
-
 	require.NoError(t, err)
 
 	out := new(bytes.Buffer)
@@ -546,27 +491,22 @@ func TestSyncToCatalog_SyncError(t *testing.T) {
 
 	expectedError := errors.New("sync failed")
 
-	cmd, err := NewCommand(Config{
-		Logger: logger.Nop(),
-		Domain: domain.NewDomain("/tmp", "testdomain"),
-		Deps: Deps{
-			ConfigLoader: func(_ domain.Domain, _ string, _ logger.Logger) (*config.Config, error) {
-				return &config.Config{
-					DatastoreType: cfgdomain.DatastoreTypeCatalog,
-					Env: &cfgenv.Config{
-						Catalog: cfgenv.CatalogConfig{GRPC: "grpc.example.com:443"},
-					},
-				}, nil
-			},
-			CatalogLoader: func(_ context.Context, _ string, _ *config.Config, _ domain.Domain) (fdatastore.CatalogStore, error) {
-				return &mockCatalogStore{}, nil
-			},
-			CatalogSyncer: func(_ context.Context, _ domain.EnvDir, _ fdatastore.CatalogStore) error {
-				return expectedError
-			},
+	cmd, err := newTestCommand(t, Deps{
+		ConfigLoader: func(_ domain.Domain, _ string, _ logger.Logger) (*config.Config, error) {
+			return &config.Config{
+				DatastoreType: cfgdomain.DatastoreTypeCatalog,
+				Env: &cfgenv.Config{
+					Catalog: cfgenv.CatalogConfig{GRPC: "grpc.example.com:443"},
+				},
+			}, nil
+		},
+		CatalogLoader: func(_ context.Context, _ string, _ *config.Config, _ domain.Domain) (fdatastore.CatalogStore, error) {
+			return &mockCatalogStore{}, nil
+		},
+		CatalogSyncer: func(_ context.Context, _ domain.EnvDir, _ fdatastore.CatalogStore) error {
+			return expectedError
 		},
 	})
-
 	require.NoError(t, err)
 
 	out := new(bytes.Buffer)
@@ -585,6 +525,8 @@ func TestSyncToCatalog_SyncError(t *testing.T) {
 func TestConfig_Validate(t *testing.T) {
 	t.Parallel()
 
+	tempDir := t.TempDir()
+
 	t.Run("missing all required fields", func(t *testing.T) {
 		t.Parallel()
 
@@ -600,7 +542,7 @@ func TestConfig_Validate(t *testing.T) {
 		t.Parallel()
 
 		cfg := Config{
-			Domain: domain.NewDomain("/tmp", "test"),
+			Domain: domain.NewDomain(tempDir, "test"),
 		}
 		err := cfg.Validate()
 
@@ -614,7 +556,7 @@ func TestConfig_Validate(t *testing.T) {
 
 		cfg := Config{
 			Logger: logger.Nop(),
-			Domain: domain.NewDomain("/tmp", "test"),
+			Domain: domain.NewDomain(tempDir, "test"),
 		}
 		err := cfg.Validate()
 
@@ -628,7 +570,7 @@ func TestNewCommand_InvalidConfigReturnsError(t *testing.T) {
 
 	cmd, err := NewCommand(Config{
 		Logger: nil, // Missing required field
-		Domain: domain.NewDomain("/tmp", "testdomain"),
+		Domain: domain.NewDomain(t.TempDir(), "testdomain"),
 	})
 
 	require.Error(t, err)
