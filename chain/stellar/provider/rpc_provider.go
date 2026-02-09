@@ -19,10 +19,10 @@ func (c RPCChainProviderConfig) validate() error {
 		return errors.New("network passphrase is required")
 	}
 	if c.FriendbotURL == "" {
-		return errors.New("Friendbot URL is required")
+		return errors.New("friendbot URL is required")
 	}
 	if c.SorobanRPCURL == "" {
-		return errors.New("Soroban RPC URL is required")
+		return errors.New("soroban RPC URL is required")
 	}
 
 	return nil
@@ -72,5 +72,6 @@ func (p *RPCChainProvider) BlockChain() chain.BlockChain {
 	if p.chain == nil {
 		return nil
 	}
+
 	return p.chain
 }

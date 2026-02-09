@@ -22,6 +22,8 @@ onchain:
   ton:
     deployer_key: "0xedd"
     wallet_version: "V5R1"
+  stellar:
+    deployer_key: "0x567"
 offchain:
   job_distributor:
     endpoints:

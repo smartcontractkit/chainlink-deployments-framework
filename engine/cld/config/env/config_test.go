@@ -41,6 +41,9 @@ var (
 				DeployerKey:   "0xedd",
 				WalletVersion: "V5R1",
 			},
+			Stellar: StellarConfig{
+				DeployerKey: "0x567",
+			},
 		},
 		Offchain: OffchainConfig{
 			JobDistributor: JobDistributorConfig{
@@ -81,6 +84,7 @@ var (
 		"ONCHAIN_APTOS_DEPLOYER_KEY":                 "0x123",
 		"ONCHAIN_TRON_DEPLOYER_KEY":                  "0x123",
 		"ONCHAIN_SUI_DEPLOYER_KEY":                   "0x123",
+		"ONCHAIN_STELLAR_DEPLOYER_KEY":               "0x567",
 		"ONCHAIN_TON_DEPLOYER_KEY":                   "0x123",
 		"ONCHAIN_TON_WALLET_VERSION":                 "V5R1",
 		"OFFCHAIN_JD_AUTH_COGNITO_APP_CLIENT_ID":     "123",
@@ -107,6 +111,7 @@ var (
 		"APTOS_DEPLOYER_KEY":                "0x123",
 		"SUI_DEPLOYER_KEY":                  "0x123",
 		"TRON_DEPLOYER_KEY":                 "0x123",
+		"STELLAR_DEPLOYER_KEY":              "0x567",
 		"JD_AUTH_COGNITO_APP_CLIENT_ID":     "123",
 		"JD_AUTH_COGNITO_APP_CLIENT_SECRET": "123",
 		"JD_AUTH_AWS_REGION":                "us-east-1",
@@ -149,6 +154,9 @@ var (
 			},
 			Sui: SuiConfig{
 				DeployerKey: "0x123",
+			},
+			Stellar: StellarConfig{
+				DeployerKey: "0x567",
 			},
 			Ton: TonConfig{
 				DeployerKey:   "0x123",
@@ -205,10 +213,12 @@ func Test_Load(t *testing.T) { //nolint:paralleltest // see comment in setupTest
 					EVM: EVMConfig{
 						Seth: nil, // Testing optional pointer fields
 					},
-					Solana: SolanaConfig{},
-					Aptos:  AptosConfig{},
-					Tron:   TronConfig{},
-					Ton:    TonConfig{},
+					Solana:  SolanaConfig{},
+					Aptos:   AptosConfig{},
+					Tron:    TronConfig{},
+					Sui:     SuiConfig{},
+					Ton:     TonConfig{},
+					Stellar: StellarConfig{},
 				},
 				Offchain: OffchainConfig{
 					JobDistributor: JobDistributorConfig{
