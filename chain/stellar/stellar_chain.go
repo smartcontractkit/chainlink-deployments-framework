@@ -6,7 +6,7 @@ import (
 
 type ChainMetadata = chaincommon.ChainMetadata
 
-// Chain represents a Stellar network instance used CLDF.
+// Chain represents a Stellar network instance used by the Chainlink Deployments Framework (CLDF).
 type Chain struct {
 	ChainMetadata
 }
