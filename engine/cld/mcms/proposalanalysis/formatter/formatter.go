@@ -1,33 +1,20 @@
 package formatter
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/types"
 )
 
-// FormatterRequest encapsulates the context passed to formatter methods.
-type FormatterRequest struct {
-	Domain          string
-	EnvironmentName string
-}
-
-// Formatter transforms an AnalyzedProposal into a specific output format
-type Formatter interface {
-	ID() string
-	Format(ctx context.Context, req FormatterRequest, proposal types.AnalyzedProposal) ([]byte, error)
-}
-
 // FormatterRegistry manages formatter registration and lookup
 type FormatterRegistry struct {
-	formatters map[string]Formatter
+	formatters map[string]types.Formatter
 }
 
 // NewFormatterRegistry creates a new formatter registry
 func NewFormatterRegistry() *FormatterRegistry {
 	return &FormatterRegistry{
-		formatters: make(map[string]Formatter),
+		formatters: make(map[string]types.Formatter),
 	}
 }
 
@@ -36,7 +23,7 @@ func NewFormatterRegistry() *FormatterRegistry {
 // - formatter is nil
 // - formatter ID is empty
 // - a formatter with the same ID is already registered
-func (r *FormatterRegistry) Register(formatter Formatter) error {
+func (r *FormatterRegistry) Register(formatter types.Formatter) error {
 	if formatter == nil {
 		return fmt.Errorf("formatter cannot be nil")
 	}
@@ -55,7 +42,7 @@ func (r *FormatterRegistry) Register(formatter Formatter) error {
 }
 
 // Get retrieves a formatter by ID
-func (r *FormatterRegistry) Get(id string) (Formatter, bool) {
+func (r *FormatterRegistry) Get(id string) (types.Formatter, bool) {
 	f, ok := r.formatters[id]
 	return f, ok
 }
