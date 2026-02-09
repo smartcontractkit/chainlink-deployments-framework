@@ -27,19 +27,19 @@ func TestMergeDataStoreToCatalog(t *testing.T) {
 		mockCatalogContractStore := NewMockMutableStoreV2[ContractMetadataKey, ContractMetadata](t)
 		mockCatalogEnvStore := NewMockMutableUnaryStoreV2[EnvMetadata](t)
 
-		// Create mocks for migration datastore and its stores
-		mockMigrationDS := NewMockDataStore(t)
-		mockMigrationAddressStore := NewMockAddressRefStore(t)
-		mockMigrationChainStore := NewMockChainMetadataStore(t)
-		mockMigrationContractStore := NewMockContractMetadataStore(t)
-		mockMigrationEnvStore := NewMockEnvMetadataStore(t)
+		// Create mocks for source datastore and its stores
+		mockSourceDS := NewMockDataStore(t)
+		mockSourceAddressStore := NewMockAddressRefStore(t)
+		mockSourceChainStore := NewMockChainMetadataStore(t)
+		mockSourceContractStore := NewMockContractMetadataStore(t)
+		mockSourceEnvStore := NewMockEnvMetadataStore(t)
 
 		// Setup test data
 		testAddressRefs := []AddressRef{
 			{
 				Address:       "0xabc",
 				ChainSelector: 3,
-				Type:          "migration",
+				Type:          "TestContract",
 				Version:       semver.MustParse("3.0.0"),
 				Qualifier:     "new",
 			},
@@ -77,18 +77,18 @@ func TestMergeDataStoreToCatalog(t *testing.T) {
 			},
 		).Once()
 
-		// Setup migration datastore expectations - fetch from migration
-		mockMigrationDS.EXPECT().Addresses().Return(mockMigrationAddressStore).Once()
-		mockMigrationAddressStore.EXPECT().Fetch().Return(testAddressRefs, nil).Once()
+		// Setup source datastore expectations - fetch from source
+		mockSourceDS.EXPECT().Addresses().Return(mockSourceAddressStore).Once()
+		mockSourceAddressStore.EXPECT().Fetch().Return(testAddressRefs, nil).Once()
 
-		mockMigrationDS.EXPECT().ChainMetadata().Return(mockMigrationChainStore).Once()
-		mockMigrationChainStore.EXPECT().Fetch().Return(testChainMetadata, nil).Once()
+		mockSourceDS.EXPECT().ChainMetadata().Return(mockSourceChainStore).Once()
+		mockSourceChainStore.EXPECT().Fetch().Return(testChainMetadata, nil).Once()
 
-		mockMigrationDS.EXPECT().ContractMetadata().Return(mockMigrationContractStore).Once()
-		mockMigrationContractStore.EXPECT().Fetch().Return(testContractMetadata, nil).Once()
+		mockSourceDS.EXPECT().ContractMetadata().Return(mockSourceContractStore).Once()
+		mockSourceContractStore.EXPECT().Fetch().Return(testContractMetadata, nil).Once()
 
-		mockMigrationDS.EXPECT().EnvMetadata().Return(mockMigrationEnvStore).Once()
-		mockMigrationEnvStore.EXPECT().Get().Return(testEnvMetadata, nil).Once()
+		mockSourceDS.EXPECT().EnvMetadata().Return(mockSourceEnvStore).Once()
+		mockSourceEnvStore.EXPECT().Get().Return(testEnvMetadata, nil).Once()
 
 		// Setup catalog expectations - upsert to catalog
 		mockTxCatalog.EXPECT().Addresses().Return(mockCatalogAddressStore).Times(1)
@@ -112,7 +112,7 @@ func TestMergeDataStoreToCatalog(t *testing.T) {
 		mockCatalogEnvStore.EXPECT().Set(ctx, testEnvMetadata.Metadata).Return(nil).Once()
 
 		// Execute
-		err := MergeDataStoreToCatalog(ctx, mockMigrationDS, mockCatalog)
+		err := MergeDataStoreToCatalog(ctx, mockSourceDS, mockCatalog)
 
 		// Assert
 		require.NoError(t, err)
@@ -125,11 +125,11 @@ func TestMergeDataStoreToCatalog(t *testing.T) {
 		mockCatalog := NewMockCatalogStore(t)
 		mockTxCatalog := NewMockCatalogStore(t)
 
-		mockMigrationDS := NewMockDataStore(t)
-		mockMigrationAddressStore := NewMockAddressRefStore(t)
-		mockMigrationChainStore := NewMockChainMetadataStore(t)
-		mockMigrationContractStore := NewMockContractMetadataStore(t)
-		mockMigrationEnvStore := NewMockEnvMetadataStore(t)
+		mockSourceDS := NewMockDataStore(t)
+		mockSourceAddressStore := NewMockAddressRefStore(t)
+		mockSourceChainStore := NewMockChainMetadataStore(t)
+		mockSourceContractStore := NewMockContractMetadataStore(t)
+		mockSourceEnvStore := NewMockEnvMetadataStore(t)
 
 		// Setup WithTransaction
 		mockCatalog.EXPECT().WithTransaction(ctx, mock.Anything).RunAndReturn(
@@ -138,21 +138,21 @@ func TestMergeDataStoreToCatalog(t *testing.T) {
 			},
 		).Once()
 
-		// Setup migration datastore expectations
-		mockMigrationDS.EXPECT().Addresses().Return(mockMigrationAddressStore).Once()
-		mockMigrationAddressStore.EXPECT().Fetch().Return([]AddressRef{}, nil).Once()
+		// Setup source datastore expectations
+		mockSourceDS.EXPECT().Addresses().Return(mockSourceAddressStore).Once()
+		mockSourceAddressStore.EXPECT().Fetch().Return([]AddressRef{}, nil).Once()
 
-		mockMigrationDS.EXPECT().ChainMetadata().Return(mockMigrationChainStore).Once()
-		mockMigrationChainStore.EXPECT().Fetch().Return([]ChainMetadata{}, nil).Once()
+		mockSourceDS.EXPECT().ChainMetadata().Return(mockSourceChainStore).Once()
+		mockSourceChainStore.EXPECT().Fetch().Return([]ChainMetadata{}, nil).Once()
 
-		mockMigrationDS.EXPECT().ContractMetadata().Return(mockMigrationContractStore).Once()
-		mockMigrationContractStore.EXPECT().Fetch().Return([]ContractMetadata{}, nil).Once()
+		mockSourceDS.EXPECT().ContractMetadata().Return(mockSourceContractStore).Once()
+		mockSourceContractStore.EXPECT().Fetch().Return([]ContractMetadata{}, nil).Once()
 
-		mockMigrationDS.EXPECT().EnvMetadata().Return(mockMigrationEnvStore).Once()
-		mockMigrationEnvStore.EXPECT().Get().Return(EnvMetadata{}, ErrEnvMetadataNotSet).Once()
+		mockSourceDS.EXPECT().EnvMetadata().Return(mockSourceEnvStore).Once()
+		mockSourceEnvStore.EXPECT().Get().Return(EnvMetadata{}, ErrEnvMetadataNotSet).Once()
 
 		// Execute - should succeed because ErrEnvMetadataNotSet is acceptable
-		err := MergeDataStoreToCatalog(ctx, mockMigrationDS, mockCatalog)
+		err := MergeDataStoreToCatalog(ctx, mockSourceDS, mockCatalog)
 
 		// Assert
 		require.NoError(t, err)
@@ -164,8 +164,8 @@ func TestMergeDataStoreToCatalog(t *testing.T) {
 		// Create mocks
 		mockCatalog := NewMockCatalogStore(t)
 		mockTxCatalog := NewMockCatalogStore(t)
-		mockMigrationDS := NewMockDataStore(t)
-		mockMigrationAddressStore := NewMockAddressRefStore(t)
+		mockSourceDS := NewMockDataStore(t)
+		mockSourceAddressStore := NewMockAddressRefStore(t)
 
 		// Setup WithTransaction
 		mockCatalog.EXPECT().WithTransaction(ctx, mock.Anything).RunAndReturn(
@@ -174,12 +174,12 @@ func TestMergeDataStoreToCatalog(t *testing.T) {
 			},
 		).Once()
 
-		// Setup migration datastore to fail on address fetch
-		mockMigrationDS.EXPECT().Addresses().Return(mockMigrationAddressStore)
-		mockMigrationAddressStore.EXPECT().Fetch().Return(nil, errors.New("connection error"))
+		// Setup source datastore to fail on address fetch
+		mockSourceDS.EXPECT().Addresses().Return(mockSourceAddressStore)
+		mockSourceAddressStore.EXPECT().Fetch().Return(nil, errors.New("connection error"))
 
 		// Execute
-		err := MergeDataStoreToCatalog(ctx, mockMigrationDS, mockCatalog)
+		err := MergeDataStoreToCatalog(ctx, mockSourceDS, mockCatalog)
 
 		// Assert
 		require.Error(t, err)
@@ -193,9 +193,9 @@ func TestMergeDataStoreToCatalog(t *testing.T) {
 		// Create mocks
 		mockCatalog := NewMockCatalogStore(t)
 		mockTxCatalog := NewMockCatalogStore(t)
-		mockMigrationDS := NewMockDataStore(t)
-		mockMigrationAddressStore := NewMockAddressRefStore(t)
-		mockMigrationChainStore := NewMockChainMetadataStore(t)
+		mockSourceDS := NewMockDataStore(t)
+		mockSourceAddressStore := NewMockAddressRefStore(t)
+		mockSourceChainStore := NewMockChainMetadataStore(t)
 
 		// Setup WithTransaction
 		mockCatalog.EXPECT().WithTransaction(ctx, mock.Anything).RunAndReturn(
@@ -204,15 +204,15 @@ func TestMergeDataStoreToCatalog(t *testing.T) {
 			},
 		).Once()
 
-		// Setup migration datastore
-		mockMigrationDS.EXPECT().Addresses().Return(mockMigrationAddressStore)
-		mockMigrationAddressStore.EXPECT().Fetch().Return([]AddressRef{}, nil)
+		// Setup source datastore
+		mockSourceDS.EXPECT().Addresses().Return(mockSourceAddressStore)
+		mockSourceAddressStore.EXPECT().Fetch().Return([]AddressRef{}, nil)
 
-		mockMigrationDS.EXPECT().ChainMetadata().Return(mockMigrationChainStore)
-		mockMigrationChainStore.EXPECT().Fetch().Return(nil, errors.New("database error"))
+		mockSourceDS.EXPECT().ChainMetadata().Return(mockSourceChainStore)
+		mockSourceChainStore.EXPECT().Fetch().Return(nil, errors.New("database error"))
 
 		// Execute
-		err := MergeDataStoreToCatalog(ctx, mockMigrationDS, mockCatalog)
+		err := MergeDataStoreToCatalog(ctx, mockSourceDS, mockCatalog)
 
 		// Assert
 		require.Error(t, err)
@@ -226,10 +226,10 @@ func TestMergeDataStoreToCatalog(t *testing.T) {
 		// Create mocks
 		mockCatalog := NewMockCatalogStore(t)
 		mockTxCatalog := NewMockCatalogStore(t)
-		mockMigrationDS := NewMockDataStore(t)
-		mockMigrationAddressStore := NewMockAddressRefStore(t)
-		mockMigrationChainStore := NewMockChainMetadataStore(t)
-		mockMigrationContractStore := NewMockContractMetadataStore(t)
+		mockSourceDS := NewMockDataStore(t)
+		mockSourceAddressStore := NewMockAddressRefStore(t)
+		mockSourceChainStore := NewMockChainMetadataStore(t)
+		mockSourceContractStore := NewMockContractMetadataStore(t)
 
 		// Setup WithTransaction
 		mockCatalog.EXPECT().WithTransaction(ctx, mock.Anything).RunAndReturn(
@@ -238,18 +238,18 @@ func TestMergeDataStoreToCatalog(t *testing.T) {
 			},
 		).Once()
 
-		// Setup migration datastore
-		mockMigrationDS.EXPECT().Addresses().Return(mockMigrationAddressStore)
-		mockMigrationAddressStore.EXPECT().Fetch().Return([]AddressRef{}, nil)
+		// Setup source datastore
+		mockSourceDS.EXPECT().Addresses().Return(mockSourceAddressStore)
+		mockSourceAddressStore.EXPECT().Fetch().Return([]AddressRef{}, nil)
 
-		mockMigrationDS.EXPECT().ChainMetadata().Return(mockMigrationChainStore)
-		mockMigrationChainStore.EXPECT().Fetch().Return([]ChainMetadata{}, nil)
+		mockSourceDS.EXPECT().ChainMetadata().Return(mockSourceChainStore)
+		mockSourceChainStore.EXPECT().Fetch().Return([]ChainMetadata{}, nil)
 
-		mockMigrationDS.EXPECT().ContractMetadata().Return(mockMigrationContractStore)
-		mockMigrationContractStore.EXPECT().Fetch().Return(nil, errors.New("network timeout"))
+		mockSourceDS.EXPECT().ContractMetadata().Return(mockSourceContractStore)
+		mockSourceContractStore.EXPECT().Fetch().Return(nil, errors.New("network timeout"))
 
 		// Execute
-		err := MergeDataStoreToCatalog(ctx, mockMigrationDS, mockCatalog)
+		err := MergeDataStoreToCatalog(ctx, mockSourceDS, mockCatalog)
 
 		// Assert
 		require.Error(t, err)
@@ -263,11 +263,11 @@ func TestMergeDataStoreToCatalog(t *testing.T) {
 		// Create mocks
 		mockCatalog := NewMockCatalogStore(t)
 		mockTxCatalog := NewMockCatalogStore(t)
-		mockMigrationDS := NewMockDataStore(t)
-		mockMigrationAddressStore := NewMockAddressRefStore(t)
-		mockMigrationChainStore := NewMockChainMetadataStore(t)
-		mockMigrationContractStore := NewMockContractMetadataStore(t)
-		mockMigrationEnvStore := NewMockEnvMetadataStore(t)
+		mockSourceDS := NewMockDataStore(t)
+		mockSourceAddressStore := NewMockAddressRefStore(t)
+		mockSourceChainStore := NewMockChainMetadataStore(t)
+		mockSourceContractStore := NewMockContractMetadataStore(t)
+		mockSourceEnvStore := NewMockEnvMetadataStore(t)
 
 		// Setup WithTransaction
 		mockCatalog.EXPECT().WithTransaction(ctx, mock.Anything).RunAndReturn(
@@ -276,21 +276,21 @@ func TestMergeDataStoreToCatalog(t *testing.T) {
 			},
 		).Once()
 
-		// Setup migration datastore
-		mockMigrationDS.EXPECT().Addresses().Return(mockMigrationAddressStore)
-		mockMigrationAddressStore.EXPECT().Fetch().Return([]AddressRef{}, nil)
+		// Setup source datastore
+		mockSourceDS.EXPECT().Addresses().Return(mockSourceAddressStore)
+		mockSourceAddressStore.EXPECT().Fetch().Return([]AddressRef{}, nil)
 
-		mockMigrationDS.EXPECT().ChainMetadata().Return(mockMigrationChainStore)
-		mockMigrationChainStore.EXPECT().Fetch().Return([]ChainMetadata{}, nil)
+		mockSourceDS.EXPECT().ChainMetadata().Return(mockSourceChainStore)
+		mockSourceChainStore.EXPECT().Fetch().Return([]ChainMetadata{}, nil)
 
-		mockMigrationDS.EXPECT().ContractMetadata().Return(mockMigrationContractStore)
-		mockMigrationContractStore.EXPECT().Fetch().Return([]ContractMetadata{}, nil)
+		mockSourceDS.EXPECT().ContractMetadata().Return(mockSourceContractStore)
+		mockSourceContractStore.EXPECT().Fetch().Return([]ContractMetadata{}, nil)
 
-		mockMigrationDS.EXPECT().EnvMetadata().Return(mockMigrationEnvStore)
-		mockMigrationEnvStore.EXPECT().Get().Return(EnvMetadata{}, errors.New("connection timeout"))
+		mockSourceDS.EXPECT().EnvMetadata().Return(mockSourceEnvStore)
+		mockSourceEnvStore.EXPECT().Get().Return(EnvMetadata{}, errors.New("connection timeout"))
 
 		// Execute
-		err := MergeDataStoreToCatalog(ctx, mockMigrationDS, mockCatalog)
+		err := MergeDataStoreToCatalog(ctx, mockSourceDS, mockCatalog)
 
 		// Assert
 		require.Error(t, err)
@@ -306,8 +306,8 @@ func TestMergeDataStoreToCatalog(t *testing.T) {
 		mockTxCatalog := NewMockCatalogStore(t)
 		mockCatalogAddressStore := NewMockMutableRefStoreV2[AddressRefKey, AddressRef](t)
 
-		mockMigrationDS := NewMockDataStore(t)
-		mockMigrationAddressStore := NewMockAddressRefStore(t)
+		mockSourceDS := NewMockDataStore(t)
+		mockSourceAddressStore := NewMockAddressRefStore(t)
 
 		testAddressRefs := []AddressRef{
 			{
@@ -325,16 +325,16 @@ func TestMergeDataStoreToCatalog(t *testing.T) {
 			},
 		).Once()
 
-		// Setup migration datastore
-		mockMigrationDS.EXPECT().Addresses().Return(mockMigrationAddressStore)
-		mockMigrationAddressStore.EXPECT().Fetch().Return(testAddressRefs, nil)
+		// Setup source datastore
+		mockSourceDS.EXPECT().Addresses().Return(mockSourceAddressStore)
+		mockSourceAddressStore.EXPECT().Fetch().Return(testAddressRefs, nil)
 
 		// Setup catalog to fail on upsert
 		mockTxCatalog.EXPECT().Addresses().Return(mockCatalogAddressStore)
 		mockCatalogAddressStore.EXPECT().Upsert(ctx, testAddressRefs[0]).Return(errors.New("upsert failed"))
 
 		// Execute
-		err := MergeDataStoreToCatalog(ctx, mockMigrationDS, mockCatalog)
+		err := MergeDataStoreToCatalog(ctx, mockSourceDS, mockCatalog)
 
 		// Assert
 		require.Error(t, err)
@@ -342,7 +342,7 @@ func TestMergeDataStoreToCatalog(t *testing.T) {
 		require.ErrorContains(t, err, "upsert failed")
 	})
 
-	t.Run("handles empty migration datastore", func(t *testing.T) {
+	t.Run("handles empty source datastore", func(t *testing.T) {
 		t.Parallel()
 
 		// Create mocks
@@ -350,11 +350,11 @@ func TestMergeDataStoreToCatalog(t *testing.T) {
 		mockTxCatalog := NewMockCatalogStore(t)
 		mockCatalogEnvStore := NewMockMutableUnaryStoreV2[EnvMetadata](t)
 
-		mockMigrationDS := NewMockDataStore(t)
-		mockMigrationAddressStore := NewMockAddressRefStore(t)
-		mockMigrationChainStore := NewMockChainMetadataStore(t)
-		mockMigrationContractStore := NewMockContractMetadataStore(t)
-		mockMigrationEnvStore := NewMockEnvMetadataStore(t)
+		mockSourceDS := NewMockDataStore(t)
+		mockSourceAddressStore := NewMockAddressRefStore(t)
+		mockSourceChainStore := NewMockChainMetadataStore(t)
+		mockSourceContractStore := NewMockContractMetadataStore(t)
+		mockSourceEnvStore := NewMockEnvMetadataStore(t)
 
 		// Setup WithTransaction
 		mockCatalog.EXPECT().WithTransaction(ctx, mock.Anything).RunAndReturn(
@@ -363,25 +363,25 @@ func TestMergeDataStoreToCatalog(t *testing.T) {
 			},
 		).Once()
 
-		// Setup migration datastore expectations - all empty
-		mockMigrationDS.EXPECT().Addresses().Return(mockMigrationAddressStore).Once()
-		mockMigrationAddressStore.EXPECT().Fetch().Return([]AddressRef{}, nil).Once()
+		// Setup source datastore expectations - all stores are empty
+		mockSourceDS.EXPECT().Addresses().Return(mockSourceAddressStore).Once()
+		mockSourceAddressStore.EXPECT().Fetch().Return([]AddressRef{}, nil).Once()
 
-		mockMigrationDS.EXPECT().ChainMetadata().Return(mockMigrationChainStore).Once()
-		mockMigrationChainStore.EXPECT().Fetch().Return([]ChainMetadata{}, nil).Once()
+		mockSourceDS.EXPECT().ChainMetadata().Return(mockSourceChainStore).Once()
+		mockSourceChainStore.EXPECT().Fetch().Return([]ChainMetadata{}, nil).Once()
 
-		mockMigrationDS.EXPECT().ContractMetadata().Return(mockMigrationContractStore).Once()
-		mockMigrationContractStore.EXPECT().Fetch().Return([]ContractMetadata{}, nil).Once()
+		mockSourceDS.EXPECT().ContractMetadata().Return(mockSourceContractStore).Once()
+		mockSourceContractStore.EXPECT().Fetch().Return([]ContractMetadata{}, nil).Once()
 
-		mockMigrationDS.EXPECT().EnvMetadata().Return(mockMigrationEnvStore).Once()
-		mockMigrationEnvStore.EXPECT().Get().Return(EnvMetadata{Metadata: map[string]interface{}{}}, nil).Once()
+		mockSourceDS.EXPECT().EnvMetadata().Return(mockSourceEnvStore).Once()
+		mockSourceEnvStore.EXPECT().Get().Return(EnvMetadata{Metadata: map[string]interface{}{}}, nil).Once()
 
 		// Setup catalog expectations - env metadata set only
 		mockTxCatalog.EXPECT().EnvMetadata().Return(mockCatalogEnvStore).Once()
 		mockCatalogEnvStore.EXPECT().Set(ctx, mock.Anything).Return(nil).Once()
 
 		// Execute
-		err := MergeDataStoreToCatalog(ctx, mockMigrationDS, mockCatalog)
+		err := MergeDataStoreToCatalog(ctx, mockSourceDS, mockCatalog)
 
 		// Assert
 		require.NoError(t, err)
@@ -392,14 +392,14 @@ func TestMergeDataStoreToCatalog(t *testing.T) {
 
 		// Create mocks
 		mockCatalog := NewMockCatalogStore(t)
-		mockMigrationDS := NewMockDataStore(t)
+		mockSourceDS := NewMockDataStore(t)
 
 		// Setup WithTransaction to return an error (simulating rollback)
 		expectedErr := errors.New("transaction rolled back")
 		mockCatalog.EXPECT().WithTransaction(ctx, mock.Anything).Return(expectedErr).Once()
 
 		// Execute
-		err := MergeDataStoreToCatalog(ctx, mockMigrationDS, mockCatalog)
+		err := MergeDataStoreToCatalog(ctx, mockSourceDS, mockCatalog)
 
 		// Assert
 		require.Error(t, err)

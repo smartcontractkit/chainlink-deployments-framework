@@ -143,15 +143,15 @@ changesets:
 			rootCmd := sharedCommands.NewDurablePipelineCmds(
 				testDomain,
 				func(envName string) (*changeset.ChangesetsRegistry, error) {
-					rp := migrationsRegistryProviderStub{
+					rp := changesetsRegistryProviderStub{
 						BaseRegistryProvider: changeset.NewBaseRegistryProvider(),
-						AddMigrationAction: func(registry *changeset.ChangesetsRegistry) {
+						AddChangesetAction: func(registry *changeset.ChangesetsRegistry) {
 							registry.Add(changesetName, changeset.Configure(&changesetStub).With(1))
 						},
 					}
 
 					if err := rp.Init(); err != nil {
-						return nil, fmt.Errorf("failed to init migrations %w", err)
+						return nil, fmt.Errorf("failed to init changesets %w", err)
 					}
 
 					return rp.Registry(), nil
@@ -348,16 +348,16 @@ changesets:
 					rootCmd := sharedCommands.NewDurablePipelineCmds(
 						testDomain,
 						func(envName string) (*changeset.ChangesetsRegistry, error) {
-							rp := migrationsRegistryProviderStub{
+							rp := changesetsRegistryProviderStub{
 								BaseRegistryProvider: changeset.NewBaseRegistryProvider(),
-								AddMigrationAction: func(registry *changeset.ChangesetsRegistry) {
+								AddChangesetAction: func(registry *changeset.ChangesetsRegistry) {
 									cs := &stubChangeset{resolver: testResolver}
 									registry.Add("0001_test_changeset", changeset.Configure(cs).WithConfigResolver(testResolver))
 								},
 							}
 
 							if err := rp.Init(); err != nil {
-								return nil, fmt.Errorf("failed to init migrations %w", err)
+								return nil, fmt.Errorf("failed to init changesets %w", err)
 							}
 
 							return rp.Registry(), nil
@@ -462,9 +462,9 @@ func TestBuildListCmd(t *testing.T) {
 				})
 
 				// Create registry with mixed changeset types
-				rp := migrationsRegistryProviderStub{
+				rp := changesetsRegistryProviderStub{
 					BaseRegistryProvider: changeset.NewBaseRegistryProvider(),
-					AddMigrationAction: func(registry *changeset.ChangesetsRegistry) {
+					AddChangesetAction: func(registry *changeset.ChangesetsRegistry) {
 						// Static changeset (no resolver)
 						staticChangeset := &stubChangeset{}
 						registry.Add("0001_static_changeset", changeset.Configure(staticChangeset).With(1))
@@ -502,9 +502,9 @@ func TestBuildListCmd(t *testing.T) {
 				"--environment", env,
 			},
 			setupMocks: func() (*changeset.ChangesetsRegistry, *fresolvers.ConfigResolverManager, error) {
-				rp := migrationsRegistryProviderStub{
+				rp := changesetsRegistryProviderStub{
 					BaseRegistryProvider: changeset.NewBaseRegistryProvider(),
-					AddMigrationAction: func(registry *changeset.ChangesetsRegistry) {
+					AddChangesetAction: func(registry *changeset.ChangesetsRegistry) {
 						// Add no changesets
 					},
 				}
@@ -543,9 +543,9 @@ func TestBuildListCmd(t *testing.T) {
 					ExampleYAML: "test: value2",
 				})
 
-				rp := migrationsRegistryProviderStub{
+				rp := changesetsRegistryProviderStub{
 					BaseRegistryProvider: changeset.NewBaseRegistryProvider(),
-					AddMigrationAction: func(registry *changeset.ChangesetsRegistry) {
+					AddChangesetAction: func(registry *changeset.ChangesetsRegistry) {
 						cs := &stubChangeset{resolver: MockFirstResolver}
 						registry.Add("0001_test_changeset", changeset.Configure(cs).WithConfigResolver(MockFirstResolver))
 					},
@@ -584,7 +584,7 @@ func TestBuildListCmd(t *testing.T) {
 			setupMocks: func() (*changeset.ChangesetsRegistry, *fresolvers.ConfigResolverManager, error) {
 				return nil, fresolvers.NewConfigResolverManager(), errors.New("registry load failed")
 			},
-			expectedErr: "failed to load migrations registry: registry load failed",
+			expectedErr: "failed to load changesets registry: registry load failed",
 		},
 	}
 
@@ -686,15 +686,15 @@ func (m *mockProposalContext) GetEVMRegistry() analyzer.EVMABIRegistry {
 	return registry
 }
 
-type migrationsRegistryProviderStub struct {
+type changesetsRegistryProviderStub struct {
 	*changeset.BaseRegistryProvider
-	AddMigrationAction func(registry *changeset.ChangesetsRegistry)
+	AddChangesetAction func(registry *changeset.ChangesetsRegistry)
 }
 
-func (p *migrationsRegistryProviderStub) Init() error {
+func (p *changesetsRegistryProviderStub) Init() error {
 	registry := p.Registry()
 
-	p.AddMigrationAction(registry)
+	p.AddChangesetAction(registry)
 
 	return nil
 }
@@ -777,9 +777,9 @@ changesets:
 	rootcmd := sharedCommands.NewDurablePipelineCmds(
 		testDomain,
 		func(envName string) (*changeset.ChangesetsRegistry, error) {
-			rp := migrationsRegistryProviderStub{
+			rp := changesetsRegistryProviderStub{
 				BaseRegistryProvider: changeset.NewBaseRegistryProvider(),
-				AddMigrationAction: func(registry *changeset.ChangesetsRegistry) {
+				AddChangesetAction: func(registry *changeset.ChangesetsRegistry) {
 					cs := &stubChangeset{resolver: testResolver}
 					registry.Add("0001_test_changeset", changeset.Configure(cs).WithConfigResolver(testResolver))
 					registry.Add("0002_test_changeset", changeset.Configure(cs).WithConfigResolver(testResolver))
@@ -787,7 +787,7 @@ changesets:
 			}
 
 			if err := rp.Init(); err != nil {
-				return nil, fmt.Errorf("failed to init migrations %w", err)
+				return nil, fmt.Errorf("failed to init changesets %w", err)
 			}
 
 			return rp.Registry(), nil
@@ -1871,15 +1871,15 @@ changesets:
 	rootCmd := sharedCommands.NewDurablePipelineCmds(
 		testDomain,
 		func(envName string) (*changeset.ChangesetsRegistry, error) {
-			rp := migrationsRegistryProviderStub{
+			rp := changesetsRegistryProviderStub{
 				BaseRegistryProvider: changeset.NewBaseRegistryProvider(),
-				AddMigrationAction: func(registry *changeset.ChangesetsRegistry) {
+				AddChangesetAction: func(registry *changeset.ChangesetsRegistry) {
 					registry.Add("0001_test_changeset", changeset.Configure(&changesetStub).With(1))
 				},
 			}
 
 			if initErr := rp.Init(); initErr != nil {
-				return nil, fmt.Errorf("failed to init migrations %w", initErr)
+				return nil, fmt.Errorf("failed to init changesets %w", initErr)
 			}
 
 			return rp.Registry(), nil

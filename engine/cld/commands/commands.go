@@ -30,6 +30,7 @@ package commands
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/datastore"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/state"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
@@ -55,22 +56,18 @@ type StateConfig struct {
 }
 
 // State creates the state command group for managing environment state.
-// Returns an error if required configuration is missing.
-//
-// Usage:
-//
-//	cmds := commands.New(lggr)
-//	stateCmd, err := cmds.State(domain, commands.StateConfig{
-//	    ViewState: myViewStateFunc,
-//	})
-//	if err != nil {
-//	    return err
-//	}
-//	rootCmd.AddCommand(stateCmd)
 func (c *Commands) State(dom domain.Domain, cfg StateConfig) (*cobra.Command, error) {
 	return state.NewCommand(state.Config{
 		Logger:    c.lggr,
 		Domain:    dom,
 		ViewState: cfg.ViewState,
+	})
+}
+
+// Datastore creates the datastore command group.
+func (c *Commands) Datastore(dom domain.Domain) (*cobra.Command, error) {
+	return datastore.NewCommand(datastore.Config{
+		Logger: c.lggr,
+		Domain: dom,
 	})
 }

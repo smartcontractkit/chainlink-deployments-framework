@@ -31,7 +31,7 @@ var loadEnv = cldenv.Load
 // to avoid using real backends
 func (c Commands) NewDurablePipelineCmds(
 	domain dom.Domain,
-	loadMigration func(envName string) (*cs.ChangesetsRegistry, error),
+	loadChangesets func(envName string) (*cs.ChangesetsRegistry, error),
 	decodeProposalCtxProvider func(env fdeployment.Environment) (analyzer.ProposalContext, error),
 	loadConfigResolvers *fresolvers.ConfigResolverManager) *cobra.Command {
 	evmCmd := &cobra.Command{
@@ -40,10 +40,10 @@ func (c Commands) NewDurablePipelineCmds(
 	}
 
 	evmCmd.AddCommand(
-		c.newDurablePipelineRun(domain, loadMigration, decodeProposalCtxProvider, loadConfigResolvers),
-		c.newDurablePipelineInputGenerate(domain, loadMigration, loadConfigResolvers),
-		c.newDurablePipelineListBuild(domain, loadMigration, loadConfigResolvers),
-		c.newDurablePipelineTemplateInput(domain, loadMigration, loadConfigResolvers))
+		c.newDurablePipelineRun(domain, loadChangesets, decodeProposalCtxProvider, loadConfigResolvers),
+		c.newDurablePipelineInputGenerate(domain, loadChangesets, loadConfigResolvers),
+		c.newDurablePipelineListBuild(domain, loadChangesets, loadConfigResolvers),
+		c.newDurablePipelineTemplateInput(domain, loadChangesets, loadConfigResolvers))
 
 	evmCmd.PersistentFlags().StringP("environment", "e", "", "Deployment environment (required)")
 	_ = evmCmd.MarkPersistentFlagRequired("environment")
@@ -85,7 +85,7 @@ var (
 // newDurablePipelineRun builds the 'run' subcommand for executing durable pipelines
 func (c Commands) newDurablePipelineRun(
 	domain dom.Domain,
-	loadMigration func(envName string) (*cs.ChangesetsRegistry, error),
+	loadChangesets func(envName string) (*cs.ChangesetsRegistry, error),
 	decodeProposalCtxProvider func(env fdeployment.Environment) (analyzer.ProposalContext, error),
 	loadConfigResolvers *fresolvers.ConfigResolverManager,
 ) *cobra.Command {
@@ -129,18 +129,18 @@ func (c Commands) newDurablePipelineRun(
 				return err
 			}
 
-			migration, err := loadMigration(envKey)
+			registry, err := loadChangesets(envKey)
 			if err != nil {
 				return err
 			}
 
-			envOptions, err := configureEnvironmentOptions(migration, actualChangesetName, dryRun, c.lggr)
+			envOptions, err := configureEnvironmentOptions(registry, actualChangesetName, dryRun, c.lggr)
 			if err != nil {
 				return err
 			}
 
 			// Verify that the resolver is registered
-			cfg, err := migration.GetConfigurations(actualChangesetName)
+			cfg, err := registry.GetConfigurations(actualChangesetName)
 			if err != nil {
 				return fmt.Errorf("failed to get configurations for %s: %w", actualChangesetName, err)
 			}
@@ -172,7 +172,7 @@ func (c Commands) newDurablePipelineRun(
 				indexStr = fmt.Sprintf(" (at index %d)", changesetIndex)
 			}
 			// We create the directory even before the attempt to run the changesets.
-			// Some migrations may execute ChangeSet functions that only have side effects but not artifacts.
+			// Some changesets may execute ChangeSet functions that only have side effects but not artifacts.
 			// In that case we still want to create the directory. We include a .gitkeep file to ensure
 			// the directory is not empty.
 			c.lggr.Infof("Applying %s durable pipeline for changeset %s%s for environment: %s\n",
@@ -180,7 +180,7 @@ func (c Commands) newDurablePipelineRun(
 			)
 
 			// Run the changeset for durable pipelines
-			out, err := migration.Apply(actualChangesetName, env)
+			out, err := registry.Apply(actualChangesetName, env)
 			// save reports first then handle above error
 			// 2nd param is set to 0 for now as we are not loading any reports yet
 			if saveErr := saveReports(reporter, originalReportsLen, c.lggr, artdir, actualChangesetName); saveErr != nil {
@@ -256,7 +256,7 @@ var (
 // durable pipeline configurations using config resolvers
 func (c Commands) newDurablePipelineInputGenerate(
 	domain dom.Domain,
-	loadMigrationsRegistry func(envName string) (*cs.ChangesetsRegistry, error),
+	loadChangesetsRegistry func(envName string) (*cs.ChangesetsRegistry, error),
 	loadConfigResolvers *fresolvers.ConfigResolverManager,
 ) *cobra.Command {
 	var (
@@ -278,10 +278,10 @@ func (c Commands) newDurablePipelineInputGenerate(
 		Example: inputGenerateExample,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			envKey, _ := cmd.Flags().GetString("environment")
-			// Load the migrations registry
-			registry, err := loadMigrationsRegistry(envKey)
+			// Load the changesets registry
+			registry, err := loadChangesetsRegistry(envKey)
 			if err != nil {
-				return fmt.Errorf("load migrations registry: %w", err)
+				return fmt.Errorf("load changesets registry: %w", err)
 			}
 
 			// Read & parse the inputs file
@@ -524,7 +524,7 @@ var (
 )
 
 // newDurablePipelineListBuild builds the list subcommand for listing durable pipeline info including registered changesets and config fresolvers
-func (Commands) newDurablePipelineListBuild(domain dom.Domain, loadMigrationsRegistry func(envName string) (*cs.ChangesetsRegistry, error), loadConfigResolvers *fresolvers.ConfigResolverManager) *cobra.Command {
+func (Commands) newDurablePipelineListBuild(domain dom.Domain, loadChangesetsRegistry func(envName string) (*cs.ChangesetsRegistry, error), loadConfigResolvers *fresolvers.ConfigResolverManager) *cobra.Command {
 	cmd := cobra.Command{
 		Use:     "list",
 		Short:   "List durable pipeline info",
@@ -532,9 +532,9 @@ func (Commands) newDurablePipelineListBuild(domain dom.Domain, loadMigrationsReg
 		Example: listExample,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			envKey, _ := cmd.Flags().GetString("environment")
-			registry, err := loadMigrationsRegistry(envKey)
+			registry, err := loadChangesetsRegistry(envKey)
 			if err != nil {
-				return fmt.Errorf("failed to load migrations registry: %w", err)
+				return fmt.Errorf("failed to load changesets registry: %w", err)
 			}
 
 			changesets := registry.ListKeys()
@@ -606,7 +606,7 @@ var (
 		# Generate YAML template for a single changeset
 		chainlink-deployments durable-pipeline template-input \
 		  --environment testnet \
-		  --changeset test_migration_dynamic_inputs
+		  --changeset test_changeset_dynamic_inputs
 
 		# Generate YAML template for multiple changesets
 		chainlink-deployments durable-pipeline template-input \
@@ -616,13 +616,13 @@ var (
 		# Configure depth limit for nested structures
 		chainlink-deployments durable-pipeline template-input \
 		  --environment testnet \
-		  --changeset test_migration_dynamic_inputs \
+		  --changeset test_changeset_dynamic_inputs \
 		  --depth 3
 
 		# Save output to file
 		chainlink-deployments durable-pipeline template-input \
 		  --environment testnet \
-		  --changeset test_migration_dynamic_inputs > example.yaml
+		  --changeset test_changeset_dynamic_inputs > example.yaml
 		`
 )
 

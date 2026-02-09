@@ -2,4 +2,4 @@
 "chainlink-deployments-framework": patch
 ---
 
-remove migration archive functionality
+Migration reference fix

@@ -46,14 +46,14 @@ var (
 	ErrArtifactNotFound = errors.New("artifact not found")
 )
 
-// ArtifactsDir represents a directory containing all migration artifacts grouped by the migration
+// ArtifactsDir represents a directory containing all changeset artifacts grouped by the changeset
 // key. It provides methods to interact with the artifacts in the directory.
 type ArtifactsDir struct {
 	rootPath           string // rootPath is absolute path of the domains filesystem
 	domainKey          string // The key of the domain that the environment belongs to. e.g. "ccip", "keystone"
 	envKey             string // The name of the environment. e.g. "mainnet", "testnet", "staging"
 	durablePipelineDir string // The directory containing the durable pipeline artifacts
-	timestamp          string // The timestamp when the migration started
+	timestamp          string // The timestamp when the changeset execution started
 }
 
 // NewArtifactsDir creates a new Artifacts.
@@ -117,13 +117,13 @@ func (a *ArtifactsDir) setDurablePipelinesTimestamp(timestamp string) error {
 // CreateProposalsDir creates the proposals directory within the artifacts directory if it does not exist.
 // It also creates a .gitkeep file within the proposals directory to ensure the directory is tracked by git.
 func (a *ArtifactsDir) CreateProposalsDir() error {
-	migDirPath := a.getProposalDir()
+	dirPath := a.getProposalDir()
 
-	if err := os.MkdirAll(migDirPath, 0755); err != nil {
+	if err := os.MkdirAll(dirPath, 0755); err != nil {
 		return err
 	}
 
-	_, err := os.Create(filepath.Join(migDirPath, ".gitkeep"))
+	_, err := os.Create(filepath.Join(dirPath, ".gitkeep"))
 
 	return err
 }
@@ -141,13 +141,13 @@ func (a *ArtifactsDir) CreateOperationsReportsDir() error {
 // CreateDecodedProposalsDir creates the decoded_proposals directory within the artifacts directory if it does not exist.
 // It also creates a .gitkeep file within the proposals directory to ensure the directory is tracked by git.
 func (a *ArtifactsDir) CreateDecodedProposalsDir() error {
-	migDirPath := a.getDecodedProposalDir()
+	dirPath := a.getDecodedProposalDir()
 
-	if err := os.MkdirAll(migDirPath, 0755); err != nil {
+	if err := os.MkdirAll(dirPath, 0755); err != nil {
 		return err
 	}
 
-	_, err := os.Create(filepath.Join(migDirPath, ".gitkeep"))
+	_, err := os.Create(filepath.Join(dirPath, ".gitkeep"))
 
 	return err
 }
@@ -155,13 +155,13 @@ func (a *ArtifactsDir) CreateDecodedProposalsDir() error {
 // CreateArchivedProposalsDir creates the proposals directory within the artifacts directory if it does not exist.
 // It also creates a .gitkeep file within the proposals directory to ensure the directory is tracked by git.
 func (a *ArtifactsDir) CreateArchivedProposalsDir() error {
-	migDirPath := a.getArchivedProposalDir()
+	dirPath := a.getArchivedProposalDir()
 
-	if err := os.MkdirAll(migDirPath, 0755); err != nil {
+	if err := os.MkdirAll(dirPath, 0755); err != nil {
 		return err
 	}
 
-	_, err := os.Create(filepath.Join(migDirPath, ".gitkeep"))
+	_, err := os.Create(filepath.Join(dirPath, ".gitkeep"))
 
 	return err
 }
@@ -715,7 +715,7 @@ func (a *ArtifactsDir) getArchivedProposalDir() string {
 
 // marshalIndentAndSort marshals a map of addresses to their types and versions into a sorted JSON object format.
 // This is a workaround to ensure that the JSON output is deterministic and sorted by chain selector and address which
-// helps to avoid merge conflicts in git when multiple migrations are run.
+// helps to avoid merge conflicts in git when multiple changesets are run.
 func marshalIndentAndSort(addrMap map[uint64]map[string]fdeployment.TypeAndVersion) ([]byte, error) {
 	// Sort the outer map keys (chain selectors)
 	chainSelectors := make([]uint64, 0, len(addrMap))
