@@ -595,7 +595,7 @@ func Test_chainLoaderSui_Load(t *testing.T) {
 func Test_chainLoaderStellar_Load(t *testing.T) {
 	t.Parallel()
 
-	var stellarSelector uint64 = chainsel.STELLAR_TESTNET.Selector
+	stellarSelector := chainsel.STELLAR_TESTNET.Selector
 
 	networkCfg := cfgnet.NewConfig([]cfgnet.Network{
 		{
