@@ -6,18 +6,18 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/flags"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/legacy/cli"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/text"
 )
 
 var (
 	migrateShort = "Migrate address book to the new datastore format"
 
-	migrateLong = cli.LongDesc(`
+	migrateLong = text.LongDesc(`
 		Converts the address book artifact format to the new datastore schema within a
 		given Domain Environment. This updates your on-chain address book to the latest storage format.
 	`)
 
-	migrateExample = cli.Examples(`
+	migrateExample = text.Examples(`
 		# Migrate the address book for the ccip staging domain to the new datastore format
 		ccip address-book migrate --environment staging
 	`)

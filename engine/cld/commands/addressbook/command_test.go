@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -12,14 +13,23 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
+// newTestCommand creates a new command with a test domain rooted in a temp directory.
+// This helper reduces boilerplate and ensures portability across platforms.
+func newTestCommand(t *testing.T, deps Deps) (*cobra.Command, error) {
+	t.Helper()
+
+	return NewCommand(Config{
+		Logger: logger.Nop(),
+		Domain: domain.NewDomain(t.TempDir(), "testdomain"),
+		Deps:   deps,
+	})
+}
+
 // TestNewCommand_Structure verifies the command structure is correct.
 func TestNewCommand_Structure(t *testing.T) {
 	t.Parallel()
 
-	cmd, err := NewCommand(Config{
-		Logger: logger.Nop(),
-		Domain: domain.NewDomain("/tmp", "testdomain"),
-	})
+	cmd, err := newTestCommand(t, Deps{})
 
 	require.NoError(t, err)
 	require.NotNil(t, cmd)
@@ -48,11 +58,7 @@ func TestNewCommand_Structure(t *testing.T) {
 func TestNewCommand_MergeFlags(t *testing.T) {
 	t.Parallel()
 
-	cmd, err := NewCommand(Config{
-		Logger: logger.Nop(),
-		Domain: domain.NewDomain("/tmp", "testdomain"),
-	})
-
+	cmd, err := newTestCommand(t, Deps{})
 	require.NoError(t, err)
 
 	// Find the merge subcommand
@@ -86,11 +92,7 @@ func TestNewCommand_MergeFlags(t *testing.T) {
 func TestNewCommand_MigrateFlags(t *testing.T) {
 	t.Parallel()
 
-	cmd, err := NewCommand(Config{
-		Logger: logger.Nop(),
-		Domain: domain.NewDomain("/tmp", "testdomain"),
-	})
-
+	cmd, err := newTestCommand(t, Deps{})
 	require.NoError(t, err)
 
 	// Find the migrate subcommand
@@ -114,11 +116,7 @@ func TestNewCommand_MigrateFlags(t *testing.T) {
 func TestNewCommand_RemoveFlags(t *testing.T) {
 	t.Parallel()
 
-	cmd, err := NewCommand(Config{
-		Logger: logger.Nop(),
-		Domain: domain.NewDomain("/tmp", "testdomain"),
-	})
-
+	cmd, err := newTestCommand(t, Deps{})
 	require.NoError(t, err)
 
 	// Find the remove subcommand
@@ -152,11 +150,7 @@ func TestNewCommand_RemoveFlags(t *testing.T) {
 func TestMerge_MissingEnvironmentFlagFails(t *testing.T) {
 	t.Parallel()
 
-	cmd, err := NewCommand(Config{
-		Logger: logger.Nop(),
-		Domain: domain.NewDomain("/tmp", "testdomain"),
-	})
-
+	cmd, err := newTestCommand(t, Deps{})
 	require.NoError(t, err)
 
 	cmd.SetArgs([]string{"merge", "--name", "test"})
@@ -169,11 +163,7 @@ func TestMerge_MissingEnvironmentFlagFails(t *testing.T) {
 func TestMerge_MissingNameFlagFails(t *testing.T) {
 	t.Parallel()
 
-	cmd, err := NewCommand(Config{
-		Logger: logger.Nop(),
-		Domain: domain.NewDomain("/tmp", "testdomain"),
-	})
-
+	cmd, err := newTestCommand(t, Deps{})
 	require.NoError(t, err)
 
 	cmd.SetArgs([]string{"merge", "-e", "staging"})
@@ -189,20 +179,15 @@ func TestMerge_Success(t *testing.T) {
 	var mergerCalled bool
 	var mergedName, mergedTimestamp string
 
-	cmd, err := NewCommand(Config{
-		Logger: logger.Nop(),
-		Domain: domain.NewDomain("/tmp", "testdomain"),
-		Deps: Deps{
-			AddressBookMerger: func(_ domain.EnvDir, name, timestamp string) error {
-				mergerCalled = true
-				mergedName = name
-				mergedTimestamp = timestamp
+	cmd, err := newTestCommand(t, Deps{
+		AddressBookMerger: func(_ domain.EnvDir, name, timestamp string) error {
+			mergerCalled = true
+			mergedName = name
+			mergedTimestamp = timestamp
 
-				return nil
-			},
+			return nil
 		},
 	})
-
 	require.NoError(t, err)
 
 	out := new(bytes.Buffer)
@@ -225,18 +210,13 @@ func TestMerge_WithTimestamp(t *testing.T) {
 
 	var mergedTimestamp string
 
-	cmd, err := NewCommand(Config{
-		Logger: logger.Nop(),
-		Domain: domain.NewDomain("/tmp", "testdomain"),
-		Deps: Deps{
-			AddressBookMerger: func(_ domain.EnvDir, _, timestamp string) error {
-				mergedTimestamp = timestamp
+	cmd, err := newTestCommand(t, Deps{
+		AddressBookMerger: func(_ domain.EnvDir, _, timestamp string) error {
+			mergedTimestamp = timestamp
 
-				return nil
-			},
+			return nil
 		},
 	})
-
 	require.NoError(t, err)
 
 	out := new(bytes.Buffer)
@@ -256,16 +236,11 @@ func TestMerge_Error(t *testing.T) {
 
 	expectedError := errors.New("merge failed")
 
-	cmd, err := NewCommand(Config{
-		Logger: logger.Nop(),
-		Domain: domain.NewDomain("/tmp", "testdomain"),
-		Deps: Deps{
-			AddressBookMerger: func(_ domain.EnvDir, _, _ string) error {
-				return expectedError
-			},
+	cmd, err := newTestCommand(t, Deps{
+		AddressBookMerger: func(_ domain.EnvDir, _, _ string) error {
+			return expectedError
 		},
 	})
-
 	require.NoError(t, err)
 
 	out := new(bytes.Buffer)
@@ -284,11 +259,7 @@ func TestMerge_Error(t *testing.T) {
 func TestMigrate_MissingEnvironmentFlagFails(t *testing.T) {
 	t.Parallel()
 
-	cmd, err := NewCommand(Config{
-		Logger: logger.Nop(),
-		Domain: domain.NewDomain("/tmp", "testdomain"),
-	})
-
+	cmd, err := newTestCommand(t, Deps{})
 	require.NoError(t, err)
 
 	cmd.SetArgs([]string{"migrate"})
@@ -303,18 +274,13 @@ func TestMigrate_Success(t *testing.T) {
 
 	var migratorCalled bool
 
-	cmd, err := NewCommand(Config{
-		Logger: logger.Nop(),
-		Domain: domain.NewDomain("/tmp", "testdomain"),
-		Deps: Deps{
-			AddressBookMigrator: func(_ domain.EnvDir) error {
-				migratorCalled = true
+	cmd, err := newTestCommand(t, Deps{
+		AddressBookMigrator: func(_ domain.EnvDir) error {
+			migratorCalled = true
 
-				return nil
-			},
+			return nil
 		},
 	})
-
 	require.NoError(t, err)
 
 	out := new(bytes.Buffer)
@@ -336,16 +302,11 @@ func TestMigrate_Error(t *testing.T) {
 
 	expectedError := errors.New("migration failed")
 
-	cmd, err := NewCommand(Config{
-		Logger: logger.Nop(),
-		Domain: domain.NewDomain("/tmp", "testdomain"),
-		Deps: Deps{
-			AddressBookMigrator: func(_ domain.EnvDir) error {
-				return expectedError
-			},
+	cmd, err := newTestCommand(t, Deps{
+		AddressBookMigrator: func(_ domain.EnvDir) error {
+			return expectedError
 		},
 	})
-
 	require.NoError(t, err)
 
 	out := new(bytes.Buffer)
@@ -364,11 +325,7 @@ func TestMigrate_Error(t *testing.T) {
 func TestRemove_MissingEnvironmentFlagFails(t *testing.T) {
 	t.Parallel()
 
-	cmd, err := NewCommand(Config{
-		Logger: logger.Nop(),
-		Domain: domain.NewDomain("/tmp", "testdomain"),
-	})
-
+	cmd, err := newTestCommand(t, Deps{})
 	require.NoError(t, err)
 
 	cmd.SetArgs([]string{"remove", "--name", "test"})
@@ -381,11 +338,7 @@ func TestRemove_MissingEnvironmentFlagFails(t *testing.T) {
 func TestRemove_MissingNameFlagFails(t *testing.T) {
 	t.Parallel()
 
-	cmd, err := NewCommand(Config{
-		Logger: logger.Nop(),
-		Domain: domain.NewDomain("/tmp", "testdomain"),
-	})
-
+	cmd, err := newTestCommand(t, Deps{})
 	require.NoError(t, err)
 
 	cmd.SetArgs([]string{"remove", "-e", "staging"})
@@ -401,20 +354,15 @@ func TestRemove_Success(t *testing.T) {
 	var removerCalled bool
 	var removedName, removedTimestamp string
 
-	cmd, err := NewCommand(Config{
-		Logger: logger.Nop(),
-		Domain: domain.NewDomain("/tmp", "testdomain"),
-		Deps: Deps{
-			AddressBookRemover: func(_ domain.EnvDir, name, timestamp string) error {
-				removerCalled = true
-				removedName = name
-				removedTimestamp = timestamp
+	cmd, err := newTestCommand(t, Deps{
+		AddressBookRemover: func(_ domain.EnvDir, name, timestamp string) error {
+			removerCalled = true
+			removedName = name
+			removedTimestamp = timestamp
 
-				return nil
-			},
+			return nil
 		},
 	})
-
 	require.NoError(t, err)
 
 	out := new(bytes.Buffer)
@@ -437,18 +385,13 @@ func TestRemove_WithTimestamp(t *testing.T) {
 
 	var removedTimestamp string
 
-	cmd, err := NewCommand(Config{
-		Logger: logger.Nop(),
-		Domain: domain.NewDomain("/tmp", "testdomain"),
-		Deps: Deps{
-			AddressBookRemover: func(_ domain.EnvDir, _, timestamp string) error {
-				removedTimestamp = timestamp
+	cmd, err := newTestCommand(t, Deps{
+		AddressBookRemover: func(_ domain.EnvDir, _, timestamp string) error {
+			removedTimestamp = timestamp
 
-				return nil
-			},
+			return nil
 		},
 	})
-
 	require.NoError(t, err)
 
 	out := new(bytes.Buffer)
@@ -468,16 +411,11 @@ func TestRemove_Error(t *testing.T) {
 
 	expectedError := errors.New("remove failed")
 
-	cmd, err := NewCommand(Config{
-		Logger: logger.Nop(),
-		Domain: domain.NewDomain("/tmp", "testdomain"),
-		Deps: Deps{
-			AddressBookRemover: func(_ domain.EnvDir, _, _ string) error {
-				return expectedError
-			},
+	cmd, err := newTestCommand(t, Deps{
+		AddressBookRemover: func(_ domain.EnvDir, _, _ string) error {
+			return expectedError
 		},
 	})
-
 	require.NoError(t, err)
 
 	out := new(bytes.Buffer)
@@ -496,6 +434,8 @@ func TestRemove_Error(t *testing.T) {
 func TestConfig_Validate(t *testing.T) {
 	t.Parallel()
 
+	tempDir := t.TempDir()
+
 	t.Run("missing all required fields", func(t *testing.T) {
 		t.Parallel()
 
@@ -511,7 +451,7 @@ func TestConfig_Validate(t *testing.T) {
 		t.Parallel()
 
 		cfg := Config{
-			Domain: domain.NewDomain("/tmp", "test"),
+			Domain: domain.NewDomain(tempDir, "test"),
 		}
 		err := cfg.Validate()
 
@@ -525,7 +465,7 @@ func TestConfig_Validate(t *testing.T) {
 
 		cfg := Config{
 			Logger: logger.Nop(),
-			Domain: domain.NewDomain("/tmp", "test"),
+			Domain: domain.NewDomain(tempDir, "test"),
 		}
 		err := cfg.Validate()
 
@@ -539,7 +479,7 @@ func TestNewCommand_InvalidConfigReturnsError(t *testing.T) {
 
 	cmd, err := NewCommand(Config{
 		Logger: nil, // Missing required field
-		Domain: domain.NewDomain("/tmp", "testdomain"),
+		Domain: domain.NewDomain(t.TempDir(), "testdomain"),
 	})
 
 	require.Error(t, err)

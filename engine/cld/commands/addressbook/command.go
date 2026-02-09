@@ -6,15 +6,15 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/text"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/legacy/cli"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
 var (
 	addressbookShort = "Address book operations"
 
-	addressbookLong = cli.LongDesc(`
+	addressbookLong = text.LongDesc(`
 		Commands for managing address book artifacts.
 
 		The address book contains contract addresses and type/version information for deployed contracts.

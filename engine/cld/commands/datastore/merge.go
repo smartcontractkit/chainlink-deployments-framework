@@ -6,14 +6,14 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/flags"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/text"
 	cfgdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/domain"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/legacy/cli"
 )
 
 var (
 	mergeShort = "Merge datastore artifacts"
 
-	mergeLong = cli.LongDesc(`
+	mergeLong = text.LongDesc(`
 		Merges the datastore artifact of a specific changeset to the main datastore within a
 		given Domain Environment. The merge destination depends on the datastore configuration:
 		- file: merges to local JSON files
@@ -21,7 +21,7 @@ var (
 		- all: merges to both local files and catalog
 	`)
 
-	mergeExample = cli.Examples(`
+	mergeExample = text.Examples(`
 		# Merge the datastore for the 0001_deploy_cap changeset in the ccip staging domain
 		ccip datastore merge --environment staging --name 0001_deploy_cap
 

@@ -6,19 +6,19 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/flags"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/legacy/cli"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/text"
 )
 
 var (
 	removeShort = "Remove changeset address book entries"
 
-	removeLong = cli.LongDesc(`
+	removeLong = text.LongDesc(`
 		Removes the address book entries introduced by a specific changeset from the main
 		address book within a given Domain Environment. This can be used to rollback
 		address-book merge changes.
 	`)
 
-	removeExample = cli.Examples(`
+	removeExample = text.Examples(`
 		# Remove the address book entries for the 0001_deploy_cap changeset in the ccip staging domain
 		ccip address-book remove --environment staging --name 0001_deploy_cap
 	`)

@@ -6,19 +6,19 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/flags"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/legacy/cli"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/text"
 )
 
 var (
 	mergeShort = "Merge the address book for a changeset to the main address book"
 
-	mergeLong = cli.LongDesc(`
+	mergeLong = text.LongDesc(`
 		Merges the address book artifact of a specific changeset to the main address book within a
 		given Domain Environment. This is to ensure that the address book is up-to-date with the
 		latest changeset changes.
 	`)
 
-	mergeExample = cli.Examples(`
+	mergeExample = text.Examples(`
 		# Merge the address book for the 0001_deploy_cap changeset in the ccip staging domain environment
 		ccip address-book merge --environment staging --name 0001_deploy_cap
 

@@ -6,15 +6,15 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/text"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/legacy/cli"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
 var (
 	datastoreShort = "Datastore operations"
 
-	datastoreLong = cli.LongDesc(`
+	datastoreLong = text.LongDesc(`
 		Commands for managing datastore artifacts.
 
 		The datastore contains contract addresses and metadata for deployed contracts.
