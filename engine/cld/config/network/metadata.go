@@ -12,6 +12,13 @@ type EVMMetadata struct {
 	AnvilConfig *AnvilConfig `yaml:"anvil_config,omitempty"`
 }
 
+// StellarMetadata holds metadata specific to Stellar networks.
+// The main RPC URL comes from network.RPCs (like other chains); only passphrase and Friendbot (faucet) URL live here.
+type StellarMetadata struct {
+	NetworkPassphrase string `yaml:"network_passphrase"`
+	FriendbotURL      string `yaml:"friendbot_url"`
+}
+
 // AnvilConfig holds the configuration for starting an Anvil node.
 type AnvilConfig struct {
 	Image          string `yaml:"image"`

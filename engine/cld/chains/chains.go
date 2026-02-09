@@ -347,17 +347,28 @@ func newChainLoaderStellar(
 }
 
 // Load loads a Stellar Chain for a selector.
+// RPC URL (Soroban) comes from network.RPCs like other chains; passphrase and Friendbot URL from metadata.
 func (l *chainLoaderStellar) Load(ctx context.Context, selector uint64) (fchain.BlockChain, error) {
 	network, err := l.getNetwork(selector)
 	if err != nil {
 		return nil, err
 	}
 
+	rpcURL := network.RPCs[0].HTTPURL
+	if rpcURL == "" {
+		return nil, fmt.Errorf("stellar network %d: RPC http_url is required", selector)
+	}
+
+	md, err := cfgnet.DecodeMetadata[cfgnet.StellarMetadata](network.Metadata)
+	if err != nil {
+		return nil, fmt.Errorf("stellar network %d: decode metadata: %w", selector, err)
+	}
+
 	c, err := stellarprov.NewRPCChainProvider(selector,
 		stellarprov.RPCChainProviderConfig{
-			NetworkPassphrase: network.Metadata.(map[string]any)["network_passphrase"].(string),
-			FriendbotURL:      network.RPCs[1].HTTPURL,
-			SorobanRPCURL:     network.RPCs[0].HTTPURL,
+			NetworkPassphrase: md.NetworkPassphrase,
+			FriendbotURL:      md.FriendbotURL,
+			SorobanRPCURL:     rpcURL,
 		},
 	).Initialize(ctx)
 	if err != nil {
