@@ -19,10 +19,10 @@ func (c RPCChainProviderConfig) validate() error {
 		return errors.New("network passphrase is required")
 	}
 	if c.FriendbotURL == "" {
-		return errors.New("friendbot url is required")
+		return errors.New("Friendbot URL is required")
 	}
 	if c.SorobanRPCURL == "" {
-		return errors.New("soroban rpc url is required")
+		return errors.New("Soroban RPC URL is required")
 	}
 
 	return nil
