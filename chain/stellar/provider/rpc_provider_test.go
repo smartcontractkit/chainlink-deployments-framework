@@ -21,47 +21,62 @@ func Test_RPCChainProviderConfig_validate(t *testing.T) {
 		{
 			name: "valid config",
 			config: RPCChainProviderConfig{
-				NetworkPassphrase: "Test SDF Network ; September 2015",
-				FriendbotURL:      "https://friendbot.stellar.org",
-				SorobanRPCURL:     "https://soroban-testnet.stellar.org",
+				NetworkPassphrase:  "Test SDF Network ; September 2015",
+				FriendbotURL:       "https://friendbot.stellar.org",
+				SorobanRPCURL:      "https://soroban-testnet.stellar.org",
+				DeployerKeypairGen: KeypairRandom(),
 			},
 			wantErr: "",
 		},
 		{
 			name: "missing network passphrase",
 			config: RPCChainProviderConfig{
-				NetworkPassphrase: "",
-				FriendbotURL:      "https://friendbot.stellar.org",
-				SorobanRPCURL:     "https://soroban-testnet.stellar.org",
+				NetworkPassphrase:  "",
+				FriendbotURL:       "https://friendbot.stellar.org",
+				SorobanRPCURL:      "https://soroban-testnet.stellar.org",
+				DeployerKeypairGen: KeypairRandom(),
 			},
 			wantErr: "network passphrase is required",
 		},
 		{
-			name: "missing friendbot URL",
+			name: "missing friendbot URL - allowed since optional",
 			config: RPCChainProviderConfig{
-				NetworkPassphrase: "Test SDF Network ; September 2015",
-				FriendbotURL:      "",
-				SorobanRPCURL:     "https://soroban-testnet.stellar.org",
+				NetworkPassphrase:  "Test SDF Network ; September 2015",
+				FriendbotURL:       "",
+				SorobanRPCURL:      "https://soroban-testnet.stellar.org",
+				DeployerKeypairGen: KeypairRandom(),
 			},
-			wantErr: "friendbot URL is required",
+			wantErr: "", // FriendbotURL is optional
 		},
 		{
 			name: "missing soroban RPC URL",
 			config: RPCChainProviderConfig{
-				NetworkPassphrase: "Test SDF Network ; September 2015",
-				FriendbotURL:      "https://friendbot.stellar.org",
-				SorobanRPCURL:     "",
+				NetworkPassphrase:  "Test SDF Network ; September 2015",
+				FriendbotURL:       "https://friendbot.stellar.org",
+				SorobanRPCURL:      "",
+				DeployerKeypairGen: KeypairRandom(),
 			},
 			wantErr: "soroban RPC URL is required",
 		},
 		{
 			name: "all fields missing",
 			config: RPCChainProviderConfig{
-				NetworkPassphrase: "",
-				FriendbotURL:      "",
-				SorobanRPCURL:     "",
+				NetworkPassphrase:  "",
+				FriendbotURL:       "",
+				SorobanRPCURL:      "",
+				DeployerKeypairGen: nil,
 			},
-			wantErr: "network passphrase is required",
+			wantErr: "soroban RPC URL is required",
+		},
+		{
+			name: "missing deployer keypair generator",
+			config: RPCChainProviderConfig{
+				NetworkPassphrase:  "Test SDF Network ; September 2015",
+				FriendbotURL:       "https://friendbot.stellar.org",
+				SorobanRPCURL:      "https://soroban-testnet.stellar.org",
+				DeployerKeypairGen: nil,
+			},
+			wantErr: "deployer keypair generator is required",
 		},
 	}
 
@@ -93,18 +108,20 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 			name:         "valid initialization",
 			giveSelector: 12345,
 			giveConfig: RPCChainProviderConfig{
-				NetworkPassphrase: "Test SDF Network ; September 2015",
-				FriendbotURL:      "https://friendbot.stellar.org",
-				SorobanRPCURL:     "https://soroban-testnet.stellar.org",
+				NetworkPassphrase:  "Test SDF Network ; September 2015",
+				FriendbotURL:       "https://friendbot.stellar.org",
+				SorobanRPCURL:      "https://soroban-testnet.stellar.org",
+				DeployerKeypairGen: KeypairFromHex("0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"),
 			},
 		},
 		{
 			name:         "re-initialize returns existing chain",
 			giveSelector: 67890,
 			giveConfig: RPCChainProviderConfig{
-				NetworkPassphrase: "Test SDF Network ; September 2015",
-				FriendbotURL:      "https://friendbot.stellar.org",
-				SorobanRPCURL:     "https://soroban-testnet.stellar.org",
+				NetworkPassphrase:  "Test SDF Network ; September 2015",
+				FriendbotURL:       "https://friendbot.stellar.org",
+				SorobanRPCURL:      "https://soroban-testnet.stellar.org",
+				DeployerKeypairGen: KeypairRandom(),
 			},
 			giveChain: &stellar.Chain{
 				ChainMetadata: stellar.ChainMetadata{Selector: 67890},
@@ -114,31 +131,45 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 			name:         "fails config validation - missing network passphrase",
 			giveSelector: 12345,
 			giveConfig: RPCChainProviderConfig{
-				NetworkPassphrase: "",
-				FriendbotURL:      "https://friendbot.stellar.org",
-				SorobanRPCURL:     "https://soroban-testnet.stellar.org",
+				NetworkPassphrase:  "",
+				FriendbotURL:       "https://friendbot.stellar.org",
+				SorobanRPCURL:      "https://soroban-testnet.stellar.org",
+				DeployerKeypairGen: KeypairRandom(),
 			},
 			wantErr: "network passphrase is required",
 		},
 		{
-			name:         "fails config validation - missing friendbot URL",
+			name:         "missing friendbot URL - allowed since optional",
 			giveSelector: 12345,
 			giveConfig: RPCChainProviderConfig{
-				NetworkPassphrase: "Test SDF Network ; September 2015",
-				FriendbotURL:      "",
-				SorobanRPCURL:     "https://soroban-testnet.stellar.org",
+				NetworkPassphrase:  "Test SDF Network ; September 2015",
+				FriendbotURL:       "",
+				SorobanRPCURL:      "https://soroban-testnet.stellar.org",
+				DeployerKeypairGen: KeypairRandom(),
 			},
-			wantErr: "friendbot URL is required",
+			wantErr: "", // FriendbotURL is optional
 		},
 		{
 			name:         "fails config validation - missing soroban RPC URL",
 			giveSelector: 12345,
 			giveConfig: RPCChainProviderConfig{
-				NetworkPassphrase: "Test SDF Network ; September 2015",
-				FriendbotURL:      "https://friendbot.stellar.org",
-				SorobanRPCURL:     "",
+				NetworkPassphrase:  "Test SDF Network ; September 2015",
+				FriendbotURL:       "https://friendbot.stellar.org",
+				SorobanRPCURL:      "",
+				DeployerKeypairGen: KeypairRandom(),
 			},
 			wantErr: "soroban RPC URL is required",
+		},
+		{
+			name:         "fails config validation - missing deployer keypair generator",
+			giveSelector: 12345,
+			giveConfig: RPCChainProviderConfig{
+				NetworkPassphrase:  "Test SDF Network ; September 2015",
+				FriendbotURL:       "https://friendbot.stellar.org",
+				SorobanRPCURL:      "https://soroban-testnet.stellar.org",
+				DeployerKeypairGen: nil,
+			},
+			wantErr: "deployer keypair generator is required",
 		},
 	}
 
@@ -165,8 +196,16 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 			assert.Equal(t, tt.giveSelector, gotChain.Selector)
 
 			// If we had a pre-existing chain, verify it's the same instance
+			// The re-initialization returns early without re-populating fields
 			if tt.giveChain != nil {
 				assert.Equal(t, tt.giveChain, gotChain)
+			} else {
+				// For fresh initialization, verify all fields are populated
+				assert.NotNil(t, gotChain.Client, "RPC client should be initialized")
+				assert.NotNil(t, gotChain.Signer, "Signer should be initialized")
+				assert.Equal(t, tt.giveConfig.SorobanRPCURL, gotChain.URL)
+				assert.Equal(t, tt.giveConfig.FriendbotURL, gotChain.FriendbotURL)
+				assert.Equal(t, tt.giveConfig.NetworkPassphrase, gotChain.NetworkPassphrase)
 			}
 		})
 	}
@@ -245,9 +284,10 @@ func Test_NewRPCChainProvider(t *testing.T) {
 
 	selector := uint64(12345)
 	config := RPCChainProviderConfig{
-		NetworkPassphrase: "Test SDF Network ; September 2015",
-		FriendbotURL:      "https://friendbot.stellar.org",
-		SorobanRPCURL:     "https://soroban-testnet.stellar.org",
+		NetworkPassphrase:  "Test SDF Network ; September 2015",
+		FriendbotURL:       "https://friendbot.stellar.org",
+		SorobanRPCURL:      "https://soroban-testnet.stellar.org",
+		DeployerKeypairGen: KeypairRandom(),
 	}
 
 	p := NewRPCChainProvider(selector, config)

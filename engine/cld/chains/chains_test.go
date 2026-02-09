@@ -630,7 +630,7 @@ func Test_chainLoaderStellar_Load(t *testing.T) {
 
 	onchainConfig := cfgenv.OnchainConfig{
 		Stellar: cfgenv.StellarConfig{
-			DeployerKey: "0x123467890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+			DeployerKey: "0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
 		},
 	}
 
@@ -737,7 +737,7 @@ func Test_chainLoaderStellar_Load(t *testing.T) {
 			wantErr:           "network passphrase is required",
 		},
 		{
-			name:         "missing friendbot URL in metadata",
+			name:         "missing friendbot URL in metadata - allowed since optional",
 			giveSelector: 333333,
 			giveNetworkConfig: cfgnet.NewConfig([]cfgnet.Network{
 				{
@@ -753,12 +753,12 @@ func Test_chainLoaderStellar_Load(t *testing.T) {
 					},
 					Metadata: cfgnet.StellarMetadata{
 						NetworkPassphrase: "Test SDF Network ; September 2015",
-						FriendbotURL:      "", // Empty friendbot URL
+						FriendbotURL:      "", // Empty friendbot URL (optional)
 					},
 				},
 			}),
 			giveOnchainConfig: onchainConfig,
-			wantErr:           "friendbot URL is required",
+			wantErr:           "", // FriendbotURL is optional
 		},
 		// Note: Empty deployer key test is omitted because Stellar RPC provider
 		// doesn't validate the deployer key at initialization time.

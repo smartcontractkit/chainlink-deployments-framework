@@ -366,9 +366,10 @@ func (l *chainLoaderStellar) Load(ctx context.Context, selector uint64) (fchain.
 
 	c, err := stellarprov.NewRPCChainProvider(selector,
 		stellarprov.RPCChainProviderConfig{
-			NetworkPassphrase: md.NetworkPassphrase,
-			FriendbotURL:      md.FriendbotURL,
-			SorobanRPCURL:     rpcURL,
+			NetworkPassphrase:  md.NetworkPassphrase,
+			FriendbotURL:       md.FriendbotURL,
+			SorobanRPCURL:      rpcURL,
+			DeployerKeypairGen: stellarprov.KeypairFromHex(l.cfg.Stellar.DeployerKey),
 		},
 	).Initialize(ctx)
 	if err != nil {
