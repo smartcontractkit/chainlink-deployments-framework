@@ -10,6 +10,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/stellar"
 	chainsui "github.com/smartcontractkit/chainlink-deployments-framework/chain/sui"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/ton"
 )
@@ -45,11 +46,12 @@ func TestChainAccess_SelectorsAndLookups(t *testing.T) {
 	t.Parallel()
 
 	const (
-		evmSel   = uint64(111)
-		solSel   = uint64(222)
-		aptosSel = uint64(333)
-		suiSel   = uint64(444)
-		tonSel   = uint64(555)
+		evmSel     = uint64(111)
+		solSel     = uint64(222)
+		aptosSel   = uint64(333)
+		suiSel     = uint64(444)
+		tonSel     = uint64(555)
+		stellarSel = uint64(666)
 	)
 
 	evmOnchain := evm.NewMockOnchainClient(t)
@@ -66,7 +68,8 @@ func TestChainAccess_SelectorsAndLookups(t *testing.T) {
 			Client:        nil,
 			Signer:        suiSigner,
 		},
-		tonSel: ton.Chain{ChainMetadata: ton.ChainMetadata{Selector: tonSel}, Client: nil},
+		tonSel:     ton.Chain{ChainMetadata: ton.ChainMetadata{Selector: tonSel}, Client: nil},
+		stellarSel: stellar.Chain{ChainMetadata: stellar.ChainMetadata{Selector: stellarSel}, Client: nil},
 	})
 
 	a := Wrap(chains)
@@ -92,4 +95,8 @@ func TestChainAccess_SelectorsAndLookups(t *testing.T) {
 	gotTon, ok := a.TonClient(tonSel)
 	require.True(t, ok)
 	require.Nil(t, gotTon)
+
+	gotStellar, ok := a.StellarClient(stellarSel)
+	require.True(t, ok)
+	require.Nil(t, gotStellar)
 }
