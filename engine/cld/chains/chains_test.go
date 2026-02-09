@@ -279,7 +279,7 @@ func Test_LoadChains(t *testing.T) {
 			WalletVersion: "V4R2",
 		},
 		Stellar: cfgenv.StellarConfig{
-			DeployerKey: "0x123467890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+			DeployerKey: "0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
 		},
 	}
 
