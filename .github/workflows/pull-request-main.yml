@@ -117,6 +117,22 @@ jobs:
           use-go-cache: true
           artifact-name: provider-tests-tron
 
+  ci-test-provider-stellar:
+    name: Provider Tests - Stellar
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      id-token: write
+      contents: read
+      actions: read
+    steps:
+      - name: Build and test stellar provider packages
+        uses: smartcontractkit/.github/actions/ci-test-go@dfcba48f05933158428bce867d790e3d5a9baa6b # ci-test-go@1.1.0
+        with:
+          go-test-cmd: go test -race -coverprofile=coverage.txt ./chain/stellar/provider/...
+          use-go-cache: true
+          artifact-name: provider-tests-stellar
+
   ci-test-provider-fast:
     name: Provider Tests - Others
     runs-on: ubuntu-latest
@@ -130,8 +146,8 @@ jobs:
         uses: smartcontractkit/.github/actions/ci-test-go@dfcba48f05933158428bce867d790e3d5a9baa6b # ci-test-go@1.1.0
         with:
           # -p 2 -parallel 3 = 2 packages, 3 tests max = 6 containers max
-          # Run all provider tests EXCEPT slow ones (aptos, canton, ton, tron) which have dedicated jobs
-          go-test-cmd: go test -race -p 2 -parallel 3 -coverprofile=coverage.txt $(go list ./... | grep '/provider' | grep -E -v '/(aptos|canton|ton|tron)/provider')
+          # Run all provider tests EXCEPT slow ones (aptos, canton, ton, tron, stellar) which have dedicated jobs
+          go-test-cmd: go test -race -p 2 -parallel 3 -coverprofile=coverage.txt $(go list ./... | grep '/provider' | grep -E -v '/(aptos|canton|ton|tron|stellar)/provider')
           use-go-cache: true
           artifact-name: provider-tests-others
 
@@ -203,7 +219,7 @@ jobs:
     name: Sonar Scan
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
-    needs: [ci-test, ci-test-provider-aptos, ci-test-provider-canton, ci-test-provider-ton, ci-test-provider-tron, ci-test-provider-fast, ci-test-catalog-remote, ci-lint-misc, ci-lint]
+    needs: [ci-test, ci-test-provider-aptos, ci-test-provider-canton, ci-test-provider-ton, ci-test-provider-tron, ci-test-provider-stellar, ci-test-provider-fast, ci-test-catalog-remote, ci-lint-misc, ci-lint]
     permissions:
       contents: read
       actions: read

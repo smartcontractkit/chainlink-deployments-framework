@@ -52,6 +52,7 @@ func TestKeypairFromHex_Generate(t *testing.T) {
 			if tt.wantErr != "" {
 				require.ErrorContains(t, err, tt.wantErr)
 				assert.Nil(t, signer)
+
 				return
 			}
 
@@ -115,7 +116,7 @@ func TestKeypairRandom_GenerateUnique(t *testing.T) {
 
 	// Generate multiple times
 	addresses := make(map[string]bool)
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		signer, err := gen.Generate()
 		require.NoError(t, err)
 
@@ -127,7 +128,7 @@ func TestKeypairRandom_GenerateUnique(t *testing.T) {
 		addresses[address] = true
 	}
 
-	assert.Equal(t, 10, len(addresses), "should have generated 10 unique addresses")
+	assert.Len(t, addresses, 10, "should have generated 10 unique addresses")
 }
 
 func TestKeypairGenerator_Interface(t *testing.T) {
@@ -139,13 +140,13 @@ func TestKeypairGenerator_Interface(t *testing.T) {
 
 	// Test interface methods
 	hexGen := KeypairFromHex("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
-	var gen1 KeypairGenerator = hexGen
+	gen1 := hexGen
 	signer1, err := gen1.Generate()
 	require.NoError(t, err)
 	assert.NotNil(t, signer1)
 
 	randomGen := KeypairRandom()
-	var gen2 KeypairGenerator = randomGen
+	gen2 := randomGen
 	signer2, err := gen2.Generate()
 	require.NoError(t, err)
 	assert.NotNil(t, signer2)

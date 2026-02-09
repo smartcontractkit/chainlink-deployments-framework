@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/stellar/go-stellar-sdk/keypair"
@@ -29,7 +30,7 @@ func KeypairFromHex(hexKey string) KeypairGenerator {
 // Generate generates a Stellar keypair from the hex-encoded private key.
 func (k *keypairFromHex) Generate() (stellar.StellarSigner, error) {
 	if k.hexKey == "" {
-		return nil, fmt.Errorf("hex key is empty")
+		return nil, errors.New("hex key is empty")
 	}
 
 	kp, err := stellar.KeypairFromHex(k.hexKey)

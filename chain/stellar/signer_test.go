@@ -118,6 +118,7 @@ func TestKeypairFromHex(t *testing.T) {
 			if tt.wantErr != "" {
 				require.ErrorContains(t, err, tt.wantErr)
 				assert.Nil(t, kp)
+
 				return
 			}
 
@@ -132,7 +133,7 @@ func TestKeypairFromHex(t *testing.T) {
 
 			// Verify the signature
 			err = kp.Verify(message, sig)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 	}
 }
@@ -167,10 +168,10 @@ func TestKeypairFromHex_ConsistentAddress(t *testing.T) {
 
 	// Each keypair should be able to verify the other's signature
 	err = kp1.Verify(message, sig2)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = kp2.Verify(message, sig1)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestKeypairFromHex_RealStellarKey(t *testing.T) {
@@ -188,7 +189,7 @@ func TestKeypairFromHex_RealStellarKey(t *testing.T) {
 	require.NoError(t, err)
 
 	err = reconstructedKp.Verify(message, sig)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Verify the address is a valid Stellar address format (starts with G)
 	address := reconstructedKp.Address()
@@ -221,7 +222,7 @@ func TestStellarSigner_Interface(t *testing.T) {
 	kp, err := keypair.Random()
 	require.NoError(t, err)
 
-	var signer StellarSigner = NewStellarKeypairSigner(kp)
+	signer := NewStellarKeypairSigner(kp)
 	require.NotNil(t, signer)
 
 	// Test all interface methods
@@ -278,6 +279,7 @@ func TestKeypairFromHex_EdgeCases(t *testing.T) {
 			if tt.wantErr != "" {
 				require.ErrorContains(t, err, tt.wantErr)
 				assert.Nil(t, kp)
+
 				return
 			}
 
@@ -305,7 +307,7 @@ func TestKeypairFromHex_ByteConversion(t *testing.T) {
 	}
 
 	hexKey := hex.EncodeToString(expectedBytes)
-	require.Equal(t, 64, len(hexKey), "hex encoding of 32 bytes should be 64 chars")
+	require.Len(t, hexKey, 64, "hex encoding of 32 bytes should be 64 chars")
 
 	kp, err := KeypairFromHex(hexKey)
 	require.NoError(t, err)
