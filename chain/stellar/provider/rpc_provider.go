@@ -57,7 +57,7 @@ func (p *RPCChainProvider) Initialize(_ context.Context) (chain.BlockChain, erro
 		ChainMetadata: stellar.ChainMetadata{Selector: p.selector},
 	}
 
-	return *p.chain, nil
+	return p.chain, nil
 }
 
 func (p *RPCChainProvider) Name() string {
@@ -72,5 +72,5 @@ func (p *RPCChainProvider) BlockChain() chain.BlockChain {
 	if p.chain == nil {
 		return nil
 	}
-	return *p.chain
+	return p.chain
 }
