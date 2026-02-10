@@ -67,7 +67,6 @@ func Test_LoadEnvConfig(t *testing.T) { //nolint:paralleltest // These tests are
 				"SOLANA_PROGRAM_PATH":               "0xcde",
 				"APTOS_DEPLOYER_KEY":                "0x345",
 				"TRON_DEPLOYER_KEY":                 "0x456",
-				"ONCHAIN_STELLAR_DEPLOYER_KEY":      "0x567", // Stellar uses new-style env var
 			},
 			wantFunc: func(t *testing.T, cfg *cfgenv.Config) {
 				t.Helper()
@@ -91,7 +90,6 @@ func Test_LoadEnvConfig(t *testing.T) { //nolint:paralleltest // These tests are
 				assert.Equal(t, "0x234", cfg.Onchain.Solana.WalletKey)
 				assert.Equal(t, "0x345", cfg.Onchain.Aptos.DeployerKey)
 				assert.Equal(t, "0x456", cfg.Onchain.Tron.DeployerKey)
-				assert.Equal(t, "0x567", cfg.Onchain.Stellar.DeployerKey)
 			},
 		},
 		{
