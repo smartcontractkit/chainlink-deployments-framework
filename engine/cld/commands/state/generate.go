@@ -11,9 +11,9 @@ import (
 	"github.com/spf13/pflag"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/flags"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/text"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/legacy/cli"
 )
 
 // addPreviousStateAlias adds --previousState as deprecated alias for --prev.
@@ -34,7 +34,7 @@ func addPreviousStateAlias(cmd *cobra.Command) {
 var (
 	generateShort = "Generate latest state from the environment"
 
-	generateLong = cli.LongDesc(`
+	generateLong = text.LongDesc(`
 		Generate the latest deployment state by reading on-chain data.
 
 		This command connects to the configured RPC endpoints for the environment,
@@ -45,7 +45,7 @@ var (
 		to disk, or --print to output the full JSON to stdout.
 	`)
 
-	generateExample = cli.Examples(`
+	generateExample = text.Examples(`
 		# Generate and print state for staging environment
 		myapp state generate -e staging
 

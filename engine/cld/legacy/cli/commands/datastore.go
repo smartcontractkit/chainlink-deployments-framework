@@ -26,13 +26,7 @@ func (c Commands) NewDatastoreCmds(dom domain.Domain) *cobra.Command {
 		Domain: dom,
 	})
 	if err != nil {
-		return &cobra.Command{
-			Use:   "datastore",
-			Short: "Datastore operations",
-			RunE: func(_ *cobra.Command, _ []string) error {
-				return err
-			},
-		}
+		panic(err)
 	}
 
 	return cmd

@@ -6,21 +6,21 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/flags"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/text"
 	cfgdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/domain"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/legacy/cli"
 )
 
 var (
 	syncToCatalogShort = "Sync local datastore to catalog"
 
-	syncToCatalogLong = cli.LongDesc(`
+	syncToCatalogLong = text.LongDesc(`
 		Syncs the entire local datastore to the catalog service. This is used for initial
 		migration from file-based to catalog-based datastore management.
 
 		The environment must have catalog configured (datastore type: catalog or all).
 	`)
 
-	syncToCatalogExample = cli.Examples(`
+	syncToCatalogExample = text.Examples(`
 		# Sync the entire local datastore to catalog
 		ccip datastore sync-to-catalog --environment staging
 	`)

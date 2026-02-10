@@ -30,6 +30,7 @@ package commands
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/addressbook"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/datastore"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/state"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
@@ -67,6 +68,14 @@ func (c *Commands) State(dom domain.Domain, cfg StateConfig) (*cobra.Command, er
 // Datastore creates the datastore command group.
 func (c *Commands) Datastore(dom domain.Domain) (*cobra.Command, error) {
 	return datastore.NewCommand(datastore.Config{
+		Logger: c.lggr,
+		Domain: dom,
+	})
+}
+
+// AddressBook creates the address-book command group.
+func (c *Commands) AddressBook(dom domain.Domain) (*cobra.Command, error) {
+	return addressbook.NewCommand(addressbook.Config{
 		Logger: c.lggr,
 		Domain: dom,
 	})

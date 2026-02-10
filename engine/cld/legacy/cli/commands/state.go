@@ -36,15 +36,9 @@ func (c Commands) NewStateCmds(dom domain.Domain, config StateConfig) *cobra.Com
 		ViewState: config.ViewState,
 	})
 	if err != nil {
-		// Return a command that errors on execution to maintain backward compatibility.
-		// The new API (state.NewCommand) returns error directly for proper handling.
-		return &cobra.Command{
-			Use:   "state",
-			Short: "State commands (misconfigured)",
-			RunE: func(_ *cobra.Command, _ []string) error {
-				return err
-			},
-		}
+		// Configuration errors (nil logger, missing domain, nil ViewState) are programmer bugs.
+		// Panic to fail fast and make the issue immediately visible.
+		panic(err)
 	}
 
 	return cmd
