@@ -1,5 +1,7 @@
 package analyzer
 
+import "strings"
+
 const (
 	// Magic number constants
 	MinStructFieldsForPrettyFormat = 2
@@ -12,6 +14,16 @@ type DecodedCall struct {
 	Method  string
 	Inputs  []NamedField
 	Outputs []NamedField
+}
+
+// MethodName returns the method name extracted from Method.
+func (d *DecodedCall) MethodName() string {
+	name := strings.TrimPrefix(d.Method, "function ")
+	if idx := strings.Index(name, "("); idx >= 0 {
+		name = name[:idx]
+	}
+
+	return strings.TrimSpace(name)
 }
 
 // String renders a human-readable representation of the decoded call using the default text renderer.

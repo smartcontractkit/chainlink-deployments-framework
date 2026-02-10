@@ -171,8 +171,12 @@ func (w *anchorInstructionWrapper) Inputs() []NamedField {
 
 	inputs := make([]NamedField, rImpl.NumField())
 	for i := range rImpl.NumField() {
-		inputs[i].Name = rImpl.Type().Field(i).Name
-		inputs[i].Value = YamlField{Value: rImpl.Field(i).Interface()}
+		raw := rImpl.Field(i).Interface()
+		inputs[i] = NamedField{
+			Name:     rImpl.Type().Field(i).Name,
+			Value:    YamlField{Value: raw},
+			RawValue: raw,
+		}
 	}
 
 	return inputs
