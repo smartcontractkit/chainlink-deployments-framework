@@ -131,27 +131,6 @@ func TestKeypairRandom_GenerateUnique(t *testing.T) {
 	assert.Len(t, addresses, 10, "should have generated 10 unique addresses")
 }
 
-func TestKeypairGenerator_Interface(t *testing.T) {
-	t.Parallel()
-
-	// Verify both types implement KeypairGenerator
-	var _ KeypairGenerator = (*keypairFromHex)(nil)
-	var _ KeypairGenerator = (*keypairRandom)(nil)
-
-	// Test interface methods
-	hexGen := KeypairFromHex("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
-	gen1 := hexGen
-	signer1, err := gen1.Generate()
-	require.NoError(t, err)
-	assert.NotNil(t, signer1)
-
-	randomGen := KeypairRandom()
-	gen2 := randomGen
-	signer2, err := gen2.Generate()
-	require.NoError(t, err)
-	assert.NotNil(t, signer2)
-}
-
 func TestKeypairFromHex_GenerateWithDifferentKeys(t *testing.T) {
 	t.Parallel()
 

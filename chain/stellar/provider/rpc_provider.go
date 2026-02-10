@@ -100,9 +100,5 @@ func (p *RPCChainProvider) ChainSelector() uint64 {
 }
 
 func (p *RPCChainProvider) BlockChain() chain.BlockChain {
-	if p.chain == nil {
-		return nil
-	}
-
 	return p.chain
 }
