@@ -250,9 +250,7 @@ func TestMerge_Error(t *testing.T) {
 
 	execErr := cmd.Execute()
 
-	require.Error(t, execErr)
-	assert.Contains(t, execErr.Error(), "error during address book merge")
-	assert.Contains(t, execErr.Error(), expectedError.Error())
+	require.EqualError(t, execErr, "error during address book merge for testdomain staging 0001_deploy: merge failed")
 }
 
 // TestMigrate_MissingEnvironmentFlagFails verifies required flag validation.
@@ -316,9 +314,7 @@ func TestMigrate_Error(t *testing.T) {
 
 	execErr := cmd.Execute()
 
-	require.Error(t, execErr)
-	assert.Contains(t, execErr.Error(), "error during address book migration")
-	assert.Contains(t, execErr.Error(), expectedError.Error())
+	require.EqualError(t, execErr, "error during address book migration for testdomain staging: migration failed")
 }
 
 // TestRemove_MissingEnvironmentFlagFails verifies required flag validation.
@@ -425,9 +421,7 @@ func TestRemove_Error(t *testing.T) {
 
 	execErr := cmd.Execute()
 
-	require.Error(t, execErr)
-	assert.Contains(t, execErr.Error(), "error during address book remove")
-	assert.Contains(t, execErr.Error(), expectedError.Error())
+	require.EqualError(t, execErr, "error during address book remove for testdomain staging 0001_deploy: remove failed")
 }
 
 // TestConfig_Validate verifies validation catches missing required fields.
@@ -442,9 +436,7 @@ func TestConfig_Validate(t *testing.T) {
 		cfg := Config{}
 		err := cfg.Validate()
 
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "Logger")
-		assert.Contains(t, err.Error(), "Domain")
+		require.EqualError(t, err, "addressbook.Config: missing required fields: Logger, Domain")
 	})
 
 	t.Run("missing Logger only", func(t *testing.T) {
@@ -455,9 +447,7 @@ func TestConfig_Validate(t *testing.T) {
 		}
 		err := cfg.Validate()
 
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "Logger")
-		assert.NotContains(t, err.Error(), "Domain")
+		require.EqualError(t, err, "addressbook.Config: missing required fields: Logger")
 	})
 
 	t.Run("valid config", func(t *testing.T) {
@@ -482,7 +472,6 @@ func TestNewCommand_InvalidConfigReturnsError(t *testing.T) {
 		Domain: domain.NewDomain(t.TempDir(), "testdomain"),
 	})
 
-	require.Error(t, err)
+	require.EqualError(t, err, "addressbook.Config: missing required fields: Logger")
 	assert.Nil(t, cmd)
-	assert.Contains(t, err.Error(), "Logger")
 }

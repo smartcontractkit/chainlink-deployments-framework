@@ -340,9 +340,7 @@ func TestMerge_ConfigLoadError(t *testing.T) {
 
 	execErr := cmd.Execute()
 
-	require.Error(t, execErr)
-	assert.Contains(t, execErr.Error(), "failed to load config")
-	assert.Contains(t, execErr.Error(), expectedError.Error())
+	require.EqualError(t, execErr, "failed to load config: config not found")
 }
 
 // TestMerge_CatalogLoadError verifies error handling.
@@ -373,9 +371,7 @@ func TestMerge_CatalogLoadError(t *testing.T) {
 
 	execErr := cmd.Execute()
 
-	require.Error(t, execErr)
-	assert.Contains(t, execErr.Error(), "failed to load catalog")
-	assert.Contains(t, execErr.Error(), expectedError.Error())
+	require.EqualError(t, execErr, "failed to load catalog: catalog connection failed")
 }
 
 // TestMerge_FileMergerError verifies error handling.
@@ -403,9 +399,7 @@ func TestMerge_FileMergerError(t *testing.T) {
 
 	execErr := cmd.Execute()
 
-	require.Error(t, execErr)
-	assert.Contains(t, execErr.Error(), "error during datastore merge to file")
-	assert.Contains(t, execErr.Error(), expectedError.Error())
+	require.EqualError(t, execErr, "error during datastore merge to file for testdomain staging 0001_deploy: merge failed")
 }
 
 // TestSyncToCatalog_MissingEnvironmentFlagFails verifies required flag validation.
@@ -480,9 +474,7 @@ func TestSyncToCatalog_CatalogNotConfigured(t *testing.T) {
 
 	execErr := cmd.Execute()
 
-	require.Error(t, execErr)
-	assert.Contains(t, execErr.Error(), "catalog is not configured")
-	assert.Contains(t, execErr.Error(), "staging")
+	require.EqualError(t, execErr, "catalog is not configured for environment staging (datastore type: file)")
 }
 
 // TestSyncToCatalog_SyncError verifies error handling.
@@ -516,9 +508,7 @@ func TestSyncToCatalog_SyncError(t *testing.T) {
 
 	execErr := cmd.Execute()
 
-	require.Error(t, execErr)
-	assert.Contains(t, execErr.Error(), "error syncing datastore to catalog")
-	assert.Contains(t, execErr.Error(), expectedError.Error())
+	require.EqualError(t, execErr, "error syncing datastore to catalog for testdomain staging: sync failed")
 }
 
 // TestConfig_Validate verifies validation catches missing required fields.
@@ -533,9 +523,7 @@ func TestConfig_Validate(t *testing.T) {
 		cfg := Config{}
 		err := cfg.Validate()
 
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "Logger")
-		assert.Contains(t, err.Error(), "Domain")
+		require.EqualError(t, err, "datastore.Config: missing required fields: Logger, Domain")
 	})
 
 	t.Run("missing Logger only", func(t *testing.T) {
@@ -546,9 +534,7 @@ func TestConfig_Validate(t *testing.T) {
 		}
 		err := cfg.Validate()
 
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "Logger")
-		assert.NotContains(t, err.Error(), "Domain")
+		require.EqualError(t, err, "datastore.Config: missing required fields: Logger")
 	})
 
 	t.Run("valid config", func(t *testing.T) {
@@ -573,7 +559,6 @@ func TestNewCommand_InvalidConfigReturnsError(t *testing.T) {
 		Domain: domain.NewDomain(t.TempDir(), "testdomain"),
 	})
 
-	require.Error(t, err)
+	require.EqualError(t, err, "datastore.Config: missing required fields: Logger")
 	assert.Nil(t, cmd)
-	assert.Contains(t, err.Error(), "Logger")
 }

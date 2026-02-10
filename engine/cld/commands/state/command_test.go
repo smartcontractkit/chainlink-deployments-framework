@@ -453,10 +453,7 @@ func TestConfig_Validate(t *testing.T) {
 		cfg := Config{}
 		err := cfg.Validate()
 
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "Logger")
-		assert.Contains(t, err.Error(), "Domain")
-		assert.Contains(t, err.Error(), "ViewState")
+		require.EqualError(t, err, "state.Config: missing required fields: Logger, Domain, ViewState")
 	})
 
 	t.Run("missing ViewState only", func(t *testing.T) {
@@ -464,14 +461,11 @@ func TestConfig_Validate(t *testing.T) {
 
 		cfg := Config{
 			Logger: logger.Nop(),
-			Domain: domain.NewDomain("/tmp", "test"),
+			Domain: domain.NewDomain(t.TempDir(), "test"),
 		}
 		err := cfg.Validate()
 
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "ViewState")
-		assert.NotContains(t, err.Error(), "Logger")
-		assert.NotContains(t, err.Error(), "Domain")
+		require.EqualError(t, err, "state.Config: missing required fields: ViewState")
 	})
 
 	t.Run("valid config", func(t *testing.T) {
@@ -479,7 +473,7 @@ func TestConfig_Validate(t *testing.T) {
 
 		cfg := Config{
 			Logger: logger.Nop(),
-			Domain: domain.NewDomain("/tmp", "test"),
+			Domain: domain.NewDomain(t.TempDir(), "test"),
 			ViewState: func(_ fdeployment.Environment, _ json.Marshaler) (json.Marshaler, error) {
 				return json.RawMessage(`{}`), nil
 			},
@@ -496,13 +490,12 @@ func TestNewCommand_InvalidConfigReturnsError(t *testing.T) {
 
 	cmd, err := NewCommand(Config{
 		Logger:    logger.Nop(),
-		Domain:    domain.NewDomain("/tmp", "testdomain"),
+		Domain:    domain.NewDomain(t.TempDir(), "testdomain"),
 		ViewState: nil, // Missing required field
 	})
 
-	require.Error(t, err)
+	require.EqualError(t, err, "state.Config: missing required fields: ViewState")
 	assert.Nil(t, cmd)
-	assert.Contains(t, err.Error(), "ViewState")
 }
 
 // TestNewCommand_MissingLogger verifies NewCommand returns error for missing logger.
@@ -511,13 +504,12 @@ func TestNewCommand_MissingLogger(t *testing.T) {
 
 	cmd, err := NewCommand(Config{
 		Logger: nil, // Missing required field
-		Domain: domain.NewDomain("/tmp", "testdomain"),
+		Domain: domain.NewDomain(t.TempDir(), "testdomain"),
 		ViewState: func(_ fdeployment.Environment, _ json.Marshaler) (json.Marshaler, error) {
 			return json.RawMessage(`{}`), nil
 		},
 	})
 
-	require.Error(t, err)
+	require.EqualError(t, err, "state.Config: missing required fields: Logger")
 	assert.Nil(t, cmd)
-	assert.Contains(t, err.Error(), "Logger")
 }
