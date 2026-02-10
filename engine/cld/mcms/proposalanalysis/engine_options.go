@@ -1,48 +1,21 @@
 package proposalanalysis
 
 import (
+	"time"
+
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
-	experimentalanalyzer "github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 )
+
+// Default timeout for analyzer execution
+const DefaultAnalyzerTimeout = 5 * time.Minute
 
 // EngineOption configures the analyzer engine using the functional options pattern
 type EngineOption func(*engineConfig)
 
 // engineConfig holds configuration for the analyzer engine
 type engineConfig struct {
-	evmRegistry    experimentalanalyzer.EVMABIRegistry
-	solanaRegistry experimentalanalyzer.SolanaDecoderRegistry
-	logger         logger.Logger
-}
-
-// WithEVMRegistry allows injecting an EVM ABI registry into the analyzer engine
-// The registry will be made available to all analyzers through the AnalyzerContext
-//
-// Example:
-//
-//	evmRegistry, _ := experimentalanalyzer.NewEnvironmentEVMRegistry(env, map[string]string{
-//	    "MyContract": "/path/to/abi.json",
-//	})
-//	engine := internal.NewAnalyzerEngine(analyzer.WithEVMRegistry(evmRegistry))
-func WithEVMRegistry(registry experimentalanalyzer.EVMABIRegistry) EngineOption {
-	return func(cfg *engineConfig) {
-		cfg.evmRegistry = registry
-	}
-}
-
-// WithSolanaRegistry allows injecting a Solana decoder registry into the analyzer engine
-// The registry will be made available to all analyzers through the AnalyzerContext
-//
-// Example:
-//
-//	solanaRegistry, _ := experimentalanalyzer.NewEnvironmentSolanaRegistry(env, map[string]DecodeInstructionFn{
-//	    "MyProgram": myDecoder,
-//	})
-//	engine := internal.NewAnalyzerEngine(analyzer.WithSolanaRegistry(solanaRegistry))
-func WithSolanaRegistry(registry experimentalanalyzer.SolanaDecoderRegistry) EngineOption {
-	return func(cfg *engineConfig) {
-		cfg.solanaRegistry = registry
-	}
+	logger          logger.Logger
+	analyzerTimeout time.Duration
 }
 
 // ApplyEngineOptions applies all engine options and returns the configuration
@@ -53,16 +26,6 @@ func ApplyEngineOptions(opts ...EngineOption) *engineConfig {
 		opt(cfg)
 	}
 	return cfg
-}
-
-// GetEVMRegistry returns the EVM registry from the config
-func (cfg *engineConfig) GetEVMRegistry() experimentalanalyzer.EVMABIRegistry {
-	return cfg.evmRegistry
-}
-
-// GetSolanaRegistry returns the Solana registry from the config
-func (cfg *engineConfig) GetSolanaRegistry() experimentalanalyzer.SolanaDecoderRegistry {
-	return cfg.solanaRegistry
 }
 
 // WithLogger allows injecting a logger into the analyzer engine
@@ -86,4 +49,29 @@ func (cfg *engineConfig) GetLogger() logger.Logger {
 		return logger.Nop()
 	}
 	return cfg.logger
+}
+
+// WithAnalyzerTimeout allows configuring the timeout for analyzer execution
+// Each analyzer will be given this amount of time to complete before being cancelled
+// This is important for analyzers that make network calls or other long-running operations
+// Default is 5 minutes if not specified
+//
+// Example:
+//
+//	engine := proposalanalysis.NewAnalyzerEngine(
+//	    proposalanalysis.WithAnalyzerTimeout(2 * time.Minute),
+//	)
+func WithAnalyzerTimeout(timeout time.Duration) EngineOption {
+	return func(cfg *engineConfig) {
+		cfg.analyzerTimeout = timeout
+	}
+}
+
+// GetAnalyzerTimeout returns the analyzer timeout from the config
+// Returns DefaultAnalyzerTimeout (5 minutes) if none was provided
+func (cfg *engineConfig) GetAnalyzerTimeout() time.Duration {
+	if cfg.analyzerTimeout == 0 {
+		return DefaultAnalyzerTimeout
+	}
+	return cfg.analyzerTimeout
 }

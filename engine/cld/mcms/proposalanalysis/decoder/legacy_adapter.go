@@ -73,6 +73,16 @@ func (d *decodedCall) AdditionalFields() json.RawMessage {
 	return json.RawMessage("{}")
 }
 
+func (d *decodedCall) ContractType() string {
+	// return d.call.ContractType
+	return ""
+}
+
+func (d *decodedCall) ContractVersion() string {
+	// return d.call.ContractVersion
+	return ""
+}
+
 // decodedParameter adapts legacy experimental named field
 type decodedParameter struct {
 	field experimentalanalyzer.NamedField
@@ -84,6 +94,11 @@ func (d *decodedParameter) Name() string {
 
 func (d *decodedParameter) Value() any {
 	return convertFieldValue(d.field.Value)
+}
+
+func (d *decodedParameter) Type() string {
+	// return d.field.Type
+	return ""
 }
 
 // convertNamedFields converts legacy experimental NamedFields to DecodedParameters

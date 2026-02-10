@@ -18,12 +18,14 @@ type ProposalDecoder interface {
 
 // legacyDecoder adapts the legacy experimental/analyzer package to the new decoder interface
 type legacyDecoder struct {
-	proposalContext experimentalanalyzer.ProposalContext
+	evmABIMappings map[string]string
+	solanaDecoders map[string]experimentalanalyzer.DecodeInstructionFn
 }
 
 // NewLegacyDecoder creates a decoder that wraps legacy experimental/analyzer decoding logic.
 // Use functional options to configure:
-//   - WithProposalContext: provide a custom ProposalContext (otherwise default is created)
+//   - WithEVMABIMappings: override proposal context EVM ABI mappings
+//   - WithSolanaDecoders: override proposal context Solana decoder mappings
 func NewLegacyDecoder(opts ...DecoderOption) ProposalDecoder {
 	decoder := &legacyDecoder{}
 
@@ -37,11 +39,17 @@ func NewLegacyDecoder(opts ...DecoderOption) ProposalDecoder {
 // DecoderOption is a functional option for configuring the decoder
 type DecoderOption func(*legacyDecoder)
 
-// WithProposalContext injects a custom ProposalContext for decoding.
-// If not provided, a default context will be created during decoding.
-func WithProposalContext(ctx experimentalanalyzer.ProposalContext) DecoderOption {
+// WithEVMABIMappings overrides the proposal context EVM ABI mappings used during decoding.
+func WithEVMABIMappings(mappings map[string]string) DecoderOption {
 	return func(d *legacyDecoder) {
-		d.proposalContext = ctx
+		d.evmABIMappings = mappings
+	}
+}
+
+// WithSolanaDecoders overrides the proposal context Solana decoder mappings used during decoding.
+func WithSolanaDecoders(decoders map[string]experimentalanalyzer.DecodeInstructionFn) DecoderOption {
+	return func(d *legacyDecoder) {
+		d.solanaDecoders = decoders
 	}
 }
 
@@ -50,18 +58,12 @@ func (d *legacyDecoder) Decode(
 	env deployment.Environment,
 	proposal *mcms.TimelockProposal,
 ) (types.DecodedTimelockProposal, error) {
-	// Create proposal context for legacy experimental analyzer
-	// Use the provided context if available, otherwise create a default one
-	var proposalCtx experimentalanalyzer.ProposalContext
-
-	if d.proposalContext != nil {
-		proposalCtx = d.proposalContext
-	} else {
-		var err error
-		proposalCtx, err = experimentalanalyzer.NewDefaultProposalContext(env)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create proposal context: %w", err)
-		}
+	proposalCtx, err := experimentalanalyzer.NewDefaultProposalContext(env,
+		experimentalanalyzer.WithEVMABIMappings(d.evmABIMappings),
+		experimentalanalyzer.WithSolanaDecoders(d.solanaDecoders),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create proposal context: %w", err)
 	}
 
 	// Build the report using legacy experimental analyzer

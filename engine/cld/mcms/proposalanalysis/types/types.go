@@ -53,6 +53,8 @@ type DecodedCall interface { // DecodedCall or DecodedTransaction?
 	Outputs() DecodedParameters
 	Data() []byte
 	AdditionalFields() json.RawMessage
+	ContractType() string
+	ContractVersion() string
 }
 
 type DecodedParameters []DecodedParameter
@@ -84,6 +86,8 @@ type AnalyzedCall interface {
 	Name() string
 	Inputs() AnalyzedParameters
 	Outputs() AnalyzedParameters
+	ContractType() string
+	ContractVersion() string
 }
 
 type AnalyzedParameters []AnalyzedParameter
@@ -101,14 +105,6 @@ type AnalyzerContext interface {
 	Proposal() AnalyzedProposal
 	BatchOperation() AnalyzedBatchOperation
 	Call() AnalyzedCall
-
-	// GetEVMRegistry returns the EVM ABI registry for chain-specific decoding
-	// Returns nil if no custom registry was provided
-	GetEVMRegistry() experimentalanalyzer.EVMABIRegistry
-
-	// GetSolanaRegistry returns the Solana decoder registry for chain-specific decoding
-	// Returns nil if no custom registry was provided
-	GetSolanaRegistry() experimentalanalyzer.SolanaDecoderRegistry
 
 	// GetAnnotationsFrom returns annotations from a specific analyzer at the current context level.
 	// For ProposalAnalyzers, this queries the proposal; for CallAnalyzers, the call; etc.
@@ -178,12 +174,18 @@ type Formatter interface {
 
 // ----- engine -----
 
+type DecodeInstructionFn = experimentalanalyzer.DecodeInstructionFn
+
 type AnalyzerEngine interface {
 	Run(ctx context.Context, domain cldfdomain.Domain, environmentName string, proposal *mcms.TimelockProposal) (AnalyzedProposal, error)
 
 	RegisterAnalyzer(analyzer BaseAnalyzer) error
 
 	RegisterFormatter(formatter Formatter) error
+
+	RegisterEVMABIMappings(evmABIMappings map[string]string) error
+
+	RegisterSolanaDecoders(solanaDecoders map[string]DecodeInstructionFn) error
 
 	Format(ctx context.Context, w io.Writer, formatterID string, proposal AnalyzedProposal) error
 }

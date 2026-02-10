@@ -2,6 +2,7 @@ package proposalanalysis
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -30,12 +31,35 @@ func TestEngineOptions(t *testing.T) {
 		lggr := logger.Test(t)
 		cfg := ApplyEngineOptions(
 			WithLogger(lggr),
-			WithEVMRegistry(nil),
-			WithSolanaRegistry(nil),
 		)
 
 		assert.NotNil(t, cfg.GetLogger())
-		assert.Nil(t, cfg.GetEVMRegistry())
-		assert.Nil(t, cfg.GetSolanaRegistry())
+	})
+
+	t.Run("WithAnalyzerTimeout option sets timeout", func(t *testing.T) {
+		customTimeout := 2 * time.Minute
+		cfg := ApplyEngineOptions(WithAnalyzerTimeout(customTimeout))
+
+		assert.Equal(t, customTimeout, cfg.GetAnalyzerTimeout())
+	})
+
+	t.Run("GetAnalyzerTimeout returns default when not set", func(t *testing.T) {
+		cfg := ApplyEngineOptions()
+
+		timeout := cfg.GetAnalyzerTimeout()
+		assert.Equal(t, DefaultAnalyzerTimeout, timeout)
+		assert.Equal(t, 5*time.Minute, timeout)
+	})
+
+	t.Run("all options can be combined including timeout", func(t *testing.T) {
+		lggr := logger.Test(t)
+		customTimeout := 1 * time.Minute
+		cfg := ApplyEngineOptions(
+			WithLogger(lggr),
+			WithAnalyzerTimeout(customTimeout),
+		)
+
+		assert.NotNil(t, cfg.GetLogger())
+		assert.Equal(t, customTimeout, cfg.GetAnalyzerTimeout())
 	})
 }

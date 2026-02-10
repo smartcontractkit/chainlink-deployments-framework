@@ -6,6 +6,7 @@ import (
 	"io"
 	"maps"
 	"slices"
+	"time"
 
 	"github.com/samber/lo"
 	"github.com/smartcontractkit/mcms"
@@ -18,8 +19,8 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/formatter"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/internal"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/types"
-	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 	experimentalanalyzer "github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
 type analyzerEngine struct {
@@ -28,28 +29,33 @@ type analyzerEngine struct {
 	callAnalyzers           []types.CallAnalyzer
 	parameterAnalyzers      []types.ParameterAnalyzer
 
+	evmABIMappings map[string]string
+	solanaDecoders map[string]experimentalanalyzer.DecodeInstructionFn
+
 	decoder           decoder.ProposalDecoder
 	formatterRegistry *formatter.FormatterRegistry
-	evmRegistry       experimentalanalyzer.EVMABIRegistry
-	solanaRegistry    experimentalanalyzer.SolanaDecoderRegistry
-	executionContext  types.ExecutionContext // Store for formatters
-	logger            logger.Logger
+
+	executionContext types.ExecutionContext // Store for formatters
+	logger           logger.Logger
+	analyzerTimeout  time.Duration
 }
 
 var _ types.AnalyzerEngine = &analyzerEngine{}
 
 // NewAnalyzerEngine creates a new analyzer engine
-// Options can be provided to customize the engine behavior, such as injecting registries and logger
+// Options can be provided to customize the engine behavior, such as injecting a logger and timeouts.
+// Chain-specific EVM ABI mappings and Solana decoders are registered via RegisterEVMABIMappings and RegisterSolanaDecoders.
 func NewAnalyzerEngine(opts ...EngineOption) types.AnalyzerEngine {
 	// Apply options to get configuration
 	cfg := ApplyEngineOptions(opts...)
 
 	engine := &analyzerEngine{
+		evmABIMappings:    make(map[string]string),
+		solanaDecoders:    make(map[string]experimentalanalyzer.DecodeInstructionFn),
 		decoder:           decoder.NewLegacyDecoder(),
 		formatterRegistry: formatter.NewFormatterRegistry(),
-		evmRegistry:       cfg.GetEVMRegistry(),
-		solanaRegistry:    cfg.GetSolanaRegistry(),
 		logger:            cfg.GetLogger(),
+		analyzerTimeout:   cfg.GetAnalyzerTimeout(),
 	}
 	return engine
 }
@@ -64,11 +70,16 @@ func (ae *analyzerEngine) Run(
 	chainSelectors := lo.Map(mcmsChainSelectors, func(s mcmstypes.ChainSelector, _ int) uint64 { return uint64(s) })
 	env, err := cldfenvironment.Load(ctx, domain, environmentName,
 		cldfenvironment.OnlyLoadChainsFor(chainSelectors),
-		// cldfenvironment.WithLogger(lggr),
+		cldfenvironment.WithLogger(ae.logger),
 		cldfenvironment.WithoutJD())
 	if err != nil {
 		return nil, fmt.Errorf("failed to load environment: %w", err)
 	}
+
+	ae.decoder = decoder.NewLegacyDecoder(
+		decoder.WithEVMABIMappings(ae.evmABIMappings),
+		decoder.WithSolanaDecoders(ae.solanaDecoders),
+	)
 
 	// Decode proposal
 	decodedProposal, err := ae.decoder.Decode(ctx, env, proposal)
@@ -76,10 +87,7 @@ func (ae *analyzerEngine) Run(
 		return nil, fmt.Errorf("failed to decode timelock proposal: %w", err)
 	}
 
-	actx := &analyzerContext{
-		evmRegistry:    ae.evmRegistry,
-		solanaRegistry: ae.solanaRegistry,
-	}
+	actx := &analyzerContext{}
 	ectx := executionContext{
 		domain:          domain,
 		environmentName: environmentName,
@@ -190,6 +198,48 @@ func (ae *analyzerEngine) RegisterFormatter(f types.Formatter) error {
 	return ae.formatterRegistry.Register(f)
 }
 
+func (ae *analyzerEngine) RegisterEVMABIMappings(evmABIMappings map[string]string) error {
+	if len(evmABIMappings) == 0 {
+		return fmt.Errorf("evm ABI mappings cannot be empty")
+	}
+
+	for key, abi := range evmABIMappings {
+		if key == "" {
+			return fmt.Errorf("evm ABI mapping key cannot be empty")
+		}
+		if abi == "" {
+			return fmt.Errorf("evm ABI mapping value cannot be empty for key %q", key)
+		}
+		if _, exists := ae.evmABIMappings[key]; exists {
+			return fmt.Errorf("evm ABI mapping for key %q is already registered", key)
+		}
+		ae.evmABIMappings[key] = abi
+	}
+
+	return nil
+}
+
+func (ae *analyzerEngine) RegisterSolanaDecoders(solanaDecoders map[string]experimentalanalyzer.DecodeInstructionFn) error {
+	if len(solanaDecoders) == 0 {
+		return fmt.Errorf("solana decoders cannot be empty")
+	}
+
+	for key, decodeFn := range solanaDecoders {
+		if key == "" {
+			return fmt.Errorf("solana decoder key cannot be empty")
+		}
+		if decodeFn == nil {
+			return fmt.Errorf("solana decoder cannot be nil for key %q", key)
+		}
+		if _, exists := ae.solanaDecoders[key]; exists {
+			return fmt.Errorf("solana decoder for key %q is already registered", key)
+		}
+		ae.solanaDecoders[key] = decodeFn
+	}
+
+	return nil
+}
+
 // trackAnnotations wraps annotations with analyzer ID tracking.
 // This allows annotations to be queried by analyzer ID using GetAnnotationsByAnalyzer.
 func trackAnnotations(annotations types.Annotations, analyzerID string) types.Annotations {
@@ -262,9 +312,17 @@ func (ae *analyzerEngine) analyzeProposal(
 			continue
 		}
 
-		annotations, err := proposalAnalyzer.Analyze(ctx, req, decodedProposal)
+		// Execute analyzer with timeout
+		analyzerCtx, cancel := context.WithTimeout(ctx, ae.analyzerTimeout)
+		annotations, err := proposalAnalyzer.Analyze(analyzerCtx, req, decodedProposal)
+		cancel() // Always cancel to free resources
+
 		if err != nil {
-			ae.logger.Errorw("Proposal analyzer failed", "analyzerID", proposalAnalyzer.ID(), "error", err)
+			if analyzerCtx.Err() == context.DeadlineExceeded {
+				ae.logger.Errorw("Proposal analyzer timed out", "analyzerID", proposalAnalyzer.ID(), "timeout", ae.analyzerTimeout)
+			} else {
+				ae.logger.Errorw("Proposal analyzer failed", "analyzerID", proposalAnalyzer.ID(), "error", err)
+			}
 			continue
 		}
 		// Track which analyzer created the annotations
@@ -332,9 +390,17 @@ func (ae *analyzerEngine) analyzeBatchOperation(
 			continue
 		}
 
-		annotations, err := batchOpAnalyzer.Analyze(ctx, req, decodedBatchOperation)
+		// Execute analyzer with timeout
+		analyzerCtx, cancel := context.WithTimeout(ctx, ae.analyzerTimeout)
+		annotations, err := batchOpAnalyzer.Analyze(analyzerCtx, req, decodedBatchOperation)
+		cancel() // Always cancel to free resources
+
 		if err != nil {
-			ae.logger.Errorw("Batch operation analyzer failed", "analyzerID", batchOpAnalyzer.ID(), "chainSelector", decodedBatchOperation.ChainSelector(), "error", err)
+			if analyzerCtx.Err() == context.DeadlineExceeded {
+				ae.logger.Errorw("Batch operation analyzer timed out", "analyzerID", batchOpAnalyzer.ID(), "chainSelector", decodedBatchOperation.ChainSelector(), "timeout", ae.analyzerTimeout)
+			} else {
+				ae.logger.Errorw("Batch operation analyzer failed", "analyzerID", batchOpAnalyzer.ID(), "chainSelector", decodedBatchOperation.ChainSelector(), "error", err)
+			}
 			continue
 		}
 		trackedAnnotations := trackAnnotations(annotations, batchOpAnalyzer.ID())
@@ -413,9 +479,17 @@ func (ae *analyzerEngine) analyzeCall(
 			continue
 		}
 
-		annotations, err := callAnalyzer.Analyze(ctx, req, decodedCall)
+		// Execute analyzer with timeout
+		analyzerCtx, cancel := context.WithTimeout(ctx, ae.analyzerTimeout)
+		annotations, err := callAnalyzer.Analyze(analyzerCtx, req, decodedCall)
+		cancel() // Always cancel to free resources
+
 		if err != nil {
-			ae.logger.Errorw("Call analyzer failed", "analyzerID", callAnalyzer.ID(), "callName", decodedCall.Name(), "error", err)
+			if analyzerCtx.Err() == context.DeadlineExceeded {
+				ae.logger.Errorw("Call analyzer timed out", "analyzerID", callAnalyzer.ID(), "callName", decodedCall.Name(), "timeout", ae.analyzerTimeout)
+			} else {
+				ae.logger.Errorw("Call analyzer failed", "analyzerID", callAnalyzer.ID(), "callName", decodedCall.Name(), "error", err)
+			}
 			continue
 		}
 		trackedAnnotations := trackAnnotations(annotations, callAnalyzer.ID())
@@ -467,9 +541,17 @@ func (ae *analyzerEngine) analyzeParameter(
 			continue
 		}
 
-		annotations, err := paramAnalyzer.Analyze(ctx, req, decodedParameter)
+		// Execute analyzer with timeout
+		analyzerCtx, cancel := context.WithTimeout(ctx, ae.analyzerTimeout)
+		annotations, err := paramAnalyzer.Analyze(analyzerCtx, req, decodedParameter)
+		cancel() // Always cancel to free resources
+
 		if err != nil {
-			ae.logger.Errorw("Parameter analyzer failed", "analyzerID", paramAnalyzer.ID(), "paramName", decodedParameter.Name(), "paramType", decodedParameter.Type(), "error", err)
+			if analyzerCtx.Err() == context.DeadlineExceeded {
+				ae.logger.Errorw("Parameter analyzer timed out", "analyzerID", paramAnalyzer.ID(), "paramName", decodedParameter.Name(), "paramType", decodedParameter.Type(), "timeout", ae.analyzerTimeout)
+			} else {
+				ae.logger.Errorw("Parameter analyzer failed", "analyzerID", paramAnalyzer.ID(), "paramName", decodedParameter.Name(), "paramType", decodedParameter.Type(), "error", err)
+			}
 			continue
 		}
 		trackedAnnotations := trackAnnotations(annotations, paramAnalyzer.ID())
@@ -526,6 +608,14 @@ func (a analyzedCall) Inputs() types.AnalyzedParameters {
 
 func (a analyzedCall) Outputs() types.AnalyzedParameters {
 	return a.outputs
+}
+
+func (a analyzedCall) ContractType() string {
+	return a.decodedCall.ContractType()
+}
+
+func (a analyzedCall) ContractVersion() string {
+	return a.decodedCall.ContractVersion()
 }
 
 // ---------------------------------------------------------------------
