@@ -93,25 +93,3 @@ func (a annotated) GetAnnotationsByAnalyzer(analyzerID string) types.Annotations
 	}
 	return result
 }
-
-// helpers
-
-// NewInfoAnnotation creates an INFO annotation
-func NewInfoAnnotation(name string, value any) types.Annotation {
-	return NewAnnotation(name, "INFO", value)
-}
-
-// NewWarnAnnotation creates a WARN annotation
-func NewWarnAnnotation(name string, value any) types.Annotation {
-	return NewAnnotation(name, "WARN", value)
-}
-
-// NewErrorAnnotation creates an ERROR annotation
-func NewErrorAnnotation(name string, value any) types.Annotation {
-	return NewAnnotation(name, "ERROR", value)
-}
-
-// NewDiffAnnotation creates a DIFF annotation
-func NewDiffAnnotation(name string, value any) types.Annotation {
-	return NewAnnotation(name, "DIFF", value)
-}

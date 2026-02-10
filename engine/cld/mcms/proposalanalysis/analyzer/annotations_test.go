@@ -120,13 +120,3 @@ func TestAnnotations(t *testing.T) {
 		assert.Len(t, gasAnalyzerAnnotations, 2)
 	})
 }
-
-func TestAnnotationsImplementInterfaces(t *testing.T) {
-	t.Run("annotation implements Annotation", func(t *testing.T) {
-		var _ analyzer.Annotation = &annotation{}
-	})
-
-	t.Run("annotated implements Annotated", func(t *testing.T) {
-		var _ analyzer.Annotated = &annotated{}
-	})
-}
