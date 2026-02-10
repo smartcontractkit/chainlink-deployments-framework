@@ -54,6 +54,9 @@ func Test_newChainLoaders(t *testing.T) {
 				Ton: cfgenv.TonConfig{
 					DeployerKey: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
 				},
+				Stellar: cfgenv.StellarConfig{
+					DeployerKey: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+				},
 			},
 			wantLoaders: []string{
 				chainsel.FamilyEVM,
@@ -62,6 +65,7 @@ func Test_newChainLoaders(t *testing.T) {
 				chainsel.FamilyAptos,
 				chainsel.FamilySui,
 				chainsel.FamilyTon,
+				chainsel.FamilyStellar,
 			},
 		},
 		{
@@ -135,11 +139,12 @@ func Test_LoadChains(t *testing.T) {
 	var (
 		fakeSrv = newFakeRPCServer(t)
 
-		evmSelector    = chainsel.TEST_1000.Selector
-		solanaSelector = chainsel.TEST_22222222222222222222222222222222222222222222.Selector
-		aptosSelector  = chainsel.APTOS_LOCALNET.Selector
-		tronSelector   = chainsel.TRON_TESTNET_NILE.Selector
-		suiSelector    = chainsel.SUI_LOCALNET.Selector
+		evmSelector     = chainsel.TEST_1000.Selector
+		solanaSelector  = chainsel.TEST_22222222222222222222222222222222222222222222.Selector
+		aptosSelector   = chainsel.APTOS_LOCALNET.Selector
+		tronSelector    = chainsel.TRON_TESTNET_NILE.Selector
+		suiSelector     = chainsel.SUI_LOCALNET.Selector
+		stellarSelector = chainsel.STELLAR_TESTNET.Selector
 		// tonSelector    = chainsel.TON_TESTNET.Selector
 	)
 
@@ -204,6 +209,22 @@ func Test_LoadChains(t *testing.T) {
 				},
 			},
 		},
+		{
+			Type:          cfgnet.NetworkTypeTestnet,
+			ChainSelector: stellarSelector,
+			RPCs: []cfgnet.RPC{
+				{
+					RPCName:            "stellar_rpc",
+					PreferredURLScheme: "http",
+					HTTPURL:            "http://stellar-rpc",
+					WSURL:              "",
+				},
+			},
+			Metadata: cfgnet.StellarMetadata{
+				NetworkPassphrase: "Test SDF Network ; September 2015",
+				FriendbotURL:      "https://friendbot.stellar.org",
+			},
+		},
 		// TON API Client requires to connect to a liteserver on initialization,
 		// however, testing with actual liteserver could be fragile, disabling test for now:
 		// {
@@ -257,6 +278,9 @@ func Test_LoadChains(t *testing.T) {
 			DeployerKey:   "0b1f7dbb19112fdac53344cf49731e41bfc420ac6a71d38c89fb38d04a6563d99aa3d1fa430550e8de5171ec55453b4e048c1701cadfa56726d489c56d67bab3", // Mock private key
 			WalletVersion: "V4R2",
 		},
+		Stellar: cfgenv.StellarConfig{
+			DeployerKey: "0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+		},
 	}
 
 	tests := []struct {
@@ -271,8 +295,8 @@ func Test_LoadChains(t *testing.T) {
 			name:              "loads all valid chains",
 			giveNetworkConfig: networksConfig,
 			giveOnchainConfig: onchainConfig,
-			giveSelectors:     []uint64{evmSelector, solanaSelector, aptosSelector, tronSelector, suiSelector},
-			wantCount:         5,
+			giveSelectors:     []uint64{evmSelector, solanaSelector, aptosSelector, tronSelector, suiSelector, stellarSelector},
+			wantCount:         6,
 		},
 		{
 			name:              "fails with unknown selector",
@@ -563,6 +587,206 @@ func Test_chainLoaderSui_Load(t *testing.T) {
 
 				assert.Equal(t, tt.giveSelector, chain.ChainSelector())
 				assert.Equal(t, "sui", chain.Family())
+			}
+		})
+	}
+}
+
+func Test_chainLoaderStellar_Load(t *testing.T) {
+	t.Parallel()
+
+	stellarSelector := chainsel.STELLAR_TESTNET.Selector
+
+	networkCfg := cfgnet.NewConfig([]cfgnet.Network{
+		{
+			Type:          cfgnet.NetworkTypeTestnet,
+			ChainSelector: stellarSelector,
+			RPCs: []cfgnet.RPC{
+				{
+					RPCName:            "stellar_testnet_rpc",
+					PreferredURLScheme: "http",
+					HTTPURL:            "https://soroban-testnet.stellar.org",
+					WSURL:              "", // Not used for Stellar
+				},
+			},
+			Metadata: cfgnet.StellarMetadata{
+				NetworkPassphrase: "Test SDF Network ; September 2015",
+				FriendbotURL:      "https://friendbot.stellar.org",
+			},
+		},
+		{
+			Type:          cfgnet.NetworkTypeTestnet,
+			ChainSelector: 999999, // Different chain for testing
+			RPCs: []cfgnet.RPC{
+				{
+					RPCName:            "other_chain_rpc",
+					PreferredURLScheme: "http",
+					HTTPURL:            "https://other.rpc.com",
+					WSURL:              "",
+				},
+			},
+		},
+	})
+
+	onchainConfig := cfgenv.OnchainConfig{
+		Stellar: cfgenv.StellarConfig{
+			DeployerKey: "0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+		},
+	}
+
+	tests := []struct {
+		name              string
+		giveSelector      uint64
+		giveNetworkConfig *cfgnet.Config
+		giveOnchainConfig cfgenv.OnchainConfig
+		wantErr           string
+	}{
+		{
+			name:              "successful load",
+			giveSelector:      stellarSelector,
+			giveNetworkConfig: networkCfg,
+			giveOnchainConfig: onchainConfig,
+		},
+		{
+			name:              "network not found",
+			giveSelector:      88888888, // Non-existent chain selector
+			giveNetworkConfig: networkCfg,
+			giveOnchainConfig: onchainConfig,
+			wantErr:           "not found in configuration",
+		},
+		{
+			name:         "no RPCs configured",
+			giveSelector: 777777,
+			giveNetworkConfig: cfgnet.NewConfig([]cfgnet.Network{
+				{
+					Type:          cfgnet.NetworkTypeTestnet,
+					ChainSelector: 777777,
+					RPCs:          []cfgnet.RPC{},
+				},
+			}),
+			giveOnchainConfig: onchainConfig,
+			wantErr:           "no RPCs found for chain selector: 777777",
+		},
+		{
+			name:         "missing RPC HTTP URL",
+			giveSelector: 666666,
+			giveNetworkConfig: cfgnet.NewConfig([]cfgnet.Network{
+				{
+					Type:          cfgnet.NetworkTypeTestnet,
+					ChainSelector: 666666,
+					RPCs: []cfgnet.RPC{
+						{
+							RPCName:            "stellar_rpc",
+							PreferredURLScheme: "http",
+							HTTPURL:            "", // Empty HTTP URL
+							WSURL:              "",
+						},
+					},
+					Metadata: cfgnet.StellarMetadata{
+						NetworkPassphrase: "Test Network",
+						FriendbotURL:      "https://friendbot.stellar.org",
+					},
+				},
+			}),
+			giveOnchainConfig: onchainConfig,
+			wantErr:           "RPC http_url is required",
+		},
+		{
+			name:         "missing metadata",
+			giveSelector: 555555,
+			giveNetworkConfig: cfgnet.NewConfig([]cfgnet.Network{
+				{
+					Type:          cfgnet.NetworkTypeTestnet,
+					ChainSelector: 555555,
+					RPCs: []cfgnet.RPC{
+						{
+							RPCName:            "stellar_rpc",
+							PreferredURLScheme: "http",
+							HTTPURL:            "https://soroban-testnet.stellar.org",
+							WSURL:              "",
+						},
+					},
+					// No Metadata field at all
+				},
+			}),
+			giveOnchainConfig: onchainConfig,
+			wantErr:           "decode metadata",
+		},
+		{
+			name:         "missing network passphrase in metadata",
+			giveSelector: 444444,
+			giveNetworkConfig: cfgnet.NewConfig([]cfgnet.Network{
+				{
+					Type:          cfgnet.NetworkTypeTestnet,
+					ChainSelector: 444444,
+					RPCs: []cfgnet.RPC{
+						{
+							RPCName:            "stellar_rpc",
+							PreferredURLScheme: "http",
+							HTTPURL:            "https://soroban-testnet.stellar.org",
+							WSURL:              "",
+						},
+					},
+					Metadata: cfgnet.StellarMetadata{
+						NetworkPassphrase: "", // Empty passphrase
+						FriendbotURL:      "https://friendbot.stellar.org",
+					},
+				},
+			}),
+			giveOnchainConfig: onchainConfig,
+			wantErr:           "network passphrase is required",
+		},
+		{
+			name:         "missing friendbot URL in metadata - allowed since optional",
+			giveSelector: 333333,
+			giveNetworkConfig: cfgnet.NewConfig([]cfgnet.Network{
+				{
+					Type:          cfgnet.NetworkTypeTestnet,
+					ChainSelector: 333333,
+					RPCs: []cfgnet.RPC{
+						{
+							RPCName:            "stellar_rpc",
+							PreferredURLScheme: "http",
+							HTTPURL:            "https://soroban-testnet.stellar.org",
+							WSURL:              "",
+						},
+					},
+					Metadata: cfgnet.StellarMetadata{
+						NetworkPassphrase: "Test SDF Network ; September 2015",
+						FriendbotURL:      "", // Empty friendbot URL (optional)
+					},
+				},
+			}),
+			giveOnchainConfig: onchainConfig,
+			wantErr:           "", // FriendbotURL is optional
+		},
+		// Note: Empty deployer key test is omitted because Stellar RPC provider
+		// doesn't validate the deployer key at initialization time.
+		// It would only fail when trying to use the key for actual operations.
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			loader := newChainLoaderStellar(tt.giveNetworkConfig, tt.giveOnchainConfig)
+			require.NotNil(t, loader)
+
+			ctx := t.Context()
+
+			chain, err := loader.Load(ctx, tt.giveSelector)
+
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				require.ErrorContains(t, err, tt.wantErr)
+				assert.Nil(t, chain)
+			} else {
+				require.NoError(t, err)
+				require.NotNil(t, chain)
+
+				assert.Equal(t, tt.giveSelector, chain.ChainSelector())
+				// Note: Family() returns empty string for test selectors not in chain-selectors
+				// Once STELLAR_LOCALNET is fully supported, we can use it and assert the family
 			}
 		})
 	}

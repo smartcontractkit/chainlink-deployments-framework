@@ -18,6 +18,7 @@ import (
 	evmprov "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider"
 	evmclient "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider/rpcclient"
 	solanaprov "github.com/smartcontractkit/chainlink-deployments-framework/chain/solana/provider"
+	stellarprov "github.com/smartcontractkit/chainlink-deployments-framework/chain/stellar/provider"
 	suiprov "github.com/smartcontractkit/chainlink-deployments-framework/chain/sui/provider"
 	tonprov "github.com/smartcontractkit/chainlink-deployments-framework/chain/ton/provider"
 	tronprov "github.com/smartcontractkit/chainlink-deployments-framework/chain/tron/provider"
@@ -202,6 +203,12 @@ func newChainLoaders(
 		lggr.Info("Skipping Sui chains, no private key found in secrets")
 	}
 
+	if cfg.Stellar.DeployerKey != "" {
+		loaders[chainsel.FamilyStellar] = newChainLoaderStellar(networks, cfg)
+	} else {
+		lggr.Info("Skipping Stellar chains, no private key found in secrets")
+	}
+
 	if cfg.Ton.DeployerKey != "" {
 		loaders[chainsel.FamilyTon] = newChainLoaderTon(networks, cfg)
 	} else {
@@ -217,6 +224,7 @@ var (
 	_ ChainLoader = &chainLoaderEVM{}
 	_ ChainLoader = &chainLoaderTron{}
 	_ ChainLoader = &chainLoaderSui{}
+	_ ChainLoader = &chainLoaderStellar{}
 )
 
 // ChainLoader is an interface that defines the methods for loading a chain.
@@ -319,6 +327,53 @@ func (l *chainLoaderSui) Load(ctx context.Context, selector uint64) (fchain.Bloc
 	).Initialize(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Sui chain %d: %w", selector, err)
+	}
+
+	return c, nil
+}
+
+// chainLoaderStellar implements the ChainLoader interface for Stellar.
+type chainLoaderStellar struct {
+	*baseChainLoader
+}
+
+// newChainLoaderStellar creates a new chain loader for Stellar.
+func newChainLoaderStellar(
+	networks *cfgnet.Config, cfg cfgenv.OnchainConfig,
+) *chainLoaderStellar {
+	return &chainLoaderStellar{
+		baseChainLoader: newBaseChainLoader(networks, cfg),
+	}
+}
+
+// Load loads a Stellar Chain for a selector.
+// RPC URL (Soroban) comes from network.RPCs like other chains; passphrase and Friendbot URL from metadata.
+func (l *chainLoaderStellar) Load(ctx context.Context, selector uint64) (fchain.BlockChain, error) {
+	network, err := l.getNetwork(selector)
+	if err != nil {
+		return nil, err
+	}
+
+	rpcURL := network.RPCs[0].HTTPURL
+	if rpcURL == "" {
+		return nil, fmt.Errorf("stellar network %d: RPC http_url is required", selector)
+	}
+
+	md, err := cfgnet.DecodeMetadata[cfgnet.StellarMetadata](network.Metadata)
+	if err != nil {
+		return nil, fmt.Errorf("stellar network %d: decode metadata: %w", selector, err)
+	}
+
+	c, err := stellarprov.NewRPCChainProvider(selector,
+		stellarprov.RPCChainProviderConfig{
+			NetworkPassphrase:  md.NetworkPassphrase,
+			FriendbotURL:       md.FriendbotURL,
+			SorobanRPCURL:      rpcURL,
+			DeployerKeypairGen: stellarprov.KeypairFromHex(l.cfg.Stellar.DeployerKey),
+		},
+	).Initialize(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize Stellar chain %d: %w", selector, err)
 	}
 
 	return c, nil

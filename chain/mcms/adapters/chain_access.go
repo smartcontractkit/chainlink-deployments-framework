@@ -6,12 +6,14 @@ import (
 	solrpc "github.com/gagliardetto/solana-go/rpc"
 	"github.com/smartcontractkit/mcms/sdk/evm"
 	mcmssui "github.com/smartcontractkit/mcms/sdk/sui"
+	"github.com/stellar/go-stellar-sdk/clients/rpcclient"
 	"github.com/xssnick/tonutils-go/ton"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	cldfaptos "github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos"
 	cldfevm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	cldfsol "github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
+	cldfstellar "github.com/smartcontractkit/chainlink-deployments-framework/chain/stellar"
 	cldfsui "github.com/smartcontractkit/chainlink-deployments-framework/chain/sui"
 	cldfton "github.com/smartcontractkit/chainlink-deployments-framework/chain/ton"
 )
@@ -23,6 +25,7 @@ type ChainsFetcher interface {
 	AptosChains() map[uint64]cldfaptos.Chain
 	SuiChains() map[uint64]cldfsui.Chain
 	TonChains() map[uint64]cldfton.Chain
+	StellarChains() map[uint64]cldfstellar.Chain
 }
 
 // ChainAccessAdapter adapts CLDF's chain.BlockChains into a selector + lookup style API.
@@ -84,6 +87,16 @@ func (a *ChainAccessAdapter) SuiClient(selector uint64) (sui.ISuiAPI, mcmssui.Su
 // TonClient returns the Ton API client for the given selector.
 func (a *ChainAccessAdapter) TonClient(selector uint64) (*ton.APIClient, bool) {
 	ch, ok := a.inner.TonChains()[selector]
+	if !ok {
+		return nil, false
+	}
+
+	return ch.Client, true
+}
+
+// StellarClient returns the Stellar RPC client for the given selector.
+func (a *ChainAccessAdapter) StellarClient(selector uint64) (*rpcclient.Client, bool) {
+	ch, ok := a.inner.StellarChains()[selector]
 	if !ok {
 		return nil, false
 	}

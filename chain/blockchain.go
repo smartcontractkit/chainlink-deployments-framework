@@ -13,6 +13,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/canton"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/stellar"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/sui"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/ton"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron"
@@ -27,6 +28,7 @@ var _ BlockChain = sui.Chain{}
 var _ BlockChain = ton.Chain{}
 var _ BlockChain = tron.Chain{}
 var _ BlockChain = canton.Chain{}
+var _ BlockChain = stellar.Chain{}
 
 // NetworkType represents the type of network, which can either be mainnet or testnet.
 type NetworkType string
@@ -163,6 +165,11 @@ func (b BlockChains) TronChains() map[uint64]tron.Chain {
 
 func (b BlockChains) CantonChains() map[uint64]canton.Chain {
 	return getChainsByType[canton.Chain, *canton.Chain](b)
+}
+
+// StellarChains returns a map of all Stellar chains with their selectors.
+func (b BlockChains) StellarChains() map[uint64]stellar.Chain {
+	return getChainsByType[stellar.Chain, *stellar.Chain](b)
 }
 
 // ChainSelectorsOption defines a function type for configuring ChainSelectors
