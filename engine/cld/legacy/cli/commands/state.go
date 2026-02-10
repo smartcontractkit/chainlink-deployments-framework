@@ -36,21 +36,9 @@ func (c Commands) NewStateCmds(dom domain.Domain, config StateConfig) *cobra.Com
 		ViewState: config.ViewState,
 	})
 	if err != nil {
-		// Return an error command that surfaces the configuration error on any invocation.
-		// PersistentPreRunE ensures subcommands also return the real error.
-		// RunE handles direct invocation of the root command.
-		errCmd := &cobra.Command{
-			Use:   "state",
-			Short: "State commands (misconfigured)",
-			RunE: func(_ *cobra.Command, _ []string) error {
-				return err
-			},
-		}
-		errCmd.PersistentPreRunE = func(_ *cobra.Command, _ []string) error {
-			return err
-		}
-
-		return errCmd
+		// Configuration errors (nil logger, missing domain, nil ViewState) are programmer bugs.
+		// Panic to fail fast and make the issue immediately visible.
+		panic(err)
 	}
 
 	return cmd

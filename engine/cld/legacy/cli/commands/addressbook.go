@@ -26,21 +26,7 @@ func (c Commands) NewAddressBookCmds(dom domain.Domain) *cobra.Command {
 		Domain: dom,
 	})
 	if err != nil {
-		// Return an error command that surfaces the configuration error on any invocation.
-		// PersistentPreRunE ensures subcommands also return the real error.
-		// RunE handles direct invocation of the root command.
-		errCmd := &cobra.Command{
-			Use:   "address-book",
-			Short: "Address book operations (misconfigured)",
-			RunE: func(_ *cobra.Command, _ []string) error {
-				return err
-			},
-		}
-		errCmd.PersistentPreRunE = func(_ *cobra.Command, _ []string) error {
-			return err
-		}
-
-		return errCmd
+		panic(err)
 	}
 
 	return cmd

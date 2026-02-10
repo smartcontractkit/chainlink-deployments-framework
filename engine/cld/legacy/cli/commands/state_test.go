@@ -90,19 +90,15 @@ func TestStateGenerate_MissingEnvFails(t *testing.T) {
 	require.ErrorContains(t, err, `required flag(s) "environment" not set`)
 }
 
-func TestNewStateCmds_InvalidConfigReturnsErrorOnExecute(t *testing.T) {
+func TestNewStateCmds_InvalidConfigPanics(t *testing.T) {
 	t.Parallel()
 
 	c := NewCommands(logger.Nop())
 	dom := domain.NewDomain(t.TempDir(), "foo")
 	cfg := StateConfig{ViewState: nil} // Missing required field
 
-	// Command is created (backward compatible)
-	cmd := c.NewStateCmds(dom, cfg)
-	require.NotNil(t, cmd)
-
-	// But errors when executed
-	err := cmd.Execute()
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "ViewState")
+	// Configuration errors (nil ViewState) cause a panic
+	require.Panics(t, func() {
+		c.NewStateCmds(dom, cfg)
+	})
 }
