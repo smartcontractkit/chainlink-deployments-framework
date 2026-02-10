@@ -18,6 +18,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/formatter"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/internal"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/types"
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 	experimentalanalyzer "github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 )
 
@@ -32,12 +33,13 @@ type analyzerEngine struct {
 	evmRegistry       experimentalanalyzer.EVMABIRegistry
 	solanaRegistry    experimentalanalyzer.SolanaDecoderRegistry
 	executionContext  types.ExecutionContext // Store for formatters
+	logger            logger.Logger
 }
 
 var _ types.AnalyzerEngine = &analyzerEngine{}
 
 // NewAnalyzerEngine creates a new analyzer engine
-// Options can be provided to customize the engine behavior, such as injecting registries
+// Options can be provided to customize the engine behavior, such as injecting registries and logger
 func NewAnalyzerEngine(opts ...EngineOption) types.AnalyzerEngine {
 	// Apply options to get configuration
 	cfg := ApplyEngineOptions(opts...)
@@ -47,6 +49,7 @@ func NewAnalyzerEngine(opts ...EngineOption) types.AnalyzerEngine {
 		formatterRegistry: formatter.NewFormatterRegistry(),
 		evmRegistry:       cfg.GetEVMRegistry(),
 		solanaRegistry:    cfg.GetSolanaRegistry(),
+		logger:            cfg.GetLogger(),
 	}
 	return engine
 }
@@ -220,7 +223,7 @@ func (ae *analyzerEngine) analyzeProposal(
 	for _, batchOp := range decodedProposal.BatchOperations() {
 		analyzedBatchOp, err := ae.analyzeBatchOperation(ctx, actx, ectx, batchOp)
 		if err != nil {
-			// log error but continue
+			ae.logger.Errorw("Failed to analyze batch operation", "chainSelector", batchOp.ChainSelector(), "error", err)
 			continue
 		}
 		batchOps = append(batchOps, analyzedBatchOp)
@@ -261,7 +264,7 @@ func (ae *analyzerEngine) analyzeProposal(
 
 		annotations, err := proposalAnalyzer.Analyze(ctx, req, decodedProposal)
 		if err != nil {
-			// log error but continue with other analyzers
+			ae.logger.Errorw("Proposal analyzer failed", "analyzerID", proposalAnalyzer.ID(), "error", err)
 			continue
 		}
 		// Track which analyzer created the annotations
@@ -290,7 +293,7 @@ func (ae *analyzerEngine) analyzeBatchOperation(
 	for _, call := range decodedBatchOperation.Calls() {
 		analyzedCall, err := ae.analyzeCall(ctx, actx, ectx, call)
 		if err != nil {
-			// log error but continue
+			ae.logger.Errorw("Failed to analyze call", "callName", call.Name(), "error", err)
 			continue
 		}
 		calls = append(calls, analyzedCall)
@@ -331,7 +334,7 @@ func (ae *analyzerEngine) analyzeBatchOperation(
 
 		annotations, err := batchOpAnalyzer.Analyze(ctx, req, decodedBatchOperation)
 		if err != nil {
-			// log error but continue
+			ae.logger.Errorw("Batch operation analyzer failed", "analyzerID", batchOpAnalyzer.ID(), "chainSelector", decodedBatchOperation.ChainSelector(), "error", err)
 			continue
 		}
 		trackedAnnotations := trackAnnotations(annotations, batchOpAnalyzer.ID())
@@ -359,7 +362,7 @@ func (ae *analyzerEngine) analyzeCall(
 	for _, param := range decodedCall.Inputs() {
 		analyzedParam, err := ae.analyzeParameter(ctx, actx, ectx, param)
 		if err != nil {
-			// log error but continue
+			ae.logger.Errorw("Failed to analyze input parameter", "paramName", param.Name(), "paramType", param.Type(), "error", err)
 			continue
 		}
 		inputs = append(inputs, analyzedParam)
@@ -369,7 +372,7 @@ func (ae *analyzerEngine) analyzeCall(
 	for _, param := range decodedCall.Outputs() {
 		analyzedParam, err := ae.analyzeParameter(ctx, actx, ectx, param)
 		if err != nil {
-			// log error but continue
+			ae.logger.Errorw("Failed to analyze output parameter", "paramName", param.Name(), "paramType", param.Type(), "error", err)
 			continue
 		}
 		outputs = append(outputs, analyzedParam)
@@ -412,7 +415,7 @@ func (ae *analyzerEngine) analyzeCall(
 
 		annotations, err := callAnalyzer.Analyze(ctx, req, decodedCall)
 		if err != nil {
-			// log error but continue
+			ae.logger.Errorw("Call analyzer failed", "analyzerID", callAnalyzer.ID(), "callName", decodedCall.Name(), "error", err)
 			continue
 		}
 		trackedAnnotations := trackAnnotations(annotations, callAnalyzer.ID())
@@ -466,7 +469,7 @@ func (ae *analyzerEngine) analyzeParameter(
 
 		annotations, err := paramAnalyzer.Analyze(ctx, req, decodedParameter)
 		if err != nil {
-			// log error but continue
+			ae.logger.Errorw("Parameter analyzer failed", "analyzerID", paramAnalyzer.ID(), "paramName", decodedParameter.Name(), "paramType", decodedParameter.Type(), "error", err)
 			continue
 		}
 		trackedAnnotations := trackAnnotations(annotations, paramAnalyzer.ID())

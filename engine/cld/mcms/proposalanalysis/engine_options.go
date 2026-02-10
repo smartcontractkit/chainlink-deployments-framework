@@ -1,6 +1,7 @@
 package proposalanalysis
 
 import (
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 	experimentalanalyzer "github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 )
 
@@ -11,6 +12,7 @@ type EngineOption func(*engineConfig)
 type engineConfig struct {
 	evmRegistry    experimentalanalyzer.EVMABIRegistry
 	solanaRegistry experimentalanalyzer.SolanaDecoderRegistry
+	logger         logger.Logger
 }
 
 // WithEVMRegistry allows injecting an EVM ABI registry into the analyzer engine
@@ -61,4 +63,27 @@ func (cfg *engineConfig) GetEVMRegistry() experimentalanalyzer.EVMABIRegistry {
 // GetSolanaRegistry returns the Solana registry from the config
 func (cfg *engineConfig) GetSolanaRegistry() experimentalanalyzer.SolanaDecoderRegistry {
 	return cfg.solanaRegistry
+}
+
+// WithLogger allows injecting a logger into the analyzer engine
+// The logger will be used for logging errors and debug information during analysis
+// If not provided, the engine will use a no-op logger
+//
+// Example:
+//
+//	lggr, _ := logger.New()
+//	engine := proposalanalysis.NewAnalyzerEngine(proposalanalysis.WithLogger(lggr))
+func WithLogger(lggr logger.Logger) EngineOption {
+	return func(cfg *engineConfig) {
+		cfg.logger = lggr
+	}
+}
+
+// GetLogger returns the logger from the config
+// Returns a no-op logger if none was provided
+func (cfg *engineConfig) GetLogger() logger.Logger {
+	if cfg.logger == nil {
+		return logger.Nop()
+	}
+	return cfg.logger
 }
