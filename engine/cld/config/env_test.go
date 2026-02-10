@@ -67,7 +67,7 @@ func Test_LoadEnvConfig(t *testing.T) { //nolint:paralleltest // These tests are
 				"SOLANA_PROGRAM_PATH":               "0xcde",
 				"APTOS_DEPLOYER_KEY":                "0x345",
 				"TRON_DEPLOYER_KEY":                 "0x456",
-				"STELLAR_DEPLOYER_KEY":              "0x567",
+				"ONCHAIN_STELLAR_DEPLOYER_KEY":      "0x567", // Stellar uses new-style env var
 			},
 			wantFunc: func(t *testing.T, cfg *cfgenv.Config) {
 				t.Helper()
