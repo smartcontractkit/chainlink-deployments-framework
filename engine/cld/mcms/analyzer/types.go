@@ -6,145 +6,131 @@ import (
 
 	"github.com/smartcontractkit/mcms"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
-	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
+	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	cldfdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
+	expanalyzer "github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 )
 
-// ----- annotation -----
-
 type Annotation interface {
+	Type() string
 	Name() string
-	Type() string // TODO: replace with enum
 	Value() any
+	AnalyzerID() string
 }
 
 type Annotations []Annotation
 
-type Annotated interface {
-	AddAnnotations(annotations ...Annotation)
-	Annotations() Annotations
+type DecodedTimelockProposal struct {
+	BatchOperations []DecodedBatchOperation
 }
 
-// ----- decoded -----
-
-type DecodedTimelockProposal interface {
-	BatchOperations() DecodedBatchOperations
+type DecodedBatchOperation struct {
+	ChainSelector uint64
+	ChainName     string
+	Calls         []DecodedCall
 }
 
-type DecodedBatchOperations []DecodedBatchOperation
-
-type DecodedBatchOperation interface {
-	ChainSelector() uint64
-	Calls() DecodedCalls
+type DecodedParameter struct {
+	Name         string // parameter name (e.g. "chainsToAdd")
+	Value        any    // raw decoded Go value (e.g. *big.Int, uint64, common.Address)
+	DisplayValue any    // optional display-oriented value from the decoder (e.g., FieldValue for EVM, YamlField for Solana); nil when unavailable
 }
 
-type DecodedCalls []DecodedCall
-
-type DecodedCall interface { // DecodedCall or DecodedTransaction?
+type DecodedCall interface {
 	ContractType() string
-	ContractVersion() string
-	To() string   // review: current analyzer uses "Address"
-	Name() string // review: current analyzer uses "Method"
-	Inputs() DecodedParameters
-	Outputs() DecodedParameters
+	Name() string               // method name
+	To() string                 // target address
+	Inputs() []DecodedParameter // ordered input parameters
 	Data() []byte
 	AdditionalFields() json.RawMessage
 }
 
-type DecodedParameters []DecodedParameter
-
-type DecodedParameter interface {
-	Name() string
-	Type() string // reflect.Type?
-	Value() any   // reflect.Value?
+type AnalyzedProposal struct {
+	*annotated
+	Decoded         DecodedTimelockProposal
+	BatchOperations []*AnalyzedBatchOperation
 }
 
-// ----- analyzed -----
-
-type AnalyzedProposal interface {
-	Annotated
-	BatchOperations() AnalyzedBatchOperations
+type AnalyzedBatchOperation struct {
+	*annotated
+	ChainSelector uint64
+	ChainName     string
+	Calls         []*AnalyzedCall
 }
 
-type AnalyzedBatchOperation interface {
-	Annotated
-	Calls() AnalyzedCalls
+type AnalyzedCall struct {
+	*annotated
+	DecodedCall
+	AnalyzedInputs []*AnalyzedParameter
 }
 
-type AnalyzedBatchOperations []AnalyzedBatchOperation
-
-type AnalyzedCalls []AnalyzedCall
-
-type AnalyzedCall interface {
-	Annotated
-	Name() string
-	Inputs() AnalyzedParameters
-	Outputs() AnalyzedParameters
+type AnalyzedParameter struct {
+	*annotated
+	DecodedParameter
 }
 
-type AnalyzedParameters []AnalyzedParameter
-
-type AnalyzedParameter interface {
-	Annotated
-	Name() string
-	Type() string // reflect.Type?
-	Value() any   // reflect.Value?
+// AnalyzerContext provides the current position in the proposal tree so that
+// analyzers can inspect their parent context
+type AnalyzerContext struct {
+	Proposal       *AnalyzedProposal
+	BatchOperation *AnalyzedBatchOperation
+	Call           *AnalyzedCall
+	Parameter      *AnalyzedParameter
 }
 
-// ----- contexts -----
-
-type AnalyzerContext interface {
-	Proposal() AnalyzedProposal
-	BatchOperation() AnalyzedBatchOperation
-	Call() AnalyzedCall
+type ExecutionContext struct {
+	Domain          cldfdomain.Domain
+	EnvironmentName string
+	Env             deployment.Environment
+	proposalCtx     expanalyzer.ProposalContext
 }
 
-type ExecutionContext interface {
-	Domain() cldfdomain.Domain
-	EnvironmentName() string
-	BlockChains() chain.BlockChains
-	DataStore() datastore.DataStore
-	// Environment() Environment
+type AnalyzerRequest struct {
+	Context   *AnalyzerContext
+	Execution *ExecutionContext
 }
-
-// ----- analyzers -----
 
 type BaseAnalyzer interface {
 	ID() string
-	Dependencies() []BaseAnalyzer
+	Dependencies() []string
 }
 
 type ProposalAnalyzer interface {
 	BaseAnalyzer
-	Matches(ctx context.Context, actx AnalyzerContext, proposal DecodedTimelockProposal) bool // TODO: is there a better name? AppliesTo? ShouldAnalyze?
-	Analyze(ctx context.Context, actx AnalyzerContext, ectx ExecutionContext, proposal DecodedTimelockProposal) (Annotations, error)
+	Matches(ctx context.Context, req AnalyzerRequest, proposal DecodedTimelockProposal) bool
+	Analyze(ctx context.Context, req AnalyzerRequest, proposal DecodedTimelockProposal) (Annotations, error)
 }
 
 type BatchOperationAnalyzer interface {
 	BaseAnalyzer
-	Matches(ctx context.Context, actx AnalyzerContext, operation DecodedBatchOperation) bool
-	Analyze(ctx context.Context, actx AnalyzerContext, ectx ExecutionContext, operation DecodedBatchOperation) (Annotations, error)
+	Matches(ctx context.Context, req AnalyzerRequest, operation DecodedBatchOperation) bool
+	Analyze(ctx context.Context, req AnalyzerRequest, operation DecodedBatchOperation) (Annotations, error)
 }
 
 type CallAnalyzer interface {
 	BaseAnalyzer
-	Matches(ctx context.Context, actx AnalyzerContext, call DecodedCall) bool
-	Analyze(ctx context.Context, actx AnalyzerContext, ectx ExecutionContext, call DecodedCall) (Annotations, error)
+	Matches(ctx context.Context, req AnalyzerRequest, call DecodedCall) bool
+	Analyze(ctx context.Context, req AnalyzerRequest, call DecodedCall) (Annotations, error)
 }
 
 type ParameterAnalyzer interface {
 	BaseAnalyzer
-	Matches(ctx context.Context, actx AnalyzerContext, param DecodedParameter) bool
-	Analyze(ctx context.Context, actx AnalyzerContext, ectx ExecutionContext, param DecodedParameter) (Annotations, error)
+	Matches(ctx context.Context, req AnalyzerRequest, param DecodedParameter) bool
+	Analyze(ctx context.Context, req AnalyzerRequest, param DecodedParameter) (Annotations, error)
 }
 
-// ----- engine/runtime -----
+type AnalyzerEngine interface {
+	Run(ctx context.Context, domain cldfdomain.Domain, environmentName string, proposal *mcms.TimelockProposal) (*AnalyzedProposal, error)
+	AnalyzeWithProposalContext(ctx context.Context, env deployment.Environment, proposalCtx expanalyzer.ProposalContext, proposal *mcms.TimelockProposal) (*AnalyzedProposal, error)
+	Analyze(ctx context.Context, ectx *ExecutionContext, proposal *mcms.TimelockProposal) (*AnalyzedProposal, error)
+	AnalyzeDecoded(ctx context.Context, ectx *ExecutionContext, decoded DecodedTimelockProposal) (*AnalyzedProposal, error)
+	RegisterAnalyzer(analyzer BaseAnalyzer) error
+}
 
-type AnalyzerEngine interface { // review: rename to AnalyzerRuntime? AnalyzerService? ...?
-	Run(ctx context.Context, domain cldfdomain.Domain, environmentName string, proposal *mcms.TimelockProposal) (AnalyzedProposal, error)
+func NewAnalyzerEngine() AnalyzerEngine {
+	return &analyzerEngine{}
+}
 
-	RegisterAnalyzer(analyzer BaseAnalyzer) error // do we need to add a method for each type? like RegisterProposalAnalyzer?
-
-	RegisterFormatter( /* tbd */ ) error
+func RenderText(proposal *AnalyzedProposal, description string) string {
+	return renderText(proposal, description)
 }

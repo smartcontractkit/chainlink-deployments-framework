@@ -145,6 +145,5 @@ func Test_AnalyzeRmnHomeSetConfig(t *testing.T) {
 	}, analyzeResult.Inputs[1].Value)
 	assert.Equal(t, "digestToOverwrite", analyzeResult.Inputs[2].Name)
 	assert.Equal(t, BytesField{Value: hexutil.MustDecode("0x0000000000000000000000000000000000000000000000000000000000000000")}, analyzeResult.Inputs[2].Value)
-	assert.Equal(t, "newConfigDigest", analyzeResult.Outputs[0].Name)
-	assert.Equal(t, BytesField{Value: hexutil.MustDecode("0x0000000000000000000000000000000000000000000000000000000000000060")}, analyzeResult.Outputs[0].Value)
+	assert.Empty(t, analyzeResult.Outputs)
 }
