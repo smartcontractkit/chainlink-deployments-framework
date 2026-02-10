@@ -576,6 +576,7 @@ signers:
   - "0x5f077BCeE6e285154473F65699d6F46Fd03D105A"
 `
 
+//nolint:gosec // G101 all test values
 var timelockProposalSuiBurnMintTokenPool = `{
   "version": "v1",
   "kind": "TimelockProposal",
@@ -596,7 +597,7 @@ var timelockProposalSuiBurnMintTokenPool = `{
       }
     }
   },
-  "description": "Invokes the following set of operations: sui-ccip-burn_mint_token_pool-execute_ownership_transfer_to_mcms",
+  "description": "Invoke",
   "action": "schedule",
   "delay": "10s",
   "timelockAddresses": {
