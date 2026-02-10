@@ -152,7 +152,7 @@ func TestUpfConvertTimelockProposalWithSui(t *testing.T) {
 				require.NoError(t, err)
 				require.NotEmpty(t, gotUpf)
 				// Verify that the proposal was successfully converted
-				require.Equal(t, gotUpf, suiUPFProposal)
+				require.Equal(t, suiUPFProposal, gotUpf)
 			},
 		},
 	}
@@ -626,13 +626,13 @@ var timelockProposalSuiBurnMintTokenPool = `{
   ]
 }`
 
-var suiUPFProposal = fmt.Sprintf(`---
+var suiUPFProposal = `---
 msigType: mcms
 proposalHash: "0x6676342371fba5bf02bfe07457797fc0dfa51b85eec23bf08ae5114f365865db"
 mcmsParams:
   validUntil: 1999999999
   merkleRoot: "0x093c18a1ae222c48c735c2d8f231fc8892060cc299d2a949d0c5b2bb830a1dbe"
-  asciiProposalHash: 'G\x80\xda\xeb\x95\xf5\xf5\x8d\xd4W\x9a\x04R\x92y\xd8\x19\x0e%s6\xd0\x851k\xbc\xad\x193?\xcdr\xb9'
+  asciiProposalHash: 'G\x80\xda\xeb\x95\xf5\xf5\x8d\xd4W\x9a\x04R\x92y\xd8\x19\x0e` + "`" + `6\xd0\x851k\xbc\xad\x193?\xcdr\xb9'
   overridePreviousRoot: false
 transactions:
 - index: 0
@@ -664,7 +664,7 @@ transactions:
 signers:
   9762610643973837292:
   - "0xA5D5B0B844c8f11B61F28AC98BBA84dEA9b80953"
-`, "`")
+`
 
 // timelockProposalTON is generated using makeTONGrantRoleTx helper
 var timelockProposalTON = func(t *testing.T) string {

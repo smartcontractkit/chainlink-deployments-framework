@@ -29,7 +29,7 @@ func AnalyzeSuiTransaction(ctx ProposalContext, decoder *mcmssuisdk.Decoder, cha
 		return nil, fmt.Errorf("failed to unmarshal Sui additional fields: %w", err)
 	}
 
-	// simply provide the method if MCMS
+	// Return the method name directly for MCMS transactions, since the inner transactions will be decoded separately
 	if additionalFields.ModuleName == "mcms" {
 		methodName := fmt.Sprintf("%s::%s", additionalFields.ModuleName, additionalFields.Function)
 		return &DecodedCall{
