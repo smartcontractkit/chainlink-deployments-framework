@@ -111,7 +111,6 @@ var (
 		"APTOS_DEPLOYER_KEY":                "0x123",
 		"SUI_DEPLOYER_KEY":                  "0x123",
 		"TRON_DEPLOYER_KEY":                 "0x123",
-		"STELLAR_DEPLOYER_KEY":              "0x567",
 		"JD_AUTH_COGNITO_APP_CLIENT_ID":     "123",
 		"JD_AUTH_COGNITO_APP_CLIENT_SECRET": "123",
 		"JD_AUTH_AWS_REGION":                "us-east-1",
@@ -123,9 +122,10 @@ var (
 		"TON_DEPLOYER_KEY":                  "0x123",
 		"TON_WALLET_VERSION":                "V5R1",
 		// These values do not have a legacy equivalent
-		"CATALOG_GRPC":                "http://localhost:8080",
-		"CATALOG_AUTH_KMS_KEY_ID":     "123",
-		"CATALOG_AUTH_KMS_KEY_REGION": "us-east-1",
+		"ONCHAIN_STELLAR_DEPLOYER_KEY": "0x567", // Stellar is new, uses new-style env var
+		"CATALOG_GRPC":                 "http://localhost:8080",
+		"CATALOG_AUTH_KMS_KEY_ID":      "123",
+		"CATALOG_AUTH_KMS_KEY_REGION":  "us-east-1",
 	}
 
 	// envCfg is the config that is loaded from the environment variables.
