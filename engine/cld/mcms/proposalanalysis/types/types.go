@@ -3,6 +3,7 @@ package types
 import (
 	"context"
 	"encoding/json"
+	"io"
 
 	"github.com/smartcontractkit/mcms"
 
@@ -58,6 +59,7 @@ type DecodedParameters []DecodedParameter
 
 type DecodedParameter interface {
 	Name() string
+	Type() string
 	Value() any
 }
 
@@ -171,7 +173,7 @@ type FormatterRequest struct {
 // Formatter transforms an AnalyzedProposal into a specific output format
 type Formatter interface {
 	ID() string
-	Format(ctx context.Context, req FormatterRequest, proposal AnalyzedProposal) ([]byte, error)
+	Format(ctx context.Context, w io.Writer, req FormatterRequest, proposal AnalyzedProposal) error
 }
 
 // ----- engine -----
@@ -183,5 +185,5 @@ type AnalyzerEngine interface {
 
 	RegisterFormatter(formatter Formatter) error
 
-	Format(ctx context.Context, formatterID string, proposal AnalyzedProposal) (string, error)
+	Format(ctx context.Context, w io.Writer, formatterID string, proposal AnalyzedProposal) error
 }

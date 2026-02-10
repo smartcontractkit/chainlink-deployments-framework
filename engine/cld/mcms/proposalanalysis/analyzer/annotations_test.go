@@ -26,7 +26,7 @@ func TestAnnotations(t *testing.T) {
 	})
 
 	t.Run("AddAnnotations", func(t *testing.T) {
-		a := &annotated{}
+		a := &Annotated{}
 		ann1 := NewAnnotation("ann1", "INFO", "v1")
 		ann2 := NewAnnotation("ann2", "WARN", "v2")
 
@@ -38,7 +38,7 @@ func TestAnnotations(t *testing.T) {
 	})
 
 	t.Run("GetAnnotationsByName", func(t *testing.T) {
-		a := &annotated{}
+		a := &Annotated{}
 		ann1 := NewAnnotation("gas-estimate", "INFO", 100)
 		ann2 := NewAnnotation("security-check", "WARN", "vulnerable")
 		ann3 := NewAnnotation("gas-estimate", "INFO", 200)
@@ -59,7 +59,7 @@ func TestAnnotations(t *testing.T) {
 	})
 
 	t.Run("GetAnnotationsByType", func(t *testing.T) {
-		a := &annotated{}
+		a := &Annotated{}
 		ann1 := NewAnnotation("ann1", "INFO", "v1")
 		ann2 := NewAnnotation("ann2", "WARN", "v2")
 		ann3 := NewAnnotation("ann3", "INFO", "v3")
@@ -81,7 +81,7 @@ func TestAnnotations(t *testing.T) {
 	})
 
 	t.Run("GetAnnotationsByAnalyzer", func(t *testing.T) {
-		a := &annotated{}
+		a := &Annotated{}
 		ann1 := NewAnnotationWithAnalyzer("ann1", "INFO", "v1", "analyzer-1")
 		ann2 := NewAnnotationWithAnalyzer("ann2", "WARN", "v2", "analyzer-2")
 		ann3 := NewAnnotationWithAnalyzer("ann3", "INFO", "v3", "analyzer-1")
@@ -100,7 +100,7 @@ func TestAnnotations(t *testing.T) {
 	})
 
 	t.Run("Combined queries", func(t *testing.T) {
-		a := &annotated{}
+		a := &Annotated{}
 		ann1 := NewAnnotationWithAnalyzer("gas-estimate", "INFO", 100, "gas-analyzer")
 		ann2 := NewAnnotationWithAnalyzer("gas-estimate", "WARN", 500, "gas-analyzer")
 		ann3 := NewAnnotationWithAnalyzer("security", "WARN", "issue", "security-analyzer")

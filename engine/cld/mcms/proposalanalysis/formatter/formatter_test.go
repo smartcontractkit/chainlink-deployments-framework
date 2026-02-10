@@ -1,7 +1,9 @@
 package formatter
 
 import (
+	"bytes"
 	"context"
+	"io"
 	"testing"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/types"
@@ -18,8 +20,9 @@ func (m *mockFormatter) ID() string {
 	return m.id
 }
 
-func (m *mockFormatter) Format(ctx context.Context, req FormatterRequest, proposal types.AnalyzedProposal) ([]bytes, error) {
-	return []byte("mock output"), nil
+func (m *mockFormatter) Format(ctx context.Context, w io.Writer, req types.FormatterRequest, proposal types.AnalyzedProposal) error {
+	_, err := w.Write([]byte("mock output"))
+	return err
 }
 
 func TestFormatterRegistry(t *testing.T) {
@@ -96,5 +99,16 @@ func TestFormatterRegistry(t *testing.T) {
 
 		ids := registry.List()
 		assert.Empty(t, ids)
+	})
+
+	t.Run("Format writes to io.Writer", func(t *testing.T) {
+		formatter := &mockFormatter{id: "test-formatter"}
+		ctx := context.Background()
+
+		// Example: Write to a bytes.Buffer
+		var buf bytes.Buffer
+		err := formatter.Format(ctx, &buf, types.FormatterRequest{}, nil)
+		require.NoError(t, err)
+		assert.Equal(t, "mock output", buf.String())
 	})
 }

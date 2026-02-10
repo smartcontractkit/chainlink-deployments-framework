@@ -44,22 +44,22 @@ func NewAnnotationWithAnalyzer(name, atype string, value any, analyzerID string)
 
 // ---------------------------------------------------------------------
 
-var _ types.Annotated = &annotated{}
+var _ types.Annotated = &Annotated{}
 
-type annotated struct {
+type Annotated struct {
 	annotations types.Annotations
 }
 
-func (a *annotated) AddAnnotations(annotations ...types.Annotation) {
+func (a *Annotated) AddAnnotations(annotations ...types.Annotation) {
 	a.annotations = append(a.annotations, annotations...)
 }
 
-func (a annotated) Annotations() types.Annotations {
+func (a Annotated) Annotations() types.Annotations {
 	return a.annotations
 }
 
 // GetAnnotationsByName returns all annotations with the given name
-func (a annotated) GetAnnotationsByName(name string) types.Annotations {
+func (a Annotated) GetAnnotationsByName(name string) types.Annotations {
 	var result types.Annotations
 	for _, ann := range a.annotations {
 		if ann.Name() == name {
@@ -70,7 +70,7 @@ func (a annotated) GetAnnotationsByName(name string) types.Annotations {
 }
 
 // GetAnnotationsByType returns all annotations with the given type
-func (a annotated) GetAnnotationsByType(atype string) types.Annotations {
+func (a Annotated) GetAnnotationsByType(atype string) types.Annotations {
 	var result types.Annotations
 	for _, ann := range a.annotations {
 		if ann.Type() == atype {
@@ -81,7 +81,7 @@ func (a annotated) GetAnnotationsByType(atype string) types.Annotations {
 }
 
 // GetAnnotationsByAnalyzer returns all annotations created by the given analyzer ID
-func (a annotated) GetAnnotationsByAnalyzer(analyzerID string) types.Annotations {
+func (a Annotated) GetAnnotationsByAnalyzer(analyzerID string) types.Annotations {
 	var result types.Annotations
 	for _, ann := range a.annotations {
 		// Try to cast to our internal annotation type to access analyzerID
