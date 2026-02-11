@@ -73,7 +73,5 @@ func (d *legacyDecoder) Decode(
 	}
 
 	// Convert to our DecodedTimelockProposal interface
-	return &decodedTimelockProposal{
-		report: report,
-	}, nil
+	return newDecodedTimelockProposal(report, proposal), nil
 }

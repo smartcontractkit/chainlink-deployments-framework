@@ -14,6 +14,7 @@ import (
 	"github.com/smartcontractkit/mcms"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 
+	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	cldfdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	cldfenvironment "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
 	analyzer "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
@@ -78,6 +79,16 @@ func (ae *analyzerEngine) Run(
 		return nil, fmt.Errorf("failed to load environment: %w", err)
 	}
 
+	return ae.RunWithEnvironment(ctx, domain, environmentName, env, proposal)
+}
+
+func (ae *analyzerEngine) RunWithEnvironment(
+	ctx context.Context,
+	domain cldfdomain.Domain,
+	environmentName string,
+	env deployment.Environment,
+	proposal *mcms.TimelockProposal,
+) (types.AnalyzedProposal, error) {
 	ae.decoder = decoder.NewLegacyDecoder(
 		decoder.WithEVMABIMappings(ae.evmABIMappings),
 		decoder.WithSolanaDecoders(ae.solanaDecoders),
@@ -276,10 +287,10 @@ func executeAnalyzerLevels(
 		var wg sync.WaitGroup
 		for i, baseAnalyzer := range level {
 			wg.Add(1)
-			go func() {
+			go func(i int, baseAnalyzer types.BaseAnalyzer) {
 				defer wg.Done()
 				levelResults[i] = execute(ctx, baseAnalyzer)
-			}()
+			}(i, baseAnalyzer)
 		}
 		wg.Wait()
 		results = append(results, levelResults...)
@@ -624,6 +635,14 @@ type analyzedBatchOperation struct {
 	*analyzer.Annotated
 	decodedBatchOperation types.DecodedBatchOperation
 	calls                 types.AnalyzedCalls
+}
+
+func (a analyzedBatchOperation) ChainSelector() uint64 {
+	return a.decodedBatchOperation.ChainSelector()
+}
+
+func (a analyzedBatchOperation) ChainName() string {
+	return a.decodedBatchOperation.ChainName()
 }
 
 func (a analyzedBatchOperation) Calls() types.AnalyzedCalls {

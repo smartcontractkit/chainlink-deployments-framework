@@ -1,6 +1,7 @@
 package mcmsv2
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/json"
@@ -48,6 +49,9 @@ import (
 	cldf_config_domain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/domain"
 	cldf_domain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	cldfenvironment "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis"
+	proposalformatter "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/formatter"
+	proposaltypes "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/types"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer/upf"
@@ -101,6 +105,25 @@ type cfgv2 struct {
 	proposalCtx      analyzer.ProposalContext
 }
 
+type ProposalAnalyzerRegistrationRequest struct {
+	ProposalContext analyzer.ProposalContext
+	Proposal        *mcms.TimelockProposal
+}
+
+type ProposalAnalyzerRegistrar func(engine proposaltypes.AnalyzerEngine, req ProposalAnalyzerRegistrationRequest) error
+
+type buildMCMSv2Options struct {
+	analyzerRegistrar ProposalAnalyzerRegistrar
+}
+
+type BuildMCMSv2Option func(*buildMCMSv2Options)
+
+func WithProposalAnalyzerRegistrar(registrar ProposalAnalyzerRegistrar) BuildMCMSv2Option {
+	return func(o *buildMCMSv2Options) {
+		o.analyzerRegistrar = registrar
+	}
+}
+
 // addMCMSv2DeprecationWarning decorates a command to:
 // - show a large deprecation banner in help output
 // - print the same banner to stderr at runtime before execution
@@ -142,7 +165,12 @@ func addMCMSv2DeprecationWarning(cmd *cobra.Command) *cobra.Command {
 	return cmd
 }
 
-func BuildMCMSv2Cmd(lggr logger.Logger, domain cldf_domain.Domain, proposalContextProvider analyzer.ProposalContextProvider) *cobra.Command {
+func BuildMCMSv2Cmd(
+	lggr logger.Logger,
+	domain cldf_domain.Domain,
+	proposalContextProvider analyzer.ProposalContextProvider,
+	opts ...BuildMCMSv2Option,
+) *cobra.Command {
 	var (
 		proposalPath       string
 		proposalKindStr    string
@@ -156,6 +184,11 @@ func BuildMCMSv2Cmd(lggr logger.Logger, domain cldf_domain.Domain, proposalConte
 	}
 	if proposalContextProvider == nil {
 		panic("nil proposal context provider received")
+	}
+
+	buildOpts := &buildMCMSv2Options{}
+	for _, opt := range opts {
+		opt(buildOpts)
 	}
 
 	cmd := cobra.Command{
@@ -194,7 +227,8 @@ func BuildMCMSv2Cmd(lggr logger.Logger, domain cldf_domain.Domain, proposalConte
 	cmd.AddCommand(addMCMSv2DeprecationWarning(buildTimelockExecuteChainV2Cmd(lggr, domain, proposalContextProvider)))
 	cmd.AddCommand(addMCMSv2DeprecationWarning(buildTimelockExecuteOperationV2Cmd(lggr, domain, proposalContextProvider)))
 	cmd.AddCommand(buildMCMSv2AnalyzeProposalCmd(stdErrLogger, domain, proposalContextProvider)) // not deprecated (yet)
-	cmd.AddCommand(buildMCMSv2ConvertUpf(stdErrLogger, domain, proposalContextProvider))         // not deprecated (yet)
+	cmd.AddCommand(buildMCMSv2AnalyzeProposalNewCmd(stdErrLogger, domain, proposalContextProvider, buildOpts.analyzerRegistrar))
+	cmd.AddCommand(buildMCMSv2ConvertUpf(stdErrLogger, domain, proposalContextProvider)) // not deprecated (yet)
 	cmd.AddCommand(addMCMSv2DeprecationWarning(buildMCMSv2ResetProposalCmd(stdErrLogger, domain, proposalContextProvider)))
 
 	// fork flag is only used internally by buildExecuteForkCommand
@@ -825,7 +859,9 @@ func buildExecuteForkCommand(lggr logger.Logger, domain cldf_domain.Domain, prop
 }
 
 func buildMCMSv2AnalyzeProposalCmd(
-	lggr logger.Logger, domain cldf_domain.Domain, proposalCtxProvider analyzer.ProposalContextProvider,
+	lggr logger.Logger,
+	domain cldf_domain.Domain,
+	proposalCtxProvider analyzer.ProposalContextProvider,
 ) *cobra.Command {
 	var outputFile string
 	var format string
@@ -895,6 +931,116 @@ func buildMCMSv2AnalyzeProposalCmd(
 	cmd.Flags().StringVar(&format, "format", "markdown", "Output format: markdown (default), text")
 
 	return cmd
+}
+
+func buildMCMSv2AnalyzeProposalNewCmd(
+	lggr logger.Logger,
+	domain cldf_domain.Domain,
+	proposalCtxProvider analyzer.ProposalContextProvider,
+	analyzerRegistrar ProposalAnalyzerRegistrar,
+) *cobra.Command {
+	var outputFile string
+	var format string
+
+	cmd := &cobra.Command{
+		Use:   "analyze-proposal-new",
+		Short: "Analyze proposal with v2 analyzer engine (text output)",
+		Long:  ``,
+		PreRun: func(command *cobra.Command, args []string) {
+			command.InheritedFlags().Lookup(chainSelectorFlag).Changed = true
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			output, err := runMCMSv2AnalyzeProposalNew(
+				cmd.Context(),
+				lggr,
+				cmd,
+				domain,
+				proposalCtxProvider,
+				analyzerRegistrar,
+				format,
+			)
+			if err != nil {
+				return err
+			}
+			return writeAnalyzeOutput(outputFile, output)
+		},
+	}
+	cmd.SetHelpFunc(func(command *cobra.Command, args []string) {
+		command.Flags().MarkHidden(chainSelectorFlag) //nolint:errcheck
+		command.Parent().HelpFunc()(command, args)
+	})
+	cmd.Flags().StringVarP(&outputFile, "output", "o", "", "Output file to write analyze result")
+	cmd.Flags().StringVar(&format, "format", "text", "Output format: text (default), txt")
+	return cmd
+}
+
+func runMCMSv2AnalyzeProposalNew(
+	ctx context.Context,
+	lggr logger.Logger,
+	cmd *cobra.Command,
+	domain cldf_domain.Domain,
+	proposalCtxProvider analyzer.ProposalContextProvider,
+	analyzerRegistrar ProposalAnalyzerRegistrar,
+	format string,
+) (string, error) {
+	if proposalCtxProvider == nil {
+		return "", errors.New("proposalCtxProvider is required, please provide one in the domain cli constructor")
+	}
+	formatterID, err := normalizeAnalyzeProposalNewFormat(format)
+	if err != nil {
+		return "", err
+	}
+
+	cfgv2, err := newCfgv2(lggr, cmd, domain, proposalCtxProvider, acceptExpiredProposal)
+	if err != nil {
+		return "", fmt.Errorf("error creating config: %w", err)
+	}
+	if cfgv2.timelockProposal == nil {
+		return "", errors.New("expected proposal to be have non-nil *TimelockProposal")
+	}
+
+	if err := fetchPipelinePRData(ctx, lggr, domain, cfgv2, proposalCtxProvider, &commandRunner{}); err != nil {
+		return "", fmt.Errorf("failed to fetch pipeline PR data: %w", err)
+	}
+
+	engine, err := newDefaultProposalAnalyzerEngine(lggr, cfgv2.proposalCtx, cfgv2.timelockProposal, analyzerRegistrar, formatterID)
+	if err != nil {
+		return "", fmt.Errorf("failed to initialize proposal analyzer engine: %w", err)
+	}
+
+	analyzedProposal, err := engine.RunWithEnvironment(
+		ctx,
+		domain,
+		cfgv2.envStr,
+		cfgv2.env,
+		cfgv2.timelockProposal,
+	)
+	if err != nil {
+		return "", fmt.Errorf("failed to analyze proposal: %w", err)
+	}
+
+	var out bytes.Buffer
+	if err := engine.Format(ctx, &out, formatterID, analyzedProposal); err != nil {
+		return "", fmt.Errorf("failed to format analyzed proposal: %w", err)
+	}
+	return out.String(), nil
+}
+
+func normalizeAnalyzeProposalNewFormat(format string) (string, error) {
+	switch format {
+	case "", proposalformatter.FormatterTextID, "txt":
+		return proposalformatter.FormatterTextID, nil
+	default:
+		return "", fmt.Errorf("unknown format '%s' for analyze-proposal-new (supported: text, txt)", format)
+	}
+}
+
+func writeAnalyzeOutput(outputFile string, output string) error {
+	if outputFile == "" {
+		fmt.Println(output)
+		return nil
+	}
+	return os.WriteFile(outputFile, []byte(output), 0o600)
 }
 
 func buildMCMSv2ResetProposalCmd(
@@ -1794,20 +1940,80 @@ func addCallProxyOption(
 	return fmt.Errorf("failed to find call proxy contract for timelock %v", timelockAddress)
 }
 
-// createRendererFromFormat creates an appropriate renderer based on the format string.
-// Defaults to markdown renderer for unknown formats.
 func createRendererFromFormat(format string) (analyzer.Renderer, error) {
 	switch format {
 	case "text", "txt":
 		return analyzer.NewTextRenderer(), nil
-	case "markdown", "md":
-		return analyzer.NewMarkdownRenderer(), nil
-	case "":
+	case "markdown", "md", "":
 		return analyzer.NewMarkdownRenderer(), nil
 	default:
-		// error if format is not specified or invalid
 		return nil, fmt.Errorf("unknown format '%s'", format)
 	}
+}
+
+func newDefaultProposalAnalyzerEngine(
+	lggr logger.Logger,
+	proposalCtx analyzer.ProposalContext,
+	proposal *mcms.TimelockProposal,
+	analyzerRegistrar ProposalAnalyzerRegistrar,
+	formatterID string,
+) (proposaltypes.AnalyzerEngine, error) {
+	engine := proposalanalysis.NewAnalyzerEngine(proposalanalysis.WithLogger(lggr))
+	switch formatterID {
+	case proposalformatter.FormatterTextID:
+		if err := engine.RegisterFormatter(&proposalformatter.TextFormatter{}); err != nil {
+			return nil, fmt.Errorf("failed to register text formatter: %w", err)
+		}
+	default:
+		return nil, fmt.Errorf("unsupported formatter %q for analyze-proposal-new", formatterID)
+	}
+
+	if err := registerEVMABIMappingsIfNeeded(engine, proposalCtx, proposal); err != nil {
+		return nil, err
+	}
+
+	if analyzerRegistrar != nil {
+		req := ProposalAnalyzerRegistrationRequest{
+			ProposalContext: proposalCtx,
+			Proposal:        proposal,
+		}
+		if err := analyzerRegistrar(engine, req); err != nil {
+			return nil, fmt.Errorf("custom analyzer registration failed: %w", err)
+		}
+	}
+
+	return engine, nil
+}
+
+func registerEVMABIMappingsIfNeeded(
+	engine proposaltypes.AnalyzerEngine,
+	proposalCtx analyzer.ProposalContext,
+	proposal *mcms.TimelockProposal,
+) error {
+	if proposal == nil {
+		return nil
+	}
+
+	for _, op := range proposal.Operations {
+		family, err := chainsel.GetSelectorFamily(uint64(op.ChainSelector))
+		if err != nil || family != chainsel.FamilyEVM {
+			continue
+		}
+
+		if proposalCtx == nil || proposalCtx.GetEVMRegistry() == nil {
+			return errors.New("missing EVM ABI registry in proposal context for EVM proposal analysis")
+		}
+		abis := proposalCtx.GetEVMRegistry().GetAllABIs()
+		if len(abis) == 0 {
+			return errors.New("empty EVM ABI registry for EVM proposal analysis")
+		}
+		if err := engine.RegisterEVMABIMappings(abis); err != nil {
+			return fmt.Errorf("failed to register EVM ABI mappings: %w", err)
+		}
+		return nil
+	}
+
+	return nil
 }
 
 var ErrOperationAlreadyExecuted = errors.New("operation already executed")
