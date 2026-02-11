@@ -2,10 +2,12 @@ package proposalanalysis
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"maps"
 	"slices"
+	"sync"
 	"time"
 
 	"github.com/samber/lo"
@@ -255,6 +257,36 @@ func trackAnnotations(annotations types.Annotations, analyzerID string) types.An
 	return tracked
 }
 
+type analyzerExecutionResult struct {
+	analyzerID  string
+	annotations types.Annotations
+	err         error
+	timedOut    bool
+	skipped     bool
+}
+
+func executeAnalyzerLevels(
+	ctx context.Context,
+	levels [][]types.BaseAnalyzer,
+	execute func(context.Context, types.BaseAnalyzer) analyzerExecutionResult,
+) []analyzerExecutionResult {
+	results := make([]analyzerExecutionResult, 0)
+	for _, level := range levels {
+		levelResults := make([]analyzerExecutionResult, len(level))
+		var wg sync.WaitGroup
+		for i, baseAnalyzer := range level {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				levelResults[i] = execute(ctx, baseAnalyzer)
+			}()
+		}
+		wg.Wait()
+		results = append(results, levelResults...)
+	}
+	return results
+}
+
 func (ae *analyzerEngine) analyzeProposal(
 	ctx context.Context,
 	actx *analyzerContext,
@@ -292,41 +324,43 @@ func (ae *analyzerEngine) analyzeProposal(
 		return nil, fmt.Errorf("failed to build dependency graph for proposal analyzers: %w", err)
 	}
 
-	sorted, err := graph.TopologicalSort()
-	if err != nil {
-		return nil, fmt.Errorf("failed to sort proposal analyzers: %w", err)
-	}
-
-	// Execute proposal analyzers in dependency order
-	for _, baseAnalyzer := range sorted {
+	levels := graph.Levels()
+	results := executeAnalyzerLevels(ctx, levels, func(ctx context.Context, baseAnalyzer types.BaseAnalyzer) analyzerExecutionResult {
 		proposalAnalyzer := baseAnalyzer.(types.ProposalAnalyzer)
-
-		// Create analyzer request
 		req := types.AnalyzerRequest{
 			AnalyzerContext:  actx,
 			ExecutionContext: ectx,
 		}
-
-		// Check if analyzer can analyze this proposal
 		if !proposalAnalyzer.CanAnalyze(ctx, req, decodedProposal) {
-			continue
+			return analyzerExecutionResult{
+				analyzerID: proposalAnalyzer.ID(),
+				skipped:    true,
+			}
 		}
-
-		// Execute analyzer with timeout
 		analyzerCtx, cancel := context.WithTimeout(ctx, ae.analyzerTimeout)
 		annotations, err := proposalAnalyzer.Analyze(analyzerCtx, req, decodedProposal)
+		timedOut := errors.Is(analyzerCtx.Err(), context.DeadlineExceeded)
 		cancel() // Always cancel to free resources
-
-		if err != nil {
-			if analyzerCtx.Err() == context.DeadlineExceeded {
-				ae.logger.Errorw("Proposal analyzer timed out", "analyzerID", proposalAnalyzer.ID(), "timeout", ae.analyzerTimeout)
+		return analyzerExecutionResult{
+			analyzerID:  proposalAnalyzer.ID(),
+			annotations: annotations,
+			err:         err,
+			timedOut:    timedOut,
+		}
+	})
+	for _, result := range results {
+		if result.skipped {
+			continue
+		}
+		if result.err != nil {
+			if result.timedOut {
+				ae.logger.Errorw("Proposal analyzer timed out", "analyzerID", result.analyzerID, "timeout", ae.analyzerTimeout)
 			} else {
-				ae.logger.Errorw("Proposal analyzer failed", "analyzerID", proposalAnalyzer.ID(), "error", err)
+				ae.logger.Errorw("Proposal analyzer failed", "analyzerID", result.analyzerID, "error", result.err)
 			}
 			continue
 		}
-		// Track which analyzer created the annotations
-		trackedAnnotations := trackAnnotations(annotations, proposalAnalyzer.ID())
+		trackedAnnotations := trackAnnotations(result.annotations, result.analyzerID)
 		proposal.AddAnnotations(trackedAnnotations...)
 	}
 
@@ -370,40 +404,43 @@ func (ae *analyzerEngine) analyzeBatchOperation(
 		return nil, fmt.Errorf("failed to build dependency graph for batch operation analyzers: %w", err)
 	}
 
-	sorted, err := graph.TopologicalSort()
-	if err != nil {
-		return nil, fmt.Errorf("failed to sort batch operation analyzers: %w", err)
-	}
-
-	// Execute batch operation analyzers
-	for _, baseAnalyzer := range sorted {
+	levels := graph.Levels()
+	results := executeAnalyzerLevels(ctx, levels, func(ctx context.Context, baseAnalyzer types.BaseAnalyzer) analyzerExecutionResult {
 		batchOpAnalyzer := baseAnalyzer.(types.BatchOperationAnalyzer)
-
-		// Create analyzer request
 		req := types.AnalyzerRequest{
 			AnalyzerContext:  actx,
 			ExecutionContext: ectx,
 		}
-
-		// Check if analyzer can analyze this batch operation
 		if !batchOpAnalyzer.CanAnalyze(ctx, req, decodedBatchOperation) {
-			continue
+			return analyzerExecutionResult{
+				analyzerID: batchOpAnalyzer.ID(),
+				skipped:    true,
+			}
 		}
-
-		// Execute analyzer with timeout
 		analyzerCtx, cancel := context.WithTimeout(ctx, ae.analyzerTimeout)
 		annotations, err := batchOpAnalyzer.Analyze(analyzerCtx, req, decodedBatchOperation)
+		timedOut := analyzerCtx.Err() == context.DeadlineExceeded
 		cancel() // Always cancel to free resources
-
-		if err != nil {
-			if analyzerCtx.Err() == context.DeadlineExceeded {
-				ae.logger.Errorw("Batch operation analyzer timed out", "analyzerID", batchOpAnalyzer.ID(), "chainSelector", decodedBatchOperation.ChainSelector(), "timeout", ae.analyzerTimeout)
+		return analyzerExecutionResult{
+			analyzerID:  batchOpAnalyzer.ID(),
+			annotations: annotations,
+			err:         err,
+			timedOut:    timedOut,
+		}
+	})
+	for _, result := range results {
+		if result.skipped {
+			continue
+		}
+		if result.err != nil {
+			if result.timedOut {
+				ae.logger.Errorw("Batch operation analyzer timed out", "analyzerID", result.analyzerID, "chainSelector", decodedBatchOperation.ChainSelector(), "timeout", ae.analyzerTimeout)
 			} else {
-				ae.logger.Errorw("Batch operation analyzer failed", "analyzerID", batchOpAnalyzer.ID(), "chainSelector", decodedBatchOperation.ChainSelector(), "error", err)
+				ae.logger.Errorw("Batch operation analyzer failed", "analyzerID", result.analyzerID, "chainSelector", decodedBatchOperation.ChainSelector(), "error", result.err)
 			}
 			continue
 		}
-		trackedAnnotations := trackAnnotations(annotations, batchOpAnalyzer.ID())
+		trackedAnnotations := trackAnnotations(result.annotations, result.analyzerID)
 		batchOp.AddAnnotations(trackedAnnotations...)
 	}
 
@@ -459,40 +496,43 @@ func (ae *analyzerEngine) analyzeCall(
 		return nil, fmt.Errorf("failed to build dependency graph for call analyzers: %w", err)
 	}
 
-	sorted, err := graph.TopologicalSort()
-	if err != nil {
-		return nil, fmt.Errorf("failed to sort call analyzers: %w", err)
-	}
-
-	// Execute call analyzers
-	for _, baseAnalyzer := range sorted {
+	levels := graph.Levels()
+	results := executeAnalyzerLevels(ctx, levels, func(ctx context.Context, baseAnalyzer types.BaseAnalyzer) analyzerExecutionResult {
 		callAnalyzer := baseAnalyzer.(types.CallAnalyzer)
-
-		// Create analyzer request
 		req := types.AnalyzerRequest{
 			AnalyzerContext:  actx,
 			ExecutionContext: ectx,
 		}
-
-		// Check if analyzer can analyze this call
 		if !callAnalyzer.CanAnalyze(ctx, req, decodedCall) {
-			continue
+			return analyzerExecutionResult{
+				analyzerID: callAnalyzer.ID(),
+				skipped:    true,
+			}
 		}
-
-		// Execute analyzer with timeout
 		analyzerCtx, cancel := context.WithTimeout(ctx, ae.analyzerTimeout)
 		annotations, err := callAnalyzer.Analyze(analyzerCtx, req, decodedCall)
+		timedOut := analyzerCtx.Err() == context.DeadlineExceeded
 		cancel() // Always cancel to free resources
-
-		if err != nil {
-			if analyzerCtx.Err() == context.DeadlineExceeded {
-				ae.logger.Errorw("Call analyzer timed out", "analyzerID", callAnalyzer.ID(), "callName", decodedCall.Name(), "timeout", ae.analyzerTimeout)
+		return analyzerExecutionResult{
+			analyzerID:  callAnalyzer.ID(),
+			annotations: annotations,
+			err:         err,
+			timedOut:    timedOut,
+		}
+	})
+	for _, result := range results {
+		if result.skipped {
+			continue
+		}
+		if result.err != nil {
+			if result.timedOut {
+				ae.logger.Errorw("Call analyzer timed out", "analyzerID", result.analyzerID, "callName", decodedCall.Name(), "timeout", ae.analyzerTimeout)
 			} else {
-				ae.logger.Errorw("Call analyzer failed", "analyzerID", callAnalyzer.ID(), "callName", decodedCall.Name(), "error", err)
+				ae.logger.Errorw("Call analyzer failed", "analyzerID", result.analyzerID, "callName", decodedCall.Name(), "error", result.err)
 			}
 			continue
 		}
-		trackedAnnotations := trackAnnotations(annotations, callAnalyzer.ID())
+		trackedAnnotations := trackAnnotations(result.annotations, result.analyzerID)
 		call.AddAnnotations(trackedAnnotations...)
 	}
 
@@ -521,40 +561,43 @@ func (ae *analyzerEngine) analyzeParameter(
 		return nil, fmt.Errorf("failed to build dependency graph for parameter analyzers: %w", err)
 	}
 
-	sorted, err := graph.TopologicalSort()
-	if err != nil {
-		return nil, fmt.Errorf("failed to sort parameter analyzers: %w", err)
-	}
-
-	// Execute parameter analyzers
-	for _, baseAnalyzer := range sorted {
+	levels := graph.Levels()
+	results := executeAnalyzerLevels(ctx, levels, func(ctx context.Context, baseAnalyzer types.BaseAnalyzer) analyzerExecutionResult {
 		paramAnalyzer := baseAnalyzer.(types.ParameterAnalyzer)
-
-		// Create analyzer request
 		req := types.AnalyzerRequest{
 			AnalyzerContext:  actx,
 			ExecutionContext: ectx,
 		}
-
-		// Check if analyzer can analyze this parameter
 		if !paramAnalyzer.CanAnalyze(ctx, req, decodedParameter) {
-			continue
+			return analyzerExecutionResult{
+				analyzerID: paramAnalyzer.ID(),
+				skipped:    true,
+			}
 		}
-
-		// Execute analyzer with timeout
 		analyzerCtx, cancel := context.WithTimeout(ctx, ae.analyzerTimeout)
 		annotations, err := paramAnalyzer.Analyze(analyzerCtx, req, decodedParameter)
+		timedOut := analyzerCtx.Err() == context.DeadlineExceeded
 		cancel() // Always cancel to free resources
-
-		if err != nil {
-			if analyzerCtx.Err() == context.DeadlineExceeded {
-				ae.logger.Errorw("Parameter analyzer timed out", "analyzerID", paramAnalyzer.ID(), "paramName", decodedParameter.Name(), "paramType", decodedParameter.Type(), "timeout", ae.analyzerTimeout)
+		return analyzerExecutionResult{
+			analyzerID:  paramAnalyzer.ID(),
+			annotations: annotations,
+			err:         err,
+			timedOut:    timedOut,
+		}
+	})
+	for _, result := range results {
+		if result.skipped {
+			continue
+		}
+		if result.err != nil {
+			if result.timedOut {
+				ae.logger.Errorw("Parameter analyzer timed out", "analyzerID", result.analyzerID, "paramName", decodedParameter.Name(), "paramType", decodedParameter.Type(), "timeout", ae.analyzerTimeout)
 			} else {
-				ae.logger.Errorw("Parameter analyzer failed", "analyzerID", paramAnalyzer.ID(), "paramName", decodedParameter.Name(), "paramType", decodedParameter.Type(), "error", err)
+				ae.logger.Errorw("Parameter analyzer failed", "analyzerID", result.analyzerID, "paramName", decodedParameter.Name(), "paramType", decodedParameter.Type(), "error", result.err)
 			}
 			continue
 		}
-		trackedAnnotations := trackAnnotations(annotations, paramAnalyzer.ID())
+		trackedAnnotations := trackAnnotations(result.annotations, result.analyzerID)
 		param.AddAnnotations(trackedAnnotations...)
 	}
 

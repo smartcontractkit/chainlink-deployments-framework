@@ -144,8 +144,9 @@ func (g *dependencyGraph) TopologicalSort() ([]types.BaseAnalyzer, error) {
 	return result, nil
 }
 
-// getLevels returns analyzers grouped by execution level (for parallel execution)
-func (g *dependencyGraph) getLevels() [][]types.BaseAnalyzer {
+// Levels returns analyzers grouped by execution level (for parallel execution).
+// Analyzers in the same level have no inter-dependencies and can run concurrently.
+func (g *dependencyGraph) Levels() [][]types.BaseAnalyzer {
 	inDegree := make(map[string]int)
 	for id, node := range g.nodes {
 		inDegree[id] = len(node.dependencies)

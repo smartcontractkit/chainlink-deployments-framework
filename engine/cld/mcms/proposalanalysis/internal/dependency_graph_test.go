@@ -182,7 +182,7 @@ func TestGetLevels(t *testing.T) {
 		graph, err := NewDependencyGraph([]types.BaseAnalyzer{a1, a2, a3})
 		require.NoError(t, err)
 
-		levels := graph.getLevels()
+		levels := graph.Levels()
 		require.Len(t, levels, 3)
 		assert.Len(t, levels[0], 1)
 		assert.Equal(t, "a1", levels[0][0].ID())
@@ -206,7 +206,7 @@ func TestGetLevels(t *testing.T) {
 		graph, err := NewDependencyGraph([]types.BaseAnalyzer{a1, a2, a3, a4})
 		require.NoError(t, err)
 
-		levels := graph.getLevels()
+		levels := graph.Levels()
 		require.Len(t, levels, 3)
 
 		// Level 0: a1
@@ -231,7 +231,7 @@ func TestGetLevels(t *testing.T) {
 		graph, err := NewDependencyGraph([]types.BaseAnalyzer{a1, a2, a3})
 		require.NoError(t, err)
 
-		levels := graph.getLevels()
+		levels := graph.Levels()
 		require.Len(t, levels, 1)
 		assert.Len(t, levels[0], 3)
 	})
