@@ -280,6 +280,7 @@ func (p *CTFChainProvider) buildEnvVars() map[string]string {
 
 // checkStellarNodeHealth checks if the Stellar node is ready by checking if the RPC endpoint is accessible.
 func checkStellarNodeHealth(ctx context.Context, t *testing.T, sorobanRPCURL string) error {
+	t.Helper()
 	var lastErr error
 
 	err := retry.Do(func() error {
@@ -307,6 +308,7 @@ func checkStellarNodeHealth(ctx context.Context, t *testing.T, sorobanRPCURL str
 		}
 
 		t.Logf("Stellar Soroban RPC node is healthy (status: %d)", resp.StatusCode)
+
 		return nil
 	},
 		retry.Context(ctx),
