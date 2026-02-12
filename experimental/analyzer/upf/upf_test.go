@@ -10,7 +10,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/google/go-cmp/cmp"
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-ccip/chains/evm/gobindings/generated/v1_6_0/rmn_remote"
 	rmnremotebindings "github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings/v0_1_0/rmn_remote"
@@ -110,7 +109,7 @@ func TestUpfConvertTimelockProposal(t *testing.T) {
 			// require.NoError(t, err2)
 			if tt.wantErr == "" {
 				require.NoError(t, err)
-				require.Empty(t, cmp.Diff(tt.want, got))
+				require.YAMLEq(t, tt.want, got)
 			} else {
 				require.ErrorContains(t, err, tt.wantErr)
 			}
@@ -150,7 +149,7 @@ func TestUpfConvertTimelockProposalWithSui(t *testing.T) {
 			assertion: func(t *testing.T, gotUpf string, err error) {
 				t.Helper()
 				require.NoError(t, err)
-				require.Equal(t, upfProposalSui, gotUpf)
+				require.YAMLEq(t, upfProposalSui, gotUpf)
 			},
 		},
 		{
@@ -164,7 +163,7 @@ func TestUpfConvertTimelockProposalWithSui(t *testing.T) {
 			assertion: func(t *testing.T, gotUpf string, err error) {
 				t.Helper()
 				require.NoError(t, err)
-				require.Equal(t, upfProposalSuiUnknownModule, gotUpf)
+				require.YAMLEq(t, upfProposalSuiUnknownModule, gotUpf)
 			},
 		},
 	}
@@ -489,7 +488,7 @@ transactions:
         - pubkey: CpbeEvmTR4UE8CgDDL5b1nqjSz7JCD4wNJhxPLZRkSL1
           issigner: false
           iswritable: true
-        - pubkey: 11111111111111111111111111111111
+        - pubkey: "11111111111111111111111111111111"
           issigner: false
           iswritable: false
         Id: 0x9017959d8b60f859fa9f05f49b9c04f41a112c23fe54370b00a39cdccb75fb04
@@ -582,7 +581,7 @@ transactions:
               Subject:
                 value: 0xfb968f03709115b80000000000000000
 signers:
-  "10344971235874465080":
+  10344971235874465080:
   - "0xA5D5B0B844c8f11B61F28AC98BBA84dEA9b80953"
   - "0x9A60462e4CA802E3E945663930Be0d162e662091"
   - "0x5f077BCeE6e285154473F65699d6F46Fd03D105A"
@@ -653,7 +652,7 @@ transactions:
       functionName: "failed to decode Sui transaction: could not find function in contractInterfaces for mcms::timelock_schedule_batch"
       functionArgs: {}
 signers:
-  "9762610643973837292":
+  9762610643973837292:
   - "0xA5D5B0B844c8f11B61F28AC98BBA84dEA9b80953"
 `
 
@@ -722,7 +721,7 @@ transactions:
       functionName: "failed to decode Sui transaction: could not find function in contractInterfaces for mcms::timelock_schedule_batch"
       functionArgs: {}
 signers:
-  "9762610643973837292":
+  9762610643973837292:
   - "0xA5D5B0B844c8f11B61F28AC98BBA84dEA9b80953"
 `
 
