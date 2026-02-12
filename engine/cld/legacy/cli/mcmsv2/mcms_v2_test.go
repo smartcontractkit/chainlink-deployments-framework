@@ -80,16 +80,6 @@ func TestMCMSv2CommandFlagParsing(t *testing.T) {
 			},
 		},
 		{
-			name: "execute-operation",
-			args: []string{"execute-operation", "-e", "staging", "-p", "testdata/proposal.json", "-k", "TimelockProposal", "-s", "16015286601757825753"},
-			expected: commonFlagsv2{
-				proposalPath:    "testdata/proposal.json",
-				proposalKindStr: "TimelockProposal",
-				environmentStr:  "staging",
-				chainSelector:   16015286601757825753,
-			},
-		},
-		{
 			name: "set-root",
 			args: []string{"set-root", "-e", "staging", "-p", "testdata/proposal.json", "-k", "TimelockProposal", "-s", "16015286601757825753"},
 			expected: commonFlagsv2{
@@ -100,48 +90,8 @@ func TestMCMSv2CommandFlagParsing(t *testing.T) {
 			},
 		},
 		{
-			name: "is-timelock-ready",
-			args: []string{"is-timelock-ready", "-e", "staging", "-p", "testdata/proposal.json", "-k", "TimelockProposal", "-s", "16015286601757825753"},
-			expected: commonFlagsv2{
-				proposalPath:    "testdata/proposal.json",
-				proposalKindStr: "TimelockProposal",
-				environmentStr:  "staging",
-				chainSelector:   16015286601757825753,
-			},
-		},
-		{
-			name: "is-timelock-done",
-			args: []string{"is-timelock-done", "-e", "staging", "-p", "testdata/proposal.json", "-k", "TimelockProposal", "-s", "16015286601757825753"},
-			expected: commonFlagsv2{
-				proposalPath:    "testdata/proposal.json",
-				proposalKindStr: "TimelockProposal",
-				environmentStr:  "staging",
-				chainSelector:   16015286601757825753,
-			},
-		},
-		{
-			name: "is-timelock-operation-done",
-			args: []string{"is-timelock-operation-done", "--index", "1", "-e", "staging", "-p", "testdata/proposal.json", "-k", "TimelockProposal", "-s", "16015286601757825753"},
-			expected: commonFlagsv2{
-				proposalPath:    "testdata/proposal.json",
-				proposalKindStr: "TimelockProposal",
-				environmentStr:  "staging",
-				chainSelector:   16015286601757825753,
-			},
-		},
-		{
 			name: "timelock-execute-chain",
 			args: []string{"timelock-execute-chain", "-e", "staging", "-p", "testdata/proposal.json", "-k", "TimelockProposal", "-s", "16015286601757825753"},
-			expected: commonFlagsv2{
-				proposalPath:    "testdata/proposal.json",
-				proposalKindStr: "TimelockProposal",
-				environmentStr:  "staging",
-				chainSelector:   16015286601757825753,
-			},
-		},
-		{
-			name: "timelock-execute-operation",
-			args: []string{"timelock-execute-operation", "-e", "staging", "-p", "testdata/proposal.json", "-k", "TimelockProposal", "-s", "16015286601757825753"},
 			expected: commonFlagsv2{
 				proposalPath:    "testdata/proposal.json",
 				proposalKindStr: "TimelockProposal",
@@ -181,37 +131,13 @@ func TestMCMSv2CommandFlagParsing(t *testing.T) {
 			},
 			wantParseErr: "unknown proposal kind 'InvalidProposal'",
 		},
-		{
-			name: "analyze-proposal",
-			args: []string{"analyze-proposal", "-e", "staging", "-p", "testdata/proposal.json", "-k", "TimelockProposal"},
-			expected: commonFlagsv2{
-				proposalPath:    "testdata/proposal.json",
-				proposalKindStr: "TimelockProposal",
-				environmentStr:  "staging",
-				chainSelector:   0,
-			},
-		},
-		{
-			name: "convert-upf",
-			args: []string{"convert-upf", "-e", "staging", "-p", "testdata/proposal.json", "-k", "TimelockProposal"},
-			expected: commonFlagsv2{
-				proposalPath:    "testdata/proposal.json",
-				proposalKindStr: "TimelockProposal",
-				environmentStr:  "staging",
-				chainSelector:   0,
-			},
-		},
-		{
-			name: "execute-fork",
-			args: []string{"execute-fork", "-e", "staging", "-p", "testdata/proposal.json", "-k", "TimelockProposal", "--fork"},
-			expected: commonFlagsv2{
-				proposalPath:    "testdata/proposal.json",
-				proposalKindStr: "TimelockProposal",
-				environmentStr:  "staging",
-				chainSelector:   0,
-				fork:            true,
-			},
-		},
+		// NOTE: The following commands have been migrated to engine/cld/commands/mcms
+		// and have their own tests there. They use local flags instead of parent's
+		// persistent flags, so flag parsing tests are not applicable here:
+		// - analyze-proposal
+		// - convert-upf
+		// - execute-fork
+		// - error-decode-evm
 	}
 
 	for _, test := range tests {

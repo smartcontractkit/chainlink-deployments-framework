@@ -44,6 +44,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	cldf_chains "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/chains"
+	mcmscmd "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/mcms"
 	cldf_config "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config"
 	cldf_config_domain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/domain"
 	cldf_domain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
@@ -177,29 +178,31 @@ func BuildMCMSv2Cmd(lggr logger.Logger, domain cldf_domain.Domain, proposalConte
 	panicErr(cmd.MarkPersistentFlagRequired(environmentFlag))
 	panicErr(cmd.MarkPersistentFlagRequired(chainSelectorFlag))
 
-	// Everything under mcmsv2 is being deprecated, except a small set of commands
-	// that remain supported for now.
-	cmd.AddCommand(addMCMSv2DeprecationWarning(buildMCMSCheckQuorumv2Cmd(lggr, domain)))
-	cmd.AddCommand(addMCMSv2DeprecationWarning(buildExecuteChainv2Cmd(lggr, domain, proposalContextProvider)))
-	cmd.AddCommand(addMCMSv2DeprecationWarning(buildExecuteOperationv2Cmd(lggr, domain, proposalContextProvider)))
-	cmd.AddCommand(addMCMSv2DeprecationWarning(buildSetRootv2Cmd(lggr, domain, proposalContextProvider)))
-	cmd.AddCommand(addMCMSv2DeprecationWarning(buildGetOpCountV2Cmd(lggr, domain, proposalContextProvider)))
-	cmd.AddCommand(buildMCMSErrorDecode(lggr, domain, proposalContextProvider)) // not deprecated (yet)
-	cmd.AddCommand(addMCMSv2DeprecationWarning(buildRunTimelockIsPendingV2Cmd(lggr, domain)))
-	cmd.AddCommand(addMCMSv2DeprecationWarning(buildRunTimelockIsReadyToExecuteV2Cmd(lggr, domain)))
-	cmd.AddCommand(addMCMSv2DeprecationWarning(buildRunTimelockIsDoneV2Cmd(lggr, domain, proposalContextProvider)))
-	cmd.AddCommand(addMCMSv2DeprecationWarning(buildRunTimelockIsOperationPendingV2Cmd(lggr, domain)))
-	cmd.AddCommand(addMCMSv2DeprecationWarning(buildRunTimelockIsOperationReadyToExecuteV2Cmd(lggr, domain)))
-	cmd.AddCommand(addMCMSv2DeprecationWarning(buildRunTimelockIsOperationDoneV2Cmd(lggr, domain)))
-	cmd.AddCommand(addMCMSv2DeprecationWarning(buildTimelockExecuteChainV2Cmd(lggr, domain, proposalContextProvider)))
-	cmd.AddCommand(addMCMSv2DeprecationWarning(buildTimelockExecuteOperationV2Cmd(lggr, domain, proposalContextProvider)))
-	cmd.AddCommand(buildMCMSv2AnalyzeProposalCmd(stdErrLogger, domain, proposalContextProvider)) // not deprecated (yet)
-	cmd.AddCommand(buildMCMSv2ConvertUpf(stdErrLogger, domain, proposalContextProvider))         // not deprecated (yet)
-	cmd.AddCommand(addMCMSv2DeprecationWarning(buildMCMSv2ResetProposalCmd(stdErrLogger, domain, proposalContextProvider)))
+	// -----------------------------------------------------------
+	// MIGRATED COMMANDS - delegate to new modular implementation
+	// These commands use the new modular mcms package (engine/cld/commands/mcms).
+	// -----------------------------------------------------------
+	mcmsCmd, mcmsErr := mcmscmd.NewCommand(mcmscmd.Config{
+		Logger:                  lggr,
+		Domain:                  domain,
+		ProposalContextProvider: proposalContextProvider,
+	})
+	if mcmsErr != nil {
+		panic(fmt.Sprintf("failed to create modular mcms commands: %v", mcmsErr))
+	}
+	for _, sub := range mcmsCmd.Commands() {
+		cmd.AddCommand(sub)
+	}
 
-	// fork flag is only used internally by buildExecuteForkCommand
-	cmd.PersistentFlags().BoolP(forkFlag, "f", false, "Run the command on forked environment (EVM)")
-	cmd.AddCommand(buildExecuteForkCommand(lggr, domain, proposalContextProvider)) // not deprecated (yet)
+	// -----------------------------------------------------------
+	// DEPRECATED COMMANDS - still used in scripts/actions
+	// -----------------------------------------------------------
+	cmd.AddCommand(addMCMSv2DeprecationWarning(buildMCMSCheckQuorumv2Cmd(lggr, domain)))
+	cmd.AddCommand(addMCMSv2DeprecationWarning(buildSetRootv2Cmd(lggr, domain, proposalContextProvider)))
+	cmd.AddCommand(addMCMSv2DeprecationWarning(buildExecuteChainv2Cmd(lggr, domain, proposalContextProvider)))
+	cmd.AddCommand(addMCMSv2DeprecationWarning(buildTimelockExecuteChainV2Cmd(lggr, domain, proposalContextProvider)))
+	cmd.AddCommand(addMCMSv2DeprecationWarning(buildMCMSv2ResetProposalCmd(stdErrLogger, domain, proposalContextProvider)))
+	cmd.AddCommand(addMCMSv2DeprecationWarning(buildGetOpCountV2Cmd(lggr, domain, proposalContextProvider)))
 
 	return &cmd
 }
@@ -219,6 +222,7 @@ func newCLIStdErrLogger() (logger.Logger, error) {
 	return lggr, nil
 }
 
+//nolint:unused // kept for reference, migrated to engine/cld/commands/mcms
 func buildMCMSErrorDecode(lggr logger.Logger, domain cldf_domain.Domain, proposalCtxProvider analyzer.ProposalContextProvider) *cobra.Command {
 	var filePath string
 
@@ -369,6 +373,7 @@ func buildMCMSCheckQuorumv2Cmd(lggr logger.Logger, domain cldf_domain.Domain) *c
 	}
 }
 
+//nolint:unused // deprecated command, kept for reference
 func buildExecuteOperationv2Cmd(lggr logger.Logger, domain cldf_domain.Domain, proposalCtxProvider analyzer.ProposalContextProvider) *cobra.Command {
 	var index int
 
@@ -506,6 +511,7 @@ func buildGetOpCountV2Cmd(lggr logger.Logger, domain cldf_domain.Domain, proposa
 	}
 }
 
+//nolint:unused // deprecated command, kept for reference
 func buildRunTimelockIsPendingV2Cmd(lggr logger.Logger, domain cldf_domain.Domain) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "is-timelock-pending",
@@ -540,6 +546,7 @@ func buildRunTimelockIsPendingV2Cmd(lggr logger.Logger, domain cldf_domain.Domai
 	return cmd
 }
 
+//nolint:unused // deprecated command, kept for reference
 func buildRunTimelockIsReadyToExecuteV2Cmd(lggr logger.Logger, domain cldf_domain.Domain) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "is-timelock-ready",
@@ -574,6 +581,7 @@ func buildRunTimelockIsReadyToExecuteV2Cmd(lggr logger.Logger, domain cldf_domai
 	return cmd
 }
 
+//nolint:unused // deprecated command, kept for reference
 func buildRunTimelockIsDoneV2Cmd(lggr logger.Logger, domain cldf_domain.Domain, proposalContextProvider analyzer.ProposalContextProvider) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "is-timelock-done",
@@ -608,6 +616,7 @@ func buildRunTimelockIsDoneV2Cmd(lggr logger.Logger, domain cldf_domain.Domain, 
 	return cmd
 }
 
+//nolint:unused // deprecated command, kept for reference
 func buildRunTimelockIsOperationPendingV2Cmd(lggr logger.Logger, domain cldf_domain.Domain) *cobra.Command {
 	var index int
 
@@ -651,6 +660,7 @@ func buildRunTimelockIsOperationPendingV2Cmd(lggr logger.Logger, domain cldf_dom
 	return cmd
 }
 
+//nolint:unused // deprecated command, kept for reference
 func buildRunTimelockIsOperationReadyToExecuteV2Cmd(lggr logger.Logger, domain cldf_domain.Domain) *cobra.Command {
 	var index int
 
@@ -693,6 +703,7 @@ func buildRunTimelockIsOperationReadyToExecuteV2Cmd(lggr logger.Logger, domain c
 	return cmd
 }
 
+//nolint:unused // deprecated command, kept for reference
 func buildRunTimelockIsOperationDoneV2Cmd(lggr logger.Logger, domain cldf_domain.Domain) *cobra.Command {
 	var index int
 
@@ -753,6 +764,7 @@ func buildTimelockExecuteChainV2Cmd(lggr logger.Logger, domain cldf_domain.Domai
 	}
 }
 
+//nolint:unused // deprecated command, kept for reference
 func buildTimelockExecuteOperationV2Cmd(lggr logger.Logger, domain cldf_domain.Domain, proposalCtxProvider analyzer.ProposalContextProvider) *cobra.Command {
 	var index int
 
@@ -801,6 +813,8 @@ func buildTimelockExecuteOperationV2Cmd(lggr logger.Logger, domain cldf_domain.D
 // it calls "set-root", "execute-chain", "execute-timelock-chain" to verify
 // that a signed proposal can be applied on a taget network
 // see rewind-blocks param, by default we are rewinding forked chains to speed up verification of Timelock proposals
+//
+//nolint:unused // kept for reference, migrated to engine/cld/commands/mcms
 func buildExecuteForkCommand(lggr logger.Logger, domain cldf_domain.Domain, proposalCtxProvider analyzer.ProposalContextProvider) *cobra.Command {
 	var testSigner bool
 
@@ -824,6 +838,7 @@ func buildExecuteForkCommand(lggr logger.Logger, domain cldf_domain.Domain, prop
 	return cmd
 }
 
+//nolint:unused // kept for reference, migrated to engine/cld/commands/mcms
 func buildMCMSv2AnalyzeProposalCmd(
 	lggr logger.Logger, domain cldf_domain.Domain, proposalCtxProvider analyzer.ProposalContextProvider,
 ) *cobra.Command {
@@ -978,6 +993,7 @@ func buildMCMSv2ResetProposalCmd(
 	return cmd
 }
 
+//nolint:unused // kept for reference, migrated to engine/cld/commands/mcms
 func buildMCMSv2ConvertUpf(
 	lggr logger.Logger, domain cldf_domain.Domain, proposalCtxProvider analyzer.ProposalContextProvider,
 ) *cobra.Command {
@@ -1074,9 +1090,9 @@ func parseCommonFlagsv2(cmdFlags *pflag.FlagSet) (commonFlagsv2, error) {
 	if err != nil {
 		return flags, fmt.Errorf("error getting selector flag: %w", err)
 	}
-	flags.fork, err = cmdFlags.GetBool(forkFlag)
-	if err != nil {
-		return flags, fmt.Errorf("error getting fork flag: %w", err)
+	// fork flag is optional - only used by execute-fork which is now migrated
+	if cmdFlags.Lookup(forkFlag) != nil {
+		flags.fork, _ = cmdFlags.GetBool(forkFlag)
 	}
 
 	// Validate proposal kind
@@ -1796,6 +1812,8 @@ func addCallProxyOption(
 
 // createRendererFromFormat creates an appropriate renderer based on the format string.
 // Defaults to markdown renderer for unknown formats.
+//
+//nolint:unused // kept for reference, migrated to engine/cld/commands/mcms
 func createRendererFromFormat(format string) (analyzer.Renderer, error) {
 	switch format {
 	case "text", "txt":
@@ -1862,8 +1880,10 @@ type commandRunnerI interface {
 	Run(ctx context.Context, command string, args ...string) ([]byte, error)
 }
 
+//nolint:unused // kept for reference
 type commandRunner struct{}
 
+//nolint:unused // kept for reference
 func (commandRunner) Run(ctx context.Context, command string, args ...string) ([]byte, error) {
 	return exec.CommandContext(ctx, command, args...).Output()
 }
