@@ -249,6 +249,9 @@ type CTFAnvilChainProviderConfig struct {
 	// DefaultNetwork once
 	Once *sync.Once
 
+	// Optional: name given to the anvil container
+	Name string
+
 	// Required: ConfirmFunctor is a type that generates a confirmation function for transactions.
 	// Use ConfirmFuncGeth to use the Geth client for transaction confirmation, or
 	// ConfirmFuncSeth to use the Seth client for transaction confirmation with richer debugging.
@@ -581,6 +584,7 @@ func (p *CTFAnvilChainProvider) startContainer(ctx context.Context, chainID stri
 
 		// Create the input for the Anvil blockchain network
 		input := &blockchain.Input{
+			ContainerName:            p.config.Name,
 			Type:                     blockchain.TypeAnvil,
 			ChainID:                  chainID,
 			Port:                     portStr,

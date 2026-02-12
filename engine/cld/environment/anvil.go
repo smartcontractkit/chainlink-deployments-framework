@@ -254,6 +254,7 @@ func newAnvilChains(
 		}
 
 		config := evmprov.CTFAnvilChainProviderConfig{
+			Name:                     fmt.Sprintf("anvil-fork-%d", network.ChainSelector),
 			Once:                     &once,
 			ConfirmFunctor:           evmprov.ConfirmFuncGeth(3 * time.Minute),
 			DockerCmdParamsOverrides: []string{"--auto-impersonate"},
