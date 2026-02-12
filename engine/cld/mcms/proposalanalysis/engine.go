@@ -18,8 +18,8 @@ import (
 	cldfenvironment "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
 	analyzer "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/decoder"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/formatter"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/internal"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/renderer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/types"
 	experimentalanalyzer "github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
@@ -34,10 +34,10 @@ type analyzerEngine struct {
 	evmABIMappings map[string]string
 	solanaDecoders map[string]experimentalanalyzer.DecodeInstructionFn
 
-	decoder           decoder.ProposalDecoder
-	formatterRegistry *formatter.FormatterRegistry
+	decoder          decoder.ProposalDecoder
+	rendererRegistry *renderer.RendererRegistry
 
-	executionContext types.ExecutionContext // Store for formatters
+	executionContext types.ExecutionContext
 	logger           logger.Logger
 	analyzerTimeout  time.Duration
 }
@@ -52,12 +52,12 @@ func NewAnalyzerEngine(opts ...EngineOption) types.AnalyzerEngine {
 	cfg := ApplyEngineOptions(opts...)
 
 	engine := &analyzerEngine{
-		evmABIMappings:    make(map[string]string),
-		solanaDecoders:    make(map[string]experimentalanalyzer.DecodeInstructionFn),
-		decoder:           decoder.NewLegacyDecoder(),
-		formatterRegistry: formatter.NewFormatterRegistry(),
-		logger:            cfg.GetLogger(),
-		analyzerTimeout:   cfg.GetAnalyzerTimeout(),
+		evmABIMappings:   make(map[string]string),
+		solanaDecoders:   make(map[string]experimentalanalyzer.DecodeInstructionFn),
+		decoder:          decoder.NewLegacyDecoder(),
+		rendererRegistry: renderer.NewRendererRegistry(),
+		logger:           cfg.GetLogger(),
+		analyzerTimeout:  cfg.GetAnalyzerTimeout(),
 	}
 	return engine
 }
@@ -97,7 +97,6 @@ func (ae *analyzerEngine) Run(
 		dataStore:       env.DataStore,
 	}
 
-	// Store execution context for formatters
 	ae.executionContext = &ectx
 
 	analyzedProposal, err := ae.analyzeProposal(ctx, actx, ectx, decodedProposal)
@@ -108,28 +107,28 @@ func (ae *analyzerEngine) Run(
 	return analyzedProposal, nil
 }
 
-// Format writes the formatted proposal output to the provided io.Writer.
-func (ae *analyzerEngine) Format(
+// Render writes the rendered proposal output to the provided io.Writer.
+func (ae *analyzerEngine) Render(
 	ctx context.Context,
 	w io.Writer,
-	formatterID string,
+	rendererID string,
 	proposal types.AnalyzedProposal,
 ) error {
-	f, exists := ae.formatterRegistry.Get(formatterID)
+	r, exists := ae.rendererRegistry.Get(rendererID)
 	if !exists {
-		return fmt.Errorf("formatter %s not registered", formatterID)
+		return fmt.Errorf("renderer %s not registered", rendererID)
 	}
 
 	if ae.executionContext == nil {
-		return fmt.Errorf("execution context not available - ensure Run() was called before Format()")
+		return fmt.Errorf("execution context not available - ensure Run() was called before Render()")
 	}
 
-	req := types.FormatterRequest{
+	req := types.RendererRequest{
 		Domain:          ae.executionContext.Domain().String(),
 		EnvironmentName: ae.executionContext.EnvironmentName(),
 	}
 
-	return f.Format(ctx, w, req, proposal)
+	return r.Render(ctx, w, req, proposal)
 }
 
 func (ae *analyzerEngine) RegisterAnalyzer(baseAnalyzer types.BaseAnalyzer) error {
@@ -196,8 +195,8 @@ func (ae *analyzerEngine) hasAnalyzerID(id string) bool {
 	return false
 }
 
-func (ae *analyzerEngine) RegisterFormatter(f types.Formatter) error {
-	return ae.formatterRegistry.Register(f)
+func (ae *analyzerEngine) RegisterRenderer(r types.Renderer) error {
+	return ae.rendererRegistry.Register(r)
 }
 
 func (ae *analyzerEngine) RegisterEVMABIMappings(evmABIMappings map[string]string) error {

@@ -158,18 +158,18 @@ type ParameterAnalyzer interface {
 	Analyze(ctx context.Context, req AnalyzerRequest, param DecodedParameter) (Annotations, error)
 }
 
-// ----- formatter -----
+// ----- renderer -----
 
-// FormatterRequest encapsulates the context passed to formatter methods.
-type FormatterRequest struct {
+// RendererRequest encapsulates the context passed to renderer methods.
+type RendererRequest struct {
 	Domain          string
 	EnvironmentName string
 }
 
-// Formatter transforms an AnalyzedProposal into a specific output format
-type Formatter interface {
+// Renderer transforms an AnalyzedProposal into a specific output format
+type Renderer interface {
 	ID() string
-	Format(ctx context.Context, w io.Writer, req FormatterRequest, proposal AnalyzedProposal) error
+	Render(ctx context.Context, w io.Writer, req RendererRequest, proposal AnalyzedProposal) error
 }
 
 // ----- engine -----
@@ -181,11 +181,11 @@ type AnalyzerEngine interface {
 
 	RegisterAnalyzer(analyzer BaseAnalyzer) error
 
-	RegisterFormatter(formatter Formatter) error
+	RegisterRenderer(renderer Renderer) error
 
 	RegisterEVMABIMappings(evmABIMappings map[string]string) error
 
 	RegisterSolanaDecoders(solanaDecoders map[string]DecodeInstructionFn) error
 
-	Format(ctx context.Context, w io.Writer, formatterID string, proposal AnalyzedProposal) error
+	Render(ctx context.Context, w io.Writer, rendererID string, proposal AnalyzedProposal) error
 }
