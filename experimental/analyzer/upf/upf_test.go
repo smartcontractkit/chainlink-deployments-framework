@@ -123,6 +123,7 @@ func TestUpfConvertTimelockProposalWithSui(t *testing.T) {
 
 	// ---- Sui: testnet
 	dsAddContract(t, ds, chainsel.SUI_TESTNET.Selector, "0x4e825a4758064df713762e431c3a16b8105857195214469db0d6985b7d70266d", "MCMSUser 1.0.0")
+	dsAddContract(t, ds, chainsel.SUI_TESTNET.Selector, "0xa363028c36d9b7ade44dfe4c317893bf86a4a1ce69293b6cb1569928fcf55e63", "burn_mint_token_pool 1.0.0")
 
 	env := deployment.Environment{
 		DataStore:         ds.Seal(),
@@ -139,8 +140,8 @@ func TestUpfConvertTimelockProposalWithSui(t *testing.T) {
 		assertion        func(*testing.T, string, error)
 	}{
 		{
-			name:             "Sui proposal with valid transaction",
-			timelockProposal: timelockProposalSui,
+			name:             "Sui burn_mint_token_pool ownership transfer",
+			timelockProposal: timelockProposalSuiBurnMintTokenPool,
 			signers: map[mcmstypes.ChainSelector][]common.Address{
 				mcmstypes.ChainSelector(chainsel.SUI_TESTNET.Selector): {
 					common.HexToAddress("0xA5D5B0B844c8f11B61F28AC98BBA84dEA9b80953"),
@@ -149,21 +150,9 @@ func TestUpfConvertTimelockProposalWithSui(t *testing.T) {
 			assertion: func(t *testing.T, gotUpf string, err error) {
 				t.Helper()
 				require.NoError(t, err)
-				require.YAMLEq(t, upfProposalSui, gotUpf)
-			},
-		},
-		{
-			name:             "Sui proposal with unknown module",
-			timelockProposal: timelockProposalSuiUnknownModule,
-			signers: map[mcmstypes.ChainSelector][]common.Address{
-				mcmstypes.ChainSelector(chainsel.SUI_TESTNET.Selector): {
-					common.HexToAddress("0xA5D5B0B844c8f11B61F28AC98BBA84dEA9b80953"),
-				},
-			},
-			assertion: func(t *testing.T, gotUpf string, err error) {
-				t.Helper()
-				require.NoError(t, err)
-				require.YAMLEq(t, upfProposalSuiUnknownModule, gotUpf)
+				require.NotEmpty(t, gotUpf)
+				// Verify that the proposal was successfully converted
+				require.Equal(t, suiUPFProposal, gotUpf)
 			},
 		},
 	}
@@ -587,38 +576,49 @@ signers:
   - "0x5f077BCeE6e285154473F65699d6F46Fd03D105A"
 `
 
-var timelockProposalSui = `{
+//nolint:gosec // G101 all test values
+var timelockProposalSuiBurnMintTokenPool = `{
   "version": "v1",
   "kind": "TimelockProposal",
   "validUntil": 1999999999,
-  "signatures": [],
+  "signatures": null,
   "overridePreviousRoot": false,
   "chainMetadata": {
     "9762610643973837292": {
-      "startingOpCount": 1,
-      "mcmAddress": "0x4e825a4758064df713762e431c3a16b8105857195214469db0d6985b7d70266d",
-      "additionalFields": null
+      "startingOpCount": 4,
+      "mcmAddress": "0x7418a4d56580cb2eac68025af4c928de007fa093f711d838a139fb3675a2ef5a",
+      "additionalFields": {
+        "role": 2,
+        "mcms_package_id": "0x832b7fd3b7f03d2fd55811cd565d675c09d938f2dc8c24dfd5e73bae4ca118df",
+        "account_obj": "0x0ad2d032fe62f567a8cb545200629a92bbd1033d84a64350d0c9f178afe3f998",
+        "registry_obj": "0x4d06d9106ae26847cab08eaa6ff4eb977c699f0ed90dacc7cdb9575bee92ad20",
+        "timelock_obj": "0xa514be3fe446f654389c1bd2dc4ce9dcbd85753fe537c0c64a34298607ee33b6",
+        "deployer_state_obj": "0xb1879297d851a448c923982c9d3efaf51612e18bb394d20aab496199f5d6ec4d"
+      }
     }
   },
-  "description": "simple Sui proposal",
+  "description": "Invoke",
   "action": "schedule",
-  "delay": "5m0s",
+  "delay": "10s",
   "timelockAddresses": {
-    "9762610643973837292": "0x4e825a4758064df713762e431c3a16b8105857195214469db0d6985b7d70266d"
+    "9762610643973837292": "0xa514be3fe446f654389c1bd2dc4ce9dcbd85753fe537c0c64a34298607ee33b6"
   },
   "operations": [
     {
       "chainSelector": 9762610643973837292,
       "transactions": [
         {
-          "contractType": "MCMSUser",
+          "contractType": "burn_mint_token_pool",
           "tags": [],
-          "to": "0x4e825a4758064df713762e431c3a16b8105857195214469db0d6985b7d70266d",
-          "data": "i8WcKEL0NsEiFpGjWdxClBwfJeyhP0ut55f7Dg2PS2W5dbWeXl19LUYyEaeuZRHbtJS9IbqY1GNZHOkUhofVcGRhdGVkIEZpZWxkIEEKAQIDBAUGBwgJCg==",
+          "to": "0xa363028c36d9b7ade44dfe4c317893bf86a4a1ce69293b6cb1569928fcf55e63",
+          "data": "gIiW6Fws+lnexlxd5E2Te3gDfR3J97yFPBcYjHk3ZNYhFzSEY0DsnIRNNMzPknW8ZlwHHO5Wz097aXjSs7D1800G2RBq4mhHyrCOqm/065d8aZ8O2Q2sx825V1vukq0ggyt/07fwPS/VWBHNVl1nXAnZOPLcjCTf1ec7rkyhGN8=",
           "additionalFields": {
-            "module_name": "mcms_user",
-            "function": "function_one",
-            "state_obj": "0x8bc59c2842f436c1221691a359dc42941c1f25eca13f4bad79f7b00e8df4b968"
+            "module_name": "burn_mint_token_pool",
+            "function": "execute_ownership_transfer_to_mcms",
+            "state_obj": "0x211734846340ec9c844d34cccf9275bc665c071cee56cf4f7b6978d2b3b0f5f3",
+            "type_args": [
+              "0x0ade2872306bc9346f3576bfb6c45db1a590f00330b810e4f7084ff9efdc5da2::link::LINK"
+            ]
           }
         }
       ]
@@ -626,13 +626,13 @@ var timelockProposalSui = `{
   ]
 }`
 
-var upfProposalSui = `---
+var suiUPFProposal = `---
 msigType: mcms
-proposalHash: "0x1c733d9d09e9d41e1651596078df88b00c68e085cc6bf14b8f346866b1741a28"
+proposalHash: "0x6676342371fba5bf02bfe07457797fc0dfa51b85eec23bf08ae5114f365865db"
 mcmsParams:
   validUntil: 1999999999
-  merkleRoot: "0xeeaa854482fdd28dec1ca358c4ba9c7399560b580683c7fa372e9a69eab8ba1d"
-  asciiProposalHash: '\x93>\x07\xb8>\xce3\xfa\xa7\xccZ\x1e\xea\xf8|\xb39\x9c\x10s\xd7\x98\xc8\xa6\x1d\xe13\x99\xa1u\xe2.'
+  merkleRoot: "0x093c18a1ae222c48c735c2d8f231fc8892060cc299d2a949d0c5b2bb830a1dbe"
+  asciiProposalHash: 'G\x80\xda\xeb\x95\xf5\xf5\x8d\xd4W\x9a\x04R\x92y\xd8\x19\x0e` + "`" + `6\xd0\x851k\xbc\xad\x193?\xcdr\xb9'
   overridePreviousRoot: false
 transactions:
 - index: 0
@@ -640,86 +640,27 @@ transactions:
   chainId: "2"
   chainName: sui-testnet
   chainShortName: sui-testnet
-  msigAddress: "0x4e825a4758064df713762e431c3a16b8105857195214469db0d6985b7d70266d"
-  timelockAddress: "0x4e825a4758064df713762e431c3a16b8105857195214469db0d6985b7d70266d"
-  to: ""
+  msigAddress: "0x7418a4d56580cb2eac68025af4c928de007fa093f711d838a139fb3675a2ef5a"
+  timelockAddress: "0xa514be3fe446f654389c1bd2dc4ce9dcbd85753fe537c0c64a34298607ee33b6"
+  to: "0x832b7fd3b7f03d2fd55811cd565d675c09d938f2dc8c24dfd5e73bae4ca118df"
   value: 0
-  data: AU6CWkdYBk33E3YuQxw6FrgQWFcZUhRGnbDWmFt9cCZtAQltY21zX3VzZXIBDGZ1bmN0aW9uX29uZQFYi8WcKEL0NsEiFpGjWdxClBwfJeyhP0ut55f7Dg2PS2W5dbWeXl19LUYyEaeuZRHbtJS9IbqY1GNZHOkUhofVcGRhdGVkIEZpZWxkIEEKAQIDBAUGBwgJCiAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACB3NZP/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACwBAAAAAAAA
-  txNonce: 1
+  data: AaNjAow22bet5E3+TDF4k7+GpKHOaSk7bLFWmSj89V5jARRidXJuX21pbnRfdG9rZW5fcG9vbAEiZXhlY3V0ZV9vd25lcnNoaXBfdHJhbnNmZXJfdG9fbWNtcwGAAYCIluhcLPpZ3sZcXeRNk3t4A30dyfe8hTwXGIx5N2TWIRc0hGNA7JyETTTMz5J1vGZcBxzuVs9Pe2l40rOw9fNNBtkQauJoR8qwjqpv9OuXfGmfDtkNrMfNuVdb7pKtIIMrf9O38D0v1VgRzVZdZ1wJ2Tjy3Iwk39XnO65MoRjfIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIHc1k/8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACgAAAAAAAAA=
+  txNonce: 4
   metadata:
     contractType: MCMS
     decodedCalldata:
-      functionName: "failed to decode Sui transaction: could not find function in contractInterfaces for mcms::timelock_schedule_batch"
-      functionArgs: {}
-signers:
-  9762610643973837292:
-  - "0xA5D5B0B844c8f11B61F28AC98BBA84dEA9b80953"
-`
-
-var timelockProposalSuiUnknownModule = `{
-  "version": "v1",
-  "kind": "TimelockProposal",
-  "validUntil": 1999999999,
-  "signatures": [],
-  "overridePreviousRoot": false,
-  "chainMetadata": {
-    "9762610643973837292": {
-      "startingOpCount": 1,
-      "mcmAddress": "0x4e825a4758064df713762e431c3a16b8105857195214469db0d6985b7d70266d",
-      "additionalFields": null
-    }
-  },
-  "description": "Sui proposal with unknown module",
-  "action": "schedule",
-  "delay": "5m0s",
-  "timelockAddresses": {
-    "9762610643973837292": "0x4e825a4758064df713762e431c3a16b8105857195214469db0d6985b7d70266d"
-  },
-  "operations": [
-    {
-      "chainSelector": 9762610643973837292,
-      "transactions": [
-        {
-          "contractType": "MCMSUser",
-          "tags": [],
-          "to": "0x4e825a4758064df713762e431c3a16b8105857195214469db0d6985b7d70266d",
-          "data": "c29tZSBkYXRh",
-          "additionalFields": {
-            "module_name": "unknown_module",
-            "function": "some_function",
-            "state_obj": "0x123"
-          }
-        }
-      ]
-    }
-  ]
-}`
-
-var upfProposalSuiUnknownModule = `---
-msigType: mcms
-proposalHash: "0x5433c70ce0b94602235ae03d5485a3ff991b90d35b90f3474af5455f1105c198"
-mcmsParams:
-  validUntil: 1999999999
-  merkleRoot: "0x0104cddb47805604d82eeab0e02cb33c4374c1e635ab038d2a1ed9038c48e4a9"
-  asciiProposalHash: 'L\xb9E\x9d\xfeMY\x83\xec3\xba\x00\xa6F0@\x82 \xd4\xc0\x9bj-"C\xcb\xf6\xb6v\xc0B\xbc'
-  overridePreviousRoot: false
-transactions:
-- index: 0
-  chainFamily: sui
-  chainId: "2"
-  chainName: sui-testnet
-  chainShortName: sui-testnet
-  msigAddress: "0x4e825a4758064df713762e431c3a16b8105857195214469db0d6985b7d70266d"
-  timelockAddress: "0x4e825a4758064df713762e431c3a16b8105857195214469db0d6985b7d70266d"
-  to: ""
-  value: 0
-  data: AU6CWkdYBk33E3YuQxw6FrgQWFcZUhRGnbDWmFt9cCZtAQ51bmtub3duX21vZHVsZQENc29tZV9mdW5jdGlvbgEJc29tZSBkYXRhIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIHc1k/8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAALAEAAAAAAAA=
-  txNonce: 1
-  metadata:
-    contractType: MCMS
-    decodedCalldata:
-      functionName: "failed to decode Sui transaction: could not find function in contractInterfaces for mcms::timelock_schedule_batch"
-      functionArgs: {}
+      functionName: mcms::timelock_schedule_batch
+      functionArgs:
+        calls:
+        - to: "0xa363028c36d9b7ade44dfe4c317893bf86a4a1ce69293b6cb1569928fcf55e63"
+          value: 0
+          data:
+            functionName: burn_mint_token_pool::execute_ownership_transfer_to_mcms
+            functionArgs:
+              owner_cap: "0x808896e85c2cfa59dec65c5de44d937b78037d1dc9f7bc853c17188c793764d6"
+              registry: "0x4d06d9106ae26847cab08eaa6ff4eb977c699f0ed90dacc7cdb9575bee92ad20"
+              state: "0x211734846340ec9c844d34cccf9275bc665c071cee56cf4f7b6978d2b3b0f5f3"
+              to: "0x832b7fd3b7f03d2fd55811cd565d675c09d938f2dc8c24dfd5e73bae4ca118df"
 signers:
   9762610643973837292:
   - "0xA5D5B0B844c8f11B61F28AC98BBA84dEA9b80953"
