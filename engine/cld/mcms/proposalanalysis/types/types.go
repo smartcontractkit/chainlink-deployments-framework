@@ -9,6 +9,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
+	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	cldfdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	experimentalanalyzer "github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 )
@@ -41,6 +42,7 @@ type DecodedBatchOperations []DecodedBatchOperation
 
 type DecodedBatchOperation interface {
 	ChainSelector() uint64
+	ChainName() string
 	Calls() DecodedCalls
 }
 
@@ -63,6 +65,7 @@ type DecodedParameter interface {
 	Name() string
 	Type() string
 	Value() any
+	DisplayValue() any
 }
 
 // ----- analyzed -----
@@ -74,6 +77,8 @@ type AnalyzedProposal interface {
 
 type AnalyzedBatchOperation interface {
 	Annotated
+	ChainSelector() uint64
+	ChainName() string
 	Calls() AnalyzedCalls
 }
 
@@ -178,6 +183,13 @@ type DecodeInstructionFn = experimentalanalyzer.DecodeInstructionFn
 
 type AnalyzerEngine interface {
 	Run(ctx context.Context, domain cldfdomain.Domain, environmentName string, proposal *mcms.TimelockProposal) (AnalyzedProposal, error)
+	RunWithEnvironment(
+		ctx context.Context,
+		domain cldfdomain.Domain,
+		environmentName string,
+		env deployment.Environment,
+		proposal *mcms.TimelockProposal,
+	) (AnalyzedProposal, error)
 
 	RegisterAnalyzer(analyzer BaseAnalyzer) error
 
