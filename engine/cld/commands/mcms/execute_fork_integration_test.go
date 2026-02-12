@@ -65,6 +65,7 @@ func Test_executeFork_Integration(t *testing.T) { //nolint:paralleltest
 
 	// initialize anvil container with main blockchain
 	anvilConfig := cldfchainprovider.CTFAnvilChainProviderConfig{
+		Name:                  "anvil-main-blockchain",
 		Once:                  &sync.Once{},
 		ConfirmFunctor:        cldfchainprovider.ConfirmFuncGeth(3 * time.Minute),
 		Image:                 "f4hrenh9it/foundry:latest",

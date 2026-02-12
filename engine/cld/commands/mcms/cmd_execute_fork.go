@@ -23,8 +23,8 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/flags"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/mcms/layout"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/text"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/legacy/cli/mcmsv2/layout"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
