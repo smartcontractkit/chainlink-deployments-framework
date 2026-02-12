@@ -1,0 +1,11 @@
+# Testnet network configuration file
+preferred_url_scheme: &preferred_url_scheme "http"
+networks:
+  # local anvil (evm chain id: 1337)
+  - type: testnet
+    chain_selector: 3379446385462418246
+    rpcs:
+      - rpc_name: Local RPC
+        preferred_url_scheme: *preferred_url_scheme
+        http_url: https://localhost:9999/
+        ws_url: wss://localhost:9999/
