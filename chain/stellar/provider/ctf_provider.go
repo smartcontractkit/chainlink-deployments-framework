@@ -22,14 +22,6 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/stellar"
 )
 
-const (
-	// defaultStellarImage is the default Docker image used for Stellar localnet.
-	defaultStellarImage = "stellar/quickstart:latest"
-
-	// defaultNetworkPassphrase is the network passphrase for Stellar standalone network.
-	defaultNetworkPassphrase = "Standalone Network ; February 2017"
-)
-
 // CTFChainProviderConfig holds the configuration to initialize the CTFChainProvider.
 type CTFChainProviderConfig struct {
 	// Required: A generator for the deployer keypair. Use KeypairFromHex to create a deployer
@@ -128,7 +120,7 @@ func (p *CTFChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 	// Get network passphrase
 	networkPassphrase := p.config.NetworkPassphrase
 	if networkPassphrase == "" {
-		networkPassphrase = defaultNetworkPassphrase
+		networkPassphrase = blockchain.DefaultStellarNetworkPassphrase
 	}
 
 	// Construct the chain
@@ -263,7 +255,7 @@ func (p *CTFChainProvider) getImage() string {
 		return p.config.Image
 	}
 
-	return defaultStellarImage
+	return blockchain.DefaultStellarImage
 }
 
 // buildEnvVars constructs the environment variables for the Stellar container.
