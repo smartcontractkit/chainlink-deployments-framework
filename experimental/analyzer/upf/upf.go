@@ -46,7 +46,8 @@ func UpfConvertTimelockProposal(
 		if batch.Metadata == nil || batch.Metadata.DecodedCalldata == nil {
 			continue
 		}
-		if batch.Metadata.ContractType == "RBACTimelock" && isTimelockBatchFunction(batch.Metadata.DecodedCalldata.FunctionName) {
+		// Check for both RBACTimelock (EVM, Solana) and MCMS (Sui, Aptos, TON) contract types
+		if (batch.Metadata.ContractType == "RBACTimelock" || batch.Metadata.ContractType == "MCMS") && isTimelockBatchFunction(batch.Metadata.DecodedCalldata.FunctionName) {
 			batch.Metadata.DecodedCalldata.FunctionArgs["calls"] = decodedBatches[decodedBatchesIndex]
 			decodedBatchesIndex++
 		}

@@ -207,6 +207,17 @@ func TestAnalyzeSuiTransactionWithErrors(t *testing.T) {
 			wantError:   false,
 		},
 		{
+			name: "mcms module transaction returns method name directly",
+			mcmsTx: types.Transaction{
+				To:               suiTestAddress,
+				Data:             []byte{0x01, 0x02, 0x03}, // Data doesn't matter for MCMS module
+				AdditionalFields: json.RawMessage(`{"module_name":"mcms","function":"timelock_schedule_batch","state_obj":"0x123"}`),
+			},
+			wantAddress: suiTestAddress,
+			wantMethod:  "mcms::timelock_schedule_batch",
+			wantError:   false,
+		},
+		{
 			name: "decoder decode failure with empty data",
 			mcmsTx: types.Transaction{
 				To:               suiTestAddress,
@@ -276,6 +287,11 @@ func TestAnalyzeSuiTransactionWithErrors(t *testing.T) {
 					// For decode failure, just check that it starts with the expected prefix
 					require.True(t, hasPrefix(result.Method, tt.wantMethod),
 						"Method %q should start with prefix %q", result.Method, tt.wantMethod)
+				case "mcms module transaction returns method name directly":
+					// For MCMS module, verify the method is correct and inputs are empty
+					require.Equal(t, tt.wantMethod, result.Method, "Method mismatch")
+					require.Empty(t, result.Inputs, "MCMS module transactions should have empty inputs")
+					require.Empty(t, result.Outputs, "MCMS module transactions should have empty outputs")
 				default:
 					require.Equal(t, tt.wantMethod, result.Method, "Method mismatch")
 				}
