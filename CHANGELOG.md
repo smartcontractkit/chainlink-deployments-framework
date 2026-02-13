@@ -1,5 +1,29 @@
 # chainlink-deployments-framework
 
+## 0.80.1
+
+### Patch Changes
+
+- [#719](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/719) [`f4aad62`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/f4aad622da5542df6077e079fa80c6bef96b6db9) Thanks [@ajaskolski](https://github.com/ajaskolski)! - refactor(modular-cmds): create addressbook modular command and delegate legacy one to it
+
+- [#730](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/730) [`c6b6eae`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/c6b6eaee11979342afa0514d83bfbf61630cb8a8) Thanks [@krebernisak](https://github.com/krebernisak)! - Bump github.com/smartcontractkit/chainlink-ton@83535910e2c0 and use bounded trace to confirm tx
+
+- [#728](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/728) [`3a7f8d0`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/3a7f8d006d32cd6bc93f84ec563ffee4cf53b744) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - chore: bump CTF to v0.14.0
+
+- [#716](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/716) [`8c0cc40`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/8c0cc40200a596209a6fb96034e70e0f355c29d1) Thanks [@bytesizedroll](https://github.com/bytesizedroll)! - Migration reference fix
+
+- [#714](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/714) [`c4522c1`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/c4522c10051901509e13ad376c7a6b84eee9e4f1) Thanks [@FelixFan1992](https://github.com/FelixFan1992)! - add Stellar support for mcms adapters, RPC provider, chain config, and blockchain
+
+- [#723](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/723) [`9e501d5`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/9e501d5aba4951ddc0ca4f5223183324bc00641b) Thanks [@RodrigoAD](https://github.com/RodrigoAD)! - Fix sui timelock decoder
+
+- [#725](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/725) [`8ce7726`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/8ce7726f079e004179499c2ec2c507aaf22b41a9) Thanks [@FelixFan1992](https://github.com/FelixFan1992)! - add a ctf provider for Stellar
+
+- [#729](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/729) [`901ba0b`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/901ba0ba050f7bef7e980e0276bafe325eb57172) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - chore: bump chain-selectors to v1.0.96
+
+- [#720](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/720) [`b296b7d`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/b296b7df28a63cb47172c5f9646b7596e7d4324c) Thanks [@krebernisak](https://github.com/krebernisak)! - Revert chainlink-ccip/chains/solana to 85accaf3d28d (availabel contract release)
+
+- [#733](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/733) [`9fcb21e`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/9fcb21e1b796d651f549433227d8f301cc970e03) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - chore: bump mcms to v0.36.0
+
 ## 0.80.0
 
 ### Minor Changes
