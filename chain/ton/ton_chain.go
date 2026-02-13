@@ -10,6 +10,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/common"
 
+	"github.com/smartcontractkit/chainlink-ton/pkg/bindings"
 	"github.com/smartcontractkit/chainlink-ton/pkg/ton/tracetracking"
 )
 
@@ -31,6 +32,6 @@ type Chain struct {
 // MakeDefaultConfirmFunc creates a default ConfirmFunc that waits for transaction trace.
 var MakeDefaultConfirmFunc = func(c ton.APIClientWrapped) ConfirmFunc {
 	return func(ctx context.Context, tx *tlb.Transaction) error {
-		return tracetracking.WaitForTrace(ctx, c, tx)
+		return tracetracking.WaitForTrace(ctx, c, tx, bindings.DefaultTraceStopCondition)
 	}
 }
