@@ -2,8 +2,6 @@ package mcms
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
 	"fmt"
 
 	chainsel "github.com/smartcontractkit/chain-selectors"
@@ -19,9 +17,6 @@ import (
 
 	suibindings "github.com/smartcontractkit/chainlink-sui/bindings"
 )
-
-// defaultTONExecutorAmount is the default amount of TON for MCMS/Timelock executor transactions.
-const defaultTONExecutorAmount = "0.1"
 
 // getInspectorFromChainSelector returns an inspector for the given chain selector.
 func getInspectorFromChainSelector(cfg *forkConfig) (sdk.Inspector, error) {
@@ -223,48 +218,4 @@ func getTimelockExecutorWithChainOverride(cfg *forkConfig, chainSelector types.C
 	}
 
 	return executor, nil
-}
-
-// aptosRoleFromProposal extracts the Aptos role from a timelock proposal.
-func aptosRoleFromProposal(proposal *mcms.TimelockProposal) (*aptos.TimelockRole, error) {
-	if proposal == nil {
-		return nil, errors.New("aptos timelock proposal is needed")
-	}
-
-	switch proposal.Action {
-	case types.TimelockActionBypass:
-		role := aptos.TimelockRoleBypasser
-
-		return &role, nil
-	case types.TimelockActionSchedule:
-		role := aptos.TimelockRoleProposer
-
-		return &role, nil
-	case types.TimelockActionCancel:
-		role := aptos.TimelockRoleCanceller
-
-		return &role, nil
-	default:
-		return nil, errors.New("unknown timelock action")
-	}
-}
-
-// suiMetadataFromProposal extracts Sui metadata from a timelock proposal.
-func suiMetadataFromProposal(selector types.ChainSelector, proposal *mcms.TimelockProposal) (sui.AdditionalFieldsMetadata, error) {
-	if proposal == nil {
-		return sui.AdditionalFieldsMetadata{}, errors.New("sui timelock proposal is needed")
-	}
-
-	var metadata sui.AdditionalFieldsMetadata
-	err := json.Unmarshal([]byte(proposal.ChainMetadata[selector].AdditionalFields), &metadata)
-	if err != nil {
-		return sui.AdditionalFieldsMetadata{}, err
-	}
-
-	err = metadata.Validate()
-	if err != nil {
-		return sui.AdditionalFieldsMetadata{}, err
-	}
-
-	return metadata, nil
 }
