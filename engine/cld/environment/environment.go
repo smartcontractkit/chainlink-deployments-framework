@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 
+	fchain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	cldcatalog "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/catalog"
@@ -75,17 +77,30 @@ func Load(
 		lggr.Infow("Using file-based datastore")
 	}
 
-	// default - loads all chains from the networks config
-	chainSelectorsToLoad := cfg.Networks.ChainSelectors()
+	var blockChains fchain.BlockChainCollection
+	if os.Getenv("CLD_LAZY_BLOCKCHAINS") == "true" {
+		lggr.Infow("Using lazy blockchains")
+		// Use lazy loading for chains - they will be initialized on first access
+		// All chains from the network config are made available, but only loaded when accessed
+		// ENSURE all downstream code uses the Chains() method instead of the BlockChains field
+		blockChains, err = chains.NewLazyBlockChains(ctx, lggr, cfg)
+		if err != nil {
+			return fdeployment.Environment{}, err
+		}
+	} else {
+		lggr.Infow("Using eager blockchains")
+		// default - loads all chains from the networks config
+		chainSelectorsToLoad := cfg.Networks.ChainSelectors()
 
-	if loadcfg.chainSelectorsToLoad != nil {
-		lggr.Infow("Override: loading chains", "chains", loadcfg.chainSelectorsToLoad)
-		chainSelectorsToLoad = loadcfg.chainSelectorsToLoad
-	}
+		if loadcfg.chainSelectorsToLoad != nil {
+			lggr.Infow("Override: loading chains", "chains", loadcfg.chainSelectorsToLoad)
+			chainSelectorsToLoad = loadcfg.chainSelectorsToLoad
+		}
 
-	blockChains, err := chains.LoadChains(ctx, lggr, cfg, chainSelectorsToLoad)
-	if err != nil {
-		return fdeployment.Environment{}, err
+		blockChains, err = chains.LoadChains(ctx, lggr, cfg, chainSelectorsToLoad)
+		if err != nil {
+			return fdeployment.Environment{}, err
+		}
 	}
 
 	nodes, err := envdir.LoadNodes()
@@ -130,16 +145,15 @@ func Load(
 
 	getCtx := func() context.Context { return ctx }
 
-	return fdeployment.Environment{
-		Name:              envKey,
-		Logger:            lggr,
-		ExistingAddresses: ab,
-		DataStore:         ds,
-		NodeIDs:           nodes.Keys(),
-		Offchain:          jd,
-		GetContext:        getCtx,
-		OCRSecrets:        sharedSecrets,
-		OperationsBundle:  operations.NewBundle(getCtx, lggr, loadcfg.reporter, operations.WithOperationRegistry(loadcfg.operationRegistry)),
-		BlockChains:       blockChains,
-	}, nil
+	return *fdeployment.NewEnvironmentWithChains(
+		envKey,
+		lggr,
+		ab,
+		ds,
+		nodes.Keys(),
+		jd,
+		getCtx,
+		sharedSecrets,
+		operations.NewBundle(getCtx, lggr, loadcfg.reporter, operations.WithOperationRegistry(loadcfg.operationRegistry)),
+		blockChains), nil
 }

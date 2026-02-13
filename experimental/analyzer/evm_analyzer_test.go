@@ -828,7 +828,7 @@ func TestQueryEIP1967ImplementationSlot(t *testing.T) {
 				t.Helper()
 				env, err := testenv.New(t.Context(), testenv.WithEVMSimulated(t, []uint64{chainSelector}))
 				require.NoError(t, err)
-				evmChains := env.BlockChains.EVMChains()
+				evmChains := env.Chains().EVMChains()
 
 				return evmChains[chainSelector]
 			},
@@ -889,22 +889,24 @@ func TestTryEIP1967ProxyFallback(t *testing.T) {
 				t.Helper()
 
 				return &DefaultProposalContext{
-					AddressesByChain: deployment.AddressesByChain{
-						chainSelector: {
-							proxyAddress: deployment.MustTypeAndVersionFromString("TransparentUpgradeableProxy 1.0.0"),
-						},
-					},
-					evmRegistry: &mockEVMRegistry{
-						abis: map[string]string{
-							"TransparentUpgradeableProxy 1.0.0": proxyABI,
-						},
-						addressesByChain: deployment.AddressesByChain{
+						AddressesByChain: deployment.AddressesByChain{
 							chainSelector: {
 								proxyAddress: deployment.MustTypeAndVersionFromString("TransparentUpgradeableProxy 1.0.0"),
 							},
 						},
-					},
-				}, deployment.Environment{}
+						evmRegistry: &mockEVMRegistry{
+							abis: map[string]string{
+								"TransparentUpgradeableProxy 1.0.0": proxyABI,
+							},
+							addressesByChain: deployment.AddressesByChain{
+								chainSelector: {
+									proxyAddress: deployment.MustTypeAndVersionFromString("TransparentUpgradeableProxy 1.0.0"),
+								},
+							},
+						},
+					}, deployment.Environment{
+						BlockChains: chain.NewBlockChainsFromSlice([]chain.BlockChain{}), // empty blockchains
+					}
 			},
 			chainSelector: chainSelector,
 			proxyAddress:  proxyAddress,
@@ -956,14 +958,14 @@ func TestTryEIP1967ProxyFallback(t *testing.T) {
 				require.NoError(t, err)
 
 				// Set storage to return implAddress (via mock wrapper), but don't add it to address book
-				evmChains := testEnv.BlockChains.EVMChains()
+				evmChains := testEnv.Chains().EVMChains()
 				evmChain := evmChains[chainSelector]
 				mockChain, err := setEIP1967StorageOnSimulatedChain(t, evmChain, common.HexToAddress(proxyAddress), implAddress)
 				require.NoError(t, err)
 				evmChains[chainSelector] = mockChain
 				// Rebuild BlockChains with all chains (including the mocked one)
 				allChains := make([]chain.BlockChain, 0)
-				for _, c := range testEnv.BlockChains.All() {
+				for _, c := range testEnv.Chains().All() {
 					if c.ChainSelector() == chainSelector {
 						allChains = append(allChains, mockChain)
 					} else {
@@ -1011,14 +1013,14 @@ func TestTryEIP1967ProxyFallback(t *testing.T) {
 				require.NoError(t, err)
 
 				// Set storage to return implAddress
-				evmChains := testEnv.BlockChains.EVMChains()
+				evmChains := testEnv.Chains().EVMChains()
 				evmChain := evmChains[chainSelector]
 				mockChain, err := setEIP1967StorageOnSimulatedChain(t, evmChain, common.HexToAddress(proxyAddress), implAddress)
 				require.NoError(t, err)
 				evmChains[chainSelector] = mockChain
 				// Rebuild BlockChains with all chains (including the mocked one)
 				allChains := make([]chain.BlockChain, 0)
-				for _, c := range testEnv.BlockChains.All() {
+				for _, c := range testEnv.Chains().All() {
 					if c.ChainSelector() == chainSelector {
 						allChains = append(allChains, mockChain)
 					} else {
@@ -1065,7 +1067,9 @@ func TestTryEIP1967ProxyFallback(t *testing.T) {
 			setupCtx: func(t *testing.T) (ProposalContext, deployment.Environment) {
 				t.Helper()
 
-				return mockProposalContext(t), deployment.Environment{}
+				return mockProposalContext(t), deployment.Environment{
+					BlockChains: chain.NewBlockChainsFromSlice([]chain.BlockChain{}), // empty blockchains
+				}
 			},
 			chainSelector: chainSelector,
 			proxyAddress:  proxyAddress,
@@ -1082,14 +1086,14 @@ func TestTryEIP1967ProxyFallback(t *testing.T) {
 				require.NoError(t, err)
 
 				// Set storage to return implAddress
-				evmChains := testEnv.BlockChains.EVMChains()
+				evmChains := testEnv.Chains().EVMChains()
 				evmChain := evmChains[chainSelector]
 				mockChain, err := setEIP1967StorageOnSimulatedChain(t, evmChain, common.HexToAddress(proxyAddress), implAddress)
 				require.NoError(t, err)
 				evmChains[chainSelector] = mockChain
 				// Rebuild BlockChains with all chains (including the mocked one)
 				allChains := make([]chain.BlockChain, 0)
-				for _, c := range testEnv.BlockChains.All() {
+				for _, c := range testEnv.Chains().All() {
 					if c.ChainSelector() == chainSelector {
 						allChains = append(allChains, mockChain)
 					} else {
@@ -1149,14 +1153,14 @@ func TestTryEIP1967ProxyFallback(t *testing.T) {
 				require.NoError(t, err)
 
 				// Set storage to return implAddress
-				evmChains := testEnv.BlockChains.EVMChains()
+				evmChains := testEnv.Chains().EVMChains()
 				evmChain := evmChains[chainSelector]
 				mockChain, err := setEIP1967StorageOnSimulatedChain(t, evmChain, common.HexToAddress(proxyAddress), implAddress)
 				require.NoError(t, err)
 				evmChains[chainSelector] = mockChain
 				// Rebuild BlockChains with all chains (including the mocked one)
 				allChains := make([]chain.BlockChain, 0)
-				for _, c := range testEnv.BlockChains.All() {
+				for _, c := range testEnv.Chains().All() {
 					if c.ChainSelector() == chainSelector {
 						allChains = append(allChains, mockChain)
 					} else {
@@ -1370,14 +1374,14 @@ func TestAnalyzeEVMTransaction_EIP1967ProxyFallback(t *testing.T) {
 				require.NoError(t, err)
 
 				// Set storage to return implAddress
-				evmChains := testEnv.BlockChains.EVMChains()
+				evmChains := testEnv.Chains().EVMChains()
 				evmChain := evmChains[chainSelector]
 				mockChain, err := setEIP1967StorageOnSimulatedChain(t, evmChain, common.HexToAddress(proxyAddress), implAddress)
 				require.NoError(t, err)
 				evmChains[chainSelector] = mockChain
 				// Rebuild BlockChains with all chains (including the mocked one)
 				allChains := make([]chain.BlockChain, 0)
-				for _, c := range testEnv.BlockChains.All() {
+				for _, c := range testEnv.Chains().All() {
 					if c.ChainSelector() == chainSelector {
 						allChains = append(allChains, mockChain)
 					} else {
@@ -1473,14 +1477,14 @@ func TestAnalyzeEVMTransaction_EIP1967ProxyFallback(t *testing.T) {
 				require.NoError(t, err)
 
 				// Set storage to return implAddress
-				evmChains := testEnv.BlockChains.EVMChains()
+				evmChains := testEnv.Chains().EVMChains()
 				evmChain := evmChains[chainSelector]
 				mockChain, err := setEIP1967StorageOnSimulatedChain(t, evmChain, common.HexToAddress(proxyAddress), implAddress)
 				require.NoError(t, err)
 				evmChains[chainSelector] = mockChain
 				// Rebuild BlockChains with all chains (including the mocked one)
 				allChains := make([]chain.BlockChain, 0)
-				for _, c := range testEnv.BlockChains.All() {
+				for _, c := range testEnv.Chains().All() {
 					if c.ChainSelector() == chainSelector {
 						allChains = append(allChains, mockChain)
 					} else {
@@ -1523,22 +1527,24 @@ func TestAnalyzeEVMTransaction_EIP1967ProxyFallback(t *testing.T) {
 				t.Helper()
 
 				return &DefaultProposalContext{
-					AddressesByChain: deployment.AddressesByChain{
-						chainSelector: {
-							proxyAddress: deployment.MustTypeAndVersionFromString("TransparentUpgradeableProxy 1.0.0"),
-						},
-					},
-					evmRegistry: &mockEVMRegistry{
-						abis: map[string]string{
-							"TransparentUpgradeableProxy 1.0.0": proxyABI,
-						},
-						addressesByChain: deployment.AddressesByChain{
+						AddressesByChain: deployment.AddressesByChain{
 							chainSelector: {
 								proxyAddress: deployment.MustTypeAndVersionFromString("TransparentUpgradeableProxy 1.0.0"),
 							},
 						},
-					},
-				}, deployment.Environment{}
+						evmRegistry: &mockEVMRegistry{
+							abis: map[string]string{
+								"TransparentUpgradeableProxy 1.0.0": proxyABI,
+							},
+							addressesByChain: deployment.AddressesByChain{
+								chainSelector: {
+									proxyAddress: deployment.MustTypeAndVersionFromString("TransparentUpgradeableProxy 1.0.0"),
+								},
+							},
+						},
+					}, deployment.Environment{
+						BlockChains: chain.NewBlockChainsFromSlice([]chain.BlockChain{}), // empty blockchains
+					}
 			},
 			expectedError: true,
 			errorContains: "error analyzing operation", // Original error, not chain error
