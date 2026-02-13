@@ -1,4 +1,4 @@
-package mcmsv2
+package mcms
 
 import (
 	"context"
@@ -16,17 +16,130 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/rpc"
 	"github.com/smartcontractkit/mcms"
-	mcmssdk "github.com/smartcontractkit/mcms/sdk"
-	mcmstypes "github.com/smartcontractkit/mcms/types"
+	"github.com/smartcontractkit/mcms/sdk"
+	"github.com/smartcontractkit/mcms/types"
+	"github.com/spf13/cobra"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/legacy/cli/mcmsv2/layout"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/flags"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/mcms/layout"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/text"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
+var (
+	executeForkShort = "Execute proposal on forked environment"
+
+	executeForkLong = text.LongDesc(`
+		Executes set-root, execute-chain and execute-timelock-chain operations
+		for a forked environment.
+
+		This is useful for testing proposals before executing them on mainnet.
+		The command will use Anvil to fork the target chain and execute the
+		proposal operations.
+	`)
+
+	executeForkExample = text.Examples(`
+		# Execute a proposal on a forked environment
+		myapp mcms execute-fork -e staging -p ./proposal.json -s 1
+
+		# Execute with a test signer
+		myapp mcms execute-fork -e staging -p ./proposal.json -s 1 --test-signer
+	`)
+)
+
+type executeForkFlags struct {
+	environment   string
+	proposalPath  string
+	proposalKind  string
+	chainSelector uint64
+	testSigner    bool
+}
+
+// newExecuteForkCmd creates the "execute-fork" subcommand.
+func newExecuteForkCmd(cfg Config) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "execute-fork",
+		Short:   executeForkShort,
+		Long:    executeForkLong,
+		Example: executeForkExample,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			f := executeForkFlags{
+				environment:   flags.MustString(cmd.Flags().GetString("environment")),
+				proposalPath:  flags.MustString(cmd.Flags().GetString("proposal")),
+				proposalKind:  flags.MustString(cmd.Flags().GetString("proposalKind")),
+				chainSelector: flags.MustUint64(cmd.Flags().GetUint64("selector")),
+				testSigner:    flags.MustBool(cmd.Flags().GetBool("test-signer")),
+			}
+
+			return runExecuteFork(cmd, cfg, f)
+		},
+	}
+
+	// Shared flags
+	flags.Environment(cmd)
+	flags.Proposal(cmd)
+	flags.ProposalKind(cmd, string(types.KindTimelockProposal))
+	flags.ChainSelector(cmd, true) // required for execute-fork
+
+	// Fork-specific flags
+	cmd.Flags().Bool("test-signer", false, "Use a test signer key")
+
+	return cmd
+}
+
+// runExecuteFork executes the execute-fork command logic.
+func runExecuteFork(cmd *cobra.Command, cfg Config, f executeForkFlags) error {
+	ctx := cmd.Context()
+	deps := cfg.deps()
+
+	// --- Load all data first ---
+
+	proposalCfg, err := LoadProposalConfig(ctx, cfg.Logger, cfg.Domain, deps, cfg.ProposalContextProvider,
+		ProposalFlags{
+			ProposalPath:  f.proposalPath,
+			ProposalKind:  f.proposalKind,
+			Environment:   f.environment,
+			ChainSelector: f.chainSelector,
+			Fork:          true,
+		},
+		acceptExpiredProposal,
+	)
+	if err != nil {
+		return fmt.Errorf("error creating config: %w", err)
+	}
+
+	if proposalCfg.TimelockProposal == nil {
+		return errors.New("expected proposal to be a TimelockProposal")
+	}
+
+	// --- Execute logic with loaded data ---
+
+	// Create the fork execution config
+	forkCfg := &forkConfig{
+		kind:             proposalCfg.Kind,
+		proposal:         proposalCfg.Proposal,
+		timelockProposal: proposalCfg.TimelockProposal,
+		chainSelector:    f.chainSelector,
+		blockchains:      proposalCfg.Env.BlockChains,
+		envStr:           f.environment,
+		env:              proposalCfg.Env,
+		forkedEnv:        proposalCfg.ForkedEnv,
+		fork:             true,
+		proposalCtx:      proposalCfg.ProposalCtx,
+	}
+
+	// Execute the fork
+	return executeFork(ctx, cfg.Logger, forkCfg, f.testSigner)
+}
+
+// --- Fork execution logic (fork-specific) ---
+
+// executeFork executes a proposal on a forked environment.
+// This is the main entry point for fork execution.
 func executeFork(
-	ctx context.Context, lggr logger.Logger, cfg *cfgv2, testSigner bool,
+	ctx context.Context, lggr logger.Logger, cfg *forkConfig, testSigner bool,
 ) error {
 	family, err := chainsel.GetSelectorFamily(cfg.chainSelector)
 	if err != nil {
@@ -34,7 +147,8 @@ func executeFork(
 	}
 	if family != chainsel.FamilyEVM {
 		lggr.Infof("Skipping fork execution: chain selector %d is not EVM. Family is %s", cfg.chainSelector, family)
-		return nil // don’t fail, just exit cleanly
+
+		return nil // don't fail, just exit cleanly
 	}
 
 	logTransactions(lggr, cfg)
@@ -47,11 +161,12 @@ func executeFork(
 	url := cfg.forkedEnv.ChainConfigs[cfg.chainSelector].HTTPRPCs[0].External
 	anvilClient := rpc.New(url, nil)
 	chainID := cfg.forkedEnv.ChainConfigs[cfg.chainSelector].ChainID
-	mcmAddress := cfg.proposal.ChainMetadata[mcmstypes.ChainSelector(cfg.chainSelector)].MCMAddress
-	timelockAddress := common.HexToAddress(cfg.timelockProposal.TimelockAddresses[mcmstypes.ChainSelector(cfg.chainSelector)])
+	mcmAddress := cfg.proposal.ChainMetadata[types.ChainSelector(cfg.chainSelector)].MCMAddress
+	timelockAddress := common.HexToAddress(cfg.timelockProposal.TimelockAddresses[types.ChainSelector(cfg.chainSelector)])
 
 	ctx, cancel := context.WithTimeout(ctx, 300*time.Second)
 	defer cancel()
+
 	if testSigner {
 		if lerr := layout.SetMCMSigner(
 			ctx,
@@ -102,8 +217,9 @@ func executeFork(
 		return fmt.Errorf("failed to mine block: %w", err)
 	}
 
-	if cfg.timelockProposal.Action != mcmstypes.TimelockActionSchedule {
+	if cfg.timelockProposal.Action != types.TimelockActionSchedule {
 		lggr.Infof("Proposal has type %s, skipping executing timelock chain command", cfg.timelockProposal.Action)
+
 		return nil
 	}
 
@@ -114,6 +230,7 @@ func executeFork(
 		if derr := diagnoseTimelockRevert(ctx, lggr, anvilClient.URL, cfg.chainSelector, cfg.timelockProposal.Operations,
 			timelockAddress, cfg.env.ExistingAddresses, cfg.proposalCtx); derr != nil { //nolint:staticcheck
 			lggr.Errorw("Diagnosis results", "err", derr)
+
 			return fmt.Errorf("failed to timelock execute chain: %w", derr)
 		}
 
@@ -124,9 +241,8 @@ func executeFork(
 	return nil
 }
 
-// --- helper types and functions ---
-
-func logTransactions(lggr logger.Logger, cfg *cfgv2) {
+// logTransactions sets up transaction logging for the forked chain.
+func logTransactions(lggr logger.Logger, cfg *forkConfig) {
 	lggr.Infof("logging transactions sent to forked chain %v", cfg.chainSelector)
 
 	chains := maps.Collect(cfg.blockchains.All())
@@ -134,6 +250,7 @@ func logTransactions(lggr logger.Logger, cfg *cfgv2) {
 	evmChain, ok := chains[cfg.chainSelector].(cldf_evm.Chain)
 	if !ok {
 		lggr.Warnf("failed to configure transaction logging for chain selector %v (not evm: %T)", cfg.chainSelector, chains[cfg.chainSelector])
+
 		return
 	}
 
@@ -143,7 +260,7 @@ func logTransactions(lggr logger.Logger, cfg *cfgv2) {
 }
 
 // overwriteProposalSignatureWithTestKey overwrites the proposal's signature with a test key signature.
-func overwriteProposalSignatureWithTestKey(ctx context.Context, cfg *cfgv2, testKey *ecdsa.PrivateKey) error {
+func overwriteProposalSignatureWithTestKey(ctx context.Context, cfg *forkConfig, testKey *ecdsa.PrivateKey) error {
 	p := &cfg.proposal
 
 	// Override the proposal fields that are used in the signing hash to ensure no errors occur related to those.
@@ -153,24 +270,24 @@ func overwriteProposalSignatureWithTestKey(ctx context.Context, cfg *cfgv2, test
 	p.Signatures = nil
 	p.OverridePreviousRoot = true
 
-	inspector, err := getInspectorFromChainSelector(*cfg)
+	inspector, err := getInspectorFromChainSelector(cfg)
 	if err != nil {
 		return fmt.Errorf("error getting inspector from chain selector: %w", err)
 	}
-	signable, errSignable := mcms.NewSignable(p, map[mcmstypes.ChainSelector]mcmssdk.Inspector{
-		mcmstypes.ChainSelector(cfg.chainSelector): inspector,
+	signable, errSignable := mcms.NewSignable(p, map[types.ChainSelector]sdk.Inspector{
+		types.ChainSelector(cfg.chainSelector): inspector,
 	})
 	if errSignable != nil {
 		return fmt.Errorf("error creating signable: %w", errSignable)
 	}
 
 	signature, err := signable.SignAndAppend(mcms.NewPrivateKeySigner(testKey))
-	p.Signatures = []mcmstypes.Signature{signature}
+	p.Signatures = []types.Signature{signature}
 	if err != nil {
 		return fmt.Errorf("error creating signable: %w", err)
 	}
 
-	quorumMet, err := signable.CheckQuorum(ctx, mcmstypes.ChainSelector(cfg.chainSelector))
+	quorumMet, err := signable.CheckQuorum(ctx, types.ChainSelector(cfg.chainSelector))
 	if err != nil {
 		return fmt.Errorf("failed to check quorum: %w", err)
 	}
@@ -181,6 +298,7 @@ func overwriteProposalSignatureWithTestKey(ctx context.Context, cfg *cfgv2, test
 	return nil
 }
 
+// loggingRpcClient wraps an OnchainClient to log transactions before sending.
 type loggingRpcClient struct {
 	cldf_evm.OnchainClient
 	txOpts *bind.TransactOpts

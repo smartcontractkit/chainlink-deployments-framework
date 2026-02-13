@@ -1,8 +1,10 @@
-package mcmsv2
+package mcms
 
 import (
+	"encoding/json"
 	"io"
 	"maps"
+	"math/big"
 	"net"
 	"os"
 	"path/filepath"
@@ -13,7 +15,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Masterminds/semver/v3"
+	"github.com/ethereum/go-ethereum/common"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/yaml.v3"
@@ -21,9 +27,14 @@ import (
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	ctf "github.com/smartcontractkit/chainlink-testing-framework/framework"
 	ctfchain "github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
+	"github.com/smartcontractkit/mcms"
+	mcmssdk "github.com/smartcontractkit/mcms/sdk"
+	mcmsevmsdk "github.com/smartcontractkit/mcms/sdk/evm"
+	mcmsevmbindings "github.com/smartcontractkit/mcms/sdk/evm/bindings"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 
 	cldfchain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
+	evmchain "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	cldfchainprovider "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider"
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
@@ -31,24 +42,25 @@ import (
 	cldfconfignet "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/network"
 	cldfdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	cldfenv "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
+	testruntime "github.com/smartcontractkit/chainlink-deployments-framework/engine/test/runtime"
 	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
 const (
-	domainName = "testdomain"
-	envName    = "testnet"
+	integrationDomainName = "testdomain"
+	integrationEnvName    = "testnet"
 )
 
-var _, modulePath, _, _ = runtime.Caller(0)
+var _, integrationModulePath, _, _ = runtime.Caller(0)
 
-func Test_executeFork(t *testing.T) { //nolint:paralleltest
+func Test_executeFork_Integration(t *testing.T) { //nolint:paralleltest
 	lggr, logs := logger.TestObserved(t, zapcore.DebugLevel)
 
-	domainsRoot := filepath.Clean(filepath.Join(modulePath, "..", "testdata", "domains"))
-	domain := cldfdomain.NewDomain(domainsRoot, domainName)
+	domainsRoot := filepath.Clean(filepath.Join(integrationModulePath, "..", "testdata", "domains"))
+	domain := cldfdomain.NewDomain(domainsRoot, integrationDomainName)
 	t.Setenv("ONCHAIN_EVM_DEPLOYER_KEY", ctfchain.DefaultAnvilPrivateKey)
-	domainConfig, err := cldfconfig.Load(domain, envName, lggr)
+	domainConfig, err := cldfconfig.Load(domain, integrationEnvName, lggr)
 	require.NoError(t, err)
 
 	// initialize anvil container with main blockchain
@@ -57,7 +69,7 @@ func Test_executeFork(t *testing.T) { //nolint:paralleltest
 		Once:                  &sync.Once{},
 		ConfirmFunctor:        cldfchainprovider.ConfirmFuncGeth(3 * time.Minute),
 		Image:                 "f4hrenh9it/foundry:latest",
-		Port:                  strconv.Itoa(getFreePort(t)),
+		Port:                  strconv.Itoa(getFreePortForIntegration(t)),
 		DeployerTransactorGen: cldfchainprovider.TransactorFromRaw(domainConfig.Env.Onchain.EVM.DeployerKey),
 		T:                     t,
 	}
@@ -65,19 +77,19 @@ func Test_executeFork(t *testing.T) { //nolint:paralleltest
 	evmChain, err := provider.Initialize(t.Context())
 	require.NoError(t, err)
 
-	saveDomainNetworkConfig(t, &domain, envName, domainConfig, provider, anvilConfig.Port)
+	saveDomainNetworkConfigForIntegration(t, &domain, integrationEnvName, domainConfig, provider, anvilConfig.Port)
 
-	env, err := cldfenv.Load(t.Context(), domain, envName)
+	env, err := cldfenv.Load(t.Context(), domain, integrationEnvName)
 	require.NoError(t, err)
 	env.BlockChains = cldfchain.NewBlockChains(map[uint64]cldfchain.BlockChain{
 		chainsel.GETH_TESTNET.Selector: evmChain,
 	})
 	chain := slices.Collect(maps.Values(env.BlockChains.EVMChains()))[0]
 
-	mcmAddress, timelockAddress, callProxyAddress, env := deployMCMS(t, env)
-	saveChangesetOutputs(t, domain, env, "deploy-mcms")
+	mcmAddress, timelockAddress, callProxyAddress, env := deployMCMSForIntegration(t, env)
+	saveChangesetOutputsForIntegration(t, domain, env, "deploy-mcms")
 
-	timelockProposal, mcmProposal := testTimelockProposal(t, chain, timelockAddress, mcmAddress)
+	timelockProposal, mcmProposal := testTimelockProposalForIntegration(t, chain, timelockAddress, mcmAddress)
 
 	forkedEnv, err := cldfenv.LoadFork(t.Context(), domain, env.Name, nil,
 		cldfenv.WithLogger(lggr), cldfenv.OnlyLoadChainsFor([]uint64{chain.Selector}),
@@ -89,12 +101,12 @@ func Test_executeFork(t *testing.T) { //nolint:paralleltest
 
 	tests := []struct {
 		name   string
-		cfg    *cfgv2
+		cfg    *forkConfig
 		assert func(err error)
 	}{
 		{
 			name: "success",
-			cfg: &cfgv2{
+			cfg: &forkConfig{
 				kind:             mcmstypes.KindTimelockProposal,
 				proposal:         mcmProposal,
 				timelockProposal: &timelockProposal,
@@ -147,7 +159,7 @@ func Test_executeFork(t *testing.T) { //nolint:paralleltest
 
 // --- helpers and fixtures ---
 
-func getFreePort(t *testing.T) int {
+func getFreePortForIntegration(t *testing.T) int {
 	t.Helper()
 
 	addr, err := net.ResolveTCPAddr("tcp", "localhost:0")
@@ -160,7 +172,7 @@ func getFreePort(t *testing.T) int {
 	return listener.Addr().(*net.TCPAddr).Port
 }
 
-func mutableDataStore(t *testing.T, ds datastore.DataStore) datastore.MutableDataStore {
+func mutableDataStoreForIntegration(t *testing.T, ds datastore.DataStore) datastore.MutableDataStore {
 	t.Helper()
 
 	mutDS := datastore.NewMemoryDataStore()
@@ -170,7 +182,7 @@ func mutableDataStore(t *testing.T, ds datastore.DataStore) datastore.MutableDat
 	return mutDS
 }
 
-func deployMCMS(t *testing.T, env cldf.Environment) (string, string, string, cldf.Environment) {
+func deployMCMSForIntegration(t *testing.T, env cldf.Environment) (string, string, string, cldf.Environment) {
 	t.Helper()
 
 	privateKey, err := crypto.GenerateKey()
@@ -178,13 +190,161 @@ func deployMCMS(t *testing.T, env cldf.Environment) (string, string, string, cld
 	signerAddress := crypto.PubkeyToAddress(privateKey.PublicKey)
 
 	chain := slices.Collect(maps.Values(env.BlockChains.EVMChains()))[0]
-	mcmAddress, env := deployMcm(t, env, chain, signerAddress)
-	timelockAddress, callProxyAddress, env := deployTimelockAndCallProxy(t, env, chain, []string{mcmAddress}, nil, nil)
+	mcmAddress, env := deployMcmForIntegration(t, env, chain, signerAddress)
+	timelockAddress, callProxyAddress, env := deployTimelockAndCallProxyForIntegration(t, env, chain, []string{mcmAddress}, nil, nil)
 
 	return mcmAddress, timelockAddress, callProxyAddress, env
 }
 
-func saveDomainNetworkConfig(
+func deployMcmForIntegration(
+	t *testing.T, env cldf.Environment, chain evmchain.Chain, signerAddress common.Address,
+) (string, cldf.Environment) {
+	t.Helper()
+
+	mcmAddress := common.Address{}
+	changeset := cldf.CreateChangeSet(
+		func(e cldf.Environment, config struct{}) (cldf.ChangesetOutput, error) {
+			ds := datastore.NewMemoryDataStore()
+			var tx *ethtypes.Transaction
+
+			// deploy mcm
+			var mcmContract *mcmsevmbindings.ManyChainMultiSig
+			var err error
+			mcmAddress, tx, mcmContract, err = mcmsevmbindings.DeployManyChainMultiSig(chain.DeployerKey, chain.Client)
+			require.NoError(t, err)
+			_, err = chain.Confirm(tx)
+			require.NoError(t, err)
+			err = ds.Addresses().Add(datastore.AddressRef{
+				Address:       mcmAddress.Hex(),
+				ChainSelector: chain.Selector,
+				Type:          "ManyChainMultiSig",
+				Version:       semver.MustParse("1.0.0"),
+			})
+			require.NoError(t, err)
+
+			// set config
+			tx, err = mcmContract.SetConfig(chain.DeployerKey,
+				[]common.Address{signerAddress}, // signerAddresses
+				[]uint8{0},                      // signerGroups
+				[32]uint8{1},                    // groupQuorums
+				[32]uint8{0},                    // groupParents
+				true,
+			)
+			require.NoError(t, err)
+			_, err = chain.Confirm(tx)
+			require.NoError(t, err)
+
+			return cldf.ChangesetOutput{DataStore: ds}, nil
+		},
+		func(e cldf.Environment, config struct{}) error { return nil }, // verify,
+	)
+
+	task := testruntime.ChangesetTask(changeset, struct{}{})
+	runtime := testruntime.NewFromEnvironment(env)
+	err := runtime.Exec(task)
+	require.NoError(t, err)
+
+	return mcmAddress.Hex(), env
+}
+
+func deployTimelockAndCallProxyForIntegration(
+	t *testing.T, env cldf.Environment, chain evmchain.Chain, proposers []string, bypassers []string, cancellers []string,
+) (string, string, cldf.Environment) {
+	t.Helper()
+
+	callProxyAddress := common.Address{}
+	timelockAddress := common.Address{}
+	changeset := cldf.CreateChangeSet(
+		func(e cldf.Environment, config struct{}) (cldf.ChangesetOutput, error) {
+			ds := datastore.NewMemoryDataStore()
+			ab := cldf.NewMemoryAddressBook()
+			var tx *ethtypes.Transaction
+			var err error
+
+			// deploy call proxy
+			callProxyAddress, tx, _, err = mcmsevmbindings.DeployCallProxy(chain.DeployerKey, chain.Client, common.Address{})
+			require.NoError(t, err)
+			err = ds.Addresses().Add(datastore.AddressRef{
+				Address:       callProxyAddress.Hex(),
+				ChainSelector: chain.Selector,
+				Type:          "CallProxy",
+				Version:       semver.MustParse("1.0.0"),
+			})
+			require.NoError(t, err)
+			err = ab.Save(chain.Selector, callProxyAddress.Hex(), cldf.MustTypeAndVersionFromString("CallProxy 1.0.0"))
+			require.NoError(t, err)
+			_, err = chain.Confirm(tx)
+			require.NoError(t, err)
+
+			// deploy timelock
+			timelockAddress, tx, _, err = mcmsevmbindings.DeployRBACTimelock(chain.DeployerKey, chain.Client, big.NewInt(0),
+				chain.DeployerKey.From,
+				lo.Map(proposers, func(p string, _ int) common.Address { return common.HexToAddress(p) }),
+				[]common.Address{callProxyAddress},
+				lo.Map(bypassers, func(p string, _ int) common.Address { return common.HexToAddress(p) }),
+				lo.Map(cancellers, func(p string, _ int) common.Address { return common.HexToAddress(p) }),
+			)
+			require.NoError(t, err)
+			err = ds.Addresses().Add(datastore.AddressRef{
+				Address:       timelockAddress.Hex(),
+				ChainSelector: chain.Selector,
+				Type:          "RBACTimelock",
+				Version:       semver.MustParse("1.0.0"),
+			})
+			require.NoError(t, err)
+			err = ab.Save(chain.Selector, timelockAddress.Hex(), cldf.MustTypeAndVersionFromString("RBACTimelock 1.0.0"))
+			require.NoError(t, err)
+			_, err = chain.Confirm(tx)
+			require.NoError(t, err)
+
+			return cldf.ChangesetOutput{AddressBook: ab, DataStore: ds}, nil
+		},
+		func(e cldf.Environment, config struct{}) error { return nil }, // verify,
+	)
+
+	task := testruntime.ChangesetTask(changeset, struct{}{})
+	runtime := testruntime.NewFromEnvironment(env)
+	err := runtime.Exec(task)
+	require.NoError(t, err)
+
+	return timelockAddress.Hex(), callProxyAddress.Hex(), env
+}
+
+func testTimelockProposalForIntegration(
+	t *testing.T,
+	chain evmchain.Chain,
+	timelockAddress string,
+	mcmAddress string,
+) (mcms.TimelockProposal, mcms.Proposal) {
+	t.Helper()
+
+	timelockProposal, err := mcms.NewTimelockProposalBuilder().
+		SetVersion("v1").
+		SetValidUntil(2082758399).
+		SetDescription("test timelock proposal").
+		SetOverridePreviousRoot(true).
+		SetAction(mcmstypes.TimelockActionSchedule).
+		AddTimelockAddress(mcmstypes.ChainSelector(chain.Selector), timelockAddress).
+		AddChainMetadata(mcmstypes.ChainSelector(chain.Selector), mcmstypes.ChainMetadata{MCMAddress: mcmAddress}).
+		AddOperation(mcmstypes.BatchOperation{
+			ChainSelector: mcmstypes.ChainSelector(chain.Selector),
+			Transactions: []mcmstypes.Transaction{{
+				To:               chain.DeployerKey.From.Hex(),
+				Data:             []byte("0x"),
+				AdditionalFields: json.RawMessage(`{"value": 0}`),
+			}},
+		}).Build()
+	require.NoError(t, err)
+
+	mcmProposal, _, err := timelockProposal.Convert(t.Context(), map[mcmstypes.ChainSelector]mcmssdk.TimelockConverter{
+		mcmstypes.ChainSelector(chain.Selector): &mcmsevmsdk.TimelockConverter{},
+	})
+	require.NoError(t, err)
+
+	return *timelockProposal, mcmProposal
+}
+
+func saveDomainNetworkConfigForIntegration(
 	t *testing.T, domain *cldfdomain.Domain, envName string, domainConfig *cldfconfig.Config,
 	provider *cldfchainprovider.CTFAnvilChainProvider, containerPort string,
 ) {
@@ -202,7 +362,7 @@ func saveDomainNetworkConfig(
 	networks[0].RPCs[0].HTTPURL = containerURL
 	networks[0].Metadata = &cldfconfignet.EVMMetadata{AnvilConfig: &cldfconfignet.AnvilConfig{
 		Image:          "f4hrenh9it/foundry:latest",
-		Port:           uint64(getFreePort(t)), //nolint:gosec
+		Port:           uint64(getFreePortForIntegration(t)), //nolint:gosec
 		ArchiveHTTPURL: "http://" + networkAliases[ctf.DefaultNetworkName][0] + ":" + containerPort,
 	}}
 
@@ -213,28 +373,28 @@ func saveDomainNetworkConfig(
 
 	filePath := domain.ConfigNetworksFilePath(envName + ".yaml")
 	backupPath := filePath + ".bkp"
-	copyFile(t, filePath, backupPath)
+	copyFileForIntegration(t, filePath, backupPath)
 	err = os.WriteFile(filePath, networkConfigYaml, 0o600)
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		copyFile(t, backupPath, filePath)
+		copyFileForIntegration(t, backupPath, filePath)
 		err = os.Remove(backupPath)
 		require.NoError(t, err)
 	})
 }
 
-func saveChangesetOutputs(t *testing.T, domain cldfdomain.Domain, env cldf.Environment, changesetName string) {
+func saveChangesetOutputsForIntegration(t *testing.T, domain cldfdomain.Domain, env cldf.Environment, changesetName string) {
 	t.Helper()
 
 	envDir := domain.EnvDir(env.Name)
 	addressBookBkpPath := envDir.AddressBookFilePath() + ".bkp"
-	copyFile(t, envDir.AddressBookFilePath(), addressBookBkpPath)
+	copyFileForIntegration(t, envDir.AddressBookFilePath(), addressBookBkpPath)
 	addressRefsBkpPath := envDir.AddressRefsFilePath() + ".bkp"
-	copyFile(t, envDir.AddressRefsFilePath(), addressRefsBkpPath)
+	copyFileForIntegration(t, envDir.AddressRefsFilePath(), addressRefsBkpPath)
 
 	err := envDir.ArtifactsDir().SaveChangesetOutput(changesetName, cldf.ChangesetOutput{
 		AddressBook: env.ExistingAddresses, //nolint:staticcheck
-		DataStore:   mutableDataStore(t, env.DataStore),
+		DataStore:   mutableDataStoreForIntegration(t, env.DataStore),
 	})
 	require.NoError(t, err)
 	err = envDir.MergeChangesetAddressBook(changesetName, "")
@@ -243,8 +403,8 @@ func saveChangesetOutputs(t *testing.T, domain cldfdomain.Domain, env cldf.Envir
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
-		copyFile(t, addressBookBkpPath, envDir.AddressBookFilePath())
-		copyFile(t, addressRefsBkpPath, envDir.AddressRefsFilePath())
+		copyFileForIntegration(t, addressBookBkpPath, envDir.AddressBookFilePath())
+		copyFileForIntegration(t, addressRefsBkpPath, envDir.AddressRefsFilePath())
 		err = os.Remove(addressBookBkpPath)
 		require.NoError(t, err)
 		err = os.Remove(addressRefsBkpPath)
@@ -254,7 +414,7 @@ func saveChangesetOutputs(t *testing.T, domain cldfdomain.Domain, env cldf.Envir
 	})
 }
 
-func copyFile(t *testing.T, src, dest string) {
+func copyFileForIntegration(t *testing.T, src, dest string) {
 	t.Helper()
 
 	srcFile, err := os.Open(src)
