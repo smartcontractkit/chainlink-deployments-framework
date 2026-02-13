@@ -18,6 +18,10 @@ func MustString(s string, _ error) string { return s }
 // Safe to use with registered flags where GetBool cannot fail.
 func MustBool(b bool, _ error) bool { return b }
 
+// MustUint64 returns the uint64 value, ignoring the error.
+// Safe to use with registered flags where GetUint64 cannot fail.
+func MustUint64(u uint64, _ error) uint64 { return u }
+
 // Environment adds the required --environment/-e flag to a command.
 // Retrieve the value with cmd.Flags().GetString("environment").
 //
@@ -67,4 +71,49 @@ func Output(cmd *cobra.Command, defaultValue string) {
 
 		return pflag.NormalizedName(name)
 	})
+}
+
+// --- MCMS shared flags ---
+
+// Proposal adds the required --proposal/-p flag for specifying proposal file path.
+// Retrieve the value with cmd.Flags().GetString("proposal").
+//
+// Usage:
+//
+//	flags.Proposal(cmd)
+//	// later in RunE:
+//	proposalPath, _ := cmd.Flags().GetString("proposal")
+func Proposal(cmd *cobra.Command) {
+	cmd.Flags().StringP("proposal", "p", "", "Absolute file path containing the proposal (required)")
+	_ = cmd.MarkFlagRequired("proposal")
+}
+
+// ProposalKind adds the --proposalKind/-k flag for specifying proposal type.
+// The defaultKind parameter should be a valid proposal kind string (e.g., "timelock").
+// Retrieve the value with cmd.Flags().GetString("proposalKind").
+//
+// Usage:
+//
+//	flags.ProposalKind(cmd, "timelock")
+//	// later in RunE:
+//	kind, _ := cmd.Flags().GetString("proposalKind")
+func ProposalKind(cmd *cobra.Command, defaultKind string) {
+	cmd.Flags().StringP("proposalKind", "k", defaultKind, "The type of proposal being ingested")
+}
+
+// ChainSelector adds the --selector/-s flag for specifying chain selector.
+// If required is true, the flag is marked as required.
+// Retrieve the value with cmd.Flags().GetUint64("selector").
+//
+// Usage:
+//
+//	flags.ChainSelector(cmd, false) // optional
+//	flags.ChainSelector(cmd, true)  // required
+//	// later in RunE:
+//	selector, _ := cmd.Flags().GetUint64("selector")
+func ChainSelector(cmd *cobra.Command, required bool) {
+	cmd.Flags().Uint64P("selector", "s", 0, "Chain selector")
+	if required {
+		_ = cmd.MarkFlagRequired("selector")
+	}
 }

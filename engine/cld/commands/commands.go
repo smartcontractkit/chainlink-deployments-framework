@@ -32,8 +32,10 @@ import (
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/addressbook"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/datastore"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/mcms"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/state"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
+	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
@@ -78,5 +80,21 @@ func (c *Commands) AddressBook(dom domain.Domain) (*cobra.Command, error) {
 	return addressbook.NewCommand(addressbook.Config{
 		Logger: c.lggr,
 		Domain: dom,
+	})
+}
+
+// MCMSConfig holds configuration for MCMS commands.
+type MCMSConfig struct {
+	// ProposalContextProvider creates proposal context for analysis.
+	// This is domain-specific and must be provided by the user.
+	ProposalContextProvider analyzer.ProposalContextProvider
+}
+
+// MCMS creates the mcms command group for proposal analysis and conversion.
+func (c *Commands) MCMS(dom domain.Domain, cfg MCMSConfig) (*cobra.Command, error) {
+	return mcms.NewCommand(mcms.Config{
+		Logger:                  c.lggr,
+		Domain:                  dom,
+		ProposalContextProvider: cfg.ProposalContextProvider,
 	})
 }
