@@ -63,7 +63,11 @@ func TestMCMSv2_DelegatedModularCommands(t *testing.T) {
 		t.Run(tt.subcommand, func(t *testing.T) {
 			t.Parallel()
 
-			subCmd, _, err := cmd.Find([]string{tt.subcommand})
+			// Each parallel subtest needs its own cobra command tree because
+			// cobra.Command.Find() mutates internal flag state and is not goroutine-safe.
+			localCmd := BuildMCMSv2Cmd(lggr, domain, proposalCtxProvider)
+
+			subCmd, _, err := localCmd.Find([]string{tt.subcommand})
 			require.NoError(t, err)
 			require.Equal(t, tt.subcommand, subCmd.Use)
 
