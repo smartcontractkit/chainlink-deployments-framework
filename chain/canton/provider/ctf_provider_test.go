@@ -3,9 +3,13 @@ package provider
 import (
 	"testing"
 
-	chainsel "github.com/smartcontractkit/chain-selectors"
+	apiv2 "github.com/digital-asset/dazl-client/v8/go/api/com/daml/ledger/api/v2"
+	adminv2 "github.com/digital-asset/dazl-client/v8/go/api/com/daml/ledger/api/v2/admin"
+	participantv30 "github.com/digital-asset/dazl-client/v8/go/api/com/digitalasset/canton/admin/participant/v30"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	chainsel "github.com/smartcontractkit/chain-selectors"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/canton"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/testutils"
@@ -94,11 +98,23 @@ func Test_CTFChainProvider_Initialize(t *testing.T) {
 				require.True(t, ok, "expected chain to be of type *canton.Chain")
 				assert.Equal(t, tt.giveSelector, gotChain.Selector)
 				assert.Len(t, gotChain.Participants, tt.giveConfig.NumberOfValidators)
-				// Test that we can retrieve JWTs for each participant
+				assert.NotEmpty(t, gotChain.RegistryAPIURL)
+
 				for _, participant := range gotChain.Participants {
-					jwt, err := participant.JWTProvider.Token(t.Context())
+					// Test that we can retrieve JWTs for each participant
+					token, err := participant.TokenSource.Token()
 					require.NoError(t, err)
-					assert.NotEmpty(t, jwt)
+					assert.NotEmpty(t, token.AccessToken)
+					// Can't reasonably test all service clients here, but we can test that at least one client for each category is functional
+					// Test that ledger service clients can be called
+					_, err = participant.LedgerServices.Version.GetLedgerApiVersion(t.Context(), &apiv2.GetLedgerApiVersionRequest{})
+					require.NoError(t, err)
+					// Test that ledger admin service clients can be called
+					_, err = participant.LedgerServices.Admin.UserManagement.ListUsers(t.Context(), &adminv2.ListUsersRequest{})
+					require.NoError(t, err)
+					// Test that admin service client can be called
+					_, err = participant.AdminServices.Package.ListDars(t.Context(), &participantv30.ListDarsRequest{})
+					require.NoError(t, err)
 				}
 
 				// Check that subsequent calls to Initialize don't re-initialize the chain
