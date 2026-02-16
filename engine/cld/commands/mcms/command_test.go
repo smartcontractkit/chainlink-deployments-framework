@@ -126,9 +126,6 @@ func TestNewCommand_InvalidConfigReturnsError(t *testing.T) {
 func TestSubcommands_HaveRequiredFlags(t *testing.T) {
 	t.Parallel()
 
-	cmd, err := newTestCommand(t)
-	require.NoError(t, err)
-
 	tests := []struct {
 		subcommand string
 		flags      []string
@@ -154,6 +151,9 @@ func TestSubcommands_HaveRequiredFlags(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.subcommand, func(t *testing.T) {
 			t.Parallel()
+
+			cmd, err := newTestCommand(t)
+			require.NoError(t, err)
 
 			subCmd, _, err := cmd.Find([]string{tt.subcommand})
 			require.NoError(t, err)
