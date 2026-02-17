@@ -13,14 +13,14 @@ import (
 )
 
 // RPCChainProviderConfig is the configuration for the RPCChainProvider.
-// The number of provided endpoints must match the number of provided JWT providers
-// The order of endpoints must correspond to the order of JWT providers
 // At least one participant must be provided
 type RPCChainProviderConfig struct {
 	// Required: List of participants to connect to
 	Participants []ParticipantConfig
 }
 
+// ParticipantConfig is the configuration of a single participant.
+// It contains the configuration details to connect and authenticate against a participant's APIs.
 type ParticipantConfig struct {
 	// (HTTP) The URL to access the participant's JSON Ledger API
 	// Required
