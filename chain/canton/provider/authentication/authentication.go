@@ -68,7 +68,7 @@ func (ts insecureTokenSource) GetRequestMetadata(ctx context.Context, uri ...str
 		return nil, err
 	}
 	if token == nil {
-		//nolint:nilnil // nothing to do here, just retuning no metadata and no error
+		//nolint:nilnil // nothing to do here, just returning no metadata and no error
 		return nil, nil
 	}
 
