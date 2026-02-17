@@ -9,14 +9,17 @@ import (
 	"sync"
 	"testing"
 
+	adminv2 "github.com/digital-asset/dazl-client/v8/go/api/com/daml/ledger/api/v2/admin"
 	"github.com/smartcontractkit/freeport"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/canton"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/canton/provider/authentication"
 )
 
 // CTFChainProviderConfig is the configuration for the CTFChainProvider.
@@ -111,6 +114,43 @@ func (p *CTFChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 	}
 
 	for i, participantEndpoints := range output.NetworkSpecificData.CantonEndpoints.Participants {
+		// Create an InsecureStaticProvider that always returns the same JWT token for the participant
+		authProvider := authentication.NewInsecureStaticProvider(participantEndpoints.JWT)
+		tokenSource := authProvider.TokenSource()
+		transportCredentials := authProvider.TransportCredentials()
+		perRPCCredentials := authProvider.PerRPCCredentials()
+
+		// Dial Ledger API endpoint
+		ledgerApiConn, err := grpc.NewClient(
+			participantEndpoints.GRPCLedgerAPIURL,
+			grpc.WithTransportCredentials(transportCredentials),
+			grpc.WithPerRPCCredentials(perRPCCredentials),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create Ledger API gRPC client for participant %d(%s): %w", i+1, participantEndpoints.GRPCLedgerAPIURL, err)
+		}
+		ledgerServices := canton.CreateLedgerServiceClients(ledgerApiConn)
+
+		// Dial Admin API endpoint
+		adminApiConn, err := grpc.NewClient(
+			participantEndpoints.AdminAPIURL,
+			grpc.WithTransportCredentials(transportCredentials),
+			grpc.WithPerRPCCredentials(perRPCCredentials),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create Admin API gRPC client for participant %d(%s): %w", i+1, participantEndpoints.AdminAPIURL, err)
+		}
+		adminServices := canton.CreateAdminServiceClients(adminApiConn)
+
+		// Query primary party for the user
+		resp, err := ledgerServices.Admin.UserManagement.GetUser(ctx, &adminv2.GetUserRequest{UserId: participantEndpoints.UserID})
+		if err != nil {
+			return nil, fmt.Errorf("failed to get user %q: %w", participantEndpoints.UserID, err)
+		}
+		if resp.User.PrimaryParty == "" {
+			return nil, fmt.Errorf("user %q has no primary party", participantEndpoints.UserID)
+		}
+
 		p.chain.Participants[i] = canton.Participant{
 			Name: fmt.Sprintf("Participant %v", i+1),
 			Endpoints: canton.ParticipantEndpoints{
@@ -119,7 +159,11 @@ func (p *CTFChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 				AdminAPIURL:      participantEndpoints.AdminAPIURL,
 				ValidatorAPIURL:  participantEndpoints.ValidatorAPIURL,
 			},
-			JWTProvider: canton.NewStaticJWTProvider(participantEndpoints.JWT),
+			LedgerServices: ledgerServices,
+			AdminServices:  &adminServices,
+			TokenSource:    tokenSource,
+			UserID:         participantEndpoints.UserID,
+			PartyID:        resp.User.PrimaryParty,
 		}
 	}
 

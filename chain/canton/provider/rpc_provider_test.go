@@ -3,10 +3,13 @@ package provider
 import (
 	"testing"
 
-	chainsel "github.com/smartcontractkit/chain-selectors"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	chainsel "github.com/smartcontractkit/chain-selectors"
+
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/canton"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/canton/provider/authentication"
 )
 
 func Test_RPCChainProviderConfig_validate(t *testing.T) {
@@ -20,16 +23,16 @@ func Test_RPCChainProviderConfig_validate(t *testing.T) {
 		{
 			name: "valid config",
 			config: RPCChainProviderConfig{
-				Endpoints: []canton.ParticipantEndpoints{
+				Participants: []ParticipantConfig{
 					{
-						JSONLedgerAPIURL: "",
-						GRPCLedgerAPIURL: "",
+						JSONLedgerAPIURL: "json-ledger-api",
+						GRPCLedgerAPIURL: "grpc-ledger-api",
 						AdminAPIURL:      "",
-						ValidatorAPIURL:  "",
+						ValidatorAPIURL:  "validator-api",
+						UserID:           "user-id",
+						PartyID:          "party-id",
+						AuthProvider:     authentication.InsecureStaticProvider{AccessToken: ""},
 					},
-				},
-				JWTProviders: []canton.JWTProvider{
-					canton.NewStaticJWTProvider("token"),
 				},
 			},
 		},
@@ -39,27 +42,89 @@ func Test_RPCChainProviderConfig_validate(t *testing.T) {
 			wantErr: "no participants specified",
 		},
 		{
-			name: "mismatched participants and JWT providers",
+			name: "invalid config - no JSONLedgerAPIURL",
 			config: RPCChainProviderConfig{
-				Endpoints: []canton.ParticipantEndpoints{
+				Participants: []ParticipantConfig{
 					{
 						JSONLedgerAPIURL: "",
-						GRPCLedgerAPIURL: "",
-						AdminAPIURL:      "",
-						ValidatorAPIURL:  "",
 					},
-					{
-						JSONLedgerAPIURL: "",
-						GRPCLedgerAPIURL: "",
-						AdminAPIURL:      "",
-						ValidatorAPIURL:  "",
-					},
-				},
-				JWTProviders: []canton.JWTProvider{
-					canton.NewStaticJWTProvider("token"),
 				},
 			},
-			wantErr: "number of participants must match number of JWT providers",
+			wantErr: "no JSON Ledger API URL set",
+		},
+		{
+			name: "invalid config - GRPCLedgerAPIURL",
+			config: RPCChainProviderConfig{
+				Participants: []ParticipantConfig{
+					{
+						JSONLedgerAPIURL: "json-ledger-api",
+						GRPCLedgerAPIURL: "",
+					},
+				},
+			},
+			wantErr: "no gRPC Ledger API URL set",
+		},
+		{
+			name: "invalid config - ValidatorAPIURL",
+			config: RPCChainProviderConfig{
+				Participants: []ParticipantConfig{
+					{
+						JSONLedgerAPIURL: "json-ledger-api",
+						GRPCLedgerAPIURL: "grpc-ledger-api",
+						AdminAPIURL:      "admin-api",
+						ValidatorAPIURL:  "",
+					},
+				},
+			},
+			wantErr: "no Validator API URL set",
+		},
+		{
+			name: "invalid config - no UserID",
+			config: RPCChainProviderConfig{
+				Participants: []ParticipantConfig{
+					{
+						JSONLedgerAPIURL: "json-ledger-api",
+						GRPCLedgerAPIURL: "grpc-ledger-api",
+						AdminAPIURL:      "admin-api",
+						ValidatorAPIURL:  "validator-api",
+						UserID:           "",
+					},
+				},
+			},
+			wantErr: "no User ID set",
+		},
+		{
+			name: "invalid config - no PartyID",
+			config: RPCChainProviderConfig{
+				Participants: []ParticipantConfig{
+					{
+						JSONLedgerAPIURL: "json-ledger-api",
+						GRPCLedgerAPIURL: "grpc-ledger-api",
+						AdminAPIURL:      "admin-api",
+						ValidatorAPIURL:  "validator-api",
+						UserID:           "user-id",
+						PartyID:          "",
+					},
+				},
+			},
+			wantErr: "no Party ID set",
+		},
+		{
+			name: "invalid config - no AuthProvider",
+			config: RPCChainProviderConfig{
+				Participants: []ParticipantConfig{
+					{
+						JSONLedgerAPIURL: "json-ledger-api",
+						GRPCLedgerAPIURL: "grpc-ledger-api",
+						AdminAPIURL:      "admin-api",
+						ValidatorAPIURL:  "validator-api",
+						UserID:           "user-id",
+						PartyID:          "party-id",
+						AuthProvider:     nil,
+					},
+				},
+			},
+			wantErr: "no authentication provider set",
 		},
 	}
 
@@ -89,16 +154,32 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 			name:         "valid initialization",
 			giveSelector: chainsel.CANTON_LOCALNET.Selector,
 			giveConfig: RPCChainProviderConfig{
-				Endpoints: []canton.ParticipantEndpoints{
+				Participants: []ParticipantConfig{
 					{
-						JSONLedgerAPIURL: "",
-						GRPCLedgerAPIURL: "",
-						AdminAPIURL:      "",
-						ValidatorAPIURL:  "",
+						JSONLedgerAPIURL: "participant1-json-ledger-api.localhost:8080",
+						GRPCLedgerAPIURL: "participant1-grpc-ledger-api-url.localhost:8080",
+						AdminAPIURL:      "participant1-admin-api-url.localhost:8080",
+						ValidatorAPIURL:  "participant1-validator-api-url.localhost:8080",
+						UserID:           "participant1",
+						PartyID:          "local-party-1",
+						AuthProvider:     authentication.InsecureStaticProvider{AccessToken: "testToken"},
 					},
 				},
-				JWTProviders: []canton.JWTProvider{
-					canton.NewStaticJWTProvider("testToken"),
+			},
+		}, {
+			name:         "valid initialization without Admin API",
+			giveSelector: chainsel.CANTON_LOCALNET.Selector,
+			giveConfig: RPCChainProviderConfig{
+				Participants: []ParticipantConfig{
+					{
+						JSONLedgerAPIURL: "participant1-json-ledger-api.localhost:8080",
+						GRPCLedgerAPIURL: "participant1-grpc-ledger-api-url.localhost:8080",
+						AdminAPIURL:      "", // Not set
+						ValidatorAPIURL:  "participant1-validator-api-url.localhost:8080",
+						UserID:           "participant1",
+						PartyID:          "local-party-1",
+						AuthProvider:     authentication.InsecureStaticProvider{AccessToken: "testToken"},
+					},
 				},
 			},
 		},
@@ -118,23 +199,59 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 
 				gotChain, ok := chain.(*canton.Chain)
 				require.True(t, ok, "expected chain to be of type *canton.Chain")
-				require.Equal(t, tt.giveSelector, gotChain.Selector)
-				require.Len(t, gotChain.Participants, len(tt.giveConfig.Endpoints))
+				assert.Equal(t, tt.giveSelector, gotChain.Selector)
+				assert.Len(t, gotChain.Participants, len(tt.giveConfig.Participants))
 
 				for i, participant := range gotChain.Participants {
-					jwt, err := participant.JWTProvider.Token(t.Context())
+					// Validate TokenSource is set
+					token, err := participant.TokenSource.Token()
 					require.NoError(t, err)
-					require.NotEmpty(t, jwt)
-					require.Equal(t, "testToken", jwt)
-					require.Equal(t, tt.giveConfig.Endpoints[i], participant.Endpoints)
+					assert.NotEmpty(t, token)
+					assert.Equal(t, "testToken", token.AccessToken)
+					// Validate endpoints are populated
+					assert.Equal(t, tt.giveConfig.Participants[i].JSONLedgerAPIURL, participant.Endpoints.JSONLedgerAPIURL)
+					assert.Equal(t, tt.giveConfig.Participants[i].GRPCLedgerAPIURL, participant.Endpoints.GRPCLedgerAPIURL)
+					assert.Equal(t, tt.giveConfig.Participants[i].AdminAPIURL, participant.Endpoints.AdminAPIURL)
+					assert.Equal(t, tt.giveConfig.Participants[i].ValidatorAPIURL, participant.Endpoints.ValidatorAPIURL)
+					assert.Equal(t, tt.giveConfig.Participants[i].UserID, participant.UserID)
+					assert.Equal(t, tt.giveConfig.Participants[i].PartyID, participant.PartyID)
+					// Validate service clients have been created
+					assert.NotNil(t, participant.LedgerServices.CommandCompletion)
+					assert.NotNil(t, participant.LedgerServices.Command)
+					assert.NotNil(t, participant.LedgerServices.CommandSubmission)
+					assert.NotNil(t, participant.LedgerServices.EventQuery)
+					assert.NotNil(t, participant.LedgerServices.PackageService)
+					assert.NotNil(t, participant.LedgerServices.State)
+					assert.NotNil(t, participant.LedgerServices.Update)
+					assert.NotNil(t, participant.LedgerServices.Version)
+					assert.NotNil(t, participant.LedgerServices.Admin.CommandInspection)
+					assert.NotNil(t, participant.LedgerServices.Admin.IdentityProviderConfig)
+					assert.NotNil(t, participant.LedgerServices.Admin.PackageManagement)
+					assert.NotNil(t, participant.LedgerServices.Admin.ParticipantPruning)
+					assert.NotNil(t, participant.LedgerServices.Admin.PartyManagement)
+					assert.NotNil(t, participant.LedgerServices.Admin.UserManagement)
+					// Validate admin service clients have been created
+					if tt.giveConfig.Participants[i].AdminAPIURL != "" {
+						require.NotNil(t, participant.AdminServices)
+						assert.NotNil(t, participant.AdminServices.Package)
+						assert.NotNil(t, participant.AdminServices.ParticipantInspection)
+						assert.NotNil(t, participant.AdminServices.ParticipantRepair)
+						assert.NotNil(t, participant.AdminServices.ParticipantStatus)
+						assert.NotNil(t, participant.AdminServices.PartyManagement)
+						assert.NotNil(t, participant.AdminServices.Ping)
+						assert.NotNil(t, participant.AdminServices.Pruning)
+						assert.NotNil(t, participant.AdminServices.ResourceManagement)
+						assert.NotNil(t, participant.AdminServices.SynchronizerConnectivity)
+						assert.NotNil(t, participant.AdminServices.TrafficControl)
+					}
 				}
 
 				// Check that subsequent calls to Initialize don't re-initialize the chain
 				chainBefore := provider.chain
 				chain2, err := provider.Initialize(t.Context())
 				require.NoError(t, err)
-				require.Equal(t, chain, chain2)
-				require.Same(t, chainBefore, provider.chain)
+				assert.Equal(t, chain, chain2)
+				assert.Same(t, chainBefore, provider.chain)
 			}
 		})
 	}
@@ -144,14 +261,14 @@ func Test_RPCChainProvider_Name(t *testing.T) {
 	t.Parallel()
 
 	p := &RPCChainProvider{}
-	require.Equal(t, "Canton RPC Chain Provider", p.Name())
+	assert.Equal(t, "Canton RPC Chain Provider", p.Name())
 }
 
 func Test_RPCChainProvider_ChainSelector(t *testing.T) {
 	t.Parallel()
 
 	p := &RPCChainProvider{selector: chainsel.CANTON_LOCALNET.Selector}
-	require.Equal(t, chainsel.CANTON_LOCALNET.Selector, p.ChainSelector())
+	assert.Equal(t, chainsel.CANTON_LOCALNET.Selector, p.ChainSelector())
 }
 
 func Test_RPCChainProvider_BlockChain(t *testing.T) {
@@ -169,5 +286,5 @@ func Test_RPCChainProvider_BlockChain(t *testing.T) {
 		chain: chain,
 	}
 
-	require.Equal(t, *chain, provider.BlockChain())
+	assert.Equal(t, *chain, provider.BlockChain())
 }
