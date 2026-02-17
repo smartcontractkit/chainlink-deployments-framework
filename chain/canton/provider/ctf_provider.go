@@ -9,6 +9,7 @@ import (
 	"sync"
 	"testing"
 
+	adminv2 "github.com/digital-asset/dazl-client/v8/go/api/com/daml/ledger/api/v2/admin"
 	"github.com/smartcontractkit/freeport"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
@@ -108,15 +109,13 @@ func (p *CTFChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 	}
 
 	p.chain = &canton.Chain{
-		ChainMetadata:  canton.ChainMetadata{Selector: p.selector},
-		Participants:   make([]canton.Participant, len(output.NetworkSpecificData.CantonEndpoints.Participants)),
-		RegistryAPIURL: output.NetworkSpecificData.CantonEndpoints.RegistryAPIURL,
+		ChainMetadata: canton.ChainMetadata{Selector: p.selector},
+		Participants:  make([]canton.Participant, len(output.NetworkSpecificData.CantonEndpoints.Participants)),
 	}
 
 	for i, participantEndpoints := range output.NetworkSpecificData.CantonEndpoints.Participants {
-		fmt.Printf("%+v\n", participantEndpoints)
 		// Create an InsecureStaticProvider that always returns the same JWT token for the participant
-		authProvider := authentication.InsecureStaticProvider{AccessToken: participantEndpoints.JWT}
+		authProvider := authentication.NewInsecureStaticProvider(participantEndpoints.JWT)
 		tokenSource := authProvider.TokenSource()
 		transportCredentials := authProvider.TransportCredentials()
 		perRPCCredentials := authProvider.PerRPCCredentials()
@@ -143,6 +142,15 @@ func (p *CTFChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 		}
 		adminServices := canton.CreateAdminServiceClients(adminApiConn)
 
+		// Query primary party for the user
+		resp, err := ledgerServices.Admin.UserManagement.GetUser(ctx, &adminv2.GetUserRequest{UserId: participantEndpoints.UserID})
+		if err != nil {
+			return nil, fmt.Errorf("failed to get user %q: %w", participantEndpoints.UserID, err)
+		}
+		if resp.User.PrimaryParty == "" {
+			return nil, fmt.Errorf("user %q has no primary party", participantEndpoints.UserID)
+		}
+
 		p.chain.Participants[i] = canton.Participant{
 			Name: fmt.Sprintf("Participant %v", i+1),
 			Endpoints: canton.ParticipantEndpoints{
@@ -155,6 +163,7 @@ func (p *CTFChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 			AdminServices:  &adminServices,
 			TokenSource:    tokenSource,
 			UserID:         participantEndpoints.UserID,
+			PartyID:        resp.User.PrimaryParty,
 		}
 	}
 

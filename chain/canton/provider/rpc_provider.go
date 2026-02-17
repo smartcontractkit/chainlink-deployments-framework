@@ -19,16 +19,15 @@ import (
 type RPCChainProviderConfig struct {
 	// Required: List of participants to connect to
 	Participants []ParticipantConfig
-	// (HTTP) The URL to access the SV's Registry API
-	// https://docs.sync.global/app_dev/token_standard/index.html#api-references
-	RegistryAPIURL string
 }
 
 type ParticipantConfig struct {
 	// (HTTP) The URL to access the participant's JSON Ledger API
+	// Required
 	// https://docs.digitalasset.com/build/3.5/reference/json-api/json-api.html
 	JSONLedgerAPIURL string
 	// (gRPC) The URL to access the participant's gRPC Ledger API
+	// Required
 	// https://docs.digitalasset.com/build/3.5/reference/lapi-proto-docs.html
 	GRPCLedgerAPIURL string
 	// (gRPC) The URL to access the participant's Admin API
@@ -36,11 +35,17 @@ type ParticipantConfig struct {
 	// https://docs.digitalasset.com/operate/3.5/howtos/configure/apis/admin_api.html
 	AdminAPIURL string
 	// (HTTP) The URL to access the participant's Validator API
+	// Required
 	// https://docs.sync.global/app_dev/validator_api/index.html
 	ValidatorAPIURL string
 	// The UserID of the user that should be used for accessing the participant's API endpoints.
+	// Required
 	UserID string
+	// The PartyID of the party that should be used for accessing the participant's API endpoints.
+	// Required
+	PartyID string
 	// An authentication.Provider implementation that provides the credentials for authenticating with the participant's API endpoints.
+	// Required
 	AuthProvider authentication.Provider
 }
 
@@ -49,6 +54,21 @@ func (c RPCChainProviderConfig) validate() error {
 		return errors.New("no participants specified")
 	}
 	for i, participant := range c.Participants {
+		if participant.JSONLedgerAPIURL == "" {
+			return fmt.Errorf("participant %d has no JSON Ledger API URL set", i+1)
+		}
+		if participant.GRPCLedgerAPIURL == "" {
+			return fmt.Errorf("participant %d has no gRPC Ledger API URL set", i+1)
+		}
+		if participant.ValidatorAPIURL == "" {
+			return fmt.Errorf("participant %d has no Validator API URL set", i+1)
+		}
+		if participant.UserID == "" {
+			return fmt.Errorf("participant %d has no User ID set", i+1)
+		}
+		if participant.PartyID == "" {
+			return fmt.Errorf("participant %d has no Party ID set", i+1)
+		}
 		if participant.AuthProvider == nil {
 			return fmt.Errorf("participant %d has no authentication provider set", i+1)
 		}
@@ -85,9 +105,8 @@ func (p *RPCChainProvider) Initialize(_ context.Context) (chain.BlockChain, erro
 	}
 
 	p.chain = &canton.Chain{
-		ChainMetadata:  canton.ChainMetadata{Selector: p.selector},
-		Participants:   make([]canton.Participant, len(p.config.Participants)),
-		RegistryAPIURL: p.config.RegistryAPIURL,
+		ChainMetadata: canton.ChainMetadata{Selector: p.selector},
+		Participants:  make([]canton.Participant, len(p.config.Participants)),
 	}
 
 	for i, participant := range p.config.Participants {
@@ -133,6 +152,7 @@ func (p *RPCChainProvider) Initialize(_ context.Context) (chain.BlockChain, erro
 			AdminServices:  adminServices,
 			TokenSource:    tokenSource,
 			UserID:         participant.UserID,
+			PartyID:        participant.PartyID,
 		}
 	}
 

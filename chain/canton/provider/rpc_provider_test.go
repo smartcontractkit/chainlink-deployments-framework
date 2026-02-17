@@ -25,11 +25,12 @@ func Test_RPCChainProviderConfig_validate(t *testing.T) {
 			config: RPCChainProviderConfig{
 				Participants: []ParticipantConfig{
 					{
-						JSONLedgerAPIURL: "",
-						GRPCLedgerAPIURL: "",
+						JSONLedgerAPIURL: "json-ledger-api",
+						GRPCLedgerAPIURL: "grpc-ledger-api",
 						AdminAPIURL:      "",
-						ValidatorAPIURL:  "",
-						UserID:           "",
+						ValidatorAPIURL:  "validator-api",
+						UserID:           "user-id",
+						PartyID:          "party-id",
 						AuthProvider:     authentication.InsecureStaticProvider{AccessToken: ""},
 					},
 				},
@@ -41,15 +42,84 @@ func Test_RPCChainProviderConfig_validate(t *testing.T) {
 			wantErr: "no participants specified",
 		},
 		{
-			name: "invalid config - no auth provider",
+			name: "invalid config - no JSONLedgerAPIURL",
 			config: RPCChainProviderConfig{
 				Participants: []ParticipantConfig{
 					{
 						JSONLedgerAPIURL: "",
+					},
+				},
+			},
+			wantErr: "no JSON Ledger API URL set",
+		},
+		{
+			name: "invalid config - GRPCLedgerAPIURL",
+			config: RPCChainProviderConfig{
+				Participants: []ParticipantConfig{
+					{
+						JSONLedgerAPIURL: "json-ledger-api",
 						GRPCLedgerAPIURL: "",
-						AdminAPIURL:      "",
+					},
+				},
+			},
+			wantErr: "no gRPC Ledger API URL set",
+		},
+		{
+			name: "invalid config - ValidatorAPIURL",
+			config: RPCChainProviderConfig{
+				Participants: []ParticipantConfig{
+					{
+						JSONLedgerAPIURL: "json-ledger-api",
+						GRPCLedgerAPIURL: "grpc-ledger-api",
+						AdminAPIURL:      "admin-api",
 						ValidatorAPIURL:  "",
+					},
+				},
+			},
+			wantErr: "no Validator API URL set",
+		},
+		{
+			name: "invalid config - no UserID",
+			config: RPCChainProviderConfig{
+				Participants: []ParticipantConfig{
+					{
+						JSONLedgerAPIURL: "json-ledger-api",
+						GRPCLedgerAPIURL: "grpc-ledger-api",
+						AdminAPIURL:      "admin-api",
+						ValidatorAPIURL:  "validator-api",
 						UserID:           "",
+					},
+				},
+			},
+			wantErr: "no User ID set",
+		},
+		{
+			name: "invalid config - no PartyID",
+			config: RPCChainProviderConfig{
+				Participants: []ParticipantConfig{
+					{
+						JSONLedgerAPIURL: "json-ledger-api",
+						GRPCLedgerAPIURL: "grpc-ledger-api",
+						AdminAPIURL:      "admin-api",
+						ValidatorAPIURL:  "validator-api",
+						UserID:           "user-id",
+						PartyID:          "",
+					},
+				},
+			},
+			wantErr: "no Party ID set",
+		},
+		{
+			name: "invalid config - no AuthProvider",
+			config: RPCChainProviderConfig{
+				Participants: []ParticipantConfig{
+					{
+						JSONLedgerAPIURL: "json-ledger-api",
+						GRPCLedgerAPIURL: "grpc-ledger-api",
+						AdminAPIURL:      "admin-api",
+						ValidatorAPIURL:  "validator-api",
+						UserID:           "user-id",
+						PartyID:          "party-id",
 						AuthProvider:     nil,
 					},
 				},
@@ -91,10 +161,10 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 						AdminAPIURL:      "participant1-admin-api-url.localhost:8080",
 						ValidatorAPIURL:  "participant1-validator-api-url.localhost:8080",
 						UserID:           "participant1",
+						PartyID:          "local-party-1",
 						AuthProvider:     authentication.InsecureStaticProvider{AccessToken: "testToken"},
 					},
 				},
-				RegistryAPIURL: "https://registry-api.localhost:8080",
 			},
 		}, {
 			name:         "valid initialization without Admin API",
@@ -107,10 +177,10 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 						AdminAPIURL:      "", // Not set
 						ValidatorAPIURL:  "participant1-validator-api-url.localhost:8080",
 						UserID:           "participant1",
+						PartyID:          "local-party-1",
 						AuthProvider:     authentication.InsecureStaticProvider{AccessToken: "testToken"},
 					},
 				},
-				RegistryAPIURL: "https://registry-api.localhost:8080",
 			},
 		},
 	}
@@ -131,7 +201,6 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 				require.True(t, ok, "expected chain to be of type *canton.Chain")
 				assert.Equal(t, tt.giveSelector, gotChain.Selector)
 				assert.Len(t, gotChain.Participants, len(tt.giveConfig.Participants))
-				assert.Equal(t, tt.giveConfig.RegistryAPIURL, gotChain.RegistryAPIURL)
 
 				for i, participant := range gotChain.Participants {
 					// Validate TokenSource is set
@@ -145,6 +214,7 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 					assert.Equal(t, tt.giveConfig.Participants[i].AdminAPIURL, participant.Endpoints.AdminAPIURL)
 					assert.Equal(t, tt.giveConfig.Participants[i].ValidatorAPIURL, participant.Endpoints.ValidatorAPIURL)
 					assert.Equal(t, tt.giveConfig.Participants[i].UserID, participant.UserID)
+					assert.Equal(t, tt.giveConfig.Participants[i].PartyID, participant.PartyID)
 					// Validate service clients have been created
 					assert.NotNil(t, participant.LedgerServices.CommandCompletion)
 					assert.NotNil(t, participant.LedgerServices.Command)

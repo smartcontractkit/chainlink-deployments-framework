@@ -98,9 +98,10 @@ func Test_CTFChainProvider_Initialize(t *testing.T) {
 				require.True(t, ok, "expected chain to be of type *canton.Chain")
 				assert.Equal(t, tt.giveSelector, gotChain.Selector)
 				assert.Len(t, gotChain.Participants, tt.giveConfig.NumberOfValidators)
-				assert.NotEmpty(t, gotChain.RegistryAPIURL)
 
 				for _, participant := range gotChain.Participants {
+					// Test that the party has been set
+					assert.NotEmpty(t, participant.PartyID)
 					// Test that we can retrieve JWTs for each participant
 					token, err := participant.TokenSource.Token()
 					require.NoError(t, err)

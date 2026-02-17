@@ -32,6 +32,12 @@ type InsecureStaticProvider struct {
 
 var _ Provider = InsecureStaticProvider{}
 
+func NewInsecureStaticProvider(accessToken string) InsecureStaticProvider {
+	return InsecureStaticProvider{
+		AccessToken: accessToken,
+	}
+}
+
 func (i InsecureStaticProvider) TokenSource() oauth2.TokenSource {
 	return oauth2.StaticTokenSource(&oauth2.Token{
 		AccessToken: i.AccessToken,

@@ -23,9 +23,6 @@ type Chain struct {
 	// List of participants in the Canton network
 	// The number of participants depends on the config the provider has been initialized with
 	Participants []Participant
-	// (HTTP) The URL to access the SV's Registry API
-	// https://docs.sync.global/app_dev/token_standard/index.html#api-references
-	RegistryAPIURL string
 }
 
 // Participant represents a single Canton participant node in the network.
@@ -50,6 +47,8 @@ type Participant struct {
 	// The UserID that will be used to interact with this participant.
 	// The TokenSource will return access tokens containing this UserID as a subject claim.
 	UserID string
+	// The PartyID that will be used to interact with this participant.
+	PartyID string
 }
 
 // ParticipantEndpoints holds all available API endpoints for a Canton participant
@@ -65,6 +64,8 @@ type ParticipantEndpoints struct {
 	AdminAPIURL string
 	// (HTTP) The URL to access the participant's Validator API
 	// https://docs.sync.global/app_dev/validator_api/index.html
+	// This also serves the Scan Proxy API, which provides access to the Global Scan and Token Standard APIs:
+	// https://docs.sync.global/app_dev/validator_api/index.html#validator-api-scan-proxy
 	ValidatorAPIURL string
 }
 
