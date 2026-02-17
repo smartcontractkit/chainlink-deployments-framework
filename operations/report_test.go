@@ -3,6 +3,7 @@ package operations
 import (
 	"encoding/json"
 	"errors"
+	"math/big"
 	"testing"
 	"time"
 
@@ -137,7 +138,7 @@ func Test_typeReport(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, "1", res.ID)
 	assert.Equal(t, Definition{}, res.Def)
-	assert.Equal(t, map[string]interface{}{"a": float64(1)}, res.Input)
+	assert.Equal(t, map[string]interface{}{"a": json.Number("1")}, res.Input)
 	assert.InEpsilon(t, float64(2), res.Output, 0)
 	assert.Equal(t, &now, res.Timestamp)
 	assert.Nil(t, res.Err)
@@ -155,6 +156,26 @@ func Test_typeReport(t *testing.T) {
 	// incorrect output type
 	_, ok = typeReport[int, string](report)
 	assert.False(t, ok)
+}
+
+func Test_typeReport_PreservesBigIntInInputAndOutput(t *testing.T) {
+	t.Parallel()
+
+	report := Report[any, any]{
+		ID:  "1",
+		Def: Definition{},
+		Input: map[string]interface{}{
+			"a": big.NewInt(1000000000000000000),
+		},
+		Output: map[string]interface{}{
+			"b": big.NewInt(2000000000000000000),
+		},
+	}
+
+	res, ok := typeReport[map[string]interface{}, map[string]interface{}](report)
+	assert.True(t, ok)
+	assert.Equal(t, map[string]interface{}{"a": json.Number("1000000000000000000")}, res.Input)
+	assert.Equal(t, map[string]interface{}{"b": json.Number("2000000000000000000")}, res.Output)
 }
 
 var reportJSON = `
