@@ -1,7 +1,6 @@
 package authentication
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,6 +9,8 @@ import (
 )
 
 func TestInsecureStaticProvider(t *testing.T) {
+	t.Parallel()
+
 	testToken := "test-token-123"
 	provider := NewInsecureStaticProvider(testToken)
 
@@ -31,7 +32,7 @@ func TestInsecureStaticProvider(t *testing.T) {
 	require.NoError(t, err)
 	header, ok := metadata["authorization"]
 	require.True(t, ok, "PerRPCCredentials didn't return authorization header")
-	assert.Equal(t, fmt.Sprintf("Bearer %s", testToken), header)
+	assert.Equal(t, "Bearer "+testToken, header)
 
 	// Test that the RPC credentials do not require transport security
 	requireTransportSecurity := perRPCCredentials.RequireTransportSecurity()

@@ -1,7 +1,6 @@
 package canton
 
 import (
-	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -47,6 +46,8 @@ func TestChain_ChainInfo(t *testing.T) {
 }
 
 func TestCreateLedgerServiceClients(t *testing.T) {
+	t.Parallel()
+
 	var conn grpc.ClientConnInterface
 	ledgerServiceClients := CreateLedgerServiceClients(conn)
 	assertNoFieldIsZero(t, ledgerServiceClients)
@@ -54,6 +55,8 @@ func TestCreateLedgerServiceClients(t *testing.T) {
 }
 
 func TestCreateAdminServiceClients(t *testing.T) {
+	t.Parallel()
+
 	var conn grpc.ClientConnInterface
 	adminServiceClients := CreateAdminServiceClients(conn)
 	assertNoFieldIsZero(t, adminServiceClients)
@@ -66,7 +69,7 @@ func assertNoFieldIsZero(t *testing.T, structValue any, msgAndArgs ...any) {
 	var emptyFields []string
 	structT := reflect.TypeOf(structValue)
 	structV := reflect.ValueOf(structValue)
-	for i := 0; i < structT.NumField(); i++ {
+	for i := range structT.NumField() {
 		field := structT.Field(i)
 		if structV.Field(i).IsZero() {
 			emptyFields = append(emptyFields, field.Name)
@@ -74,6 +77,6 @@ func assertNoFieldIsZero(t *testing.T, structValue any, msgAndArgs ...any) {
 	}
 
 	if len(emptyFields) > 0 {
-		assert.Fail(t, fmt.Sprintf("Expected all fields to be set, but the following fields were zero: %s", strings.Join(emptyFields, ", ")), msgAndArgs...)
+		assert.Fail(t, "Expected all fields to be set, but the following fields were zero: "+strings.Join(emptyFields, ", "), msgAndArgs...)
 	}
 }
