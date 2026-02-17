@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.80.2
+
+### Patch Changes
+
+- [#738](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/738) [`812cae8`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/812cae863419ae45fb61065febcafe025de28713) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(operations): preserve numeric precision in typeReport
+
 ## 0.80.1
 
 ### Patch Changes
