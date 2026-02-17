@@ -157,7 +157,7 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 				Participants: []ParticipantConfig{
 					{
 						JSONLedgerAPIURL: "participant1-json-ledger-api.localhost:8080",
-						GRPCLedgerAPIURL: "participant1-grpc-leder-api-url.localhost:8080",
+						GRPCLedgerAPIURL: "participant1-grpc-ledger-api-url.localhost:8080",
 						AdminAPIURL:      "participant1-admin-api-url.localhost:8080",
 						ValidatorAPIURL:  "participant1-validator-api-url.localhost:8080",
 						UserID:           "participant1",
@@ -173,7 +173,7 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 				Participants: []ParticipantConfig{
 					{
 						JSONLedgerAPIURL: "participant1-json-ledger-api.localhost:8080",
-						GRPCLedgerAPIURL: "participant1-grpc-leder-api-url.localhost:8080",
+						GRPCLedgerAPIURL: "participant1-grpc-ledger-api-url.localhost:8080",
 						AdminAPIURL:      "", // Not set
 						ValidatorAPIURL:  "participant1-validator-api-url.localhost:8080",
 						UserID:           "participant1",
