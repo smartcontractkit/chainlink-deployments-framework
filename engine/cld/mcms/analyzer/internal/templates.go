@@ -1,5 +1,9 @@
 package internal
 
+// Deprecated: These templates are kept for backward compatibility with tests.
+// New code should use file-based templates from the templates/ directory.
+// The renderer now loads templates from templates/<format>/*.tmpl files.
+
 // proposalTemplate is the main template for rendering an AnalyzedProposal.
 const proposalTemplate = `{{define "proposal" -}}
 ╔═══════════════════════════════════════════════════════════════════════════════
