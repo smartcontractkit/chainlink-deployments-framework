@@ -1,5 +1,15 @@
 # chainlink-deployments-framework
 
+## 0.81.0
+
+### Minor Changes
+
+- [#737](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/737) [`e839073`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/e83907322b13d9d57d3af9d28dcc0f1c5fdf101f) Thanks [@friedemannf](https://github.com/friedemannf)! - feat(chain): update Canton support to support clients and authentication
+
+  - Add gRPC service clients to Canton chain output
+  - Add UserID and PartyID to Canton chain output
+  - Remove JWTProvider and replace with oauth2.TokenSource for authentication
+
 ## 0.80.2
 
 ### Patch Changes
