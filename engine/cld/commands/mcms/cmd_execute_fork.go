@@ -247,7 +247,9 @@ func executeFork(
 	return nil
 }
 
-// overrideForkChainDeployerKeyToTestSigner sets the deployer key for the forked chain to the test signer key,
+// overrideForkChainDeployerKeyToTestSigner sets the deployer key for the
+// forked chain to the test signer key, updating cfg.blockchains for the
+// EVM chain identified by the provided chainID.
 func overrideForkChainDeployerKeyToTestSigner(cfg *forkConfig, chainID string) error {
 	chainIDBig, ok := new(big.Int).SetString(chainID, 10)
 	if !ok {
