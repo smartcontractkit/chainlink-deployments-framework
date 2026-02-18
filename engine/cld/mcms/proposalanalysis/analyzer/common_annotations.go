@@ -8,19 +8,23 @@ const (
 	AnnotationRiskType = "enum"
 )
 
-// Severity levels for use with AnnotationSeverityName.
+// Severity represents the severity level of an analysis finding.
+type Severity string
+
 const (
-	SeverityError   = "error"
-	SeverityWarning = "warning"
-	SeverityInfo    = "info"
-	SeverityDebug   = "debug"
+	SeverityError   Severity = "error"
+	SeverityWarning Severity = "warning"
+	SeverityInfo    Severity = "info"
+	SeverityDebug   Severity = "debug"
 )
 
-// Risk levels for use with AnnotationRiskName.
+// Risk represents the risk level of an analyzed operation.
+type Risk string
+
 const (
-	RiskHigh   = "high"
-	RiskMedium = "medium"
-	RiskLow    = "low"
+	RiskHigh   Risk = "high"
+	RiskMedium Risk = "medium"
+	RiskLow    Risk = "low"
 )
 
 // Value type annotation.
@@ -32,13 +36,13 @@ const (
 )
 
 // SeverityAnnotation creates an annotation indicating analysis severity.
-func SeverityAnnotation(level string) Annotation {
-	return NewAnnotation(AnnotationSeverityName, AnnotationSeverityType, level)
+func SeverityAnnotation(level Severity) Annotation {
+	return NewAnnotation(AnnotationSeverityName, AnnotationSeverityType, string(level))
 }
 
 // RiskAnnotation creates an annotation indicating risk level.
-func RiskAnnotation(level string) Annotation {
-	return NewAnnotation(AnnotationRiskName, AnnotationRiskType, level)
+func RiskAnnotation(level Risk) Annotation {
+	return NewAnnotation(AnnotationRiskName, AnnotationRiskType, string(level))
 }
 
 // ValueTypeAnnotation describes the semantic type of a parameter value.
