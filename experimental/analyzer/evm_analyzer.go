@@ -75,6 +75,7 @@ func AnalyzeEVMTransaction(
 				if fallbackResult.ContractType == "" {
 					fallbackResult.ContractType = mcmsTx.ContractType
 				}
+
 				return fallbackResult, fallbackABI, fallbackABIStr, nil
 			}
 			// Fallback failed, return original error
