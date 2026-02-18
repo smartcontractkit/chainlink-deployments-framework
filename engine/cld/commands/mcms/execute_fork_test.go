@@ -234,3 +234,16 @@ func TestOverrideForkChainDeployerKeyToTestSigner_NonEVMChain(t *testing.T) {
 	err := overrideForkChainDeployerKeyToTestSigner(cfg, "998")
 	require.ErrorContains(t, err, "is not an evm chain")
 }
+
+func TestOverrideForkChainDeployerKeyToTestSigner_MissingChainSelector(t *testing.T) {
+	t.Parallel()
+
+	const selector = uint64(4286062357653186312)
+	cfg := &forkConfig{
+		chainSelector: selector,
+		blockchains:   chain.NewBlockChains(map[uint64]chain.BlockChain{}),
+	}
+
+	err := overrideForkChainDeployerKeyToTestSigner(cfg, "998")
+	require.Error(t, err)
+}
