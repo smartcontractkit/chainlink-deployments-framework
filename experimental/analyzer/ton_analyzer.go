@@ -41,8 +41,9 @@ func AnalyzeTONTransaction(_ ProposalContext, decoder sdk.Decoder, mcmsTx types.
 		errStr := fmt.Errorf("failed to decode TON transaction: %w", err)
 
 		return &DecodedCall{
-			Address: mcmsTx.To,
-			Method:  errStr.Error(),
+			Address:      mcmsTx.To,
+			Method:       errStr.Error(),
+			ContractType: mcmsTx.ContractType,
 		}, nil
 	}
 
@@ -52,9 +53,10 @@ func AnalyzeTONTransaction(_ ProposalContext, decoder sdk.Decoder, mcmsTx types.
 	}
 
 	return &DecodedCall{
-		Address: mcmsTx.To,
-		Method:  decodedOp.MethodName(),
-		Inputs:  namedArgs,
-		Outputs: []NamedField{},
+		Address:      mcmsTx.To,
+		Method:       decodedOp.MethodName(),
+		Inputs:       namedArgs,
+		Outputs:      []NamedField{},
+		ContractType: mcmsTx.ContractType,
 	}, nil
 }

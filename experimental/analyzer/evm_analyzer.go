@@ -50,7 +50,7 @@ func AnalyzeEVMTransaction(
 ) (*DecodedCall, *abi.ABI, string, error) {
 	// Check if this is a native token transfer
 	if isNativeTokenTransfer(mcmsTx) {
-		return createNativeTransferCall(mcmsTx), nil, "", nil
+		return createNativeTransferCall(proposalCtx, chainSelector, mcmsTx), nil, "", nil
 	}
 
 	evmRegistry := proposalCtx.GetEVMRegistry()
@@ -71,7 +71,8 @@ func AnalyzeEVMTransaction(
 				ctx, proposalCtx, env, chainSelector, mcmsTx.To, mcmsTx.Data, decoder,
 			)
 			if fallbackErr == nil {
-				// Successfully decoded with implementation ABI
+				fallbackResult.ContractType = mcmsTx.ContractType
+				fallbackResult.ContractVersion = resolveContractVersion(proposalCtx, chainSelector, mcmsTx.To)
 				return fallbackResult, fallbackABI, fallbackABIStr, nil
 			}
 			// Fallback failed, return original error
@@ -79,6 +80,9 @@ func AnalyzeEVMTransaction(
 
 		return nil, nil, "", fmt.Errorf("error analyzing operation: %w", err)
 	}
+
+	analyzeResult.ContractType = mcmsTx.ContractType
+	analyzeResult.ContractVersion = resolveContractVersion(proposalCtx, chainSelector, mcmsTx.To)
 
 	return analyzeResult, abi, abiStr, nil
 }
@@ -115,15 +119,17 @@ func getTransactionValue(mcmsTx types.Transaction) *big.Int {
 }
 
 // createNativeTransferCall creates a DecodedCall for native token transfers
-func createNativeTransferCall(mcmsTx types.Transaction) *DecodedCall {
+func createNativeTransferCall(proposalCtx ProposalContext, chainSelector uint64, mcmsTx types.Transaction) *DecodedCall {
 	value := getTransactionValue(mcmsTx)
 
 	// Convert wei to ETH using big.Rat for precise decimal representation
 	eth := new(big.Rat).SetFrac(value, big.NewInt(1e18))
 
 	return &DecodedCall{
-		Address: mcmsTx.To,
-		Method:  "native_transfer",
+		Address:         mcmsTx.To,
+		Method:          "native_transfer",
+		ContractType:    mcmsTx.ContractType,
+		ContractVersion: resolveContractVersion(proposalCtx, chainSelector, mcmsTx.To),
 		Inputs: []NamedField{
 			{
 				Name:  "recipient",

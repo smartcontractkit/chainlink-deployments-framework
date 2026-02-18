@@ -35,8 +35,10 @@ func AnalyzeAptosTransaction(ctx ProposalContext, decoder *mcmsaptossdk.Decoder,
 		errStr := fmt.Errorf("failed to decode Aptos transaction: %w", err)
 
 		return &DecodedCall{
-			Address: mcmsTx.To,
-			Method:  errStr.Error(),
+			Address:         mcmsTx.To,
+			Method:          errStr.Error(),
+			ContractType:    mcmsTx.ContractType,
+			ContractVersion: resolveContractVersion(ctx, chainSelector, mcmsTx.To),
 		}, nil
 	}
 	namedArgs, err := toNamedFields(decodedOp)
@@ -45,9 +47,11 @@ func AnalyzeAptosTransaction(ctx ProposalContext, decoder *mcmsaptossdk.Decoder,
 	}
 
 	return &DecodedCall{
-		Address: mcmsTx.To,
-		Method:  decodedOp.MethodName(),
-		Inputs:  namedArgs,
-		Outputs: []NamedField{},
+		Address:         mcmsTx.To,
+		Method:          decodedOp.MethodName(),
+		Inputs:          namedArgs,
+		Outputs:         []NamedField{},
+		ContractType:    mcmsTx.ContractType,
+		ContractVersion: resolveContractVersion(ctx, chainSelector, mcmsTx.To),
 	}, nil
 }

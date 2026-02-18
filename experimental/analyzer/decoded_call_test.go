@@ -3,6 +3,7 @@ package analyzer
 import (
 	"testing"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
@@ -127,6 +128,82 @@ Outputs:
 			t.Parallel()
 
 			result := tt.call.String(tt.context)
+			require.Equal(t, tt.want, result)
+		})
+	}
+}
+
+func TestResolveContractVersion(t *testing.T) {
+	t.Parallel()
+
+	chainSelector := uint64(12345)
+	address := "0x1234567890123456789012345678901234567890"
+
+	tests := []struct {
+		name     string
+		ctx      ProposalContext
+		chainSel uint64
+		address  string
+		want     string
+	}{
+		{
+			name: "returns version when address is registered",
+			ctx: &DefaultProposalContext{
+				AddressesByChain: deployment.AddressesByChain{
+					chainSelector: {
+						address: deployment.TypeAndVersion{
+							Type:    "TestContract",
+							Version: *semver.MustParse("1.2.3"),
+						},
+					},
+				},
+			},
+			chainSel: chainSelector,
+			address:  address,
+			want:     "1.2.3",
+		},
+		{
+			name: "returns empty string when address is not registered",
+			ctx: &DefaultProposalContext{
+				AddressesByChain: deployment.AddressesByChain{
+					chainSelector: {},
+				},
+			},
+			chainSel: chainSelector,
+			address:  address,
+			want:     "",
+		},
+		{
+			name: "returns empty string when chain is not registered",
+			ctx: &DefaultProposalContext{
+				AddressesByChain: deployment.AddressesByChain{},
+			},
+			chainSel: chainSelector,
+			address:  address,
+			want:     "",
+		},
+		{
+			name: "returns empty string for zero-value version",
+			ctx: &DefaultProposalContext{
+				AddressesByChain: deployment.AddressesByChain{
+					chainSelector: {
+						address: deployment.TypeAndVersion{
+							Type: "TestContract",
+						},
+					},
+				},
+			},
+			chainSel: chainSelector,
+			address:  address,
+			want:     "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			result := resolveContractVersion(tt.ctx, tt.chainSel, tt.address)
 			require.Equal(t, tt.want, result)
 		})
 	}

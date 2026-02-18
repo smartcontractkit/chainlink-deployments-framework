@@ -58,6 +58,8 @@ func AnalyzeSolanaTransaction(
 	decodedTx.Address = mcmsTx.To
 	decodedTx.Method = instruction.Name()
 	decodedTx.Inputs = instruction.Inputs()
+	decodedTx.ContractType = mcmsTx.ContractType
+	decodedTx.ContractVersion = resolveContractVersion(ctx, chainSelector, mcmsTx.To)
 
 	return decodedTx, nil
 }

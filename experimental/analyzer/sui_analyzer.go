@@ -33,10 +33,12 @@ func AnalyzeSuiTransaction(ctx ProposalContext, decoder *mcmssuisdk.Decoder, cha
 	if additionalFields.ModuleName == "mcms" {
 		methodName := fmt.Sprintf("%s::%s", additionalFields.ModuleName, additionalFields.Function)
 		return &DecodedCall{
-			Address: mcmsTx.To,
-			Method:  methodName,
-			Inputs:  []NamedField{},
-			Outputs: []NamedField{},
+			Address:         mcmsTx.To,
+			Method:          methodName,
+			Inputs:          []NamedField{},
+			Outputs:         []NamedField{},
+			ContractType:    mcmsTx.ContractType,
+			ContractVersion: resolveContractVersion(ctx, chainSelector, mcmsTx.To),
 		}, nil
 	}
 
@@ -46,8 +48,10 @@ func AnalyzeSuiTransaction(ctx ProposalContext, decoder *mcmssuisdk.Decoder, cha
 		errStr := fmt.Errorf("no function info found for module %s on chain selector %d", additionalFields.ModuleName, chainSelector)
 
 		return &DecodedCall{
-			Address: mcmsTx.To,
-			Method:  errStr.Error(),
+			Address:         mcmsTx.To,
+			Method:          errStr.Error(),
+			ContractType:    mcmsTx.ContractType,
+			ContractVersion: resolveContractVersion(ctx, chainSelector, mcmsTx.To),
 		}, nil
 	}
 
@@ -57,8 +61,10 @@ func AnalyzeSuiTransaction(ctx ProposalContext, decoder *mcmssuisdk.Decoder, cha
 		errStr := fmt.Errorf("failed to decode Sui transaction: %w", err)
 
 		return &DecodedCall{
-			Address: mcmsTx.To,
-			Method:  errStr.Error(),
+			Address:         mcmsTx.To,
+			Method:          errStr.Error(),
+			ContractType:    mcmsTx.ContractType,
+			ContractVersion: resolveContractVersion(ctx, chainSelector, mcmsTx.To),
 		}, nil
 	}
 	namedArgs, err := toNamedFields(decodedOp)
@@ -67,9 +73,11 @@ func AnalyzeSuiTransaction(ctx ProposalContext, decoder *mcmssuisdk.Decoder, cha
 	}
 
 	return &DecodedCall{
-		Address: mcmsTx.To,
-		Method:  decodedOp.MethodName(),
-		Inputs:  namedArgs,
-		Outputs: []NamedField{},
+		Address:         mcmsTx.To,
+		Method:          decodedOp.MethodName(),
+		Inputs:          namedArgs,
+		Outputs:         []NamedField{},
+		ContractType:    mcmsTx.ContractType,
+		ContractVersion: resolveContractVersion(ctx, chainSelector, mcmsTx.To),
 	}, nil
 }
