@@ -133,21 +133,22 @@ Outputs:
 	}
 }
 
-func TestResolveContractVersion(t *testing.T) {
+func TestResolveContractInfo(t *testing.T) {
 	t.Parallel()
 
 	chainSelector := uint64(12345)
 	address := "0x1234567890123456789012345678901234567890"
 
 	tests := []struct {
-		name     string
-		ctx      ProposalContext
-		chainSel uint64
-		address  string
-		want     string
+		name        string
+		ctx         ProposalContext
+		chainSel    uint64
+		address     string
+		wantType    string
+		wantVersion string
 	}{
 		{
-			name: "returns version when address is registered",
+			name: "returns type and version when address is registered",
 			ctx: &DefaultProposalContext{
 				AddressesByChain: deployment.AddressesByChain{
 					chainSelector: {
@@ -158,32 +159,35 @@ func TestResolveContractVersion(t *testing.T) {
 					},
 				},
 			},
-			chainSel: chainSelector,
-			address:  address,
-			want:     "1.2.3",
+			chainSel:    chainSelector,
+			address:     address,
+			wantType:    "TestContract",
+			wantVersion: "1.2.3",
 		},
 		{
-			name: "returns empty string when address is not registered",
+			name: "returns empty strings when address is not registered",
 			ctx: &DefaultProposalContext{
 				AddressesByChain: deployment.AddressesByChain{
 					chainSelector: {},
 				},
 			},
-			chainSel: chainSelector,
-			address:  address,
-			want:     "",
+			chainSel:    chainSelector,
+			address:     address,
+			wantType:    "",
+			wantVersion: "",
 		},
 		{
-			name: "returns empty string when chain is not registered",
+			name: "returns empty strings when chain is not registered",
 			ctx: &DefaultProposalContext{
 				AddressesByChain: deployment.AddressesByChain{},
 			},
-			chainSel: chainSelector,
-			address:  address,
-			want:     "",
+			chainSel:    chainSelector,
+			address:     address,
+			wantType:    "",
+			wantVersion: "",
 		},
 		{
-			name: "returns empty string for zero-value version",
+			name: "returns type but empty version for zero-value version",
 			ctx: &DefaultProposalContext{
 				AddressesByChain: deployment.AddressesByChain{
 					chainSelector: {
@@ -193,9 +197,10 @@ func TestResolveContractVersion(t *testing.T) {
 					},
 				},
 			},
-			chainSel: chainSelector,
-			address:  address,
-			want:     "",
+			chainSel:    chainSelector,
+			address:     address,
+			wantType:    "TestContract",
+			wantVersion: "",
 		},
 	}
 
@@ -203,8 +208,9 @@ func TestResolveContractVersion(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			result := resolveContractVersion(tt.ctx, tt.chainSel, tt.address)
-			require.Equal(t, tt.want, result)
+			gotType, gotVersion := resolveContractInfo(tt.ctx, tt.chainSel, tt.address)
+			require.Equal(t, tt.wantType, gotType)
+			require.Equal(t, tt.wantVersion, gotVersion)
 		})
 	}
 }

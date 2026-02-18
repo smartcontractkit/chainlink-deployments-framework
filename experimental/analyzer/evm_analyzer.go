@@ -71,9 +71,10 @@ func AnalyzeEVMTransaction(
 				ctx, proposalCtx, env, chainSelector, mcmsTx.To, mcmsTx.Data, decoder,
 			)
 			if fallbackErr == nil {
-				fallbackResult.ContractType = mcmsTx.ContractType
-				fallbackResult.ContractVersion = resolveContractVersion(proposalCtx, chainSelector, mcmsTx.To)
-
+				fallbackResult.ContractType, fallbackResult.ContractVersion = resolveContractInfo(proposalCtx, chainSelector, mcmsTx.To)
+				if fallbackResult.ContractType == "" {
+					fallbackResult.ContractType = mcmsTx.ContractType
+				}
 				return fallbackResult, fallbackABI, fallbackABIStr, nil
 			}
 			// Fallback failed, return original error
@@ -82,8 +83,10 @@ func AnalyzeEVMTransaction(
 		return nil, nil, "", fmt.Errorf("error analyzing operation: %w", err)
 	}
 
-	analyzeResult.ContractType = mcmsTx.ContractType
-	analyzeResult.ContractVersion = resolveContractVersion(proposalCtx, chainSelector, mcmsTx.To)
+	analyzeResult.ContractType, analyzeResult.ContractVersion = resolveContractInfo(proposalCtx, chainSelector, mcmsTx.To)
+	if analyzeResult.ContractType == "" {
+		analyzeResult.ContractType = mcmsTx.ContractType
+	}
 
 	return analyzeResult, abi, abiStr, nil
 }
@@ -126,11 +129,16 @@ func createNativeTransferCall(proposalCtx ProposalContext, chainSelector uint64,
 	// Convert wei to ETH using big.Rat for precise decimal representation
 	eth := new(big.Rat).SetFrac(value, big.NewInt(1e18))
 
+	contractType, contractVersion := resolveContractInfo(proposalCtx, chainSelector, mcmsTx.To)
+	if contractType == "" {
+		contractType = mcmsTx.ContractType
+	}
+
 	return &DecodedCall{
 		Address:         mcmsTx.To,
 		Method:          "native_transfer",
-		ContractType:    mcmsTx.ContractType,
-		ContractVersion: resolveContractVersion(proposalCtx, chainSelector, mcmsTx.To),
+		ContractType:    contractType,
+		ContractVersion: contractVersion,
 		Inputs: []NamedField{
 			{
 				Name:  "recipient",

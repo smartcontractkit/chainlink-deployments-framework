@@ -24,6 +24,11 @@ func AnalyzeSuiTransactions(ctx ProposalContext, chainSelector uint64, txs []typ
 }
 
 func AnalyzeSuiTransaction(ctx ProposalContext, decoder *mcmssuisdk.Decoder, chainSelector uint64, mcmsTx types.Transaction) (*DecodedCall, error) {
+	contractType, contractVersion := resolveContractInfo(ctx, chainSelector, mcmsTx.To)
+	if contractType == "" {
+		contractType = mcmsTx.ContractType
+	}
+
 	var additionalFields mcmssuisdk.AdditionalFields
 	if err := json.Unmarshal(mcmsTx.AdditionalFields, &additionalFields); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal Sui additional fields: %w", err)
@@ -37,8 +42,8 @@ func AnalyzeSuiTransaction(ctx ProposalContext, decoder *mcmssuisdk.Decoder, cha
 			Method:          methodName,
 			Inputs:          []NamedField{},
 			Outputs:         []NamedField{},
-			ContractType:    mcmsTx.ContractType,
-			ContractVersion: resolveContractVersion(ctx, chainSelector, mcmsTx.To),
+			ContractType:    contractType,
+			ContractVersion: contractVersion,
 		}, nil
 	}
 
@@ -50,8 +55,8 @@ func AnalyzeSuiTransaction(ctx ProposalContext, decoder *mcmssuisdk.Decoder, cha
 		return &DecodedCall{
 			Address:         mcmsTx.To,
 			Method:          errStr.Error(),
-			ContractType:    mcmsTx.ContractType,
-			ContractVersion: resolveContractVersion(ctx, chainSelector, mcmsTx.To),
+			ContractType:    contractType,
+			ContractVersion: contractVersion,
 		}, nil
 	}
 
@@ -63,8 +68,8 @@ func AnalyzeSuiTransaction(ctx ProposalContext, decoder *mcmssuisdk.Decoder, cha
 		return &DecodedCall{
 			Address:         mcmsTx.To,
 			Method:          errStr.Error(),
-			ContractType:    mcmsTx.ContractType,
-			ContractVersion: resolveContractVersion(ctx, chainSelector, mcmsTx.To),
+			ContractType:    contractType,
+			ContractVersion: contractVersion,
 		}, nil
 	}
 	namedArgs, err := toNamedFields(decodedOp)
@@ -77,7 +82,7 @@ func AnalyzeSuiTransaction(ctx ProposalContext, decoder *mcmssuisdk.Decoder, cha
 		Method:          decodedOp.MethodName(),
 		Inputs:          namedArgs,
 		Outputs:         []NamedField{},
-		ContractType:    mcmsTx.ContractType,
-		ContractVersion: resolveContractVersion(ctx, chainSelector, mcmsTx.To),
+		ContractType:    contractType,
+		ContractVersion: contractVersion,
 	}, nil
 }

@@ -24,27 +24,30 @@ func (d *DecodedCall) String(context *FieldContext) string {
 	return renderer.RenderDecodedCall(d, context)
 }
 
-// resolveContractVersion looks up the contract version from the proposal context's
-// registered addresses
-func resolveContractVersion(ctx ProposalContext, chainSelector uint64, address string) string {
+// resolveContractInfo looks up the contract type and version from the proposal
+// context's registered addresses
+func resolveContractInfo(ctx ProposalContext, chainSelector uint64, address string) (contractType, contractVersion string) {
 	dpc, ok := ctx.(*DefaultProposalContext)
 	if !ok {
-		return ""
+		return "", ""
 	}
 
 	addresses, ok := dpc.AddressesByChain[chainSelector]
 	if !ok {
-		return ""
+		return "", ""
 	}
 
 	tv, ok := addresses[address]
 	if !ok {
-		return ""
+		return "", ""
 	}
 
-	if tv.Version.Original() == "" {
-		return ""
+	ct := string(tv.Type)
+
+	var cv string
+	if tv.Version.Original() != "" {
+		cv = tv.Version.String()
 	}
 
-	return tv.Version.String()
+	return ct, cv
 }
