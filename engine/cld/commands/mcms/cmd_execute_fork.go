@@ -269,17 +269,44 @@ func overrideForkChainDeployerKeyToTestSigner(cfg *forkConfig, chainID string) e
 		return fmt.Errorf("failed to create test signer transactor: %w", err)
 	}
 
-	chains := maps.Collect(cfg.blockchains.All())
-	evmChain, ok := chains[cfg.chainSelector].(cldf_evm.Chain)
-	if !ok {
-		return fmt.Errorf("chain selector %d is not an evm chain", cfg.chainSelector)
+	targetChain, err := cfg.blockchains.GetBySelector(cfg.chainSelector)
+	if err != nil {
+		return fmt.Errorf("chain selector %d not found: %w", cfg.chainSelector, err)
 	}
 
+	evmChain, ok := targetChain.(cldf_evm.Chain)
+	if !ok {
+		return fmt.Errorf("chain selector %d is not an evm chain (got %T)", cfg.chainSelector, targetChain)
+	}
+	preserveTransactOptsConfig(testSignerTxOpts, evmChain.DeployerKey)
+
+	chains := maps.Collect(cfg.blockchains.All())
 	evmChain.DeployerKey = testSignerTxOpts
 	chains[cfg.chainSelector] = evmChain
 	cfg.blockchains = chain.NewBlockChains(chains)
 
 	return nil
+}
+
+// preserveTransactOptsConfig keeps chain-specific tx settings when swapping signers.
+func preserveTransactOptsConfig(dst, src *bind.TransactOpts) {
+	if dst == nil || src == nil {
+		return
+	}
+
+	dst.GasLimit = src.GasLimit
+	dst.NoSend = src.NoSend
+	dst.Context = src.Context
+
+	if src.GasPrice != nil {
+		dst.GasPrice = new(big.Int).Set(src.GasPrice)
+	}
+	if src.GasTipCap != nil {
+		dst.GasTipCap = new(big.Int).Set(src.GasTipCap)
+	}
+	if src.GasFeeCap != nil {
+		dst.GasFeeCap = new(big.Int).Set(src.GasFeeCap)
+	}
 }
 
 // logTransactions sets up transaction logging for the forked chain.

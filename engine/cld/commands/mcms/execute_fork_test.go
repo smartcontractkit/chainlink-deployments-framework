@@ -2,6 +2,7 @@ package mcms
 
 import (
 	"bytes"
+	"context"
 	"math/big"
 	"testing"
 
@@ -185,6 +186,12 @@ func TestOverrideForkChainDeployerKeyToTestSigner_Success(t *testing.T) {
 
 	prevTxOpts, err := bind.NewKeyedTransactorWithChainID(prevPrivKey, big.NewInt(998))
 	require.NoError(t, err)
+	prevTxOpts.GasLimit = 10_000_000
+	prevTxOpts.GasPrice = big.NewInt(100)
+	prevTxOpts.GasTipCap = big.NewInt(2)
+	prevTxOpts.GasFeeCap = big.NewInt(200)
+	prevTxOpts.NoSend = true
+	prevTxOpts.Context = context.Background()
 
 	cfg := &forkConfig{
 		chainSelector: selector,
@@ -203,6 +210,12 @@ func TestOverrideForkChainDeployerKeyToTestSigner_Success(t *testing.T) {
 	require.NotNil(t, updatedChain.DeployerKey)
 	require.Equal(t, blockchain.DefaultAnvilPublicKey, updatedChain.DeployerKey.From.Hex())
 	require.NotEqual(t, prevTxOpts.From, updatedChain.DeployerKey.From)
+	require.Equal(t, prevTxOpts.GasLimit, updatedChain.DeployerKey.GasLimit)
+	require.Equal(t, 0, prevTxOpts.GasPrice.Cmp(updatedChain.DeployerKey.GasPrice))
+	require.Equal(t, 0, prevTxOpts.GasTipCap.Cmp(updatedChain.DeployerKey.GasTipCap))
+	require.Equal(t, 0, prevTxOpts.GasFeeCap.Cmp(updatedChain.DeployerKey.GasFeeCap))
+	require.Equal(t, prevTxOpts.NoSend, updatedChain.DeployerKey.NoSend)
+	require.Equal(t, prevTxOpts.Context, updatedChain.DeployerKey.Context)
 }
 
 func TestOverrideForkChainDeployerKeyToTestSigner_InvalidChainID(t *testing.T) {
@@ -233,6 +246,20 @@ func TestOverrideForkChainDeployerKeyToTestSigner_NonEVMChain(t *testing.T) {
 
 	err := overrideForkChainDeployerKeyToTestSigner(cfg, "998")
 	require.ErrorContains(t, err, "is not an evm chain")
+}
+
+func TestOverrideForkChainDeployerKeyToTestSigner_ChainNotFound(t *testing.T) {
+	t.Parallel()
+
+	const selector = uint64(4286062357653186312)
+	cfg := &forkConfig{
+		chainSelector: selector,
+		blockchains:   chain.NewBlockChains(nil),
+	}
+
+	err := overrideForkChainDeployerKeyToTestSigner(cfg, "998")
+	require.ErrorContains(t, err, "chain selector")
+	require.ErrorContains(t, err, "not found")
 }
 
 func TestOverrideForkChainDeployerKeyToTestSigner_MissingChainSelector(t *testing.T) {
