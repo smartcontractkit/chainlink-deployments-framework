@@ -23,9 +23,8 @@ func NewAnnotation(name, atype string, value any) Annotation {
 	}
 }
 
-// NewAnnotationWithAnalyzer creates a new annotation with analyzer ID.
-// This is used internally by the engine to associate annotations with the
-// analyzer that produced them.
+// NewAnnotationWithAnalyzer creates a new annotation tagged with the ID of the
+// analyzer that produced it.
 func NewAnnotationWithAnalyzer(name, atype string, value any, analyzerID string) Annotation {
 	return &annotation{
 		name:       name,
