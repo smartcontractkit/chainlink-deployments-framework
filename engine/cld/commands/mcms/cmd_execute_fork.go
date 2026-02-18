@@ -198,6 +198,9 @@ func executeFork(
 		if lerr != nil {
 			return fmt.Errorf("failed to override fork deployer key to test signer: %w", lerr)
 		}
+
+		// Re-wrap the RPC client with logging after updating the deployer key
+		logTransactions(lggr, cfg)
 	}
 
 	// set root
