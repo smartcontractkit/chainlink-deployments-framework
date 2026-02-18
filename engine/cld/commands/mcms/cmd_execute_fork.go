@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"math/big"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -192,6 +193,11 @@ func executeFork(
 		if lerr != nil {
 			return fmt.Errorf("failed to overwrite proposal signature: %w", lerr)
 		}
+
+		lerr = overrideForkChainDeployerKeyToTestSigner(cfg, chainID)
+		if lerr != nil {
+			return fmt.Errorf("failed to override fork deployer key to test signer: %w", lerr)
+		}
 	}
 
 	// set root
@@ -237,6 +243,36 @@ func executeFork(
 		return fmt.Errorf("failed to timelock execute chain: %w", err)
 	}
 	lggr.Info("Timelock.execute() - success")
+
+	return nil
+}
+
+// overrideForkChainDeployerKeyToTestSigner sets the deployer key for the forked chain to the test signer key,
+func overrideForkChainDeployerKeyToTestSigner(cfg *forkConfig, chainID string) error {
+	chainIDBig, ok := new(big.Int).SetString(chainID, 10)
+	if !ok {
+		return fmt.Errorf("invalid chain id %q", chainID)
+	}
+
+	privKey, err := crypto.HexToECDSA(blockchain.DefaultAnvilPrivateKey)
+	if err != nil {
+		return fmt.Errorf("failed to parse test signer private key: %w", err)
+	}
+
+	testSignerTxOpts, err := bind.NewKeyedTransactorWithChainID(privKey, chainIDBig)
+	if err != nil {
+		return fmt.Errorf("failed to create test signer transactor: %w", err)
+	}
+
+	chains := maps.Collect(cfg.blockchains.All())
+	evmChain, ok := chains[cfg.chainSelector].(cldf_evm.Chain)
+	if !ok {
+		return fmt.Errorf("chain selector %d is not an evm chain", cfg.chainSelector)
+	}
+
+	evmChain.DeployerKey = testSignerTxOpts
+	chains[cfg.chainSelector] = evmChain
+	cfg.blockchains = chain.NewBlockChains(chains)
 
 	return nil
 }
