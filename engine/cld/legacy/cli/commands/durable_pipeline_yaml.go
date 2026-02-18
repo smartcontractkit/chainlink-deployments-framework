@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/smartcontractkit/chainlink-deployments-framework/helper"
 	"gopkg.in/yaml.v3"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
@@ -260,6 +261,10 @@ func parseDurablePipelineYAML(inputFileName string, domain domain.Domain, envKey
 	if err = yaml.Unmarshal(yamlData, &dpYAML); err != nil {
 		return nil, fmt.Errorf("failed to parse input file %s: %w", inputFileName, err)
 	}
+
+	// Coerce big int strings as YAML parsing may interpret large numbers as strings
+	matchFunc := helper.DefaultMatchKeysToFix
+	dpYAML = helper.CoerceBigIntStringsForKeys(dpYAML, matchFunc).(durablePipelineYAML)
 
 	if dpYAML.Environment == "" {
 		return nil, fmt.Errorf("input file %s is missing required 'environment' field", inputFileName)

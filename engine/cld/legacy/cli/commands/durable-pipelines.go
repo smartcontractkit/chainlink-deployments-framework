@@ -11,6 +11,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/smartcontractkit/chainlink-deployments-framework/helper"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
@@ -303,6 +304,10 @@ func (c Commands) newDurablePipelineInputGenerate(
 			if err = yaml.Unmarshal(raw, &dpFile); err != nil {
 				return fmt.Errorf("parse inputs file (yaml): %w", err)
 			}
+
+			// Coerce big int strings as YAML parsing may interpret large numbers as strings
+			matchFunc := helper.DefaultMatchKeysToFix
+			dpFile = helper.CoerceBigIntStringsForKeys(dpFile, matchFunc).(durablePipelineFile)
 
 			// Build changeset to resolver map
 			resolverByKey := make(map[string]fresolvers.ConfigResolver)

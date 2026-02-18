@@ -6,6 +6,7 @@ import (
 	"os"
 	"slices"
 
+	"github.com/smartcontractkit/chainlink-deployments-framework/helper"
 	"gopkg.in/yaml.v3"
 )
 
@@ -209,6 +210,10 @@ func Load(filePaths []string, opts ...LoadOption) (*Config, error) {
 		if err := yaml.Unmarshal(data, &fileCfg); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal networks YAML: %w", err)
 		}
+
+		// Coerce big int strings as YAML parsing may interpret large numbers as strings
+		matchFunc := helper.DefaultMatchKeysToFix
+		fileCfg = helper.CoerceBigIntStringsForKeys(fileCfg, matchFunc).(Config)
 
 		cfg.Merge(&fileCfg)
 	}

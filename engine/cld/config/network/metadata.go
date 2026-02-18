@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/smartcontractkit/chainlink-deployments-framework/helper"
 	"gopkg.in/yaml.v3"
 )
 
@@ -67,6 +68,10 @@ func DecodeMetadata[T any](metadata any) (T, error) {
 	if err := yaml.Unmarshal(yamlBytes, &target); err != nil {
 		return target, fmt.Errorf("failed to unmarshal metadata to target type: %w", err)
 	}
+
+	// Coerce big int strings as YAML parsing may interpret large numbers as strings
+	matchFunc := helper.DefaultMatchKeysToFix
+	target = helper.CoerceBigIntStringsForKeys(target, matchFunc).(T)
 
 	return target, nil
 }

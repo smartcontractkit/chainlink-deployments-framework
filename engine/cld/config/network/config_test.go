@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	chainsel "github.com/smartcontractkit/chain-selectors"
+	"github.com/smartcontractkit/chainlink-deployments-framework/helper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
@@ -135,6 +136,10 @@ networks:
 
 	err := yaml.Unmarshal([]byte(give), &cfg)
 	require.NoError(t, err)
+
+	// Coerce big int strings as YAML parsing may interpret large numbers as strings
+	matchFunc := helper.DefaultMatchKeysToFix
+	cfg = helper.CoerceBigIntStringsForKeys(cfg, matchFunc).(Config)
 
 	assert.Equal(t, Config{
 		networks: map[uint64]Network{
