@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/smartcontractkit/mcms/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
@@ -143,7 +144,7 @@ func TestResolveContractInfo(t *testing.T) {
 		name        string
 		ctx         ProposalContext
 		chainSel    uint64
-		address     string
+		mcmsTx      types.Transaction
 		wantType    string
 		wantVersion string
 	}{
@@ -160,29 +161,47 @@ func TestResolveContractInfo(t *testing.T) {
 				},
 			},
 			chainSel:    chainSelector,
-			address:     address,
+			mcmsTx:      types.Transaction{To: address},
 			wantType:    "TestContract",
 			wantVersion: "1.2.3",
 		},
 		{
-			name: "returns empty strings when address is not registered",
+			name: "falls back to transaction ContractType when address is not registered",
+			ctx: &DefaultProposalContext{
+				AddressesByChain: deployment.AddressesByChain{
+					chainSelector: {},
+				},
+			},
+			chainSel: chainSelector,
+			mcmsTx: types.Transaction{
+				OperationMetadata: types.OperationMetadata{ContractType: "FallbackType"},
+				To:                address,
+			},
+			wantType:    "FallbackType",
+			wantVersion: "",
+		},
+		{
+			name: "falls back to transaction ContractType when chain is not registered",
+			ctx: &DefaultProposalContext{
+				AddressesByChain: deployment.AddressesByChain{},
+			},
+			chainSel: chainSelector,
+			mcmsTx: types.Transaction{
+				OperationMetadata: types.OperationMetadata{ContractType: "FallbackType"},
+				To:                address,
+			},
+			wantType:    "FallbackType",
+			wantVersion: "",
+		},
+		{
+			name: "returns empty type when neither address book nor transaction has it",
 			ctx: &DefaultProposalContext{
 				AddressesByChain: deployment.AddressesByChain{
 					chainSelector: {},
 				},
 			},
 			chainSel:    chainSelector,
-			address:     address,
-			wantType:    "",
-			wantVersion: "",
-		},
-		{
-			name: "returns empty strings when chain is not registered",
-			ctx: &DefaultProposalContext{
-				AddressesByChain: deployment.AddressesByChain{},
-			},
-			chainSel:    chainSelector,
-			address:     address,
+			mcmsTx:      types.Transaction{To: address},
 			wantType:    "",
 			wantVersion: "",
 		},
@@ -198,7 +217,7 @@ func TestResolveContractInfo(t *testing.T) {
 				},
 			},
 			chainSel:    chainSelector,
-			address:     address,
+			mcmsTx:      types.Transaction{To: address},
 			wantType:    "TestContract",
 			wantVersion: "",
 		},
@@ -208,7 +227,7 @@ func TestResolveContractInfo(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			gotType, gotVersion := resolveContractInfo(tt.ctx, tt.chainSel, tt.address)
+			gotType, gotVersion := resolveContractInfo(tt.ctx, tt.chainSel, tt.mcmsTx)
 			require.Equal(t, tt.wantType, gotType)
 			require.Equal(t, tt.wantVersion, gotVersion)
 		})

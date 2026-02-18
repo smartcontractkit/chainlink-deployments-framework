@@ -1,5 +1,9 @@
 package analyzer
 
+import (
+	"github.com/smartcontractkit/mcms/types"
+)
+
 const (
 	// Magic number constants
 	MinStructFieldsForPrettyFormat = 2
@@ -25,24 +29,27 @@ func (d *DecodedCall) String(context *FieldContext) string {
 }
 
 // resolveContractInfo looks up the contract type and version from the proposal
-// context's registered addresses
-func resolveContractInfo(ctx ProposalContext, chainSelector uint64, address string) (contractType, contractVersion string) {
+// context's registered addresses.
+func resolveContractInfo(ctx ProposalContext, chainSelector uint64, mcmsTx types.Transaction) (contractType, contractVersion string) {
 	dpc, ok := ctx.(*DefaultProposalContext)
 	if !ok {
-		return "", ""
+		return mcmsTx.ContractType, ""
 	}
 
 	addresses, ok := dpc.AddressesByChain[chainSelector]
 	if !ok {
-		return "", ""
+		return mcmsTx.ContractType, ""
 	}
 
-	tv, ok := addresses[address]
+	tv, ok := addresses[mcmsTx.To]
 	if !ok {
-		return "", ""
+		return mcmsTx.ContractType, ""
 	}
 
 	ct := string(tv.Type)
+	if ct == "" {
+		ct = mcmsTx.ContractType
+	}
 
 	var cv string
 	if tv.Version.Original() != "" {

@@ -24,10 +24,7 @@ func AnalyzeAptosTransactions(ctx ProposalContext, chainSelector uint64, txs []t
 }
 
 func AnalyzeAptosTransaction(ctx ProposalContext, decoder *mcmsaptossdk.Decoder, chainSelector uint64, mcmsTx types.Transaction) (*DecodedCall, error) {
-	contractType, contractVersion := resolveContractInfo(ctx, chainSelector, mcmsTx.To)
-	if contractType == "" {
-		contractType = mcmsTx.ContractType
-	}
+	contractType, contractVersion := resolveContractInfo(ctx, chainSelector, mcmsTx)
 
 	var additionalFields mcmsaptossdk.AdditionalFields
 	if err := json.Unmarshal(mcmsTx.AdditionalFields, &additionalFields); err != nil {

@@ -24,10 +24,7 @@ func AnalyzeSuiTransactions(ctx ProposalContext, chainSelector uint64, txs []typ
 }
 
 func AnalyzeSuiTransaction(ctx ProposalContext, decoder *mcmssuisdk.Decoder, chainSelector uint64, mcmsTx types.Transaction) (*DecodedCall, error) {
-	contractType, contractVersion := resolveContractInfo(ctx, chainSelector, mcmsTx.To)
-	if contractType == "" {
-		contractType = mcmsTx.ContractType
-	}
+	contractType, contractVersion := resolveContractInfo(ctx, chainSelector, mcmsTx)
 
 	var additionalFields mcmssuisdk.AdditionalFields
 	if err := json.Unmarshal(mcmsTx.AdditionalFields, &additionalFields); err != nil {
