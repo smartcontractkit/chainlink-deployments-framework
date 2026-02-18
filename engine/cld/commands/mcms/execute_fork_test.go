@@ -2,10 +2,17 @@ package mcms
 
 import (
 	"bytes"
+	"math/big"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/stretchr/testify/require"
 
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
+	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
@@ -166,4 +173,64 @@ func TestExecuteFork_Config_MissingProposalContextProvider(t *testing.T) {
 	})
 
 	require.ErrorContains(t, err, "ProposalContextProvider")
+}
+
+func TestOverrideForkChainDeployerKeyToTestSigner_Success(t *testing.T) {
+	t.Parallel()
+
+	const selector = uint64(4286062357653186312)
+
+	prevPrivKey, err := crypto.GenerateKey()
+	require.NoError(t, err)
+
+	prevTxOpts, err := bind.NewKeyedTransactorWithChainID(prevPrivKey, big.NewInt(998))
+	require.NoError(t, err)
+
+	cfg := &forkConfig{
+		chainSelector: selector,
+		blockchains: chain.NewBlockChains(map[uint64]chain.BlockChain{
+			selector: cldf_evm.Chain{
+				Selector:    selector,
+				DeployerKey: prevTxOpts,
+			},
+		}),
+	}
+
+	err = overrideForkChainDeployerKeyToTestSigner(cfg, "998")
+	require.NoError(t, err)
+
+	updatedChain := cfg.blockchains.EVMChains()[selector]
+	require.NotNil(t, updatedChain.DeployerKey)
+	require.Equal(t, blockchain.DefaultAnvilPublicKey, updatedChain.DeployerKey.From.Hex())
+	require.NotEqual(t, prevTxOpts.From, updatedChain.DeployerKey.From)
+}
+
+func TestOverrideForkChainDeployerKeyToTestSigner_InvalidChainID(t *testing.T) {
+	t.Parallel()
+
+	const selector = uint64(4286062357653186312)
+	cfg := &forkConfig{
+		chainSelector: selector,
+		blockchains: chain.NewBlockChains(map[uint64]chain.BlockChain{
+			selector: cldf_evm.Chain{Selector: selector},
+		}),
+	}
+
+	err := overrideForkChainDeployerKeyToTestSigner(cfg, "not-a-number")
+	require.ErrorContains(t, err, "invalid chain id")
+}
+
+func TestOverrideForkChainDeployerKeyToTestSigner_NonEVMChain(t *testing.T) {
+	t.Parallel()
+
+	const selector = uint64(4286062357653186312)
+	cfg := &forkConfig{
+		chainSelector: selector,
+		blockchains: chain.NewBlockChains(map[uint64]chain.BlockChain{
+			selector: solana.Chain{Selector: selector},
+		}),
+	}
+
+	err := overrideForkChainDeployerKeyToTestSigner(cfg, "998")
+	require.ErrorContains(t, err, "is not an evm chain")
 }
