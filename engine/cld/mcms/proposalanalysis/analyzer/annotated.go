@@ -9,10 +9,12 @@ type annotation struct {
 
 var _ Annotation = &annotation{}
 
-func (a *annotation) Name() string { return a.name }
-func (a *annotation) Type() string { return a.atype }
-func (a *annotation) Value() any   { return a.value }
+func (a *annotation) Name() string       { return a.name }
+func (a *annotation) Type() string       { return a.atype }
+func (a *annotation) Value() any         { return a.value }
+func (a *annotation) AnalyzerID() string { return a.analyzerID }
 
+// NewAnnotation creates a new annotation with the given name, type, and value.
 func NewAnnotation(name, atype string, value any) Annotation {
 	return &annotation{
 		name:  name,
@@ -48,10 +50,12 @@ func (a *BaseAnnotated) Annotations() Annotations {
 	return a.annotations
 }
 
-func (a *BaseAnnotated) GetAnnotationsByName(name string) Annotations {
+// Filter returns all annotations matching the given predicate.
+// Predicates can be composed using the ByName, ByType, and ByAnalyzer helpers.
+func (a *BaseAnnotated) Filter(pred AnnotationPredicate) Annotations {
 	var result Annotations
 	for _, ann := range a.annotations {
-		if ann.Name() == name {
+		if pred(ann) {
 			result = append(result, ann)
 		}
 	}
@@ -59,25 +63,17 @@ func (a *BaseAnnotated) GetAnnotationsByName(name string) Annotations {
 	return result
 }
 
-func (a *BaseAnnotated) GetAnnotationsByType(atype string) Annotations {
-	var result Annotations
-	for _, ann := range a.annotations {
-		if ann.Type() == atype {
-			result = append(result, ann)
-		}
-	}
+// GetAnnotationsByName returns all annotations matching the given name.
+func (a *BaseAnnotated) GetAnnotationsByName(name string) Annotations {
+	return a.Filter(ByName(name))
+}
 
-	return result
+// GetAnnotationsByType returns all annotations matching the given type.
+func (a *BaseAnnotated) GetAnnotationsByType(atype string) Annotations {
+	return a.Filter(ByType(atype))
 }
 
 // GetAnnotationsByAnalyzer returns all annotations produced by the given analyzer ID.
 func (a *BaseAnnotated) GetAnnotationsByAnalyzer(analyzerID string) Annotations {
-	var result Annotations
-	for _, ann := range a.annotations {
-		if tracked, ok := ann.(*annotation); ok && tracked.analyzerID == analyzerID {
-			result = append(result, ann)
-		}
-	}
-
-	return result
+	return a.Filter(ByAnalyzer(analyzerID))
 }

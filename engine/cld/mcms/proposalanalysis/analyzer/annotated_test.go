@@ -18,6 +18,7 @@ func TestNewAnnotation(t *testing.T) {
 		assert.Equal(t, "cld.severity", ann.Name())
 		assert.Equal(t, "enum", ann.Type())
 		assert.Equal(t, "warning", ann.Value())
+		assert.Empty(t, ann.AnalyzerID())
 	})
 
 	t.Run("supports arbitrary value types", func(t *testing.T) {
@@ -49,6 +50,14 @@ func TestNewAnnotationWithAnalyzer(t *testing.T) {
 		assert.Equal(t, "cld.risk", ann.Name())
 		assert.Equal(t, "enum", ann.Type())
 		assert.Equal(t, "high", ann.Value())
+		assert.Equal(t, "my-analyzer", ann.AnalyzerID())
+
+		a := &BaseAnnotated{}
+		a.AddAnnotations(ann)
+
+		result := a.GetAnnotationsByAnalyzer("my-analyzer")
+		require.Len(t, result, 1)
+		assert.Equal(t, "cld.risk", result[0].Name())
 	})
 }
 
@@ -149,7 +158,55 @@ func TestBaseAnnotated(t *testing.T) {
 		result = a.GetAnnotationsByAnalyzer("analyzer-b")
 		require.Len(t, result, 1)
 
+		result = a.GetAnnotationsByAnalyzer("")
+		require.Len(t, result, 1)
+		assert.Equal(t, "plain", result[0].Name())
+
 		result = a.GetAnnotationsByAnalyzer("nonexistent")
 		assert.Empty(t, result)
+	})
+
+	t.Run("Filter with custom predicate", func(t *testing.T) {
+		t.Parallel()
+
+		a := &BaseAnnotated{}
+		a.AddAnnotations(
+			NewAnnotation("severity", "enum", "warning"),
+			NewAnnotation("note", "string", "hello"),
+			NewAnnotation("risk", "enum", "high"),
+			NewAnnotation("flag", "boolean", true),
+		)
+
+		result := a.Filter(func(ann Annotation) bool {
+			s, ok := ann.Value().(string)
+			return ok && len(s) > 0 && s[0] == 'h'
+		})
+		require.Len(t, result, 2)
+		assert.Equal(t, "hello", result[0].Value())
+		assert.Equal(t, "high", result[1].Value())
+
+		result = a.Filter(func(ann Annotation) bool { return false })
+		assert.Empty(t, result)
+	})
+
+	t.Run("Filter with predicate builders", func(t *testing.T) {
+		t.Parallel()
+
+		a := &BaseAnnotated{}
+		a.AddAnnotations(
+			NewAnnotationWithAnalyzer("severity", "enum", "warning", "analyzer-a"),
+			NewAnnotation("note", "string", "hello"),
+			NewAnnotationWithAnalyzer("risk", "enum", "high", "analyzer-a"),
+		)
+
+		result := a.Filter(ByName("severity"))
+		require.Len(t, result, 1)
+		assert.Equal(t, "warning", result[0].Value())
+
+		result = a.Filter(ByType("enum"))
+		require.Len(t, result, 2)
+
+		result = a.Filter(ByAnalyzer("analyzer-a"))
+		require.Len(t, result, 2)
 	})
 }
