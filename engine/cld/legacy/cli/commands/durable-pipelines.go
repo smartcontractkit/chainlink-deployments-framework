@@ -11,9 +11,10 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/helper"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/helper"
 
 	fresolvers "github.com/smartcontractkit/chainlink-deployments-framework/changeset/resolvers"
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"

@@ -7,10 +7,11 @@ import (
 	"testing"
 
 	chainsel "github.com/smartcontractkit/chain-selectors"
-	"github.com/smartcontractkit/chainlink-deployments-framework/helper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/helper"
 )
 
 func Test_Config_Validate(t *testing.T) {

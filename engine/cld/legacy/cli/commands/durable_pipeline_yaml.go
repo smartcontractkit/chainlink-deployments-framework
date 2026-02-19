@@ -7,8 +7,9 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/helper"
 	"gopkg.in/yaml.v3"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/helper"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 )
