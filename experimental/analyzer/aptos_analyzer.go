@@ -24,6 +24,8 @@ func AnalyzeAptosTransactions(ctx ProposalContext, chainSelector uint64, txs []t
 }
 
 func AnalyzeAptosTransaction(ctx ProposalContext, decoder *mcmsaptossdk.Decoder, chainSelector uint64, mcmsTx types.Transaction) (*DecodedCall, error) {
+	contractType, contractVersion := resolveContractInfo(ctx, chainSelector, mcmsTx)
+
 	var additionalFields mcmsaptossdk.AdditionalFields
 	if err := json.Unmarshal(mcmsTx.AdditionalFields, &additionalFields); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal Aptos additional fields: %w", err)
@@ -35,8 +37,10 @@ func AnalyzeAptosTransaction(ctx ProposalContext, decoder *mcmsaptossdk.Decoder,
 		errStr := fmt.Errorf("failed to decode Aptos transaction: %w", err)
 
 		return &DecodedCall{
-			Address: mcmsTx.To,
-			Method:  errStr.Error(),
+			Address:         mcmsTx.To,
+			Method:          errStr.Error(),
+			ContractType:    contractType,
+			ContractVersion: contractVersion,
 		}, nil
 	}
 	namedArgs, err := toNamedFields(decodedOp)
@@ -45,9 +49,11 @@ func AnalyzeAptosTransaction(ctx ProposalContext, decoder *mcmsaptossdk.Decoder,
 	}
 
 	return &DecodedCall{
-		Address: mcmsTx.To,
-		Method:  decodedOp.MethodName(),
-		Inputs:  namedArgs,
-		Outputs: []NamedField{},
+		Address:         mcmsTx.To,
+		Method:          decodedOp.MethodName(),
+		Inputs:          namedArgs,
+		Outputs:         []NamedField{},
+		ContractType:    contractType,
+		ContractVersion: contractVersion,
 	}, nil
 }

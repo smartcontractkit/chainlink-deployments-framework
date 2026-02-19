@@ -3,6 +3,8 @@ package analyzer
 import (
 	"testing"
 
+	"github.com/Masterminds/semver/v3"
+	"github.com/smartcontractkit/mcms/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
@@ -128,6 +130,106 @@ Outputs:
 
 			result := tt.call.String(tt.context)
 			require.Equal(t, tt.want, result)
+		})
+	}
+}
+
+func TestResolveContractInfo(t *testing.T) {
+	t.Parallel()
+
+	chainSelector := uint64(12345)
+	address := "0x1234567890123456789012345678901234567890"
+
+	tests := []struct {
+		name        string
+		ctx         ProposalContext
+		chainSel    uint64
+		mcmsTx      types.Transaction
+		wantType    string
+		wantVersion string
+	}{
+		{
+			name: "returns type and version when address is registered",
+			ctx: &DefaultProposalContext{
+				AddressesByChain: deployment.AddressesByChain{
+					chainSelector: {
+						address: deployment.TypeAndVersion{
+							Type:    "TestContract",
+							Version: *semver.MustParse("1.2.3"),
+						},
+					},
+				},
+			},
+			chainSel:    chainSelector,
+			mcmsTx:      types.Transaction{To: address},
+			wantType:    "TestContract",
+			wantVersion: "1.2.3",
+		},
+		{
+			name: "falls back to transaction ContractType when address is not registered",
+			ctx: &DefaultProposalContext{
+				AddressesByChain: deployment.AddressesByChain{
+					chainSelector: {},
+				},
+			},
+			chainSel: chainSelector,
+			mcmsTx: types.Transaction{
+				OperationMetadata: types.OperationMetadata{ContractType: "FallbackType"},
+				To:                address,
+			},
+			wantType:    "FallbackType",
+			wantVersion: "",
+		},
+		{
+			name: "falls back to transaction ContractType when chain is not registered",
+			ctx: &DefaultProposalContext{
+				AddressesByChain: deployment.AddressesByChain{},
+			},
+			chainSel: chainSelector,
+			mcmsTx: types.Transaction{
+				OperationMetadata: types.OperationMetadata{ContractType: "FallbackType"},
+				To:                address,
+			},
+			wantType:    "FallbackType",
+			wantVersion: "",
+		},
+		{
+			name: "returns empty type when neither address book nor transaction has it",
+			ctx: &DefaultProposalContext{
+				AddressesByChain: deployment.AddressesByChain{
+					chainSelector: {},
+				},
+			},
+			chainSel:    chainSelector,
+			mcmsTx:      types.Transaction{To: address},
+			wantType:    "",
+			wantVersion: "",
+		},
+		{
+			name: "returns type but empty version for zero-value version",
+			ctx: &DefaultProposalContext{
+				AddressesByChain: deployment.AddressesByChain{
+					chainSelector: {
+						address: deployment.TypeAndVersion{
+							Type: "TestContract",
+						},
+					},
+				},
+			},
+			chainSel:    chainSelector,
+			mcmsTx:      types.Transaction{To: address},
+			wantType:    "TestContract",
+			wantVersion: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			gotType, gotVersion := resolveContractInfo(tt.ctx, tt.chainSel, tt.mcmsTx)
+			require.Equal(t, tt.wantType, gotType)
+			require.Equal(t, tt.wantVersion, gotVersion)
 		})
 	}
 }
