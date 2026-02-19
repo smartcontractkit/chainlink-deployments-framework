@@ -9,6 +9,8 @@ import (
 )
 
 func TestStringToBigIntIfOverflowInt64(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name   string
 		input  string
@@ -144,6 +146,8 @@ func TestCoerceBigIntStringsForKeys(t *testing.T) {
 }
 
 func TestDefaultMatchKeysToFix(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name  string
 		key   string
