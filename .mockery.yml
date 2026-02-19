@@ -119,3 +119,7 @@ packages:
       structname: "{{.Mock}}{{.InterfaceName}}"
     interfaces:
       AnalyzedProposal:
+      ProposalAnalyzer:
+      BatchOperationAnalyzer:
+      CallAnalyzer:
+      ParameterAnalyzer:
