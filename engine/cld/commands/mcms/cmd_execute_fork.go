@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"math/big"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -151,8 +152,6 @@ func executeFork(
 		return nil // don't fail, just exit cleanly
 	}
 
-	logTransactions(lggr, cfg)
-
 	if len(cfg.forkedEnv.ChainConfigs[cfg.chainSelector].HTTPRPCs) == 0 {
 		return fmt.Errorf("no rpcs loaded in forked environment for chain %d (fork tests require public RPCs)", cfg.chainSelector)
 	}
@@ -192,7 +191,13 @@ func executeFork(
 		if lerr != nil {
 			return fmt.Errorf("failed to overwrite proposal signature: %w", lerr)
 		}
+
+		lerr = overrideForkChainDeployerKeyWithTestSigner(cfg, chainID)
+		if lerr != nil {
+			return fmt.Errorf("failed to override fork deployer key to test signer: %w", lerr)
+		}
 	}
+	logTransactions(lggr, cfg)
 
 	// set root
 	// TODO: improve error decoding on the mcms lib for "set root".
@@ -241,6 +246,65 @@ func executeFork(
 	return nil
 }
 
+// overrideForkChainDeployerKeyWithTestSigner sets the deployer key for the
+// forked chain to the test signer key, updating cfg.blockchains for the
+// EVM chain identified by the provided chainID.
+func overrideForkChainDeployerKeyWithTestSigner(cfg *forkConfig, chainID string) error {
+	chainIDBig, ok := new(big.Int).SetString(chainID, 10)
+	if !ok {
+		return fmt.Errorf("invalid chain id %q", chainID)
+	}
+
+	privKey, err := crypto.HexToECDSA(blockchain.DefaultAnvilPrivateKey)
+	if err != nil {
+		return fmt.Errorf("failed to parse test signer private key: %w", err)
+	}
+
+	testSignerTxOpts, err := bind.NewKeyedTransactorWithChainID(privKey, chainIDBig)
+	if err != nil {
+		return fmt.Errorf("failed to create test signer transactor: %w", err)
+	}
+
+	targetChain, err := cfg.blockchains.GetBySelector(cfg.chainSelector)
+	if err != nil {
+		return fmt.Errorf("chain selector %d not found: %w", cfg.chainSelector, err)
+	}
+
+	evmChain, ok := targetChain.(cldf_evm.Chain)
+	if !ok {
+		return fmt.Errorf("chain selector %d is not an evm chain (got %T)", cfg.chainSelector, targetChain)
+	}
+	preserveTransactOptsConfig(testSignerTxOpts, evmChain.DeployerKey)
+
+	chains := maps.Collect(cfg.blockchains.All())
+	evmChain.DeployerKey = testSignerTxOpts
+	chains[cfg.chainSelector] = evmChain
+	cfg.blockchains = chain.NewBlockChains(chains)
+
+	return nil
+}
+
+// preserveTransactOptsConfig keeps chain-specific tx settings when swapping signers.
+func preserveTransactOptsConfig(dst, src *bind.TransactOpts) {
+	if dst == nil || src == nil {
+		return
+	}
+
+	dst.GasLimit = src.GasLimit
+	dst.NoSend = src.NoSend
+	dst.Context = src.Context
+
+	if src.GasPrice != nil {
+		dst.GasPrice = new(big.Int).Set(src.GasPrice)
+	}
+	if src.GasTipCap != nil {
+		dst.GasTipCap = new(big.Int).Set(src.GasTipCap)
+	}
+	if src.GasFeeCap != nil {
+		dst.GasFeeCap = new(big.Int).Set(src.GasFeeCap)
+	}
+}
+
 // logTransactions sets up transaction logging for the forked chain.
 func logTransactions(lggr logger.Logger, cfg *forkConfig) {
 	lggr.Infof("logging transactions sent to forked chain %v", cfg.chainSelector)
@@ -251,6 +315,9 @@ func logTransactions(lggr logger.Logger, cfg *forkConfig) {
 	if !ok {
 		lggr.Warnf("failed to configure transaction logging for chain selector %v (not evm: %T)", cfg.chainSelector, chains[cfg.chainSelector])
 
+		return
+	}
+	if _, alreadyWrapped := evmChain.Client.(*loggingRpcClient); alreadyWrapped {
 		return
 	}
 

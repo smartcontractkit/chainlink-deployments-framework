@@ -2,10 +2,18 @@ package mcms
 
 import (
 	"bytes"
+	"context"
+	"math/big"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/stretchr/testify/require"
 
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
+	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
@@ -166,4 +174,145 @@ func TestExecuteFork_Config_MissingProposalContextProvider(t *testing.T) {
 	})
 
 	require.ErrorContains(t, err, "ProposalContextProvider")
+}
+
+func TestExecuteFork_OverrideForkChainDeployerKeyWithTestSigner(t *testing.T) {
+	t.Parallel()
+
+	const selector = uint64(4286062357653186312)
+
+	tests := []struct {
+		name     string
+		chainID  string
+		setupCfg func(t *testing.T) (*forkConfig, *bind.TransactOpts)
+		assert   func(t *testing.T, cfg *forkConfig, prevTxOpts *bind.TransactOpts, err error)
+	}{
+		{
+			name:    "success",
+			chainID: "998",
+			setupCfg: func(t *testing.T) (*forkConfig, *bind.TransactOpts) {
+				t.Helper()
+				prevPrivKey, err := crypto.GenerateKey()
+				require.NoError(t, err)
+
+				prevTxOpts, err := bind.NewKeyedTransactorWithChainID(prevPrivKey, big.NewInt(998))
+				require.NoError(t, err)
+				prevTxOpts.GasLimit = 10_000_000
+				prevTxOpts.GasPrice = big.NewInt(100)
+				prevTxOpts.GasTipCap = big.NewInt(2)
+				prevTxOpts.GasFeeCap = big.NewInt(200)
+				prevTxOpts.NoSend = true
+				prevTxOpts.Context = context.Background()
+
+				cfg := &forkConfig{
+					chainSelector: selector,
+					blockchains: chain.NewBlockChains(map[uint64]chain.BlockChain{
+						selector: cldf_evm.Chain{
+							Selector:    selector,
+							DeployerKey: prevTxOpts,
+						},
+					}),
+				}
+
+				return cfg, prevTxOpts
+			},
+			assert: func(t *testing.T, cfg *forkConfig, prevTxOpts *bind.TransactOpts, err error) {
+				t.Helper()
+				require.NoError(t, err)
+				updatedChain := cfg.blockchains.EVMChains()[selector]
+				require.NotNil(t, updatedChain.DeployerKey)
+				require.Equal(t, blockchain.DefaultAnvilPublicKey, updatedChain.DeployerKey.From.Hex())
+				require.NotEqual(t, prevTxOpts.From, updatedChain.DeployerKey.From)
+				require.Equal(t, prevTxOpts.GasLimit, updatedChain.DeployerKey.GasLimit)
+				require.Equal(t, 0, prevTxOpts.GasPrice.Cmp(updatedChain.DeployerKey.GasPrice))
+				require.Equal(t, 0, prevTxOpts.GasTipCap.Cmp(updatedChain.DeployerKey.GasTipCap))
+				require.Equal(t, 0, prevTxOpts.GasFeeCap.Cmp(updatedChain.DeployerKey.GasFeeCap))
+				require.Equal(t, prevTxOpts.NoSend, updatedChain.DeployerKey.NoSend)
+				require.Equal(t, prevTxOpts.Context, updatedChain.DeployerKey.Context)
+			},
+		},
+		{
+			name:    "invalid chain id",
+			chainID: "not-a-number",
+			setupCfg: func(t *testing.T) (*forkConfig, *bind.TransactOpts) {
+				t.Helper()
+				cfg := &forkConfig{
+					chainSelector: selector,
+					blockchains: chain.NewBlockChains(map[uint64]chain.BlockChain{
+						selector: cldf_evm.Chain{Selector: selector},
+					}),
+				}
+
+				return cfg, nil
+			},
+			assert: func(t *testing.T, _ *forkConfig, _ *bind.TransactOpts, err error) {
+				t.Helper()
+				require.ErrorContains(t, err, "invalid chain id")
+			},
+		},
+		{
+			name:    "non evm chain",
+			chainID: "998",
+			setupCfg: func(t *testing.T) (*forkConfig, *bind.TransactOpts) {
+				t.Helper()
+				cfg := &forkConfig{
+					chainSelector: selector,
+					blockchains: chain.NewBlockChains(map[uint64]chain.BlockChain{
+						selector: solana.Chain{Selector: selector},
+					}),
+				}
+
+				return cfg, nil
+			},
+			assert: func(t *testing.T, _ *forkConfig, _ *bind.TransactOpts, err error) {
+				t.Helper()
+				require.ErrorContains(t, err, "is not an evm chain")
+			},
+		},
+		{
+			name:    "chain not found nil map",
+			chainID: "998",
+			setupCfg: func(t *testing.T) (*forkConfig, *bind.TransactOpts) {
+				t.Helper()
+				cfg := &forkConfig{
+					chainSelector: selector,
+					blockchains:   chain.NewBlockChains(nil),
+				}
+
+				return cfg, nil
+			},
+			assert: func(t *testing.T, _ *forkConfig, _ *bind.TransactOpts, err error) {
+				t.Helper()
+				require.ErrorContains(t, err, "chain selector")
+				require.ErrorContains(t, err, "not found")
+			},
+		},
+		{
+			name:    "chain not found empty map",
+			chainID: "998",
+			setupCfg: func(t *testing.T) (*forkConfig, *bind.TransactOpts) {
+				t.Helper()
+				cfg := &forkConfig{
+					chainSelector: selector,
+					blockchains:   chain.NewBlockChains(map[uint64]chain.BlockChain{}),
+				}
+
+				return cfg, nil
+			},
+			assert: func(t *testing.T, _ *forkConfig, _ *bind.TransactOpts, err error) {
+				t.Helper()
+				require.ErrorContains(t, err, "chain selector")
+				require.ErrorContains(t, err, "not found")
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			cfg, prevTxOpts := tc.setupCfg(t)
+			err := overrideForkChainDeployerKeyWithTestSigner(cfg, tc.chainID)
+			tc.assert(t, cfg, prevTxOpts, err)
+		})
+	}
 }
