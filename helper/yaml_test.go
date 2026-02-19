@@ -9,6 +9,7 @@ import (
 )
 
 func TestStringToBigIntIfOverflowInt64(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		input  string
@@ -35,6 +36,7 @@ func TestStringToBigIntIfOverflowInt64(t *testing.T) {
 }
 
 func TestCoerceBigIntStrings(t *testing.T) {
+	t.Parallel()
 	bigVal := "18446744073709551616" // overflows uint64
 	expectedBig, _ := new(big.Int).SetString(bigVal, 10)
 
@@ -90,6 +92,7 @@ func TestCoerceBigIntStrings(t *testing.T) {
 }
 
 func TestCoerceBigIntStringsForKeys(t *testing.T) {
+	t.Parallel()
 	bigVal := "18446744073709551616"
 	expectedBig, _ := new(big.Int).SetString(bigVal, 10)
 
@@ -135,6 +138,7 @@ func TestCoerceBigIntStringsForKeys(t *testing.T) {
 }
 
 func TestDefaultMatchKeysToFix(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name  string
 		key   string
