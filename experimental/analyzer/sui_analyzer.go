@@ -24,6 +24,8 @@ func AnalyzeSuiTransactions(ctx ProposalContext, chainSelector uint64, txs []typ
 }
 
 func AnalyzeSuiTransaction(ctx ProposalContext, decoder *mcmssuisdk.Decoder, chainSelector uint64, mcmsTx types.Transaction) (*DecodedCall, error) {
+	contractType, contractVersion := resolveContractInfo(ctx, chainSelector, mcmsTx)
+
 	var additionalFields mcmssuisdk.AdditionalFields
 	if err := json.Unmarshal(mcmsTx.AdditionalFields, &additionalFields); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal Sui additional fields: %w", err)
@@ -33,10 +35,12 @@ func AnalyzeSuiTransaction(ctx ProposalContext, decoder *mcmssuisdk.Decoder, cha
 	if additionalFields.ModuleName == "mcms" {
 		methodName := fmt.Sprintf("%s::%s", additionalFields.ModuleName, additionalFields.Function)
 		return &DecodedCall{
-			Address: mcmsTx.To,
-			Method:  methodName,
-			Inputs:  []NamedField{},
-			Outputs: []NamedField{},
+			Address:         mcmsTx.To,
+			Method:          methodName,
+			Inputs:          []NamedField{},
+			Outputs:         []NamedField{},
+			ContractType:    contractType,
+			ContractVersion: contractVersion,
 		}, nil
 	}
 
@@ -46,8 +50,10 @@ func AnalyzeSuiTransaction(ctx ProposalContext, decoder *mcmssuisdk.Decoder, cha
 		errStr := fmt.Errorf("no function info found for module %s on chain selector %d", additionalFields.ModuleName, chainSelector)
 
 		return &DecodedCall{
-			Address: mcmsTx.To,
-			Method:  errStr.Error(),
+			Address:         mcmsTx.To,
+			Method:          errStr.Error(),
+			ContractType:    contractType,
+			ContractVersion: contractVersion,
 		}, nil
 	}
 
@@ -57,8 +63,10 @@ func AnalyzeSuiTransaction(ctx ProposalContext, decoder *mcmssuisdk.Decoder, cha
 		errStr := fmt.Errorf("failed to decode Sui transaction: %w", err)
 
 		return &DecodedCall{
-			Address: mcmsTx.To,
-			Method:  errStr.Error(),
+			Address:         mcmsTx.To,
+			Method:          errStr.Error(),
+			ContractType:    contractType,
+			ContractVersion: contractVersion,
 		}, nil
 	}
 	namedArgs, err := toNamedFields(decodedOp)
@@ -67,9 +75,11 @@ func AnalyzeSuiTransaction(ctx ProposalContext, decoder *mcmssuisdk.Decoder, cha
 	}
 
 	return &DecodedCall{
-		Address: mcmsTx.To,
-		Method:  decodedOp.MethodName(),
-		Inputs:  namedArgs,
-		Outputs: []NamedField{},
+		Address:         mcmsTx.To,
+		Method:          decodedOp.MethodName(),
+		Inputs:          namedArgs,
+		Outputs:         []NamedField{},
+		ContractType:    contractType,
+		ContractVersion: contractVersion,
 	}, nil
 }
