@@ -7,8 +7,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
-
-	"github.com/smartcontractkit/chainlink-deployments-framework/helper"
 )
 
 var (
@@ -367,10 +365,6 @@ func Test_YAML_Marshal_Unmarshal(t *testing.T) {
 			var cfg Config
 			err = yaml.Unmarshal(yamlCfg, &cfg)
 			require.NoError(t, err)
-
-			// Coerce big int strings as YAML parsing may interpret large numbers as strings
-			matchFunc := helper.DefaultMatchKeysToFix
-			cfg = helper.CoerceBigIntStringsForKeys(cfg, matchFunc).(Config)
 
 			assert.Equal(t, *tt.want(), cfg)
 

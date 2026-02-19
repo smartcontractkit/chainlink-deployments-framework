@@ -7,8 +7,6 @@ import (
 	"slices"
 
 	"gopkg.in/yaml.v3"
-
-	"github.com/smartcontractkit/chainlink-deployments-framework/helper"
 )
 
 // Manifest is the YAML representation of network configuration.
@@ -211,10 +209,6 @@ func Load(filePaths []string, opts ...LoadOption) (*Config, error) {
 		if err := yaml.Unmarshal(data, &fileCfg); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal networks YAML: %w", err)
 		}
-
-		// Coerce big int strings as YAML parsing may interpret large numbers as strings
-		matchFunc := helper.DefaultMatchKeysToFix
-		fileCfg = helper.CoerceBigIntStringsForKeys(fileCfg, matchFunc).(Config)
 
 		cfg.Merge(&fileCfg)
 	}
