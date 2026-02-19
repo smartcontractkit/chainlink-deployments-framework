@@ -1,12 +1,14 @@
 package analyzer
 
+import "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer/annotated"
+
 type AnalyzedProposal interface {
-	Annotated
+	annotated.Annotated
 	BatchOperations() AnalyzedBatchOperations
 }
 
 type AnalyzedBatchOperation interface {
-	Annotated
+	annotated.Annotated
 	ChainSelector() uint64
 	Calls() AnalyzedCalls
 }
@@ -16,7 +18,7 @@ type AnalyzedBatchOperations []AnalyzedBatchOperation
 type AnalyzedCalls []AnalyzedCall
 
 type AnalyzedCall interface {
-	Annotated
+	annotated.Annotated
 	To() string
 	Name() string
 	Inputs() AnalyzedParameters
@@ -30,7 +32,7 @@ type AnalyzedCall interface {
 type AnalyzedParameters []AnalyzedParameter
 
 type AnalyzedParameter interface {
-	Annotated
+	annotated.Annotated
 	Name() string
 	Type() string
 	Value() any

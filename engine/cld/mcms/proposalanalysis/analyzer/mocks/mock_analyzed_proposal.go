@@ -6,6 +6,8 @@ package mocks
 
 import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer/annotated"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer/annotation"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -36,68 +38,20 @@ func (_m *MockAnalyzedProposal) EXPECT() *MockAnalyzedProposal_Expecter {
 	return &MockAnalyzedProposal_Expecter{mock: &_m.Mock}
 }
 
-// AddAnnotations provides a mock function for the type MockAnalyzedProposal
-func (_mock *MockAnalyzedProposal) AddAnnotations(annotations ...analyzer.Annotation) {
-	if len(annotations) > 0 {
-		_mock.Called(annotations)
-	} else {
-		_mock.Called()
-	}
-
-	return
-}
-
-// MockAnalyzedProposal_AddAnnotations_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddAnnotations'
-type MockAnalyzedProposal_AddAnnotations_Call struct {
-	*mock.Call
-}
-
-// AddAnnotations is a helper method to define mock.On call
-//   - annotations ...analyzer.Annotation
-func (_e *MockAnalyzedProposal_Expecter) AddAnnotations(annotations ...interface{}) *MockAnalyzedProposal_AddAnnotations_Call {
-	return &MockAnalyzedProposal_AddAnnotations_Call{Call: _e.mock.On("AddAnnotations",
-		append([]interface{}{}, annotations...)...)}
-}
-
-func (_c *MockAnalyzedProposal_AddAnnotations_Call) Run(run func(annotations ...analyzer.Annotation)) *MockAnalyzedProposal_AddAnnotations_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 []analyzer.Annotation
-		var variadicArgs []analyzer.Annotation
-		if len(args) > 0 {
-			variadicArgs = args[0].([]analyzer.Annotation)
-		}
-		arg0 = variadicArgs
-		run(
-			arg0...,
-		)
-	})
-	return _c
-}
-
-func (_c *MockAnalyzedProposal_AddAnnotations_Call) Return() *MockAnalyzedProposal_AddAnnotations_Call {
-	_c.Call.Return()
-	return _c
-}
-
-func (_c *MockAnalyzedProposal_AddAnnotations_Call) RunAndReturn(run func(annotations ...analyzer.Annotation)) *MockAnalyzedProposal_AddAnnotations_Call {
-	_c.Run(run)
-	return _c
-}
-
 // Annotations provides a mock function for the type MockAnalyzedProposal
-func (_mock *MockAnalyzedProposal) Annotations() analyzer.Annotations {
+func (_mock *MockAnalyzedProposal) Annotations() annotation.Annotations {
 	ret := _mock.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for Annotations")
 	}
 
-	var r0 analyzer.Annotations
-	if returnFunc, ok := ret.Get(0).(func() analyzer.Annotations); ok {
+	var r0 annotation.Annotations
+	if returnFunc, ok := ret.Get(0).(func() annotation.Annotations); ok {
 		r0 = returnFunc()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(analyzer.Annotations)
+			r0 = ret.Get(0).(annotation.Annotations)
 		}
 	}
 	return r0
@@ -120,12 +74,12 @@ func (_c *MockAnalyzedProposal_Annotations_Call) Run(run func()) *MockAnalyzedPr
 	return _c
 }
 
-func (_c *MockAnalyzedProposal_Annotations_Call) Return(annotations analyzer.Annotations) *MockAnalyzedProposal_Annotations_Call {
+func (_c *MockAnalyzedProposal_Annotations_Call) Return(annotations annotation.Annotations) *MockAnalyzedProposal_Annotations_Call {
 	_c.Call.Return(annotations)
 	return _c
 }
 
-func (_c *MockAnalyzedProposal_Annotations_Call) RunAndReturn(run func() analyzer.Annotations) *MockAnalyzedProposal_Annotations_Call {
+func (_c *MockAnalyzedProposal_Annotations_Call) RunAndReturn(run func() annotation.Annotations) *MockAnalyzedProposal_Annotations_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -172,6 +126,68 @@ func (_c *MockAnalyzedProposal_BatchOperations_Call) Return(analyzedBatchOperati
 }
 
 func (_c *MockAnalyzedProposal_BatchOperations_Call) RunAndReturn(run func() analyzer.AnalyzedBatchOperations) *MockAnalyzedProposal_BatchOperations_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Filter provides a mock function for the type MockAnalyzedProposal
+func (_mock *MockAnalyzedProposal) Filter(preds ...annotated.AnnotationPredicate) annotation.Annotations {
+	var tmpRet mock.Arguments
+	if len(preds) > 0 {
+		tmpRet = _mock.Called(preds)
+	} else {
+		tmpRet = _mock.Called()
+	}
+	ret := tmpRet
+
+	if len(ret) == 0 {
+		panic("no return value specified for Filter")
+	}
+
+	var r0 annotation.Annotations
+	if returnFunc, ok := ret.Get(0).(func(...annotated.AnnotationPredicate) annotation.Annotations); ok {
+		r0 = returnFunc(preds...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(annotation.Annotations)
+		}
+	}
+	return r0
+}
+
+// MockAnalyzedProposal_Filter_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Filter'
+type MockAnalyzedProposal_Filter_Call struct {
+	*mock.Call
+}
+
+// Filter is a helper method to define mock.On call
+//   - preds ...annotated.AnnotationPredicate
+func (_e *MockAnalyzedProposal_Expecter) Filter(preds ...interface{}) *MockAnalyzedProposal_Filter_Call {
+	return &MockAnalyzedProposal_Filter_Call{Call: _e.mock.On("Filter",
+		append([]interface{}{}, preds...)...)}
+}
+
+func (_c *MockAnalyzedProposal_Filter_Call) Run(run func(preds ...annotated.AnnotationPredicate)) *MockAnalyzedProposal_Filter_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 []annotated.AnnotationPredicate
+		var variadicArgs []annotated.AnnotationPredicate
+		if len(args) > 0 {
+			variadicArgs = args[0].([]annotated.AnnotationPredicate)
+		}
+		arg0 = variadicArgs
+		run(
+			arg0...,
+		)
+	})
+	return _c
+}
+
+func (_c *MockAnalyzedProposal_Filter_Call) Return(annotations annotation.Annotations) *MockAnalyzedProposal_Filter_Call {
+	_c.Call.Return(annotations)
+	return _c
+}
+
+func (_c *MockAnalyzedProposal_Filter_Call) RunAndReturn(run func(preds ...annotated.AnnotationPredicate) annotation.Annotations) *MockAnalyzedProposal_Filter_Call {
 	_c.Call.Return(run)
 	return _c
 }
