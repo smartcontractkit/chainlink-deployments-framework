@@ -1,6 +1,6 @@
 package annotated
 
-import "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer/annotation"
+import "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/internal/analyzer/annotation"
 
 // AnnotationPredicate is a function that tests whether an annotation matches
 // a given condition.

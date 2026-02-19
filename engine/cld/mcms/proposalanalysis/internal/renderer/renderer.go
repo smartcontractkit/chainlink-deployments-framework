@@ -3,7 +3,7 @@ package renderer
 import (
 	"io"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/internal/analyzer"
 )
 
 // RenderRequest encapsulates the domain and environment name

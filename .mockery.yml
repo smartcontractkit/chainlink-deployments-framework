@@ -110,11 +110,11 @@ packages:
   github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/legacy/cli/mcmsv2:
     interfaces:
       commandRunnerI:
-  github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer:
+  github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/internal/analyzer:
     config:
       all: false
       pkgname: "mocks"
-      dir: "engine/cld/mcms/proposalanalysis/analyzer/mocks"
+      dir: "engine/cld/mcms/proposalanalysis/internal/analyzer/mocks"
       filename: "mock_{{.InterfaceName | snakecase}}.go"
       structname: "{{.Mock}}{{.InterfaceName}}"
     interfaces:
