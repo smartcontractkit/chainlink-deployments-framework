@@ -40,7 +40,7 @@ func TestAnalyzeTONTransaction(t *testing.T) {
 		},
 		{
 			name:           "invalid data",
-			mcmsTx:         makeInvalidTx("link.chain.ton.mcms.MCMS"),
+			mcmsTx:         makeInvalidTx(bindings.TypeMCMS),
 			want:           &DecodedCall{Address: testAddress},
 			wantErrContain: "invalid cell BOC data",
 		},
@@ -58,7 +58,7 @@ func TestAnalyzeTONTransaction(t *testing.T) {
 		{
 			name: "empty data",
 			mcmsTx: types.Transaction{
-				OperationMetadata: types.OperationMetadata{ContractType: "link.chain.ton.mcms.MCMS"},
+				OperationMetadata: types.OperationMetadata{ContractType: bindings.TypeMCMS},
 				To:                testAddress,
 				Data:              []byte{},
 				AdditionalFields:  json.RawMessage(`{"value":0}`),
@@ -123,9 +123,9 @@ func TestAnalyzeTONTransactions(t *testing.T) {
 		{
 			name: "mixed valid and invalid",
 			txs: []types.Transaction{
-				makeInvalidTx("link.chain.ton.mcms.MCMS"),
+				makeInvalidTx(bindings.TypeMCMS),
 				setup.makeGrantRoleTx(t, 1),
-				makeInvalidTx("link.chain.ton.mcms.Timelock"),
+				makeInvalidTx(bindings.TypeTimelock),
 			},
 			want: []*DecodedCall{
 				{Address: testAddress},
@@ -137,8 +137,8 @@ func TestAnalyzeTONTransactions(t *testing.T) {
 		{
 			name: "all decode failures",
 			txs: []types.Transaction{
-				makeInvalidTx("link.chain.ton.mcms.MCMS"),
-				makeInvalidTx("link.chain.ton.mcms.Timelock"),
+				makeInvalidTx(bindings.TypeMCMS),
+				makeInvalidTx(bindings.TypeTimelock),
 			},
 			want: []*DecodedCall{
 				{Address: testAddress},
@@ -246,7 +246,7 @@ func (s *testTONSetup) makeGrantRoleTx(t *testing.T, queryID uint64) types.Trans
 		s.targetAddr,
 		grantRoleData.ToBuilder().ToSlice(),
 		big.NewInt(0),
-		"link.chain.ton.lib.access.RBAC",
+		bindings.TypeRBAC,
 		[]string{"grantRole"},
 	)
 	require.NoError(t, err)
@@ -257,8 +257,8 @@ func (s *testTONSetup) makeGrantRoleTx(t *testing.T, queryID uint64) types.Trans
 func (s *testTONSetup) expectedGrantRoleCall(queryID uint64) *DecodedCall {
 	return &DecodedCall{
 		Address:      s.targetAddr.String(),
-		Method:       "link.chain.ton.lib.access.RBAC::GrantRole(0x95cd540f)",
-		ContractType: "link.chain.ton.lib.access.RBAC",
+		Method:       bindings.TypeRBAC + "::GrantRole(0x95cd540f)",
+		ContractType: bindings.TypeRBAC,
 		Inputs: []NamedField{
 			{Name: "QueryID", Value: SimpleField{Value: bigIntStr(queryID)}},
 			{Name: "Role", Value: SimpleField{Value: s.exampleRoleBig.String()}},
