@@ -271,7 +271,7 @@ func batchOperationsToUpfDecodedCalls(ctx context.Context, proposalContext mcmsa
 			describedTxs, err = mcmsanalyzer.AnalyzeSuiTransactions(proposalContext, chainSel, batch.Transactions)
 
 		case chainsel.FamilyTon:
-			describedTxs, err = mcmsanalyzer.AnalyzeTONTransactions(proposalContext, batch.Transactions)
+			describedTxs, err = mcmsanalyzer.AnalyzeTONTransactions(proposalContext, chainSel, batch.Transactions)
 
 		default:
 			for callIdx, mcmsTx := range batch.Transactions {
@@ -356,7 +356,7 @@ func analyzeTransaction(
 
 	case chainsel.FamilyTon:
 		decoder := mcmstonsdk.NewDecoder(bindings.Registry)
-		analyzeResult, err := mcmsanalyzer.AnalyzeTONTransaction(proposalCtx, decoder, mcmsOp.Transaction)
+		analyzeResult, err := mcmsanalyzer.AnalyzeTONTransaction(proposalCtx, decoder, uint64(mcmsOp.ChainSelector), mcmsOp.Transaction)
 		if err != nil {
 			return nil, "", err
 		}
