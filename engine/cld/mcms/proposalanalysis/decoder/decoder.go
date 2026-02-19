@@ -7,6 +7,7 @@ import (
 	"github.com/smartcontractkit/mcms"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	experimentalanalyzer "github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 )
 
 type DecodedTimelockProposal interface {
@@ -44,4 +45,14 @@ type DecodedParameter interface {
 // ProposalDecoder decodes MCMS proposals into structured DecodedTimelockProposal
 type ProposalDecoder interface {
 	Decode(ctx context.Context, env deployment.Environment, proposal *mcms.TimelockProposal) (DecodedTimelockProposal, error)
+}
+
+type DecodeInstructionFn = experimentalanalyzer.DecodeInstructionFn
+
+// Config configures the proposal decoder used by the analyzer engine.
+// The decoder is expected to support multi-chain proposal decoding using the
+// provided chain-specific mappings.
+type Config struct {
+	EVMABIMappings map[string]string
+	SolanaDecoders map[string]DecodeInstructionFn
 }

@@ -1,4 +1,4 @@
-package analyzer
+package annotation
 
 import (
 	"testing"
@@ -49,19 +49,4 @@ func TestValueTypeAnnotation(t *testing.T) {
 			assert.Equal(t, vtype, ann.Value())
 		}
 	})
-}
-
-func TestAnnotationConstructors_WorkWithBaseAnnotated(t *testing.T) {
-	t.Parallel()
-
-	a := &BaseAnnotated{}
-	a.AddAnnotations(
-		SeverityAnnotation(SeverityWarning),
-		RiskAnnotation(RiskHigh),
-		ValueTypeAnnotation("ethereum.address"),
-	)
-
-	assert.Len(t, a.GetAnnotationsByName(AnnotationSeverityName), 1)
-	assert.Len(t, a.GetAnnotationsByName(AnnotationRiskName), 1)
-	assert.Len(t, a.GetAnnotationsByName(AnnotationValueTypeName), 1)
 }

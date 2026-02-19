@@ -8,6 +8,7 @@ import (
 	"context"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer/annotation"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/decoder"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -40,26 +41,26 @@ func (_m *MockProposalAnalyzer) EXPECT() *MockProposalAnalyzer_Expecter {
 }
 
 // Analyze provides a mock function for the type MockProposalAnalyzer
-func (_mock *MockProposalAnalyzer) Analyze(ctx context.Context, req analyzer.AnalyzeRequest, proposal decoder.DecodedTimelockProposal) (analyzer.Annotations, error) {
+func (_mock *MockProposalAnalyzer) Analyze(ctx context.Context, req analyzer.ProposalAnalyzeRequest, proposal decoder.DecodedTimelockProposal) (annotation.Annotations, error) {
 	ret := _mock.Called(ctx, req, proposal)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Analyze")
 	}
 
-	var r0 analyzer.Annotations
+	var r0 annotation.Annotations
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, analyzer.AnalyzeRequest, decoder.DecodedTimelockProposal) (analyzer.Annotations, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, analyzer.ProposalAnalyzeRequest, decoder.DecodedTimelockProposal) (annotation.Annotations, error)); ok {
 		return returnFunc(ctx, req, proposal)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, analyzer.AnalyzeRequest, decoder.DecodedTimelockProposal) analyzer.Annotations); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, analyzer.ProposalAnalyzeRequest, decoder.DecodedTimelockProposal) annotation.Annotations); ok {
 		r0 = returnFunc(ctx, req, proposal)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(analyzer.Annotations)
+			r0 = ret.Get(0).(annotation.Annotations)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, analyzer.AnalyzeRequest, decoder.DecodedTimelockProposal) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, analyzer.ProposalAnalyzeRequest, decoder.DecodedTimelockProposal) error); ok {
 		r1 = returnFunc(ctx, req, proposal)
 	} else {
 		r1 = ret.Error(1)
@@ -74,21 +75,21 @@ type MockProposalAnalyzer_Analyze_Call struct {
 
 // Analyze is a helper method to define mock.On call
 //   - ctx context.Context
-//   - req analyzer.AnalyzeRequest
+//   - req analyzer.ProposalAnalyzeRequest
 //   - proposal decoder.DecodedTimelockProposal
 func (_e *MockProposalAnalyzer_Expecter) Analyze(ctx interface{}, req interface{}, proposal interface{}) *MockProposalAnalyzer_Analyze_Call {
 	return &MockProposalAnalyzer_Analyze_Call{Call: _e.mock.On("Analyze", ctx, req, proposal)}
 }
 
-func (_c *MockProposalAnalyzer_Analyze_Call) Run(run func(ctx context.Context, req analyzer.AnalyzeRequest, proposal decoder.DecodedTimelockProposal)) *MockProposalAnalyzer_Analyze_Call {
+func (_c *MockProposalAnalyzer_Analyze_Call) Run(run func(ctx context.Context, req analyzer.ProposalAnalyzeRequest, proposal decoder.DecodedTimelockProposal)) *MockProposalAnalyzer_Analyze_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 analyzer.AnalyzeRequest
+		var arg1 analyzer.ProposalAnalyzeRequest
 		if args[1] != nil {
-			arg1 = args[1].(analyzer.AnalyzeRequest)
+			arg1 = args[1].(analyzer.ProposalAnalyzeRequest)
 		}
 		var arg2 decoder.DecodedTimelockProposal
 		if args[2] != nil {
@@ -103,18 +104,18 @@ func (_c *MockProposalAnalyzer_Analyze_Call) Run(run func(ctx context.Context, r
 	return _c
 }
 
-func (_c *MockProposalAnalyzer_Analyze_Call) Return(annotations analyzer.Annotations, err error) *MockProposalAnalyzer_Analyze_Call {
+func (_c *MockProposalAnalyzer_Analyze_Call) Return(annotations annotation.Annotations, err error) *MockProposalAnalyzer_Analyze_Call {
 	_c.Call.Return(annotations, err)
 	return _c
 }
 
-func (_c *MockProposalAnalyzer_Analyze_Call) RunAndReturn(run func(ctx context.Context, req analyzer.AnalyzeRequest, proposal decoder.DecodedTimelockProposal) (analyzer.Annotations, error)) *MockProposalAnalyzer_Analyze_Call {
+func (_c *MockProposalAnalyzer_Analyze_Call) RunAndReturn(run func(ctx context.Context, req analyzer.ProposalAnalyzeRequest, proposal decoder.DecodedTimelockProposal) (annotation.Annotations, error)) *MockProposalAnalyzer_Analyze_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // CanAnalyze provides a mock function for the type MockProposalAnalyzer
-func (_mock *MockProposalAnalyzer) CanAnalyze(ctx context.Context, req analyzer.AnalyzeRequest, proposal decoder.DecodedTimelockProposal) bool {
+func (_mock *MockProposalAnalyzer) CanAnalyze(ctx context.Context, req analyzer.ProposalAnalyzeRequest, proposal decoder.DecodedTimelockProposal) bool {
 	ret := _mock.Called(ctx, req, proposal)
 
 	if len(ret) == 0 {
@@ -122,7 +123,7 @@ func (_mock *MockProposalAnalyzer) CanAnalyze(ctx context.Context, req analyzer.
 	}
 
 	var r0 bool
-	if returnFunc, ok := ret.Get(0).(func(context.Context, analyzer.AnalyzeRequest, decoder.DecodedTimelockProposal) bool); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, analyzer.ProposalAnalyzeRequest, decoder.DecodedTimelockProposal) bool); ok {
 		r0 = returnFunc(ctx, req, proposal)
 	} else {
 		r0 = ret.Get(0).(bool)
@@ -137,21 +138,21 @@ type MockProposalAnalyzer_CanAnalyze_Call struct {
 
 // CanAnalyze is a helper method to define mock.On call
 //   - ctx context.Context
-//   - req analyzer.AnalyzeRequest
+//   - req analyzer.ProposalAnalyzeRequest
 //   - proposal decoder.DecodedTimelockProposal
 func (_e *MockProposalAnalyzer_Expecter) CanAnalyze(ctx interface{}, req interface{}, proposal interface{}) *MockProposalAnalyzer_CanAnalyze_Call {
 	return &MockProposalAnalyzer_CanAnalyze_Call{Call: _e.mock.On("CanAnalyze", ctx, req, proposal)}
 }
 
-func (_c *MockProposalAnalyzer_CanAnalyze_Call) Run(run func(ctx context.Context, req analyzer.AnalyzeRequest, proposal decoder.DecodedTimelockProposal)) *MockProposalAnalyzer_CanAnalyze_Call {
+func (_c *MockProposalAnalyzer_CanAnalyze_Call) Run(run func(ctx context.Context, req analyzer.ProposalAnalyzeRequest, proposal decoder.DecodedTimelockProposal)) *MockProposalAnalyzer_CanAnalyze_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 analyzer.AnalyzeRequest
+		var arg1 analyzer.ProposalAnalyzeRequest
 		if args[1] != nil {
-			arg1 = args[1].(analyzer.AnalyzeRequest)
+			arg1 = args[1].(analyzer.ProposalAnalyzeRequest)
 		}
 		var arg2 decoder.DecodedTimelockProposal
 		if args[2] != nil {
@@ -171,7 +172,7 @@ func (_c *MockProposalAnalyzer_CanAnalyze_Call) Return(b bool) *MockProposalAnal
 	return _c
 }
 
-func (_c *MockProposalAnalyzer_CanAnalyze_Call) RunAndReturn(run func(ctx context.Context, req analyzer.AnalyzeRequest, proposal decoder.DecodedTimelockProposal) bool) *MockProposalAnalyzer_CanAnalyze_Call {
+func (_c *MockProposalAnalyzer_CanAnalyze_Call) RunAndReturn(run func(ctx context.Context, req analyzer.ProposalAnalyzeRequest, proposal decoder.DecodedTimelockProposal) bool) *MockProposalAnalyzer_CanAnalyze_Call {
 	_c.Call.Return(run)
 	return _c
 }

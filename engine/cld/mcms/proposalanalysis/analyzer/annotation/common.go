@@ -1,4 +1,4 @@
-package analyzer
+package annotation
 
 const (
 	AnnotationSeverityName = "cld.severity"
@@ -37,12 +37,12 @@ const (
 
 // SeverityAnnotation creates an annotation indicating analysis severity.
 func SeverityAnnotation(level Severity) Annotation {
-	return NewAnnotation(AnnotationSeverityName, AnnotationSeverityType, string(level))
+	return New(AnnotationSeverityName, AnnotationSeverityType, string(level))
 }
 
 // RiskAnnotation creates an annotation indicating risk level.
 func RiskAnnotation(level Risk) Annotation {
-	return NewAnnotation(AnnotationRiskName, AnnotationRiskType, string(level))
+	return New(AnnotationRiskName, AnnotationRiskType, string(level))
 }
 
 // ValueTypeAnnotation describes the semantic type of a parameter value.
@@ -51,5 +51,5 @@ func RiskAnnotation(level Risk) Annotation {
 // reads this and decides how to format it for display.
 // Examples: "ethereum.address", "ethereum.uint256", "hex", "truncate:20".
 func ValueTypeAnnotation(valueType string) Annotation {
-	return NewAnnotation(AnnotationValueTypeName, AnnotationValueTypeType, valueType)
+	return New(AnnotationValueTypeName, AnnotationValueTypeType, valueType)
 }
