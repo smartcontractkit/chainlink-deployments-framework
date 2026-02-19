@@ -61,8 +61,8 @@ func coerceBigIntStrings(v any, currentKey string, matchFunc KeyMatchFunc) any {
 		if bi, ok := stringToBigIntIfOverflowInt64(x); ok {
 			return bi // IMPORTANT: *big.Int (pointer), not big.Int (value)
 		}
-		return x
 
+		return x
 	default:
 		return v
 	}
@@ -74,7 +74,7 @@ func stringToBigIntIfOverflowInt64(s string) (*big.Int, bool) {
 		return nil, false
 	} else {
 		var ne *strconv.NumError
-		if errors.As(err, &ne) && ne.Err != strconv.ErrRange {
+		if errors.As(err, &ne) && !errors.Is(ne.Err, strconv.ErrRange) {
 			// not a range overflow; should be safe to treat as string
 			return nil, false
 		}
@@ -85,7 +85,7 @@ func stringToBigIntIfOverflowInt64(s string) (*big.Int, bool) {
 		return nil, false
 	} else {
 		var ne *strconv.NumError
-		if errors.As(err, &ne) && ne.Err != strconv.ErrRange {
+		if errors.As(err, &ne) && !errors.Is(ne.Err, strconv.ErrRange) {
 			// not a range overflow; should be safe to treat as string
 			return nil, false
 		}
@@ -95,6 +95,7 @@ func stringToBigIntIfOverflowInt64(s string) (*big.Int, bool) {
 	if !ok {
 		return nil, false
 	}
+
 	return z, true
 }
 
