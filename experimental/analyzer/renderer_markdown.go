@@ -9,8 +9,9 @@ import (
 	"text/template"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/smartcontractkit/chainlink-deployments-framework/helper"
 	"gopkg.in/yaml.v3"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/helper"
 )
 
 //go:embed templates/markdown/*.tmpl

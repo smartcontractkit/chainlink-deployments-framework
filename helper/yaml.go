@@ -70,25 +70,25 @@ func coerceBigIntStrings(v any, currentKey string, matchFunc KeyMatchFunc) any {
 
 func stringToBigIntIfOverflowInt64(s string) (*big.Int, bool) {
 	// If it fits int64, keep it as a string (likely user meant a string, or YAML had quotes).
-	if _, err := strconv.ParseInt(s, 10, 64); err == nil {
+	var err error
+	if _, err = strconv.ParseInt(s, 10, 64); err == nil {
 		return nil, false
-	} else {
-		var ne *strconv.NumError
-		if errors.As(err, &ne) && !errors.Is(ne.Err, strconv.ErrRange) {
-			// not a range overflow; should be safe to treat as string
-			return nil, false
-		}
+	}
+
+	var ne *strconv.NumError
+	if errors.As(err, &ne) && !errors.Is(ne.Err, strconv.ErrRange) {
+		// not a range overflow; should be safe to treat as string
+		return nil, false
 	}
 
 	// If it fits uint64, keep it as a string (likely user meant a string, or YAML had quotes).
-	if _, err := strconv.ParseUint(s, 10, 64); err == nil {
+	if _, err = strconv.ParseUint(s, 10, 64); err == nil {
 		return nil, false
-	} else {
-		var ne *strconv.NumError
-		if errors.As(err, &ne) && !errors.Is(ne.Err, strconv.ErrRange) {
-			// not a range overflow; should be safe to treat as string
-			return nil, false
-		}
+	}
+
+	if errors.As(err, &ne) && !errors.Is(ne.Err, strconv.ErrRange) {
+		// not a range overflow; should be safe to treat as string
+		return nil, false
 	}
 
 	z, ok := new(big.Int).SetString(s, 10)
