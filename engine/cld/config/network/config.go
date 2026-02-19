@@ -6,8 +6,9 @@ import (
 	"os"
 	"slices"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/helper"
 	"gopkg.in/yaml.v3"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/helper"
 )
 
 // Manifest is the YAML representation of network configuration.

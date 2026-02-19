@@ -4,10 +4,11 @@ import (
 	"os"
 	"testing"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/helper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/helper"
 )
 
 var (

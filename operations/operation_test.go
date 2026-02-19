@@ -182,7 +182,7 @@ B: 20
 
 	// Coerce big int strings as YAML parsing may interpret large numbers as strings
 	matchFunc := helper.DefaultMatchKeysToFix
-	yamlInput = helper.CoerceBigIntStringsForKeys(yamlInput, matchFunc).(interface{})
+	yamlInput = helper.CoerceBigIntStringsForKeys(yamlInput, matchFunc)
 
 	// The yamlInput is now a map[string]interface{}, which should work with AsUntypedRelaxed
 	result, err := untypedOp.handler(bundle, OpDeps{}, yamlInput)

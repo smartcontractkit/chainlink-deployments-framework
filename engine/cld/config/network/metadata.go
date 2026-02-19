@@ -4,8 +4,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/helper"
 	"gopkg.in/yaml.v3"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/helper"
 )
 
 // EVMMetadata is a struct that holds metadata specific to EVM networks.

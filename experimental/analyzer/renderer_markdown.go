@@ -478,7 +478,7 @@ func (r *MarkdownRenderer) renderYamlFieldDetails(f YamlField) string {
 		if err := yaml.Unmarshal([]byte(str), &data); err == nil {
 			// Coerce big int strings as YAML parsing may interpret large numbers as strings
 			matchFunc := helper.DefaultMatchKeysToFix
-			data = helper.CoerceBigIntStringsForKeys(data, matchFunc).(interface{})
+			data = helper.CoerceBigIntStringsForKeys(data, matchFunc)
 			if pretty, err := yaml.Marshal(data); err == nil {
 				content := strings.TrimRight(string(pretty), "\n")
 				content = strings.ReplaceAll(content, "- ", "&#45; ")
