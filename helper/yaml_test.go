@@ -9,7 +9,6 @@ import (
 )
 
 func TestStringToBigIntIfOverflowInt64(t *testing.T) {
-	t.Parallel()
 	tests := []struct {
 		name   string
 		input  string
@@ -25,6 +24,7 @@ func TestStringToBigIntIfOverflowInt64(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			got, ok := stringToBigIntIfOverflowInt64(tt.input)
 			assert.Equal(t, tt.wantOK, ok)
 			if tt.wantOK {
@@ -36,17 +36,18 @@ func TestStringToBigIntIfOverflowInt64(t *testing.T) {
 }
 
 func TestCoerceBigIntStrings(t *testing.T) {
-	t.Parallel()
 	bigVal := "18446744073709551616" // overflows uint64
 	expectedBig, _ := new(big.Int).SetString(bigVal, 10)
 
 	t.Run("nil and scalars pass through", func(t *testing.T) {
+		t.Parallel()
 		assert.Nil(t, CoerceBigIntStrings(nil))
 		assert.Equal(t, 42, CoerceBigIntStrings(42))
 		assert.Equal(t, "12345", CoerceBigIntStrings("12345"))
 	})
 
 	t.Run("overflow string converted to big.Int", func(t *testing.T) {
+		t.Parallel()
 		result := CoerceBigIntStrings(bigVal)
 		bi, ok := result.(*big.Int)
 		require.True(t, ok, "expected *big.Int, got %T", result)
@@ -54,6 +55,7 @@ func TestCoerceBigIntStrings(t *testing.T) {
 	})
 
 	t.Run("map with mixed values", func(t *testing.T) {
+		t.Parallel()
 		input := map[string]any{
 			"name":  "test",
 			"value": bigVal,
@@ -66,6 +68,7 @@ func TestCoerceBigIntStrings(t *testing.T) {
 	})
 
 	t.Run("nested maps and slices", func(t *testing.T) {
+		t.Parallel()
 		input := map[string]any{
 			"level1": map[string]any{
 				"level2": []any{
@@ -81,6 +84,7 @@ func TestCoerceBigIntStrings(t *testing.T) {
 	})
 
 	t.Run("slice of typed maps", func(t *testing.T) {
+		t.Parallel()
 		input := []map[string]any{
 			{"key": bigVal},
 			{"key": "small"},
@@ -92,11 +96,11 @@ func TestCoerceBigIntStrings(t *testing.T) {
 }
 
 func TestCoerceBigIntStringsForKeys(t *testing.T) {
-	t.Parallel()
 	bigVal := "18446744073709551616"
 	expectedBig, _ := new(big.Int).SetString(bigVal, 10)
 
 	t.Run("matchFunc controls conversion", func(t *testing.T) {
+		t.Parallel()
 		input := map[string]any{"target": bigVal, "other": bigVal}
 
 		// matchAll converts everything
@@ -110,6 +114,7 @@ func TestCoerceBigIntStringsForKeys(t *testing.T) {
 	})
 
 	t.Run("selective key matching", func(t *testing.T) {
+		t.Parallel()
 		matchTarget := func(key string) bool { return key == ".target" }
 		input := map[string]any{"target": bigVal, "other": bigVal}
 		result := CoerceBigIntStringsForKeys(input, matchTarget).(map[string]any)
@@ -118,6 +123,7 @@ func TestCoerceBigIntStringsForKeys(t *testing.T) {
 	})
 
 	t.Run("nested and list key paths", func(t *testing.T) {
+		t.Parallel()
 		matchNested := func(key string) bool { return key == ".outer.inner" }
 		input := map[string]any{
 			"outer": map[string]any{"inner": bigVal, "skip": bigVal},
@@ -138,7 +144,6 @@ func TestCoerceBigIntStringsForKeys(t *testing.T) {
 }
 
 func TestDefaultMatchKeysToFix(t *testing.T) {
-	t.Parallel()
 	tests := []struct {
 		name  string
 		key   string
@@ -178,6 +183,7 @@ func TestDefaultMatchKeysToFix(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			assert.Equal(t, tt.match, DefaultMatchKeysToFix(tt.key))
 		})
 	}
