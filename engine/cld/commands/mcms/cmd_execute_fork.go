@@ -152,8 +152,6 @@ func executeFork(
 		return nil // don't fail, just exit cleanly
 	}
 
-	logTransactions(lggr, cfg)
-
 	if len(cfg.forkedEnv.ChainConfigs[cfg.chainSelector].HTTPRPCs) == 0 {
 		return fmt.Errorf("no rpcs loaded in forked environment for chain %d (fork tests require public RPCs)", cfg.chainSelector)
 	}
@@ -199,9 +197,8 @@ func executeFork(
 			return fmt.Errorf("failed to override fork deployer key to test signer: %w", lerr)
 		}
 
-		// Re-wrap the RPC client with logging after updating the deployer key
-		logTransactions(lggr, cfg)
 	}
+	logTransactions(lggr, cfg)
 
 	// set root
 	// TODO: improve error decoding on the mcms lib for "set root".
@@ -319,6 +316,9 @@ func logTransactions(lggr logger.Logger, cfg *forkConfig) {
 	if !ok {
 		lggr.Warnf("failed to configure transaction logging for chain selector %v (not evm: %T)", cfg.chainSelector, chains[cfg.chainSelector])
 
+		return
+	}
+	if _, alreadyWrapped := evmChain.Client.(*loggingRpcClient); alreadyWrapped {
 		return
 	}
 
