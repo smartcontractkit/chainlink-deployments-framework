@@ -4,13 +4,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"math/big"
 	"os"
+	"regexp"
 	"strconv"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 )
+
+var decimalInteger = regexp.MustCompile(`^-?(0|[1-9][0-9]*)$`)
 
 // durablePipelineYAML represents the structure of a durable pipeline YAML input file
 type durablePipelineYAML struct {
@@ -215,6 +220,16 @@ func setChangesetEnvironmentVariable(changesetName string, changesetData any, in
 					}
 				case uint64:
 					// no need to do any checks here
+				case json.Number:
+					// yaml.Node conversion preserves integers as json.Number.
+					// Validate it's a non-negative integer without precision loss.
+					n, ok := new(big.Int).SetString(v.String(), 10)
+					if !ok {
+						return fmt.Errorf("chain override value must be an integer, got type %T with value: %v", override, override)
+					}
+					if n.Sign() < 0 {
+						return fmt.Errorf("chain override value must be non-negative, got: %s", v.String())
+					}
 				default:
 					return fmt.Errorf("chain override value must be an integer, got type %T with value: %v", override, override)
 				}
@@ -256,22 +271,107 @@ func parseDurablePipelineYAML(inputFileName string, domain domain.Domain, envKey
 		return nil, fmt.Errorf("failed to read input file %s: %w", resolvedPath, err)
 	}
 
-	var dpYAML durablePipelineYAML
-	if err = yaml.Unmarshal(yamlData, &dpYAML); err != nil {
+	var root yaml.Node
+	if err = yaml.Unmarshal(yamlData, &root); err != nil {
 		return nil, fmt.Errorf("failed to parse input file %s: %w", inputFileName, err)
 	}
 
-	if dpYAML.Environment == "" {
+	rootMap, ok := yamlNodeToAny(&root).(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("failed to parse input file %s: expected a YAML object at the root", inputFileName)
+	}
+
+	envRaw, hasEnv := rootMap["environment"]
+	domainRaw, hasDomain := rootMap["domain"]
+	changesetsRaw, hasChangesets := rootMap["changesets"]
+
+	dpYAML := &durablePipelineYAML{
+		Changesets: changesetsRaw,
+	}
+	if envStr, ok := envRaw.(string); ok {
+		dpYAML.Environment = envStr
+	}
+	if domainStr, ok := domainRaw.(string); ok {
+		dpYAML.Domain = domainStr
+	}
+
+	if !hasEnv || dpYAML.Environment == "" {
 		return nil, fmt.Errorf("input file %s is missing required 'environment' field", inputFileName)
 	}
-	if dpYAML.Domain == "" {
+	if !hasDomain || dpYAML.Domain == "" {
 		return nil, fmt.Errorf("input file %s is missing required 'domain' field", inputFileName)
 	}
-	if dpYAML.Changesets == nil {
+	if !hasChangesets || dpYAML.Changesets == nil {
 		return nil, fmt.Errorf("input file %s is missing required 'changesets' field", inputFileName)
 	}
 
-	return &dpYAML, nil
+	return dpYAML, nil
+}
+
+func yamlNodeToAny(node *yaml.Node) any {
+	if node == nil {
+		return nil
+	}
+
+	switch node.Kind {
+	case yaml.DocumentNode:
+		if len(node.Content) == 0 {
+			return nil
+		}
+
+		return yamlNodeToAny(node.Content[0])
+	case yaml.MappingNode:
+		out := make(map[string]any, len(node.Content)/2)
+		for i := 0; i+1 < len(node.Content); i += 2 {
+			key := node.Content[i]
+			value := node.Content[i+1]
+			out[key.Value] = yamlNodeToAny(value)
+		}
+
+		return out
+	case yaml.SequenceNode:
+		out := make([]any, 0, len(node.Content))
+		for _, elem := range node.Content {
+			out = append(out, yamlNodeToAny(elem))
+		}
+
+		return out
+	case yaml.ScalarNode:
+		// Plain decimal integers are preserved as JSON numbers, which allows
+		// downstream big.Int unmarshal without float64 precision loss.
+		if node.Style == 0 && decimalInteger.MatchString(node.Value) {
+			return json.Number(node.Value)
+		}
+
+		switch node.Tag {
+		case "!!int":
+			if decimalInteger.MatchString(node.Value) {
+				return json.Number(node.Value)
+			}
+			if n, ok := new(big.Int).SetString(strings.ReplaceAll(node.Value, "_", ""), 0); ok {
+				return json.Number(n.String())
+			}
+
+			return node.Value
+		case "!!float":
+			f, err := strconv.ParseFloat(node.Value, 64)
+			if err != nil {
+				return node.Value
+			}
+
+			return f
+		case "!!null":
+			return nil
+		case "!!bool":
+			return strings.EqualFold(node.Value, "true")
+		default:
+			return node.Value
+		}
+	case yaml.AliasNode:
+		return yamlNodeToAny(node.Alias)
+	default:
+		return nil
+	}
 }
 
 // getAllChangesetsInOrder returns all changesets in order from array format changesets data

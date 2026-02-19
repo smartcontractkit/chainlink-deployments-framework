@@ -917,6 +917,63 @@ changesets:
 	}
 }
 
+//nolint:paralleltest
+func TestSetDurablePipelineInputFromYAML_LargeIntegerPrecision(t *testing.T) {
+	testDomain := domain.NewDomain(t.TempDir(), "test")
+	env := "testnet"
+
+	workspaceRoot := t.TempDir()
+	inputsDir := filepath.Join(workspaceRoot, "domains", testDomain.String(), env, "durable_pipelines", "inputs")
+	require.NoError(t, os.MkdirAll(inputsDir, 0755))
+	require.NoError(t, os.MkdirAll(filepath.Join(workspaceRoot, "domains"), 0755))
+
+	originalWd, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(workspaceRoot))
+	t.Cleanup(func() {
+		require.NoError(t, os.Chdir(originalWd))
+	})
+
+	yamlContent := `environment: testnet
+domain: test
+changesets:
+  - test_changeset:
+      payload:
+        feequoterparams:
+          maxfeejuelspermsg: 200000000000000000111`
+
+	yamlFileName := "test-large-int-precision-regression.yaml"
+	yamlFilePath := filepath.Join(inputsDir, yamlFileName)
+	require.NoError(t, os.WriteFile(yamlFilePath, []byte(yamlContent), 0644)) //nolint:gosec
+
+	t.Cleanup(func() {
+		os.Unsetenv("DURABLE_PIPELINE_INPUT")
+	})
+	os.Unsetenv("DURABLE_PIPELINE_INPUT")
+
+	err = setDurablePipelineInputFromYAML(yamlFileName, "test_changeset", testDomain, env)
+	require.NoError(t, err)
+
+	durablePipelineInput := os.Getenv("DURABLE_PIPELINE_INPUT")
+	require.NotEmpty(t, durablePipelineInput)
+
+	decoder := json.NewDecoder(strings.NewReader(durablePipelineInput))
+	decoder.UseNumber()
+
+	var parsed map[string]any
+	require.NoError(t, decoder.Decode(&parsed))
+
+	payload, ok := parsed["payload"].(map[string]any)
+	require.True(t, ok, "payload must be an object")
+
+	feeQuoterParams, ok := payload["feequoterparams"].(map[string]any)
+	require.True(t, ok, "payload.feequoterparams must be an object")
+
+	maxFee, ok := feeQuoterParams["maxfeejuelspermsg"].(json.Number)
+	require.True(t, ok, "maxfeejuelspermsg should be a JSON number")
+	require.Equal(t, "200000000000000000111", maxFee.String())
+}
+
 func TestFindChangesetInData(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -1716,6 +1773,152 @@ changesets: [
 			require.Equal(t, "testnet", result.Environment)
 			require.Equal(t, "test", result.Domain)
 			require.NotNil(t, result.Changesets)
+		})
+	}
+}
+
+//nolint:paralleltest // This test uses os.Chdir which changes global state
+func TestParseDurablePipelineYAML_YamlNodeConversion(t *testing.T) {
+	testDomain := domain.NewDomain(t.TempDir(), "test")
+	env := "testnet"
+
+	workspaceRoot := t.TempDir()
+	inputsDir := filepath.Join(workspaceRoot, "domains", testDomain.String(), env, "durable_pipelines", "inputs")
+	require.NoError(t, os.MkdirAll(inputsDir, 0755))
+	require.NoError(t, os.MkdirAll(filepath.Join(workspaceRoot, "domains"), 0755))
+
+	originalWd, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(workspaceRoot))
+	t.Cleanup(func() {
+		require.NoError(t, os.Chdir(originalWd))
+	})
+
+	tests := []struct {
+		name          string
+		yamlContent   string
+		expectError   bool
+		errorContains string
+		expectedJSON  string
+		assertResult  func(t *testing.T, result *durablePipelineYAML)
+	}{
+		{
+			name: "preserves dynamic payload fields and large integers",
+			yamlContent: `environment: testnet
+domain: test
+changesets:
+  - test_changeset:
+      payload:
+        feequoterparams:
+          maxfeejuelspermsg: 200000000000000000001
+          defaulttokenfeeusdcents: 1200
+          premiummultiplierwei: 1000000000000000000000000
+        enabled: true
+        multiplier: 1.25
+        note: hello-world
+        optional: null
+        tags:
+          - alpha
+          - beta
+        chainconfig:
+          16015286601757825753:
+            maxgas: 5000000`,
+			expectedJSON: `[{"test_changeset":{"payload":{"chainconfig":{"16015286601757825753":{"maxgas":5000000}},"enabled":true,"feequoterparams":{"defaulttokenfeeusdcents":1200,"maxfeejuelspermsg":200000000000000000001,"premiummultiplierwei":1000000000000000000000000},"multiplier":1.25,"note":"hello-world","optional":null,"tags":["alpha","beta"]}}}]`,
+			assertResult: func(t *testing.T, result *durablePipelineYAML) {
+				t.Helper()
+
+				changesets, ok := result.Changesets.([]any)
+				require.True(t, ok)
+				require.Len(t, changesets, 1)
+
+				changesetData := changesets[0].(map[string]any)["test_changeset"].(map[string]any)
+				payload := changesetData["payload"].(map[string]any)
+				feeQuoterParams := payload["feequoterparams"].(map[string]any)
+
+				maxFee, ok := feeQuoterParams["maxfeejuelspermsg"].(json.Number)
+				require.True(t, ok, "large integer should be preserved as json.Number")
+				require.Equal(t, "200000000000000000001", maxFee.String())
+
+				premiumMultiplier, ok := feeQuoterParams["premiummultiplierwei"].(json.Number)
+				require.True(t, ok, "large integer should be preserved as json.Number")
+				require.Equal(t, "1000000000000000000000000", premiumMultiplier.String())
+
+				defaultTokenFee, ok := feeQuoterParams["defaulttokenfeeusdcents"].(json.Number)
+				require.True(t, ok, "integer should be represented as json.Number")
+				require.Equal(t, "1200", defaultTokenFee.String())
+
+				require.Equal(t, true, payload["enabled"])
+				multiplier, ok := payload["multiplier"].(float64)
+				require.True(t, ok)
+				require.InDelta(t, 1.25, multiplier, 1e-9)
+				require.Equal(t, "hello-world", payload["note"])
+				require.Nil(t, payload["optional"])
+
+				tags, ok := payload["tags"].([]any)
+				require.True(t, ok)
+				require.Equal(t, []any{"alpha", "beta"}, tags)
+
+				chainConfig, ok := payload["chainconfig"].(map[string]any)
+				require.True(t, ok)
+				selectorConfig, ok := chainConfig["16015286601757825753"].(map[string]any)
+				require.True(t, ok)
+				maxGas, ok := selectorConfig["maxgas"].(json.Number)
+				require.True(t, ok)
+				require.Equal(t, "5000000", maxGas.String())
+			},
+		},
+		{
+			name: "keeps mixed scalar YAML types compatible",
+			yamlContent: `environment: testnet
+domain: test
+changesets:
+  - test_changeset:
+      payload:
+        enabled: true
+        ratio: 1.25
+        note: hello
+        optional: null
+        smallint: 42
+        list:
+          - 1
+          - false
+          - null
+          - 2.5`,
+			expectedJSON: `[{"test_changeset":{"payload":{"enabled":true,"list":[1,false,null,2.5],"note":"hello","optional":null,"ratio":1.25,"smallint":42}}}]`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			yamlFileName := fmt.Sprintf("test-parse-node-compat-%s.yaml", strings.ReplaceAll(tt.name, " ", "-"))
+			yamlFilePath := filepath.Join(inputsDir, yamlFileName)
+			require.NoError(t, os.WriteFile(yamlFilePath, []byte(tt.yamlContent), 0644)) //nolint:gosec
+			t.Cleanup(func() {
+				require.NoError(t, os.Remove(yamlFilePath))
+			})
+
+			result, parseErr := parseDurablePipelineYAML(yamlFileName, testDomain, env)
+			if tt.expectError {
+				require.Error(t, parseErr)
+				require.Contains(t, parseErr.Error(), tt.errorContains)
+				require.Nil(t, result)
+
+				return
+			}
+
+			require.NoError(t, parseErr)
+			require.NotNil(t, result)
+			require.Equal(t, "testnet", result.Environment)
+			require.Equal(t, "test", result.Domain)
+			require.NotNil(t, result.Changesets)
+			if tt.expectedJSON != "" {
+				changesetsJSON, err := json.Marshal(result.Changesets)
+				require.NoError(t, err)
+				require.JSONEq(t, tt.expectedJSON, string(changesetsJSON))
+			}
+			if tt.assertResult != nil {
+				tt.assertResult(t, result)
+			}
 		})
 	}
 }
