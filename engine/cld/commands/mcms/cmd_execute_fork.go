@@ -196,7 +196,6 @@ func executeFork(
 		if lerr != nil {
 			return fmt.Errorf("failed to override fork deployer key to test signer: %w", lerr)
 		}
-
 	}
 	logTransactions(lggr, cfg)
 
