@@ -194,7 +194,7 @@ func executeFork(
 			return fmt.Errorf("failed to overwrite proposal signature: %w", lerr)
 		}
 
-		lerr = overrideForkChainDeployerKeyToTestSigner(cfg, chainID)
+		lerr = overrideForkChainDeployerKeyWithTestSigner(cfg, chainID)
 		if lerr != nil {
 			return fmt.Errorf("failed to override fork deployer key to test signer: %w", lerr)
 		}
@@ -250,10 +250,10 @@ func executeFork(
 	return nil
 }
 
-// overrideForkChainDeployerKeyToTestSigner sets the deployer key for the
+// overrideForkChainDeployerKeyWithTestSigner sets the deployer key for the
 // forked chain to the test signer key, updating cfg.blockchains for the
 // EVM chain identified by the provided chainID.
-func overrideForkChainDeployerKeyToTestSigner(cfg *forkConfig, chainID string) error {
+func overrideForkChainDeployerKeyWithTestSigner(cfg *forkConfig, chainID string) error {
 	chainIDBig, ok := new(big.Int).SetString(chainID, 10)
 	if !ok {
 		return fmt.Errorf("invalid chain id %q", chainID)

@@ -176,101 +176,144 @@ func TestExecuteFork_Config_MissingProposalContextProvider(t *testing.T) {
 	require.ErrorContains(t, err, "ProposalContextProvider")
 }
 
-func TestOverrideForkChainDeployerKeyToTestSigner_Success(t *testing.T) {
+func TestExecuteFork_OverrideForkChainDeployerKeyWithTestSigner(t *testing.T) {
 	t.Parallel()
 
 	const selector = uint64(4286062357653186312)
 
-	prevPrivKey, err := crypto.GenerateKey()
-	require.NoError(t, err)
+	tests := []struct {
+		name     string
+		chainID  string
+		setupCfg func(t *testing.T) (*forkConfig, *bind.TransactOpts)
+		assert   func(t *testing.T, cfg *forkConfig, prevTxOpts *bind.TransactOpts, err error)
+	}{
+		{
+			name:    "success",
+			chainID: "998",
+			setupCfg: func(t *testing.T) (*forkConfig, *bind.TransactOpts) {
+				t.Helper()
+				prevPrivKey, err := crypto.GenerateKey()
+				require.NoError(t, err)
 
-	prevTxOpts, err := bind.NewKeyedTransactorWithChainID(prevPrivKey, big.NewInt(998))
-	require.NoError(t, err)
-	prevTxOpts.GasLimit = 10_000_000
-	prevTxOpts.GasPrice = big.NewInt(100)
-	prevTxOpts.GasTipCap = big.NewInt(2)
-	prevTxOpts.GasFeeCap = big.NewInt(200)
-	prevTxOpts.NoSend = true
-	prevTxOpts.Context = context.Background()
+				prevTxOpts, err := bind.NewKeyedTransactorWithChainID(prevPrivKey, big.NewInt(998))
+				require.NoError(t, err)
+				prevTxOpts.GasLimit = 10_000_000
+				prevTxOpts.GasPrice = big.NewInt(100)
+				prevTxOpts.GasTipCap = big.NewInt(2)
+				prevTxOpts.GasFeeCap = big.NewInt(200)
+				prevTxOpts.NoSend = true
+				prevTxOpts.Context = context.Background()
 
-	cfg := &forkConfig{
-		chainSelector: selector,
-		blockchains: chain.NewBlockChains(map[uint64]chain.BlockChain{
-			selector: cldf_evm.Chain{
-				Selector:    selector,
-				DeployerKey: prevTxOpts,
+				cfg := &forkConfig{
+					chainSelector: selector,
+					blockchains: chain.NewBlockChains(map[uint64]chain.BlockChain{
+						selector: cldf_evm.Chain{
+							Selector:    selector,
+							DeployerKey: prevTxOpts,
+						},
+					}),
+				}
+
+				return cfg, prevTxOpts
 			},
-		}),
+			assert: func(t *testing.T, cfg *forkConfig, prevTxOpts *bind.TransactOpts, err error) {
+				t.Helper()
+				require.NoError(t, err)
+				updatedChain := cfg.blockchains.EVMChains()[selector]
+				require.NotNil(t, updatedChain.DeployerKey)
+				require.Equal(t, blockchain.DefaultAnvilPublicKey, updatedChain.DeployerKey.From.Hex())
+				require.NotEqual(t, prevTxOpts.From, updatedChain.DeployerKey.From)
+				require.Equal(t, prevTxOpts.GasLimit, updatedChain.DeployerKey.GasLimit)
+				require.Equal(t, 0, prevTxOpts.GasPrice.Cmp(updatedChain.DeployerKey.GasPrice))
+				require.Equal(t, 0, prevTxOpts.GasTipCap.Cmp(updatedChain.DeployerKey.GasTipCap))
+				require.Equal(t, 0, prevTxOpts.GasFeeCap.Cmp(updatedChain.DeployerKey.GasFeeCap))
+				require.Equal(t, prevTxOpts.NoSend, updatedChain.DeployerKey.NoSend)
+				require.Equal(t, prevTxOpts.Context, updatedChain.DeployerKey.Context)
+			},
+		},
+		{
+			name:    "invalid chain id",
+			chainID: "not-a-number",
+			setupCfg: func(t *testing.T) (*forkConfig, *bind.TransactOpts) {
+				t.Helper()
+				cfg := &forkConfig{
+					chainSelector: selector,
+					blockchains: chain.NewBlockChains(map[uint64]chain.BlockChain{
+						selector: cldf_evm.Chain{Selector: selector},
+					}),
+				}
+
+				return cfg, nil
+			},
+			assert: func(t *testing.T, _ *forkConfig, _ *bind.TransactOpts, err error) {
+				t.Helper()
+				require.ErrorContains(t, err, "invalid chain id")
+			},
+		},
+		{
+			name:    "non evm chain",
+			chainID: "998",
+			setupCfg: func(t *testing.T) (*forkConfig, *bind.TransactOpts) {
+				t.Helper()
+				cfg := &forkConfig{
+					chainSelector: selector,
+					blockchains: chain.NewBlockChains(map[uint64]chain.BlockChain{
+						selector: solana.Chain{Selector: selector},
+					}),
+				}
+
+				return cfg, nil
+			},
+			assert: func(t *testing.T, _ *forkConfig, _ *bind.TransactOpts, err error) {
+				t.Helper()
+				require.ErrorContains(t, err, "is not an evm chain")
+			},
+		},
+		{
+			name:    "chain not found nil map",
+			chainID: "998",
+			setupCfg: func(t *testing.T) (*forkConfig, *bind.TransactOpts) {
+				t.Helper()
+				cfg := &forkConfig{
+					chainSelector: selector,
+					blockchains:   chain.NewBlockChains(nil),
+				}
+
+				return cfg, nil
+			},
+			assert: func(t *testing.T, _ *forkConfig, _ *bind.TransactOpts, err error) {
+				t.Helper()
+				require.ErrorContains(t, err, "chain selector")
+				require.ErrorContains(t, err, "not found")
+			},
+		},
+		{
+			name:    "chain not found empty map",
+			chainID: "998",
+			setupCfg: func(t *testing.T) (*forkConfig, *bind.TransactOpts) {
+				t.Helper()
+				cfg := &forkConfig{
+					chainSelector: selector,
+					blockchains:   chain.NewBlockChains(map[uint64]chain.BlockChain{}),
+				}
+
+				return cfg, nil
+			},
+			assert: func(t *testing.T, _ *forkConfig, _ *bind.TransactOpts, err error) {
+				t.Helper()
+				require.ErrorContains(t, err, "chain selector")
+				require.ErrorContains(t, err, "not found")
+			},
+		},
 	}
 
-	err = overrideForkChainDeployerKeyToTestSigner(cfg, "998")
-	require.NoError(t, err)
-
-	updatedChain := cfg.blockchains.EVMChains()[selector]
-	require.NotNil(t, updatedChain.DeployerKey)
-	require.Equal(t, blockchain.DefaultAnvilPublicKey, updatedChain.DeployerKey.From.Hex())
-	require.NotEqual(t, prevTxOpts.From, updatedChain.DeployerKey.From)
-	require.Equal(t, prevTxOpts.GasLimit, updatedChain.DeployerKey.GasLimit)
-	require.Equal(t, 0, prevTxOpts.GasPrice.Cmp(updatedChain.DeployerKey.GasPrice))
-	require.Equal(t, 0, prevTxOpts.GasTipCap.Cmp(updatedChain.DeployerKey.GasTipCap))
-	require.Equal(t, 0, prevTxOpts.GasFeeCap.Cmp(updatedChain.DeployerKey.GasFeeCap))
-	require.Equal(t, prevTxOpts.NoSend, updatedChain.DeployerKey.NoSend)
-	require.Equal(t, prevTxOpts.Context, updatedChain.DeployerKey.Context)
-}
-
-func TestOverrideForkChainDeployerKeyToTestSigner_InvalidChainID(t *testing.T) {
-	t.Parallel()
-
-	const selector = uint64(4286062357653186312)
-	cfg := &forkConfig{
-		chainSelector: selector,
-		blockchains: chain.NewBlockChains(map[uint64]chain.BlockChain{
-			selector: cldf_evm.Chain{Selector: selector},
-		}),
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			cfg, prevTxOpts := tc.setupCfg(t)
+			err := overrideForkChainDeployerKeyWithTestSigner(cfg, tc.chainID)
+			tc.assert(t, cfg, prevTxOpts, err)
+		})
 	}
-
-	err := overrideForkChainDeployerKeyToTestSigner(cfg, "not-a-number")
-	require.ErrorContains(t, err, "invalid chain id")
-}
-
-func TestOverrideForkChainDeployerKeyToTestSigner_NonEVMChain(t *testing.T) {
-	t.Parallel()
-
-	const selector = uint64(4286062357653186312)
-	cfg := &forkConfig{
-		chainSelector: selector,
-		blockchains: chain.NewBlockChains(map[uint64]chain.BlockChain{
-			selector: solana.Chain{Selector: selector},
-		}),
-	}
-
-	err := overrideForkChainDeployerKeyToTestSigner(cfg, "998")
-	require.ErrorContains(t, err, "is not an evm chain")
-}
-
-func TestOverrideForkChainDeployerKeyToTestSigner_ChainNotFound(t *testing.T) {
-	t.Parallel()
-
-	const selector = uint64(4286062357653186312)
-	cfg := &forkConfig{
-		chainSelector: selector,
-		blockchains:   chain.NewBlockChains(nil),
-	}
-
-	err := overrideForkChainDeployerKeyToTestSigner(cfg, "998")
-	require.ErrorContains(t, err, "chain selector")
-	require.ErrorContains(t, err, "not found")
-}
-
-func TestOverrideForkChainDeployerKeyToTestSigner_MissingChainSelector(t *testing.T) {
-	t.Parallel()
-
-	const selector = uint64(4286062357653186312)
-	cfg := &forkConfig{
-		chainSelector: selector,
-		blockchains:   chain.NewBlockChains(map[uint64]chain.BlockChain{}),
-	}
-
-	err := overrideForkChainDeployerKeyToTestSigner(cfg, "998")
-	require.Error(t, err)
 }
