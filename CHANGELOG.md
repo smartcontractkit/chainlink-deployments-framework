@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.81.1
+
+### Patch Changes
+
+- [#752](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/752) [`e07d0ff`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/e07d0ffb55c4f852178e6231621dd70a1ce82196) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(engine): support big int in changeset
+
 ## 0.81.0
 
 ### Minor Changes
