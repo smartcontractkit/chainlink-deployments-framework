@@ -1,6 +1,6 @@
 package annotated
 
-import "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer/annotation"
+import "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/internal/analyzer/annotation"
 
 type Annotated interface {
 	Annotations() annotation.Annotations

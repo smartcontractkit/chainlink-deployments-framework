@@ -1,6 +1,6 @@
 package analyzer
 
-import "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer/annotated"
+import "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/internal/analyzer/annotated"
 
 type AnalyzedProposal interface {
 	annotated.Annotated

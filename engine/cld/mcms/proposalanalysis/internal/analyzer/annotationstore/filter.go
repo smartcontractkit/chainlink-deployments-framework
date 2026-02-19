@@ -1,6 +1,6 @@
 package annotationstore
 
-import "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer/annotation"
+import "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/internal/analyzer/annotation"
 
 // AnnotationLevel identifies which proposal-analysis level to read annotations from.
 type AnnotationLevel string
