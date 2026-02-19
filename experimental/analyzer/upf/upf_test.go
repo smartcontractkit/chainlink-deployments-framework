@@ -682,7 +682,7 @@ var timelockProposalTON = func(t *testing.T) string {
 		targetAddr,
 		grantRoleData.ToBuilder().ToSlice(),
 		big.NewInt(0),
-		"com.chainlink.ton.lib.access.RBAC",
+		"link.chain.ton.lib.access.RBAC",
 		[]string{"grantRole"},
 	)
 
@@ -773,12 +773,12 @@ func TestIsTimelockBatchFunction(t *testing.T) {
 		// TON
 		{
 			name:         "TON ScheduleBatch",
-			functionName: "com.chainlink.ton.mcms.RBACTimelock::ScheduleBatch(0x12345678)",
+			functionName: "link.chain.ton.mcms.Timelock::ScheduleBatch(0x12345678)",
 			want:         true,
 		},
 		{
 			name:         "TON BypasserExecuteBatch",
-			functionName: "com.chainlink.ton.mcms.RBACTimelock::BypasserExecuteBatch(0xabcdef)",
+			functionName: "link.chain.ton.mcms.Timelock::BypasserExecuteBatch(0xabcdef)",
 			want:         true,
 		},
 		// Non-matching
