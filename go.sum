@@ -778,6 +778,8 @@ github.com/smartcontractkit/chainlink-ton v0.0.0-20260219100752-f31a249242e9 h1:
 github.com/smartcontractkit/chainlink-ton v0.0.0-20260219100752-f31a249242e9/go.mod h1:FDDjLuc4vrfclu3JHkMaREg0XZz7Lw1MK47Z4jJ4U5Q=
 github.com/smartcontractkit/chainlink-ton v0.0.0-20260219102915-4cc5743a2032 h1:GLNOBZvueYabKPZX5eBRD6irO1rMHBOt23vJPOrQMHg=
 github.com/smartcontractkit/chainlink-ton v0.0.0-20260219102915-4cc5743a2032/go.mod h1:FDDjLuc4vrfclu3JHkMaREg0XZz7Lw1MK47Z4jJ4U5Q=
+github.com/smartcontractkit/chainlink-ton v0.0.0-20260219201907-054376f21418 h1:7f92q/Tz/Ns+gjChmWg5mEonrYutZV33k/1x+Xxsb4I=
+github.com/smartcontractkit/chainlink-ton v0.0.0-20260219201907-054376f21418/go.mod h1:FDDjLuc4vrfclu3JHkMaREg0XZz7Lw1MK47Z4jJ4U5Q=
 github.com/smartcontractkit/chainlink-tron/relayer v0.0.11-0.20250815105909-75499abc4335 h1:7bxYNrPpygn8PUSBiEKn8riMd7CXMi/4bjTy0fHhcrY=
 github.com/smartcontractkit/chainlink-tron/relayer v0.0.11-0.20250815105909-75499abc4335/go.mod h1:ccjEgNeqOO+bjPddnL4lUrNLzyCvGCxgBjJdhFX3wa8=
 github.com/smartcontractkit/chainlink-tron/relayer/gotron-sdk v0.0.4 h1:J4qtAo0ZmgX5pIr8Y5mdC+J2rj2e/6CTUC263t6mGOM=
@@ -790,6 +792,8 @@ github.com/smartcontractkit/libocr v0.0.0-20250912173940-f3ab0246e23d h1:LokA9Po
 github.com/smartcontractkit/libocr v0.0.0-20250912173940-f3ab0246e23d/go.mod h1:Acy3BTBxou83ooMESLO90s8PKSu7RvLCzwSTbxxfOK0=
 github.com/smartcontractkit/mcms v0.36.0 h1:In8qkN09hXSDKsL5ds/auJ3C0zjnG9m4R8pWpTrZjJE=
 github.com/smartcontractkit/mcms v0.36.0/go.mod h1:bdPO/IKrEU3sMlvpcTtoK4amofJ/DpcHPPopeEZrCrY=
+github.com/smartcontractkit/mcms v0.36.1-0.20260219203701-d34ae76388f1 h1:UQpSKIxCXEGmZPh/aIvtmcJlqAT2ndviC7Fg0rVikOk=
+github.com/smartcontractkit/mcms v0.36.1-0.20260219203701-d34ae76388f1/go.mod h1:2krgKy83dzrWjCAj9ccI7hlboXOnROH2m7YXAdLSZw0=
 github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 h1:+jumHNA0Wrelhe64i8F6HNlS8pkoyMv5sreGx2Ry5Rw=
 github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8/go.mod h1:3n1Cwaq1E1/1lhQhtRK2ts/ZwZEhjcQeJQ1RuC6Q/8U=
 github.com/spf13/afero v1.15.0 h1:b/YBCLWAJdFWJTN9cLhiXXcD7mzKn9Dm86dNnfyQw1I=
