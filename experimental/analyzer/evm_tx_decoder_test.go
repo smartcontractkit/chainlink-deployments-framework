@@ -28,6 +28,7 @@ func Test_AnalyzeRmnHomeSetConfig(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, _abi.Methods["setCandidate"].String(), analyzeResult.Method)
 	assert.Equal(t, "staticConfig", analyzeResult.Inputs[0].Name)
+	assert.NotNil(t, analyzeResult.Inputs[0].RawValue)
 	assert.Equal(t, StructField{
 		Fields: []NamedField{
 			{
@@ -80,6 +81,7 @@ func Test_AnalyzeRmnHomeSetConfig(t *testing.T) {
 		},
 	}, analyzeResult.Inputs[0].Value)
 	assert.Equal(t, "dynamicConfig", analyzeResult.Inputs[1].Name)
+	assert.NotNil(t, analyzeResult.Inputs[1].RawValue)
 	assert.Equal(t, StructField{
 		Fields: []NamedField{
 			{
@@ -144,7 +146,9 @@ func Test_AnalyzeRmnHomeSetConfig(t *testing.T) {
 		},
 	}, analyzeResult.Inputs[1].Value)
 	assert.Equal(t, "digestToOverwrite", analyzeResult.Inputs[2].Name)
+	assert.NotNil(t, analyzeResult.Inputs[2].RawValue)
 	assert.Equal(t, BytesField{Value: hexutil.MustDecode("0x0000000000000000000000000000000000000000000000000000000000000000")}, analyzeResult.Inputs[2].Value)
 	assert.Equal(t, "newConfigDigest", analyzeResult.Outputs[0].Name)
+	assert.NotNil(t, analyzeResult.Outputs[0].RawValue)
 	assert.Equal(t, BytesField{Value: hexutil.MustDecode("0x0000000000000000000000000000000000000000000000000000000000000060")}, analyzeResult.Outputs[0].Value)
 }

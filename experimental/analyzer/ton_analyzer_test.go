@@ -260,9 +260,9 @@ func (s *testTONSetup) expectedGrantRoleCall(queryID uint64) *DecodedCall {
 		Method:       bindings.TypeRBAC + "::GrantRole(0x95cd540f)",
 		ContractType: bindings.TypeRBAC,
 		Inputs: []NamedField{
-			{Name: "QueryID", Value: SimpleField{Value: bigIntStr(queryID)}},
-			{Name: "Role", Value: SimpleField{Value: s.exampleRoleBig.String()}},
-			{Name: "Account", Value: SimpleField{Value: s.targetAddr.String()}},
+			{Name: "QueryID", Value: SimpleField{Value: bigIntStr(queryID)}, RawValue: queryID},
+			{Name: "Role", Value: SimpleField{Value: s.exampleRoleBig.String()}, RawValue: tlbe.NewUint256(s.exampleRoleBig)},
+			{Name: "Account", Value: SimpleField{Value: s.targetAddr.String()}, RawValue: s.targetAddr},
 		},
 		Outputs: []NamedField{},
 	}

@@ -434,6 +434,22 @@ func TestGetTransactionValue(t *testing.T) {
 	}
 }
 
+func expectedNativeTransferCall(to string, weiStr string) *DecodedCall {
+	wei, _ := new(big.Int).SetString(weiStr, 10)
+	ethVal := new(big.Rat).SetFrac(new(big.Int).Set(wei), big.NewInt(1e18))
+
+	return &DecodedCall{
+		Address: to,
+		Method:  "native_transfer",
+		Inputs: []NamedField{
+			{Name: "recipient", Value: AddressField{Value: to}, RawValue: to},
+			{Name: "amount_wei", Value: SimpleField{Value: wei.String()}, RawValue: wei},
+			{Name: "amount_eth", Value: SimpleField{Value: ethVal.FloatString(18)}, RawValue: ethVal},
+		},
+		Outputs: []NamedField{},
+	}
+}
+
 func TestCreateNativeTransferCall(t *testing.T) {
 	t.Parallel()
 
@@ -449,25 +465,7 @@ func TestCreateNativeTransferCall(t *testing.T) {
 				Data:             []byte{},
 				AdditionalFields: json.RawMessage(`{"value": "1000000000000000000"}`),
 			},
-			expectedCall: &DecodedCall{
-				Address: "0xeE5E8f8Be22101d26084e90053695E2088a01a24",
-				Method:  "native_transfer",
-				Inputs: []NamedField{
-					{
-						Name:  "recipient",
-						Value: AddressField{Value: "0xeE5E8f8Be22101d26084e90053695E2088a01a24"},
-					},
-					{
-						Name:  "amount_wei",
-						Value: SimpleField{Value: "1000000000000000000"},
-					},
-					{
-						Name:  "amount_eth",
-						Value: SimpleField{Value: "1.000000000000000000"},
-					},
-				},
-				Outputs: []NamedField{},
-			},
+			expectedCall: expectedNativeTransferCall("0xeE5E8f8Be22101d26084e90053695E2088a01a24", "1000000000000000000"),
 		},
 		{
 			name: "0.5 ETH transfer",
@@ -476,25 +474,7 @@ func TestCreateNativeTransferCall(t *testing.T) {
 				Data:             []byte{},
 				AdditionalFields: json.RawMessage(`{"value": "500000000000000000"}`),
 			},
-			expectedCall: &DecodedCall{
-				Address: "0x1234567890123456789012345678901234567890",
-				Method:  "native_transfer",
-				Inputs: []NamedField{
-					{
-						Name:  "recipient",
-						Value: AddressField{Value: "0x1234567890123456789012345678901234567890"},
-					},
-					{
-						Name:  "amount_wei",
-						Value: SimpleField{Value: "500000000000000000"},
-					},
-					{
-						Name:  "amount_eth",
-						Value: SimpleField{Value: "0.500000000000000000"},
-					},
-				},
-				Outputs: []NamedField{},
-			},
+			expectedCall: expectedNativeTransferCall("0x1234567890123456789012345678901234567890", "500000000000000000"),
 		},
 		{
 			name: "Small amount transfer - 1 wei",
@@ -503,25 +483,7 @@ func TestCreateNativeTransferCall(t *testing.T) {
 				Data:             []byte{},
 				AdditionalFields: json.RawMessage(`{"value": "1"}`),
 			},
-			expectedCall: &DecodedCall{
-				Address: "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd",
-				Method:  "native_transfer",
-				Inputs: []NamedField{
-					{
-						Name:  "recipient",
-						Value: AddressField{Value: "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd"},
-					},
-					{
-						Name:  "amount_wei",
-						Value: SimpleField{Value: "1"},
-					},
-					{
-						Name:  "amount_eth",
-						Value: SimpleField{Value: "0.000000000000000001"},
-					},
-				},
-				Outputs: []NamedField{},
-			},
+			expectedCall: expectedNativeTransferCall("0xabcdefabcdefabcdefabcdefabcdefabcdefabcd", "1"),
 		},
 	}
 
@@ -559,25 +521,7 @@ func TestAnalyzeEVMTransaction_NativeTransfer(t *testing.T) {
 				Data:             []byte{},
 				AdditionalFields: json.RawMessage(`{"value": "1000000000000000000"}`),
 			},
-			expectedCall: &DecodedCall{
-				Address: "0xeE5E8f8Be22101d26084e90053695E2088a01a24",
-				Method:  "native_transfer",
-				Inputs: []NamedField{
-					{
-						Name:  "recipient",
-						Value: AddressField{Value: "0xeE5E8f8Be22101d26084e90053695E2088a01a24"},
-					},
-					{
-						Name:  "amount_wei",
-						Value: SimpleField{Value: "1000000000000000000"},
-					},
-					{
-						Name:  "amount_eth",
-						Value: SimpleField{Value: "1.000000000000000000"},
-					},
-				},
-				Outputs: []NamedField{},
-			},
+			expectedCall:  expectedNativeTransferCall("0xeE5E8f8Be22101d26084e90053695E2088a01a24", "1000000000000000000"),
 			expectedError: false,
 		},
 		{
@@ -637,25 +581,7 @@ func TestAnalyzeEVMTransactions_NativeTransfer(t *testing.T) {
 				},
 			},
 			expectedCalls: []*DecodedCall{
-				{
-					Address: "0xeE5E8f8Be22101d26084e90053695E2088a01a24",
-					Method:  "native_transfer",
-					Inputs: []NamedField{
-						{
-							Name:  "recipient",
-							Value: AddressField{Value: "0xeE5E8f8Be22101d26084e90053695E2088a01a24"},
-						},
-						{
-							Name:  "amount_wei",
-							Value: SimpleField{Value: "1000000000000000000"},
-						},
-						{
-							Name:  "amount_eth",
-							Value: SimpleField{Value: "1.000000000000000000"},
-						},
-					},
-					Outputs: []NamedField{},
-				},
+				expectedNativeTransferCall("0xeE5E8f8Be22101d26084e90053695E2088a01a24", "1000000000000000000"),
 			},
 			expectedError: false,
 		},
@@ -674,44 +600,8 @@ func TestAnalyzeEVMTransactions_NativeTransfer(t *testing.T) {
 				},
 			},
 			expectedCalls: []*DecodedCall{
-				{
-					Address: "0xeE5E8f8Be22101d26084e90053695E2088a01a24",
-					Method:  "native_transfer",
-					Inputs: []NamedField{
-						{
-							Name:  "recipient",
-							Value: AddressField{Value: "0xeE5E8f8Be22101d26084e90053695E2088a01a24"},
-						},
-						{
-							Name:  "amount_wei",
-							Value: SimpleField{Value: "1000000000000000000"},
-						},
-						{
-							Name:  "amount_eth",
-							Value: SimpleField{Value: "1.000000000000000000"},
-						},
-					},
-					Outputs: []NamedField{},
-				},
-				{
-					Address: "0x1234567890123456789012345678901234567890",
-					Method:  "native_transfer",
-					Inputs: []NamedField{
-						{
-							Name:  "recipient",
-							Value: AddressField{Value: "0x1234567890123456789012345678901234567890"},
-						},
-						{
-							Name:  "amount_wei",
-							Value: SimpleField{Value: "500000000000000000"},
-						},
-						{
-							Name:  "amount_eth",
-							Value: SimpleField{Value: "0.500000000000000000"},
-						},
-					},
-					Outputs: []NamedField{},
-				},
+				expectedNativeTransferCall("0xeE5E8f8Be22101d26084e90053695E2088a01a24", "1000000000000000000"),
+				expectedNativeTransferCall("0x1234567890123456789012345678901234567890", "500000000000000000"),
 			},
 			expectedError: false,
 		},
