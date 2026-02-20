@@ -91,7 +91,7 @@ func analyzeTransactions(ctx context.Context, proposalCtx ProposalContext, env d
 	case chainsel.FamilySui:
 		return AnalyzeSuiTransactions(proposalCtx, chainSel, txs)
 	case chainsel.FamilyTon:
-		return AnalyzeTONTransactions(proposalCtx, txs)
+		return AnalyzeTONTransactions(proposalCtx, chainSel, txs)
 	default:
 		return []*DecodedCall{}, nil
 	}

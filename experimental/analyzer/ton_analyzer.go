@@ -10,11 +10,11 @@ import (
 )
 
 // AnalyzeTONTransactions decodes a slice of TON transactions and returns their decoded representations.
-func AnalyzeTONTransactions(ctx ProposalContext, txs []types.Transaction) ([]*DecodedCall, error) {
+func AnalyzeTONTransactions(ctx ProposalContext, chainSelector uint64, txs []types.Transaction) ([]*DecodedCall, error) {
 	decoder := ton.NewDecoder(bindings.Registry)
 	decodedTxs := make([]*DecodedCall, len(txs))
 	for i, op := range txs {
-		analyzedTransaction, err := AnalyzeTONTransaction(ctx, decoder, op)
+		analyzedTransaction, err := AnalyzeTONTransaction(ctx, decoder, chainSelector, op)
 		if err != nil {
 			return nil, fmt.Errorf("failed to analyze TON transaction %d: %w", i, err)
 		}
@@ -33,7 +33,9 @@ func AnalyzeTONTransactions(ctx ProposalContext, txs []types.Transaction) ([]*De
 // On decode failure, this function returns a DecodedCall with the error in the Method field
 // instead of returning an error. This allows the proposal to continue processing even if
 // a single transaction fails to decode.
-func AnalyzeTONTransaction(_ ProposalContext, decoder sdk.Decoder, mcmsTx types.Transaction) (*DecodedCall, error) {
+func AnalyzeTONTransaction(ctx ProposalContext, decoder sdk.Decoder, chainSelector uint64, mcmsTx types.Transaction) (*DecodedCall, error) {
+	contractType, contractVersion := resolveContractInfo(ctx, chainSelector, mcmsTx)
+
 	decodedOp, err := decoder.Decode(mcmsTx, mcmsTx.ContractType)
 	if err != nil {
 		// Don't return an error to not block the whole proposal decoding because of a single transaction decode failure.
@@ -41,9 +43,10 @@ func AnalyzeTONTransaction(_ ProposalContext, decoder sdk.Decoder, mcmsTx types.
 		errStr := fmt.Errorf("failed to decode TON transaction: %w", err)
 
 		return &DecodedCall{
-			Address:      mcmsTx.To,
-			Method:       errStr.Error(),
-			ContractType: mcmsTx.ContractType,
+			Address:         mcmsTx.To,
+			Method:          errStr.Error(),
+			ContractType:    contractType,
+			ContractVersion: contractVersion,
 		}, nil
 	}
 
@@ -53,10 +56,11 @@ func AnalyzeTONTransaction(_ ProposalContext, decoder sdk.Decoder, mcmsTx types.
 	}
 
 	return &DecodedCall{
-		Address:      mcmsTx.To,
-		Method:       decodedOp.MethodName(),
-		Inputs:       namedArgs,
-		Outputs:      []NamedField{},
-		ContractType: mcmsTx.ContractType,
+		Address:         mcmsTx.To,
+		Method:          decodedOp.MethodName(),
+		Inputs:          namedArgs,
+		Outputs:         []NamedField{},
+		ContractType:    contractType,
+		ContractVersion: contractVersion,
 	}, nil
 }

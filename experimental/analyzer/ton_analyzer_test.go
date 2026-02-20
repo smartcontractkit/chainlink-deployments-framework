@@ -14,6 +14,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/xssnick/tonutils-go/address"
 	"github.com/xssnick/tonutils-go/tlb"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 )
 
 const testAddress = "EQDtFpEwcFAEcRe5mLVh2N6C0x-_hJEM7W61_JLnSF74p4q2"
@@ -70,7 +72,7 @@ func TestAnalyzeTONTransaction(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			result, err := AnalyzeTONTransaction(ctx, decoder, tt.mcmsTx)
+			result, err := AnalyzeTONTransaction(ctx, decoder, 0, tt.mcmsTx)
 			require.NoError(t, err)
 			require.NotNil(t, result)
 			require.Equal(t, tt.want.Address, result.Address)
@@ -155,7 +157,7 @@ func TestAnalyzeTONTransactions(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			results, err := AnalyzeTONTransactions(ctx, tt.txs)
+			results, err := AnalyzeTONTransactions(ctx, 0, tt.txs)
 			require.NoError(t, err)
 			require.Len(t, results, len(tt.want))
 
@@ -173,6 +175,49 @@ func TestAnalyzeTONTransactions(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestAnalyzeTONTransactionResolveContractInfo(t *testing.T) {
+	t.Parallel()
+
+	setup := newTestTONSetup(t)
+	decoder := ton.NewDecoder(bindings.Registry)
+	chainSelector := uint64(123456)
+	tx := setup.makeGrantRoleTx(t, 1)
+
+	t.Run("resolves contract type and version from proposal context", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := &DefaultProposalContext{
+			AddressesByChain: deployment.AddressesByChain{
+				chainSelector: {
+					tx.To: deployment.MustTypeAndVersionFromString("TONRBAC 1.2.3"),
+				},
+			},
+		}
+
+		result, err := AnalyzeTONTransaction(ctx, decoder, chainSelector, tx)
+		require.NoError(t, err)
+		require.Equal(t, "TONRBAC", result.ContractType)
+		require.Equal(t, "1.2.3", result.ContractVersion)
+	})
+
+	t.Run("falls back when address is not in proposal context", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := &DefaultProposalContext{
+			AddressesByChain: deployment.AddressesByChain{
+				chainSelector: {
+					"EQCxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx": deployment.MustTypeAndVersionFromString("OtherContract 9.9.9"),
+				},
+			},
+		}
+
+		result, err := AnalyzeTONTransaction(ctx, decoder, chainSelector, tx)
+		require.NoError(t, err)
+		require.Equal(t, tx.ContractType, result.ContractType)
+		require.Empty(t, result.ContractVersion)
+	})
 }
 
 func newTestTONSetup(t *testing.T) *testTONSetup {
