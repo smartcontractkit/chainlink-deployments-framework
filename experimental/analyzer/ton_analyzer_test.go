@@ -260,9 +260,9 @@ func (s *testTONSetup) expectedGrantRoleCall(queryID uint64) *DecodedCall {
 		Method:       "com.chainlink.ton.lib.access.RBAC::GrantRole(0x95cd540f)",
 		ContractType: "com.chainlink.ton.lib.access.RBAC",
 		Inputs: []NamedField{
-			{Name: "QueryID", Value: SimpleField{Value: bigIntStr(queryID)}},
-			{Name: "Role", Value: SimpleField{Value: s.exampleRoleBig.String()}},
-			{Name: "Account", Value: SimpleField{Value: s.targetAddr.String()}},
+			{Name: "QueryID", Value: SimpleField{Value: bigIntStr(queryID)}, RawValue: queryID},
+			{Name: "Role", Value: SimpleField{Value: s.exampleRoleBig.String()}, RawValue: tlbe.NewUint256(s.exampleRoleBig)},
+			{Name: "Account", Value: SimpleField{Value: s.targetAddr.String()}, RawValue: s.targetAddr},
 		},
 		Outputs: []NamedField{},
 	}
