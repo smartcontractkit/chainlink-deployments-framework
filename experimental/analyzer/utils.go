@@ -18,8 +18,9 @@ func toNamedFields(decodedOp mcmssdk.DecodedOperation) ([]NamedField, error) {
 	namedArgs := make([]NamedField, len(args))
 	for i := range args {
 		namedArgs[i] = NamedField{
-			Name:  keys[i],
-			Value: getFieldValue(args[i]),
+			Name:     keys[i],
+			Value:    getFieldValue(args[i]),
+			RawValue: args[i],
 		}
 	}
 
