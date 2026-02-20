@@ -143,37 +143,49 @@ func (w *anchorInstructionWrapper) Impl() (any, error) {
 func (w *anchorInstructionWrapper) Inputs() []NamedField {
 	impl, err := w.Impl()
 	if err != nil {
+		errMsg := err.Error()
 		return []NamedField{{
-			Name:  "error",
-			Value: SimpleField{Value: err.Error()},
+			Name:     "error",
+			Value:    SimpleField{Value: errMsg},
+			RawValue: errMsg,
 		}}
 	}
 	if reflect.ValueOf(impl).Elem().Kind() != reflect.Struct {
+		errMsg := "unexpected BaseVariant.Impl element type (not a struct)"
 		return []NamedField{{
-			Name:  "error",
-			Value: SimpleField{Value: "unexpected BaseVariant.Impl element type (not a struct)"},
+			Name:     "error",
+			Value:    SimpleField{Value: errMsg},
+			RawValue: errMsg,
 		}}
 	}
 
 	rImpl := reflect.ValueOf(impl)
 	if rImpl.Kind() != reflect.Ptr {
+		errMsg := "unexpected BaseVariant.Impl type (not a pointer)"
 		return []NamedField{{
-			Name:  "error",
-			Value: SimpleField{Value: "unexpected BaseVariant.Impl type (not a pointer)"},
+			Name:     "error",
+			Value:    SimpleField{Value: errMsg},
+			RawValue: errMsg,
 		}}
 	}
 	if rImpl.Elem().Kind() != reflect.Struct {
+		errMsg := "unexpected BaseVariant.Impl element type (not a struct)"
 		return []NamedField{{
-			Name:  "error",
-			Value: SimpleField{Value: "unexpected BaseVariant.Impl element type (not a struct)"},
+			Name:     "error",
+			Value:    SimpleField{Value: errMsg},
+			RawValue: errMsg,
 		}}
 	}
 	rImpl = rImpl.Elem()
 
 	inputs := make([]NamedField, rImpl.NumField())
 	for i := range rImpl.NumField() {
-		inputs[i].Name = rImpl.Type().Field(i).Name
-		inputs[i].Value = YamlField{Value: rImpl.Field(i).Interface()}
+		rawVal := rImpl.Field(i).Interface()
+		inputs[i] = NamedField{
+			Name:     rImpl.Type().Field(i).Name,
+			Value:    YamlField{Value: rawVal},
+			RawValue: rawVal,
+		}
 	}
 
 	return inputs
