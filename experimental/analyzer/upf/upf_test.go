@@ -14,6 +14,7 @@ import (
 	"github.com/smartcontractkit/chainlink-ccip/chains/evm/gobindings/generated/v1_6_0/rmn_remote"
 	rmnremotebindings "github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings/v0_1_0/rmn_remote"
 	timelockbindings "github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings/v0_1_0/timelock"
+	"github.com/smartcontractkit/chainlink-ton/pkg/bindings"
 	"github.com/smartcontractkit/chainlink-ton/pkg/bindings/lib/access/rbac"
 	"github.com/smartcontractkit/chainlink-ton/pkg/ton/tlbe"
 	"github.com/smartcontractkit/mcms"
@@ -682,7 +683,7 @@ var timelockProposalTON = func(t *testing.T) string {
 		targetAddr,
 		grantRoleData.ToBuilder().ToSlice(),
 		big.NewInt(0),
-		"com.chainlink.ton.lib.access.RBAC",
+		bindings.TypeRBAC,
 		[]string{"grantRole"},
 	)
 
@@ -773,12 +774,12 @@ func TestIsTimelockBatchFunction(t *testing.T) {
 		// TON
 		{
 			name:         "TON ScheduleBatch",
-			functionName: "com.chainlink.ton.mcms.RBACTimelock::ScheduleBatch(0x12345678)",
+			functionName: "link.chain.ton.mcms.Timelock::ScheduleBatch(0x12345678)",
 			want:         true,
 		},
 		{
 			name:         "TON BypasserExecuteBatch",
-			functionName: "com.chainlink.ton.mcms.RBACTimelock::BypasserExecuteBatch(0xabcdef)",
+			functionName: "link.chain.ton.mcms.Timelock::BypasserExecuteBatch(0xabcdef)",
 			want:         true,
 		},
 		// Non-matching
