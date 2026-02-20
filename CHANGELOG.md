@@ -1,5 +1,15 @@
 # chainlink-deployments-framework
 
+## 0.81.2
+
+### Patch Changes
+
+- [#748](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/748) [`3fdcce9`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/3fdcce9373b8f1007ee8dc34b8b32a7778826700) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat(mcms): updated proposal decoder to include contract version and contract type
+
+- [#757](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/757) [`7d0d5bf`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/7d0d5bf2014a1e5ab30f71b658a7f8733b569a57) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - chore: bump mcms to v0.36.1 and chain-selectors to v1.0.97
+
+- [#746](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/746) [`05dfc74`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/05dfc74d70014e5a66aa17af5dc2d01cb3602cbb) Thanks [@ecPablo](https://github.com/ecPablo)! - fix fork tests so that deployer keys for the forked chain are replaced with the anvil keys
+
 ## 0.81.1
 
 ### Patch Changes
