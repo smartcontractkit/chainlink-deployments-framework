@@ -1,0 +1,10 @@
+{{define "parameter" -}}
+{{- $important := getAnnotation . "render.important" -}}
+{{- $emoji := getAnnotationValue . "render.emoji" -}}
+{{- $formatter := getAnnotationValue . "render.formatter" -}}
+{{- if $important}}<span class="important">{{end -}}
+{{- if $emoji}}{{$emoji}} {{end -}}
+<strong>{{.Name}}</strong> <span style="color: #7f8c8d;">({{.Type}})</span>: 
+<code style="background: #ecf0f1; padding: 2px 6px; border-radius: 3px;">{{if $formatter}}{{formatValue . $formatter}}{{else}}{{.Value}}{{end}}</code>
+{{- if $important}}</span>{{end -}}
+{{- end}}
