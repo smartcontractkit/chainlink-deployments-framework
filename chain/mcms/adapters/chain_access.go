@@ -85,7 +85,7 @@ func (a *ChainAccessAdapter) SuiClient(selector uint64) (sui.ISuiAPI, mcmssui.Su
 }
 
 // TonClient returns the Ton API client for the given selector.
-func (a *ChainAccessAdapter) TonClient(selector uint64) (*ton.APIClient, bool) {
+func (a *ChainAccessAdapter) TonClient(selector uint64) (ton.APIClientWrapped, bool) {
 	ch, ok := a.inner.TonChains()[selector]
 	if !ok {
 		return nil, false

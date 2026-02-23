@@ -21,12 +21,12 @@ type ChainMetadata = common.ChainMetadata
 
 // Chain represents a TON chain.
 type Chain struct {
-	ChainMetadata                  // Contains canonical chain identifier
-	Client        *ton.APIClient   // APIClient for Lite Server connection
-	Wallet        *wallet.Wallet   // Wallet abstraction (signing, sending)
-	WalletAddress *address.Address // Address of deployer wallet
-	URL           string           // Liteserver URL
-	Confirm       ConfirmFunc      // Function to confirm transactions
+	ChainMetadata                      // Contains canonical chain identifier
+	Client        ton.APIClientWrapped // APIClient for Lite Server connection
+	Wallet        *wallet.Wallet       // Wallet abstraction (signing, sending)
+	WalletAddress *address.Address     // Address of deployer wallet
+	URL           string               // Liteserver URL
+	Confirm       ConfirmFunc          // Function to confirm transactions
 }
 
 // MakeDefaultConfirmFunc creates a default ConfirmFunc that waits for transaction trace.
