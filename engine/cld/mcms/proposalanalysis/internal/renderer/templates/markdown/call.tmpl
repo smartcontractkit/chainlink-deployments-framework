@@ -1,0 +1,26 @@
+{{- define "call" -}}
+{{- $severity := annotation .Annotations "cld.severity" -}}
+{{- $risk := annotation .Annotations "cld.risk" -}}
+- [ ]{{ if .ContractType }} **{{ .ContractType }}{{ if .ContractVersion }} {{ .ContractVersion }}{{ end }}**{{ end }} `{{ .Name }}`
+{{- if $severity }} {{ severitySymbol $severity }} **{{ $severity }}**{{ end -}}
+{{- if $risk }} {{ riskSymbol $risk }} risk: **{{ $risk }}**{{ end }}
+
+**Target:** `{{ truncateAddress .To }}`
+{{- if .Inputs }}
+
+**Inputs:**
+{{ range .Inputs }}
+{{ template "parameter" . }}
+{{- end }}
+{{ end -}}
+{{- if .Outputs }}
+
+**Outputs:**
+{{ range .Outputs }}
+{{ template "parameter" . }}
+{{- end }}
+{{ end -}}
+{{- if hasDisplayAnnotations .Annotations }}
+{{ template "annotations" .Annotations }}
+{{ end -}}
+{{- end -}}

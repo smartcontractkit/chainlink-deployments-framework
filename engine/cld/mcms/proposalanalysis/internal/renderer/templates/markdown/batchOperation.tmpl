@@ -1,0 +1,10 @@
+{{- define "batchOperation" -}}
+{{- if hasDisplayAnnotations .Annotations }}
+{{ template "annotations" .Annotations }}
+{{ end }}
+{{- range $i, $call := .Calls }}
+#### Call {{ add $i 1 }}
+
+{{ template "call" $call }}
+{{ end -}}
+{{- end -}}
