@@ -8,11 +8,11 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/smartcontractkit/mcms"
-	"github.com/smartcontractkit/mcms/sdk"
-	"github.com/smartcontractkit/mcms/sdk/evm"
+	"github.com/smartcontractkit/mcms/chainwrappers"
 	"github.com/smartcontractkit/mcms/types"
 	"github.com/spf13/cobra"
 
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/mcms/adapters"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/flags"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/text"
 	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer/upf"
@@ -139,11 +139,17 @@ func getProposalSigners(
 	_ *Deps,
 ) (map[types.ChainSelector][]common.Address, error) {
 	chainMeta := proposal.ChainMetadatas()
-
 	addresses := make(map[types.ChainSelector][]common.Address, len(chainMeta))
+
+	wrappedChains := adapters.Wrap(cfg.Env.BlockChains)
+	inspectors, err := chainwrappers.BuildInspectors(&wrappedChains, cfg.TimelockProposal.ChainMetadata, cfg.TimelockProposal.Action)
+	if err != nil {
+		return nil, fmt.Errorf("building inspectors: %w", err)
+	}
+
 	for chainSelector, metadata := range chainMeta {
-		inspector, err := getInspectorFromProposalConfig(cfg, uint64(chainSelector))
-		if err != nil {
+		inspector, ok := inspectors[chainSelector]
+		if !ok {
 			return nil, fmt.Errorf("get inspector for selector %d: %w", chainSelector, err)
 		}
 
@@ -156,15 +162,4 @@ func getProposalSigners(
 	}
 
 	return addresses, nil
-}
-
-// getInspectorFromProposalConfig creates an inspector for the given chain selector.
-func getInspectorFromProposalConfig(cfg *ProposalConfig, chainSelector uint64) (sdk.Inspector, error) {
-	// Find the chain in the environment
-	evmChain, ok := cfg.Env.BlockChains.EVMChains()[chainSelector]
-	if !ok {
-		return nil, fmt.Errorf("chain selector %d not found in environment", chainSelector)
-	}
-
-	return evm.NewInspector(evmChain.Client), nil
 }
