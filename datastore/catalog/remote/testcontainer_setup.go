@@ -176,7 +176,9 @@ func (s *TestContainerSetup) startCatalogService(ctx context.Context) error {
 		if logErr == nil && logReader != nil {
 			logBytes := make([]byte, 8192)
 			n, _ := logReader.Read(logBytes)
-			log.Printf("Migration logs: %s", string(logBytes[:n]))
+			sanitized := strings.ReplaceAll(string(logBytes[:n]), "\n", "\\n")
+			sanitized = strings.ReplaceAll(sanitized, "\r", "\\r")
+			log.Printf("Migration logs: %s", sanitized)
 		}
 
 		return fmt.Errorf("migration failed with exit code: %d", state.ExitCode)
