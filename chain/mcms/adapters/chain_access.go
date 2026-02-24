@@ -11,6 +11,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	cldfaptos "github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos"
+	cldfcanton "github.com/smartcontractkit/chainlink-deployments-framework/chain/canton"
 	cldfevm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	cldfsol "github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
 	cldfstellar "github.com/smartcontractkit/chainlink-deployments-framework/chain/stellar"
@@ -26,6 +27,7 @@ type ChainsFetcher interface {
 	SuiChains() map[uint64]cldfsui.Chain
 	TonChains() map[uint64]cldfton.Chain
 	StellarChains() map[uint64]cldfstellar.Chain
+	CantonChains() map[uint64]cldfcanton.Chain
 }
 
 // ChainAccessAdapter adapts CLDF's chain.BlockChains into a selector + lookup style API.
@@ -102,4 +104,15 @@ func (a *ChainAccessAdapter) StellarClient(selector uint64) (*rpcclient.Client, 
 	}
 
 	return ch.Client, true
+}
+
+// CantonChain returns the Canton chain for the given selector.
+// Canton chains contain participants with their own service clients, so we return the chain itself.
+func (a *ChainAccessAdapter) CantonChain(selector uint64) (cldfcanton.Chain, bool) {
+	ch, ok := a.inner.CantonChains()[selector]
+	if !ok {
+		return cldfcanton.Chain{}, false
+	}
+
+	return ch, true
 }

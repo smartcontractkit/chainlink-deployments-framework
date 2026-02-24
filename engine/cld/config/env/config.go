@@ -82,6 +82,16 @@ type TronConfig struct {
 	DeployerKey string `mapstructure:"deployer_key" yaml:"deployer_key"` // Secret: The private key of the deployer account.
 }
 
+// CantonConfig is the configuration for the Canton Chains.
+//
+// WARNING: This data type contains sensitive fields and should not be logged or set in file
+// configuration.
+type CantonConfig struct {
+	// JWT token for authenticating with Canton participants. This token will be used for all participants.
+	// For more complex scenarios with different tokens per participant, use the network metadata.
+	JWTToken string `mapstructure:"jwt_token" yaml:"jwt_token"` // Secret: JWT token for Canton participant authentication.
+}
+
 // JobDistributorConfig is the configuration for connecting and authenticating to the Job
 // Distributor.
 //
@@ -140,6 +150,7 @@ type OnchainConfig struct {
 	Stellar StellarConfig `mapstructure:"stellar" yaml:"stellar"`
 	Tron    TronConfig    `mapstructure:"tron" yaml:"tron"`
 	Ton     TonConfig     `mapstructure:"ton" yaml:"ton"`
+	Canton  CantonConfig  `mapstructure:"canton" yaml:"canton"`
 }
 
 // OffchainConfig wraps the configuration for the offchain components.
@@ -236,6 +247,7 @@ var (
 		"onchain.stellar.deployer_key":                            {"ONCHAIN_STELLAR_DEPLOYER_KEY"},
 		"onchain.ton.deployer_key":                                {"ONCHAIN_TON_DEPLOYER_KEY", "TON_DEPLOYER_KEY"},
 		"onchain.ton.wallet_version":                              {"ONCHAIN_TON_WALLET_VERSION", "TON_WALLET_VERSION"},
+		"onchain.canton.jwt_token":                                {"ONCHAIN_CANTON_JWT_TOKEN"},
 		"offchain.job_distributor.auth.cognito_app_client_id":     {"OFFCHAIN_JD_AUTH_COGNITO_APP_CLIENT_ID", "JD_AUTH_COGNITO_APP_CLIENT_ID"},
 		"offchain.job_distributor.auth.cognito_app_client_secret": {"OFFCHAIN_JD_AUTH_COGNITO_APP_CLIENT_SECRET", "JD_AUTH_COGNITO_APP_CLIENT_SECRET"},
 		"offchain.job_distributor.auth.aws_region":                {"OFFCHAIN_JD_AUTH_AWS_REGION", "JD_AUTH_AWS_REGION"},
