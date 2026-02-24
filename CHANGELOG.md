@@ -1,5 +1,15 @@
 # chainlink-deployments-framework
 
+## 0.82.0
+
+### Minor Changes
+
+- [#761](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/761) [`3f9ccf1`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/3f9ccf1aba64ed74cb742f392061e5d6cd941dc5) Thanks [@krebernisak](https://github.com/krebernisak)! - Changed TON chain client type, use retry strategy
+
+### Patch Changes
+
+- [#758](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/758) [`b35d411`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/b35d411da4d0276113e1a4e5da9a75f881589ea8) Thanks [@jkongie](https://github.com/jkongie)! - Bump `go-ethereum` to v1.17.0
+
 ## 0.81.2
 
 ### Patch Changes
