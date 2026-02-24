@@ -33,7 +33,9 @@ func (fp FailurePolicy) String() string {
 	}
 }
 
-// HookContext is the read-only context passed to every hook function.
+// HookContext is the context passed to every hook function.
+// Hooks must treat all fields as read-only; mutating the environment,
+// config, or output is unsupported and may cause undefined behavior.
 // For pre-hooks, Output and Err are nil. For post-hooks, they reflect
 // the result of Apply.
 type HookContext struct {
