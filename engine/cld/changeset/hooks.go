@@ -8,7 +8,8 @@ import (
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 )
 
-const defaultHookTimeout = 30 * time.Second
+// DefaultHookTimeout is applied when a HookDefinition has a zero Timeout.
+const DefaultHookTimeout = 30 * time.Second
 
 // FailurePolicy determines how a hook error affects the pipeline.
 type FailurePolicy int
@@ -54,7 +55,7 @@ type PostHookFunc func(ctx context.Context, hctx HookContext) error
 type HookDefinition struct {
 	Name          string
 	FailurePolicy FailurePolicy
-	Timeout       time.Duration // zero means defaultHookTimeout (30s)
+	Timeout       time.Duration // zero means DefaultHookTimeout (30s)
 }
 
 // PreHook pairs a HookDefinition with a PreHookFunc.
@@ -69,12 +70,12 @@ type PostHook struct {
 	Fn PostHookFunc
 }
 
-// executeHook runs a single hook function with the configured timeout and
+// ExecuteHook runs a single hook function with the configured timeout and
 // failure policy. It logs the outcome via hctx.Env.Logger.
 //
 // Returns nil when the hook succeeds or when the hook fails but the
 // FailurePolicy is Warn. Returns the hook error only when the policy is Abort.
-func executeHook(
+func ExecuteHook(
 	parentCtx context.Context,
 	def HookDefinition,
 	fn func(context.Context, HookContext) error,
@@ -82,7 +83,7 @@ func executeHook(
 ) error {
 	timeout := def.Timeout
 	if timeout == 0 {
-		timeout = defaultHookTimeout
+		timeout = DefaultHookTimeout
 	}
 
 	ctx, cancel := context.WithTimeout(parentCtx, timeout)
