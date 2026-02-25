@@ -19,6 +19,8 @@ onchain:
     wallet_version: "V5R1"
   stellar:
     deployer_key: "0x567"
+  canton:
+    jwt_token: ""
 offchain:
   job_distributor:
     endpoints:
