@@ -21,6 +21,11 @@ _Annotations:_
 - **`amount`** (`uint256`): 1,000,000,000,000,000,000
 - **`enabled`** (`bool`): true
 
+
+**Changes:**
+
+- **outboundRateLimit:** ~~0~~ -> **1,000,000**
+
 _Annotations:_
 - ccip.lane: ethereum -> arbitrum
 

@@ -261,6 +261,7 @@ func TestIsFrameworkAnnotation(t *testing.T) {
 	assert.True(t, isFrameworkAnnotation("cld.severity"))
 	assert.True(t, isFrameworkAnnotation("cld.risk"))
 	assert.True(t, isFrameworkAnnotation("cld.value_type"))
+	assert.True(t, isFrameworkAnnotation("cld.diff"))
 	assert.False(t, isFrameworkAnnotation("ccip.lane"))
 	assert.False(t, isFrameworkAnnotation(""))
 }
@@ -406,6 +407,77 @@ func TestRenderCallOutputs(t *testing.T) {
 	assert.Contains(t, out, "500")
 	assert.Contains(t, out, "**`active`**")
 	assert.Contains(t, out, "true")
+}
+
+func TestRenderDiff_Markdown(t *testing.T) {
+	t.Parallel()
+
+	call := analyzer.NewAnalyzedCallNode("0xaaaa", "applyChainUpdates", nil, nil, nil, "TokenPool", "v1.5.0")
+	call.AddAnnotations(
+		annotation.DiffAnnotation("outbound.capacity", big.NewInt(0), big.NewInt(1000000), "ethereum.uint256"),
+		annotation.DiffAnnotation("inbound.rate", big.NewInt(100), big.NewInt(500), "ethereum.uint256"),
+	)
+
+	proposal := analyzer.NewAnalyzedProposalNode(analyzer.AnalyzedBatchOperations{
+		analyzer.NewAnalyzedBatchOperationNode(1, analyzer.AnalyzedCalls{call}),
+	})
+
+	r, err := NewMarkdownRenderer()
+	require.NoError(t, err)
+	out := renderToString(t, r, RenderRequest{}, proposal)
+
+	assert.Contains(t, out, "**Changes:**")
+	assert.Contains(t, out, "**outbound.capacity:** ~~0~~ -> **1,000,000**")
+	assert.Contains(t, out, "**inbound.rate:** ~~100~~ -> **500**")
+}
+
+func TestDiffFuncmap(t *testing.T) {
+	t.Parallel()
+
+	t.Run("renderDiff with field and value type", func(t *testing.T) {
+		t.Parallel()
+
+		dv := annotation.DiffValue{Field: "rate", Old: big.NewInt(100), New: big.NewInt(200), ValueType: "ethereum.uint256"}
+		assert.Equal(t, "**rate:** ~~100~~ -> **200**", renderDiff(dv))
+	})
+
+	t.Run("renderDiff without field", func(t *testing.T) {
+		t.Parallel()
+
+		dv := annotation.DiffValue{Old: "old", New: "new"}
+		assert.Equal(t, "~~old~~ -> **new**", renderDiff(dv))
+	})
+
+	t.Run("renderDiff without value type skips type-specific formatting", func(t *testing.T) {
+		t.Parallel()
+
+		dv := annotation.DiffValue{Field: "rate", Old: big.NewInt(1000000), New: big.NewInt(2000000)}
+		assert.Equal(t, "**rate:** ~~1000000~~ -> **2000000**", renderDiff(dv))
+	})
+
+	t.Run("diffAnnotations extracts only diff values", func(t *testing.T) {
+		t.Parallel()
+
+		anns := annotation.Annotations{
+			annotation.SeverityAnnotation(annotation.SeverityWarning),
+			annotation.DiffAnnotation("a", 1, 2, ""),
+			annotation.New("ccip.lane", "string", "eth -> arb"),
+			annotation.DiffAnnotation("b", 3, 4, ""),
+		}
+		diffs := diffAnnotations(anns)
+		assert.Len(t, diffs, 2)
+		assert.Equal(t, "a", diffs[0].Field)
+		assert.Equal(t, "b", diffs[1].Field)
+	})
+
+	t.Run("diffAnnotations returns nil when no diffs", func(t *testing.T) {
+		t.Parallel()
+
+		anns := annotation.Annotations{
+			annotation.SeverityAnnotation(annotation.SeverityInfo),
+		}
+		assert.Nil(t, diffAnnotations(anns))
+	})
 }
 
 func TestParameterValueTypeNotRenderedAsAnnotation(t *testing.T) {
