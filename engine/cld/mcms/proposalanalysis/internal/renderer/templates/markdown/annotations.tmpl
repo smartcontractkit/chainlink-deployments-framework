@@ -1,0 +1,21 @@
+{{- define "annotations" -}}
+
+{{- /* check if there is at least one non framework annotation */ -}}
+{{- $show := false -}}
+{{- range . -}}
+{{- if not (isFrameworkAnnotation .Name) -}}
+{{- $show = true -}}
+{{- end -}}
+{{- end -}}
+
+{{- /* render list */ -}}
+{{- if $show -}}
+_Annotations:_
+{{ range . -}}
+{{- if not (isFrameworkAnnotation .Name) -}}
+- {{ if .Name }}{{ .Name }}: {{ end }}{{ .Value }}
+{{- end -}}
+{{ end -}}
+{{- end -}}
+
+{{- end -}}

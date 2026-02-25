@@ -1,0 +1,10 @@
+{{- define "parameter" -}}
+- **`{{ .Name }}`** (`{{ .Type }}`): {{ formatParam . }}
+{{- if hasDisplayAnnotations .Annotations }}
+{{- range .Annotations }}
+{{- if not (isFrameworkAnnotation .Name) }}
+  - _{{ if .Name }}{{ .Name }}: {{ end }}{{ .Value }}_
+{{- end }}
+{{- end }}
+{{- end -}}
+{{- end -}}
