@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.82.1
+
+### Patch Changes
+
+- [#779](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/779) [`139427a`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/139427a6a4d656fd7e26656e9d38007c435826ba) Thanks [@ecPablo](https://github.com/ecPablo)! - fix convert UPF to support all non evm chain families in getProposalSigners
+
 ## 0.82.0
 
 ### Minor Changes
