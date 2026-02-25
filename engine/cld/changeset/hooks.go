@@ -33,25 +33,31 @@ func (fp FailurePolicy) String() string {
 	}
 }
 
-// HookContext is the context passed to every hook function.
-// Hooks must treat all fields as read-only; mutating the environment,
-// config, or output is unsupported and may cause undefined behavior.
-// For pre-hooks, Output and Err are nil. For post-hooks, they reflect
-// the result of Apply.
-type HookContext struct {
+// PreHookParams is passed to pre-hooks.
+// All fields must be treated as read-only.
+type PreHookParams struct {
 	Env          fdeployment.Environment
 	ChangesetKey string
 	Config       any
-	Output       *fdeployment.ChangesetOutput // nil for pre-hooks
-	Err          error                        // nil for pre-hooks; nil on success
-	Timestamp    time.Time
+}
+
+// PostHookParams is passed to post-hooks.
+// All fields must be treated as read-only.
+type PostHookParams struct {
+	Env          fdeployment.Environment
+	ChangesetKey string
+	Config       any
+	Output       fdeployment.ChangesetOutput
+	Err          error
 }
 
 // PreHookFunc is the signature for functions that run before changeset Apply.
-type PreHookFunc func(ctx context.Context, hctx HookContext) error
+// The context is derived from env.GetContext() with the hook's timeout applied.
+type PreHookFunc func(ctx context.Context, params PreHookParams) error
 
 // PostHookFunc is the signature for functions that run after changeset Apply.
-type PostHookFunc func(ctx context.Context, hctx HookContext) error
+// The context is derived from env.GetContext() with the hook's timeout applied.
+type PostHookFunc func(ctx context.Context, params PostHookParams) error
 
 // HookDefinition holds the metadata common to all hooks.
 type HookDefinition struct {
@@ -63,57 +69,55 @@ type HookDefinition struct {
 // PreHook pairs a HookDefinition with a PreHookFunc.
 type PreHook struct {
 	HookDefinition
-	Fn PreHookFunc
+	Func PreHookFunc
 }
 
 // PostHook pairs a HookDefinition with a PostHookFunc.
 type PostHook struct {
 	HookDefinition
-	Fn PostHookFunc
+	Func PostHookFunc
 }
 
-// ExecuteHook runs a single hook function with the configured timeout and
-// failure policy. It logs the outcome via hctx.Env.Logger.
+// ExecuteHook runs a hook function with the configured timeout and failure
+// policy. The parent context is derived from env.GetContext(); each hook
+// receives a child context with its timeout applied.
 //
 // Returns nil when the hook succeeds or when the hook fails but the
 // FailurePolicy is Warn. Returns the hook error only when the policy is Abort.
 func ExecuteHook(
-	parentCtx context.Context,
+	env fdeployment.Environment,
 	def HookDefinition,
-	fn func(context.Context, HookContext) error,
-	hctx HookContext,
+	fn func(ctx context.Context) error,
 ) error {
 	timeout := def.Timeout
 	if timeout == 0 {
 		timeout = DefaultHookTimeout
 	}
 
-	ctx, cancel := context.WithTimeout(parentCtx, timeout)
+	ctx, cancel := context.WithTimeout(env.GetContext(), timeout)
 	defer cancel()
 
 	start := time.Now()
-	err := fn(ctx, hctx)
+	err := fn(ctx)
 	duration := time.Since(start)
 
 	if err != nil {
-		hctx.Env.Logger.Warnw("hook failed",
+		env.Logger.Warnw("hook failed",
 			"hook", def.Name,
 			"duration", duration,
 			"policy", def.FailurePolicy.String(),
 			"error", err,
 		)
-
-		if def.FailurePolicy == Warn {
-			return nil
-		}
-
-		return err
+	} else {
+		env.Logger.Infow("hook completed",
+			"hook", def.Name,
+			"duration", duration,
+		)
 	}
 
-	hctx.Env.Logger.Infow("hook completed",
-		"hook", def.Name,
-		"duration", duration,
-	)
+	if err != nil && def.FailurePolicy == Warn {
+		return nil
+	}
 
-	return nil
+	return err
 }
