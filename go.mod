@@ -35,13 +35,13 @@ require (
 	github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings v0.0.0-20250912190424-fd2e35d7deb5
 	github.com/smartcontractkit/chainlink-protos/job-distributor v0.18.0
 	github.com/smartcontractkit/chainlink-protos/op-catalog v0.0.4
-	github.com/smartcontractkit/chainlink-testing-framework/framework v0.14.3
+	github.com/smartcontractkit/chainlink-testing-framework/framework v0.14.7
 	github.com/smartcontractkit/chainlink-testing-framework/seth v1.51.5
 	github.com/smartcontractkit/chainlink-ton v0.0.0-20260219201907-054376f21418
 	github.com/smartcontractkit/chainlink-tron/relayer v0.0.11-0.20250815105909-75499abc4335
 	github.com/smartcontractkit/freeport v0.1.3-0.20250828155247-add56fa28aad
 	github.com/smartcontractkit/libocr v0.0.0-20250912173940-f3ab0246e23d
-	github.com/smartcontractkit/mcms v0.36.2
+	github.com/smartcontractkit/mcms v0.36.3
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
@@ -54,7 +54,7 @@ require (
 	go.uber.org/zap v1.27.1
 	golang.org/x/crypto v0.48.0
 	golang.org/x/exp v0.0.0-20260112195511-716be5621a96
-	golang.org/x/oauth2 v0.34.0
+	golang.org/x/oauth2 v0.35.0
 	google.golang.org/grpc v1.79.1
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v3 v3.0.1
@@ -167,7 +167,7 @@ require (
 	github.com/docker/docker v28.5.2+incompatible // indirect
 	github.com/docker/go-connections v0.6.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
-	github.com/ebitengine/purego v0.9.1 // indirect
+	github.com/ebitengine/purego v0.10.0 // indirect
 	github.com/fatih/color v1.18.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
@@ -331,7 +331,7 @@ require (
 	golang.org/x/term v0.40.0 // indirect
 	golang.org/x/text v0.34.0 // indirect
 	golang.org/x/time v0.14.0 // indirect
-	golang.org/x/tools v0.41.0 // indirect
+	golang.org/x/tools v0.42.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260114163908-3f89685c29c3 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20251222181119-0a764e51fe1b
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect

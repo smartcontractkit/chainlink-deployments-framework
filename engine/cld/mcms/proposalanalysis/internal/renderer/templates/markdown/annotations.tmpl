@@ -1,0 +1,10 @@
+{{- define "annotations" -}}
+
+_Annotations:_
+{{ range . -}}
+{{- if not (isFrameworkAnnotation .Name) -}}
+- {{ if .Name }}{{ .Name }}: {{ end }}{{ .Value }}
+{{- end -}}
+{{ end -}}
+
+{{- end -}}

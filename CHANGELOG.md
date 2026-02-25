@@ -1,5 +1,23 @@
 # chainlink-deployments-framework
 
+## 0.82.3
+
+### Patch Changes
+
+- [#790](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/790) [`a50026f`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/a50026fee89624fc6563ff867b1d114a62f31e21) Thanks [@ecPablo](https://github.com/ecPablo)! - bump mcms lib to v0.36.3
+
+## 0.82.2
+
+### Patch Changes
+
+- [#787](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/787) [`ee3889f`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/ee3889fcdbab5fe54dfec46b0341012b91e278d2) Thanks [@friedemannf](https://github.com/friedemannf)! - Bump chainlink-testing-framework to v0.14.7
+
+## 0.82.1
+
+### Patch Changes
+
+- [#779](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/779) [`139427a`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/139427a6a4d656fd7e26656e9d38007c435826ba) Thanks [@ecPablo](https://github.com/ecPablo)! - fix convert UPF to support all non evm chain families in getProposalSigners
+
 ## 0.82.0
 
 ### Minor Changes

@@ -54,8 +54,8 @@ type ContractCreationResult struct {
 
 // GetContractCreationTx finds contract creation tx by querying getcontractcreation action.
 // It is a short-cut provided by most Etherscan instances.
-func GetContractCreationTx(ctx context.Context, endpoint string, addressStr string, apiKey string) (string, error) {
-	url := fmt.Sprintf("%s?module=contract&action=getcontractcreation&contractaddresses=%s&apikey=%s", endpoint, addressStr, apiKey)
+func GetContractCreationTx(ctx context.Context, endpoint string, chainIDStr, addressStr string, apiKey string) (string, error) {
+	url := fmt.Sprintf("%s?chainid=%s&module=contract&action=getcontractcreation&contractaddresses=%s&apikey=%s", endpoint, chainIDStr, addressStr, apiKey)
 
 	ctx, cancel := context.WithTimeout(ctx, etherscanTimeout)
 	defer cancel()
@@ -97,7 +97,7 @@ func GetContractCreationTx(ctx context.Context, endpoint string, addressStr stri
 	}
 	// If API call failed due to reasons other than action unsupported, there is no fallback.
 	if !strings.Contains(errMsg, "invalid Action name") {
-		return "", err
+		return "", fmt.Errorf("failed to get contract creation tx: %s", errMsg)
 	}
 
 	return GetContractCreationTxFallback(ctx, endpoint, addressStr, apiKey)
@@ -187,7 +187,7 @@ func buildContractVerifyCmd(
 	}
 
 	cmd := []string{
-		"forge", "contract verify", "--watch",
+		"forge", "verify-contract", "--watch",
 		"--compiler-version", compilerVersion,
 		"--optimizer-runs", strconv.FormatUint(optimizerRuns, 10),
 		"--chain-id", chainID,
@@ -273,7 +273,7 @@ func verifyContract(
 		lggr.Infof("contract %s is already verified", contractAddress)
 		return nil
 	}
-	contractCreationTx, err := GetContractCreationTx(ctx, explorer.URL, contractAddress, explorer.APIKey)
+	contractCreationTx, err := GetContractCreationTx(ctx, explorer.URL, chainID, contractAddress, explorer.APIKey)
 	if err != nil {
 		return fmt.Errorf("failed to get contract creation tx: %w", err)
 	}
