@@ -150,7 +150,7 @@ func getProposalSigners(
 	for chainSelector, metadata := range chainMeta {
 		inspector, ok := inspectors[chainSelector]
 		if !ok {
-			return nil, fmt.Errorf("get inspector for selector %d: %w", chainSelector, err)
+			return nil, fmt.Errorf("no inspector found for chain selector %d", chainSelector)
 		}
 
 		config, err := inspector.GetConfig(ctx, metadata.MCMAddress)
