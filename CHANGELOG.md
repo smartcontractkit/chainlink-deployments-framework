@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.82.3
+
+### Patch Changes
+
+- [#790](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/790) [`a50026f`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/a50026fee89624fc6563ff867b1d114a62f31e21) Thanks [@ecPablo](https://github.com/ecPablo)! - bump mcms lib to v0.36.3
+
 ## 0.82.2
 
 ### Patch Changes
