@@ -16,10 +16,10 @@ const nilValue = "<nil>"
 
 // frameworkAnnotations lists annotation names that are consumed by the
 // framework's built-in template logic.
-var frameworkAnnotations = map[string]bool{
-	annotation.AnnotationSeverityName:  true,
-	annotation.AnnotationRiskName:      true,
-	annotation.AnnotationValueTypeName: true,
+var frameworkAnnotations = map[string]struct{}{
+	annotation.AnnotationSeverityName:  {},
+	annotation.AnnotationRiskName:      {},
+	annotation.AnnotationValueTypeName: {},
 }
 
 func defaultFuncMap() template.FuncMap {
@@ -50,7 +50,9 @@ func truncateAddress(addr string) string {
 // isFrameworkAnnotation reports whether the given annotation name is handled
 // by dedicated template logic rather than the generic annotations section.
 func isFrameworkAnnotation(name string) bool {
-	return frameworkAnnotations[name]
+	_, ok := frameworkAnnotations[name]
+
+	return ok
 }
 
 // hasDisplayAnnotations reports whether any annotations should be shown in the

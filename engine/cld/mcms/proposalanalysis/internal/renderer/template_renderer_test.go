@@ -13,78 +13,33 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/internal/analyzer"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/internal/analyzer/annotated"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/internal/analyzer/annotation"
 )
 
-type stubProposal struct {
-	annotated.BaseAnnotated
-	batches analyzer.AnalyzedBatchOperations
-}
-
-func (s *stubProposal) BatchOperations() analyzer.AnalyzedBatchOperations { return s.batches }
-
-type stubBatchOp struct {
-	annotated.BaseAnnotated
-	chainSelector uint64
-	calls         analyzer.AnalyzedCalls
-}
-
-func (s *stubBatchOp) ChainSelector() uint64         { return s.chainSelector }
-func (s *stubBatchOp) Calls() analyzer.AnalyzedCalls { return s.calls }
-
-type stubCall struct {
-	annotated.BaseAnnotated
-	to               string
-	name             string
-	inputs           analyzer.AnalyzedParameters
-	outputs          analyzer.AnalyzedParameters
-	data             []byte
-	contractType     string
-	contractVersion  string
-	additionalFields map[string]any
-}
-
-func (s *stubCall) To() string                           { return s.to }
-func (s *stubCall) Name() string                         { return s.name }
-func (s *stubCall) Inputs() analyzer.AnalyzedParameters  { return s.inputs }
-func (s *stubCall) Outputs() analyzer.AnalyzedParameters { return s.outputs }
-func (s *stubCall) Data() []byte                         { return s.data }
-func (s *stubCall) ContractType() string                 { return s.contractType }
-func (s *stubCall) ContractVersion() string              { return s.contractVersion }
-func (s *stubCall) AdditionalFields() map[string]any     { return s.additionalFields }
-
-type stubParam struct {
-	annotated.BaseAnnotated
-	name  string
-	typ   string
-	value any
-}
-
-func (s *stubParam) Name() string { return s.name }
-func (s *stubParam) Type() string { return s.typ }
-func (s *stubParam) Value() any   { return s.value }
-
-func newTestProposal() *stubProposal {
-	return &stubProposal{
-		batches: analyzer.AnalyzedBatchOperations{
-			&stubBatchOp{
-				chainSelector: 5009297550715157269,
-				calls: analyzer.AnalyzedCalls{
-					&stubCall{
-						to:              "0x1111111111111111111111111111111111111111",
-						name:            "transfer",
-						contractType:    "ERC20",
-						contractVersion: "v1.0.0",
-						inputs: analyzer.AnalyzedParameters{
-							&stubParam{name: "amount", typ: "uint256", value: big.NewInt(1000)},
-							&stubParam{name: "recipient", typ: "address", value: "0xabcdef1234567890abcdef1234567890abcdef12"},
-						},
+func newTestProposal() *analyzer.AnalyzedProposalNode {
+	return analyzer.NewAnalyzedProposalNode(
+		analyzer.AnalyzedBatchOperations{
+			analyzer.NewAnalyzedBatchOperationNode(5009297550715157269, analyzer.AnalyzedCalls{
+				analyzer.NewAnalyzedCallNode(
+					"0x1111111111111111111111111111111111111111", "transfer",
+					analyzer.AnalyzedParameters{
+						analyzer.NewAnalyzedParameterNode("amount", "uint256", big.NewInt(1000)),
+						analyzer.NewAnalyzedParameterNode("recipient", "address", "0xabcdef1234567890abcdef1234567890abcdef12"),
 					},
-				},
-			},
+					nil, nil, "ERC20", "v1.0.0",
+				),
+			}),
 		},
-	}
+	)
+}
+
+func renderToString(t *testing.T, r *TemplateRenderer, req RenderRequest, proposal analyzer.AnalyzedProposal) string {
+	t.Helper()
+
+	var buf bytes.Buffer
+	require.NoError(t, r.RenderTo(&buf, req, proposal))
+
+	return buf.String()
 }
 
 func minimalTemplates(proposalTemplate string) map[string]string {
@@ -104,8 +59,7 @@ func TestNewMarkdownRenderer(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, IDMarkdown, r.ID())
 
-	out, err := r.RenderToString(RenderRequest{Domain: "ccip", EnvironmentName: "mainnet"}, newTestProposal())
-	require.NoError(t, err)
+	out := renderToString(t, r, RenderRequest{Domain: "ccip", EnvironmentName: "mainnet"}, newTestProposal())
 
 	assert.Contains(t, out, "## Proposal — ccip (mainnet)")
 	assert.Contains(t, out, "<details>")
@@ -125,8 +79,7 @@ func TestNoTitleWithoutRequest(t *testing.T) {
 	r, err := NewMarkdownRenderer()
 	require.NoError(t, err)
 
-	out, err := r.RenderToString(RenderRequest{}, newTestProposal())
-	require.NoError(t, err)
+	out := renderToString(t, r, RenderRequest{}, newTestProposal())
 
 	assert.NotContains(t, out, "## Proposal")
 	assert.Contains(t, out, "<details>")
@@ -135,41 +88,31 @@ func TestNoTitleWithoutRequest(t *testing.T) {
 func TestRenderEmptyProposal(t *testing.T) {
 	t.Parallel()
 
-	proposal := &stubProposal{}
-
 	r, err := NewMarkdownRenderer()
 	require.NoError(t, err)
-	out, err := r.RenderToString(RenderRequest{}, proposal)
-	require.NoError(t, err)
+	out := renderToString(t, r, RenderRequest{}, analyzer.NewAnalyzedProposalNode(nil))
 	assert.Contains(t, out, "No batch operations")
 }
 
 func TestRenderWithAnnotations(t *testing.T) {
 	t.Parallel()
 
-	call := &stubCall{
-		to:           "0x1111111111111111111111111111111111111111",
-		name:         "setConfig",
-		contractType: "Router",
-	}
+	call := analyzer.NewAnalyzedCallNode(
+		"0x1111111111111111111111111111111111111111", "setConfig",
+		nil, nil, nil, "Router", "",
+	)
 	call.AddAnnotations(
 		annotation.New("ccip.lane", "string", "ethereum -> arbitrum"),
 		annotation.New("description", "string", "update router config"),
 	)
 
-	proposal := &stubProposal{
-		batches: analyzer.AnalyzedBatchOperations{
-			&stubBatchOp{
-				chainSelector: 123,
-				calls:         analyzer.AnalyzedCalls{call},
-			},
-		},
-	}
+	proposal := analyzer.NewAnalyzedProposalNode(analyzer.AnalyzedBatchOperations{
+		analyzer.NewAnalyzedBatchOperationNode(123, analyzer.AnalyzedCalls{call}),
+	})
 
 	r, err := NewMarkdownRenderer()
 	require.NoError(t, err)
-	out, err := r.RenderToString(RenderRequest{}, proposal)
-	require.NoError(t, err)
+	out := renderToString(t, r, RenderRequest{}, proposal)
 
 	assert.Contains(t, out, "ccip.lane: ethereum -> arbitrum")
 	assert.Contains(t, out, "description: update router config")
@@ -203,8 +146,7 @@ func TestWithTemplateFuncs(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	out, err := r.RenderToString(RenderRequest{}, newTestProposal())
-	require.NoError(t, err)
+	out := renderToString(t, r, RenderRequest{}, newTestProposal())
 	assert.Equal(t, "HELLO", out)
 }
 
@@ -228,8 +170,7 @@ func TestWithTemplates_InMemoryOverride(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	out, err := r.RenderToString(RenderRequest{}, newTestProposal())
-	require.NoError(t, err)
+	out := renderToString(t, r, RenderRequest{}, newTestProposal())
 	assert.Equal(t, "custom: 1 batches", out)
 }
 
@@ -246,8 +187,7 @@ func TestWithTemplateDir(t *testing.T) {
 	r, err := NewMarkdownRenderer(WithTemplateDir(dir))
 	require.NoError(t, err)
 
-	out, err := r.RenderToString(RenderRequest{}, newTestProposal())
-	require.NoError(t, err)
+	out := renderToString(t, r, RenderRequest{}, newTestProposal())
 	assert.Equal(t, "dir: 1", out)
 }
 
@@ -358,7 +298,7 @@ func TestFormatParam_WithValueTypeAnnotation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			p := &stubParam{name: "x", typ: "test", value: tt.value}
+			p := analyzer.NewAnalyzedParameterNode("x", "test", tt.value)
 			p.AddAnnotations(annotation.ValueTypeAnnotation(tt.valueType))
 			assert.Equal(t, tt.expected, formatParam(p))
 		})
@@ -394,30 +334,20 @@ func TestFormatEthereumUint256_NegativeNumber(t *testing.T) {
 func TestRenderSeverityAndRisk_Markdown(t *testing.T) {
 	t.Parallel()
 
-	call := &stubCall{
-		to:           "0xaaaa",
-		name:         "dangerousMethod",
-		contractType: "Router",
-	}
+	call := analyzer.NewAnalyzedCallNode("0xaaaa", "dangerousMethod", nil, nil, nil, "Router", "")
 	call.AddAnnotations(
 		annotation.SeverityAnnotation(annotation.SeverityWarning),
 		annotation.RiskAnnotation(annotation.RiskHigh),
 		annotation.New("ccip.lane", "string", "ethereum -> arbitrum"),
 	)
 
-	proposal := &stubProposal{
-		batches: analyzer.AnalyzedBatchOperations{
-			&stubBatchOp{
-				chainSelector: 1,
-				calls:         analyzer.AnalyzedCalls{call},
-			},
-		},
-	}
+	proposal := analyzer.NewAnalyzedProposalNode(analyzer.AnalyzedBatchOperations{
+		analyzer.NewAnalyzedBatchOperationNode(1, analyzer.AnalyzedCalls{call}),
+	})
 
 	r, err := NewMarkdownRenderer()
 	require.NoError(t, err)
-	out, err := r.RenderToString(RenderRequest{}, proposal)
-	require.NoError(t, err)
+	out := renderToString(t, r, RenderRequest{}, proposal)
 
 	assert.Contains(t, out, "⚠")
 	assert.Contains(t, out, "**warning**")
@@ -438,25 +368,16 @@ func TestWithTemplateFuncs_OverridesBuiltIn(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	proposal := &stubProposal{
-		batches: analyzer.AnalyzedBatchOperations{
-			&stubBatchOp{
-				chainSelector: 1,
-				calls: analyzer.AnalyzedCalls{
-					&stubCall{
-						to:   "0xaaaa",
-						name: "test",
-						inputs: analyzer.AnalyzedParameters{
-							&stubParam{name: "x", typ: "uint256", value: big.NewInt(42)},
-						},
-					},
-				},
-			},
-		},
-	}
+	proposal := analyzer.NewAnalyzedProposalNode(analyzer.AnalyzedBatchOperations{
+		analyzer.NewAnalyzedBatchOperationNode(1, analyzer.AnalyzedCalls{
+			analyzer.NewAnalyzedCallNode("0xaaaa", "test",
+				analyzer.AnalyzedParameters{analyzer.NewAnalyzedParameterNode("x", "uint256", big.NewInt(42))},
+				nil, nil, "", "",
+			),
+		}),
+	})
 
-	out, err := r.RenderToString(RenderRequest{}, proposal)
-	require.NoError(t, err)
+	out := renderToString(t, r, RenderRequest{}, proposal)
 	assert.Contains(t, out, "CUSTOM")
 	assert.NotContains(t, out, "42")
 }
@@ -464,28 +385,21 @@ func TestWithTemplateFuncs_OverridesBuiltIn(t *testing.T) {
 func TestRenderCallOutputs(t *testing.T) {
 	t.Parallel()
 
-	proposal := &stubProposal{
-		batches: analyzer.AnalyzedBatchOperations{
-			&stubBatchOp{
-				chainSelector: 1,
-				calls: analyzer.AnalyzedCalls{
-					&stubCall{
-						to:   "0xaaaa",
-						name: "getConfig",
-						outputs: analyzer.AnalyzedParameters{
-							&stubParam{name: "rate", typ: "uint256", value: big.NewInt(500)},
-							&stubParam{name: "active", typ: "bool", value: true},
-						},
-					},
+	proposal := analyzer.NewAnalyzedProposalNode(analyzer.AnalyzedBatchOperations{
+		analyzer.NewAnalyzedBatchOperationNode(1, analyzer.AnalyzedCalls{
+			analyzer.NewAnalyzedCallNode("0xaaaa", "getConfig", nil,
+				analyzer.AnalyzedParameters{
+					analyzer.NewAnalyzedParameterNode("rate", "uint256", big.NewInt(500)),
+					analyzer.NewAnalyzedParameterNode("active", "bool", true),
 				},
-			},
-		},
-	}
+				nil, "", "",
+			),
+		}),
+	})
 
 	r, err := NewMarkdownRenderer()
 	require.NoError(t, err)
-	out, err := r.RenderToString(RenderRequest{}, proposal)
-	require.NoError(t, err)
+	out := renderToString(t, r, RenderRequest{}, proposal)
 
 	assert.Contains(t, out, "**Outputs:**")
 	assert.Contains(t, out, "**`rate`**")
@@ -497,31 +411,24 @@ func TestRenderCallOutputs(t *testing.T) {
 func TestParameterValueTypeNotRenderedAsAnnotation(t *testing.T) {
 	t.Parallel()
 
-	target := &stubParam{name: "target", typ: "address", value: "abcd"}
+	target := analyzer.NewAnalyzedParameterNode("target", "address", "abcd")
 	target.AddAnnotations(
 		annotation.ValueTypeAnnotation("ethereum.address"),
 		annotation.New("label", "string", "destination contract"),
 	)
 
-	proposal := &stubProposal{
-		batches: analyzer.AnalyzedBatchOperations{
-			&stubBatchOp{
-				chainSelector: 1,
-				calls: analyzer.AnalyzedCalls{
-					&stubCall{
-						to:     "0xaaaa",
-						name:   "setConfig",
-						inputs: analyzer.AnalyzedParameters{target},
-					},
-				},
-			},
-		},
-	}
+	proposal := analyzer.NewAnalyzedProposalNode(analyzer.AnalyzedBatchOperations{
+		analyzer.NewAnalyzedBatchOperationNode(1, analyzer.AnalyzedCalls{
+			analyzer.NewAnalyzedCallNode("0xaaaa", "setConfig",
+				analyzer.AnalyzedParameters{target},
+				nil, nil, "", "",
+			),
+		}),
+	})
 
 	r, err := NewMarkdownRenderer()
 	require.NoError(t, err)
-	out, err := r.RenderToString(RenderRequest{}, proposal)
-	require.NoError(t, err)
+	out := renderToString(t, r, RenderRequest{}, proposal)
 
 	assert.Contains(t, out, "destination contract")
 	assert.NotContains(t, out, "cld.value_type:")

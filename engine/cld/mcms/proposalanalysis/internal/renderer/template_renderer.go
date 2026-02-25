@@ -1,7 +1,6 @@
 package renderer
 
 import (
-	"bytes"
 	"embed"
 	"fmt"
 	"io"
@@ -38,16 +37,6 @@ func (r *TemplateRenderer) RenderTo(w io.Writer, req RenderRequest, proposal ana
 	}
 
 	return nil
-}
-
-// RenderToString renders the proposal and returns it as a string.
-func (r *TemplateRenderer) RenderToString(req RenderRequest, proposal analyzer.AnalyzedProposal) (string, error) {
-	var buf bytes.Buffer
-	if err := r.RenderTo(&buf, req, proposal); err != nil {
-		return "", err
-	}
-
-	return buf.String(), nil
 }
 
 // NewMarkdownRenderer creates a TemplateRenderer with embedded markdown templates.

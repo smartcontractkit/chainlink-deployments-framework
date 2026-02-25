@@ -12,68 +12,59 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/internal/analyzer/annotation"
 )
 
-func goldenProposal() *stubProposal {
-	targetParam := &stubParam{
-		name:  "target",
-		typ:   "address",
-		value: "0xAbCdEf1234567890abcdef1234567890abcdef12",
-	}
+func goldenProposal() *analyzer.AnalyzedProposalNode {
+	targetParam := analyzer.NewAnalyzedParameterNode(
+		"target", "address", "0xAbCdEf1234567890abcdef1234567890abcdef12",
+	)
 	targetParam.AddAnnotations(
 		annotation.ValueTypeAnnotation("ethereum.address"),
 		annotation.New("label", "string", "destination contract"),
 	)
 
-	amountParam := &stubParam{
-		name:  "amount",
-		typ:   "uint256",
-		value: big.NewInt(1000000000000000000),
-	}
+	amountParam := analyzer.NewAnalyzedParameterNode(
+		"amount", "uint256", big.NewInt(1000000000000000000),
+	)
 	amountParam.AddAnnotations(annotation.ValueTypeAnnotation("ethereum.uint256"))
 
-	enabledParam := &stubParam{name: "enabled", typ: "bool", value: true}
+	enabledParam := analyzer.NewAnalyzedParameterNode("enabled", "bool", true)
 
-	call1 := &stubCall{
-		to:              "0x1111111111111111111111111111111111111111",
-		name:            "setRateLimiterConfig",
-		contractType:    "OnRamp",
-		contractVersion: "v1.5.0",
-		inputs:          analyzer.AnalyzedParameters{targetParam, amountParam, enabledParam},
-	}
+	call1 := analyzer.NewAnalyzedCallNode(
+		"0x1111111111111111111111111111111111111111", "setRateLimiterConfig",
+		analyzer.AnalyzedParameters{targetParam, amountParam, enabledParam},
+		nil, nil, "OnRamp", "v1.5.0",
+	)
 	call1.AddAnnotations(
 		annotation.SeverityAnnotation(annotation.SeverityWarning),
 		annotation.RiskAnnotation(annotation.RiskHigh),
 		annotation.New("ccip.lane", "string", "ethereum -> arbitrum"),
 	)
 
-	call2 := &stubCall{
-		to:           "0x2222222222222222222222222222222222222222",
-		name:         "transfer",
-		contractType: "ERC20",
-		inputs: analyzer.AnalyzedParameters{
-			&stubParam{name: "to", typ: "address", value: "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"},
-			&stubParam{name: "value", typ: "uint256", value: big.NewInt(500)},
+	call2 := analyzer.NewAnalyzedCallNode(
+		"0x2222222222222222222222222222222222222222", "transfer",
+		analyzer.AnalyzedParameters{
+			analyzer.NewAnalyzedParameterNode("to", "address", "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"),
+			analyzer.NewAnalyzedParameterNode("value", "uint256", big.NewInt(500)),
 		},
-	}
+		nil, nil, "ERC20", "",
+	)
 
-	batch1 := &stubBatchOp{
-		chainSelector: 5009297550715157269,
-		calls:         analyzer.AnalyzedCalls{call1, call2},
-	}
+	batch1 := analyzer.NewAnalyzedBatchOperationNode(
+		5009297550715157269, analyzer.AnalyzedCalls{call1, call2},
+	)
 	batch1.AddAnnotations(annotation.New("batch.note", "string", "first batch"))
 
-	batch2 := &stubBatchOp{
-		chainSelector: 13264668187771770619,
-		calls: analyzer.AnalyzedCalls{
-			&stubCall{
-				to:   "0x3333333333333333333333333333333333333333",
-				name: "pause",
-			},
+	batch2 := analyzer.NewAnalyzedBatchOperationNode(
+		13264668187771770619, analyzer.AnalyzedCalls{
+			analyzer.NewAnalyzedCallNode(
+				"0x3333333333333333333333333333333333333333", "pause",
+				nil, nil, nil, "", "",
+			),
 		},
-	}
+	)
 
-	return &stubProposal{
-		batches: analyzer.AnalyzedBatchOperations{batch1, batch2},
-	}
+	return analyzer.NewAnalyzedProposalNode(
+		analyzer.AnalyzedBatchOperations{batch1, batch2},
+	)
 }
 
 func TestGolden_Markdown(t *testing.T) {
@@ -82,11 +73,10 @@ func TestGolden_Markdown(t *testing.T) {
 	r, err := NewMarkdownRenderer()
 	require.NoError(t, err)
 
-	out, err := r.RenderToString(
+	out := renderToString(t, r,
 		RenderRequest{Domain: "ccip", EnvironmentName: "mainnet"},
 		goldenProposal(),
 	)
-	require.NoError(t, err)
 
 	golden := filepath.Join("testdata", "golden_markdown.md")
 	expected, err := os.ReadFile(golden)

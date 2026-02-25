@@ -1,8 +1,12 @@
 {{- define "proposal" -}}
+
+{{- /* Title: show domain and environment when provided */ -}}
 {{- if or .Request.Domain .Request.EnvironmentName -}}
 ## Proposal — {{ .Request.Domain }}{{ if .Request.EnvironmentName }} ({{ .Request.EnvironmentName }}){{ end }}
 
 {{ end -}}
+
+{{- /* Batch operations: one collapsible <details> per batch */ -}}
 {{- $batches := .Proposal.BatchOperations -}}
 {{- if $batches -}}
 {{- range $i, $batch := $batches }}
@@ -15,4 +19,5 @@
 {{- else -}}
 _No batch operations._
 {{ end -}}
+
 {{- end -}}
