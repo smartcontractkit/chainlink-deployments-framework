@@ -20,6 +20,7 @@ var frameworkAnnotations = map[string]struct{}{
 	annotation.AnnotationSeverityName:  {},
 	annotation.AnnotationRiskName:      {},
 	annotation.AnnotationValueTypeName: {},
+	annotation.AnnotationDiffName:      {},
 }
 
 func defaultFuncMap() template.FuncMap {
@@ -27,6 +28,8 @@ func defaultFuncMap() template.FuncMap {
 		"annotation":            findAnnotationValue,
 		"isFrameworkAnnotation": isFrameworkAnnotation,
 		"hasDisplayAnnotations": hasDisplayAnnotations,
+		"diffAnnotations":       diffAnnotations,
+		"renderDiff":            renderDiff,
 		"formatParam":           formatParam,
 		"truncateAddress":       truncateAddress,
 		"severitySymbol":        severitySymbol,
@@ -250,4 +253,38 @@ func riskSymbol(risk any) string {
 	default:
 		return ""
 	}
+}
+
+// diffAnnotations extracts all diff annotations as DiffValue structs.
+func diffAnnotations(anns annotation.Annotations) []annotation.DiffValue {
+	var diffs []annotation.DiffValue
+	for _, ann := range anns {
+		if ann.Name() == annotation.AnnotationDiffName {
+			if dv, ok := ann.Value().(annotation.DiffValue); ok {
+				diffs = append(diffs, dv)
+			}
+		}
+	}
+
+	return diffs
+}
+
+// renderDiff formats a DiffValue as a markdown diff string.
+func renderDiff(dv annotation.DiffValue) string {
+	oldStr := formatDiffSide(dv.Old, dv.ValueType)
+	newStr := formatDiffSide(dv.New, dv.ValueType)
+
+	if dv.Field != "" {
+		return fmt.Sprintf("**%s:** ~~%s~~ -> **%s**", dv.Field, oldStr, newStr)
+	}
+
+	return fmt.Sprintf("~~%s~~ -> **%s**", oldStr, newStr)
+}
+
+func formatDiffSide(v any, valueType string) string {
+	if valueType != "" {
+		return formatByValueType(v, valueType)
+	}
+
+	return formatValue(v)
 }

@@ -27,6 +27,15 @@
 {{- end }}
 {{ end -}}
 
+{{- /* Diff annotations (old -> new changes) */ -}}
+{{- with diffAnnotations .Annotations }}
+
+**Changes:**
+{{ range . }}
+- {{ renderDiff . }}
+{{- end }}
+{{ end -}}
+
 {{- /* Custom annotations (framework ones are filtered out) */ -}}
 {{- if hasDisplayAnnotations .Annotations }}
 {{ template "annotations" .Annotations }}

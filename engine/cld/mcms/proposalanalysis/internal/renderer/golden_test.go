@@ -37,6 +37,7 @@ func goldenProposal() *analyzer.AnalyzedProposalNode {
 		annotation.SeverityAnnotation(annotation.SeverityWarning),
 		annotation.RiskAnnotation(annotation.RiskHigh),
 		annotation.New("ccip.lane", "string", "ethereum -> arbitrum"),
+		annotation.DiffAnnotation("outboundRateLimit", big.NewInt(0), big.NewInt(1000000), "ethereum.uint256"),
 	)
 
 	call2 := analyzer.NewAnalyzedCallNode(
