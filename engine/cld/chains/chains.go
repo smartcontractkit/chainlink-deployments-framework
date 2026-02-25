@@ -750,8 +750,8 @@ func (l *chainLoaderCanton) Load(ctx context.Context, selector uint64) (fchain.B
 	// Convert metadata participants to provider participant configs
 	participants := make([]cantonprov.ParticipantConfig, len(md.Participants))
 	for i, participantMD := range md.Participants {
-		// Create authentication provider using the JWT token from config
-		authProvider := cantonauth.NewInsecureStaticProvider(l.cfg.Canton.JWTToken)
+		// Use TLS-enforcing auth provider for remote Canton participant endpoints.
+		authProvider := cantonauth.NewStaticProvider(l.cfg.Canton.JWTToken)
 
 		participants[i] = cantonprov.ParticipantConfig{
 			JSONLedgerAPIURL: participantMD.JSONLedgerAPIURL,
