@@ -44,6 +44,9 @@ var (
 			Stellar: StellarConfig{
 				DeployerKey: "0x567",
 			},
+			Canton: CantonConfig{
+				JWTToken: "",
+			},
 		},
 		Offchain: OffchainConfig{
 			JobDistributor: JobDistributorConfig{
@@ -162,6 +165,9 @@ var (
 				DeployerKey:   "0x123",
 				WalletVersion: "V5R1",
 			},
+			Canton: CantonConfig{
+				JWTToken: "",
+			},
 		},
 		Offchain: OffchainConfig{
 			JobDistributor: JobDistributorConfig{
@@ -219,6 +225,7 @@ func Test_Load(t *testing.T) { //nolint:paralleltest // see comment in setupTest
 					Sui:     SuiConfig{},
 					Ton:     TonConfig{},
 					Stellar: StellarConfig{},
+					Canton:  CantonConfig{},
 				},
 				Offchain: OffchainConfig{
 					JobDistributor: JobDistributorConfig{
