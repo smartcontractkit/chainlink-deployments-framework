@@ -1,6 +1,8 @@
 package changeset
 
 import (
+	"slices"
+
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 )
 
@@ -39,13 +41,13 @@ func (ccs PostProcessingChangeSetImpl[C]) Configurations() (Configurations, erro
 
 // WithPreHooks appends pre-hooks to this changeset. Multiple calls are additive.
 func (ccs PostProcessingChangeSetImpl[C]) WithPreHooks(hooks ...PreHook) PostProcessingChangeSet {
-	ccs.preHooks = append(ccs.preHooks, hooks...)
+	ccs.preHooks = append(slices.Clone(ccs.preHooks), hooks...)
 	return ccs
 }
 
 // WithPostHooks appends post-hooks to this changeset. Multiple calls are additive.
 func (ccs PostProcessingChangeSetImpl[C]) WithPostHooks(hooks ...PostHook) PostProcessingChangeSet {
-	ccs.postHooks = append(ccs.postHooks, hooks...)
+	ccs.postHooks = append(slices.Clone(ccs.postHooks), hooks...)
 	return ccs
 }
 

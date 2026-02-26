@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"slices"
 	"strings"
 
 	fresolvers "github.com/smartcontractkit/chainlink-deployments-framework/changeset/resolvers"
@@ -310,13 +311,13 @@ func (ccs ChangeSetImpl[C]) Configurations() (Configurations, error) {
 
 // WithPreHooks appends pre-hooks to this changeset. Multiple calls are additive.
 func (ccs ChangeSetImpl[C]) WithPreHooks(hooks ...PreHook) ConfiguredChangeSet {
-	ccs.preHooks = append(ccs.preHooks, hooks...)
+	ccs.preHooks = append(slices.Clone(ccs.preHooks), hooks...)
 	return ccs
 }
 
 // WithPostHooks appends post-hooks to this changeset. Multiple calls are additive.
 func (ccs ChangeSetImpl[C]) WithPostHooks(hooks ...PostHook) ConfiguredChangeSet {
-	ccs.postHooks = append(ccs.postHooks, hooks...)
+	ccs.postHooks = append(slices.Clone(ccs.postHooks), hooks...)
 	return ccs
 }
 
@@ -329,7 +330,7 @@ func (ccs ChangeSetImpl[C]) ThenWith(postProcessor PostProcessor) PostProcessing
 	return PostProcessingChangeSetImpl[C]{
 		changeset:     ccs,
 		postProcessor: postProcessor,
-		preHooks:      ccs.preHooks,
-		postHooks:     ccs.postHooks,
+		preHooks:      slices.Clone(ccs.preHooks),
+		postHooks:     slices.Clone(ccs.postHooks),
 	}
 }
