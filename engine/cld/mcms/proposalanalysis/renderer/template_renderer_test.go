@@ -14,6 +14,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer/annotation"
+	experimentalanalyzer "github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 )
 
 func newTestProposal() *analyzer.AnalyzedProposalNode {
@@ -218,6 +219,78 @@ func TestFormatValue(t *testing.T) {
 	}
 }
 
+func TestFormatValue_FieldValueTypes(t *testing.T) {
+	t.Parallel()
+
+	t.Run("AddressField", func(t *testing.T) {
+		t.Parallel()
+		assert.Equal(t, "0xAbC123", formatValue(experimentalanalyzer.AddressField{Value: "0xAbC123"}))
+	})
+
+	t.Run("BytesField", func(t *testing.T) {
+		t.Parallel()
+		assert.Equal(t, "0xdeadbeef", formatValue(experimentalanalyzer.BytesField{Value: []byte{0xde, 0xad, 0xbe, 0xef}}))
+	})
+
+	t.Run("BytesField empty", func(t *testing.T) {
+		t.Parallel()
+		assert.Equal(t, "0x", formatValue(experimentalanalyzer.BytesField{Value: nil}))
+	})
+
+	t.Run("SimpleField", func(t *testing.T) {
+		t.Parallel()
+		assert.Equal(t, "42", formatValue(experimentalanalyzer.SimpleField{Value: "42"}))
+	})
+
+	t.Run("ArrayField empty", func(t *testing.T) {
+		t.Parallel()
+		assert.Equal(t, "[]", formatValue(experimentalanalyzer.ArrayField{Elements: nil}))
+	})
+
+	t.Run("ArrayField single element", func(t *testing.T) {
+		t.Parallel()
+		af := experimentalanalyzer.ArrayField{
+			Elements: []experimentalanalyzer.FieldValue{
+				experimentalanalyzer.SimpleField{Value: "100"},
+			},
+		}
+		assert.Equal(t, "[100]", formatValue(af))
+	})
+
+	t.Run("StructField", func(t *testing.T) {
+		t.Parallel()
+		sf := experimentalanalyzer.StructField{
+			Fields: []experimentalanalyzer.NamedField{
+				{Name: "IsEnabled", Value: experimentalanalyzer.SimpleField{Value: "true"}},
+				{Name: "Capacity", Value: experimentalanalyzer.SimpleField{Value: "1000000"}},
+			},
+		}
+		out := formatValue(sf)
+		assert.Equal(t, "{ IsEnabled: true, Capacity: 1000000 }", out)
+	})
+
+	t.Run("nested struct in array", func(t *testing.T) {
+		t.Parallel()
+		af := experimentalanalyzer.ArrayField{
+			Elements: []experimentalanalyzer.FieldValue{
+				experimentalanalyzer.StructField{
+					Fields: []experimentalanalyzer.NamedField{
+						{Name: "RemoteChainSelector", Value: experimentalanalyzer.SimpleField{Value: "42"}},
+						{Name: "RemotePoolAddresses", Value: experimentalanalyzer.ArrayField{
+							Elements: []experimentalanalyzer.FieldValue{
+								experimentalanalyzer.AddressField{Value: "0xABC"},
+							},
+						}},
+					},
+				},
+			},
+		}
+		out := formatValue(af)
+		assert.Contains(t, out, "RemoteChainSelector: 42")
+		assert.Contains(t, out, "0xABC")
+	})
+}
+
 func TestFormatValue_MapsAndSlices(t *testing.T) {
 	t.Parallel()
 
@@ -260,8 +333,8 @@ func TestIsFrameworkAnnotation(t *testing.T) {
 
 	assert.True(t, isFrameworkAnnotation("cld.severity"))
 	assert.True(t, isFrameworkAnnotation("cld.risk"))
-	assert.True(t, isFrameworkAnnotation("cld.value_type"))
 	assert.True(t, isFrameworkAnnotation("cld.diff"))
+	assert.False(t, isFrameworkAnnotation("cld.value_type"))
 	assert.False(t, isFrameworkAnnotation("ccip.lane"))
 	assert.False(t, isFrameworkAnnotation(""))
 }
@@ -271,39 +344,13 @@ func TestHasDisplayAnnotations(t *testing.T) {
 
 	assert.False(t, hasDisplayAnnotations(nil))
 	assert.False(t, hasDisplayAnnotations(annotation.Annotations{
-		annotation.ValueTypeAnnotation("ethereum.uint256"),
 		annotation.SeverityAnnotation(annotation.SeverityWarning),
+		annotation.RiskAnnotation(annotation.RiskHigh),
 	}))
 	assert.True(t, hasDisplayAnnotations(annotation.Annotations{
-		annotation.ValueTypeAnnotation("ethereum.uint256"),
+		annotation.SeverityAnnotation(annotation.SeverityWarning),
 		annotation.New("ccip.note", "string", "visible"),
 	}))
-}
-
-func TestFormatParam_WithValueTypeAnnotation(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name      string
-		value     any
-		valueType string
-		expected  string
-	}{
-		{name: "ethereum.address from short string", value: "abcd", valueType: "ethereum.address", expected: "0x000000000000000000000000000000000000abcd"},
-		{name: "ethereum.uint256 with commas", value: big.NewInt(1000000), valueType: "ethereum.uint256", expected: "1,000,000"},
-		{name: "hex from bytes", value: []byte{0xde, 0xad}, valueType: "hex", expected: "0xdead"},
-		{name: "nil value", value: nil, valueType: "ethereum.address", expected: "<nil>"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			p := analyzer.NewAnalyzedParameterNode("x", "test", tt.value)
-			p.AddAnnotations(annotation.ValueTypeAnnotation(tt.valueType))
-			assert.Equal(t, tt.expected, formatParam(p))
-		})
-	}
 }
 
 func TestTruncateAddress(t *testing.T) {
@@ -317,19 +364,14 @@ func TestTruncateAddress(t *testing.T) {
 	assert.Empty(t, truncateAddress(""))
 }
 
-func TestFormatAsHex_UnsupportedTypeFallsBack(t *testing.T) {
+func TestCommaGrouped(t *testing.T) {
 	t.Parallel()
 
-	out := formatAsHex(map[string]any{"foo": "bar"})
-	assert.NotContains(t, out, "%!")
-	assert.Contains(t, out, "foo")
-}
-
-func TestFormatEthereumUint256_NegativeNumber(t *testing.T) {
-	t.Parallel()
-
-	assert.Equal(t, "-1,000", formatEthereumUint256(big.NewInt(-1000)))
-	assert.Equal(t, "-10,000,000", formatEthereumUint256("-10000000"))
+	assert.Equal(t, "1,000,000", commaGrouped(big.NewInt(1000000)))
+	assert.Equal(t, "-1,000", commaGrouped(big.NewInt(-1000)))
+	assert.Equal(t, "-10,000,000", commaGrouped("-10000000"))
+	assert.Equal(t, "42", commaGrouped("42"))
+	assert.Equal(t, "0", commaGrouped(big.NewInt(0)))
 }
 
 func TestRenderSeverityAndRisk_Markdown(t *testing.T) {
@@ -480,12 +522,11 @@ func TestDiffFuncmap(t *testing.T) {
 	})
 }
 
-func TestParameterValueTypeNotRenderedAsAnnotation(t *testing.T) {
+func TestAnnotationsRenderedInOutput(t *testing.T) {
 	t.Parallel()
 
 	target := analyzer.NewAnalyzedParameterNode("target", "address", "abcd")
 	target.AddAnnotations(
-		annotation.ValueTypeAnnotation("ethereum.address"),
 		annotation.New("label", "string", "destination contract"),
 	)
 
@@ -503,5 +544,4 @@ func TestParameterValueTypeNotRenderedAsAnnotation(t *testing.T) {
 	out := renderToString(t, r, RenderRequest{}, proposal)
 
 	assert.Contains(t, out, "destination contract")
-	assert.NotContains(t, out, "cld.value_type:")
 }

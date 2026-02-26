@@ -40,6 +40,7 @@ type DecodedParameter interface {
 	Name() string
 	Type() string
 	Value() any
+	RawValue() any
 }
 
 // ProposalDecoder decodes MCMS proposals into structured DecodedTimelockProposal

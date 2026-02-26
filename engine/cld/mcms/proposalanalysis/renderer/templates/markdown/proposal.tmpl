@@ -11,7 +11,7 @@
 {{- if $batches -}}
 {{- range $i, $batch := $batches }}
 <details>
-<summary><h3>Batch {{ add $i 1 }} — Chain <code>{{ .ChainSelector }}</code></h3></summary>
+<summary><h3>Batch {{ add $i 1 }} — {{ resolveChainSelector .ChainSelector }} (<code>{{ .ChainSelector }}</code>)</h3></summary>
 
 {{ template "batchOperation" $batch }}
 </details>
