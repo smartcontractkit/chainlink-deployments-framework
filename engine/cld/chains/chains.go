@@ -747,10 +747,14 @@ func (l *chainLoaderCanton) Load(ctx context.Context, selector uint64) (fchain.B
 		return nil, fmt.Errorf("canton network %d: no participants found in metadata", selector)
 	}
 
-	// Convert metadata participants to provider participant configs
-	participants := make([]cantonprov.ParticipantConfig, len(md.Participants))
-	// Use TLS-enforcing auth provider for remote Canton participant endpoints.
+	if l.cfg.Canton.JWTToken == "" {
+		return nil, fmt.Errorf("canton network %d: JWT token is required", selector)
+	}
+
+	// Use TLS-enforcing auth provider for Canton participant endpoints.
 	authProvider := cantonauth.NewStaticProvider(l.cfg.Canton.JWTToken)
+
+	participants := make([]cantonprov.ParticipantConfig, len(md.Participants))
 	for i, participantMD := range md.Participants {
 		participants[i] = cantonprov.ParticipantConfig{
 			JSONLedgerAPIURL: participantMD.JSONLedgerAPIURL,
