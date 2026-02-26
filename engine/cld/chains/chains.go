@@ -812,12 +812,14 @@ func (l *chainLoaderCanton) cantonAuthProvider(ctx context.Context, selector uin
 		if err != nil {
 			return nil, fmt.Errorf("canton network %d: authorization_code auth: %w", selector, err)
 		}
+
 		return oidc, nil
 	default:
 		// static or empty
 		if c.JWTToken == "" {
 			return nil, fmt.Errorf("canton network %d: JWT token is required for static auth", selector)
 		}
+
 		return cantonauth.NewStaticProvider(c.JWTToken), nil
 	}
 }

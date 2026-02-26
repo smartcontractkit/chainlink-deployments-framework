@@ -148,7 +148,6 @@ func (p *OIDCProvider) TransportCredentials() credentials.TransportCredentials {
 }
 
 func (p *OIDCProvider) PerRPCCredentials() credentials.PerRPCCredentials {
-
 	return secureTokenSource{
 		TokenSource: p.tokenSource,
 	}
@@ -159,6 +158,7 @@ func generateState() string {
 	if _, err := rand.Read(b); err != nil {
 		panic(err)
 	}
+
 	return base64.RawURLEncoding.EncodeToString(b)
 }
 
