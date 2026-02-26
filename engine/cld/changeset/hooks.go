@@ -6,6 +6,7 @@ import (
 	"time"
 
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
 // DefaultHookTimeout is applied when a HookDefinition has a zero Timeout.
@@ -16,9 +17,9 @@ type FailurePolicy int
 
 const (
 	// Abort causes a hook error to fail the pipeline.
-	Abort FailurePolicy = 0
+	Abort FailurePolicy = iota
 	// Warn causes a hook error to be logged while the pipeline continues.
-	Warn FailurePolicy = 1
+	Warn
 )
 
 // String returns the string representation of a FailurePolicy.
@@ -33,10 +34,17 @@ func (fp FailurePolicy) String() string {
 	}
 }
 
+// HookEnv is the restricted environment surface exposed to hooks.
+// Additional fields may be added in future versions as needs arise.
+type HookEnv struct {
+	Name   string
+	Logger logger.Logger
+}
+
 // PreHookParams is passed to pre-hooks.
 // All fields must be treated as read-only.
 type PreHookParams struct {
-	Env          fdeployment.Environment
+	Env          HookEnv
 	ChangesetKey string
 	Config       any
 }
@@ -44,7 +52,7 @@ type PreHookParams struct {
 // PostHookParams is passed to post-hooks.
 // All fields must be treated as read-only.
 type PostHookParams struct {
-	Env          fdeployment.Environment
+	Env          HookEnv
 	ChangesetKey string
 	Config       any
 	Output       fdeployment.ChangesetOutput
