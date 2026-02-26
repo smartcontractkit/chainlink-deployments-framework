@@ -84,9 +84,9 @@ type TronConfig struct {
 
 // CantonAuthType is the authentication scheme for Canton participant APIs.
 const (
-	CantonAuthTypeStatic             = "static"              // Pre-obtained JWT (e.g. from canton-login).
-	CantonAuthTypeClientCredentials  = "client_credentials"  // CI: fetch token with client_id + client_secret + auth_url.
-	CantonAuthTypeAuthorizationCode  = "authorization_code" // Local: browser flow with client_id + auth_url.
+	CantonAuthTypeStatic            = "static"             // Pre-obtained JWT (e.g. from canton-login).
+	CantonAuthTypeClientCredentials = "client_credentials" // CI: fetch token with client_id + client_secret + auth_url.
+	CantonAuthTypeAuthorizationCode = "authorization_code" // Local: browser flow with client_id + auth_url.
 )
 
 // CantonConfig is the configuration for the Canton Chains.
@@ -264,8 +264,8 @@ var (
 		"onchain.canton.auth_type":                                {"ONCHAIN_CANTON_AUTH_TYPE"},
 		"onchain.canton.jwt_token":                                {"ONCHAIN_CANTON_JWT_TOKEN"},
 		"onchain.canton.auth_url":                                 {"ONCHAIN_CANTON_AUTH_URL"},
-		"onchain.canton.client_id":                                 {"ONCHAIN_CANTON_CLIENT_ID"},
-		"onchain.canton.client_secret":                             {"ONCHAIN_CANTON_CLIENT_SECRET"},
+		"onchain.canton.client_id":                                {"ONCHAIN_CANTON_CLIENT_ID"},
+		"onchain.canton.client_secret":                            {"ONCHAIN_CANTON_CLIENT_SECRET"},
 		"offchain.job_distributor.auth.cognito_app_client_id":     {"OFFCHAIN_JD_AUTH_COGNITO_APP_CLIENT_ID", "JD_AUTH_COGNITO_APP_CLIENT_ID"},
 		"offchain.job_distributor.auth.cognito_app_client_secret": {"OFFCHAIN_JD_AUTH_COGNITO_APP_CLIENT_SECRET", "JD_AUTH_COGNITO_APP_CLIENT_SECRET"},
 		"offchain.job_distributor.auth.aws_region":                {"OFFCHAIN_JD_AUTH_AWS_REGION", "JD_AUTH_AWS_REGION"},

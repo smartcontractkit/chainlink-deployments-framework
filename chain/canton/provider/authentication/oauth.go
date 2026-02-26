@@ -132,6 +132,7 @@ func NewAuthorizationCodeProvider(ctx context.Context, authURL, clientID string)
 		}, nil
 	case <-ctx.Done():
 		_ = server.Shutdown(ctx)
+
 		return nil, ctx.Err()
 	}
 }
