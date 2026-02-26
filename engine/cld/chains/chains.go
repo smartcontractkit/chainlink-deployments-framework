@@ -14,6 +14,8 @@ import (
 
 	fchain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	aptosprov "github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos/provider"
+	cantonprov "github.com/smartcontractkit/chainlink-deployments-framework/chain/canton/provider"
+	cantonauth "github.com/smartcontractkit/chainlink-deployments-framework/chain/canton/provider/authentication"
 	fevm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	evmprov "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider"
 	evmclient "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider/rpcclient"
@@ -215,6 +217,12 @@ func newChainLoaders(
 		lggr.Info("Skipping Ton chains, no private key found in secrets")
 	}
 
+	if cfg.Canton.JWTToken != "" {
+		loaders[chainsel.FamilyCanton] = newChainLoaderCanton(networks, cfg)
+	} else {
+		lggr.Info("Skipping Canton chains, no JWT token found in secrets")
+	}
+
 	return loaders
 }
 
@@ -225,6 +233,8 @@ var (
 	_ ChainLoader = &chainLoaderTron{}
 	_ ChainLoader = &chainLoaderSui{}
 	_ ChainLoader = &chainLoaderStellar{}
+	_ ChainLoader = &chainLoaderTon{}
+	_ ChainLoader = &chainLoaderCanton{}
 )
 
 // ChainLoader is an interface that defines the methods for loading a chain.
@@ -703,6 +713,70 @@ func (l *chainLoaderTron) tronSignerGenerator(
 	}
 
 	return tronprov.SignerGenPrivateKey(cfg.Tron.DeployerKey)
+}
+
+// chainLoaderCanton implements the ChainLoader interface for Canton.
+type chainLoaderCanton struct {
+	*baseChainLoader
+}
+
+// newChainLoaderCanton creates a new chain loader for Canton.
+func newChainLoaderCanton(
+	networks *cfgnet.Config, cfg cfgenv.OnchainConfig,
+) *chainLoaderCanton {
+	return &chainLoaderCanton{
+		baseChainLoader: newBaseChainLoader(networks, cfg),
+	}
+}
+
+// Load loads a Canton Chain for a selector.
+// Participant configurations come from network metadata, and JWT token from env config.
+func (l *chainLoaderCanton) Load(ctx context.Context, selector uint64) (fchain.BlockChain, error) {
+	network, err := l.getNetwork(selector)
+	if err != nil {
+		return nil, err
+	}
+
+	// Decode Canton metadata to get participant configurations
+	md, err := cfgnet.DecodeMetadata[cfgnet.CantonMetadata](network.Metadata)
+	if err != nil {
+		return nil, fmt.Errorf("canton network %d: decode metadata: %w", selector, err)
+	}
+
+	if len(md.Participants) == 0 {
+		return nil, fmt.Errorf("canton network %d: no participants found in metadata", selector)
+	}
+
+	if l.cfg.Canton.JWTToken == "" {
+		return nil, fmt.Errorf("canton network %d: JWT token is required", selector)
+	}
+
+	// Use TLS-enforcing auth provider for Canton participant endpoints.
+	authProvider := cantonauth.NewStaticProvider(l.cfg.Canton.JWTToken)
+
+	participants := make([]cantonprov.ParticipantConfig, len(md.Participants))
+	for i, participantMD := range md.Participants {
+		participants[i] = cantonprov.ParticipantConfig{
+			JSONLedgerAPIURL: participantMD.JSONLedgerAPIURL,
+			GRPCLedgerAPIURL: participantMD.GRPCLedgerAPIURL,
+			AdminAPIURL:      participantMD.AdminAPIURL,
+			ValidatorAPIURL:  participantMD.ValidatorAPIURL,
+			UserID:           participantMD.UserID,
+			PartyID:          participantMD.PartyID,
+			AuthProvider:     authProvider,
+		}
+	}
+
+	c, err := cantonprov.NewRPCChainProvider(selector,
+		cantonprov.RPCChainProviderConfig{
+			Participants: participants,
+		},
+	).Initialize(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize Canton chain %d: %w", selector, err)
+	}
+
+	return c, nil
 }
 
 // useKMS returns true if both KeyID and KeyRegion are set in the provided KMS config.

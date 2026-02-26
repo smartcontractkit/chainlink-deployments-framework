@@ -57,6 +57,9 @@ func Test_newChainLoaders(t *testing.T) {
 				Stellar: cfgenv.StellarConfig{
 					DeployerKey: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
 				},
+				Canton: cfgenv.CantonConfig{
+					JWTToken: "test-jwt",
+				},
 			},
 			wantLoaders: []string{
 				chainsel.FamilyEVM,
@@ -66,6 +69,7 @@ func Test_newChainLoaders(t *testing.T) {
 				chainsel.FamilySui,
 				chainsel.FamilyTon,
 				chainsel.FamilyStellar,
+				chainsel.FamilyCanton,
 			},
 		},
 		{
@@ -1188,6 +1192,190 @@ func Test_ChainLoaderTron_Load(t *testing.T) {
 
 				assert.Equal(t, tt.giveSelector, chain.ChainSelector())
 				assert.Equal(t, "tron", chain.Family())
+			}
+		})
+	}
+}
+
+func Test_chainLoaderCanton_Load(t *testing.T) {
+	t.Parallel()
+
+	ctx := t.Context()
+	cantonSelector := chainsel.CANTON_LOCALNET.Selector
+
+	validCantonMetadata := cfgnet.CantonMetadata{
+		Participants: []cfgnet.CantonParticipantMetadata{
+			{
+				JSONLedgerAPIURL: "https://localhost:8080",
+				GRPCLedgerAPIURL: "localhost:8081",
+				ValidatorAPIURL:  "https://localhost:8082",
+				UserID:           "user-1",
+				PartyID:          "party-1",
+			},
+		},
+	}
+
+	networkCfg := cfgnet.NewConfig([]cfgnet.Network{
+		{
+			Type:          cfgnet.NetworkTypeTestnet,
+			ChainSelector: cantonSelector,
+			RPCs: []cfgnet.RPC{
+				{
+					RPCName:            "canton_rpc",
+					PreferredURLScheme: "http",
+					HTTPURL:            "https://localhost:4000",
+					WSURL:              "",
+				},
+			},
+			Metadata: validCantonMetadata,
+		},
+		{
+			Type:          cfgnet.NetworkTypeTestnet,
+			ChainSelector: 999999,
+			RPCs: []cfgnet.RPC{
+				{
+					RPCName:            "other_rpc",
+					PreferredURLScheme: "http",
+					HTTPURL:            "https://other.rpc.com",
+					WSURL:              "",
+				},
+			},
+		},
+	})
+
+	tests := []struct {
+		name              string
+		giveSelector      uint64
+		giveNetworkConfig *cfgnet.Config
+		giveOnchainConfig cfgenv.OnchainConfig
+		wantErr           string
+	}{
+		{
+			name:              "successful load with JWT set",
+			giveSelector:      cantonSelector,
+			giveNetworkConfig: networkCfg,
+			giveOnchainConfig: cfgenv.OnchainConfig{
+				Canton: cfgenv.CantonConfig{JWTToken: "test-jwt-token"},
+			},
+		},
+		{
+			name:              "empty JWT token returns error",
+			giveSelector:      cantonSelector,
+			giveNetworkConfig: networkCfg,
+			giveOnchainConfig: cfgenv.OnchainConfig{
+				Canton: cfgenv.CantonConfig{JWTToken: ""},
+			},
+			wantErr: "JWT token is required",
+		},
+		{
+			name:              "network not found",
+			giveSelector:      88888888,
+			giveNetworkConfig: networkCfg,
+			giveOnchainConfig: cfgenv.OnchainConfig{Canton: cfgenv.CantonConfig{JWTToken: "token"}},
+			wantErr:           "not found in configuration",
+		},
+		{
+			name:         "no RPCs configured",
+			giveSelector: 777777,
+			giveNetworkConfig: cfgnet.NewConfig([]cfgnet.Network{
+				{
+					Type:          cfgnet.NetworkTypeTestnet,
+					ChainSelector: 777777,
+					RPCs:          []cfgnet.RPC{},
+					Metadata:      validCantonMetadata,
+				},
+			}),
+			giveOnchainConfig: cfgenv.OnchainConfig{Canton: cfgenv.CantonConfig{JWTToken: "token"}},
+			wantErr:           "no RPCs found for chain selector: 777777",
+		},
+		{
+			name:         "missing metadata",
+			giveSelector: 555555,
+			giveNetworkConfig: cfgnet.NewConfig([]cfgnet.Network{
+				{
+					Type:          cfgnet.NetworkTypeTestnet,
+					ChainSelector: 555555,
+					RPCs: []cfgnet.RPC{
+						{
+							RPCName:            "canton_rpc",
+							PreferredURLScheme: "http",
+							HTTPURL:            "https://localhost:4000",
+							WSURL:              "",
+						},
+					},
+					Metadata: nil,
+				},
+			}),
+			giveOnchainConfig: cfgenv.OnchainConfig{Canton: cfgenv.CantonConfig{JWTToken: "token"}},
+			wantErr:           "decode metadata",
+		},
+		{
+			name:         "wrong metadata type decodes to empty participants",
+			giveSelector: 444444,
+			giveNetworkConfig: cfgnet.NewConfig([]cfgnet.Network{
+				{
+					Type:          cfgnet.NetworkTypeTestnet,
+					ChainSelector: 444444,
+					RPCs: []cfgnet.RPC{
+						{
+							RPCName:            "canton_rpc",
+							PreferredURLScheme: "http",
+							HTTPURL:            "https://localhost:4000",
+							WSURL:              "",
+						},
+					},
+					Metadata: cfgnet.StellarMetadata{
+						NetworkPassphrase: "test",
+						FriendbotURL:      "https://friendbot.example.com",
+					},
+				},
+			}),
+			giveOnchainConfig: cfgenv.OnchainConfig{Canton: cfgenv.CantonConfig{JWTToken: "token"}},
+			wantErr:           "no participants found in metadata",
+		},
+		{
+			name:         "empty participants in metadata",
+			giveSelector: 333333,
+			giveNetworkConfig: cfgnet.NewConfig([]cfgnet.Network{
+				{
+					Type:          cfgnet.NetworkTypeTestnet,
+					ChainSelector: 333333,
+					RPCs: []cfgnet.RPC{
+						{
+							RPCName:            "canton_rpc",
+							PreferredURLScheme: "http",
+							HTTPURL:            "https://localhost:4000",
+							WSURL:              "",
+						},
+					},
+					Metadata: cfgnet.CantonMetadata{
+						Participants: []cfgnet.CantonParticipantMetadata{},
+					},
+				},
+			}),
+			giveOnchainConfig: cfgenv.OnchainConfig{Canton: cfgenv.CantonConfig{JWTToken: "token"}},
+			wantErr:           "no participants found in metadata",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			loader := newChainLoaderCanton(tt.giveNetworkConfig, tt.giveOnchainConfig)
+			require.NotNil(t, loader)
+
+			chain, err := loader.Load(ctx, tt.giveSelector)
+
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				require.ErrorContains(t, err, tt.wantErr)
+				assert.Nil(t, chain)
+			} else {
+				require.NoError(t, err)
+				require.NotNil(t, chain)
+				assert.Equal(t, tt.giveSelector, chain.ChainSelector())
+				assert.Equal(t, chainsel.FamilyCanton, chain.Family())
 			}
 		})
 	}

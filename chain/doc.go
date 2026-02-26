@@ -91,6 +91,7 @@ Retrieve chains by their blockchain family with type safety:
 	suiChains := chains.SuiChains()
 	tonChains := chains.TonChains()
 	tronChains := chains.TronChains()
+	cantonChains := chains.CantonChains()
 
 # Iterating Over All Chains
 
