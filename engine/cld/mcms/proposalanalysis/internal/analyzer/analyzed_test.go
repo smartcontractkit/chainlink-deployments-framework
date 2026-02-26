@@ -19,7 +19,7 @@ func TestNewAnalyzedProposalNode(t *testing.T) {
 func TestNewAnalyzedBatchOperationNode(t *testing.T) {
 	t.Parallel()
 
-	call := NewAnalyzedCallNode("0xabc", "doThing", nil, nil, []byte{0x01}, "Foo", "1.0.0")
+	call := NewAnalyzedCallNode("0xabc", "doThing", nil, nil, []byte{0x01}, "Foo", "1.0.0", nil)
 	node := NewAnalyzedBatchOperationNode(5009297550715157269, AnalyzedCalls{call})
 
 	require.Equal(t, uint64(5009297550715157269), node.ChainSelector())
@@ -32,6 +32,11 @@ func TestNewAnalyzedCallNode(t *testing.T) {
 
 	in := NewAnalyzedParameterNode("amount", "uint256", 42)
 	out := NewAnalyzedParameterNode("ok", "bool", true)
+	additional := map[string]any{
+		"gas":    12345,
+		"strict": true,
+		"label":  "router-update",
+	}
 	node := NewAnalyzedCallNode(
 		"0xabc",
 		"transfer",
@@ -40,6 +45,7 @@ func TestNewAnalyzedCallNode(t *testing.T) {
 		[]byte{0xaa, 0xbb},
 		"Token",
 		"v1",
+		additional,
 	)
 
 	require.Equal(t, "0xabc", node.To())
@@ -49,7 +55,12 @@ func TestNewAnalyzedCallNode(t *testing.T) {
 	require.Equal(t, []byte{0xaa, 0xbb}, node.Data())
 	require.Equal(t, "Token", node.ContractType())
 	require.Equal(t, "v1", node.ContractVersion())
-	require.Equal(t, map[string]any{}, node.AdditionalFields())
+	require.Equal(t, additional, node.AdditionalFields())
+
+	// Additional fields should be returned as a defensive copy.
+	got := node.AdditionalFields()
+	got["gas"] = 1
+	require.Equal(t, 12345, node.AdditionalFields()["gas"])
 }
 
 func TestNewAnalyzedParameterNode(t *testing.T) {

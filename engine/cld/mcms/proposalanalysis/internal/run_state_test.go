@@ -174,6 +174,23 @@ func TestRunStateRunParameterAnalyzer_AnnotatesInputAndOutputNodes(t *testing.T)
 	require.Equal(t, "param-analyzer", outAnns[2].AnalyzerID())
 }
 
+func TestNewRunState_ConvertsAdditionalFieldsFromDecodedCall(t *testing.T) {
+	t.Parallel()
+
+	decoded, batch, call, inputParam, outputParam := newDecodedFixture()
+	require.NotNil(t, batch)
+	require.NotNil(t, call)
+	require.NotNil(t, inputParam)
+	require.NotNil(t, outputParam)
+	state := newTestRunState(decoded)
+
+	require.Equal(t, map[string]any{
+		"gas":    float64(12345),
+		"strict": true,
+		"label":  "router-update",
+	}, state.callAt(0, 0).AdditionalFields())
+}
+
 func newTestRunState(decoded decoder.DecodedTimelockProposal) *runState {
 	req := RunRequest{
 		Domain: cldfdomain.NewDomain("/tmp/domains", "mcms"),
@@ -197,10 +214,11 @@ func newDecodedFixture() (
 	in := &decodedParam{name: "amount", atype: "uint256", value: 123}
 	out := &decodedParam{name: "ok", atype: "bool", value: true}
 	call := &decodedCall{
-		to:      "0xabc",
-		name:    "transfer",
-		inputs:  decoder.DecodedParameters{in},
-		outputs: decoder.DecodedParameters{out},
+		to:         "0xabc",
+		name:       "transfer",
+		inputs:     decoder.DecodedParameters{in},
+		outputs:    decoder.DecodedParameters{out},
+		additional: json.RawMessage(`{"gas":12345,"strict":true,"label":"router-update"}`),
 	}
 	batch := &decodedBatch{selector: 111, calls: decoder.DecodedCalls{call}}
 	proposal := &decodedProposal{batches: decoder.DecodedBatchOperations{batch}}
@@ -223,10 +241,11 @@ func (d *decodedBatch) ChainSelector() uint64       { return d.selector }
 func (d *decodedBatch) Calls() decoder.DecodedCalls { return d.calls }
 
 type decodedCall struct {
-	to      string
-	name    string
-	inputs  decoder.DecodedParameters
-	outputs decoder.DecodedParameters
+	to         string
+	name       string
+	inputs     decoder.DecodedParameters
+	outputs    decoder.DecodedParameters
+	additional json.RawMessage
 }
 
 func (d *decodedCall) To() string                         { return d.to }
@@ -234,7 +253,7 @@ func (d *decodedCall) Name() string                       { return d.name }
 func (d *decodedCall) Inputs() decoder.DecodedParameters  { return d.inputs }
 func (d *decodedCall) Outputs() decoder.DecodedParameters { return d.outputs }
 func (d *decodedCall) Data() []byte                       { return nil }
-func (d *decodedCall) AdditionalFields() json.RawMessage  { return nil }
+func (d *decodedCall) AdditionalFields() json.RawMessage  { return d.additional }
 func (d *decodedCall) ContractType() string               { return "token" }
 func (d *decodedCall) ContractVersion() string            { return "v1" }
 

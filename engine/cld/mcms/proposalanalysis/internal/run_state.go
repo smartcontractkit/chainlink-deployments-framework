@@ -2,6 +2,7 @@ package proposalanalysis
 
 import (
 	"context"
+	"encoding/json"
 	"sync"
 	"time"
 
@@ -292,10 +293,32 @@ func toAnalyzedProposal(decoded decoder.DecodedTimelockProposal) *analyzer.Analy
 			for _, p := range c.Outputs() {
 				outputs = append(outputs, analyzer.NewAnalyzedParameterNode(p.Name(), p.Type(), p.Value()))
 			}
-			calls = append(calls, analyzer.NewAnalyzedCallNode(c.To(), c.Name(), inputs, outputs, c.Data(), c.ContractType(), c.ContractVersion()))
+			calls = append(calls, analyzer.NewAnalyzedCallNode(
+				c.To(),
+				c.Name(),
+				inputs,
+				outputs,
+				c.Data(),
+				c.ContractType(),
+				c.ContractVersion(),
+				parseAdditionalFields(c.AdditionalFields()),
+			))
 		}
 		batches = append(batches, analyzer.NewAnalyzedBatchOperationNode(b.ChainSelector(), calls))
 	}
 
 	return analyzer.NewAnalyzedProposalNode(batches)
+}
+
+func parseAdditionalFields(raw json.RawMessage) map[string]any {
+	if len(raw) == 0 {
+		return nil
+	}
+
+	var fields map[string]any
+	if err := json.Unmarshal(raw, &fields); err != nil {
+		return nil
+	}
+
+	return fields
 }

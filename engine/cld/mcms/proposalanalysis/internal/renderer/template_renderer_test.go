@@ -26,7 +26,7 @@ func newTestProposal() *analyzer.AnalyzedProposalNode {
 						analyzer.NewAnalyzedParameterNode("amount", "uint256", big.NewInt(1000)),
 						analyzer.NewAnalyzedParameterNode("recipient", "address", "0xabcdef1234567890abcdef1234567890abcdef12"),
 					},
-					nil, nil, "ERC20", "v1.0.0",
+					nil, nil, "ERC20", "v1.0.0", nil,
 				),
 			}),
 		},
@@ -99,7 +99,7 @@ func TestRenderWithAnnotations(t *testing.T) {
 
 	call := analyzer.NewAnalyzedCallNode(
 		"0x1111111111111111111111111111111111111111", "setConfig",
-		nil, nil, nil, "Router", "",
+		nil, nil, nil, "Router", "", nil,
 	)
 	call.AddAnnotations(
 		annotation.New("ccip.lane", "string", "ethereum -> arbitrum"),
@@ -335,7 +335,7 @@ func TestFormatEthereumUint256_NegativeNumber(t *testing.T) {
 func TestRenderSeverityAndRisk_Markdown(t *testing.T) {
 	t.Parallel()
 
-	call := analyzer.NewAnalyzedCallNode("0xaaaa", "dangerousMethod", nil, nil, nil, "Router", "")
+	call := analyzer.NewAnalyzedCallNode("0xaaaa", "dangerousMethod", nil, nil, nil, "Router", "", nil)
 	call.AddAnnotations(
 		annotation.SeverityAnnotation(annotation.SeverityWarning),
 		annotation.RiskAnnotation(annotation.RiskHigh),
@@ -373,7 +373,7 @@ func TestWithTemplateFuncs_OverridesBuiltIn(t *testing.T) {
 		analyzer.NewAnalyzedBatchOperationNode(1, analyzer.AnalyzedCalls{
 			analyzer.NewAnalyzedCallNode("0xaaaa", "test",
 				analyzer.AnalyzedParameters{analyzer.NewAnalyzedParameterNode("x", "uint256", big.NewInt(42))},
-				nil, nil, "", "",
+				nil, nil, "", "", nil,
 			),
 		}),
 	})
@@ -393,7 +393,7 @@ func TestRenderCallOutputs(t *testing.T) {
 					analyzer.NewAnalyzedParameterNode("rate", "uint256", big.NewInt(500)),
 					analyzer.NewAnalyzedParameterNode("active", "bool", true),
 				},
-				nil, "", "",
+				nil, "", "", nil,
 			),
 		}),
 	})
@@ -412,7 +412,7 @@ func TestRenderCallOutputs(t *testing.T) {
 func TestRenderDiff_Markdown(t *testing.T) {
 	t.Parallel()
 
-	call := analyzer.NewAnalyzedCallNode("0xaaaa", "applyChainUpdates", nil, nil, nil, "TokenPool", "v1.5.0")
+	call := analyzer.NewAnalyzedCallNode("0xaaaa", "applyChainUpdates", nil, nil, nil, "TokenPool", "v1.5.0", nil)
 	call.AddAnnotations(
 		annotation.DiffAnnotation("outbound.capacity", big.NewInt(0), big.NewInt(1000000), "ethereum.uint256"),
 		annotation.DiffAnnotation("inbound.rate", big.NewInt(100), big.NewInt(500), "ethereum.uint256"),
@@ -493,7 +493,7 @@ func TestParameterValueTypeNotRenderedAsAnnotation(t *testing.T) {
 		analyzer.NewAnalyzedBatchOperationNode(1, analyzer.AnalyzedCalls{
 			analyzer.NewAnalyzedCallNode("0xaaaa", "setConfig",
 				analyzer.AnalyzedParameters{target},
-				nil, nil, "", "",
+				nil, nil, "", "", nil,
 			),
 		}),
 	})
