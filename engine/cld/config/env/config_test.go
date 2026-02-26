@@ -45,7 +45,11 @@ var (
 				DeployerKey: "0x567",
 			},
 			Canton: CantonConfig{
-				JWTToken: "",
+				AuthType:    "",
+				JWTToken:    "",
+				AuthURL:     "",
+				ClientID:    "",
+				ClientSecret: "",
 			},
 		},
 		Offchain: OffchainConfig{
@@ -166,7 +170,11 @@ var (
 				WalletVersion: "V5R1",
 			},
 			Canton: CantonConfig{
-				JWTToken: "",
+				AuthType:    "",
+				JWTToken:    "",
+				AuthURL:     "",
+				ClientID:    "",
+				ClientSecret: "",
 			},
 		},
 		Offchain: OffchainConfig{

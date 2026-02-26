@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os/exec"
 	"runtime"
+	"strconv"
 	"time"
 
 	"golang.org/x/oauth2"
@@ -27,7 +28,7 @@ type OIDCProvider struct {
 // NewClientCredentialsProvider creates a provider that fetches tokens using the OAuth2 client credentials flow.
 // Use in CI where ClientID, ClientSecret and AuthURL are available; tokens are obtained automatically.
 func NewClientCredentialsProvider(ctx context.Context, authURL, clientID, clientSecret string) (*OIDCProvider, error) {
-	tokenURL := fmt.Sprintf("%s/v1/token", authURL)
+	tokenURL := authURL + "/v1/token"
 
 	oauthCfg := &clientcredentials.Config{
 		ClientID:     clientID,
@@ -50,9 +51,9 @@ func NewAuthorizationCodeProvider(ctx context.Context, authURL, clientID string)
 	verifier := oauth2.GenerateVerifier()
 
 	port := 8400
-	authEndpoint := fmt.Sprintf("%s/v1/authorize", authURL)
-	tokenEndpoint := fmt.Sprintf("%s/v1/token", authURL)
-	redirectURL := fmt.Sprintf("http://localhost:%d", port)
+	authEndpoint := authURL + "/v1/authorize"
+	tokenEndpoint := authURL + "/v1/token"
+	redirectURL := "http://localhost:" + strconv.Itoa(port)
 
 	oauthCfg := &oauth2.Config{
 		ClientID:    clientID,
@@ -100,7 +101,7 @@ func NewAuthorizationCodeProvider(ctx context.Context, authURL, clientID string)
 	})
 
 	server := http.Server{
-		Addr:              fmt.Sprintf(":%d", port),
+		Addr:              ":" + strconv.Itoa(port),
 		Handler:           serveMux,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
@@ -115,15 +116,17 @@ func NewAuthorizationCodeProvider(ctx context.Context, authURL, clientID string)
 		serverErr <- server.Serve(listener)
 	}()
 
-	openBrowser(authCodeURL)
+	openBrowser(ctx, authCodeURL)
 
 	select {
 	case err := <-serverErr:
 		_ = server.Shutdown(ctx)
+
 		return nil, fmt.Errorf("callback server error: %w", err)
 	case token := <-callbackChan:
 		tokenSource := oauthCfg.TokenSource(ctx, token)
 		_ = server.Shutdown(ctx)
+
 		return &OIDCProvider{
 			tokenSource: tokenSource,
 		}, nil
@@ -144,6 +147,7 @@ func (p *OIDCProvider) TransportCredentials() credentials.TransportCredentials {
 }
 
 func (p *OIDCProvider) PerRPCCredentials() credentials.PerRPCCredentials {
+
 	return secureTokenSource{
 		TokenSource: p.tokenSource,
 	}
@@ -158,13 +162,13 @@ func generateState() string {
 }
 
 // openBrowser opens the default browser to url on supported platforms; otherwise it is a no-op.
-func openBrowser(url string) {
+func openBrowser(ctx context.Context, url string) {
 	switch runtime.GOOS {
 	case "darwin":
-		_ = exec.Command("open", url).Start()
+		_ = exec.CommandContext(ctx, "open", url).Start()
 	case "linux":
-		_ = exec.Command("xdg-open", url).Start()
+		_ = exec.CommandContext(ctx, "xdg-open", url).Start()
 	case "windows":
-		_ = exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
+		_ = exec.CommandContext(ctx, "rundll32", "url.dll,FileProtocolHandler", url).Start()
 	}
 }

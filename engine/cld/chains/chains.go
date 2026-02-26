@@ -802,6 +802,7 @@ func (l *chainLoaderCanton) cantonAuthProvider(ctx context.Context, selector uin
 		if err != nil {
 			return nil, fmt.Errorf("canton network %d: client_credentials auth: %w", selector, err)
 		}
+
 		return oidc, nil
 	case cfgenv.CantonAuthTypeAuthorizationCode:
 		if c.AuthURL == "" || c.ClientID == "" {
