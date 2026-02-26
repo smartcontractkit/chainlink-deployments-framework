@@ -72,11 +72,28 @@ type registryEntry struct {
 
 	// options contains the configuration options for this changeset
 	options ChangesetConfig
+
+	preHooks  []PreHook
+	postHooks []PostHook
+}
+
+// hookCarrier is implemented by changeset types that carry hooks through the
+// fluent API chain. Add() uses this to extract hooks into the registry entry.
+type hookCarrier interface {
+	getPreHooks() []PreHook
+	getPostHooks() []PostHook
 }
 
 // newRegistryEntry creates a new registry entry for a changeset.
 func newRegistryEntry(c ChangeSet, opts ChangesetConfig) registryEntry {
-	return registryEntry{changeset: c, options: opts}
+	entry := registryEntry{changeset: c, options: opts}
+
+	if hc, ok := c.(hookCarrier); ok {
+		entry.preHooks = hc.getPreHooks()
+		entry.postHooks = hc.getPostHooks()
+	}
+
+	return entry
 }
 
 // newArchivedRegistryEntry creates a new registry entry for an archived changeset.

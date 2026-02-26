@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"slices"
 	"strings"
 
 	fresolvers "github.com/smartcontractkit/chainlink-deployments-framework/changeset/resolvers"
@@ -39,6 +40,8 @@ type ChangeSet internalChangeSet
 type ConfiguredChangeSet interface {
 	ChangeSet
 	ThenWith(postProcessor PostProcessor) PostProcessingChangeSet
+	WithPreHooks(hooks ...PreHook) ConfiguredChangeSet
+	WithPostHooks(hooks ...PostHook) ConfiguredChangeSet
 }
 
 // WrappedChangeSet simply wraps a fdeployment.ChangeSetV2 to use it in the fluent interface, which hosts
@@ -264,6 +267,9 @@ type ChangeSetImpl[C any] struct {
 	// Present only when the changeset was wired with
 	// Configure(...).WithConfigResolver(...)
 	ConfigResolver fresolvers.ConfigResolver
+
+	preHooks  []PreHook
+	postHooks []PostHook
 }
 
 func (ccs ChangeSetImpl[C]) noop() {}
@@ -303,10 +309,28 @@ func (ccs ChangeSetImpl[C]) Configurations() (Configurations, error) {
 	}, nil
 }
 
-// ThenWith adds post-processing to a configured changeset
+// WithPreHooks appends pre-hooks to this changeset. Multiple calls are additive.
+func (ccs ChangeSetImpl[C]) WithPreHooks(hooks ...PreHook) ConfiguredChangeSet {
+	ccs.preHooks = append(slices.Clone(ccs.preHooks), hooks...)
+	return ccs
+}
+
+// WithPostHooks appends post-hooks to this changeset. Multiple calls are additive.
+func (ccs ChangeSetImpl[C]) WithPostHooks(hooks ...PostHook) ConfiguredChangeSet {
+	ccs.postHooks = append(slices.Clone(ccs.postHooks), hooks...)
+	return ccs
+}
+
+func (ccs ChangeSetImpl[C]) getPreHooks() []PreHook   { return ccs.preHooks }
+func (ccs ChangeSetImpl[C]) getPostHooks() []PostHook { return ccs.postHooks }
+
+// ThenWith adds post-processing to a configured changeset.
+// Hooks registered before ThenWith are carried forward.
 func (ccs ChangeSetImpl[C]) ThenWith(postProcessor PostProcessor) PostProcessingChangeSet {
 	return PostProcessingChangeSetImpl[C]{
 		changeset:     ccs,
 		postProcessor: postProcessor,
+		preHooks:      slices.Clone(ccs.preHooks),
+		postHooks:     slices.Clone(ccs.postHooks),
 	}
 }
