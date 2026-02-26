@@ -31,7 +31,7 @@ func goldenProposal() *analyzer.AnalyzedProposalNode {
 	call1 := analyzer.NewAnalyzedCallNode(
 		"0x1111111111111111111111111111111111111111", "setRateLimiterConfig",
 		analyzer.AnalyzedParameters{targetParam, amountParam, enabledParam},
-		nil, nil, "OnRamp", "v1.5.0",
+		nil, nil, "OnRamp", "v1.5.0", nil,
 	)
 	call1.AddAnnotations(
 		annotation.SeverityAnnotation(annotation.SeverityWarning),
@@ -46,7 +46,7 @@ func goldenProposal() *analyzer.AnalyzedProposalNode {
 			analyzer.NewAnalyzedParameterNode("to", "address", "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"),
 			analyzer.NewAnalyzedParameterNode("value", "uint256", big.NewInt(500)),
 		},
-		nil, nil, "ERC20", "",
+		nil, nil, "ERC20", "", nil,
 	)
 
 	batch1 := analyzer.NewAnalyzedBatchOperationNode(
@@ -58,7 +58,7 @@ func goldenProposal() *analyzer.AnalyzedProposalNode {
 		13264668187771770619, analyzer.AnalyzedCalls{
 			analyzer.NewAnalyzedCallNode(
 				"0x3333333333333333333333333333333333333333", "pause",
-				nil, nil, nil, "", "",
+				nil, nil, nil, "", "", nil,
 			),
 		},
 	)

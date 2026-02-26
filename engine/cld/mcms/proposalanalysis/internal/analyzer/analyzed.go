@@ -99,6 +99,7 @@ func NewAnalyzedCallNode(
 	data []byte,
 	contractType,
 	contractVersion string,
+	additional map[string]any,
 ) *AnalyzedCallNode {
 	return &AnalyzedCallNode{
 		to:              to,
@@ -108,6 +109,7 @@ func NewAnalyzedCallNode(
 		data:            data,
 		contractType:    contractType,
 		contractVersion: contractVersion,
+		additional:      additional,
 	}
 }
 

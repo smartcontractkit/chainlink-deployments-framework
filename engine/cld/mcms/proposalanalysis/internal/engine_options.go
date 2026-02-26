@@ -4,8 +4,9 @@ import (
 	"time"
 )
 
-// DefaultAnalyzerTimeout is the default timeout for analyzer execution.
-const DefaultAnalyzerTimeout = 5 * time.Minute
+// DefaultAnalyzerTimeout is the default timeout budget for a single analyzer
+// invocation, including both CanAnalyze and Analyze.
+const DefaultAnalyzerTimeout = 2 * time.Minute
 
 // EngineOption configures the analyzer engine using the functional options pattern
 type EngineOption func(*engineConfig)
@@ -29,7 +30,7 @@ func ApplyEngineOptions(opts ...EngineOption) *engineConfig {
 // WithAnalyzerTimeout allows configuring the timeout for analyzer execution
 // Each analyzer will be given this amount of time to complete before being cancelled
 // This is important for analyzers that make network calls or other long-running operations
-// Default is 5 minutes if not specified
+// Default is 2 minutes if not specified
 //
 // Example:
 //
@@ -43,7 +44,7 @@ func WithAnalyzerTimeout(timeout time.Duration) EngineOption {
 }
 
 // GetAnalyzerTimeout returns the analyzer timeout from the config
-// Returns DefaultAnalyzerTimeout (5 minutes) if none was provided
+// Returns DefaultAnalyzerTimeout (2 minutes) if none was provided
 func (cfg *engineConfig) GetAnalyzerTimeout() time.Duration {
 	if cfg.analyzerTimeout == 0 {
 		return DefaultAnalyzerTimeout
