@@ -118,6 +118,11 @@ type ChangesetsRegistry struct {
 
 	// validate enables or disables changeset key validation.
 	validate bool
+
+	// globalPreHooks run before every changeset in this registry.
+	globalPreHooks []PreHook
+	// globalPostHooks run after every changeset in this registry.
+	globalPostHooks []PostHook
 }
 
 // NewChangesetsRegistry creates a new ChangesetsRegistry.
@@ -135,6 +140,22 @@ func (r *ChangesetsRegistry) SetValidate(validate bool) {
 	defer r.mu.Unlock()
 
 	r.validate = validate
+}
+
+// AddGlobalPreHooks appends pre-hooks that run before every changeset in this registry.
+func (r *ChangesetsRegistry) AddGlobalPreHooks(hooks ...PreHook) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.globalPreHooks = append(r.globalPreHooks, hooks...)
+}
+
+// AddGlobalPostHooks appends post-hooks that run after every changeset in this registry.
+func (r *ChangesetsRegistry) AddGlobalPostHooks(hooks ...PostHook) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.globalPostHooks = append(r.globalPostHooks, hooks...)
 }
 
 // Apply applies a changeset.
