@@ -91,7 +91,7 @@ func TestAdaptTimelockProposal(t *testing.T) {
 		require.Len(t, call.Inputs(), 1)
 		assert.Equal(t, "value", call.Inputs()[0].Name())
 		assert.Equal(t, "SimpleField", call.Inputs()[0].Type())
-		assert.Equal(t, "42", call.Inputs()[0].Value())
+		assert.Equal(t, experimentalanalyzer.SimpleField{Value: "42"}, call.Inputs()[0].Value())
 	})
 
 	t.Run("undecoded transaction creates call with raw data only", func(t *testing.T) {
@@ -205,12 +205,12 @@ func TestAdaptTimelockProposal(t *testing.T) {
 		require.Len(t, call.Inputs(), 1)
 		assert.Equal(t, "account", call.Inputs()[0].Name())
 		assert.Equal(t, "AddressField", call.Inputs()[0].Type())
-		assert.Equal(t, "0x123", call.Inputs()[0].Value())
+		assert.Equal(t, experimentalanalyzer.AddressField{Value: "0x123"}, call.Inputs()[0].Value())
 
 		require.Len(t, call.Outputs(), 1)
 		assert.Equal(t, "balance", call.Outputs()[0].Name())
 		assert.Equal(t, "SimpleField", call.Outputs()[0].Type())
-		assert.Equal(t, "1000", call.Outputs()[0].Value())
+		assert.Equal(t, experimentalanalyzer.SimpleField{Value: "1000"}, call.Outputs()[0].Value())
 	})
 }
 
@@ -300,7 +300,7 @@ func TestAdaptNamedFields(t *testing.T) {
 		assert.Nil(t, result[0].Value())
 	})
 
-	t.Run("nil RawValue produces nil parameter value", func(t *testing.T) {
+	t.Run("field with Value stores the FieldValue", func(t *testing.T) {
 		t.Parallel()
 
 		fields := []experimentalanalyzer.NamedField{
@@ -312,7 +312,7 @@ func TestAdaptNamedFields(t *testing.T) {
 		require.Len(t, result, 1)
 		assert.Equal(t, "selector", result[0].Name())
 		assert.Equal(t, "ChainSelectorField", result[0].Type())
-		assert.Nil(t, result[0].Value())
+		assert.Equal(t, experimentalanalyzer.ChainSelectorField{Value: 42}, result[0].Value())
 	})
 
 	t.Run("multiple fields of different types", func(t *testing.T) {
@@ -330,14 +330,14 @@ func TestAdaptNamedFields(t *testing.T) {
 
 		assert.Equal(t, "addr", result[0].Name())
 		assert.Equal(t, "AddressField", result[0].Type())
-		assert.Equal(t, "0xABC", result[0].Value())
+		assert.Equal(t, experimentalanalyzer.AddressField{Value: "0xABC"}, result[0].Value())
 
 		assert.Equal(t, "amount", result[1].Name())
 		assert.Equal(t, "SimpleField", result[1].Type())
-		assert.Equal(t, "1000", result[1].Value())
+		assert.Equal(t, experimentalanalyzer.SimpleField{Value: "1000"}, result[1].Value())
 
 		assert.Equal(t, "data", result[2].Name())
 		assert.Equal(t, "BytesField", result[2].Type())
-		assert.Equal(t, []byte{0xFF}, result[2].Value())
+		assert.Equal(t, experimentalanalyzer.BytesField{Value: []byte{0xFF}}, result[2].Value())
 	})
 }
