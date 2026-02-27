@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"reflect"
 	"strconv"
 	"strings"
 	"text/template"
@@ -12,6 +13,7 @@ import (
 	chainutils "github.com/smartcontractkit/chainlink-deployments-framework/chain/utils"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer/annotation"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/format"
 	experimentalanalyzer "github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 )
 
@@ -198,50 +200,55 @@ func formatStructField(sf experimentalanalyzer.StructField) string {
 	return "{ " + strings.Join(parts, ", ") + " }"
 }
 
-// commaGrouped adds comma separators to a numeric string for readability.
+// commaGrouped adds comma separators to a numeric value for readability.
 func commaGrouped(v any) string {
-	var num *big.Int
+	if n, ok := v.(json.Number); ok {
+		v = string(n)
+	}
+
 	switch val := v.(type) {
 	case *big.Int:
 		if val == nil {
 			return nilValue
 		}
-		num = val
+
+		return format.CommaGroupBigInt(val)
 	case string:
-		var ok bool
-		num, ok = new(big.Int).SetString(val, 10)
+		num, ok := new(big.Int).SetString(val, 10)
 		if !ok {
 			return val
 		}
+
+		return format.CommaGroupBigInt(num)
 	default:
-		num = new(big.Int)
-		if _, err := fmt.Sscan(fmt.Sprintf("%v", v), num); err != nil {
-			return fmt.Sprintf("%v", v)
+		rv := reflect.ValueOf(v)
+		if rv.CanInt() {
+			return format.CommaGroupBigInt(big.NewInt(rv.Int()))
 		}
-	}
 
-	s := num.String()
-	sign := ""
-	if strings.HasPrefix(s, "-") {
-		sign = "-"
-		s = strings.TrimPrefix(s, "-")
-	}
-	if len(s) <= 3 {
-		return sign + s
-	}
-
-	var b strings.Builder
-	if sign != "" {
-		b.WriteString(sign)
-	}
-	for i, ch := range s {
-		if i > 0 && (len(s)-i)%3 == 0 {
-			b.WriteRune(',')
+		if rv.CanUint() {
+			return format.CommaGroupBigInt(new(big.Int).SetUint64(rv.Uint()))
 		}
-		b.WriteRune(ch)
-	}
 
-	return b.String()
+		if rv.CanFloat() {
+			s := strconv.FormatFloat(rv.Float(), 'f', -1, 64)
+			parts := strings.Split(s, ".")
+
+			num, ok := new(big.Int).SetString(parts[0], 10)
+			if !ok {
+				return s
+			}
+
+			intPart := format.CommaGroupBigInt(num)
+			if len(parts) == 2 {
+				return intPart + "." + parts[1]
+			}
+
+			return intPart
+		}
+
+		return formatValue(v)
+	}
 }
 
 func severitySymbol(severity any) string {
