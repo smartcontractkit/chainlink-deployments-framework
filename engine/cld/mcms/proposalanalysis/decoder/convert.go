@@ -90,14 +90,20 @@ func adaptNamedFields(fields []experimentalanalyzer.NamedField) DecodedParameter
 
 	params := make(DecodedParameters, len(fields))
 	for i, field := range fields {
-		ptype := ""
-		if field.Value != nil {
+		ptype := field.TypeName
+		if ptype == "" && field.Value != nil {
 			ptype = field.Value.GetType()
 		}
+
+		value := any(field.Value)
+		if value == nil {
+			value = field.RawValue
+		}
+
 		params[i] = &decodedParameter{
 			name:     field.Name,
 			ptype:    ptype,
-			value:    field.Value,
+			value:    value,
 			rawValue: field.RawValue,
 		}
 	}
