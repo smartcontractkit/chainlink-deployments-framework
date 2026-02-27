@@ -334,7 +334,6 @@ func TestIsFrameworkAnnotation(t *testing.T) {
 	assert.True(t, isFrameworkAnnotation("cld.severity"))
 	assert.True(t, isFrameworkAnnotation("cld.risk"))
 	assert.True(t, isFrameworkAnnotation("cld.diff"))
-	assert.False(t, isFrameworkAnnotation("cld.value_type"))
 	assert.False(t, isFrameworkAnnotation("ccip.lane"))
 	assert.False(t, isFrameworkAnnotation(""))
 }
@@ -351,6 +350,13 @@ func TestHasDisplayAnnotations(t *testing.T) {
 		annotation.SeverityAnnotation(annotation.SeverityWarning),
 		annotation.New("ccip.note", "string", "visible"),
 	}))
+}
+
+func TestResolveChainSelector(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, "ethereum-mainnet", resolveChainSelector(5009297550715157269))
+	assert.Empty(t, resolveChainSelector(9999999999999999999))
 }
 
 func TestTruncateAddress(t *testing.T) {

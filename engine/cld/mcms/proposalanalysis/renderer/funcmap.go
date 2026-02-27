@@ -45,7 +45,7 @@ func defaultFuncMap() template.FuncMap {
 func resolveChainSelector(sel uint64) string {
 	info, err := chainutils.ChainInfo(sel)
 	if err != nil {
-		return strconv.FormatUint(sel, 10)
+		return ""
 	}
 
 	return info.ChainName
@@ -125,6 +125,9 @@ func formatValue(v any) string {
 		return val.GetValue()
 	case experimentalanalyzer.ChainSelectorField:
 		name := resolveChainSelector(val.GetValue())
+		if name == "" {
+			return strconv.FormatUint(val.GetValue(), 10)
+		}
 
 		return fmt.Sprintf("%s (%d)", name, val.GetValue())
 	case experimentalanalyzer.YamlField:
@@ -172,6 +175,10 @@ func formatArrayField(af experimentalanalyzer.ArrayField) string {
 
 	if len(elems) == 1 {
 		return "[" + parts[0] + "]"
+	}
+
+	for i, part := range parts {
+		parts[i] = "  " + part
 	}
 
 	return "[\n" + strings.Join(parts, ",\n") + "\n]"
