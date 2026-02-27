@@ -10,6 +10,7 @@ import (
 
 // SolanaDecoderRegistry is an interface for retrieving and managing Solana instruction decoders.
 type SolanaDecoderRegistry interface {
+	Decoders() map[string]DecodeInstructionFn
 	GetSolanaInstructionDecoderByAddress(chainSelector uint64, address string) (DecodeInstructionFn, error)
 	GetSolanaInstructionDecoderByType(typeAndVersion deployment.TypeAndVersion) (DecodeInstructionFn, error)
 	AddSolanaInstructionDecoder(contractType deployment.TypeAndVersion, decoder DecodeInstructionFn)
@@ -22,6 +23,15 @@ type environmentSolanaRegistry struct {
 	registry         map[string]DecodeInstructionFn
 	env              deployment.Environment
 	addressesByChain deployment.AddressesByChain
+}
+
+func (reg environmentSolanaRegistry) Decoders() map[string]DecodeInstructionFn {
+	out := make(map[string]DecodeInstructionFn, len(reg.registry))
+	for k, v := range reg.registry {
+		out[k] = v
+	}
+
+	return out
 }
 
 func (reg environmentSolanaRegistry) GetSolanaInstructionDecoderByAddress(chainSelector uint64, address string) (DecodeInstructionFn, error) {

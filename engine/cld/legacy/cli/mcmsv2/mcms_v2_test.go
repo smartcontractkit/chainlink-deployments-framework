@@ -7,6 +7,7 @@ import (
 
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	cldf_domain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
+	proposalanalyzer "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
@@ -100,5 +101,24 @@ func TestBuildMCMSv2Cmd_PanicsOnNilProposalCtxProvider(t *testing.T) {
 
 	require.Panics(t, func() {
 		BuildMCMSv2Cmd(lggr, domain, nil)
+	})
+}
+
+func TestBuildMCMSv2Cmd_PanicsOnNilCustomAnalyzerOption(t *testing.T) {
+	t.Parallel()
+
+	lggr := logger.Nop()
+	domain := cldf_domain.NewDomain(t.TempDir(), "testdomain")
+	proposalCtxProvider := func(_ cldf.Environment) (analyzer.ProposalContext, error) {
+		return nil, nil //nolint:nilnil
+	}
+
+	require.Panics(t, func() {
+		BuildMCMSv2Cmd(
+			lggr,
+			domain,
+			proposalCtxProvider,
+			WithProposalAnalyzers([]proposalanalyzer.BaseAnalyzer{nil}...),
+		)
 	})
 }
