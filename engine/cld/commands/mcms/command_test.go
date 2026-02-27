@@ -9,6 +9,7 @@ import (
 
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
+	proposalanalyzer "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
@@ -44,7 +45,7 @@ func TestNewCommand_Structure(t *testing.T) {
 
 	// Verify subcommands exist
 	subcommands := cmd.Commands()
-	require.GreaterOrEqual(t, len(subcommands), 4, "expected at least 4 subcommands")
+	require.GreaterOrEqual(t, len(subcommands), 5, "expected at least 5 subcommands")
 
 	// Collect subcommand names
 	subcommandNames := make(map[string]bool)
@@ -53,7 +54,7 @@ func TestNewCommand_Structure(t *testing.T) {
 	}
 
 	// Verify expected subcommands
-	expectedSubcommands := []string{"error-decode-evm", "analyze-proposal", "convert-upf", "execute-fork"}
+	expectedSubcommands := []string{"error-decode-evm", "analyze-proposal", "analyze-proposal-v2", "convert-upf", "execute-fork"}
 	for _, expected := range expectedSubcommands {
 		require.True(t, subcommandNames[expected], "expected subcommand '%s' not found", expected)
 	}
@@ -97,6 +98,16 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expectedErr: "",
 		},
+		{
+			name: "nil custom analyzer",
+			config: Config{
+				Logger:                  logger.Nop(),
+				Domain:                  domain.NewDomain(t.TempDir(), "test"),
+				ProposalContextProvider: mockProposalContextProvider,
+				ProposalAnalyzers:       []proposalanalyzer.BaseAnalyzer{nil},
+			},
+			expectedErr: "mcms.Config: ProposalAnalyzers[0] cannot be nil",
+		},
 	}
 
 	for _, tt := range tests {
@@ -137,6 +148,10 @@ func TestSubcommands_HaveRequiredFlags(t *testing.T) {
 		{
 			subcommand: "analyze-proposal",
 			flags:      []string{"environment", "proposal", "proposalKind", "output", "format"},
+		},
+		{
+			subcommand: "analyze-proposal-v2",
+			flags:      []string{"environment", "proposal", "output", "format"},
 		},
 		{
 			subcommand: "convert-upf",
@@ -189,6 +204,21 @@ func TestAnalyzeProposal_MissingRequiredFlags(t *testing.T) {
 	require.NoError(t, err)
 
 	cmd.SetArgs([]string{"analyze-proposal"})
+	out := new(bytes.Buffer)
+	cmd.SetOut(out)
+	cmd.SetErr(out)
+
+	execErr := cmd.Execute()
+	require.ErrorContains(t, execErr, "required flag")
+}
+
+func TestAnalyzeProposalV2_MissingRequiredFlags(t *testing.T) {
+	t.Parallel()
+
+	cmd, err := newTestCommand(t)
+	require.NoError(t, err)
+
+	cmd.SetArgs([]string{"analyze-proposal-v2"})
 	out := new(bytes.Buffer)
 	cmd.SetOut(out)
 	cmd.SetErr(out)

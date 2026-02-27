@@ -9,6 +9,8 @@ import (
 
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
+	proposalanalyzer "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
+	experimentalanalyzer "github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
@@ -66,5 +68,64 @@ func TestCommands_State_MissingViewState(t *testing.T) {
 
 	require.Error(t, err)
 	assert.Nil(t, cmd)
-	assert.Contains(t, err.Error(), "ViewState")
+	require.ErrorContains(t, err, "ViewState")
+}
+
+func TestCommands_MCMS_Success(t *testing.T) {
+	t.Parallel()
+
+	lggr := logger.Nop()
+	cmds := New(lggr)
+	dom := domain.NewDomain(t.TempDir(), "testdomain")
+	proposalCtxProvider := func(_ fdeployment.Environment) (experimentalanalyzer.ProposalContext, error) {
+		return nil, nil //nolint:nilnil
+	}
+
+	cmd, err := cmds.MCMS(dom, MCMSConfig{
+		ProposalContextProvider: proposalCtxProvider,
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, cmd)
+	assert.Equal(t, "mcms", cmd.Use)
+
+	// Ensure v2 command is exposed through the commands factory path.
+	subCmd, _, findErr := cmd.Find([]string{"analyze-proposal-v2"})
+	require.NoError(t, findErr)
+	require.NotNil(t, subCmd)
+	assert.Equal(t, "analyze-proposal-v2", subCmd.Use)
+}
+
+func TestCommands_MCMS_ForwardsProposalAnalyzers(t *testing.T) {
+	t.Parallel()
+
+	lggr := logger.Nop()
+	cmds := New(lggr)
+	dom := domain.NewDomain(t.TempDir(), "testdomain")
+	proposalCtxProvider := func(_ fdeployment.Environment) (experimentalanalyzer.ProposalContext, error) {
+		return nil, nil //nolint:nilnil
+	}
+
+	cmd, err := cmds.MCMS(dom, MCMSConfig{
+		ProposalContextProvider: proposalCtxProvider,
+		ProposalAnalyzers:       []proposalanalyzer.BaseAnalyzer{nil},
+	})
+
+	require.Error(t, err)
+	assert.Nil(t, cmd)
+	require.ErrorContains(t, err, "ProposalAnalyzers[0] cannot be nil")
+}
+
+func TestCommands_MCMS_MissingProposalContextProvider(t *testing.T) {
+	t.Parallel()
+
+	lggr := logger.Nop()
+	cmds := New(lggr)
+	dom := domain.NewDomain(t.TempDir(), "testdomain")
+
+	cmd, err := cmds.MCMS(dom, MCMSConfig{})
+
+	require.Error(t, err)
+	assert.Nil(t, cmd)
+	require.ErrorContains(t, err, "missing required fields: ProposalContextProvider")
 }
