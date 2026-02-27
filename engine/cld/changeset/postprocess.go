@@ -1,18 +1,26 @@
 package changeset
 
 import (
+	"slices"
+
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 )
 
 type PostProcessor func(e fdeployment.Environment, config fdeployment.ChangesetOutput) (fdeployment.ChangesetOutput, error)
 
-type PostProcessingChangeSet internalChangeSet
+type PostProcessingChangeSet interface {
+	internalChangeSet
+	WithPreHooks(hooks ...PreHook) PostProcessingChangeSet
+	WithPostHooks(hooks ...PostHook) PostProcessingChangeSet
+}
 
 var _ PostProcessingChangeSet = PostProcessingChangeSetImpl[any]{}
 
 type PostProcessingChangeSetImpl[C any] struct {
 	changeset     ChangeSetImpl[C]
 	postProcessor PostProcessor
+	preHooks      []PreHook
+	postHooks     []PostHook
 }
 
 func (ccs PostProcessingChangeSetImpl[C]) noop() {}
@@ -30,3 +38,18 @@ func (ccs PostProcessingChangeSetImpl[C]) Apply(env fdeployment.Environment) (fd
 func (ccs PostProcessingChangeSetImpl[C]) Configurations() (Configurations, error) {
 	return ccs.changeset.Configurations()
 }
+
+// WithPreHooks appends pre-hooks to this changeset. Multiple calls are additive.
+func (ccs PostProcessingChangeSetImpl[C]) WithPreHooks(hooks ...PreHook) PostProcessingChangeSet {
+	ccs.preHooks = append(slices.Clone(ccs.preHooks), hooks...)
+	return ccs
+}
+
+// WithPostHooks appends post-hooks to this changeset. Multiple calls are additive.
+func (ccs PostProcessingChangeSetImpl[C]) WithPostHooks(hooks ...PostHook) PostProcessingChangeSet {
+	ccs.postHooks = append(slices.Clone(ccs.postHooks), hooks...)
+	return ccs
+}
+
+func (ccs PostProcessingChangeSetImpl[C]) getPreHooks() []PreHook   { return ccs.preHooks }
+func (ccs PostProcessingChangeSetImpl[C]) getPostHooks() []PostHook { return ccs.postHooks }
