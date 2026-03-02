@@ -35,7 +35,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/mcms"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/state"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
-	proposalanalyzer "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis"
 	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
@@ -91,7 +91,7 @@ type MCMSConfig struct {
 	ProposalContextProvider analyzer.ProposalContextProvider
 
 	// ProposalAnalyzers are custom analyzers registered into analyze-proposal-v2.
-	ProposalAnalyzers []proposalanalyzer.BaseAnalyzer
+	ProposalAnalyzers []proposalanalysis.BaseAnalyzer
 }
 
 // MCMS creates the mcms command group for proposal analysis and conversion.

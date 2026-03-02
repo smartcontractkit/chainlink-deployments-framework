@@ -14,9 +14,6 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/flags"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/text"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis"
-	proposalanalysisanalyzer "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
-	analysisdecoder "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/decoder"
-	analysisrenderer "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/renderer"
 )
 
 var (
@@ -71,7 +68,7 @@ func newAnalyzeProposalV2Cmd(cfg Config) *cobra.Command {
 	flags.ChainSelector(cmd, false)
 
 	cmd.Flags().StringP("output", "o", "", "Output file to write analysis result")
-	cmd.Flags().String("format", analysisrenderer.IDMarkdown, "Output format: markdown")
+	cmd.Flags().String("format", proposalanalysis.RendererIDMarkdown, "Output format: markdown")
 
 	return cmd
 }
@@ -102,7 +99,7 @@ func runAnalyzeProposalV2(cmd *cobra.Command, cfg Config, f analyzeProposalV2Fla
 		return err
 	}
 
-	markdownRenderer, err := analysisrenderer.NewMarkdownRenderer()
+	markdownRenderer, err := proposalanalysis.NewMarkdownRenderer()
 	if err != nil {
 		return fmt.Errorf("create markdown renderer: %w", err)
 	}
@@ -116,7 +113,7 @@ func runAnalyzeProposalV2(cmd *cobra.Command, cfg Config, f analyzeProposalV2Fla
 	}
 
 	var evmABIMappings map[string]string
-	var solanaDecoders map[string]analysisdecoder.DecodeInstructionFn
+	var solanaDecoders map[string]proposalanalysis.DecodeInstructionFn
 	if proposalCfg.ProposalCtx != nil {
 		if proposalCfg.ProposalCtx.GetEVMRegistry() != nil {
 			evmABIMappings = proposalCfg.ProposalCtx.GetEVMRegistry().GetAllABIs()
@@ -129,7 +126,7 @@ func runAnalyzeProposalV2(cmd *cobra.Command, cfg Config, f analyzeProposalV2Fla
 	analyzedProposal, err := engine.Run(ctx, proposalanalysis.RunRequest{
 		Domain:      cfg.Domain,
 		Environment: &proposalCfg.Env,
-		DecoderConfig: analysisdecoder.Config{
+		DecoderConfig: proposalanalysis.DecoderConfig{
 			EVMABIMappings: evmABIMappings,
 			SolanaDecoders: solanaDecoders,
 		},
@@ -139,7 +136,7 @@ func runAnalyzeProposalV2(cmd *cobra.Command, cfg Config, f analyzeProposalV2Fla
 	}
 
 	var out bytes.Buffer
-	if err := engine.RenderTo(&out, rendererID, analysisrenderer.RenderRequest{
+	if err := engine.RenderTo(&out, rendererID, proposalanalysis.RenderRequest{
 		Domain:          cfg.Domain.Key(),
 		EnvironmentName: proposalCfg.EnvStr,
 	}, analyzedProposal); err != nil {
@@ -158,7 +155,7 @@ func runAnalyzeProposalV2(cmd *cobra.Command, cfg Config, f analyzeProposalV2Fla
 	return nil
 }
 
-func registerProposalAnalyzers(engine proposalanalysis.AnalyzerEngine, analyzers []proposalanalysisanalyzer.BaseAnalyzer) error {
+func registerProposalAnalyzers(engine proposalanalysis.AnalyzerEngine, analyzers []proposalanalysis.BaseAnalyzer) error {
 	for _, analyzer := range analyzers {
 		if err := engine.RegisterAnalyzer(analyzer); err != nil {
 			return fmt.Errorf("register proposal analyzer %q: %w", analyzer.ID(), err)
@@ -170,8 +167,8 @@ func registerProposalAnalyzers(engine proposalanalysis.AnalyzerEngine, analyzers
 
 func normalizeRendererFormat(format string) (string, error) {
 	switch strings.ToLower(strings.TrimSpace(format)) {
-	case "", analysisrenderer.IDMarkdown, "md":
-		return analysisrenderer.IDMarkdown, nil
+	case "", proposalanalysis.RendererIDMarkdown, "md":
+		return proposalanalysis.RendererIDMarkdown, nil
 	default:
 		return "", fmt.Errorf("unknown format %q: only markdown is supported for analyze-proposal-v2", format)
 	}

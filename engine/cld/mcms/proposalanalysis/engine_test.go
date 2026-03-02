@@ -15,11 +15,11 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	cldfdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer/annotation"
-	analyzermocks "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer/mocks"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/decoder"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/renderer"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/internal/analyzer"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/internal/analyzer/annotation"
+	analyzermocks "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/internal/analyzer/mocks"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/internal/decoder"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/internal/renderer"
 )
 
 func TestAnalyzerEngineRunInputValidation(t *testing.T) {
@@ -63,7 +63,7 @@ func TestAnalyzerEngineRunDecoderFactoryError(t *testing.T) {
 	t.Parallel()
 
 	boom := errors.New("factory failed")
-	engine := newAnalyzerEngineWithDeps(Deps{
+	engine := newAnalyzerEngineWithDeps(deps{
 		DecoderFactory: func(cfg decoder.Config) (decoder.ProposalDecoder, error) {
 			return nil, boom
 		},
@@ -83,7 +83,7 @@ func TestAnalyzerEngineRunDecodeError(t *testing.T) {
 	t.Parallel()
 
 	boom := errors.New("decode failed")
-	engine := newAnalyzerEngineWithDeps(Deps{
+	engine := newAnalyzerEngineWithDeps(deps{
 		DecoderFactory: func(cfg decoder.Config) (decoder.ProposalDecoder, error) {
 			return decoderStub{
 				decodeFn: func(ctx context.Context, env deployment.Environment, proposal *mcms.TimelockProposal) (decoder.DecodedTimelockProposal, error) {
@@ -171,7 +171,7 @@ func TestAnalyzerEngineRunExecutesAnalyzersAndResolvesDependencies(t *testing.T)
 	require.NotNil(t, inputParam)
 	require.NotNil(t, outputParam)
 
-	engine := newAnalyzerEngineWithDeps(Deps{
+	engine := newAnalyzerEngineWithDeps(deps{
 		DecoderFactory: func(cfg decoder.Config) (decoder.ProposalDecoder, error) {
 			return decoderStub{
 				decodeFn: func(ctx context.Context, env deployment.Environment, proposal *mcms.TimelockProposal) (decoder.DecodedTimelockProposal, error) {

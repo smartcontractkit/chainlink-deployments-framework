@@ -9,7 +9,7 @@ import (
 
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
-	proposalanalyzer "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis"
 	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
@@ -104,7 +104,7 @@ func TestConfig_Validate(t *testing.T) {
 				Logger:                  logger.Nop(),
 				Domain:                  domain.NewDomain(t.TempDir(), "test"),
 				ProposalContextProvider: mockProposalContextProvider,
-				ProposalAnalyzers:       []proposalanalyzer.BaseAnalyzer{nil},
+				ProposalAnalyzers:       []proposalanalysis.BaseAnalyzer{nil},
 			},
 			expectedErr: "mcms.Config: ProposalAnalyzers[0] cannot be nil",
 		},
