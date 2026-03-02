@@ -35,9 +35,15 @@ type tokenMeta struct {
 	address  common.Address
 }
 
-// TokenMetadataAnalyzer resolves ERC20 token metadata.
+type cacheKey struct {
+	chain uint64
+	pool  common.Address
+}
+
+// TokenMetadataAnalyzer resolves ERC20 token metadata (symbol, decimals,
+// address) for any token pool call.
 type TokenMetadataAnalyzer struct {
-	cache map[common.Address]tokenMeta
+	cache map[cacheKey]tokenMeta
 }
 
 var _ analyzer.CallAnalyzer = (*TokenMetadataAnalyzer)(nil)
@@ -60,6 +66,10 @@ func (a *TokenMetadataAnalyzer) Analyze(
 	req analyzer.AnalyzeRequest[analyzer.CallAnalyzerContext],
 	call decoder.DecodedCall,
 ) (annotation.Annotations, error) {
+	if !common.IsHexAddress(call.To()) {
+		return nil, fmt.Errorf("invalid pool address %q", call.To())
+	}
+
 	chainSel := req.AnalyzerContext.BatchOperation().ChainSelector()
 	evmChain, ok := req.ExecutionContext.BlockChains().EVMChains()[chainSel]
 	if !ok {
@@ -68,7 +78,7 @@ func (a *TokenMetadataAnalyzer) Analyze(
 
 	poolAddress := common.HexToAddress(call.To())
 
-	meta, err := a.resolve(ctx, poolAddress, evmChain.Client)
+	meta, err := a.resolve(ctx, chainSel, poolAddress, evmChain.Client)
 	if err != nil {
 		return nil, err
 	}
@@ -82,14 +92,16 @@ func (a *TokenMetadataAnalyzer) Analyze(
 
 func (a *TokenMetadataAnalyzer) resolve(
 	ctx context.Context,
+	chainSel uint64,
 	poolAddress common.Address,
 	backend bind.ContractCaller,
 ) (tokenMeta, error) {
 	if a.cache == nil {
-		a.cache = make(map[common.Address]tokenMeta)
+		a.cache = make(map[cacheKey]tokenMeta)
 	}
 
-	if m, ok := a.cache[poolAddress]; ok {
+	key := cacheKey{chain: chainSel, pool: poolAddress}
+	if m, ok := a.cache[key]; ok {
 		return m, nil
 	}
 
@@ -113,7 +125,7 @@ func (a *TokenMetadataAnalyzer) resolve(
 	symbol := resolveSymbol(callOpts, tokenAddr, backend)
 
 	m := tokenMeta{symbol: symbol, decimals: decimals, address: tokenAddr}
-	a.cache[poolAddress] = m
+	a.cache[key] = m
 
 	return m, nil
 }
