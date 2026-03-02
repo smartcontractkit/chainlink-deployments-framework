@@ -6,6 +6,11 @@
 
 {{ end -}}
 
+{{- /* Proposal-level annotations */ -}}
+{{- if hasDisplayAnnotations .Proposal.Annotations -}}
+{{ template "annotations" .Proposal.Annotations }}
+{{ end -}}
+
 {{- /* Batch operations: one collapsible <details> per batch */ -}}
 {{- $batches := .Proposal.BatchOperations -}}
 {{- if $batches -}}
