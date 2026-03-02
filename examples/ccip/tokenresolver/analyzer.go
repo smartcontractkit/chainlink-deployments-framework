@@ -29,22 +29,9 @@ var tokenPoolContractTypes = map[string]struct{}{
 	"TokenPool":                 {},
 }
 
-type tokenMeta struct {
-	symbol   string
-	decimals uint8
-	address  common.Address
-}
-
-type cacheKey struct {
-	chain uint64
-	pool  common.Address
-}
-
 // TokenMetadataAnalyzer resolves ERC20 token metadata (symbol, decimals,
 // address) for any token pool call.
-type TokenMetadataAnalyzer struct {
-	cache map[cacheKey]tokenMeta
-}
+type TokenMetadataAnalyzer struct{}
 
 var _ analyzer.CallAnalyzer = (*TokenMetadataAnalyzer)(nil)
 
@@ -78,56 +65,30 @@ func (a *TokenMetadataAnalyzer) Analyze(
 
 	poolAddress := common.HexToAddress(call.To())
 
-	meta, err := a.resolve(ctx, chainSel, poolAddress, evmChain.Client)
+	poolCaller, err := token_pool.NewTokenPoolCaller(poolAddress, evmChain.Client)
 	if err != nil {
-		return nil, err
-	}
-
-	return annotation.Annotations{
-		annotation.New(AnnotationSymbol, "string", meta.symbol),
-		annotation.New(AnnotationDecimals, "uint8", meta.decimals),
-		annotation.New(AnnotationAddress, "string", meta.address.Hex()),
-	}, nil
-}
-
-func (a *TokenMetadataAnalyzer) resolve(
-	ctx context.Context,
-	chainSel uint64,
-	poolAddress common.Address,
-	backend bind.ContractCaller,
-) (tokenMeta, error) {
-	if a.cache == nil {
-		a.cache = make(map[cacheKey]tokenMeta)
-	}
-
-	key := cacheKey{chain: chainSel, pool: poolAddress}
-	if m, ok := a.cache[key]; ok {
-		return m, nil
-	}
-
-	poolCaller, err := token_pool.NewTokenPoolCaller(poolAddress, backend)
-	if err != nil {
-		return tokenMeta{}, fmt.Errorf("create token pool caller for %s: %w", poolAddress, err)
+		return nil, fmt.Errorf("create token pool caller for %s: %w", poolAddress, err)
 	}
 
 	callOpts := &bind.CallOpts{Context: ctx}
 
 	tokenAddr, err := poolCaller.GetToken(callOpts)
 	if err != nil {
-		return tokenMeta{}, fmt.Errorf("get token for pool %s: %w", poolAddress, err)
+		return nil, fmt.Errorf("get token for pool %s: %w", poolAddress, err)
 	}
 
 	decimals, err := poolCaller.GetTokenDecimals(callOpts)
 	if err != nil {
-		return tokenMeta{}, fmt.Errorf("get decimals for pool %s: %w", poolAddress, err)
+		return nil, fmt.Errorf("get decimals for pool %s: %w", poolAddress, err)
 	}
 
-	symbol := resolveSymbol(callOpts, tokenAddr, backend)
+	symbol := resolveSymbol(callOpts, tokenAddr, evmChain.Client)
 
-	m := tokenMeta{symbol: symbol, decimals: decimals, address: tokenAddr}
-	a.cache[key] = m
-
-	return m, nil
+	return annotation.Annotations{
+		annotation.New(AnnotationSymbol, "string", symbol),
+		annotation.New(AnnotationDecimals, "uint8", decimals),
+		annotation.New(AnnotationAddress, "string", tokenAddr.Hex()),
+	}, nil
 }
 
 func resolveSymbol(
