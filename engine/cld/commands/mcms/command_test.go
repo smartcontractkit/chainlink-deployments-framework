@@ -212,6 +212,18 @@ func TestAnalyzeProposal_MissingRequiredFlags(t *testing.T) {
 	require.ErrorContains(t, execErr, "required flag")
 }
 
+func TestAnalyzeProposal_DeprecatedMessage(t *testing.T) {
+	t.Parallel()
+
+	cmd, err := newTestCommand(t)
+	require.NoError(t, err)
+
+	subCmd, _, err := cmd.Find([]string{"analyze-proposal"})
+	require.NoError(t, err)
+	require.Equal(t, "analyze-proposal", subCmd.Use)
+	require.Equal(t, analyzeProposalDeprecated, subCmd.Deprecated)
+}
+
 func TestAnalyzeProposalV2_MissingRequiredFlags(t *testing.T) {
 	t.Parallel()
 

@@ -16,6 +16,7 @@ import (
 
 var (
 	analyzeProposalShort = "Analyze proposal and provide human readable output"
+	analyzeProposalDeprecated = "use analyze-proposal-v2 instead; analyze-proposal is deprecated and will be removed in a future release"
 
 	analyzeProposalLong = text.LongDesc(`
 		Analyzes a proposal and provides a human-readable description of its contents.
@@ -48,10 +49,11 @@ type analyzeProposalFlags struct {
 // newAnalyzeProposalCmd creates the "analyze-proposal" subcommand.
 func newAnalyzeProposalCmd(cfg Config) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "analyze-proposal",
-		Short:   analyzeProposalShort,
-		Long:    analyzeProposalLong,
-		Example: analyzeProposalExample,
+		Use:        "analyze-proposal",
+		Short:      analyzeProposalShort,
+		Long:       analyzeProposalLong,
+		Example:    analyzeProposalExample,
+		Deprecated: analyzeProposalDeprecated,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			f := analyzeProposalFlags{
 				environment:   flags.MustString(cmd.Flags().GetString("environment")),
