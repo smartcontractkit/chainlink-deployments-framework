@@ -17,14 +17,12 @@ func goldenProposal() *analyzer.AnalyzedProposalNode {
 		"target", "address", "0xAbCdEf1234567890abcdef1234567890abcdef12",
 	)
 	targetParam.AddAnnotations(
-		annotation.ValueTypeAnnotation("ethereum.address"),
 		annotation.New("label", "string", "destination contract"),
 	)
 
 	amountParam := analyzer.NewAnalyzedParameterNode(
 		"amount", "uint256", big.NewInt(1000000000000000000),
 	)
-	amountParam.AddAnnotations(annotation.ValueTypeAnnotation("ethereum.uint256"))
 
 	enabledParam := analyzer.NewAnalyzedParameterNode("enabled", "bool", true)
 

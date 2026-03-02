@@ -32,51 +32,35 @@ func Test_AnalyzeRmnHomeSetConfig(t *testing.T) {
 	assert.Equal(t, StructField{
 		Fields: []NamedField{
 			{
-				Name: "Nodes",
+				Name:     "Nodes",
+				TypeName: "(bytes32,bytes32)[]",
 				Value: ArrayField{
 					Elements: []FieldValue{
 						StructField{
 							Fields: []NamedField{
-								{
-									Name:  "PeerId",
-									Value: BytesField{Value: hexutil.MustDecode("0xe98702d28f71e1d61ec514fe067781b4144aac68519488e80d70b2e7ccb53d43")},
-								},
-								{
-									Name:  "OffchainPublicKey",
-									Value: BytesField{Value: hexutil.MustDecode("0xb34944857a42444d1b285d7940d6e06682309e0781e43a69676ee9f85c73c2d1")},
-								},
+								{Name: "PeerId", TypeName: "bytes32", Value: BytesField{Value: hexutil.MustDecode("0xe98702d28f71e1d61ec514fe067781b4144aac68519488e80d70b2e7ccb53d43")}},
+								{Name: "OffchainPublicKey", TypeName: "bytes32", Value: BytesField{Value: hexutil.MustDecode("0xb34944857a42444d1b285d7940d6e06682309e0781e43a69676ee9f85c73c2d1")}},
 							},
 						},
 						StructField{
 							Fields: []NamedField{
-								{
-									Name:  "PeerId",
-									Value: BytesField{Value: hexutil.MustDecode("0x49978bab3172a2740e5e63c2521d53ed2358786624cec1b714c788eedade101b")},
-								},
-								{
-									Name:  "OffchainPublicKey",
-									Value: BytesField{Value: hexutil.MustDecode("0x68d9f3f274e3985528a923a9bace3d39c55dd778b187b4120b384cc48c892859")},
-								},
+								{Name: "PeerId", TypeName: "bytes32", Value: BytesField{Value: hexutil.MustDecode("0x49978bab3172a2740e5e63c2521d53ed2358786624cec1b714c788eedade101b")}},
+								{Name: "OffchainPublicKey", TypeName: "bytes32", Value: BytesField{Value: hexutil.MustDecode("0x68d9f3f274e3985528a923a9bace3d39c55dd778b187b4120b384cc48c892859")}},
 							},
 						},
 						StructField{
 							Fields: []NamedField{
-								{
-									Name:  "PeerId",
-									Value: BytesField{Value: hexutil.MustDecode("0x8001e4afa8fa061833dfee29d286f7dfe0b78a767f1fa1f152bcda4d53415061")},
-								},
-								{
-									Name:  "OffchainPublicKey",
-									Value: BytesField{Value: hexutil.MustDecode("0x5af8ee32316a6427f169a45fdc1b3a91a85ac459e3c1cb91c69e1c51f0c1fc21")},
-								},
+								{Name: "PeerId", TypeName: "bytes32", Value: BytesField{Value: hexutil.MustDecode("0x8001e4afa8fa061833dfee29d286f7dfe0b78a767f1fa1f152bcda4d53415061")}},
+								{Name: "OffchainPublicKey", TypeName: "bytes32", Value: BytesField{Value: hexutil.MustDecode("0x5af8ee32316a6427f169a45fdc1b3a91a85ac459e3c1cb91c69e1c51f0c1fc21")}},
 							},
 						},
 					},
 				},
 			},
 			{
-				Name:  "OffchainConfig",
-				Value: BytesField{Value: hexutil.MustDecode("0x")},
+				Name:     "OffchainConfig",
+				TypeName: "bytes",
+				Value:    BytesField{Value: hexutil.MustDecode("0x")},
 			},
 		},
 	}, analyzeResult.Inputs[0].Value)
@@ -85,63 +69,38 @@ func Test_AnalyzeRmnHomeSetConfig(t *testing.T) {
 	assert.Equal(t, StructField{
 		Fields: []NamedField{
 			{
-				Name: "SourceChains",
+				Name:     "SourceChains",
+				TypeName: "(uint64,uint64,uint256)[]",
 				Value: ArrayField{
 					Elements: []FieldValue{
 						StructField{
 							Fields: []NamedField{
-								{
-									Name:  "ChainSelector",
-									Value: ChainSelectorField{Value: 16015286601757825753},
-								},
-								{
-									Name:  "FObserve",
-									Value: SimpleField{Value: "1"},
-								},
-								{
-									Name:  "ObserverNodesBitmap",
-									Value: SimpleField{Value: "7"},
-								},
+								{Name: "ChainSelector", TypeName: "uint64", Value: ChainSelectorField{Value: 16015286601757825753}},
+								{Name: "FObserve", TypeName: "uint64", Value: SimpleField{Value: "1"}},
+								{Name: "ObserverNodesBitmap", TypeName: "uint256", Value: SimpleField{Value: "7"}},
 							},
 						},
 						StructField{
 							Fields: []NamedField{
-								{
-									Name:  "ChainSelector",
-									Value: ChainSelectorField{Value: 14767482510784806043},
-								},
-								{
-									Name:  "FObserve",
-									Value: SimpleField{Value: "1"},
-								},
-								{
-									Name:  "ObserverNodesBitmap",
-									Value: SimpleField{Value: "7"},
-								},
+								{Name: "ChainSelector", TypeName: "uint64", Value: ChainSelectorField{Value: 14767482510784806043}},
+								{Name: "FObserve", TypeName: "uint64", Value: SimpleField{Value: "1"}},
+								{Name: "ObserverNodesBitmap", TypeName: "uint256", Value: SimpleField{Value: "7"}},
 							},
 						},
 						StructField{
 							Fields: []NamedField{
-								{
-									Name:  "ChainSelector",
-									Value: ChainSelectorField{Value: 3478487238524512106},
-								},
-								{
-									Name:  "FObserve",
-									Value: SimpleField{Value: "1"},
-								},
-								{
-									Name:  "ObserverNodesBitmap",
-									Value: SimpleField{Value: "7"},
-								},
+								{Name: "ChainSelector", TypeName: "uint64", Value: ChainSelectorField{Value: 3478487238524512106}},
+								{Name: "FObserve", TypeName: "uint64", Value: SimpleField{Value: "1"}},
+								{Name: "ObserverNodesBitmap", TypeName: "uint256", Value: SimpleField{Value: "7"}},
 							},
 						},
 					},
 				},
 			},
 			{
-				Name:  "OffchainConfig",
-				Value: BytesField{Value: hexutil.MustDecode("0x")},
+				Name:     "OffchainConfig",
+				TypeName: "bytes",
+				Value:    BytesField{Value: hexutil.MustDecode("0x")},
 			},
 		},
 	}, analyzeResult.Inputs[1].Value)

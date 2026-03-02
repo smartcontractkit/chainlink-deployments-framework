@@ -2,12 +2,14 @@ package mcms
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/spf13/cobra"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/text"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
+	proposalanalyzer "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
@@ -34,6 +36,9 @@ type Config struct {
 	// ProposalContextProvider creates proposal context for analysis. Required.
 	ProposalContextProvider analyzer.ProposalContextProvider
 
+	// ProposalAnalyzers are custom analyzers registered into the v2 proposal analysis engine.
+	ProposalAnalyzers []proposalanalyzer.BaseAnalyzer
+
 	// Deps holds optional dependencies that can be overridden.
 	// If fields are nil, production defaults are used.
 	Deps Deps
@@ -55,6 +60,9 @@ func (c Config) Validate() error {
 
 	if len(missing) > 0 {
 		return errors.New("mcms.Config: missing required fields: " + strings.Join(missing, ", "))
+	}
+	if err := validateProposalAnalyzers(c.ProposalAnalyzers); err != nil {
+		return err
 	}
 
 	return nil
@@ -83,8 +91,19 @@ func NewCommand(cfg Config) (*cobra.Command, error) {
 
 	cmd.AddCommand(newErrorDecodeCmd(cfg))
 	cmd.AddCommand(newAnalyzeProposalCmd(cfg))
+	cmd.AddCommand(newAnalyzeProposalV2Cmd(cfg))
 	cmd.AddCommand(newConvertUpfCmd(cfg))
 	cmd.AddCommand(newExecuteForkCmd(cfg))
 
 	return cmd, nil
+}
+
+func validateProposalAnalyzers(analyzers []proposalanalyzer.BaseAnalyzer) error {
+	for i, analyzer := range analyzers {
+		if analyzer == nil {
+			return fmt.Errorf("mcms.Config: ProposalAnalyzers[%d] cannot be nil", i)
+		}
+	}
+
+	return nil
 }

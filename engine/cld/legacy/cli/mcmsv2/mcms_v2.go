@@ -24,9 +24,24 @@ import (
 
 	mcmscmd "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/mcms"
 	cldf_domain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
+	proposalanalyzer "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
+
+type buildOptions struct {
+	proposalAnalyzers []proposalanalyzer.BaseAnalyzer
+}
+
+// BuildOption configures BuildMCMSv2Cmd.
+type BuildOption func(*buildOptions)
+
+// WithProposalAnalyzers registers custom analyzers for analyze-proposal-v2.
+func WithProposalAnalyzers(analyzers ...proposalanalyzer.BaseAnalyzer) BuildOption {
+	return func(o *buildOptions) {
+		o.proposalAnalyzers = analyzers
+	}
+}
 
 // BuildMCMSv2Cmd creates the mcmsv2 command with all subcommands.
 // This function delegates to the modular mcms package for backward compatibility.
@@ -34,12 +49,23 @@ import (
 // Deprecated: Use the modular commands package for new integrations.
 // Execution commands (check-quorum, set-root, execute-chain, timelock-execute-chain)
 // have been moved to mcms-tools: https://github.com/smartcontractkit/mcms-tools
-func BuildMCMSv2Cmd(lggr logger.Logger, domain cldf_domain.Domain, proposalContextProvider analyzer.ProposalContextProvider) *cobra.Command {
+func BuildMCMSv2Cmd(
+	lggr logger.Logger,
+	domain cldf_domain.Domain,
+	proposalContextProvider analyzer.ProposalContextProvider,
+	opts ...BuildOption,
+) *cobra.Command {
 	if lggr == nil {
 		panic("nil logger received")
 	}
 	if proposalContextProvider == nil {
 		panic("nil proposal context provider received")
+	}
+	options := &buildOptions{}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(options)
+		}
 	}
 
 	cmd := cobra.Command{
@@ -64,6 +90,7 @@ Available commands here:
 		Logger:                  lggr,
 		Domain:                  domain,
 		ProposalContextProvider: proposalContextProvider,
+		ProposalAnalyzers:       options.proposalAnalyzers,
 	})
 	if err != nil {
 		panic(fmt.Sprintf("failed to create modular mcms commands: %v", err))

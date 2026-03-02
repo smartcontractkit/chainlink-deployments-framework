@@ -90,14 +90,21 @@ func adaptNamedFields(fields []experimentalanalyzer.NamedField) DecodedParameter
 
 	params := make(DecodedParameters, len(fields))
 	for i, field := range fields {
-		ptype := ""
-		if field.Value != nil {
+		ptype := field.TypeName
+		if ptype == "" && field.Value != nil {
 			ptype = field.Value.GetType()
 		}
+
+		value := any(field.Value)
+		if value == nil {
+			value = field.RawValue
+		}
+
 		params[i] = &decodedParameter{
-			name:  field.Name,
-			ptype: ptype,
-			value: field.RawValue,
+			name:     field.Name,
+			ptype:    ptype,
+			value:    value,
+			rawValue: field.RawValue,
 		}
 	}
 
@@ -162,11 +169,13 @@ func (d *decodedCall) ContractVersion() string           { return d.contractVers
 var _ DecodedParameter = (*decodedParameter)(nil)
 
 type decodedParameter struct {
-	name  string
-	ptype string
-	value any
+	name     string
+	ptype    string
+	value    any
+	rawValue any
 }
 
-func (d *decodedParameter) Name() string { return d.name }
-func (d *decodedParameter) Type() string { return d.ptype }
-func (d *decodedParameter) Value() any   { return d.value }
+func (d *decodedParameter) Name() string  { return d.name }
+func (d *decodedParameter) Type() string  { return d.ptype }
+func (d *decodedParameter) Value() any    { return d.value }
+func (d *decodedParameter) RawValue() any { return d.rawValue }

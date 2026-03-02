@@ -5,11 +5,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"reflect"
+	"strconv"
 	"strings"
 	"text/template"
 
+	chainutils "github.com/smartcontractkit/chainlink-deployments-framework/chain/utils"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer/annotation"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/format"
+	experimentalanalyzer "github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 )
 
 const nilValue = "<nil>"
@@ -17,10 +22,9 @@ const nilValue = "<nil>"
 // frameworkAnnotations lists annotation names that are consumed by the
 // framework's built-in template logic.
 var frameworkAnnotations = map[string]struct{}{
-	annotation.AnnotationSeverityName:  {},
-	annotation.AnnotationRiskName:      {},
-	annotation.AnnotationValueTypeName: {},
-	annotation.AnnotationDiffName:      {},
+	annotation.AnnotationSeverityName: {},
+	annotation.AnnotationRiskName:     {},
+	annotation.AnnotationDiffName:     {},
 }
 
 func defaultFuncMap() template.FuncMap {
@@ -32,10 +36,21 @@ func defaultFuncMap() template.FuncMap {
 		"renderDiff":            renderDiff,
 		"formatParam":           formatParam,
 		"truncateAddress":       truncateAddress,
+		"resolveChainSelector":  resolveChainSelector,
 		"severitySymbol":        severitySymbol,
 		"riskSymbol":            riskSymbol,
 		"add":                   func(a, b int) int { return a + b },
 	}
+}
+
+// resolveChainSelector returns a human-readable chain name for a selector.
+func resolveChainSelector(sel uint64) string {
+	info, err := chainutils.ChainInfo(sel)
+	if err != nil {
+		return ""
+	}
+
+	return info.ChainName
 }
 
 // truncateAddress shortens a long address for display.
@@ -83,33 +98,14 @@ func findAnnotationValue(anns annotation.Annotations, name string) any {
 
 // formatParam formats a parameter's value for display.
 func formatParam(param analyzer.AnalyzedParameter) string {
-	for _, ann := range param.Annotations() {
-		if ann.Name() == annotation.AnnotationValueTypeName {
-			if vt, ok := ann.Value().(string); ok && vt != "" {
-				return formatByValueType(param.Value(), vt)
-			}
-		}
+	v := formatValue(param.Value())
+
+	t := param.Type()
+	if strings.Contains(t, "int") {
+		return commaGrouped(v)
 	}
 
-	return formatValue(param.Value())
-}
-
-// formatByValueType formats a raw value according to a semantic value type.
-func formatByValueType(v any, valueType string) string {
-	if v == nil {
-		return nilValue
-	}
-
-	switch valueType {
-	case "ethereum.address":
-		return formatEthereumAddress(v)
-	case "ethereum.uint256":
-		return formatEthereumUint256(v)
-	case "hex":
-		return formatAsHex(v)
-	default:
-		return formatValue(v)
-	}
+	return v
 }
 
 // formatValue produces a human-readable string for arbitrary parameter values.
@@ -119,23 +115,43 @@ func formatValue(v any) string {
 	}
 
 	switch val := v.(type) {
+	case experimentalanalyzer.AddressField:
+		return val.GetValue()
+	case experimentalanalyzer.BytesField:
+		if len(val.GetValue()) == 0 {
+			return "0x"
+		}
+
+		return "0x" + hex.EncodeToString(val.GetValue())
+	case experimentalanalyzer.SimpleField:
+		return val.GetValue()
+	case experimentalanalyzer.ChainSelectorField:
+		name := resolveChainSelector(val.GetValue())
+		if name == "" {
+			return strconv.FormatUint(val.GetValue(), 10)
+		}
+
+		return fmt.Sprintf("%s (%d)", name, val.GetValue())
+	case experimentalanalyzer.YamlField:
+		return val.GetValue()
+	case experimentalanalyzer.ArrayField:
+		return formatArrayField(val)
+	case experimentalanalyzer.StructField:
+		return formatStructField(val)
 	case []byte:
 		if len(val) == 0 {
 			return "0x"
 		}
 
 		return "0x" + hex.EncodeToString(val)
-
 	case *big.Int:
 		if val == nil {
 			return nilValue
 		}
 
 		return val.String()
-
 	case fmt.Stringer:
 		return val.String()
-
 	default:
 		if b, err := json.MarshalIndent(v, "", "  "); err == nil {
 			s := string(b)
@@ -148,81 +164,89 @@ func formatValue(v any) string {
 	}
 }
 
-func formatEthereumAddress(v any) string {
-	s := fmt.Sprintf("%v", v)
-	s = strings.TrimPrefix(s, "0x")
-	s = strings.ToLower(s)
-	if len(s) < 40 {
-		s = strings.Repeat("0", 40-len(s)) + s
+func formatArrayField(af experimentalanalyzer.ArrayField) string {
+	elems := af.GetElements()
+	if len(elems) == 0 {
+		return "[]"
 	}
 
-	return "0x" + s
+	parts := make([]string, len(elems))
+	for i, elem := range elems {
+		parts[i] = formatValue(elem)
+	}
+
+	if len(elems) == 1 {
+		return "[" + parts[0] + "]"
+	}
+
+	for i, part := range parts {
+		parts[i] = "  " + part
+	}
+
+	return "[\n" + strings.Join(parts, ",\n") + "\n]"
 }
 
-func formatEthereumUint256(v any) string {
-	var num *big.Int
+func formatStructField(sf experimentalanalyzer.StructField) string {
+	fields := sf.GetFields()
+	if len(fields) == 0 {
+		return "{}"
+	}
+
+	parts := make([]string, 0, len(fields))
+	for _, f := range fields {
+		parts = append(parts, fmt.Sprintf("%s: %s", f.Name, formatValue(f.Value)))
+	}
+
+	return "{ " + strings.Join(parts, ", ") + " }"
+}
+
+// commaGrouped adds comma separators to a numeric value for readability.
+func commaGrouped(v any) string {
+	if n, ok := v.(json.Number); ok {
+		v = string(n)
+	}
+
 	switch val := v.(type) {
 	case *big.Int:
 		if val == nil {
 			return nilValue
 		}
-		num = val
+
+		return format.CommaGroupBigInt(val)
 	case string:
-		var ok bool
-		num, ok = new(big.Int).SetString(val, 10)
+		num, ok := new(big.Int).SetString(val, 10)
 		if !ok {
 			return val
 		}
+
+		return format.CommaGroupBigInt(num)
 	default:
-		num = new(big.Int)
-		if _, err := fmt.Sscan(fmt.Sprintf("%v", v), num); err != nil {
-			return fmt.Sprintf("%v", v)
-		}
-	}
-
-	s := num.String()
-	sign := ""
-	if strings.HasPrefix(s, "-") {
-		sign = "-"
-		s = strings.TrimPrefix(s, "-")
-	}
-	if len(s) <= 3 {
-		return sign + s
-	}
-
-	var b strings.Builder
-	if sign != "" {
-		b.WriteString(sign)
-	}
-	for i, ch := range s {
-		if i > 0 && (len(s)-i)%3 == 0 {
-			b.WriteRune(',')
-		}
-		b.WriteRune(ch)
-	}
-
-	return b.String()
-}
-
-func formatAsHex(v any) string {
-	switch val := v.(type) {
-	case []byte:
-		return "0x" + hex.EncodeToString(val)
-	case *big.Int:
-		if val == nil {
-			return nilValue
+		rv := reflect.ValueOf(v)
+		if rv.CanInt() {
+			return format.CommaGroupBigInt(big.NewInt(rv.Int()))
 		}
 
-		return "0x" + strings.ToLower(val.Text(16))
-	case string:
-		if strings.HasPrefix(val, "0x") {
-			return val
+		if rv.CanUint() {
+			return format.CommaGroupBigInt(new(big.Int).SetUint64(rv.Uint()))
 		}
 
-		return "0x" + val
-	case uint8, uint16, uint32, uint64, uint, int8, int16, int32, int64, int:
-		return fmt.Sprintf("0x%x", val)
-	default:
+		if rv.CanFloat() {
+			s := strconv.FormatFloat(rv.Float(), 'f', -1, 64)
+			parts := strings.Split(s, ".")
+
+			num, ok := new(big.Int).SetString(parts[0], 10)
+			if !ok {
+				return s
+			}
+
+			intPart := format.CommaGroupBigInt(num)
+			if len(parts) == 2 {
+				return intPart + "." + parts[1]
+			}
+
+			return intPart
+		}
+
 		return formatValue(v)
 	}
 }
@@ -282,8 +306,8 @@ func renderDiff(dv annotation.DiffValue) string {
 }
 
 func formatDiffSide(v any, valueType string) string {
-	if valueType != "" {
-		return formatByValueType(v, valueType)
+	if strings.Contains(valueType, "int") {
+		return commaGrouped(v)
 	}
 
 	return formatValue(v)

@@ -35,6 +35,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/mcms"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/state"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
+	proposalanalyzer "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
@@ -88,6 +89,9 @@ type MCMSConfig struct {
 	// ProposalContextProvider creates proposal context for analysis.
 	// This is domain-specific and must be provided by the user.
 	ProposalContextProvider analyzer.ProposalContextProvider
+
+	// ProposalAnalyzers are custom analyzers registered into analyze-proposal-v2.
+	ProposalAnalyzers []proposalanalyzer.BaseAnalyzer
 }
 
 // MCMS creates the mcms command group for proposal analysis and conversion.
@@ -96,5 +100,6 @@ func (c *Commands) MCMS(dom domain.Domain, cfg MCMSConfig) (*cobra.Command, erro
 		Logger:                  c.lggr,
 		Domain:                  dom,
 		ProposalContextProvider: cfg.ProposalContextProvider,
+		ProposalAnalyzers:       cfg.ProposalAnalyzers,
 	})
 }

@@ -61,6 +61,7 @@ func (p *EVMTxCallDecoder) decodeMethodCall(address string, method *abi.Method, 
 		}
 		inputs[i] = NamedField{
 			Name:     input.Name,
+			TypeName: input.Type.String(),
 			Value:    p.decodeArg(input.Name, &input.Type, arg),
 			RawValue: arg,
 		}
@@ -73,6 +74,7 @@ func (p *EVMTxCallDecoder) decodeMethodCall(address string, method *abi.Method, 
 		}
 		outputs[i] = NamedField{
 			Name:     output.Name,
+			TypeName: output.Type.String(),
 			Value:    p.decodeArg(output.Name, &output.Type, out),
 			RawValue: out,
 		}
@@ -121,8 +123,9 @@ func (p *EVMTxCallDecoder) decodeStruct(argAbi *abi.Type, argVal any) StructFiel
 		argFieldTyp := reflect.ValueOf(argVal).FieldByName(argFieldName)
 		argument := p.decodeArg(argFieldName, argFieldAbi, argFieldTyp.Interface())
 		fields[i] = NamedField{
-			Name:  argFieldName,
-			Value: argument,
+			Name:     argFieldName,
+			TypeName: argFieldAbi.String(),
+			Value:    argument,
 		}
 	}
 
