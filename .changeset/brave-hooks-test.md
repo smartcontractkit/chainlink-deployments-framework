@@ -2,4 +2,4 @@
 "chainlink-deployments-framework": patch
 ---
 
-Add comprehensive unit tests for hook types and ExecuteHook helper
+Add unit tests for hook types, ExecuteHook helper, and fluent API hook integration
