@@ -853,6 +853,175 @@ func Test_WithHooks_SliceIsolation(t *testing.T) {
 	require.Len(t, branchHooks, 2, "branch should have both hooks")
 }
 
+// Integration tests — full hook lifecycle through the registry provider pattern.
+
+func Test_Integration_MultiChangeset_GlobalAndPerCSHooks(t *testing.T) {
+	t.Parallel()
+
+	var order []string
+
+	globalPre := PreHook{
+		HookDefinition: HookDefinition{Name: "global-pre"},
+		Func: func(_ context.Context, p PreHookParams) error {
+			order = append(order, "global-pre:"+p.ChangesetKey)
+			return nil
+		},
+	}
+	globalPost := PostHook{
+		HookDefinition: HookDefinition{Name: "global-post"},
+		Func: func(_ context.Context, p PostHookParams) error {
+			order = append(order, "global-post:"+p.ChangesetKey)
+			return nil
+		},
+	}
+
+	csAPre := PreHook{
+		HookDefinition: HookDefinition{Name: "csA-pre"},
+		Func: func(_ context.Context, _ PreHookParams) error {
+			order = append(order, "csA-pre")
+			return nil
+		},
+	}
+	csBPost := PostHook{
+		HookDefinition: HookDefinition{Name: "csB-post"},
+		Func: func(_ context.Context, _ PostHookParams) error {
+			order = append(order, "csB-post")
+			return nil
+		},
+	}
+
+	csA := Configure(MyChangeSet).With("cfgA").WithPreHooks(csAPre)
+	csB := Configure(MyChangeSet).With("cfgB").WithPostHooks(csBPost)
+
+	r := NewChangesetsRegistry()
+	r.SetValidate(false)
+	r.AddGlobalPreHooks(globalPre)
+	r.AddGlobalPostHooks(globalPost)
+	r.Add("csA", csA)
+	r.Add("csB", csB)
+
+	_, err := r.Apply("csA", hookTestEnv(t))
+	require.NoError(t, err)
+
+	_, err = r.Apply("csB", hookTestEnv(t))
+	require.NoError(t, err)
+
+	expected := []string{
+		"global-pre:csA", "csA-pre", "global-post:csA",
+		"global-pre:csB", "csB-post", "global-post:csB",
+	}
+	assert.Equal(t, expected, order,
+		"global hooks should run for every changeset; per-CS hooks only for their own")
+}
+
+func Test_Integration_MixedAbortWarn_GlobalAndPerCS(t *testing.T) {
+	t.Parallel()
+
+	var order []string
+
+	r := NewChangesetsRegistry()
+	r.SetValidate(false)
+
+	r.AddGlobalPreHooks(PreHook{
+		HookDefinition: HookDefinition{Name: "global-warn-pre", FailurePolicy: Warn},
+		Func: func(_ context.Context, _ PreHookParams) error {
+			order = append(order, "global-warn-pre")
+			return errors.New("global warning")
+		},
+	})
+
+	csWithAbort := Configure(MyChangeSet).With("cfg").
+		WithPreHooks(PreHook{
+			HookDefinition: HookDefinition{Name: "cs-abort-pre", FailurePolicy: Abort},
+			Func: func(_ context.Context, _ PreHookParams) error {
+				order = append(order, "cs-abort-pre")
+				return errors.New("abort this")
+			},
+		})
+
+	csClean := Configure(MyChangeSet).With("cfg").
+		WithPostHooks(PostHook{
+			HookDefinition: HookDefinition{Name: "cs-warn-post", FailurePolicy: Warn},
+			Func: func(_ context.Context, _ PostHookParams) error {
+				order = append(order, "cs-warn-post")
+				return errors.New("post warning")
+			},
+		})
+
+	r.Add("cs-abort", csWithAbort)
+	r.Add("cs-clean", csClean)
+
+	_, err := r.Apply("cs-abort", hookTestEnv(t))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "abort this")
+
+	assert.Equal(t, []string{"global-warn-pre", "cs-abort-pre"}, order,
+		"global Warn pre-hook should run and be swallowed, then per-CS Abort should fail")
+
+	order = nil
+	_, err = r.Apply("cs-clean", hookTestEnv(t))
+	require.NoError(t, err)
+
+	assert.Equal(t, []string{"global-warn-pre", "cs-warn-post"}, order,
+		"global Warn pre-hook swallowed, Apply succeeds, per-CS Warn post-hook swallowed")
+}
+
+func Test_Integration_HooksCoexistWithThenWith(t *testing.T) {
+	t.Parallel()
+
+	var order []string
+
+	postProcessed := false
+
+	cs := Configure(MyChangeSet).With("cfg").
+		WithPreHooks(PreHook{
+			HookDefinition: HookDefinition{Name: "pre"},
+			Func: func(_ context.Context, _ PreHookParams) error {
+				order = append(order, "pre")
+				return nil
+			},
+		}).
+		ThenWith(func(_ fdeployment.Environment, o fdeployment.ChangesetOutput) (fdeployment.ChangesetOutput, error) {
+			postProcessed = true
+			order = append(order, "post-processor")
+
+			return o, nil
+		}).
+		WithPostHooks(PostHook{
+			HookDefinition: HookDefinition{Name: "post"},
+			Func: func(_ context.Context, _ PostHookParams) error {
+				order = append(order, "post")
+				return nil
+			},
+		})
+
+	r := NewChangesetsRegistry()
+	r.SetValidate(false)
+	r.AddGlobalPreHooks(PreHook{
+		HookDefinition: HookDefinition{Name: "global-pre"},
+		Func: func(_ context.Context, _ PreHookParams) error {
+			order = append(order, "global-pre")
+			return nil
+		},
+	})
+	r.AddGlobalPostHooks(PostHook{
+		HookDefinition: HookDefinition{Name: "global-post"},
+		Func: func(_ context.Context, _ PostHookParams) error {
+			order = append(order, "global-post")
+			return nil
+		},
+	})
+	r.Add("cs-pp", cs)
+
+	_, err := r.Apply("cs-pp", hookTestEnv(t))
+	require.NoError(t, err)
+	assert.True(t, postProcessed, "ThenWith post-processor should have run")
+
+	expected := []string{"global-pre", "pre", "post-processor", "post", "global-post"}
+	assert.Equal(t, expected, order,
+		"hooks and ThenWith post-processor should coexist in the correct order")
+}
+
 func Test_Apply_HappyPath_WithHooks(t *testing.T) {
 	t.Parallel()
 
