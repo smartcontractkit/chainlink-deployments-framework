@@ -1,5 +1,15 @@
 # chainlink-deployments-framework
 
+## 0.84.0
+
+### Minor Changes
+
+- [#780](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/780) [`a06e7ee`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/a06e7ee2e8bdcb95094c3f75ae6b1605fc805093) Thanks [@bytesizedroll](https://github.com/bytesizedroll)! - Add pre/post changeset execution hook types and executeHook helper
+
+- [#800](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/800) [`30b67b6`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/30b67b6e6c758899781651aecbe69fe33fbcf67d) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat(mcms): new analyze-proposal-v2 command
+
+- [#796](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/796) [`ed1a889`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/ed1a88961c1676ba07be9cf43a1b5e37dc5ecdbd) Thanks [@bytesizedroll](https://github.com/bytesizedroll)! - Add per-changeset hook registration via WithPreHooks/WithPostHooks fluent API
+
 ## 0.83.0
 
 ### Minor Changes
