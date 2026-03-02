@@ -1,6 +1,7 @@
 package changeset
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"slices"
@@ -158,7 +159,17 @@ func (r *ChangesetsRegistry) AddGlobalPostHooks(hooks ...PostHook) {
 	r.globalPostHooks = append(r.globalPostHooks, hooks...)
 }
 
-// Apply applies a changeset.
+// Apply applies a changeset, running any registered hooks around it.
+//
+// Execution order:
+//  1. Global pre-hooks (in order added)
+//  2. Per-changeset pre-hooks (in order specified)
+//  3. entry.changeset.Apply(env)
+//  4. Per-changeset post-hooks
+//  5. Global post-hooks
+//
+// If Apply failed, that error is always returned. Post-hook failures after
+// a failed Apply are logged but never mask the Apply error.
 func (r *ChangesetsRegistry) Apply(
 	key string, e fdeployment.Environment,
 ) (fdeployment.ChangesetOutput, error) {
@@ -174,7 +185,68 @@ func (r *ChangesetsRegistry) Apply(
 		return fdeployment.ChangesetOutput{}, fmt.Errorf("changeset '%s' is archived at SHA '%s'", key, *entry.gitSHA)
 	}
 
-	return entry.changeset.Apply(e)
+	hookEnv := HookEnv{
+		Name:   e.Name,
+		Logger: e.Logger,
+	}
+
+	preParams := PreHookParams{
+		Env:          hookEnv,
+		ChangesetKey: key,
+	}
+
+	for _, h := range r.globalPreHooks {
+		if err := ExecuteHook(e, h.HookDefinition, func(ctx context.Context) error {
+			return h.Func(ctx, preParams)
+		}); err != nil {
+			return fdeployment.ChangesetOutput{}, fmt.Errorf("global pre-hook %q failed: %w", h.Name, err)
+		}
+	}
+
+	for _, h := range entry.preHooks {
+		if err := ExecuteHook(e, h.HookDefinition, func(ctx context.Context) error {
+			return h.Func(ctx, preParams)
+		}); err != nil {
+			return fdeployment.ChangesetOutput{}, fmt.Errorf("pre-hook %q failed: %w", h.Name, err)
+		}
+	}
+
+	output, applyErr := entry.changeset.Apply(e)
+
+	postParams := PostHookParams{
+		Env:          hookEnv,
+		ChangesetKey: key,
+		Output:       output,
+		Err:          applyErr,
+	}
+
+	for _, h := range entry.postHooks {
+		if err := ExecuteHook(e, h.HookDefinition, func(ctx context.Context) error {
+			return h.Func(ctx, postParams)
+		}); err != nil {
+			if applyErr != nil {
+				e.Logger.Warnw("post-hook failed after changeset error",
+					"hook", h.Name, "hookErr", err, "changesetErr", applyErr)
+			} else {
+				return output, fmt.Errorf("post-hook %q failed: %w", h.Name, err)
+			}
+		}
+	}
+
+	for _, h := range r.globalPostHooks {
+		if err := ExecuteHook(e, h.HookDefinition, func(ctx context.Context) error {
+			return h.Func(ctx, postParams)
+		}); err != nil {
+			if applyErr != nil {
+				e.Logger.Warnw("global post-hook failed after changeset error",
+					"hook", h.Name, "hookErr", err, "changesetErr", applyErr)
+			} else {
+				return output, fmt.Errorf("global post-hook %q failed: %w", h.Name, err)
+			}
+		}
+	}
+
+	return output, applyErr
 }
 
 // GetChangesetOptions retrieves the configuration options for a changeset.
