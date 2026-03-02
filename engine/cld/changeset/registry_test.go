@@ -296,6 +296,58 @@ func Test_Changesets_GetChangesetOptions(t *testing.T) {
 	}
 }
 
+func Test_Changesets_AddGlobalPreHooks(t *testing.T) {
+	t.Parallel()
+
+	r := NewChangesetsRegistry()
+
+	h1 := PreHook{HookDefinition: HookDefinition{Name: "h1"}}
+	h2 := PreHook{HookDefinition: HookDefinition{Name: "h2"}}
+	h3 := PreHook{HookDefinition: HookDefinition{Name: "h3"}}
+
+	r.AddGlobalPreHooks(h1, h2)
+	require.Len(t, r.globalPreHooks, 2)
+	require.Equal(t, "h1", r.globalPreHooks[0].Name)
+	require.Equal(t, "h2", r.globalPreHooks[1].Name)
+
+	r.AddGlobalPreHooks(h3)
+	require.Len(t, r.globalPreHooks, 3, "multiple calls should be additive")
+	require.Equal(t, "h3", r.globalPreHooks[2].Name)
+}
+
+func Test_Changesets_AddGlobalPostHooks(t *testing.T) {
+	t.Parallel()
+
+	r := NewChangesetsRegistry()
+
+	h1 := PostHook{HookDefinition: HookDefinition{Name: "h1"}}
+	h2 := PostHook{HookDefinition: HookDefinition{Name: "h2"}}
+	h3 := PostHook{HookDefinition: HookDefinition{Name: "h3"}}
+
+	r.AddGlobalPostHooks(h1, h2)
+	require.Len(t, r.globalPostHooks, 2)
+	require.Equal(t, "h1", r.globalPostHooks[0].Name)
+	require.Equal(t, "h2", r.globalPostHooks[1].Name)
+
+	r.AddGlobalPostHooks(h3)
+	require.Len(t, r.globalPostHooks, 3, "multiple calls should be additive")
+	require.Equal(t, "h3", r.globalPostHooks[2].Name)
+}
+
+func Test_Changesets_NoGlobalHooks_Unchanged(t *testing.T) {
+	t.Parallel()
+
+	r := NewChangesetsRegistry()
+	r.Add("0001_test", noopChangeset{})
+
+	require.Nil(t, r.globalPreHooks)
+	require.Nil(t, r.globalPostHooks)
+
+	got, err := r.Apply("0001_test", fdeployment.Environment{})
+	require.NoError(t, err)
+	require.Equal(t, fdeployment.ChangesetOutput{}, got)
+}
+
 func Test_Changesets_InputChainOverrides(t *testing.T) {
 	t.Parallel()
 
