@@ -217,10 +217,10 @@ func newChainLoaders(
 		lggr.Info("Skipping Ton chains, no private key found in secrets")
 	}
 
-	if cfg.Canton.JWTToken != "" {
+	if cantonAuthConfigured(cfg.Canton) {
 		loaders[chainsel.FamilyCanton] = newChainLoaderCanton(networks, cfg)
 	} else {
-		lggr.Info("Skipping Canton chains, no JWT token found in secrets")
+		lggr.Info("Skipping Canton chains, no Canton auth configured (set auth_type and jwt_token, or auth_url+client_id for OAuth)")
 	}
 
 	return loaders
@@ -747,12 +747,10 @@ func (l *chainLoaderCanton) Load(ctx context.Context, selector uint64) (fchain.B
 		return nil, fmt.Errorf("canton network %d: no participants found in metadata", selector)
 	}
 
-	if l.cfg.Canton.JWTToken == "" {
-		return nil, fmt.Errorf("canton network %d: JWT token is required", selector)
+	authProvider, err := l.cantonAuthProvider(ctx, selector)
+	if err != nil {
+		return nil, err
 	}
-
-	// Use TLS-enforcing auth provider for Canton participant endpoints.
-	authProvider := cantonauth.NewStaticProvider(l.cfg.Canton.JWTToken)
 
 	participants := make([]cantonprov.ParticipantConfig, len(md.Participants))
 	for i, participantMD := range md.Participants {
@@ -777,6 +775,53 @@ func (l *chainLoaderCanton) Load(ctx context.Context, selector uint64) (fchain.B
 	}
 
 	return c, nil
+}
+
+// cantonAuthConfigured returns true if Canton auth is configured for at least one scheme (static, client_credentials, or authorization_code).
+func cantonAuthConfigured(c cfgenv.CantonConfig) bool {
+	switch c.AuthType {
+	case cfgenv.CantonAuthTypeClientCredentials:
+		return c.AuthURL != "" && c.ClientID != "" && c.ClientSecret != ""
+	case cfgenv.CantonAuthTypeAuthorizationCode:
+		return c.AuthURL != "" && c.ClientID != ""
+	default:
+		// static or empty (backward compat: jwt_token alone enables Canton)
+		return c.JWTToken != ""
+	}
+}
+
+// cantonAuthProvider builds a Canton auth Provider from config. Caller must ensure cantonAuthConfigured(cfg.Canton) is true.
+func (l *chainLoaderCanton) cantonAuthProvider(ctx context.Context, selector uint64) (cantonauth.Provider, error) {
+	c := l.cfg.Canton
+	switch c.AuthType {
+	case cfgenv.CantonAuthTypeClientCredentials:
+		if c.AuthURL == "" || c.ClientID == "" || c.ClientSecret == "" {
+			return nil, fmt.Errorf("canton network %d: client_credentials requires auth_url, client_id, and client_secret", selector)
+		}
+		oidc, err := cantonauth.NewClientCredentialsProvider(ctx, c.AuthURL, c.ClientID, c.ClientSecret)
+		if err != nil {
+			return nil, fmt.Errorf("canton network %d: client_credentials auth: %w", selector, err)
+		}
+
+		return oidc, nil
+	case cfgenv.CantonAuthTypeAuthorizationCode:
+		if c.AuthURL == "" || c.ClientID == "" {
+			return nil, fmt.Errorf("canton network %d: authorization_code requires auth_url and client_id", selector)
+		}
+		oidc, err := cantonauth.NewAuthorizationCodeProvider(ctx, c.AuthURL, c.ClientID)
+		if err != nil {
+			return nil, fmt.Errorf("canton network %d: authorization_code auth: %w", selector, err)
+		}
+
+		return oidc, nil
+	default:
+		// static or empty
+		if c.JWTToken == "" {
+			return nil, fmt.Errorf("canton network %d: JWT token is required for static auth", selector)
+		}
+
+		return cantonauth.NewStaticProvider(c.JWTToken), nil
+	}
 }
 
 // useKMS returns true if both KeyID and KeyRegion are set in the provided KMS config.
