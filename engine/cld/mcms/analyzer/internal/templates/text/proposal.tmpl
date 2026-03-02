@@ -1,0 +1,16 @@
+{{define "proposal" -}}
+╔═══════════════════════════════════════════════════════════════════════════════
+║ ANALYZED PROPOSAL
+╚═══════════════════════════════════════════════════════════════════════════════
+{{- $batchOps := .BatchOperations -}}
+{{if $batchOps}}
+
+Batch Operations: {{len $batchOps}}
+{{range $i, $batchOp := $batchOps -}}
+{{template "batchOperation" $batchOp}}
+{{end -}}
+{{else}}
+
+No batch operations found.
+{{end -}}
+{{end}}

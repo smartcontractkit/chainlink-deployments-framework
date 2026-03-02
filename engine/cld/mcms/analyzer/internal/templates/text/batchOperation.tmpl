@@ -1,0 +1,17 @@
+{{define "batchOperation" -}}
+
+─────────────────────────────────────────────────────────────────────────────
+ BATCH OPERATION
+─────────────────────────────────────────────────────────────────────────────
+{{- $calls := .Calls -}}
+{{if $calls}}
+
+Calls: {{len $calls}}
+{{range $i, $call := $calls -}}
+{{template "call" $call}}
+{{end -}}
+{{else}}
+
+No calls found.
+{{end -}}
+{{end}}

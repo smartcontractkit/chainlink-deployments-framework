@@ -1,0 +1,24 @@
+{{define "batchOperation" -}}
+<div class="batch-operation" style="margin: 20px 0; padding: 15px; background: #ecf0f1; border-left: 4px solid #3498db; border-radius: 4px;">
+    <h3 style="margin-top: 0;">📦 Batch Operation</h3>
+    {{- $severity := getAnnotationValue . "cld.severity" -}}
+    {{if $severity}}
+    <div class="severity-{{$severity}}">Severity: {{severitySymbol $severity}} {{$severity}}</div>
+    {{end -}}
+    {{- $risk := getAnnotationValue . "cld.risk" -}}
+    {{if $risk}}
+    <div class="risk-{{$risk}}">Risk: {{riskSymbol $risk}} {{$risk}}</div>
+    {{end -}}
+    {{- $calls := .Calls -}}
+    {{if $calls}}
+    <div class="calls" style="margin-top: 15px;">
+        <h4>Calls ({{len $calls}})</h4>
+        {{range $i, $call := $calls -}}
+        {{template "call" $call}}
+        {{end -}}
+    </div>
+    {{else}}
+    <p><em>No calls found.</em></p>
+    {{end -}}
+</div>
+{{end}}
