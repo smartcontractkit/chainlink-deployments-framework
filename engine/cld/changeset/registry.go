@@ -173,16 +173,9 @@ func (r *ChangesetsRegistry) AddGlobalPostHooks(hooks ...PostHook) {
 func (r *ChangesetsRegistry) Apply(
 	key string, e fdeployment.Environment,
 ) (fdeployment.ChangesetOutput, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	entry, ok := r.entries[key]
-	if !ok {
-		return fdeployment.ChangesetOutput{}, fmt.Errorf("changeset '%s' not found", key)
-	}
-
-	if entry.IsArchived() {
-		return fdeployment.ChangesetOutput{}, fmt.Errorf("changeset '%s' is archived at SHA '%s'", key, *entry.gitSHA)
+	entry, globalPre, globalPost, err := r.getApplySnapshot(key)
+	if err != nil {
+		return fdeployment.ChangesetOutput{}, err
 	}
 
 	hookEnv := HookEnv{
@@ -195,7 +188,7 @@ func (r *ChangesetsRegistry) Apply(
 		ChangesetKey: key,
 	}
 
-	for _, h := range r.globalPreHooks {
+	for _, h := range globalPre {
 		if err := ExecuteHook(e, h.HookDefinition, func(ctx context.Context) error {
 			return h.Func(ctx, preParams)
 		}); err != nil {
@@ -233,7 +226,7 @@ func (r *ChangesetsRegistry) Apply(
 		}
 	}
 
-	for _, h := range r.globalPostHooks {
+	for _, h := range globalPost {
 		if err := ExecuteHook(e, h.HookDefinition, func(ctx context.Context) error {
 			return h.Func(ctx, postParams)
 		}); err != nil {
@@ -247,6 +240,25 @@ func (r *ChangesetsRegistry) Apply(
 	}
 
 	return output, applyErr
+}
+
+// getApplySnapshot reads the registry entry and global hook slices under
+// the mutex, returning copies so Apply can release the lock before running
+// hooks and the changeset.
+func (r *ChangesetsRegistry) getApplySnapshot(key string) (registryEntry, []PreHook, []PostHook, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	entry, ok := r.entries[key]
+	if !ok {
+		return registryEntry{}, nil, nil, fmt.Errorf("changeset '%s' not found", key)
+	}
+
+	if entry.IsArchived() {
+		return registryEntry{}, nil, nil, fmt.Errorf("changeset '%s' is archived at SHA '%s'", key, *entry.gitSHA)
+	}
+
+	return entry, slices.Clone(r.globalPreHooks), slices.Clone(r.globalPostHooks), nil
 }
 
 // GetChangesetOptions retrieves the configuration options for a changeset.
