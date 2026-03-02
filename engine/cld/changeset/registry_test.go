@@ -680,6 +680,179 @@ func Test_Apply_HookEnvConstruction(t *testing.T) {
 	assert.NotNil(t, receivedEnv.Logger)
 }
 
+func Test_WithPreHooks_Additive(t *testing.T) {
+	t.Parallel()
+
+	h1 := PreHook{HookDefinition: HookDefinition{Name: "h1"}, Func: func(_ context.Context, _ PreHookParams) error { return nil }}
+	h2 := PreHook{HookDefinition: HookDefinition{Name: "h2"}, Func: func(_ context.Context, _ PreHookParams) error { return nil }}
+	h3 := PreHook{HookDefinition: HookDefinition{Name: "h3"}, Func: func(_ context.Context, _ PreHookParams) error { return nil }}
+
+	cs := Configure(MyChangeSet).With("cfg").
+		WithPreHooks(h1, h2).
+		WithPreHooks(h3)
+
+	hooks := cs.(hookCarrier).getPreHooks()
+	require.Len(t, hooks, 3)
+	assert.Equal(t, "h1", hooks[0].Name)
+	assert.Equal(t, "h2", hooks[1].Name)
+	assert.Equal(t, "h3", hooks[2].Name)
+}
+
+func Test_WithPostHooks_Additive(t *testing.T) {
+	t.Parallel()
+
+	h1 := PostHook{HookDefinition: HookDefinition{Name: "h1"}, Func: func(_ context.Context, _ PostHookParams) error { return nil }}
+	h2 := PostHook{HookDefinition: HookDefinition{Name: "h2"}, Func: func(_ context.Context, _ PostHookParams) error { return nil }}
+
+	cs := Configure(MyChangeSet).With("cfg").
+		WithPostHooks(h1).
+		WithPostHooks(h2)
+
+	hooks := cs.(hookCarrier).getPostHooks()
+	require.Len(t, hooks, 2)
+	assert.Equal(t, "h1", hooks[0].Name)
+	assert.Equal(t, "h2", hooks[1].Name)
+}
+
+func Test_WithHooks_ThenWith_CarriesForward(t *testing.T) {
+	t.Parallel()
+
+	pre := PreHook{HookDefinition: HookDefinition{Name: "pre-before-then"}, Func: func(_ context.Context, _ PreHookParams) error { return nil }}
+	post := PostHook{HookDefinition: HookDefinition{Name: "post-before-then"}, Func: func(_ context.Context, _ PostHookParams) error { return nil }}
+
+	cs := Configure(MyChangeSet).With("cfg").
+		WithPreHooks(pre).
+		WithPostHooks(post).
+		ThenWith(func(_ fdeployment.Environment, o fdeployment.ChangesetOutput) (fdeployment.ChangesetOutput, error) {
+			return o, nil
+		})
+
+	carrier := cs.(hookCarrier)
+	require.Len(t, carrier.getPreHooks(), 1)
+	assert.Equal(t, "pre-before-then", carrier.getPreHooks()[0].Name)
+	require.Len(t, carrier.getPostHooks(), 1)
+	assert.Equal(t, "post-before-then", carrier.getPostHooks()[0].Name)
+}
+
+func Test_WithHooks_ThenWith_AdditiveAfterThenWith(t *testing.T) {
+	t.Parallel()
+
+	preBefore := PreHook{HookDefinition: HookDefinition{Name: "pre-before"}, Func: func(_ context.Context, _ PreHookParams) error { return nil }}
+	preAfter := PreHook{HookDefinition: HookDefinition{Name: "pre-after"}, Func: func(_ context.Context, _ PreHookParams) error { return nil }}
+	postAfter := PostHook{HookDefinition: HookDefinition{Name: "post-after"}, Func: func(_ context.Context, _ PostHookParams) error { return nil }}
+
+	cs := Configure(MyChangeSet).With("cfg").
+		WithPreHooks(preBefore).
+		ThenWith(func(_ fdeployment.Environment, o fdeployment.ChangesetOutput) (fdeployment.ChangesetOutput, error) {
+			return o, nil
+		}).
+		WithPreHooks(preAfter).
+		WithPostHooks(postAfter)
+
+	carrier := cs.(hookCarrier)
+	preHooks := carrier.getPreHooks()
+	require.Len(t, preHooks, 2)
+	assert.Equal(t, "pre-before", preHooks[0].Name)
+	assert.Equal(t, "pre-after", preHooks[1].Name)
+
+	postHooks := carrier.getPostHooks()
+	require.Len(t, postHooks, 1)
+	assert.Equal(t, "post-after", postHooks[0].Name)
+}
+
+func Test_FluentAPI_HooksExtractedByAdd(t *testing.T) {
+	t.Parallel()
+
+	var order []string
+
+	pre := PreHook{
+		HookDefinition: HookDefinition{Name: "fluent-pre"},
+		Func: func(_ context.Context, _ PreHookParams) error {
+			order = append(order, "fluent-pre")
+			return nil
+		},
+	}
+	post := PostHook{
+		HookDefinition: HookDefinition{Name: "fluent-post"},
+		Func: func(_ context.Context, _ PostHookParams) error {
+			order = append(order, "fluent-post")
+			return nil
+		},
+	}
+
+	cs := Configure(MyChangeSet).With("cfg").
+		WithPreHooks(pre).
+		WithPostHooks(post)
+
+	r := NewChangesetsRegistry()
+	r.SetValidate(false)
+	r.Add("test-cs", cs)
+
+	entry := r.entries["test-cs"]
+	require.Len(t, entry.preHooks, 1, "Add should extract pre-hooks via hookCarrier")
+	require.Len(t, entry.postHooks, 1, "Add should extract post-hooks via hookCarrier")
+
+	_, err := r.Apply("test-cs", hookTestEnv(t))
+	require.NoError(t, err)
+	assert.Equal(t, []string{"fluent-pre", "fluent-post"}, order)
+}
+
+func Test_FluentAPI_ThenWith_HooksExtractedByAdd(t *testing.T) {
+	t.Parallel()
+
+	var order []string
+
+	pre := PreHook{
+		HookDefinition: HookDefinition{Name: "pp-pre"},
+		Func: func(_ context.Context, _ PreHookParams) error {
+			order = append(order, "pp-pre")
+			return nil
+		},
+	}
+	post := PostHook{
+		HookDefinition: HookDefinition{Name: "pp-post"},
+		Func: func(_ context.Context, _ PostHookParams) error {
+			order = append(order, "pp-post")
+			return nil
+		},
+	}
+
+	cs := Configure(MyChangeSet).With("cfg").
+		WithPreHooks(pre).
+		ThenWith(func(_ fdeployment.Environment, o fdeployment.ChangesetOutput) (fdeployment.ChangesetOutput, error) {
+			return o, nil
+		}).
+		WithPostHooks(post)
+
+	r := NewChangesetsRegistry()
+	r.SetValidate(false)
+	r.Add("test-cs", cs)
+
+	entry := r.entries["test-cs"]
+	require.Len(t, entry.preHooks, 1)
+	require.Len(t, entry.postHooks, 1)
+
+	_, err := r.Apply("test-cs", hookTestEnv(t))
+	require.NoError(t, err)
+	assert.Equal(t, []string{"pp-pre", "pp-post"}, order)
+}
+
+func Test_WithHooks_SliceIsolation(t *testing.T) {
+	t.Parallel()
+
+	h1 := PreHook{HookDefinition: HookDefinition{Name: "h1"}, Func: func(_ context.Context, _ PreHookParams) error { return nil }}
+	h2 := PreHook{HookDefinition: HookDefinition{Name: "h2"}, Func: func(_ context.Context, _ PreHookParams) error { return nil }}
+
+	base := Configure(MyChangeSet).With("cfg").WithPreHooks(h1)
+	branch := base.WithPreHooks(h2)
+
+	baseHooks := base.(hookCarrier).getPreHooks()
+	branchHooks := branch.(hookCarrier).getPreHooks()
+
+	require.Len(t, baseHooks, 1, "base should be unaffected by branch append")
+	require.Len(t, branchHooks, 2, "branch should have both hooks")
+}
+
 func Test_Apply_HappyPath_WithHooks(t *testing.T) {
 	t.Parallel()
 
