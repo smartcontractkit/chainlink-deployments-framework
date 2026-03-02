@@ -9,7 +9,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/text"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
-	proposalanalyzer "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis"
 	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
@@ -37,7 +37,7 @@ type Config struct {
 	ProposalContextProvider analyzer.ProposalContextProvider
 
 	// ProposalAnalyzers are custom analyzers registered into the v2 proposal analysis engine.
-	ProposalAnalyzers []proposalanalyzer.BaseAnalyzer
+	ProposalAnalyzers []proposalanalysis.BaseAnalyzer
 
 	// Deps holds optional dependencies that can be overridden.
 	// If fields are nil, production defaults are used.
@@ -98,7 +98,7 @@ func NewCommand(cfg Config) (*cobra.Command, error) {
 	return cmd, nil
 }
 
-func validateProposalAnalyzers(analyzers []proposalanalyzer.BaseAnalyzer) error {
+func validateProposalAnalyzers(analyzers []proposalanalysis.BaseAnalyzer) error {
 	for i, analyzer := range analyzers {
 		if analyzer == nil {
 			return fmt.Errorf("mcms.Config: ProposalAnalyzers[%d] cannot be nil", i)

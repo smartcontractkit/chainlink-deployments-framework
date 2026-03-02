@@ -9,7 +9,7 @@ import (
 
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
-	proposalanalyzer "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis"
 	experimentalanalyzer "github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
@@ -108,7 +108,7 @@ func TestCommands_MCMS_ForwardsProposalAnalyzers(t *testing.T) {
 
 	cmd, err := cmds.MCMS(dom, MCMSConfig{
 		ProposalContextProvider: proposalCtxProvider,
-		ProposalAnalyzers:       []proposalanalyzer.BaseAnalyzer{nil},
+		ProposalAnalyzers:       []proposalanalysis.BaseAnalyzer{nil},
 	})
 
 	require.Error(t, err)

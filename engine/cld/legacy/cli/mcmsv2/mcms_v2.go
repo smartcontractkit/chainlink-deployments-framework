@@ -24,20 +24,20 @@ import (
 
 	mcmscmd "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/mcms"
 	cldf_domain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
-	proposalanalyzer "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis"
 	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
 type buildOptions struct {
-	proposalAnalyzers []proposalanalyzer.BaseAnalyzer
+	proposalAnalyzers []proposalanalysis.BaseAnalyzer
 }
 
 // BuildOption configures BuildMCMSv2Cmd.
 type BuildOption func(*buildOptions)
 
 // WithProposalAnalyzers registers custom analyzers for analyze-proposal-v2.
-func WithProposalAnalyzers(analyzers ...proposalanalyzer.BaseAnalyzer) BuildOption {
+func WithProposalAnalyzers(analyzers ...proposalanalysis.BaseAnalyzer) BuildOption {
 	return func(o *buildOptions) {
 		o.proposalAnalyzers = analyzers
 	}
@@ -79,6 +79,7 @@ Install with: brew install smartcontractkit/tap/mcms-tools
 
 Available commands here:
   - analyze-proposal: Analyze proposal and provide human readable output
+  - analyze-proposal-v2: Analyze timelock proposal using the v2 framework
   - convert-upf: Convert proposal to UPF (universal proposal format)
   - execute-fork: Execute proposal on forked environment for testing
   - error-decode-evm: Decode EVM transaction errors
