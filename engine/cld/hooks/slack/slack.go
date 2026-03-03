@@ -110,6 +110,7 @@ func Notify(token, channel, message string) changeset.PreHook {
 		},
 		Func: func(ctx context.Context, params changeset.PreHookParams) error {
 			if token == "" {
+				params.Env.Logger.Warnw("slack hook skipped: token is empty", "hook", "slack-notify")
 				return nil
 			}
 
@@ -141,6 +142,7 @@ func Result(token, channel string) changeset.PostHook {
 		},
 		Func: func(ctx context.Context, params changeset.PostHookParams) error {
 			if token == "" {
+				params.Env.Logger.Warnw("slack hook skipped: token is empty", "hook", "slack-result")
 				return nil
 			}
 
