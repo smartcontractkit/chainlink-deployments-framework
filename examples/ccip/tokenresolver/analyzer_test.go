@@ -1,7 +1,6 @@
 package tokenresolver
 
 import (
-	"context"
 	"encoding/json"
 	"testing"
 
@@ -26,7 +25,7 @@ func TestCanAnalyze_MatchesTokenPoolContractTypes(t *testing.T) {
 		t.Run(ct, func(t *testing.T) {
 			t.Parallel()
 			call := &stubCall{contractType: ct}
-			assert.True(t, a.CanAnalyze(context.Background(), emptyCallReq(), call))
+			assert.True(t, a.CanAnalyze(t.Context(), emptyCallReq(), call))
 		})
 	}
 }
@@ -40,7 +39,7 @@ func TestCanAnalyze_RejectsUnknownContractTypes(t *testing.T) {
 		t.Run(ct, func(t *testing.T) {
 			t.Parallel()
 			call := &stubCall{contractType: ct}
-			assert.False(t, a.CanAnalyze(context.Background(), emptyCallReq(), call))
+			assert.False(t, a.CanAnalyze(t.Context(), emptyCallReq(), call))
 		})
 	}
 }
@@ -59,7 +58,7 @@ func TestCanAnalyze_MatchesAnyMethod(t *testing.T) {
 		t.Run(method, func(t *testing.T) {
 			t.Parallel()
 			call := &stubCall{contractType: "TokenPool", name: method}
-			assert.True(t, a.CanAnalyze(context.Background(), emptyCallReq(), call),
+			assert.True(t, a.CanAnalyze(t.Context(), emptyCallReq(), call),
 				"token metadata resolver should match any method on a token pool")
 		})
 	}
