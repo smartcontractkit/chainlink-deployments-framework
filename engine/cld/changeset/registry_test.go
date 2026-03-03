@@ -33,35 +33,35 @@ func (n noopChangeset) Configurations() (Configurations, error) {
 
 // recordingChangeset tracks whether Apply was called and returns configurable output/error.
 type recordingChangeset struct {
-	applyCalled *bool
+	applyCalled bool
 	output      fdeployment.ChangesetOutput
 	err         error
 }
 
-func (recordingChangeset) noop() {}
+func (*recordingChangeset) noop() {}
 
-func (r recordingChangeset) Apply(_ fdeployment.Environment) (fdeployment.ChangesetOutput, error) {
-	*r.applyCalled = true
+func (r *recordingChangeset) Apply(_ fdeployment.Environment) (fdeployment.ChangesetOutput, error) {
+	r.applyCalled = true
 	return r.output, r.err
 }
 
-func (recordingChangeset) Configurations() (Configurations, error) {
+func (*recordingChangeset) Configurations() (Configurations, error) {
 	return Configurations{}, nil
 }
 
-// orderRecordingChangeset records "apply" into a shared order slice.
+// orderRecordingChangeset records "apply" calls into its internal order slice for tests.
 type orderRecordingChangeset struct {
-	order *[]string
+	order []string
 }
 
-func (orderRecordingChangeset) noop() {}
+func (*orderRecordingChangeset) noop() {}
 
-func (o orderRecordingChangeset) Apply(_ fdeployment.Environment) (fdeployment.ChangesetOutput, error) {
-	*o.order = append(*o.order, "apply")
+func (o *orderRecordingChangeset) Apply(_ fdeployment.Environment) (fdeployment.ChangesetOutput, error) {
+	o.order = append(o.order, "apply")
 	return fdeployment.ChangesetOutput{}, nil
 }
 
-func (orderRecordingChangeset) Configurations() (Configurations, error) {
+func (*orderRecordingChangeset) Configurations() (Configurations, error) {
 	return Configurations{}, nil
 }
 
@@ -453,8 +453,7 @@ func Test_Changesets_InputChainOverrides(t *testing.T) {
 func Test_Apply_PreHookAbort_BlocksChangeset(t *testing.T) {
 	t.Parallel()
 
-	called := false
-	cs := recordingChangeset{applyCalled: &called}
+	cs := &recordingChangeset{}
 
 	r := NewChangesetsRegistry()
 	r.entries["test-cs"] = registryEntry{
@@ -469,15 +468,14 @@ func Test_Apply_PreHookAbort_BlocksChangeset(t *testing.T) {
 
 	_, err := r.Apply("test-cs", hookTestEnv(t))
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "service unhealthy")
-	assert.False(t, called, "changeset should not have been called")
+	require.ErrorContains(t, err, "service unhealthy")
+	assert.False(t, cs.applyCalled, "changeset should not have been called")
 }
 
 func Test_Apply_PreHookWarn_ContinuesExecution(t *testing.T) {
 	t.Parallel()
 
-	called := false
-	cs := recordingChangeset{applyCalled: &called}
+	cs := &recordingChangeset{}
 
 	r := NewChangesetsRegistry()
 	r.entries["test-cs"] = registryEntry{
@@ -492,19 +490,17 @@ func Test_Apply_PreHookWarn_ContinuesExecution(t *testing.T) {
 
 	_, err := r.Apply("test-cs", hookTestEnv(t))
 	require.NoError(t, err)
-	assert.True(t, called, "changeset should still run after Warn hook failure")
+	assert.True(t, cs.applyCalled, "changeset should still run after Warn hook failure")
 }
 
 func Test_Apply_PostHookReceivesOutputAndErr(t *testing.T) {
 	t.Parallel()
 
-	called := false
 	expectedOutput := fdeployment.ChangesetOutput{}
 	expectedErr := errors.New("apply failed")
-	cs := recordingChangeset{
-		applyCalled: &called,
-		output:      expectedOutput,
-		err:         expectedErr,
+	cs := &recordingChangeset{
+		output: expectedOutput,
+		err:    expectedErr,
 	}
 
 	var receivedParams PostHookParams
@@ -532,12 +528,11 @@ func Test_Apply_PostHookReceivesOutputAndErr(t *testing.T) {
 func Test_Apply_PostHookAbort_AfterSuccessfulApply(t *testing.T) {
 	t.Parallel()
 
-	called := false
-	cs := recordingChangeset{applyCalled: &called}
+	cs := recordingChangeset{}
 
 	r := NewChangesetsRegistry()
 	r.entries["test-cs"] = registryEntry{
-		changeset: cs,
+		changeset: &cs,
 		postHooks: []PostHook{{
 			HookDefinition: HookDefinition{Name: "post-blocker", FailurePolicy: Abort},
 			Func: func(_ context.Context, _ PostHookParams) error {
@@ -548,22 +543,20 @@ func Test_Apply_PostHookAbort_AfterSuccessfulApply(t *testing.T) {
 
 	_, err := r.Apply("test-cs", hookTestEnv(t))
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "post-hook failed")
-	assert.True(t, called, "changeset should have been called before post-hook")
+	require.ErrorContains(t, err, "post-hook failed")
+	assert.True(t, cs.applyCalled, "changeset should have been called before post-hook")
 }
 
 func Test_Apply_PostHookFailure_AfterFailedApply_ApplyErrorWins(t *testing.T) {
 	t.Parallel()
 
-	called := false
 	cs := recordingChangeset{
-		applyCalled: &called,
-		err:         errors.New("apply error"),
+		err: errors.New("apply error"),
 	}
 
 	r := NewChangesetsRegistry()
 	r.entries["test-cs"] = registryEntry{
-		changeset: cs,
+		changeset: &cs,
 		postHooks: []PostHook{{
 			HookDefinition: HookDefinition{Name: "post-also-fails", FailurePolicy: Abort},
 			Func: func(_ context.Context, _ PostHookParams) error {
@@ -574,14 +567,14 @@ func Test_Apply_PostHookFailure_AfterFailedApply_ApplyErrorWins(t *testing.T) {
 
 	_, err := r.Apply("test-cs", hookTestEnv(t))
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "apply error", "Apply error should be returned, not post-hook error")
+	require.ErrorContains(t, err, "apply error", "Apply error should be returned, not post-hook error")
 	assert.NotContains(t, err.Error(), "post-hook error")
 }
 
 func Test_Apply_ExecutionOrder(t *testing.T) {
 	t.Parallel()
 
-	var order []string
+	cs := &orderRecordingChangeset{}
 
 	r := NewChangesetsRegistry()
 	r.SetValidate(false)
@@ -589,14 +582,14 @@ func Test_Apply_ExecutionOrder(t *testing.T) {
 	r.AddGlobalPreHooks(PreHook{
 		HookDefinition: HookDefinition{Name: "global-pre"},
 		Func: func(_ context.Context, _ PreHookParams) error {
-			order = append(order, "global-pre")
+			cs.order = append(cs.order, "global-pre")
 			return nil
 		},
 	})
 	r.AddGlobalPostHooks(PostHook{
 		HookDefinition: HookDefinition{Name: "global-post"},
 		Func: func(_ context.Context, _ PostHookParams) error {
-			order = append(order, "global-post")
+			cs.order = append(cs.order, "global-post")
 			return nil
 		},
 	})
@@ -604,18 +597,18 @@ func Test_Apply_ExecutionOrder(t *testing.T) {
 	r.Add("test-cs", noopChangeset{})
 
 	r.entries["test-cs"] = registryEntry{
-		changeset: orderRecordingChangeset{order: &order},
+		changeset: cs,
 		preHooks: []PreHook{{
 			HookDefinition: HookDefinition{Name: "cs-pre"},
 			Func: func(_ context.Context, _ PreHookParams) error {
-				order = append(order, "cs-pre")
+				cs.order = append(cs.order, "cs-pre")
 				return nil
 			},
 		}},
 		postHooks: []PostHook{{
 			HookDefinition: HookDefinition{Name: "cs-post"},
 			Func: func(_ context.Context, _ PostHookParams) error {
-				order = append(order, "cs-post")
+				cs.order = append(cs.order, "cs-post")
 				return nil
 			},
 		}},
@@ -625,14 +618,13 @@ func Test_Apply_ExecutionOrder(t *testing.T) {
 	require.NoError(t, err)
 
 	expected := []string{"global-pre", "cs-pre", "apply", "cs-post", "global-post"}
-	assert.Equal(t, expected, order)
+	assert.Equal(t, expected, cs.order)
 }
 
 func Test_Apply_GlobalPreHookAbort_BlocksChangeset(t *testing.T) {
 	t.Parallel()
 
-	called := false
-	cs := recordingChangeset{applyCalled: &called}
+	cs := &recordingChangeset{}
 
 	r := NewChangesetsRegistry()
 	r.SetValidate(false)
@@ -648,15 +640,14 @@ func Test_Apply_GlobalPreHookAbort_BlocksChangeset(t *testing.T) {
 
 	_, err := r.Apply("test-cs", hookTestEnv(t))
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "global pre-hook blocked")
-	assert.False(t, called, "changeset should not run when global pre-hook aborts")
+	require.ErrorContains(t, err, "global pre-hook blocked")
+	assert.False(t, cs.applyCalled, "changeset should not run when global pre-hook aborts")
 }
 
 func Test_Apply_HookEnvConstruction(t *testing.T) {
 	t.Parallel()
 
-	called := false
-	cs := recordingChangeset{applyCalled: &called}
+	cs := &recordingChangeset{}
 
 	var receivedEnv HookEnv
 
@@ -953,7 +944,7 @@ func Test_Integration_MixedAbortWarn_GlobalAndPerCS(t *testing.T) {
 
 	_, err := r.Apply("cs-abort", hookTestEnv(t))
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "abort this")
+	require.ErrorContains(t, err, "abort this")
 
 	assert.Equal(t, []string{"global-warn-pre", "cs-abort-pre"}, order,
 		"global Warn pre-hook should run and be swallowed, then per-CS Abort should fail")
@@ -1025,8 +1016,7 @@ func Test_Integration_HooksCoexistWithThenWith(t *testing.T) {
 func Test_Apply_HappyPath_WithHooks(t *testing.T) {
 	t.Parallel()
 
-	called := false
-	cs := recordingChangeset{applyCalled: &called}
+	cs := recordingChangeset{}
 
 	preHookRan := false
 	postHookRan := false
@@ -1049,12 +1039,12 @@ func Test_Apply_HappyPath_WithHooks(t *testing.T) {
 		},
 	})
 
-	r.Add("test-cs", cs)
+	r.Add("test-cs", &cs)
 
 	got, err := r.Apply("test-cs", hookTestEnv(t))
 	require.NoError(t, err)
 	assert.Equal(t, fdeployment.ChangesetOutput{}, got)
-	assert.True(t, called, "changeset should have been called")
+	assert.True(t, cs.applyCalled, "changeset should have been called")
 	assert.True(t, preHookRan, "pre-hook should have run")
 	assert.True(t, postHookRan, "post-hook should have run")
 }
