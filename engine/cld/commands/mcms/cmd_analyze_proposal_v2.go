@@ -44,7 +44,7 @@ type analyzeProposalV2Flags struct {
 	proposalPath  string
 	chainSelector uint64
 	output        string
-	format        string
+	rendererID    string
 }
 
 func newAnalyzeProposalV2Cmd(cfg Config) *cobra.Command {
@@ -59,7 +59,7 @@ func newAnalyzeProposalV2Cmd(cfg Config) *cobra.Command {
 				proposalPath:  flags.MustString(cmd.Flags().GetString("proposal")),
 				chainSelector: flags.MustUint64(cmd.Flags().GetUint64("selector")),
 				output:        flags.MustString(cmd.Flags().GetString("output")),
-				format:        flags.MustString(cmd.Flags().GetString("format")),
+				rendererID:    flags.MustString(cmd.Flags().GetString("renderer-id")),
 			}
 
 			return runAnalyzeProposalV2(cmd, cfg, f)
@@ -71,7 +71,7 @@ func newAnalyzeProposalV2Cmd(cfg Config) *cobra.Command {
 	flags.ChainSelector(cmd, false)
 
 	cmd.Flags().StringP("output", "o", "", "Output file to write analysis result")
-	cmd.Flags().String("format", analysisrenderer.IDMarkdown, "Output format: markdown")
+	cmd.Flags().String("renderer-id", analysisrenderer.IDMarkdown, "Renderer ID for analysis output")
 
 	return cmd
 }
@@ -97,11 +97,6 @@ func runAnalyzeProposalV2(cmd *cobra.Command, cfg Config, f analyzeProposalV2Fla
 		return errors.New("expected proposal be a timelock proposal")
 	}
 
-	rendererID, err := normalizeRendererFormat(f.format)
-	if err != nil {
-		return err
-	}
-
 	markdownRenderer, err := analysisrenderer.NewMarkdownRenderer()
 	if err != nil {
 		return fmt.Errorf("create markdown renderer: %w", err)
@@ -109,11 +104,15 @@ func runAnalyzeProposalV2(cmd *cobra.Command, cfg Config, f analyzeProposalV2Fla
 
 	engine := proposalanalysis.NewAnalyzerEngine()
 	if registerErr := engine.RegisterRenderer(markdownRenderer); registerErr != nil {
-		return fmt.Errorf("register renderer: %w", registerErr)
+		return fmt.Errorf("register renderer %q: %w", "markdown", registerErr)
+	}
+	if rendererErr := registerProposalRenderers(engine, cfg.ProposalRenderers); rendererErr != nil {
+		return rendererErr
 	}
 	if analyzerErr := registerProposalAnalyzers(engine, cfg.ProposalAnalyzers); analyzerErr != nil {
 		return analyzerErr
 	}
+	rendererID := strings.TrimSpace(f.rendererID)
 
 	var evmABIMappings map[string]string
 	var solanaDecoders map[string]analysisdecoder.DecodeInstructionFn
@@ -168,11 +167,12 @@ func registerProposalAnalyzers(engine proposalanalysis.AnalyzerEngine, analyzers
 	return nil
 }
 
-func normalizeRendererFormat(format string) (string, error) {
-	switch strings.ToLower(strings.TrimSpace(format)) {
-	case "", analysisrenderer.IDMarkdown, "md":
-		return analysisrenderer.IDMarkdown, nil
-	default:
-		return "", fmt.Errorf("unknown format %q: only markdown is supported for analyze-proposal-v2", format)
+func registerProposalRenderers(engine proposalanalysis.AnalyzerEngine, renderers []analysisrenderer.Renderer) error {
+	for _, renderer := range renderers {
+		if err := engine.RegisterRenderer(renderer); err != nil {
+			return fmt.Errorf("register proposal renderer %q: %w", renderer.ID(), err)
+		}
 	}
+
+	return nil
 }

@@ -10,6 +10,7 @@ import (
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	proposalanalyzer "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
+	proposalrenderer "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/renderer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
@@ -108,6 +109,16 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expectedErr: "mcms.Config: ProposalAnalyzers[0] cannot be nil",
 		},
+		{
+			name: "nil custom renderer",
+			config: Config{
+				Logger:                  logger.Nop(),
+				Domain:                  domain.NewDomain(t.TempDir(), "test"),
+				ProposalContextProvider: mockProposalContextProvider,
+				ProposalRenderers:       []proposalrenderer.Renderer{nil},
+			},
+			expectedErr: "mcms.Config: ProposalRenderers[0] cannot be nil",
+		},
 	}
 
 	for _, tt := range tests {
@@ -151,7 +162,7 @@ func TestSubcommands_HaveRequiredFlags(t *testing.T) {
 		},
 		{
 			subcommand: "analyze-proposal-v2",
-			flags:      []string{"environment", "proposal", "output", "format"},
+			flags:      []string{"environment", "proposal", "output", "renderer-id"},
 		},
 		{
 			subcommand: "convert-upf",

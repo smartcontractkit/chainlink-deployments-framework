@@ -10,6 +10,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/text"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	proposalanalyzer "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
+	proposalrenderer "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/renderer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
@@ -39,6 +40,9 @@ type Config struct {
 	// ProposalAnalyzers are custom analyzers registered into the v2 proposal analysis engine.
 	ProposalAnalyzers []proposalanalyzer.BaseAnalyzer
 
+	// ProposalRenderers are custom renderers registered into the v2 proposal analysis engine.
+	ProposalRenderers []proposalrenderer.Renderer
+
 	// Deps holds optional dependencies that can be overridden.
 	// If fields are nil, production defaults are used.
 	Deps Deps
@@ -62,6 +66,9 @@ func (c Config) Validate() error {
 		return errors.New("mcms.Config: missing required fields: " + strings.Join(missing, ", "))
 	}
 	if err := validateProposalAnalyzers(c.ProposalAnalyzers); err != nil {
+		return err
+	}
+	if err := validateProposalRenderers(c.ProposalRenderers); err != nil {
 		return err
 	}
 
@@ -102,6 +109,16 @@ func validateProposalAnalyzers(analyzers []proposalanalyzer.BaseAnalyzer) error 
 	for i, analyzer := range analyzers {
 		if analyzer == nil {
 			return fmt.Errorf("mcms.Config: ProposalAnalyzers[%d] cannot be nil", i)
+		}
+	}
+
+	return nil
+}
+
+func validateProposalRenderers(renderers []proposalrenderer.Renderer) error {
+	for i, renderer := range renderers {
+		if renderer == nil {
+			return fmt.Errorf("mcms.Config: ProposalRenderers[%d] cannot be nil", i)
 		}
 	}
 
