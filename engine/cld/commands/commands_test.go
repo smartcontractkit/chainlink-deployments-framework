@@ -10,6 +10,7 @@ import (
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	proposalanalyzer "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
+	proposalrenderer "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/renderer"
 	experimentalanalyzer "github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
@@ -114,6 +115,26 @@ func TestCommands_MCMS_ForwardsProposalAnalyzers(t *testing.T) {
 	require.Error(t, err)
 	assert.Nil(t, cmd)
 	require.ErrorContains(t, err, "ProposalAnalyzers[0] cannot be nil")
+}
+
+func TestCommands_MCMS_ForwardsProposalRenderers(t *testing.T) {
+	t.Parallel()
+
+	lggr := logger.Nop()
+	cmds := New(lggr)
+	dom := domain.NewDomain(t.TempDir(), "testdomain")
+	proposalCtxProvider := func(_ fdeployment.Environment) (experimentalanalyzer.ProposalContext, error) {
+		return nil, nil //nolint:nilnil
+	}
+
+	cmd, err := cmds.MCMS(dom, MCMSConfig{
+		ProposalContextProvider: proposalCtxProvider,
+		ProposalRenderers:       []proposalrenderer.Renderer{nil},
+	})
+
+	require.Error(t, err)
+	assert.Nil(t, cmd)
+	require.ErrorContains(t, err, "ProposalRenderers[0] cannot be nil")
 }
 
 func TestCommands_MCMS_MissingProposalContextProvider(t *testing.T) {
