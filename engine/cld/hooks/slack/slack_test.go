@@ -39,7 +39,7 @@ func withTestURL(t *testing.T, url string) {
 	t.Cleanup(func() { slackAPIPostURL = orig })
 }
 
-func capturePayload(t *testing.T) (*httptest.Server, *chatPostMessagePayload, *string) {
+func capturePayload(t *testing.T) (*chatPostMessagePayload, *string) {
 	t.Helper()
 	var received chatPostMessagePayload
 	var authHeader string
@@ -49,15 +49,15 @@ func capturePayload(t *testing.T) (*httptest.Server, *chatPostMessagePayload, *s
 		_ = json.Unmarshal(body, &received)
 		_, _ = w.Write(okResponse(t))
 	}))
+	t.Cleanup(srv.Close)
+	withTestURL(t, srv.URL)
 
-	return srv, &received, &authHeader
+	return &received, &authHeader
 }
 
 //nolint:paralleltest // mutates package-level slackAPIPostURL
 func TestNotify_PostsBlockKit(t *testing.T) {
-	srv, received, authHeader := capturePayload(t)
-	defer srv.Close()
-	withTestURL(t, srv.URL)
+	received, authHeader := capturePayload(t)
 
 	hook := Notify("xoxb-test-token", "#deploys", "deploying tokens")
 	err := hook.Func(t.Context(), changeset.PreHookParams{
@@ -100,7 +100,7 @@ func TestNotify_APIError_ReturnsError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write(errResponse(t, "channel_not_found"))
 	}))
-	defer srv.Close()
+	t.Cleanup(srv.Close)
 	withTestURL(t, srv.URL)
 
 	hook := Notify("xoxb-token", "#bad", "test")
@@ -114,7 +114,7 @@ func TestNotify_HTTPError_ReturnsStatus(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusTooManyRequests)
 	}))
-	defer srv.Close()
+	t.Cleanup(srv.Close)
 	withTestURL(t, srv.URL)
 
 	hook := Notify("xoxb-token", "#ch", "test")
@@ -134,9 +134,7 @@ func TestNotify_Metadata(t *testing.T) {
 
 //nolint:paralleltest // mutates package-level slackAPIPostURL
 func TestResult_Success(t *testing.T) {
-	srv, received, _ := capturePayload(t)
-	defer srv.Close()
-	withTestURL(t, srv.URL)
+	received, _ := capturePayload(t)
 
 	hook := Result("xoxb-token", "#deploys")
 	err := hook.Func(t.Context(), changeset.PostHookParams{
@@ -164,9 +162,7 @@ func TestResult_Success(t *testing.T) {
 
 //nolint:paralleltest // mutates package-level slackAPIPostURL
 func TestResult_Failure(t *testing.T) {
-	srv, received, _ := capturePayload(t)
-	defer srv.Close()
-	withTestURL(t, srv.URL)
+	received, _ := capturePayload(t)
 
 	hook := Result("xoxb-token", "#deploys")
 	err := hook.Func(t.Context(), changeset.PostHookParams{
