@@ -219,12 +219,17 @@ func generateStructYAMLWithDepthLimit(
 			return result, nil
 		}
 
-		result := fmt.Sprintf("%s# Map[%s]%s\n%sexample_key: ", indent, keyType.String(), valueType.String(), indent)
-
 		valueStr, err := generateFieldValueWithDepthLimit(valueType, indent+"  ", depth+1, visited, maxDepth)
 		if err != nil {
 			return "", err
 		}
+
+		// Complex values (lists/maps/structs) already carry newline + indentation from recursive generation.
+		if strings.HasPrefix(valueStr, "\n") {
+			return fmt.Sprintf("%s# Map[%s]%s\n%sexample_key:%s\n", indent, keyType.String(), valueType.String(), indent, strings.TrimRight(valueStr, "\n")), nil
+		}
+
+		result := fmt.Sprintf("%s# Map[%s]%s\n%sexample_key: ", indent, keyType.String(), valueType.String(), indent)
 
 		return result + strings.TrimSpace(valueStr) + "\n", nil
 
@@ -271,7 +276,12 @@ func generateFieldValueWithDepthLimit(
 			return "", err
 		}
 
-		return fmt.Sprintf("\n%s- %s", indent, strings.TrimSpace(elemValue)), nil
+		trimmedElem := strings.TrimSpace(elemValue)
+		if strings.Contains(trimmedElem, "\n") {
+			return formatMultilineSliceElement(elemValue, indent), nil
+		}
+
+		return fmt.Sprintf("\n%s- %s", indent, trimmedElem), nil
 	case reflect.Struct:
 		structYAML, err := generateStructYAMLWithDepthLimit(t, indent, depth+1, visited, maxDepth)
 		if err != nil {
@@ -298,12 +308,60 @@ func generateFieldValueWithDepthLimit(
 			keyExample = "example_key"
 		}
 
+		// Complex values (lists/maps/structs) already carry newline + indentation from recursive generation.
+		if strings.HasPrefix(valueStr, "\n") {
+			return fmt.Sprintf("\n%s%s:%s", indent, keyExample, valueStr), nil
+		}
+
 		return fmt.Sprintf("\n%s%s: %s", indent, keyExample, strings.TrimSpace(valueStr)), nil
 	case reflect.Interface:
 		return `"interface{} - provide appropriate value"`, nil
 	default:
 		return fmt.Sprintf(`"unknown_type_%s"`, t.Kind().String()), nil
 	}
+}
+
+func formatMultilineSliceElement(elemValue string, indent string) string {
+	lines := trimBoundaryEmptyLines(strings.Split(strings.TrimRight(elemValue, " \t\n"), "\n"))
+	if len(lines) == 0 {
+		return fmt.Sprintf("\n%s- ", indent)
+	}
+
+	knownPrefix := indent + "  "
+	var listValue strings.Builder
+	listValue.WriteString(fmt.Sprintf("\n%s- %s", indent, stripKnownPrefix(lines[0], knownPrefix)))
+
+	for _, line := range lines[1:] {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+
+		listValue.WriteString("\n")
+		listValue.WriteString(indent)
+		listValue.WriteString("  ")
+		listValue.WriteString(stripKnownPrefix(line, knownPrefix))
+	}
+
+	return listValue.String()
+}
+
+func trimBoundaryEmptyLines(lines []string) []string {
+	for len(lines) > 0 && strings.TrimSpace(lines[0]) == "" {
+		lines = lines[1:]
+	}
+	for len(lines) > 0 && strings.TrimSpace(lines[len(lines)-1]) == "" {
+		lines = lines[:len(lines)-1]
+	}
+
+	return lines
+}
+
+func stripKnownPrefix(line string, knownPrefix string) string {
+	if strings.HasPrefix(line, knownPrefix) {
+		return line[len(knownPrefix):]
+	}
+
+	return strings.TrimLeft(line, " ")
 }
 
 // getFieldName extracts the field name from yaml or json tags, falling back to the struct field name

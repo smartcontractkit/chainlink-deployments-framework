@@ -45,6 +45,31 @@ type DeepNestedInput struct {
 	} `yaml:"level1" json:"level1"`
 }
 
+type ContractsByChainInput struct {
+	ContractsByChain map[uint64][]ContractMeta `yaml:"contractsbychain" json:"contractsbychain"`
+}
+
+type ContractMeta struct {
+	Address        common.Address `yaml:"address" json:"address"`
+	TypeAndVersion string         `yaml:"typeAndVersion" json:"typeAndVersion"`
+	DeployBlock    uint64         `yaml:"deployBlock" json:"deployBlock"`
+	Status         string         `yaml:"status" json:"status"`
+}
+
+type ContractMetaNested struct {
+	Label string `yaml:"label" json:"label"`
+}
+
+type ContractMetaWithNested struct {
+	Address    common.Address                `yaml:"address" json:"address"`
+	Attributes map[string]ContractMetaNested `yaml:"attributes" json:"attributes"`
+	Tags       []string                      `yaml:"tags" json:"tags"`
+}
+
+type ContractsByChainNestedInput struct {
+	ContractsByChain map[uint64][]ContractMetaWithNested `yaml:"contractsbychain" json:"contractsbychain"`
+}
+
 // Mock resolver for testing
 func MockTemplateResolver(input map[string]any) (any, error) {
 	return map[string]any{"resolved": true}, nil
@@ -710,6 +735,67 @@ func TestGenerateFieldValueWithDepthLimit(t *testing.T) {
 			require.Equal(t, tt.expectedOutput, result, tt.description)
 		})
 	}
+}
+
+func TestGenerateStructYAMLWithDepthLimit_MapSliceStructIndentation(t *testing.T) {
+	t.Parallel()
+
+	result, err := generateStructYAMLWithDepthLimit(reflect.TypeOf(ContractsByChainInput{}), "  ", 0, make(map[reflect.Type]bool), 5)
+	require.NoError(t, err)
+
+	expectedOutput := `  contractsbychain:
+    123:
+      - address: # common.Address
+        typeAndVersion: # string
+        deployBlock: # uint64
+        status: # string
+`
+	require.Equal(t, expectedOutput, result)
+}
+
+func TestGenerateStructYAMLWithDepthLimit_MapSliceStructIndentation_NestedValues(t *testing.T) {
+	t.Parallel()
+
+	result, err := generateStructYAMLWithDepthLimit(reflect.TypeOf(ContractsByChainNestedInput{}), "  ", 0, make(map[reflect.Type]bool), 8)
+	require.NoError(t, err)
+
+	expectedBlock := `  contractsbychain:
+    123:
+      - address: # common.Address
+        attributes:
+          example_key:
+            label: # string
+        tags:
+          - # string`
+	require.Contains(t, result, expectedBlock)
+}
+
+func TestGenerateStructYAMLWithDepthLimit_RootMapWithCompositeValue(t *testing.T) {
+	t.Parallel()
+
+	result, err := generateStructYAMLWithDepthLimit(reflect.TypeOf(map[uint64][]SimpleInput{}), "  ", 0, make(map[reflect.Type]bool), 5)
+	require.NoError(t, err)
+
+	expectedOutput := "  # Map[uint64]" + reflect.TypeOf([]SimpleInput{}).String() + "\n" +
+		"  example_key:\n" +
+		"    - name: # string\n" +
+		"      value: # int\n" +
+		"      flag: # bool\n"
+	require.Equal(t, expectedOutput, result)
+}
+
+func TestGenerateStructYAMLWithDepthLimit_RootMapStructValue(t *testing.T) {
+	t.Parallel()
+
+	result, err := generateStructYAMLWithDepthLimit(reflect.TypeOf(map[string]SimpleInput{}), "  ", 0, make(map[reflect.Type]bool), 5)
+	require.NoError(t, err)
+
+	expectedOutput := "  # Map[string]" + reflect.TypeOf(SimpleInput{}).String() + "\n" +
+		"  example_key:\n" +
+		"    name: # string\n" +
+		"    value: # int\n" +
+		"    flag: # bool\n"
+	require.Equal(t, expectedOutput, result)
 }
 
 func TestGenerateStructYAMLWithDepthLimit(t *testing.T) {
