@@ -36,6 +36,8 @@ type Participant struct {
 	Name string
 	// The endpoints to interact with the participant's APIs
 	Endpoints ParticipantEndpoints
+	// Optional (Docker) internal endpoints to interact with the participant's APIs
+	InternalEndpoints *ParticipantEndpoints
 	// The set of service clients to interact with the participant's Ledger API.
 	// All clients are ready-to-use and are already configured with the correct authentication.
 	LedgerServices LedgerServiceClients

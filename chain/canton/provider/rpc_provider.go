@@ -22,22 +22,13 @@ type RPCChainProviderConfig struct {
 // ParticipantConfig is the configuration of a single participant.
 // It contains the configuration details to connect and authenticate against a participant's APIs.
 type ParticipantConfig struct {
-	// (HTTP) The URL to access the participant's JSON Ledger API
-	// Required
-	// https://docs.digitalasset.com/build/3.5/reference/json-api/json-api.html
-	JSONLedgerAPIURL string
-	// (gRPC) The URL to access the participant's gRPC Ledger API
-	// Required
-	// https://docs.digitalasset.com/build/3.5/reference/lapi-proto-docs.html
-	GRPCLedgerAPIURL string
-	// (gRPC) The URL to access the participant's Admin API
-	// Optional - if not set, admin services will not be populated for this participant
-	// https://docs.digitalasset.com/operate/3.5/howtos/configure/apis/admin_api.html
-	AdminAPIURL string
-	// (HTTP) The URL to access the participant's Validator API
-	// Required
-	// https://docs.sync.global/app_dev/validator_api/index.html
-	ValidatorAPIURL string
+	// The endpoints used to connect to this participant's APIs.
+	Endpoints
+	// The (Docker) internal endpoints used to connect to the participant's APIs.
+	// If Specified, the resulting chain will have its InternalEndpoints field populated with these values.
+	// This is useful when having to connect Canton from within another Docker container.
+	// Optional
+	InternalEndpoints *Endpoints
 	// The UserID of the user that should be used for accessing the participant's API endpoints.
 	// Required
 	UserID string
@@ -49,19 +40,32 @@ type ParticipantConfig struct {
 	AuthProvider authentication.Provider
 }
 
+type Endpoints struct {
+	// (HTTP) The URL to access the participant's JSON Ledger API
+	// Optional
+	// https://docs.digitalasset.com/build/3.5/reference/json-api/json-api.html
+	JSONLedgerAPIURL string
+	// (gRPC) The URL to access the participant's gRPC Ledger API
+	// Required
+	// https://docs.digitalasset.com/build/3.5/reference/lapi-proto-docs.html
+	GRPCLedgerAPIURL string
+	// (gRPC) The URL to access the participant's Admin API
+	// Optional - if not set, admin services will not be populated for this participant
+	// https://docs.digitalasset.com/operate/3.5/howtos/configure/apis/admin_api.html
+	AdminAPIURL string
+	// (HTTP) The URL to access the participant's Validator API
+	// Optional
+	// https://docs.sync.global/app_dev/validator_api/index.html
+	ValidatorAPIURL string
+}
+
 func (c RPCChainProviderConfig) validate() error {
 	if len(c.Participants) == 0 {
 		return errors.New("no participants specified")
 	}
 	for i, participant := range c.Participants {
-		if participant.JSONLedgerAPIURL == "" {
-			return fmt.Errorf("participant %d has no JSON Ledger API URL set", i+1)
-		}
 		if participant.GRPCLedgerAPIURL == "" {
 			return fmt.Errorf("participant %d has no gRPC Ledger API URL set", i+1)
-		}
-		if participant.ValidatorAPIURL == "" {
-			return fmt.Errorf("participant %d has no Validator API URL set", i+1)
 		}
 		if participant.UserID == "" {
 			return fmt.Errorf("participant %d has no User ID set", i+1)
@@ -140,6 +144,17 @@ func (p *RPCChainProvider) Initialize(_ context.Context) (chain.BlockChain, erro
 			adminServices = &services
 		}
 
+		// Populate internal endpoints (if set)
+		var internalEndpoints *canton.ParticipantEndpoints
+		if participant.InternalEndpoints != nil {
+			internalEndpoints = &canton.ParticipantEndpoints{
+				JSONLedgerAPIURL: participant.InternalEndpoints.JSONLedgerAPIURL,
+				GRPCLedgerAPIURL: participant.InternalEndpoints.GRPCLedgerAPIURL,
+				AdminAPIURL:      participant.InternalEndpoints.AdminAPIURL,
+				ValidatorAPIURL:  participant.InternalEndpoints.ValidatorAPIURL,
+			}
+		}
+
 		p.chain.Participants[i] = canton.Participant{
 			Name: fmt.Sprintf("Participant %v", i+1),
 			Endpoints: canton.ParticipantEndpoints{
@@ -148,11 +163,12 @@ func (p *RPCChainProvider) Initialize(_ context.Context) (chain.BlockChain, erro
 				AdminAPIURL:      participant.AdminAPIURL,
 				ValidatorAPIURL:  participant.ValidatorAPIURL,
 			},
-			LedgerServices: ledgerServices,
-			AdminServices:  adminServices,
-			TokenSource:    tokenSource,
-			UserID:         participant.UserID,
-			PartyID:        participant.PartyID,
+			InternalEndpoints: internalEndpoints,
+			LedgerServices:    ledgerServices,
+			AdminServices:     adminServices,
+			TokenSource:       tokenSource,
+			UserID:            participant.UserID,
+			PartyID:           participant.PartyID,
 		}
 	}
 

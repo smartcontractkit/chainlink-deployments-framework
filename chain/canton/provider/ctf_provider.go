@@ -99,7 +99,7 @@ func (p *CTFChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 	}
 
 	// Test HTTP health endpoint
-	for i, participant := range output.NetworkSpecificData.CantonEndpoints.Participants {
+	for i, participant := range output.NetworkSpecificData.CantonData.ExternalEndpoints.Participants {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, participant.HTTPHealthCheckURL+"/health", nil)
 		require.NoError(p.t, err)
 		resp, err := http.DefaultClient.Do(req)
@@ -110,10 +110,10 @@ func (p *CTFChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 
 	p.chain = &canton.Chain{
 		ChainMetadata: canton.ChainMetadata{Selector: p.selector},
-		Participants:  make([]canton.Participant, len(output.NetworkSpecificData.CantonEndpoints.Participants)),
+		Participants:  make([]canton.Participant, len(output.NetworkSpecificData.CantonData.ExternalEndpoints.Participants)),
 	}
 
-	for i, participantEndpoints := range output.NetworkSpecificData.CantonEndpoints.Participants {
+	for i, participantEndpoints := range output.NetworkSpecificData.CantonData.ExternalEndpoints.Participants {
 		// Create an InsecureStaticProvider that always returns the same JWT token for the participant
 		authProvider := authentication.NewInsecureStaticProvider(participantEndpoints.JWT)
 		tokenSource := authProvider.TokenSource()
@@ -158,6 +158,12 @@ func (p *CTFChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 				GRPCLedgerAPIURL: participantEndpoints.GRPCLedgerAPIURL,
 				AdminAPIURL:      participantEndpoints.AdminAPIURL,
 				ValidatorAPIURL:  participantEndpoints.ValidatorAPIURL,
+			},
+			InternalEndpoints: &canton.ParticipantEndpoints{
+				JSONLedgerAPIURL: output.NetworkSpecificData.CantonData.InternalEndpoints.Participants[i].JSONLedgerAPIURL,
+				GRPCLedgerAPIURL: output.NetworkSpecificData.CantonData.InternalEndpoints.Participants[i].GRPCLedgerAPIURL,
+				AdminAPIURL:      output.NetworkSpecificData.CantonData.InternalEndpoints.Participants[i].AdminAPIURL,
+				ValidatorAPIURL:  output.NetworkSpecificData.CantonData.InternalEndpoints.Participants[i].ValidatorAPIURL,
 			},
 			LedgerServices: ledgerServices,
 			AdminServices:  &adminServices,
