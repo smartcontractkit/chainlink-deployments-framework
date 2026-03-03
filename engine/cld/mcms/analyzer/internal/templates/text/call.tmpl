@@ -1,0 +1,36 @@
+{{define "call" -}}
+
+  ┌───────────────────────────────────────────────────────────────────────────
+  │ CALL: {{.Name}}{{if getAnnotation . "render.important"}} ⭐{{end}}
+  └───────────────────────────────────────────────────────────────────────────
+{{- $severity := getAnnotationValue . "cld.severity" -}}
+{{if $severity}}
+  Severity: {{severitySymbol $severity}} {{$severity}}
+{{end -}}
+{{- $risk := getAnnotationValue . "cld.risk" -}}
+{{if $risk}}
+  Risk: {{riskSymbol $risk}} {{$risk}}
+{{end -}}
+{{- $inputs := .Inputs -}}
+{{if $inputs}}
+
+  Inputs ({{len $inputs}}):
+{{range $i, $input := $inputs -}}
+    {{template "parameter" $input}}
+{{end -}}
+{{else}}
+
+  No inputs.
+{{end -}}
+{{- $outputs := .Outputs -}}
+{{if $outputs}}
+
+  Outputs ({{len $outputs}}):
+{{range $i, $output := $outputs -}}
+    {{template "parameter" $output}}
+{{end -}}
+{{else}}
+
+  No outputs.
+{{end -}}
+{{end}}

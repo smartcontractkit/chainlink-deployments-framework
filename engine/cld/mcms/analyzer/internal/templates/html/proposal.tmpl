@@ -1,0 +1,42 @@
+{{define "proposal" -}}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Analyzed Proposal</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f5f5f5; }
+        .proposal { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .proposal-header { background: #2c3e50; color: white; padding: 15px; border-radius: 4px; margin-bottom: 20px; }
+        .proposal-header h1 { margin: 0; font-size: 24px; }
+        .batch-operations { margin-top: 20px; }
+        .severity-error { color: #c0392b; font-weight: bold; }
+        .severity-warning { color: #f39c12; font-weight: bold; }
+        .severity-info { color: #3498db; }
+        .severity-debug { color: #95a5a6; }
+        .risk-high { color: #c0392b; font-weight: bold; }
+        .risk-medium { color: #f39c12; font-weight: bold; }
+        .risk-low { color: #27ae60; }
+        .important { font-weight: bold; background-color: #fff3cd; padding: 2px 4px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+<div class="proposal">
+    <div class="proposal-header">
+        <h1>🔍 ANALYZED PROPOSAL</h1>
+    </div>
+    {{- $batchOps := .BatchOperations -}}
+    {{if $batchOps}}
+    <div class="batch-operations">
+        <h2>Batch Operations ({{len $batchOps}})</h2>
+        {{range $i, $batchOp := $batchOps -}}
+        {{template "batchOperation" $batchOp}}
+        {{end -}}
+    </div>
+    {{else}}
+    <p><em>No batch operations found.</em></p>
+    {{end -}}
+</div>
+</body>
+</html>
+{{end}}

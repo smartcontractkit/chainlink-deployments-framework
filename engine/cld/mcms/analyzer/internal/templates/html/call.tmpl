@@ -1,0 +1,39 @@
+{{define "call" -}}
+<div class="call" style="margin: 15px 0; padding: 12px; background: white; border: 1px solid #bdc3c7; border-radius: 4px;">
+    <h4 style="margin-top: 0;">
+        {{- if getAnnotation . "render.important"}}<span class="important">⭐ {{end -}}
+        📞 {{.Name}}
+        {{- if getAnnotation . "render.important"}}</span>{{end -}}
+    </h4>
+    {{- $severity := getAnnotationValue . "cld.severity" -}}
+    {{if $severity}}
+    <div class="severity-{{$severity}}" style="margin: 5px 0;">Severity: {{severitySymbol $severity}} {{$severity}}</div>
+    {{end -}}
+    {{- $risk := getAnnotationValue . "cld.risk" -}}
+    {{if $risk}}
+    <div class="risk-{{$risk}}" style="margin: 5px 0;">Risk: {{riskSymbol $risk}} {{$risk}}</div>
+    {{end -}}
+    {{- $inputs := .Inputs -}}
+    {{if $inputs}}
+    <div class="inputs" style="margin-top: 10px;">
+        <strong>Inputs ({{len $inputs}}):</strong>
+        <ul style="margin: 5px 0; padding-left: 20px;">
+        {{range $i, $input := $inputs -}}
+            <li>{{template "parameter" $input}}</li>
+        {{end -}}
+        </ul>
+    </div>
+    {{end -}}
+    {{- $outputs := .Outputs -}}
+    {{if $outputs}}
+    <div class="outputs" style="margin-top: 10px;">
+        <strong>Outputs ({{len $outputs}}):</strong>
+        <ul style="margin: 5px 0; padding-left: 20px;">
+        {{range $i, $output := $outputs -}}
+            <li>{{template "parameter" $output}}</li>
+        {{end -}}
+        </ul>
+    </div>
+    {{end -}}
+</div>
+{{end}}
