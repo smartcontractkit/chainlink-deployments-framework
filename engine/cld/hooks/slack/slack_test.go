@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/changeset"
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
 func okResponse(t *testing.T) []byte {
@@ -87,7 +88,9 @@ func TestNotify_EmptyToken_Noop(t *testing.T) {
 	t.Parallel()
 
 	hook := Notify("", "#deploys", "should not send")
-	err := hook.Func(t.Context(), changeset.PreHookParams{})
+	err := hook.Func(t.Context(), changeset.PreHookParams{
+		Env: changeset.HookEnv{Logger: logger.Test(t)},
+	})
 
 	require.NoError(t, err)
 }
@@ -192,6 +195,7 @@ func TestResult_EmptyToken_Noop(t *testing.T) {
 
 	hook := Result("", "#deploys")
 	err := hook.Func(t.Context(), changeset.PostHookParams{
+		Env:          changeset.HookEnv{Logger: logger.Test(t)},
 		ChangesetKey: "0001_deploy",
 	})
 
