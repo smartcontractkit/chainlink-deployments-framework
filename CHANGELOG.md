@@ -1,5 +1,14 @@
 # chainlink-deployments-framework
 
+## 0.85.0
+
+### Minor Changes
+
+- [#816](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/816) [`2af08f1`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/2af08f1ee22db5211693833c2b8861f42390b7a4) Thanks [@friedemannf](https://github.com/friedemannf)! - Add InternalEndpoints to Canton Chain
+  Bump CTF to v0.15.0
+
+- [#813](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/813) [`a415992`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/a415992e6000a3e4d46ad8521cbe2e26cb13a16f) Thanks [@bytesizedroll](https://github.com/bytesizedroll)! - Add Slack notification hooks (Notify and Result) in new engine/cld/hooks/slack package
+
 ## 0.84.0
 
 ### Minor Changes
