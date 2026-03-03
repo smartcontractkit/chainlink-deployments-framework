@@ -118,10 +118,10 @@ func Test_CTFChainProvider_Initialize(t *testing.T) {
 					require.NoError(t, err)
 					// Test that the internal endpoints have been populated
 					require.NotNil(t, participant.InternalEndpoints)
-					require.NotZero(t, participant.InternalEndpoints.JSONLedgerAPIURL)
-					require.NotZero(t, participant.InternalEndpoints.GRPCLedgerAPIURL)
-					require.NotZero(t, participant.InternalEndpoints.AdminAPIURL)
-					require.NotZero(t, participant.InternalEndpoints.ValidatorAPIURL)
+					assert.NotEmpty(t, participant.InternalEndpoints.JSONLedgerAPIURL)
+					assert.NotEmpty(t, participant.InternalEndpoints.GRPCLedgerAPIURL)
+					assert.NotEmpty(t, participant.InternalEndpoints.AdminAPIURL)
+					assert.NotEmpty(t, participant.InternalEndpoints.ValidatorAPIURL)
 				}
 
 				// Check that subsequent calls to Initialize don't re-initialize the chain
