@@ -160,7 +160,7 @@ func TestExecuteHook_ExceedsTimeout_Warn_SwallowsError(t *testing.T) {
 func TestExecuteHook_ParentContextDeadlineRespected(t *testing.T) {
 	t.Parallel()
 
-	parentCtx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	parentCtx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
 	defer cancel()
 
 	env := fdeployment.Environment{
