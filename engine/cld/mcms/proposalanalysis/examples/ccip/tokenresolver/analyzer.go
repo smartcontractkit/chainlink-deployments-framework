@@ -67,28 +67,29 @@ func (a *TokenMetadataAnalyzer) Analyze(
 
 	poolCaller, err := token_pool.NewTokenPoolCaller(poolAddress, evmChain.Client)
 	if err != nil {
-		return nil, fmt.Errorf("create token pool caller for %s: %w", poolAddress, err)
+		return nil, nil //nolint:nilerr
 	}
 
 	callOpts := &bind.CallOpts{Context: ctx}
 
 	tokenAddr, err := poolCaller.GetToken(callOpts)
 	if err != nil {
-		return nil, fmt.Errorf("get token for pool %s: %w", poolAddress, err)
-	}
-
-	decimals, err := poolCaller.GetTokenDecimals(callOpts)
-	if err != nil {
-		return nil, fmt.Errorf("get decimals for pool %s: %w", poolAddress, err)
+		return nil, nil //nolint:nilerr
 	}
 
 	symbol := resolveSymbol(callOpts, tokenAddr, evmChain.Client)
 
-	return annotation.Annotations{
+	anns := annotation.Annotations{
 		annotation.New(AnnotationSymbol, "string", symbol),
-		annotation.New(AnnotationDecimals, "uint8", decimals),
-		annotation.New(AnnotationAddress, "string", tokenAddr.Hex()),
-	}, nil
+	}
+
+	if decimals, err := poolCaller.GetTokenDecimals(callOpts); err == nil {
+		anns = append(anns, annotation.New(AnnotationDecimals, "uint8", decimals))
+	}
+
+	anns = append(anns, annotation.New(AnnotationAddress, "string", tokenAddr.Hex()))
+
+	return anns, nil
 }
 
 func resolveSymbol(
