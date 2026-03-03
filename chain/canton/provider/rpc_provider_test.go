@@ -25,13 +25,15 @@ func Test_RPCChainProviderConfig_validate(t *testing.T) {
 			config: RPCChainProviderConfig{
 				Participants: []ParticipantConfig{
 					{
-						JSONLedgerAPIURL: "json-ledger-api",
-						GRPCLedgerAPIURL: "grpc-ledger-api",
-						AdminAPIURL:      "",
-						ValidatorAPIURL:  "validator-api",
-						UserID:           "user-id",
-						PartyID:          "party-id",
-						AuthProvider:     authentication.InsecureStaticProvider{AccessToken: ""},
+						Endpoints: Endpoints{
+							JSONLedgerAPIURL: "json-ledger-api",
+							GRPCLedgerAPIURL: "grpc-ledger-api",
+							AdminAPIURL:      "",
+							ValidatorAPIURL:  "validator-api",
+						},
+						UserID:       "user-id",
+						PartyID:      "party-id",
+						AuthProvider: authentication.InsecureStaticProvider{AccessToken: ""},
 					},
 				},
 			},
@@ -42,52 +44,74 @@ func Test_RPCChainProviderConfig_validate(t *testing.T) {
 			wantErr: "no participants specified",
 		},
 		{
-			name: "invalid config - no JSONLedgerAPIURL",
+			name: "valid config - no JSONLedgerAPIURL",
 			config: RPCChainProviderConfig{
 				Participants: []ParticipantConfig{
 					{
-						JSONLedgerAPIURL: "",
+						Endpoints: Endpoints{
+							JSONLedgerAPIURL: "",
+							GRPCLedgerAPIURL: "grpc-ledger-api",
+							AdminAPIURL:      "",
+							ValidatorAPIURL:  "validator-api",
+						},
+						UserID:       "user-id",
+						PartyID:      "party-id",
+						AuthProvider: authentication.InsecureStaticProvider{AccessToken: ""},
 					},
 				},
 			},
-			wantErr: "no JSON Ledger API URL set",
 		},
 		{
-			name: "invalid config - GRPCLedgerAPIURL",
+			name: "invalid config - no GRPCLedgerAPIURL",
 			config: RPCChainProviderConfig{
 				Participants: []ParticipantConfig{
 					{
-						JSONLedgerAPIURL: "json-ledger-api",
-						GRPCLedgerAPIURL: "",
+						Endpoints: Endpoints{
+							JSONLedgerAPIURL: "",
+							GRPCLedgerAPIURL: "",
+							AdminAPIURL:      "",
+							ValidatorAPIURL:  "",
+						},
+						UserID:       "user-id",
+						PartyID:      "party-id",
+						AuthProvider: authentication.InsecureStaticProvider{AccessToken: ""},
 					},
 				},
 			},
 			wantErr: "no gRPC Ledger API URL set",
 		},
 		{
-			name: "invalid config - ValidatorAPIURL",
+			name: "valid config - no ValidatorAPIURL",
 			config: RPCChainProviderConfig{
 				Participants: []ParticipantConfig{
 					{
-						JSONLedgerAPIURL: "json-ledger-api",
-						GRPCLedgerAPIURL: "grpc-ledger-api",
-						AdminAPIURL:      "admin-api",
-						ValidatorAPIURL:  "",
+						Endpoints: Endpoints{
+							JSONLedgerAPIURL: "",
+							GRPCLedgerAPIURL: "grpc-ledger-api",
+							AdminAPIURL:      "",
+							ValidatorAPIURL:  "",
+						},
+						UserID:       "user-id",
+						PartyID:      "party-id",
+						AuthProvider: authentication.InsecureStaticProvider{AccessToken: ""},
 					},
 				},
 			},
-			wantErr: "no Validator API URL set",
 		},
 		{
 			name: "invalid config - no UserID",
 			config: RPCChainProviderConfig{
 				Participants: []ParticipantConfig{
 					{
-						JSONLedgerAPIURL: "json-ledger-api",
-						GRPCLedgerAPIURL: "grpc-ledger-api",
-						AdminAPIURL:      "admin-api",
-						ValidatorAPIURL:  "validator-api",
-						UserID:           "",
+						Endpoints: Endpoints{
+							JSONLedgerAPIURL: "json-ledger-api",
+							GRPCLedgerAPIURL: "grpc-ledger-api",
+							AdminAPIURL:      "admin-api",
+							ValidatorAPIURL:  "validator-api",
+						},
+						UserID:       "",
+						PartyID:      "party-id",
+						AuthProvider: authentication.InsecureStaticProvider{AccessToken: ""},
 					},
 				},
 			},
@@ -98,12 +122,15 @@ func Test_RPCChainProviderConfig_validate(t *testing.T) {
 			config: RPCChainProviderConfig{
 				Participants: []ParticipantConfig{
 					{
-						JSONLedgerAPIURL: "json-ledger-api",
-						GRPCLedgerAPIURL: "grpc-ledger-api",
-						AdminAPIURL:      "admin-api",
-						ValidatorAPIURL:  "validator-api",
-						UserID:           "user-id",
-						PartyID:          "",
+						Endpoints: Endpoints{
+							JSONLedgerAPIURL: "json-ledger-api",
+							GRPCLedgerAPIURL: "grpc-ledger-api",
+							AdminAPIURL:      "admin-api",
+							ValidatorAPIURL:  "validator-api",
+						},
+						UserID:       "user-id",
+						PartyID:      "",
+						AuthProvider: authentication.InsecureStaticProvider{AccessToken: ""},
 					},
 				},
 			},
@@ -114,13 +141,15 @@ func Test_RPCChainProviderConfig_validate(t *testing.T) {
 			config: RPCChainProviderConfig{
 				Participants: []ParticipantConfig{
 					{
-						JSONLedgerAPIURL: "json-ledger-api",
-						GRPCLedgerAPIURL: "grpc-ledger-api",
-						AdminAPIURL:      "admin-api",
-						ValidatorAPIURL:  "validator-api",
-						UserID:           "user-id",
-						PartyID:          "party-id",
-						AuthProvider:     nil,
+						Endpoints: Endpoints{
+							JSONLedgerAPIURL: "json-ledger-api",
+							GRPCLedgerAPIURL: "grpc-ledger-api",
+							AdminAPIURL:      "admin-api",
+							ValidatorAPIURL:  "validator-api",
+						},
+						UserID:       "user-id",
+						PartyID:      "party-id",
+						AuthProvider: nil,
 					},
 				},
 			},
@@ -156,13 +185,15 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 			giveConfig: RPCChainProviderConfig{
 				Participants: []ParticipantConfig{
 					{
-						JSONLedgerAPIURL: "participant1-json-ledger-api.localhost:8080",
-						GRPCLedgerAPIURL: "participant1-grpc-ledger-api-url.localhost:8080",
-						AdminAPIURL:      "participant1-admin-api-url.localhost:8080",
-						ValidatorAPIURL:  "participant1-validator-api-url.localhost:8080",
-						UserID:           "participant1",
-						PartyID:          "local-party-1",
-						AuthProvider:     authentication.InsecureStaticProvider{AccessToken: "testToken"},
+						Endpoints: Endpoints{
+							JSONLedgerAPIURL: "participant1-json-ledger-api.localhost:8080",
+							GRPCLedgerAPIURL: "participant1-grpc-ledger-api-url.localhost:8080",
+							AdminAPIURL:      "participant1-admin-api-url.localhost:8080",
+							ValidatorAPIURL:  "participant1-validator-api-url.localhost:8080",
+						},
+						UserID:       "participant1",
+						PartyID:      "local-party-1",
+						AuthProvider: authentication.InsecureStaticProvider{AccessToken: "testToken"},
 					},
 				},
 			},
@@ -172,13 +203,39 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 			giveConfig: RPCChainProviderConfig{
 				Participants: []ParticipantConfig{
 					{
-						JSONLedgerAPIURL: "participant1-json-ledger-api.localhost:8080",
-						GRPCLedgerAPIURL: "participant1-grpc-ledger-api-url.localhost:8080",
-						AdminAPIURL:      "", // Not set
-						ValidatorAPIURL:  "participant1-validator-api-url.localhost:8080",
-						UserID:           "participant1",
-						PartyID:          "local-party-1",
-						AuthProvider:     authentication.InsecureStaticProvider{AccessToken: "testToken"},
+						Endpoints: Endpoints{
+							JSONLedgerAPIURL: "participant1-json-ledger-api.localhost:8080",
+							GRPCLedgerAPIURL: "participant1-grpc-ledger-api-url.localhost:8080",
+							AdminAPIURL:      "", // Not set
+							ValidatorAPIURL:  "participant1-validator-api-url.localhost:8080",
+						},
+						UserID:       "participant1",
+						PartyID:      "local-party-1",
+						AuthProvider: authentication.InsecureStaticProvider{AccessToken: "testToken"},
+					},
+				},
+			},
+		}, {
+			name:         "valid initialization with internal endpoints",
+			giveSelector: chainsel.CANTON_LOCALNET.Selector,
+			giveConfig: RPCChainProviderConfig{
+				Participants: []ParticipantConfig{
+					{
+						Endpoints: Endpoints{
+							JSONLedgerAPIURL: "participant1-json-ledger-api.localhost:8080",
+							GRPCLedgerAPIURL: "participant1-grpc-ledger-api-url.localhost:8080",
+							AdminAPIURL:      "participant1-admin-api-url.localhost:8080",
+							ValidatorAPIURL:  "participant1-validator-api-url.localhost:8080",
+						},
+						InternalEndpoints: &Endpoints{
+							JSONLedgerAPIURL: "participant1-json-ledger-api.internal:8081",
+							GRPCLedgerAPIURL: "participant1.grpc-ledger-api.internal:8081",
+							AdminAPIURL:      "participant1.admin-api.internal:8081",
+							ValidatorAPIURL:  "participant1.validator-api.internal:8081",
+						},
+						UserID:       "participant1",
+						PartyID:      "local-party-1",
+						AuthProvider: authentication.InsecureStaticProvider{AccessToken: "testToken"},
 					},
 				},
 			},
@@ -243,6 +300,14 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 						assert.NotNil(t, participant.AdminServices.ResourceManagement)
 						assert.NotNil(t, participant.AdminServices.SynchronizerConnectivity)
 						assert.NotNil(t, participant.AdminServices.TrafficControl)
+					}
+					// Validate that internal endpoints have been populated
+					if tt.giveConfig.Participants[i].InternalEndpoints != nil {
+						require.NotNil(t, participant.InternalEndpoints)
+						assert.Equal(t, tt.giveConfig.Participants[i].InternalEndpoints.JSONLedgerAPIURL, participant.InternalEndpoints.JSONLedgerAPIURL)
+						assert.Equal(t, tt.giveConfig.Participants[i].InternalEndpoints.GRPCLedgerAPIURL, participant.InternalEndpoints.GRPCLedgerAPIURL)
+						assert.Equal(t, tt.giveConfig.Participants[i].InternalEndpoints.AdminAPIURL, participant.InternalEndpoints.AdminAPIURL)
+						assert.Equal(t, tt.giveConfig.Participants[i].InternalEndpoints.ValidatorAPIURL, participant.InternalEndpoints.ValidatorAPIURL)
 					}
 				}
 

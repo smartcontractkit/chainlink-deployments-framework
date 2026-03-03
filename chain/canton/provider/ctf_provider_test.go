@@ -116,6 +116,12 @@ func Test_CTFChainProvider_Initialize(t *testing.T) {
 					// Test that admin service client can be called
 					_, err = participant.AdminServices.Package.ListDars(t.Context(), &participantv30.ListDarsRequest{})
 					require.NoError(t, err)
+					// Test that the internal endpoints have been populated
+					require.NotNil(t, participant.InternalEndpoints)
+					assert.NotEmpty(t, participant.InternalEndpoints.JSONLedgerAPIURL)
+					assert.NotEmpty(t, participant.InternalEndpoints.GRPCLedgerAPIURL)
+					assert.NotEmpty(t, participant.InternalEndpoints.AdminAPIURL)
+					assert.NotEmpty(t, participant.InternalEndpoints.ValidatorAPIURL)
 				}
 
 				// Check that subsequent calls to Initialize don't re-initialize the chain
