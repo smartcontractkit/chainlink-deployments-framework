@@ -205,6 +205,10 @@ func post(ctx context.Context, token, channel, fallback, color string, header bl
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("slack: unexpected status %d", resp.StatusCode)
+	}
+
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return fmt.Errorf("slack: read response: %w", err)

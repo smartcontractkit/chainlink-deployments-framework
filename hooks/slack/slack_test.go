@@ -106,6 +106,20 @@ func TestNotify_APIError_ReturnsError(t *testing.T) {
 	require.ErrorContains(t, err, "channel_not_found")
 }
 
+//nolint:paralleltest // mutates package-level slackAPIPostURL
+func TestNotify_HTTPError_ReturnsStatus(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusTooManyRequests)
+	}))
+	defer srv.Close()
+	withTestURL(t, srv.URL)
+
+	hook := Notify("xoxb-token", "#ch", "test")
+	err := hook.Func(t.Context(), changeset.PreHookParams{})
+
+	require.ErrorContains(t, err, "unexpected status 429")
+}
+
 func TestNotify_Metadata(t *testing.T) {
 	t.Parallel()
 
