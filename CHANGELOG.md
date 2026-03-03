@@ -1,5 +1,27 @@
 # chainlink-deployments-framework
 
+## 0.84.0
+
+### Minor Changes
+
+- [#780](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/780) [`a06e7ee`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/a06e7ee2e8bdcb95094c3f75ae6b1605fc805093) Thanks [@bytesizedroll](https://github.com/bytesizedroll)! - Add pre/post changeset execution hook types and executeHook helper
+
+- [#801](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/801) [`7313881`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/73138818b6913d380523788259e98f83d490020b) Thanks [@bytesizedroll](https://github.com/bytesizedroll)! - Add global hook registration to ChangesetsRegistry
+
+- [#800](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/800) [`30b67b6`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/30b67b6e6c758899781651aecbe69fe33fbcf67d) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat(mcms): new analyze-proposal-v2 command
+
+- [#805](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/805) [`182fb35`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/182fb350ecdc4a72d700752e97eaeb2948e7aa66) Thanks [@bytesizedroll](https://github.com/bytesizedroll)! - Wire hook execution into ChangesetsRegistry.Apply() with global and per-changeset pre/post hooks
+
+- [#796](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/796) [`ed1a889`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/ed1a88961c1676ba07be9cf43a1b5e37dc5ecdbd) Thanks [@bytesizedroll](https://github.com/bytesizedroll)! - Add per-changeset hook registration via WithPreHooks/WithPostHooks fluent API
+
+### Patch Changes
+
+- [#806](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/806) [`c3f5598`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/c3f55983528fd277728c27107ce171489e9f6bc4) Thanks [@bytesizedroll](https://github.com/bytesizedroll)! - Add unit tests for hook types, ExecuteHook helper, and fluent API hook integration
+
+- [#808](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/808) [`f4843cd`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/f4843cd4c95ba31eb3b30957b37d122aa8d88e83) Thanks [@bytesizedroll](https://github.com/bytesizedroll)! - Add integration tests for full hook lifecycle through the registry provider pattern
+
+- [#811](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/811) [`64d0d13`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/64d0d13960976b7b5e424d0525bde925efcb9686) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(cli): correct template-input YAML indentation for map slice structs
+
 ## 0.83.0
 
 ### Minor Changes
