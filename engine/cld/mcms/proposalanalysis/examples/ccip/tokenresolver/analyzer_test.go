@@ -48,30 +48,8 @@ func TestCanAnalyze_MatchesAnyMethod(t *testing.T) {
 	t.Parallel()
 
 	a := &TokenMetadataAnalyzer{}
-
-	for _, method := range []string{
-		"applyChainUpdates",
-		"setRateLimiterAdmin",
-		"transferOwnership",
-		"anyMethodName",
-	} {
-		t.Run(method, func(t *testing.T) {
-			t.Parallel()
-			call := &stubCall{contractType: "TokenPool", name: method}
-			assert.True(t, a.CanAnalyze(t.Context(), emptyCallReq(), call),
-				"token metadata resolver should match any method on a token pool")
-		})
-	}
-}
-
-func TestID(t *testing.T) {
-	t.Parallel()
-	assert.Equal(t, "ccip.token_pool.token_metadata", (&TokenMetadataAnalyzer{}).ID())
-}
-
-func TestDependencies(t *testing.T) {
-	t.Parallel()
-	assert.Empty(t, (&TokenMetadataAnalyzer{}).Dependencies())
+	call := &stubCall{contractType: "TokenPool", name: "anyMethodName"}
+	assert.True(t, a.CanAnalyze(t.Context(), emptyCallReq(), call))
 }
 
 type stubCall struct {

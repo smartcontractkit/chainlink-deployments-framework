@@ -11,6 +11,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer/annotation"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/decoder"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/examples/ccip"
 )
 
 const (
@@ -20,14 +21,6 @@ const (
 	AnnotationDecimals = "ccip.token.decimals"
 	AnnotationAddress  = "ccip.token.address"
 )
-
-var tokenPoolContractTypes = map[string]struct{}{
-	"LockReleaseTokenPool":      {},
-	"BurnMintTokenPool":         {},
-	"BurnFromMintTokenPool":     {},
-	"BurnWithFromMintTokenPool": {},
-	"TokenPool":                 {},
-}
 
 // TokenMetadataAnalyzer resolves ERC20 token metadata (symbol, decimals,
 // address) for any token pool call.
@@ -43,9 +36,7 @@ func (a *TokenMetadataAnalyzer) CanAnalyze(
 	_ analyzer.AnalyzeRequest[analyzer.CallAnalyzerContext],
 	call decoder.DecodedCall,
 ) bool {
-	_, ok := tokenPoolContractTypes[call.ContractType()]
-
-	return ok
+	return ccip.IsTokenPoolContract(call.ContractType())
 }
 
 func (a *TokenMetadataAnalyzer) Analyze(

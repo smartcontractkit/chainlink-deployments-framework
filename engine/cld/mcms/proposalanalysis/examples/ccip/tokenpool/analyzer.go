@@ -15,19 +15,12 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer/annotation"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer/annotationstore"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/decoder"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/examples/ccip"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/examples/ccip/tokenresolver"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/format"
 )
 
 const AnalyzerID = "ccip.token_pool.apply_chain_updates"
-
-var tokenPoolContractTypes = map[string]struct{}{
-	"LockReleaseTokenPool":      {},
-	"BurnMintTokenPool":         {},
-	"BurnFromMintTokenPool":     {},
-	"BurnWithFromMintTokenPool": {},
-	"TokenPool":                 {},
-}
 
 type ChainUpdatesAnalyzer struct{}
 
@@ -41,11 +34,7 @@ func (a *ChainUpdatesAnalyzer) CanAnalyze(
 	_ analyzer.AnalyzeRequest[analyzer.CallAnalyzerContext],
 	call decoder.DecodedCall,
 ) bool {
-	if _, ok := tokenPoolContractTypes[call.ContractType()]; !ok {
-		return false
-	}
-
-	return call.Name() == "applyChainUpdates"
+	return ccip.IsTokenPoolContract(call.ContractType()) && call.Name() == "applyChainUpdates"
 }
 
 func (a *ChainUpdatesAnalyzer) Analyze(
