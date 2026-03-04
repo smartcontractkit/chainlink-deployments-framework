@@ -1,0 +1,15 @@
+graph TD
+    classDef registry fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    classDef pool fill:#d4edda,stroke:#28a745,stroke-width:2px
+    classDef remote fill:#fff3cd,stroke:#ffc107,stroke-width:2px
+    classDef default fill:#f5f5f5,stroke:#666,stroke-width:1px
+    subgraph ethereum_mainnet ["ethereum-mainnet"]
+        n1["OnRamp v1.5.0<br/>0x1111..1111"]:::default
+        n2["ERC20<br/>0x2222..2222"]:::default
+    end
+    subgraph binance_smart_chain_testnet ["binance_smart_chain-testnet"]
+        n3["0x3333..3333"]:::default
+    end
+    n1 -->|"1. setRateLimiterConfig"| n1
+    n1 -->|"2. transfer"| n2
+    n3 -->|"3. pause"| n3
