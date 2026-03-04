@@ -3,12 +3,7 @@ Package analyzer defines analyzer interfaces used by the proposal analysis engin
 
 # Implementing an Analyzer
 
-Every analyzer must implement `BaseAnalyzer`:
-
-  - ID() string: unique identifier.
-  - Dependencies() []string: analyzer IDs that must run first.
-
-Then implement one of the scope-specific analyzer interfaces:
+Every analyzer must implement one of the scope-specific analyzer interfaces:
 
   - ProposalAnalyzer
   - BatchOperationAnalyzer
@@ -22,8 +17,6 @@ Example proposal-level analyzer:
 
 		"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis"
 		"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
-		"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer/annotation"
-		"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/decoder"
 	)
 
 	type RiskAnalyzer struct{}
@@ -39,7 +32,7 @@ Example proposal-level analyzer:
 	func (RiskAnalyzer) CanAnalyze(
 		ctx context.Context,
 		req analyzer.ProposalAnalyzeRequest,
-		proposal decoder.DecodedTimelockProposal,
+		proposal analyzer.DecodedTimelockProposal,
 	) bool {
 		_ = ctx
 		_ = req
@@ -50,14 +43,14 @@ Example proposal-level analyzer:
 	func (RiskAnalyzer) Analyze(
 		ctx context.Context,
 		req analyzer.ProposalAnalyzeRequest,
-		proposal decoder.DecodedTimelockProposal,
-	) (annotation.Annotations, error) {
+		proposal analyzer.DecodedTimelockProposal,
+	) (analyzer.Annotations, error) {
 		_ = ctx
 		_ = req
 		_ = proposal
 
-		return annotation.Annotations{
-			annotation.New("risk-level", "string", "medium"),
+		return analyzer.Annotations{
+			analyzer.NewAnnotation("risk-level", "string", "medium"),
 		}, nil
 	}
 

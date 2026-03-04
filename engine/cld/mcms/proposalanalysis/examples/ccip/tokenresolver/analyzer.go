@@ -9,8 +9,6 @@ import (
 	"github.com/smartcontractkit/chainlink-ccip/chains/evm/gobindings/generated/latest/token_pool"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer/annotation"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/decoder"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/examples/ccip"
 )
 
@@ -34,7 +32,7 @@ func (a *TokenMetadataAnalyzer) Dependencies() []string { return nil }
 func (a *TokenMetadataAnalyzer) CanAnalyze(
 	_ context.Context,
 	_ analyzer.AnalyzeRequest[analyzer.CallAnalyzerContext],
-	call decoder.DecodedCall,
+	call analyzer.DecodedCall,
 ) bool {
 	return ccip.IsTokenPoolContract(call.ContractType())
 }
@@ -42,8 +40,8 @@ func (a *TokenMetadataAnalyzer) CanAnalyze(
 func (a *TokenMetadataAnalyzer) Analyze(
 	ctx context.Context,
 	req analyzer.AnalyzeRequest[analyzer.CallAnalyzerContext],
-	call decoder.DecodedCall,
-) (annotation.Annotations, error) {
+	call analyzer.DecodedCall,
+) (analyzer.Annotations, error) {
 	if !common.IsHexAddress(call.To()) {
 		return nil, fmt.Errorf("invalid pool address %q", call.To())
 	}
@@ -75,10 +73,10 @@ func (a *TokenMetadataAnalyzer) Analyze(
 
 	symbol := resolveSymbol(callOpts, tokenAddr, evmChain.Client)
 
-	return annotation.Annotations{
-		annotation.New(AnnotationSymbol, "string", symbol),
-		annotation.New(AnnotationDecimals, "uint8", decimals),
-		annotation.New(AnnotationAddress, "string", tokenAddr.Hex()),
+	return analyzer.Annotations{
+		analyzer.NewAnnotation(AnnotationSymbol, "string", symbol),
+		analyzer.NewAnnotation(AnnotationDecimals, "uint8", decimals),
+		analyzer.NewAnnotation(AnnotationAddress, "string", tokenAddr.Hex()),
 	}, nil
 }
 
