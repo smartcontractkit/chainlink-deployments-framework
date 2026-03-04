@@ -2,11 +2,12 @@
 
 
 <details>
-<summary><h3>Batch 1 — Chain <code>5009297550715157269</code></h3></summary>
+<summary><h3>Batch 1 — ethereum-mainnet (<code>5009297550715157269</code>)</h3></summary>
 
 
 _Annotations:_
 - batch.note: first batch
+
 
 #### Call 1
 
@@ -16,7 +17,7 @@ _Annotations:_
 
 **Inputs:**
 
-- **`target`** (`address`): 0xabcdef1234567890abcdef1234567890abcdef12
+- **`target`** (`address`): 0xAbCdEf1234567890abcdef1234567890abcdef12
   - _label: destination contract_
 - **`amount`** (`uint256`): 1,000,000,000,000,000,000
 - **`enabled`** (`bool`): true
@@ -28,6 +29,7 @@ _Annotations:_
 
 _Annotations:_
 - ccip.lane: ethereum -> arbitrum
+
 
 
 #### Call 2
@@ -45,7 +47,7 @@ _Annotations:_
 </details>
 
 <details>
-<summary><h3>Batch 2 — Chain <code>13264668187771770619</code></h3></summary>
+<summary><h3>Batch 2 — binance_smart_chain-testnet (<code>13264668187771770619</code>)</h3></summary>
 
 
 #### Call 1

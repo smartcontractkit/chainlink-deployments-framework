@@ -263,6 +263,7 @@ type decodedParam struct {
 	value any
 }
 
-func (d *decodedParam) Name() string { return d.name }
-func (d *decodedParam) Type() string { return d.atype }
-func (d *decodedParam) Value() any   { return d.value }
+func (d *decodedParam) Name() string  { return d.name }
+func (d *decodedParam) Type() string  { return d.atype }
+func (d *decodedParam) Value() any    { return d.value }
+func (d *decodedParam) RawValue() any { return d.value }

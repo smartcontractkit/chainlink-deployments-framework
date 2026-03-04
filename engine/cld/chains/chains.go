@@ -755,13 +755,15 @@ func (l *chainLoaderCanton) Load(ctx context.Context, selector uint64) (fchain.B
 	participants := make([]cantonprov.ParticipantConfig, len(md.Participants))
 	for i, participantMD := range md.Participants {
 		participants[i] = cantonprov.ParticipantConfig{
-			JSONLedgerAPIURL: participantMD.JSONLedgerAPIURL,
-			GRPCLedgerAPIURL: participantMD.GRPCLedgerAPIURL,
-			AdminAPIURL:      participantMD.AdminAPIURL,
-			ValidatorAPIURL:  participantMD.ValidatorAPIURL,
-			UserID:           participantMD.UserID,
-			PartyID:          participantMD.PartyID,
-			AuthProvider:     authProvider,
+			Endpoints: cantonprov.Endpoints{
+				JSONLedgerAPIURL: participantMD.JSONLedgerAPIURL,
+				GRPCLedgerAPIURL: participantMD.GRPCLedgerAPIURL,
+				AdminAPIURL:      participantMD.AdminAPIURL,
+				ValidatorAPIURL:  participantMD.ValidatorAPIURL,
+			},
+			UserID:       participantMD.UserID,
+			PartyID:      participantMD.PartyID,
+			AuthProvider: authProvider,
 		}
 	}
 

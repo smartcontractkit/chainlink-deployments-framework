@@ -35,18 +35,3 @@ func TestRiskAnnotation(t *testing.T) {
 		}
 	})
 }
-
-func TestValueTypeAnnotation(t *testing.T) {
-	t.Parallel()
-
-	t.Run("uses correct name and type", func(t *testing.T) {
-		t.Parallel()
-
-		for _, vtype := range []string{"ethereum.address", "ethereum.uint256", "hex", "truncate:20"} {
-			ann := ValueTypeAnnotation(vtype)
-			assert.Equal(t, AnnotationValueTypeName, ann.Name())
-			assert.Equal(t, AnnotationValueTypeType, ann.Type())
-			assert.Equal(t, vtype, ann.Value())
-		}
-	})
-}
