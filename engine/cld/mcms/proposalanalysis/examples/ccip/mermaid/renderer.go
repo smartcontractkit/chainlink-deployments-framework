@@ -29,7 +29,6 @@ func (r *MermaidRenderer) RenderTo(w io.Writer, _ renderer.RenderRequest, propos
 	b.WriteString("graph TD\n")
 	b.WriteString("    classDef registry fill:#e1f5fe,stroke:#01579b,stroke-width:2px\n")
 	b.WriteString("    classDef pool fill:#d4edda,stroke:#28a745,stroke-width:2px\n")
-	b.WriteString("    classDef remote fill:#fff3cd,stroke:#ffc107,stroke-width:2px\n")
 	b.WriteString("    classDef default fill:#f5f5f5,stroke:#666,stroke-width:1px\n")
 
 	batches := proposal.BatchOperations()
