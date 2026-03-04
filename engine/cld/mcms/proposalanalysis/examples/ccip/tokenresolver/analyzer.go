@@ -74,12 +74,12 @@ func (a *TokenMetadataAnalyzer) Analyze(
 
 	tokenAddr, err := poolCaller.GetToken(callOpts)
 	if err != nil {
-		return nil, fmt.Errorf("get token for pool %s: %w", poolAddress, err)
+		return nil, fmt.Errorf("get token address from pool %s: %w", poolAddress, err)
 	}
 
 	decimals, err := poolCaller.GetTokenDecimals(callOpts)
 	if err != nil {
-		return nil, fmt.Errorf("get decimals for pool %s: %w", poolAddress, err)
+		return nil, fmt.Errorf("get token decimals from pool %s: %w", poolAddress, err)
 	}
 
 	symbol := resolveSymbol(callOpts, tokenAddr, evmChain.Client)
