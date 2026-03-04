@@ -167,21 +167,6 @@ func TestVerifyEnv_RunVerifyEnv_NetworkFilter(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestVerifyEnv_PreRunE_TxHashMultipleNetworksFails(t *testing.T) {
-	t.Parallel()
-
-	cmd := NewVerifyEnvCmdWithUse(Config{
-		Logger:                 logger.Nop(),
-		Domain:                 domain.NewDomain(t.TempDir(), "testdomain"),
-		ContractInputsProvider: &mockContractInputsProvider{},
-	}, "verify-env")
-	cmd.SetArgs([]string{"-e", "staging", "-t", "0xabc", "-a", "0x123", "-n", "1,2"})
-
-	err := cmd.Execute()
-	require.Error(t, err)
-	require.Equal(t, "--tx-hash requires --networks to have only one chain selector", err.Error())
-}
-
 func TestParseNetworkFilter(t *testing.T) {
 	t.Parallel()
 

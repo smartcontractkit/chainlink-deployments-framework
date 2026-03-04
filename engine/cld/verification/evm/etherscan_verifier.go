@@ -31,6 +31,9 @@ type transactionInfo struct {
 const statusOK = "1"
 const messageOK = "OK"
 
+// maxVerificationPollAttempts limits polling to avoid stalling CI when the API never returns pass/fail.
+const maxVerificationPollAttempts = 12 // ~1 min at 5s poll interval
+
 // NewEtherscanV2ContractVerifier creates a verifier that uses metadata from ContractInputsProvider.
 func NewEtherscanV2ContractVerifier(
 	chain chainsel.Chain,
@@ -83,9 +86,23 @@ func (v *etherscanVerifier) IsVerified(ctx context.Context) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("failed to check verification status: %w", err)
 	}
-	var js interface{}
+	if resp.Status != statusOK || !strings.EqualFold(resp.Message, messageOK) {
+		if strings.Contains(strings.ToLower(resp.Result), "contract source code not verified") {
+			return false, nil
+		}
 
-	return json.Unmarshal([]byte(resp.Result), &js) == nil, nil
+		return false, fmt.Errorf("etherscan API error while checking verification status: status=%s message=%s result=%s", resp.Status, resp.Message, resp.Result)
+	}
+	var js interface{}
+	if err := json.Unmarshal([]byte(resp.Result), &js); err != nil {
+		if strings.Contains(strings.ToLower(resp.Result), "contract source code not verified") {
+			return false, nil
+		}
+
+		return false, fmt.Errorf("failed to parse ABI JSON from etherscan response: %w", err)
+	}
+
+	return true, nil
 }
 
 func (v *etherscanVerifier) Verify(ctx context.Context) error {
@@ -110,13 +127,12 @@ func (v *etherscanVerifier) Verify(ctx context.Context) error {
 	}
 
 	resp, err := sendEtherscanRequest[string](ctx, v.httpClient, v.chain.EvmChainID, "POST", "contract", "verifysourcecode", v.apiKey, map[string]string{
-		"contractaddress":       v.address,
-		"sourceCode":            sourceCode,
-		"codeformat":            "solidity-standard-json-input",
-		"contractname":          v.metadata.Name,
-		"compilerversion":       v.metadata.Version,
-		"constructorArguements": constructorArgs,
-		"constructorArguments":  constructorArgs,
+		"contractaddress":      v.address,
+		"sourceCode":           sourceCode,
+		"codeformat":           "solidity-standard-json-input",
+		"contractname":         v.metadata.Name,
+		"compilerversion":      v.metadata.Version,
+		"constructorArguments": constructorArgs,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to verify contract: %w", err)
@@ -127,25 +143,33 @@ func (v *etherscanVerifier) Verify(ctx context.Context) error {
 	v.lggr.Infof("Verification request submitted for %s", v.String())
 
 	guid := resp.Result
-	for {
+	pollDur := v.pollInterval
+	if pollDur <= 0 {
+		pollDur = 5 * time.Second
+	}
+	for range maxVerificationPollAttempts {
 		statusResp, err := sendEtherscanRequest[string](ctx, v.httpClient, v.chain.EvmChainID, "GET", "contract", "checkverifystatus", v.apiKey, map[string]string{
 			"guid": guid,
 		})
 		if err != nil {
 			return fmt.Errorf("failed to check verification status: %w", err)
 		}
-		if statusResp.Status == statusOK && strings.Contains(strings.ToLower(statusResp.Result), "pass") {
-			break
+		resultLower := strings.ToLower(statusResp.Result)
+		if statusResp.Status == statusOK && strings.Contains(resultLower, "pass") {
+			return nil
 		}
-		v.lggr.Infof("Verification status - %s, checking again in %s", statusResp.Result, v.pollInterval)
+		if strings.Contains(resultLower, "fail") {
+			return fmt.Errorf("verification failed: %s", statusResp.Result)
+		}
+		v.lggr.Infof("Verification status - %s, checking again in %s", statusResp.Result, pollDur)
 		select {
-		case <-time.After(v.pollInterval):
+		case <-time.After(pollDur):
 		case <-ctx.Done():
 			return ctx.Err()
 		}
 	}
 
-	return nil
+	return fmt.Errorf("verification timed out after %d attempts", maxVerificationPollAttempts)
 }
 
 func (v *etherscanVerifier) getConstructorArgs(ctx context.Context) (string, error) {
@@ -179,11 +203,20 @@ func sendEtherscanRequest[R any](ctx context.Context, client *http.Client, chain
 	for k, val := range extraParams {
 		form.Add(k, val)
 	}
-	httpReq, err := http.NewRequestWithContext(ctx, method, etherscanURL+fmt.Sprintf("?chainid=%d", chainID), strings.NewReader(form.Encode()))
+	baseURL := etherscanURL + fmt.Sprintf("?chainid=%d", chainID)
+	var reqBody io.Reader
+	if method == "GET" {
+		baseURL = baseURL + "&" + form.Encode()
+	} else {
+		reqBody = strings.NewReader(form.Encode())
+	}
+	httpReq, err := http.NewRequestWithContext(ctx, method, baseURL, reqBody)
 	if err != nil {
 		return etherscanAPIResponse[R]{}, fmt.Errorf("failed to create request: %w", err)
 	}
-	httpReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	if method != "GET" {
+		httpReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	}
 
 	if client == nil {
 		client = http.DefaultClient

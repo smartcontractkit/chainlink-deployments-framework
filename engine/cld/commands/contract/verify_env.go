@@ -1,7 +1,6 @@
 package contract
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -16,6 +15,8 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/verification/evm"
 )
+
+const rateLimitDelay = 1 * time.Second
 
 var (
 	verifyEnvShort = "Verify EVM contracts in an environment"
@@ -43,7 +44,6 @@ func newVerifyEnvCmdWithUse(cfg Config, use string) *cobra.Command {
 	var (
 		filterNetworks string
 		filterContract string
-		createTxHash   string
 		pollInterval   time.Duration
 		customDomain   string
 		fromLocal      bool
@@ -64,7 +64,6 @@ func newVerifyEnvCmdWithUse(cfg Config, use string) *cobra.Command {
 				environment:    env,
 				filterNetworks: filterNetworks,
 				filterContract: filterContract,
-				createTxHash:   createTxHash,
 				pollInterval:   pollInterval,
 				fromLocal:      fromLocal,
 			}
@@ -76,23 +75,9 @@ func newVerifyEnvCmdWithUse(cfg Config, use string) *cobra.Command {
 	flags.Environment(cmd)
 	cmd.Flags().StringVarP(&filterNetworks, "networks", "n", "", "Optional comma-separated list of chain selectors to verify")
 	cmd.Flags().StringVarP(&filterContract, "address", "a", "", "Optional contract address to verify")
-	cmd.Flags().StringVarP(&createTxHash, "tx-hash", "t", "", "Optional creation tx hash for the contract")
 	cmd.Flags().DurationVarP(&pollInterval, "poll-interval", "p", 5*time.Second, "Polling interval for verification status")
 	cmd.Flags().StringVarP(&customDomain, "domain", "d", "", "Domain to verify (default: from config)")
 	cmd.Flags().BoolVar(&fromLocal, "local", false, "Use local datastore files only; ignore domain config (use for local runs)")
-
-	cmd.PreRunE = func(cmd *cobra.Command, args []string) error {
-		if createTxHash != "" {
-			if filterContract == "" {
-				return errors.New("--tx-hash requires --address to be specified")
-			}
-			if filterNetworks != "" && len(strings.Split(filterNetworks, ",")) != 1 {
-				return errors.New("--tx-hash requires --networks to have only one chain selector")
-			}
-		}
-
-		return nil
-	}
 
 	return cmd
 }
@@ -101,7 +86,6 @@ type verifyEnvFlags struct {
 	environment    string
 	filterNetworks string
 	filterContract string
-	createTxHash   string
 	pollInterval   time.Duration
 	fromLocal      bool
 }
@@ -163,7 +147,7 @@ func runVerifyEnv(cmd *cobra.Command, cfg Config, f verifyEnvFlags, dom domain.D
 		}
 
 		for _, ref := range addresses {
-			if f.filterContract != "" && ref.Address != f.filterContract {
+			if f.filterContract != "" && !strings.EqualFold(ref.Address, f.filterContract) {
 				continue
 			}
 			if ref.Version == nil {
@@ -178,16 +162,15 @@ func runVerifyEnv(cmd *cobra.Command, cfg Config, f verifyEnvFlags, dom domain.D
 			}
 
 			verifier, err := evm.NewVerifier(strategy, evm.VerifierConfig{
-				Chain:         chain,
-				Network:       network,
-				Address:       ref.Address,
-				Metadata:      metadata,
-				ContractType:  string(ref.Type),
-				Version:       ref.Version.String(),
-				PollInterval:  f.pollInterval,
-				CreatorTxHash: f.createTxHash,
-				Logger:        cfg.Logger,
-				HTTPClient:    cfg.VerifierHTTPClient,
+				Chain:        chain,
+				Network:      network,
+				Address:      ref.Address,
+				Metadata:     metadata,
+				ContractType: string(ref.Type),
+				Version:      ref.Version.String(),
+				PollInterval: f.pollInterval,
+				Logger:       cfg.Logger,
+				HTTPClient:   cfg.VerifierHTTPClient,
 			})
 			if err != nil {
 				cfg.Logger.Debugf("Failed to create verifier for %s on %s: %s", ref.Address, chain.Name, err)
@@ -203,7 +186,7 @@ func runVerifyEnv(cmd *cobra.Command, cfg Config, f verifyEnvFlags, dom domain.D
 					ref.Type, ref.Version, ref.Address, chain.Name, err)
 			}
 
-			time.Sleep(f.pollInterval)
+			time.Sleep(rateLimitDelay)
 		}
 	}
 

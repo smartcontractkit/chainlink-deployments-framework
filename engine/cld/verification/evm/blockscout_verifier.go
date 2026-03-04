@@ -85,7 +85,8 @@ func (v *blockscoutVerifier) IsVerified(ctx context.Context) (bool, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return false, nil
+		limitedBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+		return false, fmt.Errorf("blockscout IsVerified: unexpected status code %d: %s", resp.StatusCode, string(limitedBody))
 	}
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {

@@ -97,7 +97,7 @@ func TestNewVerifier_StrategySourcify(t *testing.T) {
 	chain, ok := chainsel.ChainBySelector(chainsel.ETHEREUM_MAINNET.Selector)
 	require.True(t, ok)
 
-	v, err := NewVerifier(StrategySourcify, VerifierConfig{
+	_, err := NewVerifier(StrategySourcify, VerifierConfig{
 		Chain:        chain,
 		Network:      cfgnet.Network{ChainSelector: chain.Selector},
 		Address:      "0x123",
@@ -107,8 +107,7 @@ func TestNewVerifier_StrategySourcify(t *testing.T) {
 		Logger:       logger.Nop(),
 	})
 	require.Error(t, err)
-	require.Nil(t, v)
-	require.Equal(t, "chain ID 1 is not supported by the sourcify API", err.Error())
+	require.Equal(t, "sourcify verifier not yet implemented", err.Error())
 }
 
 func TestNewVerifier_StrategyRoutescan(t *testing.T) {
@@ -156,7 +155,7 @@ func TestNewVerifier_StrategyOkLink(t *testing.T) {
 	chain, ok := chainsel.ChainBySelector(chainsel.ETHEREUM_MAINNET_XLAYER_1.Selector)
 	require.True(t, ok)
 
-	v, err := NewVerifier(StrategyOkLink, VerifierConfig{
+	_, err := NewVerifier(StrategyOkLink, VerifierConfig{
 		Chain:        chain,
 		Network:      cfgnet.Network{ChainSelector: chain.Selector},
 		Address:      "0x123",
@@ -165,9 +164,8 @@ func TestNewVerifier_StrategyOkLink(t *testing.T) {
 		Version:      "1.0.0",
 		Logger:       logger.Nop(),
 	})
-	require.NoError(t, err)
-	require.NotNil(t, v)
-	require.Contains(t, v.String(), "0x123")
+	require.Error(t, err)
+	require.Equal(t, "oklink verifier not yet implemented", err.Error())
 }
 
 func TestNewVerifier_StrategyBtrScan(t *testing.T) {
@@ -176,7 +174,7 @@ func TestNewVerifier_StrategyBtrScan(t *testing.T) {
 	chain, ok := chainsel.ChainBySelector(chainsel.BITCOIN_MAINNET_BITLAYER_1.Selector)
 	require.True(t, ok)
 
-	v, err := NewVerifier(StrategyBtrScan, VerifierConfig{
+	_, err := NewVerifier(StrategyBtrScan, VerifierConfig{
 		Chain:        chain,
 		Network:      cfgnet.Network{ChainSelector: chain.Selector},
 		Address:      "0x123",
@@ -185,9 +183,8 @@ func TestNewVerifier_StrategyBtrScan(t *testing.T) {
 		Version:      "1.0.0",
 		Logger:       logger.Nop(),
 	})
-	require.NoError(t, err)
-	require.NotNil(t, v)
-	require.Contains(t, v.String(), "0x123")
+	require.Error(t, err)
+	require.Equal(t, "btrscan verifier not yet implemented", err.Error())
 }
 
 func TestNewVerifier_StrategyBtrScan_UnsupportedChain(t *testing.T) {
@@ -206,7 +203,7 @@ func TestNewVerifier_StrategyBtrScan_UnsupportedChain(t *testing.T) {
 		Logger:       logger.Nop(),
 	})
 	require.Error(t, err)
-	require.Equal(t, "chain ID 1 is not supported by the BtrScan API", err.Error())
+	require.Equal(t, "btrscan verifier not yet implemented", err.Error())
 }
 
 func TestNewVerifier_StrategyCoreDAO(t *testing.T) {
@@ -215,7 +212,7 @@ func TestNewVerifier_StrategyCoreDAO(t *testing.T) {
 	chain, ok := chainsel.ChainBySelector(chainsel.CORE_MAINNET.Selector)
 	require.True(t, ok)
 
-	v, err := NewVerifier(StrategyCoreDAO, VerifierConfig{
+	_, err := NewVerifier(StrategyCoreDAO, VerifierConfig{
 		Chain:        chain,
 		Network:      cfgnet.Network{ChainSelector: chain.Selector},
 		Address:      "0x123",
@@ -224,9 +221,8 @@ func TestNewVerifier_StrategyCoreDAO(t *testing.T) {
 		Version:      "1.0.0",
 		Logger:       logger.Nop(),
 	})
-	require.NoError(t, err)
-	require.NotNil(t, v)
-	require.Contains(t, v.String(), "0x123")
+	require.Error(t, err)
+	require.Equal(t, "coredao verifier not yet implemented", err.Error())
 }
 
 func TestNewVerifier_StrategyL2Scan(t *testing.T) {
@@ -235,7 +231,7 @@ func TestNewVerifier_StrategyL2Scan(t *testing.T) {
 	chain, ok := chainsel.ChainBySelector(chainsel.BITCOIN_MERLIN_MAINNET.Selector)
 	require.True(t, ok)
 
-	v, err := NewVerifier(StrategyL2Scan, VerifierConfig{
+	_, err := NewVerifier(StrategyL2Scan, VerifierConfig{
 		Chain:        chain,
 		Network:      cfgnet.Network{ChainSelector: chain.Selector},
 		Address:      "0x123",
@@ -244,9 +240,8 @@ func TestNewVerifier_StrategyL2Scan(t *testing.T) {
 		Version:      "1.0.0",
 		Logger:       logger.Nop(),
 	})
-	require.NoError(t, err)
-	require.NotNil(t, v)
-	require.Contains(t, v.String(), "0x123")
+	require.Error(t, err)
+	require.Equal(t, "l2scan verifier not yet implemented", err.Error())
 }
 
 func TestNewVerifier_StrategySocialScan(t *testing.T) {
@@ -255,7 +250,7 @@ func TestNewVerifier_StrategySocialScan(t *testing.T) {
 	chain, ok := chainsel.ChainBySelector(chainsel.PHAROS_TESTNET.Selector)
 	require.True(t, ok)
 
-	v, err := NewVerifier(StrategySocialScan, VerifierConfig{
+	_, err := NewVerifier(StrategySocialScan, VerifierConfig{
 		Chain:        chain,
 		Network:      cfgnet.Network{ChainSelector: chain.Selector},
 		Address:      "0x123",
@@ -264,9 +259,8 @@ func TestNewVerifier_StrategySocialScan(t *testing.T) {
 		Version:      "1.0.0",
 		Logger:       logger.Nop(),
 	})
-	require.NoError(t, err)
-	require.NotNil(t, v)
-	require.Contains(t, v.String(), "0x123")
+	require.Error(t, err)
+	require.Equal(t, "socialscan verifier not yet implemented", err.Error())
 }
 
 func TestNewVerifier_StrategyDefault(t *testing.T) {

@@ -78,18 +78,6 @@ func TestVerifyEnv_MissingEnvironmentFlagFails(t *testing.T) {
 	require.Equal(t, `required flag(s) "environment" not set`, err.Error())
 }
 
-func TestVerifyEnv_TxHashWithoutAddressFails(t *testing.T) {
-	t.Parallel()
-
-	cmd := newTestContractCommand(t)
-	cmd.SetArgs([]string{"verify-env", "-e", "staging", "-t", "0x123"})
-
-	err := cmd.Execute()
-
-	require.Error(t, err)
-	require.Equal(t, "--tx-hash requires --address to be specified", err.Error())
-}
-
 func TestConfig_Validate(t *testing.T) {
 	t.Parallel()
 

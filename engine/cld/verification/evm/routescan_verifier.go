@@ -73,9 +73,19 @@ func (v *routescanVerifier) IsVerified(ctx context.Context) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("failed to check verification status: %w", err)
 	}
+	if resp.Status != statusOK || !strings.EqualFold(resp.Message, messageOK) {
+		return false, fmt.Errorf("routescan API error while checking verification status: status=%q message=%q", resp.Status, resp.Message)
+	}
 	var js interface{}
+	if err := json.Unmarshal([]byte(resp.Result), &js); err != nil {
+		if strings.Contains(strings.ToLower(resp.Result), "contract source code not verified") {
+			return false, nil
+		}
 
-	return json.Unmarshal([]byte(resp.Result), &js) == nil, nil
+		return false, fmt.Errorf("failed to parse ABI JSON from routescan response: %w", err)
+	}
+
+	return true, nil
 }
 
 func (v *routescanVerifier) Verify(ctx context.Context) error {
@@ -116,25 +126,33 @@ func (v *routescanVerifier) Verify(ctx context.Context) error {
 	v.lggr.Infof("Verification request submitted for %s", v.String())
 
 	guid := resp.Result
-	for {
+	pollDur := v.pollInterval
+	if pollDur <= 0 {
+		pollDur = 5 * time.Second
+	}
+	for range maxVerificationPollAttempts {
 		statusResp, err := sendRoutescanRequest[string](ctx, v.httpClient, v.chain.EvmChainID, v.networkType, "GET", "contract", "checkverifystatus", v.apiKey, map[string]string{
 			"guid": guid,
 		})
 		if err != nil {
 			return fmt.Errorf("failed to check verification status: %w", err)
 		}
-		if statusResp.Status == statusOK && strings.Contains(strings.ToLower(statusResp.Result), "pass") {
-			break
+		resultLower := strings.ToLower(statusResp.Result)
+		if statusResp.Status == statusOK && strings.Contains(resultLower, "pass") {
+			return nil
 		}
-		v.lggr.Infof("Verification status - %s, checking again in %s", statusResp.Result, v.pollInterval)
+		if strings.Contains(resultLower, "fail") {
+			return fmt.Errorf("verification failed: %s", statusResp.Result)
+		}
+		v.lggr.Infof("Verification status - %s, checking again in %s", statusResp.Result, pollDur)
 		select {
-		case <-time.After(v.pollInterval):
+		case <-time.After(pollDur):
 		case <-ctx.Done():
 			return ctx.Err()
 		}
 	}
 
-	return nil
+	return fmt.Errorf("verification timed out after %d attempts", maxVerificationPollAttempts)
 }
 
 func (v *routescanVerifier) getConstructorArgs(ctx context.Context) (string, error) {

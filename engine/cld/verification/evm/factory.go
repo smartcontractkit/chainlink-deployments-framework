@@ -15,15 +15,14 @@ import (
 
 // VerifierConfig holds the parameters needed to create a verifier.
 type VerifierConfig struct {
-	Chain         chainsel.Chain
-	Network       cfgnet.Network
-	Address       string
-	Metadata      SolidityContractMetadata
-	ContractType  string
-	Version       string
-	PollInterval  time.Duration
-	CreatorTxHash string
-	Logger        logger.Logger
+	Chain        chainsel.Chain
+	Network      cfgnet.Network
+	Address      string
+	Metadata     SolidityContractMetadata
+	ContractType string
+	Version      string
+	PollInterval time.Duration
+	Logger       logger.Logger
 	// HTTPClient is optional; when nil, verifiers use http.DefaultClient. Set for testing.
 	HTTPClient *http.Client
 }
@@ -49,17 +48,17 @@ func NewVerifier(strategy VerificationStrategy, cfg VerifierConfig) (verificatio
 	case StrategyBlockscout:
 		return newBlockscoutVerifier(cfg)
 	case StrategySourcify:
-		return newSourcifyVerifier(cfg)
+		return nil, errors.New("sourcify verifier not yet implemented")
 	case StrategyOkLink:
-		return newOkLinkVerifier(cfg)
+		return nil, errors.New("oklink verifier not yet implemented")
 	case StrategyBtrScan:
-		return newBtrScanVerifier(cfg)
+		return nil, errors.New("btrscan verifier not yet implemented")
 	case StrategyCoreDAO:
-		return newCoreDAOVerifier(cfg)
+		return nil, errors.New("coredao verifier not yet implemented")
 	case StrategyL2Scan:
-		return newL2ScanVerifier(cfg)
+		return nil, errors.New("l2scan verifier not yet implemented")
 	case StrategySocialScan:
-		return newSocialScanVerifier(cfg)
+		return nil, errors.New("socialscan verifier not yet implemented")
 	default:
 		return nil, fmt.Errorf("no verifier for strategy %d", strategy)
 	}
