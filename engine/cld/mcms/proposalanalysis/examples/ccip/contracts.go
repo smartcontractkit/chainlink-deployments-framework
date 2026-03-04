@@ -1,6 +1,6 @@
 package ccip
 
-var TokenPoolContractTypes = map[string]struct{}{
+var tokenPoolContractTypes = map[string]struct{}{
 	"LockReleaseTokenPool":      {},
 	"BurnMintTokenPool":         {},
 	"BurnFromMintTokenPool":     {},
@@ -9,7 +9,7 @@ var TokenPoolContractTypes = map[string]struct{}{
 }
 
 func IsTokenPoolContract(contractType string) bool {
-	_, ok := TokenPoolContractTypes[contractType]
+	_, ok := tokenPoolContractTypes[contractType]
 
 	return ok
 }
