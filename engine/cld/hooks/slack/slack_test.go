@@ -55,12 +55,14 @@ func capturePayload(t *testing.T) (*chatPostMessagePayload, *string) {
 	return &received, &authHeader
 }
 
-//nolint:paralleltest // mutates package-level slackAPIPostURL
+//nolint:paralleltest // mutates package-level slackAPIPostURL and env var
 func TestNotify_PostsBlockKit(t *testing.T) {
+	t.Setenv(TokenEnvVar, "xoxb-test-token")
 	received, authHeader := capturePayload(t)
 
-	hook := Notify("xoxb-test-token", "#deploys", "deploying tokens")
+	hook := Notify("#deploys", "deploying tokens")
 	err := hook.Func(t.Context(), changeset.PreHookParams{
+		Env:          changeset.HookEnv{Logger: logger.Test(t)},
 		ChangesetKey: "0001_deploy",
 	})
 
@@ -84,10 +86,11 @@ func TestNotify_PostsBlockKit(t *testing.T) {
 	assert.Equal(t, "context", att.Blocks[1].Type)
 }
 
+//nolint:paralleltest // uses t.Setenv
 func TestNotify_EmptyToken_Noop(t *testing.T) {
-	t.Parallel()
+	t.Setenv(TokenEnvVar, "")
 
-	hook := Notify("", "#deploys", "should not send")
+	hook := Notify("#deploys", "should not send")
 	err := hook.Func(t.Context(), changeset.PreHookParams{
 		Env: changeset.HookEnv{Logger: logger.Test(t)},
 	})
@@ -95,49 +98,56 @@ func TestNotify_EmptyToken_Noop(t *testing.T) {
 	require.NoError(t, err)
 }
 
-//nolint:paralleltest // mutates package-level slackAPIPostURL
+//nolint:paralleltest // mutates package-level slackAPIPostURL and env var
 func TestNotify_APIError_ReturnsError(t *testing.T) {
+	t.Setenv(TokenEnvVar, "xoxb-token")
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write(errResponse(t, "channel_not_found"))
 	}))
 	t.Cleanup(srv.Close)
 	withTestURL(t, srv.URL)
 
-	hook := Notify("xoxb-token", "#bad", "test")
-	err := hook.Func(t.Context(), changeset.PreHookParams{})
+	hook := Notify("#bad", "test")
+	err := hook.Func(t.Context(), changeset.PreHookParams{
+		Env: changeset.HookEnv{Logger: logger.Test(t)},
+	})
 
 	require.ErrorContains(t, err, "channel_not_found")
 }
 
-//nolint:paralleltest // mutates package-level slackAPIPostURL
+//nolint:paralleltest // mutates package-level slackAPIPostURL and env var
 func TestNotify_HTTPError_ReturnsStatus(t *testing.T) {
+	t.Setenv(TokenEnvVar, "xoxb-token")
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusTooManyRequests)
 	}))
 	t.Cleanup(srv.Close)
 	withTestURL(t, srv.URL)
 
-	hook := Notify("xoxb-token", "#ch", "test")
-	err := hook.Func(t.Context(), changeset.PreHookParams{})
+	hook := Notify("#ch", "test")
+	err := hook.Func(t.Context(), changeset.PreHookParams{
+		Env: changeset.HookEnv{Logger: logger.Test(t)},
+	})
 
 	require.ErrorContains(t, err, "unexpected status 429")
 }
 
+//nolint:paralleltest // uses t.Setenv
 func TestNotify_Metadata(t *testing.T) {
-	t.Parallel()
-
-	hook := Notify("token", "#ch", "msg")
+	hook := Notify("#ch", "msg")
 	assert.Equal(t, "slack-notify", hook.Name)
 	assert.Equal(t, changeset.Warn, hook.FailurePolicy)
 	assert.Equal(t, 10*time.Second, hook.Timeout)
 }
 
-//nolint:paralleltest // mutates package-level slackAPIPostURL
+//nolint:paralleltest // mutates package-level slackAPIPostURL and env var
 func TestResult_Success(t *testing.T) {
+	t.Setenv(TokenEnvVar, "xoxb-token")
 	received, _ := capturePayload(t)
 
-	hook := Result("xoxb-token", "#deploys")
+	hook := Result("#deploys")
 	err := hook.Func(t.Context(), changeset.PostHookParams{
+		Env:          changeset.HookEnv{Logger: logger.Test(t)},
 		ChangesetKey: "0001_deploy",
 		Err:          nil,
 	})
@@ -160,12 +170,14 @@ func TestResult_Success(t *testing.T) {
 	assert.Equal(t, "context", att.Blocks[1].Type)
 }
 
-//nolint:paralleltest // mutates package-level slackAPIPostURL
+//nolint:paralleltest // mutates package-level slackAPIPostURL and env var
 func TestResult_Failure(t *testing.T) {
+	t.Setenv(TokenEnvVar, "xoxb-token")
 	received, _ := capturePayload(t)
 
-	hook := Result("xoxb-token", "#deploys")
+	hook := Result("#deploys")
 	err := hook.Func(t.Context(), changeset.PostHookParams{
+		Env:          changeset.HookEnv{Logger: logger.Test(t)},
 		ChangesetKey: "0002_migrate",
 		Err:          errors.New("tx reverted"),
 	})
@@ -186,10 +198,11 @@ func TestResult_Failure(t *testing.T) {
 	assert.Equal(t, "context", att.Blocks[2].Type)
 }
 
+//nolint:paralleltest // uses t.Setenv
 func TestResult_EmptyToken_Noop(t *testing.T) {
-	t.Parallel()
+	t.Setenv(TokenEnvVar, "")
 
-	hook := Result("", "#deploys")
+	hook := Result("#deploys")
 	err := hook.Func(t.Context(), changeset.PostHookParams{
 		Env:          changeset.HookEnv{Logger: logger.Test(t)},
 		ChangesetKey: "0001_deploy",
@@ -198,10 +211,9 @@ func TestResult_EmptyToken_Noop(t *testing.T) {
 	require.NoError(t, err)
 }
 
+//nolint:paralleltest // uses t.Setenv
 func TestResult_Metadata(t *testing.T) {
-	t.Parallel()
-
-	hook := Result("token", "#ch")
+	hook := Result("#ch")
 	assert.Equal(t, "slack-result", hook.Name)
 	assert.Equal(t, changeset.Warn, hook.FailurePolicy)
 	assert.Equal(t, 10*time.Second, hook.Timeout)
