@@ -57,8 +57,8 @@ func TestRoutescanVerifier_IsVerified_NotVerified(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(routeScanAPIResponse[string]{
-			Status:  statusOK,
-			Message: messageOK,
+			Status:  "0",
+			Message: "NOTOK",
 			Result:  "Contract source code not verified",
 		})
 	}))

@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 
 	chainsel "github.com/smartcontractkit/chain-selectors"
 
@@ -70,8 +71,23 @@ func (v *blockscoutVerifier) String() string {
 	return fmt.Sprintf("%s %s (%s on %s)", v.contractType, v.version, v.address, v.chain.Name)
 }
 
-func (v *blockscoutVerifier) IsVerified(ctx context.Context) (bool, error) {
+// apiBase returns the base URL for Blockscout API calls. If v.apiURL has no path or path is "/",
+// appends "/api"; otherwise preserves the configured path to avoid clobbering custom API paths.
+func (v *blockscoutVerifier) apiBase() (*url.URL, error) {
 	u, err := url.Parse(v.apiURL)
+	if err != nil {
+		return nil, err
+	}
+	path := strings.TrimSuffix(u.Path, "/")
+	if path == "" || path == "/" {
+		u.Path = "/api"
+	}
+
+	return u, nil
+}
+
+func (v *blockscoutVerifier) IsVerified(ctx context.Context) (bool, error) {
+	u, err := v.apiBase()
 	if err != nil {
 		return false, fmt.Errorf("failed to parse API URL: %w", err)
 	}
@@ -142,11 +158,10 @@ func (v *blockscoutVerifier) Verify(ctx context.Context) error {
 		Name:             name,
 		OptimizationUsed: true,
 	}
-	u, err := url.Parse(v.apiURL)
+	u, err := v.apiBase()
 	if err != nil {
 		return fmt.Errorf("invalid API URL: %w", err)
 	}
-	u.Path = "/api"
 	q := u.Query()
 	q.Set("module", "contract")
 	q.Set("action", "verify")

@@ -101,6 +101,10 @@ func (v *routescanVerifier) IsVerified(ctx context.Context) (bool, error) {
 		return false, fmt.Errorf("failed to check verification status: %w", err)
 	}
 	if resp.Status != statusOK || !strings.EqualFold(resp.Message, messageOK) {
+		if strings.Contains(strings.ToLower(resp.Result), "contract source code not verified") {
+			return false, nil
+		}
+
 		return false, fmt.Errorf("routescan API error while checking verification status: status=%q message=%q", resp.Status, resp.Message)
 	}
 	var js interface{}
