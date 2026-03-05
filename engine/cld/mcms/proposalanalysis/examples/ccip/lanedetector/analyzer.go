@@ -10,8 +10,6 @@ import (
 
 	chainutils "github.com/smartcontractkit/chainlink-deployments-framework/chain/utils"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer/annotation"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/decoder"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/examples/ccip"
 )
 
@@ -32,7 +30,7 @@ func (a *LaneDetectorAnalyzer) Dependencies() []string { return nil }
 func (a *LaneDetectorAnalyzer) CanAnalyze(
 	_ context.Context,
 	_ analyzer.ProposalAnalyzeRequest,
-	_ decoder.DecodedTimelockProposal,
+	_ analyzer.DecodedTimelockProposal,
 ) bool {
 	return true
 }
@@ -40,8 +38,8 @@ func (a *LaneDetectorAnalyzer) CanAnalyze(
 func (a *LaneDetectorAnalyzer) Analyze(
 	_ context.Context,
 	_ analyzer.ProposalAnalyzeRequest,
-	proposal decoder.DecodedTimelockProposal,
-) (annotation.Annotations, error) {
+	proposal analyzer.DecodedTimelockProposal,
+) (analyzer.Annotations, error) {
 	type edge struct{ from, to uint64 }
 
 	edgeSet := make(map[edge]struct{})
@@ -90,15 +88,15 @@ func (a *LaneDetectorAnalyzer) Analyze(
 
 	sort.Strings(lanes)
 
-	anns := make(annotation.Annotations, len(lanes))
+	anns := make(analyzer.Annotations, len(lanes))
 	for i, lane := range lanes {
-		anns[i] = annotation.New(AnnotationLane, "string", lane)
+		anns[i] = analyzer.NewAnnotation(AnnotationLane, "string", lane)
 	}
 
 	return anns, nil
 }
 
-func extractRemoteSelectors(params decoder.DecodedParameters) []uint64 {
+func extractRemoteSelectors(params analyzer.DecodedParameters) []uint64 {
 	for _, param := range params {
 		if param.Name() != "chainsToAdd" && param.Name() != "chains" {
 			continue

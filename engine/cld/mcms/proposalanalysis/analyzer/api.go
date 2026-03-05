@@ -15,6 +15,7 @@ type (
 	Annotations = annotation.Annotations
 	Severity    = annotation.Severity
 	Risk        = annotation.Risk
+	DiffValue   = annotation.DiffValue
 )
 
 const (
@@ -22,6 +23,8 @@ const (
 	AnnotationSeverityType = annotation.AnnotationSeverityType
 	AnnotationRiskName     = annotation.AnnotationRiskName
 	AnnotationRiskType     = annotation.AnnotationRiskType
+	AnnotationDiffName     = annotation.AnnotationDiffName
+	AnnotationDiffType     = annotation.AnnotationDiffType
 
 	SeverityError   = annotation.SeverityError
 	SeverityWarning = annotation.SeverityWarning
@@ -43,6 +46,10 @@ func SeverityAnnotation(level Severity) Annotation {
 
 func RiskAnnotation(level Risk) Annotation {
 	return annotation.RiskAnnotation(level)
+}
+
+func DiffAnnotation(field string, oldVal, newVal any, valueType string) Annotation {
+	return annotation.DiffAnnotation(field, oldVal, newVal, valueType)
 }
 
 // Dependency annotation store types and helpers.

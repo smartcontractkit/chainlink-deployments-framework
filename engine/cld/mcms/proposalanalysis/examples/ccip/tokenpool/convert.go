@@ -6,10 +6,10 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/smartcontractkit/chainlink-ccip/chains/evm/gobindings/generated/latest/token_pool"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/decoder"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
 )
 
-func extractChainUpdateParams(call decoder.DecodedCall) ([]token_pool.TokenPoolChainUpdate, []uint64, error) {
+func extractChainUpdateParams(call analyzer.DecodedCall) ([]token_pool.TokenPoolChainUpdate, []uint64, error) {
 	var chainsToAdd []token_pool.TokenPoolChainUpdate
 	var selectorsToRemove []uint64
 

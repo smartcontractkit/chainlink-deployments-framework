@@ -9,7 +9,6 @@ import (
 
 	chainutils "github.com/smartcontractkit/chainlink-deployments-framework/chain/utils"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer/annotation"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/renderer"
 )
 
@@ -23,7 +22,7 @@ func NewMermaidRenderer() *MermaidRenderer { return &MermaidRenderer{} }
 
 func (r *MermaidRenderer) ID() string { return IDMermaid }
 
-func (r *MermaidRenderer) RenderTo(w io.Writer, _ renderer.RenderRequest, proposal analyzer.AnalyzedProposal) error {
+func (r *MermaidRenderer) RenderTo(w io.Writer, _ renderer.RenderRequest, proposal renderer.AnalyzedProposal) error {
 	var b strings.Builder
 
 	b.WriteString("graph TD\n")
@@ -111,10 +110,10 @@ type contractNode struct {
 	label         string
 	contractType  string
 	chainSelector uint64
-	annotations   annotation.Annotations
+	annotations   analyzer.Annotations
 }
 
-func collectNodes(batches analyzer.AnalyzedBatchOperations) ([]contractNode, map[contractKey]string) {
+func collectNodes(batches renderer.AnalyzedBatchOperations) ([]contractNode, map[contractKey]string) {
 	seen := make(map[contractKey]int)
 	idMap := make(map[contractKey]string)
 	var nodes []contractNode
@@ -149,7 +148,7 @@ func collectNodes(batches analyzer.AnalyzedBatchOperations) ([]contractNode, map
 	return nodes, idMap
 }
 
-func buildLabel(call analyzer.AnalyzedCall) string {
+func buildLabel(call renderer.AnalyzedCall) string {
 	var parts []string
 
 	ct := call.ContractType()
@@ -189,7 +188,7 @@ func contractStyle(ct string) string {
 
 var chainSelectorInParens = regexp.MustCompile(`\((\d+)\)`)
 
-func extractChainSelector(ann annotation.Annotation) uint64 {
+func extractChainSelector(ann analyzer.Annotation) uint64 {
 	matches := chainSelectorInParens.FindStringSubmatch(fmt.Sprintf("%v", ann.Value()))
 	if len(matches) < 2 {
 		return 0
