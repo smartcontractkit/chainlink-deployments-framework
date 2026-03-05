@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"slices"
+	"strconv"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -203,7 +204,11 @@ func readTokenMetadata(store analyzer.DependencyAnnotationStore) (string, uint8)
 }
 
 func resolveChainLabel(chainSelector uint64) string {
-	return fmt.Sprintf("%s (%d)", format.ResolveChainName(chainSelector), chainSelector)
+	if name, ok := format.TryResolveChainName(chainSelector); ok {
+		return fmt.Sprintf("%s (%d)", name, chainSelector)
+	}
+
+	return strconv.FormatUint(chainSelector, 10)
 }
 
 func formatRichAmount(amount *big.Int, decimals uint8, tokenSymbol string) string {

@@ -77,10 +77,19 @@ func TruncateAddress(addr string) string {
 
 // ResolveChainName returns a human-readable chain name for a chain selector.
 func ResolveChainName(sel uint64) string {
-	info, err := chainutils.ChainInfo(sel)
-	if err != nil {
-		return fmt.Sprintf("chain-%d", sel)
+	if name, ok := TryResolveChainName(sel); ok {
+		return name
 	}
 
-	return info.ChainName
+	return fmt.Sprintf("chain-%d", sel)
+}
+
+// TryResolveChainName returns the chain name and true if the selector is known,
+func TryResolveChainName(sel uint64) (string, bool) {
+	info, err := chainutils.ChainInfo(sel)
+	if err != nil {
+		return "", false
+	}
+
+	return info.ChainName, true
 }

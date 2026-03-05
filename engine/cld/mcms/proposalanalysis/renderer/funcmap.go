@@ -36,7 +36,7 @@ func defaultFuncMap() template.FuncMap {
 		"formatParam":           formatParam,
 		"formatAnnotationValue": formatAnnotationValue,
 		"truncateAddress":       format.TruncateAddress,
-		"resolveChainSelector":  format.ResolveChainName,
+		"resolveChainSelector":  resolveChainSelector,
 		"severitySymbol":        severitySymbol,
 		"riskSymbol":            riskSymbol,
 		"add":                   func(a, b int) int { return a + b },
@@ -109,7 +109,11 @@ func formatValue(v any) string {
 	case experimentalanalyzer.SimpleField:
 		return val.GetValue()
 	case experimentalanalyzer.ChainSelectorField:
-		return fmt.Sprintf("%s (%d)", format.ResolveChainName(val.GetValue()), val.GetValue())
+		if name, ok := format.TryResolveChainName(val.GetValue()); ok {
+			return fmt.Sprintf("%s (%d)", name, val.GetValue())
+		}
+
+		return strconv.FormatUint(val.GetValue(), 10)
 	case experimentalanalyzer.YamlField:
 		return val.GetValue()
 	case experimentalanalyzer.ArrayField:
@@ -232,6 +236,14 @@ func commaGrouped(v any) string {
 
 		return formatValue(v)
 	}
+}
+
+func resolveChainSelector(sel uint64) string {
+	if name, ok := format.TryResolveChainName(sel); ok {
+		return name
+	}
+
+	return "Chain " + strconv.FormatUint(sel, 10)
 }
 
 func severitySymbol(v any) string {
