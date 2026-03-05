@@ -47,35 +47,37 @@ func defaultNetworkLoader(env string, dom domain.Domain) (*cfgnet.Config, error)
 }
 
 func defaultDataStoreLoader(ctx context.Context, envdir domain.EnvDir, lggr logger.Logger, opts DataStoreLoadOptions) (datastore.DataStore, error) {
-	if opts.FromLocal {
-		return envdir.DataStore()
-	}
-
 	dom := domain.NewDomain(envdir.RootPath(), envdir.DomainKey())
 	envKey := envdir.Key()
 
 	cfg, err := config.Load(dom, envKey, lggr)
 	if err != nil {
+		if opts.FromLocal {
+			lggr.Infow("Loading datastore from local files")
+			return envdir.DataStore()
+		}
+
 		return nil, fmt.Errorf("failed to load config: %w", err)
 	}
 
-	if cfg.DatastoreType == cfgdomain.DatastoreTypeCatalog || cfg.DatastoreType == cfgdomain.DatastoreTypeAll {
-		if cfg.Env.Catalog.GRPC == "" {
-			return nil, fmt.Errorf("catalog GRPC endpoint is required when datastore is set to %q", cfg.DatastoreType)
-		}
-		lggr.Infow("Loading datastore from catalog", "url", cfg.Env.Catalog.GRPC)
-		catalogStore, err := cldcatalog.LoadCatalog(ctx, envKey, cfg, dom)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load catalog: %w", err)
-		}
-		ds, err := datastore.LoadDataStoreFromCatalog(ctx, catalogStore)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load data from catalog: %w", err)
-		}
-		lggr.Infow("Loaded datastore from catalog")
-
-		return ds, nil
+	if opts.FromLocal || cfg.DatastoreType == cfgdomain.DatastoreTypeFile {
+		lggr.Infow("Loading datastore from local files")
+		return envdir.DataStore()
 	}
 
-	return envdir.DataStore()
+	if cfg.Env.Catalog.GRPC == "" {
+		return nil, fmt.Errorf("catalog GRPC endpoint is required when datastore is set to %q", cfg.DatastoreType)
+	}
+	lggr.Infow("Loading datastore from catalog", "url", cfg.Env.Catalog.GRPC)
+	catalogStore, err := cldcatalog.LoadCatalog(ctx, envKey, cfg, dom)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load catalog: %w", err)
+	}
+	ds, err := datastore.LoadDataStoreFromCatalog(ctx, catalogStore)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load data from catalog: %w", err)
+	}
+	lggr.Infow("Loaded datastore from catalog")
+
+	return ds, nil
 }

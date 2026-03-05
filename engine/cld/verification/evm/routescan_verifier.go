@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	chainsel "github.com/smartcontractkit/chain-selectors"
@@ -18,6 +19,32 @@ import (
 )
 
 const routescanURL = "https://api.routescan.io/v2"
+const routescanRateLimit = 2
+
+// routescanChainIDs - see https://routescan.notion.site
+var routescanChainIDs = map[string]map[uint64]string{
+	"testnet": {
+		21000001: "21000001", 3636: "3636", 80069: "80069", 9746: "9746_5", 43113: "43113",
+	},
+	"mainnet": {
+		21000000: "21000000", 3637: "3637", 80094: "80094", 9745: "9745", 43114: "43114",
+	},
+}
+
+func IsChainSupportedOnRouteScan(chainID uint64) (networkType string, ok bool) {
+	for nt, ids := range routescanChainIDs {
+		if _, found := ids[chainID]; found {
+			return nt, true
+		}
+	}
+
+	return "", false
+}
+
+var routescanRateLimiter = struct {
+	ticker *time.Ticker
+	once   sync.Once
+}{}
 
 type routescanTxInfo struct {
 	Input string `json:"input"`
@@ -180,7 +207,7 @@ func (v *routescanVerifier) getConstructorArgs(ctx context.Context) (string, err
 
 func sendRoutescanRequest[R any](ctx context.Context, client *http.Client, chainID uint64, networkType string, method, module, action, key string, extraParams map[string]string) (routeScanAPIResponse[R], error) {
 	routescanRateLimiter.once.Do(func() {
-		routescanRateLimiter.ticker = time.NewTicker(time.Second / RoutescanRateLimit)
+		routescanRateLimiter.ticker = time.NewTicker(time.Second / routescanRateLimit)
 	})
 	select {
 	case <-routescanRateLimiter.ticker.C:

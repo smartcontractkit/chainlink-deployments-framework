@@ -19,9 +19,11 @@ var (
 	contractLong = text.LongDesc(`
 		Commands for verifying deployed contracts on block explorers.
 
-		Verify EVM contracts in an environment using the datastore to discover
+		Verify contracts in an environment using the datastore or catalog to discover
 		contracts. Requires a domain-specific ContractInputsProvider to supply
 		contract metadata (Standard JSON, bytecode) for verification.
+
+		Currently supports only EVM-based chains, but can be extended to other chain types in the future.
 	`)
 )
 

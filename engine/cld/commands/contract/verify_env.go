@@ -16,8 +16,6 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/verification/evm"
 )
 
-const rateLimitDelay = 1 * time.Second
-
 var (
 	verifyEnvShort = "Verify EVM contracts in an environment"
 
@@ -45,6 +43,7 @@ func newVerifyEnvCmdWithUse(cfg Config, use string) *cobra.Command {
 		filterNetworks string
 		filterContract string
 		pollInterval   time.Duration
+		rateLimitDelay time.Duration
 		customDomain   string
 		fromLocal      bool
 	)
@@ -58,13 +57,18 @@ func newVerifyEnvCmdWithUse(cfg Config, use string) *cobra.Command {
 			env, _ := cmd.Flags().GetString("environment")
 			dom := cfg.Domain
 			if customDomain != "" {
-				dom = domain.MustGetDomain(customDomain)
+				d, err := domain.GetDomain(customDomain)
+				if err != nil {
+					return fmt.Errorf("invalid domain %q: %w", customDomain, err)
+				}
+				dom = d
 			}
 			f := verifyEnvFlags{
 				environment:    env,
 				filterNetworks: filterNetworks,
 				filterContract: filterContract,
 				pollInterval:   pollInterval,
+				rateLimitDelay: rateLimitDelay,
 				fromLocal:      fromLocal,
 			}
 
@@ -76,6 +80,7 @@ func newVerifyEnvCmdWithUse(cfg Config, use string) *cobra.Command {
 	cmd.Flags().StringVarP(&filterNetworks, "networks", "n", "", "Optional comma-separated list of chain selectors to verify")
 	cmd.Flags().StringVarP(&filterContract, "address", "a", "", "Optional contract address to verify")
 	cmd.Flags().DurationVarP(&pollInterval, "poll-interval", "p", 5*time.Second, "Polling interval for verification status")
+	cmd.Flags().DurationVar(&rateLimitDelay, "rate-limit-delay", 1*time.Second, "Delay between contract verifications (rate limiting)")
 	cmd.Flags().StringVarP(&customDomain, "domain", "d", "", "Domain to verify (default: from config)")
 	cmd.Flags().BoolVar(&fromLocal, "local", false, "Use local datastore files only; ignore domain config (use for local runs)")
 
@@ -87,6 +92,7 @@ type verifyEnvFlags struct {
 	filterNetworks string
 	filterContract string
 	pollInterval   time.Duration
+	rateLimitDelay time.Duration
 	fromLocal      bool
 }
 
@@ -173,7 +179,11 @@ func runVerifyEnv(cmd *cobra.Command, cfg Config, f verifyEnvFlags, dom domain.D
 				HTTPClient:   cfg.VerifierHTTPClient,
 			})
 			if err != nil {
-				cfg.Logger.Debugf("Failed to create verifier for %s on %s: %s", ref.Address, chain.Name, err)
+				cfg.Logger.Warnf("Failed to create verifier for %s %s (%s on %s): %s",
+					ref.Type, ref.Version, ref.Address, chain.Name, err)
+				totalContracts++
+				failed = append(failed, fmt.Sprintf("%s %s (%s on %s) - verifier init failed", ref.Type, ref.Version, ref.Address, chain.Name))
+
 				continue
 			}
 
@@ -186,25 +196,27 @@ func runVerifyEnv(cmd *cobra.Command, cfg Config, f verifyEnvFlags, dom domain.D
 					ref.Type, ref.Version, ref.Address, chain.Name, err)
 			}
 
-			time.Sleep(rateLimitDelay)
+			if ctx := cmd.Context(); ctx != nil {
+				select {
+				case <-ctx.Done():
+					return ctx.Err()
+				case <-time.After(f.rateLimitDelay):
+				}
+			} else {
+				time.Sleep(f.rateLimitDelay)
+			}
 		}
 	}
 
-	fmt.Println("\n=== Verification Summary ===")
-	fmt.Printf("Successful Verifications: %d\n\n", totalContracts-len(failed))
+	cfg.Logger.Infof("\n=== Verification Summary ===\nSuccessful: %d", totalContracts-len(failed))
 	if len(failed) > 0 {
-		fmt.Printf("Failed Verifications: %d\n", len(failed))
+		cfg.Logger.Infof("Failed: %d", len(failed))
 		for _, s := range failed {
-			fmt.Println("-", s)
+			cfg.Logger.Infof("  - %s", s)
 		}
-		fmt.Println()
 	}
 	if len(skippedNetworks) > 0 {
-		fmt.Println("Networks skipped due to missing verification strategy:")
-		for _, n := range skippedNetworks {
-			fmt.Println("-", n)
-		}
-		fmt.Println()
+		cfg.Logger.Infof("Networks skipped (no verifier): %v", skippedNetworks)
 	}
 
 	return nil

@@ -18,6 +18,24 @@ import (
 
 const etherscanURL = "https://api.etherscan.io/v2/api"
 
+// etherscanV2ChainIDs - see https://docs.etherscan.io/etherscan-v2/supported-chains
+var etherscanV2ChainIDs = map[uint64]struct{}{
+	1: {}, 11155111: {}, 17000: {}, 560048: {}, 2741: {}, 11124: {}, 33111: {}, 33139: {},
+	42170: {}, 42161: {}, 421614: {}, 8453: {}, 84532: {}, 80094: {}, 80069: {}, 199: {},
+	1028: {}, 81457: {}, 168587773: {}, 56: {}, 97: {}, 44787: {}, 42220: {}, 25: {},
+	252: {}, 2522: {}, 100: {}, 59144: {}, 59141: {}, 5000: {}, 5003: {}, 4352: {},
+	43521: {}, 1287: {}, 10143: {}, 1284: {}, 1285: {}, 10: {}, 11155420: {}, 80002: {},
+	137: {}, 2442: {}, 1101: {}, 534352: {}, 534351: {}, 57054: {}, 146: {}, 50104: {},
+	531050104: {}, 1923: {}, 1924: {}, 167009: {}, 167000: {}, 130: {}, 1301: {},
+	1111: {}, 1112: {}, 480: {}, 4801: {}, 660279: {}, 37714555429: {}, 51: {}, 50: {},
+	324: {}, 300: {}, 204: {}, 5611: {}, 747474: {}, 988: {}, 11142220: {}, 14601: {},
+}
+
+func IsChainSupportedOnEtherscanV2(chainID uint64) bool {
+	_, ok := etherscanV2ChainIDs[chainID]
+	return ok
+}
+
 type etherscanAPIResponse[R any] struct {
 	Status  string `json:"status"`
 	Message string `json:"message"`
