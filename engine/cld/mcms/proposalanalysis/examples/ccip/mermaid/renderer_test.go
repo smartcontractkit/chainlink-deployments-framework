@@ -11,11 +11,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer/annotation"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/renderer"
 )
 
-func render(t *testing.T, proposal *analyzer.AnalyzedProposalNode) string {
+func render(t *testing.T, proposal *renderer.AnalyzedProposalNode) string {
 	t.Helper()
 
 	var buf bytes.Buffer
@@ -25,8 +24,8 @@ func render(t *testing.T, proposal *analyzer.AnalyzedProposalNode) string {
 	return buf.String()
 }
 
-func call(addr, method, contractType, version string, anns ...annotation.Annotation) *analyzer.AnalyzedCallNode {
-	c := analyzer.NewAnalyzedCallNode(addr, method, nil, nil, nil, contractType, version, nil)
+func call(addr, method, contractType, version string, anns ...analyzer.Annotation) *renderer.AnalyzedCallNode {
+	c := renderer.NewAnalyzedCallNode(addr, method, nil, nil, nil, contractType, version, nil)
 	if len(anns) > 0 {
 		c.AddAnnotations(anns...)
 	}
@@ -34,19 +33,19 @@ func call(addr, method, contractType, version string, anns ...annotation.Annotat
 	return c
 }
 
-func batch(chainSel uint64, calls ...*analyzer.AnalyzedCallNode) *analyzer.AnalyzedBatchOperationNode {
-	ac := make(analyzer.AnalyzedCalls, len(calls))
+func batch(chainSel uint64, calls ...*renderer.AnalyzedCallNode) *renderer.AnalyzedBatchOperationNode {
+	ac := make(renderer.AnalyzedCalls, len(calls))
 	for i, c := range calls {
 		ac[i] = c
 	}
 
-	return analyzer.NewAnalyzedBatchOperationNode(chainSel, ac)
+	return renderer.NewAnalyzedBatchOperationNode(chainSel, ac)
 }
 
 func TestGolden_Mermaid(t *testing.T) {
 	t.Parallel()
 
-	proposal := analyzer.NewAnalyzedProposalNode(analyzer.AnalyzedBatchOperations{
+	proposal := renderer.NewAnalyzedProposalNode(renderer.AnalyzedBatchOperations{
 		batch(5009297550715157269,
 			call("0x1111111111111111111111111111111111111111", "setRateLimiterConfig", "OnRamp", "v1.5.0"),
 			call("0x2222222222222222222222222222222222222222", "transfer", "ERC20", ""),
@@ -65,14 +64,14 @@ func TestGolden_Mermaid(t *testing.T) {
 func TestMermaid_EmptyProposal(t *testing.T) {
 	t.Parallel()
 
-	out := render(t, analyzer.NewAnalyzedProposalNode(nil))
+	out := render(t, renderer.NewAnalyzedProposalNode(nil))
 	assert.Contains(t, out, "graph TD")
 }
 
 func TestMermaid_MultipleBatchesSameChain(t *testing.T) {
 	t.Parallel()
 
-	proposal := analyzer.NewAnalyzedProposalNode(analyzer.AnalyzedBatchOperations{
+	proposal := renderer.NewAnalyzedProposalNode(renderer.AnalyzedBatchOperations{
 		batch(5009297550715157269, call("0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "applyChainUpdates", "BurnMintTokenPool", "1.5.1")),
 		batch(5009297550715157269, call("0xBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB", "acceptOwnership", "TokenAdminRegistry", "1.5.0")),
 		batch(5009297550715157269, call("0xBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB", "setPool", "TokenAdminRegistry", "1.5.0")),
@@ -88,17 +87,17 @@ func TestMermaid_MultipleBatchesSameChain(t *testing.T) {
 func TestMermaid_CrossChainEdges(t *testing.T) {
 	t.Parallel()
 
-	proposal := analyzer.NewAnalyzedProposalNode(analyzer.AnalyzedBatchOperations{
+	proposal := renderer.NewAnalyzedProposalNode(renderer.AnalyzedBatchOperations{
 		batch(9027416829622342829,
 			call("0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "applyChainUpdates", "BurnMintTokenPool", "1.5.1",
-				annotation.New("ccip.token.symbol", "string", "SolvBTC"),
-				annotation.New("ccip.chain_update", "string", "avalanche-mainnet (6433500567565415381) added"),
+				analyzer.NewAnnotation("ccip.token.symbol", "string", "SolvBTC"),
+				analyzer.NewAnnotation("ccip.chain_update", "string", "avalanche-mainnet (6433500567565415381) added"),
 			),
 		),
 		batch(6433500567565415381,
 			call("0xBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB", "applyChainUpdates", "BurnMintTokenPool", "1.5.1",
-				annotation.New("ccip.token.symbol", "string", "SolvBTC"),
-				annotation.New("ccip.chain_update", "string", "sei-mainnet (9027416829622342829) added"),
+				analyzer.NewAnnotation("ccip.token.symbol", "string", "SolvBTC"),
+				analyzer.NewAnnotation("ccip.chain_update", "string", "sei-mainnet (9027416829622342829) added"),
 			),
 		),
 	})

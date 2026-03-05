@@ -6,9 +6,6 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	cldfdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer/annotation"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer/annotationstore"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/decoder"
 )
 
 // ExecutionContext encapsulates the execution context passed to an analyzer.
@@ -23,13 +20,13 @@ type ExecutionContext interface {
 type AnalyzeRequest[T any] struct {
 	AnalyzerContext           T
 	ExecutionContext          ExecutionContext
-	DependencyAnnotationStore annotationstore.DependencyAnnotationStore
+	DependencyAnnotationStore DependencyAnnotationStore
 }
 
 // ProposalAnalyzeRequest encapsulates the execution context and annotation store passed to a proposal analyzer.
 type ProposalAnalyzeRequest struct {
 	ExecutionContext          ExecutionContext
-	DependencyAnnotationStore annotationstore.DependencyAnnotationStore
+	DependencyAnnotationStore DependencyAnnotationStore
 }
 
 type BaseAnalyzer interface {
@@ -46,45 +43,45 @@ type BaseAnalyzer interface {
 
 type ProposalAnalyzer interface {
 	BaseAnalyzer
-	CanAnalyze(ctx context.Context, req ProposalAnalyzeRequest, proposal decoder.DecodedTimelockProposal) bool
-	Analyze(ctx context.Context, req ProposalAnalyzeRequest, proposal decoder.DecodedTimelockProposal) (annotation.Annotations, error)
+	CanAnalyze(ctx context.Context, req ProposalAnalyzeRequest, proposal DecodedTimelockProposal) bool
+	Analyze(ctx context.Context, req ProposalAnalyzeRequest, proposal DecodedTimelockProposal) (Annotations, error)
 }
 
 type BatchOperationAnalyzer interface {
 	BaseAnalyzer
-	CanAnalyze(ctx context.Context, req AnalyzeRequest[BatchOperationAnalyzerContext], operation decoder.DecodedBatchOperation) bool
-	Analyze(ctx context.Context, req AnalyzeRequest[BatchOperationAnalyzerContext], operation decoder.DecodedBatchOperation) (annotation.Annotations, error)
+	CanAnalyze(ctx context.Context, req AnalyzeRequest[BatchOperationAnalyzerContext], operation DecodedBatchOperation) bool
+	Analyze(ctx context.Context, req AnalyzeRequest[BatchOperationAnalyzerContext], operation DecodedBatchOperation) (Annotations, error)
 }
 
 type CallAnalyzer interface {
 	BaseAnalyzer
-	CanAnalyze(ctx context.Context, req AnalyzeRequest[CallAnalyzerContext], call decoder.DecodedCall) bool
-	Analyze(ctx context.Context, req AnalyzeRequest[CallAnalyzerContext], call decoder.DecodedCall) (annotation.Annotations, error)
+	CanAnalyze(ctx context.Context, req AnalyzeRequest[CallAnalyzerContext], call DecodedCall) bool
+	Analyze(ctx context.Context, req AnalyzeRequest[CallAnalyzerContext], call DecodedCall) (Annotations, error)
 }
 
 type ParameterAnalyzer interface {
 	BaseAnalyzer
-	CanAnalyze(ctx context.Context, req AnalyzeRequest[ParameterAnalyzerContext], param decoder.DecodedParameter) bool
-	Analyze(ctx context.Context, req AnalyzeRequest[ParameterAnalyzerContext], param decoder.DecodedParameter) (annotation.Annotations, error)
+	CanAnalyze(ctx context.Context, req AnalyzeRequest[ParameterAnalyzerContext], param DecodedParameter) bool
+	Analyze(ctx context.Context, req AnalyzeRequest[ParameterAnalyzerContext], param DecodedParameter) (Annotations, error)
 }
 
 type ParameterAnalyzerContext interface {
 	// Proposal returns the current proposal-level context.
-	Proposal() decoder.DecodedTimelockProposal
+	Proposal() DecodedTimelockProposal
 	// BatchOperation returns the current batch operation context.
-	BatchOperation() decoder.DecodedBatchOperation
+	BatchOperation() DecodedBatchOperation
 	// Call returns the current call-level context.
-	Call() decoder.DecodedCall
+	Call() DecodedCall
 }
 
 type CallAnalyzerContext interface {
 	// Proposal returns the current proposal-level context.
-	Proposal() decoder.DecodedTimelockProposal
+	Proposal() DecodedTimelockProposal
 	// BatchOperation returns the current batch operation context.
-	BatchOperation() decoder.DecodedBatchOperation
+	BatchOperation() DecodedBatchOperation
 }
 
 type BatchOperationAnalyzerContext interface {
 	// Proposal returns the current proposal-level context.
-	Proposal() decoder.DecodedTimelockProposal
+	Proposal() DecodedTimelockProposal
 }

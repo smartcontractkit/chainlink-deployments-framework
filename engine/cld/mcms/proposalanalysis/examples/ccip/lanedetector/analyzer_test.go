@@ -11,7 +11,6 @@ import (
 	"github.com/smartcontractkit/chainlink-ccip/chains/evm/gobindings/generated/latest/token_pool"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/decoder"
 )
 
 const (
@@ -38,7 +37,7 @@ func TestAnalyze_SymmetricPairDetectsLane(t *testing.T) {
 func TestAnalyze_AsymmetricNoLane(t *testing.T) {
 	t.Parallel()
 
-	proposal := &stubProposal{batches: []decoder.DecodedBatchOperation{
+	proposal := &stubProposal{batches: []analyzer.DecodedBatchOperation{
 		batch(seiMainnet, call("BurnMintTokenPool", "applyChainUpdates", avaxMainnet)),
 	}}
 
@@ -50,7 +49,7 @@ func TestAnalyze_AsymmetricNoLane(t *testing.T) {
 func TestAnalyze_SelfLoopIgnored(t *testing.T) {
 	t.Parallel()
 
-	proposal := &stubProposal{batches: []decoder.DecodedBatchOperation{
+	proposal := &stubProposal{batches: []analyzer.DecodedBatchOperation{
 		batch(seiMainnet, call("BurnMintTokenPool", "applyChainUpdates", seiMainnet)),
 	}}
 
@@ -65,7 +64,7 @@ func TestAnalyze_ThreeChainTopology(t *testing.T) {
 	const jovay uint64 = 1523760397290643893
 	const abstract uint64 = 3577778157919314504
 
-	proposal := &stubProposal{batches: []decoder.DecodedBatchOperation{
+	proposal := &stubProposal{batches: []analyzer.DecodedBatchOperation{
 		batch(jovay, call("BurnMintTokenPool", "applyChainUpdates", ethMainnet)),
 		batch(abstract, call("BurnMintTokenPool", "applyChainUpdates", ethMainnet)),
 		batch(ethMainnet, call("BurnMintTokenPool", "applyChainUpdates", jovay, abstract)),
@@ -89,7 +88,7 @@ func TestAnalyze_IgnoresNonTokenPool(t *testing.T) {
 func TestAnalyze_IgnoresNonApplyChainUpdates(t *testing.T) {
 	t.Parallel()
 
-	proposal := &stubProposal{batches: []decoder.DecodedBatchOperation{
+	proposal := &stubProposal{batches: []analyzer.DecodedBatchOperation{
 		batch(seiMainnet, call("BurnMintTokenPool", "setRateLimiterAdmin", avaxMainnet)),
 		batch(avaxMainnet, call("BurnMintTokenPool", "setRateLimiterAdmin", seiMainnet)),
 	}}
@@ -112,17 +111,17 @@ func symmetricProposal(chainA, chainB uint64) *stubProposal {
 }
 
 func symmetricProposalWithType(contractType string, chainA, chainB uint64) *stubProposal {
-	return &stubProposal{batches: []decoder.DecodedBatchOperation{
+	return &stubProposal{batches: []analyzer.DecodedBatchOperation{
 		batch(chainA, call(contractType, "applyChainUpdates", chainB)),
 		batch(chainB, call(contractType, "applyChainUpdates", chainA)),
 	}}
 }
 
-func batch(chainSel uint64, calls ...decoder.DecodedCall) *stubBatch {
+func batch(chainSel uint64, calls ...analyzer.DecodedCall) *stubBatch {
 	return &stubBatch{chainSelector: chainSel, calls: calls}
 }
 
-func call(contractType, method string, remoteSelectors ...uint64) decoder.DecodedCall {
+func call(contractType, method string, remoteSelectors ...uint64) analyzer.DecodedCall {
 	updates := make([]token_pool.TokenPoolChainUpdate, len(remoteSelectors))
 	for i, sel := range remoteSelectors {
 		updates[i] = token_pool.TokenPoolChainUpdate{
@@ -136,36 +135,36 @@ func call(contractType, method string, remoteSelectors ...uint64) decoder.Decode
 	return &stubCall{
 		contractType: contractType,
 		name:         method,
-		inputs: decoder.DecodedParameters{
+		inputs: analyzer.DecodedParameters{
 			&stubParam{name: "chainsToAdd", rawValue: updates},
 		},
 	}
 }
 
 type stubProposal struct {
-	batches []decoder.DecodedBatchOperation
+	batches []analyzer.DecodedBatchOperation
 }
 
-func (s *stubProposal) BatchOperations() decoder.DecodedBatchOperations { return s.batches }
+func (s *stubProposal) BatchOperations() analyzer.DecodedBatchOperations { return s.batches }
 
 type stubBatch struct {
 	chainSelector uint64
-	calls         []decoder.DecodedCall
+	calls         []analyzer.DecodedCall
 }
 
-func (s *stubBatch) ChainSelector() uint64       { return s.chainSelector }
-func (s *stubBatch) Calls() decoder.DecodedCalls { return s.calls }
+func (s *stubBatch) ChainSelector() uint64        { return s.chainSelector }
+func (s *stubBatch) Calls() analyzer.DecodedCalls { return s.calls }
 
 type stubCall struct {
 	contractType string
 	name         string
-	inputs       decoder.DecodedParameters
+	inputs       analyzer.DecodedParameters
 }
 
-func (s *stubCall) To() string                        { return "" }
-func (s *stubCall) Name() string                      { return s.name }
-func (s *stubCall) Inputs() decoder.DecodedParameters { return s.inputs }
-func (s *stubCall) Outputs() decoder.DecodedParameters {
+func (s *stubCall) To() string                         { return "" }
+func (s *stubCall) Name() string                       { return s.name }
+func (s *stubCall) Inputs() analyzer.DecodedParameters { return s.inputs }
+func (s *stubCall) Outputs() analyzer.DecodedParameters {
 	return nil
 }
 func (s *stubCall) Data() []byte                      { return nil }

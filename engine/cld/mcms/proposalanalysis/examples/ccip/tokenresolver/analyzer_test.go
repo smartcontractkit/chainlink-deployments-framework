@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/decoder"
 )
 
 func TestCanAnalyze_MatchesTokenPoolContractTypes(t *testing.T) {
@@ -59,10 +58,10 @@ type stubCall struct {
 	to              string
 }
 
-func (s *stubCall) To() string                        { return s.to }
-func (s *stubCall) Name() string                      { return s.name }
-func (s *stubCall) Inputs() decoder.DecodedParameters { return nil }
-func (s *stubCall) Outputs() decoder.DecodedParameters {
+func (s *stubCall) To() string                         { return s.to }
+func (s *stubCall) Name() string                       { return s.name }
+func (s *stubCall) Inputs() analyzer.DecodedParameters { return nil }
+func (s *stubCall) Outputs() analyzer.DecodedParameters {
 	return nil
 }
 func (s *stubCall) Data() []byte                      { return nil }
@@ -70,7 +69,7 @@ func (s *stubCall) AdditionalFields() json.RawMessage { return nil }
 func (s *stubCall) ContractType() string              { return s.contractType }
 func (s *stubCall) ContractVersion() string           { return s.contractVersion }
 
-var _ decoder.DecodedCall = (*stubCall)(nil)
+var _ analyzer.DecodedCall = (*stubCall)(nil)
 
 func emptyCallReq() analyzer.AnalyzeRequest[analyzer.CallAnalyzerContext] {
 	return analyzer.AnalyzeRequest[analyzer.CallAnalyzerContext]{}
