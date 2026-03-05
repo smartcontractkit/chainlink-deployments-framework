@@ -24,13 +24,13 @@
 - **inbound from bsc-mainnet capacity:** ~~0~~ -> **0.5 USDC (500,000, decimals=6)**
 - **inbound from bsc-mainnet rate:** ~~0~~ -> **0.00005 USDC (50, decimals=6)**
 
+
 _Annotations:_
 - ccip.token.symbol: USDC
 - ccip.token.decimals: 6
 - ccip.token.address: 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
 - ccip.chain_update: bsc-mainnet (11344663589394136015) added
 - ccip.rate_limiter: inbound from bsc-mainnet: rate limiter enabled
-
 
 
 #### Call 2
@@ -44,9 +44,9 @@ _Annotations:_
 - **`remoteChainSelectorsToRemove`** (`uint64[]`): [ 3734025351759498498 ]
 - **`chainsToAdd`** (`tuple[]`): <nil>
 
+
 _Annotations:_
 - ccip.chain_update: avalanche-mainnet (6433500567565415381) removed
-
 
 
 </details>

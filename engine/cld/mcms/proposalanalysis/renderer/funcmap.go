@@ -10,7 +10,6 @@ import (
 	"strings"
 	"text/template"
 
-	chainutils "github.com/smartcontractkit/chainlink-deployments-framework/chain/utils"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer/annotation"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/format"
@@ -35,34 +34,13 @@ func defaultFuncMap() template.FuncMap {
 		"diffAnnotations":       diffAnnotations,
 		"renderDiff":            renderDiff,
 		"formatParam":           formatParam,
-		"truncateAddress":       truncateAddress,
-		"resolveChainSelector":  resolveChainSelector,
+		"formatAnnotationValue": formatAnnotationValue,
+		"truncateAddress":       format.TruncateAddress,
+		"resolveChainSelector":  format.ResolveChainName,
 		"severitySymbol":        severitySymbol,
 		"riskSymbol":            riskSymbol,
 		"add":                   func(a, b int) int { return a + b },
 	}
-}
-
-// resolveChainSelector returns a human-readable chain name for a selector.
-func resolveChainSelector(sel uint64) string {
-	info, err := chainutils.ChainInfo(sel)
-	if err != nil {
-		return ""
-	}
-
-	return info.ChainName
-}
-
-// truncateAddress shortens a long address for display.
-func truncateAddress(addr string) string {
-	if strings.HasPrefix(addr, "0x") && len(addr) > 12 {
-		return addr[:6] + ".." + addr[len(addr)-4:]
-	}
-	if len(addr) > 12 {
-		return addr[:4] + ".." + addr[len(addr)-3:]
-	}
-
-	return addr
 }
 
 // isFrameworkAnnotation reports whether the given annotation name is handled
@@ -108,6 +86,11 @@ func formatParam(param analyzer.AnalyzedParameter) string {
 	return v
 }
 
+// formatAnnotationValue formats an annotation's value for display.
+func formatAnnotationValue(v any) string {
+	return formatValue(v)
+}
+
 // formatValue produces a human-readable string for arbitrary parameter values.
 func formatValue(v any) string {
 	if v == nil {
@@ -126,12 +109,7 @@ func formatValue(v any) string {
 	case experimentalanalyzer.SimpleField:
 		return val.GetValue()
 	case experimentalanalyzer.ChainSelectorField:
-		name := resolveChainSelector(val.GetValue())
-		if name == "" {
-			return strconv.FormatUint(val.GetValue(), 10)
-		}
-
-		return fmt.Sprintf("%s (%d)", name, val.GetValue())
+		return fmt.Sprintf("%s (%d)", format.ResolveChainName(val.GetValue()), val.GetValue())
 	case experimentalanalyzer.YamlField:
 		return val.GetValue()
 	case experimentalanalyzer.ArrayField:
@@ -151,6 +129,11 @@ func formatValue(v any) string {
 
 		return val.String()
 	case fmt.Stringer:
+		rv := reflect.ValueOf(val)
+		if rv.Kind() == reflect.Ptr && rv.IsNil() {
+			return nilValue
+		}
+
 		return val.String()
 	default:
 		if b, err := json.MarshalIndent(v, "", "  "); err == nil {
@@ -251,28 +234,38 @@ func commaGrouped(v any) string {
 	}
 }
 
-func severitySymbol(severity any) string {
-	switch fmt.Sprintf("%v", severity) {
-	case string(annotation.SeverityError):
+func severitySymbol(v any) string {
+	s, ok := v.(string)
+	if !ok {
+		return ""
+	}
+
+	switch annotation.Severity(s) {
+	case annotation.SeverityError:
 		return "✗"
-	case string(annotation.SeverityWarning):
+	case annotation.SeverityWarning:
 		return "⚠"
-	case string(annotation.SeverityInfo):
+	case annotation.SeverityInfo:
 		return "ℹ"
-	case string(annotation.SeverityDebug):
+	case annotation.SeverityDebug:
 		return "⚙"
 	default:
 		return ""
 	}
 }
 
-func riskSymbol(risk any) string {
-	switch fmt.Sprintf("%v", risk) {
-	case string(annotation.RiskHigh):
+func riskSymbol(v any) string {
+	s, ok := v.(string)
+	if !ok {
+		return ""
+	}
+
+	switch annotation.Risk(s) {
+	case annotation.RiskHigh:
 		return "🔴"
-	case string(annotation.RiskMedium):
+	case annotation.RiskMedium:
 		return "🟡"
-	case string(annotation.RiskLow):
+	case annotation.RiskLow:
 		return "🟢"
 	default:
 		return ""
