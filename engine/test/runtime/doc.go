@@ -222,6 +222,51 @@
 //
 // The runtime provides specialized tasks for handling Multi-Chain Multi-Sig (MCMS) proposals.
 //
+// # Registered Changesets From YAML
+//
+// Runtime can execute durable-pipeline changesets directly from YAML using a registry provider
+// factory. This is useful for domain tests that already define a changeset registry (for example
+// `domains/<domain>/<env>/pipelines.go`) and want to run the exact same registered changesets in
+// unit or integration tests.
+//
+// The input YAML must include:
+//   - `environment`
+//   - `domain`
+//   - `changesets` as an ordered array
+//
+// Each changeset entry should follow:
+//
+//	changesets:
+//	  - deploy_link_token:
+//	      payload:
+//	        chains:
+//	          - linea_sepolia
+//	      chainOverrides: [1, 2, 3] # optional
+//
+// Example:
+//
+//	func TestExecuteRegisteredChangesetsFromYAML(t *testing.T) {
+//		rt, err := runtime.New(t.Context())
+//		require.NoError(t, err)
+//
+//		input := []byte(`environment: testnet
+//	domain: opdev
+//	changesets:
+//	  - deploy_link_token:
+//	      payload:
+//	        chains:
+//	          - linea_sepolia
+//	`)
+//
+//		err = rt.ExecRegisteredChangesetsFromYAML(
+//			func() changeset.RegistryProvider {
+//				return testnet.NewPipelinesRegistryProvider()
+//			},
+//			input,
+//		)
+//		require.NoError(t, err)
+//	}
+//
 // ## Available MCMS Tasks
 //
 // **SignProposalTask(proposalID, signingKeys...)** - Signs MCMS or Timelock proposals with
