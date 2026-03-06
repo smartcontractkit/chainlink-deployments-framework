@@ -55,7 +55,7 @@ func (f *aptosInspectorFactory) Make() (mcmssdk.Inspector, error) {
 		)
 	}
 
-	return mcmsaptossdk.NewInspector(f.chain.Client, role), nil
+	return mcmsaptossdk.NewInspector(f.chain.Client, role, false), nil
 }
 
 var _ ConverterFactory = &aptosConverterFactory{}
@@ -102,6 +102,7 @@ func (f *aptosExecutorFactory) Make() (mcmssdk.Executor, error) {
 		f.chain.DeployerSigner,
 		f.encoder,
 		mcmsaptossdk.TimelockRoleProposer,
+		false,
 	), nil
 }
 
