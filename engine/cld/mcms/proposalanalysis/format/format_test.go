@@ -2,6 +2,7 @@ package format
 
 import (
 	"math/big"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -77,4 +78,22 @@ func TestFormatTokenAmount(t *testing.T) {
 			assert.Equal(t, tt.expected, FormatTokenAmount(tt.amount, tt.decimals))
 		})
 	}
+}
+
+func TestTruncateAddress(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, "0x1234..5678", TruncateAddress("0x1234567890abcdef1234567890abcdef12345678"))
+	assert.Equal(t, "0xAbCd..ef12", TruncateAddress("0xAbCdEf1234567890abcdef1234567890abcdef12"))
+	assert.Equal(t, "7EqQ..ZCk", TruncateAddress("7EqQdEULxWcraVx3mXKFjc84LhCkMGZCk"))
+	assert.Equal(t, "0xaaaa", TruncateAddress("0xaaaa"))
+	assert.Equal(t, "short", TruncateAddress("short"))
+	assert.Empty(t, TruncateAddress(""))
+}
+
+func TestResolveChainName(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, "ethereum-mainnet", ResolveChainName(5009297550715157269))
+	assert.True(t, strings.HasPrefix(ResolveChainName(9999999999999999999), "chain-"))
 }

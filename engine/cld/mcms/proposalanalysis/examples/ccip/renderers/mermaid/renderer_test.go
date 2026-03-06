@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/examples/ccip"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/renderer"
 )
 
@@ -91,13 +92,13 @@ func TestMermaid_CrossChainEdges(t *testing.T) {
 		batch(9027416829622342829,
 			call("0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "applyChainUpdates", "BurnMintTokenPool", "1.5.1",
 				analyzer.NewAnnotation("ccip.token.symbol", "string", "SolvBTC"),
-				analyzer.NewAnnotation("ccip.chain_update", "string", "avalanche-mainnet (6433500567565415381) added"),
+				analyzer.NewAnnotation("ccip.chain_update", "chain_update", ccip.ChainUpdateValue{RemoteChainSelector: 6433500567565415381, Label: "avalanche-mainnet (6433500567565415381) added"}),
 			),
 		),
 		batch(6433500567565415381,
 			call("0xBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB", "applyChainUpdates", "BurnMintTokenPool", "1.5.1",
 				analyzer.NewAnnotation("ccip.token.symbol", "string", "SolvBTC"),
-				analyzer.NewAnnotation("ccip.chain_update", "string", "sei-mainnet (9027416829622342829) added"),
+				analyzer.NewAnnotation("ccip.chain_update", "chain_update", ccip.ChainUpdateValue{RemoteChainSelector: 9027416829622342829, Label: "sei-mainnet (9027416829622342829) added"}),
 			),
 		),
 	})
