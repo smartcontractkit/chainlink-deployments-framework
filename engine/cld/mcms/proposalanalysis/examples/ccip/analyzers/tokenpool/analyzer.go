@@ -5,18 +5,15 @@ import (
 	"fmt"
 	"math/big"
 	"slices"
+	"strconv"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/smartcontractkit/chainlink-ccip/chains/evm/gobindings/generated/latest/token_pool"
 
-	chainutils "github.com/smartcontractkit/chainlink-deployments-framework/chain/utils"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer/annotation"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer/annotationstore"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/decoder"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/examples/ccip"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/examples/ccip/tokenresolver"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/examples/ccip/analyzers/tokenresolver"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/format"
 )
 
@@ -32,7 +29,7 @@ func (a *ChainUpdatesAnalyzer) Dependencies() []string { return []string{tokenre
 func (a *ChainUpdatesAnalyzer) CanAnalyze(
 	_ context.Context,
 	_ analyzer.AnalyzeRequest[analyzer.CallAnalyzerContext],
-	call decoder.DecodedCall,
+	call analyzer.DecodedCall,
 ) bool {
 	return ccip.IsTokenPoolContract(call.ContractType()) && call.Name() == "applyChainUpdates"
 }
@@ -40,8 +37,8 @@ func (a *ChainUpdatesAnalyzer) CanAnalyze(
 func (a *ChainUpdatesAnalyzer) Analyze(
 	ctx context.Context,
 	req analyzer.AnalyzeRequest[analyzer.CallAnalyzerContext],
-	call decoder.DecodedCall,
-) (annotation.Annotations, error) {
+	call analyzer.DecodedCall,
+) (analyzer.Annotations, error) {
 	chainSel := req.AnalyzerContext.BatchOperation().ChainSelector()
 	evmChains := req.ExecutionContext.BlockChains().EVMChains()
 	evmChain, ok := evmChains[chainSel]
@@ -54,9 +51,9 @@ func (a *ChainUpdatesAnalyzer) Analyze(
 		return nil, fmt.Errorf("extract chain update params: %w", err)
 	}
 	if len(chainsToAdd) == 0 && len(selectorsToRemove) == 0 {
-		return annotation.Annotations{
-			annotation.SeverityAnnotation(annotation.SeverityWarning),
-			annotation.New("ccip.warning", "string", "no chain updates provided"),
+		return analyzer.Annotations{
+			analyzer.SeverityAnnotation(analyzer.SeverityWarning),
+			analyzer.NewAnnotation("ccip.warning", "string", "no chain updates provided"),
 		}, nil
 	}
 
@@ -78,18 +75,20 @@ func (a *ChainUpdatesAnalyzer) Analyze(
 
 	tokenSymbol, decimals := readTokenMetadata(req.DependencyAnnotationStore)
 
-	var anns annotation.Annotations
+	var anns analyzer.Annotations
 
 	for _, update := range chainsToAdd {
 		remoteLabel := resolveChainLabel(update.RemoteChainSelector)
 		chainExists := slices.Contains(currentChains, update.RemoteChainSelector)
 
 		if !chainExists {
-			anns = append(anns, annotation.New("ccip.chain_update", "string", remoteLabel+" added"))
+			anns = append(anns, analyzer.NewAnnotation("ccip.chain_update", "chain_update",
+				ccip.ChainUpdateValue{RemoteChainSelector: update.RemoteChainSelector, Label: remoteLabel + " added"}))
 		} else {
 			anns = append(anns,
-				annotation.SeverityAnnotation(annotation.SeverityWarning),
-				annotation.New("ccip.chain_update", "string", remoteLabel+" already enabled"),
+				analyzer.SeverityAnnotation(analyzer.SeverityWarning),
+				analyzer.NewAnnotation("ccip.chain_update", "chain_update",
+					ccip.ChainUpdateValue{RemoteChainSelector: update.RemoteChainSelector, Label: remoteLabel + " already enabled"}),
 			)
 		}
 
@@ -117,11 +116,13 @@ func (a *ChainUpdatesAnalyzer) Analyze(
 		chainExists := slices.Contains(currentChains, sel)
 
 		if chainExists {
-			anns = append(anns, annotation.New("ccip.chain_update", "string", remoteLabel+" removed"))
+			anns = append(anns, analyzer.NewAnnotation("ccip.chain_update", "chain_update",
+				ccip.ChainUpdateValue{RemoteChainSelector: sel, Label: remoteLabel + " removed"}))
 		} else {
 			anns = append(anns,
-				annotation.SeverityAnnotation(annotation.SeverityWarning),
-				annotation.New("ccip.chain_update", "string", remoteLabel+" already disabled"),
+				analyzer.SeverityAnnotation(analyzer.SeverityWarning),
+				analyzer.NewAnnotation("ccip.chain_update", "chain_update",
+					ccip.ChainUpdateValue{RemoteChainSelector: sel, Label: remoteLabel + " already disabled"}),
 			)
 		}
 	}
@@ -135,8 +136,8 @@ func compareRateLimiterConfig(
 	decimals uint8,
 	direction string,
 	tokenSymbol string,
-) annotation.Annotations {
-	var anns annotation.Annotations
+) analyzer.Annotations {
+	var anns analyzer.Annotations
 
 	if current.IsEnabled != proposed.IsEnabled {
 		action := "disabled"
@@ -144,7 +145,7 @@ func compareRateLimiterConfig(
 			action = "enabled"
 		}
 
-		anns = append(anns, annotation.New(
+		anns = append(anns, analyzer.NewAnnotation(
 			"ccip.rate_limiter", "string",
 			fmt.Sprintf("%s: rate limiter %s", direction, action),
 		))
@@ -154,7 +155,7 @@ func compareRateLimiterConfig(
 	propCap := orZero(proposed.Capacity)
 
 	if curCap.Cmp(propCap) != 0 {
-		anns = append(anns, annotation.DiffAnnotation(
+		anns = append(anns, analyzer.DiffAnnotation(
 			direction+" capacity",
 			formatRichAmount(curCap, decimals, tokenSymbol),
 			formatRichAmount(propCap, decimals, tokenSymbol),
@@ -162,8 +163,8 @@ func compareRateLimiterConfig(
 		))
 
 		if propCap.Sign() == 0 {
-			anns = append(anns, annotation.SeverityAnnotation(annotation.SeverityWarning))
-			anns = append(anns, annotation.RiskAnnotation(annotation.RiskHigh))
+			anns = append(anns, analyzer.SeverityAnnotation(analyzer.SeverityWarning))
+			anns = append(anns, analyzer.RiskAnnotation(analyzer.RiskHigh))
 		}
 	}
 
@@ -171,7 +172,7 @@ func compareRateLimiterConfig(
 	propRate := orZero(proposed.Rate)
 
 	if curRate.Cmp(propRate) != 0 {
-		anns = append(anns, annotation.DiffAnnotation(
+		anns = append(anns, analyzer.DiffAnnotation(
 			direction+" rate",
 			formatRichAmount(curRate, decimals, tokenSymbol),
 			formatRichAmount(propRate, decimals, tokenSymbol),
@@ -179,23 +180,23 @@ func compareRateLimiterConfig(
 		))
 
 		if propRate.Sign() == 0 {
-			anns = append(anns, annotation.SeverityAnnotation(annotation.SeverityWarning))
-			anns = append(anns, annotation.RiskAnnotation(annotation.RiskHigh))
+			anns = append(anns, analyzer.SeverityAnnotation(analyzer.SeverityWarning))
+			anns = append(anns, analyzer.RiskAnnotation(analyzer.RiskHigh))
 		}
 	}
 
 	return anns
 }
 
-func readTokenMetadata(store annotationstore.DependencyAnnotationStore) (string, uint8) {
+func readTokenMetadata(store analyzer.DependencyAnnotationStore) (string, uint8) {
 	var symbol string
 	var decimals uint8
 
-	if anns := store.Filter(annotationstore.ByAnalyzer(tokenresolver.AnalyzerID), annotationstore.ByName(tokenresolver.AnnotationSymbol)); len(anns) > 0 {
+	if anns := store.Filter(analyzer.ByAnnotationAnalyzer(tokenresolver.AnalyzerID), analyzer.ByAnnotationName(tokenresolver.AnnotationSymbol)); len(anns) > 0 {
 		symbol, _ = anns[0].Value().(string)
 	}
 
-	if anns := store.Filter(annotationstore.ByAnalyzer(tokenresolver.AnalyzerID), annotationstore.ByName(tokenresolver.AnnotationDecimals)); len(anns) > 0 {
+	if anns := store.Filter(analyzer.ByAnnotationAnalyzer(tokenresolver.AnalyzerID), analyzer.ByAnnotationName(tokenresolver.AnnotationDecimals)); len(anns) > 0 {
 		decimals, _ = anns[0].Value().(uint8)
 	}
 
@@ -203,12 +204,11 @@ func readTokenMetadata(store annotationstore.DependencyAnnotationStore) (string,
 }
 
 func resolveChainLabel(chainSelector uint64) string {
-	info, err := chainutils.ChainInfo(chainSelector)
-	if err != nil {
-		return fmt.Sprintf("chain-%d", chainSelector)
+	if name, ok := format.TryResolveChainName(chainSelector); ok {
+		return fmt.Sprintf("%s (%d)", name, chainSelector)
 	}
 
-	return fmt.Sprintf("%s (%d)", info.ChainName, chainSelector)
+	return strconv.FormatUint(chainSelector, 10)
 }
 
 func formatRichAmount(amount *big.Int, decimals uint8, tokenSymbol string) string {

@@ -5,14 +5,9 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/smartcontractkit/chainlink-ccip/chains/evm/gobindings/generated/latest/token_pool"
-
-	chainutils "github.com/smartcontractkit/chainlink-deployments-framework/chain/utils"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer/annotation"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/decoder"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/examples/ccip"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/format"
 )
 
 const (
@@ -32,7 +27,7 @@ func (a *LaneDetectorAnalyzer) Dependencies() []string { return nil }
 func (a *LaneDetectorAnalyzer) CanAnalyze(
 	_ context.Context,
 	_ analyzer.ProposalAnalyzeRequest,
-	_ decoder.DecodedTimelockProposal,
+	_ analyzer.DecodedTimelockProposal,
 ) bool {
 	return true
 }
@@ -40,8 +35,8 @@ func (a *LaneDetectorAnalyzer) CanAnalyze(
 func (a *LaneDetectorAnalyzer) Analyze(
 	_ context.Context,
 	_ analyzer.ProposalAnalyzeRequest,
-	proposal decoder.DecodedTimelockProposal,
-) (annotation.Annotations, error) {
+	proposal analyzer.DecodedTimelockProposal,
+) (analyzer.Annotations, error) {
 	type edge struct{ from, to uint64 }
 
 	edgeSet := make(map[edge]struct{})
@@ -57,9 +52,14 @@ func (a *LaneDetectorAnalyzer) Analyze(
 				continue
 			}
 
-			for _, remote := range extractRemoteSelectors(call.Inputs()) {
-				if remote != src {
-					edgeSet[edge{src, remote}] = struct{}{}
+			updates, err := ccip.ParseChainUpdates(call.Inputs())
+			if err != nil {
+				return nil, fmt.Errorf("parse chain updates for %s on chain %d: %w", call.To(), src, err)
+			}
+
+			for _, u := range updates {
+				if u.RemoteChainSelector != src {
+					edgeSet[edge{src, u.RemoteChainSelector}] = struct{}{}
 				}
 			}
 		}
@@ -84,52 +84,16 @@ func (a *LaneDetectorAnalyzer) Analyze(
 		seen[canonical] = struct{}{}
 
 		lanes = append(lanes, fmt.Sprintf("%s <-> %s",
-			resolveChainName(canonical.from),
-			resolveChainName(canonical.to)))
+			format.ResolveChainName(canonical.from),
+			format.ResolveChainName(canonical.to)))
 	}
 
 	sort.Strings(lanes)
 
-	anns := make(annotation.Annotations, len(lanes))
+	anns := make(analyzer.Annotations, len(lanes))
 	for i, lane := range lanes {
-		anns[i] = annotation.New(AnnotationLane, "string", lane)
+		anns[i] = analyzer.NewAnnotation(AnnotationLane, "string", lane)
 	}
 
 	return anns, nil
-}
-
-func extractRemoteSelectors(params decoder.DecodedParameters) []uint64 {
-	for _, param := range params {
-		if param.Name() != "chainsToAdd" && param.Name() != "chains" {
-			continue
-		}
-
-		raw := param.RawValue()
-		if raw == nil {
-			continue
-		}
-
-		converted, ok := abi.ConvertType(raw, new([]token_pool.TokenPoolChainUpdate)).(*[]token_pool.TokenPoolChainUpdate)
-		if !ok {
-			continue
-		}
-
-		selectors := make([]uint64, len(*converted))
-		for i, u := range *converted {
-			selectors[i] = u.RemoteChainSelector
-		}
-
-		return selectors
-	}
-
-	return nil
-}
-
-func resolveChainName(sel uint64) string {
-	info, err := chainutils.ChainInfo(sel)
-	if err != nil {
-		return fmt.Sprintf("chain-%d", sel)
-	}
-
-	return info.ChainName
 }

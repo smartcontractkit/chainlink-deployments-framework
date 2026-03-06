@@ -1,9 +1,7 @@
 {{- define "batchOperation" -}}
 
 {{- /* Batch annotations (non framework only) */ -}}
-{{- if hasDisplayAnnotations .Annotations }}
 {{ template "annotations" .Annotations }}
-{{ end }}
 
 {{- /* Calls within the batch */ -}}
 {{- range $i, $call := .Calls }}

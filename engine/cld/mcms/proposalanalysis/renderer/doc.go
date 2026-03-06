@@ -6,7 +6,7 @@ Package renderer defines renderer interfaces used to format analyzed proposals.
 A renderer must implement:
 
   - ID() string: unique renderer identifier.
-  - RenderTo(io.Writer, RenderRequest, analyzer.AnalyzedProposal) error
+  - RenderTo(io.Writer, RenderRequest, AnalyzedProposal) error
 
 Example custom plain-text renderer:
 
@@ -15,7 +15,6 @@ Example custom plain-text renderer:
 		"io"
 
 		"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis"
-		"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
 		"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/renderer"
 	)
 
@@ -28,7 +27,7 @@ Example custom plain-text renderer:
 	func (PlainRenderer) RenderTo(
 		w io.Writer,
 		req renderer.RenderRequest,
-		proposal analyzer.AnalyzedProposal,
+		proposal renderer.AnalyzedProposal,
 	) error {
 		if _, err := fmt.Fprintf(
 			w,

@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer/annotation"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/renderer"
 )
 
@@ -35,9 +34,9 @@ func TestCompareRateLimiterConfig(t *testing.T) {
 
 		anns := compareRateLimiterConfig(current, proposed, 6, "outbound to BSC", "USDC")
 		require.Len(t, anns, 1)
-		assert.Equal(t, annotation.AnnotationDiffName, anns[0].Name())
+		assert.Equal(t, analyzer.AnnotationDiffName, anns[0].Name())
 
-		dv, ok := anns[0].Value().(annotation.DiffValue)
+		dv, ok := anns[0].Value().(analyzer.DiffValue)
 		require.True(t, ok)
 		assert.Equal(t, "outbound to BSC capacity", dv.Field)
 		assert.Equal(t, "1000000 USDC (1,000,000,000,000, decimals=6)", dv.Old)
@@ -60,9 +59,9 @@ func TestCompareRateLimiterConfig(t *testing.T) {
 
 		anns := compareRateLimiterConfig(current, proposed, 6, "inbound from BSC", "USDC")
 		require.Len(t, anns, 1)
-		assert.Equal(t, annotation.AnnotationDiffName, anns[0].Name())
+		assert.Equal(t, analyzer.AnnotationDiffName, anns[0].Name())
 
-		dv, ok := anns[0].Value().(annotation.DiffValue)
+		dv, ok := anns[0].Value().(analyzer.DiffValue)
 		require.True(t, ok)
 		assert.Equal(t, "inbound from BSC rate", dv.Field)
 	})
@@ -103,9 +102,9 @@ func TestCompareRateLimiterConfig(t *testing.T) {
 
 		anns := compareRateLimiterConfig(current, proposed, 6, "outbound to BSC", "USDC")
 		require.Len(t, anns, 3)
-		assert.Equal(t, annotation.AnnotationDiffName, anns[0].Name())
-		assert.Equal(t, annotation.AnnotationSeverityName, anns[1].Name())
-		assert.Equal(t, annotation.AnnotationRiskName, anns[2].Name())
+		assert.Equal(t, analyzer.AnnotationDiffName, anns[0].Name())
+		assert.Equal(t, analyzer.AnnotationSeverityName, anns[1].Name())
+		assert.Equal(t, analyzer.AnnotationRiskName, anns[2].Name())
 	})
 
 	t.Run("no changes produces empty annotations", func(t *testing.T) {
@@ -196,24 +195,24 @@ func buildGoldenProposal() analyzer.AnalyzedProposal {
 	)
 
 	call1.AddAnnotations(
-		annotation.New("ccip.token.symbol", "string", "USDC"),
-		annotation.New("ccip.token.decimals", "uint8", uint8(6)),
-		annotation.New("ccip.token.address", "string", "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"),
-		annotation.New("ccip.chain_update", "string", "bsc-mainnet (11344663589394136015) added"),
-		annotation.DiffAnnotation(
+		analyzer.NewAnnotation("ccip.token.symbol", "string", "USDC"),
+		analyzer.NewAnnotation("ccip.token.decimals", "uint8", uint8(6)),
+		analyzer.NewAnnotation("ccip.token.address", "string", "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"),
+		analyzer.NewAnnotation("ccip.chain_update", "string", "bsc-mainnet (11344663589394136015) added"),
+		analyzer.DiffAnnotation(
 			"outbound to bsc-mainnet capacity",
 			"1 USDC (1,000,000, decimals=6)", "2 USDC (2,000,000, decimals=6)", "",
 		),
-		annotation.DiffAnnotation(
+		analyzer.DiffAnnotation(
 			"outbound to bsc-mainnet rate",
 			"0.0001 USDC (100, decimals=6)", "0.0002 USDC (200, decimals=6)", "",
 		),
-		annotation.New("ccip.rate_limiter", "string", "inbound from bsc-mainnet: rate limiter enabled"),
-		annotation.DiffAnnotation(
+		analyzer.NewAnnotation("ccip.rate_limiter", "string", "inbound from bsc-mainnet: rate limiter enabled"),
+		analyzer.DiffAnnotation(
 			"inbound from bsc-mainnet capacity",
 			"0", "0.5 USDC (500,000, decimals=6)", "",
 		),
-		annotation.DiffAnnotation(
+		analyzer.DiffAnnotation(
 			"inbound from bsc-mainnet rate",
 			"0", "0.00005 USDC (50, decimals=6)", "",
 		),
@@ -234,9 +233,9 @@ func buildGoldenProposal() analyzer.AnalyzedProposal {
 	)
 
 	call2.AddAnnotations(
-		annotation.New("ccip.chain_update", "string", "avalanche-mainnet (6433500567565415381) removed"),
-		annotation.SeverityAnnotation(annotation.SeverityWarning),
-		annotation.RiskAnnotation(annotation.RiskMedium),
+		analyzer.NewAnnotation("ccip.chain_update", "string", "avalanche-mainnet (6433500567565415381) removed"),
+		analyzer.SeverityAnnotation(analyzer.SeverityWarning),
+		analyzer.RiskAnnotation(analyzer.RiskMedium),
 	)
 
 	batchOp := analyzer.NewAnalyzedBatchOperationNode(

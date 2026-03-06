@@ -8,8 +8,6 @@ import (
 	"slices"
 	"strings"
 	"text/template"
-
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
 )
 
 //go:embed templates/*
@@ -27,7 +25,7 @@ var _ Renderer = (*TemplateRenderer)(nil)
 
 func (r *TemplateRenderer) ID() string { return r.id }
 
-func (r *TemplateRenderer) RenderTo(w io.Writer, req RenderRequest, proposal analyzer.AnalyzedProposal) error {
+func (r *TemplateRenderer) RenderTo(w io.Writer, req RenderRequest, proposal AnalyzedProposal) error {
 	ctx := templateRenderContext{
 		Request:  req,
 		Proposal: proposal,
@@ -75,7 +73,7 @@ func newTemplateRenderer(id, format string, opts ...Option) (*TemplateRenderer, 
 
 type templateRenderContext struct {
 	Request  RenderRequest
-	Proposal analyzer.AnalyzedProposal
+	Proposal AnalyzedProposal
 }
 
 func validateRequiredTemplates(tmpl *template.Template) error {

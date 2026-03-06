@@ -7,17 +7,14 @@
 {{ end -}}
 
 {{- /* Proposal-level annotations */ -}}
-{{- if hasDisplayAnnotations .Proposal.Annotations -}}
 {{ template "annotations" .Proposal.Annotations }}
-{{ end -}}
 
 {{- /* Batch operations: one collapsible <details> per batch */ -}}
 {{- $batches := .Proposal.BatchOperations -}}
 {{- if $batches -}}
 {{- range $i, $batch := $batches }}
 <details>
-{{ $chainName := resolveChainSelector .ChainSelector -}}
-<summary><h3>Batch {{ add $i 1 }} — {{ if $chainName }}{{ $chainName }} (<code>{{ .ChainSelector }}</code>){{ else }}Chain <code>{{ .ChainSelector }}</code>{{ end }}</h3></summary>
+<summary><h3>Batch {{ add $i 1 }} — {{ resolveChainSelector .ChainSelector }} (<code>{{ .ChainSelector }}</code>)</h3></summary>
 
 {{ template "batchOperation" $batch }}
 </details>

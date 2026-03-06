@@ -219,6 +219,13 @@ func TestFormatValue(t *testing.T) {
 	}
 }
 
+func TestFormatValue_NilStringer(t *testing.T) {
+	t.Parallel()
+
+	var nilBigRat *big.Rat
+	assert.Equal(t, "<nil>", formatValue(nilBigRat))
+}
+
 func TestFormatValue_FieldValueTypes(t *testing.T) {
 	t.Parallel()
 
@@ -350,24 +357,6 @@ func TestHasDisplayAnnotations(t *testing.T) {
 		annotation.SeverityAnnotation(annotation.SeverityWarning),
 		annotation.New("ccip.note", "string", "visible"),
 	}))
-}
-
-func TestResolveChainSelector(t *testing.T) {
-	t.Parallel()
-
-	assert.Equal(t, "ethereum-mainnet", resolveChainSelector(5009297550715157269))
-	assert.Empty(t, resolveChainSelector(9999999999999999999))
-}
-
-func TestTruncateAddress(t *testing.T) {
-	t.Parallel()
-
-	assert.Equal(t, "0x1234..5678", truncateAddress("0x1234567890abcdef1234567890abcdef12345678"))
-	assert.Equal(t, "0xAbCd..ef12", truncateAddress("0xAbCdEf1234567890abcdef1234567890abcdef12"))
-	assert.Equal(t, "7EqQ..ZCk", truncateAddress("7EqQdEULxWcraVx3mXKFjc84LhCkMGZCk"))
-	assert.Equal(t, "0xaaaa", truncateAddress("0xaaaa"))
-	assert.Equal(t, "short", truncateAddress("short"))
-	assert.Empty(t, truncateAddress(""))
 }
 
 func TestCommaGrouped(t *testing.T) {

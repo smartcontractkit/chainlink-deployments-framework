@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/decoder"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
 )
 
 func TestExtractChainUpdateParams(t *testing.T) {
@@ -33,7 +33,7 @@ func TestExtractChainUpdateParams(t *testing.T) {
 		t.Parallel()
 
 		call := &stubConvertCall{
-			inputs: decoder.DecodedParameters{
+			inputs: analyzer.DecodedParameters{
 				&stubConvertParam{name: "chainsToAdd", rawValue: []token_pool.TokenPoolChainUpdate{chainUpdate}},
 				&stubConvertParam{name: "remoteChainSelectorsToRemove", rawValue: []uint64{}},
 			},
@@ -50,7 +50,7 @@ func TestExtractChainUpdateParams(t *testing.T) {
 		t.Parallel()
 
 		call := &stubConvertCall{
-			inputs: decoder.DecodedParameters{
+			inputs: analyzer.DecodedParameters{
 				&stubConvertParam{name: "chains", rawValue: []token_pool.TokenPoolChainUpdate{chainUpdate}},
 			},
 		}
@@ -64,7 +64,7 @@ func TestExtractChainUpdateParams(t *testing.T) {
 		t.Parallel()
 
 		call := &stubConvertCall{
-			inputs: decoder.DecodedParameters{
+			inputs: analyzer.DecodedParameters{
 				&stubConvertParam{name: "chainsToAdd", rawValue: []token_pool.TokenPoolChainUpdate{}},
 				&stubConvertParam{name: "remoteChainSelectorsToRemove", rawValue: []uint64{100, 200}},
 			},
@@ -80,7 +80,7 @@ func TestExtractChainUpdateParams(t *testing.T) {
 		t.Parallel()
 
 		call := &stubConvertCall{
-			inputs: decoder.DecodedParameters{
+			inputs: analyzer.DecodedParameters{
 				&stubConvertParam{name: "chainsToAdd", rawValue: nil},
 			},
 		}
@@ -95,7 +95,7 @@ func TestExtractChainUpdateParams(t *testing.T) {
 		t.Parallel()
 
 		call := &stubConvertCall{
-			inputs: decoder.DecodedParameters{
+			inputs: analyzer.DecodedParameters{
 				&stubConvertParam{name: "unknownField", rawValue: "something"},
 			},
 		}
@@ -108,13 +108,13 @@ func TestExtractChainUpdateParams(t *testing.T) {
 }
 
 type stubConvertCall struct {
-	inputs decoder.DecodedParameters
+	inputs analyzer.DecodedParameters
 }
 
-func (s *stubConvertCall) To() string                        { return "" }
-func (s *stubConvertCall) Name() string                      { return "applyChainUpdates" }
-func (s *stubConvertCall) Inputs() decoder.DecodedParameters { return s.inputs }
-func (s *stubConvertCall) Outputs() decoder.DecodedParameters {
+func (s *stubConvertCall) To() string                         { return "" }
+func (s *stubConvertCall) Name() string                       { return "applyChainUpdates" }
+func (s *stubConvertCall) Inputs() analyzer.DecodedParameters { return s.inputs }
+func (s *stubConvertCall) Outputs() analyzer.DecodedParameters {
 	return nil
 }
 func (s *stubConvertCall) Data() []byte                      { return nil }
@@ -122,7 +122,7 @@ func (s *stubConvertCall) AdditionalFields() json.RawMessage { return nil }
 func (s *stubConvertCall) ContractType() string              { return "BurnMintTokenPool" }
 func (s *stubConvertCall) ContractVersion() string           { return "1.5.1" }
 
-var _ decoder.DecodedCall = (*stubConvertCall)(nil)
+var _ analyzer.DecodedCall = (*stubConvertCall)(nil)
 
 type stubConvertParam struct {
 	name     string
@@ -134,4 +134,4 @@ func (s *stubConvertParam) Type() string  { return "" }
 func (s *stubConvertParam) Value() any    { return s.rawValue }
 func (s *stubConvertParam) RawValue() any { return s.rawValue }
 
-var _ decoder.DecodedParameter = (*stubConvertParam)(nil)
+var _ analyzer.DecodedParameter = (*stubConvertParam)(nil)

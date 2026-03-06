@@ -2,15 +2,16 @@
 // notifications to Slack via the Slack Bot API using Block Kit formatting
 // inside colored attachments.
 //
-// All hooks use [changeset.Warn] failure policy so Slack errors never
-// block the changeset pipeline. When the token is empty the hooks
-// silently no-op, making them safe to register unconditionally.
+// The bot token is read from the SLACK_BOT_TOKEN environment variable at
+// execution time. All hooks use [changeset.Warn] failure policy so Slack
+// errors never block the changeset pipeline. When the token is empty the
+// hooks log a warning and no-op, making them safe to register unconditionally.
 //
 // Usage:
 //
 //	Configure(myCS).With(cfg).
-//	    WithPreHooks(slack.Notify(token, channel, "deploying tokens")).
-//	    WithPostHooks(slack.Result(token, channel))
+//	    WithPreHooks(slack.Notify(channel, "deploying tokens")).
+//	    WithPostHooks(slack.Result(channel))
 package slack
 
 import (
@@ -20,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/changeset"
@@ -27,6 +29,9 @@ import (
 
 const (
 	hookTimeout = 10 * time.Second
+
+	// TokenEnvVar is the environment variable name read at hook execution time.
+	TokenEnvVar = "SLACK_BOT_TOKEN" //nolint:gosec // env var name, not a credential
 
 	colorBlue  = "#1976D2"
 	colorGreen = "#2eb67d"
@@ -98,10 +103,10 @@ func mrkdwn(label, value string) textObj {
 }
 
 // Notify returns a PreHook that posts a Block Kit message to channel using the
-// Slack chat.postMessage API with a bot token. Messages render with a blue
-// color bar and structured fields.
-// Uses Warn policy with a 10s timeout. No-ops when token is empty.
-func Notify(token, channel, message string) changeset.PreHook {
+// Slack chat.postMessage API. The bot token is read from SLACK_BOT_TOKEN at
+// execution time. Messages render with a blue color bar and structured fields.
+// Uses Warn policy with a 10s timeout. No-ops when the env var is empty.
+func Notify(channel, message string) changeset.PreHook {
 	return changeset.PreHook{
 		HookDefinition: changeset.HookDefinition{
 			Name:          "slack-notify",
@@ -109,8 +114,9 @@ func Notify(token, channel, message string) changeset.PreHook {
 			Timeout:       hookTimeout,
 		},
 		Func: func(ctx context.Context, params changeset.PreHookParams) error {
+			token := os.Getenv(TokenEnvVar)
 			if token == "" {
-				params.Env.Logger.Warnw("slack hook skipped: token is empty", "hook", "slack-notify")
+				params.Env.Logger.Warnw("slack hook skipped: token is empty", "hook", "slack-notify", "env", TokenEnvVar)
 				return nil
 			}
 
@@ -131,9 +137,10 @@ func Notify(token, channel, message string) changeset.PreHook {
 
 // Result returns a PostHook that posts changeset success/failure status to
 // channel using the Slack chat.postMessage API with Block Kit formatting.
+// The bot token is read from SLACK_BOT_TOKEN at execution time.
 // Success renders with a green color bar, failure with red.
-// Uses Warn policy with a 10s timeout. No-ops when token is empty.
-func Result(token, channel string) changeset.PostHook {
+// Uses Warn policy with a 10s timeout. No-ops when the env var is empty.
+func Result(channel string) changeset.PostHook {
 	return changeset.PostHook{
 		HookDefinition: changeset.HookDefinition{
 			Name:          "slack-result",
@@ -141,8 +148,9 @@ func Result(token, channel string) changeset.PostHook {
 			Timeout:       hookTimeout,
 		},
 		Func: func(ctx context.Context, params changeset.PostHookParams) error {
+			token := os.Getenv(TokenEnvVar)
 			if token == "" {
-				params.Env.Logger.Warnw("slack hook skipped: token is empty", "hook", "slack-result")
+				params.Env.Logger.Warnw("slack hook skipped: token is empty", "hook", "slack-result", "env", TokenEnvVar)
 				return nil
 			}
 

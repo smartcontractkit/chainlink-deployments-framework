@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.85.1
+
+### Patch Changes
+
+- [#831](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/831) [`5db3a2d`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/5db3a2d6048db7968089864f50f9d67b6e2eddb3) Thanks [@bytesizedroll](https://github.com/bytesizedroll)! - read bot token from SLACK_BOT_TOKEN env var for slack hook
+
 ## 0.85.0
 
 ### Minor Changes
