@@ -31,8 +31,8 @@ github.com/allegro/bigcache v1.2.1 h1:hg1sY1raCwic3Vnsvje6TT7/pnZba83LeFck5NrFKS
 github.com/allegro/bigcache v1.2.1/go.mod h1:Cb/ax3seSYIx7SuZdm2G2xzfwmv3TPSk2ucNfQESPXM=
 github.com/apache/arrow-go/v18 v18.3.1 h1:oYZT8FqONiK74JhlH3WKVv+2NKYoyZ7C2ioD4Dj3ixk=
 github.com/apache/arrow-go/v18 v18.3.1/go.mod h1:12QBya5JZT6PnBihi5NJTzbACrDGXYkrgjujz3MRQXU=
-github.com/aptos-labs/aptos-go-sdk v1.11.0 h1:vIL1hpjECUiu7zMl9Wz6VV8ttXsrDqKUj0HxoeaIER4=
-github.com/aptos-labs/aptos-go-sdk v1.11.0/go.mod h1:8YvYwRg93UcG6pTStCpZdYiscCtKh51sYfeLgIy/41c=
+github.com/aptos-labs/aptos-go-sdk v1.12.0 h1:deHZ7NJlFhHm2i+eaPHt6EPa3BuXXnIYx2X5J3/U0Es=
+github.com/aptos-labs/aptos-go-sdk v1.12.0/go.mod h1:FTgKp0RLfEefllCdkCj0jPU14xWk11yA7SFVfCDLUj8=
 github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5 h1:0CwZNZbxp69SHPdPJAN/hZIm0C4OItdklCFmMRWYpio=
 github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5/go.mod h1:wHh0iHkYZB8zMSxRWpUBQtwG5a7fFgvEO+odwuTv2gs=
 github.com/avast/retry-go v3.0.0+incompatible h1:4SOWQ7Qs+oroOTQOYnAHqelpCO0biHSxpiH9JdtuBj0=
@@ -405,8 +405,8 @@ github.com/hashicorp/golang-lru v1.0.2 h1:dV3g9Z/unq5DpblPpw+Oqcv4dU/1omnb4Ok8iP
 github.com/hashicorp/golang-lru v1.0.2/go.mod h1:iADmTwqILo4mZ8BN3D2Q6+9jd8WM5uGBxy+E8yxSoD4=
 github.com/hashicorp/yamux v0.1.2 h1:XtB8kyFOyHXYVFnwT5C3+Bdo8gArse7j2AQ0DA0Uey8=
 github.com/hashicorp/yamux v0.1.2/go.mod h1:C+zze2n6e/7wshOZep2A70/aQU6QBRWJO/G6FT1wIns=
-github.com/hasura/go-graphql-client v0.14.5 h1:M9HxxGLCcDZnxJGYyWXAzDYEpommgjW+sUW3V8EaGms=
-github.com/hasura/go-graphql-client v0.14.5/go.mod h1:jfSZtBER3or+88Q9vFhWHiFMPppfYILRyl+0zsgPIIw=
+github.com/hasura/go-graphql-client v0.15.1 h1:mCb5I+8Bk3FU3GKWvf/zDXkTh7FbGlqJmP3oisBdnN8=
+github.com/hasura/go-graphql-client v0.15.1/go.mod h1:jfSZtBER3or+88Q9vFhWHiFMPppfYILRyl+0zsgPIIw=
 github.com/hdevalence/ed25519consensus v0.2.0 h1:37ICyZqdyj0lAZ8P4D1d1id3HqbbG1N3iBb1Tb4rdcU=
 github.com/hdevalence/ed25519consensus v0.2.0/go.mod h1:w3BHWjwJbFU29IRHL1Iqkw3sus+7FctEyM4RqDxYNzo=
 github.com/holiman/billy v0.0.0-20250707135307-f2f9b9aae7db h1:IZUYC/xb3giYwBLMnr8d0TGTzPKFGNTCGgGLoyeX330=
@@ -771,8 +771,6 @@ github.com/smartcontractkit/chainlink-protos/op-catalog v0.0.4 h1:AEnxv4HM3WD1Rb
 github.com/smartcontractkit/chainlink-protos/op-catalog v0.0.4/go.mod h1:PjZD54vr6rIKEKQj6HNA4hllvYI/QpT+Zefj3tqkFAs=
 github.com/smartcontractkit/chainlink-sui v0.0.0-20260205175622-33e65031f9a9 h1:KyPROV+v7P8VdiU7JhVuGLcDlEBsURSpQmSCgNBTY+s=
 github.com/smartcontractkit/chainlink-sui v0.0.0-20260205175622-33e65031f9a9/go.mod h1:KpEWZJMLwbdMHeHQz9rbkES0vRrx4nk6OQXyhlHb9/8=
-github.com/smartcontractkit/chainlink-testing-framework/framework v0.14.7 h1:IkfD45g8TEVMkBW4NOtalbwZIqVAiA9Ml/Up3N2txlY=
-github.com/smartcontractkit/chainlink-testing-framework/framework v0.14.7/go.mod h1:43xdIQuqw/gzfazsqJkBrGdF25TIJDiY/Ak/YrWFTmU=
 github.com/smartcontractkit/chainlink-testing-framework/framework v0.15.0 h1:7fQDETtHDe68c9Eusx4YpdPMsoBJX+hQMYjS0SlAIt4=
 github.com/smartcontractkit/chainlink-testing-framework/framework v0.15.0/go.mod h1:43xdIQuqw/gzfazsqJkBrGdF25TIJDiY/Ak/YrWFTmU=
 github.com/smartcontractkit/chainlink-testing-framework/seth v1.51.5 h1:RwZXxdIAOyjp6cwc9Quxgr38k8r7ACz+Lxh9o/A6oH0=
