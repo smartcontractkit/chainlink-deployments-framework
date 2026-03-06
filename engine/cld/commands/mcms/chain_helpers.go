@@ -39,7 +39,8 @@ func getInspectorFromChainSelector(cfg *forkConfig) (sdk.Inspector, error) {
 			return nil, fmt.Errorf("error getting aptos role from proposal: %w", err)
 		}
 		aptosChain := cfg.blockchains.AptosChains()[cfg.chainSelector]
-		inspector = aptos.NewInspector(aptosChain.Client, *role)
+		isCurseMCMS := aptos.IsCurseMCMSFromOperations(cfg.timelockProposal.Operations, types.ChainSelector(cfg.chainSelector))
+		inspector = aptos.NewInspector(aptosChain.Client, *role, isCurseMCMS)
 	case chainsel.FamilySui:
 		metadata, err := suiMetadataFromProposal(types.ChainSelector(cfg.chainSelector), cfg.timelockProposal)
 		if err != nil {
@@ -138,8 +139,9 @@ func getExecutorWithChainOverride(cfg *forkConfig, chainSelector types.ChainSele
 			return nil, fmt.Errorf("error getting aptos role from proposal: %w", err)
 		}
 		c := cfg.blockchains.AptosChains()[uint64(chainSelector)]
+		isCurseMCMS := aptos.IsCurseMCMSFromOperations(cfg.timelockProposal.Operations, chainSelector)
 
-		return aptos.NewExecutor(c.Client, c.DeployerSigner, aptosEncoder, *role), nil
+		return aptos.NewExecutor(c.Client, c.DeployerSigner, aptosEncoder, *role, isCurseMCMS), nil
 
 	case chainsel.FamilySui:
 		suiEncoder, ok := encoder.(*sui.Encoder)
