@@ -52,6 +52,9 @@ var (
 		# Generate and save state to default location (also prints)
 		myapp state generate -e staging --persist
 
+		# Use local datastore files when catalog is unreachable and local files are available
+		myapp state generate -e testnet --persist --local-datastore
+
 		# Generate and save to custom path without printing
 		myapp state generate -e staging -p -o /path/to/state.json --print=false
 
@@ -61,11 +64,12 @@ var (
 )
 
 type generateFlags struct {
-	environment   string
-	persist       bool
-	output        string
-	previousState string
-	print         bool
+	environment    string
+	persist        bool
+	output         string
+	previousState  string
+	print          bool
+	localDatastore bool
 }
 
 // newGenerateCmd creates the "generate" subcommand for generating state.
@@ -77,11 +81,12 @@ func newGenerateCmd(cfg Config) *cobra.Command {
 		Example: generateExample,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			f := generateFlags{
-				environment:   flags.MustString(cmd.Flags().GetString("environment")),
-				persist:       flags.MustBool(cmd.Flags().GetBool("persist")),
-				output:        flags.MustString(cmd.Flags().GetString("out")),
-				previousState: flags.MustString(cmd.Flags().GetString("prev")),
-				print:         flags.MustBool(cmd.Flags().GetBool("print")),
+				environment:    flags.MustString(cmd.Flags().GetString("environment")),
+				persist:        flags.MustBool(cmd.Flags().GetBool("persist")),
+				output:         flags.MustString(cmd.Flags().GetString("out")),
+				previousState:  flags.MustString(cmd.Flags().GetString("prev")),
+				print:          flags.MustBool(cmd.Flags().GetBool("print")),
+				localDatastore: flags.MustBool(cmd.Flags().GetBool("local-datastore")),
 			}
 
 			return runGenerate(cmd, cfg, f)
@@ -96,6 +101,7 @@ func newGenerateCmd(cfg Config) *cobra.Command {
 	// Local flags specific to this command
 	cmd.Flags().BoolP("persist", "p", false, "Persist state to disk")
 	cmd.Flags().StringP("prev", "s", "", "Previous state file path")
+	cmd.Flags().Bool("local-datastore", false, "Use local datastore files instead of catalog (for when catalog is unreachable)")
 
 	// Deprecated alias: --previousState -> --prev
 	addPreviousStateAlias(cmd)
@@ -111,6 +117,7 @@ func runGenerate(cmd *cobra.Command, cfg Config, f generateFlags) error {
 	output := f.output
 	previousState := f.previousState
 	shouldPrint := f.print
+	localDatastore := f.localDatastore
 
 	deps := cfg.deps()
 	envdir := cfg.Domain.EnvDir(envKey)
@@ -124,7 +131,11 @@ func runGenerate(cmd *cobra.Command, cfg Config, f generateFlags) error {
 	ctx, cancel := context.WithTimeout(cmd.Context(), viewTimeout)
 	defer cancel()
 
-	env, err := deps.EnvironmentLoader(ctx, cfg.Domain, envKey, environment.WithLogger(cfg.Logger))
+	envOpts := []environment.LoadEnvironmentOption{environment.WithLogger(cfg.Logger)}
+	if localDatastore {
+		envOpts = append(envOpts, environment.WithLocalDatastoreFallback())
+	}
+	env, err := deps.EnvironmentLoader(ctx, cfg.Domain, envKey, envOpts...)
 	if err != nil {
 		return fmt.Errorf("failed to load environment: %w", err)
 	}
