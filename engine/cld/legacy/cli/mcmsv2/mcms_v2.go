@@ -78,7 +78,8 @@ reset-proposal, get-op-count) have been moved to mcms-tools.
 Install with: brew install smartcontractkit/tap/mcms-tools
 
 Available commands here:
-  - analyze-proposal: Analyze proposal and provide human readable output
+  - analyze-proposal: Analyze proposal and provide human readable output (deprecated)
+  - analyze-proposal-v2: Analyze timelock proposal using the v2 framework
   - convert-upf: Convert proposal to UPF (universal proposal format)
   - execute-fork: Execute proposal on forked environment for testing
   - error-decode-evm: Decode EVM transaction errors
