@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/spf13/cobra"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -19,8 +18,8 @@ func TestEnvironment(t *testing.T) {
 
 		f := cmd.Flags().Lookup("environment")
 		require.NotNil(t, f)
-		assert.Equal(t, "e", f.Shorthand)
-		assert.Empty(t, f.DefValue)
+		require.Equal(t, "e", f.Shorthand)
+		require.Empty(t, f.DefValue)
 	})
 
 	t.Run("is required", func(t *testing.T) {
@@ -31,7 +30,7 @@ func TestEnvironment(t *testing.T) {
 
 		err := cmd.ValidateRequiredFlags()
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "environment")
+		require.Equal(t, `required flag(s) "environment" not set`, err.Error())
 	})
 
 	t.Run("value retrieval", func(t *testing.T) {
@@ -45,7 +44,7 @@ func TestEnvironment(t *testing.T) {
 
 		require.NoError(t, err)
 		env, _ := cmd.Flags().GetString("environment")
-		assert.Equal(t, "staging", env)
+		require.Equal(t, "staging", env)
 	})
 }
 
@@ -60,8 +59,8 @@ func TestPrint(t *testing.T) {
 
 		f := cmd.Flags().Lookup("print")
 		require.NotNil(t, f)
-		assert.Empty(t, f.Shorthand)
-		assert.Equal(t, "true", f.DefValue)
+		require.Empty(t, f.Shorthand)
+		require.Equal(t, "true", f.DefValue)
 	})
 
 	t.Run("value retrieval", func(t *testing.T) {
@@ -75,7 +74,7 @@ func TestPrint(t *testing.T) {
 
 		require.NoError(t, err)
 		shouldPrint, _ := cmd.Flags().GetBool("print")
-		assert.True(t, shouldPrint)
+		require.True(t, shouldPrint)
 	})
 }
 
@@ -90,14 +89,14 @@ func TestOutput(t *testing.T) {
 
 		f := cmd.Flags().Lookup("out")
 		require.NotNil(t, f)
-		assert.Equal(t, "o", f.Shorthand)
+		require.Equal(t, "o", f.Shorthand)
 
 		cmd.SetArgs([]string{"-o", "/new/path.json"})
 		err := cmd.Execute()
 
 		require.NoError(t, err)
 		out, _ := cmd.Flags().GetString("out")
-		assert.Equal(t, "/new/path.json", out)
+		require.Equal(t, "/new/path.json", out)
 	})
 
 	t.Run("deprecated alias still works", func(t *testing.T) {
@@ -112,7 +111,7 @@ func TestOutput(t *testing.T) {
 
 		require.NoError(t, err)
 		out, _ := cmd.Flags().GetString("out")
-		assert.Equal(t, "/old/path.json", out)
+		require.Equal(t, "/old/path.json", out)
 	})
 
 	t.Run("default value", func(t *testing.T) {
@@ -123,7 +122,7 @@ func TestOutput(t *testing.T) {
 
 		f := cmd.Flags().Lookup("out")
 		require.NotNil(t, f)
-		assert.Equal(t, "default.json", f.DefValue)
+		require.Equal(t, "default.json", f.DefValue)
 	})
 }
 
@@ -138,9 +137,9 @@ func TestFlagsAreLocal(t *testing.T) {
 
 	// Child should NOT have the environment flag
 	f := child.Flags().Lookup("environment")
-	assert.Nil(t, f, "local flags should not be inherited by subcommands")
+	require.Nil(t, f, "local flags should not be inherited by subcommands")
 
 	// But parent should have it
 	pf := parent.Flags().Lookup("environment")
-	assert.NotNil(t, pf)
+	require.NotNil(t, pf)
 }
