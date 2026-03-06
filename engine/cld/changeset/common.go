@@ -32,6 +32,7 @@ type Configurations struct {
 type internalChangeSet interface {
 	noop() // unexported function to prevent arbitrary structs from implementing ChangeSet.
 	Apply(env fdeployment.Environment) (fdeployment.ChangesetOutput, error)
+	applyWithInput(env fdeployment.Environment, inputStr string) (fdeployment.ChangesetOutput, error)
 	Configurations() (Configurations, error)
 }
 
@@ -77,6 +78,35 @@ type TypedJSON struct {
 	ChainOverrides []uint64        `json:"chainOverrides"` // Optional field for chain overrides
 }
 
+func parseTypedInput(inputStr string) (TypedJSON, error) {
+	if inputStr == "" {
+		return TypedJSON{}, errors.New("input is empty")
+	}
+
+	var inputObject TypedJSON
+	if err := json.Unmarshal([]byte(inputStr), &inputObject); err != nil {
+		return TypedJSON{}, fmt.Errorf("JSON must be in JSON format with 'payload' fields: %w", err)
+	}
+	if len(inputObject.Payload) == 0 {
+		return TypedJSON{}, errors.New("'payload' field is required")
+	}
+
+	return inputObject, nil
+}
+
+func decodePayload[C any](payload json.RawMessage) (C, error) {
+	var config C
+
+	payloadDecoder := json.NewDecoder(strings.NewReader(string(payload)))
+	payloadDecoder.UseNumber()
+	payloadDecoder.DisallowUnknownFields()
+	if err := payloadDecoder.Decode(&config); err != nil {
+		return config, fmt.Errorf("failed to unmarshal payload: %w", err)
+	}
+
+	return config, nil
+}
+
 // WithJSON returns a fully configured changeset, which pairs a [fdeployment.ChangeSet] with its configuration based
 // a JSON input. It also allows extensions, such as a PostProcessing function.
 // InputStr must be a JSON object with a "payload" field that contains the actual input data for a Durable Pipeline.
@@ -92,31 +122,12 @@ type TypedJSON struct {
 // Note: Prefer WithEnvInput for durable_pipelines.go
 func (f WrappedChangeSet[C]) WithJSON(_ C, inputStr string) ConfiguredChangeSet {
 	return ChangeSetImpl[C]{changeset: f, configProvider: func() (C, error) {
-		var config C
-
-		if inputStr == "" {
-			return config, errors.New("input is empty")
+		inputObject, err := parseTypedInput(inputStr)
+		if err != nil {
+			var zero C
+			return zero, err
 		}
-
-		var inputObject TypedJSON
-		if err := json.Unmarshal([]byte(inputStr), &inputObject); err != nil {
-			return config, fmt.Errorf("JSON must be in JSON format with 'payload' fields: %w", err)
-		}
-
-		// If payload is null, decode it as null (which will give zero value)
-		// If payload is missing, return an error
-		if len(inputObject.Payload) == 0 {
-			return config, errors.New("'payload' field is required")
-		}
-
-		payloadDecoder := json.NewDecoder(strings.NewReader(string(inputObject.Payload)))
-		payloadDecoder.UseNumber()
-		payloadDecoder.DisallowUnknownFields()
-		if err := payloadDecoder.Decode(&config); err != nil {
-			return config, fmt.Errorf("failed to unmarshal payload: %w", err)
-		}
-
-		return config, nil
+		return decodePayload[C](inputObject.Payload)
 	},
 		inputChainOverrides: func() ([]uint64, error) {
 			return loadInputChainOverrides(inputStr)
@@ -152,42 +163,35 @@ func (f WrappedChangeSet[C]) WithEnvInput(opts ...EnvInputOption[C]) ConfiguredC
 
 	inputStr := os.Getenv("DURABLE_PIPELINE_INPUT")
 
-	return ChangeSetImpl[C]{changeset: f, configProvider: func() (C, error) {
-		var config C
+	providerFromInput := func(rawInput string) (C, error) {
+		var zero C
 
-		if inputStr == "" {
-			return config, errors.New("input is empty")
+		inputObject, err := parseTypedInput(rawInput)
+		if err != nil {
+			return zero, err
 		}
-
-		var inputObject TypedJSON
-		if err := json.Unmarshal([]byte(inputStr), &inputObject); err != nil {
-			return config, fmt.Errorf("JSON must be in JSON format with 'payload' fields: %w", err)
-		}
-
-		// If payload is null, decode it as null (which will give zero value)
-		// If payload is missing, return an error
-		if len(inputObject.Payload) == 0 {
-			return config, errors.New("'payload' field is required")
-		}
-
-		payloadDecoder := json.NewDecoder(strings.NewReader(string(inputObject.Payload)))
-		payloadDecoder.UseNumber()
-		payloadDecoder.DisallowUnknownFields()
-		if err := payloadDecoder.Decode(&config); err != nil {
-			return config, fmt.Errorf("failed to unmarshal payload: %w", err)
+		config, err := decodePayload[C](inputObject.Payload)
+		if err != nil {
+			return zero, err
 		}
 
 		if options.inputModifier != nil {
-			conf, err := options.inputModifier(config)
-			if err != nil {
-				return conf, fmt.Errorf("failed to apply input modifier: %w", err)
+			conf, modifierErr := options.inputModifier(config)
+			if modifierErr != nil {
+				return conf, fmt.Errorf("failed to apply input modifier: %w", modifierErr)
 			}
 
 			return conf, nil
 		}
 
 		return config, nil
-	},
+	}
+
+	return ChangeSetImpl[C]{changeset: f,
+		configProvider: func() (C, error) {
+			return providerFromInput(inputStr)
+		},
+		configProviderWithInput: providerFromInput,
 		inputChainOverrides: func() ([]uint64, error) {
 			return loadInputChainOverrides(inputStr)
 		},
@@ -223,21 +227,17 @@ func (f WrappedChangeSet[C]) WithConfigResolver(resolver fresolvers.ConfigResolv
 	// Read input from environment variable
 	inputStr := os.Getenv("DURABLE_PIPELINE_INPUT")
 
-	configProvider := func() (C, error) {
+	configProviderFromInput := func(rawInput string) (C, error) {
 		var zero C
 
-		if inputStr == "" {
+		if rawInput == "" {
 			return zero, errors.New("input is empty")
 		}
 
-		// Parse JSON input
 		var inputObject TypedJSON
-		if err := json.Unmarshal([]byte(inputStr), &inputObject); err != nil {
+		if err := json.Unmarshal([]byte(rawInput), &inputObject); err != nil {
 			return zero, fmt.Errorf("failed to parse resolver input as JSON: %w", err)
 		}
-
-		// If payload is null, pass it to the resolver (which will receive null)
-		// If payload field is missing, return an error
 		if len(inputObject.Payload) == 0 {
 			return zero, errors.New("'payload' field is required")
 		}
@@ -251,8 +251,12 @@ func (f WrappedChangeSet[C]) WithConfigResolver(resolver fresolvers.ConfigResolv
 		return typedConfig, nil
 	}
 
-	return ChangeSetImpl[C]{changeset: f, configProvider: configProvider,
-		ConfigResolver: resolver,
+	return ChangeSetImpl[C]{changeset: f,
+		configProvider: func() (C, error) {
+			return configProviderFromInput(inputStr)
+		},
+		configProviderWithInput: configProviderFromInput,
+		ConfigResolver:          resolver,
 		inputChainOverrides: func() ([]uint64, error) {
 			return loadInputChainOverrides(inputStr)
 		},
@@ -262,9 +266,10 @@ func (f WrappedChangeSet[C]) WithConfigResolver(resolver fresolvers.ConfigResolv
 var _ ConfiguredChangeSet = ChangeSetImpl[any]{}
 
 type ChangeSetImpl[C any] struct {
-	changeset           WrappedChangeSet[C]
-	configProvider      func() (C, error)
-	inputChainOverrides func() ([]uint64, error)
+	changeset               WrappedChangeSet[C]
+	configProvider          func() (C, error)
+	configProviderWithInput func(inputStr string) (C, error)
+	inputChainOverrides     func() ([]uint64, error)
 
 	// Present only when the changeset was wired with
 	// Configure(...).WithConfigResolver(...)
@@ -283,6 +288,25 @@ func (ccs ChangeSetImpl[C]) Apply(env fdeployment.Environment) (fdeployment.Chan
 	}
 	err = ccs.changeset.operation.VerifyPreconditions(env, c)
 	if err != nil {
+		return fdeployment.ChangesetOutput{}, err
+	}
+
+	return ccs.changeset.operation.Apply(env, c)
+}
+
+func (ccs ChangeSetImpl[C]) applyWithInput(env fdeployment.Environment, inputStr string) (fdeployment.ChangesetOutput, error) {
+	if inputStr == "" {
+		return ccs.Apply(env)
+	}
+	if ccs.configProviderWithInput == nil {
+		return ccs.Apply(env)
+	}
+
+	c, err := ccs.configProviderWithInput(inputStr)
+	if err != nil {
+		return fdeployment.ChangesetOutput{}, err
+	}
+	if err := ccs.changeset.operation.VerifyPreconditions(env, c); err != nil {
 		return fdeployment.ChangesetOutput{}, err
 	}
 
