@@ -111,3 +111,15 @@ func Test_WithDryRunJobDistributor(t *testing.T) {
 
 	assert.True(t, opts.useDryRunJobDistributor)
 }
+
+func Test_WithLocalDatastoreFallback(t *testing.T) {
+	t.Parallel()
+
+	opts := &LoadConfig{}
+	require.False(t, opts.useLocalDatastoreFallback)
+
+	option := WithLocalDatastoreFallback()
+	option(opts)
+
+	assert.True(t, opts.useLocalDatastoreFallback)
+}

@@ -404,6 +404,42 @@ func TestGenerate_ViewStateError(t *testing.T) {
 	assert.Contains(t, execErr.Error(), expectedError.Error())
 }
 
+// TestGenerate_WithLocalDatastore verifies that --local-datastore passes WithLocalDatastoreFallback to the environment loader.
+func TestGenerate_WithLocalDatastore(t *testing.T) {
+	t.Parallel()
+
+	var receivedOpts []environment.LoadEnvironmentOption
+	cmd, err := NewCommand(Config{
+		Logger: logger.Nop(),
+		Domain: domain.NewDomain("/tmp", "testdomain"),
+		ViewState: func(_ fdeployment.Environment, _ json.Marshaler) (json.Marshaler, error) {
+			return &mockState{Data: map[string]any{}}, nil
+		},
+		Deps: Deps{
+			EnvironmentLoader: func(_ context.Context, _ domain.Domain, envKey string, opts ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
+				receivedOpts = opts
+				return fdeployment.Environment{Name: envKey}, nil
+			},
+			StateLoader: func(_ domain.EnvDir) (domain.JSONSerializer, error) {
+				return nil, os.ErrNotExist
+			},
+		},
+	})
+
+	require.NoError(t, err)
+
+	out := new(bytes.Buffer)
+	cmd.SetOut(out)
+	cmd.SetErr(out)
+	cmd.SetArgs([]string{"generate", "-e", "staging", "--local-datastore"})
+
+	execErr := cmd.Execute()
+
+	require.NoError(t, execErr)
+	// Without --local-datastore we only pass WithLogger; with --local-datastore we add WithLocalDatastoreFallback.
+	require.Len(t, receivedOpts, 2, "expected 2 options (WithLogger + WithLocalDatastoreFallback) when --local-datastore is set")
+}
+
 // TestGenerate_StateSaveError verifies error handling.
 func TestGenerate_StateSaveError(t *testing.T) {
 	t.Parallel()

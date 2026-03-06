@@ -48,7 +48,9 @@ func Load(
 
 	var ds fdatastore.DataStore
 
-	if cfg.DatastoreType == cfgdomain.DatastoreTypeCatalog || cfg.DatastoreType == cfgdomain.DatastoreTypeAll {
+	useCatalog := (cfg.DatastoreType == cfgdomain.DatastoreTypeCatalog || cfg.DatastoreType == cfgdomain.DatastoreTypeAll) && !loadcfg.useLocalDatastoreFallback
+
+	if useCatalog {
 		if cfg.Env.Catalog.GRPC != "" {
 			lggr.Infow("Fetching data from Catalog", "url", cfg.Env.Catalog.GRPC)
 			catalogStore, catalogErr := cldcatalog.LoadCatalog(ctx, envKey, cfg, domain)
@@ -67,7 +69,10 @@ func Load(
 			return fdeployment.Environment{}, fmt.Errorf("catalog GRPC endpoint is required when datastore location is set to '%s'", cfgdomain.DatastoreTypeCatalog)
 		}
 	} else {
-		// Load datastore from file system (default behavior)
+		// Load datastore from file system (default behavior, or when --local-datastore is used)
+		if loadcfg.useLocalDatastoreFallback && (cfg.DatastoreType == cfgdomain.DatastoreTypeCatalog || cfg.DatastoreType == cfgdomain.DatastoreTypeAll) {
+			lggr.Infow("Using local datastore files (--local-datastore); catalog bypassed")
+		}
 		ds, err = envdir.DataStore()
 		if err != nil {
 			return fdeployment.Environment{}, err

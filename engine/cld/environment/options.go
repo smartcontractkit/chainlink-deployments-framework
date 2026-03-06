@@ -40,6 +40,10 @@ type LoadConfig struct {
 	// useDryRunJobDistributor configures the environment to use a dry-run Job Distributor
 	// that allows read operations but performs noop write operations.
 	useDryRunJobDistributor bool
+
+	// useLocalDatastoreFallback when true, load datastore from local files even when the
+	// domain is configured for catalog or catalog/all. Use when the catalog service is not reachable locally.
+	useLocalDatastoreFallback bool
 }
 
 // Configure applies a slice of LoadEnvironmentOption functions to the LoadConfig.
@@ -175,5 +179,15 @@ func WithLogger(lggr logger.Logger) LoadEnvironmentOption {
 func WithDryRunJobDistributor() LoadEnvironmentOption {
 	return func(o *LoadConfig) {
 		o.useDryRunJobDistributor = true
+	}
+}
+
+// WithLocalDatastoreFallback configures the environment to load the datastore from local
+// files (e.g. address_refs.json in the environment's datastore directory) instead of the
+// catalog service. Use this when the domain has datastore set to "catalog" or "all" in
+// domain.yaml but the catalog service is not reachable locally (e.g. state generate run offline).
+func WithLocalDatastoreFallback() LoadEnvironmentOption {
+	return func(o *LoadConfig) {
+		o.useLocalDatastoreFallback = true
 	}
 }
