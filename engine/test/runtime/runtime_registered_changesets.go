@@ -3,7 +3,6 @@ package runtime
 import (
 	"errors"
 	"fmt"
-	"os"
 
 	"github.com/segmentio/ksuid"
 
@@ -14,14 +13,10 @@ import (
 // ExecRegisteredChangesetsFromYAML executes registered changesets from durable-pipeline YAML input.
 //
 // For each changeset entry in YAML order:
-//  1. Set DURABLE_PIPELINE_INPUT from that entry's payload/chainOverrides.
+//  1. Build per-entry durable-pipeline JSON input from payload/chainOverrides.
 //  2. Create and initialize a fresh registry provider.
-//  3. Apply the named changeset against the current runtime environment.
+//  3. Apply the named changeset against the current runtime environment with explicit input.
 //  4. Merge output into runtime state and regenerate environment for the next step.
-//
-// Do not run this in parallel. This is not thread-safe. It temporarily mutates the process-wide
-// DURABLE_PIPELINE_INPUT environment variable while applying each changeset.
-// Once we move the reliance on the environment variable in the implementation, we can remove this restriction.
 func (r *Runtime) ExecRegisteredChangesetsFromYAML(
 	providerFactory func() changeset.RegistryProvider,
 	inputYAML []byte,
@@ -46,22 +41,10 @@ func (r *Runtime) ExecRegisteredChangesetsFromYAML(
 		return fmt.Errorf("input file %s has empty 'changesets' array", "runtime-input.yaml")
 	}
 
-	oldInput, hadInput := os.LookupEnv("DURABLE_PIPELINE_INPUT")
-	defer func() {
-		if hadInput {
-			_ = os.Setenv("DURABLE_PIPELINE_INPUT", oldInput)
-		} else {
-			_ = os.Unsetenv("DURABLE_PIPELINE_INPUT")
-		}
-	}()
-
 	for _, cs := range ordered {
 		inputJSON, err := durablepipeline.BuildChangesetInputJSON(cs.Name, cs.Data)
 		if err != nil {
 			return fmt.Errorf("failed to build input for changeset %q in input file %s: %w", cs.Name, "runtime-input.yaml", err)
-		}
-		if setEnvErr := os.Setenv("DURABLE_PIPELINE_INPUT", inputJSON); setEnvErr != nil {
-			return fmt.Errorf("failed to set DURABLE_PIPELINE_INPUT environment variable: %w", setEnvErr)
 		}
 
 		provider := providerFactory()
@@ -72,7 +55,7 @@ func (r *Runtime) ExecRegisteredChangesetsFromYAML(
 			return fmt.Errorf("failed to init registry provider: %w", initErr)
 		}
 
-		out, err := provider.Registry().Apply(cs.Name, r.currentEnv)
+		out, err := provider.Registry().ApplyWithInput(cs.Name, r.currentEnv, inputJSON)
 		if err != nil {
 			return err
 		}

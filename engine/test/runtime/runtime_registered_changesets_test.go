@@ -1,7 +1,6 @@
 package runtime
 
 import (
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -69,9 +68,11 @@ func makeResolverChangeset(name string, out *[]recordedCall) fdeployment.ChangeS
 	)
 }
 
-//nolint:paralleltest // Mutates process-wide DURABLE_PIPELINE_INPUT during execution.
+//nolint:paralleltest // One subtest intentionally uses process env for precedence assertions.
 func TestRuntime_ExecRegisteredChangesetsFromYAML(t *testing.T) {
 	t.Run("executes changesets in YAML order with per-entry input", func(t *testing.T) {
+		t.Parallel()
+
 		rt, err := New(t.Context())
 		require.NoError(t, err)
 
@@ -111,6 +112,8 @@ changesets:
 	})
 
 	t.Run("supports resolver-backed registered changesets", func(t *testing.T) {
+		t.Parallel()
+
 		rt, err := New(t.Context())
 		require.NoError(t, err)
 
@@ -145,6 +148,8 @@ changesets:
 	})
 
 	t.Run("returns error for invalid YAML changeset payload", func(t *testing.T) {
+		t.Parallel()
+
 		rt, err := New(t.Context())
 		require.NoError(t, err)
 
@@ -163,6 +168,8 @@ changesets:
 	})
 
 	t.Run("returns error when provider factory is nil", func(t *testing.T) {
+		t.Parallel()
+
 		rt, err := New(t.Context())
 		require.NoError(t, err)
 
@@ -176,19 +183,19 @@ changesets:
 		require.ErrorContains(t, err, "provider factory is required")
 	})
 
-	t.Run("restores previous DURABLE_PIPELINE_INPUT", func(t *testing.T) {
-		const original = `{"payload":{"before":true}}`
-		t.Setenv("DURABLE_PIPELINE_INPUT", original)
+	t.Run("explicit YAML input takes precedence over env var", func(t *testing.T) {
+		t.Setenv("DURABLE_PIPELINE_INPUT", `{"payload":{"value":999}}`)
 
 		rt, err := New(t.Context())
 		require.NoError(t, err)
+		var calls []recordedCall
 
 		providerFactory := func() changeset.RegistryProvider {
 			return newTestRegistryProvider(func(registry *changeset.ChangesetsRegistry) {
 				registry.SetValidate(false)
 				registry.Add(
 					"first",
-					changeset.Configure(makeInputChangeset("first", &[]recordedCall{})).WithEnvInput(),
+					changeset.Configure(makeInputChangeset("first", &calls)).WithEnvInput(),
 				)
 			})
 		}
@@ -201,6 +208,6 @@ changesets:
         value: 1
 `))
 		require.NoError(t, err)
-		require.JSONEq(t, original, os.Getenv("DURABLE_PIPELINE_INPUT"))
+		require.Equal(t, []recordedCall{{Name: "first", Value: 1}}, calls)
 	})
 }
