@@ -3,12 +3,11 @@ package mermaid
 import (
 	"fmt"
 	"io"
-	"regexp"
-	"strconv"
 	"strings"
 
-	chainutils "github.com/smartcontractkit/chainlink-deployments-framework/chain/utils"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/examples/ccip"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/format"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/renderer"
 )
 
@@ -42,7 +41,7 @@ func (r *MermaidRenderer) RenderTo(w io.Writer, _ renderer.RenderRequest, propos
 
 		rendered[sel] = true
 
-		name := resolveChainSelector(sel)
+		name := format.ResolveChainName(sel)
 		id := sanitizeID(name)
 		b.WriteString(fmt.Sprintf("    subgraph %s [\"%s\"]\n", id, escapeQuotes(name)))
 
@@ -108,7 +107,9 @@ type contractKey struct {
 type contractNode struct {
 	id            string
 	label         string
+	address       string
 	contractType  string
+	version       string
 	chainSelector uint64
 	annotations   analyzer.Annotations
 }
@@ -131,38 +132,42 @@ func collectNodes(batches renderer.AnalyzedBatchOperations) ([]contractNode, map
 			}
 
 			id := fmt.Sprintf("n%d", len(nodes)+1)
-			label := buildLabel(call)
 
 			seen[k] = len(nodes)
 			idMap[k] = id
 			nodes = append(nodes, contractNode{
 				id:            id,
-				label:         label,
+				address:       call.To(),
 				contractType:  call.ContractType(),
+				version:       call.ContractVersion(),
 				chainSelector: sel,
 				annotations:   call.Annotations(),
 			})
 		}
 	}
 
+	for i := range nodes {
+		nodes[i].label = buildLabel(nodes[i])
+	}
+
 	return nodes, idMap
 }
 
-func buildLabel(call renderer.AnalyzedCall) string {
+func buildLabel(n contractNode) string {
 	var parts []string
 
-	ct := call.ContractType()
+	ct := n.contractType
 	if ct != "" {
-		if cv := call.ContractVersion(); cv != "" {
-			ct += " " + cv
+		if n.version != "" {
+			ct += " " + n.version
 		}
 
 		parts = append(parts, ct)
 	}
 
-	parts = append(parts, truncateAddress(call.To()))
+	parts = append(parts, format.TruncateAddress(n.address))
 
-	for _, ann := range call.Annotations() {
+	for _, ann := range n.annotations {
 		if ann.Name() == "ccip.token.symbol" {
 			parts = append(parts, fmt.Sprintf("%v", ann.Value()))
 
@@ -186,40 +191,13 @@ func contractStyle(ct string) string {
 	return "default"
 }
 
-var chainSelectorInParens = regexp.MustCompile(`\((\d+)\)`)
-
 func extractChainSelector(ann analyzer.Annotation) uint64 {
-	matches := chainSelectorInParens.FindStringSubmatch(fmt.Sprintf("%v", ann.Value()))
-	if len(matches) < 2 {
+	v, ok := ann.Value().(ccip.ChainUpdateValue)
+	if !ok {
 		return 0
 	}
 
-	sel, err := strconv.ParseUint(matches[1], 10, 64)
-	if err != nil {
-		return 0
-	}
-
-	return sel
-}
-
-func resolveChainSelector(sel uint64) string {
-	info, err := chainutils.ChainInfo(sel)
-	if err != nil {
-		return "chain-" + strconv.FormatUint(sel, 10)
-	}
-
-	return info.ChainName
-}
-
-func truncateAddress(addr string) string {
-	if strings.HasPrefix(addr, "0x") && len(addr) > 12 {
-		return addr[:6] + ".." + addr[len(addr)-4:]
-	}
-	if len(addr) > 12 {
-		return addr[:4] + ".." + addr[len(addr)-3:]
-	}
-
-	return addr
+	return v.RemoteChainSelector
 }
 
 func sanitizeID(s string) string {

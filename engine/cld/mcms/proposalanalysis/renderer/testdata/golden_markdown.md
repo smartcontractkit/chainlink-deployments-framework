@@ -5,9 +5,9 @@
 <summary><h3>Batch 1 — ethereum-mainnet (<code>5009297550715157269</code>)</h3></summary>
 
 
+
 _Annotations:_
 - batch.note: first batch
-
 
 #### Call 1
 
@@ -27,9 +27,9 @@ _Annotations:_
 
 - **outboundRateLimit:** ~~0~~ -> **1,000,000**
 
+
 _Annotations:_
 - ccip.lane: ethereum -> arbitrum
-
 
 
 #### Call 2

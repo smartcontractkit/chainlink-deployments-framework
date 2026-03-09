@@ -31,12 +31,14 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/addressbook"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/contract"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/datastore"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/mcms"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/state"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	proposalanalyzer "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
 	proposalrenderer "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/renderer"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/verification/evm"
 	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
@@ -106,5 +108,21 @@ func (c *Commands) MCMS(dom domain.Domain, cfg MCMSConfig) (*cobra.Command, erro
 		ProposalContextProvider: cfg.ProposalContextProvider,
 		ProposalAnalyzers:       cfg.ProposalAnalyzers,
 		ProposalRenderers:       cfg.ProposalRenderers,
+	})
+}
+
+// ContractConfig holds configuration for contract verification commands.
+type ContractConfig struct {
+	// ContractInputsProvider supplies contract metadata for verification.
+	// Required for verify-env. Domain-specific ContractInputsProvider.
+	ContractInputsProvider evm.ContractInputsProvider
+}
+
+// Contract creates the contract command group for verification.
+func (c *Commands) Contract(dom domain.Domain, cfg ContractConfig) (*cobra.Command, error) {
+	return contract.NewCommand(contract.Config{
+		Logger:                 c.lggr,
+		Domain:                 dom,
+		ContractInputsProvider: cfg.ContractInputsProvider,
 	})
 }

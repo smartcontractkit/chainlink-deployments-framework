@@ -5,15 +5,16 @@ import (
 	"fmt"
 	"math/big"
 	"slices"
+	"strconv"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/smartcontractkit/chainlink-ccip/chains/evm/gobindings/generated/latest/token_pool"
 
-	chainutils "github.com/smartcontractkit/chainlink-deployments-framework/chain/utils"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/examples/ccip"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/examples/ccip/tokenresolver"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/examples/ccip/analyzers/tokenresolver"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/format"
 )
 
 const AnalyzerID = "ccip.token_pool.apply_chain_updates"
@@ -81,11 +82,13 @@ func (a *ChainUpdatesAnalyzer) Analyze(
 		chainExists := slices.Contains(currentChains, update.RemoteChainSelector)
 
 		if !chainExists {
-			anns = append(anns, analyzer.NewAnnotation("ccip.chain_update", "string", remoteLabel+" added"))
+			anns = append(anns, analyzer.NewAnnotation("ccip.chain_update", "chain_update",
+				ccip.ChainUpdateValue{RemoteChainSelector: update.RemoteChainSelector, Label: remoteLabel + " added"}))
 		} else {
 			anns = append(anns,
 				analyzer.SeverityAnnotation(analyzer.SeverityWarning),
-				analyzer.NewAnnotation("ccip.chain_update", "string", remoteLabel+" already enabled"),
+				analyzer.NewAnnotation("ccip.chain_update", "chain_update",
+					ccip.ChainUpdateValue{RemoteChainSelector: update.RemoteChainSelector, Label: remoteLabel + " already enabled"}),
 			)
 		}
 
@@ -113,11 +116,13 @@ func (a *ChainUpdatesAnalyzer) Analyze(
 		chainExists := slices.Contains(currentChains, sel)
 
 		if chainExists {
-			anns = append(anns, analyzer.NewAnnotation("ccip.chain_update", "string", remoteLabel+" removed"))
+			anns = append(anns, analyzer.NewAnnotation("ccip.chain_update", "chain_update",
+				ccip.ChainUpdateValue{RemoteChainSelector: sel, Label: remoteLabel + " removed"}))
 		} else {
 			anns = append(anns,
 				analyzer.SeverityAnnotation(analyzer.SeverityWarning),
-				analyzer.NewAnnotation("ccip.chain_update", "string", remoteLabel+" already disabled"),
+				analyzer.NewAnnotation("ccip.chain_update", "chain_update",
+					ccip.ChainUpdateValue{RemoteChainSelector: sel, Label: remoteLabel + " already disabled"}),
 			)
 		}
 	}
@@ -199,12 +204,11 @@ func readTokenMetadata(store analyzer.DependencyAnnotationStore) (string, uint8)
 }
 
 func resolveChainLabel(chainSelector uint64) string {
-	info, err := chainutils.ChainInfo(chainSelector)
-	if err != nil {
-		return fmt.Sprintf("chain-%d", chainSelector)
+	if name, ok := format.TryResolveChainName(chainSelector); ok {
+		return fmt.Sprintf("%s (%d)", name, chainSelector)
 	}
 
-	return fmt.Sprintf("%s (%d)", info.ChainName, chainSelector)
+	return strconv.FormatUint(chainSelector, 10)
 }
 
 func formatRichAmount(amount *big.Int, decimals uint8, tokenSymbol string) string {
@@ -213,12 +217,12 @@ func formatRichAmount(amount *big.Int, decimals uint8, tokenSymbol string) strin
 	}
 
 	if tokenSymbol == "" && decimals == 0 {
-		return analyzer.CommaGroupBigInt(amount) + " (decimals=unknown)"
+		return format.CommaGroupBigInt(amount) + " (decimals=unknown)"
 	}
 
-	human := analyzer.FormatTokenAmount(amount, decimals)
+	human := format.FormatTokenAmount(amount, decimals)
 
-	return fmt.Sprintf("%s %s (%s, decimals=%d)", human, tokenSymbol, analyzer.CommaGroupBigInt(amount), decimals)
+	return fmt.Sprintf("%s %s (%s, decimals=%d)", human, tokenSymbol, format.CommaGroupBigInt(amount), decimals)
 }
 
 func orZero(n *big.Int) *big.Int {
