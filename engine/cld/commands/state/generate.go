@@ -53,7 +53,7 @@ var (
 		myapp state generate -e staging --persist
 
 		# Use local datastore files when catalog is unreachable and local files are available
-		myapp state generate -e testnet --persist --local-datastore
+		myapp state generate -e testnet --persist --local
 
 		# Generate and save to custom path without printing
 		myapp state generate -e staging -p -o /path/to/state.json --print=false
@@ -86,7 +86,7 @@ func newGenerateCmd(cfg Config) *cobra.Command {
 				output:         flags.MustString(cmd.Flags().GetString("out")),
 				previousState:  flags.MustString(cmd.Flags().GetString("prev")),
 				print:          flags.MustBool(cmd.Flags().GetBool("print")),
-				localDatastore: flags.MustBool(cmd.Flags().GetBool("local-datastore")),
+				localDatastore: flags.MustBool(cmd.Flags().GetBool("local")),
 			}
 
 			return runGenerate(cmd, cfg, f)
@@ -101,7 +101,7 @@ func newGenerateCmd(cfg Config) *cobra.Command {
 	// Local flags specific to this command
 	cmd.Flags().BoolP("persist", "p", false, "Persist state to disk")
 	cmd.Flags().StringP("prev", "s", "", "Previous state file path")
-	cmd.Flags().Bool("local-datastore", false, "Use local datastore files instead of catalog (for when catalog is unreachable)")
+	cmd.Flags().Bool("local", false, "Use local datastore files instead of catalog (for when catalog is unreachable)")
 
 	// Deprecated alias: --previousState -> --prev
 	addPreviousStateAlias(cmd)

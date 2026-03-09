@@ -404,7 +404,7 @@ func TestGenerate_ViewStateError(t *testing.T) {
 	assert.Contains(t, execErr.Error(), expectedError.Error())
 }
 
-// TestGenerate_WithLocalDatastore verifies that --local-datastore passes WithLocalDatastoreFallback to the environment loader.
+// TestGenerate_WithLocalDatastore verifies that --local passes WithLocalDatastoreFallback to the environment loader.
 func TestGenerate_WithLocalDatastore(t *testing.T) {
 	t.Parallel()
 
@@ -431,13 +431,13 @@ func TestGenerate_WithLocalDatastore(t *testing.T) {
 	out := new(bytes.Buffer)
 	cmd.SetOut(out)
 	cmd.SetErr(out)
-	cmd.SetArgs([]string{"generate", "-e", "staging", "--local-datastore"})
+	cmd.SetArgs([]string{"generate", "-e", "staging", "--local"})
 
 	execErr := cmd.Execute()
 
 	require.NoError(t, execErr)
-	// Without --local-datastore we only pass WithLogger; with --local-datastore we add WithLocalDatastoreFallback.
-	require.Len(t, receivedOpts, 2, "expected 2 options (WithLogger + WithLocalDatastoreFallback) when --local-datastore is set")
+	// Without --local we only pass WithLogger; with --local we add WithLocalDatastoreFallback.
+	require.Len(t, receivedOpts, 2, "expected 2 options (WithLogger + WithLocalDatastoreFallback) when --local is set")
 }
 
 // TestGenerate_StateSaveError verifies error handling.

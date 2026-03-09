@@ -69,9 +69,9 @@ func Load(
 			return fdeployment.Environment{}, fmt.Errorf("catalog GRPC endpoint is required when datastore location is set to '%s'", cfgdomain.DatastoreTypeCatalog)
 		}
 	} else {
-		// Load datastore from file system (default behavior, or when --local-datastore is used)
+		// Load datastore from file system (default behavior, or when --local is used)
 		if loadcfg.useLocalDatastoreFallback && (cfg.DatastoreType == cfgdomain.DatastoreTypeCatalog || cfg.DatastoreType == cfgdomain.DatastoreTypeAll) {
-			lggr.Infow("Using local datastore files (--local-datastore); catalog bypassed")
+			lggr.Infow("Using local datastore files (--local); catalog bypassed")
 		}
 		ds, err = envdir.DataStore()
 		if err != nil {
