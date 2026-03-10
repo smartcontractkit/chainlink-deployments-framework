@@ -97,7 +97,7 @@ func (a *ChainAccessAdapter) AptosSigner(selector uint64) (aptoslib.TransactionS
 	return ch.DeployerSigner, ok
 }
 
-// SuiClient returns the Sui API client and signer for the given selector.
+// SuiClient returns the Sui API client for the given selector.
 func (a *ChainAccessAdapter) SuiClient(selector uint64) (sui.ISuiAPI, bool) {
 	ch, ok := a.inner.SuiChains()[selector]
 	if !ok {
