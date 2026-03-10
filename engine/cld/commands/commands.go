@@ -30,10 +30,14 @@ package commands
 import (
 	"github.com/spf13/cobra"
 
+	fresolvers "github.com/smartcontractkit/chainlink-deployments-framework/changeset/resolvers"
+	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	cs "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/changeset"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/addressbook"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/contract"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/datastore"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/mcms"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/pipeline"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/state"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	proposalanalyzer "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
@@ -124,5 +128,23 @@ func (c *Commands) Contract(dom domain.Domain, cfg ContractConfig) (*cobra.Comma
 		Logger:                 c.lggr,
 		Domain:                 dom,
 		ContractInputsProvider: cfg.ContractInputsProvider,
+	})
+}
+
+// PipelineConfig holds configuration for pipeline commands.
+type PipelineConfig struct {
+	LoadChangesets            func(envName string) (*cs.ChangesetsRegistry, error)
+	DecodeProposalCtxProvider func(env fdeployment.Environment) (analyzer.ProposalContext, error)
+	ConfigResolverManager     *fresolvers.ConfigResolverManager
+}
+
+// Pipeline creates the pipeline command group.
+func (c *Commands) Pipeline(dom domain.Domain, cfg PipelineConfig) (*cobra.Command, error) {
+	return pipeline.NewCommand(&pipeline.Config{
+		Logger:                    c.lggr,
+		Domain:                    dom,
+		LoadChangesets:            cfg.LoadChangesets,
+		DecodeProposalCtxProvider: cfg.DecodeProposalCtxProvider,
+		ConfigResolverManager:     cfg.ConfigResolverManager,
 	})
 }

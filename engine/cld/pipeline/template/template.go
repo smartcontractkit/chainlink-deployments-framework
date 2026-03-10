@@ -1,4 +1,4 @@
-package commands
+package template
 
 import (
 	"errors"
@@ -10,8 +10,8 @@ import (
 	cs "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/changeset"
 )
 
-// generateMultiChangesetYAMLTemplate creates a YAML template with multiple changesets
-func generateMultiChangesetYAMLTemplate(
+// GenerateMultiChangesetYAML creates a YAML template with multiple changesets.
+func GenerateMultiChangesetYAML(
 	domainName string,
 	envKey string,
 	changesetNames []string,
@@ -23,45 +23,39 @@ func generateMultiChangesetYAMLTemplate(
 		return "", errors.New("no changeset names provided")
 	}
 
-	// Start with header
 	yamlTemplate := fmt.Sprintf(`# Generated via template-input command
 environment: %s
 domain: %s
 changesets:
 `, envKey, domainName)
 
-	// Generate each changeset section
-	var yamlTemplateSb34 strings.Builder
+	var sb strings.Builder
 	for i, changesetName := range changesetNames {
 		if changesetName == "" {
 			continue
 		}
 
-		// Add separator between changesets
 		if i > 0 {
-			yamlTemplateSb34.WriteString("\n  # ----------------------------------------\n")
+			sb.WriteString("\n  # ----------------------------------------\n")
 		}
 
-		// Get changeset configuration
 		cfg, err := registry.GetConfigurations(changesetName)
 		if err != nil {
 			return "", fmt.Errorf("get configurations for changeset %s: %w", changesetName, err)
 		}
 
-		// Generate changeset section
-		changesetSection, err := generateChangesetSection(changesetName, cfg, resolverManager, "  ", depthLimit)
+		section, err := generateChangesetSection(changesetName, cfg, resolverManager, "  ", depthLimit)
 		if err != nil {
 			return "", fmt.Errorf("generate section for changeset %s: %w", changesetName, err)
 		}
 
-		yamlTemplateSb34.WriteString(changesetSection)
+		sb.WriteString(section)
 	}
-	yamlTemplate += yamlTemplateSb34.String()
+	yamlTemplate += sb.String()
 
 	return yamlTemplate, nil
 }
 
-// generateChangesetSection generates a single changeset section within a multi-changeset YAML
 func generateChangesetSection(
 	changesetName string,
 	cfg cs.Configurations,
@@ -71,14 +65,12 @@ func generateChangesetSection(
 ) (string, error) {
 	var section strings.Builder
 
-	// Add changeset header comment
 	if cfg.ConfigResolver != nil {
 		resolverName := resolverManager.NameOf(cfg.ConfigResolver)
 		if resolverName == "" {
 			return "", fmt.Errorf("resolver for changeset %s is not registered", changesetName)
 		}
 
-		// Use reflection to get the input type of the resolver
 		rf := reflect.TypeOf(cfg.ConfigResolver)
 		if rf.Kind() != reflect.Func || rf.NumIn() != 1 {
 			return "", fmt.Errorf("invalid resolver signature for %s", changesetName)
@@ -90,30 +82,25 @@ func generateChangesetSection(
 		section.WriteString(fmt.Sprintf("%s# Input type: %s\n", indent, inputType.String()))
 		section.WriteString(fmt.Sprintf("%s- %s:\n", indent, changesetName))
 
-		// Add chainOverrides at the changeset level (before payload)
 		writeChainOverridesSection(&section, indent)
 
 		section.WriteString(indent + "    payload:\n")
 
-		// Generate the payload structure from the struct
-		payloadYAML, err := generateStructYAMLWithDepthLimit(inputType, indent+"      ", 0, make(map[reflect.Type]bool), depthLimit)
+		payloadYAML, err := GenerateStructYAMLWithDepthLimit(inputType, indent+"      ", 0, make(map[reflect.Type]bool), depthLimit)
 		if err != nil {
 			return "", fmt.Errorf("generate struct YAML for %s: %w", inputType.String(), err)
 		}
 
 		section.WriteString(payloadYAML)
 	} else if cfg.InputType != nil {
-		// We have type information - generate template based on it
 		section.WriteString(fmt.Sprintf("%s# Input type: %s\n", indent, cfg.InputType.String()))
 		section.WriteString(fmt.Sprintf("%s- %s:\n", indent, changesetName))
 
-		// Add chainOverrides at the changeset level (before payload)
 		writeChainOverridesSection(&section, indent)
 
 		section.WriteString(indent + "    payload:\n")
 
-		// Generate the payload structure from the struct
-		payloadYAML, err := generateStructYAMLWithDepthLimit(cfg.InputType, indent+"      ", 0, make(map[reflect.Type]bool), depthLimit)
+		payloadYAML, err := GenerateStructYAMLWithDepthLimit(cfg.InputType, indent+"      ", 0, make(map[reflect.Type]bool), depthLimit)
 		if err != nil {
 			return "", fmt.Errorf("generate struct YAML for %s: %w", cfg.InputType.String(), err)
 		}
@@ -124,8 +111,15 @@ func generateChangesetSection(
 	return section.String(), nil
 }
 
-// generateStructYAMLWithDepthLimit recursively generates YAML structure with user-configurable depth limiting
-func generateStructYAMLWithDepthLimit(
+func writeChainOverridesSection(section *strings.Builder, indent string) {
+	section.WriteString(indent + "    # Optional: Chain overrides (uncomment if needed)\n")
+	section.WriteString(indent + "    # chainOverrides:\n")
+	section.WriteString(indent + "    #   - 1  # Chain selector 1\n")
+	section.WriteString(indent + "    #   - 2  # Chain selector 2\n")
+}
+
+// GenerateStructYAMLWithDepthLimit recursively generates YAML structure with depth limiting.
+func GenerateStructYAMLWithDepthLimit(
 	t reflect.Type,
 	indent string,
 	depth int,
@@ -136,48 +130,38 @@ func generateStructYAMLWithDepthLimit(
 		return "", nil
 	}
 
-	// Handle pointers
 	if t.Kind() == reflect.Ptr {
 		t = t.Elem()
 	}
 
-	// Check for cycles
 	if visited[t] {
 		return fmt.Sprintf("# ... (circular reference to %s)\n", t.String()), nil
 	}
 
-	switch t.Kind() { //nolint:exhaustive // default case handles unspecified types
+	switch t.Kind() { //nolint:exhaustive
 	case reflect.Struct:
-		// Mark this type as visited for cycle detection
 		visited[t] = true
 		defer func() { delete(visited, t) }()
 
 		var result strings.Builder
 		fieldCount := 0
-		maxFields := 20 // Limit number of fields to show
+		maxFields := 20
 
 		for i := 0; i < t.NumField() && fieldCount < maxFields; i++ {
 			field := t.Field(i)
 
-			// Skip unexported fields
 			if !field.IsExported() {
 				continue
 			}
 
-			// Skip fields with yaml:"-" or json:"-" tag
-			if yamlTag := field.Tag.Get("yaml"); yamlTag == "-" {
-				continue
-			}
-			if jsonTag := field.Tag.Get("json"); jsonTag == "-" {
+			if field.Tag.Get("yaml") == "-" || field.Tag.Get("json") == "-" {
 				continue
 			}
 
-			// Get field name from yaml/json tags or use field name
-			fieldName := getFieldName(field)
+			fieldName := GetFieldName(field)
 			fieldType := field.Type
 
-			// Generate value based on field type
-			fieldValue, err := generateFieldValueWithDepthLimit(fieldType, indent+"  ", depth+1, visited, maxDepth)
+			fieldValue, err := GenerateFieldValueWithDepthLimit(fieldType, indent+"  ", depth+1, visited, maxDepth)
 			if err != nil {
 				return "", fmt.Errorf("generate field value for %s: %w", field.Name, err)
 			}
@@ -200,7 +184,7 @@ func generateStructYAMLWithDepthLimit(
 		elemType := t.Elem()
 		result := fmt.Sprintf("%s# Array of %s\n%s- ", indent, elemType.String(), indent)
 
-		elemValue, err := generateFieldValueWithDepthLimit(elemType, indent+"  ", depth+1, visited, maxDepth)
+		elemValue, err := GenerateFieldValueWithDepthLimit(elemType, indent+"  ", depth+1, visited, maxDepth)
 		if err != nil {
 			return "", err
 		}
@@ -211,35 +195,29 @@ func generateStructYAMLWithDepthLimit(
 		keyType := t.Key()
 		valueType := t.Elem()
 
-		// Special handling for map[string]interface{} - show the interface{} type
 		if keyType.Kind() == reflect.String && valueType.Kind() == reflect.Interface {
-			result := fmt.Sprintf("%s# Map[%s]%s\n", indent, keyType.String(), valueType.String())
-			result += fmt.Sprintf("%sexample_key: # %s\n", indent, valueType.String())
-
-			return result, nil
+			return fmt.Sprintf("%s# Map[%s]%s\n%sexample_key: # %s\n", indent, keyType.String(), valueType.String(), indent, valueType.String()), nil
 		}
 
-		valueStr, err := generateFieldValueWithDepthLimit(valueType, indent+"  ", depth+1, visited, maxDepth)
+		valueStr, err := GenerateFieldValueWithDepthLimit(valueType, indent+"  ", depth+1, visited, maxDepth)
 		if err != nil {
 			return "", err
 		}
 
-		// Complex values (lists/maps/structs) already carry newline + indentation from recursive generation.
 		if strings.HasPrefix(valueStr, "\n") {
 			return fmt.Sprintf("%s# Map[%s]%s\n%sexample_key:%s\n", indent, keyType.String(), valueType.String(), indent, strings.TrimRight(valueStr, "\n")), nil
 		}
 
-		result := fmt.Sprintf("%s# Map[%s]%s\n%sexample_key: ", indent, keyType.String(), valueType.String(), indent)
-
-		return result + strings.TrimSpace(valueStr) + "\n", nil
+		return fmt.Sprintf("%s# Map[%s]%s\n%sexample_key: ", indent, keyType.String(), valueType.String(), indent) + strings.TrimSpace(valueStr) + "\n", nil
 
 	default:
 		return " # " + t.String(), nil
 	}
 }
 
-// generateFieldValueWithDepthLimit generates an example value for a field based on its type with user-configurable depth limiting
-func generateFieldValueWithDepthLimit(
+// GenerateFieldValueWithDepthLimit generates an example value for a field based on its type.
+// Exported for testing.
+func GenerateFieldValueWithDepthLimit(
 	t reflect.Type,
 	indent string,
 	depth int,
@@ -250,12 +228,11 @@ func generateFieldValueWithDepthLimit(
 		return " ...", nil
 	}
 
-	// Handle pointers
 	if t.Kind() == reflect.Ptr {
 		t = t.Elem()
 	}
 
-	switch t.Kind() { //nolint:exhaustive // default case handles unspecified types
+	switch t.Kind() { //nolint:exhaustive
 	case reflect.String:
 		return " # string", nil
 	case reflect.Bool:
@@ -265,13 +242,11 @@ func generateFieldValueWithDepthLimit(
 		reflect.Float32, reflect.Float64:
 		return " # " + t.String(), nil
 	case reflect.Slice, reflect.Array:
-		// Special case: if it's a slice/array of uint8 (bytes), treat it as a string type
 		if t.Elem().Kind() == reflect.Uint8 {
 			return " # " + t.String(), nil
 		}
-		// Regular slice/array handling
 		elemType := t.Elem()
-		elemValue, err := generateFieldValueWithDepthLimit(elemType, indent+"  ", depth+1, visited, maxDepth)
+		elemValue, err := GenerateFieldValueWithDepthLimit(elemType, indent+"  ", depth+1, visited, maxDepth)
 		if err != nil {
 			return "", err
 		}
@@ -283,7 +258,7 @@ func generateFieldValueWithDepthLimit(
 
 		return fmt.Sprintf("\n%s- %s", indent, trimmedElem), nil
 	case reflect.Struct:
-		structYAML, err := generateStructYAMLWithDepthLimit(t, indent, depth+1, visited, maxDepth)
+		structYAML, err := GenerateStructYAMLWithDepthLimit(t, indent, depth+1, visited, maxDepth)
 		if err != nil {
 			return "", err
 		}
@@ -292,13 +267,13 @@ func generateFieldValueWithDepthLimit(
 	case reflect.Map:
 		keyType := t.Key()
 		valueType := t.Elem()
-		valueStr, err := generateFieldValueWithDepthLimit(valueType, indent+"  ", depth+1, visited, maxDepth)
+		valueStr, err := GenerateFieldValueWithDepthLimit(valueType, indent+"  ", depth+1, visited, maxDepth)
 		if err != nil {
 			return "", err
 		}
 
 		var keyExample string
-		switch keyType.Kind() { //nolint:exhaustive // default case handles unspecified types
+		switch keyType.Kind() { //nolint:exhaustive
 		case reflect.String:
 			keyExample = "example_key"
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
@@ -308,7 +283,6 @@ func generateFieldValueWithDepthLimit(
 			keyExample = "example_key"
 		}
 
-		// Complex values (lists/maps/structs) already carry newline + indentation from recursive generation.
 		if strings.HasPrefix(valueStr, "\n") {
 			return fmt.Sprintf("\n%s%s:%s", indent, keyExample, valueStr), nil
 		}
@@ -364,30 +338,20 @@ func stripKnownPrefix(line string, knownPrefix string) string {
 	return strings.TrimLeft(line, " ")
 }
 
-// getFieldName extracts the field name from yaml or json tags, falling back to the struct field name
-func getFieldName(field reflect.StructField) string {
-	// Try yaml tag first
+// GetFieldName extracts the field name from yaml or json tags, falling back to the struct field name.
+// Exported for testing.
+func GetFieldName(field reflect.StructField) string {
 	if yamlTag := field.Tag.Get("yaml"); yamlTag != "" {
 		if parts := strings.Split(yamlTag, ","); len(parts) > 0 && parts[0] != "" {
 			return parts[0]
 		}
 	}
 
-	// Try json tag
 	if jsonTag := field.Tag.Get("json"); jsonTag != "" {
 		if parts := strings.Split(jsonTag, ","); len(parts) > 0 && parts[0] != "" {
 			return parts[0]
 		}
 	}
 
-	// Fall back to field name in lowercase
 	return strings.ToLower(field.Name)
-}
-
-// writeChainOverridesSection writes the common chain overrides comment section
-func writeChainOverridesSection(section *strings.Builder, indent string) {
-	section.WriteString(indent + "    # Optional: Chain overrides (uncomment if needed)\n")
-	section.WriteString(indent + "    # chainOverrides:\n")
-	section.WriteString(indent + "    #   - 1  # Chain selector 1\n")
-	section.WriteString(indent + "    #   - 2  # Chain selector 2\n")
 }

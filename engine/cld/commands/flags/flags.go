@@ -22,6 +22,10 @@ func MustBool(b bool, _ error) bool { return b }
 // Safe to use with registered flags where GetUint64 cannot fail.
 func MustUint64(u uint64, _ error) uint64 { return u }
 
+// MustInt returns the int value, ignoring the error.
+// Safe to use with registered flags where GetInt cannot fail.
+func MustInt(i int, _ error) int { return i }
+
 // Environment adds the required --environment/-e flag to a command.
 // Retrieve the value with cmd.Flags().GetString("environment").
 //

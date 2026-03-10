@@ -18,6 +18,7 @@ import (
 	fresolvers "github.com/smartcontractkit/chainlink-deployments-framework/changeset/resolvers"
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/changeset"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/pipeline"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
@@ -55,13 +56,12 @@ changesets:
 		require.NoError(t, os.Chdir(originalWd))
 	})
 
-	tempLoadEnv := environment.Load
-	// mock the loadEnv function to avoid loading a real environment
-	loadEnv = func(ctx context.Context, domain domain.Domain, envName string, options ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
+	origLoader := pipeline.DefaultEnvironmentLoader
+	pipeline.DefaultEnvironmentLoader = func(ctx context.Context, dom domain.Domain, envName string, options ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
 		return fdeployment.Environment{}, nil
 	}
 	t.Cleanup(func() {
-		loadEnv = tempLoadEnv
+		pipeline.DefaultEnvironmentLoader = origLoader
 	})
 
 	tests := []struct {
@@ -75,7 +75,7 @@ changesets:
 		{
 			name: "successful execution",
 			args: []string{
-				"execute",
+				"run",
 				"--environment", env,
 				"--changeset", changesetName,
 				"--input-file", yamlFileName,
@@ -87,7 +87,7 @@ changesets:
 		{
 			name: "error in applyChangeSet",
 			args: []string{
-				"execute",
+				"run",
 				"--environment", env,
 				"--changeset", changesetName,
 				"--input-file", yamlFileName,
@@ -101,7 +101,7 @@ changesets:
 		{
 			name: "error unknown flag",
 			args: []string{
-				"execute",
+				"run",
 				"--environment", env,
 				"--changeset", changesetName,
 				"--input-file", yamlFileName,
@@ -115,7 +115,7 @@ changesets:
 		{
 			name: "execution with proposal decoding",
 			args: []string{
-				"execute",
+				"run",
 				"--environment", env,
 				"--changeset", changesetName,
 				"--input-file", yamlFileName,
@@ -182,13 +182,12 @@ func TestNewDurablePipelineInputGenerateCmd(t *testing.T) {
 	env := "testnet"
 	testDomain := domain.NewDomain(t.TempDir(), "test")
 
-	tempLoadEnv := environment.Load
-	// mock the loadEnv function to avoid loading a real environment
-	loadEnv = func(ctx context.Context, domain domain.Domain, envName string, options ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
+	origLoader := pipeline.DefaultEnvironmentLoader
+	pipeline.DefaultEnvironmentLoader = func(ctx context.Context, dom domain.Domain, envName string, options ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
 		return fdeployment.Environment{}, nil
 	}
 	t.Cleanup(func() {
-		loadEnv = tempLoadEnv
+		pipeline.DefaultEnvironmentLoader = origLoader
 	})
 
 	// Create workspace structure for input file
@@ -431,13 +430,12 @@ func TestBuildListCmd(t *testing.T) {
 	env := "testnet"
 	testDomain := domain.NewDomain(t.TempDir(), "test")
 
-	tempLoadEnv := environment.Load
-	// mock the loadEnv function to avoid loading a real environment
-	loadEnv = func(ctx context.Context, domain domain.Domain, envName string, options ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
+	origLoader := pipeline.DefaultEnvironmentLoader
+	pipeline.DefaultEnvironmentLoader = func(ctx context.Context, dom domain.Domain, envName string, options ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
 		return fdeployment.Environment{}, nil
 	}
 	t.Cleanup(func() {
-		loadEnv = tempLoadEnv
+		pipeline.DefaultEnvironmentLoader = origLoader
 	})
 
 	tests := []struct {
@@ -722,13 +720,12 @@ func TestNewDurablePipelineInputGenerateCmd_WithDuplicates(t *testing.T) {
 	testDomain := domain.NewDomain(t.TempDir(), "test")
 	inputsFileName := "test-inputs-array-duplicates.yaml"
 
-	tempLoadEnv := environment.Load
-	// mock the loadEnv function to avoid loading a real environment
-	loadEnv = func(ctx context.Context, domain domain.Domain, envName string, options ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
+	origLoader := pipeline.DefaultEnvironmentLoader
+	pipeline.DefaultEnvironmentLoader = func(ctx context.Context, dom domain.Domain, envName string, options ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
 		return fdeployment.Environment{}, nil
 	}
 	t.Cleanup(func() {
-		loadEnv = tempLoadEnv
+		pipeline.DefaultEnvironmentLoader = origLoader
 	})
 
 	// Create workspace structure for input file
@@ -2054,13 +2051,12 @@ changesets:
 		require.NoError(t, os.Chdir(originalWd))
 	})
 
-	tempLoadEnv := environment.Load
-	// mock the loadEnv function to avoid loading a real environment
-	loadEnv = func(ctx context.Context, domain domain.Domain, envName string, options ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
+	origLoader := pipeline.DefaultEnvironmentLoader
+	pipeline.DefaultEnvironmentLoader = func(ctx context.Context, dom domain.Domain, envName string, options ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
 		return fdeployment.Environment{}, nil
 	}
 	t.Cleanup(func() {
-		loadEnv = tempLoadEnv
+		pipeline.DefaultEnvironmentLoader = origLoader
 	})
 
 	// Create a changeset stub
