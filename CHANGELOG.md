@@ -1,5 +1,15 @@
 # chainlink-deployments-framework
 
+## 0.86.0
+
+### Minor Changes
+
+- [#826](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/826) [`bc7e435`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/bc7e435710fc04f35f7a5600b3cda70bfc3c6d74) Thanks [@ajaskolski](https://github.com/ajaskolski)! - feat: extract from cld ccip and make domain agnostic verification cmd for contracts
+
+### Patch Changes
+
+- [#836](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/836) [`27021a9`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/27021a9111e43ef5ebc4a1297324c48aef61cce6) Thanks [@FelixFan1992](https://github.com/FelixFan1992)! - update aptos mcms to also handle curse mcms
+
 ## 0.85.1
 
 ### Patch Changes
