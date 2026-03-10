@@ -14,7 +14,6 @@ import (
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/changeset"
 	fdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/pipeline/template"
 )
 
 // Test input types for template generation
@@ -731,7 +730,7 @@ func TestGenerateFieldValueWithDepthLimit(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			result, err := template.GenerateFieldValueWithDepthLimit(tt.inputType, "  ", 1, make(map[reflect.Type]bool), tt.maxDepth)
+			result, err := generateFieldValueWithDepthLimit(tt.inputType, "  ", 1, make(map[reflect.Type]bool), tt.maxDepth)
 			require.NoError(t, err, tt.description)
 			require.Equal(t, tt.expectedOutput, result, tt.description)
 		})
@@ -741,7 +740,7 @@ func TestGenerateFieldValueWithDepthLimit(t *testing.T) {
 func TestGenerateStructYAMLWithDepthLimit_MapSliceStructIndentation(t *testing.T) {
 	t.Parallel()
 
-	result, err := template.GenerateStructYAMLWithDepthLimit(reflect.TypeOf(ContractsByChainInput{}), "  ", 0, make(map[reflect.Type]bool), 5)
+	result, err := generateStructYAMLWithDepthLimit(reflect.TypeOf(ContractsByChainInput{}), "  ", 0, make(map[reflect.Type]bool), 5)
 	require.NoError(t, err)
 
 	expectedOutput := `  contractsbychain:
@@ -757,7 +756,7 @@ func TestGenerateStructYAMLWithDepthLimit_MapSliceStructIndentation(t *testing.T
 func TestGenerateStructYAMLWithDepthLimit_MapSliceStructIndentation_NestedValues(t *testing.T) {
 	t.Parallel()
 
-	result, err := template.GenerateStructYAMLWithDepthLimit(reflect.TypeOf(ContractsByChainNestedInput{}), "  ", 0, make(map[reflect.Type]bool), 8)
+	result, err := generateStructYAMLWithDepthLimit(reflect.TypeOf(ContractsByChainNestedInput{}), "  ", 0, make(map[reflect.Type]bool), 8)
 	require.NoError(t, err)
 
 	expectedBlock := `  contractsbychain:
@@ -774,7 +773,7 @@ func TestGenerateStructYAMLWithDepthLimit_MapSliceStructIndentation_NestedValues
 func TestGenerateStructYAMLWithDepthLimit_RootMapWithCompositeValue(t *testing.T) {
 	t.Parallel()
 
-	result, err := template.GenerateStructYAMLWithDepthLimit(reflect.TypeOf(map[uint64][]SimpleInput{}), "  ", 0, make(map[reflect.Type]bool), 5)
+	result, err := generateStructYAMLWithDepthLimit(reflect.TypeOf(map[uint64][]SimpleInput{}), "  ", 0, make(map[reflect.Type]bool), 5)
 	require.NoError(t, err)
 
 	expectedOutput := "  # Map[uint64]" + reflect.TypeOf([]SimpleInput{}).String() + "\n" +
@@ -788,7 +787,7 @@ func TestGenerateStructYAMLWithDepthLimit_RootMapWithCompositeValue(t *testing.T
 func TestGenerateStructYAMLWithDepthLimit_RootMapStructValue(t *testing.T) {
 	t.Parallel()
 
-	result, err := template.GenerateStructYAMLWithDepthLimit(reflect.TypeOf(map[string]SimpleInput{}), "  ", 0, make(map[reflect.Type]bool), 5)
+	result, err := generateStructYAMLWithDepthLimit(reflect.TypeOf(map[string]SimpleInput{}), "  ", 0, make(map[reflect.Type]bool), 5)
 	require.NoError(t, err)
 
 	expectedOutput := "  # Map[string]" + reflect.TypeOf(SimpleInput{}).String() + "\n" +
@@ -848,7 +847,7 @@ func TestGenerateStructYAMLWithDepthLimit(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			result, err := template.GenerateStructYAMLWithDepthLimit(tt.inputType, "  ", 0, make(map[reflect.Type]bool), tt.maxDepth)
+			result, err := generateStructYAMLWithDepthLimit(tt.inputType, "  ", 0, make(map[reflect.Type]bool), tt.maxDepth)
 			require.NoError(t, err, tt.description)
 
 			for _, expectedField := range tt.expectedFields {
@@ -918,7 +917,7 @@ func TestGetFieldName(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			result := template.GetFieldName(tt.field)
+			result := getFieldName(tt.field)
 			require.Equal(t, tt.expectedName, result, tt.description)
 		})
 	}
