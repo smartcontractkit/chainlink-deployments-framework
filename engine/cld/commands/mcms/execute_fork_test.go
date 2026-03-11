@@ -3,12 +3,15 @@ package mcms
 import (
 	"bytes"
 	"context"
+	"errors"
+	"fmt"
 	"math/big"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
@@ -315,4 +318,41 @@ func TestExecuteFork_OverrideForkChainDeployerKeyWithTestSigner(t *testing.T) {
 			tc.assert(t, cfg, prevTxOpts, err)
 		})
 	}
+}
+
+func TestAddDecodedRevertReason_NilError(t *testing.T) {
+	t.Parallel()
+	result := addDecodedRevertReason(logger.Nop(), nil, nil)
+	assert.NoError(t, result)
+}
+
+func TestAddDecodedRevertReason_NilProposalCtx(t *testing.T) {
+	t.Parallel()
+	original := errors.New("some error")
+	result := addDecodedRevertReason(logger.Nop(), original, nil)
+	assert.Equal(t, original, result)
+}
+
+func TestAddDecodedRevertReason_ErrorWithHexPattern(t *testing.T) {
+	t.Parallel()
+
+	// Simulate an error containing a hex-encoded Error(string) left by tryDecodeByteArg fallback.
+	// 08c379a0 = Error(string) selector + ABI-encoded "test revert"
+	hexPayload := "0x08c379a0" +
+		"0000000000000000000000000000000000000000000000000000000000000020" +
+		"000000000000000000000000000000000000000000000000000000000000000b" +
+		"74657374207265766572740000000000000000000000000000000000000000000"
+	original := fmt.Errorf("error -`CallReverted` args [%s]", hexPayload)
+
+	// Use a minimal mock that returns nil registry -- addDecodedRevertReason falls back
+	result := addDecodedRevertReason(logger.Nop(), original, nil)
+	assert.Equal(t, original, result)
+}
+
+func TestAddDecodedRevertReason_PlainError(t *testing.T) {
+	t.Parallel()
+
+	original := errors.New("plain error without any hex data")
+	result := addDecodedRevertReason(logger.Nop(), original, nil)
+	assert.Equal(t, original, result)
 }

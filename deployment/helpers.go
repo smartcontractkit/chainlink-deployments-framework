@@ -47,17 +47,54 @@ func parseErrorFromABI(errorString string, contractABI string) (string, error) {
 
 	for errorName, abiError := range parsedAbi.Errors {
 		if len(data) >= 4 && bytes.Equal(data[:4], abiError.ID.Bytes()[:4]) {
-			// Found a matching error
 			v, err3 := abiError.Unpack(data)
 			if err3 != nil {
 				return "", fmt.Errorf("error unpacking data: %w", err3)
 			}
 
-			return fmt.Sprintf("error -`%v` args %v", errorName, v), nil
+			return fmt.Sprintf("error -`%v` args %v", errorName, formatUnpackedArgs(v, contractABI)), nil
 		}
 	}
 
 	return "", errors.New("error not found in ABI")
+}
+
+// formatUnpackedArgs formats an ABI-unpacked value, recursively decoding any
+// []byte fields that contain ABI-encoded errors (e.g. CallReverted(bytes)
+// wrapping Error(string)).
+func formatUnpackedArgs(unpackedValue interface{}, contractABI string) string {
+	// abiError.Unpack returns interface{} which is typically []interface{}
+	values, ok := unpackedValue.([]interface{})
+	if !ok {
+		return tryDecodeByteArg(unpackedValue, contractABI)
+	}
+
+	parts := make([]string, len(values))
+	for i, v := range values {
+		parts[i] = tryDecodeByteArg(v, contractABI)
+	}
+
+	return "[" + strings.Join(parts, ", ") + "]"
+}
+
+// tryDecodeByteArg checks if v is a []byte containing an ABI-encoded error
+// and attempts to decode it recursively. Falls back to fmt %v for non-byte types.
+func tryDecodeByteArg(v interface{}, contractABI string) string {
+	inner, ok := v.([]byte)
+	if !ok || len(inner) < 4 {
+		return fmt.Sprintf("%v", v)
+	}
+
+	if reason, err := abi.UnpackRevert(inner); err == nil {
+		return fmt.Sprintf("Error(\"%s\")", reason)
+	}
+
+	decoded, err := parseErrorFromABI(hex.EncodeToString(inner), contractABI)
+	if err == nil {
+		return decoded
+	}
+
+	return "0x" + hex.EncodeToString(inner)
 }
 
 // DecodeErr decodes an error from a contract call using the contract's ABI.

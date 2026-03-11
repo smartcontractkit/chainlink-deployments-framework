@@ -13,11 +13,13 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	gethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/rpc"
 	"github.com/smartcontractkit/mcms"
 	"github.com/smartcontractkit/mcms/sdk"
+	"github.com/smartcontractkit/mcms/sdk/evm/bindings"
 	"github.com/smartcontractkit/mcms/types"
 	"github.com/spf13/cobra"
 
@@ -26,6 +28,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/flags"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/mcms/layout"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/text"
+	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
@@ -160,6 +163,18 @@ func executeFork(
 	url := cfg.forkedEnv.ChainConfigs[cfg.chainSelector].HTTPRPCs[0].External
 	anvilClient := rpc.New(url, nil)
 	chainID := cfg.forkedEnv.ChainConfigs[cfg.chainSelector].ChainID
+
+	// Check if this is a zkSync chain - standard Anvil doesn't support zkSync forking
+	isZkSync, err := isZkSyncChain(cfg.chainSelector)
+	if err != nil {
+		return fmt.Errorf("failed to check if chain is zkSync: %w", err)
+	}
+	if isZkSync {
+		lggr.Infof("Skipping fork execution: chain selector %d is zkSync (chain ID %s), which requires anvil-zksync instead of standard anvil",
+			cfg.chainSelector, chainID)
+
+		return nil // don't fail, just exit cleanly
+	}
 	mcmAddress := cfg.proposal.ChainMetadata[types.ChainSelector(cfg.chainSelector)].MCMAddress
 	timelockAddress := common.HexToAddress(cfg.timelockProposal.TimelockAddresses[types.ChainSelector(cfg.chainSelector)])
 
@@ -199,18 +214,15 @@ func executeFork(
 	}
 	logTransactions(lggr, cfg)
 
-	// set root
-	// TODO: improve error decoding on the mcms lib for "set root".
 	err = setRootCommand(ctx, lggr, cfg)
 	if err != nil {
-		return fmt.Errorf("MCM.setRoot() - failure: %w", err)
+		return fmt.Errorf("MCM.setRoot() - failure: %w", addDecodedRevertReason(lggr, err, cfg.proposalCtx))
 	}
 	lggr.Info("MCM.setRoot() - success")
 
-	// TODO: improve error decoding on the mcms lib for "execute chain".
 	err = executeChainCommand(ctx, lggr, cfg, true)
 	if err != nil {
-		return fmt.Errorf("MCM.execute() - failure: %w", err)
+		return fmt.Errorf("MCM.execute() - failure: %w", addDecodedRevertReason(lggr, err, cfg.proposalCtx))
 	}
 	lggr.Info("MCM.execute() - success")
 
@@ -244,6 +256,20 @@ func executeFork(
 	lggr.Info("Timelock.execute() - success")
 
 	return nil
+}
+
+// isZkSyncChain checks if a chain selector corresponds to a zkSync chain.
+// zkSync chains use zkEVM/EraVM which requires anvil-zksync, not standard Anvil.
+// Returns (true, nil) for zkSync chains, (false, nil) for non-zkSync, or (false, err) on lookup failure.
+func isZkSyncChain(selector uint64) (bool, error) {
+	chainIDStr, err := chainsel.GetChainIDFromSelector(selector)
+	if err != nil {
+		return false, err
+	}
+
+	// zkSync Era mainnet = 324, zkSync Sepolia testnet = 300
+	// See: https://docs.zksync.io/zksync-network/environment
+	return chainIDStr == "324" || chainIDStr == "300", nil
 }
 
 // overrideForkChainDeployerKeyWithTestSigner sets the deployer key for the
@@ -363,6 +389,34 @@ func overwriteProposalSignatureWithTestKey(ctx context.Context, cfg *forkConfig,
 	}
 
 	return nil
+}
+
+// addDecodedRevertReason attempts to decode revert data from err using the
+// full domain ABI registry available in proposalCtx.
+func addDecodedRevertReason(lggr logger.Logger, err error, proposalCtx analyzer.ProposalContext) error {
+	if err == nil || proposalCtx == nil || proposalCtx.GetEVMRegistry() == nil {
+		return err
+	}
+
+	dec, decErr := NewErrDecoder(proposalCtx.GetEVMRegistry())
+	if decErr != nil {
+		lggr.Warnf("Failed to create ErrDecoder: %v", decErr)
+		return err
+	}
+
+	// Extract rpc.DataError from the error chain and decode with all domain ABIs
+	var dataErr ethrpc.DataError
+	if errors.As(err, &dataErr) {
+		if hexData, ok := dataErr.ErrorData().(string); ok {
+			// Reuse existing decodeRevertData function from err_decode_helpers.go
+			if decoded, ok := decodeRevertData(hexData, dec, bindings.ManyChainMultiSigABI); ok && decoded != "" {
+				lggr.Warnf("Decoded revert reason: %s", decoded)
+				return fmt.Errorf("%w (decoded: %s)", err, decoded)
+			}
+		}
+	}
+
+	return err
 }
 
 // loggingRpcClient wraps an OnchainClient to log transactions before sending.
