@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.86.1
+
+### Patch Changes
+
+- [#844](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/844) [`97cef23`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/97cef2341a5e3b80c0847046ca72950e60f72fb6) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - feat: add signer methods to mcms adapters
+
 ## 0.86.0
 
 ### Minor Changes
