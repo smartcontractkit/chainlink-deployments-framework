@@ -9,7 +9,7 @@
 
 - [ ] **LockReleaseTokenPool 1.5.1** `applyChainUpdates`
 
-**Target:** `0x1234..5678`
+**Target:** `0x1234567890abcdef1234567890abcdef12345678`
 
 **Inputs:**
 
@@ -37,7 +37,7 @@ _Annotations:_
 
 - [ ] **BurnMintTokenPool 1.5.1** `applyChainUpdates` ⚠ **warning** 🟡 risk: **medium**
 
-**Target:** `0xabcd..abcd`
+**Target:** `0xabcdefabcdefabcdefabcdefabcdefabcdefabcd`
 
 **Inputs:**
 
