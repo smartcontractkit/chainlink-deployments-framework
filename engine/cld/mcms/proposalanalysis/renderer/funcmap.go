@@ -35,7 +35,6 @@ func defaultFuncMap() template.FuncMap {
 		"renderDiff":            renderDiff,
 		"formatParam":           formatParam,
 		"formatAnnotationValue": formatAnnotationValue,
-		"truncateAddress":       format.TruncateAddress,
 		"resolveChainSelector":  resolveChainSelector,
 		"severitySymbol":        severitySymbol,
 		"riskSymbol":            riskSymbol,

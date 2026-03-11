@@ -9,7 +9,7 @@
 {{- if $severity }} {{ severitySymbol $severity }} **{{ $severity }}**{{ end -}}
 {{- if $risk }} {{ riskSymbol $risk }} risk: **{{ $risk }}**{{ end }}
 
-**Target:** `{{ truncateAddress .To }}`
+**Target:** `{{ .To }}`
 
 {{- if .Inputs }}
 
