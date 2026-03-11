@@ -289,9 +289,9 @@ func GenerateFieldValueWithDepthLimit(
 
 		return fmt.Sprintf("\n%s%s: %s", indent, keyExample, strings.TrimSpace(valueStr)), nil
 	case reflect.Interface:
-		return `"interface{} - provide appropriate value"`, nil
+		return ` "interface{} - provide appropriate value"`, nil
 	default:
-		return fmt.Sprintf(`"unknown_type_%s"`, t.Kind().String()), nil
+		return fmt.Sprintf(` "unknown_type_%s"`, t.Kind().String()), nil
 	}
 }
 

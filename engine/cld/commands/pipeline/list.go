@@ -89,7 +89,9 @@ func runList(cmd *cobra.Command, cfg *Config, f listFlags) error {
 		}
 	}
 
-	w.Flush()
+	if err := w.Flush(); err != nil {
+		return fmt.Errorf("flush tabwriter: %w", err)
+	}
 
 	allResolvers := cfg.ConfigResolverManager.ListResolvers()
 	fmt.Fprintf(out, "\nAvailable Config Resolvers:\n")

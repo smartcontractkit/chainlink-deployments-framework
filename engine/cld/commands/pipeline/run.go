@@ -30,6 +30,7 @@ var (
 		chainlink-deployments durable-pipeline run \
   		--environment testnet \
   		--changeset 0001_test_changeset \
+  		--input-file inputs.yaml \
   		--dry-run
 
 		# Run changeset by name with input file
@@ -156,7 +157,7 @@ func runRun(cmd *cobra.Command, cfg *Config, f runFlags) error {
 
 	out, err := registry.Apply(actualChangesetName, env)
 	if saveErr := dprun.SaveReports(reporter, originalReportsLen, cfg.Logger, artdir, actualChangesetName); saveErr != nil {
-		return saveErr
+		cfg.Logger.Errorf("failed to save reports: %v", saveErr)
 	}
 	if err != nil {
 		return err
@@ -171,7 +172,7 @@ func runRun(cmd *cobra.Command, cfg *Config, f runFlags) error {
 		for idx, proposal := range out.MCMSTimelockProposals {
 			describedProposal, err := analyzer.DescribeTimelockProposal(cmd.Context(), proposalContext, env, &proposal)
 			if err != nil {
-				cfg.Logger.Errorf("failed to describe time lock proposal %d: %w", idx, err)
+				cfg.Logger.Errorf("failed to describe time lock proposal %d: %v", idx, err)
 				continue
 			}
 			out.DescribedTimelockProposals[idx] = describedProposal

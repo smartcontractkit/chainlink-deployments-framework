@@ -32,7 +32,7 @@ func TestDeps_applyDefaults_PreservesCustomLoader(t *testing.T) {
 	d.applyDefaults()
 	require.NotNil(t, d.EnvironmentLoader)
 	// Should preserve the custom loader, not override
-	env, err := d.EnvironmentLoader(context.Background(), domain.NewDomain(t.TempDir(), "test"), "testnet")
+	env, err := d.EnvironmentLoader(t.Context(), domain.NewDomain(t.TempDir(), "test"), "testnet")
 	require.NoError(t, err)
 	require.NotNil(t, env)
 }
