@@ -123,3 +123,28 @@ packages:
       BatchOperationAnalyzer:
       CallAnalyzer:
       ParameterAnalyzer:
+  github.com/aptos-labs/aptos-go-sdk:
+    config:
+      all: false
+      pkgname: "mocks"
+      dir: "chain/aptos/mocks"
+      filename: "{{.InterfaceName | snakecase}}.go"
+    interfaces:
+      AptosRpcClient:
+      TransactionSigner:
+  github.com/block-vision/sui-go-sdk/sui:
+    config:
+      all: false
+      pkgname: "mocks"
+      dir: "chain/sui/mocks"
+      filename: "{{.InterfaceName | snakecase}}.go"
+    interfaces:
+      ISuiAPI:
+  github.com/xssnick/tonutils-go/ton:
+    config:
+      all: false
+      pkgname: "mocks"
+      dir: "chain/ton/mocks"
+      filename: "{{.InterfaceName | snakecase}}.go"
+    interfaces:
+      APIClientWrapped:
