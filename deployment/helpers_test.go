@@ -63,7 +63,6 @@ func TestParseErrorFromABI(t *testing.T) {
 func TestParseErrorFromABI_CallRevertedWithErrorString(t *testing.T) {
 	t.Parallel()
 
-	// This is the exact hex from the bug report: CallReverted(bytes) wrapping
 	// Error("AccessControl: account 0xa5d5b0b844c8f11b61f28ac98bba84dea9b80953
 	// is missing role 0xb09aa5aeb3702cfd50b6b62bc4532604938f21248a27a1d5ca736082b6819cc1")
 	revertHex := "0x70de1b4b" +
