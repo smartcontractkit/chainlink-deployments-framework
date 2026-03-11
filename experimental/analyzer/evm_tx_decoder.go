@@ -37,22 +37,18 @@ func (p *EVMTxCallDecoder) Decode(address string, contractABI *abi.ABI, data []b
 	if err != nil {
 		return nil, err
 	}
-	outs := make(map[string]any)
-	err = method.Outputs.UnpackIntoMap(outs, methodData)
-	if err != nil {
-		return nil, err
-	}
+
 	args := make(map[string]any)
 	err = method.Inputs.UnpackIntoMap(args, methodData)
 	if err != nil {
 		return nil, err
 	}
 
-	return p.decodeMethodCall(address, method, args, outs)
+	return p.decodeMethodCall(address, method, args)
 }
 
 // decodeMethodCall decodes a method call with the given arguments and outputs.
-func (p *EVMTxCallDecoder) decodeMethodCall(address string, method *abi.Method, args map[string]any, outs map[string]any) (*DecodedCall, error) {
+func (p *EVMTxCallDecoder) decodeMethodCall(address string, method *abi.Method, args map[string]any) (*DecodedCall, error) {
 	inputs := make([]NamedField, len(method.Inputs))
 	for i, input := range method.Inputs {
 		arg, ok := args[input.Name]
@@ -66,19 +62,8 @@ func (p *EVMTxCallDecoder) decodeMethodCall(address string, method *abi.Method, 
 			RawValue: arg,
 		}
 	}
-	outputs := make([]NamedField, len(method.Outputs))
-	for i, output := range method.Outputs {
-		out, ok := outs[output.Name]
-		if !ok {
-			return nil, fmt.Errorf("missing output '%s'", output.Name)
-		}
-		outputs[i] = NamedField{
-			Name:     output.Name,
-			TypeName: output.Type.String(),
-			Value:    p.decodeArg(output.Name, &output.Type, out),
-			RawValue: out,
-		}
-	}
+	// For decoded proposals we only have input calldata, so outputs are not available.
+	outputs := make([]NamedField, 0, len(method.Outputs))
 
 	return &DecodedCall{
 		Address: address,
