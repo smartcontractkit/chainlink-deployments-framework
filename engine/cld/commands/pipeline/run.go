@@ -156,11 +156,15 @@ func runRun(cmd *cobra.Command, cfg *Config, f runFlags) error {
 	)
 
 	out, err := registry.Apply(actualChangesetName, env)
-	if saveErr := dprun.SaveReports(reporter, originalReportsLen, cfg.Logger, artdir, actualChangesetName); saveErr != nil {
+	var saveErr error
+	if saveErr = dprun.SaveReports(reporter, originalReportsLen, cfg.Logger, artdir, actualChangesetName); saveErr != nil {
 		cfg.Logger.Errorf("failed to save reports: %v", saveErr)
 	}
 	if err != nil {
 		return err
+	}
+	if saveErr != nil {
+		return saveErr
 	}
 
 	if len(out.DescribedTimelockProposals) == 0 && cfg.DecodeProposalCtxProvider != nil {
