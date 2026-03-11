@@ -63,7 +63,8 @@ func parseErrorFromABI(errorString string, contractABI string) (string, error) {
 // []byte fields that contain ABI-encoded errors (e.g. CallReverted(bytes)
 // wrapping Error(string)).
 func formatUnpackedArgs(unpackedValue interface{}, contractABI string) string {
-	// abiError.Unpack returns interface{} which is typically []interface{}
+	// unpackedValue is typically a []interface{} slice from abiError.Unpack.
+	// Try to assert to slice; if not a slice, treat as single value.
 	values, ok := unpackedValue.([]interface{})
 	if !ok {
 		return tryDecodeByteArg(unpackedValue, contractABI)
