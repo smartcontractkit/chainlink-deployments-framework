@@ -40,6 +40,7 @@ func FormatUnpackedRevert(data []byte, reason string) string {
 	if IsPanicRevert(data) {
 		return fmt.Sprintf("Panic(\"%s\")", reason)
 	}
+
 	return fmt.Sprintf("Error(\"%s\")", reason)
 }
 
@@ -57,6 +58,7 @@ func parseErrorFromABI(errorString string, contractABI string) (string, error) {
 		if IsPanicRevert(data) {
 			return fmt.Sprintf("panic - `%s`", v), nil
 		}
+
 		return fmt.Sprintf("error - `%s`", v), nil
 	}
 

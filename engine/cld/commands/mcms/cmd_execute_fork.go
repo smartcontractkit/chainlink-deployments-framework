@@ -410,6 +410,8 @@ func addDecodedRevertReason(lggr logger.Logger, err error, proposalCtx analyzer.
 	}
 
 	// Strategy 2: parse hex payloads from the error string. This covers the
+	// case where DecodeErr already consumed the rpc.DataError, embedding the
+	// hex payload as text in the resulting error message.
 	if decoded := tryDecodeHexFromErrorString(err.Error(), dec); decoded != "" {
 		lggr.Warnf("Decoded revert reason from error string: %s", decoded)
 		return fmt.Errorf("%w (decoded: %s)", err, decoded)
@@ -432,12 +434,14 @@ func tryDecodeHexFromErrorString(errStr string, dec *ErrDecoder) string {
 			if deployment.IsPanicRevert(raw) {
 				return fmt.Sprintf("Panic(%s)", reason)
 			}
+
 			return reason
 		}
 		if decoded, ok := dec.decodeRecursive(raw, bindings.ManyChainMultiSigABI); ok {
 			return decoded
 		}
 	}
+
 	return ""
 }
 

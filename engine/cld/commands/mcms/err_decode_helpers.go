@@ -162,8 +162,9 @@ func prettyFromBytes(data []byte, preferredABIJSON string, dec *ErrDecoder) (str
 	}
 	if reason, derr := abi.UnpackRevert(data); derr == nil {
 		if deployment.IsPanicRevert(data) {
-			return fmt.Sprintf("Panic(%s)", reason), true
+			return deployment.FormatUnpackedRevert(data, reason), true
 		}
+
 		return reason, true
 	}
 	// 2) custom errors (preferred ABI -> registry, recursive unwrap)

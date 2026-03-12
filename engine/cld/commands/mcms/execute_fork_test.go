@@ -332,6 +332,7 @@ func TestExecuteFork_AddDecodedRevertReason(t *testing.T) {
 		t.Helper()
 		r := analyzer.NewMockEVMABIRegistry(t)
 		r.EXPECT().GetAllABIs().Return(map[string]string{"MCM 1.0.0": mcmABI})
+
 		return r
 	}
 
@@ -363,6 +364,7 @@ func TestExecuteFork_AddDecodedRevertReason(t *testing.T) {
 			setup: func(t *testing.T) (error, analyzer.ProposalContext) {
 				mock := analyzer.NewMockProposalContext(t)
 				mock.EXPECT().GetEVMRegistry().Return(nil)
+
 				return errors.New("some error"), mock
 			},
 			assert: func(t *testing.T, input error, result error) {
@@ -374,6 +376,7 @@ func TestExecuteFork_AddDecodedRevertReason(t *testing.T) {
 			setup: func(t *testing.T) (error, analyzer.ProposalContext) {
 				mock := analyzer.NewMockProposalContext(t)
 				mock.EXPECT().GetEVMRegistry().Return(newRegistry(t))
+
 				return errors.New("plain error without any hex data"), mock
 			},
 			assert: func(t *testing.T, input error, result error) {
@@ -387,6 +390,7 @@ func TestExecuteFork_AddDecodedRevertReason(t *testing.T) {
 				mock.EXPECT().GetEVMRegistry().Return(newRegistry(t))
 				innerRevert := packErrorString(t, "access denied")
 				outerHex := packCallReverted(t, mcmABI, innerRevert)
+
 				return &mockDataError{msg: "execution reverted", data: "0x" + outerHex}, mock
 			},
 			assert: func(t *testing.T, input error, result error) {
@@ -403,6 +407,7 @@ func TestExecuteFork_AddDecodedRevertReason(t *testing.T) {
 				mock.EXPECT().GetEVMRegistry().Return(newRegistry(t))
 				innerRevert := packErrorString(t, "not authorized")
 				outerHex := packCallReverted(t, mcmABI, innerRevert)
+
 				return fmt.Errorf("error executing chain op 0: contract error: error -`CallReverted` args [0x%s]", outerHex), mock
 			},
 			assert: func(t *testing.T, input error, result error) {
@@ -467,6 +472,7 @@ func TestExecuteFork_TryDecodeHexFromErrorString(t *testing.T) {
 			buildErrStr: func(t *testing.T) string {
 				innerRevert := packErrorString(t, "forbidden")
 				outerHex := packCallReverted(t, mcmABI, innerRevert)
+
 				return fmt.Sprintf("contract error: error -`CallReverted` args [0x%s]", outerHex)
 			},
 			wantContains: []string{"CallReverted", "forbidden"},
@@ -509,6 +515,7 @@ func packErrorString(t *testing.T, msg string) string {
 	errDef := parsedABI.Errors["Error"]
 	packed, err := errDef.Inputs.Pack(msg)
 	require.NoError(t, err)
+
 	return hex.EncodeToString(append(errDef.ID[:4], packed...))
 }
 
@@ -524,5 +531,6 @@ func packCallReverted(t *testing.T, mcmABIJSON string, innerHex string) string {
 	crErr := parsed.Errors["CallReverted"]
 	packed, err := crErr.Inputs.Pack(innerBytes)
 	require.NoError(t, err)
+
 	return hex.EncodeToString(append(crErr.ID[:4], packed...))
 }

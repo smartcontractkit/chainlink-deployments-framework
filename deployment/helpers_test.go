@@ -72,6 +72,7 @@ func buildPanicPayload(t *testing.T, code uint64) []byte {
 	require.NoError(t, err)
 	packed, err := abi.Arguments{{Type: typ}}.Pack(new(big.Int).SetUint64(code))
 	require.NoError(t, err)
+
 	return append(panicSelector, packed...)
 }
 
@@ -131,99 +132,102 @@ func TestParseErrorFromABI(t *testing.T) {
 	}
 }
 
-func TestParseErrorFromABI_CallRevertedWithErrorString(t *testing.T) {
-	t.Parallel()
-
-	// Error("AccessControl: account 0xa5d5b0b844c8f11b61f28ac98bba84dea9b80953
-	// is missing role 0xb09aa5aeb3702cfd50b6b62bc4532604938f21248a27a1d5ca736082b6819cc1")
-	revertHex := "0x70de1b4b" +
-		"0000000000000000000000000000000000000000000000000000000000000020" +
-		"00000000000000000000000000000000000000000000000000000000000000e4" +
-		"08c379a0" +
-		"0000000000000000000000000000000000000000000000000000000000000020" +
-		"0000000000000000000000000000000000000000000000000000000000000094" +
-		"416363657373436f6e74726f6c3a206163636f756e742030786135643562306238" +
-		"3434633866313162363166323861633938626261383464656139623830393533" +
-		"206973206d697373696e6720726f6c6520307862303961613561656233373032" +
-		"6366643530623662363262633435333236303439333866323132343861323761" +
-		"3164356361373336303832623638313963633100000000000000000000000000" +
-		"0000000000000000000000000000000000000000000000000000000000000000"
-
-	result, err := parseErrorFromABI(revertHex, callRevertedABI)
-	require.NoError(t, err)
-	assert.Contains(t, result, "CallReverted")
-	assert.Contains(t, result, "AccessControl")
-	assert.Contains(t, result, "0xa5d5b0b844c8f11b61f28ac98bba84dea9b80953")
-	assert.Contains(t, result, "is missing role")
-
-	// The result should NOT contain raw byte arrays like "[8 195 121 160 ...]"
-	assert.NotContains(t, result, "[8 195")
-}
-
-func TestParseErrorFromABI_CallRevertedWithNestedCustomError(t *testing.T) {
-	t.Parallel()
-
-	// Build CallReverted(bytes) wrapping InvalidConfig(uint64) from sampleABI.
-	// InvalidConfig selector = keccak256("InvalidConfig(uint64)")[:4]
-	parsedABI, err := abi.JSON(strings.NewReader(sampleABI))
-	require.NoError(t, err)
-
-	invalidConfigErr := parsedABI.Errors["InvalidConfig"]
-	innerData, err := invalidConfigErr.Inputs.Pack(uint64(42))
-	require.NoError(t, err)
-	innerPayload := append(invalidConfigErr.ID[:4], innerData...)
-
-	// Wrap in CallReverted(bytes)
+// wrapInCallReverted ABI-encodes innerPayload inside a CallReverted(bytes) error.
+func wrapInCallReverted(t *testing.T, innerPayload []byte) []byte {
+	t.Helper()
 	callRevertedParsed, err := abi.JSON(strings.NewReader(callRevertedABI))
 	require.NoError(t, err)
 	callRevertedErr := callRevertedParsed.Errors["CallReverted"]
 	outerData, err := callRevertedErr.Inputs.Pack(innerPayload)
 	require.NoError(t, err)
-	fullData := append(callRevertedErr.ID[:4], outerData...)
 
-	// sampleABI doesn't have CallReverted, so use a combined ABI
+	return append(callRevertedErr.ID[:4], outerData...)
+}
+
+func TestParseErrorFromABI_CallReverted(t *testing.T) {
+	t.Parallel()
+
 	combinedABI := `[{"inputs":[{"type":"bytes"}],"name":"CallReverted","type":"error"},` +
 		`{"inputs":[{"type":"uint64","name":"configId"}],"name":"InvalidConfig","type":"error"}]`
 
-	result, err := parseErrorFromABI("0x"+hex.EncodeToString(fullData), combinedABI)
-	require.NoError(t, err)
-	assert.Equal(t, "error -`CallReverted` args [error -`InvalidConfig` args [42]]", result)
-}
+	tests := []struct {
+		name            string
+		buildHex        func(t *testing.T) string
+		contractABI     string
+		wantExact       string
+		wantContains    []string
+		wantNotContains []string
+	}{
+		{
+			name: "wrapping Error(string)",
+			buildHex: func(_ *testing.T) string {
+				return "0x70de1b4b" +
+					"0000000000000000000000000000000000000000000000000000000000000020" +
+					"00000000000000000000000000000000000000000000000000000000000000e4" +
+					"08c379a0" +
+					"0000000000000000000000000000000000000000000000000000000000000020" +
+					"0000000000000000000000000000000000000000000000000000000000000094" +
+					"416363657373436f6e74726f6c3a206163636f756e742030786135643562306238" +
+					"3434633866313162363166323861633938626261383464656139623830393533" +
+					"206973206d697373696e6720726f6c6520307862303961613561656233373032" +
+					"6366643530623662363262633435333236303439333866323132343861323761" +
+					"3164356361373336303832623638313963633100000000000000000000000000" +
+					"0000000000000000000000000000000000000000000000000000000000000000"
+			},
+			contractABI:     callRevertedABI,
+			wantContains:    []string{"CallReverted", "AccessControl", "0xa5d5b0b844c8f11b61f28ac98bba84dea9b80953", "is missing role"},
+			wantNotContains: []string{"[8 195"},
+		},
+		{
+			name: "wrapping nested custom error",
+			buildHex: func(t *testing.T) string {
+				parsedABI, err := abi.JSON(strings.NewReader(sampleABI))
+				require.NoError(t, err)
+				invalidConfigErr := parsedABI.Errors["InvalidConfig"]
+				innerData, err := invalidConfigErr.Inputs.Pack(uint64(42))
+				require.NoError(t, err)
+				innerPayload := append(invalidConfigErr.ID[:4], innerData...)
 
-func TestParseErrorFromABI_CallRevertedWithPanic(t *testing.T) {
-	t.Parallel()
+				return "0x" + hex.EncodeToString(wrapInCallReverted(t, innerPayload))
+			},
+			contractABI: combinedABI,
+			wantExact:   "error -`CallReverted` args [error -`InvalidConfig` args [42]]",
+		},
+		{
+			name: "wrapping Panic(uint256)",
+			buildHex: func(t *testing.T) string {
+				return "0x" + hex.EncodeToString(wrapInCallReverted(t, buildPanicPayload(t, 0x12)))
+			},
+			contractABI: callRevertedABI,
+			wantExact:   "error -`CallReverted` args [Panic(\"division or modulo by zero\")]",
+		},
+		{
+			name: "wrapping unknown inner error",
+			buildHex: func(t *testing.T) string {
+				unknownInner := make([]byte, 36)
+				copy(unknownInner[:4], []byte{0xde, 0xad, 0xbe, 0xef})
+				return "0x" + hex.EncodeToString(wrapInCallReverted(t, unknownInner))
+			},
+			contractABI:  callRevertedABI,
+			wantContains: []string{"CallReverted", "0xdeadbeef"},
+		},
+	}
 
-	panicPayload := buildPanicPayload(t, 0x12)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			result, err := parseErrorFromABI(tc.buildHex(t), tc.contractABI)
+			require.NoError(t, err)
 
-	callRevertedParsed, err := abi.JSON(strings.NewReader(callRevertedABI))
-	require.NoError(t, err)
-	callRevertedErr := callRevertedParsed.Errors["CallReverted"]
-	outerData, err := callRevertedErr.Inputs.Pack(panicPayload)
-	require.NoError(t, err)
-	fullData := append(callRevertedErr.ID[:4], outerData...)
-
-	result, err := parseErrorFromABI("0x"+hex.EncodeToString(fullData), callRevertedABI)
-	require.NoError(t, err)
-	assert.Equal(t, `error -`+"`CallReverted`"+` args [Panic("division or modulo by zero")]`, result)
-}
-
-func TestParseErrorFromABI_CallRevertedWithUnknownInnerError(t *testing.T) {
-	t.Parallel()
-
-	// Build CallReverted(bytes) wrapping unknown data (not Error(string), not in ABI)
-	unknownInner := make([]byte, 36)
-	copy(unknownInner[:4], []byte{0xde, 0xad, 0xbe, 0xef})
-
-	callRevertedParsed, err := abi.JSON(strings.NewReader(callRevertedABI))
-	require.NoError(t, err)
-	callRevertedErr := callRevertedParsed.Errors["CallReverted"]
-	outerData, err := callRevertedErr.Inputs.Pack(unknownInner)
-	require.NoError(t, err)
-	fullData := append(callRevertedErr.ID[:4], outerData...)
-
-	result, err := parseErrorFromABI("0x"+hex.EncodeToString(fullData), callRevertedABI)
-	require.NoError(t, err)
-	assert.Contains(t, result, "CallReverted")
-	// Should fall back to hex since the inner error is unrecognized
-	assert.Contains(t, result, "0xdeadbeef")
+			if tc.wantExact != "" {
+				assert.Equal(t, tc.wantExact, result)
+			}
+			for _, s := range tc.wantContains {
+				assert.Contains(t, result, s)
+			}
+			for _, s := range tc.wantNotContains {
+				assert.NotContains(t, result, s)
+			}
+		})
+	}
 }
