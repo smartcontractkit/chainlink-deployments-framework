@@ -47,7 +47,12 @@ func Load(
 	}
 
 	var ds fdatastore.DataStore
-	if useCatalog(cfg.DatastoreType, loadcfg.useLocalDatastoreFallback) {
+
+	effectiveDatastoreType := cfg.DatastoreType
+	if loadcfg.datastoreType != nil {
+		effectiveDatastoreType = *loadcfg.datastoreType
+	}
+	if useCatalog(effectiveDatastoreType) {
 		if cfg.Env.Catalog.GRPC != "" {
 			lggr.Infow("Fetching data from Catalog", "url", cfg.Env.Catalog.GRPC)
 			catalogStore, catalogErr := cldcatalog.LoadCatalog(ctx, envKey, cfg, domain)
@@ -142,6 +147,6 @@ func Load(
 	}, nil
 }
 
-func useCatalog(datastoreType cfgdomain.DatastoreType, useLocalDatastoreFallback bool) bool {
-	return (datastoreType == cfgdomain.DatastoreTypeCatalog || datastoreType == cfgdomain.DatastoreTypeAll) && !useLocalDatastoreFallback
+func useCatalog(datastoreType cfgdomain.DatastoreType) bool {
+	return datastoreType == cfgdomain.DatastoreTypeCatalog || datastoreType == cfgdomain.DatastoreTypeAll
 }

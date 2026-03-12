@@ -3,6 +3,7 @@ package environment
 import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
+	cfgdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/domain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 )
 
@@ -41,9 +42,8 @@ type LoadConfig struct {
 	// that allows read operations but performs noop write operations.
 	useDryRunJobDistributor bool
 
-	// useLocalDatastoreFallback when true, load datastore from local files even when the
-	// domain is configured for catalog or catalog/all. Use when the catalog service is not reachable locally.
-	useLocalDatastoreFallback bool
+	// datastoreType when set, overrides the datastore type from domain config (e.g. from --datastore flag).
+	datastoreType *cfgdomain.DatastoreType
 }
 
 // Configure applies a slice of LoadEnvironmentOption functions to the LoadConfig.
@@ -182,12 +182,10 @@ func WithDryRunJobDistributor() LoadEnvironmentOption {
 	}
 }
 
-// WithLocalDatastoreFallback configures the environment to load the datastore from local
-// files (e.g. address_refs.json in the environment's datastore directory) instead of the
-// catalog service. Use this when the domain has datastore set to "catalog" or "all" in
-// domain.yaml but the catalog service is not reachable locally (e.g. state generate run offline).
-func WithLocalDatastoreFallback() LoadEnvironmentOption {
+// WithDatastoreType overrides the datastore type from domain config. Use when the caller
+// explicitly requests "file" or "catalog" (e.g. from a CLI flag). Omit to use domain default.
+func WithDatastoreType(t cfgdomain.DatastoreType) LoadEnvironmentOption {
 	return func(o *LoadConfig) {
-		o.useLocalDatastoreFallback = true
+		o.datastoreType = &t
 	}
 }

@@ -6,9 +6,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
-
 	foperations "github.com/smartcontractkit/chainlink-deployments-framework/operations"
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
 func Test_WithAnvilKeyAsDeployer(t *testing.T) {
@@ -110,16 +109,4 @@ func Test_WithDryRunJobDistributor(t *testing.T) {
 	option(opts)
 
 	assert.True(t, opts.useDryRunJobDistributor)
-}
-
-func Test_WithLocalDatastoreFallback(t *testing.T) {
-	t.Parallel()
-
-	opts := &LoadConfig{}
-	require.False(t, opts.useLocalDatastoreFallback)
-
-	option := WithLocalDatastoreFallback()
-	option(opts)
-
-	assert.True(t, opts.useLocalDatastoreFallback)
 }

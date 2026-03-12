@@ -12,6 +12,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/flags"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/text"
+	cfgdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/domain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
 )
@@ -43,6 +44,9 @@ var (
 
 		By default, the generated state is not saved. Use --persist to save
 		to disk, or --print to output the full JSON to stdout.
+
+		Use --datastore file or --datastore catalog to override the datastore
+		source; when omitted, the setting from domain.yaml is used.
 	`)
 
 	generateExample = text.Examples(`
@@ -52,8 +56,8 @@ var (
 		# Generate and save state to default location (also prints)
 		myapp state generate -e staging --persist
 
-		# Use local datastore files when catalog is unreachable and local files are available
-		myapp state generate -e testnet --persist --local
+		# Use file datastore (overrides domain.yaml); omit --datastore to use domain default
+		myapp state generate -e testnet --persist --datastore=file
 
 		# Generate and save to custom path without printing
 		myapp state generate -e staging -p -o /path/to/state.json --print=false
@@ -64,12 +68,12 @@ var (
 )
 
 type generateFlags struct {
-	environment    string
-	persist        bool
-	output         string
-	previousState  string
-	print          bool
-	localDatastore bool
+	environment   string
+	persist       bool
+	output        string
+	previousState string
+	print         bool
+	datastore     string // "file", "catalog", or empty for domain default
 }
 
 // newGenerateCmd creates the "generate" subcommand for generating state.
@@ -81,12 +85,12 @@ func newGenerateCmd(cfg Config) *cobra.Command {
 		Example: generateExample,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			f := generateFlags{
-				environment:    flags.MustString(cmd.Flags().GetString("environment")),
-				persist:        flags.MustBool(cmd.Flags().GetBool("persist")),
-				output:         flags.MustString(cmd.Flags().GetString("out")),
-				previousState:  flags.MustString(cmd.Flags().GetString("prev")),
-				print:          flags.MustBool(cmd.Flags().GetBool("print")),
-				localDatastore: flags.MustBool(cmd.Flags().GetBool("local")),
+				environment:   flags.MustString(cmd.Flags().GetString("environment")),
+				persist:       flags.MustBool(cmd.Flags().GetBool("persist")),
+				output:        flags.MustString(cmd.Flags().GetString("out")),
+				previousState: flags.MustString(cmd.Flags().GetString("prev")),
+				print:         flags.MustBool(cmd.Flags().GetBool("print")),
+				datastore:     flags.MustString(cmd.Flags().GetString("datastore")),
 			}
 
 			return runGenerate(cmd, cfg, f)
@@ -101,7 +105,7 @@ func newGenerateCmd(cfg Config) *cobra.Command {
 	// Local flags specific to this command
 	cmd.Flags().BoolP("persist", "p", false, "Persist state to disk")
 	cmd.Flags().StringP("prev", "s", "", "Previous state file path")
-	cmd.Flags().Bool("local", false, "Use local datastore files instead of catalog (for when catalog is unreachable)")
+	cmd.Flags().String("datastore", "", "Datastore to use: file or catalog. Defaults to domain.yaml setting when unset.")
 
 	// Deprecated alias: --previousState -> --prev
 	addPreviousStateAlias(cmd)
@@ -117,7 +121,11 @@ func runGenerate(cmd *cobra.Command, cfg Config, f generateFlags) error {
 	output := f.output
 	previousState := f.previousState
 	shouldPrint := f.print
-	localDatastore := f.localDatastore
+	datastoreFlag := f.datastore
+
+	if datastoreFlag != "" && datastoreFlag != "file" && datastoreFlag != "catalog" {
+		return fmt.Errorf("--datastore must be %q or %q, got %q", "file", "catalog", datastoreFlag)
+	}
 
 	deps := cfg.deps()
 	envdir := cfg.Domain.EnvDir(envKey)
@@ -132,8 +140,11 @@ func runGenerate(cmd *cobra.Command, cfg Config, f generateFlags) error {
 	defer cancel()
 
 	envOpts := []environment.LoadEnvironmentOption{environment.WithLogger(cfg.Logger)}
-	if localDatastore {
-		envOpts = append(envOpts, environment.WithLocalDatastoreFallback())
+	switch datastoreFlag {
+	case "file":
+		envOpts = append(envOpts, environment.WithDatastoreType(cfgdomain.DatastoreTypeFile))
+	case "catalog":
+		envOpts = append(envOpts, environment.WithDatastoreType(cfgdomain.DatastoreTypeCatalog))
 	}
 	env, err := deps.EnvironmentLoader(ctx, cfg.Domain, envKey, envOpts...)
 	if err != nil {
