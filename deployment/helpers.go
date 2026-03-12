@@ -26,6 +26,23 @@ func SimTransactOpts() *bind.TransactOpts {
 	}, From: common.HexToAddress("0x0"), NoSend: true, GasLimit: 1_000_000}
 }
 
+// panicSelector is the 4-byte selector for Panic(uint256): 0x4e487b71.
+var panicSelector = []byte{0x4e, 0x48, 0x7b, 0x71}
+
+// IsPanicRevert reports whether data starts with the Panic(uint256) selector.
+func IsPanicRevert(data []byte) bool {
+	return len(data) >= 4 && bytes.Equal(data[:4], panicSelector)
+}
+
+// FormatUnpackedRevert formats the result of abi.UnpackRevert as either
+// Error("...") or Panic("...") depending on the selector in data.
+func FormatUnpackedRevert(data []byte, reason string) string {
+	if IsPanicRevert(data) {
+		return fmt.Sprintf("Panic(\"%s\")", reason)
+	}
+	return fmt.Sprintf("Error(\"%s\")", reason)
+}
+
 func parseErrorFromABI(errorString string, contractABI string) (string, error) {
 	errorString = strings.TrimPrefix(errorString, "Reverted ")
 	errorString = strings.TrimPrefix(errorString, "0x")
@@ -37,6 +54,9 @@ func parseErrorFromABI(errorString string, contractABI string) (string, error) {
 
 	v, err := abi.UnpackRevert(data)
 	if err == nil {
+		if IsPanicRevert(data) {
+			return fmt.Sprintf("panic - `%s`", v), nil
+		}
 		return fmt.Sprintf("error - `%s`", v), nil
 	}
 
@@ -87,7 +107,7 @@ func tryDecodeByteArg(v interface{}, contractABI string) string {
 	}
 
 	if reason, err := abi.UnpackRevert(inner); err == nil {
-		return fmt.Sprintf("Error(\"%s\")", reason)
+		return FormatUnpackedRevert(inner, reason)
 	}
 
 	decoded, err := parseErrorFromABI(hex.EncodeToString(inner), contractABI)

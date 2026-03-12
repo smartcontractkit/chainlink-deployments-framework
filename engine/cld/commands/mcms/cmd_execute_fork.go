@@ -26,6 +26,8 @@ import (
 	"github.com/smartcontractkit/mcms/types"
 	"github.com/spf13/cobra"
 
+	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/flags"
@@ -417,7 +419,7 @@ func addDecodedRevertReason(lggr logger.Logger, err error, proposalCtx analyzer.
 }
 
 // tryDecodeHexFromErrorString scans errStr for hex payloads and attempts to
-// decode each one as a standard Error(string) or known custom error.
+// decode each one as a standard Error(string), Panic(uint256), or known custom error.
 // Returns "" when nothing can be meaningfully decoded.
 func tryDecodeHexFromErrorString(errStr string, dec *ErrDecoder) string {
 	matches := hexPayloadPattern.FindAllStringSubmatch(errStr, -1)
@@ -427,6 +429,9 @@ func tryDecodeHexFromErrorString(errStr string, dec *ErrDecoder) string {
 			continue
 		}
 		if reason, uerr := abi.UnpackRevert(raw); uerr == nil {
+			if deployment.IsPanicRevert(raw) {
+				return fmt.Sprintf("Panic(%s)", reason)
+			}
 			return reason
 		}
 		if decoded, ok := dec.decodeRecursive(raw, bindings.ManyChainMultiSigABI); ok {

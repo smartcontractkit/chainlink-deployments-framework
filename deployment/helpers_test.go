@@ -2,6 +2,7 @@ package deployment
 
 import (
 	"encoding/hex"
+	"math/big"
 	"strings"
 	"testing"
 
@@ -15,6 +16,64 @@ const sampleABI = "[{\"inputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\
 // callRevertedABI is a minimal ABI containing only the CallReverted(bytes) error,
 // matching the MCM contract's error signature.
 const callRevertedABI = `[{"inputs":[{"internalType":"bytes","name":"","type":"bytes"}],"name":"CallReverted","type":"error"}]`
+
+func TestIsPanicRevert(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		data []byte
+		want bool
+	}{
+		{
+			name: "Panic(uint256) selector",
+			data: append([]byte{0x4e, 0x48, 0x7b, 0x71}, make([]byte, 32)...),
+			want: true,
+		},
+		{
+			name: "Error(string) selector",
+			data: []byte{0x08, 0xc3, 0x79, 0xa0, 0x00},
+			want: false,
+		},
+		{
+			name: "too short",
+			data: []byte{0x4e, 0x48, 0x7b},
+			want: false,
+		},
+		{
+			name: "nil",
+			data: nil,
+			want: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tc.want, IsPanicRevert(tc.data))
+		})
+	}
+}
+
+func TestFormatUnpackedRevert(t *testing.T) {
+	t.Parallel()
+
+	panicData := append([]byte{0x4e, 0x48, 0x7b, 0x71}, make([]byte, 32)...)
+	errorData := append([]byte{0x08, 0xc3, 0x79, 0xa0}, make([]byte, 32)...)
+
+	assert.Equal(t, `Panic("division or modulo by zero")`, FormatUnpackedRevert(panicData, "division or modulo by zero"))
+	assert.Equal(t, `Error("Only callable by owner")`, FormatUnpackedRevert(errorData, "Only callable by owner"))
+}
+
+// buildPanicPayload builds a valid Panic(uint256) ABI-encoded payload.
+func buildPanicPayload(t *testing.T, code uint64) []byte {
+	t.Helper()
+	typ, err := abi.NewType("uint256", "", nil)
+	require.NoError(t, err)
+	packed, err := abi.Arguments{{Type: typ}}.Pack(new(big.Int).SetUint64(code))
+	require.NoError(t, err)
+	return append(panicSelector, packed...)
+}
 
 func TestParseErrorFromABI(t *testing.T) {
 	t.Parallel()
@@ -36,6 +95,18 @@ func TestParseErrorFromABI(t *testing.T) {
 			RevertReason:       "0xdf3b81ea0000000000000000000000000000000000000000000000000000000100000001",
 			ABI:                sampleABI,
 			ParsedRevertReason: "error -`InvalidConfig` args [4294967297]",
+		},
+		{
+			Name:               "Panic division by zero",
+			RevertReason:       "0x4e487b710000000000000000000000000000000000000000000000000000000000000012",
+			ABI:                "",
+			ParsedRevertReason: "panic - `division or modulo by zero`",
+		},
+		{
+			Name:               "Panic assertion failure",
+			RevertReason:       "0x4e487b710000000000000000000000000000000000000000000000000000000000000001",
+			ABI:                "",
+			ParsedRevertReason: "panic - `assert(false)`",
 		},
 		{
 			Name:               "Empty error string",
@@ -117,6 +188,23 @@ func TestParseErrorFromABI_CallRevertedWithNestedCustomError(t *testing.T) {
 	result, err := parseErrorFromABI("0x"+hex.EncodeToString(fullData), combinedABI)
 	require.NoError(t, err)
 	assert.Equal(t, "error -`CallReverted` args [error -`InvalidConfig` args [42]]", result)
+}
+
+func TestParseErrorFromABI_CallRevertedWithPanic(t *testing.T) {
+	t.Parallel()
+
+	panicPayload := buildPanicPayload(t, 0x12)
+
+	callRevertedParsed, err := abi.JSON(strings.NewReader(callRevertedABI))
+	require.NoError(t, err)
+	callRevertedErr := callRevertedParsed.Errors["CallReverted"]
+	outerData, err := callRevertedErr.Inputs.Pack(panicPayload)
+	require.NoError(t, err)
+	fullData := append(callRevertedErr.ID[:4], outerData...)
+
+	result, err := parseErrorFromABI("0x"+hex.EncodeToString(fullData), callRevertedABI)
+	require.NoError(t, err)
+	assert.Equal(t, `error -`+"`CallReverted`"+` args [Panic("division or modulo by zero")]`, result)
 }
 
 func TestParseErrorFromABI_CallRevertedWithUnknownInnerError(t *testing.T) {
