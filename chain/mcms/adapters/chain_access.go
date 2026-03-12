@@ -33,6 +33,8 @@ type ChainsFetcher interface {
 	CantonChains() map[uint64]cldfcanton.Chain
 }
 
+var _ ChainsFetcher = &chain.BlockChains{}
+
 // ChainAccessAdapter adapts CLDF's chain.BlockChains into a selector + lookup style API.
 // It is used to make it compatible with the mcms lib chain access interface.
 type ChainAccessAdapter struct {

@@ -89,17 +89,16 @@ func TestConvertTimelock(t *testing.T) {
 					},
 				}
 			},
-			wantErr: "failed to get selector family for chain",
+			wantErr: "failed to build converters: error getting chain family: chain family not found for selector 999999",
 		},
 		{
-			name: "fails to get converter factory",
+			name: "fails with invalid chain family",
 			setupProposal: func(t *testing.T) mcmslib.TimelockProposal {
 				t.Helper()
 
 				return mcmslib.TimelockProposal{
 					BaseProposal: mcmslib.BaseProposal{
 						ChainMetadata: map[mcmstypes.ChainSelector]mcmstypes.ChainMetadata{
-							// We are choosing Tron here because it is not supported by the converter factory. This may change in the future.
 							mcmstypes.ChainSelector(chainselectors.TRON_TESTNET_NILE.Selector): {
 								MCMAddress: "0x0000000000000000000000000000000000000000",
 							},
@@ -107,7 +106,7 @@ func TestConvertTimelock(t *testing.T) {
 					},
 				}
 			},
-			wantErr: "failed to get converter factory for chain",
+			wantErr: "failed to build converters: error getting chain family: unsupported chain family: tron",
 		},
 	}
 
