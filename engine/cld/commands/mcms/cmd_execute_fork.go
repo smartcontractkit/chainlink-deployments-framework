@@ -3,12 +3,15 @@ package mcms
 import (
 	"context"
 	"crypto/ecdsa"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"maps"
 	"math/big"
+	"regexp"
 	"time"
 
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	gethtypes "github.com/ethereum/go-ethereum/core/types"
@@ -375,6 +378,11 @@ func overwriteProposalSignatureWithTestKey(ctx context.Context, cfg *forkConfig,
 	return nil
 }
 
+// hexPayloadPattern matches hex strings that are long enough to contain at
+// least a 4-byte selector (8+ hex chars). Used as a fallback when
+// rpc.DataError has already been consumed by DecodeErr.
+var hexPayloadPattern = regexp.MustCompile(`0x([0-9a-fA-F]{8,})`)
+
 // addDecodedRevertReason attempts to decode revert data from err using the
 // full domain ABI registry available in proposalCtx.
 func addDecodedRevertReason(lggr logger.Logger, err error, proposalCtx analyzer.ProposalContext) error {
@@ -388,11 +396,10 @@ func addDecodedRevertReason(lggr logger.Logger, err error, proposalCtx analyzer.
 		return err
 	}
 
-	// Extract rpc.DataError from the error chain and decode with all domain ABIs
+	// Strategy 1: extract rpc.DataError from the error chain
 	var dataErr ethrpc.DataError
 	if errors.As(err, &dataErr) {
 		if hexData, ok := dataErr.ErrorData().(string); ok {
-			// Reuse existing decodeRevertData function from err_decode_helpers.go
 			if decoded, ok := decodeRevertData(hexData, dec, bindings.ManyChainMultiSigABI); ok && decoded != "" {
 				lggr.Warnf("Decoded revert reason: %s", decoded)
 				return fmt.Errorf("%w (decoded: %s)", err, decoded)
@@ -400,7 +407,33 @@ func addDecodedRevertReason(lggr logger.Logger, err error, proposalCtx analyzer.
 		}
 	}
 
+	// Strategy 2: parse hex payloads from the error string. This covers the
+	if decoded := tryDecodeHexFromErrorString(err.Error(), dec); decoded != "" {
+		lggr.Warnf("Decoded revert reason from error string: %s", decoded)
+		return fmt.Errorf("%w (decoded: %s)", err, decoded)
+	}
+
 	return err
+}
+
+// tryDecodeHexFromErrorString scans errStr for hex payloads and attempts to
+// decode each one as a standard Error(string) or known custom error.
+// Returns "" when nothing can be meaningfully decoded.
+func tryDecodeHexFromErrorString(errStr string, dec *ErrDecoder) string {
+	matches := hexPayloadPattern.FindAllStringSubmatch(errStr, -1)
+	for _, match := range matches {
+		raw, err := hex.DecodeString(match[1])
+		if err != nil || len(raw) < 4 {
+			continue
+		}
+		if reason, uerr := abi.UnpackRevert(raw); uerr == nil {
+			return reason
+		}
+		if decoded, ok := dec.decodeRecursive(raw, bindings.ManyChainMultiSigABI); ok {
+			return decoded
+		}
+	}
+	return ""
 }
 
 // loggingRpcClient wraps an OnchainClient to log transactions before sending.

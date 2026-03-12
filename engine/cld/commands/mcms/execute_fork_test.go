@@ -3,11 +3,14 @@ package mcms
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"math/big"
+	"strings"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
@@ -17,7 +20,9 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
+	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
+	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
@@ -320,39 +325,215 @@ func TestExecuteFork_OverrideForkChainDeployerKeyWithTestSigner(t *testing.T) {
 	}
 }
 
-func TestAddDecodedRevertReason_NilError(t *testing.T) {
+func TestExecuteFork_AddDecodedRevertReason(t *testing.T) {
 	t.Parallel()
-	result := addDecodedRevertReason(logger.Nop(), nil, nil)
-	assert.NoError(t, result)
+
+	mcmABI := `[{"inputs":[{"type":"bytes"}],"name":"CallReverted","type":"error"}]`
+	registry := &stubEVMRegistry{abis: map[string]string{"MCM 1.0.0": mcmABI}}
+
+	tests := []struct {
+		name   string
+		setup  func(t *testing.T) (error, analyzer.ProposalContext)
+		assert func(t *testing.T, input error, result error)
+	}{
+		{
+			name: "nil error returns nil",
+			setup: func(t *testing.T) (error, analyzer.ProposalContext) {
+				return nil, nil
+			},
+			assert: func(t *testing.T, _ error, result error) {
+				assert.NoError(t, result)
+			},
+		},
+		{
+			name: "nil proposalCtx returns original error",
+			setup: func(t *testing.T) (error, analyzer.ProposalContext) {
+				return errors.New("some error"), nil
+			},
+			assert: func(t *testing.T, input error, result error) {
+				assert.Equal(t, input, result)
+			},
+		},
+		{
+			name: "nil registry returns original error",
+			setup: func(t *testing.T) (error, analyzer.ProposalContext) {
+				mock := analyzer.NewMockProposalContext(t)
+				mock.EXPECT().GetEVMRegistry().Return(nil)
+				return errors.New("some error"), mock
+			},
+			assert: func(t *testing.T, input error, result error) {
+				assert.Equal(t, input, result)
+			},
+		},
+		{
+			name: "plain error without hex data returns original",
+			setup: func(t *testing.T) (error, analyzer.ProposalContext) {
+				mock := analyzer.NewMockProposalContext(t)
+				mock.EXPECT().GetEVMRegistry().Return(registry)
+				return errors.New("plain error without any hex data"), mock
+			},
+			assert: func(t *testing.T, input error, result error) {
+				assert.Equal(t, input, result)
+			},
+		},
+		{
+			name: "strategy 1: decodes rpc.DataError from error chain",
+			setup: func(t *testing.T) (error, analyzer.ProposalContext) {
+				mock := analyzer.NewMockProposalContext(t)
+				mock.EXPECT().GetEVMRegistry().Return(registry)
+				innerRevert := packErrorString(t, "access denied")
+				outerHex := packCallReverted(t, mcmABI, innerRevert)
+				return &mockDataError{msg: "execution reverted", data: "0x" + outerHex}, mock
+			},
+			assert: func(t *testing.T, input error, result error) {
+				require.Error(t, result)
+				assert.Contains(t, result.Error(), "decoded:")
+				assert.Contains(t, result.Error(), "access denied")
+				assert.ErrorIs(t, result, input)
+			},
+		},
+		{
+			name: "strategy 2: decodes hex from error string after DecodeErr consumed DataError",
+			setup: func(t *testing.T) (error, analyzer.ProposalContext) {
+				mock := analyzer.NewMockProposalContext(t)
+				mock.EXPECT().GetEVMRegistry().Return(registry)
+				innerRevert := packErrorString(t, "not authorized")
+				outerHex := packCallReverted(t, mcmABI, innerRevert)
+				return fmt.Errorf("error executing chain op 0: contract error: error -`CallReverted` args [0x%s]", outerHex), mock
+			},
+			assert: func(t *testing.T, input error, result error) {
+				require.Error(t, result)
+				assert.Contains(t, result.Error(), "decoded:")
+				assert.Contains(t, result.Error(), "not authorized")
+				assert.ErrorIs(t, result, input)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			input, pCtx := tc.setup(t)
+			result := addDecodedRevertReason(logger.Nop(), input, pCtx)
+			tc.assert(t, input, result)
+		})
+	}
 }
 
-func TestAddDecodedRevertReason_NilProposalCtx(t *testing.T) {
+func TestExecuteFork_TryDecodeHexFromErrorString(t *testing.T) {
 	t.Parallel()
-	original := errors.New("some error")
-	result := addDecodedRevertReason(logger.Nop(), original, nil)
-	assert.Equal(t, original, result)
+
+	mcmABI := `[{"inputs":[{"type":"bytes"}],"name":"CallReverted","type":"error"}]`
+	registry := &stubEVMRegistry{abis: map[string]string{"MCM 1.0.0": mcmABI}}
+	dec, err := NewErrDecoder(registry)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name         string
+		buildErrStr  func(t *testing.T) string
+		wantEmpty    bool
+		wantContains []string
+	}{
+		{
+			name:        "no hex in string",
+			buildErrStr: func(*testing.T) string { return "just a plain error" },
+			wantEmpty:   true,
+		},
+		{
+			name:        "hex too short to be a selector",
+			buildErrStr: func(*testing.T) string { return "failed with 0xdead" },
+			wantEmpty:   true,
+		},
+		{
+			name:        "hex with unknown selector",
+			buildErrStr: func(*testing.T) string { return "error 0xdeadbeefcafebabe" },
+			wantEmpty:   true,
+		},
+		{
+			name: "decodes Error(string) hex",
+			buildErrStr: func(t *testing.T) string {
+				hexPayload := packErrorString(t, "test revert")
+				return fmt.Sprintf("some error with 0x%s embedded", hexPayload)
+			},
+			wantContains: []string{"test revert"},
+		},
+		{
+			name: "decodes CallReverted wrapping Error(string)",
+			buildErrStr: func(t *testing.T) string {
+				innerRevert := packErrorString(t, "forbidden")
+				outerHex := packCallReverted(t, mcmABI, innerRevert)
+				return fmt.Sprintf("contract error: error -`CallReverted` args [0x%s]", outerHex)
+			},
+			wantContains: []string{"CallReverted", "forbidden"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			result := tryDecodeHexFromErrorString(tc.buildErrStr(t), dec)
+			if tc.wantEmpty {
+				assert.Empty(t, result)
+			} else {
+				for _, want := range tc.wantContains {
+					assert.Contains(t, result, want)
+				}
+			}
+		})
+	}
 }
 
-func TestAddDecodedRevertReason_ErrorWithHexPattern(t *testing.T) {
-	t.Parallel()
+// --- test helpers ---
 
-	// Simulate an error containing a hex-encoded Error(string) left by tryDecodeByteArg fallback.
-	// 08c379a0 = Error(string) selector + ABI-encoded "test revert"
-	hexPayload := "0x08c379a0" +
-		"0000000000000000000000000000000000000000000000000000000000000020" +
-		"000000000000000000000000000000000000000000000000000000000000000b" +
-		"74657374207265766572740000000000000000000000000000000000000000000"
-	original := fmt.Errorf("error -`CallReverted` args [%s]", hexPayload)
-
-	// Use a minimal mock that returns nil registry -- addDecodedRevertReason falls back
-	result := addDecodedRevertReason(logger.Nop(), original, nil)
-	assert.Equal(t, original, result)
+// mockDataError implements ethrpc.DataError for testing strategy 1.
+type mockDataError struct {
+	msg  string
+	data interface{}
 }
 
-func TestAddDecodedRevertReason_PlainError(t *testing.T) {
-	t.Parallel()
+func (e *mockDataError) Error() string          { return e.msg }
+func (e *mockDataError) ErrorData() interface{} { return e.data }
 
-	original := errors.New("plain error without any hex data")
-	result := addDecodedRevertReason(logger.Nop(), original, nil)
-	assert.Equal(t, original, result)
+// stubEVMRegistry is a minimal EVMABIRegistry for unit tests.
+type stubEVMRegistry struct {
+	abis map[string]string
+}
+
+func (r *stubEVMRegistry) GetAllABIs() map[string]string { return r.abis }
+func (r *stubEVMRegistry) GetABIByAddress(uint64, string) (*abi.ABI, string, error) {
+	return nil, "", errors.New("not implemented")
+}
+func (r *stubEVMRegistry) GetABIByType(deployment.TypeAndVersion) (*abi.ABI, string, error) {
+	return nil, "", errors.New("not implemented")
+}
+func (r *stubEVMRegistry) AddABI(deployment.TypeAndVersion, string) error {
+	return errors.New("not implemented")
+}
+
+// packErrorString ABI-encodes a standard Error(string) revert and returns
+// the raw hex (no 0x prefix).
+func packErrorString(t *testing.T, msg string) string {
+	t.Helper()
+	// Error(string) selector: 0x08c379a0
+	parsedABI, err := abi.JSON(strings.NewReader(`[{"inputs":[{"type":"string"}],"name":"Error","type":"error"}]`))
+	require.NoError(t, err)
+	errDef := parsedABI.Errors["Error"]
+	packed, err := errDef.Inputs.Pack(msg)
+	require.NoError(t, err)
+	return hex.EncodeToString(append(errDef.ID[:4], packed...))
+}
+
+// packCallReverted wraps innerHex (no 0x prefix) into a CallReverted(bytes)
+// payload and returns the full hex (no 0x prefix).
+func packCallReverted(t *testing.T, mcmABIJSON string, innerHex string) string {
+	t.Helper()
+	innerBytes, err := hex.DecodeString(innerHex)
+	require.NoError(t, err)
+
+	parsed, err := abi.JSON(strings.NewReader(mcmABIJSON))
+	require.NoError(t, err)
+	crErr := parsed.Errors["CallReverted"]
+	packed, err := crErr.Inputs.Pack(innerBytes)
+	require.NoError(t, err)
+	return hex.EncodeToString(append(crErr.ID[:4], packed...))
 }

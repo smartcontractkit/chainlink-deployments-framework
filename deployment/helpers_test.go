@@ -116,8 +116,7 @@ func TestParseErrorFromABI_CallRevertedWithNestedCustomError(t *testing.T) {
 
 	result, err := parseErrorFromABI("0x"+hex.EncodeToString(fullData), combinedABI)
 	require.NoError(t, err)
-	assert.Contains(t, result, "CallReverted")
-	assert.Contains(t, result, "InvalidConfig")
+	assert.Equal(t, "error -`CallReverted` args [error -`InvalidConfig` args [42]]", result)
 }
 
 func TestParseErrorFromABI_CallRevertedWithUnknownInnerError(t *testing.T) {
