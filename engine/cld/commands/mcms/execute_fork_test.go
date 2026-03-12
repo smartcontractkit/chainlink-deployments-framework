@@ -20,7 +20,6 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
-	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
@@ -329,7 +328,12 @@ func TestExecuteFork_AddDecodedRevertReason(t *testing.T) {
 	t.Parallel()
 
 	mcmABI := `[{"inputs":[{"type":"bytes"}],"name":"CallReverted","type":"error"}]`
-	registry := &stubEVMRegistry{abis: map[string]string{"MCM 1.0.0": mcmABI}}
+	newRegistry := func(t *testing.T) *analyzer.MockEVMABIRegistry {
+		t.Helper()
+		r := analyzer.NewMockEVMABIRegistry(t)
+		r.EXPECT().GetAllABIs().Return(map[string]string{"MCM 1.0.0": mcmABI})
+		return r
+	}
 
 	tests := []struct {
 		name   string
@@ -369,7 +373,7 @@ func TestExecuteFork_AddDecodedRevertReason(t *testing.T) {
 			name: "plain error without hex data returns original",
 			setup: func(t *testing.T) (error, analyzer.ProposalContext) {
 				mock := analyzer.NewMockProposalContext(t)
-				mock.EXPECT().GetEVMRegistry().Return(registry)
+				mock.EXPECT().GetEVMRegistry().Return(newRegistry(t))
 				return errors.New("plain error without any hex data"), mock
 			},
 			assert: func(t *testing.T, input error, result error) {
@@ -380,7 +384,7 @@ func TestExecuteFork_AddDecodedRevertReason(t *testing.T) {
 			name: "strategy 1: decodes rpc.DataError from error chain",
 			setup: func(t *testing.T) (error, analyzer.ProposalContext) {
 				mock := analyzer.NewMockProposalContext(t)
-				mock.EXPECT().GetEVMRegistry().Return(registry)
+				mock.EXPECT().GetEVMRegistry().Return(newRegistry(t))
 				innerRevert := packErrorString(t, "access denied")
 				outerHex := packCallReverted(t, mcmABI, innerRevert)
 				return &mockDataError{msg: "execution reverted", data: "0x" + outerHex}, mock
@@ -396,7 +400,7 @@ func TestExecuteFork_AddDecodedRevertReason(t *testing.T) {
 			name: "strategy 2: decodes hex from error string after DecodeErr consumed DataError",
 			setup: func(t *testing.T) (error, analyzer.ProposalContext) {
 				mock := analyzer.NewMockProposalContext(t)
-				mock.EXPECT().GetEVMRegistry().Return(registry)
+				mock.EXPECT().GetEVMRegistry().Return(newRegistry(t))
 				innerRevert := packErrorString(t, "not authorized")
 				outerHex := packCallReverted(t, mcmABI, innerRevert)
 				return fmt.Errorf("error executing chain op 0: contract error: error -`CallReverted` args [0x%s]", outerHex), mock
@@ -424,7 +428,8 @@ func TestExecuteFork_TryDecodeHexFromErrorString(t *testing.T) {
 	t.Parallel()
 
 	mcmABI := `[{"inputs":[{"type":"bytes"}],"name":"CallReverted","type":"error"}]`
-	registry := &stubEVMRegistry{abis: map[string]string{"MCM 1.0.0": mcmABI}}
+	registry := analyzer.NewMockEVMABIRegistry(t)
+	registry.EXPECT().GetAllABIs().Return(map[string]string{"MCM 1.0.0": mcmABI})
 	dec, err := NewErrDecoder(registry)
 	require.NoError(t, err)
 
@@ -493,22 +498,6 @@ type mockDataError struct {
 
 func (e *mockDataError) Error() string          { return e.msg }
 func (e *mockDataError) ErrorData() interface{} { return e.data }
-
-// stubEVMRegistry is a minimal EVMABIRegistry for unit tests.
-type stubEVMRegistry struct {
-	abis map[string]string
-}
-
-func (r *stubEVMRegistry) GetAllABIs() map[string]string { return r.abis }
-func (r *stubEVMRegistry) GetABIByAddress(uint64, string) (*abi.ABI, string, error) {
-	return nil, "", errors.New("not implemented")
-}
-func (r *stubEVMRegistry) GetABIByType(deployment.TypeAndVersion) (*abi.ABI, string, error) {
-	return nil, "", errors.New("not implemented")
-}
-func (r *stubEVMRegistry) AddABI(deployment.TypeAndVersion, string) error {
-	return errors.New("not implemented")
-}
 
 // packErrorString ABI-encodes a standard Error(string) revert and returns
 // the raw hex (no 0x prefix).
