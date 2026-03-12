@@ -25,6 +25,10 @@ func (noopChangeset) Apply(e fdeployment.Environment) (fdeployment.ChangesetOutp
 	return fdeployment.ChangesetOutput{}, nil
 }
 
+func (n noopChangeset) applyWithInput(e fdeployment.Environment, _ string) (fdeployment.ChangesetOutput, error) {
+	return n.Apply(e)
+}
+
 func (n noopChangeset) Configurations() (Configurations, error) {
 	return Configurations{
 		InputChainOverrides: n.chainOverrides,
@@ -45,6 +49,10 @@ func (r *recordingChangeset) Apply(_ fdeployment.Environment) (fdeployment.Chang
 	return r.output, r.err
 }
 
+func (r *recordingChangeset) applyWithInput(e fdeployment.Environment, _ string) (fdeployment.ChangesetOutput, error) {
+	return r.Apply(e)
+}
+
 func (*recordingChangeset) Configurations() (Configurations, error) {
 	return Configurations{}, nil
 }
@@ -59,6 +67,10 @@ func (*orderRecordingChangeset) noop() {}
 func (o *orderRecordingChangeset) Apply(_ fdeployment.Environment) (fdeployment.ChangesetOutput, error) {
 	o.order = append(o.order, "apply")
 	return fdeployment.ChangesetOutput{}, nil
+}
+
+func (o *orderRecordingChangeset) applyWithInput(e fdeployment.Environment, _ string) (fdeployment.ChangesetOutput, error) {
+	return o.Apply(e)
 }
 
 func (*orderRecordingChangeset) Configurations() (Configurations, error) {
@@ -146,6 +158,63 @@ func Test_Changesets_Apply(t *testing.T) {
 			}
 		})
 	}
+}
+
+//nolint:paralleltest // Uses process environment for fallback behavior assertions.
+func Test_Changesets_ApplyWithInput_WithEnvConfiguredChangeset(t *testing.T) {
+	type inputConfig struct {
+		Value int `json:"value"`
+	}
+
+	t.Setenv("DURABLE_PIPELINE_INPUT", `{"payload":{"value":999}}`)
+
+	var received int
+	cs := fdeployment.CreateChangeSet(
+		func(_ fdeployment.Environment, cfg inputConfig) (fdeployment.ChangesetOutput, error) {
+			received = cfg.Value
+			return fdeployment.ChangesetOutput{}, nil
+		},
+		func(_ fdeployment.Environment, _ inputConfig) error { return nil },
+	)
+
+	r := NewChangesetsRegistry()
+	r.Add("0001_test", Configure(cs).WithEnvInput())
+
+	_, err := r.ApplyWithInput("0001_test", fdeployment.Environment{}, `{"payload":{"value":1}}`)
+	require.NoError(t, err)
+	require.Equal(t, 1, received)
+}
+
+//nolint:paralleltest // Uses process environment for fallback behavior assertions.
+func Test_Changesets_ApplyWithInput_WithResolverConfiguredChangeset(t *testing.T) {
+	type resolverInput struct {
+		Base int `json:"base"`
+	}
+	type resolverOutput struct {
+		Value int `json:"value"`
+	}
+
+	t.Setenv("DURABLE_PIPELINE_INPUT", `{"payload":{"base":100}}`)
+
+	resolver := func(input resolverInput) (resolverOutput, error) {
+		return resolverOutput{Value: input.Base + 10}, nil
+	}
+
+	var received int
+	cs := fdeployment.CreateChangeSet(
+		func(_ fdeployment.Environment, cfg resolverOutput) (fdeployment.ChangesetOutput, error) {
+			received = cfg.Value
+			return fdeployment.ChangesetOutput{}, nil
+		},
+		func(_ fdeployment.Environment, _ resolverOutput) error { return nil },
+	)
+
+	r := NewChangesetsRegistry()
+	r.Add("0001_test", Configure(cs).WithConfigResolver(resolver))
+
+	_, err := r.ApplyWithInput("0001_test", fdeployment.Environment{}, `{"payload":{"base":7}}`)
+	require.NoError(t, err)
+	require.Equal(t, 17, received)
 }
 
 func Test_Changesets_Add(t *testing.T) {
