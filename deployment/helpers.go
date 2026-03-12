@@ -59,7 +59,7 @@ func parseErrorFromABI(errorString string, contractABI string) (string, error) {
 	return "", errors.New("error not found in ABI")
 }
 
-// formatUnpackedArgs formats an ABI-unpacked value, recursively decoding any
+// formatUnpackedArgs formats an ABI-unpacked value, recursively decode any
 // []byte fields that contain ABI-encoded errors (e.g. CallReverted(bytes)
 // wrapping Error(string)).
 func formatUnpackedArgs(unpackedValue interface{}, contractABI string) string {
