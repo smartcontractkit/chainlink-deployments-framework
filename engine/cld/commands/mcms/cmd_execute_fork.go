@@ -164,16 +164,14 @@ func executeFork(
 	anvilClient := rpc.New(url, nil)
 	chainID := cfg.forkedEnv.ChainConfigs[cfg.chainSelector].ChainID
 
-	// Check if this is a zkSync chain - standard Anvil doesn't support zkSync forking
-	isZkSync, err := isZkSyncChain(cfg.chainSelector)
-	if err != nil {
-		return fmt.Errorf("failed to check if chain is zkSync: %w", err)
-	}
-	if isZkSync {
-		lggr.Infof("Skipping fork execution: chain selector %d is zkSync (chain ID %s), which requires anvil-zksync instead of standard anvil",
+	// zkSync VM chains (zkSync Era, Lens, Cronos zkEVM, etc.) require anvil-zksync,
+	// not standard Anvil. Derive this from the loaded chain which is set by the chain
+	// provider, so it stays in sync with new zkSync chains automatically.
+	if evmChain, ok := cfg.blockchains.EVMChains()[cfg.chainSelector]; ok && evmChain.IsZkSyncVM {
+		lggr.Infof("Skipping fork execution: chain selector %d is zkSync VM (chain ID %s), which requires anvil-zksync instead of standard anvil",
 			cfg.chainSelector, chainID)
 
-		return nil // don't fail, just exit cleanly
+		return nil
 	}
 	mcmAddress := cfg.proposal.ChainMetadata[types.ChainSelector(cfg.chainSelector)].MCMAddress
 	timelockAddress := common.HexToAddress(cfg.timelockProposal.TimelockAddresses[types.ChainSelector(cfg.chainSelector)])
@@ -256,20 +254,6 @@ func executeFork(
 	lggr.Info("Timelock.execute() - success")
 
 	return nil
-}
-
-// isZkSyncChain checks if a chain selector corresponds to a zkSync chain.
-// zkSync chains use zkEVM/EraVM which requires anvil-zksync, not standard Anvil.
-// Returns (true, nil) for zkSync chains, (false, nil) for non-zkSync, or (false, err) on lookup failure.
-func isZkSyncChain(selector uint64) (bool, error) {
-	chainIDStr, err := chainsel.GetChainIDFromSelector(selector)
-	if err != nil {
-		return false, err
-	}
-
-	// zkSync Era mainnet = 324, zkSync Sepolia testnet = 300
-	// See: https://docs.zksync.io/zksync-network/environment
-	return chainIDStr == "324" || chainIDStr == "300", nil
 }
 
 // overrideForkChainDeployerKeyWithTestSigner sets the deployer key for the
