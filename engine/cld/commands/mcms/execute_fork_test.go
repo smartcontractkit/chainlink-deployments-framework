@@ -338,62 +338,70 @@ func TestExecuteFork_AddDecodedRevertReason(t *testing.T) {
 
 	tests := []struct {
 		name   string
-		setup  func(t *testing.T) (error, analyzer.ProposalContext)
+		setup  func(t *testing.T) (analyzer.ProposalContext, error)
 		assert func(t *testing.T, input error, result error)
 	}{
 		{
 			name: "nil error returns nil",
-			setup: func(t *testing.T) (error, analyzer.ProposalContext) {
-				return nil, nil
+			setup: func(_ *testing.T) (analyzer.ProposalContext, error) {
+				return nil, nil //nolint:nilnil // intentional: testing nil-input path
 			},
 			assert: func(t *testing.T, _ error, result error) {
+				t.Helper()
 				assert.NoError(t, result)
 			},
 		},
 		{
 			name: "nil proposalCtx returns original error",
-			setup: func(t *testing.T) (error, analyzer.ProposalContext) {
-				return errors.New("some error"), nil
+			setup: func(_ *testing.T) (analyzer.ProposalContext, error) {
+				return nil, errors.New("some error")
 			},
 			assert: func(t *testing.T, input error, result error) {
+				t.Helper()
 				assert.Equal(t, input, result)
 			},
 		},
 		{
 			name: "nil registry returns original error",
-			setup: func(t *testing.T) (error, analyzer.ProposalContext) {
+			setup: func(t *testing.T) (analyzer.ProposalContext, error) {
+				t.Helper()
 				mock := analyzer.NewMockProposalContext(t)
 				mock.EXPECT().GetEVMRegistry().Return(nil)
 
-				return errors.New("some error"), mock
+				return mock, errors.New("some error")
 			},
 			assert: func(t *testing.T, input error, result error) {
+				t.Helper()
 				assert.Equal(t, input, result)
 			},
 		},
 		{
 			name: "plain error without hex data returns original",
-			setup: func(t *testing.T) (error, analyzer.ProposalContext) {
+			setup: func(t *testing.T) (analyzer.ProposalContext, error) {
+				t.Helper()
 				mock := analyzer.NewMockProposalContext(t)
 				mock.EXPECT().GetEVMRegistry().Return(newRegistry(t))
 
-				return errors.New("plain error without any hex data"), mock
+				return mock, errors.New("plain error without any hex data")
 			},
 			assert: func(t *testing.T, input error, result error) {
+				t.Helper()
 				assert.Equal(t, input, result)
 			},
 		},
 		{
 			name: "strategy 1: decodes rpc.DataError from error chain",
-			setup: func(t *testing.T) (error, analyzer.ProposalContext) {
+			setup: func(t *testing.T) (analyzer.ProposalContext, error) {
+				t.Helper()
 				mock := analyzer.NewMockProposalContext(t)
 				mock.EXPECT().GetEVMRegistry().Return(newRegistry(t))
 				innerRevert := packErrorString(t, "access denied")
 				outerHex := packCallReverted(t, mcmABI, innerRevert)
 
-				return &mockDataError{msg: "execution reverted", data: "0x" + outerHex}, mock
+				return mock, &mockDataError{msg: "execution reverted", data: "0x" + outerHex}
 			},
 			assert: func(t *testing.T, input error, result error) {
+				t.Helper()
 				require.Error(t, result)
 				assert.Contains(t, result.Error(), "decoded:")
 				assert.Contains(t, result.Error(), "access denied")
@@ -402,15 +410,17 @@ func TestExecuteFork_AddDecodedRevertReason(t *testing.T) {
 		},
 		{
 			name: "strategy 2: decodes hex from error string after DecodeErr consumed DataError",
-			setup: func(t *testing.T) (error, analyzer.ProposalContext) {
+			setup: func(t *testing.T) (analyzer.ProposalContext, error) {
+				t.Helper()
 				mock := analyzer.NewMockProposalContext(t)
 				mock.EXPECT().GetEVMRegistry().Return(newRegistry(t))
 				innerRevert := packErrorString(t, "not authorized")
 				outerHex := packCallReverted(t, mcmABI, innerRevert)
 
-				return fmt.Errorf("error executing chain op 0: contract error: error -`CallReverted` args [0x%s]", outerHex), mock
+				return mock, fmt.Errorf("error executing chain op 0: contract error: error -`CallReverted` args [0x%s]", outerHex)
 			},
 			assert: func(t *testing.T, input error, result error) {
+				t.Helper()
 				require.Error(t, result)
 				assert.Contains(t, result.Error(), "decoded:")
 				assert.Contains(t, result.Error(), "not authorized")
@@ -422,7 +432,7 @@ func TestExecuteFork_AddDecodedRevertReason(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			input, pCtx := tc.setup(t)
+			pCtx, input := tc.setup(t)
 			result := addDecodedRevertReason(logger.Nop(), input, pCtx)
 			tc.assert(t, input, result)
 		})
@@ -462,7 +472,10 @@ func TestExecuteFork_TryDecodeHexFromErrorString(t *testing.T) {
 		{
 			name: "decodes Error(string) hex",
 			buildErrStr: func(t *testing.T) string {
+				t.Helper()
+
 				hexPayload := packErrorString(t, "test revert")
+
 				return fmt.Sprintf("some error with 0x%s embedded", hexPayload)
 			},
 			wantContains: []string{"test revert"},
@@ -470,6 +483,8 @@ func TestExecuteFork_TryDecodeHexFromErrorString(t *testing.T) {
 		{
 			name: "decodes CallReverted wrapping Error(string)",
 			buildErrStr: func(t *testing.T) string {
+				t.Helper()
+
 				innerRevert := packErrorString(t, "forbidden")
 				outerHex := packCallReverted(t, mcmABI, innerRevert)
 

@@ -181,6 +181,7 @@ func TestParseErrorFromABI_CallReverted(t *testing.T) {
 		{
 			name: "wrapping nested custom error",
 			buildHex: func(t *testing.T) string {
+				t.Helper()
 				parsedABI, err := abi.JSON(strings.NewReader(sampleABI))
 				require.NoError(t, err)
 				invalidConfigErr := parsedABI.Errors["InvalidConfig"]
@@ -196,6 +197,7 @@ func TestParseErrorFromABI_CallReverted(t *testing.T) {
 		{
 			name: "wrapping Panic(uint256)",
 			buildHex: func(t *testing.T) string {
+				t.Helper()
 				return "0x" + hex.EncodeToString(wrapInCallReverted(t, buildPanicPayload(t, 0x12)))
 			},
 			contractABI: callRevertedABI,
@@ -204,8 +206,10 @@ func TestParseErrorFromABI_CallReverted(t *testing.T) {
 		{
 			name: "wrapping unknown inner error",
 			buildHex: func(t *testing.T) string {
+				t.Helper()
 				unknownInner := make([]byte, 36)
 				copy(unknownInner[:4], []byte{0xde, 0xad, 0xbe, 0xef})
+
 				return "0x" + hex.EncodeToString(wrapInCallReverted(t, unknownInner))
 			},
 			contractABI:  callRevertedABI,
