@@ -3,18 +3,25 @@ package mcms
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
+	"errors"
+	"fmt"
 	"math/big"
+	"strings"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
+	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
@@ -315,4 +322,230 @@ func TestExecuteFork_OverrideForkChainDeployerKeyWithTestSigner(t *testing.T) {
 			tc.assert(t, cfg, prevTxOpts, err)
 		})
 	}
+}
+
+func TestExecuteFork_AddDecodedRevertReason(t *testing.T) {
+	t.Parallel()
+
+	mcmABI := `[{"inputs":[{"type":"bytes"}],"name":"CallReverted","type":"error"}]`
+	newRegistry := func(t *testing.T) *analyzer.MockEVMABIRegistry {
+		t.Helper()
+		r := analyzer.NewMockEVMABIRegistry(t)
+		r.EXPECT().GetAllABIs().Return(map[string]string{"MCM 1.0.0": mcmABI})
+
+		return r
+	}
+
+	tests := []struct {
+		name   string
+		setup  func(t *testing.T) (analyzer.ProposalContext, error)
+		assert func(t *testing.T, input error, result error)
+	}{
+		{
+			name: "nil error returns nil",
+			setup: func(_ *testing.T) (analyzer.ProposalContext, error) {
+				return nil, nil //nolint:nilnil // intentional: testing nil-input path
+			},
+			assert: func(t *testing.T, _ error, result error) {
+				t.Helper()
+				assert.NoError(t, result)
+			},
+		},
+		{
+			name: "nil proposalCtx returns original error",
+			setup: func(_ *testing.T) (analyzer.ProposalContext, error) {
+				return nil, errors.New("some error")
+			},
+			assert: func(t *testing.T, input error, result error) {
+				t.Helper()
+				assert.Equal(t, input, result)
+			},
+		},
+		{
+			name: "nil registry returns original error",
+			setup: func(t *testing.T) (analyzer.ProposalContext, error) {
+				t.Helper()
+				mock := analyzer.NewMockProposalContext(t)
+				mock.EXPECT().GetEVMRegistry().Return(nil)
+
+				return mock, errors.New("some error")
+			},
+			assert: func(t *testing.T, input error, result error) {
+				t.Helper()
+				assert.Equal(t, input, result)
+			},
+		},
+		{
+			name: "plain error without hex data returns original",
+			setup: func(t *testing.T) (analyzer.ProposalContext, error) {
+				t.Helper()
+				mock := analyzer.NewMockProposalContext(t)
+				mock.EXPECT().GetEVMRegistry().Return(newRegistry(t))
+
+				return mock, errors.New("plain error without any hex data")
+			},
+			assert: func(t *testing.T, input error, result error) {
+				t.Helper()
+				assert.Equal(t, input, result)
+			},
+		},
+		{
+			name: "strategy 1: decodes rpc.DataError from error chain",
+			setup: func(t *testing.T) (analyzer.ProposalContext, error) {
+				t.Helper()
+				mock := analyzer.NewMockProposalContext(t)
+				mock.EXPECT().GetEVMRegistry().Return(newRegistry(t))
+				innerRevert := packErrorString(t, "access denied")
+				outerHex := packCallReverted(t, mcmABI, innerRevert)
+
+				return mock, &mockDataError{msg: "execution reverted", data: "0x" + outerHex}
+			},
+			assert: func(t *testing.T, input error, result error) {
+				t.Helper()
+				require.Error(t, result)
+				assert.Contains(t, result.Error(), "decoded:")
+				assert.Contains(t, result.Error(), "access denied")
+				assert.ErrorIs(t, result, input)
+			},
+		},
+		{
+			name: "strategy 2: decodes hex from error string after DecodeErr consumed DataError",
+			setup: func(t *testing.T) (analyzer.ProposalContext, error) {
+				t.Helper()
+				mock := analyzer.NewMockProposalContext(t)
+				mock.EXPECT().GetEVMRegistry().Return(newRegistry(t))
+				innerRevert := packErrorString(t, "not authorized")
+				outerHex := packCallReverted(t, mcmABI, innerRevert)
+
+				return mock, fmt.Errorf("error executing chain op 0: contract error: error -`CallReverted` args [0x%s]", outerHex)
+			},
+			assert: func(t *testing.T, input error, result error) {
+				t.Helper()
+				require.Error(t, result)
+				assert.Contains(t, result.Error(), "decoded:")
+				assert.Contains(t, result.Error(), "not authorized")
+				assert.ErrorIs(t, result, input)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			pCtx, input := tc.setup(t)
+			result := addDecodedRevertReason(logger.Nop(), input, pCtx)
+			tc.assert(t, input, result)
+		})
+	}
+}
+
+func TestExecuteFork_TryDecodeHexFromErrorString(t *testing.T) {
+	t.Parallel()
+
+	mcmABI := `[{"inputs":[{"type":"bytes"}],"name":"CallReverted","type":"error"}]`
+	registry := analyzer.NewMockEVMABIRegistry(t)
+	registry.EXPECT().GetAllABIs().Return(map[string]string{"MCM 1.0.0": mcmABI})
+	dec, err := NewErrDecoder(registry)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name         string
+		buildErrStr  func(t *testing.T) string
+		wantEmpty    bool
+		wantContains []string
+	}{
+		{
+			name:        "no hex in string",
+			buildErrStr: func(*testing.T) string { return "just a plain error" },
+			wantEmpty:   true,
+		},
+		{
+			name:        "hex too short to be a selector",
+			buildErrStr: func(*testing.T) string { return "failed with 0xdead" },
+			wantEmpty:   true,
+		},
+		{
+			name:        "hex with unknown selector",
+			buildErrStr: func(*testing.T) string { return "error 0xdeadbeefcafebabe" },
+			wantEmpty:   true,
+		},
+		{
+			name: "decodes Error(string) hex",
+			buildErrStr: func(t *testing.T) string {
+				t.Helper()
+
+				hexPayload := packErrorString(t, "test revert")
+
+				return fmt.Sprintf("some error with 0x%s embedded", hexPayload)
+			},
+			wantContains: []string{"test revert"},
+		},
+		{
+			name: "decodes CallReverted wrapping Error(string)",
+			buildErrStr: func(t *testing.T) string {
+				t.Helper()
+
+				innerRevert := packErrorString(t, "forbidden")
+				outerHex := packCallReverted(t, mcmABI, innerRevert)
+
+				return fmt.Sprintf("contract error: error -`CallReverted` args [0x%s]", outerHex)
+			},
+			wantContains: []string{"CallReverted", "forbidden"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			result := tryDecodeHexFromErrorString(tc.buildErrStr(t), dec)
+			if tc.wantEmpty {
+				assert.Empty(t, result)
+			} else {
+				for _, want := range tc.wantContains {
+					assert.Contains(t, result, want)
+				}
+			}
+		})
+	}
+}
+
+// --- test helpers ---
+
+// mockDataError implements ethrpc.DataError for testing strategy 1.
+type mockDataError struct {
+	msg  string
+	data interface{}
+}
+
+func (e *mockDataError) Error() string          { return e.msg }
+func (e *mockDataError) ErrorData() interface{} { return e.data }
+
+// packErrorString ABI-encodes a standard Error(string) revert and returns
+// the raw hex (no 0x prefix).
+func packErrorString(t *testing.T, msg string) string {
+	t.Helper()
+	// Error(string) selector: 0x08c379a0
+	parsedABI, err := abi.JSON(strings.NewReader(`[{"inputs":[{"type":"string"}],"name":"Error","type":"error"}]`))
+	require.NoError(t, err)
+	errDef := parsedABI.Errors["Error"]
+	packed, err := errDef.Inputs.Pack(msg)
+	require.NoError(t, err)
+
+	return hex.EncodeToString(append(errDef.ID[:4], packed...))
+}
+
+// packCallReverted wraps innerHex (no 0x prefix) into a CallReverted(bytes)
+// payload and returns the full hex (no 0x prefix).
+func packCallReverted(t *testing.T, mcmABIJSON string, innerHex string) string {
+	t.Helper()
+	innerBytes, err := hex.DecodeString(innerHex)
+	require.NoError(t, err)
+
+	parsed, err := abi.JSON(strings.NewReader(mcmABIJSON))
+	require.NoError(t, err)
+	crErr := parsed.Errors["CallReverted"]
+	packed, err := crErr.Inputs.Pack(innerBytes)
+	require.NoError(t, err)
+
+	return hex.EncodeToString(append(crErr.ID[:4], packed...))
 }

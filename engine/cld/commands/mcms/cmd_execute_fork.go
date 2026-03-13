@@ -3,29 +3,37 @@ package mcms
 import (
 	"context"
 	"crypto/ecdsa"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"maps"
 	"math/big"
+	"regexp"
 	"time"
 
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	gethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/rpc"
 	"github.com/smartcontractkit/mcms"
 	"github.com/smartcontractkit/mcms/sdk"
+	"github.com/smartcontractkit/mcms/sdk/evm/bindings"
 	"github.com/smartcontractkit/mcms/types"
 	"github.com/spf13/cobra"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/flags"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/mcms/layout"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/text"
+	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
@@ -160,6 +168,16 @@ func executeFork(
 	url := cfg.forkedEnv.ChainConfigs[cfg.chainSelector].HTTPRPCs[0].External
 	anvilClient := rpc.New(url, nil)
 	chainID := cfg.forkedEnv.ChainConfigs[cfg.chainSelector].ChainID
+
+	// zkSync VM chains (zkSync Era, Lens, Cronos zkEVM, etc.) require anvil-zksync,
+	// not standard Anvil. Derive this from the loaded chain which is set by the chain
+	// provider, so it stays in sync with new zkSync chains automatically.
+	if evmChain, ok := cfg.blockchains.EVMChains()[cfg.chainSelector]; ok && evmChain.IsZkSyncVM {
+		lggr.Infof("Skipping fork execution: chain selector %d is zkSync VM (chain ID %s), which requires anvil-zksync instead of standard anvil",
+			cfg.chainSelector, chainID)
+
+		return nil
+	}
 	mcmAddress := cfg.proposal.ChainMetadata[types.ChainSelector(cfg.chainSelector)].MCMAddress
 	timelockAddress := common.HexToAddress(cfg.timelockProposal.TimelockAddresses[types.ChainSelector(cfg.chainSelector)])
 
@@ -199,18 +217,15 @@ func executeFork(
 	}
 	logTransactions(lggr, cfg)
 
-	// set root
-	// TODO: improve error decoding on the mcms lib for "set root".
 	err = setRootCommand(ctx, lggr, cfg)
 	if err != nil {
-		return fmt.Errorf("MCM.setRoot() - failure: %w", err)
+		return fmt.Errorf("MCM.setRoot() - failure: %w", addDecodedRevertReason(lggr, err, cfg.proposalCtx))
 	}
 	lggr.Info("MCM.setRoot() - success")
 
-	// TODO: improve error decoding on the mcms lib for "execute chain".
 	err = executeChainCommand(ctx, lggr, cfg, true)
 	if err != nil {
-		return fmt.Errorf("MCM.execute() - failure: %w", err)
+		return fmt.Errorf("MCM.execute() - failure: %w", addDecodedRevertReason(lggr, err, cfg.proposalCtx))
 	}
 	lggr.Info("MCM.execute() - success")
 
@@ -363,6 +378,71 @@ func overwriteProposalSignatureWithTestKey(ctx context.Context, cfg *forkConfig,
 	}
 
 	return nil
+}
+
+// hexPayloadPattern matches hex strings that are long enough to contain at
+// least a 4-byte selector (8+ hex chars). Used as a fallback when
+// rpc.DataError has already been consumed by DecodeErr.
+var hexPayloadPattern = regexp.MustCompile(`0x([0-9a-fA-F]{8,})`)
+
+// addDecodedRevertReason attempts to decode revert data from err using the
+// full domain ABI registry available in proposalCtx.
+func addDecodedRevertReason(lggr logger.Logger, err error, proposalCtx analyzer.ProposalContext) error {
+	if err == nil || proposalCtx == nil || proposalCtx.GetEVMRegistry() == nil {
+		return err
+	}
+
+	dec, decErr := NewErrDecoder(proposalCtx.GetEVMRegistry())
+	if decErr != nil {
+		lggr.Warnf("Failed to create ErrDecoder: %v", decErr)
+		return err
+	}
+
+	// Strategy 1: extract rpc.DataError from the error chain
+	var dataErr ethrpc.DataError
+	if errors.As(err, &dataErr) {
+		if hexData, ok := dataErr.ErrorData().(string); ok {
+			if decoded, ok := decodeRevertData(hexData, dec, bindings.ManyChainMultiSigABI); ok && decoded != "" {
+				lggr.Warnf("Decoded revert reason: %s", decoded)
+				return fmt.Errorf("%w (decoded: %s)", err, decoded)
+			}
+		}
+	}
+
+	// Strategy 2: parse hex payloads from the error string. This covers the
+	// case where DecodeErr already consumed the rpc.DataError, embedding the
+	// hex payload as text in the resulting error message.
+	if decoded := tryDecodeHexFromErrorString(err.Error(), dec); decoded != "" {
+		lggr.Warnf("Decoded revert reason from error string: %s", decoded)
+		return fmt.Errorf("%w (decoded: %s)", err, decoded)
+	}
+
+	return err
+}
+
+// tryDecodeHexFromErrorString scans errStr for hex payloads and attempts to
+// decode each one as a standard Error(string), Panic(uint256), or known custom error.
+// Returns "" when nothing can be meaningfully decoded.
+func tryDecodeHexFromErrorString(errStr string, dec *ErrDecoder) string {
+	matches := hexPayloadPattern.FindAllStringSubmatch(errStr, -1)
+	for _, match := range matches {
+		raw, err := hex.DecodeString(match[1])
+		if err != nil || len(raw) < 4 {
+			continue
+		}
+		if reason, uerr := abi.UnpackRevert(raw); uerr == nil {
+			if deployment.IsPanicRevert(raw) {
+				return fmt.Sprintf("Panic(%s)", reason)
+			}
+
+			return reason
+		}
+		if decoded, ok := dec.decodeRecursive(raw, bindings.ManyChainMultiSigABI); ok {
+			return decoded
+		}
+	}
+
+	return ""
 }
 
 // loggingRpcClient wraps an OnchainClient to log transactions before sending.
