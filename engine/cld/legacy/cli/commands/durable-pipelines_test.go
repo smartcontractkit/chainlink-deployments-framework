@@ -213,18 +213,6 @@ func TestNewDurablePipelineInputGenerateCmd(t *testing.T) {
 		mockInputContent  string
 	}{
 		{
-			name:              "object format",
-			formatDescription: "legacy object format",
-			inputsFileName:    "test-inputs-object.yaml",
-			mockInputContent: `environment: testnet
-domain: test
-changesets:
-  0001_test_changeset:
-    payload:
-      chain: optimism_sepolia
-      value: 100`,
-		},
-		{
 			name:              "array format",
 			formatDescription: "new array format",
 			inputsFileName:    "test-inputs-array.yaml",

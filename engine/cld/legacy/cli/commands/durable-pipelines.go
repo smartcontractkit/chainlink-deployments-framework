@@ -322,37 +322,11 @@ func (c Commands) newDurablePipelineInputGenerate(
 				}
 			}
 
-			// Resolve every changeset in the file
-			var orderedChangesets []map[string]any // For both formats to preserve order and duplicates
+			// Resolve every changeset in the file.
+			var orderedChangesets []map[string]any
 
-			// Handle both object and array formats for changesets
-			//nolint:exhaustive // Only handling MappingNode and SequenceNode cases for changesets
+			//nolint:exhaustive // SequenceNode is the only valid format for changesets
 			switch dpFile.Changesets.Kind {
-			case yaml.MappingNode:
-				// Object format: changesets: { key1: {payload: ...}, key2: {payload: ...} }
-				orderedChangesets = make([]map[string]any, 0, len(dpFile.Changesets.Content)/2)
-				// yaml.Node for a mapping has Content with alternating key-value pairs
-				for i := 0; i < len(dpFile.Changesets.Content); i += 2 {
-					keyNode := dpFile.Changesets.Content[i]
-					valueNode := dpFile.Changesets.Content[i+1]
-
-					csName := keyNode.Value
-					resolver, ok := resolverByKey[csName]
-					if !ok {
-						resolver = nil // No resolver registered for this changeset
-					}
-
-					resolvedCfg, err2 := resolveChangesetConfig(valueNode, csName, resolver)
-					if err2 != nil {
-						return err2
-					}
-
-					// For object format, store each changeset as a separate item (same as array format)
-					changesetItem := map[string]any{
-						csName: map[string]any{"payload": resolvedCfg},
-					}
-					orderedChangesets = append(orderedChangesets, changesetItem)
-				}
 			case yaml.SequenceNode:
 				// Array format: changesets: [ { key1: {payload: ...} }, { key2: {payload: ...} } ]
 				orderedChangesets = make([]map[string]any, 0, len(dpFile.Changesets.Content))
@@ -383,73 +357,38 @@ func (c Commands) newDurablePipelineInputGenerate(
 					orderedChangesets = append(orderedChangesets, changesetItem)
 				}
 			default:
-				return fmt.Errorf("changesets must be either an object (mapping) or an array (sequence), got %v", dpFile.Changesets.Kind)
+				return fmt.Errorf("changesets must be an array (sequence), got %v", dpFile.Changesets.Kind)
 			}
 
-			// Build ordered output structure using yaml.Node to preserve order and original format
-			var changesetsNode *yaml.Node
+			changesetsNode := &yaml.Node{
+				Kind: yaml.SequenceNode,
+			}
 
-			if dpFile.Changesets.Kind == yaml.MappingNode {
-				// Object format: preserve as object
-				changesetsNode = &yaml.Node{
+			for _, changesetItem := range orderedChangesets {
+				// Create a mapping node for each changeset item.
+				itemNode := &yaml.Node{
 					Kind: yaml.MappingNode,
 				}
 
-				for _, changesetItem := range orderedChangesets {
-					// Each changesetItem has one key-value pair
-					for csName, csConfig := range changesetItem {
-						// Add key node
-						keyNode := &yaml.Node{
-							Kind:  yaml.ScalarNode,
-							Value: csName,
-						}
-						changesetsNode.Content = append(changesetsNode.Content, keyNode)
-
-						// Add value node
-						valueNode := &yaml.Node{}
-						err = valueNode.Encode(csConfig)
-						if err != nil {
-							return fmt.Errorf("encode changeset value for %s: %w", csName, err)
-						}
-						changesetsNode.Content = append(changesetsNode.Content, valueNode)
-
-						break // Only one key-value pair per item
+				// Each changesetItem has one key-value pair.
+				for csName, csConfig := range changesetItem {
+					keyNode := &yaml.Node{
+						Kind:  yaml.ScalarNode,
+						Value: csName,
 					}
-				}
-			} else {
-				// Array format: preserve as array
-				changesetsNode = &yaml.Node{
-					Kind: yaml.SequenceNode,
+					itemNode.Content = append(itemNode.Content, keyNode)
+
+					valueNode := &yaml.Node{}
+					err = valueNode.Encode(csConfig)
+					if err != nil {
+						return fmt.Errorf("encode changeset value for %s: %w", csName, err)
+					}
+					itemNode.Content = append(itemNode.Content, valueNode)
+
+					break // Only one key-value pair per item.
 				}
 
-				for _, changesetItem := range orderedChangesets {
-					// Create a mapping node for each changeset item
-					itemNode := &yaml.Node{
-						Kind: yaml.MappingNode,
-					}
-
-					// Each changesetItem has one key-value pair
-					for csName, csConfig := range changesetItem {
-						// Add key node
-						keyNode := &yaml.Node{
-							Kind:  yaml.ScalarNode,
-							Value: csName,
-						}
-						itemNode.Content = append(itemNode.Content, keyNode)
-
-						// Add value node
-						valueNode := &yaml.Node{}
-						err = valueNode.Encode(csConfig)
-						if err != nil {
-							return fmt.Errorf("encode changeset value for %s: %w", csName, err)
-						}
-						itemNode.Content = append(itemNode.Content, valueNode)
-
-						break // Only one key-value pair per item
-					}
-
-					changesetsNode.Content = append(changesetsNode.Content, itemNode)
-				}
+				changesetsNode.Content = append(changesetsNode.Content, itemNode)
 			}
 
 			// Create the final output structure
