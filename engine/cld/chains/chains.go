@@ -148,10 +148,20 @@ func LoadChains(
 		loadedChains = append(loadedChains, result.chain)
 	}
 
-	// If any chains failed to load, return an error
+	// If all chains failed, that's a hard error
+	if len(failedChains) > 0 && len(loadedChains) == 0 {
+		return fchain.BlockChains{}, fmt.Errorf("all %d chains failed to load: %v",
+			len(validSelectors), failedChains)
+	}
+
+	// Some chains failed but others succeeded -- warn and continue with what we have
 	if len(failedChains) > 0 {
-		return fchain.BlockChains{}, fmt.Errorf("failed to load %d out of %d chains: %v",
-			len(failedChains), len(validSelectors), failedChains)
+		lggr.Warnw("Some chains failed to load, continuing with available chains",
+			"failed", len(failedChains),
+			"total", len(validSelectors),
+			"successful", len(loadedChains),
+			"errors", failedChains,
+		)
 	}
 
 	lggr.Infow("Successfully loaded all chains",
@@ -516,12 +526,13 @@ func (l *chainLoaderEVM) Load(ctx context.Context, selector uint64) (fchain.Bloc
 	clientOpts := []func(client *evmclient.MultiClient){
 		func(client *evmclient.MultiClient) {
 			client.RetryConfig = evmclient.RetryConfig{
-				Attempts:     5,                     // assuming failure rate is 20%, this will take 5 attempts to succeed
-				Delay:        10 * time.Millisecond, // this is a very short delay, we want to be fast in this case
-				Timeout:      5 * time.Second,
-				DialAttempts: 5,
-				DialDelay:    10 * time.Millisecond,
-				DialTimeout:  2 * time.Second,
+				Attempts:           5,                      // assuming failure rate is 20%, this will take 5 attempts to succeed
+				Delay:              10 * time.Millisecond,  // this is a very short delay, we want to be fast in this case
+				Timeout:            5 * time.Second,
+				DialAttempts:       5,
+				DialDelay:          10 * time.Millisecond,
+				DialTimeout:        2 * time.Second,
+				HealthCheckTimeout: 15 * time.Second, // high concurrency needs more headroom than the 2s default
 			}
 		},
 	}
