@@ -3,6 +3,7 @@ package mcms
 import (
 	"context"
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 
 	chainsel "github.com/smartcontractkit/chain-selectors"
@@ -99,6 +100,15 @@ func LoadProposalConfig(
 				converter = solana.TimelockConverter{}
 			case chainsel.FamilyAptos:
 				converter = aptos.NewTimelockConverter()
+				if md := timelockCastedProposal.ChainMetadata[chain]; len(md.AdditionalFields) > 0 {
+					var af aptos.AdditionalFieldsMetadata
+					if aptosErr := json.Unmarshal(md.AdditionalFields, &af); aptosErr != nil {
+						return nil, fmt.Errorf("failed to unmarshal Aptos chain metadata: %w", aptosErr)
+					}
+					if af.MCMSType.IsCurseMCMS() {
+						converter = aptos.NewCurseTimelockConverter()
+					}
+				}
 			case chainsel.FamilySui:
 				var suiErr error
 				converter, suiErr = sui.NewTimelockConverter()
