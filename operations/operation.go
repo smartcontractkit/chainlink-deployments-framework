@@ -1,6 +1,7 @@
 package operations
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -146,7 +147,9 @@ func (o *Operation[IN, OUT, DEP]) AsUntypedRelaxed() *Operation[any, any, any] {
 					if err != nil {
 						return nil, errors.New("input type mismatch: failed to marshal input for conversion")
 					}
-					if err := json.Unmarshal(inputBytes, &typedInput); err != nil {
+					dec := json.NewDecoder(bytes.NewReader(inputBytes))
+					dec.UseNumber()
+					if err := dec.Decode(&typedInput); err != nil {
 						return nil, errors.New("input type mismatch: failed to convert input to expected type")
 					}
 				}

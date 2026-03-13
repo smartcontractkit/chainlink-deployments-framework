@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 
 	"gopkg.in/yaml.v3"
 
@@ -126,9 +127,9 @@ func Generate(opts GenerateOptions) (string, error) {
 				keyNode := &yaml.Node{Kind: yaml.ScalarNode, Value: csName}
 				changesetsNode.Content = append(changesetsNode.Content, keyNode)
 
-				valueNode := &yaml.Node{}
-				if encodeErr := valueNode.Encode(csConfig); encodeErr != nil {
-					return "", fmt.Errorf("encode changeset value for %s: %w", csName, encodeErr)
+				valueNode, nodeErr := anyToYAMLNode(csConfig)
+				if nodeErr != nil {
+					return "", fmt.Errorf("encode changeset value for %s: %w", csName, nodeErr)
 				}
 				changesetsNode.Content = append(changesetsNode.Content, valueNode)
 
@@ -143,9 +144,9 @@ func Generate(opts GenerateOptions) (string, error) {
 				keyNode := &yaml.Node{Kind: yaml.ScalarNode, Value: csName}
 				itemNode.Content = append(itemNode.Content, keyNode)
 
-				valueNode := &yaml.Node{}
-				if encodeErr := valueNode.Encode(csConfig); encodeErr != nil {
-					return "", fmt.Errorf("encode changeset value for %s: %w", csName, encodeErr)
+				valueNode, nodeErr := anyToYAMLNode(csConfig)
+				if nodeErr != nil {
+					return "", fmt.Errorf("encode changeset value for %s: %w", csName, nodeErr)
 				}
 				itemNode.Content = append(itemNode.Content, valueNode)
 
@@ -190,4 +191,65 @@ func Generate(opts GenerateOptions) (string, error) {
 	}
 
 	return output, nil
+}
+
+// anyToYAMLNode converts dynamic resolver output into a YAML node tree while
+// preserving numeric semantics for json.Number values.
+//
+// yaml.v3 treats json.Number as a string-like value by default and emits quoted
+// scalars (e.g. "1"), which changes number fields into strings in generated
+// inputs. We map json.Number to scalar nodes with numeric tags so values remain
+// numbers in YAML/JSON output.
+func anyToYAMLNode(v any) (*yaml.Node, error) {
+	switch typed := v.(type) {
+	case map[string]any:
+		node := &yaml.Node{Kind: yaml.MappingNode}
+		keys := make([]string, 0, len(typed))
+		for k := range typed {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			valueNode, err := anyToYAMLNode(typed[k])
+			if err != nil {
+				return nil, err
+			}
+			node.Content = append(node.Content,
+				&yaml.Node{Kind: yaml.ScalarNode, Value: k},
+				valueNode,
+			)
+		}
+
+		return node, nil
+	case []any:
+		node := &yaml.Node{Kind: yaml.SequenceNode}
+		for _, elem := range typed {
+			elemNode, err := anyToYAMLNode(elem)
+			if err != nil {
+				return nil, err
+			}
+			node.Content = append(node.Content, elemNode)
+		}
+
+		return node, nil
+	case json.Number:
+		value := typed.String()
+		tag := "!!float"
+		if decimalInteger.MatchString(value) {
+			tag = "!!int"
+		}
+
+		return &yaml.Node{
+			Kind:  yaml.ScalarNode,
+			Tag:   tag,
+			Value: value,
+		}, nil
+	default:
+		node := &yaml.Node{}
+		if err := node.Encode(v); err != nil {
+			return nil, err
+		}
+
+		return node, nil
+	}
 }

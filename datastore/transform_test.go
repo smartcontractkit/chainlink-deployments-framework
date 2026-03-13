@@ -1,6 +1,7 @@
 package datastore
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -22,4 +23,22 @@ func TestAs(t *testing.T) {
 	typed, err := As[testMetadata](a)
 	require.NoError(t, err)
 	require.Equal(t, orig, typed)
+}
+
+func TestAs_UseNumberForAnyField(t *testing.T) {
+	t.Parallel()
+
+	type testWithAny struct {
+		Value any `json:"value"`
+	}
+
+	const expected = "16015286601757825753"
+	src := map[string]any{"value": json.Number(expected)}
+
+	typed, err := As[testWithAny](src)
+	require.NoError(t, err)
+
+	n, ok := typed.Value.(json.Number)
+	require.True(t, ok, "Value should decode as json.Number")
+	require.Equal(t, expected, n.String())
 }

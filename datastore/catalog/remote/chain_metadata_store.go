@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 
 	"google.golang.org/grpc/codes"
@@ -74,7 +75,9 @@ func (s *catalogChainMetadataStore) keyToFilter(key datastore.ChainMetadataKey) 
 func (s *catalogChainMetadataStore) protoToChainMetadata(protoRecord *pb.ChainMetadata) (datastore.ChainMetadata, error) {
 	var metadata any
 	if protoRecord.Metadata != "" {
-		if err := json.Unmarshal([]byte(protoRecord.Metadata), &metadata); err != nil {
+		dec := json.NewDecoder(strings.NewReader(protoRecord.Metadata))
+		dec.UseNumber()
+		if err := dec.Decode(&metadata); err != nil {
 			return datastore.ChainMetadata{}, fmt.Errorf("failed to unmarshal metadata JSON: %w", err)
 		}
 	}
