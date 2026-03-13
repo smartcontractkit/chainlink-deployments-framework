@@ -1,5 +1,13 @@
 # chainlink-deployments-framework
 
+## 0.86.3
+
+### Patch Changes
+
+- [#850](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/850) [`71cae14`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/71cae14da078d48c7e84505bb371460319facd37) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - chore: replace converters builder with chainwrappers helper in mcms cmds
+
+- [#848](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/848) [`6938f6d`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/6938f6d308d219265d80997ef93d532f81f5a180) Thanks [@ecPablo](https://github.com/ecPablo)! - fix error decoding and skip zksync chains
+
 ## 0.86.2
 
 ### Patch Changes
