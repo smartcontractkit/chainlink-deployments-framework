@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -168,29 +169,36 @@ func (d EnvDir) loadDataStore() (fdatastore.MutableDataStore, error) {
 	var ds = fdatastore.NewMemoryDataStore()
 
 	if len(refs) > 0 {
-		if err = json.Unmarshal(refs, &ds.AddressRefStore.Records); err != nil {
+		if err = decodeJSONUseNumber(refs, &ds.AddressRefStore.Records); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal address refs JSON: %w", err)
 		}
 	}
 
 	if len(chainMeta) > 0 {
-		if err = json.Unmarshal(chainMeta, &ds.ChainMetadataStore.Records); err != nil {
+		if err = decodeJSONUseNumber(chainMeta, &ds.ChainMetadataStore.Records); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal chain metadata JSON: %w", err)
 		}
 	}
 	if len(ctrMeta) > 0 {
-		if err = json.Unmarshal(ctrMeta, &ds.ContractMetadataStore.Records); err != nil {
+		if err = decodeJSONUseNumber(ctrMeta, &ds.ContractMetadataStore.Records); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal contract metadata JSON: %w", err)
 		}
 	}
 
 	if len(envMeta) > 0 {
-		if err = json.Unmarshal(envMeta, &ds.EnvMetadataStore.Record); err != nil {
+		if err = decodeJSONUseNumber(envMeta, &ds.EnvMetadataStore.Record); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal env metadata JSON: %w", err)
 		}
 	}
 
 	return ds, nil
+}
+
+func decodeJSONUseNumber(data []byte, target any) error {
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.UseNumber()
+
+	return dec.Decode(target)
 }
 
 // ArtifactsDir returns the artifacts for the domain's environment directory.

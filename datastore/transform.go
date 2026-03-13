@@ -1,6 +1,7 @@
 package datastore
 
 import (
+	"bytes"
 	"encoding/json"
 )
 
@@ -20,13 +21,15 @@ import (
 //	}
 func As[T any](src any) (T, error) {
 	var zero T
-	bytes, err := json.Marshal(src)
+	payload, err := json.Marshal(src)
 	if err != nil {
 		return zero, err
 	}
 
 	var dst T
-	err = json.Unmarshal(bytes, &dst)
+	dec := json.NewDecoder(bytes.NewReader(payload))
+	dec.UseNumber()
+	err = dec.Decode(&dst)
 
 	return dst, err
 }

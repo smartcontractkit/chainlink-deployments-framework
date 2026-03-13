@@ -185,7 +185,7 @@ func TestNewRunState_ConvertsAdditionalFieldsFromDecodedCall(t *testing.T) {
 	state := newTestRunState(decoded)
 
 	require.Equal(t, map[string]any{
-		"gas":    float64(12345),
+		"gas":    json.Number("12345"),
 		"strict": true,
 		"label":  "router-update",
 	}, state.callAt(0, 0).AdditionalFields())

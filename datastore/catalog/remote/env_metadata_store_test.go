@@ -439,3 +439,23 @@ func TestCatalogEnvMetadataStore_ConversionHelpers(t *testing.T) {
 		})
 	}
 }
+
+func TestCatalogEnvMetadataStore_ProtoToEnvMetadata_PreservesLargeInteger(t *testing.T) {
+	t.Parallel()
+
+	store := setupTestEnvStore(t, generateRandomDomain(), "catalog_testing")
+	record := &pb.EnvironmentMetadata{
+		Domain:      "test-domain",
+		Environment: "catalog_testing",
+		Metadata:    `{"chainSelector":16015286601757825753}`,
+		RowVersion:  1,
+	}
+
+	got, err := store.protoToEnvMetadata(record)
+	require.NoError(t, err)
+
+	metadataMap := got.Metadata.(map[string]any)
+	n, ok := metadataMap["chainSelector"].(json.Number)
+	require.True(t, ok, "chainSelector should decode as json.Number")
+	require.Equal(t, "16015286601757825753", n.String())
+}

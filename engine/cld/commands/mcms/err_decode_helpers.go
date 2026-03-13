@@ -312,7 +312,9 @@ func decodeRevertDataFromBytes(data []byte, dec *ErrDecoder, preferredABIJSON st
 // ReadExecutionErrorFromFile reads and parses an execution error from a JSON file.
 func ReadExecutionErrorFromFile(data []byte) (*evm.ExecutionError, error) {
 	var jsonData map[string]any
-	if err := json.Unmarshal(data, &jsonData); err != nil {
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.UseNumber()
+	if err := dec.Decode(&jsonData); err != nil {
 		return nil, fmt.Errorf("error unmarshaling JSON: %w", err)
 	}
 

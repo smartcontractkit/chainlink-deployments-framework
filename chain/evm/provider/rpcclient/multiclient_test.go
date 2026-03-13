@@ -172,7 +172,7 @@ func TestMultiClient_dialWithRetry(t *testing.T) {
 			}, lggr)
 
 			require.Error(t, err)
-			require.Contains(t, err.Error(), tt.wantErr)
+			require.ErrorContains(t, err, tt.wantErr)
 		})
 	}
 }
@@ -245,7 +245,7 @@ func TestMultiClient_retryWithBackups(t *testing.T) {
 			)
 
 			require.Error(t, err)
-			require.Contains(t, err.Error(), tt.wantErr)
+			require.ErrorContains(t, err, tt.wantErr)
 		})
 	}
 }

@@ -1,6 +1,7 @@
 package input
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -34,7 +35,9 @@ payload:
 				m, ok := got.(map[string]any)
 				require.True(t, ok)
 				require.Equal(t, "bar", m["foo"])
-				require.EqualValues(t, 42, m["num"])
+				num, ok := m["num"].(json.Number)
+				require.True(t, ok)
+				require.Equal(t, "42", num.String())
 			},
 		},
 		{
@@ -56,11 +59,43 @@ payload:
 			},
 		},
 		{
+			name: "with resolver preserves large integer as json number",
+			yamlContent: `
+payload:
+  maxfeejuelspermsg: 200000000000000000111
+`,
+			csName: "my_cs",
+			resolver: func(m map[string]any) (any, error) {
+				maxFee, ok := m["maxfeejuelspermsg"].(json.Number)
+				require.True(t, ok)
+				require.Equal(t, "200000000000000000111", maxFee.String())
+
+				return map[string]any{"resolved": true}, nil
+			},
+			checkGot: func(t *testing.T, got any) {
+				t.Helper()
+				m, ok := got.(map[string]any)
+				require.True(t, ok)
+				require.Equal(t, true, m["resolved"])
+			},
+		},
+		{
+			name: "missing payload returns explicit error",
+			yamlContent: `
+not_payload:
+  value: 1
+`,
+			csName:   "my_cs",
+			resolver: nil,
+			wantErr:  "decode changeset data for my_cs: missing required 'payload' field",
+			checkGot: nil,
+		},
+		{
 			name:        "invalid yaml returns decode error",
 			yamlContent: "",
 			csName:      "my_cs",
 			resolver:    nil,
-			wantErr:     "decode changeset data for my_cs: yaml: unmarshal errors:\n  line 0: cannot unmarshal !!str `not-a-map` into struct { Payload interface {} \"yaml:\\\"payload\\\"\" }",
+			wantErr:     "decode changeset data for my_cs: expected mapping node",
 			checkGot:    nil,
 		},
 	}
@@ -82,7 +117,7 @@ payload:
 
 			if tt.wantErr != "" {
 				require.Error(t, err)
-				require.Equal(t, tt.wantErr, err.Error())
+				require.ErrorContains(t, err, tt.wantErr)
 
 				return
 			}

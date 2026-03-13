@@ -1,13 +1,13 @@
 package resolvers
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
 	"runtime"
 	"sort"
-	"strings"
 	"sync"
 )
 
@@ -141,7 +141,8 @@ func CallResolver[C any](resolver ConfigResolver, payload json.RawMessage) (C, e
 		// If the function expects a pointer, create the underlying type and get a pointer to it
 		elemType := inType.Elem()
 		elemPtr := reflect.New(elemType)
-		decoder := json.NewDecoder(strings.NewReader(string(payload)))
+		decoder := json.NewDecoder(bytes.NewReader(payload))
+		decoder.UseNumber()
 		decoder.DisallowUnknownFields()
 		if err := decoder.Decode(elemPtr.Interface()); err != nil {
 			return zero, fmt.Errorf("unmarshal payload into %v: %w", inType, err)
@@ -150,7 +151,8 @@ func CallResolver[C any](resolver ConfigResolver, payload json.RawMessage) (C, e
 	} else {
 		// If the function expects a value, create a pointer, unmarshal, then get the value
 		inPtr := reflect.New(inType)
-		decoder := json.NewDecoder(strings.NewReader(string(payload)))
+		decoder := json.NewDecoder(bytes.NewReader(payload))
+		decoder.UseNumber()
 		decoder.DisallowUnknownFields()
 		if err := decoder.Decode(inPtr.Interface()); err != nil {
 			return zero, fmt.Errorf("unmarshal payload into %v: %w", inType, err)

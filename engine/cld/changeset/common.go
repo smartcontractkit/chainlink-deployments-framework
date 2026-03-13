@@ -110,6 +110,7 @@ func (f WrappedChangeSet[C]) WithJSON(_ C, inputStr string) ConfiguredChangeSet 
 		}
 
 		payloadDecoder := json.NewDecoder(strings.NewReader(string(inputObject.Payload)))
+		payloadDecoder.UseNumber()
 		payloadDecoder.DisallowUnknownFields()
 		if err := payloadDecoder.Decode(&config); err != nil {
 			return config, fmt.Errorf("failed to unmarshal payload: %w", err)
@@ -170,6 +171,7 @@ func (f WrappedChangeSet[C]) WithEnvInput(opts ...EnvInputOption[C]) ConfiguredC
 		}
 
 		payloadDecoder := json.NewDecoder(strings.NewReader(string(inputObject.Payload)))
+		payloadDecoder.UseNumber()
 		payloadDecoder.DisallowUnknownFields()
 		if err := payloadDecoder.Decode(&config); err != nil {
 			return config, fmt.Errorf("failed to unmarshal payload: %w", err)

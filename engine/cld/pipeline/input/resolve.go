@@ -13,16 +13,18 @@ import (
 // ResolveChangesetConfig resolves the configuration for a changeset using either
 // a registered resolver or keeping the original payload.
 func ResolveChangesetConfig(valueNode *yaml.Node, csName string, resolver resolvers.ConfigResolver) (any, error) {
-	var changesetData struct {
-		Payload any `yaml:"payload"`
+	changesetMap, ok := YamlNodeToAny(valueNode).(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("decode changeset data for %s: expected mapping node", csName)
 	}
-
-	if err := valueNode.Decode(&changesetData); err != nil {
-		return nil, fmt.Errorf("decode changeset data for %s: %w", csName, err)
+	// Parse payload directly from yaml.Node conversion to preserve integer literals as json.Number.
+	payload, payloadExists := changesetMap["payload"]
+	if !payloadExists {
+		return nil, fmt.Errorf("decode changeset data for %s: missing required 'payload' field", csName)
 	}
 
 	if resolver != nil {
-		jsonSafePayload, err := convmap.Convert(changesetData.Payload, nil)
+		jsonSafePayload, err := convmap.Convert(payload, nil)
 		if err != nil {
 			return nil, fmt.Errorf("convert payload for %s: %w", csName, err)
 		}
@@ -39,5 +41,5 @@ func ResolveChangesetConfig(valueNode *yaml.Node, csName string, resolver resolv
 		return resolvedCfg, nil
 	}
 
-	return changesetData.Payload, nil
+	return payload, nil
 }
