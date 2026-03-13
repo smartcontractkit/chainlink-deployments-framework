@@ -86,7 +86,7 @@ func LoadProposalConfig(
 
 		// Construct converters for each chain
 		converters := make(map[types.ChainSelector]sdk.TimelockConverter)
-		for chain := range timelockCastedProposal.ChainMetadata {
+		for chain, md := range timelockCastedProposal.ChainMetadata {
 			fam, famErr := types.GetChainSelectorFamily(chain)
 			if famErr != nil {
 				return nil, fmt.Errorf("error getting chain family: %w", famErr)
@@ -100,7 +100,7 @@ func LoadProposalConfig(
 				converter = solana.TimelockConverter{}
 			case chainsel.FamilyAptos:
 				converter = aptos.NewTimelockConverter()
-				if md := timelockCastedProposal.ChainMetadata[chain]; len(md.AdditionalFields) > 0 {
+				if len(md.AdditionalFields) > 0 {
 					var af aptos.AdditionalFieldsMetadata
 					if aptosErr := json.Unmarshal(md.AdditionalFields, &af); aptosErr != nil {
 						return nil, fmt.Errorf("failed to unmarshal Aptos chain metadata: %w", aptosErr)
