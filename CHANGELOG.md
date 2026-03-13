@@ -1,5 +1,13 @@
 # chainlink-deployments-framework
 
+## 0.86.2
+
+### Patch Changes
+
+- [#851](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/851) [`98b91fb`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/98b91fbe957be50515d373f9ed60d1e57e784237) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix: preserve json number accuracy on marshal and unmarshal
+
+- [#847](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/847) [`fa1639e`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/fa1639e74a340818933a3d3e292d5532c363e6c5) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - chore: use mcms chainwrappers helpers
+
 ## 0.86.1
 
 ### Patch Changes
