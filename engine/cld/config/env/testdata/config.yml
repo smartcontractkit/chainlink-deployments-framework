@@ -25,7 +25,11 @@ onchain:
   stellar:
     deployer_key: "0x567"
   canton:
+    auth_type: ""
     jwt_token: ""
+    auth_url: ""
+    client_id: ""
+    client_secret: ""
 offchain:
   job_distributor:
     endpoints:
