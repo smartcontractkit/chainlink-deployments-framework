@@ -60,6 +60,8 @@ type Environment struct {
 	OperationsBundle operations.Bundle
 	// BlockChains is the container of all chains in the environment.
 	BlockChains chain.BlockChains
+	// DomainConfigGetter is used to read domain-backed configuration values.
+	DomainConfigGetter DomainConfigGetter
 }
 
 // EnvironmentOption is a functional option for configuring an Environment
@@ -88,8 +90,9 @@ func NewEnvironment(
 		GetContext:        ctx,
 		OCRSecrets:        secrets,
 		// default to memory reporter as that is the only reporter available for now
-		OperationsBundle: operations.NewBundle(ctx, logger, operations.NewMemoryReporter()),
-		BlockChains:      blockChains,
+		OperationsBundle:   operations.NewBundle(ctx, logger, operations.NewMemoryReporter()),
+		BlockChains:        blockChains,
+		DomainConfigGetter: envVarDomainConfigGetter{},
 	}
 
 	// Apply functional options
@@ -115,16 +118,17 @@ func (e Environment) Clone() Environment {
 	}
 
 	return Environment{
-		Name:              e.Name,
-		Logger:            e.Logger,
-		ExistingAddresses: ab,
-		DataStore:         ds.Seal(),
-		NodeIDs:           e.NodeIDs,
-		Offchain:          e.Offchain,
-		GetContext:        e.GetContext,
-		OCRSecrets:        e.OCRSecrets,
-		OperationsBundle:  e.OperationsBundle,
-		BlockChains:       e.BlockChains,
+		Name:               e.Name,
+		Logger:             e.Logger,
+		ExistingAddresses:  ab,
+		DataStore:          ds.Seal(),
+		NodeIDs:            e.NodeIDs,
+		Offchain:           e.Offchain,
+		GetContext:         e.GetContext,
+		OCRSecrets:         e.OCRSecrets,
+		OperationsBundle:   e.OperationsBundle,
+		BlockChains:        e.BlockChains,
+		DomainConfigGetter: e.DomainConfigGetter,
 	}
 }
 
