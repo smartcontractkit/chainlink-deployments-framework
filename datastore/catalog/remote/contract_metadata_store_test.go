@@ -2,6 +2,7 @@ package remote
 
 import (
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"os"
@@ -787,6 +788,28 @@ func TestCatalogContractMetadataStore_ConversionHelpers(t *testing.T) {
 			tt.test(t, store)
 		})
 	}
+}
+
+func TestCatalogContractMetadataStore_ProtoToContractMetadata_PreservesLargeInteger(t *testing.T) {
+	t.Parallel()
+
+	store := setupTestContractStore(t, "test-domain", "catalog_testing")
+	record := &pb.ContractMetadata{
+		Domain:        "test-domain",
+		Environment:   "catalog_testing",
+		ChainSelector: 12345,
+		Address:       "0x1234567890abcdef1234567890abcdef12345678",
+		Metadata:      `{"chainSelector":16015286601757825753}`,
+		RowVersion:    1,
+	}
+
+	got, err := store.protoToContractMetadata(record)
+	require.NoError(t, err)
+
+	metadataMap := got.Metadata.(map[string]any)
+	n, ok := metadataMap["chainSelector"].(json.Number)
+	require.True(t, ok, "chainSelector should decode as json.Number")
+	require.Equal(t, "16015286601757825753", n.String())
 }
 
 // Test updater functions that demonstrate different patterns for MetadataUpdaterF

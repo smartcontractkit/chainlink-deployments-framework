@@ -1,6 +1,7 @@
 package jsonutils
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -103,4 +104,19 @@ func Test_LoadJSON(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_LoadJSON_UseNumberForUntypedValues(t *testing.T) {
+	t.Parallel()
+
+	fsys := fstest.MapFS{
+		"numbers.json": {Data: []byte(`{"value":16015286601757825753}`)},
+	}
+
+	got, err := LoadFromFS[map[string]any](fsys, "numbers.json")
+	require.NoError(t, err)
+
+	n, ok := got["value"].(json.Number)
+	require.True(t, ok, "value should decode as json.Number")
+	require.Equal(t, "16015286601757825753", n.String())
 }

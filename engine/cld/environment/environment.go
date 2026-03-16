@@ -48,7 +48,11 @@ func Load(
 
 	var ds fdatastore.DataStore
 
-	if cfg.DatastoreType == cfgdomain.DatastoreTypeCatalog || cfg.DatastoreType == cfgdomain.DatastoreTypeAll {
+	effectiveDatastoreType := cfg.DatastoreType
+	if loadcfg.datastoreType != nil {
+		effectiveDatastoreType = *loadcfg.datastoreType
+	}
+	if useCatalog(effectiveDatastoreType) {
 		if cfg.Env.Catalog.GRPC != "" {
 			lggr.Infow("Fetching data from Catalog", "url", cfg.Env.Catalog.GRPC)
 			catalogStore, catalogErr := cldcatalog.LoadCatalog(ctx, envKey, cfg, domain)
@@ -67,7 +71,6 @@ func Load(
 			return fdeployment.Environment{}, fmt.Errorf("catalog GRPC endpoint is required when datastore location is set to '%s'", cfgdomain.DatastoreTypeCatalog)
 		}
 	} else {
-		// Load datastore from file system (default behavior)
 		ds, err = envdir.DataStore()
 		if err != nil {
 			return fdeployment.Environment{}, err
@@ -142,4 +145,8 @@ func Load(
 		OperationsBundle:  operations.NewBundle(getCtx, lggr, loadcfg.reporter, operations.WithOperationRegistry(loadcfg.operationRegistry)),
 		BlockChains:       blockChains,
 	}, nil
+}
+
+func useCatalog(datastoreType cfgdomain.DatastoreType) bool {
+	return datastoreType == cfgdomain.DatastoreTypeCatalog || datastoreType == cfgdomain.DatastoreTypeAll
 }

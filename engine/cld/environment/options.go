@@ -3,6 +3,7 @@ package environment
 import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
+	cfgdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/domain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 )
 
@@ -40,6 +41,9 @@ type LoadConfig struct {
 	// useDryRunJobDistributor configures the environment to use a dry-run Job Distributor
 	// that allows read operations but performs noop write operations.
 	useDryRunJobDistributor bool
+
+	// datastoreType when set, overrides the datastore type from domain config (e.g. from --datastore flag).
+	datastoreType *cfgdomain.DatastoreType
 }
 
 // Configure applies a slice of LoadEnvironmentOption functions to the LoadConfig.
@@ -175,5 +179,13 @@ func WithLogger(lggr logger.Logger) LoadEnvironmentOption {
 func WithDryRunJobDistributor() LoadEnvironmentOption {
 	return func(o *LoadConfig) {
 		o.useDryRunJobDistributor = true
+	}
+}
+
+// WithDatastoreType overrides the datastore type from domain config. Use when the caller
+// explicitly requests "file" or "catalog" (e.g. from a CLI flag). Omit to use domain default.
+func WithDatastoreType(t cfgdomain.DatastoreType) LoadEnvironmentOption {
+	return func(o *LoadConfig) {
+		o.datastoreType = &t
 	}
 }

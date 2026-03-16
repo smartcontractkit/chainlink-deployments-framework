@@ -1,5 +1,21 @@
 # chainlink-deployments-framework
 
+## 0.86.3
+
+### Patch Changes
+
+- [#850](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/850) [`71cae14`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/71cae14da078d48c7e84505bb371460319facd37) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - chore: replace converters builder with chainwrappers helper in mcms cmds
+
+- [#848](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/848) [`6938f6d`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/6938f6d308d219265d80997ef93d532f81f5a180) Thanks [@ecPablo](https://github.com/ecPablo)! - fix error decoding and skip zksync chains
+
+## 0.86.2
+
+### Patch Changes
+
+- [#851](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/851) [`98b91fb`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/98b91fbe957be50515d373f9ed60d1e57e784237) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix: preserve json number accuracy on marshal and unmarshal
+
+- [#847](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/847) [`fa1639e`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/fa1639e74a340818933a3d3e292d5532c363e6c5) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - chore: use mcms chainwrappers helpers
+
 ## 0.86.1
 
 ### Patch Changes

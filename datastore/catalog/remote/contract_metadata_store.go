@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
 
 	"google.golang.org/grpc/codes"
@@ -76,7 +77,9 @@ func (s *catalogContractMetadataStore) keyToFilter(key datastore.ContractMetadat
 func (s *catalogContractMetadataStore) protoToContractMetadata(protoRecord *pb.ContractMetadata) (datastore.ContractMetadata, error) {
 	var metadata any
 	if protoRecord.Metadata != "" {
-		if err := json.Unmarshal([]byte(protoRecord.Metadata), &metadata); err != nil {
+		dec := json.NewDecoder(strings.NewReader(protoRecord.Metadata))
+		dec.UseNumber()
+		if err := dec.Decode(&metadata); err != nil {
 			return datastore.ContractMetadata{}, fmt.Errorf("failed to unmarshal metadata JSON: %w", err)
 		}
 	}

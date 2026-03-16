@@ -639,7 +639,7 @@ func (a *ArtifactsDir) loadDataStore(dataStorePath string) (fdatastore.DataStore
 	}
 
 	var dataStore fdatastore.MemoryDataStore
-	if err = json.Unmarshal(b, &dataStore); err != nil {
+	if err = decodeJSONUseNumber(b, &dataStore); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal JSON for datastore from path %s: %w",
 			dataStorePath, err,
 		)
@@ -655,7 +655,7 @@ func (a *ArtifactsDir) loadMutableDataStore(dataStorePath string) (fdatastore.Mu
 	}
 
 	var dataStore fdatastore.MemoryDataStore
-	if err = json.Unmarshal(b, &dataStore); err != nil {
+	if err = decodeJSONUseNumber(b, &dataStore); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal JSON for datastore from path %s: %w",
 			dataStorePath, err,
 		)

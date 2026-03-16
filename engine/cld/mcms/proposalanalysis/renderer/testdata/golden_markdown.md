@@ -13,7 +13,7 @@ _Annotations:_
 
 - [ ] **OnRamp v1.5.0** `setRateLimiterConfig` ⚠ **warning** 🔴 risk: **high**
 
-**Target:** `0x1111..1111`
+**Target:** `0x1111111111111111111111111111111111111111`
 
 **Inputs:**
 
@@ -36,7 +36,7 @@ _Annotations:_
 
 - [ ] **ERC20** `transfer`
 
-**Target:** `0x2222..2222`
+**Target:** `0x2222222222222222222222222222222222222222`
 
 **Inputs:**
 
@@ -54,6 +54,6 @@ _Annotations:_
 
 - [ ] `pause`
 
-**Target:** `0x3333..3333`
+**Target:** `0x3333333333333333333333333333333333333333`
 
 </details>

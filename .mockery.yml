@@ -107,6 +107,7 @@ packages:
       structname: "{{.Mock}}{{.InterfaceName}}"
     interfaces:
       ProposalContext:
+      EVMABIRegistry:
   github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/legacy/cli/mcmsv2:
     interfaces:
       commandRunnerI:

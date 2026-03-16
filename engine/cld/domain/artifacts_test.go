@@ -1354,3 +1354,38 @@ func Test_getOperationsReportsFilePath(t *testing.T) {
 		})
 	}
 }
+
+func Test_Artifacts_loadMutableDataStore_PreservesLargeIntegerMetadata(t *testing.T) {
+	t.Parallel()
+
+	fixture := setupTestDomainsFS(t)
+	arts := fixture.artifactsDir
+	path := filepath.Join(fixture.rootDirPath, "datastore.json")
+
+	payload := []byte(`{
+  "AddressRefStore": {"records": []},
+  "ChainMetadataStore": {
+    "records": [
+      {
+        "chainSelector": 123,
+        "metadata": {"destChainSelector": 16015286601757825753}
+      }
+    ]
+  },
+  "ContractMetadataStore": {"records": []},
+  "EnvMetadataStore": {"record": {"metadata": null}}
+}`)
+	require.NoError(t, os.WriteFile(path, payload, 0600))
+
+	ds, err := arts.loadMutableDataStore(path)
+	require.NoError(t, err)
+
+	record, err := ds.ChainMetadata().Get(fdatastore.NewChainMetadataKey(123))
+	require.NoError(t, err)
+
+	metadataMap, ok := record.Metadata.(map[string]any)
+	require.True(t, ok)
+	n, ok := metadataMap["destChainSelector"].(json.Number)
+	require.True(t, ok, "destChainSelector should decode as json.Number")
+	require.Equal(t, "16015286601757825753", n.String())
+}

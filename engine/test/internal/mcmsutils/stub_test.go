@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver/v3"
+	gethbind "github.com/ethereum/go-ethereum/accounts/abi/bind"
 	gethtypes "github.com/ethereum/go-ethereum/core/types"
-	sollib "github.com/gagliardetto/solana-go"
 
 	chainselectors "github.com/smartcontractkit/chain-selectors"
 	mcmslib "github.com/smartcontractkit/mcms"
@@ -15,7 +15,6 @@ import (
 	fchain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	fchainaptos "github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos"
 	fchainevm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
-	fchainsolana "github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
 	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 )
@@ -30,25 +29,11 @@ func stubAptosChain() fchainaptos.Chain {
 // stubEVMChain creates a stubbed EVM chain
 func stubEVMChain() fchainevm.Chain {
 	return fchainevm.Chain{
-		Selector: chainselectors.ETHEREUM_TESTNET_SEPOLIA.Selector,
+		Selector:    chainselectors.ETHEREUM_TESTNET_SEPOLIA.Selector,
+		DeployerKey: &gethbind.TransactOpts{},
 		Confirm: func(tx *gethtypes.Transaction) (uint64, error) { // This is a stubbed implementation of the Confirm function which always returns success
 			return 0, nil
 		},
-	}
-}
-
-// stubSolanaChain creates a stubbed Solana chain
-func stubSolanaChain() fchainsolana.Chain {
-	// Create a dummy private key for testing (32 bytes repeated to make 64 bytes)
-	privateKeyBytes := make([]byte, 64)
-	for i := range 64 {
-		privateKeyBytes[i] = byte(i%32 + 1)
-	}
-	dummyKey := sollib.PrivateKey(privateKeyBytes)
-
-	return fchainsolana.Chain{
-		Selector:    chainselectors.TEST_22222222222222222222222222222222222222222222.Selector,
-		DeployerKey: &dummyKey,
 	}
 }
 
