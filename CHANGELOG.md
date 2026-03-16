@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.88.0
+
+### Minor Changes
+
+- [#861](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/861) [`ec0bb20`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/ec0bb205e98139cae0dc8a9faea5f74c3581ba54) Thanks [@ecPablo](https://github.com/ecPablo)! - add CRE configuration fields to domain config
+
 ## 0.87.0
 
 ### Minor Changes
