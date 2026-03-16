@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.87.0
+
+### Minor Changes
+
+- [#835](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/835) [`3f8ba39`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/3f8ba393ef2204ebb66db1ebcc054d2fcfaf3f42) Thanks [@giogam](https://github.com/giogam)! - feat(state): add --datastore flag (file|catalog) for state generate; defaults to domain.yaml when unset
+
 ## 0.86.3
 
 ### Patch Changes
