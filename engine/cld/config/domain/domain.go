@@ -32,8 +32,8 @@ func (d DatastoreType) IsValid() bool {
 	return d == DatastoreTypeFile || d == DatastoreTypeCatalog || d == DatastoreTypeAll
 }
 
-// CRE represents the CRE (Chainlink Runtime Environment) configuration.
-type CRE struct {
+// CREConfig represents the CRE (Chainlink Runtime Environment) configuration.
+type CREConfig struct {
 	Enabled bool `mapstructure:"enabled" yaml:"enabled"`
 }
 
@@ -41,7 +41,7 @@ type CRE struct {
 type Environment struct {
 	NetworkTypes []string      `mapstructure:"network_types" yaml:"network_types"`
 	Datastore    DatastoreType `mapstructure:"datastore" yaml:"datastore"`
-	CRE          *CRE          `mapstructure:"cre" yaml:"cre,omitempty"`
+	CRE          *CREConfig    `mapstructure:"cre" yaml:"cre,omitempty"`
 }
 
 // validate validates the environment configuration.
