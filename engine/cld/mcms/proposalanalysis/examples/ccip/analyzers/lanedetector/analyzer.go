@@ -67,7 +67,7 @@ func (a *LaneDetectorAnalyzer) Analyze(
 
 	// Find bidirectional pairs: A>B and B>A both exist.
 	seen := make(map[edge]struct{})
-	lanes := make([]string, 0, len(edgeSet))
+	var lanes []string
 
 	for e := range edgeSet {
 		if _, ok := edgeSet[edge{e.to, e.from}]; !ok {
