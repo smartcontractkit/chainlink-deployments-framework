@@ -21,6 +21,37 @@ _Annotations:_
   - _label: destination contract_
 - **`amount`** (`uint256`): 1,000,000,000,000,000,000
 - **`enabled`** (`bool`): true
+- **`proof`** (`bytes`): 0xdeadbeef
+- **`destChainConfigArgs`** (`((uint64,(bool,uint16,uint32,uint32,uint32,uint8,uint8,uint16,uint32,uint16,uint16,bytes4,bool,uint16,uint32,uint32,uint64,uint32,uint32))[])`):
+  ```text
+  [
+    {
+      "DestChainSelector": "aptos-testnet (743186221051783445)",
+      "DestChainConfig": {
+        "IsEnabled": true,
+        "MaxNumberOfTokensPerMsg": 1,
+        "MaxDataBytes": 30000,
+        "DestGasPerPayloadByteBase": 0,
+        "DestDataAvailabilityMultiplierBps": 0,
+        "ChainFamilySelector": "0xac77ffec",
+        "GasMultiplierWeiPerEth": 1100000000000000000
+      }
+    },
+    {
+      "DestChainSelector": "sui-testnet (9762610643973837292)",
+      "DestChainConfig": {
+        "IsEnabled": true,
+        "MaxNumberOfTokensPerMsg": 1,
+        "MaxDataBytes": 16000,
+        "DestGasPerPayloadByteBase": 16,
+        "DestDataAvailabilityMultiplierBps": 1,
+        "ChainFamilySelector": "0xc4e05953",
+        "GasMultiplierWeiPerEth": 1100000000000000000
+      }
+    }
+  ]
+  ```
+  - _note: multi-chain destination configuration_
 
 
 **Changes:**
