@@ -35,6 +35,18 @@ func (ccs PostProcessingChangeSetImpl[C]) Apply(env fdeployment.Environment) (fd
 	return ccs.postProcessor(env, output)
 }
 
+func (ccs PostProcessingChangeSetImpl[C]) applyWithInput(
+	env fdeployment.Environment, inputStr string,
+) (fdeployment.ChangesetOutput, error) {
+	env.Logger.Debugf("Post-processing ChangesetOutput from %T", ccs.changeset.changeset.operation)
+	output, err := ccs.changeset.applyWithInput(env, inputStr)
+	if err != nil {
+		return output, err
+	}
+
+	return ccs.postProcessor(env, output)
+}
+
 func (ccs PostProcessingChangeSetImpl[C]) Configurations() (Configurations, error) {
 	return ccs.changeset.Configurations()
 }

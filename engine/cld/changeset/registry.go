@@ -173,6 +173,19 @@ func (r *ChangesetsRegistry) AddGlobalPostHooks(hooks ...PostHook) {
 func (r *ChangesetsRegistry) Apply(
 	key string, e fdeployment.Environment,
 ) (fdeployment.ChangesetOutput, error) {
+	return r.applyWithInput(key, e, "")
+}
+
+// ApplyWithInput applies a changeset with explicit input string for this apply invocation.
+func (r *ChangesetsRegistry) ApplyWithInput(
+	key string, e fdeployment.Environment, inputStr string,
+) (fdeployment.ChangesetOutput, error) {
+	return r.applyWithInput(key, e, inputStr)
+}
+
+func (r *ChangesetsRegistry) applyWithInput(
+	key string, e fdeployment.Environment, inputStr string,
+) (fdeployment.ChangesetOutput, error) {
 	entry, globalPre, globalPost, err := r.getApplySnapshot(key)
 	if err != nil {
 		return fdeployment.ChangesetOutput{}, err
@@ -204,7 +217,9 @@ func (r *ChangesetsRegistry) Apply(
 		}
 	}
 
-	output, applyErr := entry.changeset.Apply(e)
+	var output fdeployment.ChangesetOutput
+	var applyErr error
+	output, applyErr = entry.changeset.applyWithInput(e, inputStr)
 
 	postParams := PostHookParams{
 		Env:          hookEnv,
