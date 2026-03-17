@@ -516,8 +516,8 @@ func (l *chainLoaderEVM) Load(ctx context.Context, selector uint64) (fchain.Bloc
 	clientOpts := []func(client *evmclient.MultiClient){
 		func(client *evmclient.MultiClient) {
 			client.RetryConfig = evmclient.RetryConfig{
-				Attempts:           5,                      // assuming failure rate is 20%, this will take 5 attempts to succeed
-				Delay:              10 * time.Millisecond,  // this is a very short delay, we want to be fast in this case
+				Attempts:           5,                     // assuming failure rate is 20%, this will take 5 attempts to succeed
+				Delay:              10 * time.Millisecond, // this is a very short delay, we want to be fast in this case
 				Timeout:            5 * time.Second,
 				DialAttempts:       5,
 				DialDelay:          10 * time.Millisecond,
