@@ -1,5 +1,13 @@
 # chainlink-deployments-framework
 
+## 0.88.1
+
+### Patch Changes
+
+- [#858](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/858) [`b05a8f2`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/b05a8f2c279335e655d359be011804e5b56c9e80) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(mcms/analyzer/renderer): inline complex parameter values in markdown
+
+- [#853](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/853) [`7b0467c`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/7b0467c5db46e3ad52ef75d3f6271dbb750ec7dc) Thanks [@finleydecker](https://github.com/finleydecker)! - fix: make RPC health check timeout configurable
+
 ## 0.88.0
 
 ### Minor Changes
