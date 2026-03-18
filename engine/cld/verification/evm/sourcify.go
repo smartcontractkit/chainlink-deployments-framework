@@ -1,7 +1,7 @@
 package evm
 
 var sourcifyChainIDs = map[uint64]struct{}{
-	295: {}, 296: {}, 2020: {}, 2021: {},
+	295: {}, 296: {}, 2020: {}, 2021: {}, 42431: {},
 }
 
 func IsChainSupportedOnSourcify(chainID uint64) bool {

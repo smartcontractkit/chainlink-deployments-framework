@@ -33,6 +33,7 @@ func TestGetVerificationStrategy(t *testing.T) {
 		{"Mantle", 5000, StrategyEtherscan},
 		{"Scroll", 534352, StrategyEtherscan},
 		{"Sourcify chain", 295, StrategySourcify},
+		{"Tempo Testnet Moderato", 42431, StrategySourcify},
 		{"L2Scan chain", 4200, StrategyL2Scan},
 		{"SocialScan chain", 688688, StrategySocialScan},
 		{"Unknown chain", 999999999, StrategyUnknown},
@@ -83,6 +84,7 @@ func TestIsChainSupportedOnSourcify(t *testing.T) {
 	t.Parallel()
 
 	require.True(t, IsChainSupportedOnSourcify(295))
+	require.True(t, IsChainSupportedOnSourcify(42431))
 	require.False(t, IsChainSupportedOnSourcify(1))
 }
 
