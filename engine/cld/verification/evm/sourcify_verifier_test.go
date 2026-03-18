@@ -158,12 +158,12 @@ func TestSourcifyVerifier_Verify_SubmitAndPoll(t *testing.T) {
 			w.WriteHeader(http.StatusNotFound)
 
 		case r.Method == http.MethodPost:
-			// Submit verification
 			var body sourcifyVerifyRequest
 			_ = json.NewDecoder(r.Body).Decode(&body)
 			assert.Equal(t, "0.8.19", body.CompilerVersion)
 			assert.Equal(t, "contracts/Test.sol:Test", body.ContractIdentifier)
 			assert.NotNil(t, body.StdJsonInput)
+			assert.Equal(t, "Solidity", body.StdJsonInput["language"])
 
 			w.WriteHeader(http.StatusAccepted)
 			_ = json.NewEncoder(w).Encode(sourcifyVerifyResponse{VerificationID: "test-uuid-123"})
@@ -192,7 +192,7 @@ func TestSourcifyVerifier_Verify_SubmitAndPoll(t *testing.T) {
 		Network: cfgnet.Network{ChainSelector: chain.Selector, BlockExplorer: cfgnet.BlockExplorer{URL: server.URL}},
 		Address: "0xabc",
 		Metadata: SolidityContractMetadata{
-			Name:     "Test",
+			Name:     "contracts/Test.sol:Test",
 			Version:  "0.8.19",
 			Language: "Solidity",
 			Sources:  map[string]any{"contracts/Test.sol": map[string]any{"content": "contract Test {}"}},
@@ -331,7 +331,28 @@ func TestSourcifyVerifier_BuildContractIdentifier(t *testing.T) {
 		expected string
 	}{
 		{
-			name: "exact path match",
+			name: "fully qualified name used as-is",
+			metadata: SolidityContractMetadata{
+				Name: "contracts/pools/BurnMintTokenPool.sol:BurnMintTokenPool",
+				Sources: map[string]any{
+					"contracts/pools/BurnMintTokenPool.sol": map[string]any{"content": "..."},
+					"node_modules/@openzeppelin/contracts/access/AccessControl.sol": map[string]any{"content": "..."},
+				},
+			},
+			expected: "contracts/pools/BurnMintTokenPool.sol:BurnMintTokenPool",
+		},
+		{
+			name: "fully qualified name with different source path",
+			metadata: SolidityContractMetadata{
+				Name: "src/v0.8/shared/test/helpers/BurnMintERC20WithDrip.sol:BurnMintERC20WithDrip",
+				Sources: map[string]any{
+					"src/v0.8/shared/test/helpers/BurnMintERC20WithDrip.sol": map[string]any{"content": "..."},
+				},
+			},
+			expected: "src/v0.8/shared/test/helpers/BurnMintERC20WithDrip.sol:BurnMintERC20WithDrip",
+		},
+		{
+			name: "plain name matched from sources",
 			metadata: SolidityContractMetadata{
 				Name:    "Storage",
 				Sources: map[string]any{"contracts/Storage.sol": map[string]any{"content": "..."}},
@@ -413,4 +434,46 @@ func TestSourcifyVerifier_DefaultBaseURL(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Equal(t, sourcifyServerURL, v.(*sourcifyVerifier).baseURL)
+}
+
+func TestSourcifyVerifier_TempoCustomURL(t *testing.T) {
+	t.Parallel()
+
+	chain := chainsel.Chain{
+		EvmChainID: 42431,
+		Selector:   1,
+		Name:       "tempo-testnet-moderato",
+	}
+	v, err := newSourcifyVerifier(VerifierConfig{
+		Chain:        chain,
+		Network:      cfgnet.Network{ChainSelector: chain.Selector},
+		Address:      "0xabc",
+		Metadata:     SolidityContractMetadata{},
+		ContractType: "Test",
+		Version:      "1.0.0",
+		Logger:       logger.Nop(),
+	})
+	require.NoError(t, err)
+	require.Equal(t, "https://contracts.tempo.xyz", v.(*sourcifyVerifier).baseURL)
+}
+
+func TestSourcifyVerifier_BlockExplorerURLOverridesCustom(t *testing.T) {
+	t.Parallel()
+
+	chain := chainsel.Chain{
+		EvmChainID: 42431,
+		Selector:   1,
+		Name:       "tempo-testnet-moderato",
+	}
+	v, err := newSourcifyVerifier(VerifierConfig{
+		Chain:        chain,
+		Network:      cfgnet.Network{ChainSelector: chain.Selector, BlockExplorer: cfgnet.BlockExplorer{URL: "https://custom.sourcify.example"}},
+		Address:      "0xabc",
+		Metadata:     SolidityContractMetadata{},
+		ContractType: "Test",
+		Version:      "1.0.0",
+		Logger:       logger.Nop(),
+	})
+	require.NoError(t, err)
+	require.Equal(t, "https://custom.sourcify.example", v.(*sourcifyVerifier).baseURL)
 }

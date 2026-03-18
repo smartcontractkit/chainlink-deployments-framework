@@ -23,7 +23,7 @@ func newSourcifyVerifier(cfg VerifierConfig) (verification.Verifiable, error) {
 		return nil, fmt.Errorf("chain ID %d is not supported by Sourcify", cfg.Chain.EvmChainID)
 	}
 
-	baseURL := sourcifyServerURL
+	baseURL := getSourcifyServerURL(cfg.Chain.EvmChainID)
 	if cfg.Network.BlockExplorer.URL != "" {
 		baseURL = strings.TrimSuffix(cfg.Network.BlockExplorer.URL, "/")
 	}
@@ -246,11 +246,17 @@ func (v *sourcifyVerifier) pollVerification(ctx context.Context, verificationID 
 	return fmt.Errorf("verification timed out after %d attempts", maxVerificationPollAttempts)
 }
 
-// buildContractIdentifier constructs "path/to/Contract.sol:ContractName" from metadata.
+// buildContractIdentifier returns the Sourcify contractIdentifier in "path/to/File.sol:ContractName" format.
+// If metadata.Name is already fully qualified (contains ":"), it is used as-is.
+// Otherwise we attempt to locate the matching source file in the sources map.
 func (v *sourcifyVerifier) buildContractIdentifier() string {
 	name := v.metadata.Name
 	if name == "" {
 		name = v.contractType
+	}
+
+	if strings.Contains(name, ":") {
+		return name
 	}
 
 	suffix := "/" + name + ".sol"
@@ -259,8 +265,6 @@ func (v *sourcifyVerifier) buildContractIdentifier() string {
 			return source + ":" + name
 		}
 	}
-
-	// Fall back: use the first source key with an exact filename match, or just the first key.
 	for source := range v.metadata.Sources {
 		if strings.HasSuffix(source, name+".sol") {
 			return source + ":" + name
