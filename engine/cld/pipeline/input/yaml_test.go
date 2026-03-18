@@ -18,7 +18,6 @@ func TestFindChangesetInData(t *testing.T) {
 		name       string
 		changesets any
 		csName     string
-		fileName   string
 		want       any
 		wantErr    string
 	}{
@@ -28,32 +27,28 @@ func TestFindChangesetInData(t *testing.T) {
 				map[string]any{"cs_a": map[string]any{"payload": "a"}},
 				map[string]any{"cs_b": map[string]any{"payload": "b"}},
 			},
-			csName:   "cs_b",
-			fileName: "test.yaml",
-			want:     map[string]any{"payload": "b"},
+			csName: "cs_b",
+			want:   map[string]any{"payload": "b"},
 		},
 		{
 			name: "not found",
 			changesets: []any{
 				map[string]any{"cs_a": map[string]any{"payload": "a"}},
 			},
-			csName:   "cs_missing",
-			fileName: "test.yaml",
-			wantErr:  "changeset 'cs_missing' not found in input file test.yaml",
+			csName:  "cs_missing",
+			wantErr: "changeset 'cs_missing' not found",
 		},
 		{
 			name:       "invalid format",
 			changesets: map[string]any{"x": 1},
 			csName:     "cs",
-			fileName:   "test.yaml",
-			wantErr:    "input file test.yaml has invalid 'changesets' format, expected array format",
+			wantErr:    "invalid 'changesets' format, expected array format",
 		},
 		{
 			name:       "empty array",
 			changesets: []any{},
 			csName:     "cs",
-			fileName:   "test.yaml",
-			wantErr:    "input file test.yaml has empty 'changesets' array",
+			wantErr:    "empty 'changesets' array",
 		},
 	}
 
@@ -61,7 +56,7 @@ func TestFindChangesetInData(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := FindChangesetInData(tt.changesets, tt.csName, tt.fileName)
+			got, err := FindChangesetInData(tt.changesets, tt.csName)
 
 			if tt.wantErr != "" {
 				require.Error(t, err)
@@ -81,7 +76,6 @@ func TestGetAllChangesetsInOrder(t *testing.T) {
 	tests := []struct {
 		name       string
 		changesets any
-		fileName   string
 		want       []ChangesetItem
 		wantErr    string
 	}{
@@ -91,7 +85,6 @@ func TestGetAllChangesetsInOrder(t *testing.T) {
 				map[string]any{"first": map[string]any{"payload": 1}},
 				map[string]any{"second": map[string]any{"payload": 2}},
 			},
-			fileName: "test.yaml",
 			want: []ChangesetItem{
 				{Name: "first", Data: map[string]any{"payload": 1}},
 				{Name: "second", Data: map[string]any{"payload": 2}},
@@ -100,8 +93,7 @@ func TestGetAllChangesetsInOrder(t *testing.T) {
 		{
 			name:       "invalid format",
 			changesets: map[string]any{"x": 1},
-			fileName:   "test.yaml",
-			wantErr:    "input file test.yaml has invalid 'changesets' format for index access, expected array format",
+			wantErr:    "invalid 'changesets' format for index access, expected array format",
 		},
 	}
 
@@ -109,7 +101,7 @@ func TestGetAllChangesetsInOrder(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := GetAllChangesetsInOrder(tt.changesets, tt.fileName)
+			got, err := GetAllChangesetsInOrder(tt.changesets)
 
 			if tt.wantErr != "" {
 				require.Error(t, err)
@@ -183,22 +175,19 @@ func TestSetChangesetEnvironmentVariable(t *testing.T) {
 		name          string
 		csName        string
 		changesetData any
-		fileName      string
 		wantErr       string
 	}{
 		{
 			name:          "missing payload",
 			csName:        "my_cs",
 			changesetData: map[string]any{"other": 1},
-			fileName:      "test.yaml",
-			wantErr:       "changeset 'my_cs' in input file test.yaml is missing required 'payload' field",
+			wantErr:       `failed to build input for changeset "my_cs": changeset "my_cs" is missing required 'payload' field`,
 		},
 		{
 			name:          "invalid changeset data",
 			csName:        "my_cs",
 			changesetData: "not-a-map",
-			fileName:      "test.yaml",
-			wantErr:       "changeset 'my_cs' in input file test.yaml is not a valid object",
+			wantErr:       `failed to build input for changeset "my_cs": changeset "my_cs" is not a valid object`,
 		},
 		{
 			name:   "invalid chain override negative",
@@ -207,8 +196,7 @@ func TestSetChangesetEnvironmentVariable(t *testing.T) {
 				"payload":        map[string]any{},
 				"chainOverrides": []any{-1},
 			},
-			fileName: "test.yaml",
-			wantErr:  "chain override value must be non-negative, got: -1",
+			wantErr: `failed to build input for changeset "my_cs": chain override value must be non-negative, got: -1`,
 		},
 	}
 
@@ -216,7 +204,7 @@ func TestSetChangesetEnvironmentVariable(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			err := SetChangesetEnvironmentVariable(tt.csName, tt.changesetData, tt.fileName)
+			err := SetChangesetEnvironmentVariable(tt.csName, tt.changesetData)
 
 			require.Error(t, err)
 			require.Equal(t, tt.wantErr, err.Error())
@@ -230,7 +218,7 @@ func TestSetChangesetEnvironmentVariable_Success(t *testing.T) {
 	orig := os.Getenv("DURABLE_PIPELINE_INPUT")
 	t.Cleanup(func() { _ = os.Setenv("DURABLE_PIPELINE_INPUT", orig) })
 
-	err := SetChangesetEnvironmentVariable("my_cs", map[string]any{"payload": map[string]any{"x": 1}}, "test.yaml")
+	err := SetChangesetEnvironmentVariable("my_cs", map[string]any{"payload": map[string]any{"x": 1}})
 	require.NoError(t, err)
 
 	val := os.Getenv("DURABLE_PIPELINE_INPUT")
@@ -275,7 +263,7 @@ changesets: []
 			fileName: "p.yaml",
 			domKey:   "mydomain",
 			envKey:   "testnet",
-			wantErr:  "input file p.yaml is missing required 'environment' field",
+			wantErr:  "input file p.yaml: missing required 'environment' field",
 		},
 		{
 			name: "missing changesets",
@@ -285,7 +273,7 @@ domain: mydomain
 			fileName: "p.yaml",
 			domKey:   "mydomain",
 			envKey:   "testnet",
-			wantErr:  "input file p.yaml is missing required 'changesets' field",
+			wantErr:  "input file p.yaml: missing required 'changesets' field",
 		},
 	}
 

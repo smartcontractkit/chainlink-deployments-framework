@@ -14,6 +14,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/changeset"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/pipeline/input"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
@@ -21,7 +22,7 @@ import (
 // resolveChangesetConfig resolves the configuration for a changeset using either a registered resolver or keeping the original payload
 func resolveChangesetConfig(valueNode *yaml.Node, csName string, resolver resolvers.ConfigResolver) (any, error) {
 	var resolvedCfg any
-	changesetMap, ok := yamlNodeToAny(valueNode).(map[string]any)
+	changesetMap, ok := input.YamlNodeToAny(valueNode).(map[string]any)
 	if !ok {
 		return nil, fmt.Errorf("decode changeset data for %s: expected mapping node", csName)
 	}
