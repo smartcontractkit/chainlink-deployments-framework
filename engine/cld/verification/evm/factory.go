@@ -48,7 +48,7 @@ func NewVerifier(strategy VerificationStrategy, cfg VerifierConfig) (verificatio
 	case StrategyBlockscout:
 		return newBlockscoutVerifier(cfg)
 	case StrategySourcify:
-		return nil, errors.New("sourcify verifier not yet implemented")
+		return newSourcifyVerifier(cfg)
 	case StrategyOkLink:
 		return nil, errors.New("oklink verifier not yet implemented")
 	case StrategyBtrScan:

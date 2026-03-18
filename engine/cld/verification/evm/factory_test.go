@@ -91,7 +91,7 @@ func TestNewVerifier_StrategyBlockscout(t *testing.T) {
 	require.Equal(t, "chain ID 1 is not supported by the Blockscout API", err.Error())
 }
 
-func TestNewVerifier_StrategySourcify(t *testing.T) {
+func TestNewVerifier_StrategySourcify_UnsupportedChain(t *testing.T) {
 	t.Parallel()
 
 	chain, ok := chainsel.ChainBySelector(chainsel.ETHEREUM_MAINNET.Selector)
@@ -107,7 +107,34 @@ func TestNewVerifier_StrategySourcify(t *testing.T) {
 		Logger:       logger.Nop(),
 	})
 	require.Error(t, err)
-	require.Equal(t, "sourcify verifier not yet implemented", err.Error())
+	require.Contains(t, err.Error(), "not supported by Sourcify")
+}
+
+func TestNewVerifier_StrategySourcify(t *testing.T) {
+	t.Parallel()
+
+	chain := chainsel.Chain{
+		EvmChainID: 295,
+		Selector:   chainsel.HEDERA_MAINNET.Selector,
+		Name:       "hedera-mainnet",
+	}
+
+	v, err := NewVerifier(StrategySourcify, VerifierConfig{
+		Chain:   chain,
+		Network: cfgnet.Network{ChainSelector: chain.Selector},
+		Address: "0x123",
+		Metadata: SolidityContractMetadata{
+			Version:  "0.8.19",
+			Language: "Solidity",
+			Name:     "Test",
+		},
+		ContractType: "Test",
+		Version:      "1.0.0",
+		Logger:       logger.Nop(),
+	})
+	require.NoError(t, err)
+	require.NotNil(t, v)
+	require.Equal(t, "Test 1.0.0 (0x123 on hedera-mainnet)", v.String())
 }
 
 func TestNewVerifier_StrategyRoutescan(t *testing.T) {
