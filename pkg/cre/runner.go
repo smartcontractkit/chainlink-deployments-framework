@@ -9,7 +9,7 @@ type CallResult struct {
 	ExitCode int
 }
 
-// Runner runner for the CRE CLI.
+// Runner is used to invoke the CRE CLI.
 type Runner interface {
 	Call(ctx context.Context, args ...string) (*CallResult, error)
 }
