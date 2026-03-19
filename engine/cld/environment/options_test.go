@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	foperations "github.com/smartcontractkit/chainlink-deployments-framework/operations"
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/cre"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
@@ -109,4 +110,83 @@ func Test_WithDryRunJobDistributor(t *testing.T) {
 	option(opts)
 
 	assert.True(t, opts.useDryRunJobDistributor)
+}
+
+func Test_WithCRERunner(t *testing.T) {
+	t.Parallel()
+
+	opts := &LoadConfig{}
+	assert.Nil(t, opts.creRunner)
+
+	runner := &cre.CLIRunner{BinaryPath: "/path/to/cre"}
+	option := WithCRERunner(runner)
+	option(opts)
+
+	assert.Equal(t, runner, opts.creRunner)
+}
+
+func Test_WithCREBinaryPath(t *testing.T) {
+	t.Parallel()
+
+	opts := &LoadConfig{}
+	assert.Empty(t, opts.creBinaryPath)
+
+	binaryPath := "/custom/path/to/cre"
+	option := WithCREBinaryPath(binaryPath)
+	option(opts)
+
+	assert.Equal(t, binaryPath, opts.creBinaryPath)
+}
+
+func Test_resolveCRERunner(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		override   cre.Runner
+		binaryPath string
+		wantType   string
+		wantPath   string
+	}{
+		{
+			name:       "override takes precedence",
+			override:   &cre.CLIRunner{BinaryPath: "/override/cre"},
+			binaryPath: "/default/cre",
+			wantType:   "*cre.CLIRunner",
+			wantPath:   "/override/cre",
+		},
+		{
+			name:       "no override uses binary path",
+			override:   nil,
+			binaryPath: "/custom/cre",
+			wantType:   "*cre.CLIRunner",
+			wantPath:   "/custom/cre",
+		},
+		{
+			name:       "empty binary path uses default",
+			override:   nil,
+			binaryPath: "",
+			wantType:   "*cre.CLIRunner",
+			wantPath:   "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := resolveCRERunner(tt.override, tt.binaryPath)
+
+			if tt.override != nil {
+				// Override should return the exact same instance
+				assert.Equal(t, tt.override, got)
+			} else {
+				// No override should return a CLIRunner
+				require.NotNil(t, got)
+				cliRunner, ok := got.(*cre.CLIRunner)
+				require.True(t, ok, "expected *cre.CLIRunner, got %T", got)
+				assert.Equal(t, tt.binaryPath, cliRunner.BinaryPath)
+			}
+		})
+	}
 }

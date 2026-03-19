@@ -9,6 +9,7 @@ import (
 	fchain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/internal/testutils"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/onchain"
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/cre"
 )
 
 func Test_withChainLoader(t *testing.T) {
