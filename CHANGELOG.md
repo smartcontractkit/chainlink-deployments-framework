@@ -1,5 +1,13 @@
 # chainlink-deployments-framework
 
+## 0.89.0
+
+### Minor Changes
+
+- [#876](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/876) [`5d69a79`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/5d69a798f22b4b544e2df61c0a6cff0e30f90b7a) Thanks [@ajaskolski](https://github.com/ajaskolski)! - feat: add additional verifiers to evm cmd
+
+- [#870](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/870) [`c8456cb`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/c8456cbc6982c9cd6afaa135a89e517ca97134d2) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - refactor(cld/runtime): export input yaml parsing functions from pipeline/input package
+
 ## 0.88.1
 
 ### Patch Changes
