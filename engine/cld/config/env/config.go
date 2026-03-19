@@ -259,6 +259,14 @@ var (
 		"catalog.grpc":                                            {"CATALOG_GRPC"},
 		"catalog.auth.kms_key_id":                                 {"CATALOG_AUTH_KMS_KEY_ID"},
 		"catalog.auth.kms_key_region":                             {"CATALOG_AUTH_KMS_KEY_REGION"},
+		"cre.auth.hmac_key_id":                                    {"CRE_DEPLOY_HMAC_KEY_ID"},
+		"cre.auth.hmac_key_secret":                                {"CRE_DEPLOY_HMAC_SECRET"},
+		"cre.auth.tenant_id":                                      {"CRE_TENANT_ID"},
+		"cre.auth.org_id":                                         {"CRE_ORG_ID"},
+		"cre.tls":                                                 {"CRE_TLS"},
+		"cre.timeout":                                             {"CRE_TIMEOUT"},
+		"cre.storage_address":                                     {"CRE_STORAGE_ADDR"},
+		"cre.don_family":                                          {"CRE_DON_FAMILY"},
 	}
 )
 

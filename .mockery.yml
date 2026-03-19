@@ -149,3 +149,12 @@ packages:
       filename: "{{.InterfaceName | snakecase}}.go"
     interfaces:
       APIClientWrapped:
+  github.com/smartcontractkit/chainlink-deployments-framework/pkg/cre:
+    config:
+      all: false
+      pkgname: "cremocks"
+      dir: "pkg/cre/mocks"
+      filename: "mock_{{.InterfaceName | snakecase}}.go"
+      structname: "{{.Mock}}{{.InterfaceName}}"
+    interfaces:
+      Runner:

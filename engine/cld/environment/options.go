@@ -1,10 +1,10 @@
 package environment
 
 import (
-	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
-
 	cfgdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/domain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/cre"
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
 // LoadConfig contains configuration parameters for loading an environment.
@@ -44,6 +44,9 @@ type LoadConfig struct {
 
 	// datastoreType when set, overrides the datastore type from domain config (e.g. from --datastore flag).
 	datastoreType *cfgdomain.DatastoreType
+
+	creRunner     cre.Runner
+	creBinaryPath string
 }
 
 // Configure applies a slice of LoadEnvironmentOption functions to the LoadConfig.
@@ -188,4 +191,27 @@ func WithDatastoreType(t cfgdomain.DatastoreType) LoadEnvironmentOption {
 	return func(o *LoadConfig) {
 		o.datastoreType = &t
 	}
+}
+
+// WithCRERunner replaces the default CRE CLIRunner (useful in tests).
+func WithCRERunner(r cre.Runner) LoadEnvironmentOption {
+	return func(o *LoadConfig) {
+		o.creRunner = r
+	}
+}
+
+// WithCREBinaryPath sets the CRE CLI executable path. Empty uses "cre" on PATH.
+func WithCREBinaryPath(path string) LoadEnvironmentOption {
+	return func(o *LoadConfig) {
+		o.creBinaryPath = path
+	}
+}
+
+// resolveCRERunner returns override if set, otherwise a CLIRunner for the given path.
+func resolveCRERunner(override cre.Runner, binaryPath string) cre.Runner {
+	if override != nil {
+		return override
+	}
+
+	return &cre.CLIRunner{BinaryPath: binaryPath}
 }

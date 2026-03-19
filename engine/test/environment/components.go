@@ -9,6 +9,7 @@ import (
 	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	foffchain "github.com/smartcontractkit/chainlink-deployments-framework/offchain"
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/cre"
 )
 
 // components is a struct that contains the components of the environment.
@@ -21,6 +22,7 @@ type components struct {
 	OffchainClient foffchain.Client
 	NodeIDs        []string
 	Logger         logger.Logger
+	CRERunner      cre.Runner
 }
 
 // newComponents creates a new components instance.

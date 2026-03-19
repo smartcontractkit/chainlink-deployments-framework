@@ -10,6 +10,7 @@ import (
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/onchain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/offchain"
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/cre"
 )
 
 // Assign the chain container loader constructors to local variables to allow for stubbing in tests.
@@ -261,6 +262,14 @@ func withChainLoaderN(t *testing.T, loader *onchain.ChainLoader, n int) LoadOpt 
 
 		cmps.AddChains(chains...)
 
+		return nil
+	}
+}
+
+// WithCRERunner sets the CRE CLI runner for the test environment.
+func WithCRERunner(r cre.Runner) LoadOpt {
+	return func(cmps *components) error {
+		cmps.CRERunner = r
 		return nil
 	}
 }

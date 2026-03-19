@@ -14,6 +14,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/offchain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/offchain/ocr"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/cre"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
@@ -60,6 +61,10 @@ type Environment struct {
 	OperationsBundle operations.Bundle
 	// BlockChains is the container of all chains in the environment.
 	BlockChains chain.BlockChains
+	// CRERunner invokes the CRE CLI from changesets. Optional in environment loading, so it won't
+	// fail to load environment if cre binary not available; failures (e.g. binary not found) only occur
+	// when CRERunner.Call() is used inside changesets. May be nil in test environments that did not set it.
+	CRERunner cre.Runner
 }
 
 // EnvironmentOption is a functional option for configuring an Environment
@@ -100,6 +105,13 @@ func NewEnvironment(
 	return env
 }
 
+// WithCRERunner sets the CRE CLI runner
+func WithCRERunner(r cre.Runner) EnvironmentOption {
+	return func(e *Environment) {
+		e.CRERunner = r
+	}
+}
+
 // Clone creates a copy of the environment with a new reference to the address book.
 func (e Environment) Clone() Environment {
 	ab := NewMemoryAddressBook()
@@ -125,6 +137,7 @@ func (e Environment) Clone() Environment {
 		OCRSecrets:        e.OCRSecrets,
 		OperationsBundle:  e.OperationsBundle,
 		BlockChains:       e.BlockChains,
+		CRERunner:         e.CRERunner,
 	}
 }
 
