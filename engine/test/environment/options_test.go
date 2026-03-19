@@ -126,3 +126,17 @@ func Test_withChainLoaderN(t *testing.T) {
 		})
 	}
 }
+
+func Test_WithCRERunner(t *testing.T) {
+	t.Parallel()
+
+	cmps := newComponents()
+	require.Nil(t, cmps.CRERunner)
+
+	runner := &cre.CLIRunner{BinaryPath: "/path/to/cre"}
+	option := WithCRERunner(runner)
+	err := option(cmps)
+
+	require.NoError(t, err)
+	require.Equal(t, runner, cmps.CRERunner)
+}
