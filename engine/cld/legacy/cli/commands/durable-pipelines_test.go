@@ -20,6 +20,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/changeset"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
+	pipelineinput "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/pipeline/input"
 	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 )
 
@@ -974,104 +975,6 @@ changesets:
 	require.Equal(t, "200000000000000000111", maxFee.String())
 }
 
-func TestFindChangesetInData(t *testing.T) {
-	t.Parallel()
-	tests := []struct {
-		name          string
-		changesets    any
-		changesetName string
-		expectError   bool
-		expectedData  any
-		errorContains string
-		description   string
-	}{
-		{
-			name: "array format - changeset found",
-			changesets: []any{
-				map[string]any{
-					"test_changeset": map[string]any{
-						"payload": map[string]any{"value": 123},
-					},
-				},
-				map[string]any{
-					"other_changeset": map[string]any{
-						"payload": map[string]any{"value": 456},
-					},
-				},
-			},
-			changesetName: "test_changeset",
-			expectError:   false,
-			expectedData: map[string]any{
-				"payload": map[string]any{"value": 123},
-			},
-			description: "Should find changeset in array format",
-		},
-		{
-			name: "array format - changeset not found",
-			changesets: []any{
-				map[string]any{
-					"other_changeset": map[string]any{
-						"payload": map[string]any{"value": 123},
-					},
-				},
-			},
-			changesetName: "test_changeset",
-			expectError:   true,
-			description:   "Should return error when changeset not found in array format",
-		},
-		{
-			name:          "array format - empty",
-			changesets:    []any{},
-			changesetName: "test_changeset",
-			expectError:   true,
-			description:   "Should return error for empty array",
-		},
-		{
-			name: "object format - should be rejected",
-			changesets: map[string]any{
-				"test_changeset": map[string]any{
-					"payload": map[string]any{"value": 123},
-				},
-			},
-			changesetName: "test_changeset",
-			expectError:   true,
-			errorContains: "expected array format",
-			description:   "Should return error when object format is provided (no longer supported)",
-		},
-		{
-			name:          "invalid format - string",
-			changesets:    "invalid",
-			changesetName: "test_changeset",
-			expectError:   true,
-			description:   "Should return error for invalid format",
-		},
-		{
-			name:          "invalid format - nil",
-			changesets:    nil,
-			changesetName: "test_changeset",
-			expectError:   true,
-			description:   "Should return error for nil",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			result, err := findChangesetInData(tt.changesets, tt.changesetName, "test-file.yaml")
-
-			if tt.expectError {
-				require.Error(t, err, tt.description)
-				if tt.errorContains != "" {
-					require.ErrorContains(t, err, tt.errorContains, tt.description)
-				}
-			} else {
-				require.NoError(t, err, tt.description)
-				require.Equal(t, tt.expectedData, result, tt.description)
-			}
-		})
-	}
-}
-
 //nolint:paralleltest
 func TestSetDurablePipelineInputFromYAML_ArrayFormat(t *testing.T) {
 	testDomain := domain.NewDomain(t.TempDir(), "test")
@@ -1592,89 +1495,6 @@ changesets:
 	}
 }
 
-func TestGetAllChangesetsInOrder(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name          string
-		changesets    any
-		expectedNames []string
-		expectError   bool
-		errorContains string
-	}{
-		{
-			name: "object format - should return error",
-			changesets: map[string]any{
-				"first":  map[string]any{"payload": map[string]any{"value": 1}},
-				"second": map[string]any{"payload": map[string]any{"value": 2}},
-			},
-			expectError:   true,
-			errorContains: "expected array format",
-		},
-		{
-			name: "array format",
-			changesets: []any{
-				map[string]any{
-					"first": map[string]any{"payload": map[string]any{"value": 1}},
-				},
-				map[string]any{
-					"second": map[string]any{"payload": map[string]any{"value": 2}},
-				},
-			},
-			expectedNames: []string{"first", "second"},
-		},
-		{
-			name:          "invalid format - string",
-			changesets:    "invalid",
-			expectError:   true,
-			errorContains: "has invalid 'changesets' format",
-		},
-		{
-			name:          "invalid format - number",
-			changesets:    123,
-			expectError:   true,
-			errorContains: "has invalid 'changesets' format",
-		},
-		{
-			name: "array with invalid item",
-			changesets: []any{
-				"not a map",
-			},
-			expectedNames: []string{}, // Should skip invalid items
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			result, err := getAllChangesetsInOrder(tt.changesets, "test-file.yaml")
-
-			if tt.expectError {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), tt.errorContains)
-
-				return
-			}
-
-			require.NoError(t, err)
-
-			// Extract names from result
-			var actualNames []string
-			for _, changeset := range result {
-				actualNames = append(actualNames, changeset.name)
-			}
-
-			// Check if the expected names match
-			if len(tt.expectedNames) > 0 {
-				require.Equal(t, tt.expectedNames, actualNames)
-			} else {
-				require.Empty(t, actualNames)
-			}
-		})
-	}
-}
-
 //nolint:paralleltest // This test uses os.Chdir which changes global state
 func TestParseDurablePipelineYAML(t *testing.T) {
 	testDomain := domain.NewDomain(t.TempDir(), "test")
@@ -1734,7 +1554,7 @@ domain: test
 changesets: [
   invalid yaml structure`,
 			expectError:   true,
-			errorContains: "failed to parse input file",
+			errorContains: "failed to parse",
 		},
 	}
 
@@ -1800,7 +1620,7 @@ func TestParseDurablePipelineYAML_YamlNodeConversion(t *testing.T) {
 		expectError   bool
 		errorContains string
 		expectedJSON  string
-		assertResult  func(t *testing.T, result *durablePipelineYAML)
+		assertResult  func(t *testing.T, result *pipelineinput.DurablePipelineYAML)
 	}{
 		{
 			name: "preserves dynamic payload fields and large integers",
@@ -1824,7 +1644,7 @@ changesets:
           16015286601757825753:
             maxgas: 5000000`,
 			expectedJSON: `[{"test_changeset":{"payload":{"chainconfig":{"16015286601757825753":{"maxgas":5000000}},"enabled":true,"feequoterparams":{"defaulttokenfeeusdcents":1200,"maxfeejuelspermsg":200000000000000000001,"premiummultiplierwei":1000000000000000000000000},"multiplier":1.25,"note":"hello-world","optional":null,"tags":["alpha","beta"]}}}]`,
-			assertResult: func(t *testing.T, result *durablePipelineYAML) {
+			assertResult: func(t *testing.T, result *pipelineinput.DurablePipelineYAML) {
 				t.Helper()
 
 				changesets, ok := result.Changesets.([]any)
