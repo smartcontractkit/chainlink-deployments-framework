@@ -95,6 +95,23 @@ func TestGetAllChangesetsInOrder(t *testing.T) {
 			changesets: map[string]any{"x": 1},
 			wantErr:    "invalid 'changesets' format for index access, expected array format",
 		},
+		{
+			name: "invalid array item type",
+			changesets: []any{
+				"first",
+			},
+			wantErr: "invalid changesets[0]: expected single-key object",
+		},
+		{
+			name: "invalid multi-key item",
+			changesets: []any{
+				map[string]any{
+					"first":  map[string]any{"payload": 1},
+					"second": map[string]any{"payload": 2},
+				},
+			},
+			wantErr: "invalid changesets[0]: expected single-key object, got 2 keys",
+		},
 	}
 
 	for _, tt := range tests {
