@@ -94,12 +94,32 @@ func TestNewVerifier_StrategyBlockscout(t *testing.T) {
 func TestNewVerifier_StrategySourcify(t *testing.T) {
 	t.Parallel()
 
+	chain, ok := chainsel.ChainBySelector(chainsel.HEDERA_MAINNET.Selector)
+	require.True(t, ok)
+
+	v, err := NewVerifier(StrategySourcify, VerifierConfig{
+		Chain:        chain,
+		Network:      cfgnet.Network{ChainSelector: chain.Selector, BlockExplorer: cfgnet.BlockExplorer{URL: "https://sourcify.dev/server"}},
+		Address:      "0x123",
+		Metadata:     SolidityContractMetadata{Version: "0.8.19", Name: "Test"},
+		ContractType: "Test",
+		Version:      "1.0.0",
+		Logger:       logger.Nop(),
+	})
+	require.NoError(t, err)
+	require.NotNil(t, v)
+	require.Equal(t, "Test 1.0.0 (0x123 on hedera-mainnet)", v.String())
+}
+
+func TestNewVerifier_StrategySourcify_UnsupportedChain(t *testing.T) {
+	t.Parallel()
+
 	chain, ok := chainsel.ChainBySelector(chainsel.ETHEREUM_MAINNET.Selector)
 	require.True(t, ok)
 
 	_, err := NewVerifier(StrategySourcify, VerifierConfig{
 		Chain:        chain,
-		Network:      cfgnet.Network{ChainSelector: chain.Selector},
+		Network:      cfgnet.Network{ChainSelector: chain.Selector, BlockExplorer: cfgnet.BlockExplorer{URL: "https://sourcify.dev"}},
 		Address:      "0x123",
 		Metadata:     SolidityContractMetadata{},
 		ContractType: "Test",
@@ -107,7 +127,7 @@ func TestNewVerifier_StrategySourcify(t *testing.T) {
 		Logger:       logger.Nop(),
 	})
 	require.Error(t, err)
-	require.Equal(t, "sourcify verifier not yet implemented", err.Error())
+	require.Contains(t, err.Error(), "not supported by the Sourcify API")
 }
 
 func TestNewVerifier_StrategyRoutescan(t *testing.T) {
@@ -155,6 +175,26 @@ func TestNewVerifier_StrategyOkLink(t *testing.T) {
 	chain, ok := chainsel.ChainBySelector(chainsel.ETHEREUM_MAINNET_XLAYER_1.Selector)
 	require.True(t, ok)
 
+	v, err := NewVerifier(StrategyOkLink, VerifierConfig{
+		Chain:        chain,
+		Network:      cfgnet.Network{ChainSelector: chain.Selector, BlockExplorer: cfgnet.BlockExplorer{APIKey: "test-key"}},
+		Address:      "0x123",
+		Metadata:     SolidityContractMetadata{Version: "0.8.19", Name: "Test"},
+		ContractType: "Test",
+		Version:      "1.0.0",
+		Logger:       logger.Nop(),
+	})
+	require.NoError(t, err)
+	require.NotNil(t, v)
+	require.Equal(t, "Test 1.0.0 (0x123 on XLAYER)", v.String())
+}
+
+func TestNewVerifier_StrategyOkLink_NoAPIKey(t *testing.T) {
+	t.Parallel()
+
+	chain, ok := chainsel.ChainBySelector(chainsel.ETHEREUM_MAINNET_XLAYER_1.Selector)
+	require.True(t, ok)
+
 	_, err := NewVerifier(StrategyOkLink, VerifierConfig{
 		Chain:        chain,
 		Network:      cfgnet.Network{ChainSelector: chain.Selector},
@@ -165,7 +205,7 @@ func TestNewVerifier_StrategyOkLink(t *testing.T) {
 		Logger:       logger.Nop(),
 	})
 	require.Error(t, err)
-	require.Equal(t, "oklink verifier not yet implemented", err.Error())
+	require.Contains(t, err.Error(), "OKLink API key not configured")
 }
 
 func TestNewVerifier_StrategyBtrScan(t *testing.T) {
@@ -174,17 +214,18 @@ func TestNewVerifier_StrategyBtrScan(t *testing.T) {
 	chain, ok := chainsel.ChainBySelector(chainsel.BITCOIN_MAINNET_BITLAYER_1.Selector)
 	require.True(t, ok)
 
-	_, err := NewVerifier(StrategyBtrScan, VerifierConfig{
+	v, err := NewVerifier(StrategyBtrScan, VerifierConfig{
 		Chain:        chain,
-		Network:      cfgnet.Network{ChainSelector: chain.Selector},
+		Network:      cfgnet.Network{ChainSelector: chain.Selector, BlockExplorer: cfgnet.BlockExplorer{URL: "https://btrscan.io/api", APIKey: "test"}},
 		Address:      "0x123",
-		Metadata:     SolidityContractMetadata{},
+		Metadata:     SolidityContractMetadata{Version: "0.8.19", Name: "Test"},
 		ContractType: "Test",
 		Version:      "1.0.0",
 		Logger:       logger.Nop(),
 	})
-	require.Error(t, err)
-	require.Equal(t, "btrscan verifier not yet implemented", err.Error())
+	require.NoError(t, err)
+	require.NotNil(t, v)
+	require.Equal(t, "Test 1.0.0 (0x123 on bitcoin-mainnet-bitlayer-1)", v.String())
 }
 
 func TestNewVerifier_StrategyBtrScan_UnsupportedChain(t *testing.T) {
@@ -195,7 +236,7 @@ func TestNewVerifier_StrategyBtrScan_UnsupportedChain(t *testing.T) {
 
 	_, err := NewVerifier(StrategyBtrScan, VerifierConfig{
 		Chain:        chain,
-		Network:      cfgnet.Network{ChainSelector: chain.Selector},
+		Network:      cfgnet.Network{ChainSelector: chain.Selector, BlockExplorer: cfgnet.BlockExplorer{URL: "https://btrscan.io"}},
 		Address:      "0x123",
 		Metadata:     SolidityContractMetadata{},
 		ContractType: "Test",
@@ -203,7 +244,7 @@ func TestNewVerifier_StrategyBtrScan_UnsupportedChain(t *testing.T) {
 		Logger:       logger.Nop(),
 	})
 	require.Error(t, err)
-	require.Equal(t, "btrscan verifier not yet implemented", err.Error())
+	require.Contains(t, err.Error(), "not supported by the BtrScan API")
 }
 
 func TestNewVerifier_StrategyCoreDAO(t *testing.T) {
@@ -212,17 +253,18 @@ func TestNewVerifier_StrategyCoreDAO(t *testing.T) {
 	chain, ok := chainsel.ChainBySelector(chainsel.CORE_MAINNET.Selector)
 	require.True(t, ok)
 
-	_, err := NewVerifier(StrategyCoreDAO, VerifierConfig{
+	v, err := NewVerifier(StrategyCoreDAO, VerifierConfig{
 		Chain:        chain,
-		Network:      cfgnet.Network{ChainSelector: chain.Selector},
+		Network:      cfgnet.Network{ChainSelector: chain.Selector, BlockExplorer: cfgnet.BlockExplorer{URL: "https://openapi.coredao.org", APIKey: "test"}},
 		Address:      "0x123",
-		Metadata:     SolidityContractMetadata{},
+		Metadata:     SolidityContractMetadata{Version: "0.8.19", Name: "Test"},
 		ContractType: "Test",
 		Version:      "1.0.0",
 		Logger:       logger.Nop(),
 	})
-	require.Error(t, err)
-	require.Equal(t, "coredao verifier not yet implemented", err.Error())
+	require.NoError(t, err)
+	require.NotNil(t, v)
+	require.Equal(t, "Test 1.0.0 (0x123 on core-mainnet)", v.String())
 }
 
 func TestNewVerifier_StrategyL2Scan(t *testing.T) {
@@ -231,17 +273,18 @@ func TestNewVerifier_StrategyL2Scan(t *testing.T) {
 	chain, ok := chainsel.ChainBySelector(chainsel.BITCOIN_MERLIN_MAINNET.Selector)
 	require.True(t, ok)
 
-	_, err := NewVerifier(StrategyL2Scan, VerifierConfig{
+	v, err := NewVerifier(StrategyL2Scan, VerifierConfig{
 		Chain:        chain,
-		Network:      cfgnet.Network{ChainSelector: chain.Selector},
+		Network:      cfgnet.Network{ChainSelector: chain.Selector, BlockExplorer: cfgnet.BlockExplorer{URL: "https://scan.merlinchain.io/api", APIKey: "test"}},
 		Address:      "0x123",
-		Metadata:     SolidityContractMetadata{},
+		Metadata:     SolidityContractMetadata{Version: "0.8.19", Name: "Test"},
 		ContractType: "Test",
 		Version:      "1.0.0",
 		Logger:       logger.Nop(),
 	})
-	require.Error(t, err)
-	require.Equal(t, "l2scan verifier not yet implemented", err.Error())
+	require.NoError(t, err)
+	require.NotNil(t, v)
+	require.Equal(t, "Test 1.0.0 (0x123 on bitcoin-merlin-mainnet)", v.String())
 }
 
 func TestNewVerifier_StrategySocialScan(t *testing.T) {
@@ -250,17 +293,18 @@ func TestNewVerifier_StrategySocialScan(t *testing.T) {
 	chain, ok := chainsel.ChainBySelector(chainsel.PHAROS_TESTNET.Selector)
 	require.True(t, ok)
 
-	_, err := NewVerifier(StrategySocialScan, VerifierConfig{
+	v, err := NewVerifier(StrategySocialScan, VerifierConfig{
 		Chain:        chain,
-		Network:      cfgnet.Network{ChainSelector: chain.Selector},
+		Network:      cfgnet.Network{ChainSelector: chain.Selector, BlockExplorer: cfgnet.BlockExplorer{APIKey: "test-key"}},
 		Address:      "0x123",
-		Metadata:     SolidityContractMetadata{},
+		Metadata:     SolidityContractMetadata{Version: "0.8.19", Name: "Test"},
 		ContractType: "Test",
 		Version:      "1.0.0",
 		Logger:       logger.Nop(),
 	})
-	require.Error(t, err)
-	require.Equal(t, "socialscan verifier not yet implemented", err.Error())
+	require.NoError(t, err)
+	require.NotNil(t, v)
+	require.Equal(t, "Test 1.0.0 (0x123 on pharos-testnet)", v.String())
 }
 
 func TestNewVerifier_StrategyDefault(t *testing.T) {

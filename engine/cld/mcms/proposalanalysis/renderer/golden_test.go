@@ -13,6 +13,21 @@ import (
 )
 
 func goldenProposal() *analyzer.AnalyzedProposalNode {
+	type destChainConfig struct {
+		IsEnabled                         bool   `json:"IsEnabled"`
+		MaxNumberOfTokensPerMsg           uint16 `json:"MaxNumberOfTokensPerMsg"`
+		MaxDataBytes                      uint32 `json:"MaxDataBytes"`
+		DestGasPerPayloadByteBase         uint8  `json:"DestGasPerPayloadByteBase"`
+		DestDataAvailabilityMultiplierBps uint16 `json:"DestDataAvailabilityMultiplierBps"`
+		ChainFamilySelector               string `json:"ChainFamilySelector"`
+		GasMultiplierWeiPerEth            uint64 `json:"GasMultiplierWeiPerEth"`
+	}
+
+	type destChainConfigArg struct {
+		DestChainSelector string          `json:"DestChainSelector"`
+		DestChainConfig   destChainConfig `json:"DestChainConfig"`
+	}
+
 	targetParam := analyzer.NewAnalyzedParameterNode(
 		"target", "address", "0xAbCdEf1234567890abcdef1234567890abcdef12",
 	)
@@ -25,10 +40,47 @@ func goldenProposal() *analyzer.AnalyzedProposalNode {
 	)
 
 	enabledParam := analyzer.NewAnalyzedParameterNode("enabled", "bool", true)
+	destChainConfigArgsParam := analyzer.NewAnalyzedParameterNode(
+		"destChainConfigArgs",
+		"((uint64,(bool,uint16,uint32,uint32,uint32,uint8,uint8,uint16,uint32,uint16,uint16,bytes4,bool,uint16,uint32,uint32,uint64,uint32,uint32))[])",
+		[]destChainConfigArg{
+			{
+				DestChainSelector: "aptos-testnet (743186221051783445)",
+				DestChainConfig: destChainConfig{
+					IsEnabled:                         true,
+					MaxNumberOfTokensPerMsg:           1,
+					MaxDataBytes:                      30000,
+					DestGasPerPayloadByteBase:         0,
+					DestDataAvailabilityMultiplierBps: 0,
+					ChainFamilySelector:               "0xac77ffec",
+					GasMultiplierWeiPerEth:            1100000000000000000,
+				},
+			},
+			{
+				DestChainSelector: "sui-testnet (9762610643973837292)",
+				DestChainConfig: destChainConfig{
+					IsEnabled:                         true,
+					MaxNumberOfTokensPerMsg:           1,
+					MaxDataBytes:                      16000,
+					DestGasPerPayloadByteBase:         16,
+					DestDataAvailabilityMultiplierBps: 1,
+					ChainFamilySelector:               "0xc4e05953",
+					GasMultiplierWeiPerEth:            1100000000000000000,
+				},
+			},
+		},
+	)
+	destChainConfigArgsParam.AddAnnotations(annotation.New("note", "string", "multi-chain destination configuration"))
 
 	call1 := analyzer.NewAnalyzedCallNode(
 		"0x1111111111111111111111111111111111111111", "setRateLimiterConfig",
-		analyzer.AnalyzedParameters{targetParam, amountParam, enabledParam},
+		analyzer.AnalyzedParameters{
+			targetParam,
+			amountParam,
+			enabledParam,
+			analyzer.NewAnalyzedParameterNode("proof", "bytes", []byte{0xde, 0xad, 0xbe, 0xef}),
+			destChainConfigArgsParam,
+		},
 		nil, nil, "OnRamp", "v1.5.0", nil,
 	)
 	call1.AddAnnotations(

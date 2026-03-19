@@ -1,5 +1,33 @@
 # chainlink-deployments-framework
 
+## 0.89.0
+
+### Minor Changes
+
+- [#876](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/876) [`5d69a79`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/5d69a798f22b4b544e2df61c0a6cff0e30f90b7a) Thanks [@ajaskolski](https://github.com/ajaskolski)! - feat: add additional verifiers to evm cmd
+
+- [#870](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/870) [`c8456cb`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/c8456cbc6982c9cd6afaa135a89e517ca97134d2) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - refactor(cld/runtime): export input yaml parsing functions from pipeline/input package
+
+## 0.88.1
+
+### Patch Changes
+
+- [#858](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/858) [`b05a8f2`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/b05a8f2c279335e655d359be011804e5b56c9e80) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(mcms/analyzer/renderer): inline complex parameter values in markdown
+
+- [#853](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/853) [`7b0467c`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/7b0467c5db46e3ad52ef75d3f6271dbb750ec7dc) Thanks [@finleydecker](https://github.com/finleydecker)! - fix: make RPC health check timeout configurable
+
+## 0.88.0
+
+### Minor Changes
+
+- [#861](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/861) [`ec0bb20`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/ec0bb205e98139cae0dc8a9faea5f74c3581ba54) Thanks [@ecPablo](https://github.com/ecPablo)! - add CRE configuration fields to domain config
+
+## 0.87.0
+
+### Minor Changes
+
+- [#835](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/835) [`3f8ba39`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/3f8ba393ef2204ebb66db1ebcc054d2fcfaf3f42) Thanks [@giogam](https://github.com/giogam)! - feat(state): add --datastore flag (file|catalog) for state generate; defaults to domain.yaml when unset
+
 ## 0.86.3
 
 ### Patch Changes

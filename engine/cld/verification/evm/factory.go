@@ -48,17 +48,17 @@ func NewVerifier(strategy VerificationStrategy, cfg VerifierConfig) (verificatio
 	case StrategyBlockscout:
 		return newBlockscoutVerifier(cfg)
 	case StrategySourcify:
-		return nil, errors.New("sourcify verifier not yet implemented")
+		return newSourcifyVerifier(cfg)
 	case StrategyOkLink:
-		return nil, errors.New("oklink verifier not yet implemented")
+		return newOkLinkVerifier(cfg)
 	case StrategyBtrScan:
-		return nil, errors.New("btrscan verifier not yet implemented")
+		return newBtrScanVerifier(cfg)
 	case StrategyCoreDAO:
-		return nil, errors.New("coredao verifier not yet implemented")
+		return newCoreDAOVerifier(cfg)
 	case StrategyL2Scan:
-		return nil, errors.New("l2scan verifier not yet implemented")
+		return newL2ScanVerifier(cfg)
 	case StrategySocialScan:
-		return nil, errors.New("socialscan verifier not yet implemented")
+		return newSocialScanVerifier(cfg)
 	default:
 		return nil, fmt.Errorf("no verifier for strategy %d", strategy)
 	}
