@@ -43,14 +43,14 @@ func (r *MermaidRenderer) RenderTo(w io.Writer, _ renderer.RenderRequest, propos
 
 		name := format.ResolveChainName(sel)
 		id := sanitizeID(name)
-		fmt.Fprintf(&b, "    subgraph %s [\"%s\"]\n", id, escapeQuotes(name))
+		b.WriteString(fmt.Sprintf("    subgraph %s [\"%s\"]\n", id, escapeQuotes(name)))
 
 		for _, n := range nodes {
 			if n.chainSelector != sel {
 				continue
 			}
 
-			fmt.Fprintf(&b, "        %s[\"%s\"]:::%s\n", n.id, escapeQuotes(n.label), contractStyle(n.contractType))
+			b.WriteString(fmt.Sprintf("        %s[\"%s\"]:::%s\n", n.id, escapeQuotes(n.label), contractStyle(n.contractType)))
 		}
 
 		b.WriteString("    end\n")
@@ -68,7 +68,7 @@ func (r *MermaidRenderer) RenderTo(w io.Writer, _ renderer.RenderRequest, propos
 				from = prevID
 			}
 
-			fmt.Fprintf(&b, "    %s -->|\"%d. %s\"| %s\n", from, step, escapeQuotes(call.Name()), curID)
+			b.WriteString(fmt.Sprintf("    %s -->|\"%d. %s\"| %s\n", from, step, escapeQuotes(call.Name()), curID))
 			prevID = curID
 		}
 	}
@@ -86,7 +86,7 @@ func (r *MermaidRenderer) RenderTo(w io.Writer, _ renderer.RenderRequest, propos
 
 			for j := range nodes {
 				if nodes[j].chainSelector == remoteSel && nodes[j].id != src.id {
-					fmt.Fprintf(&b, "    %s -->|\"%s\"| %s\n", src.id, "chain update", nodes[j].id)
+					b.WriteString(fmt.Sprintf("    %s -->|\"%s\"| %s\n", src.id, "chain update", nodes[j].id))
 
 					break
 				}
