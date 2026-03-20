@@ -160,14 +160,6 @@ func Test_resolveCRERunner(t *testing.T) {
 			name:       "empty binary path uses default",
 			override:   nil,
 			binaryPath: "",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			got := resolveCRERunner(tt.override, tt.binaryPath)
 
 			if tt.override != nil {
 				// Override should return the exact same instance
