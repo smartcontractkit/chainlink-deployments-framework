@@ -73,6 +73,7 @@ var (
 				KMSKeyRegion: "us-east-1",
 			},
 		},
+		CRE: CREConfig{},
 	}
 
 	// envVars is the environment variables that used to set the config.
@@ -194,6 +195,7 @@ var (
 				KMSKeyRegion: "us-east-1",
 			},
 		},
+		CRE: CREConfig{},
 	}
 )
 
@@ -235,6 +237,7 @@ func Test_Load(t *testing.T) { //nolint:paralleltest // see comment in setupTest
 					OCR: OCRConfig{},
 				},
 				Catalog: CatalogConfig{},
+				CRE:     CREConfig{},
 			},
 		},
 		{
@@ -331,6 +334,29 @@ func Test_LoadEnv_Legacy(t *testing.T) { //nolint:paralleltest // see comment in
 	require.NoError(t, err)
 
 	assert.Equal(t, envCfg, got)
+}
+
+func Test_LoadEnv_BindsCREFromEnv(t *testing.T) { //nolint:paralleltest // see comment in setupEnvVars
+	t.Setenv("CRE_DEPLOY_HMAC_KEY_ID", "kid-1")
+	t.Setenv("CRE_DEPLOY_HMAC_SECRET", "secret-1")
+	t.Setenv("CRE_TENANT_ID", "tenant-1")
+	t.Setenv("CRE_ORG_ID", "org-1")
+	t.Setenv("CRE_TLS", "true")
+	t.Setenv("CRE_TIMEOUT", "30s")
+	t.Setenv("CRE_STORAGE_ADDR", "addr-1")
+	t.Setenv("CRE_DON_FAMILY", "family-1")
+
+	got, err := LoadEnv()
+	require.NoError(t, err)
+
+	require.Equal(t, "kid-1", got.CRE.Auth.HMACKeyID)
+	require.Equal(t, "secret-1", got.CRE.Auth.HMACKeySecret)
+	require.Equal(t, "tenant-1", got.CRE.Auth.TenantID)
+	require.Equal(t, "org-1", got.CRE.Auth.OrgID)
+	require.Equal(t, "true", got.CRE.TLS)
+	require.Equal(t, "30s", got.CRE.Timeout)
+	require.Equal(t, "addr-1", got.CRE.StorageAddress)
+	require.Equal(t, "family-1", got.CRE.DonFamily)
 }
 
 func Test_YAML_Marshal_Unmarshal(t *testing.T) {

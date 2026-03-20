@@ -140,6 +140,23 @@ type CatalogConfig struct {
 	Auth *CatalogAuthConfig `mapstructure:"auth" yaml:"auth,omitempty"` // The authentication configuration for the Catalog.
 }
 
+// CREAuthConfig holds authentication settings for CRE (Chainlink Runtime Environment) deploy operations.
+type CREAuthConfig struct {
+	HMACKeyID     string `mapstructure:"hmac_key_id" yaml:"hmac_key_id"`         // Secret: HMAC key ID
+	HMACKeySecret string `mapstructure:"hmac_key_secret" yaml:"hmac_key_secret"` // Secret: HMAC key secret
+	TenantID      string `mapstructure:"tenant_id" yaml:"tenant_id"`
+	OrgID         string `mapstructure:"org_id" yaml:"org_id"`
+}
+
+// CREConfig is the configuration for CRE deploy and related CLI usage (credentials, endpoints, timeouts).
+type CREConfig struct {
+	Auth           CREAuthConfig `mapstructure:"auth" yaml:"auth"`
+	TLS            string        `mapstructure:"tls" yaml:"tls"`
+	Timeout        string        `mapstructure:"timeout" yaml:"timeout"`
+	StorageAddress string        `mapstructure:"storage_address" yaml:"storage_address"`
+	DonFamily      string        `mapstructure:"don_family" yaml:"don_family"`
+}
+
 // OnchainConfig wraps the configuration for the onchain components.
 type OnchainConfig struct {
 	KMS     KMSConfig     `mapstructure:"kms" yaml:"kms"`
@@ -164,6 +181,9 @@ type Config struct {
 	Onchain  OnchainConfig  `mapstructure:"onchain" yaml:"onchain"`
 	Offchain OffchainConfig `mapstructure:"offchain" yaml:"offchain"`
 	Catalog  CatalogConfig  `mapstructure:"catalog" yaml:"catalog"`
+	// CRE is optional. If the cre block is absent from YAML and CRE_* env vars are unset,
+	// unmarshaling leaves CRE zero-valued; Load/LoadEnv still succeed (same as other optional sections).
+	CRE CREConfig `mapstructure:"cre" yaml:"cre,omitempty"`
 }
 
 // Load loads the config from the file path, falling back to env vars if the file does not exist.
