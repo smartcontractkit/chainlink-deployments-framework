@@ -145,29 +145,21 @@ func Test_resolveCRERunner(t *testing.T) {
 		name       string
 		override   cre.Runner
 		binaryPath string
-		wantType   string
-		wantPath   string
 	}{
 		{
 			name:       "override takes precedence",
 			override:   &cre.CLIRunner{BinaryPath: "/override/cre"},
 			binaryPath: "/default/cre",
-			wantType:   "*cre.CLIRunner",
-			wantPath:   "/override/cre",
 		},
 		{
 			name:       "no override uses binary path",
 			override:   nil,
 			binaryPath: "/custom/cre",
-			wantType:   "*cre.CLIRunner",
-			wantPath:   "/custom/cre",
 		},
 		{
 			name:       "empty binary path uses default",
 			override:   nil,
 			binaryPath: "",
-			wantType:   "*cre.CLIRunner",
-			wantPath:   "",
 		},
 	}
 
