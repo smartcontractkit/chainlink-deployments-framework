@@ -157,20 +157,27 @@ func Test_resolveCRERunner(t *testing.T) {
 			binaryPath: "/custom/cre",
 		},
 		{
-			name:       "empty binary path uses default",
+			name:       "empty_binary_path_uses_cli_default",
 			override:   nil,
 			binaryPath: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := resolveCRERunner(tt.override, tt.binaryPath)
 
 			if tt.override != nil {
-				// Override should return the exact same instance
 				assert.Equal(t, tt.override, got)
-			} else {
-				// No override should return a CLIRunner
-				require.NotNil(t, got)
-				cliRunner, ok := got.(*cre.CLIRunner)
-				require.True(t, ok, "expected *cre.CLIRunner, got %T", got)
-				assert.Equal(t, tt.binaryPath, cliRunner.BinaryPath)
+				return
 			}
+
+			require.NotNil(t, got)
+			cliRunner, ok := got.(*cre.CLIRunner)
+			require.True(t, ok, "expected *cre.CLIRunner, got %T", got)
+			assert.Equal(t, tt.binaryPath, cliRunner.BinaryPath)
 		})
 	}
 }
