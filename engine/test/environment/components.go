@@ -6,10 +6,10 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
 	fchain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
+	"github.com/smartcontractkit/chainlink-deployments-framework/cre"
 	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	foffchain "github.com/smartcontractkit/chainlink-deployments-framework/offchain"
-	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/cre"
 )
 
 // components is a struct that contains the components of the environment.

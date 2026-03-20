@@ -6,8 +6,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/smartcontractkit/chainlink-deployments-framework/cre"
 	foperations "github.com/smartcontractkit/chainlink-deployments-framework/operations"
-	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/cre"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 

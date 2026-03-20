@@ -1,9 +1,9 @@
 package environment
 
 import (
+	"github.com/smartcontractkit/chainlink-deployments-framework/cre"
 	cfgdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/domain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
-	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/cre"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 

@@ -7,7 +7,7 @@ package cremocks
 import (
 	"context"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/cre"
+	"github.com/smartcontractkit/chainlink-deployments-framework/cre"
 	mock "github.com/stretchr/testify/mock"
 )
 
