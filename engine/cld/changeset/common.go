@@ -43,6 +43,7 @@ type ConfiguredChangeSet interface {
 	ThenWith(postProcessor PostProcessor) PostProcessingChangeSet
 	WithPreHooks(hooks ...PreHook) ConfiguredChangeSet
 	WithPostHooks(hooks ...PostHook) ConfiguredChangeSet
+	WithPostProposalHooks(hooks ...PostProposalHook) ConfiguredChangeSet
 }
 
 // WrappedChangeSet simply wraps a fdeployment.ChangeSetV2 to use it in the fluent interface, which hosts
@@ -72,7 +73,7 @@ func (f WrappedChangeSet[C]) With(config C) ConfiguredChangeSet {
 	return ChangeSetImpl[C]{changeset: f, configProvider: func() (C, error) { return config, nil }}
 }
 
-// inputObject is a JSON object with a "payload" field that contains the actual input data for a Durable Pipeline.
+// TypedJSON is a JSON object with a "payload" field that contains the actual input data for a Durable Pipeline.
 type TypedJSON struct {
 	Payload        json.RawMessage `json:"payload"`
 	ChainOverrides []uint64        `json:"chainOverrides"` // Optional field for chain overrides
@@ -121,15 +122,16 @@ func decodePayload[C any](payload json.RawMessage) (C, error) {
 //
 // Note: Prefer WithEnvInput for durable_pipelines.go
 func (f WrappedChangeSet[C]) WithJSON(_ C, inputStr string) ConfiguredChangeSet {
-	return ChangeSetImpl[C]{changeset: f, configProvider: func() (C, error) {
-		inputObject, err := parseTypedInput(inputStr)
-		if err != nil {
-			var zero C
-			return zero, err
-		}
+	return ChangeSetImpl[C]{
+		changeset: f, configProvider: func() (C, error) {
+			inputObject, err := parseTypedInput(inputStr)
+			if err != nil {
+				var zero C
+				return zero, err
+			}
 
-		return decodePayload[C](inputObject.Payload)
-	},
+			return decodePayload[C](inputObject.Payload)
+		},
 		inputChainOverrides: func() ([]uint64, error) {
 			return loadInputChainOverrides(inputStr)
 		},
@@ -188,7 +190,8 @@ func (f WrappedChangeSet[C]) WithEnvInput(opts ...EnvInputOption[C]) ConfiguredC
 		return config, nil
 	}
 
-	return ChangeSetImpl[C]{changeset: f,
+	return ChangeSetImpl[C]{
+		changeset: f,
 		configProvider: func() (C, error) {
 			return providerFromInput(inputStr)
 		},
@@ -231,6 +234,11 @@ func (f WrappedChangeSet[C]) WithConfigResolver(resolver fresolvers.ConfigResolv
 	configProviderFromInput := func(rawInput string) (C, error) {
 		var zero C
 
+		if rawInput == "" {
+			return zero, errors.New("input is empty")
+		}
+
+		// Parse JSON input
 		inputObject, err := parseTypedInput(rawInput)
 		if err != nil {
 			return zero, fmt.Errorf("failed to parse resolver input as JSON: %w", err)
@@ -245,7 +253,8 @@ func (f WrappedChangeSet[C]) WithConfigResolver(resolver fresolvers.ConfigResolv
 		return typedConfig, nil
 	}
 
-	return ChangeSetImpl[C]{changeset: f,
+	return ChangeSetImpl[C]{
+		changeset: f,
 		configProvider: func() (C, error) {
 			return configProviderFromInput(inputStr)
 		},
@@ -269,8 +278,9 @@ type ChangeSetImpl[C any] struct {
 	// Configure(...).WithConfigResolver(...)
 	ConfigResolver fresolvers.ConfigResolver
 
-	preHooks  []PreHook
-	postHooks []PostHook
+	preHooks          []PreHook
+	postHooks         []PostHook
+	postProposalHooks []PostProposalHook
 }
 
 func (ccs ChangeSetImpl[C]) noop() {}
@@ -341,16 +351,24 @@ func (ccs ChangeSetImpl[C]) WithPostHooks(hooks ...PostHook) ConfiguredChangeSet
 	return ccs
 }
 
-func (ccs ChangeSetImpl[C]) getPreHooks() []PreHook   { return ccs.preHooks }
-func (ccs ChangeSetImpl[C]) getPostHooks() []PostHook { return ccs.postHooks }
+// WithPostProposalHooks appends post-hooks to this changeset. Multiple calls are additive.
+func (ccs ChangeSetImpl[C]) WithPostProposalHooks(hooks ...PostProposalHook) ConfiguredChangeSet {
+	ccs.postProposalHooks = append(slices.Clone(ccs.postProposalHooks), hooks...)
+	return ccs
+}
+
+func (ccs ChangeSetImpl[C]) getPreHooks() []PreHook                   { return ccs.preHooks }
+func (ccs ChangeSetImpl[C]) getPostHooks() []PostHook                 { return ccs.postHooks }
+func (ccs ChangeSetImpl[C]) getPostProposalHooks() []PostProposalHook { return ccs.postProposalHooks }
 
 // ThenWith adds post-processing to a configured changeset.
 // Hooks registered before ThenWith are carried forward.
 func (ccs ChangeSetImpl[C]) ThenWith(postProcessor PostProcessor) PostProcessingChangeSet {
 	return PostProcessingChangeSetImpl[C]{
-		changeset:     ccs,
-		postProcessor: postProcessor,
-		preHooks:      slices.Clone(ccs.preHooks),
-		postHooks:     slices.Clone(ccs.postHooks),
+		changeset:         ccs,
+		postProcessor:     postProcessor,
+		preHooks:          slices.Clone(ccs.preHooks),
+		postHooks:         slices.Clone(ccs.postHooks),
+		postProposalHooks: slices.Clone(ccs.postProposalHooks),
 	}
 }

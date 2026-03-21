@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/smartcontractkit/mcms"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
@@ -41,6 +44,14 @@ type HookEnv struct {
 	Logger logger.Logger
 }
 
+// ProposalHookEnv is the restricted environment surface exposed to proposal hooks.
+// Additional fields may be added in future versions as needs arise.
+type ProposalHookEnv struct {
+	Name        string
+	Logger      logger.Logger
+	BlockChains chain.BlockChains
+}
+
 // PreHookParams is passed to pre-hooks.
 // All fields must be treated as read-only.
 type PreHookParams struct {
@@ -59,6 +70,16 @@ type PostHookParams struct {
 	Err          error
 }
 
+// PostProposalHookParams is passed to post-hooks.
+// All fields must be treated as read-only.
+type PostProposalHookParams struct {
+	Env          ProposalHookEnv
+	ChangesetKey string
+	Proposal     *mcms.TimelockProposal
+	Input        any
+	Reports      []MCMSTimelockExecuteReport
+}
+
 // PreHookFunc is the signature for functions that run before changeset Apply.
 // The context is derived from env.GetContext() with the hook's timeout applied.
 type PreHookFunc func(ctx context.Context, params PreHookParams) error
@@ -66,6 +87,10 @@ type PreHookFunc func(ctx context.Context, params PreHookParams) error
 // PostHookFunc is the signature for functions that run after changeset Apply.
 // The context is derived from env.GetContext() with the hook's timeout applied.
 type PostHookFunc func(ctx context.Context, params PostHookParams) error
+
+// PostProposalHookFunc is the signature for functions that run after an MCMS proposal execution.
+// The context is derived from env.GetContext() with the hook's timeout applied.
+type PostProposalHookFunc func(ctx context.Context, params PostProposalHookParams) error
 
 // HookDefinition holds the metadata common to all hooks.
 type HookDefinition struct {
@@ -84,6 +109,12 @@ type PreHook struct {
 type PostHook struct {
 	HookDefinition
 	Func PostHookFunc
+}
+
+// PostProposalHook pairs a HookDefinition with a PostProposalHookFunc.
+type PostProposalHook struct {
+	HookDefinition
+	Func PostProposalHookFunc
 }
 
 // ExecuteHook runs a hook function with the configured timeout and failure

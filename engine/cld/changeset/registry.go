@@ -10,7 +10,6 @@ import (
 	"sync"
 
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
-
 	foperations "github.com/smartcontractkit/chainlink-deployments-framework/operations"
 )
 
@@ -65,8 +64,9 @@ type registryEntry struct {
 	// options contains the configuration options for this changeset
 	options ChangesetConfig
 
-	preHooks  []PreHook
-	postHooks []PostHook
+	preHooks          []PreHook
+	postHooks         []PostHook
+	postProposalHooks []PostProposalHook
 }
 
 // hookCarrier is implemented by changeset types that carry hooks through the
@@ -74,6 +74,7 @@ type registryEntry struct {
 type hookCarrier interface {
 	getPreHooks() []PreHook
 	getPostHooks() []PostHook
+	getPostProposalHooks() []PostProposalHook
 }
 
 // newRegistryEntry creates a new registry entry for a changeset.
@@ -83,6 +84,7 @@ func newRegistryEntry(c ChangeSet, opts ChangesetConfig) registryEntry {
 	if hc, ok := c.(hookCarrier); ok {
 		entry.preHooks = hc.getPreHooks()
 		entry.postHooks = hc.getPostHooks()
+		entry.postProposalHooks = hc.getPostProposalHooks()
 	}
 
 	return entry
@@ -115,6 +117,8 @@ type ChangesetsRegistry struct {
 	globalPreHooks []PreHook
 	// globalPostHooks run after every changeset in this registry.
 	globalPostHooks []PostHook
+	// globalPostProposalHooks run after every changeset in this registry is executed in a mcms proposal.
+	globalPostProposalHooks []PostProposalHook
 }
 
 type applyConfig struct {
@@ -172,6 +176,14 @@ func (r *ChangesetsRegistry) AddGlobalPostHooks(hooks ...PostHook) {
 	r.globalPostHooks = append(r.globalPostHooks, hooks...)
 }
 
+// AddGlobalPostProposalHooks appends post-hooks that run after every changeset in this registry.
+func (r *ChangesetsRegistry) AddGlobalPostProposalHooks(hooks ...PostProposalHook) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.globalPostProposalHooks = append(r.globalPostProposalHooks, hooks...)
+}
+
 // Apply applies a changeset, running any registered hooks around it.
 //
 // Execution order:
@@ -200,7 +212,7 @@ func (r *ChangesetsRegistry) Apply(
 		return entry.changeset.applyWithInput(e, cfg.inputStr)
 	}
 
-	entry, globalPre, globalPost, err := r.getApplySnapshot(key)
+	applySnapshot, err := r.getApplySnapshot(key)
 	if err != nil {
 		return fdeployment.ChangesetOutput{}, err
 	}
@@ -215,7 +227,7 @@ func (r *ChangesetsRegistry) Apply(
 		ChangesetKey: key,
 	}
 
-	for _, h := range globalPre {
+	for _, h := range applySnapshot.globalPreHooks {
 		if err := ExecuteHook(e, h.HookDefinition, func(ctx context.Context) error {
 			return h.Func(ctx, preParams)
 		}); err != nil {
@@ -223,7 +235,7 @@ func (r *ChangesetsRegistry) Apply(
 		}
 	}
 
-	for _, h := range entry.preHooks {
+	for _, h := range applySnapshot.registryEntry.preHooks {
 		if err := ExecuteHook(e, h.HookDefinition, func(ctx context.Context) error {
 			return h.Func(ctx, preParams)
 		}); err != nil {
@@ -231,9 +243,7 @@ func (r *ChangesetsRegistry) Apply(
 		}
 	}
 
-	var output fdeployment.ChangesetOutput
-	var applyErr error
-	output, applyErr = entry.changeset.applyWithInput(e, cfg.inputStr)
+	output, applyErr := applySnapshot.registryEntry.changeset.applyWithInput(e, cfg.inputStr)
 
 	postParams := PostHookParams{
 		Env:          hookEnv,
@@ -242,7 +252,7 @@ func (r *ChangesetsRegistry) Apply(
 		Err:          applyErr,
 	}
 
-	for _, h := range entry.postHooks {
+	for _, h := range applySnapshot.registryEntry.postHooks {
 		if err := ExecuteHook(e, h.HookDefinition, func(ctx context.Context) error {
 			return h.Func(ctx, postParams)
 		}); err != nil {
@@ -255,7 +265,7 @@ func (r *ChangesetsRegistry) Apply(
 		}
 	}
 
-	for _, h := range globalPost {
+	for _, h := range applySnapshot.globalPostHooks {
 		if err := ExecuteHook(e, h.HookDefinition, func(ctx context.Context) error {
 			return h.Func(ctx, postParams)
 		}); err != nil {
@@ -279,19 +289,31 @@ func (r *ChangesetsRegistry) getApplyEntry(key string) (registryEntry, error) {
 	return r.getApplyEntryLocked(key)
 }
 
+type applySnapshot struct {
+	registryEntry           registryEntry
+	globalPreHooks          []PreHook
+	globalPostHooks         []PostHook
+	globalPostProposalHooks []PostProposalHook
+}
+
 // getApplySnapshot reads the registry entry and global hook slices under
 // the mutex, returning copies so Apply can release the lock before running
 // hooks and the changeset.
-func (r *ChangesetsRegistry) getApplySnapshot(key string) (registryEntry, []PreHook, []PostHook, error) {
+func (r *ChangesetsRegistry) getApplySnapshot(key string) (applySnapshot, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	entry, err := r.getApplyEntryLocked(key)
 	if err != nil {
-		return registryEntry{}, nil, nil, err
+		return applySnapshot{}, err
 	}
 
-	return entry, slices.Clone(r.globalPreHooks), slices.Clone(r.globalPostHooks), nil
+	return applySnapshot{
+		registryEntry:           entry,
+		globalPreHooks:          slices.Clone(r.globalPreHooks),
+		globalPostHooks:         slices.Clone(r.globalPostHooks),
+		globalPostProposalHooks: slices.Clone(r.globalPostProposalHooks),
+	}, nil
 }
 
 func (r *ChangesetsRegistry) getApplyEntryLocked(key string) (registryEntry, error) {
