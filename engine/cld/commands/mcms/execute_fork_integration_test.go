@@ -149,7 +149,7 @@ func Test_executeFork_Integration(t *testing.T) { //nolint:paralleltest
 	}
 	for _, tt := range tests { //nolint:paralleltest
 		t.Run(tt.name, func(t *testing.T) {
-			err := executeFork(t.Context(), lggr, tt.cfg, true)
+			err := executeFork(t.Context(), Config{Logger: lggr}, tt.cfg, true)
 
 			tt.assert(err)
 			logs.TakeAll() // clear logs

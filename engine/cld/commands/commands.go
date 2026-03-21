@@ -102,6 +102,9 @@ type MCMSConfig struct {
 
 	// ProposalRenderers are custom renderers registered into analyze-proposal-v2.
 	ProposalRenderers []proposalrenderer.Renderer
+
+	// LoadChangeset are custom changeset loading functions. Optional
+	LoadChangesets func(envName string) (*cs.ChangesetsRegistry, error)
 }
 
 // MCMS creates the mcms command group for proposal analysis and conversion.
@@ -112,6 +115,7 @@ func (c *Commands) MCMS(dom domain.Domain, cfg MCMSConfig) (*cobra.Command, erro
 		ProposalContextProvider: cfg.ProposalContextProvider,
 		ProposalAnalyzers:       cfg.ProposalAnalyzers,
 		ProposalRenderers:       cfg.ProposalRenderers,
+		LoadChangesets:          cfg.LoadChangesets,
 	})
 }
 

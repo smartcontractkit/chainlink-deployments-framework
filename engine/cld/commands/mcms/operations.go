@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
+	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	gethtypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/google/uuid"
 	"github.com/smartcontractkit/mcms"
 	"github.com/smartcontractkit/mcms/sdk"
 	"github.com/smartcontractkit/mcms/sdk/evm/bindings"
@@ -20,6 +22,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	cldfchangeset "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/changeset"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
@@ -141,21 +144,37 @@ func executeChainCommand(ctx context.Context, lggr logger.Logger, cfg *forkConfi
 	return nil
 }
 
+type timelockExecuteChainCommandOptions struct {
+	idFn    func() string
+	clockFn func() time.Time
+}
+
+type timelockExecuteChainCommandOption func(*timelockExecuteChainCommandOptions)
+
 // timelockExecuteChainCommand executes timelock operations.
-func timelockExecuteChainCommand(ctx context.Context, lggr logger.Logger, cfg *forkConfig) error {
+func timelockExecuteChainCommand(
+	ctx context.Context, lggr logger.Logger, cfg *forkConfig, opts ...timelockExecuteChainCommandOption,
+) ([]cldfchangeset.MCMSTimelockExecuteReport, error) {
+	options := timelockExecuteChainCommandOptions{idFn: uuid.NewString, clockFn: time.Now}
+	for _, opt := range opts {
+		opt(&options)
+	}
+
 	if cfg.timelockProposal == nil {
-		return errors.New("expected proposal to be have non-nil *TimelockProposal")
+		return nil, errors.New("expected proposal to be have non-nil *TimelockProposal")
 	}
 
 	executable, err := createTimelockExecutable(ctx, cfg)
 	if err != nil {
-		return fmt.Errorf("failed to create TimelockExecutable: %w", err)
+		return nil, fmt.Errorf("failed to create TimelockExecutable: %w", err)
 	}
 
 	executeOptions, err := timelockExecuteOptions(ctx, lggr, cfg)
 	if err != nil {
-		return fmt.Errorf("failed to get timelock execute options: %w", err)
+		return nil, fmt.Errorf("failed to get timelock execute options: %w", err)
 	}
+
+	reports := make([]cldfchangeset.MCMSTimelockExecuteReport, len(cfg.timelockProposal.Operations))
 
 	for i := range cfg.timelockProposal.Operations {
 		if uint64(cfg.timelockProposal.Operations[i].ChainSelector) == cfg.chainSelector {
@@ -167,17 +186,33 @@ func timelockExecuteChainCommand(ctx context.Context, lggr logger.Logger, cfg *f
 			}
 
 			if err := executable.IsOperationReady(ctx, i); err != nil {
-				return fmt.Errorf("operation %d is not ready to be executed: %w", i, err)
+				return nil, fmt.Errorf("operation %d is not ready to be executed: %w", i, err)
 			}
+
+			timestamp := options.clockFn()
 
 			result, err := executable.Execute(ctx, i, executeOptions...)
 			if err != nil {
-				return fmt.Errorf("failed to execute operation %d: %w", i, err)
+				return nil, fmt.Errorf("failed to execute operation %d: %w", i, err)
+			}
+			reports[i] = cldfchangeset.MCMSTimelockExecuteReport{
+				ID:        options.idFn(),
+				Type:      cldfchangeset.MCMSTimelockExecuteReportType,
+				Status:    "SUCCESS",
+				Timestamp: timestamp,
+				Input: cldfchangeset.MCMSTimelockExecuteReportInput{
+					Index:         i,
+					ChainSelector: cfg.chainSelector,
+					OperationID:   cfg.timelockProposal.Operations[i].OperationID,
+				},
+				Output: cldfchangeset.MCMSTimelockExecuteReportOutput{
+					TransactionResult: result,
+				},
 			}
 
 			err = confirmTransaction(ctx, lggr, result, cfg)
 			if err != nil {
-				return fmt.Errorf("failed to confirm execute transaction: %w", err)
+				return nil, fmt.Errorf("failed to confirm execute transaction: %w", err)
 			}
 
 			lggr.Infof("Operation %d executed successfully: %s\n", i, result)
@@ -186,7 +221,7 @@ func timelockExecuteChainCommand(ctx context.Context, lggr logger.Logger, cfg *f
 
 	lggr.Infof("All operations executed successfully")
 
-	return nil
+	return reports, nil
 }
 
 // confirmTransaction waits for a transaction to be confirmed.

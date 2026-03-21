@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver/v3"
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	mcmsv2 "github.com/smartcontractkit/mcms"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
@@ -423,7 +424,7 @@ func Test_Artifacts_ChangesetOperationsReportsFileExists(t *testing.T) {
 			beforeFunc: func(t *testing.T, artsDir *ArtifactsDir) {
 				t.Helper()
 
-				err := os.Mkdir(filepath.Join(artsDir.OperationsReportsDirPath(), "0001_initial-reports.json"), 0755)
+				err := os.Mkdir(filepath.Join(artsDir.OperationsReportsDirPath(), "0001_initial-reports.json"), 0o755)
 				require.NoError(t, err)
 			},
 			giveChangesetKey: "0001_initial",
@@ -473,7 +474,7 @@ func Test_Artifacts_SaveChangesetOutput_LoadChangesetOutput(t *testing.T) {
 			Spec:  js2.MustMarshal(),
 		}
 
-		validUntilUnixTime = uint32(time.Now().Add(time.Hour).Unix()) //nolint:gosec // This won't overflow until 7 Feb 2106, and would also cause MCMS to fail anyway
+		validUntilUnixTime = uint32(time.Date(2035, time.December, 31, 23, 59, 59, 999999999, time.UTC).Unix()) //nolint:gosec // This won't overflow until 7 Feb 2106, and would also cause MCMS to fail anyway
 
 		mcmsProposals = []mcmsv2.Proposal{
 			{
@@ -513,6 +514,7 @@ func Test_Artifacts_SaveChangesetOutput_LoadChangesetOutput(t *testing.T) {
 				},
 				Operations: []mcmstypes.Operation{
 					{
+						// OperationID: common.HexToHash(),
 						ChainSelector: mcmstypes.ChainSelector(chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector),
 						Transaction: mcmstypes.Transaction{
 							To:               "0x321",
@@ -543,6 +545,7 @@ func Test_Artifacts_SaveChangesetOutput_LoadChangesetOutput(t *testing.T) {
 				},
 				Operations: []mcmstypes.BatchOperation{
 					{
+						OperationID:   gethcommon.HexToHash("0xe8baef452df2576e6867edad359ff541e1c3d8bd80c5c2acd737e8173c5f2245"),
 						ChainSelector: mcmstypes.ChainSelector(chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector),
 						Transactions: []mcmstypes.Transaction{
 							{
@@ -572,6 +575,7 @@ func Test_Artifacts_SaveChangesetOutput_LoadChangesetOutput(t *testing.T) {
 				},
 				Operations: []mcmstypes.BatchOperation{
 					{
+						OperationID:   gethcommon.HexToHash("0x445a3dd84afb93f57fd894e5f468d3167c0a015c21603c6c6ed97a0b40421b04"),
 						ChainSelector: mcmstypes.ChainSelector(chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector),
 						Transactions: []mcmstypes.Transaction{
 							{
@@ -702,7 +706,7 @@ func Test_Artifacts_SaveChangesetOutput_LoadChangesetOutput(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run("durable pipelines "+tt.name, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
 			fixture := setupTestDomainsFS(t)
@@ -963,7 +967,8 @@ func Test_Artifacts_SaveAndLoadOperationsReport(t *testing.T) {
 			name:      "report does not exist - return empty slice",
 			giveCsKey: "invalid",
 			want:      []operations.Report[any, any]{},
-		}, {
+		},
+		{
 			name:      "success - directory does not exist - should create it",
 			giveCsKey: changesetKey,
 			beforeFunc: func(t *testing.T, artsDir *ArtifactsDir) {
