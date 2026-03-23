@@ -91,10 +91,9 @@ func NewCommand(cfg Config) (*cobra.Command, error) {
 	cfg.deps()
 
 	cmd := &cobra.Command{
-		Use:     "mcms",
-		Aliases: []string{"mcmsv2"},
-		Short:   mcmsShort,
-		Long:    mcmsLong,
+		Use:   "mcms",
+		Short: mcmsShort,
+		Long:  mcmsLong,
 	}
 
 	cmd.AddCommand(newErrorDecodeCmd(cfg))
