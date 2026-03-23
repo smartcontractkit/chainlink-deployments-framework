@@ -181,7 +181,7 @@ func Test_Changesets_ApplyWithInput_WithEnvConfiguredChangeset(t *testing.T) {
 	r.Add("0001_test", Configure(cs).WithEnvInput())
 
 	// overrides the input set by the env var
-	_, err := r.ApplyWithInput("0001_test", fdeployment.Environment{}, `{"payload":{"value":1}}`)
+	_, err := r.Apply("0001_test", fdeployment.Environment{}, WithInput(`{"payload":{"value":1}}`))
 	require.NoError(t, err)
 	require.Equal(t, 1, received)
 }
@@ -214,7 +214,7 @@ func Test_Changesets_ApplyWithInput_WithResolverConfiguredChangeset(t *testing.T
 	r.Add("0001_test", Configure(cs).WithConfigResolver(resolver))
 
 	// overrides the input set by the env var
-	_, err := r.ApplyWithInput("0001_test", fdeployment.Environment{}, `{"payload":{"base":7}}`)
+	_, err := r.Apply("0001_test", fdeployment.Environment{}, WithInput(`{"payload":{"base":7}}`))
 	require.NoError(t, err)
 	require.Equal(t, 17, received)
 }

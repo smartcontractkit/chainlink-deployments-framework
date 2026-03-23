@@ -111,11 +111,17 @@ func GetAllChangesetsInOrder(changesets any) ([]ChangesetItem, error) {
 		return nil, errors.New("invalid 'changesets' format for index access, expected array format")
 	}
 
-	for _, item := range data {
-		if itemMap, ok := item.(map[string]any); ok {
-			for name, changesetData := range itemMap {
-				result = append(result, ChangesetItem{Name: name, Data: changesetData})
-			}
+	for i, item := range data {
+		itemMap, ok := item.(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("invalid changesets[%d]: expected single-key object", i)
+		}
+		if len(itemMap) != 1 {
+			return nil, fmt.Errorf("invalid changesets[%d]: expected single-key object, got %d keys", i, len(itemMap))
+		}
+
+		for name, changesetData := range itemMap {
+			result = append(result, ChangesetItem{Name: name, Data: changesetData})
 		}
 	}
 

@@ -48,9 +48,10 @@
 //
 //		func TestMyDeployment(t *testing.T) {
 //			// Create runtime instance with a simulated EVM blockchain
-//			runtime := New(t.Context(), WithEnvOpts(
+//			runtime, err := New(t.Context(), WithEnvOpts(
 //	        	testenv.WithEVMSimulatedN(t, 1)
 //	     	))
+//			require.NoError(t, err)
 //
 //			// Execute a changeset
 //			task := ChangesetTask(myChangeset, MyChangesetConfig{
@@ -75,9 +76,10 @@
 //
 //	func TestMultiStepDeployment(t *testing.T) {
 //		// Create runtime instance with a simulated EVM blockchain
-//		runtime := New(t.Context(), WithEnvOpts(
+//		runtime, err := New(t.Context(), WithEnvOpts(
 //			testenv.WithEVMSimulatedN(t, 1)
 //	    ))
+//		require.NoError(t, err)
 //
 //		// Define the first changeset
 //		coreTask := ChangesetTask(coreChangeset, CoreConfig{})
@@ -221,6 +223,64 @@
 // # MCMS Proposals
 //
 // The runtime provides specialized tasks for handling Multi-Chain Multi-Sig (MCMS) proposals.
+//
+// # Registered Changesets From YAML
+//
+// Runtime can execute pipeline changesets from YAML using a dedicated executable task and
+// a registry provider factory. This is useful for domain tests that already define a changeset registry (for example
+// `domains/<domain>/<env>/pipelines.go`) and want to run the exact same registered changesets in
+// unit or integration tests.
+//
+// By default, registered changesets are applied without executing pre/post hooks.
+// Pass `runtime.WithExecuteHooks()` to opt in to hook execution.
+//
+// The input YAML must include:
+//   - `environment`
+//   - `domain`
+//   - `changesets` as an ordered array
+//
+// Each changeset entry should follow:
+//
+//	changesets:
+//	  - deploy_link_token:
+//	      payload:
+//	        chains:
+//	          - 5224473277236331295
+//
+// Example:
+//
+//	func TestExecuteRegisteredChangesetsFromYAML(t *testing.T) {
+//		rt, err := New(t.Context(), WithEnvOpts(
+//	    	testenv.WithEVMSimulatedN(t, 1)
+//	    ))
+//		require.NoError(t, err)
+//
+//		input := []byte(`environment: testnet
+//	domain: opdev
+//	changesets:
+//	  - deploy_link_token:
+//	      payload:
+//	        chains:
+//	          - 5224473277236331295
+//	`)
+//
+//		providerFactory := func() changeset.RegistryProvider {
+//			return testnet.NewPipelinesRegistryProvider()
+//		}
+//		err = rt.Exec(RegisteredChangesetsTask(
+//			providerFactory,
+//			input,
+//		))
+//		require.NoError(t, err)
+//
+//		// Opt in to execute pre/post hooks.
+//		err = rt.Exec(RegisteredChangesetsTask(
+//			providerFactory,
+//			input,
+//			WithExecuteHooks(),
+//		))
+//		require.NoError(t, err)
+//	}
 //
 // ## Available MCMS Tasks
 //
