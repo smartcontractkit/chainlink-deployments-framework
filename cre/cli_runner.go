@@ -11,10 +11,6 @@ import (
 const defaultBinary = "cre"
 
 // CLIRunner runs the CRE CLI via os/exec. Run executes the binary and captures stdout/stderr.
-//
-// Set [CLIRunner.Stdout] and/or [CLIRunner.Stderr] to stream output in real time (e.g. os.Stdout,
-// a zap WriteSyncer, or any [io.Writer]). The captured bytes in [CallResult] are always available
-// regardless of whether streaming writers are set.
 type CLIRunner struct {
 	// BinaryPath is the executable to run. Empty means "cre" (resolved via PATH).
 	BinaryPath string
