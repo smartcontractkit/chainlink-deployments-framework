@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.90.1
+
+### Patch Changes
+
+- [#880](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/880) [`95463e8`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/95463e8d8f97178441471378e1b5595f8a454c02) Thanks [@ajaskolski](https://github.com/ajaskolski)! - refactor: clears delegation usage for modular cmds
+
 ## 0.90.0
 
 ### Minor Changes
