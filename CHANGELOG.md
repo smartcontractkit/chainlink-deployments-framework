@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.90.0
+
+### Minor Changes
+
+- [#874](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/874) [`89964c0`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/89964c0bb856972b8f77dfcd2bbf7afa724c56e8) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat(engine/test): support executing registered changesets from a YAML file at test runtime
+
 ## 0.89.0
 
 ### Minor Changes
