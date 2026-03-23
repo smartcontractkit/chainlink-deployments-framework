@@ -63,9 +63,8 @@ func TestResolveConfig_URL(t *testing.T) {
 	}
 	ctx := t.Context()
 	workDir := t.TempDir()
-	r, err := NewArtifactsResolver(workDir)
+	r, err := NewArtifactsResolver(workDir, WithHTTPClient(srv.Client()))
 	require.NoError(t, err)
-	r.HTTPClient = srv.Client()
 	path, err := r.ResolveConfig(ctx, src)
 	require.NoError(t, err)
 	got, err := os.ReadFile(path)
@@ -105,9 +104,8 @@ func TestResolveConfig_gitHubFile(t *testing.T) {
 	}
 	ctx := t.Context()
 	workDir := t.TempDir()
-	r, err := NewArtifactsResolver(workDir)
+	r, err := NewArtifactsResolver(workDir, WithHTTPClient(client))
 	require.NoError(t, err)
-	r.HTTPClient = client
 	path, err := r.ResolveConfig(ctx, src)
 	require.NoError(t, err)
 	got, err := os.ReadFile(path)

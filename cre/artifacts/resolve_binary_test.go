@@ -98,9 +98,8 @@ func TestResolveBinary_workDir(t *testing.T) {
 		},
 	}
 	ctx := t.Context()
-	r, err := NewArtifactsResolver(workDir)
+	r, err := NewArtifactsResolver(workDir, WithHTTPClient(srv.Client()))
 	require.NoError(t, err)
-	r.HTTPClient = srv.Client()
 	path, err := r.ResolveBinary(ctx, src)
 	require.NoError(t, err)
 	base := filepath.Base(path)
@@ -154,9 +153,8 @@ func TestResolveBinary_downloadURL(t *testing.T) {
 			}
 			ctx := t.Context()
 			workDir := t.TempDir()
-			r, err := NewArtifactsResolver(workDir)
+			r, err := NewArtifactsResolver(workDir, WithHTTPClient(srv.Client()))
 			require.NoError(t, err)
-			r.HTTPClient = srv.Client()
 			path, err := r.ResolveBinary(ctx, src)
 			if tt.wantErr != "" {
 				require.Error(t, err)
@@ -258,9 +256,8 @@ func TestResolveBinary_gitHubRelease(t *testing.T) {
 			}
 
 			workDir := t.TempDir()
-			r, err := NewArtifactsResolver(workDir)
+			r, err := NewArtifactsResolver(workDir, WithHTTPClient(client))
 			require.NoError(t, err)
-			r.HTTPClient = client
 			path, err := r.ResolveBinary(t.Context(), src)
 			if tt.wantErr != "" {
 				require.Error(t, err)
@@ -301,9 +298,8 @@ func TestResolveBinary_parseSHA256Errors(t *testing.T) {
 					SHA256: tt.sha256,
 				},
 			}
-			r, err := NewArtifactsResolver(t.TempDir())
+			r, err := NewArtifactsResolver(t.TempDir(), WithHTTPClient(srv.Client()))
 			require.NoError(t, err)
-			r.HTTPClient = srv.Client()
 			_, err = r.ResolveBinary(t.Context(), src)
 			require.Error(t, err)
 			require.Contains(t, err.Error(), tt.wantErr)
@@ -330,9 +326,8 @@ func TestResolveBinary_contextCanceled(t *testing.T) {
 	}
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	r, err := NewArtifactsResolver(t.TempDir())
+	r, err := NewArtifactsResolver(t.TempDir(), WithHTTPClient(srv.Client()))
 	require.NoError(t, err)
-	r.HTTPClient = srv.Client()
 	_, err = r.ResolveBinary(ctx, src)
 	require.Error(t, err)
 }

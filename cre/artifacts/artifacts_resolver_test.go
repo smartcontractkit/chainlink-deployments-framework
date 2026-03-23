@@ -1,6 +1,7 @@
 package artifacts
 
 import (
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -15,4 +16,12 @@ func TestArtifactsResolver_WorkDir(t *testing.T) {
 
 	var nilR *ArtifactsResolver
 	require.Equal(t, "", nilR.WorkDir())
+}
+
+func TestWithHTTPClient(t *testing.T) {
+	t.Parallel()
+	c := &http.Client{}
+	r, err := NewArtifactsResolver(t.TempDir(), WithHTTPClient(c))
+	require.NoError(t, err)
+	require.Equal(t, c, r.client)
 }

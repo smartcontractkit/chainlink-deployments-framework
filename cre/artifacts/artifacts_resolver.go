@@ -10,19 +10,31 @@ import (
 // ArtifactsResolver resolves workflow WASM and config paths from [BinarySource] and [ConfigSource]
 // via local files or remote fetch.
 type ArtifactsResolver struct {
-	// HTTPClient is optional for remote artifact fetches. When nil, http.DefaultClient is used.
-	// Set Client.Timeout (or a custom Transport) to bound download time; that is unrelated to cre.timeout in CLD config, which applies to the CRE CLI, not artifact HTTP.
-	HTTPClient *http.Client
-	workDir    string
+	client  *http.Client
+	workDir string
+}
+
+// ArtifactsResolverOption configures [NewArtifactsResolver].
+type ArtifactsResolverOption func(*ArtifactsResolver)
+
+// WithHTTPClient sets the HTTP client for remote artifact fetches. When omitted, http.DefaultClient is used
+func WithHTTPClient(c *http.Client) ArtifactsResolverOption {
+	return func(r *ArtifactsResolver) {
+		r.client = c
+	}
 }
 
 // NewArtifactsResolver returns a resolver for workDir (non-empty after trim). GitHub: GITHUB_TOKEN/GH_TOKEN (github_http.go).
-func NewArtifactsResolver(workDir string) (*ArtifactsResolver, error) {
+func NewArtifactsResolver(workDir string, opts ...ArtifactsResolverOption) (*ArtifactsResolver, error) {
 	wd := strings.TrimSpace(workDir)
 	if wd == "" {
 		return nil, errors.New("cre: WorkDir is required")
 	}
-	return &ArtifactsResolver{workDir: wd}, nil
+	r := &ArtifactsResolver{workDir: wd}
+	for _, opt := range opts {
+		opt(r)
+	}
+	return r, nil
 }
 
 // WorkDir returns the directory used for downloads and temp artifacts. Callers may pass it to os.RemoveAll after use.
@@ -61,5 +73,5 @@ func (r *ArtifactsResolver) httpClient() *http.Client {
 	if r == nil {
 		return nil
 	}
-	return r.HTTPClient
+	return r.client
 }
