@@ -6,6 +6,7 @@ import (
 	fchain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
+	"github.com/smartcontractkit/chainlink-deployments-framework/cre"
 	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/onchain"
@@ -261,6 +262,14 @@ func withChainLoaderN(t *testing.T, loader *onchain.ChainLoader, n int) LoadOpt 
 
 		cmps.AddChains(chains...)
 
+		return nil
+	}
+}
+
+// WithCRERunner sets the CRE CLI runner for the test environment.
+func WithCRERunner(r cre.Runner) LoadOpt {
+	return func(cmps *components) error {
+		cmps.CRERunner = r
 		return nil
 	}
 }

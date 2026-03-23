@@ -6,6 +6,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
 	fchain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
+	"github.com/smartcontractkit/chainlink-deployments-framework/cre"
 	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	foffchain "github.com/smartcontractkit/chainlink-deployments-framework/offchain"
@@ -21,6 +22,7 @@ type components struct {
 	OffchainClient foffchain.Client
 	NodeIDs        []string
 	Logger         logger.Logger
+	CRERunner      cre.Runner
 }
 
 // newComponents creates a new components instance.

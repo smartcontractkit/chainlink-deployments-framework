@@ -67,6 +67,7 @@ func (l *Loader) Load(ctx context.Context, opts ...LoadOpt) (*fdeployment.Enviro
 		oc = foffchain.NewMemoryJobDistributor()
 	}
 
+	// CRERunner may be nil; tests that need CRE use WithCRERunner(cremocks.NewMockRunner(t)).
 	return &fdeployment.Environment{
 		Name:              environmentName,
 		Logger:            cmps.Logger,
@@ -78,6 +79,7 @@ func (l *Loader) Load(ctx context.Context, opts ...LoadOpt) (*fdeployment.Enviro
 		GetContext:        getCtx,
 		OCRSecrets:        focr.XXXGenerateTestOCRSecrets(),
 		OperationsBundle:  foperations.NewBundle(getCtx, cmps.Logger, foperations.NewMemoryReporter()),
+		CRERunner:         cmps.CRERunner,
 	}, nil
 }
 
