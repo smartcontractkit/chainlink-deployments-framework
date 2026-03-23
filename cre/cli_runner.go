@@ -31,7 +31,7 @@ func (r *CLIRunner) binary() string {
 	return defaultBinary
 }
 
-// Call runs the binary and captures stdout and stderr. Exit code 0 returns (res, nil);
+// Run runs the binary and captures stdout and stderr. Exit code 0 returns (res, nil);
 // exit code != 0 returns (res, *ExitError) so callers get both result and error.
 // Runner-related failures (binary not found, context canceled) return (nil, err).
 func (r *CLIRunner) Run(ctx context.Context, args ...string) (*CallResult, error) {
