@@ -11,5 +11,5 @@ type CallResult struct {
 
 // Runner is used to invoke the CRE CLI.
 type Runner interface {
-	Call(ctx context.Context, args ...string) (*CallResult, error)
+	Run(ctx context.Context, args ...string) (*CallResult, error)
 }

@@ -118,66 +118,20 @@ func Test_WithCRERunner(t *testing.T) {
 	opts := &LoadConfig{}
 	assert.Nil(t, opts.creRunner)
 
-	runner := &cre.CLIRunner{BinaryPath: "/path/to/cre"}
+	runner := cre.NewCLIRunner("/path/to/cre")
 	option := WithCRERunner(runner)
 	option(opts)
 
 	assert.Equal(t, runner, opts.creRunner)
 }
 
-func Test_WithCREBinaryPath(t *testing.T) {
+func Test_newLoadConfig_defaultCRERunner(t *testing.T) {
 	t.Parallel()
 
-	opts := &LoadConfig{}
-	assert.Empty(t, opts.creBinaryPath)
+	cfg, err := newLoadConfig()
+	require.NoError(t, err)
 
-	binaryPath := "/custom/path/to/cre"
-	option := WithCREBinaryPath(binaryPath)
-	option(opts)
-
-	assert.Equal(t, binaryPath, opts.creBinaryPath)
-}
-
-func Test_resolveCRERunner(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name       string
-		override   cre.Runner
-		binaryPath string
-	}{
-		{
-			name:       "override takes precedence",
-			override:   &cre.CLIRunner{BinaryPath: "/override/cre"},
-			binaryPath: "/default/cre",
-		},
-		{
-			name:       "no override uses binary path",
-			override:   nil,
-			binaryPath: "/custom/cre",
-		},
-		{
-			name:       "empty_binary_path_uses_cli_default",
-			override:   nil,
-			binaryPath: "",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			got := resolveCRERunner(tt.override, tt.binaryPath)
-
-			if tt.override != nil {
-				assert.Equal(t, tt.override, got)
-				return
-			}
-
-			require.NotNil(t, got)
-			cliRunner, ok := got.(*cre.CLIRunner)
-			require.True(t, ok, "expected *cre.CLIRunner, got %T", got)
-			assert.Equal(t, tt.binaryPath, cliRunner.BinaryPath)
-		})
-	}
+	require.NotNil(t, cfg.creRunner)
+	_, ok := cfg.creRunner.(*cre.CLIRunner)
+	require.True(t, ok, "expected *cre.CLIRunner, got %T", cfg.creRunner)
 }

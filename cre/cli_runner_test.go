@@ -1,138 +1,183 @@
 package cre
 
 import (
+	"bytes"
 	"context"
-	"errors"
-	"io/fs"
-	"os/exec"
 	"path/filepath"
-	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
 
-func TestCLIRunner_binary(t *testing.T) {
+func TestNewCLIRunner(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name       string
 		binaryPath string
 		want       string
 	}{
-		{"default_empty", "", defaultBinary},
+		{"empty_defaults_to_cre", "", defaultBinary},
 		{"custom_path", "/opt/cre", "/opt/cre"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			r := &CLIRunner{BinaryPath: tt.binaryPath}
-			require.Equal(t, tt.want, r.binary())
+			r := NewCLIRunner(tt.binaryPath)
+			require.Equal(t, tt.want, r.binaryPath)
 		})
 	}
 }
 
-func TestCLIRunner_Call(t *testing.T) {
+func TestCLIRunner_Run(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name           string
-		skip           string
-		setupCtx       func(*testing.T) context.Context
-		runner         *CLIRunner
-		args           []string
-		wantErr        bool
-		wantResNil     bool
-		wantExitCode   int
-		wantErrIs      error
-		checkExitError bool
+		name         string
+		setupCtx     func(*testing.T) context.Context
+		runner       *CLIRunner
+		args         []string
+		wantErr      bool
+		wantResNil   bool
+		wantExitCode int
+		wantStdout   string
+		wantStderr   string
+		wantErrIs    error
+		wantExitErr  bool
 	}{
 		{
-			name:    "binary_not_found",
-			runner:  &CLIRunner{BinaryPath: filepath.Join(t.TempDir(), "nonexistent-cre-xyz")},
-			args:    []string{"build"},
-			wantErr: true, wantResNil: true,
+			name:       "binary_not_found",
+			runner:     NewCLIRunner(filepath.Join(t.TempDir(), "nonexistent-cre-xyz")),
+			args:       []string{"build"},
+			wantErr:    true,
+			wantResNil: true,
 		},
 		{
 			name:   "context_already_canceled",
-			runner: &CLIRunner{BinaryPath: "cre"},
+			runner: NewCLIRunner("/bin/sh"),
 			setupCtx: func(t *testing.T) context.Context {
 				t.Helper()
-
 				ctx, cancel := context.WithCancel(t.Context())
 				cancel()
 
 				return ctx
 			},
-			args:       []string{"build"},
+			args:       []string{"-c", "echo unreachable"},
 			wantErr:    true,
 			wantResNil: true,
 			wantErrIs:  context.Canceled,
 		},
 		{
-			name:           "nonzero_exit_returns_error",
-			skip:           "windows",
-			runner:         &CLIRunner{BinaryPath: "/bin/sh"},
-			args:           []string{"-c", "exit 41"},
-			wantErr:        true,
-			wantResNil:     false,
-			wantExitCode:   41,
-			checkExitError: true,
+			name:         "nonzero_exit_captures_output",
+			runner:       NewCLIRunner("/bin/sh"),
+			args:         []string{"-c", `echo "fail out"; echo "fail err" >&2; exit 41`},
+			wantErr:      true,
+			wantExitCode: 41,
+			wantStdout:   "fail out\n",
+			wantStderr:   "fail err\n",
+			wantExitErr:  true,
 		},
 		{
-			name:         "success",
-			skip:         "windows",
-			runner:       &CLIRunner{BinaryPath: "true"},
-			args:         nil,
-			wantErr:      false,
-			wantResNil:   false,
+			name:         "success_with_output",
+			runner:       NewCLIRunner("/bin/sh"),
+			args:         []string{"-c", `echo "hello stdout"; echo "hello stderr" >&2`},
+			wantStdout:   "hello stdout\n",
+			wantStderr:   "hello stderr\n",
 			wantExitCode: 0,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.skip == "windows" && runtime.GOOS == "windows" {
-				t.Skip("skipped on windows")
-			}
-			if tt.name == "success" {
-				if _, err := exec.LookPath("true"); err != nil {
-					t.Skip("true not in PATH")
-				}
-			}
 			t.Parallel()
 
 			ctx := t.Context()
 			if tt.setupCtx != nil {
 				ctx = tt.setupCtx(t)
 			}
-			res, err := tt.runner.Call(ctx, tt.args...)
+
+			res, err := tt.runner.Run(ctx, tt.args...)
+
+			if tt.wantResNil {
+				require.Nil(t, res)
+			}
 			if tt.wantErr {
 				require.Error(t, err)
-				if tt.wantResNil {
-					require.Nil(t, res)
-				} else {
-					require.NotNil(t, res)
-					require.Equal(t, tt.wantExitCode, res.ExitCode)
-				}
 				if tt.wantErrIs != nil {
 					require.ErrorIs(t, err, tt.wantErrIs)
 				}
-				if tt.checkExitError {
+				if tt.wantExitErr {
 					var exitErr *ExitError
 					require.ErrorAs(t, err, &exitErr)
 					require.Equal(t, tt.wantExitCode, exitErr.ExitCode)
 				}
-				if tt.name == "binary_not_found" {
-					require.True(t,
-						errors.Is(err, fs.ErrNotExist) || errors.Is(err, exec.ErrNotFound) || errors.Is(err, exec.ErrDot),
-						"expected not found style error, got %v", err)
-				}
-
-				return
+			} else {
+				require.NoError(t, err)
 			}
-			require.NoError(t, err)
-			require.NotNil(t, res)
-			require.Equal(t, tt.wantExitCode, res.ExitCode)
+
+			if res != nil {
+				require.Equal(t, tt.wantExitCode, res.ExitCode)
+				require.Equal(t, tt.wantStdout, string(res.Stdout))
+				require.Equal(t, tt.wantStderr, string(res.Stderr))
+			}
 		})
 	}
+}
+
+func TestCLIRunner_StreamingWriters(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		args       []string
+		wantStdout string
+		wantStderr string
+	}{
+		{
+			name:       "stdout_streamed",
+			args:       []string{"-c", `echo "hello from stdout"`},
+			wantStdout: "hello from stdout\n",
+			wantStderr: "",
+		},
+		{
+			name:       "stderr_streamed",
+			args:       []string{"-c", `echo "hello from stderr" >&2`},
+			wantStdout: "",
+			wantStderr: "hello from stderr\n",
+		},
+		{
+			name:       "both_streamed",
+			args:       []string{"-c", `echo "out"; echo "err" >&2`},
+			wantStdout: "out\n",
+			wantStderr: "err\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var streamOut, streamErr bytes.Buffer
+			r := NewCLIRunner("/bin/sh")
+			r.Stdout = &streamOut
+			r.Stderr = &streamErr
+
+			res, err := r.Run(t.Context(), tt.args...)
+			require.NoError(t, err)
+
+			require.Equal(t, tt.wantStdout, streamOut.String(), "streamed stdout")
+			require.Equal(t, tt.wantStderr, streamErr.String(), "streamed stderr")
+
+			require.Equal(t, tt.wantStdout, string(res.Stdout), "captured stdout")
+			require.Equal(t, tt.wantStderr, string(res.Stderr), "captured stderr")
+		})
+	}
+}
+
+func TestCLIRunner_NilWriters_DefaultBehavior(t *testing.T) {
+	t.Parallel()
+
+	r := NewCLIRunner("/bin/sh")
+	res, err := r.Run(t.Context(), "-c", `echo "works"`)
+	require.NoError(t, err)
+	require.Equal(t, "works\n", string(res.Stdout))
 }

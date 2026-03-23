@@ -45,8 +45,7 @@ type LoadConfig struct {
 	// datastoreType when set, overrides the datastore type from domain config (e.g. from --datastore flag).
 	datastoreType *cfgdomain.DatastoreType
 
-	creRunner     cre.Runner
-	creBinaryPath string
+	creRunner cre.Runner
 }
 
 // Configure applies a slice of LoadEnvironmentOption functions to the LoadConfig.
@@ -66,11 +65,11 @@ func newLoadConfig() (*LoadConfig, error) {
 		return nil, err
 	}
 
-	// Default options
 	return &LoadConfig{
 		reporter:          operations.NewMemoryReporter(),
 		operationRegistry: operations.NewOperationRegistry(),
 		lggr:              lggr,
+		creRunner:         cre.NewCLIRunner(""),
 	}, nil
 }
 
@@ -193,25 +192,11 @@ func WithDatastoreType(t cfgdomain.DatastoreType) LoadEnvironmentOption {
 	}
 }
 
-// WithCRERunner replaces the default CRE CLIRunner (useful in tests).
+// WithCRERunner overrides the default CRE CLI runner. The default is a [cre.CLIRunner] that
+// resolves "cre" from PATH. Use this to supply a custom binary path
+// (e.g. WithCRERunner(cre.NewCLIRunner("/opt/cre"))) or a mock in tests.
 func WithCRERunner(r cre.Runner) LoadEnvironmentOption {
 	return func(o *LoadConfig) {
 		o.creRunner = r
 	}
-}
-
-// WithCREBinaryPath sets the CRE CLI executable path. Empty uses "cre" on PATH.
-func WithCREBinaryPath(path string) LoadEnvironmentOption {
-	return func(o *LoadConfig) {
-		o.creBinaryPath = path
-	}
-}
-
-// resolveCRERunner returns override if set, otherwise a CLIRunner for the given path.
-func resolveCRERunner(override cre.Runner, binaryPath string) cre.Runner {
-	if override != nil {
-		return override
-	}
-
-	return &cre.CLIRunner{BinaryPath: binaryPath}
 }
