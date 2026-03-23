@@ -73,5 +73,6 @@ func wrapWriter(buf *bytes.Buffer, stream io.Writer) io.Writer {
 	if stream == nil {
 		return buf
 	}
+
 	return io.MultiWriter(buf, stream)
 }

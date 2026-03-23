@@ -58,6 +58,7 @@ func TestCLIRunner_Run(t *testing.T) {
 				t.Helper()
 				ctx, cancel := context.WithCancel(t.Context())
 				cancel()
+
 				return ctx
 			},
 			args:       []string{"-c", "echo unreachable"},
