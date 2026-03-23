@@ -118,7 +118,7 @@ func Test_WithCRERunner(t *testing.T) {
 	opts := &LoadConfig{}
 	assert.Nil(t, opts.creRunner)
 
-	runner := &cre.CLIRunner{BinaryPath: "/path/to/cre"}
+	runner := cre.NewCLIRunner("/path/to/cre")
 	option := WithCRERunner(runner)
 	option(opts)
 
@@ -132,7 +132,6 @@ func Test_newLoadConfig_defaultCRERunner(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NotNil(t, cfg.creRunner)
-	cliRunner, ok := cfg.creRunner.(*cre.CLIRunner)
+	_, ok := cfg.creRunner.(*cre.CLIRunner)
 	require.True(t, ok, "expected *cre.CLIRunner, got %T", cfg.creRunner)
-	assert.Empty(t, cliRunner.BinaryPath)
 }

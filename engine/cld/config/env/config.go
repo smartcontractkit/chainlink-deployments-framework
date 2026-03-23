@@ -183,8 +183,7 @@ type Config struct {
 	Onchain  OnchainConfig  `mapstructure:"onchain" yaml:"onchain"`
 	Offchain OffchainConfig `mapstructure:"offchain" yaml:"offchain"`
 	Catalog  CatalogConfig  `mapstructure:"catalog" yaml:"catalog"`
-	// unmarshaling leaves CRE zero-valued; Load/LoadEnv still succeed (same as other optional sections).
-	CRE CREConfig `mapstructure:"cre" yaml:"cre,omitempty"`
+	CRE      CREConfig      `mapstructure:"cre" yaml:"cre,omitempty"`
 }
 
 // Load loads the config from the file path, falling back to env vars if the file does not exist.

@@ -133,7 +133,7 @@ func Test_WithCRERunner(t *testing.T) {
 	cmps := newComponents()
 	require.Nil(t, cmps.CRERunner)
 
-	runner := &cre.CLIRunner{BinaryPath: "/path/to/cre"}
+	runner := cre.NewCLIRunner("/path/to/cre")
 	option := WithCRERunner(runner)
 	err := option(cmps)
 

@@ -9,21 +9,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCLIRunner_binary(t *testing.T) {
+func TestNewCLIRunner(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name       string
 		binaryPath string
 		want       string
 	}{
-		{"default_empty", "", defaultBinary},
+		{"empty_defaults_to_cre", "", defaultBinary},
 		{"custom_path", "/opt/cre", "/opt/cre"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			r := &CLIRunner{BinaryPath: tt.binaryPath}
-			require.Equal(t, tt.want, r.binary())
+			r := NewCLIRunner(tt.binaryPath)
+			require.Equal(t, tt.want, r.binaryPath)
 		})
 	}
 }
@@ -46,14 +46,14 @@ func TestCLIRunner_Run(t *testing.T) {
 	}{
 		{
 			name:       "binary_not_found",
-			runner:     &CLIRunner{BinaryPath: filepath.Join(t.TempDir(), "nonexistent-cre-xyz")},
+			runner:     NewCLIRunner(filepath.Join(t.TempDir(), "nonexistent-cre-xyz")),
 			args:       []string{"build"},
 			wantErr:    true,
 			wantResNil: true,
 		},
 		{
 			name:   "context_already_canceled",
-			runner: &CLIRunner{BinaryPath: "/bin/sh"},
+			runner: NewCLIRunner("/bin/sh"),
 			setupCtx: func(t *testing.T) context.Context {
 				t.Helper()
 				ctx, cancel := context.WithCancel(t.Context())
@@ -68,7 +68,7 @@ func TestCLIRunner_Run(t *testing.T) {
 		},
 		{
 			name:         "nonzero_exit_captures_output",
-			runner:       &CLIRunner{BinaryPath: "/bin/sh"},
+			runner:       NewCLIRunner("/bin/sh"),
 			args:         []string{"-c", `echo "fail out"; echo "fail err" >&2; exit 41`},
 			wantErr:      true,
 			wantExitCode: 41,
@@ -78,7 +78,7 @@ func TestCLIRunner_Run(t *testing.T) {
 		},
 		{
 			name:         "success_with_output",
-			runner:       &CLIRunner{BinaryPath: "/bin/sh"},
+			runner:       NewCLIRunner("/bin/sh"),
 			args:         []string{"-c", `echo "hello stdout"; echo "hello stderr" >&2`},
 			wantStdout:   "hello stdout\n",
 			wantStderr:   "hello stderr\n",
@@ -157,11 +157,9 @@ func TestCLIRunner_StreamingWriters(t *testing.T) {
 			t.Parallel()
 
 			var streamOut, streamErr bytes.Buffer
-			r := &CLIRunner{
-				BinaryPath: "/bin/sh",
-				Stdout:     &streamOut,
-				Stderr:     &streamErr,
-			}
+			r := NewCLIRunner("/bin/sh")
+			r.Stdout = &streamOut
+			r.Stderr = &streamErr
 
 			res, err := r.Run(t.Context(), tt.args...)
 			require.NoError(t, err)
@@ -178,7 +176,7 @@ func TestCLIRunner_StreamingWriters(t *testing.T) {
 func TestCLIRunner_NilWriters_DefaultBehavior(t *testing.T) {
 	t.Parallel()
 
-	r := &CLIRunner{BinaryPath: "/bin/sh"}
+	r := NewCLIRunner("/bin/sh")
 	res, err := r.Run(t.Context(), "-c", `echo "works"`)
 	require.NoError(t, err)
 	require.Equal(t, "works\n", string(res.Stdout))
