@@ -149,7 +149,7 @@ func LoadFork(
 		func() context.Context { return ctx },
 		focr.XXXGenerateTestOCRSecrets(),
 		fchain.NewBlockChains(blockChains),
-		fdeployment.WithCRERunner(resolveCRERunner(loadcfg.creRunner, loadcfg.creBinaryPath)),
+		fdeployment.WithCRERunner(loadcfg.creRunner),
 	)
 
 	return ForkedEnvironment{

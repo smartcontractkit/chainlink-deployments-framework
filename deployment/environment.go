@@ -63,7 +63,7 @@ type Environment struct {
 	BlockChains chain.BlockChains
 	// CRERunner invokes the CRE CLI from changesets. Optional in environment loading, so it won't
 	// fail to load environment if cre binary not available; failures (e.g. binary not found) only occur
-	// when CRERunner.Call() is used inside changesets. May be nil in test environments that did not set it.
+	// when CRERunner.Run() is used inside changesets. May be nil in test environments that did not set it.
 	CRERunner cre.Runner
 }
 

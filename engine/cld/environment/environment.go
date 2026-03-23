@@ -144,7 +144,7 @@ func Load(
 		OCRSecrets:        sharedSecrets,
 		OperationsBundle:  operations.NewBundle(getCtx, lggr, loadcfg.reporter, operations.WithOperationRegistry(loadcfg.operationRegistry)),
 		BlockChains:       blockChains,
-		CRERunner:         resolveCRERunner(loadcfg.creRunner, loadcfg.creBinaryPath),
+		CRERunner:         loadcfg.creRunner,
 	}, nil
 }
 

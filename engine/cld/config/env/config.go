@@ -141,6 +141,8 @@ type CatalogConfig struct {
 }
 
 // CREAuthConfig holds authentication settings for CRE (Chainlink Runtime Environment) deploy operations.
+// WARNING: This data type contains sensitive fields and should not be logged or set in file
+// configuration.
 type CREAuthConfig struct {
 	HMACKeyID     string `mapstructure:"hmac_key_id" yaml:"hmac_key_id"`         // Secret: HMAC key ID
 	HMACKeySecret string `mapstructure:"hmac_key_secret" yaml:"hmac_key_secret"` // Secret: HMAC key secret
@@ -181,7 +183,6 @@ type Config struct {
 	Onchain  OnchainConfig  `mapstructure:"onchain" yaml:"onchain"`
 	Offchain OffchainConfig `mapstructure:"offchain" yaml:"offchain"`
 	Catalog  CatalogConfig  `mapstructure:"catalog" yaml:"catalog"`
-	// CRE is optional. If the cre block is absent from YAML and CRE_* env vars are unset,
 	// unmarshaling leaves CRE zero-valued; Load/LoadEnv still succeed (same as other optional sections).
 	CRE CREConfig `mapstructure:"cre" yaml:"cre,omitempty"`
 }

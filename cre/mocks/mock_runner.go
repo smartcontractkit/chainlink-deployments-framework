@@ -39,7 +39,7 @@ func (_m *MockRunner) EXPECT() *MockRunner_Expecter {
 }
 
 // Call provides a mock function for the type MockRunner
-func (_mock *MockRunner) Call(ctx context.Context, args ...string) (*cre.CallResult, error) {
+func (_mock *MockRunner) Run(ctx context.Context, args ...string) (*cre.CallResult, error) {
 	var tmpRet mock.Arguments
 	if len(args) > 0 {
 		tmpRet = _mock.Called(ctx, args)
@@ -49,7 +49,7 @@ func (_mock *MockRunner) Call(ctx context.Context, args ...string) (*cre.CallRes
 	ret := tmpRet
 
 	if len(ret) == 0 {
-		panic("no return value specified for Call")
+		panic("no return value specified for Run")
 	}
 
 	var r0 *cre.CallResult
@@ -72,7 +72,7 @@ func (_mock *MockRunner) Call(ctx context.Context, args ...string) (*cre.CallRes
 	return r0, r1
 }
 
-// MockRunner_Call_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Call'
+// MockRunner_Call_Call is a *mock.Run that shadows Run/Return methods with type explicit version for method 'Run'
 type MockRunner_Call_Call struct {
 	*mock.Call
 }
@@ -81,7 +81,7 @@ type MockRunner_Call_Call struct {
 //   - ctx context.Context
 //   - args ...string
 func (_e *MockRunner_Expecter) Call(ctx interface{}, args ...interface{}) *MockRunner_Call_Call {
-	return &MockRunner_Call_Call{Call: _e.mock.On("Call",
+	return &MockRunner_Call_Call{Call: _e.mock.On("Run",
 		append([]interface{}{ctx}, args...)...)}
 }
 
