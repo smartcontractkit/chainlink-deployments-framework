@@ -14,12 +14,14 @@ import (
 	chainselectors "github.com/smartcontractkit/chain-selectors"
 
 	mcmslib "github.com/smartcontractkit/mcms"
+	"github.com/smartcontractkit/mcms/chainwrappers"
 	mcmssdk "github.com/smartcontractkit/mcms/sdk"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 
 	fchain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	fchainaptos "github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos"
 	fchainevm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/mcms/adapters"
 	fchainsolana "github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
 	fchainton "github.com/smartcontractkit/chainlink-deployments-framework/chain/ton"
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
@@ -81,7 +83,12 @@ func NewExecutor(e fdeployment.Environment) *Executor {
 // 4. Executing each operation sequentially and confirming transactions
 //
 // Returns an error if any step fails
-func (e *Executor) ExecuteMCMS(ctx context.Context, proposal *mcmslib.Proposal) error {
+func (e *Executor) ExecuteMCMS(ctx context.Context, proposal *mcmslib.Proposal, execOpts ...ExecuteOption) error {
+	opts := &executeOptions{action: mcmstypes.TimelockActionSchedule}
+	for _, execOpt := range execOpts {
+		execOpt(opts)
+	}
+
 	// Validate the proposal to ensure it is valid ensuring that all chain metadata is present.
 	if err := proposal.Validate(); err != nil {
 		return fmt.Errorf("failed to validate MCMS proposal: %w", err)
@@ -102,21 +109,10 @@ func (e *Executor) ExecuteMCMS(ctx context.Context, proposal *mcmslib.Proposal) 
 		return fmt.Errorf("failed to retrieve encoders from MCMS proposal: %w", err)
 	}
 
-	// Generate executors for each chain
-	executors := make(map[mcmstypes.ChainSelector]mcmssdk.Executor, 0)
-	for selector := range proposal.ChainMetadata {
-		b := blockchains[selector]
-
-		execFactory, ferr := GetExecutorFactory(b, encoders[selector])
-		if ferr != nil {
-			return fmt.Errorf("failed to create executor factory for chain selector %d (%s): %w", selector, b.Name(), ferr)
-		}
-
-		executor, merr := execFactory.Make()
-		if merr != nil {
-			return fmt.Errorf("failed to create executor for chain selector %d (%s): %w", selector, b.Name(), merr)
-		}
-		executors[selector] = executor
+	mcmsBlockChains := adapters.Wrap(e.env.BlockChains)
+	executors, err := chainwrappers.BuildExecutors(&mcmsBlockChains, proposal.ChainMetadata, encoders, opts.action)
+	if err != nil {
+		return fmt.Errorf("failed to build executors: %w", err)
 	}
 
 	executable, err := e.newExecutable(proposal, executors)
@@ -158,6 +154,18 @@ func (e *Executor) ExecuteMCMS(ctx context.Context, proposal *mcmslib.Proposal) 
 	return nil
 }
 
+type executeOptions struct {
+	action mcmstypes.TimelockAction
+}
+
+type ExecuteOption = func(o *executeOptions)
+
+func WithTimelockAction(action mcmstypes.TimelockAction) ExecuteOption {
+	return func(o *executeOptions) {
+		o.action = action
+	}
+}
+
 // ExecuteTimelock executes a timelock proposal, which involves both MCMS execution
 // and timelock-specific operations. The execution process includes:
 //
@@ -190,7 +198,7 @@ func (e *Executor) ExecuteTimelock(ctx context.Context, timelockProposal *mcmsli
 	}
 
 	// Execute the proposal against the MCMS Contract
-	if err = e.ExecuteMCMS(ctx, proposal); err != nil {
+	if err = e.ExecuteMCMS(ctx, proposal, WithTimelockAction(timelockProposal.Action)); err != nil {
 		return fmt.Errorf("failed to execute MCMS proposal: %w", err)
 	}
 
@@ -202,19 +210,10 @@ func (e *Executor) ExecuteTimelock(ctx context.Context, timelockProposal *mcmsli
 
 	// Now we execute the proposal on the Timelock contract
 
-	// Generate executors for each blockchain
-	executors := make(map[mcmstypes.ChainSelector]mcmssdk.TimelockExecutor, 0)
-	for selector, b := range blockchains {
-		execFactory, gerr := GetTimelockExecutorFactory(b)
-		if gerr != nil {
-			return fmt.Errorf("failed to create timelock executor factory for chain selector %d (%s): %w", selector, b.Name(), gerr)
-		}
-
-		executor, merr := execFactory.Make()
-		if merr != nil {
-			return fmt.Errorf("failed to create timelock executor for chain selector %d (%s): %w", selector, b.Name(), merr)
-		}
-		executors[selector] = executor
+	mcmsBlockChains := adapters.Wrap(e.env.BlockChains)
+	executors, err := chainwrappers.BuildTimelockExecutors(&mcmsBlockChains, proposal.ChainMetadata, timelockProposal.Action)
+	if err != nil {
+		return fmt.Errorf("failed to build executors: %w", err)
 	}
 
 	// Generate call proxies for each EVM operation.

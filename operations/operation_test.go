@@ -2,6 +2,7 @@ package operations
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/Masterminds/semver/v3"
@@ -183,4 +184,60 @@ B: 20
 	result, err := untypedOp.handler(bundle, OpDeps{}, yamlInput)
 	require.NoError(t, err)
 	assert.Equal(t, 30, result)
+}
+
+func Test_Operation_AsUntypedRelaxed_UseNumberForAnyInputValueType(t *testing.T) {
+	t.Parallel()
+
+	type AnyInput struct {
+		Value any `json:"value"`
+	}
+
+	handler := func(b Bundle, deps OpDeps, input AnyInput) (string, error) {
+		n, ok := input.Value.(json.Number)
+		require.True(t, ok, "value should decode as json.Number for any field")
+
+		return n.String(), nil
+	}
+
+	typedOp := NewOperation("any-value", semver.MustParse("1.0.0"), "test operation", handler)
+	untypedOp := typedOp.AsUntypedRelaxed()
+	bundle := NewBundle(t.Context, logger.Test(t), nil)
+
+	yamlData := "value: 16015286601757825753\n"
+	var yamlInput any
+	err := yaml.Unmarshal([]byte(yamlData), &yamlInput)
+	require.NoError(t, err)
+
+	result, err := untypedOp.handler(bundle, OpDeps{}, yamlInput)
+	require.NoError(t, err)
+	assert.Equal(t, "16015286601757825753", result)
+}
+
+func Test_Operation_AsUntypedRelaxed_UseNumberForAnyInputPointerType(t *testing.T) {
+	t.Parallel()
+
+	type AnyInput struct {
+		Value any `json:"value"`
+	}
+
+	handler := func(b Bundle, deps OpDeps, input *AnyInput) (string, error) {
+		n, ok := input.Value.(json.Number)
+		require.True(t, ok, "value should decode as json.Number for any field")
+
+		return n.String(), nil
+	}
+
+	typedOp := NewOperation("any-pointer", semver.MustParse("1.0.0"), "test operation", handler)
+	untypedOp := typedOp.AsUntypedRelaxed()
+	bundle := NewBundle(t.Context, logger.Test(t), nil)
+
+	yamlData := "value: 16015286601757825753\n"
+	var yamlInput any
+	err := yaml.Unmarshal([]byte(yamlData), &yamlInput)
+	require.NoError(t, err)
+
+	result, err := untypedOp.handler(bundle, OpDeps{}, yamlInput)
+	require.NoError(t, err)
+	assert.Equal(t, "16015286601757825753", result)
 }

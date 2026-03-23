@@ -109,6 +109,11 @@ func TestNewCommand_GenerateFlags(t *testing.T) {
 			require.NotNil(t, pr)
 			assert.Equal(t, "true", pr.Value.String())
 
+			// Datastore flag (default empty = use domain.yaml)
+			ds := sub.Flags().Lookup("datastore")
+			require.NotNil(t, ds)
+			assert.Empty(t, ds.Value.String())
+
 			break
 		}
 	}
@@ -363,9 +368,8 @@ func TestGenerate_EnvironmentLoadError(t *testing.T) {
 
 	execErr := cmd.Execute()
 
-	require.Error(t, execErr)
-	assert.Contains(t, execErr.Error(), "failed to load environment")
-	assert.Contains(t, execErr.Error(), expectedError.Error())
+	require.ErrorContains(t, execErr, "failed to load environment")
+	require.ErrorContains(t, execErr, expectedError.Error())
 }
 
 // TestGenerate_ViewStateError verifies error handling.
@@ -399,9 +403,99 @@ func TestGenerate_ViewStateError(t *testing.T) {
 
 	execErr := cmd.Execute()
 
-	require.Error(t, execErr)
-	assert.Contains(t, execErr.Error(), "unable to snapshot state")
-	assert.Contains(t, execErr.Error(), expectedError.Error())
+	require.ErrorContains(t, execErr, "unable to snapshot state")
+	require.ErrorContains(t, execErr, expectedError.Error())
+}
+
+// TestGenerate_WithDatastoreFlag verifies that --datastore file and --datastore catalog pass the corresponding option to the environment loader.
+func TestGenerate_WithDatastoreFlag(t *testing.T) {
+	t.Parallel()
+
+	t.Run("file", func(t *testing.T) {
+		t.Parallel()
+
+		var receivedOpts []environment.LoadEnvironmentOption
+		cmd, err := NewCommand(Config{
+			Logger: logger.Nop(),
+			Domain: domain.NewDomain("/tmp", "testdomain"),
+			ViewState: func(_ fdeployment.Environment, _ json.Marshaler) (json.Marshaler, error) {
+				return &mockState{Data: map[string]any{}}, nil
+			},
+			Deps: Deps{
+				EnvironmentLoader: func(_ context.Context, _ domain.Domain, envKey string, opts ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
+					receivedOpts = opts
+					return fdeployment.Environment{Name: envKey}, nil
+				},
+				StateLoader: func(_ domain.EnvDir) (domain.JSONSerializer, error) {
+					return nil, os.ErrNotExist
+				},
+			},
+		})
+		require.NoError(t, err)
+		out := new(bytes.Buffer)
+		cmd.SetOut(out)
+		cmd.SetErr(out)
+		cmd.SetArgs([]string{"generate", "-e", "staging", "--datastore", "file"})
+		require.NoError(t, cmd.Execute())
+		require.Len(t, receivedOpts, 2, "expected WithLogger + WithDatastoreType(file)")
+	})
+
+	t.Run("catalog", func(t *testing.T) {
+		t.Parallel()
+
+		var receivedOpts []environment.LoadEnvironmentOption
+		cmd, err := NewCommand(Config{
+			Logger: logger.Nop(),
+			Domain: domain.NewDomain("/tmp", "testdomain"),
+			ViewState: func(_ fdeployment.Environment, _ json.Marshaler) (json.Marshaler, error) {
+				return &mockState{Data: map[string]any{}}, nil
+			},
+			Deps: Deps{
+				EnvironmentLoader: func(_ context.Context, _ domain.Domain, envKey string, opts ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
+					receivedOpts = opts
+					return fdeployment.Environment{Name: envKey}, nil
+				},
+				StateLoader: func(_ domain.EnvDir) (domain.JSONSerializer, error) {
+					return nil, os.ErrNotExist
+				},
+			},
+		})
+		require.NoError(t, err)
+		out := new(bytes.Buffer)
+		cmd.SetOut(out)
+		cmd.SetErr(out)
+		cmd.SetArgs([]string{"generate", "-e", "staging", "--datastore", "catalog"})
+		require.NoError(t, cmd.Execute())
+		require.Len(t, receivedOpts, 2, "expected WithLogger + WithDatastoreType(catalog)")
+	})
+}
+
+// TestGenerate_InvalidDatastoreFlag verifies that an invalid --datastore value returns an error.
+func TestGenerate_InvalidDatastoreFlag(t *testing.T) {
+	t.Parallel()
+
+	cmd, err := NewCommand(Config{
+		Logger: logger.Nop(),
+		Domain: domain.NewDomain("/tmp", "testdomain"),
+		ViewState: func(_ fdeployment.Environment, _ json.Marshaler) (json.Marshaler, error) {
+			return &mockState{Data: map[string]any{}}, nil
+		},
+		Deps: Deps{
+			EnvironmentLoader: func(_ context.Context, _ domain.Domain, _ string, _ ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
+				return fdeployment.Environment{}, nil
+			},
+			StateLoader: func(_ domain.EnvDir) (domain.JSONSerializer, error) {
+				return nil, os.ErrNotExist
+			},
+		},
+	})
+	require.NoError(t, err)
+	out := new(bytes.Buffer)
+	cmd.SetOut(out)
+	cmd.SetErr(out)
+	cmd.SetArgs([]string{"generate", "-e", "staging", "--datastore", "invalid"})
+	execErr := cmd.Execute()
+	require.ErrorContains(t, execErr, `--datastore must be "file" or "catalog"`)
 }
 
 // TestGenerate_StateSaveError verifies error handling.
@@ -438,9 +532,8 @@ func TestGenerate_StateSaveError(t *testing.T) {
 
 	execErr := cmd.Execute()
 
-	require.Error(t, execErr)
-	assert.Contains(t, execErr.Error(), "failed to save state")
-	assert.Contains(t, execErr.Error(), expectedError.Error())
+	require.ErrorContains(t, execErr, "failed to save state")
+	require.ErrorContains(t, execErr, expectedError.Error())
 }
 
 // TestConfig_Validate verifies validation catches missing required fields.

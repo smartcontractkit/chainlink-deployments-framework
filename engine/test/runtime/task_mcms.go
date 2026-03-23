@@ -301,7 +301,7 @@ func signTimelockProposal(
 // proposalExecutor is an interface that defines the methods for executing MCMS and timelock
 // proposals.
 type proposalExecutor interface {
-	ExecuteMCMS(ctx context.Context, proposal *mcmslib.Proposal) error
+	ExecuteMCMS(ctx context.Context, proposal *mcmslib.Proposal, opts ...mcmsutils.ExecuteOption) error
 	ExecuteTimelock(ctx context.Context, proposal *mcmslib.TimelockProposal) error
 }
 

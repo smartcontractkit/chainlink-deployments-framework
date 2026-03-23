@@ -34,8 +34,9 @@ func defaultFuncMap() template.FuncMap {
 		"diffAnnotations":       diffAnnotations,
 		"renderDiff":            renderDiff,
 		"formatParam":           formatParam,
+		"hasNewline":            hasNewline,
+		"indentLines":           indentLines,
 		"formatAnnotationValue": formatAnnotationValue,
-		"truncateAddress":       format.TruncateAddress,
 		"resolveChainSelector":  resolveChainSelector,
 		"severitySymbol":        severitySymbol,
 		"riskSymbol":            riskSymbol,
@@ -84,6 +85,23 @@ func formatParam(param analyzer.AnalyzedParameter) string {
 	}
 
 	return v
+}
+
+func hasNewline(s string) bool {
+	return strings.Contains(s, "\n")
+}
+
+func indentLines(s, prefix string) string {
+	if s == "" {
+		return ""
+	}
+
+	lines := strings.Split(s, "\n")
+	for i := range lines {
+		lines[i] = prefix + lines[i]
+	}
+
+	return strings.Join(lines, "\n")
 }
 
 // formatAnnotationValue formats an annotation's value for display.

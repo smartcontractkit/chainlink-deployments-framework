@@ -1730,3 +1730,33 @@ func Test_EnvDir_SaveViewState(t *testing.T) {
 		})
 	}
 }
+
+func Test_EnvDir_MutableDataStore_PreservesLargeIntegerMetadata(t *testing.T) {
+	t.Parallel()
+
+	fixture := setupTestDomainsFS(t)
+	envDir := fixture.domain.EnvDir("staging")
+
+	chainMetadataPath := filepath.Join(envDir.DataStoreDirPath(), ChainMetadataFileName)
+	payload := []byte(`[
+  {
+    "chainSelector": 123,
+    "metadata": {
+      "destChainSelector": 16015286601757825753
+    }
+  }
+]`)
+	require.NoError(t, os.WriteFile(chainMetadataPath, payload, 0600))
+
+	ds, err := envDir.MutableDataStore()
+	require.NoError(t, err)
+
+	record, err := ds.ChainMetadata().Get(fdatastore.NewChainMetadataKey(123))
+	require.NoError(t, err)
+
+	metadataMap, ok := record.Metadata.(map[string]any)
+	require.True(t, ok, "metadata should decode as map")
+	n, ok := metadataMap["destChainSelector"].(json.Number)
+	require.True(t, ok, "destChainSelector should decode as json.Number")
+	require.Equal(t, "16015286601757825753", n.String())
+}

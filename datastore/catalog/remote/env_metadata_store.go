@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 
 	"google.golang.org/grpc/codes"
@@ -71,7 +72,9 @@ func (s *catalogEnvMetadataStore) keyToFilter() *pb.EnvironmentMetadataKeyFilter
 func (s *catalogEnvMetadataStore) protoToEnvMetadata(protoRecord *pb.EnvironmentMetadata) (datastore.EnvMetadata, error) {
 	var metadata any
 	if protoRecord.Metadata != "" {
-		if err := json.Unmarshal([]byte(protoRecord.Metadata), &metadata); err != nil {
+		dec := json.NewDecoder(strings.NewReader(protoRecord.Metadata))
+		dec.UseNumber()
+		if err := dec.Decode(&metadata); err != nil {
 			return datastore.EnvMetadata{}, fmt.Errorf("failed to unmarshal metadata JSON: %w", err)
 		}
 	}

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 	"reflect"
 	"testing"
 
@@ -355,9 +356,14 @@ func TestWithConfigResolver_Success(t *testing.T) {
 
 	manager := resolvers.NewConfigResolverManager()
 	resolver := func(input map[string]any) (any, error) {
+		countNum, ok := input["count"].(json.Number)
+		require.True(t, ok)
+		count, ok := new(big.Int).SetString(countNum.String(), 10)
+		require.True(t, ok)
+
 		return TestConfigType{
 			Value: input["value"].(string),
-			Count: int(input["count"].(float64)),
+			Count: int(count.Int64()),
 		}, nil
 	}
 	info := resolvers.ResolverInfo{
@@ -816,6 +822,58 @@ func TestWithEnvInput_StrictPayloadUnmarshaling(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestWithEnvInput_UseNumberForAnyPayload(t *testing.T) {
+	type TestConfig struct {
+		Value any `json:"value"`
+	}
+
+	const expected = "16015286601757825753"
+	t.Setenv("DURABLE_PIPELINE_INPUT", `{"payload":{"value":`+expected+`}}`)
+
+	cs := deployment.CreateChangeSet(
+		func(e deployment.Environment, config TestConfig) (deployment.ChangesetOutput, error) {
+			n, ok := config.Value.(json.Number)
+			require.True(t, ok, "value should decode as json.Number when config field is any")
+			require.Equal(t, expected, n.String())
+
+			return deployment.ChangesetOutput{}, nil
+		},
+		func(e deployment.Environment, config TestConfig) error { return nil },
+	)
+	env := deployment.Environment{Logger: logger.Test(t)}
+	configured := Configure(cs).WithEnvInput()
+
+	_, err := configured.Apply(env)
+	require.NoError(t, err)
+}
+
+func TestWithJSON_UseNumberForAnyPayload(t *testing.T) {
+	t.Parallel()
+
+	type TestConfig struct {
+		Value any `json:"value"`
+	}
+
+	const expected = "16015286601757825753"
+	input := `{"payload":{"value":` + expected + `}}`
+
+	cs := deployment.CreateChangeSet(
+		func(e deployment.Environment, config TestConfig) (deployment.ChangesetOutput, error) {
+			n, ok := config.Value.(json.Number)
+			require.True(t, ok, "value should decode as json.Number when config field is any")
+			require.Equal(t, expected, n.String())
+
+			return deployment.ChangesetOutput{}, nil
+		},
+		func(e deployment.Environment, config TestConfig) error { return nil },
+	)
+	env := deployment.Environment{Logger: logger.Test(t)}
+	configured := Configure(cs).WithJSON(TestConfig{}, input)
+
+	_, err := configured.Apply(env)
+	require.NoError(t, err)
 }
 
 func TestConfigurations_ConfigResolverInfo(t *testing.T) {

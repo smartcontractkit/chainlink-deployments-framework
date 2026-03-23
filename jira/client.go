@@ -1,6 +1,7 @@
 package jira
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -125,7 +126,9 @@ func (c *Client) GetIssue(issueKey string, fields []string) (*JiraIssue, error) 
 	}
 
 	var issue JiraIssue
-	if err := json.Unmarshal(body, &issue); err != nil {
+	dec := json.NewDecoder(bytes.NewReader(body))
+	dec.UseNumber()
+	if err := dec.Decode(&issue); err != nil {
 		return nil, fmt.Errorf("failed to parse JIRA response: %w", err)
 	}
 

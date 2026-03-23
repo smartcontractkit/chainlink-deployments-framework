@@ -473,9 +473,9 @@ func (r *MarkdownRenderer) renderSimpleFieldDetails(f SimpleField) string {
 
 func (r *MarkdownRenderer) renderYamlFieldDetails(f YamlField) string {
 	if str, ok := f.Value.(string); ok {
-		var data interface{}
-		if err := yaml.Unmarshal([]byte(str), &data); err == nil {
-			if pretty, err := yaml.Marshal(data); err == nil {
+		var node yaml.Node
+		if err := yaml.Unmarshal([]byte(str), &node); err == nil {
+			if pretty, err := yaml.Marshal(&node); err == nil {
 				content := strings.TrimRight(string(pretty), "\n")
 				content = strings.ReplaceAll(content, "- ", "&#45; ")
 

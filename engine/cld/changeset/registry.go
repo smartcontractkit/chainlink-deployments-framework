@@ -126,6 +126,28 @@ type ChangesetsRegistry struct {
 	globalPostHooks []PostHook
 }
 
+type applyConfig struct {
+	inputStr string
+	runHooks bool
+}
+
+// ApplyOption configures ChangesetsRegistry.Apply behavior.
+type ApplyOption func(*applyConfig)
+
+// WithInput sets an explicit input string for a single apply invocation.
+func WithInput(inputStr string) ApplyOption {
+	return func(cfg *applyConfig) {
+		cfg.inputStr = inputStr
+	}
+}
+
+// WithoutHooks disables global and per-changeset pre/post hooks for this apply invocation.
+func WithoutHooks() ApplyOption {
+	return func(cfg *applyConfig) {
+		cfg.runHooks = false
+	}
+}
+
 // NewChangesetsRegistry creates a new ChangesetsRegistry.
 func NewChangesetsRegistry() *ChangesetsRegistry {
 	return &ChangesetsRegistry{
@@ -171,8 +193,22 @@ func (r *ChangesetsRegistry) AddGlobalPostHooks(hooks ...PostHook) {
 // If Apply failed, that error is always returned. Post-hook failures after
 // a failed Apply are logged but never mask the Apply error.
 func (r *ChangesetsRegistry) Apply(
-	key string, e fdeployment.Environment,
+	key string, e fdeployment.Environment, opts ...ApplyOption,
 ) (fdeployment.ChangesetOutput, error) {
+	cfg := applyConfig{runHooks: true}
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+
+	if !cfg.runHooks {
+		entry, err := r.getApplyEntry(key)
+		if err != nil {
+			return fdeployment.ChangesetOutput{}, err
+		}
+
+		return entry.changeset.applyWithInput(e, cfg.inputStr)
+	}
+
 	entry, globalPre, globalPost, err := r.getApplySnapshot(key)
 	if err != nil {
 		return fdeployment.ChangesetOutput{}, err
@@ -204,7 +240,9 @@ func (r *ChangesetsRegistry) Apply(
 		}
 	}
 
-	output, applyErr := entry.changeset.Apply(e)
+	var output fdeployment.ChangesetOutput
+	var applyErr error
+	output, applyErr = entry.changeset.applyWithInput(e, cfg.inputStr)
 
 	postParams := PostHookParams{
 		Env:          hookEnv,
@@ -242,6 +280,14 @@ func (r *ChangesetsRegistry) Apply(
 	return output, applyErr
 }
 
+// getApplyEntry reads and validates a changeset entry under the mutex.
+func (r *ChangesetsRegistry) getApplyEntry(key string) (registryEntry, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	return r.getApplyEntryLocked(key)
+}
+
 // getApplySnapshot reads the registry entry and global hook slices under
 // the mutex, returning copies so Apply can release the lock before running
 // hooks and the changeset.
@@ -249,16 +295,25 @@ func (r *ChangesetsRegistry) getApplySnapshot(key string) (registryEntry, []PreH
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	entry, ok := r.entries[key]
-	if !ok {
-		return registryEntry{}, nil, nil, fmt.Errorf("changeset '%s' not found", key)
-	}
-
-	if entry.IsArchived() {
-		return registryEntry{}, nil, nil, fmt.Errorf("changeset '%s' is archived at SHA '%s'", key, *entry.gitSHA)
+	entry, err := r.getApplyEntryLocked(key)
+	if err != nil {
+		return registryEntry{}, nil, nil, err
 	}
 
 	return entry, slices.Clone(r.globalPreHooks), slices.Clone(r.globalPostHooks), nil
+}
+
+func (r *ChangesetsRegistry) getApplyEntryLocked(key string) (registryEntry, error) {
+	entry, ok := r.entries[key]
+	if !ok {
+		return registryEntry{}, fmt.Errorf("changeset '%s' not found", key)
+	}
+
+	if entry.IsArchived() {
+		return registryEntry{}, fmt.Errorf("changeset '%s' is archived at SHA '%s'", key, *entry.gitSHA)
+	}
+
+	return entry, nil
 }
 
 // GetChangesetOptions retrieves the configuration options for a changeset.

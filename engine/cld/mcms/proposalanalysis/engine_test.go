@@ -292,7 +292,7 @@ _Annotations:_
 
 - [ ] ` + "`native_transfer`" + `
 
-**Target:** ` + "`0x1234..7890`" + `
+**Target:** ` + "`0x1234567890123456789012345678901234567890`" + `
 
 **Inputs:**
 
@@ -304,6 +304,40 @@ _Annotations:_
 </details>
 `
 	require.Equal(t, expected, out.String())
+}
+
+func TestAnalyzerEngineRenderTo_MarkdownPreservesLargeJSONNumber(t *testing.T) {
+	t.Parallel()
+
+	engine := NewAnalyzerEngine()
+
+	markdownRenderer, err := renderer.NewMarkdownRenderer()
+	require.NoError(t, err)
+	require.NoError(t, engine.RegisterRenderer(markdownRenderer))
+
+	const large = "200000000000000000111"
+	proposal := analyzer.NewAnalyzedProposalNode(analyzer.AnalyzedBatchOperations{
+		analyzer.NewAnalyzedBatchOperationNode(5009297550715157269, analyzer.AnalyzedCalls{
+			analyzer.NewAnalyzedCallNode(
+				"0x1111111111111111111111111111111111111111",
+				"setConfig",
+				analyzer.AnalyzedParameters{
+					analyzer.NewAnalyzedParameterNode("maxFee", "uint256", json.Number(large)),
+				},
+				nil, nil, "Router", "v1.0.0", nil,
+			),
+		}),
+	})
+
+	var out bytes.Buffer
+	err = engine.RenderTo(&out, renderer.IDMarkdown, renderer.RenderRequest{
+		Domain:          "mcms",
+		EnvironmentName: "staging",
+	}, proposal)
+	require.NoError(t, err)
+
+	require.Contains(t, out.String(), "200,000,000,000,000,000,111")
+	require.NotContains(t, out.String(), "2e+20")
 }
 
 type decoderStub struct {

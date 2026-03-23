@@ -41,23 +41,25 @@ const (
 
 // RetryConfig configures retry behavior for RPC operations.
 type RetryConfig struct {
-	Attempts     uint
-	Delay        time.Duration
-	Timeout      time.Duration
-	DialAttempts uint
-	DialDelay    time.Duration
-	DialTimeout  time.Duration
+	Attempts           uint
+	Delay              time.Duration
+	Timeout            time.Duration
+	DialAttempts       uint
+	DialDelay          time.Duration
+	DialTimeout        time.Duration
+	HealthCheckTimeout time.Duration
 }
 
 // defaultRetryConfig returns default retry configuration.
 func defaultRetryConfig() RetryConfig {
 	return RetryConfig{
-		Attempts:     RPCDefaultRetryAttempts,
-		Delay:        RPCDefaultRetryDelay,
-		Timeout:      RPCDefaultRetryTimeout,
-		DialAttempts: RPCDefaultDialRetryAttempts,
-		DialDelay:    RPCDefaultDialRetryDelay,
-		DialTimeout:  RPCDefaultDialTimeout,
+		Attempts:           RPCDefaultRetryAttempts,
+		Delay:              RPCDefaultRetryDelay,
+		Timeout:            RPCDefaultRetryTimeout,
+		DialAttempts:       RPCDefaultDialRetryAttempts,
+		DialDelay:          RPCDefaultDialRetryDelay,
+		DialTimeout:        RPCDefaultDialTimeout,
+		HealthCheckTimeout: RPCDefaultHealthCheckTimeout,
 	}
 }
 
@@ -76,10 +78,13 @@ type MultiClient struct {
 
 // rpcHealthCheck performs a basic health check on the RPC client by calling eth_blockNumber
 func (mc *MultiClient) rpcHealthCheck(ctx context.Context, client *ethclient.Client) error {
-	timeoutCtx, cancel := context.WithTimeout(ctx, RPCDefaultHealthCheckTimeout)
+	timeout := mc.RetryConfig.HealthCheckTimeout
+	if timeout == 0 {
+		timeout = RPCDefaultHealthCheckTimeout
+	}
+	timeoutCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	// Try to get the latest block number
 	_, err := client.BlockNumber(timeoutCtx)
 	if err != nil {
 		return fmt.Errorf("health check failed: %w", err)

@@ -69,7 +69,7 @@ func TestNewMarkdownRenderer(t *testing.T) {
 	assert.Contains(t, out, "**ERC20 v1.0.0**")
 	assert.Contains(t, out, "`transfer`")
 	assert.Contains(t, out, "- [ ]")
-	assert.Contains(t, out, "0x1111..1111")
+	assert.Contains(t, out, "0x1111111111111111111111111111111111111111")
 	assert.Contains(t, out, "**`amount`**")
 	assert.Contains(t, out, "**`recipient`**")
 }

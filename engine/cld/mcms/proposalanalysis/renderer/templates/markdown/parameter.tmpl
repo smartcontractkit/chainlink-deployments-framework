@@ -1,10 +1,18 @@
 {{- define "parameter" -}}
-- **`{{ .Name }}`** (`{{ .Type }}`): {{ formatParam . }}
-{{- if hasDisplayAnnotations .Annotations }}
-{{- range .Annotations }}
+{{- $formatted := formatParam . -}}
+{{- if hasNewline $formatted -}}
+- **`{{ .Name }}`** (`{{ .Type }}`):
+  ```text
+{{ indentLines $formatted "  " }}
+  ```
+{{- else -}}
+- **`{{ .Name }}`** (`{{ .Type }}`): {{ $formatted }}
+{{- end -}}
+{{- if hasDisplayAnnotations .Annotations -}}
+{{- range .Annotations -}}
 {{- if not (isFrameworkAnnotation .Name) }}
   - _{{ if .Name }}{{ .Name }}: {{ end }}{{ formatAnnotationValue .Value }}_
-{{- end }}
-{{- end }}
+{{- end -}}
+{{- end -}}
 {{- end -}}
 {{- end -}}

@@ -5,18 +5,11 @@ import (
 	"crypto/rand"
 	"fmt"
 
-	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/mcms"
-	"github.com/smartcontractkit/mcms/sdk"
-	"github.com/smartcontractkit/mcms/sdk/aptos"
-	"github.com/smartcontractkit/mcms/sdk/evm"
-	"github.com/smartcontractkit/mcms/sdk/solana"
-	"github.com/smartcontractkit/mcms/sdk/sui"
-	"github.com/smartcontractkit/mcms/sdk/ton"
+	"github.com/smartcontractkit/mcms/chainwrappers"
 	"github.com/smartcontractkit/mcms/types"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/xssnick/tonutils-go/tlb"
 
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
@@ -83,35 +76,9 @@ func LoadProposalConfig(
 			timelockCastedProposal.SaltOverride = newRandomSalt()
 		}
 
-		// Construct converters for each chain
-		converters := make(map[types.ChainSelector]sdk.TimelockConverter)
-		for chain := range timelockCastedProposal.ChainMetadata {
-			fam, famErr := types.GetChainSelectorFamily(chain)
-			if famErr != nil {
-				return nil, fmt.Errorf("error getting chain family: %w", famErr)
-			}
-
-			var converter sdk.TimelockConverter
-			switch fam {
-			case chainsel.FamilyEVM:
-				converter = &evm.TimelockConverter{}
-			case chainsel.FamilySolana:
-				converter = solana.TimelockConverter{}
-			case chainsel.FamilyAptos:
-				converter = aptos.NewTimelockConverter()
-			case chainsel.FamilySui:
-				var suiErr error
-				converter, suiErr = sui.NewTimelockConverter()
-				if suiErr != nil {
-					return nil, fmt.Errorf("error creating Sui timelock converter: %w", suiErr)
-				}
-			case chainsel.FamilyTon:
-				converter = ton.NewTimelockConverter(tlb.MustFromTON(defaultTONExecutorAmount))
-			default:
-				return nil, fmt.Errorf("unsupported chain family %s", fam)
-			}
-
-			converters[chain] = converter
+		converters, cerr := chainwrappers.BuildConverters(timelockCastedProposal.ChainMetadata)
+		if cerr != nil {
+			return nil, fmt.Errorf("error building converters for timelock proposal: %w", cerr)
 		}
 
 		convertedProposal, _, convErr := timelockCastedProposal.Convert(ctx, converters)

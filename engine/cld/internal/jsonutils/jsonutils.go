@@ -1,6 +1,7 @@
 package jsonutils
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/fs"
@@ -26,7 +27,9 @@ func LoadFromFS[T any](fs fs.ReadFileFS, path string) (T, error) {
 		return v, fmt.Errorf("failed to read %s: %w", path, err)
 	}
 
-	if err = json.Unmarshal(f, &v); err != nil {
+	dec := json.NewDecoder(bytes.NewReader(f))
+	dec.UseNumber()
+	if err = dec.Decode(&v); err != nil {
 		return v, fmt.Errorf("failed to unmarshal JSON at path %s: %w", path, err)
 	}
 

@@ -112,8 +112,9 @@ func TestClient_GetIssue(t *testing.T) {
 			response := JiraIssue{
 				Key: "TEST-123",
 				Fields: map[string]any{
-					"summary":     "Test Issue",
-					"description": "This is a test issue description",
+					"summary":           "Test Issue",
+					"description":       "This is a test issue description",
+					"customfield_10000": uint64(16015286601757825753),
 					"status": map[string]any{
 						"name": "To Do",
 						"id":   "1",
@@ -197,6 +198,11 @@ func TestClient_GetIssue(t *testing.T) {
 			summary, ok := issue.Fields["summary"]
 			assert.True(t, ok, "Expected summary field")
 			assert.Equal(t, "Test Issue", summary)
+			if len(tt.fields) == 0 {
+				num, ok := issue.Fields["customfield_10000"].(json.Number)
+				require.True(t, ok, "Expected customfield_10000 to decode as json.Number")
+				assert.Equal(t, "16015286601757825753", num.String())
+			}
 		})
 	}
 }

@@ -1,6 +1,7 @@
 package proposalanalysis
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"sync"
@@ -316,7 +317,9 @@ func parseAdditionalFields(raw json.RawMessage) map[string]any {
 	}
 
 	var fields map[string]any
-	if err := json.Unmarshal(raw, &fields); err != nil {
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	dec.UseNumber()
+	if err := dec.Decode(&fields); err != nil {
 		return nil
 	}
 

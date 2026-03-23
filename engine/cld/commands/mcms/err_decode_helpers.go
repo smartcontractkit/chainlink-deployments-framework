@@ -13,6 +13,7 @@ import (
 
 	"github.com/smartcontractkit/mcms/sdk/evm"
 
+	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 )
 
@@ -82,9 +83,8 @@ func (d *ErrDecoder) decodeRecursive(revertData []byte, preferredABIJSON string)
 					// Unwrap if single bytes arg
 					if len(vs) == 1 {
 						if inner, ok := vs[0].([]byte); ok && len(inner) >= 4 {
-							// 1) Standard Error(string)?
 							if reason, derr := abi.UnpackRevert(inner); derr == nil {
-								return fmt.Sprintf("%s(...) -> Error(%s)", name, reason), true
+								return fmt.Sprintf("%s(...) -> %s", name, deployment.FormatUnpackedRevert(inner, reason)), true
 							}
 							// 2) Another custom error? Recurse with no preferred ABI.
 							if pretty, ok := d.decodeRecursive(inner, ""); ok {
@@ -120,7 +120,7 @@ func (d *ErrDecoder) decodeRecursive(revertData []byte, preferredABIJSON string)
 		if len(vs) == 1 {
 			if inner, ok := vs[0].([]byte); ok && len(inner) >= 4 {
 				if reason, derr := abi.UnpackRevert(inner); derr == nil {
-					return fmt.Sprintf("%s(...) -> Error(%s)", c.Name, reason), true
+					return fmt.Sprintf("%s(...) -> %s", c.Name, deployment.FormatUnpackedRevert(inner, reason)), true
 				}
 				if pretty, ok := d.decodeRecursive(inner, ""); ok {
 					return fmt.Sprintf("%s(...) -> %s", c.Name, pretty), true
@@ -155,13 +155,16 @@ func (d *ErrDecoder) matchErrorSelector(sel4 errorSelector) (string, bool) {
 	return fmt.Sprintf("%s(...) @%s", c.Name, c.TypeVer), true
 }
 
-// prettyFromBytes tries Error(string), then custom errors (pref ABI -> registry)
+// prettyFromBytes tries Error(string)/Panic(uint256), then custom errors (pref ABI -> registry)
 func prettyFromBytes(data []byte, preferredABIJSON string, dec *ErrDecoder) (string, bool) {
 	if len(data) == 0 {
 		return "", false
 	}
-	// 1) standard Error(string)
 	if reason, derr := abi.UnpackRevert(data); derr == nil {
+		if deployment.IsPanicRevert(data) {
+			return deployment.FormatUnpackedRevert(data, reason), true
+		}
+
 		return reason, true
 	}
 	// 2) custom errors (preferred ABI -> registry, recursive unwrap)
@@ -312,7 +315,9 @@ func decodeRevertDataFromBytes(data []byte, dec *ErrDecoder, preferredABIJSON st
 // ReadExecutionErrorFromFile reads and parses an execution error from a JSON file.
 func ReadExecutionErrorFromFile(data []byte) (*evm.ExecutionError, error) {
 	var jsonData map[string]any
-	if err := json.Unmarshal(data, &jsonData); err != nil {
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.UseNumber()
+	if err := dec.Decode(&jsonData); err != nil {
 		return nil, fmt.Errorf("error unmarshaling JSON: %w", err)
 	}
 
