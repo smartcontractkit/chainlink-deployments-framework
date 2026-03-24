@@ -91,8 +91,8 @@ func fetchGitHubFileContent(ctx context.Context, client *http.Client, repo, ref,
 		return "", fmt.Errorf("cre: github config %s/%s ref %q path %q: %w", owner, name, strings.TrimSpace(ref), path, err)
 	}
 	var file githubFileAPIResponse
-	if err := json.Unmarshal(body, &file); err != nil {
-		return "", fmt.Errorf("cre: github config decode: %w", err)
+	if unmarshalErr := json.Unmarshal(body, &file); unmarshalErr != nil {
+		return "", fmt.Errorf("cre: github config decode: %w", unmarshalErr)
 	}
 	if file.Type != "" && file.Type != "file" {
 		return "", fmt.Errorf("cre: github config: path is not a file (type=%s)", file.Type)

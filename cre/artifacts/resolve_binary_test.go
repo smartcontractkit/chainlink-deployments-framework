@@ -119,7 +119,10 @@ func TestResolveBinary_downloadURL(t *testing.T) {
 	validHex := hex.EncodeToString(sum[:])
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodGet, r.Method)
+		if r.Method != http.MethodGet {
+			http.Error(w, "want GET", http.StatusMethodNotAllowed)
+			return
+		}
 		_, _ = w.Write(payload)
 	}))
 	t.Cleanup(srv.Close)
@@ -210,7 +213,10 @@ func TestResolveBinary_gitHubRelease(t *testing.T) {
 							return
 						}
 					case strings.Contains(r.URL.Path, "/releases/assets/"):
-						require.Equal(t, "application/octet-stream", r.Header.Get("Accept"))
+						if r.Header.Get("Accept") != "application/octet-stream" {
+							http.Error(w, "bad Accept", http.StatusBadRequest)
+							return
+						}
 						_, _ = w.Write(payload)
 					default:
 						w.WriteHeader(http.StatusNotFound)

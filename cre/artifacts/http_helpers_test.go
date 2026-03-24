@@ -31,15 +31,20 @@ func Test_httpGet(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "ok", string(b))
 
-	_, err = httpGet(ctx, client, srv.URL+"/missing", "test op")
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "404")
+	missingResp, errMissing := httpGet(ctx, client, srv.URL+"/missing", "test op")
+	require.Error(t, errMissing)
+	if missingResp != nil {
+		defer missingResp.Body.Close()
+	}
+	require.Nil(t, missingResp)
+	require.Contains(t, errMissing.Error(), "404")
 }
 
 func Test_githubRESTGETBytes(t *testing.T) {
 	t.Parallel()
+	var gotAccept string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, "application/vnd.github+json", r.Header.Get("Accept"))
+		gotAccept = r.Header.Get("Accept")
 		_, _ = io.WriteString(w, `{"x":1}`)
 	}))
 	t.Cleanup(srv.Close)
@@ -48,6 +53,7 @@ func Test_githubRESTGETBytes(t *testing.T) {
 	client := srv.Client()
 	body, err := githubGet(ctx, client, srv.URL+"/api", "test gh")
 	require.NoError(t, err)
+	require.Equal(t, "application/vnd.github+json", gotAccept)
 	require.Equal(t, `{"x":1}`, string(body))
 }
 

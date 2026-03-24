@@ -18,10 +18,12 @@ func Test_gitHubBearerTransport(t *testing.T) {
 		})
 
 		rt := &gitHubBearerTransport{base: mockRT, token: githubTokenFromEnv()}
-		req, err := http.NewRequest(http.MethodGet, "https://example.com/x", nil)
+		req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "https://example.com/x", nil)
 		require.NoError(t, err)
-		_, err = rt.RoundTrip(req)
+		resp, err := rt.RoundTrip(req)
 		require.NoError(t, err)
+		require.NotNil(t, resp)
+		t.Cleanup(func() { _ = resp.Body.Close() })
 		require.NotNil(t, inner)
 		require.Equal(t, "Bearer secret-token", inner.Header.Get("Authorization"))
 		require.Empty(t, req.Header.Get("Authorization"))
@@ -37,11 +39,13 @@ func Test_gitHubBearerTransport(t *testing.T) {
 		})
 
 		rt := &gitHubBearerTransport{base: mockRT, token: githubTokenFromEnv()}
-		req, err := http.NewRequest(http.MethodGet, "https://api.github.com/foo", nil)
+		req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "https://api.github.com/foo", nil)
 		require.NoError(t, err)
 		req.Header.Set("Authorization", "Bearer existing")
-		_, err = rt.RoundTrip(req)
+		resp, err := rt.RoundTrip(req)
 		require.NoError(t, err)
+		require.NotNil(t, resp)
+		t.Cleanup(func() { _ = resp.Body.Close() })
 		require.Equal(t, "Bearer existing", inner.Header.Get("Authorization"))
 	})
 }

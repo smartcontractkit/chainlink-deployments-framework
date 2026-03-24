@@ -6,7 +6,9 @@ import (
 	"strings"
 )
 
-// GitHub PAT env vars (not part of CRE deploy / cfg.CRE).
+// GitHub PAT env var names (not part of CRE deploy / cfg.CRE).
+//
+//nolint:gosec // G101: env var name strings, not credentials
 const (
 	envGitHubToken = "GITHUB_TOKEN"
 	envGHToken     = "GH_TOKEN"

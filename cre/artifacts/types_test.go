@@ -443,6 +443,7 @@ func TestWorkflowBundle_Validate(t *testing.T) {
 }
 
 func TestWorkflowBundle_ApplyDeployDefaults(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		cre        cfgenv.CREConfig
@@ -501,6 +502,7 @@ func TestWorkflowBundle_ApplyDeployDefaults(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			w := tt.input
 			w.ApplyDeployDefaults(tt.cre)
 			require.Equal(t, tt.wantFamily, w.DonFamily)
@@ -509,6 +511,7 @@ func TestWorkflowBundle_ApplyDeployDefaults(t *testing.T) {
 }
 
 func TestWorkflowBundle_ApplyDeployDefaults_nil(t *testing.T) {
+	t.Parallel()
 	var w *WorkflowBundle
 	require.NotPanics(t, func() { w.ApplyDeployDefaults(cfgenv.CREConfig{}) })
 }
