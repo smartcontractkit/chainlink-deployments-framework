@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -53,7 +54,10 @@ func TestResolveConfig_URL(t *testing.T) {
 	t.Parallel()
 	want := []byte(`{"env":"staging"}`)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodGet, r.Method)
+		if r.Method != http.MethodGet {
+			http.Error(w, "want GET", http.StatusMethodNotAllowed)
+			return
+		}
 		_, _ = w.Write(want)
 	}))
 	t.Cleanup(srv.Close)
@@ -78,16 +82,25 @@ func TestResolveConfig_gitHubFile(t *testing.T) {
 	encoded := base64.StdEncoding.EncodeToString(raw)
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodGet, r.Method)
-		require.Contains(t, r.URL.Path, "/contents/")
-		require.Equal(t, "main", r.URL.Query().Get("ref"))
+		if r.Method != http.MethodGet {
+			http.Error(w, "want GET", http.StatusMethodNotAllowed)
+			return
+		}
+		if !strings.Contains(r.URL.Path, "/contents/") {
+			http.NotFound(w, r)
+			return
+		}
+		if r.URL.Query().Get("ref") != "main" {
+			http.Error(w, "bad ref", http.StatusBadRequest)
+			return
+		}
 		resp := map[string]any{
 			"type":     "file",
 			"encoding": "base64",
 			"content":  encoded,
 		}
 		w.Header().Set("Content-Type", "application/json")
-		require.NoError(t, json.NewEncoder(w).Encode(resp))
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	t.Cleanup(srv.Close)
 
