@@ -153,6 +153,7 @@ func writeStreamAndVerifySHA256(body io.Reader, expectedSHA256Hex, workDir strin
 	if _, copyErr := io.Copy(io.MultiWriter(f, h), body); copyErr != nil {
 		closeErr := f.Close()
 		err = errors.Join(fmt.Errorf("cre: download binary write: %w", copyErr), closeErr)
+
 		return "", err
 	}
 
