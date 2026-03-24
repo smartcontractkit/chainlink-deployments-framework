@@ -15,6 +15,7 @@ func plainHTTPClient(c *http.Client) *http.Client {
 	if c == nil {
 		return http.DefaultClient
 	}
+
 	return c
 }
 
@@ -32,8 +33,10 @@ func httpGet(ctx context.Context, client *http.Client, rawURL string, op string)
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 		_ = resp.Body.Close()
+
 		return nil, fmt.Errorf("cre: %s: unexpected status %d: %s", op, resp.StatusCode, strings.TrimSpace(string(body)))
 	}
+
 	return resp, nil
 }
 
@@ -53,8 +56,10 @@ func httpGetGitHubReleaseAsset(ctx context.Context, client *http.Client, apiAsse
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 		_ = resp.Body.Close()
+
 		return nil, fmt.Errorf("cre: %s: %s: unexpected status %d: %s", op, strings.TrimSpace(apiAssetURL), resp.StatusCode, strings.TrimSpace(string(body)))
 	}
+
 	return resp, nil
 }
 
@@ -77,6 +82,7 @@ func githubGet(ctx context.Context, client *http.Client, apiURL string, op strin
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("cre: %s: %s: status %d: %s", op, apiURL, resp.StatusCode, strings.TrimSpace(string(body)))
 	}
+
 	return body, nil
 }
 
@@ -88,10 +94,12 @@ func resolveLocalArtifactPath(path string) (string, error) {
 		if os.IsNotExist(err) {
 			return "", fmt.Errorf("cre: local file does not exist: %w", err)
 		}
+
 		return "", fmt.Errorf("cre: local file: %w", err)
 	}
 	if info.IsDir() {
 		return "", fmt.Errorf("cre: local path is a directory: %s", clean)
 	}
+
 	return clean, nil
 }

@@ -72,6 +72,7 @@ func (b BinarySource) Validate() error {
 	if hasExt {
 		return b.ExternalRef.Validate()
 	}
+
 	return nil
 }
 
@@ -103,6 +104,7 @@ func (e *ExternalBinaryRef) Validate() error {
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -112,6 +114,7 @@ func (e *ExternalBinaryRef) IsURL() bool {
 	if e == nil {
 		return false
 	}
+
 	return strings.TrimSpace(e.URL) != ""
 }
 
@@ -120,6 +123,7 @@ func (e *ExternalBinaryRef) IsGitHubRelease() bool {
 	if e == nil {
 		return false
 	}
+
 	return strings.TrimSpace(e.Repo) != "" && strings.TrimSpace(e.ReleaseTag) != "" && strings.TrimSpace(e.AssetName) != ""
 }
 
@@ -146,6 +150,7 @@ func (c ConfigSource) Validate() error {
 	if hasExt {
 		return c.ExternalRef.Validate()
 	}
+
 	return nil
 }
 
@@ -177,6 +182,7 @@ func (e *ExternalConfigRef) Validate() error {
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -186,6 +192,7 @@ func (e *ExternalConfigRef) IsURL() bool {
 	if e == nil {
 		return false
 	}
+
 	return strings.TrimSpace(e.URL) != ""
 }
 
@@ -194,6 +201,7 @@ func (e *ExternalConfigRef) IsGitHubFile() bool {
 	if e == nil {
 		return false
 	}
+
 	return strings.TrimSpace(e.Repo) != "" && strings.TrimSpace(e.Ref) != "" && strings.TrimSpace(e.Path) != ""
 }
 
@@ -205,6 +213,7 @@ func (w WorkflowBundle) Validate() error {
 	if err := w.Binary.Validate(); err != nil {
 		return err
 	}
+
 	return w.Config.Validate()
 }
 
@@ -234,11 +243,13 @@ func validURL(raw string) error {
 		if u.Scheme == "" {
 			return errors.New("url must be an absolute http or https URL with a host")
 		}
+
 		return fmt.Errorf("url scheme must be http or https, got %q", u.Scheme)
 	}
 	if u.Host == "" {
 		return errors.New("url must be an absolute http or https URL with a host")
 	}
+
 	return nil
 }
 
@@ -251,5 +262,6 @@ func parseGitHubRepo(repo string) (owner, name string, err error) {
 	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
 		return "", "", fmt.Errorf("cre: repo must be owner/name, got %q", repo)
 	}
+
 	return parts[0], parts[1], nil
 }

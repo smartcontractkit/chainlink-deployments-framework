@@ -51,8 +51,10 @@ func resolveBinaryHttp(ctx context.Context, src BinarySource, httpClient *http.C
 		if isGitHubAPIReleaseAssetURL(downloadURL) {
 			return downloadGitHubReleaseAssetAndVerify(ctx, gh, downloadURL, ref.SHA256, workDir)
 		}
+
 		return downloadAndVerify(ctx, gh, downloadURL, ref.SHA256, workDir)
 	}
+
 	return "", fmt.Errorf("cre: resolve binary: unsupported external binary ref (%s)", binaryExternalRefSummary(ref))
 }
 
@@ -64,6 +66,7 @@ func isGitHubAPIReleaseAssetURL(raw string) bool {
 	if u.Host != "api.github.com" {
 		return false
 	}
+
 	return strings.Contains(u.Path, "/releases/assets/")
 }
 
@@ -71,6 +74,7 @@ func binaryExternalRefSummary(e *ExternalBinaryRef) string {
 	if e == nil {
 		return "externalRef=<nil>"
 	}
+
 	return fmt.Sprintf("url=%q repo=%q releaseTag=%q assetName=%q sha256=%q",
 		strings.TrimSpace(e.URL),
 		strings.TrimSpace(e.Repo),
@@ -89,8 +93,10 @@ func resolveBinaryLocal(p string) (string, error) {
 		if p == clean {
 			return "", fmt.Errorf("cre: binary local path %q must have .wasm extension", p)
 		}
+
 		return "", fmt.Errorf("cre: binary local path %q must have .wasm extension (resolved %q)", p, clean)
 	}
+
 	return clean, nil
 }
 
@@ -100,6 +106,7 @@ func downloadAndVerify(ctx context.Context, client *http.Client, downloadURL, ex
 		return "", err
 	}
 	defer resp.Body.Close()
+
 	return writeStreamAndVerifySHA256(resp.Body, expectedSHA256Hex, workDir)
 }
 
@@ -111,6 +118,7 @@ func downloadGitHubReleaseAssetAndVerify(ctx context.Context, client *http.Clien
 		return "", err
 	}
 	defer resp.Body.Close()
+
 	return writeStreamAndVerifySHA256(resp.Body, expectedSHA256Hex, workDir)
 }
 
@@ -148,6 +156,7 @@ func writeStreamAndVerifySHA256(body io.Reader, expectedSHA256Hex, workDir strin
 			fmt.Errorf("cre: download binary write: %w", copyErr),
 			closeErr,
 		)
+
 		return "", err
 	}
 
@@ -160,6 +169,7 @@ func writeStreamAndVerifySHA256(body io.Reader, expectedSHA256Hex, workDir strin
 		err = errors.New("cre: download binary: sha256 mismatch")
 		return "", err
 	}
+
 	return tmpPath, nil
 }
 
@@ -175,6 +185,7 @@ func parseSHA256Hex(s string) ([]byte, error) {
 	if len(b) != sha256.Size {
 		return nil, fmt.Errorf("cre: sha256 must be %d bytes, got %d", sha256.Size, len(b))
 	}
+
 	return b, nil
 }
 
@@ -206,5 +217,6 @@ func resolveGitHubAssetURL(ctx context.Context, client *http.Client, repo, tag, 
 			return u, nil
 		}
 	}
+
 	return "", fmt.Errorf("cre: github release %s/%s tag %q: asset %q not found in release assets", owner, name, tagClean, want)
 }

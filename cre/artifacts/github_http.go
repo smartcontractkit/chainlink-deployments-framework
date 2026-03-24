@@ -19,6 +19,7 @@ func githubTokenFromEnv() string {
 			return t
 		}
 	}
+
 	return ""
 }
 
@@ -38,6 +39,7 @@ func (t *gitHubBearerTransport) RoundTrip(req *http.Request) (*http.Response, er
 	}
 	r2 := req.Clone(req.Context())
 	r2.Header.Set("Authorization", "Bearer "+t.token)
+
 	return base.RoundTrip(r2)
 }
 
@@ -56,5 +58,6 @@ func githubHTTPClientOrDefault(c *http.Client) *http.Client {
 	}
 	out := *c
 	out.Transport = &gitHubBearerTransport{base: base, token: token}
+
 	return &out
 }

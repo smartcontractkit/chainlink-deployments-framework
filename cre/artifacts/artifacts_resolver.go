@@ -34,6 +34,7 @@ func NewArtifactsResolver(workDir string, opts ...ArtifactsResolverOption) (*Art
 	for _, opt := range opts {
 		opt(r)
 	}
+
 	return r, nil
 }
 
@@ -42,6 +43,7 @@ func (r *ArtifactsResolver) WorkDir() string {
 	if r == nil {
 		return ""
 	}
+
 	return r.workDir
 }
 
@@ -54,6 +56,7 @@ func (r *ArtifactsResolver) ResolveBinary(ctx context.Context, src BinarySource)
 	if wd == "" {
 		return "", errors.New("cre: WorkDir is required")
 	}
+
 	return resolveBinaryHttp(ctx, src, r.httpClient(), wd)
 }
 
@@ -66,6 +69,7 @@ func (r *ArtifactsResolver) ResolveConfig(ctx context.Context, src ConfigSource)
 	if wd == "" {
 		return "", errors.New("cre: WorkDir is required")
 	}
+
 	return resolveConfigHttp(ctx, src, r.httpClient(), wd)
 }
 
@@ -73,5 +77,6 @@ func (r *ArtifactsResolver) httpClient() *http.Client {
 	if r == nil {
 		return nil
 	}
+
 	return r.client
 }

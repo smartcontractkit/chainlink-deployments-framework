@@ -24,7 +24,7 @@ func Test_gitHubBearerTransport(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, inner)
 		require.Equal(t, "Bearer secret-token", inner.Header.Get("Authorization"))
-		require.Equal(t, "", req.Header.Get("Authorization"))
+		require.Empty(t, req.Header.Get("Authorization"))
 	})
 
 	t.Run("does not override existing authorization", func(t *testing.T) {

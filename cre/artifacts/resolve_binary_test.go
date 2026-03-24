@@ -71,6 +71,7 @@ func TestResolveBinary_local(t *testing.T) {
 			if tt.wantErr != "" {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tt.wantErr)
+
 				return
 			}
 			require.NoError(t, err)
@@ -138,6 +139,7 @@ func TestResolveBinary_downloadURL(t *testing.T) {
 					w.WriteHeader(http.StatusInternalServerError)
 				}))
 				t.Cleanup(failSrv.Close)
+
 				return failSrv.URL + "/x"
 			},
 		},
@@ -159,6 +161,7 @@ func TestResolveBinary_downloadURL(t *testing.T) {
 			if tt.wantErr != "" {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tt.wantErr)
+
 				return
 			}
 			require.NoError(t, err)
@@ -228,6 +231,7 @@ func TestResolveBinary_gitHubRelease(t *testing.T) {
 								{"name": "other.wasm", "browser_download_url": s.URL + "/x"},
 							},
 						})
+
 						return
 					}
 					w.WriteHeader(http.StatusNotFound)
@@ -262,6 +266,7 @@ func TestResolveBinary_gitHubRelease(t *testing.T) {
 			if tt.wantErr != "" {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tt.wantErr)
+
 				return
 			}
 			require.NoError(t, err)
@@ -337,6 +342,7 @@ func rewriteGitHubAPIToTestServer(testBase string, rt http.RoundTripper) http.Ro
 	if rt == nil {
 		rt = http.DefaultTransport
 	}
+
 	return roundTripperFunc(func(req *http.Request) (*http.Response, error) {
 		if req.URL.Host == "api.github.com" {
 			u, err := url.Parse(testBase + req.URL.Path)
@@ -346,8 +352,10 @@ func rewriteGitHubAPIToTestServer(testBase string, rt http.RoundTripper) http.Ro
 			u.RawQuery = req.URL.RawQuery
 			req2 := req.Clone(req.Context())
 			req2.URL = u
+
 			return rt.RoundTrip(req2)
 		}
+
 		return rt.RoundTrip(req)
 	})
 }

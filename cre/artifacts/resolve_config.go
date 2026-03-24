@@ -39,6 +39,7 @@ func resolveConfigHttp(ctx context.Context, src ConfigSource, httpClient *http.C
 		gh := githubHTTPClientOrDefault(httpClient)
 		return fetchGitHubFileContent(ctx, gh, ref.Repo, ref.Ref, ref.Path, workDir)
 	}
+
 	return "", fmt.Errorf("cre: resolve config: unsupported external config ref (%s)", configExternalRefSummary(ref))
 }
 
@@ -46,6 +47,7 @@ func configExternalRefSummary(e *ExternalConfigRef) string {
 	if e == nil {
 		return "externalRef=<nil>"
 	}
+
 	return fmt.Sprintf("url=%q repo=%q ref=%q path=%q",
 		strings.TrimSpace(e.URL),
 		strings.TrimSpace(e.Repo),
@@ -64,6 +66,7 @@ func downloadConfigURL(ctx context.Context, client *http.Client, rawURL, workDir
 		return "", err
 	}
 	defer resp.Body.Close()
+
 	return writeConfigFile(workDir, resp.Body)
 }
 
@@ -101,6 +104,7 @@ func fetchGitHubFileContent(ctx context.Context, client *http.Client, repo, ref,
 	if err != nil {
 		return "", fmt.Errorf("cre: github config base64: %w", err)
 	}
+
 	return writeConfigFile(workDir, bytes.NewReader(raw))
 }
 
@@ -109,6 +113,7 @@ func encodeGitHubPath(p string) string {
 	for i := range parts {
 		parts[i] = url.PathEscape(parts[i])
 	}
+
 	return strings.Join(parts, "/")
 }
 
@@ -128,6 +133,7 @@ func writeConfigFile(workDir string, r io.Reader) (string, error) {
 	if _, copyErr := io.Copy(f, r); copyErr != nil {
 		closeErr := f.Close()
 		remErr := os.Remove(path)
+
 		return "", errors.Join(
 			fmt.Errorf("cre: config write: %w", copyErr),
 			closeErr,
@@ -141,5 +147,6 @@ func writeConfigFile(workDir string, r io.Reader) (string, error) {
 			remErr,
 		)
 	}
+
 	return path, nil
 }

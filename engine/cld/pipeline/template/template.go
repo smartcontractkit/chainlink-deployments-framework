@@ -78,9 +78,9 @@ func generateChangesetSection(
 
 		inputType := rf.In(0)
 
-		section.WriteString(fmt.Sprintf("%s# Config Resolver: %s\n", indent, resolverName))
-		section.WriteString(fmt.Sprintf("%s# Input type: %s\n", indent, inputType.String()))
-		section.WriteString(fmt.Sprintf("%s- %s:\n", indent, changesetName))
+		fmt.Fprintf(&section, "%s# Config Resolver: %s\n", indent, resolverName)
+		fmt.Fprintf(&section, "%s# Input type: %s\n", indent, inputType.String())
+		fmt.Fprintf(&section, "%s- %s:\n", indent, changesetName)
 
 		writeChainOverridesSection(&section, indent)
 
@@ -93,8 +93,8 @@ func generateChangesetSection(
 
 		section.WriteString(payloadYAML)
 	} else if cfg.InputType != nil {
-		section.WriteString(fmt.Sprintf("%s# Input type: %s\n", indent, cfg.InputType.String()))
-		section.WriteString(fmt.Sprintf("%s- %s:\n", indent, changesetName))
+		fmt.Fprintf(&section, "%s# Input type: %s\n", indent, cfg.InputType.String())
+		fmt.Fprintf(&section, "%s- %s:\n", indent, changesetName)
 
 		writeChainOverridesSection(&section, indent)
 
@@ -166,7 +166,7 @@ func GenerateStructYAMLWithDepthLimit(
 				return "", fmt.Errorf("generate field value for %s: %w", field.Name, err)
 			}
 
-			result.WriteString(fmt.Sprintf("%s%s:", indent, fieldName))
+			fmt.Fprintf(&result, "%s%s:", indent, fieldName)
 			result.WriteString(fieldValue)
 			if !strings.HasSuffix(fieldValue, "\n") {
 				result.WriteString("\n")
@@ -175,7 +175,7 @@ func GenerateStructYAMLWithDepthLimit(
 		}
 
 		if t.NumField() > maxFields {
-			result.WriteString(fmt.Sprintf("%s# ... and %d more fields\n", indent, t.NumField()-maxFields))
+			fmt.Fprintf(&result, "%s# ... and %d more fields\n", indent, t.NumField()-maxFields)
 		}
 
 		return result.String(), nil
@@ -303,7 +303,7 @@ func formatMultilineSliceElement(elemValue string, indent string) string {
 
 	knownPrefix := indent + "  "
 	var listValue strings.Builder
-	listValue.WriteString(fmt.Sprintf("\n%s- %s", indent, stripKnownPrefix(lines[0], knownPrefix)))
+	fmt.Fprintf(&listValue, "\n%s- %s", indent, stripKnownPrefix(lines[0], knownPrefix))
 
 	for _, line := range lines[1:] {
 		if strings.TrimSpace(line) == "" {

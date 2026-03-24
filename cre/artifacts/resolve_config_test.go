@@ -7,7 +7,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -41,6 +40,7 @@ func TestResolveConfig_local(t *testing.T) {
 			if tt.wantErr != "" {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tt.wantErr)
+
 				return
 			}
 			require.NoError(t, err)
@@ -79,7 +79,7 @@ func TestResolveConfig_gitHubFile(t *testing.T) {
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
-		require.True(t, strings.Contains(r.URL.Path, "/contents/"))
+		require.Contains(t, r.URL.Path, "/contents/")
 		require.Equal(t, "main", r.URL.Query().Get("ref"))
 		resp := map[string]any{
 			"type":     "file",

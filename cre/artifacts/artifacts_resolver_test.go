@@ -15,7 +15,7 @@ func TestArtifactsResolver_WorkDir(t *testing.T) {
 	require.Equal(t, dir, r.WorkDir())
 
 	var nilR *ArtifactsResolver
-	require.Equal(t, "", nilR.WorkDir())
+	require.Empty(t, nilR.WorkDir())
 }
 
 func TestWithHTTPClient(t *testing.T) {

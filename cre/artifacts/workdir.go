@@ -13,6 +13,7 @@ func randomWorkDirSuffix() string {
 	if _, err := rand.Read(b); err != nil {
 		return strconv.FormatInt(time.Now().UnixNano(), 36)
 	}
+
 	return hex.EncodeToString(b)
 }
 
