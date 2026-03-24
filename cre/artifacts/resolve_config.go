@@ -117,7 +117,7 @@ func encodeGitHubPath(p string) string {
 	return strings.Join(parts, "/")
 }
 
-func writeConfigFile(workDir string, r io.Reader) (string, error) {
+func writeConfigFile(workDir string, reader io.Reader) (string, error) {
 	wd := strings.TrimSpace(workDir)
 	if wd == "" {
 		return "", errors.New("cre: workDir is required for config download")
@@ -130,7 +130,7 @@ func writeConfigFile(workDir string, r io.Reader) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("cre: config file: %w", err)
 	}
-	if _, copyErr := io.Copy(f, r); copyErr != nil {
+	if _, copyErr := io.Copy(f, reader); copyErr != nil {
 		closeErr := f.Close()
 		remErr := os.Remove(path)
 

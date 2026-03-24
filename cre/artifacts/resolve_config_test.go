@@ -1,8 +1,10 @@
 package artifacts
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -12,6 +14,114 @@ import (
 
 	"github.com/stretchr/testify/require"
 )
+
+func Test_writeConfigFile(t *testing.T) {
+	t.Parallel()
+
+	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		want := []byte(`{"ok":true}`)
+		path, err := writeConfigFile(dir, bytes.NewReader(want))
+		require.NoError(t, err)
+		require.Equal(t, dir, filepath.Dir(path))
+		base := filepath.Base(path)
+		require.True(t, strings.HasPrefix(base, "workflow-config-"), base)
+		require.True(t, strings.HasSuffix(base, ".json"), base)
+		got, err := os.ReadFile(path)
+		require.NoError(t, err)
+		require.Equal(t, want, got)
+	})
+
+	t.Run("empty_work_dir", func(t *testing.T) {
+		t.Parallel()
+		_, err := writeConfigFile("", strings.NewReader("{}"))
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "workDir is required")
+	})
+
+	t.Run("whitespace_work_dir", func(t *testing.T) {
+		t.Parallel()
+		_, err := writeConfigFile("   ", strings.NewReader("{}"))
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "workDir is required")
+	})
+
+	t.Run("mkdir_fails_when_path_is_file", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		blocksDir := filepath.Join(dir, "not-a-dir")
+		require.NoError(t, os.WriteFile(blocksDir, []byte("x"), 0o600))
+		_, err := writeConfigFile(blocksDir, strings.NewReader("{}"))
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "config work dir")
+	})
+
+	t.Run("copy_error_removes_partial_file", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		_, err := writeConfigFile(dir, errReader{err: errors.New("read boom")})
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "config write")
+		entries, err := os.ReadDir(dir)
+		require.NoError(t, err)
+		require.Empty(t, entries, "partial config file should be removed on write failure")
+	})
+}
+
+type errReader struct {
+	err error
+}
+
+func (e errReader) Read(p []byte) (int, error) {
+	return 0, e.err
+}
+
+func Test_configExternalRefSummary(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name string
+		ref  *ExternalConfigRef
+		want string
+	}{
+		{
+			name: "nil",
+			ref:  nil,
+			want: "externalRef=<nil>",
+		},
+		{
+			name: "empty_fields",
+			ref:  &ExternalConfigRef{},
+			want: `url="" repo="" ref="" path=""`,
+		},
+		{
+			name: "all_fields",
+			ref: &ExternalConfigRef{
+				URL:  "https://example/cfg.json",
+				Repo: "org/repo",
+				Ref:  "main",
+				Path: "path/to/config.json",
+			},
+			want: `url="https://example/cfg.json" repo="org/repo" ref="main" path="path/to/config.json"`,
+		},
+		{
+			name: "trims_whitespace",
+			ref: &ExternalConfigRef{
+				URL:  "  https://x  ",
+				Repo: " org/r ",
+				Ref:  " v1 ",
+				Path: " a/b.json ",
+			},
+			want: `url="https://x" repo="org/r" ref="v1" path="a/b.json"`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, tt.want, configExternalRefSummary(tt.ref))
+		})
+	}
+}
 
 func TestResolveConfig_local(t *testing.T) {
 	t.Parallel()
