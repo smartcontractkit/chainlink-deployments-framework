@@ -20,39 +20,36 @@ type WorkflowBundle struct {
 	DonFamily    string       `json:"donFamily,omitempty" yaml:"donFamily,omitempty"`
 }
 
+// Validate validates the workflow bundle.
+func (w WorkflowBundle) Validate() error {
+	if strings.TrimSpace(w.WorkflowName) == "" {
+		return errors.New("cre: workflowName is required")
+	}
+	if err := w.Binary.Validate(); err != nil {
+		return err
+	}
+
+	return w.Config.Validate()
+}
+
+// ApplyDeployDefaults sets DonFamily from cre when empty (after trim). No-op if w is nil.
+func (w *WorkflowBundle) ApplyDeployDefaults(cre cfgenv.CREConfig) {
+	if w == nil {
+		return
+	}
+	if strings.TrimSpace(w.DonFamily) != "" {
+		return
+	}
+	w.DonFamily = ""
+	if s := strings.TrimSpace(cre.DonFamily); s != "" {
+		w.DonFamily = s
+	}
+}
+
 // BinarySource is either a local path to an existing WASM file or an external reference.
 type BinarySource struct {
 	ExternalRef *ExternalBinaryRef `json:"externalRef,omitempty" yaml:"externalRef,omitempty"`
 	LocalPath   string             `json:"localPath,omitempty" yaml:"localPath,omitempty"`
-}
-
-// ExternalBinaryRef describes a remote WASM (GitHub release asset or direct URL).
-type ExternalBinaryRef struct {
-	URL        string `json:"url,omitempty" yaml:"url,omitempty"`
-	ReleaseTag string `json:"releaseTag,omitempty" yaml:"releaseTag,omitempty"`
-	AssetName  string `json:"assetName,omitempty" yaml:"assetName,omitempty"`
-	Repo       string `json:"repo,omitempty" yaml:"repo,omitempty"`
-	SHA256     string `json:"sha256,omitempty" yaml:"sha256,omitempty"`
-}
-
-// ConfigSource is either a local config file or an external reference.
-type ConfigSource struct {
-	ExternalRef *ExternalConfigRef `json:"externalRef,omitempty" yaml:"externalRef,omitempty"`
-	LocalPath   string             `json:"localPath,omitempty" yaml:"localPath,omitempty"`
-}
-
-// ExternalConfigRef describes remote config (GitHub file at ref, or arbitrary URL).
-type ExternalConfigRef struct {
-	Repo string `json:"repo,omitempty" yaml:"repo,omitempty"`
-	Ref  string `json:"ref,omitempty" yaml:"ref,omitempty"`
-	Path string `json:"path,omitempty" yaml:"path,omitempty"`
-	URL  string `json:"url,omitempty" yaml:"url,omitempty"`
-}
-
-// normalizeGitHubConfigPath trims surrounding space and leading slashes so the path is suitable
-// for the GitHub Contents API
-func normalizeGitHubConfigPath(p string) string {
-	return strings.TrimLeft(strings.TrimSpace(p), "/")
 }
 
 // IsLocal reports whether the binary source is a local filesystem path.
@@ -80,6 +77,15 @@ func (b BinarySource) Validate() error {
 	}
 
 	return nil
+}
+
+// ExternalBinaryRef describes a remote WASM (GitHub release asset or direct URL).
+type ExternalBinaryRef struct {
+	URL        string `json:"url,omitempty" yaml:"url,omitempty"`
+	ReleaseTag string `json:"releaseTag,omitempty" yaml:"releaseTag,omitempty"`
+	AssetName  string `json:"assetName,omitempty" yaml:"assetName,omitempty"`
+	Repo       string `json:"repo,omitempty" yaml:"repo,omitempty"`
+	SHA256     string `json:"sha256,omitempty" yaml:"sha256,omitempty"`
 }
 
 // Validate enforces one external mode (URL XOR GitHub release) and SHA256 for WASM.
@@ -133,6 +139,12 @@ func (e *ExternalBinaryRef) IsGitHubRelease() bool {
 	return strings.TrimSpace(e.Repo) != "" && strings.TrimSpace(e.ReleaseTag) != "" && strings.TrimSpace(e.AssetName) != ""
 }
 
+// ConfigSource is either a local config file or an external reference.
+type ConfigSource struct {
+	ExternalRef *ExternalConfigRef `json:"externalRef,omitempty" yaml:"externalRef,omitempty"`
+	LocalPath   string             `json:"localPath,omitempty" yaml:"localPath,omitempty"`
+}
+
 // IsLocal reports whether the config source is a local filesystem path.
 func (c ConfigSource) IsLocal() bool {
 	return strings.TrimSpace(c.LocalPath) != ""
@@ -158,6 +170,14 @@ func (c ConfigSource) Validate() error {
 	}
 
 	return nil
+}
+
+// ExternalConfigRef describes remote config (GitHub file at ref, or arbitrary URL).
+type ExternalConfigRef struct {
+	Repo string `json:"repo,omitempty" yaml:"repo,omitempty"`
+	Ref  string `json:"ref,omitempty" yaml:"ref,omitempty"`
+	Path string `json:"path,omitempty" yaml:"path,omitempty"`
+	URL  string `json:"url,omitempty" yaml:"url,omitempty"`
 }
 
 // Validate enforces GitHub file mode XOR URL mode.
@@ -216,30 +236,12 @@ func (e *ExternalConfigRef) IsGitHubFile() bool {
 	return strings.TrimSpace(e.Repo) != "" && strings.TrimSpace(e.Ref) != "" && normalizeGitHubConfigPath(e.Path) != ""
 }
 
-// Validate validates the workflow bundle.
-func (w WorkflowBundle) Validate() error {
-	if strings.TrimSpace(w.WorkflowName) == "" {
-		return errors.New("cre: workflowName is required")
-	}
-	if err := w.Binary.Validate(); err != nil {
-		return err
-	}
+// helpers
 
-	return w.Config.Validate()
-}
-
-// ApplyDeployDefaults sets DonFamily from cre when empty (after trim). No-op if w is nil.
-func (w *WorkflowBundle) ApplyDeployDefaults(cre cfgenv.CREConfig) {
-	if w == nil {
-		return
-	}
-	if strings.TrimSpace(w.DonFamily) != "" {
-		return
-	}
-	w.DonFamily = ""
-	if s := strings.TrimSpace(cre.DonFamily); s != "" {
-		w.DonFamily = s
-	}
+// normalizeGitHubConfigPath trims surrounding space and leading slashes so the path is suitable
+// for the GitHub Contents API
+func normalizeGitHubConfigPath(p string) string {
+	return strings.TrimLeft(strings.TrimSpace(p), "/")
 }
 
 // validURL ensures raw is parseable and uses an http scheme with a non-empty host.
