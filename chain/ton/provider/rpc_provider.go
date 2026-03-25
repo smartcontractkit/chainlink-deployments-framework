@@ -29,7 +29,7 @@ type SubwalletID uint32
 
 func ParseSubwalletID(idStr string) (*SubwalletID, error) {
 	if idStr == "" {
-		return nil, nil // No subwallet ID provided
+		return nil, nil //nolint:nilnil // No subwallet ID provided
 	}
 
 	uintVal, err := strconv.ParseUint(idStr, 10, 32)
