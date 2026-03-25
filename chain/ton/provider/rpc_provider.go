@@ -38,6 +38,7 @@ func ParseSubwalletID(idStr string) (*SubwalletID, error) {
 	}
 
 	subwalletID := SubwalletID(uintVal)
+
 	return &subwalletID, nil
 }
 
