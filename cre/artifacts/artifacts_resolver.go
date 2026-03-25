@@ -47,7 +47,7 @@ func (r *ArtifactsResolver) WorkDir() string {
 	return r.workDir
 }
 
-// ResolveBinary resolves a .wasm path. Cleanup: defer os.RemoveAll(r.WorkDir()) (downloads only).
+// ResolveBinary resolves a .wasm path.
 func (r *ArtifactsResolver) ResolveBinary(ctx context.Context, src BinarySource) (string, error) {
 	if r == nil {
 		return "", errors.New("cre: resolver is nil")
@@ -60,7 +60,7 @@ func (r *ArtifactsResolver) ResolveBinary(ctx context.Context, src BinarySource)
 	return resolveBinaryHttp(ctx, src, r.httpClient(), wd)
 }
 
-// ResolveConfig resolves a config file path. Cleanup same as [ArtifactsResolver.ResolveBinary].
+// ResolveConfig resolves a config file path.
 func (r *ArtifactsResolver) ResolveConfig(ctx context.Context, src ConfigSource) (string, error) {
 	if r == nil {
 		return "", errors.New("cre: resolver is nil")
