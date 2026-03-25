@@ -268,6 +268,7 @@ var (
 		"onchain.stellar.deployer_key":                            {"ONCHAIN_STELLAR_DEPLOYER_KEY"},
 		"onchain.ton.deployer_key":                                {"ONCHAIN_TON_DEPLOYER_KEY", "TON_DEPLOYER_KEY"},
 		"onchain.ton.wallet_version":                              {"ONCHAIN_TON_WALLET_VERSION", "TON_WALLET_VERSION"},
+		"onchain.ton.subwallet_id":                                {"ONCHAIN_TON_SUBWALLET_ID", "TON_SUBWALLET_ID"},
 		"onchain.canton.jwt_token":                                {"ONCHAIN_CANTON_JWT_TOKEN"},
 		"offchain.job_distributor.auth.cognito_app_client_id":     {"OFFCHAIN_JD_AUTH_COGNITO_APP_CLIENT_ID", "JD_AUTH_COGNITO_APP_CLIENT_ID"},
 		"offchain.job_distributor.auth.cognito_app_client_secret": {"OFFCHAIN_JD_AUTH_COGNITO_APP_CLIENT_SECRET", "JD_AUTH_COGNITO_APP_CLIENT_SECRET"},
