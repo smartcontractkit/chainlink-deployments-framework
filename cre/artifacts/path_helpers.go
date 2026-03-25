@@ -45,10 +45,10 @@ func ensureDownloadWorkDir(workDir string) error {
 	return nil
 }
 
-// maxDownloadSize is the upper bound for any single artifact download (2 GiB).
-const maxDownloadSize int64 = 2 << 30
+// maxDownloadSize is the upper bound for any single artifact download (3 GiB).
+const maxDownloadSize int64 = 3 << 30
 
-// writeToFile writes r to path with mode 0o600 and a hard cap of maxDownloadSize bytes.
+// writeToFile writes r to path with mode 0o600 and a hard cap of maxSize bytes.
 // The file is removed on any failure (write error, close error, or size exceeded).
 func writeToFile(path string, r io.Reader) error {
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
