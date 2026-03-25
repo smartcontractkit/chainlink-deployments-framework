@@ -17,12 +17,43 @@ _Annotations:_
 
 **Inputs:**
 
-- **`target`** (`address`): 0xAbCdEf1234567890abcdef1234567890abcdef12
+- **`target`** (`address`):
+  <details open>
+  <summary>Value</summary>
+
+  ```text
+  0xAbCdEf1234567890abcdef1234567890abcdef12
+  ```
+  </details>
   - _label: destination contract_
-- **`amount`** (`uint256`): 1,000,000,000,000,000,000
-- **`enabled`** (`bool`): true
-- **`proof`** (`bytes`): 0xdeadbeef
+- **`amount`** (`uint256`):
+  <details open>
+  <summary>Value</summary>
+
+  ```text
+  1,000,000,000,000,000,000
+  ```
+  </details>
+- **`enabled`** (`bool`):
+  <details open>
+  <summary>Value</summary>
+
+  ```text
+  true
+  ```
+  </details>
+- **`proof`** (`bytes`):
+  <details open>
+  <summary>Value</summary>
+
+  ```text
+  0xdeadbeef
+  ```
+  </details>
 - **`destChainConfigArgs`** (`((uint64,(bool,uint16,uint32,uint32,uint32,uint8,uint8,uint16,uint32,uint16,uint16,bytes4,bool,uint16,uint32,uint32,uint64,uint32,uint32))[])`):
+  <details open>
+  <summary>Value</summary>
+
   ```text
   [
     {
@@ -51,6 +82,7 @@ _Annotations:_
     }
   ]
   ```
+  </details>
   - _note: multi-chain destination configuration_
 
 
@@ -71,8 +103,22 @@ _Annotations:_
 
 **Inputs:**
 
-- **`to`** (`address`): 0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef
-- **`value`** (`uint256`): 500
+- **`to`** (`address`):
+  <details open>
+  <summary>Value</summary>
+
+  ```text
+  0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef
+  ```
+  </details>
+- **`value`** (`uint256`):
+  <details open>
+  <summary>Value</summary>
+
+  ```text
+  500
+  ```
+  </details>
 
 
 </details>
