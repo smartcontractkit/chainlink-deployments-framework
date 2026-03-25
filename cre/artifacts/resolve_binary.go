@@ -90,10 +90,6 @@ func resolveBinaryLocal(p string) (string, error) {
 		return "", err
 	}
 	if !strings.EqualFold(filepath.Ext(clean), ".wasm") {
-		if p == clean {
-			return "", fmt.Errorf("cre: binary local path %q must have .wasm extension", p)
-		}
-
 		return "", fmt.Errorf("cre: binary local path %q must have .wasm extension (resolved %q)", p, clean)
 	}
 
@@ -101,6 +97,12 @@ func resolveBinaryLocal(p string) (string, error) {
 }
 
 func downloadAndVerify(ctx context.Context, client *http.Client, downloadURL, expectedSHA256Hex, workDir string) (path string, err error) {
+	if _, err := parseSHA256Hex(expectedSHA256Hex); err != nil {
+		return "", err
+	}
+	if err := ensureBinaryDownloadWorkDir(workDir); err != nil {
+		return "", err
+	}
 	resp, err := httpGet(ctx, client, downloadURL, "download binary")
 	if err != nil {
 		return "", err
@@ -113,6 +115,12 @@ func downloadAndVerify(ctx context.Context, client *http.Client, downloadURL, ex
 // downloadGitHubReleaseAssetAndVerify downloads via the GitHub API asset URL (not browser_download_url)
 // so Bearer auth stays on api.github.com and is not stripped on redirect to the object CDN.
 func downloadGitHubReleaseAssetAndVerify(ctx context.Context, client *http.Client, apiAssetURL, expectedSHA256Hex, workDir string) (path string, err error) {
+	if _, err := parseSHA256Hex(expectedSHA256Hex); err != nil {
+		return "", err
+	}
+	if err := ensureBinaryDownloadWorkDir(workDir); err != nil {
+		return "", err
+	}
 	resp, err := httpGetGitHubReleaseAsset(ctx, client, apiAssetURL, "download binary")
 	if err != nil {
 		return "", err
@@ -120,6 +128,18 @@ func downloadGitHubReleaseAssetAndVerify(ctx context.Context, client *http.Clien
 	defer resp.Body.Close()
 
 	return writeStreamAndVerifySHA256(resp.Body, expectedSHA256Hex, workDir)
+}
+
+// ensureBinaryDownloadWorkDir creates workDir for assets downloading
+func ensureBinaryDownloadWorkDir(workDir string) error {
+	wd := strings.TrimSpace(workDir)
+	if wd == "" {
+		return errors.New("cre: workDir is required for binary download")
+	}
+	if err := os.MkdirAll(wd, 0o700); err != nil {
+		return fmt.Errorf("cre: download binary work dir: %w", err)
+	}
+	return nil
 }
 
 func writeStreamAndVerifySHA256(body io.Reader, expectedSHA256Hex, workDir string) (path string, err error) {
@@ -132,9 +152,6 @@ func writeStreamAndVerifySHA256(body io.Reader, expectedSHA256Hex, workDir strin
 		return "", err
 	}
 
-	if mkErr := os.MkdirAll(wd, 0o700); mkErr != nil {
-		return "", fmt.Errorf("cre: download binary work dir: %w", mkErr)
-	}
 	tmpPath := filepath.Join(wd, newWorkDirBinaryFileName())
 	f, err := os.OpenFile(tmpPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
 	if err != nil {
@@ -170,8 +187,11 @@ func writeStreamAndVerifySHA256(body io.Reader, expectedSHA256Hex, workDir strin
 	return tmpPath, nil
 }
 
+// parseSHA256Hex decodes a 64-character lowercase hex SHA-256 digest. An optional "0x" or "0X"
+// prefix (after trimming) is accepted for convenience; typical shasum/openssl output has no prefix.
 func parseSHA256Hex(s string) ([]byte, error) {
 	s = strings.TrimSpace(strings.ToLower(s))
+	s = strings.TrimPrefix(s, "0x")
 	if s == "" {
 		return nil, errors.New("cre: sha256 is empty")
 	}

@@ -24,7 +24,9 @@ func WithHTTPClient(c *http.Client) ArtifactsResolverOption {
 	}
 }
 
-// NewArtifactsResolver returns a resolver for workDir (non-empty after trim). GitHub: GITHUB_TOKEN/GH_TOKEN (github_http.go).
+// NewArtifactsResolver returns a resolver for workDir (non-empty after trim).
+// for Github release assets, the resolver uses the GitHub API to fetch
+// release info and download assets using GITHUB_TOKEN/GH_TOKEN env vars (github_http.go).
 func NewArtifactsResolver(workDir string, opts ...ArtifactsResolverOption) (*ArtifactsResolver, error) {
 	wd := strings.TrimSpace(workDir)
 	if wd == "" {

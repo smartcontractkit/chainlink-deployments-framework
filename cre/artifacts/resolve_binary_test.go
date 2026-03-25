@@ -284,10 +284,18 @@ func TestResolveBinary_gitHubRelease(t *testing.T) {
 	}
 }
 
-func TestResolveBinary_parseSHA256Errors(t *testing.T) {
+func TestResolveBinary_parseSHA256(t *testing.T) {
 	t.Parallel()
+	payload := []byte("a payload")
+	sum := sha256.Sum256(payload)
+	validHex := hex.EncodeToString(sum[:])
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte("x"))
+		if r.Method != http.MethodGet {
+			http.Error(w, "want GET", http.StatusMethodNotAllowed)
+			return
+		}
+		_, _ = w.Write(payload)
 	}))
 	t.Cleanup(srv.Close)
 
@@ -299,6 +307,10 @@ func TestResolveBinary_parseSHA256Errors(t *testing.T) {
 	}{
 		{name: "invalid_hex", sha256: "not-hex", wantErr: "invalid sha256"},
 		{name: "wrong_length", sha256: "abcd", wantErr: "sha256 must"},
+		{name: "bare_hex_ok", sha256: validHex, wantErr: ""},
+		{name: "0x_prefix_ok", sha256: "0x" + validHex, wantErr: ""},
+		{name: "0X_prefix_ok", sha256: "0X" + validHex, wantErr: ""},
+		{name: "trimmed_0x_prefix", sha256: "  0x" + validHex + "  ", wantErr: ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -311,9 +323,16 @@ func TestResolveBinary_parseSHA256Errors(t *testing.T) {
 			}
 			r, err := NewArtifactsResolver(t.TempDir(), WithHTTPClient(srv.Client()))
 			require.NoError(t, err)
-			_, err = r.ResolveBinary(t.Context(), src)
-			require.Error(t, err)
-			require.Contains(t, err.Error(), tt.wantErr)
+			path, err := r.ResolveBinary(t.Context(), src)
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			got, err := os.ReadFile(path)
+			require.NoError(t, err)
+			require.Equal(t, payload, got)
 		})
 	}
 }
