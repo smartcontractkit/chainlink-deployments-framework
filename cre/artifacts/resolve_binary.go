@@ -132,8 +132,8 @@ func writeBinaryAndVerifySHA256(body io.Reader, expected []byte, workDir string)
 	return tmpPath, nil
 }
 
-// parseSHA256Hex decodes a 64-character lowercase hex SHA-256 digest. An optional "0x" or "0X"
-// prefix (after trimming) is accepted for convenience; typical shasum/openssl output has no prefix.
+// parseSHA256Hex decodes a 64-character hex SHA-256 digest (case-insensitive). An optional
+// "0x" or "0X" prefix and surrounding whitespace are stripped before decoding.
 func parseSHA256Hex(s string) ([]byte, error) {
 	s = strings.TrimSpace(strings.ToLower(s))
 	s = strings.TrimPrefix(s, "0x")
