@@ -312,6 +312,7 @@ func TestExternalConfigRef_Validate(t *testing.T) {
 		{name: "nil", ref: nil, wantErr: "nil"},
 		{name: "url_ok", ref: &ExternalConfigRef{URL: "https://x"}},
 		{name: "gh_ok", ref: &ExternalConfigRef{Repo: "o/r", Ref: "r", Path: "p"}},
+		{name: "gh_ok_leading_slashes", ref: &ExternalConfigRef{Repo: "o/r", Ref: "r", Path: "///p.json"}},
 		{
 			name:    "both",
 			ref:     &ExternalConfigRef{URL: "https://x", Repo: "o/r", Ref: "r", Path: "p"},
@@ -320,7 +321,17 @@ func TestExternalConfigRef_Validate(t *testing.T) {
 		{
 			name:    "incomplete_gh",
 			ref:     &ExternalConfigRef{Repo: "o/r", Ref: "r"},
-			wantErr: "url or repo/ref/path is required",
+			wantErr: "path must name a non-empty file path",
+		},
+		{
+			name:    "gh_path_slash_only",
+			ref:     &ExternalConfigRef{Repo: "o/r", Ref: "r", Path: "/"},
+			wantErr: "path must name a non-empty file path",
+		},
+		{
+			name:    "gh_path_slashes_only",
+			ref:     &ExternalConfigRef{Repo: "o/r", Ref: "r", Path: "////"},
+			wantErr: "path must name a non-empty file path",
 		},
 		{
 			name:    "bad_repo",
@@ -363,6 +374,8 @@ func TestExternalConfigRef_IsURL_IsGitHubFile(t *testing.T) {
 		{"nil", nil, false, false},
 		{"https_url", &ExternalConfigRef{URL: "https://example.com/c.json"}, true, false},
 		{"gh", &ExternalConfigRef{Repo: "a/b", Ref: "r", Path: "p"}, false, true},
+		{"gh_path_leading_slash", &ExternalConfigRef{Repo: "a/b", Ref: "r", Path: "/p"}, false, true},
+		{"gh_path_only_slashes", &ExternalConfigRef{Repo: "a/b", Ref: "r", Path: "///"}, false, false},
 		// IsURL is only "url field set"; [ExternalConfigRef.Validate] rejects these with [validURL].
 		{"url_field_not_valid_http", &ExternalConfigRef{URL: "not-a-url"}, true, false},
 		{"url_whitespace_only", &ExternalConfigRef{URL: " "}, false, false},

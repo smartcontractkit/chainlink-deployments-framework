@@ -37,14 +37,14 @@ func Test_writeConfigFile(t *testing.T) {
 		t.Parallel()
 		_, err := writeConfigFile("", strings.NewReader("{}"))
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "workDir is required")
+		require.Contains(t, err.Error(), "WorkDir is required")
 	})
 
 	t.Run("whitespace_work_dir", func(t *testing.T) {
 		t.Parallel()
 		_, err := writeConfigFile("   ", strings.NewReader("{}"))
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "workDir is required")
+		require.Contains(t, err.Error(), "WorkDir is required")
 	})
 
 	t.Run("mkdir_fails_when_path_is_file", func(t *testing.T) {
@@ -54,7 +54,7 @@ func Test_writeConfigFile(t *testing.T) {
 		require.NoError(t, os.WriteFile(blocksDir, []byte("x"), 0o600))
 		_, err := writeConfigFile(blocksDir, strings.NewReader("{}"))
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "config work dir")
+		require.Contains(t, err.Error(), "config download WorkDir")
 	})
 
 	t.Run("copy_error_removes_partial_file", func(t *testing.T) {
@@ -113,6 +113,15 @@ func Test_configExternalRefSummary(t *testing.T) {
 				Path: " a/b.json ",
 			},
 			want: `url="https://x" repo="org/r" ref="v1" path="a/b.json"`,
+		},
+		{
+			name: "trims_leading_slashes_on_path",
+			ref: &ExternalConfigRef{
+				Repo: "org/repo",
+				Ref:  "main",
+				Path: " /dir/cfg.json ",
+			},
+			want: `url="" repo="org/repo" ref="main" path="dir/cfg.json"`,
 		},
 	}
 	for _, tt := range tests {

@@ -49,6 +49,13 @@ type ExternalConfigRef struct {
 	URL  string `json:"url,omitempty" yaml:"url,omitempty"`
 }
 
+// normalizeGitHubConfigPath trims surrounding space and leading slashes so the path is suitable
+// for the GitHub Contents API (non-empty path within the repository). Empty input or only slashes
+// after trim yields "".
+func normalizeGitHubConfigPath(p string) string {
+	return strings.TrimLeft(strings.TrimSpace(p), "/")
+}
+
 // IsLocal reports whether the binary source is a local filesystem path.
 func (b BinarySource) IsLocal() bool {
 	return strings.TrimSpace(b.LocalPath) != ""
@@ -163,8 +170,13 @@ func (e *ExternalConfigRef) Validate() error {
 	hasURL := rawURL != ""
 	repo := strings.TrimSpace(e.Repo)
 	ref := strings.TrimSpace(e.Ref)
-	path := strings.TrimSpace(e.Path)
-	hasGH := repo != "" && ref != "" && path != ""
+	pathNorm := normalizeGitHubConfigPath(e.Path)
+
+	if repo != "" && ref != "" && pathNorm == "" {
+		return errors.New("cre: external config: path must name a non-empty file path within the repository")
+	}
+
+	hasGH := repo != "" && ref != "" && pathNorm != ""
 
 	if hasURL && hasGH {
 		return errors.New("cre: external config: specify either url or repo/ref/path, not both")
@@ -202,7 +214,7 @@ func (e *ExternalConfigRef) IsGitHubFile() bool {
 		return false
 	}
 
-	return strings.TrimSpace(e.Repo) != "" && strings.TrimSpace(e.Ref) != "" && strings.TrimSpace(e.Path) != ""
+	return strings.TrimSpace(e.Repo) != "" && strings.TrimSpace(e.Ref) != "" && normalizeGitHubConfigPath(e.Path) != ""
 }
 
 // Validate validates the workflow bundle.

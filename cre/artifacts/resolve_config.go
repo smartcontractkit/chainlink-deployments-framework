@@ -52,7 +52,7 @@ func configExternalRefSummary(e *ExternalConfigRef) string {
 		strings.TrimSpace(e.URL),
 		strings.TrimSpace(e.Repo),
 		strings.TrimSpace(e.Ref),
-		strings.TrimSpace(e.Path),
+		normalizeGitHubConfigPath(e.Path),
 	)
 }
 
@@ -82,7 +82,10 @@ func fetchGitHubFileContent(ctx context.Context, client *http.Client, repo, ref,
 	if err != nil {
 		return "", err
 	}
-	path = strings.TrimPrefix(strings.TrimSpace(path), "/")
+	path = normalizeGitHubConfigPath(path)
+	if path == "" {
+		return "", errors.New("cre: github config: path is required")
+	}
 	apiPath := encodeGitHubPath(path)
 	refQ := url.QueryEscape(strings.TrimSpace(ref))
 	apiURL := fmt.Sprintf("https://api.github.com/repos/%s/%s/contents/%s?ref=%s", owner, name, apiPath, refQ)
@@ -120,10 +123,10 @@ func encodeGitHubPath(p string) string {
 func writeConfigFile(workDir string, reader io.Reader) (string, error) {
 	wd := strings.TrimSpace(workDir)
 	if wd == "" {
-		return "", errors.New("cre: workDir is required for config download")
+		return "", errors.New("cre: WorkDir is required for config download")
 	}
 	if err := os.MkdirAll(wd, 0o700); err != nil {
-		return "", fmt.Errorf("cre: config work dir: %w", err)
+		return "", fmt.Errorf("cre: config download WorkDir: %w", err)
 	}
 	path := filepath.Join(wd, newWorkDirConfigFileName())
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)

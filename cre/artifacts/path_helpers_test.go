@@ -13,18 +13,35 @@ func Test_resolveLocalArtifactPath(t *testing.T) {
 	dir := t.TempDir()
 	good := filepath.Join(dir, "f.json")
 	require.NoError(t, os.WriteFile(good, []byte("{}"), 0o600))
-
-	p, err := resolveLocalArtifactPath(good)
-	require.NoError(t, err)
-	require.Equal(t, good, p)
-
-	_, err = resolveLocalArtifactPath(filepath.Join(dir, "nope"))
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "does not exist")
-
 	sub := filepath.Join(dir, "d")
 	require.NoError(t, os.Mkdir(sub, 0o700))
-	_, err = resolveLocalArtifactPath(sub)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "directory")
+
+	tests := []struct {
+		name    string
+		path    string
+		want    string
+		wantErr string
+	}{
+		{name: "bare_file", path: good, want: good},
+		{name: "padded_file", path: "  " + good + "\t", want: good},
+		{name: "missing", path: filepath.Join(dir, "nope"), wantErr: "does not exist"},
+		{name: "directory", path: sub, wantErr: "directory"},
+		{name: "empty_string", path: "", wantErr: "empty"},
+		{name: "whitespace_only", path: "   \t  ", wantErr: "empty"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := resolveLocalArtifactPath(tt.path)
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.wantErr)
+				require.Empty(t, got)
+
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
+		})
+	}
 }

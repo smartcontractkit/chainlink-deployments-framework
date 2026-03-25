@@ -97,10 +97,10 @@ func resolveBinaryLocal(p string) (string, error) {
 }
 
 func downloadAndVerify(ctx context.Context, client *http.Client, downloadURL, expectedSHA256Hex, workDir string) (path string, err error) {
-	if _, err := parseSHA256Hex(expectedSHA256Hex); err != nil {
+	if _, err = parseSHA256Hex(expectedSHA256Hex); err != nil {
 		return "", err
 	}
-	if err := createBinaryDownloadWorkDir(workDir); err != nil {
+	if err = createBinaryDownloadWorkDir(workDir); err != nil {
 		return "", err
 	}
 	resp, err := httpGet(ctx, client, downloadURL, "download binary")
@@ -115,10 +115,10 @@ func downloadAndVerify(ctx context.Context, client *http.Client, downloadURL, ex
 // downloadGitHubReleaseAssetAndVerify downloads via the GitHub API asset URL (not browser_download_url)
 // so Bearer auth stays on api.github.com and is not stripped on redirect to the object CDN.
 func downloadGitHubReleaseAssetAndVerify(ctx context.Context, client *http.Client, apiAssetURL, expectedSHA256Hex, workDir string) (path string, err error) {
-	if _, err := parseSHA256Hex(expectedSHA256Hex); err != nil {
+	if _, err = parseSHA256Hex(expectedSHA256Hex); err != nil {
 		return "", err
 	}
-	if err := createBinaryDownloadWorkDir(workDir); err != nil {
+	if err = createBinaryDownloadWorkDir(workDir); err != nil {
 		return "", err
 	}
 	resp, err := httpGetGitHubReleaseAsset(ctx, client, apiAssetURL, "download binary")
@@ -134,18 +134,19 @@ func downloadGitHubReleaseAssetAndVerify(ctx context.Context, client *http.Clien
 func createBinaryDownloadWorkDir(workDir string) error {
 	wd := strings.TrimSpace(workDir)
 	if wd == "" {
-		return errors.New("cre: workDir is required for binary download")
+		return errors.New("cre: WorkDir is required for binary download")
 	}
 	if err := os.MkdirAll(wd, 0o700); err != nil {
-		return fmt.Errorf("cre: download binary work dir: %w", err)
+		return fmt.Errorf("cre: binary download WorkDir: %w", err)
 	}
+
 	return nil
 }
 
 func writeStreamAndVerifySHA256(body io.Reader, expectedSHA256Hex, workDir string) (path string, err error) {
 	wd := strings.TrimSpace(workDir)
 	if wd == "" {
-		return "", errors.New("cre: workDir is required for binary download")
+		return "", errors.New("cre: WorkDir is required for binary download")
 	}
 	expected, err := parseSHA256Hex(expectedSHA256Hex)
 	if err != nil {

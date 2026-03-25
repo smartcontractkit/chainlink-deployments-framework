@@ -1,14 +1,21 @@
 package artifacts
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // resolveLocalArtifactPath returns a cleaned path to an existing non-directory file, or an error.
 func resolveLocalArtifactPath(path string) (string, error) {
-	clean := filepath.Clean(path)
+	s := strings.TrimSpace(path)
+	if s == "" {
+		return "", errors.New("cre: local path is empty")
+	}
+
+	clean := filepath.Clean(s)
 	info, err := os.Stat(clean)
 	if err != nil {
 		if os.IsNotExist(err) {

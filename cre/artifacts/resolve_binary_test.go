@@ -225,6 +225,35 @@ func TestResolveBinary_gitHubRelease(t *testing.T) {
 			},
 		},
 		{
+			name: "success_browser_download_url_only", repo: "org/repo", releaseTag: "v1.0.0", assetName: "binary.wasm", sha: validHex,
+			handler: func(srv **httptest.Server, payload []byte) http.HandlerFunc {
+				return func(w http.ResponseWriter, r *http.Request) {
+					s := *srv
+					switch {
+					case strings.HasPrefix(r.URL.Path, "/repos/") && strings.Contains(r.URL.Path, "/releases/tags/"):
+						w.Header().Set("Content-Type", "application/json")
+						rel := map[string]any{
+							"assets": []map[string]string{
+								{
+									"name":                 "binary.wasm",
+									"browser_download_url": s.URL + "/download/binary.wasm",
+								},
+							},
+						}
+						if err := json.NewEncoder(w).Encode(rel); err != nil {
+							http.Error(w, err.Error(), http.StatusInternalServerError)
+
+							return
+						}
+					case strings.HasPrefix(r.URL.Path, "/download/"):
+						_, _ = w.Write(payload)
+					default:
+						w.WriteHeader(http.StatusNotFound)
+					}
+				}
+			},
+		},
+		{
 			name: "missing_asset", repo: "o/r", releaseTag: "v1", assetName: "want.wasm",
 			sha:     strings.Repeat("ab", 32),
 			wantErr: `o/r tag "v1": asset "want.wasm" not found`,
@@ -327,6 +356,7 @@ func TestResolveBinary_parseSHA256(t *testing.T) {
 			if tt.wantErr != "" {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tt.wantErr)
+
 				return
 			}
 			require.NoError(t, err)
