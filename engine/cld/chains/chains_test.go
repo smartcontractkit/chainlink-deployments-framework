@@ -281,7 +281,6 @@ func Test_LoadChains(t *testing.T) {
 		Ton: cfgenv.TonConfig{
 			DeployerKey:   "0b1f7dbb19112fdac53344cf49731e41bfc420ac6a71d38c89fb38d04a6563d99aa3d1fa430550e8de5171ec55453b4e048c1701cadfa56726d489c56d67bab3", // Mock private key
 			WalletVersion: "V4R2",
-			SubwalletID:   "42",
 		},
 		Stellar: cfgenv.StellarConfig{
 			DeployerKey: "0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
