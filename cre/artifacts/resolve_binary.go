@@ -43,7 +43,7 @@ func resolveBinaryHttp(ctx context.Context, src BinarySource, httpClient *http.C
 		return "", err
 	}
 
-	if ref.IsURL() {
+	if ref.isURL() {
 		plain := plainHTTPClient(httpClient)
 		resp, err := httpGet(ctx, plain, ref.URL, "download binary")
 		if err != nil {
@@ -54,7 +54,7 @@ func resolveBinaryHttp(ctx context.Context, src BinarySource, httpClient *http.C
 		return writeBinaryAndVerifySHA256(resp.Body, expectedSHA, workDir)
 	}
 
-	if ref.IsGitHubRelease() {
+	if ref.isGitHubRelease() {
 		gh := githubHTTPClientOrDefault(httpClient)
 		downloadURL, err := resolveGitHubAssetURL(ctx, gh, ref.Repo, ref.ReleaseTag, ref.AssetName)
 		if err != nil {
@@ -90,7 +90,7 @@ func isGitHubAPIReleaseAssetURL(raw string) bool {
 	return strings.Contains(u.Path, "/releases/assets/")
 }
 
-func binaryExternalRefSummary(e *ExternalBinaryRef) string {
+func binaryExternalRefSummary(e *externalBinaryRef) string {
 	if e == nil {
 		return "externalRef=<nil>"
 	}

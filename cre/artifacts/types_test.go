@@ -46,9 +46,9 @@ func TestBinarySource_IsLocal_IsExternal(t *testing.T) {
 		ext   bool
 	}{
 		{"empty", BinarySource{}, false, false},
-		{"local_only", BinarySource{LocalPath: "/x/y.wasm"}, true, false},
-		{"external_only", BinarySource{ExternalRef: &ExternalBinaryRef{}}, false, true},
-		{"both_flags", BinarySource{LocalPath: "/a", ExternalRef: &ExternalBinaryRef{}}, true, true},
+		{"local_only", NewBinarySourceLocal("/x/y.wasm"), true, false},
+		{"external_only", BinarySource{ExternalRef: &externalBinaryRef{}}, false, true},
+		{"both_flags", BinarySource{LocalPath: "/a", ExternalRef: &externalBinaryRef{}}, true, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -76,7 +76,7 @@ func TestBinarySource_Validate(t *testing.T) {
 		{
 			name: "ok_external_url",
 			src: BinarySource{
-				ExternalRef: &ExternalBinaryRef{
+				ExternalRef: &externalBinaryRef{
 					URL:    "https://example.com/x.wasm",
 					SHA256: validSHA,
 				},
@@ -85,7 +85,7 @@ func TestBinarySource_Validate(t *testing.T) {
 		{
 			name: "ok_external_release",
 			src: BinarySource{
-				ExternalRef: &ExternalBinaryRef{
+				ExternalRef: &externalBinaryRef{
 					Repo:       "org/repo",
 					ReleaseTag: "v1",
 					AssetName:  "binary.wasm",
@@ -102,7 +102,7 @@ func TestBinarySource_Validate(t *testing.T) {
 			name: "both_local_and_external",
 			src: BinarySource{
 				LocalPath:   "/a.wasm",
-				ExternalRef: &ExternalBinaryRef{URL: "https://x", SHA256: validSHA},
+				ExternalRef: &externalBinaryRef{URL: "https://x", SHA256: validSHA},
 			},
 			wantErr: "either localPath or externalRef, not both",
 		},
@@ -129,62 +129,61 @@ func TestBinarySource_Validate(t *testing.T) {
 	}
 }
 
-func TestExternalBinaryRef_Validate(t *testing.T) {
+func Test_externalBinaryRef_validate(t *testing.T) {
 	t.Parallel()
 	validSHA := "abababababababababababababababababababababababababababababababab"
 	tests := []struct {
 		name    string
-		ref     *ExternalBinaryRef
+		ref     *externalBinaryRef
 		wantErr string
 	}{
-		{name: "nil", ref: nil, wantErr: "nil"},
 		{
 			name: "url_ok",
-			ref: &ExternalBinaryRef{
+			ref: &externalBinaryRef{
 				URL:    "https://example.com/a.wasm",
 				SHA256: validSHA,
 			},
 		},
 		{
 			name: "release_ok",
-			ref: &ExternalBinaryRef{
+			ref: &externalBinaryRef{
 				Repo: "o/r", ReleaseTag: "t", AssetName: "a.wasm", SHA256: validSHA,
 			},
 		},
 		{
 			name: "url_and_release",
-			ref: &ExternalBinaryRef{
+			ref: &externalBinaryRef{
 				URL: "https://x", Repo: "o/r", ReleaseTag: "t", AssetName: "a", SHA256: validSHA,
 			},
 			wantErr: "either url or repo/releaseTag/assetName, not both",
 		},
 		{
 			name:    "missing_mode",
-			ref:     &ExternalBinaryRef{SHA256: validSHA},
+			ref:     &externalBinaryRef{SHA256: validSHA},
 			wantErr: "url or repo/releaseTag/assetName is required",
 		},
 		{
 			name:    "missing_sha",
-			ref:     &ExternalBinaryRef{URL: "https://x"},
+			ref:     &externalBinaryRef{URL: "https://x"},
 			wantErr: "sha256 is required",
 		},
 		{
 			name: "bad_repo",
-			ref: &ExternalBinaryRef{
+			ref: &externalBinaryRef{
 				Repo: "nope", ReleaseTag: "t", AssetName: "a", SHA256: validSHA,
 			},
 			wantErr: "owner/name",
 		},
 		{
 			name: "invalid_url_relative",
-			ref: &ExternalBinaryRef{
+			ref: &externalBinaryRef{
 				URL: "artifacts/foo.wasm", SHA256: validSHA,
 			},
 			wantErr: "host",
 		},
 		{
 			name: "invalid_url_ftp",
-			ref: &ExternalBinaryRef{
+			ref: &externalBinaryRef{
 				URL: "ftp://example.com/a.wasm", SHA256: validSHA,
 			},
 			wantErr: "scheme",
@@ -193,7 +192,7 @@ func TestExternalBinaryRef_Validate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			err := tt.ref.Validate()
+			err := tt.ref.validate()
 			if tt.wantErr == "" {
 				require.NoError(t, err)
 			} else {
@@ -204,28 +203,27 @@ func TestExternalBinaryRef_Validate(t *testing.T) {
 	}
 }
 
-func TestExternalBinaryRef_IsURL_IsGitHubRelease(t *testing.T) {
+func Test_externalBinaryRef_isURL_isGitHubRelease(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name    string
-		ref     *ExternalBinaryRef
+		ref     *externalBinaryRef
 		wantURL bool
 		wantRel bool
 	}{
-		{"nil", nil, false, false},
-		{"https_url", &ExternalBinaryRef{URL: "https://example.com/a.wasm"}, true, false},
-		{"release", &ExternalBinaryRef{Repo: "a/b", ReleaseTag: "v", AssetName: "x"}, false, true},
-		{"empty", &ExternalBinaryRef{}, false, false},
-		// IsURL is only "url field set"; [ExternalBinaryRef.Validate] rejects these with [validURL].
-		{"url_field_not_valid_http", &ExternalBinaryRef{URL: "totally-not-a-url"}, true, false},
-		{"url_field_relative_looking", &ExternalBinaryRef{URL: "artifacts/foo.wasm"}, true, false},
-		{"url_whitespace_only", &ExternalBinaryRef{URL: "   \t "}, false, false},
+		{"https_url", &externalBinaryRef{URL: "https://example.com/a.wasm"}, true, false},
+		{"release", &externalBinaryRef{Repo: "a/b", ReleaseTag: "v", AssetName: "x"}, false, true},
+		{"empty", &externalBinaryRef{}, false, false},
+		// isURL is only "url field set"; validate rejects invalid URLs.
+		{"url_field_not_valid_http", &externalBinaryRef{URL: "totally-not-a-url"}, true, false},
+		{"url_field_relative_looking", &externalBinaryRef{URL: "artifacts/foo.wasm"}, true, false},
+		{"url_whitespace_only", &externalBinaryRef{URL: "   \t "}, false, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, tt.wantURL, tt.ref.IsURL(), "IsURL should reflect non-empty url field only")
-			require.Equal(t, tt.wantRel, tt.ref.IsGitHubRelease())
+			require.Equal(t, tt.wantURL, tt.ref.isURL(), "isURL should reflect non-empty url field only")
+			require.Equal(t, tt.wantRel, tt.ref.isGitHubRelease())
 		})
 	}
 }
@@ -239,8 +237,8 @@ func TestConfigSource_IsLocal_IsExternal(t *testing.T) {
 		ext   bool
 	}{
 		{"empty", ConfigSource{}, false, false},
-		{"local", ConfigSource{LocalPath: "/c.json"}, true, false},
-		{"external", ConfigSource{ExternalRef: &ExternalConfigRef{}}, false, true},
+		{"local", NewConfigSourceLocal("/c.json"), true, false},
+		{"external", ConfigSource{ExternalRef: &externalConfigRef{}}, false, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -265,13 +263,13 @@ func TestConfigSource_Validate(t *testing.T) {
 		{
 			name: "ok_url",
 			src: ConfigSource{
-				ExternalRef: &ExternalConfigRef{URL: "https://example.com/c.json"},
+				ExternalRef: &externalConfigRef{URL: "https://example.com/c.json"},
 			},
 		},
 		{
 			name: "ok_github",
 			src: ConfigSource{
-				ExternalRef: &ExternalConfigRef{Repo: "o/r", Ref: "main", Path: "cfg.json"},
+				ExternalRef: &externalConfigRef{Repo: "o/r", Ref: "main", Path: "cfg.json"},
 			},
 		},
 		{
@@ -283,7 +281,7 @@ func TestConfigSource_Validate(t *testing.T) {
 			name: "both",
 			src: ConfigSource{
 				LocalPath:   "/a.json",
-				ExternalRef: &ExternalConfigRef{URL: "https://x"},
+				ExternalRef: &externalConfigRef{URL: "https://x"},
 			},
 			wantErr: "either localPath or externalRef, not both",
 		},
@@ -302,57 +300,56 @@ func TestConfigSource_Validate(t *testing.T) {
 	}
 }
 
-func TestExternalConfigRef_Validate(t *testing.T) {
+func Test_externalConfigRef_validate(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name    string
-		ref     *ExternalConfigRef
+		ref     *externalConfigRef
 		wantErr string
 	}{
-		{name: "nil", ref: nil, wantErr: "nil"},
-		{name: "url_ok", ref: &ExternalConfigRef{URL: "https://x"}},
-		{name: "gh_ok", ref: &ExternalConfigRef{Repo: "o/r", Ref: "r", Path: "p"}},
-		{name: "gh_ok_leading_slashes", ref: &ExternalConfigRef{Repo: "o/r", Ref: "r", Path: "///p.json"}},
+		{name: "url_ok", ref: &externalConfigRef{URL: "https://x"}},
+		{name: "gh_ok", ref: &externalConfigRef{Repo: "o/r", Ref: "r", Path: "p"}},
+		{name: "gh_ok_leading_slashes", ref: &externalConfigRef{Repo: "o/r", Ref: "r", Path: "///p.json"}},
 		{
 			name:    "both",
-			ref:     &ExternalConfigRef{URL: "https://x", Repo: "o/r", Ref: "r", Path: "p"},
+			ref:     &externalConfigRef{URL: "https://x", Repo: "o/r", Ref: "r", Path: "p"},
 			wantErr: "either url or repo/ref/path, not both",
 		},
 		{
 			name:    "incomplete_gh",
-			ref:     &ExternalConfigRef{Repo: "o/r", Ref: "r"},
+			ref:     &externalConfigRef{Repo: "o/r", Ref: "r"},
 			wantErr: "path must name a non-empty file path",
 		},
 		{
 			name:    "gh_path_slash_only",
-			ref:     &ExternalConfigRef{Repo: "o/r", Ref: "r", Path: "/"},
+			ref:     &externalConfigRef{Repo: "o/r", Ref: "r", Path: "/"},
 			wantErr: "path must name a non-empty file path",
 		},
 		{
 			name:    "gh_path_slashes_only",
-			ref:     &ExternalConfigRef{Repo: "o/r", Ref: "r", Path: "////"},
+			ref:     &externalConfigRef{Repo: "o/r", Ref: "r", Path: "////"},
 			wantErr: "path must name a non-empty file path",
 		},
 		{
 			name:    "bad_repo",
-			ref:     &ExternalConfigRef{Repo: "bad", Ref: "r", Path: "p"},
+			ref:     &externalConfigRef{Repo: "bad", Ref: "r", Path: "p"},
 			wantErr: "owner/name",
 		},
 		{
 			name:    "invalid_url_relative",
-			ref:     &ExternalConfigRef{URL: "config.json"},
+			ref:     &externalConfigRef{URL: "config.json"},
 			wantErr: "host",
 		},
 		{
 			name:    "invalid_url_ftp",
-			ref:     &ExternalConfigRef{URL: "ftp://example.com/c.json"},
+			ref:     &externalConfigRef{URL: "ftp://example.com/c.json"},
 			wantErr: "scheme",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			err := tt.ref.Validate()
+			err := tt.ref.validate()
 			if tt.wantErr == "" {
 				require.NoError(t, err)
 			} else {
@@ -363,28 +360,27 @@ func TestExternalConfigRef_Validate(t *testing.T) {
 	}
 }
 
-func TestExternalConfigRef_IsURL_IsGitHubFile(t *testing.T) {
+func Test_externalConfigRef_isURL_isGitHubFile(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name   string
-		ref    *ExternalConfigRef
+		ref    *externalConfigRef
 		url    bool
 		ghFile bool
 	}{
-		{"nil", nil, false, false},
-		{"https_url", &ExternalConfigRef{URL: "https://example.com/c.json"}, true, false},
-		{"gh", &ExternalConfigRef{Repo: "a/b", Ref: "r", Path: "p"}, false, true},
-		{"gh_path_leading_slash", &ExternalConfigRef{Repo: "a/b", Ref: "r", Path: "/p"}, false, true},
-		{"gh_path_only_slashes", &ExternalConfigRef{Repo: "a/b", Ref: "r", Path: "///"}, false, false},
-		// IsURL is only "url field set"; [ExternalConfigRef.Validate] rejects these with [validURL].
-		{"url_field_not_valid_http", &ExternalConfigRef{URL: "not-a-url"}, true, false},
-		{"url_whitespace_only", &ExternalConfigRef{URL: " "}, false, false},
+		{"https_url", &externalConfigRef{URL: "https://example.com/c.json"}, true, false},
+		{"gh", &externalConfigRef{Repo: "a/b", Ref: "r", Path: "p"}, false, true},
+		{"gh_path_leading_slash", &externalConfigRef{Repo: "a/b", Ref: "r", Path: "/p"}, false, true},
+		{"gh_path_only_slashes", &externalConfigRef{Repo: "a/b", Ref: "r", Path: "///"}, false, false},
+		// isURL is only "url field set"; validate rejects invalid URLs.
+		{"url_field_not_valid_http", &externalConfigRef{URL: "not-a-url"}, true, false},
+		{"url_whitespace_only", &externalConfigRef{URL: " "}, false, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, tt.url, tt.ref.IsURL(), "IsURL should reflect non-empty url field only")
-			require.Equal(t, tt.ghFile, tt.ref.IsGitHubFile())
+			require.Equal(t, tt.url, tt.ref.isURL(), "isURL should reflect non-empty url field only")
+			require.Equal(t, tt.ghFile, tt.ref.isGitHubFile())
 		})
 	}
 }
@@ -413,8 +409,8 @@ func TestWorkflowBundle_Validate(t *testing.T) {
 			name: "empty_name",
 			bundle: WorkflowBundle{
 				WorkflowName: "",
-				Binary:       BinarySource{LocalPath: "/x.wasm"},
-				Config:       ConfigSource{LocalPath: "/c.json"},
+				Binary:       NewBinarySourceLocal("/x.wasm"),
+				Config:       NewConfigSourceLocal("/c.json"),
 			},
 			wantErr: "workflowName is required",
 		},
@@ -423,7 +419,7 @@ func TestWorkflowBundle_Validate(t *testing.T) {
 			bundle: WorkflowBundle{
 				WorkflowName: "w",
 				Binary:       BinarySource{},
-				Config:       ConfigSource{LocalPath: "/c.json"},
+				Config:       NewConfigSourceLocal("/c.json"),
 			},
 			wantErr: "binary",
 		},
@@ -432,7 +428,7 @@ func TestWorkflowBundle_Validate(t *testing.T) {
 			bundle: WorkflowBundle{
 				WorkflowName: "w",
 				Binary: BinarySource{
-					ExternalRef: &ExternalBinaryRef{
+					ExternalRef: &externalBinaryRef{
 						URL: "https://x", SHA256: validSHA,
 					},
 				},

@@ -49,9 +49,36 @@ func (w *WorkflowBundle) ApplyDeployDefaults(cre cfgenv.CREConfig) {
 }
 
 // BinarySource is either a local path to an existing WASM file or an external reference.
+// Create via [NewBinarySourceLocal], [NewBinarySourceURL], or [NewBinarySourceGitHubRelease],
+// or unmarshal from JSON/YAML and call [BinarySource.Validate].
 type BinarySource struct {
-	ExternalRef *ExternalBinaryRef `json:"externalRef,omitempty" yaml:"externalRef,omitempty"`
+	ExternalRef *externalBinaryRef `json:"externalRef,omitempty" yaml:"externalRef,omitempty"`
 	LocalPath   string             `json:"localPath,omitempty" yaml:"localPath,omitempty"`
+}
+
+// NewBinarySourceLocal returns a BinarySource for a local .wasm file at localPath.
+func NewBinarySourceLocal(localPath string) BinarySource {
+	return BinarySource{LocalPath: strings.TrimSpace(localPath)}
+}
+
+// NewBinarySourceURL returns a validated BinarySource for a direct URL download with SHA-256 verification.
+func NewBinarySourceURL(rawURL, sha256 string) (BinarySource, error) {
+	ref := &externalBinaryRef{URL: rawURL, SHA256: sha256}
+	if err := ref.validate(); err != nil {
+		return BinarySource{}, err
+	}
+
+	return BinarySource{ExternalRef: ref}, nil
+}
+
+// NewBinarySourceGitHubRelease returns a validated BinarySource for a GitHub release asset.
+func NewBinarySourceGitHubRelease(repo, releaseTag, assetName, sha256 string) (BinarySource, error) {
+	ref := &externalBinaryRef{Repo: repo, ReleaseTag: releaseTag, AssetName: assetName, SHA256: sha256}
+	if err := ref.validate(); err != nil {
+		return BinarySource{}, err
+	}
+
+	return BinarySource{ExternalRef: ref}, nil
 }
 
 // IsLocal reports whether the binary source is a local filesystem path.
@@ -76,14 +103,16 @@ func (b *BinarySource) Validate() error {
 		return errors.New("cre: binary: localPath or externalRef is required")
 	}
 	if hasExt {
-		return b.ExternalRef.Validate()
+		return b.ExternalRef.validate()
 	}
 
 	return nil
 }
 
-// ExternalBinaryRef describes a remote WASM (GitHub release asset or direct URL).
-type ExternalBinaryRef struct {
+// externalBinaryRef describes a remote WASM (GitHub release asset or direct URL).
+// Constructed by [NewBinarySourceURL] or [NewBinarySourceGitHubRelease], or
+// unmarshaled via the parent [BinarySource] and validated with [BinarySource.Validate].
+type externalBinaryRef struct {
 	URL        string `json:"url,omitempty" yaml:"url,omitempty"`
 	ReleaseTag string `json:"releaseTag,omitempty" yaml:"releaseTag,omitempty"`
 	AssetName  string `json:"assetName,omitempty" yaml:"assetName,omitempty"`
@@ -91,11 +120,9 @@ type ExternalBinaryRef struct {
 	SHA256     string `json:"sha256,omitempty" yaml:"sha256,omitempty"`
 }
 
-// Validate trims all string fields, then enforces one external mode (URL XOR GitHub release) and SHA256.
-func (e *ExternalBinaryRef) Validate() error {
-	if e == nil {
-		return errors.New("cre: external binary ref is nil")
-	}
+// validate trims all string fields, then enforces one external mode (URL XOR GitHub release) and SHA256.
+// The caller guarantees e is non-nil (BinarySource.Validate checks IsExternal first).
+func (e *externalBinaryRef) validate() error {
 	e.URL = strings.TrimSpace(e.URL)
 	e.Repo = strings.TrimSpace(e.Repo)
 	e.ReleaseTag = strings.TrimSpace(e.ReleaseTag)
@@ -128,28 +155,48 @@ func (e *ExternalBinaryRef) Validate() error {
 	return nil
 }
 
-// IsURL reports whether the url field is non-empty.
-func (e *ExternalBinaryRef) IsURL() bool {
-	if e == nil {
-		return false
-	}
-
+// isURL reports whether the url field is non-empty. Caller guarantees e is non-nil.
+func (e *externalBinaryRef) isURL() bool {
 	return strings.TrimSpace(e.URL) != ""
 }
 
-// IsGitHubRelease reports whether this ref uses GitHub Releases API resolution.
-func (e *ExternalBinaryRef) IsGitHubRelease() bool {
-	if e == nil {
-		return false
-	}
-
+// isGitHubRelease reports whether this ref uses GitHub Releases API resolution.
+// Caller guarantees e is non-nil.
+func (e *externalBinaryRef) isGitHubRelease() bool {
 	return strings.TrimSpace(e.Repo) != "" && strings.TrimSpace(e.ReleaseTag) != "" && strings.TrimSpace(e.AssetName) != ""
 }
 
 // ConfigSource is either a local config file or an external reference.
+// Create via [NewConfigSourceLocal], [NewConfigSourceURL], or [NewConfigSourceGitHub],
+// or unmarshal from JSON/YAML and call [ConfigSource.Validate].
 type ConfigSource struct {
-	ExternalRef *ExternalConfigRef `json:"externalRef,omitempty" yaml:"externalRef,omitempty"`
+	ExternalRef *externalConfigRef `json:"externalRef,omitempty" yaml:"externalRef,omitempty"`
 	LocalPath   string             `json:"localPath,omitempty" yaml:"localPath,omitempty"`
+}
+
+// NewConfigSourceLocal returns a ConfigSource for a local config file at localPath.
+func NewConfigSourceLocal(localPath string) ConfigSource {
+	return ConfigSource{LocalPath: strings.TrimSpace(localPath)}
+}
+
+// NewConfigSourceURL returns a validated ConfigSource for a direct URL download.
+func NewConfigSourceURL(rawURL string) (ConfigSource, error) {
+	ref := &externalConfigRef{URL: rawURL}
+	if err := ref.validate(); err != nil {
+		return ConfigSource{}, err
+	}
+
+	return ConfigSource{ExternalRef: ref}, nil
+}
+
+// NewConfigSourceGitHub returns a validated ConfigSource for a GitHub file via the Contents API.
+func NewConfigSourceGitHub(repo, ref, path string) (ConfigSource, error) {
+	r := &externalConfigRef{Repo: repo, Ref: ref, Path: path}
+	if err := r.validate(); err != nil {
+		return ConfigSource{}, err
+	}
+
+	return ConfigSource{ExternalRef: r}, nil
 }
 
 // IsLocal reports whether the config source is a local filesystem path.
@@ -174,25 +221,25 @@ func (c *ConfigSource) Validate() error {
 		return errors.New("cre: config: localPath or externalRef is required")
 	}
 	if hasExt {
-		return c.ExternalRef.Validate()
+		return c.ExternalRef.validate()
 	}
 
 	return nil
 }
 
-// ExternalConfigRef describes remote config (GitHub file at ref, or arbitrary URL).
-type ExternalConfigRef struct {
+// externalConfigRef describes remote config (GitHub file at ref, or arbitrary URL).
+// Constructed by [NewConfigSourceURL] or [NewConfigSourceGitHub], or
+// unmarshaled via the parent [ConfigSource] and validated with [ConfigSource.Validate].
+type externalConfigRef struct {
 	Repo string `json:"repo,omitempty" yaml:"repo,omitempty"`
 	Ref  string `json:"ref,omitempty" yaml:"ref,omitempty"`
 	Path string `json:"path,omitempty" yaml:"path,omitempty"`
 	URL  string `json:"url,omitempty" yaml:"url,omitempty"`
 }
 
-// Validate trims all string fields (normalizing Path), then enforces GitHub file mode XOR URL mode.
-func (e *ExternalConfigRef) Validate() error {
-	if e == nil {
-		return errors.New("cre: external config ref is nil")
-	}
+// validate trims all string fields (normalizing Path), then enforces GitHub file mode XOR URL mode.
+// The caller guarantees e is non-nil (ConfigSource.Validate checks IsExternal first).
+func (e *externalConfigRef) validate() error {
 	e.URL = strings.TrimSpace(e.URL)
 	e.Repo = strings.TrimSpace(e.Repo)
 	e.Ref = strings.TrimSpace(e.Ref)
@@ -225,28 +272,21 @@ func (e *ExternalConfigRef) Validate() error {
 	return nil
 }
 
-// IsURL reports whether the url field is non-empty.
-func (e *ExternalConfigRef) IsURL() bool {
-	if e == nil {
-		return false
-	}
-
+// isURL reports whether the url field is non-empty. Caller guarantees e is non-nil.
+func (e *externalConfigRef) isURL() bool {
 	return strings.TrimSpace(e.URL) != ""
 }
 
-// IsGitHubFile reports whether this ref uses GitHub Contents API (repo + ref + path).
-func (e *ExternalConfigRef) IsGitHubFile() bool {
-	if e == nil {
-		return false
-	}
-
+// isGitHubFile reports whether this ref uses GitHub Contents API (repo + ref + path).
+// Caller guarantees e is non-nil.
+func (e *externalConfigRef) isGitHubFile() bool {
 	return strings.TrimSpace(e.Repo) != "" && strings.TrimSpace(e.Ref) != "" && normalizeGitHubConfigPath(e.Path) != ""
 }
 
 // helpers
 
 // normalizeGitHubConfigPath trims surrounding space and leading slashes so the path is suitable
-// for the GitHub Contents API
+// for the GitHub Contents API.
 func normalizeGitHubConfigPath(p string) string {
 	return strings.TrimLeft(strings.TrimSpace(p), "/")
 }

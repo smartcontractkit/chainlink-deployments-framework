@@ -56,7 +56,7 @@ func Test_configExternalRefSummary(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name string
-		ref  *ExternalConfigRef
+		ref  *externalConfigRef
 		want string
 	}{
 		{
@@ -66,12 +66,12 @@ func Test_configExternalRefSummary(t *testing.T) {
 		},
 		{
 			name: "empty_fields",
-			ref:  &ExternalConfigRef{},
+			ref:  &externalConfigRef{},
 			want: `url="" repo="" ref="" path=""`,
 		},
 		{
 			name: "all_fields",
-			ref: &ExternalConfigRef{
+			ref: &externalConfigRef{
 				URL:  "https://example/cfg.json",
 				Repo: "org/repo",
 				Ref:  "main",
@@ -81,7 +81,7 @@ func Test_configExternalRefSummary(t *testing.T) {
 		},
 		{
 			name: "after_validate_normalized",
-			ref: &ExternalConfigRef{
+			ref: &externalConfigRef{
 				URL:  "https://x",
 				Repo: "org/r",
 				Ref:  "v1",
@@ -112,9 +112,9 @@ func TestResolveConfig_local(t *testing.T) {
 		src     ConfigSource
 		wantErr string
 	}{
-		{name: "ok", src: ConfigSource{LocalPath: good}},
-		{name: "missing", src: ConfigSource{LocalPath: filepath.Join(dir, "nope.json")}, wantErr: "does not exist"},
-		{name: "dir", src: ConfigSource{LocalPath: sub}, wantErr: "directory"},
+		{name: "ok", src: NewConfigSourceLocal(good)},
+		{name: "missing", src: NewConfigSourceLocal(filepath.Join(dir, "nope.json")), wantErr: "does not exist"},
+		{name: "dir", src: NewConfigSourceLocal(sub), wantErr: "directory"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -162,7 +162,10 @@ func TestResolveConfig_external(t *testing.T) {
 				}))
 				t.Cleanup(srv.Close)
 
-				return ConfigSource{ExternalRef: &ExternalConfigRef{URL: srv.URL + "/config.json"}}, srv.Client()
+				src, err := NewConfigSourceURL(srv.URL + "/config.json")
+				require.NoError(t, err)
+
+				return src, srv.Client()
 			},
 		},
 		{
@@ -192,9 +195,8 @@ func TestResolveConfig_external(t *testing.T) {
 				}))
 				t.Cleanup(srv.Close)
 
-				src := ConfigSource{
-					ExternalRef: &ExternalConfigRef{Repo: "org/repo", Ref: "main", Path: "workflows/config.json"},
-				}
+				src, err := NewConfigSourceGitHub("org/repo", "main", "workflows/config.json")
+				require.NoError(t, err)
 				client := &http.Client{
 					Transport: rewriteGitHubAPIToTestServer(srv.URL, http.DefaultTransport),
 				}
@@ -210,7 +212,10 @@ func TestResolveConfig_external(t *testing.T) {
 				srv := httptest.NewServer(http.NotFoundHandler())
 				t.Cleanup(srv.Close)
 
-				return ConfigSource{ExternalRef: &ExternalConfigRef{URL: srv.URL + "/missing.json"}}, srv.Client()
+				src, err := NewConfigSourceURL(srv.URL + "/missing.json")
+				require.NoError(t, err)
+
+				return src, srv.Client()
 			},
 		},
 	}

@@ -41,25 +41,10 @@ func TestResolveBinary_local(t *testing.T) {
 		src     BinarySource
 		wantErr string
 	}{
-		{
-			name: "ok",
-			src:  BinarySource{LocalPath: good},
-		},
-		{
-			name:    "missing",
-			src:     BinarySource{LocalPath: filepath.Join(dir, "missing.wasm")},
-			wantErr: "does not exist",
-		},
-		{
-			name:    "directory",
-			src:     BinarySource{LocalPath: sub},
-			wantErr: "directory",
-		},
-		{
-			name:    "wrong_extension",
-			src:     BinarySource{LocalPath: badExt},
-			wantErr: ".wasm",
-		},
+		{name: "ok", src: NewBinarySourceLocal(good)},
+		{name: "missing", src: NewBinarySourceLocal(filepath.Join(dir, "missing.wasm")), wantErr: "does not exist"},
+		{name: "directory", src: NewBinarySourceLocal(sub), wantErr: "directory"},
+		{name: "wrong_extension", src: NewBinarySourceLocal(badExt), wantErr: ".wasm"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -92,12 +77,8 @@ func TestResolveBinary_workDir(t *testing.T) {
 	t.Cleanup(srv.Close)
 
 	workDir := t.TempDir()
-	src := BinarySource{
-		ExternalRef: &ExternalBinaryRef{
-			URL:    srv.URL + "/binary.wasm",
-			SHA256: validHex,
-		},
-	}
+	src, err := NewBinarySourceURL(srv.URL+"/binary.wasm", validHex)
+	require.NoError(t, err)
 	ctx := t.Context()
 	r, err := NewArtifactsResolver(workDir, WithHTTPClient(srv.Client()))
 	require.NoError(t, err)
@@ -150,12 +131,8 @@ func TestResolveBinary_downloadURL(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			src := BinarySource{
-				ExternalRef: &ExternalBinaryRef{
-					URL:    tt.urlFn(),
-					SHA256: tt.sha,
-				},
-			}
+			src, err := NewBinarySourceURL(tt.urlFn(), tt.sha)
+			require.NoError(t, err)
 			ctx := t.Context()
 			workDir := t.TempDir()
 			r, err := NewArtifactsResolver(workDir, WithHTTPClient(srv.Client()))
@@ -285,14 +262,8 @@ func TestResolveBinary_gitHubRelease(t *testing.T) {
 				Transport: rewriteGitHubAPIToTestServer(srv.URL, http.DefaultTransport),
 			}
 
-			src := BinarySource{
-				ExternalRef: &ExternalBinaryRef{
-					Repo:       tt.repo,
-					ReleaseTag: tt.releaseTag,
-					AssetName:  tt.assetName,
-					SHA256:     tt.sha,
-				},
-			}
+			src, err := NewBinarySourceGitHubRelease(tt.repo, tt.releaseTag, tt.assetName, tt.sha)
+			require.NoError(t, err)
 
 			workDir := t.TempDir()
 			r, err := NewArtifactsResolver(workDir, WithHTTPClient(client))
@@ -344,12 +315,8 @@ func TestResolveBinary_parseSHA256(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			src := BinarySource{
-				ExternalRef: &ExternalBinaryRef{
-					URL:    baseURL,
-					SHA256: tt.sha256,
-				},
-			}
+			src, err := NewBinarySourceURL(baseURL, tt.sha256)
+			require.NoError(t, err)
 			r, err := NewArtifactsResolver(t.TempDir(), WithHTTPClient(srv.Client()))
 			require.NoError(t, err)
 			path, err := r.ResolveBinary(t.Context(), src)
@@ -378,12 +345,8 @@ func TestResolveBinary_contextCanceled(t *testing.T) {
 	sum := sha256.Sum256(payload)
 	validHex := hex.EncodeToString(sum[:])
 
-	src := BinarySource{
-		ExternalRef: &ExternalBinaryRef{
-			URL:    srv.URL + "/slow",
-			SHA256: validHex,
-		},
-	}
+	src, err := NewBinarySourceURL(srv.URL+"/slow", validHex)
+	require.NoError(t, err)
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	r, err := NewArtifactsResolver(t.TempDir(), WithHTTPClient(srv.Client()))

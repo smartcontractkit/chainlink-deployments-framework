@@ -29,7 +29,7 @@ func resolveConfigHttp(ctx context.Context, src ConfigSource, httpClient *http.C
 
 	ref := src.ExternalRef
 
-	if ref.IsURL() {
+	if ref.isURL() {
 		plain := plainHTTPClient(httpClient)
 		resp, err := httpGet(ctx, plain, ref.URL, "download config")
 		if err != nil {
@@ -40,7 +40,7 @@ func resolveConfigHttp(ctx context.Context, src ConfigSource, httpClient *http.C
 		return writeConfigToWorkDir(resp.Body, workDir)
 	}
 
-	if ref.IsGitHubFile() {
+	if ref.isGitHubFile() {
 		gh := githubHTTPClientOrDefault(httpClient)
 		r, err := fetchGitHubFileContent(ctx, gh, ref.Repo, ref.Ref, ref.Path)
 		if err != nil {
@@ -53,7 +53,7 @@ func resolveConfigHttp(ctx context.Context, src ConfigSource, httpClient *http.C
 	return "", fmt.Errorf("cre: resolve config: unsupported external config ref (%s)", configExternalRefSummary(ref))
 }
 
-func configExternalRefSummary(e *ExternalConfigRef) string {
+func configExternalRefSummary(e *externalConfigRef) string {
 	if e == nil {
 		return "externalRef=<nil>"
 	}
