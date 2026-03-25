@@ -100,7 +100,7 @@ func downloadAndVerify(ctx context.Context, client *http.Client, downloadURL, ex
 	if _, err := parseSHA256Hex(expectedSHA256Hex); err != nil {
 		return "", err
 	}
-	if err := ensureBinaryDownloadWorkDir(workDir); err != nil {
+	if err := createBinaryDownloadWorkDir(workDir); err != nil {
 		return "", err
 	}
 	resp, err := httpGet(ctx, client, downloadURL, "download binary")
@@ -118,7 +118,7 @@ func downloadGitHubReleaseAssetAndVerify(ctx context.Context, client *http.Clien
 	if _, err := parseSHA256Hex(expectedSHA256Hex); err != nil {
 		return "", err
 	}
-	if err := ensureBinaryDownloadWorkDir(workDir); err != nil {
+	if err := createBinaryDownloadWorkDir(workDir); err != nil {
 		return "", err
 	}
 	resp, err := httpGetGitHubReleaseAsset(ctx, client, apiAssetURL, "download binary")
@@ -130,8 +130,8 @@ func downloadGitHubReleaseAssetAndVerify(ctx context.Context, client *http.Clien
 	return writeStreamAndVerifySHA256(resp.Body, expectedSHA256Hex, workDir)
 }
 
-// ensureBinaryDownloadWorkDir creates workDir for assets downloading
-func ensureBinaryDownloadWorkDir(workDir string) error {
+// createBinaryDownloadWorkDir creates workDir for assets downloading
+func createBinaryDownloadWorkDir(workDir string) error {
 	wd := strings.TrimSpace(workDir)
 	if wd == "" {
 		return errors.New("cre: workDir is required for binary download")
