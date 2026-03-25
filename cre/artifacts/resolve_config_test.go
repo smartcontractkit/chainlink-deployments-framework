@@ -1,7 +1,6 @@
 package artifacts
 
 import (
-	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -15,14 +14,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_writeConfigFile(t *testing.T) {
+func Test_writeConfigToWorkDir(t *testing.T) {
 	t.Parallel()
 
 	t.Run("success", func(t *testing.T) {
 		t.Parallel()
 		dir := t.TempDir()
 		want := []byte(`{"ok":true}`)
-		path, err := writeConfigFile(dir, bytes.NewReader(want))
+		path, err := writeConfigToWorkDir(strings.NewReader(string(want)), dir)
 		require.NoError(t, err)
 		require.Equal(t, dir, filepath.Dir(path))
 		base := filepath.Base(path)
@@ -33,36 +32,12 @@ func Test_writeConfigFile(t *testing.T) {
 		require.Equal(t, want, got)
 	})
 
-	t.Run("empty_work_dir", func(t *testing.T) {
-		t.Parallel()
-		_, err := writeConfigFile("", strings.NewReader("{}"))
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "WorkDir is required")
-	})
-
-	t.Run("whitespace_work_dir", func(t *testing.T) {
-		t.Parallel()
-		_, err := writeConfigFile("   ", strings.NewReader("{}"))
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "WorkDir is required")
-	})
-
-	t.Run("mkdir_fails_when_path_is_file", func(t *testing.T) {
-		t.Parallel()
-		dir := t.TempDir()
-		blocksDir := filepath.Join(dir, "not-a-dir")
-		require.NoError(t, os.WriteFile(blocksDir, []byte("x"), 0o600))
-		_, err := writeConfigFile(blocksDir, strings.NewReader("{}"))
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "config download WorkDir")
-	})
-
 	t.Run("copy_error_removes_partial_file", func(t *testing.T) {
 		t.Parallel()
 		dir := t.TempDir()
-		_, err := writeConfigFile(dir, errReader{err: errors.New("read boom")})
+		_, err := writeConfigToWorkDir(errReader{err: errors.New("read boom")}, dir)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "config write")
+		require.Contains(t, err.Error(), "write file")
 		entries, err := os.ReadDir(dir)
 		require.NoError(t, err)
 		require.Empty(t, entries, "partial config file should be removed on write failure")

@@ -50,8 +50,7 @@ type ExternalConfigRef struct {
 }
 
 // normalizeGitHubConfigPath trims surrounding space and leading slashes so the path is suitable
-// for the GitHub Contents API (non-empty path within the repository). Empty input or only slashes
-// after trim yields "".
+// for the GitHub Contents API
 func normalizeGitHubConfigPath(p string) string {
 	return strings.TrimLeft(strings.TrimSpace(p), "/")
 }

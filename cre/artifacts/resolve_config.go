@@ -10,7 +10,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"path/filepath"
 	"strings"
 )
@@ -21,23 +20,34 @@ func resolveConfigHttp(ctx context.Context, src ConfigSource, httpClient *http.C
 	}
 
 	if src.IsLocal() {
-		return resolveConfigLocal(src.LocalPath)
+		return resolveLocalArtifactPath(src.LocalPath)
 	}
 
-	if strings.TrimSpace(workDir) == "" {
-		return "", errors.New("cre: WorkDir is required for external config")
+	if err := ensureDownloadWorkDir(workDir); err != nil {
+		return "", err
 	}
 
 	ref := src.ExternalRef
 
 	if ref.IsURL() {
 		plain := plainHTTPClient(httpClient)
-		return downloadConfigURL(ctx, plain, ref.URL, workDir)
+		resp, err := httpGet(ctx, plain, strings.TrimSpace(ref.URL), "download config")
+		if err != nil {
+			return "", err
+		}
+		defer resp.Body.Close()
+
+		return writeConfigToWorkDir(resp.Body, workDir)
 	}
 
 	if ref.IsGitHubFile() {
 		gh := githubHTTPClientOrDefault(httpClient)
-		return fetchGitHubFileContent(ctx, gh, ref.Repo, ref.Ref, ref.Path, workDir)
+		r, err := fetchGitHubFileContent(ctx, gh, ref.Repo, ref.Ref, ref.Path)
+		if err != nil {
+			return "", err
+		}
+
+		return writeConfigToWorkDir(r, workDir)
 	}
 
 	return "", fmt.Errorf("cre: resolve config: unsupported external config ref (%s)", configExternalRefSummary(ref))
@@ -56,20 +66,6 @@ func configExternalRefSummary(e *ExternalConfigRef) string {
 	)
 }
 
-func resolveConfigLocal(p string) (string, error) {
-	return resolveLocalArtifactPath(p)
-}
-
-func downloadConfigURL(ctx context.Context, client *http.Client, rawURL, workDir string) (string, error) {
-	resp, err := httpGet(ctx, client, strings.TrimSpace(rawURL), "download config")
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	return writeConfigFile(workDir, resp.Body)
-}
-
 // githubFileAPIResponse matches GitHub Contents API for a file (not directory).
 type githubFileAPIResponse struct {
 	Type     string `json:"type"`
@@ -77,38 +73,40 @@ type githubFileAPIResponse struct {
 	Content  string `json:"content"`
 }
 
-func fetchGitHubFileContent(ctx context.Context, client *http.Client, repo, ref, path, workDir string) (string, error) {
+// fetchGitHubFileContent fetches a file via the GitHub Contents API and returns the decoded content
+// as a reader. workDir validation and file writing are the caller's responsibility.
+func fetchGitHubFileContent(ctx context.Context, client *http.Client, repo, ref, path string) (io.Reader, error) {
 	owner, name, err := parseGitHubRepo(repo)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	path = normalizeGitHubConfigPath(path)
 	if path == "" {
-		return "", errors.New("cre: github config: path is required")
+		return nil, errors.New("cre: github config: path is required")
 	}
 	apiPath := encodeGitHubPath(path)
 	refQ := url.QueryEscape(strings.TrimSpace(ref))
 	apiURL := fmt.Sprintf("https://api.github.com/repos/%s/%s/contents/%s?ref=%s", owner, name, apiPath, refQ)
 	body, err := githubGet(ctx, client, apiURL, "github config")
 	if err != nil {
-		return "", fmt.Errorf("cre: github config %s/%s ref %q path %q: %w", owner, name, strings.TrimSpace(ref), path, err)
+		return nil, fmt.Errorf("cre: github config %s/%s ref %q path %q: %w", owner, name, strings.TrimSpace(ref), path, err)
 	}
 	var file githubFileAPIResponse
 	if unmarshalErr := json.Unmarshal(body, &file); unmarshalErr != nil {
-		return "", fmt.Errorf("cre: github config decode: %w", unmarshalErr)
+		return nil, fmt.Errorf("cre: github config decode: %w", unmarshalErr)
 	}
 	if file.Type != "" && file.Type != "file" {
-		return "", fmt.Errorf("cre: github config: path is not a file (type=%s)", file.Type)
+		return nil, fmt.Errorf("cre: github config: path is not a file (type=%s)", file.Type)
 	}
 	if !strings.EqualFold(strings.TrimSpace(file.Encoding), "base64") {
-		return "", fmt.Errorf("cre: github config: unexpected encoding %q", file.Encoding)
+		return nil, fmt.Errorf("cre: github config: unexpected encoding %q", file.Encoding)
 	}
 	raw, err := base64.StdEncoding.DecodeString(strings.ReplaceAll(file.Content, "\n", ""))
 	if err != nil {
-		return "", fmt.Errorf("cre: github config base64: %w", err)
+		return nil, fmt.Errorf("cre: github config base64: %w", err)
 	}
 
-	return writeConfigFile(workDir, bytes.NewReader(raw))
+	return bytes.NewReader(raw), nil
 }
 
 func encodeGitHubPath(p string) string {
@@ -120,36 +118,10 @@ func encodeGitHubPath(p string) string {
 	return strings.Join(parts, "/")
 }
 
-func writeConfigFile(workDir string, reader io.Reader) (string, error) {
-	wd := strings.TrimSpace(workDir)
-	if wd == "" {
-		return "", errors.New("cre: WorkDir is required for config download")
-	}
-	if err := os.MkdirAll(wd, 0o700); err != nil {
-		return "", fmt.Errorf("cre: config download WorkDir: %w", err)
-	}
-	path := filepath.Join(wd, newWorkDirConfigFileName())
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
-	if err != nil {
-		return "", fmt.Errorf("cre: config file: %w", err)
-	}
-	if _, copyErr := io.Copy(f, reader); copyErr != nil {
-		closeErr := f.Close()
-		remErr := os.Remove(path)
+// writeConfigToWorkDir writes reader content to a new config file in workDir. The caller must
+// ensure workDir exists (via ensureDownloadWorkDir).
+func writeConfigToWorkDir(r io.Reader, workDir string) (string, error) {
+	path := filepath.Join(strings.TrimSpace(workDir), newWorkDirConfigFileName())
 
-		return "", errors.Join(
-			fmt.Errorf("cre: config write: %w", copyErr),
-			closeErr,
-			remErr,
-		)
-	}
-	if closeErr := f.Close(); closeErr != nil {
-		remErr := os.Remove(path)
-		return "", errors.Join(
-			fmt.Errorf("cre: config close: %w", closeErr),
-			remErr,
-		)
-	}
-
-	return path, nil
+	return path, writeToFile(path, r)
 }

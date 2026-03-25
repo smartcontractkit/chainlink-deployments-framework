@@ -33,26 +33,46 @@ func resolveBinaryHttp(ctx context.Context, src BinarySource, httpClient *http.C
 		return resolveBinaryLocal(src.LocalPath)
 	}
 
-	if strings.TrimSpace(workDir) == "" {
-		return "", errors.New("cre: WorkDir is required for external binary")
+	if err := ensureDownloadWorkDir(workDir); err != nil {
+		return "", err
 	}
 
 	ref := src.ExternalRef
+	expectedSHA, err := parseSHA256Hex(ref.SHA256)
+	if err != nil {
+		return "", err
+	}
+
 	if ref.IsURL() {
 		plain := plainHTTPClient(httpClient)
-		return downloadAndVerify(ctx, plain, ref.URL, ref.SHA256, workDir)
+		resp, err := httpGet(ctx, plain, ref.URL, "download binary")
+		if err != nil {
+			return "", err
+		}
+		defer resp.Body.Close()
+
+		return writeBinaryAndVerifySHA256(resp.Body, expectedSHA, workDir)
 	}
+
 	if ref.IsGitHubRelease() {
 		gh := githubHTTPClientOrDefault(httpClient)
 		downloadURL, err := resolveGitHubAssetURL(ctx, gh, ref.Repo, ref.ReleaseTag, ref.AssetName)
 		if err != nil {
 			return "", err
 		}
-		if isGitHubAPIReleaseAssetURL(downloadURL) {
-			return downloadGitHubReleaseAssetAndVerify(ctx, gh, downloadURL, ref.SHA256, workDir)
-		}
 
-		return downloadAndVerify(ctx, gh, downloadURL, ref.SHA256, workDir)
+		var resp *http.Response
+		if isGitHubAPIReleaseAssetURL(downloadURL) {
+			resp, err = httpGetGitHubReleaseAsset(ctx, gh, downloadURL, "download binary")
+		} else {
+			resp, err = httpGet(ctx, gh, downloadURL, "download binary")
+		}
+		if err != nil {
+			return "", err
+		}
+		defer resp.Body.Close()
+
+		return writeBinaryAndVerifySHA256(resp.Body, expectedSHA, workDir)
 	}
 
 	return "", fmt.Errorf("cre: resolve binary: unsupported external binary ref (%s)", binaryExternalRefSummary(ref))
@@ -96,93 +116,21 @@ func resolveBinaryLocal(p string) (string, error) {
 	return clean, nil
 }
 
-func downloadAndVerify(ctx context.Context, client *http.Client, downloadURL, expectedSHA256Hex, workDir string) (path string, err error) {
-	if _, err = parseSHA256Hex(expectedSHA256Hex); err != nil {
-		return "", err
-	}
-	if err = createBinaryDownloadWorkDir(workDir); err != nil {
-		return "", err
-	}
-	resp, err := httpGet(ctx, client, downloadURL, "download binary")
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	return writeStreamAndVerifySHA256(resp.Body, expectedSHA256Hex, workDir)
-}
-
-// downloadGitHubReleaseAssetAndVerify downloads via the GitHub API asset URL (not browser_download_url)
-// so Bearer auth stays on api.github.com and is not stripped on redirect to the object CDN.
-func downloadGitHubReleaseAssetAndVerify(ctx context.Context, client *http.Client, apiAssetURL, expectedSHA256Hex, workDir string) (path string, err error) {
-	if _, err = parseSHA256Hex(expectedSHA256Hex); err != nil {
-		return "", err
-	}
-	if err = createBinaryDownloadWorkDir(workDir); err != nil {
-		return "", err
-	}
-	resp, err := httpGetGitHubReleaseAsset(ctx, client, apiAssetURL, "download binary")
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	return writeStreamAndVerifySHA256(resp.Body, expectedSHA256Hex, workDir)
-}
-
-// createBinaryDownloadWorkDir creates workDir for assets downloading
-func createBinaryDownloadWorkDir(workDir string) error {
-	wd := strings.TrimSpace(workDir)
-	if wd == "" {
-		return errors.New("cre: WorkDir is required for binary download")
-	}
-	if err := os.MkdirAll(wd, 0o700); err != nil {
-		return fmt.Errorf("cre: binary download WorkDir: %w", err)
-	}
-
-	return nil
-}
-
-func writeStreamAndVerifySHA256(body io.Reader, expectedSHA256Hex, workDir string) (path string, err error) {
-	wd := strings.TrimSpace(workDir)
-	if wd == "" {
-		return "", errors.New("cre: WorkDir is required for binary download")
-	}
-	expected, err := parseSHA256Hex(expectedSHA256Hex)
-	if err != nil {
-		return "", err
-	}
-
-	tmpPath := filepath.Join(wd, newWorkDirBinaryFileName())
-	f, err := os.OpenFile(tmpPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
-	if err != nil {
-		return "", fmt.Errorf("cre: download binary temp file: %w", err)
-	}
-
-	defer func() {
-		if err != nil {
-			if remErr := os.Remove(tmpPath); remErr != nil {
-				err = errors.Join(err, fmt.Errorf("cre: remove temp wasm: %w", remErr))
-			}
-		}
-	}()
-
+// writeBinaryAndVerifySHA256 streams body to a temp file while computing SHA-256, then verifies
+// the digest matches expected. The file is removed on any error (write failure or sha256 mismatch).
+func writeBinaryAndVerifySHA256(body io.Reader, expected []byte, workDir string) (string, error) {
+	tmpPath := filepath.Join(strings.TrimSpace(workDir), newWorkDirBinaryFileName())
 	h := sha256.New()
-	if _, copyErr := io.Copy(io.MultiWriter(f, h), body); copyErr != nil {
-		closeErr := f.Close()
-		err = errors.Join(fmt.Errorf("cre: download binary write: %w", copyErr), closeErr)
-
+	if err := writeToFile(tmpPath, io.TeeReader(body, h)); err != nil {
 		return "", err
 	}
+	if subtle.ConstantTimeCompare(h.Sum(nil), expected) != 1 {
+		remErr := os.Remove(tmpPath)
 
-	if closeErr := f.Close(); closeErr != nil {
-		err = fmt.Errorf("cre: download binary close: %w", closeErr)
-		return "", err
-	}
-	sum := h.Sum(nil)
-	if subtle.ConstantTimeCompare(sum, expected) != 1 {
-		err = errors.New("cre: download binary: sha256 mismatch")
-		return "", err
+		return "", errors.Join(
+			errors.New("cre: download binary: sha256 mismatch"),
+			remErr,
+		)
 	}
 
 	return tmpPath, nil

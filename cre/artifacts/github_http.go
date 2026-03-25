@@ -31,23 +31,24 @@ func githubTokenFromEnv() string {
 	return ""
 }
 
-// gitHubBearerAllowedHost reports whether an outgoing request to host should include a GitHub PAT.
+// gitHubBearerAllowedHost reports whether an outgoing request should include a GitHub PAT.
 // Hosts under github.com (including api.github.com) and githubusercontent.com are allowed so tokens
-// are not sent to arbitrary redirect targets or third-party URLs. GitHub Enterprise on a custom
-// hostname is not matched unless it uses a *.github.com suffix.
+// are not sent to arbitrary redirect targets or third-party URLs.
 func gitHubBearerAllowedHost(hostPort string) bool {
 	if hostPort == "" {
 		return false
 	}
+
 	host, _, err := net.SplitHostPort(hostPort)
 	if err != nil {
 		host = hostPort
 	}
+
 	host = strings.ToLower(strings.TrimSpace(host))
 	if host == "" {
 		return false
 	}
-	// Apex hosts do not match the subdomain suffixes (e.g. github.com vs *.github.com).
+	// check for hosts that do not match the subdomain suffixes (e.g. github.com vs *.github.com).
 	return host == hostGitHubCom ||
 		strings.HasSuffix(host, suffixGitHubCom) ||
 		host == hostGitHubUserContent ||

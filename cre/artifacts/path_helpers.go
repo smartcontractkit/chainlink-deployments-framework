@@ -3,6 +3,7 @@ package artifacts
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -29,4 +30,45 @@ func resolveLocalArtifactPath(path string) (string, error) {
 	}
 
 	return clean, nil
+}
+
+// ensureDownloadWorkDir validates workDir and creates it when missing.
+func ensureDownloadWorkDir(workDir string) error {
+	wd := strings.TrimSpace(workDir)
+	if wd == "" {
+		return errors.New("cre: WorkDir is required for download")
+	}
+	if err := os.MkdirAll(wd, 0o700); err != nil {
+		return fmt.Errorf("cre: download WorkDir: %w", err)
+	}
+
+	return nil
+}
+
+// writeToFile writes r to path with mode 0o600, removing path on failure after open.
+func writeToFile(path string, r io.Reader) error {
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
+	if err != nil {
+		return fmt.Errorf("cre: create file: %w", err)
+	}
+	if _, copyErr := io.Copy(f, r); copyErr != nil {
+		closeErr := f.Close()
+		remErr := os.Remove(path)
+
+		return errors.Join(
+			fmt.Errorf("cre: write file: %w", copyErr),
+			closeErr,
+			remErr,
+		)
+	}
+	if closeErr := f.Close(); closeErr != nil {
+		remErr := os.Remove(path)
+
+		return errors.Join(
+			fmt.Errorf("cre: close file: %w", closeErr),
+			remErr,
+		)
+	}
+
+	return nil
 }
