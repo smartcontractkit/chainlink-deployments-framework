@@ -275,7 +275,8 @@ func Test_ParseSubwalletID(t *testing.T) {
 			name:    "invalid subwallet ID (too large)",
 			input:   "5000000000",
 			wantErr: true,
-		}}
+		},
+	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
