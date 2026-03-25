@@ -40,6 +40,7 @@ var (
 			Ton: TonConfig{
 				DeployerKey:   "0xedd",
 				WalletVersion: "V5R1",
+				SubwalletID:   "42",
 			},
 			Stellar: StellarConfig{
 				DeployerKey: "0x567",
@@ -165,6 +166,7 @@ var (
 			Ton: TonConfig{
 				DeployerKey:   "0x123",
 				WalletVersion: "V5R1",
+				SubwalletID:   "42",
 			},
 			Canton: CantonConfig{
 				JWTToken: "",

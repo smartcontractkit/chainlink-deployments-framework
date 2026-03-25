@@ -48,6 +48,7 @@ type SolanaConfig struct {
 type TonConfig struct {
 	DeployerKey   string `mapstructure:"deployer_key" yaml:"deployer_key"`     // Secret: The private key of the deployer account.
 	WalletVersion string `mapstructure:"wallet_version" yaml:"wallet_version"` // The version of the TON wallet
+	SubwalletID   string `mapstructure:"subwallet_id" yaml:"subwallet_id"`     // The subwallet ID to use for deployments
 }
 
 // AptosConfig is the configuration for the Aptos Chains.
