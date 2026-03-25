@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/xssnick/tonutils-go/liteclient"
@@ -24,6 +25,23 @@ const (
 	WalletVersionDefault WalletVersion = ""
 )
 
+type SubwalletID uint32
+
+func ParseSubwalletID(idStr string) (*SubwalletID, error) {
+	if idStr == "" {
+		return nil, nil //nolint:nilnil // No subwallet ID provided
+	}
+
+	uintVal, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		return nil, fmt.Errorf("invalid subwallet ID format: %w", err)
+	}
+
+	subwalletID := SubwalletID(uintVal)
+
+	return &subwalletID, nil
+}
+
 // RPCChainProviderConfig holds the configuration to initialize the RPCChainProvider.
 type RPCChainProviderConfig struct {
 	// Required: The liteserver URL to connect to the Ton node (format: liteserver://publickey@host:port).
@@ -36,6 +54,8 @@ type RPCChainProviderConfig struct {
 	// Optional: The TON wallet version to use. Supported versions are: V1R1, V1R2, V1R3, V2R1,
 	// V2R2, V3R1, V3R2, V4R1, V4R2 and V5R1. If no value provided, V5R1 is used as default.
 	WalletVersion WalletVersion
+	// Optional: The subwallet ID to use. If no value provided, let the library decide.
+	SubwalletID *SubwalletID
 }
 
 // validateLiteserverURL validates the format of a liteserver URL
@@ -131,7 +151,7 @@ func setupConnection(ctx context.Context, liteserverURL string) (tonlib.APIClien
 }
 
 // createWallet creates a TON wallet from the given private key and API client
-func createWallet(api tonlib.APIClientWrapped, privateKey []byte, version WalletVersion) (*wallet.Wallet, error) {
+func createWallet(api tonlib.APIClientWrapped, privateKey []byte, version WalletVersion, subwalletID *SubwalletID) (*wallet.Wallet, error) {
 	walletConfig, err := getWalletVersionConfig(version)
 	if err != nil {
 		return nil, fmt.Errorf("unsupported wallet version: %w", err)
@@ -140,6 +160,12 @@ func createWallet(api tonlib.APIClientWrapped, privateKey []byte, version Wallet
 	tonWallet, err := wallet.FromPrivateKeyWithOptions(api, privateKey, walletConfig, wallet.WithWorkchain(0))
 	if err != nil {
 		return nil, fmt.Errorf("failed to init TON wallet: %w", err)
+	}
+	if subwalletID != nil {
+		tonWallet, err = tonWallet.GetSubwallet(uint32(*subwalletID))
+		if err != nil {
+			return nil, fmt.Errorf("failed to get subwallet: %w", err)
+		}
 	}
 
 	return tonWallet, nil
@@ -168,7 +194,7 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 	}
 
 	// Create wallet
-	tonWallet, err := createWallet(api, privateKey, p.config.WalletVersion)
+	tonWallet, err := createWallet(api, privateKey, p.config.WalletVersion, p.config.SubwalletID)
 	if err != nil {
 		return nil, err
 	}
