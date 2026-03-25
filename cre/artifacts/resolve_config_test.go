@@ -144,78 +144,103 @@ func TestResolveConfig_local(t *testing.T) {
 	}
 }
 
-func TestResolveConfig_URL(t *testing.T) {
+func TestResolveConfig_external(t *testing.T) {
 	t.Parallel()
-	want := []byte(`{"env":"staging"}`)
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, "want GET", http.StatusMethodNotAllowed)
-			return
-		}
-		_, _ = w.Write(want)
-	}))
-	t.Cleanup(srv.Close)
 
-	src := ConfigSource{
-		ExternalRef: &ExternalConfigRef{URL: srv.URL + "/config.json"},
-	}
-	ctx := t.Context()
-	workDir := t.TempDir()
-	r, err := NewArtifactsResolver(workDir, WithHTTPClient(srv.Client()))
-	require.NoError(t, err)
-	path, err := r.ResolveConfig(ctx, src)
-	require.NoError(t, err)
-	got, err := os.ReadFile(path)
-	require.NoError(t, err)
-	require.Equal(t, want, got)
-}
+	urlPayload := []byte(`{"env":"staging"}`)
+	ghPayload := []byte(`{"x":true}`)
+	ghEncoded := base64.StdEncoding.EncodeToString(ghPayload)
 
-func TestResolveConfig_gitHubFile(t *testing.T) {
-	t.Parallel()
-	raw := []byte(`{"x":true}`)
-	encoded := base64.StdEncoding.EncodeToString(raw)
+	tests := []struct {
+		name    string
+		want    []byte
+		setup   func(t *testing.T) (ConfigSource, *http.Client)
+		wantErr string
+	}{
+		{
+			name: "url",
+			want: urlPayload,
+			setup: func(t *testing.T) (ConfigSource, *http.Client) {
+				t.Helper()
+				srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if r.Method != http.MethodGet {
+						http.Error(w, "want GET", http.StatusMethodNotAllowed)
+						return
+					}
+					_, _ = w.Write(urlPayload)
+				}))
+				t.Cleanup(srv.Close)
 
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, "want GET", http.StatusMethodNotAllowed)
-			return
-		}
-		if !strings.Contains(r.URL.Path, "/contents/") {
-			http.NotFound(w, r)
-			return
-		}
-		if r.URL.Query().Get("ref") != "main" {
-			http.Error(w, "bad ref", http.StatusBadRequest)
-			return
-		}
-		resp := map[string]any{
-			"type":     "file",
-			"encoding": "base64",
-			"content":  encoded,
-		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(resp)
-	}))
-	t.Cleanup(srv.Close)
+				return ConfigSource{ExternalRef: &ExternalConfigRef{URL: srv.URL + "/config.json"}}, srv.Client()
+			},
+		},
+		{
+			name: "github_file",
+			want: ghPayload,
+			setup: func(t *testing.T) (ConfigSource, *http.Client) {
+				t.Helper()
+				srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if r.Method != http.MethodGet {
+						http.Error(w, "want GET", http.StatusMethodNotAllowed)
+						return
+					}
+					if !strings.Contains(r.URL.Path, "/contents/") {
+						http.NotFound(w, r)
+						return
+					}
+					if r.URL.Query().Get("ref") != "main" {
+						http.Error(w, "bad ref", http.StatusBadRequest)
+						return
+					}
+					w.Header().Set("Content-Type", "application/json")
+					_ = json.NewEncoder(w).Encode(map[string]any{
+						"type":     "file",
+						"encoding": "base64",
+						"content":  ghEncoded,
+					})
+				}))
+				t.Cleanup(srv.Close)
 
-	client := &http.Client{
-		Transport: rewriteGitHubAPIToTestServer(srv.URL, http.DefaultTransport),
-	}
+				src := ConfigSource{
+					ExternalRef: &ExternalConfigRef{Repo: "org/repo", Ref: "main", Path: "workflows/config.json"},
+				}
+				client := &http.Client{
+					Transport: rewriteGitHubAPIToTestServer(srv.URL, http.DefaultTransport),
+				}
 
-	src := ConfigSource{
-		ExternalRef: &ExternalConfigRef{
-			Repo: "org/repo",
-			Ref:  "main",
-			Path: "workflows/config.json",
+				return src, client
+			},
+		},
+		{
+			name:    "url_404",
+			wantErr: "404",
+			setup: func(t *testing.T) (ConfigSource, *http.Client) {
+				t.Helper()
+				srv := httptest.NewServer(http.NotFoundHandler())
+				t.Cleanup(srv.Close)
+
+				return ConfigSource{ExternalRef: &ExternalConfigRef{URL: srv.URL + "/missing.json"}}, srv.Client()
+			},
 		},
 	}
-	ctx := t.Context()
-	workDir := t.TempDir()
-	r, err := NewArtifactsResolver(workDir, WithHTTPClient(client))
-	require.NoError(t, err)
-	path, err := r.ResolveConfig(ctx, src)
-	require.NoError(t, err)
-	got, err := os.ReadFile(path)
-	require.NoError(t, err)
-	require.Equal(t, raw, got)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			src, client := tt.setup(t)
+			workDir := t.TempDir()
+			r, err := NewArtifactsResolver(workDir, WithHTTPClient(client))
+			require.NoError(t, err)
+			path, err := r.ResolveConfig(t.Context(), src)
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.wantErr)
+
+				return
+			}
+			require.NoError(t, err)
+			got, err := os.ReadFile(path)
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
+		})
+	}
 }
