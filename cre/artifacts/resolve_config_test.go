@@ -80,23 +80,14 @@ func Test_configExternalRefSummary(t *testing.T) {
 			want: `url="https://example/cfg.json" repo="org/repo" ref="main" path="path/to/config.json"`,
 		},
 		{
-			name: "trims_whitespace",
+			name: "after_validate_normalized",
 			ref: &ExternalConfigRef{
-				URL:  "  https://x  ",
-				Repo: " org/r ",
-				Ref:  " v1 ",
-				Path: " a/b.json ",
+				URL:  "https://x",
+				Repo: "org/r",
+				Ref:  "v1",
+				Path: "a/b.json",
 			},
 			want: `url="https://x" repo="org/r" ref="v1" path="a/b.json"`,
-		},
-		{
-			name: "trims_leading_slashes_on_path",
-			ref: &ExternalConfigRef{
-				Repo: "org/repo",
-				Ref:  "main",
-				Path: " /dir/cfg.json ",
-			},
-			want: `url="" repo="org/repo" ref="main" path="dir/cfg.json"`,
 		},
 	}
 	for _, tt := range tests {

@@ -20,9 +20,11 @@ type WorkflowBundle struct {
 	DonFamily    string       `json:"donFamily,omitempty" yaml:"donFamily,omitempty"`
 }
 
-// Validate validates the workflow bundle.
-func (w WorkflowBundle) Validate() error {
-	if strings.TrimSpace(w.WorkflowName) == "" {
+// Validate trims string fields and validates the workflow bundle.
+func (w *WorkflowBundle) Validate() error {
+	w.WorkflowName = strings.TrimSpace(w.WorkflowName)
+	w.DonFamily = strings.TrimSpace(w.DonFamily)
+	if w.WorkflowName == "" {
 		return errors.New("cre: workflowName is required")
 	}
 	if err := w.Binary.Validate(); err != nil {
@@ -32,15 +34,15 @@ func (w WorkflowBundle) Validate() error {
 	return w.Config.Validate()
 }
 
-// ApplyDeployDefaults sets DonFamily from cre when empty (after trim). No-op if w is nil.
+// ApplyDeployDefaults sets DonFamily from cre when empty. No-op if w is nil.
 func (w *WorkflowBundle) ApplyDeployDefaults(cre cfgenv.CREConfig) {
 	if w == nil {
 		return
 	}
-	if strings.TrimSpace(w.DonFamily) != "" {
+	w.DonFamily = strings.TrimSpace(w.DonFamily)
+	if w.DonFamily != "" {
 		return
 	}
-	w.DonFamily = ""
 	if s := strings.TrimSpace(cre.DonFamily); s != "" {
 		w.DonFamily = s
 	}
@@ -53,17 +55,18 @@ type BinarySource struct {
 }
 
 // IsLocal reports whether the binary source is a local filesystem path.
-func (b BinarySource) IsLocal() bool {
+func (b *BinarySource) IsLocal() bool {
 	return strings.TrimSpace(b.LocalPath) != ""
 }
 
 // IsExternal reports whether the binary source uses an external reference.
-func (b BinarySource) IsExternal() bool {
+func (b *BinarySource) IsExternal() bool {
 	return b.ExternalRef != nil
 }
 
-// Validate checks that exactly one of local path or external ref is set.
-func (b BinarySource) Validate() error {
+// Validate trims LocalPath and checks that exactly one of local path or external ref is set.
+func (b *BinarySource) Validate() error {
+	b.LocalPath = strings.TrimSpace(b.LocalPath)
 	hasLocal := b.IsLocal()
 	hasExt := b.IsExternal()
 	if hasLocal && hasExt {
@@ -88,14 +91,19 @@ type ExternalBinaryRef struct {
 	SHA256     string `json:"sha256,omitempty" yaml:"sha256,omitempty"`
 }
 
-// Validate enforces one external mode (URL XOR GitHub release) and SHA256 for WASM.
+// Validate trims all string fields, then enforces one external mode (URL XOR GitHub release) and SHA256.
 func (e *ExternalBinaryRef) Validate() error {
 	if e == nil {
 		return errors.New("cre: external binary ref is nil")
 	}
-	rawURL := strings.TrimSpace(e.URL)
-	hasURL := rawURL != ""
-	hasRelease := strings.TrimSpace(e.Repo) != "" && strings.TrimSpace(e.ReleaseTag) != "" && strings.TrimSpace(e.AssetName) != ""
+	e.URL = strings.TrimSpace(e.URL)
+	e.Repo = strings.TrimSpace(e.Repo)
+	e.ReleaseTag = strings.TrimSpace(e.ReleaseTag)
+	e.AssetName = strings.TrimSpace(e.AssetName)
+	e.SHA256 = strings.TrimSpace(e.SHA256)
+
+	hasURL := e.URL != ""
+	hasRelease := e.Repo != "" && e.ReleaseTag != "" && e.AssetName != ""
 
 	if hasURL && hasRelease {
 		return errors.New("cre: external binary: specify either url or repo/releaseTag/assetName, not both")
@@ -103,11 +111,11 @@ func (e *ExternalBinaryRef) Validate() error {
 	if !hasURL && !hasRelease {
 		return errors.New("cre: external binary: url or repo/releaseTag/assetName is required")
 	}
-	if strings.TrimSpace(e.SHA256) == "" {
+	if e.SHA256 == "" {
 		return errors.New("cre: external binary: sha256 is required")
 	}
 	if hasURL {
-		if err := validURL(rawURL); err != nil {
+		if err := validURL(e.URL); err != nil {
 			return fmt.Errorf("cre: external binary: %w", err)
 		}
 	}
@@ -120,8 +128,7 @@ func (e *ExternalBinaryRef) Validate() error {
 	return nil
 }
 
-// IsURL reports whether the url field is non-empty (after [strings.TrimSpace]).
-// When true, [ExternalBinaryRef.Validate] requires an absolute http or https URL.
+// IsURL reports whether the url field is non-empty.
 func (e *ExternalBinaryRef) IsURL() bool {
 	if e == nil {
 		return false
@@ -146,17 +153,18 @@ type ConfigSource struct {
 }
 
 // IsLocal reports whether the config source is a local filesystem path.
-func (c ConfigSource) IsLocal() bool {
+func (c *ConfigSource) IsLocal() bool {
 	return strings.TrimSpace(c.LocalPath) != ""
 }
 
 // IsExternal reports whether the config source uses an external reference.
-func (c ConfigSource) IsExternal() bool {
+func (c *ConfigSource) IsExternal() bool {
 	return c.ExternalRef != nil
 }
 
-// Validate checks that exactly one of local path or external ref is set.
-func (c ConfigSource) Validate() error {
+// Validate trims LocalPath and checks that exactly one of local path or external ref is set.
+func (c *ConfigSource) Validate() error {
+	c.LocalPath = strings.TrimSpace(c.LocalPath)
 	hasLocal := c.IsLocal()
 	hasExt := c.IsExternal()
 	if hasLocal && hasExt {
@@ -180,22 +188,22 @@ type ExternalConfigRef struct {
 	URL  string `json:"url,omitempty" yaml:"url,omitempty"`
 }
 
-// Validate enforces GitHub file mode XOR URL mode.
+// Validate trims all string fields (normalizing Path), then enforces GitHub file mode XOR URL mode.
 func (e *ExternalConfigRef) Validate() error {
 	if e == nil {
 		return errors.New("cre: external config ref is nil")
 	}
-	rawURL := strings.TrimSpace(e.URL)
-	hasURL := rawURL != ""
-	repo := strings.TrimSpace(e.Repo)
-	ref := strings.TrimSpace(e.Ref)
-	pathNorm := normalizeGitHubConfigPath(e.Path)
+	e.URL = strings.TrimSpace(e.URL)
+	e.Repo = strings.TrimSpace(e.Repo)
+	e.Ref = strings.TrimSpace(e.Ref)
+	e.Path = normalizeGitHubConfigPath(e.Path)
 
-	if repo != "" && ref != "" && pathNorm == "" {
+	if e.Repo != "" && e.Ref != "" && e.Path == "" {
 		return errors.New("cre: external config: path must name a non-empty file path within the repository")
 	}
 
-	hasGH := repo != "" && ref != "" && pathNorm != ""
+	hasURL := e.URL != ""
+	hasGH := e.Repo != "" && e.Ref != "" && e.Path != ""
 
 	if hasURL && hasGH {
 		return errors.New("cre: external config: specify either url or repo/ref/path, not both")
@@ -204,12 +212,12 @@ func (e *ExternalConfigRef) Validate() error {
 		return errors.New("cre: external config: url or repo/ref/path is required")
 	}
 	if hasURL {
-		if err := validURL(rawURL); err != nil {
+		if err := validURL(e.URL); err != nil {
 			return fmt.Errorf("cre: external config: %w", err)
 		}
 	}
 	if hasGH {
-		if _, _, err := parseGitHubRepo(repo); err != nil {
+		if _, _, err := parseGitHubRepo(e.Repo); err != nil {
 			return err
 		}
 	}
@@ -217,8 +225,7 @@ func (e *ExternalConfigRef) Validate() error {
 	return nil
 }
 
-// IsURL reports whether the url field is non-empty (after [strings.TrimSpace]).
-// When true, [ExternalConfigRef.Validate] requires an absolute http or https URL.
+// IsURL reports whether the url field is non-empty.
 func (e *ExternalConfigRef) IsURL() bool {
 	if e == nil {
 		return false

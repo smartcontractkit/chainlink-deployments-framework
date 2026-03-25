@@ -31,7 +31,7 @@ func resolveConfigHttp(ctx context.Context, src ConfigSource, httpClient *http.C
 
 	if ref.IsURL() {
 		plain := plainHTTPClient(httpClient)
-		resp, err := httpGet(ctx, plain, strings.TrimSpace(ref.URL), "download config")
+		resp, err := httpGet(ctx, plain, ref.URL, "download config")
 		if err != nil {
 			return "", err
 		}
@@ -59,10 +59,7 @@ func configExternalRefSummary(e *ExternalConfigRef) string {
 	}
 
 	return fmt.Sprintf("url=%q repo=%q ref=%q path=%q",
-		strings.TrimSpace(e.URL),
-		strings.TrimSpace(e.Repo),
-		strings.TrimSpace(e.Ref),
-		normalizeGitHubConfigPath(e.Path),
+		e.URL, e.Repo, e.Ref, e.Path,
 	)
 }
 
@@ -80,16 +77,15 @@ func fetchGitHubFileContent(ctx context.Context, client *http.Client, repo, ref,
 	if err != nil {
 		return nil, err
 	}
-	path = normalizeGitHubConfigPath(path)
 	if path == "" {
 		return nil, errors.New("cre: github config: path is required")
 	}
 	apiPath := encodeGitHubPath(path)
-	refQ := url.QueryEscape(strings.TrimSpace(ref))
+	refQ := url.QueryEscape(ref)
 	apiURL := fmt.Sprintf("https://api.github.com/repos/%s/%s/contents/%s?ref=%s", owner, name, apiPath, refQ)
 	body, err := githubGet(ctx, client, apiURL, "github config")
 	if err != nil {
-		return nil, fmt.Errorf("cre: github config %s/%s ref %q path %q: %w", owner, name, strings.TrimSpace(ref), path, err)
+		return nil, fmt.Errorf("cre: github config %s/%s ref %q path %q: %w", owner, name, ref, path, err)
 	}
 	var file githubFileAPIResponse
 	if unmarshalErr := json.Unmarshal(body, &file); unmarshalErr != nil {

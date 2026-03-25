@@ -96,11 +96,7 @@ func binaryExternalRefSummary(e *ExternalBinaryRef) string {
 	}
 
 	return fmt.Sprintf("url=%q repo=%q releaseTag=%q assetName=%q sha256=%q",
-		strings.TrimSpace(e.URL),
-		strings.TrimSpace(e.Repo),
-		strings.TrimSpace(e.ReleaseTag),
-		strings.TrimSpace(e.AssetName),
-		strings.TrimSpace(e.SHA256),
+		e.URL, e.Repo, e.ReleaseTag, e.AssetName, e.SHA256,
 	)
 }
 
@@ -160,20 +156,18 @@ func resolveGitHubAssetURL(ctx context.Context, client *http.Client, repo, tag, 
 	if err != nil {
 		return "", err
 	}
-	tagClean := strings.TrimSpace(tag)
-	want := strings.TrimSpace(assetName)
-	tagEnc := url.PathEscape(tagClean)
+	tagEnc := url.PathEscape(tag)
 	apiURL := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/tags/%s", owner, name, tagEnc)
 	body, err := githubGet(ctx, client, apiURL, "github release")
 	if err != nil {
-		return "", fmt.Errorf("cre: github release %s/%s tag %q asset %q: %w", owner, name, tagClean, want, err)
+		return "", fmt.Errorf("cre: github release %s/%s tag %q asset %q: %w", owner, name, tag, assetName, err)
 	}
 	var rel githubRelease
 	if err := json.Unmarshal(body, &rel); err != nil {
-		return "", fmt.Errorf("cre: github release decode %s/%s tag %q: %w", owner, name, tagClean, err)
+		return "", fmt.Errorf("cre: github release decode %s/%s tag %q: %w", owner, name, tag, err)
 	}
 	for _, a := range rel.Assets {
-		if a.Name != want {
+		if a.Name != assetName {
 			continue
 		}
 		if u := strings.TrimSpace(a.URL); u != "" {
@@ -184,5 +178,5 @@ func resolveGitHubAssetURL(ctx context.Context, client *http.Client, repo, tag, 
 		}
 	}
 
-	return "", fmt.Errorf("cre: github release %s/%s tag %q: asset %q not found in release assets", owner, name, tagClean, want)
+	return "", fmt.Errorf("cre: github release %s/%s tag %q: asset %q not found in release assets", owner, name, tag, assetName)
 }
