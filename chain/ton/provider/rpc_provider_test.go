@@ -24,7 +24,6 @@ func Test_RPCChainProviderConfig_validate(t *testing.T) {
 				c.WSURL = "ws://localhost:8080"
 				c.DeployerSignerGen = PrivateKeyRandom()
 				c.WalletVersion = ""
-				c.SubwalletID = nil
 			},
 		},
 		{
@@ -240,59 +239,6 @@ func Test_getWalletVersionConfig(t *testing.T) {
 	}
 }
 
-func Test_ParseSubwalletID(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name          string
-		input         string
-		wantSubwallet *SubwalletID
-		wantErr       bool
-	}{
-		{
-			name:          "default subwallet ID (empty string)",
-			input:         "",
-			wantSubwallet: nil,
-			wantErr:       false,
-		},
-		{
-			name:          "valid subwallet ID",
-			input:         "42",
-			wantSubwallet: func() *SubwalletID { v := SubwalletID(42); return &v }(),
-			wantErr:       false,
-		},
-		{
-			name:    "invalid subwallet ID (non-numeric)",
-			input:   "abc",
-			wantErr: true,
-		},
-		{
-			name:    "invalid subwallet ID (negative number)",
-			input:   "-1",
-			wantErr: true,
-		},
-		{
-			name:    "invalid subwallet ID (too large)",
-			input:   "5000000000",
-			wantErr: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			got, err := ParseSubwalletID(tt.input)
-			if tt.wantErr {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-				assert.Equal(t, tt.wantSubwallet, got)
-			}
-		})
-	}
-}
-
 func Test_NewRPCChainProvider(t *testing.T) {
 	t.Parallel()
 
@@ -318,7 +264,6 @@ func Test_createWallet(t *testing.T) {
 	tests := []struct {
 		name          string
 		version       WalletVersion
-		subwalletID   *SubwalletID
 		expectError   bool
 		errorContains string
 	}{
@@ -335,7 +280,7 @@ func Test_createWallet(t *testing.T) {
 			t.Parallel()
 
 			privateKey := make([]byte, 32)
-			wallet, err := createWallet(nil, privateKey, tt.version, tt.subwalletID)
+			wallet, err := createWallet(nil, privateKey, tt.version)
 
 			if tt.expectError {
 				require.Error(t, err)

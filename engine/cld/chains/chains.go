@@ -458,18 +458,12 @@ func (l *chainLoaderTon) Load(ctx context.Context, selector uint64) (fchain.Bloc
 	httpURL := network.RPCs[0].HTTPURL
 	wsURL := network.RPCs[0].WSURL
 
-	subwalletID, err := tonprov.ParseSubwalletID(l.cfg.Ton.SubwalletID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse subwallet ID: %w", err)
-	}
-
 	c, err := tonprov.NewRPCChainProvider(selector,
 		tonprov.RPCChainProviderConfig{
 			HTTPURL:           httpURL,
 			WSURL:             wsURL,
 			DeployerSignerGen: tonprov.PrivateKeyFromRaw(l.cfg.Ton.DeployerKey),
 			WalletVersion:     tonprov.WalletVersion(l.cfg.Ton.WalletVersion),
-			SubwalletID:       subwalletID,
 		},
 	).Initialize(ctx)
 	if err != nil {

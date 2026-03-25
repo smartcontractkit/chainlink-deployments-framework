@@ -22,7 +22,6 @@ onchain:
   ton:
     deployer_key: "0xedd"
     wallet_version: "V5R1"
-    subwallet_id: "42"
   stellar:
     deployer_key: "0x567"
   canton:
