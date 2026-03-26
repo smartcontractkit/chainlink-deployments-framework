@@ -14,10 +14,13 @@ import (
 
 	fchain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	aptosprov "github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos/provider"
+	cantonprov "github.com/smartcontractkit/chainlink-deployments-framework/chain/canton/provider"
+	cantonauth "github.com/smartcontractkit/chainlink-deployments-framework/chain/canton/provider/authentication"
 	fevm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	evmprov "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider"
 	evmclient "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider/rpcclient"
 	solanaprov "github.com/smartcontractkit/chainlink-deployments-framework/chain/solana/provider"
+	stellarprov "github.com/smartcontractkit/chainlink-deployments-framework/chain/stellar/provider"
 	suiprov "github.com/smartcontractkit/chainlink-deployments-framework/chain/sui/provider"
 	tonprov "github.com/smartcontractkit/chainlink-deployments-framework/chain/ton/provider"
 	tronprov "github.com/smartcontractkit/chainlink-deployments-framework/chain/tron/provider"
@@ -174,38 +177,50 @@ func newChainLoaders(
 	if useKMS(cfg.KMS) || cfg.EVM.DeployerKey != "" {
 		loaders[chainsel.FamilyEVM] = newChainLoaderEVM(networks, cfg, lggr)
 	} else {
-		lggr.Warn("Skipping EVM chains, no private key or KMS config found in secrets")
+		lggr.Info("Skipping EVM chains, no private key or KMS config found in secrets")
 	}
 
 	// Tron chains are loaded if either KMS or deployer key is configured.
 	if useKMS(cfg.KMS) || cfg.Tron.DeployerKey != "" {
 		loaders[chainsel.FamilyTron] = newChainLoaderTron(networks, cfg)
 	} else {
-		lggr.Warn("Skipping Tron chains, no private key or KMS config found in secrets")
+		lggr.Info("Skipping Tron chains, no private key or KMS config found in secrets")
 	}
 
 	if cfg.Solana.ProgramsDirPath != "" && cfg.Solana.WalletKey != "" {
 		loaders[chainsel.FamilySolana] = newChainLoaderSolana(networks, cfg)
 	} else {
-		lggr.Warn("Skipping Solana chains, no private key or program path found in secrets")
+		lggr.Info("Skipping Solana chains, no private key or program path found in secrets")
 	}
 
 	if cfg.Aptos.DeployerKey != "" {
 		loaders[chainsel.FamilyAptos] = newChainLoaderAptos(networks, cfg)
 	} else {
-		lggr.Warn("Skipping Aptos chains, no private key found in secrets")
+		lggr.Info("Skipping Aptos chains, no private key found in secrets")
 	}
 
 	if cfg.Sui.DeployerKey != "" {
 		loaders[chainsel.FamilySui] = newChainLoaderSui(networks, cfg)
 	} else {
-		lggr.Warn("Skipping Sui chains, no private key found in secrets")
+		lggr.Info("Skipping Sui chains, no private key found in secrets")
+	}
+
+	if cfg.Stellar.DeployerKey != "" {
+		loaders[chainsel.FamilyStellar] = newChainLoaderStellar(networks, cfg)
+	} else {
+		lggr.Info("Skipping Stellar chains, no private key found in secrets")
 	}
 
 	if cfg.Ton.DeployerKey != "" {
 		loaders[chainsel.FamilyTon] = newChainLoaderTon(networks, cfg)
 	} else {
-		lggr.Warn("Skipping Ton chains, no private key found in secrets")
+		lggr.Info("Skipping Ton chains, no private key found in secrets")
+	}
+
+	if cfg.Canton.JWTToken != "" {
+		loaders[chainsel.FamilyCanton] = newChainLoaderCanton(networks, cfg)
+	} else {
+		lggr.Info("Skipping Canton chains, no JWT token found in secrets")
 	}
 
 	return loaders
@@ -217,6 +232,9 @@ var (
 	_ ChainLoader = &chainLoaderEVM{}
 	_ ChainLoader = &chainLoaderTron{}
 	_ ChainLoader = &chainLoaderSui{}
+	_ ChainLoader = &chainLoaderStellar{}
+	_ ChainLoader = &chainLoaderTon{}
+	_ ChainLoader = &chainLoaderCanton{}
 )
 
 // ChainLoader is an interface that defines the methods for loading a chain.
@@ -319,6 +337,53 @@ func (l *chainLoaderSui) Load(ctx context.Context, selector uint64) (fchain.Bloc
 	).Initialize(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Sui chain %d: %w", selector, err)
+	}
+
+	return c, nil
+}
+
+// chainLoaderStellar implements the ChainLoader interface for Stellar.
+type chainLoaderStellar struct {
+	*baseChainLoader
+}
+
+// newChainLoaderStellar creates a new chain loader for Stellar.
+func newChainLoaderStellar(
+	networks *cfgnet.Config, cfg cfgenv.OnchainConfig,
+) *chainLoaderStellar {
+	return &chainLoaderStellar{
+		baseChainLoader: newBaseChainLoader(networks, cfg),
+	}
+}
+
+// Load loads a Stellar Chain for a selector.
+// RPC URL (Soroban) comes from network.RPCs like other chains; passphrase and Friendbot URL from metadata.
+func (l *chainLoaderStellar) Load(ctx context.Context, selector uint64) (fchain.BlockChain, error) {
+	network, err := l.getNetwork(selector)
+	if err != nil {
+		return nil, err
+	}
+
+	rpcURL := network.RPCs[0].HTTPURL
+	if rpcURL == "" {
+		return nil, fmt.Errorf("stellar network %d: RPC http_url is required", selector)
+	}
+
+	md, err := cfgnet.DecodeMetadata[cfgnet.StellarMetadata](network.Metadata)
+	if err != nil {
+		return nil, fmt.Errorf("stellar network %d: decode metadata: %w", selector, err)
+	}
+
+	c, err := stellarprov.NewRPCChainProvider(selector,
+		stellarprov.RPCChainProviderConfig{
+			NetworkPassphrase:  md.NetworkPassphrase,
+			FriendbotURL:       md.FriendbotURL,
+			SorobanRPCURL:      rpcURL,
+			DeployerKeypairGen: stellarprov.KeypairFromHex(l.cfg.Stellar.DeployerKey),
+		},
+	).Initialize(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize Stellar chain %d: %w", selector, err)
 	}
 
 	return c, nil
@@ -451,12 +516,13 @@ func (l *chainLoaderEVM) Load(ctx context.Context, selector uint64) (fchain.Bloc
 	clientOpts := []func(client *evmclient.MultiClient){
 		func(client *evmclient.MultiClient) {
 			client.RetryConfig = evmclient.RetryConfig{
-				Attempts:     5,                     // assuming failure rate is 20%, this will take 5 attempts to succeed
-				Delay:        10 * time.Millisecond, // this is a very short delay, we want to be fast in this case
-				Timeout:      5 * time.Second,
-				DialAttempts: 5,
-				DialDelay:    10 * time.Millisecond,
-				DialTimeout:  2 * time.Second,
+				Attempts:           5,                     // assuming failure rate is 20%, this will take 5 attempts to succeed
+				Delay:              10 * time.Millisecond, // this is a very short delay, we want to be fast in this case
+				Timeout:            5 * time.Second,
+				DialAttempts:       5,
+				DialDelay:          10 * time.Millisecond,
+				DialTimeout:        2 * time.Second,
+				HealthCheckTimeout: 15 * time.Second, // high concurrency needs more headroom than the 2s default
 			}
 		},
 	}
@@ -648,6 +714,72 @@ func (l *chainLoaderTron) tronSignerGenerator(
 	}
 
 	return tronprov.SignerGenPrivateKey(cfg.Tron.DeployerKey)
+}
+
+// chainLoaderCanton implements the ChainLoader interface for Canton.
+type chainLoaderCanton struct {
+	*baseChainLoader
+}
+
+// newChainLoaderCanton creates a new chain loader for Canton.
+func newChainLoaderCanton(
+	networks *cfgnet.Config, cfg cfgenv.OnchainConfig,
+) *chainLoaderCanton {
+	return &chainLoaderCanton{
+		baseChainLoader: newBaseChainLoader(networks, cfg),
+	}
+}
+
+// Load loads a Canton Chain for a selector.
+// Participant configurations come from network metadata, and JWT token from env config.
+func (l *chainLoaderCanton) Load(ctx context.Context, selector uint64) (fchain.BlockChain, error) {
+	network, err := l.getNetwork(selector)
+	if err != nil {
+		return nil, err
+	}
+
+	// Decode Canton metadata to get participant configurations
+	md, err := cfgnet.DecodeMetadata[cfgnet.CantonMetadata](network.Metadata)
+	if err != nil {
+		return nil, fmt.Errorf("canton network %d: decode metadata: %w", selector, err)
+	}
+
+	if len(md.Participants) == 0 {
+		return nil, fmt.Errorf("canton network %d: no participants found in metadata", selector)
+	}
+
+	if l.cfg.Canton.JWTToken == "" {
+		return nil, fmt.Errorf("canton network %d: JWT token is required", selector)
+	}
+
+	// Use TLS-enforcing auth provider for Canton participant endpoints.
+	authProvider := cantonauth.NewStaticProvider(l.cfg.Canton.JWTToken)
+
+	participants := make([]cantonprov.ParticipantConfig, len(md.Participants))
+	for i, participantMD := range md.Participants {
+		participants[i] = cantonprov.ParticipantConfig{
+			Endpoints: cantonprov.Endpoints{
+				JSONLedgerAPIURL: participantMD.JSONLedgerAPIURL,
+				GRPCLedgerAPIURL: participantMD.GRPCLedgerAPIURL,
+				AdminAPIURL:      participantMD.AdminAPIURL,
+				ValidatorAPIURL:  participantMD.ValidatorAPIURL,
+			},
+			UserID:       participantMD.UserID,
+			PartyID:      participantMD.PartyID,
+			AuthProvider: authProvider,
+		}
+	}
+
+	c, err := cantonprov.NewRPCChainProvider(selector,
+		cantonprov.RPCChainProviderConfig{
+			Participants: participants,
+		},
+	).Initialize(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize Canton chain %d: %w", selector, err)
+	}
+
+	return c, nil
 }
 
 // useKMS returns true if both KeyID and KeyRegion are set in the provided KMS config.

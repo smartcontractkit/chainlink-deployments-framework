@@ -7,6 +7,7 @@ package runtime
 import (
 	"context"
 
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/internal/mcmsutils"
 	"github.com/smartcontractkit/mcms"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -39,16 +40,22 @@ func (_m *mockProposalExecutor) EXPECT() *mockProposalExecutor_Expecter {
 }
 
 // ExecuteMCMS provides a mock function for the type mockProposalExecutor
-func (_mock *mockProposalExecutor) ExecuteMCMS(ctx context.Context, proposal *mcms.Proposal) error {
-	ret := _mock.Called(ctx, proposal)
+func (_mock *mockProposalExecutor) ExecuteMCMS(ctx context.Context, proposal *mcms.Proposal, opts ...mcmsutils.ExecuteOption) error {
+	var tmpRet mock.Arguments
+	if len(opts) > 0 {
+		tmpRet = _mock.Called(ctx, proposal, opts)
+	} else {
+		tmpRet = _mock.Called(ctx, proposal)
+	}
+	ret := tmpRet
 
 	if len(ret) == 0 {
 		panic("no return value specified for ExecuteMCMS")
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *mcms.Proposal) error); ok {
-		r0 = returnFunc(ctx, proposal)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *mcms.Proposal, ...mcmsutils.ExecuteOption) error); ok {
+		r0 = returnFunc(ctx, proposal, opts...)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -63,11 +70,13 @@ type mockProposalExecutor_ExecuteMCMS_Call struct {
 // ExecuteMCMS is a helper method to define mock.On call
 //   - ctx context.Context
 //   - proposal *mcms.Proposal
-func (_e *mockProposalExecutor_Expecter) ExecuteMCMS(ctx interface{}, proposal interface{}) *mockProposalExecutor_ExecuteMCMS_Call {
-	return &mockProposalExecutor_ExecuteMCMS_Call{Call: _e.mock.On("ExecuteMCMS", ctx, proposal)}
+//   - opts ...mcmsutils.ExecuteOption
+func (_e *mockProposalExecutor_Expecter) ExecuteMCMS(ctx interface{}, proposal interface{}, opts ...interface{}) *mockProposalExecutor_ExecuteMCMS_Call {
+	return &mockProposalExecutor_ExecuteMCMS_Call{Call: _e.mock.On("ExecuteMCMS",
+		append([]interface{}{ctx, proposal}, opts...)...)}
 }
 
-func (_c *mockProposalExecutor_ExecuteMCMS_Call) Run(run func(ctx context.Context, proposal *mcms.Proposal)) *mockProposalExecutor_ExecuteMCMS_Call {
+func (_c *mockProposalExecutor_ExecuteMCMS_Call) Run(run func(ctx context.Context, proposal *mcms.Proposal, opts ...mcmsutils.ExecuteOption)) *mockProposalExecutor_ExecuteMCMS_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -77,9 +86,16 @@ func (_c *mockProposalExecutor_ExecuteMCMS_Call) Run(run func(ctx context.Contex
 		if args[1] != nil {
 			arg1 = args[1].(*mcms.Proposal)
 		}
+		var arg2 []mcmsutils.ExecuteOption
+		var variadicArgs []mcmsutils.ExecuteOption
+		if len(args) > 2 {
+			variadicArgs = args[2].([]mcmsutils.ExecuteOption)
+		}
+		arg2 = variadicArgs
 		run(
 			arg0,
 			arg1,
+			arg2...,
 		)
 	})
 	return _c
@@ -90,7 +106,7 @@ func (_c *mockProposalExecutor_ExecuteMCMS_Call) Return(err error) *mockProposal
 	return _c
 }
 
-func (_c *mockProposalExecutor_ExecuteMCMS_Call) RunAndReturn(run func(ctx context.Context, proposal *mcms.Proposal) error) *mockProposalExecutor_ExecuteMCMS_Call {
+func (_c *mockProposalExecutor_ExecuteMCMS_Call) RunAndReturn(run func(ctx context.Context, proposal *mcms.Proposal, opts ...mcmsutils.ExecuteOption) error) *mockProposalExecutor_ExecuteMCMS_Call {
 	_c.Call.Return(run)
 	return _c
 }

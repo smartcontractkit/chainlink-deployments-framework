@@ -1,6 +1,7 @@
 package operations
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -286,7 +287,7 @@ func typeReport[IN, OUT any](r Report[any, any]) (Report[IN, OUT], bool) {
 		return Report[IN, OUT]{}, false
 	}
 	var input IN
-	if err = json.Unmarshal(inputBytes, &input); err != nil {
+	if err = decode(inputBytes, &input); err != nil {
 		return Report[IN, OUT]{}, false
 	}
 
@@ -296,7 +297,7 @@ func typeReport[IN, OUT any](r Report[any, any]) (Report[IN, OUT], bool) {
 	}
 
 	var output OUT
-	if err := json.Unmarshal(outputBytes, &output); err != nil {
+	if err := decode(outputBytes, &output); err != nil {
 		return Report[IN, OUT]{}, false
 	}
 
@@ -310,4 +311,11 @@ func typeReport[IN, OUT any](r Report[any, any]) (Report[IN, OUT], bool) {
 		ChildOperationReports: r.ChildOperationReports,
 		ExecutionSeries:       r.ExecutionSeries,
 	}, true
+}
+
+func decode(data []byte, out any) error {
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.UseNumber()
+
+	return dec.Decode(out)
 }

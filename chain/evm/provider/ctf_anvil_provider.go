@@ -249,6 +249,9 @@ type CTFAnvilChainProviderConfig struct {
 	// DefaultNetwork once
 	Once *sync.Once
 
+	// Optional: name given to the anvil container
+	Name string
+
 	// Required: ConfirmFunctor is a type that generates a confirmation function for transactions.
 	// Use ConfirmFuncGeth to use the Geth client for transaction confirmation, or
 	// ConfirmFuncSeth to use the Seth client for transaction confirmation with richer debugging.
@@ -272,6 +275,14 @@ type CTFAnvilChainProviderConfig struct {
 	// startup command, enabling advanced Anvil configurations such as custom block time,
 	// gas limits, or other Anvil-specific options.
 	DockerCmdParamsOverrides []string
+
+	// Optional: ForkURLs is a list of RPC URLs to fork from when starting Anvil.
+	// If provided, Anvil will start in fork mode, allowing you to test against
+	// a forked state of an existing blockchain. When multiple URLs are provided,
+	// they are used in round-robin fashion on retry attempts. This is useful for
+	// load balancing across multiple RPC endpoints or providing fallback URLs.
+	// Example: []string{"https://rpc.blockchain.com/your-api-key"}
+	ForkURLs []string
 
 	// Optional: Port specifies the port for the Anvil container. If not provided,
 	// a free port will be automatically allocated. Use this when you need the Anvil
@@ -339,7 +350,7 @@ type CTFAnvilChainProvider struct {
 
 	chain     *evm.Chain
 	httpURL   string
-	container testcontainers.Container
+	Container testcontainers.Container
 }
 
 // NewCTFAnvilChainProvider creates a new CTFAnvilChainProvider with the given selector and
@@ -370,23 +381,23 @@ func (p *CTFAnvilChainProvider) Initialize(ctx context.Context) (chain.BlockChai
 
 	err := p.config.validate()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to validate config: %w", err)
 	}
 
 	chainID, err := chainsel.GetChainIDFromSelector(p.selector)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get chain id from selector: %w", err)
 	}
 
 	httpURL, err := p.startContainer(ctx, chainID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to start container: %w", err)
 	}
 	p.httpURL = httpURL
 
 	lggr, err := logger.New()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create new logger: %w", err)
 	}
 
 	client, err := rpcclient.NewMultiClient(lggr, rpcclient.RPCConfig{
@@ -418,7 +429,7 @@ func (p *CTFAnvilChainProvider) Initialize(ctx context.Context) (chain.BlockChai
 		// Use custom deployer transactor generator
 		deployerKey, err = p.config.DeployerTransactorGen.Generate(chainIDBigInt)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to generate deployer transactor: %w", err)
 		}
 
 		signHashFunc = func(hash []byte) ([]byte, error) {
@@ -426,14 +437,14 @@ func (p *CTFAnvilChainProvider) Initialize(ctx context.Context) (chain.BlockChai
 		}
 	} else {
 		// Use default Anvil deployer account
-		deployerPrivateKey, parseErr := crypto.HexToECDSA(anvilTestPrivateKeys[0])
-		if parseErr != nil {
-			return nil, parseErr
+		deployerPrivateKey, perr := crypto.HexToECDSA(anvilTestPrivateKeys[0])
+		if perr != nil {
+			return nil, fmt.Errorf("failed to parse anvil test private key: %w", perr)
 		}
 
-		deployerKey, err = bind.NewKeyedTransactorWithChainID(deployerPrivateKey, chainIDBigInt)
-		if err != nil {
-			return nil, err
+		deployerKey, perr = bind.NewKeyedTransactorWithChainID(deployerPrivateKey, chainIDBigInt)
+		if perr != nil {
+			return nil, fmt.Errorf("failed to create eth transactor: %w", perr)
 		}
 
 		signHashFunc = func(hash []byte) ([]byte, error) {
@@ -449,14 +460,14 @@ func (p *CTFAnvilChainProvider) Initialize(ctx context.Context) (chain.BlockChai
 	// Build additional user transactors from the default Anvil accounts
 	userTransactors, err := p.getUserTransactors(chainID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get user transactors: %w", err)
 	}
 
 	confirmFunc, err := p.config.ConfirmFunctor.Generate(
 		ctx, p.selector, client, deployerKey.From,
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to generate confirm function: %w", err)
 	}
 
 	p.chain = &evm.Chain{
@@ -515,12 +526,12 @@ func (p *CTFAnvilChainProvider) GetNodeHTTPURL() string {
 //
 // Returns an error if the container termination fails.
 func (p *CTFAnvilChainProvider) Cleanup(ctx context.Context) error {
-	if p.container != nil {
-		err := p.container.Terminate(ctx)
+	if p.Container != nil {
+		err := p.Container.Terminate(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to terminate Anvil container: %w", err)
 		}
-		p.container = nil // Clear the reference after successful termination
+		p.Container = nil // Clear the reference after successful termination
 	}
 
 	return nil
@@ -537,9 +548,8 @@ func (p *CTFAnvilChainProvider) Cleanup(ctx context.Context) error {
 //
 // Returns the external HTTP URL that can be used to connect to the Anvil node.
 func (p *CTFAnvilChainProvider) startContainer(ctx context.Context, chainID string) (string, error) {
-	var (
-		attempts = uint(10)
-	)
+	attempts := uint(10)
+	attempt := uint(0)
 
 	err := framework.DefaultNetwork(p.config.Once)
 	if err != nil {
@@ -566,13 +576,20 @@ func (p *CTFAnvilChainProvider) startContainer(ctx context.Context, chainID stri
 			portStr = strconv.Itoa(port)
 		}
 
+		dockerCmdOverrides := p.config.DockerCmdParamsOverrides
+		if len(p.config.ForkURLs) > 0 {
+			url := p.config.ForkURLs[attempt%uint(len(p.config.ForkURLs))]
+			dockerCmdOverrides = append(dockerCmdOverrides, "--fork-url", url)
+		}
+
 		// Create the input for the Anvil blockchain network
 		input := &blockchain.Input{
+			ContainerName:            p.config.Name,
 			Type:                     blockchain.TypeAnvil,
 			ChainID:                  chainID,
 			Port:                     portStr,
 			Image:                    p.config.Image, // Use custom image if provided, empty string uses default
-			DockerCmdParamsOverrides: p.config.DockerCmdParamsOverrides,
+			DockerCmdParamsOverrides: dockerCmdOverrides,
 		}
 
 		// Create the CTF container for Anvil
@@ -587,7 +604,7 @@ func (p *CTFAnvilChainProvider) startContainer(ctx context.Context, chainID stri
 		}
 
 		// Store container reference for manual cleanup
-		p.container = output.Container
+		p.Container = output.Container
 
 		// Only register cleanup if T is available (for test cleanup)
 		if p.config.T != nil {
@@ -611,6 +628,7 @@ func (p *CTFAnvilChainProvider) startContainer(ctx context.Context, chainID stri
 		retry.Attempts(attempts),
 		retry.Delay(1*time.Second),
 		retry.DelayType(retry.FixedDelay),
+		retry.OnRetry(func(a uint, err error) { attempt = a + 1 }),
 	)
 	if err != nil {
 		return "", fmt.Errorf("failed to start CTF Anvil container after %d attempts: %w", attempts, err)

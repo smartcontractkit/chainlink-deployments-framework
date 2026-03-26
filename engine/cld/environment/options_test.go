@@ -6,9 +6,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
-
+	"github.com/smartcontractkit/chainlink-deployments-framework/cre"
 	foperations "github.com/smartcontractkit/chainlink-deployments-framework/operations"
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
 func Test_WithAnvilKeyAsDeployer(t *testing.T) {
@@ -110,4 +110,28 @@ func Test_WithDryRunJobDistributor(t *testing.T) {
 	option(opts)
 
 	assert.True(t, opts.useDryRunJobDistributor)
+}
+
+func Test_WithCRERunner(t *testing.T) {
+	t.Parallel()
+
+	opts := &LoadConfig{}
+	assert.Nil(t, opts.creRunner)
+
+	runner := cre.NewCLIRunner("/path/to/cre")
+	option := WithCRERunner(runner)
+	option(opts)
+
+	assert.Equal(t, runner, opts.creRunner)
+}
+
+func Test_newLoadConfig_defaultCRERunner(t *testing.T) {
+	t.Parallel()
+
+	cfg, err := newLoadConfig()
+	require.NoError(t, err)
+
+	require.NotNil(t, cfg.creRunner)
+	_, ok := cfg.creRunner.(*cre.CLIRunner)
+	require.True(t, ok, "expected *cre.CLIRunner, got %T", cfg.creRunner)
 }

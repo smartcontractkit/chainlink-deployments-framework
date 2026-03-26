@@ -1,0 +1,189 @@
+package provider
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"net/http"
+	"strconv"
+	"sync"
+	"testing"
+
+	adminv2 "github.com/digital-asset/dazl-client/v8/go/api/com/daml/ledger/api/v2/admin"
+	"github.com/smartcontractkit/freeport"
+	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/canton"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/canton/provider/authentication"
+)
+
+// CTFChainProviderConfig is the configuration for the CTFChainProvider.
+type CTFChainProviderConfig struct {
+	// Required: The number of Canton validators to start in the CTF network; must be > 0
+	NumberOfValidators int
+	// Optional: The Canton Docker image to use; if empty, the default CTF image will be used
+	Image string
+
+	// Required: A sync.Once instance to ensure that the CTF framework only sets up the new
+	// DefaultNetwork once
+	Once *sync.Once
+}
+
+func (c CTFChainProviderConfig) validate() error {
+	if c.NumberOfValidators <= 0 {
+		return errors.New("number of validators must be greater than zero")
+	}
+	if c.Once == nil {
+		return errors.New("sync.Once instance is required")
+	}
+
+	return nil
+}
+
+var _ chain.Provider = (*CTFChainProvider)(nil)
+
+// CTFChainProvider initializes a Canton chain instance using the Chainlink Testing Framework (CTF).
+// It will spin up a local Canton instance inside Docker containers, with the specified number of validators.
+type CTFChainProvider struct {
+	t        *testing.T
+	selector uint64
+	config   CTFChainProviderConfig
+
+	chain *canton.Chain
+}
+
+func NewCTFChainProvider(t *testing.T, selector uint64, config CTFChainProviderConfig) *CTFChainProvider {
+	t.Helper()
+
+	p := &CTFChainProvider{
+		t:        t,
+		selector: selector,
+		config:   config,
+	}
+
+	return p
+}
+
+func (p *CTFChainProvider) Initialize(ctx context.Context) (chain.BlockChain, error) {
+	if p.chain != nil {
+		return p.chain, nil // already initialized
+	}
+
+	if err := p.config.validate(); err != nil {
+		return nil, err
+	}
+
+	// initialize the docker network used by CTF
+	if err := framework.DefaultNetwork(p.config.Once); err != nil {
+		return nil, err
+	}
+
+	port := freeport.GetOne(p.t)
+	input := &blockchain.Input{
+		Type:                     blockchain.TypeCanton,
+		Image:                    p.config.Image,
+		Port:                     strconv.Itoa(port),
+		NumberOfCantonValidators: p.config.NumberOfValidators,
+	}
+	output, err := blockchain.NewBlockchainNetwork(input)
+	if err != nil {
+		p.t.Logf("Error creating Canton blockchain network: %v", err)
+		freeport.Return([]int{port})
+
+		return nil, err
+	}
+
+	// Test HTTP health endpoint
+	for i, participant := range output.NetworkSpecificData.CantonData.ExternalEndpoints.Participants {
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, participant.HTTPHealthCheckURL+"/health", nil)
+		require.NoError(p.t, err)
+		resp, err := http.DefaultClient.Do(req)
+		require.NoErrorf(p.t, err, "Error reaching Canton participant %d health endpoint", i+1)
+		_ = resp.Body.Close()
+		require.Equal(p.t, http.StatusOK, resp.StatusCode, "Unexpected status code from Canton participant %d health endpoint", i+1)
+	}
+
+	p.chain = &canton.Chain{
+		ChainMetadata: canton.ChainMetadata{Selector: p.selector},
+		Participants:  make([]canton.Participant, len(output.NetworkSpecificData.CantonData.ExternalEndpoints.Participants)),
+	}
+
+	for i, participantEndpoints := range output.NetworkSpecificData.CantonData.ExternalEndpoints.Participants {
+		// Create an InsecureStaticProvider that always returns the same JWT token for the participant
+		authProvider := authentication.NewInsecureStaticProvider(participantEndpoints.JWT)
+		tokenSource := authProvider.TokenSource()
+		transportCredentials := authProvider.TransportCredentials()
+		perRPCCredentials := authProvider.PerRPCCredentials()
+
+		// Dial Ledger API endpoint
+		ledgerApiConn, err := grpc.NewClient(
+			participantEndpoints.GRPCLedgerAPIURL,
+			grpc.WithTransportCredentials(transportCredentials),
+			grpc.WithPerRPCCredentials(perRPCCredentials),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create Ledger API gRPC client for participant %d(%s): %w", i+1, participantEndpoints.GRPCLedgerAPIURL, err)
+		}
+		ledgerServices := canton.CreateLedgerServiceClients(ledgerApiConn)
+
+		// Dial Admin API endpoint
+		adminApiConn, err := grpc.NewClient(
+			participantEndpoints.AdminAPIURL,
+			grpc.WithTransportCredentials(transportCredentials),
+			grpc.WithPerRPCCredentials(perRPCCredentials),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create Admin API gRPC client for participant %d(%s): %w", i+1, participantEndpoints.AdminAPIURL, err)
+		}
+		adminServices := canton.CreateAdminServiceClients(adminApiConn)
+
+		// Query primary party for the user
+		resp, err := ledgerServices.Admin.UserManagement.GetUser(ctx, &adminv2.GetUserRequest{UserId: participantEndpoints.UserID})
+		if err != nil {
+			return nil, fmt.Errorf("failed to get user %q: %w", participantEndpoints.UserID, err)
+		}
+		if resp.User.PrimaryParty == "" {
+			return nil, fmt.Errorf("user %q has no primary party", participantEndpoints.UserID)
+		}
+
+		p.chain.Participants[i] = canton.Participant{
+			Name: fmt.Sprintf("Participant %v", i+1),
+			Endpoints: canton.ParticipantEndpoints{
+				JSONLedgerAPIURL: participantEndpoints.JSONLedgerAPIURL,
+				GRPCLedgerAPIURL: participantEndpoints.GRPCLedgerAPIURL,
+				AdminAPIURL:      participantEndpoints.AdminAPIURL,
+				ValidatorAPIURL:  participantEndpoints.ValidatorAPIURL,
+			},
+			InternalEndpoints: &canton.ParticipantEndpoints{
+				JSONLedgerAPIURL: output.NetworkSpecificData.CantonData.InternalEndpoints.Participants[i].JSONLedgerAPIURL,
+				GRPCLedgerAPIURL: output.NetworkSpecificData.CantonData.InternalEndpoints.Participants[i].GRPCLedgerAPIURL,
+				AdminAPIURL:      output.NetworkSpecificData.CantonData.InternalEndpoints.Participants[i].AdminAPIURL,
+				ValidatorAPIURL:  output.NetworkSpecificData.CantonData.InternalEndpoints.Participants[i].ValidatorAPIURL,
+			},
+			LedgerServices: ledgerServices,
+			AdminServices:  &adminServices,
+			TokenSource:    tokenSource,
+			UserID:         participantEndpoints.UserID,
+			PartyID:        resp.User.PrimaryParty,
+		}
+	}
+
+	return p.chain, nil
+}
+
+func (p *CTFChainProvider) Name() string {
+	return "Canton CTF Chain Provider"
+}
+
+func (p *CTFChainProvider) ChainSelector() uint64 {
+	return p.selector
+}
+
+func (p *CTFChainProvider) BlockChain() chain.BlockChain {
+	return *p.chain
+}

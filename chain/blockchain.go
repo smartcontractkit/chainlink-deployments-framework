@@ -7,9 +7,13 @@ import (
 	"reflect"
 	"slices"
 
+	chainsel "github.com/smartcontractkit/chain-selectors"
+
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/canton"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/stellar"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/sui"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/ton"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron"
@@ -23,16 +27,40 @@ var _ BlockChain = aptos.Chain{}
 var _ BlockChain = sui.Chain{}
 var _ BlockChain = ton.Chain{}
 var _ BlockChain = tron.Chain{}
+var _ BlockChain = canton.Chain{}
+var _ BlockChain = stellar.Chain{}
+
+// NetworkType represents the type of network, which can either be mainnet or testnet.
+type NetworkType string
+
+var (
+	// NetworkTypeMainnet represents the 'mainnet' network type
+	NetworkTypeMainnet NetworkType = "mainnet"
+
+	// NetworkTypeTestnet represents the 'testnet' network type
+	NetworkTypeTestnet NetworkType = "testnet"
+)
 
 // BlockChain is an interface that represents a chain.
 // A chain can be an EVM chain, Solana chain Aptos chain or others.
 type BlockChain interface {
 	// String returns chain name and selector "<name> (<selector>)"
 	String() string
-	// Name returns the name of the chain
+
+	// Name returns the name of the chain (e.g. Ethereum Mainnet, Solana Mainnet, Aptos Mainnet, etc.)
 	Name() string
+
+	// ChainSelector returns the chain's selector
 	ChainSelector() uint64
+
+	// Family returns the family of the chain (e.g. evm, solana, aptos, etc.)
 	Family() string
+
+	// NetworkType returns the type of network the chain is on (e.g. mainnet, testnet)
+	NetworkType() (chainsel.NetworkType, error)
+
+	// IsNetworkType checks if the chain is on the given network type
+	IsNetworkType(networkType chainsel.NetworkType) bool
 }
 
 // BlockChains represents a collection of chains.
@@ -133,6 +161,15 @@ func (b BlockChains) TonChains() map[uint64]ton.Chain {
 // TronChains returns a map of all Tron chains with their selectors.
 func (b BlockChains) TronChains() map[uint64]tron.Chain {
 	return getChainsByType[tron.Chain, *tron.Chain](b)
+}
+
+func (b BlockChains) CantonChains() map[uint64]canton.Chain {
+	return getChainsByType[canton.Chain, *canton.Chain](b)
+}
+
+// StellarChains returns a map of all Stellar chains with their selectors.
+func (b BlockChains) StellarChains() map[uint64]stellar.Chain {
+	return getChainsByType[stellar.Chain, *stellar.Chain](b)
 }
 
 // ChainSelectorsOption defines a function type for configuring ChainSelectors

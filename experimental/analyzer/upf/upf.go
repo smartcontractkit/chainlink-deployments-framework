@@ -11,9 +11,11 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/goccy/go-yaml"
 	chainsel "github.com/smartcontractkit/chain-selectors"
+	"github.com/smartcontractkit/chainlink-ton/pkg/bindings"
 	"github.com/smartcontractkit/mcms"
 	mcmsaptossdk "github.com/smartcontractkit/mcms/sdk/aptos"
 	mcmssuisdk "github.com/smartcontractkit/mcms/sdk/sui"
+	mcmstonsdk "github.com/smartcontractkit/mcms/sdk/ton"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
@@ -44,11 +46,8 @@ func UpfConvertTimelockProposal(
 		if batch.Metadata == nil || batch.Metadata.DecodedCalldata == nil {
 			continue
 		}
-		if batch.Metadata.ContractType == "RBACTimelock" &&
-			(batch.Metadata.DecodedCalldata.FunctionName == "function scheduleBatch((address,uint256,bytes)[] calls, bytes32 predecessor, bytes32 salt, uint256 delay) returns()" ||
-				batch.Metadata.DecodedCalldata.FunctionName == "function bypasserExecuteBatch((address,uint256,bytes)[] calls) payable returns()" ||
-				batch.Metadata.DecodedCalldata.FunctionName == "BypasserExecuteBatch" ||
-				batch.Metadata.DecodedCalldata.FunctionName == "ScheduleBatch") {
+		// Check for both RBACTimelock (EVM, Solana) and MCMS (Sui, Aptos, TON) contract types
+		if (batch.Metadata.ContractType == "RBACTimelock" || batch.Metadata.ContractType == "MCMS") && isTimelockBatchFunction(batch.Metadata.DecodedCalldata.FunctionName) {
 			batch.Metadata.DecodedCalldata.FunctionArgs["calls"] = decodedBatches[decodedBatchesIndex]
 			decodedBatchesIndex++
 		}
@@ -239,14 +238,10 @@ func encodeTransactionData(mcmsOp mcmstypes.Operation) (string, error) {
 	}
 
 	switch chainFamily {
-	case chainsel.FamilySolana:
-		return base64.StdEncoding.EncodeToString(mcmsOp.Transaction.Data), nil
-	case chainsel.FamilyAptos:
-		return base64.StdEncoding.EncodeToString(mcmsOp.Transaction.Data), nil
-	case chainsel.FamilySui:
-		return base64.StdEncoding.EncodeToString(mcmsOp.Transaction.Data), nil
-	default:
+	case chainsel.FamilyEVM:
 		return "0x" + hex.EncodeToString(mcmsOp.Transaction.Data), nil
+	default:
+		return base64.StdEncoding.EncodeToString(mcmsOp.Transaction.Data), nil
 	}
 }
 
@@ -261,55 +256,22 @@ func batchOperationsToUpfDecodedCalls(ctx context.Context, proposalContext mcmsa
 		}
 
 		decodedCalls[batchIdx] = make([]*DecodedInnerCall, len(batch.Transactions))
-
+		var describedTxs []*mcmsanalyzer.DecodedCall
 		switch family {
 		case chainsel.FamilyEVM:
-			describedTxs, err := mcmsanalyzer.AnalyzeEVMTransactions(ctx, proposalContext, env, chainSel, batch.Transactions)
-			if err != nil {
-				return nil, err
-			}
-			for callIdx, tx := range describedTxs {
-				decodedCalls[batchIdx][callIdx] = &DecodedInnerCall{
-					To:   tx.Address,
-					Data: cldDecodedCallToUpfDecodedCallData(tx),
-				}
-			}
+			describedTxs, err = mcmsanalyzer.AnalyzeEVMTransactions(ctx, proposalContext, env, chainSel, batch.Transactions)
 
 		case chainsel.FamilySolana:
-			describedTxs, err := mcmsanalyzer.AnalyzeSolanaTransactions(proposalContext, chainSel, batch.Transactions)
-			if err != nil {
-				return nil, err
-			}
-			for callIdx, tx := range describedTxs {
-				decodedCalls[batchIdx][callIdx] = &DecodedInnerCall{
-					To:   tx.Address,
-					Data: cldDecodedCallToUpfDecodedCallData(tx),
-				}
-			}
+			describedTxs, err = mcmsanalyzer.AnalyzeSolanaTransactions(proposalContext, chainSel, batch.Transactions)
 
 		case chainsel.FamilyAptos:
-			describedTxs, err := mcmsanalyzer.AnalyzeAptosTransactions(proposalContext, chainSel, batch.Transactions)
-			if err != nil {
-				return nil, err
-			}
-			for callIdx, tx := range describedTxs {
-				decodedCalls[batchIdx][callIdx] = &DecodedInnerCall{
-					To:   tx.Address,
-					Data: cldDecodedCallToUpfDecodedCallData(tx),
-				}
-			}
+			describedTxs, err = mcmsanalyzer.AnalyzeAptosTransactions(proposalContext, chainSel, batch.Transactions)
 
 		case chainsel.FamilySui:
-			describedTxs, err := mcmsanalyzer.AnalyzeSuiTransactions(proposalContext, chainSel, batch.Transactions)
-			if err != nil {
-				return nil, err
-			}
-			for callIdx, tx := range describedTxs {
-				decodedCalls[batchIdx][callIdx] = &DecodedInnerCall{
-					To:   tx.Address,
-					Data: cldDecodedCallToUpfDecodedCallData(tx),
-				}
-			}
+			describedTxs, err = mcmsanalyzer.AnalyzeSuiTransactions(proposalContext, chainSel, batch.Transactions)
+
+		case chainsel.FamilyTon:
+			describedTxs, err = mcmsanalyzer.AnalyzeTONTransactions(proposalContext, chainSel, batch.Transactions)
 
 		default:
 			for callIdx, mcmsTx := range batch.Transactions {
@@ -317,6 +279,19 @@ func batchOperationsToUpfDecodedCalls(ctx context.Context, proposalContext mcmsa
 					To:   mcmsTx.To,
 					Data: &DecodedCallData{FunctionName: family + " transaction decoding is not supported"},
 				}
+			}
+
+			continue
+		}
+
+		if err != nil {
+			return nil, err
+		}
+
+		for callIdx, tx := range describedTxs {
+			decodedCalls[batchIdx][callIdx] = &DecodedInnerCall{
+				To:   tx.Address,
+				Data: cldDecodedCallToUpfDecodedCallData(tx),
 			}
 		}
 	}
@@ -379,6 +354,14 @@ func analyzeTransaction(
 
 		return analyzeResult, "", nil
 
+	case chainsel.FamilyTon:
+		decoder := mcmstonsdk.NewDecoder(bindings.Registry)
+		analyzeResult, err := mcmsanalyzer.AnalyzeTONTransaction(proposalCtx, decoder, uint64(mcmsOp.ChainSelector), mcmsOp.Transaction)
+		if err != nil {
+			return nil, "", err
+		}
+
+		return analyzeResult, "", nil
 	default:
 		return nil, "", fmt.Errorf("unsupported chain family: %s", chainFamily)
 	}
@@ -389,6 +372,10 @@ func upfYamlMarshallers() []yaml.EncodeOption {
 	// It could be refactored into a dedicated Renderer object to improve code organization
 	// and make the marshaling logic more reusable across different output formats.
 	return []yaml.EncodeOption{
+		// Custom marshaler for rawBytes - goccy/go-yaml doesn't use MarshalYAML method
+		yaml.CustomMarshaler(func(arg rawBytes) ([]byte, error) {
+			return arg.MarshalYAML()
+		}),
 		yaml.CustomMarshaler(func(arg mcmsanalyzer.SimpleField) ([]byte, error) {
 			return yaml.Marshal(arg.Value)
 		}),

@@ -45,8 +45,10 @@ func FieldContextGet[T any](fieldCtx *FieldContext, key string) (T, error) {
 }
 
 type NamedField struct {
-	Name  string
-	Value FieldValue
+	Name     string
+	TypeName string
+	Value    FieldValue
+	RawValue any
 }
 
 func (n NamedField) GetType() string {

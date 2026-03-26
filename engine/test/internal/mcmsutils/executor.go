@@ -6,18 +6,24 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver/v3"
-	aptosapi "github.com/aptos-labs/aptos-go-sdk/api"
 	"github.com/avast/retry-go/v4"
+	"github.com/xssnick/tonutils-go/tlb"
+
+	aptosapi "github.com/aptos-labs/aptos-go-sdk/api"
 	gethtypes "github.com/ethereum/go-ethereum/core/types"
 	chainselectors "github.com/smartcontractkit/chain-selectors"
+
 	mcmslib "github.com/smartcontractkit/mcms"
+	"github.com/smartcontractkit/mcms/chainwrappers"
 	mcmssdk "github.com/smartcontractkit/mcms/sdk"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 
 	fchain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	fchainaptos "github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos"
 	fchainevm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/mcms/adapters"
 	fchainsolana "github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
+	fchainton "github.com/smartcontractkit/chainlink-deployments-framework/chain/ton"
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 )
@@ -77,7 +83,12 @@ func NewExecutor(e fdeployment.Environment) *Executor {
 // 4. Executing each operation sequentially and confirming transactions
 //
 // Returns an error if any step fails
-func (e *Executor) ExecuteMCMS(ctx context.Context, proposal *mcmslib.Proposal) error {
+func (e *Executor) ExecuteMCMS(ctx context.Context, proposal *mcmslib.Proposal, execOpts ...ExecuteOption) error {
+	opts := &executeOptions{action: mcmstypes.TimelockActionSchedule}
+	for _, execOpt := range execOpts {
+		execOpt(opts)
+	}
+
 	// Validate the proposal to ensure it is valid ensuring that all chain metadata is present.
 	if err := proposal.Validate(); err != nil {
 		return fmt.Errorf("failed to validate MCMS proposal: %w", err)
@@ -98,21 +109,10 @@ func (e *Executor) ExecuteMCMS(ctx context.Context, proposal *mcmslib.Proposal) 
 		return fmt.Errorf("failed to retrieve encoders from MCMS proposal: %w", err)
 	}
 
-	// Generate executors for each chain
-	executors := make(map[mcmstypes.ChainSelector]mcmssdk.Executor, 0)
-	for selector := range proposal.ChainMetadata {
-		b := blockchains[selector]
-
-		execFactory, ferr := GetExecutorFactory(b, encoders[selector])
-		if ferr != nil {
-			return fmt.Errorf("failed to create executor factory for chain selector %d (%s): %w", selector, b.Name(), ferr)
-		}
-
-		executor, merr := execFactory.Make()
-		if merr != nil {
-			return fmt.Errorf("failed to create executor for chain selector %d (%s): %w", selector, b.Name(), merr)
-		}
-		executors[selector] = executor
+	mcmsBlockChains := adapters.Wrap(e.env.BlockChains)
+	executors, err := chainwrappers.BuildExecutors(&mcmsBlockChains, proposal.ChainMetadata, encoders, opts.action)
+	if err != nil {
+		return fmt.Errorf("failed to build executors: %w", err)
 	}
 
 	executable, err := e.newExecutable(proposal, executors)
@@ -129,7 +129,7 @@ func (e *Executor) ExecuteMCMS(ctx context.Context, proposal *mcmslib.Proposal) 
 
 		b := blockchains[selector]
 
-		if err := confirmTransaction(b, txResult); err != nil {
+		if err := confirmTransaction(ctx, b, txResult); err != nil {
 			return fmt.Errorf("failed to confirm SetRoot transaction for chain selector %d (%s): %w", selector, b.Name(), err)
 		}
 	}
@@ -143,7 +143,7 @@ func (e *Executor) ExecuteMCMS(ctx context.Context, proposal *mcmslib.Proposal) 
 
 		b := blockchains[op.ChainSelector]
 
-		if err := confirmTransaction(b, txResult); err != nil {
+		if err := confirmTransaction(ctx, b, txResult); err != nil {
 			return fmt.Errorf(
 				"failed to confirm execute transaction for operation %d on chain selector %d (%s): %w",
 				i, op.ChainSelector, b.Name(), err,
@@ -152,6 +152,18 @@ func (e *Executor) ExecuteMCMS(ctx context.Context, proposal *mcmslib.Proposal) 
 	}
 
 	return nil
+}
+
+type executeOptions struct {
+	action mcmstypes.TimelockAction
+}
+
+type ExecuteOption = func(o *executeOptions)
+
+func WithTimelockAction(action mcmstypes.TimelockAction) ExecuteOption {
+	return func(o *executeOptions) {
+		o.action = action
+	}
 }
 
 // ExecuteTimelock executes a timelock proposal, which involves both MCMS execution
@@ -186,7 +198,7 @@ func (e *Executor) ExecuteTimelock(ctx context.Context, timelockProposal *mcmsli
 	}
 
 	// Execute the proposal against the MCMS Contract
-	if err = e.ExecuteMCMS(ctx, proposal); err != nil {
+	if err = e.ExecuteMCMS(ctx, proposal, WithTimelockAction(timelockProposal.Action)); err != nil {
 		return fmt.Errorf("failed to execute MCMS proposal: %w", err)
 	}
 
@@ -198,19 +210,10 @@ func (e *Executor) ExecuteTimelock(ctx context.Context, timelockProposal *mcmsli
 
 	// Now we execute the proposal on the Timelock contract
 
-	// Generate executors for each blockchain
-	executors := make(map[mcmstypes.ChainSelector]mcmssdk.TimelockExecutor, 0)
-	for selector, b := range blockchains {
-		execFactory, gerr := GetTimelockExecutorFactory(b)
-		if gerr != nil {
-			return fmt.Errorf("failed to create timelock executor factory for chain selector %d (%s): %w", selector, b.Name(), gerr)
-		}
-
-		executor, merr := execFactory.Make()
-		if merr != nil {
-			return fmt.Errorf("failed to create timelock executor for chain selector %d (%s): %w", selector, b.Name(), merr)
-		}
-		executors[selector] = executor
+	mcmsBlockChains := adapters.Wrap(e.env.BlockChains)
+	executors, err := chainwrappers.BuildTimelockExecutors(&mcmsBlockChains, proposal.ChainMetadata, timelockProposal.Action)
+	if err != nil {
+		return fmt.Errorf("failed to build executors: %w", err)
 	}
 
 	// Generate call proxies for each EVM operation.
@@ -221,7 +224,13 @@ func (e *Executor) ExecuteTimelock(ctx context.Context, timelockProposal *mcmsli
 		// Don't love that we are putting chain specific logic here.
 		if b.Family() == chainselectors.FamilyEVM {
 			var proxyAddr string
-			proxyAddr, err = findCallProxyAddress(e.env.DataStore.Addresses(), uint64(op.ChainSelector))
+			timelockAddress, ok := timelockProposal.TimelockAddresses[op.ChainSelector]
+			if !ok {
+				return fmt.Errorf(
+					"timelock address not found in proposal for chain selector %d", op.ChainSelector,
+				)
+			}
+			proxyAddr, err = findCallProxyAddressForTimelock(e.env.DataStore.Addresses(), uint64(op.ChainSelector), timelockAddress)
 			if err != nil {
 				return fmt.Errorf(
 					"ensure CallProxy is deployed and configured in datastore: %w", err,
@@ -264,7 +273,7 @@ func (e *Executor) ExecuteTimelock(ctx context.Context, timelockProposal *mcmsli
 		}
 
 		// Confirm the transaction on the chain
-		if err = confirmTransaction(b, tx); err != nil {
+		if err = confirmTransaction(ctx, b, tx); err != nil {
 			return fmt.Errorf(
 				"failed to confirm timelock execution transaction for operation %d on chain selector %d (%s): %w",
 				i, op.ChainSelector, b.Name(), err,
@@ -275,29 +284,80 @@ func (e *Executor) ExecuteTimelock(ctx context.Context, timelockProposal *mcmsli
 	return nil
 }
 
-// findCallProxyAddress retrieves the CallProxy contract address for a given chain selector.
-// It looks up the address in the datastore using version 1.0.0 with no qualifier.
-// Currently only supports datastore-based address resolution.
-func findCallProxyAddress(ds datastore.AddressRefStore, selector uint64) (string, error) {
-	ref := ds.Filter(
+// findCallProxyAddressForTimelock retrieves the CallProxy contract address for a given
+// chain selector and timelock address. This function supports multiple MCMS deployments
+// on the same chain by using the timelock address to determine which CallProxy to use.
+//
+// The function works by:
+// 1. Finding the RBACTimelock in the datastore by address to get its qualifier
+// 2. Using that qualifier to find the associated CallProxy (version 1.0.0)
+//
+// This ensures that the correct CallProxy is selected when multiple MCMS instances
+// exist on the same chain, each with different qualifiers.
+func findCallProxyAddressForTimelock(
+	ds datastore.AddressRefStore,
+	selector uint64,
+	timelockAddress string,
+) (string, error) {
+	// First, find the RBACTimelock's qualifier by looking up the timelock address
+	timelockRefs := ds.Filter(
+		datastore.AddressRefByChainSelector(selector),
+		datastore.AddressRefByType("RBACTimelock"),
+		datastore.AddressRefByAddress(timelockAddress),
+	)
+
+	if len(timelockRefs) == 0 {
+		return "", fmt.Errorf(
+			"RBACTimelock address %s not found in datastore for chain selector %d",
+			timelockAddress, selector,
+		)
+	}
+
+	if len(timelockRefs) > 1 {
+		return "", fmt.Errorf(
+			"multiple RBACTimelock entries found for address %s on chain selector %d",
+			timelockAddress, selector,
+		)
+	}
+
+	qualifier := timelockRefs[0].Qualifier
+
+	// Now find the CallProxy with the same qualifier (or any qualifier if empty)
+	// Build filters dynamically - when qualifier is empty, match any CallProxy
+	filters := []datastore.FilterFunc[datastore.AddressRefKey, datastore.AddressRef]{
 		datastore.AddressRefByChainSelector(selector),
 		datastore.AddressRefByType("CallProxy"),
 		datastore.AddressRefByVersion(semver.MustParse("1.0.0")),
-	)
-	if len(ref) == 0 {
-		return "", fmt.Errorf("CallProxy address not found in datastore (chain selector: %d, version: 1.0.0)", selector)
-	}
-	if len(ref) > 1 {
-		return "", fmt.Errorf("multiple CallProxy addresses found in datastore (chain selector: %d, version: 1.0.0)", selector)
 	}
 
-	return ref[0].Address, nil
+	// Only filter by qualifier if it's not empty (empty = no qualifier filter applied, matches all)
+	if qualifier != "" {
+		filters = append(filters, datastore.AddressRefByQualifier(qualifier))
+	}
+
+	callProxyRefs := ds.Filter(filters...)
+
+	if len(callProxyRefs) == 0 {
+		return "", fmt.Errorf(
+			"CallProxy not found for qualifier %q on chain selector %d (version: 1.0.0)",
+			qualifier, selector,
+		)
+	}
+
+	if len(callProxyRefs) > 1 {
+		return "", fmt.Errorf(
+			"multiple CallProxy addresses found for qualifier %q on chain selector %d (version: 1.0.0)",
+			qualifier, selector,
+		)
+	}
+
+	return callProxyRefs[0].Address, nil
 }
 
 // confirmTransaction confirms a transaction on the appropriate blockchain based on its type.
 // Supports EVM, Aptos, and Solana chains with chain-specific confirmation logic.
 // For Solana chains, confirmation is handled internally by the MCMS SDK.
-func confirmTransaction(blockchain fchain.BlockChain, tx mcmstypes.TransactionResult) error {
+func confirmTransaction(ctx context.Context, blockchain fchain.BlockChain, tx mcmstypes.TransactionResult) error {
 	switch chain := blockchain.(type) {
 	case fchainevm.Chain:
 		evmTx, ok := tx.RawData.(*gethtypes.Transaction)
@@ -316,6 +376,15 @@ func confirmTransaction(blockchain fchain.BlockChain, tx mcmstypes.TransactionRe
 
 		if err := chain.Confirm(aptosTx.Hash); err != nil {
 			return fmt.Errorf("failed to confirm Aptos transaction %s on chain %s: %w", aptosTx.Hash, chain.Name(), err)
+		}
+	case fchainton.Chain:
+		tonTX, ok := tx.RawData.(*tlb.Transaction)
+		if !ok {
+			return fmt.Errorf("invalid transaction raw data type: %T", tx.RawData)
+		}
+		err := chain.Confirm(ctx, tonTX)
+		if err != nil {
+			return fmt.Errorf("failed to confirm TON transaction %s on chain %s: %w", tx.Hash, chain.Name(), err)
 		}
 	case fchainsolana.Chain:
 		// NOOP: no need to confirm transaction on solana as the MCMS sdk confirms it internally

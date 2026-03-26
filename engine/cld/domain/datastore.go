@@ -7,21 +7,21 @@ import (
 	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 )
 
-// LoadDataStoreByMigrationKey searches for a datastore file in the migration directory and
+// LoadDataStoreByChangesetKey searches for a datastore file in the changeset directory and
 // returns the datastore as read-only.
 //
 // The search will look for a datastore file with a matching name as the domain, env and
-// migration key, returning the first matching file. An error is returned if no matches are found
+// changeset key, returning the first matching file. An error is returned if no matches are found
 // or if an error occurs during the search.
 //
-// Pattern format: "*-<domain>-<env>-<migKey>_datastore.json".
-func (a *ArtifactsDir) LoadDataStoreByMigrationKey(migKey string) (fdatastore.DataStore, error) {
-	migDirPath := a.MigrationDirPath(migKey)
+// Pattern format: "*-<domain>-<env>-<csKey>_datastore.json".
+func (a *ArtifactsDir) LoadDataStoreByChangesetKey(csKey string) (fdatastore.DataStore, error) {
+	csDirPath := a.ChangesetDirPath(csKey)
 	pattern := fmt.Sprintf("*-%s-%s-%s_%s",
-		a.DomainKey(), a.EnvKey(), migKey, DataStoreFileName,
+		a.DomainKey(), a.EnvKey(), csKey, DataStoreFileName,
 	)
 
-	dataStorePath, err := a.findArtifactPath(migDirPath, pattern)
+	dataStorePath, err := a.findArtifactPath(csDirPath, pattern)
 	if err != nil {
 		return nil, err
 	}
@@ -29,7 +29,7 @@ func (a *ArtifactsDir) LoadDataStoreByMigrationKey(migKey string) (fdatastore.Da
 	return a.loadDataStore(dataStorePath)
 }
 
-func loadDataStoreByMigrationKey(artDir *ArtifactsDir, migKey, timestamp string) (fdatastore.DataStore, error) {
+func loadDataStoreByChangesetKey(artDir *ArtifactsDir, csKey, timestamp string) (fdatastore.DataStore, error) {
 	// Set the durable pipelines directory and timestamp if provided
 	if timestamp != "" {
 		if err := artDir.SetDurablePipelines(timestamp); err != nil {
@@ -37,11 +37,11 @@ func loadDataStoreByMigrationKey(artDir *ArtifactsDir, migKey, timestamp string)
 		}
 	}
 
-	// Load the migration datastore where the artifacts group name is the migration key
-	migDataStore, err := artDir.LoadDataStoreByMigrationKey(migKey)
+	// Load the changeset datastore where the artifacts group name is the changeset key
+	csDataStore, err := artDir.LoadDataStoreByChangesetKey(csKey)
 	if err != nil {
 		if errors.Is(err, ErrArtifactNotFound) {
-			fmt.Println("No migration data store found, skipping merge")
+			fmt.Println("No changeset data store found, skipping merge")
 
 			return fdatastore.NewMemoryDataStore().Seal(), nil
 		}
@@ -49,5 +49,5 @@ func loadDataStoreByMigrationKey(artDir *ArtifactsDir, migKey, timestamp string)
 		return fdatastore.NewMemoryDataStore().Seal(), err
 	}
 
-	return migDataStore, nil
+	return csDataStore, nil
 }

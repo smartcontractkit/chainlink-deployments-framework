@@ -135,6 +135,10 @@ linters:
       - linters:
           - goconst
         path: (.+)_test\.go
+      - linters:
+          - staticcheck
+        text: "SA1019:.*aws-sdk-go.*is deprecated"
+        path: (.+)\.go
     paths:
       - third_party$
       - builtin$

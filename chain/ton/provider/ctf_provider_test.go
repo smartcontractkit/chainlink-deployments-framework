@@ -89,7 +89,7 @@ func Test_CTFChainProvider_Initialize(t *testing.T) {
 				assert.Equal(t, tt.giveSelector, gotChain.Selector)
 				assert.NotEmpty(t, gotChain.Client)
 				assert.NotEmpty(t, gotChain.Wallet)
-				assert.NotEmpty(t, gotChain.WalletAddress)
+				require.False(t, gotChain.WalletAddress.IsAddrNone())
 			}
 		})
 	}
@@ -131,4 +131,32 @@ func Test_CTFChainProvider_getImage(t *testing.T) {
 	// Test custom image
 	p2 := &CTFChainProvider{config: CTFChainProviderConfig{Image: "ghcr.io/neodix42/mylocalton-docker:latest"}}
 	assert.Equal(t, "ghcr.io/neodix42/mylocalton-docker:latest", p2.getImage())
+}
+
+func Test_CTFChainProvider_getPort(t *testing.T) {
+	t.Parallel()
+
+	t.Run("custom port specified", func(t *testing.T) {
+		t.Parallel()
+
+		customPort := 8080
+		p := &CTFChainProvider{config: CTFChainProviderConfig{Port: customPort}}
+
+		port, usedFreeport := p.getPort()
+		assert.Equal(t, customPort, port)
+		assert.False(t, usedFreeport, "usedFreeport should be false when custom port is specified")
+	})
+
+	t.Run("default port uses freeport", func(t *testing.T) {
+		t.Parallel()
+
+		p := &CTFChainProvider{
+			t:      t,
+			config: CTFChainProviderConfig{Port: 0},
+		}
+
+		port, usedFreeport := p.getPort()
+		assert.NotZero(t, port, "port should be assigned by freeport")
+		assert.True(t, usedFreeport, "usedFreeport should be true when no custom port is specified")
+	})
 }

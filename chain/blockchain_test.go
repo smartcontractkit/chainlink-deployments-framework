@@ -11,8 +11,10 @@ import (
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/canton"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/stellar"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/sui"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/ton"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron"
@@ -25,6 +27,8 @@ var aptosChain1 = aptos.Chain{Selector: chainsel.APTOS_LOCALNET.Selector}
 var suiChain1 = sui.Chain{ChainMetadata: sui.ChainMetadata{Selector: chainsel.SUI_LOCALNET.Selector}}
 var tonChain1 = ton.Chain{ChainMetadata: ton.ChainMetadata{Selector: chainsel.TON_LOCALNET.Selector}}
 var tronChain1 = tron.Chain{ChainMetadata: tron.ChainMetadata{Selector: chainsel.TRON_MAINNET.Selector}}
+var cantonChain1 = canton.Chain{ChainMetadata: canton.ChainMetadata{Selector: chainsel.CANTON_LOCALNET.Selector}}
+var stellarChain1 = stellar.Chain{ChainMetadata: stellar.ChainMetadata{Selector: chainsel.STELLAR_LOCALNET.Selector}}
 
 func TestNewBlockChains(t *testing.T) {
 	t.Parallel()
@@ -162,7 +166,8 @@ func TestBlockChainsAllChains(t *testing.T) {
 		evmChain1.Selector, evmChain2.Selector,
 		solanaChain1.Selector, aptosChain1.Selector,
 		suiChain1.Selector, tonChain1.Selector,
-		tronChain1.Selector,
+		tronChain1.Selector, cantonChain1.Selector,
+		stellarChain1.Selector,
 	}
 
 	assert.Len(t, allChains, len(expectedSelectors))
@@ -280,6 +285,36 @@ func TestBlockChainsGetters(t *testing.T) {
 			},
 			description: "should return all Tron chains",
 		},
+		{
+			name: "CantonChains",
+			runTest: func(t *testing.T, chains chain.BlockChains) {
+				t.Helper()
+				cantonChains := chains.CantonChains()
+				expectedSelectors := []uint64{cantonChain1.Selector}
+
+				assert.Len(t, cantonChains, len(expectedSelectors), "unexpected number of Canton chains")
+
+				for _, selector := range expectedSelectors {
+					_, exists := cantonChains[selector]
+					assert.True(t, exists, "expected Canton chain with selector %d", selector)
+				}
+			},
+		},
+		{
+			name: "StellarChains",
+			runTest: func(t *testing.T, chains chain.BlockChains) {
+				t.Helper()
+				stellarChains := chains.StellarChains()
+				expectedSelectors := []uint64{stellarChain1.Selector}
+				assert.Len(t, stellarChains, len(expectedSelectors), "unexpected number of Stellar chains")
+
+				for _, selector := range expectedSelectors {
+					_, exists := stellarChains[selector]
+					assert.True(t, exists, "expected Stellar chain with selector %d", selector)
+				}
+			},
+			description: "expected Stellar chain selectors",
+		},
 	}
 
 	// Run tests for both value and pointer chains
@@ -319,7 +354,8 @@ func TestBlockChainsListChainSelectors(t *testing.T) {
 				evmChain1.ChainSelector(), evmChain2.ChainSelector(),
 				solanaChain1.ChainSelector(), aptosChain1.ChainSelector(),
 				suiChain1.ChainSelector(), tonChain1.ChainSelector(),
-				tronChain1.ChainSelector(),
+				tronChain1.ChainSelector(), cantonChain1.ChainSelector(),
+				stellarChain1.ChainSelector(),
 			},
 			description: "expected all chain selectors",
 		},
@@ -360,17 +396,29 @@ func TestBlockChainsListChainSelectors(t *testing.T) {
 			description: "expected Tron chain selectors",
 		},
 		{
+			name:        "with family filter - Canton",
+			options:     []chain.ChainSelectorsOption{chain.WithFamily(chainsel.FamilyCanton)},
+			expectedIDs: []uint64{cantonChain1.Selector},
+			description: "expected Canton chain selectors",
+		},
+		{
 			name:        "with multiple families",
 			options:     []chain.ChainSelectorsOption{chain.WithFamily(chainsel.FamilyEVM), chain.WithFamily(chainsel.FamilySolana)},
 			expectedIDs: []uint64{evmChain1.Selector, evmChain2.Selector, solanaChain1.Selector},
 			description: "expected EVM and Solana chain selectors",
 		},
 		{
+			name:        "with family filter - Stellar",
+			options:     []chain.ChainSelectorsOption{chain.WithFamily(chainsel.FamilyStellar)},
+			expectedIDs: []uint64{stellarChain1.Selector},
+			description: "expected Stellar chain selectors",
+		},
+		{
 			name: "with exclusion",
 			options: []chain.ChainSelectorsOption{chain.WithChainSelectorsExclusion(
 				[]uint64{evmChain1.Selector, aptosChain1.Selector}),
 			},
-			expectedIDs: []uint64{evmChain2.Selector, solanaChain1.Selector, suiChain1.Selector, tonChain1.Selector, tronChain1.Selector},
+			expectedIDs: []uint64{evmChain2.Selector, solanaChain1.Selector, suiChain1.Selector, tonChain1.Selector, tronChain1.Selector, cantonChain1.Selector, stellarChain1.Selector},
 			description: "expected chain selectors excluding 1 and 4",
 		},
 		{
@@ -395,16 +443,18 @@ func TestBlockChainsListChainSelectors(t *testing.T) {
 }
 
 // buildBlockChains creates a new BlockChains instance with the test chains.
-// 2 evm chains, 1 solana chain, 1 aptos chain, 1 sui chain, 1 ton chain, 1 tron chain.
+// 2 evm chains, 1 solana chain, 1 aptos chain, 1 sui chain, 1 ton chain, 1 tron chain, 1 canton chain, 1 stellar chain.
 func buildBlockChains() chain.BlockChains {
 	chains := chain.NewBlockChains(map[uint64]chain.BlockChain{
-		evmChain1.ChainSelector():    evmChain1,
-		solanaChain1.ChainSelector(): solanaChain1,
-		evmChain2.ChainSelector():    evmChain2,
-		aptosChain1.ChainSelector():  aptosChain1,
-		suiChain1.ChainSelector():    suiChain1,
-		tonChain1.ChainSelector():    tonChain1,
-		tronChain1.ChainSelector():   tronChain1,
+		evmChain1.ChainSelector():     evmChain1,
+		solanaChain1.ChainSelector():  solanaChain1,
+		evmChain2.ChainSelector():     evmChain2,
+		aptosChain1.ChainSelector():   aptosChain1,
+		suiChain1.ChainSelector():     suiChain1,
+		tonChain1.ChainSelector():     tonChain1,
+		tronChain1.ChainSelector():    tronChain1,
+		cantonChain1.ChainSelector():  cantonChain1,
+		stellarChain1.ChainSelector(): stellarChain1,
 	})
 
 	return chains
@@ -427,6 +477,10 @@ func buildBlockChainsPointers() chain.BlockChains {
 		case ton.Chain:
 			pointerChains[selector] = &c
 		case tron.Chain:
+			pointerChains[selector] = &c
+		case canton.Chain:
+			pointerChains[selector] = &c
+		case stellar.Chain:
 			pointerChains[selector] = &c
 		default:
 			continue // skip unsupported chains

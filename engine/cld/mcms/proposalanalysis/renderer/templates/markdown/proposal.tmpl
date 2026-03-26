@@ -1,0 +1,26 @@
+{{- define "proposal" -}}
+
+{{- /* Title: show domain and environment when provided */ -}}
+{{- if or .Request.Domain .Request.EnvironmentName -}}
+## Proposal — {{ .Request.Domain }}{{ if .Request.EnvironmentName }} ({{ .Request.EnvironmentName }}){{ end }}
+
+{{ end -}}
+
+{{- /* Proposal-level annotations */ -}}
+{{ template "annotations" .Proposal.Annotations }}
+
+{{- /* Batch operations: one collapsible <details> per batch */ -}}
+{{- $batches := .Proposal.BatchOperations -}}
+{{- if $batches -}}
+{{- range $i, $batch := $batches }}
+<details>
+<summary><h3>Batch {{ add $i 1 }} — {{ resolveChainSelector .ChainSelector }} (<code>{{ .ChainSelector }}</code>)</h3></summary>
+
+{{ template "batchOperation" $batch }}
+</details>
+{{ end -}}
+{{- else -}}
+_No batch operations._
+{{ end -}}
+
+{{- end -}}

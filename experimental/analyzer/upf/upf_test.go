@@ -2,24 +2,31 @@ package upf
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"math/big"
 	"strings"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/google/go-cmp/cmp"
+	"github.com/ethereum/go-ethereum/crypto"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-ccip/chains/evm/gobindings/generated/v1_6_0/rmn_remote"
 	rmnremotebindings "github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings/v0_1_0/rmn_remote"
 	timelockbindings "github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings/v0_1_0/timelock"
-	"github.com/stretchr/testify/require"
-
-	chainsel "github.com/smartcontractkit/chain-selectors"
+	"github.com/smartcontractkit/chainlink-ton/pkg/bindings"
+	"github.com/smartcontractkit/chainlink-ton/pkg/bindings/lib/access/rbac"
+	"github.com/smartcontractkit/chainlink-ton/pkg/ton/tlbe"
 	"github.com/smartcontractkit/mcms"
 	mcmssdk "github.com/smartcontractkit/mcms/sdk"
 	mcmsevmsdk "github.com/smartcontractkit/mcms/sdk/evm"
 	mcmssolanasdk "github.com/smartcontractkit/mcms/sdk/solana"
 	mcmssuisdk "github.com/smartcontractkit/mcms/sdk/sui"
+	mcmstonsdk "github.com/smartcontractkit/mcms/sdk/ton"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
+	"github.com/stretchr/testify/require"
+	"github.com/xssnick/tonutils-go/address"
+	"github.com/xssnick/tonutils-go/tlb"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
@@ -103,10 +110,121 @@ func TestUpfConvertTimelockProposal(t *testing.T) {
 			// require.NoError(t, err2)
 			if tt.wantErr == "" {
 				require.NoError(t, err)
-				require.Empty(t, cmp.Diff(tt.want, got))
+				require.YAMLEq(t, tt.want, got)
 			} else {
 				require.ErrorContains(t, err, tt.wantErr)
 			}
+		})
+	}
+}
+
+func TestUpfConvertTimelockProposalWithSui(t *testing.T) {
+	t.Parallel()
+	ds := datastore.NewMemoryDataStore()
+
+	// ---- Sui: testnet
+	dsAddContract(t, ds, chainsel.SUI_TESTNET.Selector, "0x4e825a4758064df713762e431c3a16b8105857195214469db0d6985b7d70266d", "MCMSUser 1.0.0")
+	dsAddContract(t, ds, chainsel.SUI_TESTNET.Selector, "0xa363028c36d9b7ade44dfe4c317893bf86a4a1ce69293b6cb1569928fcf55e63", "burn_mint_token_pool 1.0.0")
+
+	env := deployment.Environment{
+		DataStore:         ds.Seal(),
+		ExistingAddresses: deployment.NewMemoryAddressBook(),
+	}
+
+	proposalCtx, err := mcmsanalyzer.NewDefaultProposalContext(env)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name             string
+		timelockProposal string
+		signers          map[mcmstypes.ChainSelector][]common.Address
+		assertion        func(*testing.T, string, error)
+	}{
+		{
+			name:             "Sui burn_mint_token_pool ownership transfer",
+			timelockProposal: timelockProposalSuiBurnMintTokenPool,
+			signers: map[mcmstypes.ChainSelector][]common.Address{
+				mcmstypes.ChainSelector(chainsel.SUI_TESTNET.Selector): {
+					common.HexToAddress("0xA5D5B0B844c8f11B61F28AC98BBA84dEA9b80953"),
+				},
+			},
+			assertion: func(t *testing.T, gotUpf string, err error) {
+				t.Helper()
+				require.NoError(t, err)
+				require.NotEmpty(t, gotUpf)
+				// Verify that the proposal was successfully converted
+				require.Equal(t, suiUPFProposal, gotUpf)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			timelockProposal, err := mcms.NewTimelockProposal(strings.NewReader(tt.timelockProposal))
+			require.NoError(t, err)
+			mcmProposal := convertTimelockProposal(t.Context(), t, timelockProposal)
+
+			got, err := UpfConvertTimelockProposal(t.Context(), proposalCtx, env, timelockProposal, mcmProposal, tt.signers)
+
+			tt.assertion(t, got, err)
+		})
+	}
+}
+
+func TestUpfConvertTimelockProposalWithTon(t *testing.T) {
+	t.Parallel()
+	ds := datastore.NewMemoryDataStore()
+
+	// ---- TON: testnet
+	dsAddContract(t, ds, chainsel.TON_TESTNET.Selector, "EQADa3W6G0nSiTV4a6euRA42fU9QxSEnb-WeDpcrtWzA2jM8", "MCMS 1.0.0")
+
+	env := deployment.Environment{
+		DataStore:         ds.Seal(),
+		ExistingAddresses: deployment.NewMemoryAddressBook(),
+	}
+
+	proposalCtx, err := mcmsanalyzer.NewDefaultProposalContext(env)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name             string
+		timelockProposal string
+		signers          map[mcmstypes.ChainSelector][]common.Address
+		assertion        func(*testing.T, string, error)
+	}{
+		{
+			name:             "TON proposal with GrantRole transaction",
+			timelockProposal: timelockProposalTON(t),
+			signers: map[mcmstypes.ChainSelector][]common.Address{
+				mcmstypes.ChainSelector(chainsel.TON_TESTNET.Selector): {
+					common.HexToAddress("0xA5D5B0B844c8f11B61F28AC98BBA84dEA9b80953"),
+				},
+			},
+			assertion: func(t *testing.T, gotUpf string, err error) {
+				t.Helper()
+				require.NoError(t, err)
+				// Verify it contains TON-specific content
+				require.Contains(t, gotUpf, "chainFamily: ton")
+				require.Contains(t, gotUpf, "chainName: ton-testnet")
+				require.Contains(t, gotUpf, "msigAddress: EQADa3W6G0nSiTV4a6euRA42fU9QxSEnb-WeDpcrtWzA2jM8")
+				require.Contains(t, gotUpf, "contractType: RBACTimelock")
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			timelockProposal, err := mcms.NewTimelockProposal(strings.NewReader(tt.timelockProposal))
+			require.NoError(t, err)
+			mcmProposal := convertTimelockProposal(t.Context(), t, timelockProposal)
+
+			got, err := UpfConvertTimelockProposal(t.Context(), proposalCtx, env, timelockProposal, mcmProposal, tt.signers)
+
+			tt.assertion(t, got, err)
 		})
 	}
 }
@@ -130,6 +248,8 @@ func convertTimelockProposal(ctx context.Context, t *testing.T, timelockProposal
 			converter, err := mcmssuisdk.NewTimelockConverter()
 			require.NoError(t, err)
 			converters[chain] = converter
+		case chainsel.FamilyTon:
+			converters[chain] = mcmstonsdk.NewTimelockConverter(mcmstonsdk.DefaultSendAmount)
 		default:
 			t.Fatalf("unsupported chain family %s", chainFamily)
 		}
@@ -358,7 +478,7 @@ transactions:
         - pubkey: CpbeEvmTR4UE8CgDDL5b1nqjSz7JCD4wNJhxPLZRkSL1
           issigner: false
           iswritable: true
-        - pubkey: 11111111111111111111111111111111
+        - pubkey: "11111111111111111111111111111111"
           issigner: false
           iswritable: false
         Id: 0x9017959d8b60f859fa9f05f49b9c04f41a112c23fe54370b00a39cdccb75fb04
@@ -451,44 +571,55 @@ transactions:
               Subject:
                 value: 0xfb968f03709115b80000000000000000
 signers:
-  "10344971235874465080":
+  10344971235874465080:
   - "0xA5D5B0B844c8f11B61F28AC98BBA84dEA9b80953"
   - "0x9A60462e4CA802E3E945663930Be0d162e662091"
   - "0x5f077BCeE6e285154473F65699d6F46Fd03D105A"
 `
 
-var timelockProposalSui = `{
+//nolint:gosec // G101 all test values
+var timelockProposalSuiBurnMintTokenPool = `{
   "version": "v1",
   "kind": "TimelockProposal",
   "validUntil": 1999999999,
-  "signatures": [],
+  "signatures": null,
   "overridePreviousRoot": false,
   "chainMetadata": {
     "9762610643973837292": {
-      "startingOpCount": 1,
-      "mcmAddress": "0x4e825a4758064df713762e431c3a16b8105857195214469db0d6985b7d70266d",
-      "additionalFields": null
+      "startingOpCount": 4,
+      "mcmAddress": "0x7418a4d56580cb2eac68025af4c928de007fa093f711d838a139fb3675a2ef5a",
+      "additionalFields": {
+        "role": 2,
+        "mcms_package_id": "0x832b7fd3b7f03d2fd55811cd565d675c09d938f2dc8c24dfd5e73bae4ca118df",
+        "account_obj": "0x0ad2d032fe62f567a8cb545200629a92bbd1033d84a64350d0c9f178afe3f998",
+        "registry_obj": "0x4d06d9106ae26847cab08eaa6ff4eb977c699f0ed90dacc7cdb9575bee92ad20",
+        "timelock_obj": "0xa514be3fe446f654389c1bd2dc4ce9dcbd85753fe537c0c64a34298607ee33b6",
+        "deployer_state_obj": "0xb1879297d851a448c923982c9d3efaf51612e18bb394d20aab496199f5d6ec4d"
+      }
     }
   },
-  "description": "simple Sui proposal",
+  "description": "Invoke",
   "action": "schedule",
-  "delay": "5m0s",
+  "delay": "10s",
   "timelockAddresses": {
-    "9762610643973837292": "0x4e825a4758064df713762e431c3a16b8105857195214469db0d6985b7d70266d"
+    "9762610643973837292": "0xa514be3fe446f654389c1bd2dc4ce9dcbd85753fe537c0c64a34298607ee33b6"
   },
   "operations": [
     {
       "chainSelector": 9762610643973837292,
       "transactions": [
         {
-          "contractType": "MCMSUser",
+          "contractType": "burn_mint_token_pool",
           "tags": [],
-          "to": "0x4e825a4758064df713762e431c3a16b8105857195214469db0d6985b7d70266d",
-          "data": "i8WcKEL0NsEiFpGjWdxClBwfJeyhP0ut55f7Dg2PS2W5dbWeXl19LUYyEaeuZRHbtJS9IbqY1GNZHOkUhofVcGRhdGVkIEZpZWxkIEEKAQIDBAUGBwgJCg==",
+          "to": "0xa363028c36d9b7ade44dfe4c317893bf86a4a1ce69293b6cb1569928fcf55e63",
+          "data": "gIiW6Fws+lnexlxd5E2Te3gDfR3J97yFPBcYjHk3ZNYhFzSEY0DsnIRNNMzPknW8ZlwHHO5Wz097aXjSs7D1800G2RBq4mhHyrCOqm/065d8aZ8O2Q2sx825V1vukq0ggyt/07fwPS/VWBHNVl1nXAnZOPLcjCTf1ec7rkyhGN8=",
           "additionalFields": {
-            "module_name": "mcms_user",
-            "function": "function_one",
-            "state_obj": "0x8bc59c2842f436c1221691a359dc42941c1f25eca13f4bad79f7b00e8df4b968"
+            "module_name": "burn_mint_token_pool",
+            "function": "execute_ownership_transfer_to_mcms",
+            "state_obj": "0x211734846340ec9c844d34cccf9275bc665c071cee56cf4f7b6978d2b3b0f5f3",
+            "type_args": [
+              "0x0ade2872306bc9346f3576bfb6c45db1a590f00330b810e4f7084ff9efdc5da2::link::LINK"
+            ]
           }
         }
       ]
@@ -496,13 +627,13 @@ var timelockProposalSui = `{
   ]
 }`
 
-var upfProposalSui = `---
+var suiUPFProposal = `---
 msigType: mcms
-proposalHash: "0x1c733d9d09e9d41e1651596078df88b00c68e085cc6bf14b8f346866b1741a28"
+proposalHash: "0x6676342371fba5bf02bfe07457797fc0dfa51b85eec23bf08ae5114f365865db"
 mcmsParams:
   validUntil: 1999999999
-  merkleRoot: "0xeeaa854482fdd28dec1ca358c4ba9c7399560b580683c7fa372e9a69eab8ba1d"
-  asciiProposalHash: '\x93>\x07\xb8>\xce3\xfa\xa7\xccZ\x1e\xea\xf8|\xb39\x9c\x10s\xd7\x98\xc8\xa6\x1d\xe13\x99\xa1u\xe2.'
+  merkleRoot: "0x093c18a1ae222c48c735c2d8f231fc8892060cc299d2a949d0c5b2bb830a1dbe"
+  asciiProposalHash: 'G\x80\xda\xeb\x95\xf5\xf5\x8d\xd4W\x9a\x04R\x92y\xd8\x19\x0e` + "`" + `6\xd0\x851k\xbc\xad\x193?\xcdr\xb9'
   overridePreviousRoot: false
 transactions:
 - index: 0
@@ -510,153 +641,170 @@ transactions:
   chainId: "2"
   chainName: sui-testnet
   chainShortName: sui-testnet
-  msigAddress: "0x4e825a4758064df713762e431c3a16b8105857195214469db0d6985b7d70266d"
-  timelockAddress: "0x4e825a4758064df713762e431c3a16b8105857195214469db0d6985b7d70266d"
-  to: ""
+  msigAddress: "0x7418a4d56580cb2eac68025af4c928de007fa093f711d838a139fb3675a2ef5a"
+  timelockAddress: "0xa514be3fe446f654389c1bd2dc4ce9dcbd85753fe537c0c64a34298607ee33b6"
+  to: "0x832b7fd3b7f03d2fd55811cd565d675c09d938f2dc8c24dfd5e73bae4ca118df"
   value: 0
-  data: AU6CWkdYBk33E3YuQxw6FrgQWFcZUhRGnbDWmFt9cCZtAQltY21zX3VzZXIBDGZ1bmN0aW9uX29uZQFYi8WcKEL0NsEiFpGjWdxClBwfJeyhP0ut55f7Dg2PS2W5dbWeXl19LUYyEaeuZRHbtJS9IbqY1GNZHOkUhofVcGRhdGVkIEZpZWxkIEEKAQIDBAUGBwgJCiAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACB3NZP/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACwBAAAAAAAA
-  txNonce: 1
+  data: AaNjAow22bet5E3+TDF4k7+GpKHOaSk7bLFWmSj89V5jARRidXJuX21pbnRfdG9rZW5fcG9vbAEiZXhlY3V0ZV9vd25lcnNoaXBfdHJhbnNmZXJfdG9fbWNtcwGAAYCIluhcLPpZ3sZcXeRNk3t4A30dyfe8hTwXGIx5N2TWIRc0hGNA7JyETTTMz5J1vGZcBxzuVs9Pe2l40rOw9fNNBtkQauJoR8qwjqpv9OuXfGmfDtkNrMfNuVdb7pKtIIMrf9O38D0v1VgRzVZdZ1wJ2Tjy3Iwk39XnO65MoRjfIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIHc1k/8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACgAAAAAAAAA=
+  txNonce: 4
   metadata:
     contractType: MCMS
     decodedCalldata:
-      functionName: "failed to decode Sui transaction: could not find function in contractInterfaces for mcms::timelock_schedule_batch"
-      functionArgs: {}
+      functionName: mcms::timelock_schedule_batch
+      functionArgs:
+        calls:
+        - to: "0xa363028c36d9b7ade44dfe4c317893bf86a4a1ce69293b6cb1569928fcf55e63"
+          value: 0
+          data:
+            functionName: burn_mint_token_pool::execute_ownership_transfer_to_mcms
+            functionArgs:
+              owner_cap: "0x808896e85c2cfa59dec65c5de44d937b78037d1dc9f7bc853c17188c793764d6"
+              registry: "0x4d06d9106ae26847cab08eaa6ff4eb977c699f0ed90dacc7cdb9575bee92ad20"
+              state: "0x211734846340ec9c844d34cccf9275bc665c071cee56cf4f7b6978d2b3b0f5f3"
+              to: "0x832b7fd3b7f03d2fd55811cd565d675c09d938f2dc8c24dfd5e73bae4ca118df"
 signers:
-  "9762610643973837292":
+  9762610643973837292:
   - "0xA5D5B0B844c8f11B61F28AC98BBA84dEA9b80953"
 `
 
-var timelockProposalSuiUnknownModule = `{
-  "version": "v1",
-  "kind": "TimelockProposal",
-  "validUntil": 1999999999,
-  "signatures": [],
-  "overridePreviousRoot": false,
-  "chainMetadata": {
-    "9762610643973837292": {
-      "startingOpCount": 1,
-      "mcmAddress": "0x4e825a4758064df713762e431c3a16b8105857195214469db0d6985b7d70266d",
-      "additionalFields": null
-    }
-  },
-  "description": "Sui proposal with unknown module",
-  "action": "schedule",
-  "delay": "5m0s",
-  "timelockAddresses": {
-    "9762610643973837292": "0x4e825a4758064df713762e431c3a16b8105857195214469db0d6985b7d70266d"
-  },
-  "operations": [
-    {
-      "chainSelector": 9762610643973837292,
-      "transactions": [
-        {
-          "contractType": "MCMSUser",
-          "tags": [],
-          "to": "0x4e825a4758064df713762e431c3a16b8105857195214469db0d6985b7d70266d",
-          "data": "c29tZSBkYXRh",
-          "additionalFields": {
-            "module_name": "unknown_module",
-            "function": "some_function",
-            "state_obj": "0x123"
-          }
-        }
-      ]
-    }
-  ]
-}`
+// timelockProposalTON is generated using makeTONGrantRoleTx helper
+var timelockProposalTON = func(t *testing.T) string {
+	t.Helper()
+	// Create a GrantRole transaction for the test
+	targetAddr := address.MustParseAddr("EQADa3W6G0nSiTV4a6euRA42fU9QxSEnb-WeDpcrtWzA2jM8")
+	exampleRole := crypto.Keccak256Hash([]byte("EXAMPLE_ROLE"))
+	grantRoleData, _ := tlb.ToCell(rbac.GrantRole{
+		QueryID: 1,
+		Role:    tlbe.NewUint256(new(big.Int).SetBytes(exampleRole[:])),
+		Account: targetAddr,
+	})
 
-var upfProposalSuiUnknownModule = `---
-msigType: mcms
-proposalHash: "0x5433c70ce0b94602235ae03d5485a3ff991b90d35b90f3474af5455f1105c198"
-mcmsParams:
-  validUntil: 1999999999
-  merkleRoot: "0x0104cddb47805604d82eeab0e02cb33c4374c1e635ab038d2a1ed9038c48e4a9"
-  asciiProposalHash: 'L\xb9E\x9d\xfeMY\x83\xec3\xba\x00\xa6F0@\x82 \xd4\xc0\x9bj-"C\xcb\xf6\xb6v\xc0B\xbc'
-  overridePreviousRoot: false
-transactions:
-- index: 0
-  chainFamily: sui
-  chainId: "2"
-  chainName: sui-testnet
-  chainShortName: sui-testnet
-  msigAddress: "0x4e825a4758064df713762e431c3a16b8105857195214469db0d6985b7d70266d"
-  timelockAddress: "0x4e825a4758064df713762e431c3a16b8105857195214469db0d6985b7d70266d"
-  to: ""
-  value: 0
-  data: AU6CWkdYBk33E3YuQxw6FrgQWFcZUhRGnbDWmFt9cCZtAQ51bmtub3duX21vZHVsZQENc29tZV9mdW5jdGlvbgEJc29tZSBkYXRhIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIHc1k/8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAALAEAAAAAAAA=
-  txNonce: 1
-  metadata:
-    contractType: MCMS
-    decodedCalldata:
-      functionName: "failed to decode Sui transaction: could not find function in contractInterfaces for mcms::timelock_schedule_batch"
-      functionArgs: {}
-signers:
-  "9762610643973837292":
-  - "0xA5D5B0B844c8f11B61F28AC98BBA84dEA9b80953"
-`
+	tx, _ := mcmstonsdk.NewTransaction(
+		targetAddr,
+		grantRoleData.ToBuilder().ToSlice(),
+		big.NewInt(0),
+		bindings.TypeRBAC,
+		[]string{"grantRole"},
+	)
 
-func TestUpfConvertTimelockProposalWithSui(t *testing.T) {
-	t.Parallel()
-	ds := datastore.NewMemoryDataStore()
-
-	// ---- Sui: testnet
-	dsAddContract(t, ds, chainsel.SUI_TESTNET.Selector, "0x4e825a4758064df713762e431c3a16b8105857195214469db0d6985b7d70266d", "MCMSUser 1.0.0")
-
-	env := deployment.Environment{
-		DataStore:         ds.Seal(),
-		ExistingAddresses: deployment.NewMemoryAddressBook(),
-	}
-
-	proposalCtx, err := mcmsanalyzer.NewDefaultProposalContext(env)
+	// Marshal the transaction data
+	txData, err := json.Marshal(tx)
 	require.NoError(t, err)
 
+	return fmt.Sprintf(`{
+  "version": "v1",
+  "kind": "TimelockProposal",
+  "validUntil": 1999999999,
+  "signatures": [],
+  "overridePreviousRoot": false,
+  "chainMetadata": {
+    "1399300952838017768": {
+      "startingOpCount": 1,
+      "mcmAddress": "EQADa3W6G0nSiTV4a6euRA42fU9QxSEnb-WeDpcrtWzA2jM8",
+      "additionalFields": null
+    }
+  },
+  "description": "simple TON proposal with GrantRole",
+  "action": "schedule",
+  "delay": "5m0s",
+  "timelockAddresses": {
+    "1399300952838017768": "EQADa3W6G0nSiTV4a6euRA42fU9QxSEnb-WeDpcrtWzA2jM8"
+  },
+  "operations": [
+    {
+      "chainSelector": 1399300952838017768,
+      "transactions": [%s]
+    }
+  ]
+}`, string(txData))
+}
+
+func TestIsTimelockBatchFunction(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
-		name             string
-		timelockProposal string
-		signers          map[mcmstypes.ChainSelector][]common.Address
-		assertion        func(*testing.T, string, error)
+		name         string
+		functionName string
+		want         bool
 	}{
+		// EVM
 		{
-			name:             "Sui proposal with valid transaction",
-			timelockProposal: timelockProposalSui,
-			signers: map[mcmstypes.ChainSelector][]common.Address{
-				mcmstypes.ChainSelector(chainsel.SUI_TESTNET.Selector): {
-					common.HexToAddress("0xA5D5B0B844c8f11B61F28AC98BBA84dEA9b80953"),
-				},
-			},
-			assertion: func(t *testing.T, gotUpf string, err error) {
-				t.Helper()
-				require.NoError(t, err)
-				require.Equal(t, upfProposalSui, gotUpf)
-			},
+			name:         "EVM scheduleBatch",
+			functionName: "function scheduleBatch((address,uint256,bytes)[] calls, bytes32 predecessor, bytes32 salt, uint256 delay) returns()",
+			want:         true,
 		},
 		{
-			name:             "Sui proposal with unknown module",
-			timelockProposal: timelockProposalSuiUnknownModule,
-			signers: map[mcmstypes.ChainSelector][]common.Address{
-				mcmstypes.ChainSelector(chainsel.SUI_TESTNET.Selector): {
-					common.HexToAddress("0xA5D5B0B844c8f11B61F28AC98BBA84dEA9b80953"),
-				},
-			},
-			assertion: func(t *testing.T, gotUpf string, err error) {
-				t.Helper()
-				require.NoError(t, err)
-				require.Equal(t, upfProposalSuiUnknownModule, gotUpf)
-			},
+			name:         "EVM bypasserExecuteBatch",
+			functionName: "function bypasserExecuteBatch((address,uint256,bytes)[] calls) payable returns()",
+			want:         true,
+		},
+		// Solana
+		{
+			name:         "Solana ScheduleBatch",
+			functionName: "ScheduleBatch",
+			want:         true,
+		},
+		{
+			name:         "Solana BypasserExecuteBatch",
+			functionName: "BypasserExecuteBatch",
+			want:         true,
+		},
+		// Sui
+		{
+			name:         "Sui timelock_schedule_batch",
+			functionName: "mcms::timelock_schedule_batch",
+			want:         true,
+		},
+		{
+			name:         "Sui timelock_bypasser_execute_batch",
+			functionName: "mcms::timelock_bypasser_execute_batch",
+			want:         true,
+		},
+		// Aptos
+		{
+			name:         "Aptos timelock_schedule_batch",
+			functionName: "package::module::timelock_schedule_batch",
+			want:         true,
+		},
+		{
+			name:         "Aptos timelock_bypasser_execute_batch",
+			functionName: "package::module::timelock_bypasser_execute_batch",
+			want:         true,
+		},
+		// TON
+		{
+			name:         "TON ScheduleBatch",
+			functionName: "link.chain.ton.mcms.Timelock::ScheduleBatch(0x12345678)",
+			want:         true,
+		},
+		{
+			name:         "TON BypasserExecuteBatch",
+			functionName: "link.chain.ton.mcms.Timelock::BypasserExecuteBatch(0xabcdef)",
+			want:         true,
+		},
+		// Non-matching
+		{
+			name:         "unrelated function",
+			functionName: "function transfer(address to, uint256 amount) returns(bool)",
+			want:         false,
+		},
+		{
+			name:         "empty string",
+			functionName: "",
+			want:         false,
+		},
+		{
+			name:         "partial match without colon",
+			functionName: "timelock_schedule_batch",
+			want:         false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-
-			timelockProposal, err := mcms.NewTimelockProposal(strings.NewReader(tt.timelockProposal))
-			require.NoError(t, err)
-			mcmProposal := convertTimelockProposal(t.Context(), t, timelockProposal)
-
-			got, err := UpfConvertTimelockProposal(t.Context(), proposalCtx, env, timelockProposal, mcmProposal, tt.signers)
-
-			tt.assertion(t, got, err)
+			got := isTimelockBatchFunction(tt.functionName)
+			require.Equal(t, tt.want, got)
 		})
 	}
 }

@@ -22,10 +22,13 @@ onchain:
   ton:
     deployer_key: "0xedd"
     wallet_version: "V5R1"
+  stellar:
+    deployer_key: "0x567"
+  canton:
+    jwt_token: ""
 offchain:
   job_distributor:
     endpoints:
-      wsrpc: "ws://localhost:1234"
       grpc: "grpc://localhost:4567"
     auth:
       cognito_app_client_id: "af1a2b3c"

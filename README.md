@@ -266,7 +266,49 @@ To add a new chain to the framework, follow these steps:
      - Add `var _ BlockChain = newchain.Chain{}` at the top to verify interface compliance
      - Create a new getter method (e.g., `NewChainChains()`) that returns `map[uint64]newchain.Chain` (e.g., `NewSuiChains()`)
 
-6. **Write comprehensive tests:**
+6. **Update MCMS adapter:**
+
+   - Update `chain/mcms/adapters/chain_access.go`:
+     - Import your chain's RPC client library and CLDF chain package:
+       ```go
+       import (
+           // ... existing imports ...
+           newchainclient "github.com/your-chain/client-library" // Your chain's RPC client
+           cldfnewchain "github.com/smartcontractkit/chainlink-deployments-framework/chain/newchain"
+       )
+       ```
+     - Add your chain's getter method to the `ChainsFetcher` interface:
+       ```go
+       type ChainsFetcher interface {
+           // ... existing methods ...
+           NewChainChains() map[uint64]cldfnewchain.Chain
+       }
+       ```
+     - Add a client accessor method to the `ChainAccessAdapter`:
+       ```go
+       // NewChainClient returns the underlying NewChain RPC client for the given selector.
+       func (a *ChainAccessAdapter) NewChainClient(selector uint64) (*newchainclient.Client, bool) {
+           ch, ok := a.inner.NewChainChains()[selector]
+           if !ok {
+               return nil, false
+           }
+
+           // Return the RPC client from your Chain type.
+           // This assumes your Chain struct has a Client field.
+           // Adjust to use the appropriate field or method accessor (e.g., ch.RPCClient, ch.GetClient()).
+           return ch.Client, true
+       }
+       ```
+   - Update `chain/mcms/adapters/chain_access_test.go`:
+     - Import your chain package and add test coverage for the client accessor method
+     - Example test assertion:
+       ```go
+       gotNewChain, ok := a.NewChainClient(newChainSel)
+       require.True(t, ok)
+       require.Nil(t, gotNewChain) // or assert on expected client properties
+       ```
+
+7. **Write comprehensive tests:**
    - Test chain instantiation
    - Test all interface methods
    - Test the getter method in BlockChains

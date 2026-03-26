@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver/v3"
+	gethbind "github.com/ethereum/go-ethereum/accounts/abi/bind"
 	gethtypes "github.com/ethereum/go-ethereum/core/types"
-	sollib "github.com/gagliardetto/solana-go"
 
 	chainselectors "github.com/smartcontractkit/chain-selectors"
 	mcmslib "github.com/smartcontractkit/mcms"
@@ -15,7 +15,6 @@ import (
 	fchain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	fchainaptos "github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos"
 	fchainevm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
-	fchainsolana "github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
 	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 )
@@ -30,27 +29,19 @@ func stubAptosChain() fchainaptos.Chain {
 // stubEVMChain creates a stubbed EVM chain
 func stubEVMChain() fchainevm.Chain {
 	return fchainevm.Chain{
-		Selector: chainselectors.ETHEREUM_TESTNET_SEPOLIA.Selector,
+		Selector:    chainselectors.ETHEREUM_TESTNET_SEPOLIA.Selector,
+		DeployerKey: &gethbind.TransactOpts{},
 		Confirm: func(tx *gethtypes.Transaction) (uint64, error) { // This is a stubbed implementation of the Confirm function which always returns success
 			return 0, nil
 		},
 	}
 }
 
-// stubSolanaChain creates a stubbed Solana chain
-func stubSolanaChain() fchainsolana.Chain {
-	// Create a dummy private key for testing (32 bytes repeated to make 64 bytes)
-	privateKeyBytes := make([]byte, 64)
-	for i := range 64 {
-		privateKeyBytes[i] = byte(i%32 + 1)
-	}
-	dummyKey := sollib.PrivateKey(privateKeyBytes)
-
-	return fchainsolana.Chain{
-		Selector:    chainselectors.TEST_22222222222222222222222222222222222222222222.Selector,
-		DeployerKey: &dummyKey,
-	}
-}
+const (
+	// Test fixture addresses for stubbed MCMS environment
+	testTimelockAddress  = "0x1111111111111111111111111111111111111111"
+	testCallProxyAddress = "0x1234567890123456789012345678901234567890"
+)
 
 // stubEnvironment creates a stubbed environment with a single EVM chain
 func stubEnvironment() fdeployment.Environment {
@@ -59,9 +50,17 @@ func stubEnvironment() fdeployment.Environment {
 	ds := fdatastore.NewMemoryDataStore()
 	ds.Addresses().Add(fdatastore.AddressRef{ //nolint:errcheck // This will not fail in the test
 		ChainSelector: chain.Selector,
-		Address:       "0x1234567890123456789012345678901234567890",
+		Address:       testTimelockAddress,
+		Type:          "RBACTimelock",
+		Version:       semver.MustParse("1.0.0"),
+		Qualifier:     "",
+	})
+	ds.Addresses().Add(fdatastore.AddressRef{ //nolint:errcheck // This will not fail in the test
+		ChainSelector: chain.Selector,
+		Address:       testCallProxyAddress,
 		Type:          "CallProxy",
 		Version:       semver.MustParse("1.0.0"),
+		Qualifier:     "",
 	})
 
 	return fdeployment.Environment{
@@ -83,7 +82,7 @@ func stubMCMSProposal() *mcmslib.Proposal {
 			ChainMetadata: map[mcmstypes.ChainSelector]mcmstypes.ChainMetadata{
 				mcmstypes.ChainSelector(stubEVMChain().Selector): {
 					StartingOpCount: 0,
-					MCMAddress:      "0x0000000000000000000000000000000000000000",
+					MCMAddress:      testTimelockAddress,
 				},
 			},
 		},
@@ -119,13 +118,13 @@ func stubTimelockProposal(
 			ChainMetadata: map[mcmstypes.ChainSelector]mcmstypes.ChainMetadata{
 				selector: {
 					StartingOpCount: 0,
-					MCMAddress:      "0x0000000000000000000000000000000000000000",
+					MCMAddress:      testTimelockAddress,
 				},
 			},
 		},
 		Action: action,
 		TimelockAddresses: map[mcmstypes.ChainSelector]string{
-			selector: "0x0000000000000000000000000000000000000000",
+			selector: testTimelockAddress,
 		},
 		Operations: []mcmstypes.BatchOperation{
 			{

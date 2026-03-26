@@ -1,0 +1,18 @@
+{{- define "parameter" -}}
+{{- $formatted := formatParam . -}}
+- **`{{ .Name }}`** (`{{ .Type }}`):
+  <details open>
+  <summary>Value</summary>
+
+  ```text
+{{ indentLines $formatted "  " }}
+  ```
+  </details>
+{{- if hasDisplayAnnotations .Annotations -}}
+{{- range .Annotations -}}
+{{- if not (isFrameworkAnnotation .Name) }}
+  - _{{ if .Name }}{{ .Name }}: {{ end }}{{ formatAnnotationValue .Value }}_
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}

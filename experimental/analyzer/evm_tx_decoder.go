@@ -60,8 +60,10 @@ func (p *EVMTxCallDecoder) decodeMethodCall(address string, method *abi.Method, 
 			return nil, fmt.Errorf("missing argument '%s'", input.Name)
 		}
 		inputs[i] = NamedField{
-			Name:  input.Name,
-			Value: p.decodeArg(input.Name, &input.Type, arg),
+			Name:     input.Name,
+			TypeName: input.Type.String(),
+			Value:    p.decodeArg(input.Name, &input.Type, arg),
+			RawValue: arg,
 		}
 	}
 	outputs := make([]NamedField, len(method.Outputs))
@@ -71,8 +73,10 @@ func (p *EVMTxCallDecoder) decodeMethodCall(address string, method *abi.Method, 
 			return nil, fmt.Errorf("missing output '%s'", output.Name)
 		}
 		outputs[i] = NamedField{
-			Name:  output.Name,
-			Value: p.decodeArg(output.Name, &output.Type, out),
+			Name:     output.Name,
+			TypeName: output.Type.String(),
+			Value:    p.decodeArg(output.Name, &output.Type, out),
+			RawValue: out,
 		}
 	}
 
@@ -119,8 +123,9 @@ func (p *EVMTxCallDecoder) decodeStruct(argAbi *abi.Type, argVal any) StructFiel
 		argFieldTyp := reflect.ValueOf(argVal).FieldByName(argFieldName)
 		argument := p.decodeArg(argFieldName, argFieldAbi, argFieldTyp.Interface())
 		fields[i] = NamedField{
-			Name:  argFieldName,
-			Value: argument,
+			Name:     argFieldName,
+			TypeName: argFieldAbi.String(),
+			Value:    argument,
 		}
 	}
 

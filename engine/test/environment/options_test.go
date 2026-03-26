@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	fchain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
+	"github.com/smartcontractkit/chainlink-deployments-framework/cre"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/internal/testutils"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/onchain"
 )
@@ -124,4 +125,18 @@ func Test_withChainLoaderN(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_WithCRERunner(t *testing.T) {
+	t.Parallel()
+
+	cmps := newComponents()
+	require.Nil(t, cmps.CRERunner)
+
+	runner := cre.NewCLIRunner("/path/to/cre")
+	option := WithCRERunner(runner)
+	err := option(cmps)
+
+	require.NoError(t, err)
+	require.Equal(t, runner, cmps.CRERunner)
 }

@@ -198,4 +198,3 @@ func (_c *MockContractMetadataStore_Filter_Call) RunAndReturn(run func(...Filter
 	_c.Call.Return(run)
 	return _c
 }
-

@@ -19,7 +19,7 @@ jobs:
         uses: smartcontractkit/.github/actions/ci-lint-go@ci-lint-go/v2 # ci-lint-go@2.0.0
         with:
           only-new-issues: "false"
-          golangci-lint-version: v2.5.0
+          golangci-lint-version: v2.8.0
 
   ci-lint-misc:
     name: Lint GH Actions and scripts
@@ -50,10 +50,93 @@ jobs:
           use-go-cache: true
           artifact-name: unit-tests
 
-  ci-test-provider:
-    name: Provider Tests
+  ci-test-provider-aptos:
+    name: Provider Tests - Aptos
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      id-token: write
+      contents: read
+      actions: read
+    steps:
+      - name: Build and test aptos provider packages
+        uses: smartcontractkit/.github/actions/ci-test-go@dfcba48f05933158428bce867d790e3d5a9baa6b # ci-test-go@1.1.0
+        with:
+          go-test-cmd: go test -race -coverprofile=coverage.txt ./chain/aptos/provider/...
+          use-go-cache: true
+          artifact-name: provider-tests-aptos
+
+  ci-test-provider-canton:
+    name: Provider Tests - Canton
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      id-token: write
+      contents: read
+      actions: read
+    steps:
+      - name: Build and test canton provider packages
+        uses: smartcontractkit/.github/actions/ci-test-go@dfcba48f05933158428bce867d790e3d5a9baa6b # ci-test-go@1.1.0
+        with:
+          go-test-cmd: go test -race -coverprofile=coverage.txt ./chain/canton/provider/...
+          use-go-cache: true
+          artifact-name: provider-tests-canton
+
+  ci-test-provider-ton:
+    name: Provider Tests - TON
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      id-token: write
+      contents: read
+      actions: read
+    steps:
+      - name: Build and test ton provider packages
+        uses: smartcontractkit/.github/actions/ci-test-go@dfcba48f05933158428bce867d790e3d5a9baa6b # ci-test-go@1.1.0
+        with:
+          # disable the checkptr runtime check due a false positive in github.com/xssnick/tonutils-go
+          # causing tests in ci to fail "fatal error: checkptr: pointer arithmetic result points to invalid allocation"
+          # https://github.com/xssnick/tonutils-go/issues/310
+          go-test-cmd: go test -race -gcflags=all=-d=checkptr=0 -coverprofile=coverage.txt ./chain/ton/provider/...
+          use-go-cache: true
+          artifact-name: provider-tests-ton
+
+  ci-test-provider-tron:
+    name: Provider Tests - TRON
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      id-token: write
+      contents: read
+      actions: read
+    steps:
+      - name: Build and test tron provider packages
+        uses: smartcontractkit/.github/actions/ci-test-go@dfcba48f05933158428bce867d790e3d5a9baa6b # ci-test-go@1.1.0
+        with:
+          go-test-cmd: go test -race -coverprofile=coverage.txt ./chain/tron/provider/...
+          use-go-cache: true
+          artifact-name: provider-tests-tron
+
+  ci-test-provider-stellar:
+    name: Provider Tests - Stellar
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      id-token: write
+      contents: read
+      actions: read
+    steps:
+      - name: Build and test stellar provider packages
+        uses: smartcontractkit/.github/actions/ci-test-go@dfcba48f05933158428bce867d790e3d5a9baa6b # ci-test-go@1.1.0
+        with:
+          go-test-cmd: go test -race -coverprofile=coverage.txt ./chain/stellar/provider/...
+          use-go-cache: true
+          artifact-name: provider-tests-stellar
+
+  ci-test-provider-fast:
+    name: Provider Tests - Others
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions:
       id-token: write
       contents: read
@@ -62,14 +145,11 @@ jobs:
       - name: Build and test provider packages
         uses: smartcontractkit/.github/actions/ci-test-go@dfcba48f05933158428bce867d790e3d5a9baa6b # ci-test-go@1.1.0
         with:
-          # disable the checkptr runtime check due a false positive in github.com/xssnick/tonutils-go
-          # causing tests in ci to fail "fatal error: checkptr: pointer arithmetic result points to invalid allocation"
-          # https://github.com/xssnick/tonutils-go/issues/310
           # -p 2 -parallel 3 = 2 packages, 3 tests max = 6 containers max
-          # Only run provider packages which use Docker containers
-          go-test-cmd: go test -race -gcflags=all=-d=checkptr=0 -p 2 -parallel 3 -coverprofile=coverage.txt $(go list ./... | grep '/provider')
+          # Run all provider tests EXCEPT slow ones (aptos, canton, ton, tron, stellar) which have dedicated jobs
+          go-test-cmd: go test -race -p 2 -parallel 3 -coverprofile=coverage.txt $(go list ./... | grep '/provider' | grep -E -v '/(aptos|canton|ton|tron|stellar)/provider')
           use-go-cache: true
-          artifact-name: provider-tests
+          artifact-name: provider-tests-others
 
   ci-test-catalog-remote:
     name: Catalog Remote Tests
@@ -84,7 +164,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Configure AWS credentials for ECR
-        uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 # v5.1.1
+        uses: aws-actions/configure-aws-credentials@8df5847569e6427dd6c4fb1cf565c83acfa8afa7 # v6.0.0
         with:
           role-to-assume: ${{ secrets.ECR_READ_ROLE_ARN }}
           aws-region: ${{ secrets.AWS_REGION }}
@@ -101,18 +181,18 @@ jobs:
             --query 'reverse(sort_by(imageDetails,& imagePushedAt))' \
             --output json | \
             jq -r '
-              [.[] | 
-               select(.imageTags != null) | 
-               .imageTags[] | 
+              [.[] |
+               select(.imageTags != null) |
+               .imageTags[] |
                select(test("^v[0-9]+\\.[0-9]+\\.[0-9]+$"))
               ] | first
             ')
-          
+
           if [[ -z "${LATEST_TAG}" ]] || [[ "${LATEST_TAG}" == "null" ]]; then
             echo "::error::Could not find a valid semantic version tag in ECR"
             exit 1
           fi
-          
+
           echo "Latest catalog service tag from ECR: ${LATEST_TAG}"
           echo "tag=${LATEST_TAG}" >> "${GITHUB_OUTPUT}"
 
@@ -139,7 +219,7 @@ jobs:
     name: Sonar Scan
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
-    needs: [ci-test, ci-test-provider, ci-test-catalog-remote, ci-lint-misc, ci-lint]
+    needs: [ci-test, ci-test-provider-aptos, ci-test-provider-canton, ci-test-provider-ton, ci-test-provider-tron, ci-test-provider-stellar, ci-test-provider-fast, ci-test-catalog-remote, ci-lint-misc, ci-lint]
     permissions:
       contents: read
       actions: read

@@ -16,7 +16,7 @@ const (
 	// ArchivedProposalsDirName is the name of the directory containing archived proposals.
 	ArchivedProposalsDirName = "archived_proposals"
 
-	// ArtifactsDirName is the name of the directory containing migration artifacts.
+	// ArtifactsDirName is the name of the directory containing changeset artifacts.
 	ArtifactsDirName = "artifacts"
 
 	// DarastoreDirName is the name of the directory containing the datastore files.
@@ -72,14 +72,6 @@ const (
 	// ViewStateFileName is the name of the file containing the view state of the
 	// environment.
 	ViewStateFileName = "state.json"
-
-	// MigrationsFileName is the name of the file containing the migrations for the
-	// environment.
-	MigrationsFileName = "migrations.go"
-
-	// MigrationsArchiveFileName is the name of the file containing the archived
-	// migrations for the environment.
-	MigrationsArchiveFileName = "migrations_archive.go"
 
 	// DurablePipelineDirName is the name of the directory containing durable pipelines.
 	DurablePipelineDirName = "durable_pipelines"

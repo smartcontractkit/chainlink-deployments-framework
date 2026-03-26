@@ -1,6 +1,7 @@
 package changeset
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"slices"
@@ -14,16 +15,12 @@ import (
 )
 
 // RegistryProvider defines an interface for initializing and managing the changeset registry
-// for a domain environment. It provides methods to initialize the registry, archive changesets,
-// and retrieve the initialized ChangesetsRegistry.
+// for a domain environment. It provides methods to initialize the registry and retrieve the
+// initialized ChangesetsRegistry.
 type RegistryProvider interface {
 	// Init initializes the changeset registry by adding changesets specific to the domain
 	// environment using the `Add` method on the ChangesetsRegistry.
 	Init() error
-
-	// Archive archives a changeset in the registry. This is intended for changesets that have
-	// already been applied and are retained only for historical purposes.
-	Archive()
 
 	// Registry retrieves the initialized ChangesetsRegistry.
 	Registry() *ChangesetsRegistry
@@ -57,11 +54,6 @@ func (p *BaseRegistryProvider) Init() error {
 	return nil
 }
 
-// Archive is an empty implementation of archiving changesets in the registry.
-//
-// This should be overridden by the domain-specific registry provider.
-func (p *BaseRegistryProvider) Archive() {}
-
 type registryEntry struct {
 	// changeset is the changeset that is registered.
 	changeset ChangeSet
@@ -72,11 +64,28 @@ type registryEntry struct {
 
 	// options contains the configuration options for this changeset
 	options ChangesetConfig
+
+	preHooks  []PreHook
+	postHooks []PostHook
+}
+
+// hookCarrier is implemented by changeset types that carry hooks through the
+// fluent API chain. Add() uses this to extract hooks into the registry entry.
+type hookCarrier interface {
+	getPreHooks() []PreHook
+	getPostHooks() []PostHook
 }
 
 // newRegistryEntry creates a new registry entry for a changeset.
 func newRegistryEntry(c ChangeSet, opts ChangesetConfig) registryEntry {
-	return registryEntry{changeset: c, options: opts}
+	entry := registryEntry{changeset: c, options: opts}
+
+	if hc, ok := c.(hookCarrier); ok {
+		entry.preHooks = hc.getPreHooks()
+		entry.postHooks = hc.getPostHooks()
+	}
+
+	return entry
 }
 
 // newArchivedRegistryEntry creates a new registry entry for an archived changeset.
@@ -101,6 +110,33 @@ type ChangesetsRegistry struct {
 
 	// validate enables or disables changeset key validation.
 	validate bool
+
+	// globalPreHooks run before every changeset in this registry.
+	globalPreHooks []PreHook
+	// globalPostHooks run after every changeset in this registry.
+	globalPostHooks []PostHook
+}
+
+type applyConfig struct {
+	inputStr string
+	runHooks bool
+}
+
+// ApplyOption configures ChangesetsRegistry.Apply behavior.
+type ApplyOption func(*applyConfig)
+
+// WithInput sets an explicit input string for a single apply invocation.
+func WithInput(inputStr string) ApplyOption {
+	return func(cfg *applyConfig) {
+		cfg.inputStr = inputStr
+	}
+}
+
+// WithoutHooks disables global and per-changeset pre/post hooks for this apply invocation.
+func WithoutHooks() ApplyOption {
+	return func(cfg *applyConfig) {
+		cfg.runHooks = false
+	}
 }
 
 // NewChangesetsRegistry creates a new ChangesetsRegistry.
@@ -120,23 +156,155 @@ func (r *ChangesetsRegistry) SetValidate(validate bool) {
 	r.validate = validate
 }
 
-// Apply applies a changeset.
-func (r *ChangesetsRegistry) Apply(
-	key string, e fdeployment.Environment,
-) (fdeployment.ChangesetOutput, error) {
+// AddGlobalPreHooks appends pre-hooks that run before every changeset in this registry.
+func (r *ChangesetsRegistry) AddGlobalPreHooks(hooks ...PreHook) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
+	r.globalPreHooks = append(r.globalPreHooks, hooks...)
+}
+
+// AddGlobalPostHooks appends post-hooks that run after every changeset in this registry.
+func (r *ChangesetsRegistry) AddGlobalPostHooks(hooks ...PostHook) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.globalPostHooks = append(r.globalPostHooks, hooks...)
+}
+
+// Apply applies a changeset, running any registered hooks around it.
+//
+// Execution order:
+//  1. Global pre-hooks (in order added)
+//  2. Per-changeset pre-hooks (in order specified)
+//  3. entry.changeset.Apply(env)
+//  4. Per-changeset post-hooks
+//  5. Global post-hooks
+//
+// If Apply failed, that error is always returned. Post-hook failures after
+// a failed Apply are logged but never mask the Apply error.
+func (r *ChangesetsRegistry) Apply(
+	key string, e fdeployment.Environment, opts ...ApplyOption,
+) (fdeployment.ChangesetOutput, error) {
+	cfg := applyConfig{runHooks: true}
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+
+	if !cfg.runHooks {
+		entry, err := r.getApplyEntry(key)
+		if err != nil {
+			return fdeployment.ChangesetOutput{}, err
+		}
+
+		return entry.changeset.applyWithInput(e, cfg.inputStr)
+	}
+
+	entry, globalPre, globalPost, err := r.getApplySnapshot(key)
+	if err != nil {
+		return fdeployment.ChangesetOutput{}, err
+	}
+
+	hookEnv := HookEnv{
+		Name:   e.Name,
+		Logger: e.Logger,
+	}
+
+	preParams := PreHookParams{
+		Env:          hookEnv,
+		ChangesetKey: key,
+	}
+
+	for _, h := range globalPre {
+		if err := ExecuteHook(e, h.HookDefinition, func(ctx context.Context) error {
+			return h.Func(ctx, preParams)
+		}); err != nil {
+			return fdeployment.ChangesetOutput{}, fmt.Errorf("global pre-hook %q failed: %w", h.Name, err)
+		}
+	}
+
+	for _, h := range entry.preHooks {
+		if err := ExecuteHook(e, h.HookDefinition, func(ctx context.Context) error {
+			return h.Func(ctx, preParams)
+		}); err != nil {
+			return fdeployment.ChangesetOutput{}, fmt.Errorf("pre-hook %q failed: %w", h.Name, err)
+		}
+	}
+
+	var output fdeployment.ChangesetOutput
+	var applyErr error
+	output, applyErr = entry.changeset.applyWithInput(e, cfg.inputStr)
+
+	postParams := PostHookParams{
+		Env:          hookEnv,
+		ChangesetKey: key,
+		Output:       output,
+		Err:          applyErr,
+	}
+
+	for _, h := range entry.postHooks {
+		if err := ExecuteHook(e, h.HookDefinition, func(ctx context.Context) error {
+			return h.Func(ctx, postParams)
+		}); err != nil {
+			if applyErr != nil {
+				e.Logger.Warnw("post-hook failed after changeset error",
+					"hook", h.Name, "hookErr", err, "changesetErr", applyErr)
+			} else {
+				return output, fmt.Errorf("post-hook %q failed: %w", h.Name, err)
+			}
+		}
+	}
+
+	for _, h := range globalPost {
+		if err := ExecuteHook(e, h.HookDefinition, func(ctx context.Context) error {
+			return h.Func(ctx, postParams)
+		}); err != nil {
+			if applyErr != nil {
+				e.Logger.Warnw("global post-hook failed after changeset error",
+					"hook", h.Name, "hookErr", err, "changesetErr", applyErr)
+			} else {
+				return output, fmt.Errorf("global post-hook %q failed: %w", h.Name, err)
+			}
+		}
+	}
+
+	return output, applyErr
+}
+
+// getApplyEntry reads and validates a changeset entry under the mutex.
+func (r *ChangesetsRegistry) getApplyEntry(key string) (registryEntry, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	return r.getApplyEntryLocked(key)
+}
+
+// getApplySnapshot reads the registry entry and global hook slices under
+// the mutex, returning copies so Apply can release the lock before running
+// hooks and the changeset.
+func (r *ChangesetsRegistry) getApplySnapshot(key string) (registryEntry, []PreHook, []PostHook, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	entry, err := r.getApplyEntryLocked(key)
+	if err != nil {
+		return registryEntry{}, nil, nil, err
+	}
+
+	return entry, slices.Clone(r.globalPreHooks), slices.Clone(r.globalPostHooks), nil
+}
+
+func (r *ChangesetsRegistry) getApplyEntryLocked(key string) (registryEntry, error) {
 	entry, ok := r.entries[key]
 	if !ok {
-		return fdeployment.ChangesetOutput{}, fmt.Errorf("changeset '%s' not found", key)
+		return registryEntry{}, fmt.Errorf("changeset '%s' not found", key)
 	}
 
 	if entry.IsArchived() {
-		return fdeployment.ChangesetOutput{}, fmt.Errorf("changeset '%s' is archived at SHA '%s'", key, *entry.gitSHA)
+		return registryEntry{}, fmt.Errorf("changeset '%s' is archived at SHA '%s'", key, *entry.gitSHA)
 	}
 
-	return entry.changeset.Apply(e)
+	return entry, nil
 }
 
 // GetChangesetOptions retrieves the configuration options for a changeset.

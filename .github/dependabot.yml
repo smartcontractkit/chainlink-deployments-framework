@@ -12,18 +12,7 @@ updates:
   - package-ecosystem: gomod
     directory: "/"
     schedule:
-      interval: daily
-    # High priority configuration for chain-selectors
-    allow:
-      - dependency-name: "github.com/smartcontractkit/chain-selectors"
-    open-pull-requests-limit: 1
-  - package-ecosystem: gomod
-    directory: "/"
-    schedule:
       interval: weekly
-    # General Go module updates with lower priority
-    ignore:
-      - dependency-name: "github.com/smartcontractkit/chain-selectors"
     open-pull-requests-limit: 9
   - package-ecosystem: npm
     directory: "/"

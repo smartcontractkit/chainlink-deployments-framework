@@ -244,7 +244,7 @@ func (p *ZkSyncCTFChainProvider) getTransactors(
 		require.FailNowf(p.t, "failed to parse chain ID into big.Int: %s", chainID)
 	}
 
-	transactors := make([]*bind.TransactOpts, 0)
+	transactors := make([]*bind.TransactOpts, 0, len(blockchain.AnvilZKSyncRichAccountPks))
 	for _, pk := range blockchain.AnvilZKSyncRichAccountPks {
 		privateKey, err := crypto.HexToECDSA(pk)
 		require.NoError(p.t, err)

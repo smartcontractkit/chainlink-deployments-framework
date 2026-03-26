@@ -30,15 +30,6 @@ func TestNewJDClient_ConfigurationScenarios(t *testing.T) {
 			description: "Basic configuration with insecure credentials",
 		},
 		{
-			name: "config with WSRPC",
-			config: JDConfig{
-				GRPC:  "localhost:9090",
-				WSRPC: "ws://localhost:9091",
-				Creds: insecure.NewCredentials(),
-			},
-			description: "Configuration with WebSocket RPC endpoint",
-		},
-		{
 			name: "config with OAuth2 auth",
 			config: JDConfig{
 				GRPC:  "localhost:9090",
@@ -47,12 +38,10 @@ func TestNewJDClient_ConfigurationScenarios(t *testing.T) {
 			},
 			description: "Configuration with OAuth2 authentication",
 		},
-
 		{
 			name: "complete config",
 			config: JDConfig{
 				GRPC:  "localhost:9090",
-				WSRPC: "ws://localhost:9091",
 				Creds: insecure.NewCredentials(),
 				Auth:  oauth2.StaticTokenSource(&oauth2.Token{AccessToken: "test-token"}),
 			},
@@ -75,7 +64,6 @@ func TestNewJDClient_ConfigurationScenarios(t *testing.T) {
 				require.NotNil(t, client, "Client should not be nil for %s", tt.description)
 
 				// Verify fields are set correctly
-				assert.Equal(t, tt.config.WSRPC, client.WSRPC)
 				assert.NotNil(t, client.NodeServiceClient)
 				assert.NotNil(t, client.JobServiceClient)
 				assert.NotNil(t, client.CSAServiceClient)

@@ -1,6 +1,7 @@
 package upf
 
 import (
+	"bytes"
 	"slices"
 
 	mcmstypes "github.com/smartcontractkit/mcms/types"
@@ -64,6 +65,8 @@ func (m rawBytes) MarshalYAML() ([]byte, error) {
 	if m == nil {
 		return []byte("null"), nil
 	}
+	// In YAML single-quoted strings, single quotes are escaped by doubling them
+	escaped := bytes.ReplaceAll(m, []byte{'\''}, []byte{'\'', '\''})
 
-	return slices.Concat([]byte{'\''}, m, []byte{'\''}), nil
+	return slices.Concat([]byte{'\''}, escaped, []byte{'\''}), nil
 }

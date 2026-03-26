@@ -41,6 +41,12 @@ var (
 				DeployerKey:   "0xedd",
 				WalletVersion: "V5R1",
 			},
+			Stellar: StellarConfig{
+				DeployerKey: "0x567",
+			},
+			Canton: CantonConfig{
+				JWTToken: "",
+			},
 		},
 		Offchain: OffchainConfig{
 			JobDistributor: JobDistributorConfig{
@@ -52,8 +58,7 @@ var (
 					Password:               "password1",
 				},
 				Endpoints: JobDistributorEndpoints{
-					WSRPC: "ws://localhost:1234",
-					GRPC:  "grpc://localhost:4567",
+					GRPC: "grpc://localhost:4567",
 				},
 			},
 			OCR: OCRConfig{
@@ -68,6 +73,7 @@ var (
 				KMSKeyRegion: "us-east-1",
 			},
 		},
+		CRE: CREConfig{},
 	}
 
 	// envVars is the environment variables that used to set the config.
@@ -82,6 +88,7 @@ var (
 		"ONCHAIN_APTOS_DEPLOYER_KEY":                 "0x123",
 		"ONCHAIN_TRON_DEPLOYER_KEY":                  "0x123",
 		"ONCHAIN_SUI_DEPLOYER_KEY":                   "0x123",
+		"ONCHAIN_STELLAR_DEPLOYER_KEY":               "0x567",
 		"ONCHAIN_TON_DEPLOYER_KEY":                   "0x123",
 		"ONCHAIN_TON_WALLET_VERSION":                 "V5R1",
 		"OFFCHAIN_JD_AUTH_COGNITO_APP_CLIENT_ID":     "123",
@@ -89,7 +96,6 @@ var (
 		"OFFCHAIN_JD_AUTH_AWS_REGION":                "us-east-1",
 		"OFFCHAIN_JD_AUTH_USERNAME":                  "123",
 		"OFFCHAIN_JD_AUTH_PASSWORD":                  "123",
-		"OFFCHAIN_JD_ENDPOINTS_WSRPC":                "WSRPC2",
 		"OFFCHAIN_JD_ENDPOINTS_GRPC":                 "GRPC2",
 		"OFFCHAIN_OCR_X_SIGNERS":                     "awkward bat",
 		"OFFCHAIN_OCR_X_PROPOSERS":                   "caring deer",
@@ -114,16 +120,16 @@ var (
 		"JD_AUTH_AWS_REGION":                "us-east-1",
 		"JD_AUTH_USERNAME":                  "123",
 		"JD_AUTH_PASSWORD":                  "123",
-		"JD_WS_RPC":                         "WSRPC2",
 		"JD_GRPC":                           "GRPC2",
 		"OCR_X_SIGNERS":                     "awkward bat",
 		"OCR_X_PROPOSERS":                   "caring deer",
+		"TON_DEPLOYER_KEY":                  "0x123",
+		"TON_WALLET_VERSION":                "V5R1",
 		// These values do not have a legacy equivalent
-		"ONCHAIN_TON_DEPLOYER_KEY":    "0x123",
-		"ONCHAIN_TON_WALLET_VERSION":  "V5R1",
-		"CATALOG_GRPC":                "http://localhost:8080",
-		"CATALOG_AUTH_KMS_KEY_ID":     "123",
-		"CATALOG_AUTH_KMS_KEY_REGION": "us-east-1",
+		"ONCHAIN_STELLAR_DEPLOYER_KEY": "0x567", // Stellar is new, uses new-style env var
+		"CATALOG_GRPC":                 "http://localhost:8080",
+		"CATALOG_AUTH_KMS_KEY_ID":      "123",
+		"CATALOG_AUTH_KMS_KEY_REGION":  "us-east-1",
 	}
 
 	// envCfg is the config that is loaded from the environment variables.
@@ -153,9 +159,15 @@ var (
 			Sui: SuiConfig{
 				DeployerKey: "0x123",
 			},
+			Stellar: StellarConfig{
+				DeployerKey: "0x567",
+			},
 			Ton: TonConfig{
 				DeployerKey:   "0x123",
 				WalletVersion: "V5R1",
+			},
+			Canton: CantonConfig{
+				JWTToken: "",
 			},
 		},
 		Offchain: OffchainConfig{
@@ -168,8 +180,7 @@ var (
 					Password:               "123",
 				},
 				Endpoints: JobDistributorEndpoints{
-					WSRPC: "WSRPC2",
-					GRPC:  "GRPC2",
+					GRPC: "GRPC2",
 				},
 			},
 			OCR: OCRConfig{
@@ -184,6 +195,7 @@ var (
 				KMSKeyRegion: "us-east-1",
 			},
 		},
+		CRE: CREConfig{},
 	}
 )
 
@@ -209,10 +221,13 @@ func Test_Load(t *testing.T) { //nolint:paralleltest // see comment in setupTest
 					EVM: EVMConfig{
 						Seth: nil, // Testing optional pointer fields
 					},
-					Solana: SolanaConfig{},
-					Aptos:  AptosConfig{},
-					Tron:   TronConfig{},
-					Ton:    TonConfig{},
+					Solana:  SolanaConfig{},
+					Aptos:   AptosConfig{},
+					Tron:    TronConfig{},
+					Sui:     SuiConfig{},
+					Ton:     TonConfig{},
+					Stellar: StellarConfig{},
+					Canton:  CantonConfig{},
 				},
 				Offchain: OffchainConfig{
 					JobDistributor: JobDistributorConfig{
@@ -222,6 +237,7 @@ func Test_Load(t *testing.T) { //nolint:paralleltest // see comment in setupTest
 					OCR: OCRConfig{},
 				},
 				Catalog: CatalogConfig{},
+				CRE:     CREConfig{},
 			},
 		},
 		{
@@ -318,6 +334,29 @@ func Test_LoadEnv_Legacy(t *testing.T) { //nolint:paralleltest // see comment in
 	require.NoError(t, err)
 
 	assert.Equal(t, envCfg, got)
+}
+
+func Test_LoadEnv_BindsCREFromEnv(t *testing.T) { //nolint:paralleltest // see comment in setupEnvVars
+	t.Setenv("CRE_DEPLOY_HMAC_KEY_ID", "kid-1")
+	t.Setenv("CRE_DEPLOY_HMAC_SECRET", "secret-1")
+	t.Setenv("CRE_TENANT_ID", "tenant-1")
+	t.Setenv("CRE_ORG_ID", "org-1")
+	t.Setenv("CRE_TLS", "true")
+	t.Setenv("CRE_TIMEOUT", "30s")
+	t.Setenv("CRE_STORAGE_ADDR", "addr-1")
+	t.Setenv("CRE_DON_FAMILY", "family-1")
+
+	got, err := LoadEnv()
+	require.NoError(t, err)
+
+	require.Equal(t, "kid-1", got.CRE.Auth.HMACKeyID)
+	require.Equal(t, "secret-1", got.CRE.Auth.HMACKeySecret)
+	require.Equal(t, "tenant-1", got.CRE.Auth.TenantID)
+	require.Equal(t, "org-1", got.CRE.Auth.OrgID)
+	require.Equal(t, "true", got.CRE.TLS)
+	require.Equal(t, "30s", got.CRE.Timeout)
+	require.Equal(t, "addr-1", got.CRE.StorageAddress)
+	require.Equal(t, "family-1", got.CRE.DonFamily)
 }
 
 func Test_YAML_Marshal_Unmarshal(t *testing.T) {

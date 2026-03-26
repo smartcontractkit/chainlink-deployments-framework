@@ -6,6 +6,7 @@ import (
 	fchain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
+	"github.com/smartcontractkit/chainlink-deployments-framework/cre"
 	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/onchain"
@@ -17,6 +18,7 @@ var (
 	newAptosContainerLoader         = onchain.NewAptosContainerLoader
 	newSolanaContainerLoader        = onchain.NewSolanaContainerLoader
 	newSuiContainerLoader           = onchain.NewSuiContainerLoader
+	newSuiContainerLoaderWithConfig = onchain.NewSuiContainerLoaderWithConfig
 	newTonContainerLoader           = onchain.NewTonContainerLoader
 	newTonContainerLoaderWithConfig = onchain.NewTonContainerLoaderWithConfig
 	newTronContainerLoader          = onchain.NewTronContainerLoader
@@ -170,11 +172,26 @@ func WithSuiContainer(t *testing.T, selectors []uint64) LoadOpt {
 	return withChainLoader(t, newSuiContainerLoader(), selectors)
 }
 
+// WithSuiContainerWithConfig loads Sui blockchain container instances with custom configuration
+// for specified chain selectors.
+func WithSuiContainerWithConfig(t *testing.T, selectors []uint64, cfg onchain.SuiContainerConfig) LoadOpt {
+	t.Helper()
+
+	return withChainLoader(t, newSuiContainerLoaderWithConfig(cfg), selectors)
+}
+
 // WithSuiContainerN loads n Sui blockchain container instances.
 func WithSuiContainerN(t *testing.T, n int) LoadOpt {
 	t.Helper()
 
 	return withChainLoaderN(t, newSuiContainerLoader(), n)
+}
+
+// WithSuiContainerNWithConfig loads n Sui blockchain container instances with custom configuration.
+func WithSuiContainerNWithConfig(t *testing.T, n int, cfg onchain.SuiContainerConfig) LoadOpt {
+	t.Helper()
+
+	return withChainLoaderN(t, newSuiContainerLoaderWithConfig(cfg), n)
 }
 
 // WithLogger sets the logger for the environment.
@@ -245,6 +262,14 @@ func withChainLoaderN(t *testing.T, loader *onchain.ChainLoader, n int) LoadOpt 
 
 		cmps.AddChains(chains...)
 
+		return nil
+	}
+}
+
+// WithCRERunner sets the CRE CLI runner for the test environment.
+func WithCRERunner(r cre.Runner) LoadOpt {
+	return func(cmps *components) error {
+		cmps.CRERunner = r
 		return nil
 	}
 }

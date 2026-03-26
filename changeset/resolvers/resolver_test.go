@@ -185,9 +185,14 @@ func TestCallResolver_Success(t *testing.T) {
 	}
 
 	resolver := func(input map[string]any) (TestConfigType, error) {
+		countNum, ok := input["count"].(json.Number)
+		require.True(t, ok, "count should decode as json.Number")
+		count, err := countNum.Int64()
+		require.NoError(t, err)
+
 		return TestConfigType{
 			Value: input["value"].(string),
-			Count: int(input["count"].(float64)),
+			Count: int(count),
 		}, nil
 	}
 
@@ -352,6 +357,54 @@ func TestCallResolver_ValueTypes(t *testing.T) {
 	result, err := CallResolver[TestOutput](resolver, payload)
 	require.NoError(t, err)
 	assert.Equal(t, "test_processed", result.Result)
+}
+
+func TestCallResolver_UseNumberForAnyInputValueType(t *testing.T) {
+	t.Parallel()
+
+	type TestInput struct {
+		Value any `json:"value"`
+	}
+	type TestOutput struct {
+		Value string
+	}
+
+	const expected = "16015286601757825753"
+	resolver := func(input TestInput) (TestOutput, error) {
+		n, ok := input.Value.(json.Number)
+		require.True(t, ok, "value should decode as json.Number for any field")
+
+		return TestOutput{Value: n.String()}, nil
+	}
+
+	payload := json.RawMessage(`{"value": ` + expected + `}`)
+	result, err := CallResolver[TestOutput](resolver, payload)
+	require.NoError(t, err)
+	assert.Equal(t, expected, result.Value)
+}
+
+func TestCallResolver_UseNumberForAnyInputPointerType(t *testing.T) {
+	t.Parallel()
+
+	type TestInput struct {
+		Value any `json:"value"`
+	}
+	type TestOutput struct {
+		Value string
+	}
+
+	const expected = "16015286601757825753"
+	resolver := func(input *TestInput) (TestOutput, error) {
+		n, ok := input.Value.(json.Number)
+		require.True(t, ok, "value should decode as json.Number for any field")
+
+		return TestOutput{Value: n.String()}, nil
+	}
+
+	payload := json.RawMessage(`{"value": ` + expected + `}`)
+	result, err := CallResolver[TestOutput](resolver, payload)
+	require.NoError(t, err)
+	assert.Equal(t, expected, result.Value)
 }
 
 func TestResolverInfo(t *testing.T) {

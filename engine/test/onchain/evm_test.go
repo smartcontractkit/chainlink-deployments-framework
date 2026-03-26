@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/samber/lo"
 	chainselectors "github.com/smartcontractkit/chain-selectors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -34,6 +36,7 @@ func Test_NewEVMSimLoaderEVMWithConfig(t *testing.T) {
 	config := EVMSimLoaderConfig{
 		NumAdditionalAccounts: 5,
 		BlockTime:             time.Second,
+		AdminAccount:          lo.Must(crypto.HexToECDSA("26a6528a1d63fffc4ce9f109d407bb584f3fce17a09033608fcb31c47c163756")),
 	}
 
 	loader := NewEVMSimLoaderWithConfig(config)

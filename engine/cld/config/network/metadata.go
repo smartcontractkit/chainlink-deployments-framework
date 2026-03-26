@@ -12,6 +12,35 @@ type EVMMetadata struct {
 	AnvilConfig *AnvilConfig `yaml:"anvil_config,omitempty"`
 }
 
+// StellarMetadata holds metadata specific to Stellar networks.
+// The main RPC URL comes from network.RPCs (like other chains); only passphrase and Friendbot (faucet) URL live here.
+type StellarMetadata struct {
+	NetworkPassphrase string `yaml:"network_passphrase"`
+	FriendbotURL      string `yaml:"friendbot_url"`
+}
+
+// CantonParticipantMetadata holds the configuration for a single Canton participant.
+type CantonParticipantMetadata struct {
+	// (HTTP) The URL to access the participant's JSON Ledger API
+	JSONLedgerAPIURL string `yaml:"json_ledger_api_url"`
+	// (gRPC) The URL to access the participant's gRPC Ledger API
+	GRPCLedgerAPIURL string `yaml:"grpc_ledger_api_url"`
+	// (gRPC) The URL to access the participant's Admin API (optional)
+	AdminAPIURL string `yaml:"admin_api_url,omitempty"`
+	// (HTTP) The URL to access the participant's Validator API
+	ValidatorAPIURL string `yaml:"validator_api_url"`
+	// The UserID of the user that should be used for accessing the participant's API endpoints
+	UserID string `yaml:"user_id"`
+	// The PartyID of the party that should be used for accessing the participant's API endpoints
+	PartyID string `yaml:"party_id"`
+}
+
+// CantonMetadata holds metadata specific to Canton networks.
+// It contains the list of participants to connect to.
+type CantonMetadata struct {
+	Participants []CantonParticipantMetadata `yaml:"participants"`
+}
+
 // AnvilConfig holds the configuration for starting an Anvil node.
 type AnvilConfig struct {
 	Image          string `yaml:"image"`
@@ -26,9 +55,6 @@ func (a AnvilConfig) Validate() error {
 	}
 	if a.Port == 0 {
 		return errors.New("port is not defined")
-	}
-	if a.ArchiveHTTPURL == "" {
-		return errors.New("archive_http_url is not defined")
 	}
 
 	return nil

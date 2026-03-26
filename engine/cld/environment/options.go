@@ -1,9 +1,10 @@
 package environment
 
 import (
-	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
-
+	"github.com/smartcontractkit/chainlink-deployments-framework/cre"
+	cfgdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/domain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
 // LoadConfig contains configuration parameters for loading an environment.
@@ -26,7 +27,7 @@ type LoadConfig struct {
 
 	// withoutJD determines whether to skip Job Distributor initialization.
 	// When true, the Environment's Offchain field will be nil.
-	// Useful for migrations that don't require Job Distributor functionality.
+	// Useful for changesets that don't require Job Distributor functionality.
 	withoutJD bool
 
 	// anvilKeyAsDeployer determines whether to use Anvil's default private key
@@ -40,6 +41,11 @@ type LoadConfig struct {
 	// useDryRunJobDistributor configures the environment to use a dry-run Job Distributor
 	// that allows read operations but performs noop write operations.
 	useDryRunJobDistributor bool
+
+	// datastoreType when set, overrides the datastore type from domain config (e.g. from --datastore flag).
+	datastoreType *cfgdomain.DatastoreType
+
+	creRunner cre.Runner
 }
 
 // Configure applies a slice of LoadEnvironmentOption functions to the LoadConfig.
@@ -59,11 +65,11 @@ func newLoadConfig() (*LoadConfig, error) {
 		return nil, err
 	}
 
-	// Default options
 	return &LoadConfig{
 		reporter:          operations.NewMemoryReporter(),
 		operationRegistry: operations.NewOperationRegistry(),
 		lggr:              lggr,
+		creRunner:         cre.NewCLIRunner(""),
 	}, nil
 }
 
@@ -103,7 +109,7 @@ func WithReporter(reporter operations.Reporter) LoadEnvironmentOption {
 //   - Testing scenarios where JD dependencies are not available
 //
 // WARNING: When this option is used, env.Offchain will be nil. Any code that
-// attempts to use env.Offchain will panic. Ensure your migration or operation
+// attempts to use env.Offchain will panic. Ensure your changeset or operation
 // does not depend on Job Distributor functionality.
 func WithoutJD() LoadEnvironmentOption {
 	return func(o *LoadConfig) {
@@ -111,10 +117,10 @@ func WithoutJD() LoadEnvironmentOption {
 	}
 }
 
-// OnlyLoadChainsFor configures the environment to load only specified chains for a migration.
+// OnlyLoadChainsFor configures the environment to load only specified chains for a changeset.
 //
 // This option optimizes environment loading by restricting it to only the chains
-// required for a specific migration. This can significantly reduce loading time
+// required for a specific changeset. This can significantly reduce loading time
 // and resource usage when working with environments that support many chains.
 //
 // By default, if this option is not specified, all chains are loaded.
@@ -165,15 +171,32 @@ func WithLogger(lggr logger.Logger) LoadEnvironmentOption {
 // that would normally modify the Job Distributor state. In this mode:
 //   - Read operations are forwarded to the real Job Distributor backend
 //   - Write operations are stubbed out and logged but not executed
-//   - This allows testing of migration logic without affecting production systems
+//   - This allows testing of changeset logic without affecting production systems
 //
 // This option is particularly useful for:
 //   - Running fork tests without affecting the production environment
-//   - Testing migrations against production environments safely
+//   - Testing changesets against production environments safely
 //   - Validating operation logic before actual deployment
 //   - Debugging issues without side effects
 func WithDryRunJobDistributor() LoadEnvironmentOption {
 	return func(o *LoadConfig) {
 		o.useDryRunJobDistributor = true
+	}
+}
+
+// WithDatastoreType overrides the datastore type from domain config. Use when the caller
+// explicitly requests "file" or "catalog" (e.g. from a CLI flag). Omit to use domain default.
+func WithDatastoreType(t cfgdomain.DatastoreType) LoadEnvironmentOption {
+	return func(o *LoadConfig) {
+		o.datastoreType = &t
+	}
+}
+
+// WithCRERunner overrides the default CRE CLI runner. The default is a [cre.CLIRunner] that
+// resolves "cre" from PATH. Use this to supply a custom binary path
+// (e.g. WithCRERunner(cre.NewCLIRunner("/opt/cre"))) or a mock in tests.
+func WithCRERunner(r cre.Runner) LoadEnvironmentOption {
+	return func(o *LoadConfig) {
+		o.creRunner = r
 	}
 }

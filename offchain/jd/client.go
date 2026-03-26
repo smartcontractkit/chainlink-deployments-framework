@@ -16,7 +16,8 @@ import (
 
 // JDConfig is the configuration for the Job Distributor client.
 type JDConfig struct {
-	GRPC  string
+	GRPC string
+	// DEPRECATED: WSRPC is no longer used and will be removed in a future version.
 	WSRPC string
 	Creds credentials.TransportCredentials
 	Auth  oauth2.TokenSource
@@ -28,6 +29,7 @@ type JobDistributor struct {
 	jobv1.JobServiceClient
 	csav1.CSAServiceClient
 
+	// DEPRECATED: WSRPC is no longer used and will be removed in a future version.
 	WSRPC string
 }
 
@@ -38,10 +40,12 @@ func NewJDClient(cfg JDConfig) (*JobDistributor, error) {
 		return nil, fmt.Errorf("failed to connect Job Distributor service. Err: %w", err)
 	}
 	jd := &JobDistributor{
-		WSRPC:             cfg.WSRPC,
 		NodeServiceClient: nodev1.NewNodeServiceClient(conn),
 		JobServiceClient:  jobv1.NewJobServiceClient(conn),
 		CSAServiceClient:  csav1.NewCSAServiceClient(conn),
+		// DEPRECATED: WSRPC is no longer used and will be removed in a future version in CLD.
+		// This is kept here for backwards compatibility as Chainlink repo uses it to remember the value of WSRPC.
+		WSRPC: cfg.WSRPC,
 	}
 
 	return jd, err

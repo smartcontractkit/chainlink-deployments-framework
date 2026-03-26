@@ -19,7 +19,7 @@ jobs:
         uses: smartcontractkit/.github/actions/ci-lint-go@ci-lint-go/v2 # ci-lint-go@2.0.0
         with:
           only-new-issues: "false"
-          golangci-lint-version: v2.5.0
+          golangci-lint-version: v2.8.0
 
   ci-lint-misc:
     name: Lint GH Actions and scripts
@@ -80,7 +80,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Configure AWS credentials for ECR
-        uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 # v5.1.1
+        uses: aws-actions/configure-aws-credentials@8df5847569e6427dd6c4fb1cf565c83acfa8afa7 # v6.0.0
         with:
           role-to-assume: ${{ secrets.ECR_READ_ROLE_ARN }}
           aws-region: ${{ secrets.AWS_REGION }}
@@ -97,18 +97,18 @@ jobs:
             --query 'reverse(sort_by(imageDetails,& imagePushedAt))' \
             --output json | \
             jq -r '
-              [.[] | 
-               select(.imageTags != null) | 
-               .imageTags[] | 
+              [.[] |
+               select(.imageTags != null) |
+               .imageTags[] |
                select(test("^v[0-9]+\\.[0-9]+\\.[0-9]+$"))
               ] | first
             ')
-          
+
           if [[ -z "${LATEST_TAG}" ]] || [[ "${LATEST_TAG}" == "null" ]]; then
             echo "::error::Could not find a valid semantic version tag in ECR"
             exit 1
           fi
-          
+
           echo "Latest catalog service tag from ECR: ${LATEST_TAG}"
           echo "tag=${LATEST_TAG}" >> "${GITHUB_OUTPUT}"
 

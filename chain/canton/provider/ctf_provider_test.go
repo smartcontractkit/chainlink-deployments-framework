@@ -1,0 +1,177 @@
+package provider
+
+import (
+	"testing"
+
+	apiv2 "github.com/digital-asset/dazl-client/v8/go/api/com/daml/ledger/api/v2"
+	adminv2 "github.com/digital-asset/dazl-client/v8/go/api/com/daml/ledger/api/v2/admin"
+	participantv30 "github.com/digital-asset/dazl-client/v8/go/api/com/digitalasset/canton/admin/participant/v30"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	chainsel "github.com/smartcontractkit/chain-selectors"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/canton"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/testutils"
+)
+
+func Test_CTFChainProviderConfig_validate(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		config  CTFChainProviderConfig
+		wantErr string
+	}{
+		{
+			name: "valid config",
+			config: CTFChainProviderConfig{
+				NumberOfValidators: 4,
+				Once:               testutils.DefaultNetworkOnce,
+			},
+			wantErr: "",
+		},
+		{
+			name: "missing sync.Once",
+			config: CTFChainProviderConfig{
+				NumberOfValidators: 3,
+				Once:               nil,
+			},
+			wantErr: "sync.Once instance is required",
+		},
+		{
+			name: "invalid number of validators",
+			config: CTFChainProviderConfig{
+				NumberOfValidators: -99,
+				Once:               testutils.DefaultNetworkOnce,
+			},
+			wantErr: "number of validators must be greater than zero",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			err := tt.config.validate()
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func Test_CTFChainProvider_Initialize(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name         string
+		giveSelector uint64
+		giveConfig   CTFChainProviderConfig
+		wantErr      string
+	}{
+		{
+			name:         "valid initialization",
+			giveSelector: chainsel.CANTON_LOCALNET.Selector,
+			giveConfig: CTFChainProviderConfig{
+				NumberOfValidators: 1,
+				Once:               testutils.DefaultNetworkOnce,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			provider := NewCTFChainProvider(t, tt.giveSelector, tt.giveConfig)
+			chain, err := provider.Initialize(t.Context())
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+			} else {
+				require.NoError(t, err)
+				require.NotNil(t, chain)
+
+				gotChain, ok := chain.(*canton.Chain)
+				require.True(t, ok, "expected chain to be of type *canton.Chain")
+				assert.Equal(t, tt.giveSelector, gotChain.Selector)
+				assert.Len(t, gotChain.Participants, tt.giveConfig.NumberOfValidators)
+
+				for _, participant := range gotChain.Participants {
+					// Test that the party has been set
+					assert.NotEmpty(t, participant.PartyID)
+					// Test that we can retrieve JWTs for each participant
+					token, err := participant.TokenSource.Token()
+					require.NoError(t, err)
+					assert.NotEmpty(t, token.AccessToken)
+					// Can't reasonably test all service clients here, but we can test that at least one client for each category is functional
+					// Test that ledger service clients can be called
+					_, err = participant.LedgerServices.Version.GetLedgerApiVersion(t.Context(), &apiv2.GetLedgerApiVersionRequest{})
+					require.NoError(t, err)
+					// Test that ledger admin service clients can be called
+					_, err = participant.LedgerServices.Admin.UserManagement.ListUsers(t.Context(), &adminv2.ListUsersRequest{})
+					require.NoError(t, err)
+					// Test that admin service client can be called
+					_, err = participant.AdminServices.Package.ListDars(t.Context(), &participantv30.ListDarsRequest{})
+					require.NoError(t, err)
+					// Test that the internal endpoints have been populated
+					require.NotNil(t, participant.InternalEndpoints)
+					assert.NotEmpty(t, participant.InternalEndpoints.JSONLedgerAPIURL)
+					assert.NotEmpty(t, participant.InternalEndpoints.GRPCLedgerAPIURL)
+					assert.NotEmpty(t, participant.InternalEndpoints.AdminAPIURL)
+					assert.NotEmpty(t, participant.InternalEndpoints.ValidatorAPIURL)
+				}
+
+				// Check that subsequent calls to Initialize don't re-initialize the chain
+				chainBefore := provider.chain
+				chain2, err := provider.Initialize(t.Context())
+				require.NoError(t, err)
+				require.Equal(t, chain, chain2)
+				require.Same(t, chainBefore, provider.chain)
+			}
+		})
+	}
+}
+
+func Test_CTFChainProvider_Name(t *testing.T) {
+	t.Parallel()
+
+	provider := NewCTFChainProvider(t, chainsel.CANTON_LOCALNET.Selector, CTFChainProviderConfig{
+		NumberOfValidators: 3,
+		Once:               testutils.DefaultNetworkOnce,
+	})
+
+	require.Equal(t, "Canton CTF Chain Provider", provider.Name())
+}
+
+func Test_CTFChainProvider_ChainSelector(t *testing.T) {
+	t.Parallel()
+
+	selector := chainsel.CANTON_LOCALNET.Selector
+	provider := NewCTFChainProvider(t, selector, CTFChainProviderConfig{
+		NumberOfValidators: 3,
+		Once:               testutils.DefaultNetworkOnce,
+	})
+
+	require.Equal(t, selector, provider.ChainSelector())
+}
+
+func Test_CTFChainProvider_BlockChain(t *testing.T) {
+	t.Parallel()
+
+	chain := &canton.Chain{
+		ChainMetadata: canton.ChainMetadata{Selector: chainsel.CANTON_LOCALNET.Selector},
+		Participants: []canton.Participant{
+			{Name: "Participant 1"},
+			{Name: "Participant 2"},
+		},
+	}
+
+	provider := &CTFChainProvider{
+		chain: chain,
+	}
+
+	require.Equal(t, *chain, provider.BlockChain())
+}

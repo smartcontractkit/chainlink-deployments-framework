@@ -38,7 +38,7 @@ func MustGetDomain(key string) Domain {
 }
 
 // Domain represents a specific domain that is operated by a team. Each domain corresponds to a
-// team's ownership of a set of migrations that span multiple environments.
+// team's ownership of a set of changesets that span multiple environments.
 type Domain struct {
 	// rootPath is absolute path of the domains filesystem. e.g. if the domain directory is in the
 	// project root directory, this would be the project root directory.

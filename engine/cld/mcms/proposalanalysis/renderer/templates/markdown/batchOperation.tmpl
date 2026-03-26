@@ -1,0 +1,13 @@
+{{- define "batchOperation" -}}
+
+{{- /* Batch annotations (non framework only) */ -}}
+{{ template "annotations" .Annotations }}
+
+{{- /* Calls within the batch */ -}}
+{{- range $i, $call := .Calls }}
+#### Call {{ add $i 1 }}
+
+{{ template "call" $call }}
+{{ end -}}
+
+{{- end -}}

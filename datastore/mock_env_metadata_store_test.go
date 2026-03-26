@@ -88,4 +88,3 @@ func (_c *MockEnvMetadataStore_Get_Call) RunAndReturn(run func() (EnvMetadata, e
 	_c.Call.Return(run)
 	return _c
 }
-

@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"fmt"
 	"math/big"
 	"testing"
@@ -37,6 +38,9 @@ type SimChainProviderConfig struct {
 	// set to 0s, meaning that blocks are not mined automatically and you must call the Commit
 	// method on the Simulated Backend to produce a new block.
 	BlockTime time.Duration
+	// Optional: AdminAccount is a pre-defined account which will be configured as the admin.
+	// Useful to get deterministic deployment addresses.
+	AdminAccount *ecdsa.PrivateKey
 }
 
 var _ chain.Provider = (*SimChainProvider)(nil)
@@ -74,9 +78,13 @@ func (p *SimChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 		return *p.chain, nil // Already initialized
 	}
 
-	// Generate a deployer account
-	adminKey, err := crypto.GenerateKey()
-	require.NoError(p.t, err, "failed to generate deployer key")
+	var adminKey = p.config.AdminAccount
+	if adminKey == nil {
+		// Generate a deployer account
+		var err error
+		adminKey, err = crypto.GenerateKey()
+		require.NoError(p.t, err, "failed to generate deployer key")
+	}
 
 	adminTransactor, err := bind.NewKeyedTransactorWithChainID(adminKey, simChainID)
 	require.NoError(p.t, err)

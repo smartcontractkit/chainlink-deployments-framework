@@ -27,7 +27,7 @@ func LoadPipelinesRegistry(envKey string) (*changeset.ChangesetsRegistry, error)
 	rp.Registry().SetValidate(false)
 
 	if err := rp.Init(); err != nil {
-		return nil, fmt.Errorf("failed to init migrations %w", err)
+		return nil, fmt.Errorf("failed to init changesets %w", err)
 	}
 
 	return rp.Registry(), nil //nolint:govet // remove when the first registry is available

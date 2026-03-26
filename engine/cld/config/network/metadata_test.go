@@ -42,14 +42,6 @@ func Test_AnvilConfig_Validate(t *testing.T) {
 			},
 			wantErr: true,
 		},
-		{
-			name: "missing archive HTTP URL",
-			config: AnvilConfig{
-				Image: "anvil:latest",
-				Port:  8545,
-			},
-			wantErr: true,
-		},
 	}
 
 	for _, tt := range tests {

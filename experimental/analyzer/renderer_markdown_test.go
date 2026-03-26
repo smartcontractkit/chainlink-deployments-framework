@@ -34,8 +34,8 @@ func TestMarkdownRenderer_RenderDecodedCall_SimpleCall(t *testing.T) {
 	assert.Contains(t, output, "**Address:** `0x1234567890123456789012345678901234567890`")
 	assert.Contains(t, output, "**Method:** `transfer(address,uint256)`")
 	assert.Contains(t, output, "**Inputs:**")
-	assert.Contains(t, output, "- `to`: `0xabcdefabcdefabcdefabcdefabcdefabcdefabcd`")
-	assert.Contains(t, output, "- `amount`: `1000000000000000000`")
+	assert.Contains(t, output, "**`to`**: `0xabcdefabcdefabcdefabcdefabcdefabcdefabcd`")
+	assert.Contains(t, output, "**`amount`**: `1000000000000000000`")
 	assert.NotContains(t, output, "**Outputs:**")
 }
 
@@ -64,9 +64,9 @@ func TestMarkdownRenderer_RenderDecodedCall_WithOutputs(t *testing.T) {
 	output := renderer.RenderDecodedCall(call, ctx)
 
 	assert.Contains(t, output, "**Inputs:**")
-	assert.Contains(t, output, "- `account`: `0xabcdefabcdefabcdefabcdefabcdefabcdefabcd`")
+	assert.Contains(t, output, "**`account`**: `0xabcdefabcdefabcdefabcdefabcdefabcdefabcd`")
 	assert.Contains(t, output, "**Outputs:**")
-	assert.Contains(t, output, "- `balance`: `5000000000000000000`")
+	assert.Contains(t, output, "**`balance`**: `5000000000000000000`")
 }
 
 func TestMarkdownRenderer_RenderDecodedCall_WithAddressAnnotation(t *testing.T) {
@@ -113,6 +113,73 @@ func TestMarkdownRenderer_RenderDecodedCall_EmptyInputsOutputs(t *testing.T) {
 	assert.NotContains(t, output, "**Outputs:**")
 }
 
+func TestMarkdownRenderer_RenderDecodedCall_TopLevelBlocks_NoListIndentation(t *testing.T) {
+	t.Parallel()
+
+	renderer := NewMarkdownRenderer()
+	call := &DecodedCall{
+		Address: "0x88C6be3328DC0aa67d6E7E2Fd2245B35e6389030",
+		Method:  "setConfig(address[],uint8[],uint8[32],uint8[32],bool)",
+		Inputs: []NamedField{
+			{
+				Name: "signerAddresses",
+				Value: ArrayField{Elements: []FieldValue{
+					AddressField{Value: "0x9cA1A1bAf18278Ed49FC25E35753768167959082"},
+					AddressField{Value: "0xAd5F37dB17a54eb3b8c6DE6774b3D410CE8AeDD5"},
+				}},
+			},
+			{
+				Name: "signerGroups",
+				Value: ArrayField{Elements: []FieldValue{
+					SimpleField{Value: "0"},
+					SimpleField{Value: "0"},
+				}},
+			},
+			{
+				Name: "groupQuorums",
+				Value: ArrayField{Elements: []FieldValue{
+					SimpleField{Value: "1"},
+					SimpleField{Value: "0"},
+					SimpleField{Value: "0"},
+					SimpleField{Value: "0"},
+				}},
+			},
+			{
+				Name: "groupParents",
+				Value: ArrayField{Elements: []FieldValue{
+					SimpleField{Value: "0"},
+					SimpleField{Value: "0"},
+					SimpleField{Value: "0"},
+					SimpleField{Value: "0"},
+				}},
+			},
+			{
+				Name:  "clearRoot",
+				Value: SimpleField{Value: "false"},
+			},
+		},
+		Outputs: []NamedField{},
+	}
+
+	ctx := NewFieldContext(nil)
+	output := renderer.RenderDecodedCall(call, ctx)
+
+	// New format should not emit nested list markers for inputs.
+	assert.NotContains(t, output, "\n  - `")
+	// Details should start at column 0, not indented under a list.
+	assert.Contains(t, output, "\n<details>")
+	assert.NotContains(t, output, "\n    <details>")
+
+	// key inputs should be present and use top-level blocks.
+	assert.Contains(t, output, "**`signerAddresses`**:")
+	assert.Contains(t, output, "**`groupQuorums`**:")
+
+	// Details wrapper should use a summary + fenced code (GitHub-stable).
+	assert.Contains(t, output, "<summary>Details</summary>")
+	assert.Contains(t, output, "```text")
+	assert.Contains(t, output, "</details>")
+}
+
 // Tests for MarkdownRenderer descriptor handling methods
 
 func TestMarkdownRenderer_SummarizeArgument_SimpleField(t *testing.T) {
@@ -131,8 +198,9 @@ func TestMarkdownRenderer_SummarizeArgument_SimpleField(t *testing.T) {
 	summary, details = renderer.summarizeField("longName", SimpleField{Value: longValue}, ctx)
 	assert.Contains(t, summary, "`this is a very long string that should …cause it exceeds the 80 character limit` (len=")
 	assert.Contains(t, details, "<details>")
-	assert.Contains(t, details, "<pre><code>")
-	assert.Contains(t, details, "</code></pre>")
+	assert.Contains(t, details, "<summary>Details</summary>")
+	assert.Contains(t, details, "```text")
+	assert.Contains(t, details, "```")
 	assert.Contains(t, details, "</details>")
 	assert.Contains(t, details, longValue)
 }
@@ -170,8 +238,9 @@ func TestMarkdownRenderer_SummarizeArgument_BytesField(t *testing.T) {
 	summary, details := renderer.summarizeField("small", BytesField{Value: smallBytes}, ctx)
 	assert.Contains(t, summary, "bytes(len=3):")
 	assert.Contains(t, details, "<details>")
-	assert.Contains(t, details, "<pre><code>")
-	assert.Contains(t, details, "</code></pre>")
+	assert.Contains(t, details, "<summary>Details</summary>")
+	assert.Contains(t, details, "```text")
+	assert.Contains(t, details, "```")
 	assert.Contains(t, details, "</details>")
 	assert.Contains(t, details, "0x010203")
 
@@ -183,8 +252,9 @@ func TestMarkdownRenderer_SummarizeArgument_BytesField(t *testing.T) {
 	summary, details = renderer.summarizeField("large", BytesField{Value: largeBytes}, ctx)
 	assert.Contains(t, summary, "bytes(len=50):")
 	assert.Contains(t, details, "<details>")
-	assert.Contains(t, details, "<pre><code>")
-	assert.Contains(t, details, "</code></pre>")
+	assert.Contains(t, details, "<summary>Details</summary>")
+	assert.Contains(t, details, "```text")
+	assert.Contains(t, details, "```")
 	assert.Contains(t, details, "</details>")
 }
 
@@ -208,8 +278,9 @@ func TestMarkdownRenderer_SummarizeArgument_ArrayField(t *testing.T) {
 	summary, details = renderer.summarizeField("array", ArrayField{Elements: elements}, ctx)
 	assert.Contains(t, summary, "array[3]")
 	assert.Contains(t, details, "<details>")
-	assert.Contains(t, details, "<pre><code>")
-	assert.Contains(t, details, "</code></pre>")
+	assert.Contains(t, details, "<summary>Details</summary>")
+	assert.Contains(t, details, "```text")
+	assert.Contains(t, details, "```")
 	assert.Contains(t, details, "</details>")
 }
 
@@ -226,8 +297,9 @@ func TestMarkdownRenderer_SummarizeArgument_StructField(t *testing.T) {
 	summary, details := renderer.summarizeField("struct", StructField{Fields: fields}, ctx)
 	assert.Contains(t, summary, "struct{ 2 fields }")
 	assert.Contains(t, details, "<details>")
-	assert.Contains(t, details, "<pre><code>")
-	assert.Contains(t, details, "</code></pre>")
+	assert.Contains(t, details, "<summary>Details</summary>")
+	assert.Contains(t, details, "```text")
+	assert.Contains(t, details, "```")
 	assert.Contains(t, details, "</details>")
 	// Test that details contain actual field content, not just the summary
 	assert.Contains(t, details, "field1: value1")
@@ -253,8 +325,9 @@ func TestMarkdownRenderer_SummarizeArgument_ArrayField_Details(t *testing.T) {
 
 	// Test that details contain actual array content, not just the summary
 	assert.Contains(t, details, "<details>")
-	assert.Contains(t, details, "<pre><code>")
-	assert.Contains(t, details, "</code></pre>")
+	assert.Contains(t, details, "<summary>Details</summary>")
+	assert.Contains(t, details, "```text")
+	assert.Contains(t, details, "```")
 	assert.Contains(t, details, "</details>")
 	assert.Contains(t, details, "item1")
 	assert.Contains(t, details, "item2")
@@ -277,8 +350,9 @@ func TestMarkdownRenderer_SummarizeArgument_StructField_Empty(t *testing.T) {
 
 	// Test that details show the appropriate message for empty struct
 	assert.Contains(t, details, "<details>")
-	assert.Contains(t, details, "<pre><code>")
-	assert.Contains(t, details, "</code></pre>")
+	assert.Contains(t, details, "<summary>Details</summary>")
+	assert.Contains(t, details, "```text")
+	assert.Contains(t, details, "```")
 	assert.Contains(t, details, "</details>")
 	assert.Contains(t, details, "struct with 0 fields (no field data available)")
 }
@@ -301,8 +375,9 @@ func TestMarkdownRenderer_StructDetail(t *testing.T) {
 	assert.Contains(t, summary, "struct{ 2 fields }")
 
 	assert.Contains(t, details, "<details>")
-	assert.Contains(t, details, "<pre><code>")
-	assert.Contains(t, details, "</code></pre>")
+	assert.Contains(t, details, "<summary>Details</summary>")
+	assert.Contains(t, details, "```text")
+	assert.Contains(t, details, "```")
 	assert.Contains(t, details, "</details>")
 
 	// details should contain actual field content
@@ -346,8 +421,9 @@ func TestMarkdownRenderer_ArrayField_WithStructElement(t *testing.T) {
 
 	// Details should show FULL nested content in GitHub Flavored Markdown collapsible section
 	assert.Contains(t, details, "<details>")
-	assert.Contains(t, details, "<pre><code>")
-	assert.Contains(t, details, "</code></pre>")
+	assert.Contains(t, details, "<summary>Details</summary>")
+	assert.Contains(t, details, "```text")
+	assert.Contains(t, details, "```")
 	assert.Contains(t, details, "</details>")
 
 	// Should show the outer struct fields
@@ -359,8 +435,8 @@ func TestMarkdownRenderer_ArrayField_WithStructElement(t *testing.T) {
 	assert.Contains(t, details, "FChain: someValue")
 	assert.Contains(t, details, "Config:")
 
-	assert.Contains(t, details, "<pre><code>")
-	assert.Contains(t, details, "</code></pre>")
+	assert.Contains(t, details, "```text")
+	assert.Contains(t, details, "```")
 	assert.Contains(t, details, "</details>")
 
 	// Details should NOT contain just the summary
@@ -382,8 +458,9 @@ func TestMarkdownRenderer_StructField_EmptyFields(t *testing.T) {
 
 	// Details should show appropriate message for empty struct
 	assert.Contains(t, details, "<details>")
-	assert.Contains(t, details, "<pre><code>")
-	assert.Contains(t, details, "</code></pre>")
+	assert.Contains(t, details, "<summary>Details</summary>")
+	assert.Contains(t, details, "```text")
+	assert.Contains(t, details, "```")
 	assert.Contains(t, details, "</details>")
 	assert.Contains(t, details, "struct with 0 fields (no field data available)")
 }
@@ -444,8 +521,11 @@ func TestMarkdownRenderer_YamlField_PrettyPrinting(t *testing.T) {
 	assert.Contains(t, summary, "signer: false")
 
 	// Details should show pretty-printed YAML with proper indentation
-	assert.Contains(t, details, "<details><pre><code>")
-	assert.Contains(t, details, "</code></pre></details>")
+	assert.Contains(t, details, "<details>")
+	assert.Contains(t, details, "<summary>Details</summary>")
+	assert.Contains(t, details, "```text")
+	assert.Contains(t, details, "```")
+	assert.Contains(t, details, "</details>")
 
 	// Should contain the YAML structure with proper formatting and html espaced strings &#45 for dashes "-"
 	assert.Contains(t, details, "items:")

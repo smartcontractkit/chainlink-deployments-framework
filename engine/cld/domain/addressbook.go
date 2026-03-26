@@ -74,7 +74,7 @@ func (d EnvDir) MigrateAddressBook() error {
 	return nil
 }
 
-func loadAddressBookByMigrationKey(artDir *ArtifactsDir, migKey, timestamp string) (fdeployment.AddressBook, error) {
+func loadAddressBookByChangesetKey(artDir *ArtifactsDir, csKey, timestamp string) (fdeployment.AddressBook, error) {
 	// Set the durable pipelines directory and timestamp if provided
 	if timestamp != "" {
 		if err := artDir.SetDurablePipelines(timestamp); err != nil {
@@ -82,11 +82,11 @@ func loadAddressBookByMigrationKey(artDir *ArtifactsDir, migKey, timestamp strin
 		}
 	}
 
-	// Load the migration address book where the artifacts group name is the migration key
-	migAddrBook, err := artDir.LoadAddressBookByMigrationKey(migKey)
+	// Load the changeset address book where the artifacts group name is the changeset key
+	csAddrBook, err := artDir.LoadAddressBookByChangesetKey(csKey)
 	if err != nil {
 		if errors.Is(err, ErrArtifactNotFound) {
-			fmt.Println("No migration address book found, skipping merge")
+			fmt.Println("No changeset address book found, skipping merge")
 
 			return &fdeployment.AddressBookMap{}, nil
 		}
@@ -94,5 +94,5 @@ func loadAddressBookByMigrationKey(artDir *ArtifactsDir, migKey, timestamp strin
 		return &fdeployment.AddressBookMap{}, err
 	}
 
-	return migAddrBook, nil
+	return csAddrBook, nil
 }

@@ -14,6 +14,7 @@ import (
 	nodev1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/node"
 
 	foffchain "github.com/smartcontractkit/chainlink-deployments-framework/offchain"
+	"github.com/smartcontractkit/chainlink-deployments-framework/offchain/jd"
 )
 
 // listJobsByNodeId fetches jobs for a slice of node IDs and returns a map of job slices for each node ID.
@@ -70,7 +71,7 @@ func listProposalsByNodeId(
 
 // toNodeIDs maps nodes into slice of IDs.
 func toNodeIDs(nodes []*nodev1.Node) []string {
-	nodeIDs := make([]string, 0)
+	nodeIDs := make([]string, 0, len(nodes))
 	for _, ni := range nodes {
 		nodeIDs = append(nodeIDs, ni.Id)
 	}
@@ -80,7 +81,7 @@ func toNodeIDs(nodes []*nodev1.Node) []string {
 
 // toJobIDs maps job slice into slice of IDs.
 func toJobIDs(jobs []*jobv1.Job) []string {
-	ids := make([]string, 0)
+	ids := make([]string, 0, len(jobs))
 	for _, j := range jobs {
 		ids = append(ids, j.Id)
 	}
@@ -94,7 +95,7 @@ func toNodeViews(
 	nidToProposals map[string][]*jobv1.Proposal,
 	nidToJobs map[string][]*jobv1.Job,
 ) []NodeView {
-	nvs := make([]NodeView, 0)
+	nvs := make([]NodeView, 0, len(ns))
 	for _, n := range ns {
 		jobsView := toJobsView(n, nidToProposals, nidToJobs)
 		nvs = append(nvs, NodeView{
@@ -153,7 +154,7 @@ func writeNodeTable(nodes []*nodev1.Node) {
 	for _, node := range nodes {
 		labelsString := &strings.Builder{}
 		labelsTable := tablewriter.NewWriter(labelsString)
-		var labels [][]string
+		labels := make([][]string, 0, len(node.Labels))
 		for _, label := range node.Labels {
 			labels = append(labels, []string{label.Key, *label.Value})
 		}
@@ -178,7 +179,9 @@ func writeNodeTable(nodes []*nodev1.Node) {
 		if len(node.P2PKeyBundles) > 0 {
 			p2pBuilder := &strings.Builder{}
 			p2pTable := tablewriter.NewWriter(p2pBuilder)
-			var p2pData [][]string
+			// Pre-allocate capacity for 2 rows per P2PKeyBundle (Peer ID and Public Key).
+			// If the number of rows per bundle changes, update this multiplier accordingly.
+			p2pData := make([][]string, 0, len(node.P2PKeyBundles)*2)
 			for _, p2p := range node.P2PKeyBundles {
 				p2pData = append(p2pData, []string{"Peer ID", p2p.PeerId})
 				p2pData = append(p2pData, []string{"Public Key", p2p.PublicKey})
@@ -213,26 +216,9 @@ func writeChainConfigTable(configsByNode map[string][]*nodev1.ChainConfig) {
 	for nodeID, configs := range configsByNode {
 		fmt.Printf("Node ID: %v\n", nodeID)
 		for _, config := range configs {
-			var family string
-			switch config.Chain.Type {
-			case nodev1.ChainType_CHAIN_TYPE_EVM:
-				family = chainsel.FamilyEVM
-			case nodev1.ChainType_CHAIN_TYPE_APTOS:
-				family = chainsel.FamilyAptos
-			case nodev1.ChainType_CHAIN_TYPE_SOLANA:
-				family = chainsel.FamilySolana
-			case nodev1.ChainType_CHAIN_TYPE_STARKNET:
-				family = chainsel.FamilyStarknet
-			case nodev1.ChainType_CHAIN_TYPE_TRON:
-				family = chainsel.FamilyTron
-			case nodev1.ChainType_CHAIN_TYPE_TON:
-				family = chainsel.FamilyTon
-			case nodev1.ChainType_CHAIN_TYPE_SUI:
-				family = chainsel.FamilySui
-			case nodev1.ChainType_CHAIN_TYPE_UNSPECIFIED:
-				panic("chain type must be specified")
-			default:
-				panic(fmt.Sprintf("unsupported chain type %s", config.Chain.Type))
+			family, err := jd.ChainTypeToFamily(config.Chain.Type)
+			if err != nil {
+				panic(err)
 			}
 
 			details, err := chainsel.GetChainDetailsByChainIDAndFamily(config.Chain.Id, family)

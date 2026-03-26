@@ -529,6 +529,8 @@ func Test_solanaAnalyzer_describeOperations(t *testing.T) {
 					expected := tt.want[i]
 					require.Equal(t, expected.Address, result.Address, "Address mismatch for result %d", i)
 					require.Equal(t, expected.Method, result.Method, "Method mismatch for result %d", i)
+					require.NotEmpty(t, result.ContractType, "ContractType should be populated for result %d", i)
+					require.NotEmpty(t, result.ContractVersion, "ContractVersion should be populated for result %d", i)
 					require.Len(t, result.Inputs, len(expected.Inputs), "Number of inputs should match for result %d", i)
 
 					// Compare each input
@@ -708,6 +710,8 @@ func Test_solanaAnalyzer_describeBatchOperations(t *testing.T) {
 					expected := tt.want[i]
 					require.Equal(t, expected.Address, result.Address, "Address mismatch for result %d", i)
 					require.Equal(t, expected.Method, result.Method, "Method mismatch for result %d", i)
+					require.NotEmpty(t, result.ContractType, "ContractType should be populated for result %d", i)
+					require.NotEmpty(t, result.ContractVersion, "ContractVersion should be populated for result %d", i)
 					require.Len(t, result.Inputs, len(expected.Inputs), "Number of inputs should match for result %d", i)
 
 					// Compare each input

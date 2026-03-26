@@ -13,8 +13,6 @@ import (
 	"github.com/avast/retry-go/v4"
 	"github.com/testcontainers/testcontainers-go"
 
-	"github.com/xssnick/tonutils-go/address"
-	"github.com/xssnick/tonutils-go/tlb"
 	"github.com/xssnick/tonutils-go/ton"
 	"github.com/xssnick/tonutils-go/ton/wallet"
 
@@ -34,6 +32,7 @@ const (
 
 	// supportedTONImageRepository is the only supported Docker image repository for TON localnet.
 	supportedTONImageRepository = "ghcr.io/neodix42/mylocalton-docker"
+	defaultClientRetryCount     = 5
 )
 
 // CTFChainProviderConfig holds the configuration to initialize the CTFChainProvider.
@@ -49,6 +48,10 @@ type CTFChainProviderConfig struct {
 	// Optional: Custom environment variables to pass to the TON container.
 	// Example: map[string]string{"NEXT_BLOCK_GENERATION_DELAY": "0.5"}
 	CustomEnv map[string]string
+
+	// Optional: Port to expose the TON container on. If 0 or not specified, a free port will be
+	// automatically selected using freeport.
+	Port int
 }
 
 // validate checks if the CTFChainProviderConfig is valid.
@@ -122,24 +125,19 @@ func (p *CTFChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 		return nil, fmt.Errorf("failed to create wallet: %w", err)
 	}
 
-	// airdrop the deployer wallet
-	ferr := fundTonWallets(ctx, nodeClient, []*address.Address{tonWallet.Address()}, []tlb.Coins{tlb.MustFromTON("1000")})
-	if ferr != nil {
-		return nil, fmt.Errorf("failed to fund wallet: %w", ferr)
-	}
-
 	p.chain = &cldf_ton.Chain{
 		ChainMetadata: cldf_ton.ChainMetadata{Selector: p.selector},
 		Client:        nodeClient,
 		Wallet:        tonWallet,
-		WalletAddress: tonWallet.Address(),
+		WalletAddress: tonWallet.WalletAddress(),
 		URL:           url,
+		Confirm:       cldf_ton.MakeDefaultConfirmFunc(nodeClient),
 	}
 
 	return *p.chain, nil
 }
 
-func (p *CTFChainProvider) startContainer(ctx context.Context, chainID string) (string, *ton.APIClient, error) {
+func (p *CTFChainProvider) startContainer(ctx context.Context, chainID string) (string, ton.APIClientWrapped, error) {
 	var (
 		attempts = uint(10)
 		url      string
@@ -152,8 +150,7 @@ func (p *CTFChainProvider) startContainer(ctx context.Context, chainID string) (
 	}
 
 	url, err = retry.DoWithData(func() (string, error) {
-		// Initialize a port for the container
-		port := freeport.GetOne(p.t)
+		port, usedFreeport := p.getPort()
 
 		// spin up mylocalton with CTFv2
 		output, rerr := blockchain.NewBlockchainNetwork(&blockchain.Input{
@@ -165,7 +162,10 @@ func (p *CTFChainProvider) startContainer(ctx context.Context, chainID string) (
 		})
 		if rerr != nil {
 			// Return the ports to freeport to avoid leaking them during retries
-			freeport.Return([]int{port})
+			// Only return if we obtained the port from freeport
+			if usedFreeport {
+				freeport.Return([]int{port})
+			}
 
 			return "", rerr
 		}
@@ -191,7 +191,7 @@ func (p *CTFChainProvider) startContainer(ctx context.Context, chainID string) (
 		return "", nil, fmt.Errorf("failed to create liteclient connection pool: %w", err)
 	}
 
-	client := ton.NewAPIClient(connectionPool, ton.ProofCheckPolicyFast)
+	client := ton.NewAPIClient(connectionPool, ton.ProofCheckPolicyFast).WithRetry(defaultClientRetryCount)
 
 	// check connection, CTFv2 handles the readiness
 	mb, err := getMasterchainBlockID(ctx, client)
@@ -218,54 +218,6 @@ func createTonWallet(client ton.APIClientWrapped, versionConfig wallet.VersionCo
 	}
 
 	return pw, nil
-}
-
-func fundTonWallets(ctx context.Context, client ton.APIClientWrapped, recipients []*address.Address, amounts []tlb.Coins) error {
-	if len(amounts) != len(recipients) {
-		return errors.New("recipients and amounts must have the same length")
-	}
-
-	// initialize the prefunded wallet(Highload-V2), for other wallets, see https://github.com/neodix42/mylocalton-docker#pre-installed-wallets
-	version := wallet.HighloadV2Verified //nolint:staticcheck // SA1019: only available option in mylocalton-docker
-	rawHlWallet, err := wallet.FromSeed(client, strings.Fields(blockchain.DefaultTonHlWalletMnemonic), version)
-	if err != nil {
-		return fmt.Errorf("failed to create wallet from seed: %w", err)
-	}
-
-	mcFunderWallet, err := wallet.FromPrivateKeyWithOptions(client, rawHlWallet.PrivateKey(), version, wallet.WithWorkchain(-1))
-	if err != nil {
-		return fmt.Errorf("failed to create wallet from private key: %w", err)
-	}
-
-	funder, err := mcFunderWallet.GetSubwallet(uint32(42))
-	if err != nil {
-		return fmt.Errorf("failed to get subwallet: %w", err)
-	}
-
-	// double check funder address
-	if funder.Address().StringRaw() != blockchain.DefaultTonHlWalletAddress {
-		return fmt.Errorf("funder address mismatch: %s != %s", funder.Address().StringRaw(), blockchain.DefaultTonHlWalletAddress)
-	}
-
-	// create transfer messages for each recipient
-	messages := make([]*wallet.Message, len(recipients))
-	for i, addr := range recipients {
-		transfer, terr := funder.BuildTransfer(addr, amounts[i], false, "")
-		if terr != nil {
-			return fmt.Errorf("failed to build transfer: %w", terr)
-		}
-		messages[i] = transfer
-	}
-
-	// we don't wait for the transaction to be confirmed here, as it may take some time
-	// the name SendManyWaitTransaction is misleading, it doesn't wait for the transaction to be confirmed,
-	// it just sends the transactions(TON has asynchronous transactions)
-	_, _, txerr := funder.SendManyWaitTransaction(ctx, messages)
-	if txerr != nil {
-		return fmt.Errorf("failed to send many wait transaction: %w", txerr)
-	}
-
-	return nil
 }
 
 func getMasterchainBlockID(ctx context.Context, client ton.APIClientWrapped) (*ton.BlockIDExt, error) {
@@ -313,4 +265,14 @@ func (p *CTFChainProvider) getImage() string {
 	}
 
 	return defaultTONImage
+}
+
+// getPort returns the configured port if specified, otherwise gets a free port using freeport.
+// The second return value indicates whether the port was obtained from freeport.
+func (p *CTFChainProvider) getPort() (port int, usedFreeport bool) {
+	if p.config.Port != 0 {
+		return p.config.Port, false
+	}
+
+	return freeport.GetOne(p.t), true
 }

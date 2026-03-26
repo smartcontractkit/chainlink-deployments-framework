@@ -1,0 +1,460 @@
+package mcms
+
+import (
+	"context"
+	"crypto/ecdsa"
+	"encoding/hex"
+	"errors"
+	"fmt"
+	"maps"
+	"math/big"
+	"regexp"
+	"time"
+
+	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
+	gethtypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
+	ethrpc "github.com/ethereum/go-ethereum/rpc"
+	chainsel "github.com/smartcontractkit/chain-selectors"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/rpc"
+	"github.com/smartcontractkit/mcms"
+	"github.com/smartcontractkit/mcms/sdk"
+	"github.com/smartcontractkit/mcms/sdk/evm/bindings"
+	"github.com/smartcontractkit/mcms/types"
+	"github.com/spf13/cobra"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
+	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/flags"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/mcms/layout"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/text"
+	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
+)
+
+var (
+	executeForkShort = "Execute proposal on forked environment"
+
+	executeForkLong = text.LongDesc(`
+		Executes set-root, execute-chain and execute-timelock-chain operations
+		for a forked environment.
+
+		This is useful for testing proposals before executing them on mainnet.
+		The command will use Anvil to fork the target chain and execute the
+		proposal operations.
+	`)
+
+	executeForkExample = text.Examples(`
+		# Execute a proposal on a forked environment
+		myapp mcms execute-fork -e staging -p ./proposal.json -s 1
+
+		# Execute with a test signer
+		myapp mcms execute-fork -e staging -p ./proposal.json -s 1 --test-signer
+	`)
+)
+
+type executeForkFlags struct {
+	environment   string
+	proposalPath  string
+	proposalKind  string
+	chainSelector uint64
+	testSigner    bool
+}
+
+// newExecuteForkCmd creates the "execute-fork" subcommand.
+func newExecuteForkCmd(cfg Config) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "execute-fork",
+		Short:   executeForkShort,
+		Long:    executeForkLong,
+		Example: executeForkExample,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			f := executeForkFlags{
+				environment:   flags.MustString(cmd.Flags().GetString("environment")),
+				proposalPath:  flags.MustString(cmd.Flags().GetString("proposal")),
+				proposalKind:  flags.MustString(cmd.Flags().GetString("proposalKind")),
+				chainSelector: flags.MustUint64(cmd.Flags().GetUint64("selector")),
+				testSigner:    flags.MustBool(cmd.Flags().GetBool("test-signer")),
+			}
+
+			return runExecuteFork(cmd, cfg, f)
+		},
+	}
+
+	// Shared flags
+	flags.Environment(cmd)
+	flags.Proposal(cmd)
+	flags.ProposalKind(cmd, string(types.KindTimelockProposal))
+	flags.ChainSelector(cmd, true) // required for execute-fork
+
+	// Fork-specific flags
+	cmd.Flags().Bool("test-signer", false, "Use a test signer key")
+
+	return cmd
+}
+
+// runExecuteFork executes the execute-fork command logic.
+func runExecuteFork(cmd *cobra.Command, cfg Config, f executeForkFlags) error {
+	ctx := cmd.Context()
+	deps := cfg.deps()
+
+	// --- Load all data first ---
+
+	proposalCfg, err := LoadProposalConfig(ctx, cfg.Logger, cfg.Domain, deps, cfg.ProposalContextProvider,
+		ProposalFlags{
+			ProposalPath:  f.proposalPath,
+			ProposalKind:  f.proposalKind,
+			Environment:   f.environment,
+			ChainSelector: f.chainSelector,
+			Fork:          true,
+		},
+		acceptExpiredProposal,
+	)
+	if err != nil {
+		return fmt.Errorf("error creating config: %w", err)
+	}
+
+	if proposalCfg.TimelockProposal == nil {
+		return errors.New("expected proposal to be a TimelockProposal")
+	}
+
+	// --- Execute logic with loaded data ---
+
+	// Create the fork execution config
+	forkCfg := &forkConfig{
+		kind:             proposalCfg.Kind,
+		proposal:         proposalCfg.Proposal,
+		timelockProposal: proposalCfg.TimelockProposal,
+		chainSelector:    f.chainSelector,
+		blockchains:      proposalCfg.Env.BlockChains,
+		envStr:           f.environment,
+		env:              proposalCfg.Env,
+		forkedEnv:        proposalCfg.ForkedEnv,
+		fork:             true,
+		proposalCtx:      proposalCfg.ProposalCtx,
+	}
+
+	// Execute the fork
+	return executeFork(ctx, cfg.Logger, forkCfg, f.testSigner)
+}
+
+// --- Fork execution logic (fork-specific) ---
+
+// executeFork executes a proposal on a forked environment.
+// This is the main entry point for fork execution.
+func executeFork(
+	ctx context.Context, lggr logger.Logger, cfg *forkConfig, testSigner bool,
+) error {
+	family, err := chainsel.GetSelectorFamily(cfg.chainSelector)
+	if err != nil {
+		return fmt.Errorf("failed to get selector family: %w", err)
+	}
+	if family != chainsel.FamilyEVM {
+		lggr.Infof("Skipping fork execution: chain selector %d is not EVM. Family is %s", cfg.chainSelector, family)
+
+		return nil // don't fail, just exit cleanly
+	}
+
+	if len(cfg.forkedEnv.ChainConfigs[cfg.chainSelector].HTTPRPCs) == 0 {
+		return fmt.Errorf("no rpcs loaded in forked environment for chain %d (fork tests require public RPCs)", cfg.chainSelector)
+	}
+
+	// get the chain URL, chain ID and MCM contract address
+	url := cfg.forkedEnv.ChainConfigs[cfg.chainSelector].HTTPRPCs[0].External
+	anvilClient := rpc.New(url, nil)
+	chainID := cfg.forkedEnv.ChainConfigs[cfg.chainSelector].ChainID
+
+	// zkSync VM chains (zkSync Era, Lens, Cronos zkEVM, etc.) require anvil-zksync,
+	// not standard Anvil. Derive this from the loaded chain which is set by the chain
+	// provider, so it stays in sync with new zkSync chains automatically.
+	if evmChain, ok := cfg.blockchains.EVMChains()[cfg.chainSelector]; ok && evmChain.IsZkSyncVM {
+		lggr.Infof("Skipping fork execution: chain selector %d is zkSync VM (chain ID %s), which requires anvil-zksync instead of standard anvil",
+			cfg.chainSelector, chainID)
+
+		return nil
+	}
+	mcmAddress := cfg.proposal.ChainMetadata[types.ChainSelector(cfg.chainSelector)].MCMAddress
+	timelockAddress := common.HexToAddress(cfg.timelockProposal.TimelockAddresses[types.ChainSelector(cfg.chainSelector)])
+
+	ctx, cancel := context.WithTimeout(ctx, 300*time.Second)
+	defer cancel()
+
+	if testSigner {
+		if lerr := layout.SetMCMSigner(
+			ctx,
+			lggr,
+			layout.MCMSLayout,
+			blockchain.DefaultAnvilPrivateKey,
+			blockchain.DefaultAnvilPublicKey,
+			blockchain.DefaultAnvilPublicKey,
+			url,
+			chainID,
+			mcmAddress,
+		); lerr != nil {
+			return fmt.Errorf("failed to set signer: %w", lerr)
+		}
+
+		// Override signatures for proposal
+		privKey, lerr := crypto.HexToECDSA(blockchain.DefaultAnvilPrivateKey)
+		if lerr != nil {
+			return fmt.Errorf("failed to parse anvil's default private key: %w", lerr)
+		}
+
+		lerr = overwriteProposalSignatureWithTestKey(ctx, cfg, privKey)
+		if lerr != nil {
+			return fmt.Errorf("failed to overwrite proposal signature: %w", lerr)
+		}
+
+		lerr = overrideForkChainDeployerKeyWithTestSigner(cfg, chainID)
+		if lerr != nil {
+			return fmt.Errorf("failed to override fork deployer key to test signer: %w", lerr)
+		}
+	}
+	logTransactions(lggr, cfg)
+
+	err = setRootCommand(ctx, lggr, cfg)
+	if err != nil {
+		return fmt.Errorf("MCM.setRoot() - failure: %w", addDecodedRevertReason(lggr, err, cfg.proposalCtx))
+	}
+	lggr.Info("MCM.setRoot() - success")
+
+	err = executeChainCommand(ctx, lggr, cfg, true)
+	if err != nil {
+		return fmt.Errorf("MCM.execute() - failure: %w", addDecodedRevertReason(lggr, err, cfg.proposalCtx))
+	}
+	lggr.Info("MCM.execute() - success")
+
+	lggr.Info("Wait for the chain to be mined before executing timelock chain command")
+	if err = anvilClient.EVMIncreaseTime(uint64(cfg.timelockProposal.Delay.Seconds())); err != nil {
+		return fmt.Errorf("failed to increase time: %w", err)
+	}
+	if err = anvilClient.AnvilMine([]interface{}{1}); err != nil {
+		return fmt.Errorf("failed to mine block: %w", err)
+	}
+
+	if cfg.timelockProposal.Action != types.TimelockActionSchedule {
+		lggr.Infof("Proposal has type %s, skipping executing timelock chain command", cfg.timelockProposal.Action)
+
+		return nil
+	}
+
+	lggr.Info("Executing timelock chain command")
+	err = timelockExecuteChainCommand(ctx, lggr, cfg)
+	if err != nil {
+		lggr.Warnw("Timelock.execute() - failure; starting calling individual ops for debugging", "err", err)
+		if derr := diagnoseTimelockRevert(ctx, lggr, anvilClient.URL, cfg.chainSelector, cfg.timelockProposal.Operations,
+			timelockAddress, cfg.env.ExistingAddresses, cfg.proposalCtx); derr != nil { //nolint:staticcheck
+			lggr.Errorw("Diagnosis results", "err", derr)
+
+			return fmt.Errorf("failed to timelock execute chain: %w", derr)
+		}
+
+		return fmt.Errorf("failed to timelock execute chain: %w", err)
+	}
+	lggr.Info("Timelock.execute() - success")
+
+	return nil
+}
+
+// overrideForkChainDeployerKeyWithTestSigner sets the deployer key for the
+// forked chain to the test signer key, updating cfg.blockchains for the
+// EVM chain identified by the provided chainID.
+func overrideForkChainDeployerKeyWithTestSigner(cfg *forkConfig, chainID string) error {
+	chainIDBig, ok := new(big.Int).SetString(chainID, 10)
+	if !ok {
+		return fmt.Errorf("invalid chain id %q", chainID)
+	}
+
+	privKey, err := crypto.HexToECDSA(blockchain.DefaultAnvilPrivateKey)
+	if err != nil {
+		return fmt.Errorf("failed to parse test signer private key: %w", err)
+	}
+
+	testSignerTxOpts, err := bind.NewKeyedTransactorWithChainID(privKey, chainIDBig)
+	if err != nil {
+		return fmt.Errorf("failed to create test signer transactor: %w", err)
+	}
+
+	targetChain, err := cfg.blockchains.GetBySelector(cfg.chainSelector)
+	if err != nil {
+		return fmt.Errorf("chain selector %d not found: %w", cfg.chainSelector, err)
+	}
+
+	evmChain, ok := targetChain.(cldf_evm.Chain)
+	if !ok {
+		return fmt.Errorf("chain selector %d is not an evm chain (got %T)", cfg.chainSelector, targetChain)
+	}
+	preserveTransactOptsConfig(testSignerTxOpts, evmChain.DeployerKey)
+
+	chains := maps.Collect(cfg.blockchains.All())
+	evmChain.DeployerKey = testSignerTxOpts
+	chains[cfg.chainSelector] = evmChain
+	cfg.blockchains = chain.NewBlockChains(chains)
+
+	return nil
+}
+
+// preserveTransactOptsConfig keeps chain-specific tx settings when swapping signers.
+func preserveTransactOptsConfig(dst, src *bind.TransactOpts) {
+	if dst == nil || src == nil {
+		return
+	}
+
+	dst.GasLimit = src.GasLimit
+	dst.NoSend = src.NoSend
+	dst.Context = src.Context
+
+	if src.GasPrice != nil {
+		dst.GasPrice = new(big.Int).Set(src.GasPrice)
+	}
+	if src.GasTipCap != nil {
+		dst.GasTipCap = new(big.Int).Set(src.GasTipCap)
+	}
+	if src.GasFeeCap != nil {
+		dst.GasFeeCap = new(big.Int).Set(src.GasFeeCap)
+	}
+}
+
+// logTransactions sets up transaction logging for the forked chain.
+func logTransactions(lggr logger.Logger, cfg *forkConfig) {
+	lggr.Infof("logging transactions sent to forked chain %v", cfg.chainSelector)
+
+	chains := maps.Collect(cfg.blockchains.All())
+
+	evmChain, ok := chains[cfg.chainSelector].(cldf_evm.Chain)
+	if !ok {
+		lggr.Warnf("failed to configure transaction logging for chain selector %v (not evm: %T)", cfg.chainSelector, chains[cfg.chainSelector])
+
+		return
+	}
+	if _, alreadyWrapped := evmChain.Client.(*loggingRpcClient); alreadyWrapped {
+		return
+	}
+
+	evmChain.Client = &loggingRpcClient{OnchainClient: evmChain.Client, txOpts: evmChain.DeployerKey, lggr: lggr}
+	chains[cfg.chainSelector] = evmChain
+	cfg.blockchains = chain.NewBlockChains(chains)
+}
+
+// overwriteProposalSignatureWithTestKey overwrites the proposal's signature with a test key signature.
+func overwriteProposalSignatureWithTestKey(ctx context.Context, cfg *forkConfig, testKey *ecdsa.PrivateKey) error {
+	p := &cfg.proposal
+
+	// Override the proposal fields that are used in the signing hash to ensure no errors occur related to those.
+	if time.Unix(int64(p.ValidUntil), 0).Before(time.Now().Add(10 * time.Minute)) {
+		p.ValidUntil = uint32(time.Now().Add(5 * time.Hour).Unix()) //nolint:gosec // G404: time-based validity is acceptable for test signatures
+	}
+	p.Signatures = nil
+	p.OverridePreviousRoot = true
+
+	inspector, err := getInspectorFromChainSelector(cfg)
+	if err != nil {
+		return fmt.Errorf("error getting inspector from chain selector: %w", err)
+	}
+	signable, errSignable := mcms.NewSignable(p, map[types.ChainSelector]sdk.Inspector{
+		types.ChainSelector(cfg.chainSelector): inspector,
+	})
+	if errSignable != nil {
+		return fmt.Errorf("error creating signable: %w", errSignable)
+	}
+
+	signature, err := signable.SignAndAppend(mcms.NewPrivateKeySigner(testKey))
+	p.Signatures = []types.Signature{signature}
+	if err != nil {
+		return fmt.Errorf("error creating signable: %w", err)
+	}
+
+	quorumMet, err := signable.CheckQuorum(ctx, types.ChainSelector(cfg.chainSelector))
+	if err != nil {
+		return fmt.Errorf("failed to check quorum: %w", err)
+	}
+	if !quorumMet {
+		return errors.New("quorum not met")
+	}
+
+	return nil
+}
+
+// hexPayloadPattern matches hex strings that are long enough to contain at
+// least a 4-byte selector (8+ hex chars). Used as a fallback when
+// rpc.DataError has already been consumed by DecodeErr.
+var hexPayloadPattern = regexp.MustCompile(`0x([0-9a-fA-F]{8,})`)
+
+// addDecodedRevertReason attempts to decode revert data from err using the
+// full domain ABI registry available in proposalCtx.
+func addDecodedRevertReason(lggr logger.Logger, err error, proposalCtx analyzer.ProposalContext) error {
+	if err == nil || proposalCtx == nil || proposalCtx.GetEVMRegistry() == nil {
+		return err
+	}
+
+	dec, decErr := NewErrDecoder(proposalCtx.GetEVMRegistry())
+	if decErr != nil {
+		lggr.Warnf("Failed to create ErrDecoder: %v", decErr)
+		return err
+	}
+
+	// Strategy 1: extract rpc.DataError from the error chain
+	var dataErr ethrpc.DataError
+	if errors.As(err, &dataErr) {
+		if hexData, ok := dataErr.ErrorData().(string); ok {
+			if decoded, ok := decodeRevertData(hexData, dec, bindings.ManyChainMultiSigABI); ok && decoded != "" {
+				lggr.Warnf("Decoded revert reason: %s", decoded)
+				return fmt.Errorf("%w (decoded: %s)", err, decoded)
+			}
+		}
+	}
+
+	// Strategy 2: parse hex payloads from the error string. This covers the
+	// case where DecodeErr already consumed the rpc.DataError, embedding the
+	// hex payload as text in the resulting error message.
+	if decoded := tryDecodeHexFromErrorString(err.Error(), dec); decoded != "" {
+		lggr.Warnf("Decoded revert reason from error string: %s", decoded)
+		return fmt.Errorf("%w (decoded: %s)", err, decoded)
+	}
+
+	return err
+}
+
+// tryDecodeHexFromErrorString scans errStr for hex payloads and attempts to
+// decode each one as a standard Error(string), Panic(uint256), or known custom error.
+// Returns "" when nothing can be meaningfully decoded.
+func tryDecodeHexFromErrorString(errStr string, dec *ErrDecoder) string {
+	matches := hexPayloadPattern.FindAllStringSubmatch(errStr, -1)
+	for _, match := range matches {
+		raw, err := hex.DecodeString(match[1])
+		if err != nil || len(raw) < 4 {
+			continue
+		}
+		if reason, uerr := abi.UnpackRevert(raw); uerr == nil {
+			if deployment.IsPanicRevert(raw) {
+				return fmt.Sprintf("Panic(%s)", reason)
+			}
+
+			return reason
+		}
+		if decoded, ok := dec.decodeRecursive(raw, bindings.ManyChainMultiSigABI); ok {
+			return decoded
+		}
+	}
+
+	return ""
+}
+
+// loggingRpcClient wraps an OnchainClient to log transactions before sending.
+type loggingRpcClient struct {
+	cldf_evm.OnchainClient
+	txOpts *bind.TransactOpts
+	lggr   logger.Logger
+}
+
+func (c *loggingRpcClient) SendTransaction(ctx context.Context, tx *gethtypes.Transaction) error {
+	c.lggr.Infow("sending on-chain transaction", "from", c.txOpts.From, "to", tx.To(), "value", tx.Value(),
+		"data", common.Bytes2Hex(tx.Data()))
+
+	return c.OnchainClient.SendTransaction(ctx, tx)
+}

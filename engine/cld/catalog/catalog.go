@@ -29,7 +29,7 @@ func LoadCatalog(ctx context.Context, env string,
 	return catalogDatastore, nil
 }
 
-// loadCatalogClient initializes a Catalogue client using the grpc and gap config.
+// loadCatalogClient initializes a Catalogue client using the grpc config.
 func loadCatalogClient(
 	ctx context.Context, env string, cfg *cfgenv.CatalogConfig,
 ) (*catalogremote.CatalogClient, error) {

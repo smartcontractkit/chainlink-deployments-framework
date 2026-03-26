@@ -937,7 +937,7 @@ func (c Commands) newJDJobBatchPropose(domain domain.Domain) *cobra.Command {
 
 	cmd.Flags().StringVarP(&jobspecPath, "jobspec", "j", "", "Absolute file path containing the jobspec to be proposed")
 	cmd.Flags().StringVarP(&jobsPath, "jobs", "p", "", "Absolute file path containing the job details to be proposed")
-	// TODO mark jobs as required when all migrations use jobs instead of jobspecs
+	// TODO mark jobs as required when all changesets use jobs instead of jobspecs
 
 	return cmd
 }

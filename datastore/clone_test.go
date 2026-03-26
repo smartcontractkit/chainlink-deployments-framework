@@ -45,7 +45,7 @@ func TestClone(t *testing.T) {
 			clone, err := clone(tt.give)
 			if tt.wantErr != "" {
 				require.Error(t, err)
-				require.Contains(t, err.Error(), tt.wantErr)
+				require.ErrorContains(t, err, tt.wantErr)
 			} else {
 				require.NoError(t, err, "clone should not return an error for %s", tt.name)
 				typed, err := As[testStruct](clone)

@@ -21,8 +21,6 @@ type ClientProviderOption func(*ClientOffchainProviderConfig)
 type ClientOffchainProviderConfig struct {
 	// Required: The gRPC URL to connect to the Job Distributor service.
 	GRPC string
-	// Optional: The WebSocket RPC URL for the Job Distributor service.
-	WSRPC string
 	// Optional: Transport credentials for secure gRPC connections. Defaults to insecure.NewCredentials()
 	Creds credentials.TransportCredentials
 	// Optional: OAuth2 token source for authentication.
@@ -91,7 +89,6 @@ func (p *ClientOffchainProvider) Initialize(ctx context.Context) (offchain.Clien
 	// Create JD configuration from provider config
 	jdConfig := jd.JDConfig{
 		GRPC:  p.config.GRPC,
-		WSRPC: p.config.WSRPC,
 		Creds: p.config.Creds,
 		Auth:  p.config.Auth,
 	}

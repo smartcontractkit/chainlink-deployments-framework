@@ -144,3 +144,21 @@ func Test_EnvironmentSolanaRegistry_GetSolanaInstructionDecoderByType_And_Add(t 
 	require.NoError(t, err)
 	require.Nil(t, dec)
 }
+
+func Test_EnvironmentSolanaRegistry_Decoders_ReturnsDefensiveCopy(t *testing.T) {
+	t.Parallel()
+
+	tv := deployment.MustTypeAndVersionFromString("Bypasser 2.0.0")
+	reg, err := NewEnvironmentSolanaRegistry(deployment.Environment{
+		ExistingAddresses: deployment.NewMemoryAddressBook(),
+		DataStore:         datastore.NewMemoryDataStore().Seal(),
+	}, map[string]DecodeInstructionFn{tv.String(): nil})
+	require.NoError(t, err)
+
+	decoders := reg.Decoders()
+	delete(decoders, tv.String())
+
+	decoder, getErr := reg.GetSolanaInstructionDecoderByType(tv)
+	require.NoError(t, getErr)
+	require.Nil(t, decoder)
+}

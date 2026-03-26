@@ -122,7 +122,7 @@ func LoadFork(
 		)
 		if err != nil {
 			if errors.Is(err, offchain.ErrEndpointsRequired) {
-				lggr.Warn("Skipping JD initialization: gRPC and wsRPC endpoints are not set in config")
+				lggr.Warn("Skipping JD initialization: gRPC endpoint is not set in config")
 			} else {
 				return ForkedEnvironment{}, fmt.Errorf("failed to load offchain client: %w", err)
 			}
@@ -149,6 +149,7 @@ func LoadFork(
 		func() context.Context { return ctx },
 		focr.XXXGenerateTestOCRSecrets(),
 		fchain.NewBlockChains(blockChains),
+		fdeployment.WithCRERunner(loadcfg.creRunner),
 	)
 
 	return ForkedEnvironment{

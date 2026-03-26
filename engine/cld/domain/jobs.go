@@ -13,7 +13,7 @@ import (
 // Deprecated: The map used to represent the job specs that was provided by
 // `chainlink/deployments` is no longer used, and has been replaced by a slice
 // of `fdeployment.ProposedJob` structs. This has been kept around for backwards
-// compatibility with existing migrations, but should not be used in new code.
+// compatibility with existing changesets, but should not be used in new code.
 // Prefer using `LoadJobs` instead.
 func LoadJobSpecs(jobSpecsFilePath string) (map[string][]string, error) {
 	specs := make(map[string][]string)

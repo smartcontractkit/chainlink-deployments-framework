@@ -58,6 +58,14 @@ type AptosConfig struct {
 	DeployerKey string `mapstructure:"deployer_key" yaml:"deployer_key"` // Secret: The private key of the deployer account.
 }
 
+// StellarConfig is the configuration for the Stellar Chains.
+//
+// WARNING: This data type contains sensitive fields and should not be logged or set in file
+// configuration.
+type StellarConfig struct {
+	DeployerKey string `mapstructure:"deployer_key" yaml:"deployer_key"` // Secret: The private key of the deployer account.
+}
+
 // SuiConfig is the configuration for the Sui Chains.
 //
 // WARNING: This data type contains sensitive fields and should not be logged or set in file
@@ -72,6 +80,16 @@ type SuiConfig struct {
 // configuration.
 type TronConfig struct {
 	DeployerKey string `mapstructure:"deployer_key" yaml:"deployer_key"` // Secret: The private key of the deployer account.
+}
+
+// CantonConfig is the configuration for the Canton Chains.
+//
+// WARNING: This data type contains sensitive fields and should not be logged or set in file
+// configuration.
+type CantonConfig struct {
+	// JWT token for authenticating with Canton participants. This token will be used for all participants.
+	// For more complex scenarios with different tokens per participant, use the network metadata.
+	JWTToken string `mapstructure:"jwt_token" yaml:"jwt_token"` // Secret: JWT token for Canton participant authentication.
 }
 
 // JobDistributorConfig is the configuration for connecting and authenticating to the Job
@@ -98,8 +116,7 @@ type JobDistributorAuth struct {
 
 // JobDistributorEndpoints is the configuration for the URL endpoints for the Job Distributor.
 type JobDistributorEndpoints struct {
-	WSRPC string `mapstructure:"wsrpc" yaml:"wsrpc"` // The WebSocket RPC URL for the Job Distributor. Used to connect Job Distributor to CL nodes.
-	GRPC  string `mapstructure:"grpc" yaml:"grpc"`   // The gRPC URL for the Job Distributor. Used to interact with the Job Distributor API.
+	GRPC string `mapstructure:"grpc" yaml:"grpc"` // The gRPC URL for the Job Distributor. Used to interact with the Job Distributor API.
 }
 
 // OCRConfig is the configuration for the OCR.
@@ -123,15 +140,36 @@ type CatalogConfig struct {
 	Auth *CatalogAuthConfig `mapstructure:"auth" yaml:"auth,omitempty"` // The authentication configuration for the Catalog.
 }
 
+// CREAuthConfig holds authentication settings for CRE (Chainlink Runtime Environment) deploy operations.
+// WARNING: This data type contains sensitive fields and should not be logged or set in file
+// configuration.
+type CREAuthConfig struct {
+	HMACKeyID     string `mapstructure:"hmac_key_id" yaml:"hmac_key_id"`         // Secret: HMAC key ID
+	HMACKeySecret string `mapstructure:"hmac_key_secret" yaml:"hmac_key_secret"` // Secret: HMAC key secret
+	TenantID      string `mapstructure:"tenant_id" yaml:"tenant_id"`
+	OrgID         string `mapstructure:"org_id" yaml:"org_id"`
+}
+
+// CREConfig is the configuration for CRE deploy and related CLI usage (credentials, endpoints, timeouts).
+type CREConfig struct {
+	Auth           CREAuthConfig `mapstructure:"auth" yaml:"auth"`
+	TLS            string        `mapstructure:"tls" yaml:"tls"`
+	Timeout        string        `mapstructure:"timeout" yaml:"timeout"`
+	StorageAddress string        `mapstructure:"storage_address" yaml:"storage_address"`
+	DonFamily      string        `mapstructure:"don_family" yaml:"don_family"`
+}
+
 // OnchainConfig wraps the configuration for the onchain components.
 type OnchainConfig struct {
-	KMS    KMSConfig    `mapstructure:"kms" yaml:"kms"`
-	EVM    EVMConfig    `mapstructure:"evm" yaml:"evm"`
-	Solana SolanaConfig `mapstructure:"solana" yaml:"solana"`
-	Aptos  AptosConfig  `mapstructure:"aptos" yaml:"aptos"`
-	Sui    SuiConfig    `mapstructure:"sui" yaml:"sui"`
-	Tron   TronConfig   `mapstructure:"tron" yaml:"tron"`
-	Ton    TonConfig    `mapstructure:"ton" yaml:"ton"`
+	KMS     KMSConfig     `mapstructure:"kms" yaml:"kms"`
+	EVM     EVMConfig     `mapstructure:"evm" yaml:"evm"`
+	Solana  SolanaConfig  `mapstructure:"solana" yaml:"solana"`
+	Aptos   AptosConfig   `mapstructure:"aptos" yaml:"aptos"`
+	Sui     SuiConfig     `mapstructure:"sui" yaml:"sui"`
+	Stellar StellarConfig `mapstructure:"stellar" yaml:"stellar"`
+	Tron    TronConfig    `mapstructure:"tron" yaml:"tron"`
+	Ton     TonConfig     `mapstructure:"ton" yaml:"ton"`
+	Canton  CantonConfig  `mapstructure:"canton" yaml:"canton"`
 }
 
 // OffchainConfig wraps the configuration for the offchain components.
@@ -145,6 +183,7 @@ type Config struct {
 	Onchain  OnchainConfig  `mapstructure:"onchain" yaml:"onchain"`
 	Offchain OffchainConfig `mapstructure:"offchain" yaml:"offchain"`
 	Catalog  CatalogConfig  `mapstructure:"catalog" yaml:"catalog"`
+	CRE      CREConfig      `mapstructure:"cre" yaml:"cre,omitempty"`
 }
 
 // Load loads the config from the file path, falling back to env vars if the file does not exist.
@@ -225,20 +264,29 @@ var (
 		"onchain.aptos.deployer_key":                              {"ONCHAIN_APTOS_DEPLOYER_KEY", "APTOS_DEPLOYER_KEY"},
 		"onchain.tron.deployer_key":                               {"ONCHAIN_TRON_DEPLOYER_KEY", "TRON_DEPLOYER_KEY"},
 		"onchain.sui.deployer_key":                                {"ONCHAIN_SUI_DEPLOYER_KEY", "SUI_DEPLOYER_KEY"},
-		"onchain.ton.deployer_key":                                {"ONCHAIN_TON_DEPLOYER_KEY"},
-		"onchain.ton.wallet_version":                              {"ONCHAIN_TON_WALLET_VERSION"},
+		"onchain.stellar.deployer_key":                            {"ONCHAIN_STELLAR_DEPLOYER_KEY"},
+		"onchain.ton.deployer_key":                                {"ONCHAIN_TON_DEPLOYER_KEY", "TON_DEPLOYER_KEY"},
+		"onchain.ton.wallet_version":                              {"ONCHAIN_TON_WALLET_VERSION", "TON_WALLET_VERSION"},
+		"onchain.canton.jwt_token":                                {"ONCHAIN_CANTON_JWT_TOKEN"},
 		"offchain.job_distributor.auth.cognito_app_client_id":     {"OFFCHAIN_JD_AUTH_COGNITO_APP_CLIENT_ID", "JD_AUTH_COGNITO_APP_CLIENT_ID"},
 		"offchain.job_distributor.auth.cognito_app_client_secret": {"OFFCHAIN_JD_AUTH_COGNITO_APP_CLIENT_SECRET", "JD_AUTH_COGNITO_APP_CLIENT_SECRET"},
 		"offchain.job_distributor.auth.aws_region":                {"OFFCHAIN_JD_AUTH_AWS_REGION", "JD_AUTH_AWS_REGION"},
 		"offchain.job_distributor.auth.username":                  {"OFFCHAIN_JD_AUTH_USERNAME", "JD_AUTH_USERNAME"},
 		"offchain.job_distributor.auth.password":                  {"OFFCHAIN_JD_AUTH_PASSWORD", "JD_AUTH_PASSWORD"},
-		"offchain.job_distributor.endpoints.wsrpc":                {"OFFCHAIN_JD_ENDPOINTS_WSRPC", "JD_WS_RPC"},
 		"offchain.job_distributor.endpoints.grpc":                 {"OFFCHAIN_JD_ENDPOINTS_GRPC", "JD_GRPC"},
 		"offchain.ocr.x_signers":                                  {"OFFCHAIN_OCR_X_SIGNERS", "OCR_X_SIGNERS"},
 		"offchain.ocr.x_proposers":                                {"OFFCHAIN_OCR_X_PROPOSERS", "OCR_X_PROPOSERS"},
 		"catalog.grpc":                                            {"CATALOG_GRPC"},
 		"catalog.auth.kms_key_id":                                 {"CATALOG_AUTH_KMS_KEY_ID"},
 		"catalog.auth.kms_key_region":                             {"CATALOG_AUTH_KMS_KEY_REGION"},
+		"cre.auth.hmac_key_id":                                    {"CRE_DEPLOY_HMAC_KEY_ID"},
+		"cre.auth.hmac_key_secret":                                {"CRE_DEPLOY_HMAC_SECRET"},
+		"cre.auth.tenant_id":                                      {"CRE_TENANT_ID"},
+		"cre.auth.org_id":                                         {"CRE_ORG_ID"},
+		"cre.tls":                                                 {"CRE_TLS"},
+		"cre.timeout":                                             {"CRE_TIMEOUT"},
+		"cre.storage_address":                                     {"CRE_STORAGE_ADDR"},
+		"cre.don_family":                                          {"CRE_DON_FAMILY"},
 	}
 )
 

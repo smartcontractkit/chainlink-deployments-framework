@@ -3,7 +3,6 @@ package mcmsutils
 import (
 	"context"
 	"errors"
-	"fmt"
 	"testing"
 	"time"
 
@@ -380,46 +379,298 @@ func TestExecutor_ExecuteTimelock(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("success with multiple MCMS deployments on same chain", func(t *testing.T) {
+		t.Parallel()
+
+		selector := stubEVMChain().Selector
+
+		// Setup: Create environment with TWO MCMS deployments
+		ds := fdatastore.NewMemoryDataStore()
+
+		// First MCMS deployment (MCMS_EVM_1)
+		qualifier1 := "MCMS_EVM_1"
+		timelockAddr1 := "0x1111111111111111111111111111111111111111"
+		callProxyAddr1 := "0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+
+		err := ds.Addresses().Add(fdatastore.AddressRef{
+			ChainSelector: selector,
+			Type:          "RBACTimelock",
+			Version:       semver.MustParse("1.0.0"),
+			Address:       timelockAddr1,
+			Qualifier:     qualifier1,
+		})
+		require.NoError(t, err)
+
+		err = ds.Addresses().Add(fdatastore.AddressRef{
+			ChainSelector: selector,
+			Type:          "CallProxy",
+			Version:       semver.MustParse("1.0.0"),
+			Address:       callProxyAddr1,
+			Qualifier:     qualifier1,
+		})
+		require.NoError(t, err)
+
+		// Second MCMS deployment (MCMS_EVM_2)
+		qualifier2 := "MCMS_EVM_2"
+		timelockAddr2 := "0x2222222222222222222222222222222222222222"
+		callProxyAddr2 := "0xBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+
+		err = ds.Addresses().Add(fdatastore.AddressRef{
+			ChainSelector: selector,
+			Type:          "RBACTimelock",
+			Version:       semver.MustParse("1.0.0"),
+			Address:       timelockAddr2,
+			Qualifier:     qualifier2,
+		})
+		require.NoError(t, err)
+
+		err = ds.Addresses().Add(fdatastore.AddressRef{
+			ChainSelector: selector,
+			Type:          "CallProxy",
+			Version:       semver.MustParse("1.0.0"),
+			Address:       callProxyAddr2,
+			Qualifier:     qualifier2,
+		})
+		require.NoError(t, err)
+
+		env := fdeployment.Environment{
+			DataStore:   ds.Seal(),
+			BlockChains: fchain.NewBlockChainsFromSlice([]fchain.BlockChain{stubEVMChain()}),
+		}
+
+		// Create proposal for SECOND MCMS instance
+		proposal := stubTimelockProposal(mcmstypes.TimelockActionSchedule)
+		proposal.TimelockAddresses[mcmstypes.ChainSelector(selector)] = timelockAddr2
+
+		// Setup mocks
+		mockMCMSExecutable := newMockMcmsExecutable(t)
+		mockTimelockExecutable := newMockTimelockExecutable(t)
+
+		mockMCMSExecutable.EXPECT().
+			SetRoot(t.Context(), mcmstypes.ChainSelector(selector)).
+			Return(setRootTxResult, nil)
+
+		mockMCMSExecutable.EXPECT().
+			Execute(t.Context(), 0).
+			Return(confirmTxResult, nil)
+
+		mockTimelockExecutable.EXPECT().
+			IsReady(t.Context()).
+			Return(nil)
+
+		mockTimelockExecutable.EXPECT().
+			Execute(t.Context(), 0, mock.AnythingOfType("[]mcms.Option")).
+			Return(confirmTxResult, nil)
+
+		executor := newMockedExecutor(t, env, mockMCMSExecutable, mockTimelockExecutable)
+
+		// Execute - should succeed and use CallProxy from MCMS_EVM_2, not MCMS_EVM_1
+		err = executor.ExecuteTimelock(t.Context(), proposal)
+		require.NoError(t, err, "ExecuteTimelock should succeed with multiple MCMS deployments")
+	})
+
+	t.Run("fails with unknown timelock address in multiple MCMS environment", func(t *testing.T) {
+		t.Parallel()
+
+		selector := stubEVMChain().Selector
+
+		// Setup: Create environment with two MCMS deployments
+		ds := fdatastore.NewMemoryDataStore()
+
+		err := ds.Addresses().Add(fdatastore.AddressRef{
+			ChainSelector: selector,
+			Type:          "RBACTimelock",
+			Version:       semver.MustParse("1.0.0"),
+			Address:       "0x1111111111111111111111111111111111111111",
+			Qualifier:     "MCMS_EVM_1",
+		})
+		require.NoError(t, err)
+
+		err = ds.Addresses().Add(fdatastore.AddressRef{
+			ChainSelector: selector,
+			Type:          "CallProxy",
+			Version:       semver.MustParse("1.0.0"),
+			Address:       "0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+			Qualifier:     "MCMS_EVM_1",
+		})
+		require.NoError(t, err)
+
+		env := fdeployment.Environment{
+			DataStore:   ds.Seal(),
+			BlockChains: fchain.NewBlockChainsFromSlice([]fchain.BlockChain{stubEVMChain()}),
+		}
+
+		// Create proposal with UNKNOWN timelock address
+		proposal := stubTimelockProposal(mcmstypes.TimelockActionSchedule)
+		proposal.TimelockAddresses[mcmstypes.ChainSelector(selector)] = "0x9999999999999999999999999999999999999999"
+
+		// Setup mocks - execution gets to the point of looking up CallProxy
+		mockMCMSExecutable := newMockMcmsExecutable(t)
+		mockTimelockExecutable := newMockTimelockExecutable(t)
+
+		mockMCMSExecutable.EXPECT().
+			SetRoot(t.Context(), mcmstypes.ChainSelector(selector)).
+			Return(setRootTxResult, nil)
+
+		mockMCMSExecutable.EXPECT().
+			Execute(t.Context(), 0).
+			Return(confirmTxResult, nil)
+
+		executor := newMockedExecutor(t, env, mockMCMSExecutable, mockTimelockExecutable)
+
+		// Execute - should fail because timelock address is not in datastore
+		err = executor.ExecuteTimelock(t.Context(), proposal)
+		require.Error(t, err)
+		require.ErrorContains(t, err, "RBACTimelock address 0x9999999999999999999999999999999999999999 not found",
+			"Should fail when timelock address is not registered in datastore")
+	})
 }
 
-func TestFindCallProxyAddress(t *testing.T) {
+func TestFindCallProxyAddressForTimelock(t *testing.T) {
 	t.Parallel()
 
 	selector := uint64(909606746561742123)
-	typeName := fdatastore.ContractType("CallProxy")
 	ds := fdatastore.NewMemoryDataStore()
 
-	addr, err := findCallProxyAddress(ds.Addresses(), selector)
-	require.Error(t, err)
-	require.EqualError(t, err, fmt.Sprintf("CallProxy address not found in datastore (chain selector: %d, version: 1.0.0)", selector))
-	require.Empty(t, addr)
+	t.Run("returns error when timelock not found", func(t *testing.T) { //nolint:paralleltest // shares datastore state
+		addr, err := findCallProxyAddressForTimelock(ds.Addresses(), selector, "0xTimelock1")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "RBACTimelock address 0xTimelock1 not found")
+		require.Empty(t, addr)
+	})
 
-	err = ds.Addresses().Add(fdatastore.AddressRef{
+	// Add first MCMS deployment
+	qualifier1 := "MCMS_EVM_1"
+	timelockAddr1 := "0xTimelock1"
+	callProxyAddr1 := "0xCallProxy1"
+
+	err := ds.Addresses().Add(fdatastore.AddressRef{
 		ChainSelector: selector,
-		Type:          typeName,
+		Type:          "RBACTimelock",
 		Version:       semver.MustParse("1.0.0"),
-		Address:       "0x123",
-		Qualifier:     "qual",
+		Address:       timelockAddr1,
+		Qualifier:     qualifier1,
 	})
 	require.NoError(t, err)
 
-	addr, err = findCallProxyAddress(ds.Addresses(), selector)
-	require.NoError(t, err)
-	require.Equal(t, "0x123", addr)
-
 	err = ds.Addresses().Add(fdatastore.AddressRef{
 		ChainSelector: selector,
-		Type:          typeName,
+		Type:          "CallProxy",
 		Version:       semver.MustParse("1.0.0"),
-		Address:       "0x234",
-		Qualifier:     "other",
+		Address:       callProxyAddr1,
+		Qualifier:     qualifier1,
 	})
 	require.NoError(t, err)
 
-	addr, err = findCallProxyAddress(ds.Addresses(), selector)
-	require.Error(t, err)
-	require.EqualError(t, err, fmt.Sprintf("multiple CallProxy addresses found in datastore (chain selector: %d, version: 1.0.0)", selector))
-	require.Empty(t, addr)
+	t.Run("finds correct CallProxy for first MCMS deployment", func(t *testing.T) { //nolint:paralleltest // shares datastore state
+		addr, callProxyErr := findCallProxyAddressForTimelock(ds.Addresses(), selector, timelockAddr1)
+		require.NoError(t, callProxyErr)
+		require.Equal(t, callProxyAddr1, addr)
+	})
+
+	// Add second MCMS deployment
+	qualifier2 := "MCMS_EVM_2"
+	timelockAddr2 := "0xTimelock2"
+	callProxyAddr2 := "0xCallProxy2"
+
+	err = ds.Addresses().Add(fdatastore.AddressRef{
+		ChainSelector: selector,
+		Type:          "RBACTimelock",
+		Version:       semver.MustParse("1.0.0"),
+		Address:       timelockAddr2,
+		Qualifier:     qualifier2,
+	})
+	require.NoError(t, err)
+
+	err = ds.Addresses().Add(fdatastore.AddressRef{
+		ChainSelector: selector,
+		Type:          "CallProxy",
+		Version:       semver.MustParse("1.0.0"),
+		Address:       callProxyAddr2,
+		Qualifier:     qualifier2,
+	})
+	require.NoError(t, err)
+
+	t.Run("finds correct CallProxy for second MCMS deployment", func(t *testing.T) { //nolint:paralleltest // shares datastore state
+		addr, callProxyErr := findCallProxyAddressForTimelock(ds.Addresses(), selector, timelockAddr2)
+		require.NoError(t, callProxyErr)
+		require.Equal(t, callProxyAddr2, addr)
+	})
+
+	t.Run("returns error when CallProxy not found for qualifier", func(t *testing.T) { //nolint:paralleltest // shares datastore state
+		// Add a timelock without a corresponding CallProxy
+		qualifier3 := "MCMS_EVM_3"
+		timelockAddr3 := "0xTimelock3"
+
+		err := ds.Addresses().Add(fdatastore.AddressRef{
+			ChainSelector: selector,
+			Type:          "RBACTimelock",
+			Version:       semver.MustParse("1.0.0"),
+			Address:       timelockAddr3,
+			Qualifier:     qualifier3,
+		})
+		require.NoError(t, err)
+
+		addr, err := findCallProxyAddressForTimelock(ds.Addresses(), selector, timelockAddr3)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "CallProxy not found for qualifier")
+		require.Empty(t, addr)
+	})
+
+	t.Run("empty qualifier acts as wildcard and fails with multiple CallProxies", func(t *testing.T) { //nolint:paralleltest // shares datastore state
+		// Add MCMS deployment with empty qualifier
+		// Empty qualifier should match ANY CallProxy (wildcard behavior)
+		// Since we already have multiple CallProxies in the datastore, this should fail
+		timelockAddr4 := "0xTimelock4"
+
+		err := ds.Addresses().Add(fdatastore.AddressRef{
+			ChainSelector: selector,
+			Type:          "RBACTimelock",
+			Version:       semver.MustParse("1.0.0"),
+			Address:       timelockAddr4,
+			Qualifier:     "", // Empty = wildcard
+		})
+		require.NoError(t, err)
+
+		// Should fail because empty qualifier matches ALL CallProxies (callProxyAddr1, callProxyAddr2)
+		addr, err := findCallProxyAddressForTimelock(ds.Addresses(), selector, timelockAddr4)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "multiple CallProxy addresses found")
+		require.Empty(t, addr)
+	})
+
+	t.Run("empty qualifier works when only one CallProxy exists", func(t *testing.T) { //nolint:paralleltest // parallel would need separate test
+		// Create a fresh datastore with only ONE CallProxy to test wildcard success case
+		freshDS := fdatastore.NewMemoryDataStore()
+		freshSelector := selector
+
+		timelockAddr := "0xTimelockSingle"
+		callProxyAddr := "0xCallProxySingle"
+
+		err := freshDS.Addresses().Add(fdatastore.AddressRef{
+			ChainSelector: freshSelector,
+			Type:          "RBACTimelock",
+			Version:       semver.MustParse("1.0.0"),
+			Address:       timelockAddr,
+			Qualifier:     "", // Empty = wildcard
+		})
+		require.NoError(t, err)
+
+		err = freshDS.Addresses().Add(fdatastore.AddressRef{
+			ChainSelector: freshSelector,
+			Type:          "CallProxy",
+			Version:       semver.MustParse("1.0.0"),
+			Address:       callProxyAddr,
+			Qualifier:     "some-qualifier", // Has a qualifier, but empty timelock qualifier acts as wildcard and matches any CallProxy
+		})
+		require.NoError(t, err)
+
+		// Should succeed because there's only one CallProxy, and empty qualifier matches it
+		addr, err := findCallProxyAddressForTimelock(freshDS.Addresses(), freshSelector, timelockAddr)
+		require.NoError(t, err)
+		require.Equal(t, callProxyAddr, addr)
+	})
 }
 
 // newMockedExecutor creates a new Executor with the mock executables by overriding the
