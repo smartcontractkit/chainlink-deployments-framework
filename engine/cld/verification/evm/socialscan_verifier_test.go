@@ -36,7 +36,7 @@ func TestSocialScanVerifier_IsVerified_AlreadyVerified(t *testing.T) {
 
 	v, err := NewVerifier(StrategySocialScan, VerifierConfig{
 		Chain:        chain,
-		Network:      cfgnet.Network{ChainSelector: chain.Selector, BlockExplorer: cfgnet.BlockExplorer{APIKey: "test-key"}},
+		Network:      cfgnet.Network{ChainSelector: chain.Selector, BlockExplorer: cfgnet.BlockExplorer{APIKey: "test-key", Slug: "pharos-testnet"}},
 		Address:      "0x123",
 		Metadata:     SolidityContractMetadata{Version: "0.8.19", Name: "Test"},
 		ContractType: "Test",
@@ -72,7 +72,7 @@ func TestSocialScanVerifier_IsVerified_NotVerified(t *testing.T) {
 
 	v, err := NewVerifier(StrategySocialScan, VerifierConfig{
 		Chain:        chain,
-		Network:      cfgnet.Network{ChainSelector: chain.Selector, BlockExplorer: cfgnet.BlockExplorer{APIKey: "test-key"}},
+		Network:      cfgnet.Network{ChainSelector: chain.Selector, BlockExplorer: cfgnet.BlockExplorer{APIKey: "test-key", Slug: "pharos-testnet"}},
 		Address:      "0x123",
 		Metadata:     SolidityContractMetadata{Version: "0.8.19", Name: "Test"},
 		ContractType: "Test",

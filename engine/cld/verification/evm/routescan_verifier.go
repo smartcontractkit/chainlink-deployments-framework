@@ -21,26 +21,6 @@ import (
 const routescanURL = "https://api.routescan.io/v2"
 const routescanRateLimit = 2
 
-// routescanChainIDs - see https://routescan.notion.site
-var routescanChainIDs = map[string]map[uint64]string{
-	"testnet": {
-		21000001: "21000001", 3636: "3636", 80069: "80069", 9746: "9746_5", 43113: "43113",
-	},
-	"mainnet": {
-		21000000: "21000000", 3637: "3637", 80094: "80094", 9745: "9745", 43114: "43114",
-	},
-}
-
-func IsChainSupportedOnRouteScan(chainID uint64) (networkType string, ok bool) {
-	for nt, ids := range routescanChainIDs {
-		if _, found := ids[chainID]; found {
-			return nt, true
-		}
-	}
-
-	return "", false
-}
-
 var routescanRateLimiter = struct {
 	ticker *time.Ticker
 	once   sync.Once
@@ -57,14 +37,19 @@ type routeScanAPIResponse[R any] struct {
 }
 
 func newRouteScanVerifier(cfg VerifierConfig) (verification.Verifiable, error) {
-	networkType, ok := IsChainSupportedOnRouteScan(cfg.Chain.EvmChainID)
-	if !ok {
-		return nil, fmt.Errorf("chain ID %d is not supported by the Routescan API", cfg.Chain.EvmChainID)
+	networkType := routescanNetworkType(cfg.Network)
+	if networkType == "" {
+		return nil, fmt.Errorf("routescan requires network type mainnet or testnet for chain %s", cfg.Chain.Name)
+	}
+	chainPath := strings.TrimSpace(cfg.Network.BlockExplorer.Slug)
+	if chainPath == "" {
+		chainPath = strconv.FormatUint(cfg.Chain.EvmChainID, 10)
 	}
 
 	return &routescanVerifier{
 		chain:        cfg.Chain,
 		networkType:  networkType,
+		chainPath:    chainPath,
 		apiKey:       cfg.Network.BlockExplorer.APIKey,
 		address:      cfg.Address,
 		metadata:     cfg.Metadata,
@@ -79,6 +64,7 @@ func newRouteScanVerifier(cfg VerifierConfig) (verification.Verifiable, error) {
 type routescanVerifier struct {
 	chain        chainsel.Chain
 	networkType  string
+	chainPath    string
 	apiKey       string
 	address      string
 	metadata     SolidityContractMetadata
@@ -94,7 +80,7 @@ func (v *routescanVerifier) String() string {
 }
 
 func (v *routescanVerifier) IsVerified(ctx context.Context) (bool, error) {
-	resp, err := sendRoutescanRequest[string](ctx, v.httpClient, v.chain.EvmChainID, v.networkType, "GET", "contract", "getabi", v.apiKey, map[string]string{
+	resp, err := sendRoutescanRequest[string](ctx, v.httpClient, v.networkType, v.chainPath, "GET", "contract", "getabi", v.apiKey, map[string]string{
 		"address": v.address,
 	})
 	if err != nil {
@@ -140,7 +126,7 @@ func (v *routescanVerifier) Verify(ctx context.Context) error {
 		return fmt.Errorf("failed to get source code: %w", err)
 	}
 
-	resp, err := sendRoutescanRequest[string](ctx, v.httpClient, v.chain.EvmChainID, v.networkType, "POST", "contract", "verifysourcecode", v.apiKey, map[string]string{
+	resp, err := sendRoutescanRequest[string](ctx, v.httpClient, v.networkType, v.chainPath, "POST", "contract", "verifysourcecode", v.apiKey, map[string]string{
 		"contractaddress":      v.address,
 		"sourceCode":           sourceCode,
 		"codeformat":           "solidity-standard-json-input",
@@ -162,7 +148,7 @@ func (v *routescanVerifier) Verify(ctx context.Context) error {
 		pollDur = 5 * time.Second
 	}
 	for range maxVerificationPollAttempts {
-		statusResp, err := sendRoutescanRequest[string](ctx, v.httpClient, v.chain.EvmChainID, v.networkType, "GET", "contract", "checkverifystatus", v.apiKey, map[string]string{
+		statusResp, err := sendRoutescanRequest[string](ctx, v.httpClient, v.networkType, v.chainPath, "GET", "contract", "checkverifystatus", v.apiKey, map[string]string{
 			"guid": guid,
 		})
 		if err != nil {
@@ -187,7 +173,7 @@ func (v *routescanVerifier) Verify(ctx context.Context) error {
 }
 
 func (v *routescanVerifier) getConstructorArgs(ctx context.Context) (string, error) {
-	resp, err := sendRoutescanRequest[[]routescanTxInfo](ctx, v.httpClient, v.chain.EvmChainID, v.networkType, "GET", "account", "txlist", v.apiKey, map[string]string{
+	resp, err := sendRoutescanRequest[[]routescanTxInfo](ctx, v.httpClient, v.networkType, v.chainPath, "GET", "account", "txlist", v.apiKey, map[string]string{
 		"address": v.address,
 		"page":    "1",
 		"offset":  "1",
@@ -209,7 +195,7 @@ func (v *routescanVerifier) getConstructorArgs(ctx context.Context) (string, err
 	return txInput[len(bytecode):], nil
 }
 
-func sendRoutescanRequest[R any](ctx context.Context, client *http.Client, chainID uint64, networkType string, method, module, action, key string, extraParams map[string]string) (routeScanAPIResponse[R], error) {
+func sendRoutescanRequest[R any](ctx context.Context, client *http.Client, networkType, chainPath, method, module, action, key string, extraParams map[string]string) (routeScanAPIResponse[R], error) {
 	routescanRateLimiter.once.Do(func() {
 		routescanRateLimiter.ticker = time.NewTicker(time.Second / routescanRateLimit)
 	})
@@ -227,18 +213,13 @@ func sendRoutescanRequest[R any](ctx context.Context, client *http.Client, chain
 		params.Add(k, val)
 	}
 
-	chainIDStr, ok := routescanChainIDs[networkType][chainID]
-	if !ok {
-		chainIDStr = strconv.FormatUint(chainID, 10)
-	}
-
 	var httpReq *http.Request
 	var err error
 	if method == "GET" {
-		requestURL := routescanURL + fmt.Sprintf("/network/%s/evm/%s/etherscan/api?%s", networkType, chainIDStr, params.Encode())
+		requestURL := routescanURL + fmt.Sprintf("/network/%s/evm/%s/etherscan/api?%s", networkType, chainPath, params.Encode())
 		httpReq, err = http.NewRequestWithContext(ctx, method, requestURL, nil)
 	} else {
-		httpReq, err = http.NewRequestWithContext(ctx, method, routescanURL+fmt.Sprintf("/network/%s/evm/%s/etherscan/api?", networkType, chainIDStr), strings.NewReader(params.Encode()))
+		httpReq, err = http.NewRequestWithContext(ctx, method, routescanURL+fmt.Sprintf("/network/%s/evm/%s/etherscan/api?", networkType, chainPath), strings.NewReader(params.Encode()))
 		if err == nil {
 			httpReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		}

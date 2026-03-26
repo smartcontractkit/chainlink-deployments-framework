@@ -28,9 +28,6 @@ type sourcifyVerificationResponse struct {
 }
 
 func newSourcifyVerifier(cfg VerifierConfig) (verification.Verifiable, error) {
-	if !IsChainSupportedOnSourcify(cfg.Chain.EvmChainID) {
-		return nil, fmt.Errorf("chain ID %d is not supported by the Sourcify API", cfg.Chain.EvmChainID)
-	}
 	apiURL := cfg.Network.BlockExplorer.URL
 	if apiURL == "" {
 		return nil, fmt.Errorf("sourcify API URL not configured for chain %s", cfg.Chain.Name)
