@@ -154,4 +154,5 @@ packages:
       filename: "mock_{{.InterfaceName | snakecase}}.go"
       structname: "{{.Mock}}{{.InterfaceName}}"
     interfaces:
-      Runner:
+      CLIInvoker:
+      WorkflowAPI:

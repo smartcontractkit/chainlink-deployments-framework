@@ -134,9 +134,11 @@ func Test_WithCRERunner(t *testing.T) {
 	require.Nil(t, cmps.CRERunner)
 
 	runner := cre.NewCLIRunner("/path/to/cre")
-	option := WithCRERunner(runner)
+	creR := cre.NewRunners(cre.WithCLI(runner))
+	option := WithCRERunner(creR)
 	err := option(cmps)
 
 	require.NoError(t, err)
-	require.Equal(t, runner, cmps.CRERunner)
+	require.Equal(t, creR, cmps.CRERunner)
+	require.Equal(t, runner, cmps.CRERunner.CLI())
 }

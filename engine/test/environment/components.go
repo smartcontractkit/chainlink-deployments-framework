@@ -22,7 +22,7 @@ type components struct {
 	OffchainClient foffchain.Client
 	NodeIDs        []string
 	Logger         logger.Logger
-	CRERunner      cre.Runner
+	CRERunner      *cre.Runners
 }
 
 // newComponents creates a new components instance.

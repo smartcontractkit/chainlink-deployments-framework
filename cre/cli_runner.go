@@ -19,6 +19,8 @@ type CLIRunner struct {
 	Stderr io.Writer
 }
 
+var _ CLIInvoker = (*CLIRunner)(nil)
+
 // NewCLIRunner returns a CLIRunner for the given binary path. An empty path defaults to "cre"
 // (resolved via PATH).
 func NewCLIRunner(binaryPath string) *CLIRunner {
@@ -26,12 +28,14 @@ func NewCLIRunner(binaryPath string) *CLIRunner {
 		binaryPath = defaultBinary
 	}
 
+	// TODO: will need to add authentication logic here via API Key from the domain secrets object
+
 	return &CLIRunner{binaryPath: binaryPath}
 }
 
 // Run executes the binary and captures stdout and stderr. Exit code 0 returns (res, nil);
 // exit code != 0 returns (res, *ExitError) so callers get both result and error.
-// Runner-related failures (binary not found, context canceled) return (nil, err).
+// CLI invocation failures (binary not found, context canceled) return (nil, err).
 func (r *CLIRunner) Run(ctx context.Context, args ...string) (*CallResult, error) {
 	//nolint:gosec // G204: This is intentional - we're running a CLI tool with user-provided arguments.
 	// The binary path is controlled via configuration, and args are expected to be user-provided CLI arguments.

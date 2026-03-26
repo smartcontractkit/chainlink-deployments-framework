@@ -119,10 +119,12 @@ func Test_WithCRERunner(t *testing.T) {
 	assert.Nil(t, opts.creRunner)
 
 	runner := cre.NewCLIRunner("/path/to/cre")
-	option := WithCRERunner(runner)
+	creR := cre.NewRunners(cre.WithCLI(runner))
+	option := WithCRERunner(creR)
 	option(opts)
 
-	assert.Equal(t, runner, opts.creRunner)
+	assert.Equal(t, creR, opts.creRunner)
+	assert.Equal(t, runner, opts.creRunner.CLI())
 }
 
 func Test_newLoadConfig_defaultCRERunner(t *testing.T) {
@@ -132,6 +134,7 @@ func Test_newLoadConfig_defaultCRERunner(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NotNil(t, cfg.creRunner)
-	_, ok := cfg.creRunner.(*cre.CLIRunner)
-	require.True(t, ok, "expected *cre.CLIRunner, got %T", cfg.creRunner)
+	require.NotNil(t, cfg.creRunner.CLI())
+	_, ok := cfg.creRunner.CLI().(*cre.CLIRunner)
+	require.True(t, ok, "expected *cre.CLIRunner, got %T", cfg.creRunner.CLI())
 }
