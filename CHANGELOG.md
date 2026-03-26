@@ -1,5 +1,15 @@
 # chainlink-deployments-framework
 
+## 0.92.0
+
+### Minor Changes
+
+- [#892](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/892) [`1745660`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/17456607061640f6a921d54b5fb764a55e3a80c6) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(cld)!: remove Archive() method from RegistryProvider interface
+
+  Migration guide:
+
+  - Remove Archive() method from RegistryProvider interface implementations
+
 ## 0.91.0
 
 ### Minor Changes
