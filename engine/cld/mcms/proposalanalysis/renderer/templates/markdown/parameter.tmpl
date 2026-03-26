@@ -1,13 +1,13 @@
 {{- define "parameter" -}}
 {{- $formatted := formatParam . -}}
-{{- if hasNewline $formatted -}}
 - **`{{ .Name }}`** (`{{ .Type }}`):
+  <details open>
+  <summary>Value</summary>
+
   ```text
 {{ indentLines $formatted "  " }}
   ```
-{{- else -}}
-- **`{{ .Name }}`** (`{{ .Type }}`): {{ $formatted }}
-{{- end -}}
+  </details>
 {{- if hasDisplayAnnotations .Annotations -}}
 {{- range .Annotations -}}
 {{- if not (isFrameworkAnnotation .Name) }}
