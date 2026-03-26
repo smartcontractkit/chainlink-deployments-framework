@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/samber/lo"
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -41,6 +43,13 @@ func Test_SimChainProvider_Initialize(t *testing.T) {
 				BlockTime: 10 * time.Millisecond,
 			},
 			wantMinedBlock: true,
+		},
+		{
+			name:         "valid initialization with preset admin acount",
+			giveSelector: chainSelector,
+			giveConfig: SimChainProviderConfig{
+				AdminAccount: lo.Must(crypto.HexToECDSA("26a6528a1d63fffc4ce9f109d407bb584f3fce17a09033608fcb31c47c163756")),
+			},
 		},
 		{
 			name:              "returns an already initialized chain",
