@@ -43,6 +43,7 @@ func NewRunners(opts ...RunnersOption) *Runners {
 	for _, opt := range opts {
 		opt(r)
 	}
+
 	return r
 }
 
@@ -65,6 +66,7 @@ func (r *Runners) CLI() CLIInvoker {
 	if r == nil {
 		return nil
 	}
+
 	return r.cli
 }
 
@@ -73,5 +75,6 @@ func (r *Runners) Workflow() WorkflowAPI {
 	if r == nil {
 		return nil
 	}
+
 	return r.workflow
 }

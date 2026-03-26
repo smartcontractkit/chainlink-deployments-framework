@@ -38,63 +38,6 @@ func (_m *MockWorkflowAPI) EXPECT() *MockWorkflowAPI_Expecter {
 	return &MockWorkflowAPI_Expecter{mock: &_m.Mock}
 }
 
-// DeleteWorkflow provides a mock function for the type MockWorkflowAPI
-func (_mock *MockWorkflowAPI) DeleteWorkflow(ctx context.Context, cfg cre.DeleteWorkflowConfig) error {
-	ret := _mock.Called(ctx, cfg)
-
-	if len(ret) == 0 {
-		panic("no return value specified for DeleteWorkflow")
-	}
-
-	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, cre.DeleteWorkflowConfig) error); ok {
-		r0 = returnFunc(ctx, cfg)
-	} else {
-		r0 = ret.Error(0)
-	}
-	return r0
-}
-
-// MockWorkflowAPI_DeleteWorkflow_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteWorkflow'
-type MockWorkflowAPI_DeleteWorkflow_Call struct {
-	*mock.Call
-}
-
-// DeleteWorkflow is a helper method to define mock.On call
-//   - ctx context.Context
-//   - cfg cre.DeleteWorkflowConfig
-func (_e *MockWorkflowAPI_Expecter) DeleteWorkflow(ctx interface{}, cfg interface{}) *MockWorkflowAPI_DeleteWorkflow_Call {
-	return &MockWorkflowAPI_DeleteWorkflow_Call{Call: _e.mock.On("DeleteWorkflow", ctx, cfg)}
-}
-
-func (_c *MockWorkflowAPI_DeleteWorkflow_Call) Run(run func(ctx context.Context, cfg cre.DeleteWorkflowConfig)) *MockWorkflowAPI_DeleteWorkflow_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		var arg1 cre.DeleteWorkflowConfig
-		if args[1] != nil {
-			arg1 = args[1].(cre.DeleteWorkflowConfig)
-		}
-		run(
-			arg0,
-			arg1,
-		)
-	})
-	return _c
-}
-
-func (_c *MockWorkflowAPI_DeleteWorkflow_Call) Return(err error) *MockWorkflowAPI_DeleteWorkflow_Call {
-	_c.Call.Return(err)
-	return _c
-}
-
-func (_c *MockWorkflowAPI_DeleteWorkflow_Call) RunAndReturn(run func(ctx context.Context, cfg cre.DeleteWorkflowConfig) error) *MockWorkflowAPI_DeleteWorkflow_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // DeployWorkflow provides a mock function for the type MockWorkflowAPI
 func (_mock *MockWorkflowAPI) DeployWorkflow(ctx context.Context, cfg cre.DeployWorkflowConfig) error {
 	ret := _mock.Called(ctx, cfg)
@@ -148,63 +91,6 @@ func (_c *MockWorkflowAPI_DeployWorkflow_Call) Return(err error) *MockWorkflowAP
 }
 
 func (_c *MockWorkflowAPI_DeployWorkflow_Call) RunAndReturn(run func(ctx context.Context, cfg cre.DeployWorkflowConfig) error) *MockWorkflowAPI_DeployWorkflow_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// PauseWorkflow provides a mock function for the type MockWorkflowAPI
-func (_mock *MockWorkflowAPI) PauseWorkflow(ctx context.Context, cfg cre.PauseWorkflowConfig) error {
-	ret := _mock.Called(ctx, cfg)
-
-	if len(ret) == 0 {
-		panic("no return value specified for PauseWorkflow")
-	}
-
-	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, cre.PauseWorkflowConfig) error); ok {
-		r0 = returnFunc(ctx, cfg)
-	} else {
-		r0 = ret.Error(0)
-	}
-	return r0
-}
-
-// MockWorkflowAPI_PauseWorkflow_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PauseWorkflow'
-type MockWorkflowAPI_PauseWorkflow_Call struct {
-	*mock.Call
-}
-
-// PauseWorkflow is a helper method to define mock.On call
-//   - ctx context.Context
-//   - cfg cre.PauseWorkflowConfig
-func (_e *MockWorkflowAPI_Expecter) PauseWorkflow(ctx interface{}, cfg interface{}) *MockWorkflowAPI_PauseWorkflow_Call {
-	return &MockWorkflowAPI_PauseWorkflow_Call{Call: _e.mock.On("PauseWorkflow", ctx, cfg)}
-}
-
-func (_c *MockWorkflowAPI_PauseWorkflow_Call) Run(run func(ctx context.Context, cfg cre.PauseWorkflowConfig)) *MockWorkflowAPI_PauseWorkflow_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		var arg1 cre.PauseWorkflowConfig
-		if args[1] != nil {
-			arg1 = args[1].(cre.PauseWorkflowConfig)
-		}
-		run(
-			arg0,
-			arg1,
-		)
-	})
-	return _c
-}
-
-func (_c *MockWorkflowAPI_PauseWorkflow_Call) Return(err error) *MockWorkflowAPI_PauseWorkflow_Call {
-	_c.Call.Return(err)
-	return _c
-}
-
-func (_c *MockWorkflowAPI_PauseWorkflow_Call) RunAndReturn(run func(ctx context.Context, cfg cre.PauseWorkflowConfig) error) *MockWorkflowAPI_PauseWorkflow_Call {
 	_c.Call.Return(run)
 	return _c
 }
