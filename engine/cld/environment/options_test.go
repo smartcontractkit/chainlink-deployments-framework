@@ -1,7 +1,6 @@
 package environment
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -134,8 +133,5 @@ func Test_newLoadConfig_defaultCRERunner(t *testing.T) {
 	cfg, err := newLoadConfig()
 	require.NoError(t, err)
 
-	require.NotNil(t, cfg.creRunner)
-	require.NotNil(t, cfg.creRunner.CLI())
-	// cliRunner is unexported; assert default concrete type by name for stability across packages.
-	require.Equal(t, "*cre.cliRunner", reflect.TypeOf(cfg.creRunner.CLI()).String())
+	require.Nil(t, cfg.creRunner, "default CRE runner is deferred until Load after config is available")
 }
