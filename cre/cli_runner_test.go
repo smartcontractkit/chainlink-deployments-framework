@@ -18,7 +18,6 @@ func TestNewCLIRunner(t *testing.T) {
 	}{
 		{"empty_defaults_to_cre", "", defaultBinary},
 		{"custom_path", "/opt/cre", "/opt/cre"},
-		{"with_api_key_option", "/bin/sh", "/bin/sh"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
