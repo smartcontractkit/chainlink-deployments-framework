@@ -337,8 +337,7 @@ func Test_LoadEnv_Legacy(t *testing.T) { //nolint:paralleltest // see comment in
 }
 
 func Test_LoadEnv_BindsCREFromEnv(t *testing.T) { //nolint:paralleltest // see comment in setupEnvVars
-	t.Setenv("CRE_DEPLOY_HMAC_KEY_ID", "kid-1")
-	t.Setenv("CRE_DEPLOY_HMAC_SECRET", "secret-1")
+	t.Setenv("CRE_API_KEY", "api-key-1")
 	t.Setenv("CRE_TENANT_ID", "tenant-1")
 	t.Setenv("CRE_ORG_ID", "org-1")
 	t.Setenv("CRE_TLS", "true")
@@ -349,8 +348,7 @@ func Test_LoadEnv_BindsCREFromEnv(t *testing.T) { //nolint:paralleltest // see c
 	got, err := LoadEnv()
 	require.NoError(t, err)
 
-	require.Equal(t, "kid-1", got.CRE.Auth.HMACKeyID)
-	require.Equal(t, "secret-1", got.CRE.Auth.HMACKeySecret)
+	require.Equal(t, "api-key-1", got.CRE.Auth.APIKey)
 	require.Equal(t, "tenant-1", got.CRE.Auth.TenantID)
 	require.Equal(t, "org-1", got.CRE.Auth.OrgID)
 	require.Equal(t, "true", got.CRE.TLS)

@@ -14,16 +14,98 @@ func TestNewCLIRunner(t *testing.T) {
 	tests := []struct {
 		name       string
 		binaryPath string
+		opts       []CLIRunnerOption
 		want       string
 	}{
-		{"empty_defaults_to_cre", "", defaultBinary},
-		{"custom_path", "/opt/cre", "/opt/cre"},
+		{"empty_defaults_to_cre", "", nil, defaultBinary},
+		{"custom_path", "/opt/cre", nil, "/opt/cre"},
+		{"with_api_key_option", "/bin/sh", []CLIRunnerOption{WithAPIKey("k")}, "/bin/sh"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			r := NewCLIRunner(tt.binaryPath)
+			r := NewCLIRunner(tt.binaryPath, tt.opts...)
 			require.Equal(t, tt.want, r.binaryPath)
+		})
+	}
+}
+
+func TestCLIRunner_APIKeyEnv(t *testing.T) {
+	// Cannot use t.Parallel: subtests use t.Setenv.
+	tests := []struct {
+		name           string
+		parentAPIKey   string
+		opts           []CLIRunnerOption
+		wantSubprocess string
+	}{
+		{
+			name:           "with_api_key_sets_subprocess_env",
+			parentAPIKey:   "",
+			opts:           []CLIRunnerOption{WithAPIKey("test-api-key-value")},
+			wantSubprocess: "test-api-key-value",
+		},
+		{
+			name:           "without_api_key_inherits_unset_parent",
+			parentAPIKey:   "",
+			opts:           nil,
+			wantSubprocess: "",
+		},
+		{
+			name:           "with_api_key_overrides_parent_env",
+			parentAPIKey:   "from-parent",
+			opts:           []CLIRunnerOption{WithAPIKey("from-runner")},
+			wantSubprocess: "from-runner",
+		},
+	}
+
+	shArgs := []string{"-c", `printf '%s' "$` + envCREAPIKey + `"`}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv(envCREAPIKey, tt.parentAPIKey)
+
+			r := NewCLIRunner("/bin/sh", tt.opts...)
+			res, err := r.Run(t.Context(), shArgs...)
+			require.NoError(t, err)
+			require.Equal(t, 0, res.ExitCode)
+			require.Equal(t, tt.wantSubprocess, string(res.Stdout))
+		})
+	}
+}
+
+func Test_envForCRECLI(t *testing.T) {
+	t.Setenv(envCREAPIKey, "old")
+
+	tests := []struct {
+		name           string
+		apiKey         string
+		mustContain    []string
+		mustNotContain []string
+	}{
+		{
+			name:        "empty_api_key_passes_through_parent",
+			apiKey:      "",
+			mustContain: []string{envCREAPIKey + "=old"},
+		},
+		{
+			name:           "non_empty_replaces_existing",
+			apiKey:         "new",
+			mustContain:    []string{envCREAPIKey + "=new"},
+			mustNotContain: []string{envCREAPIKey + "=old"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := envForCRECLI(tt.apiKey)
+			for _, s := range tt.mustContain {
+				require.Contains(t, got, s)
+			}
+			for _, s := range tt.mustNotContain {
+				require.NotContains(t, got, s)
+			}
 		})
 	}
 }
