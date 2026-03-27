@@ -68,7 +68,7 @@ func LoadFork(
 		if cfg.Env != nil {
 			apiKey = cfg.Env.CRE.Auth.APIKey
 		}
-		loadcfg.creRunner = cre.NewCRERunner(cre.WithCLI(cre.NewCLIRunner("", cre.WithAPIKey(apiKey))))
+		loadcfg.creRunner = cre.NewRunner(cre.WithCLI(cre.NewCLIRunner("", cre.WithAPIKey(apiKey))))
 	}
 
 	// Limit to EVM networks only

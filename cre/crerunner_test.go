@@ -6,32 +6,34 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNewCRERunner(t *testing.T) {
+func TestNewRunner(t *testing.T) {
 	t.Parallel()
 
 	cli := NewCLIRunner("/bin/sh")
-	var wf stubWorkflowRunner
+	var cr stubClientRunner
 
-	r := NewCRERunner(WithCLI(cli), WithClient(&wf))
+	r := NewRunner(WithCLI(cli), WithClient(&cr))
 	require.NotNil(t, r)
 	require.Equal(t, cli, r.CLI())
-	require.Equal(t, &wf, r.Client())
+	require.Equal(t, &cr, r.Client())
 }
 
-func TestNewCRERunner_Empty(t *testing.T) {
+func TestNewRunner_Empty(t *testing.T) {
 	t.Parallel()
 
-	r := NewCRERunner()
+	r := NewRunner()
 	require.NotNil(t, r)
 	require.Nil(t, r.CLI())
 	require.Nil(t, r.Client())
 }
 
-func TestCRERunner_NilInterface(t *testing.T) {
+func TestRunner_NilInterface(t *testing.T) {
 	t.Parallel()
 
-	var r CRERunner
+	var r Runner
 	require.Nil(t, r)
+	// A nil Runner interface must not have methods called on it; check non-nil before CLI() / Client().
 }
 
-type stubWorkflowRunner struct{}
+// stubClientRunner implements [ClientRunner] for tests (empty interface: any concrete type will do).
+type stubClientRunner struct{}

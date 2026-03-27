@@ -267,7 +267,7 @@ func withChainLoaderN(t *testing.T, loader *onchain.ChainLoader, n int) LoadOpt 
 }
 
 // WithCRERunner sets the CRE runners for the test environment.
-func WithCRERunner(r cre.CRERunner) LoadOpt {
+func WithCRERunner(r cre.Runner) LoadOpt {
 	return func(cmps *components) error {
 		cmps.CRERunner = r
 		return nil

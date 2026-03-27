@@ -67,7 +67,7 @@ func (l *Loader) Load(ctx context.Context, opts ...LoadOpt) (*fdeployment.Enviro
 		oc = foffchain.NewMemoryJobDistributor()
 	}
 
-	// CRERunner may be nil; tests that need CRE use WithCRERunner(cre.NewCRERunner(cre.WithCLI(cremocks.NewMockCLIRunner(t)))).
+	// CRERunner may be nil; tests that need CRE use WithCRERunner(cre.NewRunner(cre.WithCLI(cremocks.NewMockCLIRunner(t)))).
 	return &fdeployment.Environment{
 		Name:              environmentName,
 		Logger:            cmps.Logger,

@@ -15,34 +15,34 @@ type CLIRunner interface {
 	Run(ctx context.Context, args ...string) (*CallResult, error)
 }
 
-// WorkflowRunner is a placeholder for the future CRE v2 Go client. No methods yet—the real API will be added when the CRE Go library is integrated.
+// ClientRunner is a placeholder for the future CRE v2 Go client. No methods yet—the real API will be added when the CRE Go library is integrated.
 //
 // TODO: Add methods (e.g. DeployWorkflow) and supporting config types once the library contract is clear.
-// TODO: Revisit layout: consider moving [WorkflowRunner] and concrete clients to a dedicated file or subpackage when the surface grows.
-type WorkflowRunner interface{}
+// TODO: Revisit layout: consider moving [ClientRunner] and concrete clients to a dedicated file or subpackage when the surface grows.
+type ClientRunner interface{}
 
-// CRERunner groups CLI and Go API access to CRE (v1 subprocess + v2 client).
-// The default implementation is built with [NewCRERunner]; other implementations may be used in tests or for alternate wiring.
+// Runner groups CLI and Go API access to CRE (v1 subprocess + v2 client).
+// The default implementation is built with [NewRunner]; other implementations may be used in tests or for alternate wiring.
 //
-// If CRERunner is nil, do not call [CRERunner.CLI] or [CRERunner.Client] (unlike a nil concrete pointer, a nil interface cannot be used as a receiver).
-type CRERunner interface {
+// If the environment field CRERunner is nil, do not call [Runner.CLI] or [Runner.Client] (unlike a nil concrete pointer, a nil interface cannot be used as a receiver).
+type Runner interface {
 	CLI() CLIRunner
-	Client() WorkflowRunner
+	Client() ClientRunner
 }
 
-// crerunner is the default [CRERunner] implementation.
+// crerunner is the default [Runner] implementation.
 type crerunner struct {
-	cli      CLIRunner
-	workflow WorkflowRunner
+	cli    CLIRunner
+	client ClientRunner
 }
 
-var _ CRERunner = (*crerunner)(nil)
+var _ Runner = (*crerunner)(nil)
 
-// CRERunnerOption configures a [crerunner] instance for [NewCRERunner].
-type CRERunnerOption func(*crerunner)
+// RunnerOption configures a [crerunner] instance for [NewRunner].
+type RunnerOption func(*crerunner)
 
-// NewCRERunner returns a [CRERunner] with the given options applied.
-func NewCRERunner(opts ...CRERunnerOption) CRERunner {
+// NewRunner returns a [Runner] with the given options applied.
+func NewRunner(opts ...RunnerOption) Runner {
 	c := &crerunner{}
 	for _, opt := range opts {
 		opt(c)
@@ -52,16 +52,16 @@ func NewCRERunner(opts ...CRERunnerOption) CRERunner {
 }
 
 // WithCLI sets the CLI [CLIRunner] (subprocess).
-func WithCLI(cli CLIRunner) CRERunnerOption {
+func WithCLI(cli CLIRunner) RunnerOption {
 	return func(r *crerunner) {
 		r.cli = cli
 	}
 }
 
-// WithClient sets the Go API [WorkflowRunner] (v2). The accessor is [CRERunner.Client] for a familiar call shape.
-func WithClient(client WorkflowRunner) CRERunnerOption {
+// WithClient sets the Go API [ClientRunner] (v2).
+func WithClient(client ClientRunner) RunnerOption {
 	return func(r *crerunner) {
-		r.workflow = client
+		r.client = client
 	}
 }
 
@@ -74,11 +74,11 @@ func (r *crerunner) CLI() CLIRunner {
 	return r.cli
 }
 
-// Client returns the Go API client ([WorkflowRunner]), or nil if none was configured.
-func (r *crerunner) Client() WorkflowRunner {
+// Client returns the Go API client ([ClientRunner]), or nil if none was configured.
+func (r *crerunner) Client() ClientRunner {
 	if r == nil {
 		return nil
 	}
 
-	return r.workflow
+	return r.client
 }
