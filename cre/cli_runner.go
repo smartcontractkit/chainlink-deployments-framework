@@ -12,25 +12,10 @@ import (
 
 const defaultBinary = "cre"
 
-// envCREAPIKey is the environment variable name the CRE CLI reads for API key authentication.
-const envCREAPIKey = "CRE_API_KEY" //nolint:gosec // G101: env var name, not a secret value
-
-// CLIRunnerOption configures a [cliRunner] from [NewCLIRunner].
-type CLIRunnerOption func(*cliRunner)
-
-// WithAPIKey sets the CRE API key passed to the subprocess as [envCREAPIKey]. When non-empty,
-// it overrides any existing value in the parent environment for the child process only.
-func WithAPIKey(key string) CLIRunnerOption {
-	return func(r *cliRunner) {
-		r.apiKey = key
-	}
-}
-
 // cliRunner runs the CRE CLI via os/exec. Run executes the binary and captures stdout/stderr.
 // It implements the [CLIRunner] interface.
 type cliRunner struct {
 	binaryPath string
-	apiKey     string
 	// Stdout, if set, receives a real-time copy of the process stdout while it runs.
 	Stdout io.Writer
 	// Stderr, if set, receives a real-time copy of the process stderr while it runs.
@@ -41,7 +26,7 @@ var _ CLIRunner = (*cliRunner)(nil)
 
 // NewCLIRunner returns a [cliRunner] for the given binary path. An empty path defaults to "cre"
 // (resolved via PATH).
-func NewCLIRunner(binaryPath string, opts ...CLIRunnerOption) *cliRunner {
+func NewCLIRunner(binaryPath string) *cliRunner {
 	if binaryPath == "" {
 		binaryPath = defaultBinary
 	}
@@ -54,27 +39,6 @@ func NewCLIRunner(binaryPath string, opts ...CLIRunnerOption) *cliRunner {
 	return r
 }
 
-// envForCRECLI returns the environment for the subprocess. When apiKey is non-empty, any
-// existing [envCREAPIKey] entry from the parent is removed and replaced with the given value.
-func envForCRECLI(apiKey string) []string {
-	env := os.Environ()
-	if apiKey == "" {
-		return env
-	}
-
-	out := make([]string, 0, len(env)+1)
-	prefix := envCREAPIKey + "="
-	for _, e := range env {
-		if !strings.HasPrefix(e, prefix) {
-			out = append(out, e)
-		}
-	}
-
-	out = append(out, prefix+apiKey)
-
-	return out
-}
-
 // Run executes the binary and captures stdout and stderr. Exit code 0 returns (res, nil);
 // exit code != 0 returns (res, *ExitError) so callers get both result and error.
 // CLI invocation failures (binary not found, context canceled) return (nil, err).
@@ -82,10 +46,6 @@ func (r *cliRunner) Run(ctx context.Context, args ...string) (*CallResult, error
 	//nolint:gosec // G204: This is intentional - we're running a CLI tool with user-provided arguments.
 	// The binary path is controlled via configuration, and args are expected to be user-provided CLI arguments.
 	cmd := exec.CommandContext(ctx, r.binaryPath, args...)
-
-	if r.apiKey != "" {
-		cmd.Env = envForCRECLI(r.apiKey)
-	}
 
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = wrapWriter(&stdout, r.Stdout)
