@@ -30,20 +30,20 @@ type Runner interface {
 	Client() Client
 }
 
-// crerunner is the default [Runner] implementation.
-type crerunner struct {
+// runner is the default [Runner] implementation.
+type runner struct {
 	cli    CLIRunner
 	client Client
 }
 
-var _ Runner = (*crerunner)(nil)
+var _ Runner = (*runner)(nil)
 
-// RunnerOption configures a [crerunner] instance for [NewRunner].
-type RunnerOption func(*crerunner)
+// RunnerOption configures a [runner] instance for [NewRunner].
+type RunnerOption func(*runner)
 
 // NewRunner returns a [Runner] with the given options applied.
 func NewRunner(opts ...RunnerOption) Runner {
-	c := &crerunner{}
+	c := &runner{}
 	for _, opt := range opts {
 		opt(c)
 	}
@@ -53,20 +53,20 @@ func NewRunner(opts ...RunnerOption) Runner {
 
 // WithCLI sets the CLI [CLIRunner] (subprocess).
 func WithCLI(cli CLIRunner) RunnerOption {
-	return func(r *crerunner) {
+	return func(r *runner) {
 		r.cli = cli
 	}
 }
 
 // WithClient sets the Go API [Client] (v2).
 func WithClient(client Client) RunnerOption {
-	return func(r *crerunner) {
+	return func(r *runner) {
 		r.client = client
 	}
 }
 
 // CLI returns the CLI runner, or nil if none was configured.
-func (r *crerunner) CLI() CLIRunner {
+func (r *runner) CLI() CLIRunner {
 	if r == nil {
 		return nil
 	}
@@ -75,7 +75,7 @@ func (r *crerunner) CLI() CLIRunner {
 }
 
 // Client returns the Go API client ([Client]), or nil if none was configured.
-func (r *crerunner) Client() Client {
+func (r *runner) Client() Client {
 	if r == nil {
 		return nil
 	}
