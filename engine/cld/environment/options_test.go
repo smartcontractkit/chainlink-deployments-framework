@@ -133,5 +133,5 @@ func Test_newLoadConfig_defaultCRERunner(t *testing.T) {
 	cfg, err := newLoadConfig()
 	require.NoError(t, err)
 
-	require.Nil(t, cfg.creRunner, "default CRE runner is deferred until Load after config is available")
+	require.Nil(t, cfg.creRunner, "CRE runner is nil by default; callers opt in via WithCRERunner")
 }
