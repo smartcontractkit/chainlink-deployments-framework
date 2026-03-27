@@ -10,12 +10,12 @@ func TestNewCRERunner(t *testing.T) {
 	t.Parallel()
 
 	cli := NewCLIRunner("/bin/sh")
-	var wf stubWorkflowRunner
+	var cr stubClientRunner
 
-	r := NewCRERunner(WithCLI(cli), WithClient(&wf))
+	r := NewCRERunner(WithCLI(cli), WithClient(&cr))
 	require.NotNil(t, r)
 	require.Equal(t, cli, r.CLI())
-	require.Equal(t, &wf, r.Client())
+	require.Equal(t, &cr, r.Client())
 }
 
 func TestNewCRERunner_Empty(t *testing.T) {
@@ -34,4 +34,5 @@ func TestCRERunner_NilInterface(t *testing.T) {
 	require.Nil(t, r)
 }
 
-type stubWorkflowRunner struct{}
+// stubClientRunner implements [ClientRunner] for tests (empty interface: any concrete type will do).
+type stubClientRunner struct{}
