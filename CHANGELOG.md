@@ -1,5 +1,15 @@
 # chainlink-deployments-framework
 
+## 0.93.0
+
+### Minor Changes
+
+- [#896](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/896) [`0f6bdb1`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/0f6bdb1d6636a474727e298f77ca709669ab0086) Thanks [@ecPablo](https://github.com/ecPablo)! - add wrapper object for CRE to allow CLI and Go API implementations to coexist
+
+### Patch Changes
+
+- [#889](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/889) [`aa6fdfd`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/aa6fdfdbd37c1534beb248f5d878245d658a3f81) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(mcms): render proposal parameters in collapsible code blocks
+
 ## 0.92.0
 
 ### Minor Changes
