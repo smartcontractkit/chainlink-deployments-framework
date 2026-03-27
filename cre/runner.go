@@ -16,15 +16,11 @@ type CLIRunner interface {
 }
 
 // Client is a placeholder for the future CRE v2 Go client. No methods yet—the real API will be added when the CRE Go library is integrated.
-//
 // TODO: Add methods (e.g. DeployWorkflow) and supporting config types once the library contract is clear.
 // TODO: Revisit layout: consider moving [Client] and concrete clients to a dedicated file or subpackage when the surface grows.
 type Client interface{}
 
 // Runner groups CLI and Go API access to CRE (v1 subprocess + v2 client).
-// The default implementation is built with [NewRunner]; other implementations may be used in tests or for alternate wiring.
-//
-// If the environment field CRERunner is nil, do not call [Runner.CLI] or [Runner.Client] (unlike a nil concrete pointer, a nil interface cannot be used as a receiver).
 type Runner interface {
 	CLI() CLIRunner
 	Client() Client
@@ -51,14 +47,14 @@ func NewRunner(opts ...RunnerOption) Runner {
 	return c
 }
 
-// WithCLI sets the CLI [CLIRunner] (subprocess).
+// WithCLI sets the CLI [CLIRunner].
 func WithCLI(cli CLIRunner) RunnerOption {
 	return func(r *runner) {
 		r.cli = cli
 	}
 }
 
-// WithClient sets the Go API [Client] (v2).
+// WithClient sets the Go API [Client].
 func WithClient(client Client) RunnerOption {
 	return func(r *runner) {
 		r.client = client
