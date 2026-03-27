@@ -155,4 +155,4 @@ packages:
       structname: "{{.Mock}}{{.InterfaceName}}"
     interfaces:
       CLIRunner:
-      ClientRunner:
+      Client:

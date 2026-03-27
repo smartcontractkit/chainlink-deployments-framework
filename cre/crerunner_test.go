@@ -10,12 +10,12 @@ func TestNewRunner(t *testing.T) {
 	t.Parallel()
 
 	cli := NewCLIRunner("/bin/sh")
-	var cr stubClientRunner
+	var c stubClient
 
-	r := NewRunner(WithCLI(cli), WithClient(&cr))
+	r := NewRunner(WithCLI(cli), WithClient(&c))
 	require.NotNil(t, r)
 	require.Equal(t, cli, r.CLI())
-	require.Equal(t, &cr, r.Client())
+	require.Equal(t, &c, r.Client())
 }
 
 func TestNewRunner_Empty(t *testing.T) {
@@ -35,5 +35,5 @@ func TestRunner_NilInterface(t *testing.T) {
 	// A nil Runner interface must not have methods called on it; check non-nil before CLI() / Client().
 }
 
-// stubClientRunner implements [Client] for tests (empty interface: any concrete type will do).
-type stubClientRunner struct{}
+// stubClient implements [Client] for tests (empty interface: any concrete type will do).
+type stubClient struct{}

@@ -5,9 +5,7 @@ import (
 	"context"
 	"errors"
 	"io"
-	"os"
 	"os/exec"
-	"strings"
 )
 
 const defaultBinary = "cre"
@@ -31,12 +29,7 @@ func NewCLIRunner(binaryPath string) *cliRunner {
 		binaryPath = defaultBinary
 	}
 
-	r := &cliRunner{binaryPath: binaryPath}
-	for _, opt := range opts {
-		opt(r)
-	}
-
-	return r
+	return &cliRunner{binaryPath: binaryPath}
 }
 
 // Run executes the binary and captures stdout and stderr. Exit code 0 returns (res, nil);
