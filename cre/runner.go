@@ -10,7 +10,7 @@ type CallResult struct {
 }
 
 // CLIRunner is the interface for running the CRE binary as a subprocess (v1 / CLI access).
-// The default implementation is [cliRunner].
+// The default implementation is created by [NewCLIRunner].
 type CLIRunner interface {
 	Run(ctx context.Context, args ...string) (*CallResult, error)
 }
