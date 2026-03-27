@@ -51,6 +51,7 @@ func TestNewRunner(t *testing.T) {
 			if tt.wantNil {
 				var r Runner
 				require.Nil(t, r)
+
 				return
 			}
 
