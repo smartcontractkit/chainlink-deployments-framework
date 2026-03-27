@@ -9,60 +9,64 @@ type CallResult struct {
 	ExitCode int
 }
 
-// CLIInvoker runs the CRE binary as a subprocess (v1 / CLI access).
-type CLIInvoker interface {
+// CLIRunner is the interface for running the CRE binary as a subprocess (v1 / CLI access).
+// The default implementation is [cliRunner].
+type CLIRunner interface {
 	Run(ctx context.Context, args ...string) (*CallResult, error)
 }
 
-// WorkflowAPI is the typed Go API for CRE workflow operations (v2).
-// Concrete implementations may be added later (e.g. gRPC/HTTP).
+// WorkflowRunner is a placeholder for the future CRE v2 Go client. No methods yet—the real API will be added when the CRE Go library is integrated.
 //
-// TODO: Flesh out [DeployWorkflowConfig] and the real transport once the CRE Go client/library API is defined.
-// TODO: Add PauseWorkflow / DeleteWorkflow (and config types) to this interface and wire implementations when those APIs exist.
-// TODO: Revisit layout: consider moving [WorkflowAPI], config types, and concrete clients to a dedicated file (e.g. workflow_api.go) or subpackage (e.g. cre/workflow).
-type WorkflowAPI interface {
-	DeployWorkflow(ctx context.Context, cfg DeployWorkflowConfig) error
+// TODO: Add methods (e.g. DeployWorkflow) and supporting config types once the library contract is clear.
+// TODO: Revisit layout: consider moving [WorkflowRunner] and concrete clients to a dedicated file or subpackage when the surface grows.
+type WorkflowRunner interface{}
+
+// CRERunner groups CLI and Go API access to CRE (v1 subprocess + v2 client).
+// The default implementation is built with [NewCRERunner]; other implementations may be used in tests or for alternate wiring.
+//
+// If CRERunner is nil, do not call [CRERunner.CLI] or [CRERunner.Client] (unlike a nil concrete pointer, a nil interface cannot be used as a receiver).
+type CRERunner interface {
+	CLI() CLIRunner
+	Client() WorkflowRunner
 }
 
-// DeployWorkflowConfig holds parameters for DeployWorkflow. Fields are TBD.
-// TODO: Align fields with the CRE Go library once available.
-type DeployWorkflowConfig struct{}
-
-// Runners groups CLI and Go API access to CRE. Use [NewRunners] with [WithCLI] and/or [WithWorkflowAPI].
-type Runners struct {
-	cli      CLIInvoker
-	workflow WorkflowAPI
+// crerunner is the default [CRERunner] implementation.
+type crerunner struct {
+	cli      CLIRunner
+	workflow WorkflowRunner
 }
 
-// RunnersOption configures a [Runners] instance.
-type RunnersOption func(*Runners)
+var _ CRERunner = (*crerunner)(nil)
 
-// NewRunners returns a [Runners] with the given options applied.
-func NewRunners(opts ...RunnersOption) *Runners {
-	r := &Runners{}
+// CRERunnerOption configures a [crerunner] instance for [NewCRERunner].
+type CRERunnerOption func(*crerunner)
+
+// NewCRERunner returns a [CRERunner] with the given options applied.
+func NewCRERunner(opts ...CRERunnerOption) CRERunner {
+	c := &crerunner{}
 	for _, opt := range opts {
-		opt(r)
+		opt(c)
 	}
 
-	return r
+	return c
 }
 
-// WithCLI sets the CLI [CLIInvoker] (subprocess).
-func WithCLI(cli CLIInvoker) RunnersOption {
-	return func(r *Runners) {
+// WithCLI sets the CLI [CLIRunner] (subprocess).
+func WithCLI(cli CLIRunner) CRERunnerOption {
+	return func(r *crerunner) {
 		r.cli = cli
 	}
 }
 
-// WithWorkflowAPI sets the workflow [WorkflowAPI].
-func WithWorkflowAPI(workflow WorkflowAPI) RunnersOption {
-	return func(r *Runners) {
-		r.workflow = workflow
+// WithClient sets the Go API [WorkflowRunner] (v2). The accessor is [CRERunner.Client] for a familiar call shape.
+func WithClient(client WorkflowRunner) CRERunnerOption {
+	return func(r *crerunner) {
+		r.workflow = client
 	}
 }
 
-// CLI returns the CLI invoker, or nil if none was configured.
-func (r *Runners) CLI() CLIInvoker {
+// CLI returns the CLI runner, or nil if none was configured.
+func (r *crerunner) CLI() CLIRunner {
 	if r == nil {
 		return nil
 	}
@@ -70,8 +74,8 @@ func (r *Runners) CLI() CLIInvoker {
 	return r.cli
 }
 
-// Workflow returns the workflow API, or nil if none was configured.
-func (r *Runners) Workflow() WorkflowAPI {
+// Client returns the Go API client ([WorkflowRunner]), or nil if none was configured.
+func (r *crerunner) Client() WorkflowRunner {
 	if r == nil {
 		return nil
 	}

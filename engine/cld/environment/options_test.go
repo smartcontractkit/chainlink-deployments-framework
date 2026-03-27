@@ -1,6 +1,7 @@
 package environment
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -119,7 +120,7 @@ func Test_WithCRERunner(t *testing.T) {
 	assert.Nil(t, opts.creRunner)
 
 	runner := cre.NewCLIRunner("/path/to/cre")
-	creR := cre.NewRunners(cre.WithCLI(runner))
+	creR := cre.NewCRERunner(cre.WithCLI(runner))
 	option := WithCRERunner(creR)
 	option(opts)
 
@@ -135,6 +136,6 @@ func Test_newLoadConfig_defaultCRERunner(t *testing.T) {
 
 	require.NotNil(t, cfg.creRunner)
 	require.NotNil(t, cfg.creRunner.CLI())
-	_, ok := cfg.creRunner.CLI().(*cre.CLIRunner)
-	require.True(t, ok, "expected *cre.CLIRunner, got %T", cfg.creRunner.CLI())
+	// cliRunner is unexported; assert default concrete type by name for stability across packages.
+	require.Equal(t, "*cre.cliRunner", reflect.TypeOf(cfg.creRunner.CLI()).String())
 }
