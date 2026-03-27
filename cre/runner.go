@@ -15,11 +15,11 @@ type CLIRunner interface {
 	Run(ctx context.Context, args ...string) (*CallResult, error)
 }
 
-// ClientRunner is a placeholder for the future CRE v2 Go client. No methods yet—the real API will be added when the CRE Go library is integrated.
+// Client is a placeholder for the future CRE v2 Go client. No methods yet—the real API will be added when the CRE Go library is integrated.
 //
 // TODO: Add methods (e.g. DeployWorkflow) and supporting config types once the library contract is clear.
-// TODO: Revisit layout: consider moving [ClientRunner] and concrete clients to a dedicated file or subpackage when the surface grows.
-type ClientRunner interface{}
+// TODO: Revisit layout: consider moving [Client] and concrete clients to a dedicated file or subpackage when the surface grows.
+type Client interface{}
 
 // Runner groups CLI and Go API access to CRE (v1 subprocess + v2 client).
 // The default implementation is built with [NewRunner]; other implementations may be used in tests or for alternate wiring.
@@ -27,13 +27,13 @@ type ClientRunner interface{}
 // If the environment field CRERunner is nil, do not call [Runner.CLI] or [Runner.Client] (unlike a nil concrete pointer, a nil interface cannot be used as a receiver).
 type Runner interface {
 	CLI() CLIRunner
-	Client() ClientRunner
+	Client() Client
 }
 
 // crerunner is the default [Runner] implementation.
 type crerunner struct {
 	cli    CLIRunner
-	client ClientRunner
+	client Client
 }
 
 var _ Runner = (*crerunner)(nil)
@@ -58,8 +58,8 @@ func WithCLI(cli CLIRunner) RunnerOption {
 	}
 }
 
-// WithClient sets the Go API [ClientRunner] (v2).
-func WithClient(client ClientRunner) RunnerOption {
+// WithClient sets the Go API [Client] (v2).
+func WithClient(client Client) RunnerOption {
 	return func(r *crerunner) {
 		r.client = client
 	}
@@ -74,8 +74,8 @@ func (r *crerunner) CLI() CLIRunner {
 	return r.cli
 }
 
-// Client returns the Go API client ([ClientRunner]), or nil if none was configured.
-func (r *crerunner) Client() ClientRunner {
+// Client returns the Go API client ([Client]), or nil if none was configured.
+func (r *crerunner) Client() Client {
 	if r == nil {
 		return nil
 	}

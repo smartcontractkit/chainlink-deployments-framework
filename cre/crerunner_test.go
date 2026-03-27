@@ -35,5 +35,5 @@ func TestRunner_NilInterface(t *testing.T) {
 	// A nil Runner interface must not have methods called on it; check non-nil before CLI() / Client().
 }
 
-// stubClientRunner implements [ClientRunner] for tests (empty interface: any concrete type will do).
+// stubClientRunner implements [Client] for tests (empty interface: any concrete type will do).
 type stubClientRunner struct{}
