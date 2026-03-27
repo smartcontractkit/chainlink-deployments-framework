@@ -10,7 +10,6 @@ import (
 	chainsel "github.com/smartcontractkit/chain-selectors"
 
 	fchain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
-	"github.com/smartcontractkit/chainlink-deployments-framework/cre"
 	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config"
@@ -61,14 +60,6 @@ func LoadFork(
 	cfg, err := config.Load(domain, env, lggr)
 	if err != nil {
 		return ForkedEnvironment{}, fmt.Errorf("failed to load config: %w", err)
-	}
-
-	if loadcfg.creRunner == nil {
-		apiKey := ""
-		if cfg.Env != nil {
-			apiKey = cfg.Env.CRE.Auth.APIKey
-		}
-		loadcfg.creRunner = cre.NewRunner(cre.WithCLI(cre.NewCLIRunner("", cre.WithAPIKey(apiKey))))
 	}
 
 	// Limit to EVM networks only

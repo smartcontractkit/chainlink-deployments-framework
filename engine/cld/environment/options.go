@@ -69,8 +69,7 @@ func newLoadConfig() (*LoadConfig, error) {
 		reporter:          operations.NewMemoryReporter(),
 		operationRegistry: operations.NewOperationRegistry(),
 		lggr:              lggr,
-		// Default CRE runner is built in Load / LoadFork after env config is available (API key).
-		creRunner: nil,
+		creRunner:         nil,
 	}, nil
 }
 
