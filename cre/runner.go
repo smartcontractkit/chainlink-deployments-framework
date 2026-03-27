@@ -9,7 +9,72 @@ type CallResult struct {
 	ExitCode int
 }
 
-// Runner is used to invoke the CRE CLI.
-type Runner interface {
+// CLIRunner is the interface for running the CRE binary as a subprocess (v1 / CLI access).
+// The default implementation is created by [NewCLIRunner].
+type CLIRunner interface {
 	Run(ctx context.Context, args ...string) (*CallResult, error)
+}
+
+// Client is a placeholder for the future CRE v2 Go client. No methods yet—the real API will be added when the CRE Go library is integrated.
+// TODO: Add methods (e.g. DeployWorkflow) and supporting config types once the library contract is clear.
+// TODO: Revisit layout: consider moving [Client] and concrete clients to a dedicated file or subpackage when the surface grows.
+type Client interface{}
+
+// Runner groups CLI and Go API access to CRE (v1 subprocess + v2 client).
+type Runner interface {
+	CLI() CLIRunner
+	Client() Client
+}
+
+// runner is the default [Runner] implementation.
+type runner struct {
+	cli    CLIRunner
+	client Client
+}
+
+var _ Runner = (*runner)(nil)
+
+// RunnerOption configures a [runner] instance for [NewRunner].
+type RunnerOption func(*runner)
+
+// NewRunner returns a [Runner] with the given options applied.
+func NewRunner(opts ...RunnerOption) Runner {
+	c := &runner{}
+	for _, opt := range opts {
+		opt(c)
+	}
+
+	return c
+}
+
+// WithCLI sets the CLI [CLIRunner].
+func WithCLI(cli CLIRunner) RunnerOption {
+	return func(r *runner) {
+		r.cli = cli
+	}
+}
+
+// WithClient sets the Go API [Client].
+func WithClient(client Client) RunnerOption {
+	return func(r *runner) {
+		r.client = client
+	}
+}
+
+// CLI returns the CLI runner, or nil if none was configured.
+func (r *runner) CLI() CLIRunner {
+	if r == nil {
+		return nil
+	}
+
+	return r.cli
+}
+
+// Client returns the Go API client ([Client]), or nil if none was configured.
+func (r *runner) Client() Client {
+	if r == nil {
+		return nil
+	}
+
+	return r.client
 }

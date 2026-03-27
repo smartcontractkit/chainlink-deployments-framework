@@ -34,7 +34,7 @@ func TestCLIRunner_Run(t *testing.T) {
 	tests := []struct {
 		name         string
 		setupCtx     func(*testing.T) context.Context
-		runner       *CLIRunner
+		runner       *cliRunner
 		args         []string
 		wantErr      bool
 		wantResNil   bool
