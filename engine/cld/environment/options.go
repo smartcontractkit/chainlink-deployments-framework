@@ -45,7 +45,7 @@ type LoadConfig struct {
 	// datastoreType when set, overrides the datastore type from domain config (e.g. from --datastore flag).
 	datastoreType *cfgdomain.DatastoreType
 
-	creRunner cre.CRERunner
+	creRunner cre.Runner
 }
 
 // Configure applies a slice of LoadEnvironmentOption functions to the LoadConfig.
@@ -69,7 +69,7 @@ func newLoadConfig() (*LoadConfig, error) {
 		reporter:          operations.NewMemoryReporter(),
 		operationRegistry: operations.NewOperationRegistry(),
 		lggr:              lggr,
-		creRunner:         cre.NewCRERunner(cre.WithCLI(cre.NewCLIRunner(""))),
+		creRunner:         cre.NewCLIRunner(""),
 	}, nil
 }
 
@@ -192,10 +192,10 @@ func WithDatastoreType(t cfgdomain.DatastoreType) LoadEnvironmentOption {
 	}
 }
 
-// WithCRERunner overrides the default CRE runners. The default uses [cre.NewCLIRunner] (subprocess; resolves "cre" from PATH).
-// Use this to supply a custom binary path or to mock the Go API client
-// (e.g. WithCRERunner(cre.NewCRERunner(cre.WithCLI(cre.NewCLIRunner("/opt/cre"))))) or to use mocks in tests.
-func WithCRERunner(r cre.CRERunner) LoadEnvironmentOption {
+// WithCRERunner sets the CRE runner for the environment. By default no runner is configured (nil),
+// so CRERunner on the resulting environment will be nil unless this option is used.
+// Example: WithCRERunner(cre.NewRunner(cre.WithCLI(cre.NewCLIRunner("/opt/cre"))))
+func WithCRERunner(r cre.Runner) LoadEnvironmentOption {
 	return func(o *LoadConfig) {
 		o.creRunner = r
 	}

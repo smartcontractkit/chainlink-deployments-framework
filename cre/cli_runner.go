@@ -29,8 +29,6 @@ func NewCLIRunner(binaryPath string) *cliRunner {
 		binaryPath = defaultBinary
 	}
 
-	// TODO: will need to add authentication logic here via API Key from the domain secrets object
-
 	return &cliRunner{binaryPath: binaryPath}
 }
 
