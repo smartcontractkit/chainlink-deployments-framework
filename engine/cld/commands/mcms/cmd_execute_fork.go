@@ -128,19 +128,21 @@ func runExecuteFork(cmd *cobra.Command, cfg Config, f executeForkFlags) error {
 	// Create the fork execution config
 	forkCfg := &forkConfig{
 		kind:             proposalCfg.Kind,
+		proposalPath:     f.proposalPath,
 		proposal:         proposalCfg.Proposal,
 		timelockProposal: proposalCfg.TimelockProposal,
 		chainSelector:    f.chainSelector,
 		blockchains:      proposalCfg.Env.BlockChains,
 		envStr:           f.environment,
 		env:              proposalCfg.Env,
+		domain:           cfg.Domain,
 		forkedEnv:        proposalCfg.ForkedEnv,
 		fork:             true,
 		proposalCtx:      proposalCfg.ProposalCtx,
 	}
 
 	// Execute the fork
-	return executeFork(ctx, cfg.Logger, forkCfg, f.testSigner)
+	return executeFork(ctx, cfg, forkCfg, f.testSigner)
 }
 
 // --- Fork execution logic (fork-specific) ---
@@ -148,8 +150,10 @@ func runExecuteFork(cmd *cobra.Command, cfg Config, f executeForkFlags) error {
 // executeFork executes a proposal on a forked environment.
 // This is the main entry point for fork execution.
 func executeFork(
-	ctx context.Context, lggr logger.Logger, cfg *forkConfig, testSigner bool,
+	ctx context.Context, mcmsCfg Config, cfg *forkConfig, testSigner bool,
 ) error {
+	lggr := mcmsCfg.Logger
+
 	family, err := chainsel.GetSelectorFamily(cfg.chainSelector)
 	if err != nil {
 		return fmt.Errorf("failed to get selector family: %w", err)
@@ -233,7 +237,7 @@ func executeFork(
 	if err = anvilClient.EVMIncreaseTime(uint64(cfg.timelockProposal.Delay.Seconds())); err != nil {
 		return fmt.Errorf("failed to increase time: %w", err)
 	}
-	if err = anvilClient.AnvilMine([]interface{}{1}); err != nil {
+	if err = anvilClient.AnvilMine([]any{1}); err != nil {
 		return fmt.Errorf("failed to mine block: %w", err)
 	}
 
@@ -244,7 +248,7 @@ func executeFork(
 	}
 
 	lggr.Info("Executing timelock chain command")
-	err = timelockExecuteChainCommand(ctx, lggr, cfg)
+	reports, err := timelockExecuteChainCommand(ctx, lggr, cfg)
 	if err != nil {
 		lggr.Warnw("Timelock.execute() - failure; starting calling individual ops for debugging", "err", err)
 		if derr := diagnoseTimelockRevert(ctx, lggr, anvilClient.URL, cfg.chainSelector, cfg.timelockProposal.Operations,
@@ -257,6 +261,17 @@ func executeFork(
 		return fmt.Errorf("failed to timelock execute chain: %w", err)
 	}
 	lggr.Info("Timelock.execute() - success")
+
+	err = runHooks(ctx, mcmsCfg, runHooksFlags{
+		environment:   cfg.envStr,
+		proposalPath:  cfg.proposalPath,
+		proposalKind:  string(types.KindTimelockProposal),
+		chainSelector: cfg.chainSelector,
+		reports:       reports,
+	})
+	if err != nil {
+		lggr.Warnw("Failed to run post-execution hooks", "err", err)
+	}
 
 	return nil
 }
@@ -332,11 +347,11 @@ func logTransactions(lggr logger.Logger, cfg *forkConfig) {
 
 		return
 	}
-	if _, alreadyWrapped := evmChain.Client.(*loggingRpcClient); alreadyWrapped {
+	if _, alreadyWrapped := evmChain.Client.(*loggingRPCClient); alreadyWrapped {
 		return
 	}
 
-	evmChain.Client = &loggingRpcClient{OnchainClient: evmChain.Client, txOpts: evmChain.DeployerKey, lggr: lggr}
+	evmChain.Client = &loggingRPCClient{OnchainClient: evmChain.Client, txOpts: evmChain.DeployerKey, lggr: lggr}
 	chains[cfg.chainSelector] = evmChain
 	cfg.blockchains = chain.NewBlockChains(chains)
 }
@@ -445,14 +460,14 @@ func tryDecodeHexFromErrorString(errStr string, dec *ErrDecoder) string {
 	return ""
 }
 
-// loggingRpcClient wraps an OnchainClient to log transactions before sending.
-type loggingRpcClient struct {
+// loggingRPCClient wraps an OnchainClient to log transactions before sending.
+type loggingRPCClient struct {
 	cldf_evm.OnchainClient
 	txOpts *bind.TransactOpts
 	lggr   logger.Logger
 }
 
-func (c *loggingRpcClient) SendTransaction(ctx context.Context, tx *gethtypes.Transaction) error {
+func (c *loggingRPCClient) SendTransaction(ctx context.Context, tx *gethtypes.Transaction) error {
 	c.lggr.Infow("sending on-chain transaction", "from", c.txOpts.From, "to", tx.To(), "value", tx.Value(),
 		"data", common.Bytes2Hex(tx.Data()))
 

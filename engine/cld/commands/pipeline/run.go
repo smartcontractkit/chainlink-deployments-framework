@@ -1,12 +1,19 @@
 package pipeline
 
 import (
+	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"os"
 	"strconv"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/samber/lo"
 	"github.com/spf13/cobra"
 
+	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/flags"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/pipeline/input"
@@ -167,6 +174,12 @@ func runRun(cmd *cobra.Command, cfg *Config, f runFlags) error {
 		return saveErr
 	}
 
+	err = saveChangesetProposalMetadata(cmd.Context(), actualChangesetName, out)
+	if err != nil {
+		return fmt.Errorf("failed to save changeset proposal metadata: %w", err)
+	}
+
+	// TODO: remove this block
 	if len(out.DescribedTimelockProposals) == 0 && cfg.DecodeProposalCtxProvider != nil {
 		out.DescribedTimelockProposals = make([]string, len(out.MCMSTimelockProposals))
 		proposalContext, err := cfg.DecodeProposalCtxProvider(env)
@@ -186,6 +199,41 @@ func runRun(cmd *cobra.Command, cfg *Config, f runFlags) error {
 	if err := artdir.SaveChangesetOutput(actualChangesetName, out); err != nil {
 		cfg.Logger.Errorf("failed to save changeset artifacts: %v", err)
 		return err
+	}
+
+	return nil
+}
+
+func saveChangesetProposalMetadata(ctx context.Context, changesetName string, out fdeployment.ChangesetOutput) error {
+	if len(out.MCMSTimelockProposals) == 0 {
+		return nil
+	}
+
+	changesetInputJSON := os.Getenv("DURABLE_PIPELINE_INPUT")
+	if len(changesetInputJSON) == 0 {
+		return errors.New("durable pipeline input is empty or not set")
+	}
+
+	for i := range out.MCMSTimelockProposals {
+		proposal := &out.MCMSTimelockProposals[i]
+		if proposal.Metadata == nil {
+			proposal.Metadata = map[string]any{}
+		}
+
+		operationIDs, _, err := proposal.OperationIDs(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to get operation IDs from proposal: %w", err)
+		}
+
+		proposal.Metadata["changesets"] = []struct {
+			Name       string
+			Operations []string
+			Input      json.RawMessage
+		}{{
+			Name:       changesetName,
+			Input:      json.RawMessage(changesetInputJSON),
+			Operations: lo.Map(operationIDs, func(o common.Hash, _ int) string { return o.Hex() }),
+		}}
 	}
 
 	return nil
