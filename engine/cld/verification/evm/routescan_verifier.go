@@ -213,13 +213,15 @@ func sendRoutescanRequest[R any](ctx context.Context, client *http.Client, netwo
 		params.Add(k, val)
 	}
 
+	// chainPath comes from config (slug) or decimal chain ID; escape so one path segment cannot inject / or ?.
+	seg := url.PathEscape(chainPath)
 	var httpReq *http.Request
 	var err error
 	if method == "GET" {
-		requestURL := routescanURL + fmt.Sprintf("/network/%s/evm/%s/etherscan/api?%s", networkType, chainPath, params.Encode())
+		requestURL := routescanURL + fmt.Sprintf("/network/%s/evm/%s/etherscan/api?%s", networkType, seg, params.Encode())
 		httpReq, err = http.NewRequestWithContext(ctx, method, requestURL, nil)
 	} else {
-		httpReq, err = http.NewRequestWithContext(ctx, method, routescanURL+fmt.Sprintf("/network/%s/evm/%s/etherscan/api?", networkType, chainPath), strings.NewReader(params.Encode()))
+		httpReq, err = http.NewRequestWithContext(ctx, method, routescanURL+fmt.Sprintf("/network/%s/evm/%s/etherscan/api?", networkType, seg), strings.NewReader(params.Encode()))
 		if err == nil {
 			httpReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		}

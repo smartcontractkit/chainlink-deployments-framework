@@ -45,7 +45,7 @@ func TestNewVerifier_StrategyEtherscan_NoAPIKey(t *testing.T) {
 		Logger:       logger.Nop(),
 	})
 	require.Error(t, err)
-	require.Equal(t, "etherscan API key not configured for chain ethereum-mainnet", err.Error())
+	require.Equal(t, `block_explorer type "etherscan" API key not configured for chain ethereum-mainnet`, err.Error())
 }
 
 func TestNewVerifier_StrategyEtherscan_WithAPIKey(t *testing.T) {
