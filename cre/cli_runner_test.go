@@ -14,18 +14,20 @@ func TestNewCLIRunner(t *testing.T) {
 	tests := []struct {
 		name       string
 		binaryPath string
-		opts       []CLIRunnerOption
-		want       string
+		apiKey     string
+		wantPath   string
+		wantKey    string
 	}{
-		{"empty_defaults_to_cre", "", nil, defaultBinary},
-		{"custom_path", "/opt/cre", nil, "/opt/cre"},
-		{"with_api_key_option", "/bin/sh", []CLIRunnerOption{WithAPIKey("k")}, "/bin/sh"},
+		{"empty_defaults_to_cre", "", "", defaultBinary, ""},
+		{"custom_path", "/opt/cre", "", "/opt/cre", ""},
+		{"with_api_key", "/bin/sh", "k", "/bin/sh", "k"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			r := NewCLIRunner(tt.binaryPath, tt.opts...)
-			require.Equal(t, tt.want, r.binaryPath)
+			r := NewCLIRunner(tt.binaryPath, tt.apiKey)
+			require.Equal(t, tt.wantPath, r.binaryPath)
+			require.Equal(t, tt.wantKey, r.apiKey)
 		})
 	}
 }
@@ -35,25 +37,25 @@ func TestCLIRunner_APIKeyEnv(t *testing.T) {
 	tests := []struct {
 		name           string
 		parentAPIKey   string
-		opts           []CLIRunnerOption
+		apiKey         string
 		wantSubprocess string
 	}{
 		{
 			name:           "with_api_key_sets_subprocess_env",
 			parentAPIKey:   "",
-			opts:           []CLIRunnerOption{WithAPIKey("test-api-key-value")},
+			apiKey:         "test-api-key-value",
 			wantSubprocess: "test-api-key-value",
 		},
 		{
 			name:           "without_api_key_inherits_unset_parent",
 			parentAPIKey:   "",
-			opts:           nil,
+			apiKey:         "",
 			wantSubprocess: "",
 		},
 		{
 			name:           "with_api_key_overrides_parent_env",
 			parentAPIKey:   "from-parent",
-			opts:           []CLIRunnerOption{WithAPIKey("from-runner")},
+			apiKey:         "from-runner",
 			wantSubprocess: "from-runner",
 		},
 	}
@@ -64,7 +66,7 @@ func TestCLIRunner_APIKeyEnv(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Setenv(envCREAPIKey, tt.parentAPIKey)
 
-			r := NewCLIRunner("/bin/sh", tt.opts...)
+			r := NewCLIRunner("/bin/sh", tt.apiKey)
 			res, err := r.Run(t.Context(), shArgs...)
 			require.NoError(t, err)
 			require.Equal(t, 0, res.ExitCode)
@@ -128,14 +130,14 @@ func TestCLIRunner_Run(t *testing.T) {
 	}{
 		{
 			name:       "binary_not_found",
-			runner:     NewCLIRunner(filepath.Join(t.TempDir(), "nonexistent-cre-xyz")),
+			runner:     NewCLIRunner(filepath.Join(t.TempDir(), "nonexistent-cre-xyz"), ""),
 			args:       []string{"build"},
 			wantErr:    true,
 			wantResNil: true,
 		},
 		{
 			name:   "context_already_canceled",
-			runner: NewCLIRunner("/bin/sh"),
+			runner: NewCLIRunner("/bin/sh", ""),
 			setupCtx: func(t *testing.T) context.Context {
 				t.Helper()
 				ctx, cancel := context.WithCancel(t.Context())
@@ -150,7 +152,7 @@ func TestCLIRunner_Run(t *testing.T) {
 		},
 		{
 			name:         "nonzero_exit_captures_output",
-			runner:       NewCLIRunner("/bin/sh"),
+			runner:       NewCLIRunner("/bin/sh", ""),
 			args:         []string{"-c", `echo "fail out"; echo "fail err" >&2; exit 41`},
 			wantErr:      true,
 			wantExitCode: 41,
@@ -160,7 +162,7 @@ func TestCLIRunner_Run(t *testing.T) {
 		},
 		{
 			name:         "success_with_output",
-			runner:       NewCLIRunner("/bin/sh"),
+			runner:       NewCLIRunner("/bin/sh", ""),
 			args:         []string{"-c", `echo "hello stdout"; echo "hello stderr" >&2`},
 			wantStdout:   "hello stdout\n",
 			wantStderr:   "hello stderr\n",
@@ -239,7 +241,7 @@ func TestCLIRunner_StreamingWriters(t *testing.T) {
 			t.Parallel()
 
 			var streamOut, streamErr bytes.Buffer
-			r := NewCLIRunner("/bin/sh")
+			r := NewCLIRunner("/bin/sh", "")
 			r.Stdout = &streamOut
 			r.Stderr = &streamErr
 
@@ -258,7 +260,7 @@ func TestCLIRunner_StreamingWriters(t *testing.T) {
 func TestCLIRunner_NilWriters_DefaultBehavior(t *testing.T) {
 	t.Parallel()
 
-	r := NewCLIRunner("/bin/sh")
+	r := NewCLIRunner("/bin/sh", "")
 	res, err := r.Run(t.Context(), "-c", `echo "works"`)
 	require.NoError(t, err)
 	require.Equal(t, "works\n", string(res.Stdout))

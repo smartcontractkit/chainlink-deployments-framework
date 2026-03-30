@@ -9,7 +9,7 @@ import (
 func TestNewRunner(t *testing.T) {
 	t.Parallel()
 
-	cli := NewCLIRunner("/bin/sh")
+	cli := NewCLIRunner("/bin/sh", "")
 	var c stubClient
 
 	tests := []struct {

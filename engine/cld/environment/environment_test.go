@@ -100,7 +100,7 @@ func Test_Load_WithCRERunnerOverride(t *testing.T) {
 
 	domain := setupTest(t, setupTestConfig, setupAddressbook, setupDataStore, setupNodes)
 
-	customRunner := cre.NewRunner(cre.WithCLI(cre.NewCLIRunner("/custom/cre")))
+	customRunner := cre.NewRunner(cre.WithCLI(cre.NewCLIRunner("/custom/cre", "")))
 
 	env, err := Load(t.Context(), domain, "staging",
 		WithoutJD(),

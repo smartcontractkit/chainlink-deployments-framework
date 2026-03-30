@@ -44,7 +44,7 @@ func Load(
 
 	if loadcfg.creRunner == nil {
 		apiKey := cfg.Env.CRE.Auth.APIKey
-		loadcfg.creRunner = cre.NewRunner(cre.WithCLI(cre.NewCLIRunner("", cre.WithAPIKey(apiKey))))
+		loadcfg.creRunner = cre.NewRunner(cre.WithCLI(cre.NewCLIRunner("", apiKey)))
 	}
 
 	ab, err := envdir.AddressBook()

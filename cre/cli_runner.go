@@ -15,17 +15,6 @@ const defaultBinary = "cre"
 // envCREAPIKey is the environment variable name the CRE CLI reads for API key authentication.
 const envCREAPIKey = "CRE_API_KEY" //nolint:gosec // G101: env var name, not a secret value
 
-// CLIRunnerOption configures a [cliRunner] from [NewCLIRunner].
-type CLIRunnerOption func(*cliRunner)
-
-// WithAPIKey sets the CRE API key passed to the subprocess as [envCREAPIKey]. When non-empty,
-// it overrides any existing value in the parent environment for the child process only.
-func WithAPIKey(key string) CLIRunnerOption {
-	return func(r *cliRunner) {
-		r.apiKey = key
-	}
-}
-
 // cliRunner runs the CRE CLI via os/exec. Run executes the binary and captures stdout/stderr.
 // It implements the [CLIRunner] interface.
 type cliRunner struct {
@@ -39,19 +28,14 @@ type cliRunner struct {
 
 var _ CLIRunner = (*cliRunner)(nil)
 
-// NewCLIRunner returns a [cliRunner] for the given binary path. An empty path defaults to "cre"
-// (resolved via PATH).
-func NewCLIRunner(binaryPath string, opts ...CLIRunnerOption) *cliRunner {
+// NewCLIRunner returns a [cliRunner] for the given binary path and API key.
+// An empty binaryPath defaults to "cre" (resolved via PATH).
+func NewCLIRunner(binaryPath string, apiKey string) *cliRunner {
 	if binaryPath == "" {
 		binaryPath = defaultBinary
 	}
 
-	r := &cliRunner{binaryPath: binaryPath}
-	for _, opt := range opts {
-		opt(r)
-	}
-
-	return r
+	return &cliRunner{binaryPath: binaryPath, apiKey: apiKey}
 }
 
 // envForCRECLI returns the full environment for the subprocess: we copy os.Environ() so PATH and
