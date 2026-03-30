@@ -41,6 +41,7 @@ func TestNewCommand_Structure(t *testing.T) {
 
 	// Verify parent command
 	require.Equal(t, "mcms", cmd.Use)
+	require.Equal(t, []string{"mcmsv2"}, cmd.Aliases)
 	require.NotEmpty(t, cmd.Short)
 	require.NotEmpty(t, cmd.Long)
 

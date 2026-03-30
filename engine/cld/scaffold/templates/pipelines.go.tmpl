@@ -20,9 +20,6 @@ func NewPipelinesRegistryProvider() *PipelinesRegistryProvider {
 	}
 }
 
-// Archive is a noop for the DurablePipelines.
-func (*PipelinesRegistryProvider) Archive() {}
-
 // Init is used to register Durable Pipelines with the registry
 //
 // Add your Durable Pipeline changeset to the registry here.

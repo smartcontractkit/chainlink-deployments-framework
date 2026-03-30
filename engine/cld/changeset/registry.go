@@ -15,16 +15,12 @@ import (
 )
 
 // RegistryProvider defines an interface for initializing and managing the changeset registry
-// for a domain environment. It provides methods to initialize the registry, archive changesets,
-// and retrieve the initialized ChangesetsRegistry.
+// for a domain environment. It provides methods to initialize the registry and retrieve the
+// initialized ChangesetsRegistry.
 type RegistryProvider interface {
 	// Init initializes the changeset registry by adding changesets specific to the domain
 	// environment using the `Add` method on the ChangesetsRegistry.
 	Init() error
-
-	// Archive archives a changeset in the registry. This is intended for changesets that have
-	// already been applied and are retained only for historical purposes.
-	Archive()
 
 	// Registry retrieves the initialized ChangesetsRegistry.
 	Registry() *ChangesetsRegistry
@@ -57,11 +53,6 @@ func (p *BaseRegistryProvider) Registry() *ChangesetsRegistry {
 func (p *BaseRegistryProvider) Init() error {
 	return nil
 }
-
-// Archive is an empty implementation of archiving changesets in the registry.
-//
-// This should be overridden by the domain-specific registry provider.
-func (p *BaseRegistryProvider) Archive() {}
 
 type registryEntry struct {
 	// changeset is the changeset that is registered.

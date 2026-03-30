@@ -1,5 +1,33 @@
 # chainlink-deployments-framework
 
+## 0.92.0
+
+### Minor Changes
+
+- [#892](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/892) [`1745660`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/17456607061640f6a921d54b5fb764a55e3a80c6) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(cld)!: remove Archive() method from RegistryProvider interface
+
+  Migration guide:
+
+  - Remove Archive() method from RegistryProvider interface implementations
+
+## 0.91.0
+
+### Minor Changes
+
+- [#877](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/877) [`540ea5e`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/540ea5ed95f897f63ce892b4f2a2d650f43025bf) Thanks [@ecPablo](https://github.com/ecPablo)! - Add CRE CLI runner object.
+
+- [#884](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/884) [`74837dc`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/74837dccc8f321af2403a19ae4a86bd7b0e82399) Thanks [@ecPablo](https://github.com/ecPablo)! - add wasm and config resolution types for cre workflows
+
+### Patch Changes
+
+- [#891](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/891) [`7b39baf`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/7b39baf248934d448161aca0a28f259c64ecf67e) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - chore: enable preset admin accounts in the evm simulated provider
+
+## 0.90.1
+
+### Patch Changes
+
+- [#880](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/880) [`95463e8`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/95463e8d8f97178441471378e1b5595f8a454c02) Thanks [@ajaskolski](https://github.com/ajaskolski)! - refactor: clears delegation usage for modular cmds
+
 ## 0.90.0
 
 ### Minor Changes

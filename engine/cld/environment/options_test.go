@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/smartcontractkit/chainlink-deployments-framework/cre"
 	foperations "github.com/smartcontractkit/chainlink-deployments-framework/operations"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
@@ -109,4 +110,28 @@ func Test_WithDryRunJobDistributor(t *testing.T) {
 	option(opts)
 
 	assert.True(t, opts.useDryRunJobDistributor)
+}
+
+func Test_WithCRERunner(t *testing.T) {
+	t.Parallel()
+
+	opts := &LoadConfig{}
+	assert.Nil(t, opts.creRunner)
+
+	runner := cre.NewCLIRunner("/path/to/cre", "")
+	creR := cre.NewRunner(cre.WithCLI(runner))
+	option := WithCRERunner(creR)
+	option(opts)
+
+	assert.Equal(t, creR, opts.creRunner)
+	assert.Equal(t, runner, opts.creRunner.CLI())
+}
+
+func Test_newLoadConfig_defaultCRERunner(t *testing.T) {
+	t.Parallel()
+
+	cfg, err := newLoadConfig()
+	require.NoError(t, err)
+
+	require.Nil(t, cfg.creRunner, "CRE runner is nil by default; callers opt in via WithCRERunner")
 }

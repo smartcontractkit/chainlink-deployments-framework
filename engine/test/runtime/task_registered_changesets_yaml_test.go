@@ -517,8 +517,6 @@ func (p *testRegistryProvider) Init() error {
 	return nil
 }
 
-func (p *testRegistryProvider) Archive() {}
-
 func staticProviderFactory(provider changeset.RegistryProvider) RegistryProviderFactory {
 	return func() changeset.RegistryProvider {
 		return provider

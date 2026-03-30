@@ -1,10 +1,10 @@
 package environment
 
 import (
-	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
-
+	"github.com/smartcontractkit/chainlink-deployments-framework/cre"
 	cfgdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/domain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
 // LoadConfig contains configuration parameters for loading an environment.
@@ -44,6 +44,8 @@ type LoadConfig struct {
 
 	// datastoreType when set, overrides the datastore type from domain config (e.g. from --datastore flag).
 	datastoreType *cfgdomain.DatastoreType
+
+	creRunner cre.Runner
 }
 
 // Configure applies a slice of LoadEnvironmentOption functions to the LoadConfig.
@@ -63,7 +65,6 @@ func newLoadConfig() (*LoadConfig, error) {
 		return nil, err
 	}
 
-	// Default options
 	return &LoadConfig{
 		reporter:          operations.NewMemoryReporter(),
 		operationRegistry: operations.NewOperationRegistry(),
@@ -187,5 +188,14 @@ func WithDryRunJobDistributor() LoadEnvironmentOption {
 func WithDatastoreType(t cfgdomain.DatastoreType) LoadEnvironmentOption {
 	return func(o *LoadConfig) {
 		o.datastoreType = &t
+	}
+}
+
+// WithCRERunner sets the CRE runner for the environment. By default no runner is configured (nil),
+// so CRERunner on the resulting environment will be nil unless this option is used.
+// Example: WithCRERunner(cre.NewRunner(cre.WithCLI(cre.NewCLIRunner("/opt/cre", apiKey))))
+func WithCRERunner(r cre.Runner) LoadEnvironmentOption {
+	return func(o *LoadConfig) {
+		o.creRunner = r
 	}
 }

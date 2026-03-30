@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/smartcontractkit/chainlink-deployments-framework/cre"
 	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	cldcatalog "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/catalog"
@@ -39,6 +40,11 @@ func Load(
 	cfg, err := config.Load(domain, envKey, lggr)
 	if err != nil {
 		return fdeployment.Environment{}, err
+	}
+
+	if loadcfg.creRunner == nil {
+		apiKey := cfg.Env.CRE.Auth.APIKey
+		loadcfg.creRunner = cre.NewRunner(cre.WithCLI(cre.NewCLIRunner("", apiKey)))
 	}
 
 	ab, err := envdir.AddressBook()
@@ -144,6 +150,7 @@ func Load(
 		OCRSecrets:        sharedSecrets,
 		OperationsBundle:  operations.NewBundle(getCtx, lggr, loadcfg.reporter, operations.WithOperationRegistry(loadcfg.operationRegistry)),
 		BlockChains:       blockChains,
+		CRERunner:         loadcfg.creRunner,
 	}, nil
 }
 

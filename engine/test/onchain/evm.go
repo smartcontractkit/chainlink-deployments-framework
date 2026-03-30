@@ -2,6 +2,7 @@
 package onchain
 
 import (
+	"crypto/ecdsa"
 	"testing"
 	"time"
 
@@ -13,8 +14,9 @@ import (
 
 // EVMSimLoaderConfig holds configuration options for EVM simulated chain loading.
 type EVMSimLoaderConfig struct {
-	NumAdditionalAccounts uint          // Number of additional pre-funded accounts to create
-	BlockTime             time.Duration // Time interval between automatic block mining (0 = manual)
+	NumAdditionalAccounts uint              // Number of additional pre-funded accounts to create
+	BlockTime             time.Duration     // Time interval between automatic block mining (0 = manual)
+	AdminAccount          *ecdsa.PrivateKey // pre-defined account which will be configured as admin.
 }
 
 // NewEVMSimLoader creates a new EVM chain loader with default simulated backend configuration.
@@ -45,6 +47,7 @@ func NewEVMSimLoaderWithConfig(cfg EVMSimLoaderConfig) *ChainLoader {
 		return evmprov.NewSimChainProvider(t, selector, evmprov.SimChainProviderConfig{
 			NumAdditionalAccounts: cfg.NumAdditionalAccounts,
 			BlockTime:             cfg.BlockTime,
+			AdminAccount:          cfg.AdminAccount,
 		}).Initialize(t.Context())
 	}
 

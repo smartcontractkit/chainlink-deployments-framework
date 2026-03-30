@@ -13,8 +13,22 @@
 
 **Inputs:**
 
-- **`remoteChainSelectorsToRemove`** (`uint64[]`): <nil>
-- **`chainsToAdd`** (`tuple[]`): (decoded)
+- **`remoteChainSelectorsToRemove`** (`uint64[]`):
+  <details open>
+  <summary>Value</summary>
+
+  ```text
+  <nil>
+  ```
+  </details>
+- **`chainsToAdd`** (`tuple[]`):
+  <details open>
+  <summary>Value</summary>
+
+  ```text
+  (decoded)
+  ```
+  </details>
 
 
 **Changes:**
@@ -41,8 +55,22 @@ _Annotations:_
 
 **Inputs:**
 
-- **`remoteChainSelectorsToRemove`** (`uint64[]`): [ 3734025351759498498 ]
-- **`chainsToAdd`** (`tuple[]`): <nil>
+- **`remoteChainSelectorsToRemove`** (`uint64[]`):
+  <details open>
+  <summary>Value</summary>
+
+  ```text
+  [ 3734025351759498498 ]
+  ```
+  </details>
+- **`chainsToAdd`** (`tuple[]`):
+  <details open>
+  <summary>Value</summary>
+
+  ```text
+  <nil>
+  ```
+  </details>
 
 
 _Annotations:_
