@@ -20,10 +20,6 @@ type CLIRunnerOption func(*cliRunner)
 
 // WithAPIKey sets the CRE API key passed to the subprocess as [envCREAPIKey]. When non-empty,
 // it overrides any existing value in the parent environment for the child process only.
-//
-// The key is applied via Cmd.Env on the exec.Command, not via its argv (binary path and args).
-// Secrets belong in the child's environment block, not in argv (argv is visible in process listings
-// and some tooling). Avoid logging cmd.Env or the raw key.
 func WithAPIKey(key string) CLIRunnerOption {
 	return func(r *cliRunner) {
 		r.apiKey = key
@@ -59,8 +55,7 @@ func NewCLIRunner(binaryPath string, opts ...CLIRunnerOption) *cliRunner {
 }
 
 // envForCRECLI returns the full environment for the subprocess: we copy os.Environ() so PATH and
-// other inherited vars stay (a single-var env would break most CLIs). We strip any existing
-// CRE_API_KEY= line first so we do not duplicate the key; duplicates are ill-defined (first vs last wins).
+// other inherited vars stay. We strip any existing CRE_API_KEY= line first so we do not duplicate the key;
 func envForCRECLI(apiKey string) []string {
 	env := os.Environ()
 	if apiKey == "" {
@@ -88,7 +83,7 @@ func (r *cliRunner) Run(ctx context.Context, args ...string) (*CallResult, error
 	// The binary path is controlled via configuration, and args are expected to be user-provided CLI arguments.
 	cmd := exec.CommandContext(ctx, r.binaryPath, args...)
 
-	// API key is set on the child's environment only (not concatenated into argv).
+	// API key is set on the child's environment only
 	if r.apiKey != "" {
 		cmd.Env = envForCRECLI(r.apiKey)
 	}

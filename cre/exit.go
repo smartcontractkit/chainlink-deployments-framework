@@ -4,7 +4,7 @@ import "fmt"
 
 // ExitError is returned when the CRE process ran and exited with a non-zero code.
 // Use errors.As to inspect ExitCode, Stdout, and Stderr. Result is still returned
-// from Run (for example Runner.Run or CLIRunner.Run) so callers can log or inspect output.
+// from Run (CLIRunner.Run) so callers can log or inspect output.
 type ExitError struct {
 	ExitCode int
 	Stdout   []byte
