@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	chainsel "github.com/smartcontractkit/chain-selectors"
@@ -33,14 +34,26 @@ func NewVerifier(strategy VerificationStrategy, cfg VerifierConfig) (verificatio
 	case StrategyUnknown:
 		return nil, errors.New("no verifier for unknown strategy")
 	case StrategyEtherscan:
-		apiKey := cfg.Network.BlockExplorer.APIKey
+		apiKey := strings.TrimSpace(cfg.Network.BlockExplorer.APIKey)
 		if apiKey == "" {
-			return nil, fmt.Errorf("etherscan API key not configured for chain %s", cfg.Chain.Name)
+			t := strings.TrimSpace(cfg.Network.BlockExplorer.Type)
+			if t == "" {
+				t = "etherscan"
+			}
+
+			return nil, fmt.Errorf("block_explorer type %q API key not configured for chain %s", t, cfg.Chain.Name)
 		}
 
 		return NewEtherscanV2ContractVerifier(
-			cfg.Chain, apiKey, cfg.Address, cfg.Metadata,
-			cfg.ContractType, cfg.Version, cfg.PollInterval, cfg.Logger,
+			cfg.Chain,
+			apiKey,
+			strings.TrimSpace(cfg.Network.BlockExplorer.URL),
+			cfg.Address,
+			cfg.Metadata,
+			cfg.ContractType,
+			cfg.Version,
+			cfg.PollInterval,
+			cfg.Logger,
 			cfg.HTTPClient,
 		)
 	case StrategyRoutescan:

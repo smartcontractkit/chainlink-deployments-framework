@@ -36,7 +36,7 @@ func TestRoutescanVerifier_IsVerified_AlreadyVerified(t *testing.T) {
 
 	v, err := newRouteScanVerifier(VerifierConfig{
 		Chain:        chain,
-		Network:      cfgnet.Network{ChainSelector: chain.Selector, BlockExplorer: cfgnet.BlockExplorer{APIKey: "test"}},
+		Network:      cfgnet.Network{Type: cfgnet.NetworkTypeTestnet, ChainSelector: chain.Selector, BlockExplorer: cfgnet.BlockExplorer{APIKey: "test"}},
 		Address:      "0x123",
 		Metadata:     SolidityContractMetadata{Name: "Test", Version: "0.8.19"},
 		ContractType: "Test",
@@ -72,7 +72,7 @@ func TestRoutescanVerifier_IsVerified_NotVerified(t *testing.T) {
 
 	v, err := newRouteScanVerifier(VerifierConfig{
 		Chain:        chain,
-		Network:      cfgnet.Network{ChainSelector: chain.Selector, BlockExplorer: cfgnet.BlockExplorer{APIKey: "test"}},
+		Network:      cfgnet.Network{Type: cfgnet.NetworkTypeTestnet, ChainSelector: chain.Selector, BlockExplorer: cfgnet.BlockExplorer{APIKey: "test"}},
 		Address:      "0x123",
 		Metadata:     SolidityContractMetadata{Name: "Test", Version: "0.8.19"},
 		ContractType: "Test",
@@ -95,7 +95,7 @@ func TestRoutescanVerifier_String(t *testing.T) {
 
 	v, err := newRouteScanVerifier(VerifierConfig{
 		Chain:        chain,
-		Network:      cfgnet.Network{ChainSelector: chain.Selector},
+		Network:      cfgnet.Network{Type: cfgnet.NetworkTypeTestnet, ChainSelector: chain.Selector},
 		Address:      "0xabc",
 		Metadata:     SolidityContractMetadata{},
 		ContractType: "MyContract",
