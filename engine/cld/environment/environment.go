@@ -43,10 +43,7 @@ func Load(
 	}
 
 	if loadcfg.creRunner == nil {
-		apiKey := ""
-		if cfg.Env != nil {
-			apiKey = cfg.Env.CRE.Auth.APIKey
-		}
+		apiKey := cfg.Env.CRE.Auth.APIKey
 		loadcfg.creRunner = cre.NewRunner(cre.WithCLI(cre.NewCLIRunner("", cre.WithAPIKey(apiKey))))
 	}
 

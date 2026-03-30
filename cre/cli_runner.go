@@ -55,7 +55,8 @@ func NewCLIRunner(binaryPath string, opts ...CLIRunnerOption) *cliRunner {
 }
 
 // envForCRECLI returns the full environment for the subprocess: we copy os.Environ() so PATH and
-// other inherited vars stay. We strip any existing CRE_API_KEY= line first so we do not duplicate the key;
+// other inherited vars stay. We strip any existing CRE_API_KEY= when api key is provided
+// so we do not duplicate the key;
 func envForCRECLI(apiKey string) []string {
 	env := os.Environ()
 	if apiKey == "" {
