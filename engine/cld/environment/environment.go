@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/smartcontractkit/chainlink-deployments-framework/cre"
 	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	cldcatalog "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/catalog"
@@ -39,6 +40,14 @@ func Load(
 	cfg, err := config.Load(domain, envKey, lggr)
 	if err != nil {
 		return fdeployment.Environment{}, err
+	}
+
+	if loadcfg.creRunner == nil {
+		apiKey := ""
+		if cfg.Env != nil {
+			apiKey = cfg.Env.CRE.Auth.APIKey
+		}
+		loadcfg.creRunner = cre.NewRunner(cre.WithCLI(cre.NewCLIRunner("", cre.WithAPIKey(apiKey))))
 	}
 
 	ab, err := envdir.AddressBook()

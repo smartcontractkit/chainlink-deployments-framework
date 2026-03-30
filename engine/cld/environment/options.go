@@ -69,7 +69,6 @@ func newLoadConfig() (*LoadConfig, error) {
 		reporter:          operations.NewMemoryReporter(),
 		operationRegistry: operations.NewOperationRegistry(),
 		lggr:              lggr,
-		creRunner:         nil, // optional; set via WithCRERunner
 	}, nil
 }
 
