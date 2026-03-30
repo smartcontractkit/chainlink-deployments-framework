@@ -1,4 +1,4 @@
-// Package hooks provides changeset lifecycle hooks for EVM contract verification.
+// Package evm provides changeset lifecycle hooks for EVM contract verification.
 package evm
 
 import (
@@ -62,16 +62,20 @@ func verifyDeployedContracts(dom domain.Domain, provider evm.ContractInputsProvi
 		return iterateEVMVerifiers(ctx, params.Output.DataStore.Seal(), networkCfg, provider, params.Env.Logger, "verify hook",
 			func(ctx context.Context, v cldverification.Verifiable, ref datastore.AddressRef, ch chain_selectors.Chain) error {
 				params.Env.Logger.Infof("verify hook: verifying %s %s (%s on %s)", ref.Type, ref.Version, ref.Address, ch.Name)
-				return v.Verify(ctx)
+				if err := v.Verify(ctx); err != nil {
+					return fmt.Errorf("verify hook: verifier %s for %s %s (%s on %s): %w", v.String(), ref.Type, ref.Version, ref.Address, ch.Name, err)
+				}
+				return nil
 			},
 		)
 	}
 }
 
 // NewRequireVerifiedEVMContractsPreHook returns a global pre-hook that checks block-explorer
-// verification status for every EVM address in the environment datastore (same ContractInputsProvider
-// as contract verify-env). It uses IsVerified only (no submission). If any contract is not
-// verified, the hook returns an error and blocks the changeset (Abort policy).
+// verification status for EVM addresses in the environment datastore that can be resolved to a
+// supported network/contract type (same ContractInputsProvider as contract verify-env). It uses
+// IsVerified only (no submission). If any checked contract is not verified, the hook returns an
+// error and blocks the changeset (Abort policy).
 func NewRequireVerifiedEVMContractsPreHook(dom domain.Domain, provider evm.ContractInputsProvider) changeset.PreHook {
 	return changeset.PreHook{
 		HookDefinition: changeset.HookDefinition{
