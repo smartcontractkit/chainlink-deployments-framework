@@ -48,7 +48,8 @@ func NewVerifyDeployedEVMContractsPostHook(dom domain.Domain, provider evm.Contr
 func verifyDeployedContracts(dom domain.Domain, provider evm.ContractInputsProvider) changeset.PostHookFunc {
 	return func(ctx context.Context, params changeset.PostHookParams) error {
 		if params.Err != nil {
-			return nil
+			// Skip verification when apply failed; returning the error would log a misleading post-hook failure.
+			return nil //nolint:nilerr // apply error is already returned by the registry
 		}
 		if params.Output.DataStore == nil {
 			return nil
@@ -65,6 +66,7 @@ func verifyDeployedContracts(dom domain.Domain, provider evm.ContractInputsProvi
 				if err := v.Verify(ctx); err != nil {
 					return fmt.Errorf("verify hook: verifier %s for %s %s (%s on %s): %w", v.String(), ref.Type, ref.Version, ref.Address, ch.Name, err)
 				}
+
 				return nil
 			},
 		)
@@ -77,6 +79,7 @@ func verifyDeployedContracts(dom domain.Domain, provider evm.ContractInputsProvi
 // IsVerified only (no submission). If any checked contract is not verified, the hook returns an
 // error and blocks the changeset (Abort policy).
 func NewRequireVerifiedEVMContractsPreHook(dom domain.Domain, provider evm.ContractInputsProvider) changeset.PreHook {
+
 	return changeset.PreHook{
 		HookDefinition: changeset.HookDefinition{
 			Name:          requireVerifiedEnvContractsHookName,
@@ -109,6 +112,7 @@ func requireVerifiedEnvContracts(dom domain.Domain, provider evm.ContractInputsP
 				if !verified {
 					return fmt.Errorf("%s: contract is not verified on explorer", v.String())
 				}
+
 				return nil
 			},
 		)
@@ -120,6 +124,7 @@ func loadFilteredEVMNetworks(envName string, dom domain.Domain, lggr logger.Logg
 	if err != nil {
 		return nil, err
 	}
+
 	return networkCfg.FilterWith(cfgnet.ChainFamilyFilter(chain_selectors.FamilyEVM)), nil
 }
 
@@ -173,6 +178,7 @@ func iterateEVMVerifiers(
 			if err != nil {
 				errs = append(errs, fmt.Errorf("%s %s (%s on %s): %w",
 					ref.Type, ref.Version, ref.Address, ch.Name, err))
+
 				continue
 			}
 

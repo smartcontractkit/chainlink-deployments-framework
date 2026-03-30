@@ -104,10 +104,10 @@ func TestRequireVerified_PreHook_LoadNetworksError(t *testing.T) {
 	h := NewRequireVerifiedEVMContractsPreHook(dom, &mockProvider{})
 	// Minimal env layout so DataStore() succeeds: empty files skip JSON decode in loadDataStore.
 	envDir := dom.EnvDir("staging")
-	require.NoError(t, mkdirAllAndWrite(t, envDir.AddressRefsFilePath(), ""))
-	require.NoError(t, mkdirAllAndWrite(t, envDir.ChainMetadataFilePath(), ""))
-	require.NoError(t, mkdirAllAndWrite(t, envDir.ContractMetadataFilePath(), ""))
-	require.NoError(t, mkdirAllAndWrite(t, envDir.EnvMetadataFilePath(), ""))
+	require.NoError(t, mkdirAllAndWrite(t, envDir.AddressRefsFilePath()))
+	require.NoError(t, mkdirAllAndWrite(t, envDir.ChainMetadataFilePath()))
+	require.NoError(t, mkdirAllAndWrite(t, envDir.ContractMetadataFilePath()))
+	require.NoError(t, mkdirAllAndWrite(t, envDir.EnvMetadataFilePath()))
 
 	err := h.Func(t.Context(), changeset.PreHookParams{
 		Env: changeset.HookEnv{Name: "staging", Logger: logger.Test(t)},
@@ -321,10 +321,10 @@ func TestIterateEVMVerifiers_StepSuccess(t *testing.T) {
 	require.Equal(t, 1, stepCalls)
 }
 
-func mkdirAllAndWrite(t *testing.T, path, content string) error {
+func mkdirAllAndWrite(t *testing.T, path string) error {
 	t.Helper()
-	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
-	return os.WriteFile(path, []byte(content), 0o644)
+	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0755))
+	return os.WriteFile(path, nil, 0600)
 }
 
 type mockProvider struct {
