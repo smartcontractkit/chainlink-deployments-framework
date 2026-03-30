@@ -382,7 +382,7 @@ func TestVerifyEnv_RunVerifyEnv_VerificationSuccess(t *testing.T) {
 			"result":  `[{"type":"constructor"}]`,
 		})
 	}))
-	defer server.Close()
+	t.Cleanup(server.Close)
 
 	targetURL, _ := url.Parse(server.URL)
 	httpClient := &http.Client{Transport: &evmRedirectTransport{target: targetURL}}
@@ -433,7 +433,7 @@ func TestVerifyEnv_RunVerifyEnv_VerificationFailure(t *testing.T) {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte("internal error"))
 	}))
-	defer server.Close()
+	t.Cleanup(server.Close)
 
 	targetURL, _ := url.Parse(server.URL)
 	httpClient := &http.Client{Transport: &evmRedirectTransport{target: targetURL}}
@@ -525,7 +525,7 @@ func TestVerifyEnv_RunVerifyEnv_BlockscoutFromNetworkExplorerConfig(t *testing.T
 			"result":  `[{"type":"constructor"}]`,
 		})
 	}))
-	defer server.Close()
+	t.Cleanup(server.Close)
 
 	targetURL, _ := url.Parse(server.URL)
 	httpClient := &http.Client{Transport: &evmRedirectTransport{target: targetURL}}

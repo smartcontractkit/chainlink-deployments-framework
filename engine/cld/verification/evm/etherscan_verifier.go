@@ -82,7 +82,7 @@ func (v *etherscanVerifier) String() string {
 }
 
 func (v *etherscanVerifier) IsVerified(ctx context.Context) (bool, error) {
-	resp, err := sendEtherscanRequestForVerifier[string](v, ctx, "GET", "contract", "getabi", map[string]string{
+	resp, err := sendEtherscanRequestForVerifier[string](ctx, v, "GET", "contract", "getabi", map[string]string{
 		"address": v.address,
 	})
 	if err != nil {
@@ -128,7 +128,7 @@ func (v *etherscanVerifier) Verify(ctx context.Context) error {
 		return fmt.Errorf("failed to get source code: %w", err)
 	}
 
-	resp, err := sendEtherscanRequestForVerifier[string](v, ctx, "POST", "contract", "verifysourcecode", map[string]string{
+	resp, err := sendEtherscanRequestForVerifier[string](ctx, v, "POST", "contract", "verifysourcecode", map[string]string{
 		"contractaddress":      v.address,
 		"sourceCode":           sourceCode,
 		"codeformat":           "solidity-standard-json-input",
@@ -150,7 +150,7 @@ func (v *etherscanVerifier) Verify(ctx context.Context) error {
 		pollDur = 5 * time.Second
 	}
 	for range maxVerificationPollAttempts {
-		statusResp, err := sendEtherscanRequestForVerifier[string](v, ctx, "GET", "contract", "checkverifystatus", map[string]string{
+		statusResp, err := sendEtherscanRequestForVerifier[string](ctx, v, "GET", "contract", "checkverifystatus", map[string]string{
 			"guid": guid,
 		})
 		if err != nil {
@@ -175,7 +175,7 @@ func (v *etherscanVerifier) Verify(ctx context.Context) error {
 }
 
 func (v *etherscanVerifier) getConstructorArgs(ctx context.Context) (string, error) {
-	resp, err := sendEtherscanRequestForVerifier[[]transactionInfo](v, ctx, "GET", "account", "txlist", map[string]string{
+	resp, err := sendEtherscanRequestForVerifier[[]transactionInfo](ctx, v, "GET", "account", "txlist", map[string]string{
 		"address": v.address,
 		"page":    "1",
 		"offset":  "1",
@@ -229,7 +229,7 @@ func (v *etherscanVerifier) etherscanRequestURL(method string, form url.Values) 
 	return full
 }
 
-func sendEtherscanRequestForVerifier[R any](v *etherscanVerifier, ctx context.Context, method, module, action string, extraParams map[string]string) (etherscanAPIResponse[R], error) {
+func sendEtherscanRequestForVerifier[R any](ctx context.Context, v *etherscanVerifier, method, module, action string, extraParams map[string]string) (etherscanAPIResponse[R], error) {
 	form := url.Values{}
 	form.Add("module", module)
 	form.Add("action", action)
