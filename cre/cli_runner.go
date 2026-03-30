@@ -10,8 +10,9 @@ import (
 
 const defaultBinary = "cre"
 
-// CLIRunner runs the CRE CLI via os/exec. Run executes the binary and captures stdout/stderr.
-type CLIRunner struct {
+// cliRunner runs the CRE CLI via os/exec. Run executes the binary and captures stdout/stderr.
+// It implements the [CLIRunner] interface.
+type cliRunner struct {
 	binaryPath string
 	// Stdout, if set, receives a real-time copy of the process stdout while it runs.
 	Stdout io.Writer
@@ -19,20 +20,22 @@ type CLIRunner struct {
 	Stderr io.Writer
 }
 
-// NewCLIRunner returns a CLIRunner for the given binary path. An empty path defaults to "cre"
+var _ CLIRunner = (*cliRunner)(nil)
+
+// NewCLIRunner returns a [cliRunner] for the given binary path. An empty path defaults to "cre"
 // (resolved via PATH).
-func NewCLIRunner(binaryPath string) *CLIRunner {
+func NewCLIRunner(binaryPath string) *cliRunner {
 	if binaryPath == "" {
 		binaryPath = defaultBinary
 	}
 
-	return &CLIRunner{binaryPath: binaryPath}
+	return &cliRunner{binaryPath: binaryPath}
 }
 
 // Run executes the binary and captures stdout and stderr. Exit code 0 returns (res, nil);
 // exit code != 0 returns (res, *ExitError) so callers get both result and error.
-// Runner-related failures (binary not found, context canceled) return (nil, err).
-func (r *CLIRunner) Run(ctx context.Context, args ...string) (*CallResult, error) {
+// CLI invocation failures (binary not found, context canceled) return (nil, err).
+func (r *cliRunner) Run(ctx context.Context, args ...string) (*CallResult, error) {
 	//nolint:gosec // G204: This is intentional - we're running a CLI tool with user-provided arguments.
 	// The binary path is controlled via configuration, and args are expected to be user-provided CLI arguments.
 	cmd := exec.CommandContext(ctx, r.binaryPath, args...)

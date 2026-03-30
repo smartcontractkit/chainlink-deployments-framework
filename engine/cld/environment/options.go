@@ -69,7 +69,7 @@ func newLoadConfig() (*LoadConfig, error) {
 		reporter:          operations.NewMemoryReporter(),
 		operationRegistry: operations.NewOperationRegistry(),
 		lggr:              lggr,
-		creRunner:         cre.NewCLIRunner(""),
+		creRunner:         nil, // optional; set via WithCRERunner
 	}, nil
 }
 
@@ -192,9 +192,9 @@ func WithDatastoreType(t cfgdomain.DatastoreType) LoadEnvironmentOption {
 	}
 }
 
-// WithCRERunner overrides the default CRE CLI runner. The default is a [cre.CLIRunner] that
-// resolves "cre" from PATH. Use this to supply a custom binary path
-// (e.g. WithCRERunner(cre.NewCLIRunner("/opt/cre"))) or a mock in tests.
+// WithCRERunner sets the CRE runner for the environment. By default no runner is configured (nil),
+// so CRERunner on the resulting environment will be nil unless this option is used.
+// Example: WithCRERunner(cre.NewRunner(cre.WithCLI(cre.NewCLIRunner("/opt/cre"))))
 func WithCRERunner(r cre.Runner) LoadEnvironmentOption {
 	return func(o *LoadConfig) {
 		o.creRunner = r

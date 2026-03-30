@@ -18,6 +18,8 @@ type WorkflowBundle struct {
 	Binary       BinarySource `json:"binary" yaml:"binary"`
 	Config       ConfigSource `json:"config" yaml:"config"`
 	DonFamily    string       `json:"donFamily,omitempty" yaml:"donFamily,omitempty"`
+	Attributes   string       `json:"attributes,omitempty" yaml:"attributes,omitempty"`
+	Tag          string       `json:"tag,omitempty" yaml:"tag,omitempty"`
 }
 
 // Validate trims string fields and validates the workflow bundle.
