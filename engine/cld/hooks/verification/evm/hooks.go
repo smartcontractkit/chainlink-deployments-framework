@@ -79,7 +79,6 @@ func verifyDeployedContracts(dom domain.Domain, provider evm.ContractInputsProvi
 // IsVerified only (no submission). If any checked contract is not verified, the hook returns an
 // error and blocks the changeset (Abort policy).
 func NewRequireVerifiedEVMContractsPreHook(dom domain.Domain, provider evm.ContractInputsProvider) changeset.PreHook {
-
 	return changeset.PreHook{
 		HookDefinition: changeset.HookDefinition{
 			Name:          requireVerifiedEnvContractsHookName,

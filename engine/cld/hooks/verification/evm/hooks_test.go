@@ -2,7 +2,11 @@ package evm
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -23,6 +27,50 @@ import (
 
 func init() {
 	interVerifyDelay = 0
+}
+
+const verificationHookEnv = "hooktest"
+
+// newDomainWithExplorerNetwork writes domain.yaml + networks.yaml so config.LoadNetworks resolves
+// a single mainnet EVM network with BlockExplorer.URL set to explorerURL (e.g. httptest server).
+func newDomainWithExplorerNetwork(t *testing.T, chainSelector uint64, explorerURL string) domain.Domain {
+	t.Helper()
+
+	dom := domain.NewDomain(t.TempDir(), "test")
+	require.NoError(t, os.MkdirAll(dom.ConfigNetworksDirPath(), 0755))
+
+	networkYAML := fmt.Sprintf(`networks:
+  - type: mainnet
+    chain_selector: %d
+    block_explorer:
+      url: %q
+    rpcs:
+      - http_url: http://127.0.0.1:8545
+`, chainSelector, explorerURL)
+	require.NoError(t, os.WriteFile(dom.ConfigNetworksFilePath("networks.yaml"), []byte(networkYAML), 0600))
+
+	domainYAML := fmt.Sprintf(`environments:
+  %s:
+    network_types:
+      - mainnet
+`, verificationHookEnv)
+	require.NoError(t, os.WriteFile(dom.ConfigDomainFilePath(), []byte(domainYAML), 0600))
+
+	return dom
+}
+
+func writeEnvDatastoreWithRefs(t *testing.T, dom domain.Domain, refs []datastore.AddressRef) {
+	t.Helper()
+
+	envDir := dom.EnvDir(verificationHookEnv)
+	require.NoError(t, os.MkdirAll(envDir.DataStoreDirPath(), 0755))
+
+	refsJSON, err := json.Marshal(refs)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(envDir.AddressRefsFilePath(), refsJSON, 0600))
+	require.NoError(t, os.WriteFile(envDir.ChainMetadataFilePath(), []byte("[]"), 0600))
+	require.NoError(t, os.WriteFile(envDir.ContractMetadataFilePath(), []byte("[]"), 0600))
+	require.NoError(t, os.WriteFile(envDir.EnvMetadataFilePath(), []byte("null"), 0600))
 }
 
 func TestNewVerifyDeployedEVMContractsPostHook_Definition(t *testing.T) {
@@ -321,9 +369,129 @@ func TestIterateEVMVerifiers_StepSuccess(t *testing.T) {
 	require.Equal(t, 1, stepCalls)
 }
 
+func TestRequireVerified_PreHook_Sourcify_NotVerified(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte("Files have not been found"))
+	}))
+	defer server.Close()
+
+	chain, ok := chainsel.ChainBySelector(chainsel.HEDERA_MAINNET.Selector)
+	require.True(t, ok)
+
+	dom := newDomainWithExplorerNetwork(t, chain.Selector, server.URL)
+	writeEnvDatastoreWithRefs(t, dom, []datastore.AddressRef{{
+		ChainSelector: chain.Selector,
+		Type:          "MyContract",
+		Version:       semver.MustParse("1.0.0"),
+		Address:       "0x0000000000000000000000000000000000000001",
+	}})
+
+	h := NewRequireVerifiedEVMContractsPreHook(dom, &mockProvider{
+		metadata: evm.SolidityContractMetadata{
+			Version:  "0.8.19",
+			Language: "Solidity",
+			Name:     "MyContract",
+		},
+	})
+	err := h.Func(t.Context(), changeset.PreHookParams{
+		Env: changeset.HookEnv{Name: verificationHookEnv, Logger: logger.Test(t)},
+	})
+	require.Error(t, err)
+	require.ErrorContains(t, err, "not verified on explorer")
+}
+
+func TestRequireVerified_PreHook_Sourcify_AlreadyVerified(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": "full"})
+	}))
+	defer server.Close()
+
+	chain, ok := chainsel.ChainBySelector(chainsel.HEDERA_MAINNET.Selector)
+	require.True(t, ok)
+
+	dom := newDomainWithExplorerNetwork(t, chain.Selector, server.URL)
+	writeEnvDatastoreWithRefs(t, dom, []datastore.AddressRef{{
+		ChainSelector: chain.Selector,
+		Type:          "MyContract",
+		Version:       semver.MustParse("1.0.0"),
+		Address:       "0x0000000000000000000000000000000000000001",
+	}})
+
+	h := NewRequireVerifiedEVMContractsPreHook(dom, &mockProvider{
+		metadata: evm.SolidityContractMetadata{
+			Version:  "0.8.19",
+			Language: "Solidity",
+			Name:     "MyContract",
+		},
+	})
+	err := h.Func(t.Context(), changeset.PreHookParams{
+		Env: changeset.HookEnv{Name: verificationHookEnv, Logger: logger.Test(t)},
+	})
+	require.NoError(t, err)
+}
+
+func TestVerifyDeployed_PostHook_Blockscout_CallsVerifyWhenNotVerified(t *testing.T) {
+	t.Parallel()
+
+	var verifyPOSTs int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		action := r.URL.Query().Get("action")
+		switch {
+		case r.Method == http.MethodGet && action == "getabi":
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]string{"status": "0", "result": ""})
+		case r.Method == http.MethodPost && action == "verify":
+			verifyPOSTs++
+			w.WriteHeader(http.StatusOK)
+		default:
+			t.Fatalf("unexpected request %s %s", r.Method, r.URL.RequestURI())
+		}
+	}))
+	defer server.Close()
+
+	chain, ok := chainsel.ChainBySelector(chainsel.ZORA_MAINNET.Selector)
+	require.True(t, ok)
+
+	dom := newDomainWithExplorerNetwork(t, chain.Selector, server.URL)
+
+	mds := datastore.NewMemoryDataStore()
+	require.NoError(t, mds.Addresses().Add(datastore.AddressRef{
+		ChainSelector: chain.Selector,
+		Type:          "MyContract",
+		Version:       semver.MustParse("1.0.0"),
+		Address:       "0x0000000000000000000000000000000000000001",
+	}))
+
+	h := NewVerifyDeployedEVMContractsPostHook(dom, &mockProvider{
+		metadata: evm.SolidityContractMetadata{
+			Version:  "0.8.19",
+			Language: "Solidity",
+			Name:     "MyContract",
+			Sources: map[string]any{
+				"MyContract.sol": map[string]any{"content": "pragma solidity 0.8.19; contract MyContract {}"},
+			},
+		},
+	})
+	err := h.Func(t.Context(), changeset.PostHookParams{
+		Env: changeset.HookEnv{Name: verificationHookEnv, Logger: logger.Test(t)},
+		Output: deployment.ChangesetOutput{
+			DataStore: mds,
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, 1, verifyPOSTs, "Verify should POST to explorer when IsVerified is false")
+}
+
 func mkdirAllAndWrite(t *testing.T, path string) error {
 	t.Helper()
 	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0755))
+
 	return os.WriteFile(path, nil, 0600)
 }
 
@@ -336,5 +504,6 @@ func (m *mockProvider) GetInputs(_ datastore.ContractType, _ *semver.Version) (e
 	if m.getInputsErr != nil {
 		return evm.SolidityContractMetadata{}, m.getInputsErr
 	}
+
 	return m.metadata, nil
 }
