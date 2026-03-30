@@ -118,7 +118,7 @@ func Test_WithCRERunner(t *testing.T) {
 	opts := &LoadConfig{}
 	assert.Nil(t, opts.creRunner)
 
-	runner := cre.NewCLIRunner("/path/to/cre")
+	runner := cre.NewCLIRunner("/path/to/cre", "")
 	creR := cre.NewRunner(cre.WithCLI(runner))
 	option := WithCRERunner(creR)
 	option(opts)

@@ -69,7 +69,6 @@ func newLoadConfig() (*LoadConfig, error) {
 		reporter:          operations.NewMemoryReporter(),
 		operationRegistry: operations.NewOperationRegistry(),
 		lggr:              lggr,
-		creRunner:         nil, // optional; set via WithCRERunner
 	}, nil
 }
 
@@ -194,7 +193,7 @@ func WithDatastoreType(t cfgdomain.DatastoreType) LoadEnvironmentOption {
 
 // WithCRERunner sets the CRE runner for the environment. By default no runner is configured (nil),
 // so CRERunner on the resulting environment will be nil unless this option is used.
-// Example: WithCRERunner(cre.NewRunner(cre.WithCLI(cre.NewCLIRunner("/opt/cre"))))
+// Example: WithCRERunner(cre.NewRunner(cre.WithCLI(cre.NewCLIRunner("/opt/cre", apiKey))))
 func WithCRERunner(r cre.Runner) LoadEnvironmentOption {
 	return func(o *LoadConfig) {
 		o.creRunner = r
