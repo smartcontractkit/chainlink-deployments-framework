@@ -21,7 +21,11 @@ var (
 
 	verifyEnvLong = `Verify all EVM contracts in a given environment using the datastore.
 
-If a network does not have a verification strategy defined, we ignore it and do not attempt to verify its contracts.
+Networks are skipped when no verification strategy applies (e.g. missing or unsupported block_explorer.type, or missing fields required for strategy selection such as URL or slug).
+
+Some explorer types allow an empty api_key in config for local or secret-injected keys; in that case a strategy may still be selected and verify-env attempts verification per contract, failing at verifier init if the key is still missing.
+
+Verification strategy is chosen only from domain network config; CLDF does not maintain chain allowlists.
 Requires a domain-specific ContractInputsProvider to supply contract metadata.`
 
 	verifyEnvExample = `
@@ -144,7 +148,7 @@ func runVerifyEnv(cmd *cobra.Command, cfg Config, f verifyEnvFlags, dom domain.D
 			datastore.AddressRefByChainSelector(chain.Selector),
 		)
 
-		strategy := evm.GetVerificationStrategy(chain.EvmChainID)
+		strategy := evm.GetVerificationStrategyForNetwork(network)
 		if strategy == evm.StrategyUnknown {
 			cfg.Logger.Warnf("No verification strategy found for %s, skipping network", chain.Name)
 			skippedNetworks = append(skippedNetworks, chain.Name)
