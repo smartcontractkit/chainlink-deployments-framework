@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -17,24 +18,6 @@ import (
 )
 
 const etherscanURL = "https://api.etherscan.io/v2/api"
-
-// etherscanV2ChainIDs - see https://docs.etherscan.io/etherscan-v2/supported-chains
-var etherscanV2ChainIDs = map[uint64]struct{}{
-	1: {}, 11155111: {}, 17000: {}, 560048: {}, 2741: {}, 11124: {}, 33111: {}, 33139: {},
-	42170: {}, 42161: {}, 421614: {}, 8453: {}, 84532: {}, 80094: {}, 80069: {}, 199: {},
-	1028: {}, 81457: {}, 168587773: {}, 56: {}, 97: {}, 44787: {}, 42220: {}, 25: {},
-	252: {}, 2522: {}, 100: {}, 59144: {}, 59141: {}, 5000: {}, 5003: {}, 4352: {},
-	43521: {}, 1287: {}, 10143: {}, 1284: {}, 1285: {}, 10: {}, 11155420: {}, 80002: {},
-	137: {}, 2442: {}, 1101: {}, 534352: {}, 534351: {}, 57054: {}, 146: {}, 50104: {},
-	531050104: {}, 1923: {}, 1924: {}, 167009: {}, 167000: {}, 130: {}, 1301: {},
-	1111: {}, 1112: {}, 480: {}, 4801: {}, 660279: {}, 37714555429: {}, 51: {}, 50: {},
-	324: {}, 300: {}, 204: {}, 5611: {}, 747474: {}, 988: {}, 11142220: {}, 14601: {},
-}
-
-func IsChainSupportedOnEtherscanV2(chainID uint64) bool {
-	_, ok := etherscanV2ChainIDs[chainID]
-	return ok
-}
 
 type etherscanAPIResponse[R any] struct {
 	Status  string `json:"status"`
@@ -53,9 +36,12 @@ const messageOK = "OK"
 const maxVerificationPollAttempts = 12 // ~1 min at 5s poll interval
 
 // NewEtherscanV2ContractVerifier creates a verifier that uses metadata from ContractInputsProvider.
+// apiBaseURL is optional: when empty, the default Etherscan v2 multiplexer is used; otherwise it must
+// be the explorer API base URL from domain network config (CLD).
 func NewEtherscanV2ContractVerifier(
 	chain chainsel.Chain,
 	apiKey string,
+	apiBaseURL string,
 	address string,
 	metadata SolidityContractMetadata,
 	contractType string,
@@ -64,13 +50,10 @@ func NewEtherscanV2ContractVerifier(
 	lggr logger.Logger,
 	httpClient *http.Client,
 ) (verification.Verifiable, error) {
-	if !IsChainSupportedOnEtherscanV2(chain.EvmChainID) {
-		return nil, fmt.Errorf("chain ID %d is not supported by the Etherscan V2 API", chain.EvmChainID)
-	}
-
 	return &etherscanVerifier{
 		chain:        chain,
 		apiKey:       apiKey,
+		apiBaseURL:   strings.TrimSpace(apiBaseURL),
 		address:      address,
 		metadata:     metadata,
 		contractType: contractType,
@@ -84,6 +67,7 @@ func NewEtherscanV2ContractVerifier(
 type etherscanVerifier struct {
 	chain        chainsel.Chain
 	apiKey       string
+	apiBaseURL   string
 	address      string
 	metadata     SolidityContractMetadata
 	contractType string
@@ -98,7 +82,7 @@ func (v *etherscanVerifier) String() string {
 }
 
 func (v *etherscanVerifier) IsVerified(ctx context.Context) (bool, error) {
-	resp, err := sendEtherscanRequest[string](ctx, v.httpClient, v.chain.EvmChainID, "GET", "contract", "getabi", v.apiKey, map[string]string{
+	resp, err := sendEtherscanRequestForVerifier[string](ctx, v, "GET", "contract", "getabi", map[string]string{
 		"address": v.address,
 	})
 	if err != nil {
@@ -144,7 +128,7 @@ func (v *etherscanVerifier) Verify(ctx context.Context) error {
 		return fmt.Errorf("failed to get source code: %w", err)
 	}
 
-	resp, err := sendEtherscanRequest[string](ctx, v.httpClient, v.chain.EvmChainID, "POST", "contract", "verifysourcecode", v.apiKey, map[string]string{
+	resp, err := sendEtherscanRequestForVerifier[string](ctx, v, "POST", "contract", "verifysourcecode", map[string]string{
 		"contractaddress":      v.address,
 		"sourceCode":           sourceCode,
 		"codeformat":           "solidity-standard-json-input",
@@ -166,7 +150,7 @@ func (v *etherscanVerifier) Verify(ctx context.Context) error {
 		pollDur = 5 * time.Second
 	}
 	for range maxVerificationPollAttempts {
-		statusResp, err := sendEtherscanRequest[string](ctx, v.httpClient, v.chain.EvmChainID, "GET", "contract", "checkverifystatus", v.apiKey, map[string]string{
+		statusResp, err := sendEtherscanRequestForVerifier[string](ctx, v, "GET", "contract", "checkverifystatus", map[string]string{
 			"guid": guid,
 		})
 		if err != nil {
@@ -191,7 +175,7 @@ func (v *etherscanVerifier) Verify(ctx context.Context) error {
 }
 
 func (v *etherscanVerifier) getConstructorArgs(ctx context.Context) (string, error) {
-	resp, err := sendEtherscanRequest[[]transactionInfo](ctx, v.httpClient, v.chain.EvmChainID, "GET", "account", "txlist", v.apiKey, map[string]string{
+	resp, err := sendEtherscanRequestForVerifier[[]transactionInfo](ctx, v, "GET", "account", "txlist", map[string]string{
 		"address": v.address,
 		"page":    "1",
 		"offset":  "1",
@@ -213,29 +197,61 @@ func (v *etherscanVerifier) getConstructorArgs(ctx context.Context) (string, err
 	return txInput[len(bytecode):], nil
 }
 
-func sendEtherscanRequest[R any](ctx context.Context, client *http.Client, chainID uint64, method, module, action, key string, extraParams map[string]string) (etherscanAPIResponse[R], error) {
+func (v *etherscanVerifier) apiBase() string {
+	if v.apiBaseURL != "" {
+		return v.apiBaseURL
+	}
+
+	return etherscanURL
+}
+
+// etherscanRequestURL builds the request URL. If the configured base already contains chainid=, it is not added again.
+func (v *etherscanVerifier) etherscanRequestURL(method string, form url.Values) string {
+	base := v.apiBase()
+	chainID := v.chain.EvmChainID
+	lower := strings.ToLower(base)
+	full := base
+	if !strings.Contains(lower, "chainid=") {
+		sep := "?"
+		if strings.Contains(base, "?") {
+			sep = "&"
+		}
+		full = base + sep + "chainid=" + strconv.FormatUint(chainID, 10)
+	}
+	if method == http.MethodGet {
+		if strings.Contains(full, "?") {
+			return full + "&" + form.Encode()
+		}
+
+		return full + "?" + form.Encode()
+	}
+
+	return full
+}
+
+func sendEtherscanRequestForVerifier[R any](ctx context.Context, v *etherscanVerifier, method, module, action string, extraParams map[string]string) (etherscanAPIResponse[R], error) {
 	form := url.Values{}
 	form.Add("module", module)
 	form.Add("action", action)
-	form.Add("apikey", key)
+	form.Add("apikey", v.apiKey)
 	for k, val := range extraParams {
 		form.Add(k, val)
 	}
-	baseURL := etherscanURL + fmt.Sprintf("?chainid=%d", chainID)
+
+	reqURL := v.etherscanRequestURL(method, form)
 	var reqBody io.Reader
-	if method == "GET" {
-		baseURL = baseURL + "&" + form.Encode()
-	} else {
+	if method != http.MethodGet {
 		reqBody = strings.NewReader(form.Encode())
 	}
-	httpReq, err := http.NewRequestWithContext(ctx, method, baseURL, reqBody)
+	httpReq, err := http.NewRequestWithContext(ctx, method, reqURL, reqBody)
 	if err != nil {
 		return etherscanAPIResponse[R]{}, fmt.Errorf("failed to create request: %w", err)
 	}
-	if method != "GET" {
+	if method != http.MethodGet {
 		httpReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	}
 
+	client := v.httpClient
 	if client == nil {
 		client = http.DefaultClient
 	}

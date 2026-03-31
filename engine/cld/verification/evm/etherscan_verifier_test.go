@@ -34,7 +34,7 @@ func TestEtherscanVerifier_IsVerified_AlreadyVerified(t *testing.T) {
 	require.True(t, ok)
 
 	v, err := NewEtherscanV2ContractVerifier(
-		chain, "api-key", "0x123",
+		chain, "api-key", "", "0x123",
 		SolidityContractMetadata{Name: "Test", Version: "0.8.19"},
 		"Test", "1.0.0", 0, logger.Nop(),
 		client,
@@ -66,7 +66,7 @@ func TestEtherscanVerifier_IsVerified_NotVerified(t *testing.T) {
 	require.True(t, ok)
 
 	v, err := NewEtherscanV2ContractVerifier(
-		chain, "api-key", "0x123",
+		chain, "api-key", "", "0x123",
 		SolidityContractMetadata{Name: "Test", Version: "0.8.19"},
 		"Test", "1.0.0", 0, logger.Nop(),
 		client,
@@ -85,7 +85,7 @@ func TestEtherscanVerifier_String(t *testing.T) {
 	require.True(t, ok)
 
 	v, err := NewEtherscanV2ContractVerifier(
-		chain, "key", "0xabc",
+		chain, "key", "", "0xabc",
 		SolidityContractMetadata{},
 		"MyContract", "2.0.0", 0, logger.Nop(),
 		nil,
