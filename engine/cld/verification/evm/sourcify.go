@@ -1,12 +1,13 @@
 package evm
 
 var sourcifyChainIDs = map[uint64]struct{}{
-	295: {}, 296: {}, 2020: {}, 2021: {}, 42431: {},
+	295: {}, 296: {}, 2020: {}, 2021: {}, 4217: {}, 42431: {},
 }
 
 // sourcifyCustomServerURLs maps chain IDs to custom Sourcify-compatible server URLs.
 // Chains not listed here fall back to the default sourcifyServerURL.
 var sourcifyCustomServerURLs = map[uint64]string{
+	4217:  "https://contracts.tempo.xyz",
 	42431: "https://contracts.tempo.xyz",
 }
 

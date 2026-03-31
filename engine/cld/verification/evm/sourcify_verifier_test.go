@@ -457,6 +457,27 @@ func TestSourcifyVerifier_TempoCustomURL(t *testing.T) {
 	require.Equal(t, "https://contracts.tempo.xyz", v.(*sourcifyVerifier).baseURL)
 }
 
+func TestSourcifyVerifier_TempoMainnetCustomURL(t *testing.T) {
+	t.Parallel()
+
+	chain := chainsel.Chain{
+		EvmChainID: 4217,
+		Selector:   7281642695469137430,
+		Name:       "tempo-mainnet",
+	}
+	v, err := newSourcifyVerifier(VerifierConfig{
+		Chain:        chain,
+		Network:      cfgnet.Network{ChainSelector: chain.Selector},
+		Address:      "0xabc",
+		Metadata:     SolidityContractMetadata{},
+		ContractType: "Test",
+		Version:      "1.0.0",
+		Logger:       logger.Nop(),
+	})
+	require.NoError(t, err)
+	require.Equal(t, "https://contracts.tempo.xyz", v.(*sourcifyVerifier).baseURL)
+}
+
 func TestSourcifyVerifier_BlockExplorerURLOverridesCustom(t *testing.T) {
 	t.Parallel()
 
