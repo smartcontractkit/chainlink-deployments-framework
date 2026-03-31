@@ -1,5 +1,23 @@
 # chainlink-deployments-framework
 
+## 0.93.0
+
+### Minor Changes
+
+- [#896](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/896) [`0f6bdb1`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/0f6bdb1d6636a474727e298f77ca709669ab0086) Thanks [@ecPablo](https://github.com/ecPablo)! - add wrapper object for CRE to allow CLI and Go API implementations to coexist
+
+### Patch Changes
+
+- [#898](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/898) [`59b7400`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/59b74000cadd72d311c44cbb38b7623cbca4208e) Thanks [@ecPablo](https://github.com/ecPablo)! - remove hmac keys in favor of api key for cre
+
+- [#902](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/902) [`aba964b`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/aba964b14498ac7b0ccd1ad45ff571025a7a7d80) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(input): remove handling of object format
+
+  Object format for input YAML is no longer supported; only array format is supported.
+
+- [#894](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/894) [`4a9a5cc`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/4a9a5cc9b32a72614ca3d012124e75bb02f1c7aa) Thanks [@ajaskolski](https://github.com/ajaskolski)! - refactor: verification modular cmd use network cfg from cld
+
+- [#889](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/889) [`aa6fdfd`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/aa6fdfdbd37c1534beb248f5d878245d658a3f81) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(mcms): render proposal parameters in collapsible code blocks
+
 ## 0.92.0
 
 ### Minor Changes
