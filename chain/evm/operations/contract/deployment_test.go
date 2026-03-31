@@ -109,7 +109,10 @@ func TestDeploy(t *testing.T) {
 					ABI: contractABI,
 				},
 				BytecodeByTypeAndVersion: map[string]Bytecode{
-					deployment.NewTypeAndVersion(testContractType, *semver.MustParse("1.0.0")).String(): {EVM: []byte{}},
+					deployment.NewTypeAndVersion(testContractType, *semver.MustParse("1.0.0")).String(): {
+						EVM:      []byte{0x00},
+						ZkSyncVM: []byte{0x00},
+					},
 				},
 				Validate: func(input ConstructorArgs) error {
 					if input.Value%2 != 0 {
@@ -140,6 +143,7 @@ func TestDeploy(t *testing.T) {
 			}
 
 			deployZkContract = func(
+				_ context.Context,
 				_ *accounts.TransactOpts,
 				_ []byte,
 				_ *clients.Client,

@@ -1,6 +1,7 @@
 package contract
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -85,6 +86,9 @@ func NewWrite[ARGS any, C any](params WriteParams[ARGS, C]) *operations.Operatio
 			if params.ContractABI == "" {
 				return WriteOutput{}, fmt.Errorf("contract ABI must be specified for %s", params.Name)
 			}
+			if input.Address == (common.Address{}) {
+				return WriteOutput{}, fmt.Errorf("address must be specified for %s", params.Name)
+			}
 			if params.NewContract == nil {
 				return WriteOutput{}, fmt.Errorf("newContract function must be defined for %s", params.Name)
 			}
@@ -110,6 +114,9 @@ func NewWrite[ARGS any, C any](params WriteParams[ARGS, C]) *operations.Operatio
 			}
 			var execInfo *ExecInfo
 			tx, callErr := params.CallContract(boundContract, opts, input.Args)
+			if callErr == nil && tx == nil {
+				return WriteOutput{}, fmt.Errorf("contract call returned nil transaction for %s against %s on %s", params.Name, input.Address, chain)
+			}
 			if allowed {
 				// If the call has actually been sent, we need check the call error and confirm the transaction.
 				_, confirmErr := deployment.ConfirmIfNoErrorWithABI(chain, tx, params.ContractABI, callErr)
@@ -154,6 +161,11 @@ func OnlyOwner[C ownableContract, ARGS any](contract C, opts *bind.CallOpts, cal
 		retryDelay = 500 * time.Millisecond
 	)
 
+	ctx := context.Background()
+	if opts != nil && opts.Context != nil {
+		ctx = opts.Context
+	}
+
 	deadline := time.Now().Add(timeout)
 	var lastErr error
 
@@ -167,7 +179,11 @@ func OnlyOwner[C ownableContract, ARGS any](contract C, opts *bind.CallOpts, cal
 		// These errors typically contain "attempting to unmarshal an empty string"
 		if strings.Contains(err.Error(), "empty string") || strings.Contains(err.Error(), "no contract code") {
 			lastErr = err
-			time.Sleep(retryDelay)
+			select {
+			case <-ctx.Done():
+				return false, fmt.Errorf("context cancelled while waiting for owner of %s: %w", contract.Address(), ctx.Err())
+			case <-time.After(retryDelay):
+			}
 
 			continue
 		}

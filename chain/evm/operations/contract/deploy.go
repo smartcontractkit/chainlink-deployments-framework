@@ -105,6 +105,9 @@ func NewDeploy[ARGS any](params DeployParams[ARGS]) *operations.Operation[Deploy
 			if !ok {
 				return datastore.AddressRef{}, fmt.Errorf("no bytecode defined for %s", input.TypeAndVersion)
 			}
+			if err := bytecode.Validate(chain.IsZkSyncVM); err != nil {
+				return datastore.AddressRef{}, fmt.Errorf("invalid bytecode for %s: %w", input.TypeAndVersion, err)
+			}
 			// END Validation
 
 			parsedABI, err := params.ContractMetadata.GetAbi()
@@ -126,6 +129,7 @@ func NewDeploy[ARGS any](params DeployParams[ARGS]) *operations.Operation[Deploy
 			)
 			if chain.IsZkSyncVM {
 				addr, deployErr = deployZkContract(
+					b.GetContext(),
 					nil,
 					bytecode.ZkSyncVM,
 					chain.ClientZkSyncVM,
@@ -143,6 +147,9 @@ func NewDeploy[ARGS any](params DeployParams[ARGS]) *operations.Operation[Deploy
 				)
 			}
 			if !chain.IsZkSyncVM {
+				if deployErr == nil && tx == nil {
+					return datastore.AddressRef{}, fmt.Errorf("deploy returned nil transaction for %s on %s", input.TypeAndVersion, chain)
+				}
 				// Non-ZkSyncVM chains require manual confirmation of the deployment transaction.
 				// We attempt to decode any errors with the provided ABI.
 				_, confirmErr := deployment.ConfirmIfNoErrorWithABI(chain, tx, params.ContractMetadata.ABI, deployErr)
@@ -178,6 +185,7 @@ func derefString(s *string) string {
 
 // deployZkContractImpl deploys a contract on a ZkSync VM chain using the provided parameters.
 func deployZkContractImpl(
+	ctx context.Context,
 	deployOpts *accounts.TransactOpts,
 	bytecode []byte,
 	client *clients.Client,
@@ -212,7 +220,7 @@ func deployZkContractImpl(
 		return common.Address{}, fmt.Errorf("failed to deploy zk contract: %w", err)
 	}
 
-	receipt, err := client.WaitMined(context.Background(), txHash)
+	receipt, err := client.WaitMined(ctx, txHash)
 	if err != nil {
 		return common.Address{}, fmt.Errorf("failed to confirm zk contract deployment: %w", err)
 	}
@@ -224,15 +232,22 @@ func deployZkContractImpl(
 func arrayify[ARGS any](args ARGS) ([]any, error) {
 	v := reflect.ValueOf(args)
 	if v.Kind() == reflect.Ptr {
+		if v.IsNil() {
+			return nil, errors.New("expected non-nil pointer to struct, got nil")
+		}
 		v = v.Elem()
 	}
 	if v.Kind() != reflect.Struct {
 		return nil, fmt.Errorf("expected struct or pointer to struct, got %s", v.Kind())
 	}
 
-	result := make([]any, v.NumField())
+	result := make([]any, 0, v.NumField())
 	for i := range v.NumField() {
-		result[i] = v.Field(i).Interface()
+		f := v.Field(i)
+		if !f.CanInterface() {
+			return nil, fmt.Errorf("field %d of %T is unexported and cannot be used as a constructor argument", i, v.Interface())
+		}
+		result = append(result, f.Interface())
 	}
 
 	return result, nil
@@ -248,7 +263,7 @@ func MaybeDeployContract[ARGS any](
 	existingAddresses []datastore.AddressRef) (datastore.AddressRef, error) {
 	for _, ref := range existingAddresses {
 		if ref.Type == datastore.ContractType(input.TypeAndVersion.Type) &&
-			ref.Version.String() == input.TypeAndVersion.Version.String() {
+			ref.Version != nil && ref.Version.String() == input.TypeAndVersion.Version.String() {
 			if input.Qualifier != nil {
 				if ref.Qualifier == *input.Qualifier {
 					return ref, nil
