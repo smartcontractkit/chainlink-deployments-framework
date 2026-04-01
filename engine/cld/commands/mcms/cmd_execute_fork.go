@@ -265,6 +265,7 @@ func executeFork(
 		return nil
 	}
 
+	cfg.env.Name = cfg.envStr // ensure hooks load the correct env config for the fork
 	err = runHooksInternal(ctx, mcmsCfg, cfg.env, cfg.timelockProposal, reports)
 	if err != nil {
 		lggr.Warnw("Failed to run post-execution hooks", "err", err)

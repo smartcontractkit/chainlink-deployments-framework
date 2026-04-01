@@ -74,6 +74,10 @@ func LoadProposalConfig(
 		timelockCastedProposal = fileProposal.(*mcms.TimelockProposal)
 		if flags.Fork && timelockCastedProposal.Action == types.TimelockActionSchedule {
 			timelockCastedProposal.SaltOverride = newRandomSalt()
+			_, serr := timelockCastedProposal.SetOperationIDs(ctx, true)
+			if serr != nil {
+				return nil, fmt.Errorf("failed to set operation IDs after resetting the timelock proposal salt: %w", serr)
+			}
 		}
 
 		converters, cerr := chainwrappers.BuildConverters(timelockCastedProposal.ChainMetadata)
