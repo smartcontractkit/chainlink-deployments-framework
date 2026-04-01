@@ -70,7 +70,7 @@ type PostHookParams struct {
 	Err          error
 }
 
-// PostProposalHookParams is passed to post-hooks.
+// PostProposalHookParams is passed to post-proposal-hooks.
 // All fields must be treated as read-only.
 type PostProposalHookParams struct {
 	Env          ProposalHookEnv

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
+	"slices"
 
 	"github.com/smartcontractkit/mcms"
 	"github.com/smartcontractkit/mcms/chainwrappers"
@@ -18,8 +19,10 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
-// acceptExpiredProposal is a sentinel option to accept expired proposals.
-var acceptExpiredProposal = struct{}{}
+const (
+	acceptExpiredProposal = "accept-expired-proposal-option" // sentinel option to accept expired proposals.
+	randomSalt            = "random-salt-option"             // sentinel option to override the proposal's salt with a random value
+)
 
 // ProposalConfig holds the loaded proposal configuration.
 type ProposalConfig struct {
@@ -51,7 +54,7 @@ func LoadProposalConfig(
 	deps *Deps,
 	proposalCtxProvider analyzer.ProposalContextProvider,
 	flags ProposalFlags,
-	opts ...interface{},
+	opts ...any,
 ) (*ProposalConfig, error) {
 	// Validate proposal kind
 	proposalKind, exists := types.StringToProposalKind[flags.ProposalKind]
@@ -62,7 +65,7 @@ func LoadProposalConfig(
 	// Load proposal from file
 	fileProposal, err := deps.ProposalLoader(proposalKind, flags.ProposalPath)
 	if err != nil {
-		if !containsAcceptExpired(opts) || !isProposalExpiredError(err) {
+		if !slices.Contains(opts, acceptExpiredProposal) || !isProposalExpiredError(err) {
 			return nil, fmt.Errorf("error loading proposal: %w", err)
 		}
 	}
@@ -72,7 +75,7 @@ func LoadProposalConfig(
 
 	if proposalKind == types.KindTimelockProposal {
 		timelockCastedProposal = fileProposal.(*mcms.TimelockProposal)
-		if flags.Fork && timelockCastedProposal.Action == types.TimelockActionSchedule {
+		if flags.Fork && slices.Contains(opts, randomSalt) && timelockCastedProposal.Action == types.TimelockActionSchedule {
 			timelockCastedProposal.SaltOverride = newRandomSalt()
 			_, serr := timelockCastedProposal.SetOperationIDs(ctx, true)
 			if serr != nil {
@@ -116,8 +119,7 @@ func LoadProposalConfig(
 
 	// Load Environment
 	if cfg.Fork {
-		// For forked environments, load via LoadFork
-		cfg.ForkedEnv, err = cldfenvironment.LoadFork(ctx, dom, cfg.EnvStr, nil,
+		cfg.ForkedEnv, err = deps.ForkEnvironmentLoader(ctx, dom, cfg.EnvStr, nil,
 			cldfenvironment.OnlyLoadChainsFor(chainSelectors),
 			cldfenvironment.WithoutJD(),
 			cldfenvironment.WithLogger(lggr))
@@ -165,17 +167,6 @@ func isProposalExpiredError(err error) bool {
 	errStr := err.Error()
 
 	return containsStr(errStr, "expired") || containsStr(errStr, "valid_until")
-}
-
-// containsAcceptExpired checks if the opts contain acceptExpiredProposal.
-func containsAcceptExpired(opts []interface{}) bool {
-	for _, opt := range opts {
-		if opt == acceptExpiredProposal {
-			return true
-		}
-	}
-
-	return false
 }
 
 func containsStr(s, substr string) bool {

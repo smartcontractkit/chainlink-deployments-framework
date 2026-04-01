@@ -100,19 +100,15 @@ func newRunProposalHooksCmd(cfg Config) *cobra.Command {
 	return cmd
 }
 
-func runHooks(ctx context.Context, cfg Config, flags runHooksFlags) error {
-	if cfg.LoadChangesets == nil {
-		return errors.New("LoadChangesets function is required for proposal hook execution")
-	}
-
+func runHooks(ctx context.Context, cfg Config, hFlags runHooksFlags) error {
 	deps := cfg.deps()
 
 	proposalCfg, err := LoadProposalConfig(ctx, cfg.Logger, cfg.Domain, deps, cfg.ProposalContextProvider,
 		ProposalFlags{
-			ProposalPath:  flags.proposalPath,
-			ProposalKind:  flags.proposalKind,
-			Environment:   flags.environment,
-			ChainSelector: flags.chainSelector,
+			ProposalPath:  hFlags.proposalPath,
+			ProposalKind:  hFlags.proposalKind,
+			Environment:   hFlags.environment,
+			ChainSelector: hFlags.chainSelector,
 		},
 		acceptExpiredProposal,
 	)
@@ -124,16 +120,19 @@ func runHooks(ctx context.Context, cfg Config, flags runHooksFlags) error {
 		return errors.New("expected proposal to be a TimelockProposal")
 	}
 
-	return runHooksInternal(ctx, cfg, proposalCfg.Env, proposalCfg.TimelockProposal, flags.reports)
+	return runHooksInternal(cfg, proposalCfg.Env, proposalCfg.TimelockProposal, hFlags.reports)
 }
 
 func runHooksInternal(
-	_ context.Context,
 	cfg Config,
 	env cldf.Environment,
 	timelockProposal *mcms.TimelockProposal,
 	reports []cldfchangeset.MCMSTimelockExecuteReport,
 ) error {
+	if cfg.LoadChangesets == nil {
+		return errors.New("LoadChangesets function is required for proposal hook execution")
+	}
+
 	var metadata proposalMetadata
 	err := mapstructure.Decode(timelockProposal.Metadata, &metadata)
 	if err != nil {

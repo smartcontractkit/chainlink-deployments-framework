@@ -179,7 +179,7 @@ func runRun(cmd *cobra.Command, cfg *Config, f runFlags) error {
 		return fmt.Errorf("failed to save changeset proposal metadata: %w", err)
 	}
 
-	// TODO: remove this block
+	// TODO: proposal decoding is handled by the CLD GH workflows; this should be removed.
 	if len(out.DescribedTimelockProposals) == 0 && cfg.DecodeProposalCtxProvider != nil {
 		out.DescribedTimelockProposals = make([]string, len(out.MCMSTimelockProposals))
 		proposalContext, err := cfg.DecodeProposalCtxProvider(env)

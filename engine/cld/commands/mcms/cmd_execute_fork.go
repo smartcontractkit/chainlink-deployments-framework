@@ -64,10 +64,11 @@ type executeForkFlags struct {
 	proposalKind  string
 	chainSelector uint64
 	testSigner    bool
+	randomSalt    bool
 }
 
 // newExecuteForkCmd creates the "execute-fork" subcommand.
-func newExecuteForkCmd(cfg Config) *cobra.Command {
+func newExecuteForkCmd(mcmsCfg Config) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "execute-fork",
 		Short:   executeForkShort,
@@ -80,9 +81,10 @@ func newExecuteForkCmd(cfg Config) *cobra.Command {
 				proposalKind:  flags.MustString(cmd.Flags().GetString("proposalKind")),
 				chainSelector: flags.MustUint64(cmd.Flags().GetUint64("selector")),
 				testSigner:    flags.MustBool(cmd.Flags().GetBool("test-signer")),
+				randomSalt:    flags.MustBool(cmd.Flags().GetBool("random-salt")),
 			}
 
-			return runExecuteFork(cmd, cfg, f)
+			return runExecuteFork(cmd, mcmsCfg, f)
 		},
 	}
 
@@ -94,18 +96,24 @@ func newExecuteForkCmd(cfg Config) *cobra.Command {
 
 	// Fork-specific flags
 	cmd.Flags().Bool("test-signer", false, "Use a test signer key")
+	cmd.Flags().Bool("random-salt", false, "Override the proposal's salt with a random value. "+
+		"Useful to run fork tests with proposals already executed onchain.")
 
 	return cmd
 }
 
 // runExecuteFork executes the execute-fork command logic.
-func runExecuteFork(cmd *cobra.Command, cfg Config, f executeForkFlags) error {
+func runExecuteFork(cmd *cobra.Command, mcmsCfg Config, f executeForkFlags) error {
 	ctx := cmd.Context()
-	deps := cfg.deps()
+	deps := mcmsCfg.deps()
 
 	// --- Load all data first ---
 
-	proposalCfg, err := LoadProposalConfig(ctx, cfg.Logger, cfg.Domain, deps, cfg.ProposalContextProvider,
+	loadOptions := []any{acceptExpiredProposal}
+	if f.randomSalt {
+		loadOptions = append(loadOptions, randomSalt)
+	}
+	proposalCfg, err := LoadProposalConfig(ctx, mcmsCfg.Logger, mcmsCfg.Domain, deps, mcmsCfg.ProposalContextProvider,
 		ProposalFlags{
 			ProposalPath:  f.proposalPath,
 			ProposalKind:  f.proposalKind,
@@ -113,7 +121,7 @@ func runExecuteFork(cmd *cobra.Command, cfg Config, f executeForkFlags) error {
 			ChainSelector: f.chainSelector,
 			Fork:          true,
 		},
-		acceptExpiredProposal,
+		loadOptions...,
 	)
 	if err != nil {
 		return fmt.Errorf("error creating config: %w", err)
@@ -140,7 +148,7 @@ func runExecuteFork(cmd *cobra.Command, cfg Config, f executeForkFlags) error {
 	}
 
 	// Execute the fork
-	return executeFork(ctx, cfg, forkCfg, f.testSigner)
+	return executeFork(ctx, mcmsCfg, forkCfg, f.testSigner)
 }
 
 // --- Fork execution logic (fork-specific) ---
@@ -266,7 +274,7 @@ func executeFork(
 	}
 
 	cfg.env.Name = cfg.envStr // ensure hooks load the correct env config for the fork
-	err = runHooksInternal(ctx, mcmsCfg, cfg.env, cfg.timelockProposal, reports)
+	err = runHooksInternal(mcmsCfg, cfg.env, cfg.timelockProposal, reports)
 	if err != nil {
 		lggr.Warnw("Failed to run post-execution hooks", "err", err)
 	}

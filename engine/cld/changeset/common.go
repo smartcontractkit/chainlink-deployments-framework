@@ -234,10 +234,6 @@ func (f WrappedChangeSet[C]) WithConfigResolver(resolver fresolvers.ConfigResolv
 	configProviderFromInput := func(rawInput string) (C, error) {
 		var zero C
 
-		if rawInput == "" {
-			return zero, errors.New("input is empty")
-		}
-
 		// Parse JSON input
 		inputObject, err := parseTypedInput(rawInput)
 		if err != nil {
