@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver/v3"
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	mcmsv2 "github.com/smartcontractkit/mcms"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
@@ -544,7 +543,6 @@ func Test_Artifacts_SaveChangesetOutput_LoadChangesetOutput(t *testing.T) {
 				},
 				Operations: []mcmstypes.BatchOperation{
 					{
-						OperationID:   gethcommon.HexToHash("0xe8baef452df2576e6867edad359ff541e1c3d8bd80c5c2acd737e8173c5f2245"),
 						ChainSelector: mcmstypes.ChainSelector(chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector),
 						Transactions: []mcmstypes.Transaction{
 							{
@@ -574,7 +572,6 @@ func Test_Artifacts_SaveChangesetOutput_LoadChangesetOutput(t *testing.T) {
 				},
 				Operations: []mcmstypes.BatchOperation{
 					{
-						OperationID:   gethcommon.HexToHash("0x445a3dd84afb93f57fd894e5f468d3167c0a015c21603c6c6ed97a0b40421b04"),
 						ChainSelector: mcmstypes.ChainSelector(chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector),
 						Transactions: []mcmstypes.Transaction{
 							{

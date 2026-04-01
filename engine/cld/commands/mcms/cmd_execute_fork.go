@@ -30,6 +30,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
+	cldfchangeset "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/changeset"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/flags"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/mcms/layout"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/text"
@@ -166,28 +167,33 @@ func executeFork(
 	}
 	if family != chainsel.FamilyEVM {
 		lggr.Infof("Skipping fork execution: chain selector %d is not EVM. Family is %s", cfg.chainSelector, family)
-
-		return nil // don't fail, just exit cleanly
+		return nil
 	}
 
-	if len(cfg.forkedEnv.ChainConfigs[cfg.chainSelector].HTTPRPCs) == 0 {
+	chainConfig, ok := cfg.forkedEnv.ChainConfigs[cfg.chainSelector]
+	if !ok {
+		return fmt.Errorf("failed to get forked env's chain config for chain %d", cfg.chainSelector)
+	}
+	if len(chainConfig.HTTPRPCs) == 0 {
 		return fmt.Errorf("no rpcs loaded in forked environment for chain %d (fork tests require public RPCs)", cfg.chainSelector)
 	}
-
-	// get the chain URL, chain ID and MCM contract address
-	url := cfg.forkedEnv.ChainConfigs[cfg.chainSelector].HTTPRPCs[0].External
-	anvilClient := rpc.New(url, nil)
-	chainID := cfg.forkedEnv.ChainConfigs[cfg.chainSelector].ChainID
+	forkClient, ok := cfg.forkedEnv.ForkClients[cfg.chainSelector]
+	if !ok {
+		return fmt.Errorf("failed to get fork client for chain %d", cfg.chainSelector)
+	}
 
 	// zkSync VM chains (zkSync Era, Lens, Cronos zkEVM, etc.) require anvil-zksync,
 	// not standard Anvil. Derive this from the loaded chain which is set by the chain
 	// provider, so it stays in sync with new zkSync chains automatically.
 	if evmChain, ok := cfg.blockchains.EVMChains()[cfg.chainSelector]; ok && evmChain.IsZkSyncVM {
 		lggr.Infof("Skipping fork execution: chain selector %d is zkSync VM (chain ID %s), which requires anvil-zksync instead of standard anvil",
-			cfg.chainSelector, chainID)
+			cfg.chainSelector, chainConfig.ChainID)
 
 		return nil
 	}
+
+	url := chainConfig.HTTPRPCs[0].External
+	anvilClient := rpc.New(url, nil)
 	mcmAddress := cfg.proposal.ChainMetadata[types.ChainSelector(cfg.chainSelector)].MCMAddress
 	timelockAddress := common.HexToAddress(cfg.timelockProposal.TimelockAddresses[types.ChainSelector(cfg.chainSelector)])
 
@@ -203,7 +209,7 @@ func executeFork(
 			blockchain.DefaultAnvilPublicKey,
 			blockchain.DefaultAnvilPublicKey,
 			url,
-			chainID,
+			chainConfig.ChainID,
 			mcmAddress,
 		); lerr != nil {
 			return fmt.Errorf("failed to set signer: %w", lerr)
@@ -220,7 +226,7 @@ func executeFork(
 			return fmt.Errorf("failed to overwrite proposal signature: %w", lerr)
 		}
 
-		lerr = overrideForkChainDeployerKeyWithTestSigner(cfg, chainID)
+		lerr = overrideForkChainDeployerKeyWithTestSigner(cfg, chainConfig.ChainID)
 		if lerr != nil {
 			return fmt.Errorf("failed to override fork deployer key to test signer: %w", lerr)
 		}
@@ -273,10 +279,11 @@ func executeFork(
 		return nil
 	}
 
+	forkContext := &cldfchangeset.EVMForkContext{ChainConfig: chainConfig, Client: forkClient}
 	cfg.env.Name = cfg.envStr // ensure hooks load the correct env config for the fork
-	err = runHooksInternal(mcmsCfg, cfg.env, cfg.timelockProposal, reports)
+	err = runHooksInternal(mcmsCfg, cfg.env, cfg.timelockProposal, reports, forkContext)
 	if err != nil {
-		lggr.Warnw("Failed to run post-execution hooks", "err", err)
+		return fmt.Errorf("failed to run post-proposal hooks: %w", err)
 	}
 
 	return nil

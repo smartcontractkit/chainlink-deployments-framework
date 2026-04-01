@@ -919,7 +919,7 @@ func Test_FluentAPI_HooksExtractedByAdd(t *testing.T) {
 		require.Len(t, entry.postProposalHooks, 1, "Add should extract post-proposal-hooks via hookCarrier")
 		require.Equal(t, "proposal-hook", entry.postProposalHooks[0].Name)
 
-		err := r.RunProposalHooks("test-cs", hookTestEnv(t), nil, "input", nil)
+		err := r.RunProposalHooks("test-cs", hookTestEnv(t), nil, "input", nil, nil)
 		require.NoError(t, err)
 		require.Equal(t, []string{"proposal"}, hookExecutions)
 	})
@@ -940,7 +940,7 @@ func Test_FluentAPI_HooksExtractedByAdd(t *testing.T) {
 		require.Len(t, entry.postProposalHooks, 1)
 		require.Equal(t, "proposal-hook", entry.postProposalHooks[0].Name)
 
-		err := r.RunProposalHooks("test-cs", hookTestEnv(t), nil, "input", nil)
+		err := r.RunProposalHooks("test-cs", hookTestEnv(t), nil, "input", nil, nil)
 		require.NoError(t, err)
 		require.Equal(t, []string{"proposal"}, hookExecutions)
 	})
