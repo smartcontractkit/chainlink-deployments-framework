@@ -21,6 +21,21 @@ jobs:
           only-new-issues: "false"
           golangci-lint-version: v2.8.0
 
+  ci-lint-operations-gen:
+    name: Lint operations-gen
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+      actions: read
+    steps:
+      - name: Linting operations-gen
+        uses: smartcontractkit/.github/actions/ci-lint-go@ci-lint-go/v2 # ci-lint-go@2.0.0
+        with:
+          only-new-issues: "false"
+          golangci-lint-version: v2.8.0
+          go-directory: tools/operations-gen
+
   ci-lint-misc:
     name: Lint GH Actions and scripts
     runs-on: ubuntu-latest
@@ -29,6 +44,22 @@ jobs:
     steps:
       - name: Linting Misc (yaml + sh files)
         uses: smartcontractkit/.github/actions/ci-lint-misc@eeb76b5870e3c17856d5a60fd064a053c023b5f5 # ci-lint-misc@1.0.0
+
+  ci-test-operations-gen:
+    name: Tests operations-gen
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      id-token: write
+      contents: read
+      actions: read
+    steps:
+      - name: Build and test operations-gen
+        uses: smartcontractkit/.github/actions/ci-test-go@dfcba48f05933158428bce867d790e3d5a9baa6b # ci-test-go@1.1.0
+        with:
+          go-test-cmd: cd tools/operations-gen && go test -race ./...
+          use-go-cache: true
+          artifact-name: unit-tests-operations-gen
 
   ci-test:
     name: Tests
@@ -219,7 +250,7 @@ jobs:
     name: Sonar Scan
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
-    needs: [ci-test, ci-test-provider-aptos, ci-test-provider-canton, ci-test-provider-ton, ci-test-provider-tron, ci-test-provider-stellar, ci-test-provider-fast, ci-test-catalog-remote, ci-lint-misc, ci-lint]
+    needs: [ci-test, ci-test-operations-gen, ci-test-provider-aptos, ci-test-provider-canton, ci-test-provider-ton, ci-test-provider-tron, ci-test-provider-stellar, ci-test-provider-fast, ci-test-catalog-remote, ci-lint-misc, ci-lint, ci-lint-operations-gen]
     permissions:
       contents: read
       actions: read
