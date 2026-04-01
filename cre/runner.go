@@ -1,6 +1,10 @@
 package cre
 
-import "context"
+import (
+	"context"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/cre/cliconfig"
+)
 
 // CallResult holds stdout, stderr, and exit code from a completed CRE call.
 type CallResult struct {
@@ -13,6 +17,7 @@ type CallResult struct {
 // The default implementation is created by [NewCLIRunner].
 type CLIRunner interface {
 	Run(ctx context.Context, args ...string) (*CallResult, error)
+	ContextRegistries() []cliconfig.ContextRegistryEntry
 }
 
 // Client is a placeholder for the future CRE v2 Go client. No methods yet—the real API will be added when the CRE Go library is integrated.

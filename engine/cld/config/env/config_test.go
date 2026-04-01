@@ -343,7 +343,6 @@ func Test_LoadEnv_BindsCREFromEnv(t *testing.T) { //nolint:paralleltest // see c
 	t.Setenv("CRE_TLS", "true")
 	t.Setenv("CRE_TIMEOUT", "30s")
 	t.Setenv("CRE_STORAGE_ADDR", "addr-1")
-	t.Setenv("CRE_DON_FAMILY", "family-1")
 
 	got, err := LoadEnv()
 	require.NoError(t, err)
@@ -354,7 +353,6 @@ func Test_LoadEnv_BindsCREFromEnv(t *testing.T) { //nolint:paralleltest // see c
 	require.Equal(t, "true", got.CRE.TLS)
 	require.Equal(t, "30s", got.CRE.Timeout)
 	require.Equal(t, "addr-1", got.CRE.StorageAddress)
-	require.Equal(t, "family-1", got.CRE.DonFamily)
 }
 
 func Test_YAML_Marshal_Unmarshal(t *testing.T) {

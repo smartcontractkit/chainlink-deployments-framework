@@ -152,10 +152,11 @@ type CREAuthConfig struct {
 // CREConfig is the configuration for CRE deploy and related CLI usage (credentials, endpoints, timeouts).
 type CREConfig struct {
 	Auth           CREAuthConfig `mapstructure:"auth" yaml:"auth"`
+	CLIEnv         string        `mapstructure:"cli_env" yaml:"cli_env"`
+	GatewayURL     string        `mapstructure:"gateway_url" yaml:"gateway_url"`
 	TLS            string        `mapstructure:"tls" yaml:"tls"`
 	Timeout        string        `mapstructure:"timeout" yaml:"timeout"`
 	StorageAddress string        `mapstructure:"storage_address" yaml:"storage_address"`
-	DonFamily      string        `mapstructure:"don_family" yaml:"don_family"`
 }
 
 // OnchainConfig wraps the configuration for the onchain components.
@@ -281,10 +282,11 @@ var (
 		"cre.auth.api_key":                                        {"CRE_API_KEY"},
 		"cre.auth.tenant_id":                                      {"CRE_TENANT_ID"},
 		"cre.auth.org_id":                                         {"CRE_ORG_ID"},
+		"cre.cli_env":                                             {"CRE_CLI_ENV"},
+		"cre.gateway_url":                                         {"CRE_GATEWAY_URL"},
 		"cre.tls":                                                 {"CRE_TLS"},
 		"cre.timeout":                                             {"CRE_TIMEOUT"},
 		"cre.storage_address":                                     {"CRE_STORAGE_ADDR"},
-		"cre.don_family":                                          {"CRE_DON_FAMILY"},
 	}
 )
 

@@ -43,8 +43,20 @@ func Load(
 	}
 
 	if loadcfg.creRunner == nil {
+		domainCfg, err := cfgdomain.Load(domain.ConfigDomainFilePath())
+		if err != nil {
+			return fdeployment.Environment{}, fmt.Errorf("load domain config for CRE defaults: %w", err)
+		}
+
+		var creOpts []cre.CLIRunnerOption
+		if envCfg, ok := domainCfg.Environments[envKey]; ok && envCfg.CRE != nil && envCfg.CRE.Enabled {
+			creOpts = append(creOpts, cre.WithContextRegistries(envCfg.CRE.DefaultRegistries))
+		}
+
 		apiKey := cfg.Env.CRE.Auth.APIKey
-		loadcfg.creRunner = cre.NewRunner(cre.WithCLI(cre.NewCLIRunner("", apiKey)))
+		loadcfg.creRunner = cre.NewRunner(cre.WithCLI(
+			cre.NewCLIRunner("", apiKey, creOpts...),
+		))
 	}
 
 	ab, err := envdir.AddressBook()

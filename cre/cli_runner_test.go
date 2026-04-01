@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/cre/cliconfig"
 )
 
 func TestNewCLIRunner(t *testing.T) {
@@ -255,6 +257,19 @@ func TestCLIRunner_StreamingWriters(t *testing.T) {
 			require.Equal(t, tt.wantStderr, string(res.Stderr), "captured stderr")
 		})
 	}
+}
+
+func TestCLIRunner_ContextRegistries(t *testing.T) {
+	t.Parallel()
+
+	want := []cliconfig.ContextRegistryEntry{{ID: "a", Label: "L", Type: "off-chain"}}
+	r := NewCLIRunner("/bin/sh", "", WithContextRegistries(want))
+	got := r.ContextRegistries()
+	require.Equal(t, want, got)
+	// Returned slice is a copy; mutating it does not affect the runner.
+	got[0].ID = "mutated"
+	got2 := r.ContextRegistries()
+	require.Equal(t, "a", got2[0].ID)
 }
 
 func TestCLIRunner_NilWriters_DefaultBehavior(t *testing.T) {

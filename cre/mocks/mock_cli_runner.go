@@ -8,6 +8,7 @@ import (
 	"context"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/cre"
+	"github.com/smartcontractkit/chainlink-deployments-framework/cre/cliconfig"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -36,6 +37,52 @@ type MockCLIRunner_Expecter struct {
 
 func (_m *MockCLIRunner) EXPECT() *MockCLIRunner_Expecter {
 	return &MockCLIRunner_Expecter{mock: &_m.Mock}
+}
+
+// ContextRegistries provides a mock function for the type MockCLIRunner
+func (_mock *MockCLIRunner) ContextRegistries() []cliconfig.ContextRegistryEntry {
+	ret := _mock.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for ContextRegistries")
+	}
+
+	var r0 []cliconfig.ContextRegistryEntry
+	if returnFunc, ok := ret.Get(0).(func() []cliconfig.ContextRegistryEntry); ok {
+		r0 = returnFunc()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]cliconfig.ContextRegistryEntry)
+		}
+	}
+	return r0
+}
+
+// MockCLIRunner_ContextRegistries_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ContextRegistries'
+type MockCLIRunner_ContextRegistries_Call struct {
+	*mock.Call
+}
+
+// ContextRegistries is a helper method to define mock.On call
+func (_e *MockCLIRunner_Expecter) ContextRegistries() *MockCLIRunner_ContextRegistries_Call {
+	return &MockCLIRunner_ContextRegistries_Call{Call: _e.mock.On("ContextRegistries")}
+}
+
+func (_c *MockCLIRunner_ContextRegistries_Call) Run(run func()) *MockCLIRunner_ContextRegistries_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockCLIRunner_ContextRegistries_Call) Return(contextRegistryEntrys []cliconfig.ContextRegistryEntry) *MockCLIRunner_ContextRegistries_Call {
+	_c.Call.Return(contextRegistryEntrys)
+	return _c
+}
+
+func (_c *MockCLIRunner_ContextRegistries_Call) RunAndReturn(run func() []cliconfig.ContextRegistryEntry) *MockCLIRunner_ContextRegistries_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // Run provides a mock function for the type MockCLIRunner

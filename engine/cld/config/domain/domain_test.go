@@ -475,6 +475,111 @@ jira:
 	}
 }
 
+func TestLoad_CREDefaultRegistries(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		configYAML  string
+		expectError bool
+		checkConfig func(*DomainConfig) error
+	}{
+		{
+			name: "valid cre.default_registries on env",
+			configYAML: `
+environments:
+  testnet:
+    network_types:
+      - testnet
+    cre:
+      enabled: true
+      default_registries:
+        - id: private
+          label: "Private (Chainlink-hosted)"
+          type: off-chain
+          secrets_auth_flows:
+            - browser
+            - owner-key-signing
+`,
+			expectError: false,
+			checkConfig: func(config *DomainConfig) error {
+				env := config.Environments["testnet"]
+				if env.CRE == nil || !env.CRE.Enabled {
+					return assert.AnError
+				}
+				if len(env.CRE.DefaultRegistries) != 1 {
+					return assert.AnError
+				}
+				r := env.CRE.DefaultRegistries[0]
+				if r.ID != "private" || r.Type != "off-chain" {
+					return assert.AnError
+				}
+				return nil
+			},
+		},
+		{
+			name: "missing registry id",
+			configYAML: `
+environments:
+  testnet:
+    network_types:
+      - testnet
+    cre:
+      enabled: true
+      default_registries:
+        - label: "x"
+          type: off-chain
+`,
+			expectError: true,
+		},
+		{
+			name: "cre disabled - registries ignored during validation",
+			configYAML: `
+environments:
+  testnet:
+    network_types:
+      - testnet
+    cre:
+      enabled: false
+`,
+			expectError: false,
+			checkConfig: func(config *DomainConfig) error {
+				env := config.Environments["testnet"]
+				if env.CRE == nil || env.CRE.Enabled {
+					return assert.AnError
+				}
+				return nil
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			tempDir := t.TempDir()
+			configPath := filepath.Join(tempDir, "domain.yaml")
+			err := os.WriteFile(configPath, []byte(tt.configYAML), 0600)
+			require.NoError(t, err)
+
+			config, err := Load(configPath)
+
+			if tt.expectError {
+				require.Error(t, err)
+				require.Nil(t, config)
+				return
+			}
+
+			require.NoError(t, err)
+			require.NotNil(t, config)
+
+			if tt.checkConfig != nil {
+				require.NoError(t, tt.checkConfig(config))
+			}
+		})
+	}
+}
+
 func TestLoad_InvalidYAML(t *testing.T) {
 	t.Parallel()
 

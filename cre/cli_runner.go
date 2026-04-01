@@ -8,6 +8,8 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/cre/cliconfig"
 )
 
 const defaultBinary = "cre"
@@ -18,24 +20,47 @@ const envCREAPIKey = "CRE_API_KEY" //nolint:gosec // G101: env var name, not a s
 // cliRunner runs the CRE CLI via os/exec. Run executes the binary and captures stdout/stderr.
 // It implements the [CLIRunner] interface.
 type cliRunner struct {
-	binaryPath string
-	apiKey     string
+	binaryPath               string
+	apiKey                   string
+	defaultContextRegistries []cliconfig.ContextRegistryEntry
 	// Stdout, if set, receives a real-time copy of the process stdout while it runs.
 	Stdout io.Writer
 	// Stderr, if set, receives a real-time copy of the process stderr while it runs.
 	Stderr io.Writer
 }
 
+// CLIRunnerOption configures a [cliRunner] from [NewCLIRunner].
+type CLIRunnerOption func(*cliRunner)
+
 var _ CLIRunner = (*cliRunner)(nil)
 
 // NewCLIRunner returns a [cliRunner] for the given binary path and API key.
 // An empty binaryPath defaults to "cre" (resolved via PATH).
-func NewCLIRunner(binaryPath string, apiKey string) *cliRunner {
+func NewCLIRunner(binaryPath string, apiKey string, opts ...CLIRunnerOption) *cliRunner {
 	if binaryPath == "" {
 		binaryPath = defaultBinary
 	}
 
-	return &cliRunner{binaryPath: binaryPath, apiKey: apiKey}
+	r := &cliRunner{binaryPath: binaryPath, apiKey: apiKey}
+	for _, o := range opts {
+		o(r)
+	}
+	return r
+}
+
+// WithContextRegistries sets registry entries for CRE context.yaml generation
+func WithContextRegistries(registries []cliconfig.ContextRegistryEntry) CLIRunnerOption {
+	return func(r *cliRunner) {
+		r.defaultContextRegistries = append([]cliconfig.ContextRegistryEntry{}, registries...)
+	}
+}
+
+// ContextRegistries returns a copy of domain defaults attached to this runner, or nil if none.
+func (r *cliRunner) ContextRegistries() []cliconfig.ContextRegistryEntry {
+	if r == nil || len(r.defaultContextRegistries) == 0 {
+		return nil
+	}
+	return append([]cliconfig.ContextRegistryEntry{}, r.defaultContextRegistries...)
 }
 
 // envForCRECLI returns the full environment for the subprocess: we copy os.Environ() so PATH and
