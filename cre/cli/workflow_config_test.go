@@ -86,25 +86,3 @@ func TestWriteWorkflowYAML(t *testing.T) {
 	require.NoError(t, yaml.Unmarshal(raw, &got))
 	require.Equal(t, "private", got["staging"].UserWorkflow.DeploymentRegistry)
 }
-
-func TestWriteContextYAML(t *testing.T) {
-	t.Parallel()
-	dir := t.TempDir()
-	cfg := ContextConfig{
-		defaultEnvName: {
-			TenantID:   "t",
-			DonFamily:  "zone-a",
-			GatewayURL: "https://gw",
-			Registries: []fcre.ContextRegistryEntry{{ID: "private", Label: "Private", Type: "off-chain"}},
-		},
-	}
-	path, err := WriteContextYAML(dir, cfg)
-	require.NoError(t, err)
-
-	raw, err := os.ReadFile(path)
-	require.NoError(t, err)
-	var got ContextConfig
-	require.NoError(t, yaml.Unmarshal(raw, &got))
-	require.Equal(t, "t", got[defaultEnvName].TenantID)
-	require.Len(t, got[defaultEnvName].Registries, 1)
-}

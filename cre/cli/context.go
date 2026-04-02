@@ -93,3 +93,8 @@ func FlatRegistries(cfg ContextConfig) []fcre.ContextRegistryEntry {
 
 	return out
 }
+
+// WriteContextYAML writes context.yaml to dir and returns the file path.
+func WriteContextYAML(dir string, cfg ContextConfig) (string, error) {
+	return writeYAMLFile(dir, "context.yaml", cfg)
+}

@@ -52,6 +52,7 @@ func NewCLIRunner(binaryPath string, apiKey string, opts ...CLIRunnerOption) *cl
 	for _, o := range opts {
 		o(r)
 	}
+
 	return r
 }
 
@@ -77,6 +78,7 @@ func (r *cliRunner) ContextRegistries() []fcre.ContextRegistryEntry {
 	if r == nil || len(r.defaultContextRegistries) == 0 {
 		return nil
 	}
+
 	return append([]fcre.ContextRegistryEntry{}, r.defaultContextRegistries...)
 }
 

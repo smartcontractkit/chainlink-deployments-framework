@@ -1,9 +1,11 @@
 package cli
 
 import (
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 
 	fcre "github.com/smartcontractkit/chainlink-deployments-framework/cre"
 
@@ -171,4 +173,26 @@ func TestFlatRegistries(t *testing.T) {
 	}
 	require.True(t, ids["a"])
 	require.True(t, ids["b"])
+}
+
+func TestWriteContextYAML(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	cfg := ContextConfig{
+		defaultEnvName: {
+			TenantID:   "t",
+			DonFamily:  "zone-a",
+			GatewayURL: "https://gw",
+			Registries: []fcre.ContextRegistryEntry{{ID: "private", Label: "Private", Type: "off-chain"}},
+		},
+	}
+	path, err := WriteContextYAML(dir, cfg)
+	require.NoError(t, err)
+
+	raw, err := os.ReadFile(path)
+	require.NoError(t, err)
+	var got ContextConfig
+	require.NoError(t, yaml.Unmarshal(raw, &got))
+	require.Equal(t, "t", got[defaultEnvName].TenantID)
+	require.Len(t, got[defaultEnvName].Registries, 1)
 }
