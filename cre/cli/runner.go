@@ -57,7 +57,7 @@ func NewCLIRunner(binaryPath string, apiKey string, opts ...CLIRunnerOption) *cl
 }
 
 // WithContextRegistries sets domain-level registry entries for CRE context.yaml generation
-// (e.g. loaded from domain.yaml cre_context_defaults by engine/cld/environment.Load).
+// (e.g. loaded from domain.yaml cre.default_registries by engine/cld/environment.Load).
 func WithContextRegistries(registries []fcre.ContextRegistryEntry) CLIRunnerOption {
 	return func(r *cliRunner) {
 		r.defaultContextRegistries = append([]fcre.ContextRegistryEntry{}, registries...)
