@@ -31,17 +31,13 @@ func WriteCREEnvFile(workDir, contextYAMLPath string, cfg cfgenv.CREConfig, donF
 		return "", nil
 	}
 
+	if err := os.MkdirAll(workDir, 0o700); err != nil {
+		return "", fmt.Errorf("mkdir %s: %w", workDir, err)
+	}
+
 	content := strings.Join(lines, "\n") + "\n"
 
-	if err := os.MkdirAll(workDir, 0o755); err != nil {
-		return "", err
-	}
-
-	if err := os.WriteFile(envPath, []byte(content), 0o600); err != nil {
-		return "", err
-	}
-
-	return envPath, nil
+	return envPath, os.WriteFile(envPath, []byte(content), 0o600)
 }
 
 type kv struct {
