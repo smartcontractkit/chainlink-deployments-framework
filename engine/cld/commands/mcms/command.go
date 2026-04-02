@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/changeset"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/text"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	proposalanalyzer "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
@@ -42,6 +43,9 @@ type Config struct {
 
 	// ProposalRenderers are custom renderers registered into the v2 proposal analysis engine.
 	ProposalRenderers []proposalrenderer.Renderer
+
+	// LoadChangeset are custom changeset loading functions. Optional
+	LoadChangesets func(envName string) (*changeset.ChangesetsRegistry, error)
 
 	// Deps holds optional dependencies that can be overridden.
 	// If fields are nil, production defaults are used.
@@ -102,6 +106,7 @@ func NewCommand(cfg Config) (*cobra.Command, error) {
 	cmd.AddCommand(newAnalyzeProposalV2Cmd(cfg))
 	cmd.AddCommand(newConvertUpfCmd(cfg))
 	cmd.AddCommand(newExecuteForkCmd(cfg))
+	cmd.AddCommand(newRunProposalHooksCmd(cfg))
 
 	return cmd, nil
 }
