@@ -54,7 +54,7 @@ func BuildContextConfig(
 		registries = append([]fcre.ContextRegistryEntry{}, contextOverrides.Registries...)
 	}
 	if len(registries) == 0 {
-		return nil, errors.New("CRE context registries: empty after merge (set domain cre_context_defaults.default_registries or input.context.registries)")
+		return nil, errors.New("CRE context registries: empty after merge (set domain cre.default_registries or input.context.registries)")
 	}
 
 	return ContextConfig{
