@@ -26,6 +26,16 @@ type runner struct {
 
 var _ Runner = (*runner)(nil)
 
+const (
+	RegistryTypeOnChain  = "on-chain"
+	RegistryTypeOffChain = "off-chain"
+)
+
+var validRegistryTypes = []string{
+	RegistryTypeOnChain,
+	RegistryTypeOffChain,
+}
+
 // RunnerOption configures a [runner] instance for [NewRunner].
 type RunnerOption func(*runner)
 
@@ -89,8 +99,13 @@ func (r ContextRegistryEntry) Validate() error {
 	if strings.TrimSpace(r.Label) == "" {
 		return fmt.Errorf("registry %q: label is required", r.ID)
 	}
-	if strings.TrimSpace(r.Type) == "" {
+
+	registryType := strings.TrimSpace(r.Type)
+	if registryType == "" {
 		return fmt.Errorf("registry %q: type is required", r.ID)
+	}
+	if !isValidRegistryType(registryType) {
+		return fmt.Errorf("registry %q: invalid type %q (allowed: %s)", r.ID, r.Type, strings.Join(validRegistryTypes, ", "))
 	}
 
 	return nil
@@ -103,4 +118,14 @@ type CLIRunner interface {
 	Run(ctx context.Context, env map[string]string, args ...string) (*CallResult, error)
 	// ContextRegistries returns workflow registries defined from domain.yaml.
 	ContextRegistries() []ContextRegistryEntry
+}
+
+func isValidRegistryType(value string) bool {
+	for _, validType := range validRegistryTypes {
+		if strings.EqualFold(value, validType) {
+			return true
+		}
+	}
+
+	return false
 }

@@ -108,6 +108,19 @@ func Test_envForCRECLI(t *testing.T) {
 				"CUSTOM_KEY=old-custom",
 			},
 		},
+		{
+			name:   "extra_env_cannot_override_runner_api_key",
+			apiKey: "runner-api",
+			extraEnv: map[string]string{
+				envCREAPIKey: "override-api",
+			},
+			mustContain: []string{
+				envCREAPIKey + "=runner-api",
+			},
+			mustNotContain: []string{
+				envCREAPIKey + "=override-api",
+			},
+		},
 	}
 
 	for _, tt := range tests {

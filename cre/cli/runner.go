@@ -52,7 +52,6 @@ func NewCLIRunner(binaryPath string, apiKey string, opts ...CLIRunnerOption) *cl
 	for _, o := range opts {
 		o(r)
 	}
-
 	return r
 }
 
@@ -78,7 +77,6 @@ func (r *cliRunner) ContextRegistries() []fcre.ContextRegistryEntry {
 	if r == nil || len(r.defaultContextRegistries) == 0 {
 		return nil
 	}
-
 	return append([]fcre.ContextRegistryEntry{}, r.defaultContextRegistries...)
 }
 
@@ -117,6 +115,10 @@ func envForCRECLI(apiKey string, extraEnv map[string]string) []string {
 		out = append(out, envCREAPIKey+"="+apiKey)
 	}
 	for k, v := range extraEnv {
+		// Keep runner-configured API key when present.
+		if apiKey != "" && k == envCREAPIKey {
+			continue
+		}
 		out = append(out, k+"="+v)
 	}
 

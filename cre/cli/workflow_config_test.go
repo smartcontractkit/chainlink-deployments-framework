@@ -44,6 +44,15 @@ func TestContextRegistryEntry_Validate(t *testing.T) {
 			entry:   fcre.ContextRegistryEntry{ID: "private", Label: "Private"},
 			wantErr: `registry "private": type is required`,
 		},
+		{
+			name:    "invalid type",
+			entry:   fcre.ContextRegistryEntry{ID: "private", Label: "Private", Type: "private"},
+			wantErr: `registry "private": invalid type "private" (allowed: on-chain, off-chain)`,
+		},
+		{
+			name:  "valid type is case insensitive",
+			entry: fcre.ContextRegistryEntry{ID: "private", Label: "Private", Type: "On-Chain"},
+		},
 	}
 
 	for _, tt := range tests {
