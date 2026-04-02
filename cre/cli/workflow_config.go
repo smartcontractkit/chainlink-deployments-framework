@@ -6,8 +6,6 @@ import (
 	"path/filepath"
 
 	"gopkg.in/yaml.v3"
-
-	fcre "github.com/smartcontractkit/chainlink-deployments-framework/cre"
 )
 
 // UserWorkflow is the user-workflow section of workflow.yaml.
@@ -32,33 +30,9 @@ type WorkflowTarget struct {
 // WorkflowConfig is the full workflow.yaml document.
 type WorkflowConfig map[string]WorkflowTarget
 
-// ContextOverrides holds optional user-level overrides for the generated context.yaml.
-// When fields are empty, values fall back to CRE_* process environment variables.
-type ContextOverrides struct {
-	TenantID   string                      `json:"tenantId,omitempty" yaml:"tenantId,omitempty"`
-	GatewayURL string                      `json:"gatewayUrl,omitempty" yaml:"gatewayUrl,omitempty"`
-	Registries []fcre.ContextRegistryEntry `json:"registries,omitempty" yaml:"registries,omitempty"`
-}
-
-// ContextEnvironment is one environment block (e.g. PRODUCTION) in context.yaml.
-type ContextEnvironment struct {
-	TenantID   string                      `json:"tenantId" yaml:"tenant_id"`
-	DonFamily  string                      `json:"donFamily" yaml:"don_family"`
-	GatewayURL string                      `json:"gatewayUrl" yaml:"gateway_url"`
-	Registries []fcre.ContextRegistryEntry `json:"registries,omitempty" yaml:"registries,omitempty"`
-}
-
-// ContextConfig is the full context.yaml document (environment name → config).
-type ContextConfig map[string]ContextEnvironment
-
 // WriteWorkflowYAML writes workflow.yaml to dir and returns the file path.
 func WriteWorkflowYAML(dir string, cfg WorkflowConfig) (string, error) {
 	return writeYAMLFile(dir, "workflow.yaml", cfg)
-}
-
-// WriteContextYAML writes context.yaml to dir and returns the file path.
-func WriteContextYAML(dir string, cfg ContextConfig) (string, error) {
-	return writeYAMLFile(dir, "context.yaml", cfg)
 }
 
 func writeYAMLFile(dir, name string, v any) (string, error) {

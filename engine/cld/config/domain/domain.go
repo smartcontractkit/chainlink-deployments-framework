@@ -33,7 +33,7 @@ func (d DatastoreType) IsValid() bool {
 	return d == DatastoreTypeFile || d == DatastoreTypeCatalog || d == DatastoreTypeAll
 }
 
-// CREConfig represents the CRE (Chainlink Runtime Environment) configuration for a domain environment.
+// CREConfig represents the CRE (Chainlink Runtime Environment) configuration for a domain.
 type CREConfig struct {
 	Enabled           bool                       `mapstructure:"enabled" yaml:"enabled"`
 	DefaultRegistries []cre.ContextRegistryEntry `mapstructure:"default_registries" yaml:"default_registries,omitempty"`
