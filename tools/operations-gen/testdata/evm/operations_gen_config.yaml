@@ -1,0 +1,20 @@
+version: "1.0.0"
+chain_family: evm
+
+input:
+  base_path: "."
+
+output:
+  base_path: "."
+
+contracts:
+  - contract_name: LinkToken
+    version: "1.0.0"
+    abi_file: "link_token.json"
+    functions:
+      - name: transfer
+        access: owner
+      - name: balanceOf
+        access: public
+      - name: approve
+        access: public
