@@ -2,6 +2,7 @@ package mcms
 
 import (
 	"context"
+	"math/big"
 
 	"github.com/smartcontractkit/mcms"
 	"github.com/smartcontractkit/mcms/types"
@@ -21,6 +22,15 @@ type EnvironmentLoaderFunc func(
 	opts ...cldfenvironment.LoadEnvironmentOption,
 ) (cldf.Environment, error)
 
+// ForkEnvironmentLoaderFunc loads a fork environment.
+type ForkEnvironmentLoaderFunc func(
+	ctx context.Context,
+	domain domain.Domain,
+	envKey string,
+	blockNumbers map[uint64]*big.Int,
+	opts ...cldfenvironment.LoadEnvironmentOption,
+) (cldfenvironment.ForkedEnvironment, error)
+
 // ProposalLoaderFunc loads a proposal from a file.
 type ProposalLoaderFunc func(kind types.ProposalKind, path string) (mcms.ProposalInterface, error)
 
@@ -28,6 +38,9 @@ type ProposalLoaderFunc func(kind types.ProposalKind, path string) (mcms.Proposa
 type Deps struct {
 	// EnvironmentLoader loads a deployment environment.
 	EnvironmentLoader EnvironmentLoaderFunc
+
+	// ForkEnvironmentLoader loads a deployment environment.
+	ForkEnvironmentLoader ForkEnvironmentLoaderFunc
 
 	// ProposalLoader loads a proposal from a file.
 	ProposalLoader ProposalLoaderFunc
@@ -37,6 +50,9 @@ type Deps struct {
 func (d *Deps) applyDefaults() {
 	if d.EnvironmentLoader == nil {
 		d.EnvironmentLoader = defaultEnvironmentLoader
+	}
+	if d.ForkEnvironmentLoader == nil {
+		d.ForkEnvironmentLoader = cldfenvironment.LoadFork
 	}
 	if d.ProposalLoader == nil {
 		d.ProposalLoader = mcms.LoadProposal

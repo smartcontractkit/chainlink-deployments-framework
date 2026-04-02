@@ -825,78 +825,125 @@ func Test_WithHooks_ThenWith_AdditiveAfterThenWith(t *testing.T) {
 func Test_FluentAPI_HooksExtractedByAdd(t *testing.T) {
 	t.Parallel()
 
-	var order []string
-
-	pre := PreHook{
-		HookDefinition: HookDefinition{Name: "fluent-pre"},
-		Func: func(_ context.Context, _ PreHookParams) error {
-			order = append(order, "fluent-pre")
-			return nil
-		},
+	thenWith := func(_ fdeployment.Environment, o fdeployment.ChangesetOutput) (fdeployment.ChangesetOutput, error) {
+		return o, nil
 	}
-	post := PostHook{
-		HookDefinition: HookDefinition{Name: "fluent-post"},
-		Func: func(_ context.Context, _ PostHookParams) error {
-			order = append(order, "fluent-post")
-			return nil
-		},
+	newRegistry := func(cs ChangeSet) *ChangesetsRegistry {
+		r := NewChangesetsRegistry()
+		r.SetValidate(false)
+		r.Add("test-cs", cs)
+
+		return r
 	}
-
-	cs := Configure(MyChangeSet).With("cfg").
-		WithPreHooks(pre).
-		WithPostHooks(post)
-
-	r := NewChangesetsRegistry()
-	r.SetValidate(false)
-	r.Add("test-cs", cs)
-
-	entry := r.entries["test-cs"]
-	require.Len(t, entry.preHooks, 1, "Add should extract pre-hooks via hookCarrier")
-	require.Len(t, entry.postHooks, 1, "Add should extract post-hooks via hookCarrier")
-
-	_, err := r.Apply("test-cs", hookTestEnv(t))
-	require.NoError(t, err)
-	assert.Equal(t, []string{"fluent-pre", "fluent-post"}, order)
-}
-
-func Test_FluentAPI_ThenWith_HooksExtractedByAdd(t *testing.T) {
-	t.Parallel()
-
-	var order []string
-
-	pre := PreHook{
-		HookDefinition: HookDefinition{Name: "pp-pre"},
-		Func: func(_ context.Context, _ PreHookParams) error {
-			order = append(order, "pp-pre")
-			return nil
-		},
+	preHook := func(order *[]string) PreHook {
+		return PreHook{
+			HookDefinition: HookDefinition{Name: "pre"},
+			Func: func(_ context.Context, _ PreHookParams) error {
+				*order = append(*order, "pre")
+				return nil
+			},
+		}
 	}
-	post := PostHook{
-		HookDefinition: HookDefinition{Name: "pp-post"},
-		Func: func(_ context.Context, _ PostHookParams) error {
-			order = append(order, "pp-post")
-			return nil
-		},
+	postHook := func(order *[]string) PostHook {
+		return PostHook{
+			HookDefinition: HookDefinition{Name: "post"},
+			Func: func(_ context.Context, _ PostHookParams) error {
+				*order = append(*order, "post")
+				return nil
+			},
+		}
+	}
+	proposalHook := func(order *[]string) PostProposalHook {
+		return PostProposalHook{
+			HookDefinition: HookDefinition{Name: "proposal-hook"},
+			Func: func(_ context.Context, _ PostProposalHookParams) error {
+				*order = append(*order, "proposal")
+				return nil
+			},
+		}
 	}
 
-	cs := Configure(MyChangeSet).With("cfg").
-		WithPreHooks(pre).
-		ThenWith(func(_ fdeployment.Environment, o fdeployment.ChangesetOutput) (fdeployment.ChangesetOutput, error) {
-			return o, nil
-		}).
-		WithPostHooks(post)
+	t.Run("pre and post hooks", func(t *testing.T) {
+		t.Parallel()
 
-	r := NewChangesetsRegistry()
-	r.SetValidate(false)
-	r.Add("test-cs", cs)
+		hookExecutions := []string{}
 
-	entry := r.entries["test-cs"]
-	require.Len(t, entry.preHooks, 1)
-	require.Len(t, entry.postHooks, 1)
+		cs := Configure(MyChangeSet).With("cfg").
+			WithPreHooks(preHook(&hookExecutions)).
+			WithPostHooks(postHook(&hookExecutions))
 
-	_, err := r.Apply("test-cs", hookTestEnv(t))
-	require.NoError(t, err)
-	assert.Equal(t, []string{"pp-pre", "pp-post"}, order)
+		r := newRegistry(cs)
+
+		entry := r.entries["test-cs"]
+		require.Len(t, entry.preHooks, 1)
+		require.Len(t, entry.postHooks, 1)
+
+		_, err := r.Apply("test-cs", hookTestEnv(t))
+		require.NoError(t, err)
+		require.Equal(t, []string{"pre", "post"}, hookExecutions)
+	})
+
+	t.Run("pre and post hooks through ThenWith", func(t *testing.T) {
+		t.Parallel()
+
+		hookExecutions := []string{}
+
+		cs := Configure(MyChangeSet).With("cfg").
+			WithPreHooks(preHook(&hookExecutions)).
+			ThenWith(thenWith).
+			WithPostHooks(postHook(&hookExecutions))
+
+		r := newRegistry(cs)
+
+		entry := r.entries["test-cs"]
+		require.Len(t, entry.preHooks, 1)
+		require.Len(t, entry.postHooks, 1)
+
+		_, err := r.Apply("test-cs", hookTestEnv(t))
+		require.NoError(t, err)
+		require.Equal(t, []string{"pre", "post"}, hookExecutions)
+	})
+
+	t.Run("post-proposal hooks", func(t *testing.T) {
+		t.Parallel()
+
+		hookExecutions := []string{}
+
+		cs := Configure(MyChangeSet).
+			With("cfg").
+			WithPostProposalHooks(proposalHook(&hookExecutions))
+
+		r := newRegistry(cs)
+
+		entry := r.entries["test-cs"]
+		require.Len(t, entry.postProposalHooks, 1, "Add should extract post-proposal-hooks via hookCarrier")
+		require.Equal(t, "proposal-hook", entry.postProposalHooks[0].Name)
+
+		err := r.RunProposalHooks("test-cs", hookTestEnv(t), nil, "input", nil)
+		require.NoError(t, err)
+		require.Equal(t, []string{"proposal"}, hookExecutions)
+	})
+
+	t.Run("post-proposal hooks through ThenWith", func(t *testing.T) {
+		t.Parallel()
+
+		hookExecutions := []string{}
+
+		cs := Configure(MyChangeSet).
+			With("cfg").
+			WithPostProposalHooks(proposalHook(&hookExecutions)).
+			ThenWith(thenWith)
+
+		r := newRegistry(cs)
+
+		entry := r.entries["test-cs"]
+		require.Len(t, entry.postProposalHooks, 1)
+		require.Equal(t, "proposal-hook", entry.postProposalHooks[0].Name)
+
+		err := r.RunProposalHooks("test-cs", hookTestEnv(t), nil, "input", nil)
+		require.NoError(t, err)
+		require.Equal(t, []string{"proposal"}, hookExecutions)
+	})
 }
 
 func Test_WithHooks_SliceIsolation(t *testing.T) {
@@ -1118,4 +1165,83 @@ func Test_Apply_HappyPath_WithHooks(t *testing.T) {
 	assert.True(t, cs.applyCalled, "changeset should have been called")
 	assert.True(t, preHookRan, "pre-hook should have run")
 	assert.True(t, postHookRan, "post-hook should have run")
+}
+
+func Test_WithPostProposalHooks(t *testing.T) {
+	t.Parallel()
+
+	noop := func(_ context.Context, _ PostProposalHookParams) error { return nil }
+	h1 := PostProposalHook{HookDefinition: HookDefinition{Name: "h1"}, Func: noop}
+	h2 := PostProposalHook{HookDefinition: HookDefinition{Name: "h2"}, Func: noop}
+	thenWith := func(_ fdeployment.Environment, o fdeployment.ChangesetOutput) (fdeployment.ChangesetOutput, error) {
+		return o, nil
+	}
+
+	t.Run("additive across multiple calls", func(t *testing.T) {
+		t.Parallel()
+
+		cs := Configure(MyChangeSet).With("cfg").
+			WithPostProposalHooks(h1).
+			WithPostProposalHooks(h2)
+
+		hooks := cs.(hookCarrier).getPostProposalHooks()
+		require.Len(t, hooks, 2)
+		require.Equal(t, "h1", hooks[0].Name)
+		require.Equal(t, "h2", hooks[1].Name)
+	})
+
+	t.Run("slice isolation between branches", func(t *testing.T) {
+		t.Parallel()
+
+		base := Configure(MyChangeSet).With("cfg").WithPostProposalHooks(h1)
+		branch := base.WithPostProposalHooks(h2)
+
+		require.Len(t, base.(hookCarrier).getPostProposalHooks(), 1)
+		require.Len(t, branch.(hookCarrier).getPostProposalHooks(), 2)
+	})
+
+	t.Run("single hook carried forward through ThenWith", func(t *testing.T) {
+		t.Parallel()
+
+		cs := Configure(MyChangeSet).With("cfg").
+			WithPostProposalHooks(h1).
+			ThenWith(thenWith)
+
+		hooks := cs.(hookCarrier).getPostProposalHooks()
+		require.Len(t, hooks, 1)
+		require.Equal(t, "h1", hooks[0].Name)
+	})
+
+	t.Run("multiple hooks carried forward through ThenWith", func(t *testing.T) {
+		t.Parallel()
+
+		cs := Configure(MyChangeSet).With("cfg").
+			WithPostProposalHooks(h1).
+			WithPostProposalHooks(h2).
+			ThenWith(thenWith)
+
+		hooks := cs.(hookCarrier).getPostProposalHooks()
+		require.Len(t, hooks, 2)
+		require.Equal(t, "h1", hooks[0].Name)
+		require.Equal(t, "h2", hooks[1].Name)
+	})
+}
+
+func Test_Changesets_AddGlobalPostProposalHooks(t *testing.T) {
+	t.Parallel()
+
+	r := NewChangesetsRegistry()
+
+	h1 := PostProposalHook{HookDefinition: HookDefinition{Name: "h1"}}
+	h2 := PostProposalHook{HookDefinition: HookDefinition{Name: "h2"}}
+	h3 := PostProposalHook{HookDefinition: HookDefinition{Name: "h3"}}
+
+	r.AddGlobalPostProposalHooks(h1, h2)
+	require.Len(t, r.globalPostProposalHooks, 2)
+	require.Equal(t, "h1", r.globalPostProposalHooks[0].Name)
+	require.Equal(t, "h2", r.globalPostProposalHooks[1].Name)
+
+	r.AddGlobalPostProposalHooks(h3)
+	require.Len(t, r.globalPostProposalHooks, 3)
+	require.Equal(t, "h3", r.globalPostProposalHooks[2].Name)
 }

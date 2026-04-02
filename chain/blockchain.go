@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"slices"
 
+	"github.com/samber/lo"
 	chainsel "github.com/smartcontractkit/chain-selectors"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos"
@@ -170,6 +171,13 @@ func (b BlockChains) CantonChains() map[uint64]canton.Chain {
 // StellarChains returns a map of all Stellar chains with their selectors.
 func (b BlockChains) StellarChains() map[uint64]stellar.Chain {
 	return getChainsByType[stellar.Chain, *stellar.Chain](b)
+}
+
+func (b BlockChains) ReadOnly() BlockChains {
+	return NewBlockChains(lo.MapValues(b.chains, func(c BlockChain, _ uint64) BlockChain {
+		// TODO: define ReadOnly() method for each chain, then replace with `c.ReadOnly()`
+		return c
+	}))
 }
 
 // ChainSelectorsOption defines a function type for configuring ChainSelectors
