@@ -154,5 +154,13 @@ packages:
       filename: "mock_{{.InterfaceName | snakecase}}.go"
       structname: "{{.Mock}}{{.InterfaceName}}"
     interfaces:
-      CLIRunner:
       Client:
+  github.com/smartcontractkit/chainlink-deployments-framework/cre/cli:
+    config:
+      all: false
+      pkgname: "cremocks"
+      dir: "cre/mocks"
+      filename: "mock_{{.InterfaceName | snakecase}}.go"
+      structname: "{{.Mock}}{{.InterfaceName}}"
+    interfaces:
+      CLIRunner:

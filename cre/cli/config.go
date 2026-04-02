@@ -1,13 +1,13 @@
-package cliconfig
+package cli
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"gopkg.in/yaml.v3"
+
+	fcre "github.com/smartcontractkit/chainlink-deployments-framework/cre"
 )
 
 // UserWorkflow is the user-workflow section of workflow.yaml.
@@ -32,44 +32,20 @@ type WorkflowTarget struct {
 // WorkflowConfig is the full workflow.yaml document.
 type WorkflowConfig map[string]WorkflowTarget
 
-// ContextRegistryEntry is one registry in context.yaml.
-type ContextRegistryEntry struct {
-	ID               string   `json:"id" mapstructure:"id" yaml:"id"`
-	Label            string   `json:"label" mapstructure:"label" yaml:"label"`
-	Type             string   `json:"type" mapstructure:"type" yaml:"type"` // "on-chain" or "off-chain"
-	Address          string   `json:"address,omitempty" mapstructure:"address,omitempty" yaml:"address,omitempty"`
-	ChainName        string   `json:"chainName,omitempty" mapstructure:"chain_name,omitempty" yaml:"chain_name,omitempty"`
-	SecretsAuthFlows []string `json:"secretsAuthFlows,omitempty" mapstructure:"secrets_auth_flows,omitempty" yaml:"secrets_auth_flows,omitempty"`
-}
-
-// Validate checks that required fields (id, label, type) are non-empty.
-func (r ContextRegistryEntry) Validate() error {
-	if strings.TrimSpace(r.ID) == "" {
-		return errors.New("registry id is required")
-	}
-	if strings.TrimSpace(r.Label) == "" {
-		return fmt.Errorf("registry %q: label is required", r.ID)
-	}
-	if strings.TrimSpace(r.Type) == "" {
-		return fmt.Errorf("registry %q: type is required", r.ID)
-	}
-	return nil
-}
-
 // ContextOverrides holds optional user-level overrides for the generated context.yaml.
 // When fields are empty, values fall back to CRE_* process environment variables.
 type ContextOverrides struct {
-	TenantID   string                 `json:"tenantId,omitempty" yaml:"tenantId,omitempty"`
-	GatewayURL string                 `json:"gatewayUrl,omitempty" yaml:"gatewayUrl,omitempty"`
-	Registries []ContextRegistryEntry `json:"registries,omitempty" yaml:"registries,omitempty"`
+	TenantID   string                      `json:"tenantId,omitempty" yaml:"tenantId,omitempty"`
+	GatewayURL string                      `json:"gatewayUrl,omitempty" yaml:"gatewayUrl,omitempty"`
+	Registries []fcre.ContextRegistryEntry `json:"registries,omitempty" yaml:"registries,omitempty"`
 }
 
 // ContextEnvironment is one environment block (e.g. PRODUCTION) in context.yaml.
 type ContextEnvironment struct {
-	TenantID   string                 `json:"tenantId" yaml:"tenant_id"`
-	DonFamily  string                 `json:"donFamily" yaml:"don_family"`
-	GatewayURL string                 `json:"gatewayUrl" yaml:"gateway_url"`
-	Registries []ContextRegistryEntry `json:"registries,omitempty" yaml:"registries,omitempty"`
+	TenantID   string                      `json:"tenantId" yaml:"tenant_id"`
+	DonFamily  string                      `json:"donFamily" yaml:"don_family"`
+	GatewayURL string                      `json:"gatewayUrl" yaml:"gateway_url"`
+	Registries []fcre.ContextRegistryEntry `json:"registries,omitempty" yaml:"registries,omitempty"`
 }
 
 // ContextConfig is the full context.yaml document (environment name → config).
@@ -97,5 +73,6 @@ func writeYAMLFile(dir, name string, v any) (string, error) {
 	if err := os.WriteFile(path, out, 0o600); err != nil {
 		return "", fmt.Errorf("write %s: %w", path, err)
 	}
+
 	return path, nil
 }

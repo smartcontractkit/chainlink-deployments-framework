@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/viper"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/cre/cliconfig"
+	"github.com/smartcontractkit/chainlink-deployments-framework/cre"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/jira"
 )
 
@@ -35,8 +35,8 @@ func (d DatastoreType) IsValid() bool {
 
 // CREConfig represents the CRE (Chainlink Runtime Environment) configuration for a domain environment.
 type CREConfig struct {
-	Enabled           bool                             `mapstructure:"enabled" yaml:"enabled"`
-	DefaultRegistries []cliconfig.ContextRegistryEntry `mapstructure:"default_registries" yaml:"default_registries,omitempty"`
+	Enabled           bool                       `mapstructure:"enabled" yaml:"enabled"`
+	DefaultRegistries []cre.ContextRegistryEntry `mapstructure:"default_registries" yaml:"default_registries,omitempty"`
 }
 
 // Environment represents a single environment configuration.
@@ -48,10 +48,11 @@ type Environment struct {
 
 // creDefaultRegistries returns the CRE default registries when CRE is enabled,
 // or nil otherwise.
-func (e *Environment) creDefaultRegistries() []cliconfig.ContextRegistryEntry {
+func (e *Environment) creDefaultRegistries() []cre.ContextRegistryEntry {
 	if e.CRE == nil || !e.CRE.Enabled {
 		return nil
 	}
+
 	return e.CRE.DefaultRegistries
 }
 

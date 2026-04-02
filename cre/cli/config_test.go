@@ -1,4 +1,4 @@
-package cliconfig
+package cli
 
 import (
 	"os"
@@ -6,6 +6,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	fcre "github.com/smartcontractkit/chainlink-deployments-framework/cre"
 
 	"gopkg.in/yaml.v3"
 )
@@ -15,31 +17,31 @@ func TestContextRegistryEntry_Validate(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		entry   ContextRegistryEntry
+		entry   fcre.ContextRegistryEntry
 		wantErr string
 	}{
 		{
 			name:  "valid entry",
-			entry: ContextRegistryEntry{ID: "private", Label: "Private", Type: "off-chain"},
+			entry: fcre.ContextRegistryEntry{ID: "private", Label: "Private", Type: "off-chain"},
 		},
 		{
 			name:    "missing id",
-			entry:   ContextRegistryEntry{Label: "Private", Type: "off-chain"},
+			entry:   fcre.ContextRegistryEntry{Label: "Private", Type: "off-chain"},
 			wantErr: "registry id is required",
 		},
 		{
 			name:    "blank id",
-			entry:   ContextRegistryEntry{ID: "  ", Label: "Private", Type: "off-chain"},
+			entry:   fcre.ContextRegistryEntry{ID: "  ", Label: "Private", Type: "off-chain"},
 			wantErr: "registry id is required",
 		},
 		{
 			name:    "missing label",
-			entry:   ContextRegistryEntry{ID: "private", Type: "off-chain"},
+			entry:   fcre.ContextRegistryEntry{ID: "private", Type: "off-chain"},
 			wantErr: `registry "private": label is required`,
 		},
 		{
 			name:    "missing type",
-			entry:   ContextRegistryEntry{ID: "private", Label: "Private"},
+			entry:   fcre.ContextRegistryEntry{ID: "private", Label: "Private"},
 			wantErr: `registry "private": type is required`,
 		},
 	}
@@ -80,11 +82,11 @@ func TestWriteContextYAML(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	cfg := ContextConfig{
-		"PRODUCTION": {
+		defaultEnvName: {
 			TenantID:   "t",
 			DonFamily:  "zone-a",
 			GatewayURL: "https://gw",
-			Registries: []ContextRegistryEntry{{ID: "private", Label: "Private", Type: "off-chain"}},
+			Registries: []fcre.ContextRegistryEntry{{ID: "private", Label: "Private", Type: "off-chain"}},
 		},
 	}
 	path, err := WriteContextYAML(dir, cfg)
@@ -94,6 +96,6 @@ func TestWriteContextYAML(t *testing.T) {
 	require.NoError(t, err)
 	var got ContextConfig
 	require.NoError(t, yaml.Unmarshal(raw, &got))
-	require.Equal(t, "t", got["PRODUCTION"].TenantID)
-	require.Len(t, got["PRODUCTION"].Registries, 1)
+	require.Equal(t, "t", got[defaultEnvName].TenantID)
+	require.Len(t, got[defaultEnvName].Registries, 1)
 }

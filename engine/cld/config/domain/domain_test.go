@@ -514,6 +514,7 @@ environments:
 				if r.ID != "private" || r.Type != "off-chain" {
 					return assert.AnError
 				}
+
 				return nil
 			},
 		},
@@ -548,6 +549,7 @@ environments:
 				if env.CRE == nil || env.CRE.Enabled {
 					return assert.AnError
 				}
+
 				return nil
 			},
 		},
@@ -567,6 +569,7 @@ environments:
 			if tt.expectError {
 				require.Error(t, err)
 				require.Nil(t, config)
+
 				return
 			}
 

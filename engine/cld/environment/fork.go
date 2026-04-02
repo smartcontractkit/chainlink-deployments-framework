@@ -11,6 +11,7 @@ import (
 
 	fchain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/cre"
+	crecli "github.com/smartcontractkit/chainlink-deployments-framework/cre/cli"
 	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config"
@@ -65,7 +66,7 @@ func LoadFork(
 
 	if loadcfg.creRunner == nil {
 		apiKey := cfg.Env.CRE.Auth.APIKey
-		loadcfg.creRunner = cre.NewRunner(cre.WithCLI(cre.NewCLIRunner("", apiKey)))
+		loadcfg.creRunner = cre.NewRunner(cre.WithCLI(crecli.NewCLIRunner("", apiKey)))
 	}
 
 	// Limit to EVM networks only
