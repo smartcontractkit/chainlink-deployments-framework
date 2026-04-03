@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/cre"
+	crecli "github.com/smartcontractkit/chainlink-deployments-framework/cre/cli"
 	fdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 )
 
@@ -79,8 +80,17 @@ func Test_Load_NoError(t *testing.T) {
 	// Set up domain
 	domain := setupTest(t, setupTestConfig, setupAddressbook, setupDataStore, setupNodes)
 
-	_, err := Load(t.Context(), domain, "staging", WithoutJD(), OnlyLoadChainsFor([]uint64{}))
+	env, err := Load(t.Context(), domain, "staging", WithoutJD(), OnlyLoadChainsFor([]uint64{}))
 	require.NoError(t, err)
+	require.NotNil(t, env.CRERunner.CLI())
+	regs := env.CRERunner.CLI().ContextRegistries()
+	require.Len(t, regs, 1)
+	require.Equal(t, cre.ContextRegistryEntry{
+		ID:               "private",
+		Label:            "Private (Chainlink-hosted)",
+		Type:             "off-chain",
+		SecretsAuthFlows: []string{"browser", "owner-key-signing"},
+	}, regs[0])
 }
 
 func Test_Load_DefaultCRERunner(t *testing.T) {
@@ -100,7 +110,7 @@ func Test_Load_WithCRERunnerOverride(t *testing.T) {
 
 	domain := setupTest(t, setupTestConfig, setupAddressbook, setupDataStore, setupNodes)
 
-	customRunner := cre.NewRunner(cre.WithCLI(cre.NewCLIRunner("/custom/cre", "")))
+	customRunner := cre.NewRunner(cre.WithCLI(crecli.NewCLIRunner("/custom/cre", "")))
 
 	env, err := Load(t.Context(), domain, "staging",
 		WithoutJD(),

@@ -340,10 +340,11 @@ func Test_LoadEnv_BindsCREFromEnv(t *testing.T) { //nolint:paralleltest // see c
 	t.Setenv("CRE_API_KEY", "api-key-1")
 	t.Setenv("CRE_TENANT_ID", "tenant-1")
 	t.Setenv("CRE_ORG_ID", "org-1")
+	t.Setenv("CRE_CLI_ENV", "STAGING")
+	t.Setenv("CRE_GATEWAY_URL", "https://gateway.example")
 	t.Setenv("CRE_TLS", "true")
 	t.Setenv("CRE_TIMEOUT", "30s")
 	t.Setenv("CRE_STORAGE_ADDR", "addr-1")
-	t.Setenv("CRE_DON_FAMILY", "family-1")
 
 	got, err := LoadEnv()
 	require.NoError(t, err)
@@ -351,10 +352,11 @@ func Test_LoadEnv_BindsCREFromEnv(t *testing.T) { //nolint:paralleltest // see c
 	require.Equal(t, "api-key-1", got.CRE.Auth.APIKey)
 	require.Equal(t, "tenant-1", got.CRE.Auth.TenantID)
 	require.Equal(t, "org-1", got.CRE.Auth.OrgID)
+	require.Equal(t, "STAGING", got.CRE.CLIEnv)
+	require.Equal(t, "https://gateway.example", got.CRE.GatewayURL)
 	require.Equal(t, "true", got.CRE.TLS)
 	require.Equal(t, "30s", got.CRE.Timeout)
 	require.Equal(t, "addr-1", got.CRE.StorageAddress)
-	require.Equal(t, "family-1", got.CRE.DonFamily)
 }
 
 func Test_YAML_Marshal_Unmarshal(t *testing.T) {

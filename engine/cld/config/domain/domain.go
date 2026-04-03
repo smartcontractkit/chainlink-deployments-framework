@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/viper"
 
+	"github.com/smartcontractkit/chainlink-deployments-framework/cre"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/jira"
 )
 
@@ -32,9 +33,10 @@ func (d DatastoreType) IsValid() bool {
 	return d == DatastoreTypeFile || d == DatastoreTypeCatalog || d == DatastoreTypeAll
 }
 
-// CREConfig represents the CRE (Chainlink Runtime Environment) configuration.
+// CREConfig represents the CRE (Chainlink Runtime Environment) configuration for a domain.
 type CREConfig struct {
-	Enabled bool `mapstructure:"enabled" yaml:"enabled"`
+	Enabled           bool                       `mapstructure:"enabled" yaml:"enabled"`
+	DefaultRegistries []cre.ContextRegistryEntry `mapstructure:"default_registries" yaml:"default_registries,omitempty"`
 }
 
 // Environment represents a single environment configuration.
@@ -42,6 +44,16 @@ type Environment struct {
 	NetworkTypes []string      `mapstructure:"network_types" yaml:"network_types"`
 	Datastore    DatastoreType `mapstructure:"datastore" yaml:"datastore"`
 	CRE          *CREConfig    `mapstructure:"cre" yaml:"cre,omitempty"`
+}
+
+// creDefaultRegistries returns the CRE default registries when CRE is enabled,
+// or nil otherwise.
+func (e *Environment) creDefaultRegistries() []cre.ContextRegistryEntry {
+	if e.CRE == nil || !e.CRE.Enabled {
+		return nil
+	}
+
+	return e.CRE.DefaultRegistries
 }
 
 // validate validates the environment configuration.
@@ -69,6 +81,12 @@ func (e *Environment) validate() error {
 	// Validate datastore field if provided
 	if e.Datastore != "" && !e.Datastore.IsValid() {
 		return fmt.Errorf("invalid datastore value: %s (must be 'file', 'catalog', or 'all')", e.Datastore)
+	}
+
+	for i, r := range e.creDefaultRegistries() {
+		if err := r.Validate(); err != nil {
+			return fmt.Errorf("cre.default_registries[%d]: %w", i, err)
+		}
 	}
 
 	return nil

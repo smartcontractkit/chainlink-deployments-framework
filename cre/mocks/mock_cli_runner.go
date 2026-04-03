@@ -38,13 +38,59 @@ func (_m *MockCLIRunner) EXPECT() *MockCLIRunner_Expecter {
 	return &MockCLIRunner_Expecter{mock: &_m.Mock}
 }
 
+// ContextRegistries provides a mock function for the type MockCLIRunner
+func (_mock *MockCLIRunner) ContextRegistries() []cre.ContextRegistryEntry {
+	ret := _mock.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for ContextRegistries")
+	}
+
+	var r0 []cre.ContextRegistryEntry
+	if returnFunc, ok := ret.Get(0).(func() []cre.ContextRegistryEntry); ok {
+		r0 = returnFunc()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]cre.ContextRegistryEntry)
+		}
+	}
+	return r0
+}
+
+// MockCLIRunner_ContextRegistries_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ContextRegistries'
+type MockCLIRunner_ContextRegistries_Call struct {
+	*mock.Call
+}
+
+// ContextRegistries is a helper method to define mock.On call
+func (_e *MockCLIRunner_Expecter) ContextRegistries() *MockCLIRunner_ContextRegistries_Call {
+	return &MockCLIRunner_ContextRegistries_Call{Call: _e.mock.On("ContextRegistries")}
+}
+
+func (_c *MockCLIRunner_ContextRegistries_Call) Run(run func()) *MockCLIRunner_ContextRegistries_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockCLIRunner_ContextRegistries_Call) Return(contextRegistryEntrys []cre.ContextRegistryEntry) *MockCLIRunner_ContextRegistries_Call {
+	_c.Call.Return(contextRegistryEntrys)
+	return _c
+}
+
+func (_c *MockCLIRunner_ContextRegistries_Call) RunAndReturn(run func() []cre.ContextRegistryEntry) *MockCLIRunner_ContextRegistries_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Run provides a mock function for the type MockCLIRunner
-func (_mock *MockCLIRunner) Run(ctx context.Context, args ...string) (*cre.CallResult, error) {
+func (_mock *MockCLIRunner) Run(ctx context.Context, env map[string]string, args ...string) (*cre.CallResult, error) {
 	var tmpRet mock.Arguments
 	if len(args) > 0 {
-		tmpRet = _mock.Called(ctx, args)
+		tmpRet = _mock.Called(ctx, env, args)
 	} else {
-		tmpRet = _mock.Called(ctx)
+		tmpRet = _mock.Called(ctx, env)
 	}
 	ret := tmpRet
 
@@ -54,18 +100,18 @@ func (_mock *MockCLIRunner) Run(ctx context.Context, args ...string) (*cre.CallR
 
 	var r0 *cre.CallResult
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, ...string) (*cre.CallResult, error)); ok {
-		return returnFunc(ctx, args...)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, map[string]string, ...string) (*cre.CallResult, error)); ok {
+		return returnFunc(ctx, env, args...)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, ...string) *cre.CallResult); ok {
-		r0 = returnFunc(ctx, args...)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, map[string]string, ...string) *cre.CallResult); ok {
+		r0 = returnFunc(ctx, env, args...)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*cre.CallResult)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, ...string) error); ok {
-		r1 = returnFunc(ctx, args...)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, map[string]string, ...string) error); ok {
+		r1 = returnFunc(ctx, env, args...)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -79,27 +125,33 @@ type MockCLIRunner_Run_Call struct {
 
 // Run is a helper method to define mock.On call
 //   - ctx context.Context
+//   - env map[string]string
 //   - args ...string
-func (_e *MockCLIRunner_Expecter) Run(ctx interface{}, args ...interface{}) *MockCLIRunner_Run_Call {
+func (_e *MockCLIRunner_Expecter) Run(ctx interface{}, env interface{}, args ...interface{}) *MockCLIRunner_Run_Call {
 	return &MockCLIRunner_Run_Call{Call: _e.mock.On("Run",
-		append([]interface{}{ctx}, args...)...)}
+		append([]interface{}{ctx, env}, args...)...)}
 }
 
-func (_c *MockCLIRunner_Run_Call) Run(run func(ctx context.Context, args ...string)) *MockCLIRunner_Run_Call {
+func (_c *MockCLIRunner_Run_Call) Run(run func(ctx context.Context, env map[string]string, args ...string)) *MockCLIRunner_Run_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 []string
-		var variadicArgs []string
-		if len(args) > 1 {
-			variadicArgs = args[1].([]string)
+		var arg1 map[string]string
+		if args[1] != nil {
+			arg1 = args[1].(map[string]string)
 		}
-		arg1 = variadicArgs
+		var arg2 []string
+		var variadicArgs []string
+		if len(args) > 2 {
+			variadicArgs = args[2].([]string)
+		}
+		arg2 = variadicArgs
 		run(
 			arg0,
-			arg1...,
+			arg1,
+			arg2...,
 		)
 	})
 	return _c
@@ -110,7 +162,7 @@ func (_c *MockCLIRunner_Run_Call) Return(callResult *cre.CallResult, err error) 
 	return _c
 }
 
-func (_c *MockCLIRunner_Run_Call) RunAndReturn(run func(ctx context.Context, args ...string) (*cre.CallResult, error)) *MockCLIRunner_Run_Call {
+func (_c *MockCLIRunner_Run_Call) RunAndReturn(run func(ctx context.Context, env map[string]string, args ...string) (*cre.CallResult, error)) *MockCLIRunner_Run_Call {
 	_c.Call.Return(run)
 	return _c
 }

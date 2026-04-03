@@ -1,16 +1,18 @@
-package cre
+package cli
 
 import (
 	"bytes"
 	"context"
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	fcre "github.com/smartcontractkit/chainlink-deployments-framework/cre"
 )
 
 func TestNewCLIRunner(t *testing.T) {
 	t.Parallel()
+
 	tests := []struct {
 		name       string
 		binaryPath string
@@ -18,10 +20,11 @@ func TestNewCLIRunner(t *testing.T) {
 		wantPath   string
 		wantKey    string
 	}{
-		{"empty_defaults_to_cre", "", "", defaultBinary, ""},
-		{"custom_path", "/opt/cre", "", "/opt/cre", ""},
-		{"with_api_key", "/bin/sh", "k", "/bin/sh", "k"},
+		{name: "empty_defaults_to_cre", binaryPath: "", apiKey: "", wantPath: defaultBinary, wantKey: ""},
+		{name: "custom_path", binaryPath: "/opt/cre", apiKey: "", wantPath: "/opt/cre", wantKey: ""},
+		{name: "with_api_key", binaryPath: "/bin/sh", apiKey: "k", wantPath: "/bin/sh", wantKey: "k"},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
@@ -67,7 +70,7 @@ func TestCLIRunner_APIKeyEnv(t *testing.T) {
 			t.Setenv(envCREAPIKey, tt.parentAPIKey)
 
 			r := NewCLIRunner("/bin/sh", tt.apiKey)
-			res, err := r.Run(t.Context(), shArgs...)
+			res, err := r.Run(t.Context(), nil, shArgs...)
 			require.NoError(t, err)
 			require.Equal(t, 0, res.ExitCode)
 			require.Equal(t, tt.wantSubprocess, string(res.Stdout))
@@ -76,24 +79,47 @@ func TestCLIRunner_APIKeyEnv(t *testing.T) {
 }
 
 func Test_envForCRECLI(t *testing.T) {
-	t.Setenv(envCREAPIKey, "old")
+	t.Setenv(envCREAPIKey, "old-api")
+	t.Setenv("CUSTOM_KEY", "old-custom")
 
 	tests := []struct {
 		name           string
 		apiKey         string
+		extraEnv       map[string]string
 		mustContain    []string
 		mustNotContain []string
 	}{
 		{
-			name:        "empty_api_key_passes_through_parent",
+			name:        "empty_api_key_no_extra_passes_through_parent",
 			apiKey:      "",
-			mustContain: []string{envCREAPIKey + "=old"},
+			extraEnv:    nil,
+			mustContain: []string{envCREAPIKey + "=old-api", "CUSTOM_KEY=old-custom"},
 		},
 		{
-			name:           "non_empty_replaces_existing",
-			apiKey:         "new",
-			mustContain:    []string{envCREAPIKey + "=new"},
-			mustNotContain: []string{envCREAPIKey + "=old"},
+			name:     "non_empty_replaces_existing_and_extra_overrides",
+			apiKey:   "new-api",
+			extraEnv: map[string]string{"CUSTOM_KEY": "new-custom"},
+			mustContain: []string{
+				envCREAPIKey + "=new-api",
+				"CUSTOM_KEY=new-custom",
+			},
+			mustNotContain: []string{
+				envCREAPIKey + "=old-api",
+				"CUSTOM_KEY=old-custom",
+			},
+		},
+		{
+			name:   "extra_env_cannot_override_runner_api_key",
+			apiKey: "runner-api",
+			extraEnv: map[string]string{
+				envCREAPIKey: "override-api",
+			},
+			mustContain: []string{
+				envCREAPIKey + "=runner-api",
+			},
+			mustNotContain: []string{
+				envCREAPIKey + "=override-api",
+			},
 		},
 	}
 
@@ -101,7 +127,7 @@ func Test_envForCRECLI(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := envForCRECLI(tt.apiKey)
+			got := envForCRECLI(tt.apiKey, tt.extraEnv)
 			for _, s := range tt.mustContain {
 				require.Contains(t, got, s)
 			}
@@ -130,7 +156,7 @@ func TestCLIRunner_Run(t *testing.T) {
 	}{
 		{
 			name:       "binary_not_found",
-			runner:     NewCLIRunner(filepath.Join(t.TempDir(), "nonexistent-cre-xyz"), ""),
+			runner:     NewCLIRunner(t.TempDir()+"/nonexistent-cre-xyz", ""),
 			args:       []string{"build"},
 			wantErr:    true,
 			wantResNil: true,
@@ -179,7 +205,7 @@ func TestCLIRunner_Run(t *testing.T) {
 				ctx = tt.setupCtx(t)
 			}
 
-			res, err := tt.runner.Run(ctx, tt.args...)
+			res, err := tt.runner.Run(ctx, nil, tt.args...)
 
 			if tt.wantResNil {
 				require.Nil(t, res)
@@ -190,7 +216,7 @@ func TestCLIRunner_Run(t *testing.T) {
 					require.ErrorIs(t, err, tt.wantErrIs)
 				}
 				if tt.wantExitErr {
-					var exitErr *ExitError
+					var exitErr *fcre.ExitError
 					require.ErrorAs(t, err, &exitErr)
 					require.Equal(t, tt.wantExitCode, exitErr.ExitCode)
 				}
@@ -245,7 +271,7 @@ func TestCLIRunner_StreamingWriters(t *testing.T) {
 			r.Stdout = &streamOut
 			r.Stderr = &streamErr
 
-			res, err := r.Run(t.Context(), tt.args...)
+			res, err := r.Run(t.Context(), nil, tt.args...)
 			require.NoError(t, err)
 
 			require.Equal(t, tt.wantStdout, streamOut.String(), "streamed stdout")
@@ -257,11 +283,24 @@ func TestCLIRunner_StreamingWriters(t *testing.T) {
 	}
 }
 
+func TestCLIRunner_ContextRegistries(t *testing.T) {
+	t.Parallel()
+
+	want := []fcre.ContextRegistryEntry{{ID: "a", Label: "L", Type: "off-chain"}}
+	r := NewCLIRunner("/bin/sh", "", WithContextRegistries(want))
+	got := r.ContextRegistries()
+	require.Equal(t, want, got)
+	// Returned slice is a copy; mutating it does not affect the runner.
+	got[0].ID = "mutated"
+	got2 := r.ContextRegistries()
+	require.Equal(t, "a", got2[0].ID)
+}
+
 func TestCLIRunner_NilWriters_DefaultBehavior(t *testing.T) {
 	t.Parallel()
 
 	r := NewCLIRunner("/bin/sh", "")
-	res, err := r.Run(t.Context(), "-c", `echo "works"`)
+	res, err := r.Run(t.Context(), nil, "-c", `echo "works"`)
 	require.NoError(t, err)
 	require.Equal(t, "works\n", string(res.Stdout))
 }
