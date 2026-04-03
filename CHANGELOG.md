@@ -1,5 +1,13 @@
 # chainlink-deployments-framework
 
+## 0.93.1
+
+### Patch Changes
+
+- [#878](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/878) [`96b99d6`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/96b99d68d27b1fcb75983ef7addc3be6576debbb) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - feat: add post-proposal-execution hooks
+
+- [#911](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/911) [`5c68f8d`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/5c68f8dfafe661c7fe29533f530f028879385672) Thanks [@friedemannf](https://github.com/friedemannf)! - Bump chainlink-testing-framework to v0.15.13
+
 ## 0.93.0
 
 ### Minor Changes
