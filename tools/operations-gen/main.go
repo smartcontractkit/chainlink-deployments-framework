@@ -34,7 +34,7 @@ type ChainFamilyHandler interface {
 
 // chainFamilies is the single registration point for all supported chain families.
 var chainFamilies = map[string]ChainFamilyHandler{
-	// "evm": evmHandler{}, // TODO: enable in next PR
+	"evm": evmHandler{},
 }
 
 // Config holds the top-level generator configuration.
