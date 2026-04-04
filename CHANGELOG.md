@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.94.0
+
+### Minor Changes
+
+- [#906](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/906) [`18c4387`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/18c43878dde904ab231663c6d4115e8ae3daba52) Thanks [@ecPablo](https://github.com/ecPablo)! - Add workflow.yaml, project.yaml, and context.yaml generation helpers for CRE CLI runner
+
 ## 0.93.1
 
 ### Patch Changes
