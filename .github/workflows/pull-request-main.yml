@@ -7,6 +7,23 @@ on:
       - main
 
 jobs:
+  changes:
+    name: Detect changed files
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      operations_gen: ${{ steps.filter.outputs.operations_gen }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        id: filter
+        with:
+          filters: |
+            operations_gen:
+              - 'tools/operations-gen/**'
+
   ci-lint:
     name: Lint
     runs-on: ubuntu-latest
@@ -23,6 +40,8 @@ jobs:
 
   ci-lint-operations-gen:
     name: Lint operations-gen
+    needs: [changes]
+    if: needs.changes.outputs.operations_gen == 'true'
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -47,6 +66,8 @@ jobs:
 
   ci-test-operations-gen:
     name: Tests operations-gen
+    needs: [changes]
+    if: needs.changes.outputs.operations_gen == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -248,7 +269,11 @@ jobs:
 
   sonarqube:
     name: Sonar Scan
-    if: github.event_name == 'pull_request'
+    if: |
+      always() &&
+      github.event_name == 'pull_request' &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled')
     runs-on: ubuntu-24.04
     needs: [ci-test, ci-test-operations-gen, ci-test-provider-aptos, ci-test-provider-canton, ci-test-provider-ton, ci-test-provider-tron, ci-test-provider-stellar, ci-test-provider-fast, ci-test-catalog-remote, ci-lint-misc, ci-lint, ci-lint-operations-gen]
     permissions:
