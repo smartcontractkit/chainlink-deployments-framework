@@ -89,7 +89,7 @@ func TestConvertTimelock(t *testing.T) {
 					},
 				}
 			},
-			wantErr: "failed to build converters: error getting chain family: chain family not found for selector 999999",
+			wantErr: "failed to build converters: failed to build converter for selector 999999",
 		},
 		{
 			name: "fails with invalid chain family",
@@ -106,7 +106,7 @@ func TestConvertTimelock(t *testing.T) {
 					},
 				}
 			},
-			wantErr: "failed to build converters: error getting chain family: unsupported chain family: tron",
+			wantErr: "failed to build converters: failed to build converter for selector 2052925811360307740",
 		},
 	}
 

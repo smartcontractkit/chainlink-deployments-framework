@@ -144,19 +144,19 @@ type CatalogConfig struct {
 // WARNING: This data type contains sensitive fields and should not be logged or set in file
 // configuration.
 type CREAuthConfig struct {
-	HMACKeyID     string `mapstructure:"hmac_key_id" yaml:"hmac_key_id"`         // Secret: HMAC key ID
-	HMACKeySecret string `mapstructure:"hmac_key_secret" yaml:"hmac_key_secret"` // Secret: HMAC key secret
-	TenantID      string `mapstructure:"tenant_id" yaml:"tenant_id"`
-	OrgID         string `mapstructure:"org_id" yaml:"org_id"`
+	APIKey   string `mapstructure:"api_key" yaml:"api_key"` // Secret: CRE API key
+	TenantID string `mapstructure:"tenant_id" yaml:"tenant_id"`
+	OrgID    string `mapstructure:"org_id" yaml:"org_id"`
 }
 
 // CREConfig is the configuration for CRE deploy and related CLI usage (credentials, endpoints, timeouts).
 type CREConfig struct {
 	Auth           CREAuthConfig `mapstructure:"auth" yaml:"auth"`
+	CLIEnv         string        `mapstructure:"cli_env" yaml:"cli_env"`
+	GatewayURL     string        `mapstructure:"gateway_url" yaml:"gateway_url"`
 	TLS            string        `mapstructure:"tls" yaml:"tls"`
 	Timeout        string        `mapstructure:"timeout" yaml:"timeout"`
 	StorageAddress string        `mapstructure:"storage_address" yaml:"storage_address"`
-	DonFamily      string        `mapstructure:"don_family" yaml:"don_family"`
 }
 
 // OnchainConfig wraps the configuration for the onchain components.
@@ -279,14 +279,14 @@ var (
 		"catalog.grpc":                                            {"CATALOG_GRPC"},
 		"catalog.auth.kms_key_id":                                 {"CATALOG_AUTH_KMS_KEY_ID"},
 		"catalog.auth.kms_key_region":                             {"CATALOG_AUTH_KMS_KEY_REGION"},
-		"cre.auth.hmac_key_id":                                    {"CRE_DEPLOY_HMAC_KEY_ID"},
-		"cre.auth.hmac_key_secret":                                {"CRE_DEPLOY_HMAC_SECRET"},
+		"cre.auth.api_key":                                        {"CRE_API_KEY"},
 		"cre.auth.tenant_id":                                      {"CRE_TENANT_ID"},
 		"cre.auth.org_id":                                         {"CRE_ORG_ID"},
+		"cre.cli_env":                                             {"CRE_CLI_ENV"},
+		"cre.gateway_url":                                         {"CRE_GATEWAY_URL"},
 		"cre.tls":                                                 {"CRE_TLS"},
 		"cre.timeout":                                             {"CRE_TIMEOUT"},
 		"cre.storage_address":                                     {"CRE_STORAGE_ADDR"},
-		"cre.don_family":                                          {"CRE_DON_FAMILY"},
 	}
 )
 

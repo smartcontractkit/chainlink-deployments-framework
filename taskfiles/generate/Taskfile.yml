@@ -9,3 +9,27 @@ tasks:
     desc: Generate mocks for interfaces
     cmds:
       - mockery
+
+  operations:
+    desc: Generate contract operation wrappers from a config file
+    summary: |
+      Generates type-safe Go operation wrappers for EVM (or other chain family) contracts.
+
+      Pass CONFIG variable with an absolute path, or a path relative to the repo root.
+      Relative paths are resolved against the repo root before being passed to the generator.
+
+      Example:
+        task generate:operations CONFIG=/path/to/operations_gen_config.yaml
+        task generate:operations CONFIG=./path/from/repo/root/operations_gen_config.yaml
+    vars:
+      CONFIG: '{{.CONFIG}}'
+      # If CONFIG is absolute use it as-is; otherwise treat it as relative to the repo root.
+      # This avoids a dependency on `realpath` which is not available on all platforms.
+      ABS_CONFIG:
+        sh: |
+          case "{{.CONFIG}}" in
+            /*) printf '%s\n' "{{.CONFIG}}" ;;
+            *)  printf '%s\n' "{{.ROOT_DIR}}/{{.CONFIG}}" ;;
+          esac
+    cmds:
+      - cd {{.ROOT_DIR}}/tools/operations-gen && go run . -config {{.ABS_CONFIG}}

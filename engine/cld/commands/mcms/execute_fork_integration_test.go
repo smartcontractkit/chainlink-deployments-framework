@@ -73,51 +73,57 @@ func Test_executeFork_Integration(t *testing.T) { //nolint:paralleltest
 		DeployerTransactorGen: cldfchainprovider.TransactorFromRaw(domainConfig.Env.Onchain.EVM.DeployerKey),
 		T:                     t,
 	}
-	provider := cldfchainprovider.NewCTFAnvilChainProvider(chainsel.GETH_TESTNET.Selector, anvilConfig)
+	chainSelector := chainsel.GETH_TESTNET.Selector
+	provider := cldfchainprovider.NewCTFAnvilChainProvider(chainSelector, anvilConfig)
 	evmChain, err := provider.Initialize(t.Context())
 	require.NoError(t, err)
+	t.Cleanup(func() { _ = provider.Container.Terminate(t.Context()) })
 
 	saveDomainNetworkConfigForIntegration(t, &domain, integrationEnvName, domainConfig, provider, anvilConfig.Port)
 
-	env, err := cldfenv.Load(t.Context(), domain, integrationEnvName)
+	env, err := cldfenv.Load(t.Context(), domain, integrationEnvName, cldfenv.WithLogger(lggr))
 	require.NoError(t, err)
 	env.BlockChains = cldfchain.NewBlockChains(map[uint64]cldfchain.BlockChain{
 		chainsel.GETH_TESTNET.Selector: evmChain,
 	})
-	chain := slices.Collect(maps.Values(env.BlockChains.EVMChains()))[0]
 
 	mcmAddress, timelockAddress, callProxyAddress, env := deployMCMSForIntegration(t, env)
 	saveChangesetOutputsForIntegration(t, domain, env, "deploy-mcms")
 
-	timelockProposal, mcmProposal := testTimelockProposalForIntegration(t, chain, timelockAddress, mcmAddress)
-
 	forkedEnv, err := cldfenv.LoadFork(t.Context(), domain, env.Name, nil,
-		cldfenv.WithLogger(lggr), cldfenv.OnlyLoadChainsFor([]uint64{chain.Selector}),
+		cldfenv.WithLogger(lggr), cldfenv.OnlyLoadChainsFor([]uint64{chainSelector}),
 		cldfenv.WithAnvilKeyAsDeployer(), cldfenv.WithoutJD())
 	require.NoError(t, err)
+	forkedChain := slices.Collect(maps.Values(forkedEnv.BlockChains.EVMChains()))[0]
+
+	timelockProposal, mcmProposal := testTimelockProposal(t, forkedChain, timelockAddress, mcmAddress, 2082758399)
 
 	proposalCtx, err := analyzer.NewDefaultProposalContext(env)
 	require.NoError(t, err)
 
+	defaultForkCfg := &forkConfig{
+		kind:             mcmstypes.KindTimelockProposal,
+		proposal:         mcmProposal,
+		timelockProposal: &timelockProposal,
+		chainSelector:    chainSelector,
+		blockchains:      forkedEnv.BlockChains,
+		envStr:           env.Name,
+		env:              env,
+		fork:             true,
+		forkedEnv:        forkedEnv,
+		proposalCtx:      proposalCtx,
+	}
+
 	tests := []struct {
-		name   string
-		cfg    *forkConfig
-		assert func(err error)
+		name    string
+		mcmsCfg Config
+		cfg     func() *forkConfig
+		assert  func(err error)
 	}{
 		{
-			name: "success",
-			cfg: &forkConfig{
-				kind:             mcmstypes.KindTimelockProposal,
-				proposal:         mcmProposal,
-				timelockProposal: &timelockProposal,
-				chainSelector:    chain.Selector,
-				blockchains:      forkedEnv.BlockChains,
-				envStr:           env.Name,
-				env:              env,
-				fork:             true,
-				forkedEnv:        forkedEnv,
-				proposalCtx:      proposalCtx,
-			},
+			name:    "success: hooks disabled (LoadChangesets not in mcms config)",
+			mcmsCfg: Config{Logger: lggr},
+			cfg:     func() *forkConfig { return defaultForkCfg },
 			assert: func(err error) {
 				require.NoError(t, err)
 				require.Equal(t, 1, logs.FilterMessageSnippet("MCM.setRoot() - success").Len())
@@ -146,10 +152,45 @@ func Test_executeFork_Integration(t *testing.T) { //nolint:paralleltest
 				})
 			},
 		},
+		{
+			name: "success: hooks enabled (LoadChangesets in mcms config)",
+			mcmsCfg: Config{
+				Logger:         lggr,
+				Domain:         domain,
+				LoadChangesets: loadChangesets,
+			},
+			cfg: func() *forkConfig {
+				timelockProposal, mcmProposal := testTimelockProposal(t, forkedChain, timelockAddress, mcmAddress, 2082758400)
+				fcfg := *defaultForkCfg
+				fcfg.proposal = mcmProposal
+				fcfg.timelockProposal = &timelockProposal
+				fcfg.timelockProposal.Metadata = map[string]any{
+					"changesets": []any{
+						map[string]any{
+							"name":         "001_test_changeset",
+							"input":        map[string]any{},
+							"operationIDs": []any{"0x342ae55e5f86f04edeb7f9294370354a07ca69e8c9e95c92b71b7e28ca799195"},
+						},
+					},
+				}
+
+				return &fcfg
+			},
+			assert: func(err error) {
+				require.NoError(t, err)
+				require.Equal(t, 1, logs.FilterMessageSnippet("MCM.setRoot() - success").Len())
+				require.Equal(t, 1, logs.FilterMessageSnippet("MCM.execute() - success").Len())
+				require.Equal(t, 1, logs.FilterMessageSnippet("Timelock.execute() - success").Len())
+				require.Equal(t, 3, logs.FilterMessage("sending on-chain transaction").Len())
+				require.Equal(t, 1, logs.FilterMessage("test-changeset-post-proposal-hook executed").Len())
+				require.Equal(t, 1, logs.FilterMessage("test-global-post-proposal-hook executed").Len())
+			},
+		},
 	}
 	for _, tt := range tests { //nolint:paralleltest
 		t.Run(tt.name, func(t *testing.T) {
-			err := executeFork(t.Context(), lggr, tt.cfg, true)
+			lggr.Infof("EXECUTING FORK TEST (%s)", tt.name)
+			err := executeFork(t.Context(), tt.mcmsCfg, tt.cfg(), true)
 
 			tt.assert(err)
 			logs.TakeAll() // clear logs
@@ -310,22 +351,30 @@ func deployTimelockAndCallProxyForIntegration(
 	return timelockAddress.Hex(), callProxyAddress.Hex(), env
 }
 
-func testTimelockProposalForIntegration(
+func testTimelockProposal(
 	t *testing.T,
 	chain evmchain.Chain,
 	timelockAddress string,
 	mcmAddress string,
+	validUntil uint32,
 ) (mcms.TimelockProposal, mcms.Proposal) {
 	t.Helper()
 
+	opCount, err := mcmsevmsdk.NewInspector(chain.Client).GetOpCount(t.Context(), mcmAddress)
+	require.NoError(t, err)
+	t.Logf("%v OPCOUNT: %d", mcmAddress, opCount)
+
 	timelockProposal, err := mcms.NewTimelockProposalBuilder().
 		SetVersion("v1").
-		SetValidUntil(2082758399).
+		SetValidUntil(validUntil).
 		SetDescription("test timelock proposal").
 		SetOverridePreviousRoot(true).
 		SetAction(mcmstypes.TimelockActionSchedule).
 		AddTimelockAddress(mcmstypes.ChainSelector(chain.Selector), timelockAddress).
-		AddChainMetadata(mcmstypes.ChainSelector(chain.Selector), mcmstypes.ChainMetadata{MCMAddress: mcmAddress}).
+		AddChainMetadata(mcmstypes.ChainSelector(chain.Selector), mcmstypes.ChainMetadata{
+			StartingOpCount: opCount,
+			MCMAddress:      mcmAddress,
+		}).
 		AddOperation(mcmstypes.BatchOperation{
 			ChainSelector: mcmstypes.ChainSelector(chain.Selector),
 			Transactions: []mcmstypes.Transaction{{

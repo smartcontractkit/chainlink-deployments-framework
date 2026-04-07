@@ -36,7 +36,7 @@ func TestOkLinkVerifier_IsVerified_AlreadyVerified(t *testing.T) {
 
 	v, err := NewVerifier(StrategyOkLink, VerifierConfig{
 		Chain:        chain,
-		Network:      cfgnet.Network{ChainSelector: chain.Selector, BlockExplorer: cfgnet.BlockExplorer{APIKey: "test-key"}},
+		Network:      cfgnet.Network{ChainSelector: chain.Selector, BlockExplorer: cfgnet.BlockExplorer{APIKey: "test-key", Slug: "XLAYER"}},
 		Address:      "0x123",
 		Metadata:     SolidityContractMetadata{Version: "0.8.19", Name: "Test"},
 		ContractType: "Test",
@@ -72,7 +72,7 @@ func TestOkLinkVerifier_IsVerified_NotVerified(t *testing.T) {
 
 	v, err := NewVerifier(StrategyOkLink, VerifierConfig{
 		Chain:        chain,
-		Network:      cfgnet.Network{ChainSelector: chain.Selector, BlockExplorer: cfgnet.BlockExplorer{APIKey: "test-key"}},
+		Network:      cfgnet.Network{ChainSelector: chain.Selector, BlockExplorer: cfgnet.BlockExplorer{APIKey: "test-key", Slug: "XLAYER"}},
 		Address:      "0x123",
 		Metadata:     SolidityContractMetadata{Version: "0.8.19", Name: "Test"},
 		ContractType: "Test",

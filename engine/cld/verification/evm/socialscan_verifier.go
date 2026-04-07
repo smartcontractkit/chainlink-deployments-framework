@@ -35,9 +35,9 @@ type socialscanAPIResponse[R any] struct {
 }
 
 func newSocialScanVerifier(cfg VerifierConfig) (verification.Verifiable, error) {
-	chainName, ok := getSocialScanChainName(cfg.Chain.EvmChainID)
-	if !ok {
-		return nil, fmt.Errorf("chain ID %d is not supported by the SocialScan API", cfg.Chain.EvmChainID)
+	chainName := strings.TrimSpace(cfg.Network.BlockExplorer.Slug)
+	if chainName == "" {
+		return nil, fmt.Errorf("socialscan block_explorer.slug is required for chain %s", cfg.Chain.Name)
 	}
 	apiKey := cfg.Network.BlockExplorer.APIKey
 	if apiKey == "" {

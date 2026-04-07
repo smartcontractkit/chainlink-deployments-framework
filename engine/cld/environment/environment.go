@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/smartcontractkit/chainlink-deployments-framework/cre"
+	crecli "github.com/smartcontractkit/chainlink-deployments-framework/cre/cli"
 	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	cldcatalog "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/catalog"
@@ -39,6 +41,23 @@ func Load(
 	cfg, err := config.Load(domain, envKey, lggr)
 	if err != nil {
 		return fdeployment.Environment{}, err
+	}
+
+	if loadcfg.creRunner == nil {
+		domainCfg, loadDomainErr := cfgdomain.Load(domain.ConfigDomainFilePath())
+		if loadDomainErr != nil {
+			return fdeployment.Environment{}, fmt.Errorf("load domain config for CRE defaults: %w", loadDomainErr)
+		}
+
+		var creOpts []crecli.CLIRunnerOption
+		if envCfg, ok := domainCfg.Environments[envKey]; ok && envCfg.CRE != nil && envCfg.CRE.Enabled {
+			creOpts = append(creOpts, crecli.WithContextRegistries(envCfg.CRE.DefaultRegistries))
+		}
+
+		apiKey := cfg.Env.CRE.Auth.APIKey
+		loadcfg.creRunner = cre.NewRunner(cre.WithCLI(
+			crecli.NewCLIRunner("", apiKey, creOpts...),
+		))
 	}
 
 	ab, err := envdir.AddressBook()

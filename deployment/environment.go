@@ -61,9 +61,8 @@ type Environment struct {
 	OperationsBundle operations.Bundle
 	// BlockChains is the container of all chains in the environment.
 	BlockChains chain.BlockChains
-	// CRERunner invokes the CRE CLI from changesets. Optional in environment loading, so it won't
-	// fail to load environment if cre binary not available; failures (e.g. binary not found) only occur
-	// when CRERunner.Run() is used inside changesets. May be nil in test environments that did not set it.
+	// CRERunner groups CLI and Go API access to CRE from changesets. Optional in environment loading, so it won't
+	// fail to load environment if cre binary not available
 	CRERunner cre.Runner
 }
 
@@ -105,7 +104,7 @@ func NewEnvironment(
 	return env
 }
 
-// WithCRERunner sets the CRE CLI runner
+// WithCRERunner sets the CRE runners (CLI and/or Go API client).
 func WithCRERunner(r cre.Runner) EnvironmentOption {
 	return func(e *Environment) {
 		e.CRERunner = r

@@ -8,6 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/smartcontractkit/chainlink-deployments-framework/cre"
+	crecli "github.com/smartcontractkit/chainlink-deployments-framework/cre/cli"
 	fdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 )
 
@@ -78,8 +80,56 @@ func Test_Load_NoError(t *testing.T) {
 	// Set up domain
 	domain := setupTest(t, setupTestConfig, setupAddressbook, setupDataStore, setupNodes)
 
-	_, err := Load(t.Context(), domain, "staging", WithoutJD(), OnlyLoadChainsFor([]uint64{}))
+	env, err := Load(t.Context(), domain, "staging", WithoutJD(), OnlyLoadChainsFor([]uint64{}))
 	require.NoError(t, err)
+	require.NotNil(t, env.CRERunner.CLI())
+	regs := env.CRERunner.CLI().ContextRegistries()
+	require.Len(t, regs, 1)
+	require.Equal(t, cre.ContextRegistryEntry{
+		ID:               "private",
+		Label:            "Private (Chainlink-hosted)",
+		Type:             "off-chain",
+		SecretsAuthFlows: []string{"browser", "owner-key-signing"},
+	}, regs[0])
+}
+
+func Test_Load_DefaultCRERunner(t *testing.T) {
+	t.Parallel()
+
+	domain := setupTest(t, setupTestConfig, setupAddressbook, setupDataStore, setupNodes)
+
+	env, err := Load(t.Context(), domain, "staging", WithoutJD(), OnlyLoadChainsFor([]uint64{}))
+	require.NoError(t, err)
+
+	require.NotNil(t, env.CRERunner, "Load must set a default CRERunner when WithCRERunner is not provided")
+	require.NotNil(t, env.CRERunner.CLI(), "default CRERunner must have a non-nil CLI")
+}
+
+func Test_Load_WithCRERunnerOverride(t *testing.T) {
+	t.Parallel()
+
+	domain := setupTest(t, setupTestConfig, setupAddressbook, setupDataStore, setupNodes)
+
+	customRunner := cre.NewRunner(cre.WithCLI(crecli.NewCLIRunner("/custom/cre", "")))
+
+	env, err := Load(t.Context(), domain, "staging",
+		WithoutJD(),
+		OnlyLoadChainsFor([]uint64{}),
+		WithCRERunner(customRunner),
+	)
+	require.NoError(t, err)
+
+	require.Equal(t, customRunner, env.CRERunner, "Load must use the provided CRERunner, not create a default")
+}
+
+func Test_Load_DefaultCRERunner_WithAPIKey(t *testing.T) { //nolint:paralleltest // sets env var
+	domain := setupTest(t, setupTestConfigWithCREAPIKey, setupAddressbook, setupDataStore, setupNodes)
+
+	env, err := Load(t.Context(), domain, "staging", WithoutJD(), OnlyLoadChainsFor([]uint64{}))
+	require.NoError(t, err)
+
+	require.NotNil(t, env.CRERunner)
+	require.NotNil(t, env.CRERunner.CLI())
 }
 
 func setupTest(t *testing.T, setupFnc ...func(t *testing.T, domain fdomain.Domain)) fdomain.Domain {
@@ -181,6 +231,19 @@ func setupDataStore(t *testing.T, domain fdomain.Domain) {
 	// Create env metadata file
 	envMetadataPath := filepath.Join(env.DataStoreDirPath(), "env_metadata.json")
 	require.NoError(t, os.WriteFile(envMetadataPath, []byte(envMetadataConfig), 0600))
+}
+
+func setupTestConfigWithCREAPIKey(t *testing.T, domain fdomain.Domain) {
+	t.Helper()
+
+	setupTestConfig(t, domain)
+
+	localPath := filepath.Join(domain.DirPath(), ".config", "local", "config.staging.yaml")
+	existing, err := os.ReadFile(localPath)
+	require.NoError(t, err)
+
+	withCRE := append(existing, []byte("cre:\n  auth:\n    api_key: \"test-cre-api-key\"\n")...)
+	require.NoError(t, os.WriteFile(localPath, withCRE, 0600))
 }
 
 func setupNodes(t *testing.T, domain fdomain.Domain) {

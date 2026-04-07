@@ -42,9 +42,6 @@ type l2scanTransactionListResponse struct {
 }
 
 func newL2ScanVerifier(cfg VerifierConfig) (verification.Verifiable, error) {
-	if !IsChainSupportedOnL2Scan(cfg.Chain.EvmChainID) {
-		return nil, fmt.Errorf("chain ID %d is not supported by the L2Scan API", cfg.Chain.EvmChainID)
-	}
 	apiURL := cfg.Network.BlockExplorer.URL
 	if apiURL == "" {
 		return nil, fmt.Errorf("l2scan API URL not configured for chain %s", cfg.Chain.Name)

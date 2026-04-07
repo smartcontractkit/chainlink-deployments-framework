@@ -50,9 +50,6 @@ type btrScanVerificationStatusResponse struct {
 }
 
 func newBtrScanVerifier(cfg VerifierConfig) (verification.Verifiable, error) {
-	if !IsChainSupportedOnBtrScan(cfg.Chain.EvmChainID) {
-		return nil, fmt.Errorf("chain ID %d is not supported by the BtrScan API", cfg.Chain.EvmChainID)
-	}
 	apiURL := cfg.Network.BlockExplorer.URL
 	if apiURL == "" {
 		return nil, fmt.Errorf("btrscan API URL not configured for chain %s", cfg.Chain.Name)

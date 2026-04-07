@@ -50,9 +50,6 @@ type coreDAOVerifyRequest struct {
 }
 
 func newCoreDAOVerifier(cfg VerifierConfig) (verification.Verifiable, error) {
-	if !IsChainSupportedOnCoreDAO(cfg.Chain.EvmChainID) {
-		return nil, fmt.Errorf("chain ID %d is not supported by the CoreDAO API", cfg.Chain.EvmChainID)
-	}
 	apiURL := cfg.Network.BlockExplorer.URL
 	if apiURL == "" {
 		return nil, fmt.Errorf("coredao API URL not configured for chain %s", cfg.Chain.Name)

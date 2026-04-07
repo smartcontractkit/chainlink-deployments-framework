@@ -8,6 +8,7 @@ import (
 
 	fchain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/cre"
+	crecli "github.com/smartcontractkit/chainlink-deployments-framework/cre/cli"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/internal/testutils"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/onchain"
 )
@@ -133,10 +134,12 @@ func Test_WithCRERunner(t *testing.T) {
 	cmps := newComponents()
 	require.Nil(t, cmps.CRERunner)
 
-	runner := cre.NewCLIRunner("/path/to/cre")
-	option := WithCRERunner(runner)
+	runner := crecli.NewCLIRunner("/path/to/cre", "")
+	creR := cre.NewRunner(cre.WithCLI(runner))
+	option := WithCRERunner(creR)
 	err := option(cmps)
 
 	require.NoError(t, err)
-	require.Equal(t, runner, cmps.CRERunner)
+	require.Equal(t, creR, cmps.CRERunner)
+	require.Equal(t, runner, cmps.CRERunner.CLI())
 }

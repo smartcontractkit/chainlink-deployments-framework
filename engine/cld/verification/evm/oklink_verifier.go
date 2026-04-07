@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -46,9 +47,9 @@ type oklinkVerifyContractInfo struct {
 }
 
 func newOkLinkVerifier(cfg VerifierConfig) (verification.Verifiable, error) {
-	chainShortName, ok := GetOkLinkShortName(cfg.Chain.EvmChainID)
-	if !ok {
-		return nil, fmt.Errorf("chain ID %d is not supported by the OKLink API", cfg.Chain.EvmChainID)
+	chainShortName := strings.TrimSpace(cfg.Network.BlockExplorer.Slug)
+	if chainShortName == "" {
+		return nil, fmt.Errorf("OKLink block_explorer.slug is required for chain %s", cfg.Chain.Name)
 	}
 	apiKey := cfg.Network.BlockExplorer.APIKey
 	if apiKey == "" {
