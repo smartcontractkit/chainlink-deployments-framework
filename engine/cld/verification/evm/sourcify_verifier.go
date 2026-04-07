@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -20,6 +21,17 @@ import (
 // sourcifyAPIResponse is the legacy v1 response used by IsVerified (GET /files/any/).
 type sourcifyAPIResponse struct {
 	Status string `json:"status"`
+}
+
+// sourcifyV1VerifyResponse is the response from POST /verify/solc-json (legacy v1).
+type sourcifyV1VerifyResponse struct {
+	Result []sourcifyV1Result `json:"result"`
+}
+
+type sourcifyV1Result struct {
+	Address string `json:"address"`
+	ChainID string `json:"chainId"`
+	Status  string `json:"status"`
 }
 
 // sourcifyV2SubmitResponse is the response from POST /v2/verify/{chainId}/{address}.
@@ -108,6 +120,18 @@ func (v *sourcifyVerifier) Verify(ctx context.Context) error {
 		return nil
 	}
 
+	err = v.verifyV2(ctx)
+	if err != nil && isV2EndpointNotFound(err) {
+		v.lggr.Infof("Sourcify v2 API not available, falling back to v1 for %s", v)
+		return v.verifyV1(ctx)
+	}
+
+	return err
+}
+
+// verifyV2 uses the current Sourcify v2 API (async ticketing).
+// POST /v2/verify/{chainId}/{address} -> poll GET /v2/verify/{verificationId}.
+func (v *sourcifyVerifier) verifyV2(ctx context.Context) error {
 	contractIdentifier := v.metadata.Name
 	if !strings.Contains(contractIdentifier, ":") {
 		for sourcePath := range v.metadata.Sources {
@@ -139,6 +163,51 @@ func (v *sourcifyVerifier) Verify(ctx context.Context) error {
 	v.lggr.Infof("Verification submitted for %s (id: %s), polling for result...", v, submitResp.VerificationID)
 
 	return v.pollVerificationJob(ctx, submitResp.VerificationID)
+}
+
+// verifyV1 uses the legacy Sourcify v1 API (synchronous, single-request).
+// POST /verify/solc-json. Used as fallback for self-hosted instances that lack v2.
+func (v *sourcifyVerifier) verifyV1(ctx context.Context) error {
+	sourceCode, err := v.metadata.SourceCode()
+	if err != nil {
+		return fmt.Errorf("failed to get source code: %w", err)
+	}
+
+	contractName := v.metadata.Name
+	if idx := strings.LastIndex(contractName, ":"); idx >= 0 && idx+1 < len(contractName) {
+		contractName = contractName[idx+1:]
+	}
+
+	requestData := map[string]any{
+		"address":         v.address,
+		"chain":           strconv.FormatUint(v.chain.EvmChainID, 10),
+		"files":           map[string]string{"SolcJsonInput.json": sourceCode},
+		"compilerVersion": v.metadata.Version,
+		"contractName":    contractName,
+	}
+
+	submitURL := fmt.Sprintf("%s/verify/solc-json", v.apiURL)
+	resp, err := doSourcifyRequest[sourcifyV1VerifyResponse](ctx, v.httpClient, http.MethodPost, submitURL, requestData)
+	if err != nil {
+		return fmt.Errorf("failed to verify contract: %w", err)
+	}
+	if len(resp.Result) == 0 {
+		return errors.New("invalid verification response")
+	}
+
+	status := resp.Result[0].Status
+	if status != "perfect" && status != "partial" {
+		return fmt.Errorf("unexpected verification status: %s", status)
+	}
+	v.lggr.Infof("Verification status - %s", status)
+
+	return nil
+}
+
+// isV2EndpointNotFound detects when a Sourcify instance doesn't support the v2 API.
+// Self-hosted instances (e.g. Ronin) may run older versions without v2 routes.
+func isV2EndpointNotFound(err error) bool {
+	return strings.Contains(err.Error(), "Cannot POST")
 }
 
 func (v *sourcifyVerifier) pollVerificationJob(ctx context.Context, verificationID string) error {

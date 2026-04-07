@@ -283,3 +283,65 @@ func TestSourcifyVerifier_Verify_ContractIdentifierWithoutPath(t *testing.T) {
 	require.Contains(t, capturedIdentifier, "MyContract")
 	require.Contains(t, capturedIdentifier, ":")
 }
+
+func TestSourcifyVerifier_Verify_V1Fallback(t *testing.T) {
+	t.Parallel()
+
+	var capturedV1Body map[string]any
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		switch {
+		case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/files/any/"):
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte("Files have not been found"))
+
+		case r.Method == http.MethodPost && strings.Contains(r.URL.Path, "/v2/verify/"):
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(`<pre>Cannot POST /v2/verify/295/0x123</pre>`))
+
+		case r.Method == http.MethodPost && strings.Contains(r.URL.Path, "/verify/solc-json"):
+			_ = json.NewDecoder(r.Body).Decode(&capturedV1Body)
+			_ = json.NewEncoder(w).Encode(sourcifyV1VerifyResponse{
+				Result: []sourcifyV1Result{{Status: "perfect", Address: "0x123", ChainID: "295"}},
+			})
+		}
+	}))
+	defer server.Close()
+
+	targetURL, _ := url.Parse(server.URL)
+	client := &http.Client{Transport: &redirectTransport{target: targetURL}}
+
+	chain, ok := chainsel.ChainBySelector(chainsel.HEDERA_MAINNET.Selector)
+	require.True(t, ok)
+
+	v, err := NewVerifier(StrategySourcify, VerifierConfig{
+		Chain:   chain,
+		Network: cfgnet.Network{ChainSelector: chain.Selector, BlockExplorer: cfgnet.BlockExplorer{URL: "https://sourcify.dev/server"}},
+		Address: "0x123",
+		Metadata: SolidityContractMetadata{
+			Version:  "0.8.19+commit.abc",
+			Language: "Solidity",
+			Settings: map[string]any{"optimizer": map[string]any{"enabled": true}},
+			Sources:  map[string]any{"contracts/Test.sol": map[string]any{"content": "contract Test {}"}},
+			Name:     "contracts/Test.sol:Test",
+		},
+		ContractType: "Test",
+		Version:      "1.0.0",
+		PollInterval: 10 * time.Millisecond,
+		Logger:       logger.Nop(),
+		HTTPClient:   client,
+	})
+	require.NoError(t, err)
+
+	err = v.Verify(context.Background())
+	require.NoError(t, err)
+
+	require.NotNil(t, capturedV1Body)
+	assert.Equal(t, "0x123", capturedV1Body["address"])
+	assert.Equal(t, "Test", capturedV1Body["contractName"])
+	files, ok := capturedV1Body["files"].(map[string]any)
+	require.True(t, ok)
+	assert.Contains(t, files, "SolcJsonInput.json")
+}
