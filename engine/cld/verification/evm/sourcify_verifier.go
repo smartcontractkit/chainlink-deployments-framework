@@ -66,9 +66,15 @@ func newSourcifyVerifier(cfg VerifierConfig) (verification.Verifiable, error) {
 		return nil, fmt.Errorf("sourcify API URL not configured for chain %s", cfg.Chain.Name)
 	}
 
+	var rpcURL string
+	if len(cfg.Network.RPCs) > 0 {
+		rpcURL = cfg.Network.RPCs[0].HTTPURL
+	}
+
 	return &sourcifyVerifier{
 		chain:        cfg.Chain,
 		apiURL:       strings.TrimSuffix(apiURL, "/"),
+		rpcURL:       rpcURL,
 		address:      cfg.Address,
 		metadata:     cfg.Metadata,
 		contractType: cfg.ContractType,
@@ -82,6 +88,7 @@ func newSourcifyVerifier(cfg VerifierConfig) (verification.Verifiable, error) {
 type sourcifyVerifier struct {
 	chain        chainsel.Chain
 	apiURL       string
+	rpcURL       string
 	address      string
 	metadata     SolidityContractMetadata
 	contractType string
@@ -150,6 +157,12 @@ func (v *sourcifyVerifier) verifyV2(ctx context.Context) error {
 		"contractIdentifier": contractIdentifier,
 	}
 
+	if txHash, err := v.findCreationTxHash(ctx); err != nil {
+		v.lggr.Infof("Could not look up creation tx hash for %s: %s", v, err)
+	} else {
+		requestData["creationTransactionHash"] = txHash
+	}
+
 	submitURL := fmt.Sprintf("%s/v2/verify/%d/%s", v.apiURL, v.chain.EvmChainID, v.address)
 	submitResp, err := doSourcifyRequest[sourcifyV2SubmitResponse](ctx, v.httpClient, http.MethodPost, submitURL, requestData)
 	if err != nil {
@@ -184,6 +197,12 @@ func (v *sourcifyVerifier) verifyV1(ctx context.Context) error {
 		"files":           map[string]string{"SolcJsonInput.json": sourceCode},
 		"compilerVersion": v.metadata.Version,
 		"contractName":    contractName,
+	}
+
+	if txHash, err := v.findCreationTxHash(ctx); err != nil {
+		v.lggr.Infof("Could not look up creation tx hash for %s: %s", v, err)
+	} else {
+		requestData["creatorTxHash"] = txHash
 	}
 
 	submitURL := fmt.Sprintf("%s/verify/solc-json", v.apiURL)
@@ -248,6 +267,173 @@ func (v *sourcifyVerifier) pollVerificationJob(ctx context.Context, verification
 
 		return errors.New("verification completed but contract was not matched")
 	}
+}
+
+// findCreationTxHash looks up the transaction that deployed the contract by binary-searching
+// block heights via eth_getCode, then scanning the creation block's receipts.
+func (v *sourcifyVerifier) findCreationTxHash(ctx context.Context) (string, error) {
+	if v.rpcURL == "" {
+		return "", errors.New("no RPC URL configured")
+	}
+
+	latestBlock, err := v.ethBlockNumber(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to get latest block: %w", err)
+	}
+
+	creationBlock, err := v.binarySearchCreationBlock(ctx, 0, latestBlock)
+	if err != nil {
+		return "", fmt.Errorf("failed to find creation block: %w", err)
+	}
+
+	v.lggr.Infof("Found creation block %d for %s, scanning transactions...", creationBlock, v.address)
+
+	return v.findCreationTxInBlock(ctx, creationBlock)
+}
+
+// binarySearchCreationBlock finds the block number where the contract first appeared.
+func (v *sourcifyVerifier) binarySearchCreationBlock(ctx context.Context, low, high uint64) (uint64, error) {
+	for low < high {
+		mid := low + (high-low)/2
+		code, err := v.ethGetCode(ctx, mid)
+		if err != nil {
+			return 0, err
+		}
+		if code == "0x" || code == "" {
+			low = mid + 1
+		} else {
+			high = mid
+		}
+	}
+
+	return low, nil
+}
+
+// findCreationTxInBlock gets all transactions in a block and checks receipts to find
+// which transaction created the contract at v.address.
+func (v *sourcifyVerifier) findCreationTxInBlock(ctx context.Context, blockNum uint64) (string, error) {
+	blockHex := fmt.Sprintf("0x%x", blockNum)
+
+	type jsonrpcResponse struct {
+		Result json.RawMessage `json:"result"`
+		Error  *struct {
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+
+	blockResp, err := v.rpcCall(ctx, "eth_getBlockByNumber", []any{blockHex, false})
+	if err != nil {
+		return "", fmt.Errorf("eth_getBlockByNumber failed: %w", err)
+	}
+
+	var block struct {
+		Transactions []string `json:"transactions"`
+	}
+	if err := json.Unmarshal(blockResp, &block); err != nil {
+		return "", fmt.Errorf("failed to parse block: %w", err)
+	}
+
+	target := strings.ToLower(v.address)
+	for _, txHash := range block.Transactions {
+		receiptResp, err := v.rpcCall(ctx, "eth_getTransactionReceipt", []any{txHash})
+		if err != nil {
+			continue
+		}
+
+		var receipt struct {
+			ContractAddress *string `json:"contractAddress"`
+		}
+		if err := json.Unmarshal(receiptResp, &receipt); err != nil {
+			continue
+		}
+		if receipt.ContractAddress != nil && strings.EqualFold(*receipt.ContractAddress, target) {
+			return txHash, nil
+		}
+	}
+
+	return "", fmt.Errorf("no transaction in block %d created contract %s", blockNum, v.address)
+}
+
+func (v *sourcifyVerifier) ethBlockNumber(ctx context.Context) (uint64, error) {
+	resp, err := v.rpcCall(ctx, "eth_blockNumber", []any{})
+	if err != nil {
+		return 0, err
+	}
+
+	var hexNum string
+	if err := json.Unmarshal(resp, &hexNum); err != nil {
+		return 0, fmt.Errorf("failed to parse block number: %w", err)
+	}
+
+	return strconv.ParseUint(strings.TrimPrefix(hexNum, "0x"), 16, 64)
+}
+
+func (v *sourcifyVerifier) ethGetCode(ctx context.Context, blockNum uint64) (string, error) {
+	blockHex := fmt.Sprintf("0x%x", blockNum)
+	resp, err := v.rpcCall(ctx, "eth_getCode", []any{v.address, blockHex})
+	if err != nil {
+		return "", err
+	}
+
+	var code string
+	if err := json.Unmarshal(resp, &code); err != nil {
+		return "", fmt.Errorf("failed to parse code response: %w", err)
+	}
+
+	return code, nil
+}
+
+// rpcCall makes a JSON-RPC 2.0 call to the chain's RPC endpoint.
+func (v *sourcifyVerifier) rpcCall(ctx context.Context, method string, params any) (json.RawMessage, error) {
+	reqBody := map[string]any{
+		"jsonrpc": "2.0",
+		"method":  method,
+		"params":  params,
+		"id":      1,
+	}
+
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal RPC request: %w", err)
+	}
+
+	client := v.httpClient
+	if client == nil {
+		client = http.DefaultClient
+	}
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, v.rpcURL, bytes.NewReader(jsonData))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create RPC request: %w", err)
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("RPC request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read RPC response: %w", err)
+	}
+
+	var rpcResp struct {
+		Result json.RawMessage `json:"result"`
+		Error  *struct {
+			Code    int    `json:"code"`
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(body, &rpcResp); err != nil {
+		return nil, fmt.Errorf("failed to parse RPC response: %w", err)
+	}
+	if rpcResp.Error != nil {
+		return nil, fmt.Errorf("RPC error: %s", rpcResp.Error.Message)
+	}
+
+	return rpcResp.Result, nil
 }
 
 // doSourcifyRequest sends an HTTP request and decodes the JSON response.
