@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.94.1
+
+### Patch Changes
+
+- [#919](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/919) [`267e083`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/267e0832565028ccbc97e96e7a947cd61c26cbfb) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - fix: use "changeset uuids" to associate proposal operations and changesets
+
 ## 0.94.0
 
 ### Minor Changes
