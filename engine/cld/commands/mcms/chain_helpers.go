@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/mcms"
 	"github.com/smartcontractkit/mcms/chainwrappers"
 	"github.com/smartcontractkit/mcms/sdk"
@@ -11,6 +12,15 @@ import (
 
 	cldfmcmsadapters "github.com/smartcontractkit/chainlink-deployments-framework/chain/mcms/adapters"
 )
+
+func newChainAccessor(cfg *forkConfig) *cldfmcmsadapters.ChainAccessAdapter {
+	a := cldfmcmsadapters.Wrap(cfg.blockchains)
+	return &a
+}
+
+func selectorFamily(sel types.ChainSelector) (string, error) {
+	return chainsel.GetSelectorFamily(uint64(sel))
+}
 
 // getInspectorFromChainSelector returns an inspector for the given chain selector.
 func getInspectorFromChainSelector(cfg *forkConfig) (sdk.Inspector, error) {
@@ -20,9 +30,28 @@ func getInspectorFromChainSelector(cfg *forkConfig) (sdk.Inspector, error) {
 		return nil, fmt.Errorf("failed to get chain metadata from timelock proposal for chain selector %v", cfg.chainSelector)
 	}
 
-	chainAccessor := cldfmcmsadapters.Wrap(cfg.blockchains)
+	family, err := selectorFamily(chainSelector)
+	if err != nil {
+		return nil, fmt.Errorf("chain selector family: %w", err)
+	}
 
-	return chainwrappers.BuildInspector(&chainAccessor, chainSelector, cfg.timelockProposal.Action, chainMetadata)
+	acc := newChainAccessor(cfg)
+	action := cfg.timelockProposal.Action
+
+	switch family {
+	case chainsel.FamilyEVM:
+		return buildEVMInspector(acc, action, chainSelector, chainMetadata)
+	case chainsel.FamilySolana:
+		return buildSolanaInspector(acc, action, chainSelector, chainMetadata)
+	case chainsel.FamilyAptos:
+		return buildAptosInspector(acc, action, chainSelector, chainMetadata)
+	case chainsel.FamilySui:
+		return buildSuiInspector(acc, action, chainSelector, chainMetadata)
+	case chainsel.FamilyTon:
+		return buildTonInspector(acc, action, chainSelector, chainMetadata)
+	default:
+		return chainwrappers.BuildInspector(acc, chainSelector, action, chainMetadata)
+	}
 }
 
 // createExecutable creates an MCMS executable for the proposal.
@@ -73,9 +102,28 @@ func getExecutorWithChainOverride(cfg *forkConfig, chainSelector types.ChainSele
 		return nil, fmt.Errorf("failed to get chain metadata from timelock proposal for chain selector %v", chainSelector)
 	}
 
-	chainAccessor := cldfmcmsadapters.Wrap(cfg.blockchains)
+	family, err := selectorFamily(chainSelector)
+	if err != nil {
+		return nil, fmt.Errorf("chain selector family: %w", err)
+	}
 
-	return chainwrappers.BuildExecutor(&chainAccessor, chainSelector, encoder, cfg.timelockProposal.Action, chainMetadata)
+	acc := newChainAccessor(cfg)
+	action := cfg.timelockProposal.Action
+
+	switch family {
+	case chainsel.FamilyEVM:
+		return buildEVMExecutor(acc, action, chainSelector, encoder, chainMetadata)
+	case chainsel.FamilySolana:
+		return buildSolanaExecutor(acc, action, chainSelector, encoder, chainMetadata)
+	case chainsel.FamilyAptos:
+		return buildAptosExecutor(acc, action, chainSelector, encoder, chainMetadata)
+	case chainsel.FamilySui:
+		return buildSuiExecutor(acc, action, chainSelector, encoder, chainMetadata)
+	case chainsel.FamilyTon:
+		return buildTonExecutor(acc, action, chainSelector, encoder, chainMetadata)
+	default:
+		return chainwrappers.BuildExecutor(acc, chainSelector, encoder, action, chainMetadata)
+	}
 }
 
 // getTimelockExecutorWithChainOverride returns a timelock executor for the given chain selector.
@@ -85,7 +133,26 @@ func getTimelockExecutorWithChainOverride(cfg *forkConfig, chainSelector types.C
 		return nil, fmt.Errorf("failed to get chain metadata from timelock proposal for chain selector %v", chainSelector)
 	}
 
-	chainAccessor := cldfmcmsadapters.Wrap(cfg.blockchains)
+	family, err := selectorFamily(chainSelector)
+	if err != nil {
+		return nil, fmt.Errorf("chain selector family: %w", err)
+	}
 
-	return chainwrappers.BuildTimelockExecutor(&chainAccessor, chainSelector, cfg.timelockProposal.Action, chainMetadata)
+	acc := newChainAccessor(cfg)
+	action := cfg.timelockProposal.Action
+
+	switch family {
+	case chainsel.FamilyEVM:
+		return buildEVMTimelockExecutor(acc, action, chainSelector, chainMetadata)
+	case chainsel.FamilySolana:
+		return buildSolanaTimelockExecutor(acc, action, chainSelector, chainMetadata)
+	case chainsel.FamilyAptos:
+		return buildAptosTimelockExecutor(acc, action, chainSelector, chainMetadata)
+	case chainsel.FamilySui:
+		return buildSuiTimelockExecutor(acc, action, chainSelector, chainMetadata)
+	case chainsel.FamilyTon:
+		return buildTonTimelockExecutor(acc, action, chainSelector, chainMetadata)
+	default:
+		return chainwrappers.BuildTimelockExecutor(acc, chainSelector, action, chainMetadata)
+	}
 }
