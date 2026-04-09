@@ -1,6 +1,7 @@
 package mcms
 
 import (
+	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/mcms/chainwrappers"
 	"github.com/smartcontractkit/mcms/sdk"
 	mcmsaptos "github.com/smartcontractkit/mcms/sdk/aptos"
@@ -8,6 +9,15 @@ import (
 
 	cldfmcmsadapters "github.com/smartcontractkit/chainlink-deployments-framework/chain/mcms/adapters"
 )
+
+func init() {
+	registerChainFamilyBuilders(
+		chainsel.FamilyAptos,
+		buildAptosInspector,
+		buildAptosExecutor,
+		buildAptosTimelockExecutor,
+	)
+}
 
 // aptosRoleFromProposal maps the timelock action to the Aptos MCMS role. Use this (or extend it)
 // when CLDF needs Aptos-specific role logic without going through chainwrappers.

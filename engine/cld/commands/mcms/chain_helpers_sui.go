@@ -1,6 +1,7 @@
 package mcms
 
 import (
+	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/mcms/chainwrappers"
 	"github.com/smartcontractkit/mcms/sdk"
 	mcmssui "github.com/smartcontractkit/mcms/sdk/sui"
@@ -8,6 +9,15 @@ import (
 
 	cldfmcmsadapters "github.com/smartcontractkit/chainlink-deployments-framework/chain/mcms/adapters"
 )
+
+func init() {
+	registerChainFamilyBuilders(
+		chainsel.FamilySui,
+		buildSuiInspector,
+		buildSuiExecutor,
+		buildSuiTimelockExecutor,
+	)
+}
 
 // suiMetadataFromProposal parses Sui-specific fields from MCMS chain metadata.
 func suiMetadataFromProposal(metadata types.ChainMetadata) (mcmssui.AdditionalFieldsMetadata, error) {

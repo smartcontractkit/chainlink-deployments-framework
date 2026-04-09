@@ -38,20 +38,11 @@ func getInspectorFromChainSelector(cfg *forkConfig) (sdk.Inspector, error) {
 	acc := newChainAccessor(cfg)
 	action := cfg.timelockProposal.Action
 
-	switch family {
-	case chainsel.FamilyEVM:
-		return buildEVMInspector(acc, action, chainSelector, chainMetadata)
-	case chainsel.FamilySolana:
-		return buildSolanaInspector(acc, action, chainSelector, chainMetadata)
-	case chainsel.FamilyAptos:
-		return buildAptosInspector(acc, action, chainSelector, chainMetadata)
-	case chainsel.FamilySui:
-		return buildSuiInspector(acc, action, chainSelector, chainMetadata)
-	case chainsel.FamilyTon:
-		return buildTonInspector(acc, action, chainSelector, chainMetadata)
-	default:
-		return chainwrappers.BuildInspector(acc, chainSelector, action, chainMetadata)
+	if build, ok := chainFamilyInspectorBuilders[family]; ok {
+		return build(acc, action, chainSelector, chainMetadata)
 	}
+
+	return chainwrappers.BuildInspector(acc, chainSelector, action, chainMetadata)
 }
 
 // createExecutable creates an MCMS executable for the proposal.
@@ -110,20 +101,11 @@ func getExecutorWithChainOverride(cfg *forkConfig, chainSelector types.ChainSele
 	acc := newChainAccessor(cfg)
 	action := cfg.timelockProposal.Action
 
-	switch family {
-	case chainsel.FamilyEVM:
-		return buildEVMExecutor(acc, action, chainSelector, encoder, chainMetadata)
-	case chainsel.FamilySolana:
-		return buildSolanaExecutor(acc, action, chainSelector, encoder, chainMetadata)
-	case chainsel.FamilyAptos:
-		return buildAptosExecutor(acc, action, chainSelector, encoder, chainMetadata)
-	case chainsel.FamilySui:
-		return buildSuiExecutor(acc, action, chainSelector, encoder, chainMetadata)
-	case chainsel.FamilyTon:
-		return buildTonExecutor(acc, action, chainSelector, encoder, chainMetadata)
-	default:
-		return chainwrappers.BuildExecutor(acc, chainSelector, encoder, action, chainMetadata)
+	if build, ok := chainFamilyExecutorBuilders[family]; ok {
+		return build(acc, action, chainSelector, encoder, chainMetadata)
 	}
+
+	return chainwrappers.BuildExecutor(acc, chainSelector, encoder, action, chainMetadata)
 }
 
 // getTimelockExecutorWithChainOverride returns a timelock executor for the given chain selector.
@@ -141,18 +123,9 @@ func getTimelockExecutorWithChainOverride(cfg *forkConfig, chainSelector types.C
 	acc := newChainAccessor(cfg)
 	action := cfg.timelockProposal.Action
 
-	switch family {
-	case chainsel.FamilyEVM:
-		return buildEVMTimelockExecutor(acc, action, chainSelector, chainMetadata)
-	case chainsel.FamilySolana:
-		return buildSolanaTimelockExecutor(acc, action, chainSelector, chainMetadata)
-	case chainsel.FamilyAptos:
-		return buildAptosTimelockExecutor(acc, action, chainSelector, chainMetadata)
-	case chainsel.FamilySui:
-		return buildSuiTimelockExecutor(acc, action, chainSelector, chainMetadata)
-	case chainsel.FamilyTon:
-		return buildTonTimelockExecutor(acc, action, chainSelector, chainMetadata)
-	default:
-		return chainwrappers.BuildTimelockExecutor(acc, chainSelector, action, chainMetadata)
+	if build, ok := chainFamilyTimelockExecutorBuilders[family]; ok {
+		return build(acc, action, chainSelector, chainMetadata)
 	}
+
+	return chainwrappers.BuildTimelockExecutor(acc, chainSelector, action, chainMetadata)
 }

@@ -1,12 +1,22 @@
 package mcms
 
 import (
+	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/mcms/chainwrappers"
 	"github.com/smartcontractkit/mcms/sdk"
 	"github.com/smartcontractkit/mcms/types"
 
 	cldfmcmsadapters "github.com/smartcontractkit/chainlink-deployments-framework/chain/mcms/adapters"
 )
+
+func init() {
+	registerChainFamilyBuilders(
+		chainsel.FamilySolana,
+		buildSolanaInspector,
+		buildSolanaExecutor,
+		buildSolanaTimelockExecutor,
+	)
+}
 
 func buildSolanaInspector(
 	acc *cldfmcmsadapters.ChainAccessAdapter,

@@ -2,9 +2,7 @@ package mcms
 
 import (
 	"context"
-	"math"
 	"testing"
-	"time"
 
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/mcms"
@@ -15,16 +13,8 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 )
 
-// uint32Unix converts tm.Unix() to uint32 after a range check (gosec G115).
-func uint32Unix(t *testing.T, tm time.Time) uint32 {
-	t.Helper()
-	sec := tm.Unix()
-	if sec < 0 || sec > int64(math.MaxUint32) {
-		t.Fatalf("unix timestamp %d out of uint32 range", sec)
-	}
-
-	return uint32(sec)
-}
+// mcmsTestProposalValidUntil is a far-future MCMS validUntil (uint32 max ≈ year 2106) for test fixtures.
+const mcmsTestProposalValidUntil uint32 = 0xffffffff
 
 func TestSelectorFamily_EVM(t *testing.T) {
 	t.Parallel()
@@ -54,7 +44,7 @@ func TestGetInspectorFromChainSelector_MissingProposalChainMetadata(t *testing.T
 			BaseProposal: mcms.BaseProposal{
 				Version:       "v1",
 				Kind:          types.KindProposal,
-				ValidUntil:    uint32Unix(t, time.Now().Add(24*time.Hour)),
+				ValidUntil:    mcmsTestProposalValidUntil,
 				ChainMetadata: map[types.ChainSelector]types.ChainMetadata{},
 			},
 		},
@@ -77,7 +67,7 @@ func TestGetInspectorFromChainSelector_AptosUnknownAction(t *testing.T) {
 			BaseProposal: mcms.BaseProposal{
 				Version:    "v1",
 				Kind:       types.KindProposal,
-				ValidUntil: uint32Unix(t, time.Now().Add(24*time.Hour)),
+				ValidUntil: mcmsTestProposalValidUntil,
 				ChainMetadata: map[types.ChainSelector]types.ChainMetadata{
 					sel: {MCMAddress: "0x1", StartingOpCount: 0},
 				},
@@ -104,7 +94,7 @@ func TestGetInspectorFromChainSelector_SuiInvalidMetadata(t *testing.T) {
 			BaseProposal: mcms.BaseProposal{
 				Version:    "v1",
 				Kind:       types.KindProposal,
-				ValidUntil: uint32Unix(t, time.Now().Add(24*time.Hour)),
+				ValidUntil: mcmsTestProposalValidUntil,
 				ChainMetadata: map[types.ChainSelector]types.ChainMetadata{
 					sel: {
 						MCMAddress:       "0x1",
@@ -135,7 +125,7 @@ func TestGetInspectorFromChainSelector_DefaultUnsupportedFamily(t *testing.T) {
 			BaseProposal: mcms.BaseProposal{
 				Version:    "v1",
 				Kind:       types.KindProposal,
-				ValidUntil: uint32Unix(t, time.Now().Add(24*time.Hour)),
+				ValidUntil: mcmsTestProposalValidUntil,
 				ChainMetadata: map[types.ChainSelector]types.ChainMetadata{
 					sel: {MCMAddress: "0x1", StartingOpCount: 0},
 				},
@@ -160,7 +150,7 @@ func TestGetExecutorWithChainOverride_MissingTimelockChainMetadata(t *testing.T)
 		BaseProposal: mcms.BaseProposal{
 			Version:    "v1",
 			Kind:       types.KindProposal,
-			ValidUntil: uint32Unix(t, time.Now().Add(24*time.Hour)),
+			ValidUntil: mcmsTestProposalValidUntil,
 			ChainMetadata: map[types.ChainSelector]types.ChainMetadata{
 				sel: {MCMAddress: "0x1", StartingOpCount: 0},
 			},
@@ -207,7 +197,7 @@ func TestCreateExecutable_PropagatesExecutorError(t *testing.T) {
 		BaseProposal: mcms.BaseProposal{
 			Version:    "v1",
 			Kind:       types.KindProposal,
-			ValidUntil: uint32Unix(t, time.Now().Add(24*time.Hour)),
+			ValidUntil: mcmsTestProposalValidUntil,
 			ChainMetadata: map[types.ChainSelector]types.ChainMetadata{
 				sel: {MCMAddress: "0x1", StartingOpCount: 0},
 			},
