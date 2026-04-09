@@ -50,6 +50,8 @@ type ProposalHookEnv struct {
 	Name        string
 	Logger      logger.Logger
 	BlockChains chain.BlockChains
+	ForkContext ForkContext
+	// TODO: read-only JD and CRE clients
 }
 
 // PreHookParams is passed to pre-hooks.

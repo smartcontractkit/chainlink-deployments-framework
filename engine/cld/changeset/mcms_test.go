@@ -148,7 +148,7 @@ func Test_RunProposalHooks(t *testing.T) {
 			execLogs := []string{}
 			registry := tt.setup(&execLogs)
 
-			err := registry.RunProposalHooks(tt.key, hookTestEnv(t), &mcms.TimelockProposal{}, nil, nil)
+			err := registry.RunProposalHooks(tt.key, hookTestEnv(t), &mcms.TimelockProposal{}, nil, nil, nil)
 
 			if tt.wantErr == "" {
 				require.NoError(t, err)
@@ -181,7 +181,7 @@ func Test_RunProposalHooks_HookReceivesCorrectParams(t *testing.T) {
 		}},
 	}
 
-	err := r.RunProposalHooks("test-cs", hookTestEnv(t), proposal, input, reports)
+	err := r.RunProposalHooks("test-cs", hookTestEnv(t), proposal, input, reports, nil)
 	require.NoError(t, err)
 
 	expectedParams := PostProposalHookParams{

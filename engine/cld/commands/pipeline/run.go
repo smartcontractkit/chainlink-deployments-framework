@@ -1,7 +1,6 @@
 package pipeline
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,8 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/samber/lo"
+	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
@@ -174,7 +172,7 @@ func runRun(cmd *cobra.Command, cfg *Config, f runFlags) error {
 		return saveErr
 	}
 
-	err = saveChangesetProposalMetadata(cmd.Context(), actualChangesetName, out)
+	err = saveChangesetProposalMetadata(actualChangesetName, out)
 	if err != nil {
 		return fmt.Errorf("failed to save changeset proposal metadata: %w", err)
 	}
@@ -204,7 +202,7 @@ func runRun(cmd *cobra.Command, cfg *Config, f runFlags) error {
 	return nil
 }
 
-func saveChangesetProposalMetadata(ctx context.Context, changesetName string, out fdeployment.ChangesetOutput) error {
+func saveChangesetProposalMetadata(changesetName string, out fdeployment.ChangesetOutput) error {
 	if len(out.MCMSTimelockProposals) == 0 {
 		return nil
 	}
@@ -214,26 +212,34 @@ func saveChangesetProposalMetadata(ctx context.Context, changesetName string, ou
 		return errors.New("durable pipeline input is empty or not set")
 	}
 
+	id := uuid.NewString()
+
 	for i := range out.MCMSTimelockProposals {
 		proposal := &out.MCMSTimelockProposals[i]
 		if proposal.Metadata == nil {
 			proposal.Metadata = map[string]any{}
 		}
 
-		operationIDs, _, err := proposal.OperationIDs(ctx)
-		if err != nil {
-			return fmt.Errorf("failed to get operation IDs from proposal: %w", err)
-		}
-
 		proposal.Metadata["changesets"] = []struct {
-			Name         string          `json:"name"`
-			Input        json.RawMessage `json:"input"`
-			OperationIDs []string        `json:"operationIDs"`
+			ID    string          `json:"id"`
+			Name  string          `json:"name"`
+			Input json.RawMessage `json:"input"`
 		}{{
-			Name:         changesetName,
-			Input:        json.RawMessage(changesetInputJSON),
-			OperationIDs: lo.Map(operationIDs, func(o common.Hash, _ int) string { return o.Hex() }),
+			ID:    id,
+			Name:  changesetName,
+			Input: json.RawMessage(changesetInputJSON),
 		}}
+
+		for j := range proposal.Operations {
+			batchOp := &proposal.Operations[j]
+			for k := range batchOp.Transactions {
+				transaction := &batchOp.Transactions[k]
+				if transaction.Tags == nil {
+					transaction.Tags = []string{}
+				}
+				transaction.Tags = append(transaction.Tags, "changeset:"+id)
+			}
+		}
 	}
 
 	return nil

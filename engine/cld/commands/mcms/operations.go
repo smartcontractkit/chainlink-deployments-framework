@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"slices"
 	"strings"
 	"time"
 
@@ -186,6 +185,15 @@ func timelockExecuteChainCommand(
 		return nil, fmt.Errorf("failed to get timelock execute options: %w", err)
 	}
 
+	operationIDs, _, err := cfg.timelockProposal.OperationIDs(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get operation IDs from proposal: %w", err)
+	}
+	if len(operationIDs) != len(cfg.timelockProposal.Operations) {
+		return nil, fmt.Errorf("unexpected number of operation IDs: expected %d, got %d",
+			len(cfg.timelockProposal.Operations), len(operationIDs))
+	}
+
 	reports := []cldfchangeset.MCMSTimelockExecuteReport{}
 	for i := range cfg.timelockProposal.Operations {
 		if uint64(cfg.timelockProposal.Operations[i].ChainSelector) == cfg.chainSelector {
@@ -207,7 +215,6 @@ func timelockExecuteChainCommand(
 				return nil, fmt.Errorf("failed to execute operation %d: %w", i, err)
 			}
 
-			operationID := cfg.timelockProposal.Operations[i].OperationID
 			reports = append(reports, cldfchangeset.MCMSTimelockExecuteReport{
 				ID:        options.idFn(),
 				Type:      cldfchangeset.MCMSTimelockExecuteReportType,
@@ -216,11 +223,11 @@ func timelockExecuteChainCommand(
 				Input: cldfchangeset.MCMSTimelockExecuteReportInput{
 					Index:            i,
 					ChainSelector:    cfg.chainSelector,
-					OperationID:      operationID,
+					OperationID:      operationIDs[i],
 					TimelockAddress:  timelockAddress,
 					MCMAddress:       chainMetadata.MCMAddress,
 					AdditionalFields: chainMetadata.AdditionalFields,
-					Changeset:        findChangeset(operationID, cfg.timelockProposal.Metadata),
+					Changeset:        findChangeset(cfg.timelockProposal, i),
 				},
 				Output: cldfchangeset.MCMSTimelockExecuteReportOutput{
 					TransactionResult: result,
@@ -451,33 +458,58 @@ func addCallProxyOption(
 	return fmt.Errorf("failed to find call proxy contract for timelock %v", timelockAddress)
 }
 
-// findChangeset finds the changeset name and index for the given operation ID from the proposal
-// metadata. It assumes the metadata has a "changesets" field which is a list of changesets (as
-// implemented in CLDF)
-func findChangeset(operationID common.Hash, metadata map[string]any) cldfchangeset.MCMSReportChangeset {
-	if metadata == nil {
+func getChangesetID(batchOperation types.BatchOperation) (string, error) {
+	const tagPrefix = "changeset:"
+
+	if len(batchOperation.Transactions) == 0 {
+		return "", errors.New("no transaction found in batch operation")
+	}
+
+	for _, tag := range batchOperation.Transactions[0].Tags {
+		if strings.HasPrefix(tag, tagPrefix) && len(tag) > len(tagPrefix) {
+			return tag[len(tagPrefix):], nil
+		}
+	}
+
+	return "", errors.New("no changeset tag found in batch operation")
+}
+
+// findChangeset finds the changeset name and index for the given id from the proposal
+// metadata. It assumes the metadata has a "changesets" field which is a list of changesets,
+// and that each changeset entry has an "id" field with an UUID.
+func findChangeset(proposal *mcms.TimelockProposal, index int) cldfchangeset.MCMSReportChangeset {
+	if index >= len(proposal.Operations) {
+		return cldfchangeset.MCMSReportChangeset{}
+	}
+
+	changesetID, err := getChangesetID(proposal.Operations[index])
+	if err != nil {
+		return cldfchangeset.MCMSReportChangeset{}
+	}
+
+	if proposal.Metadata == nil {
 		return cldfchangeset.MCMSReportChangeset{}
 	}
 
 	type changesetType struct {
-		Name         string   `json:"name"`
-		OperationIDs []string `json:"operationIDs"`
+		ID   string `json:"id"`
+		Name string `json:"name"`
 	}
 	var parsedMetadata struct {
 		Changesets []changesetType `json:"changesets"`
 	}
 
-	err := mapstructure.Decode(metadata, &parsedMetadata)
+	err = mapstructure.Decode(proposal.Metadata, &parsedMetadata)
 	if err != nil {
 		return cldfchangeset.MCMSReportChangeset{}
 	}
 
 	changeset, index, found := lo.FindIndexOf(parsedMetadata.Changesets, func(c changesetType) bool {
-		return slices.Contains(c.OperationIDs, operationID.Hex())
+		return c.ID == changesetID
 	})
 	if !found {
 		return cldfchangeset.MCMSReportChangeset{}
 	}
 
-	return cldfchangeset.MCMSReportChangeset{Index: index, Name: changeset.Name}
+	return cldfchangeset.MCMSReportChangeset{ID: changeset.ID, Index: index, Name: changeset.Name}
 }

@@ -7,22 +7,32 @@ import (
 	"time"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/mcms"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	cldfenv "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
 )
 
 // ----- mcms timelock execution report types -----
 
+type MCMSReportStatus string
+
+const (
+	StatusSuccess MCMSReportStatus = "SUCCESS"
+	StatusNoOp    MCMSReportStatus = "NOOP"
+	StatusFailed  MCMSReportStatus = "FAILED"
+)
+
 type mcmsReport[IN, OUT any] struct {
-	ID        string    `json:"id"`
-	Type      string    `json:"type"`
-	Status    string    `json:"status,omitempty"`
-	Error     string    `json:"error,omitempty"`
-	Timestamp time.Time `json:"timestamp,omitzero"`
-	Input     IN        `json:"input,omitempty"`
-	Output    OUT       `json:"output,omitempty"`
+	ID        string           `json:"id"`
+	Type      string           `json:"type"`
+	Status    MCMSReportStatus `json:"status,omitempty"`
+	Error     string           `json:"error,omitempty"`
+	Timestamp time.Time        `json:"timestamp,omitzero"`
+	Input     IN               `json:"input,omitempty"`
+	Output    OUT              `json:"output,omitempty"`
 }
 
 type MCMSTimelockExecuteReportInput struct {
@@ -40,6 +50,7 @@ type MCMSTimelockExecuteReportOutput struct {
 }
 
 type MCMSReportChangeset struct {
+	ID    string `json:"id"`
 	Index int    `json:"index"`
 	Name  string `json:"name,omitzero"`
 }
@@ -48,24 +59,49 @@ type MCMSTimelockExecuteReport mcmsReport[MCMSTimelockExecuteReportInput, MCMSTi
 
 const MCMSTimelockExecuteReportType = "timelock-execution"
 
+// ----- fork context -----
+
+// ForkContext provides information about the forked state of the environment, if applicable. It is
+// exposed to hooks to allow them to adjust their behavior accordingly.
+type ForkContext interface {
+	ChainFamily() string
+}
+
+type EVMForkContext struct {
+	ChainConfig cldfenv.ChainConfig
+	Client      cldfenv.ForkedOnchainClient
+}
+
+func (*EVMForkContext) ChainFamily() string {
+	return chainsel.FamilyEVM
+}
+
 // RunProposalHooks executes all post-proposal hooks for the given proposal and reports. It returns
 // an error if any of the hooks fail.
 // Execution order is:
 //  1. Per-changeset post-proposal-hooks
 //  2. Global post-proposal-hooks
 func (r *ChangesetsRegistry) RunProposalHooks(
-	key string, e fdeployment.Environment, proposal *mcms.TimelockProposal, input any, reports []MCMSTimelockExecuteReport,
+	key string, e fdeployment.Environment, proposal *mcms.TimelockProposal, input any,
+	reports []MCMSTimelockExecuteReport, forkCtx ForkContext,
 ) error {
 	applySnapshot, err := r.getApplySnapshot(key)
 	if err != nil {
 		return err
 	}
 
+	blockChains := e.BlockChains
+	if forkCtx == nil {
+		blockChains = blockChains.ReadOnly()
+	}
+
 	params := PostProposalHookParams{
 		Env: ProposalHookEnv{
 			Name:        e.Name,
 			Logger:      e.Logger,
-			BlockChains: e.BlockChains.ReadOnly(),
+			BlockChains: blockChains,
+			ForkContext: forkCtx,
+			// TODO: JD and CRE clients
 		},
 		ChangesetKey: key,
 		Proposal:     proposal,
