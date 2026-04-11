@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/samber/lo"
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/mcms"
@@ -522,9 +524,8 @@ changesets:
 	require.EqualError(t, err, "environment load failed")
 }
 
+//nolint:paralleltest
 func TestRunCmd_SubcommandExists(t *testing.T) {
-	t.Parallel()
-
 	cfg := &Config{
 		Logger:                logger.Test(t),
 		Domain:                domain.NewDomain(t.TempDir(), "test"),
@@ -553,9 +554,8 @@ func TestRunCmd_SubcommandExists(t *testing.T) {
 	require.True(t, found)
 }
 
+//nolint:paralleltest
 func TestRunCmd_RequiresInputFile(t *testing.T) {
-	t.Parallel()
-
 	cfg := &Config{
 		Logger:                logger.Test(t),
 		Domain:                domain.NewDomain(t.TempDir(), "test"),
@@ -575,6 +575,8 @@ func TestRunCmd_RequiresInputFile(t *testing.T) {
 
 //nolint:paralleltest
 func TestRunCmd_ReturnsProposal(t *testing.T) {
+	generateStableUUIDs(t)
+
 	env := "testnet"
 	changesetName := "0001_test_changeset"
 	workspaceRoot := t.TempDir()
@@ -651,6 +653,7 @@ changesets:
 	require.Equal(t, map[string]any{
 		"changesets": []any{
 			map[string]any{
+				"id":   "c00e5d67-c275-4389-aded-7d8b151cbd5b",
 				"name": changesetName,
 				"input": map[string]any{
 					"payload": map[string]any{
@@ -658,10 +661,20 @@ changesets:
 						"value": json.Number("100"),
 					},
 				},
-				"operationIDs": []any{"0x0206ff10261710c45650d4912ffc6d6808fd1248fb510e47d0e9482058d9c048"},
 			},
 		},
 	}, proposal.Metadata)
+	require.Equal(t, []mcmstypes.BatchOperation{{
+		ChainSelector: mcmstypes.ChainSelector(chainsel.GETH_TESTNET.Selector),
+		Transactions: []mcmstypes.Transaction{{
+			To:               "0xToAddress",
+			Data:             []byte("0x"),
+			AdditionalFields: json.RawMessage("{\n            \"value\": 0\n          }"),
+			OperationMetadata: mcmstypes.OperationMetadata{
+				Tags: []string{"changeset:c00e5d67-c275-4389-aded-7d8b151cbd5b"},
+			},
+		}},
+	}}, proposal.Operations)
 }
 
 // ----- shared test data -----
@@ -683,3 +696,9 @@ var testProposal = lo.Must(mcms.NewTimelockProposalBuilder().
 		}},
 	}).
 	Build())
+
+func generateStableUUIDs(t *testing.T) {
+	t.Helper()
+	uuid.SetRand(rand.New(rand.NewSource(1234))) //nolint:gosec // not used for security purposes
+	t.Cleanup(func() { uuid.SetRand(nil) })
+}

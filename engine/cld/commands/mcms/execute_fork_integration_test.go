@@ -77,7 +77,12 @@ func Test_executeFork_Integration(t *testing.T) { //nolint:paralleltest
 	provider := cldfchainprovider.NewCTFAnvilChainProvider(chainSelector, anvilConfig)
 	evmChain, err := provider.Initialize(t.Context())
 	require.NoError(t, err)
-	t.Cleanup(func() { _ = provider.Container.Terminate(t.Context()) })
+	t.Cleanup(func() {
+		alias, _ := provider.Container.NetworkAliases(t.Context())
+		id := provider.Container.GetContainerID()
+		t.Logf("terminating anvil container %v (alias: %v)", id, alias)
+		_ = provider.Container.Terminate(t.Context())
+	})
 
 	saveDomainNetworkConfigForIntegration(t, &domain, integrationEnvName, domainConfig, provider, anvilConfig.Port)
 
@@ -167,12 +172,13 @@ func Test_executeFork_Integration(t *testing.T) { //nolint:paralleltest
 				fcfg.timelockProposal.Metadata = map[string]any{
 					"changesets": []any{
 						map[string]any{
-							"name":         "001_test_changeset",
-							"input":        map[string]any{},
-							"operationIDs": []any{"0x342ae55e5f86f04edeb7f9294370354a07ca69e8c9e95c92b71b7e28ca799195"},
+							"id":    "6987294d-a9af-470a-aa2b-8350a778f3fa",
+							"name":  "001_test_changeset",
+							"input": map[string]any{},
 						},
 					},
 				}
+				fcfg.timelockProposal.Operations[0].Transactions[0].Tags = []string{"changeset:6987294d-a9af-470a-aa2b-8350a778f3fa"}
 
 				return &fcfg
 			},
@@ -183,13 +189,16 @@ func Test_executeFork_Integration(t *testing.T) { //nolint:paralleltest
 				require.Equal(t, 1, logs.FilterMessageSnippet("Timelock.execute() - success").Len())
 				require.Equal(t, 3, logs.FilterMessage("sending on-chain transaction").Len())
 				require.Equal(t, 1, logs.FilterMessage("test-changeset-post-proposal-hook executed").Len())
+				require.Equal(t, 1, logs.FilterMessage("test-changeset-post-proposal-hook; # reports: 1").Len())
+				require.Equal(t, 1, logs.FilterMessage("test-changeset-post-proposal-hook; forkctx family: evm").Len())
 				require.Equal(t, 1, logs.FilterMessage("test-global-post-proposal-hook executed").Len())
+				require.Equal(t, 1, logs.FilterMessage("test-global-post-proposal-hook; # reports: 1").Len())
+				require.Equal(t, 1, logs.FilterMessage("test-global-post-proposal-hook; forkctx family: evm").Len())
 			},
 		},
 	}
 	for _, tt := range tests { //nolint:paralleltest
 		t.Run(tt.name, func(t *testing.T) {
-			lggr.Infof("EXECUTING FORK TEST (%s)", tt.name)
 			err := executeFork(t.Context(), tt.mcmsCfg, tt.cfg(), true)
 
 			tt.assert(err)
@@ -362,7 +371,6 @@ func testTimelockProposal(
 
 	opCount, err := mcmsevmsdk.NewInspector(chain.Client).GetOpCount(t.Context(), mcmAddress)
 	require.NoError(t, err)
-	t.Logf("%v OPCOUNT: %d", mcmAddress, opCount)
 
 	timelockProposal, err := mcms.NewTimelockProposalBuilder().
 		SetVersion("v1").

@@ -2,12 +2,14 @@ package mcms
 
 import (
 	"context"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"strconv"
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zapcore"
@@ -20,9 +22,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
-func Test_newRunProposalHooksCmd(t *testing.T) {
-	t.Parallel()
-
+func Test_newRunProposalHooksCmd(t *testing.T) { //nolint:paralleltest
 	type testCase struct {
 		name    string
 		args    []string
@@ -128,6 +128,8 @@ func Test_newRunProposalHooksCmd(t *testing.T) {
 			},
 			setup: func(t *testing.T, testCtx *testCase) {
 				t.Helper()
+				generateStableUUIDs(t)
+
 				testCtx.testDir = t.TempDir()
 
 				envName := "testnet"
@@ -157,14 +159,17 @@ func Test_newRunProposalHooksCmd(t *testing.T) {
 				t.Helper()
 				require.NoError(t, err)
 				require.Equal(t, 1, testCtx.logs.FilterMessage("test-changeset-post-proposal-hook executed").Len())
+				require.Equal(t, 1, testCtx.logs.FilterMessage("test-changeset-post-proposal-hook; # reports: 1").Len())
+				require.Equal(t, 0, testCtx.logs.FilterMessage("test-changeset-post-proposal-hook; forkctx family: EVM").Len())
 				require.Equal(t, 2, testCtx.logs.FilterMessage("test-global-post-proposal-hook executed").Len())
+				require.Equal(t, 1, testCtx.logs.FilterMessage("test-global-post-proposal-hook; # reports: 1").Len())
+				require.Equal(t, 1, testCtx.logs.FilterMessage("test-global-post-proposal-hook; # reports: 0").Len())
+				require.Equal(t, 0, testCtx.logs.FilterMessage("test-global-post-proposal-hook; forkctx family: EVM").Len())
 			},
 		},
 	}
-	for _, tt := range tests {
+	for _, tt := range tests { //nolint:paralleltest
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
 			tt.setup(t, &tt)
 
 			cmd := newRunProposalHooksCmd(tt.cfg)
@@ -199,7 +204,6 @@ var testProposalWithoutChangesetsJSON = []byte(`{
     },
     "operations": [
         {
-            "operationID": "0x342ae55e5f86f04edeb7f9294370354a07ca69e8c9e95c92b71b7e28ca799195",
             "chainSelector": 3379446385462418246,
             "transactions": [
                 {
@@ -215,103 +219,118 @@ var testProposalWithoutChangesetsJSON = []byte(`{
 }`)
 
 var testProposalWithChangesetsJSON = []byte(`{
-    "version": "v1",
-    "kind": "TimelockProposal",
-    "validUntil": 2004259681,
-    "chainMetadata": {
-        "3379446385462418246": {
-            "mcmAddress": "0x0000000000000000000000000000000000000001",
-            "startingOpCount": 0,
-            "additionalFields": {}
-        }
-    },
-    "timelockAddresses": {
-        "3379446385462418246": "0x0000000000000000000000000000000000000002"
-    },
-    "description": "Test proposal",
-    "overridePreviousRoot": false,
-    "action": "schedule",
-    "delay": "1h0m0s",
-    "signatures": null,
+	"version": "v1",
+	"kind": "TimelockProposal",
+	"validUntil": 2004259681,
+	"chainMetadata": {
+		"3379446385462418246": {
+			"mcmAddress": "0x0000000000000000000000000000000000000001",
+			"startingOpCount": 0,
+			"additionalFields": {}
+		}
+	},
+	"timelockAddresses": {
+		"3379446385462418246": "0x0000000000000000000000000000000000000002"
+	},
+	"description": "Test proposal",
+	"overridePreviousRoot": false,
+	"action": "schedule",
+	"delay": "1h0m0s",
+	"signatures": null,
 	"metadata": {
 		"changesets": [
 			{
+				"id": "30377e5d-d431-4c27-ac79-31ced49fffc0",
 				"name": "001_test_changeset",
-				"input": {},
-				"operationIDs": ["0x342ae55e5f86f04edeb7f9294370354a07ca69e8c9e95c92b71b7e28ca799195"]
+				"input": {
+					"key": "value"
+				}
 			},
 			{
+				"id": "df1fbe75-5009-4561-b936-d3c1c6762c98",
 				"name": "002_test_changeset",
-				"input": {},
-				"operationIDs": ["0x7035f429cd9f1ee3455617b74a0b29b29b7af8c24aa48b9b1f0827f9d76571da"]
+				"input": {}
 			}
 		]
 	},
-    "operations": [
-        {
-            "operationID": "0x342ae55e5f86f04edeb7f9294370354a07ca69e8c9e95c92b71b7e28ca799195",
-            "chainSelector": 3379446385462418246,
-            "transactions": [
-                {
-                    "to": "0x0000000000000000000000000000000000000003",
-                    "additionalFields": {"value": 0},
-                    "data": "ZGF0YQ=="
-                }
-            ]
-        },
-        {
-            "operationID": "0x7035f429cd9f1ee3455617b74a0b29b29b7af8c24aa48b9b1f0827f9d76571da",
-            "chainSelector": 3379446385462418246,
-            "transactions": [
-                {
-                    "to": "0x0000000000000000000000000000000000000004",
-                    "additionalFields": {"value": 0},
-                    "data": "ZGF0YQ=="
-                }
-            ]
-        }
-    ]
+	"operations": [
+		{
+			"chainSelector": 3379446385462418246,
+			"transactions": [
+				{
+					"to": "0x0000000000000000000000000000000000000003",
+					"data": "ZGF0YQ==",
+					"additionalFields": {
+						"value": 0
+					},
+					"tags": [
+						"test-tag",
+						"changeset:30377e5d-d431-4c27-ac79-31ced49fffc0"
+					]
+				}
+			]
+		},
+		{
+			"chainSelector": 3379446385462418246,
+			"transactions": [
+				{
+					"to": "0x0000000000000000000000000000000000000004",
+					"data": "ZGF0YQ==",
+					"additionalFields": {
+						"value": 0
+					},
+					"tags": [
+						"test-tag",
+						"changeset:df1fbe75-5009-4561-b936-d3c1c6762c98"
+					]
+				}
+			]
+		}
+	]
 }`)
 
-var testReportJSON = []byte(`[
-  {
-    "id": "f4a81ef3-54f2-46f0-82a8-b3954c355b5f",
-    "status": "SUCCESS",
-    "timestamp": "2026-03-25T23:18:23.394643-03:00",
-    "input": {
-      "index": 0,
-      "operationID": "0x2a7a360a499fdbddead746aa11c1fbbf2b7ed1f2b86ee398fb4cad610e2ecb9d",
-      "chainSelector": 3379446385462418246,
-      "timelockAddress": "0xa316c2dEeaF7593F7E3Ce15D69D80eF60Aa1A919",
-      "mcmAddress": "0xB09e94838Bd0c7c0ba105705Ec09ED6a10953EDe",
-      "additionalFields": null
-    },
-    "output": {
-      "transactionResult": {
-        "hash": "0xda30e0c13e66e2fdec526620e5e655faa4d5de3139d0c04f7515d0cb3b145aab",
-        "chainFamily": "evm",
-        "rawData": {
-          "type": "0x2",
-          "chainId": "0x14a34",
-          "nonce": "0x4a",
-          "to": "0x6a08ed6cba5398f061eac2b3f01e0047974851d0",
-          "gas": "0x1043c8",
-          "gasPrice": null,
-          "maxPriorityFeePerGas": "0xf4240",
-          "maxFeePerGas": "0xa7d8c0",
-          "value": "0x0",
-          "input": "0x6ceef48000000000",
-          "accessList": [],
-          "v": "0x1",
-          "r": "0x809f6092d7a9ac3c186be1b0faeba873f575561e8b7393bda57fc505f80b8932",
-          "s": "0x51dded11cf4e94a99084d8c0d081835b73b7f3a00b049c467bcfd9b640ae047",
-          "yParity": "0x1",
-          "hash": "0xda30e0c13e66e2fdec526620e5e655faa4d5de3139d0c04f7515d0cb3b145aab"
-        }
-      }
-    }
-  }
-]`)
+var testReportJSON = []byte(`[{
+	"id": "f4a81ef3-54f2-46f0-82a8-b3954c355b5f",
+	"status": "SUCCESS",
+	"timestamp": "2026-03-25T23:18:23.394643-03:00",
+	"input": {
+		"index": 0,
+		"operationID": "0x2a7a360a499fdbddead746aa11c1fbbf2b7ed1f2b86ee398fb4cad610e2ecb9d",
+		"chainSelector": 3379446385462418246,
+		"timelockAddress": "0xa316c2dEeaF7593F7E3Ce15D69D80eF60Aa1A919",
+		"mcmAddress": "0xB09e94838Bd0c7c0ba105705Ec09ED6a10953EDe",
+		"additionalFields": null,
+		"changeset": {
+			"id": "30377e5d-d431-4c27-ac79-31ced49fffc0",
+			"index": 0,
+			"name": "001_test_changeset"
+		}
+	},
+	"output": {
+		"transactionResult": {
+			"hash": "0xda30e0c13e66e2fdec526620e5e655faa4d5de3139d0c04f7515d0cb3b145aab",
+			"chainFamily": "evm",
+			"rawData": {
+				"type": "0x2",
+				"chainId": "0x14a34",
+				"nonce": "0x4a",
+				"to": "0x6a08ed6cba5398f061eac2b3f01e0047974851d0",
+				"gas": "0x1043c8",
+				"gasPrice": null,
+				"maxPriorityFeePerGas": "0xf4240",
+				"maxFeePerGas": "0xa7d8c0",
+				"value": "0x0",
+				"input": "0x6ceef48000000000",
+				"accessList": [],
+				"v": "0x1",
+				"r": "0x809f6092d7a9ac3c186be1b0faeba873f575561e8b7393bda57fc505f80b8932",
+				"s": "0x51dded11cf4e94a99084d8c0d081835b73b7f3a00b049c467bcfd9b640ae047",
+				"yParity": "0x1",
+				"hash": "0xda30e0c13e66e2fdec526620e5e655faa4d5de3139d0c04f7515d0cb3b145aab"
+			}
+		}
+	}
+}]`)
 
 func loadChangesets(envName string) (*changeset.ChangesetsRegistry, error) {
 	registry := changeset.NewChangesetsRegistry()
@@ -327,6 +346,12 @@ func loadChangesets(envName string) (*changeset.ChangesetsRegistry, error) {
 				},
 				Func: func(ctx context.Context, params changeset.PostProposalHookParams) error {
 					params.Env.Logger.Info("test-changeset-post-proposal-hook executed")
+					params.Env.Logger.Infof("test-changeset-post-proposal-hook; # reports: %d", len(params.Reports))
+					if params.Env.ForkContext != nil {
+						params.Env.Logger.Infof("test-changeset-post-proposal-hook; forkctx family: %v",
+							params.Env.ForkContext.ChainFamily())
+					}
+
 					return nil
 				},
 			}),
@@ -344,11 +369,22 @@ func loadChangesets(envName string) (*changeset.ChangesetsRegistry, error) {
 		},
 		Func: func(ctx context.Context, params changeset.PostProposalHookParams) error {
 			params.Env.Logger.Info("test-global-post-proposal-hook executed")
+			params.Env.Logger.Infof("test-global-post-proposal-hook; # reports: %d", len(params.Reports))
+			if params.Env.ForkContext != nil {
+				params.Env.Logger.Infof("test-global-post-proposal-hook; forkctx family: %v", params.Env.ForkContext.ChainFamily())
+			}
+
 			return nil
 		},
 	})
 
 	return registry, nil
+}
+
+func generateStableUUIDs(t *testing.T) {
+	t.Helper()
+	uuid.SetRand(rand.New(rand.NewSource(1234))) //nolint:gosec // not used for security purposes
+	t.Cleanup(func() { uuid.SetRand(nil) })
 }
 
 type testChangesetConfig struct{}

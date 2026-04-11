@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"slices"
 
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/samber/lo"
@@ -46,19 +45,13 @@ type runHooksFlags struct {
 }
 
 type proposalMetadata struct {
-	Changesets         []changesetMetadata     `json:"changesets" mapstructure:"changesets"`
-	PostExecutionHooks []proposalHooksMetadata `json:"postExecutionHooks" mapstructure:"postExecutionHooks"`
-}
-
-type proposalHooksMetadata struct {
-	Name  string `json:"name" mapstructure:"name"`
-	Input any    `json:"input" mapstructure:"input"`
+	Changesets []changesetMetadata `json:"changesets" mapstructure:"changesets"`
 }
 
 type changesetMetadata struct {
-	Name         string   `json:"name" mapstructure:"name"`
-	OperationIDs []string `json:"operationIDs" mapstructure:"operationIDs"`
-	Input        any      `json:"input" mapstructure:"input"`
+	ID    string `json:"id" mapstructure:"id"`
+	Name  string `json:"name" mapstructure:"name"`
+	Input any    `json:"input" mapstructure:"input"`
 }
 
 func newRunProposalHooksCmd(cfg Config) *cobra.Command {
@@ -120,7 +113,7 @@ func runHooks(ctx context.Context, cfg Config, hFlags runHooksFlags) error {
 		return errors.New("expected proposal to be a TimelockProposal")
 	}
 
-	return runHooksInternal(cfg, proposalCfg.Env, proposalCfg.TimelockProposal, hFlags.reports)
+	return runHooksInternal(cfg, proposalCfg.Env, proposalCfg.TimelockProposal, hFlags.reports, nil)
 }
 
 func runHooksInternal(
@@ -128,6 +121,7 @@ func runHooksInternal(
 	env cldf.Environment,
 	timelockProposal *mcms.TimelockProposal,
 	reports []cldfchangeset.MCMSTimelockExecuteReport,
+	forkCtx cldfchangeset.ForkContext,
 ) error {
 	if cfg.LoadChangesets == nil {
 		return errors.New("LoadChangesets function is required for proposal hook execution")
@@ -146,17 +140,17 @@ func runHooksInternal(
 
 	for _, changeset := range metadata.Changesets {
 		changesetReports := lo.Filter(reports, func(r cldfchangeset.MCMSTimelockExecuteReport, _ int) bool {
-			return slices.Contains(changeset.OperationIDs, r.Input.OperationID.Hex())
+			return changeset.ID != "" && changeset.ID == r.Input.Changeset.ID
 		})
 
-		herr := changesetRegistry.RunProposalHooks(changeset.Name, env, timelockProposal, changeset.Input, changesetReports)
+		herr := changesetRegistry.RunProposalHooks(changeset.Name, env, timelockProposal,
+			changeset.Input, changesetReports, forkCtx)
 		if herr != nil {
-			cfg.Logger.Errorw("proposal hook failed", "changeset", changeset.Name, "error", herr)
-			err = errors.Join(err, fmt.Errorf("proposal hook for changeset %q failed: %w", changeset.Name, herr))
+			return fmt.Errorf("proposal hook for changeset %q failed: %w", changeset.Name, herr)
 		}
 	}
 
-	return err
+	return nil
 }
 
 func loadReport(path string) ([]cldfchangeset.MCMSTimelockExecuteReport, error) {
