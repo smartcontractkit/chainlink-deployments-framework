@@ -32,8 +32,9 @@ type Configurations struct {
 type internalChangeSet interface {
 	noop() // unexported function to prevent arbitrary structs from implementing ChangeSet.
 	Apply(env fdeployment.Environment) (fdeployment.ChangesetOutput, error)
-	applyWithInput(env fdeployment.Environment, inputStr string) (fdeployment.ChangesetOutput, error)
 	Configurations() (Configurations, error)
+	applyWithInput(env fdeployment.Environment, inputStr string) (fdeployment.ChangesetOutput, error)
+	configuration(input string) (any, error)
 }
 
 type ChangeSet internalChangeSet
@@ -333,6 +334,17 @@ func (ccs ChangeSetImpl[C]) Configurations() (Configurations, error) {
 		ConfigResolver:      ccs.ConfigResolver,
 		InputType:           inputType,
 	}, nil
+}
+
+func (ccs ChangeSetImpl[C]) configuration(input string) (any, error) {
+	if input != "" && ccs.configProviderWithInput != nil {
+		return ccs.configProviderWithInput(input)
+	}
+	if ccs.configProvider != nil {
+		return ccs.configProvider()
+	}
+
+	return nil, errors.New("no configuration provider found")
 }
 
 // WithPreHooks appends pre-hooks to this changeset. Multiple calls are additive.

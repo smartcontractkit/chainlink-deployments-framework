@@ -45,3 +45,17 @@ func TestChangesets_PostProcess(t *testing.T) {
 	require.NoError(t, err)
 	assert.Nil(t, configs.InputChainOverrides)
 }
+
+func TestChangesets_PostProcess_configuration(t *testing.T) {
+	t.Parallel()
+
+	noopPostProcessor := func(_ fdeployment.Environment, o fdeployment.ChangesetOutput) (fdeployment.ChangesetOutput, error) {
+		return o, nil
+	}
+	input := `{"payload":"config"}`
+
+	got, err := Configure(MyChangeSet).With("config").ThenWith(noopPostProcessor).configuration(input)
+
+	require.NoError(t, err)
+	require.Equal(t, "config", got)
+}

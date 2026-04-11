@@ -70,6 +70,10 @@ func (ccs PostProcessingChangeSetImpl[C]) WithPostProposalHooks(hooks ...PostPro
 	return ccs
 }
 
+func (ccs PostProcessingChangeSetImpl[C]) configuration(input string) (any, error) {
+	return ccs.changeset.configuration(input)
+}
+
 func (ccs PostProcessingChangeSetImpl[C]) getPreHooks() []PreHook   { return ccs.preHooks }
 func (ccs PostProcessingChangeSetImpl[C]) getPostHooks() []PostHook { return ccs.postHooks }
 func (ccs PostProcessingChangeSetImpl[C]) getPostProposalHooks() []PostProposalHook {

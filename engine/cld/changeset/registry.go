@@ -217,6 +217,11 @@ func (r *ChangesetsRegistry) Apply(
 		return fdeployment.ChangesetOutput{}, err
 	}
 
+	changesetConfig, err := applySnapshot.registryEntry.changeset.configuration(cfg.inputStr)
+	if err != nil {
+		return fdeployment.ChangesetOutput{}, fmt.Errorf("failed to get changeset configuration: %w", err)
+	}
+
 	hookEnv := HookEnv{
 		Name:   e.Name,
 		Logger: e.Logger,
@@ -225,6 +230,7 @@ func (r *ChangesetsRegistry) Apply(
 	preParams := PreHookParams{
 		Env:          hookEnv,
 		ChangesetKey: key,
+		Config:       changesetConfig,
 	}
 
 	for _, h := range applySnapshot.globalPreHooks {
@@ -248,6 +254,7 @@ func (r *ChangesetsRegistry) Apply(
 	postParams := PostHookParams{
 		Env:          hookEnv,
 		ChangesetKey: key,
+		Config:       changesetConfig,
 		Output:       output,
 		Err:          applyErr,
 	}
@@ -337,6 +344,17 @@ func (r *ChangesetsRegistry) GetChangesetOptions(key string) (ChangesetConfig, e
 	}
 
 	return entry.options, nil
+}
+
+// GetConfiguration retrieves the configuration for a changeset.
+// \"input\" is the optional input string passed to \"registry.Apply()\".
+func (r *ChangesetsRegistry) GetConfiguration(key string, input string) (any, error) {
+	entry, ok := r.entries[key]
+	if !ok {
+		return nil, fmt.Errorf("changeset '%s' not found", key)
+	}
+
+	return entry.changeset.configuration(input)
 }
 
 // GetConfigurations retrieves the configurations for a changeset.

@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/changeset"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/flags"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/pipeline/input"
@@ -172,7 +173,7 @@ func runRun(cmd *cobra.Command, cfg *Config, f runFlags) error {
 		return saveErr
 	}
 
-	err = saveChangesetProposalMetadata(actualChangesetName, out)
+	err = saveChangesetProposalMetadata(registry, actualChangesetName, out)
 	if err != nil {
 		return fmt.Errorf("failed to save changeset proposal metadata: %w", err)
 	}
@@ -202,7 +203,9 @@ func runRun(cmd *cobra.Command, cfg *Config, f runFlags) error {
 	return nil
 }
 
-func saveChangesetProposalMetadata(changesetName string, out fdeployment.ChangesetOutput) error {
+func saveChangesetProposalMetadata(
+	registry *changeset.ChangesetsRegistry, changesetName string, out fdeployment.ChangesetOutput,
+) error {
 	if len(out.MCMSTimelockProposals) == 0 {
 		return nil
 	}
@@ -210,6 +213,11 @@ func saveChangesetProposalMetadata(changesetName string, out fdeployment.Changes
 	changesetInputJSON := os.Getenv("DURABLE_PIPELINE_INPUT")
 	if len(changesetInputJSON) == 0 {
 		return errors.New("durable pipeline input is empty or not set")
+	}
+
+	changesetConfig, err := registry.GetConfiguration(changesetName, changesetInputJSON)
+	if err != nil {
+		return fmt.Errorf("failed to get changeset configuration: %w", err)
 	}
 
 	id := uuid.NewString()
@@ -221,13 +229,15 @@ func saveChangesetProposalMetadata(changesetName string, out fdeployment.Changes
 		}
 
 		proposal.Metadata["changesets"] = []struct {
-			ID    string          `json:"id"`
-			Name  string          `json:"name"`
-			Input json.RawMessage `json:"input"`
+			ID     string          `json:"id"`
+			Name   string          `json:"name"`
+			Input  json.RawMessage `json:"input"`
+			Config any             `json:"config"`
 		}{{
-			ID:    id,
-			Name:  changesetName,
-			Input: json.RawMessage(changesetInputJSON),
+			ID:     id,
+			Name:   changesetName,
+			Input:  json.RawMessage(changesetInputJSON),
+			Config: changesetConfig,
 		}}
 
 		for j := range proposal.Operations {

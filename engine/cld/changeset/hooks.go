@@ -78,8 +78,11 @@ type PostProposalHookParams struct {
 	Env          ProposalHookEnv
 	ChangesetKey string
 	Proposal     *mcms.TimelockProposal
-	Input        any
+	Config       any
 	Reports      []MCMSTimelockExecuteReport
+
+	// Deprecated: use `Config` instead. Will be removed in a future version.
+	Input any
 }
 
 // PreHookFunc is the signature for functions that run before changeset Apply.

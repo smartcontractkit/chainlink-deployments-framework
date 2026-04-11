@@ -876,6 +876,42 @@ func TestWithJSON_UseNumberForAnyPayload(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestChangeSetImpl_configuration(t *testing.T) { //nolint:paralleltest
+	configuredChangeset := Configure(MyChangeSet)
+	input := `{"payload":"config"}`
+
+	t.Run("With", func(t *testing.T) { //nolint:paralleltest
+		got, err := configuredChangeset.With("config").configuration(input)
+		require.NoError(t, err)
+		require.Equal(t, "config", got)
+	})
+
+	t.Run("WithConfigFrom", func(t *testing.T) { //nolint:paralleltest
+		got, err := configuredChangeset.WithConfigFrom(func() (string, error) {
+			return "config", nil
+		}).configuration(input)
+		require.NoError(t, err)
+		require.Equal(t, "config", got)
+	})
+
+	t.Run("WithEnvInput", func(t *testing.T) { //nolint:paralleltest
+		t.Setenv("DURABLE_PIPELINE_INPUT", input)
+		got, err := configuredChangeset.WithEnvInput().configuration(input)
+		require.NoError(t, err)
+		require.Equal(t, "config", got)
+	})
+
+	t.Run("WithConfigResolver", func(t *testing.T) { //nolint:paralleltest
+		t.Setenv("DURABLE_PIPELINE_INPUT", input)
+		resolver := func(input string) (string, error) {
+			return "resolved " + input, nil
+		}
+		got, err := configuredChangeset.WithConfigResolver(resolver).configuration(input)
+		require.NoError(t, err)
+		require.Equal(t, "resolved config", got)
+	})
+}
+
 func TestConfigurations_ConfigResolverInfo(t *testing.T) {
 	t.Parallel()
 
