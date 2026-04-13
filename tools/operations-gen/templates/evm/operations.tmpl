@@ -25,7 +25,7 @@ var Version = semver.MustParse("{{.Version}}")
 var TypeAndVersion = cldf_deployment.NewTypeAndVersion(ContractType, *Version)
 
 const {{.ContractType}}ABI = `{{.ABI}}`
-{{- if not .NoDeployment}}
+{{- if not .OmitDeploy}}
 const {{.ContractType}}Bin = "{{.Bytecode}}"
 {{- end}}
 
@@ -74,7 +74,7 @@ func (c *{{$.ContractType}}Contract) {{.Name}}({{.Params}}) {{.Returns}} {
 
 type {{.Name}} struct {
 {{- range .Fields}}
-	{{.GoName}} {{.GoType}}
+	{{.GoName}} {{.GoType}}{{if .JSONTag}} `json:"{{.JSONTag}}"`{{end}}
 {{- end}}
 }
 {{- end}}
@@ -82,11 +82,11 @@ type {{.Name}} struct {
 
 type {{.Name}} struct {
 {{- range .Fields}}
-	{{.GoName}} {{.GoType}}
+	{{.GoName}} {{.GoType}}{{if .JSONTag}} `json:"{{.JSONTag}}"`{{end}}
 {{- end}}
 }
 {{- end}}
-{{- if not .NoDeployment}}
+{{- if not .OmitDeploy}}
 {{if .Constructor}}
 
 type ConstructorArgs struct {

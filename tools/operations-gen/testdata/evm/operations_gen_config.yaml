@@ -2,7 +2,8 @@ version: "1.0.0"
 chain_family: evm
 
 input:
-  base_path: "."
+  abi_base_path: "./abi"
+  bytecode_base_path: "./bytecode"
 
 output:
   base_path: "."
@@ -13,7 +14,7 @@ contracts:
     abi_file: "link_token.json"
     functions:
       - name: transfer
-        access: owner
+        access: public
       - name: balanceOf
         access: public
       - name: approve
