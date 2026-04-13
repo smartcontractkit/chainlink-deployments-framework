@@ -107,8 +107,7 @@ func TestTransactionForChain(t *testing.T) {
 			tx, err := TransactionForChain(tt.chain, tt.toAddress, tt.data, tt.value, tt.contractType, tt.tags)
 
 			if tt.wantErr != "" {
-				require.Error(t, err)
-				assert.Contains(t, err.Error(), tt.wantErr)
+				require.ErrorContains(t, err, tt.wantErr)
 				assert.Equal(t, mcmstypes.Transaction{}, tx)
 
 				return
@@ -166,8 +165,7 @@ func TestBatchOperationForChain(t *testing.T) {
 			bop, err := BatchOperationForChain(tt.chain, tt.toAddress, tt.data, tt.value, tt.contractType, tt.tags)
 
 			if tt.wantErr != "" {
-				require.Error(t, err)
-				assert.Contains(t, err.Error(), tt.wantErr)
+				require.ErrorContains(t, err, tt.wantErr)
 				assert.Equal(t, mcmstypes.BatchOperation{}, bop)
 
 				return

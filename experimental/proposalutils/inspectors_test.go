@@ -17,24 +17,20 @@ func TestWithTimelockAction(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name       string
-		action     mcmstypes.TimelockAction
-		wantAction mcmstypes.TimelockAction
+		name   string
+		action mcmstypes.TimelockAction
 	}{
 		{
-			name:       "sets schedule action",
-			action:     mcmstypes.TimelockActionSchedule,
-			wantAction: mcmstypes.TimelockActionSchedule,
+			name:   "sets schedule action",
+			action: mcmstypes.TimelockActionSchedule,
 		},
 		{
-			name:       "sets cancel action",
-			action:     mcmstypes.TimelockActionCancel,
-			wantAction: mcmstypes.TimelockActionCancel,
+			name:   "sets cancel action",
+			action: mcmstypes.TimelockActionCancel,
 		},
 		{
-			name:       "sets bypass action",
-			action:     mcmstypes.TimelockActionBypass,
-			wantAction: mcmstypes.TimelockActionBypass,
+			name:   "sets bypass action",
+			action: mcmstypes.TimelockActionBypass,
 		},
 	}
 
@@ -44,7 +40,7 @@ func TestWithTimelockAction(t *testing.T) {
 
 			var opts mcmsInspectorOptions
 			WithTimelockAction(tt.action)(&opts)
-			assert.Equal(t, tt.wantAction, opts.TimelockAction)
+			assert.Equal(t, tt.action, opts.TimelockAction)
 		})
 	}
 }
@@ -95,8 +91,7 @@ func TestMcmsInspectorForChain(t *testing.T) {
 			inspector, err := McmsInspectorForChain(env, tt.chain, tt.opts...)
 
 			if tt.wantErr != "" {
-				require.Error(t, err)
-				assert.Contains(t, err.Error(), tt.wantErr)
+				require.ErrorContains(t, err, tt.wantErr)
 				assert.Nil(t, inspector)
 
 				return

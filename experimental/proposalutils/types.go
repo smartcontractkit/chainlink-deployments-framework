@@ -48,7 +48,7 @@ func (role MCMSRole) String() string {
 	return string(role)
 }
 
-type MCMSWithTimelockConfig struct {
+type MCMSWithTimelockConfigLegacy struct {
 	Canceller        config.Config `json:"canceller"`
 	Bypasser         config.Config `json:"bypasser"`
 	Proposer         config.Config `json:"proposer"`
@@ -59,7 +59,7 @@ type MCMSWithTimelockConfig struct {
 // MCMSWithTimelockConfigV2 holds the configuration for an MCMS with timelock.
 // Unlike the legacy MCMSWithTimelockConfig type above, this variant uses the
 // newer mcmstypes.Config definitions.
-type MCMSWithTimelockConfigV2 struct {
+type MCMSWithTimelockConfig struct {
 	Canceller        mcmstypes.Config `json:"canceller"`
 	Bypasser         mcmstypes.Config `json:"bypasser"`
 	Proposer         mcmstypes.Config `json:"proposer"`

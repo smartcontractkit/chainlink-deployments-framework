@@ -12,6 +12,8 @@ import (
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 )
 
+// TransactionForChain builds an mcmstypes.Transaction for the given chain selector.
+// It currently supports EVM and Solana chains; other chain families return an error.
 func TransactionForChain(
 	chain uint64, toAddress string, data []byte, value *big.Int, contractType string, tags []string,
 ) (mcmstypes.Transaction, error) {
@@ -44,6 +46,9 @@ func TransactionForChain(
 	return tx, nil
 }
 
+// BatchOperationForChain creates an mcmstypes.BatchOperation containing a single transaction
+// for the given chain selector. It delegates to TransactionForChain, so it supports EVM and
+// Solana chains.
 func BatchOperationForChain(
 	chain uint64, toAddress string, data []byte, value *big.Int, contractType string, tags []string,
 ) (mcmstypes.BatchOperation, error) {
