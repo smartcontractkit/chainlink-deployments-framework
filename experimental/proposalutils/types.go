@@ -9,8 +9,6 @@ import (
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 )
 
-type MCMSRole string
-
 const (
 	BypasserManyChainMultisig  cldf.ContractType = "BypasserManyChainMultiSig"
 	CancellerManyChainMultisig cldf.ContractType = "CancellerManyChainMultiSig"
@@ -18,11 +16,6 @@ const (
 	ManyChainMultisig          cldf.ContractType = "ManyChainMultiSig"
 	RBACTimelock               cldf.ContractType = "RBACTimelock"
 	CallProxy                  cldf.ContractType = "CallProxy"
-
-	// roles
-	ProposerRole  MCMSRole = "PROPOSER"
-	BypasserRole  MCMSRole = "BYPASSER"
-	CancellerRole MCMSRole = "CANCELLER"
 
 	// LinkToken is the burn/mint link token. It should be used everywhere for
 	// new deployments. Corresponds to
@@ -43,10 +36,6 @@ const (
 	CancellerAccessControllerAccount cldf.ContractType = "CancellerAccessControllerAccount"
 	BypasserAccessControllerAccount  cldf.ContractType = "BypasserAccessControllerAccount"
 )
-
-func (role MCMSRole) String() string {
-	return string(role)
-}
 
 type MCMSWithTimelockConfigLegacy struct {
 	Canceller        config.Config `json:"canceller"`
