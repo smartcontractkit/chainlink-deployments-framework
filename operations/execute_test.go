@@ -178,6 +178,7 @@ func Test_ExecuteOperation_WithPreviousRun(t *testing.T) {
 	require.Nil(t, res.Err)
 	assert.Equal(t, 2, res.Output)
 	assert.Equal(t, 1, handlerCalledTimes)
+	firstRunID := res.ID
 
 	// rerun should return previous report
 	res, err = ExecuteOperation(bundle, op, nil, 1)
@@ -185,13 +186,31 @@ func Test_ExecuteOperation_WithPreviousRun(t *testing.T) {
 	require.Nil(t, res.Err)
 	assert.Equal(t, 2, res.Output)
 	assert.Equal(t, 1, handlerCalledTimes)
+	assert.Equal(t, firstRunID, res.ID)
+
+	// rerun with WithForceExecute should execute again and add a new report
+	res, err = ExecuteOperation(bundle, op, nil, 1, WithForceExecute[int, any]())
+	require.NoError(t, err)
+	require.Nil(t, res.Err)
+	assert.Equal(t, 2, res.Output)
+	assert.Equal(t, 2, handlerCalledTimes)
+	forcedRunID := res.ID
+	assert.NotEqual(t, firstRunID, forcedRunID)
+
+	// rerun without WithForceExecute should return the latest successful report
+	res, err = ExecuteOperation(bundle, op, nil, 1)
+	require.NoError(t, err)
+	require.Nil(t, res.Err)
+	assert.Equal(t, 2, res.Output)
+	assert.Equal(t, 2, handlerCalledTimes)
+	assert.Equal(t, forcedRunID, res.ID)
 
 	// new run with different input, should perform execution
 	res, err = ExecuteOperation(bundle, op, nil, 3)
 	require.NoError(t, err)
 	require.Nil(t, res.Err)
 	assert.Equal(t, 4, res.Output)
-	assert.Equal(t, 2, handlerCalledTimes)
+	assert.Equal(t, 3, handlerCalledTimes)
 
 	// new run with different op, should perform execution
 	op = NewOperation("plus1-v2", semver.MustParse("2.0.0"), "test operation", handler)
@@ -199,7 +218,7 @@ func Test_ExecuteOperation_WithPreviousRun(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, res.Err)
 	assert.Equal(t, 2, res.Output)
-	assert.Equal(t, 3, handlerCalledTimes)
+	assert.Equal(t, 4, handlerCalledTimes)
 
 	// new run with op that returns error
 	res, err = ExecuteOperation(bundle, opWithError, nil, 1)
@@ -214,6 +233,36 @@ func Test_ExecuteOperation_WithPreviousRun(t *testing.T) {
 	require.ErrorContains(t, err, "test error")
 	require.ErrorContains(t, res.Err, "test error")
 	assert.Equal(t, 2, handlerWithErrorCalledTimes)
+}
+
+func Test_ExecuteOperation_WithPreviousRun_UsesMostRecentSuccessfulReport(t *testing.T) {
+	t.Parallel()
+
+	handlerCalledTimes := 0
+	op := NewOperation("plus1", semver.MustParse("1.0.0"), "test operation",
+		func(b Bundle, deps any, input int) (output int, err error) {
+			handlerCalledTimes++
+			return input + 1, nil
+		},
+	)
+
+	oldestSuccessful := NewReport(op.def, 1, 2, nil)
+	mostRecentSuccessful := NewReport(op.def, 1, 5, nil)
+	newestFailed := NewReport(op.def, 1, 0, errors.New("failed report should not be reused"))
+
+	reporter := NewMemoryReporter(WithReports([]Report[any, any]{
+		genericReport(oldestSuccessful),
+		genericReport(mostRecentSuccessful),
+		genericReport(newestFailed),
+	}))
+	bundle := NewBundle(t.Context, logger.Test(t), reporter)
+
+	res, err := ExecuteOperation(bundle, op, nil, 1)
+	require.NoError(t, err)
+	require.Nil(t, res.Err)
+	assert.Equal(t, mostRecentSuccessful.ID, res.ID)
+	assert.Equal(t, 5, res.Output)
+	assert.Equal(t, 0, handlerCalledTimes)
 }
 
 func Test_ExecuteOperation_Unserializable_Data(t *testing.T) {
@@ -390,6 +439,7 @@ func Test_ExecuteSequence_WithPreviousRun(t *testing.T) {
 	assert.Equal(t, 2, res.Output)
 	assert.Len(t, res.ExecutionReports, 2) // 1 seq report + 1 op report
 	assert.Equal(t, 1, handlerCalledTimes)
+	firstRunID := res.ID
 
 	// rerun should return previous report
 	res, err = ExecuteSequence(bundle, sequence, nil, 1)
@@ -398,6 +448,7 @@ func Test_ExecuteSequence_WithPreviousRun(t *testing.T) {
 	assert.Equal(t, 2, res.Output)
 	assert.Len(t, res.ExecutionReports, 2) // 1 seq report + 1 op report
 	assert.Equal(t, 1, handlerCalledTimes)
+	assert.Equal(t, firstRunID, res.ID)
 
 	// new run with different input, should perform execution
 	res, err = ExecuteSequence(bundle, sequence, nil, 3)
@@ -814,16 +865,17 @@ func Test_ExecuteOperationN(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name              string
-		n                 uint
-		seriesID          string
-		setupReporter     func() Reporter
-		options           []ExecuteOption[int, any]
-		simulateOpError   bool
-		input             int
-		wantOpCalledTimes int
-		wantReportsCount  int
-		wantErr           string
+		name                  string
+		n                     uint
+		seriesID              string
+		setupReporter         func() Reporter
+		options               []ExecuteOperationNOption[int, any]
+		simulateOpError       bool
+		simulateRetryFailures bool // handler fails first attempts when testing WithOperationNRetry
+		input                 int
+		wantOpCalledTimes     int
+		wantReportsCount      int
+		wantErr               string
 	}{
 		{
 			name:              "execute operation multiple times",
@@ -934,12 +986,13 @@ func Test_ExecuteOperationN(t *testing.T) {
 			wantErr:           "add report error",
 		},
 		{
-			name:              "with retry option",
-			n:                 1,
-			seriesID:          "test-multiple-6",
-			options:           []ExecuteOption[int, any]{WithRetry[int, any]()},
-			wantOpCalledTimes: 3, // 2 attempts with default retry
-			wantReportsCount:  1,
+			name:                  "with retry option",
+			n:                     1,
+			seriesID:              "test-multiple-6",
+			options:               []ExecuteOperationNOption[int, any]{WithOperationNRetry[int, any]()},
+			simulateRetryFailures: true,
+			wantOpCalledTimes:     3, // 3 attempts total: 2 failures + 1 success with default retry
+			wantReportsCount:      1,
 		},
 	}
 
@@ -960,7 +1013,7 @@ func Test_ExecuteOperationN(t *testing.T) {
 					return 0, NewUnrecoverableError(errors.New("fatal error"))
 				}
 
-				if failTimes > 0 && len(tt.options) > 0 {
+				if failTimes > 0 && tt.simulateRetryFailures {
 					failTimes--
 					return 0, errors.New("test error")
 				}

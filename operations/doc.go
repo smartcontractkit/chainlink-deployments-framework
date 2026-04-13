@@ -26,6 +26,7 @@ Executor:
   - Executes operations with configurable retry policies
   - Handles operation failures and recovery strategies
   - Supports input hooks for dynamic parameter adjustment
+  - Operations reuse previous successful reports by default; ExecuteOperation accepts WithForceExecute to bypass that reuse
 
 Sequence:
   - Orchestrates multiple operations in dependency order
@@ -39,14 +40,22 @@ Reporter:
 
 # Basic Usage
 
-	// Define an operation
+	// Define an operation.
 	op := operations.NewOperation(
-		operations.OperationDef{ID: "deploy-contract", Version: "1.0.0"},
+		"deploy-contract",
+		semver.MustParse("1.0.0"),
+		"deploy contract operation",
 		handler,
 	)
 
-	// Execute the operation
-	bundle := operations.NewBundle(logger, reporter)
-	result, err := operations.ExecuteOperation(bundle, op, input, deps)
+	// Execute the operation. By default, previous successful reports are reused.
+	bundle := operations.NewBundle(context.Background, logger, reporter)
+	result, err := operations.ExecuteOperation(bundle, op, deps, input)
+
+	// Force execution and ignore previous successful reports.
+	result, err = operations.ExecuteOperation(bundle, op, deps, input, operations.WithForceExecute[InputType, DepsType]())
+
+	// Execute a sequence.
+	_, err = operations.ExecuteSequence(bundle, sequence, deps, input)
 */
 package operations

@@ -13,9 +13,19 @@ var ErrNotSerializable = errors.New("data cannot be safely written to disk witho
 // ExecuteConfig is the configuration for the ExecuteOperation function.
 type ExecuteConfig[IN, DEP any] struct {
 	retryConfig RetryConfig[IN, DEP]
+	// forceExecute controls whether execution should skip execution when previous successful report is found (set by WithForceExecute).
+	forceExecute bool
 }
 
 type ExecuteOption[IN, DEP any] func(*ExecuteConfig[IN, DEP])
+
+// ExecuteOperationNConfig holds options for ExecuteOperationN.
+type ExecuteOperationNConfig[IN, DEP any] struct {
+	retryConfig RetryConfig[IN, DEP]
+}
+
+// ExecuteOperationNOption configures ExecuteOperationN.
+type ExecuteOperationNOption[IN, DEP any] func(*ExecuteOperationNConfig[IN, DEP])
 
 type RetryConfig[IN, DEP any] struct {
 	// Enabled determines if the retry is enabled for the operation.
@@ -77,6 +87,35 @@ func WithRetryConfig[IN, DEP any](config RetryConfig[IN, DEP]) ExecuteOption[IN,
 	}
 }
 
+// WithForceExecute is an ExecuteOption that forces execution and ignores prior successful reports.
+func WithForceExecute[IN, DEP any]() ExecuteOption[IN, DEP] {
+	return func(c *ExecuteConfig[IN, DEP]) {
+		c.forceExecute = true
+	}
+}
+
+// WithOperationNRetry is an ExecuteOperationNOption that enables the default retry for each run in ExecuteOperationN.
+func WithOperationNRetry[IN, DEP any]() ExecuteOperationNOption[IN, DEP] {
+	return func(c *ExecuteOperationNConfig[IN, DEP]) {
+		c.retryConfig.Enabled = true
+	}
+}
+
+// WithOperationNRetryInput is an ExecuteOperationNOption that enables retry and an input transform on each retry attempt.
+func WithOperationNRetryInput[IN, DEP any](inputHookFunc func(uint, error, IN, DEP) IN) ExecuteOperationNOption[IN, DEP] {
+	return func(c *ExecuteOperationNConfig[IN, DEP]) {
+		c.retryConfig.Enabled = true
+		c.retryConfig.InputHook = inputHookFunc
+	}
+}
+
+// WithOperationNRetryConfig is an ExecuteOperationNOption that sets the retry configuration for ExecuteOperationN.
+func WithOperationNRetryConfig[IN, DEP any](config RetryConfig[IN, DEP]) ExecuteOperationNOption[IN, DEP] {
+	return func(c *ExecuteOperationNConfig[IN, DEP]) {
+		c.retryConfig = config
+	}
+}
+
 // ExecuteOperation executes an operation with the given input and dependencies.
 // Execution will return the previous successful execution result and skip execution if there was a
 // previous successful run found in the Reports.
@@ -105,25 +144,26 @@ func ExecuteOperation[IN, OUT, DEP any](
 		return Report[IN, OUT]{}, fmt.Errorf("operation %s input: %w", operation.def.ID, ErrNotSerializable)
 	}
 
-	if previousReport, ok := loadPreviousSuccessfulReport[IN, OUT](b, operation.def, input); ok {
-		b.Logger.Infow("Operation already executed. Returning previous result", "id", operation.def.ID,
-			"version", operation.def.Version, "description", operation.def.Description)
-
-		return previousReport, nil
-	}
-
 	executeConfig := &ExecuteConfig[IN, DEP]{
 		retryConfig: newDisabledRetryConfig[IN, DEP](),
 	}
 	for _, opt := range opts {
 		opt(executeConfig)
 	}
+	if !executeConfig.forceExecute {
+		if previousReport, ok := loadPreviousSuccessfulReport[IN, OUT](b, operation.def, input); ok {
+			b.Logger.Infow("Operation already executed. Returning previous result", "id", operation.def.ID,
+				"version", operation.def.Version, "description", operation.def.Description)
+
+			return previousReport, nil
+		}
+	}
 
 	var output OUT
 	var err error
 
 	if executeConfig.retryConfig.Enabled {
-		output, err = executeWithRetry(b, operation, deps, input, executeConfig)
+		output, err = executeWithRetry(b, operation, deps, input, executeConfig.retryConfig)
 	} else {
 		output, err = operation.execute(b, deps, input)
 	}
@@ -146,15 +186,22 @@ func ExecuteOperation[IN, OUT, DEP any](
 
 // ExecuteOperationN executes the given operation multiple n times with the given input and dependencies.
 // Execution will return the previous successful execution results and skip execution if there were
-// previous successful runs found in the Reports.
+// previous successful runs found in the Reports. Options are ExecuteOperationNOption (retry only).
 // executionSeriesID is used to identify the multiple executions as a single unit.
 // It is important to use a unique executionSeriesID for different sets of multiple executions.
 func ExecuteOperationN[IN, OUT, DEP any](
 	b Bundle, operation *Operation[IN, OUT, DEP], deps DEP, input IN, seriesID string, n uint,
-	opts ...ExecuteOption[IN, DEP],
+	opts ...ExecuteOperationNOption[IN, DEP],
 ) ([]Report[IN, OUT], error) {
 	if !IsSerializable(b.Logger, input) {
 		return []Report[IN, OUT]{}, fmt.Errorf("operation %s input: %w", operation.def.ID, ErrNotSerializable)
+	}
+
+	nConfig := &ExecuteOperationNConfig[IN, DEP]{
+		retryConfig: newDisabledRetryConfig[IN, DEP](),
+	}
+	for _, opt := range opts {
+		opt(nConfig)
 	}
 
 	results, ok := loadSuccessfulExecutionSeriesReports[IN, OUT](b, operation.def, input, seriesID)
@@ -175,20 +222,13 @@ func ExecuteOperationN[IN, OUT, DEP any](
 		"n", n,
 		"remainingTimesToRun", remainingTimesToRun)
 
-	executeConfig := &ExecuteConfig[IN, DEP]{
-		retryConfig: newDisabledRetryConfig[IN, DEP](),
-	}
-	for _, opt := range opts {
-		opt(executeConfig)
-	}
-
 	order := resultsLen
 	for range remainingTimesToRun {
 		var output OUT
 		var err error
 
-		if executeConfig.retryConfig.Enabled {
-			output, err = executeWithRetry(b, operation, deps, input, executeConfig)
+		if nConfig.retryConfig.Enabled {
+			output, err = executeWithRetry(b, operation, deps, input, nConfig.retryConfig)
 		} else {
 			output, err = operation.execute(b, deps, input)
 		}
@@ -222,12 +262,12 @@ func executeWithRetry[IN, OUT, DEP any](
 	operation *Operation[IN, OUT, DEP],
 	deps DEP,
 	input IN,
-	executeConfig *ExecuteConfig[IN, DEP],
+	retryCfg RetryConfig[IN, DEP],
 ) (OUT, error) {
 	var inputTemp = input
 
 	// Generate the configurable options for the retry
-	retryOpts := executeConfig.retryConfig.Policy.options()
+	retryOpts := retryCfg.Policy.options()
 	// Use the operation context in the retry
 	retryOpts = append(retryOpts, retry.Context(b.GetContext()))
 	// Append the retry logic which will log the retry and attempt to transform the input
@@ -236,8 +276,8 @@ func executeWithRetry[IN, OUT, DEP any](
 		b.Logger.Infow("Operation failed. Retrying...",
 			"operation", operation.def.ID, "attempt", attempt, "error", err)
 
-		if executeConfig.retryConfig.InputHook != nil {
-			inputTemp = executeConfig.retryConfig.InputHook(attempt, err, inputTemp, deps)
+		if retryCfg.InputHook != nil {
+			inputTemp = retryCfg.InputHook(attempt, err, inputTemp, deps)
 		}
 	}))
 
@@ -355,7 +395,10 @@ func loadPreviousSuccessfulReport[IN, OUT any](
 		return Report[IN, OUT]{}, false
 	}
 
-	for _, report := range prevReports {
+	// When multiple reports match the same operation input, we return the last matching report in
+	// GetReports order, which assumes newer reports are appended after older ones (typical for reporters).
+	for i := len(prevReports) - 1; i >= 0; i-- {
+		report := prevReports[i]
 		// Check if operation/sequence was run previously and return the report if successful
 		reportHash, err := constructUniqueHashFrom(b.reportHashCache, report.Def, report.Input)
 		if err != nil {
