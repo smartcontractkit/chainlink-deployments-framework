@@ -305,17 +305,6 @@ func ExecuteMCMSTimelockProposalV2(t *testing.T, env cldf.Environment, timelockP
 	return nil
 }
 
-func SingleGroupTimelockConfigLegacy(t *testing.T) proposalutils.MCMSWithTimelockConfigLegacy {
-	t.Helper()
-
-	return proposalutils.MCMSWithTimelockConfigLegacy{
-		Canceller:        SingleGroupMCMSLegacy(t),
-		Bypasser:         SingleGroupMCMSLegacy(t),
-		Proposer:         SingleGroupMCMSLegacy(t),
-		TimelockMinDelay: big.NewInt(0),
-	}
-}
-
 func SingleGroupTimelockConfig(t *testing.T) proposalutils.MCMSWithTimelockConfig {
 	t.Helper()
 
