@@ -56,14 +56,6 @@ func (c *{{.ContractType}}Contract) Address() common.Address {
 	return c.address
 }
 
-func (c *{{.ContractType}}Contract) Owner(opts *bind.CallOpts) (common.Address, error) {
-	var out []any
-	err := c.contract.Call(opts, &out, "owner")
-	if err != nil {
-		return common.Address{}, err
-	}
-	return *abi.ConvertType(out[0], new(common.Address)).(*common.Address), nil
-}
 {{range .ContractMethods}}
 
 func (c *{{$.ContractType}}Contract) {{.Name}}({{.Params}}) {{.Returns}} {

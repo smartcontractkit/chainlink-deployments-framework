@@ -1,0 +1,22 @@
+version: "1.0.0"
+chain_family: evm
+
+input:
+  abi_base_path: "./abi"
+  bytecode_base_path: "./bytecode"
+
+output:
+  base_path: "."
+
+contracts:
+  - contract_name: ManyChainMultiSig
+    version: "1.0.0"
+    package_name: many_chain_multi_sig
+    abi_file: "many_chain_multi_sig.json"
+    functions:
+      - name: owner
+        access: public
+      - name: setConfig
+        access: owner
+      - name: setRoot
+        access: owner
