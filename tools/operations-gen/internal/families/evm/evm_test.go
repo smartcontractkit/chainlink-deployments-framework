@@ -36,11 +36,23 @@ func TestSolidityToGoType(t *testing.T) {
 		{"bool", "bool"},
 		{"string", "string"},
 		{"bytes32", "[32]byte"},
-		// arrays
+		// dynamic arrays
 		{"uint256[]", "[]*big.Int"},
 		{"address[]", "[]common.Address"},
+		// fixed-size arrays
+		{"uint8[32]", "[32]uint8"},
+		{"bytes32[4]", "[4][32]byte"},
+		// intermediate uint sizes
+		{"uint40", "uint64"},
+		{"uint48", "uint64"},
+		{"uint56", "uint64"},
 		// unknown scalar → any
 		{"uint512", "any"},
+		// unknown scalar fixed-size array → any
+		{"uint512[4]", "any"},
+		// malformed arrays should never panic and should degrade to any
+		{"[", "any"},
+		{"uint8[", "any"},
 		// tuple → any
 		{"tuple", "any"},
 		{"tuple[]", "any"},
