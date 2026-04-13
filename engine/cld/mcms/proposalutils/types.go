@@ -7,8 +7,7 @@ import (
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 )
 
-// DEPRECATED: use MCMSWithTimelockConfig
-// this will removed once all ccip code is migrated to use the new MCMSWithTimelockConfig type.
+// Deprecated: use MCMSWithTimelockConfig. This will be removed once all CCIP code is migrated to use the new MCMSWithTimelockConfig type.
 type MCMSWithTimelockConfigLegacy struct {
 	Canceller        config.Config `json:"canceller"`
 	Bypasser         config.Config `json:"bypasser"`
