@@ -23,7 +23,7 @@ import (
 
 	cldfmcmsadapters "github.com/smartcontractkit/chainlink-deployments-framework/chain/mcms/adapters"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
-	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/proposalutils"
+	proposalutils "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
 )
 
 // TestXXXMCMSSigner is a throwaway private key used for signing MCMS proposals in tests.
@@ -37,7 +37,7 @@ func init() {
 	TestXXXMCMSSigner = key
 }
 
-func SingleGroupMCMS(t *testing.T) config.Config {
+func SingleGroupMCMSLegacy(t *testing.T) config.Config {
 	t.Helper()
 
 	publicKey := TestXXXMCMSSigner.Public().(*ecdsa.PublicKey)
@@ -49,7 +49,7 @@ func SingleGroupMCMS(t *testing.T) config.Config {
 	return *c
 }
 
-func SingleGroupMCMSV2(t *testing.T) mcmstypes.Config {
+func SingleGroupMCMS(t *testing.T) mcmstypes.Config {
 	t.Helper()
 
 	publicKey := TestXXXMCMSSigner.Public().(*ecdsa.PublicKey)
@@ -305,6 +305,17 @@ func ExecuteMCMSTimelockProposalV2(t *testing.T, env cldf.Environment, timelockP
 	return nil
 }
 
+func SingleGroupTimelockConfigLegacy(t *testing.T) proposalutils.MCMSWithTimelockConfigLegacy {
+	t.Helper()
+
+	return proposalutils.MCMSWithTimelockConfigLegacy{
+		Canceller:        SingleGroupMCMSLegacy(t),
+		Bypasser:         SingleGroupMCMSLegacy(t),
+		Proposer:         SingleGroupMCMSLegacy(t),
+		TimelockMinDelay: big.NewInt(0),
+	}
+}
+
 func SingleGroupTimelockConfig(t *testing.T) proposalutils.MCMSWithTimelockConfig {
 	t.Helper()
 
@@ -312,17 +323,6 @@ func SingleGroupTimelockConfig(t *testing.T) proposalutils.MCMSWithTimelockConfi
 		Canceller:        SingleGroupMCMS(t),
 		Bypasser:         SingleGroupMCMS(t),
 		Proposer:         SingleGroupMCMS(t),
-		TimelockMinDelay: big.NewInt(0),
-	}
-}
-
-func SingleGroupTimelockConfigV2(t *testing.T) proposalutils.MCMSWithTimelockConfigV2 {
-	t.Helper()
-
-	return proposalutils.MCMSWithTimelockConfigV2{
-		Canceller:        SingleGroupMCMSV2(t),
-		Bypasser:         SingleGroupMCMSV2(t),
-		Proposer:         SingleGroupMCMSV2(t),
 		TimelockMinDelay: big.NewInt(0),
 	}
 }

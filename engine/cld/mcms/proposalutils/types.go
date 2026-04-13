@@ -45,8 +45,8 @@ type MCMSWithTimelockConfigLegacy struct {
 	Label            *string       `json:"label"`
 }
 
-// MCMSWithTimelockConfigV2 holds the configuration for an MCMS with timelock.
-// Unlike the legacy MCMSWithTimelockConfig type above, this variant uses the
+// MCMSWithTimelockConfig holds the configuration for an MCMS with timelock.
+// Unlike the legacy MCMSWithTimelockConfigLegacy type above, this variant uses the
 // newer mcmstypes.Config definitions.
 type MCMSWithTimelockConfig struct {
 	Canceller        mcmstypes.Config `json:"canceller"`
