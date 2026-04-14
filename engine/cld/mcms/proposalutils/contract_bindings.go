@@ -32,5 +32,6 @@ func (state MCMSWithTimelockContracts) Validate() error {
 	if state.CallProxy == nil {
 		return errors.New("call proxy not found")
 	}
+
 	return nil
 }
