@@ -6,6 +6,16 @@ import (
 	ownerhelpers "github.com/smartcontractkit/ccip-owner-contracts/pkg/gethwrappers"
 )
 
+var (
+	ErrMissingTimelockBinding = errors.New("missing Timelock RBACTimelock binding")
+	ErrMissingCancellerMCM    = errors.New("missing CancellerMcm ManyChainMultiSig binding")
+	ErrMissingProposerMCM     = errors.New("missing ProposerMcm ManyChainMultiSig binding")
+	ErrMissingBypasserMCM     = errors.New("missing BypasserMcm ManyChainMultiSig binding")
+	ErrMissingCallProxy       = errors.New("missing CallProxy binding")
+)
+
+// MCMSWithTimelockContracts holds the Go bindings
+// for a MCMSWithTimelock standard contract deployment.
 type MCMSWithTimelockContracts struct {
 	CancellerMcm *ownerhelpers.ManyChainMultiSig
 	BypasserMcm  *ownerhelpers.ManyChainMultiSig
@@ -14,23 +24,23 @@ type MCMSWithTimelockContracts struct {
 	CallProxy    *ownerhelpers.CallProxy
 }
 
-// Validate checks that all fields are non-nil, ensuring it's ready
+// Validate checks all contract bindings are non-nil, ensuring the struct is ready
 // for use generating views or interactions.
 func (state MCMSWithTimelockContracts) Validate() error {
 	if state.Timelock == nil {
-		return errors.New("timelock not found")
+		return ErrMissingTimelockBinding
 	}
 	if state.CancellerMcm == nil {
-		return errors.New("canceller not found")
+		return ErrMissingCancellerMCM
 	}
 	if state.ProposerMcm == nil {
-		return errors.New("proposer not found")
+		return ErrMissingProposerMCM
 	}
 	if state.BypasserMcm == nil {
-		return errors.New("bypasser not found")
+		return ErrMissingBypasserMCM
 	}
 	if state.CallProxy == nil {
-		return errors.New("call proxy not found")
+		return ErrMissingCallProxy
 	}
 
 	return nil
