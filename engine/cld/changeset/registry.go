@@ -209,7 +209,12 @@ func (r *ChangesetsRegistry) Apply(
 			return fdeployment.ChangesetOutput{}, err
 		}
 
-		return entry.changeset.applyWithInput(e, cfg.inputStr)
+		changesetConfig, err := entry.changeset.resolvedInput(cfg.inputStr)
+		if err != nil {
+			return fdeployment.ChangesetOutput{}, fmt.Errorf("failed to get changeset configuration: %w", err)
+		}
+
+		return entry.changeset.applyWithInput(e, changesetConfig)
 	}
 
 	applySnapshot, err := r.getApplySnapshot(key)
@@ -217,7 +222,7 @@ func (r *ChangesetsRegistry) Apply(
 		return fdeployment.ChangesetOutput{}, err
 	}
 
-	changesetConfig, err := applySnapshot.registryEntry.changeset.configuration(cfg.inputStr)
+	changesetConfig, err := applySnapshot.registryEntry.changeset.resolvedInput(cfg.inputStr)
 	if err != nil {
 		return fdeployment.ChangesetOutput{}, fmt.Errorf("failed to get changeset configuration: %w", err)
 	}
@@ -249,7 +254,7 @@ func (r *ChangesetsRegistry) Apply(
 		}
 	}
 
-	output, applyErr := applySnapshot.registryEntry.changeset.applyWithInput(e, cfg.inputStr)
+	output, applyErr := applySnapshot.registryEntry.changeset.applyWithInput(e, changesetConfig)
 
 	postParams := PostHookParams{
 		Env:          hookEnv,
@@ -346,15 +351,15 @@ func (r *ChangesetsRegistry) GetChangesetOptions(key string) (ChangesetConfig, e
 	return entry.options, nil
 }
 
-// GetConfiguration retrieves the configuration for a changeset.
+// GetResolvedInput retrieves the configuration for a changeset.
 // \"input\" is the optional input string passed to \"registry.Apply()\".
-func (r *ChangesetsRegistry) GetConfiguration(key string, input string) (any, error) {
+func (r *ChangesetsRegistry) GetResolvedInput(key string, input string) (any, error) {
 	entry, ok := r.entries[key]
 	if !ok {
 		return nil, fmt.Errorf("changeset '%s' not found", key)
 	}
 
-	return entry.changeset.configuration(input)
+	return entry.changeset.resolvedInput(input)
 }
 
 // GetConfigurations retrieves the configurations for a changeset.

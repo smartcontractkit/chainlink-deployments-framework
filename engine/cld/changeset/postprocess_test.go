@@ -54,7 +54,7 @@ func TestChangesets_PostProcess_configuration(t *testing.T) {
 	}
 	input := `{"payload":"config"}`
 
-	got, err := Configure(MyChangeSet).With("config").ThenWith(noopPostProcessor).configuration(input)
+	got, err := Configure(MyChangeSet).With("config").ThenWith(noopPostProcessor).resolvedInput(input)
 
 	require.NoError(t, err)
 	require.Equal(t, "config", got)

@@ -26,7 +26,7 @@ func (noopChangeset) Apply(e fdeployment.Environment) (fdeployment.ChangesetOutp
 	return fdeployment.ChangesetOutput{}, nil
 }
 
-func (n noopChangeset) applyWithInput(e fdeployment.Environment, _ string) (fdeployment.ChangesetOutput, error) {
+func (n noopChangeset) applyWithInput(e fdeployment.Environment, _ any) (fdeployment.ChangesetOutput, error) {
 	return n.Apply(e)
 }
 
@@ -36,7 +36,7 @@ func (n noopChangeset) Configurations() (Configurations, error) {
 	}, nil
 }
 
-func (n noopChangeset) configuration(input string) (any, error) {
+func (n noopChangeset) resolvedInput(input string) (any, error) {
 	return n.config, nil
 }
 
@@ -55,7 +55,7 @@ func (r *recordingChangeset) Apply(_ fdeployment.Environment) (fdeployment.Chang
 	return r.output, r.err
 }
 
-func (r *recordingChangeset) applyWithInput(e fdeployment.Environment, _ string) (fdeployment.ChangesetOutput, error) {
+func (r *recordingChangeset) applyWithInput(e fdeployment.Environment, _ any) (fdeployment.ChangesetOutput, error) {
 	return r.Apply(e)
 }
 
@@ -63,7 +63,7 @@ func (*recordingChangeset) Configurations() (Configurations, error) {
 	return Configurations{}, nil
 }
 
-func (r *recordingChangeset) configuration(input string) (any, error) {
+func (r *recordingChangeset) resolvedInput(input string) (any, error) {
 	return r.config, nil
 }
 
@@ -79,7 +79,7 @@ func (o *orderRecordingChangeset) Apply(_ fdeployment.Environment) (fdeployment.
 	return fdeployment.ChangesetOutput{}, nil
 }
 
-func (o *orderRecordingChangeset) applyWithInput(e fdeployment.Environment, _ string) (fdeployment.ChangesetOutput, error) {
+func (o *orderRecordingChangeset) applyWithInput(e fdeployment.Environment, _ any) (fdeployment.ChangesetOutput, error) {
 	return o.Apply(e)
 }
 
@@ -87,7 +87,7 @@ func (*orderRecordingChangeset) Configurations() (Configurations, error) {
 	return Configurations{}, nil
 }
 
-func (*orderRecordingChangeset) configuration(input string) (any, error) {
+func (*orderRecordingChangeset) resolvedInput(input string) (any, error) {
 	return "orderRecordingChangesetConfiguration", nil
 }
 
@@ -1293,7 +1293,7 @@ func Test_WithPostProposalHooks(t *testing.T) {
 	})
 }
 
-func Test_Changesets_GetConfiguration(t *testing.T) {
+func Test_Changesets_GetResolvedInput(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -1347,7 +1347,7 @@ func Test_Changesets_GetConfiguration(t *testing.T) {
 			registry := NewChangesetsRegistry()
 			tt.setup(registry)
 
-			got, err := registry.GetConfiguration(tt.key, tt.input)
+			got, err := registry.GetResolvedInput(tt.key, tt.input)
 
 			if tt.wantErr == "" {
 				require.NoError(t, err)

@@ -33,8 +33,8 @@ type internalChangeSet interface {
 	noop() // unexported function to prevent arbitrary structs from implementing ChangeSet.
 	Apply(env fdeployment.Environment) (fdeployment.ChangesetOutput, error)
 	Configurations() (Configurations, error)
-	applyWithInput(env fdeployment.Environment, inputStr string) (fdeployment.ChangesetOutput, error)
-	configuration(input string) (any, error)
+	applyWithInput(env fdeployment.Environment, input any) (fdeployment.ChangesetOutput, error)
+	resolvedInput(input string) (any, error)
 }
 
 type ChangeSet internalChangeSet
@@ -295,23 +295,21 @@ func (ccs ChangeSetImpl[C]) Apply(env fdeployment.Environment) (fdeployment.Chan
 	return ccs.changeset.operation.Apply(env, c)
 }
 
-func (ccs ChangeSetImpl[C]) applyWithInput(env fdeployment.Environment, inputStr string) (fdeployment.ChangesetOutput, error) {
-	if inputStr == "" {
-		return ccs.Apply(env)
+func (ccs ChangeSetImpl[C]) applyWithInput(env fdeployment.Environment, input any) (fdeployment.ChangesetOutput, error) {
+	cInput, ok := input.(C)
+	if !ok {
+		return fdeployment.ChangesetOutput{}, fmt.Errorf("invalid input type: expected %T but got %T", *new(C), input)
 	}
-	if ccs.configProviderWithInput == nil {
+
+	if reflect.ValueOf(input).IsZero() {
 		return ccs.Apply(env)
 	}
 
-	c, err := ccs.configProviderWithInput(inputStr)
-	if err != nil {
-		return fdeployment.ChangesetOutput{}, err
-	}
-	if err := ccs.changeset.operation.VerifyPreconditions(env, c); err != nil {
+	if err := ccs.changeset.operation.VerifyPreconditions(env, cInput); err != nil {
 		return fdeployment.ChangesetOutput{}, err
 	}
 
-	return ccs.changeset.operation.Apply(env, c)
+	return ccs.changeset.operation.Apply(env, cInput)
 }
 
 func (ccs ChangeSetImpl[C]) Configurations() (Configurations, error) {
@@ -336,7 +334,7 @@ func (ccs ChangeSetImpl[C]) Configurations() (Configurations, error) {
 	}, nil
 }
 
-func (ccs ChangeSetImpl[C]) configuration(input string) (any, error) {
+func (ccs ChangeSetImpl[C]) resolvedInput(input string) (any, error) {
 	if input != "" && ccs.configProviderWithInput != nil {
 		return ccs.configProviderWithInput(input)
 	}
@@ -344,7 +342,7 @@ func (ccs ChangeSetImpl[C]) configuration(input string) (any, error) {
 		return ccs.configProvider()
 	}
 
-	return nil, errors.New("no configuration provider found")
+	return *new(C), errors.New("no configuration provider found")
 }
 
 // WithPreHooks appends pre-hooks to this changeset. Multiple calls are additive.

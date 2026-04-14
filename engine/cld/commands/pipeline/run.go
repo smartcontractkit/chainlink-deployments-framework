@@ -215,7 +215,7 @@ func saveChangesetProposalMetadata(
 		return errors.New("durable pipeline input is empty or not set")
 	}
 
-	changesetConfig, err := registry.GetConfiguration(changesetName, changesetInputJSON)
+	changesetConfig, err := registry.GetResolvedInput(changesetName, changesetInputJSON)
 	if err != nil {
 		return fmt.Errorf("failed to get changeset configuration: %w", err)
 	}
