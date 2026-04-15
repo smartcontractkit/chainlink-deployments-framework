@@ -296,7 +296,7 @@ func (ccs ChangeSetImpl[C]) Apply(env fdeployment.Environment) (fdeployment.Chan
 }
 
 func (ccs ChangeSetImpl[C]) applyWithInput(env fdeployment.Environment, input any) (fdeployment.ChangesetOutput, error) {
-	if reflect.ValueOf(input).IsZero() {
+	if input == nil || reflect.ValueOf(input).IsZero() {
 		return ccs.Apply(env)
 	}
 

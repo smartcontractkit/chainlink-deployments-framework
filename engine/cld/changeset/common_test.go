@@ -925,3 +925,37 @@ func TestConfigurations_ConfigResolverInfo(t *testing.T) {
 
 	assert.Equal(t, reflect.ValueOf(resolver).Pointer(), reflect.ValueOf(configs.ConfigResolver).Pointer())
 }
+
+func TestChangesetImple_applyWithInput(t *testing.T) {
+	t.Parallel()
+
+	c := ChangeSetImpl[string]{
+		configProvider: func() (string, error) { return "config", nil },
+		changeset:      Configure(MyChangeSet),
+	}
+	tests := []struct {
+		name  string
+		input any
+	}{
+		{
+			name:  "nil input",
+			input: nil,
+		},
+		{
+			name:  "empty input",
+			input: "",
+		},
+		{
+			name:  "non-empty input",
+			input: "input",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			_, err := c.applyWithInput(deployment.Environment{}, tt.input) // just check it doesn't panic
+			require.NoError(t, err)
+		})
+	}
+}
