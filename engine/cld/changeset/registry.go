@@ -203,102 +203,98 @@ func (r *ChangesetsRegistry) Apply(
 		opt(&cfg)
 	}
 
-	if !cfg.runHooks {
-		entry, err := r.getApplyEntry(key)
-		if err != nil {
-			return fdeployment.ChangesetOutput{}, err
-		}
-
-		changesetConfig, err := entry.changeset.resolvedInput(cfg.inputStr)
-		if err != nil {
-			return fdeployment.ChangesetOutput{}, fmt.Errorf("failed to get changeset configuration: %w", err)
-		}
-
-		return entry.changeset.applyWithInput(e, changesetConfig)
-	}
-
 	applySnapshot, err := r.getApplySnapshot(key)
 	if err != nil {
 		return fdeployment.ChangesetOutput{}, err
 	}
 
-	changesetConfig, err := applySnapshot.registryEntry.changeset.resolvedInput(cfg.inputStr)
+	resolvedInput, err := applySnapshot.registryEntry.changeset.resolvedInput(cfg.inputStr)
 	if err != nil {
 		return fdeployment.ChangesetOutput{}, fmt.Errorf("failed to get changeset configuration: %w", err)
 	}
 
-	hookEnv := HookEnv{
-		Name:   e.Name,
-		Logger: e.Logger,
-	}
-
-	preParams := PreHookParams{
-		Env:          hookEnv,
-		ChangesetKey: key,
-		Config:       changesetConfig,
-	}
-
-	for _, h := range applySnapshot.globalPreHooks {
-		if err := ExecuteHook(e, h.HookDefinition, func(ctx context.Context) error {
-			return h.Func(ctx, preParams)
-		}); err != nil {
-			return fdeployment.ChangesetOutput{}, fmt.Errorf("global pre-hook %q failed: %w", h.Name, err)
+	if cfg.runHooks {
+		err = runPreHooks(e, key, resolvedInput, applySnapshot)
+		if err != nil {
+			return fdeployment.ChangesetOutput{}, err
 		}
 	}
 
-	for _, h := range applySnapshot.registryEntry.preHooks {
-		if err := ExecuteHook(e, h.HookDefinition, func(ctx context.Context) error {
-			return h.Func(ctx, preParams)
-		}); err != nil {
-			return fdeployment.ChangesetOutput{}, fmt.Errorf("pre-hook %q failed: %w", h.Name, err)
-		}
+	var output fdeployment.ChangesetOutput
+	var applyErr error
+	if cfg.inputStr == "" {
+		output, applyErr = applySnapshot.registryEntry.changeset.Apply(e)
+	} else {
+		output, applyErr = applySnapshot.registryEntry.changeset.applyWithInput(e, resolvedInput)
 	}
 
-	output, applyErr := applySnapshot.registryEntry.changeset.applyWithInput(e, changesetConfig)
-
-	postParams := PostHookParams{
-		Env:          hookEnv,
-		ChangesetKey: key,
-		Config:       changesetConfig,
-		Output:       output,
-		Err:          applyErr,
-	}
-
-	for _, h := range applySnapshot.registryEntry.postHooks {
-		if err := ExecuteHook(e, h.HookDefinition, func(ctx context.Context) error {
-			return h.Func(ctx, postParams)
-		}); err != nil {
-			if applyErr != nil {
-				e.Logger.Warnw("post-hook failed after changeset error",
-					"hook", h.Name, "hookErr", err, "changesetErr", applyErr)
-			} else {
-				return output, fmt.Errorf("post-hook %q failed: %w", h.Name, err)
-			}
-		}
-	}
-
-	for _, h := range applySnapshot.globalPostHooks {
-		if err := ExecuteHook(e, h.HookDefinition, func(ctx context.Context) error {
-			return h.Func(ctx, postParams)
-		}); err != nil {
-			if applyErr != nil {
-				e.Logger.Warnw("global post-hook failed after changeset error",
-					"hook", h.Name, "hookErr", err, "changesetErr", applyErr)
-			} else {
-				return output, fmt.Errorf("global post-hook %q failed: %w", h.Name, err)
-			}
+	if cfg.runHooks {
+		err = runPostHooks(e, key, resolvedInput, output, applyErr, applySnapshot)
+		if err != nil {
+			return fdeployment.ChangesetOutput{}, err
 		}
 	}
 
 	return output, applyErr
 }
 
-// getApplyEntry reads and validates a changeset entry under the mutex.
-func (r *ChangesetsRegistry) getApplyEntry(key string) (registryEntry, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+func runPreHooks(e fdeployment.Environment, key string, resolvedInput any, applySnapshot applySnapshot) error {
+	preParams := PreHookParams{
+		Env:          HookEnv{Name: e.Name, Logger: e.Logger},
+		ChangesetKey: key,
+		Config:       resolvedInput,
+	}
 
-	return r.getApplyEntryLocked(key)
+	for _, h := range applySnapshot.globalPreHooks {
+		err := ExecuteHook(e, h.HookDefinition, func(ctx context.Context) error { return h.Func(ctx, preParams) })
+		if err != nil {
+			return fmt.Errorf("global pre-hook %q failed: %w", h.Name, err)
+		}
+	}
+	for _, h := range applySnapshot.registryEntry.preHooks {
+		err := ExecuteHook(e, h.HookDefinition, func(ctx context.Context) error { return h.Func(ctx, preParams) })
+		if err != nil {
+			return fmt.Errorf("changeset pre-hook %q failed: %w", h.Name, err)
+		}
+	}
+
+	return nil
+}
+
+func runPostHooks(
+	e fdeployment.Environment, key string, resolvedInput any, output fdeployment.ChangesetOutput,
+	applyErr error, applySnapshot applySnapshot,
+) error {
+	postParams := PostHookParams{
+		Env:          HookEnv{Name: e.Name, Logger: e.Logger},
+		ChangesetKey: key,
+		Config:       resolvedInput,
+		Output:       output,
+		Err:          applyErr,
+	}
+
+	for _, h := range applySnapshot.registryEntry.postHooks {
+		err := ExecuteHook(e, h.HookDefinition, func(ctx context.Context) error { return h.Func(ctx, postParams) })
+		if err != nil {
+			if applyErr != nil {
+				e.Logger.Warnw("post-hook failed after changeset error", "hook", h.Name, "hookErr", err, "changesetErr", applyErr)
+			} else {
+				return fmt.Errorf("changeset post-hook %q failed: %w", h.Name, err)
+			}
+		}
+	}
+	for _, h := range applySnapshot.globalPostHooks {
+		err := ExecuteHook(e, h.HookDefinition, func(ctx context.Context) error { return h.Func(ctx, postParams) })
+		if err != nil {
+			if applyErr != nil {
+				e.Logger.Warnw("global post-hook failed after changeset error", "hook", h.Name, "hookErr", err, "changesetErr", applyErr)
+			} else {
+				return fmt.Errorf("global post-hook %q failed: %w", h.Name, err)
+			}
+		}
+	}
+
+	return nil
 }
 
 type applySnapshot struct {

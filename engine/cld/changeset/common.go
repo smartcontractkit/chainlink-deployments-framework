@@ -296,10 +296,6 @@ func (ccs ChangeSetImpl[C]) Apply(env fdeployment.Environment) (fdeployment.Chan
 }
 
 func (ccs ChangeSetImpl[C]) applyWithInput(env fdeployment.Environment, input any) (fdeployment.ChangesetOutput, error) {
-	if input == nil || reflect.ValueOf(input).IsZero() {
-		return ccs.Apply(env)
-	}
-
 	cInput, ok := input.(C)
 	if !ok {
 		return fdeployment.ChangesetOutput{}, fmt.Errorf("invalid input type: expected %T but got %T", *new(C), input)
