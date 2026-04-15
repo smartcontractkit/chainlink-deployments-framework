@@ -9,5 +9,6 @@ func GetAptosRoleFromAction(action mcmstypes.TimelockAction) (mcmsaptossdk.Timel
 	if action == "" {
 		return mcmsaptossdk.TimelockRoleProposer, nil
 	}
+
 	return mcmsaptossdk.AptosRoleFromAction(action)
 }
