@@ -358,6 +358,9 @@ func (r *ChangesetsRegistry) GetResolvedInput(key string, input string) (any, er
 	if !ok {
 		return nil, fmt.Errorf("changeset '%s' not found", key)
 	}
+	if entry.IsArchived() {
+		return nil, fmt.Errorf("changeset '%s' is archived at SHA '%s'", key, *entry.gitSHA)
+	}
 
 	return entry.changeset.resolvedInput(input)
 }

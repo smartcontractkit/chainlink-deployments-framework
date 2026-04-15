@@ -926,7 +926,7 @@ func TestConfigurations_ConfigResolverInfo(t *testing.T) {
 	assert.Equal(t, reflect.ValueOf(resolver).Pointer(), reflect.ValueOf(configs.ConfigResolver).Pointer())
 }
 
-func TestChangesetImple_applyWithInput(t *testing.T) {
+func TestChangesetImpl_applyWithInput(t *testing.T) {
 	t.Parallel()
 
 	c := ChangeSetImpl[string]{
