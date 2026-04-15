@@ -160,10 +160,13 @@ func Test_newRunProposalHooksCmd(t *testing.T) { //nolint:paralleltest
 				require.NoError(t, err)
 				require.Equal(t, 1, testCtx.logs.FilterMessage("test-changeset-post-proposal-hook executed").Len())
 				require.Equal(t, 1, testCtx.logs.FilterMessage("test-changeset-post-proposal-hook; # reports: 1").Len())
+				require.Equal(t, 1, testCtx.logs.FilterMessage("test-changeset-post-proposal-hook; config: map[config-key:config-value]").Len())
 				require.Equal(t, 0, testCtx.logs.FilterMessage("test-changeset-post-proposal-hook; forkctx family: EVM").Len())
 				require.Equal(t, 2, testCtx.logs.FilterMessage("test-global-post-proposal-hook executed").Len())
 				require.Equal(t, 1, testCtx.logs.FilterMessage("test-global-post-proposal-hook; # reports: 1").Len())
 				require.Equal(t, 1, testCtx.logs.FilterMessage("test-global-post-proposal-hook; # reports: 0").Len())
+				require.Equal(t, 1, testCtx.logs.FilterMessage("test-global-post-proposal-hook; config: map[config-key:config-value]").Len())
+				require.Equal(t, 1, testCtx.logs.FilterMessage("test-global-post-proposal-hook; config: map[]").Len())
 				require.Equal(t, 0, testCtx.logs.FilterMessage("test-global-post-proposal-hook; forkctx family: EVM").Len())
 			},
 		},
@@ -243,13 +246,17 @@ var testProposalWithChangesetsJSON = []byte(`{
 				"id": "30377e5d-d431-4c27-ac79-31ced49fffc0",
 				"name": "001_test_changeset",
 				"input": {
-					"key": "value"
+					"input-key": "input-value"
+				},
+				"config": {
+					"config-key": "config-value"
 				}
 			},
 			{
 				"id": "df1fbe75-5009-4561-b936-d3c1c6762c98",
 				"name": "002_test_changeset",
-				"input": {}
+				"input": {},
+				"config": {}
 			}
 		]
 	},
@@ -347,6 +354,7 @@ func loadChangesets(envName string) (*changeset.ChangesetsRegistry, error) {
 				Func: func(ctx context.Context, params changeset.PostProposalHookParams) error {
 					params.Env.Logger.Info("test-changeset-post-proposal-hook executed")
 					params.Env.Logger.Infof("test-changeset-post-proposal-hook; # reports: %d", len(params.Reports))
+					params.Env.Logger.Infof("test-changeset-post-proposal-hook; config: %v", params.Config)
 					if params.Env.ForkContext != nil {
 						params.Env.Logger.Infof("test-changeset-post-proposal-hook; forkctx family: %v",
 							params.Env.ForkContext.ChainFamily())
@@ -370,6 +378,7 @@ func loadChangesets(envName string) (*changeset.ChangesetsRegistry, error) {
 		Func: func(ctx context.Context, params changeset.PostProposalHookParams) error {
 			params.Env.Logger.Info("test-global-post-proposal-hook executed")
 			params.Env.Logger.Infof("test-global-post-proposal-hook; # reports: %d", len(params.Reports))
+			params.Env.Logger.Infof("test-global-post-proposal-hook; config: %v", params.Config)
 			if params.Env.ForkContext != nil {
 				params.Env.Logger.Infof("test-global-post-proposal-hook; forkctx family: %v", params.Env.ForkContext.ChainFamily())
 			}

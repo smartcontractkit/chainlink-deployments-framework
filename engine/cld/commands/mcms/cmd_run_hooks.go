@@ -49,9 +49,10 @@ type proposalMetadata struct {
 }
 
 type changesetMetadata struct {
-	ID    string `json:"id" mapstructure:"id"`
-	Name  string `json:"name" mapstructure:"name"`
-	Input any    `json:"input" mapstructure:"input"`
+	ID     string `json:"id" mapstructure:"id"`
+	Name   string `json:"name" mapstructure:"name"`
+	Input  any    `json:"input" mapstructure:"input"`
+	Config any    `json:"config" mapstructure:"config"`
 }
 
 func newRunProposalHooksCmd(cfg Config) *cobra.Command {
@@ -144,7 +145,7 @@ func runHooksInternal(
 		})
 
 		herr := changesetRegistry.RunProposalHooks(changeset.Name, env, timelockProposal,
-			changeset.Input, changesetReports, forkCtx)
+			changeset.Input, changeset.Config, changesetReports, forkCtx)
 		if herr != nil {
 			return fmt.Errorf("proposal hook for changeset %q failed: %w", changeset.Name, herr)
 		}

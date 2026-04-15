@@ -148,7 +148,7 @@ func Test_RunProposalHooks(t *testing.T) {
 			execLogs := []string{}
 			registry := tt.setup(&execLogs)
 
-			err := registry.RunProposalHooks(tt.key, hookTestEnv(t), &mcms.TimelockProposal{}, nil, nil, nil)
+			err := registry.RunProposalHooks(tt.key, hookTestEnv(t), &mcms.TimelockProposal{}, nil, nil, nil, nil)
 
 			if tt.wantErr == "" {
 				require.NoError(t, err)
@@ -165,6 +165,7 @@ func Test_RunProposalHooks_HookReceivesCorrectParams(t *testing.T) {
 
 	proposal := &mcms.TimelockProposal{}
 	input := "test-input"
+	config := "test-config"
 	reports := []MCMSTimelockExecuteReport{{Type: MCMSTimelockExecuteReportType}}
 
 	var receivedParams PostProposalHookParams
@@ -181,7 +182,7 @@ func Test_RunProposalHooks_HookReceivesCorrectParams(t *testing.T) {
 		}},
 	}
 
-	err := r.RunProposalHooks("test-cs", hookTestEnv(t), proposal, input, reports, nil)
+	err := r.RunProposalHooks("test-cs", hookTestEnv(t), proposal, input, config, reports, nil)
 	require.NoError(t, err)
 
 	expectedParams := PostProposalHookParams{
@@ -189,6 +190,7 @@ func Test_RunProposalHooks_HookReceivesCorrectParams(t *testing.T) {
 		ChangesetKey: "test-cs",
 		Proposal:     proposal,
 		Input:        input,
+		Config:       config,
 		Reports:      reports,
 	}
 	require.Empty(t, cmp.Diff(expectedParams, receivedParams,

@@ -17,6 +17,7 @@ import (
 // Used for testing.
 type noopChangeset struct {
 	chainOverrides []uint64
+	config         any
 }
 
 func (noopChangeset) noop() {}
@@ -25,7 +26,7 @@ func (noopChangeset) Apply(e fdeployment.Environment) (fdeployment.ChangesetOutp
 	return fdeployment.ChangesetOutput{}, nil
 }
 
-func (n noopChangeset) applyWithInput(e fdeployment.Environment, _ string) (fdeployment.ChangesetOutput, error) {
+func (n noopChangeset) applyWithInput(e fdeployment.Environment, _ any) (fdeployment.ChangesetOutput, error) {
 	return n.Apply(e)
 }
 
@@ -35,9 +36,14 @@ func (n noopChangeset) Configurations() (Configurations, error) {
 	}, nil
 }
 
+func (n noopChangeset) resolvedInput(input string) (any, error) {
+	return n.config, nil
+}
+
 // recordingChangeset tracks whether Apply was called and returns configurable output/error.
 type recordingChangeset struct {
 	applyCalled bool
+	config      any
 	output      fdeployment.ChangesetOutput
 	err         error
 }
@@ -49,12 +55,16 @@ func (r *recordingChangeset) Apply(_ fdeployment.Environment) (fdeployment.Chang
 	return r.output, r.err
 }
 
-func (r *recordingChangeset) applyWithInput(e fdeployment.Environment, _ string) (fdeployment.ChangesetOutput, error) {
+func (r *recordingChangeset) applyWithInput(e fdeployment.Environment, _ any) (fdeployment.ChangesetOutput, error) {
 	return r.Apply(e)
 }
 
 func (*recordingChangeset) Configurations() (Configurations, error) {
 	return Configurations{}, nil
+}
+
+func (r *recordingChangeset) resolvedInput(input string) (any, error) {
+	return r.config, nil
 }
 
 // orderRecordingChangeset records "apply" calls into its internal order slice for tests.
@@ -69,12 +79,16 @@ func (o *orderRecordingChangeset) Apply(_ fdeployment.Environment) (fdeployment.
 	return fdeployment.ChangesetOutput{}, nil
 }
 
-func (o *orderRecordingChangeset) applyWithInput(e fdeployment.Environment, _ string) (fdeployment.ChangesetOutput, error) {
+func (o *orderRecordingChangeset) applyWithInput(e fdeployment.Environment, _ any) (fdeployment.ChangesetOutput, error) {
 	return o.Apply(e)
 }
 
 func (*orderRecordingChangeset) Configurations() (Configurations, error) {
 	return Configurations{}, nil
+}
+
+func (*orderRecordingChangeset) resolvedInput(input string) (any, error) {
+	return "orderRecordingChangesetConfiguration", nil
 }
 
 func hookTestEnv(t *testing.T) fdeployment.Environment {
@@ -564,7 +578,57 @@ func Test_Apply_PreHookWarn_ContinuesExecution(t *testing.T) {
 	assert.True(t, cs.applyCalled, "changeset should still run after Warn hook failure")
 }
 
-func Test_Apply_PostHookReceivesOutputAndErr(t *testing.T) {
+func Test_Apply_PreHook_ReceivesParams(t *testing.T) {
+	t.Parallel()
+
+	changeset := &recordingChangeset{config: "test-config"}
+	receivedParams := PreHookParams{}
+	registry := NewChangesetsRegistry()
+	registry.entries["test-cs"] = registryEntry{
+		changeset: changeset,
+		preHooks: []PreHook{{
+			HookDefinition: HookDefinition{Name: "observer", FailurePolicy: Warn},
+			Func: func(_ context.Context, params PreHookParams) error {
+				receivedParams = params
+				return nil
+			},
+		}},
+	}
+
+	_, err := registry.Apply("test-cs", hookTestEnv(t))
+
+	require.NoError(t, err)
+	require.Equal(t, "test-cs", receivedParams.ChangesetKey)
+	require.Equal(t, "test-env", receivedParams.Env.Name)
+	require.Equal(t, "test-config", receivedParams.Config)
+}
+
+func Test_Apply_PreHook_ConfigurationErrorAbortsPipeline(t *testing.T) {
+	t.Parallel()
+
+	changeset := Configure(MyChangeSet).WithConfigFrom(func() (string, error) {
+		return "", errors.New("config unavailable")
+	})
+	registry := NewChangesetsRegistry()
+	registry.SetValidate(false)
+	registry.Add("test-cs", changeset)
+
+	preHookRan := false
+	registry.AddGlobalPreHooks(PreHook{
+		HookDefinition: HookDefinition{Name: "pre-hook"},
+		Func: func(_ context.Context, _ PreHookParams) error {
+			preHookRan = true
+			return nil
+		},
+	})
+
+	_, err := registry.Apply("test-cs", hookTestEnv(t))
+
+	require.ErrorContains(t, err, "failed to get changeset configuration")
+	require.False(t, preHookRan)
+}
+
+func Test_Apply_PostHook_ReceivesParams(t *testing.T) {
 	t.Parallel()
 
 	expectedOutput := fdeployment.ChangesetOutput{}
@@ -572,6 +636,7 @@ func Test_Apply_PostHookReceivesOutputAndErr(t *testing.T) {
 	cs := &recordingChangeset{
 		output: expectedOutput,
 		err:    expectedErr,
+		config: "test-config",
 	}
 
 	var receivedParams PostHookParams
@@ -594,6 +659,7 @@ func Test_Apply_PostHookReceivesOutputAndErr(t *testing.T) {
 	assert.Equal(t, expectedErr, receivedParams.Err)
 	assert.Equal(t, "test-cs", receivedParams.ChangesetKey)
 	assert.Equal(t, "test-env", receivedParams.Env.Name)
+	assert.Equal(t, "test-config", receivedParams.Config)
 }
 
 func Test_Apply_PostHookAbort_AfterSuccessfulApply(t *testing.T) {
@@ -919,7 +985,7 @@ func Test_FluentAPI_HooksExtractedByAdd(t *testing.T) {
 		require.Len(t, entry.postProposalHooks, 1, "Add should extract post-proposal-hooks via hookCarrier")
 		require.Equal(t, "proposal-hook", entry.postProposalHooks[0].Name)
 
-		err := r.RunProposalHooks("test-cs", hookTestEnv(t), nil, "input", nil, nil)
+		err := r.RunProposalHooks("test-cs", hookTestEnv(t), nil, "input", "config", nil, nil)
 		require.NoError(t, err)
 		require.Equal(t, []string{"proposal"}, hookExecutions)
 	})
@@ -940,7 +1006,7 @@ func Test_FluentAPI_HooksExtractedByAdd(t *testing.T) {
 		require.Len(t, entry.postProposalHooks, 1)
 		require.Equal(t, "proposal-hook", entry.postProposalHooks[0].Name)
 
-		err := r.RunProposalHooks("test-cs", hookTestEnv(t), nil, "input", nil, nil)
+		err := r.RunProposalHooks("test-cs", hookTestEnv(t), nil, "input", "config", nil, nil)
 		require.NoError(t, err)
 		require.Equal(t, []string{"proposal"}, hookExecutions)
 	})
@@ -1225,6 +1291,72 @@ func Test_WithPostProposalHooks(t *testing.T) {
 		require.Equal(t, "h1", hooks[0].Name)
 		require.Equal(t, "h2", hooks[1].Name)
 	})
+}
+
+func Test_Changesets_GetResolvedInput(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		setup   func(*ChangesetsRegistry)
+		key     string
+		input   string
+		want    any
+		wantErr string
+	}{
+		{
+			name:    "unknown key returns error",
+			setup:   func(r *ChangesetsRegistry) {},
+			key:     "invalid_key",
+			wantErr: "changeset 'invalid_key' not found",
+		},
+		{
+			name: "found key returns config value",
+			setup: func(r *ChangesetsRegistry) {
+				r.Add("0001_cap_reg", noopChangeset{config: "my-config"})
+			},
+			key:  "0001_cap_reg",
+			want: "my-config",
+		},
+		{
+			name: "found key with nil config returns nil",
+			setup: func(r *ChangesetsRegistry) {
+				r.Add("0001_cap_reg", noopChangeset{})
+			},
+			key:  "0001_cap_reg",
+			want: nil,
+		},
+		{
+			name: "configuration error is propagated",
+			setup: func(r *ChangesetsRegistry) {
+				cs := Configure(MyChangeSet).WithConfigFrom(func() (string, error) {
+					return "", errors.New("config unavailable")
+				})
+				r.SetValidate(false)
+				r.Add("0001_cap_reg", cs)
+			},
+			key:     "0001_cap_reg",
+			wantErr: "config unavailable",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			registry := NewChangesetsRegistry()
+			tt.setup(registry)
+
+			got, err := registry.GetResolvedInput(tt.key, tt.input)
+
+			if tt.wantErr == "" {
+				require.NoError(t, err)
+				require.Equal(t, tt.want, got)
+			} else {
+				require.ErrorContains(t, err, tt.wantErr)
+			}
+		})
+	}
 }
 
 func Test_Changesets_AddGlobalPostProposalHooks(t *testing.T) {
