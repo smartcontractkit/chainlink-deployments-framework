@@ -220,13 +220,7 @@ func (r *ChangesetsRegistry) Apply(
 		}
 	}
 
-	var output fdeployment.ChangesetOutput
-	var applyErr error
-	if cfg.inputStr == "" {
-		output, applyErr = applySnapshot.registryEntry.changeset.Apply(e)
-	} else {
-		output, applyErr = applySnapshot.registryEntry.changeset.applyWithInput(e, resolvedInput)
-	}
+	output, applyErr := applySnapshot.registryEntry.changeset.applyWithInput(e, resolvedInput)
 
 	if cfg.runHooks {
 		err = runPostHooks(e, key, resolvedInput, output, applyErr, applySnapshot)
