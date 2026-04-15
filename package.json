@@ -4,7 +4,7 @@
   "description": "A deployment framework for chainlink-deployments ",
   "private": true,
   "scripts": {
-    "ci:changeset:publish": "pnpm changeset publish",
+    "ci:changeset:publish": "node ./scripts/release/tag-releases.mjs",
     "ci:changeset:version": "pnpm changeset version && pnpm version --patch"
   },
   "author": "@smartcontractkit",

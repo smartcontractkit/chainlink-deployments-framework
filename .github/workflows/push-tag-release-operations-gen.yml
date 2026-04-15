@@ -1,0 +1,27 @@
+name: push-tag-release-operations-gen
+
+on:
+  push:
+    tags:
+      - tools/operations-gen/v*
+
+jobs:
+  cicd-publish-release-operations-gen:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: write
+      actions: read
+    steps:
+      - name: cicd-publish-release-operations-gen
+        uses: smartcontractkit/.github/actions/cicd-build-publish-artifacts-go@b4737861584f88fa9569d6978f70fedf8b1ae67c # cicd-build-publish-artifacts-go@0.4.0
+        with:
+          # general inputs
+          app-name: operations-gen
+          publish: "false" # do not publish docker image to ECR
+          update-git-tag: "false"
+          # goreleaser inputs
+          goreleaser-args: "--config tools/operations-gen/.goreleaser.yml"
+          goreleaser-version: '~> v2'
+          goreleaser-dist: goreleaser-pro
+          goreleaser-key: ${{ secrets.GORELEASER_KEY }}
