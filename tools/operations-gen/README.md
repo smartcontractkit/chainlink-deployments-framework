@@ -10,6 +10,28 @@ go run ./tools/operations-gen -config /path/to/operations_gen_config.yaml
 
 The `-config` path can be absolute or relative to the current working directory.
 
+Print the CLI release metadata:
+
+```bash
+go run ./tools/operations-gen -version
+```
+
+## Install a released version
+
+This module is released with Go module subdirectory tags in the form `tools/operations-gen/vX.Y.Z`.
+
+Install a specific released version:
+
+```bash
+go install github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen@vX.Y.Z
+```
+
+Download prebuilt release binaries and checksums from the GitHub Releases page:
+
+```text
+https://github.com/smartcontractkit/chainlink-deployments-framework/releases
+```
+
 ## Project structure
 
 ```text
@@ -62,24 +84,24 @@ contracts:
 
 ### Top-level fields
 
-| Field              | Required | Description                                                                                   |
-| ------------------ | -------- | --------------------------------------------------------------------------------------------- |
-| `version`          | Yes      | Config schema version                                                                         |
-| `chain_family`     | No       | Target chain family. Only `"evm"` is supported. Defaults to `"evm"`.                          |
-| `input.abi_base_path` | Yes   | Directory containing versioned ABI files. Relative to the config file.                            |
-| `input.bytecode_base_path` | Yes | Directory containing versioned bytecode files. Relative to the config file.                  |
-| `output.base_path` | Yes      | Root directory where generated files are written. Relative to the config file.                    |
+| Field                      | Required | Description                                                                    |
+| -------------------------- | -------- | ------------------------------------------------------------------------------ |
+| `version`                  | Yes      | Config schema version                                                          |
+| `chain_family`             | No       | Target chain family. Only `"evm"` is supported. Defaults to `"evm"`.           |
+| `input.abi_base_path`      | Yes      | Directory containing versioned ABI files. Relative to the config file.         |
+| `input.bytecode_base_path` | Yes      | Directory containing versioned bytecode files. Relative to the config file.    |
+| `output.base_path`         | Yes      | Root directory where generated files are written. Relative to the config file. |
 
 ### Contract fields
 
-| Field           | Required | Description                                                                                                      |
-| --------------- | -------- | ---------------------------------------------------------------------------------------------------------------- |
-| `contract_name` | Yes      | Contract name as it appears in the ABI (e.g. `FeeQuoter`)                                                        |
-| `version`       | Yes      | Semver version of the contract (e.g. `"1.6.0"`)                                                                  |
-| `package_name`  | No       | Override the generated Go package name. Defaults to `snake_case(contract_name)`.                                 |
-| `abi_file`      | No       | Override the ABI filename. Defaults to `{package_name}.json`.                                                    |
-| `version_path`  | No       | Override the directory path derived from the version. Defaults to `v{major}_{minor}_{patch}`.                    |
-| `omit_deploy`   | No       | Skip generation of the `Deploy` operation and bytecode constant. Defaults to `false`.                          |
+| Field           | Required | Description                                                                                   |
+| --------------- | -------- | --------------------------------------------------------------------------------------------- |
+| `contract_name` | Yes      | Contract name as it appears in the ABI (e.g. `FeeQuoter`)                                     |
+| `version`       | Yes      | Semver version of the contract (e.g. `"1.6.0"`)                                               |
+| `package_name`  | No       | Override the generated Go package name. Defaults to `snake_case(contract_name)`.              |
+| `abi_file`      | No       | Override the ABI filename. Defaults to `{package_name}.json`.                                 |
+| `version_path`  | No       | Override the directory path derived from the version. Defaults to `v{major}_{minor}_{patch}`. |
+| `omit_deploy`   | No       | Skip generation of the `Deploy` operation and bytecode constant. Defaults to `false`.         |
 
 ### Function access control
 
