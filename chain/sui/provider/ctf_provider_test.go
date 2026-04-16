@@ -107,7 +107,8 @@ func Test_CTFChainProvider_Initialize(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
+			// Do not use t.Parallel() here: multiple subtests share Docker / CTF default network
+			// and Sui-related resources; parallel runs flake or fail together.
 
 			p := NewCTFChainProvider(t, tt.giveSelector, tt.giveConfig)
 

@@ -36,7 +36,7 @@ type CTFChainProviderConfig struct {
 	Once *sync.Once
 
 	// Optional: A specification of the image to use for the CTF container.
-	// Default: mysten/sui-tools:devnet
+	// Default: mysten/sui-tools:ci-arm64 on darwin/arm64; mysten/sui-tools:devnet-v1.69.2 elsewhere.
 	Image *string
 
 	// Optional: A specification of the platform to use for the CTF container.
@@ -174,7 +174,7 @@ func (p *CTFChainProvider) startContainer(
 		faucetPort := ports[1]
 
 		var image string
-		var platform string
+		var imagePlatform *string
 
 		// by default, if image and platform are empty, they are set to amd64 by CTF
 		// to support running locally on macos arm64, we set the image and platform to ci-arm64 and linux/arm64 respectively
@@ -184,21 +184,20 @@ func (p *CTFChainProvider) startContainer(
 			if runtime.GOARCH == "arm64" {
 				image = "mysten/sui-tools:ci-arm64"
 			} else {
-				image = "mysten/sui-tools:devnet-v1.69.0"
+				image = defaultSuiImage
 			}
 		}
 
 		if p.config.Platform != nil {
-			platform = *p.config.Platform
-		} else {
-			if runtime.GOARCH == "arm64" {
-				platform = "linux/arm64"
-			}
+			imagePlatform = p.config.Platform
+		} else if runtime.GOARCH == "arm64" {
+			arm := "linux/arm64"
+			imagePlatform = &arm
 		}
 
 		input := &blockchain.Input{
 			Image:         image,
-			ImagePlatform: &platform,
+			ImagePlatform: imagePlatform,
 			Type:          blockchain.TypeSui,
 			ChainID:       chainID,
 			PublicKey:     address,
@@ -206,7 +205,7 @@ func (p *CTFChainProvider) startContainer(
 			FaucetPort:    strconv.Itoa(faucetPort),
 		}
 
-		output, rerr := blockchain.NewBlockchainNetwork(input)
+		output, rerr := newSuiCTFBlockchainNetwork(p.t.Context(), input)
 		if rerr != nil {
 			// Return the ports to freeport to avoid leaking them during retries
 			freeport.Return([]int{port, faucetPort})
