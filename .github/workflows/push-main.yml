@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - ggoh/test-ci
 
 jobs:
   cache-gomod:
@@ -31,7 +32,7 @@ jobs:
       contents: read
     steps:
       - name: cd-release
-        uses: smartcontractkit/.github/actions/cicd-changesets@eeb76b5870e3c17856d5a60fd064a053c023b5f5 # cicd-changesets@1.0.0
+        uses: smartcontractkit/.github/actions/cicd-changesets@6ff93d190d3499c4889001c181f503c45420497d # cicd-changesets@1.3.0
         with:
           # general inputs
           git-user: app-token-issuer-infra-releng[bot]
@@ -40,3 +41,5 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
           aws-role-arn: ${{ secrets.GATI_AWS_ROLE_CI_CHANGESET_TOKEN_ISSUER_ROLE_ARN }}
           aws-lambda-url: ${{ secrets.GATI_LAMBDA_ENGOPS_URL }}
+          changesets-tag-separator: "/v"
+          changesets-root-version-package-path: ./package.json
