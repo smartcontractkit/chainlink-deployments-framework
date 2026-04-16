@@ -203,7 +203,7 @@ func newAnvilChains(
 			}
 			network.Metadata = cfgnet.EVMMetadata{
 				AnvilConfig: &cfgnet.AnvilConfig{
-					Image: "f4hrenh9it/foundry:latest",
+					Image: "ghcr.io/foundry-rs/foundry:latest",
 					Port:  uint64(ports[0]), //nolint:gosec // G115: int to uint64 conversion is safe here (port numbers are always in valid range)
 				},
 			}
@@ -257,7 +257,7 @@ func newAnvilChains(
 			Name:                     fmt.Sprintf("anvil-fork-%d", network.ChainSelector),
 			Once:                     &once,
 			ConfirmFunctor:           evmprov.ConfirmFuncGeth(3 * time.Minute),
-			DockerCmdParamsOverrides: []string{"--auto-impersonate"},
+			DockerCmdParamsOverrides: []string{"--auto-impersonate", "--no-storage-caching"},
 			Image:                    metadata.AnvilConfig.Image,
 			ForkURLs:                 forkURLs,
 			DeployerTransactorGen:    signerGenerator,
