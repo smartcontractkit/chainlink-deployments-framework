@@ -1,0 +1,42 @@
+version: 2
+project_name: operations-gen
+
+monorepo:
+  tag_prefix: tools/operations-gen/
+
+builds:
+  - id: operations-gen
+    main: .
+    dir: tools/operations-gen
+    binary: operations-gen
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w -X main.version={{ .Version }} -X main.commit={{ .Commit }} -X main.date={{ .Date }}
+    goos:
+      - darwin
+      - linux
+      - windows
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        format: zip
+
+release:
+  github:
+    owner: smartcontractkit
+    name: chainlink-deployments-framework
+  prerelease: auto
+  footer: |
+    Check out the official changelog [here](https://github.com/smartcontractkit/chainlink-deployments-framework/blob/main/tools/operations-gen/CHANGELOG.md)
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  disable: true
