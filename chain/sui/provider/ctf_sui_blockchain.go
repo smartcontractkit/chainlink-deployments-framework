@@ -91,7 +91,7 @@ func generateKeyDataCTF(ctx context.Context, containerName, keyCipherType string
 		return nil, fmt.Errorf("%w (raw output: %.300q)", err, keyOut)
 	}
 
-	framework.L.Info().Interface("Key", key).Msg("Test key")
+	framework.L.Info().Str("suiAddress", key.SuiAddress).Msg("CTF test key generated")
 
 	return key, nil
 }
