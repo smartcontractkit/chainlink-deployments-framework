@@ -184,7 +184,7 @@ func (p *CTFChainProvider) startContainer(
 			if runtime.GOARCH == "arm64" {
 				image = "mysten/sui-tools:ci-arm64"
 			} else {
-				image = "mysten/sui-tools:devnet-v1.61.0"
+				image = "mysten/sui-tools:devnet-v1.69.0"
 			}
 		}
 
