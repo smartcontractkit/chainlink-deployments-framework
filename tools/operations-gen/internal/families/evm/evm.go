@@ -1,0 +1,931 @@
+package evm
+
+import (
+	"bytes"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"sort"
+	"strconv"
+	"strings"
+	"text/template"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/internal/core"
+)
+
+const (
+	// anyType is the fallback Go type for unknown source types.
+	anyType = "any"
+	// emptyReturnType is the Go type used for read functions with no return values.
+	emptyReturnType = "struct{}"
+
+	abiTypeFunction         = "function"
+	abiTypeConstructor      = "constructor"
+	stateMutabilityView     = "view"
+	stateMutabilityPure     = "pure"
+	accessOwner             = "owner"
+	accessPublic            = "public"
+	accessControlAllCallers = "AllCallersAllowed"
+	accessControlOnlyOwner  = "OnlyOwner"
+)
+
+// evmTypeMap maps Solidity types to their Go equivalents.
+var evmTypeMap = map[string]string{
+	"address": "common.Address",
+	"string":  "string",
+	"bool":    "bool",
+	"bytes":   "[]byte",
+	"bytes32": "[32]byte",
+	"bytes16": "[16]byte",
+	"bytes4":  "[4]byte",
+	"uint8":   "uint8",
+	"uint16":  "uint16",
+	"uint32":  "uint32",
+	"uint40":  "uint64",
+	"uint48":  "uint64",
+	"uint56":  "uint64",
+	"uint64":  "uint64",
+	"uint96":  "*big.Int",
+	"uint128": "*big.Int",
+	"uint160": "*big.Int",
+	"uint192": "*big.Int",
+	"uint224": "*big.Int",
+	"uint256": "*big.Int",
+	"int8":    "int8",
+	"int16":   "int16",
+	"int32":   "int32",
+	"int64":   "int64",
+	"int96":   "*big.Int",
+	"int128":  "*big.Int",
+	"int160":  "*big.Int",
+	"int192":  "*big.Int",
+	"int224":  "*big.Int",
+	"int256":  "*big.Int",
+}
+
+// ---- EVM contract config (YAML schema owned by Handler) ----
+
+// evmContractConfig is the EVM-specific contract configuration decoded from YAML.
+type evmContractConfig struct {
+	Name        string              `yaml:"contract_name"`
+	Version     string              `yaml:"version"`
+	VersionPath string              `yaml:"version_path,omitempty"` // Optional: override folder path derived from version
+	PackageName string              `yaml:"package_name,omitempty"` // Optional: override package name
+	ABIFile     string              `yaml:"abi_file,omitempty"`     // Optional: override ABI file name
+	OmitDeploy  bool                `yaml:"omit_deploy,omitempty"`  // Optional: skip Deploy operation
+	Functions   []evmFunctionConfig `yaml:"functions"`
+}
+
+// evmFunctionConfig selects a contract function and assigns its access control.
+type evmFunctionConfig struct {
+	Name   string `yaml:"name"`
+	Access string `yaml:"access,omitempty"` // "owner" or "public"
+}
+
+type evmInputConfig struct {
+	ABIBasePath      string `yaml:"abi_base_path"`
+	BytecodeBasePath string `yaml:"bytecode_base_path"`
+}
+
+type evmOutputConfig struct {
+	BasePath string `yaml:"base_path"`
+}
+
+// ---- Intermediate representation ----
+
+// contractInfo holds all parsed information about a contract needed for code generation.
+type contractInfo struct {
+	Name          string
+	Version       string
+	PackageName   string
+	OutputPath    string
+	ABI           string
+	Bytecode      string
+	OmitDeploy    bool
+	Constructor   *functionInfo
+	Functions     map[string]*functionInfo
+	FunctionOrder []string
+	StructDefs    map[string]*structDef
+}
+
+type structDef struct {
+	Name   string
+	Fields []parameterInfo
+}
+
+type functionInfo struct {
+	Name         string
+	Parameters   []parameterInfo
+	ReturnParams []parameterInfo
+	IsWrite      bool
+	CallMethod   string // Method name, with numeric suffix for overloaded functions
+	HasOnlyOwner bool
+}
+
+type parameterInfo struct {
+	Name         string
+	SolidityType string
+	GoType       string
+	IsStruct     bool
+	StructName   string
+	Components   []parameterInfo
+}
+
+// ---- Template data (EVM-specific) ----
+
+type templateData struct {
+	PackageName       string
+	PackageNameHyphen string
+	ContractType      string
+	Version           string
+	ABI               string
+	Bytecode          string
+	NeedsBigInt       bool
+	HasWriteOps       bool
+	OmitDeploy        bool
+	Constructor       *constructorData
+	StructDefs        []structDefData
+	ArgStructs        []argStructData
+	Operations        []operationData
+	ContractMethods   []contractMethodData
+}
+
+type constructorData struct {
+	Parameters []parameterData
+}
+
+type structDefData struct {
+	Name   string
+	Fields []parameterData
+}
+
+type argStructData struct {
+	Name   string
+	Fields []parameterData
+}
+
+type parameterData struct {
+	GoName  string
+	GoType  string
+	JSONTag string // ABI parameter name; may be a synthesized placeholder (e.g. "ret0") for unnamed outputs
+}
+
+type operationData struct {
+	Name          string
+	MethodName    string
+	OpName        string
+	ArgsType      string
+	CallArgs      string
+	IsWrite       bool
+	AccessControl string // Only for writes
+	ReturnType    string // Only for reads
+}
+
+type contractMethodData struct {
+	Name       string
+	MethodName string
+	Params     string
+	Returns    string
+	MethodBody string
+}
+
+// ---- Handler ----
+
+// Handler implements ChainFamilyHandler for EVM (Solidity/go-ethereum) chains.
+type Handler struct{}
+
+// Generate decodes each YAML node as an evmContractConfig, extracts contract info,
+// and writes a generated operations file for each contract.
+func (h Handler) Generate(config core.Config, tmpl *template.Template) error {
+	var input evmInputConfig
+	if err := config.Input.Decode(&input); err != nil {
+		return fmt.Errorf("failed to decode EVM input config: %w", err)
+	}
+	var output evmOutputConfig
+	if err := config.Output.Decode(&output); err != nil {
+		return fmt.Errorf("failed to decode EVM output config: %w", err)
+	}
+	if config.ConfigDir != "" {
+		input.ABIBasePath = filepath.Join(config.ConfigDir, input.ABIBasePath)
+		input.BytecodeBasePath = filepath.Join(config.ConfigDir, input.BytecodeBasePath)
+		output.BasePath = filepath.Join(config.ConfigDir, output.BasePath)
+	}
+
+	for _, node := range config.Contracts.Content {
+		if node == nil {
+			continue
+		}
+		var cfg evmContractConfig
+		if err := node.Decode(&cfg); err != nil {
+			return fmt.Errorf("failed to decode EVM contract config: %w", err)
+		}
+
+		info, err := extractContractInfo(cfg, input, output)
+		if err != nil {
+			return fmt.Errorf("error extracting info for %s: %w", cfg.Name, err)
+		}
+
+		if err := generateOperationsFile(info, tmpl); err != nil {
+			return fmt.Errorf("error generating file for %s: %w", cfg.Name, err)
+		}
+
+		fmt.Printf("✓ Generated operations for %s at %s\n", info.Name, info.OutputPath)
+	}
+
+	return nil
+}
+
+// ---- Extraction ----
+
+func extractContractInfo(cfg evmContractConfig, input evmInputConfig, output evmOutputConfig) (*contractInfo, error) {
+	if cfg.Name == "" || cfg.Version == "" {
+		return nil, errors.New("contract_name and version are required")
+	}
+
+	packageName := cfg.PackageName
+	if packageName == "" {
+		packageName = toSnakeCase(cfg.Name)
+	}
+	versionPath := core.VersionToPath(cfg.Version)
+	if cfg.VersionPath != "" {
+		versionPath = cfg.VersionPath
+	}
+
+	if err := validatePathSegment("package_name", packageName); err != nil {
+		return nil, err
+	}
+	if err := validatePathSegment("version_path", versionPath); err != nil {
+		return nil, err
+	}
+
+	abiString, bytecode, err := readABIAndBytecode(cfg, packageName, versionPath, input)
+	if err != nil {
+		return nil, err
+	}
+
+	abiEntries, err := parseABIEntries(abiString)
+	if err != nil {
+		return nil, err
+	}
+
+	info := &contractInfo{
+		Name:        cfg.Name,
+		Version:     cfg.Version,
+		PackageName: packageName,
+		OutputPath:  core.ContractOutputPath(output.BasePath, versionPath, packageName),
+		ABI:         abiString,
+		Bytecode:    bytecode,
+		OmitDeploy:  cfg.OmitDeploy,
+		Functions:   make(map[string]*functionInfo),
+		StructDefs:  make(map[string]*structDef),
+	}
+
+	extractConstructor(info, abiEntries, evmTypeMap)
+
+	if err := extractFunctions(info, cfg.Functions, abiEntries, evmTypeMap); err != nil {
+		return nil, err
+	}
+
+	collectAllStructDefs(info)
+
+	return info, nil
+}
+
+func collectAllStructDefs(info *contractInfo) {
+	if info.Constructor != nil {
+		collectStructDefs(info.Constructor.Parameters, info.StructDefs)
+	}
+	for _, fi := range info.Functions {
+		collectStructDefs(fi.Parameters, info.StructDefs)
+		collectStructDefs(fi.ReturnParams, info.StructDefs)
+
+		if !fi.IsWrite && len(fi.ReturnParams) > 1 {
+			structName := multiReturnStructName(fi.Name)
+			if _, exists := info.StructDefs[structName]; !exists {
+				info.StructDefs[structName] = &structDef{
+					Name:   structName,
+					Fields: fi.ReturnParams,
+				}
+			}
+		}
+	}
+}
+
+func collectStructDefs(params []parameterInfo, structDefs map[string]*structDef) {
+	for _, param := range params {
+		if param.IsStruct && param.StructName != "" {
+			if _, exists := structDefs[param.StructName]; !exists {
+				structDefs[param.StructName] = &structDef{
+					Name:   param.StructName,
+					Fields: param.Components,
+				}
+			}
+			collectStructDefs(param.Components, structDefs)
+		}
+	}
+}
+
+// ---- Code generation ----
+
+func generateOperationsFile(info *contractInfo, tmpl *template.Template) error {
+	data := prepareTemplateData(info)
+
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
+		return fmt.Errorf("template execution error: %w", err)
+	}
+
+	return core.WriteGoFile(info.OutputPath, buf.Bytes())
+}
+
+func prepareTemplateData(info *contractInfo) templateData {
+	data := templateData{
+		PackageName:       info.PackageName,
+		PackageNameHyphen: toKebabCase(info.PackageName),
+		ContractType:      info.Name,
+		Version:           info.Version,
+		ABI:               info.ABI,
+		Bytecode:          info.Bytecode,
+		NeedsBigInt:       checkNeedsBigInt(info),
+		OmitDeploy:        info.OmitDeploy,
+	}
+
+	if info.Constructor != nil {
+		data.Constructor = &constructorData{
+			Parameters: prepareParameters(info.Constructor.Parameters),
+		}
+	}
+
+	for _, name := range info.FunctionOrder {
+		fi := info.Functions[name]
+		data.ContractMethods = append(data.ContractMethods, prepareContractMethod(fi, fi.IsWrite))
+
+		if fi.IsWrite {
+			data.HasWriteOps = true
+			data.Operations = append(data.Operations, prepareWriteOp(fi))
+		} else {
+			data.Operations = append(data.Operations, prepareReadOp(fi))
+		}
+
+		if len(fi.Parameters) > 1 {
+			data.ArgStructs = append(data.ArgStructs, argStructData{
+				Name:   fi.Name + "Args",
+				Fields: prepareParameters(fi.Parameters),
+			})
+		}
+	}
+
+	structNames := make([]string, 0, len(info.StructDefs))
+	for name := range info.StructDefs {
+		structNames = append(structNames, name)
+	}
+	sort.Strings(structNames)
+	for _, name := range structNames {
+		sd := info.StructDefs[name]
+		data.StructDefs = append(data.StructDefs, structDefData{
+			Name:   sd.Name,
+			Fields: prepareParameters(sd.Fields),
+		})
+	}
+
+	return data
+}
+
+func prepareParameters(params []parameterInfo) []parameterData {
+	result := make([]parameterData, 0, len(params))
+	for i, param := range params {
+		result = append(result, parameterData{
+			GoName:  fieldNameOrIndex(param.Name, i),
+			GoType:  param.GoType,
+			JSONTag: param.Name,
+		})
+	}
+
+	return result
+}
+
+// buildCallArgs builds the argsType and callArgs strings for an operation.
+func buildCallArgs(fi *functionInfo) (argsType string, callArgs string) {
+	if len(fi.Parameters) == 0 {
+		return emptyReturnType, ""
+	}
+
+	if len(fi.Parameters) == 1 {
+		return fi.Parameters[0].GoType, ", args"
+	}
+
+	argsType = fi.Name + "Args"
+	callArgsList := make([]string, 0, len(fi.Parameters))
+	for i, p := range fi.Parameters {
+		callArgsList = append(callArgsList, "args."+fieldNameOrIndex(p.Name, i))
+	}
+	callArgs = ", " + strings.Join(callArgsList, ", ")
+
+	return argsType, callArgs
+}
+
+func resolveReturnType(fi *functionInfo) string {
+	if len(fi.ReturnParams) == 1 {
+		return fi.ReturnParams[0].GoType
+	} else if len(fi.ReturnParams) > 1 {
+		return multiReturnStructName(fi.Name)
+	}
+
+	return emptyReturnType
+}
+
+func prepareWriteOp(fi *functionInfo) operationData {
+	argsType, callArgs := buildCallArgs(fi)
+
+	accessControl := accessControlAllCallers
+	if fi.HasOnlyOwner {
+		accessControl = accessControlOnlyOwner
+	}
+
+	return operationData{
+		Name:          fi.Name,
+		MethodName:    fi.CallMethod,
+		OpName:        toKebabCase(fi.Name),
+		ArgsType:      argsType,
+		CallArgs:      callArgs,
+		IsWrite:       true,
+		AccessControl: accessControl,
+	}
+}
+
+func prepareReadOp(fi *functionInfo) operationData {
+	argsType, callArgs := buildCallArgs(fi)
+
+	return operationData{
+		Name:       fi.Name,
+		MethodName: fi.CallMethod,
+		OpName:     toKebabCase(fi.Name),
+		ArgsType:   argsType,
+		ReturnType: resolveReturnType(fi),
+		CallArgs:   callArgs,
+		IsWrite:    false,
+	}
+}
+
+func multiReturnStructName(funcName string) string {
+	return funcName + "Result"
+}
+
+// prepareContractMethod builds the contractMethodData for a single contract function,
+// generating go-ethereum–specific method signatures and bodies.
+func prepareContractMethod(fi *functionInfo, isWrite bool) contractMethodData {
+	optsType := "*bind.CallOpts"
+	if isWrite {
+		optsType = "*bind.TransactOpts"
+	}
+
+	params := "opts " + optsType
+	var methodArgs []string
+
+	if len(fi.Parameters) == 1 {
+		params += ", args " + fi.Parameters[0].GoType
+		methodArgs = []string{"args"}
+	} else if len(fi.Parameters) > 1 {
+		var sb strings.Builder
+		for _, p := range fi.Parameters {
+			paramName := sanitizeParamName(p.Name)
+			if paramName == "" {
+				paramName = fmt.Sprintf("arg%d", len(methodArgs))
+			}
+			fmt.Fprintf(&sb, ", %s %s", paramName, p.GoType)
+			methodArgs = append(methodArgs, paramName)
+		}
+		params += sb.String()
+	}
+
+	returns := "(*types.Transaction, error)"
+	if !isWrite {
+		returns = fmt.Sprintf("(%s, error)", resolveReturnType(fi))
+	}
+
+	var methodBody string
+	if isWrite {
+		methodBody = buildWriteMethodBody(fi.CallMethod, methodArgs)
+	} else {
+		methodBody = buildReadMethodBody(fi, methodArgs, resolveReturnType(fi))
+	}
+
+	return contractMethodData{
+		Name:       fi.Name,
+		MethodName: fi.CallMethod,
+		Params:     params,
+		Returns:    returns,
+		MethodBody: methodBody,
+	}
+}
+
+// buildWriteMethodBody generates the body of a write (transact) method.
+func buildWriteMethodBody(callMethod string, methodArgs []string) string {
+	if len(methodArgs) > 0 {
+		return fmt.Sprintf("return c.contract.Transact(opts, \"%s\", %s)",
+			callMethod, strings.Join(methodArgs, ", "))
+	}
+
+	return fmt.Sprintf("return c.contract.Transact(opts, \"%s\")", callMethod)
+}
+
+// buildReadMethodBody generates the body of a read (call) method.
+func buildReadMethodBody(fi *functionInfo, methodArgs []string, returnType string) string {
+	callArgsStr := ""
+	if len(methodArgs) > 0 {
+		callArgsStr = ", " + strings.Join(methodArgs, ", ")
+	}
+	if len(fi.ReturnParams) == 0 {
+		return fmt.Sprintf(
+			`err := c.contract.Call(opts, nil, "%s"%s)
+	return struct{}{}, err`,
+			fi.CallMethod, callArgsStr,
+		)
+	}
+	if len(fi.ReturnParams) > 1 {
+		return buildMultiReturnMethodBody(fi, callArgsStr, returnType)
+	}
+
+	return fmt.Sprintf(
+		`var out []any
+	err := c.contract.Call(opts, &out, "%s"%s)
+	if err != nil {
+		var zero %s
+		return zero, err
+	}
+	return *abi.ConvertType(out[0], new(%s)).(*%s), nil`,
+		fi.CallMethod, callArgsStr, returnType, returnType, returnType,
+	)
+}
+
+// buildMultiReturnMethodBody generates the body for a read method with multiple return values,
+// packing them into a result struct.
+func buildMultiReturnMethodBody(fi *functionInfo, callArgsStr, returnType string) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "var out []any\n")
+	fmt.Fprintf(&b, "\terr := c.contract.Call(opts, &out, \"%s\"%s)\n", fi.CallMethod, callArgsStr)
+	fmt.Fprintf(&b, "\toutstruct := new(%s)\n", returnType)
+	fmt.Fprintf(&b, "\tif err != nil {\n")
+	fmt.Fprintf(&b, "\t\treturn *outstruct, err\n")
+	fmt.Fprintf(&b, "\t}\n\n")
+	for i, p := range fi.ReturnParams {
+		fmt.Fprintf(&b, "\toutstruct.%s = *abi.ConvertType(out[%d], new(%s)).(*%s)\n",
+			fieldNameOrIndex(p.Name, i), i, p.GoType, p.GoType)
+	}
+	fmt.Fprintf(&b, "\n\treturn *outstruct, nil")
+
+	return b.String()
+}
+
+// ---- ABI parsing ----
+
+// ABIEntry represents a single entry in a Solidity contract ABI JSON.
+type ABIEntry struct {
+	Type            string     `json:"type"`
+	Name            string     `json:"name"`
+	Inputs          []ABIParam `json:"inputs"`
+	Outputs         []ABIParam `json:"outputs"`
+	StateMutability string     `json:"stateMutability"`
+}
+
+// ABIParam represents a parameter within an ABI entry.
+type ABIParam struct {
+	Name         string     `json:"name"`
+	Type         string     `json:"type"`
+	InternalType string     `json:"internalType"`
+	Components   []ABIParam `json:"components"`
+}
+
+// readABIAndBytecode reads the ABI JSON and (optionally) bytecode for a contract
+// from the configured input roots:
+//
+//	{input.ABIBasePath}/{versionPath}/{name}.json
+//	{input.BytecodeBasePath}/{versionPath}/{name}.bin
+func readABIAndBytecode(
+	cfg evmContractConfig,
+	packageName,
+	versionPath string,
+	input evmInputConfig) (abiString string, bytecode string, err error) {
+	var abiFileName string
+	if cfg.ABIFile != "" {
+		if !strings.HasSuffix(cfg.ABIFile, ".json") {
+			return "", "", fmt.Errorf("abi_file %q must end with .json", cfg.ABIFile)
+		}
+		abiFileName = cfg.ABIFile
+	} else {
+		abiFileName = packageName + ".json"
+	}
+
+	abiPath := filepath.Join(input.ABIBasePath, versionPath, abiFileName)
+	abiBytes, err := os.ReadFile(abiPath)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to read ABI from %s: %w", abiPath, err)
+	}
+
+	if cfg.OmitDeploy {
+		return string(abiBytes), "", nil
+	}
+
+	bytecodeName := strings.TrimSuffix(abiFileName, ".json") + ".bin"
+	bytecodePath := filepath.Join(input.BytecodeBasePath, versionPath, bytecodeName)
+	bytecodeBytes, err := os.ReadFile(bytecodePath)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to read bytecode from %s: %w", bytecodePath, err)
+	}
+
+	return string(abiBytes), strings.TrimSpace(string(bytecodeBytes)), nil
+}
+
+func extractConstructor(info *contractInfo, abiEntries []ABIEntry, typeMap map[string]string) {
+	for _, entry := range abiEntries {
+		if entry.Type == abiTypeConstructor {
+			info.Constructor = parseABIFunction(entry, info.PackageName, typeMap)
+			break
+		}
+	}
+}
+
+func extractFunctions(info *contractInfo, funcConfigs []evmFunctionConfig, abiEntries []ABIEntry, typeMap map[string]string) error {
+	for _, funcCfg := range funcConfigs {
+		funcInfos := findFunctionInABI(abiEntries, funcCfg.Name, info.PackageName, typeMap)
+		if funcInfos == nil {
+			return fmt.Errorf("function %s not found in ABI", funcCfg.Name)
+		}
+
+		for _, fi := range funcInfos {
+			switch funcCfg.Access {
+			case accessOwner:
+				fi.HasOnlyOwner = true
+			case accessPublic, "":
+				fi.HasOnlyOwner = false
+			default:
+				return fmt.Errorf("unknown access control '%s' for function %s (use 'owner' or 'public')",
+					funcCfg.Access, funcCfg.Name)
+			}
+
+			info.Functions[fi.Name] = fi
+			info.FunctionOrder = append(info.FunctionOrder, fi.Name)
+		}
+	}
+
+	return nil
+}
+
+// findFunctionInABI finds all overloads of a function by name and returns functionInfo
+// for each, following Geth's overload naming convention.
+func findFunctionInABI(entries []ABIEntry, funcName string, packageName string, typeMap map[string]string) []*functionInfo {
+	var candidates []ABIEntry
+	for _, entry := range entries {
+		if entry.Type == abiTypeFunction && strings.EqualFold(entry.Name, funcName) {
+			candidates = append(candidates, entry)
+		}
+	}
+
+	if len(candidates) == 0 {
+		return nil
+	}
+
+	var funcInfos []*functionInfo
+	for i, candidate := range candidates {
+		fi := parseABIFunction(candidate, packageName, typeMap)
+
+		// Follow Geth's overload naming convention:
+		// First: no suffix, second: "0", third: "1", etc.
+		if len(candidates) > 1 && i > 0 {
+			suffix := strconv.Itoa(i - 1)
+			fi.Name = fi.Name + suffix
+			fi.CallMethod = fi.CallMethod + suffix
+		}
+
+		funcInfos = append(funcInfos, fi)
+	}
+
+	return funcInfos
+}
+
+// parseABIFunction converts a Solidity ABI function entry into a functionInfo.
+// IsWrite is determined by stateMutability: anything other than "view" or "pure" is a write.
+func parseABIFunction(entry ABIEntry, packageName string, typeMap map[string]string) *functionInfo {
+	fi := &functionInfo{
+		Name:       core.Capitalize(entry.Name),
+		CallMethod: entry.Name,
+		IsWrite:    entry.StateMutability != stateMutabilityView && entry.StateMutability != stateMutabilityPure,
+	}
+
+	for i, input := range entry.Inputs {
+		p := parseABIParam(input, packageName, typeMap)
+		if p.Name == "" {
+			p.Name = fmt.Sprintf("arg%d", i)
+		}
+		fi.Parameters = append(fi.Parameters, p)
+	}
+
+	for i, output := range entry.Outputs {
+		p := parseABIParam(output, packageName, typeMap)
+		if p.Name == "" {
+			p.Name = fmt.Sprintf("ret%d", i)
+		}
+		fi.ReturnParams = append(fi.ReturnParams, p)
+	}
+
+	return fi
+}
+
+//nolint:unparam
+func parseABIParam(param ABIParam, packageName string, typeMap map[string]string) parameterInfo {
+	goType := solidityToGoType(param.Type, typeMap)
+
+	pi := parameterInfo{
+		Name:         param.Name,
+		SolidityType: param.Type,
+		GoType:       goType,
+	}
+
+	if strings.HasPrefix(param.Type, "tuple") {
+		structName := extractStructName(param.InternalType)
+		if structName != "" {
+			pi.IsStruct = true
+			pi.StructName = structName
+
+			if strings.HasSuffix(param.Type, "[]") {
+				pi.GoType = "[]" + structName
+			} else {
+				pi.GoType = structName
+			}
+
+			for _, comp := range param.Components {
+				pi.Components = append(pi.Components, parseABIParam(comp, packageName, typeMap))
+			}
+		}
+	}
+
+	return pi
+}
+
+// solidityToGoType maps a Solidity type string to its Go equivalent using typeMap.
+func solidityToGoType(solidityType string, typeMap map[string]string) string {
+	// Array: uint8[] → []uint8, uint8[32] → [32]uint8
+	if i := strings.LastIndexByte(solidityType, '['); i != -1 {
+		// Guard malformed type strings like "[" or "uint8[" to avoid slicing panics.
+		if !strings.HasSuffix(solidityType, "]") || i+1 > len(solidityType)-1 {
+			return anyType
+		}
+		sizeStr := solidityType[i+1 : len(solidityType)-1]
+		_, numErr := strconv.Atoi(sizeStr)
+		if sizeStr == "" || numErr == nil {
+			inner := solidityToGoType(solidityType[:i], typeMap)
+			if inner != anyType {
+				return "[" + sizeStr + "]" + inner
+			}
+
+			return anyType
+		}
+	}
+	if goType, ok := typeMap[solidityType]; ok {
+		return goType
+	}
+
+	return anyType
+}
+
+// extractStructName parses the Go struct name from a Solidity ABI internalType field.
+// e.g. "struct IOnRamp.DestChainConfig" → "DestChainConfig"
+// e.g. "struct MyStruct" → "MyStruct"  (no module prefix)
+// Returns "" for anonymous tuples ("tuple", "tuple[]") so callers fall back to any.
+func extractStructName(internalType string) string {
+	if internalType == "" {
+		return ""
+	}
+
+	// Bare "tuple" / "tuple[]" have no named struct — callers should fall back to any.
+	if strings.HasPrefix(internalType, "tuple") {
+		return ""
+	}
+
+	normalized := strings.TrimPrefix(internalType, "struct ")
+	normalized = strings.TrimSuffix(normalized, "[]")
+	parts := strings.Split(normalized, ".")
+
+	return parts[len(parts)-1]
+}
+
+// parseABIEntries unmarshals a raw ABI JSON string into a slice of ABIEntry.
+func parseABIEntries(abiString string) ([]ABIEntry, error) {
+	var entries []ABIEntry
+	if err := json.Unmarshal([]byte(abiString), &entries); err != nil {
+		return nil, fmt.Errorf("failed to parse ABI: %w", err)
+	}
+
+	return entries, nil
+}
+
+// checkNeedsBigInt reports whether any parameter in the contract uses *big.Int,
+// which requires importing "math/big" in the generated file.
+func checkNeedsBigInt(info *contractInfo) bool {
+	var check func(params []parameterInfo) bool
+	check = func(params []parameterInfo) bool {
+		for _, p := range params {
+			if strings.Contains(p.GoType, "*big.Int") {
+				return true
+			}
+			if len(p.Components) > 0 && check(p.Components) {
+				return true
+			}
+		}
+
+		return false
+	}
+
+	for _, fi := range info.Functions {
+		if check(fi.Parameters) || check(fi.ReturnParams) {
+			return true
+		}
+	}
+
+	if info.Constructor != nil && check(info.Constructor.Parameters) {
+		return true
+	}
+
+	return false
+}
+
+// ---- Naming utilities ----
+
+// trimUnderscores strips all leading underscores from s.
+func trimUnderscores(s string) string {
+	return strings.TrimLeft(s, "_")
+}
+
+// sanitizeFieldName strips leading underscores and capitalizes the result,
+// producing a valid exported Go identifier for struct fields.
+// Returns "" when the result would start with a digit (e.g. "_1" → ""); callers fall back to "Field%d".
+// e.g. "_to" → "To", "_value" → "Value", "balance" → "Balance"
+func sanitizeFieldName(name string) string {
+	trimmed := trimUnderscores(name)
+	if len(trimmed) == 0 || (trimmed[0] >= '0' && trimmed[0] <= '9') {
+		return ""
+	}
+
+	return core.Capitalize(trimmed)
+}
+
+// sanitizeParamName strips leading underscores and lowercases the first rune,
+// producing a valid unexported Go identifier for method parameters.
+// Returns "" when the result would start with a digit (e.g. "_1" → ""); callers fall back to "arg%d".
+// e.g. "_to" → "to", "_value" → "value"
+func sanitizeParamName(name string) string {
+	name = trimUnderscores(name)
+	if len(name) == 0 || (name[0] >= '0' && name[0] <= '9') {
+		return ""
+	}
+
+	return strings.ToLower(name[:1]) + name[1:]
+}
+
+// fieldNameOrIndex returns the sanitized exported field name for a struct field,
+// or "Field{i}" when the sanitized result would be empty (e.g. numeric-only names).
+func fieldNameOrIndex(name string, i int) string {
+	if n := sanitizeFieldName(name); n != "" {
+		return n
+	}
+
+	return fmt.Sprintf("Field%d", i)
+}
+
+func toSnakeCase(s string) string {
+	var result []rune
+	runes := []rune(s)
+	for i := range runes {
+		r := runes[i]
+		if i > 0 && r >= 'A' && r <= 'Z' {
+			prevLower := runes[i-1] >= 'a' && runes[i-1] <= 'z'
+			nextLower := i+1 < len(runes) && runes[i+1] >= 'a' && runes[i+1] <= 'z'
+			if prevLower || nextLower {
+				result = append(result, '_')
+			}
+		}
+		result = append(result, r)
+	}
+
+	return strings.ToLower(string(result))
+}
+
+func toKebabCase(s string) string {
+	return strings.ReplaceAll(toSnakeCase(s), "_", "-")
+}
+
+// validatePathSegment rejects values that could traverse outside the output base path.
+// Absolute paths and any cleaned path containing ".." or a path separator are rejected.
+func validatePathSegment(field, value string) error {
+	if filepath.IsAbs(value) {
+		return fmt.Errorf("%s must not be an absolute path: %q", field, value)
+	}
+	cleaned := filepath.Clean(value)
+	if strings.Contains(cleaned, "..") || strings.ContainsRune(cleaned, filepath.Separator) {
+		return fmt.Errorf("%s must not contain path separators or '..': %q", field, value)
+	}
+
+	return nil
+}

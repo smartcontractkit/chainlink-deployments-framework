@@ -593,7 +593,7 @@ changesets:
   - 0001_test_changeset:
       payload:
         chain: optimism_sepolia
-        value: 100`
+        value: 123456789012345678901234`
 	yamlFileName := "test-input.yaml"
 	require.NoError(t, os.WriteFile(filepath.Join(inputsDir, yamlFileName), []byte(yamlContent), 0o600))
 
@@ -607,7 +607,7 @@ changesets:
 		rp := &registryProviderStub{
 			BaseRegistryProvider: changeset.NewBaseRegistryProvider(),
 			AddAction: func(reg *changeset.ChangesetsRegistry) {
-				reg.Add(changesetName, changeset.Configure(changesetStub).With(1))
+				reg.Add(changesetName, changeset.Configure(changesetStub).WithEnvInput())
 			},
 		}
 		if initErr := rp.Init(); initErr != nil {
@@ -658,8 +658,12 @@ changesets:
 				"input": map[string]any{
 					"payload": map[string]any{
 						"chain": "optimism_sepolia",
-						"value": json.Number("100"),
+						"value": json.Number("123456789012345678901234"),
 					},
+				},
+				"config": map[string]any{
+					"chain": "optimism_sepolia",
+					"value": json.Number("123456789012345678901234"),
 				},
 			},
 		},

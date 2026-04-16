@@ -82,7 +82,7 @@ func (*EVMForkContext) ChainFamily() string {
 //  1. Per-changeset post-proposal-hooks
 //  2. Global post-proposal-hooks
 func (r *ChangesetsRegistry) RunProposalHooks(
-	key string, e fdeployment.Environment, proposal *mcms.TimelockProposal, input any,
+	key string, e fdeployment.Environment, proposal *mcms.TimelockProposal, input, config any,
 	reports []MCMSTimelockExecuteReport, forkCtx ForkContext,
 ) error {
 	applySnapshot, err := r.getApplySnapshot(key)
@@ -106,6 +106,7 @@ func (r *ChangesetsRegistry) RunProposalHooks(
 		ChangesetKey: key,
 		Proposal:     proposal,
 		Input:        input,
+		Config:       config,
 		Reports:      reports,
 	}
 

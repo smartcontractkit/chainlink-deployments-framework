@@ -1,5 +1,17 @@
 # chainlink-deployments-framework
 
+## 0.95.0
+
+### Minor Changes
+
+- [#928](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/928) [`2b4b616`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/2b4b61682ae0fe49209527edccb592772a5bdd2c) Thanks [@ecPablo](https://github.com/ecPablo)! - add contract binding types to proposalutils
+
+- [#923](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/923) [`54f8ccb`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/54f8ccb486d027e83cb14d47bdce70f2c7c536e2) Thanks [@ecPablo](https://github.com/ecPablo)! - port proposalutils helpers from engine/cld/mcms/proposalutils/ so they are part of the framework
+
+### Patch Changes
+
+- [#924](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/924) [`062a409`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/062a409d5953a9f0e395ecaadd401fb2e119d0b4) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - fix: populate Config attribute in hook params
+
 ## 0.94.1
 
 ### Patch Changes
