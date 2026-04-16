@@ -4,7 +4,7 @@
   "description": "A deployment framework for chainlink-deployments ",
   "private": true,
   "scripts": {
-    "ci:changeset:publish": "node ./scripts/release/tag-releases.mjs",
+    "ci:changeset:publish": "pnpm changeset publish",
     "ci:changeset:version": "pnpm changeset version && pnpm version --patch"
   },
   "author": "@smartcontractkit",
@@ -13,6 +13,11 @@
     "@changesets/cli": "^2.30.0"
   },
   "repository": "https://github.com/smartcontractkit/chainlink-deployments-framework",
+  "chainlink": {
+    "changesets": {
+      "rootVersion": true
+    }
+  },
   "pnpm": {
     "overrides": {}
   }
