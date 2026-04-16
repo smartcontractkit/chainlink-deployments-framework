@@ -1,5 +1,5 @@
 ---
-"operations-gen": patch
+"tools/operations-gen": patch
 ---
 
 test

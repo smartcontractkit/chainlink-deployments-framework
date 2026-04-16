@@ -1,5 +1,5 @@
 {
-  "name": "operations-gen",
+  "name": "tools/operations-gen",
   "version": "0.0.1",
   "private": true,
   "description": "Changesets metadata package for tools/operations-gen Go module"

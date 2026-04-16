@@ -3,7 +3,7 @@ name: push-tag-release
 on:
   push:
     tags:
-      - v*
+      - XXXv*
 
 jobs:
   cicd-publish-release:
