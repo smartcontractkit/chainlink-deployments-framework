@@ -2,6 +2,7 @@ package provider
 
 import (
 	"encoding/binary"
+	"math"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,7 +11,7 @@ import (
 
 func Test_demuxDockerExecOutput(t *testing.T) {
 	t.Parallel()
-	assert.Equal(t, "", demuxDockerExecOutput(""))
+	assert.Empty(t, demuxDockerExecOutput(""))
 	assert.Equal(t, `{"x":1}`, demuxDockerExecOutput(`{"x":1}`))
 }
 
@@ -18,7 +19,12 @@ func Test_demuxDockerExecOutput(t *testing.T) {
 func encodeDockerStdoutFrame(payload string) string {
 	hdr := make([]byte, 8)
 	hdr[0] = 1 // stdcopy.Stdout
-	binary.BigEndian.PutUint32(hdr[4:], uint32(len(payload)))
+	pl := uint64(len(payload))
+	if pl > math.MaxUint32 {
+		panic("encodeDockerStdoutFrame: payload length exceeds uint32")
+	}
+	binary.BigEndian.PutUint32(hdr[4:], uint32(pl))
+
 	return string(hdr) + payload
 }
 

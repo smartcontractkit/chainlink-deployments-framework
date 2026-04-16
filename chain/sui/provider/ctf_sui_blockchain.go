@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -22,7 +23,7 @@ import (
 
 // defaultSuiImage is the mysten/sui-tools image used when CTFChainProviderConfig.Image is unset
 // (non–darwin/arm64 hosts). Keep aligned with the Sui release you support in tests.
-const defaultSuiImage = "mysten/sui-tools:devnet-v1.69.2"
+const defaultSuiImage = "mysten/sui-tools:devnet-v1.69.0"
 
 // demuxDockerExecOutput converts Docker exec attach output to plain text when it uses the
 // multiplexed stream format (first byte 1=stdout / 2=stderr). Must run before stripping 0x01,
@@ -38,6 +39,7 @@ func demuxDockerExecOutput(raw string) string {
 	if _, err := stdcopy.StdCopy(&stdout, &stderr, strings.NewReader(raw)); err != nil {
 		return raw
 	}
+
 	return stdout.String() + stderr.String()
 }
 
@@ -47,7 +49,7 @@ func demuxDockerExecOutput(raw string) string {
 func parseSuiKeytoolGenerateJSON(keyOut string) (*blockchain.SuiWalletInfo, error) {
 	text := demuxDockerExecOutput(keyOut)
 	s := strings.ReplaceAll(text, "\x00", "")
-	for i := 0; i < len(s); i++ {
+	for i := range len(s) {
 		if s[i] != '{' {
 			continue
 		}
@@ -60,6 +62,7 @@ func parseSuiKeytoolGenerateJSON(keyOut string) (*blockchain.SuiWalletInfo, erro
 			return &key, nil
 		}
 	}
+
 	return nil, fmt.Errorf("failed to parse SuiWalletInfo from keytool output: %.200q", keyOut)
 }
 
@@ -87,7 +90,9 @@ func generateKeyDataCTF(ctx context.Context, containerName, keyCipherType string
 	if err != nil {
 		return nil, fmt.Errorf("%w (raw output: %.300q)", err, keyOut)
 	}
+
 	framework.L.Info().Interface("Key", key).Msg("Test key")
+
 	return key, nil
 }
 
@@ -123,7 +128,7 @@ func newSuiCTFBlockchainNetwork(ctx context.Context, in *blockchain.Input) (*blo
 		}
 	}
 
-	containerPort := fmt.Sprintf("%s/tcp", blockchain.DefaultSuiNodePort)
+	containerPort := blockchain.DefaultSuiNodePort + "/tcp"
 
 	imagePlatform := "linux/amd64"
 	if in.ImagePlatform != nil && *in.ImagePlatform != "" {
@@ -131,7 +136,7 @@ func newSuiCTFBlockchainNetwork(ctx context.Context, in *blockchain.Input) (*blo
 	}
 
 	if pods.K8sEnabled() {
-		return nil, fmt.Errorf("K8s support is not yet implemented")
+		return nil, errors.New("K8s support is not yet implemented")
 	}
 
 	req := testcontainers.ContainerRequest{
@@ -192,6 +197,7 @@ func newSuiCTFBlockchainNetwork(ctx context.Context, in *blockchain.Input) (*blo
 	if err := fundAccount(fmt.Sprintf("http://%s:%s", "127.0.0.1", in.FaucetPort), suiAccount.SuiAddress); err != nil {
 		return nil, err
 	}
+
 	return &blockchain.Output{
 		UseCache:            true,
 		Type:                in.Type,
