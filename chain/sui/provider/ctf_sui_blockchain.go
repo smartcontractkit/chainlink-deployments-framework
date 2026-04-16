@@ -21,8 +21,8 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/pods"
 )
 
-// defaultSuiImage is the mysten/sui-tools image used when CTFChainProviderConfig.Image is unset
-// (non–darwin/arm64 hosts). Keep aligned with the Sui release you support in tests.
+// defaultSuiImage is the mysten/sui-tools image used when CTFChainProviderConfig.Image is unset.
+// Keep aligned with the Sui release you support in tests.
 const defaultSuiImage = "mysten/sui-tools:devnet-v1.69.0"
 
 // demuxDockerExecOutput converts Docker exec attach output to plain text when it uses the

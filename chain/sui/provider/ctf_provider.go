@@ -23,6 +23,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/sui"
+	"github.com/smartcontractkit/chainlink-deployments-framework/internal/pointer"
 )
 
 // CTFChainProviderConfig holds the configuration to initialize the CTFChainProvider.
@@ -36,7 +37,7 @@ type CTFChainProviderConfig struct {
 	Once *sync.Once
 
 	// Optional: A specification of the image to use for the CTF container.
-	// Default: mysten/sui-tools:ci-arm64 on darwin/arm64; mysten/sui-tools:devnet-v1.69.2 elsewhere.
+	// Default: mysten/sui-tools:ci-arm64 on arm64; mysten/sui-tools:devnet-v1.69.0 elsewhere.
 	Image *string
 
 	// Optional: A specification of the platform to use for the CTF container.
@@ -191,8 +192,7 @@ func (p *CTFChainProvider) startContainer(
 		if p.config.Platform != nil {
 			imagePlatform = p.config.Platform
 		} else if runtime.GOARCH == "arm64" {
-			arm := "linux/arm64"
-			imagePlatform = &arm
+			imagePlatform = pointer.To("linux/arm64")
 		}
 
 		input := &blockchain.Input{
