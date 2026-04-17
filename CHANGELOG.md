@@ -1,5 +1,13 @@
 # chainlink-deployments-framework
 
+## 0.95.2
+
+### Patch Changes
+
+- [#939](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/939) [`18b00e6`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/18b00e692520feabc26f3bf4a1e60c406a7a7a82) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - refactor(cld): remove archived changeset registry entries
+
+- [#933](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/933) [`1313ab2`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/1313ab22026d448155e6c64763f4b24092a32ea5) Thanks [@ajaskolski](https://github.com/ajaskolski)! - fix: blockscout should show raw error on contract verification
+
 ## 0.95.1
 
 ### Patch Changes
