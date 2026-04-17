@@ -217,7 +217,7 @@ import (
 	"github.com/avast/retry-go/v4"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/crypto"
-	chainsel "github.com/smartcontractkit/chain-selectors"
+	chainsel "github.com/smartcontractkit/chain-selectors/remote"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/freeport"
@@ -384,10 +384,11 @@ func (p *CTFAnvilChainProvider) Initialize(ctx context.Context) (chain.BlockChai
 		return nil, fmt.Errorf("failed to validate config: %w", err)
 	}
 
-	chainID, err := chainsel.GetChainIDFromSelector(p.selector)
+	chainDetails, err := chainsel.GetChainDetailsBySelector(ctx, p.selector)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get chain id from selector: %w", err)
+		return nil, fmt.Errorf("failed to get chain details for selector: %w", err)
 	}
+	chainID := chainDetails.ChainID
 
 	httpURL, err := p.startContainer(ctx, chainID)
 	if err != nil {
@@ -400,7 +401,7 @@ func (p *CTFAnvilChainProvider) Initialize(ctx context.Context) (chain.BlockChai
 		return nil, fmt.Errorf("failed to create new logger: %w", err)
 	}
 
-	client, err := rpcclient.NewMultiClient(lggr, rpcclient.RPCConfig{
+	client, err := rpcclient.NewMultiClient(ctx, lggr, rpcclient.RPCConfig{
 		ChainSelector: p.selector,
 		RPCs: []rpcclient.RPC{
 			{

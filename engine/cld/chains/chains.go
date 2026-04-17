@@ -9,6 +9,7 @@ import (
 	"time"
 
 	chainsel "github.com/smartcontractkit/chain-selectors"
+	chainselremote "github.com/smartcontractkit/chain-selectors/remote"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
@@ -61,14 +62,15 @@ func LoadChains(
 
 	for _, selector := range chainselToLoad {
 		// Get the chain family for this selector
-		chainFamily, err := chainsel.GetSelectorFamily(selector)
+		chainDetails, err := chainselremote.GetChainDetailsBySelector(ctx, selector)
 		if err != nil {
-			lggr.Warnw("Unable to get chain family for selector",
+			lggr.Warnw("Unable to get chain details for selector",
 				"selector", selector, "error", err,
 			)
 
-			return fchain.BlockChains{}, fmt.Errorf("unable to get chain family for selector %d", selector)
+			return fchain.BlockChains{}, fmt.Errorf("unable to get chain family for selector %d: %w", selector, err)
 		}
+		chainFamily := chainDetails.Family
 
 		// Check if we have a loader for this chain family
 		loader, exists := chainLoaders[chainFamily]
