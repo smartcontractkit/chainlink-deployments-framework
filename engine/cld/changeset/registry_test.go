@@ -121,9 +121,6 @@ func Test_Changesets_Apply(t *testing.T) {
 	t.Parallel()
 
 	var (
-		archivedKey = "0001_archived_mig"
-		archivedSHA = "abcdef"
-
 		applyKey       = "0002_apply_mig"
 		applyChangeset = noopChangeset{}
 	)
@@ -144,11 +141,6 @@ func Test_Changesets_Apply(t *testing.T) {
 			giveKey: "0003_unregistered",
 			wantErr: "changeset '0003_unregistered' not found",
 		},
-		{
-			name:    "with an archived changeset",
-			giveKey: archivedKey,
-			wantErr: "changeset '0001_archived_mig' is archived at SHA 'abcdef'",
-		},
 	}
 
 	for _, tt := range tests {
@@ -158,7 +150,6 @@ func Test_Changesets_Apply(t *testing.T) {
 			r := NewChangesetsRegistry()
 
 			// Setup the registry.
-			r.Archive(archivedKey, archivedSHA)
 			r.Add(applyKey, applyChangeset)
 
 			got, err := r.Apply(tt.giveKey, fdeployment.Environment{})
@@ -264,18 +255,6 @@ func Test_Changesets_Add(t *testing.T) {
 	require.NotPanics(t, func() {
 		r.Add("0002_same_index", noopChangeset{})
 	}, "Add should not panic when validation is disabled")
-}
-
-func Test_Changesets_Archive(t *testing.T) {
-	t.Parallel()
-
-	r := NewChangesetsRegistry()
-
-	r.Archive("0001_cap_reg", "abcdef")
-	require.Equal(t, []string{"0001_cap_reg"}, r.keyHistory)
-
-	r.Archive("0002_cap_reg", "abcdef")
-	require.Equal(t, []string{"0001_cap_reg", "0002_cap_reg"}, r.keyHistory)
 }
 
 func Test_Changesets_ListKeys(t *testing.T) {
