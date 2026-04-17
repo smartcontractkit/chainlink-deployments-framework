@@ -57,10 +57,6 @@ type registryEntry struct {
 	// changeset is the changeset that is registered.
 	changeset ChangeSet
 
-	// gitSHA is the git SHA of the buried changeset. This only applies to changesets that are
-	// buried.
-	gitSHA *string
-
 	// options contains the configuration options for this changeset
 	options ChangesetConfig
 
@@ -88,16 +84,6 @@ func newRegistryEntry(c ChangeSet, opts ChangesetConfig) registryEntry {
 	}
 
 	return entry
-}
-
-// newArchivedRegistryEntry creates a new registry entry for an archived changeset.
-func newArchivedRegistryEntry(gitSHA string) registryEntry {
-	return registryEntry{gitSHA: &gitSHA}
-}
-
-// IsArchived returns true if the changeset is archived.
-func (e registryEntry) IsArchived() bool {
-	return e.gitSHA != nil
 }
 
 // ChangesetsRegistry is a registry of changesets that can be applied to a domain environment.
@@ -324,10 +310,6 @@ func (r *ChangesetsRegistry) getApplyEntryLocked(key string) (registryEntry, err
 		return registryEntry{}, fmt.Errorf("changeset '%s' not found", key)
 	}
 
-	if entry.IsArchived() {
-		return registryEntry{}, fmt.Errorf("changeset '%s' is archived at SHA '%s'", key, *entry.gitSHA)
-	}
-
 	return entry, nil
 }
 
@@ -347,9 +329,6 @@ func (r *ChangesetsRegistry) GetResolvedInput(key string, input string) (any, er
 	entry, ok := r.entries[key]
 	if !ok {
 		return nil, fmt.Errorf("changeset '%s' not found", key)
-	}
-	if entry.IsArchived() {
-		return nil, fmt.Errorf("changeset '%s' is archived at SHA '%s'", key, *entry.gitSHA)
 	}
 
 	return entry.changeset.resolvedInput(input)
@@ -468,15 +447,6 @@ func extractIndexFromKey(key string) (int, error) {
 	}
 
 	return index, nil
-}
-
-// Archive buries a changeset in the registry.
-func (r *ChangesetsRegistry) Archive(key string, gitSHA string) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	r.entries[key] = newArchivedRegistryEntry(gitSHA)
-	r.keyHistory = append(r.keyHistory, key)
 }
 
 // LatestKey returns the most recent changeset key.
