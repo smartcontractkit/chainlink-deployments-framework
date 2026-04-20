@@ -36,7 +36,8 @@ type CTFChainProviderConfig struct {
 	Once *sync.Once
 
 	// Optional: A specification of the image to use for the CTF container.
-	// Default: mysten/sui-tools:devnet
+	// Default: unset, which uses CTF blockchain defaults (blockchain.DefaultSuiImage /
+	// blockchain.DefaultSuiImageARM64 from chainlink-testing-framework for the host GOARCH).
 	Image *string
 
 	// Optional: A specification of the platform to use for the CTF container.
@@ -173,37 +174,24 @@ func (p *CTFChainProvider) startContainer(
 		port := ports[0]
 		faucetPort := ports[1]
 
-		var image string
-		var platform string
-
-		// by default, if image and platform are empty, they are set to amd64 by CTF
-		// to support running locally on macos arm64, we set the image and platform to ci-arm64 and linux/arm64 respectively
-		if p.config.Image != nil {
-			image = *p.config.Image
-		} else {
-			if runtime.GOARCH == "arm64" {
-				image = "mysten/sui-tools:ci-arm64"
-			} else {
-				image = "mysten/sui-tools:devnet-v1.61.0"
-			}
-		}
-
-		if p.config.Platform != nil {
-			platform = *p.config.Platform
-		} else {
-			if runtime.GOARCH == "arm64" {
-				platform = "linux/arm64"
-			}
-		}
-
+		// Image: when unset, blockchain.NewBlockchainNetwork applies CTF defaults
+		// (DefaultSuiImage / DefaultSuiImageARM64) inside defaultSui.
 		input := &blockchain.Input{
-			Image:         image,
-			ImagePlatform: &platform,
-			Type:          blockchain.TypeSui,
-			ChainID:       chainID,
-			PublicKey:     address,
-			Port:          strconv.Itoa(port),
-			FaucetPort:    strconv.Itoa(faucetPort),
+			Type:       blockchain.TypeSui,
+			ChainID:    chainID,
+			PublicKey:  address,
+			Port:       strconv.Itoa(port),
+			FaucetPort: strconv.Itoa(faucetPort),
+		}
+		if p.config.Image != nil {
+			input.Image = *p.config.Image
+		}
+		if p.config.Platform != nil {
+			input.ImagePlatform = p.config.Platform
+		} else if runtime.GOARCH == "arm64" {
+			// Mysten arm64 images need an explicit platform; CTF only sets this when Image is empty.
+			arm := "linux/arm64"
+			input.ImagePlatform = &arm
 		}
 
 		output, rerr := blockchain.NewBlockchainNetwork(input)
