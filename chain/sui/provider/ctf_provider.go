@@ -40,8 +40,8 @@ type CTFChainProviderConfig struct {
 	// blockchain.DefaultSuiImageARM64 from chainlink-testing-framework for the host GOARCH).
 	Image *string
 
-	// Optional: A specification of the platform to use for the CTF container.
-	// Default: linux/amd64
+	// Optional: OCI platform for the CTF image (ImagePlatform).
+	// Default: unset; on arm64 hosts this provider sets linux/arm64, otherwise CTF defaults apply.
 	Platform *string
 }
 
