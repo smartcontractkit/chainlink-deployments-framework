@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"math/big"
 
-	chainsel "github.com/smartcontractkit/chain-selectors"
+	chainsel "github.com/smartcontractkit/chain-selectors/remote"
 	zkAccounts "github.com/zksync-sdk/zksync2-go/accounts"
 	zkClients "github.com/zksync-sdk/zksync2-go/clients"
 
@@ -108,10 +108,11 @@ func (p *ZkSyncRPCChainProvider) Initialize(ctx context.Context) (chain.BlockCha
 	}
 
 	// Get the Chain ID
-	chainIDStr, err := chainsel.GetChainIDFromSelector(p.selector)
+	chainDetails, err := chainsel.GetChainDetailsBySelector(ctx, p.selector)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get chain ID from selector %d: %w", p.selector, err)
+		return nil, fmt.Errorf("failed to get chain details for selector %d: %w", p.selector, err)
 	}
+	chainIDStr := chainDetails.ChainID
 
 	chainID, ok := new(big.Int).SetString(chainIDStr, 10)
 	if !ok {
@@ -125,7 +126,7 @@ func (p *ZkSyncRPCChainProvider) Initialize(ctx context.Context) (chain.BlockCha
 	}
 
 	// Setup the client.
-	client, err := rpcclient.NewMultiClient(p.config.Logger, rpcclient.RPCConfig{
+	client, err := rpcclient.NewMultiClient(ctx, p.config.Logger, rpcclient.RPCConfig{
 		ChainSelector: p.selector,
 		RPCs:          p.config.RPCs,
 	}, p.config.ClientOpts...)

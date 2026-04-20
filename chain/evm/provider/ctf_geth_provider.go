@@ -222,7 +222,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	chainsel "github.com/smartcontractkit/chain-selectors"
+	chainsel "github.com/smartcontractkit/chain-selectors/remote"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/freeport"
@@ -380,10 +380,11 @@ func (p *CTFGethChainProvider) Initialize(ctx context.Context) (chain.BlockChain
 		return nil, err
 	}
 
-	chainID, err := chainsel.GetChainIDFromSelector(p.selector)
+	chainDetails, err := chainsel.GetChainDetailsBySelector(ctx, p.selector)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get chain details for selector %d: %w", p.selector, err)
 	}
+	chainID := chainDetails.ChainID
 
 	httpURL, err := p.startContainer(ctx, chainID)
 	if err != nil {
@@ -396,7 +397,7 @@ func (p *CTFGethChainProvider) Initialize(ctx context.Context) (chain.BlockChain
 		return nil, err
 	}
 
-	client, err := rpcclient.NewMultiClient(lggr, rpcclient.RPCConfig{
+	client, err := rpcclient.NewMultiClient(ctx, lggr, rpcclient.RPCConfig{
 		ChainSelector: p.selector,
 		RPCs: []rpcclient.RPC{
 			{

@@ -7,7 +7,7 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	chainsel "github.com/smartcontractkit/chain-selectors"
+	chainsel "github.com/smartcontractkit/chain-selectors/remote"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
@@ -97,10 +97,11 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 	}
 
 	// Get the Chain ID
-	chainIDStr, err := chainsel.GetChainIDFromSelector(p.selector)
+	chainDetails, err := chainsel.GetChainDetailsBySelector(ctx, p.selector)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get chain ID from selector %d: %w", p.selector, err)
+		return nil, fmt.Errorf("failed to get chain details for selector %d: %w", p.selector, err)
 	}
+	chainIDStr := chainDetails.ChainID
 
 	chainID, ok := new(big.Int).SetString(chainIDStr, 10)
 	if !ok {
@@ -125,7 +126,7 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 	}
 
 	// Setup the client.
-	client, err := rpcclient.NewMultiClient(p.config.Logger, rpcclient.RPCConfig{
+	client, err := rpcclient.NewMultiClient(ctx, p.config.Logger, rpcclient.RPCConfig{
 		ChainSelector: p.selector,
 		RPCs:          p.config.RPCs,
 	}, p.config.ClientOpts...)
