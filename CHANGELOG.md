@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.96.0
+
+### Minor Changes
+
+- [#941](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/941) [`7fec47c`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/7fec47ca4acb434e5e70092ff1702331ca62771b) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - chore: use remote chains selectors
+
 ## 0.95.2
 
 ### Patch Changes
