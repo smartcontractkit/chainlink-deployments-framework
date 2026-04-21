@@ -1,5 +1,24 @@
 # chainlink-deployments-framework
 
+## 0.97.0
+
+### Minor Changes
+
+- [#925](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/925) [`bd71875`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/bd71875f974bdf567807e5d1ac93671a93044555) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat(operations-api): introduce `WithForceExecute` and new `ExecuteOperationN` options
+
+  ### Migration: `ExecuteOperationN`
+
+  **Signature**
+
+  - Before: `ExecuteOperationN(..., opts ...ExecuteOption[IN, DEP])`
+  - After: `ExecuteOperationN(..., opts ...ExecuteOperationNOption[IN, DEP])`
+
+### Patch Changes
+
+- [#946](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/946) [`beb1bcc`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/beb1bcca36d0256009d50e17d7b7498348b97fef) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - bump packages to address security vuln
+
+- [#944](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/944) [`cb237fb`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/cb237fb42e0c3865a3074580d6eed1dab3e158c1) Thanks [@FelixFan1992](https://github.com/FelixFan1992)! - update ctf version to include updated sui default image
+
 ## 0.96.0
 
 ### Minor Changes
