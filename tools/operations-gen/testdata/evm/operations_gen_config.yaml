@@ -6,7 +6,6 @@ output:
 contracts:
   - contract_name: ManyChainMultiSig
     version: "1.0.0"
-    output_version_path: v1_0_0
     gobindings_package: "github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/testdata/evm/gobindings/v1_0_0/many_chain_multi_sig"
     functions:
       - name: owner
@@ -15,7 +14,6 @@ contracts:
         access: owner
   - contract_name: RBACTimelock
     version: "1.0.0"
-    output_version_path: v1_0_0
     gobindings_package: "github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/testdata/evm/gobindings/v1_0_0/rbac_timelock"
     functions:
       - name: executeBatch
