@@ -70,7 +70,7 @@ func extractContractInfo(cfg EvmContractConfig, input EvmInputConfig, output Evm
 		return nil, err
 	}
 
-	abiString, bytecode, err := ReadABIAndByteCode(cfg, packageName, versionPath, input)
+	abiString, bytecode, err := ReadABIAndBytecode(cfg, packageName, versionPath, input)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +112,7 @@ func extractConstructor(info *ContractInfo, abiEntries []ABIEntry, typeMap map[s
 	}
 }
 
-func extractFunctions(info *ContractInfo, funcConfigs []evmFunctionConfig, abiEntries []ABIEntry, typeMap map[string]string) error {
+func extractFunctions(info *ContractInfo, funcConfigs []EvmFunctionConfig, abiEntries []ABIEntry, typeMap map[string]string) error {
 	for _, funcCfg := range funcConfigs {
 		funcInfos := FindFunctionInABI(abiEntries, funcCfg.Name, info.PackageName, typeMap)
 		if funcInfos == nil {

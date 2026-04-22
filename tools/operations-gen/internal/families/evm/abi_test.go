@@ -163,7 +163,7 @@ func TestFindFunctionInABIOverloads(t *testing.T) {
 func TestReadABIAndBytecodeInvalidABIFileSuffix(t *testing.T) {
 	t.Parallel()
 	cfg := evm.EvmContractConfig{ABIFile: "contract.abi"}
-	_, _, err := evm.ReadABIAndByteCode(cfg, "contract", "v1_0_0", evm.EvmInputConfig{
+	_, _, err := evm.ReadABIAndBytecode(cfg, "contract", "v1_0_0", evm.EvmInputConfig{
 		ABIBasePath:      t.TempDir(),
 		BytecodeBasePath: t.TempDir(),
 	})

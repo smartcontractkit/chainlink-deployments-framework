@@ -62,12 +62,12 @@ type ABIParam struct {
 	Components   []ABIParam `json:"components"`
 }
 
-// ReadABIAndByteCode reads the ABI JSON and (optionally) bytecode for a contract
+// ReadABIAndBytecode reads the ABI JSON and (optionally) bytecode for a contract
 // from the configured input roots:
 //
 //	{input.ABIBasePath}/{versionPath}/{name}.json
 //	{input.BytecodeBasePath}/{versionPath}/{name}.bin
-func ReadABIAndByteCode(
+func ReadABIAndBytecode(
 	cfg EvmContractConfig,
 	packageName,
 	versionPath string,

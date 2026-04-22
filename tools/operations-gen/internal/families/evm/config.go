@@ -8,11 +8,11 @@ type EvmContractConfig struct {
 	PackageName string              `yaml:"package_name,omitempty"` // Optional: override package name
 	ABIFile     string              `yaml:"abi_file,omitempty"`     // Optional: override ABI file name
 	OmitDeploy  bool                `yaml:"omit_deploy,omitempty"`  // Optional: skip Deploy operation
-	Functions   []evmFunctionConfig `yaml:"functions"`
+	Functions   []EvmFunctionConfig `yaml:"functions"`
 }
 
-// evmFunctionConfig selects a contract function and assigns its access control.
-type evmFunctionConfig struct {
+// EvmFunctionConfig selects a contract function and assigns its access control.
+type EvmFunctionConfig struct {
 	Name   string `yaml:"name"`
 	Access string `yaml:"access,omitempty"` // "owner" or "public"
 }
