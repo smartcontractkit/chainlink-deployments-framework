@@ -25,8 +25,7 @@ type ContractConfig struct {
 	PackageName string `yaml:"package_name,omitempty"`
 	// NoDeployment skips generating the Deploy operation and omits the bytecode constant.
 	NoDeployment bool `yaml:"no_deployment,omitempty"`
-	// GobindingsPackage is the Go import path of the gobindings package for this
-	// contract (e.g. "github.com/smartcontractkit/payments/gobindings/generated/latest/foo").
+	// GobindingsPackage is the Go import path of the gobindings package for this contract.
 	// Required — the generator reads ABI and bytecode directly from the gobindings source.
 	GobindingsPackage string           `yaml:"gobindings_package"`
 	Functions         []FunctionConfig `yaml:"functions"`

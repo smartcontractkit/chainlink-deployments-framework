@@ -13,7 +13,7 @@ import (
 
 // findModuleRoot walks up the directory tree from startDir until it finds a
 // go.mod file, then returns the directory containing it and the module path
-// declared inside (e.g. "github.com/smartcontractkit/payments").
+// declared inside (e.g. "github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen").
 func findModuleRoot(startDir string) (moduleDir, moduleName string, err error) {
 	dir := startDir
 	for {

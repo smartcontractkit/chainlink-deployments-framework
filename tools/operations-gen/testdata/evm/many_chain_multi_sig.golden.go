@@ -13,7 +13,6 @@ import (
 	cld_ops "github.com/smartcontractkit/chainlink-deployments-framework/operations"
 
 	gobindings "github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/testdata/evm/gobindings/v1_0_0/many_chain_multi_sig"
-	"github.com/smartcontractkit/payments/changeset/cld/contract"
 )
 
 var ContractType cldf_deployment.ContractType = "ManyChainMultiSig"
