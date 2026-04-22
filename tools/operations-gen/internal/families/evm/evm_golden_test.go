@@ -1,4 +1,4 @@
-package evm
+package evm_test
 
 import (
 	"flag"
@@ -10,6 +10,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/internal/core"
+	"github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/internal/families/evm"
 )
 
 var update = flag.Bool("update", false, "update golden files")
@@ -46,15 +47,15 @@ func runGoldenGenerationTest(t *testing.T, configFileName string, goldenFileName
 	}
 
 	// Override paths: inputs point to fixture dirs, output to a temp dir.
-	cfg.Input = mustYAMLNode(t, evmInputConfig{
+	cfg.Input = mustYAMLNode(t, evm.EvmInputConfig{
 		ABIBasePath:      filepath.Join(evmTestdataDir, "abi"),
 		BytecodeBasePath: filepath.Join(evmTestdataDir, "bytecode"),
 	})
 	tmpDir := t.TempDir()
-	cfg.Output = mustYAMLNode(t, evmOutputConfig{BasePath: tmpDir})
+	cfg.Output = mustYAMLNode(t, evm.EvmOutputConfig{BasePath: tmpDir})
 	cfg.ConfigDir = ""
 
-	handler := Handler{}
+	handler := evm.Handler{}
 	tmpl, err := loadTemplateForTest()
 	if err != nil {
 		t.Fatalf("loadTemplate: %v", err)
@@ -65,14 +66,14 @@ func runGoldenGenerationTest(t *testing.T, configFileName string, goldenFileName
 	}
 
 	// Derive the output path from the first contract in the config, mirroring extractContractInfo.
-	var contractCfgs []evmContractConfig
+	var contractCfgs []evm.EvmContractConfig
 	if err = cfg.Contracts.Decode(&contractCfgs); err != nil || len(contractCfgs) == 0 {
 		t.Fatalf("decoding contract configs: %v", err)
 	}
 	first := contractCfgs[0]
 	pkgName := first.PackageName
 	if pkgName == "" {
-		pkgName = toSnakeCase(first.Name)
+		pkgName = evm.ToSnakeCase(first.Name)
 	}
 	vPath := core.VersionToPath(first.Version)
 	if first.VersionPath != "" {
