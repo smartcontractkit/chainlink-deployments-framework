@@ -1,17 +1,29 @@
-version: "1.0.0"
-chain_family: evm
-
-input:
-  abi_base_path: "./abi"
-  bytecode_base_path: "./bytecode"
+version: "1.0"
 
 output:
   base_path: "."
 
 contracts:
+  - contract_name: ManyChainMultiSig
+    version: "1.0.0"
+    output_version_path: v1_0_0
+    gobindings_package: "github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/testdata/evm/gobindings/v1_0_0/many_chain_multi_sig"
+    functions:
+      - name: owner
+        access: public
+      - name: setConfig
+        access: owner
+  - contract_name: RBACTimelock
+    version: "1.0.0"
+    output_version_path: v1_0_0
+    gobindings_package: "github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/testdata/evm/gobindings/v1_0_0/rbac_timelock"
+    functions:
+      - name: executeBatch
+        access: role
+        role: EXECUTOR_ROLE
   - contract_name: LinkToken
     version: "1.0.0"
-    abi_file: "link_token.json"
+    gobindings_package: "github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/testdata/evm/gobindings/v1_0_0/link_token"
     functions:
       - name: transfer
         access: public

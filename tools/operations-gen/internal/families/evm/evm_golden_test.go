@@ -1,4 +1,4 @@
-package evm
+package evm_test
 
 import (
 	"flag"
@@ -10,27 +10,69 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/internal/core"
+	"github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/internal/families/evm"
 )
 
 var update = flag.Bool("update", false, "update golden files")
 
-// TestGenerateLinkToken is an end-to-end test that runs the generator against the
-// real LinkToken ABI/bytecode and verifies that the generated output matches golden.
-func TestGenerateLinkToken(t *testing.T) {
+// goldenFixtureConfig is the shared YAML used by TestGenerate.
+const goldenFixtureConfig = "operations_gen_config.yaml"
+
+// TestGenerate runs Generate once for goldenFixtureConfig, then each subtest checks
+// one contract's output against testdata/evm/<package>.golden.go.
+func TestGenerate(t *testing.T) {
 	t.Parallel()
-	runGoldenGenerationTest(t, "operations_gen_config.yaml", "link_token.golden.go")
+
+	evmTestdataDir, tmpDir, contractCfgs := goldenTestRun(t, goldenFixtureConfig)
+
+	tests := []struct {
+		name         string
+		contractName string // matches YAML contract_name
+	}{
+		{"generate many chain multisig", "ManyChainMultiSig"},
+		{"generate rbac timelock", "RBACTimelock"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			assertContractGolden(t, evmTestdataDir, tmpDir, contractCfgs, tc.contractName)
+		})
+	}
 }
 
-// TestGenerateManyChainMultiSig verifies generation against an MCMS-like ABI fixture.
-func TestGenerateManyChainMultiSig(t *testing.T) {
-	t.Parallel()
-	runGoldenGenerationTest(t, "operations_gen_mcms_config.yaml", "many_chain_multi_sig.golden.go")
-}
-
-func runGoldenGenerationTest(t *testing.T, configFileName string, goldenFileName string) {
+// assertContractGolden compares or updates the golden for one contract after a shared
+// goldenTestRun (tmpDir must already hold generated files for all contracts in contractCfgs).
+func assertContractGolden(t *testing.T, evmTestdataDir, tmpDir string, contractCfgs []evm.ContractConfig, contractName string) {
 	t.Helper()
 
-	evmTestdataDir, err := filepath.Abs(filepath.Join("..", "..", "..", "testdata", "evm"))
+	cc, ok := findContractConfig(contractCfgs, contractName)
+	if !ok {
+		t.Fatalf("no contract_name %q in config", contractName)
+	}
+
+	pkgName := contractPackageName(cc)
+	outputPath := contractGeneratedPath(tmpDir, cc)
+	goldenPath := filepath.Join(evmTestdataDir, pkgName+".golden.go")
+	compareOrUpdateGolden(t, outputPath, goldenPath, cc.Name)
+}
+
+func findContractConfig(cfgs []evm.ContractConfig, contractName string) (evm.ContractConfig, bool) {
+	for _, c := range cfgs {
+		if c.Name == contractName {
+			return c, true
+		}
+	}
+
+	return evm.ContractConfig{}, false
+}
+
+// goldenTestRun loads config from testdata/evm, runs Generate into a temp dir, and
+// returns the testdata directory, temp output root, and decoded contract configs.
+func goldenTestRun(t *testing.T, configFileName string) (evmTestdataDir, tmpDir string, contractCfgs []evm.ContractConfig) {
+	t.Helper()
+
+	var err error
+	evmTestdataDir, err = filepath.Abs(filepath.Join("..", "..", "..", "testdata", "evm"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,16 +87,11 @@ func runGoldenGenerationTest(t *testing.T, configFileName string, goldenFileName
 		t.Fatalf("parsing config: %v", err)
 	}
 
-	// Override paths: inputs point to fixture dirs, output to a temp dir.
-	cfg.Input = mustYAMLNode(t, evmInputConfig{
-		ABIBasePath:      filepath.Join(evmTestdataDir, "abi"),
-		BytecodeBasePath: filepath.Join(evmTestdataDir, "bytecode"),
-	})
-	tmpDir := t.TempDir()
-	cfg.Output = mustYAMLNode(t, evmOutputConfig{BasePath: tmpDir})
-	cfg.ConfigDir = ""
+	tmpDir = t.TempDir()
+	cfg.Output = mustYAMLNode(t, evm.OutputConfig{BasePath: tmpDir})
+	cfg.ConfigDir = evmTestdataDir
 
-	handler := Handler{}
+	handler := evm.Handler{}
 	tmpl, err := loadTemplateForTest()
 	if err != nil {
 		t.Fatalf("loadTemplate: %v", err)
@@ -64,32 +101,47 @@ func runGoldenGenerationTest(t *testing.T, configFileName string, goldenFileName
 		t.Fatalf("Generate: %v", err)
 	}
 
-	// Derive the output path from the first contract in the config, mirroring extractContractInfo.
-	var contractCfgs []evmContractConfig
 	if err = cfg.Contracts.Decode(&contractCfgs); err != nil || len(contractCfgs) == 0 {
 		t.Fatalf("decoding contract configs: %v", err)
 	}
-	first := contractCfgs[0]
-	pkgName := first.PackageName
-	if pkgName == "" {
-		pkgName = toSnakeCase(first.Name)
-	}
-	vPath := core.VersionToPath(first.Version)
-	if first.VersionPath != "" {
-		vPath = first.VersionPath
-	}
-	outputPath := core.ContractOutputPath(tmpDir, vPath, pkgName)
 
-	got, err := os.ReadFile(outputPath)
+	return evmTestdataDir, tmpDir, contractCfgs
+}
+
+func contractPackageName(cc evm.ContractConfig) string {
+	if cc.PackageName != "" {
+		return cc.PackageName
+	}
+
+	return evm.ToSnakeCase(cc.Name)
+}
+
+func contractVersionPath(cc evm.ContractConfig) string {
+	vPath := core.VersionToPath(cc.Version)
+	if cc.OutputVersionPath != "" {
+		vPath = cc.OutputVersionPath
+	}
+
+	return vPath
+}
+
+func contractGeneratedPath(tmpDir string, cc evm.ContractConfig) string {
+	return core.ContractOutputPath(tmpDir, contractVersionPath(cc), contractPackageName(cc))
+}
+
+// compareOrUpdateGolden reads generated output at gotPath and compares or writes
+// goldenPath. If contractName is non-empty, mismatch errors mention that contract.
+func compareOrUpdateGolden(t *testing.T, gotPath, goldenPath, contractName string) {
+	t.Helper()
+
+	got, err := os.ReadFile(gotPath)
 	if err != nil {
-		t.Fatalf("reading generated file %s: %v", outputPath, err)
+		t.Fatalf("reading generated file %s: %v", gotPath, err)
 	}
-
-	goldenPath := filepath.Join(evmTestdataDir, goldenFileName)
 
 	if *update {
 		if err = os.WriteFile(goldenPath, got, 0o600); err != nil {
-			t.Fatalf("writing golden file: %v", err)
+			t.Fatalf("writing golden file %s: %v", goldenPath, err)
 		}
 
 		return
@@ -101,7 +153,12 @@ func runGoldenGenerationTest(t *testing.T, configFileName string, goldenFileName
 	}
 
 	if string(got) != string(want) {
-		t.Errorf("generated output does not match golden file %s\n\nrun: go test ./... -run %s -update", goldenPath, t.Name())
+		if contractName != "" {
+			t.Errorf("generated output for %s does not match golden file %s\n\n",
+				contractName, goldenPath)
+		} else {
+			t.Errorf("generated output does not match golden file %s\n\n", goldenPath)
+		}
 	}
 }
 
