@@ -81,6 +81,16 @@ func AbiToGoType(t abi.Type) string {
 			return fmt.Sprintf("[%d]%s", t.Size, AbiToGoType(*t.Elem))
 		}
 	case abi.TupleTy:
+		// Anonymous tuples (e.g. an inline `(uint256,address)` return) have no
+		// TupleRawName and therefore no corresponding gobindings struct. Emitting
+		// "gobindings." would produce an invalid identifier and break compilation;
+		// fall back to `any` so generated code at least compiles. Slices/arrays of
+		// anonymous tuples degrade naturally via the recursive SliceTy/ArrayTy
+		// cases above (e.g. "[]any").
+		if t.TupleRawName == "" {
+			return anyType
+		}
+
 		return "gobindings." + t.TupleRawName
 	}
 

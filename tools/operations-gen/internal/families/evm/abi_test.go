@@ -53,6 +53,11 @@ func TestSolidityToGoType(t *testing.T) {
 		// tuples resolve to the gobindings-generated struct name
 		{abi.Type{T: abi.TupleTy, TupleRawName: "TestStruct"}, "gobindings.TestStruct"},
 		{abi.Type{T: abi.ArrayTy, Elem: &abi.Type{T: abi.TupleTy, TupleRawName: "TestStruct"}}, "[]gobindings.TestStruct"},
+		// anonymous tuples have no gobindings struct — must degrade to `any`
+		// rather than emitting the invalid identifier "gobindings."
+		{abi.Type{T: abi.TupleTy, TupleRawName: ""}, "any"},
+		{abi.Type{T: abi.SliceTy, Elem: &abi.Type{T: abi.TupleTy, TupleRawName: ""}}, "[]any"},
+		{abi.Type{T: abi.ArrayTy, Size: 3, Elem: &abi.Type{T: abi.TupleTy, TupleRawName: ""}}, "[3]any"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.want, func(t *testing.T) {

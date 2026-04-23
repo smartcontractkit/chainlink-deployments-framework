@@ -150,7 +150,8 @@ func extractFunctions(info *ContractInfo, funcConfigs []EvmFunctionConfig, parse
 			switch funcCfg.Access {
 			case accessOwner:
 				fi.AccessControl = accessOwner
-			case accessPublic:
+			case accessPublic, "":
+				fi.AccessControl = accessPublic
 			default:
 				return fmt.Errorf("unknown access control '%s' for function %s (use 'owner' or 'public')",
 					funcCfg.Access, funcCfg.Name)

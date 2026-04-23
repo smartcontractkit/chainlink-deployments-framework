@@ -5,7 +5,6 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/common"
 
 	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	cldf_deployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
@@ -37,14 +36,8 @@ func NewRead[ARGS any, RET any, C any](params ReadParams[ARGS, RET, C]) *operati
 		func(b operations.Bundle, chain cldf_evm.Chain, input FunctionInput[ARGS]) (RET, error) {
 			var empty RET
 			// BEGIN Validation
-			if input.ChainSelector != chain.Selector {
-				return empty, fmt.Errorf("mismatch between inputted chain selector and selector defined within dependencies: %d != %d", input.ChainSelector, chain.Selector)
-			}
 			if params.ContractType == "" {
 				return empty, fmt.Errorf("contract type must be specified for %s", params.Name)
-			}
-			if input.Address == (common.Address{}) {
-				return empty, fmt.Errorf("address must be specified for %s", params.Name)
 			}
 			if params.CallContract == nil {
 				return empty, fmt.Errorf("callContract function must be defined for %s", params.Name)

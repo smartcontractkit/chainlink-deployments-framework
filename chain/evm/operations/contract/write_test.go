@@ -3,7 +3,6 @@ package contract
 import (
 	"context"
 	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/Masterminds/semver/v3"
@@ -56,7 +55,6 @@ func TestWrite(t *testing.T) {
 	t.Parallel()
 	address := common.HexToAddress("0x01")
 	validChainSel := uint64(5009297550715157269)
-	invalidChainSel := uint64(12345)
 
 	contractABI := `[{
 		"inputs": [{"name": "value", "type": "uint256"}],
@@ -73,46 +71,29 @@ func TestWrite(t *testing.T) {
 		{
 			desc: "args validation failure",
 			input: FunctionInput[int]{
-				ChainSelector: validChainSel,
-				Address:       address,
-				Args:          3,
+				Args: 3,
 			},
 			expectedErr: "invalid args for test-write: input must be even",
 		},
 		{
 			desc: "revert from contract",
 			input: FunctionInput[int]{
-				ChainSelector: validChainSel,
-				Address:       address,
-				Args:          10,
+				Args: 10,
 			},
 			deployerAddress: OwnerAddress,
 			expectedErr:     "due to error -`InvalidValue` args [1]: 6072742c0000000000000000000000000000000000000000000000000000000000000001",
 		},
 		{
-			desc: "mismatched chain selector",
-			input: FunctionInput[int]{
-				ChainSelector: invalidChainSel,
-				Address:       address,
-				Args:          2,
-			},
-			expectedErr: fmt.Sprintf("mismatch between inputted chain selector and selector defined within dependencies: %d != %d", invalidChainSel, validChainSel),
-		},
-		{
 			desc: "called by owner",
 			input: FunctionInput[int]{
-				ChainSelector: validChainSel,
-				Address:       address,
-				Args:          2,
+				Args: 2,
 			},
 			deployerAddress: OwnerAddress,
 		},
 		{
 			desc: "not called by owner",
 			input: FunctionInput[int]{
-				ChainSelector: validChainSel,
-				Address:       address,
-				Args:          2,
+				Args: 2,
 			},
 			deployerAddress: common.HexToAddress("0x03"),
 		},

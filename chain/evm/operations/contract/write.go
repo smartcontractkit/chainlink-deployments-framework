@@ -61,11 +61,7 @@ type WriteParams[ARGS any, C any] struct {
 	CallContract func(contract C, opts *bind.TransactOpts, input ARGS) (*eth_types.Transaction, error)
 }
 
-// NewWrite creates a new write operation.
-// Any interfacing with gethwrappers should live in the callContract function.
-// If the deployer key is an allowed caller, the transaction will be signed and sent.
-// Otherwise, the MCMS transaction will be returned for alternative handling.
-func NewWrite[ARGS any, C any](params WriteParams[ARGS, C]) *operations.Operation[FunctionInput[ARGS], WriteOutput, evm.Chain] {
+func NewWrite[ARGS any, C interface{ Address() common.Address }](params WriteParams[ARGS, C]) *operations.Operation[FunctionInput[ARGS], WriteOutput, evm.Chain] {
 	return operations.NewOperation(
 		params.Name,
 		params.Version,
@@ -77,17 +73,11 @@ func NewWrite[ARGS any, C any](params WriteParams[ARGS, C]) *operations.Operatio
 					return WriteOutput{}, fmt.Errorf("invalid args for %s: %w", params.Name, err)
 				}
 			}
-			if input.ChainSelector != chain.Selector {
-				return WriteOutput{}, fmt.Errorf("mismatch between inputted chain selector and selector defined within dependencies: %d != %d", input.ChainSelector, chain.Selector)
-			}
 			if params.ContractType == "" {
 				return WriteOutput{}, fmt.Errorf("contract type must be specified for %s", params.Name)
 			}
 			if params.ContractABI == "" {
 				return WriteOutput{}, fmt.Errorf("contract ABI must be specified for %s", params.Name)
-			}
-			if input.Address == (common.Address{}) {
-				return WriteOutput{}, fmt.Errorf("address must be specified for %s", params.Name)
 			}
 			if params.CallContract == nil {
 				return WriteOutput{}, fmt.Errorf("callContract function must be defined for %s", params.Name)
@@ -99,7 +89,7 @@ func NewWrite[ARGS any, C any](params WriteParams[ARGS, C]) *operations.Operatio
 
 			allowed, err := params.IsAllowedCaller(params.Contract, &bind.CallOpts{Context: b.GetContext()}, chain.DeployerKey.From, input.Args)
 			if err != nil {
-				return WriteOutput{}, fmt.Errorf("failed to check if %s is an allowed caller of %s against %s on %s: %w", chain.DeployerKey.From, params.Name, input.Address, chain, err)
+				return WriteOutput{}, fmt.Errorf("failed to check if %s is an allowed caller of %s against %s on %s: %w", chain.DeployerKey.From, params.Name, params.Contract.Address(), chain, err)
 			}
 			opts := deployment.SimTransactOpts()
 			if allowed {
@@ -108,31 +98,31 @@ func NewWrite[ARGS any, C any](params WriteParams[ARGS, C]) *operations.Operatio
 			var execInfo *ExecInfo
 			tx, callErr := params.CallContract(params.Contract, opts, input.Args)
 			if callErr == nil && tx == nil {
-				return WriteOutput{}, fmt.Errorf("contract call returned nil transaction for %s against %s on %s", params.Name, input.Address, chain)
+				return WriteOutput{}, fmt.Errorf("contract call returned nil transaction for %s against %s on %s", params.Name, params.Contract.Address(), chain)
 			}
 			if allowed {
 				// If the call has actually been sent, we need check the call error and confirm the transaction.
 				_, confirmErr := deployment.ConfirmIfNoErrorWithABI(chain, tx, params.ContractABI, callErr)
 				if confirmErr != nil {
-					return WriteOutput{}, fmt.Errorf("failed to confirm %s tx against %s on %s with args %+v: %w", params.Name, input.Address, chain, input.Args, confirmErr)
+					return WriteOutput{}, fmt.Errorf("failed to confirm %s tx against %s on %s with args %+v: %w", params.Name, params.Contract.Address(), chain, input.Args, confirmErr)
 				}
 				execInfo = &ExecInfo{Hash: tx.Hash().Hex()}
-				b.Logger.Debugw(fmt.Sprintf("Confirmed %s tx against %s on %s", params.Name, input.Address, chain), "hash", tx.Hash().Hex(), "args", input.Args)
+				b.Logger.Debugw(fmt.Sprintf("Confirmed %s tx against %s on %s", params.Name, params.Contract.Address(), chain), "hash", tx.Hash().Hex(), "args", input.Args)
 			} else if callErr != nil {
 				// If we didn't execute the transaction, but there was an error preparing it, return the error.
-				return WriteOutput{}, fmt.Errorf("failed to prepare %s tx against %s on %s with args %+v: %w", params.Name, input.Address, chain, input.Args, callErr)
+				return WriteOutput{}, fmt.Errorf("failed to prepare %s tx against %s on %s with args %+v: %w", params.Name, params.Contract.Address(), chain, input.Args, callErr)
 			} else {
-				b.Logger.Debugw(fmt.Sprintf("Prepared %s tx against %s on %s", params.Name, input.Address, chain), "args", input.Args)
+				b.Logger.Debugw(fmt.Sprintf("Prepared %s tx against %s on %s", params.Name, params.Contract.Address(), chain), "args", input.Args)
 			}
 
 			return WriteOutput{
-				ChainSelector: input.ChainSelector,
+				ChainSelector: chain.Selector,
 				ExecInfo:      execInfo,
 				Tx: mcms_types.Transaction{
 					OperationMetadata: mcms_types.OperationMetadata{
 						ContractType: string(params.ContractType),
 					},
-					To:               input.Address.Hex(),
+					To:               params.Contract.Address().Hex(),
 					Data:             tx.Data(),
 					AdditionalFields: json.RawMessage(`{"value": 0}`),
 				},
