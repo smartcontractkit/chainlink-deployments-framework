@@ -20,7 +20,7 @@ type ReadParams[ARGS any, RET any, C any] struct {
 	Description string
 	// ContractType is the type of contract to read from.
 	ContractType cldf_deployment.ContractType
-	// Contract is the contract binding instance to use for this write operation.
+	// Contract is the contract binding instance to use for this read operation.
 	Contract C
 	// CallContract is a function that calls the desired read function on the contract.
 	CallContract func(contract C, opts *bind.CallOpts, input ARGS) (RET, error)
