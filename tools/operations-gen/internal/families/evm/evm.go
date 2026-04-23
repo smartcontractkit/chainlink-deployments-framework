@@ -12,7 +12,7 @@ import (
 // Handler implements ChainFamilyHandler for EVM (Solidity/go-ethereum) chains.
 type Handler struct{}
 
-// Generate decodes each YAML node as an evmContractConfig, extracts contract info,
+// Generate decodes each YAML node as an EvmContractConfig, extracts contract info,
 // and writes a generated operations file for each contract.
 func (h Handler) Generate(config core.Config, tmpl *template.Template) error {
 	var output OutputConfig

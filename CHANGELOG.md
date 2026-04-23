@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.98.0
+
+### Minor Changes
+
+- [#948](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/948) [`ebfd4ae`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/ebfd4ae55dc58ca94f828ca9ea4d77a6f6704ac9) Thanks [@ecPablo](https://github.com/ecPablo)! - port link token types
+
 ## 0.97.0
 
 ### Minor Changes
