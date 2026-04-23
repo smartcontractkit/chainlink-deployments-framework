@@ -171,7 +171,7 @@ func ChecksNeedsBigInt(info *ContractInfo) bool {
 func prepareParameters(params []ParameterInfo) []ParameterData {
 	result := make([]ParameterData, 0, len(params))
 	for i, param := range params {
-		name := toPascalCase(param.Name)
+		name := SanitizeFieldName(param.Name)
 		if name == "" {
 			name = fmt.Sprintf("Field%d", i)
 		}
@@ -183,24 +183,6 @@ func prepareParameters(params []ParameterInfo) []ParameterData {
 	}
 
 	return result
-}
-
-// toPascalCase converts a Solidity parameter name into an exported Go
-// identifier. It strips leading underscores (e.g. "_to" -> "To"), splits on
-// remaining underscores, and capitalises each segment ("signer_addresses" ->
-// "SignerAddresses"). Already-camelCase names are preserved ("signerAddresses"
-// -> "SignerAddresses").
-func toPascalCase(s string) string {
-	s = strings.TrimLeft(s, "_")
-	if s == "" {
-		return ""
-	}
-	parts := strings.Split(s, "_")
-	for i, p := range parts {
-		parts[i] = capitalize(p)
-	}
-
-	return strings.Join(parts, "")
 }
 
 func prepareWriteOp(fi *FunctionInfo) OperationData {
@@ -256,7 +238,7 @@ func buildCallArgs(fi *FunctionInfo) (argsType string, callArgs string) {
 	argsType = fi.Name + "Args"
 	var callArgsList []string
 	for i, p := range fi.Parameters {
-		fieldName := toPascalCase(p.Name)
+		fieldName := SanitizeFieldName(p.Name)
 		if fieldName == "" {
 			fieldName = fmt.Sprintf("Field%d", i)
 		}

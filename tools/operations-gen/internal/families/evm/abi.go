@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/internal/core"
 )
 
 const (
@@ -132,7 +134,7 @@ func ReadABIAndBytecode(
 	return string(abiBytes), strings.TrimSpace(string(bytecodeBytes)), nil
 }
 
-// findMatchingMethods returns all methods in parsedABI whose RawName matches
+// FindFunctionInABI returns all methods in parsedABI whose RawName matches
 // funcName (case-insensitive), sorted by their disambiguated Name for
 // deterministic output.
 func FindFunctionInABI(parsedABI abi.ABI, funcName string) []abi.Method {
@@ -184,7 +186,7 @@ func paramInfoFromType(name string, t abi.Type) ParameterInfo {
 // and is used as both the Go method name key and the CallMethod string.
 func methodToFunctionInfo(m abi.Method) *FunctionInfo {
 	fi := &FunctionInfo{
-		Name:            capitalize(m.Name),
+		Name:            core.Capitalize(m.Name),
 		StateMutability: m.StateMutability,
 		CallMethod:      m.Name,
 		IsWrite:         m.StateMutability != "view" && m.StateMutability != "pure",
@@ -207,11 +209,15 @@ func methodToFunctionInfo(m abi.Method) *FunctionInfo {
 	return fi
 }
 
-// capitalize upper-cases the first character of s.
-func capitalize(s string) string {
-	if s == "" {
+// SanitizeFieldName strips leading underscores and capitalizes the result,
+// producing a valid exported Go identifier for struct fields.
+// Returns "" when the result would start with a digit (e.g. "_1" → ""); callers fall back to "Field%d".
+// e.g. "_to" → "To", "_value" → "Value", "balance" → "Balance"
+func SanitizeFieldName(name string) string {
+	trimmed := strings.TrimLeft(name, "_")
+	if len(trimmed) == 0 || (trimmed[0] >= '0' && trimmed[0] <= '9') {
 		return ""
 	}
 
-	return strings.ToUpper(s[:1]) + s[1:]
+	return core.Capitalize(trimmed)
 }

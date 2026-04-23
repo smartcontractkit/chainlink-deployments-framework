@@ -42,3 +42,57 @@ func TestSolidityToGoType(t *testing.T) {
 		})
 	}
 }
+
+func TestSanitizeFieldName(t *testing.T) {
+	t.Parallel()
+	cases := []struct{ input, want string }{
+		// ABI params with leading underscores (common Solidity convention)
+		{"_to", "To"},
+		{"_value", "Value"},
+		{"_spender", "Spender"},
+		// Multiple leading underscores
+		{"__foo", "Foo"},
+		// No underscore — plain capitalize
+		{"balance", "Balance"},
+		{"owner", "Owner"},
+		// Already exported
+		{"Amount", "Amount"},
+		// Leading underscore followed by digit — result starts with digit, invalid Go identifier
+		{"_1", ""},
+		{"__2foo", ""},
+		// Empty
+		{"", ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.input, func(t *testing.T) {
+			t.Parallel()
+			if got := evm.SanitizeFieldName(tc.input); got != tc.want {
+				t.Errorf("SanitizeFieldName(%q) = %q, want %q", tc.input, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestReadABIAndBytecodeInvalidABIFileSuffix(t *testing.T) {
+	t.Parallel()
+	cfg := evm.EvmContractConfig{ABIFile: "contract.abi"}
+	_, _, err := evm.ReadABIAndBytecode(cfg, "contract", "v1_0_0", evm.EvmInputConfig{
+		ABIBasePath:      t.TempDir(),
+		BytecodeBasePath: t.TempDir(),
+	})
+	if err == nil {
+		t.Fatal("expected error for abi_file without .json suffix, got nil")
+	}
+}
+
+func TestFindFunctionInABINotFound(t *testing.T) {
+	t.Parallel()
+	parsed := abi.ABI{
+		Methods: map[string]abi.Method{
+			"transfer": {Name: "transfer", RawName: "transfer"},
+		},
+	}
+	if got := evm.FindFunctionInABI(parsed, "mint"); got != nil {
+		t.Errorf("expected nil for missing function, got %v", got)
+	}
+}
