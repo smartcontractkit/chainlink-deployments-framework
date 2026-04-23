@@ -65,7 +65,7 @@ func TestRead(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
 			t.Parallel()
-			boundContract, err := newTestContract(address, nil)
+			boundContract, err := newTestContract(address)
 			require.NoError(t, err, "Failed to construct bound test contract")
 
 			read := NewRead(ReadParams[int, string, *testContract]{

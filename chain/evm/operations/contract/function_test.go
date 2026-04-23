@@ -34,7 +34,7 @@ type testContract struct {
 	value   int
 }
 
-func newTestContract(address common.Address, backend bind.ContractBackend) (*testContract, error) {
+func newTestContract(address common.Address) (*testContract, error) {
 	return &testContract{
 		address: address,
 		value:   0,
