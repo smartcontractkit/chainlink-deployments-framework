@@ -1,6 +1,7 @@
 package datastore
 
 import (
+	"slices"
 	"sync"
 )
 
@@ -19,8 +20,9 @@ type MutableContractMetadataStore interface {
 // MemoryContractMetadataStore is an in-memory implementation of the ContractMetadataStore and
 // MutableContractMetadataStore interfaces.
 type MemoryContractMetadataStore struct {
-	mu      sync.RWMutex
-	Records []ContractMetadata `json:"records"`
+	mu          sync.RWMutex
+	Records     []ContractMetadata        `json:"records"`
+	DeletedKeys []ContractMetadataKey     `json:"deletedKeys,omitempty"`
 }
 
 // MemoryContractMetadataStore implements ContractMetadataStore interface.
@@ -143,8 +145,8 @@ func (s *MemoryContractMetadataStore) Update(record ContractMetadata) error {
 	return nil
 }
 
-// Delete deletes an existing record whose primary key elements match the supplied ContractMetadata, returning an error if no
-// such record exists.
+// Delete removes the record matching the supplied key from the store and appends the key
+// to DeletedKeys for soft-delete tracking. Returns ErrContractMetadataNotFound if the key does not exist.
 func (s *MemoryContractMetadataStore) Delete(key ContractMetadataKey) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -154,6 +156,9 @@ func (s *MemoryContractMetadataStore) Delete(key ContractMetadataKey) error {
 		return ErrContractMetadataNotFound
 	}
 	s.Records = append(s.Records[:idx], s.Records[idx+1:]...)
+	if !slices.Contains(s.DeletedKeys, key) {
+		s.DeletedKeys = append(s.DeletedKeys, key)
+	}
 
 	return nil
 }

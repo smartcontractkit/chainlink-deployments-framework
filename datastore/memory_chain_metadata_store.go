@@ -1,6 +1,7 @@
 package datastore
 
 import (
+	"slices"
 	"sync"
 )
 
@@ -19,8 +20,9 @@ type MutableChainMetadataStore interface {
 // MemoryChainMetadataStore is an in-memory implementation of the ChainMetadataStore and
 // MutableChainMetadataStore interfaces.
 type MemoryChainMetadataStore struct {
-	mu      sync.RWMutex
-	Records []ChainMetadata `json:"records"`
+	mu          sync.RWMutex
+	Records     []ChainMetadata    `json:"records"`
+	DeletedKeys []ChainMetadataKey `json:"deletedKeys,omitempty"`
 }
 
 // MemoryChainMetadataStore implements ChainMetadataStore interface.
@@ -143,8 +145,8 @@ func (s *MemoryChainMetadataStore) Update(record ChainMetadata) error {
 	return nil
 }
 
-// Delete deletes an existing record whose primary key elements match the supplied ChainMetadata, returning an error if no
-// such record exists.
+// Delete removes the record matching the supplied key from the store and appends the key
+// to DeletedKeys for soft-delete tracking. Returns ErrChainMetadataNotFound if the key does not exist.
 func (s *MemoryChainMetadataStore) Delete(key ChainMetadataKey) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -154,6 +156,9 @@ func (s *MemoryChainMetadataStore) Delete(key ChainMetadataKey) error {
 		return ErrChainMetadataNotFound
 	}
 	s.Records = append(s.Records[:idx], s.Records[idx+1:]...)
+	if !slices.Contains(s.DeletedKeys, key) {
+		s.DeletedKeys = append(s.DeletedKeys, key)
+	}
 
 	return nil
 }

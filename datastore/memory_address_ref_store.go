@@ -1,6 +1,7 @@
 package datastore
 
 import (
+	"slices"
 	"sync"
 )
 
@@ -19,8 +20,9 @@ type MutableAddressRefStore interface {
 // MemoryAddressRefStore is an in-memory implementation of the AddressRefStore and
 // MutableAddressRefStore interfaces.
 type MemoryAddressRefStore struct {
-	Records []AddressRef `json:"records"`
-	mu      sync.RWMutex
+	Records     []AddressRef        `json:"records"`
+	DeletedKeys []AddressRefKey     `json:"deletedKeys,omitempty"`
+	mu          sync.RWMutex
 }
 
 // MemoryAddressRefStore implements AddressRefStore interface.
@@ -133,8 +135,8 @@ func (s *MemoryAddressRefStore) Update(record AddressRef) error {
 	return nil
 }
 
-// Delete deletes record whose primary key elements match the supplied AddressRecord, returning an error if no
-// such record exists to be deleted.
+// Delete removes the record matching the supplied key from the store and appends the key
+// to DeletedKeys for soft-delete tracking. Returns ErrAddressRefNotFound if the key does not exist.
 func (s *MemoryAddressRefStore) Delete(key AddressRefKey) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -144,6 +146,9 @@ func (s *MemoryAddressRefStore) Delete(key AddressRefKey) error {
 		return ErrAddressRefNotFound
 	}
 	s.Records = append(s.Records[:idx], s.Records[idx+1:]...)
+	if !slices.Contains(s.DeletedKeys, key) {
+			s.DeletedKeys = append(s.DeletedKeys, key)
+	}
 
 	return nil
 }

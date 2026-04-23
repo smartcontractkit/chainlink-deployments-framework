@@ -55,14 +55,25 @@ func (s *MemoryDataStore) EnvMetadata() MutableEnvMetadataStore {
 
 // Merge merges the given mutable data store into the current MemoryDataStore.
 func (s *MemoryDataStore) Merge(other DataStore) error {
+	// Fetch address ref records from the other data store
 	addressRefs, err := other.Addresses().Fetch()
 	if err != nil {
 		return err
 	}
 
+	// Upsert address ref records into the current data store
 	for _, addressRef := range addressRefs {
 		if err = s.AddressRefStore.Upsert(addressRef); err != nil {
 			return err
+		}
+	}
+
+	// Propagate address ref deletions
+	if src, ok := other.Addresses().(*MemoryAddressRefStore); ok {
+		for _, dk := range src.DeletedKeys {
+			if err = s.AddressRefStore.Delete(dk); err != nil && !errors.Is(err, ErrAddressRefNotFound) {
+				return err
+			}
 		}
 	}
 
@@ -71,23 +82,45 @@ func (s *MemoryDataStore) Merge(other DataStore) error {
 		return err
 	}
 
+	// Upsert chain metadata records into the current data store
 	for _, record := range chainMetadataRecords {
 		if err = s.ChainMetadataStore.Upsert(record); err != nil {
 			return err
 		}
 	}
 
+	// Propagate chain metadata deletions
+	if src, ok := other.ChainMetadata().(*MemoryChainMetadataStore); ok {
+		for _, dk := range src.DeletedKeys {
+			if err = s.ChainMetadataStore.Delete(dk); err != nil && !errors.Is(err, ErrChainMetadataNotFound) {
+				return err
+			}
+		}
+	}
+
+	// Fetch contract metadata records from the other data store
 	contractMetadataRecords, err := other.ContractMetadata().Fetch()
 	if err != nil {
 		return err
 	}
 
+	// Upsert contract metadata records into the current data store
 	for _, record := range contractMetadataRecords {
 		if err = s.ContractMetadataStore.Upsert(record); err != nil {
 			return err
 		}
 	}
 
+	// Propagate contract metadata deletions
+	if src, ok := other.ContractMetadata().(*MemoryContractMetadataStore); ok {
+		for _, dk := range src.DeletedKeys {
+			if err = s.ContractMetadataStore.Delete(dk); err != nil && !errors.Is(err, ErrContractMetadataNotFound) {
+				return err
+			}
+		}
+	}
+
+	// Fetch env metadata record from the other data store
 	envMetadata, err := other.EnvMetadata().Get()
 	if err != nil {
 		if errors.Is(err, ErrEnvMetadataNotSet) {

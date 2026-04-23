@@ -303,53 +303,45 @@ func TestMemoryAddressRefStore_Delete(t *testing.T) {
 		}
 	)
 
-	tests := []struct {
-		name          string
-		givenState    []AddressRef
-		expectedState []AddressRef
-		giveKey       AddressRefKey
-		expectedError error
-	}{
-		{
-			name: "success: deletes given record",
-			givenState: []AddressRef{
-				recordOne,
-				recordTwo,
-				recordThree,
-			},
-			giveKey: recordTwo.Key(),
-			expectedState: []AddressRef{
-				recordOne,
-				recordThree,
-			},
-		},
-		{
-			name: "error: record not found",
-			givenState: []AddressRef{
-				recordOne,
-				recordThree,
-			},
-			giveKey:       recordTwo.Key(),
-			expectedError: ErrAddressRefNotFound,
-		},
-	}
+	t.Run("success: deletes given record and appends to DeletedKeys", func(t *testing.T) {
+		t.Parallel()
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
+		store := MemoryAddressRefStore{Records: []AddressRef{recordOne, recordTwo, recordThree}}
+		assert.Len(t, store.Records, 3)
+		assert.Len(t, store.DeletedKeys, 0)
+		err := store.Delete(recordTwo.Key())
+		require.NoError(t, err)
+		assert.Equal(t, []AddressRef{recordOne, recordThree}, store.Records)
+		assert.Len(t, store.DeletedKeys, 1)
+		assert.True(t, store.DeletedKeys[0].Equals(recordTwo.Key()))
+		assert.Len(t, store.Records, 2)
+	})
 
-			store := MemoryAddressRefStore{Records: tt.givenState}
-			err := store.Delete(tt.giveKey)
+	t.Run("error: absent key returns ErrAddressRefNotFound", func(t *testing.T) {
+		t.Parallel()
 
-			if tt.expectedError != nil {
-				require.Error(t, err)
-				assert.Equal(t, tt.expectedError, err)
-			} else {
-				require.NoError(t, err)
-				assert.Equal(t, tt.expectedState, store.Records)
-			}
-		})
-	}
+		store := MemoryAddressRefStore{Records: []AddressRef{recordOne, recordThree}}
+		assert.Len(t, store.Records, 2)
+		assert.Len(t, store.DeletedKeys, 0)
+		err := store.Delete(recordTwo.Key())
+		require.ErrorIs(t, err, ErrAddressRefNotFound)
+		assert.Equal(t, []AddressRef{recordOne, recordThree}, store.Records)
+		assert.Len(t, store.DeletedKeys, 0)
+	})
+
+	t.Run("error: second Delete returns ErrAddressRefNotFound, DeletedKeys unchanged", func(t *testing.T) {
+		t.Parallel()
+
+		store := MemoryAddressRefStore{Records: []AddressRef{recordOne, recordTwo, recordThree}}
+		assert.Len(t, store.Records, 3)
+		assert.Len(t, store.DeletedKeys, 0)
+		require.NoError(t, store.Delete(recordTwo.Key()))
+		assert.Len(t, store.DeletedKeys, 1)
+		assert.True(t, store.DeletedKeys[0].Equals(recordTwo.Key()))
+		require.ErrorIs(t, store.Delete(recordTwo.Key()), ErrAddressRefNotFound)
+		assert.Len(t, store.DeletedKeys, 1)
+		assert.Len(t, store.Records, 2)
+	})
 }
 
 func TestMemoryAddressRefStore_Fetch(t *testing.T) {

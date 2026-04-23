@@ -255,53 +255,37 @@ func TestMemoryMemoryContractMetadataStore_Delete(t *testing.T) {
 		}
 	)
 
-	tests := []struct {
-		name          string
-		givenState    []ContractMetadata
-		expectedState []ContractMetadata
-		giveKey       ContractMetadataKey
-		expectedError error
-	}{
-		{
-			name: "success: deletes given record",
-			givenState: []ContractMetadata{
-				recordOne,
-				recordTwo,
-				recordThree,
-			},
-			giveKey: recordTwo.Key(),
-			expectedState: []ContractMetadata{
-				recordOne,
-				recordThree,
-			},
-		},
-		{
-			name: "error: record not found",
-			givenState: []ContractMetadata{
-				recordOne,
-				recordThree,
-			},
-			giveKey:       recordTwo.Key(),
-			expectedError: ErrContractMetadataNotFound,
-		},
-	}
+	t.Run("success: deletes given record and appends to DeletedKeys", func(t *testing.T) {
+		t.Parallel()
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
+		store := MemoryContractMetadataStore{Records: []ContractMetadata{recordOne, recordTwo, recordThree}}
+		err := store.Delete(recordTwo.Key())
+		require.NoError(t, err)
+		require.Equal(t, []ContractMetadata{recordOne, recordThree}, store.Records)
+		require.Len(t, store.DeletedKeys, 1)
+		require.True(t, store.DeletedKeys[0].Equals(recordTwo.Key()))
+	})
 
-			store := MemoryContractMetadataStore{Records: tt.givenState}
-			err := store.Delete(tt.giveKey)
+	t.Run("error: absent key returns ErrContractMetadataNotFound", func(t *testing.T) {
+		t.Parallel()
 
-			if tt.expectedError != nil {
-				require.Error(t, err)
-				require.Equal(t, tt.expectedError, err)
-			} else {
-				require.NoError(t, err)
-				require.Equal(t, tt.expectedState, store.Records)
-			}
-		})
-	}
+		store := MemoryContractMetadataStore{Records: []ContractMetadata{recordOne, recordThree}}
+		err := store.Delete(recordTwo.Key())
+		require.ErrorIs(t, err, ErrContractMetadataNotFound)
+		require.Equal(t, []ContractMetadata{recordOne, recordThree}, store.Records)
+		require.Len(t, store.DeletedKeys, 0)
+	})
+
+	t.Run("error: second Delete returns ErrContractMetadataNotFound, DeletedKeys unchanged", func(t *testing.T) {
+		t.Parallel()
+
+		store := MemoryContractMetadataStore{Records: []ContractMetadata{recordOne, recordTwo, recordThree}}
+		require.NoError(t, store.Delete(recordTwo.Key()))
+		require.Len(t, store.DeletedKeys, 1)
+		require.True(t, store.DeletedKeys[0].Equals(recordTwo.Key()))
+		require.ErrorIs(t, store.Delete(recordTwo.Key()), ErrContractMetadataNotFound)
+		require.Len(t, store.DeletedKeys, 1)
+	})
 }
 
 func TestMemoryContractMetadataStore_Fetch(t *testing.T) {

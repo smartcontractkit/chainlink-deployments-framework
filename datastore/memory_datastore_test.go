@@ -64,6 +64,67 @@ func TestMemoryDataStore_Merge(t *testing.T) {
 			expectedContractMetadataCount: 1,
 		},
 		{
+			name: "Merge propagates deletions: delete wins over existing records",
+			setup: func() (*MemoryDataStore, *MemoryDataStore) {
+				dataStore1 := NewMemoryDataStore()
+				dataStore2 := NewMemoryDataStore()
+
+				// dataStore1 has records A and B for each store
+				require.NoError(t, dataStore1.Addresses().Add(AddressRef{
+					Address: "0x111", Type: "typeA", Version: semver.MustParse("1.0.0"), Qualifier: "q",
+				}))
+				require.NoError(t, dataStore1.Addresses().Add(AddressRef{
+					Address: "0x222", Type: "typeB", Version: semver.MustParse("1.0.0"), Qualifier: "q",
+				}))
+				require.NoError(t, dataStore1.ChainMetadata().Add(ChainMetadata{
+					ChainSelector: 10, Metadata: testMetadata{Field: "a"},
+				}))
+				require.NoError(t, dataStore1.ChainMetadata().Add(ChainMetadata{
+					ChainSelector: 20, Metadata: testMetadata{Field: "b"},
+				}))
+				require.NoError(t, dataStore1.ContractMetadata().Add(ContractMetadata{
+					ChainSelector: 10, Address: "0x111", Metadata: testMetadata{Field: "a"},
+				}))
+				require.NoError(t, dataStore1.ContractMetadata().Add(ContractMetadata{
+					ChainSelector: 20, Address: "0x222", Metadata: testMetadata{Field: "b"},
+				}))
+				require.NoError(t, dataStore1.EnvMetadata().Set(EnvMetadata{
+					Metadata: testMetadata{Field: "env"},
+				}))
+
+				// dataStore2 deletes key A from each store (key A is not in dataStore2's Records)
+				require.NoError(t, dataStore2.Addresses().Delete(NewAddressRefKey(0, "typeA", semver.MustParse("1.0.0"), "q")))
+				require.NoError(t, dataStore2.ChainMetadata().Delete(NewChainMetadataKey(10)))
+				require.NoError(t, dataStore2.ContractMetadata().Delete(NewContractMetadataKey(10, "0x111")))
+
+				return dataStore1, dataStore2
+			},
+			expectedAddrRefsCount:         1,
+			excpectedChainMetadataCount:   1,
+			expectedContractMetadataCount: 1,
+		},
+		{
+			name: "Merge propagates deletions: delete of non-existent key is a no-op",
+			setup: func() (*MemoryDataStore, *MemoryDataStore) {
+				dataStore1 := NewMemoryDataStore()
+				dataStore2 := NewMemoryDataStore()
+
+				// dataStore1 is empty; dataStore2 deletes a key that was never in dataStore1
+				require.NoError(t, dataStore2.Addresses().Delete(NewAddressRefKey(0, "typeA", semver.MustParse("1.0.0"), "q")))
+				require.NoError(t, dataStore2.ChainMetadata().Delete(NewChainMetadataKey(10)))
+				require.NoError(t, dataStore2.ContractMetadata().Delete(NewContractMetadataKey(10, "0x111")))
+
+				require.NoError(t, dataStore1.EnvMetadata().Set(EnvMetadata{
+					Metadata: testMetadata{Field: "env"},
+				}))
+
+				return dataStore1, dataStore2
+			},
+			expectedAddrRefsCount:         0,
+			excpectedChainMetadataCount:   0,
+			expectedContractMetadataCount: 0,
+		},
+		{
 			name: "Match existing address with labels",
 			setup: func() (*MemoryDataStore, *MemoryDataStore) {
 				dataStore1 := NewMemoryDataStore()

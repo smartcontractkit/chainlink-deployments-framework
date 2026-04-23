@@ -245,53 +245,37 @@ func TestMemoryMemoryChainMetadataStore_Delete(t *testing.T) {
 		}
 	)
 
-	tests := []struct {
-		name          string
-		givenState    []ChainMetadata
-		expectedState []ChainMetadata
-		giveKey       ChainMetadataKey
-		expectedError error
-	}{
-		{
-			name: "success: deletes given record",
-			givenState: []ChainMetadata{
-				recordOne,
-				recordTwo,
-				recordThree,
-			},
-			giveKey: recordTwo.Key(),
-			expectedState: []ChainMetadata{
-				recordOne,
-				recordThree,
-			},
-		},
-		{
-			name: "error: record not found",
-			givenState: []ChainMetadata{
-				recordOne,
-				recordThree,
-			},
-			giveKey:       recordTwo.Key(),
-			expectedError: ErrChainMetadataNotFound,
-		},
-	}
+	t.Run("success: deletes given record and appends to DeletedKeys", func(t *testing.T) {
+		t.Parallel()
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
+		store := MemoryChainMetadataStore{Records: []ChainMetadata{recordOne, recordTwo, recordThree}}
+		err := store.Delete(recordTwo.Key())
+		require.NoError(t, err)
+		require.Equal(t, []ChainMetadata{recordOne, recordThree}, store.Records)
+		require.Len(t, store.DeletedKeys, 1)
+		require.True(t, store.DeletedKeys[0].Equals(recordTwo.Key()))
+	})
 
-			store := MemoryChainMetadataStore{Records: tt.givenState}
-			err := store.Delete(tt.giveKey)
+	t.Run("error: absent key returns ErrChainMetadataNotFound", func(t *testing.T) {
+		t.Parallel()
 
-			if tt.expectedError != nil {
-				require.Error(t, err)
-				require.Equal(t, tt.expectedError, err)
-			} else {
-				require.NoError(t, err)
-				require.Equal(t, tt.expectedState, store.Records)
-			}
-		})
-	}
+		store := MemoryChainMetadataStore{Records: []ChainMetadata{recordOne, recordThree}}
+		err := store.Delete(recordTwo.Key())
+		require.ErrorIs(t, err, ErrChainMetadataNotFound)
+		require.Equal(t, []ChainMetadata{recordOne, recordThree}, store.Records)
+		require.Len(t, store.DeletedKeys, 0)
+	})
+
+	t.Run("error: second Delete returns ErrChainMetadataNotFound, DeletedKeys unchanged", func(t *testing.T) {
+		t.Parallel()
+
+		store := MemoryChainMetadataStore{Records: []ChainMetadata{recordOne, recordTwo, recordThree}}
+		require.NoError(t, store.Delete(recordTwo.Key()))
+		require.Len(t, store.DeletedKeys, 1)
+		require.True(t, store.DeletedKeys[0].Equals(recordTwo.Key()))
+		require.ErrorIs(t, store.Delete(recordTwo.Key()), ErrChainMetadataNotFound)
+		require.Len(t, store.DeletedKeys, 1)
+	})
 }
 
 func TestMemoryChainMetadataStore_Fetch(t *testing.T) {
