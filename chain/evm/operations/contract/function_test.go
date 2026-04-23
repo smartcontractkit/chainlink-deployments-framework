@@ -34,11 +34,11 @@ type testContract struct {
 	value   int
 }
 
-func newTestContract(address common.Address) (*testContract, error) {
+func newTestContract(address common.Address) *testContract {
 	return &testContract{
 		address: address,
 		value:   0,
-	}, nil
+	}
 }
 
 func (t *testContract) Read(opts *bind.CallOpts, value int) (string, error) {
