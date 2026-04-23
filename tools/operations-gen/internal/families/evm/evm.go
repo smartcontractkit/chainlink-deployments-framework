@@ -9,19 +9,8 @@ import (
 )
 
 const (
-	// anyType is the fallback Go type for unknown source types.
-	anyType = "any"
-	// emptyReturnType is the Go type used for read functions with no return values.
-	emptyReturnType = "struct{}"
-
-	abiTypeFunction         = "function"
-	abiTypeConstructor      = "constructor"
-	stateMutabilityView     = "view"
-	stateMutabilityPure     = "pure"
-	accessOwner             = "owner"
-	accessPublic            = "public"
-	accessControlAllCallers = "AllCallersAllowed"
-	accessControlOnlyOwner  = "OnlyOwner"
+	accessOwner  = "owner"
+	accessPublic = "public"
 )
 
 // ---- Handler ----

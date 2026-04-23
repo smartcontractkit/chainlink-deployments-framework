@@ -5,73 +5,23 @@ package many_chain_multi_sig
 import (
 	"math/big"
 
-	"strings"
-
 	"github.com/Masterminds/semver/v3"
-	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 
+	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	cldf_deployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	cld_ops "github.com/smartcontractkit/chainlink-deployments-framework/operations"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/operations/contract"
+	gobindings "github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/testdata/evm/gobindings/v1_0_0/many_chain_multi_sig"
 )
 
 var ContractType cldf_deployment.ContractType = "ManyChainMultiSig"
 var Version = semver.MustParse("1.0.0")
 var TypeAndVersion = cldf_deployment.NewTypeAndVersion(ContractType, *Version)
 
-const ManyChainMultiSigABI = `[{"inputs":[],"stateMutability":"nonpayable","type":"constructor"},{"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address[]","name":"signerAddresses","type":"address[]"},{"internalType":"uint8[]","name":"signerGroups","type":"uint8[]"},{"internalType":"uint8[32]","name":"groupQuorums","type":"uint8[32]"},{"internalType":"uint8[32]","name":"groupParents","type":"uint8[32]"},{"internalType":"bool","name":"clearRoot","type":"bool"}],"name":"setConfig","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"bytes32","name":"root","type":"bytes32"},{"internalType":"uint32","name":"validUntil","type":"uint32"},{"components":[{"internalType":"uint256","name":"chainId","type":"uint256"},{"internalType":"address","name":"multiSig","type":"address"},{"internalType":"uint40","name":"preOpCount","type":"uint40"},{"internalType":"uint40","name":"postOpCount","type":"uint40"},{"internalType":"bool","name":"overridePreviousRoot","type":"bool"}],"internalType":"struct ManyChainMultiSig.RootMetadata","name":"metadata","type":"tuple"},{"internalType":"bytes32[]","name":"metadataProof","type":"bytes32[]"},{"components":[{"internalType":"uint8","name":"v","type":"uint8"},{"internalType":"bytes32","name":"r","type":"bytes32"},{"internalType":"bytes32","name":"s","type":"bytes32"}],"internalType":"struct ManyChainMultiSig.Signature[]","name":"signatures","type":"tuple[]"}],"name":"setRoot","outputs":[],"stateMutability":"nonpayable","type":"function"}]
-`
-const ManyChainMultiSigBin = "0x60006000"
-
-type ManyChainMultiSigContract struct {
-	address  common.Address
-	abi      abi.ABI
-	backend  bind.ContractBackend
-	contract *bind.BoundContract
-}
-
-func NewManyChainMultiSigContract(
-	address common.Address,
-	backend bind.ContractBackend,
-) (*ManyChainMultiSigContract, error) {
-	parsed, err := abi.JSON(strings.NewReader(ManyChainMultiSigABI))
-	if err != nil {
-		return nil, err
-	}
-	return &ManyChainMultiSigContract{
-		address:  address,
-		abi:      parsed,
-		backend:  backend,
-		contract: bind.NewBoundContract(address, parsed, backend, backend, backend),
-	}, nil
-}
-
-func (c *ManyChainMultiSigContract) Address() common.Address {
-	return c.address
-}
-
-func (c *ManyChainMultiSigContract) Owner(opts *bind.CallOpts) (common.Address, error) {
-	var out []any
-	err := c.contract.Call(opts, &out, "owner")
-	if err != nil {
-		var zero common.Address
-		return zero, err
-	}
-	return *abi.ConvertType(out[0], new(common.Address)).(*common.Address), nil
-}
-
-func (c *ManyChainMultiSigContract) SetConfig(opts *bind.TransactOpts, signerAddresses []common.Address, signerGroups []uint8, groupQuorums [32]uint8, groupParents [32]uint8, clearRoot bool) (*types.Transaction, error) {
-	return c.contract.Transact(opts, "setConfig", signerAddresses, signerGroups, groupQuorums, groupParents, clearRoot)
-}
-
-func (c *ManyChainMultiSigContract) SetRoot(opts *bind.TransactOpts, root [32]byte, validUntil uint32, metadata RootMetadata, metadataProof [][32]byte, signatures []Signature) (*types.Transaction, error) {
-	return c.contract.Transact(opts, "setRoot", root, validUntil, metadata, metadataProof, signatures)
-}
-
-type RootMetadata struct {
+type ManyChainMultiSigRootMetadata struct {
 	ChainId              *big.Int       `json:"chainId"`
 	MultiSig             common.Address `json:"multiSig"`
 	PreOpCount           uint64         `json:"preOpCount"`
@@ -79,7 +29,7 @@ type RootMetadata struct {
 	OverridePreviousRoot bool           `json:"overridePreviousRoot"`
 }
 
-type Signature struct {
+type ManyChainMultiSigSignature struct {
 	V uint8    `json:"v"`
 	R [32]byte `json:"r"`
 	S [32]byte `json:"s"`
@@ -94,75 +44,77 @@ type SetConfigArgs struct {
 }
 
 type SetRootArgs struct {
-	Root          [32]byte     `json:"root"`
-	ValidUntil    uint32       `json:"validUntil"`
-	Metadata      RootMetadata `json:"metadata"`
-	MetadataProof [][32]byte   `json:"metadataProof"`
-	Signatures    []Signature  `json:"signatures"`
+	Root          [32]byte                      `json:"root"`
+	ValidUntil    uint32                        `json:"validUntil"`
+	Metadata      ManyChainMultiSigRootMetadata `json:"metadata"`
+	MetadataProof [][32]byte                    `json:"metadataProof"`
+	Signatures    []ManyChainMultiSigSignature  `json:"signatures"`
 }
 
-type ConstructorArgs struct {
-}
+type ConstructorArgs = struct{}
 
 var Deploy = contract.NewDeploy(contract.DeployParams[ConstructorArgs]{
-	Name:        "many-chain-multi-sig:deploy",
-	Version:     Version,
-	Description: "Deploys the ManyChainMultiSig contract",
-	ContractMetadata: &bind.MetaData{
-		ABI: ManyChainMultiSigABI,
-		Bin: ManyChainMultiSigBin,
-	},
+	Name:             "many-chain-multi-sig:deploy",
+	Version:          Version,
+	Description:      "Deploys the ManyChainMultiSig contract",
+	ContractMetadata: gobindings.ManyChainMultiSigMetaData,
 	BytecodeByTypeAndVersion: map[string]contract.Bytecode{
 		cldf_deployment.NewTypeAndVersion(ContractType, *Version).String(): {
-			EVM: common.FromHex(ManyChainMultiSigBin),
+			EVM: common.FromHex(gobindings.ManyChainMultiSigMetaData.Bin),
 		},
 	},
 	Validate: func(ConstructorArgs) error { return nil },
 })
 
-var Owner = contract.NewRead(contract.ReadParams[struct{}, common.Address, *ManyChainMultiSigContract]{
+var Owner = contract.NewRead(contract.ReadParams[struct{}, common.Address, gobindings.ManyChainMultiSigInterface]{
 	Name:         "many-chain-multi-sig:owner",
 	Version:      Version,
 	Description:  "Calls owner on the contract",
 	ContractType: ContractType,
-	NewContract:  NewManyChainMultiSigContract,
-	CallContract: func(c *ManyChainMultiSigContract, opts *bind.CallOpts, args struct{}) (common.Address, error) {
+	NewContract: func(addr common.Address, backend bind.ContractBackend) (gobindings.ManyChainMultiSigInterface, error) {
+		return gobindings.NewManyChainMultiSig(addr, backend)
+	},
+	CallContract: func(c gobindings.ManyChainMultiSigInterface, opts *bind.CallOpts, args struct{}) (common.Address, error) {
 		return c.Owner(opts)
 	},
 })
 
-var SetConfig = contract.NewWrite(contract.WriteParams[SetConfigArgs, *ManyChainMultiSigContract]{
-	Name:            "many-chain-multi-sig:set-config",
-	Version:         Version,
-	Description:     "Calls setConfig on the contract",
-	ContractType:    ContractType,
-	ContractABI:     ManyChainMultiSigABI,
-	NewContract:     NewManyChainMultiSigContract,
-	IsAllowedCaller: contract.OnlyOwner[*ManyChainMultiSigContract, SetConfigArgs],
-	Validate:        func(SetConfigArgs) error { return nil },
-	CallContract: func(
-		c *ManyChainMultiSigContract,
-		opts *bind.TransactOpts,
-		args SetConfigArgs,
-	) (*types.Transaction, error) {
-		return c.SetConfig(opts, args.SignerAddresses, args.SignerGroups, args.GroupQuorums, args.GroupParents, args.ClearRoot)
-	},
-})
+func NewWriteSetConfig(c gobindings.ManyChainMultiSigInterface) *cld_ops.Operation[contract.FunctionInput[SetConfigArgs], contract.WriteOutput, cldf_evm.Chain] {
+	return contract.NewWrite(contract.WriteParams[SetConfigArgs, gobindings.ManyChainMultiSigInterface]{
+		Name:            "many-chain-multi-sig:set-config",
+		Version:         Version,
+		Description:     "Calls setConfig on the contract",
+		ContractType:    ContractType,
+		ContractABI:     gobindings.ManyChainMultiSigMetaData.ABI,
+		Contract:        c,
+		IsAllowedCaller: contract.OnlyOwner[gobindings.ManyChainMultiSigInterface, SetConfigArgs],
+		Validate:        func(SetConfigArgs) error { return nil },
+		CallContract: func(
+			c gobindings.ManyChainMultiSigInterface,
+			opts *bind.TransactOpts,
+			args SetConfigArgs,
+		) (*types.Transaction, error) {
+			return c.SetConfig(opts, args.SignerAddresses, args.SignerGroups, args.GroupQuorums, args.GroupParents, args.ClearRoot)
+		},
+	})
+}
 
-var SetRoot = contract.NewWrite(contract.WriteParams[SetRootArgs, *ManyChainMultiSigContract]{
-	Name:            "many-chain-multi-sig:set-root",
-	Version:         Version,
-	Description:     "Calls setRoot on the contract",
-	ContractType:    ContractType,
-	ContractABI:     ManyChainMultiSigABI,
-	NewContract:     NewManyChainMultiSigContract,
-	IsAllowedCaller: contract.OnlyOwner[*ManyChainMultiSigContract, SetRootArgs],
-	Validate:        func(SetRootArgs) error { return nil },
-	CallContract: func(
-		c *ManyChainMultiSigContract,
-		opts *bind.TransactOpts,
-		args SetRootArgs,
-	) (*types.Transaction, error) {
-		return c.SetRoot(opts, args.Root, args.ValidUntil, args.Metadata, args.MetadataProof, args.Signatures)
-	},
-})
+func NewWriteSetRoot(c gobindings.ManyChainMultiSigInterface) *cld_ops.Operation[contract.FunctionInput[SetRootArgs], contract.WriteOutput, cldf_evm.Chain] {
+	return contract.NewWrite(contract.WriteParams[SetRootArgs, gobindings.ManyChainMultiSigInterface]{
+		Name:            "many-chain-multi-sig:set-root",
+		Version:         Version,
+		Description:     "Calls setRoot on the contract",
+		ContractType:    ContractType,
+		ContractABI:     gobindings.ManyChainMultiSigMetaData.ABI,
+		Contract:        c,
+		IsAllowedCaller: contract.OnlyOwner[gobindings.ManyChainMultiSigInterface, SetRootArgs],
+		Validate:        func(SetRootArgs) error { return nil },
+		CallContract: func(
+			c gobindings.ManyChainMultiSigInterface,
+			opts *bind.TransactOpts,
+			args SetRootArgs,
+		) (*types.Transaction, error) {
+			return c.SetRoot(opts, args.Root, args.ValidUntil, args.Metadata, args.MetadataProof, args.Signatures)
+		},
+	})
+}

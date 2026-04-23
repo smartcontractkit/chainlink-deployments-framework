@@ -19,37 +19,38 @@ type templateData struct {
 	Version           string
 	ABI               string
 	Bytecode          string
+	GobindingsImport  string
 	NeedsBigInt       bool
 	HasWriteOps       bool
 	OmitDeploy        bool
 	Constructor       *constructorData
 	StructDefs        []structDefData
 	ArgStructs        []argStructData
-	Operations        []operationData
+	Operations        []OperationData
 	ContractMethods   []contractMethodData
 }
 
 type constructorData struct {
-	Parameters []parameterData
+	Parameters []ParameterData
 }
 
 type structDefData struct {
 	Name   string
-	Fields []parameterData
+	Fields []ParameterData
 }
 
 type argStructData struct {
 	Name   string
-	Fields []parameterData
+	Fields []ParameterData
 }
 
-type parameterData struct {
+type ParameterData struct {
 	GoName  string
 	GoType  string
 	JSONTag string // ABI parameter name; may be a synthesized placeholder (e.g. "ret0") for unnamed outputs
 }
 
-type operationData struct {
+type OperationData struct {
 	Name          string
 	MethodName    string
 	OpName        string
@@ -58,6 +59,9 @@ type operationData struct {
 	IsWrite       bool
 	AccessControl string // Only for writes
 	ReturnType    string // Only for reads
+	// ReturnFields is non-empty for read operations with multiple return values.
+	// The template uses it to pack individual return values into a synthetic result struct.
+	ReturnFields []ParameterData
 }
 
 type contractMethodData struct {
@@ -87,6 +91,7 @@ func prepareTemplateData(info *ContractInfo) templateData {
 		Version:           info.Version,
 		ABI:               info.ABI,
 		Bytecode:          info.Bytecode,
+		GobindingsImport:  info.GobindingsPackage,
 		NeedsBigInt:       ChecksNeedsBigInt(info),
 		OmitDeploy:        info.OmitDeploy,
 	}
@@ -99,7 +104,6 @@ func prepareTemplateData(info *ContractInfo) templateData {
 
 	for _, name := range info.FunctionOrder {
 		fi := info.Functions[name]
-		data.ContractMethods = append(data.ContractMethods, prepareContractMethod(fi, fi.IsWrite))
 
 		if fi.IsWrite {
 			data.HasWriteOps = true
@@ -162,66 +166,101 @@ func ChecksNeedsBigInt(info *ContractInfo) bool {
 	return false
 }
 
-func prepareParameters(params []ParameterInfo) []parameterData {
-	result := make([]parameterData, 0, len(params))
+// prepareParameters converts a slice of ParameterInfo to ParameterData,
+// capitalising names and providing fallback names for anonymous fields.
+func prepareParameters(params []ParameterInfo) []ParameterData {
+	result := make([]ParameterData, 0, len(params))
 	for i, param := range params {
-		result = append(result, parameterData{
-			GoName:  fieldNameOrIndex(param.Name, i),
-			GoType:  param.GoType,
-			JSONTag: param.Name,
-		})
+		name := toPascalCase(param.Name)
+		if name == "" {
+			name = fmt.Sprintf("Field%d", i)
+		}
+		jsonTag := param.Name
+		if jsonTag == "" {
+			jsonTag = fmt.Sprintf("ret%d", i)
+		}
+		result = append(result, ParameterData{GoName: name, GoType: param.GoType, JSONTag: jsonTag})
 	}
 
 	return result
 }
 
-func prepareWriteOp(fi *FunctionInfo) operationData {
-	argsType, callArgs := buildCallArgs(fi)
-
-	accessControl := accessControlAllCallers
-	if fi.HasOnlyOwner {
-		accessControl = accessControlOnlyOwner
+// toPascalCase converts a Solidity parameter name into an exported Go
+// identifier. It strips leading underscores (e.g. "_to" -> "To"), splits on
+// remaining underscores, and capitalises each segment ("signer_addresses" ->
+// "SignerAddresses"). Already-camelCase names are preserved ("signerAddresses"
+// -> "SignerAddresses").
+func toPascalCase(s string) string {
+	s = strings.TrimLeft(s, "_")
+	if s == "" {
+		return ""
+	}
+	parts := strings.Split(s, "_")
+	for i, p := range parts {
+		parts[i] = capitalize(p)
 	}
 
-	return operationData{
+	return strings.Join(parts, "")
+}
+
+func prepareWriteOp(fi *FunctionInfo) OperationData {
+	argsType, callArgs := buildCallArgs(fi)
+
+	return OperationData{
 		Name:          fi.Name,
 		MethodName:    fi.CallMethod,
 		OpName:        toKebabCase(fi.Name),
 		ArgsType:      argsType,
 		CallArgs:      callArgs,
 		IsWrite:       true,
-		AccessControl: accessControl,
+		AccessControl: fi.AccessControl,
 	}
 }
 
-func prepareReadOp(fi *FunctionInfo) operationData {
-	argsType, callArgs := buildCallArgs(fi)
+// prepareReadOp builds the OperationData for a view/pure function.
+// For multi-return functions, ReturnFields is populated so the template can
+// pack individual return values into a synthetic result struct.
+func prepareReadOp(funcInfo *FunctionInfo) OperationData {
+	argsType, callArgs := buildCallArgs(funcInfo)
 
-	return operationData{
-		Name:       fi.Name,
-		MethodName: fi.CallMethod,
-		OpName:     toKebabCase(fi.Name),
-		ArgsType:   argsType,
-		ReturnType: resolveReturnType(fi),
-		CallArgs:   callArgs,
-		IsWrite:    false,
+	returnType := anyType
+	var returnFields []ParameterData
+	if len(funcInfo.ReturnParams) == 1 {
+		returnType = funcInfo.ReturnParams[0].GoType
+	} else if len(funcInfo.ReturnParams) > 1 {
+		returnType = multiReturnStructName(funcInfo.Name)
+		returnFields = prepareParameters(funcInfo.ReturnParams)
+	}
+
+	return OperationData{
+		Name:         funcInfo.Name,
+		MethodName:   funcInfo.CallMethod,
+		OpName:       toKebabCase(funcInfo.Name),
+		ArgsType:     argsType,
+		CallArgs:     callArgs,
+		IsWrite:      false,
+		ReturnType:   returnType,
+		ReturnFields: returnFields,
 	}
 }
 
 // buildCallArgs builds the argsType and callArgs strings for an operation.
 func buildCallArgs(fi *FunctionInfo) (argsType string, callArgs string) {
 	if len(fi.Parameters) == 0 {
-		return emptyReturnType, ""
+		return "struct{}", ""
 	}
-
 	if len(fi.Parameters) == 1 {
 		return fi.Parameters[0].GoType, ", args"
 	}
 
 	argsType = fi.Name + "Args"
-	callArgsList := make([]string, 0, len(fi.Parameters))
+	var callArgsList []string
 	for i, p := range fi.Parameters {
-		callArgsList = append(callArgsList, "args."+fieldNameOrIndex(p.Name, i))
+		fieldName := toPascalCase(p.Name)
+		if fieldName == "" {
+			fieldName = fmt.Sprintf("Field%d", i)
+		}
+		callArgsList = append(callArgsList, "args."+fieldName)
 	}
 	callArgs = ", " + strings.Join(callArgsList, ", ")
 

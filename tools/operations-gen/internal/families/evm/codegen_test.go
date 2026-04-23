@@ -62,13 +62,10 @@ func TestCheckNeedsBigInt(t *testing.T) {
 
 	t.Run("constructor param needs big.Int", func(t *testing.T) {
 		t.Parallel()
-		entry := evm.ABIEntry{
-			Type:   "constructor",
-			Inputs: []evm.ABIParam{{Name: "supply", Type: "uint256"}},
-		}
-		fi := evm.ParseABIFunction(entry, "pkg", evm.EvmTypeMap)
 		info := &evm.ContractInfo{
-			Constructor:   fi,
+			Constructor: &evm.FunctionInfo{
+				Parameters: []evm.ParameterInfo{{GoType: "*big.Int"}},
+			},
 			Functions:     map[string]*evm.FunctionInfo{},
 			FunctionOrder: []string{},
 		}
