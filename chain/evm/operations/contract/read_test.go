@@ -65,12 +65,15 @@ func TestRead(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
 			t.Parallel()
+			boundContract, err := newTestContract(address, nil)
+			require.NoError(t, err, "Failed to construct bound test contract")
+
 			read := NewRead(ReadParams[int, string, *testContract]{
 				Name:         "test-read",
 				Version:      semver.MustParse("1.0.0"),
 				Description:  "Test read operation",
 				ContractType: testContractType,
-				NewContract:  newTestContract,
+				Contract:     boundContract,
 				CallContract: func(contract *testContract, opts *bind.CallOpts, input int) (string, error) {
 					return contract.Read(opts, input)
 				},

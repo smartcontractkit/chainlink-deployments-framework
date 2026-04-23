@@ -15,10 +15,13 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 {{end}}
 	cldf_deployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
-{{- if .HasWriteOps}}
+{{- if .Operations}}
 	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
+{{- end}}
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/operations/contract"
+{{- if .Operations}}
 	cld_ops "github.com/smartcontractkit/chainlink-deployments-framework/operations"
-{{end}}
+{{- end}}
 	gobindings "{{.GobindingsImport}}"
 )
 
@@ -89,27 +92,27 @@ func NewWrite{{.Name}}(c gobindings.{{$.ContractType}}Interface) *cld_ops.Operat
 	})
 }
 {{- else}}
-var {{.Name}} = contract.NewRead(contract.ReadParams[{{.ArgsType}}, {{.ReturnType}}, gobindings.{{$.ContractType}}Interface]{
-	Name:         "{{$.PackageNameHyphen}}:{{.OpName}}",
-	Version:      Version,
-	Description:  "Calls {{.MethodName}} on the contract",
-	ContractType: ContractType,
-	NewContract: func(addr common.Address, backend bind.ContractBackend) (gobindings.{{$.ContractType}}Interface, error) {
-		return gobindings.New{{$.ContractType}}(addr, backend)
-	},
+func NewRead{{.Name}}(c gobindings.{{$.ContractType}}Interface) *cld_ops.Operation[contract.FunctionInput[{{.ArgsType}}], {{.ReturnType}}, cldf_evm.Chain] {
+	return contract.NewRead(contract.ReadParams[{{.ArgsType}}, {{.ReturnType}}, gobindings.{{$.ContractType}}Interface]{
+		Name:         "{{$.PackageNameHyphen}}:{{.OpName}}",
+		Version:      Version,
+		Description:  "Calls {{.MethodName}} on the contract",
+		ContractType: ContractType,
+		Contract:     c,
 {{- if .ReturnFields}}
-	CallContract: func(c gobindings.{{$.ContractType}}Interface, opts *bind.CallOpts, args {{.ArgsType}}) ({{.ReturnType}}, error) {
-		{{range $i, $f := .ReturnFields}}{{if gt $i 0}}, {{end}}r{{$i}}{{end}}, err := c.{{.Name}}(opts{{.CallArgs}})
-		if err != nil {
-			return {{.ReturnType}}{}, err
-		}
-		return {{.ReturnType}}{ {{range $i, $f := .ReturnFields}}{{$f.GoName}}: r{{$i}}, {{end}} }, nil
-	},
+		CallContract: func(c gobindings.{{$.ContractType}}Interface, opts *bind.CallOpts, args {{.ArgsType}}) ({{.ReturnType}}, error) {
+			{{range $i, $f := .ReturnFields}}{{if gt $i 0}}, {{end}}r{{$i}}{{end}}, err := c.{{.Name}}(opts{{.CallArgs}})
+			if err != nil {
+				return {{.ReturnType}}{}, err
+			}
+			return {{.ReturnType}}{ {{range $i, $f := .ReturnFields}}{{$f.GoName}}: r{{$i}}, {{end}} }, nil
+		},
 {{- else}}
-	CallContract: func(c gobindings.{{$.ContractType}}Interface, opts *bind.CallOpts, args {{.ArgsType}}) ({{.ReturnType}}, error) {
-		return c.{{.Name}}(opts{{.CallArgs}})
-	},
+		CallContract: func(c gobindings.{{$.ContractType}}Interface, opts *bind.CallOpts, args {{.ArgsType}}) ({{.ReturnType}}, error) {
+			return c.{{.Name}}(opts{{.CallArgs}})
+		},
 {{- end}}
-})
+	})
+}
 {{- end}}
 {{- end}}

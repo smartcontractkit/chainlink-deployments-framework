@@ -85,8 +85,12 @@ func TestCheckNeedsBigInt(t *testing.T) {
 		}
 	})
 
-	t.Run("nested tuple component needs big.Int", func(t *testing.T) {
+	t.Run("tuple parameter with *big.Int component does not need local big.Int", func(t *testing.T) {
 		t.Parallel()
+		// Tuple parameters are emitted as gobindings.<Name> references, so the
+		// generated file never declares a local *big.Int field on behalf of a
+		// nested tuple component. ChecksNeedsBigInt must therefore only look
+		// at the top-level GoType of each parameter.
 		info := &evm.ContractInfo{
 			Functions: map[string]*evm.FunctionInfo{
 				"Foo": {
@@ -94,7 +98,7 @@ func TestCheckNeedsBigInt(t *testing.T) {
 					Parameters: []evm.ParameterInfo{
 						{
 							Name:       "metadata",
-							GoType:     "RootMetadata",
+							GoType:     "gobindings.RootMetadata",
 							IsStruct:   true,
 							StructName: "RootMetadata",
 							Components: []evm.ParameterInfo{
@@ -106,8 +110,8 @@ func TestCheckNeedsBigInt(t *testing.T) {
 			},
 			FunctionOrder: []string{"Foo"},
 		}
-		if !evm.ChecksNeedsBigInt(info) {
-			t.Error("expected true for nested tuple component using *big.Int")
+		if evm.ChecksNeedsBigInt(info) {
+			t.Error("expected false: tuple components live in gobindings, no local *big.Int field")
 		}
 	})
 }

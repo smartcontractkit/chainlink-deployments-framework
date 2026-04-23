@@ -51,8 +51,8 @@ type WriteParams[ARGS any, C any] struct {
 	ContractType deployment.ContractType
 	// ContractABI is the ABI of the target contract.
 	ContractABI string
-	// NewContract is a function that creates a new instance of the contract binding.
-	NewContract func(address common.Address, backend bind.ContractBackend) (C, error)
+	// Contract is the contract binding instance to use for this write operation.
+	Contract C
 	// IsAllowedCaller is a function that checks if the caller is allowed to call the function.
 	IsAllowedCaller func(contract C, opts *bind.CallOpts, caller common.Address, input ARGS) (bool, error)
 	// Validate is a function that validates the input arguments.
@@ -89,9 +89,6 @@ func NewWrite[ARGS any, C any](params WriteParams[ARGS, C]) *operations.Operatio
 			if input.Address == (common.Address{}) {
 				return WriteOutput{}, fmt.Errorf("address must be specified for %s", params.Name)
 			}
-			if params.NewContract == nil {
-				return WriteOutput{}, fmt.Errorf("newContract function must be defined for %s", params.Name)
-			}
 			if params.CallContract == nil {
 				return WriteOutput{}, fmt.Errorf("callContract function must be defined for %s", params.Name)
 			}
@@ -100,11 +97,7 @@ func NewWrite[ARGS any, C any](params WriteParams[ARGS, C]) *operations.Operatio
 			}
 			// END Validation
 
-			boundContract, err := params.NewContract(input.Address, chain.Client)
-			if err != nil {
-				return WriteOutput{}, fmt.Errorf("failed to create contract instance for %s at %s on %s: %w", params.Name, input.Address, chain, err)
-			}
-			allowed, err := params.IsAllowedCaller(boundContract, &bind.CallOpts{Context: b.GetContext()}, chain.DeployerKey.From, input.Args)
+			allowed, err := params.IsAllowedCaller(params.Contract, &bind.CallOpts{Context: b.GetContext()}, chain.DeployerKey.From, input.Args)
 			if err != nil {
 				return WriteOutput{}, fmt.Errorf("failed to check if %s is an allowed caller of %s against %s on %s: %w", chain.DeployerKey.From, params.Name, input.Address, chain, err)
 			}
@@ -113,7 +106,7 @@ func NewWrite[ARGS any, C any](params WriteParams[ARGS, C]) *operations.Operatio
 				opts = chain.DeployerKey
 			}
 			var execInfo *ExecInfo
-			tx, callErr := params.CallContract(boundContract, opts, input.Args)
+			tx, callErr := params.CallContract(params.Contract, opts, input.Args)
 			if callErr == nil && tx == nil {
 				return WriteOutput{}, fmt.Errorf("contract call returned nil transaction for %s against %s on %s", params.Name, input.Address, chain)
 			}

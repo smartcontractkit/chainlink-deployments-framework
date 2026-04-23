@@ -61,6 +61,9 @@ func extractContractInfo(cfg EvmContractConfig, input EvmInputConfig, output Evm
 	if cfg.Name == "" || cfg.Version == "" {
 		return nil, errors.New("contract_name and version are required")
 	}
+	if cfg.GobindingsPackage == "" {
+		return nil, fmt.Errorf("gobindings_package is required for contract %q", cfg.Name)
+	}
 
 	packageName := cfg.PackageName
 	if packageName == "" {
@@ -161,36 +164,21 @@ func extractFunctions(info *ContractInfo, funcConfigs []EvmFunctionConfig, parse
 	return nil
 }
 
+// collectAllStructDefs registers the struct defs that the operations file
+// must declare locally. The only such case today is the synthetic XxxResult
+// struct used to pack multi-return reads; Solidity tuple types are referenced
+// directly via the "gobindings" import and therefore do not need re-declaring.
 func collectAllStructDefs(info *ContractInfo) {
-	if info.Constructor != nil {
-		collectStructDefs(info.Constructor.Parameters, info.StructDefs)
-	}
 	for _, fi := range info.Functions {
-		collectStructDefs(fi.Parameters, info.StructDefs)
-		collectStructDefs(fi.ReturnParams, info.StructDefs)
-
-		if !fi.IsWrite && len(fi.ReturnParams) > 1 {
-			structName := multiReturnStructName(fi.Name)
-			if _, exists := info.StructDefs[structName]; !exists {
-				info.StructDefs[structName] = &structDef{
-					Name:   structName,
-					Fields: fi.ReturnParams,
-				}
-			}
+		if fi.IsWrite || len(fi.ReturnParams) <= 1 {
+			continue
 		}
-	}
-}
-
-func collectStructDefs(params []ParameterInfo, structDefs map[string]*structDef) {
-	for _, param := range params {
-		if param.IsStruct && param.StructName != "" {
-			if _, exists := structDefs[param.StructName]; !exists {
-				structDefs[param.StructName] = &structDef{
-					Name:   param.StructName,
-					Fields: param.Components,
-				}
+		structName := multiReturnStructName(fi.Name)
+		if _, exists := info.StructDefs[structName]; !exists {
+			info.StructDefs[structName] = &structDef{
+				Name:   structName,
+				Fields: fi.ReturnParams,
 			}
-			collectStructDefs(param.Components, structDefs)
 		}
 	}
 }

@@ -3,37 +3,21 @@
 package many_chain_multi_sig
 
 import (
-	"math/big"
-
 	"github.com/Masterminds/semver/v3"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 
 	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/operations/contract"
 	cldf_deployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	cld_ops "github.com/smartcontractkit/chainlink-deployments-framework/operations"
-
 	gobindings "github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/testdata/evm/gobindings/v1_0_0/many_chain_multi_sig"
 )
 
 var ContractType cldf_deployment.ContractType = "ManyChainMultiSig"
 var Version = semver.MustParse("1.0.0")
 var TypeAndVersion = cldf_deployment.NewTypeAndVersion(ContractType, *Version)
-
-type ManyChainMultiSigRootMetadata struct {
-	ChainId              *big.Int       `json:"chainId"`
-	MultiSig             common.Address `json:"multiSig"`
-	PreOpCount           uint64         `json:"preOpCount"`
-	PostOpCount          uint64         `json:"postOpCount"`
-	OverridePreviousRoot bool           `json:"overridePreviousRoot"`
-}
-
-type ManyChainMultiSigSignature struct {
-	V uint8    `json:"v"`
-	R [32]byte `json:"r"`
-	S [32]byte `json:"s"`
-}
 
 type SetConfigArgs struct {
 	SignerAddresses []common.Address `json:"signerAddresses"`
@@ -44,11 +28,11 @@ type SetConfigArgs struct {
 }
 
 type SetRootArgs struct {
-	Root          [32]byte                      `json:"root"`
-	ValidUntil    uint32                        `json:"validUntil"`
-	Metadata      ManyChainMultiSigRootMetadata `json:"metadata"`
-	MetadataProof [][32]byte                    `json:"metadataProof"`
-	Signatures    []ManyChainMultiSigSignature  `json:"signatures"`
+	Root          [32]byte                                 `json:"root"`
+	ValidUntil    uint32                                   `json:"validUntil"`
+	Metadata      gobindings.ManyChainMultiSigRootMetadata `json:"metadata"`
+	MetadataProof [][32]byte                               `json:"metadataProof"`
+	Signatures    []gobindings.ManyChainMultiSigSignature  `json:"signatures"`
 }
 
 type ConstructorArgs = struct{}
@@ -66,18 +50,18 @@ var Deploy = contract.NewDeploy(contract.DeployParams[ConstructorArgs]{
 	Validate: func(ConstructorArgs) error { return nil },
 })
 
-var Owner = contract.NewRead(contract.ReadParams[struct{}, common.Address, gobindings.ManyChainMultiSigInterface]{
-	Name:         "many-chain-multi-sig:owner",
-	Version:      Version,
-	Description:  "Calls owner on the contract",
-	ContractType: ContractType,
-	NewContract: func(addr common.Address, backend bind.ContractBackend) (gobindings.ManyChainMultiSigInterface, error) {
-		return gobindings.NewManyChainMultiSig(addr, backend)
-	},
-	CallContract: func(c gobindings.ManyChainMultiSigInterface, opts *bind.CallOpts, args struct{}) (common.Address, error) {
-		return c.Owner(opts)
-	},
-})
+func NewReadOwner(c gobindings.ManyChainMultiSigInterface) *cld_ops.Operation[contract.FunctionInput[struct{}], common.Address, cldf_evm.Chain] {
+	return contract.NewRead(contract.ReadParams[struct{}, common.Address, gobindings.ManyChainMultiSigInterface]{
+		Name:         "many-chain-multi-sig:owner",
+		Version:      Version,
+		Description:  "Calls owner on the contract",
+		ContractType: ContractType,
+		Contract:     c,
+		CallContract: func(c gobindings.ManyChainMultiSigInterface, opts *bind.CallOpts, args struct{}) (common.Address, error) {
+			return c.Owner(opts)
+		},
+	})
+}
 
 func NewWriteSetConfig(c gobindings.ManyChainMultiSigInterface) *cld_ops.Operation[contract.FunctionInput[SetConfigArgs], contract.WriteOutput, cldf_evm.Chain] {
 	return contract.NewWrite(contract.WriteParams[SetConfigArgs, gobindings.ManyChainMultiSigInterface]{

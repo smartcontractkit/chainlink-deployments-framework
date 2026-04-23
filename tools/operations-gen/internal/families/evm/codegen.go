@@ -138,14 +138,14 @@ func prepareTemplateData(info *ContractInfo) templateData {
 
 // ChecksNeedsBigInt reports whether any parameter in the contract uses *big.Int,
 // which requires importing "math/big" in the generated file.
+//
+// The check only inspects the top-level GoType of each parameter: tuple
+// (struct) parameters are emitted as references into the gobindings package,
+// so their internal fields never surface as *big.Int in the generated file.
 func ChecksNeedsBigInt(info *ContractInfo) bool {
-	var check func(params []ParameterInfo) bool
-	check = func(params []ParameterInfo) bool {
+	check := func(params []ParameterInfo) bool {
 		for _, p := range params {
 			if strings.Contains(p.GoType, "*big.Int") {
-				return true
-			}
-			if len(p.Components) > 0 && check(p.Components) {
 				return true
 			}
 		}

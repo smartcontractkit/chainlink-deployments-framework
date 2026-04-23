@@ -14,7 +14,6 @@ func TestSolidityToGoType(t *testing.T) {
 		solidity abi.Type
 		want     string
 	}{
-		{abi.Type{T: abi.UintTy, Size: 256}, "*big.Int"},
 		{abi.Type{T: abi.AddressTy}, "common.Address"},
 		{abi.Type{T: abi.BoolTy}, "bool"},
 		{abi.Type{T: abi.StringTy}, "string"},
@@ -25,13 +24,35 @@ func TestSolidityToGoType(t *testing.T) {
 		// fixed-size arrays
 		{abi.Type{T: abi.ArrayTy, Size: 32, Elem: &abi.Type{T: abi.UintTy, Size: 8}}, "[32]uint8"},
 		{abi.Type{T: abi.ArrayTy, Size: 4, Elem: &abi.Type{T: abi.FixedBytesTy, Size: 32}}, "[4][32]byte"},
-		// intermediate uint sizes
-		{abi.Type{T: abi.UintTy, Size: 40}, "uint64"},
-		{abi.Type{T: abi.UintTy, Size: 48}, "uint64"},
-		{abi.Type{T: abi.UintTy, Size: 56}, "uint64"},
-		// tuple → any
-		{abi.Type{T: abi.TupleTy, TupleRawName: "TestStruct"}, "TestStruct"},
-		{abi.Type{T: abi.ArrayTy, Elem: &abi.Type{T: abi.TupleTy, TupleRawName: "TestStruct"}}, "[]TestStruct"},
+		// native-width unsigned ints
+		{abi.Type{T: abi.UintTy, Size: 8}, "uint8"},
+		{abi.Type{T: abi.UintTy, Size: 16}, "uint16"},
+		{abi.Type{T: abi.UintTy, Size: 32}, "uint32"},
+		{abi.Type{T: abi.UintTy, Size: 64}, "uint64"},
+		// non-native unsigned widths fall back to *big.Int to match abigen
+		{abi.Type{T: abi.UintTy, Size: 24}, "*big.Int"},
+		{abi.Type{T: abi.UintTy, Size: 40}, "*big.Int"},
+		{abi.Type{T: abi.UintTy, Size: 48}, "*big.Int"},
+		{abi.Type{T: abi.UintTy, Size: 56}, "*big.Int"},
+		{abi.Type{T: abi.UintTy, Size: 72}, "*big.Int"},
+		{abi.Type{T: abi.UintTy, Size: 128}, "*big.Int"},
+		{abi.Type{T: abi.UintTy, Size: 256}, "*big.Int"},
+		// native-width signed ints
+		{abi.Type{T: abi.IntTy, Size: 8}, "int8"},
+		{abi.Type{T: abi.IntTy, Size: 16}, "int16"},
+		{abi.Type{T: abi.IntTy, Size: 32}, "int32"},
+		{abi.Type{T: abi.IntTy, Size: 64}, "int64"},
+		// non-native signed widths fall back to *big.Int to match abigen
+		{abi.Type{T: abi.IntTy, Size: 24}, "*big.Int"},
+		{abi.Type{T: abi.IntTy, Size: 40}, "*big.Int"},
+		{abi.Type{T: abi.IntTy, Size: 48}, "*big.Int"},
+		{abi.Type{T: abi.IntTy, Size: 56}, "*big.Int"},
+		{abi.Type{T: abi.IntTy, Size: 72}, "*big.Int"},
+		{abi.Type{T: abi.IntTy, Size: 128}, "*big.Int"},
+		{abi.Type{T: abi.IntTy, Size: 256}, "*big.Int"},
+		// tuples resolve to the gobindings-generated struct name
+		{abi.Type{T: abi.TupleTy, TupleRawName: "TestStruct"}, "gobindings.TestStruct"},
+		{abi.Type{T: abi.ArrayTy, Elem: &abi.Type{T: abi.TupleTy, TupleRawName: "TestStruct"}}, "[]gobindings.TestStruct"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.want, func(t *testing.T) {

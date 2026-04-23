@@ -11,9 +11,9 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 
 	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/operations/contract"
 	cldf_deployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	cld_ops "github.com/smartcontractkit/chainlink-deployments-framework/operations"
-
 	gobindings "github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/testdata/evm/gobindings/v1_0_0/link_token"
 )
 
@@ -66,18 +66,18 @@ func NewWriteTransfer(c gobindings.LinkTokenInterface) *cld_ops.Operation[contra
 	})
 }
 
-var BalanceOf = contract.NewRead(contract.ReadParams[common.Address, *big.Int, gobindings.LinkTokenInterface]{
-	Name:         "link-token:balance-of",
-	Version:      Version,
-	Description:  "Calls balanceOf on the contract",
-	ContractType: ContractType,
-	NewContract: func(addr common.Address, backend bind.ContractBackend) (gobindings.LinkTokenInterface, error) {
-		return gobindings.NewLinkToken(addr, backend)
-	},
-	CallContract: func(c gobindings.LinkTokenInterface, opts *bind.CallOpts, args common.Address) (*big.Int, error) {
-		return c.BalanceOf(opts, args)
-	},
-})
+func NewReadBalanceOf(c gobindings.LinkTokenInterface) *cld_ops.Operation[contract.FunctionInput[common.Address], *big.Int, cldf_evm.Chain] {
+	return contract.NewRead(contract.ReadParams[common.Address, *big.Int, gobindings.LinkTokenInterface]{
+		Name:         "link-token:balance-of",
+		Version:      Version,
+		Description:  "Calls balanceOf on the contract",
+		ContractType: ContractType,
+		Contract:     c,
+		CallContract: func(c gobindings.LinkTokenInterface, opts *bind.CallOpts, args common.Address) (*big.Int, error) {
+			return c.BalanceOf(opts, args)
+		},
+	})
+}
 
 func NewWriteApprove(c gobindings.LinkTokenInterface) *cld_ops.Operation[contract.FunctionInput[ApproveArgs], contract.WriteOutput, cldf_evm.Chain] {
 	return contract.NewWrite(contract.WriteParams[ApproveArgs, gobindings.LinkTokenInterface]{

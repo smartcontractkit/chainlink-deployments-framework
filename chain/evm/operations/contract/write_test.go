@@ -121,13 +121,16 @@ func TestWrite(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
 			t.Parallel()
+			boundContract, err := newTestContract(address, nil)
+			require.NoError(t, err, "Failed to construct bound test contract")
+
 			write := NewWrite(WriteParams[int, *testContract]{
 				Name:            "test-write",
 				Version:         semver.MustParse("1.0.0"),
 				Description:     "Test write operation",
 				ContractType:    testContractType,
 				ContractABI:     contractABI,
-				NewContract:     newTestContract,
+				Contract:        boundContract,
 				IsAllowedCaller: OnlyOwner[*testContract, int],
 				Validate: func(input int) error {
 					if input%2 != 0 {

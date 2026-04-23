@@ -13,17 +13,26 @@ import (
 )
 
 const (
-	anyType     = "any"
-	uint64Typee = "uint64"
-	int64Type   = "int64"
+	anyType    = "any"
+	uint64Type = "uint64"
+	int64Type  = "int64"
 )
 
 // AbiToGoType converts a go-ethereum abi.Type to its Go type string.
 //
 // Primitive types map to their Go equivalents. Tuple types return
-// TupleRawName — the geth binding struct name (e.g. "BaseAuctionAssetParams"),
-// which is later prefixed with "geth_bindings." by remapGobindingsTypes.
-// Slice and array types are handled recursively.
+// "gobindings.<TupleRawName>" — the geth-generated binding struct for the
+// same Solidity struct. The operations file always imports the gobindings
+// package as "gobindings", so referencing these types directly avoids
+// declaring a second, incompatible copy in the generated file.
+// Slice and array types are handled recursively and therefore compose
+// naturally (e.g. []gobindings.Foo, [3]gobindings.Foo).
+//
+// Integer widths follow abigen's canonical mapping
+// (accounts/abi/type.go:reflectIntType): only 8, 16, 32 and 64 map to native
+// Go integer types — every other width (24, 40, 48, 56, 72 … 256) becomes
+// *big.Int so the generated signatures exactly match the gobindings emitted
+// by geth's abigen.
 func AbiToGoType(t abi.Type) string {
 	switch t.T {
 	case abi.UintTy:
@@ -32,18 +41,10 @@ func AbiToGoType(t abi.Type) string {
 			return "uint8"
 		case 16:
 			return "uint16"
-		case 24:
-			return "uint32"
 		case 32:
 			return "uint32"
-		case 40:
-			return uint64Typee
-		case 48:
-			return uint64Typee
-		case 56:
-			return uint64Typee
 		case 64:
-			return uint64Typee
+			return uint64Type
 		default:
 			return "*big.Int"
 		}
@@ -53,16 +54,8 @@ func AbiToGoType(t abi.Type) string {
 			return "int8"
 		case 16:
 			return "int16"
-		case 24:
-			return "int32"
 		case 32:
 			return "int32"
-		case 40:
-			return int64Type
-		case 48:
-			return int64Type
-		case 56:
-			return int64Type
 		case 64:
 			return int64Type
 		default:
@@ -88,7 +81,7 @@ func AbiToGoType(t abi.Type) string {
 			return fmt.Sprintf("[%d]%s", t.Size, AbiToGoType(*t.Elem))
 		}
 	case abi.TupleTy:
-		return t.TupleRawName
+		return "gobindings." + t.TupleRawName
 	}
 
 	return anyType
