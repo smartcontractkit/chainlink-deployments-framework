@@ -85,7 +85,7 @@ output:
 contracts:
   - contract_name: FeeQuoter
     version: "1.6.0"
-    gobindings_package: "https://github.com/smartcontractkit/chainlink-ccip/chains/evm/gobindings/generated/v1_6_0/fee_quoter"
+    gobindings_package: "github.com/smartcontractkit/chainlink-ccip/chains/evm/gobindings/generated/v1_6_0/fee_quoter"
     package_name: fee_quoter # Optional: override default package name
     abi_file: "fee_quoter.json" # Optional: override default ABI filename
     omit_deploy: false # Optional: set true to skip Deploy operation generation (default: false)
