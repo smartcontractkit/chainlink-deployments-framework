@@ -30,8 +30,6 @@ func (h Handler) Generate(config core.Config, tmpl *template.Template) error {
 		return fmt.Errorf("failed to decode EVM output config: %w", err)
 	}
 	if config.ConfigDir != "" {
-		input.ABIBasePath = filepath.Join(config.ConfigDir, input.ABIBasePath)
-		input.BytecodeBasePath = filepath.Join(config.ConfigDir, input.BytecodeBasePath)
 		output.BasePath = filepath.Join(config.ConfigDir, output.BasePath)
 	}
 

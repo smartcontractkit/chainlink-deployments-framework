@@ -14,7 +14,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/operations/contract"
 	cldf_deployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	cld_ops "github.com/smartcontractkit/chainlink-deployments-framework/operations"
-	gobindings "github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/testdata/evm/gobindings/v1_0_0/link_token"
+	gobindings "github.com/smartcontractkit/chainlink-evm/gethwrappers/shared/generated/initial/link_token"
 )
 
 var ContractType cldf_deployment.ContractType = "LinkToken"
@@ -22,13 +22,13 @@ var Version = semver.MustParse("1.0.0")
 var TypeAndVersion = cldf_deployment.NewTypeAndVersion(ContractType, *Version)
 
 type TransferArgs struct {
-	To    common.Address `json:"_to"`
-	Value *big.Int       `json:"_value"`
+	To     common.Address `json:"to"`
+	Amount *big.Int       `json:"amount"`
 }
 
 type ApproveArgs struct {
-	Spender common.Address `json:"_spender"`
-	Value   *big.Int       `json:"_value"`
+	Spender common.Address `json:"spender"`
+	Amount  *big.Int       `json:"amount"`
 }
 
 type ConstructorArgs = struct{}
@@ -61,7 +61,7 @@ func NewWriteTransfer(c gobindings.LinkTokenInterface) *cld_ops.Operation[contra
 			opts *bind.TransactOpts,
 			args TransferArgs,
 		) (*types.Transaction, error) {
-			return c.Transfer(opts, args.To, args.Value)
+			return c.Transfer(opts, args.To, args.Amount)
 		},
 	})
 }
@@ -94,7 +94,7 @@ func NewWriteApprove(c gobindings.LinkTokenInterface) *cld_ops.Operation[contrac
 			opts *bind.TransactOpts,
 			args ApproveArgs,
 		) (*types.Transaction, error) {
-			return c.Approve(opts, args.Spender, args.Value)
+			return c.Approve(opts, args.Spender, args.Amount)
 		},
 	})
 }

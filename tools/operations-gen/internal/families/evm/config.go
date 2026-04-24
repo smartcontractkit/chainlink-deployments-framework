@@ -6,9 +6,8 @@ type EvmContractConfig struct {
 	Version           string              `yaml:"version"`
 	VersionPath       string              `yaml:"version_path,omitempty"` // Optional: override folder path derived from version
 	PackageName       string              `yaml:"package_name,omitempty"` // Optional: override package name
-	ABIFile           string              `yaml:"abi_file,omitempty"`     // Optional: override ABI file name
 	OmitDeploy        bool                `yaml:"omit_deploy,omitempty"`  // Optional: skip Deploy operation
-	GobindingsPackage string              `yaml:"gobindings_package"`     // Required:  the Go import path of the gobindings package for this contract.
+	GobindingsPackage string              `yaml:"gobindings_package"`     // Required: the Go import path of the gobindings package for this contract.
 	Functions         []EvmFunctionConfig `yaml:"functions"`
 }
 
@@ -18,9 +17,12 @@ type EvmFunctionConfig struct {
 	Access string `yaml:"access,omitempty"` // "owner" or "public"
 }
 
+// EvmInputConfig is retained for backward compatibility with existing config
+// files. ABI and bytecode are now resolved from gobindings_package instead of
+// these paths.
 type EvmInputConfig struct {
-	ABIBasePath      string `yaml:"abi_base_path"`
-	BytecodeBasePath string `yaml:"bytecode_base_path"`
+	ABIBasePath      string `yaml:"abi_base_path,omitempty"`
+	BytecodeBasePath string `yaml:"bytecode_base_path,omitempty"`
 }
 
 type EvmOutputConfig struct {

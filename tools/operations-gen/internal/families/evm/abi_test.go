@@ -99,15 +99,22 @@ func TestSanitizeFieldName(t *testing.T) {
 	}
 }
 
-func TestReadABIAndBytecodeInvalidABIFileSuffix(t *testing.T) {
+func TestReadABI(t *testing.T) {
 	t.Parallel()
-	cfg := evm.EvmContractConfig{ABIFile: "contract.abi"}
-	_, _, err := evm.ReadABIAndBytecode(cfg, "contract", "v1_0_0", evm.EvmInputConfig{
-		ABIBasePath:      t.TempDir(),
-		BytecodeBasePath: t.TempDir(),
-	})
-	if err == nil {
-		t.Fatal("expected error for abi_file without .json suffix, got nil")
+	cfg := evm.EvmContractConfig{
+		Name:              "LinkToken",
+		GobindingsPackage: "github.com/smartcontractkit/chainlink-evm/gethwrappers/shared/generated/initial/link_token",
+	}
+
+	parsedABI, err := evm.ReadABI(cfg)
+	if err != nil {
+		t.Fatalf("ReadABI returned error: %v", err)
+	}
+	if parsedABI == nil {
+		t.Fatal("expected parsed ABI, got nil")
+	}
+	if _, ok := parsedABI.Methods["transfer"]; !ok {
+		t.Fatal("expected transfer method in ABI")
 	}
 }
 

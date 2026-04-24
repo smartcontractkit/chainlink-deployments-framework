@@ -17,8 +17,6 @@ type templateData struct {
 	PackageNameHyphen string
 	ContractType      string
 	Version           string
-	ABI               string
-	Bytecode          string
 	GobindingsImport  string
 	NeedsBigInt       bool
 	HasWriteOps       bool
@@ -89,8 +87,6 @@ func prepareTemplateData(info *ContractInfo) templateData {
 		PackageNameHyphen: toKebabCase(info.PackageName),
 		ContractType:      info.Name,
 		Version:           info.Version,
-		ABI:               info.ABI,
-		Bytecode:          info.Bytecode,
 		GobindingsImport:  info.GobindingsPackage,
 		NeedsBigInt:       ChecksNeedsBigInt(info),
 		OmitDeploy:        info.OmitDeploy,

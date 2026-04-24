@@ -20,8 +20,6 @@ type ContractInfo struct {
 	PackageName       string
 	GobindingsPackage string
 	OutputPath        string
-	ABI               string
-	Bytecode          string
 	OmitDeploy        bool
 	Constructor       *FunctionInfo
 	Functions         map[string]*FunctionInfo
@@ -81,13 +79,9 @@ func extractContractInfo(cfg EvmContractConfig, input EvmInputConfig, output Evm
 		return nil, err
 	}
 
-	abiString, bytecode, err := ReadABIAndBytecode(cfg, packageName, versionPath, input)
-	if err != nil {
-		return nil, err
-	}
+	_ = input
 
-	// From a string (already-loaded JSON):
-	parsedAbi, err := abi.JSON(strings.NewReader(abiString))
+	parsedAbi, err := ReadABI(cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -98,16 +92,14 @@ func extractContractInfo(cfg EvmContractConfig, input EvmInputConfig, output Evm
 		PackageName:       packageName,
 		GobindingsPackage: cfg.GobindingsPackage,
 		OutputPath:        core.ContractOutputPath(output.BasePath, versionPath, packageName),
-		ABI:               abiString,
-		Bytecode:          bytecode,
 		OmitDeploy:        cfg.OmitDeploy,
 		Functions:         make(map[string]*FunctionInfo),
 		StructDefs:        make(map[string]*structDef),
 	}
 
-	extractConstructor(info, parsedAbi)
+	extractConstructor(info, *parsedAbi)
 
-	if err := extractFunctions(info, cfg.Functions, parsedAbi); err != nil {
+	if err := extractFunctions(info, cfg.Functions, *parsedAbi); err != nil {
 		return nil, err
 	}
 

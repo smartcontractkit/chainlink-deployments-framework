@@ -12,7 +12,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/operations/contract"
 	cldf_deployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	cld_ops "github.com/smartcontractkit/chainlink-deployments-framework/operations"
-	gobindings "github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/testdata/evm/gobindings/v1_0_0/many_chain_multi_sig"
+	gobindings "github.com/smartcontractkit/mcms/sdk/evm/bindings"
 )
 
 var ContractType cldf_deployment.ContractType = "ManyChainMultiSig"
@@ -28,11 +28,11 @@ type SetConfigArgs struct {
 }
 
 type SetRootArgs struct {
-	Root          [32]byte                                 `json:"root"`
-	ValidUntil    uint32                                   `json:"validUntil"`
-	Metadata      gobindings.ManyChainMultiSigRootMetadata `json:"metadata"`
-	MetadataProof [][32]byte                               `json:"metadataProof"`
-	Signatures    []gobindings.ManyChainMultiSigSignature  `json:"signatures"`
+	Root          [32]byte   `json:"root"`
+	ValidUntil    uint32     `json:"validUntil"`
+	Metadata      any        `json:"metadata"`
+	MetadataProof [][32]byte `json:"metadataProof"`
+	Signatures    []any      `json:"signatures"`
 }
 
 type ConstructorArgs = struct{}

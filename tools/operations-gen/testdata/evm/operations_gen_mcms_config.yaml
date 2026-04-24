@@ -1,9 +1,7 @@
 version: "1.0.0"
 chain_family: evm
 
-input:
-  abi_base_path: "./abi"
-  bytecode_base_path: "./bytecode"
+input: {}
 
 output:
   base_path: "."
@@ -12,8 +10,7 @@ contracts:
   - contract_name: ManyChainMultiSig
     version: "1.0.0"
     package_name: many_chain_multi_sig
-    abi_file: "many_chain_multi_sig.json"
-    gobindings_package: "github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/testdata/evm/gobindings/v1_0_0/many_chain_multi_sig"
+    gobindings_package: "github.com/smartcontractkit/mcms/sdk/evm/bindings"
     functions:
       - name: owner
         access: public

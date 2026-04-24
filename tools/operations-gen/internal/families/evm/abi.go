@@ -1,13 +1,17 @@
 package evm
 
 import (
+	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
+	"golang.org/x/tools/go/packages"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/internal/core"
 )
@@ -97,44 +101,138 @@ func AbiToGoType(t abi.Type) string {
 	return anyType
 }
 
-// ReadABIAndBytecode reads the ABI JSON and (optionally) bytecode for a contract
-// from the configured input roots:
-//
-//	{input.ABIBasePath}/{versionPath}/{name}.json
-//	{input.BytecodeBasePath}/{versionPath}/{name}.bin
-func ReadABIAndBytecode(
+// ReadABI reads the ABI from the generated gobindings package by extracting the exported <ContractName>MetaData.ABI.
+func ReadABI(
 	cfg EvmContractConfig,
-	packageName,
-	versionPath string,
-	input EvmInputConfig) (abiString string, bytecode string, err error) {
-	var abiFileName string
-	if cfg.ABIFile != "" {
-		if !strings.HasSuffix(cfg.ABIFile, ".json") {
-			return "", "", fmt.Errorf("abi_file %q must end with .json", cfg.ABIFile)
+) (*abi.ABI, error) {
+	if cfg.GobindingsPackage == "" {
+		return nil, fmt.Errorf("gobindings_package is required for contract %q", cfg.Name)
+	}
+
+	abiStr, err := readABIFromGobinding(cfg.GobindingsPackage, cfg.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	parsedABI, err := abi.JSON(strings.NewReader(*abiStr))
+	if err != nil {
+		return nil, err
+	}
+
+	return &parsedABI, nil
+}
+
+func readABIFromGobinding(pkgPath string, contractName string) (*string, error) {
+	pkgs, err := packages.Load(&packages.Config{
+		Mode: packages.NeedName | packages.NeedFiles,
+	}, pkgPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load gobindings package %q: %w", pkgPath, err)
+	}
+
+	if len(pkgs) != 1 {
+		return nil, fmt.Errorf("expected one package for %q, got %d", pkgPath, len(pkgs))
+	}
+
+	pkg := pkgs[0]
+	if len(pkg.Errors) > 0 {
+		return nil, fmt.Errorf("failed to load gobindings package %q: %v", pkgPath, pkg.Errors)
+	}
+	if len(pkg.GoFiles) == 0 {
+		return nil, fmt.Errorf("gobindings package %q has no Go files", pkgPath)
+	}
+
+	metadataVar := contractName + "MetaData"
+	fset := token.NewFileSet()
+	for _, filePath := range pkg.GoFiles {
+		file, err := parser.ParseFile(fset, filePath, nil, 0)
+		if err != nil {
+			return nil, fmt.Errorf("parse gobindings file %q: %w", filePath, err)
 		}
-		abiFileName = cfg.ABIFile
-	} else {
-		abiFileName = packageName + ".json"
+
+		abiStr, err := extractAbiFromFile(file, metadataVar)
+		if err != nil {
+			return nil, fmt.Errorf("extract %s from gobindings package %q: %w", metadataVar, pkgPath, err)
+		}
+		if abiStr != nil {
+			return abiStr, nil
+		}
 	}
 
-	abiPath := filepath.Join(input.ABIBasePath, versionPath, abiFileName)
-	abiBytes, err := os.ReadFile(abiPath)
+	return nil, fmt.Errorf("metadata %q not found in gobindings package %q", metadataVar, pkgPath)
+}
+
+func extractAbiFromFile(file *ast.File, metadataVar string) (abiStr *string, err error) {
+	ast.Inspect(file, func(node ast.Node) bool {
+		if err != nil || abiStr != nil {
+			return false
+		}
+
+		valueSpec, ok := node.(*ast.ValueSpec)
+		if !ok {
+			return true
+		}
+
+		for i, name := range valueSpec.Names {
+			if name.Name != metadataVar || i >= len(valueSpec.Values) {
+				continue
+			}
+
+			var value string
+			value, err = metadataABIValue(valueSpec.Values[i])
+			if err != nil {
+				err = fmt.Errorf("read %s ABI: %w", metadataVar, err)
+			} else {
+				abiStr = &value
+			}
+
+			return false
+		}
+
+		return true
+	})
+
+	return abiStr, nil
+}
+
+func metadataABIValue(expr ast.Expr) (string, error) {
+	if unary, ok := expr.(*ast.UnaryExpr); ok && unary.Op == token.AND {
+		expr = unary.X
+	}
+
+	comp, ok := expr.(*ast.CompositeLit)
+	if !ok {
+		return "", errors.New("metadata value is not a composite literal")
+	}
+
+	for _, elt := range comp.Elts {
+		kv, ok := elt.(*ast.KeyValueExpr)
+		if !ok {
+			continue
+		}
+		key, ok := kv.Key.(*ast.Ident)
+		if !ok || key.Name != "ABI" {
+			continue
+		}
+
+		return stringLiteralValue(kv.Value)
+	}
+
+	return "", errors.New("metadata does not contain ABI")
+}
+
+func stringLiteralValue(expr ast.Expr) (string, error) {
+	lit, ok := expr.(*ast.BasicLit)
+	if !ok || lit.Kind != token.STRING {
+		return "", errors.New("expected string literal")
+	}
+
+	value, err := strconv.Unquote(lit.Value)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to read ABI from %s: %w", abiPath, err)
+		return "", fmt.Errorf("unquote string literal: %w", err)
 	}
 
-	if cfg.OmitDeploy {
-		return string(abiBytes), "", nil
-	}
-
-	bytecodeName := strings.TrimSuffix(abiFileName, ".json") + ".bin"
-	bytecodePath := filepath.Join(input.BytecodeBasePath, versionPath, bytecodeName)
-	bytecodeBytes, err := os.ReadFile(bytecodePath)
-	if err != nil {
-		return "", "", fmt.Errorf("failed to read bytecode from %s: %w", bytecodePath, err)
-	}
-
-	return string(abiBytes), strings.TrimSpace(string(bytecodeBytes)), nil
+	return value, nil
 }
 
 // FindFunctionInABI returns all methods in parsedABI whose RawName matches

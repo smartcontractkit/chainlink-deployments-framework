@@ -1,9 +1,7 @@
 version: "1.0.0"
 chain_family: evm
 
-input:
-  abi_base_path: "./abi"
-  bytecode_base_path: "./bytecode"
+input: {}
 
 output:
   base_path: "."
@@ -11,8 +9,7 @@ output:
 contracts:
   - contract_name: LinkToken
     version: "1.0.0"
-    abi_file: "link_token.json"
-    gobindings_package: "github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/testdata/evm/gobindings/v1_0_0/link_token"
+    gobindings_package: "github.com/smartcontractkit/chainlink-evm/gethwrappers/shared/generated/initial/link_token"
     functions:
       - name: transfer
         access: public
