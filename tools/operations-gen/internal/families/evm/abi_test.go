@@ -99,15 +99,52 @@ func TestSanitizeFieldName(t *testing.T) {
 	}
 }
 
-func TestReadABIAndBytecodeInvalidABIFileSuffix(t *testing.T) {
+func TestReadABI(t *testing.T) {
 	t.Parallel()
-	cfg := evm.EvmContractConfig{ABIFile: "contract.abi"}
-	_, _, err := evm.ReadABIAndBytecode(cfg, "contract", "v1_0_0", evm.EvmInputConfig{
-		ABIBasePath:      t.TempDir(),
-		BytecodeBasePath: t.TempDir(),
-	})
-	if err == nil {
-		t.Fatal("expected error for abi_file without .json suffix, got nil")
+	cfg := evm.EvmContractConfig{
+		Name:              "LinkToken",
+		GobindingsPackage: "github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/testdata/evm/gobindings/v1_0_0/link_token",
+	}
+
+	parsedABI, err := evm.ReadABI(cfg)
+	if err != nil {
+		t.Fatalf("ReadABI returned error: %v", err)
+	}
+	if parsedABI == nil {
+		t.Fatal("expected parsed ABI, got nil")
+	}
+	if _, ok := parsedABI.Methods["transfer"]; !ok {
+		t.Fatal("expected transfer method in ABI")
+	}
+}
+
+func TestReadABIPopulatesTupleRawNamesFromGobindings(t *testing.T) {
+	t.Parallel()
+	cfg := evm.EvmContractConfig{
+		Name:              "ManyChainMultiSig",
+		GobindingsPackage: "github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/testdata/evm/gobindings/v1_0_0/many_chain_multi_sig",
+	}
+
+	parsedABI, err := evm.ReadABI(cfg)
+	if err != nil {
+		t.Fatalf("ReadABI returned error: %v", err)
+	}
+
+	setRoot, ok := parsedABI.Methods["setRoot"]
+	if !ok {
+		t.Fatal("expected setRoot method in ABI")
+	}
+
+	if got, want := setRoot.Inputs[2].Type.TupleRawName, "ManyChainMultiSigRootMetadata"; got != want {
+		t.Fatalf("metadata TupleRawName = %q, want %q", got, want)
+	}
+
+	signaturesType := setRoot.Inputs[4].Type
+	if signaturesType.Elem == nil {
+		t.Fatal("expected signatures type to have element type")
+	}
+	if got, want := signaturesType.Elem.TupleRawName, "ManyChainMultiSigSignature"; got != want {
+		t.Fatalf("signatures TupleRawName = %q, want %q", got, want)
 	}
 }
 
@@ -118,7 +155,7 @@ func TestFindFunctionInABINotFound(t *testing.T) {
 			"transfer": {Name: "transfer", RawName: "transfer"},
 		},
 	}
-	if got := evm.FindFunctionInABI(parsed, "mint"); got != nil {
+	if got := evm.FindFunctionInABI(&parsed, "mint"); got != nil {
 		t.Errorf("expected nil for missing function, got %v", got)
 	}
 }

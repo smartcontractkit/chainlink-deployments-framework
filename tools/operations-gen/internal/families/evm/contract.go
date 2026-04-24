@@ -20,8 +20,6 @@ type ContractInfo struct {
 	PackageName       string
 	GobindingsPackage string
 	OutputPath        string
-	ABI               string
-	Bytecode          string
 	OmitDeploy        bool
 	Constructor       *FunctionInfo
 	Functions         map[string]*FunctionInfo
@@ -57,7 +55,7 @@ type ParameterInfo struct {
 
 // ---- Extraction ----
 
-func extractContractInfo(cfg EvmContractConfig, input EvmInputConfig, output EvmOutputConfig) (*ContractInfo, error) {
+func extractContractInfo(cfg EvmContractConfig, output EvmOutputConfig) (*ContractInfo, error) {
 	if cfg.Name == "" || cfg.Version == "" {
 		return nil, errors.New("contract_name and version are required")
 	}
@@ -81,13 +79,7 @@ func extractContractInfo(cfg EvmContractConfig, input EvmInputConfig, output Evm
 		return nil, err
 	}
 
-	abiString, bytecode, err := ReadABIAndBytecode(cfg, packageName, versionPath, input)
-	if err != nil {
-		return nil, err
-	}
-
-	// From a string (already-loaded JSON):
-	parsedAbi, err := abi.JSON(strings.NewReader(abiString))
+	parsedAbi, err := ReadABI(cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -98,8 +90,6 @@ func extractContractInfo(cfg EvmContractConfig, input EvmInputConfig, output Evm
 		PackageName:       packageName,
 		GobindingsPackage: cfg.GobindingsPackage,
 		OutputPath:        core.ContractOutputPath(output.BasePath, versionPath, packageName),
-		ABI:               abiString,
-		Bytecode:          bytecode,
 		OmitDeploy:        cfg.OmitDeploy,
 		Functions:         make(map[string]*FunctionInfo),
 		StructDefs:        make(map[string]*structDef),
@@ -118,7 +108,7 @@ func extractContractInfo(cfg EvmContractConfig, input EvmInputConfig, output Evm
 
 // extractConstructor populates info.Constructor when the ABI defines a
 // constructor with one or more inputs.
-func extractConstructor(info *ContractInfo, parsedABI abi.ABI) {
+func extractConstructor(info *ContractInfo, parsedABI *abi.ABI) {
 	if len(parsedABI.Constructor.Inputs) == 0 {
 		return
 	}
@@ -137,7 +127,7 @@ func extractConstructor(info *ContractInfo, parsedABI abi.ABI) {
 	info.Constructor = fi
 }
 
-func extractFunctions(info *ContractInfo, funcConfigs []EvmFunctionConfig, parsedAbi abi.ABI) error {
+func extractFunctions(info *ContractInfo, funcConfigs []EvmFunctionConfig, parsedAbi *abi.ABI) error {
 	for _, funcCfg := range funcConfigs {
 		methods := FindFunctionInABI(parsedAbi, funcCfg.Name)
 		if len(methods) == 0 {

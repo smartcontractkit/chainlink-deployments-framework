@@ -46,11 +46,7 @@ func runGoldenGenerationTest(t *testing.T, configFileName string, goldenFileName
 		t.Fatalf("parsing config: %v", err)
 	}
 
-	// Override paths: inputs point to fixture dirs, output to a temp dir.
-	cfg.Input = mustYAMLNode(t, evm.EvmInputConfig{
-		ABIBasePath:      filepath.Join(evmTestdataDir, "abi"),
-		BytecodeBasePath: filepath.Join(evmTestdataDir, "bytecode"),
-	})
+	// Override output path to an isolated temp dir.
 	tmpDir := t.TempDir()
 	cfg.Output = mustYAMLNode(t, evm.EvmOutputConfig{BasePath: tmpDir})
 	cfg.ConfigDir = ""

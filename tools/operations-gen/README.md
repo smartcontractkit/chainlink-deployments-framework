@@ -69,15 +69,11 @@ tools/operations-gen/
 
 ## Configuration
 
-Create an `operations_gen_config.yaml` alongside your ABI/bytecode directories:
+Create an `operations_gen_config.yaml` that points at your abigen-generated gobindings package:
 
 ```yaml
 version: "1.0.0"
 chain_family: evm # Optional: defaults to "evm"
-
-input:
-  abi_base_path: "./abi" # Directory containing versioned ABI json files
-  bytecode_base_path: "./bytecode" # Directory containing versioned bytecode .bin files
 
 output:
   base_path: "." # Directory where generated operations/ folders are written
@@ -87,7 +83,6 @@ contracts:
     version: "1.6.0"
     gobindings_package: "github.com/smartcontractkit/chainlink-ccip/chains/evm/gobindings/generated/v1_6_0/fee_quoter"
     package_name: fee_quoter # Optional: override default package name
-    abi_file: "fee_quoter.json" # Optional: override default ABI filename
     omit_deploy: false # Optional: set true to skip Deploy operation generation (default: false)
     functions:
       - name: updatePrices
@@ -102,8 +97,6 @@ contracts:
 | -------------------------- | -------- | ------------------------------------------------------------------------------ |
 | `version`                  | Yes      | Config schema version                                                          |
 | `chain_family`             | No       | Target chain family. Only `"evm"` is supported. Defaults to `"evm"`.           |
-| `input.abi_base_path`      | Yes      | Directory containing versioned ABI files. Relative to the config file.         |
-| `input.bytecode_base_path` | Yes      | Directory containing versioned bytecode files. Relative to the config file.    |
 | `output.base_path`         | Yes      | Root directory where generated files are written. Relative to the config file. |
 
 ### Contract fields
@@ -112,9 +105,8 @@ contracts:
 | -------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `contract_name`      | Yes      | Contract name as it appears in the ABI (e.g. `FeeQuoter`)                                                                                                                                                                       |
 | `version`            | Yes      | Semver version of the contract (e.g. `"1.6.0"`)                                                                                                                                                                                 |
-| `gobindings_package` | Yes      | Full Go import path of the abigen-generated bindings package for this contract. Tuple types and contract interfaces are resolved via this import (e.g. `gobindings.FeeQuoterInterface`, `gobindings.InternalTokenPriceUpdate`). |
+| `gobindings_package` | Yes      | Full Go import path of the abigen-generated bindings package for this contract. The generator loads this package from source, extracts `<ContractName>MetaData`, and uses it for ABI, bytecode, tuple types, and contract interfaces. |
 | `package_name`       | No       | Override the generated Go package name. Defaults to `snake_case(contract_name)`.                                                                                                                                                |
-| `abi_file`           | No       | Override the ABI filename. Defaults to `{package_name}.json`.                                                                                                                                                                   |
 | `version_path`       | No       | Override the directory path derived from the version. Defaults to `v{major}_{minor}_{patch}`.                                                                                                                                   |
 | `omit_deploy`        | No       | Skip generation of the `Deploy` operation and bytecode constant. Defaults to `false`.                                                                                                                                           |
 
@@ -125,21 +117,18 @@ contracts:
 | `owner`  | Generates a write operation gated by `OnlyOwner`, producing an MCMS-compatible transaction when the deployer key is not the owner. |
 | `public` | Generates a read operation (for `view`/`pure` functions) or an unrestricted write operation.                                       |
 
-## Input layout
+## Gobindings requirements
 
-The generator expects ABIs and bytecode under separate input roots:
+The generator expects an abigen-generated package that exports the standard metadata symbol:
 
-```
-{input.abi_base_path}/
-  v1_6_0/
-    fee_quoter.json
-
-{input.bytecode_base_path}/
-  v1_6_0/
-    fee_quoter.bin
+```go
+var FeeQuoterMetaData = &bind.MetaData{
+    ABI: "...",
+    Bin: "...",
+}
 ```
 
-Version `1.6.0` maps to directory `v1_6_0`. Override with `version_path` if your layout differs.
+For `omit_deploy: true`, only the `ABI` field is required. Otherwise both `ABI` and `Bin` must be present.
 
 ## Output layout
 
