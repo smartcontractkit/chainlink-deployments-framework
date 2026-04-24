@@ -95,9 +95,9 @@ func extractContractInfo(cfg EvmContractConfig, output EvmOutputConfig) (*Contra
 		StructDefs:        make(map[string]*structDef),
 	}
 
-	extractConstructor(info, *parsedAbi)
+	extractConstructor(info, parsedAbi)
 
-	if err := extractFunctions(info, cfg.Functions, *parsedAbi); err != nil {
+	if err := extractFunctions(info, cfg.Functions, parsedAbi); err != nil {
 		return nil, err
 	}
 
@@ -108,7 +108,7 @@ func extractContractInfo(cfg EvmContractConfig, output EvmOutputConfig) (*Contra
 
 // extractConstructor populates info.Constructor when the ABI defines a
 // constructor with one or more inputs.
-func extractConstructor(info *ContractInfo, parsedABI abi.ABI) {
+func extractConstructor(info *ContractInfo, parsedABI *abi.ABI) {
 	if len(parsedABI.Constructor.Inputs) == 0 {
 		return
 	}
@@ -127,7 +127,7 @@ func extractConstructor(info *ContractInfo, parsedABI abi.ABI) {
 	info.Constructor = fi
 }
 
-func extractFunctions(info *ContractInfo, funcConfigs []EvmFunctionConfig, parsedAbi abi.ABI) error {
+func extractFunctions(info *ContractInfo, funcConfigs []EvmFunctionConfig, parsedAbi *abi.ABI) error {
 	for _, funcCfg := range funcConfigs {
 		methods := FindFunctionInABI(parsedAbi, funcCfg.Name)
 		if len(methods) == 0 {

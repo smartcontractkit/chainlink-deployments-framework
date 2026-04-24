@@ -155,7 +155,7 @@ func TestFindFunctionInABINotFound(t *testing.T) {
 			"transfer": {Name: "transfer", RawName: "transfer"},
 		},
 	}
-	if got := evm.FindFunctionInABI(parsed, "mint"); got != nil {
+	if got := evm.FindFunctionInABI(&parsed, "mint"); got != nil {
 		t.Errorf("expected nil for missing function, got %v", got)
 	}
 }

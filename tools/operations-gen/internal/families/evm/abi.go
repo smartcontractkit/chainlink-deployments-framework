@@ -259,7 +259,7 @@ func stringLiteralValue(expr ast.Expr) (string, error) {
 // FindFunctionInABI returns all methods in parsedABI whose RawName matches
 // funcName (case-insensitive), sorted by their disambiguated Name for
 // deterministic output.
-func FindFunctionInABI(parsedABI abi.ABI, funcName string) []abi.Method {
+func FindFunctionInABI(parsedABI *abi.ABI, funcName string) []abi.Method {
 	var matches []abi.Method
 	for _, m := range parsedABI.Methods {
 		if strings.EqualFold(m.RawName, funcName) {
