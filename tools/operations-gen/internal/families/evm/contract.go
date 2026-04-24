@@ -150,6 +150,9 @@ func extractFunctions(info *ContractInfo, funcConfigs []EvmFunctionConfig, parse
 			case accessPublic, "":
 				fi.AccessControl = accessPublic
 			case accessRole:
+				if funcCfg.Role == "" {
+					return fmt.Errorf("role is required when access is %q for function %s", accessRole, funcCfg.Name)
+				}
 				role, err := resolveRoleField(funcCfg.Role)
 				if err != nil {
 					return fmt.Errorf("failed to resolve role %q for function %s: %w", funcCfg.Role, funcCfg.Name, err)
