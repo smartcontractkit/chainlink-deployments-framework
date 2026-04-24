@@ -152,12 +152,12 @@ func extractFunctions(info *ContractInfo, funcConfigs []EvmFunctionConfig, parse
 			case accessRole:
 				role, err := resolveRoleField(funcCfg.Role)
 				if err != nil {
-					return fmt.Errorf("failed to resolve role for function %s", funcCfg.Name)
+					return fmt.Errorf("failed to resolve role %q for function %s: %w", funcCfg.Role, funcCfg.Name, err)
 				}
 				fi.AccessControl = accessRole
 				fi.Role = role
 			default:
-				return fmt.Errorf("unknown access control '%s' for function %s (use 'owner' or 'public')",
+				return fmt.Errorf("unknown access control '%s' for function %s (use 'owner', 'public', or 'role')",
 					funcCfg.Access, funcCfg.Name)
 			}
 
