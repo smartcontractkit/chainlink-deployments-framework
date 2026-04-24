@@ -114,12 +114,24 @@ func ReadABI(
 		return nil, err
 	}
 
-	parsedABI, err := abi.JSON(strings.NewReader(*abiStr))
+	parsedABI, err := abi.JSON(strings.NewReader(normalizeStructInternalTypes(*abiStr, cfg.Name)))
 	if err != nil {
 		return nil, err
 	}
 
 	return &parsedABI, nil
+}
+
+func normalizeStructInternalTypes(abiString string, contractName string) string {
+	if contractName == "" {
+		return abiString
+	}
+
+	// Some abigen-produced bindings encode struct internal types without the
+	// space go-ethereum expects ("structContract.Type" instead of
+	// "struct Contract.Type"). Normalize that shape so abi.JSON can populate
+	// TupleRawName and the generated ops can reuse the gobindings struct types.
+	return strings.ReplaceAll(abiString, "struct"+contractName+".", "struct "+contractName+".")
 }
 
 func readABIFromGobinding(pkgPath string, contractName string, loadDir string) (*string, error) {

@@ -118,6 +118,36 @@ func TestReadABI(t *testing.T) {
 	}
 }
 
+func TestReadABIPopulatesTupleRawNamesFromGobindings(t *testing.T) {
+	t.Parallel()
+	cfg := evm.EvmContractConfig{
+		Name:              "ManyChainMultiSig",
+		GobindingsPackage: "github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/testdata/evm/gobindings/v1_0_0/many_chain_multi_sig",
+	}
+
+	parsedABI, err := evm.ReadABI(cfg)
+	if err != nil {
+		t.Fatalf("ReadABI returned error: %v", err)
+	}
+
+	setRoot, ok := parsedABI.Methods["setRoot"]
+	if !ok {
+		t.Fatal("expected setRoot method in ABI")
+	}
+
+	if got, want := setRoot.Inputs[2].Type.TupleRawName, "ManyChainMultiSigRootMetadata"; got != want {
+		t.Fatalf("metadata TupleRawName = %q, want %q", got, want)
+	}
+
+	signaturesType := setRoot.Inputs[4].Type
+	if signaturesType.Elem == nil {
+		t.Fatal("expected signatures type to have element type")
+	}
+	if got, want := signaturesType.Elem.TupleRawName, "ManyChainMultiSigSignature"; got != want {
+		t.Fatalf("signatures TupleRawName = %q, want %q", got, want)
+	}
+}
+
 func TestFindFunctionInABINotFound(t *testing.T) {
 	t.Parallel()
 	parsed := abi.ABI{

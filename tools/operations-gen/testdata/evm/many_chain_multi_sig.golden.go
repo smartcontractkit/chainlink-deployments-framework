@@ -28,11 +28,11 @@ type SetConfigArgs struct {
 }
 
 type SetRootArgs struct {
-	Root          [32]byte   `json:"root"`
-	ValidUntil    uint32     `json:"validUntil"`
-	Metadata      any        `json:"metadata"`
-	MetadataProof [][32]byte `json:"metadataProof"`
-	Signatures    []any      `json:"signatures"`
+	Root          [32]byte                                 `json:"root"`
+	ValidUntil    uint32                                   `json:"validUntil"`
+	Metadata      gobindings.ManyChainMultiSigRootMetadata `json:"metadata"`
+	MetadataProof [][32]byte                               `json:"metadataProof"`
+	Signatures    []gobindings.ManyChainMultiSigSignature  `json:"signatures"`
 }
 
 type ConstructorArgs = struct{}
