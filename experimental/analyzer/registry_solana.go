@@ -101,6 +101,8 @@ var nativeDecoderMappings = map[string]DecodeInstructionFn{
 func NewEnvironmentSolanaRegistry(env deployment.Environment, decoderMappings map[string]DecodeInstructionFn) (*environmentSolanaRegistry, error) {
 	if decoderMappings == nil {
 		decoderMappings = map[string]DecodeInstructionFn{}
+	} else {
+		decoderMappings = maps.Clone(decoderMappings)
 	}
 
 	addressesByChain, errAddrBook := env.ExistingAddresses.Addresses() //nolint:staticcheck
