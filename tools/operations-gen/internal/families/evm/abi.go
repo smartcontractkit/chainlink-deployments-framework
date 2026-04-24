@@ -116,7 +116,7 @@ func ReadABI(
 
 	parsedABI, err := abi.JSON(strings.NewReader(normalizeStructInternalTypes(*abiStr, cfg.Name)))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse ABI from %sMetaData in gobindings package %q: %w", cfg.Name, cfg.GobindingsPackage, err)
 	}
 
 	return &parsedABI, nil
