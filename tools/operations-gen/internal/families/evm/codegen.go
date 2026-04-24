@@ -186,7 +186,7 @@ func prepareWriteOp(fi *FunctionInfo) OperationData {
 	argsType, callArgs := buildCallArgs(fi)
 
 	role := ""
-	if fi.AccessControl == "role" {
+	if fi.AccessControl == accessRole {
 		role = formatRoleGoLiteral(fi.Role)
 	}
 
