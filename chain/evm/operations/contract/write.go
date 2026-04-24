@@ -178,14 +178,14 @@ func OnlyOwner[C ownableContract, ARGS any](contract C, opts *bind.CallOpts, cal
 	return false, fmt.Errorf("failed to get owner of %s after %v: %w", contract.Address(), timeout, lastErr)
 }
 
-type accessControlContract interface {
+type AccessControlContract interface {
 	Address() common.Address
 	HasRole(opts *bind.CallOpts, role [32]byte, account common.Address) (bool, error)
 }
 
 // HasRole reports whether account holds role on contract (OpenZeppelin IAccessControl-style HasRole).
 // Includes retries for RPC flakiness after deploy.
-func HasRole[C accessControlContract](
+func HasRole[C AccessControlContract](
 	contract C,
 	opts *bind.CallOpts,
 	role [32]byte,
@@ -218,7 +218,7 @@ func HasRole[C accessControlContract](
 			lastErr = err
 			select {
 			case <-ctx.Done():
-				return false, fmt.Errorf("context cancelled while waiting for owner of %s: %w", contract.Address(), ctx.Err())
+				return false, fmt.Errorf("context cancelled while waiting for role check of %s: %w", contract.Address(), ctx.Err())
 			case <-time.After(retryDelay):
 			}
 
@@ -226,10 +226,10 @@ func HasRole[C accessControlContract](
 		}
 
 		// For other errors, fail immediately
-		return false, fmt.Errorf("failed to get owner of %s: %w", contract.Address(), err)
+		return false, fmt.Errorf("failed to check role of %s: %w", contract.Address(), err)
 	}
 
-	return false, fmt.Errorf("failed to get owner of %s after %v: %w", contract.Address(), timeout, lastErr)
+	return false, fmt.Errorf("failed to check role of %s after %v: %w", contract.Address(), timeout, lastErr)
 }
 
 func AllCallersAllowed[C any, ARGS any](contract C, opts *bind.CallOpts, caller common.Address, args ARGS) (bool, error) {
