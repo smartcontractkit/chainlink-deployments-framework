@@ -7,7 +7,7 @@ output:
 contracts:
   - contract_name: LinkToken
     version: "1.0.0"
-    gobindings_package: "github.com/smartcontractkit/chainlink-evm/gethwrappers/shared/generated/initial/link_token"
+    gobindings_package: "github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/testdata/evm/gobindings/v1_0_0/link_token"
     functions:
       - name: transfer
         access: public

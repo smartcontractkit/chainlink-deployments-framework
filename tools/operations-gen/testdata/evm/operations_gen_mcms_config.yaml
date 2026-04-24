@@ -8,7 +8,7 @@ contracts:
   - contract_name: ManyChainMultiSig
     version: "1.0.0"
     package_name: many_chain_multi_sig
-    gobindings_package: "github.com/smartcontractkit/mcms/sdk/evm/bindings"
+    gobindings_package: "github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/testdata/evm/gobindings/v1_0_0/many_chain_multi_sig"
     functions:
       - name: owner
         access: public

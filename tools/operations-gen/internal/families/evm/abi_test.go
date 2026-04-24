@@ -103,7 +103,7 @@ func TestReadABI(t *testing.T) {
 	t.Parallel()
 	cfg := evm.EvmContractConfig{
 		Name:              "LinkToken",
-		GobindingsPackage: "github.com/smartcontractkit/chainlink-evm/gethwrappers/shared/generated/initial/link_token",
+		GobindingsPackage: "github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/testdata/evm/gobindings/v1_0_0/link_token",
 	}
 
 	parsedABI, err := evm.ReadABI(cfg)

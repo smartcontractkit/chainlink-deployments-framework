@@ -14,7 +14,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/operations/contract"
 	cldf_deployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	cld_ops "github.com/smartcontractkit/chainlink-deployments-framework/operations"
-	gobindings "github.com/smartcontractkit/chainlink-evm/gethwrappers/shared/generated/initial/link_token"
+	gobindings "github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/testdata/evm/gobindings/v1_0_0/link_token"
 )
 
 var ContractType cldf_deployment.ContractType = "LinkToken"
