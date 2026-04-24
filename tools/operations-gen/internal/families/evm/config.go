@@ -17,14 +17,6 @@ type EvmFunctionConfig struct {
 	Access string `yaml:"access,omitempty"` // "owner" or "public"
 }
 
-// EvmInputConfig is retained for backward compatibility with existing config
-// files. ABI and bytecode are now resolved from gobindings_package instead of
-// these paths.
-type EvmInputConfig struct {
-	ABIBasePath      string `yaml:"abi_base_path,omitempty"`
-	BytecodeBasePath string `yaml:"bytecode_base_path,omitempty"`
-}
-
 type EvmOutputConfig struct {
 	BasePath string `yaml:"base_path"`
 }

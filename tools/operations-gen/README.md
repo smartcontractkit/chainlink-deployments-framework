@@ -75,9 +75,6 @@ Create an `operations_gen_config.yaml` that points at your abigen-generated gobi
 version: "1.0.0"
 chain_family: evm # Optional: defaults to "evm"
 
-input:
-  {} # Reserved for future chain-family-specific inputs; unused for EVM today
-
 output:
   base_path: "." # Directory where generated operations/ folders are written
 
@@ -100,7 +97,6 @@ contracts:
 | -------------------------- | -------- | ------------------------------------------------------------------------------ |
 | `version`                  | Yes      | Config schema version                                                          |
 | `chain_family`             | No       | Target chain family. Only `"evm"` is supported. Defaults to `"evm"`.           |
-| `input`                    | No       | Reserved for future EVM-specific inputs. It is currently unused.               |
 | `output.base_path`         | Yes      | Root directory where generated files are written. Relative to the config file. |
 
 ### Contract fields
@@ -111,7 +107,6 @@ contracts:
 | `version`            | Yes      | Semver version of the contract (e.g. `"1.6.0"`)                                                                                                                                                                                 |
 | `gobindings_package` | Yes      | Full Go import path of the abigen-generated bindings package for this contract. The generator loads this package from source, extracts `<ContractName>MetaData`, and uses it for ABI, bytecode, tuple types, and contract interfaces. |
 | `package_name`       | No       | Override the generated Go package name. Defaults to `snake_case(contract_name)`.                                                                                                                                                |
-| `abi_file`           | No       | Deprecated and ignored. ABI is read from `gobindings_package`.                                                                                                                                                                  |
 | `version_path`       | No       | Override the directory path derived from the version. Defaults to `v{major}_{minor}_{patch}`.                                                                                                                                   |
 | `omit_deploy`        | No       | Skip generation of the `Deploy` operation and bytecode constant. Defaults to `false`.                                                                                                                                           |
 

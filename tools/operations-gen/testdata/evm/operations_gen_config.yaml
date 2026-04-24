@@ -1,8 +1,6 @@
 version: "1.0.0"
 chain_family: evm
 
-input: {}
-
 output:
   base_path: "."
 

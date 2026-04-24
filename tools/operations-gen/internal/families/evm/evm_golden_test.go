@@ -47,7 +47,6 @@ func runGoldenGenerationTest(t *testing.T, configFileName string, goldenFileName
 	}
 
 	// Override output path to an isolated temp dir.
-	cfg.Input = mustYAMLNode(t, evm.EvmInputConfig{})
 	tmpDir := t.TempDir()
 	cfg.Output = mustYAMLNode(t, evm.EvmOutputConfig{BasePath: tmpDir})
 	cfg.ConfigDir = ""

@@ -55,7 +55,7 @@ type ParameterInfo struct {
 
 // ---- Extraction ----
 
-func extractContractInfo(cfg EvmContractConfig, input EvmInputConfig, output EvmOutputConfig) (*ContractInfo, error) {
+func extractContractInfo(cfg EvmContractConfig, output EvmOutputConfig) (*ContractInfo, error) {
 	if cfg.Name == "" || cfg.Version == "" {
 		return nil, errors.New("contract_name and version are required")
 	}
@@ -78,8 +78,6 @@ func extractContractInfo(cfg EvmContractConfig, input EvmInputConfig, output Evm
 	if err := validatePathSegment("version_path", versionPath); err != nil {
 		return nil, err
 	}
-
-	_ = input
 
 	parsedAbi, err := ReadABI(cfg)
 	if err != nil {
