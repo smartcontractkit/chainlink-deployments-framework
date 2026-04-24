@@ -37,6 +37,7 @@ func (h Handler) Generate(config core.Config, tmpl *template.Template) error {
 		if err := node.Decode(&cfg); err != nil {
 			return fmt.Errorf("failed to decode EVM contract config: %w", err)
 		}
+		cfg.ConfigDir = config.ConfigDir
 
 		info, err := extractContractInfo(cfg, output)
 		if err != nil {

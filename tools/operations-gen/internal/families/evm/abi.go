@@ -109,7 +109,7 @@ func ReadABI(
 		return nil, fmt.Errorf("gobindings_package is required for contract %q", cfg.Name)
 	}
 
-	abiStr, err := readABIFromGobinding(cfg.GobindingsPackage, cfg.Name)
+	abiStr, err := readABIFromGobinding(cfg.GobindingsPackage, cfg.Name, cfg.ConfigDir)
 	if err != nil {
 		return nil, err
 	}
@@ -122,10 +122,15 @@ func ReadABI(
 	return &parsedABI, nil
 }
 
-func readABIFromGobinding(pkgPath string, contractName string) (*string, error) {
-	pkgs, err := packages.Load(&packages.Config{
+func readABIFromGobinding(pkgPath string, contractName string, loadDir string) (*string, error) {
+	loadCfg := &packages.Config{
 		Mode: packages.NeedName | packages.NeedFiles,
-	}, pkgPath)
+	}
+	if loadDir != "" {
+		loadCfg.Dir = loadDir
+	}
+
+	pkgs, err := packages.Load(loadCfg, pkgPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load gobindings package %q: %w", pkgPath, err)
 	}
@@ -211,7 +216,11 @@ func metadataABIValue(expr ast.Expr) (string, error) {
 			continue
 		}
 		key, ok := kv.Key.(*ast.Ident)
-		if !ok || key.Name != "ABI" {
+		if !ok {
+			continue
+		}
+
+		if key.Name != "ABI" {
 			continue
 		}
 

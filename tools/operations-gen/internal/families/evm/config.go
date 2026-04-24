@@ -9,6 +9,7 @@ type EvmContractConfig struct {
 	OmitDeploy        bool                `yaml:"omit_deploy,omitempty"`  // Optional: skip Deploy operation
 	GobindingsPackage string              `yaml:"gobindings_package"`     // Required: the Go import path of the gobindings package for this contract.
 	Functions         []EvmFunctionConfig `yaml:"functions"`
+	ConfigDir         string              `yaml:"-"`
 }
 
 // EvmFunctionConfig selects a contract function and assigns its access control.
