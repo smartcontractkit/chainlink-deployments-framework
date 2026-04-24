@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -218,4 +219,14 @@ func (c Chain) NetworkType() (chainsel.NetworkType, error) {
 // IsNetworkType checks if the chain is on the given network type
 func (c Chain) IsNetworkType(networkType chainsel.NetworkType) bool {
 	return chaincommon.ChainMetadata{Selector: c.Selector}.IsNetworkType(networkType)
+}
+
+func (c Chain) ReadOnly() any {
+	privateKey, err := sollib.NewRandomPrivateKey()
+	if err != nil {
+		log.Fatalf("unable to generate private key for read-only chain %v: %s", c, err.Error())
+	}
+	c.DeployerKey = &privateKey
+
+	return c
 }

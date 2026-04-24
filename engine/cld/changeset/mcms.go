@@ -100,8 +100,10 @@ func (r *ChangesetsRegistry) RunProposalHooks(
 			Name:        e.Name,
 			Logger:      e.Logger,
 			BlockChains: blockChains,
+			DataStore:   e.DataStore,
+			Offchain:    e.Offchain,
 			ForkContext: forkCtx,
-			// TODO: JD and CRE clients
+			// TODO: CRE client
 		},
 		ChangesetKey: key,
 		Proposal:     proposal,

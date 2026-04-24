@@ -32,3 +32,4 @@ func (c *StubChain) NetworkType() (chainsel.NetworkType, error) {
 func (c *StubChain) IsNetworkType(networkType chainsel.NetworkType) bool {
 	return networkType == chainsel.NetworkTypeTestnet
 }
+func (c *StubChain) ReadOnly() any { return c }

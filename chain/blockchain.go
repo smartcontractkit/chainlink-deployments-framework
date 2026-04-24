@@ -62,6 +62,9 @@ type BlockChain interface {
 
 	// IsNetworkType checks if the chain is on the given network type
 	IsNetworkType(networkType chainsel.NetworkType) bool
+
+	// ReadOnly returns a read-only version of the chain
+	ReadOnly() any
 }
 
 // BlockChains represents a collection of chains.
@@ -175,8 +178,7 @@ func (b BlockChains) StellarChains() map[uint64]stellar.Chain {
 
 func (b BlockChains) ReadOnly() BlockChains {
 	return NewBlockChains(lo.MapValues(b.chains, func(c BlockChain, _ uint64) BlockChain {
-		// TODO: define ReadOnly() method for each chain, then replace with `c.ReadOnly()`
-		return c
+		return c.ReadOnly().(BlockChain)
 	}))
 }
 

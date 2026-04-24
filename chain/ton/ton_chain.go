@@ -2,6 +2,8 @@ package ton
 
 import (
 	"context"
+	"crypto/ed25519"
+	"log"
 
 	"github.com/xssnick/tonutils-go/address"
 	"github.com/xssnick/tonutils-go/tlb"
@@ -34,4 +36,21 @@ var MakeDefaultConfirmFunc = func(c ton.APIClientWrapped) ConfirmFunc {
 	return func(ctx context.Context, tx *tlb.Transaction) error {
 		return tracetracking.WaitForTrace(ctx, c, tx, bindings.DefaultTraceStopCondition)
 	}
+}
+
+func (c Chain) ReadOnly() any {
+	_, privateKey, err := ed25519.GenerateKey(nil)
+	if err != nil {
+		log.Fatalf("failed to generate private key for chain %v: %v", c, err.Error())
+	}
+
+	walletConfig := wallet.ConfigV5R1Final{NetworkGlobalID: wallet.MainnetGlobalID, Workchain: 0} // REVIEW
+	wallet, err := wallet.FromPrivateKeyWithOptions(c.Client, privateKey, walletConfig)
+	if err != nil {
+		log.Fatalf("failed to generate wallet for chain %v: %v", c, err.Error())
+	}
+
+	c.Wallet = wallet
+
+	return c
 }

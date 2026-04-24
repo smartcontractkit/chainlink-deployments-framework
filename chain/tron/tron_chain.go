@@ -2,8 +2,10 @@ package tron
 
 import (
 	"context"
+	"log"
 	"time"
 
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/fbsobreira/gotron-sdk/pkg/address"
 	"github.com/fbsobreira/gotron-sdk/pkg/http/common"
 	"github.com/fbsobreira/gotron-sdk/pkg/http/soliditynode"
@@ -85,4 +87,18 @@ func DefaultTriggerOptions() *TriggerOptions {
 		TAmount:             0,          // No TRX transferred by default.
 		ConfirmRetryOptions: DefaultConfirmRetryOptions(),
 	}
+}
+
+func (c Chain) ReadOnly() any {
+	privateKey, err := crypto.GenerateKey()
+	if err != nil {
+		log.Fatalf("failed to generate private key for chain %v: %v", c, err.Error())
+	}
+
+	c.Address = address.PubkeyToAddress(privateKey.PublicKey)
+	c.SignHash = func(ctx context.Context, txHash []byte) ([]byte, error) {
+		return crypto.Sign(txHash, privateKey)
+	}
+
+	return c
 }

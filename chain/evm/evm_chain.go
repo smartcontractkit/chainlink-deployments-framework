@@ -2,11 +2,13 @@ package evm
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/zksync-sdk/zksync2-go/accounts"
 	"github.com/zksync-sdk/zksync2-go/clients"
@@ -84,4 +86,14 @@ func (c Chain) NetworkType() (chainsel.NetworkType, error) {
 // IsNetworkType checks if the chain is on the given network type
 func (c Chain) IsNetworkType(networkType chainsel.NetworkType) bool {
 	return chaincommon.ChainMetadata{Selector: c.Selector}.IsNetworkType(networkType)
+}
+
+func (c Chain) ReadOnly() any {
+	privateKey, err := crypto.GenerateKey()
+	if err != nil {
+		panic("unable to generate private key for read-only chain: " + err.Error())
+	}
+	c.DeployerKey.From = crypto.PubkeyToAddress(*privateKey.Public().(*ecdsa.PublicKey))
+
+	return c
 }

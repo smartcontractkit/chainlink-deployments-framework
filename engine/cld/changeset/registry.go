@@ -220,7 +220,13 @@ func (r *ChangesetsRegistry) Apply(
 
 func runPreHooks(e fdeployment.Environment, key string, resolvedInput any, applySnapshot applySnapshot) error {
 	preParams := PreHookParams{
-		Env:          HookEnv{Name: e.Name, Logger: e.Logger},
+		Env: HookEnv{
+			Name:        e.Name,
+			Logger:      e.Logger,
+			BlockChains: e.BlockChains.ReadOnly(),
+			DataStore:   e.DataStore,
+			Offchain:    e.Offchain,
+		},
 		ChangesetKey: key,
 		Config:       resolvedInput,
 	}
@@ -246,7 +252,13 @@ func runPostHooks(
 	applyErr error, applySnapshot applySnapshot,
 ) error {
 	postParams := PostHookParams{
-		Env:          HookEnv{Name: e.Name, Logger: e.Logger},
+		Env: HookEnv{
+			Name:        e.Name,
+			Logger:      e.Logger,
+			BlockChains: e.BlockChains.ReadOnly(),
+			DataStore:   e.DataStore,
+			Offchain:    e.Offchain,
+		},
 		ChangesetKey: key,
 		Config:       resolvedInput,
 		Output:       output,

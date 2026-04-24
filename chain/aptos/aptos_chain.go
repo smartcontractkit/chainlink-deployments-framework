@@ -1,6 +1,8 @@
 package aptos
 
 import (
+	"log"
+
 	aptoslib "github.com/aptos-labs/aptos-go-sdk"
 	chainsel "github.com/smartcontractkit/chain-selectors"
 
@@ -49,4 +51,14 @@ func (c Chain) NetworkType() (chainsel.NetworkType, error) {
 // IsNetworkType checks if the chain is on the given network type
 func (c Chain) IsNetworkType(networkType chainsel.NetworkType) bool {
 	return chaincommon.ChainMetadata{Selector: c.Selector}.IsNetworkType(networkType)
+}
+
+func (c Chain) ReadOnly() any {
+	signer, err := aptoslib.NewSecp256k1Account()
+	if err != nil {
+		log.Fatalf("unable to generate private key for read-only chain %v: %s", c, err.Error())
+	}
+	c.DeployerSigner = signer
+
+	return c
 }

@@ -1,7 +1,10 @@
 package stellar
 
 import (
+	"log"
+
 	"github.com/stellar/go-stellar-sdk/clients/rpcclient"
+	"github.com/stellar/go-stellar-sdk/keypair"
 
 	chaincommon "github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/common"
 )
@@ -26,4 +29,14 @@ type Chain struct {
 
 	// NetworkPassphrase identifies the Stellar network
 	NetworkPassphrase string
+}
+
+func (c Chain) ReadOnly() any {
+	keyPair, err := keypair.Random()
+	if err != nil {
+		log.Fatalf("failed to create keypair for chain %v: %v", c, err.Error())
+	}
+	c.Signer = NewStellarKeypairSigner(keyPair)
+
+	return c
 }
