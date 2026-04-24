@@ -3,76 +3,67 @@ package evm_test
 import (
 	"testing"
 
+	"github.com/ethereum/go-ethereum/accounts/abi"
+
 	"github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/internal/families/evm"
 )
 
 func TestSolidityToGoType(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
-		solidity string
+		solidity abi.Type
 		want     string
 	}{
-		{"uint256", "*big.Int"},
-		{"address", "common.Address"},
-		{"bool", "bool"},
-		{"string", "string"},
-		{"bytes32", "[32]byte"},
+		{abi.Type{T: abi.AddressTy}, "common.Address"},
+		{abi.Type{T: abi.BoolTy}, "bool"},
+		{abi.Type{T: abi.StringTy}, "string"},
+		{abi.Type{T: abi.FixedBytesTy, Size: 32}, "[32]byte"},
 		// dynamic arrays
-		{"uint256[]", "[]*big.Int"},
-		{"address[]", "[]common.Address"},
+		{abi.Type{T: abi.ArrayTy, Elem: &abi.Type{T: abi.UintTy, Size: 256}}, "[]*big.Int"},
+		{abi.Type{T: abi.ArrayTy, Elem: &abi.Type{T: abi.AddressTy}}, "[]common.Address"},
 		// fixed-size arrays
-		{"uint8[32]", "[32]uint8"},
-		{"bytes32[4]", "[4][32]byte"},
-		// intermediate uint sizes
-		{"uint40", "uint64"},
-		{"uint48", "uint64"},
-		{"uint56", "uint64"},
-		// unknown scalar → any
-		{"uint512", "any"},
-		// unknown scalar fixed-size array → any
-		{"uint512[4]", "any"},
-		// malformed arrays should never panic and should degrade to any
-		{"[", "any"},
-		{"uint8[", "any"},
-		// tuple → any
-		{"tuple", "any"},
-		{"tuple[]", "any"},
+		{abi.Type{T: abi.ArrayTy, Size: 32, Elem: &abi.Type{T: abi.UintTy, Size: 8}}, "[32]uint8"},
+		{abi.Type{T: abi.ArrayTy, Size: 4, Elem: &abi.Type{T: abi.FixedBytesTy, Size: 32}}, "[4][32]byte"},
+		// native-width unsigned ints
+		{abi.Type{T: abi.UintTy, Size: 8}, "uint8"},
+		{abi.Type{T: abi.UintTy, Size: 16}, "uint16"},
+		{abi.Type{T: abi.UintTy, Size: 32}, "uint32"},
+		{abi.Type{T: abi.UintTy, Size: 64}, "uint64"},
+		// non-native unsigned widths fall back to *big.Int to match abigen
+		{abi.Type{T: abi.UintTy, Size: 24}, "*big.Int"},
+		{abi.Type{T: abi.UintTy, Size: 40}, "*big.Int"},
+		{abi.Type{T: abi.UintTy, Size: 48}, "*big.Int"},
+		{abi.Type{T: abi.UintTy, Size: 56}, "*big.Int"},
+		{abi.Type{T: abi.UintTy, Size: 72}, "*big.Int"},
+		{abi.Type{T: abi.UintTy, Size: 128}, "*big.Int"},
+		{abi.Type{T: abi.UintTy, Size: 256}, "*big.Int"},
+		// native-width signed ints
+		{abi.Type{T: abi.IntTy, Size: 8}, "int8"},
+		{abi.Type{T: abi.IntTy, Size: 16}, "int16"},
+		{abi.Type{T: abi.IntTy, Size: 32}, "int32"},
+		{abi.Type{T: abi.IntTy, Size: 64}, "int64"},
+		// non-native signed widths fall back to *big.Int to match abigen
+		{abi.Type{T: abi.IntTy, Size: 24}, "*big.Int"},
+		{abi.Type{T: abi.IntTy, Size: 40}, "*big.Int"},
+		{abi.Type{T: abi.IntTy, Size: 48}, "*big.Int"},
+		{abi.Type{T: abi.IntTy, Size: 56}, "*big.Int"},
+		{abi.Type{T: abi.IntTy, Size: 72}, "*big.Int"},
+		{abi.Type{T: abi.IntTy, Size: 128}, "*big.Int"},
+		{abi.Type{T: abi.IntTy, Size: 256}, "*big.Int"},
+		// tuples resolve to the gobindings-generated struct name
+		{abi.Type{T: abi.TupleTy, TupleRawName: "TestStruct"}, "gobindings.TestStruct"},
+		{abi.Type{T: abi.ArrayTy, Elem: &abi.Type{T: abi.TupleTy, TupleRawName: "TestStruct"}}, "[]gobindings.TestStruct"},
+		// anonymous tuples have no gobindings struct — must degrade to `any`
+		// rather than emitting the invalid identifier "gobindings."
+		{abi.Type{T: abi.TupleTy, TupleRawName: ""}, "any"},
+		{abi.Type{T: abi.SliceTy, Elem: &abi.Type{T: abi.TupleTy, TupleRawName: ""}}, "[]any"},
+		{abi.Type{T: abi.ArrayTy, Size: 3, Elem: &abi.Type{T: abi.TupleTy, TupleRawName: ""}}, "[3]any"},
 	}
 	for _, tc := range cases {
-		t.Run(tc.solidity, func(t *testing.T) {
+		t.Run(tc.want, func(t *testing.T) {
 			t.Parallel()
-			if got := evm.SolidityToGoType(tc.solidity, evm.EvmTypeMap); got != tc.want {
+			if got := evm.AbiToGoType(tc.solidity); got != tc.want {
 				t.Errorf("solidityToGoType(%q) = %q, want %q", tc.solidity, got, tc.want)
-			}
-		})
-	}
-}
-
-func TestExtractStructName(t *testing.T) {
-	t.Parallel()
-	cases := []struct {
-		internalType string
-		want         string
-	}{
-		{"struct IOnRamp.DestChainConfig", "DestChainConfig"},
-		{"struct IOnRamp.DestChainConfig[]", "DestChainConfig"},
-		{"struct MyContract.Foo", "Foo"},
-		// no dot — whole string minus [] suffix
-		{"DestChainConfig", "DestChainConfig"},
-		// "struct " prefix without a module qualifier
-		{"struct MyStruct", "MyStruct"},
-		{"struct MyStruct[]", "MyStruct"},
-		// anonymous tuples — no struct name, caller falls back to any
-		{"tuple", ""},
-		{"tuple[]", ""},
-		// empty
-		{"", ""},
-	}
-	for _, tc := range cases {
-		t.Run(tc.internalType, func(t *testing.T) {
-			t.Parallel()
-			if got := evm.ExtractStructName(tc.internalType); got != tc.want {
-				t.Errorf("ExtractStructName(%q) = %q, want %q", tc.internalType, got, tc.want)
 			}
 		})
 	}
@@ -108,58 +99,6 @@ func TestSanitizeFieldName(t *testing.T) {
 	}
 }
 
-func TestSanitizeParamName(t *testing.T) {
-	t.Parallel()
-	cases := []struct{ input, want string }{
-		{"_to", "to"},
-		{"_value", "value"},
-		{"_spender", "spender"},
-		{"__foo", "foo"},
-		// No underscore — lowercase first char
-		{"Balance", "balance"},
-		{"owner", "owner"},
-		// Leading underscore followed by digit — result starts with digit, invalid Go identifier
-		{"_1", ""},
-		// Empty
-		{"", ""},
-	}
-	for _, tc := range cases {
-		t.Run(tc.input, func(t *testing.T) {
-			t.Parallel()
-			if got := evm.SanitizeParamName(tc.input); got != tc.want {
-				t.Errorf("SanitizeParamName(%q) = %q, want %q", tc.input, got, tc.want)
-			}
-		})
-	}
-}
-
-func TestFindFunctionInABIOverloads(t *testing.T) {
-	t.Parallel()
-	entries := []evm.ABIEntry{
-		{Type: "function", Name: "transfer", Inputs: []evm.ABIParam{{Name: "to", Type: "address"}, {Name: "amount", Type: "uint256"}}, StateMutability: "nonpayable"},
-		{Type: "function", Name: "transfer", Inputs: []evm.ABIParam{{Name: "to", Type: "address"}, {Name: "amount", Type: "uint256"}, {Name: "data", Type: "bytes"}}, StateMutability: "nonpayable"},
-		{Type: "function", Name: "transfer", Inputs: []evm.ABIParam{{Name: "to", Type: "address"}, {Name: "amount", Type: "uint256"}, {Name: "data", Type: "bytes"}, {Name: "extra", Type: "bytes32"}}, StateMutability: "nonpayable"},
-	}
-
-	results := evm.FindFunctionInABI(entries, "transfer", "mypkg", evm.EvmTypeMap)
-
-	if len(results) != 3 {
-		t.Fatalf("expected 3 overloads, got %d", len(results))
-	}
-	// First overload: no suffix
-	if results[0].Name != "Transfer" || results[0].CallMethod != "transfer" {
-		t.Errorf("overload[0]: got Name=%q CallMethod=%q", results[0].Name, results[0].CallMethod)
-	}
-	// Second overload: suffix "0"
-	if results[1].Name != "Transfer0" || results[1].CallMethod != "transfer0" {
-		t.Errorf("overload[1]: got Name=%q CallMethod=%q", results[1].Name, results[1].CallMethod)
-	}
-	// Third overload: suffix "1"
-	if results[2].Name != "Transfer1" || results[2].CallMethod != "transfer1" {
-		t.Errorf("overload[2]: got Name=%q CallMethod=%q", results[2].Name, results[2].CallMethod)
-	}
-}
-
 func TestReadABIAndBytecodeInvalidABIFileSuffix(t *testing.T) {
 	t.Parallel()
 	cfg := evm.EvmContractConfig{ABIFile: "contract.abi"}
@@ -174,10 +113,12 @@ func TestReadABIAndBytecodeInvalidABIFileSuffix(t *testing.T) {
 
 func TestFindFunctionInABINotFound(t *testing.T) {
 	t.Parallel()
-	entries := []evm.ABIEntry{
-		{Type: "function", Name: "transfer"},
+	parsed := abi.ABI{
+		Methods: map[string]abi.Method{
+			"transfer": {Name: "transfer", RawName: "transfer"},
+		},
 	}
-	if got := evm.FindFunctionInABI(entries, "mint", "pkg", evm.EvmTypeMap); got != nil {
+	if got := evm.FindFunctionInABI(parsed, "mint"); got != nil {
 		t.Errorf("expected nil for missing function, got %v", got)
 	}
 }

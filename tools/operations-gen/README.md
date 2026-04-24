@@ -4,16 +4,27 @@ Generates type-safe Go operation wrappers for smart contracts from their ABIs.
 
 ## Usage
 
+From inside this repository:
+
 ```bash
 go run ./tools/operations-gen -config /path/to/operations_gen_config.yaml
 ```
 
-The `-config` path can be absolute or relative to the current working directory.
+From any other repository, install the binary once and invoke it directly:
+
+```bash
+# Pin to a published subdirectory tag
+go install github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen@vX.Y.Z
+
+operations-gen -config /path/to/operations_gen_config.yaml
+```
+
+The `-config` path can be absolute or relative to the current working directory. All paths inside the config (ABI dirs, bytecode dirs, output dir) are resolved relative to the config file's directory, so the binary can be run from anywhere.
 
 Print the CLI release metadata:
 
 ```bash
-go run ./tools/operations-gen -version
+operations-gen -version
 ```
 
 ## Install a released version
@@ -46,7 +57,9 @@ tools/operations-gen/
     families/
       evm/
         evm.go                    # EVM handler implementation
-        evm_test.go               # EVM unit tests
+        abi.go, contract.go,
+        codegen.go                # ABI → IR → template-data pipeline
+        *_test.go                 # EVM unit tests
         evm_golden_test.go        # End-to-end golden generation tests
   testdata/
     evm/                          # ABI/bytecode/config/golden fixtures
@@ -72,6 +85,7 @@ output:
 contracts:
   - contract_name: FeeQuoter
     version: "1.6.0"
+    gobindings_package: "github.com/smartcontractkit/chainlink-ccip/chains/evm/gobindings/generated/v1_6_0/fee_quoter"
     package_name: fee_quoter # Optional: override default package name
     abi_file: "fee_quoter.json" # Optional: override default ABI filename
     omit_deploy: false # Optional: set true to skip Deploy operation generation (default: false)
@@ -94,14 +108,15 @@ contracts:
 
 ### Contract fields
 
-| Field           | Required | Description                                                                                   |
-| --------------- | -------- | --------------------------------------------------------------------------------------------- |
-| `contract_name` | Yes      | Contract name as it appears in the ABI (e.g. `FeeQuoter`)                                     |
-| `version`       | Yes      | Semver version of the contract (e.g. `"1.6.0"`)                                               |
-| `package_name`  | No       | Override the generated Go package name. Defaults to `snake_case(contract_name)`.              |
-| `abi_file`      | No       | Override the ABI filename. Defaults to `{package_name}.json`.                                 |
-| `version_path`  | No       | Override the directory path derived from the version. Defaults to `v{major}_{minor}_{patch}`. |
-| `omit_deploy`   | No       | Skip generation of the `Deploy` operation and bytecode constant. Defaults to `false`.         |
+| Field                | Required | Description                                                                                                                                                                                                                     |
+| -------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `contract_name`      | Yes      | Contract name as it appears in the ABI (e.g. `FeeQuoter`)                                                                                                                                                                       |
+| `version`            | Yes      | Semver version of the contract (e.g. `"1.6.0"`)                                                                                                                                                                                 |
+| `gobindings_package` | Yes      | Full Go import path of the abigen-generated bindings package for this contract. Tuple types and contract interfaces are resolved via this import (e.g. `gobindings.FeeQuoterInterface`, `gobindings.InternalTokenPriceUpdate`). |
+| `package_name`       | No       | Override the generated Go package name. Defaults to `snake_case(contract_name)`.                                                                                                                                                |
+| `abi_file`           | No       | Override the ABI filename. Defaults to `{package_name}.json`.                                                                                                                                                                   |
+| `version_path`       | No       | Override the directory path derived from the version. Defaults to `v{major}_{minor}_{patch}`.                                                                                                                                   |
+| `omit_deploy`        | No       | Skip generation of the `Deploy` operation and bytecode constant. Defaults to `false`.                                                                                                                                           |
 
 ### Function access control
 
@@ -140,17 +155,19 @@ Generated files are written to:
 
 Each generated file contains:
 
-- ABI and bytecode constants
-- A bound contract wrapper with typed methods
+- ABI and bytecode constants, plus a `ContractType` and `Version`
 - A `Deploy` operation (unless `omit_deploy: true`)
-- A typed write operation for each `access: owner` or writable `access: public` function
-- A typed read operation for each `view`/`pure` function
+- A `NewWrite<Fn>(c gobindings.<Contract>Interface)` factory for every `access: owner` (or writable `access: public`) function, returning `*cld_ops.Operation[…]`
+- A `NewRead<Fn>(c gobindings.<Contract>Interface)` factory for every `view` / `pure` function
+- `*Args` structs for functions that take multiple inputs, and `*Result` structs for reads that return multiple outputs
 
-The generated code imports the runtime helpers from:
+The generator does not emit its own contract wrapper: each factory takes an interface from the abigen-generated `gobindings` package. The caller is expected to bind the contract via that package (`gobindings.New<Contract>(addr, backend)`) and hand the result in.
 
-```
-github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/operations/contract
-```
+The generated code depends on three imports:
+
+- `github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/operations/contract` — the operations runtime
+- `github.com/smartcontractkit/chainlink-deployments-framework/chain/evm` and `.../operations` — chain + ops types used in the factory signatures
+- `{gobindings_package}` — the per-contract abigen bindings you specified in the config
 
 ## Extending to new chain families
 
