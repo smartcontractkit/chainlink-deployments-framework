@@ -1,6 +1,7 @@
 package evm_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -157,5 +158,28 @@ func TestFindFunctionInABINotFound(t *testing.T) {
 	}
 	if got := evm.FindFunctionInABI(&parsed, "mint"); got != nil {
 		t.Errorf("expected nil for missing function, got %v", got)
+	}
+}
+
+func TestNormalizeStructInternalTypes(t *testing.T) {
+	t.Parallel()
+
+	input := `[
+		{"internalType":"structFeeAggregator.ConstructorParams","type":"tuple"},
+		{"internalType":"structClient.EVMTokenAmount[]","type":"tuple[]"},
+		{"internalType":"struct Common.AssetAmount[]","type":"tuple[]"}
+	]`
+
+	got := evm.NormalizeStructInternalTypes(input)
+
+	wantContains := []string{
+		`"internalType":"struct FeeAggregator.ConstructorParams"`,
+		`"internalType":"struct Client.EVMTokenAmount[]"`,
+		`"internalType":"struct Common.AssetAmount[]"`,
+	}
+	for _, want := range wantContains {
+		if !strings.Contains(got, want) {
+			t.Fatalf("normalized ABI does not contain %s: %s", want, got)
+		}
 	}
 }

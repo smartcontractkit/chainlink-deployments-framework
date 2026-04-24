@@ -178,6 +178,60 @@ func OnlyOwner[C ownableContract, ARGS any](contract C, opts *bind.CallOpts, cal
 	return false, fmt.Errorf("failed to get owner of %s after %v: %w", contract.Address(), timeout, lastErr)
 }
 
+type accessControlContract interface {
+	Address() common.Address
+	HasRole(opts *bind.CallOpts, role [32]byte, account common.Address) (bool, error)
+}
+
+// HasRole reports whether account holds role on contract (OpenZeppelin IAccessControl-style HasRole).
+// Includes retries for RPC flakiness after deploy.
+func HasRole[C accessControlContract](
+	contract C,
+	opts *bind.CallOpts,
+	role [32]byte,
+	account common.Address,
+) (bool, error) {
+	// Retry with timeout to handle testnet flakiness where a newly deployed contract
+	// may not be immediately visible to the RPC node
+	const (
+		timeout    = 5 * time.Second
+		retryDelay = 500 * time.Millisecond
+	)
+
+	ctx := context.Background()
+	if opts != nil && opts.Context != nil {
+		ctx = opts.Context
+	}
+
+	deadline := time.Now().Add(timeout)
+	var lastErr error
+
+	for time.Now().Before(deadline) {
+		ok, err := contract.HasRole(opts, role, account)
+		if err == nil {
+			return ok, nil
+		}
+
+		// Check if this is a "contract not found" type error (empty response)
+		// These errors typically contain "attempting to unmarshal an empty string"
+		if strings.Contains(err.Error(), "empty string") || strings.Contains(err.Error(), "no contract code") {
+			lastErr = err
+			select {
+			case <-ctx.Done():
+				return false, fmt.Errorf("context cancelled while waiting for owner of %s: %w", contract.Address(), ctx.Err())
+			case <-time.After(retryDelay):
+			}
+
+			continue
+		}
+
+		// For other errors, fail immediately
+		return false, fmt.Errorf("failed to get owner of %s: %w", contract.Address(), err)
+	}
+
+	return false, fmt.Errorf("failed to get owner of %s after %v: %w", contract.Address(), timeout, lastErr)
+}
+
 func AllCallersAllowed[C any, ARGS any](contract C, opts *bind.CallOpts, caller common.Address, args ARGS) (bool, error) {
 	return true, nil
 }

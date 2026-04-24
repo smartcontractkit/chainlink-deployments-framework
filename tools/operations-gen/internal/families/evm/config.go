@@ -15,7 +15,13 @@ type EvmContractConfig struct {
 // EvmFunctionConfig selects a contract function and assigns its access control.
 type EvmFunctionConfig struct {
 	Name   string `yaml:"name"`
-	Access string `yaml:"access,omitempty"` // "owner" or "public"
+	Access string `yaml:"access,omitempty"` // "owner", "role", or "public"
+	// Role is the OpenZeppelin-style role name used when Access is "role".
+	// Accepted formats:
+	//   - DEFAULT_ADMIN_ROLE  → all-zero bytes32
+	//   - SOME_ROLE           → keccak256("SOME_ROLE"), matching Solidity's bytes32 constant
+	//   - 64 hex chars        → raw bytes32 value
+	Role string `yaml:"role,omitempty"`
 }
 
 type EvmOutputConfig struct {

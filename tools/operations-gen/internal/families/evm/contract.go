@@ -11,6 +11,12 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/internal/core"
 )
 
+const (
+	accessPublic = "public"
+	accessOwner  = "owner"
+	accessRole   = "role"
+)
+
 // ---- Intermediate representation ----
 
 // ContractInfo holds all parsed information about a contract needed for code generation.
@@ -43,6 +49,7 @@ type FunctionInfo struct {
 	// For overloaded functions this includes the numeric suffix (e.g. "curse0").
 	CallMethod    string
 	AccessControl string
+	Role          [32]byte
 }
 
 type ParameterInfo struct {
@@ -142,6 +149,13 @@ func extractFunctions(info *ContractInfo, funcConfigs []EvmFunctionConfig, parse
 				fi.AccessControl = accessOwner
 			case accessPublic, "":
 				fi.AccessControl = accessPublic
+			case accessRole:
+				role, err := resolveRoleField(funcCfg.Role)
+				if err != nil {
+					return fmt.Errorf("failed to resolve role for function %s", funcCfg.Name)
+				}
+				fi.AccessControl = accessRole
+				fi.Role = role
 			default:
 				return fmt.Errorf("unknown access control '%s' for function %s (use 'owner' or 'public')",
 					funcCfg.Access, funcCfg.Name)

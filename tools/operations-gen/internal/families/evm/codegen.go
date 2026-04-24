@@ -56,6 +56,7 @@ type OperationData struct {
 	CallArgs      string
 	IsWrite       bool
 	AccessControl string // Only for writes
+	Role          string // Go literal for the role bytes32, e.g. [32]byte{0x12, …}
 	ReturnType    string // Only for reads
 	// ReturnFields is non-empty for read operations with multiple return values.
 	// The template uses it to pack individual return values into a synthetic result struct.
@@ -184,6 +185,11 @@ func prepareParameters(params []ParameterInfo) []ParameterData {
 func prepareWriteOp(fi *FunctionInfo) OperationData {
 	argsType, callArgs := buildCallArgs(fi)
 
+	role := ""
+	if fi.AccessControl == "role" {
+		role = formatRoleGoLiteral(fi.Role)
+	}
+
 	return OperationData{
 		Name:          fi.Name,
 		MethodName:    fi.CallMethod,
@@ -192,6 +198,7 @@ func prepareWriteOp(fi *FunctionInfo) OperationData {
 		CallArgs:      callArgs,
 		IsWrite:       true,
 		AccessControl: fi.AccessControl,
+		Role:          role,
 	}
 }
 
