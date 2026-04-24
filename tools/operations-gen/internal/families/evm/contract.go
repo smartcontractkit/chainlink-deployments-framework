@@ -157,7 +157,7 @@ func extractFunctions(info *ContractInfo, funcConfigs []EvmFunctionConfig, parse
 				fi.AccessControl = accessRole
 				fi.Role = role
 			default:
-				return fmt.Errorf("unknown access control '%s' for function %s (use 'owner' or 'public')",
+				return fmt.Errorf("unknown access control '%s' for function %s (use 'owner', 'public', or 'role')",
 					funcCfg.Access, funcCfg.Name)
 			}
 
