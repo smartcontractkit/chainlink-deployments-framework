@@ -193,6 +193,10 @@ func TestHasRole(t *testing.T) {
 			desc: "returns true when contract reports account has role",
 			setupMock: func(contract *contractmocks.MockAccessControlContract, opts *bind.CallOpts) {
 				contract.EXPECT().
+					Address().
+					Return(contractAddress).
+					Once()
+				contract.EXPECT().
 					HasRole(opts, role, account).
 					Return(true, nil).
 					Once()
@@ -203,42 +207,15 @@ func TestHasRole(t *testing.T) {
 			desc: "returns false when contract reports account does not have role",
 			setupMock: func(contract *contractmocks.MockAccessControlContract, opts *bind.CallOpts) {
 				contract.EXPECT().
+					Address().
+					Return(contractAddress).
+					Once()
+				contract.EXPECT().
 					HasRole(opts, role, account).
 					Return(false, nil).
 					Once()
 			},
 			wantAllowed: false,
-		},
-		{
-			desc: "returns non retryable errors immediately",
-			setupMock: func(contract *contractmocks.MockAccessControlContract, opts *bind.CallOpts) {
-				contract.EXPECT().
-					HasRole(opts, role, account).
-					Return(false, errors.New("rpc unavailable")).
-					Once()
-				contract.EXPECT().
-					Address().
-					Return(contractAddress).
-					Once()
-			},
-			wantErr: "failed to check role of 0x000000000000000000000000000000000000ABcD: rpc unavailable",
-		},
-		{
-			desc: "returns context error while retrying empty response errors",
-			opts: &bind.CallOpts{
-				Context: cancelledContext(),
-			},
-			setupMock: func(contract *contractmocks.MockAccessControlContract, opts *bind.CallOpts) {
-				contract.EXPECT().
-					HasRole(opts, role, account).
-					Return(false, errors.New("attempting to unmarshal an empty string")).
-					Once()
-				contract.EXPECT().
-					Address().
-					Return(contractAddress).
-					Once()
-			},
-			wantErr: "context cancelled while waiting for role check of 0x000000000000000000000000000000000000ABcD: context canceled",
 		},
 	}
 
@@ -257,6 +234,74 @@ func TestHasRole(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, test.wantAllowed, allowed)
 			}
+		})
+	}
+}
+
+func TestRetryContractCall(t *testing.T) {
+	t.Parallel()
+
+	contractAddress := common.HexToAddress("0xabcd")
+	tests := []struct {
+		desc       string
+		opts       *bind.CallOpts
+		check      func() (bool, error)
+		want       bool
+		wantErr    string
+		wantChecks int
+	}{
+		{
+			desc: "returns successful check result",
+			check: func() (bool, error) {
+				return true, nil
+			},
+			want:       true,
+			wantChecks: 1,
+		},
+		{
+			desc: "returns non retryable errors immediately",
+			check: func() (bool, error) {
+				return false, errors.New("rpc unavailable")
+			},
+			wantErr:    "failed to check role of 0x000000000000000000000000000000000000ABcD: rpc unavailable",
+			wantChecks: 1,
+		},
+		{
+			desc: "returns context error while retrying empty response errors",
+			opts: &bind.CallOpts{
+				Context: cancelledContext(),
+			},
+			check: func() (bool, error) {
+				return false, errors.New("attempting to unmarshal an empty string")
+			},
+			wantErr:    "context cancelled while waiting for role check of 0x000000000000000000000000000000000000ABcD: context canceled",
+			wantChecks: 1,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			t.Parallel()
+			checks := 0
+			got, err := RetryContractCall(
+				test.opts,
+				"role check",
+				"check role",
+				contractAddress,
+				func() (bool, error) {
+					checks++
+
+					return test.check()
+				},
+			)
+			if test.wantErr != "" {
+				require.Error(t, err)
+				require.ErrorContains(t, err, test.wantErr)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, test.want, got)
+			}
+			require.Equal(t, test.wantChecks, checks)
 		})
 	}
 }
