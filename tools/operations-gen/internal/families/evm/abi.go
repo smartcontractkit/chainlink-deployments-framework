@@ -109,7 +109,7 @@ func ReadABI(
 		return nil, fmt.Errorf("gobindings_package is required for contract %q", cfg.Name)
 	}
 
-	abiStr, err := readABIFromGobinding(cfg.GobindingsPackage, cfg.Name, cfg.ConfigDir)
+	abiStr, err := readABIFromGobindings(cfg.GobindingsPackage, cfg.Name, cfg.ConfigDir)
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +134,7 @@ func normalizeStructInternalTypes(abiString string, contractName string) string 
 	return strings.ReplaceAll(abiString, "struct"+contractName+".", "struct "+contractName+".")
 }
 
-func readABIFromGobinding(pkgPath string, contractName string, loadDir string) (*string, error) {
+func readABIFromGobindings(pkgPath string, contractName string, loadDir string) (*string, error) {
 	loadCfg := &packages.Config{
 		Mode: packages.NeedName | packages.NeedFiles,
 	}
