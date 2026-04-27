@@ -18,8 +18,8 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
-func cancelledContext() context.Context {
-	ctx, cancel := context.WithCancel(context.Background())
+func cancelledContext(c context.Context) context.Context {
+	ctx, cancel := context.WithCancel(c)
 	cancel()
 
 	return ctx
@@ -269,7 +269,7 @@ func TestRetryContractCall(t *testing.T) {
 		{
 			desc: "returns context error while retrying empty response errors",
 			opts: &bind.CallOpts{
-				Context: cancelledContext(),
+				Context: cancelledContext(t.Context()),
 			},
 			check: func() (bool, error) {
 				return false, errors.New("attempting to unmarshal an empty string")
