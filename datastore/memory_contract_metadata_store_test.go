@@ -255,15 +255,14 @@ func TestMemoryMemoryContractMetadataStore_Delete(t *testing.T) {
 		}
 	)
 
-	t.Run("success: deletes given record and appends to DeletedKeys", func(t *testing.T) {
+	t.Run("success: deletes record from Records", func(t *testing.T) {
 		t.Parallel()
 
 		store := MemoryContractMetadataStore{Records: []ContractMetadata{recordOne, recordTwo, recordThree}}
 		err := store.Delete(recordTwo.Key())
 		require.NoError(t, err)
 		require.Equal(t, []ContractMetadata{recordOne, recordThree}, store.Records)
-		require.Len(t, store.DeletedKeys, 1)
-		require.True(t, store.DeletedKeys[0].Equals(recordTwo.Key()))
+		require.Empty(t, store.DeletedRemoteKeys)
 	})
 
 	t.Run("error: absent key returns ErrContractMetadataNotFound", func(t *testing.T) {
@@ -273,18 +272,65 @@ func TestMemoryMemoryContractMetadataStore_Delete(t *testing.T) {
 		err := store.Delete(recordTwo.Key())
 		require.ErrorIs(t, err, ErrContractMetadataNotFound)
 		require.Equal(t, []ContractMetadata{recordOne, recordThree}, store.Records)
-		require.Len(t, store.DeletedKeys, 0)
+		require.Empty(t, store.DeletedRemoteKeys)
 	})
 
-	t.Run("error: second Delete returns ErrContractMetadataNotFound, DeletedKeys unchanged", func(t *testing.T) {
+	t.Run("error: second Delete returns ErrContractMetadataNotFound", func(t *testing.T) {
 		t.Parallel()
 
 		store := MemoryContractMetadataStore{Records: []ContractMetadata{recordOne, recordTwo, recordThree}}
 		require.NoError(t, store.Delete(recordTwo.Key()))
-		require.Len(t, store.DeletedKeys, 1)
-		require.True(t, store.DeletedKeys[0].Equals(recordTwo.Key()))
+		require.Len(t, store.Records, 2)
 		require.ErrorIs(t, store.Delete(recordTwo.Key()), ErrContractMetadataNotFound)
-		require.Len(t, store.DeletedKeys, 1)
+		require.Len(t, store.Records, 2)
+		require.Empty(t, store.DeletedRemoteKeys)
+	})
+}
+
+func TestMemoryContractMetadataStore_RemoteDelete(t *testing.T) {
+	t.Parallel()
+
+	var (
+		recordOne = ContractMetadata{
+			ChainSelector: 1,
+			Address:       "0x2324224",
+			Metadata:      testMetadata{Field: "metadata1", ChainSelector: 0},
+		}
+
+		recordTwo = ContractMetadata{
+			ChainSelector: 2,
+			Address:       "0x2324224",
+			Metadata:      testMetadata{Field: "metadata2", ChainSelector: 0},
+		}
+
+		recordThree = ContractMetadata{
+			ChainSelector: 3,
+			Address:       "0x2324224",
+			Metadata:      testMetadata{Field: "metadata3", ChainSelector: 0},
+		}
+	)
+
+	t.Run("success: stages key in DeletedRemoteKeys without removing from Records", func(t *testing.T) {
+		t.Parallel()
+
+		store := MemoryContractMetadataStore{Records: []ContractMetadata{recordOne, recordTwo, recordThree}}
+		require.Len(t, store.Records, 3)
+		require.Empty(t, store.DeletedRemoteKeys)
+		err := store.RemoteDelete(recordTwo.Key())
+		require.NoError(t, err)
+		require.Len(t, store.Records, 3)
+		require.Len(t, store.DeletedRemoteKeys, 1)
+		require.Equal(t, store.DeletedRemoteKeys[0], recordTwo.Key().String())
+	})
+
+	t.Run("success: second RemoteDelete does not duplicate entry", func(t *testing.T) {
+		t.Parallel()
+
+		store := MemoryContractMetadataStore{Records: []ContractMetadata{recordOne, recordTwo, recordThree}}
+		require.NoError(t, store.RemoteDelete(recordTwo.Key()))
+		require.NoError(t, store.RemoteDelete(recordTwo.Key()))
+		require.Len(t, store.Records, 3)
+		require.Len(t, store.DeletedRemoteKeys, 1)
 	})
 }
 

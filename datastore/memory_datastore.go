@@ -1,6 +1,9 @@
 package datastore
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+)
 
 // MemoryDataStore is a concrete implementation of the MutableDataStore interface.
 var _ MutableDataStore = &MemoryDataStore{}
@@ -70,8 +73,12 @@ func (s *MemoryDataStore) Merge(other DataStore) error {
 
 	// Propagate address ref deletions
 	if src, ok := other.Addresses().(*MemoryAddressRefStore); ok {
-		for _, dk := range src.DeletedKeys {
-			if err = s.AddressRefStore.Delete(dk); err != nil && !errors.Is(err, ErrAddressRefNotFound) {
+		for _, dk := range src.DeletedRemoteKeys {
+			key, keyErr := NewAddressRefKeyFromString(dk)
+			if keyErr != nil {
+				return fmt.Errorf("failed to parse address ref key: %w", keyErr)
+			}
+			if err = s.AddressRefStore.Delete(key); err != nil {
 				return err
 			}
 		}
@@ -91,8 +98,12 @@ func (s *MemoryDataStore) Merge(other DataStore) error {
 
 	// Propagate chain metadata deletions
 	if src, ok := other.ChainMetadata().(*MemoryChainMetadataStore); ok {
-		for _, dk := range src.DeletedKeys {
-			if err = s.ChainMetadataStore.Delete(dk); err != nil && !errors.Is(err, ErrChainMetadataNotFound) {
+		for _, dk := range src.DeletedRemoteKeys {
+			key, keyErr := NewChainMetadataKeyFromString(dk)
+			if keyErr != nil {
+				return fmt.Errorf("failed to parse chain metadata key: %w", keyErr)
+			}
+			if err = s.ChainMetadataStore.Delete(key); err != nil {
 				return err
 			}
 		}
@@ -113,8 +124,12 @@ func (s *MemoryDataStore) Merge(other DataStore) error {
 
 	// Propagate contract metadata deletions
 	if src, ok := other.ContractMetadata().(*MemoryContractMetadataStore); ok {
-		for _, dk := range src.DeletedKeys {
-			if err = s.ContractMetadataStore.Delete(dk); err != nil && !errors.Is(err, ErrContractMetadataNotFound) {
+		for _, dk := range src.DeletedRemoteKeys {
+			key, keyErr := NewContractMetadataKeyFromString(dk)
+			if keyErr != nil {
+				return fmt.Errorf("failed to parse contract metadata key: %w", keyErr)
+			}
+			if err = s.ContractMetadataStore.Delete(key); err != nil {
 				return err
 			}
 		}

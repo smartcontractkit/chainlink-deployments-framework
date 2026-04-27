@@ -303,18 +303,16 @@ func TestMemoryAddressRefStore_Delete(t *testing.T) {
 		}
 	)
 
-	t.Run("success: deletes given record and appends to DeletedKeys", func(t *testing.T) {
+	t.Run("success: deletes record from Records", func(t *testing.T) {
 		t.Parallel()
 
 		store := MemoryAddressRefStore{Records: []AddressRef{recordOne, recordTwo, recordThree}}
 		assert.Len(t, store.Records, 3)
-		assert.Len(t, store.DeletedKeys, 0)
+		assert.Empty(t, store.DeletedRemoteKeys)
 		err := store.Delete(recordTwo.Key())
 		require.NoError(t, err)
 		assert.Equal(t, []AddressRef{recordOne, recordThree}, store.Records)
-		assert.Len(t, store.DeletedKeys, 1)
-		assert.True(t, store.DeletedKeys[0].Equals(recordTwo.Key()))
-		assert.Len(t, store.Records, 2)
+		assert.Empty(t, store.DeletedRemoteKeys)
 	})
 
 	t.Run("error: absent key returns ErrAddressRefNotFound", func(t *testing.T) {
@@ -322,25 +320,79 @@ func TestMemoryAddressRefStore_Delete(t *testing.T) {
 
 		store := MemoryAddressRefStore{Records: []AddressRef{recordOne, recordThree}}
 		assert.Len(t, store.Records, 2)
-		assert.Len(t, store.DeletedKeys, 0)
+		assert.Empty(t, store.DeletedRemoteKeys)
 		err := store.Delete(recordTwo.Key())
 		require.ErrorIs(t, err, ErrAddressRefNotFound)
 		assert.Equal(t, []AddressRef{recordOne, recordThree}, store.Records)
-		assert.Len(t, store.DeletedKeys, 0)
+		assert.Empty(t, store.DeletedRemoteKeys)
 	})
 
-	t.Run("error: second Delete returns ErrAddressRefNotFound, DeletedKeys unchanged", func(t *testing.T) {
+	t.Run("error: second Delete returns ErrAddressRefNotFound", func(t *testing.T) {
 		t.Parallel()
 
 		store := MemoryAddressRefStore{Records: []AddressRef{recordOne, recordTwo, recordThree}}
 		assert.Len(t, store.Records, 3)
-		assert.Len(t, store.DeletedKeys, 0)
 		require.NoError(t, store.Delete(recordTwo.Key()))
-		assert.Len(t, store.DeletedKeys, 1)
-		assert.True(t, store.DeletedKeys[0].Equals(recordTwo.Key()))
-		require.ErrorIs(t, store.Delete(recordTwo.Key()), ErrAddressRefNotFound)
-		assert.Len(t, store.DeletedKeys, 1)
 		assert.Len(t, store.Records, 2)
+		require.ErrorIs(t, store.Delete(recordTwo.Key()), ErrAddressRefNotFound)
+		assert.Len(t, store.Records, 2)
+		assert.Empty(t, store.DeletedRemoteKeys)
+	})
+}
+
+func TestMemoryAddressRefStore_RemoteDelete(t *testing.T) {
+	t.Parallel()
+
+	var (
+		recordOne = AddressRef{
+			Address:       "0x2324224",
+			ChainSelector: 1,
+			Type:          "type1",
+			Version:       semver.MustParse("0.5.0"),
+			Qualifier:     "qual1",
+			Labels:        NewLabelSet("label1", "label2", "label3"),
+		}
+
+		recordTwo = AddressRef{
+			Address:       "0x2324224",
+			ChainSelector: 2,
+			Type:          "typeX",
+			Version:       semver.MustParse("0.5.0"),
+			Qualifier:     "qual1",
+			Labels:        NewLabelSet("label13", "label23", "label33"),
+		}
+
+		recordThree = AddressRef{
+			Address:       "0x2324224",
+			ChainSelector: 3,
+			Type:          "typeZ",
+			Version:       semver.MustParse("0.5.0"),
+			Qualifier:     "qual1",
+			Labels:        NewLabelSet("label13", "label23", "label33"),
+		}
+	)
+
+	t.Run("success: stages key in DeletedRemoteKeys without removing from Records", func(t *testing.T) {
+		t.Parallel()
+
+		store := MemoryAddressRefStore{Records: []AddressRef{recordOne, recordTwo, recordThree}}
+		assert.Len(t, store.Records, 3)
+		assert.Empty(t, store.DeletedRemoteKeys)
+		err := store.RemoteDelete(recordTwo.Key())
+		require.NoError(t, err)
+		assert.Len(t, store.Records, 3)
+		assert.Len(t, store.DeletedRemoteKeys, 1)
+		assert.Equal(t, store.DeletedRemoteKeys[0], recordTwo.Key().String())
+	})
+
+	t.Run("success: second RemoteDelete does not duplicate entry", func(t *testing.T) {
+		t.Parallel()
+
+		store := MemoryAddressRefStore{Records: []AddressRef{recordOne, recordTwo, recordThree}}
+		require.NoError(t, store.RemoteDelete(recordTwo.Key()))
+		require.NoError(t, store.RemoteDelete(recordTwo.Key()))
+		assert.Len(t, store.Records, 3)
+		assert.Len(t, store.DeletedRemoteKeys, 1)
 	})
 }
 

@@ -20,9 +20,9 @@ type MutableChainMetadataStore interface {
 // MemoryChainMetadataStore is an in-memory implementation of the ChainMetadataStore and
 // MutableChainMetadataStore interfaces.
 type MemoryChainMetadataStore struct {
-	mu          sync.RWMutex
-	Records     []ChainMetadata    `json:"records"`
-	DeletedKeys []ChainMetadataKey `json:"deletedKeys,omitempty"`
+	mu                sync.RWMutex
+	Records           []ChainMetadata `json:"records"`
+	DeletedRemoteKeys []string        `json:"deletedRemoteKeys,omitempty"`
 }
 
 // MemoryChainMetadataStore implements ChainMetadataStore interface.
@@ -145,8 +145,8 @@ func (s *MemoryChainMetadataStore) Update(record ChainMetadata) error {
 	return nil
 }
 
-// Delete removes the record matching the supplied key from the store and appends the key
-// to DeletedKeys for soft-delete tracking. Returns ErrChainMetadataNotFound if the key does not exist.
+// Delete removes the record matching the supplied key from the store.
+// Returns ErrChainMetadataNotFound if the key does not exist.
 func (s *MemoryChainMetadataStore) Delete(key ChainMetadataKey) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -156,9 +156,24 @@ func (s *MemoryChainMetadataStore) Delete(key ChainMetadataKey) error {
 		return ErrChainMetadataNotFound
 	}
 	s.Records = append(s.Records[:idx], s.Records[idx+1:]...)
-	if !slices.Contains(s.DeletedKeys, key) {
-		s.DeletedKeys = append(s.DeletedKeys, key)
+
+	return nil
+}
+
+// RemoteDelete stages the record matching the supplied key for deletion by appending the key
+// to DeletedRemoteKeys. RemoteDelete does not delete the record from the store, it only stages it for deletion
+// and should be used only when we need to delete a record that does not exist in the current in-memory datastore
+// but exists in the remote datastore (e.g. file or catalog).
+func (s *MemoryChainMetadataStore) RemoteDelete(key ChainMetadataKey) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	deletedKey := key.String()
+
+	if slices.Contains(s.DeletedRemoteKeys, deletedKey) {
+		return nil
 	}
+	s.DeletedRemoteKeys = append(s.DeletedRemoteKeys, deletedKey)
 
 	return nil
 }

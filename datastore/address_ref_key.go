@@ -2,6 +2,8 @@ package datastore
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/Masterminds/semver/v3"
 )
@@ -65,6 +67,20 @@ func (a addressRefKey) String() string {
 		a.version.String(),
 		a.qualifier,
 	)
+}
+
+// NewAddressRefKeyFromString creates a new AddressRefKey instance from a string representation.
+func NewAddressRefKeyFromString(key string) (AddressRefKey, error) {
+	parts := strings.Split(key, "_")
+	if len(parts) != 4 {
+		return nil, fmt.Errorf("invalid address ref key: %s", key)
+	}
+	chainSelector, err := strconv.ParseUint(parts[0], 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse chain selector: %w", err)
+	}
+
+	return NewAddressRefKey(chainSelector, ContractType(parts[1]), semver.MustParse(parts[2]), parts[3]), nil
 }
 
 // NewAddressRefKey creates a new AddressRefKey instance.

@@ -10,51 +10,59 @@ import (
 func TestMemoryDataStore_Merge(t *testing.T) {
 	t.Parallel()
 
+	var (
+		addressRefRecord = AddressRef{
+			Address:   "0x123",
+			Type:      "type1",
+			Version:   semver.MustParse("1.0.0"),
+			Qualifier: "qualifier1",
+		}
+		chainMetadataRecord = ChainMetadata{
+			ChainSelector: 1,
+			Metadata: testMetadata{
+				Field:         "test field",
+				ChainSelector: 1,
+			},
+		}
+		contractMetadataRecord = ContractMetadata{
+			Address:       "0x123",
+			ChainSelector: 2,
+			Metadata: testMetadata{
+				Field:         "another test field",
+				ChainSelector: 2,
+			},
+		}
+		envMetadataRecord = EnvMetadata{
+			Metadata: testMetadata{
+				Field:         "env test field",
+				ChainSelector: 1,
+			},
+		}
+	)
+
 	tests := []struct {
 		name                          string
 		setup                         func() (*MemoryDataStore, *MemoryDataStore)
 		expectedAddrRefsCount         int
 		excpectedChainMetadataCount   int
 		expectedContractMetadataCount int
+		expectedError                 error
 	}{
 		{
 			name: "Merge single address",
 			setup: func() (*MemoryDataStore, *MemoryDataStore) {
 				dataStore1 := NewMemoryDataStore()
 				dataStore2 := NewMemoryDataStore()
-				err := dataStore2.Addresses().Add(AddressRef{
-					Address:   "0x123",
-					Type:      "type1",
-					Version:   semver.MustParse("1.0.0"),
-					Qualifier: "qualifier1",
-				})
+				err := dataStore2.Addresses().Add(addressRefRecord)
 				require.NoError(t, err, "Adding data to dataStore2 should not fail")
 
-				err = dataStore2.ChainMetadata().Add(ChainMetadata{
-					ChainSelector: 1,
-					Metadata: testMetadata{
-						Field:         "test field",
-						ChainSelector: 1,
-					},
-				})
+				err = dataStore2.ChainMetadata().Add(chainMetadataRecord)
 				require.NoError(t, err, "Adding chain metadata to dataStore2 should not fail")
 
-				err = dataStore2.ContractMetadata().Add(ContractMetadata{
-					Address:       "0x123",
-					ChainSelector: 2,
-					Metadata: testMetadata{
-						Field:         "another test field",
-						ChainSelector: 2,
-					},
-				})
+				err = dataStore2.ContractMetadata().Add(contractMetadataRecord)
 				require.NoError(t, err, "Adding another chain metadata to dataStore2 should not fail")
 
-				err = dataStore2.EnvMetadata().Set(EnvMetadata{
-					Metadata: testMetadata{
-						Field:         "env test field",
-						ChainSelector: 1,
-					},
-				})
+				err = dataStore2.EnvMetadata().Set(envMetadataRecord)
 				require.NoError(t, err, "Adding env metadata to dataStore2 should not fail")
 
 				return dataStore1, dataStore2
@@ -64,59 +72,111 @@ func TestMemoryDataStore_Merge(t *testing.T) {
 			expectedContractMetadataCount: 1,
 		},
 		{
-			name: "Merge propagates deletions: delete wins over existing records",
+			name: "Merge deletions errors: delete address ref record that does not exist produces an error",
 			setup: func() (*MemoryDataStore, *MemoryDataStore) {
 				dataStore1 := NewMemoryDataStore()
 				dataStore2 := NewMemoryDataStore()
 
-				// dataStore1 has records A and B for each store
-				require.NoError(t, dataStore1.Addresses().Add(AddressRef{
-					Address: "0x111", Type: "typeA", Version: semver.MustParse("1.0.0"), Qualifier: "q",
-				}))
-				require.NoError(t, dataStore1.Addresses().Add(AddressRef{
-					Address: "0x222", Type: "typeB", Version: semver.MustParse("1.0.0"), Qualifier: "q",
-				}))
-				require.NoError(t, dataStore1.ChainMetadata().Add(ChainMetadata{
-					ChainSelector: 10, Metadata: testMetadata{Field: "a"},
-				}))
-				require.NoError(t, dataStore1.ChainMetadata().Add(ChainMetadata{
-					ChainSelector: 20, Metadata: testMetadata{Field: "b"},
-				}))
-				require.NoError(t, dataStore1.ContractMetadata().Add(ContractMetadata{
-					ChainSelector: 10, Address: "0x111", Metadata: testMetadata{Field: "a"},
-				}))
-				require.NoError(t, dataStore1.ContractMetadata().Add(ContractMetadata{
-					ChainSelector: 20, Address: "0x222", Metadata: testMetadata{Field: "b"},
-				}))
-				require.NoError(t, dataStore1.EnvMetadata().Set(EnvMetadata{
-					Metadata: testMetadata{Field: "env"},
-				}))
+				err := dataStore1.Addresses().Add(addressRefRecord)
+				require.NoError(t, err, "Adding data to dataStore2 should not fail")
 
-				// dataStore2 deletes key A from each store (key A is not in dataStore2's Records)
-				require.NoError(t, dataStore2.Addresses().Delete(NewAddressRefKey(0, "typeA", semver.MustParse("1.0.0"), "q")))
-				require.NoError(t, dataStore2.ChainMetadata().Delete(NewChainMetadataKey(10)))
-				require.NoError(t, dataStore2.ContractMetadata().Delete(NewContractMetadataKey(10, "0x111")))
+				err = dataStore1.ChainMetadata().Add(chainMetadataRecord)
+				require.NoError(t, err, "Adding chain metadata to dataStore2 should not fail")
+
+				err = dataStore1.ContractMetadata().Add(contractMetadataRecord)
+				require.NoError(t, err, "Adding another chain metadata to dataStore2 should not fail")
+
+				err = dataStore1.EnvMetadata().Set(envMetadataRecord)
+				require.NoError(t, err, "Adding env metadata to dataStore2 should not fail")
+
+				// dataStore2 stages a record for deletion that does not exist in dataStore1
+				require.NoError(t, dataStore2.Addresses().RemoteDelete(NewAddressRefKey(0, "typeA", semver.MustParse("1.0.0"), "q")))
 
 				return dataStore1, dataStore2
 			},
 			expectedAddrRefsCount:         1,
 			excpectedChainMetadataCount:   1,
 			expectedContractMetadataCount: 1,
+			expectedError:                 ErrAddressRefNotFound,
 		},
 		{
-			name: "Merge propagates deletions: delete of non-existent key is a no-op",
+			name: "Merge deletions errors: delete chain metadata record that does not exist produces an error",
 			setup: func() (*MemoryDataStore, *MemoryDataStore) {
 				dataStore1 := NewMemoryDataStore()
 				dataStore2 := NewMemoryDataStore()
 
-				// dataStore1 is empty; dataStore2 deletes a key that was never in dataStore1
-				require.NoError(t, dataStore2.Addresses().Delete(NewAddressRefKey(0, "typeA", semver.MustParse("1.0.0"), "q")))
-				require.NoError(t, dataStore2.ChainMetadata().Delete(NewChainMetadataKey(10)))
-				require.NoError(t, dataStore2.ContractMetadata().Delete(NewContractMetadataKey(10, "0x111")))
+				err := dataStore1.Addresses().Add(addressRefRecord)
+				require.NoError(t, err, "Adding data to dataStore2 should not fail")
 
-				require.NoError(t, dataStore1.EnvMetadata().Set(EnvMetadata{
-					Metadata: testMetadata{Field: "env"},
-				}))
+				err = dataStore1.ChainMetadata().Add(chainMetadataRecord)
+				require.NoError(t, err, "Adding chain metadata to dataStore2 should not fail")
+
+				err = dataStore1.ContractMetadata().Add(contractMetadataRecord)
+				require.NoError(t, err, "Adding another chain metadata to dataStore2 should not fail")
+
+				err = dataStore1.EnvMetadata().Set(envMetadataRecord)
+				require.NoError(t, err, "Adding env metadata to dataStore2 should not fail")
+
+				// dataStore2 stages a record for deletion that does not exist in dataStore1
+				require.NoError(t, dataStore2.ChainMetadata().RemoteDelete(NewChainMetadataKey(10)))
+
+				return dataStore1, dataStore2
+			},
+			expectedAddrRefsCount:         1,
+			excpectedChainMetadataCount:   1,
+			expectedContractMetadataCount: 1,
+			expectedError:                 ErrChainMetadataNotFound,
+		},
+		{
+			name: "Merge deletions errors: delete contract metadata record that does not exist produces an error",
+			setup: func() (*MemoryDataStore, *MemoryDataStore) {
+				dataStore1 := NewMemoryDataStore()
+				dataStore2 := NewMemoryDataStore()
+
+				err := dataStore1.Addresses().Add(addressRefRecord)
+				require.NoError(t, err, "Adding data to dataStore2 should not fail")
+
+				err = dataStore1.ChainMetadata().Add(chainMetadataRecord)
+				require.NoError(t, err, "Adding chain metadata to dataStore2 should not fail")
+
+				err = dataStore1.ContractMetadata().Add(contractMetadataRecord)
+				require.NoError(t, err, "Adding another chain metadata to dataStore2 should not fail")
+
+				err = dataStore1.EnvMetadata().Set(envMetadataRecord)
+				require.NoError(t, err, "Adding env metadata to dataStore2 should not fail")
+
+				// dataStore2 stages a record for deletion that does not exist in dataStore1
+				require.NoError(t, dataStore2.ContractMetadata().RemoteDelete(NewContractMetadataKey(10, "0x111")))
+
+				return dataStore1, dataStore2
+			},
+			expectedAddrRefsCount:         1,
+			excpectedChainMetadataCount:   1,
+			expectedContractMetadataCount: 1,
+			expectedError:                 ErrContractMetadataNotFound,
+		},
+		{
+			name: "Merge propagete deletions: deletes record from remote data store",
+			setup: func() (*MemoryDataStore, *MemoryDataStore) {
+				dataStore1 := NewMemoryDataStore()
+				dataStore2 := NewMemoryDataStore()
+
+				err := dataStore1.Addresses().Add(addressRefRecord)
+				require.NoError(t, err, "Adding data to dataStore2 should not fail")
+
+				err = dataStore1.ChainMetadata().Add(chainMetadataRecord)
+				require.NoError(t, err, "Adding chain metadata to dataStore2 should not fail")
+
+				err = dataStore1.ContractMetadata().Add(contractMetadataRecord)
+				require.NoError(t, err, "Adding another chain metadata to dataStore2 should not fail")
+
+				err = dataStore1.EnvMetadata().Set(envMetadataRecord)
+				require.NoError(t, err, "Adding env metadata to dataStore2 should not fail")
+
+				// dataStore2 stages a record for deletion that does not exist in dataStore1
+				require.NoError(t, dataStore2.Addresses().RemoteDelete(addressRefRecord.Key()))
+				require.NoError(t, dataStore2.ChainMetadata().RemoteDelete(chainMetadataRecord.Key()))
+				require.NoError(t, dataStore2.ContractMetadata().RemoteDelete(contractMetadataRecord.Key()))
 
 				return dataStore1, dataStore2
 			},
@@ -192,8 +252,13 @@ func TestMemoryDataStore_Merge(t *testing.T) {
 			dataStore1, dataStore2 := tt.setup()
 
 			// Merge dataStore2 into dataStore1
-			err := dataStore1.Merge(dataStore2.Seal())
-			require.NoError(t, err, "Merging dataStore2 into dataStore1 should not fail")
+			if tt.expectedError != nil {
+				err := dataStore1.Merge(dataStore2.Seal())
+				require.ErrorIs(t, err, tt.expectedError, "Merging dataStore2 into dataStore1 should return the expected error")
+			} else {
+				err := dataStore1.Merge(dataStore2.Seal())
+				require.NoError(t, err, "Merging dataStore2 into dataStore1 should not fail")
+			}
 
 			// Verify that dataStore1 contains the merged data
 			addressRefs, err := dataStore1.Addresses().Fetch()
