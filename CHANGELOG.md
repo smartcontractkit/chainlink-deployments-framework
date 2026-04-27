@@ -1,5 +1,13 @@
 # chainlink-deployments-framework
 
+## 0.99.0
+
+### Minor Changes
+
+- [#958](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/958) [`190d67e`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/190d67e026aecc9b486a23b3a6dc286de19006c0) Thanks [@ChrisAmora](https://github.com/ChrisAmora)! - port TimelockConfig to MCMS proposalutils
+
+- [#942](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/942) [`1bd6d2d`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/1bd6d2d5dceaca3aa09eaad203b4ffd0a708d79a) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - feat(mcms/analyzer): add Solana native programs to registry
+
 ## 0.98.0
 
 ### Minor Changes
