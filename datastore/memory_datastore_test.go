@@ -78,16 +78,16 @@ func TestMemoryDataStore_Merge(t *testing.T) {
 				dataStore2 := NewMemoryDataStore()
 
 				err := dataStore1.Addresses().Add(addressRefRecord)
-				require.NoError(t, err, "Adding data to dataStore2 should not fail")
+				require.NoError(t, err, "Adding data to dataStore1 should not fail")
 
 				err = dataStore1.ChainMetadata().Add(chainMetadataRecord)
-				require.NoError(t, err, "Adding chain metadata to dataStore2 should not fail")
+				require.NoError(t, err, "Adding chain metadata to dataStore1 should not fail")
 
 				err = dataStore1.ContractMetadata().Add(contractMetadataRecord)
-				require.NoError(t, err, "Adding another chain metadata to dataStore2 should not fail")
+				require.NoError(t, err, "Adding another chain metadata to dataStore1 should not fail")
 
 				err = dataStore1.EnvMetadata().Set(envMetadataRecord)
-				require.NoError(t, err, "Adding env metadata to dataStore2 should not fail")
+				require.NoError(t, err, "Adding env metadata to dataStore1 should not fail")
 
 				// dataStore2 stages a record for deletion that does not exist in dataStore1
 				require.NoError(t, dataStore2.Addresses().RemoteDelete(NewAddressRefKey(0, "typeA", semver.MustParse("1.0.0"), "q")))
