@@ -1,7 +1,7 @@
 package stellar
 
 import (
-	"log"
+	"fmt"
 
 	"github.com/stellar/go-stellar-sdk/clients/rpcclient"
 	"github.com/stellar/go-stellar-sdk/keypair"
@@ -31,12 +31,12 @@ type Chain struct {
 	NetworkPassphrase string
 }
 
-func (c Chain) ReadOnly() any {
+func (c Chain) ReadOnly() (any, error) {
 	keyPair, err := keypair.Random()
 	if err != nil {
-		log.Fatalf("failed to create keypair for chain %v: %v", c, err.Error())
+		return nil, fmt.Errorf("failed to generate keypair for read-only chain %v: %w", c, err)
 	}
 	c.Signer = NewStellarKeypairSigner(keyPair)
 
-	return c
+	return c, nil
 }

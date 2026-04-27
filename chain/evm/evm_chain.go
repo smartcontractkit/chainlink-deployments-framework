@@ -3,6 +3,7 @@ package evm
 import (
 	"context"
 	"crypto/ecdsa"
+	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -88,12 +89,12 @@ func (c Chain) IsNetworkType(networkType chainsel.NetworkType) bool {
 	return chaincommon.ChainMetadata{Selector: c.Selector}.IsNetworkType(networkType)
 }
 
-func (c Chain) ReadOnly() any {
+func (c Chain) ReadOnly() (any, error) {
 	privateKey, err := crypto.GenerateKey()
 	if err != nil {
-		panic("unable to generate private key for read-only chain: " + err.Error())
+		return nil, fmt.Errorf("failed to generate private key for read-only chain: %w", err)
 	}
 	c.DeployerKey.From = crypto.PubkeyToAddress(*privateKey.Public().(*ecdsa.PublicKey))
 
-	return c
+	return c, nil
 }

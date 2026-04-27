@@ -2,12 +2,12 @@ package chain
 
 import (
 	"errors"
+	"fmt"
 	"iter"
 	"maps"
 	"reflect"
 	"slices"
 
-	"github.com/samber/lo"
 	chainsel "github.com/smartcontractkit/chain-selectors"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos"
@@ -64,7 +64,7 @@ type BlockChain interface {
 	IsNetworkType(networkType chainsel.NetworkType) bool
 
 	// ReadOnly returns a read-only version of the chain
-	ReadOnly() any
+	ReadOnly() (any, error)
 }
 
 // BlockChains represents a collection of chains.
@@ -176,10 +176,22 @@ func (b BlockChains) StellarChains() map[uint64]stellar.Chain {
 	return getChainsByType[stellar.Chain, *stellar.Chain](b)
 }
 
-func (b BlockChains) ReadOnly() BlockChains {
-	return NewBlockChains(lo.MapValues(b.chains, func(c BlockChain, _ uint64) BlockChain {
-		return c.ReadOnly().(BlockChain)
-	}))
+func (b BlockChains) ReadOnly() (BlockChains, error) {
+	readOnlyChains := make(map[uint64]BlockChain, len(b.chains))
+	for selector, chain := range b.chains {
+		roChain, err := chain.ReadOnly()
+		if err != nil {
+			return BlockChains{}, fmt.Errorf("failed to generate read-only chain for selector %v: %w", selector, err)
+		}
+		castedChain, ok := roChain.(BlockChain)
+		if !ok {
+			return BlockChains{}, fmt.Errorf("failed to cast read-only chain for selector %v: %w", selector, err)
+		}
+
+		readOnlyChains[selector] = castedChain
+	}
+
+	return NewBlockChains(readOnlyChains), nil
 }
 
 // ChainSelectorsOption defines a function type for configuring ChainSelectors

@@ -1,7 +1,7 @@
 package aptos
 
 import (
-	"log"
+	"fmt"
 
 	aptoslib "github.com/aptos-labs/aptos-go-sdk"
 	chainsel "github.com/smartcontractkit/chain-selectors"
@@ -53,12 +53,12 @@ func (c Chain) IsNetworkType(networkType chainsel.NetworkType) bool {
 	return chaincommon.ChainMetadata{Selector: c.Selector}.IsNetworkType(networkType)
 }
 
-func (c Chain) ReadOnly() any {
+func (c Chain) ReadOnly() (any, error) {
 	signer, err := aptoslib.NewSecp256k1Account()
 	if err != nil {
-		log.Fatalf("unable to generate private key for read-only chain %v: %s", c, err.Error())
+		return nil, fmt.Errorf("unable to generate private key for read-only chain %v: %w", c, err)
 	}
 	c.DeployerSigner = signer
 
-	return c
+	return c, nil
 }

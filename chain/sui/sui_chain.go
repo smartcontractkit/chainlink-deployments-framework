@@ -2,7 +2,7 @@ package sui
 
 import (
 	"crypto/rand"
-	"log"
+	"fmt"
 
 	"github.com/block-vision/sui-go-sdk/sui"
 
@@ -22,13 +22,13 @@ type Chain struct {
 	// TODO: Implement ConfirmTransaction. Current tooling relies on node local execution
 }
 
-func (c Chain) ReadOnly() any {
+func (c Chain) ReadOnly() (any, error) {
 	privateKey := make([]byte, 64)
 	_, err := rand.Read(privateKey)
 	if err != nil {
-		log.Fatalf("unable to generate private key for read-only chain %v: %s", c, err.Error())
+		return nil, fmt.Errorf("failed to generate private key for read-only chain %v: %w", c, err)
 	}
 	c.Signer, _ = NewSignerFromSeed(privateKey)
 
-	return c
+	return c, nil
 }

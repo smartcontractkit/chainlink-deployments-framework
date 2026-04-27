@@ -3,7 +3,7 @@ package ton
 import (
 	"context"
 	"crypto/ed25519"
-	"log"
+	"fmt"
 
 	"github.com/xssnick/tonutils-go/address"
 	"github.com/xssnick/tonutils-go/tlb"
@@ -38,19 +38,19 @@ var MakeDefaultConfirmFunc = func(c ton.APIClientWrapped) ConfirmFunc {
 	}
 }
 
-func (c Chain) ReadOnly() any {
+func (c Chain) ReadOnly() (any, error) {
 	_, privateKey, err := ed25519.GenerateKey(nil)
 	if err != nil {
-		log.Fatalf("failed to generate private key for chain %v: %v", c, err.Error())
+		return nil, fmt.Errorf("failed to generate private key for read-only chain %v: %w", c, err)
 	}
 
 	walletConfig := wallet.ConfigV5R1Final{NetworkGlobalID: wallet.MainnetGlobalID, Workchain: 0} // REVIEW
 	wallet, err := wallet.FromPrivateKeyWithOptions(c.Client, privateKey, walletConfig)
 	if err != nil {
-		log.Fatalf("failed to generate wallet for chain %v: %v", c, err.Error())
+		return nil, fmt.Errorf("failed to generate wallet for read-only chain %v: %w", c, err)
 	}
 
 	c.Wallet = wallet
 
-	return c
+	return c, nil
 }

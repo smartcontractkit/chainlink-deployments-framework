@@ -92,7 +92,10 @@ func (r *ChangesetsRegistry) RunProposalHooks(
 
 	blockChains := e.BlockChains
 	if forkCtx == nil {
-		blockChains = blockChains.ReadOnly()
+		blockChains, err = blockChains.ReadOnly()
+		if err != nil {
+			return fmt.Errorf("failed to get read-only blockchains for proposal hooks: %w", err)
+		}
 	}
 
 	params := PostProposalHookParams{

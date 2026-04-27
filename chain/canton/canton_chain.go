@@ -151,6 +151,6 @@ func CreateAdminServiceClients(conn grpc.ClientConnInterface) AdminServiceClient
 	}
 }
 
-func (c Chain) ReadOnly() any {
-	return c
+func (c Chain) ReadOnly() (any, error) {
+	return c, nil
 }

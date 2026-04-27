@@ -2,7 +2,7 @@ package tron
 
 import (
 	"context"
-	"log"
+	"fmt"
 	"time"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -89,10 +89,10 @@ func DefaultTriggerOptions() *TriggerOptions {
 	}
 }
 
-func (c Chain) ReadOnly() any {
+func (c Chain) ReadOnly() (any, error) {
 	privateKey, err := crypto.GenerateKey()
 	if err != nil {
-		log.Fatalf("failed to generate private key for chain %v: %v", c, err.Error())
+		return nil, fmt.Errorf("failed to generate private key for read-only chain %v: %w", c, err)
 	}
 
 	c.Address = address.PubkeyToAddress(privateKey.PublicKey)
@@ -100,5 +100,5 @@ func (c Chain) ReadOnly() any {
 		return crypto.Sign(txHash, privateKey)
 	}
 
-	return c
+	return c, nil
 }
