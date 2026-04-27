@@ -8,11 +8,10 @@ import (
 	"reflect"
 	"slices"
 
-	chainsel "github.com/smartcontractkit/chain-selectors"
-
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/canton"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/common"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/stellar"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/sui"
@@ -22,14 +21,16 @@ import (
 
 var ErrBlockChainNotFound = errors.New("blockchain not found")
 
-var _ BlockChain = evm.Chain{}
-var _ BlockChain = solana.Chain{}
-var _ BlockChain = aptos.Chain{}
-var _ BlockChain = sui.Chain{}
-var _ BlockChain = ton.Chain{}
-var _ BlockChain = tron.Chain{}
-var _ BlockChain = canton.Chain{}
-var _ BlockChain = stellar.Chain{}
+var (
+	_ BlockChain = evm.Chain{}
+	_ BlockChain = solana.Chain{}
+	_ BlockChain = aptos.Chain{}
+	_ BlockChain = sui.Chain{}
+	_ BlockChain = ton.Chain{}
+	_ BlockChain = tron.Chain{}
+	_ BlockChain = canton.Chain{}
+	_ BlockChain = stellar.Chain{}
+)
 
 // NetworkType represents the type of network, which can either be mainnet or testnet.
 type NetworkType string
@@ -44,28 +45,7 @@ var (
 
 // BlockChain is an interface that represents a chain.
 // A chain can be an EVM chain, Solana chain Aptos chain or others.
-type BlockChain interface {
-	// String returns chain name and selector "<name> (<selector>)"
-	String() string
-
-	// Name returns the name of the chain (e.g. Ethereum Mainnet, Solana Mainnet, Aptos Mainnet, etc.)
-	Name() string
-
-	// ChainSelector returns the chain's selector
-	ChainSelector() uint64
-
-	// Family returns the family of the chain (e.g. evm, solana, aptos, etc.)
-	Family() string
-
-	// NetworkType returns the type of network the chain is on (e.g. mainnet, testnet)
-	NetworkType() (chainsel.NetworkType, error)
-
-	// IsNetworkType checks if the chain is on the given network type
-	IsNetworkType(networkType chainsel.NetworkType) bool
-
-	// ReadOnly returns a read-only version of the chain
-	ReadOnly() (any, error)
-}
+type BlockChain = common.BlockChain
 
 // BlockChains represents a collection of chains.
 // It provides querying capabilities for different types of chains.
@@ -183,12 +163,8 @@ func (b BlockChains) ReadOnly() (BlockChains, error) {
 		if err != nil {
 			return BlockChains{}, fmt.Errorf("failed to generate read-only chain for selector %v: %w", selector, err)
 		}
-		castedChain, ok := roChain.(BlockChain)
-		if !ok {
-			return BlockChains{}, fmt.Errorf("failed to cast read-only chain for selector %v: %w", selector, err)
-		}
 
-		readOnlyChains[selector] = castedChain
+		readOnlyChains[selector] = roChain
 	}
 
 	return NewBlockChains(readOnlyChains), nil

@@ -22,7 +22,7 @@ type Chain struct {
 	// TODO: Implement ConfirmTransaction. Current tooling relies on node local execution
 }
 
-func (c Chain) ReadOnly() (any, error) {
+func (c Chain) ReadOnly() (common.BlockChain, error) {
 	privateKey := make([]byte, 64)
 	_, err := rand.Read(privateKey)
 	if err != nil {

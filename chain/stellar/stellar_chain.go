@@ -31,7 +31,7 @@ type Chain struct {
 	NetworkPassphrase string
 }
 
-func (c Chain) ReadOnly() (any, error) {
+func (c Chain) ReadOnly() (chaincommon.BlockChain, error) {
 	keyPair, err := keypair.Random()
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate keypair for read-only chain %v: %w", c, err)

@@ -89,7 +89,7 @@ func DefaultTriggerOptions() *TriggerOptions {
 	}
 }
 
-func (c Chain) ReadOnly() (any, error) {
+func (c Chain) ReadOnly() (chaincommon.BlockChain, error) {
 	privateKey, err := crypto.GenerateKey()
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate private key for read-only chain %v: %w", c, err)

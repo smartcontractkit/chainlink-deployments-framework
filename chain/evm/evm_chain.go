@@ -89,7 +89,11 @@ func (c Chain) IsNetworkType(networkType chainsel.NetworkType) bool {
 	return chaincommon.ChainMetadata{Selector: c.Selector}.IsNetworkType(networkType)
 }
 
-func (c Chain) ReadOnly() (any, error) {
+func (c Chain) ReadOnly() (chaincommon.BlockChain, error) {
+	if c.DeployerKey == nil {
+		return c, nil
+	}
+
 	privateKey, err := crypto.GenerateKey()
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate private key for read-only chain: %w", err)

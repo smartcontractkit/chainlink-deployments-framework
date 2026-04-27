@@ -151,6 +151,6 @@ func CreateAdminServiceClients(conn grpc.ClientConnInterface) AdminServiceClient
 	}
 }
 
-func (c Chain) ReadOnly() (any, error) {
+func (c Chain) ReadOnly() (chaincommon.BlockChain, error) {
 	return c, nil
 }

@@ -38,7 +38,7 @@ var MakeDefaultConfirmFunc = func(c ton.APIClientWrapped) ConfirmFunc {
 	}
 }
 
-func (c Chain) ReadOnly() (any, error) {
+func (c Chain) ReadOnly() (common.BlockChain, error) {
 	_, privateKey, err := ed25519.GenerateKey(nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate private key for read-only chain %v: %w", c, err)
