@@ -187,7 +187,7 @@ func prepareWriteOp(fi *FunctionInfo) OperationData {
 
 	role := ""
 	if fi.AccessControl == accessRole {
-		role = formatRoleGoLiteral(fi.Role)
+		role = FormatRoleGoLiteral(fi.Role)
 	}
 
 	return OperationData{

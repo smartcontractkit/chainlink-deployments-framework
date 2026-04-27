@@ -153,7 +153,7 @@ func extractFunctions(info *ContractInfo, funcConfigs []EvmFunctionConfig, parse
 				if funcCfg.Role == "" {
 					return fmt.Errorf("role is required when access is %q for function %s", accessRole, funcCfg.Name)
 				}
-				role, err := resolveRoleField(funcCfg.Role)
+				role, err := ResolveRoleField(funcCfg.Role)
 				if err != nil {
 					return fmt.Errorf("failed to resolve role %q for function %s: %w", funcCfg.Role, funcCfg.Name, err)
 				}

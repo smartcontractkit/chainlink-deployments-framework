@@ -20,8 +20,6 @@ type EvmFunctionConfig struct {
 	// Accepted formats:
 	//   - DEFAULT_ADMIN_ROLE                 → all-zero bytes32
 	//   - SOME_ROLE                          → keccak256("SOME_ROLE"), matching Solidity's bytes32 constant
-	//   - 64 hex chars, optionally prefixed
-	//     with 0x/0X                        → raw bytes32 value
 	Role string `yaml:"role,omitempty"`
 }
 
