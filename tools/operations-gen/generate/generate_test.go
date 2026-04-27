@@ -17,13 +17,15 @@ func TestGenerate(t *testing.T) {
 	config := fmt.Sprintf(`version: "1.0.0"
 chain_family: evm
 
+input:
+  gobindings_package: "github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/testdata/evm/gobindings"
+
 output:
   base_path: %q
 
 contracts:
   - contract_name: LinkToken
     version: "1.0.0"
-    gobindings_package: "github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/testdata/evm/gobindings/v1_0_0/link_token"
     functions:
       - name: transfer
         access: public

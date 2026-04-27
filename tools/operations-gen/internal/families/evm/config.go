@@ -7,9 +7,16 @@ type EvmContractConfig struct {
 	VersionPath       string              `yaml:"version_path,omitempty"` // Optional: override folder path derived from version
 	PackageName       string              `yaml:"package_name,omitempty"` // Optional: override package name
 	OmitDeploy        bool                `yaml:"omit_deploy,omitempty"`  // Optional: skip Deploy operation
-	GobindingsPackage string              `yaml:"gobindings_package"`     // Required: the Go import path of the gobindings package for this contract.
+	GobindingsPackage string              `yaml:"gobindings_package"`     // Optional: override the derived Go import path of the gobindings package for this contract.
 	Functions         []EvmFunctionConfig `yaml:"functions"`
 	ConfigDir         string              `yaml:"-"`
+}
+
+type EvmInputConfig struct {
+	// GobindingsPackage is the parent Go import path containing versioned abigen packages.
+	// Contract packages default to:
+	//   <gobindings_package>/<version_path>/<package_name>
+	GobindingsPackage string `yaml:"gobindings_package"`
 }
 
 // EvmFunctionConfig selects a contract function and assigns its access control.

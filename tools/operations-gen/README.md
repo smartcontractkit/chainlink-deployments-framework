@@ -78,10 +78,12 @@ chain_family: evm # Optional: defaults to "evm"
 output:
   base_path: "." # Directory where generated operations/ folders are written
 
+input:
+  gobindings_package: "github.com/smartcontractkit/chainlink-ccip/chains/evm/gobindings/generated"
+
 contracts:
   - contract_name: FeeQuoter
     version: "1.6.0"
-    gobindings_package: "github.com/smartcontractkit/chainlink-ccip/chains/evm/gobindings/generated/v1_6_0/fee_quoter"
     package_name: fee_quoter # Optional: override default package name
     omit_deploy: false # Optional: set true to skip Deploy operation generation (default: false)
     functions:
@@ -93,22 +95,23 @@ contracts:
 
 ### Top-level fields
 
-| Field                      | Required | Description                                                                    |
-| -------------------------- | -------- | ------------------------------------------------------------------------------ |
-| `version`                  | Yes      | Config schema version                                                          |
-| `chain_family`             | No       | Target chain family. Only `"evm"` is supported. Defaults to `"evm"`.           |
-| `output.base_path`         | Yes      | Root directory where generated files are written. Relative to the config file. |
+| Field                      | Required | Description                                                                                                                                                 |
+| -------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `version`                  | Yes      | Config schema version                                                                                                                                       |
+| `chain_family`             | No       | Target chain family. Only `"evm"` is supported. Defaults to `"evm"`.                                                                                        |
+| `input.gobindings_package` | No       | Parent Go import path containing versioned abigen packages. Used to derive contract bindings as `<input.gobindings_package>/<version_path>/<package_name>`. |
+| `output.base_path`         | Yes      | Root directory where generated files are written. Relative to the config file.                                                                              |
 
 ### Contract fields
 
-| Field                | Required | Description                                                                                                                                                                                                                     |
-| -------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `contract_name`      | Yes      | Contract name as it appears in the ABI (e.g. `FeeQuoter`)                                                                                                                                                                       |
-| `version`            | Yes      | Semver version of the contract (e.g. `"1.6.0"`)                                                                                                                                                                                 |
-| `gobindings_package` | Yes      | Full Go import path of the abigen-generated bindings package for this contract. The generator loads this package from source, extracts `<ContractName>MetaData`, and uses it for ABI, bytecode, tuple types, and contract interfaces. |
-| `package_name`       | No       | Override the generated Go package name. Defaults to `snake_case(contract_name)`.                                                                                                                                                |
-| `version_path`       | No       | Override the directory path derived from the version. Defaults to `v{major}_{minor}_{patch}`.                                                                                                                                   |
-| `omit_deploy`        | No       | Skip generation of the `Deploy` operation and bytecode constant. Defaults to `false`.                                                                                                                                           |
+| Field                | Required | Description                                                                                                                                            |
+| -------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `contract_name`      | Yes      | Contract name as it appears in the ABI (e.g. `FeeQuoter`)                                                                                              |
+| `version`            | Yes      | Semver version of the contract (e.g. `"1.6.0"`)                                                                                                        |
+| `gobindings_package` | No       | Optional full Go import path override for this contract's abigen-generated bindings package. Required only when `input.gobindings_package` is not set. |
+| `package_name`       | No       | Override the generated Go package name. Defaults to `snake_case(contract_name)`.                                                                       |
+| `version_path`       | No       | Override the directory path derived from the version. Defaults to `v{major}_{minor}_{patch}`.                                                          |
+| `omit_deploy`        | No       | Skip generation of the `Deploy` operation and bytecode constant. Defaults to `false`.                                                                  |
 
 ### Function access control
 
@@ -156,7 +159,7 @@ The generated code depends on three imports:
 
 - `github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/operations/contract` — the operations runtime
 - `github.com/smartcontractkit/chainlink-deployments-framework/chain/evm` and `.../operations` — chain + ops types used in the factory signatures
-- `{gobindings_package}` — the per-contract abigen bindings you specified in the config
+- `{gobindings_package}` — the derived or per-contract override abigen bindings import path
 
 ## Extending to new chain families
 

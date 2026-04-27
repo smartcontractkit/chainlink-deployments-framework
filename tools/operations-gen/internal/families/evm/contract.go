@@ -62,12 +62,9 @@ type ParameterInfo struct {
 
 // ---- Extraction ----
 
-func extractContractInfo(cfg EvmContractConfig, output EvmOutputConfig) (*ContractInfo, error) {
+func extractContractInfo(cfg EvmContractConfig, input EvmInputConfig, output EvmOutputConfig) (*ContractInfo, error) {
 	if cfg.Name == "" || cfg.Version == "" {
 		return nil, errors.New("contract_name and version are required")
-	}
-	if cfg.GobindingsPackage == "" {
-		return nil, fmt.Errorf("gobindings_package is required for contract %q", cfg.Name)
 	}
 
 	packageName := cfg.PackageName
@@ -84,6 +81,11 @@ func extractContractInfo(cfg EvmContractConfig, output EvmOutputConfig) (*Contra
 	}
 	if err := validatePathSegment("version_path", versionPath); err != nil {
 		return nil, err
+	}
+
+	cfg.GobindingsPackage = resolveGobindingsPackage(cfg.GobindingsPackage, input.GobindingsPackage, versionPath, packageName)
+	if cfg.GobindingsPackage == "" {
+		return nil, fmt.Errorf("gobindings_package is required for contract %q; set either contract gobindings_package or input.gobindings_package", cfg.Name)
 	}
 
 	parsedAbi, err := ReadABI(cfg)
@@ -111,6 +113,17 @@ func extractContractInfo(cfg EvmContractConfig, output EvmOutputConfig) (*Contra
 	collectAllStructDefs(info)
 
 	return info, nil
+}
+
+func resolveGobindingsPackage(contractPackage, parentPackage, versionPath, packageName string) string {
+	if contractPackage != "" {
+		return contractPackage
+	}
+	if parentPackage == "" {
+		return ""
+	}
+
+	return strings.TrimSuffix(parentPackage, "/") + "/" + versionPath + "/" + packageName
 }
 
 // extractConstructor populates info.Constructor when the ABI defines a

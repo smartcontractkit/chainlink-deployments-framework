@@ -16,6 +16,13 @@ type Handler struct{}
 // Generate decodes each YAML node as an EvmContractConfig, extracts contract info,
 // and writes a generated operations file for each contract.
 func (h Handler) Generate(config core.Config, tmpl *template.Template) error {
+	var input EvmInputConfig
+	if config.Input.Kind != 0 {
+		if err := config.Input.Decode(&input); err != nil {
+			return fmt.Errorf("failed to decode EVM input config: %w", err)
+		}
+	}
+
 	var output EvmOutputConfig
 	if err := config.Output.Decode(&output); err != nil {
 		return fmt.Errorf("failed to decode EVM output config: %w", err)
@@ -34,7 +41,7 @@ func (h Handler) Generate(config core.Config, tmpl *template.Template) error {
 		}
 		cfg.ConfigDir = config.ConfigDir
 
-		info, err := extractContractInfo(cfg, output)
+		info, err := extractContractInfo(cfg, input, output)
 		if err != nil {
 			return fmt.Errorf("error extracting info for %s: %w", cfg.Name, err)
 		}
