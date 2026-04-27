@@ -28,6 +28,11 @@ func TestGenerateManyChainMultiSig(t *testing.T) {
 	runGoldenGenerationTest(t, "operations_gen_mcms_config.yaml", "many_chain_multi_sig.golden.go")
 }
 
+func TestGenerateRBACTimelock(t *testing.T) {
+	t.Parallel()
+	runGoldenGenerationTest(t, "operations_gen_rbac_timelock_config.yaml", "rback_timelock.golden.go")
+}
+
 func runGoldenGenerationTest(t *testing.T, configFileName string, goldenFileName string) {
 	t.Helper()
 
