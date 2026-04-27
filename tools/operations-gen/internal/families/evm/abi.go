@@ -6,6 +6,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -21,6 +22,8 @@ const (
 	uint64Type = "uint64"
 	int64Type  = "int64"
 )
+
+var compactStructInternalTypePattern = regexp.MustCompile(`struct([A-Za-z_][A-Za-z0-9_]*\.)`)
 
 // AbiToGoType converts a go-ethereum abi.Type to its Go type string.
 //
@@ -114,7 +117,7 @@ func ReadABI(
 		return nil, err
 	}
 
-	parsedABI, err := abi.JSON(strings.NewReader(normalizeStructInternalTypes(*abiStr, cfg.Name)))
+	parsedABI, err := abi.JSON(strings.NewReader(NormalizeStructInternalTypes(*abiStr)))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse ABI from %sMetaData in gobindings package %q: %w", cfg.Name, cfg.GobindingsPackage, err)
 	}
@@ -122,16 +125,12 @@ func ReadABI(
 	return &parsedABI, nil
 }
 
-func normalizeStructInternalTypes(abiString string, contractName string) string {
-	if contractName == "" {
-		return abiString
-	}
-
-	// Some abigen-produced bindings encode struct internal types without the
-	// space go-ethereum expects ("structContract.Type" instead of
-	// "struct Contract.Type"). Normalize that shape so abi.JSON can populate
-	// TupleRawName and the generated ops can reuse the gobindings struct types.
-	return strings.ReplaceAll(abiString, "struct"+contractName+".", "struct "+contractName+".")
+// Some abigen-produced bindings encode struct internal types without the
+// space go-ethereum expects ("structContract.Type" instead of
+// "struct Contract.Type"). Normalize that shape so abi.JSON can populate
+// TupleRawName and the generated ops can reuse the gobindings struct types.
+func NormalizeStructInternalTypes(abiString string) string {
+	return compactStructInternalTypePattern.ReplaceAllString(abiString, "struct $1")
 }
 
 func readABIFromGobindings(pkgPath string, contractName string, loadDir string) (*string, error) {

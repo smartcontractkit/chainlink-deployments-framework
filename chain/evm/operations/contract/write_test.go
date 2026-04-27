@@ -13,9 +13,17 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
+	contractmocks "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/operations/contract/mocks"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
+
+func cancelledContext(c context.Context) context.Context {
+	ctx, cancel := context.WithCancel(c)
+	cancel()
+
+	return ctx
+}
 
 func TestWriteOutput_Executed(t *testing.T) {
 	t.Parallel()
@@ -163,6 +171,137 @@ func TestWrite(t *testing.T) {
 				require.Equal(t, address.Hex(), report.Output.Tx.To, "Unexpected to address in output")
 				require.Equal(t, string(testContractType), report.Output.Tx.ContractType, "Unexpected ContractType in output")
 			}
+		})
+	}
+}
+
+func TestHasRole(t *testing.T) {
+	t.Parallel()
+
+	role := [32]byte{0x01, 0x02, 0x03}
+	account := common.HexToAddress("0x1234")
+	contractAddress := common.HexToAddress("0xabcd")
+
+	tests := []struct {
+		desc        string
+		opts        *bind.CallOpts
+		setupMock   func(*contractmocks.MockAccessControlContract, *bind.CallOpts)
+		wantAllowed bool
+		wantErr     string
+	}{
+		{
+			desc: "returns true when contract reports account has role",
+			setupMock: func(contract *contractmocks.MockAccessControlContract, opts *bind.CallOpts) {
+				contract.EXPECT().
+					Address().
+					Return(contractAddress).
+					Once()
+				contract.EXPECT().
+					HasRole(opts, role, account).
+					Return(true, nil).
+					Once()
+			},
+			wantAllowed: true,
+		},
+		{
+			desc: "returns false when contract reports account does not have role",
+			setupMock: func(contract *contractmocks.MockAccessControlContract, opts *bind.CallOpts) {
+				contract.EXPECT().
+					Address().
+					Return(contractAddress).
+					Once()
+				contract.EXPECT().
+					HasRole(opts, role, account).
+					Return(false, nil).
+					Once()
+			},
+			wantAllowed: false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			t.Parallel()
+			contract := contractmocks.NewMockAccessControlContract(t)
+			test.setupMock(contract, test.opts)
+
+			allowed, err := HasRole(contract, test.opts, role, account)
+			if test.wantErr != "" {
+				require.Error(t, err)
+				require.ErrorContains(t, err, test.wantErr)
+				require.False(t, allowed)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, test.wantAllowed, allowed)
+			}
+		})
+	}
+}
+
+func TestRetryContractCall(t *testing.T) {
+	t.Parallel()
+
+	contractAddress := common.HexToAddress("0xabcd")
+	tests := []struct {
+		desc       string
+		opts       *bind.CallOpts
+		check      func() (bool, error)
+		want       bool
+		wantErr    string
+		wantChecks int
+	}{
+		{
+			desc: "returns successful check result",
+			check: func() (bool, error) {
+				return true, nil
+			},
+			want:       true,
+			wantChecks: 1,
+		},
+		{
+			desc: "returns non retryable errors immediately",
+			check: func() (bool, error) {
+				return false, errors.New("rpc unavailable")
+			},
+			wantErr:    "failed to check role of 0x000000000000000000000000000000000000ABcD: rpc unavailable",
+			wantChecks: 1,
+		},
+		{
+			desc: "returns context error while retrying empty response errors",
+			opts: &bind.CallOpts{
+				Context: cancelledContext(t.Context()),
+			},
+			check: func() (bool, error) {
+				return false, errors.New("attempting to unmarshal an empty string")
+			},
+			wantErr:    "context cancelled while waiting for role check of 0x000000000000000000000000000000000000ABcD: context canceled",
+			wantChecks: 1,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			t.Parallel()
+			checks := 0
+			got, err := RetryContractCall(
+				test.opts,
+				"role check",
+				"check role",
+				contractAddress,
+				func() (bool, error) {
+					checks++
+
+					return test.check()
+				},
+			)
+			if test.wantErr != "" {
+				require.Error(t, err)
+				require.ErrorContains(t, err, test.wantErr)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, test.want, got)
+			}
+			require.Equal(t, test.wantChecks, checks)
 		})
 	}
 }

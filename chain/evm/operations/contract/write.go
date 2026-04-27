@@ -136,7 +136,15 @@ type ownableContract interface {
 	Owner(opts *bind.CallOpts) (common.Address, error)
 }
 
-func OnlyOwner[C ownableContract, ARGS any](contract C, opts *bind.CallOpts, caller common.Address, args ARGS) (bool, error) {
+// RetryContractCall retries contract read calls that can briefly fail after
+// deployment while RPC nodes catch up.
+func RetryContractCall[T any](
+	opts *bind.CallOpts,
+	waitLabel string,
+	failureLabel string,
+	contractAddress common.Address,
+	check func() (T, error),
+) (T, error) {
 	// Retry with timeout to handle testnet flakiness where a newly deployed contract
 	// may not be immediately visible to the RPC node
 	const (
@@ -151,11 +159,12 @@ func OnlyOwner[C ownableContract, ARGS any](contract C, opts *bind.CallOpts, cal
 
 	deadline := time.Now().Add(timeout)
 	var lastErr error
+	var zero T
 
 	for time.Now().Before(deadline) {
-		owner, err := contract.Owner(opts)
+		result, err := check()
 		if err == nil {
-			return owner == caller, nil
+			return result, nil
 		}
 
 		// Check if this is a "contract not found" type error (empty response)
@@ -164,7 +173,7 @@ func OnlyOwner[C ownableContract, ARGS any](contract C, opts *bind.CallOpts, cal
 			lastErr = err
 			select {
 			case <-ctx.Done():
-				return false, fmt.Errorf("context cancelled while waiting for owner of %s: %w", contract.Address(), ctx.Err())
+				return zero, fmt.Errorf("context cancelled while waiting for %s of %s: %w", waitLabel, contractAddress, ctx.Err())
 			case <-time.After(retryDelay):
 			}
 
@@ -172,10 +181,39 @@ func OnlyOwner[C ownableContract, ARGS any](contract C, opts *bind.CallOpts, cal
 		}
 
 		// For other errors, fail immediately
-		return false, fmt.Errorf("failed to get owner of %s: %w", contract.Address(), err)
+		return zero, fmt.Errorf("failed to %s of %s: %w", failureLabel, contractAddress, err)
 	}
 
-	return false, fmt.Errorf("failed to get owner of %s after %v: %w", contract.Address(), timeout, lastErr)
+	return zero, fmt.Errorf("failed to %s of %s after %v: %w", failureLabel, contractAddress, timeout, lastErr)
+}
+
+func OnlyOwner[C ownableContract, ARGS any](contract C, opts *bind.CallOpts, caller common.Address, args ARGS) (bool, error) {
+	owner, err := RetryContractCall(opts, "owner", "get owner", contract.Address(), func() (common.Address, error) {
+		return contract.Owner(opts)
+	})
+	if err != nil {
+		return false, err
+	}
+
+	return owner == caller, nil
+}
+
+type AccessControlContract interface {
+	Address() common.Address
+	HasRole(opts *bind.CallOpts, role [32]byte, account common.Address) (bool, error)
+}
+
+// HasRole reports whether account holds role on contract (OpenZeppelin IAccessControl-style HasRole).
+// Includes retries for RPC flakiness after deploy.
+func HasRole[C AccessControlContract](
+	contract C,
+	opts *bind.CallOpts,
+	role [32]byte,
+	account common.Address,
+) (bool, error) {
+	return RetryContractCall(opts, "role check", "check role", contract.Address(), func() (bool, error) {
+		return contract.HasRole(opts, role, account)
+	})
 }
 
 func AllCallersAllowed[C any, ARGS any](contract C, opts *bind.CallOpts, caller common.Address, args ARGS) (bool, error) {

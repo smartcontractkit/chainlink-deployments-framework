@@ -8,11 +8,6 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/internal/core"
 )
 
-const (
-	accessOwner  = "owner"
-	accessPublic = "public"
-)
-
 // ---- Handler ----
 
 // Handler implements ChainFamilyHandler for EVM (Solidity/go-ethereum) chains.
