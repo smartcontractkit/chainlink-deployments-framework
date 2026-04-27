@@ -15,19 +15,19 @@ func TestGenerate(t *testing.T) {
 
 	outputDir := t.TempDir()
 	config := fmt.Sprintf(`version: "1.0.0"
-	chain_family: evm
+chain_family: evm
 
-	output:
-	  base_path: %q
+output:
+  base_path: %q
 
-	contracts:
-	  - contract_name: LinkToken
-		version: "1.0.0"
-		gobindings_package: "github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/testdata/evm/gobindings/v1_0_0/link_token"
-		functions:
-		  - name: transfer
-			access: public
-	`, outputDir)
+contracts:
+  - contract_name: LinkToken
+    version: "1.0.0"
+    gobindings_package: "github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/testdata/evm/gobindings/v1_0_0/link_token"
+    functions:
+      - name: transfer
+        access: public
+`, outputDir)
 
 	var cfg Config
 	require.NoError(t, yaml.Unmarshal([]byte(config), &cfg))
