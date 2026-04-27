@@ -5,10 +5,10 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"text/template"
 
 	"gopkg.in/yaml.v3"
 
+	"github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/generate"
 	"github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/internal/core"
 	"github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/internal/families/evm"
 )
@@ -57,7 +57,7 @@ func runGoldenGenerationTest(t *testing.T, configFileName string, goldenFileName
 	cfg.ConfigDir = ""
 
 	handler := evm.Handler{}
-	tmpl, err := loadTemplateForTest()
+	tmpl, err := generate.LoadTemplate("evm")
 	if err != nil {
 		t.Fatalf("loadTemplate: %v", err)
 	}
@@ -119,14 +119,4 @@ func mustYAMLNode(t *testing.T, value any) yaml.Node {
 	}
 
 	return n
-}
-
-func loadTemplateForTest() (*template.Template, error) {
-	path := filepath.Join("..", "..", "..", "templates", "evm", "operations.tmpl")
-	content, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-
-	return template.New("operations").Parse(string(content))
 }
