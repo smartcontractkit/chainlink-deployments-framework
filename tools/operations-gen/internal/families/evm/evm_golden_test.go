@@ -31,7 +31,7 @@ func TestGenerateManyChainMultiSig(t *testing.T) {
 
 func TestGenerateRBACTimelock(t *testing.T) {
 	t.Parallel()
-	runGoldenGenerationTest(t, "operations_gen_rbac_timelock_config.yaml", "rback_timelock.golden.go")
+	runGoldenGenerationTest(t, "operations_gen_rbac_timelock_config.yaml", "rbac_timelock.golden.go")
 }
 
 func runGoldenGenerationTest(t *testing.T, configFileName string, goldenFileName string) {
