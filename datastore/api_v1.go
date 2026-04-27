@@ -66,7 +66,8 @@ type MutableStore[K Comparable[K], R UniqueRecord[K, R]] interface {
 	// such record exists to be deleted
 	Delete(key K) error
 
-	// RemoteDelete deletes a record from the store and appends the key to DeletedKeys for soft-delete tracking.
+	// RemoteDelete stages the key for remote deletion / soft-delete tracking by appending it to
+	// DeletedRemoteKeys. In-memory implementations do not immediately delete the record from the store.
 	RemoteDelete(key K) error
 }
 

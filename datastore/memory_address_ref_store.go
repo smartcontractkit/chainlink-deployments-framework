@@ -135,8 +135,8 @@ func (s *MemoryAddressRefStore) Update(record AddressRef) error {
 	return nil
 }
 
-// Delete removes the record matching the supplied key from the store and appends the key
-// to DeletedKeys for soft-delete tracking. Returns ErrAddressRefNotFound if the key does not exist.
+// Delete removes the record matching the supplied key from the store.
+// Returns ErrAddressRefNotFound if the key does not exist.
 func (s *MemoryAddressRefStore) Delete(key AddressRefKey) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()

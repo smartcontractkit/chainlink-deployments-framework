@@ -156,7 +156,7 @@ func TestMemoryDataStore_Merge(t *testing.T) {
 			expectedError:                 ErrContractMetadataNotFound,
 		},
 		{
-			name: "Merge propagete deletions: deletes record from remote data store",
+			name: "Merge propagate deletions: deletes record from remote data store",
 			setup: func() (*MemoryDataStore, *MemoryDataStore) {
 				dataStore1 := NewMemoryDataStore()
 				dataStore2 := NewMemoryDataStore()
