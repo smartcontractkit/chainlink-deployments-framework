@@ -1,4 +1,4 @@
-package proposalutils
+package mcms
 
 import cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 
