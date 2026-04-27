@@ -29,12 +29,6 @@ func MergeDataStoreToCatalog(ctx context.Context, sourceDS DataStore, catalog Ca
 			}
 		}
 
-		for _, ref := range addressRefs {
-			if upsertErr := txCatalog.Addresses().Delete(ctx, ref.Key()); upsertErr != nil {
-				return fmt.Errorf("failed to remote delete address reference from catalog: %w", upsertErr)
-			}
-		}
-
 		// Merge all chain metadata to the catalog
 		chainMetadata, err := sourceDS.ChainMetadata().Fetch()
 		if err != nil {
