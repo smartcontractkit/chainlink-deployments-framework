@@ -3,6 +3,8 @@ package evm_test
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/internal/families/evm"
 )
 
@@ -20,9 +22,7 @@ func TestToSnakeCase(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
-			if got := evm.ToSnakeCase(tc.input); got != tc.want {
-				t.Errorf("ToSnakeCase(%q) = %q, want %q", tc.input, got, tc.want)
-			}
+			require.Equal(t, tc.want, evm.ToSnakeCase(tc.input), "ToSnakeCase(%q)", tc.input)
 		})
 	}
 }
@@ -42,9 +42,7 @@ func TestCheckNeedsBigInt(t *testing.T) {
 			Functions:     map[string]*evm.FunctionInfo{"Foo": makeFuncInfo("*big.Int")},
 			FunctionOrder: []string{"Foo"},
 		}
-		if !evm.ChecksNeedsBigInt(info) {
-			t.Error("expected true")
-		}
+		require.True(t, evm.ChecksNeedsBigInt(info))
 	})
 
 	t.Run("return param needs big.Int", func(t *testing.T) {
@@ -55,9 +53,7 @@ func TestCheckNeedsBigInt(t *testing.T) {
 			},
 			FunctionOrder: []string{"Foo"},
 		}
-		if !evm.ChecksNeedsBigInt(info) {
-			t.Error("expected true")
-		}
+		require.True(t, evm.ChecksNeedsBigInt(info))
 	})
 
 	t.Run("constructor param needs big.Int", func(t *testing.T) {
@@ -69,9 +65,7 @@ func TestCheckNeedsBigInt(t *testing.T) {
 			Functions:     map[string]*evm.FunctionInfo{},
 			FunctionOrder: []string{},
 		}
-		if !evm.ChecksNeedsBigInt(info) {
-			t.Error("expected true for constructor uint256 param")
-		}
+		require.True(t, evm.ChecksNeedsBigInt(info), "expected true for constructor uint256 param")
 	})
 
 	t.Run("no big.Int", func(t *testing.T) {
@@ -80,9 +74,7 @@ func TestCheckNeedsBigInt(t *testing.T) {
 			Functions:     map[string]*evm.FunctionInfo{"Foo": makeFuncInfo("common.Address")},
 			FunctionOrder: []string{"Foo"},
 		}
-		if evm.ChecksNeedsBigInt(info) {
-			t.Error("expected false")
-		}
+		require.False(t, evm.ChecksNeedsBigInt(info))
 	})
 
 	t.Run("tuple parameter with *big.Int component does not need local big.Int", func(t *testing.T) {
@@ -110,8 +102,6 @@ func TestCheckNeedsBigInt(t *testing.T) {
 			},
 			FunctionOrder: []string{"Foo"},
 		}
-		if evm.ChecksNeedsBigInt(info) {
-			t.Error("expected false: tuple components live in gobindings, no local *big.Int field")
-		}
+		require.False(t, evm.ChecksNeedsBigInt(info), "tuple components live in gobindings, no local *big.Int field")
 	})
 }
