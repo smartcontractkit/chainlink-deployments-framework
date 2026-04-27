@@ -65,14 +65,16 @@ func NewReadOwner(c gobindings.ManyChainMultiSigInterface) *cld_ops.Operation[co
 
 func NewWriteSetConfig(c gobindings.ManyChainMultiSigInterface) *cld_ops.Operation[contract.FunctionInput[SetConfigArgs], contract.WriteOutput, cldf_evm.Chain] {
 	return contract.NewWrite(contract.WriteParams[SetConfigArgs, gobindings.ManyChainMultiSigInterface]{
-		Name:            "many-chain-multi-sig:set-config",
-		Version:         Version,
-		Description:     "Calls setConfig on the contract",
-		ContractType:    ContractType,
-		ContractABI:     gobindings.ManyChainMultiSigMetaData.ABI,
-		Contract:        c,
-		IsAllowedCaller: contract.OnlyOwner[gobindings.ManyChainMultiSigInterface, SetConfigArgs],
-		Validate:        func(SetConfigArgs) error { return nil },
+		Name:         "many-chain-multi-sig:set-config",
+		Version:      Version,
+		Description:  "Calls setConfig on the contract",
+		ContractType: ContractType,
+		ContractABI:  gobindings.ManyChainMultiSigMetaData.ABI,
+		Contract:     c,
+		IsAllowedCaller: func(c gobindings.ManyChainMultiSigInterface, opts *bind.CallOpts, caller common.Address, args SetConfigArgs) (bool, error) {
+			return contract.OnlyOwner(c, opts, caller, args)
+		},
+		Validate: func(SetConfigArgs) error { return nil },
 		CallContract: func(
 			c gobindings.ManyChainMultiSigInterface,
 			opts *bind.TransactOpts,
@@ -85,14 +87,16 @@ func NewWriteSetConfig(c gobindings.ManyChainMultiSigInterface) *cld_ops.Operati
 
 func NewWriteSetRoot(c gobindings.ManyChainMultiSigInterface) *cld_ops.Operation[contract.FunctionInput[SetRootArgs], contract.WriteOutput, cldf_evm.Chain] {
 	return contract.NewWrite(contract.WriteParams[SetRootArgs, gobindings.ManyChainMultiSigInterface]{
-		Name:            "many-chain-multi-sig:set-root",
-		Version:         Version,
-		Description:     "Calls setRoot on the contract",
-		ContractType:    ContractType,
-		ContractABI:     gobindings.ManyChainMultiSigMetaData.ABI,
-		Contract:        c,
-		IsAllowedCaller: contract.OnlyOwner[gobindings.ManyChainMultiSigInterface, SetRootArgs],
-		Validate:        func(SetRootArgs) error { return nil },
+		Name:         "many-chain-multi-sig:set-root",
+		Version:      Version,
+		Description:  "Calls setRoot on the contract",
+		ContractType: ContractType,
+		ContractABI:  gobindings.ManyChainMultiSigMetaData.ABI,
+		Contract:     c,
+		IsAllowedCaller: func(c gobindings.ManyChainMultiSigInterface, opts *bind.CallOpts, caller common.Address, args SetRootArgs) (bool, error) {
+			return contract.OnlyOwner(c, opts, caller, args)
+		},
+		Validate: func(SetRootArgs) error { return nil },
 		CallContract: func(
 			c gobindings.ManyChainMultiSigInterface,
 			opts *bind.TransactOpts,
