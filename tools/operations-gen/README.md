@@ -222,7 +222,7 @@ To add a new chain family (e.g. `solana`):
 
 2. Add `generate/templates/solana/operations.tmpl` with chain-appropriate imports and method bodies.
 
-3. Register the handler in `chainFamilies` in `generate/generate.go`:
+3. Register the handler in `chainFamilies` in `generate/chain.go`:
    ```go
    var chainFamilies = map[string]core.ChainFamilyHandler{
        "evm":    evm.Handler{},
