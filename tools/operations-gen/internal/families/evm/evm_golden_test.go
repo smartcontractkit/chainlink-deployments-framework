@@ -55,7 +55,7 @@ func runGoldenGenerationTest(t *testing.T, configFileName string, goldenFileName
 	tmpl, err := generate.LoadTemplate("evm")
 	require.NoError(t, err, "loadTemplate")
 
-	require.NoError(t, handler.Generate(cfg, tmpl, nil), "Generate")
+	require.NoError(t, handler.Generate(cfg, tmpl), "Generate")
 
 	// Derive the output path from the first contract in the config, mirroring extractContractInfo.
 	var contractCfgs []evm.EvmContractConfig

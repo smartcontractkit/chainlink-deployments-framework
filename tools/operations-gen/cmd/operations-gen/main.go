@@ -6,7 +6,6 @@ import (
 	"io"
 	"os"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 	"github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/generate"
 )
 
@@ -38,14 +37,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 
-	lggr, err := logger.New()
-	if err != nil {
-		fmt.Fprintf(stderr, "Error creating logger: %v\n", err)
-		return 1
-	}
-	defer func() { _ = lggr.Sync() }()
-
-	if err := generate.GenerateFile(*configPath, generate.WithLogger(lggr)); err != nil {
+	if err := generate.GenerateFile(*configPath); err != nil {
 		fmt.Fprintf(stderr, "Error generating operations: %v\n", err)
 		return 1
 	}

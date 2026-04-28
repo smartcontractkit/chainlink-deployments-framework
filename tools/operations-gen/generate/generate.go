@@ -9,7 +9,6 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 	"github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/internal/core"
 )
 
@@ -21,26 +20,12 @@ var templatesFS embed.FS
 // own schemas.
 type Config = core.Config
 
-type options struct {
-	logger logger.Logger
-}
-
-// Option configures generation behavior.
-type Option func(*options)
-
-// WithLogger enables progress logging during generation.
-func WithLogger(lggr logger.Logger) Option {
-	return func(opts *options) {
-		opts.logger = lggr
-	}
-}
-
 // GenerateFile reads an operations-gen YAML config file and generates operations.
 //
 // Relative output paths and package loading are resolved from the config file's
 // directory, which makes this safe to call from another repository without
 // depending on the process working directory.
-func GenerateFile(configPath string, opts ...Option) error {
+func GenerateFile(configPath string) error {
 	configData, err := os.ReadFile(configPath)
 	if err != nil {
 		return fmt.Errorf("read config: %w", err)
@@ -58,16 +43,11 @@ func GenerateFile(configPath string, opts ...Option) error {
 	}
 	config.ConfigDir = absConfigDir
 
-	return Generate(config, opts...)
+	return Generate(config)
 }
 
 // Generate generates operations from a decoded config.
-func Generate(config Config, opts ...Option) error {
-	generateOpts := options{}
-	for _, opt := range opts {
-		opt(&generateOpts)
-	}
-
+func Generate(config Config) error {
 	chainFamily := config.ChainFamily
 	if chainFamily == "" {
 		chainFamily = "evm"
@@ -83,7 +63,7 @@ func Generate(config Config, opts ...Option) error {
 		return fmt.Errorf("load template for chain family %q: %w", chainFamily, err)
 	}
 
-	if err := handler.Generate(config, tmpl, generateOpts.logger); err != nil {
+	if err := handler.Generate(config, tmpl); err != nil {
 		return fmt.Errorf("generate operations: %w", err)
 	}
 
