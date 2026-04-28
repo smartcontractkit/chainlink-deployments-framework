@@ -32,7 +32,10 @@ operations-gen -version
 `operations-gen` can also be used as a Go package from another repository:
 
 ```go
-import "github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/generate"
+import (
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
+	"github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/generate"
+)
 ```
 
 Use `GenerateFile` when the config already exists on disk:
@@ -56,6 +59,20 @@ if err := yaml.Unmarshal(configBytes, &cfg); err != nil {
 cfg.ConfigDir = repoRoot // Base for relative output paths and package loading.
 
 if err := generate.Generate(cfg); err != nil {
+	return err
+}
+```
+
+Generation is silent by default for library callers. Pass a logger to receive
+progress messages:
+
+```go
+lggr, err := logger.New()
+if err != nil {
+	return err
+}
+
+if err := generate.GenerateFile("changeset/operations_gen_config.yaml", generate.WithLogger(lggr)); err != nil {
 	return err
 }
 ```

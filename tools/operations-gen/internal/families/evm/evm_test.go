@@ -43,7 +43,7 @@ contracts:
 	tmpl, err := generate.LoadTemplate("evm")
 	require.NoError(t, err, "loadTemplate")
 
-	require.NoError(t, evm.Handler{}.Generate(cfg, tmpl), "Generate")
+	require.NoError(t, evm.Handler{}.Generate(cfg, tmpl, nil), "Generate")
 
 	outputPath := core.ContractOutputPath(tmpDir, core.VersionToPath("1.0.0"), "link_token")
 	got, err := os.ReadFile(outputPath)

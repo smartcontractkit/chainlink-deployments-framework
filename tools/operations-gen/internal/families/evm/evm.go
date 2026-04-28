@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"text/template"
 
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 	"github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/internal/core"
 )
 
@@ -15,7 +16,7 @@ type Handler struct{}
 
 // Generate decodes each YAML node as an EvmContractConfig, extracts contract info,
 // and writes a generated operations file for each contract.
-func (h Handler) Generate(config core.Config, tmpl *template.Template) error {
+func (h Handler) Generate(config core.Config, tmpl *template.Template, lggr logger.Logger) error {
 	var input EvmInputConfig
 	if config.Input.Kind != 0 {
 		if err := config.Input.Decode(&input); err != nil {
@@ -50,7 +51,9 @@ func (h Handler) Generate(config core.Config, tmpl *template.Template) error {
 			return fmt.Errorf("error generating file for %s: %w", cfg.Name, err)
 		}
 
-		fmt.Printf("✓ Generated operations for %s at %s\n", info.Name, info.OutputPath)
+		if lggr != nil {
+			lggr.Infow("Generated operations", "contract", info.Name, "path", info.OutputPath)
+		}
 	}
 
 	return nil

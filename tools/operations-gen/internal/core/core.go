@@ -9,11 +9,13 @@ import (
 	"text/template"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
 // ChainFamilyHandler abstracts all chain-specific generation logic.
 type ChainFamilyHandler interface {
-	Generate(config Config, tmpl *template.Template) error
+	Generate(config Config, tmpl *template.Template, lggr logger.Logger) error
 }
 
 // Config holds the top-level generator configuration.
