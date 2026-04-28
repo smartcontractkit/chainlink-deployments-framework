@@ -6,7 +6,7 @@ monorepo:
 
 builds:
   - id: operations-gen
-    main: .
+    main: ./cmd/operations-gen
     dir: tools/operations-gen
     binary: operations-gen
     env:
