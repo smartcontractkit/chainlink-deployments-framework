@@ -63,7 +63,7 @@ func Generate(config Config) error {
 
 	handler, ok := chainFamilies[chainFamily]
 	if !ok {
-		return fmt.Errorf("unsupported chain_family %q (supported: %s)", chainFamily, SupportedFamilies())
+		return fmt.Errorf("unsupported chain_family %q (supported: %s)", chainFamily, supportedFamilies())
 	}
 
 	tmpl, err := LoadTemplate(chainFamily)
@@ -89,8 +89,8 @@ func LoadTemplate(chainFamily string) (*template.Template, error) {
 	return template.New("operations").Parse(string(content))
 }
 
-// SupportedFamilies returns a sorted, comma-separated list of supported chain families.
-func SupportedFamilies() string {
+// supportedFamilies returns a sorted, comma-separated list of supported chain families.
+func supportedFamilies() string {
 	families := make([]string, 0, len(chainFamilies))
 	for k := range chainFamilies {
 		families = append(families, k)
