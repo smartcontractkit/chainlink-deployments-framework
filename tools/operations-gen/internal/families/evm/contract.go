@@ -171,7 +171,7 @@ func isLocalPackagePath(pkgPath string) bool {
 		filepath.IsAbs(pkgPath)
 }
 
-func findModuleForDir(dir string) (moduleRoot string, modulePath string, err error) {
+func findModuleForDir(dir string) (string, string, error) {
 	for current := filepath.Clean(dir); ; current = filepath.Dir(current) {
 		// Attempt reading go.mod file
 		goModPath := filepath.Join(current, "go.mod")
