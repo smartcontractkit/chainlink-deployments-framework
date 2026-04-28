@@ -38,7 +38,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 
 	if err := generate.GenerateFile(*configPath); err != nil {
-		fmt.Fprintf(stderr, "Error generating operations: %v\n", err)
+		fmt.Fprintf(stderr, "Error: %v\n", err)
 		return 1
 	}
 
