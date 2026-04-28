@@ -1,10 +1,10 @@
 package evm_test
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/internal/families/evm"
 )
@@ -63,9 +63,7 @@ func TestSolidityToGoType(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.want, func(t *testing.T) {
 			t.Parallel()
-			if got := evm.AbiToGoType(tc.solidity); got != tc.want {
-				t.Errorf("solidityToGoType(%q) = %q, want %q", tc.solidity, got, tc.want)
-			}
+			require.Equal(t, tc.want, evm.AbiToGoType(tc.solidity), "solidityToGoType(%q)", tc.solidity)
 		})
 	}
 }
@@ -93,9 +91,7 @@ func TestSanitizeFieldName(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
-			if got := evm.SanitizeFieldName(tc.input); got != tc.want {
-				t.Errorf("SanitizeFieldName(%q) = %q, want %q", tc.input, got, tc.want)
-			}
+			require.Equal(t, tc.want, evm.SanitizeFieldName(tc.input), "SanitizeFieldName(%q)", tc.input)
 		})
 	}
 }
@@ -108,15 +104,10 @@ func TestReadABI(t *testing.T) {
 	}
 
 	parsedABI, err := evm.ReadABI(cfg)
-	if err != nil {
-		t.Fatalf("ReadABI returned error: %v", err)
-	}
-	if parsedABI == nil {
-		t.Fatal("expected parsed ABI, got nil")
-	}
-	if _, ok := parsedABI.Methods["transfer"]; !ok {
-		t.Fatal("expected transfer method in ABI")
-	}
+	require.NoError(t, err, "ReadABI returned error")
+	require.NotNil(t, parsedABI, "expected parsed ABI, got nil")
+	_, ok := parsedABI.Methods["transfer"]
+	require.True(t, ok, "expected transfer method in ABI")
 }
 
 func TestReadABIPopulatesTupleRawNamesFromGobindings(t *testing.T) {
@@ -127,26 +118,16 @@ func TestReadABIPopulatesTupleRawNamesFromGobindings(t *testing.T) {
 	}
 
 	parsedABI, err := evm.ReadABI(cfg)
-	if err != nil {
-		t.Fatalf("ReadABI returned error: %v", err)
-	}
+	require.NoError(t, err, "ReadABI returned error")
 
 	setRoot, ok := parsedABI.Methods["setRoot"]
-	if !ok {
-		t.Fatal("expected setRoot method in ABI")
-	}
+	require.True(t, ok, "expected setRoot method in ABI")
 
-	if got, want := setRoot.Inputs[2].Type.TupleRawName, "ManyChainMultiSigRootMetadata"; got != want {
-		t.Fatalf("metadata TupleRawName = %q, want %q", got, want)
-	}
+	require.Equal(t, "ManyChainMultiSigRootMetadata", setRoot.Inputs[2].Type.TupleRawName)
 
 	signaturesType := setRoot.Inputs[4].Type
-	if signaturesType.Elem == nil {
-		t.Fatal("expected signatures type to have element type")
-	}
-	if got, want := signaturesType.Elem.TupleRawName, "ManyChainMultiSigSignature"; got != want {
-		t.Fatalf("signatures TupleRawName = %q, want %q", got, want)
-	}
+	require.NotNil(t, signaturesType.Elem, "expected signatures type to have element type")
+	require.Equal(t, "ManyChainMultiSigSignature", signaturesType.Elem.TupleRawName)
 }
 
 func TestFindFunctionInABINotFound(t *testing.T) {
@@ -156,9 +137,7 @@ func TestFindFunctionInABINotFound(t *testing.T) {
 			"transfer": {Name: "transfer", RawName: "transfer"},
 		},
 	}
-	if got := evm.FindFunctionInABI(&parsed, "mint"); got != nil {
-		t.Errorf("expected nil for missing function, got %v", got)
-	}
+	require.Nil(t, evm.FindFunctionInABI(&parsed, "mint"))
 }
 
 func TestNormalizeStructInternalTypes(t *testing.T) {
@@ -178,8 +157,6 @@ func TestNormalizeStructInternalTypes(t *testing.T) {
 		`"internalType":"struct Common.AssetAmount[]"`,
 	}
 	for _, want := range wantContains {
-		if !strings.Contains(got, want) {
-			t.Fatalf("normalized ABI does not contain %s: %s", want, got)
-		}
+		require.Contains(t, got, want)
 	}
 }

@@ -3,10 +3,12 @@ package evm
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
+	"golang.org/x/mod/modfile"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/internal/core"
 )
@@ -62,12 +64,9 @@ type ParameterInfo struct {
 
 // ---- Extraction ----
 
-func extractContractInfo(cfg EvmContractConfig, output EvmOutputConfig) (*ContractInfo, error) {
+func extractContractInfo(cfg EvmContractConfig, input EvmInputConfig, output EvmOutputConfig) (*ContractInfo, error) {
 	if cfg.Name == "" || cfg.Version == "" {
 		return nil, errors.New("contract_name and version are required")
-	}
-	if cfg.GobindingsPackage == "" {
-		return nil, fmt.Errorf("gobindings_package is required for contract %q", cfg.Name)
 	}
 
 	packageName := cfg.PackageName
@@ -85,6 +84,16 @@ func extractContractInfo(cfg EvmContractConfig, output EvmOutputConfig) (*Contra
 	if err := validatePathSegment("version_path", versionPath); err != nil {
 		return nil, err
 	}
+
+	cfg.GobindingsPackage = resolveGobindingsPackage(cfg.GobindingsPackage, input.GobindingsPackage, versionPath, packageName)
+	if cfg.GobindingsPackage == "" {
+		return nil, fmt.Errorf("gobindings_package is required for contract %q; set either contract gobindings_package or input.gobindings_package", cfg.Name)
+	}
+	resolvedGobindingsPackage, err := resolveGobindingsImportPath(cfg.GobindingsPackage, cfg.ConfigDir)
+	if err != nil {
+		return nil, fmt.Errorf("resolve gobindings_package for contract %q: %w", cfg.Name, err)
+	}
+	cfg.GobindingsPackage = resolvedGobindingsPackage
 
 	parsedAbi, err := ReadABI(cfg)
 	if err != nil {
@@ -111,6 +120,80 @@ func extractContractInfo(cfg EvmContractConfig, output EvmOutputConfig) (*Contra
 	collectAllStructDefs(info)
 
 	return info, nil
+}
+
+func resolveGobindingsPackage(contractPackage, parentPackage, versionPath, packageName string) string {
+	if contractPackage != "" {
+		return contractPackage
+	}
+	if parentPackage == "" {
+		return ""
+	}
+
+	return strings.TrimSuffix(parentPackage, "/") + "/" + versionPath + "/" + packageName
+}
+
+func resolveGobindingsImportPath(pkgPath string, loadDir string) (string, error) {
+	if !isLocalPackagePath(pkgPath) {
+		return pkgPath, nil
+	}
+
+	packageDir := filepath.Clean(pkgPath)
+	if !filepath.IsAbs(packageDir) {
+		packageDir = filepath.Join(loadDir, packageDir)
+	}
+	packageDir, err := filepath.Abs(packageDir)
+	if err != nil {
+		return "", fmt.Errorf("resolve absolute package path for %q: %w", pkgPath, err)
+	}
+
+	moduleRoot, modulePath, err := findModuleForDir(packageDir)
+	if err != nil {
+		return "", err
+	}
+
+	relPackageDir, err := filepath.Rel(moduleRoot, packageDir)
+	if err != nil {
+		return "", fmt.Errorf("resolve package path %q relative to module root %q: %w", packageDir, moduleRoot, err)
+	}
+	if relPackageDir == "." {
+		return modulePath, nil
+	}
+
+	return strings.TrimSuffix(modulePath, "/") + "/" + filepath.ToSlash(relPackageDir), nil
+}
+
+func isLocalPackagePath(pkgPath string) bool {
+	return pkgPath == "." ||
+		pkgPath == ".." ||
+		strings.HasPrefix(pkgPath, "./") ||
+		strings.HasPrefix(pkgPath, "../") ||
+		filepath.IsAbs(pkgPath)
+}
+
+func findModuleForDir(dir string) (string, string, error) {
+	for current := filepath.Clean(dir); ; current = filepath.Dir(current) {
+		// Attempt reading go.mod file
+		goModPath := filepath.Join(current, "go.mod")
+		goMod, readErr := os.ReadFile(goModPath)
+		if readErr == nil {
+			// If there is a go.mod file then we found the root, so we fetch the module path
+			modulePath := modfile.ModulePath(goMod)
+			if modulePath == "" {
+				return "", "", fmt.Errorf("go.mod %q does not define a module path", goModPath)
+			}
+
+			return current, modulePath, nil
+		}
+		// Return early on unexpected errors
+		if !errors.Is(readErr, os.ErrNotExist) {
+			return "", "", fmt.Errorf("read %q: %w", goModPath, readErr)
+		}
+		// If moving upward would not change the path anymore, we reached filesystem root and no go.mod exists.
+		if parent := filepath.Dir(current); parent == current {
+			return "", "", fmt.Errorf("could not find go.mod for local gobindings package %q", dir)
+		}
+	}
 }
 
 // extractConstructor populates info.Constructor when the ABI defines a

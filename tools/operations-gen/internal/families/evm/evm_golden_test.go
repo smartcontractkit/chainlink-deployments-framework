@@ -5,10 +5,11 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"text/template"
 
+	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 
+	"github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/generate"
 	"github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/internal/core"
 	"github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/internal/families/evm"
 )
@@ -28,23 +29,22 @@ func TestGenerateManyChainMultiSig(t *testing.T) {
 	runGoldenGenerationTest(t, "operations_gen_mcms_config.yaml", "many_chain_multi_sig.golden.go")
 }
 
+func TestGenerateRBACTimelock(t *testing.T) {
+	t.Parallel()
+	runGoldenGenerationTest(t, "operations_gen_rbac_timelock_config.yaml", "rbac_timelock.golden.go")
+}
+
 func runGoldenGenerationTest(t *testing.T, configFileName string, goldenFileName string) {
 	t.Helper()
 
 	evmTestdataDir, err := filepath.Abs(filepath.Join("..", "..", "..", "testdata", "evm"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	configData, err := os.ReadFile(filepath.Join(evmTestdataDir, configFileName))
-	if err != nil {
-		t.Fatalf("reading config: %v", err)
-	}
+	require.NoError(t, err, "reading config")
 
 	var cfg core.Config
-	if err = yaml.Unmarshal(configData, &cfg); err != nil {
-		t.Fatalf("parsing config: %v", err)
-	}
+	require.NoError(t, yaml.Unmarshal(configData, &cfg), "parsing config")
 
 	// Override output path to an isolated temp dir.
 	tmpDir := t.TempDir()
@@ -52,20 +52,15 @@ func runGoldenGenerationTest(t *testing.T, configFileName string, goldenFileName
 	cfg.ConfigDir = ""
 
 	handler := evm.Handler{}
-	tmpl, err := loadTemplateForTest()
-	if err != nil {
-		t.Fatalf("loadTemplate: %v", err)
-	}
+	tmpl, err := generate.LoadTemplate("evm")
+	require.NoError(t, err, "loadTemplate")
 
-	if err = handler.Generate(cfg, tmpl); err != nil {
-		t.Fatalf("Generate: %v", err)
-	}
+	require.NoError(t, handler.Generate(cfg, tmpl), "Generate")
 
 	// Derive the output path from the first contract in the config, mirroring extractContractInfo.
 	var contractCfgs []evm.EvmContractConfig
-	if err = cfg.Contracts.Decode(&contractCfgs); err != nil || len(contractCfgs) == 0 {
-		t.Fatalf("decoding contract configs: %v", err)
-	}
+	require.NoError(t, cfg.Contracts.Decode(&contractCfgs), "decoding contract configs")
+	require.NotEmpty(t, contractCfgs, "decoding contract configs")
 	first := contractCfgs[0]
 	pkgName := first.PackageName
 	if pkgName == "" {
@@ -78,50 +73,28 @@ func runGoldenGenerationTest(t *testing.T, configFileName string, goldenFileName
 	outputPath := core.ContractOutputPath(tmpDir, vPath, pkgName)
 
 	got, err := os.ReadFile(outputPath)
-	if err != nil {
-		t.Fatalf("reading generated file %s: %v", outputPath, err)
-	}
+	require.NoError(t, err, "reading generated file %s", outputPath)
 
 	goldenPath := filepath.Join(evmTestdataDir, goldenFileName)
 
 	if *update {
-		if err = os.WriteFile(goldenPath, got, 0o600); err != nil {
-			t.Fatalf("writing golden file: %v", err)
-		}
+		require.NoError(t, os.WriteFile(goldenPath, got, 0o600), "writing golden file")
 
 		return
 	}
 
 	want, err := os.ReadFile(goldenPath)
-	if err != nil {
-		t.Fatalf("reading golden file %s: %v (run with -update to create it)", goldenPath, err)
-	}
+	require.NoError(t, err, "reading golden file %s (run with -update to create it)", goldenPath)
 
-	if string(got) != string(want) {
-		t.Errorf("generated output does not match golden file %s\n\nrun: go test ./... -run %s -update", goldenPath, t.Name())
-	}
+	require.Equal(t, string(want), string(got), "generated output does not match golden file %s\n\nrun: go test ./... -run %s -update", goldenPath, t.Name())
 }
 
 func mustYAMLNode(t *testing.T, value any) yaml.Node {
 	t.Helper()
 	b, err := yaml.Marshal(value)
-	if err != nil {
-		t.Fatalf("marshal yaml node: %v", err)
-	}
+	require.NoError(t, err, "marshal yaml node")
 	var n yaml.Node
-	if err = yaml.Unmarshal(b, &n); err != nil {
-		t.Fatalf("unmarshal yaml node: %v", err)
-	}
+	require.NoError(t, yaml.Unmarshal(b, &n), "unmarshal yaml node")
 
 	return n
-}
-
-func loadTemplateForTest() (*template.Template, error) {
-	path := filepath.Join("..", "..", "..", "templates", "evm", "operations.tmpl")
-	content, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-
-	return template.New("operations").Parse(string(content))
 }

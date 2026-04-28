@@ -77,7 +77,9 @@ func NewWrite{{.Name}}(c gobindings.{{$.ContractType}}Interface) *cld_ops.Operat
 		ContractABI:  gobindings.{{$.ContractType}}MetaData.ABI,
 		Contract:     c,
 	{{- if eq .AccessControl "owner"}}
-		IsAllowedCaller: contract.OnlyOwner[gobindings.{{$.ContractType}}Interface, {{.ArgsType}}],
+		IsAllowedCaller: func(c gobindings.{{$.ContractType}}Interface, opts *bind.CallOpts, caller common.Address, args {{.ArgsType}}) (bool, error) {
+			return contract.OnlyOwner(c, opts, caller, args)
+		},
 	{{- else if eq .AccessControl "role"}}
 		IsAllowedCaller: func(c gobindings.{{$.ContractType}}Interface, opts *bind.CallOpts, caller common.Address, args {{.ArgsType}}) (bool, error) {
 			return contract.HasRole(c, opts, {{.Role}}, caller)

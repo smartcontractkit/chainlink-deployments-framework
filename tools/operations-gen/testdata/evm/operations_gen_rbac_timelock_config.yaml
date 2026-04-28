@@ -8,12 +8,10 @@ output:
   base_path: "."
 
 contracts:
-  - contract_name: LinkToken
+  - contract_name: RBACTimelock
     version: "1.0.0"
+    package_name: rbac_timelock
     functions:
-      - name: transfer
-        access: public
-      - name: balanceOf
-        access: public
-      - name: approve
-        access: public
+      - name: scheduleBatch
+        access: role
+        role: PROPOSER_ROLE
