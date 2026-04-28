@@ -88,11 +88,12 @@ func TestMemoryAddressRefStore_Add(t *testing.T) {
 	)
 
 	tests := []struct {
-		name          string
-		givenState    []AddressRef
-		giveRecord    AddressRef
-		expectedState []AddressRef
-		expectedError error
+		name              string
+		givenState        []AddressRef
+		deletedRemoteKeys []string
+		giveRecord        AddressRef
+		expectedState     []AddressRef
+		expectedError     error
 	}{
 		{
 			name:       "success: adds new record",
@@ -110,13 +111,37 @@ func TestMemoryAddressRefStore_Add(t *testing.T) {
 			giveRecord:    record,
 			expectedError: ErrAddressRefExists,
 		},
+		{
+			name:       "error: version is nil",
+			givenState: []AddressRef{},
+			giveRecord: AddressRef{
+				Address:       "0x2324224",
+				ChainSelector: 1,
+				Type:          "type1",
+				Qualifier:     "qual1",
+				Labels: NewLabelSet(
+					"label1", "label2", "label3",
+				),
+			},
+			expectedError: ErrAddressRefVersionRequired,
+		},
+		{
+			name:              "success: add record that was staged for deletion",
+			givenState:        []AddressRef{},
+			deletedRemoteKeys: []string{record.Key().String()},
+			giveRecord:        record,
+			expectedState: []AddressRef{
+				record,
+			},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			store := MemoryAddressRefStore{Records: tt.givenState}
+			store := MemoryAddressRefStore{Records: tt.givenState, DeletedRemoteKeys: tt.deletedRemoteKeys}
+			assert.Len(t, store.DeletedRemoteKeys, len(tt.deletedRemoteKeys))
 			err := store.Add(tt.giveRecord)
 
 			if tt.expectedError != nil {
@@ -125,6 +150,7 @@ func TestMemoryAddressRefStore_Add(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				assert.Equal(t, tt.expectedState, store.Records)
+				assert.Empty(t, store.DeletedRemoteKeys)
 			}
 		})
 	}
@@ -157,10 +183,12 @@ func TestMemoryAddressRefStore_Upsert(t *testing.T) {
 	)
 
 	tests := []struct {
-		name          string
-		givenState    []AddressRef
-		expectedState []AddressRef
-		giveRecord    AddressRef
+		name              string
+		givenState        []AddressRef
+		expectedState     []AddressRef
+		giveRecord        AddressRef
+		deletedRemoteKeys []string
+		expectedError     error
 	}{
 		{
 			name:       "success: adds new record",
@@ -180,18 +208,51 @@ func TestMemoryAddressRefStore_Upsert(t *testing.T) {
 				newRecord,
 			},
 		},
+		{
+			name:              "success: upsert record that was staged for deletion",
+			givenState:        []AddressRef{},
+			deletedRemoteKeys: []string{oldRecord.Key().String()},
+			giveRecord:        oldRecord,
+			expectedState: []AddressRef{
+				oldRecord,
+			},
+		},
+		{
+			name:              "error: version is nil",
+			givenState:        []AddressRef{},
+			deletedRemoteKeys: []string{oldRecord.Key().String()},
+			giveRecord: AddressRef{
+				Address:       "0x2324224",
+				ChainSelector: 1,
+				Type:          "type1",
+				Version:       nil,
+				Qualifier:     "qual1",
+				Labels: NewLabelSet(
+					"label1", "label2", "label3",
+				),
+			},
+			expectedError: ErrAddressRefVersionRequired,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			store := MemoryAddressRefStore{Records: tt.givenState}
+			store := MemoryAddressRefStore{Records: tt.givenState, DeletedRemoteKeys: tt.deletedRemoteKeys}
+			assert.Len(t, store.DeletedRemoteKeys, len(tt.deletedRemoteKeys))
 			// Check the error, which will always be nil for the
 			// in memory implementation, to satisfy the linter
 			err := store.Upsert(tt.giveRecord)
-			require.NoError(t, err)
-			assert.Equal(t, tt.expectedState, store.Records)
+
+			if tt.expectedError != nil {
+				require.Error(t, err)
+				assert.Equal(t, tt.expectedError, err)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.expectedState, store.Records)
+				assert.Empty(t, store.DeletedRemoteKeys)
+			}
 		})
 	}
 }
@@ -220,14 +281,25 @@ func TestMemoryAddressRefStore_Update(t *testing.T) {
 				"label13", "label23", "label33",
 			),
 		}
+		nilRecord = AddressRef{
+			Address:       "0x2324224",
+			ChainSelector: 1,
+			Type:          "type1",
+			Version:       nil,
+			Qualifier:     "qual1",
+			Labels: NewLabelSet(
+				"label13", "label23", "label33",
+			),
+		}
 	)
 
 	tests := []struct {
-		name          string
-		givenState    []AddressRef
-		expectedState []AddressRef
-		giveRecord    AddressRef
-		expectedError error
+		name              string
+		givenState        []AddressRef
+		expectedState     []AddressRef
+		deletedRemoteKeys []string
+		giveRecord        AddressRef
+		expectedError     error
 	}{
 		{
 			name: "success: updates existing record",
@@ -245,13 +317,42 @@ func TestMemoryAddressRefStore_Update(t *testing.T) {
 			giveRecord:    newRecord,
 			expectedError: ErrAddressRefNotFound,
 		},
+		{
+			name: "error: version is nil",
+			givenState: []AddressRef{
+				nilRecord,
+			},
+			giveRecord: AddressRef{
+				Address:       "0x2324224",
+				ChainSelector: 1,
+				Type:          "type1",
+				Version:       nil,
+				Qualifier:     "qual1",
+				Labels: NewLabelSet(
+					"label1", "label2", "label3",
+				),
+			},
+			expectedError: ErrAddressRefVersionRequired,
+		},
+		{
+			name: "success: update record that was staged for deletion",
+			givenState: []AddressRef{
+				oldRecord,
+			},
+			deletedRemoteKeys: []string{oldRecord.Key().String()},
+			giveRecord:        oldRecord,
+			expectedState: []AddressRef{
+				oldRecord,
+			},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			store := MemoryAddressRefStore{Records: tt.givenState}
+			store := MemoryAddressRefStore{Records: tt.givenState, DeletedRemoteKeys: tt.deletedRemoteKeys}
+			assert.Len(t, store.DeletedRemoteKeys, len(tt.deletedRemoteKeys))
 			err := store.Update(tt.giveRecord)
 
 			if tt.expectedError != nil {
@@ -260,6 +361,7 @@ func TestMemoryAddressRefStore_Update(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				assert.Equal(t, tt.expectedState, store.Records)
+				assert.Empty(t, store.DeletedRemoteKeys)
 			}
 		})
 	}
@@ -375,20 +477,22 @@ func TestMemoryAddressRefStore_RemoteDelete(t *testing.T) {
 	t.Run("success: stages key in DeletedRemoteKeys without removing from Records", func(t *testing.T) {
 		t.Parallel()
 
-		store := MemoryAddressRefStore{Records: []AddressRef{recordOne, recordTwo, recordThree}}
+		store := NewMemoryAddressRefStore()
+		store.Records = append(store.Records, recordOne, recordTwo, recordThree)
 		assert.Len(t, store.Records, 3)
 		assert.Empty(t, store.DeletedRemoteKeys)
 		err := store.RemoteDelete(recordTwo.Key())
 		require.NoError(t, err)
 		assert.Len(t, store.Records, 3)
 		assert.Len(t, store.DeletedRemoteKeys, 1)
-		assert.Equal(t, store.DeletedRemoteKeys[0], recordTwo.Key().String())
+		assert.Contains(t, store.DeletedRemoteKeys, recordTwo.Key().String())
 	})
 
 	t.Run("success: second RemoteDelete does not duplicate entry", func(t *testing.T) {
 		t.Parallel()
 
-		store := MemoryAddressRefStore{Records: []AddressRef{recordOne, recordTwo, recordThree}}
+		store := NewMemoryAddressRefStore()
+		store.Records = append(store.Records, recordOne, recordTwo, recordThree)
 		require.NoError(t, store.RemoteDelete(recordTwo.Key()))
 		require.NoError(t, store.RemoteDelete(recordTwo.Key()))
 		assert.Len(t, store.Records, 3)

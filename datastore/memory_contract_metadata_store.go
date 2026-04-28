@@ -22,7 +22,7 @@ type MutableContractMetadataStore interface {
 type MemoryContractMetadataStore struct {
 	mu                sync.RWMutex
 	Records           []ContractMetadata `json:"records"`
-	DeletedRemoteKeys []string           `json:"deletedRemoteKeys,omitempty"`
+	DeletedRemoteKeys []string           `json:"deletedRemoteKeys"`
 }
 
 // MemoryContractMetadataStore implements ContractMetadataStore interface.
@@ -33,7 +33,10 @@ var _ MutableContractMetadataStore = &MemoryContractMetadataStore{}
 
 // NewMemoryContractMetadataStore creates a new MemoryContractMetadataStore instance.
 func NewMemoryContractMetadataStore() *MemoryContractMetadataStore {
-	return &MemoryContractMetadataStore{Records: []ContractMetadata{}}
+	return &MemoryContractMetadataStore{
+		Records:           []ContractMetadata{},
+		DeletedRemoteKeys: []string{},
+	}
 }
 
 // Get returns the ContractMetadata for the provided key, or an error if no such record exists.
@@ -108,6 +111,9 @@ func (s *MemoryContractMetadataStore) Add(record ContractMetadata) error {
 	if idx != -1 {
 		return ErrContractMetadataExists
 	}
+	// If a record with the same key is being added, remove it from the deleted remote keys
+	// this covers cases that we want to delete and recreate a record which has the same key as the old one.
+	s.DeletedRemoteKeys = deleteFromSlice(s.DeletedRemoteKeys, record.Key().String())
 	s.Records = append(s.Records, record)
 
 	return nil
@@ -118,6 +124,10 @@ func (s *MemoryContractMetadataStore) Add(record ContractMetadata) error {
 func (s *MemoryContractMetadataStore) Upsert(record ContractMetadata) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	// If a record with the same key is being upserted, remove it from the deleted remote keys
+	// this covers cases that we want to delete and recreate a record which has the same key as the old one.
+	s.DeletedRemoteKeys = deleteFromSlice(s.DeletedRemoteKeys, record.Key().String())
 
 	idx := s.indexOf(record.Key())
 	if idx == -1 {
@@ -140,6 +150,9 @@ func (s *MemoryContractMetadataStore) Update(record ContractMetadata) error {
 	if idx == -1 {
 		return ErrContractMetadataNotFound
 	}
+	// If a record with the same key is being upserted, remove it from the deleted remote keys
+	// this covers cases that we want to delete and recreate a record which has the same key as the old one.
+	s.DeletedRemoteKeys = deleteFromSlice(s.DeletedRemoteKeys, record.Key().String())
 	s.Records[idx] = record
 
 	return nil
@@ -170,10 +183,9 @@ func (s *MemoryContractMetadataStore) RemoteDelete(key ContractMetadataKey) erro
 
 	deletedKey := key.String()
 
-	if slices.Contains(s.DeletedRemoteKeys, deletedKey) {
-		return nil
+	if !slices.Contains(s.DeletedRemoteKeys, deletedKey) {
+		s.DeletedRemoteKeys = append(s.DeletedRemoteKeys, deletedKey)
 	}
-	s.DeletedRemoteKeys = append(s.DeletedRemoteKeys, deletedKey)
 
 	return nil
 }

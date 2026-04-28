@@ -21,7 +21,7 @@ type MutableAddressRefStore interface {
 // MutableAddressRefStore interfaces.
 type MemoryAddressRefStore struct {
 	Records           []AddressRef `json:"records"`
-	DeletedRemoteKeys []string     `json:"deletedRemoteKeys,omitempty"`
+	DeletedRemoteKeys []string     `json:"deletedRemoteKeys"`
 	mu                sync.RWMutex
 }
 
@@ -33,7 +33,10 @@ var _ MutableAddressRefStore = &MemoryAddressRefStore{}
 
 // NewMemoryAddressRefStore creates a new MemoryAddressRefStore instance.
 func NewMemoryAddressRefStore() *MemoryAddressRefStore {
-	return &MemoryAddressRefStore{Records: []AddressRef{}}
+	return &MemoryAddressRefStore{
+		Records:           []AddressRef{},
+		DeletedRemoteKeys: []string{},
+	}
 }
 
 // Get returns the AddressRef for the provided key, or an error if no such record exists.
@@ -98,6 +101,13 @@ func (s *MemoryAddressRefStore) Add(record AddressRef) error {
 	if idx != -1 {
 		return ErrAddressRefExists
 	}
+
+	if record.Version == nil {
+		return ErrAddressRefVersionRequired
+	}
+	// If a record with the same key is being added, remove it from the deleted remote keys
+	// this covers cases that we want to delete and recreate a record which has the same key as the old one.
+	s.DeletedRemoteKeys = deleteFromSlice(s.DeletedRemoteKeys, record.Key().String())
 	s.Records = append(s.Records, record)
 
 	return nil
@@ -108,6 +118,13 @@ func (s *MemoryAddressRefStore) Add(record AddressRef) error {
 func (s *MemoryAddressRefStore) Upsert(record AddressRef) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	if record.Version == nil {
+		return ErrAddressRefVersionRequired
+	}
+	// If a record with the same key is being upserted, remove it from the deleted remote keys
+	// this covers cases that we want to delete and recreate a record which has the same key as the old one.
+	s.DeletedRemoteKeys = deleteFromSlice(s.DeletedRemoteKeys, record.Key().String())
 
 	idx := s.indexOf(record.Key())
 	if idx != -1 {
@@ -130,6 +147,14 @@ func (s *MemoryAddressRefStore) Update(record AddressRef) error {
 	if idx == -1 {
 		return ErrAddressRefNotFound
 	}
+
+	if record.Version == nil {
+		return ErrAddressRefVersionRequired
+	}
+
+	// If a record with the same key is being updated, remove it from the deleted remote keys
+	// this covers cases that we want to delete and recreate a record which has the same key as the old one.
+	s.DeletedRemoteKeys = deleteFromSlice(s.DeletedRemoteKeys, record.Key().String())
 	s.Records[idx] = record
 
 	return nil
@@ -160,10 +185,9 @@ func (s *MemoryAddressRefStore) RemoteDelete(key AddressRefKey) error {
 
 	deletedKey := key.String()
 
-	if slices.Contains(s.DeletedRemoteKeys, deletedKey) {
-		return nil
+	if !slices.Contains(s.DeletedRemoteKeys, deletedKey) {
+		s.DeletedRemoteKeys = append(s.DeletedRemoteKeys, deletedKey)
 	}
-	s.DeletedRemoteKeys = append(s.DeletedRemoteKeys, deletedKey)
 
 	return nil
 }

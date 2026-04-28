@@ -3,6 +3,7 @@ package datastore
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	chainsel "github.com/smartcontractkit/chain-selectors"
@@ -70,11 +71,12 @@ func TestMemoryChainMetadataStore_Add(t *testing.T) {
 	)
 
 	tests := []struct {
-		name          string
-		givenState    []ChainMetadata
-		giveRecord    ChainMetadata
-		expectedState []ChainMetadata
-		expectedError error
+		name              string
+		givenState        []ChainMetadata
+		giveRecord        ChainMetadata
+		expectedState     []ChainMetadata
+		deletedRemoteKeys []string
+		expectedError     error
 	}{
 		{
 			name:       "success: adds new record",
@@ -92,13 +94,23 @@ func TestMemoryChainMetadataStore_Add(t *testing.T) {
 			giveRecord:    record,
 			expectedError: ErrChainMetadataExists,
 		},
+		{
+			name:              "success: add record that was staged for deletion",
+			givenState:        []ChainMetadata{},
+			deletedRemoteKeys: []string{record.Key().String()},
+			giveRecord:        record,
+			expectedState: []ChainMetadata{
+				record,
+			},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			store := MemoryChainMetadataStore{Records: tt.givenState}
+			store := MemoryChainMetadataStore{Records: tt.givenState, DeletedRemoteKeys: tt.deletedRemoteKeys}
+			assert.Len(t, store.DeletedRemoteKeys, len(tt.deletedRemoteKeys))
 			err := store.Add(tt.giveRecord)
 
 			if tt.expectedError != nil {
@@ -107,6 +119,7 @@ func TestMemoryChainMetadataStore_Add(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, tt.expectedState, store.Records)
+				assert.Empty(t, store.DeletedRemoteKeys)
 			}
 		})
 	}
@@ -128,10 +141,11 @@ func TestMemoryChainMetadataStore_Upsert(t *testing.T) {
 	)
 
 	tests := []struct {
-		name          string
-		givenState    []ChainMetadata
-		expectedState []ChainMetadata
-		giveRecord    ChainMetadata
+		name              string
+		givenState        []ChainMetadata
+		expectedState     []ChainMetadata
+		giveRecord        ChainMetadata
+		deletedRemoteKeys []string
 	}{
 		{
 			name:       "success: adds new record",
@@ -151,18 +165,29 @@ func TestMemoryChainMetadataStore_Upsert(t *testing.T) {
 				newRecord,
 			},
 		},
+		{
+			name:              "success: upsert record that was staged for deletion",
+			givenState:        []ChainMetadata{},
+			deletedRemoteKeys: []string{oldRecord.Key().String()},
+			giveRecord:        oldRecord,
+			expectedState: []ChainMetadata{
+				oldRecord,
+			},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			store := MemoryChainMetadataStore{Records: tt.givenState}
+			store := MemoryChainMetadataStore{Records: tt.givenState, DeletedRemoteKeys: tt.deletedRemoteKeys}
+			assert.Len(t, store.DeletedRemoteKeys, len(tt.deletedRemoteKeys))
 			// Check the error for the in-memory store, which will always be nil for the
 			// in memory implementation, to satisfy the linter
 			err := store.Upsert(tt.giveRecord)
 			require.NoError(t, err)
 			require.Equal(t, tt.expectedState, store.Records)
+			assert.Empty(t, store.DeletedRemoteKeys)
 		})
 	}
 }
@@ -183,11 +208,12 @@ func TestMemoryChainMetadataStore_Update(t *testing.T) {
 	)
 
 	tests := []struct {
-		name          string
-		givenState    []ChainMetadata
-		expectedState []ChainMetadata
-		giveRecord    ChainMetadata
-		expectedError error
+		name              string
+		givenState        []ChainMetadata
+		expectedState     []ChainMetadata
+		giveRecord        ChainMetadata
+		expectedError     error
+		deletedRemoteKeys []string
 	}{
 		{
 			name: "success: updates existing record",
@@ -205,13 +231,25 @@ func TestMemoryChainMetadataStore_Update(t *testing.T) {
 			giveRecord:    newRecord,
 			expectedError: ErrChainMetadataNotFound,
 		},
+		{
+			name: "success: update record that was staged for deletion",
+			givenState: []ChainMetadata{
+				oldRecord,
+			},
+			deletedRemoteKeys: []string{oldRecord.Key().String()},
+			giveRecord:        oldRecord,
+			expectedState: []ChainMetadata{
+				oldRecord,
+			},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			store := MemoryChainMetadataStore{Records: tt.givenState}
+			store := MemoryChainMetadataStore{Records: tt.givenState, DeletedRemoteKeys: tt.deletedRemoteKeys}
+			assert.Len(t, store.DeletedRemoteKeys, len(tt.deletedRemoteKeys))
 			err := store.Update(tt.giveRecord)
 
 			if tt.expectedError != nil {
@@ -220,6 +258,7 @@ func TestMemoryChainMetadataStore_Update(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, tt.expectedState, store.Records)
+				assert.Empty(t, store.DeletedRemoteKeys)
 			}
 		})
 	}
@@ -300,20 +339,22 @@ func TestMemoryChainMetadataStore_RemoteDelete(t *testing.T) {
 	t.Run("success: stages key in DeletedRemoteKeys without removing from Records", func(t *testing.T) {
 		t.Parallel()
 
-		store := MemoryChainMetadataStore{Records: []ChainMetadata{recordOne, recordTwo, recordThree}}
+		store := NewMemoryChainMetadataStore()
+		store.Records = append(store.Records, recordOne, recordTwo, recordThree)
 		require.Len(t, store.Records, 3)
 		require.Empty(t, store.DeletedRemoteKeys)
 		err := store.RemoteDelete(recordTwo.Key())
 		require.NoError(t, err)
 		require.Len(t, store.Records, 3)
 		require.Len(t, store.DeletedRemoteKeys, 1)
-		require.Equal(t, store.DeletedRemoteKeys[0], recordTwo.Key().String())
+		require.Contains(t, store.DeletedRemoteKeys, recordTwo.Key().String())
 	})
 
 	t.Run("success: second RemoteDelete does not duplicate entry", func(t *testing.T) {
 		t.Parallel()
 
-		store := MemoryChainMetadataStore{Records: []ChainMetadata{recordOne, recordTwo, recordThree}}
+		store := NewMemoryChainMetadataStore()
+		store.Records = append(store.Records, recordOne, recordTwo, recordThree)
 		require.NoError(t, store.RemoteDelete(recordTwo.Key()))
 		require.NoError(t, store.RemoteDelete(recordTwo.Key()))
 		require.Len(t, store.Records, 3)
