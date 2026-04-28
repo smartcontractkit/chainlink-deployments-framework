@@ -2,6 +2,7 @@ package evm_test
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -51,4 +52,49 @@ contracts:
 
 	require.Contains(t, string(got), `gobindings "`+overrideGobindingsPackage+`"`)
 	require.NotContains(t, string(got), "unused_parent")
+}
+
+func TestGenerateResolvesRelativeInputGobindingsPackage(t *testing.T) {
+	t.Parallel()
+
+	const wantGobindingsPackage = "github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/testdata/evm/gobindings/v1_0_0/link_token"
+	config := `version: "1.0.0"
+chain_family: evm
+
+input:
+  gobindings_package: "./testdata/evm/gobindings"
+
+output:
+  base_path: "."
+
+contracts:
+  - contract_name: LinkToken
+    version: "1.0.0"
+    functions:
+      - name: transfer
+        access: public
+`
+
+	var cfg core.Config
+	require.NoError(t, yaml.Unmarshal([]byte(config), &cfg), "parsing config")
+
+	moduleDir, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	require.NoError(t, err)
+	tmpDir := t.TempDir()
+	outputBasePath, err := filepath.Rel(moduleDir, tmpDir)
+	require.NoError(t, err)
+	cfg.ConfigDir = moduleDir
+	cfg.Output = mustYAMLNode(t, evm.EvmOutputConfig{BasePath: outputBasePath})
+
+	tmpl, err := generate.LoadTemplate("evm")
+	require.NoError(t, err, "loadTemplate")
+
+	require.NoError(t, evm.Handler{}.Generate(cfg, tmpl), "Generate")
+
+	outputPath := core.ContractOutputPath(tmpDir, core.VersionToPath("1.0.0"), "link_token")
+	got, err := os.ReadFile(outputPath)
+	require.NoError(t, err, "reading generated file %s", outputPath)
+
+	require.Contains(t, string(got), `gobindings "`+wantGobindingsPackage+`"`)
+	require.NotContains(t, string(got), `gobindings "./testdata/evm/gobindings`)
 }
