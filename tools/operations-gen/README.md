@@ -7,14 +7,14 @@ Generates type-safe Go operation wrappers for smart contracts from their ABIs.
 From inside this repository:
 
 ```bash
-go run ./tools/operations-gen -config /path/to/operations_gen_config.yaml
+go run ./tools/operations-gen/cmd/operations-gen -config /path/to/operations_gen_config.yaml
 ```
 
 From any other repository, install the binary once and invoke it directly:
 
 ```bash
 # Pin to a published subdirectory tag
-go install github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen@vX.Y.Z
+go install github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/cmd/operations-gen@vX.Y.Z
 
 operations-gen -config /path/to/operations_gen_config.yaml
 ```
@@ -67,7 +67,7 @@ This module is released with Go module subdirectory tags in the form `tools/oper
 Install a specific released version:
 
 ```bash
-go install github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen@vX.Y.Z
+go install github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/cmd/operations-gen@vX.Y.Z
 ```
 
 Download prebuilt release binaries and checksums from the GitHub Releases page:
@@ -80,10 +80,13 @@ https://github.com/smartcontractkit/chainlink-deployments-framework/releases
 
 ```text
 tools/operations-gen/
-  main.go                         # CLI entrypoint
+  cmd/
+    operations-gen/
+      main.go                     # CLI entrypoint
   generate/                       # Importable generation package + embedded templates
-    evm/
-      operations.tmpl             # EVM codegen template
+    templates/
+      evm/
+        operations.tmpl           # EVM codegen template
   internal/
     core/
       core.go                     # Shared config + helpers/interfaces
@@ -98,7 +101,7 @@ tools/operations-gen/
     evm/                          # ABI/bytecode/config/golden fixtures
 ```
 
-`main.go` intentionally stays thin: it parses CLI flags and delegates to the importable `generate` package. Shared helpers and common config types live in `internal/core`.
+`cmd/operations-gen/main.go` intentionally stays thin: it parses CLI flags and delegates to the importable `generate` package. Shared helpers and common config types live in `internal/core`.
 
 ## Configuration
 
@@ -217,9 +220,9 @@ To add a new chain family (e.g. `solana`):
 
    The handler receives the full `core.Config`. `Config.Input`, `Config.Output`, and `Config.Contracts` are `yaml.Node` values so each chain-family handler can decode its own chain-specific schemas.
 
-2. Add `templates/solana/operations.tmpl` with chain-appropriate imports and method bodies.
+2. Add `generate/templates/solana/operations.tmpl` with chain-appropriate imports and method bodies.
 
-3. Register the handler in `chainFamilies` in `main.go`:
+3. Register the handler in `chainFamilies` in `generate/generate.go`:
    ```go
    var chainFamilies = map[string]core.ChainFamilyHandler{
        "evm":    evm.Handler{},
@@ -227,4 +230,4 @@ To add a new chain family (e.g. `solana`):
    }
    ```
 
-No other changes to `main.go` are needed. Set `chain_family: solana` in your config to use it.
+No CLI changes are needed. Set `chain_family: solana` in your config to use it.
