@@ -15,6 +15,7 @@ import (
 	"github.com/zksync-sdk/zksync2-go/clients"
 
 	chaincommon "github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/common"
+	"github.com/smartcontractkit/chainlink-deployments-framework/internal/pointer"
 )
 
 // ConfirmFunc is a function that takes a transaction, waits for the transaction to be confirmed,
@@ -98,6 +99,7 @@ func (c Chain) ReadOnly() (chaincommon.BlockChain, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate private key for read-only chain: %w", err)
 	}
+	c.DeployerKey = pointer.To(*c.DeployerKey)
 	c.DeployerKey.From = crypto.PubkeyToAddress(*privateKey.Public().(*ecdsa.PublicKey))
 
 	return c, nil
