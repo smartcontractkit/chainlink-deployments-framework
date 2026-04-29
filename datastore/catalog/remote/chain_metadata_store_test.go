@@ -763,11 +763,35 @@ func TestCatalogChainMetadataStore_Delete(t *testing.T) {
 
 				key := datastore.NewChainMetadataKey(record.ChainSelector)
 				require.NoError(t, store.Delete(t.Context(), key))
-				require.NoError(t, store.Add(t.Context(), record))
+
+				resurrected := datastore.ChainMetadata{
+					ChainSelector: record.ChainSelector,
+					Metadata:      newTestChainMetadata("Resurrected"),
+				}
+				require.NoError(t, store.Add(t.Context(), resurrected))
 
 				got, err := store.Get(t.Context(), key)
 				require.NoError(t, err)
-				require.Equal(t, record.ChainSelector, got.ChainSelector)
+				concrete, err := datastore.As[TestChainMetadata](got.Metadata)
+				require.NoError(t, err)
+				require.Equal(t, "Resurrected", concrete.Name)
+			},
+		},
+		{
+			name: "delete_excluded_from_find",
+			run: func(t *testing.T, store *catalogChainMetadataStore) {
+				t.Helper()
+				record := newRandomChainMetadata()
+				require.NoError(t, store.Add(t.Context(), record))
+
+				key := datastore.NewChainMetadataKey(record.ChainSelector)
+				_, err := store.Get(t.Context(), key)
+				require.NoError(t, err)
+
+				require.NoError(t, store.Delete(t.Context(), key))
+
+				_, err = store.Get(t.Context(), key)
+				require.ErrorIs(t, err, datastore.ErrChainMetadataNotFound)
 			},
 		},
 	}

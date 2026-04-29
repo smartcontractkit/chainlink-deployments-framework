@@ -29,6 +29,18 @@ func MergeDataStoreToCatalog(ctx context.Context, sourceDS DataStore, catalog Ca
 			}
 		}
 
+		if src, ok := sourceDS.Addresses().(*MemoryAddressRefStore); ok {
+			for _, dk := range src.DeletedRemoteKeys {
+				key, keyErr := NewAddressRefKeyFromString(dk)
+				if keyErr != nil {
+					return fmt.Errorf("failed to parse address ref key: %w", keyErr)
+				}
+				if deleteErr := txCatalog.Addresses().Delete(ctx, key); deleteErr != nil {
+					return fmt.Errorf("failed to delete address reference from catalog: %w", deleteErr)
+				}
+			}
+		}
+
 		// Merge all chain metadata to the catalog
 		chainMetadata, err := sourceDS.ChainMetadata().Fetch()
 		if err != nil {
@@ -42,6 +54,18 @@ func MergeDataStoreToCatalog(ctx context.Context, sourceDS DataStore, catalog Ca
 			}
 		}
 
+		if src, ok := sourceDS.ChainMetadata().(*MemoryChainMetadataStore); ok {
+			for _, dk := range src.DeletedRemoteKeys {
+				key, keyErr := NewChainMetadataKeyFromString(dk)
+				if keyErr != nil {
+					return fmt.Errorf("failed to parse chain metadata key: %w", keyErr)
+				}
+				if deleteErr := txCatalog.ChainMetadata().Delete(ctx, key); deleteErr != nil {
+					return fmt.Errorf("failed to delete chain metadata from catalog: %w", deleteErr)
+				}
+			}
+		}
+
 		// Merge all contract metadata to the catalog
 		contractMetadata, err := sourceDS.ContractMetadata().Fetch()
 		if err != nil {
@@ -52,6 +76,18 @@ func MergeDataStoreToCatalog(ctx context.Context, sourceDS DataStore, catalog Ca
 			key := NewContractMetadataKey(metadata.ChainSelector, metadata.Address)
 			if upsertErr := txCatalog.ContractMetadata().Upsert(ctx, key, metadata.Metadata); upsertErr != nil {
 				return fmt.Errorf("failed to upsert contract metadata to catalog: %w", upsertErr)
+			}
+		}
+
+		if src, ok := sourceDS.ContractMetadata().(*MemoryContractMetadataStore); ok {
+			for _, dk := range src.DeletedRemoteKeys {
+				key, keyErr := NewContractMetadataKeyFromString(dk)
+				if keyErr != nil {
+					return fmt.Errorf("failed to parse contract metadata key: %w", keyErr)
+				}
+				if deleteErr := txCatalog.ContractMetadata().Delete(ctx, key); deleteErr != nil {
+					return fmt.Errorf("failed to delete contract metadata from catalog: %w", deleteErr)
+				}
 			}
 		}
 

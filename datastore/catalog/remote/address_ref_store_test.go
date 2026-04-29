@@ -337,11 +337,33 @@ func TestCatalogAddressRefStore_Delete(t *testing.T) {
 
 				key := datastore.NewAddressRefKey(ref.ChainSelector, ref.Type, ref.Version, ref.Qualifier)
 				require.NoError(t, store.Delete(t.Context(), key))
-				require.NoError(t, store.Add(t.Context(), ref))
+
+				resurrected := ref
+				resurrected.Address = "0x" + randomHex(40)
+				resurrected.Labels = datastore.NewLabelSet("resurrected")
+				require.NoError(t, store.Add(t.Context(), resurrected))
 
 				got, err := store.Get(t.Context(), key)
 				require.NoError(t, err)
-				require.Equal(t, ref.Address, got.Address)
+				require.Equal(t, resurrected.Address, got.Address)
+				require.Equal(t, resurrected.Labels.List(), got.Labels.List())
+			},
+		},
+		{
+			name: "delete_excluded_from_find",
+			run: func(t *testing.T, store *catalogAddressRefStore) {
+				t.Helper()
+				ref := newRandomAddressRef()
+				require.NoError(t, store.Add(t.Context(), ref))
+
+				key := datastore.NewAddressRefKey(ref.ChainSelector, ref.Type, ref.Version, ref.Qualifier)
+				_, err := store.Get(t.Context(), key)
+				require.NoError(t, err)
+
+				require.NoError(t, store.Delete(t.Context(), key))
+
+				_, err = store.Get(t.Context(), key)
+				require.ErrorIs(t, err, datastore.ErrAddressRefNotFound)
 			},
 		},
 	}
@@ -711,7 +733,7 @@ func setupTestStore(t *testing.T, domain, environment string) *catalogAddressRef
 }
 
 // randomHex generates a random hex string of specified length
-func randomHex(length int) string {
+func randomHex(length int) string { //nolint:unparam // this is a test function and we usually want a 40 digit hex string
 	bytes := make([]byte, length/2)
 	if _, err := rand.Read(bytes); err != nil {
 		panic(fmt.Sprintf("failed to generate random bytes: %v", err))
