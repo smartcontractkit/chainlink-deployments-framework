@@ -365,10 +365,49 @@ func (s *catalogAddressRefStore) Update(ctx context.Context, record datastore.Ad
 	return nil
 }
 
-func (s *catalogAddressRefStore) Delete(_ context.Context, _ datastore.AddressRefKey) error {
-	// The catalog API does not support delete operations
-	// This is intentional as catalogs are typically immutable reference stores
-	return errors.New("delete operation not supported by catalog API")
+func (s *catalogAddressRefStore) Delete(_ context.Context, key datastore.AddressRefKey) error {
+	return s.deleteRecord(key)
+}
+
+func (s *catalogAddressRefStore) deleteRecord(key datastore.AddressRefKey) error {
+	editReq := &pb.DataAccessRequest{
+		Operation: &pb.DataAccessRequest_AddressReferenceEditRequest{
+			AddressReferenceEditRequest: &pb.AddressReferenceEditRequest{
+				Record: &pb.AddressReference{
+					Domain:        s.domain,
+					Environment:   s.environment,
+					ChainSelector: key.ChainSelector(),
+					ContractType:  string(key.Type()),
+					Version:       key.Version().String(),
+					Qualifier:     key.Qualifier(),
+				},
+				Semantics: pb.EditSemantics_SEMANTICS_DELETE,
+			},
+		},
+	}
+
+	stream, err := s.client.DataAccess(editReq)
+	if err != nil {
+		return fmt.Errorf("failed to create gRPC stream: %w", err)
+	}
+	if sendErr := stream.Send(editReq); sendErr != nil {
+		return fmt.Errorf("failed to send delete request: %w", sendErr)
+	}
+
+	resp, err := stream.Recv()
+	if err != nil {
+		return fmt.Errorf("failed to receive response: %w", err)
+	}
+
+	if statusErr := parseResponseStatus(resp.Status); statusErr != nil {
+		return fmt.Errorf("delete address ref failed: %w", statusErr)
+	}
+
+	if resp.GetAddressReferenceEditResponse() == nil {
+		return errors.New("unexpected response type")
+	}
+
+	return nil
 }
 
 // keyToFilter converts a datastore.AddressRefKey to a protobuf AddressReferenceKeyFilter

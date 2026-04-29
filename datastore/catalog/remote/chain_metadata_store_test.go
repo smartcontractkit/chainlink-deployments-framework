@@ -715,16 +715,70 @@ func TestCatalogChainMetadataStore_Upsert_StaleVersion(t *testing.T) {
 
 func TestCatalogChainMetadataStore_Delete(t *testing.T) {
 	t.Parallel()
-	store := setupTestChainStore(t, "", "")
 
-	key := datastore.NewChainMetadataKey(12345)
+	tests := []struct {
+		name string
+		run  func(t *testing.T, store *catalogChainMetadataStore)
+	}{
+		{
+			name: "delete_existing_record",
+			run: func(t *testing.T, store *catalogChainMetadataStore) {
+				t.Helper()
+				record := newRandomChainMetadata()
+				require.NoError(t, store.Add(t.Context(), record))
 
-	// Execute
-	err := store.Delete(t.Context(), key)
+				key := datastore.NewChainMetadataKey(record.ChainSelector)
+				require.NoError(t, store.Delete(t.Context(), key))
 
-	// Verify
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "delete operation not supported")
+				_, err := store.Get(t.Context(), key)
+				require.ErrorIs(t, err, datastore.ErrChainMetadataNotFound)
+			},
+		},
+		{
+			name: "delete_nonexistent_key_is_noop",
+			run: func(t *testing.T, store *catalogChainMetadataStore) {
+				t.Helper()
+				key := datastore.NewChainMetadataKey(generateRandomChainSelector())
+				require.NoError(t, store.Delete(t.Context(), key))
+			},
+		},
+		{
+			name: "delete_already_deleted_is_noop",
+			run: func(t *testing.T, store *catalogChainMetadataStore) {
+				t.Helper()
+				record := newRandomChainMetadata()
+				require.NoError(t, store.Add(t.Context(), record))
+
+				key := datastore.NewChainMetadataKey(record.ChainSelector)
+				require.NoError(t, store.Delete(t.Context(), key))
+				require.NoError(t, store.Delete(t.Context(), key))
+			},
+		},
+		{
+			name: "delete_then_readd",
+			run: func(t *testing.T, store *catalogChainMetadataStore) {
+				t.Helper()
+				record := newRandomChainMetadata()
+				require.NoError(t, store.Add(t.Context(), record))
+
+				key := datastore.NewChainMetadataKey(record.ChainSelector)
+				require.NoError(t, store.Delete(t.Context(), key))
+				require.NoError(t, store.Add(t.Context(), record))
+
+				got, err := store.Get(t.Context(), key)
+				require.NoError(t, err)
+				require.Equal(t, record.ChainSelector, got.ChainSelector)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			store := setupTestChainStore(t, "test-domain", "catalog_testing")
+			tt.run(t, store)
+		})
+	}
 }
 
 func TestCatalogChainMetadataStore_FetchAndFilter(t *testing.T) {

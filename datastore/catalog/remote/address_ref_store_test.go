@@ -288,17 +288,71 @@ func TestCatalogAddressRefStore_Upsert(t *testing.T) {
 
 func TestCatalogAddressRefStore_Delete(t *testing.T) {
 	t.Parallel()
-	store := setupTestStore(t, "", "")
 
-	version := semver.MustParse("1.0.0")
-	key := datastore.NewAddressRefKey(12345, "LinkToken", version, "test")
+	tests := []struct {
+		name string
+		run  func(t *testing.T, store *catalogAddressRefStore)
+	}{
+		{
+			name: "delete_existing_record",
+			run: func(t *testing.T, store *catalogAddressRefStore) {
+				t.Helper()
+				ref := newRandomAddressRef()
+				require.NoError(t, store.Add(t.Context(), ref))
 
-	// Execute
-	err := store.Delete(t.Context(), key)
+				key := datastore.NewAddressRefKey(ref.ChainSelector, ref.Type, ref.Version, ref.Qualifier)
+				require.NoError(t, store.Delete(t.Context(), key))
 
-	// Verify
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "delete operation not supported")
+				_, err := store.Get(t.Context(), key)
+				require.ErrorIs(t, err, datastore.ErrAddressRefNotFound)
+			},
+		},
+		{
+			name: "delete_nonexistent_key_is_noop",
+			run: func(t *testing.T, store *catalogAddressRefStore) {
+				t.Helper()
+				ref := newRandomAddressRef()
+				key := datastore.NewAddressRefKey(ref.ChainSelector, ref.Type, ref.Version, ref.Qualifier)
+				require.NoError(t, store.Delete(t.Context(), key))
+			},
+		},
+		{
+			name: "delete_already_deleted_is_noop",
+			run: func(t *testing.T, store *catalogAddressRefStore) {
+				t.Helper()
+				ref := newRandomAddressRef()
+				require.NoError(t, store.Add(t.Context(), ref))
+
+				key := datastore.NewAddressRefKey(ref.ChainSelector, ref.Type, ref.Version, ref.Qualifier)
+				require.NoError(t, store.Delete(t.Context(), key))
+				require.NoError(t, store.Delete(t.Context(), key))
+			},
+		},
+		{
+			name: "delete_then_readd",
+			run: func(t *testing.T, store *catalogAddressRefStore) {
+				t.Helper()
+				ref := newRandomAddressRef()
+				require.NoError(t, store.Add(t.Context(), ref))
+
+				key := datastore.NewAddressRefKey(ref.ChainSelector, ref.Type, ref.Version, ref.Qualifier)
+				require.NoError(t, store.Delete(t.Context(), key))
+				require.NoError(t, store.Add(t.Context(), ref))
+
+				got, err := store.Get(t.Context(), key)
+				require.NoError(t, err)
+				require.Equal(t, ref.Address, got.Address)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			store := setupTestStore(t, "test-domain", "catalog_testing")
+			tt.run(t, store)
+		})
+	}
 }
 
 func TestCatalogAddressRefStore_FetchAndFilter(t *testing.T) {

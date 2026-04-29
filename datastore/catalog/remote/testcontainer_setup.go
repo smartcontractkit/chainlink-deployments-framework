@@ -23,7 +23,7 @@ const (
 	postgresPort          = "5432"
 	catalogImageEnv       = "CATALOG_SERVICE_IMAGE"
 	catalogImageRepo      = "op-catalog-service"
-	catalogImageTag       = "latest"
+	catalogImageTag       = "v0.3.0"
 	catalogPort           = "8080"
 	networkName           = "chainlink_catalog_network"
 )

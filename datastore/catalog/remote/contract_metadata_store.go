@@ -353,8 +353,54 @@ func (s *catalogContractMetadataStore) Update(ctx context.Context, key datastore
 	return s.editRecord(record, pb.EditSemantics_SEMANTICS_UPDATE)
 }
 
-func (s *catalogContractMetadataStore) Delete(_ context.Context, _ datastore.ContractMetadataKey) error {
-	return errors.New("delete operation not supported for catalog contract metadata store")
+func (s *catalogContractMetadataStore) Delete(_ context.Context, key datastore.ContractMetadataKey) error {
+	return s.deleteRecord(key)
+}
+
+func (s *catalogContractMetadataStore) deleteRecord(key datastore.ContractMetadataKey) error {
+	editReq := &pb.DataAccessRequest{
+		Operation: &pb.DataAccessRequest_ContractMetadataEditRequest{
+			ContractMetadataEditRequest: &pb.ContractMetadataEditRequest{
+				Record: &pb.ContractMetadata{
+					Domain:        s.domain,
+					Environment:   s.environment,
+					ChainSelector: key.ChainSelector(),
+					Address:       key.Address(),
+				},
+				Semantics: pb.EditSemantics_SEMANTICS_DELETE,
+			},
+		},
+	}
+
+	stream, err := s.client.DataAccess(editReq)
+	if err != nil {
+		return fmt.Errorf("failed to create gRPC stream: %w", err)
+	}
+	if sendErr := stream.Send(editReq); sendErr != nil {
+		return fmt.Errorf("failed to send delete request: %w", sendErr)
+	}
+
+	resp, err := stream.Recv()
+	if err != nil {
+		return fmt.Errorf("failed to receive response: %w", err)
+	}
+
+	if statusErr := parseResponseStatus(resp.Status); statusErr != nil {
+		return fmt.Errorf("delete contract metadata failed: %w", statusErr)
+	}
+	if resp.GetContractMetadataEditResponse() == nil {
+		return errors.New("unexpected response type")
+	}
+
+	s.clearVersion(key)
+
+	return nil
+}
+
+func (s *catalogContractMetadataStore) clearVersion(key datastore.ContractMetadataKey) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.versionCache, key.String())
 }
 
 // editRecord is a helper method that handles Add, Upsert, and Update operations

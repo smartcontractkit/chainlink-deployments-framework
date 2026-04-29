@@ -346,8 +346,53 @@ func (s *catalogChainMetadataStore) Update(ctx context.Context, key datastore.Ch
 	return s.editRecord(record, pb.EditSemantics_SEMANTICS_UPDATE)
 }
 
-func (s *catalogChainMetadataStore) Delete(_ context.Context, _ datastore.ChainMetadataKey) error {
-	return errors.New("delete operation not supported for catalog chain metadata store")
+func (s *catalogChainMetadataStore) Delete(_ context.Context, key datastore.ChainMetadataKey) error {
+	return s.deleteRecord(key)
+}
+
+func (s *catalogChainMetadataStore) deleteRecord(key datastore.ChainMetadataKey) error {
+	editReq := &pb.DataAccessRequest{
+		Operation: &pb.DataAccessRequest_ChainMetadataEditRequest{
+			ChainMetadataEditRequest: &pb.ChainMetadataEditRequest{
+				Record: &pb.ChainMetadata{
+					Domain:        s.domain,
+					Environment:   s.environment,
+					ChainSelector: key.ChainSelector(),
+				},
+				Semantics: pb.EditSemantics_SEMANTICS_DELETE,
+			},
+		},
+	}
+
+	stream, err := s.client.DataAccess(editReq)
+	if err != nil {
+		return fmt.Errorf("failed to create gRPC stream: %w", err)
+	}
+	if sendErr := stream.Send(editReq); sendErr != nil {
+		return fmt.Errorf("failed to send delete request: %w", sendErr)
+	}
+
+	resp, err := stream.Recv()
+	if err != nil {
+		return fmt.Errorf("failed to receive response: %w", err)
+	}
+
+	if statusErr := parseResponseStatus(resp.Status); statusErr != nil {
+		return fmt.Errorf("delete chain metadata failed: %w", statusErr)
+	}
+	if resp.GetChainMetadataEditResponse() == nil {
+		return errors.New("unexpected response type")
+	}
+
+	s.clearVersion(key)
+
+	return nil
+}
+
+func (s *catalogChainMetadataStore) clearVersion(key datastore.ChainMetadataKey) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.versionCache, key.String())
 }
 
 // editRecord is a helper method that handles Add, Upsert, and Update operations
