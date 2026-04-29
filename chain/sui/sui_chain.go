@@ -1,6 +1,7 @@
 package sui
 
 import (
+	"crypto/ed25519"
 	"crypto/rand"
 	"fmt"
 
@@ -23,7 +24,7 @@ type Chain struct {
 }
 
 func (c Chain) ReadOnly() (common.BlockChain, error) {
-	privateKey := make([]byte, 64)
+	privateKey := make([]byte, ed25519.SeedSize)
 	_, err := rand.Read(privateKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate private key for read-only chain %v: %w", c, err)
