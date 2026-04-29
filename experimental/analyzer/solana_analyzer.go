@@ -10,6 +10,8 @@ import (
 	"github.com/gagliardetto/solana-go"
 	mcmssolanasdk "github.com/smartcontractkit/mcms/sdk/solana"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer/solana/programs/idl"
 )
 
 func AnalyzeSolanaTransactions(
@@ -35,22 +37,30 @@ func AnalyzeSolanaTransaction(
 		Inputs:  []NamedField{},
 		Outputs: []NamedField{},
 	}
-	solReg := ctx.GetSolanaDecoderRegistry()
-	if solReg == nil {
-		return nil, errors.New("solana decoder registry is not available")
-	}
-	decodeFn, err := solReg.GetSolanaInstructionDecoderByAddress(chainSelector, mcmsTx.To)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get solana program: %w", err)
+
+	var decodeFn DecodeInstructionFn
+
+	if idl.IsInstruction(mcmsTx.Data) {
+		decodeFn = DIFn(idl.DecodeInstruction)
+	} else {
+		solReg := ctx.GetSolanaDecoderRegistry()
+		if solReg == nil {
+			return nil, errors.New("solana decoder registry is not available")
+		}
+		var err error
+		decodeFn, err = solReg.GetSolanaInstructionDecoderByAddress(chainSelector, mcmsTx.To)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get solana program: %w", err)
+		}
 	}
 
 	var solanaAdditionalFields mcmssolanasdk.AdditionalFields
-	err = json.Unmarshal(mcmsTx.AdditionalFields, &solanaAdditionalFields)
-	if err != nil {
+	if err := json.Unmarshal(mcmsTx.AdditionalFields, &solanaAdditionalFields); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal additional fields: %w", err)
 	}
+	accounts := solanaAdditionalFields.Accounts
 
-	instruction, err := decodeFn(solanaAdditionalFields.Accounts, mcmsTx.Data)
+	instruction, err := decodeFn(accounts, mcmsTx.Data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode solana instruction: %w", err)
 	}
@@ -180,7 +190,10 @@ func (w *anchorInstructionWrapper) Inputs() []NamedField {
 
 	inputs := make([]NamedField, rImpl.NumField())
 	for i := range rImpl.NumField() {
-		rawVal := rImpl.Field(i).Interface()
+		var rawVal any = "unknown"
+		if rImpl.Field(i).CanInterface() {
+			rawVal = rImpl.Field(i).Interface()
+		}
 		inputs[i] = NamedField{
 			Name:     rImpl.Type().Field(i).Name,
 			Value:    YamlField{Value: rawVal},

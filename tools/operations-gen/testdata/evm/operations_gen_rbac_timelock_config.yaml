@@ -1,0 +1,17 @@
+version: "1.0.0"
+chain_family: evm
+
+input:
+  gobindings_package: "github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/testdata/evm/gobindings"
+
+output:
+  base_path: "."
+
+contracts:
+  - contract_name: RBACTimelock
+    version: "1.0.0"
+    package_name: rbac_timelock
+    functions:
+      - name: scheduleBatch
+        access: role
+        role: PROPOSER_ROLE

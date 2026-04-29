@@ -1,4 +1,4 @@
-package proposalutils
+package mcms
 
 // MCMSRole represents a named role within the MCMS system (e.g. proposer, bypasser, canceller).
 type MCMSRole string

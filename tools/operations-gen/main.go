@@ -1,35 +1,19 @@
 package main
 
 import (
-	"embed"
 	"flag"
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
-	"sort"
-	"strings"
-	"text/template"
 
-	"gopkg.in/yaml.v3"
-
-	"github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/internal/core"
-	"github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/internal/families/evm"
+	"github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/generate"
 )
-
-//go:embed templates
-var templatesFS embed.FS
 
 var (
 	version = "dev"
 	commit  = "none"
 	date    = "unknown"
 )
-
-// chainFamilies is the single registration point for all supported chain families.
-var chainFamilies = map[string]core.ChainFamilyHandler{
-	"evm": evm.Handler{},
-}
 
 func main() {
 	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
@@ -53,72 +37,10 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 
-	configData, err := os.ReadFile(*configPath)
-	if err != nil {
-		fmt.Fprintf(stderr, "Error reading config: %v\n", err)
-		return 1
-	}
-
-	var config core.Config
-	if err = yaml.Unmarshal(configData, &config); err != nil {
-		fmt.Fprintf(stderr, "Error parsing config: %v\n", err)
-		return 1
-	}
-
-	chainFamily := config.ChainFamily
-	if chainFamily == "" {
-		chainFamily = "evm"
-	}
-
-	handler, ok := chainFamilies[chainFamily]
-	if !ok {
-		fmt.Fprintf(stderr, "Unsupported chain_family %q (supported: %s)\n",
-			chainFamily, supportedFamilies())
-
-		return 1
-	}
-
-	tmpl, err := loadTemplate(chainFamily)
-	if err != nil {
-		fmt.Fprintf(stderr, "Error loading template for chain family %q: %v\n", chainFamily, err)
-		return 1
-	}
-
-	configDir := filepath.Dir(*configPath)
-	absConfigDir, err := filepath.Abs(configDir)
-	if err != nil {
-		fmt.Fprintf(stderr, "Error resolving config directory: %v\n", err)
-		return 1
-	}
-
-	config.ConfigDir = absConfigDir
-
-	if err := handler.Generate(config, tmpl); err != nil {
-		fmt.Fprintf(stderr, "Error generating operations: %v\n", err)
+	if err := generate.GenerateFile(*configPath); err != nil {
+		fmt.Fprintf(stderr, "Error: %v\n", err)
 		return 1
 	}
 
 	return 0
-}
-
-// loadTemplate loads the code generation template for the given chain family.
-func loadTemplate(chainFamily string) (*template.Template, error) {
-	path := fmt.Sprintf("templates/%s/operations.tmpl", chainFamily)
-	content, err := templatesFS.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("template not found at %s: %w", path, err)
-	}
-
-	return template.New("operations").Parse(string(content))
-}
-
-// supportedFamilies returns a sorted, comma-separated list of supported chain families.
-func supportedFamilies() string {
-	families := make([]string, 0, len(chainFamilies))
-	for k := range chainFamilies {
-		families = append(families, k)
-	}
-	sort.Strings(families)
-
-	return strings.Join(families, ", ")
 }

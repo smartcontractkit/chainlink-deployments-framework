@@ -4,13 +4,15 @@ import (
 	"bytes"
 	"strings"
 	"testing"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/generate"
 )
 
 // TestLoadTemplate_UnknownFamily verifies that loadTemplate returns an error
 // for a chain family that has no registered template.
 func TestLoadTemplate_UnknownFamily(t *testing.T) {
 	t.Parallel()
-	_, err := loadTemplate("solana")
+	_, err := generate.LoadTemplate("solana")
 	if err == nil {
 		t.Error("expected error for unsupported chain family, got nil")
 	}

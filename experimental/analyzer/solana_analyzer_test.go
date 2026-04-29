@@ -11,6 +11,7 @@ import (
 	timelockbindings "github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings/v0_1_0/timelock"
 
 	datastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
+	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer/solana/programs/idl"
 
 	"github.com/stretchr/testify/require"
 
@@ -105,6 +106,61 @@ func TestAnchorInstructionWrapper_Data(t *testing.T) {
 	data, err := wrapper.Data()
 	require.NoError(t, err)
 	require.Equal(t, expectedData, data)
+}
+
+func TestAnchorInstructionWrapper_Inputs_UnexportedFields(t *testing.T) {
+	t.Parallel()
+
+	type implWithUnexported struct {
+		PublicField  string
+		privateField string
+	}
+	type instrWithBaseVariant struct {
+		binary.BaseVariant
+	}
+
+	tests := []struct {
+		name    string
+		wrapper *anchorInstructionWrapper
+		want    []NamedField
+	}{
+		{
+			name: "struct with private field",
+			wrapper: &anchorInstructionWrapper{
+				anchorInstruction: &instrWithBaseVariant{
+					BaseVariant: binary.BaseVariant{
+						Impl: &implWithUnexported{
+							PublicField:  "hello",
+							privateField: "secret",
+						},
+					},
+				},
+			},
+			want: []NamedField{
+				{
+					Name:     "PublicField",
+					TypeName: "",
+					Value:    YamlField{Value: "hello"},
+					RawValue: "hello",
+				},
+				{
+					Name:     "privateField",
+					TypeName: "",
+					Value:    YamlField{Value: "unknown"},
+					RawValue: "unknown",
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			inputs := tt.wrapper.Inputs()
+			require.Equal(t, tt.want, inputs)
+		})
+	}
 }
 
 func TestYamlField_GetValue(t *testing.T) {
@@ -512,6 +568,29 @@ func Test_solanaAnalyzer_describeOperations(t *testing.T) {
 				},
 			}},
 		},
+		{
+			// IDL instructions are identified by their 8-byte discriminator prefix and decoded
+			// without a registry lookup, so the target program need not be registered as a decoder.
+			name: "success: idl.IDLCreate (discriminator bypasses decoder registry)",
+			ctx:  defaultProposalCtx,
+			operations: []mcmstypes.Operation{{
+				ChainSelector: solanaChainSelector,
+				Transaction: makeTxWithIDLInstruction(t, cpiStubProgramID, &idl.Instruction{
+					BaseVariant: binary.BaseVariant{
+						TypeID: binary.TypeID{idl.InstructionCreate},
+						Impl:   &idl.IDLCreate{DataLen: 100},
+					},
+				}),
+			}},
+			want: []*DecodedCall{{
+				Address: cpiStubProgramID,
+				Method:  "IDLCreate",
+				Inputs: []NamedField{{
+					Name:  "DataLen",
+					Value: YamlField{Value: uint64(100)},
+				}},
+			}},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -761,6 +840,23 @@ func mcmsTxFromInstruction[T any](t *testing.T, instructionBuilder interface{ Va
 	require.NoError(t, err)
 
 	return tx
+}
+
+// makeTxWithIDLInstruction builds a Solana MCMS transaction whose Data field starts with the
+// 8-byte Anchor IDL discriminator, exercising the idl.IsInstruction fast-path in
+// AnalyzeSolanaTransaction. The discriminator is NOT returned by idl.Instruction.Data(), so it
+// must be prepended here to match what an on-chain IDL instruction actually looks like.
+func makeTxWithIDLInstruction(t *testing.T, programID string, inst *idl.Instruction) mcmstypes.Transaction {
+	t.Helper()
+
+	instData, err := inst.Data()
+	require.NoError(t, err)
+
+	return mcmstypes.Transaction{
+		To:               programID,
+		Data:             append(append([]byte{}, idl.Discriminator...), instData...),
+		AdditionalFields: []byte(`{}`),
+	}
 }
 
 const (
