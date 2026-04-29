@@ -1,6 +1,10 @@
 package datastore
 
-import "fmt"
+import (
+	"fmt"
+	"strconv"
+	"strings"
+)
 
 // ContractMetadataKey is an interface that represents a key for ContractMetadata records.
 // It is used to uniquely identify a record in the ContractMetadataStore.
@@ -39,6 +43,20 @@ func (c contractMetadataKey) Equals(other ContractMetadataKey) bool {
 // String returns a string representation of the ContractMetadataKey.
 func (c contractMetadataKey) String() string {
 	return fmt.Sprintf("%d_%s", c.chainSelector, c.address)
+}
+
+// NewContractMetadataKeyFromString creates a new ContractMetadataKey instance from a string representation.
+func NewContractMetadataKeyFromString(key string) (ContractMetadataKey, error) {
+	parts := strings.Split(key, "_")
+	if len(parts) != 2 {
+		return nil, fmt.Errorf("invalid contract metadata key: %s", key)
+	}
+	chainSelector, err := strconv.ParseUint(parts[0], 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse chain selector: %w", err)
+	}
+
+	return NewContractMetadataKey(chainSelector, parts[1]), nil
 }
 
 // NewContractMetadataKey creates a new ContractMetadataKey instance.

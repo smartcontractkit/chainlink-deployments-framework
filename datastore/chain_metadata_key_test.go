@@ -55,3 +55,46 @@ func TestChainMetadataKey_String(t *testing.T) {
 	expected := "99"
 	require.Equal(t, expected, key.String())
 }
+
+func TestNewChainMetadataKeyFromString(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		give    string
+		want    ChainMetadataKey
+		wantErr string
+	}{
+		{
+			name: "success: valid string",
+			give: "5009297550715157269",
+			want: NewChainMetadataKey(5009297550715157269),
+		},
+		{
+			name:    "failure: empty string",
+			give:    "",
+			wantErr: "invalid chain metadata key",
+		},
+		{
+			name:    "failure: invalid chain selector",
+			give:    "notanumber",
+			wantErr: "failed to parse chain selector",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := NewChainMetadataKeyFromString(tt.give)
+
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, tt.want.ChainSelector(), got.ChainSelector())
+		})
+	}
+}

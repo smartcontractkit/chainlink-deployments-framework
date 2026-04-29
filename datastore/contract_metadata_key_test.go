@@ -69,3 +69,52 @@ func TestContractMetadataKey_String(t *testing.T) {
 	expected := "99_0xabc"
 	require.Equal(t, expected, key.String())
 }
+
+func TestNewContractMetadataKeyFromString(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		give    string
+		want    ContractMetadataKey
+		wantErr string
+	}{
+		{
+			name: "success: valid string",
+			give: "42_0x1234567890abcdef",
+			want: NewContractMetadataKey(42, "0x1234567890abcdef"),
+		},
+		{
+			name:    "failure: too few parts",
+			give:    "42",
+			wantErr: "invalid contract metadata key",
+		},
+		{
+			name:    "failure: too many parts",
+			give:    "42_0xabc_extra",
+			wantErr: "invalid contract metadata key",
+		},
+		{
+			name:    "failure: invalid chain selector",
+			give:    "notanumber_0x1234567890abcdef",
+			wantErr: "failed to parse chain selector",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := NewContractMetadataKeyFromString(tt.give)
+
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, tt.want.ChainSelector(), got.ChainSelector())
+			require.Equal(t, tt.want.Address(), got.Address())
+		})
+	}
+}

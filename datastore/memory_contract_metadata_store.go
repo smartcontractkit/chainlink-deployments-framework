@@ -1,6 +1,7 @@
 package datastore
 
 import (
+	"slices"
 	"sync"
 )
 
@@ -19,8 +20,9 @@ type MutableContractMetadataStore interface {
 // MemoryContractMetadataStore is an in-memory implementation of the ContractMetadataStore and
 // MutableContractMetadataStore interfaces.
 type MemoryContractMetadataStore struct {
-	mu      sync.RWMutex
-	Records []ContractMetadata `json:"records"`
+	mu                sync.RWMutex
+	Records           []ContractMetadata `json:"records"`
+	DeletedRemoteKeys []string           `json:"deletedRemoteKeys"`
 }
 
 // MemoryContractMetadataStore implements ContractMetadataStore interface.
@@ -31,7 +33,10 @@ var _ MutableContractMetadataStore = &MemoryContractMetadataStore{}
 
 // NewMemoryContractMetadataStore creates a new MemoryContractMetadataStore instance.
 func NewMemoryContractMetadataStore() *MemoryContractMetadataStore {
-	return &MemoryContractMetadataStore{Records: []ContractMetadata{}}
+	return &MemoryContractMetadataStore{
+		Records:           []ContractMetadata{},
+		DeletedRemoteKeys: []string{},
+	}
 }
 
 // Get returns the ContractMetadata for the provided key, or an error if no such record exists.
@@ -106,6 +111,9 @@ func (s *MemoryContractMetadataStore) Add(record ContractMetadata) error {
 	if idx != -1 {
 		return ErrContractMetadataExists
 	}
+	// If a record with the same key is being added, remove it from the deleted remote keys
+	// this covers cases that we want to delete and recreate a record which has the same key as the old one.
+	s.DeletedRemoteKeys = deleteFromSlice(s.DeletedRemoteKeys, record.Key().String())
 	s.Records = append(s.Records, record)
 
 	return nil
@@ -116,6 +124,10 @@ func (s *MemoryContractMetadataStore) Add(record ContractMetadata) error {
 func (s *MemoryContractMetadataStore) Upsert(record ContractMetadata) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	// If a record with the same key is being upserted, remove it from the deleted remote keys
+	// this covers cases that we want to delete and recreate a record which has the same key as the old one.
+	s.DeletedRemoteKeys = deleteFromSlice(s.DeletedRemoteKeys, record.Key().String())
 
 	idx := s.indexOf(record.Key())
 	if idx == -1 {
@@ -138,13 +150,16 @@ func (s *MemoryContractMetadataStore) Update(record ContractMetadata) error {
 	if idx == -1 {
 		return ErrContractMetadataNotFound
 	}
+	// If a record with the same key is being upserted, remove it from the deleted remote keys
+	// this covers cases that we want to delete and recreate a record which has the same key as the old one.
+	s.DeletedRemoteKeys = deleteFromSlice(s.DeletedRemoteKeys, record.Key().String())
 	s.Records[idx] = record
 
 	return nil
 }
 
-// Delete deletes an existing record whose primary key elements match the supplied ContractMetadata, returning an error if no
-// such record exists.
+// Delete removes the record matching the supplied key from the store.
+// Returns ErrContractMetadataNotFound if the key does not exist.
 func (s *MemoryContractMetadataStore) Delete(key ContractMetadataKey) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -154,6 +169,23 @@ func (s *MemoryContractMetadataStore) Delete(key ContractMetadataKey) error {
 		return ErrContractMetadataNotFound
 	}
 	s.Records = append(s.Records[:idx], s.Records[idx+1:]...)
+
+	return nil
+}
+
+// RemoteDelete stages the record matching the supplied key for deletion by appending the key
+// to DeletedRemoteKeys. RemoteDelete does not delete the record from the store, it only stages it for deletion
+// and should be used only when we need to delete a record that does not exist in the current in-memory datastore
+// but exists in the remote datastore (e.g. file or catalog).
+func (s *MemoryContractMetadataStore) RemoteDelete(key ContractMetadataKey) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	deletedKey := key.String()
+
+	if !slices.Contains(s.DeletedRemoteKeys, deletedKey) {
+		s.DeletedRemoteKeys = append(s.DeletedRemoteKeys, deletedKey)
+	}
 
 	return nil
 }

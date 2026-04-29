@@ -1,6 +1,7 @@
 package datastore
 
 import (
+	"slices"
 	"sync"
 )
 
@@ -19,8 +20,9 @@ type MutableChainMetadataStore interface {
 // MemoryChainMetadataStore is an in-memory implementation of the ChainMetadataStore and
 // MutableChainMetadataStore interfaces.
 type MemoryChainMetadataStore struct {
-	mu      sync.RWMutex
-	Records []ChainMetadata `json:"records"`
+	mu                sync.RWMutex
+	Records           []ChainMetadata `json:"records"`
+	DeletedRemoteKeys []string        `json:"deletedRemoteKeys"`
 }
 
 // MemoryChainMetadataStore implements ChainMetadataStore interface.
@@ -31,7 +33,10 @@ var _ MutableChainMetadataStore = &MemoryChainMetadataStore{}
 
 // NewMemoryChainMetadataStore creates a new MemoryChainMetadataStore instance.
 func NewMemoryChainMetadataStore() *MemoryChainMetadataStore {
-	return &MemoryChainMetadataStore{Records: []ChainMetadata{}}
+	return &MemoryChainMetadataStore{
+		Records:           []ChainMetadata{},
+		DeletedRemoteKeys: []string{},
+	}
 }
 
 // Get returns the ChainMetadata for the provided key, or an error if no such record exists.
@@ -106,6 +111,9 @@ func (s *MemoryChainMetadataStore) Add(record ChainMetadata) error {
 	if idx != -1 {
 		return ErrChainMetadataExists
 	}
+	// If a record with the same key is being added, remove it from the deleted remote keys
+	// this covers cases that we want to delete and recreate a record which has the same key as the old one.
+	s.DeletedRemoteKeys = deleteFromSlice(s.DeletedRemoteKeys, record.Key().String())
 	s.Records = append(s.Records, record)
 
 	return nil
@@ -116,6 +124,10 @@ func (s *MemoryChainMetadataStore) Add(record ChainMetadata) error {
 func (s *MemoryChainMetadataStore) Upsert(record ChainMetadata) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	// If a record with the same key is being upserted, remove it from the deleted remote keys
+	// this covers cases that we want to delete and recreate a record which has the same key as the old one.
+	s.DeletedRemoteKeys = deleteFromSlice(s.DeletedRemoteKeys, record.Key().String())
 
 	idx := s.indexOf(record.Key())
 	if idx == -1 {
@@ -138,13 +150,16 @@ func (s *MemoryChainMetadataStore) Update(record ChainMetadata) error {
 	if idx == -1 {
 		return ErrChainMetadataNotFound
 	}
+	// If a record with the same key is being upserted, remove it from the deleted remote keys
+	// this covers cases that we want to delete and recreate a record which has the same key as the old one.
+	s.DeletedRemoteKeys = deleteFromSlice(s.DeletedRemoteKeys, record.Key().String())
 	s.Records[idx] = record
 
 	return nil
 }
 
-// Delete deletes an existing record whose primary key elements match the supplied ChainMetadata, returning an error if no
-// such record exists.
+// Delete removes the record matching the supplied key from the store.
+// Returns ErrChainMetadataNotFound if the key does not exist.
 func (s *MemoryChainMetadataStore) Delete(key ChainMetadataKey) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -154,6 +169,23 @@ func (s *MemoryChainMetadataStore) Delete(key ChainMetadataKey) error {
 		return ErrChainMetadataNotFound
 	}
 	s.Records = append(s.Records[:idx], s.Records[idx+1:]...)
+
+	return nil
+}
+
+// RemoteDelete stages the record matching the supplied key for deletion by appending the key
+// to DeletedRemoteKeys. RemoteDelete does not delete the record from the store, it only stages it for deletion
+// and should be used only when we need to delete a record that does not exist in the current in-memory datastore
+// but exists in the remote datastore (e.g. file or catalog).
+func (s *MemoryChainMetadataStore) RemoteDelete(key ChainMetadataKey) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	deletedKey := key.String()
+
+	if !slices.Contains(s.DeletedRemoteKeys, deletedKey) {
+		s.DeletedRemoteKeys = append(s.DeletedRemoteKeys, deletedKey)
+	}
 
 	return nil
 }

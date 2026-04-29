@@ -3,6 +3,7 @@ package datastore
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	chainsel "github.com/smartcontractkit/chain-selectors"
@@ -73,11 +74,12 @@ func TestMemoryContractMetadataStore_Add(t *testing.T) {
 	)
 
 	tests := []struct {
-		name          string
-		givenState    []ContractMetadata
-		giveRecord    ContractMetadata
-		expectedState []ContractMetadata
-		expectedError error
+		name              string
+		givenState        []ContractMetadata
+		giveRecord        ContractMetadata
+		expectedState     []ContractMetadata
+		deletedRemoteKeys []string
+		expectedError     error
 	}{
 		{
 			name:       "success: adds new record",
@@ -95,13 +97,23 @@ func TestMemoryContractMetadataStore_Add(t *testing.T) {
 			giveRecord:    record,
 			expectedError: ErrContractMetadataExists,
 		},
+		{
+			name:              "success: add record that was staged for deletion",
+			givenState:        []ContractMetadata{},
+			deletedRemoteKeys: []string{record.Key().String()},
+			giveRecord:        record,
+			expectedState: []ContractMetadata{
+				record,
+			},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			store := MemoryContractMetadataStore{Records: tt.givenState}
+			store := MemoryContractMetadataStore{Records: tt.givenState, DeletedRemoteKeys: tt.deletedRemoteKeys}
+			assert.Len(t, store.DeletedRemoteKeys, len(tt.deletedRemoteKeys))
 			err := store.Add(tt.giveRecord)
 
 			if tt.expectedError != nil {
@@ -110,6 +122,7 @@ func TestMemoryContractMetadataStore_Add(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, tt.expectedState, store.Records)
+				assert.Empty(t, store.DeletedRemoteKeys)
 			}
 		})
 	}
@@ -133,10 +146,11 @@ func TestMemoryContractMetadataStore_Upsert(t *testing.T) {
 	)
 
 	tests := []struct {
-		name          string
-		givenState    []ContractMetadata
-		expectedState []ContractMetadata
-		giveRecord    ContractMetadata
+		name              string
+		givenState        []ContractMetadata
+		expectedState     []ContractMetadata
+		giveRecord        ContractMetadata
+		deletedRemoteKeys []string
 	}{
 		{
 			name:       "success: adds new record",
@@ -156,18 +170,29 @@ func TestMemoryContractMetadataStore_Upsert(t *testing.T) {
 				newRecord,
 			},
 		},
+		{
+			name:              "success: upsert record that was staged for deletion",
+			givenState:        []ContractMetadata{},
+			deletedRemoteKeys: []string{oldRecord.Key().String()},
+			giveRecord:        oldRecord,
+			expectedState: []ContractMetadata{
+				oldRecord,
+			},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			store := MemoryContractMetadataStore{Records: tt.givenState}
+			store := MemoryContractMetadataStore{Records: tt.givenState, DeletedRemoteKeys: tt.deletedRemoteKeys}
+			assert.Len(t, store.DeletedRemoteKeys, len(tt.deletedRemoteKeys))
 			// Check the error for the in-memory store, which will always be nil for the
 			// in memory implementation, to satisfy the linter
 			err := store.Upsert(tt.giveRecord)
 			require.NoError(t, err)
 			require.Equal(t, tt.expectedState, store.Records)
+			assert.Empty(t, store.DeletedRemoteKeys)
 		})
 	}
 }
@@ -190,11 +215,12 @@ func TestMemoryContractMetadataStore_Update(t *testing.T) {
 	)
 
 	tests := []struct {
-		name          string
-		givenState    []ContractMetadata
-		expectedState []ContractMetadata
-		giveRecord    ContractMetadata
-		expectedError error
+		name              string
+		givenState        []ContractMetadata
+		expectedState     []ContractMetadata
+		giveRecord        ContractMetadata
+		expectedError     error
+		deletedRemoteKeys []string
 	}{
 		{
 			name: "success: updates existing record",
@@ -212,13 +238,25 @@ func TestMemoryContractMetadataStore_Update(t *testing.T) {
 			giveRecord:    newRecord,
 			expectedError: ErrContractMetadataNotFound,
 		},
+		{
+			name: "success: update record that was staged for deletion",
+			givenState: []ContractMetadata{
+				oldRecord,
+			},
+			deletedRemoteKeys: []string{oldRecord.Key().String()},
+			giveRecord:        oldRecord,
+			expectedState: []ContractMetadata{
+				oldRecord,
+			},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			store := MemoryContractMetadataStore{Records: tt.givenState}
+			store := MemoryContractMetadataStore{Records: tt.givenState, DeletedRemoteKeys: tt.deletedRemoteKeys}
+			assert.Len(t, store.DeletedRemoteKeys, len(tt.deletedRemoteKeys))
 			err := store.Update(tt.giveRecord)
 
 			if tt.expectedError != nil {
@@ -227,6 +265,7 @@ func TestMemoryContractMetadataStore_Update(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, tt.expectedState, store.Records)
+				assert.Empty(t, store.DeletedRemoteKeys)
 			}
 		})
 	}
@@ -255,53 +294,85 @@ func TestMemoryMemoryContractMetadataStore_Delete(t *testing.T) {
 		}
 	)
 
-	tests := []struct {
-		name          string
-		givenState    []ContractMetadata
-		expectedState []ContractMetadata
-		giveKey       ContractMetadataKey
-		expectedError error
-	}{
-		{
-			name: "success: deletes given record",
-			givenState: []ContractMetadata{
-				recordOne,
-				recordTwo,
-				recordThree,
-			},
-			giveKey: recordTwo.Key(),
-			expectedState: []ContractMetadata{
-				recordOne,
-				recordThree,
-			},
-		},
-		{
-			name: "error: record not found",
-			givenState: []ContractMetadata{
-				recordOne,
-				recordThree,
-			},
-			giveKey:       recordTwo.Key(),
-			expectedError: ErrContractMetadataNotFound,
-		},
-	}
+	t.Run("success: deletes record from Records", func(t *testing.T) {
+		t.Parallel()
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
+		store := MemoryContractMetadataStore{Records: []ContractMetadata{recordOne, recordTwo, recordThree}}
+		err := store.Delete(recordTwo.Key())
+		require.NoError(t, err)
+		require.Equal(t, []ContractMetadata{recordOne, recordThree}, store.Records)
+		require.Empty(t, store.DeletedRemoteKeys)
+	})
 
-			store := MemoryContractMetadataStore{Records: tt.givenState}
-			err := store.Delete(tt.giveKey)
+	t.Run("error: absent key returns ErrContractMetadataNotFound", func(t *testing.T) {
+		t.Parallel()
 
-			if tt.expectedError != nil {
-				require.Error(t, err)
-				require.Equal(t, tt.expectedError, err)
-			} else {
-				require.NoError(t, err)
-				require.Equal(t, tt.expectedState, store.Records)
-			}
-		})
-	}
+		store := MemoryContractMetadataStore{Records: []ContractMetadata{recordOne, recordThree}}
+		err := store.Delete(recordTwo.Key())
+		require.ErrorIs(t, err, ErrContractMetadataNotFound)
+		require.Equal(t, []ContractMetadata{recordOne, recordThree}, store.Records)
+		require.Empty(t, store.DeletedRemoteKeys)
+	})
+
+	t.Run("error: second Delete returns ErrContractMetadataNotFound", func(t *testing.T) {
+		t.Parallel()
+
+		store := MemoryContractMetadataStore{Records: []ContractMetadata{recordOne, recordTwo, recordThree}}
+		require.NoError(t, store.Delete(recordTwo.Key()))
+		require.Len(t, store.Records, 2)
+		require.ErrorIs(t, store.Delete(recordTwo.Key()), ErrContractMetadataNotFound)
+		require.Len(t, store.Records, 2)
+		require.Empty(t, store.DeletedRemoteKeys)
+	})
+}
+
+func TestMemoryContractMetadataStore_RemoteDelete(t *testing.T) {
+	t.Parallel()
+
+	var (
+		recordOne = ContractMetadata{
+			ChainSelector: 1,
+			Address:       "0x2324224",
+			Metadata:      testMetadata{Field: "metadata1", ChainSelector: 0},
+		}
+
+		recordTwo = ContractMetadata{
+			ChainSelector: 2,
+			Address:       "0x2324224",
+			Metadata:      testMetadata{Field: "metadata2", ChainSelector: 0},
+		}
+
+		recordThree = ContractMetadata{
+			ChainSelector: 3,
+			Address:       "0x2324224",
+			Metadata:      testMetadata{Field: "metadata3", ChainSelector: 0},
+		}
+	)
+
+	t.Run("success: stages key in DeletedRemoteKeys without removing from Records", func(t *testing.T) {
+		t.Parallel()
+
+		store := NewMemoryContractMetadataStore()
+		store.Records = append(store.Records, recordOne, recordTwo, recordThree)
+		require.Len(t, store.Records, 3)
+		require.Empty(t, store.DeletedRemoteKeys)
+		err := store.RemoteDelete(recordTwo.Key())
+		require.NoError(t, err)
+		require.Len(t, store.Records, 3)
+		require.Len(t, store.DeletedRemoteKeys, 1)
+		require.Contains(t, store.DeletedRemoteKeys, recordTwo.Key().String())
+	})
+
+	t.Run("success: second RemoteDelete does not duplicate entry", func(t *testing.T) {
+		t.Parallel()
+
+		store := NewMemoryContractMetadataStore()
+		store.Records = append(store.Records, recordOne, recordTwo, recordThree)
+		require.NoError(t, store.RemoteDelete(recordTwo.Key()))
+		require.NoError(t, store.RemoteDelete(recordTwo.Key()))
+		require.Len(t, store.Records, 3)
+		require.Len(t, store.DeletedRemoteKeys, 1)
+	})
 }
 
 func TestMemoryContractMetadataStore_Fetch(t *testing.T) {
