@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"strings"
 	"sync"
 
@@ -358,7 +357,7 @@ func (s *catalogContractMetadataStore) Delete(_ context.Context, key datastore.C
 }
 
 func (s *catalogContractMetadataStore) deleteRecord(key datastore.ContractMetadataKey) error {
-	editReq := &pb.DataAccessRequest{
+	req := &pb.DataAccessRequest{
 		Operation: &pb.DataAccessRequest_ContractMetadataEditRequest{
 			ContractMetadataEditRequest: &pb.ContractMetadataEditRequest{
 				Record: &pb.ContractMetadata{
@@ -372,24 +371,9 @@ func (s *catalogContractMetadataStore) deleteRecord(key datastore.ContractMetada
 		},
 	}
 
-	stream, err := s.client.DataAccess(editReq)
-	if err != nil {
-		return fmt.Errorf("failed to create gRPC stream: %w", err)
-	}
-	if sendErr := stream.Send(editReq); sendErr != nil {
-		return fmt.Errorf("failed to send delete request: %w", sendErr)
-	}
-
-	resp, err := stream.Recv()
-	if err != nil {
-		return fmt.Errorf("failed to receive response: %w", err)
-	}
-
-	if statusErr := parseResponseStatus(resp.Status); statusErr != nil {
-		return fmt.Errorf("delete contract metadata failed: %w", statusErr)
-	}
-	if resp.GetContractMetadataEditResponse() == nil {
-		return errors.New("unexpected response type")
+	if err := executeEdit(s.client, req, "delete contract metadata",
+		(*pb.DataAccessResponse).GetContractMetadataEditResponse, nil); err != nil {
+		return err
 	}
 
 	s.clearVersion(key)
@@ -405,12 +389,10 @@ func (s *catalogContractMetadataStore) clearVersion(key datastore.ContractMetada
 
 // editRecord is a helper method that handles Add, Upsert, and Update operations
 func (s *catalogContractMetadataStore) editRecord(record datastore.ContractMetadata, semantics pb.EditSemantics) error {
-	// Get the current version for this record
 	key := record.Key()
 	version := s.getVersion(key)
 
-	// Create edit request
-	editReq := &pb.DataAccessRequest{
+	req := &pb.DataAccessRequest{
 		Operation: &pb.DataAccessRequest_ContractMetadataEditRequest{
 			ContractMetadataEditRequest: &pb.ContractMetadataEditRequest{
 				Record:    s.contractMetadataToProto(record, version),
@@ -419,51 +401,22 @@ func (s *catalogContractMetadataStore) editRecord(record datastore.ContractMetad
 		},
 	}
 
-	// Create stream with the initial request for HMAC
-	stream, err := s.client.DataAccess(editReq)
-	if err != nil {
-		return fmt.Errorf("failed to create gRPC stream: %w", err)
+	if err := executeEdit(s.client, req, "contract metadata",
+		(*pb.DataAccessResponse).GetContractMetadataEditResponse,
+		func(statusErr error, code codes.Code) error {
+			switch code { //nolint:exhaustive // We don't need to handle all codes here
+			case codes.NotFound:
+				return fmt.Errorf("%w: %s", datastore.ErrContractMetadataNotFound, statusErr.Error())
+			case codes.Aborted:
+				return fmt.Errorf("%w: %s", datastore.ErrContractMetadataStale, statusErr.Error())
+			default:
+				return fmt.Errorf("edit request failed: %w", statusErr)
+			}
+		}); err != nil {
+		return err
 	}
 
-	if sendErr := stream.Send(editReq); sendErr != nil {
-		return fmt.Errorf("failed to send edit request: %w", sendErr)
-	}
-
-	// Receive response
-	resp, recvErr := stream.Recv()
-	if recvErr != nil {
-		if errors.Is(recvErr, io.EOF) {
-			return errors.New("unexpected end of stream")
-		}
-
-		return fmt.Errorf("failed to receive response: %w", recvErr)
-	}
-
-	// Check for errors in the edit response
-	if statusErr := parseResponseStatus(resp.Status); statusErr != nil {
-		st, err := parseStatusError(statusErr)
-		if err != nil {
-			return err
-		}
-
-		switch st.Code() { //nolint:exhaustive // We don't need to handle all codes here
-		case codes.NotFound:
-			return fmt.Errorf("%w: %s", datastore.ErrContractMetadataNotFound, statusErr.Error())
-		case codes.Aborted:
-			return fmt.Errorf("%w: %s", datastore.ErrContractMetadataStale, statusErr.Error())
-		default:
-			return fmt.Errorf("edit request failed: %w", statusErr)
-		}
-	}
-
-	editResp := resp.GetContractMetadataEditResponse()
-	if editResp == nil {
-		return errors.New("unexpected response type")
-	}
-
-	// Update the version cache - increment the version after successful edit
-	newVersion := s.getVersion(key) + 1
-	s.setVersion(key, newVersion)
+	s.setVersion(key, s.getVersion(key)+1)
 
 	return nil
 }

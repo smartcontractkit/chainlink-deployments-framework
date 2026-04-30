@@ -351,7 +351,7 @@ func (s *catalogChainMetadataStore) Delete(_ context.Context, key datastore.Chai
 }
 
 func (s *catalogChainMetadataStore) deleteRecord(key datastore.ChainMetadataKey) error {
-	editReq := &pb.DataAccessRequest{
+	req := &pb.DataAccessRequest{
 		Operation: &pb.DataAccessRequest_ChainMetadataEditRequest{
 			ChainMetadataEditRequest: &pb.ChainMetadataEditRequest{
 				Record: &pb.ChainMetadata{
@@ -364,24 +364,9 @@ func (s *catalogChainMetadataStore) deleteRecord(key datastore.ChainMetadataKey)
 		},
 	}
 
-	stream, err := s.client.DataAccess(editReq)
-	if err != nil {
-		return fmt.Errorf("failed to create gRPC stream: %w", err)
-	}
-	if sendErr := stream.Send(editReq); sendErr != nil {
-		return fmt.Errorf("failed to send delete request: %w", sendErr)
-	}
-
-	resp, err := stream.Recv()
-	if err != nil {
-		return fmt.Errorf("failed to receive response: %w", err)
-	}
-
-	if statusErr := parseResponseStatus(resp.Status); statusErr != nil {
-		return fmt.Errorf("delete chain metadata failed: %w", statusErr)
-	}
-	if resp.GetChainMetadataEditResponse() == nil {
-		return errors.New("unexpected response type")
+	if err := executeEdit(s.client, req, "delete chain metadata",
+		(*pb.DataAccessResponse).GetChainMetadataEditResponse, nil); err != nil {
+		return err
 	}
 
 	s.clearVersion(key)
@@ -397,12 +382,10 @@ func (s *catalogChainMetadataStore) clearVersion(key datastore.ChainMetadataKey)
 
 // editRecord is a helper method that handles Add, Upsert, and Update operations
 func (s *catalogChainMetadataStore) editRecord(record datastore.ChainMetadata, semantics pb.EditSemantics) error {
-	// Get the current version for this record
 	key := record.Key()
 	version := s.getVersion(key)
 
-	// Create edit request
-	editReq := &pb.DataAccessRequest{
+	req := &pb.DataAccessRequest{
 		Operation: &pb.DataAccessRequest_ChainMetadataEditRequest{
 			ChainMetadataEditRequest: &pb.ChainMetadataEditRequest{
 				Record:    s.chainMetadataToProto(record, version),
@@ -411,46 +394,22 @@ func (s *catalogChainMetadataStore) editRecord(record datastore.ChainMetadata, s
 		},
 	}
 
-	// Create stream with the initial request for HMAC
-	stream, err := s.client.DataAccess(editReq)
-	if err != nil {
-		return fmt.Errorf("failed to create gRPC stream: %w", err)
+	if err := executeEdit(s.client, req, "chain metadata",
+		(*pb.DataAccessResponse).GetChainMetadataEditResponse,
+		func(statusErr error, code codes.Code) error {
+			switch code { //nolint:exhaustive // We don't need to handle all codes here
+			case codes.NotFound:
+				return fmt.Errorf("%w: %s", datastore.ErrChainMetadataNotFound, statusErr.Error())
+			case codes.Aborted:
+				return fmt.Errorf("%w: %s", datastore.ErrChainMetadataStale, statusErr.Error())
+			default:
+				return fmt.Errorf("edit request failed: %w", statusErr)
+			}
+		}); err != nil {
+		return err
 	}
 
-	if sendErr := stream.Send(editReq); sendErr != nil {
-		return fmt.Errorf("failed to send edit request: %w", sendErr)
-	}
-
-	// Receive response
-	resp, err := stream.Recv()
-	if err != nil {
-		return fmt.Errorf("failed to receive response: %w", err)
-	}
-
-	// Check for errors in the edit response
-	if statusErr := parseResponseStatus(resp.Status); statusErr != nil {
-		st, err := parseStatusError(statusErr)
-		if err != nil {
-			return err
-		}
-
-		switch st.Code() { //nolint:exhaustive // We don't need to handle all codes here
-		case codes.NotFound:
-			return fmt.Errorf("%w: %s", datastore.ErrChainMetadataNotFound, statusErr.Error())
-		case codes.Aborted:
-			return fmt.Errorf("%w: %s", datastore.ErrChainMetadataStale, statusErr.Error())
-		default:
-			return fmt.Errorf("edit request failed: %w", statusErr)
-		}
-	}
-	editResp := resp.GetChainMetadataEditResponse()
-	if editResp == nil {
-		return errors.New("unexpected response type")
-	}
-
-	// Update the version cache - increment the version after successful edit
-	newVersion := s.getVersion(key) + 1
-	s.setVersion(key, newVersion)
+	s.setVersion(key, s.getVersion(key)+1)
 
 	return nil
 }
