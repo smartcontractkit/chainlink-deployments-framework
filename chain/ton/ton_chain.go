@@ -28,6 +28,7 @@ type Chain struct {
 	Wallet        *wallet.Wallet       // Wallet abstraction (signing, sending)
 	WalletAddress *address.Address     // Address of deployer wallet
 	URL           string               // Liteserver URL
+	HTTPURL       string               // HTTP URL
 	Confirm       ConfirmFunc          // Function to confirm transactions
 }
 
