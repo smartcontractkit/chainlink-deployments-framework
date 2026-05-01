@@ -64,7 +64,7 @@ func (tc *TimelockConfig) MCMBasedOnActionSolana(s SolanaMCMSWithTimelock) (stri
 	}
 }
 
-func (tc *TimelockConfig) MCMBasedOnActionTON(s *tonstate.MCMSSuiteState) (string, error) {
+func (tc *TimelockConfig) MCMBasedOnActionTon(s *tonstate.MCMSSuiteState) (string, error) {
 	// if MCMSAction is not set, default to timelock.Schedule, this is to ensure no breaking changes for existing code
 	if tc.MCMSAction == "" {
 		tc.MCMSAction = mcmstypes.TimelockActionSchedule
