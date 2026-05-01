@@ -102,6 +102,38 @@ jobs:
           use-go-cache: true
           artifact-name: unit-tests
 
+  ci-test-provider-evm:
+    name: Chain Tests - EVM
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      id-token: write
+      contents: read
+      actions: read
+    steps:
+      - name: Build and test evm provider packages
+        uses: smartcontractkit/.github/actions/ci-test-go@dfcba48f05933158428bce867d790e3d5a9baa6b # ci-test-go@1.1.0
+        with:
+          go-test-cmd: go test -race -coverprofile=coverage.txt ./chain/evm/...
+          use-go-cache: true
+          artifact-name: provider-tests-evm
+
+  ci-test-provider-solana:
+    name: Chain Tests - Solana
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      id-token: write
+      contents: read
+      actions: read
+    steps:
+      - name: Build and test solana provider packages
+        uses: smartcontractkit/.github/actions/ci-test-go@dfcba48f05933158428bce867d790e3d5a9baa6b # ci-test-go@1.1.0
+        with:
+          go-test-cmd: go test -race -coverprofile=coverage.txt ./chain/solana/...
+          use-go-cache: true
+          artifact-name: provider-tests-solana
+
   ci-test-provider-aptos:
     name: Chain Tests - Aptos
     runs-on: ubuntu-latest
@@ -220,7 +252,7 @@ jobs:
 
   ci-test-provider-fast:
     name: Chain Tests - Others
-    runs-on: ubuntu24.04-4cores-16GB
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
       id-token: write
@@ -231,8 +263,8 @@ jobs:
         uses: smartcontractkit/.github/actions/ci-test-go@dfcba48f05933158428bce867d790e3d5a9baa6b # ci-test-go@1.1.0
         with:
           # -p 2 -parallel 3 = 2 packages, 3 tests max = 6 containers max
-          # Run all provider tests EXCEPT slow ones (aptos, sui, canton, ton, tron, stellar) which have dedicated jobs
-          go-test-cmd: go test -race -p 2 -parallel 3 -coverprofile=coverage.txt $( go list ./... | grep '/chainlink-deployments-framework/chain/' | grep -vE '/chainlink-deployments-framework/chain/(aptos|sui|canton|ton|tron|stellar)' )
+          # Run all provider tests EXCEPT slow ones (evm, solana, aptos, sui, canton, ton, tron, stellar) which have dedicated jobs
+          go-test-cmd: go test -race -p 2 -parallel 3 -coverprofile=coverage.txt $( go list ./... | grep '/chainlink-deployments-framework/chain/' | grep -vE '/chainlink-deployments-framework/chain/(evm|solana|aptos|sui|canton|ton|tron|stellar)' )
           use-go-cache: true
           artifact-name: provider-tests-others
 
@@ -308,7 +340,7 @@ jobs:
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled')
     runs-on: ubuntu-24.04
-    needs: [ci-test, ci-test-operations-gen, ci-test-provider-aptos, ci-test-provider-sui, ci-test-provider-canton, ci-test-provider-ton, ci-test-provider-tron, ci-test-provider-stellar, ci-test-provider-fast, ci-test-catalog-remote, ci-lint-misc, ci-lint, ci-lint-operations-gen]
+    needs: [ci-test, ci-test-operations-gen, ci-test-provider-evm, ci-test-provider-solana, ci-test-provider-aptos, ci-test-provider-sui, ci-test-provider-canton, ci-test-provider-ton, ci-test-provider-tron, ci-test-provider-stellar, ci-test-provider-fast, ci-test-catalog-remote, ci-lint-misc, ci-lint, ci-lint-operations-gen]
     permissions:
       contents: read
       actions: read
