@@ -98,12 +98,12 @@ jobs:
           # causing tests in ci to fail "fatal error: checkptr: pointer arithmetic result points to invalid allocation"
           # https://github.com/xssnick/tonutils-go/issues/310
           # Exclude provider packages which use Docker containers and remote catalog tests
-          go-test-cmd: go test -race -gcflags=all=-d=checkptr=0 -coverprofile=coverage.txt $(go list ./... | grep -v '/provider' | grep -v '/catalog/remote')
+          go-test-cmd: go test -race -gcflags=all=-d=checkptr=0 -coverprofile=coverage.txt $( go list ./... | grep -vE '/chainlink-deployments-framework(/chain\>|/datastore/catalog/remote\>)' )
           use-go-cache: true
           artifact-name: unit-tests
 
   ci-test-provider-aptos:
-    name: Provider Tests - Aptos
+    name: Chain Tests - Aptos
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -114,12 +114,12 @@ jobs:
       - name: Build and test aptos provider packages
         uses: smartcontractkit/.github/actions/ci-test-go@dfcba48f05933158428bce867d790e3d5a9baa6b # ci-test-go@1.1.0
         with:
-          go-test-cmd: go test -race -coverprofile=coverage.txt ./chain/aptos/provider/...
+          go-test-cmd: go test -race -coverprofile=coverage.txt ./chain/aptos/...
           use-go-cache: true
           artifact-name: provider-tests-aptos
 
   ci-test-provider-canton:
-    name: Provider Tests - Canton
+    name: Chain Tests - Canton
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -130,12 +130,12 @@ jobs:
       - name: Build and test canton provider packages
         uses: smartcontractkit/.github/actions/ci-test-go@dfcba48f05933158428bce867d790e3d5a9baa6b # ci-test-go@1.1.0
         with:
-          go-test-cmd: go test -race -coverprofile=coverage.txt ./chain/canton/provider/...
+          go-test-cmd: go test -race -coverprofile=coverage.txt ./chain/canton/...
           use-go-cache: true
           artifact-name: provider-tests-canton
 
   ci-test-provider-ton:
-    name: Provider Tests - TON
+    name: Chain Tests - TON
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -149,12 +149,12 @@ jobs:
           # disable the checkptr runtime check due a false positive in github.com/xssnick/tonutils-go
           # causing tests in ci to fail "fatal error: checkptr: pointer arithmetic result points to invalid allocation"
           # https://github.com/xssnick/tonutils-go/issues/310
-          go-test-cmd: go test -race -gcflags=all=-d=checkptr=0 -coverprofile=coverage.txt ./chain/ton/provider/...
+          go-test-cmd: go test -race -gcflags=all=-d=checkptr=0 -coverprofile=coverage.txt ./chain/ton/...
           use-go-cache: true
           artifact-name: provider-tests-ton
 
   ci-test-provider-tron:
-    name: Provider Tests - TRON
+    name: Chain Tests - TRON
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -165,12 +165,12 @@ jobs:
       - name: Build and test tron provider packages
         uses: smartcontractkit/.github/actions/ci-test-go@dfcba48f05933158428bce867d790e3d5a9baa6b # ci-test-go@1.1.0
         with:
-          go-test-cmd: go test -race -coverprofile=coverage.txt ./chain/tron/provider/...
+          go-test-cmd: go test -race -coverprofile=coverage.txt ./chain/tron/...
           use-go-cache: true
           artifact-name: provider-tests-tron
 
   ci-test-provider-stellar:
-    name: Provider Tests - Stellar
+    name: Chain Tests - Stellar
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -181,12 +181,12 @@ jobs:
       - name: Build and test stellar provider packages
         uses: smartcontractkit/.github/actions/ci-test-go@dfcba48f05933158428bce867d790e3d5a9baa6b # ci-test-go@1.1.0
         with:
-          go-test-cmd: go test -race -coverprofile=coverage.txt ./chain/stellar/provider/...
+          go-test-cmd: go test -race -coverprofile=coverage.txt ./chain/stellar/...
           use-go-cache: true
           artifact-name: provider-tests-stellar
 
   ci-test-provider-fast:
-    name: Provider Tests - Others
+    name: Chain Tests - Others
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -199,7 +199,7 @@ jobs:
         with:
           # -p 2 -parallel 3 = 2 packages, 3 tests max = 6 containers max
           # Run all provider tests EXCEPT slow ones (aptos, canton, ton, tron, stellar) which have dedicated jobs
-          go-test-cmd: go test -race -p 2 -parallel 3 -coverprofile=coverage.txt $(go list ./... | grep '/provider' | grep -E -v '/(aptos|canton|ton|tron|stellar)/provider')
+          go-test-cmd: go test -race -p 2 -parallel 3 -coverprofile=coverage.txt $( go list ./... | grep '/chainlink-deployments-framework/chain/' | grep -vE '/chainlink-deployments-framework/chain/(aptos|canton|ton|tron|stellar)' )
           use-go-cache: true
           artifact-name: provider-tests-others
 
