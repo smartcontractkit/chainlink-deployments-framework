@@ -38,13 +38,13 @@ func TestChain_ReadOnly(t *testing.T) {
 	require.True(t, ok)
 
 	// write with read-write client should work
-	deployer := stellar.NewDeployer(stellarChain.Client, stellarChain.NetworkPassphrase, stellarChain.Signer.KeypairFull())
+	deployer := NewDeployer(stellarChain.Client, stellarChain.NetworkPassphrase, stellarChain.Signer.KeypairFull())
 	contractID, err := deployer.DeployContract(t.Context(), registryContractBytes, [32]byte{})
 	require.NoError(t, err)
 
 	// read with read-only client should work
 	args := []xdr.ScVal{{Type: xdr.ScValTypeScvString, Str: pointer.To(xdr.ScString("world"))}}
-	roDeployer := stellar.NewDeployer(roStellarChain.Client, roStellarChain.NetworkPassphrase, roStellarChain.Signer.KeypairFull())
+	roDeployer := NewDeployer(roStellarChain.Client, roStellarChain.NetworkPassphrase, roStellarChain.Signer.KeypairFull())
 	_, err = roDeployer.SimulateContract(t.Context(), contractID, "hello", args)
 	require.NoError(t, err)
 

@@ -1,4 +1,4 @@
-package stellar
+package stellar_test
 
 import (
 	"context"
