@@ -2,4 +2,4 @@
 "chainlink-deployments-framework": minor
 ---
 
-port new ton config on propose.go
+Port new TON config to `propose.go`
