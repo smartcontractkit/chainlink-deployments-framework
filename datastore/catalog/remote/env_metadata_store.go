@@ -234,7 +234,7 @@ func (s *catalogEnvMetadataStore) editRecord(record datastore.EnvMetadata) error
 		},
 	}
 
-	if err := executeEdit(s.client, req, "env metadata",
+	if err := executeEdit(s.client, req,
 		(*pb.DataAccessResponse).GetEnvironmentMetadataEditResponse,
 		func(statusErr error, code codes.Code) error {
 			if code == codes.Aborted {

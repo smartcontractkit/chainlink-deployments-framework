@@ -221,7 +221,7 @@ func (s *catalogAddressRefStore) Add(_ context.Context, record datastore.Address
 		},
 	}
 
-	return executeEdit(s.client, req, "add address ref",
+	return executeEdit(s.client, req,
 		(*pb.DataAccessResponse).GetAddressReferenceEditResponse, nil)
 }
 
@@ -235,7 +235,7 @@ func (s *catalogAddressRefStore) Upsert(_ context.Context, record datastore.Addr
 		},
 	}
 
-	return executeEdit(s.client, req, "upsert address ref",
+	return executeEdit(s.client, req,
 		(*pb.DataAccessResponse).GetAddressReferenceEditResponse, nil)
 }
 
@@ -262,7 +262,7 @@ func (s *catalogAddressRefStore) Update(ctx context.Context, record datastore.Ad
 		},
 	}
 
-	return executeEdit(s.client, req, "update address ref",
+	return executeEdit(s.client, req,
 		(*pb.DataAccessResponse).GetAddressReferenceEditResponse, nil)
 }
 
@@ -287,7 +287,7 @@ func (s *catalogAddressRefStore) deleteRecord(key datastore.AddressRefKey) error
 		},
 	}
 
-	return executeEdit(s.client, req, "delete address ref",
+	return executeEdit(s.client, req,
 		(*pb.DataAccessResponse).GetAddressReferenceEditResponse, nil)
 }
 

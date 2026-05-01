@@ -364,7 +364,7 @@ func (s *catalogChainMetadataStore) deleteRecord(key datastore.ChainMetadataKey)
 		},
 	}
 
-	if err := executeEdit(s.client, req, "delete chain metadata",
+	if err := executeEdit(s.client, req,
 		(*pb.DataAccessResponse).GetChainMetadataEditResponse, nil); err != nil {
 		return err
 	}
@@ -394,7 +394,7 @@ func (s *catalogChainMetadataStore) editRecord(record datastore.ChainMetadata, s
 		},
 	}
 
-	if err := executeEdit(s.client, req, "chain metadata",
+	if err := executeEdit(s.client, req,
 		(*pb.DataAccessResponse).GetChainMetadataEditResponse,
 		func(statusErr error, code codes.Code) error {
 			switch code { //nolint:exhaustive // We don't need to handle all codes here

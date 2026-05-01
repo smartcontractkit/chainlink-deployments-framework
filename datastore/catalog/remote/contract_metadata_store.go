@@ -371,7 +371,7 @@ func (s *catalogContractMetadataStore) deleteRecord(key datastore.ContractMetada
 		},
 	}
 
-	if err := executeEdit(s.client, req, "delete contract metadata",
+	if err := executeEdit(s.client, req,
 		(*pb.DataAccessResponse).GetContractMetadataEditResponse, nil); err != nil {
 		return err
 	}
@@ -401,7 +401,7 @@ func (s *catalogContractMetadataStore) editRecord(record datastore.ContractMetad
 		},
 	}
 
-	if err := executeEdit(s.client, req, "contract metadata",
+	if err := executeEdit(s.client, req,
 		(*pb.DataAccessResponse).GetContractMetadataEditResponse,
 		func(statusErr error, code codes.Code) error {
 			switch code { //nolint:exhaustive // We don't need to handle all codes here
