@@ -120,19 +120,21 @@ func (p *CTFChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 
 	// mylocalton uses a global_id of -217 by default
 	// https://github.com/neodix42/mylocalton-docker/blob/8f9c6ea27cd608dc6370c4191554b42b5a797905/docker/scripts/start-genesis.sh#L62
-	tonWallet, err := createTonWallet(nodeClient, wallet.ConfigV5R1Final{NetworkGlobalID: -217}, wallet.WithWorkchain(0))
+	versionConfig := wallet.ConfigV5R1Final{NetworkGlobalID: -217}
+	tonWallet, err := createTonWallet(nodeClient, versionConfig, wallet.WithWorkchain(0))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create wallet: %w", err)
 	}
 
 	p.chain = &cldf_ton.Chain{
-		ChainMetadata: cldf_ton.ChainMetadata{Selector: p.selector},
-		Client:        nodeClient,
-		Wallet:        tonWallet,
-		WalletAddress: tonWallet.WalletAddress(),
-		URL:           liteServerURL,
-		HTTPURL:       httpURL,
-		Confirm:       cldf_ton.MakeDefaultConfirmFunc(nodeClient),
+		ChainMetadata:       cldf_ton.ChainMetadata{Selector: p.selector},
+		Client:              nodeClient,
+		Wallet:              tonWallet,
+		WalletAddress:       tonWallet.WalletAddress(),
+		WalletVersionConfig: versionConfig,
+		URL:                 liteServerURL,
+		HTTPURL:             httpURL,
+		Confirm:             cldf_ton.MakeDefaultConfirmFunc(nodeClient),
 	}
 
 	return *p.chain, nil
