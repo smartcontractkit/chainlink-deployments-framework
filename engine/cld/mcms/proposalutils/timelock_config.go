@@ -8,6 +8,7 @@ import (
 	"github.com/aptos-labs/aptos-go-sdk"
 	"github.com/gagliardetto/solana-go"
 	ownerhelpers "github.com/smartcontractkit/ccip-owner-contracts/pkg/gethwrappers"
+	tonstate "github.com/smartcontractkit/chainlink-ton/deployment/state"
 	mcmssolanasdk "github.com/smartcontractkit/mcms/sdk/solana"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 
@@ -58,6 +59,32 @@ func (tc *TimelockConfig) MCMBasedOnActionSolana(s SolanaMCMSWithTimelock) (stri
 		return mcmssolanasdk.ContractAddress(programs.McmProgram, programs.CancellerMcmSeed), nil
 	case mcmstypes.TimelockActionBypass:
 		return mcmssolanasdk.ContractAddress(programs.McmProgram, programs.BypasserMcmSeed), nil
+	default:
+		return "", errors.New("invalid MCMS action")
+	}
+}
+
+func (tc *TimelockConfig) MCMBasedOnActionTON(s *tonstate.MCMSSuiteState) (string, error) {
+	// if MCMSAction is not set, default to timelock.Schedule, this is to ensure no breaking changes for existing code
+	if tc.MCMSAction == "" {
+		tc.MCMSAction = mcmstypes.TimelockActionSchedule
+	}
+	switch tc.MCMSAction {
+	case mcmstypes.TimelockActionSchedule:
+		if s.Proposer == nil {
+			return "", errors.New("missing TON proposer")
+		}
+		return s.Proposer.String(), nil
+	case mcmstypes.TimelockActionCancel:
+		if s.Canceller == nil {
+			return "", errors.New("missing TON canceller")
+		}
+		return s.Canceller.String(), nil
+	case mcmstypes.TimelockActionBypass:
+		if s.Bypasser == nil {
+			return "", errors.New("missing TON bypasser")
+		}
+		return s.Bypasser.String(), nil
 	default:
 		return "", errors.New("invalid MCMS action")
 	}
