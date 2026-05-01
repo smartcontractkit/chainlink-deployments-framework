@@ -111,6 +111,11 @@ jobs:
       contents: read
       actions: read
     steps:
+      - name: Install Aptos CLI
+        uses: aptos-labs/actions/install-aptos-cli@528ef7ad9427a8c0720ea3eea790a9190d6e377d # v0.1
+        with:
+          CLI_VERSION: 9.2.0
+
       - name: Build and test aptos provider packages
         uses: smartcontractkit/.github/actions/ci-test-go@dfcba48f05933158428bce867d790e3d5a9baa6b # ci-test-go@1.1.0
         with:
