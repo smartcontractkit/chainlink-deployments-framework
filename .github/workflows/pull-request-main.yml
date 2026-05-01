@@ -123,6 +123,34 @@ jobs:
           use-go-cache: true
           artifact-name: provider-tests-aptos
 
+  ci-test-provider-sui:
+    name: Chain Tests - Sui
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      id-token: write
+      contents: read
+      actions: read
+    steps:
+      - name: Install Sui CLI
+        shell: bash
+        env:
+          VERSION: 1.67.3
+        run: |
+          echo "Installing Sui CLI v$VERSION"
+          curl -L "https://github.com/MystenLabs/sui/releases/download/mainnet-v${VERSION}/sui-mainnet-v${VERSION}-ubuntu-x86_64.tgz" -o sui.tgz
+          tar -xzf sui.tgz
+          sudo mv -f sui /usr/local/bin/
+          sudo chmod 755 /usr/local/bin/sui
+          rm -f sui.tgz
+
+      - name: Build and test sui provider packages
+        uses: smartcontractkit/.github/actions/ci-test-go@dfcba48f05933158428bce867d790e3d5a9baa6b # ci-test-go@1.1.0
+        with:
+          go-test-cmd: go test -race -coverprofile=coverage.txt ./chain/sui/...
+          use-go-cache: true
+          artifact-name: provider-tests-sui
+
   ci-test-provider-canton:
     name: Chain Tests - Canton
     runs-on: ubuntu-latest
@@ -203,8 +231,8 @@ jobs:
         uses: smartcontractkit/.github/actions/ci-test-go@dfcba48f05933158428bce867d790e3d5a9baa6b # ci-test-go@1.1.0
         with:
           # -p 2 -parallel 3 = 2 packages, 3 tests max = 6 containers max
-          # Run all provider tests EXCEPT slow ones (aptos, canton, ton, tron, stellar) which have dedicated jobs
-          go-test-cmd: go test -race -p 2 -parallel 3 -coverprofile=coverage.txt $( go list ./... | grep '/chainlink-deployments-framework/chain/' | grep -vE '/chainlink-deployments-framework/chain/(aptos|canton|ton|tron|stellar)' )
+          # Run all provider tests EXCEPT slow ones (aptos, sui, canton, ton, tron, stellar) which have dedicated jobs
+          go-test-cmd: go test -race -p 2 -parallel 3 -coverprofile=coverage.txt $( go list ./... | grep '/chainlink-deployments-framework/chain/' | grep -vE '/chainlink-deployments-framework/chain/(aptos|sui|canton|ton|tron|stellar)' )
           use-go-cache: true
           artifact-name: provider-tests-others
 
@@ -280,7 +308,7 @@ jobs:
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled')
     runs-on: ubuntu-24.04
-    needs: [ci-test, ci-test-operations-gen, ci-test-provider-aptos, ci-test-provider-canton, ci-test-provider-ton, ci-test-provider-tron, ci-test-provider-stellar, ci-test-provider-fast, ci-test-catalog-remote, ci-lint-misc, ci-lint, ci-lint-operations-gen]
+    needs: [ci-test, ci-test-operations-gen, ci-test-provider-aptos, ci-test-provider-sui, ci-test-provider-canton, ci-test-provider-ton, ci-test-provider-tron, ci-test-provider-stellar, ci-test-provider-fast, ci-test-catalog-remote, ci-lint-misc, ci-lint, ci-lint-operations-gen]
     permissions:
       contents: read
       actions: read
