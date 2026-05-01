@@ -104,7 +104,6 @@ func (r *ChangesetsRegistry) RunProposalHooks(
 			Logger:      e.Logger,
 			BlockChains: blockChains,
 			DataStore:   e.DataStore,
-			Offchain:    e.Offchain,
 			ForkContext: forkCtx,
 			// TODO: CRE client
 		},

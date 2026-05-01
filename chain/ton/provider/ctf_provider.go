@@ -173,9 +173,7 @@ func (p *CTFChainProvider) startContainer(ctx context.Context, chainID string) (
 
 		testcontainers.CleanupContainer(p.t, output.Container)
 
-		p.t.Logf("CREATED CONTAINER: %v", output.Nodes[0].ExternalHTTPUrl)
-
-		return output, nil // .Nodes[0].ExternalHTTPUrl, output.Nodes[0].ExternalWSUrl, nil
+		return output, nil
 	},
 		retry.Context(ctx),
 		retry.Attempts(attempts),
@@ -203,7 +201,6 @@ func (p *CTFChainProvider) startContainer(ctx context.Context, chainID string) (
 	if err != nil {
 		return "", "", nil, fmt.Errorf("failed to get masterchain block ID: %w", err)
 	}
-	p.t.Logf("MASTER CHAIN BLOCK ID: %#v", *mb)
 
 	// set starting point to verify master block proofs chain
 	client.SetTrustedBlock(mb)

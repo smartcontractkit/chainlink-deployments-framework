@@ -22,7 +22,7 @@ func TestChain_ReadOnly(t *testing.T) {
 	ctfConfig := provider.CTFChainProviderConfig{
 		Once:               &sync.Once{},
 		DeployerKeypairGen: provider.KeypairRandom(),
-		Image:              "stellar/quickstart:nightly", // as of Apr 2026, nightly spaws friendbot *much* faster
+		Image:              "stellar/quickstart:nightly", // as of Apr 2026, nightly spawns friendbot *much* faster
 	}
 	chainSelector := chainsel.STELLAR_LOCALNET.Selector
 	chain, err := provider.NewCTFChainProvider(t, chainSelector, ctfConfig).Initialize(t.Context())
@@ -65,10 +65,6 @@ func fundViaFriendbot(t *testing.T, friendbotURL, address string) {
 		resp, err := http.DefaultClient.Do(req)
 		require.NoError(t, err)
 		defer resp.Body.Close()
-
-		var buf []byte
-		_, err = resp.Body.Read(buf)
-		require.NoError(t, err)
 
 		return resp.StatusCode == http.StatusOK
 	}, 60*time.Second, 1000*time.Millisecond)

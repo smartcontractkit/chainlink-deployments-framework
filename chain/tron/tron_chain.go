@@ -2,6 +2,7 @@ package tron
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -101,6 +102,9 @@ func (c Chain) ReadOnly() (chaincommon.BlockChain, error) {
 	privateKey, err := crypto.GenerateKey()
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate private key for read-only chain %v: %w", c, err)
+	}
+	if c.RPCClient == nil {
+		return nil, errors.New("invalid Chain config: RPCClient is nil")
 	}
 
 	c.Address = address.PubkeyToAddress(privateKey.PublicKey)

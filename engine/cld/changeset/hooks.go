@@ -10,7 +10,6 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
-	"github.com/smartcontractkit/chainlink-deployments-framework/offchain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
@@ -46,8 +45,7 @@ type HookEnv struct {
 	Logger      logger.Logger
 	BlockChains chain.BlockChains
 	DataStore   datastore.DataStore
-	Offchain    offchain.Client
-	// TODO: read-only CRE client
+	// TODO: read-only Offchain and CRE clients
 }
 
 // ProposalHookEnv is the restricted environment surface exposed to proposal hooks.
@@ -58,8 +56,7 @@ type ProposalHookEnv struct {
 	BlockChains chain.BlockChains
 	DataStore   datastore.DataStore
 	ForkContext ForkContext
-	Offchain    offchain.Client
-	// TODO: read-only CRE client
+	// TODO: read-only Offchain and CRE clients
 }
 
 // PreHookParams is passed to pre-hooks.
