@@ -103,7 +103,7 @@ packages:
     config:
       all: false
       pkgname: "mocks"
-      dir: "chain/evm/operations/contract/mocks"
+      dir: "tools/operations-gen/contract/mocks"
       filename: "mock_{{.InterfaceName | snakecase}}.go"
       structname: "{{.Mock}}{{.InterfaceName}}"
     interfaces:

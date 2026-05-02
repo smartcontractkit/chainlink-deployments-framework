@@ -51,8 +51,8 @@ type WriteParams[ARGS any, C any] struct {
 	ContractType deployment.ContractType
 	// ContractABI is the ABI of the target contract.
 	ContractABI string
-	// NewContract is a function that creates a new instance of the contract binding.
-	NewContract func(address common.Address, backend bind.ContractBackend) (C, error)
+	// Contract is the contract binding instance to use for this write operation.
+	Contract C
 	// IsAllowedCaller is a function that checks if the caller is allowed to call the function.
 	IsAllowedCaller func(contract C, opts *bind.CallOpts, caller common.Address, input ARGS) (bool, error)
 	// Validate is a function that validates the input arguments.
@@ -61,11 +61,7 @@ type WriteParams[ARGS any, C any] struct {
 	CallContract func(contract C, opts *bind.TransactOpts, input ARGS) (*eth_types.Transaction, error)
 }
 
-// NewWrite creates a new write operation.
-// Any interfacing with gethwrappers should live in the callContract function.
-// If the deployer key is an allowed caller, the transaction will be signed and sent.
-// Otherwise, the MCMS transaction will be returned for alternative handling.
-func NewWrite[ARGS any, C any](params WriteParams[ARGS, C]) *operations.Operation[FunctionInput[ARGS], WriteOutput, evm.Chain] {
+func NewWrite[ARGS any, C interface{ Address() common.Address }](params WriteParams[ARGS, C]) *operations.Operation[FunctionInput[ARGS], WriteOutput, evm.Chain] {
 	return operations.NewOperation(
 		params.Name,
 		params.Version,
@@ -77,20 +73,11 @@ func NewWrite[ARGS any, C any](params WriteParams[ARGS, C]) *operations.Operatio
 					return WriteOutput{}, fmt.Errorf("invalid args for %s: %w", params.Name, err)
 				}
 			}
-			if input.ChainSelector != chain.Selector {
-				return WriteOutput{}, fmt.Errorf("mismatch between inputted chain selector and selector defined within dependencies: %d != %d", input.ChainSelector, chain.Selector)
-			}
 			if params.ContractType == "" {
 				return WriteOutput{}, fmt.Errorf("contract type must be specified for %s", params.Name)
 			}
 			if params.ContractABI == "" {
 				return WriteOutput{}, fmt.Errorf("contract ABI must be specified for %s", params.Name)
-			}
-			if input.Address == (common.Address{}) {
-				return WriteOutput{}, fmt.Errorf("address must be specified for %s", params.Name)
-			}
-			if params.NewContract == nil {
-				return WriteOutput{}, fmt.Errorf("newContract function must be defined for %s", params.Name)
 			}
 			if params.CallContract == nil {
 				return WriteOutput{}, fmt.Errorf("callContract function must be defined for %s", params.Name)
@@ -100,46 +87,42 @@ func NewWrite[ARGS any, C any](params WriteParams[ARGS, C]) *operations.Operatio
 			}
 			// END Validation
 
-			boundContract, err := params.NewContract(input.Address, chain.Client)
+			allowed, err := params.IsAllowedCaller(params.Contract, &bind.CallOpts{Context: b.GetContext()}, chain.DeployerKey.From, input.Args)
 			if err != nil {
-				return WriteOutput{}, fmt.Errorf("failed to create contract instance for %s at %s on %s: %w", params.Name, input.Address, chain, err)
-			}
-			allowed, err := params.IsAllowedCaller(boundContract, &bind.CallOpts{Context: b.GetContext()}, chain.DeployerKey.From, input.Args)
-			if err != nil {
-				return WriteOutput{}, fmt.Errorf("failed to check if %s is an allowed caller of %s against %s on %s: %w", chain.DeployerKey.From, params.Name, input.Address, chain, err)
+				return WriteOutput{}, fmt.Errorf("failed to check if %s is an allowed caller of %s against %s on %s: %w", chain.DeployerKey.From, params.Name, params.Contract.Address(), chain, err)
 			}
 			opts := deployment.SimTransactOpts()
 			if allowed {
 				opts = chain.DeployerKey
 			}
 			var execInfo *ExecInfo
-			tx, callErr := params.CallContract(boundContract, opts, input.Args)
+			tx, callErr := params.CallContract(params.Contract, opts, input.Args)
 			if callErr == nil && tx == nil {
-				return WriteOutput{}, fmt.Errorf("contract call returned nil transaction for %s against %s on %s", params.Name, input.Address, chain)
+				return WriteOutput{}, fmt.Errorf("contract call returned nil transaction for %s against %s on %s", params.Name, params.Contract.Address(), chain)
 			}
 			if allowed {
 				// If the call has actually been sent, we need check the call error and confirm the transaction.
 				_, confirmErr := deployment.ConfirmIfNoErrorWithABI(chain, tx, params.ContractABI, callErr)
 				if confirmErr != nil {
-					return WriteOutput{}, fmt.Errorf("failed to confirm %s tx against %s on %s with args %+v: %w", params.Name, input.Address, chain, input.Args, confirmErr)
+					return WriteOutput{}, fmt.Errorf("failed to confirm %s tx against %s on %s with args %+v: %w", params.Name, params.Contract.Address(), chain, input.Args, confirmErr)
 				}
 				execInfo = &ExecInfo{Hash: tx.Hash().Hex()}
-				b.Logger.Debugw(fmt.Sprintf("Confirmed %s tx against %s on %s", params.Name, input.Address, chain), "hash", tx.Hash().Hex(), "args", input.Args)
+				b.Logger.Debugw(fmt.Sprintf("Confirmed %s tx against %s on %s", params.Name, params.Contract.Address(), chain), "hash", tx.Hash().Hex(), "args", input.Args)
 			} else if callErr != nil {
 				// If we didn't execute the transaction, but there was an error preparing it, return the error.
-				return WriteOutput{}, fmt.Errorf("failed to prepare %s tx against %s on %s with args %+v: %w", params.Name, input.Address, chain, input.Args, callErr)
+				return WriteOutput{}, fmt.Errorf("failed to prepare %s tx against %s on %s with args %+v: %w", params.Name, params.Contract.Address(), chain, input.Args, callErr)
 			} else {
-				b.Logger.Debugw(fmt.Sprintf("Prepared %s tx against %s on %s", params.Name, input.Address, chain), "args", input.Args)
+				b.Logger.Debugw(fmt.Sprintf("Prepared %s tx against %s on %s", params.Name, params.Contract.Address(), chain), "args", input.Args)
 			}
 
 			return WriteOutput{
-				ChainSelector: input.ChainSelector,
+				ChainSelector: chain.Selector,
 				ExecInfo:      execInfo,
 				Tx: mcms_types.Transaction{
 					OperationMetadata: mcms_types.OperationMetadata{
 						ContractType: string(params.ContractType),
 					},
-					To:               input.Address.Hex(),
+					To:               params.Contract.Address().Hex(),
 					Data:             tx.Data(),
 					AdditionalFields: json.RawMessage(`{"value": 0}`),
 				},
@@ -153,7 +136,15 @@ type ownableContract interface {
 	Owner(opts *bind.CallOpts) (common.Address, error)
 }
 
-func OnlyOwner[C ownableContract, ARGS any](contract C, opts *bind.CallOpts, caller common.Address, args ARGS) (bool, error) {
+// RetryContractCall retries contract read calls that can briefly fail after
+// deployment while RPC nodes catch up.
+func RetryContractCall[T any](
+	opts *bind.CallOpts,
+	waitLabel string,
+	failureLabel string,
+	contractAddress common.Address,
+	check func() (T, error),
+) (T, error) {
 	// Retry with timeout to handle testnet flakiness where a newly deployed contract
 	// may not be immediately visible to the RPC node
 	const (
@@ -168,11 +159,12 @@ func OnlyOwner[C ownableContract, ARGS any](contract C, opts *bind.CallOpts, cal
 
 	deadline := time.Now().Add(timeout)
 	var lastErr error
+	var zero T
 
 	for time.Now().Before(deadline) {
-		owner, err := contract.Owner(opts)
+		result, err := check()
 		if err == nil {
-			return owner == caller, nil
+			return result, nil
 		}
 
 		// Check if this is a "contract not found" type error (empty response)
@@ -181,7 +173,7 @@ func OnlyOwner[C ownableContract, ARGS any](contract C, opts *bind.CallOpts, cal
 			lastErr = err
 			select {
 			case <-ctx.Done():
-				return false, fmt.Errorf("context cancelled while waiting for owner of %s: %w", contract.Address(), ctx.Err())
+				return zero, fmt.Errorf("context cancelled while waiting for %s of %s: %w", waitLabel, contractAddress, ctx.Err())
 			case <-time.After(retryDelay):
 			}
 
@@ -189,10 +181,39 @@ func OnlyOwner[C ownableContract, ARGS any](contract C, opts *bind.CallOpts, cal
 		}
 
 		// For other errors, fail immediately
-		return false, fmt.Errorf("failed to get owner of %s: %w", contract.Address(), err)
+		return zero, fmt.Errorf("failed to %s of %s: %w", failureLabel, contractAddress, err)
 	}
 
-	return false, fmt.Errorf("failed to get owner of %s after %v: %w", contract.Address(), timeout, lastErr)
+	return zero, fmt.Errorf("failed to %s of %s after %v: %w", failureLabel, contractAddress, timeout, lastErr)
+}
+
+func OnlyOwner[C ownableContract, ARGS any](contract C, opts *bind.CallOpts, caller common.Address, args ARGS) (bool, error) {
+	owner, err := RetryContractCall(opts, "owner", "get owner", contract.Address(), func() (common.Address, error) {
+		return contract.Owner(opts)
+	})
+	if err != nil {
+		return false, err
+	}
+
+	return owner == caller, nil
+}
+
+type AccessControlContract interface {
+	Address() common.Address
+	HasRole(opts *bind.CallOpts, role [32]byte, account common.Address) (bool, error)
+}
+
+// HasRole reports whether account holds role on contract (OpenZeppelin IAccessControl-style HasRole).
+// Includes retries for RPC flakiness after deploy.
+func HasRole[C AccessControlContract](
+	contract C,
+	opts *bind.CallOpts,
+	role [32]byte,
+	account common.Address,
+) (bool, error) {
+	return RetryContractCall(opts, "role check", "check role", contract.Address(), func() (bool, error) {
+		return contract.HasRole(opts, role, account)
+	})
 }
 
 func AllCallersAllowed[C any, ARGS any](contract C, opts *bind.CallOpts, caller common.Address, args ARGS) (bool, error) {
