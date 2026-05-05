@@ -63,7 +63,6 @@ var Deploy = contract.NewDeploy(contract.DeployParams[ConstructorArgs]{
 			EVM: common.FromHex(gobindings.{{.ContractType}}MetaData.Bin),
 		},
 	},
-	Validate: func(ConstructorArgs) error { return nil },
 })
 {{- end}}
 {{range .Operations}}
@@ -87,7 +86,6 @@ func NewWrite{{.Name}}(c gobindings.{{$.ContractType}}Interface) *cld_ops.Operat
 	{{- else}}
 		IsAllowedCaller: contract.AllCallersAllowed[gobindings.{{$.ContractType}}Interface, {{.ArgsType}}],
 	{{- end}}
-		Validate: func({{.ArgsType}}) error { return nil },
 		CallContract: func(
 			c gobindings.{{$.ContractType}}Interface,
 			opts *bind.TransactOpts,
