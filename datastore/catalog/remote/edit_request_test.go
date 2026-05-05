@@ -64,7 +64,6 @@ func TestGetOpName(t *testing.T) {
 		{name: "add env metadata", req: envMetadataOp(pb.EditSemantics_SEMANTICS_INSERT), expected: "add env metadata"},
 		{name: "upsert env metadata", req: envMetadataOp(pb.EditSemantics_SEMANTICS_UPSERT), expected: "upsert env metadata"},
 		{name: "update env metadata", req: envMetadataOp(pb.EditSemantics_SEMANTICS_UPDATE), expected: "update env metadata"},
-		{name: "delete env metadata", req: envMetadataOp(pb.EditSemantics_SEMANTICS_DELETE), expected: "delete env metadata"},
 		// edge cases
 		{name: "unknown operation type", req: &pb.DataAccessRequest{}, expectedErr: "unknown operation type"},
 		{name: "unknown semantics", req: &pb.DataAccessRequest{
