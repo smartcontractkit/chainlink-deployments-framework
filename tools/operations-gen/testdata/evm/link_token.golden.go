@@ -43,7 +43,6 @@ var Deploy = contract.NewDeploy(contract.DeployParams[ConstructorArgs]{
 			EVM: common.FromHex(gobindings.LinkTokenMetaData.Bin),
 		},
 	},
-	Validate: func(ConstructorArgs) error { return nil },
 })
 
 func NewWriteTransfer(c gobindings.LinkTokenInterface) *cld_ops.Operation[contract.FunctionInput[TransferArgs], contract.WriteOutput, cldf_evm.Chain] {
@@ -55,7 +54,6 @@ func NewWriteTransfer(c gobindings.LinkTokenInterface) *cld_ops.Operation[contra
 		ContractABI:     gobindings.LinkTokenMetaData.ABI,
 		Contract:        c,
 		IsAllowedCaller: contract.AllCallersAllowed[gobindings.LinkTokenInterface, TransferArgs],
-		Validate:        func(TransferArgs) error { return nil },
 		CallContract: func(
 			c gobindings.LinkTokenInterface,
 			opts *bind.TransactOpts,
@@ -88,7 +86,6 @@ func NewWriteApprove(c gobindings.LinkTokenInterface) *cld_ops.Operation[contrac
 		ContractABI:     gobindings.LinkTokenMetaData.ABI,
 		Contract:        c,
 		IsAllowedCaller: contract.AllCallersAllowed[gobindings.LinkTokenInterface, ApproveArgs],
-		Validate:        func(ApproveArgs) error { return nil },
 		CallContract: func(
 			c gobindings.LinkTokenInterface,
 			opts *bind.TransactOpts,

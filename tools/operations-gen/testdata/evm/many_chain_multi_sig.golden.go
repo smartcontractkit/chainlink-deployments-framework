@@ -47,7 +47,6 @@ var Deploy = contract.NewDeploy(contract.DeployParams[ConstructorArgs]{
 			EVM: common.FromHex(gobindings.ManyChainMultiSigMetaData.Bin),
 		},
 	},
-	Validate: func(ConstructorArgs) error { return nil },
 })
 
 func NewReadOwner(c gobindings.ManyChainMultiSigInterface) *cld_ops.Operation[contract.FunctionInput[struct{}], common.Address, cldf_evm.Chain] {
@@ -74,7 +73,6 @@ func NewWriteSetConfig(c gobindings.ManyChainMultiSigInterface) *cld_ops.Operati
 		IsAllowedCaller: func(c gobindings.ManyChainMultiSigInterface, opts *bind.CallOpts, caller common.Address, args SetConfigArgs) (bool, error) {
 			return contract.OnlyOwner(c, opts, caller, args)
 		},
-		Validate: func(SetConfigArgs) error { return nil },
 		CallContract: func(
 			c gobindings.ManyChainMultiSigInterface,
 			opts *bind.TransactOpts,
@@ -96,7 +94,6 @@ func NewWriteSetRoot(c gobindings.ManyChainMultiSigInterface) *cld_ops.Operation
 		IsAllowedCaller: func(c gobindings.ManyChainMultiSigInterface, opts *bind.CallOpts, caller common.Address, args SetRootArgs) (bool, error) {
 			return contract.OnlyOwner(c, opts, caller, args)
 		},
-		Validate: func(SetRootArgs) error { return nil },
 		CallContract: func(
 			c gobindings.ManyChainMultiSigInterface,
 			opts *bind.TransactOpts,

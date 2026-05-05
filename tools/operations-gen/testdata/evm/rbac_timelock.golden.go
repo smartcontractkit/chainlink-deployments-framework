@@ -47,7 +47,6 @@ var Deploy = contract.NewDeploy(contract.DeployParams[ConstructorArgs]{
 			EVM: common.FromHex(gobindings.RBACTimelockMetaData.Bin),
 		},
 	},
-	Validate: func(ConstructorArgs) error { return nil },
 })
 
 func NewWriteScheduleBatch(c gobindings.RBACTimelockInterface) *cld_ops.Operation[contract.FunctionInput[ScheduleBatchArgs], contract.WriteOutput, cldf_evm.Chain] {
@@ -61,7 +60,6 @@ func NewWriteScheduleBatch(c gobindings.RBACTimelockInterface) *cld_ops.Operatio
 		IsAllowedCaller: func(c gobindings.RBACTimelockInterface, opts *bind.CallOpts, caller common.Address, args ScheduleBatchArgs) (bool, error) {
 			return contract.HasRole(c, opts, [32]byte{0xb0, 0x9a, 0xa5, 0xae, 0xb3, 0x70, 0x2c, 0xfd, 0x50, 0xb6, 0xb6, 0x2b, 0xc4, 0x53, 0x26, 0x04, 0x93, 0x8f, 0x21, 0x24, 0x8a, 0x27, 0xa1, 0xd5, 0xca, 0x73, 0x60, 0x82, 0xb6, 0x81, 0x9c, 0xc1}, caller)
 		},
-		Validate: func(ScheduleBatchArgs) error { return nil },
 		CallContract: func(
 			c gobindings.RBACTimelockInterface,
 			opts *bind.TransactOpts,
