@@ -113,43 +113,46 @@ func (p *CTFChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 		return nil, fmt.Errorf("failed to get chain ID from selector: %w", err)
 	}
 
-	url, nodeClient, err := p.startContainer(ctx, chainID)
+	liteServerURL, httpURL, nodeClient, err := p.startContainer(ctx, chainID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start container: %w", err)
 	}
 
 	// mylocalton uses a global_id of -217 by default
 	// https://github.com/neodix42/mylocalton-docker/blob/8f9c6ea27cd608dc6370c4191554b42b5a797905/docker/scripts/start-genesis.sh#L62
-	tonWallet, err := createTonWallet(nodeClient, wallet.ConfigV5R1Final{NetworkGlobalID: -217}, wallet.WithWorkchain(0))
+	versionConfig := wallet.ConfigV5R1Final{NetworkGlobalID: -217}
+	tonWallet, err := createTonWallet(nodeClient, versionConfig, wallet.WithWorkchain(0))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create wallet: %w", err)
 	}
 
 	p.chain = &cldf_ton.Chain{
-		ChainMetadata: cldf_ton.ChainMetadata{Selector: p.selector},
-		Client:        nodeClient,
-		Wallet:        tonWallet,
-		WalletAddress: tonWallet.WalletAddress(),
-		URL:           url,
-		Confirm:       cldf_ton.MakeDefaultConfirmFunc(nodeClient),
+		ChainMetadata:       cldf_ton.ChainMetadata{Selector: p.selector},
+		Client:              nodeClient,
+		Wallet:              tonWallet,
+		WalletAddress:       tonWallet.WalletAddress(),
+		WalletVersionConfig: versionConfig,
+		URL:                 liteServerURL,
+		HTTPURL:             httpURL,
+		Confirm:             cldf_ton.MakeDefaultConfirmFunc(nodeClient),
 	}
 
 	return *p.chain, nil
 }
 
-func (p *CTFChainProvider) startContainer(ctx context.Context, chainID string) (string, ton.APIClientWrapped, error) {
+func (p *CTFChainProvider) startContainer(ctx context.Context, chainID string) (string, string, ton.APIClientWrapped, error) {
 	var (
 		attempts = uint(10)
-		url      string
+		bOutput  *blockchain.Output
 	)
 
 	// initialize the docker network used by CTF
 	err := framework.DefaultNetwork(p.config.Once)
 	if err != nil {
-		return "", nil, fmt.Errorf("failed to initialize default network: %w", err)
+		return "", "", nil, fmt.Errorf("failed to initialize default network: %w", err)
 	}
 
-	url, err = retry.DoWithData(func() (string, error) {
+	bOutput, err = retry.DoWithData(func() (*blockchain.Output, error) {
 		port, usedFreeport := p.getPort()
 
 		// spin up mylocalton with CTFv2
@@ -167,12 +170,12 @@ func (p *CTFChainProvider) startContainer(ctx context.Context, chainID string) (
 				freeport.Return([]int{port})
 			}
 
-			return "", rerr
+			return output, rerr
 		}
 
 		testcontainers.CleanupContainer(p.t, output.Container)
 
-		return output.Nodes[0].ExternalHTTPUrl, nil
+		return output, nil
 	},
 		retry.Context(ctx),
 		retry.Attempts(attempts),
@@ -183,12 +186,14 @@ func (p *CTFChainProvider) startContainer(ctx context.Context, chainID string) (
 		}),
 	)
 	if err != nil {
-		return "", nil, fmt.Errorf("failed to start CTF Ton container after %d attempts: %w", attempts, err)
+		return "", "", nil, fmt.Errorf("failed to start CTF Ton container after %d attempts: %w", attempts, err)
 	}
 
-	connectionPool, err := createLiteclientConnectionPool(ctx, url)
+	liteServerURL := bOutput.Nodes[0].ExternalHTTPUrl
+	httpURL := bOutput.Nodes[0].ExternalWSUrl
+	connectionPool, err := createLiteclientConnectionPool(ctx, liteServerURL)
 	if err != nil {
-		return "", nil, fmt.Errorf("failed to create liteclient connection pool: %w", err)
+		return "", "", nil, fmt.Errorf("failed to create liteclient connection pool: %w", err)
 	}
 
 	client := ton.NewAPIClient(connectionPool, ton.ProofCheckPolicyFast).WithRetry(defaultClientRetryCount)
@@ -196,13 +201,13 @@ func (p *CTFChainProvider) startContainer(ctx context.Context, chainID string) (
 	// check connection, CTFv2 handles the readiness
 	mb, err := getMasterchainBlockID(ctx, client)
 	if err != nil {
-		return "", nil, fmt.Errorf("failed to get masterchain block ID: %w", err)
+		return "", "", nil, fmt.Errorf("failed to get masterchain block ID: %w", err)
 	}
 
 	// set starting point to verify master block proofs chain
 	client.SetTrustedBlock(mb)
 
-	return url, client, nil
+	return liteServerURL, httpURL, client, nil
 }
 
 // Note: this utility functions can be replaced once we have in the chainlink-ton utils package

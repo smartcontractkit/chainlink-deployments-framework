@@ -101,10 +101,11 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 		ChainMetadata: tron.ChainMetadata{
 			Selector: p.selector,
 		},
-		Client:   combinedClient,                  // Underlying client for Tron node communication
-		SignHash: p.config.DeployerSignerGen.Sign, // Function for signing transactions
-		Address:  deployerAddr,                    // Default "from" address for transactions
-		URL:      p.config.FullNodeURL,
+		Client:    combinedClient,                  // Underlying client for Tron node communication
+		SignHash:  p.config.DeployerSignerGen.Sign, // Function for signing transactions
+		Address:   deployerAddr,                    // Default "from" address for transactions
+		URL:       p.config.FullNodeURL,
+		RPCClient: client,
 		// Helper for sending and confirming transactions
 		SendAndConfirm: func(ctx context.Context, tx *common.Transaction, opts *tron.ConfirmRetryOptions) (*soliditynode.TransactionInfo, error) {
 			options := tron.DefaultConfirmRetryOptions()

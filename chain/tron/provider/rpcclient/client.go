@@ -114,7 +114,6 @@ func (c *Client) confirmTx(
 			return retry.Unrecoverable(fmt.Errorf("transaction %s failed, result: %v", txId, result))
 		}
 	}, retryOpts...)
-
 	if err != nil {
 		// Return the last receipt (if any) and error for debugging
 		return receipt, fmt.Errorf("error confirming transaction: %w", err)
@@ -132,4 +131,11 @@ func (c *Client) CheckContractDeployed(address address.Address) error {
 	}
 
 	return nil
+}
+
+func (c *Client) WithSignHash(fn func(ctx context.Context, txHash []byte) ([]byte, error)) tron.RPCClient {
+	copyClient := *c
+	copyClient.SignHash = fn
+
+	return &copyClient
 }
