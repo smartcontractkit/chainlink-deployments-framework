@@ -99,15 +99,6 @@ packages:
       structname: "{{.Mock}}{{.InterfaceName}}"
     interfaces:
       OnchainClient:
-  github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/operations/contract:
-    config:
-      all: false
-      pkgname: "mocks"
-      dir: "tools/operations-gen/contract/mocks"
-      filename: "mock_{{.InterfaceName | snakecase}}.go"
-      structname: "{{.Mock}}{{.InterfaceName}}"
-    interfaces:
-      AccessControlContract:
   github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer:
     config:
       all: false
