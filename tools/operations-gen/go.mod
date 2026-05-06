@@ -2,8 +2,6 @@ module github.com/smartcontractkit/chainlink-deployments-framework/tools/operati
 
 go 1.25.5
 
-replace github.com/fbsobreira/gotron-sdk => github.com/smartcontractkit/chainlink-tron/relayer/gotron-sdk v0.0.4
-
 require (
 	github.com/ethereum/go-ethereum v1.17.2
 	github.com/stretchr/testify v1.11.1
