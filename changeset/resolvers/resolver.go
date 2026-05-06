@@ -137,7 +137,7 @@ func CallResolver[C any](resolver ConfigResolver, payload json.RawMessage) (C, e
 
 	// Allocate a new value of the required input type and unmarshal into it.
 	var arg reflect.Value
-	if inType.Kind() == reflect.Ptr {
+	if inType.Kind() == reflect.Pointer {
 		// If the function expects a pointer, create the underlying type and get a pointer to it
 		elemType := inType.Elem()
 		elemPtr := reflect.New(elemType)
