@@ -157,7 +157,7 @@ func TestTimelockConfigMCMBasedOnActionTONDefaultsToSchedule(t *testing.T) {
 	cfg := TimelockConfig{}
 	proposer := address.MustParseAddr("EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c")
 
-	got, err := cfg.MCMBasedOnActionTON(&tonstate.MCMSSuiteState{
+	got, err := cfg.MCMBasedOnActionTon(&tonstate.MCMSSuiteState{
 		Proposer: proposer,
 	})
 
@@ -211,7 +211,7 @@ func TestTimelockConfigMCMBasedOnActionTONSelectsRole(t *testing.T) {
 
 			cfg := TimelockConfig{MCMSAction: tt.action}
 
-			got, err := cfg.MCMBasedOnActionTON(tt.state)
+			got, err := cfg.MCMBasedOnActionTon(tt.state)
 
 			require.NoError(t, err)
 			require.Equal(t, tt.want, got)
@@ -250,7 +250,7 @@ func TestTimelockConfigMCMBasedOnActionTONErrorsOnMissingRole(t *testing.T) {
 
 			cfg := TimelockConfig{MCMSAction: tt.action}
 
-			_, err := cfg.MCMBasedOnActionTON(&tonstate.MCMSSuiteState{})
+			_, err := cfg.MCMBasedOnActionTon(&tonstate.MCMSSuiteState{})
 
 			require.EqualError(t, err, tt.want)
 		})

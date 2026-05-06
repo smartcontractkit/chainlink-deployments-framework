@@ -755,6 +755,8 @@ github.com/smartcontractkit/chainlink-aptos v0.0.0-20260306142855-8d629e752265 h
 github.com/smartcontractkit/chainlink-aptos v0.0.0-20260306142855-8d629e752265/go.mod h1:CQGkKp3YDsUuxixxmmngmRKfh6yIcftGEZsQrsSIIM8=
 github.com/smartcontractkit/chainlink-ccip v0.1.1-solana.0.20260331203127-b8dc0a6b85c5 h1:FgGNdAR/ABzC6o6jetL0Ikw2VOw/LR4NU7KG3U0ZG/c=
 github.com/smartcontractkit/chainlink-ccip v0.1.1-solana.0.20260331203127-b8dc0a6b85c5/go.mod h1:iZTLsjnvzUR4QODACgkvJ2Xd1z1YYJJvEnLZ61K/sfw=
+github.com/smartcontractkit/chainlink-ccip v0.1.1-solana.0.20260415165642-49f23e4d76cc h1:a64f9h/Lp1GMw2jU53m//faMa4+BGIxe5zFLpZH6urY=
+github.com/smartcontractkit/chainlink-ccip v0.1.1-solana.0.20260415165642-49f23e4d76cc/go.mod h1:o/CqjaVh40Pav8ICTFOIT6GC/FlX04iWmNL78S90+XQ=
 github.com/smartcontractkit/chainlink-ccip/chains/evm v0.0.0-20260415165642-49f23e4d76cc h1:dP1ERzdTbiJbHVXfHYdBAi1+8NjgkyQuY2oFNWWWDsQ=
 github.com/smartcontractkit/chainlink-ccip/chains/evm v0.0.0-20260415165642-49f23e4d76cc/go.mod h1:7XR5wfgT8hjSsiV+t0EAWvna+rYQeMPaoZf/0g+dios=
 github.com/smartcontractkit/chainlink-ccip/chains/solana v0.0.0-20260121163256-85accaf3d28d h1:xdFpzbApEMz4Rojg2Y2OjFlrh0wu7eB10V2tSZGW5y8=
@@ -785,6 +787,8 @@ github.com/smartcontractkit/chainlink-testing-framework/seth v1.51.5 h1:RwZXxdIA
 github.com/smartcontractkit/chainlink-testing-framework/seth v1.51.5/go.mod h1:kHYJnZUqiPF7/xN5273prV+srrLJkS77GbBXHLKQpx0=
 github.com/smartcontractkit/chainlink-ton v0.0.0-20260415120434-cecc380f8d87 h1:NgA2+Q0wfHicP/QeY1hgULQ1ZBk1sgBpOJi3GpxfjE8=
 github.com/smartcontractkit/chainlink-ton v0.0.0-20260415120434-cecc380f8d87/go.mod h1:UmQdvE8BtbLdoOFY0+Adqoc7HT1Hd1bbFY/yymuM0NU=
+github.com/smartcontractkit/chainlink-ton v1.0.5-0.20260430134932-681b7a7fe426 h1:DeQpkYzNYqAXfXnMwXmh5LfF86jDgvbvtB+zCgtovWA=
+github.com/smartcontractkit/chainlink-ton v1.0.5-0.20260430134932-681b7a7fe426/go.mod h1:ueY5pFIW//gVJS8/rh8qIs2gdlntxfAiOZfBSvJRjXk=
 github.com/smartcontractkit/chainlink-ton/deployment v0.0.0-20260430134932-681b7a7fe426 h1:X8MNLLrViwwhBRPwhSVywI1ym2/WBMdhnaBAIkTpwaU=
 github.com/smartcontractkit/chainlink-ton/deployment v0.0.0-20260430134932-681b7a7fe426/go.mod h1:Y4xFqbrdQX+LjVzY5jHBnbTlP3erihUqYiH4h9XMWxU=
 github.com/smartcontractkit/chainlink-tron/relayer v0.0.11-0.20250908203554-5bd9d2fe9513 h1:XRNxgcNqagXu6e4smJuS1crRK5cUAcCVd7u+iLduHDM=

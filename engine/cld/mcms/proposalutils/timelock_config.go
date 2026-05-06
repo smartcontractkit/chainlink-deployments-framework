@@ -74,16 +74,19 @@ func (tc *TimelockConfig) MCMBasedOnActionTon(s *tonstate.MCMSSuiteState) (strin
 		if s.Proposer == nil {
 			return "", errors.New("missing TON proposer")
 		}
+
 		return s.Proposer.String(), nil
 	case mcmstypes.TimelockActionCancel:
 		if s.Canceller == nil {
 			return "", errors.New("missing TON canceller")
 		}
+
 		return s.Canceller.String(), nil
 	case mcmstypes.TimelockActionBypass:
 		if s.Bypasser == nil {
 			return "", errors.New("missing TON bypasser")
 		}
+
 		return s.Bypasser.String(), nil
 	default:
 		return "", errors.New("invalid MCMS action")
