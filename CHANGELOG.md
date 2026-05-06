@@ -1,5 +1,15 @@
 # chainlink-deployments-framework
 
+## 0.100.0
+
+### Minor Changes
+
+- [#961](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/961) [`2bb6275`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/2bb6275da0f4d270c33527e276c51a5cb787d7f0) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix incorrect package name for contracts/mcms
+
+- [#954](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/954) [`d0d1079`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/d0d1079692fd969f81031c5cd5db0ad1bac0c53c) Thanks [@DimitriosNaikopoulos](https://github.com/DimitriosNaikopoulos)! - (feat) Support in memory catalog deletes and save keys for later deleting them from the catalog
+
+- [#959](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/959) [`4c845fb`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/4c845fbda91add525c03da2e7d362a1c83aff3a6) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - feat: add DataStore and BlockChains to HookEnv type
+
 ## 0.99.0
 
 ### Minor Changes
