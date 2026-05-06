@@ -15,7 +15,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
-	contractmocks "github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/contract/mocks"
+	contractmocks "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/operations2/contract/mocks"
 )
 
 func cancelledContext(c context.Context) context.Context {
