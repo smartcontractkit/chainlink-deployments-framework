@@ -307,10 +307,11 @@ func paramInfoFromType(name string, t abi.Type) ParameterInfo {
 // and is used as both the Go method name key and the CallMethod string.
 func methodToFunctionInfo(m abi.Method) *FunctionInfo {
 	fi := &FunctionInfo{
-		Name:            core.Capitalize(m.Name),
-		StateMutability: m.StateMutability,
-		CallMethod:      m.Name,
-		IsWrite:         m.StateMutability != "view" && m.StateMutability != "pure",
+		Name:                 core.Capitalize(m.Name),
+		StateMutability:      m.StateMutability,
+		CallMethod:           m.Name,
+		AllReturnParamsNamed: len(m.Outputs) > 0,
+		IsWrite:              m.StateMutability != "view" && m.StateMutability != "pure",
 	}
 	for i, arg := range m.Inputs {
 		p := paramInfoFromType(arg.Name, arg.Type)
@@ -322,6 +323,7 @@ func methodToFunctionInfo(m abi.Method) *FunctionInfo {
 	for i, arg := range m.Outputs {
 		p := paramInfoFromType(arg.Name, arg.Type)
 		if p.Name == "" {
+			fi.AllReturnParamsNamed = false
 			p.Name = fmt.Sprintf("ret%d", i)
 		}
 		fi.ReturnParams = append(fi.ReturnParams, p)

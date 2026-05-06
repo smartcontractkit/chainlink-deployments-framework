@@ -31,9 +31,6 @@ var (
 
 // DeployInput is the input structure for the Deploy operation.
 type DeployInput[ARGS any] struct {
-	// ChainSelector is the selector for the chain on which the contract will be deployed.
-	// Required to differentiate between operation runs with the same data targeting different chains.
-	ChainSelector uint64 `json:"chainSelector"`
 	// TypeAndVersion is the desired type and version of the contract to deploy.
 	// The deployment operation must define bytecode for this type and version.
 	TypeAndVersion deployment.TypeAndVersion `json:"typeAndVersion"`
@@ -94,9 +91,6 @@ func NewDeploy[ARGS any](params DeployParams[ARGS]) *operations.Operation[Deploy
 				if err := params.Validate(input.Args); err != nil {
 					return datastore.AddressRef{}, fmt.Errorf("invalid constructor args for %s: %w", params.Name, err)
 				}
-			}
-			if input.ChainSelector != chain.Selector {
-				return datastore.AddressRef{}, fmt.Errorf("mismatch between inputted chain selector and selector defined within dependencies: %d != %d", input.ChainSelector, chain.Selector)
 			}
 			if params.ContractMetadata == nil {
 				return datastore.AddressRef{}, fmt.Errorf("contract metadata must be defined for %s", params.Name)
@@ -165,7 +159,7 @@ func NewDeploy[ARGS any](params DeployParams[ARGS]) *operations.Operation[Deploy
 
 			return datastore.AddressRef{
 				Address:       addr.Hex(),
-				ChainSelector: input.ChainSelector,
+				ChainSelector: chain.Selector,
 				Type:          datastore.ContractType(input.TypeAndVersion.Type),
 				Version:       &input.TypeAndVersion.Version,
 				Qualifier:     derefString(input.Qualifier),

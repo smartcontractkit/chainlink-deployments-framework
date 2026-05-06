@@ -42,11 +42,12 @@ type structDef struct {
 
 // FunctionInfo is the parsed, config-enriched representation of one ABI function.
 type FunctionInfo struct {
-	Name            string
-	StateMutability string
-	Parameters      []ParameterInfo
-	ReturnParams    []ParameterInfo
-	IsWrite         bool
+	Name                 string
+	StateMutability      string
+	Parameters           []ParameterInfo
+	ReturnParams         []ParameterInfo
+	AllReturnParamsNamed bool
+	IsWrite              bool
 	// CallMethod is the exact method name used in contract.Transact / contract.Call.
 	// For overloaded functions this includes the numeric suffix (e.g. "curse0").
 	CallMethod    string
@@ -261,7 +262,7 @@ func extractFunctions(info *ContractInfo, funcConfigs []EvmFunctionConfig, parse
 // directly via the "gobindings" import and therefore do not need re-declaring.
 func collectAllStructDefs(info *ContractInfo) {
 	for _, fi := range info.Functions {
-		if fi.IsWrite || len(fi.ReturnParams) <= 1 {
+		if fi.IsWrite || len(fi.ReturnParams) <= 1 || fi.AllReturnParamsNamed {
 			continue
 		}
 		structName := multiReturnStructName(fi.Name)
