@@ -13,7 +13,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.32.12
 	github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider v1.59.2
 	github.com/aws/aws-sdk-go-v2/service/kms v1.50.1
-	github.com/block-vision/sui-go-sdk v1.1.4
+	github.com/block-vision/sui-go-sdk v1.2.1
 	github.com/cosmos/go-bip39 v1.0.0
 	github.com/digital-asset/dazl-client/v8 v8.9.0
 	github.com/ethereum/go-ethereum v1.17.2
@@ -38,7 +38,7 @@ require (
 	github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings v0.0.0-20250912190424-fd2e35d7deb5
 	github.com/smartcontractkit/chainlink-protos/job-distributor v0.18.0
 	github.com/smartcontractkit/chainlink-protos/op-catalog v0.0.4
-	github.com/smartcontractkit/chainlink-testing-framework/framework v0.15.18
+	github.com/smartcontractkit/chainlink-testing-framework/framework v0.15.19
 	github.com/smartcontractkit/chainlink-testing-framework/seth v1.51.5
 	github.com/smartcontractkit/chainlink-ton v1.0.5-0.20260430134932-681b7a7fe426
 	github.com/smartcontractkit/chainlink-ton/deployment v0.0.0-20260430134932-681b7a7fe426
@@ -283,7 +283,7 @@ require (
 	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/sigurn/crc16 v0.0.0-20211026045750-20ab5afb07e3 // indirect
 	github.com/sirupsen/logrus v1.9.4 // indirect
-	github.com/smartcontractkit/chainlink-sui v0.0.0-20260205175622-33e65031f9a9
+	github.com/smartcontractkit/chainlink-sui v0.0.0-20260428231901-a394dd724761
 	github.com/smartcontractkit/grpc-proxy v0.0.0-20240830132753-a7e17fec5ab7 // indirect
 	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect
 	github.com/spf13/afero v1.15.0 // indirect

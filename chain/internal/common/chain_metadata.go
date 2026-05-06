@@ -9,6 +9,28 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/utils"
 )
 
+type BlockChain interface {
+	// String returns chain name and selector "<name> (<selector>)"
+	String() string
+
+	// Name returns the name of the chain (e.g. Ethereum Mainnet, Solana Mainnet, Aptos Mainnet, etc.)
+	Name() string
+
+	// ChainSelector returns the chain's selector
+	ChainSelector() uint64
+
+	// Family returns the family of the chain (e.g. evm, solana, aptos, etc.)
+	Family() string
+
+	// NetworkType returns the type of network the chain is on (e.g. mainnet, testnet)
+	NetworkType() (chainsel.NetworkType, error)
+
+	// IsNetworkType checks if the chain is on the given network type
+	IsNetworkType(networkType chainsel.NetworkType) bool
+
+	ReadOnly() (BlockChain, error)
+}
+
 // ChainMetadata provides metadata about a chain.
 type ChainMetadata struct {
 	Selector uint64

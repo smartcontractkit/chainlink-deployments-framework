@@ -1,13 +1,19 @@
 package solana_test
 
 import (
+	"sync"
 	"testing"
 
+	sollib "github.com/gagliardetto/solana-go"
+	solsystem "github.com/gagliardetto/solana-go/programs/system"
+	solrpc "github.com/gagliardetto/solana-go/rpc"
 	chainsel "github.com/smartcontractkit/chain-selectors"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/solana/provider"
 )
 
 func TestChain_ChainInfot(t *testing.T) {
@@ -64,4 +70,48 @@ func TestChainMetadata_IsNetworkType(t *testing.T) {
 
 	assert.True(t, c.IsNetworkType(chainsel.NetworkTypeMainnet))
 	assert.False(t, c.IsNetworkType(chainsel.NetworkTypeTestnet))
+}
+
+func TestChain_ReadOnly(t *testing.T) {
+	t.Parallel()
+
+	receiverKey, err := sollib.NewRandomPrivateKey()
+	require.NoError(t, err)
+	receiverPubKey := receiverKey.PublicKey()
+
+	solanaKey := blockchain.DefaultSolanaPrivateKey
+	solanaConfig := provider.CTFChainProviderConfig{
+		DeployerKeyGen: provider.PrivateKeyFromRaw(solanaKey),
+		ProgramsPath:   t.TempDir(),
+		ProgramIDs:     map[string]string{},
+		Once:           &sync.Once{},
+	}
+	chainSelector := chainsel.SOLANA_DEVNET.Selector
+	solanaProvider := provider.NewCTFChainProvider(t, chainSelector, solanaConfig)
+	chain, err := solanaProvider.Initialize(t.Context())
+	require.NoError(t, err)
+
+	roChain, err := chain.ReadOnly()
+	require.NoError(t, err)
+	roSolChain, ok := roChain.(solana.Chain)
+	require.True(t, ok)
+	solChain, ok := chain.(solana.Chain)
+	require.True(t, ok)
+
+	// read with read-only client should work
+	deployerPubKey, err := sollib.PublicKeyFromBase58(blockchain.DefaultSolanaPublicKey)
+	require.NoError(t, err)
+	balanceRes, err := roSolChain.Client.GetBalance(t.Context(), deployerPubKey, solrpc.CommitmentConfirmed)
+	require.NoError(t, err)
+	require.Equal(t, uint64(500000000000000000), balanceRes.Value)
+
+	// write with read-write chain should work
+	ix := solsystem.NewTransferInstruction(sollib.LAMPORTS_PER_SOL, solChain.DeployerKey.PublicKey(), receiverPubKey).Build()
+	err = solChain.SendAndConfirm(t.Context(), []sollib.Instruction{ix})
+	require.NoError(t, err)
+
+	// write with read-only chain should fail
+	ix = solsystem.NewTransferInstruction(sollib.LAMPORTS_PER_SOL, roSolChain.DeployerKey.PublicKey(), receiverPubKey).Build()
+	err = roSolChain.SendAndConfirm(t.Context(), []sollib.Instruction{ix})
+	require.ErrorContains(t, err, "Attempt to debit an account but found no record of a prior credit.")
 }

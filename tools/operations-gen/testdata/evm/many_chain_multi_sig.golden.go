@@ -9,7 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 
 	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
-	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/operations/contract"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/operations2/contract"
 	cldf_deployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	cld_ops "github.com/smartcontractkit/chainlink-deployments-framework/operations"
 	gobindings "github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/testdata/evm/gobindings/v1_0_0/many_chain_multi_sig"
@@ -47,7 +47,6 @@ var Deploy = contract.NewDeploy(contract.DeployParams[ConstructorArgs]{
 			EVM: common.FromHex(gobindings.ManyChainMultiSigMetaData.Bin),
 		},
 	},
-	Validate: func(ConstructorArgs) error { return nil },
 })
 
 func NewReadOwner(c gobindings.ManyChainMultiSigInterface) *cld_ops.Operation[contract.FunctionInput[struct{}], common.Address, cldf_evm.Chain] {
@@ -63,6 +62,19 @@ func NewReadOwner(c gobindings.ManyChainMultiSigInterface) *cld_ops.Operation[co
 	})
 }
 
+func NewReadGetRoot(c gobindings.ManyChainMultiSigInterface) *cld_ops.Operation[contract.FunctionInput[struct{}], gobindings.GetRoot, cldf_evm.Chain] {
+	return contract.NewRead(contract.ReadParams[struct{}, gobindings.GetRoot, gobindings.ManyChainMultiSigInterface]{
+		Name:         "many-chain-multi-sig:get-root",
+		Version:      Version,
+		Description:  "Calls getRoot on the contract",
+		ContractType: ContractType,
+		Contract:     c,
+		CallContract: func(c gobindings.ManyChainMultiSigInterface, opts *bind.CallOpts, args struct{}) (gobindings.GetRoot, error) {
+			return c.GetRoot(opts)
+		},
+	})
+}
+
 func NewWriteSetConfig(c gobindings.ManyChainMultiSigInterface) *cld_ops.Operation[contract.FunctionInput[SetConfigArgs], contract.WriteOutput, cldf_evm.Chain] {
 	return contract.NewWrite(contract.WriteParams[SetConfigArgs, gobindings.ManyChainMultiSigInterface]{
 		Name:         "many-chain-multi-sig:set-config",
@@ -74,7 +86,6 @@ func NewWriteSetConfig(c gobindings.ManyChainMultiSigInterface) *cld_ops.Operati
 		IsAllowedCaller: func(c gobindings.ManyChainMultiSigInterface, opts *bind.CallOpts, caller common.Address, args SetConfigArgs) (bool, error) {
 			return contract.OnlyOwner(c, opts, caller, args)
 		},
-		Validate: func(SetConfigArgs) error { return nil },
 		CallContract: func(
 			c gobindings.ManyChainMultiSigInterface,
 			opts *bind.TransactOpts,
@@ -96,7 +107,6 @@ func NewWriteSetRoot(c gobindings.ManyChainMultiSigInterface) *cld_ops.Operation
 		IsAllowedCaller: func(c gobindings.ManyChainMultiSigInterface, opts *bind.CallOpts, caller common.Address, args SetRootArgs) (bool, error) {
 			return contract.OnlyOwner(c, opts, caller, args)
 		},
-		Validate: func(SetRootArgs) error { return nil },
 		CallContract: func(
 			c gobindings.ManyChainMultiSigInterface,
 			opts *bind.TransactOpts,

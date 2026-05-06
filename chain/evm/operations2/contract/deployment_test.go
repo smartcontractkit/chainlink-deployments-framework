@@ -27,7 +27,6 @@ func TestDeploy(t *testing.T) {
 	t.Parallel()
 	address := common.HexToAddress("0x01")
 	validChainSel := uint64(5009297550715157269)
-	invalidChainSel := uint64(12345)
 
 	type ConstructorArgs struct {
 		Value int
@@ -42,23 +41,13 @@ func TestDeploy(t *testing.T) {
 		{
 			desc: "args validation failure",
 			input: DeployInput[ConstructorArgs]{
-				ChainSelector: validChainSel,
-				Args:          ConstructorArgs{Value: 3},
+				Args: ConstructorArgs{Value: 3},
 			},
 			expectedErr: "invalid constructor args for test-deployment: input must be even",
 		},
 		{
-			desc: "mismatched chain selector",
-			input: DeployInput[ConstructorArgs]{
-				ChainSelector: invalidChainSel,
-				Args:          ConstructorArgs{Value: 2},
-			},
-			expectedErr: fmt.Sprintf("mismatch between inputted chain selector and selector defined within dependencies: %d != %d", invalidChainSel, validChainSel),
-		},
-		{
 			desc: "bytecode not defined for version",
 			input: DeployInput[ConstructorArgs]{
-				ChainSelector:  validChainSel,
 				Args:           ConstructorArgs{Value: 2},
 				TypeAndVersion: deployment.NewTypeAndVersion(testContractType, *semver.MustParse("1.1.0")),
 			},
@@ -67,7 +56,6 @@ func TestDeploy(t *testing.T) {
 		{
 			desc: "revert from contract",
 			input: DeployInput[ConstructorArgs]{
-				ChainSelector:  validChainSel,
 				Args:           ConstructorArgs{Value: 10},
 				TypeAndVersion: deployment.NewTypeAndVersion(testContractType, *semver.MustParse("1.0.0")),
 			},
@@ -76,7 +64,6 @@ func TestDeploy(t *testing.T) {
 		{
 			desc: "zkSyncVM deployment",
 			input: DeployInput[ConstructorArgs]{
-				ChainSelector:  validChainSel,
 				Args:           ConstructorArgs{Value: 2},
 				TypeAndVersion: deployment.NewTypeAndVersion(testContractType, *semver.MustParse("1.0.0")),
 			},
@@ -85,7 +72,6 @@ func TestDeploy(t *testing.T) {
 		{
 			desc: "evm deployment",
 			input: DeployInput[ConstructorArgs]{
-				ChainSelector:  validChainSel,
 				Args:           ConstructorArgs{Value: 2},
 				TypeAndVersion: deployment.NewTypeAndVersion(testContractType, *semver.MustParse("1.0.0")),
 			},

@@ -219,8 +219,18 @@ func (r *ChangesetsRegistry) Apply(
 }
 
 func runPreHooks(e fdeployment.Environment, key string, resolvedInput any, applySnapshot applySnapshot) error {
+	readOnlyChains, err := e.BlockChains.ReadOnly()
+	if err != nil {
+		return fmt.Errorf("failed to get read-only blockchains for pre-hooks: %w", err)
+	}
+
 	preParams := PreHookParams{
-		Env:          HookEnv{Name: e.Name, Logger: e.Logger},
+		Env: HookEnv{
+			Name:        e.Name,
+			Logger:      e.Logger,
+			BlockChains: readOnlyChains,
+			DataStore:   e.DataStore,
+		},
 		ChangesetKey: key,
 		Config:       resolvedInput,
 	}
@@ -245,8 +255,18 @@ func runPostHooks(
 	e fdeployment.Environment, key string, resolvedInput any, output fdeployment.ChangesetOutput,
 	applyErr error, applySnapshot applySnapshot,
 ) error {
+	readOnlyChains, err := e.BlockChains.ReadOnly()
+	if err != nil {
+		return fmt.Errorf("failed to get read-only blockchains for post-hooks: %w", err)
+	}
+
 	postParams := PostHookParams{
-		Env:          HookEnv{Name: e.Name, Logger: e.Logger},
+		Env: HookEnv{
+			Name:        e.Name,
+			Logger:      e.Logger,
+			BlockChains: readOnlyChains,
+			DataStore:   e.DataStore,
+		},
 		ChangesetKey: key,
 		Config:       resolvedInput,
 		Output:       output,
