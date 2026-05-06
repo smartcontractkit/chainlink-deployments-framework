@@ -62,6 +62,19 @@ func NewReadOwner(c gobindings.ManyChainMultiSigInterface) *cld_ops.Operation[co
 	})
 }
 
+func NewReadGetRoot(c gobindings.ManyChainMultiSigInterface) *cld_ops.Operation[contract.FunctionInput[struct{}], gobindings.GetRoot, cldf_evm.Chain] {
+	return contract.NewRead(contract.ReadParams[struct{}, gobindings.GetRoot, gobindings.ManyChainMultiSigInterface]{
+		Name:         "many-chain-multi-sig:get-root",
+		Version:      Version,
+		Description:  "Calls getRoot on the contract",
+		ContractType: ContractType,
+		Contract:     c,
+		CallContract: func(c gobindings.ManyChainMultiSigInterface, opts *bind.CallOpts, args struct{}) (gobindings.GetRoot, error) {
+			return c.GetRoot(opts)
+		},
+	})
+}
+
 func NewWriteSetConfig(c gobindings.ManyChainMultiSigInterface) *cld_ops.Operation[contract.FunctionInput[SetConfigArgs], contract.WriteOutput, cldf_evm.Chain] {
 	return contract.NewWrite(contract.WriteParams[SetConfigArgs, gobindings.ManyChainMultiSigInterface]{
 		Name:         "many-chain-multi-sig:set-config",
