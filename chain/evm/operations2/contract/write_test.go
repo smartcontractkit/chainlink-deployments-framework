@@ -13,9 +13,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
+	contractmocks "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/operations2/contract/mocks"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
-	contractmocks "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/operations2/contract/mocks"
 )
 
 func cancelledContext(c context.Context) context.Context {
