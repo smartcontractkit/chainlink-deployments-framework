@@ -8,9 +8,11 @@ import (
 	"github.com/gagliardetto/solana-go"
 	ownerhelpers "github.com/smartcontractkit/ccip-owner-contracts/pkg/gethwrappers"
 	chainsel "github.com/smartcontractkit/chain-selectors"
+	tonstate "github.com/smartcontractkit/chainlink-ton/deployment/state"
 	mcmssolanasdk "github.com/smartcontractkit/mcms/sdk/solana"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 	"github.com/stretchr/testify/require"
+	"github.com/xssnick/tonutils-go/address"
 
 	cldf_aptos "github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos"
 	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
@@ -32,6 +34,15 @@ type stubSolanaState struct {
 
 func (s stubSolanaState) TimelockPrograms() MCMSWithTimelockPrograms {
 	return s.programs
+}
+
+func testTONAddress(fill byte) *address.Address {
+	data := make([]byte, 32)
+	for i := range data {
+		data[i] = fill
+	}
+
+	return address.NewAddress(0, 0, data)
 }
 
 func TestTimelockConfigMCMBasedOnActionDefaultsToSchedule(t *testing.T) {
@@ -145,6 +156,112 @@ func TestTimelockConfigMCMBasedOnActionSolanaSelectsRole(t *testing.T) {
 
 			require.NoError(t, err)
 			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestTimelockConfigMCMBasedOnActionTONDefaultsToSchedule(t *testing.T) {
+	t.Parallel()
+
+	cfg := TimelockConfig{}
+	proposer := testTONAddress(0)
+
+	got, err := cfg.MCMBasedOnActionTon(&tonstate.MCMSSuiteState{
+		Proposer: proposer,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, proposer.String(), got)
+	require.Equal(t, mcmstypes.TimelockActionSchedule, cfg.MCMSAction)
+}
+
+func TestTimelockConfigMCMBasedOnActionTONSelectsRole(t *testing.T) {
+	t.Parallel()
+
+	proposer := testTONAddress(0)
+	canceller := testTONAddress(1)
+	bypasser := testTONAddress(2)
+
+	tests := []struct {
+		name   string
+		action mcmstypes.TimelockAction
+		state  *tonstate.MCMSSuiteState
+		want   string
+	}{
+		{
+			name:   "schedule",
+			action: mcmstypes.TimelockActionSchedule,
+			state: &tonstate.MCMSSuiteState{
+				Proposer: proposer,
+			},
+			want: proposer.String(),
+		},
+		{
+			name:   "cancel",
+			action: mcmstypes.TimelockActionCancel,
+			state: &tonstate.MCMSSuiteState{
+				Canceller: canceller,
+			},
+			want: canceller.String(),
+		},
+		{
+			name:   "bypass",
+			action: mcmstypes.TimelockActionBypass,
+			state: &tonstate.MCMSSuiteState{
+				Bypasser: bypasser,
+			},
+			want: bypasser.String(),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			cfg := TimelockConfig{MCMSAction: tt.action}
+
+			got, err := cfg.MCMBasedOnActionTon(tt.state)
+
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestTimelockConfigMCMBasedOnActionTONErrorsOnMissingRole(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		action mcmstypes.TimelockAction
+		want   string
+	}{
+		{
+			name:   "schedule",
+			action: mcmstypes.TimelockActionSchedule,
+			want:   "missing TON proposer",
+		},
+		{
+			name:   "cancel",
+			action: mcmstypes.TimelockActionCancel,
+			want:   "missing TON canceller",
+		},
+		{
+			name:   "bypass",
+			action: mcmstypes.TimelockActionBypass,
+			want:   "missing TON bypasser",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			cfg := TimelockConfig{MCMSAction: tt.action}
+
+			_, err := cfg.MCMBasedOnActionTon(&tonstate.MCMSSuiteState{})
+
+			require.EqualError(t, err, tt.want)
 		})
 	}
 }
