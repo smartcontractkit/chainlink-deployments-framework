@@ -36,6 +36,15 @@ func (s stubSolanaState) TimelockPrograms() MCMSWithTimelockPrograms {
 	return s.programs
 }
 
+func testTONAddress(fill byte) *address.Address {
+	data := make([]byte, 32)
+	for i := range data {
+		data[i] = fill
+	}
+
+	return address.NewAddress(0, 0, data)
+}
+
 func TestTimelockConfigMCMBasedOnActionDefaultsToSchedule(t *testing.T) {
 	t.Parallel()
 
@@ -155,7 +164,7 @@ func TestTimelockConfigMCMBasedOnActionTONDefaultsToSchedule(t *testing.T) {
 	t.Parallel()
 
 	cfg := TimelockConfig{}
-	proposer := address.MustParseAddr("EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c")
+	proposer := testTONAddress(0)
 
 	got, err := cfg.MCMBasedOnActionTon(&tonstate.MCMSSuiteState{
 		Proposer: proposer,
@@ -169,9 +178,9 @@ func TestTimelockConfigMCMBasedOnActionTONDefaultsToSchedule(t *testing.T) {
 func TestTimelockConfigMCMBasedOnActionTONSelectsRole(t *testing.T) {
 	t.Parallel()
 
-	proposer := address.MustParseAddr("EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c")
-	canceller := address.MustParseAddr("EQAREREREREREREREREREREREREREREREREREREREREREeYT")
-	bypasser := address.MustParseAddr("EQAiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIp3c")
+	proposer := testTONAddress(0)
+	canceller := testTONAddress(1)
+	bypasser := testTONAddress(2)
 
 	tests := []struct {
 		name   string
