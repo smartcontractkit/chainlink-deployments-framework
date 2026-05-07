@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.101.0
+
+### Minor Changes
+
+- [#965](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/965) [`75a8bce`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/75a8bcecfefca13619b779874eca2955f54545cc) Thanks [@ecPablo](https://github.com/ecPablo)! - Port new TON config to `propose.go`
+
 ## 0.100.0
 
 ### Minor Changes
