@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.101.1
+
+### Patch Changes
+
+- [#970](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/970) [`3dd9f6d`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/3dd9f6d3ab4391ded8f1fdcd17778e9df8e46eae) Thanks [@skudasov](https://github.com/skudasov)! - migrate to Moby and new testcontainers-go
+
 ## 0.101.0
 
 ### Minor Changes
