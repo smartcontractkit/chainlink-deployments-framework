@@ -95,7 +95,7 @@ func (s *TestContainerSetup) startPostgres(ctx context.Context) error {
 
 	// Build DSN for local access
 	s.PostgresDSN = fmt.Sprintf("postgres://%s:%s@localhost:%d/%s?sslmode=disable",
-		postgresUser, postgresPassword, localPort.Int(), postgresDB)
+		postgresUser, postgresPassword, localPort.Num(), postgresDB)
 
 	return nil
 }
@@ -238,7 +238,7 @@ func (s *TestContainerSetup) startCatalogService(ctx context.Context) error {
 		return fmt.Errorf("failed to get catalog service mapped port: %w", err)
 	}
 
-	s.CatalogGRPCAddr = fmt.Sprintf("localhost:%d", mappedPort.Int())
+	s.CatalogGRPCAddr = fmt.Sprintf("localhost:%d", mappedPort.Num())
 
 	return nil
 }
