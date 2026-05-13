@@ -3,10 +3,13 @@ package cli
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
+	"sort"
 	"strings"
 
 	fcre "github.com/smartcontractkit/chainlink-deployments-framework/cre"
@@ -20,11 +23,31 @@ const envCREAPIKey = "CRE_API_KEY" //nolint:gosec // G101: env var name, not a s
 // CLIRunnerOption configures a [cliRunner] from [NewCLIRunner].
 type CLIRunnerOption func(*cliRunner)
 
+// namedAPIKeys is the parsed form of CRE_API_KEY when it carries multiple named API keys
+type namedAPIKeys map[string]string
+
+// sortedNames returns the configured names in lexical order.
+func (n namedAPIKeys) sortedNames() []string {
+	names := make([]string, 0, len(n))
+	for name := range n {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	return names
+}
+
 // cliRunner runs the CRE CLI via os/exec. Run executes the binary and captures stdout/stderr.
 // It implements [fcre.CLIRunner].
 type cliRunner struct {
-	binaryPath               string
-	apiKey                   string
+	binaryPath string
+	// apiKey is the resolved single API key value used by Run. In named-keys
+	// mode it is empty until a name is selected via WithNamedAPIKey, which
+	// returns a clone with apiKey populated from apiKeysByName.
+	apiKey string
+	// apiKeysByName is populated only when CRE_API_KEY decoded as a JSON object
+	// of {name: apiKey} entries. nil in single-key mode.
+	apiKeysByName            namedAPIKeys
 	defaultContextRegistries []fcre.ContextRegistryEntry
 	// Stdout, if set, receives a real-time copy of the process stdout while it runs.
 	Stdout io.Writer
@@ -45,15 +68,60 @@ func NewCLIRunner(binaryPath string, apiKey string, opts ...CLIRunnerOption) *cl
 	// formatting (newlines/indentation) during manual durable-pipeline runs.
 	r := &cliRunner{
 		binaryPath: binaryPath,
-		apiKey:     apiKey,
 		Stdout:     os.Stdout,
 		Stderr:     os.Stderr,
+	}
+	if named, ok := parseNamedAPIKeys(apiKey); ok {
+		r.apiKeysByName = named
+	} else {
+		r.apiKey = apiKey
 	}
 	for _, o := range opts {
 		o(r)
 	}
 
 	return r
+}
+
+// parseNamedAPIKeys decodes raw as a JSON object of {name: apiKey} entries.
+// Returns (map, true) only when raw is a non-empty JSON object with no empty
+// keys or values. Any other shape — non-JSON values, JSON arrays/strings/
+// numbers, empty objects, or entries with empty values — returns (nil, false)
+func parseNamedAPIKeys(raw string) (namedAPIKeys, bool) {
+	var keys namedAPIKeys
+	if err := json.Unmarshal([]byte(raw), &keys); err != nil {
+		return nil, false
+	}
+	if len(keys) == 0 {
+		return nil, false
+	}
+	for name, value := range keys {
+		if name == "" || value == "" {
+			return nil, false
+		}
+	}
+
+	return keys, true
+}
+
+// WithNamedAPIKey returns a clone of this runner that uses the API key
+// registered under name. the clone preserves the underlying name->key map so further WithNamedAPIKey
+// calls remain valid.
+func (r *cliRunner) WithNamedAPIKey(name string) (fcre.CLIRunner, error) {
+	if r == nil {
+		return nil, errors.New("cre cli: runner is nil")
+	}
+	if len(r.apiKeysByName) == 0 {
+		return nil, errors.New("cre cli: runner is not configured with named API keys")
+	}
+	key, ok := r.apiKeysByName[name]
+	if !ok {
+		return nil, fmt.Errorf("cre cli: API key %q not configured (available: %v)", name, r.apiKeysByName.sortedNames())
+	}
+	clone := *r
+	clone.apiKey = key
+
+	return &clone, nil
 }
 
 // WithContextRegistries sets domain-level registry entries for CRE context.yaml generation
@@ -131,6 +199,10 @@ func envForCRECLI(apiKey string, extraEnv map[string]string) []string {
 // exit code != 0 returns (res, *fcre.ExitError) so callers get both result and error.
 // CLI invocation failures (binary not found, context canceled) return (nil, err).
 func (r *cliRunner) Run(ctx context.Context, env map[string]string, args ...string) (*fcre.CallResult, error) {
+	if r.apiKey == "" && len(r.apiKeysByName) > 0 {
+		return nil, fmt.Errorf("cre cli: named API keys configured but no name selected; call CLIRunner.WithNamedAPIKey(<name>) first (available: %v)", r.apiKeysByName.sortedNames())
+	}
+
 	//nolint:gosec // G204: This is intentional - we're running a CLI tool with user-provided arguments.
 	// The binary path is controlled via configuration, and args are expected to be user-provided CLI arguments.
 	cmd := exec.CommandContext(ctx, r.binaryPath, args...)

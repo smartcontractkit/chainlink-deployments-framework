@@ -31,8 +31,150 @@ func TestNewCLIRunner(t *testing.T) {
 			r := NewCLIRunner(tt.binaryPath, tt.apiKey)
 			require.Equal(t, tt.wantPath, r.binaryPath)
 			require.Equal(t, tt.wantKey, r.apiKey)
+			require.Nil(t, r.apiKeysByName)
 		})
 	}
+}
+
+func Test_parseNamedAPIKeys(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		raw  string
+		ok   bool
+		want namedAPIKeys
+	}{
+		{name: "valid_map_two_names", raw: `{"prod-1":"k1","prod-2":"k2"}`, ok: true, want: namedAPIKeys{"prod-1": "k1", "prod-2": "k2"}},
+		{name: "valid_map_one_name", raw: `{"prod-1":"k1"}`, ok: true, want: namedAPIKeys{"prod-1": "k1"}},
+		{name: "whitespace_around_object", raw: "  \n{\"prod-1\":\"k1\"}\n  ", ok: true, want: namedAPIKeys{"prod-1": "k1"}},
+		{name: "not_json_plain_string", raw: "abcd"},
+		{name: "json_string_literal", raw: `"abcd"`},
+		{name: "json_array", raw: `["a","b"]`},
+		{name: "json_number", raw: `42`},
+		{name: "json_null", raw: `null`},
+		{name: "empty_map", raw: `{}`},
+		{name: "empty_value_rejected", raw: `{"prod-1":""}`},
+		{name: "empty_key_rejected", raw: `{"":"k1"}`},
+		{name: "empty_string", raw: ""},
+		{name: "malformed_object", raw: `{"prod-1":`},
+		{name: "object_with_non_string_value", raw: `{"prod-1":123}`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got, ok := parseNamedAPIKeys(tt.raw)
+			require.Equal(t, tt.ok, ok)
+			if tt.ok {
+				require.Equal(t, tt.want, got)
+			} else {
+				require.Nil(t, got)
+			}
+		})
+	}
+}
+
+func TestNewCLIRunner_NamedKeysMode(t *testing.T) {
+	t.Parallel()
+
+	r := NewCLIRunner("/bin/sh", `{"prod-1":"k1","prod-2":"k2"}`)
+	require.Empty(t, r.apiKey, "apiKey must be empty until a name is selected")
+	require.Equal(t, namedAPIKeys{"prod-1": "k1", "prod-2": "k2"}, r.apiKeysByName)
+}
+
+func TestNewCLIRunner_SingleKeyMode_PreservesUnparseableValues(t *testing.T) {
+	t.Parallel()
+
+	// Values that look JSON-ish but don't parse as an object of strings stay as
+	// the literal single key value — backward compatible.
+	cases := []string{
+		"plain-secret",
+		`{"prod-1":""}`,
+		`{}`,
+		`{not-json`,
+	}
+	for _, raw := range cases {
+		t.Run(raw, func(t *testing.T) {
+			t.Parallel()
+			r := NewCLIRunner("/bin/sh", raw)
+			require.Equal(t, raw, r.apiKey)
+			require.Nil(t, r.apiKeysByName)
+		})
+	}
+}
+
+func TestCLIRunner_Run_NamedKeysWithoutSelection_Errors(t *testing.T) {
+	t.Parallel()
+
+	r := NewCLIRunner("/bin/sh", `{"prod-1":"k1","prod-2":"k2"}`)
+	res, err := r.Run(t.Context(), nil, "-c", "echo unreachable")
+	require.Nil(t, res)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "named API keys configured but no name selected")
+	// Available names are listed in sorted order.
+	require.ErrorContains(t, err, "[prod-1 prod-2]")
+}
+
+func TestCLIRunner_WithNamedAPIKey_ResolvesKeyForSubprocess(t *testing.T) {
+	// Cannot use t.Parallel: relies on a known parent env state via t.Setenv.
+	t.Setenv(envCREAPIKey, "from-parent-must-be-overridden")
+
+	r := NewCLIRunner("/bin/sh", `{"prod-1":"k1","prod-2":"k2"}`)
+	selected, err := r.WithNamedAPIKey("prod-2")
+	require.NoError(t, err)
+
+	res, err := selected.Run(t.Context(), nil, "-c", `printf '%s' "$`+envCREAPIKey+`"`)
+	require.NoError(t, err)
+	require.Equal(t, 0, res.ExitCode)
+	require.Equal(t, "k2", string(res.Stdout))
+}
+
+func TestCLIRunner_WithNamedAPIKey_UnknownNameErrors(t *testing.T) {
+	t.Parallel()
+
+	r := NewCLIRunner("/bin/sh", `{"prod-1":"k1","prod-2":"k2"}`)
+	got, err := r.WithNamedAPIKey("missing")
+	require.Nil(t, got)
+	require.Error(t, err)
+	require.ErrorContains(t, err, `API key "missing" not configured`)
+	require.ErrorContains(t, err, "[prod-1 prod-2]")
+}
+
+func TestCLIRunner_WithNamedAPIKey_SingleKeyRunnerErrors(t *testing.T) {
+	t.Parallel()
+
+	r := NewCLIRunner("/bin/sh", "plain-secret")
+	got, err := r.WithNamedAPIKey("prod-1")
+	require.Nil(t, got)
+	require.ErrorContains(t, err, "not configured with named API keys")
+}
+
+func TestCLIRunner_WithNamedAPIKey_DoesNotMutateParent(t *testing.T) {
+	t.Parallel()
+
+	parent := NewCLIRunner("/bin/sh", `{"prod-1":"k1","prod-2":"k2"}`)
+	_, err := parent.WithNamedAPIKey("prod-1")
+	require.NoError(t, err)
+
+	// Parent still rejects Run because no name has been selected on it.
+	res, err := parent.Run(t.Context(), nil, "-c", "echo unreachable")
+	require.Nil(t, res)
+	require.ErrorContains(t, err, "named API keys configured but no name selected")
+}
+
+func TestCLIRunner_WithNamedAPIKey_CanRebindOnClone(t *testing.T) {
+	t.Parallel()
+
+	parent := NewCLIRunner("/bin/sh", `{"prod-1":"k1","prod-2":"k2"}`)
+	first, err := parent.WithNamedAPIKey("prod-1")
+	require.NoError(t, err)
+	second, err := first.WithNamedAPIKey("prod-2")
+	require.NoError(t, err)
+
+	res, err := second.Run(t.Context(), nil, "-c", `printf '%s' "$`+envCREAPIKey+`"`)
+	require.NoError(t, err)
+	require.Equal(t, "k2", string(res.Stdout))
 }
 
 func TestCLIRunner_APIKeyEnv(t *testing.T) {
