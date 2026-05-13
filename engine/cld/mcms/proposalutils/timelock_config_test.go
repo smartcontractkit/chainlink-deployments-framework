@@ -8,7 +8,7 @@ import (
 	"github.com/gagliardetto/solana-go"
 	ownerhelpers "github.com/smartcontractkit/ccip-owner-contracts/pkg/gethwrappers"
 	chainsel "github.com/smartcontractkit/chain-selectors"
-	tonstate "github.com/smartcontractkit/chainlink-ton/deployment/state"
+
 	mcmssolanasdk "github.com/smartcontractkit/mcms/sdk/solana"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 	"github.com/stretchr/testify/require"
@@ -166,7 +166,7 @@ func TestTimelockConfigMCMBasedOnActionTONDefaultsToSchedule(t *testing.T) {
 	cfg := TimelockConfig{}
 	proposer := testTONAddress(0)
 
-	got, err := cfg.MCMBasedOnActionTon(&tonstate.MCMSSuiteState{
+	got, err := cfg.MCMBasedOnActionTon(&MCMSSuiteState{
 		Proposer: proposer,
 	})
 
@@ -185,13 +185,13 @@ func TestTimelockConfigMCMBasedOnActionTONSelectsRole(t *testing.T) {
 	tests := []struct {
 		name   string
 		action mcmstypes.TimelockAction
-		state  *tonstate.MCMSSuiteState
+		state  *MCMSSuiteState
 		want   string
 	}{
 		{
 			name:   "schedule",
 			action: mcmstypes.TimelockActionSchedule,
-			state: &tonstate.MCMSSuiteState{
+			state: &MCMSSuiteState{
 				Proposer: proposer,
 			},
 			want: proposer.String(),
@@ -199,7 +199,7 @@ func TestTimelockConfigMCMBasedOnActionTONSelectsRole(t *testing.T) {
 		{
 			name:   "cancel",
 			action: mcmstypes.TimelockActionCancel,
-			state: &tonstate.MCMSSuiteState{
+			state: &MCMSSuiteState{
 				Canceller: canceller,
 			},
 			want: canceller.String(),
@@ -207,7 +207,7 @@ func TestTimelockConfigMCMBasedOnActionTONSelectsRole(t *testing.T) {
 		{
 			name:   "bypass",
 			action: mcmstypes.TimelockActionBypass,
-			state: &tonstate.MCMSSuiteState{
+			state: &MCMSSuiteState{
 				Bypasser: bypasser,
 			},
 			want: bypasser.String(),
@@ -259,7 +259,7 @@ func TestTimelockConfigMCMBasedOnActionTONErrorsOnMissingRole(t *testing.T) {
 
 			cfg := TimelockConfig{MCMSAction: tt.action}
 
-			_, err := cfg.MCMBasedOnActionTon(&tonstate.MCMSSuiteState{})
+			_, err := cfg.MCMBasedOnActionTon(&MCMSSuiteState{})
 
 			require.EqualError(t, err, tt.want)
 		})
