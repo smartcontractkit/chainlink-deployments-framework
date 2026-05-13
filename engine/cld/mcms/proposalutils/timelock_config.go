@@ -28,7 +28,7 @@ type SolanaMCMSWithTimelock interface {
 	TimelockPrograms() MCMSWithTimelockPrograms
 }
 
-// MCMSSuiteState holds the state of a single MCMS deployment - currently includes all contracts addresses.
+// MCMSSuiteState holds the state of a single MCMS deployment - currently includes all contract addresses.
 type MCMSSuiteState struct {
 	// 3x MCMS contracts, each gets a role in the timelock
 	Proposer  *address.Address
