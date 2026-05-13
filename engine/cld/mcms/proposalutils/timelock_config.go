@@ -28,8 +28,8 @@ type SolanaMCMSWithTimelock interface {
 	TimelockPrograms() MCMSWithTimelockPrograms
 }
 
-// MCMSSuiteState holds the state of a single MCMS deployment - currently includes all contract addresses.
-type MCMSSuiteState struct {
+// TonMCMSSuiteState holds the state of a single MCMS deployment - currently includes all contracts addresses.
+type TonMCMSSuiteState struct {
 	// 3x MCMS contracts, each gets a role in the timelock
 	Proposer  *address.Address
 	Canceller *address.Address
@@ -75,7 +75,7 @@ func (tc *TimelockConfig) MCMBasedOnActionSolana(s SolanaMCMSWithTimelock) (stri
 	}
 }
 
-func (tc *TimelockConfig) MCMBasedOnActionTon(s *MCMSSuiteState) (string, error) {
+func (tc *TimelockConfig) MCMBasedOnActionTon(s *TonMCMSSuiteState) (string, error) {
 	// if MCMSAction is not set, default to timelock.Schedule, this is to ensure no breaking changes for existing code
 	if tc.MCMSAction == "" {
 		tc.MCMSAction = mcmstypes.TimelockActionSchedule

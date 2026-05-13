@@ -166,7 +166,7 @@ func TestTimelockConfigMCMBasedOnActionTONDefaultsToSchedule(t *testing.T) {
 	cfg := TimelockConfig{}
 	proposer := testTONAddress(0)
 
-	got, err := cfg.MCMBasedOnActionTon(&MCMSSuiteState{
+	got, err := cfg.MCMBasedOnActionTon(&TonMCMSSuiteState{
 		Proposer: proposer,
 	})
 
@@ -185,13 +185,13 @@ func TestTimelockConfigMCMBasedOnActionTONSelectsRole(t *testing.T) {
 	tests := []struct {
 		name   string
 		action mcmstypes.TimelockAction
-		state  *MCMSSuiteState
+		state  *TonMCMSSuiteState
 		want   string
 	}{
 		{
 			name:   "schedule",
 			action: mcmstypes.TimelockActionSchedule,
-			state: &MCMSSuiteState{
+			state: &TonMCMSSuiteState{
 				Proposer: proposer,
 			},
 			want: proposer.String(),
@@ -199,7 +199,7 @@ func TestTimelockConfigMCMBasedOnActionTONSelectsRole(t *testing.T) {
 		{
 			name:   "cancel",
 			action: mcmstypes.TimelockActionCancel,
-			state: &MCMSSuiteState{
+			state: &TonMCMSSuiteState{
 				Canceller: canceller,
 			},
 			want: canceller.String(),
@@ -207,7 +207,7 @@ func TestTimelockConfigMCMBasedOnActionTONSelectsRole(t *testing.T) {
 		{
 			name:   "bypass",
 			action: mcmstypes.TimelockActionBypass,
-			state: &MCMSSuiteState{
+			state: &TonMCMSSuiteState{
 				Bypasser: bypasser,
 			},
 			want: bypasser.String(),
@@ -259,7 +259,7 @@ func TestTimelockConfigMCMBasedOnActionTONErrorsOnMissingRole(t *testing.T) {
 
 			cfg := TimelockConfig{MCMSAction: tt.action}
 
-			_, err := cfg.MCMBasedOnActionTon(&MCMSSuiteState{})
+			_, err := cfg.MCMBasedOnActionTon(&TonMCMSSuiteState{})
 
 			require.EqualError(t, err, tt.want)
 		})
