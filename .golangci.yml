@@ -81,6 +81,12 @@ linters:
               desc: Use github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger instead
             - pkg: github.com/smartcontractkit/chainlink-common
               desc: We want to avoid importing this package as it has regular breaking changes.
+            - pkg: github.com/smartcontractkit/chainlink-ccip/deployment
+              desc: We want to avoid importing this package as it creates import cycles
+            - pkg: github.com/smartcontractkit/chainlink-sui/deployment
+              desc: We want to avoid importing this package as it creates import cycles
+            - pkg: github.com/smartcontractkit/chainlink-ton/deployment
+              desc: We want to avoid importing this package as it creates import cycles
     goconst:
       min-len: 5
     govet:

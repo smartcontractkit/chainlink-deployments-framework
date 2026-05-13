@@ -8,9 +8,9 @@ import (
 	"github.com/aptos-labs/aptos-go-sdk"
 	"github.com/gagliardetto/solana-go"
 	ownerhelpers "github.com/smartcontractkit/ccip-owner-contracts/pkg/gethwrappers"
-	tonstate "github.com/smartcontractkit/chainlink-ton/deployment/state"
 	mcmssolanasdk "github.com/smartcontractkit/mcms/sdk/solana"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
+	"github.com/xssnick/tonutils-go/address"
 
 	cldf_aptos "github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos"
 	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
@@ -26,6 +26,17 @@ type EVMMCMSWithTimelock interface {
 // SolanaMCMSWithTimelock adapts Solana MCMS-with-timelock state for TimelockConfig helpers.
 type SolanaMCMSWithTimelock interface {
 	TimelockPrograms() MCMSWithTimelockPrograms
+}
+
+// TonMCMSSuiteState holds the state of a single MCMS deployment - currently includes all contract addresses.
+type TonMCMSSuiteState struct {
+	// 3x MCMS contracts, each gets a role in the timelock
+	Proposer  *address.Address
+	Canceller *address.Address
+	Bypasser  *address.Address
+
+	// Timelock contract address for this MCMS suite
+	Timelock *address.Address
 }
 
 // MCMSWithTimelockPrograms holds the Solana program and PDA seed values needed to resolve MCMS role addresses.
@@ -64,7 +75,7 @@ func (tc *TimelockConfig) MCMBasedOnActionSolana(s SolanaMCMSWithTimelock) (stri
 	}
 }
 
-func (tc *TimelockConfig) MCMBasedOnActionTon(s *tonstate.MCMSSuiteState) (string, error) {
+func (tc *TimelockConfig) MCMBasedOnActionTon(s *TonMCMSSuiteState) (string, error) {
 	// if MCMSAction is not set, default to timelock.Schedule, this is to ensure no breaking changes for existing code
 	if tc.MCMSAction == "" {
 		tc.MCMSAction = mcmstypes.TimelockActionSchedule
