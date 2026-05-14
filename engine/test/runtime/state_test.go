@@ -71,11 +71,9 @@ func TestState_MergeChangesetOutput(t *testing.T) {
 		assertState func(t *testing.T, s *State)
 	}{
 		{
-			name: "successful merge with both datastore and address book",
-			stateFunc: func() *State {
-				return newState()
-			},
-			taskID: taskID,
+			name:      "successful merge with both datastore and address book",
+			stateFunc: newState,
+			taskID:    taskID,
 			output: fdeployment.ChangesetOutput{
 				DataStore:   stubTestDataStore(t),
 				AddressBook: stubTestAddressBook(),
@@ -99,11 +97,9 @@ func TestState_MergeChangesetOutput(t *testing.T) {
 			},
 		},
 		{
-			name: "merge with proposals",
-			stateFunc: func() *State {
-				return newState()
-			},
-			taskID: taskID,
+			name:      "merge with proposals",
+			stateFunc: newState,
+			taskID:    taskID,
 			output: fdeployment.ChangesetOutput{
 				MCMSProposals:         stubTestMCMSProposals(),
 				MCMSTimelockProposals: stubTestTimelockProposals(),
@@ -141,11 +137,9 @@ func TestState_MergeChangesetOutput(t *testing.T) {
 			},
 		},
 		{
-			name: "merge with nil datastore and address book",
-			stateFunc: func() *State {
-				return newState()
-			},
-			taskID: taskID,
+			name:      "merge with nil datastore and address book",
+			stateFunc: newState,
+			taskID:    taskID,
 			output: fdeployment.ChangesetOutput{
 				DataStore:   nil,
 				AddressBook: nil,
@@ -165,11 +159,9 @@ func TestState_MergeChangesetOutput(t *testing.T) {
 			},
 		},
 		{
-			name: "fail to merge address book",
-			stateFunc: func() *State {
-				return newState()
-			},
-			taskID: taskID,
+			name:      "fail to merge address book",
+			stateFunc: newState,
+			taskID:    taskID,
 			output: fdeployment.ChangesetOutput{
 				AddressBook: createTestAddressBook(1, "0x1234567890123456789012345678901234567890"),
 			},

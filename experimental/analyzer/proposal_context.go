@@ -84,7 +84,7 @@ func NewDefaultProposalContext(env deployment.Environment, opts ...proposalCtxOp
 			return nil, err
 		}
 	}
-	addressesByChain, errAddrBook := env.ExistingAddresses.Addresses() //nolint:staticcheck
+	addressesByChain, errAddrBook := env.ExistingAddresses.Addresses() //nolint:staticcheck // using deprecated API intentionally
 	if errAddrBook != nil {
 		return nil, errAddrBook
 	}

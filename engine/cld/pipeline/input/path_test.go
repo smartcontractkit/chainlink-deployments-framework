@@ -10,7 +10,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 )
 
-//nolint:paralleltest
+//nolint:paralleltest // test uses shared filesystem state
 func TestResolveDurablePipelineYamlPath(t *testing.T) {
 	tests := []struct {
 		name       string

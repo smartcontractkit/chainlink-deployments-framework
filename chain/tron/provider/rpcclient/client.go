@@ -58,13 +58,13 @@ func (c *Client) SendAndConfirmTx(
 	}
 
 	// Decode the TxID from hex into bytes, required for signing
-	txIdBytes, err := hex.DecodeString(tx.TxID)
+	txIDBytes, err := hex.DecodeString(tx.TxID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode transaction ID: %w", err)
 	}
 
 	// Sign the transaction using the client's signing function and the decoded TxID
-	signature, err := c.SignHash(ctx, txIdBytes)
+	signature, err := c.SignHash(ctx, txIDBytes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign transaction: %w", err)
 	}
@@ -85,7 +85,7 @@ func (c *Client) SendAndConfirmTx(
 // confirmTx checks the transaction receipt by its ID, retrying until it is confirmed or fails.
 // It uses the retry-go library with the configured retry options.
 func (c *Client) confirmTx(
-	txId string,
+	txID string,
 	retryOpts ...retry.Option,
 ) (*soliditynode.TransactionInfo, error) {
 	var receipt *soliditynode.TransactionInfo
@@ -93,7 +93,7 @@ func (c *Client) confirmTx(
 	// Retry loop to poll for transaction confirmation
 	err := retry.Do(func() error {
 		var err error
-		receipt, err = c.Client.GetTransactionInfoById(txId)
+		receipt, err = c.Client.GetTransactionInfoById(txID)
 		if err != nil {
 			// Still not found or confirmed, continue retrying
 			return fmt.Errorf("error fetching tx info: %w", err)
@@ -108,10 +108,10 @@ func (c *Client) confirmTx(
 			return nil
 		case soliditynode.TransactionResultDefault, soliditynode.TransactionResultUnknown:
 			// Keep retrying until status changes
-			return fmt.Errorf("transaction %s is not yet confirmed, result: %v", txId, result)
+			return fmt.Errorf("transaction %s is not yet confirmed, result: %v", txID, result)
 		default:
 			// Any other status means unrecoverable failure
-			return retry.Unrecoverable(fmt.Errorf("transaction %s failed, result: %v", txId, result))
+			return retry.Unrecoverable(fmt.Errorf("transaction %s failed, result: %v", txID, result))
 		}
 	}, retryOpts...)
 	if err != nil {

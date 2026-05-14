@@ -9,6 +9,7 @@ import (
 
 	sollib "github.com/gagliardetto/solana-go"
 	solrpc "github.com/gagliardetto/solana-go/rpc"
+
 	solCommonUtil "github.com/smartcontractkit/chainlink-ccip/chains/solana/utils/common"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
@@ -51,11 +52,7 @@ func (c RPCChainProviderConfig) validate() error {
 		return err
 	}
 
-	if err := isValidFilepath(c.KeypairDirPath); err != nil {
-		return err
-	}
-
-	return nil
+	return isValidFilepath(c.KeypairDirPath)
 }
 
 var _ chain.Provider = (*RPCChainProvider)(nil)

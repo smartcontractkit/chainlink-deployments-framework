@@ -42,7 +42,7 @@ type CatalogClient struct {
 	// Another way to express this, is that this is analogous to the "request-scoped" exception to
 	// passing context down the call-stack.
 	//
-	//nolint:containedctx
+	//nolint:containedctx // context stored for gRPC stream lifecycle
 	ctx            context.Context
 	conn           *grpc.ClientConn
 	cachedStream   grpc.BidiStreamingClient[pb.DataAccessRequest, pb.DataAccessResponse]

@@ -3,6 +3,7 @@ package deployment
 import (
 	"encoding/hex"
 	"math/big"
+	"slices"
 	"strings"
 	"testing"
 
@@ -187,7 +188,7 @@ func TestParseErrorFromABI_CallReverted(t *testing.T) {
 				invalidConfigErr := parsedABI.Errors["InvalidConfig"]
 				innerData, err := invalidConfigErr.Inputs.Pack(uint64(42))
 				require.NoError(t, err)
-				innerPayload := append(invalidConfigErr.ID[:4], innerData...)
+				innerPayload := slices.Concat(invalidConfigErr.ID[:4], innerData)
 
 				return "0x" + hex.EncodeToString(wrapInCallReverted(t, innerPayload))
 			},

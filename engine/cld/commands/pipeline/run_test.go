@@ -102,7 +102,7 @@ func loadProposal(t *testing.T, proposalsDir string) (*mcms.TimelockProposal, st
 	return proposal.(*mcms.TimelockProposal), files[0]
 }
 
-//nolint:paralleltest
+//nolint:paralleltest // test modifies shared state
 func TestRunCmd_Success(t *testing.T) {
 	env := "testnet"
 	changesetName := "0001_test_changeset"
@@ -178,7 +178,7 @@ changesets:
 	require.True(t, decodeCalled)
 }
 
-//nolint:paralleltest
+//nolint:paralleltest // test modifies shared state
 func TestRunCmd_ApplyError(t *testing.T) {
 	env := "testnet"
 	changesetName := "0001_test_changeset"
@@ -244,7 +244,7 @@ changesets:
 	require.EqualError(t, err, "changeset apply failed")
 }
 
-//nolint:paralleltest
+//nolint:paralleltest // test modifies shared state
 func TestRunCmd_UnknownFlag(t *testing.T) {
 	cfg := &Config{
 		Logger:                logger.Test(t),
@@ -269,7 +269,7 @@ func TestRunCmd_UnknownFlag(t *testing.T) {
 	require.Equal(t, "unknown flag: --fake-flag", err.Error())
 }
 
-//nolint:paralleltest
+//nolint:paralleltest // test modifies shared state
 func TestRunCmd_LoadChangesetsError(t *testing.T) {
 	testDomain := domain.NewDomain(t.TempDir(), "test")
 	workspaceRoot := t.TempDir()
@@ -313,7 +313,7 @@ changesets:
 	require.Equal(t, "load failed", err.Error())
 }
 
-//nolint:paralleltest
+//nolint:paralleltest // test modifies shared state
 func TestRunCmd_ResolverNotRegistered(t *testing.T) {
 	testDomain := domain.NewDomain(t.TempDir(), "test")
 	workspaceRoot := t.TempDir()
@@ -365,7 +365,7 @@ changesets:
 	require.Equal(t, "resolver for 0001_cs1 is not registered", err.Error())
 }
 
-//nolint:paralleltest
+//nolint:paralleltest // test modifies shared state
 func TestRunCmd_ByIndex(t *testing.T) {
 	env := "testnet"
 	testDomain := domain.NewDomain(t.TempDir(), "test")
@@ -430,7 +430,7 @@ changesets:
 	require.True(t, changesetStub.ApplyCalled)
 }
 
-//nolint:paralleltest
+//nolint:paralleltest // test modifies shared state
 func TestRunCmd_InvalidInputFile(t *testing.T) {
 	testDomain := domain.NewDomain(t.TempDir(), "test")
 	workspaceRoot := t.TempDir()
@@ -475,7 +475,7 @@ func TestRunCmd_InvalidInputFile(t *testing.T) {
 	require.Equal(t, "failed to parse input file: ", err.Error()[:28])
 }
 
-//nolint:paralleltest
+//nolint:paralleltest // test modifies shared state
 func TestRunCmd_EnvironmentLoaderError(t *testing.T) {
 	testDomain := domain.NewDomain(t.TempDir(), "test")
 	workspaceRoot := t.TempDir()
@@ -524,7 +524,7 @@ changesets:
 	require.EqualError(t, err, "environment load failed")
 }
 
-//nolint:paralleltest
+//nolint:paralleltest // test modifies shared state
 func TestRunCmd_SubcommandExists(t *testing.T) {
 	cfg := &Config{
 		Logger:                logger.Test(t),
@@ -554,7 +554,7 @@ func TestRunCmd_SubcommandExists(t *testing.T) {
 	require.True(t, found)
 }
 
-//nolint:paralleltest
+//nolint:paralleltest // test modifies shared state
 func TestRunCmd_RequiresInputFile(t *testing.T) {
 	cfg := &Config{
 		Logger:                logger.Test(t),
@@ -573,7 +573,7 @@ func TestRunCmd_RequiresInputFile(t *testing.T) {
 	require.Equal(t, `required flag(s) "input-file" not set`, err.Error())
 }
 
-//nolint:paralleltest
+//nolint:paralleltest // test modifies shared state
 func TestRunCmd_ReturnsProposal(t *testing.T) {
 	generateStableUUIDs(t)
 

@@ -21,7 +21,7 @@ type MinimalNodeCfg struct {
 
 // NodeCfg is the configuration for a node.
 // It is used to register a node with the job distributor and contains only public information, no secrets or api keys.
-type NodeCfg struct {
+type NodeCfg struct { //nolint:revive // renaming would be a breaking change
 	MinimalNodeCfg
 	P2PID string `json:"p2p_id" toml:"p2p_id" yaml:"p2p_id"`
 

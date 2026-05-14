@@ -4,8 +4,8 @@ package offchain
 type NodeKey string
 
 const (
-	NodeKey_ID     NodeKey = "id"
-	NodeKey_CSAKey NodeKey = "csa_key"
-	NodeKey_Name   NodeKey = "name"
-	NodeKey_Label  NodeKey = "label"
+	NodeKey_ID     NodeKey = "id"      //nolint:revive // renaming would be a breaking change
+	NodeKey_CSAKey NodeKey = "csa_key" //nolint:revive // renaming would be a breaking change
+	NodeKey_Name   NodeKey = "name"    //nolint:revive // renaming would be a breaking change
+	NodeKey_Label  NodeKey = "label"   //nolint:revive // renaming would be a breaking change
 )

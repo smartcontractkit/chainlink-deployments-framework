@@ -144,7 +144,7 @@ func TestJiraToStruct(t *testing.T) { //nolint:paralleltest // Cannot use t.Para
 			var result TestStruct
 			var err error
 			if clientErr != nil {
-				result, err = *new(TestStruct), clientErr
+				result, err = TestStruct{}, clientErr
 			} else {
 				result, err = JiraToStruct[TestStruct](client, dom, tt.issueKey)
 			}
@@ -265,7 +265,7 @@ func TestJiraToStruct_ErrorCases(t *testing.T) {
 			var result TestStruct
 			var err error
 			if clientErr != nil {
-				result, err = *new(TestStruct), clientErr
+				result, err = TestStruct{}, clientErr
 			} else {
 				result, err = JiraToStruct[TestStruct](client, dom, tt.issueKey)
 			}
@@ -314,7 +314,7 @@ func TestJiraToStruct_EmptyIssueKey(t *testing.T) { //nolint:paralleltest // Can
 	var result TestStruct
 	var err error
 	if clientErr != nil {
-		result, err = *new(TestStruct), clientErr
+		result, err = TestStruct{}, clientErr
 	} else {
 		result, err = JiraToStruct[TestStruct](client, dom, "")
 	}

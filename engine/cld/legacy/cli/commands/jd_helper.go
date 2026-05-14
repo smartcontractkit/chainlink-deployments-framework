@@ -10,6 +10,7 @@ import (
 
 	"github.com/olekukonko/tablewriter"
 	chainsel "github.com/smartcontractkit/chain-selectors"
+
 	jobv1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/job"
 	nodev1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/node"
 
@@ -17,26 +18,26 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/offchain/jd"
 )
 
-// listJobsByNodeId fetches jobs for a slice of node IDs and returns a map of job slices for each node ID.
-func listJobsByNodeId(
+// listJobsByNodeID fetches jobs for a slice of node IDs and returns a map of job slices for each node ID.
+func listJobsByNodeID(
 	ctx context.Context,
 	offChainClient foffchain.Client,
-	nodeIds []string,
+	nodeIDs []string,
 ) (map[string][]*jobv1.Job, error) {
 	jobs, err := offChainClient.ListJobs(ctx, &jobv1.ListJobsRequest{
 		Filter: &jobv1.ListJobsRequest_Filter{
-			NodeIds: nodeIds,
+			NodeIds: nodeIDs,
 		},
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	return toJobsByNodeId(jobs.GetJobs()), nil
+	return toJobsByNodeID(jobs.GetJobs()), nil
 }
 
-// toJobsByNodeId transforms a slice of jobs into a map of jobs keyed by the node ID.
-func toJobsByNodeId(jobs []*jobv1.Job) map[string][]*jobv1.Job {
+// toJobsByNodeID transforms a slice of jobs into a map of jobs keyed by the node ID.
+func toJobsByNodeID(jobs []*jobv1.Job) map[string][]*jobv1.Job {
 	nid2job := make(map[string][]*jobv1.Job)
 	for _, j := range jobs {
 		nid2job[j.NodeId] = append(nid2job[j.NodeId], j)
@@ -45,15 +46,15 @@ func toJobsByNodeId(jobs []*jobv1.Job) map[string][]*jobv1.Job {
 	return nid2job
 }
 
-// listProposalsByNodeId fetches the proposals for a list of jobs for a node and maps these proposals
+// listProposalsByNodeID fetches the proposals for a list of jobs for a node and maps these proposals
 // to a set of node Id.
-func listProposalsByNodeId(
+func listProposalsByNodeID(
 	ctx context.Context,
 	offChainClient foffchain.Client,
-	nodeIdToJobs map[string][]*jobv1.Job,
+	nodeIDToJobs map[string][]*jobv1.Job,
 ) (map[string][]*jobv1.Proposal, error) {
 	nid2proposal := make(map[string][]*jobv1.Proposal)
-	for nid, jobs := range nodeIdToJobs {
+	for nid, jobs := range nodeIDToJobs {
 		ps, err := offChainClient.ListProposals(ctx, &jobv1.ListProposalsRequest{
 			Filter: &jobv1.ListProposalsRequest_Filter{
 				JobIds: toJobIDs(jobs),

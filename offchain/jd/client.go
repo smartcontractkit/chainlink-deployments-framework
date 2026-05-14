@@ -5,19 +5,20 @@ import (
 	"errors"
 	"fmt"
 
-	csav1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/csa"
-	jobv1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/job"
-	nodev1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/node"
 	"golang.org/x/oauth2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
+
+	csav1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/csa"
+	jobv1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/job"
+	nodev1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/node"
 )
 
 // JDConfig is the configuration for the Job Distributor client.
-type JDConfig struct {
+type JDConfig struct { //nolint:revive // renaming would be a breaking change
 	GRPC string
-	// DEPRECATED: WSRPC is no longer used and will be removed in a future version.
+	// Deprecated: WSRPC is no longer used and will be removed in a future version.
 	WSRPC string
 	Creds credentials.TransportCredentials
 	Auth  oauth2.TokenSource
@@ -29,7 +30,7 @@ type JobDistributor struct {
 	jobv1.JobServiceClient
 	csav1.CSAServiceClient
 
-	// DEPRECATED: WSRPC is no longer used and will be removed in a future version.
+	// Deprecated: WSRPC is no longer used and will be removed in a future version.
 	WSRPC string
 }
 

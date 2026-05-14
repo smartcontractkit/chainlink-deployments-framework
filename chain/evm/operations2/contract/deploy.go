@@ -258,11 +258,10 @@ func MaybeDeployContract[ARGS any](
 	for _, ref := range existingAddresses {
 		if ref.Type == datastore.ContractType(input.TypeAndVersion.Type) &&
 			ref.Version != nil && ref.Version.String() == input.TypeAndVersion.Version.String() {
-			if input.Qualifier != nil {
-				if ref.Qualifier == *input.Qualifier {
-					return ref, nil
-				}
-			} else {
+			if input.Qualifier == nil {
+				return ref, nil
+			}
+			if ref.Qualifier == *input.Qualifier {
 				return ref, nil
 			}
 		}

@@ -111,7 +111,7 @@ func (p *CTFChainProvider) Initialize(_ context.Context) (chain.BlockChain, erro
 	}
 
 	// Start the CTF Container
-	url, faucetUrl, client := p.startContainer(chainID, deployerSigner)
+	url, faucetURL, client := p.startContainer(chainID, deployerSigner)
 
 	// Construct the chain
 	p.chain = &sui.Chain{
@@ -121,7 +121,7 @@ func (p *CTFChainProvider) Initialize(_ context.Context) (chain.BlockChain, erro
 		Client:    client,
 		Signer:    deployerSigner,
 		URL:       url,
-		FaucetURL: faucetUrl,
+		FaucetURL: faucetURL,
 		// TODO: Implement ConfirmTransaction when available
 	}
 

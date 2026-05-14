@@ -266,7 +266,7 @@ func executeFork(
 	if execErr != nil {
 		lggr.Warnw("Timelock.execute() - failure; starting calling individual ops for debugging", "err", execErr)
 		if derr := diagnoseTimelockRevert(ctx, lggr, anvilClient.URL, cfg.chainSelector, cfg.timelockProposal.Operations,
-			timelockAddress, cfg.env.ExistingAddresses, cfg.proposalCtx); derr != nil { //nolint:staticcheck
+			timelockAddress, cfg.env.ExistingAddresses, cfg.proposalCtx); derr != nil { //nolint:staticcheck // using deprecated API intentionally
 			lggr.Errorw("Diagnosis results", "err", derr)
 
 			return fmt.Errorf("failed to timelock execute chain: %w", derr)

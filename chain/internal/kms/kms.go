@@ -4,9 +4,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	kmslib "github.com/aws/aws-sdk-go/service/kms"
+	"github.com/aws/aws-sdk-go/aws"                //nolint:staticcheck // migration to aws-sdk-go-v2 is out of scope
+	"github.com/aws/aws-sdk-go/aws/session"        //nolint:staticcheck // migration to aws-sdk-go-v2 is out of scope
+	kmslib "github.com/aws/aws-sdk-go/service/kms" //nolint:staticcheck // migration to aws-sdk-go-v2 is out of scope
 )
 
 // Client is an interface that defines the methods for interacting with AWS KMS. We only expose

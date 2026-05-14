@@ -49,8 +49,8 @@ func TestGenerateMultiChangesetYAML(t *testing.T) {
 			domainName:     "test",
 			envKey:         "testnet",
 			changesetNames: nil,
-			regSetup:       func() *cs.ChangesetsRegistry { return cs.NewChangesetsRegistry() },
-			rmSetup:        func() *fresolvers.ConfigResolverManager { return fresolvers.NewConfigResolverManager() },
+			regSetup:       cs.NewChangesetsRegistry,
+			rmSetup:        fresolvers.NewConfigResolverManager,
 			wantErr:        "no changeset names provided",
 		},
 		{
@@ -58,8 +58,8 @@ func TestGenerateMultiChangesetYAML(t *testing.T) {
 			domainName:     "test",
 			envKey:         "testnet",
 			changesetNames: []string{},
-			regSetup:       func() *cs.ChangesetsRegistry { return cs.NewChangesetsRegistry() },
-			rmSetup:        func() *fresolvers.ConfigResolverManager { return fresolvers.NewConfigResolverManager() },
+			regSetup:       cs.NewChangesetsRegistry,
+			rmSetup:        fresolvers.NewConfigResolverManager,
 			wantErr:        "no changeset names provided",
 		},
 		{
@@ -67,8 +67,8 @@ func TestGenerateMultiChangesetYAML(t *testing.T) {
 			domainName:     "test",
 			envKey:         "testnet",
 			changesetNames: []string{"0001_missing"},
-			regSetup:       func() *cs.ChangesetsRegistry { return cs.NewChangesetsRegistry() },
-			rmSetup:        func() *fresolvers.ConfigResolverManager { return fresolvers.NewConfigResolverManager() },
+			regSetup:       cs.NewChangesetsRegistry,
+			rmSetup:        fresolvers.NewConfigResolverManager,
 			wantErr:        "get configurations for changeset 0001_missing: changeset '0001_missing' not found",
 		},
 		{
@@ -83,7 +83,7 @@ func TestGenerateMultiChangesetYAML(t *testing.T) {
 
 				return reg
 			},
-			rmSetup: func() *fresolvers.ConfigResolverManager { return fresolvers.NewConfigResolverManager() },
+			rmSetup: fresolvers.NewConfigResolverManager,
 			wantErr: "generate section for changeset 0001_test: resolver for changeset 0001_test is not registered",
 		},
 		{

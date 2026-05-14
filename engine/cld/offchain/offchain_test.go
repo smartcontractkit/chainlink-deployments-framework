@@ -2,6 +2,7 @@ package offchain
 
 import (
 	"errors"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -261,9 +262,9 @@ func TestLoadOffchainClient(t *testing.T) {
 				tt.beforeFunc(t, provider, client)
 			}
 
-			opts := append(tt.opts,
-				withOffchainProvider(provider),
-				withTokenSource(tokenSource),
+			opts := slices.Concat(tt.opts,
+				[]LoadOffchainClientOpt{withOffchainProvider(provider),
+					withTokenSource(tokenSource)},
 			)
 
 			got, err := LoadOffchainClient(t.Context(), tt.domain, tt.cfg, opts...)

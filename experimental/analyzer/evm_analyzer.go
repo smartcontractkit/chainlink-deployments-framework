@@ -255,7 +255,7 @@ func tryEIP1967ProxyFallback(
 // merging them into a single map.
 func getAllAddressesByChain(env deployment.Environment) (deployment.AddressesByChain, error) {
 	// Start with addresses from ExistingAddresses
-	addressesByChain, err := env.ExistingAddresses.Addresses() //nolint:staticcheck
+	addressesByChain, err := env.ExistingAddresses.Addresses() //nolint:staticcheck // using deprecated API intentionally
 	if err != nil {
 		return nil, fmt.Errorf("failed to get addresses from ExistingAddresses: %w", err)
 	}

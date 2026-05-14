@@ -7,7 +7,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws" //nolint:staticcheck // migration to aws-sdk-go-v2 is out of scope
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	chainsel "github.com/smartcontractkit/chain-selectors"

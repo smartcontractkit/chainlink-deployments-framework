@@ -24,8 +24,7 @@ func newCatalogChainMetadataStore(storage *memoryStorage) *memoryChainMetadataSt
 func (s *memoryChainMetadataStore) Get(ctx context.Context, key datastore.ChainMetadataKey, options ...datastore.GetOption) (datastore.ChainMetadata, error) {
 	ignoreTransactions := false
 	for _, option := range options {
-		switch option {
-		case datastore.IgnoreTransactionsGetOption:
+		if option == datastore.IgnoreTransactionsGetOption {
 			ignoreTransactions = true
 		}
 	}

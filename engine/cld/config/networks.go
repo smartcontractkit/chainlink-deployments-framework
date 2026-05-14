@@ -24,7 +24,7 @@ func LoadNetworks(
 	}
 
 	// Load network types from domain config
-	domainConfigPath := filepath.Join(dom.ConfigDomainFilePath())
+	domainConfigPath := filepath.Join(dom.ConfigDomainFilePath()) //nolint:gocritic // Join used to clean up the file path
 	if _, statErr := os.Stat(domainConfigPath); statErr != nil {
 		return nil, fmt.Errorf("domain config not found at %s: %w", domainConfigPath, statErr)
 	}
@@ -76,7 +76,7 @@ func loadNetworkConfig(domain fdomain.Domain) (*cfgnet.Config, error) {
 
 // loadDomainConfigNetworkTypes loads network types from domain config for the given environment.
 func loadDomainConfigNetworkTypes(env string, dom fdomain.Domain) ([]cfgnet.NetworkType, error) {
-	domainConfigPath := filepath.Join(dom.ConfigDomainFilePath())
+	domainConfigPath := filepath.Join(dom.ConfigDomainFilePath()) //nolint:gocritic // Join used to clean up the file path
 	domainConfig, err := cfgdomain.Load(domainConfigPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load domain config: %w", err)

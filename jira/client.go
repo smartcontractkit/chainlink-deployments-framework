@@ -29,7 +29,7 @@ type Client struct {
 }
 
 // JiraIssue represents a JIRA issue response
-type JiraIssue struct {
+type JiraIssue struct { //nolint:revive // renaming would be a breaking change
 	Key    string         `json:"key"`
 	Fields map[string]any `json:"fields"`
 }

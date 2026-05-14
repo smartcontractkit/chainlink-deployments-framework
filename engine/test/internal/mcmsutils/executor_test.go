@@ -51,9 +51,7 @@ func TestExecutor_ExecuteMCMS(t *testing.T) {
 					Execute(t.Context(), 0).
 					Return(confirmTxResult, nil)
 			},
-			proposal: func() *mcmslib.Proposal {
-				return stubMCMSProposal()
-			},
+			proposal: stubMCMSProposal,
 		},
 		{
 			name: "fails to validate proposal",
@@ -82,10 +80,8 @@ func TestExecutor_ExecuteMCMS(t *testing.T) {
 					SetRoot(t.Context(), mcmstypes.ChainSelector(stubEVMChain().Selector)).
 					Return(mcmstypes.TransactionResult{}, errors.New("failed to set root"))
 			},
-			proposal: func() *mcmslib.Proposal {
-				return stubMCMSProposal()
-			},
-			wantErr: "failed to set root",
+			proposal: stubMCMSProposal,
+			wantErr:  "failed to set root",
 		},
 		{
 			name: "fails to confirm set root transaction",
@@ -104,10 +100,8 @@ func TestExecutor_ExecuteMCMS(t *testing.T) {
 					[]fchain.BlockChain{c},
 				)
 			},
-			proposal: func() *mcmslib.Proposal {
-				return stubMCMSProposal()
-			},
-			wantErr: "failed to confirm transaction",
+			proposal: stubMCMSProposal,
+			wantErr:  "failed to confirm transaction",
 		},
 		{
 			name: "fails to execute",
@@ -120,10 +114,8 @@ func TestExecutor_ExecuteMCMS(t *testing.T) {
 					Execute(t.Context(), 0).
 					Return(confirmTxResult, errors.New("failed to execute"))
 			},
-			proposal: func() *mcmslib.Proposal {
-				return stubMCMSProposal()
-			},
-			wantErr: "failed to execute",
+			proposal: stubMCMSProposal,
+			wantErr:  "failed to execute",
 		},
 		{
 			name: "fails to confirm execute transaction",
@@ -154,10 +146,8 @@ func TestExecutor_ExecuteMCMS(t *testing.T) {
 					[]fchain.BlockChain{c},
 				)
 			},
-			proposal: func() *mcmslib.Proposal {
-				return stubMCMSProposal()
-			},
-			wantErr: "failed to confirm transaction",
+			proposal: stubMCMSProposal,
+			wantErr:  "failed to confirm transaction",
 		},
 	}
 

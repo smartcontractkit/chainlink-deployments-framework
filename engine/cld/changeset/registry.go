@@ -276,21 +276,19 @@ func runPostHooks(
 	for _, h := range applySnapshot.registryEntry.postHooks {
 		err := ExecuteHook(e, h.HookDefinition, func(ctx context.Context) error { return h.Func(ctx, postParams) })
 		if err != nil {
-			if applyErr != nil {
-				e.Logger.Warnw("post-hook failed after changeset error", "hook", h.Name, "hookErr", err, "changesetErr", applyErr)
-			} else {
+			if applyErr == nil {
 				return fmt.Errorf("changeset post-hook %q failed: %w", h.Name, err)
 			}
+			e.Logger.Warnw("post-hook failed after changeset error", "hook", h.Name, "hookErr", err, "changesetErr", applyErr)
 		}
 	}
 	for _, h := range applySnapshot.globalPostHooks {
 		err := ExecuteHook(e, h.HookDefinition, func(ctx context.Context) error { return h.Func(ctx, postParams) })
 		if err != nil {
-			if applyErr != nil {
-				e.Logger.Warnw("global post-hook failed after changeset error", "hook", h.Name, "hookErr", err, "changesetErr", applyErr)
-			} else {
+			if applyErr == nil {
 				return fmt.Errorf("global post-hook %q failed: %w", h.Name, err)
 			}
+			e.Logger.Warnw("global post-hook failed after changeset error", "hook", h.Name, "hookErr", err, "changesetErr", applyErr)
 		}
 	}
 
@@ -365,10 +363,10 @@ func (r *ChangesetsRegistry) GetConfigurations(key string) (Configurations, erro
 }
 
 // ChangesetOption defines an option for configuring a changeset
-type ChangesetOption func(*ChangesetConfig)
+type ChangesetOption func(*ChangesetConfig) //nolint:revive // renaming would be a breaking change
 
 // ChangesetConfig holds configuration options for a changeset
-type ChangesetConfig struct {
+type ChangesetConfig struct { //nolint:revive // renaming would be a breaking change
 	ChainsToLoad      []uint64 // nil = load all chains, empty = load no chains, populated = load specific chains
 	WithoutJD         bool
 	OperationRegistry *foperations.OperationRegistry

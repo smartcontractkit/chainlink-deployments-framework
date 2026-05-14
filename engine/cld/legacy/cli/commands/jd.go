@@ -12,10 +12,11 @@ import (
 	"time"
 
 	"github.com/pelletier/go-toml/v2"
+	"github.com/spf13/cobra"
+
 	jobv1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/job"
 	nodev1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/node"
 	"github.com/smartcontractkit/chainlink-protos/job-distributor/v1/shared/ptypes"
-	"github.com/spf13/cobra"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
@@ -164,23 +165,23 @@ func (c Commands) newJDNodeList(domain domain.Domain) *cobra.Command {
 			}
 
 			var (
-				nodeIdToJobs      = make(map[string][]*jobv1.Job)
-				nodeIdToProposals = make(map[string][]*jobv1.Proposal)
+				nodeIDToJobs      = make(map[string][]*jobv1.Job)
+				nodeIDToProposals = make(map[string][]*jobv1.Proposal)
 			)
 
 			if viewJobs {
-				nodeIdToJobs, err = listJobsByNodeId(cmd.Context(), offChainClient, toNodeIDs(nodes.GetNodes()))
+				nodeIDToJobs, err = listJobsByNodeID(cmd.Context(), offChainClient, toNodeIDs(nodes.GetNodes()))
 				if err != nil {
 					return err
 				}
 
-				nodeIdToProposals, err = listProposalsByNodeId(cmd.Context(), offChainClient, nodeIdToJobs)
+				nodeIDToProposals, err = listProposalsByNodeID(cmd.Context(), offChainClient, nodeIDToJobs)
 				if err != nil {
 					return err
 				}
 			}
 
-			nv := toNodeViews(nodes.GetNodes(), nodeIdToProposals, nodeIdToJobs)
+			nv := toNodeViews(nodes.GetNodes(), nodeIDToProposals, nodeIDToJobs)
 
 			switch format {
 			case "table":

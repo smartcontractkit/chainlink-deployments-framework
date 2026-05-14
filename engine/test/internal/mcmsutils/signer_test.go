@@ -23,10 +23,8 @@ func TestSigner_SignMCMS(t *testing.T) {
 		wantErr  string
 	}{
 		{
-			name: "successfully signs MCMS proposal",
-			proposal: func() *mcmslib.Proposal {
-				return stubMCMSProposal()
-			},
+			name:     "successfully signs MCMS proposal",
+			proposal: stubMCMSProposal,
 		},
 		{
 			name: "fails to signs proposal with empty operations",

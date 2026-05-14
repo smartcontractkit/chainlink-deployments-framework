@@ -876,17 +876,17 @@ func TestWithJSON_UseNumberForAnyPayload(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestChangeSetImpl_configuration(t *testing.T) { //nolint:paralleltest
+func TestChangeSetImpl_configuration(t *testing.T) { //nolint:paralleltest // test uses shared state
 	configuredChangeset := Configure(MyChangeSet)
 	input := `{"payload":"config"}`
 
-	t.Run("With", func(t *testing.T) { //nolint:paralleltest
+	t.Run("With", func(t *testing.T) { //nolint:paralleltest // test uses shared state
 		got, err := configuredChangeset.With("config").resolvedInput(input)
 		require.NoError(t, err)
 		require.Equal(t, "config", got)
 	})
 
-	t.Run("WithConfigFrom", func(t *testing.T) { //nolint:paralleltest
+	t.Run("WithConfigFrom", func(t *testing.T) { //nolint:paralleltest // test uses shared state
 		got, err := configuredChangeset.WithConfigFrom(func() (string, error) {
 			return "config", nil
 		}).resolvedInput(input)
@@ -894,14 +894,14 @@ func TestChangeSetImpl_configuration(t *testing.T) { //nolint:paralleltest
 		require.Equal(t, "config", got)
 	})
 
-	t.Run("WithEnvInput", func(t *testing.T) { //nolint:paralleltest
+	t.Run("WithEnvInput", func(t *testing.T) { //nolint:paralleltest // test uses shared state
 		t.Setenv("DURABLE_PIPELINE_INPUT", input)
 		got, err := configuredChangeset.WithEnvInput().resolvedInput(input)
 		require.NoError(t, err)
 		require.Equal(t, "config", got)
 	})
 
-	t.Run("WithConfigResolver", func(t *testing.T) { //nolint:paralleltest
+	t.Run("WithConfigResolver", func(t *testing.T) { //nolint:paralleltest // test uses shared state
 		t.Setenv("DURABLE_PIPELINE_INPUT", input)
 		resolver := func(input string) (string, error) {
 			return "resolved " + input, nil

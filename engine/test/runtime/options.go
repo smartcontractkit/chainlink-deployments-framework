@@ -10,7 +10,7 @@ type runtimeConfig struct {
 }
 
 // RuntimeOption is a functional option type for configuring runtime.
-type RuntimeOption func(*runtimeConfig)
+type RuntimeOption func(*runtimeConfig) //nolint:revive // renaming would be a breaking change
 
 // WithEnvironmentOptions adds environment options to the runtime. This is used to load the
 // environment with the given options.

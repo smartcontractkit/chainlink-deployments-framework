@@ -245,7 +245,7 @@ func TestSetChangesetEnvironmentVariable_Success(t *testing.T) {
 	require.Equal(t, map[string]any{"x": float64(1)}, decoded["payload"])
 }
 
-//nolint:paralleltest
+//nolint:paralleltest // test uses shared filesystem state
 func TestParseDurablePipelineYAML(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -298,7 +298,7 @@ domain: mydomain
 		t.Run(tt.name, func(t *testing.T) {
 			dir := t.TempDir()
 			require.NoError(t, os.MkdirAll(filepath.Join(dir, "domains", tt.domKey, tt.envKey, "durable_pipelines", "inputs"), 0o755))
-			require.NoError(t, os.WriteFile(filepath.Join(dir, "domains", tt.domKey, tt.envKey, "durable_pipelines", "inputs", tt.fileName), []byte(tt.yamlContent), 0o644)) //nolint:gosec
+			require.NoError(t, os.WriteFile(filepath.Join(dir, "domains", tt.domKey, tt.envKey, "durable_pipelines", "inputs", tt.fileName), []byte(tt.yamlContent), 0o644)) //nolint:gosec // test with controlled paths
 
 			originalWd, _ := os.Getwd()
 			require.NoError(t, os.Chdir(dir))

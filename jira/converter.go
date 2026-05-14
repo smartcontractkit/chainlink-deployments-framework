@@ -10,7 +10,7 @@ import (
 
 // JiraToStruct is the main function that domains use to convert JIRA issues to config structs
 // It loads the specified domain's JIRA schema and maps the issue fields
-func JiraToStruct[T any](client *Client, dom fdomain.Domain, issueKey string) (T, error) {
+func JiraToStruct[T any](client *Client, dom fdomain.Domain, issueKey string) (T, error) { //nolint:revive // exported func name is intentional
 	var zero T
 
 	if client == nil {

@@ -9,10 +9,11 @@ import (
 	"github.com/avast/retry-go/v4"
 	"github.com/fbsobreira/gotron-sdk/pkg/address"
 	chainsel "github.com/smartcontractkit/chain-selectors"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/freeport"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron/provider/testdata"
@@ -351,18 +352,18 @@ func setupLocalStack(t *testing.T) *tron.Chain {
 	)
 	require.NoError(t, err, "Failed to start CTF TRON container after %d attempts", attempts)
 
-	fullNodeUrl := bc.Nodes[0].ExternalHTTPUrl + "/wallet"
-	solidityNodeUrl := bc.Nodes[0].ExternalHTTPUrl + "/walletsolidity"
+	fullNodeURL := bc.Nodes[0].ExternalHTTPUrl + "/wallet"
+	solidityNodeURL := bc.Nodes[0].ExternalHTTPUrl + "/walletsolidity"
 
-	t.Logf("TRON node config: fullNodeUrl=%s, solidityNodeUrl=%s", fullNodeUrl, solidityNodeUrl)
+	t.Logf("TRON node config: fullNodeUrl=%s, solidityNodeUrl=%s", fullNodeURL, solidityNodeURL)
 
 	chainSelector := chainsel.TEST_22222222222222222222222222222222222222222222.Selector
 	signerGenerator, err := SignerGenPrivateKey(blockchain.TRONAccounts.PrivateKeys[0])
 	require.NoError(t, err)
 
 	rpcClient := NewRPCChainProvider(chainSelector, RPCChainProviderConfig{
-		FullNodeURL:       fullNodeUrl,
-		SolidityNodeURL:   solidityNodeUrl,
+		FullNodeURL:       fullNodeURL,
+		SolidityNodeURL:   solidityNodeURL,
 		DeployerSignerGen: signerGenerator,
 	})
 
@@ -375,12 +376,12 @@ func setupLocalStack(t *testing.T) *tron.Chain {
 	blockInfo, err := tronChain.Client.GetNowBlock()
 	require.NoError(t, err, "Failed to get current block")
 
-	blockId := blockInfo.BlockID
-	chainIdHex := blockId[len(blockId)-8:]
-	chainIdInt := new(big.Int)
-	chainIdInt.SetString(chainIdHex, 16)
-	chainId := chainIdInt.String()
-	t.Logf("Read first block: chain id=%s", chainId)
+	blockID := blockInfo.BlockID
+	chainIDHex := blockID[len(blockID)-8:]
+	chainIDInt := new(big.Int)
+	chainIDInt.SetString(chainIDHex, 16)
+	chainID := chainIDInt.String()
+	t.Logf("Read first block: chain id=%s", chainID)
 
 	return &tronChain
 }

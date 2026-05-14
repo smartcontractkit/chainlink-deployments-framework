@@ -10,7 +10,7 @@ import (
 )
 
 // StellarSigner is an interface that provides signing capabilities for Stellar transactions.
-type StellarSigner interface {
+type StellarSigner interface { //nolint:revive // renaming would be a breaking change
 	// Sign signs the given message and returns the signature bytes.
 	Sign(message []byte) ([]byte, error)
 

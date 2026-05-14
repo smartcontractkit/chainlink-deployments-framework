@@ -589,7 +589,7 @@ func (l *chainLoaderEVM) toRPCs(rpcCfgs []cfgnet.RPC) ([]evmclient.RPC, error) {
 	rpcs := make([]evmclient.RPC, 0, len(rpcCfgs))
 
 	for _, rpcCfg := range rpcCfgs {
-		preferedUrlScheme, err := evmclient.URLSchemePreferenceFromString(rpcCfg.PreferredURLScheme)
+		preferedURLScheme, err := evmclient.URLSchemePreferenceFromString(rpcCfg.PreferredURLScheme)
 		if err != nil {
 			return nil, fmt.Errorf("invalid URL scheme preference %s: %w",
 				rpcCfg.PreferredURLScheme, err,
@@ -600,7 +600,7 @@ func (l *chainLoaderEVM) toRPCs(rpcCfgs []cfgnet.RPC) ([]evmclient.RPC, error) {
 			Name:               rpcCfg.RPCName,
 			WSURL:              rpcCfg.WSURL,
 			HTTPURL:            rpcCfg.HTTPURL,
-			PreferredURLScheme: preferedUrlScheme,
+			PreferredURLScheme: preferedURLScheme,
 		})
 	}
 

@@ -18,8 +18,9 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/go-resty/resty/v2"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/freeport"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
@@ -331,10 +332,10 @@ func selectPublicRPC(
 	return urls, nil
 }
 
-var privateRpcRegexp = regexp.MustCompile(`^https?://(rpcs\.cldev\.sh|gap\-.*\.(prod|stage)\.cldev\.sh|.*\.tail[a-z0-9]+\.ts\.net)(?::\d+)?/`)
+var privateRPCRegexp = regexp.MustCompile(`^https?://(rpcs\.cldev\.sh|gap\-.*\.(prod|stage)\.cldev\.sh|.*\.tail[a-z0-9]+\.ts\.net)(?::\d+)?/`)
 
 func isPublicRPC(url string) bool {
-	return !privateRpcRegexp.MatchString(url)
+	return !privateRPCRegexp.MatchString(url)
 }
 
 func runHealthCheck(ctx context.Context, rpcURL string) error {

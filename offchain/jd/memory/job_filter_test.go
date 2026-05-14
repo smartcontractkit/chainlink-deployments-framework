@@ -167,12 +167,12 @@ func TestApplyJobFilter(t *testing.T) {
 			result := applyJobFilter(tt.jobs, tt.filter)
 
 			// Extract job IDs for comparison
-			resultIds := make([]string, len(result))
+			resultIDs := make([]string, len(result))
 			for i, job := range result {
-				resultIds[i] = job.Id
+				resultIDs[i] = job.Id
 			}
 
-			require.ElementsMatch(t, tt.expected, resultIds)
+			require.ElementsMatch(t, tt.expected, resultIDs)
 		})
 	}
 }
@@ -183,31 +183,31 @@ func TestJobMatchesIds(t *testing.T) {
 	tests := []struct {
 		name   string
 		job    *jobv1.Job
-		jobIds []string
+		jobIDs []string
 		want   bool
 	}{
 		{
 			name:   "job id matches",
 			job:    &jobv1.Job{Id: "job-1"},
-			jobIds: []string{"job-1", "job-2"},
+			jobIDs: []string{"job-1", "job-2"},
 			want:   true,
 		},
 		{
 			name:   "job id does not match",
 			job:    &jobv1.Job{Id: "job-3"},
-			jobIds: []string{"job-1", "job-2"},
+			jobIDs: []string{"job-1", "job-2"},
 			want:   false,
 		},
 		{
 			name:   "empty job ids list",
 			job:    &jobv1.Job{Id: "job-1"},
-			jobIds: []string{},
+			jobIDs: []string{},
 			want:   false,
 		},
 		{
 			name:   "single job id match",
 			job:    &jobv1.Job{Id: "job-1"},
-			jobIds: []string{"job-1"},
+			jobIDs: []string{"job-1"},
 			want:   true,
 		},
 	}
@@ -215,7 +215,7 @@ func TestJobMatchesIds(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			result := jobMatchesJobIds(tt.job, tt.jobIds)
+			result := jobMatchesJobIDs(tt.job, tt.jobIDs)
 			assert.Equal(t, tt.want, result)
 		})
 	}
@@ -350,31 +350,31 @@ func TestJobMatchesNodeIds(t *testing.T) {
 	tests := []struct {
 		name    string
 		job     *jobv1.Job
-		nodeIds []string
+		nodeIDs []string
 		want    bool
 	}{
 		{
 			name:    "node id matches",
 			job:     &jobv1.Job{NodeId: "node-1"},
-			nodeIds: []string{"node-1", "node-2"},
+			nodeIDs: []string{"node-1", "node-2"},
 			want:    true,
 		},
 		{
 			name:    "node id does not match",
 			job:     &jobv1.Job{NodeId: "node-3"},
-			nodeIds: []string{"node-1", "node-2"},
+			nodeIDs: []string{"node-1", "node-2"},
 			want:    false,
 		},
 		{
 			name:    "empty node ids list",
 			job:     &jobv1.Job{NodeId: "node-1"},
-			nodeIds: []string{},
+			nodeIDs: []string{},
 			want:    false,
 		},
 		{
 			name:    "single node id match",
 			job:     &jobv1.Job{NodeId: "node-1"},
-			nodeIds: []string{"node-1"},
+			nodeIDs: []string{"node-1"},
 			want:    true,
 		},
 	}
@@ -382,7 +382,7 @@ func TestJobMatchesNodeIds(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			result := jobMatchesNodeIds(tt.job, tt.nodeIds)
+			result := jobMatchesNodeIDs(tt.job, tt.nodeIDs)
 			assert.Equal(t, tt.want, result)
 		})
 	}

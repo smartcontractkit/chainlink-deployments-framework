@@ -65,7 +65,7 @@ type testAnalyzerEngine struct {
 }
 
 func (t *testAnalyzerEngine) Run(_ context.Context, _ proposalanalysis.RunRequest, _ *mcms.TimelockProposal) (analyzer.AnalyzedProposal, error) {
-	return nil, nil //nolint:nilnil
+	return nil, nil //nolint:nilnil // nil,nil is intentional here
 }
 
 func (t *testAnalyzerEngine) RegisterAnalyzer(_ analyzer.BaseAnalyzer) error {

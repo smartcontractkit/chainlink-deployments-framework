@@ -117,12 +117,12 @@ func TestApplyNodeFilter(t *testing.T) {
 			result := applyNodeFilter(tt.nodes, tt.filter)
 
 			// Extract node IDs for comparison
-			resultIds := make([]string, len(result))
+			resultIDs := make([]string, len(result))
 			for i, node := range result {
-				resultIds[i] = node.Id
+				resultIDs[i] = node.Id
 			}
 
-			require.ElementsMatch(t, tt.expected, resultIds)
+			require.ElementsMatch(t, tt.expected, resultIDs)
 		})
 	}
 }
@@ -165,7 +165,7 @@ func TestNodeMatchesIds(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			result := nodeMatchesIds(tt.node, tt.ids)
+			result := nodeMatchesIDs(tt.node, tt.ids)
 			assert.Equal(t, tt.want, result)
 		})
 	}

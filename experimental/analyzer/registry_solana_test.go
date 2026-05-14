@@ -182,7 +182,7 @@ func Test_EnvironmentSolanaRegistry_NilDecoderMappings(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, reg)
 
-	require.Equal(t, reg.addressesByChain, deployment.AddressesByChain{ //nolint:testifylint
+	require.Equal(t, reg.addressesByChain, deployment.AddressesByChain{ //nolint:testifylint // expected value is complex struct
 		chainsel.SOLANA_DEVNET.Selector: {
 			"TestContract1111111111111111111111111111111":  deployment.MustTypeAndVersionFromString("TestContract 1.0.0"),
 			"BPFLoaderUpgradeab1e11111111111111111111111":  deployment.MustTypeAndVersionFromString("BPFLoaderUpgradeable 1.0.0"),

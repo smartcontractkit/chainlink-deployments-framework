@@ -79,7 +79,7 @@ func TestCommands_MCMS_Success(t *testing.T) {
 	cmds := New(lggr)
 	dom := domain.NewDomain(t.TempDir(), "testdomain")
 	proposalCtxProvider := func(_ fdeployment.Environment) (experimentalanalyzer.ProposalContext, error) {
-		return nil, nil //nolint:nilnil
+		return nil, nil //nolint:nilnil // nil,nil is valid for this interface
 	}
 
 	cmd, err := cmds.MCMS(dom, MCMSConfig{
@@ -104,7 +104,7 @@ func TestCommands_MCMS_ForwardsProposalAnalyzers(t *testing.T) {
 	cmds := New(lggr)
 	dom := domain.NewDomain(t.TempDir(), "testdomain")
 	proposalCtxProvider := func(_ fdeployment.Environment) (experimentalanalyzer.ProposalContext, error) {
-		return nil, nil //nolint:nilnil
+		return nil, nil //nolint:nilnil // nil,nil is valid for this interface
 	}
 
 	cmd, err := cmds.MCMS(dom, MCMSConfig{
@@ -124,7 +124,7 @@ func TestCommands_MCMS_ForwardsProposalRenderers(t *testing.T) {
 	cmds := New(lggr)
 	dom := domain.NewDomain(t.TempDir(), "testdomain")
 	proposalCtxProvider := func(_ fdeployment.Environment) (experimentalanalyzer.ProposalContext, error) {
-		return nil, nil //nolint:nilnil
+		return nil, nil //nolint:nilnil // nil,nil is valid for this interface
 	}
 
 	cmd, err := cmds.MCMS(dom, MCMSConfig{

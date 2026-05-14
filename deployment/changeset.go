@@ -18,6 +18,7 @@ var (
 )
 
 // ChangeSet is equivalent to ChangeLogic
+//
 // Deprecated: use the ChangeLogic type, or an instance of a ChangeSetV2 in infrastructure or validation code.
 type ChangeSet[C any] func(e Environment, config C) (ChangesetOutput, error)
 

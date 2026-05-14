@@ -473,7 +473,7 @@ func Test_Artifacts_SaveChangesetOutput_LoadChangesetOutput(t *testing.T) {
 			Spec:  js2.MustMarshal(),
 		}
 
-		validUntilUnixTime = uint32(time.Date(2035, time.December, 31, 23, 59, 59, 999999999, time.UTC).Unix()) //nolint:gosec
+		validUntilUnixTime = uint32(time.Date(2035, time.December, 31, 23, 59, 59, 999999999, time.UTC).Unix()) //nolint:gosec // test value, overflow not possible
 
 		mcmsProposals = []mcmsv2.Proposal{
 			{
@@ -1312,7 +1312,7 @@ func Test_Artifacts_SaveAddressBookInSortedOrder(t *testing.T) {
 	// Also verify the saved file can be loaded back correctly
 	loadedOutput, err := artsDir.LoadChangesetOutput(csKey)
 	require.NoError(t, err)
-	//nolint:staticcheck
+	//nolint:staticcheck // deprecated API used for backward compat testing
 	require.NotNil(t, loadedOutput.AddressBook)
 }
 

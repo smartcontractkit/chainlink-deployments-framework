@@ -11,8 +11,9 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/params"
 	chainsel "github.com/smartcontractkit/chain-selectors"
-	nodev1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/node"
 	"github.com/spf13/cobra"
+
+	nodev1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/node"
 
 	evmclient "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider/rpcclient"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/chains"
@@ -125,17 +126,16 @@ func (c Commands) newEvmNonceClear(domain domain.Domain) *cobra.Command {
 			// Otherwise we need to cancel each one with a self send of 0 value eth.
 			for i := nonce; i < pendingNonce; i++ {
 				var tx *types.Transaction
-				if use1559 {
-					// Do a heavy 50% boost on the self send.
-					tx, err = build1559Tx(cmd.Context(), c.lggr,
-						chain,
-						big.NewInt(0),
-						fromAddr,
-						i, big.NewInt(30), big.NewInt(10))
-				} else {
+				if !use1559 {
 					// TODO
 					return errors.New("legacy txes not supported for nonce clearing")
 				}
+				// Do a heavy 50% boost on the self send.
+				tx, err = build1559Tx(cmd.Context(), c.lggr,
+					chain,
+					big.NewInt(0),
+					fromAddr,
+					i, big.NewInt(30), big.NewInt(10))
 				if err != nil {
 					return err
 				}

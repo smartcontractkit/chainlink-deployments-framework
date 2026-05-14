@@ -54,7 +54,7 @@ const (
 
 var _, integrationModulePath, _, _ = runtime.Caller(0)
 
-func Test_executeFork_Integration(t *testing.T) { //nolint:paralleltest
+func Test_executeFork_Integration(t *testing.T) { //nolint:paralleltest // test modifies shared state
 	lggr, logs := logger.TestObserved(t, zapcore.DebugLevel)
 
 	domainsRoot := filepath.Clean(filepath.Join(integrationModulePath, "..", "testdata", "domains"))
@@ -137,19 +137,19 @@ func Test_executeFork_Integration(t *testing.T) { //nolint:paralleltest
 
 				sendTxLogs := logs.FilterMessage("sending on-chain transaction").AllUntimed()
 				require.Len(t, sendTxLogs, 3)
-				require.Equal(t, sendTxLogs[0].ContextMap(), map[string]any{ //nolint:testifylint
+				require.Equal(t, sendTxLogs[0].ContextMap(), map[string]any{ //nolint:testifylint // expected value is complex struct
 					"from":  ctfchain.DefaultAnvilPublicKey,
 					"to":    mcmAddress,
 					"value": "0",
 					"data":  "7cc38b289f3238149e22b29dfc2efbce2cb0fe486074260593a5845eb8b9e209dcc76ecd000000000000000000000000000000000000000000000000000000007c245eff00000000000000000000000000000000000000000000000000000000000005390000000000000000000000005fbdb2315678afecb367f032d93f642f64180aa3000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000012000000000000000000000000000000000000000000000000000000000000001600000000000000000000000000000000000000000000000000000000000000001da9a3f10e279f0c947e2347b15cdafa99d0946ad70edf1de3e3f1fb3870cec8f0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000001bdd38e4c5069fd0f522fbe74f823e7c59171c4472c62250d3f537868be75b212056bb3a98355115f41e32a250530cf6f06b17311d2cae58577ab6b8651186f4f5",
 				})
-				require.Equal(t, sendTxLogs[1].ContextMap(), map[string]any{ //nolint:testifylint
+				require.Equal(t, sendTxLogs[1].ContextMap(), map[string]any{ //nolint:testifylint // expected value is complex struct
 					"from":  ctfchain.DefaultAnvilPublicKey,
 					"to":    mcmAddress,
 					"value": "0",
 					"data":  "b759d685000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000002a000000000000000000000000000000000000000000000000000000000000005390000000000000000000000005fbdb2315678afecb367f032d93f642f64180aa30000000000000000000000000000000000000000000000000000000000000000000000000000000000000000cf7ed3acca5a467e9e704c703e8d87f634fb0fc9000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000c00000000000000000000000000000000000000000000000000000000000000164a944142d000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000007c245eff00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000020000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000002307800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000105727eee6ea33160de91251c73bd0fcbb3d72c4869961bd3164ed6cdfee2d1e8",
 				})
-				require.Equal(t, sendTxLogs[2].ContextMap(), map[string]any{ //nolint:testifylint
+				require.Equal(t, sendTxLogs[2].ContextMap(), map[string]any{ //nolint:testifylint // expected value is complex struct
 					"from":  ctfchain.DefaultAnvilPublicKey,
 					"to":    callProxyAddress,
 					"value": "0",
@@ -197,7 +197,7 @@ func Test_executeFork_Integration(t *testing.T) { //nolint:paralleltest
 			},
 		},
 	}
-	for _, tt := range tests { //nolint:paralleltest
+	for _, tt := range tests { //nolint:paralleltest // test modifies shared state
 		t.Run(tt.name, func(t *testing.T) {
 			err := executeFork(t.Context(), tt.mcmsCfg, tt.cfg(), true)
 
@@ -419,7 +419,7 @@ func saveDomainNetworkConfigForIntegration(
 	networks[0].RPCs[0].HTTPURL = containerURL
 	networks[0].Metadata = &cldfconfignet.EVMMetadata{AnvilConfig: &cldfconfignet.AnvilConfig{
 		Image:          "f4hrenh9it/foundry:latest",
-		Port:           uint64(getFreePortForIntegration(t)), //nolint:gosec
+		Port:           uint64(getFreePortForIntegration(t)), //nolint:gosec // acceptable in test context
 		ArchiveHTTPURL: "http://" + networkAliases[ctf.DefaultNetworkName][0] + ":" + containerPort,
 	}}
 
@@ -450,7 +450,7 @@ func saveChangesetOutputsForIntegration(t *testing.T, domain cldfdomain.Domain, 
 	copyFileForIntegration(t, envDir.AddressRefsFilePath(), addressRefsBkpPath)
 
 	err := envDir.ArtifactsDir().SaveChangesetOutput(changesetName, cldf.ChangesetOutput{
-		AddressBook: env.ExistingAddresses, //nolint:staticcheck
+		AddressBook: env.ExistingAddresses, //nolint:staticcheck // deprecated API used for backward compatibility
 		DataStore:   mutableDataStoreForIntegration(t, env.DataStore),
 	})
 	require.NoError(t, err)

@@ -71,12 +71,12 @@ func TestCatalogDataStore_StoreInterfaces(t *testing.T) {
 	ds := NewCatalogDataStore(config)
 
 	// Verify each store implements the correct mutable interface
-	//nolint:staticcheck
+	//nolint:staticcheck // deprecated API used for backward compat testing
 	var _ datastore.MutableRefStoreV2[datastore.AddressRefKey, datastore.AddressRef] = ds.Addresses()
-	//nolint:staticcheck
+	//nolint:staticcheck // deprecated API used for backward compat testing
 	var _ datastore.MutableStoreV2[datastore.ChainMetadataKey, datastore.ChainMetadata] = ds.ChainMetadata()
-	//nolint:staticcheck
+	//nolint:staticcheck // deprecated API used for backward compat testing
 	var _ datastore.MutableStoreV2[datastore.ContractMetadataKey, datastore.ContractMetadata] = ds.ContractMetadata()
-	//nolint:staticcheck
+	//nolint:staticcheck // deprecated API used for backward compat testing
 	var _ datastore.MutableUnaryStoreV2[datastore.EnvMetadata] = ds.EnvMetadata()
 }

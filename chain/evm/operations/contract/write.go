@@ -117,7 +117,8 @@ func NewWrite[ARGS any, C any](params WriteParams[ARGS, C]) *operations.Operatio
 			if callErr == nil && tx == nil {
 				return WriteOutput{}, fmt.Errorf("contract call returned nil transaction for %s against %s on %s", params.Name, input.Address, chain)
 			}
-			if allowed {
+			switch {
+			case allowed:
 				// If the call has actually been sent, we need check the call error and confirm the transaction.
 				_, confirmErr := deployment.ConfirmIfNoErrorWithABI(chain, tx, params.ContractABI, callErr)
 				if confirmErr != nil {
@@ -125,10 +126,10 @@ func NewWrite[ARGS any, C any](params WriteParams[ARGS, C]) *operations.Operatio
 				}
 				execInfo = &ExecInfo{Hash: tx.Hash().Hex()}
 				b.Logger.Debugw(fmt.Sprintf("Confirmed %s tx against %s on %s", params.Name, input.Address, chain), "hash", tx.Hash().Hex(), "args", input.Args)
-			} else if callErr != nil {
+			case callErr != nil:
 				// If we didn't execute the transaction, but there was an error preparing it, return the error.
 				return WriteOutput{}, fmt.Errorf("failed to prepare %s tx against %s on %s with args %+v: %w", params.Name, input.Address, chain, input.Args, callErr)
-			} else {
+			default:
 				b.Logger.Debugw(fmt.Sprintf("Prepared %s tx against %s on %s", params.Name, input.Address, chain), "args", input.Args)
 			}
 

@@ -171,7 +171,7 @@ func (b BlockChains) ReadOnly() (BlockChains, error) {
 }
 
 // ChainSelectorsOption defines a function type for configuring ChainSelectors
-type ChainSelectorsOption func(*chainSelectorsOptions)
+type ChainSelectorsOption func(*chainSelectorsOptions) //nolint:revive // renaming would be a breaking change
 
 type chainSelectorsOptions struct {
 	// Use map for faster lookups
@@ -248,7 +248,7 @@ func getChainsByType[VT any, PT any](b BlockChains) map[uint64]VT {
 		switch c := any(chain).(type) {
 		case VT:
 			chains[sel] = c
-		case PT:
+		case PT: //nolint:gocritic // caseOrder: VT must be matched before PT for correct semantics
 			val := reflect.ValueOf(c)
 			if val.Kind() == reflect.Ptr && !val.IsNil() {
 				elem := val.Elem()

@@ -245,7 +245,8 @@ func Test_loadDomainConfigNetworkTypes(t *testing.T) {
 
 				// Create the domain config file
 				err = os.WriteFile(
-					filepath.Join(dom.ConfigDomainFilePath()), yamlConfig, filePerms,
+					filepath.Join(dom.ConfigDomainFilePath()), //nolint:gocritic // Join used to clean up the file path
+					yamlConfig, filePerms,
 				)
 				require.NoError(t, err)
 			}

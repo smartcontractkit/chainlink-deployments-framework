@@ -92,7 +92,7 @@ func (a *ArtifactsDir) OperationsReportsDirPath() string {
 
 // SetDurablePipelines sets the directory containing the durable pipeline artifacts and the timestamp for the durable pipelines.
 func (a *ArtifactsDir) SetDurablePipelines(timestamp string) error {
-	a.durablePipelineDir = filepath.Join(ArtifactsDurablePipelineDirName)
+	a.durablePipelineDir = filepath.Join(ArtifactsDurablePipelineDirName) //nolint:gocritic // Join used to clean up the file path
 
 	return a.setDurablePipelinesTimestamp(timestamp)
 }
@@ -131,11 +131,7 @@ func (a *ArtifactsDir) CreateProposalsDir() error {
 // CreateOperationsReportsDir creates the operations reports directory if it does not exist.
 // It also creates a .gitkeep file within the operations reports directory to ensure the directory is tracked by git.
 func (a *ArtifactsDir) CreateOperationsReportsDir() error {
-	if err := fileutils.MkdirAllGitKeep(a.OperationsReportsDirPath()); err != nil {
-		return err
-	}
-
-	return nil
+	return fileutils.MkdirAllGitKeep(a.OperationsReportsDirPath())
 }
 
 // CreateDecodedProposalsDir creates the decoded_proposals directory within the artifacts directory if it does not exist.
@@ -312,9 +308,9 @@ func (a *ArtifactsDir) SaveChangesetOutput(csKey string, output fdeployment.Chan
 	}
 
 	// Write job specs artifact
-	//nolint:staticcheck
+	//nolint:staticcheck // deprecated API used for backward compatibility
 	if len(output.JobSpecs) > 0 {
-		//nolint:staticcheck
+		//nolint:staticcheck // deprecated API used for backward compatibility
 		if err := a.saveArtifact(id, csKey, ArtifactJobSpec, output.JobSpecs); err != nil {
 			return err
 		}
@@ -354,7 +350,7 @@ func (a *ArtifactsDir) SaveChangesetOutput(csKey string, output fdeployment.Chan
 	}
 
 	// Write address book artifact
-	//nolint:staticcheck
+	//nolint:staticcheck // deprecated API used for backward compatibility
 	if output.AddressBook != nil {
 		addressBook, err := output.AddressBook.Addresses()
 		if err != nil {
@@ -425,7 +421,7 @@ func (a *ArtifactsDir) LoadChangesetOutput(csKey string) (fdeployment.ChangesetO
 			if err1 != nil {
 				return fdeployment.ChangesetOutput{}, err1
 			}
-			//nolint:staticcheck
+			//nolint:staticcheck // deprecated API used for backward compatibility
 			output.JobSpecs = jss
 		case jobsRgx.MatchString(name):
 			jobs, err1 := LoadJobs(entryPath)
@@ -438,7 +434,7 @@ func (a *ArtifactsDir) LoadChangesetOutput(csKey string) (fdeployment.ChangesetO
 			if err1 != nil {
 				return fdeployment.ChangesetOutput{}, err1
 			}
-			//nolint:staticcheck
+			//nolint:staticcheck // deprecated API used for backward compatibility
 			output.AddressBook = ab
 		case datastoreRgx.MatchString(name):
 			ds, err1 := a.loadMutableDataStore(entryPath)
@@ -547,7 +543,7 @@ func (a *ArtifactsDir) SaveOperationsReports(csKey string, reports []foperations
 		}
 	}
 
-	return jsonutils.WriteFile(filepath.Join(a.getOperationsReportsFilePath(csKey)), reports)
+	return jsonutils.WriteFile(filepath.Join(a.getOperationsReportsFilePath(csKey)), reports) //nolint:gocritic // Join used to clean up the file path
 }
 
 func (a *ArtifactsDir) getOperationsReportsFilePath(csKey string) string {

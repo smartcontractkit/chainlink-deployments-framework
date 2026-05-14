@@ -26,7 +26,7 @@ func applyNodeFilter(
 func nodeMatchesFilter(node *nodev1.Node, filter *nodev1.ListNodesRequest_Filter) bool {
 	// Check ids
 	if len(filter.Ids) > 0 {
-		if !nodeMatchesIds(node, filter.Ids) {
+		if !nodeMatchesIDs(node, filter.Ids) {
 			return false
 		}
 	}
@@ -48,8 +48,8 @@ func nodeMatchesFilter(node *nodev1.Node, filter *nodev1.ListNodesRequest_Filter
 	return true
 }
 
-// nodeMatchesIds checks if a node's ID is in the provided list of IDs.
-func nodeMatchesIds(node *nodev1.Node, ids []string) bool {
+// nodeMatchesIDs checks if a node's ID is in the provided list of IDs.
+func nodeMatchesIDs(node *nodev1.Node, ids []string) bool {
 	return slices.Contains(ids, node.Id)
 }
 

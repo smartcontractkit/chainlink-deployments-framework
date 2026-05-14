@@ -107,11 +107,11 @@ func TestChain_ReadOnly(t *testing.T) {
 	require.Equal(t, lo.Must(new(big.Int).SetString("10000000000000000000000", 10)), balance)
 
 	// write with read-write client should work
-	_, _, _, err = mcmsbindings.DeployCallProxy(evmChain.DeployerKey, evmChain.Client, gethcommon.Address{}) //nolint:dogsled
+	_, _, _, err = mcmsbindings.DeployCallProxy(evmChain.DeployerKey, evmChain.Client, gethcommon.Address{}) //nolint:dogsled // not interested in all return values
 	require.NoError(t, err)
 
 	// write with read-only client should fail
-	_, _, _, err = mcmsbindings.DeployCallProxy(roEVMChain.DeployerKey, roEVMChain.Client, gethcommon.Address{}) //nolint:dogsled
+	_, _, _, err = mcmsbindings.DeployCallProxy(roEVMChain.DeployerKey, roEVMChain.Client, gethcommon.Address{}) //nolint:dogsled // not interested in all return values
 	require.ErrorContains(t, err, "Out of gas: gas required exceeds allowance")
 }
 

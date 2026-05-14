@@ -3,6 +3,7 @@ package environment
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -173,7 +174,7 @@ func setupTestConfig(t *testing.T, domain fdomain.Domain) {
 	require.NoError(t, err)
 
 	networksPath := filepath.Join(networksDir, "networks-testnet.yaml")
-	require.NoError(t, os.WriteFile(networksPath, input, 0600))
+	require.NoError(t, os.WriteFile(networksPath, input, 0600)) //nolint:gosec // test with controlled paths
 
 	// Create local configuration file
 	localDir := filepath.Join(configDir, "local")
@@ -183,14 +184,14 @@ func setupTestConfig(t *testing.T, domain fdomain.Domain) {
 	require.NoError(t, err)
 
 	localPath := filepath.Join(localDir, "config.staging.yaml")
-	require.NoError(t, os.WriteFile(localPath, input, 0600))
+	require.NoError(t, os.WriteFile(localPath, input, 0600)) //nolint:gosec // test with controlled paths
 
 	// Create domains configuration file
 	input, err = os.ReadFile(filepath.Join("testdata", "domain.yaml"))
 	require.NoError(t, err)
 
 	domainPath := filepath.Join(configDir, "domain.yaml")
-	require.NoError(t, os.WriteFile(domainPath, input, 0600))
+	require.NoError(t, os.WriteFile(domainPath, input, 0600)) //nolint:gosec // test with controlled paths
 }
 
 func setupAddressbook(t *testing.T, domain fdomain.Domain) {
@@ -242,8 +243,8 @@ func setupTestConfigWithCREAPIKey(t *testing.T, domain fdomain.Domain) {
 	existing, err := os.ReadFile(localPath)
 	require.NoError(t, err)
 
-	withCRE := append(existing, []byte("cre:\n  auth:\n    api_key: \"test-cre-api-key\"\n")...)
-	require.NoError(t, os.WriteFile(localPath, withCRE, 0600))
+	withCRE := slices.Concat(existing, []byte("cre:\n  auth:\n    api_key: \"test-cre-api-key\"\n"))
+	require.NoError(t, os.WriteFile(localPath, withCRE, 0600)) //nolint:gosec // test with controlled paths
 }
 
 func setupNodes(t *testing.T, domain fdomain.Domain) {

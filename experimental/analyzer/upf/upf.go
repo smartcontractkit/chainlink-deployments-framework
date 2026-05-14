@@ -24,7 +24,7 @@ import (
 )
 
 // UpfConvertTimelockProposal converts a TimelockProposal to a UPF proposal format.
-func UpfConvertTimelockProposal(
+func UpfConvertTimelockProposal( //nolint:revive // exported func name is intentional
 	ctx context.Context,
 	proposalCtx mcmsanalyzer.ProposalContext,
 	env deployment.Environment,
@@ -63,7 +63,7 @@ func UpfConvertTimelockProposal(
 }
 
 // UpfConvertProposal converts a standard MCMS proposal to a UPF proposal format.
-func UpfConvertProposal(
+func UpfConvertProposal( //nolint:revive // exported func name is intentional
 	ctx context.Context,
 	proposalCtx mcmsanalyzer.ProposalContext,
 	env deployment.Environment,
@@ -202,14 +202,15 @@ func asciiHash(data [32]byte) rawBytes {
 	var sb strings.Builder
 
 	for _, byteVal := range data {
+		switch {
 		// Check if the byte is a printable ASCII character (32 to 126 are printable)
-		if byteVal >= 32 && byteVal <= 126 {
+		case byteVal >= 32 && byteVal <= 126:
 			sb.WriteByte(byteVal)
-		} else if byteVal >= 9 && byteVal <= 13 {
+		case byteVal >= 9 && byteVal <= 13:
 			// 09 to 13 are tab, newline, vertical tab, form feed, and carriage return.
 			// Just print them as a space character
 			sb.WriteByte(' ')
-		} else {
+		default:
 			// Append the escaped hexadecimal representation of the byte
 			fmt.Fprintf(&sb, "\\x%02x", byteVal)
 		}
@@ -225,7 +226,7 @@ func calculateOpCount(opCount uint64, opIndex int, operations []mcmstypes.Operat
 			break
 		}
 		if op.ChainSelector == chainSelector {
-			opCount += 1
+			opCount++
 		}
 	}
 

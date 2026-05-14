@@ -18,7 +18,7 @@ import (
 // mockProposalContextProvider creates a mock proposal context provider for tests.
 func mockProposalContextProvider(_ cldf.Environment) (analyzer.ProposalContext, error) {
 	// Return a nil context - this is intentional for testing as we don't need actual proposal context
-	return nil, nil //nolint:nilnil
+	return nil, nil //nolint:nilnil // nil,nil is intentional here
 }
 
 // newTestCommand creates a command with test configuration.

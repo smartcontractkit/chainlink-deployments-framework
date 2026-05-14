@@ -592,8 +592,8 @@ func TestBlockscoutVerifier_Verify_UsesContractTypeWhenMetadataNameEmpty(t *test
 				"result": []map[string]string{{"input": "0xbbbb"}},
 			})
 		case r.Method == http.MethodPost && action == "verifysourcecode":
-			assert.NoError(t, r.ParseForm())
-			sawContractName = r.FormValue("contractname")
+			assert.NoError(t, r.ParseForm())              //nolint:gosec // test server with controlled requests
+			sawContractName = r.FormValue("contractname") //nolint:gosec // test server with controlled requests
 			w.Header().Set("Content-Type", "application/json")
 			_ = json.NewEncoder(w).Encode(map[string]string{"status": "0", "message": "bad", "result": "x"})
 		default:

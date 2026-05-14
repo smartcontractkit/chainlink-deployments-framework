@@ -42,7 +42,7 @@ func LoadEnvConfig(dom fdomain.Domain, env string) (*cfgenv.Config, error) {
 		return cfg, nil
 	}
 
-	fp := filepath.Join(dom.ConfigLocalFilePath(env))
+	fp := filepath.Join(dom.ConfigLocalFilePath(env)) //nolint:gocritic // Join used to clean up the file path
 
 	return cfgenv.Load(fp)
 }

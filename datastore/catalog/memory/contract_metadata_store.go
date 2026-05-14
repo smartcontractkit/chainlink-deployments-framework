@@ -24,8 +24,7 @@ func newCatalogContractMetadataStore(storage *memoryStorage) *memoryContractMeta
 func (s *memoryContractMetadataStore) Get(ctx context.Context, key datastore.ContractMetadataKey, options ...datastore.GetOption) (datastore.ContractMetadata, error) {
 	ignoreTransactions := false
 	for _, option := range options {
-		switch option {
-		case datastore.IgnoreTransactionsGetOption:
+		if option == datastore.IgnoreTransactionsGetOption {
 			ignoreTransactions = true
 		}
 	}

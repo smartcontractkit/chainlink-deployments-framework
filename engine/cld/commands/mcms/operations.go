@@ -126,8 +126,7 @@ func executeChainCommand(ctx context.Context, lggr logger.Logger, cfg *forkConfi
 			if familyErr != nil {
 				lggr.Errorf("error getting chain family: %w", familyErr)
 			}
-			switch family {
-			case chainsel.FamilyEVM:
+			if family == chainsel.FamilyEVM {
 				err = cldf.DecodeErr(bindings.ManyChainMultiSigABI, err)
 
 				return fmt.Errorf("error executing chain op %d: %w", i, err)
@@ -227,7 +226,7 @@ func timelockExecuteChainCommand(
 		if err = executable.IsOperationReady(ctx, i); err != nil {
 			err = fmt.Errorf("operation %d is not ready to be executed: %w", i, err)
 			report.Status, report.Error = cldfchangeset.StatusFailed, err.Error()
-			return reports, err //nolint:nlreturn
+			return reports, err //nolint:nlreturn // early return is clear here
 		}
 
 		report.Output.TransactionResult, err = executable.Execute(ctx, i, executeOptions...)
@@ -442,7 +441,7 @@ func addCallProxyOption(
 		}
 
 		// if not found, search in the addressbook
-		addressesForChain, ierr := cfg.env.ExistingAddresses.AddressesForChain(cfg.chainSelector) //nolint:staticcheck
+		addressesForChain, ierr := cfg.env.ExistingAddresses.AddressesForChain(cfg.chainSelector) //nolint:staticcheck // using deprecated API intentionally
 		if ierr != nil {
 			lggr.Infof("unable to get addresses for chain %d in addressbook: %s", cfg.chainSelector, ierr.Error())
 

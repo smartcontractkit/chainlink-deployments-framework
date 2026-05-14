@@ -6,13 +6,13 @@ import (
 )
 
 // AddressBookMergerFunc merges a changeset's address book to the main address book.
-type AddressBookMergerFunc func(envDir domain.EnvDir, name, timestamp string) error
+type AddressBookMergerFunc func(envDir domain.EnvDir, name, timestamp string) error //nolint:revive // renaming would be a breaking change
 
 // AddressBookMigratorFunc migrates the address book to the new datastore format.
-type AddressBookMigratorFunc func(envDir domain.EnvDir) error
+type AddressBookMigratorFunc func(envDir domain.EnvDir) error //nolint:revive // renaming would be a breaking change
 
 // AddressBookRemoverFunc removes a changeset's address book entries from the main address book.
-type AddressBookRemoverFunc func(envDir domain.EnvDir, name, timestamp string) error
+type AddressBookRemoverFunc func(envDir domain.EnvDir, name, timestamp string) error //nolint:revive // renaming would be a breaking change
 
 // defaultAddressBookMerger is the production implementation that merges address books.
 func defaultAddressBookMerger(envDir domain.EnvDir, name, timestamp string) error {

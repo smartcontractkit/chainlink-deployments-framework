@@ -78,11 +78,8 @@ func TestMemoryDatastore_WithTransaction_Commit(t *testing.T) {
 			ChainSelector: 1,
 			Metadata:      map[string]any{"name": "TestChain"},
 		}
-		if addErr := catalog.ChainMetadata().Add(txCtx, chainMetadata); addErr != nil {
-			return addErr
-		}
 
-		return nil
+		return catalog.ChainMetadata().Add(txCtx, chainMetadata)
 	})
 	require.NoError(t, err)
 

@@ -293,7 +293,7 @@ func Test_EnvDir_MutableDataStore(t *testing.T) {
 				err := os.Mkdir(filepath.Join(fixture.domain.DirPath(), "test"), 0755)
 				require.NoError(t, err)
 
-				err = os.Mkdir(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath()), 0755)
+				err = os.Mkdir(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath()), 0755) //nolint:gocritic // Join used to clean up the file path
 				require.NoError(t, err)
 
 				ar, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), AddressRefsFileName))
@@ -333,7 +333,7 @@ func Test_EnvDir_MutableDataStore(t *testing.T) {
 				err := os.Mkdir(filepath.Join(fixture.domain.DirPath(), "test"), 0755)
 				require.NoError(t, err)
 
-				err = os.Mkdir(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath()), 0755)
+				err = os.Mkdir(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath()), 0755) //nolint:gocritic // Join used to clean up the file path
 				require.NoError(t, err)
 
 				ar, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), AddressRefsFileName))
@@ -373,7 +373,7 @@ func Test_EnvDir_MutableDataStore(t *testing.T) {
 				err := os.Mkdir(filepath.Join(fixture.domain.DirPath(), "test"), 0755)
 				require.NoError(t, err)
 
-				err = os.Mkdir(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath()), 0755)
+				err = os.Mkdir(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath()), 0755) //nolint:gocritic // Join used to clean up the file path
 				require.NoError(t, err)
 
 				ar, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), AddressRefsFileName))
@@ -413,7 +413,7 @@ func Test_EnvDir_MutableDataStore(t *testing.T) {
 				err := os.Mkdir(filepath.Join(fixture.domain.DirPath(), "test"), 0755)
 				require.NoError(t, err)
 
-				err = os.Mkdir(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath()), 0755)
+				err = os.Mkdir(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath()), 0755) //nolint:gocritic // Join used to clean up the file path
 				require.NoError(t, err)
 
 				ar, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), AddressRefsFileName))
@@ -452,7 +452,7 @@ func Test_EnvDir_MutableDataStore(t *testing.T) {
 				err := os.Mkdir(filepath.Join(fixture.domain.DirPath(), "test"), 0755)
 				require.NoError(t, err)
 
-				err = os.Mkdir(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath()), 0755)
+				err = os.Mkdir(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath()), 0755) //nolint:gocritic // Join used to clean up the file path
 				require.NoError(t, err)
 
 				ar, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), AddressRefsFileName))
@@ -1328,7 +1328,7 @@ func Test_EnvDir_DataStore(t *testing.T) {
 				err := os.Mkdir(filepath.Join(fixture.domain.DirPath(), "test"), 0755)
 				require.NoError(t, err)
 
-				err = os.Mkdir(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath()), 0755)
+				err = os.Mkdir(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath()), 0755) //nolint:gocritic // Join used to clean up the file path
 				require.NoError(t, err)
 
 				ar, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), AddressRefsFileName))
@@ -1368,7 +1368,7 @@ func Test_EnvDir_DataStore(t *testing.T) {
 				err := os.Mkdir(filepath.Join(fixture.domain.DirPath(), "test"), 0755)
 				require.NoError(t, err)
 
-				err = os.Mkdir(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath()), 0755)
+				err = os.Mkdir(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath()), 0755) //nolint:gocritic // Join used to clean up the file path
 				require.NoError(t, err)
 
 				ar, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), AddressRefsFileName))
@@ -1408,7 +1408,7 @@ func Test_EnvDir_DataStore(t *testing.T) {
 				err := os.Mkdir(filepath.Join(fixture.domain.DirPath(), "test"), 0755)
 				require.NoError(t, err)
 
-				err = os.Mkdir(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath()), 0755)
+				err = os.Mkdir(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath()), 0755) //nolint:gocritic // Join used to clean up the file path
 				require.NoError(t, err)
 
 				ar, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), AddressRefsFileName))
@@ -1448,7 +1448,7 @@ func Test_EnvDir_DataStore(t *testing.T) {
 				err := os.Mkdir(filepath.Join(fixture.domain.DirPath(), "test"), 0755)
 				require.NoError(t, err)
 
-				err = os.Mkdir(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath()), 0755)
+				err = os.Mkdir(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath()), 0755) //nolint:gocritic // Join used to clean up the file path
 				require.NoError(t, err)
 
 				ar, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), AddressRefsFileName))
@@ -1488,7 +1488,7 @@ func Test_EnvDir_DataStore(t *testing.T) {
 				err := os.Mkdir(filepath.Join(fixture.domain.DirPath(), "test"), 0755)
 				require.NoError(t, err)
 
-				err = os.Mkdir(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath()), 0755)
+				err = os.Mkdir(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath()), 0755) //nolint:gocritic // Join used to clean up the file path
 				require.NoError(t, err)
 
 				ar, err := os.Create(filepath.Join(fixture.domain.EnvDir("test").DataStoreDirPath(), AddressRefsFileName))

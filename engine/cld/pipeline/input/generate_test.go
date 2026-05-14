@@ -24,7 +24,7 @@ func (g *generateStubChangeset) VerifyPreconditions(_ fdeployment.Environment, _
 
 var _ fdeployment.ChangeSetV2[any] = (*generateStubChangeset)(nil)
 
-//nolint:paralleltest
+//nolint:paralleltest // test uses shared filesystem state
 func TestGenerate_ArrayFormat(t *testing.T) {
 	dir := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "domains"), 0o755))
@@ -38,7 +38,7 @@ changesets:
       payload:
         x: 1
 `
-	require.NoError(t, os.WriteFile(filepath.Join(inputsDir, "in.yaml"), []byte(inputsContent), 0o644)) //nolint:gosec
+	require.NoError(t, os.WriteFile(filepath.Join(inputsDir, "in.yaml"), []byte(inputsContent), 0o644)) //nolint:gosec // test with controlled paths
 
 	originalWd, _ := os.Getwd()
 	require.NoError(t, os.Chdir(dir))
@@ -66,7 +66,7 @@ changesets:
 	require.JSONEq(t, "{\n  \"changesets\": [\n    {\n      \"0001_cs1\": {\n        \"payload\": {\n          \"x\": 1\n        }\n      }\n    }\n  ],\n  \"domain\": \"mydomain\",\n  \"environment\": \"testnet\"\n}", got)
 }
 
-//nolint:paralleltest
+//nolint:paralleltest // test uses shared filesystem state
 func TestGenerate_ObjectFormatRejected(t *testing.T) {
 	dir := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "domains"), 0o755))
@@ -80,7 +80,7 @@ changesets:
     payload:
       v: 1
 `
-	require.NoError(t, os.WriteFile(filepath.Join(inputsDir, "in.yaml"), []byte(inputsContent), 0o644)) //nolint:gosec
+	require.NoError(t, os.WriteFile(filepath.Join(inputsDir, "in.yaml"), []byte(inputsContent), 0o644)) //nolint:gosec // test with controlled paths
 
 	originalWd, _ := os.Getwd()
 	require.NoError(t, os.Chdir(dir))
@@ -100,7 +100,7 @@ changesets:
 	require.EqualError(t, err, "changesets must be an array (sequence)")
 }
 
-//nolint:paralleltest
+//nolint:paralleltest // test uses shared filesystem state
 func TestGenerate_InvalidChangesetsFormat(t *testing.T) {
 	dir := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "domains"), 0o755))
@@ -111,7 +111,7 @@ func TestGenerate_InvalidChangesetsFormat(t *testing.T) {
 domain: mydomain
 changesets: "not-object-or-array"
 `
-	require.NoError(t, os.WriteFile(filepath.Join(inputsDir, "in.yaml"), []byte(inputsContent), 0o644)) //nolint:gosec
+	require.NoError(t, os.WriteFile(filepath.Join(inputsDir, "in.yaml"), []byte(inputsContent), 0o644)) //nolint:gosec // test with controlled paths
 
 	originalWd, _ := os.Getwd()
 	require.NoError(t, os.Chdir(dir))
@@ -132,7 +132,7 @@ changesets: "not-object-or-array"
 	require.Equal(t, "changesets must be an array (sequence)", err.Error())
 }
 
-//nolint:paralleltest
+//nolint:paralleltest // test uses shared filesystem state
 func TestGenerate_ResolverNotRegistered(t *testing.T) {
 	dir := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "domains"), 0o755))
@@ -146,7 +146,7 @@ changesets:
       payload:
         x: 1
 `
-	require.NoError(t, os.WriteFile(filepath.Join(inputsDir, "in.yaml"), []byte(inputsContent), 0o644)) //nolint:gosec
+	require.NoError(t, os.WriteFile(filepath.Join(inputsDir, "in.yaml"), []byte(inputsContent), 0o644)) //nolint:gosec // test with controlled paths
 
 	originalWd, _ := os.Getwd()
 	require.NoError(t, os.Chdir(dir))
@@ -172,7 +172,7 @@ changesets:
 	require.Equal(t, "resolver for changeset \"0001_cs1\" is not registered with the resolver manager", err.Error())
 }
 
-//nolint:paralleltest
+//nolint:paralleltest // test uses shared filesystem state
 func TestGenerate_ArrayItemInvalidFormat(t *testing.T) {
 	dir := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "domains"), 0o755))
@@ -184,7 +184,7 @@ domain: mydomain
 changesets:
   - "not-a-mapping"
 `
-	require.NoError(t, os.WriteFile(filepath.Join(inputsDir, "in.yaml"), []byte(inputsContent), 0o644)) //nolint:gosec
+	require.NoError(t, os.WriteFile(filepath.Join(inputsDir, "in.yaml"), []byte(inputsContent), 0o644)) //nolint:gosec // test with controlled paths
 
 	originalWd, _ := os.Getwd()
 	require.NoError(t, os.Chdir(dir))

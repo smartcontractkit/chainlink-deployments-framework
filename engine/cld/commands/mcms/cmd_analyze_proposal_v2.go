@@ -150,11 +150,7 @@ func runAnalyzeProposalV2(cmd *cobra.Command, cfg Config, f analyzeProposalV2Fla
 		return nil
 	}
 
-	if err := os.WriteFile(f.output, out.Bytes(), 0o600); err != nil {
-		return err
-	}
-
-	return nil
+	return os.WriteFile(f.output, out.Bytes(), 0o600)
 }
 
 func registerProposalAnalyzers(engine proposalanalysis.AnalyzerEngine, analyzers []proposalanalysisanalyzer.BaseAnalyzer) error {

@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/aws/aws-sdk-go/aws"
-	kmslib "github.com/aws/aws-sdk-go/service/kms"
+	"github.com/aws/aws-sdk-go/aws"                //nolint:staticcheck // migration to aws-sdk-go-v2 is out of scope
+	kmslib "github.com/aws/aws-sdk-go/service/kms" //nolint:staticcheck // migration to aws-sdk-go-v2 is out of scope
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/fbsobreira/gotron-sdk/pkg/address"
 
@@ -162,6 +162,6 @@ func isValidRecovery(sig []byte, hash []byte, expectedPubKey *ecdsa.PublicKey) b
 	}
 
 	// Check if the recovered public key matches the expected one
-	return recoveredPub.X.Cmp(expectedPubKey.X) == 0 && recoveredPub.Y.Cmp(expectedPubKey.Y) == 0 &&
+	return recoveredPub.X.Cmp(expectedPubKey.X) == 0 && recoveredPub.Y.Cmp(expectedPubKey.Y) == 0 && //nolint:staticcheck // deprecated ecdsa fields, migration pending
 		r.Sign() > 0 && s.Sign() > 0
 }

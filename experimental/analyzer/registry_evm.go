@@ -71,7 +71,7 @@ func (reg environmentEVMRegistry) AddABI(typeAndVersion deployment.TypeAndVersio
 
 // NewEnvironmentEVMRegistry creates a new environmentEVMRegistry from the provided ABI mappings and domain name.
 func NewEnvironmentEVMRegistry(env deployment.Environment, abiMappings map[string]string) (*environmentEVMRegistry, error) {
-	addressesByChain, errAddrBook := env.ExistingAddresses.Addresses() //nolint:staticcheck
+	addressesByChain, errAddrBook := env.ExistingAddresses.Addresses() //nolint:staticcheck // using deprecated API intentionally
 	if errAddrBook != nil {
 		return nil, errAddrBook
 	}

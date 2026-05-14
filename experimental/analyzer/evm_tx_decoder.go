@@ -159,7 +159,7 @@ func BytesAndAddressAnalyzer(_ string, argAbi *abi.Type, argVal any, _ []FieldAn
 		argArrTyp := reflect.ValueOf(argVal)
 		argArr := make([]byte, argArrTyp.Len())
 		for i := range argArrTyp.Len() {
-			argArr[i] = byte(argArrTyp.Index(i).Uint())
+			argArr[i] = byte(argArrTyp.Index(i).Uint()) //nolint:gosec // value is always in byte range from ABI decoding
 		}
 		if argAbi.T == abi.AddressTy {
 			return AddressField{Value: common.BytesToAddress(argArr).Hex()}

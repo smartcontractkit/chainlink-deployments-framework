@@ -129,12 +129,11 @@ func (m *AddressBookMap) save(chainSelector uint64, address string, typeAndVersi
 		if address == "" || address == common.HexToAddress("0x0").Hex() {
 			return fmt.Errorf("address cannot be empty: %w", ErrInvalidAddress)
 		}
-		if common.IsHexAddress(address) {
-			// IMPORTANT: WE ALWAYS STANDARDIZE ETHEREUM ADDRESS STRINGS TO EIP55
-			address = common.HexToAddress(address).Hex()
-		} else {
+		if !common.IsHexAddress(address) {
 			return fmt.Errorf("address %s is not a valid Ethereum address, only Ethereum addresses supported for EVM chains: %w", address, ErrInvalidAddress)
 		}
+		// IMPORTANT: WE ALWAYS STANDARDIZE ETHEREUM ADDRESS STRINGS TO EIP55
+		address = common.HexToAddress(address).Hex()
 	}
 
 	// TODO NONEVM-960: Add validation for non-EVM chain addresses

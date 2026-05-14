@@ -5,7 +5,7 @@ import (
 	"math/big"
 	"testing"
 
-	kmslib "github.com/aws/aws-sdk-go/service/kms"
+	kmslib "github.com/aws/aws-sdk-go/service/kms" //nolint:staticcheck // migration to aws-sdk-go-v2 is out of scope
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

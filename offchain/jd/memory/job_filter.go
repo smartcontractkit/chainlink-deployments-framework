@@ -31,7 +31,7 @@ func jobMatchesFilter(job *jobv1.Job, filter *jobv1.ListJobsRequest_Filter) bool
 
 	// Check job IDs
 	if len(filter.Ids) > 0 {
-		if !jobMatchesJobIds(job, filter.Ids) {
+		if !jobMatchesJobIDs(job, filter.Ids) {
 			return false
 		}
 	}
@@ -45,7 +45,7 @@ func jobMatchesFilter(job *jobv1.Job, filter *jobv1.ListJobsRequest_Filter) bool
 
 	// Check node IDs
 	if len(filter.NodeIds) > 0 {
-		if !jobMatchesNodeIds(job, filter.NodeIds) {
+		if !jobMatchesNodeIDs(job, filter.NodeIds) {
 			return false
 		}
 	}
@@ -62,9 +62,9 @@ func jobMatchesFilter(job *jobv1.Job, filter *jobv1.ListJobsRequest_Filter) bool
 	return true
 }
 
-// jobMatchesJobIds checks if a job's ID is in the provided list of job IDs.
-func jobMatchesJobIds(job *jobv1.Job, jobIds []string) bool {
-	return slices.Contains(jobIds, job.Id)
+// jobMatchesJobIDs checks if a job's ID is in the provided list of job IDs.
+func jobMatchesJobIDs(job *jobv1.Job, jobIDs []string) bool {
+	return slices.Contains(jobIDs, job.Id)
 }
 
 // jobMatchesUuids checks if a job's UUID is in the provided list of UUIDs.
@@ -72,9 +72,9 @@ func jobMatchesUuids(job *jobv1.Job, uuids []string) bool {
 	return slices.Contains(uuids, job.Uuid)
 }
 
-// jobMatchesNodeIds checks if a job's node ID is in the provided list of node IDs.
-func jobMatchesNodeIds(job *jobv1.Job, nodeIds []string) bool {
-	return slices.Contains(nodeIds, job.NodeId)
+// jobMatchesNodeIDs checks if a job's node ID is in the provided list of node IDs.
+func jobMatchesNodeIDs(job *jobv1.Job, nodeIDs []string) bool {
+	return slices.Contains(nodeIDs, job.NodeId)
 }
 
 // jobMatchesDeletedFilter checks if a job should be included based on its deleted status.

@@ -130,8 +130,6 @@ func LoadFork(
 		if err != nil {
 			if errors.Is(err, offchain.ErrEndpointsRequired) {
 				lggr.Warn("Skipping JD initialization: gRPC endpoint is not set in config")
-			} else {
-				return ForkedEnvironment{}, fmt.Errorf("failed to load offchain client: %w", err)
 			}
 
 			return ForkedEnvironment{}, fmt.Errorf("failed to load offchain client: %w", err)
@@ -209,8 +207,8 @@ func (e ForkedEnvironment) ApplyChangesetOutput(ctx context.Context, output fdep
 	}
 
 	// Merge new addresses into address book
-	if output.AddressBook != nil { //nolint
-		err := e.ExistingAddresses.Merge(output.AddressBook) //nolint
+	if output.AddressBook != nil { //nolint:staticcheck // deprecated API used for backward compatibility
+		err := e.ExistingAddresses.Merge(output.AddressBook) //nolint:staticcheck // deprecated API used for backward compatibility
 		if err != nil {
 			return ForkedEnvironment{}, fmt.Errorf("failed to merge new addresses into address book: %w", err)
 		}

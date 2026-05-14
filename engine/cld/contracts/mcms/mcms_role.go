@@ -1,7 +1,7 @@
 package mcms
 
 // MCMSRole represents a named role within the MCMS system (e.g. proposer, bypasser, canceller).
-type MCMSRole string
+type MCMSRole string //nolint:revive // renaming would be a breaking change
 
 const (
 	ProposerRole  MCMSRole = "PROPOSER"

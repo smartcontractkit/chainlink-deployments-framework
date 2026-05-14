@@ -15,12 +15,13 @@ import (
 	sollib "github.com/gagliardetto/solana-go"
 	solrpc "github.com/gagliardetto/solana-go/rpc"
 	chainsel "github.com/smartcontractkit/chain-selectors"
-	solCommonUtil "github.com/smartcontractkit/chainlink-ccip/chains/solana/utils/common"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/freeport"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
+
+	solCommonUtil "github.com/smartcontractkit/chainlink-ccip/chains/solana/utils/common"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
@@ -59,11 +60,8 @@ func (c CTFChainProviderConfig) validate() error {
 	if c.ProgramIDs == nil {
 		return errors.New("program ids is required")
 	}
-	if err := isValidFilepath(c.ProgramsPath); err != nil {
-		return err
-	}
 
-	return nil
+	return isValidFilepath(c.ProgramsPath)
 }
 
 var _ chain.Provider = (*CTFChainProvider)(nil)

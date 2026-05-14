@@ -24,8 +24,7 @@ func newCatalogAddressRefStore(storage *memoryStorage) *memoryAddressRefStore {
 func (s *memoryAddressRefStore) Get(ctx context.Context, key datastore.AddressRefKey, options ...datastore.GetOption) (datastore.AddressRef, error) {
 	ignoreTransactions := false
 	for _, option := range options {
-		switch option {
-		case datastore.IgnoreTransactionsGetOption:
+		if option == datastore.IgnoreTransactionsGetOption {
 			ignoreTransactions = true
 		}
 	}

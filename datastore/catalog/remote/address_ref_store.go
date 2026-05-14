@@ -40,8 +40,7 @@ func newCatalogAddressRefStore(cfg catalogAddressRefStoreConfig) *catalogAddress
 func (s *catalogAddressRefStore) Get(_ context.Context, key datastore.AddressRefKey, options ...datastore.GetOption) (datastore.AddressRef, error) {
 	ignoreTransactions := false
 	for _, option := range options {
-		switch option {
-		case datastore.IgnoreTransactionsGetOption:
+		if option == datastore.IgnoreTransactionsGetOption {
 			ignoreTransactions = true
 		}
 	}

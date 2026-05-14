@@ -18,7 +18,7 @@ const defaultBinary = "cre"
 const envCREAPIKey = "CRE_API_KEY"
 
 // CLIRunnerOption configures a [cliRunner] from [NewCLIRunner].
-type CLIRunnerOption func(*cliRunner)
+type CLIRunnerOption func(*cliRunner) //nolint:revive // renaming would be a breaking change
 
 // cliRunner runs the CRE CLI via os/exec. Run executes the binary and captures stdout/stderr.
 // It implements [fcre.CLIRunner].

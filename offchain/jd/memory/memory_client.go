@@ -33,7 +33,7 @@ var _ offchain.Client = (*MemoryJobDistributor)(nil)
 // MemoryJobDistributor is an in-memory implementation of the Job Distributor client.
 // It stores jobs, proposals, nodes, and keypairs in memory without persisting to any backend.
 // This implementation is thread-safe and can be used concurrently from multiple goroutines.
-type MemoryJobDistributor struct {
+type MemoryJobDistributor struct { //nolint:revive // renaming would be a breaking change
 	mu sync.RWMutex // protects all fields below
 
 	jobs      map[string]*jobv1.Job

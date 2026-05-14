@@ -72,11 +72,8 @@ func (c Config) Validate() error {
 	if err := validateProposalAnalyzers(c.ProposalAnalyzers); err != nil {
 		return err
 	}
-	if err := validateProposalRenderers(c.ProposalRenderers); err != nil {
-		return err
-	}
 
-	return nil
+	return validateProposalRenderers(c.ProposalRenderers)
 }
 
 // deps returns the Deps with defaults applied.

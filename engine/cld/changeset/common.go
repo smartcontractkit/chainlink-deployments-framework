@@ -265,7 +265,7 @@ func (f WrappedChangeSet[C]) WithConfigResolver(resolver fresolvers.ConfigResolv
 
 var _ ConfiguredChangeSet = ChangeSetImpl[any]{}
 
-type ChangeSetImpl[C any] struct {
+type ChangeSetImpl[C any] struct { //nolint:revive // renaming would be a breaking change
 	changeset               WrappedChangeSet[C]
 	configProvider          func() (C, error)
 	configProviderWithInput func(inputStr string) (C, error)

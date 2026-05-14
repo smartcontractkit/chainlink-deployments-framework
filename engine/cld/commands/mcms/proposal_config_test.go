@@ -146,7 +146,7 @@ func TestLoadProposalConfig(t *testing.T) {
 				EnvironmentLoader: nopEnvLoader,
 			},
 			proposalCtxProvider: func(_ cldf.Environment) (analyzer.ProposalContext, error) {
-				return nil, nil //nolint:nilnil
+				return nil, nil //nolint:nilnil // nil,nil is intentional here
 			},
 			assert: func(t *testing.T, got *ProposalConfig, err error) {
 				t.Helper()

@@ -60,10 +60,8 @@ func TestConfigureEnvironmentOptions(t *testing.T) {
 			dryRun:    false,
 		},
 		{
-			name: "unknown changeset",
-			regSetup: func() *cs.ChangesetsRegistry {
-				return cs.NewChangesetsRegistry()
-			},
+			name:      "unknown changeset",
+			regSetup:  cs.NewChangesetsRegistry,
 			changeset: "0001_test",
 			dryRun:    false,
 			wantErr:   "changeset '0001_test' not found",
@@ -110,10 +108,8 @@ func TestGetChainOverrides(t *testing.T) {
 			want:      nil,
 		},
 		{
-			name: "unknown changeset",
-			regSetup: func() *cs.ChangesetsRegistry {
-				return cs.NewChangesetsRegistry()
-			},
+			name:      "unknown changeset",
+			regSetup:  cs.NewChangesetsRegistry,
 			changeset: "0001_missing",
 			wantErr:   "changeset '0001_missing' not found",
 		},

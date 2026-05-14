@@ -104,6 +104,6 @@ func TestChain_ReadOnly(t *testing.T) {
 	require.NoError(t, err)
 
 	// write with read-only client should fail
-	_, _, _, err = aptosmcms.DeployToResourceAccount(roAptosChain.DeployerSigner, roAptosChain.Client, seed) //nolint:dogsled
+	_, _, _, err = aptosmcms.DeployToResourceAccount(roAptosChain.DeployerSigner, roAptosChain.Client, seed) //nolint:dogsled // not interested in all return values
 	require.ErrorContains(t, err, "INSUFFICIENT_BALANCE_FOR_TRANSACTION_FEE")
 }

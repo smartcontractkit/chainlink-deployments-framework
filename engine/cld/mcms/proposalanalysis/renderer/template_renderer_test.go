@@ -138,7 +138,7 @@ func TestWithTemplateFuncs(t *testing.T) {
 	t.Parallel()
 
 	customFuncs := template.FuncMap{
-		"shout": func(s string) string { return strings.ToUpper(s) },
+		"shout": strings.ToUpper,
 	}
 
 	r, err := NewMarkdownRenderer(

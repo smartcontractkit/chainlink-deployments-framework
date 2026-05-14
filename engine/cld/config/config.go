@@ -50,12 +50,11 @@ func Load(dom fdomain.Domain, env string, lggr logger.Logger) (*Config, error) {
 
 	jiraCfg, err := LoadJiraConfig(dom)
 	if err != nil {
-		if errors.Is(err, ErrJiraConfigNotFound) {
-			lggr.Infof("JIRA config not available: %v", err)
-			jiraCfg = nil
-		} else {
+		if !errors.Is(err, ErrJiraConfigNotFound) {
 			return nil, fmt.Errorf("failed to load JIRA config: %w", err)
 		}
+		lggr.Infof("JIRA config not available: %v", err)
+		jiraCfg = nil
 	}
 
 	datastoreType, err := LoadDatastoreType(dom, env)

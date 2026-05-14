@@ -14,7 +14,7 @@ import (
 	"strings"
 )
 
-func resolveConfigHttp(ctx context.Context, src ConfigSource, httpClient *http.Client, workDir string) (string, error) {
+func resolveConfigHTTP(ctx context.Context, src ConfigSource, httpClient *http.Client, workDir string) (string, error) {
 	if err := src.Validate(); err != nil {
 		return "", err
 	}

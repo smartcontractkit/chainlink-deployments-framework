@@ -262,7 +262,7 @@ func TestEnsureTimeout(t *testing.T) {
 
 	tests := []struct {
 		name          string
-		parentContext context.Context //nolint:containedctx
+		parentContext context.Context //nolint:containedctx // test struct embeds context for convenience
 		timeout       time.Duration
 	}{
 		{

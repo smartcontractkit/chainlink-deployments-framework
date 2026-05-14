@@ -16,12 +16,13 @@ import (
 	"github.com/fbsobreira/gotron-sdk/pkg/http/common"
 	"github.com/fbsobreira/gotron-sdk/pkg/http/soliditynode"
 	chainsel "github.com/smartcontractkit/chain-selectors"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
-	"github.com/smartcontractkit/chainlink-tron/relayer/sdk"
 	"github.com/smartcontractkit/freeport"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
+	"github.com/smartcontractkit/chainlink-tron/relayer/sdk"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron"
@@ -106,17 +107,17 @@ func (p *CTFChainProvider) Initialize(_ context.Context) (chain.BlockChain, erro
 	fullNodeURL, solidityNodeURL := p.startContainer(chainID)
 
 	// Parse URLs for node connections
-	fullNodeUrlObj, err := url.Parse(fullNodeURL)
+	fullNodeURLObj, err := url.Parse(fullNodeURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse full node URL: %w", err)
 	}
-	solidityNodeUrlObj, err := url.Parse(solidityNodeURL)
+	solidityNodeURLObj, err := url.Parse(solidityNodeURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse solidity node URL: %w", err)
 	}
 
 	// Create a client that wraps both full node and solidity node connections
-	combinedClient, err := sdk.CreateCombinedClient(fullNodeUrlObj, solidityNodeUrlObj)
+	combinedClient, err := sdk.CreateCombinedClient(fullNodeURLObj, solidityNodeURLObj)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create combined client: %w", err)
 	}
@@ -285,13 +286,13 @@ func (p *CTFChainProvider) startContainer(chainID string) (string, string) {
 
 // waitForTronNode waits for the TRON node to be ready by checking if it can get the current block.
 func (p *CTFChainProvider) waitForTronNode(fullNodeURL, solidityNodeURL string) {
-	fullNodeUrlObj, err := url.Parse(fullNodeURL)
+	fullNodeURLObj, err := url.Parse(fullNodeURL)
 	require.NoError(p.t, err, "Failed to parse full node URL")
 
-	solidityNodeUrlObj, err := url.Parse(solidityNodeURL)
+	solidityNodeURLObj, err := url.Parse(solidityNodeURL)
 	require.NoError(p.t, err, "Failed to parse solidity node URL")
 
-	combinedClient, err := sdk.CreateCombinedClient(fullNodeUrlObj, solidityNodeUrlObj)
+	combinedClient, err := sdk.CreateCombinedClient(fullNodeURLObj, solidityNodeURLObj)
 	require.NoError(p.t, err, "Failed to create combined client")
 
 	var ready bool
@@ -305,12 +306,12 @@ func (p *CTFChainProvider) waitForTronNode(fullNodeURL, solidityNodeURL string) 
 
 		if blockInfo != nil && len(blockInfo.BlockID) > 0 {
 			// Extract chain ID from block for verification
-			blockId := blockInfo.BlockID
-			chainIdHex := blockId[len(blockId)-8:]
-			chainIdInt := new(big.Int)
-			chainIdInt.SetString(chainIdHex, 16)
-			chainId := chainIdInt.String()
-			p.t.Logf("TRON node ready, chain ID: %s", chainId)
+			blockID := blockInfo.BlockID
+			chainIDHex := blockID[len(blockID)-8:]
+			chainIDInt := new(big.Int)
+			chainIDInt.SetString(chainIDHex, 16)
+			chainID := chainIDInt.String()
+			p.t.Logf("TRON node ready, chain ID: %s", chainID)
 			ready = true
 
 			break

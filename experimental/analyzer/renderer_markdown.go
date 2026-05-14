@@ -251,7 +251,7 @@ func (r *MarkdownRenderer) initTemplates() {
 		"hexPreview":     hexPreview,
 		"compactValue":   compactValue,
 		"truncateMiddle": truncateMiddle,
-		"hasPrefix":      func(s, prefix string) bool { return strings.HasPrefix(s, prefix) },
+		"hasPrefix":      strings.HasPrefix,
 		"contains":       strings.Contains,
 		"replace":        strings.ReplaceAll,
 		"len":            func(s string) int { return len(s) },
@@ -695,7 +695,7 @@ func arrayPreview(elems []FieldValue, ctx *FieldContext) string {
 	}
 	parts := make([]string, 0, maxVal)
 	for i := range maxVal {
-		parts = append(parts, compactValue(elems[i], ctx))
+		parts = append(parts, compactValue(elems[i], ctx)) //nolint:gosec // maxVal is capped above
 	}
 	more := ""
 	if n > maxVal {

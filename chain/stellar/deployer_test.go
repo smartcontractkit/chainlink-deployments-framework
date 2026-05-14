@@ -380,11 +380,11 @@ func (d *Deployer) buildAndSubmitTransaction(ctx context.Context, sourceAccount 
 	}
 
 	switch submitResult.Status {
-	case "PENDING", "DUPLICATE": //nolint:goconst
+	case "PENDING", "DUPLICATE": //nolint:goconst // test constants are acceptable as literals
 		// Transaction was accepted, continue to wait for confirmation
-	case "TRY_AGAIN_LATER": //nolint:goconst
+	case "TRY_AGAIN_LATER": //nolint:goconst // test constants are acceptable as literals
 		return nil, errors.New("transaction submission failed: server overloaded, try again later")
-	case "ERROR": //nolint:goconst
+	case "ERROR": //nolint:goconst // test constants are acceptable as literals
 		if submitResult.ErrorResultXDR != "" {
 			return nil, fmt.Errorf("transaction rejected: %v (diagnostics: %v)", submitResult.ErrorResultXDR, submitResult.DiagnosticEventsXDR)
 		}
@@ -872,7 +872,7 @@ func (d *Deployer) InvokeContract(ctx context.Context, contractID string, functi
 
 func extractReturnValue(meta *xdr.TransactionMeta) (*xdr.ScVal, error) {
 	if meta == nil {
-		return nil, nil //nolint:nilnil
+		return nil, nil //nolint:nilnil // nil,nil is valid for this interface
 	}
 
 	// Versions below refer to protocol versions (20 and 21+)
@@ -880,14 +880,14 @@ func extractReturnValue(meta *xdr.TransactionMeta) (*xdr.ScVal, error) {
 	case 4:
 		v := meta.MustV4()
 		if v.SorobanMeta == nil {
-			return nil, nil //nolint:nilnil
+			return nil, nil //nolint:nilnil // nil,nil is valid for this interface
 		}
 
 		return v.SorobanMeta.ReturnValue, nil // V4 ReturnValue is already a pointer
 	case 3:
 		v := meta.MustV3()
 		if v.SorobanMeta == nil {
-			return nil, nil //nolint:nilnil
+			return nil, nil //nolint:nilnil // nil,nil is valid for this interface
 		}
 
 		return &v.SorobanMeta.ReturnValue, nil // V3 ReturnValue is a value, need address-of
@@ -1031,7 +1031,7 @@ func (d *Deployer) SimulateContract(ctx context.Context, contractID string, func
 
 	// Extract result from simulation
 	if len(simResult.Results) == 0 {
-		return nil, nil //nolint:nilnil
+		return nil, nil //nolint:nilnil // nil,nil is valid for this interface
 	}
 
 	// The result is returned as a base64-encoded XDR ScVal
@@ -1041,7 +1041,7 @@ func (d *Deployer) SimulateContract(ctx context.Context, contractID string, func
 	// Try to extract from the result - SDK versions may vary
 	// Use the struct's string representation as fallback
 	if result.ReturnValueXDR == nil || *result.ReturnValueXDR == "" {
-		return nil, nil //nolint:nilnil
+		return nil, nil //nolint:nilnil // nil,nil is valid for this interface
 	}
 
 	// Access via reflection or try common field patterns

@@ -138,22 +138,20 @@ func Test_CTFChainProvider_Initialize(t *testing.T) {
 			got, err := p.Initialize(context.Background())
 			if tt.wantErr != "" {
 				require.ErrorContains(t, err, tt.wantErr)
-			} else {
+			} else if err == nil {
 				// Note: This test may fail if Docker is not running, which is expected
 				// The test validates the code paths up to container startup
-				if err == nil {
-					require.NotNil(t, p.chain)
+				require.NotNil(t, p.chain)
 
-					// Check that the chain is of type stellar.Chain and has the expected fields
-					gotChain, ok := got.(stellar.Chain)
-					require.True(t, ok, "expected got to be of type stellar.Chain")
-					assert.Equal(t, tt.giveSelector, gotChain.Selector)
-					assert.NotNil(t, gotChain.Client)
-					assert.NotNil(t, gotChain.Signer)
-					assert.NotEmpty(t, gotChain.URL)
-				}
-				// If error occurs due to Docker not running, that's acceptable for unit tests
+				// Check that the chain is of type stellar.Chain and has the expected fields
+				gotChain, ok := got.(stellar.Chain)
+				require.True(t, ok, "expected got to be of type stellar.Chain")
+				assert.Equal(t, tt.giveSelector, gotChain.Selector)
+				assert.NotNil(t, gotChain.Client)
+				assert.NotNil(t, gotChain.Signer)
+				assert.NotEmpty(t, gotChain.URL)
 			}
+			// If error occurs due to Docker not running, that's acceptable for unit tests
 		})
 	}
 }

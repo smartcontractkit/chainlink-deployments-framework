@@ -218,10 +218,11 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/crypto"
 	chainsel "github.com/smartcontractkit/chain-selectors/remote"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/freeport"
 	"github.com/testcontainers/testcontainers-go"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
@@ -321,11 +322,9 @@ func (c CTFAnvilChainProviderConfig) validate() error {
 		if port <= 0 || port > 65535 {
 			return fmt.Errorf("invalid port %d: must be between 1 and 65535", port)
 		}
-	} else {
+	} else if c.T == nil {
 		// T is required when port is not provided (for freeport allocation)
-		if c.T == nil {
-			return errors.New("field T is required when port is not provided")
-		}
+		return errors.New("field T is required when port is not provided")
 	}
 
 	// DeployerTransactorGen is optional - if not provided, default Anvil account will be used

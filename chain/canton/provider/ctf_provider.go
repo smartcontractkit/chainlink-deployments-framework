@@ -121,7 +121,7 @@ func (p *CTFChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 		perRPCCredentials := authProvider.PerRPCCredentials()
 
 		// Dial Ledger API endpoint
-		ledgerApiConn, err := grpc.NewClient(
+		ledgerAPIConn, err := grpc.NewClient(
 			participantEndpoints.GRPCLedgerAPIURL,
 			grpc.WithTransportCredentials(transportCredentials),
 			grpc.WithPerRPCCredentials(perRPCCredentials),
@@ -129,10 +129,10 @@ func (p *CTFChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 		if err != nil {
 			return nil, fmt.Errorf("failed to create Ledger API gRPC client for participant %d(%s): %w", i+1, participantEndpoints.GRPCLedgerAPIURL, err)
 		}
-		ledgerServices := canton.CreateLedgerServiceClients(ledgerApiConn)
+		ledgerServices := canton.CreateLedgerServiceClients(ledgerAPIConn)
 
 		// Dial Admin API endpoint
-		adminApiConn, err := grpc.NewClient(
+		adminAPIConn, err := grpc.NewClient(
 			participantEndpoints.AdminAPIURL,
 			grpc.WithTransportCredentials(transportCredentials),
 			grpc.WithPerRPCCredentials(perRPCCredentials),
@@ -140,7 +140,7 @@ func (p *CTFChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 		if err != nil {
 			return nil, fmt.Errorf("failed to create Admin API gRPC client for participant %d(%s): %w", i+1, participantEndpoints.AdminAPIURL, err)
 		}
-		adminServices := canton.CreateAdminServiceClients(adminApiConn)
+		adminServices := canton.CreateAdminServiceClients(adminAPIConn)
 
 		// Query primary party for the user
 		resp, err := ledgerServices.Admin.UserManagement.GetUser(ctx, &adminv2.GetUserRequest{UserId: participantEndpoints.UserID})

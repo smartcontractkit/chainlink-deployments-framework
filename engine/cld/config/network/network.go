@@ -7,7 +7,7 @@ import (
 )
 
 // NetworkType represents the type of network, which can either be mainnet or testnet.
-type NetworkType string
+type NetworkType string //nolint:revive // renaming would be a breaking change
 
 const (
 	NetworkTypeMainnet NetworkType = "mainnet"

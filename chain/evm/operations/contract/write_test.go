@@ -145,7 +145,7 @@ func TestWrite(t *testing.T) {
 			require.NoError(t, err, "Failed to create logger")
 
 			bundle := operations.NewBundle(
-				func() context.Context { return context.Background() },
+				context.Background,
 				lggr,
 				operations.NewMemoryReporter(),
 			)

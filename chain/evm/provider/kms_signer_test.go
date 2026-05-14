@@ -7,7 +7,7 @@ import (
 	"math/big"
 	"testing"
 
-	kmslib "github.com/aws/aws-sdk-go/service/kms"
+	kmslib "github.com/aws/aws-sdk-go/service/kms" //nolint:staticcheck // migration to aws-sdk-go-v2 is out of scope
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -572,7 +572,7 @@ func Test_recoverEVMSignature(t *testing.T) {
 	require.NoError(t, err)
 
 	pubKey := testECDSAPublicKey(t)
-	pubKeyBytes := secp256k1.S256().Marshal(pubKey.X, pubKey.Y)
+	pubKeyBytes := secp256k1.S256().Marshal(pubKey.X, pubKey.Y) //nolint:staticcheck // deprecated ecdsa fields, migration pending
 
 	sigR, ok := new(big.Int).SetString("105277379219808013728922799499984494012712920083270162259481635005819358924647", 10)
 	require.True(t, ok, "failed to parse sigR from string")

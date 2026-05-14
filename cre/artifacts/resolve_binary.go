@@ -24,7 +24,7 @@ type githubRelease struct {
 	} `json:"assets"`
 }
 
-func resolveBinaryHttp(ctx context.Context, src BinarySource, httpClient *http.Client, workDir string) (string, error) {
+func resolveBinaryHTTP(ctx context.Context, src BinarySource, httpClient *http.Client, workDir string) (string, error) {
 	if err := src.Validate(); err != nil {
 		return "", err
 	}

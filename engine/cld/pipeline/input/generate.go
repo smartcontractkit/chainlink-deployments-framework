@@ -144,7 +144,7 @@ func Generate(opts GenerateOptions) (string, error) {
 	output := string(outBytes)
 
 	if opts.OutputPath != "" {
-		if err := os.WriteFile(opts.OutputPath, outBytes, 0o644); err != nil { //nolint:gosec
+		if err := os.WriteFile(opts.OutputPath, outBytes, 0o644); err != nil { //nolint:gosec // file permissions are intentional
 			return "", fmt.Errorf("write output file: %w", err)
 		}
 	}

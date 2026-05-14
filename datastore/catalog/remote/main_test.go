@@ -21,7 +21,7 @@ func TestMain(m *testing.M) {
 	// Check if we should use an existing catalog service instead of testcontainers
 	existingAddr := os.Getenv("CATALOG_GRPC_ADDRESS")
 	if existingAddr != "" {
-		log.Printf("Using existing catalog service at: %s", existingAddr)
+		log.Printf("Using existing catalog service at: %s", existingAddr) //nolint:gosec // test code, no user-controlled input
 		catalogGRPCAddress = existingAddr
 		// Run tests and exit
 		os.Exit(m.Run())
@@ -29,7 +29,6 @@ func TestMain(m *testing.M) {
 
 	// Setup context with timeout for initialization
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
 
 	log.Println("========================================")
 	log.Println("Setting up testcontainers for catalog remote tests...")
@@ -38,36 +37,41 @@ func TestMain(m *testing.M) {
 	// Setup testcontainers
 	setup, err := SetupCatalogTestContainers(ctx)
 	if err != nil {
+		cancel()
 		log.Fatalf("Failed to setup testcontainers: %v", err)
 	}
-	globalTestSetup = setup
-	catalogGRPCAddress = setup.GetCatalogGRPCAddress()
+	var exitCode int
+	{
+		defer cancel()
+		globalTestSetup = setup
+		catalogGRPCAddress = setup.GetCatalogGRPCAddress()
 
-	log.Println("========================================")
-	log.Println("Testcontainers setup complete!")
-	log.Printf("PostgreSQL DSN: %s", setup.PostgresDSN)
-	log.Printf("Catalog gRPC Address: %s", catalogGRPCAddress)
-	log.Println("========================================")
+		log.Println("========================================")
+		log.Println("Testcontainers setup complete!")
+		log.Printf("PostgreSQL DSN: %s", setup.PostgresDSN)
+		log.Printf("Catalog gRPC Address: %s", catalogGRPCAddress)
+		log.Println("========================================")
 
-	// Set the environment variable so tests can find the service
-	os.Setenv("CATALOG_GRPC_ADDRESS", catalogGRPCAddress)
+		// Set the environment variable so tests can find the service
+		os.Setenv("CATALOG_GRPC_ADDRESS", catalogGRPCAddress)
 
-	// Run all tests
-	exitCode := m.Run()
+		// Run all tests
+		exitCode = m.Run()
 
-	// Cleanup
-	log.Println("========================================")
-	log.Println("Cleaning up testcontainers...")
-	log.Println("========================================")
+		// Cleanup
+		log.Println("========================================")
+		log.Println("Cleaning up testcontainers...")
+		log.Println("========================================")
 
-	// Use a fresh context for cleanup to avoid timeout issues
-	cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 2*time.Minute)
-	defer cleanupCancel()
+		// Use a fresh context for cleanup to avoid timeout issues
+		cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 2*time.Minute)
 
-	if err := globalTestSetup.Teardown(cleanupCtx); err != nil {
-		log.Printf("Warning: Failed to teardown testcontainers: %v", err)
+		if err := globalTestSetup.Teardown(cleanupCtx); err != nil {
+			log.Printf("Warning: Failed to teardown testcontainers: %v", err)
+		}
+		cleanupCancel()
 	}
 
 	log.Println("Cleanup complete!")
-	os.Exit(exitCode)
+	os.Exit(exitCode) //nolint:gocritic // exitAfterDefer: defer cancel() runs inside the block above
 }

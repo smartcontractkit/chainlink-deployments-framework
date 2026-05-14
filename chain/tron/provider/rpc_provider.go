@@ -9,6 +9,7 @@ import (
 	"github.com/fbsobreira/gotron-sdk/pkg/address"
 	"github.com/fbsobreira/gotron-sdk/pkg/http/common"
 	"github.com/fbsobreira/gotron-sdk/pkg/http/soliditynode"
+
 	"github.com/smartcontractkit/chainlink-tron/relayer/sdk"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
@@ -72,17 +73,17 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 	}
 
 	// Parse URLs for node connections
-	fullNodeUrlObj, err := url.Parse(p.config.FullNodeURL)
+	fullNodeURLObj, err := url.Parse(p.config.FullNodeURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse full node URL: %w", err)
 	}
-	solidityNodeUrlObj, err := url.Parse(p.config.SolidityNodeURL)
+	solidityNodeURLObj, err := url.Parse(p.config.SolidityNodeURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse solidity node URL: %w", err)
 	}
 
 	// Create a client that wraps both full node and solidity node connections
-	combinedClient, err := sdk.CreateCombinedClient(fullNodeUrlObj, solidityNodeUrlObj)
+	combinedClient, err := sdk.CreateCombinedClient(fullNodeURLObj, solidityNodeURLObj)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create combined client: %w", err)
 	}

@@ -19,12 +19,12 @@ import (
 	pb "github.com/smartcontractkit/chainlink-protos/op-catalog/v1/datastore"
 )
 
-//nolint:paralleltest
+//nolint:paralleltest // test uses shared database state
 func TestCatalogTransactions_Commit(t *testing.T) {
 	t.Parallel()
 
 	t.Log("Setup Store")
-	catalog, err := setupStore(t, t.Context())
+	catalog, err := setupStore(t.Context(), t)
 	if err != nil {
 		t.Skipf("%s", err)
 		return
@@ -97,12 +97,12 @@ func TestCatalogTransactions_Commit(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest
+//nolint:paralleltest // test uses shared database state
 func TestCatalogTransactions_WithTransactions_Commit(t *testing.T) {
 	t.Parallel()
 
 	t.Log("Setup Store")
-	catalog, err := setupStore(t, t.Context())
+	catalog, err := setupStore(t.Context(), t)
 	if err != nil {
 		t.Skipf("%s", err)
 		return
@@ -170,12 +170,12 @@ func TestCatalogTransactions_WithTransactions_Commit(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest
+//nolint:paralleltest // test uses shared database state
 func TestCatalogTransactions_Rollback(t *testing.T) {
 	t.Parallel()
 
 	t.Log("Setup Store")
-	catalog, err := setupStore(t, t.Context())
+	catalog, err := setupStore(t.Context(), t)
 	if err != nil {
 		t.Skipf("%s", err)
 		return
@@ -246,12 +246,12 @@ func TestCatalogTransactions_Rollback(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest
+//nolint:paralleltest // test uses shared database state
 func TestCatalogTransactions_WithTransactions_Rollback(t *testing.T) {
 	t.Parallel()
 
 	t.Log("Setup Store")
-	catalog, err := setupStore(t, t.Context())
+	catalog, err := setupStore(t.Context(), t)
 	if err != nil {
 		t.Skipf("%s", err)
 		return
@@ -315,12 +315,12 @@ func TestCatalogTransactions_WithTransactions_Rollback(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest
+//nolint:paralleltest // test uses shared database state
 func TestCatalogTransactions_WithTransactions_Panic(t *testing.T) {
 	t.Parallel()
 
 	t.Log("Setup Store")
-	catalog, err := setupStore(t, t.Context())
+	catalog, err := setupStore(t.Context(), t)
 	if err != nil {
 		t.Skipf("%s", err)
 		return
@@ -377,13 +377,13 @@ func TestCatalogTransactions_WithTransactions_Panic(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest
+//nolint:paralleltest // test uses shared database state
 func TestCatalogTransactions_DoubleBegin(t *testing.T) {
 	t.Skipf("Expected behavior from server has a bug, so skip for now.")
 	t.Parallel()
 
 	t.Log("Setup Store")
-	catalog, err := setupStore(t, t.Context())
+	catalog, err := setupStore(t.Context(), t)
 	if err != nil {
 		t.Skipf("%s", err)
 		return
@@ -404,7 +404,7 @@ func TestCatalogTransactions_OrphanCommit(t *testing.T) {
 	t.Parallel()
 
 	t.Log("Setup Store")
-	catalog, err := setupStore(t, t.Context())
+	catalog, err := setupStore(t.Context(), t)
 	if err != nil {
 		t.Skipf("%s", err)
 		return
@@ -420,7 +420,7 @@ func TestCatalogTransactions_OrphanRollback(t *testing.T) {
 	t.Parallel()
 
 	t.Log("Setup Store")
-	catalog, err := setupStore(t, t.Context())
+	catalog, err := setupStore(t.Context(), t)
 	if err != nil {
 		t.Skipf("%s", err)
 		return
@@ -435,7 +435,7 @@ func TestCatalogTransactions_OrphanRollback(t *testing.T) {
 // setupStore creates a new catalog store.
 //
 // It returns the underlying type, since the *Transaction methods aren't exposed in the API yet.
-func setupStore(t *testing.T, ctx context.Context) (*catalogDataStore, error) {
+func setupStore(ctx context.Context, t *testing.T) (*catalogDataStore, error) {
 	t.Helper()
 	// Get gRPC address from environment or use default
 	address := os.Getenv("CATALOG_GRPC_ADDRESS")

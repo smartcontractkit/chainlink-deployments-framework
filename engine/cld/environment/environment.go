@@ -72,23 +72,22 @@ func Load(
 		effectiveDatastoreType = *loadcfg.datastoreType
 	}
 	if useCatalog(effectiveDatastoreType) {
-		if cfg.Env.Catalog.GRPC != "" {
-			lggr.Infow("Fetching data from Catalog", "url", cfg.Env.Catalog.GRPC)
-			catalogStore, catalogErr := cldcatalog.LoadCatalog(ctx, envKey, cfg, domain)
-			if catalogErr != nil {
-				return fdeployment.Environment{}, catalogErr
-			}
-
-			// Load all data from the catalog into a local datastore
-			// After this, all operations happen locally without remote calls
-			ds, err = fdatastore.LoadDataStoreFromCatalog(ctx, catalogStore)
-			if err != nil {
-				return fdeployment.Environment{}, fmt.Errorf("failed to load data from catalog: %w", err)
-			}
-			lggr.Infow("Loaded catalog data into local datastore for deployment operations")
-		} else {
+		if cfg.Env.Catalog.GRPC == "" {
 			return fdeployment.Environment{}, fmt.Errorf("catalog GRPC endpoint is required when datastore location is set to '%s'", cfgdomain.DatastoreTypeCatalog)
 		}
+		lggr.Infow("Fetching data from Catalog", "url", cfg.Env.Catalog.GRPC)
+		catalogStore, catalogErr := cldcatalog.LoadCatalog(ctx, envKey, cfg, domain)
+		if catalogErr != nil {
+			return fdeployment.Environment{}, catalogErr
+		}
+
+		// Load all data from the catalog into a local datastore
+		// After this, all operations happen locally without remote calls
+		ds, err = fdatastore.LoadDataStoreFromCatalog(ctx, catalogStore)
+		if err != nil {
+			return fdeployment.Environment{}, fmt.Errorf("failed to load data from catalog: %w", err)
+		}
+		lggr.Infow("Loaded catalog data into local datastore for deployment operations")
 	} else {
 		ds, err = envdir.DataStore()
 		if err != nil {
@@ -126,12 +125,11 @@ func Load(
 			offchain.WithCredentials(credentials.GetCredsForEnv(envKey)),
 		)
 		if err != nil {
-			if errors.Is(err, offchain.ErrEndpointsRequired) {
-				lggr.Warn("Skipping JD initialization: gRPC endpoint is not set in config")
-			} else {
+			if !errors.Is(err, offchain.ErrEndpointsRequired) {
 				return fdeployment.Environment{},
 					fmt.Errorf("failed to load offchain client for environment %s: %w", envKey, err)
 			}
+			lggr.Warn("Skipping JD initialization: gRPC endpoint is not set in config")
 		}
 	} else {
 		lggr.Info("Override: skipping JD initialization")
@@ -143,11 +141,10 @@ func Load(
 		cfg.Env.Offchain.OCR.XSigners, cfg.Env.Offchain.OCR.XProposers,
 	)
 	if err != nil {
-		if errors.Is(err, focr.ErrMnemonicRequired) {
-			lggr.Warn("No OCR secrets found in environment, proceeding without them")
-		} else {
+		if !errors.Is(err, focr.ErrMnemonicRequired) {
 			return fdeployment.Environment{}, err
 		}
+		lggr.Warn("No OCR secrets found in environment, proceeding without them")
 	}
 
 	getCtx := func() context.Context { return ctx }

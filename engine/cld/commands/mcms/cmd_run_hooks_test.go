@@ -22,7 +22,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
-func Test_newRunProposalHooksCmd(t *testing.T) { //nolint:paralleltest
+func Test_newRunProposalHooksCmd(t *testing.T) { //nolint:paralleltest // test modifies shared state
 	type testCase struct {
 		name    string
 		args    []string
@@ -171,7 +171,7 @@ func Test_newRunProposalHooksCmd(t *testing.T) { //nolint:paralleltest
 			},
 		},
 	}
-	for _, tt := range tests { //nolint:paralleltest
+	for _, tt := range tests { //nolint:paralleltest // test modifies shared state
 		t.Run(tt.name, func(t *testing.T) {
 			tt.setup(t, &tt)
 

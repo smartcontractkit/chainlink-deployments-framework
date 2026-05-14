@@ -9,9 +9,10 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"slices"
 
-	"github.com/aws/aws-sdk-go/aws"
-	kmslib "github.com/aws/aws-sdk-go/service/kms"
+	"github.com/aws/aws-sdk-go/aws"                //nolint:staticcheck // migration to aws-sdk-go-v2 is out of scope
+	kmslib "github.com/aws/aws-sdk-go/service/kms" //nolint:staticcheck // migration to aws-sdk-go-v2 is out of scope
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -133,7 +134,7 @@ func (s *KMSSigner) SignHash(txHash []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	pubKeyBytes := secp256k1.S256().Marshal(pubKey.X, pubKey.Y)
+	pubKeyBytes := secp256k1.S256().Marshal(pubKey.X, pubKey.Y) //nolint:staticcheck // deprecated ecdsa fields, migration pending
 
 	// Sign the transaction hash using KMS.
 	out, err := s.client.Sign(
@@ -227,7 +228,7 @@ func recoverEVMSignature(expectedPublicKey, txHash, r, s []byte) ([]byte, error)
 	rsSig := append(padTo32Bytes(r), padTo32Bytes(s)...)
 	// Ethereum signatures have a 65th byte called the recovery ID (v), which can be 0 or 1.
 	// Here we append 0 to the signature to start with for the first recovery attempt.
-	evmSig := append(rsSig, []byte{0}...)
+	evmSig := slices.Concat(rsSig, []byte{0})
 
 	recoveredPublicKey, err := crypto.Ecrecover(txHash, evmSig)
 	if err != nil {
@@ -236,7 +237,7 @@ func recoverEVMSignature(expectedPublicKey, txHash, r, s []byte) ([]byte, error)
 
 	if hex.EncodeToString(recoveredPublicKey) != hex.EncodeToString(expectedPublicKey) {
 		// If the first recovery attempt failed, we try with v=1.
-		evmSig = append(rsSig, []byte{1}...)
+		evmSig = slices.Concat(rsSig, []byte{1})
 		recoveredPublicKey, err = crypto.Ecrecover(txHash, evmSig)
 		if err != nil {
 			return nil, fmt.Errorf("failed to recover signature with v=1: %w", err)
@@ -255,8 +256,7 @@ func recoverEVMSignature(expectedPublicKey, txHash, r, s []byte) ([]byte, error)
 func padTo32Bytes(buffer []byte) []byte {
 	buffer = bytes.TrimLeft(buffer, "\x00")
 	for len(buffer) < 32 {
-		zeroBuf := []byte{0}
-		buffer = append(zeroBuf, buffer...)
+		buffer = append([]byte{0}, buffer...)
 	}
 
 	return buffer

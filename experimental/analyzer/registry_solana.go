@@ -105,7 +105,7 @@ func NewEnvironmentSolanaRegistry(env deployment.Environment, decoderMappings ma
 		decoderMappings = maps.Clone(decoderMappings)
 	}
 
-	addressesByChain, errAddrBook := env.ExistingAddresses.Addresses() //nolint:staticcheck
+	addressesByChain, errAddrBook := env.ExistingAddresses.Addresses() //nolint:staticcheck // using deprecated API intentionally
 	if errAddrBook != nil {
 		return nil, errAddrBook
 	}

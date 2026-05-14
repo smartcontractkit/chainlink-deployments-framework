@@ -54,7 +54,7 @@ func TestNewDefaultProposalContext(t *testing.T) {
 
 	require.NoError(t, err)
 	require.IsType(t, &DefaultProposalContext{}, got)
-	require.Equal(t, got.(*DefaultProposalContext).AddressesByChain, deployment.AddressesByChain{ //nolint:testifylint
+	require.Equal(t, got.(*DefaultProposalContext).AddressesByChain, deployment.AddressesByChain{ //nolint:testifylint // expected value is complex struct
 		9012: {
 			"0xcallproxyaddress": deployment.TypeAndVersion{
 				Type:    deployment.ContractType("CallProxy"),
@@ -83,7 +83,7 @@ func Test_DefaultProposalContext_FieldContext(t *testing.T) {
 
 	got := proposalContext.FieldsContext(5678)
 
-	require.Equal(t, got, &FieldContext{ //nolint:testifylint
+	require.Equal(t, got, &FieldContext{ //nolint:testifylint // expected value is complex struct
 		Ctx: map[string]any{
 			"AddressesByChain": deployment.AddressesByChain{
 				5678: {

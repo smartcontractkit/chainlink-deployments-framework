@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-//nolint:paralleltest
+//nolint:paralleltest // test uses shared filesystem state
 func TestFindWorkspaceRoot(t *testing.T) {
 	tests := []struct {
 		name        string

@@ -78,21 +78,21 @@ func TestChain_ReadOnly(t *testing.T) {
 
 	// read with read-only client should succeed
 	require.Eventually(t, func() bool {
-		blockIdExt, werr := roTonChain.Client.CurrentMasterchainInfo(t.Context())
+		blockIDExt, werr := roTonChain.Client.CurrentMasterchainInfo(t.Context())
 		require.NoError(t, werr)
-		account, werr := roTonChain.Client.WaitForBlock(blockIdExt.SeqNo).GetAccount(t.Context(), blockIdExt, tonChain.WalletAddress)
+		account, werr := roTonChain.Client.WaitForBlock(blockIDExt.SeqNo).GetAccount(t.Context(), blockIDExt, tonChain.WalletAddress)
 
 		return werr == nil && account.State != nil && account.State.Balance.String() == "1234"
 	}, 60*time.Second, 200*time.Millisecond)
 
 	// write with read-write client should succeed
 	msgBody := cell.BeginCell().EndCell()
-	_, _, _, err = tonChain.Wallet.DeployContractWaitTransaction(t.Context(), tlb.MustFromTON("0.02"), msgBody, //nolint:dogsled
+	_, _, _, err = tonChain.Wallet.DeployContractWaitTransaction(t.Context(), tlb.MustFromTON("0.02"), msgBody, //nolint:dogsled // not interested in all return values
 		getNFTCollectionCode(t), getContractData(t, tonChain.WalletAddress, tonChain.WalletAddress))
 	require.NoError(t, err)
 
 	// write with read-only client should fail
-	_, _, _, err = roTonChain.Wallet.DeployContractWaitTransaction(t.Context(), tlb.MustFromTON("0.02"), msgBody, //nolint:dogsled
+	_, _, _, err = roTonChain.Wallet.DeployContractWaitTransaction(t.Context(), tlb.MustFromTON("0.02"), msgBody, //nolint:dogsled // not interested in all return values
 		getNFTCollectionCode(t), getContractData(t, tonChain.WalletAddress, tonChain.WalletAddress))
 	require.ErrorContains(t, err, "Failed to unpack account state")
 }
@@ -103,10 +103,10 @@ const faucetMnemonic = "twenty unfair stay entry during please water april fabri
 
 func funder(t *testing.T, tonChain ton.Chain) *wallet.Wallet {
 	t.Helper()
-	funderWallet, err := wallet.FromSeed(tonChain.Client, strings.Fields(faucetMnemonic), wallet.HighloadV2Verified) //nolint:staticcheck
+	funderWallet, err := wallet.FromSeed(tonChain.Client, strings.Fields(faucetMnemonic), wallet.HighloadV2Verified) //nolint:staticcheck // using deprecated API intentionally
 	require.NoError(t, err)
 	funderWallet, err = wallet.FromPrivateKeyWithOptions(tonChain.Client, funderWallet.PrivateKey(),
-		wallet.HighloadV2Verified, wallet.WithWorkchain(int8(address.MasterchainID))) //nolint:staticcheck
+		wallet.HighloadV2Verified, wallet.WithWorkchain(int8(address.MasterchainID))) //nolint:staticcheck // using deprecated API intentionally
 	require.NoError(t, err)
 	funder, err := funderWallet.GetSubwallet(uint32(42))
 	require.NoError(t, err)

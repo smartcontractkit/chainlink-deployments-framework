@@ -25,7 +25,7 @@ func inputGenerateResolver(input map[string]any) (any, error) {
 	return map[string]any{"resolvedChain": chain}, nil
 }
 
-//nolint:paralleltest
+//nolint:paralleltest // test modifies shared state
 func TestInputGenerateCmd_Success(t *testing.T) {
 	env := "testnet"
 	testDomain := domain.NewDomain(t.TempDir(), "test")
@@ -41,7 +41,7 @@ changesets:
         chain: optimism_sepolia
         value: 100`
 	inputsFile := "inputs.yaml"
-	require.NoError(t, os.WriteFile(filepath.Join(inputsDir, inputsFile), []byte(inputsContent), 0o644)) //nolint:gosec
+	require.NoError(t, os.WriteFile(filepath.Join(inputsDir, inputsFile), []byte(inputsContent), 0o644)) //nolint:gosec // acceptable in test context
 
 	originalWd, _ := os.Getwd()
 	require.NoError(t, os.Chdir(workspaceRoot))
@@ -84,7 +84,7 @@ changesets:
 	require.Contains(t, buf.String(), "resolvedChain")
 }
 
-//nolint:paralleltest
+//nolint:paralleltest // test modifies shared state
 func TestInputGenerateCmd_WithOutputFile(t *testing.T) {
 	env := "testnet"
 	testDomain := domain.NewDomain(t.TempDir(), "test")
@@ -98,7 +98,7 @@ changesets:
   - 0001_cs:
       payload:
         x: 1`
-	require.NoError(t, os.WriteFile(filepath.Join(inputsDir, "in.yaml"), []byte(inputsContent), 0o644)) //nolint:gosec
+	require.NoError(t, os.WriteFile(filepath.Join(inputsDir, "in.yaml"), []byte(inputsContent), 0o644)) //nolint:gosec // acceptable in test context
 
 	originalWd, _ := os.Getwd()
 	require.NoError(t, os.Chdir(workspaceRoot))
@@ -141,7 +141,7 @@ changesets:
 	require.Contains(t, string(data), "environment: testnet")
 }
 
-//nolint:paralleltest
+//nolint:paralleltest // test modifies shared state
 func TestInputGenerateCmd_LoadError(t *testing.T) {
 	cfg := &Config{
 		Logger:                logger.Test(t),
@@ -160,7 +160,7 @@ func TestInputGenerateCmd_LoadError(t *testing.T) {
 	require.Equal(t, "load changesets registry: load failed", err.Error())
 }
 
-//nolint:paralleltest
+//nolint:paralleltest // test modifies shared state
 func TestInputGenerateCmd_MissingEnvironment(t *testing.T) {
 	cfg := &Config{
 		Logger:                logger.Test(t),

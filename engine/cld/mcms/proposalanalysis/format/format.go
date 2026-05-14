@@ -40,7 +40,7 @@ func CommaGroupBigInt(n *big.Int) string {
 
 // FormatTokenAmount converts a raw token amount to a
 // human-readable decimal string using the token's decimals.
-func FormatTokenAmount(amount *big.Int, decimals uint8) string {
+func FormatTokenAmount(amount *big.Int, decimals uint8) string { //nolint:revive // renaming would be a breaking change
 	if amount == nil || amount.Sign() == 0 {
 		return "0"
 	}

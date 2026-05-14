@@ -10,11 +10,12 @@ import (
 
 	aptoslib "github.com/aptos-labs/aptos-go-sdk"
 	chainsel "github.com/smartcontractkit/chain-selectors"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/freeport"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos"
@@ -174,7 +175,7 @@ func (p *CTFChainProvider) startContainer(
 			p.t.Logf("Error creating Aptos network: %v", err)
 			freeport.Return(ports)
 			time.Sleep(time.Second)
-			maxRetries -= 1
+			maxRetries--
 
 			continue
 		}

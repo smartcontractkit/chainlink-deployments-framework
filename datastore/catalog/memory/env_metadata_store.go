@@ -24,8 +24,7 @@ func newCatalogEnvMetadataStore(storage *memoryStorage) *memoryEnvMetadataStore 
 func (s *memoryEnvMetadataStore) Get(ctx context.Context, options ...datastore.GetOption) (datastore.EnvMetadata, error) {
 	ignoreTransactions := false
 	for _, option := range options {
-		switch option {
-		case datastore.IgnoreTransactionsGetOption:
+		if option == datastore.IgnoreTransactionsGetOption {
 			ignoreTransactions = true
 		}
 	}

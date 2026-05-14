@@ -116,8 +116,7 @@ func (s *catalogContractMetadataStore) Get(
 ) (datastore.ContractMetadata, error) {
 	ignoreTransactions := false
 	for _, option := range options {
-		switch option {
-		case datastore.IgnoreTransactionsGetOption:
+		if option == datastore.IgnoreTransactionsGetOption {
 			ignoreTransactions = true
 		}
 	}

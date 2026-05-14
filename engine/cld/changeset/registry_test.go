@@ -97,7 +97,7 @@ func hookTestEnv(t *testing.T) fdeployment.Environment {
 	return fdeployment.Environment{
 		Name:       "test-env",
 		Logger:     logger.Test(t),
-		GetContext: func() context.Context { return context.Background() },
+		GetContext: context.Background,
 	}
 }
 
@@ -165,7 +165,7 @@ func Test_Changesets_Apply(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest
+//nolint:paralleltest // test uses shared state
 func Test_Changesets_ApplyWithInput_WithEnvConfiguredChangeset(t *testing.T) {
 	type inputConfig struct {
 		Value int `json:"value"`
