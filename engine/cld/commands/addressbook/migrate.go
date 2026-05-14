@@ -30,7 +30,7 @@ type migrateFlags struct {
 // newMigrateCmd creates the "migrate" subcommand for migrating address book to datastore format.
 func newMigrateCmd(cfg Config) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "migrate",
+		Use:     "migrate", //nolint:goconst // cobra command name
 		Short:   migrateShort,
 		Long:    migrateLong,
 		Example: migrateExample,

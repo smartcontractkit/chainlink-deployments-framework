@@ -37,7 +37,7 @@ func (c Commands) NewEvmCmds(domain domain.Domain) *cobra.Command {
 	gasCmd.AddCommand(c.newEvmGasSend(domain))
 
 	nonceCmd := &cobra.Command{
-		Use:   "nonce",
+		Use:   "nonce", //nolint:goconst // cobra command name
 		Short: "Nonce management for EVM chains",
 	}
 	nonceCmd.AddCommand(c.newEvmNonceClear(domain))
@@ -80,7 +80,7 @@ func (c Commands) newEvmNonceClear(domain domain.Domain) *cobra.Command {
 	)
 
 	cmd := cobra.Command{
-		Use:     "clear",
+		Use:     "clear", //nolint:goconst // cobra command name
 		Short:   "Clear any stuck txes for the deployer key",
 		Long:    evmNonceClearLong,
 		Example: evmNonceClearExample,

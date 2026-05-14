@@ -218,7 +218,7 @@ func BuildChangesetInputJSON(changesetName string, changesetData any) (string, e
 		return "", fmt.Errorf("changeset %q is not a valid object", changesetName)
 	}
 
-	payload, payloadExists := changesetMap["payload"]
+	payload, payloadExists := changesetMap[payloadKey]
 	if !payloadExists {
 		return "", fmt.Errorf("changeset %q is missing required 'payload' field", changesetName)
 	}
@@ -258,7 +258,7 @@ func BuildChangesetInputJSON(changesetName string, changesetData any) (string, e
 		}
 	}
 
-	inputJSON := map[string]any{"payload": jsonSafePayload}
+	inputJSON := map[string]any{payloadKey: jsonSafePayload}
 	if exists {
 		inputJSON["chainOverrides"] = chainOverridesRaw
 	}

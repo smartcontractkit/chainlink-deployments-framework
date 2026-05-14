@@ -87,8 +87,8 @@ func (v *oklinkVerifier) String() string {
 
 func (v *oklinkVerifier) IsVerified(ctx context.Context) (bool, error) {
 	resp, err := sendOkLinkRequest[oklinkVerifyContractInfo](ctx, v.httpClient, "GET", "/explorer/contract/verify-contract-info", v.apiKey, map[string]string{
-		"contractAddress": v.address,
-		paramChainShortName:  v.chainShortName,
+		"contractAddress":   v.address,
+		paramChainShortName: v.chainShortName,
 	})
 	if err != nil {
 		return false, fmt.Errorf("failed to check verification status: %w", err)
@@ -124,13 +124,13 @@ func (v *oklinkVerifier) Verify(ctx context.Context) error {
 	}
 
 	resp, err := sendOkLinkRequest[string](ctx, v.httpClient, "POST", "/explorer/contract/verify-source-code", v.apiKey, map[string]string{
-		paramChainShortName:  v.chainShortName,
-		"contractAddress": v.address,
-		"contractName":    v.metadata.Name,
-		paramSourceCode:      sourceCode,
-		"codeFormat":      codeFormatSolidityJSON,
-		"compilerVersion": v.metadata.Version,
-		"evmVersion":      evmVersion,
+		paramChainShortName: v.chainShortName,
+		"contractAddress":   v.address,
+		"contractName":      v.metadata.Name,
+		paramSourceCode:     sourceCode,
+		"codeFormat":        codeFormatSolidityJSON,
+		"compilerVersion":   v.metadata.Version,
+		"evmVersion":        evmVersion,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to verify contract: %w", err)
@@ -147,7 +147,7 @@ func (v *oklinkVerifier) Verify(ctx context.Context) error {
 	for attempts := range oklinkMaxPollAttempts {
 		statusResp, err := sendOkLinkRequest[string](ctx, v.httpClient, "POST", "/explorer/contract/check-verify-result", v.apiKey, map[string]string{
 			paramChainShortName: v.chainShortName,
-			"guid":           guid,
+			"guid":              guid,
 		})
 		if err != nil {
 			return fmt.Errorf("failed to check verification status: %w", err)

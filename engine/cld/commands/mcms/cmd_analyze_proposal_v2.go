@@ -49,7 +49,7 @@ type analyzeProposalV2Flags struct {
 
 func newAnalyzeProposalV2Cmd(cfg Config) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "analyze-proposal-v2",
+		Use:     "analyze-proposal-v2", //nolint:goconst // cobra command name
 		Short:   analyzeProposalV2Short,
 		Long:    analyzeProposalV2Long,
 		Example: analyzeProposalV2Example,

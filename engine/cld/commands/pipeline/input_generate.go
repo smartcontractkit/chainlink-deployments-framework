@@ -43,7 +43,7 @@ type inputGenerateFlags struct {
 
 func newInputGenerateCmd(cfg *Config) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "input-generate",
+		Use:     "input-generate", //nolint:goconst // cobra command name
 		Short:   inputGenerateShort,
 		Long:    inputGenerateLong,
 		Example: inputGenerateExample,

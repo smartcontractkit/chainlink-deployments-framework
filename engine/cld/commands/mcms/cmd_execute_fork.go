@@ -71,7 +71,7 @@ type executeForkFlags struct {
 // newExecuteForkCmd creates the "execute-fork" subcommand.
 func newExecuteForkCmd(mcmsCfg Config) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "execute-fork",
+		Use:     "execute-fork", //nolint:goconst // cobra command name
 		Short:   executeForkShort,
 		Long:    executeForkLong,
 		Example: executeForkExample,

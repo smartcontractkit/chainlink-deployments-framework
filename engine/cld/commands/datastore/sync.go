@@ -33,7 +33,7 @@ type syncToCatalogFlags struct {
 // newSyncToCatalogCmd creates the "sync-to-catalog" subcommand.
 func newSyncToCatalogCmd(cfg Config) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "sync-to-catalog",
+		Use:     "sync-to-catalog", //nolint:goconst // cobra command name
 		Short:   syncToCatalogShort,
 		Long:    syncToCatalogLong,
 		Example: syncToCatalogExample,

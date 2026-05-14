@@ -133,7 +133,7 @@ func createNativeTransferCall(proposalCtx ProposalContext, chainSelector uint64,
 		ContractVersion: contractVersion,
 		Inputs: []NamedField{
 			{
-				Name:     "recipient",
+				Name:     "recipient", //nolint:goconst // field name for native transfers
 				Value:    AddressField{Value: mcmsTx.To},
 				RawValue: mcmsTx.To,
 			},

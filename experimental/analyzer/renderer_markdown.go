@@ -722,7 +722,7 @@ func compactValue(field FieldValue, ctx *FieldContext) string {
 	case SimpleField:
 		return truncateMiddle(f.GetValue(), MaxCompactValueLength)
 	case StructField:
-		return "struct"
+		return "struct" //nolint:goconst // type descriptor
 	case ArrayField:
 		return fmt.Sprintf("array[%d]", f.GetLength())
 	default:

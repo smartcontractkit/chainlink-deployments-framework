@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
+
 	"github.com/smartcontractkit/chainlink-ccip/chains/evm/gobindings/generated/latest/token_pool"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
@@ -19,7 +20,7 @@ func extractChainUpdateParams(call analyzer.DecodedCall) ([]token_pool.TokenPool
 	var selectorsToRemove []uint64
 
 	for _, param := range call.Inputs() {
-		if param.Name() != "remoteChainSelectorsToRemove" {
+		if param.Name() != "remoteChainSelectorsToRemove" { //nolint:goconst // Solidity parameter name
 			continue
 		}
 

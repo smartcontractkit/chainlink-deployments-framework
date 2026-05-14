@@ -177,9 +177,9 @@ func (v *etherscanVerifier) Verify(ctx context.Context) error {
 func (v *etherscanVerifier) getConstructorArgs(ctx context.Context) (string, error) {
 	resp, err := sendEtherscanRequestForVerifier[[]transactionInfo](ctx, v, "GET", "account", "txlist", map[string]string{
 		paramAddress: v.address,
-		"page":    "1",
+		"page":       "1",
 		paramOffset:  "1",
-		"sort":    "asc",
+		"sort":       "asc",
 	})
 	if err != nil {
 		return "", fmt.Errorf("failed to get contract creation info: %w", err)

@@ -79,7 +79,7 @@ type generateFlags struct {
 // newGenerateCmd creates the "generate" subcommand for generating state.
 func newGenerateCmd(cfg Config) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "generate",
+		Use:     "generate", //nolint:goconst // cobra command name
 		Short:   generateShort,
 		Long:    generateLong,
 		Example: generateExample,
@@ -123,7 +123,7 @@ func runGenerate(cmd *cobra.Command, cfg Config, f generateFlags) error {
 	shouldPrint := f.print
 	datastoreFlag := f.datastore
 
-	if datastoreFlag != "" && datastoreFlag != "file" && datastoreFlag != "catalog" {
+	if datastoreFlag != "" && datastoreFlag != "file" && datastoreFlag != "catalog" { //nolint:goconst // CLI flag values
 		return fmt.Errorf("--datastore must be %q or %q, got %q", "file", "catalog", datastoreFlag)
 	}
 

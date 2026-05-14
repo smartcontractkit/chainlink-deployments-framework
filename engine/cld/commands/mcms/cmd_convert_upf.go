@@ -48,7 +48,7 @@ type convertUpfFlags struct {
 // newConvertUpfCmd creates the "convert-upf" subcommand.
 func newConvertUpfCmd(cfg Config) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "convert-upf",
+		Use:     "convert-upf", //nolint:goconst // cobra command name
 		Short:   convertUpfShort,
 		Long:    convertUpfLong,
 		Example: convertUpfExample,

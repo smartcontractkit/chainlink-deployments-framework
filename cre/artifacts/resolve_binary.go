@@ -162,7 +162,7 @@ func resolveGitHubAssetURL(ctx context.Context, client *http.Client, repo, tag, 
 		return "", err
 	}
 	tagEnc := url.PathEscape(tag)
-	apiURL := fmt.Sprintf("https://" + githubAPIHost + "/repos/%s/%s/releases/tags/%s", owner, name, tagEnc)
+	apiURL := fmt.Sprintf("https://"+githubAPIHost+"/repos/%s/%s/releases/tags/%s", owner, name, tagEnc)
 	body, err := githubGet(ctx, client, apiURL, "github release")
 	if err != nil {
 		return "", fmt.Errorf("cre: github release %s/%s tag %q asset %q: %w", owner, name, tag, assetName, err)

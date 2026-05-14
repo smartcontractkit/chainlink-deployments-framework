@@ -189,6 +189,7 @@ func (m *AddressBookMap) AddressesForChain(chainSelector uint64) (map[string]Typ
 	// maps are mutable and pass via a pointer
 	// creating a copy of the map to prevent concurrency
 	// read and changes outside object-bound
+	//nolint:govet // legacy code
 	return maps.Clone(m.addressesByChain[chainSelector]), nil
 }
 
@@ -248,6 +249,7 @@ func (m *AddressBookMap) Remove(ab AddressBook) error {
 func (m *AddressBookMap) cloneAddresses(input map[uint64]map[string]TypeAndVersion) map[uint64]map[string]TypeAndVersion {
 	result := make(map[uint64]map[string]TypeAndVersion)
 	for chainSelector, chainAddresses := range input {
+		//nolint:govet // legacy code
 		result[chainSelector] = maps.Clone(chainAddresses)
 	}
 

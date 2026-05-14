@@ -36,7 +36,7 @@ type mergeFlags struct {
 // newMergeCmd creates the "merge" subcommand for merging address book artifacts.
 func newMergeCmd(cfg Config) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "merge",
+		Use:     "merge", //nolint:goconst // cobra command name
 		Short:   mergeShort,
 		Long:    mergeLong,
 		Example: mergeExample,

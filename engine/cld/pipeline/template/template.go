@@ -130,7 +130,7 @@ func GenerateStructYAMLWithDepthLimit(
 		return "", nil
 	}
 
-	if t.Kind() == reflect.Ptr {
+	if t.Kind() == reflect.Pointer {
 		t = t.Elem()
 	}
 
@@ -228,7 +228,7 @@ func GenerateFieldValueWithDepthLimit(
 		return " ...", nil
 	}
 
-	if t.Kind() == reflect.Ptr {
+	if t.Kind() == reflect.Pointer {
 		t = t.Elem()
 	}
 

@@ -123,7 +123,7 @@ func LoadOffchainClient(
 	)
 
 	// TODO: Remove this domain specific check
-	if dom.Key() == "keystone" && endpoints.GRPC == "" {
+	if dom.Key() == "keystone" && endpoints.GRPC == "" { //nolint:goconst // domain-specific check
 		lggr.Warn("Skipping JD initialization for Keystone, fallback to CLO data")
 
 		return nil, nil //nolint:nilnil // We want to return nil if the JD is not initialized for now.

@@ -157,7 +157,7 @@ func Test_CognitoTokenSource_Token(t *testing.T) {
 
 				// Pre-populate auth result to simulate cached token
 				accessToken := "cached-access-token"
-				refreshToken := "test-cached-refresh-token"
+				refreshToken := "test-cached-refresh-token" //nolint:gosec // G101: Test value, not a real credential
 				source.authResult = &types.AuthenticationResultType{
 					AccessToken:  &accessToken,
 					RefreshToken: &refreshToken,

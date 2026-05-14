@@ -30,7 +30,7 @@ const (
 func (fp FailurePolicy) String() string {
 	switch fp {
 	case Abort:
-		return "Abort"
+		return "Abort" //nolint:goconst // matches FailurePolicy constant name
 	case Warn:
 		return "Warn"
 	default:

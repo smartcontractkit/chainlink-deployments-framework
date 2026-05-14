@@ -47,7 +47,7 @@ func isValueSerializable(lggr logger.Logger, v reflect.Value) bool {
 	}
 
 	// Dereference pointers to get to the underlying value
-	if v.Kind() == reflect.Ptr {
+	if v.Kind() == reflect.Pointer {
 		if v.IsNil() {
 			return true
 		}

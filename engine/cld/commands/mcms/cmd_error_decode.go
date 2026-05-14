@@ -36,7 +36,7 @@ type errorDecodeFlags struct {
 // newErrorDecodeCmd creates the "error-decode-evm" subcommand.
 func newErrorDecodeCmd(cfg Config) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "error-decode-evm",
+		Use:     "error-decode-evm", //nolint:goconst // cobra command name
 		Short:   errorDecodeShort,
 		Long:    errorDecodeLong,
 		Example: errorDecodeExample,

@@ -15,6 +15,8 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 )
 
+const payloadKey = "payload"
+
 type durablePipelineFile struct {
 	Environment string    `yaml:"environment" json:"environment"`
 	Domain      string    `yaml:"domain"      json:"domain"`
@@ -92,7 +94,7 @@ func Generate(opts GenerateOptions) (string, error) {
 		}
 
 		changesetItem := map[string]any{
-			csName: map[string]any{"payload": resolvedCfg},
+			csName: map[string]any{payloadKey: resolvedCfg},
 		}
 		orderedChangesets = append(orderedChangesets, changesetItem)
 	}

@@ -154,7 +154,7 @@ func (v *socialscanVerifier) Verify(ctx context.Context) error {
 
 func (v *socialscanVerifier) getConstructorArgs(ctx context.Context) (string, error) {
 	resp, err := sendSocialscanRequest[[]socialscanTransactionInfo](ctx, v.httpClient, v.chainName, "GET", "account", "txlist", v.apiKey, map[string]string{
-		"address":    v.address,
+		paramAddress:    v.address,
 		"page":       "1",
 		paramOffset:     "1",
 		"sort":       "asc",

@@ -62,12 +62,12 @@ func ProposeJob(ctx context.Context, req ProposeJobRequest) error {
 	domainKey := req.Domain.Key()
 	selectors := []*ptypes.Selector{
 		{
-			Key:   "product",
+			Key:   selectorKeyProduct,
 			Op:    ptypes.SelectorOp_EQ,
 			Value: &domainKey,
 		},
 		{
-			Key:   "environment",
+			Key:   selectorKeyEnvironment,
 			Op:    ptypes.SelectorOp_EQ,
 			Value: &req.Environment,
 		},

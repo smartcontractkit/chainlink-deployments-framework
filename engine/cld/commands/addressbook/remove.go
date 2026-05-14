@@ -33,7 +33,7 @@ type removeFlags struct {
 // newRemoveCmd creates the "remove" subcommand for removing address book entries.
 func newRemoveCmd(cfg Config) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "remove",
+		Use:     "remove", //nolint:goconst // cobra command name
 		Short:   removeShort,
 		Long:    removeLong,
 		Example: removeExample,

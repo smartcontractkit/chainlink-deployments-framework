@@ -29,6 +29,12 @@ import (
 	fnode "github.com/smartcontractkit/chainlink-deployments-framework/offchain/node"
 )
 
+const (
+	selectorKeyProduct     = "product"
+	selectorKeyEnvironment = "environment"
+	outputFormatTable      = "table"
+)
+
 // defaultTimeout governs operations that may block
 var defaultTimeout = time.Second * 180
 
@@ -93,7 +99,7 @@ func (c Commands) newJDNodeList(domain domain.Domain) *cobra.Command {
 		dons         []string
 		format       string
 		viewJobs     bool
-		validFormats = []string{"table", "json"}
+		validFormats = []string{outputFormatTable, "json"}
 	)
 
 	cmd := &cobra.Command{
@@ -123,12 +129,12 @@ func (c Commands) newJDNodeList(domain domain.Domain) *cobra.Command {
 			domainKey := domain.Key()
 			selectors := []*ptypes.Selector{
 				{
-					Key:   "product",
+					Key:   selectorKeyProduct,
 					Op:    ptypes.SelectorOp_EQ,
 					Value: &domainKey,
 				},
 				{
-					Key:   "environment",
+					Key:   selectorKeyEnvironment,
 					Op:    ptypes.SelectorOp_EQ,
 					Value: &envKey,
 				},
@@ -184,7 +190,7 @@ func (c Commands) newJDNodeList(domain domain.Domain) *cobra.Command {
 			nv := toNodeViews(nodes.GetNodes(), nodeIDToProposals, nodeIDToJobs)
 
 			switch format {
-			case "table":
+			case outputFormatTable:
 				// TODO: update writeNodeTable to support jobs view
 				writeNodeTable(nodes.GetNodes())
 			case "json":
@@ -203,7 +209,7 @@ func (c Commands) newJDNodeList(domain domain.Domain) *cobra.Command {
 	cmd.Flags().StringSliceVarP(&labels, "label", "l", nil, "Labels (key=value)")
 	cmd.Flags().StringSliceVar(&dons, "dons", nil, "DON Names to filter by")
 	cmd.Flags().BoolVar(&viewJobs, "view-jobs", false, "Enable to view the status of job proposals for selected nodes.")
-	cmd.Flags().StringVarP(&format, "format", "f", "table", "Output format ["+strings.Join(validFormats, "|")+"]")
+	cmd.Flags().StringVarP(&format, "format", "f", outputFormatTable, "Output format ["+strings.Join(validFormats, "|")+"]")
 
 	return cmd
 }
@@ -249,7 +255,7 @@ func (c Commands) newJDNodeInspect(domain domain.Domain) *cobra.Command {
 	var (
 		labels       []string
 		format       string
-		validFormats = []string{"table", "json"}
+		validFormats = []string{outputFormatTable, "json"}
 	)
 
 	cmd := &cobra.Command{
@@ -278,12 +284,12 @@ func (c Commands) newJDNodeInspect(domain domain.Domain) *cobra.Command {
 			domainKey := domain.Key()
 			selectors := []*ptypes.Selector{
 				{
-					Key:   "product",
+					Key:   selectorKeyProduct,
 					Op:    ptypes.SelectorOp_EQ,
 					Value: &domainKey,
 				},
 				{
-					Key:   "environment",
+					Key:   selectorKeyEnvironment,
 					Op:    ptypes.SelectorOp_EQ,
 					Value: &envKey,
 				},
@@ -321,7 +327,7 @@ func (c Commands) newJDNodeInspect(domain domain.Domain) *cobra.Command {
 			}
 
 			switch format {
-			case "table":
+			case outputFormatTable:
 				writeChainConfigTable(configsByNode)
 			case "json":
 				b, err := json.MarshalIndent(configsByNode, "", "  ")
@@ -338,7 +344,7 @@ func (c Commands) newJDNodeInspect(domain domain.Domain) *cobra.Command {
 	}
 
 	cmd.Flags().StringSliceVarP(&labels, "label", "l", nil, "Labels (key=value)")
-	cmd.Flags().StringVarP(&format, "format", "f", "table", "Output format ["+strings.Join(validFormats, "|")+"]")
+	cmd.Flags().StringVarP(&format, "format", "f", outputFormatTable, "Output format ["+strings.Join(validFormats, "|")+"]")
 
 	return cmd
 }
@@ -384,12 +390,12 @@ func (c Commands) newJDNodePatchLabels(domain domain.Domain) *cobra.Command {
 			domainKey := domain.Key()
 			selectors := []*ptypes.Selector{
 				{
-					Key:   "product",
+					Key:   selectorKeyProduct,
 					Op:    ptypes.SelectorOp_EQ,
 					Value: &domainKey,
 				},
 				{
-					Key:   "environment",
+					Key:   selectorKeyEnvironment,
 					Op:    ptypes.SelectorOp_EQ,
 					Value: &envKey,
 				},
@@ -979,12 +985,12 @@ func (c Commands) newJDNodeSaveAll(domain domain.Domain) *cobra.Command {
 			domainKey := domain.Key()
 			selectors := []*ptypes.Selector{
 				{
-					Key:   "product",
+					Key:   selectorKeyProduct,
 					Op:    ptypes.SelectorOp_EQ,
 					Value: &domainKey,
 				},
 				{
-					Key:   "environment",
+					Key:   selectorKeyEnvironment,
 					Op:    ptypes.SelectorOp_EQ,
 					Value: &envKey,
 				},

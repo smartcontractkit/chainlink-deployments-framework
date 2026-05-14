@@ -33,9 +33,10 @@ const (
 	// TokenEnvVar is the environment variable name read at hook execution time.
 	TokenEnvVar = "SLACK_BOT_TOKEN"
 
-	colorBlue  = "#1976D2"
-	colorGreen = "#2eb67d"
-	colorRed   = "#e01e5a"
+	colorBlue      = "#1976D2"
+	colorGreen     = "#2eb67d"
+	colorRed       = "#e01e5a"
+	textTypeMrkdwn = "mrkdwn"
 )
 
 //nolint:gochecknoglobals // overridden in tests
@@ -83,7 +84,7 @@ func newHeader(text string) blockObj {
 func newSection(text string) blockObj {
 	return blockObj{
 		Type: "section",
-		Text: &textObj{Type: "mrkdwn", Text: text},
+		Text: &textObj{Type: textTypeMrkdwn, Text: text},
 	}
 }
 
@@ -94,12 +95,12 @@ func newFields(fields ...textObj) blockObj {
 func newContext(text string) blockObj {
 	return blockObj{
 		Type:     "context",
-		Elements: []textObj{{Type: "mrkdwn", Text: text}},
+		Elements: []textObj{{Type: textTypeMrkdwn, Text: text}},
 	}
 }
 
 func mrkdwn(label, value string) textObj {
-	return textObj{Type: "mrkdwn", Text: fmt.Sprintf("*%s*\n%s", label, value)}
+	return textObj{Type: textTypeMrkdwn, Text: fmt.Sprintf("*%s*\n%s", label, value)}
 }
 
 // Notify returns a PreHook that posts a Block Kit message to channel using the

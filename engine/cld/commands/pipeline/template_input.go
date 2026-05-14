@@ -53,7 +53,7 @@ type templateInputFlags struct {
 
 func newTemplateInputCmd(cfg *Config) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "template-input",
+		Use:     "template-input", //nolint:goconst // cobra command name
 		Short:   templateInputShort,
 		Long:    templateInputLong,
 		Example: templateInputExample,

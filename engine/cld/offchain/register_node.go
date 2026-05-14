@@ -20,6 +20,8 @@ const (
 	labelNodeTypeKey            = "type"
 	labelNodeTypeValueBootstrap = "bootstrap"
 	labelNodeTypeValuePlugin    = "plugin"
+	selectorKeyProduct          = "product"
+	selectorKeyEnvironment      = "environment"
 )
 
 // RegisterNode registers a single node with the job distributor. It errors if the node is already registered.
@@ -36,11 +38,11 @@ func RegisterNode(
 	domainKey := domain.Key()
 	labels := make([]*ptypes.Label, 0)
 	labels = append(labels, &ptypes.Label{
-		Key:   "product",
+		Key:   selectorKeyProduct,
 		Value: &domainKey,
 	})
 	labels = append(labels, &ptypes.Label{
-		Key:   "environment",
+		Key:   selectorKeyEnvironment,
 		Value: &environment,
 	})
 

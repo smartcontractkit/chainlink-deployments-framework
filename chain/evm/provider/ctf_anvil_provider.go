@@ -234,7 +234,7 @@ import (
 // anvilTestPrivateKeys contains the standard Anvil test accounts.
 // These are the well-known private keys that Anvil uses for its default accounts.
 var anvilTestPrivateKeys = []string{
-	"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80", // Account 0: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+	"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80", //nolint:goconst // well-known test private key shared across providers // Account 0: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
 	"59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d", // Account 1: 0x70997970C51812dc3A010C7d01b50e0d17dc79C8
 	"5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a", // Account 2: 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC
 	"7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6", // Account 3: 0x90F79bf6EB2c4f870365E785982E1f101E93b906

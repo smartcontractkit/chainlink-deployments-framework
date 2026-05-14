@@ -30,7 +30,7 @@ func (r *TemplateRenderer) RenderTo(w io.Writer, req RenderRequest, proposal Ana
 		Request:  req,
 		Proposal: proposal,
 	}
-	if err := r.tmpl.ExecuteTemplate(w, "proposal", ctx); err != nil {
+	if err := r.tmpl.ExecuteTemplate(w, "proposal", ctx); err != nil { //nolint:goconst // Go template name
 		return fmt.Errorf("failed to render proposal: %w", err)
 	}
 
@@ -77,7 +77,7 @@ type templateRenderContext struct {
 }
 
 func validateRequiredTemplates(tmpl *template.Template) error {
-	required := []string{"proposal", "batchOperation", "call", "parameter", "annotations"}
+	required := []string{"proposal", "batchOperation", "call", "parameter", "annotations"} //nolint:goconst // Go template names
 	missing := make([]string, 0, len(required))
 	for _, name := range required {
 		if tmpl.Lookup(name) == nil {
