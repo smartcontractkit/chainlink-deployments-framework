@@ -173,7 +173,7 @@ func TestAnalyzeTONTransactions(t *testing.T) {
 					continue
 				}
 
-				require.Equal(t, tt.want[i], result)
+				require.Equal(t, tt.want[i], result, "call %d", i)
 			}
 		})
 	}
@@ -187,7 +187,7 @@ func TestAnalyzeTONTransactionResolveContractInfo(t *testing.T) {
 	chainSelector := uint64(123456)
 	tx := setup.makeGrantRoleTx(t, 1)
 
-	t.Run("resolves contract type and version from proposal context", func(t *testing.T) {
+	t.Run("ignores contract type and version from proposal context", func(t *testing.T) {
 		t.Parallel()
 
 		ctx := &DefaultProposalContext{
@@ -200,25 +200,8 @@ func TestAnalyzeTONTransactionResolveContractInfo(t *testing.T) {
 
 		result, err := AnalyzeTONTransaction(ctx, decoder, chainSelector, tx)
 		require.NoError(t, err)
-		require.Equal(t, "TONRBAC", result.ContractType)
-		require.Equal(t, "1.2.3", result.ContractVersion)
-	})
-
-	t.Run("falls back when address is not in proposal context", func(t *testing.T) {
-		t.Parallel()
-
-		ctx := &DefaultProposalContext{
-			AddressesByChain: deployment.AddressesByChain{
-				chainSelector: {
-					"EQCxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx": deployment.MustTypeAndVersionFromString("OtherContract 9.9.9"),
-				},
-			},
-		}
-
-		result, err := AnalyzeTONTransaction(ctx, decoder, chainSelector, tx)
-		require.NoError(t, err)
-		require.Equal(t, tx.ContractType, result.ContractType)
-		require.Empty(t, result.ContractVersion)
+		require.EqualValues(t, bindings.TypeRBAC, result.ContractType)
+		require.Equal(t, "0.0.0", result.ContractVersion)
 	})
 }
 
@@ -259,9 +242,10 @@ func (s *testTONSetup) makeGrantRoleTx(t *testing.T, queryID uint64) types.Trans
 
 func (s *testTONSetup) expectedGrantRoleCall(queryID uint64) *DecodedCall {
 	return &DecodedCall{
-		Address:      s.targetAddr.String(),
-		Method:       string(bindings.TypeRBAC) + "::GrantRole(0x95cd540f)",
-		ContractType: string(bindings.TypeRBAC),
+		Address:         s.targetAddr.String(),
+		Method:          string(bindings.TypeRBAC) + "::GrantRole(0x95cd540f)",
+		ContractType:    string(bindings.TypeRBAC),
+		ContractVersion: "0.0.0",
 		Inputs: []NamedField{
 			{Name: "QueryID", Value: SimpleField{Value: bigIntStr(queryID)}, RawValue: queryID},
 			{Name: "Role", Value: SimpleField{Value: s.exampleRoleBig.String()}, RawValue: tlbe.NewUint256(s.exampleRoleBig)},

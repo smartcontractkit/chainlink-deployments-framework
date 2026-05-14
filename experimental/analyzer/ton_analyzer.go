@@ -40,9 +40,10 @@ func AnalyzeTONTransaction(ctx ProposalContext, decoder sdk.Decoder, chainSelect
 	typeAndVersion, err := deployment.TypeAndVersionFromString(mcmsTx.ContractTypeAndVersion)
 	if err != nil {
 		contractType, contractVersion := resolveContractInfo(ctx, chainSelector, mcmsTx)
+		errStr := fmt.Errorf("failed to decode TON transaction: failed to parse contract type and version: %w", err)
 		return &DecodedCall{
 			Address:         mcmsTx.To,
-			Method:          fmt.Sprintf("failed to parse contract type and version: %v", err),
+			Method:          errStr.Error(),
 			ContractType:    contractType,
 			ContractVersion: contractVersion,
 		}, nil
