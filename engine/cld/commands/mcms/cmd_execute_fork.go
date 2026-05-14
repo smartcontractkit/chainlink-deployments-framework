@@ -177,10 +177,6 @@ func executeFork(
 	if len(chainConfig.HTTPRPCs) == 0 {
 		return fmt.Errorf("no rpcs loaded in forked environment for chain %d (fork tests require public RPCs)", cfg.chainSelector)
 	}
-	forkClient, ok := cfg.forkedEnv.ForkClients[cfg.chainSelector]
-	if !ok {
-		return fmt.Errorf("failed to get fork client for chain %d", cfg.chainSelector)
-	}
 
 	// zkSync VM chains (zkSync Era, Lens, Cronos zkEVM, etc.) require anvil-zksync,
 	// not standard Anvil. Derive this from the loaded chain which is set by the chain
@@ -260,9 +256,15 @@ func executeFork(
 	}
 
 	lggr.Info("Executing timelock chain command")
-	reports, err := timelockExecuteChainCommand(ctx, lggr, cfg)
-	if err != nil {
-		lggr.Warnw("Timelock.execute() - failure; starting calling individual ops for debugging", "err", err)
+	reports, execErr := timelockExecuteChainCommand(ctx, lggr, cfg)
+
+	hookErr := runPostProposalHooks(lggr, cfg, mcmsCfg, reports, errorString(execErr))
+	if hookErr != nil {
+		lggr.Warnw("failed to run proposal hooks", "err", hookErr)
+	}
+
+	if execErr != nil {
+		lggr.Warnw("Timelock.execute() - failure; starting calling individual ops for debugging", "err", execErr)
 		if derr := diagnoseTimelockRevert(ctx, lggr, anvilClient.URL, cfg.chainSelector, cfg.timelockProposal.Operations,
 			timelockAddress, cfg.env.ExistingAddresses, cfg.proposalCtx); derr != nil { //nolint:staticcheck
 			lggr.Errorw("Diagnosis results", "err", derr)
@@ -270,18 +272,35 @@ func executeFork(
 			return fmt.Errorf("failed to timelock execute chain: %w", derr)
 		}
 
-		return fmt.Errorf("failed to timelock execute chain: %w", err)
+		return fmt.Errorf("failed to timelock execute chain: %w", execErr)
 	}
+
 	lggr.Info("Timelock.execute() - success")
 
+	return nil
+}
+
+func runPostProposalHooks(
+	lggr logger.Logger, forkCfg *forkConfig, mcmsCfg Config, reports []cldfchangeset.MCMSTimelockExecuteReport,
+	execError string,
+) error {
 	if mcmsCfg.LoadChangesets == nil {
 		lggr.Debug("LoadChangesets function not set in mcms config; skipping proposal hooks")
 		return nil
 	}
+	forkClient, ok := forkCfg.forkedEnv.ForkClients[forkCfg.chainSelector]
+	if !ok {
+		return fmt.Errorf("failed to get fork client for chain %d", forkCfg.chainSelector)
+	}
+	chainConfig, ok := forkCfg.forkedEnv.ChainConfigs[forkCfg.chainSelector]
+	if !ok {
+		return fmt.Errorf("failed to get forked env's chain config for chain %d", forkCfg.chainSelector)
+	}
 
 	forkContext := &cldfchangeset.EVMForkContext{ChainConfig: chainConfig, Client: forkClient}
-	cfg.env.Name = cfg.envStr // ensure hooks load the correct env config for the fork
-	err = runHooksInternal(mcmsCfg, cfg.env, cfg.timelockProposal, reports, forkContext)
+	forkCfg.env.Name = forkCfg.envStr // ensure hooks load the correct env config for the fork
+
+	err := runHooksInternal(mcmsCfg, forkCfg.env, forkCfg.timelockProposal, reports, execError, forkContext)
 	if err != nil {
 		return fmt.Errorf("failed to run post-proposal hooks: %w", err)
 	}
@@ -485,4 +504,12 @@ func (c *loggingRPCClient) SendTransaction(ctx context.Context, tx *gethtypes.Tr
 		"data", common.Bytes2Hex(tx.Data()))
 
 	return c.OnchainClient.SendTransaction(ctx, tx)
+}
+
+func errorString(err error) string {
+	if err == nil {
+		return ""
+	}
+
+	return err.Error()
 }

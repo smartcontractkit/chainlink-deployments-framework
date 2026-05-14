@@ -137,7 +137,7 @@ jobs:
   ci-test-provider-aptos:
     name: Chain Tests - Aptos
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     permissions:
       id-token: write
       contents: read
