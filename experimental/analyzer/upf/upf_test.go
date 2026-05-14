@@ -211,7 +211,7 @@ func TestUpfConvertTimelockProposalWithTon(t *testing.T) {
 				require.Contains(t, gotUpf, "chainName: ton-testnet")
 				require.Contains(t, gotUpf, "msigAddress: EQADa3W6G0nSiTV4a6euRA42fU9QxSEnb-WeDpcrtWzA2jM8")
 				require.Contains(t, gotUpf, "contractType: RBACTimelock")
-				require.Contains(t, gotUpf, "contractTypeAndVersion: RBACTimelock 1.0.0")
+				require.Contains(t, gotUpf, "contractTypeAndVersion: link.chain.ton.mcms.Timelock 0.0.0")
 			},
 		},
 	}
