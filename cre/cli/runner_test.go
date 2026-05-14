@@ -31,6 +31,7 @@ func TestNewCLIRunner(t *testing.T) {
 			r := NewCLIRunner(tt.binaryPath, tt.apiKey)
 			require.Equal(t, tt.wantPath, r.binaryPath)
 			require.Equal(t, tt.wantKey, r.apiKey)
+			require.Equal(t, tt.apiKey, r.rawAPIKey)
 			require.Nil(t, r.apiKeysByName)
 		})
 	}
@@ -78,9 +79,11 @@ func Test_parseNamedAPIKeys(t *testing.T) {
 func TestNewCLIRunner_NamedKeysMode(t *testing.T) {
 	t.Parallel()
 
-	r := NewCLIRunner("/bin/sh", `{"prod-1":"k1","prod-2":"k2"}`)
+	raw := `{"prod-1":"k1","prod-2":"k2"}`
+	r := NewCLIRunner("/bin/sh", raw)
 	require.Empty(t, r.apiKey, "apiKey must be empty until a name is selected")
 	require.Equal(t, namedAPIKeys{"prod-1": "k1", "prod-2": "k2"}, r.apiKeysByName)
+	require.Equal(t, raw, r.rawAPIKey, "rawAPIKey preserves the original value for debugging")
 }
 
 func TestNewCLIRunner_SingleKeyMode_PreservesUnparseableValues(t *testing.T) {
@@ -99,6 +102,7 @@ func TestNewCLIRunner_SingleKeyMode_PreservesUnparseableValues(t *testing.T) {
 			t.Parallel()
 			r := NewCLIRunner("/bin/sh", raw)
 			require.Equal(t, raw, r.apiKey)
+			require.Equal(t, raw, r.rawAPIKey)
 			require.Nil(t, r.apiKeysByName)
 		})
 	}

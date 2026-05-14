@@ -41,6 +41,9 @@ func (n namedAPIKeys) sortedNames() []string {
 // It implements [fcre.CLIRunner].
 type cliRunner struct {
 	binaryPath string
+	// rawAPIKey preserves the original value passed to NewCLIRunner verbatim,
+	// regardless of which mode (single-key or named-keys) was selected.
+	rawAPIKey string
 	// apiKey is the resolved single API key value used by Run. In named-keys
 	// mode it is empty until a name is selected via WithNamedAPIKey, which
 	// returns a clone with apiKey populated from apiKeysByName.
@@ -68,10 +71,11 @@ func NewCLIRunner(binaryPath string, apiKey string, opts ...CLIRunnerOption) *cl
 	// formatting (newlines/indentation) during manual durable-pipeline runs.
 	r := &cliRunner{
 		binaryPath: binaryPath,
+		rawAPIKey:  apiKey,
 		Stdout:     os.Stdout,
 		Stderr:     os.Stderr,
 	}
-	if named, ok := parseNamedAPIKeys(apiKey); ok {
+	if named, ok := parseNamedAPIKeys(r.rawAPIKey); ok {
 		r.apiKeysByName = named
 	} else {
 		r.apiKey = apiKey
@@ -107,10 +111,8 @@ func parseNamedAPIKeys(raw string) (namedAPIKeys, bool) {
 // WithNamedAPIKey returns a clone of this runner that uses the API key
 // registered under name. the clone preserves the underlying name->key map so further WithNamedAPIKey
 // calls remain valid.
-func (r *cliRunner) WithNamedAPIKey(name string) (fcre.CLIRunner, error) {
-	if r == nil {
-		return nil, errors.New("cre cli: runner is nil")
-	}
+func (r cliRunner) WithNamedAPIKey(name string) (fcre.CLIRunner, error) {
+
 	if len(r.apiKeysByName) == 0 {
 		return nil, errors.New("cre cli: runner is not configured with named API keys")
 	}
@@ -118,10 +120,9 @@ func (r *cliRunner) WithNamedAPIKey(name string) (fcre.CLIRunner, error) {
 	if !ok {
 		return nil, fmt.Errorf("cre cli: API key %q not configured (available: %v)", name, r.apiKeysByName.sortedNames())
 	}
-	clone := *r
-	clone.apiKey = key
+	r.apiKey = key
 
-	return &clone, nil
+	return &r, nil
 }
 
 // WithContextRegistries sets domain-level registry entries for CRE context.yaml generation
