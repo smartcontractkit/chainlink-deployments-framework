@@ -112,7 +112,6 @@ func parseNamedAPIKeys(raw string) (namedAPIKeys, bool) {
 // registered under name. the clone preserves the underlying name->key map so further WithNamedAPIKey
 // calls remain valid.
 func (r cliRunner) WithNamedAPIKey(name string) (fcre.CLIRunner, error) {
-
 	if len(r.apiKeysByName) == 0 {
 		return nil, errors.New("cre cli: runner is not configured with named API keys")
 	}
