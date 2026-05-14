@@ -115,7 +115,7 @@ func (v *socialscanVerifier) Verify(ctx context.Context) error {
 
 	resp, err := sendSocialscanRequest[string](ctx, v.httpClient, v.chainName, "POST", "contract", actionVerifySourceCode, v.apiKey, map[string]string{
 		paramContractAddress:      v.address,
-		"sourceCode":           sourceCode,
+		"sourceCode":              sourceCode,
 		paramCodeFormat:           "solidity-standard-json-input",
 		paramContractName:         v.metadata.Name,
 		paramCompilerVersion:      v.metadata.Version,
@@ -154,9 +154,9 @@ func (v *socialscanVerifier) Verify(ctx context.Context) error {
 
 func (v *socialscanVerifier) getConstructorArgs(ctx context.Context) (string, error) {
 	resp, err := sendSocialscanRequest[[]socialscanTransactionInfo](ctx, v.httpClient, v.chainName, "GET", "account", "txlist", v.apiKey, map[string]string{
-		paramAddress:    v.address,
+		paramAddress: v.address,
 		"page":       "1",
-		paramOffset:     "1",
+		paramOffset:  "1",
 		"sort":       "asc",
 		"startblock": "0",
 		"endblock":   "99999999",

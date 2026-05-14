@@ -175,9 +175,9 @@ func (v *routescanVerifier) Verify(ctx context.Context) error {
 func (v *routescanVerifier) getConstructorArgs(ctx context.Context) (string, error) {
 	resp, err := sendRoutescanRequest[[]routescanTxInfo](ctx, v.httpClient, v.networkType, v.chainPath, "GET", "account", "txlist", v.apiKey, map[string]string{
 		paramAddress: v.address,
-		"page":    "1",
+		"page":       "1",
 		paramOffset:  "1",
-		"sort":    "asc",
+		"sort":       "asc",
 	})
 	if err != nil {
 		return "", fmt.Errorf("failed to get contract creation info: %w", err)
