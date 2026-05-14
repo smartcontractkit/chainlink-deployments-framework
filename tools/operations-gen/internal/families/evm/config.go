@@ -1,6 +1,8 @@
 package evm
 
 // EvmContractConfig is the EVM-specific contract configuration decoded from YAML.
+//
+//nolint:revive // Renaming would be a breaking change.
 type EvmContractConfig struct {
 	Name              string              `yaml:"contract_name"`
 	Version           string              `yaml:"version"`
@@ -12,6 +14,7 @@ type EvmContractConfig struct {
 	ConfigDir         string              `yaml:"-"`
 }
 
+//nolint:revive // Renaming would be a breaking change.
 type EvmInputConfig struct {
 	// GobindingsPackage is the required parent Go import path, or relative filesystem path,
 	// containing versioned abigen packages, unless every contract provides its own override.
@@ -21,6 +24,8 @@ type EvmInputConfig struct {
 }
 
 // EvmFunctionConfig selects a contract function and assigns its access control.
+//
+//nolint:revive // Renaming would be a breaking change.
 type EvmFunctionConfig struct {
 	Name   string `yaml:"name"`
 	Access string `yaml:"access,omitempty"` // "owner", "role", or "public"
@@ -31,6 +36,7 @@ type EvmFunctionConfig struct {
 	Role string `yaml:"role,omitempty"`
 }
 
+//nolint:revive // Renaming would be a breaking change.
 type EvmOutputConfig struct {
 	BasePath string `yaml:"base_path"`
 }

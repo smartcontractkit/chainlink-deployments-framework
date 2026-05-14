@@ -25,6 +25,8 @@ type Config = core.Config
 // Relative output paths and package loading are resolved from the config file's
 // directory, which makes this safe to call from another repository without
 // depending on the process working directory.
+//
+//nolint:revive // Renaming would be a breaking change.
 func GenerateFile(configPath string) error {
 	configData, err := os.ReadFile(configPath)
 	if err != nil {

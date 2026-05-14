@@ -78,7 +78,7 @@ func runGoldenGenerationTest(t *testing.T, configFileName string, goldenFileName
 	goldenPath := filepath.Join(evmTestdataDir, goldenFileName)
 
 	if *update {
-		require.NoError(t, os.WriteFile(goldenPath, got, 0o600), "writing golden file")
+		require.NoError(t, os.WriteFile(goldenPath, got, 0o600), "writing golden file") //nolint:gosec // G703 false positive – goldenPath is a fixed testdata path, not user input
 
 		return
 	}
