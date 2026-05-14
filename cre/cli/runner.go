@@ -109,7 +109,7 @@ func parseNamedAPIKeys(raw string) (namedAPIKeys, bool) {
 }
 
 // WithNamedAPIKey returns a clone of this runner that uses the API key
-// registered under name. the clone preserves the underlying name->key map so further WithNamedAPIKey
+// registered under name. The clone preserves the underlying name->key map so further WithNamedAPIKey
 // calls remain valid.
 func (r cliRunner) WithNamedAPIKey(name string) (fcre.CLIRunner, error) {
 	if len(r.apiKeysByName) == 0 {
