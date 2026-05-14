@@ -77,10 +77,6 @@ linters:
               desc: You must not import this package. There is no alternative.
             - pkg: github.com/smartcontractkit/chainlink/deployment
               desc: You must not import this package. There is no alternative.
-            - pkg: github.com/smartcontractkit/chainlink-common/pkg/logger
-              desc: Use github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger instead
-            - pkg: github.com/smartcontractkit/chainlink-common
-              desc: We want to avoid importing this package as it has regular breaking changes.
             - pkg: github.com/smartcontractkit/chainlink-ccip/deployment
               desc: We want to avoid importing this package as it creates import cycles
             - pkg: github.com/smartcontractkit/chainlink-sui/deployment
