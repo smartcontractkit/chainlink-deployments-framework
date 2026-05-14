@@ -703,6 +703,6 @@ var testProposal = lo.Must(mcms.NewTimelockProposalBuilder().
 
 func generateStableUUIDs(t *testing.T) {
 	t.Helper()
-	uuid.SetRand(rand.New(rand.NewSource(1234)))
+	uuid.SetRand(rand.New(rand.NewSource(1234))) //nolint:gosec // not used for security purposes
 	t.Cleanup(func() { uuid.SetRand(nil) })
 }
