@@ -31,7 +31,7 @@ const (
 	hookTimeout = 10 * time.Second
 
 	// TokenEnvVar is the environment variable name read at hook execution time.
-	TokenEnvVar = "SLACK_BOT_TOKEN" //nolint:gosec // env var name, not a credential
+	TokenEnvVar = "SLACK_BOT_TOKEN"
 
 	colorBlue  = "#1976D2"
 	colorGreen = "#2eb67d"

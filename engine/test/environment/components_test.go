@@ -96,7 +96,7 @@ func TestComponents_AddChains(t *testing.T) {
 				t.Helper()
 
 				for i, chain := range c.Chains {
-					assert.Equal(t, uint64(i), chain.ChainSelector()) //nolint:gosec // G115: this will not overflow from a range index
+					assert.Equal(t, uint64(i), chain.ChainSelector())
 				}
 			},
 		},

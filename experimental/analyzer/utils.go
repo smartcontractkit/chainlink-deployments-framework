@@ -41,7 +41,7 @@ func getFieldValue(argument any) FieldValue {
 	case models.SuiAddress:
 		value = AddressField{Value: string(arg)}
 	default:
-		//nolint:exhaustive // default case covers everything else
+
 		switch reflect.TypeOf(arg).Kind() {
 		// If the field is a slice or array, iterate over every element individually
 		case reflect.Array, reflect.Slice:

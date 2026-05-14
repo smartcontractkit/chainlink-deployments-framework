@@ -3,10 +3,11 @@ package analyzer
 import (
 	"fmt"
 
-	"github.com/smartcontractkit/chainlink-ton/pkg/bindings"
 	"github.com/smartcontractkit/mcms/sdk"
 	"github.com/smartcontractkit/mcms/sdk/ton"
 	"github.com/smartcontractkit/mcms/types"
+
+	"github.com/smartcontractkit/chainlink-ton/pkg/bindings"
 )
 
 // AnalyzeTONTransactions decodes a slice of TON transactions and returns their decoded representations.

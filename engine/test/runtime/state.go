@@ -295,7 +295,7 @@ func (p ProposalState) Kind() (mcmstypes.ProposalKind, error) {
 //
 // Note: This function is designed for test use only. The error from rand.Read is intentionally
 // ignored as cryptographic randomness is not critical for test salt generation.
-func randomHash() *common.Hash { //nolint:unused // We will come back to this when we have a solution for the salt override.
+func randomHash() *common.Hash {
 	b := make([]byte, 32)
 	_, _ = rand.Read(b) // Assignment for errcheck. Only used in tests so we can ignore.
 	h := common.BytesToHash(b)

@@ -864,7 +864,7 @@ func TestTryEIP1967ProxyFallback(t *testing.T) {
 				testEnv.BlockChains = chain.NewBlockChainsFromSlice(allChains)
 
 				// Add proxy address to ExistingAddresses so getAllAddressesByChain can find it
-				err = testEnv.ExistingAddresses.Save(chainSelector, proxyAddress, deployment.MustTypeAndVersionFromString("TransparentUpgradeableProxy 1.0.0")) // nolint
+				err = testEnv.ExistingAddresses.Save(chainSelector, proxyAddress, deployment.MustTypeAndVersionFromString("TransparentUpgradeableProxy 1.0.0")) //nolint
 				require.NoError(t, err)
 				// Note: Implementation address NOT added to address book (this is the test case)
 
@@ -919,9 +919,9 @@ func TestTryEIP1967ProxyFallback(t *testing.T) {
 				testEnv.BlockChains = chain.NewBlockChainsFromSlice(allChains)
 
 				// Add addresses to ExistingAddresses so getAllAddressesByChain can find them
-				err = testEnv.ExistingAddresses.Save(chainSelector, proxyAddress, deployment.MustTypeAndVersionFromString("TransparentUpgradeableProxy 1.0.0")) // nolint
+				err = testEnv.ExistingAddresses.Save(chainSelector, proxyAddress, deployment.MustTypeAndVersionFromString("TransparentUpgradeableProxy 1.0.0")) //nolint
 				require.NoError(t, err)
-				err = testEnv.ExistingAddresses.Save(chainSelector, implAddress.Hex(), deployment.MustTypeAndVersionFromString("ImplementationContract 1.0.0")) // nolint
+				err = testEnv.ExistingAddresses.Save(chainSelector, implAddress.Hex(), deployment.MustTypeAndVersionFromString("ImplementationContract 1.0.0")) //nolint
 				require.NoError(t, err)
 
 				return &DefaultProposalContext{
@@ -993,7 +993,7 @@ func TestTryEIP1967ProxyFallback(t *testing.T) {
 				implABI := `[{"type":"function","name":"transfer","stateMutability":"nonpayable","inputs":[{"type":"address","name":"to"},{"type":"uint256","name":"amount"}],"outputs":[{"type":"bool"}]}]`
 
 				// Add implementation address to ExistingAddresses
-				err = testEnv.ExistingAddresses.Save(chainSelector, implAddress.Hex(), deployment.MustTypeAndVersionFromString("ImplementationContract 1.0.0")) // nolint
+				err = testEnv.ExistingAddresses.Save(chainSelector, implAddress.Hex(), deployment.MustTypeAndVersionFromString("ImplementationContract 1.0.0")) //nolint
 				require.NoError(t, err)
 
 				return &DefaultProposalContext{
@@ -1278,9 +1278,9 @@ func TestAnalyzeEVMTransaction_EIP1967ProxyFallback(t *testing.T) {
 				testEnv.BlockChains = chain.NewBlockChainsFromSlice(allChains)
 
 				// Add addresses to ExistingAddresses so getAllAddressesByChain can find them
-				err = testEnv.ExistingAddresses.Save(chainSelector, proxyAddress, deployment.MustTypeAndVersionFromString("TransparentUpgradeableProxy 1.0.0")) // nolint
+				err = testEnv.ExistingAddresses.Save(chainSelector, proxyAddress, deployment.MustTypeAndVersionFromString("TransparentUpgradeableProxy 1.0.0")) //nolint
 				require.NoError(t, err)
-				err = testEnv.ExistingAddresses.Save(chainSelector, implAddressStr, deployment.MustTypeAndVersionFromString("ImplementationContract 1.0.0")) // nolint
+				err = testEnv.ExistingAddresses.Save(chainSelector, implAddressStr, deployment.MustTypeAndVersionFromString("ImplementationContract 1.0.0")) //nolint
 				require.NoError(t, err)
 
 				return &DefaultProposalContext{

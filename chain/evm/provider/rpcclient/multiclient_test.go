@@ -75,8 +75,8 @@ func TestMultiClient(t *testing.T) {
 
 	// Expect second client to be set as backup.
 	mc, err = NewMultiClient(t.Context(), lggr, RPCConfig{ChainSelector: chainSelector, RPCs: []RPC{
-		{Name: "test-rpc", WSURL: wsURL, HTTPURL: httpURL, PreferredURLScheme: URLSchemePreferenceHTTP}, //preferred
-		{Name: "test-rpc", WSURL: wsURL, HTTPURL: httpURL, PreferredURLScheme: URLSchemePreferenceHTTP}, //backup
+		{Name: "test-rpc", WSURL: wsURL, HTTPURL: httpURL, PreferredURLScheme: URLSchemePreferenceHTTP}, // preferred
+		{Name: "test-rpc", WSURL: wsURL, HTTPURL: httpURL, PreferredURLScheme: URLSchemePreferenceHTTP}, // backup
 	}})
 	require.NoError(t, err)
 	require.Len(t, mc.Backups, 1)

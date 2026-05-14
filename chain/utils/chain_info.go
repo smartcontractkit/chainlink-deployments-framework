@@ -1,4 +1,4 @@
-package utils //nolint:revive // var-naming: We need to keep this name for now for backwards compatibility.
+package utils
 
 import chainsel "github.com/smartcontractkit/chain-selectors"
 

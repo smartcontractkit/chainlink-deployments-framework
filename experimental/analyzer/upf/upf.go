@@ -11,12 +11,13 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/goccy/go-yaml"
 	chainsel "github.com/smartcontractkit/chain-selectors"
-	"github.com/smartcontractkit/chainlink-ton/pkg/bindings"
 	"github.com/smartcontractkit/mcms"
 	mcmsaptossdk "github.com/smartcontractkit/mcms/sdk/aptos"
 	mcmssuisdk "github.com/smartcontractkit/mcms/sdk/sui"
 	mcmstonsdk "github.com/smartcontractkit/mcms/sdk/ton"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
+
+	"github.com/smartcontractkit/chainlink-ton/pkg/bindings"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	mcmsanalyzer "github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"

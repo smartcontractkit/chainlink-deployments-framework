@@ -100,7 +100,7 @@ func (c *Client) confirmTx(
 		}
 
 		// Check the transaction result status
-		//nolint:exhaustive // handled via default case
+
 		switch result := receipt.Receipt.Result; result {
 		// An empty result or success indicates confirmation
 		// TODO: investigate why when confirming a non-contract transaction, the result is empty (see SendTrxWithSendAndConfirm test)
