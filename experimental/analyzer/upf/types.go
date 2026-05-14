@@ -5,6 +5,8 @@ import (
 	"slices"
 
 	mcmstypes "github.com/smartcontractkit/mcms/types"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 )
 
 type UPFProposal struct {
@@ -41,9 +43,10 @@ type Transaction struct {
 }
 
 type Metadata struct {
-	ContractType    string           `json:"contractType,omitempty"`
-	Comment         string           `json:"comment,omitempty" `
-	DecodedCalldata *DecodedCallData `json:"decodedCalldata,omitempty"`
+	ContractType           string                     `json:"contractType,omitempty"`
+	ContractTypeAndVersion *deployment.TypeAndVersion `json:"contractTypeAndVersion,omitempty"`
+	Comment                string                     `json:"comment,omitempty" `
+	DecodedCalldata        *DecodedCallData           `json:"decodedCalldata,omitempty"`
 }
 
 type DecodedCallData struct {

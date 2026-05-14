@@ -11,12 +11,13 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/goccy/go-yaml"
 	chainsel "github.com/smartcontractkit/chain-selectors"
-	"github.com/smartcontractkit/chainlink-ton/pkg/bindings"
 	"github.com/smartcontractkit/mcms"
 	mcmsaptossdk "github.com/smartcontractkit/mcms/sdk/aptos"
 	mcmssuisdk "github.com/smartcontractkit/mcms/sdk/sui"
 	mcmstonsdk "github.com/smartcontractkit/mcms/sdk/ton"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
+
+	"github.com/smartcontractkit/chainlink-ton/pkg/bindings"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	mcmsanalyzer "github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
@@ -173,6 +174,17 @@ func mcmsOperationToUpfTransaction(
 	for _, arg := range analyzeResult.Inputs {
 		upfFunctionArgs[arg.Name] = arg.Value
 	}
+	var contractTypeAndVersion *deployment.TypeAndVersion
+	if mcmsOp.Transaction.ContractTypeAndVersion != "" {
+		contractTypeAndVersionValue, err := deployment.TypeAndVersionFromString(mcmsOp.Transaction.ContractTypeAndVersion)
+		if err != nil {
+			contractTypeAndVersion = &deployment.TypeAndVersion{
+				Type: deployment.ContractType(fmt.Sprintf("Error: failed to parse contract TypeAndVersion: %v", err)),
+			}
+		} else {
+			contractTypeAndVersion = &contractTypeAndVersionValue
+		}
+	}
 
 	return Transaction{
 		Index:           idx,
@@ -191,8 +203,9 @@ func mcmsOperationToUpfTransaction(
 				FunctionName: analyzeResult.Method,
 				FunctionArgs: upfFunctionArgs,
 			},
-			Comment:      "",
-			ContractType: mcmsOp.Transaction.ContractType,
+			Comment:                "",
+			ContractType:           mcmsOp.Transaction.ContractType,
+			ContractTypeAndVersion: contractTypeAndVersion,
 		},
 	}, nil
 }
