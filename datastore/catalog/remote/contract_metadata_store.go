@@ -399,7 +399,7 @@ func (s *catalogContractMetadataStore) editRecord(record datastore.ContractMetad
 			return err
 		}
 
-		switch st.Code() {
+		switch st.Code() { //nolint:exhaustive // only specific codes need special handling
 		case codes.NotFound:
 			return fmt.Errorf("%w: %s", datastore.ErrContractMetadataNotFound, statusErr.Error())
 		case codes.Aborted:

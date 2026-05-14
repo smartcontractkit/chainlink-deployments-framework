@@ -28,6 +28,7 @@ const (
 	InstructionResize                    // Increases account size for accounts that need over 10kb.
 )
 
+//nolint:goconst // instruction names are canonical identifiers, repeated in tests
 var InstructionImplDef = ag_binary.NewVariantDefinition(
 	ag_binary.Uint8TypeIDEncoding,
 	[]ag_binary.VariantType{

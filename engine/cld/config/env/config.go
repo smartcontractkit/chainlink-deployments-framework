@@ -264,7 +264,7 @@ var (
 		"onchain.aptos.deployer_key":                              {"ONCHAIN_APTOS_DEPLOYER_KEY", "APTOS_DEPLOYER_KEY"},
 		"onchain.tron.deployer_key":                               {"ONCHAIN_TRON_DEPLOYER_KEY", "TRON_DEPLOYER_KEY"},
 		"onchain.sui.deployer_key":                                {"ONCHAIN_SUI_DEPLOYER_KEY", "SUI_DEPLOYER_KEY"},
-		"onchain.stellar.deployer_key":                            {"ONCHAIN_STELLAR_DEPLOYER_KEY"},
+		"onchain.stellar.deployer_key":                            {"ONCHAIN_STELLAR_DEPLOYER_KEY"}, //nolint:goconst // used once here, repeated in tests
 		"onchain.ton.deployer_key":                                {"ONCHAIN_TON_DEPLOYER_KEY", "TON_DEPLOYER_KEY"},
 		"onchain.ton.wallet_version":                              {"ONCHAIN_TON_WALLET_VERSION", "TON_WALLET_VERSION"},
 		"onchain.canton.jwt_token":                                {"ONCHAIN_CANTON_JWT_TOKEN"},
@@ -276,9 +276,9 @@ var (
 		"offchain.job_distributor.endpoints.grpc":                 {"OFFCHAIN_JD_ENDPOINTS_GRPC", "JD_GRPC"},
 		"offchain.ocr.x_signers":                                  {"OFFCHAIN_OCR_X_SIGNERS", "OCR_X_SIGNERS"},
 		"offchain.ocr.x_proposers":                                {"OFFCHAIN_OCR_X_PROPOSERS", "OCR_X_PROPOSERS"},
-		"catalog.grpc":                                            {"CATALOG_GRPC"},
-		"catalog.auth.kms_key_id":                                 {"CATALOG_AUTH_KMS_KEY_ID"},
-		"catalog.auth.kms_key_region":                             {"CATALOG_AUTH_KMS_KEY_REGION"},
+		"catalog.grpc":                                            {"CATALOG_GRPC"},                //nolint:goconst // used once here, repeated in tests
+		"catalog.auth.kms_key_id":                                 {"CATALOG_AUTH_KMS_KEY_ID"},     //nolint:goconst // used once here, repeated in tests
+		"catalog.auth.kms_key_region":                             {"CATALOG_AUTH_KMS_KEY_REGION"}, //nolint:goconst // used once here, repeated in tests
 		"cre.auth.api_key":                                        {"CRE_API_KEY"},
 		"cre.auth.tenant_id":                                      {"CRE_TENANT_ID"},
 		"cre.auth.org_id":                                         {"CRE_ORG_ID"},

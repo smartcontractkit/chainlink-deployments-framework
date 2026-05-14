@@ -38,7 +38,7 @@ func NewVerifier(strategy VerificationStrategy, cfg VerifierConfig) (verificatio
 		if apiKey == "" {
 			t := strings.TrimSpace(cfg.Network.BlockExplorer.Type)
 			if t == "" {
-				t = "etherscan"
+				t = strategyNameEtherscan
 			}
 
 			return nil, fmt.Errorf("block_explorer type %q API key not configured for chain %s", t, cfg.Chain.Name)

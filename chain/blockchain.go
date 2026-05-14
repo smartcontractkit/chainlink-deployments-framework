@@ -250,7 +250,7 @@ func getChainsByType[VT any, PT any](b BlockChains) map[uint64]VT {
 			chains[sel] = c
 		case PT: //nolint:gocritic // caseOrder: VT must be matched before PT for correct semantics
 			val := reflect.ValueOf(c)
-			if val.Kind() == reflect.Ptr && !val.IsNil() {
+			if val.Kind() == reflect.Pointer && !val.IsNil() {
 				elem := val.Elem()
 				if elem.CanInterface() {
 					if v, ok := elem.Interface().(VT); ok {

@@ -16,6 +16,11 @@ import (
 	"strings"
 )
 
+const (
+	githubAPIHost     = "api.github.com"
+	externalRefNilMsg = "externalRef=<nil>"
+)
+
 type githubRelease struct {
 	Assets []struct {
 		URL                string `json:"url"`
@@ -83,7 +88,7 @@ func isGitHubAPIReleaseAssetURL(raw string) bool {
 	if err != nil {
 		return false
 	}
-	if u.Host != "api.github.com" {
+	if u.Host != githubAPIHost {
 		return false
 	}
 
@@ -92,7 +97,7 @@ func isGitHubAPIReleaseAssetURL(raw string) bool {
 
 func binaryExternalRefSummary(e *externalBinaryRef) string {
 	if e == nil {
-		return "externalRef=<nil>"
+		return externalRefNilMsg
 	}
 
 	return fmt.Sprintf("url=%q repo=%q releaseTag=%q assetName=%q sha256=%q",
@@ -157,7 +162,7 @@ func resolveGitHubAssetURL(ctx context.Context, client *http.Client, repo, tag, 
 		return "", err
 	}
 	tagEnc := url.PathEscape(tag)
-	apiURL := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/tags/%s", owner, name, tagEnc)
+	apiURL := fmt.Sprintf("https://" + githubAPIHost + "/repos/%s/%s/releases/tags/%s", owner, name, tagEnc)
 	body, err := githubGet(ctx, client, apiURL, "github release")
 	if err != nil {
 		return "", fmt.Errorf("cre: github release %s/%s tag %q asset %q: %w", owner, name, tag, assetName, err)

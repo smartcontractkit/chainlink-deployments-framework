@@ -10,6 +10,11 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/jira"
 )
 
+const (
+	networkTypeMainnet = "mainnet"
+	networkTypeTestnet = "testnet"
+)
+
 // DatastoreType represents the type of datastore to use for persisting deployment data.
 type DatastoreType string
 
@@ -65,7 +70,7 @@ func (e *Environment) validate() error {
 	// Check for valid values
 	for _, networkType := range e.NetworkTypes {
 		if !isValidNetworkType(networkType) {
-			return errors.New("invalid network_types value: " + networkType + " (must be 'mainnet' or 'testnet')")
+			return errors.New("invalid network_types value: " + networkType + " (must be '" + networkTypeMainnet + "' or '" + networkTypeTestnet + "')")
 		}
 	}
 
@@ -94,7 +99,7 @@ func (e *Environment) validate() error {
 
 // isValidNetworkType checks if the network type value is valid.
 func isValidNetworkType(networkType string) bool {
-	return networkType == "mainnet" || networkType == "testnet"
+	return networkType == networkTypeMainnet || networkType == networkTypeTestnet
 }
 
 // DomainConfig represents the parsed and validated domain configuration.

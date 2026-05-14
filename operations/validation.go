@@ -57,7 +57,7 @@ func isValueSerializable(lggr logger.Logger, v reflect.Value) bool {
 
 	// Rest of implementation for other types...
 
-	switch v.Kind() {
+	switch v.Kind() { //nolint:exhaustive // only struct, slice, array, map need deep validation
 	case reflect.Struct:
 		// Check if each field is serializable
 		for i := range v.NumField() {

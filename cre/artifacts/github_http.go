@@ -11,7 +11,7 @@ import (
 //
 
 const (
-	envGitHubToken = "GITHUB_TOKEN"
+	envGitHubToken = "GITHUB_TOKEN" //nolint:gosec // G101: not a credential, just env var name
 	envGHToken     = "GH_TOKEN"
 
 	hostGitHubCom           = "github.com"

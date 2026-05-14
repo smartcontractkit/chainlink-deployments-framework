@@ -83,7 +83,7 @@ func (v *etherscanVerifier) String() string {
 
 func (v *etherscanVerifier) IsVerified(ctx context.Context) (bool, error) {
 	resp, err := sendEtherscanRequestForVerifier[string](ctx, v, "GET", "contract", "getabi", map[string]string{
-		"address": v.address,
+		paramAddress: v.address,
 	})
 	if err != nil {
 		return false, fmt.Errorf("failed to check verification status: %w", err)
@@ -128,13 +128,13 @@ func (v *etherscanVerifier) Verify(ctx context.Context) error {
 		return fmt.Errorf("failed to get source code: %w", err)
 	}
 
-	resp, err := sendEtherscanRequestForVerifier[string](ctx, v, "POST", "contract", "verifysourcecode", map[string]string{
-		"contractaddress":      v.address,
-		"sourceCode":           sourceCode,
-		"codeformat":           "solidity-standard-json-input",
-		"contractname":         v.metadata.Name,
-		"compilerversion":      v.metadata.Version,
-		"constructorArguments": constructorArgs,
+	resp, err := sendEtherscanRequestForVerifier[string](ctx, v, "POST", "contract", actionVerifySourceCode, map[string]string{
+		paramContractAddress:      v.address,
+		paramSourceCode:           sourceCode,
+		paramCodeFormat:           codeFormatSolidityJSON,
+		paramContractName:         v.metadata.Name,
+		paramCompilerVersion:      v.metadata.Version,
+		paramConstructorArguments: constructorArgs,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to verify contract: %w", err)
@@ -176,9 +176,9 @@ func (v *etherscanVerifier) Verify(ctx context.Context) error {
 
 func (v *etherscanVerifier) getConstructorArgs(ctx context.Context) (string, error) {
 	resp, err := sendEtherscanRequestForVerifier[[]transactionInfo](ctx, v, "GET", "account", "txlist", map[string]string{
-		"address": v.address,
+		paramAddress: v.address,
 		"page":    "1",
-		"offset":  "1",
+		paramOffset:  "1",
 		"sort":    "asc",
 	})
 	if err != nil {

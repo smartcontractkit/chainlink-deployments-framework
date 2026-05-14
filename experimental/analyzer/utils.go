@@ -42,7 +42,7 @@ func getFieldValue(argument any) FieldValue {
 		value = AddressField{Value: string(arg)}
 	default:
 
-		switch reflect.TypeOf(arg).Kind() {
+		switch reflect.TypeOf(arg).Kind() { //nolint:exhaustive // only slice/array need special handling
 		// If the field is a slice or array, iterate over every element individually
 		case reflect.Array, reflect.Slice:
 			array := ArrayField{}

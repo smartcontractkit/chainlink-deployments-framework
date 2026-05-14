@@ -10,6 +10,11 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/offchain/internal/p2pkey"
 )
 
+const (
+	labelP2PID     = "p2p_id"
+	labelAdminAddr = "admin_addr"
+)
+
 // MinimalNodeCfg is the minimal configuration that can be used to identify a node.
 // It represents information that cannot be programmatically derived from Job Distributor.
 type MinimalNodeCfg struct {
@@ -62,9 +67,9 @@ func (n NodeCfg) Validate() error {
 // Labels returns the labels for the node, containing the p2p_id, nop, admin_addr and all tags.
 func (n NodeCfg) Labels() map[string]string {
 	m := map[string]string{
-		"p2p_id":     n.P2PID,
-		"nop":        strings.ReplaceAll(n.NOP, " ", "_"),
-		"admin_addr": n.AdminAddr,
+		labelP2PID:     n.P2PID,
+		"nop":          strings.ReplaceAll(n.NOP, " ", "_"),
+		labelAdminAddr: n.AdminAddr,
 	}
 	for k, v := range n.Tags {
 		m[k] = v

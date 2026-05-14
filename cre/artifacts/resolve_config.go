@@ -55,7 +55,7 @@ func resolveConfigHTTP(ctx context.Context, src ConfigSource, httpClient *http.C
 
 func configExternalRefSummary(e *externalConfigRef) string {
 	if e == nil {
-		return "externalRef=<nil>"
+		return externalRefNilMsg
 	}
 
 	return fmt.Sprintf("url=%q repo=%q ref=%q path=%q",
@@ -82,7 +82,7 @@ func fetchGitHubFileContent(ctx context.Context, client *http.Client, repo, ref,
 	}
 	apiPath := encodeGitHubPath(path)
 	refQ := url.QueryEscape(ref)
-	apiURL := fmt.Sprintf("https://api.github.com/repos/%s/%s/contents/%s?ref=%s", owner, name, apiPath, refQ)
+	apiURL := fmt.Sprintf("https://%s/repos/%s/%s/contents/%s?ref=%s", githubAPIHost, owner, name, apiPath, refQ)
 	body, err := githubGet(ctx, client, apiURL, "github config")
 	if err != nil {
 		return nil, fmt.Errorf("cre: github config %s/%s ref %q path %q: %w", owner, name, ref, path, err)

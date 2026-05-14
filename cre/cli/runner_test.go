@@ -1,3 +1,4 @@
+//nolint:gosec // G101 false positives on test apiKey field names
 package cli
 
 import (

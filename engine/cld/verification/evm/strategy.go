@@ -47,7 +47,7 @@ func GetVerificationStrategyForNetwork(n cfgnet.Network) VerificationStrategy {
 	ex := n.BlockExplorer
 	t := strings.ToLower(strings.TrimSpace(ex.Type))
 	switch t {
-	case "etherscan", "snowtrace":
+	case strategyNameEtherscan, "snowtrace":
 		if !hasAPIKey(ex) && strings.TrimSpace(ex.URL) == "" {
 			return StrategyUnknown
 		}
@@ -65,13 +65,13 @@ func GetVerificationStrategyForNetwork(n cfgnet.Network) VerificationStrategy {
 		}
 
 		return StrategyBlockscout
-	case "routescan":
+	case strategyNameRoutescan:
 		if routescanNetworkType(n) == "" {
 			return StrategyUnknown
 		}
 
 		return StrategyRoutescan
-	case "oklink":
+	case strategyNameOklink:
 		if strings.TrimSpace(ex.Slug) == "" {
 			return StrategyUnknown
 		}
@@ -95,7 +95,7 @@ func GetVerificationStrategyForNetwork(n cfgnet.Network) VerificationStrategy {
 		default:
 			return StrategyL2Scan
 		}
-	case "socialscan":
+	case strategyNameSocialscan:
 		if strings.TrimSpace(ex.Slug) == "" {
 			return StrategyUnknown
 		}

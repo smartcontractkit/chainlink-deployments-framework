@@ -388,7 +388,7 @@ func (s *catalogChainMetadataStore) editRecord(record datastore.ChainMetadata, s
 			return err
 		}
 
-		switch st.Code() {
+		switch st.Code() { //nolint:exhaustive // only specific codes need special handling
 		case codes.NotFound:
 			return fmt.Errorf("%w: %s", datastore.ErrChainMetadataNotFound, statusErr.Error())
 		case codes.Aborted:

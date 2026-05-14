@@ -146,10 +146,10 @@ func (v *coredaoVerifier) Verify(ctx context.Context) error {
 	}
 
 	verifyRequest := coreDAOVerifyRequest{
-		Action:               "verifysourcecode",
+		Action:               actionVerifySourceCode,
 		Address:              v.address,
 		APIKey:               v.apiKey,
-		CodeFormat:           "solidity-standard-json-input",
+		CodeFormat:           codeFormatSolidityJSON,
 		CompilerVersion:      v.metadata.Version,
 		ConstructorArguments: constructorArgs,
 		ContractAddress:      v.address,

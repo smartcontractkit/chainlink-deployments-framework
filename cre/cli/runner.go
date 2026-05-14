@@ -15,7 +15,7 @@ import (
 const defaultBinary = "cre"
 
 // envCREAPIKey is the environment variable name the CRE CLI reads for API key authentication.
-const envCREAPIKey = "CRE_API_KEY"
+const envCREAPIKey = "CRE_API_KEY" //nolint:gosec // G101: not a credential, just env var name
 
 // CLIRunnerOption configures a [cliRunner] from [NewCLIRunner].
 type CLIRunnerOption func(*cliRunner) //nolint:revive // renaming would be a breaking change

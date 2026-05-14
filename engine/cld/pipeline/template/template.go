@@ -138,7 +138,7 @@ func GenerateStructYAMLWithDepthLimit(
 		return fmt.Sprintf("# ... (circular reference to %s)\n", t.String()), nil
 	}
 
-	switch t.Kind() {
+	switch t.Kind() { //nolint:exhaustive // only relevant types handled, others return error
 	case reflect.Struct:
 		visited[t] = true
 		defer func() { delete(visited, t) }()
@@ -232,7 +232,7 @@ func GenerateFieldValueWithDepthLimit(
 		t = t.Elem()
 	}
 
-	switch t.Kind() {
+	switch t.Kind() { //nolint:exhaustive // only relevant types handled
 	case reflect.String:
 		return " # string", nil
 	case reflect.Bool:
@@ -273,7 +273,7 @@ func GenerateFieldValueWithDepthLimit(
 		}
 
 		var keyExample string
-		switch keyType.Kind() {
+		switch keyType.Kind() { //nolint:exhaustive // only common key types handled
 		case reflect.String:
 			keyExample = "example_key"
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
