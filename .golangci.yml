@@ -85,6 +85,8 @@ linters:
               desc: We want to avoid importing this package as it creates import cycles
     goconst:
       min-len: 5
+      min-occurrences: 5
+      ignore-tests: true
     govet:
       enable:
         - shadow
@@ -134,9 +136,6 @@ linters:
       - legacy
       - std-error-handling
     rules:
-      - linters:
-          - goconst
-        path: (.+)_test\.go
       - linters:
           - staticcheck
         text: "SA1019:.*aws-sdk-go.*is deprecated"

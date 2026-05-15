@@ -75,7 +75,7 @@ func (v *blockscoutVerifier) IsVerified(ctx context.Context) (bool, error) {
 	q := u.Query()
 	q.Set("module", "contract")
 	q.Set("action", "getabi")
-	q.Set("address", v.address)
+	q.Set(paramKeyAddress, v.address)
 	u.RawQuery = q.Encode()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
@@ -155,7 +155,7 @@ func (v *blockscoutVerifier) Verify(ctx context.Context) error {
 	form := url.Values{}
 	form.Set("contractaddress", v.address)
 	form.Set("sourceCode", sourceCode)
-	form.Set("codeformat", "solidity-standard-json-input")
+	form.Set("codeformat", codeFormatStandardJSON)
 	form.Set("contractname", contractName)
 	form.Set("compilerversion", v.metadata.Version)
 	form.Set("constructorArguments", constructorArgs)
@@ -311,7 +311,7 @@ func (v *blockscoutVerifier) getConstructorArgs(ctx context.Context) (string, er
 	q := u.Query()
 	q.Set("module", "account")
 	q.Set("action", "txlist")
-	q.Set("address", v.address)
+	q.Set(paramKeyAddress, v.address)
 	q.Set("page", "1")
 	q.Set("offset", "1")
 	q.Set("sort", "asc")
