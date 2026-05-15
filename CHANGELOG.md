@@ -1,5 +1,17 @@
 # chainlink-deployments-framework
 
+## 0.102.0
+
+### Minor Changes
+
+- [#972](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/972) [`3c4dda3`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/3c4dda332301097e4e6461b2c46ca0fdea528611) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - feat: run post-proposal hooks even when the timelock execution fails
+
+- [#976](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/976) [`d7e88c6`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/d7e88c6f5761fcced614d6cd8348d2b06870f191) Thanks [@ecPablo](https://github.com/ecPablo)! - add support for named api keys on cre api key secret
+
+### Patch Changes
+
+- [#973](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/973) [`bb15097`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/bb1509743925444a70f8c7c2ccfd44860328c55b) Thanks [@ecPablo](https://github.com/ecPablo)! - remove chainlink-ton/deployment dependency
+
 ## 0.101.1
 
 ### Patch Changes

@@ -103,7 +103,7 @@ func (v *l2scanVerifier) IsVerified(ctx context.Context) (bool, error) {
 	params := url.Values{}
 	params.Set("module", "contract")
 	params.Set("action", "getabi")
-	params.Set("address", v.address)
+	params.Set(paramKeyAddress, v.address)
 	params.Set("api_key", v.apiKey)
 
 	abiURL := v.apiURL + "?" + params.Encode()
@@ -166,7 +166,7 @@ func (v *l2scanVerifier) Verify(ctx context.Context) error {
 	formData.Set("api_key", v.apiKey)
 	formData.Set("contractaddress", v.address)
 	formData.Set("sourceCode", sourceCode)
-	formData.Set("codeformat", "solidity-standard-json-input")
+	formData.Set("codeformat", codeFormatStandardJSON)
 	formData.Set("contractname", v.metadata.Name)
 	formData.Set("compilerversion", v.metadata.Version)
 	formData.Set("constructorArguements", constructorArgs)
@@ -219,7 +219,7 @@ func (v *l2scanVerifier) getConstructorArgs(ctx context.Context) (string, error)
 	params := url.Values{}
 	params.Set("module", "account")
 	params.Set("action", "txlist")
-	params.Set("address", v.address)
+	params.Set(paramKeyAddress, v.address)
 	params.Set("page", "1")
 	params.Set("offset", "1")
 	params.Set("sort", "asc")

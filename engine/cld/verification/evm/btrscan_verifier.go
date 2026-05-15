@@ -95,7 +95,7 @@ func (v *btrscanVerifier) IsVerified(ctx context.Context) (bool, error) {
 	params.Set("apikey", v.apiKey)
 	params.Set("module", "contract")
 	params.Set("action", "getsourcecode")
-	params.Set("address", v.address)
+	params.Set(paramKeyAddress, v.address)
 
 	resp, err := sendBtrScanGETRequest[btrScanSourceCodeResponse](ctx, v.httpClient, v.apiURL, params)
 	if err != nil {
@@ -140,7 +140,7 @@ func (v *btrscanVerifier) Verify(ctx context.Context) error {
 	formData.Set("action", "verifysourcecode")
 	formData.Set("contractaddress", v.address)
 	formData.Set("sourceCode", sourceCode)
-	formData.Set("codeformat", "solidity-standard-json-input")
+	formData.Set("codeformat", codeFormatStandardJSON)
 	formData.Set("contractname", contractName)
 	formData.Set("compilerversion", v.metadata.Version)
 	formData.Set("optimizationUsed", "1")
@@ -169,7 +169,7 @@ func (v *btrscanVerifier) getConstructorArgs(ctx context.Context) (string, error
 	params.Set("apikey", v.apiKey)
 	params.Set("module", "account")
 	params.Set("action", "txlist")
-	params.Set("address", v.address)
+	params.Set(paramKeyAddress, v.address)
 	params.Set("page", "1")
 	params.Set("offset", "1")
 	params.Set("sort", "asc")

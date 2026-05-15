@@ -95,7 +95,7 @@ func writeConfigLocalFile(t *testing.T, dom fdomain.Domain, envKey, testdataFile
 	input, err := os.ReadFile(filepath.Join("testdata", testdataFileName))
 	require.NoError(t, err)
 
-	err = os.WriteFile(dom.ConfigLocalFilePath(envKey), input, filePerms)
+	err = os.WriteFile(dom.ConfigLocalFilePath(envKey), input, filePerms) //nolint:gosec // G703: path is rooted in t.TempDir() and in a test we control all the inputs
 	require.NoError(t, err)
 }
 
@@ -107,7 +107,7 @@ func writeConfigNetworksFile(t *testing.T, dom fdomain.Domain, filename, testdat
 	input, err := os.ReadFile(filepath.Join("testdata", testdataFileName))
 	require.NoError(t, err)
 
-	err = os.WriteFile(dom.ConfigNetworksFilePath(filename), input, filePerms)
+	err = os.WriteFile(dom.ConfigNetworksFilePath(filename), input, filePerms) //nolint:gosec // G703: path is rooted in t.TempDir() and in a test we control all the inputs
 	require.NoError(t, err)
 }
 
@@ -119,6 +119,6 @@ func writeConfigDomainFile(t *testing.T, dom fdomain.Domain, testdataFileName st
 	input, err := os.ReadFile(filepath.Join("testdata", testdataFileName))
 	require.NoError(t, err)
 
-	err = os.WriteFile(dom.ConfigDomainFilePath(), input, filePerms)
+	err = os.WriteFile(dom.ConfigDomainFilePath(), input, filePerms) //nolint:gosec // G703: path is rooted in t.TempDir() and in a test we control all the inputs
 	require.NoError(t, err)
 }

@@ -64,7 +64,7 @@ func (v *sourcifyVerifier) String() string {
 
 func (v *sourcifyVerifier) IsVerified(ctx context.Context) (bool, error) {
 	resp, err := sendSourcifyRequest[sourcifyAPIResponse](ctx, v.httpClient, v.chain.EvmChainID, "GET", "files/any", v.apiURL, map[string]string{
-		"address": v.address,
+		paramKeyAddress: v.address,
 	})
 	if err != nil {
 		if strings.Contains(err.Error(), "Files have not been found") {
@@ -99,7 +99,7 @@ func (v *sourcifyVerifier) Verify(ctx context.Context) error {
 	}
 
 	requestData := map[string]any{
-		"address":         v.address,
+		paramKeyAddress:   v.address,
 		"chain":           strconv.FormatUint(v.chain.EvmChainID, 10),
 		"files":           map[string]string{"value": sourceCode},
 		"compilerVersion": v.metadata.Version,
