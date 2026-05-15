@@ -173,7 +173,7 @@ func setupTestConfig(t *testing.T, domain fdomain.Domain) {
 	require.NoError(t, err)
 
 	networksPath := filepath.Join(networksDir, "networks-testnet.yaml")
-	require.NoError(t, os.WriteFile(networksPath, input, 0600))
+	require.NoError(t, os.WriteFile(networksPath, input, 0600)) //nolint:gosec // G703: path is rooted in t.TempDir() and in a test we control all the inputs
 
 	// Create local configuration file
 	localDir := filepath.Join(configDir, "local")
@@ -183,14 +183,14 @@ func setupTestConfig(t *testing.T, domain fdomain.Domain) {
 	require.NoError(t, err)
 
 	localPath := filepath.Join(localDir, "config.staging.yaml")
-	require.NoError(t, os.WriteFile(localPath, input, 0600))
+	require.NoError(t, os.WriteFile(localPath, input, 0600)) //nolint:gosec // G703: path is rooted in t.TempDir() and in a test we control all the inputs
 
 	// Create domains configuration file
 	input, err = os.ReadFile(filepath.Join("testdata", "domain.yaml"))
 	require.NoError(t, err)
 
 	domainPath := filepath.Join(configDir, "domain.yaml")
-	require.NoError(t, os.WriteFile(domainPath, input, 0600))
+	require.NoError(t, os.WriteFile(domainPath, input, 0600)) //nolint:gosec // G703: path is rooted in t.TempDir() and in a test we control all the inputs
 }
 
 func setupAddressbook(t *testing.T, domain fdomain.Domain) {
@@ -243,7 +243,7 @@ func setupTestConfigWithCREAPIKey(t *testing.T, domain fdomain.Domain) {
 	require.NoError(t, err)
 
 	withCRE := append(existing, []byte("cre:\n  auth:\n    api_key: \"test-cre-api-key\"\n")...)
-	require.NoError(t, os.WriteFile(localPath, withCRE, 0600))
+	require.NoError(t, os.WriteFile(localPath, withCRE, 0600)) //nolint:gosec // G703: path is rooted in t.TempDir() and in a test we control all the inputs
 }
 
 func setupNodes(t *testing.T, domain fdomain.Domain) {

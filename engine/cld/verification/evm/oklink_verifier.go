@@ -128,7 +128,7 @@ func (v *oklinkVerifier) Verify(ctx context.Context) error {
 		"contractAddress": v.address,
 		"contractName":    v.metadata.Name,
 		"sourceCode":      sourceCode,
-		"codeFormat":      "solidity-standard-json-input",
+		"codeFormat":      codeFormatStandardJSON,
 		"compilerVersion": v.metadata.Version,
 		"evmVersion":      evmVersion,
 	})

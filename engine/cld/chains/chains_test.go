@@ -1255,7 +1255,7 @@ func Test_chainLoaderCanton_Load(t *testing.T) {
 			giveSelector:      cantonSelector,
 			giveNetworkConfig: networkCfg,
 			giveOnchainConfig: cfgenv.OnchainConfig{
-				Canton: cfgenv.CantonConfig{JWTToken: "test-jwt-token"},
+				Canton: cfgenv.CantonConfig{JWTToken: "test-jwt-token"}, //nolint:gosec // G101: fixed test fixture value, not a real credential
 			},
 		},
 		{

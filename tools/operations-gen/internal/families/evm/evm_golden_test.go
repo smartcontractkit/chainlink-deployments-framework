@@ -78,7 +78,7 @@ func runGoldenGenerationTest(t *testing.T, configFileName string, goldenFileName
 	goldenPath := filepath.Join(evmTestdataDir, goldenFileName)
 
 	if *update {
-		require.NoError(t, os.WriteFile(goldenPath, got, 0o600), "writing golden file")
+		require.NoError(t, os.WriteFile(goldenPath, got, 0o600), "writing golden file") //nolint:gosec // G703: goldenPath is the in-repo testdata file, only written under -update by the developer
 
 		return
 	}

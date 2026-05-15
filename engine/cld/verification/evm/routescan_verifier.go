@@ -81,7 +81,7 @@ func (v *routescanVerifier) String() string {
 
 func (v *routescanVerifier) IsVerified(ctx context.Context) (bool, error) {
 	resp, err := sendRoutescanRequest[string](ctx, v.httpClient, v.networkType, v.chainPath, "GET", "contract", "getabi", v.apiKey, map[string]string{
-		"address": v.address,
+		paramKeyAddress: v.address,
 	})
 	if err != nil {
 		return false, fmt.Errorf("failed to check verification status: %w", err)
@@ -129,7 +129,7 @@ func (v *routescanVerifier) Verify(ctx context.Context) error {
 	resp, err := sendRoutescanRequest[string](ctx, v.httpClient, v.networkType, v.chainPath, "POST", "contract", "verifysourcecode", v.apiKey, map[string]string{
 		"contractaddress":      v.address,
 		"sourceCode":           sourceCode,
-		"codeformat":           "solidity-standard-json-input",
+		"codeformat":           codeFormatStandardJSON,
 		"contractname":         v.metadata.Name,
 		"compilerversion":      v.metadata.Version,
 		"constructorArguments": constructorArgs,
@@ -174,10 +174,10 @@ func (v *routescanVerifier) Verify(ctx context.Context) error {
 
 func (v *routescanVerifier) getConstructorArgs(ctx context.Context) (string, error) {
 	resp, err := sendRoutescanRequest[[]routescanTxInfo](ctx, v.httpClient, v.networkType, v.chainPath, "GET", "account", "txlist", v.apiKey, map[string]string{
-		"address": v.address,
-		"page":    "1",
-		"offset":  "1",
-		"sort":    "asc",
+		paramKeyAddress: v.address,
+		"page":          "1",
+		"offset":        "1",
+		"sort":          "asc",
 	})
 	if err != nil {
 		return "", fmt.Errorf("failed to get contract creation info: %w", err)
