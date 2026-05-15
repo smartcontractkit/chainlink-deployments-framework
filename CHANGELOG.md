@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.104.0
+
+### Minor Changes
+
+- [#979](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/979) [`68a7a80`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/68a7a80b6be0bde000aafd435089b994c38a2a23) Thanks [@patricios-space](https://github.com/patricios-space)! - Adopt ContractTypeAndVersion in upf Transaction.Metadata
+
 ## 0.103.0
 
 ### Minor Changes
