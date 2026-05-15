@@ -6,14 +6,16 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/smartcontractkit/chainlink-ton/pkg/bindings"
-	"github.com/smartcontractkit/chainlink-ton/pkg/bindings/lib/access/rbac"
-	"github.com/smartcontractkit/chainlink-ton/pkg/ton/tlbe"
 	"github.com/smartcontractkit/mcms/sdk/ton"
 	"github.com/smartcontractkit/mcms/types"
 	"github.com/stretchr/testify/require"
 	"github.com/xssnick/tonutils-go/address"
 	"github.com/xssnick/tonutils-go/tlb"
+
+	"github.com/smartcontractkit/chainlink-ton/pkg/bindings"
+	"github.com/smartcontractkit/chainlink-ton/pkg/bindings/lib/access/rbac"
+	"github.com/smartcontractkit/chainlink-ton/pkg/ton/tlbe"
+	"github.com/smartcontractkit/chainlink-ton/pkg/ton/tvm"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 )
@@ -40,25 +42,25 @@ func TestAnalyzeTONTransaction(t *testing.T) {
 		},
 		{
 			name:           "invalid data",
-			mcmsTx:         makeInvalidTx(bindings.TypeMCMS),
+			mcmsTx:         makeInvalidTx(bindings.ShortMCMS, bindings.TypeMCMS),
 			want:           &DecodedCall{Address: testAddress},
 			wantErrContain: "invalid cell BOC data",
 		},
 		{
 			name: "unknown contract type",
 			mcmsTx: types.Transaction{
-				OperationMetadata: types.OperationMetadata{ContractType: "unknown.type"},
+				OperationMetadata: types.OperationMetadata{ContractType: "unknown.type", ContractTypeAndVersion: deployment.TypeAndVersion{Type: "com.example.package.unknown.contract"}.String()},
 				To:                testAddress,
 				Data:              []byte{0x01, 0x02},
 				AdditionalFields:  json.RawMessage(`{"value":0}`),
 			},
 			want:           &DecodedCall{Address: testAddress},
-			wantErrContain: "unknown contract interface: unknown.type",
+			wantErrContain: "unknown contract interface: com.example.package.unknown.contract",
 		},
 		{
 			name: "empty data",
 			mcmsTx: types.Transaction{
-				OperationMetadata: types.OperationMetadata{ContractType: bindings.TypeMCMS},
+				OperationMetadata: types.OperationMetadata{ContractType: bindings.ShortRBAC, ContractTypeAndVersion: deployment.TypeAndVersion{Type: deployment.ContractType(bindings.TypeMCMS)}.String()},
 				To:                testAddress,
 				Data:              []byte{},
 				AdditionalFields:  json.RawMessage(`{"value":0}`),
@@ -123,9 +125,9 @@ func TestAnalyzeTONTransactions(t *testing.T) {
 		{
 			name: "mixed valid and invalid",
 			txs: []types.Transaction{
-				makeInvalidTx(bindings.TypeMCMS),
+				makeInvalidTx(bindings.ShortMCMS, bindings.TypeMCMS),
 				setup.makeGrantRoleTx(t, 1),
-				makeInvalidTx(bindings.TypeTimelock),
+				makeInvalidTx(bindings.ShortTimelock, bindings.TypeTimelock),
 			},
 			want: []*DecodedCall{
 				{Address: testAddress},
@@ -137,8 +139,8 @@ func TestAnalyzeTONTransactions(t *testing.T) {
 		{
 			name: "all decode failures",
 			txs: []types.Transaction{
-				makeInvalidTx(bindings.TypeMCMS),
-				makeInvalidTx(bindings.TypeTimelock),
+				makeInvalidTx(bindings.ShortMCMS, bindings.TypeMCMS),
+				makeInvalidTx(bindings.ShortTimelock, bindings.TypeTimelock),
 			},
 			want: []*DecodedCall{
 				{Address: testAddress},
@@ -171,7 +173,7 @@ func TestAnalyzeTONTransactions(t *testing.T) {
 					continue
 				}
 
-				require.Equal(t, tt.want[i], result)
+				require.Equal(t, tt.want[i], result, "call %d", i)
 			}
 		})
 	}
@@ -185,7 +187,7 @@ func TestAnalyzeTONTransactionResolveContractInfo(t *testing.T) {
 	chainSelector := uint64(123456)
 	tx := setup.makeGrantRoleTx(t, 1)
 
-	t.Run("resolves contract type and version from proposal context", func(t *testing.T) {
+	t.Run("ignores contract type and version from proposal context", func(t *testing.T) {
 		t.Parallel()
 
 		ctx := &DefaultProposalContext{
@@ -198,25 +200,8 @@ func TestAnalyzeTONTransactionResolveContractInfo(t *testing.T) {
 
 		result, err := AnalyzeTONTransaction(ctx, decoder, chainSelector, tx)
 		require.NoError(t, err)
-		require.Equal(t, "TONRBAC", result.ContractType)
-		require.Equal(t, "1.2.3", result.ContractVersion)
-	})
-
-	t.Run("falls back when address is not in proposal context", func(t *testing.T) {
-		t.Parallel()
-
-		ctx := &DefaultProposalContext{
-			AddressesByChain: deployment.AddressesByChain{
-				chainSelector: {
-					"EQCxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx": deployment.MustTypeAndVersionFromString("OtherContract 9.9.9"),
-				},
-			},
-		}
-
-		result, err := AnalyzeTONTransaction(ctx, decoder, chainSelector, tx)
-		require.NoError(t, err)
-		require.Equal(t, tx.ContractType, result.ContractType)
-		require.Empty(t, result.ContractVersion)
+		require.EqualValues(t, bindings.TypeRBAC, result.ContractType)
+		require.Equal(t, "0.0.0", result.ContractVersion)
 	})
 }
 
@@ -246,7 +231,8 @@ func (s *testTONSetup) makeGrantRoleTx(t *testing.T, queryID uint64) types.Trans
 		s.targetAddr,
 		grantRoleData.ToBuilder().ToSlice(),
 		big.NewInt(0),
-		bindings.TypeRBAC,
+		bindings.ShortRBAC,
+		deployment.TypeAndVersion{Type: deployment.ContractType(bindings.TypeRBAC)}.String(),
 		[]string{"grantRole"},
 	)
 	require.NoError(t, err)
@@ -256,9 +242,10 @@ func (s *testTONSetup) makeGrantRoleTx(t *testing.T, queryID uint64) types.Trans
 
 func (s *testTONSetup) expectedGrantRoleCall(queryID uint64) *DecodedCall {
 	return &DecodedCall{
-		Address:      s.targetAddr.String(),
-		Method:       bindings.TypeRBAC + "::GrantRole(0x95cd540f)",
-		ContractType: bindings.TypeRBAC,
+		Address:         s.targetAddr.String(),
+		Method:          string(bindings.TypeRBAC) + "::GrantRole(0x95cd540f)",
+		ContractType:    string(bindings.TypeRBAC),
+		ContractVersion: "0.0.0",
 		Inputs: []NamedField{
 			{Name: "QueryID", Value: SimpleField{Value: bigIntStr(queryID)}, RawValue: queryID},
 			{Name: "Role", Value: SimpleField{Value: s.exampleRoleBig.String()}, RawValue: tlbe.NewUint256(s.exampleRoleBig)},
@@ -272,9 +259,9 @@ func bigIntStr(v uint64) string {
 	return new(big.Int).SetUint64(v).String()
 }
 
-func makeInvalidTx(contractType string) types.Transaction {
+func makeInvalidTx(contractType string, contractFQN tvm.FullyQualifiedName) types.Transaction {
 	return types.Transaction{
-		OperationMetadata: types.OperationMetadata{ContractType: contractType},
+		OperationMetadata: types.OperationMetadata{ContractType: contractType, ContractTypeAndVersion: deployment.TypeAndVersion{Type: deployment.ContractType(contractFQN)}.String()},
 		To:                testAddress,
 		Data:              []byte{0xFF, 0xFF},
 		AdditionalFields:  json.RawMessage(`{"value":0}`),

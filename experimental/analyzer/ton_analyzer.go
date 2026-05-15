@@ -3,10 +3,13 @@ package analyzer
 import (
 	"fmt"
 
-	"github.com/smartcontractkit/chainlink-ton/pkg/bindings"
 	"github.com/smartcontractkit/mcms/sdk"
 	"github.com/smartcontractkit/mcms/sdk/ton"
 	"github.com/smartcontractkit/mcms/types"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+
+	"github.com/smartcontractkit/chainlink-ton/pkg/bindings"
 )
 
 // AnalyzeTONTransactions decodes a slice of TON transactions and returns their decoded representations.
@@ -34,9 +37,19 @@ func AnalyzeTONTransactions(ctx ProposalContext, chainSelector uint64, txs []typ
 // instead of returning an error. This allows the proposal to continue processing even if
 // a single transaction fails to decode.
 func AnalyzeTONTransaction(ctx ProposalContext, decoder sdk.Decoder, chainSelector uint64, mcmsTx types.Transaction) (*DecodedCall, error) {
-	contractType, contractVersion := resolveContractInfo(ctx, chainSelector, mcmsTx)
+	contractTypeAndVersion, err := deployment.TypeAndVersionFromString(mcmsTx.ContractTypeAndVersion)
+	if err != nil {
+		contractType, contractVersion := resolveContractInfo(ctx, chainSelector, mcmsTx)
+		errStr := fmt.Errorf("failed to decode TON transaction: failed to parse contract type and version: %w", err)
 
-	decodedOp, err := decoder.Decode(mcmsTx, mcmsTx.ContractType)
+		return &DecodedCall{
+			Address:         mcmsTx.To,
+			Method:          errStr.Error(),
+			ContractType:    contractType,
+			ContractVersion: contractVersion,
+		}, nil
+	}
+	decodedOp, err := decoder.Decode(mcmsTx, contractTypeAndVersion.Type.String())
 	if err != nil {
 		// Don't return an error to not block the whole proposal decoding because of a single transaction decode failure.
 		// Instead, put the error message in the Method field so it's visible in the report.
@@ -45,8 +58,8 @@ func AnalyzeTONTransaction(ctx ProposalContext, decoder sdk.Decoder, chainSelect
 		return &DecodedCall{
 			Address:         mcmsTx.To,
 			Method:          errStr.Error(),
-			ContractType:    contractType,
-			ContractVersion: contractVersion,
+			ContractType:    contractTypeAndVersion.Type.String(),
+			ContractVersion: contractTypeAndVersion.Version.String(),
 		}, nil
 	}
 
@@ -60,7 +73,7 @@ func AnalyzeTONTransaction(ctx ProposalContext, decoder sdk.Decoder, chainSelect
 		Method:          decodedOp.MethodName(),
 		Inputs:          namedArgs,
 		Outputs:         []NamedField{},
-		ContractType:    contractType,
-		ContractVersion: contractVersion,
+		ContractType:    contractTypeAndVersion.Type.String(),
+		ContractVersion: contractTypeAndVersion.Version.String(),
 	}, nil
 }
