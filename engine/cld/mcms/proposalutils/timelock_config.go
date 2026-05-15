@@ -28,6 +28,13 @@ type SolanaMCMSWithTimelock interface {
 	TimelockPrograms() MCMSWithTimelockPrograms
 }
 
+// TonMCMSChainState holds a Go binding for all the currently deployed MCMS contracts
+// on a TON chain, indexed by qualifier. If a binding is nil, it means there is no such
+// MCMS suite contracts on the chain for that qualifier.
+type TonMCMSChainState struct {
+	ByQualifier map[string]*TonMCMSSuiteState
+}
+
 // TonMCMSSuiteState holds the state of a single MCMS deployment - currently includes all contract addresses.
 type TonMCMSSuiteState struct {
 	// 3x MCMS contracts, each gets a role in the timelock
