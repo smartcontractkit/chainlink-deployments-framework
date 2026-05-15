@@ -255,7 +255,7 @@ func recoverEVMSignature(expectedPublicKey, txHash, r, s []byte) ([]byte, error)
 func padTo32Bytes(buffer []byte) []byte {
 	buffer = bytes.TrimLeft(buffer, "\x00")
 	for len(buffer) < 32 {
-		zeroBuf := []byte{0}
+		zeroBuf := make([]byte, 1, 1+len(buffer))
 		buffer = append(zeroBuf, buffer...)
 	}
 

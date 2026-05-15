@@ -761,7 +761,8 @@ func TestTryEIP1967ProxyFallback(t *testing.T) {
 	proxyABI := `[{"type":"function","name":"upgradeTo","stateMutability":"nonpayable","inputs":[{"type":"address","name":"newImplementation"}],"outputs":[]}]`
 
 	// Method ID for transfer(address,uint256) = 0xa9059cbb
-	transferMethodID := []byte{0xa9, 0x05, 0x9c, 0xbb}
+	transferMethodID := make([]byte, 0, 68)
+	transferMethodID = append(transferMethodID, 0xa9, 0x05, 0x9c, 0xbb)
 	txData := append(transferMethodID, make([]byte, 64)...) // Method ID + 64 bytes of zeros for params
 
 	tests := []struct {
@@ -1237,7 +1238,8 @@ func TestAnalyzeEVMTransaction_EIP1967ProxyFallback(t *testing.T) {
 	implABI := `[{"type":"function","name":"transfer","stateMutability":"nonpayable","inputs":[{"type":"address","name":"to"},{"type":"uint256","name":"amount"}],"outputs":[]}]`
 
 	// Method ID for transfer(address,uint256) = 0xa9059cbb
-	transferMethodID := []byte{0xa9, 0x05, 0x9c, 0xbb}
+	transferMethodID := make([]byte, 0, 68)
+	transferMethodID = append(transferMethodID, 0xa9, 0x05, 0x9c, 0xbb)
 	txData := append(transferMethodID, make([]byte, 64)...) // Method ID + 64 bytes of zeros for params
 
 	tests := []struct {
