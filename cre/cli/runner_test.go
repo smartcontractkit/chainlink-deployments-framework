@@ -189,7 +189,7 @@ func TestCLIRunner_APIKeyEnv(t *testing.T) {
 		apiKey         string
 		wantSubprocess string
 	}{
-		{
+		{ //nolint:gosec // G101: fixed test fixture value, not a real credential
 			name:           "with_api_key_sets_subprocess_env",
 			parentAPIKey:   "",
 			apiKey:         "test-api-key-value",

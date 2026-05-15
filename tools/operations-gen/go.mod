@@ -1,6 +1,6 @@
 module github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen
 
-go 1.25.5
+go 1.26.2
 
 require (
 	github.com/ethereum/go-ethereum v1.17.2

@@ -231,7 +231,7 @@ func deployZkContractImpl(
 // arrayify converts a struct or pointer to struct into a slice of its field values.
 func arrayify[ARGS any](args ARGS) ([]any, error) {
 	v := reflect.ValueOf(args)
-	if v.Kind() == reflect.Ptr {
+	if v.Kind() == reflect.Pointer {
 		if v.IsNil() {
 			return nil, errors.New("expected non-nil pointer to struct, got nil")
 		}
