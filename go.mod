@@ -31,7 +31,7 @@ require (
 	github.com/samber/lo v1.53.0
 	github.com/segmentio/ksuid v1.0.4
 	github.com/smartcontractkit/ccip-owner-contracts v0.1.0
-	github.com/smartcontractkit/chain-selectors v1.0.99
+	github.com/smartcontractkit/chain-selectors v1.0.100
 	github.com/smartcontractkit/chainlink-aptos v0.0.0-20260428085939-5c70de12dbfc
 	github.com/smartcontractkit/chainlink-ccip/chains/evm v0.0.0-20260415165642-49f23e4d76cc
 	github.com/smartcontractkit/chainlink-ccip/chains/solana v0.0.0-20260121163256-85accaf3d28d
@@ -40,11 +40,11 @@ require (
 	github.com/smartcontractkit/chainlink-protos/op-catalog v0.0.4
 	github.com/smartcontractkit/chainlink-testing-framework/framework v0.16.1
 	github.com/smartcontractkit/chainlink-testing-framework/seth v1.51.5
-	github.com/smartcontractkit/chainlink-ton v1.0.5-0.20260514143607-2486bab4061b
+	github.com/smartcontractkit/chainlink-ton v1.0.5-0.20260514223130-48bc90aca745
 	github.com/smartcontractkit/chainlink-tron/relayer v0.0.11-0.20250908203554-5bd9d2fe9513
 	github.com/smartcontractkit/freeport v0.1.3-0.20250828155247-add56fa28aad
 	github.com/smartcontractkit/libocr v0.0.0-20260304194147-a03701e2c02e
-	github.com/smartcontractkit/mcms v0.43.1-0.20260514150806-8156aa528b51
+	github.com/smartcontractkit/mcms v0.43.1-0.20260515150551-16b18dab10da
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
