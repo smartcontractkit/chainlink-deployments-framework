@@ -1,5 +1,13 @@
 # chainlink-deployments-framework
 
+## 0.103.0
+
+### Minor Changes
+
+- [#983](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/983) [`721c1ce`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/721c1cec87507df8d19ba4c64a1b2be7b609fe7d) Thanks [@ecPablo](https://github.com/ecPablo)! - add TonMCMSChainState type
+
+- [#981](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/981) [`4da8eba`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/4da8eba6ddb0854bb7cddb250d323643c063cc36) Thanks [@patricios-space](https://github.com/patricios-space)! - Bump to Go 1.26.2, update several dependencies, and migrate from `pgx/v4` to `pgx/v5`.
+
 ## 0.102.0
 
 ### Minor Changes
