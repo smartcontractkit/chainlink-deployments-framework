@@ -174,15 +174,6 @@ func mcmsOperationToUpfTransaction(
 	for _, arg := range analyzeResult.Inputs {
 		upfFunctionArgs[arg.Name] = arg.Value
 	}
-	contractTypeAndVersion := ""
-	if mcmsOp.Transaction.ContractTypeAndVersion != "" {
-		contractTypeAndVersionValue, err := deployment.TypeAndVersionFromString(mcmsOp.Transaction.ContractTypeAndVersion)
-		if err != nil {
-			contractTypeAndVersion = fmt.Sprintf("Error: failed to parse contract TypeAndVersion: %v", err)
-		} else {
-			contractTypeAndVersion = contractTypeAndVersionValue.String()
-		}
-	}
 
 	return Transaction{
 		Index:           idx,
@@ -203,7 +194,7 @@ func mcmsOperationToUpfTransaction(
 			},
 			Comment:                "",
 			ContractType:           mcmsOp.Transaction.ContractType,
-			ContractTypeAndVersion: contractTypeAndVersion,
+			ContractTypeAndVersion: mcmsOp.Transaction.ContractTypeAndVersion,
 		},
 	}, nil
 }

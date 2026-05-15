@@ -37,7 +37,7 @@ func AnalyzeTONTransactions(ctx ProposalContext, chainSelector uint64, txs []typ
 // instead of returning an error. This allows the proposal to continue processing even if
 // a single transaction fails to decode.
 func AnalyzeTONTransaction(ctx ProposalContext, decoder sdk.Decoder, chainSelector uint64, mcmsTx types.Transaction) (*DecodedCall, error) {
-	typeAndVersion, err := deployment.TypeAndVersionFromString(mcmsTx.ContractTypeAndVersion)
+	contractTypeAndVersion, err := deployment.TypeAndVersionFromString(mcmsTx.ContractTypeAndVersion)
 	if err != nil {
 		contractType, contractVersion := resolveContractInfo(ctx, chainSelector, mcmsTx)
 		errStr := fmt.Errorf("failed to decode TON transaction: failed to parse contract type and version: %w", err)
@@ -49,7 +49,7 @@ func AnalyzeTONTransaction(ctx ProposalContext, decoder sdk.Decoder, chainSelect
 			ContractVersion: contractVersion,
 		}, nil
 	}
-	decodedOp, err := decoder.Decode(mcmsTx, typeAndVersion.Type.String())
+	decodedOp, err := decoder.Decode(mcmsTx, contractTypeAndVersion.Type.String())
 	if err != nil {
 		// Don't return an error to not block the whole proposal decoding because of a single transaction decode failure.
 		// Instead, put the error message in the Method field so it's visible in the report.
@@ -58,8 +58,8 @@ func AnalyzeTONTransaction(ctx ProposalContext, decoder sdk.Decoder, chainSelect
 		return &DecodedCall{
 			Address:         mcmsTx.To,
 			Method:          errStr.Error(),
-			ContractType:    typeAndVersion.Type.String(),
-			ContractVersion: typeAndVersion.Version.String(),
+			ContractType:    contractTypeAndVersion.Type.String(),
+			ContractVersion: contractTypeAndVersion.Version.String(),
 		}, nil
 	}
 
@@ -73,7 +73,7 @@ func AnalyzeTONTransaction(ctx ProposalContext, decoder sdk.Decoder, chainSelect
 		Method:          decodedOp.MethodName(),
 		Inputs:          namedArgs,
 		Outputs:         []NamedField{},
-		ContractType:    typeAndVersion.Type.String(),
-		ContractVersion: typeAndVersion.Version.String(),
+		ContractType:    contractTypeAndVersion.Type.String(),
+		ContractVersion: contractTypeAndVersion.Version.String(),
 	}, nil
 }
