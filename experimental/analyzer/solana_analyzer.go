@@ -105,7 +105,7 @@ func (w *anchorInstructionWrapper) Name() string {
 	}
 
 	implType := reflect.TypeOf(impl)
-	if implType.Kind() == reflect.Ptr {
+	if implType.Kind() == reflect.Pointer {
 		return implType.Elem().Name()
 	}
 
@@ -113,7 +113,7 @@ func (w *anchorInstructionWrapper) Name() string {
 }
 
 func (w *anchorInstructionWrapper) baseVariant() (binary.BaseVariant, error) {
-	if reflect.ValueOf(w.anchorInstruction).Kind() != reflect.Ptr {
+	if reflect.ValueOf(w.anchorInstruction).Kind() != reflect.Pointer {
 		return binary.BaseVariant{}, errors.New("invalid type in anchor instruction (not a pointer)")
 	}
 	if reflect.ValueOf(w.anchorInstruction).Elem().Kind() != reflect.Struct {
@@ -170,7 +170,7 @@ func (w *anchorInstructionWrapper) Inputs() []NamedField {
 	}
 
 	rImpl := reflect.ValueOf(impl)
-	if rImpl.Kind() != reflect.Ptr {
+	if rImpl.Kind() != reflect.Pointer {
 		errMsg := "unexpected BaseVariant.Impl type (not a pointer)"
 		return []NamedField{{
 			Name:     "error",
