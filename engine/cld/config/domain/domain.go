@@ -103,7 +103,7 @@ func isValidNetworkType(networkType string) bool {
 }
 
 // DomainConfig represents the parsed and validated domain configuration.
-type DomainConfig struct { //nolint:revive // renaming would be a breaking change
+type DomainConfig struct {
 	Environments map[string]Environment `mapstructure:"environments" yaml:"environments"`
 	Jira         *jira.Config           `mapstructure:"jira" yaml:"jira"`
 }

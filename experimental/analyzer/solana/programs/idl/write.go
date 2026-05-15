@@ -4,7 +4,7 @@ import (
 	ag_binary "github.com/gagliardetto/binary"
 )
 
-type IDLWrite struct{ Data []byte } //nolint:revive // renaming would be a breaking change
+type IDLWrite struct{ Data []byte }
 
 func (inst *IDLWrite) UnmarshalWithDecoder(decoder *ag_binary.Decoder) error {
 	{

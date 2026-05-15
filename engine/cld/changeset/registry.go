@@ -363,10 +363,10 @@ func (r *ChangesetsRegistry) GetConfigurations(key string) (Configurations, erro
 }
 
 // ChangesetOption defines an option for configuring a changeset
-type ChangesetOption func(*ChangesetConfig) //nolint:revive // renaming would be a breaking change
+type ChangesetOption func(*ChangesetConfig)
 
 // ChangesetConfig holds configuration options for a changeset
-type ChangesetConfig struct { //nolint:revive // renaming would be a breaking change
+type ChangesetConfig struct {
 	ChainsToLoad      []uint64 // nil = load all chains, empty = load no chains, populated = load specific chains
 	WithoutJD         bool
 	OperationRegistry *foperations.OperationRegistry

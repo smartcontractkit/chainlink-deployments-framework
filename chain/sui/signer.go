@@ -11,7 +11,7 @@ import (
 )
 
 // TODO: Everything in this file should come from chainlink-sui when available
-type SuiSigner interface { //nolint:revive // renaming would be a breaking change
+type SuiSigner interface {
 	// Sign signs the given message and returns the serialized signature.
 	Sign(message []byte) ([]string, error)
 

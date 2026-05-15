@@ -16,7 +16,7 @@ import (
 )
 
 // JDConfig is the configuration for the Job Distributor client.
-type JDConfig struct { //nolint:revive // renaming would be a breaking change
+type JDConfig struct {
 	GRPC string
 	// Deprecated: WSRPC is no longer used and will be removed in a future version.
 	WSRPC string

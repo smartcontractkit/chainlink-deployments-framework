@@ -4,7 +4,7 @@ import (
 	ag_binary "github.com/gagliardetto/binary"
 )
 
-type IDLCreateBuffer struct{} //nolint:revive // renaming would be a breaking change
+type IDLCreateBuffer struct{}
 
 func (inst *IDLCreateBuffer) UnmarshalWithDecoder(decoder *ag_binary.Decoder) error {
 	return nil

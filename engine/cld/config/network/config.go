@@ -100,7 +100,7 @@ func (c *Config) UnmarshalYAML(value *yaml.Node) error {
 }
 
 // NetworkFilter defines a function type that filters networks based on certain criteria.
-type NetworkFilter func(Network) bool //nolint:revive // renaming would be a breaking change
+type NetworkFilter func(Network) bool
 
 // FilterWith returns a new Config containing only Networks that pass all provided filter functions.
 // Filters are applied in sequence (AND logic) - a network must pass all filters to be included.

@@ -171,7 +171,7 @@ func (b BlockChains) ReadOnly() (BlockChains, error) {
 }
 
 // ChainSelectorsOption defines a function type for configuring ChainSelectors
-type ChainSelectorsOption func(*chainSelectorsOptions) //nolint:revive // renaming would be a breaking change
+type ChainSelectorsOption func(*chainSelectorsOptions)
 
 type chainSelectorsOptions struct {
 	// Use map for faster lookups

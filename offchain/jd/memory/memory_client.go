@@ -11,14 +11,15 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/pelletier/go-toml/v2"
-	csav1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/csa"
-	jobv1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/job"
-	nodev1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/node"
-	"github.com/smartcontractkit/chainlink-protos/job-distributor/v1/shared/ptypes"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	csav1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/csa"
+	jobv1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/job"
+	nodev1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/node"
+	"github.com/smartcontractkit/chainlink-protos/job-distributor/v1/shared/ptypes"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/internal/pointer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/offchain"
@@ -33,7 +34,7 @@ var _ offchain.Client = (*MemoryJobDistributor)(nil)
 // MemoryJobDistributor is an in-memory implementation of the Job Distributor client.
 // It stores jobs, proposals, nodes, and keypairs in memory without persisting to any backend.
 // This implementation is thread-safe and can be used concurrently from multiple goroutines.
-type MemoryJobDistributor struct { //nolint:revive // renaming would be a breaking change
+type MemoryJobDistributor struct {
 	mu sync.RWMutex // protects all fields below
 
 	jobs      map[string]*jobv1.Job

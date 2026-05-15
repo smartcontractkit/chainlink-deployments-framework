@@ -15,7 +15,7 @@ var (
 // through the blockchain where OCR configuration is stored. Its a low value secret used
 // to derive transmission order etc. They are extracted here such that they can common
 // across signers when multiple signers are signing the same OCR config.
-type OCRSecrets struct { //nolint:revive // renaming would be a breaking change
+type OCRSecrets struct {
 	SharedSecret [16]byte
 	EphemeralSk  [32]byte
 }

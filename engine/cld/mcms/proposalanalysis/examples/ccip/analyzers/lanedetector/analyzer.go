@@ -17,7 +17,7 @@ const (
 
 // LaneDetectorAnalyzer is a proposal-level analyzer that identifies
 // cross-chain lanes from symmetric applyChainUpdates calls between two chains.
-type LaneDetectorAnalyzer struct{} //nolint:revive // renaming would be a breaking change
+type LaneDetectorAnalyzer struct{}
 
 var _ analyzer.ProposalAnalyzer = (*LaneDetectorAnalyzer)(nil)
 

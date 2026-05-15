@@ -11,7 +11,7 @@ type Config struct {
 }
 
 // JiraConnectionConfig contains JIRA connection details
-type JiraConnectionConfig struct { //nolint:revive // renaming would be a breaking change
+type JiraConnectionConfig struct {
 	BaseURL  string `mapstructure:"base_url" yaml:"base_url"`
 	Project  string `mapstructure:"project" yaml:"project"`
 	Username string `mapstructure:"username" yaml:"username,omitempty"`

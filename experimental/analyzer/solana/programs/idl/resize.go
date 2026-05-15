@@ -4,7 +4,7 @@ import (
 	ag_binary "github.com/gagliardetto/binary"
 )
 
-type IDLResize struct{ DataLen uint64 } //nolint:revive // renaming would be a breaking change
+type IDLResize struct{ DataLen uint64 }
 
 func (inst *IDLResize) UnmarshalWithDecoder(decoder *ag_binary.Decoder) error {
 	{

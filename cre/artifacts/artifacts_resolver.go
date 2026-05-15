@@ -9,13 +9,13 @@ import (
 
 // ArtifactsResolver resolves workflow WASM and config paths from [BinarySource] and [ConfigSource]
 // via local files or remote fetch.
-type ArtifactsResolver struct { //nolint:revive // renaming would be a breaking change
+type ArtifactsResolver struct {
 	client  *http.Client
 	workDir string
 }
 
 // ArtifactsResolverOption configures [NewArtifactsResolver].
-type ArtifactsResolverOption func(*ArtifactsResolver) //nolint:revive // renaming would be a breaking change
+type ArtifactsResolverOption func(*ArtifactsResolver)
 
 // WithHTTPClient sets the HTTP client for remote artifact fetches. When omitted, http.DefaultClient is used
 func WithHTTPClient(c *http.Client) ArtifactsResolverOption {

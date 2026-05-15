@@ -5,7 +5,7 @@ import (
 )
 
 // IDLCreate instruction
-type IDLCreate struct{ DataLen uint64 } //nolint:revive // renaming would be a breaking change
+type IDLCreate struct{ DataLen uint64 }
 
 func (inst *IDLCreate) UnmarshalWithDecoder(decoder *ag_binary.Decoder) error {
 	{

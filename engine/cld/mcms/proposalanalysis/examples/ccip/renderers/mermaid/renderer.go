@@ -13,7 +13,7 @@ import (
 
 const IDMermaid = "mermaid"
 
-type MermaidRenderer struct{} //nolint:revive // renaming would be a breaking change
+type MermaidRenderer struct{}
 
 var _ renderer.Renderer = (*MermaidRenderer)(nil)
 

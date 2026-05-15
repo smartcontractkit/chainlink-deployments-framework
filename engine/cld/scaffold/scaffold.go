@@ -17,12 +17,12 @@ import (
 var templates embed.FS
 
 // ScaffoldOptions holds configuration options for domain scaffolding.
-type ScaffoldOptions struct { //nolint:revive // renaming would be a breaking change
+type ScaffoldOptions struct {
 	runModTidy bool
 }
 
 // ScaffoldOption is a functional option type for configuring domain scaffolding.
-type ScaffoldOption func(*ScaffoldOptions) //nolint:revive // renaming would be a breaking change
+type ScaffoldOption func(*ScaffoldOptions)
 
 // WithModTidy enables running 'go mod tidy' after scaffolding.
 // This will resolve and download all dependencies for the new domain.
@@ -46,7 +46,7 @@ func getRepositoryName(rootDir string) string {
 
 // ScaffoldDomain creates a new domain directory structure within the specified base path.
 // Use WithModTidy() option to run 'go mod tidy' after scaffolding.
-func ScaffoldDomain(domain enginedomain.Domain, opts ...ScaffoldOption) error { //nolint:revive // renaming would be a breaking change
+func ScaffoldDomain(domain enginedomain.Domain, opts ...ScaffoldOption) error {
 	// Apply default options and then user-provided options
 	options := defaultScaffoldOptions()
 	for _, opt := range opts {
@@ -110,7 +110,7 @@ func ScaffoldDomain(domain enginedomain.Domain, opts ...ScaffoldOption) error { 
 }
 
 // ScaffoldEnvDir creates a new environment directory structure within the specified base path.
-func ScaffoldEnvDir(envdir enginedomain.EnvDir) error { //nolint:revive // renaming would be a breaking change
+func ScaffoldEnvDir(envdir enginedomain.EnvDir) error {
 	// Check if the directory already exists or if there is an error accessing it
 	if err := checkDirExists(envdir.DirPath()); err != nil {
 		return fmt.Errorf("failed to create %s env directory: %w", envdir.String(), err)

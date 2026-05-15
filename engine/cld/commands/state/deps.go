@@ -21,11 +21,11 @@ type EnvironmentLoaderFunc func(
 // StateLoaderFunc loads the previous state from the environment directory.
 // Returns the state as a JSONSerializer, or an error if loading fails.
 // If the state file does not exist, implementations should return empty JSON.
-type StateLoaderFunc func(envdir domain.EnvDir) (domain.JSONSerializer, error) //nolint:revive // renaming would be a breaking change
+type StateLoaderFunc func(envdir domain.EnvDir) (domain.JSONSerializer, error)
 
 // StateSaverFunc saves the generated state to a file.
 // If outputPath is empty, it should use the default path in the environment directory.
-type StateSaverFunc func(envdir domain.EnvDir, outputPath string, state json.Marshaler) error //nolint:revive // renaming would be a breaking change
+type StateSaverFunc func(envdir domain.EnvDir, outputPath string, state json.Marshaler) error
 
 // ViewStateFunc is an alias for deployment.ViewStateV2 for clarity.
 // It generates the current state view from the environment.

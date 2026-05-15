@@ -7,7 +7,7 @@ import (
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 )
 
-type UPFProposal struct { //nolint:revive // renaming would be a breaking change
+type UPFProposal struct {
 	MsigType     string                               `json:"msigType"`
 	ProposalHash string                               `json:"proposalHash"`
 	McmsParams   *McmsParams                          `json:"mcmsParams,omitempty"`
