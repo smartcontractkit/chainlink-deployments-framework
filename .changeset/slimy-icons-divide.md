@@ -2,4 +2,4 @@
 "chainlink-deployments-framework": minor
 ---
 
-Bump to use go1.26 and bumps additional dependencies
+Bump to Go 1.26.2, update several dependencies, and migrate from `pgx/v4` to `pgx/v5`.
