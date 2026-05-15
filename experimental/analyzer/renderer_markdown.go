@@ -695,7 +695,7 @@ func arrayPreview(elems []FieldValue, ctx *FieldContext) string {
 	}
 	parts := make([]string, 0, maxVal)
 	for i := range maxVal {
-		parts = append(parts, compactValue(elems[i], ctx))
+		parts = append(parts, compactValue(elems[i], ctx)) //nolint:gosec // G602: maxVal is clamped to min(len(elems), 3) above, so i is always in bounds
 	}
 	more := ""
 	if n > maxVal {
