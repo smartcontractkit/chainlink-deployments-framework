@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	chainsel "github.com/smartcontractkit/chain-selectors"
@@ -228,6 +229,73 @@ func TestUpfConvertTimelockProposalWithTon(t *testing.T) {
 			tt.assertion(t, got, err)
 		})
 	}
+}
+
+func TestUpfConvertProposalWithTonContractVersion(t *testing.T) {
+	t.Parallel()
+	ds := datastore.NewMemoryDataStore()
+
+	dsAddContract(t, ds, chainsel.TON_TESTNET.Selector, "EQADa3W6G0nSiTV4a6euRA42fU9QxSEnb-WeDpcrtWzA2jM8", "MCMS 1.0.0")
+
+	env := deployment.Environment{
+		DataStore:         ds.Seal(),
+		ExistingAddresses: deployment.NewMemoryAddressBook(),
+	}
+
+	proposalCtx, err := mcmsanalyzer.NewDefaultProposalContext(env)
+	require.NoError(t, err)
+
+	targetAddr := address.MustParseAddr("EQADa3W6G0nSiTV4a6euRA42fU9QxSEnb-WeDpcrtWzA2jM8")
+	exampleRole := crypto.Keccak256Hash([]byte("EXAMPLE_ROLE"))
+	grantRoleData, _ := tlb.ToCell(rbac.GrantRole{
+		QueryID: 1,
+		Role:    tlbe.NewUint256(new(big.Int).SetBytes(exampleRole[:])),
+		Account: targetAddr,
+	})
+
+	tx, err := mcmstonsdk.NewTransaction(
+		targetAddr,
+		grantRoleData.ToBuilder().ToSlice(),
+		big.NewInt(0),
+		bindings.ShortRBAC,
+		semver.MustParse("1.2.3"),
+		bindings.TypeRBAC,
+		[]string{"grantRole"},
+	)
+	require.NoError(t, err)
+
+	proposal := &mcms.Proposal{
+		BaseProposal: mcms.BaseProposal{
+			Version:    "v1",
+			Kind:       "Proposal",
+			ValidUntil: 1999999999,
+			ChainMetadata: map[mcmstypes.ChainSelector]mcmstypes.ChainMetadata{
+				mcmstypes.ChainSelector(chainsel.TON_TESTNET.Selector): {
+					StartingOpCount: 1,
+					MCMAddress:      "EQADa3W6G0nSiTV4a6euRA42fU9QxSEnb-WeDpcrtWzA2jM8",
+				},
+			},
+			Description: "TON proposal with ContractVersion",
+		},
+		Operations: []mcmstypes.Operation{
+			{
+				ChainSelector: mcmstypes.ChainSelector(chainsel.TON_TESTNET.Selector),
+				Transaction:   tx,
+			},
+		},
+	}
+
+	signers := map[mcmstypes.ChainSelector][]common.Address{
+		mcmstypes.ChainSelector(chainsel.TON_TESTNET.Selector): {
+			common.HexToAddress("0xA5D5B0B844c8f11B61F28AC98BBA84dEA9b80953"),
+		},
+	}
+
+	got, err := UpfConvertProposal(t.Context(), proposalCtx, env, proposal, signers)
+	require.NoError(t, err)
+	require.Contains(t, got, "chainFamily: ton")
+	require.Contains(t, got, "contractType: RBAC")
+	require.Contains(t, got, "contractVersion: 1.2.3")
 }
 
 // ----- helpers -----
