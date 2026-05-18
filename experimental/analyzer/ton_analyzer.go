@@ -38,24 +38,34 @@ func AnalyzeTONTransactions(ctx ProposalContext, chainSelector uint64, txs []typ
 func AnalyzeTONTransaction(ctx ProposalContext, decoder sdk.Decoder, chainSelector uint64, mcmsTx types.Transaction) (*DecodedCall, error) {
 	contractType, contractVersion := resolveContractInfo(ctx, chainSelector, mcmsTx)
 
-	var additionalFields ton.AdditionalFields
-	if err := json.Unmarshal(mcmsTx.AdditionalFields, &additionalFields); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal TON additional fields: %w", err)
-	}
+	var errStr string
+	fullyQualifiedName := func() string {
+		var additionalFields ton.AdditionalFields
+		if err := json.Unmarshal(mcmsTx.AdditionalFields, &additionalFields); err != nil {
+			errStr = fmt.Sprintf("failed to unmarshal TON additional fields: %s", err)
+			return ""
+		}
 
-	fullyQualifiedName := string(additionalFields.ContractTypeFull)
-	if mcmsTx.ContractVersion != nil {
-		fullyQualifiedName += "@" + contractVersion
-	}
+		fullyQualifiedName := string(additionalFields.ContractTypeFull)
+		// If ContractVersion is provided, append it to the fully qualified name to ensure the decoder uses the correct version.
+		// If it is skipped, the decoder will use the latest version available for the contract type.
+		// Note: we don't use contractType from resolveContractInfo because that only represents the short type used by the datastore.
+		if mcmsTx.ContractVersion != nil {
+			fullyQualifiedName += "@" + contractVersion
+		}
+
+		return fullyQualifiedName
+	}()
+
 	decodedOp, err := decoder.Decode(mcmsTx, fullyQualifiedName)
 	if err != nil {
 		// Don't return an error to not block the whole proposal decoding because of a single transaction decode failure.
 		// Instead, put the error message in the Method field so it's visible in the report.
-		errStr := fmt.Errorf("failed to decode TON transaction: %w", err)
+		errStr = fmt.Sprintf("failed to decode TON transaction: %s. failed to unmarshal additional fields: %s", err, errStr)
 
 		return &DecodedCall{
 			Address:         mcmsTx.To,
-			Method:          errStr.Error(),
+			Method:          errStr,
 			ContractType:    contractType,
 			ContractVersion: contractVersion,
 		}, nil

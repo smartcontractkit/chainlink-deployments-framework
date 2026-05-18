@@ -24,6 +24,19 @@
                 "tags": null,
                 "contractType": ""
             }
+        },
+        {
+            "chainSelector": 3379446385462418246,
+            "transaction": {
+                "to": "0x123",
+                "additionalFields": {
+                    "value": 0
+                },
+                "data": "",
+                "tags": null,
+                "contractType": "",
+                "contractVersion": "1.2.3"
+            }
         }
     ]
 }

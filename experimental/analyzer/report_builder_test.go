@@ -272,9 +272,8 @@ func TestBuildProposalReport_TONDecodeFailure(t *testing.T) {
 			{
 				ChainSelector: types.ChainSelector(chainsel.TON_TESTNET.Selector),
 				Transaction: types.Transaction{
-					To:               "0x1234567890123456789012345678901234567890",
-					Data:             []byte{0x01, 0x02, 0x03, 0x04},
-					AdditionalFields: json.RawMessage("{}"),
+					To:   "0x1234567890123456789012345678901234567890",
+					Data: []byte{0x01, 0x02, 0x03, 0x04},
 				},
 			},
 		},
@@ -362,8 +361,8 @@ func TestBuildTimelockReport_TONDecodeFailure(t *testing.T) {
 			{
 				ChainSelector: types.ChainSelector(chainsel.TON_TESTNET.Selector),
 				Transactions: []types.Transaction{
-					{To: "0x1111111111111111111111111111111111111111", Data: []byte{0x01, 0x02, 0x03, 0x04}, AdditionalFields: json.RawMessage(`{}`)},
-					{To: "0x2222222222222222222222222222222222222222", Data: []byte{0x05, 0x06, 0x07, 0x08}, AdditionalFields: json.RawMessage(`{}`)},
+					{To: "0x1111111111111111111111111111111111111111", Data: []byte{0x01, 0x02, 0x03, 0x04}},
+					{To: "0x2222222222222222222222222222222222222222", Data: []byte{0x05, 0x06, 0x07, 0x08}},
 				},
 			},
 		},
