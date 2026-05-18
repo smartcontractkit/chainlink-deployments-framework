@@ -23,10 +23,12 @@
             "transactions": [
                 {
                     "to": "0x0000000000000000000000000000000000000000",
-                    "additionalFields": {"value": 0},
+                    "additionalFields": {
+                        "value": 0
+                    },
                     "data": "ZGF0YQ==",
                     "contractType": "",
-                    "contractTypeAndVersion": "",
+                    "contractVersion": "",
                     "tags": null
                 }
             ]

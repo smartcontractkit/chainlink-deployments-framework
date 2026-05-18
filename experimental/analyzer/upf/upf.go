@@ -192,9 +192,9 @@ func mcmsOperationToUpfTransaction(
 				FunctionName: analyzeResult.Method,
 				FunctionArgs: upfFunctionArgs,
 			},
-			Comment:                "",
-			ContractType:           mcmsOp.Transaction.ContractType,
-			ContractTypeAndVersion: mcmsOp.Transaction.ContractTypeAndVersion,
+			Comment:         "",
+			ContractType:    mcmsOp.Transaction.ContractType,
+			ContractVersion: mcmsOp.Transaction.ContractVersion,
 		},
 	}, nil
 }

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"slices"
 
+	"github.com/Masterminds/semver/v3"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 )
 
@@ -41,10 +42,10 @@ type Transaction struct {
 }
 
 type Metadata struct {
-	ContractType           string           `json:"contractType,omitempty"`
-	ContractTypeAndVersion string           `json:"contractTypeAndVersion,omitempty"`
-	Comment                string           `json:"comment,omitempty" `
-	DecodedCalldata        *DecodedCallData `json:"decodedCalldata,omitempty"`
+	ContractType    string           `json:"contractType,omitempty"`
+	ContractVersion *semver.Version  `json:"contractVersion,omitempty"`
+	Comment         string           `json:"comment,omitempty" `
+	DecodedCalldata *DecodedCallData `json:"decodedCalldata,omitempty"`
 }
 
 type DecodedCallData struct {
