@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/xssnick/tonutils-go/address"
 	"github.com/xssnick/tonutils-go/tlb"
+	"github.com/xssnick/tonutils-go/tvm/cell"
 
 	"github.com/smartcontractkit/chainlink-ton/pkg/bindings"
 	"github.com/smartcontractkit/chainlink-ton/pkg/bindings/lib/access/rbac"
@@ -52,8 +53,13 @@ func TestAnalyzeTONTransaction(t *testing.T) {
 			mcmsTx: types.Transaction{
 				OperationMetadata: types.OperationMetadata{ContractType: "unknown.type", ContractVersion: semver.MustParse("1.2.3")},
 				To:                testAddress,
-				Data:              []byte{0x01, 0x02},
-				AdditionalFields:  json.RawMessage(`{"value":0, "contractTypeFull":"com.example.package.unknown.contract"}`),
+				Data: func() []byte {
+					c := cell.BeginCell()
+					c.MustStoreBinarySnake([]byte{0x01, 0x02})
+
+					return c.EndCell().ToBOC()
+				}(),
+				AdditionalFields: json.RawMessage(`{"value":0, "contractTypeFull":"com.example.package.unknown.contract"}`),
 			},
 			want:           &DecodedCall{Address: testAddress},
 			wantErrContain: "unknown contract interface: com.example.package.unknown.contract",
@@ -79,6 +85,24 @@ func TestAnalyzeTONTransaction(t *testing.T) {
 			},
 			want:           &DecodedCall{Address: testAddress},
 			wantErrContain: "invalid cell BOC data",
+		},
+		{
+			name: "empty cell",
+			mcmsTx: types.Transaction{
+				OperationMetadata: types.OperationMetadata{ContractType: bindings.ShortMCMS},
+				To:                testAddress,
+				Data:              tvm.EmptyCell.ToBOC(),
+				AdditionalFields:  json.RawMessage(`{"value":0}`),
+			},
+			want: &DecodedCall{
+				Address:         testAddress,
+				Method:          "::(0x0)",
+				Inputs:          []NamedField{},
+				Outputs:         []NamedField{},
+				ContractType:    bindings.ShortMCMS,
+				ContractVersion: "",
+			},
+			wantErrContain: "",
 		},
 	}
 
