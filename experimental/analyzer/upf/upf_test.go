@@ -8,7 +8,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Masterminds/semver/v3"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	chainsel "github.com/smartcontractkit/chain-selectors"
@@ -212,7 +211,6 @@ func TestUpfConvertTimelockProposalWithTon(t *testing.T) {
 				require.Contains(t, gotUpf, "chainName: ton-testnet")
 				require.Contains(t, gotUpf, "msigAddress: EQADa3W6G0nSiTV4a6euRA42fU9QxSEnb-WeDpcrtWzA2jM8")
 				require.Contains(t, gotUpf, "contractType: RBACTimelock")
-				require.Contains(t, gotUpf, "contractVersion: 1.2.3")
 			},
 		},
 	}
@@ -687,7 +685,7 @@ var timelockProposalTON = func(t *testing.T) string {
 		grantRoleData.ToBuilder().ToSlice(),
 		big.NewInt(0),
 		bindings.ShortRBAC,
-		semver.MustParse("1.2.3"),
+		nil,
 		bindings.TypeRBAC,
 		[]string{"grantRole"},
 	)

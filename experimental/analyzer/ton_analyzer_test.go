@@ -53,10 +53,21 @@ func TestAnalyzeTONTransaction(t *testing.T) {
 				OperationMetadata: types.OperationMetadata{ContractType: "unknown.type", ContractVersion: semver.MustParse("1.2.3")},
 				To:                testAddress,
 				Data:              []byte{0x01, 0x02},
-				AdditionalFields:  json.RawMessage(`{"value":0, "contractFullyQualifiedName":"com.example.package.unknown.contract"}`),
+				AdditionalFields:  json.RawMessage(`{"value":0, "contractTypeFull":"com.example.package.unknown.contract"}`),
 			},
 			want:           &DecodedCall{Address: testAddress},
-			wantErrContain: "unknown contract interface: unknown.type",
+			wantErrContain: "unknown contract interface: com.example.package.unknown.contract",
+		},
+		{
+			name: "fail - unknown version",
+			mcmsTx: func() types.Transaction {
+				tx := setup.makeGrantRoleTx(t, 1)
+				tx.ContractVersion = semver.MustParse("0.0.0")
+
+				return tx
+			}(),
+			want:           &DecodedCall{Address: setup.targetAddr.String()},
+			wantErrContain: "unknown contract interface: link.chain.ton.lib.access.RBAC@0.0.0",
 		},
 		{
 			name: "empty data",
@@ -64,7 +75,7 @@ func TestAnalyzeTONTransaction(t *testing.T) {
 				OperationMetadata: types.OperationMetadata{ContractType: bindings.ShortMCMS},
 				To:                testAddress,
 				Data:              []byte{},
-				AdditionalFields:  json.RawMessage(`{"value":0, "contractFullyQualifiedName":"` + bindings.TypeMCMS + `"}`),
+				AdditionalFields:  json.RawMessage(`{"value":0, "contractTypeFull":"` + bindings.TypeMCMS + `"}`),
 			},
 			want:           &DecodedCall{Address: testAddress},
 			wantErrContain: "invalid cell BOC data",
@@ -250,7 +261,7 @@ func (s *testTONSetup) makeGrantRoleTx(t *testing.T, queryID uint64) types.Trans
 		grantRoleData.ToBuilder().ToSlice(),
 		big.NewInt(0),
 		bindings.ShortRBAC,
-		semver.MustParse("1.2.3"),
+		nil,
 		bindings.TypeRBAC,
 		[]string{"grantRole"},
 	)
@@ -277,11 +288,11 @@ func bigIntStr(v uint64) string {
 	return new(big.Int).SetUint64(v).String()
 }
 
-func makeInvalidTx(contractType string, contractFullyQualifiedName tvm.FullyQualifiedName) types.Transaction {
+func makeInvalidTx(contractType string, contractTypeFull tvm.FullyQualifiedName) types.Transaction {
 	return types.Transaction{
 		OperationMetadata: types.OperationMetadata{ContractType: contractType},
 		To:                testAddress,
 		Data:              []byte{0xFF, 0xFF},
-		AdditionalFields:  json.RawMessage(`{"value":0, "contractFullyQualifiedName":"` + contractFullyQualifiedName + `"}`),
+		AdditionalFields:  json.RawMessage(`{"value":0, "contractTypeFull":"` + contractTypeFull + `"}`),
 	}
 }
