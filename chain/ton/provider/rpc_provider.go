@@ -131,18 +131,20 @@ func setupConnection(ctx context.Context, liteserverURL string) (tonlib.APIClien
 }
 
 // createWallet creates a TON wallet from the given private key and API client
-func createWallet(api tonlib.APIClientWrapped, privateKey []byte, version WalletVersion) (*wallet.Wallet, error) {
+func createWallet(
+	api tonlib.APIClientWrapped, privateKey []byte, version WalletVersion,
+) (*wallet.Wallet, wallet.VersionConfig, error) {
 	walletConfig, err := getWalletVersionConfig(version)
 	if err != nil {
-		return nil, fmt.Errorf("unsupported wallet version: %w", err)
+		return nil, nil, fmt.Errorf("unsupported wallet version: %w", err)
 	}
 
 	tonWallet, err := wallet.FromPrivateKeyWithOptions(api, privateKey, walletConfig, wallet.WithWorkchain(0))
 	if err != nil {
-		return nil, fmt.Errorf("failed to init TON wallet: %w", err)
+		return nil, nil, fmt.Errorf("failed to init TON wallet: %w", err)
 	}
 
-	return tonWallet, nil
+	return tonWallet, walletConfig, nil
 }
 
 // Initialize initializes the RPCChainProvider.
@@ -168,7 +170,7 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 	}
 
 	// Create wallet
-	tonWallet, err := createWallet(api, privateKey, p.config.WalletVersion)
+	tonWallet, versionConfig, err := createWallet(api, privateKey, p.config.WalletVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -177,11 +179,12 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 		ChainMetadata: ton.ChainMetadata{
 			Selector: p.selector,
 		},
-		Client:        api,
-		Wallet:        tonWallet,
-		WalletAddress: tonWallet.WalletAddress(),
-		URL:           p.config.HTTPURL,
-		Confirm:       ton.MakeDefaultConfirmFunc(api),
+		Client:              api,
+		Wallet:              tonWallet,
+		WalletAddress:       tonWallet.WalletAddress(),
+		WalletVersionConfig: versionConfig,
+		URL:                 p.config.HTTPURL,
+		Confirm:             ton.MakeDefaultConfirmFunc(api),
 	}
 
 	return *p.chain, nil

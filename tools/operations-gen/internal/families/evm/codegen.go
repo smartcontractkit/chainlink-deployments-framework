@@ -213,8 +213,12 @@ func prepareReadOp(funcInfo *FunctionInfo) OperationData {
 	if len(funcInfo.ReturnParams) == 1 {
 		returnType = funcInfo.ReturnParams[0].GoType
 	} else if len(funcInfo.ReturnParams) > 1 {
-		returnType = multiReturnStructName(funcInfo.Name)
-		returnFields = prepareParameters(funcInfo.ReturnParams)
+		if funcInfo.AllReturnParamsNamed {
+			returnType = "gobindings." + funcInfo.Name
+		} else {
+			returnType = multiReturnStructName(funcInfo.Name)
+			returnFields = prepareParameters(funcInfo.ReturnParams)
+		}
 	}
 
 	return OperationData{

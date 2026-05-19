@@ -17,7 +17,7 @@ import (
 var update = flag.Bool("update", false, "update golden files")
 
 // TestGenerateLinkToken is an end-to-end test that runs the generator against the
-// real LinkToken ABI/bytecode and verifies that the generated output matches golden.
+// LinkToken gobindings fixture and verifies that the generated output matches golden.
 func TestGenerateLinkToken(t *testing.T) {
 	t.Parallel()
 	runGoldenGenerationTest(t, "operations_gen_config.yaml", "link_token.golden.go")
@@ -78,7 +78,7 @@ func runGoldenGenerationTest(t *testing.T, configFileName string, goldenFileName
 	goldenPath := filepath.Join(evmTestdataDir, goldenFileName)
 
 	if *update {
-		require.NoError(t, os.WriteFile(goldenPath, got, 0o600), "writing golden file")
+		require.NoError(t, os.WriteFile(goldenPath, got, 0o600), "writing golden file") //nolint:gosec // G703: goldenPath is the in-repo testdata file, only written under -update by the developer
 
 		return
 	}

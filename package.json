@@ -1,6 +1,6 @@
 {
   "name": "chainlink-deployments-framework",
-  "version": "0.99.0",
+  "version": "0.104.0",
   "description": "A deployment framework for chainlink-deployments ",
   "private": true,
   "scripts": {
@@ -9,7 +9,7 @@
   },
   "author": "@smartcontractkit",
   "devDependencies": {
-    "@changesets/changelog-github": "^0.6.0",
+    "@changesets/changelog-github": "^0.7.0",
     "@changesets/cli": "^2.30.0"
   },
   "repository": "https://github.com/smartcontractkit/chainlink-deployments-framework",

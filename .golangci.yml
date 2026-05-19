@@ -77,12 +77,16 @@ linters:
               desc: You must not import this package. There is no alternative.
             - pkg: github.com/smartcontractkit/chainlink/deployment
               desc: You must not import this package. There is no alternative.
-            - pkg: github.com/smartcontractkit/chainlink-common/pkg/logger
-              desc: Use github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger instead
-            - pkg: github.com/smartcontractkit/chainlink-common
-              desc: We want to avoid importing this package as it has regular breaking changes.
+            - pkg: github.com/smartcontractkit/chainlink-ccip/deployment
+              desc: We want to avoid importing this package as it creates import cycles
+            - pkg: github.com/smartcontractkit/chainlink-sui/deployment
+              desc: We want to avoid importing this package as it creates import cycles
+            - pkg: github.com/smartcontractkit/chainlink-ton/deployment
+              desc: We want to avoid importing this package as it creates import cycles
     goconst:
       min-len: 5
+      min-occurrences: 5
+      ignore-tests: true
     govet:
       enable:
         - shadow
@@ -133,12 +137,16 @@ linters:
       - std-error-handling
     rules:
       - linters:
-          - goconst
-        path: (.+)_test\.go
-      - linters:
           - staticcheck
         text: "SA1019:.*aws-sdk-go.*is deprecated"
         path: (.+)\.go
+      # The aws-sdk-go v1 KMS signer paths depend on ecdsa.PublicKey.X/Y, which were
+      # deprecated in Go 1.26. We are not upgrading the AWS SDK at the moment, so allow these here.
+      # Once we switch over to using the chainlink keystore, this can be removed.
+      - linters:
+          - staticcheck
+        text: "SA1019:.*(has been deprecated since Go 1\\.26).*ParseUncompressedPublicKey"
+        path: chain/(evm|tron)/provider/kms_signer(_test)?\.go
     paths:
       - third_party$
       - builtin$

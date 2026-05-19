@@ -1,0 +1,50 @@
+package contract
+
+import (
+	"fmt"
+
+	"github.com/Masterminds/semver/v3"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+
+	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
+	cldf_deployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
+)
+
+type ReadParams[ARGS any, RET any, C any] struct {
+	// Name is the name of the operation.
+	Name string
+	// Version is the version of the operation.
+	Version *semver.Version
+	// Description is a brief description of the operation.
+	Description string
+	// ContractType is the type of contract to read from.
+	ContractType cldf_deployment.ContractType
+	// Contract is the contract binding instance to use for this read operation.
+	Contract C
+	// CallContract is a function that calls the desired read function on the contract.
+	CallContract func(contract C, opts *bind.CallOpts, input ARGS) (RET, error)
+}
+
+// NewRead creates a new read operation.
+// Any interfacing with gethwrappers should live in the callContract function.
+func NewRead[ARGS any, RET any, C any](params ReadParams[ARGS, RET, C]) *operations.Operation[FunctionInput[ARGS], RET, cldf_evm.Chain] {
+	return operations.NewOperation(
+		params.Name,
+		params.Version,
+		params.Description,
+		func(b operations.Bundle, chain cldf_evm.Chain, input FunctionInput[ARGS]) (RET, error) {
+			var empty RET
+			// BEGIN Validation
+			if params.ContractType == "" {
+				return empty, fmt.Errorf("contract type must be specified for %s", params.Name)
+			}
+			if params.CallContract == nil {
+				return empty, fmt.Errorf("callContract function must be defined for %s", params.Name)
+			}
+			// END Validation
+
+			return params.CallContract(params.Contract, &bind.CallOpts{Context: b.GetContext()}, input.Args)
+		},
+	)
+}

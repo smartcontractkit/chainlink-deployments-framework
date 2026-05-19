@@ -42,6 +42,7 @@ type runHooksFlags struct {
 	proposalKind  string
 	chainSelector uint64
 	reports       []cldfchangeset.MCMSTimelockExecuteReport
+	error         string
 }
 
 type proposalMetadata struct {
@@ -78,6 +79,7 @@ func newRunProposalHooksCmd(cfg Config) *cobra.Command {
 				proposalKind:  flags.MustString(cmd.Flags().GetString("proposalKind")),
 				chainSelector: flags.MustUint64(cmd.Flags().GetUint64("selector")),
 				reports:       reports,
+				error:         flags.MustString(cmd.Flags().GetString("error")),
 			}
 
 			return runHooks(cmd.Context(), cfg, f)
@@ -88,7 +90,8 @@ func newRunProposalHooksCmd(cfg Config) *cobra.Command {
 	flags.Proposal(cmd)
 	flags.ProposalKind(cmd, string(mcmstypes.KindTimelockProposal))
 	flags.ChainSelector(cmd, true)
-	cmd.Flags().String("report", "", "File with timelock execution report.")
+	cmd.Flags().String("report", "", "File with timelock execution report (required).")
+	cmd.Flags().String("error", "", "The error message, in case the timelock execution failed.")
 	_ = cmd.MarkFlagRequired("report")
 
 	return cmd
@@ -114,7 +117,7 @@ func runHooks(ctx context.Context, cfg Config, hFlags runHooksFlags) error {
 		return errors.New("expected proposal to be a TimelockProposal")
 	}
 
-	return runHooksInternal(cfg, proposalCfg.Env, proposalCfg.TimelockProposal, hFlags.reports, nil)
+	return runHooksInternal(cfg, proposalCfg.Env, proposalCfg.TimelockProposal, hFlags.reports, hFlags.error, nil)
 }
 
 func runHooksInternal(
@@ -122,6 +125,7 @@ func runHooksInternal(
 	env cldf.Environment,
 	timelockProposal *mcms.TimelockProposal,
 	reports []cldfchangeset.MCMSTimelockExecuteReport,
+	execError string,
 	forkCtx cldfchangeset.ForkContext,
 ) error {
 	if cfg.LoadChangesets == nil {
@@ -145,7 +149,7 @@ func runHooksInternal(
 		})
 
 		herr := changesetRegistry.RunProposalHooks(changeset.Name, env, timelockProposal,
-			changeset.Input, changeset.Config, changesetReports, forkCtx)
+			changeset.Input, changeset.Config, changesetReports, execError, forkCtx)
 		if herr != nil {
 			return fmt.Errorf("proposal hook for changeset %q failed: %w", changeset.Name, herr)
 		}

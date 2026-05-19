@@ -19,6 +19,9 @@ type StellarSigner interface {
 
 	// Address returns the Stellar address derived from the signer's public key.
 	Address() string
+
+	// KeypairFull returns the underlying keypair.Full used by this signer, if available.
+	KeypairFull() *keypair.Full
 }
 
 // stellarKeypairSigner implements StellarSigner using a keypair.Full from the Stellar SDK.
@@ -46,6 +49,11 @@ func (s *stellarKeypairSigner) SignDecorated(message []byte) (xdr.DecoratedSigna
 // Address returns the Stellar address.
 func (s *stellarKeypairSigner) Address() string {
 	return s.kp.Address()
+}
+
+// KeypairFull returns the underlying keypair.Full used by this signer.
+func (s *stellarKeypairSigner) KeypairFull() *keypair.Full {
+	return s.kp
 }
 
 // KeypairFromHex creates a keypair.Full from a hex-encoded private key.

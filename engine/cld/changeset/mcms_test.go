@@ -148,7 +148,7 @@ func Test_RunProposalHooks(t *testing.T) {
 			execLogs := []string{}
 			registry := tt.setup(&execLogs)
 
-			err := registry.RunProposalHooks(tt.key, hookTestEnv(t), &mcms.TimelockProposal{}, nil, nil, nil, nil)
+			err := registry.RunProposalHooks(tt.key, hookTestEnv(t), &mcms.TimelockProposal{}, nil, nil, nil, "", nil)
 
 			if tt.wantErr == "" {
 				require.NoError(t, err)
@@ -168,32 +168,67 @@ func Test_RunProposalHooks_HookReceivesCorrectParams(t *testing.T) {
 	config := "test-config"
 	reports := []MCMSTimelockExecuteReport{{Type: MCMSTimelockExecuteReportType}}
 
-	var receivedParams PostProposalHookParams
+	createRegistry := func() (*ChangesetsRegistry, *PostProposalHookParams) {
+		receivedParams := new(PostProposalHookParams)
 
-	r := NewChangesetsRegistry()
-	r.entries["test-cs"] = registryEntry{
-		changeset: noopChangeset{},
-		postProposalHooks: []PostProposalHook{{
-			HookDefinition: HookDefinition{Name: "param-checker", FailurePolicy: Warn},
-			Func: func(_ context.Context, params PostProposalHookParams) error {
-				receivedParams = params
-				return nil
+		r := NewChangesetsRegistry()
+		r.entries["test-cs"] = registryEntry{
+			changeset: noopChangeset{},
+			postProposalHooks: []PostProposalHook{{
+				HookDefinition: HookDefinition{Name: "param-checker", FailurePolicy: Warn},
+				Func: func(_ context.Context, params PostProposalHookParams) error {
+					*receivedParams = params
+					return nil
+				},
+			}},
+		}
+
+		return r, receivedParams
+	}
+
+	tests := []struct {
+		name           string
+		execError      string
+		expectedParams PostProposalHookParams
+	}{
+		{
+			name:      "no execution error",
+			execError: "",
+			expectedParams: PostProposalHookParams{
+				Env:          ProposalHookEnv{Name: "test-env"},
+				ChangesetKey: "test-cs",
+				Proposal:     proposal,
+				Input:        input,
+				Config:       config,
+				Reports:      reports,
 			},
-		}},
+		},
+		{
+			name:      "with execution error",
+			execError: "timelock execution failed: out of gas",
+			expectedParams: PostProposalHookParams{
+				Env:          ProposalHookEnv{Name: "test-env"},
+				ChangesetKey: "test-cs",
+				Proposal:     proposal,
+				Input:        input,
+				Config:       config,
+				Reports:      reports,
+				Err:          "timelock execution failed: out of gas",
+			},
+		},
 	}
 
-	err := r.RunProposalHooks("test-cs", hookTestEnv(t), proposal, input, config, reports, nil)
-	require.NoError(t, err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	expectedParams := PostProposalHookParams{
-		Env:          ProposalHookEnv{Name: "test-env"},
-		ChangesetKey: "test-cs",
-		Proposal:     proposal,
-		Input:        input,
-		Config:       config,
-		Reports:      reports,
+			r, receivedParams := createRegistry()
+			err := r.RunProposalHooks("test-cs", hookTestEnv(t), proposal, input, config, reports, tt.execError, nil)
+			require.NoError(t, err)
+
+			require.Empty(t, cmp.Diff(tt.expectedParams, *receivedParams,
+				cmpopts.IgnoreFields(mcms.BaseProposal{}, "useSimulatedBackend"),
+				cmpopts.IgnoreFields(ProposalHookEnv{}, "Logger", "BlockChains")))
+		})
 	}
-	require.Empty(t, cmp.Diff(expectedParams, receivedParams,
-		cmpopts.IgnoreFields(mcms.BaseProposal{}, "useSimulatedBackend"),
-		cmpopts.IgnoreFields(ProposalHookEnv{}, "Logger", "BlockChains")))
 }

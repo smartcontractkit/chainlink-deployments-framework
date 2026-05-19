@@ -147,7 +147,7 @@ func formatValue(v any) string {
 		return val.String()
 	case fmt.Stringer:
 		rv := reflect.ValueOf(val)
-		if rv.Kind() == reflect.Ptr && rv.IsNil() {
+		if rv.Kind() == reflect.Pointer && rv.IsNil() {
 			return nilValue
 		}
 

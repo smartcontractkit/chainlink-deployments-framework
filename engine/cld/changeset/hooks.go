@@ -8,6 +8,7 @@ import (
 	"github.com/smartcontractkit/mcms"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
+	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
@@ -40,8 +41,11 @@ func (fp FailurePolicy) String() string {
 // HookEnv is the restricted environment surface exposed to hooks.
 // Additional fields may be added in future versions as needs arise.
 type HookEnv struct {
-	Name   string
-	Logger logger.Logger
+	Name        string
+	Logger      logger.Logger
+	BlockChains chain.BlockChains
+	DataStore   datastore.DataStore
+	// TODO: read-only Offchain and CRE clients
 }
 
 // ProposalHookEnv is the restricted environment surface exposed to proposal hooks.
@@ -50,8 +54,9 @@ type ProposalHookEnv struct {
 	Name        string
 	Logger      logger.Logger
 	BlockChains chain.BlockChains
+	DataStore   datastore.DataStore
 	ForkContext ForkContext
-	// TODO: read-only JD and CRE clients
+	// TODO: read-only Offchain and CRE clients
 }
 
 // PreHookParams is passed to pre-hooks.
@@ -80,6 +85,7 @@ type PostProposalHookParams struct {
 	Proposal     *mcms.TimelockProposal
 	Config       any
 	Reports      []MCMSTimelockExecuteReport
+	Err          string
 
 	// Deprecated: use `Config` instead. Will be removed in a future version.
 	Input any

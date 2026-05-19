@@ -219,3 +219,30 @@ func (c Chain) NetworkType() (chainsel.NetworkType, error) {
 func (c Chain) IsNetworkType(networkType chainsel.NetworkType) bool {
 	return chaincommon.ChainMetadata{Selector: c.Selector}.IsNetworkType(networkType)
 }
+
+func (c Chain) ReadOnly() (chaincommon.BlockChain, error) {
+	privateKey, err := sollib.NewRandomPrivateKey()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate private key for read-only chain %v: %w", c.Selector, err)
+	}
+	c.DeployerKey = &privateKey
+
+	rpcClient := rpcclient.New(solrpc.New(c.URL), privateKey)
+	c.Client = rpcClient.Client
+
+	c.SendAndConfirm = func(ctx context.Context, instructions []sollib.Instruction, opts ...rpcclient.TxModifier) error {
+		_, err := rpcClient.SendAndConfirmTx(ctx, instructions, rpcclient.WithTxModifiers(opts...),
+			rpcclient.WithRetry(1, 50*time.Millisecond))
+
+		return err
+	}
+
+	c.Confirm = func(instructions []sollib.Instruction, opts ...solCommonUtil.TxModifier) error {
+		_, err := solCommonUtil.SendAndConfirm(context.Background(), rpcClient.Client, instructions,
+			privateKey, solrpc.CommitmentConfirmed, opts...)
+
+		return err
+	}
+
+	return c, nil
+}

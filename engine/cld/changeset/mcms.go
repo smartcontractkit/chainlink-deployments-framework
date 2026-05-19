@@ -83,7 +83,7 @@ func (*EVMForkContext) ChainFamily() string {
 //  2. Global post-proposal-hooks
 func (r *ChangesetsRegistry) RunProposalHooks(
 	key string, e fdeployment.Environment, proposal *mcms.TimelockProposal, input, config any,
-	reports []MCMSTimelockExecuteReport, forkCtx ForkContext,
+	reports []MCMSTimelockExecuteReport, execError string, forkCtx ForkContext,
 ) error {
 	applySnapshot, err := r.getApplySnapshot(key)
 	if err != nil {
@@ -92,7 +92,10 @@ func (r *ChangesetsRegistry) RunProposalHooks(
 
 	blockChains := e.BlockChains
 	if forkCtx == nil {
-		blockChains = blockChains.ReadOnly()
+		blockChains, err = blockChains.ReadOnly()
+		if err != nil {
+			return fmt.Errorf("failed to get read-only blockchains for proposal hooks: %w", err)
+		}
 	}
 
 	params := PostProposalHookParams{
@@ -100,14 +103,16 @@ func (r *ChangesetsRegistry) RunProposalHooks(
 			Name:        e.Name,
 			Logger:      e.Logger,
 			BlockChains: blockChains,
+			DataStore:   e.DataStore,
 			ForkContext: forkCtx,
-			// TODO: JD and CRE clients
+			// TODO: CRE client
 		},
 		ChangesetKey: key,
 		Proposal:     proposal,
 		Input:        input,
 		Config:       config,
 		Reports:      reports,
+		Err:          execError,
 	}
 
 	for _, h := range applySnapshot.registryEntry.postProposalHooks {

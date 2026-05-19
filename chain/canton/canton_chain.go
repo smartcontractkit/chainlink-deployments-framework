@@ -150,3 +150,7 @@ func CreateAdminServiceClients(conn grpc.ClientConnInterface) AdminServiceClient
 		TrafficControl:           participantv30.NewTrafficControlServiceClient(conn),
 	}
 }
+
+func (c Chain) ReadOnly() (chaincommon.BlockChain, error) {
+	return c, nil
+}

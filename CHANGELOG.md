@@ -1,5 +1,53 @@
 # chainlink-deployments-framework
 
+## 0.104.0
+
+### Minor Changes
+
+- [#979](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/979) [`68a7a80`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/68a7a80b6be0bde000aafd435089b994c38a2a23) Thanks [@patricios-space](https://github.com/patricios-space)! - Adopt ContractTypeAndVersion in upf Transaction.Metadata
+
+## 0.103.0
+
+### Minor Changes
+
+- [#983](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/983) [`721c1ce`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/721c1cec87507df8d19ba4c64a1b2be7b609fe7d) Thanks [@ecPablo](https://github.com/ecPablo)! - add TonMCMSChainState type
+
+- [#981](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/981) [`4da8eba`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/4da8eba6ddb0854bb7cddb250d323643c063cc36) Thanks [@patricios-space](https://github.com/patricios-space)! - Bump to Go 1.26.2, update several dependencies, and migrate from `pgx/v4` to `pgx/v5`.
+
+## 0.102.0
+
+### Minor Changes
+
+- [#972](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/972) [`3c4dda3`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/3c4dda332301097e4e6461b2c46ca0fdea528611) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - feat: run post-proposal hooks even when the timelock execution fails
+
+- [#976](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/976) [`d7e88c6`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/d7e88c6f5761fcced614d6cd8348d2b06870f191) Thanks [@ecPablo](https://github.com/ecPablo)! - add support for named api keys on cre api key secret
+
+### Patch Changes
+
+- [#973](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/973) [`bb15097`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/bb1509743925444a70f8c7c2ccfd44860328c55b) Thanks [@ecPablo](https://github.com/ecPablo)! - remove chainlink-ton/deployment dependency
+
+## 0.101.1
+
+### Patch Changes
+
+- [#970](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/970) [`3dd9f6d`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/3dd9f6d3ab4391ded8f1fdcd17778e9df8e46eae) Thanks [@skudasov](https://github.com/skudasov)! - migrate to Moby and new testcontainers-go
+
+## 0.101.0
+
+### Minor Changes
+
+- [#965](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/965) [`75a8bce`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/75a8bcecfefca13619b779874eca2955f54545cc) Thanks [@ecPablo](https://github.com/ecPablo)! - Port new TON config to `propose.go`
+
+## 0.100.0
+
+### Minor Changes
+
+- [#961](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/961) [`2bb6275`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/2bb6275da0f4d270c33527e276c51a5cb787d7f0) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix incorrect package name for contracts/mcms
+
+- [#954](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/954) [`d0d1079`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/d0d1079692fd969f81031c5cd5db0ad1bac0c53c) Thanks [@DimitriosNaikopoulos](https://github.com/DimitriosNaikopoulos)! - (feat) Support in memory catalog deletes and save keys for later deleting them from the catalog
+
+- [#959](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/959) [`4c845fb`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/4c845fbda91add525c03da2e7d362a1c83aff3a6) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - feat: add DataStore and BlockChains to HookEnv type
+
 ## 0.99.0
 
 ### Minor Changes

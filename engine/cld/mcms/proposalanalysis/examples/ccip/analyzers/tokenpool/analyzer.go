@@ -92,22 +92,25 @@ func (a *ChainUpdatesAnalyzer) Analyze(
 			)
 		}
 
-		current, rerr := poolCaller.GetCurrentOutboundRateLimiterState(callOpts, update.RemoteChainSelector)
+		currentRateLimiterState, rerr := poolCaller.GetCurrentRateLimiterState(callOpts, update.RemoteChainSelector, false)
 		if rerr != nil {
-			return nil, fmt.Errorf("get outbound rate limiter for %s: %w", remoteLabel, rerr)
+			return nil, fmt.Errorf("get rate limiter state for %s: %w", remoteLabel, rerr)
 		}
 
 		anns = append(anns, compareRateLimiterConfig(
-			current, update.OutboundRateLimiterConfig, decimals, "outbound to "+remoteLabel, tokenSymbol,
+			currentRateLimiterState.OutboundRateLimiterState,
+			update.OutboundRateLimiterConfig,
+			decimals,
+			"outbound to "+remoteLabel,
+			tokenSymbol,
 		)...)
 
-		currentIn, ierr := poolCaller.GetCurrentInboundRateLimiterState(callOpts, update.RemoteChainSelector)
-		if ierr != nil {
-			return nil, fmt.Errorf("get inbound rate limiter for %s: %w", remoteLabel, ierr)
-		}
-
 		anns = append(anns, compareRateLimiterConfig(
-			currentIn, update.InboundRateLimiterConfig, decimals, "inbound from "+remoteLabel, tokenSymbol,
+			currentRateLimiterState.InboundRateLimiterState,
+			update.InboundRateLimiterConfig,
+			decimals,
+			"inbound from "+remoteLabel,
+			tokenSymbol,
 		)...)
 	}
 
