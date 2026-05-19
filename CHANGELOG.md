@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.105.0
+
+### Minor Changes
+
+- [#986](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/986) [`af2cb57`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/af2cb57d575a6f3338e675fc56f851378327275b) Thanks [@patricios-space](https://github.com/patricios-space)! - Use Metadata.ContractVersion instead of ContractTypeAndVersion
+
 ## 0.104.0
 
 ### Minor Changes
