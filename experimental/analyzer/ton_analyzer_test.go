@@ -78,7 +78,7 @@ func TestAnalyzeTONTransaction(t *testing.T) {
 			wantErrContain: "unknown contract interface: link.chain.ton.lib.access.RBAC@0.0.0",
 		},
 		{
-			name: "success - RBAC GrantRol with version",
+			name: "success - GrantRole with version",
 			decoder: ton.NewDecoder(tvm.ContractTLBRegistry{
 				bindings.TypeRBAC + "@1.2.3": bindings.Registry[bindings.TypeRBAC],
 			}),

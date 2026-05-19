@@ -38,7 +38,7 @@ func AnalyzeTONTransaction(ctx ProposalContext, decoder sdk.Decoder, chainSelect
 	fullyQualifiedName := func() string {
 		var additionalFields ton.AdditionalFields
 		if err := json.Unmarshal(mcmsTx.AdditionalFields, &additionalFields); err != nil {
-			typeErr = fmt.Sprintf("failed to unmarshal TON additional fields: %s", err)
+			typeErr = fmt.Sprintf("; additionally failed to unmarshal TON additional fields: %s", err)
 			return ""
 		}
 
@@ -53,14 +53,11 @@ func AnalyzeTONTransaction(ctx ProposalContext, decoder sdk.Decoder, chainSelect
 		return fullyQualifiedName
 	}()
 
-	decodedOp, err := decoder.Decode(mcmsTx, fullyQualifiedName)
-	if err != nil {
+	decodedOp, errDec := decoder.Decode(mcmsTx, fullyQualifiedName)
+	if errDec != nil {
 		// Don't return an error to not block the whole proposal decoding because of a single transaction decode failure.
 		// Instead, put the error message in the Method field so it's visible in the report.
-		errStr := "failed to decode TON transaction: " + err.Error()
-		if typeErr != "" {
-			errStr += "; additionally" + typeErr
-		}
+		errStr := "failed to decode TON transaction: " + errDec.Error() + typeErr
 
 		return &DecodedCall{
 			Address:         mcmsTx.To,
