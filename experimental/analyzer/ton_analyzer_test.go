@@ -7,6 +7,7 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/smartcontractkit/mcms/sdk"
 	"github.com/smartcontractkit/mcms/sdk/ton"
 	"github.com/smartcontractkit/mcms/types"
 	"github.com/stretchr/testify/require"
@@ -33,6 +34,7 @@ func TestAnalyzeTONTransaction(t *testing.T) {
 
 	tests := []struct {
 		name           string
+		decoder        sdk.Decoder
 		mcmsTx         types.Transaction
 		want           *DecodedCall
 		wantErrContain string
@@ -76,6 +78,19 @@ func TestAnalyzeTONTransaction(t *testing.T) {
 			wantErrContain: "unknown contract interface: link.chain.ton.lib.access.RBAC@0.0.0",
 		},
 		{
+			name: "success - RBAC GrantRol with version",
+			decoder: ton.NewDecoder(tvm.ContractTLBRegistry{
+				bindings.TypeRBAC + "@1.2.3": bindings.Registry[bindings.TypeRBAC],
+			}),
+			mcmsTx: func() types.Transaction {
+				tx := setup.makeGrantRoleTx(t, 1)
+				tx.ContractVersion = semver.MustParse("1.2.3")
+
+				return tx
+			}(),
+			want: setup.expectedGrantRoleCall(1, "1.2.3"),
+		},
+		{
 			name: "empty data",
 			mcmsTx: types.Transaction{
 				OperationMetadata: types.OperationMetadata{ContractType: bindings.ShortMCMS},
@@ -109,8 +124,11 @@ func TestAnalyzeTONTransaction(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-
-			result, err := AnalyzeTONTransaction(ctx, decoder, 0, tt.mcmsTx)
+			testDecoder := decoder
+			if tt.decoder != nil {
+				testDecoder = tt.decoder
+			}
+			result, err := AnalyzeTONTransaction(ctx, testDecoder, 0, tt.mcmsTx)
 			require.NoError(t, err)
 			require.NotNil(t, result)
 			require.Equal(t, tt.want.Address, result.Address)
@@ -294,11 +312,19 @@ func (s *testTONSetup) makeGrantRoleTx(t *testing.T, queryID uint64) types.Trans
 	return tx
 }
 
-func (s *testTONSetup) expectedGrantRoleCall(queryID uint64) *DecodedCall {
+func (s *testTONSetup) expectedGrantRoleCall(queryID uint64, version ...string) *DecodedCall {
+	methodPrefix := string(bindings.TypeRBAC)
+	versionStr := ""
+	if len(version) > 0 {
+		versionStr = version[0]
+		methodPrefix = methodPrefix + "@" + versionStr
+	}
+
 	return &DecodedCall{
-		Address:      s.targetAddr.String(),
-		Method:       string(bindings.TypeRBAC) + "::GrantRole(0x95cd540f)",
-		ContractType: string(bindings.ShortRBAC),
+		Address:         s.targetAddr.String(),
+		Method:          methodPrefix + "::GrantRole(0x95cd540f)",
+		ContractType:    string(bindings.ShortRBAC),
+		ContractVersion: versionStr,
 		Inputs: []NamedField{
 			{Name: "QueryID", Value: SimpleField{Value: bigIntStr(queryID)}, RawValue: queryID},
 			{Name: "Role", Value: SimpleField{Value: s.exampleRoleBig.String()}, RawValue: tlbe.NewUint256(s.exampleRoleBig)},
