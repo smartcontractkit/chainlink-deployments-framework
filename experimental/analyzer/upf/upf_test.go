@@ -2,14 +2,11 @@ package upf
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"math/big"
 	"strings"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/mcms"
 	mcmssdk "github.com/smartcontractkit/mcms/sdk"
@@ -19,15 +16,10 @@ import (
 	mcmstonsdk "github.com/smartcontractkit/mcms/sdk/ton"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 	"github.com/stretchr/testify/require"
-	"github.com/xssnick/tonutils-go/address"
-	"github.com/xssnick/tonutils-go/tlb"
 
 	"github.com/smartcontractkit/chainlink-ccip/chains/evm/gobindings/generated/v1_6_0/rmn_remote"
 	rmnremotebindings "github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings/v0_1_0/rmn_remote"
 	timelockbindings "github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings/v0_1_0/timelock"
-	"github.com/smartcontractkit/chainlink-ton/pkg/bindings"
-	"github.com/smartcontractkit/chainlink-ton/pkg/bindings/lib/access/rbac"
-	"github.com/smartcontractkit/chainlink-ton/pkg/ton/tlbe"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
@@ -695,60 +687,6 @@ signers:
   9762610643973837292:
   - "0xA5D5B0B844c8f11B61F28AC98BBA84dEA9b80953"
 `
-
-// timelockProposalTON is generated using makeTONGrantRoleTx helper
-var timelockProposalTON = func(t *testing.T) string {
-	t.Helper()
-	// Create a GrantRole transaction for the test
-	targetAddr := address.MustParseAddr("EQADa3W6G0nSiTV4a6euRA42fU9QxSEnb-WeDpcrtWzA2jM8")
-	exampleRole := crypto.Keccak256Hash([]byte("EXAMPLE_ROLE"))
-	grantRoleData, _ := tlb.ToCell(rbac.GrantRole{
-		QueryID: 1,
-		Role:    tlbe.NewUint256(new(big.Int).SetBytes(exampleRole[:])),
-		Account: targetAddr,
-	})
-
-	tx, _ := mcmstonsdk.NewTransaction(
-		targetAddr,
-		grantRoleData.ToBuilder().ToSlice(),
-		big.NewInt(0),
-		bindings.ShortRBAC,
-		nil,
-		bindings.TypeRBAC,
-		[]string{"grantRole"},
-	)
-
-	// Marshal the transaction data
-	txData, err := json.Marshal(tx)
-	require.NoError(t, err)
-
-	return fmt.Sprintf(`{
-  "version": "v1",
-  "kind": "TimelockProposal",
-  "validUntil": 1999999999,
-  "signatures": [],
-  "overridePreviousRoot": false,
-  "chainMetadata": {
-    "1399300952838017768": {
-      "startingOpCount": 1,
-      "mcmAddress": "EQADa3W6G0nSiTV4a6euRA42fU9QxSEnb-WeDpcrtWzA2jM8",
-      "additionalFields": null
-    }
-  },
-  "description": "simple TON proposal with GrantRole",
-  "action": "schedule",
-  "delay": "5m0s",
-  "timelockAddresses": {
-    "1399300952838017768": "EQADa3W6G0nSiTV4a6euRA42fU9QxSEnb-WeDpcrtWzA2jM8"
-  },
-  "operations": [
-    {
-      "chainSelector": 1399300952838017768,
-      "transactions": [%s]
-    }
-  ]
-}`, string(txData))
-}
 
 func TestIsTimelockBatchFunction(t *testing.T) {
 	t.Parallel()
