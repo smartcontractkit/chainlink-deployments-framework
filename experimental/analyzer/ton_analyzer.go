@@ -28,10 +28,6 @@ func AnalyzeTONTransactions(ctx ProposalContext, chainSelector uint64, txs []typ
 
 // AnalyzeTONTransaction decodes a single TON transaction using the MCMS TON decoder.
 //
-// Unlike Aptos/Sui analyzers, this function does not unmarshal AdditionalFields because
-// the TON decoder only requires tx.Data (BOC cell) and tx.ContractType (metadata).
-// AdditionalFields in TON is only used by the encoder/timelock_converter for the Value field.
-//
 // On decode failure, this function returns a DecodedCall with the error in the Method field
 // instead of returning an error. This allows the proposal to continue processing even if
 // a single transaction fails to decode.
@@ -51,7 +47,7 @@ func AnalyzeTONTransaction(ctx ProposalContext, decoder sdk.Decoder, chainSelect
 		// If it is skipped, the decoder will use the latest version available for the contract type.
 		// Note: we don't use contractVersion from resolveContractInfo because that only represents the short type used by the datastore.
 		if mcmsTx.ContractVersion != nil {
-			fullyQualifiedName += "@" + contractVersion
+			fullyQualifiedName += "@" + mcmsTx.ContractVersion.String()
 		}
 
 		return fullyQualifiedName
