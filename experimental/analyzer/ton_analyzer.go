@@ -59,6 +59,7 @@ func AnalyzeTONTransaction(ctx ProposalContext, decoder sdk.Decoder, chainSelect
 		// Instead, put the error message in the Method field so it's visible in the report.
 		errStr := "failed to decode TON transaction: " + errDec.Error() + typeErr
 
+		//nolint:nilerr // We are intentionally not returning an error here to allow the proposal to be processed even if decoding fails.
 		return &DecodedCall{
 			Address:         mcmsTx.To,
 			Method:          errStr,
