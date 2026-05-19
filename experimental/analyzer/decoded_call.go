@@ -31,7 +31,7 @@ func (d *DecodedCall) String(context *FieldContext) string {
 // resolveContractInfo looks up the contract type and version from the proposal
 // context's registered addresses.
 func resolveContractInfo(ctx ProposalContext, chainSelector uint64, mcmsTx types.Transaction) (contractType, contractVersion string) {
-	// Prefer the transaction's own ContractVersion when available (set by proposal creator)
+	// Use ContractVersion from transaction metadata (set by proposal creator) as fallback
 	if mcmsTx.ContractVersion != nil {
 		contractVersion = mcmsTx.ContractVersion.String()
 	}
@@ -56,8 +56,8 @@ func resolveContractInfo(ctx ProposalContext, chainSelector uint64, mcmsTx types
 		ct = mcmsTx.ContractType
 	}
 
-	// If version wasn't already set from transaction metadata, use datastore version
-	if contractVersion == "" && tv.Version.Original() != "" {
+	// Override with the DataStore version if available
+	if tv.Version.Original() != "" {
 		contractVersion = tv.Version.String()
 	}
 
