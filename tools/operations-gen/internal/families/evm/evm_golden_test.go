@@ -17,7 +17,7 @@ import (
 var update = flag.Bool("update", false, "update golden files")
 
 // TestGenerateLinkToken is an end-to-end test that runs the generator against the
-// real LinkToken ABI/bytecode and verifies that the generated output matches golden.
+// LinkToken gobindings fixture and verifies that the generated output matches golden.
 func TestGenerateLinkToken(t *testing.T) {
 	t.Parallel()
 	runGoldenGenerationTest(t, "operations_gen_config.yaml", "link_token.golden.go")
