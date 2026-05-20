@@ -372,7 +372,15 @@ func (s *catalogContractMetadataStore) deleteRecord(key datastore.ContractMetada
 	}
 
 	if err := executeEdit(s.client, req,
-		(*pb.DataAccessResponse).GetContractMetadataEditResponse, nil); err != nil {
+		(*pb.DataAccessResponse).GetContractMetadataEditResponse,
+		func(statusErr error, code codes.Code) error {
+			switch code { //nolint:exhaustive // We don't need to handle all codes here
+			case codes.NotFound:
+				return fmt.Errorf("%w: %s", datastore.ErrContractMetadataNotFound, statusErr.Error())
+			default:
+				return fmt.Errorf("delete request failed: %w", statusErr)
+			}
+		}); err != nil {
 		return err
 	}
 

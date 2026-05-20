@@ -735,15 +735,15 @@ func TestCatalogChainMetadataStore_Delete(t *testing.T) {
 			},
 		},
 		{
-			name: "delete_nonexistent_key_is_noop",
+			name: "delete_nonexistent_key_returns_not_found",
 			run: func(t *testing.T, store *catalogChainMetadataStore) {
 				t.Helper()
 				key := datastore.NewChainMetadataKey(generateRandomChainSelector())
-				require.NoError(t, store.Delete(t.Context(), key))
+				require.ErrorIs(t, store.Delete(t.Context(), key), datastore.ErrChainMetadataNotFound)
 			},
 		},
 		{
-			name: "delete_already_deleted_is_noop",
+			name: "delete_already_deleted_returns_not_found",
 			run: func(t *testing.T, store *catalogChainMetadataStore) {
 				t.Helper()
 				record := newRandomChainMetadata()
@@ -751,7 +751,7 @@ func TestCatalogChainMetadataStore_Delete(t *testing.T) {
 
 				key := datastore.NewChainMetadataKey(record.ChainSelector)
 				require.NoError(t, store.Delete(t.Context(), key))
-				require.NoError(t, store.Delete(t.Context(), key))
+				require.ErrorIs(t, store.Delete(t.Context(), key), datastore.ErrChainMetadataNotFound)
 			},
 		},
 		{

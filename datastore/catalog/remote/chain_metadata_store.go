@@ -365,7 +365,15 @@ func (s *catalogChainMetadataStore) deleteRecord(key datastore.ChainMetadataKey)
 	}
 
 	if err := executeEdit(s.client, req,
-		(*pb.DataAccessResponse).GetChainMetadataEditResponse, nil); err != nil {
+		(*pb.DataAccessResponse).GetChainMetadataEditResponse,
+		func(statusErr error, code codes.Code) error {
+			switch code { //nolint:exhaustive // We don't need to handle all codes here
+			case codes.NotFound:
+				return fmt.Errorf("%w: %s", datastore.ErrChainMetadataNotFound, statusErr.Error())
+			default:
+				return fmt.Errorf("delete request failed: %w", statusErr)
+			}
+		}); err != nil {
 		return err
 	}
 

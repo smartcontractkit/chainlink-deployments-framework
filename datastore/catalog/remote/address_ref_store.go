@@ -288,7 +288,15 @@ func (s *catalogAddressRefStore) deleteRecord(key datastore.AddressRefKey) error
 	}
 
 	return executeEdit(s.client, req,
-		(*pb.DataAccessResponse).GetAddressReferenceEditResponse, nil)
+		(*pb.DataAccessResponse).GetAddressReferenceEditResponse,
+		func(statusErr error, code codes.Code) error {
+			switch code { //nolint:exhaustive // We don't need to handle all codes here
+			case codes.NotFound:
+				return fmt.Errorf("%w: %s", datastore.ErrAddressRefNotFound, statusErr.Error())
+			default:
+				return fmt.Errorf("delete request failed: %w", statusErr)
+			}
+		})
 }
 
 // keyToFilter converts a datastore.AddressRefKey to a protobuf AddressReferenceKeyFilter

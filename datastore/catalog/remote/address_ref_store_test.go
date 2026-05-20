@@ -308,16 +308,16 @@ func TestCatalogAddressRefStore_Delete(t *testing.T) {
 			},
 		},
 		{
-			name: "delete_nonexistent_key_is_noop",
+			name: "delete_nonexistent_key_returns_not_found",
 			run: func(t *testing.T, store *catalogAddressRefStore) {
 				t.Helper()
 				ref := newRandomAddressRef()
 				key := datastore.NewAddressRefKey(ref.ChainSelector, ref.Type, ref.Version, ref.Qualifier)
-				require.NoError(t, store.Delete(t.Context(), key))
+				require.ErrorIs(t, store.Delete(t.Context(), key), datastore.ErrAddressRefNotFound)
 			},
 		},
 		{
-			name: "delete_already_deleted_is_noop",
+			name: "delete_already_deleted_returns_not_found",
 			run: func(t *testing.T, store *catalogAddressRefStore) {
 				t.Helper()
 				ref := newRandomAddressRef()
@@ -325,7 +325,7 @@ func TestCatalogAddressRefStore_Delete(t *testing.T) {
 
 				key := datastore.NewAddressRefKey(ref.ChainSelector, ref.Type, ref.Version, ref.Qualifier)
 				require.NoError(t, store.Delete(t.Context(), key))
-				require.NoError(t, store.Delete(t.Context(), key))
+				require.ErrorIs(t, store.Delete(t.Context(), key), datastore.ErrAddressRefNotFound)
 			},
 		},
 		{

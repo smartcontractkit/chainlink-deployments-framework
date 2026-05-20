@@ -526,11 +526,12 @@ func TestCatalogContractMetadataStore_Delete(t *testing.T) {
 				t.Helper()
 				record := newRandomContractMetadata()
 				key := datastore.NewContractMetadataKey(record.ChainSelector, record.Address)
-				require.NoError(t, store.Delete(t.Context(), key))
+
+				require.ErrorIs(t, store.Delete(t.Context(), key), datastore.ErrContractMetadataNotFound)
 			},
 		},
 		{
-			name: "delete_already_deleted_is_noop",
+			name: "delete_already_deleted_returns_not_found",
 			run: func(t *testing.T, store *catalogContractMetadataStore) {
 				t.Helper()
 				record := newRandomContractMetadata()
@@ -538,7 +539,7 @@ func TestCatalogContractMetadataStore_Delete(t *testing.T) {
 
 				key := datastore.NewContractMetadataKey(record.ChainSelector, record.Address)
 				require.NoError(t, store.Delete(t.Context(), key))
-				require.NoError(t, store.Delete(t.Context(), key))
+				require.ErrorIs(t, store.Delete(t.Context(), key), datastore.ErrContractMetadataNotFound)
 			},
 		},
 		{
