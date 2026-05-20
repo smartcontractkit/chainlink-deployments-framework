@@ -739,6 +739,8 @@ changesets:
 			EnvironmentLoader: func(context.Context, domain.Domain, string, ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
 				return fdeployment.Environment{}, nil
 			},
+			AddressBookMerger: func(domain.EnvDir, string, string) error { return nil },
+			DataStoreMerger:   func(domain.EnvDir, string, string) error { return nil },
 		},
 	}
 
@@ -810,6 +812,8 @@ changesets:
 			EnvironmentLoader: func(context.Context, domain.Domain, string, ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
 				return fdeployment.Environment{}, nil
 			},
+			AddressBookMerger: func(domain.EnvDir, string, string) error { return nil },
+			DataStoreMerger:   func(domain.EnvDir, string, string) error { return nil },
 		},
 	}
 
@@ -828,6 +832,133 @@ changesets:
 	require.True(t, stub1.ApplyCalled)
 	require.True(t, stub2.ApplyCalled)
 	require.False(t, stub3.ApplyCalled, "third changeset should not run after second fails")
+}
+
+//nolint:paralleltest
+func TestRunCmd_AllFlag_MergeCalledAfterEachChangeset(t *testing.T) {
+	preserveDurablePipelineInputEnv(t)
+	env := "testnet"
+	testDomain := domain.NewDomain(t.TempDir(), "test")
+
+	workspaceRoot := t.TempDir()
+	inputsDir := filepath.Join(workspaceRoot, "domains", testDomain.String(), env, "durable_pipelines", "inputs")
+	require.NoError(t, os.MkdirAll(inputsDir, 0o755))
+
+	yamlContent := `environment: testnet
+domain: test
+changesets:
+  - 0001_cs_first:
+      payload: {a: 1}
+  - 0002_cs_second:
+      payload: {b: 2}
+  - 0003_cs_third:
+      payload: {c: 3}`
+	yamlFileName := "input.yaml"
+	require.NoError(t, os.WriteFile(filepath.Join(inputsDir, yamlFileName), []byte(yamlContent), 0o600))
+
+	originalWd, _ := os.Getwd()
+	require.NoError(t, os.Chdir(workspaceRoot))
+	t.Cleanup(func() { require.NoError(t, os.Chdir(originalWd)) })
+
+	loadChangesets := func(string) (*changeset.ChangesetsRegistry, error) {
+		reg := changeset.NewChangesetsRegistry()
+		reg.Add("0001_cs_first", changeset.Configure(&stubChangeset{}).WithEnvInput())
+		reg.Add("0002_cs_second", changeset.Configure(&stubChangeset{}).WithEnvInput())
+		reg.Add("0003_cs_third", changeset.Configure(&stubChangeset{}).WithEnvInput())
+		return reg, nil
+	}
+
+	var abMergedNames []string
+	var dsMergedNames []string
+
+	cfg := &Config{
+		Logger:                logger.Test(t),
+		Domain:                testDomain,
+		LoadChangesets:        loadChangesets,
+		ConfigResolverManager: fresolvers.NewConfigResolverManager(),
+		Deps: Deps{
+			EnvironmentLoader: func(context.Context, domain.Domain, string, ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
+				return fdeployment.Environment{}, nil
+			},
+			AddressBookMerger: func(_ domain.EnvDir, name, _ string) error {
+				abMergedNames = append(abMergedNames, name)
+				return nil
+			},
+			DataStoreMerger: func(_ domain.EnvDir, name, _ string) error {
+				dsMergedNames = append(dsMergedNames, name)
+				return nil
+			},
+		},
+	}
+
+	cmd, err := NewCommand(cfg)
+	require.NoError(t, err)
+
+	cmd.SetArgs([]string{"run", "--environment", env, "--input-file", yamlFileName, "--all"})
+	require.NoError(t, cmd.Execute())
+
+	want := []string{"0001_cs_first", "0002_cs_second", "0003_cs_third"}
+	require.Equal(t, want, abMergedNames, "address book merge should be called for each changeset in order")
+	require.Equal(t, want, dsMergedNames, "datastore merge should be called for each changeset in order")
+}
+
+//nolint:paralleltest
+func TestRunCmd_AllFlag_MergeFailureStopsRun(t *testing.T) {
+	preserveDurablePipelineInputEnv(t)
+	env := "testnet"
+	testDomain := domain.NewDomain(t.TempDir(), "test")
+
+	workspaceRoot := t.TempDir()
+	inputsDir := filepath.Join(workspaceRoot, "domains", testDomain.String(), env, "durable_pipelines", "inputs")
+	require.NoError(t, os.MkdirAll(inputsDir, 0o755))
+
+	yamlContent := `environment: testnet
+domain: test
+changesets:
+  - 0001_cs_first:
+      payload: {a: 1}
+  - 0002_cs_second:
+      payload: {b: 2}`
+	yamlFileName := "input.yaml"
+	require.NoError(t, os.WriteFile(filepath.Join(inputsDir, yamlFileName), []byte(yamlContent), 0o600))
+
+	originalWd, _ := os.Getwd()
+	require.NoError(t, os.Chdir(workspaceRoot))
+	t.Cleanup(func() { require.NoError(t, os.Chdir(originalWd)) })
+
+	stub2 := &stubChangeset{}
+
+	loadChangesets := func(string) (*changeset.ChangesetsRegistry, error) {
+		reg := changeset.NewChangesetsRegistry()
+		reg.Add("0001_cs_first", changeset.Configure(&stubChangeset{}).WithEnvInput())
+		reg.Add("0002_cs_second", changeset.Configure(stub2).WithEnvInput())
+		return reg, nil
+	}
+
+	cfg := &Config{
+		Logger:                logger.Test(t),
+		Domain:                testDomain,
+		LoadChangesets:        loadChangesets,
+		ConfigResolverManager: fresolvers.NewConfigResolverManager(),
+		Deps: Deps{
+			EnvironmentLoader: func(context.Context, domain.Domain, string, ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
+				return fdeployment.Environment{}, nil
+			},
+			AddressBookMerger: func(domain.EnvDir, string, string) error {
+				return errors.New("address book merge failed")
+			},
+			DataStoreMerger: func(domain.EnvDir, string, string) error { return nil },
+		},
+	}
+
+	cmd, err := NewCommand(cfg)
+	require.NoError(t, err)
+
+	cmd.SetArgs([]string{"run", "--environment", env, "--input-file", yamlFileName, "--all"})
+
+	err = cmd.Execute()
+	require.ErrorContains(t, err, "[1/2] changeset 0001_cs_first: merge failed: address book merge: address book merge failed")
+	require.False(t, stub2.ApplyCalled, "second changeset should not run after merge failure")
 }
 
 //nolint:paralleltest

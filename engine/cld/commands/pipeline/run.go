@@ -164,7 +164,9 @@ func runSingleChangeset(
 
 // runAllChangesets runs all changesets defined in the input file sequentially. It sets the
 // DURABLE_PIPELINE_INPUT env var for each changeset before applying,
-// then loads the registry and applies each changeset in order.
+// then loads the registry and applies each changeset in order. After each changeset,
+// the address book and datastore artifacts are merged into the main state so that
+// the next changeset loads a fully up-to-date environment.
 func runAllChangesets(
 	cmd *cobra.Command,
 	cfg *Config,
@@ -192,7 +194,8 @@ func runAllChangesets(
 	for i, cs := range changesets {
 		cfg.Logger.Infof("[%d/%d] Applying changeset %s", i+1, len(changesets), cs.Name)
 
-		if err := artdir.SetDurablePipelines(strconv.FormatInt(time.Now().UnixNano(), 10)); err != nil {
+		timestamp := strconv.FormatInt(time.Now().UnixNano(), 10)
+		if err := artdir.SetDurablePipelines(timestamp); err != nil {
 			return err
 		}
 
@@ -208,9 +211,38 @@ func runAllChangesets(
 		if err := applyChangeset(cmd, cfg, f.dryRun, f.environment, cs.Name, registry, artdir, deps); err != nil {
 			return fmt.Errorf("[%d/%d] changeset %s: %w", i+1, len(changesets), cs.Name, err)
 		}
+
+		if err := mergeArtifacts(cfg, deps, f.environment, cs.Name, timestamp); err != nil {
+			return fmt.Errorf("[%d/%d] changeset %s: merge failed: %w", i+1, len(changesets), cs.Name, err)
+		}
 	}
 
 	cfg.Logger.Infof("Successfully applied all %d changesets for environment: %s", len(changesets), f.environment)
+
+	return nil
+}
+
+// mergeArtifacts merges the address book and datastore artifacts produced by a changeset
+// into the main state. Called between changesets in the --all flow so that each
+// subsequent changeset loads a fully up-to-date environment.
+func mergeArtifacts(
+	cfg *Config,
+	deps *Deps,
+	envName string,
+	changesetName string,
+	timestamp string,
+) error {
+	envDir := cfg.Domain.EnvDir(envName)
+
+	if err := deps.AddressBookMerger(envDir, changesetName, timestamp); err != nil {
+		return fmt.Errorf("address book merge: %w", err)
+	}
+	cfg.Logger.Infof("Merged address book for changeset %s", changesetName)
+
+	if err := deps.DataStoreMerger(envDir, changesetName, timestamp); err != nil {
+		return fmt.Errorf("datastore merge: %w", err)
+	}
+	cfg.Logger.Infof("Merged datastore for changeset %s", changesetName)
 
 	return nil
 }
