@@ -108,7 +108,7 @@ func GetAllChangesetsInOrder(changesets any) ([]ChangesetItem, error) {
 
 	data, ok := changesets.([]any)
 	if !ok {
-		return nil, errors.New("invalid 'changesets' format for index access, expected array format")
+		return nil, errors.New("invalid 'changesets' format, expected array format")
 	}
 
 	for i, item := range data {
