@@ -3,6 +3,8 @@
 package rbac_timelock
 
 import (
+	"fmt"
+
 	"math/big"
 
 	"github.com/Masterminds/semver/v3"
@@ -13,7 +15,7 @@ import (
 	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/operations2/contract"
 	cldf_deployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
-	cld_ops "github.com/smartcontractkit/chainlink-deployments-framework/operations"
+	cldf_ops "github.com/smartcontractkit/chainlink-deployments-framework/operations"
 	gobindings "github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/testdata/evm/gobindings/v1_0_0/rbac_timelock"
 )
 
@@ -49,9 +51,9 @@ var Deploy = contract.NewDeploy(contract.DeployParams[ConstructorArgs]{
 	},
 })
 
-func NewWriteScheduleBatch(c gobindings.RBACTimelockInterface) *cld_ops.Operation[contract.FunctionInput[ScheduleBatchArgs], contract.WriteOutput, cldf_evm.Chain] {
+func NewWriteScheduleBatch(c gobindings.RBACTimelockInterface, cs uint64) *cldf_ops.Operation[contract.FunctionInput[ScheduleBatchArgs], contract.WriteOutput, cldf_evm.Chain] {
 	return contract.NewWrite(contract.WriteParams[ScheduleBatchArgs, gobindings.RBACTimelockInterface]{
-		Name:         "rbac-timelock:schedule-batch",
+		Name:         fmt.Sprintf("%d:%s:rbac-timelock:schedule-batch", cs, c.Address().Hex()),
 		Version:      Version,
 		Description:  "Calls scheduleBatch on the contract",
 		ContractType: ContractType,

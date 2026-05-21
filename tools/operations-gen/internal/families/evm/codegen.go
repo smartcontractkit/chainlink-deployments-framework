@@ -20,6 +20,7 @@ type templateData struct {
 	GobindingsImport  string
 	NeedsBigInt       bool
 	HasWriteOps       bool
+	HasReadOps        bool
 	OmitDeploy        bool
 	Constructor       *constructorData
 	StructDefs        []structDefData
@@ -107,6 +108,7 @@ func prepareTemplateData(info *ContractInfo) templateData {
 			data.Operations = append(data.Operations, prepareWriteOp(fi))
 		} else {
 			data.Operations = append(data.Operations, prepareReadOp(fi))
+			data.HasReadOps = true
 		}
 
 		if len(fi.Parameters) > 1 {

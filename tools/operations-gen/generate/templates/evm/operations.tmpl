@@ -3,6 +3,9 @@
 package {{.PackageName}}
 
 import (
+{{- if or .HasWriteOps .HasReadOps}}
+	"fmt"
+{{end}}
 {{- if .NeedsBigInt}}
 	"math/big"
 {{end}}
@@ -20,7 +23,7 @@ import (
 {{- end}}
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/operations2/contract"
 {{- if .Operations}}
-	cld_ops "github.com/smartcontractkit/chainlink-deployments-framework/operations"
+	cldf_ops "github.com/smartcontractkit/chainlink-deployments-framework/operations"
 {{- end}}
 	gobindings "{{.GobindingsImport}}"
 )
@@ -67,9 +70,9 @@ var Deploy = contract.NewDeploy(contract.DeployParams[ConstructorArgs]{
 {{- end}}
 {{range .Operations}}
 {{if .IsWrite}}
-func NewWrite{{.Name}}(c gobindings.{{$.ContractType}}Interface) *cld_ops.Operation[contract.FunctionInput[{{.ArgsType}}], contract.WriteOutput, cldf_evm.Chain] {
+func NewWrite{{.Name}}(c gobindings.{{$.ContractType}}Interface, cs uint64) *cldf_ops.Operation[contract.FunctionInput[{{.ArgsType}}], contract.WriteOutput, cldf_evm.Chain] {
 	return contract.NewWrite(contract.WriteParams[{{.ArgsType}}, gobindings.{{$.ContractType}}Interface]{
-		Name:         "{{$.PackageNameHyphen}}:{{.OpName}}",
+		Name:         fmt.Sprintf("%d:%s:{{$.PackageNameHyphen}}:{{.OpName}}", cs, c.Address().Hex()),
 		Version:      Version,
 		Description:  "Calls {{.MethodName}} on the contract",
 		ContractType: ContractType,
@@ -82,6 +85,14 @@ func NewWrite{{.Name}}(c gobindings.{{$.ContractType}}Interface) *cld_ops.Operat
 	{{- else if eq .AccessControl "role"}}
 		IsAllowedCaller: func(c gobindings.{{$.ContractType}}Interface, opts *bind.CallOpts, caller common.Address, args {{.ArgsType}}) (bool, error) {
 			return contract.HasRole(c, opts, {{.Role}}, caller)
+		},
+	{{- else if eq .AccessControl "authorized"}}
+		IsAllowedCaller: func(c gobindings.{{$.ContractType}}Interface, opts *bind.CallOpts, caller common.Address, args {{.ArgsType}}) (bool, error) {
+			return contract.IsAuthorizedCaller(c, opts, caller)
+		},
+	{{- else if eq .AccessControl "private"}}
+		IsAllowedCaller: func(c gobindings.{{$.ContractType}}Interface, opts *bind.CallOpts, caller common.Address, args {{.ArgsType}}) (bool, error) {
+			return false, nil
 		},
 	{{- else}}
 		IsAllowedCaller: contract.AllCallersAllowed[gobindings.{{$.ContractType}}Interface, {{.ArgsType}}],
@@ -96,9 +107,9 @@ func NewWrite{{.Name}}(c gobindings.{{$.ContractType}}Interface) *cld_ops.Operat
 	})
 }
 {{- else}}
-func NewRead{{.Name}}(c gobindings.{{$.ContractType}}Interface) *cld_ops.Operation[contract.FunctionInput[{{.ArgsType}}], {{.ReturnType}}, cldf_evm.Chain] {
+func NewRead{{.Name}}(c gobindings.{{$.ContractType}}Interface, cs uint64) *cldf_ops.Operation[contract.FunctionInput[{{.ArgsType}}], {{.ReturnType}}, cldf_evm.Chain] {
 	return contract.NewRead(contract.ReadParams[{{.ArgsType}}, {{.ReturnType}}, gobindings.{{$.ContractType}}Interface]{
-		Name:         "{{$.PackageNameHyphen}}:{{.OpName}}",
+		Name:         fmt.Sprintf("%d:%s:{{$.PackageNameHyphen}}:{{.OpName}}", cs, c.Address().Hex()),
 		Version:      Version,
 		Description:  "Calls {{.MethodName}} on the contract",
 		ContractType: ContractType,

@@ -3,6 +3,8 @@
 package many_chain_multi_sig
 
 import (
+	"fmt"
+
 	"github.com/Masterminds/semver/v3"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -11,7 +13,7 @@ import (
 	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/operations2/contract"
 	cldf_deployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
-	cld_ops "github.com/smartcontractkit/chainlink-deployments-framework/operations"
+	cldf_ops "github.com/smartcontractkit/chainlink-deployments-framework/operations"
 	gobindings "github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/testdata/evm/gobindings/v1_0_0/many_chain_multi_sig"
 )
 
@@ -49,9 +51,9 @@ var Deploy = contract.NewDeploy(contract.DeployParams[ConstructorArgs]{
 	},
 })
 
-func NewReadOwner(c gobindings.ManyChainMultiSigInterface) *cld_ops.Operation[contract.FunctionInput[struct{}], common.Address, cldf_evm.Chain] {
+func NewReadOwner(c gobindings.ManyChainMultiSigInterface, cs uint64) *cldf_ops.Operation[contract.FunctionInput[struct{}], common.Address, cldf_evm.Chain] {
 	return contract.NewRead(contract.ReadParams[struct{}, common.Address, gobindings.ManyChainMultiSigInterface]{
-		Name:         "many-chain-multi-sig:owner",
+		Name:         fmt.Sprintf("%d:%s:many-chain-multi-sig:owner", cs, c.Address().Hex()),
 		Version:      Version,
 		Description:  "Calls owner on the contract",
 		ContractType: ContractType,
@@ -62,9 +64,9 @@ func NewReadOwner(c gobindings.ManyChainMultiSigInterface) *cld_ops.Operation[co
 	})
 }
 
-func NewReadGetRoot(c gobindings.ManyChainMultiSigInterface) *cld_ops.Operation[contract.FunctionInput[struct{}], gobindings.GetRoot, cldf_evm.Chain] {
+func NewReadGetRoot(c gobindings.ManyChainMultiSigInterface, cs uint64) *cldf_ops.Operation[contract.FunctionInput[struct{}], gobindings.GetRoot, cldf_evm.Chain] {
 	return contract.NewRead(contract.ReadParams[struct{}, gobindings.GetRoot, gobindings.ManyChainMultiSigInterface]{
-		Name:         "many-chain-multi-sig:get-root",
+		Name:         fmt.Sprintf("%d:%s:many-chain-multi-sig:get-root", cs, c.Address().Hex()),
 		Version:      Version,
 		Description:  "Calls getRoot on the contract",
 		ContractType: ContractType,
@@ -75,9 +77,9 @@ func NewReadGetRoot(c gobindings.ManyChainMultiSigInterface) *cld_ops.Operation[
 	})
 }
 
-func NewWriteSetConfig(c gobindings.ManyChainMultiSigInterface) *cld_ops.Operation[contract.FunctionInput[SetConfigArgs], contract.WriteOutput, cldf_evm.Chain] {
+func NewWriteSetConfig(c gobindings.ManyChainMultiSigInterface, cs uint64) *cldf_ops.Operation[contract.FunctionInput[SetConfigArgs], contract.WriteOutput, cldf_evm.Chain] {
 	return contract.NewWrite(contract.WriteParams[SetConfigArgs, gobindings.ManyChainMultiSigInterface]{
-		Name:         "many-chain-multi-sig:set-config",
+		Name:         fmt.Sprintf("%d:%s:many-chain-multi-sig:set-config", cs, c.Address().Hex()),
 		Version:      Version,
 		Description:  "Calls setConfig on the contract",
 		ContractType: ContractType,
@@ -96,9 +98,9 @@ func NewWriteSetConfig(c gobindings.ManyChainMultiSigInterface) *cld_ops.Operati
 	})
 }
 
-func NewWriteSetRoot(c gobindings.ManyChainMultiSigInterface) *cld_ops.Operation[contract.FunctionInput[SetRootArgs], contract.WriteOutput, cldf_evm.Chain] {
+func NewWriteSetRoot(c gobindings.ManyChainMultiSigInterface, cs uint64) *cldf_ops.Operation[contract.FunctionInput[SetRootArgs], contract.WriteOutput, cldf_evm.Chain] {
 	return contract.NewWrite(contract.WriteParams[SetRootArgs, gobindings.ManyChainMultiSigInterface]{
-		Name:         "many-chain-multi-sig:set-root",
+		Name:         fmt.Sprintf("%d:%s:many-chain-multi-sig:set-root", cs, c.Address().Hex()),
 		Version:      Version,
 		Description:  "Calls setRoot on the contract",
 		ContractType: ContractType,
@@ -113,6 +115,27 @@ func NewWriteSetRoot(c gobindings.ManyChainMultiSigInterface) *cld_ops.Operation
 			args SetRootArgs,
 		) (*types.Transaction, error) {
 			return c.SetRoot(opts, args.Root, args.ValidUntil, args.Metadata, args.MetadataProof, args.Signatures)
+		},
+	})
+}
+
+func NewWriteAcceptOwnership(c gobindings.ManyChainMultiSigInterface, cs uint64) *cldf_ops.Operation[contract.FunctionInput[struct{}], contract.WriteOutput, cldf_evm.Chain] {
+	return contract.NewWrite(contract.WriteParams[struct{}, gobindings.ManyChainMultiSigInterface]{
+		Name:         fmt.Sprintf("%d:%s:many-chain-multi-sig:accept-ownership", cs, c.Address().Hex()),
+		Version:      Version,
+		Description:  "Calls acceptOwnership on the contract",
+		ContractType: ContractType,
+		ContractABI:  gobindings.ManyChainMultiSigMetaData.ABI,
+		Contract:     c,
+		IsAllowedCaller: func(c gobindings.ManyChainMultiSigInterface, opts *bind.CallOpts, caller common.Address, args struct{}) (bool, error) {
+			return false, nil
+		},
+		CallContract: func(
+			c gobindings.ManyChainMultiSigInterface,
+			opts *bind.TransactOpts,
+			args struct{},
+		) (*types.Transaction, error) {
+			return c.AcceptOwnership(opts)
 		},
 	})
 }

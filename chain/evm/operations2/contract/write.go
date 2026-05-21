@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -213,6 +214,27 @@ func HasRole[C AccessControlContract](
 ) (bool, error) {
 	return RetryContractCall(opts, "role check", "check role", contract.Address(), func() (bool, error) {
 		return contract.HasRole(opts, role, account)
+	})
+}
+
+type AuthorizedCallersContract interface {
+	Address() common.Address
+	GetAllAuthorizedCallers(opts *bind.CallOpts) ([]common.Address, error)
+}
+
+// IsAuthorizedCaller returns whether caller is present in the contract's authorized caller set.
+func IsAuthorizedCaller[C AuthorizedCallersContract](
+	contract C,
+	opts *bind.CallOpts,
+	caller common.Address,
+) (bool, error) {
+	return RetryContractCall(opts, "authorized caller check", "check authorized caller", contract.Address(), func() (bool, error) {
+		callers, err := contract.GetAllAuthorizedCallers(opts)
+		if err != nil {
+			return false, err
+		}
+
+		return slices.Contains(callers, caller), nil
 	})
 }
 

@@ -14,9 +14,11 @@ import (
 )
 
 const (
-	accessPublic = "public"
-	accessOwner  = "owner"
-	accessRole   = "role"
+	accessPublic           = "public"
+	accessOwner            = "owner"
+	accessRole             = "role"
+	accessPrivate          = "private"
+	accessAuthorizedCaller = "authorized"
 )
 
 // ---- Intermediate representation ----
@@ -233,6 +235,10 @@ func extractFunctions(info *ContractInfo, funcConfigs []EvmFunctionConfig, parse
 				fi.AccessControl = accessOwner
 			case accessPublic, "":
 				fi.AccessControl = accessPublic
+			case accessPrivate:
+				fi.AccessControl = accessPrivate
+			case accessAuthorizedCaller:
+				fi.AccessControl = accessAuthorizedCaller
 			case accessRole:
 				if funcCfg.Role == "" {
 					return fmt.Errorf("role is required when access is %q for function %s", accessRole, funcCfg.Name)
