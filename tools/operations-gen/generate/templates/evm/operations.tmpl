@@ -3,9 +3,6 @@
 package {{.PackageName}}
 
 import (
-{{- if or .HasWriteOps .HasReadOps}}
-	"fmt"
-{{end}}
 {{- if .NeedsBigInt}}
 	"math/big"
 {{end}}
@@ -23,7 +20,7 @@ import (
 {{- end}}
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/operations2/contract"
 {{- if .Operations}}
-	cldf_ops "github.com/smartcontractkit/chainlink-deployments-framework/operations"
+	cld_ops "github.com/smartcontractkit/chainlink-deployments-framework/operations"
 {{- end}}
 	gobindings "{{.GobindingsImport}}"
 )
@@ -56,6 +53,7 @@ type ConstructorArgs struct {
 type ConstructorArgs = struct{}
 {{- end}}
 
+{{if not .OmitDeploy}}
 var Deploy = contract.NewDeploy(contract.DeployParams[ConstructorArgs]{
 	Name:        "{{.PackageNameHyphen}}:deploy",
 	Version:     Version,
@@ -68,11 +66,12 @@ var Deploy = contract.NewDeploy(contract.DeployParams[ConstructorArgs]{
 	},
 })
 {{- end}}
+{{- end}}
 {{range .Operations}}
 {{if .IsWrite}}
-func NewWrite{{.Name}}(c gobindings.{{$.ContractType}}Interface, cs uint64) *cldf_ops.Operation[contract.FunctionInput[{{.ArgsType}}], contract.WriteOutput, cldf_evm.Chain] {
+func NewWrite{{.Name}}(c gobindings.{{$.ContractType}}Interface) *cld_ops.Operation[contract.FunctionInput[{{.ArgsType}}], contract.WriteOutput, cldf_evm.Chain] {
 	return contract.NewWrite(contract.WriteParams[{{.ArgsType}}, gobindings.{{$.ContractType}}Interface]{
-		Name:         fmt.Sprintf("%d:%s:{{$.PackageNameHyphen}}:{{.OpName}}", cs, c.Address().Hex()),
+		Name:         "{{$.PackageNameHyphen}}:{{.OpName}}",
 		Version:      Version,
 		Description:  "Calls {{.MethodName}} on the contract",
 		ContractType: ContractType,
@@ -107,9 +106,9 @@ func NewWrite{{.Name}}(c gobindings.{{$.ContractType}}Interface, cs uint64) *cld
 	})
 }
 {{- else}}
-func NewRead{{.Name}}(c gobindings.{{$.ContractType}}Interface, cs uint64) *cldf_ops.Operation[contract.FunctionInput[{{.ArgsType}}], {{.ReturnType}}, cldf_evm.Chain] {
+func NewRead{{.Name}}(c gobindings.{{$.ContractType}}Interface) *cld_ops.Operation[contract.FunctionInput[{{.ArgsType}}], {{.ReturnType}}, cldf_evm.Chain] {
 	return contract.NewRead(contract.ReadParams[{{.ArgsType}}, {{.ReturnType}}, gobindings.{{$.ContractType}}Interface]{
-		Name:         fmt.Sprintf("%d:%s:{{$.PackageNameHyphen}}:{{.OpName}}", cs, c.Address().Hex()),
+		Name:         "{{$.PackageNameHyphen}}:{{.OpName}}",
 		Version:      Version,
 		Description:  "Calls {{.MethodName}} on the contract",
 		ContractType: ContractType,

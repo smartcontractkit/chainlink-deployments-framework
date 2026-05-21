@@ -3,8 +3,6 @@
 package link_token
 
 import (
-	"fmt"
-
 	"math/big"
 
 	"github.com/Masterminds/semver/v3"
@@ -15,7 +13,7 @@ import (
 	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/operations2/contract"
 	cldf_deployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
-	cldf_ops "github.com/smartcontractkit/chainlink-deployments-framework/operations"
+	cld_ops "github.com/smartcontractkit/chainlink-deployments-framework/operations"
 	gobindings "github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/testdata/evm/gobindings/v1_0_0/link_token"
 )
 
@@ -47,9 +45,9 @@ var Deploy = contract.NewDeploy(contract.DeployParams[ConstructorArgs]{
 	},
 })
 
-func NewWriteTransfer(c gobindings.LinkTokenInterface, cs uint64) *cldf_ops.Operation[contract.FunctionInput[TransferArgs], contract.WriteOutput, cldf_evm.Chain] {
+func NewWriteTransfer(c gobindings.LinkTokenInterface) *cld_ops.Operation[contract.FunctionInput[TransferArgs], contract.WriteOutput, cldf_evm.Chain] {
 	return contract.NewWrite(contract.WriteParams[TransferArgs, gobindings.LinkTokenInterface]{
-		Name:            fmt.Sprintf("%d:%s:link-token:transfer", cs, c.Address().Hex()),
+		Name:            "link-token:transfer",
 		Version:         Version,
 		Description:     "Calls transfer on the contract",
 		ContractType:    ContractType,
@@ -66,9 +64,9 @@ func NewWriteTransfer(c gobindings.LinkTokenInterface, cs uint64) *cldf_ops.Oper
 	})
 }
 
-func NewReadBalanceOf(c gobindings.LinkTokenInterface, cs uint64) *cldf_ops.Operation[contract.FunctionInput[common.Address], *big.Int, cldf_evm.Chain] {
+func NewReadBalanceOf(c gobindings.LinkTokenInterface) *cld_ops.Operation[contract.FunctionInput[common.Address], *big.Int, cldf_evm.Chain] {
 	return contract.NewRead(contract.ReadParams[common.Address, *big.Int, gobindings.LinkTokenInterface]{
-		Name:         fmt.Sprintf("%d:%s:link-token:balance-of", cs, c.Address().Hex()),
+		Name:         "link-token:balance-of",
 		Version:      Version,
 		Description:  "Calls balanceOf on the contract",
 		ContractType: ContractType,
@@ -79,9 +77,9 @@ func NewReadBalanceOf(c gobindings.LinkTokenInterface, cs uint64) *cldf_ops.Oper
 	})
 }
 
-func NewWriteApprove(c gobindings.LinkTokenInterface, cs uint64) *cldf_ops.Operation[contract.FunctionInput[ApproveArgs], contract.WriteOutput, cldf_evm.Chain] {
+func NewWriteApprove(c gobindings.LinkTokenInterface) *cld_ops.Operation[contract.FunctionInput[ApproveArgs], contract.WriteOutput, cldf_evm.Chain] {
 	return contract.NewWrite(contract.WriteParams[ApproveArgs, gobindings.LinkTokenInterface]{
-		Name:            fmt.Sprintf("%d:%s:link-token:approve", cs, c.Address().Hex()),
+		Name:            "link-token:approve",
 		Version:         Version,
 		Description:     "Calls approve on the contract",
 		ContractType:    ContractType,

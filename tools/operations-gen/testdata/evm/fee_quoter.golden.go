@@ -3,8 +3,6 @@
 package fee_quoter
 
 import (
-	"fmt"
-
 	"github.com/Masterminds/semver/v3"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -13,7 +11,7 @@ import (
 	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/operations2/contract"
 	cldf_deployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
-	cldf_ops "github.com/smartcontractkit/chainlink-deployments-framework/operations"
+	cld_ops "github.com/smartcontractkit/chainlink-deployments-framework/operations"
 	gobindings "github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/testdata/evm/gobindings/v1_0_0/fee_quoter"
 )
 
@@ -43,9 +41,9 @@ var Deploy = contract.NewDeploy(contract.DeployParams[ConstructorArgs]{
 	},
 })
 
-func NewWriteUpdatePrices(c gobindings.FeeQuoterInterface, cs uint64) *cldf_ops.Operation[contract.FunctionInput[gobindings.InternalPriceUpdates], contract.WriteOutput, cldf_evm.Chain] {
+func NewWriteUpdatePrices(c gobindings.FeeQuoterInterface) *cld_ops.Operation[contract.FunctionInput[gobindings.InternalPriceUpdates], contract.WriteOutput, cldf_evm.Chain] {
 	return contract.NewWrite(contract.WriteParams[gobindings.InternalPriceUpdates, gobindings.FeeQuoterInterface]{
-		Name:         fmt.Sprintf("%d:%s:fee-quoter:update-prices", cs, c.Address().Hex()),
+		Name:         "fee-quoter:update-prices",
 		Version:      Version,
 		Description:  "Calls updatePrices on the contract",
 		ContractType: ContractType,
