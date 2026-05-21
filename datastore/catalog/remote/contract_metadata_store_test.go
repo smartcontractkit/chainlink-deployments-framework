@@ -521,7 +521,7 @@ func TestCatalogContractMetadataStore_Delete(t *testing.T) {
 			},
 		},
 		{
-			name: "delete_nonexistent_key_is_noop",
+			name: "delete_nonexistent_key_returns_not_found",
 			run: func(t *testing.T, store *catalogContractMetadataStore) {
 				t.Helper()
 				record := newRandomContractMetadata()
