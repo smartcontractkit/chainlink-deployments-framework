@@ -1,5 +1,15 @@
 # chainlink-deployments-framework
 
+## 0.106.0
+
+### Minor Changes
+
+- [#964](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/964) [`e26812b`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/e26812b16ea34671db9f464739e09489be760375) Thanks [@DimitriosNaikopoulos](https://github.com/DimitriosNaikopoulos)! - (feat) Support catalog deletes for the datastore
+
+### Patch Changes
+
+- [#988](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/988) [`dcc55b7`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/dcc55b77fe07b6b3ff529e65173cfa3aec9c044e) Thanks [@stackman27](https://github.com/stackman27)! - Update chain metadata handling and analyzer improvements
+
 ## 0.105.0
 
 ### Minor Changes
