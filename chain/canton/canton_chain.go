@@ -51,6 +51,9 @@ type Participant struct {
 	UserID string
 	// The PartyID that will be used to interact with this participant.
 	PartyID string
+	// ReadAsPartyIDs lists additional parties this user may read as (CanReadAs).
+	// When non-empty, Canton contract exercises use MCMS proposal encoding instead of direct submission.
+	ReadAsPartyIDs []string
 }
 
 // ParticipantEndpoints holds all available API endpoints for a Canton participant
