@@ -17,5 +17,7 @@ var FeeQuoterMetaData = &bind.MetaData{
 type FeeQuoterInterface interface {
 	UpdatePrices(opts *bind.TransactOpts, priceUpdates InternalPriceUpdates) (*types.Transaction, error)
 
+	GetAllAuthorizedCallers(opts *bind.CallOpts) ([]common.Address, error)
+
 	Address() common.Address
 }
