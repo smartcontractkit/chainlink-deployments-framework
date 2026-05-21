@@ -53,7 +53,6 @@ type ConstructorArgs struct {
 type ConstructorArgs = struct{}
 {{- end}}
 
-{{if not .OmitDeploy}}
 var Deploy = contract.NewDeploy(contract.DeployParams[ConstructorArgs]{
 	Name:        "{{.PackageNameHyphen}}:deploy",
 	Version:     Version,
@@ -65,7 +64,6 @@ var Deploy = contract.NewDeploy(contract.DeployParams[ConstructorArgs]{
 		},
 	},
 })
-{{- end}}
 {{- end}}
 {{range .Operations}}
 {{if .IsWrite}}
