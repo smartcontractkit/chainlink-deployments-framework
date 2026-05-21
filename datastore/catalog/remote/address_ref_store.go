@@ -212,97 +212,31 @@ func (s *catalogAddressRefStore) Filter(
 }
 
 func (s *catalogAddressRefStore) Add(_ context.Context, record datastore.AddressRef) error {
-	// Convert the datastore record to protobuf
-	protoRef := s.addressRefToProto(record)
-
-	// Create the edit request with INSERT semantics
-	editRequest := &pb.AddressReferenceEditRequest{
-		Record:    protoRef,
-		Semantics: pb.EditSemantics_SEMANTICS_INSERT,
-	}
-
-	// Create the request
-	editReq := &pb.DataAccessRequest{
+	req := &pb.DataAccessRequest{
 		Operation: &pb.DataAccessRequest_AddressReferenceEditRequest{
-			AddressReferenceEditRequest: editRequest,
+			AddressReferenceEditRequest: &pb.AddressReferenceEditRequest{
+				Record:    s.addressRefToProto(record),
+				Semantics: pb.EditSemantics_SEMANTICS_INSERT,
+			},
 		},
 	}
 
-	// Create a bidirectional stream with the initial request for HMAC
-	stream, err := s.client.DataAccess(editReq)
-	if err != nil {
-		return fmt.Errorf("failed to create data access stream: %w", err)
-	}
-
-	if sendErr := stream.Send(editReq); sendErr != nil {
-		return fmt.Errorf("failed to send edit request: %w", sendErr)
-	}
-
-	// Receive the edit response
-	editResponse, err := stream.Recv()
-	if err != nil {
-		return fmt.Errorf("failed to receive edit response: %w", err)
-	}
-
-	// Check for errors in the edit response
-	if err := parseResponseStatus(editResponse.Status); err != nil {
-		return fmt.Errorf("add address ref failed: %w", err)
-	}
-
-	// Extract the edit response to validate it
-	editResp := editResponse.GetAddressReferenceEditResponse()
-	if editResp == nil {
-		return errors.New("unexpected edit response type")
-	}
-
-	return nil
+	return executeEdit(s.client, req,
+		(*pb.DataAccessResponse).GetAddressReferenceEditResponse, nil)
 }
 
 func (s *catalogAddressRefStore) Upsert(_ context.Context, record datastore.AddressRef) error {
-	// Convert the datastore record to protobuf
-	protoRef := s.addressRefToProto(record)
-
-	// Create the edit request with UPSERT semantics
-	editRequest := &pb.AddressReferenceEditRequest{
-		Record:    protoRef,
-		Semantics: pb.EditSemantics_SEMANTICS_UPSERT,
-	}
-
-	// Create the request
-	request := &pb.DataAccessRequest{
+	req := &pb.DataAccessRequest{
 		Operation: &pb.DataAccessRequest_AddressReferenceEditRequest{
-			AddressReferenceEditRequest: editRequest,
+			AddressReferenceEditRequest: &pb.AddressReferenceEditRequest{
+				Record:    s.addressRefToProto(record),
+				Semantics: pb.EditSemantics_SEMANTICS_UPSERT,
+			},
 		},
 	}
 
-	// Create a bidirectional stream with the initial request for HMAC
-	stream, err := s.client.DataAccess(request)
-	if err != nil {
-		return fmt.Errorf("failed to create data access stream: %w", err)
-	}
-
-	if sendErr := stream.Send(request); sendErr != nil {
-		return fmt.Errorf("failed to send edit request: %w", sendErr)
-	}
-
-	// Receive the response
-	response, err := stream.Recv()
-	if err != nil {
-		return fmt.Errorf("failed to receive response: %w", err)
-	}
-
-	// Check for errors in the response
-	if err := parseResponseStatus(response.Status); err != nil {
-		return fmt.Errorf("upsert address ref failed: %w", err)
-	}
-
-	// Extract the edit response to validate it
-	editResponse := response.GetAddressReferenceEditResponse()
-	if editResponse == nil {
-		return errors.New("unexpected response type")
-	}
-
-	return nil
+	return executeEdit(s.client, req,
+		(*pb.DataAccessResponse).GetAddressReferenceEditResponse, nil)
 }
 
 func (s *catalogAddressRefStore) Update(ctx context.Context, record datastore.AddressRef) error {
@@ -319,56 +253,50 @@ func (s *catalogAddressRefStore) Update(ctx context.Context, record datastore.Ad
 	}
 
 	// Record exists, proceed with updating it
-	// Convert the datastore record to protobuf
-	protoRef := s.addressRefToProto(record)
-
-	// Create the edit request with UPDATE semantics
-	editRequest := &pb.AddressReferenceEditRequest{
-		Record:    protoRef,
-		Semantics: pb.EditSemantics_SEMANTICS_UPDATE,
-	}
-
-	// Create the request
-	editReq := &pb.DataAccessRequest{
+	req := &pb.DataAccessRequest{
 		Operation: &pb.DataAccessRequest_AddressReferenceEditRequest{
-			AddressReferenceEditRequest: editRequest,
+			AddressReferenceEditRequest: &pb.AddressReferenceEditRequest{
+				Record:    s.addressRefToProto(record),
+				Semantics: pb.EditSemantics_SEMANTICS_UPDATE,
+			},
 		},
 	}
 
-	// Create a bidirectional stream with the initial request for HMAC
-	stream, streamErr := s.client.DataAccess(editReq)
-	if streamErr != nil {
-		return fmt.Errorf("failed to create data access stream: %w", streamErr)
-	}
-
-	if sendErr := stream.Send(editReq); sendErr != nil {
-		return fmt.Errorf("failed to send edit request: %w", sendErr)
-	}
-
-	// Receive the edit response
-	editResponse, err := stream.Recv()
-	if err != nil {
-		return fmt.Errorf("failed to receive edit response: %w", err)
-	}
-
-	// Check for errors in the edit response
-	if err := parseResponseStatus(editResponse.Status); err != nil {
-		return fmt.Errorf("update address ref failed: %w", err)
-	}
-
-	// Extract the edit response to validate it
-	editResp := editResponse.GetAddressReferenceEditResponse()
-	if editResp == nil {
-		return errors.New("unexpected edit response type")
-	}
-
-	return nil
+	return executeEdit(s.client, req,
+		(*pb.DataAccessResponse).GetAddressReferenceEditResponse, nil)
 }
 
-func (s *catalogAddressRefStore) Delete(_ context.Context, _ datastore.AddressRefKey) error {
-	// The catalog API does not support delete operations
-	// This is intentional as catalogs are typically immutable reference stores
-	return errors.New("delete operation not supported by catalog API")
+func (s *catalogAddressRefStore) Delete(_ context.Context, key datastore.AddressRefKey) error {
+	return s.deleteRecord(key)
+}
+
+func (s *catalogAddressRefStore) deleteRecord(key datastore.AddressRefKey) error {
+	req := &pb.DataAccessRequest{
+		Operation: &pb.DataAccessRequest_AddressReferenceEditRequest{
+			AddressReferenceEditRequest: &pb.AddressReferenceEditRequest{
+				Record: &pb.AddressReference{
+					Domain:        s.domain,
+					Environment:   s.environment,
+					ChainSelector: key.ChainSelector(),
+					ContractType:  string(key.Type()),
+					Version:       key.Version().String(),
+					Qualifier:     key.Qualifier(),
+				},
+				Semantics: pb.EditSemantics_SEMANTICS_DELETE,
+			},
+		},
+	}
+
+	return executeEdit(s.client, req,
+		(*pb.DataAccessResponse).GetAddressReferenceEditResponse,
+		func(statusErr error, code codes.Code) error {
+			switch code { //nolint:exhaustive // We don't need to handle all codes here
+			case codes.NotFound:
+				return fmt.Errorf("%w: %s", datastore.ErrAddressRefNotFound, statusErr.Error())
+			default:
+				return fmt.Errorf("delete request failed: %w", statusErr)
+			}
+		})
 }
 
 // keyToFilter converts a datastore.AddressRefKey to a protobuf AddressReferenceKeyFilter

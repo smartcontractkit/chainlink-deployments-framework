@@ -501,16 +501,97 @@ func TestCatalogContractMetadataStore_Upsert_StaleVersion(t *testing.T) {
 
 func TestCatalogContractMetadataStore_Delete(t *testing.T) {
 	t.Parallel()
-	store := setupTestContractStore(t, "", "")
 
-	key := datastore.NewContractMetadataKey(12345, "0x1234567890abcdef1234567890abcdef12345678")
+	tests := []struct {
+		name string
+		run  func(t *testing.T, store *catalogContractMetadataStore)
+	}{
+		{
+			name: "delete_existing_record",
+			run: func(t *testing.T, store *catalogContractMetadataStore) {
+				t.Helper()
+				record := newRandomContractMetadata()
+				require.NoError(t, store.Add(t.Context(), record))
 
-	// Execute
-	err := store.Delete(t.Context(), key)
+				key := datastore.NewContractMetadataKey(record.ChainSelector, record.Address)
+				require.NoError(t, store.Delete(t.Context(), key))
 
-	// Verify
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "delete operation not supported")
+				_, err := store.Get(t.Context(), key)
+				require.ErrorIs(t, err, datastore.ErrContractMetadataNotFound)
+			},
+		},
+		{
+			name: "delete_nonexistent_key_returns_not_found",
+			run: func(t *testing.T, store *catalogContractMetadataStore) {
+				t.Helper()
+				record := newRandomContractMetadata()
+				key := datastore.NewContractMetadataKey(record.ChainSelector, record.Address)
+
+				require.ErrorIs(t, store.Delete(t.Context(), key), datastore.ErrContractMetadataNotFound)
+			},
+		},
+		{
+			name: "delete_already_deleted_returns_not_found",
+			run: func(t *testing.T, store *catalogContractMetadataStore) {
+				t.Helper()
+				record := newRandomContractMetadata()
+				require.NoError(t, store.Add(t.Context(), record))
+
+				key := datastore.NewContractMetadataKey(record.ChainSelector, record.Address)
+				require.NoError(t, store.Delete(t.Context(), key))
+				require.ErrorIs(t, store.Delete(t.Context(), key), datastore.ErrContractMetadataNotFound)
+			},
+		},
+		{
+			name: "delete_then_readd",
+			run: func(t *testing.T, store *catalogContractMetadataStore) {
+				t.Helper()
+				record := newRandomContractMetadata()
+				require.NoError(t, store.Add(t.Context(), record))
+
+				key := datastore.NewContractMetadataKey(record.ChainSelector, record.Address)
+				require.NoError(t, store.Delete(t.Context(), key))
+
+				resurrected := datastore.ContractMetadata{
+					Address:       record.Address,
+					ChainSelector: record.ChainSelector,
+					Metadata:      newTestContractMetadata("Resurrected"),
+				}
+				require.NoError(t, store.Add(t.Context(), resurrected))
+
+				got, err := store.Get(t.Context(), key)
+				require.NoError(t, err)
+				concrete, err := datastore.As[TestContractMetadata](got.Metadata)
+				require.NoError(t, err)
+				require.Equal(t, "Resurrected", concrete.Name)
+			},
+		},
+		{
+			name: "delete_excluded_from_find",
+			run: func(t *testing.T, store *catalogContractMetadataStore) {
+				t.Helper()
+				record := newRandomContractMetadata()
+				require.NoError(t, store.Add(t.Context(), record))
+
+				key := datastore.NewContractMetadataKey(record.ChainSelector, record.Address)
+				_, err := store.Get(t.Context(), key)
+				require.NoError(t, err)
+
+				require.NoError(t, store.Delete(t.Context(), key))
+
+				_, err = store.Get(t.Context(), key)
+				require.ErrorIs(t, err, datastore.ErrContractMetadataNotFound)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			store := setupTestContractStore(t, "test-domain", "catalog_testing")
+			tt.run(t, store)
+		})
+	}
 }
 
 func TestCatalogContractMetadataStore_FetchAndFilter(t *testing.T) {
