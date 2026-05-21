@@ -265,7 +265,7 @@ func TestIsAuthorizedCaller(t *testing.T) {
 			wantAuthorized: true,
 		},
 		{
-			desc: "returns false when contract reports account does not have role",
+			desc: "returns false when caller is not authorized",
 			setupMock: func(contract *contractmocks.MockAuthorizedCallersContract, opts *bind.CallOpts) {
 				contract.EXPECT().
 					Address().
