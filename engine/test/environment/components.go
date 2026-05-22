@@ -16,6 +16,7 @@ import (
 type components struct {
 	mu sync.Mutex
 
+	Name           string
 	Chains         []fchain.BlockChain
 	AddressBook    fdeployment.AddressBook
 	Datastore      fdatastore.DataStore

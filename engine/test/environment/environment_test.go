@@ -151,6 +151,17 @@ func TestLoader_Load_NodeIDsOption(t *testing.T) {
 	require.Equal(t, nodeIDs, env.NodeIDs)
 }
 
+func TestLoader_Load_NameOption(t *testing.T) {
+	t.Parallel()
+
+	name := "test-name"
+	loader := NewLoader()
+	env, err := loader.Load(t.Context(), WithName(name))
+	require.NoError(t, err)
+	require.NotNil(t, env)
+	require.Equal(t, name, env.Name)
+}
+
 func TestLoader_Load_AddressBookOption(t *testing.T) {
 	t.Parallel()
 
