@@ -20,3 +20,5 @@ contracts:
         access: owner
       - name: setRoot
         access: owner
+      - name: acceptOwnership
+        access: private

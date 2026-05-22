@@ -116,3 +116,24 @@ func NewWriteSetRoot(c gobindings.ManyChainMultiSigInterface) *cld_ops.Operation
 		},
 	})
 }
+
+func NewWriteAcceptOwnership(c gobindings.ManyChainMultiSigInterface) *cld_ops.Operation[contract.FunctionInput[struct{}], contract.WriteOutput, cldf_evm.Chain] {
+	return contract.NewWrite(contract.WriteParams[struct{}, gobindings.ManyChainMultiSigInterface]{
+		Name:         "many-chain-multi-sig:accept-ownership",
+		Version:      Version,
+		Description:  "Calls acceptOwnership on the contract",
+		ContractType: ContractType,
+		ContractABI:  gobindings.ManyChainMultiSigMetaData.ABI,
+		Contract:     c,
+		IsAllowedCaller: func(c gobindings.ManyChainMultiSigInterface, opts *bind.CallOpts, caller common.Address, args struct{}) (bool, error) {
+			return false, nil
+		},
+		CallContract: func(
+			c gobindings.ManyChainMultiSigInterface,
+			opts *bind.TransactOpts,
+			args struct{},
+		) (*types.Transaction, error) {
+			return c.AcceptOwnership(opts)
+		},
+	})
+}
