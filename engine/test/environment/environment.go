@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	environmentName = "test_environment"
+	DefaultEnvironmentName = "test_environment"
 )
 
 // New creates a new environment for testing.
@@ -67,9 +67,14 @@ func (l *Loader) Load(ctx context.Context, opts ...LoadOpt) (*fdeployment.Enviro
 		oc = foffchain.NewMemoryJobDistributor()
 	}
 
+	name := cmps.Name
+	if name == "" {
+		name = DefaultEnvironmentName
+	}
+
 	// CRERunner may be nil; tests that need CRE use WithCRERunner(cre.NewRunner(cre.WithCLI(cremocks.NewMockCLIRunner(t)))).
 	return &fdeployment.Environment{
-		Name:              environmentName,
+		Name:              name,
 		Logger:            cmps.Logger,
 		BlockChains:       fchain.NewBlockChainsFromSlice(cmps.Chains),
 		ExistingAddresses: ab,
