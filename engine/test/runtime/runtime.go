@@ -83,6 +83,21 @@ func (r *Runtime) Exec(executables ...Executable) error {
 	return nil
 }
 
+// ExecChangeset executes a Changeset and returns the task ID and error.
+//
+// The task ID is returned so that the caller can use it to retrieve the output
+// of the changeset from the state.
+//
+// It is implemented as a free function rather than a method on Runtime because
+// Go does not allow type parameters on methods.
+//
+// Returns the task ID and error if the changeset execution fails.
+func ExecChangeset[C any](r *Runtime, changeset fdeployment.ChangeSetV2[C], config C) (string, error) {
+	task := ChangesetTask(changeset, config)
+
+	return task.ID(), r.Exec(task)
+}
+
 // State returns the current state of the runtime.
 func (r *Runtime) State() *State {
 	return r.state
