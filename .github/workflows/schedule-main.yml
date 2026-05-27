@@ -80,7 +80,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Configure AWS credentials for ECR
-        uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6.1.1
+        uses: aws-actions/configure-aws-credentials@acca2b1b2070338fb9fd1ca27ecee81d687e58e5 # v6.1.2
         with:
           role-to-assume: ${{ secrets.ECR_READ_ROLE_ARN }}
           aws-region: ${{ secrets.AWS_REGION }}
