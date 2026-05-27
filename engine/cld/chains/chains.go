@@ -16,6 +16,8 @@ import (
 	aptosprov "github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos/provider"
 	cantonprov "github.com/smartcontractkit/chainlink-deployments-framework/chain/canton/provider"
 	cantonauth "github.com/smartcontractkit/chainlink-deployments-framework/chain/canton/provider/authentication"
+	cantonauthcode "github.com/smartcontractkit/chainlink-deployments-framework/chain/canton/provider/authentication/authorizationcode"
+	cantonclientcreds "github.com/smartcontractkit/chainlink-deployments-framework/chain/canton/provider/authentication/clientcredentials"
 	fevm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	evmprov "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider"
 	evmclient "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider/rpcclient"
@@ -220,7 +222,7 @@ func newChainLoaders(
 	if cantonAuthConfigured(cfg.Canton) {
 		loaders[chainsel.FamilyCanton] = newChainLoaderCanton(networks, cfg)
 	} else {
-		lggr.Info("Skipping Canton chains, no Canton auth configured (set auth_type and jwt_token, or auth_url+client_id for OAuth)")
+		lggr.Info("Skipping Canton chains, no Canton auth configured (set auth_strategy and jwt_token, or auth_url+client_id for OAuth)")
 	}
 
 	return loaders
@@ -731,7 +733,8 @@ func newChainLoaderCanton(
 }
 
 // Load loads a Canton Chain for a selector.
-// Participant configurations come from network metadata, and JWT token from env config.
+// Participant configurations come from network metadata. Authentication is configured via CantonConfig
+// (static JWT, client_credentials for CI, or authorization_code for local development).
 func (l *chainLoaderCanton) Load(ctx context.Context, selector uint64) (fchain.BlockChain, error) {
 	network, err := l.getNetwork(selector)
 	if err != nil {
@@ -780,12 +783,12 @@ func (l *chainLoaderCanton) Load(ctx context.Context, selector uint64) (fchain.B
 	return c, nil
 }
 
-// cantonAuthConfigured returns true if Canton auth is configured for at least one scheme (static, client_credentials, or authorization_code).
+// cantonAuthConfigured returns true if Canton auth is configured for at least one strategy.
 func cantonAuthConfigured(c cfgenv.CantonConfig) bool {
-	switch c.AuthType {
-	case cfgenv.CantonAuthTypeClientCredentials:
+	switch c.AuthStrategy {
+	case cfgenv.CantonAuthStrategyClientCredentials:
 		return c.AuthURL != "" && c.ClientID != "" && c.ClientSecret != ""
-	case cfgenv.CantonAuthTypeAuthorizationCode:
+	case cfgenv.CantonAuthStrategyAuthorizationCode:
 		return c.AuthURL != "" && c.ClientID != ""
 	default:
 		// static or empty (backward compat: jwt_token alone enables Canton)
@@ -793,32 +796,25 @@ func cantonAuthConfigured(c cfgenv.CantonConfig) bool {
 	}
 }
 
-// cantonAuthProvider builds a Canton auth Provider from config. Caller must ensure cantonAuthConfigured(cfg.Canton) is true.
+// cantonAuthProvider builds a Canton auth Provider from config.
 func (l *chainLoaderCanton) cantonAuthProvider(ctx context.Context, selector uint64) (cantonauth.Provider, error) {
 	c := l.cfg.Canton
-	switch c.AuthType {
-	case cfgenv.CantonAuthTypeClientCredentials:
-		if c.AuthURL == "" || c.ClientID == "" || c.ClientSecret == "" {
-			return nil, fmt.Errorf("canton network %d: client_credentials requires auth_url, client_id, and client_secret", selector)
-		}
-		oidc, err := cantonauth.NewClientCredentialsProvider(ctx, c.AuthURL, c.ClientID, c.ClientSecret)
+	switch c.AuthStrategy {
+	case cfgenv.CantonAuthStrategyClientCredentials:
+		provider, err := cantonclientcreds.NewDiscoveryProvider(ctx, c.AuthURL, c.ClientID, c.ClientSecret)
 		if err != nil {
 			return nil, fmt.Errorf("canton network %d: client_credentials auth: %w", selector, err)
 		}
 
-		return oidc, nil
-	case cfgenv.CantonAuthTypeAuthorizationCode:
-		if c.AuthURL == "" || c.ClientID == "" {
-			return nil, fmt.Errorf("canton network %d: authorization_code requires auth_url and client_id", selector)
-		}
-		oidc, err := cantonauth.NewAuthorizationCodeProvider(ctx, c.AuthURL, c.ClientID)
+		return provider, nil
+	case cfgenv.CantonAuthStrategyAuthorizationCode:
+		provider, err := cantonauthcode.NewDiscoveryProvider(ctx, c.AuthURL, c.ClientID)
 		if err != nil {
 			return nil, fmt.Errorf("canton network %d: authorization_code auth: %w", selector, err)
 		}
 
-		return oidc, nil
+		return provider, nil
 	default:
-		// static or empty
 		if c.JWTToken == "" {
 			return nil, fmt.Errorf("canton network %d: JWT token is required for static auth", selector)
 		}

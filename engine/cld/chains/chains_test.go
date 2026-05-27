@@ -1381,6 +1381,78 @@ func Test_chainLoaderCanton_Load(t *testing.T) {
 	}
 }
 
+func Test_cantonAuthConfigured(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		config cfgenv.CantonConfig
+		want   bool
+	}{
+		{
+			name:   "static jwt",
+			config: cfgenv.CantonConfig{JWTToken: "token"},
+			want:   true,
+		},
+		{
+			name:   "client credentials complete",
+			config: cfgenv.CantonConfig{AuthStrategy: cfgenv.CantonAuthStrategyClientCredentials, AuthURL: "https://auth.example.com", ClientID: "id", ClientSecret: "secret"},
+			want:   true,
+		},
+		{
+			name:   "client credentials missing secret",
+			config: cfgenv.CantonConfig{AuthStrategy: cfgenv.CantonAuthStrategyClientCredentials, AuthURL: "https://auth.example.com", ClientID: "id"},
+			want:   false,
+		},
+		{
+			name:   "authorization code complete",
+			config: cfgenv.CantonConfig{AuthStrategy: cfgenv.CantonAuthStrategyAuthorizationCode, AuthURL: "https://auth.example.com", ClientID: "id"},
+			want:   true,
+		},
+		{
+			name:   "authorization code missing client id",
+			config: cfgenv.CantonConfig{AuthStrategy: cfgenv.CantonAuthStrategyAuthorizationCode, AuthURL: "https://auth.example.com"},
+			want:   false,
+		},
+		{
+			name:   "empty config",
+			config: cfgenv.CantonConfig{},
+			want:   false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tt.want, cantonAuthConfigured(tt.config))
+		})
+	}
+}
+
+func Test_chainLoaderCanton_cantonAuthProvider(t *testing.T) {
+	t.Parallel()
+
+	ctx := t.Context()
+	loader := newChainLoaderCanton(nil, cfgenv.OnchainConfig{
+		Canton: cfgenv.CantonConfig{JWTToken: "static-token"},
+	})
+
+	provider, err := loader.cantonAuthProvider(ctx, chainsel.CANTON_LOCALNET.Selector)
+	require.NoError(t, err)
+	require.NotNil(t, provider)
+
+	token, err := provider.TokenSource().Token()
+	require.NoError(t, err)
+	require.Equal(t, "static-token", token.AccessToken)
+
+	loaderMissingJWT := newChainLoaderCanton(nil, cfgenv.OnchainConfig{
+		Canton: cfgenv.CantonConfig{AuthStrategy: cfgenv.CantonAuthStrategyStatic},
+	})
+	_, err = loaderMissingJWT.cantonAuthProvider(ctx, chainsel.CANTON_LOCALNET.Selector)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "JWT token is required")
+}
+
 // newFakeRPCServer returns a fake RPC server which always answers with a valid `eth_blockNumber“
 // response for evm and a valid config for ton.
 //

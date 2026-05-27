@@ -82,11 +82,11 @@ type TronConfig struct {
 	DeployerKey string `mapstructure:"deployer_key" yaml:"deployer_key"` // Secret: The private key of the deployer account.
 }
 
-// CantonAuthType is the authentication scheme for Canton participant APIs.
+// CantonAuthStrategy is the authentication strategy for Canton participant APIs.
 const (
-	CantonAuthTypeStatic            = "static"             // Pre-obtained JWT (e.g. from canton-login).
-	CantonAuthTypeClientCredentials = "client_credentials" // CI: fetch token with client_id + client_secret + auth_url.
-	CantonAuthTypeAuthorizationCode = "authorization_code" // Local: browser flow with client_id + auth_url.
+	CantonAuthStrategyStatic            = "static"             // Pre-obtained JWT (e.g. from canton-login).
+	CantonAuthStrategyClientCredentials = "client_credentials" // CI: fetch token with client_id + client_secret + auth_url.
+	CantonAuthStrategyAuthorizationCode = "authorization_code" // Local dev: browser flow with client_id + auth_url (not for CI).
 )
 
 // CantonConfig is the configuration for the Canton Chains.
@@ -94,9 +94,9 @@ const (
 // WARNING: This data type contains sensitive fields and should not be logged or set in file
 // configuration.
 type CantonConfig struct {
-	// AuthType selects how to obtain the token: "static" (jwt_token), "client_credentials" (CI), or "authorization_code" (local browser).
-	AuthType string `mapstructure:"auth_type" yaml:"auth_type"`
-	// JWT token for static auth. Used when auth_type is "static".
+	// AuthStrategy selects how to obtain the token: "static" (jwt_token), "client_credentials" (CI), or "authorization_code" (local browser).
+	AuthStrategy string `mapstructure:"auth_strategy" yaml:"auth_strategy"`
+	// JWT token for static auth. Used when auth_strategy is "static".
 	JWTToken string `mapstructure:"jwt_token" yaml:"jwt_token"` // Secret
 	// AuthURL is the OIDC base URL (e.g. https://auth.example.com). Token URL is AuthURL/v1/token, authorize is AuthURL/v1/authorize.
 	AuthURL string `mapstructure:"auth_url" yaml:"auth_url"`
@@ -280,7 +280,7 @@ var (
 		"onchain.stellar.deployer_key":                            {"ONCHAIN_STELLAR_DEPLOYER_KEY"},
 		"onchain.ton.deployer_key":                                {"ONCHAIN_TON_DEPLOYER_KEY", "TON_DEPLOYER_KEY"},
 		"onchain.ton.wallet_version":                              {"ONCHAIN_TON_WALLET_VERSION", "TON_WALLET_VERSION"},
-		"onchain.canton.auth_type":                                {"ONCHAIN_CANTON_AUTH_TYPE"},
+		"onchain.canton.auth_strategy":                            {"ONCHAIN_CANTON_AUTH_STRATEGY"},
 		"onchain.canton.jwt_token":                                {"ONCHAIN_CANTON_JWT_TOKEN"},
 		"onchain.canton.auth_url":                                 {"ONCHAIN_CANTON_AUTH_URL"},
 		"onchain.canton.client_id":                                {"ONCHAIN_CANTON_CLIENT_ID"},

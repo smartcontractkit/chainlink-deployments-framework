@@ -45,7 +45,7 @@ var (
 				DeployerKey: "0x567",
 			},
 			Canton: CantonConfig{
-				AuthType:     "",
+				AuthStrategy: "",
 				JWTToken:     "",
 				AuthURL:      "",
 				ClientID:     "",
@@ -106,6 +106,11 @@ var (
 		"CATALOG_GRPC":                               "http://localhost:8080",
 		"CATALOG_AUTH_KMS_KEY_ID":                    "123",
 		"CATALOG_AUTH_KMS_KEY_REGION":                "us-east-1",
+		"ONCHAIN_CANTON_AUTH_STRATEGY":               "client_credentials",
+		"ONCHAIN_CANTON_AUTH_URL":                  "https://canton-auth.example.com",
+		"ONCHAIN_CANTON_CLIENT_ID":                   "canton-client-id",
+		"ONCHAIN_CANTON_CLIENT_SECRET":               "canton-client-secret",
+		"ONCHAIN_CANTON_JWT_TOKEN":                   "canton-jwt-token",
 	}
 
 	legacyEnvVars = map[string]string{
@@ -131,6 +136,11 @@ var (
 		"TON_WALLET_VERSION":                "V5R1",
 		// These values do not have a legacy equivalent
 		"ONCHAIN_STELLAR_DEPLOYER_KEY": "0x567", // Stellar is new, uses new-style env var
+		"ONCHAIN_CANTON_AUTH_STRATEGY": "client_credentials",
+		"ONCHAIN_CANTON_AUTH_URL":      "https://canton-auth.example.com",
+		"ONCHAIN_CANTON_CLIENT_ID":     "canton-client-id",
+		"ONCHAIN_CANTON_CLIENT_SECRET": "canton-client-secret",
+		"ONCHAIN_CANTON_JWT_TOKEN":     "canton-jwt-token",
 		"CATALOG_GRPC":                 "http://localhost:8080",
 		"CATALOG_AUTH_KMS_KEY_ID":      "123",
 		"CATALOG_AUTH_KMS_KEY_REGION":  "us-east-1",
@@ -171,11 +181,11 @@ var (
 				WalletVersion: "V5R1",
 			},
 			Canton: CantonConfig{
-				AuthType:     "",
-				JWTToken:     "",
-				AuthURL:      "",
-				ClientID:     "",
-				ClientSecret: "",
+				AuthStrategy: "client_credentials",
+				JWTToken:     "canton-jwt-token",
+				AuthURL:      "https://canton-auth.example.com",
+				ClientID:     "canton-client-id",
+				ClientSecret: "canton-client-secret",
 			},
 		},
 		Offchain: OffchainConfig{
