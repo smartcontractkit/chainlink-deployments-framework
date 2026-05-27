@@ -73,7 +73,7 @@ func Test_zkSyncSigner_SignTypedData(t *testing.T) {
 		return func(hash []byte) ([]byte, error) {
 			sig := make([]byte, 65)
 			copy(sig, hash)
-			sig[64] = byte(v)
+			sig[64] = byte(v) //nolint:gosec // G115: v is a test-controlled small int (recovery byte 0/1/27/28)
 
 			return sig, nil
 		}

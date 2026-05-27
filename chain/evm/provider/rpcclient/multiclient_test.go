@@ -56,7 +56,7 @@ func TestMultiClient(t *testing.T) {
 	)
 
 	// Expect defaults to be set if not provided.
-	mc, err := NewMultiClient(lggr, RPCConfig{ChainSelector: chainSelector, RPCs: []RPC{
+	mc, err := NewMultiClient(t.Context(), lggr, RPCConfig{ChainSelector: chainSelector, RPCs: []RPC{
 		{Name: "test-rpc", WSURL: wsURL, HTTPURL: httpURL, PreferredURLScheme: URLSchemePreferenceHTTP},
 	}})
 
@@ -70,11 +70,11 @@ func TestMultiClient(t *testing.T) {
 	assert.Equal(t, RPCDefaultDialRetryDelay, mc.RetryConfig.DialDelay)
 
 	// Expect error if no RPCs provided.
-	_, err = NewMultiClient(lggr, RPCConfig{ChainSelector: chainSelector, RPCs: []RPC{}})
+	_, err = NewMultiClient(t.Context(), lggr, RPCConfig{ChainSelector: chainSelector, RPCs: []RPC{}})
 	require.Error(t, err)
 
 	// Expect second client to be set as backup.
-	mc, err = NewMultiClient(lggr, RPCConfig{ChainSelector: chainSelector, RPCs: []RPC{
+	mc, err = NewMultiClient(t.Context(), lggr, RPCConfig{ChainSelector: chainSelector, RPCs: []RPC{
 		{Name: "test-rpc", WSURL: wsURL, HTTPURL: httpURL, PreferredURLScheme: URLSchemePreferenceHTTP}, //preferred
 		{Name: "test-rpc", WSURL: wsURL, HTTPURL: httpURL, PreferredURLScheme: URLSchemePreferenceHTTP}, //backup
 	}})
@@ -98,7 +98,7 @@ func TestMultiClient_healthCheckSkipsBadRPC(t *testing.T) {
 		chainSelector uint64 = 16015286601757825753
 	)
 
-	mc, err := NewMultiClient(lggr, RPCConfig{ChainSelector: chainSelector, RPCs: []RPC{
+	mc, err := NewMultiClient(t.Context(), lggr, RPCConfig{ChainSelector: chainSelector, RPCs: []RPC{
 		// first RPC -> health-check fails
 		{Name: "bad-rpc", WSURL: "", HTTPURL: badSrv.URL, PreferredURLScheme: URLSchemePreferenceHTTP},
 		// second RPC -> health-check passes

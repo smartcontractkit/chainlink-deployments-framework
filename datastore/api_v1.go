@@ -65,6 +65,10 @@ type MutableStore[K Comparable[K], R UniqueRecord[K, R]] interface {
 	// Delete deletes record whose primary key elements match the supplied key, returning an error if no
 	// such record exists to be deleted
 	Delete(key K) error
+
+	// RemoteDelete stages the key for remote deletion / soft-delete tracking by appending it to
+	// DeletedRemoteKeys. In-memory implementations do not immediately delete the record from the store.
+	RemoteDelete(key K) error
 }
 
 // UnaryStore is an interface that represents a read-only store that is limited to a single record.

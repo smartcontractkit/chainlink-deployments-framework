@@ -115,7 +115,7 @@ func TestVerifyEnv_RunVerifyEnv_WithNetworkNoAddresses(t *testing.T) {
 					{
 						Type:          cfgnet.NetworkTypeMainnet,
 						ChainSelector: ethSelector,
-						BlockExplorer: cfgnet.BlockExplorer{APIKey: "test"},
+						BlockExplorer: cfgnet.BlockExplorer{Type: "etherscan", APIKey: "test"},
 						RPCs:          []cfgnet.RPC{{HTTPURL: "https://eth.llamarpc.com"}},
 					},
 				}), nil
@@ -148,7 +148,7 @@ func TestVerifyEnv_RunVerifyEnv_NetworkFilter(t *testing.T) {
 					{
 						Type:          cfgnet.NetworkTypeMainnet,
 						ChainSelector: ethSelector,
-						BlockExplorer: cfgnet.BlockExplorer{APIKey: "test"},
+						BlockExplorer: cfgnet.BlockExplorer{Type: "etherscan", APIKey: "test"},
 						RPCs:          []cfgnet.RPC{{HTTPURL: "https://eth.llamarpc.com"}},
 					},
 				}), nil
@@ -207,7 +207,7 @@ func TestVerifyEnv_RunVerifyEnv_WithFromLocalFlag(t *testing.T) {
 					{
 						Type:          cfgnet.NetworkTypeMainnet,
 						ChainSelector: ethSelector,
-						BlockExplorer: cfgnet.BlockExplorer{APIKey: "test"},
+						BlockExplorer: cfgnet.BlockExplorer{Type: "etherscan", APIKey: "test"},
 						RPCs:          []cfgnet.RPC{{HTTPURL: "https://eth.llamarpc.com"}},
 					},
 				}), nil
@@ -255,7 +255,7 @@ func TestVerifyEnv_RunVerifyEnv_FilterContract(t *testing.T) {
 					{
 						Type:          cfgnet.NetworkTypeMainnet,
 						ChainSelector: ethSelector,
-						BlockExplorer: cfgnet.BlockExplorer{APIKey: "test"},
+						BlockExplorer: cfgnet.BlockExplorer{Type: "etherscan", APIKey: "test"},
 						RPCs:          []cfgnet.RPC{{HTTPURL: "https://eth.llamarpc.com"}},
 					},
 				}), nil
@@ -299,7 +299,7 @@ func TestVerifyEnv_RunVerifyEnv_AddressWithNilVersionSkipped(t *testing.T) {
 					{
 						Type:          cfgnet.NetworkTypeMainnet,
 						ChainSelector: ethSelector,
-						BlockExplorer: cfgnet.BlockExplorer{APIKey: "test"},
+						BlockExplorer: cfgnet.BlockExplorer{Type: "etherscan", APIKey: "test"},
 						RPCs:          []cfgnet.RPC{{HTTPURL: "https://eth.llamarpc.com"}},
 					},
 				}), nil
@@ -343,7 +343,7 @@ func TestVerifyEnv_RunVerifyEnv_GetInputsErrorSkipped(t *testing.T) {
 					{
 						Type:          cfgnet.NetworkTypeMainnet,
 						ChainSelector: ethSelector,
-						BlockExplorer: cfgnet.BlockExplorer{APIKey: "test"},
+						BlockExplorer: cfgnet.BlockExplorer{Type: "etherscan", APIKey: "test"},
 						RPCs:          []cfgnet.RPC{{HTTPURL: "https://eth.llamarpc.com"}},
 					},
 				}), nil
@@ -382,7 +382,7 @@ func TestVerifyEnv_RunVerifyEnv_VerificationSuccess(t *testing.T) {
 			"result":  `[{"type":"constructor"}]`,
 		})
 	}))
-	defer server.Close()
+	t.Cleanup(server.Close)
 
 	targetURL, _ := url.Parse(server.URL)
 	httpClient := &http.Client{Transport: &evmRedirectTransport{target: targetURL}}
@@ -398,7 +398,7 @@ func TestVerifyEnv_RunVerifyEnv_VerificationSuccess(t *testing.T) {
 					{
 						Type:          cfgnet.NetworkTypeMainnet,
 						ChainSelector: ethSelector,
-						BlockExplorer: cfgnet.BlockExplorer{APIKey: "test"},
+						BlockExplorer: cfgnet.BlockExplorer{Type: "etherscan", APIKey: "test"},
 						RPCs:          []cfgnet.RPC{{HTTPURL: "https://eth.llamarpc.com"}},
 					},
 				}), nil
@@ -433,7 +433,7 @@ func TestVerifyEnv_RunVerifyEnv_VerificationFailure(t *testing.T) {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte("internal error"))
 	}))
-	defer server.Close()
+	t.Cleanup(server.Close)
 
 	targetURL, _ := url.Parse(server.URL)
 	httpClient := &http.Client{Transport: &evmRedirectTransport{target: targetURL}}
@@ -449,7 +449,7 @@ func TestVerifyEnv_RunVerifyEnv_VerificationFailure(t *testing.T) {
 					{
 						Type:          cfgnet.NetworkTypeMainnet,
 						ChainSelector: ethSelector,
-						BlockExplorer: cfgnet.BlockExplorer{APIKey: "test"},
+						BlockExplorer: cfgnet.BlockExplorer{Type: "etherscan", APIKey: "test"},
 						RPCs:          []cfgnet.RPC{{HTTPURL: "https://eth.llamarpc.com"}},
 					},
 				}), nil
@@ -471,7 +471,7 @@ func TestVerifyEnv_RunVerifyEnv_SkippedNetworksInSummary(t *testing.T) {
 	dom := domain.NewDomain(t.TempDir(), "test")
 	cmd := &cobra.Command{}
 
-	// ZORA_TESTNET has chain ID 999999999 which returns StrategyUnknown
+	// ZORA_TESTNET: no block_explorer.type in config → StrategyUnknown
 	zoraTestnetSelector := chainsel.ZORA_TESTNET.Selector
 	ds := datastore.NewMemoryDataStore()
 
@@ -498,6 +498,65 @@ func TestVerifyEnv_RunVerifyEnv_SkippedNetworksInSummary(t *testing.T) {
 	cfg.deps()
 
 	err := runVerifyEnv(cmd, cfg, verifyEnvFlags{environment: "staging"}, dom)
+	require.NoError(t, err)
+}
+
+// Regression: verify-env picks Blockscout from block_explorer.type and url in domain network config.
+func TestVerifyEnv_RunVerifyEnv_BlockscoutFromNetworkExplorerConfig(t *testing.T) {
+	t.Parallel()
+
+	dom := domain.NewDomain(t.TempDir(), "test")
+	cmd := &cobra.Command{}
+
+	zoraTestnetSelector := chainsel.ZORA_TESTNET.Selector
+	ds := datastore.NewMemoryDataStore()
+	_ = ds.Addresses().Add(datastore.AddressRef{
+		ChainSelector: zoraTestnetSelector,
+		Address:       "0xSuccessAddr",
+		Type:          "LinkToken",
+		Version:       mustParseVersion(t),
+	})
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]string{
+			"status":  "1",
+			"message": "OK",
+			"result":  `[{"type":"constructor"}]`,
+		})
+	}))
+	t.Cleanup(server.Close)
+
+	targetURL, _ := url.Parse(server.URL)
+	httpClient := &http.Client{Transport: &evmRedirectTransport{target: targetURL}}
+
+	cfg := Config{
+		Logger:                 logger.Nop(),
+		Domain:                 dom,
+		ContractInputsProvider: &mockContractInputsProvider{},
+		VerifierHTTPClient:     httpClient,
+		Deps: Deps{
+			NetworkLoader: func(_ string, _ domain.Domain) (*cfgnet.Config, error) {
+				return cfgnet.NewConfig([]cfgnet.Network{
+					{
+						Type:          cfgnet.NetworkTypeTestnet,
+						ChainSelector: zoraTestnetSelector,
+						BlockExplorer: cfgnet.BlockExplorer{
+							Type: "blockscout",
+							URL:  server.URL,
+						},
+						RPCs: []cfgnet.RPC{{HTTPURL: "https://example.com"}},
+					},
+				}), nil
+			},
+			DataStoreLoader: func(_ context.Context, _ domain.EnvDir, _ logger.Logger, _ DataStoreLoadOptions) (datastore.DataStore, error) {
+				return ds.Seal(), nil
+			},
+		},
+	}
+	cfg.deps()
+
+	err := runVerifyEnv(cmd, cfg, verifyEnvFlags{environment: "staging", pollInterval: 1}, dom)
 	require.NoError(t, err)
 }
 

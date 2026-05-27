@@ -722,6 +722,11 @@ func Test_EnvDir_MergeChangesetDataStore(t *testing.T) {
 	err = mergeDatastore.Merge(dataStore2.Seal())
 	require.NoError(t, err)
 
+	deletionDatastore := fdatastore.NewMemoryDataStore()
+
+	err = deletionDatastore.Merge(dataStore2.Seal())
+	require.NoError(t, err)
+
 	tests := []struct {
 		name              string
 		beforeFunc        func(*testing.T, EnvDir)
@@ -797,6 +802,45 @@ func Test_EnvDir_MergeChangesetDataStore(t *testing.T) {
 			},
 			giveChangesetName: "durable_pipeline",
 			want:              mergeDatastore.Seal(),
+		},
+		{
+			name: "success with merging datastore that deletes an existing record",
+			beforeFunc: func(t *testing.T, envdir EnvDir) {
+				t.Helper()
+
+				// Populate the env dir with dataStore1
+				arts := envdir.ArtifactsDir()
+				err := arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{
+					DataStore: dataStore1,
+				})
+				require.NoError(t, err)
+
+				err = envdir.MergeChangesetDataStore("0001_initial", "")
+				require.NoError(t, err)
+
+				// Populate the env dir with dataStore2
+				err = arts.SaveChangesetOutput("0002_initial", fdeployment.ChangesetOutput{
+					DataStore: dataStore2,
+				})
+				require.NoError(t, err)
+
+				err = envdir.MergeChangesetDataStore("0002_initial", "")
+				require.NoError(t, err)
+
+				// Create a changeset that stages the dataStore1 record for remote deletion
+				deletionStore := fdatastore.NewMemoryDataStore()
+				addresses, err := dataStore1.Addresses().Fetch()
+				require.NoError(t, err)
+				err = deletionStore.Addresses().RemoteDelete(addresses[0].Key())
+				require.NoError(t, err)
+
+				err = arts.SaveChangesetOutput("0002_deletion", fdeployment.ChangesetOutput{
+					DataStore: deletionStore,
+				})
+				require.NoError(t, err)
+			},
+			giveChangesetName: "0002_deletion",
+			want:              deletionDatastore.Seal(),
 		},
 		{
 			name: "success skips with no changeset datastore found",

@@ -5,27 +5,24 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
-
-	cfgenv "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/env"
 )
-
-// EnvWorkflowDonFamily is the env name for CRE.don_family in CLD config; ApplyDeployDefaults takes cfg.CRE instead.
-const EnvWorkflowDonFamily = "CRE_DON_FAMILY"
 
 // WorkflowBundle describes workflow deploy inputs: pre-built WASM and config.
 type WorkflowBundle struct {
-	WorkflowName string       `json:"workflowName" yaml:"workflowName"`
-	Binary       BinarySource `json:"binary" yaml:"binary"`
-	Config       ConfigSource `json:"config" yaml:"config"`
-	DonFamily    string       `json:"donFamily,omitempty" yaml:"donFamily,omitempty"`
-	Attributes   string       `json:"attributes,omitempty" yaml:"attributes,omitempty"`
-	Tag          string       `json:"tag,omitempty" yaml:"tag,omitempty"`
+	WorkflowName       string       `json:"workflowName" yaml:"workflowName"`
+	Binary             BinarySource `json:"binary" yaml:"binary"`
+	Config             ConfigSource `json:"config" yaml:"config"`
+	DonFamily          string       `json:"donFamily,omitempty" yaml:"donFamily,omitempty"`
+	DeploymentRegistry string       `json:"deploymentRegistry,omitempty" yaml:"deploymentRegistry,omitempty"`
+	Attributes         string       `json:"attributes,omitempty" yaml:"attributes,omitempty"`
+	Tag                string       `json:"tag,omitempty" yaml:"tag,omitempty"`
 }
 
 // Validate trims string fields and validates the workflow bundle.
 func (w *WorkflowBundle) Validate() error {
 	w.WorkflowName = strings.TrimSpace(w.WorkflowName)
 	w.DonFamily = strings.TrimSpace(w.DonFamily)
+	w.DeploymentRegistry = strings.TrimSpace(w.DeploymentRegistry)
 	if w.WorkflowName == "" {
 		return errors.New("cre: workflowName is required")
 	}
@@ -36,23 +33,6 @@ func (w *WorkflowBundle) Validate() error {
 	return w.Config.Validate()
 }
 
-// ApplyDeployDefaults sets DonFamily from cre when empty. No-op if w is nil.
-func (w *WorkflowBundle) ApplyDeployDefaults(cre cfgenv.CREConfig) {
-	if w == nil {
-		return
-	}
-	w.DonFamily = strings.TrimSpace(w.DonFamily)
-	if w.DonFamily != "" {
-		return
-	}
-	if s := strings.TrimSpace(cre.DonFamily); s != "" {
-		w.DonFamily = s
-	}
-}
-
-// BinarySource is either a local path to an existing WASM file or an external reference.
-// Create via [NewBinarySourceLocal], [NewBinarySourceURL], or [NewBinarySourceGitHubRelease],
-// or unmarshal from JSON/YAML and call [BinarySource.Validate].
 type BinarySource struct {
 	ExternalRef *externalBinaryRef `json:"externalRef,omitempty" yaml:"externalRef,omitempty"`
 	LocalPath   string             `json:"localPath,omitempty" yaml:"localPath,omitempty"`

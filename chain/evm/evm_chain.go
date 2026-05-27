@@ -2,16 +2,20 @@ package evm
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/zksync-sdk/zksync2-go/accounts"
 	"github.com/zksync-sdk/zksync2-go/clients"
 
 	chaincommon "github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/common"
+	"github.com/smartcontractkit/chainlink-deployments-framework/internal/pointer"
 )
 
 // ConfirmFunc is a function that takes a transaction, waits for the transaction to be confirmed,
@@ -84,4 +88,19 @@ func (c Chain) NetworkType() (chainsel.NetworkType, error) {
 // IsNetworkType checks if the chain is on the given network type
 func (c Chain) IsNetworkType(networkType chainsel.NetworkType) bool {
 	return chaincommon.ChainMetadata{Selector: c.Selector}.IsNetworkType(networkType)
+}
+
+func (c Chain) ReadOnly() (chaincommon.BlockChain, error) {
+	if c.DeployerKey == nil {
+		return c, nil
+	}
+
+	privateKey, err := crypto.GenerateKey()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate private key for read-only chain: %w", err)
+	}
+	c.DeployerKey = pointer.To(*c.DeployerKey)
+	c.DeployerKey.From = crypto.PubkeyToAddress(*privateKey.Public().(*ecdsa.PublicKey))
+
+	return c, nil
 }

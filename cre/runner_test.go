@@ -1,38 +1,41 @@
-package cre
+package cre_test
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/cre"
+	cremocks "github.com/smartcontractkit/chainlink-deployments-framework/cre/mocks"
 )
 
 func TestNewRunner(t *testing.T) {
 	t.Parallel()
 
-	cli := NewCLIRunner("/bin/sh", "")
+	cli := cremocks.NewMockCLIRunner(t)
 	var c stubClient
 
 	tests := []struct {
 		name       string
-		opts       []RunnerOption
+		opts       []cre.RunnerOption
 		wantNil    bool
-		wantCLI    CLIRunner
-		wantClient Client
+		wantCLI    cre.CLIRunner
+		wantClient cre.Client
 	}{
 		{
 			name:       "both options",
-			opts:       []RunnerOption{WithCLI(cli), WithClient(&c)},
+			opts:       []cre.RunnerOption{cre.WithCLI(cli), cre.WithClient(&c)},
 			wantCLI:    cli,
 			wantClient: &c,
 		},
 		{
 			name:    "cli only",
-			opts:    []RunnerOption{WithCLI(cli)},
+			opts:    []cre.RunnerOption{cre.WithCLI(cli)},
 			wantCLI: cli,
 		},
 		{
 			name:       "client only",
-			opts:       []RunnerOption{WithClient(&c)},
+			opts:       []cre.RunnerOption{cre.WithClient(&c)},
 			wantClient: &c,
 		},
 		{
@@ -49,13 +52,13 @@ func TestNewRunner(t *testing.T) {
 			t.Parallel()
 
 			if tt.wantNil {
-				var r Runner
+				var r cre.Runner
 				require.Nil(t, r)
 
 				return
 			}
 
-			r := NewRunner(tt.opts...)
+			r := cre.NewRunner(tt.opts...)
 			require.NotNil(t, r)
 			require.Equal(t, tt.wantCLI, r.CLI())
 			require.Equal(t, tt.wantClient, r.Client())

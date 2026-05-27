@@ -95,9 +95,9 @@ func TestInputGenerateCmd_WithOutputFile(t *testing.T) {
 	inputsContent := `environment: testnet
 domain: test
 changesets:
-  0001_cs:
-    payload:
-      x: 1`
+  - 0001_cs:
+      payload:
+        x: 1`
 	require.NoError(t, os.WriteFile(filepath.Join(inputsDir, "in.yaml"), []byte(inputsContent), 0o644)) //nolint:gosec
 
 	originalWd, _ := os.Getwd()

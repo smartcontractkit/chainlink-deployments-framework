@@ -423,7 +423,7 @@ func Test_Artifacts_ChangesetOperationsReportsFileExists(t *testing.T) {
 			beforeFunc: func(t *testing.T, artsDir *ArtifactsDir) {
 				t.Helper()
 
-				err := os.Mkdir(filepath.Join(artsDir.OperationsReportsDirPath(), "0001_initial-reports.json"), 0755)
+				err := os.Mkdir(filepath.Join(artsDir.OperationsReportsDirPath(), "0001_initial-reports.json"), 0o755)
 				require.NoError(t, err)
 			},
 			giveChangesetKey: "0001_initial",
@@ -473,7 +473,7 @@ func Test_Artifacts_SaveChangesetOutput_LoadChangesetOutput(t *testing.T) {
 			Spec:  js2.MustMarshal(),
 		}
 
-		validUntilUnixTime = uint32(time.Now().Add(time.Hour).Unix()) //nolint:gosec // This won't overflow until 7 Feb 2106, and would also cause MCMS to fail anyway
+		validUntilUnixTime = uint32(time.Date(2035, time.December, 31, 23, 59, 59, 999999999, time.UTC).Unix()) //nolint:gosec
 
 		mcmsProposals = []mcmsv2.Proposal{
 			{
@@ -963,7 +963,8 @@ func Test_Artifacts_SaveAndLoadOperationsReport(t *testing.T) {
 			name:      "report does not exist - return empty slice",
 			giveCsKey: "invalid",
 			want:      []operations.Report[any, any]{},
-		}, {
+		},
+		{
 			name:      "success - directory does not exist - should create it",
 			giveCsKey: changesetKey,
 			beforeFunc: func(t *testing.T, artsDir *ArtifactsDir) {

@@ -3,3 +3,12 @@ environments:
     network_types:
       - testnet
       - mainnet
+    cre:
+      enabled: true
+      default_registries:
+        - id: private
+          label: "Private (Chainlink-hosted)"
+          type: off-chain
+          secrets_auth_flows:
+            - browser
+            - owner-key-signing

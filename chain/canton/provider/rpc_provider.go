@@ -35,6 +35,8 @@ type ParticipantConfig struct {
 	// The PartyID of the party that should be used for accessing the participant's API endpoints.
 	// Required
 	PartyID string
+	// ReadAsPartyIDs lists parties this user may read as (CanReadAs).
+	ReadAsPartyIDs []string
 	// An authentication.Provider implementation that provides the credentials for authenticating with the participant's API endpoints.
 	// Required
 	AuthProvider authentication.Provider
@@ -169,6 +171,7 @@ func (p *RPCChainProvider) Initialize(_ context.Context) (chain.BlockChain, erro
 			TokenSource:       tokenSource,
 			UserID:            participant.UserID,
 			PartyID:           participant.PartyID,
+			ReadAsPartyIDs:    participant.ReadAsPartyIDs,
 		}
 	}
 

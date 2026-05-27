@@ -7,8 +7,9 @@ import (
 )
 
 var (
-	ErrAddressRefNotFound = errors.New("no such address ref can be found for the provided key")
-	ErrAddressRefExists   = errors.New("an address ref with the supplied key already exists")
+	ErrAddressRefNotFound        = errors.New("no such address ref can be found for the provided key")
+	ErrAddressRefExists          = errors.New("an address ref with the supplied key already exists")
+	ErrAddressRefVersionRequired = errors.New("the address ref record version is required")
 )
 
 // TODO: ContractType is defined in many places in the codebase. Once it is moved

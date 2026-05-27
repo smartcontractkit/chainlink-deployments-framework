@@ -4,8 +4,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-
-	cfgenv "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/env"
 )
 
 func Test_validateAbsoluteHTTPURL(t *testing.T) {
@@ -449,78 +447,4 @@ func TestWorkflowBundle_Validate(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestWorkflowBundle_ApplyDeployDefaults(t *testing.T) {
-	t.Parallel()
-	tests := []struct {
-		name       string
-		cre        cfgenv.CREConfig
-		input      WorkflowBundle
-		wantFamily string
-	}{
-		{
-			name: "don_family_from_input",
-			cre: cfgenv.CREConfig{
-				DonFamily: "config-should-not-win",
-			},
-			input: WorkflowBundle{
-				WorkflowName: "w",
-				DonFamily:    "feeds-zone-a",
-			},
-			wantFamily: "feeds-zone-a",
-		},
-		{
-			name: "don_family_from_loaded_cre_config",
-			cre: cfgenv.CREConfig{
-				DonFamily: "from-config",
-			},
-			input: WorkflowBundle{
-				WorkflowName: "w",
-			},
-			wantFamily: "from-config",
-		},
-		{
-			name: "don_family_empty_when_cre_empty",
-			cre:  cfgenv.CREConfig{},
-			input: WorkflowBundle{
-				WorkflowName: "w",
-			},
-			wantFamily: "",
-		},
-		{
-			name: "whitespace_bundle_then_cre_empty",
-			cre:  cfgenv.CREConfig{},
-			input: WorkflowBundle{
-				WorkflowName: "w",
-				DonFamily:    "   ",
-			},
-			wantFamily: "",
-		},
-		{
-			name: "whitespace_bundle_then_cre_set",
-			cre: cfgenv.CREConfig{
-				DonFamily: "from-cre",
-			},
-			input: WorkflowBundle{
-				WorkflowName: "w",
-				DonFamily:    "   ",
-			},
-			wantFamily: "from-cre",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			w := tt.input
-			w.ApplyDeployDefaults(tt.cre)
-			require.Equal(t, tt.wantFamily, w.DonFamily)
-		})
-	}
-}
-
-func TestWorkflowBundle_ApplyDeployDefaults_nil(t *testing.T) {
-	t.Parallel()
-	var w *WorkflowBundle
-	require.NotPanics(t, func() { w.ApplyDeployDefaults(cfgenv.CREConfig{}) })
 }

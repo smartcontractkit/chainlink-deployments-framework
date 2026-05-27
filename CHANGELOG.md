@@ -1,5 +1,174 @@
 # chainlink-deployments-framework
 
+## 0.106.0
+
+### Minor Changes
+
+- [#964](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/964) [`e26812b`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/e26812b16ea34671db9f464739e09489be760375) Thanks [@DimitriosNaikopoulos](https://github.com/DimitriosNaikopoulos)! - (feat) Support catalog deletes for the datastore
+
+### Patch Changes
+
+- [#988](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/988) [`dcc55b7`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/dcc55b77fe07b6b3ff529e65173cfa3aec9c044e) Thanks [@stackman27](https://github.com/stackman27)! - Update chain metadata handling and analyzer improvements
+
+## 0.105.0
+
+### Minor Changes
+
+- [#986](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/986) [`af2cb57`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/af2cb57d575a6f3338e675fc56f851378327275b) Thanks [@patricios-space](https://github.com/patricios-space)! - Use Metadata.ContractVersion instead of ContractTypeAndVersion
+
+## 0.104.0
+
+### Minor Changes
+
+- [#979](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/979) [`68a7a80`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/68a7a80b6be0bde000aafd435089b994c38a2a23) Thanks [@patricios-space](https://github.com/patricios-space)! - Adopt ContractTypeAndVersion in upf Transaction.Metadata
+
+## 0.103.0
+
+### Minor Changes
+
+- [#983](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/983) [`721c1ce`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/721c1cec87507df8d19ba4c64a1b2be7b609fe7d) Thanks [@ecPablo](https://github.com/ecPablo)! - add TonMCMSChainState type
+
+- [#981](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/981) [`4da8eba`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/4da8eba6ddb0854bb7cddb250d323643c063cc36) Thanks [@patricios-space](https://github.com/patricios-space)! - Bump to Go 1.26.2, update several dependencies, and migrate from `pgx/v4` to `pgx/v5`.
+
+## 0.102.0
+
+### Minor Changes
+
+- [#972](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/972) [`3c4dda3`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/3c4dda332301097e4e6461b2c46ca0fdea528611) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - feat: run post-proposal hooks even when the timelock execution fails
+
+- [#976](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/976) [`d7e88c6`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/d7e88c6f5761fcced614d6cd8348d2b06870f191) Thanks [@ecPablo](https://github.com/ecPablo)! - add support for named api keys on cre api key secret
+
+### Patch Changes
+
+- [#973](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/973) [`bb15097`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/bb1509743925444a70f8c7c2ccfd44860328c55b) Thanks [@ecPablo](https://github.com/ecPablo)! - remove chainlink-ton/deployment dependency
+
+## 0.101.1
+
+### Patch Changes
+
+- [#970](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/970) [`3dd9f6d`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/3dd9f6d3ab4391ded8f1fdcd17778e9df8e46eae) Thanks [@skudasov](https://github.com/skudasov)! - migrate to Moby and new testcontainers-go
+
+## 0.101.0
+
+### Minor Changes
+
+- [#965](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/965) [`75a8bce`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/75a8bcecfefca13619b779874eca2955f54545cc) Thanks [@ecPablo](https://github.com/ecPablo)! - Port new TON config to `propose.go`
+
+## 0.100.0
+
+### Minor Changes
+
+- [#961](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/961) [`2bb6275`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/2bb6275da0f4d270c33527e276c51a5cb787d7f0) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix incorrect package name for contracts/mcms
+
+- [#954](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/954) [`d0d1079`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/d0d1079692fd969f81031c5cd5db0ad1bac0c53c) Thanks [@DimitriosNaikopoulos](https://github.com/DimitriosNaikopoulos)! - (feat) Support in memory catalog deletes and save keys for later deleting them from the catalog
+
+- [#959](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/959) [`4c845fb`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/4c845fbda91add525c03da2e7d362a1c83aff3a6) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - feat: add DataStore and BlockChains to HookEnv type
+
+## 0.99.0
+
+### Minor Changes
+
+- [#958](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/958) [`190d67e`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/190d67e026aecc9b486a23b3a6dc286de19006c0) Thanks [@ChrisAmora](https://github.com/ChrisAmora)! - port TimelockConfig to MCMS proposalutils
+
+- [#942](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/942) [`1bd6d2d`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/1bd6d2d5dceaca3aa09eaad203b4ffd0a708d79a) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - feat(mcms/analyzer): add Solana native programs to registry
+
+## 0.98.0
+
+### Minor Changes
+
+- [#948](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/948) [`ebfd4ae`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/ebfd4ae55dc58ca94f828ca9ea4d77a6f6704ac9) Thanks [@ecPablo](https://github.com/ecPablo)! - port link token types
+
+## 0.97.0
+
+### Minor Changes
+
+- [#925](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/925) [`bd71875`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/bd71875f974bdf567807e5d1ac93671a93044555) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat(operations-api): introduce `WithForceExecute` and new `ExecuteOperationN` options
+
+  ### Migration: `ExecuteOperationN`
+
+  **Signature**
+
+  - Before: `ExecuteOperationN(..., opts ...ExecuteOption[IN, DEP])`
+  - After: `ExecuteOperationN(..., opts ...ExecuteOperationNOption[IN, DEP])`
+
+### Patch Changes
+
+- [#946](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/946) [`beb1bcc`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/beb1bcca36d0256009d50e17d7b7498348b97fef) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - bump packages to address security vuln
+
+- [#944](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/944) [`cb237fb`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/cb237fb42e0c3865a3074580d6eed1dab3e158c1) Thanks [@FelixFan1992](https://github.com/FelixFan1992)! - update ctf version to include updated sui default image
+
+## 0.96.0
+
+### Minor Changes
+
+- [#941](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/941) [`7fec47c`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/7fec47ca4acb434e5e70092ff1702331ca62771b) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - chore: use remote chains selectors
+
+## 0.95.2
+
+### Patch Changes
+
+- [#939](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/939) [`18b00e6`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/18b00e692520feabc26f3bf4a1e60c406a7a7a82) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - refactor(cld): remove archived changeset registry entries
+
+- [#933](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/933) [`1313ab2`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/1313ab22026d448155e6c64763f4b24092a32ea5) Thanks [@ajaskolski](https://github.com/ajaskolski)! - fix: blockscout should show raw error on contract verification
+
+## 0.95.1
+
+### Patch Changes
+
+- [#929](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/929) [`9d78329`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/9d7832998908ae575d658e15e154b92fac29be64) Thanks [@Fletch153](https://github.com/Fletch153)! - Bump chainlink-testing-framework/framework to pick up the Sui/Aptos CTF provider cwd-tar-race fix (upstream smartcontractkit/chainlink-testing-framework#2519). Resolves intermittent `archive/tar: write too long` flakes in `Test_CTFChainProvider_Initialize` for the Sui and Aptos providers.
+
+- [#938](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/938) [`9565eff`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/9565effdc96e2349a037ecf3cfcd25cceb5c2b48) Thanks [@AnieeG](https://github.com/AnieeG)! - Fix/update anvil startup to use offical anvil image, adding --no-storage-caching option to start up
+
+## 0.95.0
+
+### Minor Changes
+
+- [#928](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/928) [`2b4b616`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/2b4b61682ae0fe49209527edccb592772a5bdd2c) Thanks [@ecPablo](https://github.com/ecPablo)! - add contract binding types to proposalutils
+
+- [#923](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/923) [`54f8ccb`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/54f8ccb486d027e83cb14d47bdce70f2c7c536e2) Thanks [@ecPablo](https://github.com/ecPablo)! - port proposalutils helpers from engine/cld/mcms/proposalutils/ so they are part of the framework
+
+### Patch Changes
+
+- [#924](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/924) [`062a409`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/062a409d5953a9f0e395ecaadd401fb2e119d0b4) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - fix: populate Config attribute in hook params
+
+## 0.94.1
+
+### Patch Changes
+
+- [#919](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/919) [`267e083`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/267e0832565028ccbc97e96e7a947cd61c26cbfb) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - fix: use "changeset uuids" to associate proposal operations and changesets
+
+## 0.94.0
+
+### Minor Changes
+
+- [#906](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/906) [`18c4387`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/18c43878dde904ab231663c6d4115e8ae3daba52) Thanks [@ecPablo](https://github.com/ecPablo)! - Add workflow.yaml, project.yaml, and context.yaml generation helpers for CRE CLI runner
+
+## 0.93.1
+
+### Patch Changes
+
+- [#878](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/878) [`96b99d6`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/96b99d68d27b1fcb75983ef7addc3be6576debbb) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - feat: add post-proposal-execution hooks
+
+- [#911](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/911) [`5c68f8d`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/5c68f8dfafe661c7fe29533f530f028879385672) Thanks [@friedemannf](https://github.com/friedemannf)! - Bump chainlink-testing-framework to v0.15.13
+
+## 0.93.0
+
+### Minor Changes
+
+- [#896](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/896) [`0f6bdb1`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/0f6bdb1d6636a474727e298f77ca709669ab0086) Thanks [@ecPablo](https://github.com/ecPablo)! - add wrapper object for CRE to allow CLI and Go API implementations to coexist
+
+### Patch Changes
+
+- [#898](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/898) [`59b7400`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/59b74000cadd72d311c44cbb38b7623cbca4208e) Thanks [@ecPablo](https://github.com/ecPablo)! - remove hmac keys in favor of api key for cre
+
+- [#902](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/902) [`aba964b`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/aba964b14498ac7b0ccd1ad45ff571025a7a7d80) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(input): remove handling of object format
+
+  Object format for input YAML is no longer supported; only array format is supported.
+
+- [#894](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/894) [`4a9a5cc`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/4a9a5cc9b32a72614ca3d012124e75bb02f1c7aa) Thanks [@ajaskolski](https://github.com/ajaskolski)! - refactor: verification modular cmd use network cfg from cld
+
+- [#889](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/889) [`aa6fdfd`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/aa6fdfdbd37c1534beb248f5d878245d658a3f81) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(mcms): render proposal parameters in collapsible code blocks
+
 ## 0.92.0
 
 ### Minor Changes

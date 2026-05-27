@@ -45,7 +45,7 @@ packages:
     config:
       all: false
       filename: "mock_{{.InterfaceName | snakecase}}_test.go"
-      structname: '{{.Mock}}{{.InterfaceName | firstUpper }}'
+      structname: "{{.Mock}}{{.InterfaceName | firstUpper }}"
     interfaces:
       mcmsExecutable:
       timelockExecutable:
@@ -53,7 +53,7 @@ packages:
     config:
       all: false
       filename: "mock_{{.InterfaceName | snakecase}}_test.go"
-      structname: '{{.Mock}}{{.InterfaceName | firstUpper }}'
+      structname: "{{.Mock}}{{.InterfaceName | firstUpper }}"
     interfaces:
       Executable:
       proposalExecutor:
@@ -99,6 +99,16 @@ packages:
       structname: "{{.Mock}}{{.InterfaceName}}"
     interfaces:
       OnchainClient:
+  github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/operations2/contract:
+    config:
+      all: false
+      pkgname: "mocks"
+      dir: "chain/evm/operations2/contract/mocks"
+      filename: "mock_{{.InterfaceName | snakecase}}.go"
+      structname: "{{.Mock}}{{.InterfaceName}}"
+    interfaces:
+      AccessControlContract:
+      AuthorizedCallersContract:
   github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer:
     config:
       all: false
@@ -154,5 +164,5 @@ packages:
       filename: "mock_{{.InterfaceName | snakecase}}.go"
       structname: "{{.Mock}}{{.InterfaceName}}"
     interfaces:
-      CLIRunner:
       Client:
+      CLIRunner:

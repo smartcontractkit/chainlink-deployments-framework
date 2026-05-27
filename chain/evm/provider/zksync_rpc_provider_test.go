@@ -172,7 +172,7 @@ func Test_ZkSyncRPCChainProvider_Initialize(t *testing.T) {
 				RPCs:                  []rpcclient.RPC{rpc},
 				ConfirmFunctor:        gethConfirmFunc,
 			},
-			wantErr: "failed to get chain ID from selector",
+			wantErr: "failed to get chain details for selector 1",
 		},
 		{
 			name:         "fails to generate deployer transactor",

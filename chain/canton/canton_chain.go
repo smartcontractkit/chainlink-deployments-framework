@@ -51,6 +51,9 @@ type Participant struct {
 	UserID string
 	// The PartyID that will be used to interact with this participant.
 	PartyID string
+	// ReadAsPartyIDs lists additional parties this user may read as (CanReadAs).
+	// When non-empty, Canton contract exercises use MCMS proposal encoding instead of direct submission.
+	ReadAsPartyIDs []string
 }
 
 // ParticipantEndpoints holds all available API endpoints for a Canton participant
@@ -149,4 +152,8 @@ func CreateAdminServiceClients(conn grpc.ClientConnInterface) AdminServiceClient
 		SynchronizerConnectivity: participantv30.NewSynchronizerConnectivityServiceClient(conn),
 		TrafficControl:           participantv30.NewTrafficControlServiceClient(conn),
 	}
+}
+
+func (c Chain) ReadOnly() (chaincommon.BlockChain, error) {
+	return c, nil
 }

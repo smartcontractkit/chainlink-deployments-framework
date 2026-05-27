@@ -30,6 +30,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
+	cldfchangeset "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/changeset"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/flags"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/mcms/layout"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/text"
@@ -64,10 +65,11 @@ type executeForkFlags struct {
 	proposalKind  string
 	chainSelector uint64
 	testSigner    bool
+	randomSalt    bool
 }
 
 // newExecuteForkCmd creates the "execute-fork" subcommand.
-func newExecuteForkCmd(cfg Config) *cobra.Command {
+func newExecuteForkCmd(mcmsCfg Config) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "execute-fork",
 		Short:   executeForkShort,
@@ -80,9 +82,10 @@ func newExecuteForkCmd(cfg Config) *cobra.Command {
 				proposalKind:  flags.MustString(cmd.Flags().GetString("proposalKind")),
 				chainSelector: flags.MustUint64(cmd.Flags().GetUint64("selector")),
 				testSigner:    flags.MustBool(cmd.Flags().GetBool("test-signer")),
+				randomSalt:    flags.MustBool(cmd.Flags().GetBool("random-salt")),
 			}
 
-			return runExecuteFork(cmd, cfg, f)
+			return runExecuteFork(cmd, mcmsCfg, f)
 		},
 	}
 
@@ -94,18 +97,24 @@ func newExecuteForkCmd(cfg Config) *cobra.Command {
 
 	// Fork-specific flags
 	cmd.Flags().Bool("test-signer", false, "Use a test signer key")
+	cmd.Flags().Bool("random-salt", false, "Override the proposal's salt with a random value. "+
+		"Useful to run fork tests with proposals already executed onchain.")
 
 	return cmd
 }
 
 // runExecuteFork executes the execute-fork command logic.
-func runExecuteFork(cmd *cobra.Command, cfg Config, f executeForkFlags) error {
+func runExecuteFork(cmd *cobra.Command, mcmsCfg Config, f executeForkFlags) error {
 	ctx := cmd.Context()
-	deps := cfg.deps()
+	deps := mcmsCfg.deps()
 
 	// --- Load all data first ---
 
-	proposalCfg, err := LoadProposalConfig(ctx, cfg.Logger, cfg.Domain, deps, cfg.ProposalContextProvider,
+	loadOptions := []any{acceptExpiredProposal}
+	if f.randomSalt {
+		loadOptions = append(loadOptions, randomSalt)
+	}
+	proposalCfg, err := LoadProposalConfig(ctx, mcmsCfg.Logger, mcmsCfg.Domain, deps, mcmsCfg.ProposalContextProvider,
 		ProposalFlags{
 			ProposalPath:  f.proposalPath,
 			ProposalKind:  f.proposalKind,
@@ -113,7 +122,7 @@ func runExecuteFork(cmd *cobra.Command, cfg Config, f executeForkFlags) error {
 			ChainSelector: f.chainSelector,
 			Fork:          true,
 		},
-		acceptExpiredProposal,
+		loadOptions...,
 	)
 	if err != nil {
 		return fmt.Errorf("error creating config: %w", err)
@@ -140,7 +149,7 @@ func runExecuteFork(cmd *cobra.Command, cfg Config, f executeForkFlags) error {
 	}
 
 	// Execute the fork
-	return executeFork(ctx, cfg.Logger, forkCfg, f.testSigner)
+	return executeFork(ctx, mcmsCfg, forkCfg, f.testSigner)
 }
 
 // --- Fork execution logic (fork-specific) ---
@@ -148,36 +157,39 @@ func runExecuteFork(cmd *cobra.Command, cfg Config, f executeForkFlags) error {
 // executeFork executes a proposal on a forked environment.
 // This is the main entry point for fork execution.
 func executeFork(
-	ctx context.Context, lggr logger.Logger, cfg *forkConfig, testSigner bool,
+	ctx context.Context, mcmsCfg Config, cfg *forkConfig, testSigner bool,
 ) error {
+	lggr := mcmsCfg.Logger
+
 	family, err := chainsel.GetSelectorFamily(cfg.chainSelector)
 	if err != nil {
 		return fmt.Errorf("failed to get selector family: %w", err)
 	}
 	if family != chainsel.FamilyEVM {
 		lggr.Infof("Skipping fork execution: chain selector %d is not EVM. Family is %s", cfg.chainSelector, family)
-
-		return nil // don't fail, just exit cleanly
+		return nil
 	}
 
-	if len(cfg.forkedEnv.ChainConfigs[cfg.chainSelector].HTTPRPCs) == 0 {
+	chainConfig, ok := cfg.forkedEnv.ChainConfigs[cfg.chainSelector]
+	if !ok {
+		return fmt.Errorf("failed to get forked env's chain config for chain %d", cfg.chainSelector)
+	}
+	if len(chainConfig.HTTPRPCs) == 0 {
 		return fmt.Errorf("no rpcs loaded in forked environment for chain %d (fork tests require public RPCs)", cfg.chainSelector)
 	}
-
-	// get the chain URL, chain ID and MCM contract address
-	url := cfg.forkedEnv.ChainConfigs[cfg.chainSelector].HTTPRPCs[0].External
-	anvilClient := rpc.New(url, nil)
-	chainID := cfg.forkedEnv.ChainConfigs[cfg.chainSelector].ChainID
 
 	// zkSync VM chains (zkSync Era, Lens, Cronos zkEVM, etc.) require anvil-zksync,
 	// not standard Anvil. Derive this from the loaded chain which is set by the chain
 	// provider, so it stays in sync with new zkSync chains automatically.
 	if evmChain, ok := cfg.blockchains.EVMChains()[cfg.chainSelector]; ok && evmChain.IsZkSyncVM {
 		lggr.Infof("Skipping fork execution: chain selector %d is zkSync VM (chain ID %s), which requires anvil-zksync instead of standard anvil",
-			cfg.chainSelector, chainID)
+			cfg.chainSelector, chainConfig.ChainID)
 
 		return nil
 	}
+
+	url := chainConfig.HTTPRPCs[0].External
+	anvilClient := rpc.New(url, nil)
 	mcmAddress := cfg.proposal.ChainMetadata[types.ChainSelector(cfg.chainSelector)].MCMAddress
 	timelockAddress := common.HexToAddress(cfg.timelockProposal.TimelockAddresses[types.ChainSelector(cfg.chainSelector)])
 
@@ -193,7 +205,7 @@ func executeFork(
 			blockchain.DefaultAnvilPublicKey,
 			blockchain.DefaultAnvilPublicKey,
 			url,
-			chainID,
+			chainConfig.ChainID,
 			mcmAddress,
 		); lerr != nil {
 			return fmt.Errorf("failed to set signer: %w", lerr)
@@ -210,7 +222,7 @@ func executeFork(
 			return fmt.Errorf("failed to overwrite proposal signature: %w", lerr)
 		}
 
-		lerr = overrideForkChainDeployerKeyWithTestSigner(cfg, chainID)
+		lerr = overrideForkChainDeployerKeyWithTestSigner(cfg, chainConfig.ChainID)
 		if lerr != nil {
 			return fmt.Errorf("failed to override fork deployer key to test signer: %w", lerr)
 		}
@@ -233,7 +245,7 @@ func executeFork(
 	if err = anvilClient.EVMIncreaseTime(uint64(cfg.timelockProposal.Delay.Seconds())); err != nil {
 		return fmt.Errorf("failed to increase time: %w", err)
 	}
-	if err = anvilClient.AnvilMine([]interface{}{1}); err != nil {
+	if err = anvilClient.AnvilMine([]any{1}); err != nil {
 		return fmt.Errorf("failed to mine block: %w", err)
 	}
 
@@ -244,9 +256,15 @@ func executeFork(
 	}
 
 	lggr.Info("Executing timelock chain command")
-	err = timelockExecuteChainCommand(ctx, lggr, cfg)
-	if err != nil {
-		lggr.Warnw("Timelock.execute() - failure; starting calling individual ops for debugging", "err", err)
+	reports, execErr := timelockExecuteChainCommand(ctx, lggr, cfg)
+
+	hookErr := runPostProposalHooks(lggr, cfg, mcmsCfg, reports, errorString(execErr))
+	if hookErr != nil {
+		lggr.Warnw("failed to run proposal hooks", "err", hookErr)
+	}
+
+	if execErr != nil {
+		lggr.Warnw("Timelock.execute() - failure; starting calling individual ops for debugging", "err", execErr)
 		if derr := diagnoseTimelockRevert(ctx, lggr, anvilClient.URL, cfg.chainSelector, cfg.timelockProposal.Operations,
 			timelockAddress, cfg.env.ExistingAddresses, cfg.proposalCtx); derr != nil { //nolint:staticcheck
 			lggr.Errorw("Diagnosis results", "err", derr)
@@ -254,9 +272,38 @@ func executeFork(
 			return fmt.Errorf("failed to timelock execute chain: %w", derr)
 		}
 
-		return fmt.Errorf("failed to timelock execute chain: %w", err)
+		return fmt.Errorf("failed to timelock execute chain: %w", execErr)
 	}
+
 	lggr.Info("Timelock.execute() - success")
+
+	return nil
+}
+
+func runPostProposalHooks(
+	lggr logger.Logger, forkCfg *forkConfig, mcmsCfg Config, reports []cldfchangeset.MCMSTimelockExecuteReport,
+	execError string,
+) error {
+	if mcmsCfg.LoadChangesets == nil {
+		lggr.Debug("LoadChangesets function not set in mcms config; skipping proposal hooks")
+		return nil
+	}
+	forkClient, ok := forkCfg.forkedEnv.ForkClients[forkCfg.chainSelector]
+	if !ok {
+		return fmt.Errorf("failed to get fork client for chain %d", forkCfg.chainSelector)
+	}
+	chainConfig, ok := forkCfg.forkedEnv.ChainConfigs[forkCfg.chainSelector]
+	if !ok {
+		return fmt.Errorf("failed to get forked env's chain config for chain %d", forkCfg.chainSelector)
+	}
+
+	forkContext := &cldfchangeset.EVMForkContext{ChainConfig: chainConfig, Client: forkClient}
+	forkCfg.env.Name = forkCfg.envStr // ensure hooks load the correct env config for the fork
+
+	err := runHooksInternal(mcmsCfg, forkCfg.env, forkCfg.timelockProposal, reports, execError, forkContext)
+	if err != nil {
+		return fmt.Errorf("failed to run post-proposal hooks: %w", err)
+	}
 
 	return nil
 }
@@ -332,11 +379,11 @@ func logTransactions(lggr logger.Logger, cfg *forkConfig) {
 
 		return
 	}
-	if _, alreadyWrapped := evmChain.Client.(*loggingRpcClient); alreadyWrapped {
+	if _, alreadyWrapped := evmChain.Client.(*loggingRPCClient); alreadyWrapped {
 		return
 	}
 
-	evmChain.Client = &loggingRpcClient{OnchainClient: evmChain.Client, txOpts: evmChain.DeployerKey, lggr: lggr}
+	evmChain.Client = &loggingRPCClient{OnchainClient: evmChain.Client, txOpts: evmChain.DeployerKey, lggr: lggr}
 	chains[cfg.chainSelector] = evmChain
 	cfg.blockchains = chain.NewBlockChains(chains)
 }
@@ -445,16 +492,24 @@ func tryDecodeHexFromErrorString(errStr string, dec *ErrDecoder) string {
 	return ""
 }
 
-// loggingRpcClient wraps an OnchainClient to log transactions before sending.
-type loggingRpcClient struct {
+// loggingRPCClient wraps an OnchainClient to log transactions before sending.
+type loggingRPCClient struct {
 	cldf_evm.OnchainClient
 	txOpts *bind.TransactOpts
 	lggr   logger.Logger
 }
 
-func (c *loggingRpcClient) SendTransaction(ctx context.Context, tx *gethtypes.Transaction) error {
+func (c *loggingRPCClient) SendTransaction(ctx context.Context, tx *gethtypes.Transaction) error {
 	c.lggr.Infow("sending on-chain transaction", "from", c.txOpts.From, "to", tx.To(), "value", tx.Value(),
 		"data", common.Bytes2Hex(tx.Data()))
 
 	return c.OnchainClient.SendTransaction(ctx, tx)
+}
+
+func errorString(err error) string {
+	if err == nil {
+		return ""
+	}
+
+	return err.Error()
 }

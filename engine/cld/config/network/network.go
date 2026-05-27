@@ -73,4 +73,7 @@ type BlockExplorer struct {
 	Type   string `yaml:"type"`
 	APIKey string `yaml:"api_key"`
 	URL    string `yaml:"url"`
+	// Slug is explorer-specific: OKLink chain short name, SocialScan path segment, or an optional
+	// Routescan /evm/{slug}/ override when it differs from the decimal EVM chain ID (e.g. Plasma testnet 9746 → "9746_5").
+	Slug string `yaml:"slug,omitempty"`
 }

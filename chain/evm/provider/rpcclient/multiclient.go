@@ -19,7 +19,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
-	chainsel "github.com/smartcontractkit/chain-selectors"
+	chainsel "github.com/smartcontractkit/chain-selectors/remote"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 )
@@ -94,16 +94,18 @@ func (mc *MultiClient) rpcHealthCheck(ctx context.Context, client *ethclient.Cli
 }
 
 // NewMultiClient creates a new MultiClient with failover capabilities.
-func NewMultiClient(lggr logger.Logger, rpcsCfg RPCConfig, opts ...func(client *MultiClient)) (*MultiClient, error) {
+func NewMultiClient(
+	ctx context.Context, lggr logger.Logger, rpcsCfg RPCConfig, opts ...func(client *MultiClient),
+) (*MultiClient, error) {
 	if len(rpcsCfg.RPCs) == 0 {
 		return nil, errors.New("no RPCs provided, need at least one")
 	}
 	// Set the chain name
-	chain, exists := chainsel.ChainBySelector(rpcsCfg.ChainSelector)
-	if !exists {
-		return nil, fmt.Errorf("chain with selector %d not found", rpcsCfg.ChainSelector)
+	chain, err := chainsel.GetChainDetailsBySelector(ctx, rpcsCfg.ChainSelector)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get chain details for %d: %w", rpcsCfg.ChainSelector, err)
 	}
-	mc := MultiClient{lggr: lggr, chainName: chain.Name}
+	mc := MultiClient{lggr: lggr, chainName: chain.ChainName}
 
 	mc.RetryConfig = defaultRetryConfig()
 
@@ -115,12 +117,12 @@ func NewMultiClient(lggr logger.Logger, rpcsCfg RPCConfig, opts ...func(client *
 	for i, rpc := range rpcsCfg.RPCs {
 		client, err := mc.dialWithRetry(rpc, lggr)
 		if err != nil {
-			lggr.Warnf("failed to dial client %d for RPC '%s' - %s (%d), trying with the next one: %v", i, rpc.Name, chain.Name, chain.Selector, err)
+			lggr.Warnf("failed to dial client %d for RPC '%s' - %s (%d), trying with the next one: %v", i, rpc.Name, chain.ChainName, chain.ChainSelector, err)
 
 			continue
 		}
-		if err := mc.rpcHealthCheck(context.Background(), client); err != nil {
-			lggr.Warnf("health check failed for client %d for RPC '%s' - %s (%d), trying with the next one: %v", i, rpc.Name, chain.Name, chain.Selector, err)
+		if err := mc.rpcHealthCheck(ctx, client); err != nil {
+			lggr.Warnf("health check failed for client %d for RPC '%s' - %s (%d), trying with the next one: %v", i, rpc.Name, chain.ChainName, chain.ChainSelector, err)
 			client.Close()
 
 			continue
@@ -457,7 +459,6 @@ func (mc *MultiClient) dialWithRetry(rpc RPC, lggr logger.Logger) (*ethclient.Cl
 		return nil
 	}, retry.Attempts(mc.RetryConfig.DialAttempts), retry.Delay(mc.RetryConfig.DialDelay),
 		retry.OnRetry(func(n uint, err error) { retryCount++ }))
-
 	if err != nil {
 		return nil, errors.Join(err, fmt.Errorf("failed to dial endpoint '%s' for RPC %s for chain %s after retries", endpoint, rpc.Name, mc.chainName))
 	}

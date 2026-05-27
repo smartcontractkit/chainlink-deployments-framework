@@ -1,12 +1,18 @@
 package pipeline
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
+	"os"
 	"strconv"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 
+	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/changeset"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/flags"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/pipeline/input"
@@ -167,6 +173,12 @@ func runRun(cmd *cobra.Command, cfg *Config, f runFlags) error {
 		return saveErr
 	}
 
+	err = saveChangesetProposalMetadata(registry, actualChangesetName, out)
+	if err != nil {
+		return fmt.Errorf("failed to save changeset proposal metadata: %w", err)
+	}
+
+	// TODO: proposal decoding is handled by the CLD GH workflows; this should be removed.
 	if len(out.DescribedTimelockProposals) == 0 && cfg.DecodeProposalCtxProvider != nil {
 		out.DescribedTimelockProposals = make([]string, len(out.MCMSTimelockProposals))
 		proposalContext, err := cfg.DecodeProposalCtxProvider(env)
@@ -186,6 +198,58 @@ func runRun(cmd *cobra.Command, cfg *Config, f runFlags) error {
 	if err := artdir.SaveChangesetOutput(actualChangesetName, out); err != nil {
 		cfg.Logger.Errorf("failed to save changeset artifacts: %v", err)
 		return err
+	}
+
+	return nil
+}
+
+func saveChangesetProposalMetadata(
+	registry *changeset.ChangesetsRegistry, changesetName string, out fdeployment.ChangesetOutput,
+) error {
+	if len(out.MCMSTimelockProposals) == 0 {
+		return nil
+	}
+
+	changesetInputJSON := os.Getenv("DURABLE_PIPELINE_INPUT")
+	if len(changesetInputJSON) == 0 {
+		return errors.New("durable pipeline input is empty or not set")
+	}
+
+	changesetConfig, err := registry.GetResolvedInput(changesetName, changesetInputJSON)
+	if err != nil {
+		return fmt.Errorf("failed to get changeset configuration: %w", err)
+	}
+
+	id := uuid.NewString()
+
+	for i := range out.MCMSTimelockProposals {
+		proposal := &out.MCMSTimelockProposals[i]
+		if proposal.Metadata == nil {
+			proposal.Metadata = map[string]any{}
+		}
+
+		proposal.Metadata["changesets"] = []struct {
+			ID     string          `json:"id"`
+			Name   string          `json:"name"`
+			Input  json.RawMessage `json:"input"`
+			Config any             `json:"config"`
+		}{{
+			ID:     id,
+			Name:   changesetName,
+			Input:  json.RawMessage(changesetInputJSON),
+			Config: changesetConfig,
+		}}
+
+		for j := range proposal.Operations {
+			batchOp := &proposal.Operations[j]
+			for k := range batchOp.Transactions {
+				transaction := &batchOp.Transactions[k]
+				if transaction.Tags == nil {
+					transaction.Tags = []string{}
+				}
+				transaction.Tags = append(transaction.Tags, "changeset:"+id)
+			}
+		}
 	}
 
 	return nil

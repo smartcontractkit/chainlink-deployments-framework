@@ -35,9 +35,9 @@ type socialscanAPIResponse[R any] struct {
 }
 
 func newSocialScanVerifier(cfg VerifierConfig) (verification.Verifiable, error) {
-	chainName, ok := getSocialScanChainName(cfg.Chain.EvmChainID)
-	if !ok {
-		return nil, fmt.Errorf("chain ID %d is not supported by the SocialScan API", cfg.Chain.EvmChainID)
+	chainName := strings.TrimSpace(cfg.Network.BlockExplorer.Slug)
+	if chainName == "" {
+		return nil, fmt.Errorf("socialscan block_explorer.slug is required for chain %s", cfg.Chain.Name)
 	}
 	apiKey := cfg.Network.BlockExplorer.APIKey
 	if apiKey == "" {
@@ -76,9 +76,11 @@ func (v *socialscanVerifier) String() string {
 }
 
 func (v *socialscanVerifier) IsVerified(ctx context.Context) (bool, error) {
-	resp, err := sendSocialscanRequest[string](ctx, v.httpClient, v.chainName, "GET", "contract", "getabi", v.apiKey, map[string]string{
-		"address": v.address,
-	})
+	params := map[string]string{
+		paramKeyAddress: v.address,
+	}
+
+	resp, err := sendSocialscanRequest[string](ctx, v.httpClient, v.chainName, "GET", "contract", "getabi", v.apiKey, params)
 	if err != nil {
 		return false, fmt.Errorf("failed to check verification status: %w", err)
 	}
@@ -116,7 +118,7 @@ func (v *socialscanVerifier) Verify(ctx context.Context) error {
 	resp, err := sendSocialscanRequest[string](ctx, v.httpClient, v.chainName, "POST", "contract", "verifysourcecode", v.apiKey, map[string]string{
 		"contractaddress":      v.address,
 		"sourceCode":           sourceCode,
-		"codeformat":           "solidity-standard-json-input",
+		"codeformat":           codeFormatStandardJSON,
 		"contractname":         v.metadata.Name,
 		"compilerversion":      v.metadata.Version,
 		"constructorArguments": constructorArgs,
@@ -154,12 +156,12 @@ func (v *socialscanVerifier) Verify(ctx context.Context) error {
 
 func (v *socialscanVerifier) getConstructorArgs(ctx context.Context) (string, error) {
 	resp, err := sendSocialscanRequest[[]socialscanTransactionInfo](ctx, v.httpClient, v.chainName, "GET", "account", "txlist", v.apiKey, map[string]string{
-		"address":    v.address,
-		"page":       "1",
-		"offset":     "1",
-		"sort":       "asc",
-		"startblock": "0",
-		"endblock":   "99999999",
+		paramKeyAddress: v.address,
+		"page":          "1",
+		"offset":        "1",
+		"sort":          "asc",
+		"startblock":    "0",
+		"endblock":      "99999999",
 	})
 	if err != nil {
 		return "", fmt.Errorf("failed to get contract creation info: %w", err)

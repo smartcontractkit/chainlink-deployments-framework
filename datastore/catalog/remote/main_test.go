@@ -21,7 +21,7 @@ func TestMain(m *testing.M) {
 	// Check if we should use an existing catalog service instead of testcontainers
 	existingAddr := os.Getenv("CATALOG_GRPC_ADDRESS")
 	if existingAddr != "" {
-		log.Printf("Using existing catalog service at: %s", existingAddr)
+		log.Printf("Using existing catalog service at: %s", existingAddr) //nolint:gosec // G706: env var is set by the developer running the tests, not untrusted input
 		catalogGRPCAddress = existingAddr
 		// Run tests and exit
 		os.Exit(m.Run())

@@ -64,6 +64,12 @@ This will prompt you to:
 2. Choose the type of change (patch, minor, major)
 3. Write a summary of the changes
 
+Package selection guidance:
+
+- Select `chainlink-deployments-framework` for framework/library changes.
+- Select `operations-gen` for changes under `tools/operations-gen` that affect the CLI behavior, generated output, or user-facing contract generation API.
+- Select both packages when a change impacts both release streams.
+
 ### 2. Changeset File Structure
 
 Changesets are stored as markdown files in the `.changeset` directory (managed automatically):
@@ -71,6 +77,7 @@ Changesets are stored as markdown files in the `.changeset` directory (managed a
 ```markdown
 ---
 "chainlink-deployments-framework": major
+"operations-gen": minor
 ---
 
 feat: support feature A
@@ -237,3 +244,5 @@ balance, err := provider.GetBalance(ctx, 1, "0x123...")  // 1 = Ethereum mainnet
 | Rename public struct field | MAJOR        | `OldName` → `NewName`                  |
 | Update documentation       | PATCH        | README, code comments                  |
 | Internal refactoring       | PATCH        | Private function changes               |
+
+For operations generator releases, CI will create/push module tags in the format `tools/operations-gen/vX.Y.Z` when the `operations-gen` package version changes.

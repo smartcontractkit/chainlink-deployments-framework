@@ -17,10 +17,11 @@ type PostProcessingChangeSet interface {
 var _ PostProcessingChangeSet = PostProcessingChangeSetImpl[any]{}
 
 type PostProcessingChangeSetImpl[C any] struct {
-	changeset     ChangeSetImpl[C]
-	postProcessor PostProcessor
-	preHooks      []PreHook
-	postHooks     []PostHook
+	changeset         ChangeSetImpl[C]
+	postProcessor     PostProcessor
+	preHooks          []PreHook
+	postHooks         []PostHook
+	postProposalHooks []PostProposalHook
 }
 
 func (ccs PostProcessingChangeSetImpl[C]) noop() {}
@@ -36,10 +37,10 @@ func (ccs PostProcessingChangeSetImpl[C]) Apply(env fdeployment.Environment) (fd
 }
 
 func (ccs PostProcessingChangeSetImpl[C]) applyWithInput(
-	env fdeployment.Environment, inputStr string,
+	env fdeployment.Environment, input any,
 ) (fdeployment.ChangesetOutput, error) {
 	env.Logger.Debugf("Post-processing ChangesetOutput from %T", ccs.changeset.changeset.operation)
-	output, err := ccs.changeset.applyWithInput(env, inputStr)
+	output, err := ccs.changeset.applyWithInput(env, input)
 	if err != nil {
 		return output, err
 	}
@@ -63,5 +64,18 @@ func (ccs PostProcessingChangeSetImpl[C]) WithPostHooks(hooks ...PostHook) PostP
 	return ccs
 }
 
+// WithPostProposalHooks appends post-proposal-hooks to this changeset. Multiple calls are additive.
+func (ccs PostProcessingChangeSetImpl[C]) WithPostProposalHooks(hooks ...PostProposalHook) PostProcessingChangeSet {
+	ccs.postProposalHooks = append(slices.Clone(ccs.postProposalHooks), hooks...)
+	return ccs
+}
+
+func (ccs PostProcessingChangeSetImpl[C]) resolvedInput(input string) (any, error) {
+	return ccs.changeset.resolvedInput(input)
+}
+
 func (ccs PostProcessingChangeSetImpl[C]) getPreHooks() []PreHook   { return ccs.preHooks }
 func (ccs PostProcessingChangeSetImpl[C]) getPostHooks() []PostHook { return ccs.postHooks }
+func (ccs PostProcessingChangeSetImpl[C]) getPostProposalHooks() []PostProposalHook {
+	return ccs.postProposalHooks
+}

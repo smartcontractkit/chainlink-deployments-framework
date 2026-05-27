@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/cre"
+	crecli "github.com/smartcontractkit/chainlink-deployments-framework/cre/cli"
 	foperations "github.com/smartcontractkit/chainlink-deployments-framework/operations"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
@@ -118,7 +119,7 @@ func Test_WithCRERunner(t *testing.T) {
 	opts := &LoadConfig{}
 	assert.Nil(t, opts.creRunner)
 
-	runner := cre.NewCLIRunner("/path/to/cre", "")
+	runner := crecli.NewCLIRunner("/path/to/cre", "")
 	creR := cre.NewRunner(cre.WithCLI(runner))
 	option := WithCRERunner(creR)
 	option(opts)

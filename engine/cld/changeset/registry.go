@@ -10,7 +10,6 @@ import (
 	"sync"
 
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
-
 	foperations "github.com/smartcontractkit/chainlink-deployments-framework/operations"
 )
 
@@ -58,15 +57,12 @@ type registryEntry struct {
 	// changeset is the changeset that is registered.
 	changeset ChangeSet
 
-	// gitSHA is the git SHA of the buried changeset. This only applies to changesets that are
-	// buried.
-	gitSHA *string
-
 	// options contains the configuration options for this changeset
 	options ChangesetConfig
 
-	preHooks  []PreHook
-	postHooks []PostHook
+	preHooks          []PreHook
+	postHooks         []PostHook
+	postProposalHooks []PostProposalHook
 }
 
 // hookCarrier is implemented by changeset types that carry hooks through the
@@ -74,6 +70,7 @@ type registryEntry struct {
 type hookCarrier interface {
 	getPreHooks() []PreHook
 	getPostHooks() []PostHook
+	getPostProposalHooks() []PostProposalHook
 }
 
 // newRegistryEntry creates a new registry entry for a changeset.
@@ -83,19 +80,10 @@ func newRegistryEntry(c ChangeSet, opts ChangesetConfig) registryEntry {
 	if hc, ok := c.(hookCarrier); ok {
 		entry.preHooks = hc.getPreHooks()
 		entry.postHooks = hc.getPostHooks()
+		entry.postProposalHooks = hc.getPostProposalHooks()
 	}
 
 	return entry
-}
-
-// newArchivedRegistryEntry creates a new registry entry for an archived changeset.
-func newArchivedRegistryEntry(gitSHA string) registryEntry {
-	return registryEntry{gitSHA: &gitSHA}
-}
-
-// IsArchived returns true if the changeset is archived.
-func (e registryEntry) IsArchived() bool {
-	return e.gitSHA != nil
 }
 
 // ChangesetsRegistry is a registry of changesets that can be applied to a domain environment.
@@ -115,6 +103,8 @@ type ChangesetsRegistry struct {
 	globalPreHooks []PreHook
 	// globalPostHooks run after every changeset in this registry.
 	globalPostHooks []PostHook
+	// globalPostProposalHooks run after every changeset in this registry is executed in a mcms proposal.
+	globalPostProposalHooks []PostProposalHook
 }
 
 type applyConfig struct {
@@ -172,6 +162,14 @@ func (r *ChangesetsRegistry) AddGlobalPostHooks(hooks ...PostHook) {
 	r.globalPostHooks = append(r.globalPostHooks, hooks...)
 }
 
+// AddGlobalPostProposalHooks appends post-hooks that run after every changeset in this registry.
+func (r *ChangesetsRegistry) AddGlobalPostProposalHooks(hooks ...PostProposalHook) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.globalPostProposalHooks = append(r.globalPostProposalHooks, hooks...)
+}
+
 // Apply applies a changeset, running any registered hooks around it.
 //
 // Execution order:
@@ -191,117 +189,145 @@ func (r *ChangesetsRegistry) Apply(
 		opt(&cfg)
 	}
 
-	if !cfg.runHooks {
-		entry, err := r.getApplyEntry(key)
-		if err != nil {
-			return fdeployment.ChangesetOutput{}, err
-		}
-
-		return entry.changeset.applyWithInput(e, cfg.inputStr)
-	}
-
-	entry, globalPre, globalPost, err := r.getApplySnapshot(key)
+	applySnapshot, err := r.getApplySnapshot(key)
 	if err != nil {
 		return fdeployment.ChangesetOutput{}, err
 	}
 
-	hookEnv := HookEnv{
-		Name:   e.Name,
-		Logger: e.Logger,
+	resolvedInput, err := applySnapshot.registryEntry.changeset.resolvedInput(cfg.inputStr)
+	if err != nil {
+		return fdeployment.ChangesetOutput{}, fmt.Errorf("failed to get changeset configuration: %w", err)
 	}
 
-	preParams := PreHookParams{
-		Env:          hookEnv,
-		ChangesetKey: key,
-	}
-
-	for _, h := range globalPre {
-		if err := ExecuteHook(e, h.HookDefinition, func(ctx context.Context) error {
-			return h.Func(ctx, preParams)
-		}); err != nil {
-			return fdeployment.ChangesetOutput{}, fmt.Errorf("global pre-hook %q failed: %w", h.Name, err)
+	if cfg.runHooks {
+		err = runPreHooks(e, key, resolvedInput, applySnapshot)
+		if err != nil {
+			return fdeployment.ChangesetOutput{}, err
 		}
 	}
 
-	for _, h := range entry.preHooks {
-		if err := ExecuteHook(e, h.HookDefinition, func(ctx context.Context) error {
-			return h.Func(ctx, preParams)
-		}); err != nil {
-			return fdeployment.ChangesetOutput{}, fmt.Errorf("pre-hook %q failed: %w", h.Name, err)
-		}
-	}
+	output, applyErr := applySnapshot.registryEntry.changeset.applyWithInput(e, resolvedInput)
 
-	var output fdeployment.ChangesetOutput
-	var applyErr error
-	output, applyErr = entry.changeset.applyWithInput(e, cfg.inputStr)
-
-	postParams := PostHookParams{
-		Env:          hookEnv,
-		ChangesetKey: key,
-		Output:       output,
-		Err:          applyErr,
-	}
-
-	for _, h := range entry.postHooks {
-		if err := ExecuteHook(e, h.HookDefinition, func(ctx context.Context) error {
-			return h.Func(ctx, postParams)
-		}); err != nil {
-			if applyErr != nil {
-				e.Logger.Warnw("post-hook failed after changeset error",
-					"hook", h.Name, "hookErr", err, "changesetErr", applyErr)
-			} else {
-				return output, fmt.Errorf("post-hook %q failed: %w", h.Name, err)
-			}
-		}
-	}
-
-	for _, h := range globalPost {
-		if err := ExecuteHook(e, h.HookDefinition, func(ctx context.Context) error {
-			return h.Func(ctx, postParams)
-		}); err != nil {
-			if applyErr != nil {
-				e.Logger.Warnw("global post-hook failed after changeset error",
-					"hook", h.Name, "hookErr", err, "changesetErr", applyErr)
-			} else {
-				return output, fmt.Errorf("global post-hook %q failed: %w", h.Name, err)
-			}
+	if cfg.runHooks {
+		err = runPostHooks(e, key, resolvedInput, output, applyErr, applySnapshot)
+		if err != nil {
+			return fdeployment.ChangesetOutput{}, err
 		}
 	}
 
 	return output, applyErr
 }
 
-// getApplyEntry reads and validates a changeset entry under the mutex.
-func (r *ChangesetsRegistry) getApplyEntry(key string) (registryEntry, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+func runPreHooks(e fdeployment.Environment, key string, resolvedInput any, applySnapshot applySnapshot) error {
+	readOnlyChains, err := e.BlockChains.ReadOnly()
+	if err != nil {
+		return fmt.Errorf("failed to get read-only blockchains for pre-hooks: %w", err)
+	}
 
-	return r.getApplyEntryLocked(key)
+	preParams := PreHookParams{
+		Env: HookEnv{
+			Name:        e.Name,
+			Logger:      e.Logger,
+			BlockChains: readOnlyChains,
+			DataStore:   e.DataStore,
+		},
+		ChangesetKey: key,
+		Config:       resolvedInput,
+	}
+
+	for _, h := range applySnapshot.globalPreHooks {
+		err := ExecuteHook(e, h.HookDefinition, func(ctx context.Context) error { return h.Func(ctx, preParams) })
+		if err != nil {
+			return fmt.Errorf("global pre-hook %q failed: %w", h.Name, err)
+		}
+	}
+	for _, h := range applySnapshot.registryEntry.preHooks {
+		err := ExecuteHook(e, h.HookDefinition, func(ctx context.Context) error { return h.Func(ctx, preParams) })
+		if err != nil {
+			return fmt.Errorf("changeset pre-hook %q failed: %w", h.Name, err)
+		}
+	}
+
+	return nil
+}
+
+func runPostHooks(
+	e fdeployment.Environment, key string, resolvedInput any, output fdeployment.ChangesetOutput,
+	applyErr error, applySnapshot applySnapshot,
+) error {
+	readOnlyChains, err := e.BlockChains.ReadOnly()
+	if err != nil {
+		return fmt.Errorf("failed to get read-only blockchains for post-hooks: %w", err)
+	}
+
+	postParams := PostHookParams{
+		Env: HookEnv{
+			Name:        e.Name,
+			Logger:      e.Logger,
+			BlockChains: readOnlyChains,
+			DataStore:   e.DataStore,
+		},
+		ChangesetKey: key,
+		Config:       resolvedInput,
+		Output:       output,
+		Err:          applyErr,
+	}
+
+	for _, h := range applySnapshot.registryEntry.postHooks {
+		err := ExecuteHook(e, h.HookDefinition, func(ctx context.Context) error { return h.Func(ctx, postParams) })
+		if err != nil {
+			if applyErr != nil {
+				e.Logger.Warnw("post-hook failed after changeset error", "hook", h.Name, "hookErr", err, "changesetErr", applyErr)
+			} else {
+				return fmt.Errorf("changeset post-hook %q failed: %w", h.Name, err)
+			}
+		}
+	}
+	for _, h := range applySnapshot.globalPostHooks {
+		err := ExecuteHook(e, h.HookDefinition, func(ctx context.Context) error { return h.Func(ctx, postParams) })
+		if err != nil {
+			if applyErr != nil {
+				e.Logger.Warnw("global post-hook failed after changeset error", "hook", h.Name, "hookErr", err, "changesetErr", applyErr)
+			} else {
+				return fmt.Errorf("global post-hook %q failed: %w", h.Name, err)
+			}
+		}
+	}
+
+	return nil
+}
+
+type applySnapshot struct {
+	registryEntry           registryEntry
+	globalPreHooks          []PreHook
+	globalPostHooks         []PostHook
+	globalPostProposalHooks []PostProposalHook
 }
 
 // getApplySnapshot reads the registry entry and global hook slices under
 // the mutex, returning copies so Apply can release the lock before running
 // hooks and the changeset.
-func (r *ChangesetsRegistry) getApplySnapshot(key string) (registryEntry, []PreHook, []PostHook, error) {
+func (r *ChangesetsRegistry) getApplySnapshot(key string) (applySnapshot, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	entry, err := r.getApplyEntryLocked(key)
 	if err != nil {
-		return registryEntry{}, nil, nil, err
+		return applySnapshot{}, err
 	}
 
-	return entry, slices.Clone(r.globalPreHooks), slices.Clone(r.globalPostHooks), nil
+	return applySnapshot{
+		registryEntry:           entry,
+		globalPreHooks:          slices.Clone(r.globalPreHooks),
+		globalPostHooks:         slices.Clone(r.globalPostHooks),
+		globalPostProposalHooks: slices.Clone(r.globalPostProposalHooks),
+	}, nil
 }
 
 func (r *ChangesetsRegistry) getApplyEntryLocked(key string) (registryEntry, error) {
 	entry, ok := r.entries[key]
 	if !ok {
 		return registryEntry{}, fmt.Errorf("changeset '%s' not found", key)
-	}
-
-	if entry.IsArchived() {
-		return registryEntry{}, fmt.Errorf("changeset '%s' is archived at SHA '%s'", key, *entry.gitSHA)
 	}
 
 	return entry, nil
@@ -315,6 +341,17 @@ func (r *ChangesetsRegistry) GetChangesetOptions(key string) (ChangesetConfig, e
 	}
 
 	return entry.options, nil
+}
+
+// GetResolvedInput retrieves the configuration for a changeset.
+// \"input\" is the optional input string passed to \"registry.Apply()\".
+func (r *ChangesetsRegistry) GetResolvedInput(key string, input string) (any, error) {
+	entry, ok := r.entries[key]
+	if !ok {
+		return nil, fmt.Errorf("changeset '%s' not found", key)
+	}
+
+	return entry.changeset.resolvedInput(input)
 }
 
 // GetConfigurations retrieves the configurations for a changeset.
@@ -430,15 +467,6 @@ func extractIndexFromKey(key string) (int, error) {
 	}
 
 	return index, nil
-}
-
-// Archive buries a changeset in the registry.
-func (r *ChangesetsRegistry) Archive(key string, gitSHA string) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	r.entries[key] = newArchivedRegistryEntry(gitSHA)
-	r.keyHistory = append(r.keyHistory, key)
 }
 
 // LatestKey returns the most recent changeset key.

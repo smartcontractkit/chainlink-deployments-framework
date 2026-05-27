@@ -3,13 +3,13 @@ package deployment
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"strings"
 	"sync"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/ethereum/go-ethereum/common"
 	chainsel "github.com/smartcontractkit/chain-selectors"
-	"golang.org/x/exp/maps"
 )
 
 var (

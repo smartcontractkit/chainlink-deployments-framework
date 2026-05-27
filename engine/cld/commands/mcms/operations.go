@@ -6,10 +6,14 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
+	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	gethtypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/go-viper/mapstructure/v2"
+	"github.com/google/uuid"
+	"github.com/samber/lo"
 	"github.com/smartcontractkit/mcms"
 	"github.com/smartcontractkit/mcms/sdk"
 	"github.com/smartcontractkit/mcms/sdk/evm/bindings"
@@ -20,6 +24,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	cldfchangeset "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/changeset"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
@@ -141,52 +146,108 @@ func executeChainCommand(ctx context.Context, lggr logger.Logger, cfg *forkConfi
 	return nil
 }
 
+type timelockExecuteChainCommandOptions struct {
+	idFn    func() string
+	clockFn func() time.Time
+}
+
+type timelockExecuteChainCommandOption func(*timelockExecuteChainCommandOptions)
+
 // timelockExecuteChainCommand executes timelock operations.
-func timelockExecuteChainCommand(ctx context.Context, lggr logger.Logger, cfg *forkConfig) error {
+func timelockExecuteChainCommand(
+	ctx context.Context, lggr logger.Logger, cfg *forkConfig, opts ...timelockExecuteChainCommandOption,
+) ([]cldfchangeset.MCMSTimelockExecuteReport, error) {
+	options := timelockExecuteChainCommandOptions{idFn: uuid.NewString, clockFn: time.Now}
+	for _, opt := range opts {
+		opt(&options)
+	}
+
 	if cfg.timelockProposal == nil {
-		return errors.New("expected proposal to be have non-nil *TimelockProposal")
+		return nil, errors.New("expected proposal to have non-nil *TimelockProposal")
+	}
+
+	timelockAddress, ok := cfg.timelockProposal.TimelockAddresses[types.ChainSelector(cfg.chainSelector)]
+	if !ok {
+		return nil, errors.New("failed to find timelock address for chain selector in proposal")
+	}
+	chainMetadata, ok := cfg.timelockProposal.ChainMetadata[types.ChainSelector(cfg.chainSelector)]
+	if !ok {
+		return nil, errors.New("failed to find chain metadata for chain selector in proposal")
 	}
 
 	executable, err := createTimelockExecutable(ctx, cfg)
 	if err != nil {
-		return fmt.Errorf("failed to create TimelockExecutable: %w", err)
+		return nil, fmt.Errorf("failed to create TimelockExecutable: %w", err)
 	}
 
 	executeOptions, err := timelockExecuteOptions(ctx, lggr, cfg)
 	if err != nil {
-		return fmt.Errorf("failed to get timelock execute options: %w", err)
+		return nil, fmt.Errorf("failed to get timelock execute options: %w", err)
 	}
 
+	operationIDs, _, err := cfg.timelockProposal.OperationIDs(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get operation IDs from proposal: %w", err)
+	}
+	if len(operationIDs) != len(cfg.timelockProposal.Operations) {
+		return nil, fmt.Errorf("unexpected number of operation IDs: expected %d, got %d",
+			len(cfg.timelockProposal.Operations), len(operationIDs))
+	}
+
+	reports := []cldfchangeset.MCMSTimelockExecuteReport{}
 	for i := range cfg.timelockProposal.Operations {
-		if uint64(cfg.timelockProposal.Operations[i].ChainSelector) == cfg.chainSelector {
-			// Check if operation is done, if so, skip it
-			if err := executable.IsOperationDone(ctx, i); err == nil {
-				lggr.Warnf("Operation %d is already done, skipping...\n", i)
-
-				continue
-			}
-
-			if err := executable.IsOperationReady(ctx, i); err != nil {
-				return fmt.Errorf("operation %d is not ready to be executed: %w", i, err)
-			}
-
-			result, err := executable.Execute(ctx, i, executeOptions...)
-			if err != nil {
-				return fmt.Errorf("failed to execute operation %d: %w", i, err)
-			}
-
-			err = confirmTransaction(ctx, lggr, result, cfg)
-			if err != nil {
-				return fmt.Errorf("failed to confirm execute transaction: %w", err)
-			}
-
-			lggr.Infof("Operation %d executed successfully: %s\n", i, result)
+		if uint64(cfg.timelockProposal.Operations[i].ChainSelector) != cfg.chainSelector {
+			continue
 		}
+
+		// Check if operation is done, if so, skip it
+		if err = executable.IsOperationDone(ctx, i); err == nil {
+			lggr.Warnf("Operation %d is already done, skipping...\n", i)
+			continue
+		}
+
+		reports = append(reports, cldfchangeset.MCMSTimelockExecuteReport{
+			ID:        options.idFn(),
+			Status:    cldfchangeset.StatusSuccess,
+			Type:      cldfchangeset.MCMSTimelockExecuteReportType,
+			Timestamp: options.clockFn(),
+			Input: cldfchangeset.MCMSTimelockExecuteReportInput{
+				Index:            i,
+				ChainSelector:    cfg.chainSelector,
+				OperationID:      operationIDs[i],
+				TimelockAddress:  timelockAddress,
+				MCMAddress:       chainMetadata.MCMAddress,
+				AdditionalFields: chainMetadata.AdditionalFields,
+				Changeset:        findChangeset(cfg.timelockProposal, i),
+			},
+			Output: cldfchangeset.MCMSTimelockExecuteReportOutput{},
+		})
+		report := &reports[len(reports)-1]
+
+		if err = executable.IsOperationReady(ctx, i); err != nil {
+			err = fmt.Errorf("operation %d is not ready to be executed: %w", i, err)
+			report.Status, report.Error = cldfchangeset.StatusFailed, err.Error()
+			return reports, err //nolint:nlreturn
+		}
+
+		report.Output.TransactionResult, err = executable.Execute(ctx, i, executeOptions...)
+		if err != nil {
+			report.Status, report.Error = cldfchangeset.StatusFailed, err.Error()
+			return reports, fmt.Errorf("failed to execute operation %d: %w", i, err)
+		}
+
+		err = confirmTransaction(ctx, lggr, report.Output.TransactionResult, cfg)
+		if err != nil {
+			report.Status, report.Error = cldfchangeset.StatusFailed, err.Error()
+			return reports, fmt.Errorf("failed to confirm execute transaction: %w", err)
+		}
+
+		lggr.Infof("Operation %d executed successfully: %s\n", i, report.Output.TransactionResult)
 	}
 
 	lggr.Infof("All operations executed successfully")
 
-	return nil
+	return reports, nil
 }
 
 // confirmTransaction waits for a transaction to be confirmed.
@@ -397,4 +458,60 @@ func addCallProxyOption(
 	}
 
 	return fmt.Errorf("failed to find call proxy contract for timelock %v", timelockAddress)
+}
+
+func getChangesetID(batchOperation types.BatchOperation) (string, error) {
+	const tagPrefix = "changeset:"
+
+	if len(batchOperation.Transactions) == 0 {
+		return "", errors.New("no transaction found in batch operation")
+	}
+
+	for _, tag := range batchOperation.Transactions[0].Tags {
+		if strings.HasPrefix(tag, tagPrefix) && len(tag) > len(tagPrefix) {
+			return tag[len(tagPrefix):], nil
+		}
+	}
+
+	return "", errors.New("no changeset tag found in batch operation")
+}
+
+// findChangeset finds the changeset name and index for the given id from the proposal
+// metadata. It assumes the metadata has a "changesets" field which is a list of changesets,
+// and that each changeset entry has an "id" field with an UUID.
+func findChangeset(proposal *mcms.TimelockProposal, index int) cldfchangeset.MCMSReportChangeset {
+	if index >= len(proposal.Operations) {
+		return cldfchangeset.MCMSReportChangeset{}
+	}
+
+	changesetID, err := getChangesetID(proposal.Operations[index])
+	if err != nil {
+		return cldfchangeset.MCMSReportChangeset{}
+	}
+
+	if proposal.Metadata == nil {
+		return cldfchangeset.MCMSReportChangeset{}
+	}
+
+	type changesetType struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	}
+	var parsedMetadata struct {
+		Changesets []changesetType `json:"changesets"`
+	}
+
+	err = mapstructure.Decode(proposal.Metadata, &parsedMetadata)
+	if err != nil {
+		return cldfchangeset.MCMSReportChangeset{}
+	}
+
+	changeset, index, found := lo.FindIndexOf(parsedMetadata.Changesets, func(c changesetType) bool {
+		return c.ID == changesetID
+	})
+	if !found {
+		return cldfchangeset.MCMSReportChangeset{}
+	}
+
+	return cldfchangeset.MCMSReportChangeset{ID: changeset.ID, Index: index, Name: changeset.Name}
 }

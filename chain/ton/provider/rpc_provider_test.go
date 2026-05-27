@@ -280,7 +280,7 @@ func Test_createWallet(t *testing.T) {
 			t.Parallel()
 
 			privateKey := make([]byte, 32)
-			wallet, err := createWallet(nil, privateKey, tt.version)
+			wallet, versionConfig, err := createWallet(nil, privateKey, tt.version)
 
 			if tt.expectError {
 				require.Error(t, err)
@@ -289,6 +289,7 @@ func Test_createWallet(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				assert.NotNil(t, wallet)
+				assert.NotNil(t, versionConfig)
 			}
 		})
 	}
