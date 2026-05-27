@@ -108,6 +108,7 @@ packages:
       structname: "{{.Mock}}{{.InterfaceName}}"
     interfaces:
       AccessControlContract:
+      AuthorizedCallersContract:
   github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer:
     config:
       all: false

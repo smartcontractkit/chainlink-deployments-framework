@@ -2,21 +2,12 @@ package upf
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"math/big"
 	"strings"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
 	chainsel "github.com/smartcontractkit/chain-selectors"
-	"github.com/smartcontractkit/chainlink-ccip/chains/evm/gobindings/generated/v1_6_0/rmn_remote"
-	rmnremotebindings "github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings/v0_1_0/rmn_remote"
-	timelockbindings "github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings/v0_1_0/timelock"
-	"github.com/smartcontractkit/chainlink-ton/pkg/bindings"
-	"github.com/smartcontractkit/chainlink-ton/pkg/bindings/lib/access/rbac"
-	"github.com/smartcontractkit/chainlink-ton/pkg/ton/tlbe"
 	"github.com/smartcontractkit/mcms"
 	mcmssdk "github.com/smartcontractkit/mcms/sdk"
 	mcmsevmsdk "github.com/smartcontractkit/mcms/sdk/evm"
@@ -25,8 +16,10 @@ import (
 	mcmstonsdk "github.com/smartcontractkit/mcms/sdk/ton"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 	"github.com/stretchr/testify/require"
-	"github.com/xssnick/tonutils-go/address"
-	"github.com/xssnick/tonutils-go/tlb"
+
+	"github.com/smartcontractkit/chainlink-ccip/chains/evm/gobindings/generated/v1_6_0/rmn_remote"
+	rmnremotebindings "github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings/v0_1_0/rmn_remote"
+	timelockbindings "github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings/v0_1_0/timelock"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
@@ -57,6 +50,11 @@ func TestUpfConvertTimelockProposal(t *testing.T) {
 	dsAddContract(t, ds, 16423721717087811551, "2hABoxD9U5A4j4x3kNDf4dBJ7ZP384Zbs3TuFn9QUTSs", "CancellerAccessControllerAccount 1.0.0")
 	dsAddContract(t, ds, 16423721717087811551, "68ds9kDfB6rJfC4zzeeQ8E9ZMwqSzFQEie1886VAPn68", "BypasserAccessControllerAccount 1.0.0")
 	dsAddContract(t, ds, 16423721717087811551, "RmnXLft1mSEwDgMKu2okYuHkiazxntFFcZFrrcXxYg7", "RMNRemote 1.0.0")
+
+	// ---- TON: testnet
+	dsAddContract(t, ds, chainsel.TON_TESTNET.Selector, "EQADa3W6G0nSiTV4a6euRA42fU9QxSEnb-WeDpcrtWzA2jM8", "MCMS 1.0.0")
+	dsAddContract(t, ds, chainsel.TON_TESTNET.Selector, "EQADa3W6G0nSiTV4a6euRA42fU9QxSEnb-WeDpcrtWzA2jM8", "Router 1.2.3")
+	dsAddContract(t, ds, chainsel.TON_TESTNET.Selector, "UQDVnPvHy7luXVeJ3VmNXSQxhme9fORLj3vylRCg6b3thiIY", "RBAC 1.0.0")
 
 	env := deployment.Environment{
 		DataStore:         ds.Seal(),
@@ -93,6 +91,9 @@ func TestUpfConvertTimelockProposal(t *testing.T) {
 					common.HexToAddress("0xA5D5B0B844c8f11B61F28AC98BBA84dEA9b80953"),
 					common.HexToAddress("0x9A60462e4CA802E3E945663930Be0d162e662091"),
 					common.HexToAddress("0x5f077BCeE6e285154473F65699d6F46Fd03D105A"),
+				},
+				mcmstypes.ChainSelector(chainsel.TON_TESTNET.Selector): {
+					common.HexToAddress("0xA5D5B0B844c8f11B61F28AC98BBA84dEA9b80953"),
 				},
 			},
 		},
@@ -173,62 +174,6 @@ func TestUpfConvertTimelockProposalWithSui(t *testing.T) {
 	}
 }
 
-func TestUpfConvertTimelockProposalWithTon(t *testing.T) {
-	t.Parallel()
-	ds := datastore.NewMemoryDataStore()
-
-	// ---- TON: testnet
-	dsAddContract(t, ds, chainsel.TON_TESTNET.Selector, "EQADa3W6G0nSiTV4a6euRA42fU9QxSEnb-WeDpcrtWzA2jM8", "MCMS 1.0.0")
-
-	env := deployment.Environment{
-		DataStore:         ds.Seal(),
-		ExistingAddresses: deployment.NewMemoryAddressBook(),
-	}
-
-	proposalCtx, err := mcmsanalyzer.NewDefaultProposalContext(env)
-	require.NoError(t, err)
-
-	tests := []struct {
-		name             string
-		timelockProposal string
-		signers          map[mcmstypes.ChainSelector][]common.Address
-		assertion        func(*testing.T, string, error)
-	}{
-		{
-			name:             "TON proposal with GrantRole transaction",
-			timelockProposal: timelockProposalTON(t),
-			signers: map[mcmstypes.ChainSelector][]common.Address{
-				mcmstypes.ChainSelector(chainsel.TON_TESTNET.Selector): {
-					common.HexToAddress("0xA5D5B0B844c8f11B61F28AC98BBA84dEA9b80953"),
-				},
-			},
-			assertion: func(t *testing.T, gotUpf string, err error) {
-				t.Helper()
-				require.NoError(t, err)
-				// Verify it contains TON-specific content
-				require.Contains(t, gotUpf, "chainFamily: ton")
-				require.Contains(t, gotUpf, "chainName: ton-testnet")
-				require.Contains(t, gotUpf, "msigAddress: EQADa3W6G0nSiTV4a6euRA42fU9QxSEnb-WeDpcrtWzA2jM8")
-				require.Contains(t, gotUpf, "contractType: RBACTimelock")
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			timelockProposal, err := mcms.NewTimelockProposal(strings.NewReader(tt.timelockProposal))
-			require.NoError(t, err)
-			mcmProposal := convertTimelockProposal(t.Context(), t, timelockProposal)
-
-			got, err := UpfConvertTimelockProposal(t.Context(), proposalCtx, env, timelockProposal, mcmProposal, tt.signers)
-
-			tt.assertion(t, got, err)
-		})
-	}
-}
-
 // ----- helpers -----
 
 func convertTimelockProposal(ctx context.Context, t *testing.T, timelockProposal *mcms.TimelockProposal) *mcms.Proposal {
@@ -287,6 +232,11 @@ var timelockProposalRMNCurse = `{
         "cancellerRoleAccessController": "2hABoxD9U5A4j4x3kNDf4dBJ7ZP384Zbs3TuFn9QUTSs",
         "bypasserRoleAccessController": "68ds9kDfB6rJfC4zzeeQ8E9ZMwqSzFQEie1886VAPn68"
       }
+    },
+    "1399300952838017768": {
+      "startingOpCount": 4,
+      "mcmAddress": "EQADa3W6G0nSiTV4a6euRA42fU9QxSEnb-WeDpcrtWzA2jM8",
+      "additionalFields": null
     }
   },
   "description": "simple EVM proposal with RMN curse",
@@ -295,7 +245,8 @@ var timelockProposalRMNCurse = `{
   "timelockAddresses": {
     "10344971235874465080": "0x5f077BCeE6e285154473F65699d6F46Fd03D105A",
     "13264668187771770619": "0x804759c9bdd258A810987FDe21c9E24C5383b722",
-    "16423721717087811551": "DoajfR5tK24xVw51fWcawUZWhAXD8yrBJVacc13neVQA.E4R6Nwg1K8Zvi6McLdkaGDD5ClX1KkyV"
+    "16423721717087811551": "DoajfR5tK24xVw51fWcawUZWhAXD8yrBJVacc13neVQA.E4R6Nwg1K8Zvi6McLdkaGDD5ClX1KkyV",
+    "1399300952838017768": "UQDVnPvHy7luXVeJ3VmNXSQxhme9fORLj3vylRCg6b3thiIY"
   },
   "operations": [
     {
@@ -357,17 +308,47 @@ var timelockProposalRMNCurse = `{
           }
         }
       ]
+    },
+    {
+      "chainSelector": 1399300952838017768,
+      "transactions": [
+        {
+          "contractType": "Router",
+          "contractVersion": "1.2.3",
+          "tags": [
+            "grantRole"
+          ],
+          "to": "EQADa3W6G0nSiTV4a6euRA42fU9QxSEnb-WeDpcrtWzA2jM8",
+          "data": "te6cckEBAQEAUAAAm5XNVA8AAAAAAAAAAamAjq/xjh1C9snrnzD1Q8U6hLD3ws36CvbU7ZXMJ03KgABtbrdDaTpRJq8NdPXIgcbPqeoYpCTt/LPB0uV2rZgbULu+N7g=",
+          "additionalFields": {
+            "contractTypeFull": "link.chain.ton.ccip.Router",
+            "value": 0
+          }
+        },
+        {
+          "contractType": "RBAC",
+          "tags": [
+            "grantRole"
+          ],
+          "to": "UQDVnPvHy7luXVeJ3VmNXSQxhme9fORLj3vylRCg6b3thiIY",
+          "data": "te6cckEBAQEAUAAAm5XNVA8AAAAAAAAAAamAjq/xjh1C9snrnzD1Q8U6hLD3ws36CvbU7ZXMJ03KgABtbrdDaTpRJq8NdPXIgcbPqeoYpCTt/LPB0uV2rZgbULu+N7g=",
+          "additionalFields": {
+            "contractTypeFull": "link.chain.ton.lib.access.RBAC",
+            "value": 0
+          }
+        }
+      ]
     }
   ]
 }`
 
 var upfProposalRMNCurse = `---
 msigType: mcms
-proposalHash: "0x41ce69645a9ce865c1035dc310e49bcb8057e932d20f50879858fc0b3319f909"
+proposalHash: "0x4e1528a57473fd4a244101bd921380b7885b2f774a46d9affdb7a85420a20420"
 mcmsParams:
   validUntil: 1999999999
-  merkleRoot: "0x963d51589fcf57be4be3f35dd42a9519deaf47754b81a61b2ef48475fb1824bf"
-  asciiProposalHash: '\xfc&\x9b\xef; \xc6R\xde\xba\x97\xe8\xcd!\x9e\xb3\xe4ya\x99\x17\x8b\x10\xefqY\x82\xe4]\x7f\xd3\xd3'
+  merkleRoot: "0x7ad0df9b769648dc4a31c43d4b14c27c872082075622b58a79e0bd1bf4d326f4"
+  asciiProposalHash: '\xf5''hv\x05O\xbc\xcav yk\xae\xe2\xc6\x0eC\xdd\x9e\xd4\xe1XL\x849kI\xef\x13\xa8\x8a\xbe'
   overridePreviousRoot: false
 transactions:
 - index: 0
@@ -570,11 +551,50 @@ transactions:
               - 11111111111111111111111111111111
               Subject:
                 value: 0xfb968f03709115b80000000000000000
+- index: 7
+  chainFamily: ton
+  chainId: "-3"
+  chainName: ton-testnet
+  chainShortName: ton-testnet
+  msigAddress: EQADa3W6G0nSiTV4a6euRA42fU9QxSEnb-WeDpcrtWzA2jM8
+  timelockAddress: UQDVnPvHy7luXVeJ3VmNXSQxhme9fORLj3vylRCg6b3thiIY
+  to: UQDVnPvHy7luXVeJ3VmNXSQxhme9fORLj3vylRCg6b3thiIY
+  value: 150000000
+  data: te6cckEBAwEA6wABoAlHGPQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAdzWT/wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEsAQKHgABtbrdDaTpRJq8NdPXIgcbPqeoYpCTt/LPB0uV2rZgbQQA1Zz7x8u5bl1Xid1ZjV0kMYZnvXzkS4978pUQoOm97YYICAgCblc1UDwAAAAAAAAABqYCOr/GOHUL2yeufMPVDxTqEsPfCzfoK9tTtlcwnTcqAAG1ut0NpOlEmrw109ciBxs+p6hikJO38s8HS5XatmBtQro9PYg==
+  txNonce: 4
+  metadata:
+    contractType: RBACTimelock
+    decodedCalldata:
+      functionName: link.chain.ton.mcms.Timelock::ScheduleBatch(0x94718f4)
+      functionArgs:
+        Calls:
+        - map[Data:619[95CD540F0000000000000001A9808EAFF18E1D42F6C9EB9F30F543C53A84B0F7C2CDFA0AF6D4ED95CC274DCA80006D6EB743693A5126AF0D74F5C881C6CFA9EA18A424EDFCB3C1D2E576AD981B4_] Target:EQADa3W6G0nSiTV4a6euRA42fU9QxSEnb-WeDpcrtWzA2jM8 Value:0]
+        - map[Data:619[95CD540F0000000000000001A9808EAFF18E1D42F6C9EB9F30F543C53A84B0F7C2CDFA0AF6D4ED95CC274DCA80006D6EB743693A5126AF0D74F5C881C6CFA9EA18A424EDFCB3C1D2E576AD981B4_] Target:EQDVnPvHy7luXVeJ3VmNXSQxhme9fORLj3vylRCg6b3thn_d Value:0]
+        Delay: "300"
+        Predecessor: "0"
+        QueryID: "0"
+        Salt: "53919893307341332922183390379372246260254658171444000539666648017328389750784"
+        calls:
+        - to: EQADa3W6G0nSiTV4a6euRA42fU9QxSEnb-WeDpcrtWzA2jM8
+          value: 0
+          data:
+            functionName: "failed to decode TON transaction: decoding failed - unknown contract interface: link.chain.ton.ccip.Router@1.2.3"
+            functionArgs: {}
+        - to: UQDVnPvHy7luXVeJ3VmNXSQxhme9fORLj3vylRCg6b3thiIY
+          value: 0
+          data:
+            functionName: link.chain.ton.lib.access.RBAC::GrantRole(0x95cd540f)
+            functionArgs:
+              Account: EQADa3W6G0nSiTV4a6euRA42fU9QxSEnb-WeDpcrtWzA2jM8
+              QueryID: "1"
+              Role: "76668012626274288566148650389907500593868393123329715998308465998801700081098"
 signers:
   10344971235874465080:
   - "0xA5D5B0B844c8f11B61F28AC98BBA84dEA9b80953"
   - "0x9A60462e4CA802E3E945663930Be0d162e662091"
   - "0x5f077BCeE6e285154473F65699d6F46Fd03D105A"
+  1399300952838017768:
+  - "0xA5D5B0B844c8f11B61F28AC98BBA84dEA9b80953"
 `
 
 //nolint:gosec // G101 all test values
@@ -666,58 +686,6 @@ signers:
   9762610643973837292:
   - "0xA5D5B0B844c8f11B61F28AC98BBA84dEA9b80953"
 `
-
-// timelockProposalTON is generated using makeTONGrantRoleTx helper
-var timelockProposalTON = func(t *testing.T) string {
-	t.Helper()
-	// Create a GrantRole transaction for the test
-	targetAddr := address.MustParseAddr("EQADa3W6G0nSiTV4a6euRA42fU9QxSEnb-WeDpcrtWzA2jM8")
-	exampleRole := crypto.Keccak256Hash([]byte("EXAMPLE_ROLE"))
-	grantRoleData, _ := tlb.ToCell(rbac.GrantRole{
-		QueryID: 1,
-		Role:    tlbe.NewUint256(new(big.Int).SetBytes(exampleRole[:])),
-		Account: targetAddr,
-	})
-
-	tx, _ := mcmstonsdk.NewTransaction(
-		targetAddr,
-		grantRoleData.ToBuilder().ToSlice(),
-		big.NewInt(0),
-		bindings.TypeRBAC,
-		[]string{"grantRole"},
-	)
-
-	// Marshal the transaction data
-	txData, err := json.Marshal(tx)
-	require.NoError(t, err)
-
-	return fmt.Sprintf(`{
-  "version": "v1",
-  "kind": "TimelockProposal",
-  "validUntil": 1999999999,
-  "signatures": [],
-  "overridePreviousRoot": false,
-  "chainMetadata": {
-    "1399300952838017768": {
-      "startingOpCount": 1,
-      "mcmAddress": "EQADa3W6G0nSiTV4a6euRA42fU9QxSEnb-WeDpcrtWzA2jM8",
-      "additionalFields": null
-    }
-  },
-  "description": "simple TON proposal with GrantRole",
-  "action": "schedule",
-  "delay": "5m0s",
-  "timelockAddresses": {
-    "1399300952838017768": "EQADa3W6G0nSiTV4a6euRA42fU9QxSEnb-WeDpcrtWzA2jM8"
-  },
-  "operations": [
-    {
-      "chainSelector": 1399300952838017768,
-      "transactions": [%s]
-    }
-  ]
-}`, string(txData))
-}
 
 func TestIsTimelockBatchFunction(t *testing.T) {
 	t.Parallel()

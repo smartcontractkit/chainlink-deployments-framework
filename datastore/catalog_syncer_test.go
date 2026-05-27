@@ -78,13 +78,14 @@ func TestMergeDataStoreToCatalog(t *testing.T) {
 		).Once()
 
 		// Setup source datastore expectations - fetch from source
-		mockSourceDS.EXPECT().Addresses().Return(mockSourceAddressStore).Once()
+		// Each store is called twice: once for Fetch, once for the DeletedRemoteKeys type assertion.
+		mockSourceDS.EXPECT().Addresses().Return(mockSourceAddressStore).Times(2)
 		mockSourceAddressStore.EXPECT().Fetch().Return(testAddressRefs, nil).Once()
 
-		mockSourceDS.EXPECT().ChainMetadata().Return(mockSourceChainStore).Once()
+		mockSourceDS.EXPECT().ChainMetadata().Return(mockSourceChainStore).Times(2)
 		mockSourceChainStore.EXPECT().Fetch().Return(testChainMetadata, nil).Once()
 
-		mockSourceDS.EXPECT().ContractMetadata().Return(mockSourceContractStore).Once()
+		mockSourceDS.EXPECT().ContractMetadata().Return(mockSourceContractStore).Times(2)
 		mockSourceContractStore.EXPECT().Fetch().Return(testContractMetadata, nil).Once()
 
 		mockSourceDS.EXPECT().EnvMetadata().Return(mockSourceEnvStore).Once()
@@ -139,13 +140,13 @@ func TestMergeDataStoreToCatalog(t *testing.T) {
 		).Once()
 
 		// Setup source datastore expectations
-		mockSourceDS.EXPECT().Addresses().Return(mockSourceAddressStore).Once()
+		mockSourceDS.EXPECT().Addresses().Return(mockSourceAddressStore).Times(2)
 		mockSourceAddressStore.EXPECT().Fetch().Return([]AddressRef{}, nil).Once()
 
-		mockSourceDS.EXPECT().ChainMetadata().Return(mockSourceChainStore).Once()
+		mockSourceDS.EXPECT().ChainMetadata().Return(mockSourceChainStore).Times(2)
 		mockSourceChainStore.EXPECT().Fetch().Return([]ChainMetadata{}, nil).Once()
 
-		mockSourceDS.EXPECT().ContractMetadata().Return(mockSourceContractStore).Once()
+		mockSourceDS.EXPECT().ContractMetadata().Return(mockSourceContractStore).Times(2)
 		mockSourceContractStore.EXPECT().Fetch().Return([]ContractMetadata{}, nil).Once()
 
 		mockSourceDS.EXPECT().EnvMetadata().Return(mockSourceEnvStore).Once()
@@ -364,13 +365,13 @@ func TestMergeDataStoreToCatalog(t *testing.T) {
 		).Once()
 
 		// Setup source datastore expectations - all stores are empty
-		mockSourceDS.EXPECT().Addresses().Return(mockSourceAddressStore).Once()
+		mockSourceDS.EXPECT().Addresses().Return(mockSourceAddressStore).Times(2)
 		mockSourceAddressStore.EXPECT().Fetch().Return([]AddressRef{}, nil).Once()
 
-		mockSourceDS.EXPECT().ChainMetadata().Return(mockSourceChainStore).Once()
+		mockSourceDS.EXPECT().ChainMetadata().Return(mockSourceChainStore).Times(2)
 		mockSourceChainStore.EXPECT().Fetch().Return([]ChainMetadata{}, nil).Once()
 
-		mockSourceDS.EXPECT().ContractMetadata().Return(mockSourceContractStore).Once()
+		mockSourceDS.EXPECT().ContractMetadata().Return(mockSourceContractStore).Times(2)
 		mockSourceContractStore.EXPECT().Fetch().Return([]ContractMetadata{}, nil).Once()
 
 		mockSourceDS.EXPECT().EnvMetadata().Return(mockSourceEnvStore).Once()
@@ -404,5 +405,127 @@ func TestMergeDataStoreToCatalog(t *testing.T) {
 		// Assert
 		require.Error(t, err)
 		assert.Equal(t, expectedErr, err)
+	})
+
+	t.Run("merges deletions to catalog", func(t *testing.T) {
+		t.Parallel()
+
+		mockCatalog := NewMockCatalogStore(t)
+		mockTxCatalog := NewMockCatalogStore(t)
+		mockCatalogAddressStore := NewMockMutableRefStoreV2[AddressRefKey, AddressRef](t)
+		mockCatalogChainStore := NewMockMutableStoreV2[ChainMetadataKey, ChainMetadata](t)
+		mockCatalogContractStore := NewMockMutableStoreV2[ContractMetadataKey, ContractMetadata](t)
+
+		// Use a real MemoryDataStore so the type assertions in the syncer succeed.
+		// RemoteDelete populates DeletedRemoteKeys (the field the syncer iterates).
+		sourceDS := NewMemoryDataStore()
+
+		addrKey := NewAddressRefKey(1, "TestContract", semver.MustParse("1.0.0"), "to-delete")
+		require.NoError(t, sourceDS.AddressRefStore.RemoteDelete(addrKey))
+
+		chainKey := NewChainMetadataKey(42)
+		require.NoError(t, sourceDS.ChainMetadataStore.RemoteDelete(chainKey))
+
+		contractKey := NewContractMetadataKey(99, "0xbeef")
+		require.NoError(t, sourceDS.ContractMetadataStore.RemoteDelete(contractKey))
+
+		mockCatalog.EXPECT().WithTransaction(ctx, mock.Anything).RunAndReturn(
+			func(ctx context.Context, fn TransactionLogic) error {
+				return fn(ctx, mockTxCatalog)
+			},
+		).Once()
+
+		// Fetch returns empty for all stores (records were deleted), so no upserts.
+		// Delete is called once per deleted key.
+		mockTxCatalog.EXPECT().Addresses().Return(mockCatalogAddressStore).Once()
+		mockCatalogAddressStore.EXPECT().Delete(ctx, addrKey).Return(nil).Once()
+
+		mockTxCatalog.EXPECT().ChainMetadata().Return(mockCatalogChainStore).Once()
+		mockCatalogChainStore.EXPECT().Delete(ctx, chainKey).Return(nil).Once()
+
+		mockTxCatalog.EXPECT().ContractMetadata().Return(mockCatalogContractStore).Once()
+		mockCatalogContractStore.EXPECT().Delete(ctx, contractKey).Return(nil).Once()
+
+		// Env metadata is not set in a fresh MemoryDataStore, syncer returns nil early.
+		err := MergeDataStoreToCatalog(ctx, sourceDS.Seal(), mockCatalog)
+		require.NoError(t, err)
+	})
+
+	t.Run("returns error when address ref delete fails", func(t *testing.T) {
+		t.Parallel()
+
+		mockCatalog := NewMockCatalogStore(t)
+		mockTxCatalog := NewMockCatalogStore(t)
+		mockCatalogAddressStore := NewMockMutableRefStoreV2[AddressRefKey, AddressRef](t)
+
+		sourceDS := NewMemoryDataStore()
+		addrKey := NewAddressRefKey(1, "TestContract", semver.MustParse("1.0.0"), "to-delete")
+		require.NoError(t, sourceDS.AddressRefStore.RemoteDelete(addrKey))
+
+		mockCatalog.EXPECT().WithTransaction(ctx, mock.Anything).RunAndReturn(
+			func(ctx context.Context, fn TransactionLogic) error {
+				return fn(ctx, mockTxCatalog)
+			},
+		).Once()
+
+		mockTxCatalog.EXPECT().Addresses().Return(mockCatalogAddressStore).Once()
+		mockCatalogAddressStore.EXPECT().Delete(ctx, addrKey).Return(errors.New("remote delete failed")).Once()
+
+		err := MergeDataStoreToCatalog(ctx, sourceDS.Seal(), mockCatalog)
+		require.Error(t, err)
+		require.ErrorContains(t, err, "failed to delete address reference from catalog")
+		require.ErrorContains(t, err, "remote delete failed")
+	})
+
+	t.Run("returns error when chain metadata delete fails", func(t *testing.T) {
+		t.Parallel()
+
+		mockCatalog := NewMockCatalogStore(t)
+		mockTxCatalog := NewMockCatalogStore(t)
+		mockCatalogChainStore := NewMockMutableStoreV2[ChainMetadataKey, ChainMetadata](t)
+
+		sourceDS := NewMemoryDataStore()
+		chainKey := NewChainMetadataKey(42)
+		require.NoError(t, sourceDS.ChainMetadataStore.RemoteDelete(chainKey))
+
+		mockCatalog.EXPECT().WithTransaction(ctx, mock.Anything).RunAndReturn(
+			func(ctx context.Context, fn TransactionLogic) error {
+				return fn(ctx, mockTxCatalog)
+			},
+		).Once()
+
+		mockTxCatalog.EXPECT().ChainMetadata().Return(mockCatalogChainStore).Once()
+		mockCatalogChainStore.EXPECT().Delete(ctx, chainKey).Return(errors.New("remote delete failed")).Once()
+
+		err := MergeDataStoreToCatalog(ctx, sourceDS.Seal(), mockCatalog)
+		require.Error(t, err)
+		require.ErrorContains(t, err, "failed to delete chain metadata from catalog")
+		require.ErrorContains(t, err, "remote delete failed")
+	})
+
+	t.Run("returns error when contract metadata delete fails", func(t *testing.T) {
+		t.Parallel()
+
+		mockCatalog := NewMockCatalogStore(t)
+		mockTxCatalog := NewMockCatalogStore(t)
+		mockCatalogContractStore := NewMockMutableStoreV2[ContractMetadataKey, ContractMetadata](t)
+
+		sourceDS := NewMemoryDataStore()
+		contractKey := NewContractMetadataKey(99, "0xbeef")
+		require.NoError(t, sourceDS.ContractMetadataStore.RemoteDelete(contractKey))
+
+		mockCatalog.EXPECT().WithTransaction(ctx, mock.Anything).RunAndReturn(
+			func(ctx context.Context, fn TransactionLogic) error {
+				return fn(ctx, mockTxCatalog)
+			},
+		).Once()
+
+		mockTxCatalog.EXPECT().ContractMetadata().Return(mockCatalogContractStore).Once()
+		mockCatalogContractStore.EXPECT().Delete(ctx, contractKey).Return(errors.New("remote delete failed")).Once()
+
+		err := MergeDataStoreToCatalog(ctx, sourceDS.Seal(), mockCatalog)
+		require.Error(t, err)
+		require.ErrorContains(t, err, "failed to delete contract metadata from catalog")
+		require.ErrorContains(t, err, "remote delete failed")
 	})
 }

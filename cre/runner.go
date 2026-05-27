@@ -118,6 +118,10 @@ type CLIRunner interface {
 	Run(ctx context.Context, env map[string]string, args ...string) (*CallResult, error)
 	// ContextRegistries returns workflow registries defined from domain.yaml.
 	ContextRegistries() []ContextRegistryEntry
+	// WithNamedAPIKey returns a CLIRunner that uses the API key registered under
+	// the given name. The name is an arbitrary label chosen by the operator when
+	// configuring CRE_API_KEY as a JSON object (e.g. {"prod":"...","stg":"..."}).
+	WithNamedAPIKey(name string) (CLIRunner, error)
 }
 
 func isValidRegistryType(value string) bool {

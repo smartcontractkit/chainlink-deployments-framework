@@ -343,6 +343,23 @@ func TestRuntime_Exec_Concurrent(t *testing.T) {
 	require.Len(t, runtime.state.Outputs, numOps)
 }
 
+func TestRuntime_ExecChangeset(t *testing.T) {
+	t.Parallel()
+
+	runtime := NewFromEnvironment(fdeployment.Environment{
+		Name:   "test-env",
+		Logger: logger.Nop(),
+	})
+
+	changeset := &mockChangeset[mockChangesetConfig]{}
+	config := mockChangesetConfig{Value: "test"}
+
+	taskID, err := ExecChangeset(runtime, changeset, config)
+	require.NoError(t, err)
+	require.NotEmpty(t, taskID)
+	require.Contains(t, runtime.state.Outputs, taskID)
+}
+
 func TestRuntime_State(t *testing.T) {
 	t.Parallel()
 

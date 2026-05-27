@@ -166,3 +166,65 @@ func (_c *MockCLIRunner_Run_Call) RunAndReturn(run func(ctx context.Context, env
 	_c.Call.Return(run)
 	return _c
 }
+
+// WithNamedAPIKey provides a mock function for the type MockCLIRunner
+func (_mock *MockCLIRunner) WithNamedAPIKey(name string) (cre.CLIRunner, error) {
+	ret := _mock.Called(name)
+
+	if len(ret) == 0 {
+		panic("no return value specified for WithNamedAPIKey")
+	}
+
+	var r0 cre.CLIRunner
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(string) (cre.CLIRunner, error)); ok {
+		return returnFunc(name)
+	}
+	if returnFunc, ok := ret.Get(0).(func(string) cre.CLIRunner); ok {
+		r0 = returnFunc(name)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(cre.CLIRunner)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(string) error); ok {
+		r1 = returnFunc(name)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockCLIRunner_WithNamedAPIKey_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WithNamedAPIKey'
+type MockCLIRunner_WithNamedAPIKey_Call struct {
+	*mock.Call
+}
+
+// WithNamedAPIKey is a helper method to define mock.On call
+//   - name string
+func (_e *MockCLIRunner_Expecter) WithNamedAPIKey(name interface{}) *MockCLIRunner_WithNamedAPIKey_Call {
+	return &MockCLIRunner_WithNamedAPIKey_Call{Call: _e.mock.On("WithNamedAPIKey", name)}
+}
+
+func (_c *MockCLIRunner_WithNamedAPIKey_Call) Run(run func(name string)) *MockCLIRunner_WithNamedAPIKey_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockCLIRunner_WithNamedAPIKey_Call) Return(cLIRunner cre.CLIRunner, err error) *MockCLIRunner_WithNamedAPIKey_Call {
+	_c.Call.Return(cLIRunner, err)
+	return _c
+}
+
+func (_c *MockCLIRunner_WithNamedAPIKey_Call) RunAndReturn(run func(name string) (cre.CLIRunner, error)) *MockCLIRunner_WithNamedAPIKey_Call {
+	_c.Call.Return(run)
+	return _c
+}

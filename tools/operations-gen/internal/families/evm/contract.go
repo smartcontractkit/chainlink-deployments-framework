@@ -14,9 +14,11 @@ import (
 )
 
 const (
-	accessPublic = "public"
-	accessOwner  = "owner"
-	accessRole   = "role"
+	accessPublic     = "public"
+	accessOwner      = "owner"
+	accessRole       = "role"
+	accessPrivate    = "private"
+	accessAuthorized = "authorized"
 )
 
 // ---- Intermediate representation ----
@@ -233,6 +235,10 @@ func extractFunctions(info *ContractInfo, funcConfigs []EvmFunctionConfig, parse
 				fi.AccessControl = accessOwner
 			case accessPublic, "":
 				fi.AccessControl = accessPublic
+			case accessPrivate:
+				fi.AccessControl = accessPrivate
+			case accessAuthorized:
+				fi.AccessControl = accessAuthorized
 			case accessRole:
 				if funcCfg.Role == "" {
 					return fmt.Errorf("role is required when access is %q for function %s", accessRole, funcCfg.Name)
@@ -244,7 +250,7 @@ func extractFunctions(info *ContractInfo, funcConfigs []EvmFunctionConfig, parse
 				fi.AccessControl = accessRole
 				fi.Role = role
 			default:
-				return fmt.Errorf("unknown access control '%s' for function %s (use 'owner', 'public', or 'role')",
+				return fmt.Errorf("unknown access control '%s' for function %s (use 'owner', 'public', 'authorized', 'private' or 'role')",
 					funcCfg.Access, funcCfg.Name)
 			}
 

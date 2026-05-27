@@ -238,6 +238,61 @@ func TestHasRole(t *testing.T) {
 	}
 }
 
+func TestIsAuthorizedCaller(t *testing.T) {
+	t.Parallel()
+
+	account := common.HexToAddress("0x1234")
+	contractAddress := common.HexToAddress("0xabcd")
+
+	tests := []struct {
+		desc           string
+		opts           *bind.CallOpts
+		setupMock      func(*contractmocks.MockAuthorizedCallersContract, *bind.CallOpts)
+		wantAuthorized bool
+	}{
+		{
+			desc: "returns true when caller is authorized",
+			setupMock: func(contract *contractmocks.MockAuthorizedCallersContract, opts *bind.CallOpts) {
+				contract.EXPECT().
+					Address().
+					Return(contractAddress).
+					Once()
+				contract.EXPECT().
+					GetAllAuthorizedCallers(opts).
+					Return([]common.Address{account}, nil).
+					Once()
+			},
+			wantAuthorized: true,
+		},
+		{
+			desc: "returns false when caller is not authorized",
+			setupMock: func(contract *contractmocks.MockAuthorizedCallersContract, opts *bind.CallOpts) {
+				contract.EXPECT().
+					Address().
+					Return(contractAddress).
+					Once()
+				contract.EXPECT().
+					GetAllAuthorizedCallers(opts).
+					Return([]common.Address{}, nil).
+					Once()
+			},
+			wantAuthorized: false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			t.Parallel()
+			contract := contractmocks.NewMockAuthorizedCallersContract(t)
+			test.setupMock(contract, test.opts)
+
+			allowed, err := IsAuthorizedCaller(contract, test.opts, account)
+			require.NoError(t, err)
+			require.Equal(t, test.wantAuthorized, allowed)
+		})
+	}
+}
+
 func TestRetryContractCall(t *testing.T) {
 	t.Parallel()
 

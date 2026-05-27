@@ -250,14 +250,15 @@ func recoverEVMSignature(expectedPublicKey, txHash, r, s []byte) ([]byte, error)
 	return evmSig, nil
 }
 
-// padTo32Bytes pads the given byte slice to 32 bytes by trimming leading zeros and prepending
-// zeros.
+// padTo32Bytes pads the given byte slice to 32 bytes by trimming leading zeros and left-padding
+// with zeros.
 func padTo32Bytes(buffer []byte) []byte {
 	buffer = bytes.TrimLeft(buffer, "\x00")
-	for len(buffer) < 32 {
-		zeroBuf := []byte{0}
-		buffer = append(zeroBuf, buffer...)
+	if len(buffer) >= 32 {
+		return buffer
 	}
+	out := make([]byte, 32)
+	copy(out[32-len(buffer):], buffer)
 
-	return buffer
+	return out
 }

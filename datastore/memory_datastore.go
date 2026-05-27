@@ -56,6 +56,12 @@ func (s *MemoryDataStore) EnvMetadata() MutableEnvMetadataStore {
 	return s.EnvMetadataStore
 }
 
+// WriteMetadata writes address refs and upserts contract and chain metadata and sets env metadata.
+// Address refs use Add by default; pass WithUpsertAddressRefs to insert or replace by key.
+func (s *MemoryDataStore) WriteMetadata(bundle MetadataBundle, opts ...WriteMetadataOption) error {
+	return WriteMetadataToDataStore(s, bundle, opts...)
+}
+
 // Merge merges the given mutable data store into the current MemoryDataStore.
 func (s *MemoryDataStore) Merge(other DataStore) error {
 	// Fetch address ref records from the other data store

@@ -85,6 +85,7 @@ type PostProposalHookParams struct {
 	Proposal     *mcms.TimelockProposal
 	Config       any
 	Reports      []MCMSTimelockExecuteReport
+	Err          string
 
 	// Deprecated: use `Config` instead. Will be removed in a future version.
 	Input any

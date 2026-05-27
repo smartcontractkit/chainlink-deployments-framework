@@ -10,6 +10,7 @@ import (
 	ownerhelpers "github.com/smartcontractkit/ccip-owner-contracts/pkg/gethwrappers"
 	mcmssolanasdk "github.com/smartcontractkit/mcms/sdk/solana"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
+	"github.com/xssnick/tonutils-go/address"
 
 	cldf_aptos "github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos"
 	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
@@ -25,6 +26,24 @@ type EVMMCMSWithTimelock interface {
 // SolanaMCMSWithTimelock adapts Solana MCMS-with-timelock state for TimelockConfig helpers.
 type SolanaMCMSWithTimelock interface {
 	TimelockPrograms() MCMSWithTimelockPrograms
+}
+
+// TonMCMSChainState holds a Go binding for all the currently deployed MCMS contracts
+// on a TON chain, indexed by qualifier. If a binding is nil, it means there is no such
+// MCMS suite contracts on the chain for that qualifier.
+type TonMCMSChainState struct {
+	ByQualifier map[string]*TonMCMSSuiteState
+}
+
+// TonMCMSSuiteState holds the state of a single MCMS deployment - currently includes all contract addresses.
+type TonMCMSSuiteState struct {
+	// 3x MCMS contracts, each gets a role in the timelock
+	Proposer  *address.Address
+	Canceller *address.Address
+	Bypasser  *address.Address
+
+	// Timelock contract address for this MCMS suite
+	Timelock *address.Address
 }
 
 // MCMSWithTimelockPrograms holds the Solana program and PDA seed values needed to resolve MCMS role addresses.
@@ -58,6 +77,35 @@ func (tc *TimelockConfig) MCMBasedOnActionSolana(s SolanaMCMSWithTimelock) (stri
 		return mcmssolanasdk.ContractAddress(programs.McmProgram, programs.CancellerMcmSeed), nil
 	case mcmstypes.TimelockActionBypass:
 		return mcmssolanasdk.ContractAddress(programs.McmProgram, programs.BypasserMcmSeed), nil
+	default:
+		return "", errors.New("invalid MCMS action")
+	}
+}
+
+func (tc *TimelockConfig) MCMBasedOnActionTon(s *TonMCMSSuiteState) (string, error) {
+	// if MCMSAction is not set, default to timelock.Schedule, this is to ensure no breaking changes for existing code
+	if tc.MCMSAction == "" {
+		tc.MCMSAction = mcmstypes.TimelockActionSchedule
+	}
+	switch tc.MCMSAction {
+	case mcmstypes.TimelockActionSchedule:
+		if s.Proposer == nil {
+			return "", errors.New("missing TON proposer")
+		}
+
+		return s.Proposer.String(), nil
+	case mcmstypes.TimelockActionCancel:
+		if s.Canceller == nil {
+			return "", errors.New("missing TON canceller")
+		}
+
+		return s.Canceller.String(), nil
+	case mcmstypes.TimelockActionBypass:
+		if s.Bypasser == nil {
+			return "", errors.New("missing TON bypasser")
+		}
+
+		return s.Bypasser.String(), nil
 	default:
 		return "", errors.New("invalid MCMS action")
 	}

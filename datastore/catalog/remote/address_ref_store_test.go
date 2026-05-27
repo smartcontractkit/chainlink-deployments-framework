@@ -288,17 +288,93 @@ func TestCatalogAddressRefStore_Upsert(t *testing.T) {
 
 func TestCatalogAddressRefStore_Delete(t *testing.T) {
 	t.Parallel()
-	store := setupTestStore(t, "", "")
 
-	version := semver.MustParse("1.0.0")
-	key := datastore.NewAddressRefKey(12345, "LinkToken", version, "test")
+	tests := []struct {
+		name string
+		run  func(t *testing.T, store *catalogAddressRefStore)
+	}{
+		{
+			name: "delete_existing_record",
+			run: func(t *testing.T, store *catalogAddressRefStore) {
+				t.Helper()
+				ref := newRandomAddressRef()
+				require.NoError(t, store.Add(t.Context(), ref))
 
-	// Execute
-	err := store.Delete(t.Context(), key)
+				key := datastore.NewAddressRefKey(ref.ChainSelector, ref.Type, ref.Version, ref.Qualifier)
+				require.NoError(t, store.Delete(t.Context(), key))
 
-	// Verify
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "delete operation not supported")
+				_, err := store.Get(t.Context(), key)
+				require.ErrorIs(t, err, datastore.ErrAddressRefNotFound)
+			},
+		},
+		{
+			name: "delete_nonexistent_key_returns_not_found",
+			run: func(t *testing.T, store *catalogAddressRefStore) {
+				t.Helper()
+				ref := newRandomAddressRef()
+				key := datastore.NewAddressRefKey(ref.ChainSelector, ref.Type, ref.Version, ref.Qualifier)
+				require.ErrorIs(t, store.Delete(t.Context(), key), datastore.ErrAddressRefNotFound)
+			},
+		},
+		{
+			name: "delete_already_deleted_returns_not_found",
+			run: func(t *testing.T, store *catalogAddressRefStore) {
+				t.Helper()
+				ref := newRandomAddressRef()
+				require.NoError(t, store.Add(t.Context(), ref))
+
+				key := datastore.NewAddressRefKey(ref.ChainSelector, ref.Type, ref.Version, ref.Qualifier)
+				require.NoError(t, store.Delete(t.Context(), key))
+				require.ErrorIs(t, store.Delete(t.Context(), key), datastore.ErrAddressRefNotFound)
+			},
+		},
+		{
+			name: "delete_then_readd",
+			run: func(t *testing.T, store *catalogAddressRefStore) {
+				t.Helper()
+				ref := newRandomAddressRef()
+				require.NoError(t, store.Add(t.Context(), ref))
+
+				key := datastore.NewAddressRefKey(ref.ChainSelector, ref.Type, ref.Version, ref.Qualifier)
+				require.NoError(t, store.Delete(t.Context(), key))
+
+				resurrected := ref
+				resurrected.Address = "0x" + randomHex(40)
+				resurrected.Labels = datastore.NewLabelSet("resurrected")
+				require.NoError(t, store.Add(t.Context(), resurrected))
+
+				got, err := store.Get(t.Context(), key)
+				require.NoError(t, err)
+				require.Equal(t, resurrected.Address, got.Address)
+				require.Equal(t, resurrected.Labels.List(), got.Labels.List())
+			},
+		},
+		{
+			name: "delete_excluded_from_find",
+			run: func(t *testing.T, store *catalogAddressRefStore) {
+				t.Helper()
+				ref := newRandomAddressRef()
+				require.NoError(t, store.Add(t.Context(), ref))
+
+				key := datastore.NewAddressRefKey(ref.ChainSelector, ref.Type, ref.Version, ref.Qualifier)
+				_, err := store.Get(t.Context(), key)
+				require.NoError(t, err)
+
+				require.NoError(t, store.Delete(t.Context(), key))
+
+				_, err = store.Get(t.Context(), key)
+				require.ErrorIs(t, err, datastore.ErrAddressRefNotFound)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			store := setupTestStore(t, "test-domain", "catalog_testing")
+			tt.run(t, store)
+		})
+	}
 }
 
 func TestCatalogAddressRefStore_FetchAndFilter(t *testing.T) {
@@ -657,7 +733,7 @@ func setupTestStore(t *testing.T, domain, environment string) *catalogAddressRef
 }
 
 // randomHex generates a random hex string of specified length
-func randomHex(length int) string {
+func randomHex(length int) string { //nolint:unparam // this is a test function and we usually want a 40 digit hex string
 	bytes := make([]byte, length/2)
 	if _, err := rand.Read(bytes); err != nil {
 		panic(fmt.Sprintf("failed to generate random bytes: %v", err))

@@ -223,63 +223,30 @@ func (s *catalogEnvMetadataStore) Set(ctx context.Context, metadata any, opts ..
 
 // editRecord is a helper method that handles the edit operation
 func (s *catalogEnvMetadataStore) editRecord(record datastore.EnvMetadata) error {
-	// Get the current version for this record
 	version := s.getVersion()
-	// Create the protobuf record
-	protoRecord := s.envMetadataToProto(record, version)
 
-	// Create edit request with UPSERT semantics (since Set should always work)
-	editReq := &pb.DataAccessRequest{
+	req := &pb.DataAccessRequest{
 		Operation: &pb.DataAccessRequest_EnvironmentMetadataEditRequest{
 			EnvironmentMetadataEditRequest: &pb.EnvironmentMetadataEditRequest{
-				Record:    protoRecord,
+				Record:    s.envMetadataToProto(record, version),
 				Semantics: pb.EditSemantics_SEMANTICS_UPSERT,
 			},
 		},
 	}
 
-	// Create stream with the initial request for HMAC
-	stream, err := s.client.DataAccess(editReq)
-	if err != nil {
-		return fmt.Errorf("failed to create gRPC stream: %w", err)
+	if err := executeEdit(s.client, req,
+		(*pb.DataAccessResponse).GetEnvironmentMetadataEditResponse,
+		func(statusErr error, code codes.Code) error {
+			if code == codes.Aborted {
+				return fmt.Errorf("%w: %s", datastore.ErrEnvMetadataStale, statusErr.Error())
+			}
+
+			return fmt.Errorf("edit request failed: %w", statusErr)
+		}); err != nil {
+		return err
 	}
 
-	if sendErr := stream.Send(editReq); sendErr != nil {
-		return fmt.Errorf("failed to send edit request: %w", sendErr)
-	}
-
-	// Receive response
-	resp, err := stream.Recv()
-	if err != nil {
-		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-			return fmt.Errorf("request canceled or deadline exceeded: %w", err)
-		}
-
-		return fmt.Errorf("failed to receive response: %w", err)
-	}
-
-	// Check for errors in the edit response
-	if statusErr := parseResponseStatus(resp.Status); statusErr != nil {
-		st, err := parseStatusError(statusErr)
-		if err != nil {
-			return err
-		}
-
-		if st.Code() == codes.Aborted {
-			return fmt.Errorf("%w: %s", datastore.ErrEnvMetadataStale, statusErr.Error())
-		}
-
-		return fmt.Errorf("edit request failed: %w", statusErr)
-	}
-
-	editResp := resp.GetEnvironmentMetadataEditResponse()
-	if editResp == nil {
-		return errors.New("unexpected response type")
-	}
-
-	// Update the version cache - increment the version after successful edit
-	newVersion := s.getVersion() + 1
-	s.setVersion(newVersion)
+	s.setVersion(s.getVersion() + 1)
 
 	return nil
 }

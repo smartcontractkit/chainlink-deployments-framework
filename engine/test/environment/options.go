@@ -234,6 +234,14 @@ func WithNodeIDs(nodeIDs []string) LoadOpt {
 	}
 }
 
+// WithName sets the name for the environment.
+func WithName(name string) LoadOpt {
+	return func(cmps *components) error {
+		cmps.Name = name
+		return nil
+	}
+}
+
 // withChainLoader creates a LoadOpt that loads chains using the provided loader and selectors.
 func withChainLoader(t *testing.T, loader *onchain.ChainLoader, selectors []uint64) LoadOpt {
 	t.Helper()

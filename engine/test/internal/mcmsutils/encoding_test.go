@@ -51,7 +51,7 @@ func TestDecodeProposal(t *testing.T) {
 		assert.Equal(t, "v1", proposal.Version)
 		assert.Equal(t, mcmstypes.ProposalKind("Proposal"), proposal.Kind)
 		require.Contains(t, proposal.ChainMetadata, mcmstypes.ChainSelector(3379446385462418246))
-		require.Len(t, proposal.Operations, 1)
+		require.Len(t, proposal.Operations, 2)
 	})
 
 	t.Run("failed decoding", func(t *testing.T) {

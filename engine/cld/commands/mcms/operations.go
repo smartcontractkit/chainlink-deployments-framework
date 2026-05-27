@@ -196,51 +196,53 @@ func timelockExecuteChainCommand(
 
 	reports := []cldfchangeset.MCMSTimelockExecuteReport{}
 	for i := range cfg.timelockProposal.Operations {
-		if uint64(cfg.timelockProposal.Operations[i].ChainSelector) == cfg.chainSelector {
-			// Check if operation is done, if so, skip it
-			if err := executable.IsOperationDone(ctx, i); err == nil {
-				lggr.Warnf("Operation %d is already done, skipping...\n", i)
-
-				continue
-			}
-
-			if err := executable.IsOperationReady(ctx, i); err != nil {
-				return nil, fmt.Errorf("operation %d is not ready to be executed: %w", i, err)
-			}
-
-			timestamp := options.clockFn()
-
-			result, err := executable.Execute(ctx, i, executeOptions...)
-			if err != nil {
-				return nil, fmt.Errorf("failed to execute operation %d: %w", i, err)
-			}
-
-			reports = append(reports, cldfchangeset.MCMSTimelockExecuteReport{
-				ID:        options.idFn(),
-				Type:      cldfchangeset.MCMSTimelockExecuteReportType,
-				Status:    "SUCCESS",
-				Timestamp: timestamp,
-				Input: cldfchangeset.MCMSTimelockExecuteReportInput{
-					Index:            i,
-					ChainSelector:    cfg.chainSelector,
-					OperationID:      operationIDs[i],
-					TimelockAddress:  timelockAddress,
-					MCMAddress:       chainMetadata.MCMAddress,
-					AdditionalFields: chainMetadata.AdditionalFields,
-					Changeset:        findChangeset(cfg.timelockProposal, i),
-				},
-				Output: cldfchangeset.MCMSTimelockExecuteReportOutput{
-					TransactionResult: result,
-				},
-			})
-
-			err = confirmTransaction(ctx, lggr, result, cfg)
-			if err != nil {
-				return nil, fmt.Errorf("failed to confirm execute transaction: %w", err)
-			}
-
-			lggr.Infof("Operation %d executed successfully: %s\n", i, result)
+		if uint64(cfg.timelockProposal.Operations[i].ChainSelector) != cfg.chainSelector {
+			continue
 		}
+
+		// Check if operation is done, if so, skip it
+		if err = executable.IsOperationDone(ctx, i); err == nil {
+			lggr.Warnf("Operation %d is already done, skipping...\n", i)
+			continue
+		}
+
+		reports = append(reports, cldfchangeset.MCMSTimelockExecuteReport{
+			ID:        options.idFn(),
+			Status:    cldfchangeset.StatusSuccess,
+			Type:      cldfchangeset.MCMSTimelockExecuteReportType,
+			Timestamp: options.clockFn(),
+			Input: cldfchangeset.MCMSTimelockExecuteReportInput{
+				Index:            i,
+				ChainSelector:    cfg.chainSelector,
+				OperationID:      operationIDs[i],
+				TimelockAddress:  timelockAddress,
+				MCMAddress:       chainMetadata.MCMAddress,
+				AdditionalFields: chainMetadata.AdditionalFields,
+				Changeset:        findChangeset(cfg.timelockProposal, i),
+			},
+			Output: cldfchangeset.MCMSTimelockExecuteReportOutput{},
+		})
+		report := &reports[len(reports)-1]
+
+		if err = executable.IsOperationReady(ctx, i); err != nil {
+			err = fmt.Errorf("operation %d is not ready to be executed: %w", i, err)
+			report.Status, report.Error = cldfchangeset.StatusFailed, err.Error()
+			return reports, err //nolint:nlreturn
+		}
+
+		report.Output.TransactionResult, err = executable.Execute(ctx, i, executeOptions...)
+		if err != nil {
+			report.Status, report.Error = cldfchangeset.StatusFailed, err.Error()
+			return reports, fmt.Errorf("failed to execute operation %d: %w", i, err)
+		}
+
+		err = confirmTransaction(ctx, lggr, report.Output.TransactionResult, cfg)
+		if err != nil {
+			report.Status, report.Error = cldfchangeset.StatusFailed, err.Error()
+			return reports, fmt.Errorf("failed to confirm execute transaction: %w", err)
+		}
+
+		lggr.Infof("Operation %d executed successfully: %s\n", i, report.Output.TransactionResult)
 	}
 
 	lggr.Infof("All operations executed successfully")

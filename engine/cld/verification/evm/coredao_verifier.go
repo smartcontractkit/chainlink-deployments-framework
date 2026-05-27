@@ -149,7 +149,7 @@ func (v *coredaoVerifier) Verify(ctx context.Context) error {
 		Action:               "verifysourcecode",
 		Address:              v.address,
 		APIKey:               v.apiKey,
-		CodeFormat:           "solidity-standard-json-input",
+		CodeFormat:           codeFormatStandardJSON,
 		CompilerVersion:      v.metadata.Version,
 		ConstructorArguments: constructorArgs,
 		ContractAddress:      v.address,
