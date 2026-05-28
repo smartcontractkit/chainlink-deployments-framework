@@ -235,6 +235,70 @@ func Test_ExecuteOperation_WithPreviousRun(t *testing.T) {
 	assert.Equal(t, 2, handlerWithErrorCalledTimes)
 }
 
+func Test_SetIdempotencyDisabled(t *testing.T) { //nolint:paralleltest // mutates global idempotency config
+	handlerCalledTimes := 0
+	op := NewOperation("plus1", semver.MustParse("1.0.0"), "test operation",
+		func(b Bundle, deps any, input int) (output int, err error) {
+			handlerCalledTimes++
+			return input + 1, nil
+		},
+	)
+
+	version := semver.MustParse("1.0.0")
+	sequence := NewSequence("seq-plus1", version, "plus 1",
+		func(b Bundle, deps any, input int) (int, error) {
+			res, err := ExecuteOperation(b, op, nil, input)
+			if err != nil {
+				return 0, err
+			}
+
+			return res.Output, nil
+		},
+	)
+
+	bundle := NewBundle(t.Context, logger.Test(t), NewMemoryReporter())
+
+	_, err := ExecuteOperation(bundle, op, nil, 1)
+	require.NoError(t, err)
+	require.Equal(t, 1, handlerCalledTimes)
+
+	_, err = ExecuteOperation(bundle, op, nil, 1)
+	require.NoError(t, err)
+	require.Equal(t, 1, handlerCalledTimes, "second run should reuse report by default")
+
+	SetIdempotencyDisabled(true)
+	require.True(t, IdempotencyDisabled())
+	t.Cleanup(func() { SetIdempotencyDisabled(false) })
+
+	_, err = ExecuteOperation(bundle, op, nil, 1)
+	require.NoError(t, err)
+	require.Equal(t, 2, handlerCalledTimes, "execution idempotency disabled should force operation execution")
+
+	_, err = ExecuteSequence(bundle, sequence, nil, 1)
+	require.NoError(t, err)
+	require.Equal(t, 3, handlerCalledTimes, "execution idempotency disabled should force sequence execution")
+
+	nHandlerCalledTimes := 0
+	nOp := NewOperation("plus1-n", semver.MustParse("1.0.0"), "test operation n",
+		func(b Bundle, deps any, input int) (output int, err error) {
+			nHandlerCalledTimes++
+			return input + 1, nil
+		},
+	)
+	reporter := NewMemoryReporter()
+	for i := range 2 {
+		report := NewReport(nOp.def, 1, 2, nil)
+		report.ExecutionSeries = &ExecutionSeries{ID: "series-1", Order: uint(i)} // #nosec G115
+		require.NoError(t, reporter.AddReport(genericReport(report)))
+	}
+	nBundle := NewBundle(t.Context, logger.Test(t), reporter)
+
+	reports, err := ExecuteOperationN(nBundle, nOp, nil, 1, "series-1", 2)
+	require.NoError(t, err)
+	require.Len(t, reports, 2)
+	require.Equal(t, 2, nHandlerCalledTimes, "execution idempotency disabled should run all N executions")
+}
+
 func Test_ExecuteOperation_WithPreviousRun_UsesMostRecentSuccessfulReport(t *testing.T) {
 	t.Parallel()
 

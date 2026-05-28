@@ -118,7 +118,7 @@ func WithOperationNRetryConfig[IN, DEP any](config RetryConfig[IN, DEP]) Execute
 
 // ExecuteOperation executes an operation with the given input and dependencies.
 // Execution will return the previous successful execution result and skip execution if there was a
-// previous successful run found in the Reports.
+// previous successful run found in the Reports, unless IdempotencyDisabled or WithForceExecute is set.
 // If previous unsuccessful execution was found, the execution will not be skipped.
 //
 // Note:
@@ -150,7 +150,7 @@ func ExecuteOperation[IN, OUT, DEP any](
 	for _, opt := range opts {
 		opt(executeConfig)
 	}
-	if !executeConfig.forceExecute {
+	if shouldReusePreviousReport(executeConfig.forceExecute) {
 		if previousReport, ok := loadPreviousSuccessfulReport[IN, OUT](b, operation.def, input); ok {
 			b.Logger.Infow("Operation already executed. Returning previous result", "id", operation.def.ID,
 				"version", operation.def.Version, "description", operation.def.Description)
@@ -186,7 +186,8 @@ func ExecuteOperation[IN, OUT, DEP any](
 
 // ExecuteOperationN executes the given operation multiple n times with the given input and dependencies.
 // Execution will return the previous successful execution results and skip execution if there were
-// previous successful runs found in the Reports. Options are ExecuteOperationNOption (retry only).
+// previous successful runs found in the Reports, unless IdempotencyDisabled is set.
+// Options are ExecuteOperationNOption (retry only).
 // executionSeriesID is used to identify the multiple executions as a single unit.
 // It is important to use a unique executionSeriesID for different sets of multiple executions.
 func ExecuteOperationN[IN, OUT, DEP any](
@@ -204,15 +205,20 @@ func ExecuteOperationN[IN, OUT, DEP any](
 		opt(nConfig)
 	}
 
-	results, ok := loadSuccessfulExecutionSeriesReports[IN, OUT](b, operation.def, input, seriesID)
-	resultsLen := uint(len(results))
-	if ok {
-		// if there are more reports than n, we return only the first n reports
-		if resultsLen >= n {
-			b.Logger.Infow("Operations already executed in an execution series. Returning previous results", "id", operation.def.ID,
-				"version", operation.def.Version, "description", operation.def.Description, "executionSeriesID", seriesID)
+	var results []Report[IN, OUT]
+	resultsLen := uint(0)
+	if shouldReusePreviousReport(false) {
+		var ok bool
+		results, ok = loadSuccessfulExecutionSeriesReports[IN, OUT](b, operation.def, input, seriesID)
+		resultsLen = uint(len(results))
+		if ok {
+			// if there are more reports than n, we return only the first n reports
+			if resultsLen >= n {
+				b.Logger.Infow("Operations already executed in an execution series. Returning previous results", "id", operation.def.ID,
+					"version", operation.def.Version, "description", operation.def.Description, "executionSeriesID", seriesID)
 
-			return results[:n], nil
+				return results[:n], nil
+			}
 		}
 	}
 	remainingTimesToRun := n - resultsLen
@@ -296,7 +302,7 @@ func executeWithRetry[IN, OUT, DEP any](
 // the operations that were executed as part of this sequence.
 // The latter is useful when we want to return all the executed reports to the changeset output.
 // Execution will return the previous successful execution result and skip execution if there was a
-// previous successful run found in the Reports.
+// previous successful run found in the Reports, unless IdempotencyDisabled is set.
 // If previous unsuccessful execution was found, the execution will not be skipped.
 //
 // Note:
@@ -314,15 +320,17 @@ func ExecuteSequence[IN, OUT, DEP any](
 		return SequenceReport[IN, OUT]{}, fmt.Errorf("sequence %s input: %w", sequence.def.ID, ErrNotSerializable)
 	}
 
-	if previousReport, ok := loadPreviousSuccessfulReport[IN, OUT](b, sequence.def, input); ok {
-		executionReports, err := b.reporter.GetExecutionReports(previousReport.ID)
-		if err != nil {
-			return SequenceReport[IN, OUT]{}, err
-		}
-		b.Logger.Infow("Sequence already executed. Returning previous result", "id", sequence.def.ID,
-			"version", sequence.def.Version, "description", sequence.def.Description)
+	if shouldReusePreviousReport(false) {
+		if previousReport, ok := loadPreviousSuccessfulReport[IN, OUT](b, sequence.def, input); ok {
+			executionReports, err := b.reporter.GetExecutionReports(previousReport.ID)
+			if err != nil {
+				return SequenceReport[IN, OUT]{}, err
+			}
+			b.Logger.Infow("Sequence already executed. Returning previous result", "id", sequence.def.ID,
+				"version", sequence.def.Version, "description", sequence.def.Description)
 
-		return SequenceReport[IN, OUT]{previousReport, executionReports}, nil
+			return SequenceReport[IN, OUT]{previousReport, executionReports}, nil
+		}
 	}
 
 	b.Logger.Infow("Executing sequence", "id", sequence.def.ID,

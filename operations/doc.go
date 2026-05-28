@@ -26,7 +26,7 @@ Executor:
   - Executes operations with configurable retry policies
   - Handles operation failures and recovery strategies
   - Supports input hooks for dynamic parameter adjustment
-  - Operations reuse previous successful reports by default; ExecuteOperation accepts WithForceExecute to bypass that reuse
+  - Operations reuse previous successful reports by default; use operations.SetIdempotencyDisabled(true) to disable reuse globally, or WithForceExecute on a single ExecuteOperation call
 
 Sequence:
   - Orchestrates multiple operations in dependency order
