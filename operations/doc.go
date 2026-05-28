@@ -55,6 +55,9 @@ Reporter:
 	// Force execution and ignore previous successful reports.
 	result, err = operations.ExecuteOperation(bundle, op, deps, input, operations.WithForceExecute[InputType, DepsType]())
 
+	// A different idempotency key runs again; the same key reuses the prior successful report.
+	result, err = operations.ExecuteOperation(bundle, op, deps, input, operations.WithIdempotencyKey[InputType, DepsType]("extra-key"))
+
 	// Execute a sequence.
 	_, err = operations.ExecuteSequence(bundle, sequence, deps, input)
 */

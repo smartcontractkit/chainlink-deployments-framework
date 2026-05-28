@@ -15,6 +15,8 @@ type ExecuteConfig[IN, DEP any] struct {
 	retryConfig RetryConfig[IN, DEP]
 	// forceExecute controls whether execution should skip execution when previous successful report is found (set by WithForceExecute).
 	forceExecute bool
+	// idempotencyKey scopes report reuse beyond operation definition and input (set by WithIdempotencyKey).
+	idempotencyKey string
 }
 
 type ExecuteOption[IN, DEP any] func(*ExecuteConfig[IN, DEP])
@@ -94,6 +96,15 @@ func WithForceExecute[IN, DEP any]() ExecuteOption[IN, DEP] {
 	}
 }
 
+// WithIdempotencyKey is an ExecuteOption that adds an extra component to the idempotency hash.
+// The hash will then be built from the operation definition, input, and this key.
+// Use it when the same operation input can legitimately produce different results, so a later run should not reuse an earlier result.
+func WithIdempotencyKey[IN, DEP any](idempotencyKey string) ExecuteOption[IN, DEP] {
+	return func(c *ExecuteConfig[IN, DEP]) {
+		c.idempotencyKey = idempotencyKey
+	}
+}
+
 // WithOperationNRetry is an ExecuteOperationNOption that enables the default retry for each run in ExecuteOperationN.
 func WithOperationNRetry[IN, DEP any]() ExecuteOperationNOption[IN, DEP] {
 	return func(c *ExecuteOperationNConfig[IN, DEP]) {
@@ -151,7 +162,7 @@ func ExecuteOperation[IN, OUT, DEP any](
 		opt(executeConfig)
 	}
 	if !executeConfig.forceExecute {
-		if previousReport, ok := loadPreviousSuccessfulReport[IN, OUT](b, operation.def, input); ok {
+		if previousReport, ok := loadPreviousSuccessfulReport[IN, OUT](b, operation.def, input, executeConfig.idempotencyKey); ok {
 			b.Logger.Infow("Operation already executed. Returning previous result", "id", operation.def.ID,
 				"version", operation.def.Version, "description", operation.def.Description)
 
@@ -173,6 +184,7 @@ func ExecuteOperation[IN, OUT, DEP any](
 	}
 
 	report := NewReport(operation.def, input, output, err)
+	report.IdempotencyKey = executeConfig.idempotencyKey
 	if err = b.reporter.AddReport(genericReport(report)); err != nil {
 		return Report[IN, OUT]{}, err
 	}
@@ -314,7 +326,7 @@ func ExecuteSequence[IN, OUT, DEP any](
 		return SequenceReport[IN, OUT]{}, fmt.Errorf("sequence %s input: %w", sequence.def.ID, ErrNotSerializable)
 	}
 
-	if previousReport, ok := loadPreviousSuccessfulReport[IN, OUT](b, sequence.def, input); ok {
+	if previousReport, ok := loadPreviousSuccessfulReport[IN, OUT](b, sequence.def, input, ""); ok {
 		executionReports, err := b.reporter.GetExecutionReports(previousReport.ID)
 		if err != nil {
 			return SequenceReport[IN, OUT]{}, err
@@ -382,14 +394,14 @@ func NewUnrecoverableError(err error) error {
 }
 
 func loadPreviousSuccessfulReport[IN, OUT any](
-	b Bundle, def Definition, input IN,
+	b Bundle, def Definition, input IN, idempotencyKey string,
 ) (Report[IN, OUT], bool) {
 	prevReports, err := b.reporter.GetReports()
 	if err != nil {
 		b.Logger.Errorw("Failed to get reports", "error", err)
 		return Report[IN, OUT]{}, false
 	}
-	currentHash, err := constructUniqueHashFrom(b.reportHashCache, def, input)
+	currentHash, err := constructUniqueHashFrom(b.reportHashCache, def, input, idempotencyKey)
 	if err != nil {
 		b.Logger.Errorw("Failed to construct unique hash", "error", err)
 		return Report[IN, OUT]{}, false
@@ -400,7 +412,7 @@ func loadPreviousSuccessfulReport[IN, OUT any](
 	for i := len(prevReports) - 1; i >= 0; i-- {
 		report := prevReports[i]
 		// Check if operation/sequence was run previously and return the report if successful
-		reportHash, err := constructUniqueHashFrom(b.reportHashCache, report.Def, report.Input)
+		reportHash, err := constructUniqueHashFrom(b.reportHashCache, report.Def, report.Input, report.IdempotencyKey)
 		if err != nil {
 			b.Logger.Errorw("Failed to construct unique hash for previous report", "error", err)
 			continue
@@ -430,7 +442,7 @@ func loadSuccessfulExecutionSeriesReports[IN, OUT any](
 		b.Logger.Errorw("Failed to get reports", "error", err)
 		return []Report[IN, OUT]{}, false
 	}
-	currentHash, err := constructUniqueHashFrom(b.reportHashCache, def, input)
+	currentHash, err := constructUniqueHashFrom(b.reportHashCache, def, input, "")
 	if err != nil {
 		b.Logger.Errorw("Failed to construct unique hash", "error", err)
 		return []Report[IN, OUT]{}, false
@@ -442,7 +454,7 @@ func loadSuccessfulExecutionSeriesReports[IN, OUT any](
 		if report.ExecutionSeries == nil || report.ExecutionSeries.ID != seriesID {
 			continue
 		}
-		reportHash, err := constructUniqueHashFrom(b.reportHashCache, report.Def, report.Input)
+		reportHash, err := constructUniqueHashFrom(b.reportHashCache, report.Def, report.Input, "")
 		if err != nil {
 			b.Logger.Errorw("Failed to construct unique hash for previous report", "error", err)
 			continue
