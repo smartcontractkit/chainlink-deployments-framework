@@ -2,6 +2,7 @@ package operations
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -249,6 +250,54 @@ func Test_ExecuteOperation_WithPreviousRun(t *testing.T) {
 	require.ErrorContains(t, err, "test error")
 	require.ErrorContains(t, res.Err, "test error")
 	assert.Equal(t, 2, handlerWithErrorCalledTimes)
+}
+
+func Test_ExecuteOperation_ReportJSON_IdempotencyKey(t *testing.T) {
+	t.Parallel()
+
+	handler := func(b Bundle, deps any, input int) (int, error) {
+		return input + 1, nil
+	}
+	op := NewOperation("plus1", semver.MustParse("1.0.0"), "test operation", handler)
+
+	t.Run("includes idempotencyKey when set", func(t *testing.T) {
+		t.Parallel()
+
+		const idempotencyKey = "chain-42161"
+		bundle := NewBundle(t.Context, logger.Test(t), NewMemoryReporter())
+
+		res, err := ExecuteOperation(bundle, op, nil, 1, WithIdempotencyKey[int, any](idempotencyKey))
+		require.NoError(t, err)
+
+		stored, err := bundle.reporter.GetReport(res.ID)
+		require.NoError(t, err)
+		assert.Equal(t, idempotencyKey, stored.IdempotencyKey)
+
+		raw, err := json.Marshal(stored)
+		require.NoError(t, err)
+
+		var payload map[string]json.RawMessage
+		require.NoError(t, json.Unmarshal(raw, &payload))
+		require.Contains(t, payload, "idempotencyKey")
+		assert.JSONEq(t, `"`+idempotencyKey+`"`, string(payload["idempotencyKey"]))
+	})
+
+	t.Run("omits idempotencyKey when unset", func(t *testing.T) {
+		t.Parallel()
+
+		bundle := NewBundle(t.Context, logger.Test(t), NewMemoryReporter())
+
+		res, err := ExecuteOperation(bundle, op, nil, 1)
+		require.NoError(t, err)
+
+		stored, err := bundle.reporter.GetReport(res.ID)
+		require.NoError(t, err)
+		assert.Empty(t, stored.IdempotencyKey)
+
+		raw, err := json.Marshal(stored)
+		require.NoError(t, err)
+		assert.NotContains(t, string(raw), "idempotencyKey")
+	})
 }
 
 func Test_ExecuteOperation_WithPreviousRun_UsesMostRecentSuccessfulReport(t *testing.T) {
