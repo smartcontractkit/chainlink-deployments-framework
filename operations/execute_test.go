@@ -212,13 +212,29 @@ func Test_ExecuteOperation_WithPreviousRun(t *testing.T) {
 	assert.Equal(t, 4, res.Output)
 	assert.Equal(t, 3, handlerCalledTimes)
 
+	// same input with a different hash key should execute again
+	res, err = ExecuteOperation(bundle, op, nil, 1, WithIdempotencyKey[int, any]("other-key"))
+	require.NoError(t, err)
+	require.Nil(t, res.Err)
+	assert.Equal(t, 2, res.Output)
+	assert.Equal(t, 4, handlerCalledTimes)
+	idempotencyKeyRunID := res.ID
+	assert.NotEqual(t, forcedRunID, idempotencyKeyRunID)
+
+	// same input and idempotency key should reuse that report
+	res, err = ExecuteOperation(bundle, op, nil, 1, WithIdempotencyKey[int, any]("other-key"))
+	require.NoError(t, err)
+	require.Nil(t, res.Err)
+	assert.Equal(t, idempotencyKeyRunID, res.ID)
+	assert.Equal(t, 4, handlerCalledTimes)
+
 	// new run with different op, should perform execution
 	op = NewOperation("plus1-v2", semver.MustParse("2.0.0"), "test operation", handler)
 	res, err = ExecuteOperation(bundle, op, nil, 1)
 	require.NoError(t, err)
 	require.Nil(t, res.Err)
 	assert.Equal(t, 2, res.Output)
-	assert.Equal(t, 4, handlerCalledTimes)
+	assert.Equal(t, 5, handlerCalledTimes)
 
 	// new run with op that returns error
 	res, err = ExecuteOperation(bundle, opWithError, nil, 1)
@@ -718,7 +734,7 @@ func Test_loadPreviousSuccessfulReport(t *testing.T) {
 				bundle.reporter = tt.setupReporter()
 			}
 
-			report, found := loadPreviousSuccessfulReport[float64, int](bundle, definition, tt.input)
+			report, found := loadPreviousSuccessfulReport[float64, int](bundle, definition, tt.input, "")
 			assert.Equal(t, tt.wantFound, found)
 
 			if tt.wantFound {

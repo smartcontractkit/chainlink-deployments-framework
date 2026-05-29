@@ -1,7 +1,6 @@
 package operations
 
 import (
-	"encoding/json"
 	"math"
 	"sync"
 	"testing"
@@ -12,8 +11,9 @@ import (
 )
 
 type argument struct {
-	def   Definition
-	input any
+	def            Definition
+	input          any
+	idempotencyKey string
 }
 
 func Test_constructUniqueHashFrom(t *testing.T) {
@@ -153,6 +153,36 @@ func Test_constructUniqueHashFrom(t *testing.T) {
 			},
 			wantSame: true,
 		},
+		{
+			name: "Same def and input with different idempotency keys should have different hash",
+			left: argument{
+				def:            definition,
+				input:          Input{A: 1, B: 2},
+				idempotencyKey: "a",
+			},
+			right: argument{
+				def:            definition,
+				input:          Input{A: 1, B: 2},
+				idempotencyKey: "b",
+			},
+			wantSame:       false,
+			skipCacheCheck: true,
+		},
+		{
+			name: "Input and idempotency key concatenation must not collide",
+			left: argument{
+				def:            definition,
+				input:          1,
+				idempotencyKey: "23",
+			},
+			right: argument{
+				def:            definition,
+				input:          12,
+				idempotencyKey: "3",
+			},
+			wantSame:       false,
+			skipCacheCheck: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -160,8 +190,8 @@ func Test_constructUniqueHashFrom(t *testing.T) {
 			t.Parallel()
 
 			cache := &sync.Map{}
-			hash1, err1 := constructUniqueHashFrom(cache, tt.left.def, tt.left.input)
-			hash2, err2 := constructUniqueHashFrom(&sync.Map{}, tt.right.def, tt.right.input)
+			hash1, err1 := constructUniqueHashFrom(cache, tt.left.def, tt.left.input, tt.left.idempotencyKey)
+			hash2, err2 := constructUniqueHashFrom(&sync.Map{}, tt.right.def, tt.right.input, tt.right.idempotencyKey)
 
 			if tt.wantErr != "" {
 				require.Error(t, err1)
@@ -182,19 +212,15 @@ func Test_constructUniqueHashFrom(t *testing.T) {
 			}
 
 			if !tt.skipCacheCheck {
-				// Verify cache behavior
-				defBytes1, err := json.Marshal(tt.left.def)
+				cacheKey1, err := buildUniqueHashCacheKey(tt.left.def, tt.left.input, tt.left.idempotencyKey)
 				require.NoError(t, err)
-				inputBytes1, err := json.Marshal(tt.left.input)
-				require.NoError(t, err)
-				cacheKey1 := string(append(defBytes1, inputBytes1...))
 
-				cached1, ok := cache.Load(cacheKey1)
+				cached1, ok := cache.Load(string(cacheKey1))
 				require.True(t, ok)
 				assert.Equal(t, hash1, cached1)
 
 				// Second call should use cache
-				cachedHash1, err := constructUniqueHashFrom(cache, tt.left.def, tt.left.input)
+				cachedHash1, err := constructUniqueHashFrom(cache, tt.left.def, tt.left.input, tt.left.idempotencyKey)
 				require.NoError(t, err)
 				assert.Equal(t, hash1, cachedHash1)
 			}
