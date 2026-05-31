@@ -1437,7 +1437,7 @@ func Test_chainLoaderCanton_cantonAuthProvider(t *testing.T) {
 		Canton: cfgenv.CantonConfig{JWTToken: "static-token"},
 	})
 
-	provider, err := loader.cantonAuthProvider(ctx, chainsel.CANTON_LOCALNET.Selector)
+	provider, err := loader.cantonAuthProvider(ctx, chainsel.CANTON_LOCALNET.Selector, true)
 	require.NoError(t, err)
 	require.NotNil(t, provider)
 
@@ -1448,7 +1448,7 @@ func Test_chainLoaderCanton_cantonAuthProvider(t *testing.T) {
 	loaderMissingJWT := newChainLoaderCanton(nil, cfgenv.OnchainConfig{
 		Canton: cfgenv.CantonConfig{AuthStrategy: cfgenv.CantonAuthStrategyStatic},
 	})
-	_, err = loaderMissingJWT.cantonAuthProvider(ctx, chainsel.CANTON_LOCALNET.Selector)
+	_, err = loaderMissingJWT.cantonAuthProvider(ctx, chainsel.CANTON_LOCALNET.Selector, false)
 	require.Error(t, err)
 	require.ErrorContains(t, err, "JWT token is required")
 }

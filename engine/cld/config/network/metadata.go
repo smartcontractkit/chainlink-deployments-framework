@@ -33,12 +33,17 @@ type CantonParticipantMetadata struct {
 	UserID string `yaml:"user_id"`
 	// The PartyID of the party that should be used for accessing the participant's API endpoints
 	PartyID string `yaml:"party_id"`
+	// ReadAsPartyIDs lists parties this user may read as (CanReadAs). When set, Canton CCIP
+	// factory deploy sequences use proposal-driven mode (MCMSEnabled) instead of direct ledger submit.
+	ReadAsPartyIDs []string `yaml:"read_as_party_ids,omitempty"`
 }
 
 // CantonMetadata holds metadata specific to Canton networks.
 // It contains the list of participants to connect to.
 type CantonMetadata struct {
-	Participants []CantonParticipantMetadata `yaml:"participants"`
+	// InsecureTransport uses plaintext gRPC (local docker compose). When false, static JWT auth uses TLS.
+	InsecureTransport bool `yaml:"insecure_transport,omitempty"`
+	Participants      []CantonParticipantMetadata `yaml:"participants"`
 }
 
 // AnvilConfig holds the configuration for starting an Anvil node.

@@ -753,7 +753,7 @@ func (l *chainLoaderCanton) Load(ctx context.Context, selector uint64) (fchain.B
 		return nil, fmt.Errorf("canton network %d: no participants found in metadata", selector)
 	}
 
-	authProvider, err := l.cantonAuthProvider(ctx, selector)
+	authProvider, err := l.cantonAuthProvider(ctx, selector, md.InsecureTransport)
 	if err != nil {
 		return nil, err
 	}
@@ -767,9 +767,10 @@ func (l *chainLoaderCanton) Load(ctx context.Context, selector uint64) (fchain.B
 				AdminAPIURL:      participantMD.AdminAPIURL,
 				ValidatorAPIURL:  participantMD.ValidatorAPIURL,
 			},
-			UserID:       participantMD.UserID,
-			PartyID:      participantMD.PartyID,
-			AuthProvider: authProvider,
+			UserID:         participantMD.UserID,
+			PartyID:        participantMD.PartyID,
+			ReadAsPartyIDs: participantMD.ReadAsPartyIDs,
+			AuthProvider:   authProvider,
 		}
 	}
 
@@ -799,7 +800,7 @@ func cantonAuthConfigured(c cfgenv.CantonConfig) bool {
 }
 
 // cantonAuthProvider builds a Canton auth Provider from config.
-func (l *chainLoaderCanton) cantonAuthProvider(ctx context.Context, selector uint64) (cantonauth.Provider, error) {
+func (l *chainLoaderCanton) cantonAuthProvider(ctx context.Context, selector uint64, insecureTransport bool) (cantonauth.Provider, error) {
 	c := l.cfg.Canton
 	switch c.AuthStrategy {
 	case cfgenv.CantonAuthStrategyClientCredentials:
@@ -819,6 +820,9 @@ func (l *chainLoaderCanton) cantonAuthProvider(ctx context.Context, selector uin
 	default:
 		if c.JWTToken == "" {
 			return nil, fmt.Errorf("canton network %d: JWT token is required for static auth", selector)
+		}
+		if insecureTransport {
+			return cantonauth.NewInsecureStaticProvider(c.JWTToken), nil
 		}
 
 		return cantonauth.NewStaticProvider(c.JWTToken), nil
