@@ -21,6 +21,15 @@ type ExecuteConfig[IN, DEP any] struct {
 
 type ExecuteOption[IN, DEP any] func(*ExecuteConfig[IN, DEP])
 
+// ExecuteSequenceConfig holds options for ExecuteSequence.
+type ExecuteSequenceConfig[IN, DEP any] struct {
+	// idempotencyKey scopes report reuse beyond sequence definition and input (set by WithSequenceIdempotencyKey).
+	idempotencyKey string
+}
+
+// ExecuteSequenceOption configures ExecuteSequence.
+type ExecuteSequenceOption[IN, DEP any] func(*ExecuteSequenceConfig[IN, DEP])
+
 // ExecuteOperationNConfig holds options for ExecuteOperationN.
 type ExecuteOperationNConfig[IN, DEP any] struct {
 	retryConfig RetryConfig[IN, DEP]
@@ -98,9 +107,16 @@ func WithForceExecute[IN, DEP any]() ExecuteOption[IN, DEP] {
 
 // WithIdempotencyKey is an ExecuteOption that adds an extra component to the idempotency hash.
 // The hash will then be built from the operation definition, input, and this key.
-// Use it when the same operation input can legitimately produce different results, so a later run should not reuse an earlier result.
+// Use it when the same input can legitimately produce different results, so a later run should not reuse an earlier result.
 func WithIdempotencyKey[IN, DEP any](idempotencyKey string) ExecuteOption[IN, DEP] {
 	return func(c *ExecuteConfig[IN, DEP]) {
+		c.idempotencyKey = idempotencyKey
+	}
+}
+
+// WithSequenceIdempotencyKey is an ExecuteSequenceOption with the same semantics as WithIdempotencyKey.
+func WithSequenceIdempotencyKey[IN, DEP any](idempotencyKey string) ExecuteSequenceOption[IN, DEP] {
+	return func(c *ExecuteSequenceConfig[IN, DEP]) {
 		c.idempotencyKey = idempotencyKey
 	}
 }
@@ -315,18 +331,27 @@ func executeWithRetry[IN, OUT, DEP any](
 // Sequences or Operations that were skipped will not be added to the reporter.
 // The ExecutionReports do not include Sequences or Operations that were skipped.
 //
+// Options:
+// ExecuteSequence accepts ExecuteSequenceOption values (for example, WithSequenceIdempotencyKey).
+//
 // Input & Output:
 // The input and output must be JSON serializable. If the input is not serializable, it will return an error.
 // To be serializable, the input and output must be json.marshalable, or it must implement json.Marshaler and json.Unmarshaler.
 // IsSerializable can be used to check if the input or output is serializable.
 func ExecuteSequence[IN, OUT, DEP any](
 	b Bundle, sequence *Sequence[IN, OUT, DEP], deps DEP, input IN,
+	opts ...ExecuteSequenceOption[IN, DEP],
 ) (SequenceReport[IN, OUT], error) {
 	if !IsSerializable(b.Logger, input) {
 		return SequenceReport[IN, OUT]{}, fmt.Errorf("sequence %s input: %w", sequence.def.ID, ErrNotSerializable)
 	}
 
-	if previousReport, ok := loadPreviousSuccessfulReport[IN, OUT](b, sequence.def, input, ""); ok {
+	sequenceConfig := &ExecuteSequenceConfig[IN, DEP]{}
+	for _, opt := range opts {
+		opt(sequenceConfig)
+	}
+
+	if previousReport, ok := loadPreviousSuccessfulReport[IN, OUT](b, sequence.def, input, sequenceConfig.idempotencyKey); ok {
 		executionReports, err := b.reporter.GetExecutionReports(previousReport.ID)
 		if err != nil {
 			return SequenceReport[IN, OUT]{}, err
@@ -369,6 +394,7 @@ func ExecuteSequence[IN, OUT, DEP any](
 		err,
 		childReports...,
 	)
+	report.IdempotencyKey = sequenceConfig.idempotencyKey
 
 	if err = b.reporter.AddReport(genericReport(report)); err != nil {
 		return SequenceReport[IN, OUT]{}, err

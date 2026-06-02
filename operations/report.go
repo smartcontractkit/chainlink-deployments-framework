@@ -24,8 +24,9 @@ type Report[IN, OUT any] struct {
 	ChildOperationReports []string `json:"childOperationReports"`
 	// ExecutionSeries is used to track the execution of an operation that was executed multiple times
 	ExecutionSeries *ExecutionSeries `json:"executionSeries,omitempty"`
-	// IdempotencyKey is an additional component of the idempotency hash. This is used when the same operation input
-	// can legitimately produce different results by providing different idempotency keys. Set via WithIdempotencyKey on ExecuteOperation.
+	// IdempotencyKey is an additional component of the idempotency hash. This is used when the same input
+	// can legitimately produce different results by providing different idempotency keys.
+	// Set via WithIdempotencyKey on ExecuteOperation or WithSequenceIdempotencyKey on ExecuteSequence.
 	IdempotencyKey string `json:"idempotencyKey,omitempty"`
 }
 

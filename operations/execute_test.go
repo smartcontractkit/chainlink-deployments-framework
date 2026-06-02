@@ -300,6 +300,66 @@ func Test_ExecuteOperation_ReportJSON_IdempotencyKey(t *testing.T) {
 	})
 }
 
+func Test_ExecuteSequence_ReportJSON_IdempotencyKey(t *testing.T) {
+	t.Parallel()
+
+	version := semver.MustParse("1.0.0")
+	op := NewOperation("plus1", version, "plus 1",
+		func(b Bundle, deps any, input int) (int, error) {
+			return input + 1, nil
+		},
+	)
+	sequence := NewSequence("seq-plus1", version, "plus 1",
+		func(b Bundle, deps any, input int) (int, error) {
+			res, err := ExecuteOperation(b, op, nil, input)
+			if err != nil {
+				return 0, err
+			}
+
+			return res.Output, nil
+		},
+	)
+
+	t.Run("includes idempotencyKey when set", func(t *testing.T) {
+		t.Parallel()
+
+		const idempotencyKey = "chain-42161"
+		bundle := NewBundle(t.Context, logger.Test(t), NewMemoryReporter())
+
+		res, err := ExecuteSequence(bundle, sequence, nil, 1, WithSequenceIdempotencyKey[int, any](idempotencyKey))
+		require.NoError(t, err)
+
+		stored, err := bundle.reporter.GetReport(res.ID)
+		require.NoError(t, err)
+		assert.Equal(t, idempotencyKey, stored.IdempotencyKey)
+
+		raw, err := json.Marshal(stored)
+		require.NoError(t, err)
+
+		var payload map[string]json.RawMessage
+		require.NoError(t, json.Unmarshal(raw, &payload))
+		require.Contains(t, payload, "idempotencyKey")
+		assert.JSONEq(t, `"`+idempotencyKey+`"`, string(payload["idempotencyKey"]))
+	})
+
+	t.Run("omits idempotencyKey when unset", func(t *testing.T) {
+		t.Parallel()
+
+		bundle := NewBundle(t.Context, logger.Test(t), NewMemoryReporter())
+
+		res, err := ExecuteSequence(bundle, sequence, nil, 1)
+		require.NoError(t, err)
+
+		stored, err := bundle.reporter.GetReport(res.ID)
+		require.NoError(t, err)
+		assert.Empty(t, stored.IdempotencyKey)
+
+		raw, err := json.Marshal(stored)
+		require.NoError(t, err)
+		assert.NotContains(t, string(raw), "idempotencyKey")
+	})
+}
+
 func Test_ExecuteOperation_WithPreviousRun_UsesMostRecentSuccessfulReport(t *testing.T) {
 	t.Parallel()
 
@@ -523,6 +583,22 @@ func Test_ExecuteSequence_WithPreviousRun(t *testing.T) {
 	assert.Len(t, res.ExecutionReports, 2) // 1 seq report + 1 op report
 	assert.Equal(t, 2, handlerCalledTimes)
 
+	// same input with a different idempotency key should execute again
+	res, err = ExecuteSequence(bundle, sequence, nil, 1, WithSequenceIdempotencyKey[int, any]("other-key"))
+	require.NoError(t, err)
+	require.Nil(t, res.Err)
+	assert.Equal(t, 2, res.Output)
+	assert.Equal(t, 3, handlerCalledTimes)
+	idempotencyKeyRunID := res.ID
+	assert.NotEqual(t, firstRunID, idempotencyKeyRunID)
+
+	// same input and idempotency key should reuse that sequence report
+	res, err = ExecuteSequence(bundle, sequence, nil, 1, WithSequenceIdempotencyKey[int, any]("other-key"))
+	require.NoError(t, err)
+	require.Nil(t, res.Err)
+	assert.Equal(t, idempotencyKeyRunID, res.ID)
+	assert.Equal(t, 3, handlerCalledTimes)
+
 	// new run with different sequence but same operation, should perform execution
 	sequence = NewSequence("seq-plus1-v2", semver.MustParse("2.0.0"), "plus 1", handler)
 	res, err = ExecuteSequence(bundle, sequence, nil, 1)
@@ -531,7 +607,7 @@ func Test_ExecuteSequence_WithPreviousRun(t *testing.T) {
 	assert.Equal(t, 2, res.Output)
 	// only 1 because the op was not executed due to previous execution found
 	assert.Len(t, res.ExecutionReports, 1)
-	assert.Equal(t, 3, handlerCalledTimes)
+	assert.Equal(t, 4, handlerCalledTimes)
 
 	// new run with sequence that returns error
 	res, err = ExecuteSequence(bundle, sequenceWithError, nil, 1)
