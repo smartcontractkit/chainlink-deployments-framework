@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.109.0
+
+### Minor Changes
+
+- [#1019](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1019) [`428f060`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/428f0600baa985c7e0a418a30d0799c9731bf27e) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat(operations): introduce WithSequenceIdempotencyKey
+
 ## 0.108.0
 
 ### Minor Changes
