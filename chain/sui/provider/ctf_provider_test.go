@@ -121,7 +121,7 @@ func Test_CTFChainProvider_Initialize(t *testing.T) {
 				// Check that the chain is of type sui.Chain and has the expected fields
 				gotChain, ok := got.(sui.Chain)
 				require.True(t, ok, "expected got to be of type sui.Chain")
-				assert.Equal(t, tt.giveSelector, gotChain.Selector)
+				assert.Equal(t, tt.giveSelector, gotChain.ChainMetadata.Selector)
 				assert.NotEmpty(t, gotChain.Client)
 				assert.NotEmpty(t, gotChain.Signer)
 				assert.NotEmpty(t, gotChain.URL)

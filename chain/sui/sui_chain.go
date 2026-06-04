@@ -1,17 +1,11 @@
 package sui
 
 import (
-<<<<<<< HEAD
 	"crypto/ed25519"
 	"crypto/rand"
 	"fmt"
 
-	"github.com/block-vision/sui-go-sdk/sui"
-||||||| parent of 8e78f6e (update sui client)
-	"github.com/block-vision/sui-go-sdk/sui"
-=======
 	cslclient "github.com/smartcontractkit/chainlink-sui/relayer/client"
->>>>>>> 8e78f6e (update sui client)
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/common"
 )

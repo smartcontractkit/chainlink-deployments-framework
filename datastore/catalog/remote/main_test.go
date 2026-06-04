@@ -41,7 +41,7 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Failed to setup testcontainers: %v", err)
 	}
 	globalTestSetup = setup
-	catalogGRPCAddress = setup.GetCatalogGRPCAddress()
+	catalogGRPCAddress = setup.CatalogGRPCAddr
 
 	log.Println("========================================")
 	log.Println("Testcontainers setup complete!")
@@ -64,7 +64,7 @@ func TestMain(m *testing.M) {
 	cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cleanupCancel()
 
-	if err := globalTestSetup.Teardown(cleanupCtx); err != nil {
+	if err := globalTestSetup.CatalogContainer.Terminate(cleanupCtx); err != nil {
 		log.Printf("Warning: Failed to teardown testcontainers: %v", err)
 	}
 

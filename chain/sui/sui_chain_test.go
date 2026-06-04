@@ -4,12 +4,12 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/block-vision/sui-go-sdk/models"
 	chainsel "github.com/smartcontractkit/chain-selectors"
-	"github.com/smartcontractkit/chainlink-sui/bindings/bind"
-	"github.com/smartcontractkit/chainlink-sui/bindings/packages/mcms"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/smartcontractkit/chainlink-sui/bindings/bind"
+	"github.com/smartcontractkit/chainlink-sui/bindings/packages/mcms"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/sui"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/sui/provider"
@@ -42,10 +42,10 @@ func TestChain_ChainInfot(t *testing.T) {
 			c := sui.Chain{
 				ChainMetadata: sui.ChainMetadata{Selector: tt.selector},
 			}
-			assert.Equal(t, tt.selector, c.ChainSelector())
-			assert.Equal(t, tt.wantString, c.String())
-			assert.Equal(t, tt.wantName, c.Name())
-			assert.Equal(t, tt.wantFamily, c.Family())
+			assert.Equal(t, tt.selector, c.ChainMetadata.ChainSelector())
+			assert.Equal(t, tt.wantString, c.ChainMetadata.String())
+			assert.Equal(t, tt.wantName, c.ChainMetadata.Name())
+			assert.Equal(t, tt.wantFamily, c.ChainMetadata.Family())
 		})
 	}
 }
@@ -75,10 +75,9 @@ func TestChain_ReadOnly(t *testing.T) {
 	require.NoError(t, err)
 
 	// read with read-only client should work
-	balanceReq := models.SuiXGetBalanceRequest{Owner: signer, CoinType: "0x2::sui::SUI"}
-	balance, err := roSuiChain.Client.SuiXGetBalance(t.Context(), balanceReq)
+	balance, err := roSuiChain.Client.GetSUIBalance(t.Context(), signer)
 	require.NoError(t, err)
-	require.Equal(t, "1000000000000", balance.TotalBalance)
+	require.Equal(t, "1000000000000", balance.GetBalance())
 
 	// write with read-write client should work
 	opts := &bind.CallOpts{WaitForExecution: true, GasBudget: pointer.To(uint64(400_000_000)), Signer: suiChain.Signer}
