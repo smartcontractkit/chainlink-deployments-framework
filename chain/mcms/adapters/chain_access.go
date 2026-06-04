@@ -2,10 +2,16 @@ package adapters
 
 import (
 	aptoslib "github.com/aptos-labs/aptos-go-sdk"
+<<<<<<< HEAD
 	"github.com/block-vision/sui-go-sdk/sui"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	sol "github.com/gagliardetto/solana-go"
+||||||| parent of 8e78f6e (update sui client)
+	"github.com/block-vision/sui-go-sdk/sui"
+=======
+>>>>>>> 8e78f6e (update sui client)
 	solrpc "github.com/gagliardetto/solana-go/rpc"
+	cslclient "github.com/smartcontractkit/chainlink-sui/relayer/client"
 	"github.com/smartcontractkit/mcms/sdk/evm"
 	mcmssui "github.com/smartcontractkit/mcms/sdk/sui"
 	"github.com/stellar/go-stellar-sdk/clients/rpcclient"
@@ -93,6 +99,7 @@ func (a *ChainAccessAdapter) AptosClient(selector uint64) (aptoslib.AptosRpcClie
 	return ch.Client, true
 }
 
+<<<<<<< HEAD
 // AptosSigner returns the Aptos signer for the given selector.
 func (a *ChainAccessAdapter) AptosSigner(selector uint64) (aptoslib.TransactionSigner, bool) {
 	ch, ok := a.inner.AptosChains()[selector]
@@ -101,6 +108,13 @@ func (a *ChainAccessAdapter) AptosSigner(selector uint64) (aptoslib.TransactionS
 
 // SuiClient returns the Sui API client for the given selector.
 func (a *ChainAccessAdapter) SuiClient(selector uint64) (sui.ISuiAPI, bool) {
+||||||| parent of 8e78f6e (update sui client)
+// SuiClient returns the Sui API client and signer for the given selector.
+func (a *ChainAccessAdapter) SuiClient(selector uint64) (sui.ISuiAPI, mcmssui.SuiSigner, bool) {
+=======
+// SuiClient returns the Sui API client and signer for the given selector.
+func (a *ChainAccessAdapter) SuiClient(selector uint64) (cslclient.BindingsClient, mcmssui.SuiSigner, bool) {
+>>>>>>> 8e78f6e (update sui client)
 	ch, ok := a.inner.SuiChains()[selector]
 	if !ok {
 		return nil, false
