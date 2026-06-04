@@ -28,6 +28,11 @@ func TestIsValidNetworkType(t *testing.T) {
 			expected: true,
 		},
 		{
+			name:     "private-testnet is valid",
+			access:   "private-testnet",
+			expected: true,
+		},
+		{
 			name:     "invalid value",
 			access:   "invalid",
 			expected: false,
@@ -119,6 +124,13 @@ func TestEnvironment_Validate(t *testing.T) {
 			name: "valid environment with testnet only",
 			environment: Environment{
 				NetworkTypes: []string{"testnet"},
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid environment with private-testnet",
+			environment: Environment{
+				NetworkTypes: []string{"mainnet", "testnet", "private-testnet"},
 			},
 			wantErr: false,
 		},

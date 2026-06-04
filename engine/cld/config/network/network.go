@@ -6,12 +6,13 @@ import (
 	chainsel "github.com/smartcontractkit/chain-selectors"
 )
 
-// NetworkType represents the type of network, which can either be mainnet or testnet.
+// NetworkType represents the type of network configured for an environment.
 type NetworkType string
 
 const (
-	NetworkTypeMainnet NetworkType = "mainnet"
-	NetworkTypeTestnet NetworkType = "testnet"
+	NetworkTypeMainnet        NetworkType = "mainnet"
+	NetworkTypeTestnet        NetworkType = "testnet"
+	NetworkTypePrivateTestnet NetworkType = "private-testnet"
 )
 
 // Network represents a network configuration.

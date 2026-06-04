@@ -65,7 +65,7 @@ func (e *Environment) validate() error {
 	// Check for valid values
 	for _, networkType := range e.NetworkTypes {
 		if !isValidNetworkType(networkType) {
-			return errors.New("invalid network_types value: " + networkType + " (must be 'mainnet' or 'testnet')")
+			return errors.New("invalid network_types value: " + networkType + " (must be 'mainnet', 'testnet', or 'private-testnet')")
 		}
 	}
 
@@ -94,7 +94,9 @@ func (e *Environment) validate() error {
 
 // isValidNetworkType checks if the network type value is valid.
 func isValidNetworkType(networkType string) bool {
-	return networkType == "mainnet" || networkType == "testnet"
+	return networkType == "mainnet" ||
+		networkType == "testnet" ||
+		networkType == "private-testnet"
 }
 
 // DomainConfig represents the parsed and validated domain configuration.
