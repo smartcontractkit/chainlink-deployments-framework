@@ -12,8 +12,9 @@ import (
 
 	"github.com/avast/retry-go/v4"
 	"github.com/block-vision/sui-go-sdk/models"
-	sui_sdk "github.com/block-vision/sui-go-sdk/sui"
 	"github.com/go-resty/resty/v2"
+	"github.com/smartcontractkit/chainlink-common/pkg/logger"
+	cslclient "github.com/smartcontractkit/chainlink-sui/relayer/client"
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
@@ -147,7 +148,7 @@ func (p *CTFChainProvider) BlockChain() chain.BlockChain {
 // It returns the URL of the Sui node and the client to interact with it.
 func (p *CTFChainProvider) startContainer(
 	chainID string, account sui.SuiSigner,
-) (string, string, sui_sdk.ISuiAPI) {
+) (string, string, cslclient.SuiPTBClient) {
 	var (
 		attempts  = uint(10)
 		url       string
@@ -235,7 +236,11 @@ func (p *CTFChainProvider) startContainer(
 	url = result.url
 	fauceturl = fmt.Sprintf("http://%s:%s", "127.0.0.1", result.faucetPort)
 
-	client := sui_sdk.NewSuiClient(url)
+	log, logErr := logger.New()
+	require.NoError(p.t, logErr, "Failed to create logger")
+
+	client, clientErr := sui.NewPTBClientFromNodeURL(log, url, "")
+	require.NoError(p.t, clientErr, "Failed to create Sui PTB client")
 
 	var ready bool
 	for i := range 30 {

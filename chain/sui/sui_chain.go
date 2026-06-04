@@ -1,7 +1,7 @@
 package sui
 
 import (
-	"github.com/block-vision/sui-go-sdk/sui"
+	cslclient "github.com/smartcontractkit/chainlink-sui/relayer/client"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/common"
 )
@@ -11,7 +11,7 @@ type ChainMetadata = common.ChainMetadata
 // Chain represents an Sui chain.
 type Chain struct {
 	ChainMetadata
-	Client    sui.ISuiAPI
+	Client    cslclient.SuiPTBClient
 	Signer    SuiSigner
 	URL       string
 	FaucetURL string
