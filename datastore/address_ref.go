@@ -45,10 +45,16 @@ type AddressRef struct {
 
 // Clone creates a copy of the AddressRefRecord.
 func (r AddressRef) Clone() AddressRef {
+	var version *semver.Version
+	if r.Version != nil {
+		v := *r.Version
+		version = &v
+	}
+
 	return AddressRef{
 		ChainSelector: r.ChainSelector,
 		Type:          r.Type,
-		Version:       r.Version,
+		Version:       version,
 		Qualifier:     r.Qualifier,
 		Address:       r.Address,
 		Labels:        r.Labels.Clone(),
