@@ -5,6 +5,7 @@ package authorizationcode
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -99,7 +100,7 @@ func NewDiscoveryProvider(
 	}
 
 	if !slices.Contains(metadata.CodeChallengeMethodsSupported, "S256") {
-		return nil, fmt.Errorf("authorization server does not support S256 PKCE challenges")
+		return nil, errors.New("authorization server does not support S256 PKCE challenges")
 	}
 
 	return NewProvider(ctx, metadata.AuthorizationEndpoint, metadata.TokenEndpoint, clientID, options...)
@@ -117,13 +118,13 @@ func NewProvider(
 	}
 
 	if authURL == "" {
-		return nil, fmt.Errorf("authURL cannot be empty")
+		return nil, errors.New("authURL cannot be empty")
 	}
 	if tokenURL == "" {
-		return nil, fmt.Errorf("tokenURL cannot be empty")
+		return nil, errors.New("tokenURL cannot be empty")
 	}
 	if clientID == "" {
-		return nil, fmt.Errorf("clientID cannot be empty")
+		return nil, errors.New("clientID cannot be empty")
 	}
 
 	flowCtx := ctx
@@ -166,8 +167,8 @@ func NewProvider(
 			return
 		}
 
-		token, err := oauthCfg.Exchange(flowCtx, code, oauth2.VerifierOption(verifier))
-		if err != nil {
+		token, exchangeErr := oauthCfg.Exchange(flowCtx, code, oauth2.VerifierOption(verifier))
+		if exchangeErr != nil {
 			http.Error(w, "Token exchange failed", http.StatusInternalServerError)
 			return
 		}

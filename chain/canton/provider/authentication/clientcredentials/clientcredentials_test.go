@@ -15,9 +15,9 @@ import (
 )
 
 type tokenResponse struct {
-	AccessToken string `json:"access_token"`
-	TokenType   string `json:"token_type"`
-	ExpiresIn   int    `json:"expires_in"`
+	Token     string `json:"access_token"`
+	TokenType string `json:"token_type"`
+	ExpiresIn int    `json:"expires_in"`
 }
 
 func newTokenServer(t *testing.T, expectedScope string) *httptest.Server {
@@ -38,9 +38,9 @@ func newTokenServer(t *testing.T, expectedScope string) *httptest.Server {
 		}
 
 		payload, err := json.Marshal(tokenResponse{
-			AccessToken: "test-access-token",
-			TokenType:   "Bearer",
-			ExpiresIn:   3600,
+			Token:     "test-access-token",
+			TokenType: "Bearer",
+			ExpiresIn: 3600,
 		})
 		require.NoError(t, err)
 
@@ -79,7 +79,7 @@ func TestNewProvider_UsesOptionsAndTokenSource(t *testing.T) {
 	server := newTokenServer(t, "scope-a scope-b")
 	t.Cleanup(server.Close)
 
-	customCreds := credentials.NewTLS(&tls.Config{InsecureSkipVerify: true})
+	customCreds := credentials.NewTLS(&tls.Config{InsecureSkipVerify: true}) //nolint:gosec // G402: intentional for transport-credentials test
 
 	provider, err := NewProvider(
 		ctx,
@@ -128,9 +128,9 @@ func TestNewDiscoveryProvider_UsesMetadataTokenEndpoint(t *testing.T) {
 		require.Equal(t, "daml_ledger_api", values.Get("scope"))
 
 		payload, err := json.Marshal(tokenResponse{
-			AccessToken: "test-access-token",
-			TokenType:   "Bearer",
-			ExpiresIn:   3600,
+			Token:     "test-access-token",
+			TokenType: "Bearer",
+			ExpiresIn: 3600,
 		})
 		require.NoError(t, err)
 

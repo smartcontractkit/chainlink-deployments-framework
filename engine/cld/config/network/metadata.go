@@ -42,7 +42,7 @@ type CantonParticipantMetadata struct {
 // It contains the list of participants to connect to.
 type CantonMetadata struct {
 	// InsecureTransport uses plaintext gRPC (local docker compose). When false, static JWT auth uses TLS.
-	InsecureTransport bool `yaml:"insecure_transport,omitempty"`
+	InsecureTransport bool                        `yaml:"insecure_transport,omitempty"`
 	Participants      []CantonParticipantMetadata `yaml:"participants"`
 }
 

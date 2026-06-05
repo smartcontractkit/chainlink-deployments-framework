@@ -203,7 +203,7 @@ func TestNewProvider_FlowCompletes(t *testing.T) {
 	require.NotEmpty(t, state)
 
 	callbackURL := "http://" + callbackHost + "/callback?code=code123&state=" + url.QueryEscape(state)
-	response, err := http.Get(callbackURL) //nolint:noctx
+	response, err := http.Get(callbackURL) //nolint:noctx,gosec // G107: test hits local callback server
 	require.NoError(t, err)
 	require.NoError(t, response.Body.Close())
 

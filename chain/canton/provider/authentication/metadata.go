@@ -30,7 +30,7 @@ func GetAuthorizationServerMetadata(ctx context.Context, authorizationServerURL 
 	request, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodGet,
-		fmt.Sprintf("%s/.well-known/oauth-authorization-server", authorizationServerURL),
+		authorizationServerURL+"/.well-known/oauth-authorization-server",
 		nil,
 	)
 	if err != nil {

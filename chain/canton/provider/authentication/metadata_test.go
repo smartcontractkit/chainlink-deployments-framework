@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -14,15 +15,15 @@ func TestGetAuthorizationServerMetadata(t *testing.T) {
 
 	ctx := t.Context()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, "/.well-known/oauth-authorization-server", r.URL.Path)
+		assert.Equal(t, "/.well-known/oauth-authorization-server", r.URL.Path)
 
 		payload, err := json.Marshal(AuthorizationServerMetadata{
-			Issuer:                        serverURL(t, r),
-			AuthorizationEndpoint:         serverURL(t, r) + "/authorize",
-			TokenEndpoint:                 serverURL(t, r) + "/token",
+			Issuer:                        serverURL(r),
+			AuthorizationEndpoint:         serverURL(r) + "/authorize",
+			TokenEndpoint:                 serverURL(r) + "/token",
 			CodeChallengeMethodsSupported: []string{"S256"},
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write(payload)
@@ -44,7 +45,7 @@ func TestGetAuthorizationServerMetadata_UnexpectedIssuer(t *testing.T) {
 		payload, err := json.Marshal(AuthorizationServerMetadata{
 			Issuer: "https://other.example.com",
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write(payload)
@@ -55,8 +56,6 @@ func TestGetAuthorizationServerMetadata_UnexpectedIssuer(t *testing.T) {
 	require.Error(t, err)
 }
 
-func serverURL(t *testing.T, r *http.Request) string {
-	t.Helper()
-
+func serverURL(r *http.Request) string {
 	return "http://" + r.Host
 }
