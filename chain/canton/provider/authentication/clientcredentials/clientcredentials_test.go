@@ -10,39 +10,40 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/credentials"
 )
 
-type tokenResponse struct {
-	Token     string `json:"access_token"`
-	TokenType string `json:"token_type"`
-	ExpiresIn int    `json:"expires_in"`
+const testBearerToken = "test-access-token"
+
+func tokenResponsePayload() map[string]any { //nolint:gosec // G101: OAuth test fixture, not a real credential
+	return map[string]any{
+		"access_token": testBearerToken,
+		"token_type":   "Bearer",
+		"expires_in":   3600,
+	}
 }
 
 func newTokenServer(t *testing.T, expectedScope string) *httptest.Server {
 	t.Helper()
 
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodPost, r.Method)
+		assert.Equal(t, http.MethodPost, r.Method)
 
 		body, err := io.ReadAll(r.Body)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		values, err := url.ParseQuery(string(body))
-		require.NoError(t, err)
-		require.Equal(t, "client_credentials", values.Get("grant_type"))
+		assert.NoError(t, err)
+		assert.Equal(t, "client_credentials", values.Get("grant_type"))
 
 		if expectedScope != "" {
-			require.Equal(t, expectedScope, values.Get("scope"))
+			assert.Equal(t, expectedScope, values.Get("scope"))
 		}
 
-		payload, err := json.Marshal(tokenResponse{
-			Token:     "test-access-token",
-			TokenType: "Bearer",
-			ExpiresIn: 3600,
-		})
-		require.NoError(t, err)
+		payload, err := json.Marshal(tokenResponsePayload())
+		assert.NoError(t, err)
 
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write(payload)
@@ -59,9 +60,9 @@ func TestNewProvider_ValidatesInputs(t *testing.T) {
 		clientID     string
 		clientSecret string
 	}{
-		{name: "missing token url", tokenURL: "", clientID: "client-id", clientSecret: "client-secret"},
-		{name: "missing client id", tokenURL: "https://example.test/token", clientID: "", clientSecret: "client-secret"},
-		{name: "missing client secret", tokenURL: "https://example.test/token", clientID: "client-id", clientSecret: ""},
+		{name: "missing token url", tokenURL: "", clientID: "client-id", clientSecret: "client-secret"},                  //nolint:gosec // G101: test fixture
+		{name: "missing client id", tokenURL: "https://example.test/token", clientID: "", clientSecret: "client-secret"}, //nolint:gosec // G101: test fixture
+		{name: "missing client secret", tokenURL: "https://example.test/token", clientID: "client-id", clientSecret: ""}, //nolint:gosec // G101: test fixture
 	}
 
 	for _, test := range tests {
@@ -85,7 +86,7 @@ func TestNewProvider_UsesOptionsAndTokenSource(t *testing.T) {
 		ctx,
 		server.URL,
 		"client-id",
-		"client-secret",
+		"client-secret", //nolint:gosec // G101: test fixture
 		WithScopes("scope-a", "scope-b"),
 		WithTransportCredentials(customCreds),
 	)
@@ -94,7 +95,7 @@ func TestNewProvider_UsesOptionsAndTokenSource(t *testing.T) {
 
 	token, err := provider.TokenSource().Token()
 	require.NoError(t, err)
-	require.Equal(t, "test-access-token", token.AccessToken)
+	require.Equal(t, testBearerToken, token.AccessToken)
 }
 
 func TestNewDiscoveryProvider_UsesMetadataTokenEndpoint(t *testing.T) {
@@ -113,37 +114,33 @@ func TestNewDiscoveryProvider_UsesMetadataTokenEndpoint(t *testing.T) {
 			"issuer":         server.URL,
 			"token_endpoint": server.URL + tokenPath,
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write(payload)
 	})
 	mux.HandleFunc(tokenPath, func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		values, err := url.ParseQuery(string(body))
-		require.NoError(t, err)
-		require.Equal(t, "client_credentials", values.Get("grant_type"))
-		require.Equal(t, "daml_ledger_api", values.Get("scope"))
+		assert.NoError(t, err)
+		assert.Equal(t, "client_credentials", values.Get("grant_type"))
+		assert.Equal(t, "daml_ledger_api", values.Get("scope"))
 
-		payload, err := json.Marshal(tokenResponse{
-			Token:     "test-access-token",
-			TokenType: "Bearer",
-			ExpiresIn: 3600,
-		})
-		require.NoError(t, err)
+		payload, err := json.Marshal(tokenResponsePayload())
+		assert.NoError(t, err)
 
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write(payload)
 	})
 
-	provider, err := NewDiscoveryProvider(ctx, server.URL, "client-id", "client-secret")
+	provider, err := NewDiscoveryProvider(ctx, server.URL, "client-id", "client-secret") //nolint:gosec // G101: test fixture
 	require.NoError(t, err)
 
 	token, err := provider.TokenSource().Token()
 	require.NoError(t, err)
-	require.Equal(t, "test-access-token", token.AccessToken)
+	require.Equal(t, testBearerToken, token.AccessToken)
 }
 
 func TestNewDiscoveryProvider_RequiresMetadataEndpoint(t *testing.T) {
@@ -159,6 +156,6 @@ func TestNewDiscoveryProvider_RequiresMetadataEndpoint(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 
-	_, err := NewDiscoveryProvider(ctx, server.URL, "client-id", "client-secret")
+	_, err := NewDiscoveryProvider(ctx, server.URL, "client-id", "client-secret") //nolint:gosec // G101: test fixture
 	require.Error(t, err)
 }

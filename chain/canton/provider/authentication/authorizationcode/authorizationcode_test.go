@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -91,17 +92,17 @@ func newTokenServer(t *testing.T) *httptest.Server {
 	t.Helper()
 
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.NoError(t, r.ParseForm())
-		require.Equal(t, "authorization_code", r.Form.Get("grant_type"))
-		require.NotEmpty(t, r.Form.Get("code"))
-		require.NotEmpty(t, r.Form.Get("code_verifier"))
+		assert.NoError(t, r.ParseForm())
+		assert.Equal(t, "authorization_code", r.Form.Get("grant_type"))
+		assert.NotEmpty(t, r.Form.Get("code"))
+		assert.NotEmpty(t, r.Form.Get("code_verifier"))
 
-		payload, err := json.Marshal(map[string]any{
+		payload, err := json.Marshal(map[string]any{ //nolint:gosec // G101: OAuth test fixture, not a real credential
 			"access_token": "auth-code-token",
 			"token_type":   "Bearer",
 			"expires_in":   3600,
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write(payload)
@@ -118,8 +119,11 @@ func TestNewProvider_ValidatesInputs(t *testing.T) {
 		tokenURL string
 		clientID string
 	}{
+		//nolint:gosec // G101: test fixture
 		{name: "missing auth url", authURL: "", tokenURL: "https://example.test/token", clientID: "client-id"},
+		//nolint:gosec // G101: test fixture
 		{name: "missing token url", authURL: "https://example.test/auth", tokenURL: "", clientID: "client-id"},
+		//nolint:gosec // G101: test fixture
 		{name: "missing client id", authURL: "https://example.test/auth", tokenURL: "https://example.test/token", clientID: ""},
 	}
 
@@ -137,20 +141,20 @@ func TestNewDiscoveryProvider_RequiresS256(t *testing.T) {
 	ctx := t.Context()
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		payload, err := json.Marshal(map[string]any{
+		payload, err := json.Marshal(map[string]any{ //nolint:gosec // G101: OAuth metadata test fixture
 			"issuer":                           "http://" + r.Host,
 			"authorization_endpoint":           "https://example.test/auth",
 			"token_endpoint":                   "https://example.test/token",
 			"code_challenge_methods_supported": []string{"plain"},
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write(payload)
 	}))
 	t.Cleanup(server.Close)
 
-	_, err := NewDiscoveryProvider(ctx, server.URL, "client-id")
+	_, err := NewDiscoveryProvider(ctx, server.URL, "client-id") //nolint:gosec // G101: test fixture
 	require.Error(t, err)
 }
 

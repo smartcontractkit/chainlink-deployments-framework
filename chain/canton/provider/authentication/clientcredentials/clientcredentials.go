@@ -5,6 +5,7 @@ package clientcredentials
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 
 	"golang.org/x/oauth2"
@@ -80,13 +81,13 @@ func NewProvider(
 	}
 
 	if tokenURL == "" {
-		return nil, fmt.Errorf("tokenURL cannot be empty")
+		return nil, errors.New("tokenURL cannot be empty")
 	}
 	if clientID == "" {
-		return nil, fmt.Errorf("clientID cannot be empty")
+		return nil, errors.New("clientID cannot be empty")
 	}
 	if clientSecret == "" {
-		return nil, fmt.Errorf("clientSecret cannot be empty")
+		return nil, errors.New("clientSecret cannot be empty")
 	}
 
 	oauthCfg := &clientcredentials.Config{
