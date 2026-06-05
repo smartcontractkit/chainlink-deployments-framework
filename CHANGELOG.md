@@ -1,5 +1,27 @@
 # chainlink-deployments-framework
 
+## 0.109.0
+
+### Minor Changes
+
+- [#1019](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1019) [`428f060`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/428f0600baa985c7e0a418a30d0799c9731bf27e) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat(operations): introduce WithSequenceIdempotencyKey
+
+## 0.108.0
+
+### Minor Changes
+
+- [#1016](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1016) [`782a4ec`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/782a4ece0188cca7e88051f51e447e41a1880b3e) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat(operations): introduce WithIdempotencyKey
+
+## 0.107.0
+
+### Minor Changes
+
+- [#1003](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1003) [`1893554`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/1893554404e39377c7f746587f41564381848ad0) Thanks [@jkongie](https://github.com/jkongie)! - feat: add `ExecChangeset` function to test runtime
+
+### Patch Changes
+
+- [#1015](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1015) [`a60e2a9`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/a60e2a9c5a9cbcce03a49794a3ce98406584fae5) Thanks [@FelixFan1992](https://github.com/FelixFan1992)! - update ctf and SUI CLI
+
 ## 0.106.0
 
 ### Minor Changes

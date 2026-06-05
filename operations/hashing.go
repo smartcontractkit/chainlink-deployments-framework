@@ -9,24 +9,37 @@ import (
 	"sync"
 )
 
-func constructUniqueHashFrom(hashCache *sync.Map, def Definition, input any) (string, error) {
-	// convert def and input into string to be used as cachekey
-	// as input can be any type, some types cannot be used as cache argument for sync.map
-	// converting to string ensure argument is always valid
-
+func buildUniqueHashCacheKey(def Definition, input any, idempotencyKey string) ([]byte, error) {
+	// convert def and input into bytes used as the sync.Map cache key
+	// as input can be any type, some types cannot be used as cache argument for sync.Map
 	key, err := json.Marshal(def)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	// convert to a canonical representation that's stable regardless of field order
-	// If the keys are not sorted, the hash generated can be different in maps.
 	inputBytes, err := canonicalizeJSON(input)
+	if err != nil {
+		return nil, err
+	}
+
+	key = append(key, inputBytes...)
+	if idempotencyKey != "" {
+		// NUL separates canonical input from the idempotency key so concatenations cannot collide
+		// (for example, input "1" + key "23" vs input "12" + key "3").
+		key = append(key, 0)
+		key = append(key, []byte(idempotencyKey)...)
+	}
+
+	return key, nil
+}
+
+func constructUniqueHashFrom(hashCache *sync.Map, def Definition, input any, idempotencyKey string) (string, error) {
+	key, err := buildUniqueHashCacheKey(def, input, idempotencyKey)
 	if err != nil {
 		return "", err
 	}
 
-	key = append(key, inputBytes...)
 	if cached, ok := hashCache.Load(string(key)); ok {
 		return cached.(string), nil
 	}

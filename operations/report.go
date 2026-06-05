@@ -24,6 +24,10 @@ type Report[IN, OUT any] struct {
 	ChildOperationReports []string `json:"childOperationReports"`
 	// ExecutionSeries is used to track the execution of an operation that was executed multiple times
 	ExecutionSeries *ExecutionSeries `json:"executionSeries,omitempty"`
+	// IdempotencyKey is an additional component of the idempotency hash. This is used when the same input
+	// can legitimately produce different results by providing different idempotency keys.
+	// Set via WithIdempotencyKey on ExecuteOperation or WithSequenceIdempotencyKey on ExecuteSequence.
+	IdempotencyKey string `json:"idempotencyKey,omitempty"`
 }
 
 // ExecutionSeries is used to track the execution of an operation that was executed multiple times.
@@ -272,6 +276,7 @@ func genericReport[IN, OUT any](r Report[IN, OUT]) Report[any, any] {
 		Err:                   r.Err,
 		ChildOperationReports: r.ChildOperationReports,
 		ExecutionSeries:       r.ExecutionSeries,
+		IdempotencyKey:        r.IdempotencyKey,
 	}
 }
 
@@ -310,6 +315,7 @@ func typeReport[IN, OUT any](r Report[any, any]) (Report[IN, OUT], bool) {
 		Err:                   r.Err,
 		ChildOperationReports: r.ChildOperationReports,
 		ExecutionSeries:       r.ExecutionSeries,
+		IdempotencyKey:        r.IdempotencyKey,
 	}, true
 }
 
