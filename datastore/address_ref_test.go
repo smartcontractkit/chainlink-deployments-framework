@@ -23,6 +23,7 @@ func TestAddressRef_Clone(t *testing.T) {
 
 	assert.Equal(t, original, clone, "Clone should produce an identical copy")
 	assert.NotSame(t, &original.Labels, &clone.Labels, "Labels should be deeply cloned")
+	assert.NotSame(t, original.Version, clone.Version, "Version should be deeply cloned")
 }
 
 func TestAddressRef_Key(t *testing.T) {
