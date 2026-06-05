@@ -98,11 +98,11 @@ type CantonConfig struct {
 	AuthStrategy string `mapstructure:"auth_strategy" yaml:"auth_strategy"`
 	// JWT token for static auth. Used when auth_strategy is "static".
 	JWTToken string `mapstructure:"jwt_token" yaml:"jwt_token"` // Secret
-	// AuthURL is the Okta authorization server URL (env: CANTON_OKTA_AUTHORIZER).
+	// AuthURL is the Okta authorization server URL (env: ONCHAIN_CANTON_OKTA_AUTHORIZER).
 	AuthURL string `mapstructure:"auth_url" yaml:"auth_url"`
-	// ClientID is the OAuth2 client ID (env: CANTON_OKTA_CLIENT_ID).
+	// ClientID is the OAuth2 client ID (env: ONCHAIN_CANTON_OKTA_CLIENT_ID).
 	ClientID string `mapstructure:"client_id" yaml:"client_id"` // Secret
-	// ClientSecret is the OAuth2 client secret (env: CANTON_OKTA_CLIENT_SECRET). Required for client_credentials (CI).
+	// ClientSecret is the OAuth2 client secret (env: ONCHAIN_CANTON_OKTA_CLIENT_SECRET). Required for client_credentials (CI).
 	ClientSecret string `mapstructure:"client_secret" yaml:"client_secret"` // Secret
 }
 
@@ -283,9 +283,9 @@ var (
 		"onchain.ton.wallet_version":                              {"ONCHAIN_TON_WALLET_VERSION", "TON_WALLET_VERSION"},
 		"onchain.canton.auth_strategy":                            {"ONCHAIN_CANTON_AUTH_STRATEGY"},
 		"onchain.canton.jwt_token":                                {"ONCHAIN_CANTON_JWT_TOKEN"},
-		"onchain.canton.auth_url":                                 {"CANTON_OKTA_AUTHORIZER"},
-		"onchain.canton.client_id":                                {"CANTON_OKTA_CLIENT_ID"},
-		"onchain.canton.client_secret":                            {"CANTON_OKTA_CLIENT_SECRET"},
+		"onchain.canton.auth_url":                                 {"ONCHAIN_CANTON_OKTA_AUTHORIZER"},
+		"onchain.canton.client_id":                                {"ONCHAIN_CANTON_OKTA_CLIENT_ID"},
+		"onchain.canton.client_secret":                            {"ONCHAIN_CANTON_OKTA_CLIENT_SECRET"},
 		"offchain.job_distributor.auth.cognito_app_client_id":     {"OFFCHAIN_JD_AUTH_COGNITO_APP_CLIENT_ID", "JD_AUTH_COGNITO_APP_CLIENT_ID"},
 		"offchain.job_distributor.auth.cognito_app_client_secret": {"OFFCHAIN_JD_AUTH_COGNITO_APP_CLIENT_SECRET", "JD_AUTH_COGNITO_APP_CLIENT_SECRET"},
 		"offchain.job_distributor.auth.aws_region":                {"OFFCHAIN_JD_AUTH_AWS_REGION", "JD_AUTH_AWS_REGION"},
