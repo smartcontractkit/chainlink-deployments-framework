@@ -10,9 +10,11 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"os/exec"
 	"runtime"
 	"slices"
+	"sync"
 	"time"
 
 	"golang.org/x/oauth2"
@@ -151,6 +153,7 @@ func NewProvider(
 	authCodeURL := oauthCfg.AuthCodeURL(state, oauth2.S256ChallengeOption(verifier))
 
 	callbackChan := make(chan *oauth2.Token, 1)
+	var deliverOnce sync.Once
 
 	serveMux := http.NewServeMux()
 	serveMux.HandleFunc(callbackURL.Path, func(w http.ResponseWriter, r *http.Request) {
@@ -169,14 +172,14 @@ func NewProvider(
 
 		token, exchangeErr := oauthCfg.Exchange(flowCtx, code, oauth2.VerifierOption(verifier))
 		if exchangeErr != nil {
-			http.Error(w, "Token exchange failed", http.StatusInternalServerError)
+			fmt.Fprintf(os.Stderr, "authorization code token exchange failed: %v\n", exchangeErr)
+			http.Error(w, fmt.Sprintf("Token exchange failed: %v", exchangeErr), http.StatusInternalServerError)
 			return
 		}
 
-		select {
-		case callbackChan <- token:
-		default:
-		}
+		deliverOnce.Do(func() {
+			callbackChan <- token
+		})
 
 		html := `<!DOCTYPE html>
 <html>
