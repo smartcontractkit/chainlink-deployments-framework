@@ -45,7 +45,11 @@ var (
 				DeployerKey: "0x567",
 			},
 			Canton: CantonConfig{
-				JWTToken: "",
+				AuthStrategy: "",
+				JWTToken:     "",
+				AuthURL:      "",
+				ClientID:     "",
+				ClientSecret: "",
 			},
 		},
 		Offchain: OffchainConfig{
@@ -77,7 +81,7 @@ var (
 	}
 
 	// envVars is the environment variables that used to set the config.
-	envVars = map[string]string{
+	envVars = map[string]string{ //nolint:gosec // G101: test fixture values, not real credentials
 		"ONCHAIN_KMS_KEY_ID":                         "123",
 		"ONCHAIN_KMS_KEY_REGION":                     "us-east-1",
 		"ONCHAIN_EVM_DEPLOYER_KEY":                   "0x123",
@@ -102,9 +106,14 @@ var (
 		"CATALOG_GRPC":                               "http://localhost:8080",
 		"CATALOG_AUTH_KMS_KEY_ID":                    "123",
 		"CATALOG_AUTH_KMS_KEY_REGION":                "us-east-1",
+		"ONCHAIN_CANTON_AUTH_STRATEGY":               "client_credentials",
+		"ONCHAIN_CANTON_AUTH_URL":                    "https://canton-auth.example.com",
+		"ONCHAIN_CANTON_CLIENT_ID":                   "canton-client-id",
+		"ONCHAIN_CANTON_CLIENT_SECRET":               "canton-client-secret",
+		"ONCHAIN_CANTON_JWT_TOKEN":                   "canton-jwt-token",
 	}
 
-	legacyEnvVars = map[string]string{
+	legacyEnvVars = map[string]string{ //nolint:gosec // G101: test fixture values, not real credentials
 		"KMS_DEPLOYER_KEY_ID":               "123",
 		"KMS_DEPLOYER_KEY_REGION":           "us-east-1",
 		"TEST_WALLET_KEY":                   "0x123",
@@ -127,6 +136,11 @@ var (
 		"TON_WALLET_VERSION":                "V5R1",
 		// These values do not have a legacy equivalent
 		"ONCHAIN_STELLAR_DEPLOYER_KEY": "0x567", // Stellar is new, uses new-style env var
+		"ONCHAIN_CANTON_AUTH_STRATEGY": "client_credentials",
+		"ONCHAIN_CANTON_AUTH_URL":      "https://canton-auth.example.com",
+		"ONCHAIN_CANTON_CLIENT_ID":     "canton-client-id",
+		"ONCHAIN_CANTON_CLIENT_SECRET": "canton-client-secret",
+		"ONCHAIN_CANTON_JWT_TOKEN":     "canton-jwt-token",
 		"CATALOG_GRPC":                 "http://localhost:8080",
 		"CATALOG_AUTH_KMS_KEY_ID":      "123",
 		"CATALOG_AUTH_KMS_KEY_REGION":  "us-east-1",
@@ -166,8 +180,12 @@ var (
 				DeployerKey:   "0x123",
 				WalletVersion: "V5R1",
 			},
-			Canton: CantonConfig{
-				JWTToken: "",
+			Canton: CantonConfig{ //nolint:gosec // G101: test fixture values, not real credentials
+				AuthStrategy: "client_credentials",
+				JWTToken:     "canton-jwt-token",
+				AuthURL:      "https://canton-auth.example.com",
+				ClientID:     "canton-client-id",
+				ClientSecret: "canton-client-secret",
 			},
 		},
 		Offchain: OffchainConfig{

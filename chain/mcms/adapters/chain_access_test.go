@@ -10,6 +10,8 @@ import (
 	"github.com/stretchr/testify/require"
 	tonwallet "github.com/xssnick/tonutils-go/ton/wallet"
 
+	mcmscanton "github.com/smartcontractkit/mcms/sdk/canton"
+
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos"
 	aptosmocks "github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos/mocks"
@@ -70,7 +72,7 @@ func TestChainAccess_UnknownSelector(t *testing.T) {
 
 	cantonChain, ok := a.CantonChain(999)
 	require.False(t, ok)
-	require.Equal(t, chaincanton.Chain{}, cantonChain)
+	require.Equal(t, mcmscanton.Chain{}, cantonChain)
 }
 
 func TestChainAccess_SelectorsAndLookups(t *testing.T) {
@@ -156,6 +158,5 @@ func TestChainAccess_SelectorsAndLookups(t *testing.T) {
 
 	gotCanton, ok := a.CantonChain(cantonSel)
 	require.True(t, ok)
-	require.Equal(t, cantonSel, gotCanton.Selector)
-	require.Nil(t, gotCanton.Participants)
+	require.Empty(t, gotCanton.Participants)
 }

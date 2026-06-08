@@ -17,6 +17,8 @@ import (
 	aptosprov "github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos/provider"
 	cantonprov "github.com/smartcontractkit/chainlink-deployments-framework/chain/canton/provider"
 	cantonauth "github.com/smartcontractkit/chainlink-deployments-framework/chain/canton/provider/authentication"
+	cantonauthcode "github.com/smartcontractkit/chainlink-deployments-framework/chain/canton/provider/authentication/authorizationcode"
+	cantonclientcreds "github.com/smartcontractkit/chainlink-deployments-framework/chain/canton/provider/authentication/clientcredentials"
 	fevm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	evmprov "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider"
 	evmclient "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider/rpcclient"
@@ -219,10 +221,10 @@ func newChainLoaders(
 		lggr.Info("Skipping Ton chains, no private key found in secrets")
 	}
 
-	if cfg.Canton.JWTToken != "" {
+	if cantonAuthConfigured(cfg.Canton) {
 		loaders[chainsel.FamilyCanton] = newChainLoaderCanton(networks, cfg)
 	} else {
-		lggr.Info("Skipping Canton chains, no JWT token found in secrets")
+		lggr.Info("Skipping Canton chains, no Canton auth configured (set auth_strategy and jwt_token, or auth_url+client_id for OAuth)")
 	}
 
 	return loaders
@@ -733,7 +735,8 @@ func newChainLoaderCanton(
 }
 
 // Load loads a Canton Chain for a selector.
-// Participant configurations come from network metadata, and JWT token from env config.
+// Participant configurations come from network metadata. Authentication is configured via CantonConfig
+// (static JWT, client_credentials for CI, or authorization_code for local development).
 func (l *chainLoaderCanton) Load(ctx context.Context, selector uint64) (fchain.BlockChain, error) {
 	network, err := l.getNetwork(selector)
 	if err != nil {
@@ -750,12 +753,10 @@ func (l *chainLoaderCanton) Load(ctx context.Context, selector uint64) (fchain.B
 		return nil, fmt.Errorf("canton network %d: no participants found in metadata", selector)
 	}
 
-	if l.cfg.Canton.JWTToken == "" {
-		return nil, fmt.Errorf("canton network %d: JWT token is required", selector)
+	authProvider, err := l.cantonAuthProvider(ctx, selector, md.InsecureTransport)
+	if err != nil {
+		return nil, err
 	}
-
-	// Use TLS-enforcing auth provider for Canton participant endpoints.
-	authProvider := cantonauth.NewStaticProvider(l.cfg.Canton.JWTToken)
 
 	participants := make([]cantonprov.ParticipantConfig, len(md.Participants))
 	for i, participantMD := range md.Participants {
@@ -766,9 +767,10 @@ func (l *chainLoaderCanton) Load(ctx context.Context, selector uint64) (fchain.B
 				AdminAPIURL:      participantMD.AdminAPIURL,
 				ValidatorAPIURL:  participantMD.ValidatorAPIURL,
 			},
-			UserID:       participantMD.UserID,
-			PartyID:      participantMD.PartyID,
-			AuthProvider: authProvider,
+			UserID:         participantMD.UserID,
+			PartyID:        participantMD.PartyID,
+			ReadAsPartyIDs: participantMD.ReadAsPartyIDs,
+			AuthProvider:   authProvider,
 		}
 	}
 
@@ -782,6 +784,52 @@ func (l *chainLoaderCanton) Load(ctx context.Context, selector uint64) (fchain.B
 	}
 
 	return c, nil
+}
+
+// cantonAuthConfigured returns true if Canton auth is configured for at least one strategy.
+func cantonAuthConfigured(c cfgenv.CantonConfig) bool {
+	switch c.AuthStrategy {
+	case cfgenv.CantonAuthStrategyClientCredentials:
+		return c.AuthURL != "" && c.ClientID != "" && c.ClientSecret != ""
+	case cfgenv.CantonAuthStrategyAuthorizationCode:
+		return c.AuthURL != "" && c.ClientID != ""
+	case "", cfgenv.CantonAuthStrategyStatic:
+		return c.JWTToken != ""
+	default:
+		return false
+	}
+}
+
+// cantonAuthProvider builds a Canton auth Provider from config.
+func (l *chainLoaderCanton) cantonAuthProvider(ctx context.Context, selector uint64, insecureTransport bool) (cantonauth.Provider, error) {
+	c := l.cfg.Canton
+	switch c.AuthStrategy {
+	case cfgenv.CantonAuthStrategyClientCredentials:
+		provider, err := cantonclientcreds.NewDiscoveryProvider(ctx, c.AuthURL, c.ClientID, c.ClientSecret)
+		if err != nil {
+			return nil, fmt.Errorf("canton network %d: client_credentials auth: %w", selector, err)
+		}
+
+		return provider, nil
+	case cfgenv.CantonAuthStrategyAuthorizationCode:
+		provider, err := cantonauthcode.NewDiscoveryProvider(ctx, c.AuthURL, c.ClientID)
+		if err != nil {
+			return nil, fmt.Errorf("canton network %d: authorization_code auth: %w", selector, err)
+		}
+
+		return provider, nil
+	case "", cfgenv.CantonAuthStrategyStatic:
+		if c.JWTToken == "" {
+			return nil, fmt.Errorf("canton network %d: JWT token is required for static auth", selector)
+		}
+		if insecureTransport {
+			return cantonauth.NewInsecureStaticProvider(c.JWTToken), nil
+		}
+
+		return cantonauth.NewStaticProvider(c.JWTToken), nil
+	default:
+		return nil, fmt.Errorf("canton network %d: unknown auth strategy: %q", selector, c.AuthStrategy)
+	}
 }
 
 // useKMS returns true if both KeyID and KeyRegion are set in the provided KMS config.
