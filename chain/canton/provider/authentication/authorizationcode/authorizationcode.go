@@ -174,6 +174,7 @@ func NewProvider(
 		if exchangeErr != nil {
 			fmt.Fprintf(os.Stderr, "authorization code token exchange failed: %v\n", exchangeErr)
 			http.Error(w, fmt.Sprintf("Token exchange failed: %v", exchangeErr), http.StatusInternalServerError)
+
 			return
 		}
 
@@ -235,7 +236,8 @@ func NewProvider(
 		return nil, fmt.Errorf("callback server error: %w", err)
 	case token := <-callbackChan:
 		shutdown()
-		tokenSource := oauthCfg.TokenSource(flowCtx, token)
+		refreshCtx := context.WithoutCancel(ctx)
+		tokenSource := oauthCfg.TokenSource(refreshCtx, token)
 
 		return &Provider{
 			tokenSource:          oauth.TokenSource{TokenSource: tokenSource},

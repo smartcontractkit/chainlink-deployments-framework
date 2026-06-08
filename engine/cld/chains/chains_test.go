@@ -1419,6 +1419,16 @@ func Test_cantonAuthConfigured(t *testing.T) {
 			config: cfgenv.CantonConfig{},
 			want:   false,
 		},
+		{
+			name:   "unknown strategy with jwt",
+			config: cfgenv.CantonConfig{AuthStrategy: "typo", JWTToken: "token"},
+			want:   false,
+		},
+		{
+			name:   "explicit static strategy",
+			config: cfgenv.CantonConfig{AuthStrategy: cfgenv.CantonAuthStrategyStatic, JWTToken: "token"},
+			want:   true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -1451,6 +1461,13 @@ func Test_chainLoaderCanton_cantonAuthProvider(t *testing.T) {
 	_, err = loaderMissingJWT.cantonAuthProvider(ctx, chainsel.CANTON_LOCALNET.Selector, false)
 	require.Error(t, err)
 	require.ErrorContains(t, err, "JWT token is required")
+
+	loaderUnknownStrategy := newChainLoaderCanton(nil, cfgenv.OnchainConfig{
+		Canton: cfgenv.CantonConfig{AuthStrategy: "typo", JWTToken: "static-token"},
+	})
+	_, err = loaderUnknownStrategy.cantonAuthProvider(ctx, chainsel.CANTON_LOCALNET.Selector, false)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "unknown auth strategy")
 }
 
 // newFakeRPCServer returns a fake RPC server which always answers with a valid `eth_blockNumber“

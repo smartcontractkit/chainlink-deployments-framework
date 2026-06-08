@@ -793,9 +793,10 @@ func cantonAuthConfigured(c cfgenv.CantonConfig) bool {
 		return c.AuthURL != "" && c.ClientID != "" && c.ClientSecret != ""
 	case cfgenv.CantonAuthStrategyAuthorizationCode:
 		return c.AuthURL != "" && c.ClientID != ""
-	default:
-		// static or empty (backward compat: jwt_token alone enables Canton)
+	case "", cfgenv.CantonAuthStrategyStatic:
 		return c.JWTToken != ""
+	default:
+		return false
 	}
 }
 
@@ -817,7 +818,7 @@ func (l *chainLoaderCanton) cantonAuthProvider(ctx context.Context, selector uin
 		}
 
 		return provider, nil
-	default:
+	case "", cfgenv.CantonAuthStrategyStatic:
 		if c.JWTToken == "" {
 			return nil, fmt.Errorf("canton network %d: JWT token is required for static auth", selector)
 		}
@@ -826,6 +827,8 @@ func (l *chainLoaderCanton) cantonAuthProvider(ctx context.Context, selector uin
 		}
 
 		return cantonauth.NewStaticProvider(c.JWTToken), nil
+	default:
+		return nil, fmt.Errorf("canton network %d: unknown auth strategy: %q", selector, c.AuthStrategy)
 	}
 }
 
