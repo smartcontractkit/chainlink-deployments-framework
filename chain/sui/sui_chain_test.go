@@ -77,7 +77,9 @@ func TestChain_ReadOnly(t *testing.T) {
 	// read with read-only client should work
 	balance, err := roSuiChain.Client.GetSUIBalance(t.Context(), signer)
 	require.NoError(t, err)
-	require.Equal(t, 1000000000000, balance.GetBalance())
+	expectedBalance := uint64(1000000000000)
+	actualBalance := balance.GetBalance()
+	require.Equal(t, expectedBalance, actualBalance)
 
 	// write with read-write client should work
 	opts := &bind.CallOpts{WaitForExecution: true, GasBudget: pointer.To(uint64(400_000_000)), Signer: suiChain.Signer}
