@@ -3,6 +3,7 @@ package upf
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 
@@ -10,6 +11,7 @@ import (
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/mcms"
 	mcmssdk "github.com/smartcontractkit/mcms/sdk"
+	mcmscantonsdk "github.com/smartcontractkit/mcms/sdk/canton"
 	mcmsevmsdk "github.com/smartcontractkit/mcms/sdk/evm"
 	mcmssolanasdk "github.com/smartcontractkit/mcms/sdk/solana"
 	mcmssuisdk "github.com/smartcontractkit/mcms/sdk/sui"
@@ -195,6 +197,8 @@ func convertTimelockProposal(ctx context.Context, t *testing.T, timelockProposal
 			converters[chain] = converter
 		case chainsel.FamilyTon:
 			converters[chain] = mcmstonsdk.NewTimelockConverter(mcmstonsdk.DefaultSendAmount)
+		case chainsel.FamilyCanton:
+			converters[chain] = mcmscantonsdk.NewTimelockConverter()
 		default:
 			t.Fatalf("unsupported chain family %s", chainFamily)
 		}
@@ -204,6 +208,67 @@ func convertTimelockProposal(ctx context.Context, t *testing.T, timelockProposal
 	require.NoError(t, err)
 
 	return &mcmProposal
+}
+
+// TestUpfConvertTimelockProposalWithCanton exercises the full UPF conversion pipeline on a Canton proposal,
+// producing an actual YAML string (the `.upf.yaml` that reviewers see).
+func TestUpfConvertTimelockProposalWithCanton(t *testing.T) {
+	t.Parallel()
+
+	proposalJSON, err := os.ReadFile("../testdata/canton_test_proposal.json")
+	require.NoError(t, err)
+
+	env := deployment.Environment{
+		DataStore:         datastore.NewMemoryDataStore().Seal(),
+		ExistingAddresses: deployment.NewMemoryAddressBook(),
+	}
+	proposalCtx, err := mcmsanalyzer.NewDefaultProposalContext(env)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name      string
+		signers   map[mcmstypes.ChainSelector][]common.Address
+		assertion func(*testing.T, string, error)
+	}{
+		{
+			name:    "Canton configure-chains proposal decodes to YAML",
+			signers: map[mcmstypes.ChainSelector][]common.Address{},
+			assertion: func(t *testing.T, gotUpf string, err error) {
+				t.Helper()
+				require.NoError(t, err)
+				require.NotEmpty(t, gotUpf)
+
+				// YAML document separator must be present.
+				require.Contains(t, gotUpf, "---")
+
+				// Canton chain family must appear.
+				require.Contains(t, gotUpf, "canton")
+
+				// Decoded function names from the real proposal must be present,
+				// proving Canton ops were decoded (not "decoding is not supported").
+				require.Contains(t, gotUpf, "ApplyDestChainConfigUpdates")
+				require.Contains(t, gotUpf, "ApplyFeeQuoterDestChainConfigUpdates")
+				require.Contains(t, gotUpf, "ApplyDestChainUpdates")
+
+				// Decoded operationData must appear in the calls — confirms inputs were rendered.
+				require.Contains(t, gotUpf, "operationData")
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			timelockProposal, err := mcms.NewTimelockProposal(strings.NewReader(string(proposalJSON)))
+			require.NoError(t, err)
+			mcmProposal := convertTimelockProposal(t.Context(), t, timelockProposal)
+
+			got, err := UpfConvertTimelockProposal(t.Context(), proposalCtx, env, timelockProposal, mcmProposal, tt.signers)
+
+			tt.assertion(t, got, err)
+		})
+	}
 }
 
 // ----- data -----
