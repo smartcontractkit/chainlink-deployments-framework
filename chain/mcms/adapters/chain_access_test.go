@@ -88,8 +88,8 @@ func TestChainAccess_SelectorsAndLookups(t *testing.T) {
 	aptosSigner := aptosmocks.NewMockTransactionSigner(t)
 	solClient := solrpc.New("http://example.invalid")
 	solSigner := &sol.PrivateKey{1, 2, 3}
-	suiClient := suimocks.NewSuiPTBClient(t)
-	suiSigner := suimocks.NewSuiSigner(t)
+	suiClient := suimocks.NewMockSuiPTBClient(t)
+	suiSigner := suimocks.NewMockSuiSigner(t)
 	tonClient := tonmocks.NewMockAPIClientWrapped(t)
 	tonSigner := &tonwallet.Wallet{}
 
