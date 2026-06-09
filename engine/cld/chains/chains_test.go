@@ -1400,6 +1400,11 @@ func Test_cantonAuthConfigured(t *testing.T) {
 			want:   true,
 		},
 		{
+			name:   "client credentials inferred without strategy",
+			config: cfgenv.CantonConfig{AuthURL: "https://auth.example.com", ClientID: "id", ClientSecret: "secret"},
+			want:   true,
+		},
+		{
 			name:   "client credentials missing secret",
 			config: cfgenv.CantonConfig{AuthStrategy: cfgenv.CantonAuthStrategyClientCredentials, AuthURL: "https://auth.example.com", ClientID: "id"},
 			want:   false,

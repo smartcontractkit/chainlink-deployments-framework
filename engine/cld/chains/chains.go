@@ -786,14 +786,31 @@ func (l *chainLoaderCanton) Load(ctx context.Context, selector uint64) (fchain.B
 	return c, nil
 }
 
+// cantonEffectiveAuthStrategy resolves the auth strategy from explicit config or available credentials.
+// When auth_strategy is unset, OAuth client credentials are inferred if auth_url, client_id, and
+// client_secret are all present (e.g. ONCHAIN_CANTON_OKTA_* from chainlink-deployments CI secrets).
+func cantonEffectiveAuthStrategy(c cfgenv.CantonConfig) string {
+	if c.AuthStrategy != "" {
+		return c.AuthStrategy
+	}
+	if c.AuthURL != "" && c.ClientID != "" && c.ClientSecret != "" {
+		return cfgenv.CantonAuthStrategyClientCredentials
+	}
+	if c.AuthURL != "" && c.ClientID != "" {
+		return cfgenv.CantonAuthStrategyAuthorizationCode
+	}
+
+	return cfgenv.CantonAuthStrategyStatic
+}
+
 // cantonAuthConfigured returns true if Canton auth is configured for at least one strategy.
 func cantonAuthConfigured(c cfgenv.CantonConfig) bool {
-	switch c.AuthStrategy {
+	switch cantonEffectiveAuthStrategy(c) {
 	case cfgenv.CantonAuthStrategyClientCredentials:
 		return c.AuthURL != "" && c.ClientID != "" && c.ClientSecret != ""
 	case cfgenv.CantonAuthStrategyAuthorizationCode:
 		return c.AuthURL != "" && c.ClientID != ""
-	case "", cfgenv.CantonAuthStrategyStatic:
+	case cfgenv.CantonAuthStrategyStatic:
 		return c.JWTToken != ""
 	default:
 		return false
@@ -803,7 +820,7 @@ func cantonAuthConfigured(c cfgenv.CantonConfig) bool {
 // cantonAuthProvider builds a Canton auth Provider from config.
 func (l *chainLoaderCanton) cantonAuthProvider(ctx context.Context, selector uint64, insecureTransport bool) (cantonauth.Provider, error) {
 	c := l.cfg.Canton
-	switch c.AuthStrategy {
+	switch cantonEffectiveAuthStrategy(c) {
 	case cfgenv.CantonAuthStrategyClientCredentials:
 		provider, err := cantonclientcreds.NewDiscoveryProvider(ctx, c.AuthURL, c.ClientID, c.ClientSecret)
 		if err != nil {
