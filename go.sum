@@ -717,8 +717,8 @@ github.com/smartcontractkit/grpc-proxy v0.0.0-20240830132753-a7e17fec5ab7 h1:12i
 github.com/smartcontractkit/grpc-proxy v0.0.0-20240830132753-a7e17fec5ab7/go.mod h1:FX7/bVdoep147QQhsOPkYsPEXhGZjeYx6lBSaSXtZOA=
 github.com/smartcontractkit/libocr v0.0.0-20260304194147-a03701e2c02e h1:poXTj5cFVM6XfC4HICIDYkDVc/A6OYB0eeID0wU2JQE=
 github.com/smartcontractkit/libocr v0.0.0-20260304194147-a03701e2c02e/go.mod h1:PLdNK6GlqfxIWXzziPkU7dCAVlVFeYkyyW7AQY0R+4Q=
-github.com/smartcontractkit/mcms v0.46.1-0.20260608155800-50bf251a7bd6 h1:szQii1gJxkKN48g/I+7gSr32wUw5N1whR6kRU5Rhb+c=
-github.com/smartcontractkit/mcms v0.46.1-0.20260608155800-50bf251a7bd6/go.mod h1:oL11nq1enQcZzbbheoo/Qzz8TCJRn8D440aApUSPwBk=
+github.com/smartcontractkit/mcms v0.47.1-0.20260609161231-2e33fc6eb369 h1:q9VwcJ5XGzjYikG21u4wYR5BjI3rxl0UEixGUdV0uUA=
+github.com/smartcontractkit/mcms v0.47.1-0.20260609161231-2e33fc6eb369/go.mod h1:35TsT8/otKh06CWIMIaFkjqgto5wR2oJo7ni9d8FrqI=
 github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 h1:+jumHNA0Wrelhe64i8F6HNlS8pkoyMv5sreGx2Ry5Rw=
 github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8/go.mod h1:3n1Cwaq1E1/1lhQhtRK2ts/ZwZEhjcQeJQ1RuC6Q/8U=
 github.com/spf13/afero v1.15.0 h1:b/YBCLWAJdFWJTN9cLhiXXcD7mzKn9Dm86dNnfyQw1I=
