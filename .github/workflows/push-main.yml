@@ -17,7 +17,7 @@ jobs:
         with:
           fetch-depth: 1 # fetch only the latest commit
       - name: Cache Go modules
-        uses: smartcontractkit/.github/actions/setup-golang@dcdc10badaa0702553d4aa2c8311b4239b48be2c # setup-golang@v0.3.2
+        uses: smartcontractkit/.github/actions/setup-golang@setup-golang/v1
         with:
           use-go-cache: true # this will setup the go cache
           only-modules: true
@@ -31,7 +31,7 @@ jobs:
       contents: read
     steps:
       - name: cd-release
-        uses: smartcontractkit/.github/actions/cicd-changesets@eeb76b5870e3c17856d5a60fd064a053c023b5f5 # cicd-changesets@1.0.0
+        uses: smartcontractkit/.github/actions/cicd-changesets@cicd-changesets/v1
         with:
           # general inputs
           git-user: app-token-issuer-infra-releng[bot]

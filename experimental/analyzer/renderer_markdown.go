@@ -722,7 +722,13 @@ func compactValue(field FieldValue, ctx *FieldContext) string {
 	case SimpleField:
 		return truncateMiddle(f.GetValue(), MaxCompactValueLength)
 	case StructField:
-		return "struct"
+		if len(f.Fields) == 0 {
+			return "{}"
+		}
+		// Show the first field as a hint: {key: value…}
+		first := f.Fields[0]
+
+		return truncateMiddle(fmt.Sprintf("{%s: %s}", first.Name, compactValue(first.Value, ctx)), MaxCompactValueLength)
 	case ArrayField:
 		return fmt.Sprintf("array[%d]", f.GetLength())
 	default:
