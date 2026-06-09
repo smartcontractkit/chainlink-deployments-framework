@@ -5,6 +5,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	sol "github.com/gagliardetto/solana-go"
 	solrpc "github.com/gagliardetto/solana-go/rpc"
+	mcmscanton "github.com/smartcontractkit/mcms/sdk/canton"
 	"github.com/smartcontractkit/mcms/sdk/evm"
 	mcmssui "github.com/smartcontractkit/mcms/sdk/sui"
 	"github.com/stellar/go-stellar-sdk/clients/rpcclient"
@@ -148,13 +149,28 @@ func (a *ChainAccessAdapter) StellarSigner(selector uint64) (cldfstellar.Stellar
 	return ch.Signer, ok
 }
 
-// CantonChain returns the Canton chain for the given selector.
-// Canton chains contain participants with their own service clients, so we return the chain itself.
-func (a *ChainAccessAdapter) CantonChain(selector uint64) (cldfcanton.Chain, bool) {
+// CantonChain returns the MCMS Canton chain view for the given selector.
+func (a *ChainAccessAdapter) CantonChain(selector uint64) (mcmscanton.Chain, bool) {
 	ch, ok := a.inner.CantonChains()[selector]
 	if !ok {
-		return cldfcanton.Chain{}, false
+		return mcmscanton.Chain{}, false
 	}
 
-	return ch, true
+	return cantonChainFromCLDF(ch), true
+}
+
+// cantonChainFromCLDF maps CLDF participant clients into mcms/sdk/canton.Chain for chainwrappers.
+func cantonChainFromCLDF(ch cldfcanton.Chain) mcmscanton.Chain {
+	participants := make([]mcmscanton.Participant, 0, len(ch.Participants))
+	for _, p := range ch.Participants {
+		participants = append(participants, mcmscanton.Participant{
+			PartyID: p.PartyID,
+			LedgerServices: mcmscanton.LedgerServices{
+				State:   p.LedgerServices.State,
+				Command: p.LedgerServices.Command,
+			},
+		})
+	}
+
+	return mcmscanton.Chain{Participants: participants}
 }

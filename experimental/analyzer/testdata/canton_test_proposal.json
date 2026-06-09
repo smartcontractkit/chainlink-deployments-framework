@@ -1,0 +1,770 @@
+{
+  "version": "v1",
+  "kind": "TimelockProposal",
+  "validUntil": 4070908800,
+  "signatures": [
+    {
+      "R": "0xc71b31550152f03e50357e7d6453b9765b879be658c21e8f2670a7539510ef71",
+      "S": "0x13da381b8fe063d69a9e412370014f91219c6d1fdc7188049f7c7da9a63b493d",
+      "V": 1
+    }
+  ],
+  "overridePreviousRoot": true,
+  "chainMetadata": {
+    "8706591216959472610": {
+      "startingOpCount": 1,
+      "mcmAddress": "0xf2919888cc1303107e124efa6ebc00348528363bccb9ce8c19a2de9637a6215d",
+      "additionalFields": {
+        "chainId": 1,
+        "multisigId": "mcms-ccip@participant1-localparty-1::1220f11b1bc6a88b6504067e8accc7b841303dac1146c0b549b7b87a08fded2266f6-proposer",
+        "instanceId": "mcms-ccip"
+      }
+    }
+  },
+  "description": "Local devnet \u2014 Configure Canton \u2194 Sepolia CCIP lanes (Canton side)",
+  "metadata": {
+    "changesets": [
+      {
+        "config": {
+          "Chains": [
+            {
+              "ChainSelector": 8706591216959472610,
+              "CommitteeVerifiers": null,
+              "FamilyExtras": null,
+              "RemoteChains": {
+                "16015286601757825753": {
+                  "AllowTrafficFrom": null,
+                  "BaseExecutionGasCost": null,
+                  "DefaultExecutorQualifier": "",
+                  "DefaultInboundCCVs": [
+                    {
+                      "address": "",
+                      "chainSelector": 0,
+                      "labels": [],
+                      "qualifier": "default",
+                      "type": "CommitteeVerifier",
+                      "version": "0.1.0"
+                    }
+                  ],
+                  "DefaultOutboundCCVs": [
+                    {
+                      "address": "",
+                      "chainSelector": 0,
+                      "labels": [],
+                      "qualifier": "default",
+                      "type": "CommitteeVerifier",
+                      "version": "0.1.0"
+                    }
+                  ],
+                  "ExecutorDestChainConfig": null,
+                  "FeeQuoterDestChainConfig": {
+                    "DefaultTokenDestGasOverhead": null,
+                    "DefaultTokenFeeUSDCents": null,
+                    "DefaultTxGasLimit": null,
+                    "DestGasPerPayloadByteBase": null,
+                    "IsEnabled": null,
+                    "LinkFeeMultiplierPercent": 100,
+                    "MaxDataBytes": null,
+                    "MaxPerMsgGasLimit": null,
+                    "NetworkFeeUSDCents": null,
+                    "OverrideExistingConfig": false,
+                    "USDPerUnitGas": 38
+                  },
+                  "LaneMandatedInboundCCVs": null,
+                  "LaneMandatedOutboundCCVs": null,
+                  "MessageNetworkFeeUSDCents": null,
+                  "TokenNetworkFeeUSDCents": null,
+                  "TokenReceiverAllowed": null
+                }
+              }
+            }
+          ],
+          "MCMS": {
+            "Description": "Local devnet \u2014 Configure Canton \u2194 Sepolia CCIP lanes (Canton side)",
+            "OverridePreviousRoot": true,
+            "Qualifier": "ccipOwner",
+            "TimelockAction": "schedule",
+            "TimelockDelay": "1s",
+            "ValidUntil": 1780700211
+          },
+          "Topology": {
+            "ExecutorPools": {
+              "default": {
+                "BackoffDuration": 15000000000,
+                "ChainConfigs": {
+                  "10344971235874465080": {
+                    "ExecutionInterval": 15000000000,
+                    "NOPAliases": [
+                      "chainlink-ccv-staging-0",
+                      "chainlink-ccv-staging-1",
+                      "chainlink-ccv-staging-2",
+                      "chainlink-ccv-staging-3",
+                      "chainlink-ccv-staging-4",
+                      "chainlink-ccv-staging-5",
+                      "chainlink-ccv-staging-6",
+                      "chainlink-ccv-staging-7",
+                      "chainlink-ccv-staging-8",
+                      "chainlink-ccv-staging-9",
+                      "chainlink-ccv-staging-10",
+                      "chainlink-ccv-staging-11",
+                      "chainlink-ccv-staging-12",
+                      "chainlink-ccv-staging-13",
+                      "chainlink-ccv-staging-14",
+                      "chainlink-ccv-staging-15",
+                      "chainlink-ccv-staging-16",
+                      "chainlink-ccv-staging-17",
+                      "chainlink-ccv-staging-18",
+                      "chainlink-ccv-staging-19",
+                      "chainlink-ccv-staging-20"
+                    ]
+                  },
+                  "14767482510784806043": {
+                    "ExecutionInterval": 15000000000,
+                    "NOPAliases": [
+                      "chainlink-ccv-staging-0",
+                      "chainlink-ccv-staging-1",
+                      "chainlink-ccv-staging-2",
+                      "chainlink-ccv-staging-3",
+                      "chainlink-ccv-staging-4",
+                      "chainlink-ccv-staging-5",
+                      "chainlink-ccv-staging-6",
+                      "chainlink-ccv-staging-7",
+                      "chainlink-ccv-staging-8",
+                      "chainlink-ccv-staging-9",
+                      "chainlink-ccv-staging-10",
+                      "chainlink-ccv-staging-11",
+                      "chainlink-ccv-staging-12",
+                      "chainlink-ccv-staging-13",
+                      "chainlink-ccv-staging-14",
+                      "chainlink-ccv-staging-15",
+                      "chainlink-ccv-staging-16",
+                      "chainlink-ccv-staging-17",
+                      "chainlink-ccv-staging-18",
+                      "chainlink-ccv-staging-19",
+                      "chainlink-ccv-staging-20"
+                    ]
+                  },
+                  "16015286601757825753": {
+                    "ExecutionInterval": 15000000000,
+                    "NOPAliases": [
+                      "chainlink-ccv-staging-0",
+                      "chainlink-ccv-staging-1",
+                      "chainlink-ccv-staging-2",
+                      "chainlink-ccv-staging-3",
+                      "chainlink-ccv-staging-4",
+                      "chainlink-ccv-staging-5",
+                      "chainlink-ccv-staging-6",
+                      "chainlink-ccv-staging-7",
+                      "chainlink-ccv-staging-8",
+                      "chainlink-ccv-staging-9",
+                      "chainlink-ccv-staging-10",
+                      "chainlink-ccv-staging-11",
+                      "chainlink-ccv-staging-12",
+                      "chainlink-ccv-staging-13",
+                      "chainlink-ccv-staging-14",
+                      "chainlink-ccv-staging-15",
+                      "chainlink-ccv-staging-16",
+                      "chainlink-ccv-staging-17",
+                      "chainlink-ccv-staging-18",
+                      "chainlink-ccv-staging-19",
+                      "chainlink-ccv-staging-20"
+                    ]
+                  },
+                  "16281711391670634445": {
+                    "ExecutionInterval": 15000000000,
+                    "NOPAliases": [
+                      "chainlink-ccv-staging-0",
+                      "chainlink-ccv-staging-1",
+                      "chainlink-ccv-staging-2",
+                      "chainlink-ccv-staging-3",
+                      "chainlink-ccv-staging-4",
+                      "chainlink-ccv-staging-5",
+                      "chainlink-ccv-staging-6",
+                      "chainlink-ccv-staging-7",
+                      "chainlink-ccv-staging-8",
+                      "chainlink-ccv-staging-9",
+                      "chainlink-ccv-staging-10",
+                      "chainlink-ccv-staging-11",
+                      "chainlink-ccv-staging-12",
+                      "chainlink-ccv-staging-13",
+                      "chainlink-ccv-staging-14",
+                      "chainlink-ccv-staging-15",
+                      "chainlink-ccv-staging-16",
+                      "chainlink-ccv-staging-17",
+                      "chainlink-ccv-staging-18",
+                      "chainlink-ccv-staging-19",
+                      "chainlink-ccv-staging-20"
+                    ]
+                  },
+                  "3478487238524512106": {
+                    "ExecutionInterval": 15000000000,
+                    "NOPAliases": [
+                      "chainlink-ccv-staging-0",
+                      "chainlink-ccv-staging-1",
+                      "chainlink-ccv-staging-2",
+                      "chainlink-ccv-staging-3",
+                      "chainlink-ccv-staging-4",
+                      "chainlink-ccv-staging-5",
+                      "chainlink-ccv-staging-6",
+                      "chainlink-ccv-staging-7",
+                      "chainlink-ccv-staging-8",
+                      "chainlink-ccv-staging-9",
+                      "chainlink-ccv-staging-10",
+                      "chainlink-ccv-staging-11",
+                      "chainlink-ccv-staging-12",
+                      "chainlink-ccv-staging-13",
+                      "chainlink-ccv-staging-14",
+                      "chainlink-ccv-staging-15",
+                      "chainlink-ccv-staging-16",
+                      "chainlink-ccv-staging-17",
+                      "chainlink-ccv-staging-18",
+                      "chainlink-ccv-staging-19",
+                      "chainlink-ccv-staging-20"
+                    ]
+                  }
+                },
+                "IndexerQueryLimit": 100,
+                "LookbackWindow": 3600000000000,
+                "MaxRetryDuration": 28800000000000,
+                "NtpServer": "time.google.com",
+                "ReaderCacheExpiry": 300000000000,
+                "WorkerCount": 100
+              }
+            },
+            "IndexerAddress": [
+              "https://indexer-1.example.test",
+              "https://indexer-2.example.test"
+            ],
+            "Monitoring": {
+              "Beholder": {
+                "CACertFile": "",
+                "InsecureConnection": true,
+                "LogStreamingEnabled": false,
+                "MetricReaderInterval": 5,
+                "OtelExporterGRPCEndpoint": "",
+                "OtelExporterHTTPEndpoint": "telemetry.example.test:443",
+                "TraceBatchTimeout": 10,
+                "TraceSampleRatio": 1
+              },
+              "Enabled": true,
+              "Type": "beholder"
+            },
+            "NOPTopology": {
+              "Committees": {
+                "default": {
+                  "Aggregators": [
+                    {
+                      "Address": "aggregator-1.example.test",
+                      "InsecureAggregatorConnection": false,
+                      "Name": "aggregator-1"
+                    },
+                    {
+                      "Address": "aggregator-2.example.test",
+                      "InsecureAggregatorConnection": false,
+                      "Name": "aggregator-2"
+                    }
+                  ],
+                  "ChainConfigs": {
+                    "10109143320554840099": {
+                      "AllowlistAdmin": "0x0000000000000000000000000000000000000000",
+                      "FeeAggregator": "0xf5008EAf49Ea2B8B905f23B45e7206E191B0959e",
+                      "NOPAliases": [
+                        "chainlink-canton-committee-verifier",
+                        "chainlink-canton-committee-verifier-0"
+                      ],
+                      "Threshold": 2
+                    },
+                    "10344971235874465080": {
+                      "AllowlistAdmin": "0x0000000000000000000000000000000000000000",
+                      "FeeAggregator": "0xf5008EAf49Ea2B8B905f23B45e7206E191B0959e",
+                      "NOPAliases": [
+                        "chainlink-ccv-staging-0",
+                        "chainlink-ccv-staging-1",
+                        "chainlink-ccv-staging-5",
+                        "chainlink-ccv-staging-6",
+                        "chainlink-ccv-staging-10",
+                        "chainlink-ccv-staging-13",
+                        "chainlink-ccv-staging-14",
+                        "chainlink-ccv-staging-15",
+                        "chainlink-ccv-staging-17",
+                        "chainlink-ccv-staging-18"
+                      ],
+                      "Threshold": 6
+                    },
+                    "14767482510784806043": {
+                      "AllowlistAdmin": "0x0000000000000000000000000000000000000000",
+                      "FeeAggregator": "0xf5008EAf49Ea2B8B905f23B45e7206E191B0959e",
+                      "NOPAliases": [
+                        "chainlink-ccv-staging-0",
+                        "chainlink-ccv-staging-1",
+                        "chainlink-ccv-staging-2",
+                        "chainlink-ccv-staging-3",
+                        "chainlink-ccv-staging-4",
+                        "chainlink-ccv-staging-10",
+                        "chainlink-ccv-staging-11",
+                        "chainlink-ccv-staging-12",
+                        "chainlink-ccv-staging-13",
+                        "chainlink-ccv-staging-14"
+                      ],
+                      "Threshold": 6
+                    },
+                    "16015286601757825753": {
+                      "AllowlistAdmin": "0x0000000000000000000000000000000000000000",
+                      "FeeAggregator": "0xf5008EAf49Ea2B8B905f23B45e7206E191B0959e",
+                      "NOPAliases": [
+                        "chainlink-ccv-staging-0",
+                        "chainlink-ccv-staging-1",
+                        "chainlink-ccv-staging-2",
+                        "chainlink-ccv-staging-3",
+                        "chainlink-ccv-staging-4",
+                        "chainlink-ccv-staging-5",
+                        "chainlink-ccv-staging-6",
+                        "chainlink-ccv-staging-7",
+                        "chainlink-ccv-staging-8",
+                        "chainlink-ccv-staging-9"
+                      ],
+                      "Threshold": 6
+                    },
+                    "16281711391670634445": {
+                      "AllowlistAdmin": "0x0000000000000000000000000000000000000000",
+                      "FeeAggregator": "0xf5008EAf49Ea2B8B905f23B45e7206E191B0959e",
+                      "NOPAliases": [
+                        "chainlink-ccv-staging-2",
+                        "chainlink-ccv-staging-3",
+                        "chainlink-ccv-staging-4",
+                        "chainlink-ccv-staging-7",
+                        "chainlink-ccv-staging-8",
+                        "chainlink-ccv-staging-11",
+                        "chainlink-ccv-staging-16",
+                        "chainlink-ccv-staging-17",
+                        "chainlink-ccv-staging-19",
+                        "chainlink-ccv-staging-20"
+                      ],
+                      "Threshold": 6
+                    },
+                    "3478487238524512106": {
+                      "AllowlistAdmin": "0x0000000000000000000000000000000000000000",
+                      "FeeAggregator": "0xf5008EAf49Ea2B8B905f23B45e7206E191B0959e",
+                      "NOPAliases": [
+                        "chainlink-ccv-staging-5",
+                        "chainlink-ccv-staging-6",
+                        "chainlink-ccv-staging-7",
+                        "chainlink-ccv-staging-8",
+                        "chainlink-ccv-staging-9",
+                        "chainlink-ccv-staging-10",
+                        "chainlink-ccv-staging-11",
+                        "chainlink-ccv-staging-12",
+                        "chainlink-ccv-staging-15",
+                        "chainlink-ccv-staging-16"
+                      ],
+                      "Threshold": 6
+                    },
+                    "8706591216959472610": {
+                      "AllowlistAdmin": "0x0000000000000000000000000000000000000000",
+                      "FeeAggregator": "0xf5008EAf49Ea2B8B905f23B45e7206E191B0959e",
+                      "NOPAliases": [
+                        "chainlink-canton-committee-verifier",
+                        "chainlink-canton-committee-verifier-0"
+                      ],
+                      "Threshold": 2
+                    }
+                  },
+                  "Qualifier": "default",
+                  "StorageLocations": [
+                    ""
+                  ],
+                  "VerifierVersion": "2.0.0"
+                },
+                "secondary": {
+                  "Aggregators": [
+                    {
+                      "Address": "secondary-aggregator-1.example.test",
+                      "InsecureAggregatorConnection": false,
+                      "Name": "secondary-aggregator-1"
+                    },
+                    {
+                      "Address": "secondary-aggregator-2.example.test",
+                      "InsecureAggregatorConnection": false,
+                      "Name": "secondary-aggregator-2"
+                    }
+                  ],
+                  "ChainConfigs": {
+                    "10344971235874465080": {
+                      "AllowlistAdmin": "0x0000000000000000000000000000000000000000",
+                      "FeeAggregator": "0xf5008EAf49Ea2B8B905f23B45e7206E191B0959e",
+                      "NOPAliases": [
+                        "chainlink-ccv-staging-0"
+                      ],
+                      "Threshold": 1
+                    },
+                    "14767482510784806043": {
+                      "AllowlistAdmin": "0x0000000000000000000000000000000000000000",
+                      "FeeAggregator": "0xf5008EAf49Ea2B8B905f23B45e7206E191B0959e",
+                      "NOPAliases": [
+                        "chainlink-ccv-staging-0"
+                      ],
+                      "Threshold": 1
+                    },
+                    "16015286601757825753": {
+                      "AllowlistAdmin": "0x0000000000000000000000000000000000000000",
+                      "FeeAggregator": "0xf5008EAf49Ea2B8B905f23B45e7206E191B0959e",
+                      "NOPAliases": [
+                        "chainlink-ccv-staging-0"
+                      ],
+                      "Threshold": 1
+                    },
+                    "16281711391670634445": {
+                      "AllowlistAdmin": "0x0000000000000000000000000000000000000000",
+                      "FeeAggregator": "0xf5008EAf49Ea2B8B905f23B45e7206E191B0959e",
+                      "NOPAliases": [
+                        "chainlink-ccv-staging-0"
+                      ],
+                      "Threshold": 1
+                    },
+                    "3478487238524512106": {
+                      "AllowlistAdmin": "0x0000000000000000000000000000000000000000",
+                      "FeeAggregator": "0xf5008EAf49Ea2B8B905f23B45e7206E191B0959e",
+                      "NOPAliases": [
+                        "chainlink-ccv-staging-0"
+                      ],
+                      "Threshold": 1
+                    }
+                  },
+                  "Qualifier": "secondary",
+                  "StorageLocations": [
+                    ""
+                  ],
+                  "VerifierVersion": "2.0.0"
+                }
+              },
+              "NOPs": [
+                {
+                  "Alias": "chainlink-ccv-staging-0",
+                  "Mode": "",
+                  "Name": "chainlink-ccv-staging-0",
+                  "SignerAddressByFamily": {
+                    "canton": "04b3a22e521d90ece86e60599a26217f7ead38c1eb3fc68000fdc4b6e5cce59eed54a886af05f22e60ec044ede68505736b496e1a03b2aedf6ab366dc84b477bce",
+                    "evm": "0xedadd85f6d13c23817e935da32494f200971ab6d"
+                  }
+                },
+                {
+                  "Alias": "chainlink-ccv-staging-1",
+                  "Mode": "",
+                  "Name": "chainlink-ccv-staging-1",
+                  "SignerAddressByFamily": {
+                    "canton": "04e7db13a109f40c8d4590942d31729c4047ecd9b67c2043e391c6d9ef93001e12c0f01452e4e5f7743c45fad0be9c5b6cec1abd4006dc9b796511b8799fcb040f",
+                    "evm": "0x96a6c9439db276d168ac9f9287deccec63acc581"
+                  }
+                },
+                {
+                  "Alias": "chainlink-ccv-staging-2",
+                  "Mode": "",
+                  "Name": "chainlink-ccv-staging-2",
+                  "SignerAddressByFamily": {
+                    "canton": "049ed0bdc13dd97814281a101ffad09f3eeac2a4a9cdba575602dfebc46bf96ceda8445456c38ab8b10c7da8c000c1940f6c1fddd09982ad19faed00d75344db26",
+                    "evm": "0xedadd85f6d13c23817e935da32494f200971ab6d"
+                  }
+                },
+                {
+                  "Alias": "chainlink-ccv-staging-3",
+                  "Mode": "",
+                  "Name": "chainlink-ccv-staging-3",
+                  "SignerAddressByFamily": {
+                    "canton": "04891e2cb3d05b820753e02263eb2298d8bfc47e4a5f44101c59ad5baaaf7602e5086f68129cab83fe9e98a06606e1d6379f5c471a7e6c8cd189a322fcfac948d0",
+                    "evm": "0x96a6c9439db276d168ac9f9287deccec63acc581"
+                  }
+                },
+                {
+                  "Alias": "chainlink-ccv-staging-4",
+                  "Mode": "",
+                  "Name": "chainlink-ccv-staging-4",
+                  "SignerAddressByFamily": {
+                    "canton": "04270666c147dc39b996167374d8919e2b369416aed5a0ce0c55615465ced27154a8d2932396702607637d817be5563b1900cf7b007a04d2de8d3e827407b3bb48",
+                    "evm": "0xedadd85f6d13c23817e935da32494f200971ab6d"
+                  }
+                },
+                {
+                  "Alias": "chainlink-ccv-staging-5",
+                  "Mode": "",
+                  "Name": "chainlink-ccv-staging-5",
+                  "SignerAddressByFamily": {
+                    "canton": "04c206cede148677b31c0ac78ed426ace6dce528ab52f5039ca93bc8b0543d94eb4d5add452a9b695c2d18db30fa72c1bb9d2328a62106ae631f378e8d5250614a",
+                    "evm": "0x96a6c9439db276d168ac9f9287deccec63acc581"
+                  }
+                },
+                {
+                  "Alias": "chainlink-ccv-staging-6",
+                  "Mode": "",
+                  "Name": "chainlink-ccv-staging-6",
+                  "SignerAddressByFamily": {
+                    "canton": "04ee145636c0d6b728e313e009e0c3f5534446431506498847643944492b3f53f498034efb228cb2ba15434b4455c163d9dc63dc0b8376d75bd54462b7b3911551",
+                    "evm": "0xedadd85f6d13c23817e935da32494f200971ab6d"
+                  }
+                },
+                {
+                  "Alias": "chainlink-ccv-staging-7",
+                  "Mode": "",
+                  "Name": "chainlink-ccv-staging-7",
+                  "SignerAddressByFamily": {
+                    "canton": "04b0497672fdccd10b9a2b541cbd7fe7d7013ae2d97961d3072cd9bd4c49c74f487d8254615068d967b92b1f2cc836cdc69558d09a3f87cecba3b68cb230309b41",
+                    "evm": "0x96a6c9439db276d168ac9f9287deccec63acc581"
+                  }
+                },
+                {
+                  "Alias": "chainlink-ccv-staging-8",
+                  "Mode": "",
+                  "Name": "chainlink-ccv-staging-8",
+                  "SignerAddressByFamily": {
+                    "canton": "04ffd46bf90c2bf034d4af36f62c7af34fb0420ed6d16461264efa98eb44cc6175117a99211f6bf452bffbadd444062c261cc467726d08889269d3fadb7cb9acad",
+                    "evm": "0xedadd85f6d13c23817e935da32494f200971ab6d"
+                  }
+                },
+                {
+                  "Alias": "chainlink-ccv-staging-9",
+                  "Mode": "",
+                  "Name": "chainlink-ccv-staging-9",
+                  "SignerAddressByFamily": {
+                    "canton": "04cbeeddd1cfeb96ff0d414c192dc16c2bb31fc201e9017992b19485fd22a8587bcd3ae0391cae51ea8cd14c3a48185995fdee893fe954b33371b1d3a40f7baba3",
+                    "evm": "0x96a6c9439db276d168ac9f9287deccec63acc581"
+                  }
+                },
+                {
+                  "Alias": "chainlink-ccv-staging-10",
+                  "Mode": "",
+                  "Name": "chainlink-ccv-staging-10",
+                  "SignerAddressByFamily": null
+                },
+                {
+                  "Alias": "chainlink-ccv-staging-11",
+                  "Mode": "",
+                  "Name": "chainlink-ccv-staging-11",
+                  "SignerAddressByFamily": null
+                },
+                {
+                  "Alias": "chainlink-ccv-staging-12",
+                  "Mode": "",
+                  "Name": "chainlink-ccv-staging-12",
+                  "SignerAddressByFamily": null
+                },
+                {
+                  "Alias": "chainlink-ccv-staging-13",
+                  "Mode": "",
+                  "Name": "chainlink-ccv-staging-13",
+                  "SignerAddressByFamily": null
+                },
+                {
+                  "Alias": "chainlink-ccv-staging-14",
+                  "Mode": "",
+                  "Name": "chainlink-ccv-staging-14",
+                  "SignerAddressByFamily": null
+                },
+                {
+                  "Alias": "chainlink-ccv-staging-15",
+                  "Mode": "",
+                  "Name": "chainlink-ccv-staging-15",
+                  "SignerAddressByFamily": null
+                },
+                {
+                  "Alias": "chainlink-ccv-staging-16",
+                  "Mode": "",
+                  "Name": "chainlink-ccv-staging-16",
+                  "SignerAddressByFamily": null
+                },
+                {
+                  "Alias": "chainlink-ccv-staging-17",
+                  "Mode": "",
+                  "Name": "chainlink-ccv-staging-17",
+                  "SignerAddressByFamily": null
+                },
+                {
+                  "Alias": "chainlink-ccv-staging-18",
+                  "Mode": "",
+                  "Name": "chainlink-ccv-staging-18",
+                  "SignerAddressByFamily": null
+                },
+                {
+                  "Alias": "chainlink-ccv-staging-19",
+                  "Mode": "",
+                  "Name": "chainlink-ccv-staging-19",
+                  "SignerAddressByFamily": null
+                },
+                {
+                  "Alias": "chainlink-ccv-staging-20",
+                  "Mode": "",
+                  "Name": "chainlink-ccv-staging-20",
+                  "SignerAddressByFamily": null
+                },
+                {
+                  "Alias": "chainlink-canton-committee-verifier",
+                  "Mode": "standalone",
+                  "Name": "chainlink-canton-committee-verifier",
+                  "SignerAddressByFamily": {
+                    "canton": "04b3a22e521d90ece86e60599a26217f7ead38c1eb3fc68000fdc4b6e5cce59eed54a886af05f22e60ec044ede68505736b496e1a03b2aedf6ab366dc84b477bce",
+                    "evm": "0x96a6c9439db276d168ac9f9287deccec63acc581"
+                  }
+                },
+                {
+                  "Alias": "chainlink-canton-committee-verifier-0",
+                  "Mode": "standalone",
+                  "Name": "chainlink-canton-committee-verifier-0",
+                  "SignerAddressByFamily": {
+                    "canton": "04e7db13a109f40c8d4590942d31729c4047ecd9b67c2043e391c6d9ef93001e12c0f01452e4e5f7743c45fad0be9c5b6cec1abd4006dc9b796511b8799fcb040f",
+                    "evm": "0xedadd85f6d13c23817e935da32494f200971ab6d"
+                  }
+                }
+              ]
+            },
+            "PyroscopeURL": ""
+          },
+          "UseTestRouter": false
+        },
+        "id": "a6281650-a92b-4ab9-850b-987382c3a518",
+        "input": {
+          "chainOverrides": [
+            8706591216959472610
+          ],
+          "payload": {
+            "chains": [
+              {
+                "chainselector": 8706591216959472610,
+                "remotechains": {
+                  "16015286601757825753": {
+                    "defaultinboundccvs": [
+                      {
+                        "qualifier": "default",
+                        "type": "CommitteeVerifier",
+                        "version": "0.1.0"
+                      }
+                    ],
+                    "defaultoutboundccvs": [
+                      {
+                        "qualifier": "default",
+                        "type": "CommitteeVerifier",
+                        "version": "0.1.0"
+                      }
+                    ],
+                    "feequoterdestchainconfig": {
+                      "linkfeemultiplierpercent": 100,
+                      "usdperunitgas": 38
+                    }
+                  }
+                }
+              }
+            ],
+            "mcms": {
+              "description": "Local devnet \u2014 Configure Canton \u2194 Sepolia CCIP lanes (Canton side)",
+              "overridePreviousRoot": true,
+              "qualifier": "ccipOwner",
+              "timelockAction": "schedule",
+              "timelockDelay": "1s",
+              "validUntil": 1780700211
+            }
+          }
+        },
+        "name": "configure-chains-for-lanes-from-topology"
+      }
+    ]
+  },
+  "action": "schedule",
+  "delay": "1s",
+  "timelockAddresses": {
+    "8706591216959472610": "0xf2919888cc1303107e124efa6ebc00348528363bccb9ce8c19a2de9637a6215d"
+  },
+  "operations": [
+    {
+      "chainSelector": 8706591216959472610,
+      "transactions": [
+        {
+          "contractType": "CantonGlobalConfig",
+          "tags": [
+            "changeset:a6281650-a92b-4ab9-850b-987382c3a518"
+          ],
+          "to": "0xbcf5112b458cef1c45a8fba8f36da4b89e07b06ed5419c3ca97594d00f0a0096",
+          "data": "ARQxNjAxNTI4NjYwMTc1NzgyNTc1MwEAAAAAAAAAFAEAAAAAAAKrmBQ4ZXfYNQ1YFBmJdNFsPHVqY4+9YgFuZXhlY3V0b3Ita2Fia3NAcGFydGljaXBhbnQxLWxvY2FscGFydHktMTo6MTIyMGYxMWIxYmM2YTg4YjY1MDQwNjdlOGFjY2M3Yjg0MTMwM2RhYzExNDZjMGI1NDliN2I4N2EwOGZkZWQyMjY2ZjYAAXdjb21taXR0ZWV2ZXJpZmllci10ZGR3YUBwYXJ0aWNpcGFudDEtbG9jYWxwYXJ0eS0xOjoxMjIwZjExYjFiYzZhODhiNjUwNDA2N2U4YWNjYzdiODQxMzAzZGFjMTE0NmMwYjU0OWI3Yjg3YTA4ZmRlZDIyNjZmNgIxMAIyNQ==",
+          "additionalFields": {
+            "targetInstanceAddress": "globalconfig-gyszh@participant1-localparty-1::1220f11b1bc6a88b6504067e8accc7b841303dac1146c0b549b7b87a08fded2266f6",
+            "functionName": "ApplyDestChainConfigUpdates",
+            "targetCid": "",
+            "contractIds": null,
+            "targetTemplateId": "#ccip-core:CCIP.GlobalConfig:GlobalConfig"
+          }
+        },
+        {
+          "contractType": "Executor",
+          "tags": [
+            "changeset:a6281650-a92b-4ab9-850b-987382c3a518"
+          ],
+          "to": "0x66399c6f398943ee91159aed076732a2299168720eb415b5b2c6f758f9aeda79",
+          "data": "AAEUMTYwMTUyODY2MDE3NTc4MjU3NTMBMAE=",
+          "additionalFields": {
+            "targetInstanceAddress": "executor-kabks@participant1-localparty-1::1220f11b1bc6a88b6504067e8accc7b841303dac1146c0b549b7b87a08fded2266f6",
+            "functionName": "ApplyDestChainUpdates",
+            "targetCid": "",
+            "contractIds": null,
+            "targetTemplateId": "#ccip-executor:CCIP.Executor:Executor"
+          }
+        },
+        {
+          "contractType": "FeeQuoter",
+          "tags": [
+            "changeset:a6281650-a92b-4ab9-850b-987382c3a518"
+          ],
+          "to": "0x834942762ebee655c0e937be89edfa8a9d691f2c829c9ab3e5454ff06ae89131",
+          "data": "ARQxNjAxNTI4NjYwMTc1NzgyNTc1MwEAAAAAAAB9AAAAAAAAehIAAAAAAAAAAAAAAAAAAAAAFAAAAAAAAw1AAzEwMAIyNQAAAAAAAV+Q",
+          "additionalFields": {
+            "targetInstanceAddress": "feequoter-ykwcl@participant1-localparty-1::1220f11b1bc6a88b6504067e8accc7b841303dac1146c0b549b7b87a08fded2266f6",
+            "functionName": "ApplyFeeQuoterDestChainConfigUpdates",
+            "targetCid": "",
+            "contractIds": null,
+            "targetTemplateId": "#ccip-core:CCIP.FeeQuoter:FeeQuoter"
+          }
+        },
+        {
+          "contractType": "FeeQuoter",
+          "tags": [
+            "changeset:a6281650-a92b-4ab9-850b-987382c3a518"
+          ],
+          "to": "0x834942762ebee655c0e937be89edfa8a9d691f2c829c9ab3e5454ff06ae89131",
+          "data": "AV9wYXJ0aWNpcGFudDEtbG9jYWxwYXJ0eS0xOjoxMjIwZjExYjFiYzZhODhiNjUwNDA2N2U4YWNjYzdiODQxMzAzZGFjMTE0NmMwYjU0OWI3Yjg3YTA4ZmRlZDIyNjZmNgA=",
+          "additionalFields": {
+            "targetInstanceAddress": "feequoter-ykwcl@participant1-localparty-1::1220f11b1bc6a88b6504067e8accc7b841303dac1146c0b549b7b87a08fded2266f6",
+            "functionName": "ApplyPriceUpdatersUpdate",
+            "targetCid": "",
+            "contractIds": null,
+            "targetTemplateId": "#ccip-core:CCIP.FeeQuoter:FeeQuoter"
+          }
+        },
+        {
+          "contractType": "FeeQuoter",
+          "tags": [
+            "changeset:a6281650-a92b-4ab9-850b-987382c3a518"
+          ],
+          "to": "0x834942762ebee655c0e937be89edfa8a9d691f2c829c9ab3e5454ff06ae89131",
+          "data": "AAEUMTYwMTUyODY2MDE3NTc4MjU3NTMAAjM4X3BhcnRpY2lwYW50MS1sb2NhbHBhcnR5LTE6OjEyMjBmMTFiMWJjNmE4OGI2NTA0MDY3ZThhY2NjN2I4NDEzMDNkYWMxMTQ2YzBiNTQ5YjdiODdhMDhmZGVkMjI2NmY2",
+          "additionalFields": {
+            "targetInstanceAddress": "feequoter-ykwcl@participant1-localparty-1::1220f11b1bc6a88b6504067e8accc7b841303dac1146c0b549b7b87a08fded2266f6",
+            "functionName": "UpdatePrices",
+            "targetCid": "",
+            "contractIds": null,
+            "targetTemplateId": "#ccip-core:CCIP.FeeQuoter:FeeQuoter"
+          }
+        },
+        {
+          "contractType": "CantonGlobalConfig",
+          "tags": [
+            "changeset:a6281650-a92b-4ab9-850b-987382c3a518"
+          ],
+          "to": "0xbcf5112b458cef1c45a8fba8f36da4b89e07b06ed5419c3ca97594d00f0a0096",
+          "data": "ARQxNjAxNTI4NjYwMTc1NzgyNTc1MwEBIAAAAAAAAAAAAAAAAKlORXRFU/SyvqnfuJeaApYrmAcyAXdjb21taXR0ZWV2ZXJpZmllci10ZGR3YUBwYXJ0aWNpcGFudDEtbG9jYWxwYXJ0eS0xOjoxMjIwZjExYjFiYzZhODhiNjUwNDA2N2U4YWNjYzdiODQxMzAzZGFjMTE0NmMwYjU0OWI3Yjg3YTA4ZmRlZDIyNjZmNgA=",
+          "additionalFields": {
+            "targetInstanceAddress": "globalconfig-gyszh@participant1-localparty-1::1220f11b1bc6a88b6504067e8accc7b841303dac1146c0b549b7b87a08fded2266f6",
+            "functionName": "ApplySourceChainConfigUpdates",
+            "targetCid": "",
+            "contractIds": null,
+            "targetTemplateId": "#ccip-core:CCIP.GlobalConfig:GlobalConfig"
+          }
+        }
+      ]
+    }
+  ]
+}

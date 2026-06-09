@@ -31,7 +31,8 @@ func getFieldValue(argument any) FieldValue {
 	var value FieldValue
 
 	switch arg := argument.(type) {
-	// Pretty-print byte arrays and addresses
+	case nil:
+		value = SimpleField{Value: "null"}
 	case []byte:
 		value = BytesField{Value: arg}
 	case aptos.AccountAddress:
@@ -43,7 +44,6 @@ func getFieldValue(argument any) FieldValue {
 	default:
 		//nolint:exhaustive // default case covers everything else
 		switch reflect.TypeOf(arg).Kind() {
-		// If the field is a slice or array, iterate over every element individually
 		case reflect.Array, reflect.Slice:
 			array := ArrayField{}
 			v := reflect.ValueOf(arg)
@@ -52,7 +52,6 @@ func getFieldValue(argument any) FieldValue {
 			}
 			value = array
 		default:
-			// Simply print the field as-is
 			value = SimpleField{Value: fmt.Sprintf("%v", arg)}
 		}
 	}

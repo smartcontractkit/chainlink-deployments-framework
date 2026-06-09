@@ -82,14 +82,28 @@ type TronConfig struct {
 	DeployerKey string `mapstructure:"deployer_key" yaml:"deployer_key"` // Secret: The private key of the deployer account.
 }
 
+// CantonAuthStrategy is the authentication strategy for Canton participant APIs.
+const (
+	CantonAuthStrategyStatic            = "static"             // Pre-obtained JWT (e.g. from canton-login).
+	CantonAuthStrategyClientCredentials = "client_credentials" // CI: fetch token with client_id + client_secret + auth_url.
+	CantonAuthStrategyAuthorizationCode = "authorization_code" // Local dev: browser flow with client_id + auth_url (not for CI).
+)
+
 // CantonConfig is the configuration for the Canton Chains.
 //
 // WARNING: This data type contains sensitive fields and should not be logged or set in file
 // configuration.
 type CantonConfig struct {
-	// JWT token for authenticating with Canton participants. This token will be used for all participants.
-	// For more complex scenarios with different tokens per participant, use the network metadata.
-	JWTToken string `mapstructure:"jwt_token" yaml:"jwt_token"` // Secret: JWT token for Canton participant authentication.
+	// AuthStrategy selects how to obtain the token: "static" (jwt_token), "client_credentials" (CI), or "authorization_code" (local browser).
+	AuthStrategy string `mapstructure:"auth_strategy" yaml:"auth_strategy"`
+	// JWT token for static auth. Used when auth_strategy is "static".
+	JWTToken string `mapstructure:"jwt_token" yaml:"jwt_token"` // Secret
+	// AuthURL is the OAuth2 authorization server URL.
+	AuthURL string `mapstructure:"auth_url" yaml:"auth_url"`
+	// ClientID is the OAuth2 client ID.
+	ClientID string `mapstructure:"client_id" yaml:"client_id"` // Secret
+	// ClientSecret is the OAuth2 client secret. Required for client_credentials (CI).
+	ClientSecret string `mapstructure:"client_secret" yaml:"client_secret"` // Secret
 }
 
 // JobDistributorConfig is the configuration for connecting and authenticating to the Job
@@ -267,7 +281,11 @@ var (
 		"onchain.stellar.deployer_key":                            {"ONCHAIN_STELLAR_DEPLOYER_KEY"},
 		"onchain.ton.deployer_key":                                {"ONCHAIN_TON_DEPLOYER_KEY", "TON_DEPLOYER_KEY"},
 		"onchain.ton.wallet_version":                              {"ONCHAIN_TON_WALLET_VERSION", "TON_WALLET_VERSION"},
+		"onchain.canton.auth_strategy":                            {"ONCHAIN_CANTON_AUTH_STRATEGY"},
 		"onchain.canton.jwt_token":                                {"ONCHAIN_CANTON_JWT_TOKEN"},
+		"onchain.canton.auth_url":                                 {"ONCHAIN_CANTON_AUTH_URL"},
+		"onchain.canton.client_id":                                {"ONCHAIN_CANTON_CLIENT_ID"},
+		"onchain.canton.client_secret":                            {"ONCHAIN_CANTON_CLIENT_SECRET"},
 		"offchain.job_distributor.auth.cognito_app_client_id":     {"OFFCHAIN_JD_AUTH_COGNITO_APP_CLIENT_ID", "JD_AUTH_COGNITO_APP_CLIENT_ID"},
 		"offchain.job_distributor.auth.cognito_app_client_secret": {"OFFCHAIN_JD_AUTH_COGNITO_APP_CLIENT_SECRET", "JD_AUTH_COGNITO_APP_CLIENT_SECRET"},
 		"offchain.job_distributor.auth.aws_region":                {"OFFCHAIN_JD_AUTH_AWS_REGION", "JD_AUTH_AWS_REGION"},
