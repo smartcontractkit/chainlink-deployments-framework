@@ -1,5 +1,23 @@
 # chainlink-deployments-framework
 
+## 0.110.0
+
+### Minor Changes
+
+- [#797](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/797) [`52ef992`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/52ef992edefe1e43bfd4ce722cca7aaca8943e93) Thanks [@stackman27](https://github.com/stackman27)! - Extend Canton chain authentication with OAuth2 client credentials (CI) and authorization code (local dev) providers, using RFC 8414 metadata discovery aligned with chainlink-canton authentication packages.
+
+- [#1031](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1031) [`ca31efb`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/ca31efba19ceb83126e90a325042be5bdbd0f17b) Thanks [@JohnChangUK](https://github.com/JohnChangUK)! - feat(analyzer): implement Canton MCMS proposal analyzer
+
+- [#1027](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1027) [`6a2444f`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/6a2444fc3ae79c23f16ef548f11029b5f02564b2) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat(datastore): add FindUniqueRef and FindAndFormatRef query helpers
+
+- [#1021](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1021) [`df502cb`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/df502cb014c275246c7d2880495a43070320f6c7) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat(deployment): add OutputBuilder for changeset output and MCMS timelock proposals
+
+- [#1030](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1030) [`f794f9d`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/f794f9d1d208095416437c3a6f3f0680985accf0) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat(changeset): add sequenceutils.NewOnChainChangesetFromSequence for on-chain sequence changesets
+
+### Patch Changes
+
+- [#1033](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1033) [`f2ff7d3`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/f2ff7d34c9e8a00293fd3810735743da3b59f971) Thanks [@stackman27](https://github.com/stackman27)! - Accept `ONCHAIN_CANTON_OKTA_*` environment variables as legacy aliases for Canton OAuth config and infer `client_credentials` when OAuth secrets are set without `ONCHAIN_CANTON_AUTH_STRATEGY`.
+
 ## 0.109.0
 
 ### Minor Changes
