@@ -416,8 +416,10 @@ func TestMarkdownRenderer_ArrayField_WithStructElement(t *testing.T) {
 
 	summary, details := renderer.summarizeField("chainConfigAdds", arrayField, ctx)
 
-	// Summary should show array with struct
-	assert.Contains(t, summary, "array[1]: [struct]")
+	// Summary shows array with struct — compact preview uses {firstField: value…} hint, not "[struct]"
+	assert.Contains(t, summary, "array[1]:")
+	assert.Contains(t, summary, "[{")
+	assert.NotContains(t, summary, "[struct]")
 
 	// Details should show FULL nested content in GitHub Flavored Markdown collapsible section
 	assert.Contains(t, details, "<details>")
@@ -439,8 +441,8 @@ func TestMarkdownRenderer_ArrayField_WithStructElement(t *testing.T) {
 	assert.Contains(t, details, "```")
 	assert.Contains(t, details, "</details>")
 
-	// Details should NOT contain just the summary
-	assert.NotContains(t, details, "array[1]: [struct]")
+	// Details should not just repeat the inline summary
+	assert.NotContains(t, details, summary)
 }
 
 func TestMarkdownRenderer_StructField_EmptyFields(t *testing.T) {
@@ -591,7 +593,7 @@ func TestCompactValue(t *testing.T) {
 	assert.Contains(t, compactValue(ChainSelectorField{Value: 1}, ctx), "1")
 	assert.Contains(t, compactValue(BytesField{Value: []byte{0x01, 0x02}}, ctx), "0x0102")
 	assert.Equal(t, "short", compactValue(SimpleField{Value: "short"}, ctx))
-	assert.Equal(t, "struct", compactValue(StructField{Fields: []NamedField{}}, ctx))
+	assert.Equal(t, "{}", compactValue(StructField{Fields: []NamedField{}}, ctx))
 	assert.Contains(t, compactValue(ArrayField{Elements: []FieldValue{}}, ctx), "array[0]")
 }
 
