@@ -46,7 +46,7 @@ require (
 	github.com/smartcontractkit/freeport v0.1.3-0.20250828155247-add56fa28aad
 	github.com/smartcontractkit/go-daml v0.0.0-20260604143752-c6f6567940ba
 	github.com/smartcontractkit/libocr v0.0.0-20260304194147-a03701e2c02e
-	github.com/smartcontractkit/mcms v0.47.1-0.20260609163952-0b2bf692ba6a
+	github.com/smartcontractkit/mcms v0.47.1-0.20260610155329-856384f2ce70
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
