@@ -163,7 +163,8 @@ func cantonChainFromCLDF(ch cldfcanton.Chain) mcmscanton.Chain {
 	participants := make([]mcmscanton.Participant, 0, len(ch.Participants))
 	for _, p := range ch.Participants {
 		participants = append(participants, mcmscanton.Participant{
-			PartyID: p.PartyID,
+			PartyID:        p.PartyID,
+			ReadAsPartyIDs: append([]string(nil), p.ReadAsPartyIDs...),
 			LedgerServices: mcmscanton.LedgerServices{
 				State:   p.LedgerServices.State,
 				Command: p.LedgerServices.Command,
