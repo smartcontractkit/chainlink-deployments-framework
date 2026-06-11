@@ -62,6 +62,7 @@ func TestGrpcTargetFromNodeURL(t *testing.T) {
 			if tt.wantErr != "" {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tt.wantErr)
+
 				return
 			}
 			require.NoError(t, err)
