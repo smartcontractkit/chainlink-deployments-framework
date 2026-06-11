@@ -354,6 +354,21 @@ func Test_LoadEnv_Legacy(t *testing.T) { //nolint:paralleltest // see comment in
 	assert.Equal(t, envCfg, got)
 }
 
+func Test_LoadEnv_CantonOktaLegacyBindings(t *testing.T) { //nolint:paralleltest // see comment in setupEnvVars
+	t.Setenv("ONCHAIN_CANTON_OKTA_AUTHORIZER", "https://smartcontract.okta.com/oauth2/ausspv7t7qurBgkou5d7")
+	t.Setenv("ONCHAIN_CANTON_OKTA_CLIENT_ID", "0oat4r1zfzm83nL2m5d7")
+	t.Setenv("ONCHAIN_CANTON_OKTA_CLIENT_SECRET", "test-client-secret")
+
+	got, err := LoadEnv()
+	require.NoError(t, err)
+
+	assert.Equal(t, CantonConfig{
+		AuthURL:      "https://smartcontract.okta.com/oauth2/ausspv7t7qurBgkou5d7",
+		ClientID:     "0oat4r1zfzm83nL2m5d7",
+		ClientSecret: "test-client-secret",
+	}, got.Onchain.Canton)
+}
+
 func Test_LoadEnv_BindsCREFromEnv(t *testing.T) { //nolint:paralleltest // see comment in setupEnvVars
 	t.Setenv("CRE_API_KEY", "api-key-1")
 	t.Setenv("CRE_TENANT_ID", "tenant-1")
