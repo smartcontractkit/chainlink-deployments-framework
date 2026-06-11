@@ -16,7 +16,7 @@ jobs:
       actions: read
     steps:
       - name: Linting Go
-        uses: smartcontractkit/.github/actions/ci-lint-go@ci-lint-go/v2 # ci-lint-go@2.0.0
+        uses: smartcontractkit/.github/actions/ci-lint-go@ci-lint-go/v2 # ci-lint-go/v2
         with:
           only-new-issues: "false"
           golangci-lint-version: v2.12.2
@@ -28,7 +28,7 @@ jobs:
       contents: read
     steps:
       - name: Linting Misc (yaml + sh files)
-        uses: smartcontractkit/.github/actions/ci-lint-misc@eeb76b5870e3c17856d5a60fd064a053c023b5f5 # ci-lint-misc@1.0.0
+        uses: smartcontractkit/.github/actions/ci-lint-misc@ci-lint-misc/v1 # ci-lint-misc/v1
 
   ci-test:
     name: Tests
@@ -40,7 +40,7 @@ jobs:
       actions: read
     steps:
       - name: Build and test
-        uses: smartcontractkit/.github/actions/ci-test-go@dfcba48f05933158428bce867d790e3d5a9baa6b # ci-test-go@1.1.0
+        uses: smartcontractkit/.github/actions/ci-test-go@ci-test-go/v1 # ci-test-go/v1
         with:
           # disable the checkptr runtime check due a false positive in github.com/xssnick/tonutils-go
           # Exclude provider packages which use Docker containers and remote catalog tests
@@ -58,7 +58,7 @@ jobs:
       actions: read
     steps:
       - name: Build and test provider packages
-        uses: smartcontractkit/.github/actions/ci-test-go@dfcba48f05933158428bce867d790e3d5a9baa6b # ci-test-go@1.1.0
+        uses: smartcontractkit/.github/actions/ci-test-go@ci-test-go/v1 # ci-test-go/v1
         with:
           # disable the checkptr runtime check due a false positive in github.com/xssnick/tonutils-go
           # -p 2 -parallel 3 = 2 packages, 3 tests max = 6 containers max
