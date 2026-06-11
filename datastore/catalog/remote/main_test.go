@@ -64,7 +64,7 @@ func TestMain(m *testing.M) {
 	cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cleanupCancel()
 
-	if err := globalTestSetup.CatalogContainer.Terminate(cleanupCtx); err != nil {
+	if err := globalTestSetup.Teardown(cleanupCtx); err != nil {
 		log.Printf("Warning: Failed to teardown testcontainers: %v", err)
 	}
 
