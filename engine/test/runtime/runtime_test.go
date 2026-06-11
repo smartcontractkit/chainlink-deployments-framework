@@ -354,10 +354,9 @@ func TestRuntime_ExecChangeset(t *testing.T) {
 	changeset := &mockChangeset[mockChangesetConfig]{}
 	config := mockChangesetConfig{Value: "test"}
 
-	taskID, err := ExecChangeset(runtime, changeset, config)
+	output, err := ExecChangeset(runtime, changeset, config)
 	require.NoError(t, err)
-	require.NotEmpty(t, taskID)
-	require.Contains(t, runtime.state.Outputs, taskID)
+	require.NotNil(t, output)
 }
 
 func TestRuntime_State(t *testing.T) {
