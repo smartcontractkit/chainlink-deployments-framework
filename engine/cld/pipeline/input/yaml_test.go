@@ -93,7 +93,7 @@ func TestGetAllChangesetsInOrder(t *testing.T) {
 		{
 			name:       "invalid format",
 			changesets: map[string]any{"x": 1},
-			wantErr:    "invalid 'changesets' format for index access, expected array format",
+			wantErr:    "invalid 'changesets' format, expected array format",
 		},
 		{
 			name: "invalid array item type",
