@@ -42,10 +42,10 @@ func TestChain_ChainInfot(t *testing.T) {
 			c := sui.Chain{
 				ChainMetadata: sui.ChainMetadata{Selector: tt.selector},
 			}
-			assert.Equal(t, tt.selector, c.ChainMetadata.ChainSelector())
-			assert.Equal(t, tt.wantString, c.ChainMetadata.String())
-			assert.Equal(t, tt.wantName, c.ChainMetadata.Name())
-			assert.Equal(t, tt.wantFamily, c.ChainMetadata.Family())
+			assert.Equal(t, tt.selector, c.ChainSelector())
+			assert.Equal(t, tt.wantString, c.String())
+			assert.Equal(t, tt.wantName, c.Name())
+			assert.Equal(t, tt.wantFamily, c.Family())
 		})
 	}
 }

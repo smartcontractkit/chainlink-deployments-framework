@@ -53,5 +53,6 @@ func grpcTargetFromNodeURL(nodeURL string) (string, error) {
 	if strings.Contains(host, ":") && !strings.HasPrefix(host, "[") {
 		return fmt.Sprintf("[%s]:%s", host, port), nil
 	}
+
 	return fmt.Sprintf("%s:%s", host, port), nil
 }

@@ -118,7 +118,7 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 
 				gotChain, ok := got.(sui.Chain)
 				require.True(t, ok, "expected got to be of type sui.Chain")
-				assert.Equal(t, tt.giveSelector, gotChain.ChainMetadata.Selector)
+				assert.Equal(t, tt.giveSelector, gotChain.Selector)
 				assert.NotEmpty(t, gotChain.Client)
 				assert.NotEmpty(t, gotChain.Signer)
 				assert.Equal(t, tt.giveConfig.RPCURL, gotChain.URL)
