@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
+
 	cslclient "github.com/smartcontractkit/chainlink-sui/relayer/client"
 )
 
