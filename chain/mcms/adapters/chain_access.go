@@ -2,7 +2,6 @@ package adapters
 
 import (
 	aptoslib "github.com/aptos-labs/aptos-go-sdk"
-	"github.com/block-vision/sui-go-sdk/sui"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	sol "github.com/gagliardetto/solana-go"
 	solrpc "github.com/gagliardetto/solana-go/rpc"
@@ -12,6 +11,8 @@ import (
 	"github.com/stellar/go-stellar-sdk/clients/rpcclient"
 	"github.com/xssnick/tonutils-go/ton"
 	tonwallet "github.com/xssnick/tonutils-go/ton/wallet"
+
+	cslclient "github.com/smartcontractkit/chainlink-sui/relayer/client"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	cldfaptos "github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos"
@@ -101,7 +102,7 @@ func (a *ChainAccessAdapter) AptosSigner(selector uint64) (aptoslib.TransactionS
 }
 
 // SuiClient returns the Sui API client for the given selector.
-func (a *ChainAccessAdapter) SuiClient(selector uint64) (sui.ISuiAPI, bool) {
+func (a *ChainAccessAdapter) SuiClient(selector uint64) (cslclient.BindingsClient, bool) {
 	ch, ok := a.inner.SuiChains()[selector]
 	if !ok {
 		return nil, false

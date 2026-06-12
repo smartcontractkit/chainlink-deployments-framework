@@ -140,14 +140,23 @@ packages:
     interfaces:
       AptosRpcClient:
       TransactionSigner:
-  github.com/block-vision/sui-go-sdk/sui:
+  github.com/smartcontractkit/chainlink-sui/relayer/client:
     config:
       all: false
       pkgname: "mocks"
       dir: "chain/sui/mocks"
       filename: "{{.InterfaceName | snakecase}}.go"
     interfaces:
-      ISuiAPI:
+      BindingsClient:
+      SuiPTBClient:
+  github.com/smartcontractkit/chainlink-sui/bindings/utils:
+    config:
+      all: false
+      pkgname: "mocks"
+      dir: "chain/sui/mocks"
+      filename: "{{.InterfaceName | snakecase}}.go"
+    interfaces:
+      SuiSigner:
   github.com/xssnick/tonutils-go/ton:
     config:
       all: false

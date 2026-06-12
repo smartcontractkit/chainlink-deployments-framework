@@ -58,10 +58,6 @@ func TestChainAccess_UnknownSelector(t *testing.T) {
 	require.False(t, ok)
 	require.Nil(t, suiClient)
 
-	suiSigner, ok := a.SuiSigner(999)
-	require.False(t, ok)
-	require.Nil(t, suiSigner)
-
 	tonClient, ok := a.TonClient(999)
 	require.False(t, ok)
 	require.Nil(t, tonClient)
@@ -94,8 +90,8 @@ func TestChainAccess_SelectorsAndLookups(t *testing.T) {
 	aptosSigner := aptosmocks.NewMockTransactionSigner(t)
 	solClient := solrpc.New("http://example.invalid")
 	solSigner := &sol.PrivateKey{1, 2, 3}
-	suiClient := suimocks.NewMockISuiAPI(t)
-	suiSigner, _ := chainsui.NewSignerFromSeed(make([]byte, 32))
+	suiClient := suimocks.NewMockSuiPTBClient(t)
+	suiSigner := suimocks.NewMockSuiSigner(t)
 	tonClient := tonmocks.NewMockAPIClientWrapped(t)
 	tonSigner := &tonwallet.Wallet{}
 

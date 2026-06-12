@@ -41,7 +41,7 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Failed to setup testcontainers: %v", err)
 	}
 	globalTestSetup = setup
-	catalogGRPCAddress = setup.GetCatalogGRPCAddress()
+	catalogGRPCAddress = setup.CatalogGRPCAddr
 
 	log.Println("========================================")
 	log.Println("Testcontainers setup complete!")

@@ -5,9 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	suisdk "github.com/block-vision/sui-go-sdk/sui"
-
 	chainsel "github.com/smartcontractkit/chain-selectors"
+	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/sui"
@@ -82,7 +81,15 @@ func (p *RPCChainProvider) Initialize(_ context.Context) (chain.BlockChain, erro
 		return nil, fmt.Errorf("failed to get chain ID from selector %d: %w", p.selector, err)
 	}
 
-	client := suisdk.NewSuiClient(p.config.RPCURL)
+	log, err := logger.New()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create logger: %w", err)
+	}
+
+	client, err := sui.NewPTBClientFromNodeURL(log, p.config.RPCURL, "")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Sui PTB client: %w", err)
+	}
 
 	p.chain = &sui.Chain{
 		ChainMetadata: sui.ChainMetadata{
