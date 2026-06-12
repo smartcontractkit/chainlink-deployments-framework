@@ -1,5 +1,21 @@
 # chainlink-deployments-framework
 
+## 0.111.0
+
+### Minor Changes
+
+- [#1041](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1041) [`7ecc2db`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/7ecc2db9c8696a5965a173ce2a1fb2705b03dbca) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat(utils): new ExecuteOnChainSequenceAndMerge util
+
+  Execute sequence and merge output into an aggregate OnChainOutput.
+
+### Patch Changes
+
+- [#1040](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1040) [`6eebfec`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/6eebfec8cf3db15c9371cef32f2776bea7f83711) Thanks [@stackman27](https://github.com/stackman27)! - Wire Canton `ReadAsPartyIDs` from CLDF chain metadata through the MCMS chain access adapter.
+
+  Bump `mcms` to pick up Canton participant `ReadAsPartyIDs` support in `sdk/canton`.
+
+- [#1044](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1044) [`f9e7309`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/f9e73090be4672dffd192c1359ead5753171c207) Thanks [@giogam](https://github.com/giogam)! - fix(datastore): preserve staged deletes across Merge composition
+
 ## 0.110.0
 
 ### Minor Changes
