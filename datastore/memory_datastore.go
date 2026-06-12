@@ -62,7 +62,26 @@ func (s *MemoryDataStore) WriteMetadata(bundle MetadataBundle, opts ...WriteMeta
 	return WriteMetadataToDataStore(s, bundle, opts...)
 }
 
-// Merge merges the given mutable data store into the current MemoryDataStore.
+// Merge applies records and staged deletions from other onto this MemoryDataStore.
+//
+// Staged deletions (other.<Store>.DeletedRemoteKeys) are propagated by appending the
+// key to s.<Store>.DeletedRemoteKeys via RemoteDelete and then removing the record
+// from s.<Store>.Records via Delete (tolerating the per-store NotFound sentinel).
+// The DeletedRemoteKeys append is what lets chained operations preserve delete intent
+// across intermediate Merges.
+//
+// NotFound on the Delete step is tolerated because the source's staged key may
+// legitimately not be present in the destination's Records (RemoteDelete is allowed
+// to stage deletes for records that exist only in the remote backing store), and
+// because we want repeated Merges of the same source to be idempotent.
+//
+// Precedence: a live record in other.<Store>.Records overrides a staged delete in
+// s.<Store>.DeletedRemoteKeys for the same key. This is a side-effect of Upsert,
+// which clears the key from DeletedRemoteKeys whenever a record is upserted (so a
+// direct `RemoteDelete(k); Upsert(rec-with-k)` cancels the staged delete on the
+// same store). Staged deletes are only "sticky" on the source side. Callers that
+// need a destination-side staged delete to survive Merge must ensure the source
+// either omits the live record or stages the delete itself.
 func (s *MemoryDataStore) Merge(other DataStore) error {
 	// Fetch address ref records from the other data store
 	addressRefs, err := other.Addresses().Fetch()
@@ -84,7 +103,10 @@ func (s *MemoryDataStore) Merge(other DataStore) error {
 			if keyErr != nil {
 				return fmt.Errorf("failed to parse address ref key: %w", keyErr)
 			}
-			if err = s.AddressRefStore.Delete(key); err != nil {
+			if err = s.AddressRefStore.RemoteDelete(key); err != nil {
+				return err
+			}
+			if err = s.AddressRefStore.Delete(key); err != nil && !errors.Is(err, ErrAddressRefNotFound) {
 				return err
 			}
 		}
@@ -109,7 +131,10 @@ func (s *MemoryDataStore) Merge(other DataStore) error {
 			if keyErr != nil {
 				return fmt.Errorf("failed to parse chain metadata key: %w", keyErr)
 			}
-			if err = s.ChainMetadataStore.Delete(key); err != nil {
+			if err = s.ChainMetadataStore.RemoteDelete(key); err != nil {
+				return err
+			}
+			if err = s.ChainMetadataStore.Delete(key); err != nil && !errors.Is(err, ErrChainMetadataNotFound) {
 				return err
 			}
 		}
@@ -135,7 +160,10 @@ func (s *MemoryDataStore) Merge(other DataStore) error {
 			if keyErr != nil {
 				return fmt.Errorf("failed to parse contract metadata key: %w", keyErr)
 			}
-			if err = s.ContractMetadataStore.Delete(key); err != nil {
+			if err = s.ContractMetadataStore.RemoteDelete(key); err != nil {
+				return err
+			}
+			if err = s.ContractMetadataStore.Delete(key); err != nil && !errors.Is(err, ErrContractMetadataNotFound) {
 				return err
 			}
 		}
