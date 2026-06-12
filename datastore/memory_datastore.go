@@ -68,9 +68,7 @@ func (s *MemoryDataStore) WriteMetadata(bundle MetadataBundle, opts ...WriteMeta
 // key to s.<Store>.DeletedRemoteKeys via RemoteDelete and then removing the record
 // from s.<Store>.Records via Delete (tolerating the per-store NotFound sentinel).
 // The DeletedRemoteKeys append is what lets chained operations preserve delete intent
-// across intermediate Merges — persistence backends (JSON file, catalog) drive their
-// remote deletes off DeletedRemoteKeys, so a Merge that only removed records and left
-// DeletedRemoteKeys empty would silently drop the delete on every hop.
+// across intermediate Merges.
 //
 // NotFound on the Delete step is tolerated because the source's staged key may
 // legitimately not be present in the destination's Records (RemoteDelete is allowed
