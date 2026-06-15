@@ -91,8 +91,6 @@ func LoadFork(
 	anvilOutput, err := newAnvilChains(
 		ctx,
 		lggr,
-		addressBook,
-		dataStore,
 		networks,
 		blockNumbers,
 		cfg.Env.Onchain,
