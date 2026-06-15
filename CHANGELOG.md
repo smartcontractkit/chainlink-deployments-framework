@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.111.1
+
+### Patch Changes
+
+- [#1045](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1045) [`f6a685f`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/f6a685faae3b38f1b4ac016e3990d4ba29f2f28f) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - fix(fork-tests): don't use AddressBook/DataStore to filter chains
+
 ## 0.111.0
 
 ### Minor Changes
