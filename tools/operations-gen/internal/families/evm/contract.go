@@ -25,18 +25,23 @@ const (
 
 // ContractInfo holds all parsed information about a contract needed for code generation.
 type ContractInfo struct {
-	Name                  string
-	Version               string
-	PackageName           string
-	GobindingsPackage     string
-	ZkSyncBytecodePackage string
-	ZkSyncBytecodeSymbol  string
-	OutputPath            string
-	OmitDeploy            bool
-	Constructor           *FunctionInfo
-	Functions             map[string]*FunctionInfo
-	FunctionOrder         []string
-	StructDefs            map[string]*structDef
+	Name              string
+	Version           string
+	PackageName       string
+	GobindingsPackage string
+	ZkSync            *ZkSyncContractInfo
+	OutputPath        string
+	OmitDeploy        bool
+	Constructor       *FunctionInfo
+	Functions         map[string]*FunctionInfo
+	FunctionOrder     []string
+	StructDefs        map[string]*structDef
+}
+
+// ZkSyncContractInfo holds resolved zkSync VM deploy bytecode for code generation.
+type ZkSyncContractInfo struct {
+	BytecodePackage string
+	BytecodeSymbol  string
 }
 
 type structDef struct {
@@ -115,16 +120,20 @@ func extractContractInfo(cfg EvmContractConfig, input EvmInputConfig, output Evm
 	}
 
 	info := &ContractInfo{
-		Name:                  cfg.Name,
-		Version:               cfg.Version,
-		PackageName:           packageName,
-		GobindingsPackage:     cfg.GobindingsPackage,
-		ZkSyncBytecodePackage: zkSyncPackage,
-		ZkSyncBytecodeSymbol:  zkSyncSymbol,
-		OutputPath:            core.ContractOutputPath(output.BasePath, versionPath, packageName),
-		OmitDeploy:            cfg.OmitDeploy,
-		Functions:             make(map[string]*FunctionInfo),
-		StructDefs:            make(map[string]*structDef),
+		Name:              cfg.Name,
+		Version:           cfg.Version,
+		PackageName:       packageName,
+		GobindingsPackage: cfg.GobindingsPackage,
+		OutputPath:        core.ContractOutputPath(output.BasePath, versionPath, packageName),
+		OmitDeploy:        cfg.OmitDeploy,
+		Functions:         make(map[string]*FunctionInfo),
+		StructDefs:        make(map[string]*structDef),
+	}
+	if zkSyncSymbol != "" {
+		info.ZkSync = &ZkSyncContractInfo{
+			BytecodePackage: zkSyncPackage,
+			BytecodeSymbol:  zkSyncSymbol,
+		}
 	}
 
 	extractConstructor(info, parsedAbi)

@@ -87,16 +87,18 @@ func generateOperationsFile(info *ContractInfo, tmpl *template.Template) error {
 
 func prepareTemplateData(info *ContractInfo) templateData {
 	data := templateData{
-		PackageName:                 info.PackageName,
-		PackageNameHyphen:           toKebabCase(info.PackageName),
-		ContractType:                info.Name,
-		Version:                     info.Version,
-		GobindingsImport:            info.GobindingsPackage,
-		ZkSyncBytecodeSymbol:        info.ZkSyncBytecodeSymbol,
-		ZkSyncBytecodeImport:        info.ZkSyncBytecodePackage,
-		ZkSyncBytecodeUseGobindings: info.ZkSyncBytecodeSymbol != "" && info.ZkSyncBytecodePackage == info.GobindingsPackage,
-		NeedsBigInt:                 ChecksNeedsBigInt(info),
-		OmitDeploy:                  info.OmitDeploy,
+		PackageName:       info.PackageName,
+		PackageNameHyphen: toKebabCase(info.PackageName),
+		ContractType:      info.Name,
+		Version:           info.Version,
+		GobindingsImport:  info.GobindingsPackage,
+		NeedsBigInt:       ChecksNeedsBigInt(info),
+		OmitDeploy:        info.OmitDeploy,
+	}
+	if info.ZkSync != nil {
+		data.ZkSyncBytecodeSymbol = info.ZkSync.BytecodeSymbol
+		data.ZkSyncBytecodeImport = info.ZkSync.BytecodePackage
+		data.ZkSyncBytecodeUseGobindings = info.ZkSync.BytecodePackage == info.GobindingsPackage
 	}
 
 	if info.Constructor != nil {
