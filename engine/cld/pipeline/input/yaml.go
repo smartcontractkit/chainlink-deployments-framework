@@ -128,27 +128,41 @@ func GetAllChangesetsInOrder(changesets any) ([]ChangesetItem, error) {
 	return result, nil
 }
 
+// anyToJSONMapKey stringifies a map key for JSON-compatible maps.
+func anyToJSONMapKey(v any) string {
+	switch k := v.(type) {
+	case string:
+		return k
+	case json.Number:
+		return k.String()
+	case int:
+		return strconv.Itoa(k)
+	case int64:
+		return strconv.FormatInt(k, 10)
+	case uint64:
+		return strconv.FormatUint(k, 10)
+	case float64:
+		if k == math.Trunc(k) && (k >= 1e15 || k <= -1e15) {
+			return strconv.FormatFloat(k, 'f', 0, 64)
+		}
+
+		return strconv.FormatFloat(k, 'f', -1, 64)
+	default:
+		return fmt.Sprintf("%v", k)
+	}
+}
+
+func isYAMLMergeKey(node *yaml.Node) bool {
+	return node != nil && node.Kind == yaml.ScalarNode && (node.Value == "<<" || node.Tag == "!!merge")
+}
+
 // ConvertToJSONSafe recursively converts map[interface{}]interface{} to map[string]any.
 func ConvertToJSONSafe(data any) (any, error) {
 	switch v := data.(type) {
 	case map[interface{}]interface{}:
 		result := make(map[string]any)
 		for key, value := range v {
-			var keyStr string
-			switch k := key.(type) {
-			case string:
-				keyStr = k
-			case int:
-				keyStr = strconv.Itoa(k)
-			case int64:
-				keyStr = strconv.FormatInt(k, 10)
-			case uint64:
-				keyStr = strconv.FormatUint(k, 10)
-			case float64:
-				keyStr = strconv.FormatFloat(k, 'f', -1, 64)
-			default:
-				keyStr = fmt.Sprintf("%v", k)
-			}
+			keyStr := anyToJSONMapKey(key)
 
 			convertedValue, err := ConvertToJSONSafe(value)
 			if err != nil {
@@ -345,7 +359,22 @@ func YamlNodeToAny(node *yaml.Node) any {
 		for i := 0; i+1 < len(node.Content); i += 2 {
 			key := node.Content[i]
 			value := node.Content[i+1]
-			out[key.Value] = YamlNodeToAny(value)
+			if isYAMLMergeKey(key) {
+				mergeMap, ok := YamlNodeToAny(value).(map[string]any)
+				if !ok {
+					continue
+				}
+				for mk, mv := range mergeMap {
+					if _, exists := out[mk]; !exists {
+						out[mk] = mv
+					}
+				}
+
+				continue
+			}
+
+			keyStr := anyToJSONMapKey(YamlNodeToAny(key))
+			out[keyStr] = YamlNodeToAny(value)
 		}
 
 		return out

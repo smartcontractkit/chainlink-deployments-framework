@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 )
@@ -183,6 +184,97 @@ func TestYamlNodeToAny_Nil(t *testing.T) {
 
 	got := YamlNodeToAny(nil)
 	require.Nil(t, got)
+}
+
+func TestYamlNodeToAny_AliasMapKeys(t *testing.T) {
+	t.Parallel()
+
+	yamlContent := `
+sel: &sel_sepolia 16015286601757825753
+other: &sel_arb 3478487238524512106
+chains:
+  *sel_sepolia: &cfg
+    qualifier: UltraFastCurse
+    timelockMinDelay: 0
+  *sel_arb: *cfg
+`
+	var root yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(yamlContent), &root))
+
+	doc := YamlNodeToAny(&root).(map[string]any)
+	chains := doc["chains"].(map[string]any)
+
+	require.Equal(t, map[string]any{
+		"16015286601757825753": map[string]any{
+			"qualifier":        "UltraFastCurse",
+			"timelockMinDelay": json.Number("0"),
+		},
+		"3478487238524512106": map[string]any{
+			"qualifier":        "UltraFastCurse",
+			"timelockMinDelay": json.Number("0"),
+		},
+	}, chains)
+}
+
+func TestYamlNodeToAny_MergeKeys(t *testing.T) {
+	t.Parallel()
+
+	yamlContent := `
+base: &base_cfg
+  qualifier: UltraFastCurse
+  timelockMinDelay: 0
+chains:
+  16015286601757825753:
+    <<: *base_cfg
+    proposer:
+      quorum: 1
+`
+	var root yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(yamlContent), &root))
+
+	doc := YamlNodeToAny(&root).(map[string]any)
+	chains := doc["chains"].(map[string]any)
+	chain := chains["16015286601757825753"].(map[string]any)
+
+	require.Equal(t, "UltraFastCurse", chain["qualifier"])
+	require.Equal(t, json.Number("0"), chain["timelockMinDelay"])
+	require.Equal(t, map[string]any{"quorum": json.Number("1")}, chain["proposer"])
+}
+
+func TestBuildChangesetInputJSON_AliasChainSelectorKeys(t *testing.T) {
+	t.Parallel()
+
+	yamlContent := `
+environment: staging_testnet
+domain: ccv
+changesets:
+  - deploy_mcms:
+      chainOverrides:
+        - &sel_sepolia 16015286601757825753
+      payload:
+        adapterVersion: "1.0.0"
+        chains:
+          *sel_sepolia:
+            qualifier: UltraFastCurse
+            timelockMinDelay: 0
+`
+	dpYAML, err := ParseYAMLBytes([]byte(yamlContent))
+	require.NoError(t, err)
+
+	changesets, err := GetAllChangesetsInOrder(dpYAML.Changesets)
+	require.NoError(t, err)
+	require.Len(t, changesets, 1)
+
+	inputJSON, err := BuildChangesetInputJSON(changesets[0].Name, changesets[0].Data)
+	require.NoError(t, err)
+
+	var decoded map[string]any
+	require.NoError(t, json.Unmarshal([]byte(inputJSON), &decoded))
+
+	payload := decoded["payload"].(map[string]any)
+	chains := payload["chains"].(map[string]any)
+	require.Contains(t, chains, "16015286601757825753")
+	require.NotContains(t, chains, "sel_sepolia")
 }
 
 func TestSetChangesetEnvironmentVariable(t *testing.T) {
