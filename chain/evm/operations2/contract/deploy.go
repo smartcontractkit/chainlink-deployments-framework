@@ -40,6 +40,13 @@ type DeployInput[ARGS any] struct {
 	Qualifier *string `json:"qualifier,omitempty"`
 	// Args are the parameters passed to the contract constructor.
 	Args ARGS `json:"args"`
+	// GasLimit optionally overrides the deployer gas limit on EVM chains.
+	// Normally set by RetryDeployWithGasBoost after gas-related failures; may also be set manually.
+	GasLimit uint64 `json:"gasLimit,omitempty"`
+	// GasPrice optionally overrides the deployer legacy gas price on EVM chains (wei).
+	// When non-zero, deploy uses a legacy fee transaction and clears any EIP-1559 GasFeeCap/GasTipCap.
+	// Normally set by RetryDeployWithGasBoost after gas-related failures; may also be set manually.
+	GasPrice uint64 `json:"gasPrice,omitempty"`
 }
 
 // Bytecode specifies the exact bytecode to deploy for each supported VM.
@@ -133,7 +140,7 @@ func NewDeploy[ARGS any](params DeployParams[ARGS]) *operations.Operation[Deploy
 				)
 			} else {
 				addr, tx, _, deployErr = deployEVMContract(
-					chain.DeployerKey,
+					deployTransactOpts(chain.DeployerKey, input.GasLimit, input.GasPrice),
 					*parsedABI,
 					bytecode.EVM,
 					chain.Client,

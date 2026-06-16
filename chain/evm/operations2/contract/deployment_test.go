@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/big"
 	"testing"
 
 	"github.com/Masterminds/semver/v3"
@@ -77,6 +78,16 @@ func TestDeploy(t *testing.T) {
 			},
 			isZkSyncVM: false,
 		},
+		{
+			desc: "evm deployment with gas overrides",
+			input: DeployInput[ConstructorArgs]{
+				Args:           ConstructorArgs{Value: 2},
+				TypeAndVersion: deployment.NewTypeAndVersion(testContractType, *semver.MustParse("1.0.0")),
+				GasLimit:       750_000,
+				GasPrice:       25_000_000_000,
+			},
+			isZkSyncVM: false,
+		},
 	}
 
 	for _, test := range tests { //nolint:paralleltest // subtests modify package-level deployZkContract/deployEVMContract vars
@@ -127,6 +138,12 @@ func TestDeploy(t *testing.T) {
 				},
 				IsZkSyncVM: test.isZkSyncVM,
 			}
+			if test.input.GasLimit > 0 || test.input.GasPrice > 0 {
+				chain.DeployerKey = &bind.TransactOpts{
+					GasFeeCap: big.NewInt(100),
+					GasTipCap: big.NewInt(2),
+				}
+			}
 
 			deployZkContract = func(
 				_ context.Context,
@@ -140,7 +157,7 @@ func TestDeploy(t *testing.T) {
 				return address, nil
 			}
 			deployEVMContract = func(
-				_ *bind.TransactOpts,
+				opts *bind.TransactOpts,
 				_ abi.ABI,
 				_ []byte,
 				_ bind.ContractBackend,
@@ -154,6 +171,13 @@ func TestDeploy(t *testing.T) {
 							common.LeftPadBytes([]byte{1}, 32)...,
 						)),
 					}
+				}
+				if test.input.GasLimit > 0 || test.input.GasPrice > 0 {
+					require.NotNil(t, opts)
+					require.Equal(t, test.input.GasLimit, opts.GasLimit)
+					require.Equal(t, test.input.GasPrice, opts.GasPrice.Uint64())
+					require.Nil(t, opts.GasFeeCap)
+					require.Nil(t, opts.GasTipCap)
 				}
 
 				return address, types.NewTx(&types.LegacyTx{
