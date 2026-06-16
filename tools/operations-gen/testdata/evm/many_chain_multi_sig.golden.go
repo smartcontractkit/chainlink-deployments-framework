@@ -13,6 +13,7 @@ import (
 	cldf_deployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	cld_ops "github.com/smartcontractkit/chainlink-deployments-framework/operations"
 	gobindings "github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/testdata/evm/gobindings/v1_0_0/many_chain_multi_sig"
+	zkbindings "github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/testdata/evm/zksync_bindings"
 )
 
 var ContractType cldf_deployment.ContractType = "ManyChainMultiSig"
@@ -44,7 +45,8 @@ var Deploy = contract.NewDeploy(contract.DeployParams[ConstructorArgs]{
 	ContractMetadata: gobindings.ManyChainMultiSigMetaData,
 	BytecodeByTypeAndVersion: map[string]contract.Bytecode{
 		cldf_deployment.NewTypeAndVersion(ContractType, *Version).String(): {
-			EVM: common.FromHex(gobindings.ManyChainMultiSigMetaData.Bin),
+			EVM:      common.FromHex(gobindings.ManyChainMultiSigMetaData.Bin),
+			ZkSyncVM: zkbindings.ManyChainMultiSigZkBytecode,
 		},
 	},
 })

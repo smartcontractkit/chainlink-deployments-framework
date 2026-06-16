@@ -9,18 +9,13 @@ output:
   base_path: "."
 
 contracts:
-  - contract_name: ManyChainMultiSig
+  - contract_name: LinkToken
     version: "1.0.0"
-    package_name: many_chain_multi_sig
-    zksync_bytecode: ManyChainMultiSigZkBytecode
+    zksync_bytecode: LinkTokenZkBytecode
     functions:
-      - name: owner
+      - name: transfer
         access: public
-      - name: getRoot
+      - name: balanceOf
         access: public
-      - name: setConfig
-        access: owner
-      - name: setRoot
-        access: owner
-      - name: acceptOwnership
-        access: private
+      - name: approve
+        access: public

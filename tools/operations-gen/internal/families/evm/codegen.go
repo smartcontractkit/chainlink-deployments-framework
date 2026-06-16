@@ -13,19 +13,22 @@ import (
 // ---- Template data (EVM-specific) ----
 
 type templateData struct {
-	PackageName       string
-	PackageNameHyphen string
-	ContractType      string
-	Version           string
-	GobindingsImport  string
-	NeedsBigInt       bool
-	HasWriteOps       bool
-	OmitDeploy        bool
-	Constructor       *constructorData
-	StructDefs        []structDefData
-	ArgStructs        []argStructData
-	Operations        []OperationData
-	ContractMethods   []contractMethodData
+	PackageName                 string
+	PackageNameHyphen           string
+	ContractType                string
+	Version                     string
+	GobindingsImport            string
+	ZkSyncBytecodeSymbol        string
+	ZkSyncBytecodeImport        string
+	ZkSyncBytecodeUseGobindings bool
+	NeedsBigInt                 bool
+	HasWriteOps                 bool
+	OmitDeploy                  bool
+	Constructor                 *constructorData
+	StructDefs                  []structDefData
+	ArgStructs                  []argStructData
+	Operations                  []OperationData
+	ContractMethods             []contractMethodData
 }
 
 type constructorData struct {
@@ -91,6 +94,11 @@ func prepareTemplateData(info *ContractInfo) templateData {
 		GobindingsImport:  info.GobindingsPackage,
 		NeedsBigInt:       ChecksNeedsBigInt(info),
 		OmitDeploy:        info.OmitDeploy,
+	}
+	if info.ZkSync != nil {
+		data.ZkSyncBytecodeSymbol = info.ZkSync.BytecodeSymbol
+		data.ZkSyncBytecodeImport = info.ZkSync.BytecodePackage
+		data.ZkSyncBytecodeUseGobindings = info.ZkSync.BytecodePackage == info.GobindingsPackage
 	}
 
 	if info.Constructor != nil {

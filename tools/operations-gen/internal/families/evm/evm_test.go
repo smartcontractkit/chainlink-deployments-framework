@@ -98,3 +98,51 @@ contracts:
 	require.Contains(t, string(got), `gobindings "`+wantGobindingsPackage+`"`)
 	require.NotContains(t, string(got), `gobindings "./testdata/evm/gobindings`)
 }
+
+func TestGenerateResolvesRelativeZkSyncBindingsPackage(t *testing.T) {
+	t.Parallel()
+
+	const wantZkSyncPackage = "github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/testdata/evm/zksync_bindings"
+	config := `version: "1.0.0"
+chain_family: evm
+
+input:
+  gobindings_package: "github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/testdata/evm/gobindings"
+  zksync_bindings_package: "./testdata/evm/zksync_bindings"
+
+output:
+  base_path: "."
+
+contracts:
+  - contract_name: ManyChainMultiSig
+    version: "1.0.0"
+    package_name: many_chain_multi_sig
+    zksync_bytecode: ManyChainMultiSigZkBytecode
+    functions:
+      - name: owner
+        access: public
+`
+
+	var cfg core.Config
+	require.NoError(t, yaml.Unmarshal([]byte(config), &cfg), "parsing config")
+
+	moduleDir, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	require.NoError(t, err)
+	tmpDir := t.TempDir()
+	outputBasePath, err := filepath.Rel(moduleDir, tmpDir)
+	require.NoError(t, err)
+	cfg.ConfigDir = moduleDir
+	cfg.Output = mustYAMLNode(t, evm.EvmOutputConfig{BasePath: outputBasePath})
+
+	tmpl, err := generate.LoadTemplate("evm")
+	require.NoError(t, err, "loadTemplate")
+
+	require.NoError(t, evm.Handler{}.Generate(cfg, tmpl), "Generate")
+
+	outputPath := core.ContractOutputPath(tmpDir, core.VersionToPath("1.0.0"), "many_chain_multi_sig")
+	got, err := os.ReadFile(outputPath)
+	require.NoError(t, err, "reading generated file %s", outputPath)
+
+	require.Contains(t, string(got), `zkbindings "`+wantZkSyncPackage+`"`)
+	require.Contains(t, string(got), "ZkSyncVM: zkbindings.ManyChainMultiSigZkBytecode")
+}

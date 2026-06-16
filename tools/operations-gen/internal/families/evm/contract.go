@@ -29,12 +29,19 @@ type ContractInfo struct {
 	Version           string
 	PackageName       string
 	GobindingsPackage string
+	ZkSync            *ZkSyncContractInfo
 	OutputPath        string
 	OmitDeploy        bool
 	Constructor       *FunctionInfo
 	Functions         map[string]*FunctionInfo
 	FunctionOrder     []string
 	StructDefs        map[string]*structDef
+}
+
+// ZkSyncContractInfo holds resolved zkSync VM deploy bytecode for code generation.
+type ZkSyncContractInfo struct {
+	BytecodePackage string
+	BytecodeSymbol  string
 }
 
 type structDef struct {
@@ -98,6 +105,15 @@ func extractContractInfo(cfg EvmContractConfig, input EvmInputConfig, output Evm
 	}
 	cfg.GobindingsPackage = resolvedGobindingsPackage
 
+	if cfg.OmitDeploy && !cfg.ZkSyncBytecode.IsZero() {
+		return nil, fmt.Errorf("contract %q: zksync_bytecode cannot be set when omit_deploy is true", cfg.Name)
+	}
+
+	zkSyncPackage, zkSyncSymbol, err := resolveZkSyncBytecode(cfg, input, cfg.GobindingsPackage)
+	if err != nil {
+		return nil, err
+	}
+
 	parsedAbi, err := ReadABI(cfg)
 	if err != nil {
 		return nil, err
@@ -112,6 +128,12 @@ func extractContractInfo(cfg EvmContractConfig, input EvmInputConfig, output Evm
 		OmitDeploy:        cfg.OmitDeploy,
 		Functions:         make(map[string]*FunctionInfo),
 		StructDefs:        make(map[string]*structDef),
+	}
+	if zkSyncSymbol != "" {
+		info.ZkSync = &ZkSyncContractInfo{
+			BytecodePackage: zkSyncPackage,
+			BytecodeSymbol:  zkSyncSymbol,
+		}
 	}
 
 	extractConstructor(info, parsedAbi)

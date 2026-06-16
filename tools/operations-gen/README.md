@@ -136,6 +136,7 @@ contracts:
 | `version`                  | Yes      | Config schema version                                                                                                                                       |
 | `chain_family`             | No       | Target chain family. Only `"evm"` is supported. Defaults to `"evm"`.                                                                                        |
 | `input.gobindings_package` | No       | Parent Go import path or relative filesystem path containing versioned abigen packages. Used to derive contract bindings as `<input.gobindings_package>/<version_path>/<package_name>`. |
+| `input.zksync_bindings_package` | No | Default Go import path or relative filesystem path for zkSync VM deploy bytecode. Used when a contract sets `zksync_bytecode` to a symbol only. |
 | `output.base_path`         | Yes      | Root directory where generated files are written. Relative to the config file.                                                                              |
 
 ### Contract fields
@@ -147,7 +148,8 @@ contracts:
 | `gobindings_package` | No       | Optional full Go import path or relative filesystem path override for this contract's abigen-generated bindings package. Required only when `input.gobindings_package` is not set. |
 | `package_name`       | No       | Override the generated Go package name. Defaults to `snake_case(contract_name)`.                                                                       |
 | `version_path`       | No       | Override the directory path derived from the version. Defaults to `v{major}_{minor}_{patch}`.                                                          |
-| `omit_deploy`        | No       | Skip generation of the `Deploy` operation and bytecode constant. Defaults to `false`.                                                                  |
+| `omit_deploy`        | No       | Skip generation of the `Deploy` operation and bytecode constant. Defaults to `false`. Cannot be combined with `zksync_bytecode`.                                                                  |
+| `zksync_bytecode`    | No       | zkSync VM deploy bytecode symbol, or `{package, symbol}`. Package defaults to `input.zksync_bindings_package`, then the contract's `gobindings_package`. |
 
 ### Function access control
 
