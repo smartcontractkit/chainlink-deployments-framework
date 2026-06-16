@@ -13,19 +13,22 @@ import (
 // ---- Template data (EVM-specific) ----
 
 type templateData struct {
-	PackageName       string
-	PackageNameHyphen string
-	ContractType      string
-	Version           string
-	GobindingsImport  string
-	NeedsBigInt       bool
-	HasWriteOps       bool
-	OmitDeploy        bool
-	Constructor       *constructorData
-	StructDefs        []structDefData
-	ArgStructs        []argStructData
-	Operations        []OperationData
-	ContractMethods   []contractMethodData
+	PackageName                 string
+	PackageNameHyphen           string
+	ContractType                string
+	Version                     string
+	GobindingsImport            string
+	ZkSyncBytecodeSymbol        string
+	ZkSyncBytecodeImport        string
+	ZkSyncBytecodeUseGobindings bool
+	NeedsBigInt                 bool
+	HasWriteOps                 bool
+	OmitDeploy                  bool
+	Constructor                 *constructorData
+	StructDefs                  []structDefData
+	ArgStructs                  []argStructData
+	Operations                  []OperationData
+	ContractMethods             []contractMethodData
 }
 
 type constructorData struct {
@@ -84,13 +87,16 @@ func generateOperationsFile(info *ContractInfo, tmpl *template.Template) error {
 
 func prepareTemplateData(info *ContractInfo) templateData {
 	data := templateData{
-		PackageName:       info.PackageName,
-		PackageNameHyphen: toKebabCase(info.PackageName),
-		ContractType:      info.Name,
-		Version:           info.Version,
-		GobindingsImport:  info.GobindingsPackage,
-		NeedsBigInt:       ChecksNeedsBigInt(info),
-		OmitDeploy:        info.OmitDeploy,
+		PackageName:                 info.PackageName,
+		PackageNameHyphen:           toKebabCase(info.PackageName),
+		ContractType:                info.Name,
+		Version:                     info.Version,
+		GobindingsImport:            info.GobindingsPackage,
+		ZkSyncBytecodeSymbol:        info.ZkSyncBytecodeSymbol,
+		ZkSyncBytecodeImport:        info.ZkSyncBytecodePackage,
+		ZkSyncBytecodeUseGobindings: info.ZkSyncBytecodeSymbol != "" && info.ZkSyncBytecodePackage == info.GobindingsPackage,
+		NeedsBigInt:                 ChecksNeedsBigInt(info),
+		OmitDeploy:                  info.OmitDeploy,
 	}
 
 	if info.Constructor != nil {

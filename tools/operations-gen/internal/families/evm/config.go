@@ -8,6 +8,7 @@ type EvmContractConfig struct {
 	PackageName       string              `yaml:"package_name,omitempty"` // Optional: override package name
 	OmitDeploy        bool                `yaml:"omit_deploy,omitempty"`  // Optional: skip Deploy operation
 	GobindingsPackage string              `yaml:"gobindings_package"`     // Optional: override the derived gobindings import path or relative filesystem path for this contract.
+	ZkSyncBytecode    ZkSyncBytecodeRef   `yaml:"zksync_bytecode,omitempty"`
 	Functions         []EvmFunctionConfig `yaml:"functions"`
 	ConfigDir         string              `yaml:"-"`
 }
@@ -18,6 +19,9 @@ type EvmInputConfig struct {
 	// Contract packages default to:
 	//   <gobindings_package>/<version_path>/<package_name>
 	GobindingsPackage string `yaml:"gobindings_package"`
+	// ZkSyncBindingsPackage is the default Go import path for zkSync VM deploy bytecode.
+	// Used when a contract sets zksync_bytecode to a symbol only.
+	ZkSyncBindingsPackage string `yaml:"zksync_bindings_package,omitempty"`
 }
 
 // EvmFunctionConfig selects a contract function and assigns its access control.

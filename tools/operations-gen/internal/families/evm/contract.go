@@ -25,16 +25,18 @@ const (
 
 // ContractInfo holds all parsed information about a contract needed for code generation.
 type ContractInfo struct {
-	Name              string
-	Version           string
-	PackageName       string
-	GobindingsPackage string
-	OutputPath        string
-	OmitDeploy        bool
-	Constructor       *FunctionInfo
-	Functions         map[string]*FunctionInfo
-	FunctionOrder     []string
-	StructDefs        map[string]*structDef
+	Name                  string
+	Version               string
+	PackageName           string
+	GobindingsPackage     string
+	ZkSyncBytecodePackage string
+	ZkSyncBytecodeSymbol  string
+	OutputPath            string
+	OmitDeploy            bool
+	Constructor           *FunctionInfo
+	Functions             map[string]*FunctionInfo
+	FunctionOrder         []string
+	StructDefs            map[string]*structDef
 }
 
 type structDef struct {
@@ -98,20 +100,31 @@ func extractContractInfo(cfg EvmContractConfig, input EvmInputConfig, output Evm
 	}
 	cfg.GobindingsPackage = resolvedGobindingsPackage
 
+	if cfg.OmitDeploy && !cfg.ZkSyncBytecode.IsZero() {
+		return nil, fmt.Errorf("contract %q: zksync_bytecode cannot be set when omit_deploy is true", cfg.Name)
+	}
+
+	zkSyncPackage, zkSyncSymbol, err := resolveZkSyncBytecode(cfg, input, cfg.GobindingsPackage)
+	if err != nil {
+		return nil, err
+	}
+
 	parsedAbi, err := ReadABI(cfg)
 	if err != nil {
 		return nil, err
 	}
 
 	info := &ContractInfo{
-		Name:              cfg.Name,
-		Version:           cfg.Version,
-		PackageName:       packageName,
-		GobindingsPackage: cfg.GobindingsPackage,
-		OutputPath:        core.ContractOutputPath(output.BasePath, versionPath, packageName),
-		OmitDeploy:        cfg.OmitDeploy,
-		Functions:         make(map[string]*FunctionInfo),
-		StructDefs:        make(map[string]*structDef),
+		Name:                  cfg.Name,
+		Version:               cfg.Version,
+		PackageName:           packageName,
+		GobindingsPackage:     cfg.GobindingsPackage,
+		ZkSyncBytecodePackage: zkSyncPackage,
+		ZkSyncBytecodeSymbol:  zkSyncSymbol,
+		OutputPath:            core.ContractOutputPath(output.BasePath, versionPath, packageName),
+		OmitDeploy:            cfg.OmitDeploy,
+		Functions:             make(map[string]*FunctionInfo),
+		StructDefs:            make(map[string]*structDef),
 	}
 
 	extractConstructor(info, parsedAbi)
