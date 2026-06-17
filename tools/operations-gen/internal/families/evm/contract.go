@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"golang.org/x/mod/modfile"
@@ -32,10 +34,15 @@ type ContractInfo struct {
 	ZkSync            *ZkSyncContractInfo
 	OutputPath        string
 	OmitDeploy        bool
-	Constructor       *FunctionInfo
-	Functions         map[string]*FunctionInfo
-	FunctionOrder     []string
-	StructDefs        map[string]*structDef
+	// DeployContractTypes holds ContractType labels that share this contract's ABI
+	// and bytecode. When non-empty, ONLY these labels appear as BytecodeByTypeAndVersion
+	// keys — the base ContractType is excluded. Each entry also gets an exported var.
+	// Always empty when OmitDeploy is true.
+	DeployContractTypes []string
+	Constructor         *FunctionInfo
+	Functions           map[string]*FunctionInfo
+	FunctionOrder       []string
+	StructDefs          map[string]*structDef
 }
 
 // ZkSyncContractInfo holds resolved zkSync VM deploy bytecode for code generation.
@@ -108,6 +115,17 @@ func extractContractInfo(cfg EvmContractConfig, input EvmInputConfig, output Evm
 	if cfg.OmitDeploy && !cfg.ZkSyncBytecode.IsZero() {
 		return nil, fmt.Errorf("contract %q: zksync_bytecode cannot be set when omit_deploy is true", cfg.Name)
 	}
+	if cfg.DeployContractTypes != nil {
+		if cfg.OmitDeploy {
+			return nil, fmt.Errorf("contract %q: deploy_contract_types cannot be set when omit_deploy is true", cfg.Name)
+		}
+		if len(cfg.DeployContractTypes) == 0 {
+			return nil, fmt.Errorf("contract %q: deploy_contract_types must contain at least one entry", cfg.Name)
+		}
+		if err = validateDeployContractTypes(cfg.Name, cfg.DeployContractTypes); err != nil {
+			return nil, err
+		}
+	}
 
 	zkSyncPackage, zkSyncSymbol, err := resolveZkSyncBytecode(cfg, input, cfg.GobindingsPackage)
 	if err != nil {
@@ -120,14 +138,15 @@ func extractContractInfo(cfg EvmContractConfig, input EvmInputConfig, output Evm
 	}
 
 	info := &ContractInfo{
-		Name:              cfg.Name,
-		Version:           cfg.Version,
-		PackageName:       packageName,
-		GobindingsPackage: cfg.GobindingsPackage,
-		OutputPath:        core.ContractOutputPath(output.BasePath, versionPath, packageName),
-		OmitDeploy:        cfg.OmitDeploy,
-		Functions:         make(map[string]*FunctionInfo),
-		StructDefs:        make(map[string]*structDef),
+		Name:                cfg.Name,
+		Version:             cfg.Version,
+		PackageName:         packageName,
+		GobindingsPackage:   cfg.GobindingsPackage,
+		OutputPath:          core.ContractOutputPath(output.BasePath, versionPath, packageName),
+		OmitDeploy:          cfg.OmitDeploy,
+		DeployContractTypes: cfg.DeployContractTypes,
+		Functions:           make(map[string]*FunctionInfo),
+		StructDefs:          make(map[string]*structDef),
 	}
 	if zkSyncSymbol != "" {
 		info.ZkSync = &ZkSyncContractInfo{
@@ -301,6 +320,43 @@ func collectAllStructDefs(info *ContractInfo) {
 			}
 		}
 	}
+}
+
+// validateDeployContractTypes checks that every label in deploy_contract_types is
+// a valid Go exported identifier, unique, and not equal to the base contract name.
+func validateDeployContractTypes(contractName string, types []string) error {
+	seen := make(map[string]struct{}, len(types))
+	for _, t := range types {
+		if t == "" {
+			return fmt.Errorf("contract %q: deploy_contract_types entries must not be empty", contractName)
+		}
+		if !isValidGoExportedIdentifier(t) {
+			return fmt.Errorf("contract %q: deploy_contract_types entry %q must be a valid Go exported identifier", contractName, t)
+		}
+		if t == contractName {
+			return fmt.Errorf("contract %q: deploy_contract_types must not contain the base contract name %q", contractName, t)
+		}
+		if _, dup := seen[t]; dup {
+			return fmt.Errorf("contract %q: duplicate deploy_contract_types entry %q", contractName, t)
+		}
+		seen[t] = struct{}{}
+	}
+
+	return nil
+}
+
+func isValidGoExportedIdentifier(s string) bool {
+	first, size := utf8.DecodeRuneInString(s)
+	if size == 0 || !unicode.IsUpper(first) {
+		return false
+	}
+	for _, r := range s[size:] {
+		if !unicode.IsLetter(r) && !unicode.IsDigit(r) && r != '_' {
+			return false
+		}
+	}
+
+	return true
 }
 
 // Absolute paths and any cleaned path containing ".." or a path separator are rejected.

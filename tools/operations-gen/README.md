@@ -127,6 +127,17 @@ contracts:
         access: owner # Write op with MCMS support
       - name: getTokenPrice
         access: public # Read op (or public write op)
+
+  # Same ABI, multiple datastore labels — one Deploy handles all three.
+  - contract_name: ManyChainMultiSig
+    version: "1.0.0"
+    deploy_contract_types:
+      - ProposerManyChainMultiSig
+      - BypasserManyChainMultiSig
+      - CancellerManyChainMultiSig
+    functions:
+      - name: setConfig
+        access: owner
 ```
 
 ### Top-level fields
@@ -148,8 +159,9 @@ contracts:
 | `gobindings_package` | No       | Optional full Go import path or relative filesystem path override for this contract's abigen-generated bindings package. Required only when `input.gobindings_package` is not set. |
 | `package_name`       | No       | Override the generated Go package name. Defaults to `snake_case(contract_name)`.                                                                       |
 | `version_path`       | No       | Override the directory path derived from the version. Defaults to `v{major}_{minor}_{patch}`.                                                          |
-| `omit_deploy`        | No       | Skip generation of the `Deploy` operation and bytecode constant. Defaults to `false`. Cannot be combined with `zksync_bytecode`.                                                                  |
-| `zksync_bytecode`    | No       | zkSync VM deploy bytecode symbol, or `{package, symbol}`. Package defaults to `input.zksync_bindings_package`, then the contract's `gobindings_package`. |
+| `omit_deploy`           | No       | Skip generation of the `Deploy` operation and bytecode constant. Defaults to `false`. Cannot be combined with `zksync_bytecode` or `deploy_contract_types`. |
+| `deploy_contract_types` | No       | List of `ContractType` labels (e.g. `ProposerManyChainMultiSig`) that share this contract's ABI and bytecode but need distinct datastore entries. Labels must be valid Go exported identifiers. When set, **only** these labels appear as keys in `BytecodeByTypeAndVersion` — the base `contract_name` type is excluded. Each label gets exported `var <Label>ContractType` and `var <Label>TypeAndVersion` vars. An empty list is rejected. Cannot be combined with `omit_deploy`. See [Deploy contract types](#deploy-contract-types). |
+| `zksync_bytecode`       | No       | zkSync VM deploy bytecode symbol, or `{package, symbol}`. Package defaults to `input.zksync_bindings_package`, then the contract's `gobindings_package`. |
 
 ### Function access control
 
@@ -162,6 +174,61 @@ contracts:
 For `access: role`, `DEFAULT_ADMIN_ROLE` maps to the all-zero role and any other
 human-readable role name is hashed as `keccak256("<ROLE_NAME>")`. Raw bytes32
 role hashes are rejected so configs remain readable.
+
+## Deploy contract types
+
+Some contracts are deployed multiple times with different semantic roles, each requiring a distinct
+`ContractType` label in the datastore (e.g. `ProposerManyChainMultiSig`, `BypasserManyChainMultiSig`,
+`CancellerManyChainMultiSig`). Because all three share the same ABI and bytecode, using three
+separate YAML contract entries would generate three near-identical files. `deploy_contract_types`
+solves this: one entry, one generated package, one `Deploy` var — but the `BytecodeByTypeAndVersion`
+map holds a key for every label so the caller can deploy under whichever type it needs.
+
+```yaml
+- contract_name: ManyChainMultiSig
+  version: "1.0.0"
+  deploy_contract_types:
+    - ProposerManyChainMultiSig
+    - BypasserManyChainMultiSig
+    - CancellerManyChainMultiSig
+  functions:
+    - name: setConfig
+      access: owner
+```
+
+This generates:
+
+```go
+var ContractType cldf_deployment.ContractType = "ManyChainMultiSig"
+var ProposerManyChainMultiSigContractType cldf_deployment.ContractType = "ProposerManyChainMultiSig"
+var ProposerManyChainMultiSigTypeAndVersion = cldf_deployment.NewTypeAndVersion(ProposerManyChainMultiSigContractType, *Version)
+var BypasserManyChainMultiSigContractType cldf_deployment.ContractType = "BypasserManyChainMultiSig"
+var BypasserManyChainMultiSigTypeAndVersion = cldf_deployment.NewTypeAndVersion(BypasserManyChainMultiSigContractType, *Version)
+var CancellerManyChainMultiSigContractType cldf_deployment.ContractType = "CancellerManyChainMultiSig"
+var CancellerManyChainMultiSigTypeAndVersion = cldf_deployment.NewTypeAndVersion(CancellerManyChainMultiSigContractType, *Version)
+
+var Deploy = contract.NewDeploy(contract.DeployParams[ConstructorArgs]{
+    BytecodeByTypeAndVersion: map[string]contract.Bytecode{
+        ProposerManyChainMultiSigTypeAndVersion.String(): { /* ... */ },
+        BypasserManyChainMultiSigTypeAndVersion.String(): { /* ... */ },
+        CancellerManyChainMultiSigTypeAndVersion.String(): { /* ... */ },
+    },
+})
+```
+
+The caller selects the role at deploy time by passing the appropriate `TypeAndVersion` to `Deploy`:
+
+```go
+many_chain_multi_sig.Deploy.Execute(b, chain, contract.DeployInput[many_chain_multi_sig.ConstructorArgs]{
+    TypeAndVersion: many_chain_multi_sig.ProposerManyChainMultiSigTypeAndVersion,
+})
+```
+
+**Rules:**
+- Labels must be valid Go exported identifiers, non-empty, unique, and different from `contract_name`.
+- The list must contain at least one entry; an empty list is rejected.
+- Cannot be combined with `omit_deploy: true`.
+- The base `contract_name` type is **not** included in `BytecodeByTypeAndVersion` when this field is set, and `TypeAndVersion` is not emitted (use the per-label `*TypeAndVersion` vars instead).
 
 ## Gobindings requirements
 

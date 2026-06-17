@@ -13,6 +13,10 @@ contracts:
     version: "1.0.0"
     package_name: many_chain_multi_sig
     zksync_bytecode: ManyChainMultiSigZkBytecode
+    deploy_contract_types:
+      - ProposerManyChainMultiSig
+      - BypasserManyChainMultiSig
+      - CancellerManyChainMultiSig
     functions:
       - name: owner
         access: public
