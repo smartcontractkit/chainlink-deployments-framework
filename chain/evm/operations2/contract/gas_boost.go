@@ -37,6 +37,7 @@ type GasBoostConfig struct {
 // The first execution attempt uses the chain deployer's default gas settings (auto-estimation).
 // On ZkSync VM chains, gas fields are not adjusted; omit this option for ZkSync-only deploy flows.
 // When cfg is nil, returns a no-op option and retry remains disabled (omit this option instead).
+// Use operations.WithRetry for retry without gas adjustment.
 func RetryDeployWithGasBoost[ARGS any](cfg *GasBoostConfig) operations.ExecuteOption[DeployInput[ARGS], evm.Chain] {
 	if cfg == nil {
 		return func(*operations.ExecuteConfig[DeployInput[ARGS], evm.Chain]) {}
@@ -44,6 +45,33 @@ func RetryDeployWithGasBoost[ARGS any](cfg *GasBoostConfig) operations.ExecuteOp
 	c := *cfg
 
 	return operations.WithRetryInput(func(attempt uint, err error, in DeployInput[ARGS], deps evm.Chain) DeployInput[ARGS] {
+		if deps.IsZkSyncVM || !isGasRetryableError(err) {
+			return in
+		}
+
+		gasLimit, gasPrice := nextBoostedGas(c, attempt, in.GasLimit, in.GasPrice)
+		in.GasLimit = gasLimit
+		in.GasPrice = gasPrice
+
+		return in
+	})
+}
+
+// RetryWriteWithGasBoost enables the default operation retry policy for contract writes and
+// increases gas on EVM retries when the prior attempt failed with a gas-related error.
+// The operation may retry on any failure (per the framework retry policy); gas limit and price are adjusted
+// only when the prior attempt failed with a gas-related error.
+// The first execution attempt uses the chain deployer's default gas settings.
+// On ZkSync VM chains, gas fields are not adjusted; omit this option for ZkSync-only write flows.
+// When cfg is nil, returns a no-op option and retry remains disabled (omit this option instead).
+// Use operations.WithRetry for retry without gas adjustment.
+func RetryWriteWithGasBoost[ARGS any](cfg *GasBoostConfig) operations.ExecuteOption[FunctionInput[ARGS], evm.Chain] {
+	if cfg == nil {
+		return func(*operations.ExecuteConfig[FunctionInput[ARGS], evm.Chain]) {}
+	}
+	c := *cfg
+
+	return operations.WithRetryInput(func(attempt uint, err error, in FunctionInput[ARGS], deps evm.Chain) FunctionInput[ARGS] {
 		if deps.IsZkSyncVM || !isGasRetryableError(err) {
 			return in
 		}
@@ -147,7 +175,7 @@ var gasRetryableErrorPatterns = []string{
 	"exceeds block gas limit",
 }
 
-func deployTransactOpts(base *bind.TransactOpts, gasLimit, gasPrice uint64) *bind.TransactOpts {
+func transactOptsWithGasOverrides(base *bind.TransactOpts, gasLimit, gasPrice uint64) *bind.TransactOpts {
 	if base == nil {
 		return nil
 	}

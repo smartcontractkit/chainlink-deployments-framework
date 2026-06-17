@@ -140,7 +140,7 @@ func NewDeploy[ARGS any](params DeployParams[ARGS]) *operations.Operation[Deploy
 				)
 			} else {
 				addr, tx, _, deployErr = deployEVMContract(
-					deployTransactOpts(chain.DeployerKey, input.GasLimit, input.GasPrice),
+					transactOptsWithGasOverrides(chain.DeployerKey, input.GasLimit, input.GasPrice),
 					*parsedABI,
 					bytecode.EVM,
 					chain.Client,
