@@ -1,5 +1,11 @@
 # operations-gen
 
+## 0.2.0
+
+### Minor Changes
+
+- [#1056](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1056) [`15d3401`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/15d340189a5d3e3b821482bccfc2714ecbc787d5) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat: add deploy_contract_types for same-ABI multi-label deploy
+
 ## 0.1.0
 
 ### Minor Changes
