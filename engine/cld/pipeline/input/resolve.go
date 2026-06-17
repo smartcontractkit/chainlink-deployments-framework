@@ -13,7 +13,11 @@ import (
 // ResolveChangesetConfig resolves the configuration for a changeset using either
 // a registered resolver or keeping the original payload.
 func ResolveChangesetConfig(valueNode *yaml.Node, csName string, resolver resolvers.ConfigResolver) (any, error) {
-	changesetMap, ok := YamlNodeToAny(valueNode).(map[string]any)
+	changesetAny, err := yamlNodeToAny(valueNode)
+	if err != nil {
+		return nil, fmt.Errorf("decode changeset data for %s: %w", csName, err)
+	}
+	changesetMap, ok := changesetAny.(map[string]any)
 	if !ok {
 		return nil, fmt.Errorf("decode changeset data for %s: expected mapping node", csName)
 	}
