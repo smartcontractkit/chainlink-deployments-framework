@@ -1,5 +1,15 @@
 # chainlink-deployments-framework
 
+## 0.112.0
+
+### Minor Changes
+
+- [#1047](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1047) [`e389ad2`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/e389ad2f0f7e6cd32156fc3f38f616079335685c) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat(operation): support gas bumping option for NewDeploy
+
+### Patch Changes
+
+- [#1050](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1050) [`56be0e3`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/56be0e324f86626e18503871bdbe967b682a5162) Thanks [@JohnChangUK](https://github.com/JohnChangUK)! - Bump `mcms` to v0.48.1 to pick up Canton enum encoding dependency updates.
+
 ## 0.111.1
 
 ### Patch Changes
