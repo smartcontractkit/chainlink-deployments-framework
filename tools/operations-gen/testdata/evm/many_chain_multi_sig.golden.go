@@ -18,7 +18,12 @@ import (
 
 var ContractType cldf_deployment.ContractType = "ManyChainMultiSig"
 var Version = semver.MustParse("1.0.0")
-var TypeAndVersion = cldf_deployment.NewTypeAndVersion(ContractType, *Version)
+var ProposerManyChainMultiSigContractType cldf_deployment.ContractType = "ProposerManyChainMultiSig"
+var ProposerManyChainMultiSigTypeAndVersion = cldf_deployment.NewTypeAndVersion(ProposerManyChainMultiSigContractType, *Version)
+var BypasserManyChainMultiSigContractType cldf_deployment.ContractType = "BypasserManyChainMultiSig"
+var BypasserManyChainMultiSigTypeAndVersion = cldf_deployment.NewTypeAndVersion(BypasserManyChainMultiSigContractType, *Version)
+var CancellerManyChainMultiSigContractType cldf_deployment.ContractType = "CancellerManyChainMultiSig"
+var CancellerManyChainMultiSigTypeAndVersion = cldf_deployment.NewTypeAndVersion(CancellerManyChainMultiSigContractType, *Version)
 
 type SetConfigArgs struct {
 	SignerAddresses []common.Address `json:"signerAddresses"`
@@ -44,7 +49,15 @@ var Deploy = contract.NewDeploy(contract.DeployParams[ConstructorArgs]{
 	Description:      "Deploys the ManyChainMultiSig contract",
 	ContractMetadata: gobindings.ManyChainMultiSigMetaData,
 	BytecodeByTypeAndVersion: map[string]contract.Bytecode{
-		cldf_deployment.NewTypeAndVersion(ContractType, *Version).String(): {
+		ProposerManyChainMultiSigTypeAndVersion.String(): {
+			EVM:      common.FromHex(gobindings.ManyChainMultiSigMetaData.Bin),
+			ZkSyncVM: zkbindings.ManyChainMultiSigZkBytecode,
+		},
+		BypasserManyChainMultiSigTypeAndVersion.String(): {
+			EVM:      common.FromHex(gobindings.ManyChainMultiSigMetaData.Bin),
+			ZkSyncVM: zkbindings.ManyChainMultiSigZkBytecode,
+		},
+		CancellerManyChainMultiSigTypeAndVersion.String(): {
 			EVM:      common.FromHex(gobindings.ManyChainMultiSigMetaData.Bin),
 			ZkSyncVM: zkbindings.ManyChainMultiSigZkBytecode,
 		},
