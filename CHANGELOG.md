@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.114.0
+
+### Minor Changes
+
+- [#1051](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1051) [`f267cfc`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/f267cfc059b65b060d805bae8c60244315556721) Thanks [@RensR](https://github.com/RensR)! - feat(cld): enhance support for YAML anchors for pipeline input files
+
 ## 0.113.0
 
 ### Minor Changes
