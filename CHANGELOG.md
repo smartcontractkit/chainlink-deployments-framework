@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.113.0
+
+### Minor Changes
+
+- [#1057](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1057) [`5d53085`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/5d530854294614b12fd24c6f7aab2296bafe5b2d) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat(evm): allow gas bumping on contract.NewWrite
+
 ## 0.112.0
 
 ### Minor Changes
