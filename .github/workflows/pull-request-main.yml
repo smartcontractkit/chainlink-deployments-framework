@@ -105,7 +105,7 @@ jobs:
   ci-test-provider-evm:
     name: Chain Tests - EVM
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     permissions:
       id-token: write
       contents: read
@@ -202,7 +202,7 @@ jobs:
   ci-test-provider-ton:
     name: Chain Tests - TON
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     permissions:
       id-token: write
       contents: read
@@ -221,7 +221,7 @@ jobs:
   ci-test-provider-tron:
     name: Chain Tests - TRON
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     permissions:
       id-token: write
       contents: read

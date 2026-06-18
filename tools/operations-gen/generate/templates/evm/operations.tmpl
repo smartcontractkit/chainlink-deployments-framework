@@ -23,11 +23,20 @@ import (
 	cld_ops "github.com/smartcontractkit/chainlink-deployments-framework/operations"
 {{- end}}
 	gobindings "{{.GobindingsImport}}"
+{{- if and .ZkSyncBytecodeSymbol (not .ZkSyncBytecodeUseGobindings)}}
+	zkbindings "{{.ZkSyncBytecodeImport}}"
+{{- end}}
 )
 
 var ContractType cldf_deployment.ContractType = "{{.ContractType}}"
 var Version = semver.MustParse("{{.Version}}")
+{{- if not .DeployContractTypes}}
 var TypeAndVersion = cldf_deployment.NewTypeAndVersion(ContractType, *Version)
+{{- end}}
+{{- range .DeployContractTypes}}
+var {{.}}ContractType cldf_deployment.ContractType = "{{.}}"
+var {{.}}TypeAndVersion = cldf_deployment.NewTypeAndVersion({{.}}ContractType, *Version)
+{{- end}}
 {{range .StructDefs}}
 type {{.Name}} struct {
 {{- range .Fields}}
@@ -59,9 +68,23 @@ var Deploy = contract.NewDeploy(contract.DeployParams[ConstructorArgs]{
 	Description: "Deploys the {{.ContractType}} contract",
 	ContractMetadata: gobindings.{{.ContractType}}MetaData,
 	BytecodeByTypeAndVersion: map[string]contract.Bytecode{
+{{- if not .DeployContractTypes}}
 		cldf_deployment.NewTypeAndVersion(ContractType, *Version).String(): {
 			EVM: common.FromHex(gobindings.{{.ContractType}}MetaData.Bin),
+{{- if .ZkSyncBytecodeSymbol}}
+			ZkSyncVM: {{if .ZkSyncBytecodeUseGobindings}}gobindings{{else}}zkbindings{{end}}.{{.ZkSyncBytecodeSymbol}},
+{{- end}}
 		},
+{{- else}}
+{{- range .DeployContractTypes}}
+		{{.}}TypeAndVersion.String(): {
+			EVM: common.FromHex(gobindings.{{$.ContractType}}MetaData.Bin),
+{{- if $.ZkSyncBytecodeSymbol}}
+			ZkSyncVM: {{if $.ZkSyncBytecodeUseGobindings}}gobindings{{else}}zkbindings{{end}}.{{$.ZkSyncBytecodeSymbol}},
+{{- end}}
+		},
+{{- end}}
+{{- end}}
 	},
 })
 {{- end}}

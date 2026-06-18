@@ -37,6 +37,9 @@ var LinkTokenABI = LinkTokenMetaData.ABI
 
 var LinkTokenBin = LinkTokenMetaData.Bin
 
+// ZkBytecode is zkSync VM deploy bytecode for operations-gen tests.
+var ZkBytecode = []byte{0xca, 0xfe}
+
 func DeployLinkToken(auth *bind.TransactOpts, backend bind.ContractBackend) (common.Address, *types.Transaction, *LinkToken, error) {
 	parsed, err := LinkTokenMetaData.GetAbi()
 	if err != nil {

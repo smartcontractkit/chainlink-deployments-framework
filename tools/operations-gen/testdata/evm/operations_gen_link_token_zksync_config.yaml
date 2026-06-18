@@ -1,0 +1,21 @@
+version: "1.0.0"
+chain_family: evm
+
+input:
+  gobindings_package: "github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/testdata/evm/gobindings"
+  zksync_bindings_package: "github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/testdata/evm/zksync_bindings"
+
+output:
+  base_path: "."
+
+contracts:
+  - contract_name: LinkToken
+    version: "1.0.0"
+    zksync_bytecode: LinkTokenZkBytecode
+    functions:
+      - name: transfer
+        access: public
+      - name: balanceOf
+        access: public
+      - name: approve
+        access: public

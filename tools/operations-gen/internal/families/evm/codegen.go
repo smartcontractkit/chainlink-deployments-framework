@@ -13,19 +13,25 @@ import (
 // ---- Template data (EVM-specific) ----
 
 type templateData struct {
-	PackageName       string
-	PackageNameHyphen string
-	ContractType      string
-	Version           string
-	GobindingsImport  string
-	NeedsBigInt       bool
-	HasWriteOps       bool
-	OmitDeploy        bool
-	Constructor       *constructorData
-	StructDefs        []structDefData
-	ArgStructs        []argStructData
-	Operations        []OperationData
-	ContractMethods   []contractMethodData
+	PackageName                 string
+	PackageNameHyphen           string
+	ContractType                string
+	Version                     string
+	GobindingsImport            string
+	ZkSyncBytecodeSymbol        string
+	ZkSyncBytecodeImport        string
+	ZkSyncBytecodeUseGobindings bool
+	NeedsBigInt                 bool
+	HasWriteOps                 bool
+	OmitDeploy                  bool
+	// DeployContractTypes holds additional ContractType labels that share this
+	// contract's ABI and bytecode.
+	DeployContractTypes []string
+	Constructor         *constructorData
+	StructDefs          []structDefData
+	ArgStructs          []argStructData
+	Operations          []OperationData
+	ContractMethods     []contractMethodData
 }
 
 type constructorData struct {
@@ -84,13 +90,19 @@ func generateOperationsFile(info *ContractInfo, tmpl *template.Template) error {
 
 func prepareTemplateData(info *ContractInfo) templateData {
 	data := templateData{
-		PackageName:       info.PackageName,
-		PackageNameHyphen: toKebabCase(info.PackageName),
-		ContractType:      info.Name,
-		Version:           info.Version,
-		GobindingsImport:  info.GobindingsPackage,
-		NeedsBigInt:       ChecksNeedsBigInt(info),
-		OmitDeploy:        info.OmitDeploy,
+		PackageName:         info.PackageName,
+		PackageNameHyphen:   toKebabCase(info.PackageName),
+		ContractType:        info.Name,
+		Version:             info.Version,
+		GobindingsImport:    info.GobindingsPackage,
+		NeedsBigInt:         ChecksNeedsBigInt(info),
+		OmitDeploy:          info.OmitDeploy,
+		DeployContractTypes: info.DeployContractTypes,
+	}
+	if info.ZkSync != nil {
+		data.ZkSyncBytecodeSymbol = info.ZkSync.BytecodeSymbol
+		data.ZkSyncBytecodeImport = info.ZkSync.BytecodePackage
+		data.ZkSyncBytecodeUseGobindings = info.ZkSync.BytecodePackage == info.GobindingsPackage
 	}
 
 	if info.Constructor != nil {

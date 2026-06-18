@@ -67,7 +67,7 @@ func TestIsGasRetryableError(t *testing.T) {
 	require.True(t, isGasRetryableError(fmt.Errorf("deploy failed: %w", core.ErrFeeCapTooLow)))
 }
 
-func TestDeployTransactOpts(t *testing.T) {
+func TestTransactOptsWithGasOverrides(t *testing.T) {
 	t.Parallel()
 
 	base := &bind.TransactOpts{
@@ -77,21 +77,21 @@ func TestDeployTransactOpts(t *testing.T) {
 		GasTipCap: big.NewInt(2),
 	}
 
-	require.Nil(t, deployTransactOpts(nil, 1, 1))
-	require.Same(t, base, deployTransactOpts(base, 0, 0))
+	require.Nil(t, transactOptsWithGasOverrides(nil, 1, 1))
+	require.Same(t, base, transactOptsWithGasOverrides(base, 0, 0))
 
-	limitOnly := deployTransactOpts(base, 500_000, 0)
+	limitOnly := transactOptsWithGasOverrides(base, 500_000, 0)
 	require.Equal(t, uint64(500_000), limitOnly.GasLimit)
 	require.Equal(t, big.NewInt(1), limitOnly.GasPrice)
 	require.Equal(t, big.NewInt(100), limitOnly.GasFeeCap)
 
-	priceOnly := deployTransactOpts(base, 0, 30_000_000_000)
+	priceOnly := transactOptsWithGasOverrides(base, 0, 30_000_000_000)
 	require.Equal(t, uint64(21_000), priceOnly.GasLimit)
 	require.Equal(t, uint64(30_000_000_000), priceOnly.GasPrice.Uint64())
 	require.Nil(t, priceOnly.GasFeeCap)
 	require.Nil(t, priceOnly.GasTipCap)
 
-	withGas := deployTransactOpts(base, 500_000, 30_000_000_000)
+	withGas := transactOptsWithGasOverrides(base, 500_000, 30_000_000_000)
 	require.Equal(t, uint64(500_000), withGas.GasLimit)
 	require.Equal(t, uint64(30_000_000_000), withGas.GasPrice.Uint64())
 	require.Nil(t, withGas.GasFeeCap)
@@ -235,4 +235,134 @@ func TestRetryDeployWithGasBoostSkipsZkSync(t *testing.T) {
 
 func ptrUint64(v uint64) *uint64 {
 	return &v
+}
+
+func TestRetryWriteWithGasBoostRetriesOnGasError(t *testing.T) {
+	t.Parallel()
+
+	failures := 2
+	var gasLimits []uint64
+	op := operations.NewOperation(
+		"write-gas-boost-retry",
+		semver.MustParse("1.0.0"),
+		"test",
+		func(_ operations.Bundle, _ evm.Chain, input FunctionInput[struct{}]) (struct{}, error) {
+			gasLimits = append(gasLimits, input.GasLimit)
+			if failures > 0 {
+				failures--
+				return struct{}{}, errors.New("out of gas: gas required exceeds allowance")
+			}
+
+			return struct{}{}, nil
+		},
+	)
+
+	cfg := &GasBoostConfig{
+		InitialGasLimit:   1_000_000,
+		GasLimitIncrement: ptrUint64(100_000),
+	}
+	bundle := optest.NewBundle(t)
+	_, err := operations.ExecuteOperation(
+		bundle,
+		op,
+		evm.Chain{Selector: 1},
+		FunctionInput[struct{}]{},
+		RetryWriteWithGasBoost[struct{}](cfg),
+	)
+	require.NoError(t, err)
+	require.Equal(t, []uint64{0, 1_000_000, 1_100_000}, gasLimits)
+}
+
+func TestRetryWriteWithGasBoostNilConfig(t *testing.T) {
+	t.Parallel()
+
+	failures := 2
+	calls := 0
+	op := operations.NewOperation(
+		"write-gas-boost-nil",
+		semver.MustParse("1.0.0"),
+		"test",
+		func(_ operations.Bundle, _ evm.Chain, _ FunctionInput[struct{}]) (struct{}, error) {
+			calls++
+			if failures > 0 {
+				failures--
+				return struct{}{}, errors.New("out of gas")
+			}
+
+			return struct{}{}, nil
+		},
+	)
+
+	bundle := optest.NewBundle(t)
+	_, err := operations.ExecuteOperation(
+		bundle,
+		op,
+		evm.Chain{Selector: 1},
+		FunctionInput[struct{}]{},
+		RetryWriteWithGasBoost[struct{}](nil),
+	)
+	require.Error(t, err)
+	require.Equal(t, 1, calls)
+}
+
+func TestRetryWriteWithGasBoostSkipsNonGasErrors(t *testing.T) {
+	t.Parallel()
+
+	var gasLimits []uint64
+	op := operations.NewOperation(
+		"write-gas-boost-skip",
+		semver.MustParse("1.0.0"),
+		"test",
+		func(_ operations.Bundle, _ evm.Chain, input FunctionInput[struct{}]) (struct{}, error) {
+			gasLimits = append(gasLimits, input.GasLimit)
+			return struct{}{}, errors.New("revert: unauthorized")
+		},
+	)
+
+	bundle := optest.NewBundle(t)
+	_, err := operations.ExecuteOperation(
+		bundle,
+		op,
+		evm.Chain{Selector: 1},
+		FunctionInput[struct{}]{},
+		RetryWriteWithGasBoost[struct{}](&GasBoostConfig{}),
+	)
+	require.Error(t, err)
+	for _, limit := range gasLimits {
+		require.Equal(t, uint64(0), limit)
+	}
+}
+
+func TestRetryWriteWithGasBoostSkipsZkSync(t *testing.T) {
+	t.Parallel()
+
+	failures := 2
+	var gasLimits []uint64
+	op := operations.NewOperation(
+		"write-gas-boost-zksync",
+		semver.MustParse("1.0.0"),
+		"test",
+		func(_ operations.Bundle, _ evm.Chain, input FunctionInput[struct{}]) (struct{}, error) {
+			gasLimits = append(gasLimits, input.GasLimit)
+			if failures > 0 {
+				failures--
+				return struct{}{}, errors.New("out of gas")
+			}
+
+			return struct{}{}, nil
+		},
+	)
+
+	bundle := optest.NewBundle(t)
+	_, err := operations.ExecuteOperation(
+		bundle,
+		op,
+		evm.Chain{Selector: 1, IsZkSyncVM: true},
+		FunctionInput[struct{}]{},
+		RetryWriteWithGasBoost[struct{}](&GasBoostConfig{}),
+	)
+	require.NoError(t, err)
+	for _, limit := range gasLimits {
+		require.Equal(t, uint64(0), limit)
+	}
 }

@@ -3,6 +3,7 @@ chain_family: evm
 
 input:
   gobindings_package: "github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/testdata/evm/gobindings"
+  zksync_bindings_package: "github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/testdata/evm/zksync_bindings"
 
 output:
   base_path: "."
@@ -11,6 +12,11 @@ contracts:
   - contract_name: ManyChainMultiSig
     version: "1.0.0"
     package_name: many_chain_multi_sig
+    zksync_bytecode: ManyChainMultiSigZkBytecode
+    deploy_contract_types:
+      - ProposerManyChainMultiSig
+      - BypasserManyChainMultiSig
+      - CancellerManyChainMultiSig
     functions:
       - name: owner
         access: public
