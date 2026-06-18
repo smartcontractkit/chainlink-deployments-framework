@@ -128,27 +128,72 @@ func GetAllChangesetsInOrder(changesets any) ([]ChangesetItem, error) {
 	return result, nil
 }
 
+// anyToJSONMapKey stringifies a map key for JSON-compatible maps.
+func anyToJSONMapKey(v any) string {
+	switch k := v.(type) {
+	case string:
+		return k
+	case json.Number:
+		return k.String()
+	case int:
+		return strconv.Itoa(k)
+	case int64:
+		return strconv.FormatInt(k, 10)
+	case uint64:
+		return strconv.FormatUint(k, 10)
+	case float64:
+		if k == math.Trunc(k) && (k >= 1e15 || k <= -1e15) {
+			return strconv.FormatFloat(k, 'f', 0, 64)
+		}
+
+		return strconv.FormatFloat(k, 'f', -1, 64)
+	default:
+		return fmt.Sprintf("%v", k)
+	}
+}
+
+func isYAMLMergeKey(node *yaml.Node) bool {
+	return node != nil &&
+		node.Kind == yaml.ScalarNode &&
+		(node.Tag == "!!merge" || (node.Value == "<<" && node.Style == 0))
+}
+
+func mergeMapInto(dst, src map[string]any) {
+	for mk, mv := range src {
+		if _, exists := dst[mk]; !exists {
+			dst[mk] = mv
+		}
+	}
+}
+
+func applyYAMLMerge(out map[string]any, value any) error {
+	switch v := value.(type) {
+	case map[string]any:
+		mergeMapInto(out, v)
+
+		return nil
+	case []any:
+		for i, item := range v {
+			mergeMap, ok := item.(map[string]any)
+			if !ok {
+				return fmt.Errorf("YAML merge sequence entry %d must be a mapping, got %T", i, item)
+			}
+			mergeMapInto(out, mergeMap)
+		}
+
+		return nil
+	default:
+		return fmt.Errorf("YAML merge key (<<) value must be a mapping or sequence of mappings, got %T", value)
+	}
+}
+
 // ConvertToJSONSafe recursively converts map[interface{}]interface{} to map[string]any.
 func ConvertToJSONSafe(data any) (any, error) {
 	switch v := data.(type) {
 	case map[interface{}]interface{}:
 		result := make(map[string]any)
 		for key, value := range v {
-			var keyStr string
-			switch k := key.(type) {
-			case string:
-				keyStr = k
-			case int:
-				keyStr = strconv.Itoa(k)
-			case int64:
-				keyStr = strconv.FormatInt(k, 10)
-			case uint64:
-				keyStr = strconv.FormatUint(k, 10)
-			case float64:
-				keyStr = strconv.FormatFloat(k, 'f', -1, 64)
-			default:
-				keyStr = fmt.Sprintf("%v", k)
-			}
+			keyStr := anyToJSONMapKey(key)
 
 			convertedValue, err := ConvertToJSONSafe(value)
 			if err != nil {
@@ -297,7 +342,11 @@ func ParseYAMLBytes(yamlData []byte) (*DurablePipelineYAML, error) {
 	if err := yaml.Unmarshal(yamlData, &root); err != nil {
 		return nil, fmt.Errorf("failed to parse YAML bytes: %w", err)
 	}
-	rootMap, ok := YamlNodeToAny(&root).(map[string]any)
+	rootAny, err := yamlNodeToAny(&root)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode YAML: %w", err)
+	}
+	rootMap, ok := rootAny.(map[string]any)
 	if !ok {
 		return nil, errors.New("expected a YAML object at the root")
 	}
@@ -328,66 +377,103 @@ func ParseYAMLBytes(yamlData []byte) (*DurablePipelineYAML, error) {
 }
 
 // YamlNodeToAny converts a yaml.Node to a generic any value.
+// This is the stable exported API; decode errors are ignored and nil is returned.
 func YamlNodeToAny(node *yaml.Node) any {
-	if node == nil {
+	v, err := yamlNodeToAny(node)
+	if err != nil {
 		return nil
+	}
+
+	return v
+}
+
+// yamlNodeToAny converts a yaml.Node to a generic any value.
+func yamlNodeToAny(node *yaml.Node) (any, error) {
+	if node == nil {
+		return nil, nil //nolint:nilnil // YAML null
 	}
 
 	switch node.Kind {
 	case yaml.DocumentNode:
 		if len(node.Content) == 0 {
-			return nil
+			return nil, nil //nolint:nilnil // empty YAML document
 		}
 
-		return YamlNodeToAny(node.Content[0])
+		return yamlNodeToAny(node.Content[0])
 	case yaml.MappingNode:
 		out := make(map[string]any, len(node.Content)/2)
 		for i := 0; i+1 < len(node.Content); i += 2 {
 			key := node.Content[i]
 			value := node.Content[i+1]
-			out[key.Value] = YamlNodeToAny(value)
+			if isYAMLMergeKey(key) {
+				merged, err := yamlNodeToAny(value)
+				if err != nil {
+					return nil, err
+				}
+				if err := applyYAMLMerge(out, merged); err != nil {
+					return nil, err
+				}
+
+				continue
+			}
+
+			keyAny, err := yamlNodeToAny(key)
+			if err != nil {
+				return nil, err
+			}
+			valueAny, err := yamlNodeToAny(value)
+			if err != nil {
+				return nil, err
+			}
+			keyStr := anyToJSONMapKey(keyAny)
+			out[keyStr] = valueAny
 		}
 
-		return out
+		return out, nil
 	case yaml.SequenceNode:
 		out := make([]any, 0, len(node.Content))
 		for _, elem := range node.Content {
-			out = append(out, YamlNodeToAny(elem))
+			elemAny, err := yamlNodeToAny(elem)
+			if err != nil {
+				return nil, err
+			}
+			out = append(out, elemAny)
 		}
 
-		return out
+		return out, nil
 	case yaml.ScalarNode:
 		if node.Style == 0 && decimalInteger.MatchString(node.Value) {
-			return json.Number(node.Value)
+			return json.Number(node.Value), nil
 		}
 
 		switch node.Tag {
 		case "!!int":
 			if decimalInteger.MatchString(node.Value) {
-				return json.Number(node.Value)
+				return json.Number(node.Value), nil
 			}
 			if n, ok := new(big.Int).SetString(strings.ReplaceAll(node.Value, "_", ""), 0); ok {
-				return json.Number(n.String())
+				return json.Number(n.String()), nil
 			}
 
-			return node.Value
+			return node.Value, nil
 		case "!!float":
 			f, err := strconv.ParseFloat(node.Value, 64)
 			if err != nil {
-				return node.Value
+				//nolint:nilerr // Fall back to raw scalar when float parsing fails.
+				return node.Value, nil
 			}
 
-			return f
+			return f, nil
 		case "!!null":
-			return nil
+			return nil, nil //nolint:nilnil // YAML null scalar
 		case "!!bool":
-			return strings.EqualFold(node.Value, "true")
+			return strings.EqualFold(node.Value, "true"), nil
 		default:
-			return node.Value
+			return node.Value, nil
 		}
 	case yaml.AliasNode:
-		return YamlNodeToAny(node.Alias)
+		return yamlNodeToAny(node.Alias)
 	default:
-		return nil
+		return nil, nil //nolint:nilnil // unsupported node kind
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 )
@@ -165,6 +166,11 @@ func TestConvertToJSONSafe(t *testing.T) {
 			in:   42,
 			want: 42,
 		},
+		{
+			name: "map with json number key",
+			in:   map[interface{}]interface{}{json.Number("16015286601757825753"): "chain"},
+			want: map[string]any{"16015286601757825753": "chain"},
+		},
 	}
 
 	for _, tt := range tests {
@@ -181,8 +187,261 @@ func TestConvertToJSONSafe(t *testing.T) {
 func TestYamlNodeToAny_Nil(t *testing.T) {
 	t.Parallel()
 
-	got := YamlNodeToAny(nil)
-	require.Nil(t, got)
+	require.Nil(t, YamlNodeToAny(nil))
+}
+
+func TestYamlNodeToAny_AliasMapKeys(t *testing.T) {
+	t.Parallel()
+
+	yamlContent := `
+sel: &sel_sepolia 16015286601757825753
+other: &sel_arb 3478487238524512106
+chains:
+  *sel_sepolia: &cfg
+    qualifier: UltraFastCurse
+    timelockMinDelay: 0
+  *sel_arb: *cfg
+`
+	var root yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(yamlContent), &root))
+
+	docAny, err := yamlNodeToAny(&root)
+	require.NoError(t, err)
+	doc := docAny.(map[string]any)
+	chains := doc["chains"].(map[string]any)
+
+	require.Equal(t, map[string]any{
+		"16015286601757825753": map[string]any{
+			"qualifier":        "UltraFastCurse",
+			"timelockMinDelay": json.Number("0"),
+		},
+		"3478487238524512106": map[string]any{
+			"qualifier":        "UltraFastCurse",
+			"timelockMinDelay": json.Number("0"),
+		},
+	}, chains)
+}
+
+func TestYamlNodeToAny_MergeKeys(t *testing.T) {
+	t.Parallel()
+
+	yamlContent := `
+base: &base_cfg
+  qualifier: UltraFastCurse
+  timelockMinDelay: 0
+chains:
+  16015286601757825753:
+    <<: *base_cfg
+    proposer:
+      quorum: 1
+`
+	var root yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(yamlContent), &root))
+
+	docAny, err := yamlNodeToAny(&root)
+	require.NoError(t, err)
+	doc := docAny.(map[string]any)
+	chains := doc["chains"].(map[string]any)
+	chain := chains["16015286601757825753"].(map[string]any)
+
+	require.Equal(t, "UltraFastCurse", chain["qualifier"])
+	require.Equal(t, json.Number("0"), chain["timelockMinDelay"])
+	require.Equal(t, map[string]any{"quorum": json.Number("1")}, chain["proposer"])
+}
+
+func TestYamlNodeToAny_MergeKeyOverrideAfter(t *testing.T) {
+	t.Parallel()
+
+	yamlContent := `
+base: &base_cfg
+  qualifier: Base
+  timelockMinDelay: 0
+chains:
+  "123":
+    <<: *base_cfg
+    qualifier: Override
+`
+	var root yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(yamlContent), &root))
+
+	docAny, err := yamlNodeToAny(&root)
+	require.NoError(t, err)
+	chain := docAny.(map[string]any)["chains"].(map[string]any)["123"].(map[string]any)
+
+	require.Equal(t, "Override", chain["qualifier"])
+	require.Equal(t, json.Number("0"), chain["timelockMinDelay"])
+}
+
+func TestYamlNodeToAny_MergeKeyExplicitBeforeMerge(t *testing.T) {
+	t.Parallel()
+
+	yamlContent := `
+base: &base_cfg
+  qualifier: Base
+  timelockMinDelay: 0
+chains:
+  "123":
+    qualifier: Override
+    <<: *base_cfg
+`
+	var root yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(yamlContent), &root))
+
+	docAny, err := yamlNodeToAny(&root)
+	require.NoError(t, err)
+	chain := docAny.(map[string]any)["chains"].(map[string]any)["123"].(map[string]any)
+
+	require.Equal(t, "Override", chain["qualifier"])
+	require.Equal(t, json.Number("0"), chain["timelockMinDelay"])
+}
+
+func TestYamlNodeToAny_MergeKeySequence(t *testing.T) {
+	t.Parallel()
+
+	yamlContent := `
+a: &a
+  x: 1
+b: &b
+  y: 2
+m:
+  <<: [*a, *b]
+  z: 3
+`
+	var root yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(yamlContent), &root))
+
+	docAny, err := yamlNodeToAny(&root)
+	require.NoError(t, err)
+	m := docAny.(map[string]any)["m"].(map[string]any)
+
+	require.Equal(t, json.Number("1"), m["x"])
+	require.Equal(t, json.Number("2"), m["y"])
+	require.Equal(t, json.Number("3"), m["z"])
+}
+
+func TestYamlNodeToAny_MergeKeySequenceConflict(t *testing.T) {
+	t.Parallel()
+
+	// YAML 1.1: earlier mappings in the merge sequence override later ones.
+	// https://yaml.org/type/merge.html
+	yamlContent := `
+a: &a
+  x: from_a
+  only_a: 1
+b: &b
+  x: from_b
+  only_b: 2
+m:
+  <<: [*a, *b]
+`
+	var root yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(yamlContent), &root))
+
+	docAny, err := yamlNodeToAny(&root)
+	require.NoError(t, err)
+	m := docAny.(map[string]any)["m"].(map[string]any)
+
+	require.Equal(t, "from_a", m["x"])
+	require.Equal(t, json.Number("1"), m["only_a"])
+	require.Equal(t, json.Number("2"), m["only_b"])
+}
+
+func TestYamlNodeToAny_QuotedMergeLikeKey(t *testing.T) {
+	t.Parallel()
+
+	yamlContent := `"<<": 1`
+	var root yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(yamlContent), &root))
+
+	docAny, err := yamlNodeToAny(&root)
+	require.NoError(t, err)
+	doc := docAny.(map[string]any)
+
+	require.Equal(t, json.Number("1"), doc["<<"])
+}
+
+func TestYamlNodeToAny_InvalidMergeValueSwallowsError(t *testing.T) {
+	t.Parallel()
+
+	yamlContent := `
+m:
+  <<: not_a_map
+  z: 3
+`
+	var root yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(yamlContent), &root))
+
+	require.Nil(t, YamlNodeToAny(&root))
+}
+
+func TestYamlNodeToAny_InvalidMergeValue(t *testing.T) {
+	t.Parallel()
+
+	yamlContent := `
+m:
+  <<: not_a_map
+  z: 3
+`
+	var root yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(yamlContent), &root))
+
+	_, err := yamlNodeToAny(&root)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "YAML merge key (<<) value must be a mapping or sequence of mappings")
+}
+
+func TestParseYAMLBytes_InvalidMergeValue(t *testing.T) {
+	t.Parallel()
+
+	yamlContent := `environment: testnet
+domain: ccv
+changesets:
+  - cs1:
+      payload:
+        m:
+          <<: not_a_map
+          z: 3
+`
+	_, err := ParseYAMLBytes([]byte(yamlContent))
+	require.Error(t, err)
+	require.ErrorContains(t, err, "failed to decode YAML")
+	require.ErrorContains(t, err, "YAML merge key (<<) value must be a mapping or sequence of mappings")
+}
+
+func TestBuildChangesetInputJSON_AliasChainSelectorKeys(t *testing.T) {
+	t.Parallel()
+
+	yamlContent := `
+environment: staging_testnet
+domain: ccv
+changesets:
+  - deploy_mcms:
+      chainOverrides:
+        - &sel_sepolia 16015286601757825753
+      payload:
+        adapterVersion: "1.0.0"
+        chains:
+          *sel_sepolia:
+            qualifier: UltraFastCurse
+            timelockMinDelay: 0
+`
+	dpYAML, err := ParseYAMLBytes([]byte(yamlContent))
+	require.NoError(t, err)
+
+	changesets, err := GetAllChangesetsInOrder(dpYAML.Changesets)
+	require.NoError(t, err)
+	require.Len(t, changesets, 1)
+
+	inputJSON, err := BuildChangesetInputJSON(changesets[0].Name, changesets[0].Data)
+	require.NoError(t, err)
+
+	var decoded map[string]any
+	require.NoError(t, json.Unmarshal([]byte(inputJSON), &decoded))
+
+	payload := decoded["payload"].(map[string]any)
+	chains := payload["chains"].(map[string]any)
+	require.Contains(t, chains, "16015286601757825753")
+	require.NotContains(t, chains, "sel_sepolia")
 }
 
 func TestSetChangesetEnvironmentVariable(t *testing.T) {
