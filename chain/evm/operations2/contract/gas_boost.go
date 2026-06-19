@@ -31,57 +31,70 @@ type GasBoostConfig struct {
 	GasPriceIncrement *uint64 `json:"gasPriceIncrement,omitempty"`
 }
 
-// RetryDeployWithGasBoost enables the default operation retry policy and increases gas on EVM deploy retries.
+// GasOverridable is implemented by operation inputs that carry optional gas overrides.
+type GasOverridable[IN any] interface {
+	GasBoostValues() (gasLimit, gasPrice uint64)
+	WithGasBoost(gasLimit, gasPrice uint64) IN
+}
+
+func (in DeployInput[ARGS]) GasBoostValues() (uint64, uint64) {
+	return in.GasLimit, in.GasPrice
+}
+
+func (in DeployInput[ARGS]) WithGasBoost(gasLimit, gasPrice uint64) DeployInput[ARGS] {
+	in.GasLimit = gasLimit
+	in.GasPrice = gasPrice
+
+	return in
+}
+
+func (in FunctionInput[ARGS]) GasBoostValues() (uint64, uint64) {
+	return in.GasLimit, in.GasPrice
+}
+
+func (in FunctionInput[ARGS]) WithGasBoost(gasLimit, gasPrice uint64) FunctionInput[ARGS] {
+	in.GasLimit = gasLimit
+	in.GasPrice = gasPrice
+
+	return in
+}
+
+// RetryWithGasBoost enables the default operation retry policy and increases gas on EVM retries.
 // The operation may retry on any failure (per the framework retry policy); gas limit and price are adjusted
 // only when the prior attempt failed with a gas-related error.
-// The first execution attempt uses the chain deployer's default gas settings (auto-estimation).
-// On ZkSync VM chains, gas fields are not adjusted; omit this option for ZkSync-only deploy flows.
+// The first execution attempt uses the chain deployer's default gas settings (auto-estimation for deploys).
+// On ZkSync VM chains, gas fields are not adjusted.
 // When cfg is nil, returns a no-op option and retry remains disabled (omit this option instead).
 // Use operations.WithRetry for retry without gas adjustment.
-func RetryDeployWithGasBoost[ARGS any](cfg *GasBoostConfig) operations.ExecuteOption[DeployInput[ARGS], evm.Chain] {
+// Input types must implement GasOverridable.
+func RetryWithGasBoost[IN GasOverridable[IN]](cfg *GasBoostConfig) operations.ExecuteOption[IN, evm.Chain] {
 	if cfg == nil {
-		return func(*operations.ExecuteConfig[DeployInput[ARGS], evm.Chain]) {}
+		return func(*operations.ExecuteConfig[IN, evm.Chain]) {}
 	}
 	c := *cfg
 
-	return operations.WithRetryInput(func(attempt uint, err error, in DeployInput[ARGS], deps evm.Chain) DeployInput[ARGS] {
+	return operations.WithRetryInput(func(attempt uint, err error, in IN, deps evm.Chain) IN {
 		if deps.IsZkSyncVM || !isGasRetryableError(err) {
 			return in
 		}
 
-		gasLimit, gasPrice := nextBoostedGas(c, attempt, in.GasLimit, in.GasPrice)
-		in.GasLimit = gasLimit
-		in.GasPrice = gasPrice
+		gasLimit, gasPrice := in.GasBoostValues()
+		gasLimit, gasPrice = nextBoostedGas(c, attempt, gasLimit, gasPrice)
 
-		return in
+		return in.WithGasBoost(gasLimit, gasPrice)
 	})
 }
 
-// RetryWriteWithGasBoost enables the default operation retry policy for contract writes and
-// increases gas on EVM retries when the prior attempt failed with a gas-related error.
-// The operation may retry on any failure (per the framework retry policy); gas limit and price are adjusted
-// only when the prior attempt failed with a gas-related error.
-// The first execution attempt uses the chain deployer's default gas settings.
-// On ZkSync VM chains, gas fields are not adjusted; omit this option for ZkSync-only write flows.
-// When cfg is nil, returns a no-op option and retry remains disabled (omit this option instead).
-// Use operations.WithRetry for retry without gas adjustment.
+// RetryDeployWithGasBoost enables RetryWithGasBoost for DeployInput.
+// On ZkSync VM chains, omit this option for ZkSync-only deploy flows.
+func RetryDeployWithGasBoost[ARGS any](cfg *GasBoostConfig) operations.ExecuteOption[DeployInput[ARGS], evm.Chain] {
+	return RetryWithGasBoost[DeployInput[ARGS]](cfg)
+}
+
+// RetryWriteWithGasBoost enables RetryWithGasBoost for FunctionInput.
+// On ZkSync VM chains, omit this option for ZkSync-only write flows.
 func RetryWriteWithGasBoost[ARGS any](cfg *GasBoostConfig) operations.ExecuteOption[FunctionInput[ARGS], evm.Chain] {
-	if cfg == nil {
-		return func(*operations.ExecuteConfig[FunctionInput[ARGS], evm.Chain]) {}
-	}
-	c := *cfg
-
-	return operations.WithRetryInput(func(attempt uint, err error, in FunctionInput[ARGS], deps evm.Chain) FunctionInput[ARGS] {
-		if deps.IsZkSyncVM || !isGasRetryableError(err) {
-			return in
-		}
-
-		gasLimit, gasPrice := nextBoostedGas(c, attempt, in.GasLimit, in.GasPrice)
-		in.GasLimit = gasLimit
-		in.GasPrice = gasPrice
-
-		return in
-	})
+	return RetryWithGasBoost[FunctionInput[ARGS]](cfg)
 }
 
 func (cfg GasBoostConfig) gasLimitIncrement() uint64 {
