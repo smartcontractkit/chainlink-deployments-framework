@@ -65,36 +65,9 @@ func Load(
 		return fdeployment.Environment{}, err
 	}
 
-	var ds fdatastore.DataStore
-
-	effectiveDatastoreType := cfg.DatastoreType
-	if loadcfg.datastoreType != nil {
-		effectiveDatastoreType = *loadcfg.datastoreType
-	}
-	if useCatalog(effectiveDatastoreType) {
-		if cfg.Env.Catalog.GRPC != "" {
-			lggr.Infow("Fetching data from Catalog", "url", cfg.Env.Catalog.GRPC)
-			catalogStore, catalogErr := cldcatalog.LoadCatalog(ctx, envKey, cfg, domain)
-			if catalogErr != nil {
-				return fdeployment.Environment{}, catalogErr
-			}
-
-			// Load all data from the catalog into a local datastore
-			// After this, all operations happen locally without remote calls
-			ds, err = fdatastore.LoadDataStoreFromCatalog(ctx, catalogStore)
-			if err != nil {
-				return fdeployment.Environment{}, fmt.Errorf("failed to load data from catalog: %w", err)
-			}
-			lggr.Infow("Loaded catalog data into local datastore for deployment operations")
-		} else {
-			return fdeployment.Environment{}, fmt.Errorf("catalog GRPC endpoint is required when datastore location is set to '%s'", cfgdomain.DatastoreTypeCatalog)
-		}
-	} else {
-		ds, err = envdir.DataStore()
-		if err != nil {
-			return fdeployment.Environment{}, err
-		}
-		lggr.Infow("Using file-based datastore")
+	ds, err := LoadDataStore(ctx, cfg, loadcfg, domain, envKey)
+	if err != nil {
+		return fdeployment.Environment{}, fmt.Errorf("failed to load datastore: %w", err)
 	}
 
 	// default - loads all chains from the networks config
@@ -165,6 +138,45 @@ func Load(
 		BlockChains:       blockChains,
 		CRERunner:         loadcfg.creRunner,
 	}, nil
+}
+
+func LoadDataStore(
+	ctx context.Context, cfg *config.Config, loadcfg *LoadConfig, domain clddomain.Domain, envKey string,
+) (fdatastore.DataStore, error) {
+	var ds fdatastore.DataStore
+	var err error
+
+	effectiveDatastoreType := cfg.DatastoreType
+	if loadcfg.datastoreType != nil {
+		effectiveDatastoreType = *loadcfg.datastoreType
+	}
+	if useCatalog(effectiveDatastoreType) {
+		if cfg.Env.Catalog.GRPC != "" {
+			loadcfg.lggr.Infow("Fetching data from Catalog", "url", cfg.Env.Catalog.GRPC)
+			catalogStore, catalogErr := cldcatalog.LoadCatalog(ctx, envKey, cfg, domain)
+			if catalogErr != nil {
+				return nil, catalogErr
+			}
+
+			// Load all data from the catalog into a local datastore
+			// After this, all operations happen locally without remote calls
+			ds, err = fdatastore.LoadDataStoreFromCatalog(ctx, catalogStore)
+			if err != nil {
+				return nil, fmt.Errorf("failed to load data from catalog: %w", err)
+			}
+			loadcfg.lggr.Infow("Loaded catalog data into local datastore for deployment operations")
+		} else {
+			return nil, fmt.Errorf("catalog GRPC endpoint is required when datastore location is set to '%s'", cfgdomain.DatastoreTypeCatalog)
+		}
+	} else {
+		ds, err = domain.EnvDir(envKey).DataStore()
+		if err != nil {
+			return nil, err
+		}
+		loadcfg.lggr.Infow("Using file-based datastore")
+	}
+
+	return ds, nil
 }
 
 func useCatalog(datastoreType cfgdomain.DatastoreType) bool {

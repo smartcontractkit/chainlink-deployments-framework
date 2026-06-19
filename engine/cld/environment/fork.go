@@ -12,7 +12,6 @@ import (
 	fchain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/cre"
 	crecli "github.com/smartcontractkit/chainlink-deployments-framework/cre/cli"
-	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config"
 	cfgnet "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/network"
@@ -74,20 +73,6 @@ func LoadFork(
 		cfgnet.ChainFamilyFilter(chainsel.FamilyEVM),
 	)
 
-	addressBook, err := domain.AddressBookByEnv(env)
-	if err != nil {
-		return ForkedEnvironment{}, fmt.Errorf("failed to load address book for domain %s and environment %s: %w", domain.Key(), env, err)
-	}
-
-	// TODO: once all products are on the new datastore, we can remove this default
-	dataStore := fdatastore.NewMemoryDataStore().Seal()
-	envDataStore, err := domain.DataStoreByEnv(env)
-	if err == nil {
-		dataStore = envDataStore
-	} else {
-		lggr.Warnf("failed to load data store for domain %s and environment %s: %w", domain.Key(), env, err)
-	}
-
 	anvilOutput, err := newAnvilChains(
 		ctx,
 		lggr,
@@ -114,7 +99,7 @@ func LoadFork(
 
 	config, err := config.LoadEnvConfig(domain, env)
 	if err != nil {
-		return ForkedEnvironment{}, err
+		return ForkedEnvironment{}, fmt.Errorf("failed to load environment-specific config: %w", err)
 	}
 
 	var oc foffchain.Client
@@ -144,6 +129,15 @@ func LoadFork(
 	}
 
 	// TODO: newSolChains, newAptosChains, etc.
+
+	addressBook, err := domain.AddressBookByEnv(env)
+	if err != nil {
+		return ForkedEnvironment{}, fmt.Errorf("failed to load addressbook for domain %s and environment %s: %w", domain.Key(), env, err)
+	}
+	dataStore, err := LoadDataStore(ctx, cfg, loadcfg, domain, env)
+	if err != nil {
+		return ForkedEnvironment{}, fmt.Errorf("failed to load datastore for domain %s and environment %s: %w", domain.Key(), env, err)
+	}
 	environment := fdeployment.NewEnvironment(
 		"fork",
 		lggr,

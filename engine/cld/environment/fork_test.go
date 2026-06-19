@@ -39,13 +39,24 @@ func Test_LoadForkedEnvironment(t *testing.T) {
 			expectError: "failed to load config",
 		},
 		{
-			name:   "Address Book Failure",
-			domain: setupTest(t, setupTestConfig),
+			name:   "AddressBook Failure",
+			domain: setupTest(t, setupTestConfig, setupNodes),
 			env:    "staging",
 			blockNumbers: map[uint64]*big.Int{
-				1: big.NewInt(1000),
+				16015286601757825753: big.NewInt(1000),
 			},
-			expectError: "failed to load address book",
+			options:     []LoadEnvironmentOption{WithoutJD()},
+			expectError: "failed to load addressbook for domain test and environment staging:",
+		},
+		{
+			name:   "DataStore Failure",
+			domain: setupTest(t, setupTestConfig, setupNodes, setupAddressbook),
+			env:    "staging",
+			blockNumbers: map[uint64]*big.Int{
+				16015286601757825753: big.NewInt(1000),
+			},
+			options:     []LoadEnvironmentOption{WithoutJD()},
+			expectError: "failed to load datastore for domain test and environment staging:",
 		},
 		{
 			name:         "Empty Block Numbers",
@@ -74,7 +85,7 @@ func Test_LoadForkedEnvironment(t *testing.T) {
 		},
 		{
 			name:   "No Error",
-			domain: setupTest(t, setupTestConfig, setupAddressbook, setupNodes),
+			domain: setupTest(t, setupTestConfig, setupAddressbook, setupDataStore, setupNodes),
 			env:    "staging",
 			blockNumbers: map[uint64]*big.Int{
 				16015286601757825753: big.NewInt(1000),
@@ -214,7 +225,7 @@ func Test_ApplyChangesetOutput(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			domain := setupTest(t, setupTestConfig, setupAddressbook, setupNodes)
+			domain := setupTest(t, setupTestConfig, setupAddressbook, setupDataStore, setupNodes)
 
 			forkEnv, err := LoadFork(t.Context(), domain, "staging", tt.blockNumbers, WithoutJD())
 			require.NoError(t, err)
