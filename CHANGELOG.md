@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.114.1
+
+### Patch Changes
+
+- [#1060](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1060) [`cf9bd17`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/cf9bd17cbc4ba06945edd7ef0a3612cb49c1b70c) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(evm): expose generic helper for gas-boost retries
+
 ## 0.114.0
 
 ### Minor Changes
