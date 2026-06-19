@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.114.2
+
+### Patch Changes
+
+- [#1062](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1062) [`cb19c70`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/cb19c70ae297063d0ccedc03d57e968d86c2a99a) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - fix(mcms): fix how the DataStore is loaded in fork tests
+
 ## 0.114.1
 
 ### Patch Changes
