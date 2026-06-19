@@ -62,7 +62,7 @@ func (in FunctionInput[ARGS]) WithGasBoost(gasLimit, gasPrice uint64) FunctionIn
 // RetryWithGasBoost enables the default operation retry policy and increases gas on EVM retries.
 // The operation may retry on any failure (per the framework retry policy); gas limit and price are adjusted
 // only when the prior attempt failed with a gas-related error.
-// The first execution attempt uses the chain deployer's default gas settings (auto-estimation for deploys).
+// The first execution attempt uses the chain deployer's default gas settings.
 // On ZkSync VM chains, gas fields are not adjusted.
 // When cfg is nil, returns a no-op option and retry remains disabled (omit this option instead).
 // Use operations.WithRetry for retry without gas adjustment.
@@ -86,6 +86,7 @@ func RetryWithGasBoost[IN GasOverridable[IN]](cfg *GasBoostConfig) operations.Ex
 }
 
 // RetryDeployWithGasBoost enables RetryWithGasBoost for DeployInput.
+// The first execution attempt uses the chain deployer's default gas settings (auto-estimation).
 // On ZkSync VM chains, omit this option for ZkSync-only deploy flows.
 func RetryDeployWithGasBoost[ARGS any](cfg *GasBoostConfig) operations.ExecuteOption[DeployInput[ARGS], evm.Chain] {
 	return RetryWithGasBoost[DeployInput[ARGS]](cfg)
