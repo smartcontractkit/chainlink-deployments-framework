@@ -68,6 +68,21 @@ func TestCheckNeedsBigInt(t *testing.T) {
 		require.True(t, evm.ChecksNeedsBigInt(info), "expected true for constructor uint256 param")
 	})
 
+	t.Run("constructor param ignored when omit_deploy", func(t *testing.T) {
+		t.Parallel()
+		info := &evm.ContractInfo{
+			OmitDeploy: true,
+			Constructor: &evm.FunctionInfo{
+				Parameters: []evm.ParameterInfo{{GoType: "*big.Int"}},
+			},
+			Functions: map[string]*evm.FunctionInfo{
+				"Owner": {Name: "Owner", ReturnParams: []evm.ParameterInfo{{GoType: "common.Address"}}},
+			},
+			FunctionOrder: []string{"Owner"},
+		}
+		require.False(t, evm.ChecksNeedsBigInt(info))
+	})
+
 	t.Run("no big.Int", func(t *testing.T) {
 		t.Parallel()
 		info := &evm.ContractInfo{

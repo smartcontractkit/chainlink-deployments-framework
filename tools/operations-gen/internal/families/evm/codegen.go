@@ -152,24 +152,31 @@ func prepareTemplateData(info *ContractInfo) templateData {
 // (struct) parameters are emitted as references into the gobindings package,
 // so their internal fields never surface as *big.Int in the generated file.
 func ChecksNeedsBigInt(info *ContractInfo) bool {
-	check := func(params []ParameterInfo) bool {
-		for _, p := range params {
-			if strings.Contains(p.GoType, "*big.Int") {
-				return true
-			}
-		}
-
-		return false
-	}
-
-	for _, fi := range info.Functions {
-		if check(fi.Parameters) || check(fi.ReturnParams) {
+	for _, name := range info.FunctionOrder {
+		fi := info.Functions[name]
+		if paramsNeedBigInt(fi.Parameters) || paramsNeedBigInt(fi.ReturnParams) {
 			return true
 		}
 	}
 
-	if info.Constructor != nil && check(info.Constructor.Parameters) {
+	for _, sd := range info.StructDefs {
+		if paramsNeedBigInt(sd.Fields) {
+			return true
+		}
+	}
+
+	if !info.OmitDeploy && info.Constructor != nil && paramsNeedBigInt(info.Constructor.Parameters) {
 		return true
+	}
+
+	return false
+}
+
+func paramsNeedBigInt(params []ParameterInfo) bool {
+	for _, p := range params {
+		if strings.Contains(p.GoType, "*big.Int") {
+			return true
+		}
 	}
 
 	return false
