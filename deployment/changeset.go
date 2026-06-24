@@ -118,6 +118,8 @@ type ChangesetOutput struct {
 	DataStore   datastore.MutableDataStore
 	// Reports are populated by the Operations API with the
 	// results of the operations executed in the changeset.
+	// Deprecated: This field is no longer being used.
+	// Retained for backwards compatibility. This field is no longer used by the framework and may not be populated or propagated.
 	Reports []operations.Report[any, any]
 }
 

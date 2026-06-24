@@ -199,7 +199,7 @@ func NewOnChainChangesetFromSequence[IN any, DEP any, CFG any](
 		}
 		report, err := operations.ExecuteSequence(e.OperationsBundle, params.Sequence, deps, input)
 		if err != nil {
-			return deployment.ChangesetOutput{Reports: report.ExecutionReports},
+			return deployment.ChangesetOutput{},
 				fmt.Errorf("failed to execute sequence with ID %s: %w", params.Sequence.ID(), err)
 		}
 
@@ -218,17 +218,13 @@ func buildOnChainChangesetOutput[IN any](
 ) (deployment.ChangesetOutput, error) {
 	ds := datastore.NewMemoryDataStore()
 	if metaErr := ds.WriteMetadata(report.Output.Metadata); metaErr != nil {
-		return deployment.ChangesetOutput{Reports: report.ExecutionReports},
+		return deployment.ChangesetOutput{},
 			fmt.Errorf("failed to write metadata to datastore: %w", metaErr)
 	}
 
-	partialOutput := deployment.ChangesetOutput{
-		Reports:   report.ExecutionReports,
-		DataStore: ds,
-	}
+	partialOutput := deployment.ChangesetOutput{DataStore: ds}
 
-	builder := deployment.NewOutputBuilder(e, ds).
-		WithOperationsReports(report.ExecutionReports)
+	builder := deployment.NewOutputBuilder(e, ds)
 
 	if cfg.mcmsRegistry != nil {
 		builder = builder.WithMCMSReaderRegistry(cfg.mcmsRegistry)

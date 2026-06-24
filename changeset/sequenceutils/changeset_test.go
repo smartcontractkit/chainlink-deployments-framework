@@ -207,8 +207,6 @@ func TestNewOnChainChangesetFromSequence_applySuccess(t *testing.T) {
 
 	out, err := cs.Apply(env, WithMCMS[testCfg]{Cfg: cfg})
 	require.NoError(t, err)
-	require.NotEmpty(t, out.Reports)
-
 	refs, fetchErr := out.DataStore.Addresses().Fetch()
 	require.NoError(t, fetchErr)
 	require.Len(t, refs, 1)
@@ -232,7 +230,6 @@ func TestNewOnChainChangesetFromSequence_applyWithBatchOpsAndMCMS(t *testing.T) 
 
 	out, err := cs.Apply(env, WithMCMS[testCfg]{Cfg: cfg, MCMS: &mcmsInput})
 	require.NoError(t, err)
-	require.NotEmpty(t, out.Reports)
 	require.NotNil(t, out.DataStore)
 	require.Len(t, out.MCMSTimelockProposals, 1)
 
@@ -287,7 +284,6 @@ func TestNewOnChainChangesetFromSequence_applyBatchOpsWithoutMCMS_preservesMetad
 	out, err := cs.Apply(env, WithMCMS[testCfg]{Cfg: cfg})
 	require.Error(t, err)
 	require.ErrorIs(t, err, ErrBatchOpsWithoutMCMSInput)
-	require.NotEmpty(t, out.Reports)
 	require.NotNil(t, out.DataStore)
 
 	refs, fetchErr := out.DataStore.Addresses().Fetch()
@@ -312,7 +308,6 @@ func TestNewOnChainChangesetFromSequence_applyEmptyBatchOpsWithoutMCMS(t *testin
 
 	out, err := cs.Apply(env, WithMCMS[testCfg]{Cfg: cfg})
 	require.NoError(t, err)
-	require.NotEmpty(t, out.Reports)
 	require.Empty(t, out.MCMSTimelockProposals)
 }
 
@@ -347,7 +342,6 @@ func TestNewOnChainChangesetFromSequence_applyMCMSBuildFailure(t *testing.T) {
 	require.Error(t, err)
 	require.ErrorIs(t, err, readerErr)
 	require.ErrorContains(t, err, "get timelock ref for chain")
-	require.NotEmpty(t, out.Reports)
 	require.NotNil(t, out.DataStore)
 
 	refs, fetchErr := out.DataStore.Addresses().Fetch()
@@ -370,7 +364,6 @@ func TestNewOnChainChangesetFromSequence_applySequenceError(t *testing.T) {
 	require.Error(t, err)
 	require.ErrorContains(t, err, seqErr.Error())
 	require.ErrorContains(t, err, "failed to execute sequence")
-	require.NotEmpty(t, out.Reports)
 	require.Nil(t, out.DataStore)
 }
 
@@ -394,7 +387,6 @@ func TestNewOnChainChangesetFromSequence_applyWriteMetadataError(t *testing.T) {
 	require.Error(t, err)
 	require.ErrorIs(t, err, datastore.ErrAddressRefVersionRequired)
 	require.ErrorContains(t, err, "failed to write metadata to datastore")
-	require.NotEmpty(t, out.Reports)
 	require.Nil(t, out.DataStore)
 }
 
