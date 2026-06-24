@@ -11,7 +11,7 @@ require (
 	github.com/aws/aws-sdk-go v1.55.8
 	github.com/aws/aws-sdk-go-v2 v1.42.0
 	github.com/aws/aws-sdk-go-v2/config v1.32.25
-	github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider v1.61.4
+	github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider v1.62.0
 	github.com/aws/aws-sdk-go-v2/service/kms v1.50.1
 	github.com/block-vision/sui-go-sdk v1.2.1
 	github.com/cosmos/go-bip39 v1.0.0
