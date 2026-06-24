@@ -18,6 +18,10 @@ type Chain struct {
 	URL            string
 
 	Confirm func(txHash string, opts ...any) error
+
+	// MCMSAddress is the CCIP MCMS contract on this chain. Zero when unset.
+	// Populated by Aptos deployment/lane changesets from the datastore.
+	MCMSAddress aptoslib.AccountAddress
 }
 
 // Author note: Have to implement the blockhain interface methods explicitly below
