@@ -8,8 +8,6 @@ import (
 	"github.com/smartcontractkit/mcms"
 	mcms_types "github.com/smartcontractkit/mcms/types"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
-
 	chain_selectors "github.com/smartcontractkit/chain-selectors"
 )
 
@@ -42,12 +40,6 @@ func NewOutputBuilder(e Environment, newDS datastore.MutableDataStore) *OutputBu
 			DataStore: newDS,
 		},
 	}
-}
-
-// WithOperationsReports sets the reports on the ChangesetOutput.
-func (b *OutputBuilder) WithOperationsReports(reports []operations.Report[any, any]) *OutputBuilder {
-	b.changesetOutput.Reports = reports
-	return b
 }
 
 // WithMCMSReaderRegistry overrides the MCMS reader registry used during Build (default: GetMCMSReaderRegistry).
@@ -89,7 +81,7 @@ func (b *OutputBuilder) WithTimelockProposal(
 }
 
 // Build constructs the final ChangesetOutput, including one MCMS timelock proposal per non-empty spec.
-// On error, returns the accumulated ChangesetOutput (data store, reports, and any proposals built so far)
+// On error, returns the accumulated ChangesetOutput (data store and any proposals built so far)
 // together with an error. The error index refers to the position in the appended proposal spec list (including
 // specs skipped because they have no batch operations after processing).
 func (b *OutputBuilder) Build() (ChangesetOutput, error) {

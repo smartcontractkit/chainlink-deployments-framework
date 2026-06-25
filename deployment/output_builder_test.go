@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
-	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 )
 
 const ethMainnetSelector = 5009297550715157269
@@ -34,15 +33,6 @@ func TestNewOutputBuilder_fromMutableDataStore(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, refs, 1)
 	require.Equal(t, "0xabc", refs[0].Address)
-}
-
-func TestWithOperationsReports(t *testing.T) {
-	t.Parallel()
-	b := newTestOutputBuilder(t)
-	reports := []operations.Report[any, any]{{}}
-	out, err := b.WithOperationsReports(reports).Build()
-	require.NoError(t, err)
-	require.Len(t, out.Reports, 1)
 }
 
 func TestBuild_noTimelockProposals(t *testing.T) {
@@ -315,10 +305,7 @@ func TestBuild_returnsPartialOutputOnProposalFailure(t *testing.T) {
 		Version:       semver.MustParse("1.0.0"),
 		Address:       "0xabc",
 	}))
-	reports := []operations.Report[any, any]{{}}
-
 	b := NewOutputBuilder(Environment{}, ds).
-		WithOperationsReports(reports).
 		WithMCMSReaderRegistry(testMCMSRegistry(t))
 	b.WithTimelockProposal(validMCMSProposalInput(), []mcms_types.BatchOperation{sampleBatchOp()})
 	b.WithTimelockProposal(MCMSTimelockProposalInput{
@@ -334,7 +321,6 @@ func TestBuild_returnsPartialOutputOnProposalFailure(t *testing.T) {
 	refs, fetchErr := out.DataStore.Addresses().Fetch()
 	require.NoError(t, fetchErr)
 	require.Len(t, refs, 1)
-	require.Equal(t, reports, out.Reports)
 	require.Len(t, out.MCMSTimelockProposals, 1)
 }
 
