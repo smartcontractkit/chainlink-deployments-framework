@@ -40,7 +40,7 @@ jobs:
       actions: read
     steps:
       - name: Build and test
-        uses: smartcontractkit/.github/actions/ci-test-go@dfcba48f05933158428bce867d790e3d5a9baa6b # ci-test-go@1.1.0
+        uses: smartcontractkit/.github/actions/ci-test-go@dc50cf055925cceb3fcad2f394e3c2cb2ba172cc # ci-test-go@1.1.0
         with:
           # disable the checkptr runtime check due a false positive in github.com/xssnick/tonutils-go
           # Exclude provider packages which use Docker containers and remote catalog tests
@@ -58,7 +58,7 @@ jobs:
       actions: read
     steps:
       - name: Build and test provider packages
-        uses: smartcontractkit/.github/actions/ci-test-go@dfcba48f05933158428bce867d790e3d5a9baa6b # ci-test-go@1.1.0
+        uses: smartcontractkit/.github/actions/ci-test-go@dc50cf055925cceb3fcad2f394e3c2cb2ba172cc # ci-test-go@1.1.0
         with:
           # disable the checkptr runtime check due a false positive in github.com/xssnick/tonutils-go
           # -p 2 -parallel 3 = 2 packages, 3 tests max = 6 containers max
@@ -122,7 +122,7 @@ jobs:
           image-tag: ${{ steps.get-catalog-tag.outputs.tag }}
 
       - name: Run Catalog Remote Integration Tests
-        uses: smartcontractkit/.github/actions/ci-test-go@dfcba48f05933158428bce867d790e3d5a9baa6b # ci-test-go@1.1.0
+        uses: smartcontractkit/.github/actions/ci-test-go@dc50cf055925cceb3fcad2f394e3c2cb2ba172cc # ci-test-go@1.1.0
         with:
           # Must cd into datastore/catalog/remote because TestMain only runs from package directory
           go-test-cmd: cd datastore/catalog/remote && go test -v -race -timeout 10m -gcflags=all=-d=checkptr=0 -coverprofile=../../../coverage.txt
