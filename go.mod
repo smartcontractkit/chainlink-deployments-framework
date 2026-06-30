@@ -28,7 +28,7 @@ require (
 	github.com/jarcoal/httpmock v1.4.1
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/patrickmn/go-cache v2.1.0+incompatible
-	github.com/pelletier/go-toml/v2 v2.4.1
+	github.com/pelletier/go-toml/v2 v2.4.2
 	github.com/samber/lo v1.53.0
 	github.com/segmentio/ksuid v1.0.4
 	github.com/smartcontractkit/ccip-owner-contracts v0.1.0
