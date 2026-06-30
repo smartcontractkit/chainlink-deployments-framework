@@ -1,5 +1,11 @@
 # operations-gen
 
+## 0.2.1
+
+### Patch Changes
+
+- [#1064](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1064) [`f9450e8`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/f9450e8fb09b1b1acc2ef3fc542c6af957cd1894) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(operations-gen): skip constructor big.Int check when omit_deploy is set
+
 ## 0.2.0
 
 ### Minor Changes

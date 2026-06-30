@@ -1,5 +1,13 @@
 # chainlink-deployments-framework
 
+## 0.114.3
+
+### Patch Changes
+
+- [#1073](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1073) [`3161d2f`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/3161d2fc7dcc0a3d1acf30bb395d710453f1b0d1) Thanks [@FelixFan1992](https://github.com/FelixFan1992)! - upgrade chainlink-sui version
+
+- [#1071](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1071) [`ed7f969`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/ed7f9694541bfe1f1ddc23c58f2f246564bc8071) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(changesetoutput): mark Reports field as deprecated
+
 ## 0.114.2
 
 ### Patch Changes
