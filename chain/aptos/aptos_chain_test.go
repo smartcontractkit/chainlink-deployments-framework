@@ -1,7 +1,6 @@
 package aptos_test
 
 import (
-	"sync"
 	"testing"
 	"time"
 
@@ -15,6 +14,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos/provider"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/testutils"
 )
 
 func TestChain_ChainInfot(t *testing.T) {
@@ -77,7 +77,7 @@ func TestChain_ReadOnly(t *testing.T) {
 	t.Parallel()
 
 	ctfProvider := provider.NewCTFChainProvider(t, chainsel.APTOS_LOCALNET.Selector, provider.CTFChainProviderConfig{
-		Once:              &sync.Once{},
+		Once:              testutils.DefaultNetworkOnce,
 		DeployerSignerGen: provider.AccountGenCTFDefault(),
 	})
 	chain, err := ctfProvider.Initialize(t.Context())
@@ -98,7 +98,7 @@ func TestChain_ReadOnly(t *testing.T) {
 
 	// write with read-write client should work
 	seed := aptosmcms.DefaultSeed + time.Now().String()
-	_, tx, _, err := aptosmcms.DeployToResourceAccount(aptosChain.DeployerSigner, roAptosChain.Client, seed)
+	_, tx, _, err := aptosmcms.DeployToResourceAccount(aptosChain.DeployerSigner, aptosChain.Client, seed)
 	require.NoError(t, err)
 	_, err = roAptosChain.Client.WaitForTransaction(tx.Hash)
 	require.NoError(t, err)

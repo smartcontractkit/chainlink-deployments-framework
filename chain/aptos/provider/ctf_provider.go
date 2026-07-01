@@ -9,11 +9,11 @@ import (
 	"time"
 
 	aptoslib "github.com/aptos-labs/aptos-go-sdk"
+	"github.com/avast/retry-go/v4"
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/freeport"
-	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
@@ -76,7 +76,7 @@ func NewCTFChainProvider(
 
 // Initialize sets up the Aptos chain by validating the configuration, starting a CTF container,
 // generating a deployer signer account, and constructing the chain instance.
-func (p *CTFChainProvider) Initialize(_ context.Context) (chain.BlockChain, error) {
+func (p *CTFChainProvider) Initialize(ctx context.Context) (chain.BlockChain, error) {
 	if p.chain != nil {
 		return *p.chain, nil // Already initialized
 	}
@@ -98,7 +98,10 @@ func (p *CTFChainProvider) Initialize(_ context.Context) (chain.BlockChain, erro
 	}
 
 	// Start the CTF Container
-	url, client := p.startContainer(chainID, deployerSigner)
+	url, client, err := p.startContainer(ctx, chainID, deployerSigner)
+	if err != nil {
+		return nil, err
+	}
 
 	// Construct the chain
 	p.chain = &aptos.Chain{
@@ -138,22 +141,25 @@ func (p *CTFChainProvider) BlockChain() chain.BlockChain {
 	return *p.chain
 }
 
+type aptosContainerResult struct {
+	url           string
+	containerName string
+}
+
 // startContainer starts a CTF container for the Aptos chain with the given chain ID and deployer account.
 // It returns the URL of the Aptos node and the client to interact with it.
 func (p *CTFChainProvider) startContainer(
-	chainID string, account *aptoslib.Account,
-) (string, *aptoslib.NodeClient) {
-	var (
-		maxRetries    = 10
-		url           string
-		containerName string
-	)
+	ctx context.Context, chainID string, account *aptoslib.Account,
+) (string, *aptoslib.NodeClient, error) {
+	const attempts = uint(10)
 
 	// initialize the docker network used by CTF
 	err := framework.DefaultNetwork(p.config.Once)
-	require.NoError(p.t, err)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to initialize default network: %w", err)
+	}
 
-	for range maxRetries {
+	result, err := retry.DoWithData(func() (aptosContainerResult, error) {
 		// reserve all the ports we need explicitly to avoid port conflicts in other tests
 		ports := freeport.GetN(p.t, 2)
 
@@ -168,52 +174,82 @@ func (p *CTFChainProvider) startContainer(
 			},
 		}
 
-		var output *blockchain.Output
-		output, err = blockchain.NewBlockchainNetwork(input)
-		if err != nil {
-			p.t.Logf("Error creating Aptos network: %v", err)
+		output, rerr := blockchain.NewBlockchainNetwork(input)
+		if rerr != nil {
 			freeport.Return(ports)
-			time.Sleep(time.Second)
-			maxRetries -= 1
 
-			continue
+			return aptosContainerResult{}, rerr
 		}
-		require.NoError(p.t, err)
 
-		containerName = output.ContainerName
 		testcontainers.CleanupContainer(p.t, output.Container)
-		url = output.Nodes[0].ExternalHTTPUrl + "/v1"
 
-		break
+		// Use 127.0.0.1 instead of testcontainers' "localhost" host to avoid IPv6
+		// resolution (dial tcp [::1]:port: connection refused) on Linux CI runners.
+		url := fmt.Sprintf("http://127.0.0.1:%d/v1", ports[0])
+
+		return aptosContainerResult{
+			url:           url,
+			containerName: output.ContainerName,
+		}, nil
+	},
+		retry.Context(ctx),
+		retry.Attempts(attempts),
+		retry.Delay(1*time.Second),
+		retry.DelayType(retry.FixedDelay),
+		retry.OnRetry(func(attempt uint, err error) {
+			p.t.Logf("Attempt %d/%d: Failed to start CTF Aptos container: %v", attempt+1, attempts, err)
+		}),
+	)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to start CTF Aptos container after %d attempts: %w", attempts, err)
 	}
 
-	client, err := aptoslib.NewNodeClient(url, 0)
-	require.NoError(p.t, err)
-
-	var ready bool
-	for i := range 30 {
-		time.Sleep(time.Second)
-		if _, err = client.GetChainId(); err != nil {
-			p.t.Logf("API server not ready yet (attempt %d): %+v\n", i+1, err)
-
-			continue
-		}
-		ready = true
-
-		break
+	client, err := aptoslib.NewNodeClient(result.url, 0)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to create Aptos node client: %w", err)
 	}
-	require.True(p.t, ready, "Aptos network not ready")
+
+	if err := waitForAptosReady(ctx, p.t, client); err != nil {
+		return "", nil, fmt.Errorf("aptos node health check failed: %w", err)
+	}
 
 	dc, err := framework.NewDockerClient()
-	require.NoError(p.t, err)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to create docker client: %w", err)
+	}
 
 	// incase we didn't use the default account above
-	_, err = dc.ExecContainer(containerName, []string{
+	_, err = dc.ExecContainer(result.containerName, []string{
 		"aptos", "account", "fund-with-faucet",
 		"--account", account.Address.String(),
 		"--amount", "100000000000",
 	})
-	require.NoError(p.t, err)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to fund deployer account: %w", err)
+	}
 
-	return url, client
+	return result.url, client, nil
+}
+
+// waitForAptosReady blocks until the Aptos REST API accepts requests.
+func waitForAptosReady(ctx context.Context, t *testing.T, client *aptoslib.NodeClient) error {
+	t.Helper()
+
+	const (
+		maxAttempts = 30
+		retryDelay  = 1 * time.Second
+	)
+
+	return retry.Do(func() error {
+		_, err := client.GetChainId()
+		return err
+	},
+		retry.Context(ctx),
+		retry.Attempts(maxAttempts),
+		retry.Delay(retryDelay),
+		retry.DelayType(retry.FixedDelay),
+		retry.OnRetry(func(attempt uint, err error) {
+			t.Logf("Aptos API server not ready yet (attempt %d): %v", attempt+1, err)
+		}),
+	)
 }
