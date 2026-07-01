@@ -14,6 +14,7 @@ import (
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/changeset"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/flags"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/pipeline/input"
 	dprun "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/pipeline/run"
@@ -22,10 +23,10 @@ import (
 )
 
 var (
-	runShort = "Run a durable pipeline changeset"
+	runShort = "Run a pipeline changeset"
 
 	runLong = `
-		Run a durable pipeline changeset.
+		Run a pipeline changeset.
 
 		This command applies a changeset against the specified environment,
 		resolves any timelock proposals, and persists artifacts.
@@ -33,23 +34,29 @@ var (
 
 	runExample = `
 		# Dry-run of changeset 0001_test_changeset in testnet
-		chainlink-deployments durable-pipeline run \
+		chainlink-deployments pipeline run \
   		--environment testnet \
   		--changeset 0001_test_changeset \
   		--input-file inputs.yaml \
   		--dry-run
 
 		# Run changeset by name with input file
-		chainlink-deployments durable-pipeline run \
+		chainlink-deployments pipeline run \
   		--environment testnet \
   		--changeset 0001_test_changeset \
   		--input-file inputs.yaml
 
 		# Run changeset by index position with array format input file.
-		chainlink-deployments durable-pipeline run \
+		chainlink-deployments pipeline run \
   		--environment testnet \
   		--input-file inputs.yaml \
   		--changeset-index 0
+
+		# Run all changesets sequentially defined in the input file
+		chainlink-deployments pipeline run \
+  		--environment testnet \
+  		--input-file inputs.yaml \
+  		--all
 `
 )
 
@@ -59,6 +66,7 @@ type runFlags struct {
 	dryRun         bool
 	inputFile      string
 	changesetIndex int
+	all            bool
 }
 
 func newRunCmd(cfg *Config) *cobra.Command {
@@ -74,6 +82,7 @@ func newRunCmd(cfg *Config) *cobra.Command {
 				dryRun:         flags.MustBool(cmd.Flags().GetBool("dry-run")),
 				inputFile:      flags.MustString(cmd.Flags().GetString("input-file")),
 				changesetIndex: flags.MustInt(cmd.Flags().GetInt("changeset-index")),
+				all:            flags.MustBool(cmd.Flags().GetBool("all")),
 			}
 
 			return runRun(cmd, cfg, f)
@@ -85,10 +94,13 @@ func newRunCmd(cfg *Config) *cobra.Command {
 	cmd.Flags().StringP("changeset", "c", "", "changeset to apply by name")
 	cmd.Flags().StringP("input-file", "i", "", "YAML input file name. Not the full path, just the name")
 	cmd.Flags().IntP("changeset-index", "x", 0, "Index of changeset to run by position in array format input file")
+	cmd.Flags().BoolP("all", "a", false, "Run all changesets defined in the input file in order")
 
 	_ = cmd.MarkFlagRequired("input-file")
 	cmd.MarkFlagsMutuallyExclusive("changeset", "changeset-index")
-	cmd.MarkFlagsOneRequired("changeset", "changeset-index")
+	cmd.MarkFlagsMutuallyExclusive("changeset", "all")
+	cmd.MarkFlagsMutuallyExclusive("changeset-index", "all")
+	cmd.MarkFlagsOneRequired("changeset", "changeset-index", "all")
 
 	return cmd
 }
@@ -96,24 +108,42 @@ func newRunCmd(cfg *Config) *cobra.Command {
 func runRun(cmd *cobra.Command, cfg *Config, f runFlags) error {
 	envdir := cfg.Domain.EnvDir(f.environment)
 	artdir := envdir.ArtifactsDir()
+	deps := cfg.deps()
 
-	var actualChangesetName string
+	if f.all {
+		return runAllChangesets(cmd, cfg, f, artdir, deps)
+	}
+
+	return runSingleChangeset(cmd, cfg, f, artdir, deps)
+}
+
+// runSingleChangeset runs a single changeset specified by name or index. It sets the
+// DURABLE_PIPELINE_INPUT env var for the changeset so that it can be accessed by the registry
+// and resolvers, then loads the registry and applies the changeset.
+func runSingleChangeset(
+	cmd *cobra.Command,
+	cfg *Config,
+	f runFlags,
+	artdir *domain.ArtifactsDir,
+	deps *Deps,
+) error {
+	if err := artdir.SetDurablePipelines(strconv.FormatInt(time.Now().UnixNano(), 10)); err != nil {
+		return err
+	}
+
+	var changesetName string
 
 	if f.changeset != "" {
-		actualChangesetName = f.changeset
+		changesetName = f.changeset
 		if err := input.PrepareInputForRunByName(f.inputFile, f.changeset, cfg.Domain, f.environment); err != nil {
 			return fmt.Errorf("failed to parse input file: %w", err)
 		}
 	} else {
 		var err error
-		actualChangesetName, err = input.PrepareInputForRunByIndex(f.inputFile, f.changesetIndex, cfg.Domain, f.environment)
+		changesetName, err = input.PrepareInputForRunByIndex(f.inputFile, f.changesetIndex, cfg.Domain, f.environment)
 		if err != nil {
 			return fmt.Errorf("failed to get changeset at index %d: %w", f.changesetIndex, err)
 		}
-	}
-
-	if err := artdir.SetDurablePipelines(strconv.FormatInt(time.Now().UnixNano(), 10)); err != nil {
-		return err
 	}
 
 	registry, err := cfg.LoadChangesets(f.environment)
@@ -121,23 +151,129 @@ func runRun(cmd *cobra.Command, cfg *Config, f runFlags) error {
 		return err
 	}
 
-	envOptions, err := dprun.ConfigureEnvironmentOptions(registry, actualChangesetName, f.dryRun, cfg.Logger)
+	indexStr := ""
+	if f.changeset == "" {
+		indexStr = fmt.Sprintf(" (at index %d)", f.changesetIndex)
+	}
+	cfg.Logger.Infof("Applying %s pipeline for changeset %s%s for environment: %s",
+		cfg.Domain, changesetName, indexStr, f.environment,
+	)
+
+	return applyChangeset(cmd, cfg, f.dryRun, f.environment, changesetName, registry, artdir, deps)
+}
+
+// runAllChangesets runs all changesets defined in the input file sequentially. It sets the
+// DURABLE_PIPELINE_INPUT env var for each changeset before applying,
+// then loads the registry and applies each changeset in order. After each changeset,
+// the address book and datastore artifacts are merged into the main state so that
+// the next changeset loads a fully up-to-date environment.
+func runAllChangesets(
+	cmd *cobra.Command,
+	cfg *Config,
+	f runFlags,
+	artdir *domain.ArtifactsDir,
+	deps *Deps,
+) error {
+	dpYAML, err := input.ParseDurablePipelineYAML(f.inputFile, cfg.Domain, f.environment)
+	if err != nil {
+		return fmt.Errorf("failed to parse input file: %w", err)
+	}
+
+	changesets, err := input.GetAllChangesetsInOrder(dpYAML.Changesets)
+	if err != nil {
+		return fmt.Errorf("failed to read changesets from input file: %w", err)
+	}
+	if len(changesets) == 0 {
+		return errors.New("no changesets found in input file")
+	}
+
+	cfg.Logger.Infof("Applying %s pipeline for all %d changesets for environment: %s",
+		cfg.Domain, len(changesets), f.environment,
+	)
+
+	for i, cs := range changesets {
+		cfg.Logger.Infof("[%d/%d] Applying changeset %s", i+1, len(changesets), cs.Name)
+
+		timestamp := strconv.FormatInt(time.Now().UnixNano(), 10)
+		if err := artdir.SetDurablePipelines(timestamp); err != nil {
+			return err
+		}
+
+		if err := input.SetChangesetEnvironmentVariable(cs.Name, cs.Data); err != nil {
+			return fmt.Errorf("changeset %s: failed to set input: %w", cs.Name, err)
+		}
+
+		registry, err := cfg.LoadChangesets(f.environment)
+		if err != nil {
+			return fmt.Errorf("[%d/%d] changeset %s: failed to load changesets: %w", i+1, len(changesets), cs.Name, err)
+		}
+
+		if err := applyChangeset(cmd, cfg, f.dryRun, f.environment, cs.Name, registry, artdir, deps); err != nil {
+			return fmt.Errorf("[%d/%d] changeset %s: %w", i+1, len(changesets), cs.Name, err)
+		}
+
+		if err := mergeArtifacts(cfg, deps, f.environment, cs.Name, timestamp); err != nil {
+			return fmt.Errorf("[%d/%d] changeset %s: merge failed: %w", i+1, len(changesets), cs.Name, err)
+		}
+	}
+
+	cfg.Logger.Infof("Successfully applied all %d changesets for environment: %s", len(changesets), f.environment)
+
+	return nil
+}
+
+// mergeArtifacts merges the address book and datastore artifacts produced by a changeset
+// into the main state. Called between changesets in the --all flow so that each
+// subsequent changeset loads a fully up-to-date environment.
+func mergeArtifacts(
+	cfg *Config,
+	deps *Deps,
+	envName string,
+	changesetName string,
+	timestamp string,
+) error {
+	envDir := cfg.Domain.EnvDir(envName)
+
+	if err := deps.AddressBookMerger(envDir, changesetName, timestamp); err != nil {
+		return fmt.Errorf("address book merge: %w", err)
+	}
+	cfg.Logger.Infof("Merged address book for changeset %s", changesetName)
+
+	if err := deps.DataStoreMerger(envDir, changesetName, timestamp); err != nil {
+		return fmt.Errorf("datastore merge: %w", err)
+	}
+	cfg.Logger.Infof("Merged datastore for changeset %s", changesetName)
+
+	return nil
+}
+
+func applyChangeset(
+	cmd *cobra.Command,
+	cfg *Config,
+	dryRun bool,
+	envName string,
+	changesetName string,
+	registry *changeset.ChangesetsRegistry,
+	artdir *domain.ArtifactsDir,
+	deps *Deps,
+) error {
+	envOptions, err := dprun.ConfigureEnvironmentOptions(registry, changesetName, dryRun, cfg.Logger)
 	if err != nil {
 		return err
 	}
 
-	regCfg, err := registry.GetConfigurations(actualChangesetName)
+	regCfg, err := registry.GetConfigurations(changesetName)
 	if err != nil {
-		return fmt.Errorf("failed to get configurations for %s: %w", actualChangesetName, err)
+		return fmt.Errorf("failed to get configurations for %s: %w", changesetName, err)
 	}
 
 	if regCfg.ConfigResolver != nil {
 		if cfg.ConfigResolverManager.NameOf(regCfg.ConfigResolver) == "" {
-			return fmt.Errorf("resolver for %s is not registered", actualChangesetName)
+			return fmt.Errorf("resolver for %s is not registered", changesetName)
 		}
 	}
 
-	reports, err := artdir.LoadOperationsReports(actualChangesetName)
+	reports, err := artdir.LoadOperationsReports(changesetName)
 	if err != nil {
 		return fmt.Errorf("failed to load operations report: %w", err)
 	}
@@ -147,23 +283,14 @@ func runRun(cmd *cobra.Command, cfg *Config, f runFlags) error {
 	reporter := operations.NewMemoryReporter(operations.WithReports(reports))
 
 	envOptions = append(envOptions, environment.WithReporter(reporter))
-	deps := cfg.deps()
-	env, err := deps.EnvironmentLoader(cmd.Context(), cfg.Domain, f.environment, envOptions...)
+	env, err := deps.EnvironmentLoader(cmd.Context(), cfg.Domain, envName, envOptions...)
 	if err != nil {
 		return err
 	}
 
-	indexStr := ""
-	if f.changeset == "" {
-		indexStr = fmt.Sprintf(" (at index %d)", f.changesetIndex)
-	}
-	cfg.Logger.Infof("Applying %s durable pipeline for changeset %s%s for environment: %s\n",
-		cfg.Domain, actualChangesetName, indexStr, f.environment,
-	)
-
-	out, err := registry.Apply(actualChangesetName, env)
+	out, err := registry.Apply(changesetName, env)
 	var saveErr error
-	if saveErr = dprun.SaveReports(reporter, originalReportsLen, cfg.Logger, artdir, actualChangesetName); saveErr != nil {
+	if saveErr = dprun.SaveReports(reporter, originalReportsLen, cfg.Logger, artdir, changesetName); saveErr != nil {
 		cfg.Logger.Errorf("failed to save reports: %v", saveErr)
 	}
 	if err != nil {
@@ -173,7 +300,7 @@ func runRun(cmd *cobra.Command, cfg *Config, f runFlags) error {
 		return saveErr
 	}
 
-	err = saveChangesetProposalMetadata(registry, actualChangesetName, out)
+	err = saveChangesetProposalMetadata(registry, changesetName, out)
 	if err != nil {
 		return fmt.Errorf("failed to save changeset proposal metadata: %w", err)
 	}
@@ -195,7 +322,7 @@ func runRun(cmd *cobra.Command, cfg *Config, f runFlags) error {
 		}
 	}
 
-	if err := artdir.SaveChangesetOutput(actualChangesetName, out); err != nil {
+	if err := artdir.SaveChangesetOutput(changesetName, out); err != nil {
 		cfg.Logger.Errorf("failed to save changeset artifacts: %v", err)
 		return err
 	}
