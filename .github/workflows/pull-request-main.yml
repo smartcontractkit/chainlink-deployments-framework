@@ -142,6 +142,15 @@ jobs:
       id-token: write
       contents: read
       actions: read
+    env:
+      # Tests shells out to the Aptos CLI to compile a Move package, which is
+      # CPU-bound and can run for 90-100s. On the 2-vCPU runner this starves the test
+      # process's Ryuk keep-alive goroutine long enough to blow Ryuk's default 10s
+      # reconnection timeout, causing it to reap the Aptos node container mid-test
+      # ("connection refused" on the next API call). Raise the timeouts so Ryuk tolerates
+      # the compile step instead of killing the container out from under the test.
+      RYUK_RECONNECTION_TIMEOUT: 60s
+      RYUK_CONNECTION_TIMEOUT: 2m
     steps:
       - name: Install Aptos CLI
         uses: aptos-labs/actions/install-aptos-cli@528ef7ad9427a8c0720ea3eea790a9190d6e377d # v0.1
