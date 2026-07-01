@@ -26,6 +26,10 @@ func ChainTypeToFamily(chainType nodev1.ChainType) (string, error) {
 		family = chain_selectors.FamilyTon
 	case nodev1.ChainType_CHAIN_TYPE_SUI:
 		family = chain_selectors.FamilySui
+	case nodev1.ChainType_CHAIN_TYPE_STELLAR:
+		family = chain_selectors.FamilyStellar
+	case nodev1.ChainType_CHAIN_TYPE_CANTON:
+		family = chain_selectors.FamilyCanton
 	case nodev1.ChainType_CHAIN_TYPE_UNSPECIFIED:
 		return "", errors.New("chain type must be specified")
 	default:
