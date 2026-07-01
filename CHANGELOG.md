@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.114.4
+
+### Patch Changes
+
+- [#1078](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1078) [`a5e342b`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/a5e342b8f4e3b5de6d68c32d90878f0b897423b4) Thanks [@dependabot](https://github.com/apps/dependabot)! - fix(offchain/jd): handle Stellar and Canton chain types in ChainTypeToFamily
+
 ## 0.114.3
 
 ### Patch Changes
