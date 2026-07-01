@@ -54,6 +54,16 @@ func TestChainTypeToFamily(t *testing.T) {
 			want:      chain_selectors.FamilySui,
 		},
 		{
+			name:      "Stellar chain type",
+			chainType: nodev1.ChainType_CHAIN_TYPE_STELLAR,
+			want:      chain_selectors.FamilyStellar,
+		},
+		{
+			name:      "Canton chain type",
+			chainType: nodev1.ChainType_CHAIN_TYPE_CANTON,
+			want:      chain_selectors.FamilyCanton,
+		},
+		{
 			name:      "unspecified chain type returns error",
 			chainType: nodev1.ChainType_CHAIN_TYPE_UNSPECIFIED,
 			wantErr:   "chain type must be specified",
