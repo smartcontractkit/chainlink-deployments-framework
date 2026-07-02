@@ -270,14 +270,14 @@ func Test_EnvDir_MigrateAddressBook_PreserveExisting(t *testing.T) {
 	t.Parallel()
 
 	var (
-		addr1 = "0x5B5BBb15ECE0a4Ed8cDab22F902e83F66aBe848f"
-		addr2 = "0x6619Bad7fadbc282B1EF2F6cC078fCbE61478792"
+		addr1        = "0x5B5BBb15ECE0a4Ed8cDab22F902e83F66aBe848f"
+		addr2        = "0x6619Bad7fadbc282B1EF2F6cC078fCbE61478792"
 		addrOnlyInDS = "0x0000000000000000000000000000000000000001"
 
 		chainsel1 = chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector
 		chainsel2 = chainsel.ETHEREUM_TESTNET_SEPOLIA_ARBITRUM_1.Selector
 
-		ctype = fdatastore.ContractType("Contract")
+		ctype                = fdatastore.ContractType("Contract")
 		onlyInDSContractType = fdatastore.ContractType("OnlyInDatastore")
 
 		addrBook1 = createAddressBookMap(t,
@@ -348,7 +348,7 @@ func Test_EnvDir_MigrateAddressBook_PreserveExisting(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, addr1, preservedAddr1.Address)
 
-	_, err = got.Addresses().Get(fdatastore.NewAddressRefKey(chainsel2, ctype, &version1_0_0, fmt.Sprintf("%s-Contract", addr2)))
+	_, err = got.Addresses().Get(fdatastore.NewAddressRefKey(chainsel2, ctype, &version1_0_0, addr2+"-Contract"))
 	require.NoError(t, err)
 
 	_, err = got.Addresses().Get(fdatastore.NewAddressRefKey(chainsel1, onlyInDSContractType, &version1_0_0, "CLLCCIP"))
@@ -375,14 +375,14 @@ func Test_EnvDir_MigrateAddressBook_ChainSelectorPreserveExisting(t *testing.T) 
 	t.Parallel()
 
 	var (
-		addr1 = "0x5B5BBb15ECE0a4Ed8cDab22F902e83F66aBe848f"
-		addr2 = "0x6619Bad7fadbc282B1EF2F6cC078fCbE61478792"
+		addr1            = "0x5B5BBb15ECE0a4Ed8cDab22F902e83F66aBe848f"
+		addr2            = "0x6619Bad7fadbc282B1EF2F6cC078fCbE61478792"
 		addrOnlyOnChain1 = "0x0000000000000000000000000000000000000001"
 
 		chainsel1 = chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector
 		chainsel2 = chainsel.ETHEREUM_TESTNET_SEPOLIA_ARBITRUM_1.Selector
 
-		ctype = fdatastore.ContractType("Contract")
+		ctype            = fdatastore.ContractType("Contract")
 		onlyOnChain1Type = fdatastore.ContractType("OnlyOnChain1")
 
 		addrBook1 = createAddressBookMap(t, "Contract", version1_0_0, chainsel1, addr1)
@@ -428,7 +428,7 @@ func Test_EnvDir_MigrateAddressBook_ChainSelectorPreserveExisting(t *testing.T) 
 	_, err = got.Addresses().Get(fdatastore.NewAddressRefKey(chainsel1, onlyOnChain1Type, &version1_0_0, "CLLCCIP"))
 	require.NoError(t, err)
 
-	_, err = got.Addresses().Get(fdatastore.NewAddressRefKey(chainsel2, ctype, &version1_0_0, fmt.Sprintf("%s-Contract", addr2)))
+	_, err = got.Addresses().Get(fdatastore.NewAddressRefKey(chainsel2, ctype, &version1_0_0, addr2+"-Contract"))
 	require.NoError(t, err)
 }
 
@@ -436,14 +436,14 @@ func Test_EnvDir_MigrateAddressBook_ChainSelectorReplaceChain(t *testing.T) {
 	t.Parallel()
 
 	var (
-		addr1 = "0x5B5BBb15ECE0a4Ed8cDab22F902e83F66aBe848f"
-		addr2 = "0x6619Bad7fadbc282B1EF2F6cC078fCbE61478792"
+		addr1            = "0x5B5BBb15ECE0a4Ed8cDab22F902e83F66aBe848f"
+		addr2            = "0x6619Bad7fadbc282B1EF2F6cC078fCbE61478792"
 		addrOnlyOnChain1 = "0x0000000000000000000000000000000000000001"
 
 		chainsel1 = chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector
 		chainsel2 = chainsel.ETHEREUM_TESTNET_SEPOLIA_ARBITRUM_1.Selector
 
-		ctype = fdatastore.ContractType("Contract")
+		ctype            = fdatastore.ContractType("Contract")
 		onlyOnChain1Type = fdatastore.ContractType("OnlyOnChain1")
 
 		addrBook1 = createAddressBookMap(t, "Contract", version1_0_0, chainsel1, addr1)
@@ -495,7 +495,7 @@ func Test_EnvDir_MigrateAddressBook_ChainSelectorReplaceChain(t *testing.T) {
 	_, err = got.Addresses().Get(fdatastore.NewAddressRefKey(chainsel1, onlyOnChain1Type, &version1_0_0, "CLLCCIP"))
 	require.NoError(t, err)
 
-	replacedAddr2, err := got.Addresses().Get(fdatastore.NewAddressRefKey(chainsel2, ctype, &version1_0_0, fmt.Sprintf("%s-Contract", addr2)))
+	replacedAddr2, err := got.Addresses().Get(fdatastore.NewAddressRefKey(chainsel2, ctype, &version1_0_0, addr2+"-Contract"))
 	require.NoError(t, err)
 	assert.Equal(t, addr2, replacedAddr2.Address)
 

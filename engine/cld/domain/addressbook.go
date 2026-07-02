@@ -122,22 +122,22 @@ func (d EnvDir) MigrateAddressBook(opts MigrateAddressBookOptions) error {
 
 	err = jsonutils.WriteFile(d.AddressRefsFilePath(), ds.(*fdatastore.MemoryDataStore).AddressRefStore.Records)
 	if err != nil {
-		return errors.New("failed to write address refs store file")
+		return fmt.Errorf("failed to write address refs store file: %w", err)
 	}
 
 	err = jsonutils.WriteFile(d.ChainMetadataFilePath(), ds.(*fdatastore.MemoryDataStore).ChainMetadataStore.Records)
 	if err != nil {
-		return errors.New("failed to write chain metadata store file")
+		return fmt.Errorf("failed to write chain metadata store file: %w", err)
 	}
 
 	err = jsonutils.WriteFile(d.ContractMetadataFilePath(), ds.(*fdatastore.MemoryDataStore).ContractMetadataStore.Records)
 	if err != nil {
-		return errors.New("failed to write contract metadata store file %err, err")
+		return fmt.Errorf("failed to write contract metadata store file: %w", err)
 	}
 
 	err = jsonutils.WriteFile(d.EnvMetadataFilePath(), ds.(*fdatastore.MemoryDataStore).EnvMetadataStore.Record)
 	if err != nil {
-		return errors.New("failed to write environment datastore file")
+		return fmt.Errorf("failed to write environment datastore file: %w", err)
 	}
 
 	return nil
@@ -146,12 +146,12 @@ func (d EnvDir) MigrateAddressBook(opts MigrateAddressBookOptions) error {
 func (d EnvDir) writeAddressRefs(ds fdatastore.MutableDataStore) error {
 	dataStoreConcrete, ok := ds.(*fdatastore.MemoryDataStore)
 	if !ok {
-		return errors.New("failed to cast dataStore to concrete type MemoryDataStore")
+		return fmt.Errorf("failed to cast dataStore to concrete type MemoryDataStore")
 	}
 
 	err := jsonutils.WriteFile(d.AddressRefsFilePath(), dataStoreConcrete.AddressRefStore.Records)
 	if err != nil {
-		return errors.New("failed to write address refs store file")
+		return fmt.Errorf("failed to write address refs store file: %w", err)
 	}
 
 	return nil
