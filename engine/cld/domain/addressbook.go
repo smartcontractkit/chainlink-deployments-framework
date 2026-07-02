@@ -146,7 +146,7 @@ func (d EnvDir) MigrateAddressBook(opts MigrateAddressBookOptions) error {
 func (d EnvDir) writeAddressRefs(ds fdatastore.MutableDataStore) error {
 	dataStoreConcrete, ok := ds.(*fdatastore.MemoryDataStore)
 	if !ok {
-		return fmt.Errorf("failed to cast dataStore to concrete type MemoryDataStore")
+		return errors.New("failed to cast dataStore to concrete type MemoryDataStore")
 	}
 
 	err := jsonutils.WriteFile(d.AddressRefsFilePath(), dataStoreConcrete.AddressRefStore.Records)
