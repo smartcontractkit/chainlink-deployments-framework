@@ -51,9 +51,13 @@ func (d EnvDir) MigrateAddressBook() error {
 		}
 	}
 
-	fdatastore.SortAddressRefs(ds.AddressRefStore.Records)
+	addressRefs, err := ds.Addresses().Fetch()
+	if err != nil {
+		return err
+	}
+	fdatastore.SortAddressRefs(addressRefs)
 
-	err = jsonutils.WriteFile(d.AddressRefsFilePath(), ds.AddressRefStore.Records)
+	err = jsonutils.WriteFile(d.AddressRefsFilePath(), addressRefs)
 	if err != nil {
 		return errors.New("failed to write address refs store file")
 	}
