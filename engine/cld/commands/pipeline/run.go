@@ -45,6 +45,12 @@ var (
   		--changeset 0001_test_changeset \
   		--input-file inputs.yaml
 
+		# Run the only changeset in a single-changeset input file (no -c or -x required)
+		chainlink-deployments durable-pipeline run \
+  		--environment testnet \
+  		--input-file inputs.yaml \
+  		--dry-run
+
 		# Run changeset by index position with array format input file.
 		chainlink-deployments durable-pipeline run \
   		--environment testnet \
@@ -88,31 +94,50 @@ func newRunCmd(cfg *Config) *cobra.Command {
 
 	_ = cmd.MarkFlagRequired("input-file")
 	cmd.MarkFlagsMutuallyExclusive("changeset", "changeset-index")
-	cmd.MarkFlagsOneRequired("changeset", "changeset-index")
 
 	return cmd
+}
+
+func resolveChangesetForRun(
+	cmd *cobra.Command,
+	cfg *Config,
+	f runFlags,
+) (actualChangesetName string, indexForLog *int, err error) {
+	switch {
+	case f.changeset != "":
+		if err := input.PrepareInputForRunByName(f.inputFile, f.changeset, cfg.Domain, f.environment); err != nil {
+			return "", nil, fmt.Errorf("failed to parse input file: %w", err)
+		}
+
+		return f.changeset, nil, nil
+	case cmd.Flags().Changed("changeset-index"):
+		name, err := input.PrepareInputForRunByIndex(f.inputFile, f.changesetIndex, cfg.Domain, f.environment)
+		if err != nil {
+			return "", nil, fmt.Errorf("failed to get changeset at index %d: %w", f.changesetIndex, err)
+		}
+		idx := f.changesetIndex
+
+		return name, &idx, nil
+	default:
+		name, err := input.PrepareInputForRunAuto(f.inputFile, cfg.Domain, f.environment)
+		if err != nil {
+			return "", nil, err
+		}
+
+		return name, nil, nil
+	}
 }
 
 func runRun(cmd *cobra.Command, cfg *Config, f runFlags) error {
 	envdir := cfg.Domain.EnvDir(f.environment)
 	artdir := envdir.ArtifactsDir()
 
-	var actualChangesetName string
-
-	if f.changeset != "" {
-		actualChangesetName = f.changeset
-		if err := input.PrepareInputForRunByName(f.inputFile, f.changeset, cfg.Domain, f.environment); err != nil {
-			return fmt.Errorf("failed to parse input file: %w", err)
-		}
-	} else {
-		var err error
-		actualChangesetName, err = input.PrepareInputForRunByIndex(f.inputFile, f.changesetIndex, cfg.Domain, f.environment)
-		if err != nil {
-			return fmt.Errorf("failed to get changeset at index %d: %w", f.changesetIndex, err)
-		}
+	actualChangesetName, indexForLog, err := resolveChangesetForRun(cmd, cfg, f)
+	if err != nil {
+		return err
 	}
 
-	if err := artdir.SetDurablePipelines(strconv.FormatInt(time.Now().UnixNano(), 10)); err != nil {
+	if err = artdir.SetDurablePipelines(strconv.FormatInt(time.Now().UnixNano(), 10)); err != nil {
 		return err
 	}
 
@@ -154,8 +179,8 @@ func runRun(cmd *cobra.Command, cfg *Config, f runFlags) error {
 	}
 
 	indexStr := ""
-	if f.changeset == "" {
-		indexStr = fmt.Sprintf(" (at index %d)", f.changesetIndex)
+	if indexForLog != nil {
+		indexStr = fmt.Sprintf(" (at index %d)", *indexForLog)
 	}
 	cfg.Logger.Infof("Applying %s durable pipeline for changeset %s%s for environment: %s\n",
 		cfg.Domain, actualChangesetName, indexStr, f.environment,

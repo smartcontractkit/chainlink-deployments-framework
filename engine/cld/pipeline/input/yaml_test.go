@@ -579,3 +579,52 @@ domain: mydomain
 		})
 	}
 }
+
+func TestPrepareInputForRunAuto(t *testing.T) {
+	t.Parallel()
+
+	workspaceRoot := t.TempDir()
+	dom := domain.NewDomain(workspaceRoot, "test")
+	envKey := "testnet"
+	inputsDir := filepath.Join(workspaceRoot, "domains", dom.String(), envKey, "durable_pipelines", "inputs")
+	require.NoError(t, os.MkdirAll(inputsDir, 0o755))
+
+	writeInput := func(name, content string) {
+		t.Helper()
+		require.NoError(t, os.WriteFile(filepath.Join(inputsDir, name), []byte(content), 0o600))
+	}
+
+	writeInput("single.yaml", `environment: testnet
+domain: test
+changesets:
+  - only_changeset:
+      payload:
+        value: 1
+`)
+	writeInput("multi.yaml", `environment: testnet
+domain: test
+changesets:
+  - first_changeset:
+      payload:
+        value: 1
+  - second_changeset:
+      payload:
+        value: 2
+`)
+
+	originalWd, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(workspaceRoot))
+	t.Cleanup(func() { _ = os.Chdir(originalWd) })
+
+	t.Cleanup(func() { _ = os.Unsetenv("DURABLE_PIPELINE_INPUT") })
+
+	name, err := PrepareInputForRunAuto("single.yaml", dom, envKey)
+	require.NoError(t, err)
+	require.Equal(t, "only_changeset", name)
+	require.Contains(t, os.Getenv("DURABLE_PIPELINE_INPUT"), `"value":1`)
+
+	_, err = PrepareInputForRunAuto("multi.yaml", dom, envKey)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "contains 2 changesets")
+}
