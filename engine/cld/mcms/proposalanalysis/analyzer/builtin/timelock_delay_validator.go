@@ -23,9 +23,13 @@ const (
 	annotTimelockDelayCheck    = "timelock_delay_validation"
 )
 
+type chainDelay struct {
+	selector uint64
+	minDelay mcmstypes.Duration
+}
+
 // TimelockDelayValidator checks that schedule proposals use a delay >= each
-// executing timelock's on-chain minDelay. A proposal delay of 0 does not mean
-// immediate execution when minDelay is non-zero.
+// executing timelock's on-chain minDelay.
 type TimelockDelayValidator struct{}
 
 var _ analyzer.ProposalAnalyzer = TimelockDelayValidator{}
@@ -49,14 +53,8 @@ func (TimelockDelayValidator) Analyze(
 	execCtx := req.ExecutionContext
 	proposalDelay := execCtx.ProposalDelay()
 
-	anns := analyzer.Annotations{
-		analyzer.NewAnnotation(annotProposalTimelockDelay, "string", proposalDelay.String()),
-	}
-
-	type chainDelay struct {
-		selector uint64
-		minDelay mcmstypes.Duration
-	}
+	anns := make(analyzer.Annotations, 0, 4)
+	anns = append(anns, analyzer.NewAnnotation(annotProposalTimelockDelay, "string", proposalDelay.String()))
 
 	chainDelays := make([]chainDelay, 0)
 	verifyErrors := make([]string, 0)
@@ -79,8 +77,21 @@ func (TimelockDelayValidator) Analyze(
 		chainDelays = append(chainDelays, chainDelay{selector: chainSelector, minDelay: minDelay})
 	}
 
+	anns = append(anns, appendTimelockDelayValidation(proposalDelay, chainDelays, verifyErrors, execCtx)...)
+
+	return anns, nil
+}
+
+func appendTimelockDelayValidation(
+	proposalDelay mcmstypes.Duration,
+	chainDelays []chainDelay,
+	verifyErrors []string,
+	execCtx analyzer.ExecutionContext,
+) analyzer.Annotations {
+	var anns analyzer.Annotations
+
 	if len(verifyErrors) > 0 {
-		anns = append(anns,
+		return append(anns,
 			analyzer.NewAnnotation(
 				annotTimelockDelayCheck,
 				"string",
@@ -88,17 +99,13 @@ func (TimelockDelayValidator) Analyze(
 			),
 			analyzer.SeverityAnnotation(analyzer.SeverityWarning),
 		)
-
-		return anns, nil
 	}
 
 	if len(chainDelays) == 0 {
-		anns = append(anns,
+		return append(anns,
 			analyzer.NewAnnotation(annotTimelockDelayCheck, "string", "no timelock addresses in proposal"),
 			analyzer.SeverityAnnotation(analyzer.SeverityWarning),
 		)
-
-		return anns, nil
 	}
 
 	minDelayLines := make([]string, 0, len(chainDelays))
@@ -120,23 +127,21 @@ func (TimelockDelayValidator) Analyze(
 	anns = append(anns, analyzer.NewAnnotation(annotTimelockMinDelay, "string", strings.Join(minDelayLines, "; ")))
 
 	if maxMinDelay.Duration > 0 && proposalDelay.Duration < maxMinDelay.Duration {
-		anns = append(anns,
+		return append(anns,
 			analyzer.NewAnnotation(
 				annotTimelockDelayCheck,
 				"string",
 				fmt.Sprintf(
-					"proposal delay %s is less than on-chain minDelay %s; delay 0 does not mean immediate execution",
+					"proposal delay %s is less than on-chain minDelay %s",
 					proposalDelay,
 					maxMinDelay,
 				),
 			),
 			analyzer.SeverityAnnotation(analyzer.SeverityError),
 		)
-
-		return anns, nil
 	}
 
-	anns = append(anns,
+	return append(anns,
 		analyzer.NewAnnotation(
 			annotTimelockDelayCheck,
 			"string",
@@ -144,8 +149,6 @@ func (TimelockDelayValidator) Analyze(
 		),
 		analyzer.SeverityAnnotation(analyzer.SeverityInfo),
 	)
-
-	return anns, nil
 }
 
 func sortedTimelockAddresses(execCtx analyzer.ExecutionContext) map[uint64]string {
