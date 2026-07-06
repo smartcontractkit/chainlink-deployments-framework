@@ -121,7 +121,7 @@ func resolveChangesetForRun(
 	default:
 		name, err := input.PrepareInputForRunAuto(f.inputFile, cfg.Domain, f.environment)
 		if err != nil {
-			return "", nil, err
+			return "", nil, fmt.Errorf("failed to parse input file: %w", err)
 		}
 
 		return name, nil, nil

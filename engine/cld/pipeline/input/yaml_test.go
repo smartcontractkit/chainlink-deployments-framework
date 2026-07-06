@@ -580,9 +580,8 @@ domain: mydomain
 	}
 }
 
+//nolint:paralleltest // mutates process cwd and environment variables.
 func TestPrepareInputForRunAuto(t *testing.T) {
-	t.Parallel()
-
 	workspaceRoot := t.TempDir()
 	dom := domain.NewDomain(workspaceRoot, "test")
 	envKey := "testnet"
@@ -627,4 +626,15 @@ changesets:
 	_, err = PrepareInputForRunAuto("multi.yaml", dom, envKey)
 	require.Error(t, err)
 	require.ErrorContains(t, err, "contains 2 changesets")
+
+	writeInput("object-format.yaml", `environment: testnet
+domain: test
+changesets:
+  only_changeset:
+    payload:
+      value: 1
+`)
+	_, err = PrepareInputForRunAuto("object-format.yaml", dom, envKey)
+	require.Error(t, err)
+	require.Equal(t, "input file object-format.yaml: invalid 'changesets' format, expected array format", err.Error())
 }

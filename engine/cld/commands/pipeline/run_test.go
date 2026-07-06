@@ -800,6 +800,7 @@ changesets:
 
 	err = cmd.Execute()
 	require.Error(t, err)
+	require.ErrorContains(t, err, "failed to parse input file:")
 	require.ErrorContains(t, err, "contains 2 changesets")
 	require.ErrorContains(t, err, "--changeset (-c) or --changeset-index (-x)")
 }

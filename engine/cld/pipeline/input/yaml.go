@@ -82,6 +82,10 @@ func PrepareInputForRunAuto(inputFileName string, dom domain.Domain, envKey stri
 		return "", err
 	}
 
+	if _, isArray := dpYAML.Changesets.([]any); !isArray {
+		return "", fmt.Errorf("input file %s: invalid 'changesets' format, expected array format", inputFileName)
+	}
+
 	changesets, err := GetAllChangesetsInOrder(dpYAML.Changesets)
 	if err != nil {
 		return "", fmt.Errorf("input file %s: %w", inputFileName, err)
