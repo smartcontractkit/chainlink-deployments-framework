@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.114.5
+
+### Patch Changes
+
+- [#1085](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1085) [`f1cd2c2`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/f1cd2c2e04096ec20293095a757a7daafdea00bf) Thanks [@FelixFan1992](https://github.com/FelixFan1992)! - beef up address refs migration CLI
+
 ## 0.114.4
 
 ### Patch Changes
