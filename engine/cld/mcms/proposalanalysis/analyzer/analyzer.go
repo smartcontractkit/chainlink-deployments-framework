@@ -24,6 +24,8 @@ type ExecutionContext interface {
 	TimelockAddress(chainSelector uint64) (string, bool)
 	// TimelockAddresses returns all timelock addresses keyed by chain selector.
 	TimelockAddresses() map[uint64]string
+	// ChainMetadata returns proposal chain metadata for building chain-family MCMS clients.
+	ChainMetadata(chainSelector uint64) (mcmstypes.ChainMetadata, bool)
 }
 
 // AnalyzeRequest encapsulates the analyzer context, execution context, and annotation store passed to analyzer.

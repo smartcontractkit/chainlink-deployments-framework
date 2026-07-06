@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	mcmstypes "github.com/smartcontractkit/mcms/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
@@ -25,6 +26,41 @@ func TestNewExecutionContextNode(t *testing.T) {
 	require.Equal(t, "staging", ctx.EnvironmentName())
 	require.Equal(t, blockChains, ctx.BlockChains())
 	require.Equal(t, dataStore, ctx.DataStore())
+}
+
+func TestExecutionContextNode_ProposalMetadataAccessors(t *testing.T) {
+	t.Parallel()
+
+	const chainSelector = uint64(16098325658947243212)
+	metadata := &ProposalExecutionMetadata{
+		Action: mcmstypes.TimelockActionSchedule,
+		Delay:  mcmstypes.MustParseDuration("300s"),
+		TimelockAddresses: map[uint64]string{
+			chainSelector: "0xTimelock",
+		},
+		ChainMetadata: map[uint64]mcmstypes.ChainMetadata{
+			chainSelector: {AdditionalFields: json.RawMessage(`{"role":1}`)},
+		},
+	}
+
+	ctx := NewExecutionContextNode(
+		cldfdomain.NewDomain("/tmp/domains", "mcms"),
+		"staging",
+		chain.NewBlockChains(nil),
+		datastore.NewMemoryDataStore().Seal(),
+		metadata,
+	)
+
+	require.Equal(t, mcmstypes.TimelockActionSchedule, ctx.ProposalAction())
+	require.Equal(t, "5m0s", ctx.ProposalDelay().String())
+
+	addr, ok := ctx.TimelockAddress(chainSelector)
+	require.True(t, ok)
+	require.Equal(t, "0xTimelock", addr)
+
+	chainMetadata, ok := ctx.ChainMetadata(chainSelector)
+	require.True(t, ok)
+	require.JSONEq(t, `{"role":1}`, string(chainMetadata.AdditionalFields))
 }
 
 func TestNewBatchOperationAnalyzerContextNode(t *testing.T) {

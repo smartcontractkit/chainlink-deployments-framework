@@ -28,6 +28,11 @@ type chainDelay struct {
 	minDelay mcmstypes.Duration
 }
 
+type timelockChainEntry struct {
+	selector uint64
+	address  string
+}
+
 // TimelockDelayValidator checks that schedule proposals use a delay >= each
 // executing timelock's on-chain minDelay.
 type TimelockDelayValidator struct{}
@@ -59,22 +64,22 @@ func (TimelockDelayValidator) Analyze(
 	chainDelays := make([]chainDelay, 0)
 	verifyErrors := make([]string, 0)
 
-	for chainSelector, timelockAddress := range sortedTimelockAddresses(execCtx) {
-		minDelay, err := readTimelockMinDelay(ctx, execCtx, chainSelector, timelockAddress)
+	for _, entry := range sortedTimelockEntries(execCtx) {
+		minDelay, err := readTimelockMinDelay(ctx, execCtx, entry.selector, entry.address)
 		if err != nil {
 			verifyErrors = append(
 				verifyErrors,
 				fmt.Sprintf(
 					"%s (%d): %v",
-					format.ResolveChainName(chainSelector),
-					chainSelector,
+					format.ResolveChainName(entry.selector),
+					entry.selector,
 					err,
 				),
 			)
 
 			continue
 		}
-		chainDelays = append(chainDelays, chainDelay{selector: chainSelector, minDelay: minDelay})
+		chainDelays = append(chainDelays, chainDelay{selector: entry.selector, minDelay: minDelay})
 	}
 
 	anns = append(anns, appendTimelockDelayValidation(proposalDelay, chainDelays, verifyErrors, execCtx)...)
@@ -91,6 +96,8 @@ func appendTimelockDelayValidation(
 	var anns analyzer.Annotations
 
 	if len(verifyErrors) > 0 {
+		sort.Strings(verifyErrors)
+
 		return append(anns,
 			analyzer.NewAnnotation(
 				annotTimelockDelayCheck,
@@ -110,6 +117,7 @@ func appendTimelockDelayValidation(
 
 	minDelayLines := make([]string, 0, len(chainDelays))
 	var maxMinDelay mcmstypes.Duration
+	sort.Slice(chainDelays, func(i, j int) bool { return chainDelays[i].selector < chainDelays[j].selector })
 	for _, entry := range chainDelays {
 		minDelayLines = append(
 			minDelayLines,
@@ -151,7 +159,7 @@ func appendTimelockDelayValidation(
 	)
 }
 
-func sortedTimelockAddresses(execCtx analyzer.ExecutionContext) map[uint64]string {
+func sortedTimelockEntries(execCtx analyzer.ExecutionContext) []timelockChainEntry {
 	addrs := execCtx.TimelockAddresses()
 	if len(addrs) == 0 {
 		return nil
@@ -163,12 +171,12 @@ func sortedTimelockAddresses(execCtx analyzer.ExecutionContext) map[uint64]strin
 	}
 	sort.Slice(selectors, func(i, j int) bool { return selectors[i] < selectors[j] })
 
-	out := make(map[uint64]string, len(addrs))
-	for _, selector := range selectors {
-		out[selector] = addrs[selector]
+	entries := make([]timelockChainEntry, len(selectors))
+	for i, selector := range selectors {
+		entries[i] = timelockChainEntry{selector: selector, address: addrs[selector]}
 	}
 
-	return out
+	return entries
 }
 
 func timelockAddressForChain(execCtx analyzer.ExecutionContext, chainSelector uint64) string {
@@ -186,7 +194,7 @@ func readTimelockMinDelay(
 	inspector, err := proposalutils.McmsTimelockInspectorForChain(
 		execCtx.BlockChains(),
 		chainSelector,
-		mcmstypes.ChainMetadata{},
+		chainMetadataForInspector(execCtx, chainSelector),
 	)
 	if err != nil {
 		return mcmstypes.Duration{}, err
@@ -198,6 +206,15 @@ func readTimelockMinDelay(
 	}
 
 	return durationFromSeconds(minDelaySec)
+}
+
+func chainMetadataForInspector(execCtx analyzer.ExecutionContext, chainSelector uint64) mcmstypes.ChainMetadata {
+	metadata, ok := execCtx.ChainMetadata(chainSelector)
+	if !ok {
+		return mcmstypes.ChainMetadata{}
+	}
+
+	return metadata
 }
 
 func durationFromSeconds(seconds uint64) (mcmstypes.Duration, error) {

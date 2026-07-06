@@ -2,6 +2,7 @@ package builtin
 
 import (
 	"math"
+	"strings"
 	"testing"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	cldfdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/format"
 )
 
 func testExecutionContext(metadata *analyzer.ProposalExecutionMetadata) analyzer.ExecutionContext {
@@ -216,7 +218,7 @@ func TestAppendTimelockDelayValidation(t *testing.T) {
 	}
 }
 
-func TestSortedTimelockAddresses(t *testing.T) {
+func TestSortedTimelockEntries(t *testing.T) {
 	t.Parallel()
 
 	execCtx := testExecutionContext(
@@ -229,13 +231,43 @@ func TestSortedTimelockAddresses(t *testing.T) {
 		},
 	)
 
-	got := sortedTimelockAddresses(execCtx)
+	got := sortedTimelockEntries(execCtx)
 	require.Len(t, got, 3)
-	assert.Equal(t, "0x1", got[1])
-	assert.Equal(t, "0x2", got[2])
-	assert.Equal(t, "0x3", got[3])
+	assert.Equal(t, []uint64{1, 2, 3}, []uint64{got[0].selector, got[1].selector, got[2].selector})
+	assert.Equal(t, "0x1", got[0].address)
+	assert.Equal(t, "0x2", got[1].address)
+	assert.Equal(t, "0x3", got[2].address)
 
-	assert.Nil(t, sortedTimelockAddresses(testExecutionContext(nil)))
+	assert.Nil(t, sortedTimelockEntries(testExecutionContext(nil)))
+}
+
+func TestAppendTimelockDelayValidation_SortsUnorderedChainDelays(t *testing.T) {
+	t.Parallel()
+
+	const chainA = uint64(3)
+	const chainB = uint64(1)
+	execCtx := testExecutionContext(
+		&analyzer.ProposalExecutionMetadata{
+			TimelockAddresses: map[uint64]string{
+				chainA: "0xA",
+				chainB: "0xB",
+			},
+		},
+	)
+
+	anns := appendTimelockDelayValidation(
+		mcmstypes.NewDuration(time.Minute),
+		[]chainDelay{
+			{selector: chainA, minDelay: mcmstypes.NewDuration(30 * time.Second)},
+			{selector: chainB, minDelay: mcmstypes.NewDuration(45 * time.Second)},
+		},
+		nil,
+		execCtx,
+	)
+
+	minDelaySummary, ok := annotationValue(anns, annotTimelockMinDelay)
+	require.True(t, ok)
+	assert.True(t, strings.HasPrefix(minDelaySummary, format.ResolveChainName(chainB)))
 }
 
 func TestDurationFromSeconds(t *testing.T) {

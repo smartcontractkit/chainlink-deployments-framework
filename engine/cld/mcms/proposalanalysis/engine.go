@@ -7,6 +7,7 @@ import (
 	"io"
 
 	"github.com/smartcontractkit/mcms"
+	mcmstypes "github.com/smartcontractkit/mcms/types"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	cldfdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
@@ -152,9 +153,15 @@ func proposalExecutionMetadata(proposal *mcms.TimelockProposal) *analyzer.Propos
 		timelocks[uint64(selector)] = address
 	}
 
+	chainMetadata := make(map[uint64]mcmstypes.ChainMetadata, len(proposal.ChainMetadata))
+	for selector, metadata := range proposal.ChainMetadata {
+		chainMetadata[uint64(selector)] = metadata
+	}
+
 	return &analyzer.ProposalExecutionMetadata{
 		Action:            proposal.Action,
 		Delay:             proposal.Delay,
 		TimelockAddresses: timelocks,
+		ChainMetadata:     chainMetadata,
 	}
 }

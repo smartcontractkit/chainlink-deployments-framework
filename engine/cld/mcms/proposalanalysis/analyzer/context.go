@@ -96,6 +96,15 @@ func (c *ExecutionContextNode) TimelockAddresses() map[uint64]string {
 	return out
 }
 
+func (c *ExecutionContextNode) ChainMetadata(chainSelector uint64) (mcmstypes.ChainMetadata, bool) {
+	if c.proposalMetadata == nil || len(c.proposalMetadata.ChainMetadata) == 0 {
+		return mcmstypes.ChainMetadata{}, false
+	}
+	metadata, ok := c.proposalMetadata.ChainMetadata[chainSelector]
+
+	return metadata, ok
+}
+
 // BatchOperationAnalyzerContextNode is the default implementation of BatchOperationAnalyzerContext.
 type BatchOperationAnalyzerContextNode struct {
 	proposal decoder.DecodedTimelockProposal

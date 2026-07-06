@@ -7,4 +7,5 @@ type ProposalExecutionMetadata struct {
 	Action            mcmstypes.TimelockAction
 	Delay             mcmstypes.Duration
 	TimelockAddresses map[uint64]string
+	ChainMetadata     map[uint64]mcmstypes.ChainMetadata
 }
