@@ -8,15 +8,11 @@ import (
 	"strings"
 	"time"
 
-	chainsel "github.com/smartcontractkit/chain-selectors"
-	mcmsevmsdk "github.com/smartcontractkit/mcms/sdk/evm"
-	mcmssolana "github.com/smartcontractkit/mcms/sdk/solana"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 
-	cldfevm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
-	cldfsol "github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/format"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
 )
 
 const (
@@ -184,51 +180,15 @@ func readTimelockMinDelay(
 	chainSelector uint64,
 	timelockAddress string,
 ) (mcmstypes.Duration, error) {
-	family, err := chainsel.GetSelectorFamily(chainSelector)
-	if err != nil {
-		return mcmstypes.Duration{}, fmt.Errorf("chain family: %w", err)
-	}
-
-	switch family {
-	case chainsel.FamilyEVM:
-		chain, ok := execCtx.BlockChains().EVMChains()[chainSelector]
-		if !ok {
-			return mcmstypes.Duration{}, fmt.Errorf("evm chain %d not loaded in environment", chainSelector)
-		}
-
-		return readEVMTimelockMinDelay(ctx, chain, timelockAddress)
-	case chainsel.FamilySolana:
-		chain, ok := execCtx.BlockChains().SolanaChains()[chainSelector]
-		if !ok {
-			return mcmstypes.Duration{}, fmt.Errorf("solana chain %d not loaded in environment", chainSelector)
-		}
-
-		return readSolanaTimelockMinDelay(ctx, chain, timelockAddress)
-	default:
-		return mcmstypes.Duration{}, fmt.Errorf("unsupported chain family %q", family)
-	}
-}
-
-func readEVMTimelockMinDelay(
-	ctx context.Context,
-	chain cldfevm.Chain,
-	timelockAddress string,
-) (mcmstypes.Duration, error) {
-	inspector := mcmsevmsdk.NewTimelockInspector(chain.Client)
-	minDelaySec, err := inspector.GetMinDelay(ctx, timelockAddress)
+	inspector, err := proposalutils.McmsTimelockInspectorForChain(
+		execCtx.BlockChains(),
+		chainSelector,
+		mcmstypes.ChainMetadata{},
+	)
 	if err != nil {
 		return mcmstypes.Duration{}, err
 	}
 
-	return durationFromSeconds(minDelaySec)
-}
-
-func readSolanaTimelockMinDelay(
-	ctx context.Context,
-	chain cldfsol.Chain,
-	timelockAddress string,
-) (mcmstypes.Duration, error) {
-	inspector := mcmssolana.NewTimelockInspector(chain.Client)
 	minDelaySec, err := inspector.GetMinDelay(ctx, timelockAddress)
 	if err != nil {
 		return mcmstypes.Duration{}, err
