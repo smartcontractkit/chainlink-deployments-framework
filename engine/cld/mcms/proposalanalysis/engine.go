@@ -104,7 +104,7 @@ func (e *analyzerEngine) Run(ctx context.Context, req RunRequest, proposal *mcms
 		return nil, fmt.Errorf("decode proposal: %w", err)
 	}
 
-	state := newRunState(req, decodedProposal)
+	state := newRunState(req, decodedProposal, proposalExecutionMetadata(proposal))
 	g, err := scheduler.New(e.analyzerRegistry.All())
 	if err != nil {
 		return state.proposal, fmt.Errorf("build analyzer graph: %w", err)
@@ -140,4 +140,21 @@ func (e *analyzerEngine) RenderTo(w io.Writer, rendererID string, renderReq rend
 	}
 
 	return r.RenderTo(w, renderReq, proposal)
+}
+
+func proposalExecutionMetadata(proposal *mcms.TimelockProposal) *analyzer.ProposalExecutionMetadata {
+	if proposal == nil {
+		return nil
+	}
+
+	timelocks := make(map[uint64]string, len(proposal.TimelockAddresses))
+	for selector, address := range proposal.TimelockAddresses {
+		timelocks[uint64(selector)] = address
+	}
+
+	return &analyzer.ProposalExecutionMetadata{
+		Action:            proposal.Action,
+		Delay:             proposal.Delay,
+		TimelockAddresses: timelocks,
+	}
 }

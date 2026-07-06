@@ -18,17 +18,23 @@ import (
 type runState struct {
 	mu sync.RWMutex
 
-	req             RunRequest
-	decodedProposal decoder.DecodedTimelockProposal
-	proposal        *analyzer.AnalyzedProposalNode
+	req              RunRequest
+	decodedProposal  decoder.DecodedTimelockProposal
+	proposalMetadata *analyzer.ProposalExecutionMetadata
+	proposal         *analyzer.AnalyzedProposalNode
 }
 
-func newRunState(req RunRequest, decoded decoder.DecodedTimelockProposal) *runState {
+func newRunState(
+	req RunRequest,
+	decoded decoder.DecodedTimelockProposal,
+	proposalMetadata *analyzer.ProposalExecutionMetadata,
+) *runState {
 	analyzed := toAnalyzedProposal(decoded)
 	return &runState{
-		req:             req,
-		decodedProposal: decoded,
-		proposal:        analyzed,
+		req:              req,
+		decodedProposal:  decoded,
+		proposalMetadata: proposalMetadata,
+		proposal:         analyzed,
 	}
 }
 
@@ -186,6 +192,7 @@ func (s *runState) executionContext() analyzer.ExecutionContext {
 		s.req.Environment.Name,
 		s.req.Environment.BlockChains,
 		s.req.Environment.DataStore,
+		s.proposalMetadata,
 	)
 }
 

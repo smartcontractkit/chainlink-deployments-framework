@@ -3,6 +3,8 @@ package analyzer
 import (
 	"context"
 
+	mcmstypes "github.com/smartcontractkit/mcms/types"
+
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	cldfdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
@@ -14,6 +16,14 @@ type ExecutionContext interface {
 	EnvironmentName() string
 	BlockChains() chain.BlockChains
 	DataStore() datastore.DataStore
+	// ProposalAction returns the timelock action for the proposal under analysis.
+	ProposalAction() mcmstypes.TimelockAction
+	// ProposalDelay returns the proposal-level timelock delay.
+	ProposalDelay() mcmstypes.Duration
+	// TimelockAddress returns the timelock contract that executes operations on the chain.
+	TimelockAddress(chainSelector uint64) (string, bool)
+	// TimelockAddresses returns all timelock addresses keyed by chain selector.
+	TimelockAddresses() map[uint64]string
 }
 
 // AnalyzeRequest encapsulates the analyzer context, execution context, and annotation store passed to analyzer.

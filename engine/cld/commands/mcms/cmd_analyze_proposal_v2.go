@@ -15,6 +15,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/text"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis"
 	proposalanalysisanalyzer "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer/builtin"
 	analysisdecoder "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/decoder"
 	analysisrenderer "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/renderer"
 )
@@ -158,7 +159,10 @@ func runAnalyzeProposalV2(cmd *cobra.Command, cfg Config, f analyzeProposalV2Fla
 }
 
 func registerProposalAnalyzers(engine proposalanalysis.AnalyzerEngine, analyzers []proposalanalysisanalyzer.BaseAnalyzer) error {
-	for _, analyzer := range analyzers {
+	defaultAnalyzers := []proposalanalysisanalyzer.BaseAnalyzer{
+		builtin.TimelockDelayValidator{},
+	}
+	for _, analyzer := range append(defaultAnalyzers, analyzers...) {
 		if err := engine.RegisterAnalyzer(analyzer); err != nil {
 			return fmt.Errorf("register proposal analyzer %q: %w", analyzer.ID(), err)
 		}

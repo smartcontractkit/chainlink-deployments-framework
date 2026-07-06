@@ -201,7 +201,7 @@ func newTestRunState(decoded decoder.DecodedTimelockProposal) *runState {
 		},
 	}
 
-	return newRunState(req, decoded)
+	return newRunState(req, decoded, nil)
 }
 
 func newDecodedFixture() (

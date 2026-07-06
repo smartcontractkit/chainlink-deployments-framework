@@ -6,6 +6,24 @@
 
 {{ end -}}
 
+{{- $severity := annotation .Proposal.Annotations "cld.severity" -}}
+{{- $proposalDelay := annotation .Proposal.Annotations "proposal_timelock_delay" -}}
+{{- $minDelay := annotation .Proposal.Annotations "timelock_min_delay" -}}
+{{- $delayCheck := annotation .Proposal.Annotations "timelock_delay_validation" -}}
+
+{{- if or $proposalDelay $minDelay $delayCheck }}
+**Timelock delay:** {{ if $proposalDelay }}{{ $proposalDelay }}{{ else }}unknown{{ end }}
+{{- if $minDelay }}
+
+**On-chain minDelay:** {{ $minDelay }}
+{{- end }}
+{{- if $delayCheck }}
+
+**Delay check:** {{ $delayCheck }}{{ if $severity }} {{ severitySymbol $severity }}{{ end }}
+{{- end }}
+
+{{ end -}}
+
 {{- /* Proposal-level annotations */ -}}
 {{ template "annotations" .Proposal.Annotations }}
 

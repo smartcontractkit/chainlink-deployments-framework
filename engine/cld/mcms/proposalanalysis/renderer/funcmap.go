@@ -24,6 +24,9 @@ var frameworkAnnotations = map[string]struct{}{
 	annotation.AnnotationSeverityName: {},
 	annotation.AnnotationRiskName:     {},
 	annotation.AnnotationDiffName:     {},
+	"proposal_timelock_delay":         {},
+	"timelock_min_delay":              {},
+	"timelock_delay_validation":       {},
 }
 
 func defaultFuncMap() template.FuncMap {

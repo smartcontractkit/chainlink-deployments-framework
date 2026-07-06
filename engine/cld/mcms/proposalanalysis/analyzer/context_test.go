@@ -19,7 +19,7 @@ func TestNewExecutionContextNode(t *testing.T) {
 	blockChains := chain.NewBlockChains(nil)
 	dataStore := datastore.NewMemoryDataStore().Seal()
 
-	ctx := NewExecutionContextNode(domain, "staging", blockChains, dataStore)
+	ctx := NewExecutionContextNode(domain, "staging", blockChains, dataStore, nil)
 
 	require.Equal(t, domain, ctx.Domain())
 	require.Equal(t, "staging", ctx.EnvironmentName())
