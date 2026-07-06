@@ -248,7 +248,7 @@ func Test_EnvDir_MigrateAddressBook(t *testing.T) {
 			err := envDir.MergeChangesetAddressBook(tt.giveChangesetName, "")
 			require.NoError(t, err)
 			// convert the address book to a datastore
-			err = envDir.MigrateAddressBook()
+			err = envDir.MigrateAddressBook(MigrateAddressBookOptions{})
 			require.NoError(t, err)
 
 			// load the datastore
@@ -264,6 +264,243 @@ func Test_EnvDir_MigrateAddressBook(t *testing.T) {
 			require.ElementsMatch(t, wantRefs, gotRefs)
 		})
 	}
+}
+
+func Test_EnvDir_MigrateAddressBook_PreserveExisting(t *testing.T) {
+	t.Parallel()
+
+	var (
+		addr1        = "0x5B5BBb15ECE0a4Ed8cDab22F902e83F66aBe848f"
+		addr2        = "0x6619Bad7fadbc282B1EF2F6cC078fCbE61478792"
+		addrOnlyInDS = "0x0000000000000000000000000000000000000001"
+
+		chainsel1 = chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector
+		chainsel2 = chainsel.ETHEREUM_TESTNET_SEPOLIA_ARBITRUM_1.Selector
+
+		ctype                = fdatastore.ContractType("Contract")
+		onlyInDSContractType = fdatastore.ContractType("OnlyInDatastore")
+
+		addrBook1 = createAddressBookMap(t,
+			"Contract",
+			version1_0_0,
+			chainsel1,
+			addr1,
+		)
+		addrBook2 = createAddressBookMap(t,
+			"Contract",
+			version1_0_0,
+			chainsel2,
+			addr2,
+		)
+	)
+
+	fixture := setupTestDomainsFS(t)
+	envDir := fixture.envDir
+
+	arts := envDir.ArtifactsDir()
+	require.NoError(t, arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{
+		AddressBook: addrBook1,
+	}))
+	require.NoError(t, envDir.MergeChangesetAddressBook("0001_initial", ""))
+	require.NoError(t, arts.SaveChangesetOutput("0002_second", fdeployment.ChangesetOutput{
+		AddressBook: addrBook2,
+	}))
+	require.NoError(t, envDir.MergeChangesetAddressBook("0002_second", ""))
+
+	ds, err := envDir.MutableDataStore()
+	require.NoError(t, err)
+	require.NoError(t, ds.Addresses().Add(fdatastore.AddressRef{
+		Address:       addr1,
+		ChainSelector: chainsel1,
+		Type:          ctype,
+		Version:       &version1_0_0,
+		Qualifier:     "CLLCCIP",
+	}))
+	require.NoError(t, ds.Addresses().Add(fdatastore.AddressRef{
+		Address:       addrOnlyInDS,
+		ChainSelector: chainsel1,
+		Type:          onlyInDSContractType,
+		Version:       &version1_0_0,
+		Qualifier:     "CLLCCIP",
+	}))
+	require.NoError(t, ds.ContractMetadata().Add(fdatastore.ContractMetadata{
+		Address:       addr1,
+		ChainSelector: chainsel1,
+		Metadata:      map[string]any{"keep": true},
+	}))
+
+	dataStoreConcrete, ok := ds.(*fdatastore.MemoryDataStore)
+	require.True(t, ok)
+	require.NoError(t, writeTestJSONFile(envDir.AddressRefsFilePath(), dataStoreConcrete.AddressRefStore.Records))
+	require.NoError(t, writeTestJSONFile(envDir.ContractMetadataFilePath(), dataStoreConcrete.ContractMetadataStore.Records))
+
+	err = envDir.MigrateAddressBook(MigrateAddressBookOptions{PreserveExisting: true})
+	require.NoError(t, err)
+
+	got, err := envDir.DataStore()
+	require.NoError(t, err)
+
+	gotRefs, err := got.Addresses().Fetch()
+	require.NoError(t, err)
+	require.Len(t, gotRefs, 3)
+
+	preservedAddr1, err := got.Addresses().Get(fdatastore.NewAddressRefKey(chainsel1, ctype, &version1_0_0, "CLLCCIP"))
+	require.NoError(t, err)
+	assert.Equal(t, addr1, preservedAddr1.Address)
+
+	_, err = got.Addresses().Get(fdatastore.NewAddressRefKey(chainsel2, ctype, &version1_0_0, addr2+"-Contract"))
+	require.NoError(t, err)
+
+	_, err = got.Addresses().Get(fdatastore.NewAddressRefKey(chainsel1, onlyInDSContractType, &version1_0_0, "CLLCCIP"))
+	require.NoError(t, err)
+
+	gotContractMetadata, err := got.ContractMetadata().Fetch()
+	require.NoError(t, err)
+	require.Len(t, gotContractMetadata, 1)
+	metadata, ok := gotContractMetadata[0].Metadata.(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, true, metadata["keep"])
+}
+
+func writeTestJSONFile(path string, data any) error {
+	b, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(path, b, 0600)
+}
+
+func Test_EnvDir_MigrateAddressBook_ChainSelectorPreserveExisting(t *testing.T) {
+	t.Parallel()
+
+	var (
+		addr1            = "0x5B5BBb15ECE0a4Ed8cDab22F902e83F66aBe848f"
+		addr2            = "0x6619Bad7fadbc282B1EF2F6cC078fCbE61478792"
+		addrOnlyOnChain1 = "0x0000000000000000000000000000000000000001"
+
+		chainsel1 = chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector
+		chainsel2 = chainsel.ETHEREUM_TESTNET_SEPOLIA_ARBITRUM_1.Selector
+
+		ctype            = fdatastore.ContractType("Contract")
+		onlyOnChain1Type = fdatastore.ContractType("OnlyOnChain1")
+
+		addrBook1 = createAddressBookMap(t, "Contract", version1_0_0, chainsel1, addr1)
+		addrBook2 = createAddressBookMap(t, "Contract", version1_0_0, chainsel2, addr2)
+	)
+
+	fixture := setupTestDomainsFS(t)
+	envDir := fixture.envDir
+
+	arts := envDir.ArtifactsDir()
+	require.NoError(t, arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{AddressBook: addrBook1}))
+	require.NoError(t, envDir.MergeChangesetAddressBook("0001_initial", ""))
+	require.NoError(t, arts.SaveChangesetOutput("0002_second", fdeployment.ChangesetOutput{AddressBook: addrBook2}))
+	require.NoError(t, envDir.MergeChangesetAddressBook("0002_second", ""))
+
+	ds, err := envDir.MutableDataStore()
+	require.NoError(t, err)
+	require.NoError(t, ds.Addresses().Add(fdatastore.AddressRef{
+		Address:       addrOnlyOnChain1,
+		ChainSelector: chainsel1,
+		Type:          onlyOnChain1Type,
+		Version:       &version1_0_0,
+		Qualifier:     "CLLCCIP",
+	}))
+
+	dataStoreConcrete, ok := ds.(*fdatastore.MemoryDataStore)
+	require.True(t, ok)
+	require.NoError(t, writeTestJSONFile(envDir.AddressRefsFilePath(), dataStoreConcrete.AddressRefStore.Records))
+
+	err = envDir.MigrateAddressBook(MigrateAddressBookOptions{
+		PreserveExisting: true,
+		ChainSelector:    chainsel2,
+	})
+	require.NoError(t, err)
+
+	got, err := envDir.DataStore()
+	require.NoError(t, err)
+
+	gotRefs, err := got.Addresses().Fetch()
+	require.NoError(t, err)
+	require.Len(t, gotRefs, 2)
+
+	_, err = got.Addresses().Get(fdatastore.NewAddressRefKey(chainsel1, onlyOnChain1Type, &version1_0_0, "CLLCCIP"))
+	require.NoError(t, err)
+
+	_, err = got.Addresses().Get(fdatastore.NewAddressRefKey(chainsel2, ctype, &version1_0_0, addr2+"-Contract"))
+	require.NoError(t, err)
+}
+
+func Test_EnvDir_MigrateAddressBook_ChainSelectorReplaceChain(t *testing.T) {
+	t.Parallel()
+
+	var (
+		addr1            = "0x5B5BBb15ECE0a4Ed8cDab22F902e83F66aBe848f"
+		addr2            = "0x6619Bad7fadbc282B1EF2F6cC078fCbE61478792"
+		addrOnlyOnChain1 = "0x0000000000000000000000000000000000000001"
+
+		chainsel1 = chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector
+		chainsel2 = chainsel.ETHEREUM_TESTNET_SEPOLIA_ARBITRUM_1.Selector
+
+		ctype            = fdatastore.ContractType("Contract")
+		onlyOnChain1Type = fdatastore.ContractType("OnlyOnChain1")
+
+		addrBook1 = createAddressBookMap(t, "Contract", version1_0_0, chainsel1, addr1)
+		addrBook2 = createAddressBookMap(t, "Contract", version1_0_0, chainsel2, addr2)
+	)
+
+	fixture := setupTestDomainsFS(t)
+	envDir := fixture.envDir
+
+	arts := envDir.ArtifactsDir()
+	require.NoError(t, arts.SaveChangesetOutput("0001_initial", fdeployment.ChangesetOutput{AddressBook: addrBook1}))
+	require.NoError(t, envDir.MergeChangesetAddressBook("0001_initial", ""))
+	require.NoError(t, arts.SaveChangesetOutput("0002_second", fdeployment.ChangesetOutput{AddressBook: addrBook2}))
+	require.NoError(t, envDir.MergeChangesetAddressBook("0002_second", ""))
+
+	ds, err := envDir.MutableDataStore()
+	require.NoError(t, err)
+	require.NoError(t, ds.Addresses().Add(fdatastore.AddressRef{
+		Address:       addrOnlyOnChain1,
+		ChainSelector: chainsel1,
+		Type:          onlyOnChain1Type,
+		Version:       &version1_0_0,
+		Qualifier:     "CLLCCIP",
+	}))
+	require.NoError(t, ds.Addresses().Add(fdatastore.AddressRef{
+		Address:       addr2,
+		ChainSelector: chainsel2,
+		Type:          ctype,
+		Version:       &version1_0_0,
+		Qualifier:     "CLLCCIP",
+	}))
+
+	dataStoreConcrete, ok := ds.(*fdatastore.MemoryDataStore)
+	require.True(t, ok)
+	require.NoError(t, writeTestJSONFile(envDir.AddressRefsFilePath(), dataStoreConcrete.AddressRefStore.Records))
+
+	err = envDir.MigrateAddressBook(MigrateAddressBookOptions{
+		ChainSelector: chainsel2,
+	})
+	require.NoError(t, err)
+
+	got, err := envDir.DataStore()
+	require.NoError(t, err)
+
+	gotRefs, err := got.Addresses().Fetch()
+	require.NoError(t, err)
+	require.Len(t, gotRefs, 2)
+
+	_, err = got.Addresses().Get(fdatastore.NewAddressRefKey(chainsel1, onlyOnChain1Type, &version1_0_0, "CLLCCIP"))
+	require.NoError(t, err)
+
+	replacedAddr2, err := got.Addresses().Get(fdatastore.NewAddressRefKey(chainsel2, ctype, &version1_0_0, addr2+"-Contract"))
+	require.NoError(t, err)
+	assert.Equal(t, addr2, replacedAddr2.Address)
+
+	_, err = got.Addresses().Get(fdatastore.NewAddressRefKey(chainsel2, ctype, &version1_0_0, "CLLCCIP"))
+	require.Error(t, err)
 }
 
 func Test_EnvDir_MutableDataStore(t *testing.T) {

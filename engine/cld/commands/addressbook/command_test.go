@@ -106,6 +106,16 @@ func TestNewCommand_MigrateFlags(t *testing.T) {
 			require.NotNil(t, e, "environment flag should be on migrate")
 			assert.Equal(t, "e", e.Shorthand)
 
+			// preserve-existing flag
+			pe := sub.Flags().Lookup("preserve-existing")
+			require.NotNil(t, pe, "preserve-existing flag should be on migrate")
+			assert.Equal(t, "false", pe.DefValue)
+
+			// selector flag
+			sel := sub.Flags().Lookup("selector")
+			require.NotNil(t, sel, "selector flag should be on migrate")
+			assert.Equal(t, "s", sel.Shorthand)
+
 			break
 		}
 	}
@@ -273,7 +283,7 @@ func TestMigrate_Success(t *testing.T) {
 	var migratorCalled bool
 
 	cmd, err := newTestCommand(t, Deps{
-		AddressBookMigrator: func(_ domain.EnvDir) error {
+		AddressBookMigrator: func(_ domain.EnvDir, _ domain.MigrateAddressBookOptions) error {
 			migratorCalled = true
 
 			return nil
@@ -294,6 +304,98 @@ func TestMigrate_Success(t *testing.T) {
 	assert.Contains(t, out.String(), "successfully migrated to the new datastore format")
 }
 
+func TestMigrate_SuccessMessages(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		args    []string
+		wantMsg string
+	}{
+		{
+			name:    "full migration",
+			args:    []string{"migrate", "-e", "staging"},
+			wantMsg: "successfully migrated to the new datastore format",
+		},
+		{
+			name:    "preserve existing",
+			args:    []string{"migrate", "-e", "staging", "--preserve-existing"},
+			wantMsg: "Added missing address book entries to address refs in testdomain staging without removing existing entries",
+		},
+		{
+			name:    "chain selector",
+			args:    []string{"migrate", "-e", "staging", "--selector", "12345"},
+			wantMsg: "Replaced address refs for chain selector 12345 in testdomain staging from the address book",
+		},
+		{
+			name:    "preserve existing with chain selector",
+			args:    []string{"migrate", "-e", "staging", "--preserve-existing", "--selector", "12345"},
+			wantMsg: "Added missing address book entries for chain selector 12345 to address refs in testdomain staging without removing existing entries",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			cmd, err := newTestCommand(t, Deps{
+				AddressBookMigrator: func(_ domain.EnvDir, _ domain.MigrateAddressBookOptions) error {
+					return nil
+				},
+			})
+			require.NoError(t, err)
+
+			out := new(bytes.Buffer)
+			cmd.SetOut(out)
+			cmd.SetErr(out)
+			cmd.SetArgs(tt.args)
+
+			require.NoError(t, cmd.Execute())
+			assert.Contains(t, out.String(), tt.wantMsg)
+		})
+	}
+}
+
+// TestMigrate_PreserveExistingFlag verifies the preserve-existing flag is passed through.
+func TestMigrate_PreserveExistingFlag(t *testing.T) {
+	t.Parallel()
+
+	var gotOpts domain.MigrateAddressBookOptions
+
+	cmd, err := newTestCommand(t, Deps{
+		AddressBookMigrator: func(_ domain.EnvDir, opts domain.MigrateAddressBookOptions) error {
+			gotOpts = opts
+
+			return nil
+		},
+	})
+	require.NoError(t, err)
+
+	cmd.SetArgs([]string{"migrate", "-e", "staging", "--preserve-existing"})
+	require.NoError(t, cmd.Execute())
+	assert.True(t, gotOpts.PreserveExisting)
+}
+
+// TestMigrate_ChainSelectorFlag verifies the selector flag is passed through.
+func TestMigrate_ChainSelectorFlag(t *testing.T) {
+	t.Parallel()
+
+	var gotOpts domain.MigrateAddressBookOptions
+
+	cmd, err := newTestCommand(t, Deps{
+		AddressBookMigrator: func(_ domain.EnvDir, opts domain.MigrateAddressBookOptions) error {
+			gotOpts = opts
+
+			return nil
+		},
+	})
+	require.NoError(t, err)
+
+	cmd.SetArgs([]string{"migrate", "-e", "staging", "--selector", "12345"})
+	require.NoError(t, cmd.Execute())
+	assert.Equal(t, uint64(12345), gotOpts.ChainSelector)
+}
+
 // TestMigrate_Error verifies error handling.
 func TestMigrate_Error(t *testing.T) {
 	t.Parallel()
@@ -301,7 +403,7 @@ func TestMigrate_Error(t *testing.T) {
 	expectedError := errors.New("migration failed")
 
 	cmd, err := newTestCommand(t, Deps{
-		AddressBookMigrator: func(_ domain.EnvDir) error {
+		AddressBookMigrator: func(_ domain.EnvDir, _ domain.MigrateAddressBookOptions) error {
 			return expectedError
 		},
 	})
