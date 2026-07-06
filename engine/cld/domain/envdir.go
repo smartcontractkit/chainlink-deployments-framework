@@ -236,7 +236,13 @@ func (d EnvDir) MergeChangesetDataStore(csKey, timestamp string) error {
 		return errors.New("failed to cast dataStore to concrete type MemoryDataStore")
 	}
 
-	err = jsonutils.WriteFile(d.AddressRefsFilePath(), dataStoreConcrete.AddressRefStore.Records)
+	addressRefs, err := dataStore.Addresses().Fetch()
+	if err != nil {
+		return fmt.Errorf("failed to fetch address refs: %w", err)
+	}
+	fdatastore.SortAddressRefs(addressRefs)
+
+	err = jsonutils.WriteFile(d.AddressRefsFilePath(), addressRefs)
 	if err != nil {
 		return errors.New("failed to write address refs store file")
 	}

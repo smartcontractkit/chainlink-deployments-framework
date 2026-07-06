@@ -120,7 +120,13 @@ func (d EnvDir) MigrateAddressBook(opts MigrateAddressBookOptions) error {
 		return d.writeAddressRefs(ds)
 	}
 
-	err = jsonutils.WriteFile(d.AddressRefsFilePath(), ds.(*fdatastore.MemoryDataStore).AddressRefStore.Records)
+	addressRefs, err := ds.Addresses().Fetch()
+	if err != nil {
+		return err
+	}
+	fdatastore.SortAddressRefs(addressRefs)
+
+	err = jsonutils.WriteFile(d.AddressRefsFilePath(), addressRefs)
 	if err != nil {
 		return fmt.Errorf("failed to write address refs store file: %w", err)
 	}
@@ -144,12 +150,13 @@ func (d EnvDir) MigrateAddressBook(opts MigrateAddressBookOptions) error {
 }
 
 func (d EnvDir) writeAddressRefs(ds fdatastore.MutableDataStore) error {
-	dataStoreConcrete, ok := ds.(*fdatastore.MemoryDataStore)
-	if !ok {
-		return errors.New("failed to cast dataStore to concrete type MemoryDataStore")
+	addressRefs, err := ds.Addresses().Fetch()
+	if err != nil {
+		return err
 	}
+	fdatastore.SortAddressRefs(addressRefs)
 
-	err := jsonutils.WriteFile(d.AddressRefsFilePath(), dataStoreConcrete.AddressRefStore.Records)
+	err = jsonutils.WriteFile(d.AddressRefsFilePath(), addressRefs)
 	if err != nil {
 		return fmt.Errorf("failed to write address refs store file: %w", err)
 	}
