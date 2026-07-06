@@ -1,5 +1,13 @@
 # chainlink-deployments-framework
 
+## 0.114.4
+
+### Patch Changes
+
+- [#1078](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1078) [`a5e342b`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/a5e342b8f4e3b5de6d68c32d90878f0b897423b4) Thanks [@dependabot](https://github.com/apps/dependabot)! - fix(offchain/jd): handle Stellar and Canton chain types in ChainTypeToFamily
+
+- [#1086](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1086) [`5aa1489`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/5aa14898f4aa9c10a9062f2ccf34510114f0458a) Thanks [@RensR](https://github.com/RensR)! - Sort address refs deterministically before writing address_refs JSON.
+
 ## 0.114.3
 
 ### Patch Changes
