@@ -9,7 +9,7 @@ import (
 type AddressBookMergerFunc func(envDir domain.EnvDir, name, timestamp string) error
 
 // AddressBookMigratorFunc migrates the address book to the new datastore format.
-type AddressBookMigratorFunc func(envDir domain.EnvDir) error
+type AddressBookMigratorFunc func(envDir domain.EnvDir, opts domain.MigrateAddressBookOptions) error
 
 // AddressBookRemoverFunc removes a changeset's address book entries from the main address book.
 type AddressBookRemoverFunc func(envDir domain.EnvDir, name, timestamp string) error
@@ -20,8 +20,8 @@ func defaultAddressBookMerger(envDir domain.EnvDir, name, timestamp string) erro
 }
 
 // defaultAddressBookMigrator is the production implementation that migrates address books.
-func defaultAddressBookMigrator(envDir domain.EnvDir) error {
-	return envDir.MigrateAddressBook()
+func defaultAddressBookMigrator(envDir domain.EnvDir, opts domain.MigrateAddressBookOptions) error {
+	return envDir.MigrateAddressBook(opts)
 }
 
 // defaultAddressBookRemover is the production implementation that removes address book entries.
