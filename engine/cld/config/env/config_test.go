@@ -17,6 +17,10 @@ var (
 				KeyID:     "f1a2b3c4",
 				KeyRegion: "us-west-1",
 			},
+			KMSEd25519: KMSEd25519Config{
+				KeyID:     "e5d25519a",
+				KeyRegion: "us-west-2",
+			},
 			EVM: EVMConfig{
 				DeployerKey: "0xabc",
 				Seth: &SethConfig{
@@ -84,6 +88,8 @@ var (
 	envVars = map[string]string{ //nolint:gosec // G101: test fixture values, not real credentials
 		"ONCHAIN_KMS_KEY_ID":                         "123",
 		"ONCHAIN_KMS_KEY_REGION":                     "us-east-1",
+		"ONCHAIN_KMS_ED25519_KEY_ID":                 "e5-from-env",
+		"ONCHAIN_KMS_ED25519_KEY_REGION":             "us-east-2",
 		"ONCHAIN_EVM_DEPLOYER_KEY":                   "0x123",
 		"ONCHAIN_EVM_SETH_CONFIG_FILE_PATH":          "config.json",
 		"ONCHAIN_EVM_SETH_GETH_WRAPPER_DIRS":         "./a,./b",
@@ -135,15 +141,17 @@ var (
 		"TON_DEPLOYER_KEY":                  "0x123",
 		"TON_WALLET_VERSION":                "V5R1",
 		// These values do not have a legacy equivalent
-		"ONCHAIN_STELLAR_DEPLOYER_KEY": "0x567", // Stellar is new, uses new-style env var
-		"ONCHAIN_CANTON_AUTH_STRATEGY": "client_credentials",
-		"ONCHAIN_CANTON_AUTH_URL":      "https://canton-auth.example.com",
-		"ONCHAIN_CANTON_CLIENT_ID":     "canton-client-id",
-		"ONCHAIN_CANTON_CLIENT_SECRET": "canton-client-secret",
-		"ONCHAIN_CANTON_JWT_TOKEN":     "canton-jwt-token",
-		"CATALOG_GRPC":                 "http://localhost:8080",
-		"CATALOG_AUTH_KMS_KEY_ID":      "123",
-		"CATALOG_AUTH_KMS_KEY_REGION":  "us-east-1",
+		"ONCHAIN_STELLAR_DEPLOYER_KEY":   "0x567",       // Stellar is new, uses new-style env var
+		"ONCHAIN_KMS_ED25519_KEY_ID":     "e5-from-env", // Ed25519 KMS is new, uses new-style env var
+		"ONCHAIN_KMS_ED25519_KEY_REGION": "us-east-2",
+		"ONCHAIN_CANTON_AUTH_STRATEGY":   "client_credentials",
+		"ONCHAIN_CANTON_AUTH_URL":        "https://canton-auth.example.com",
+		"ONCHAIN_CANTON_CLIENT_ID":       "canton-client-id",
+		"ONCHAIN_CANTON_CLIENT_SECRET":   "canton-client-secret",
+		"ONCHAIN_CANTON_JWT_TOKEN":       "canton-jwt-token",
+		"CATALOG_GRPC":                   "http://localhost:8080",
+		"CATALOG_AUTH_KMS_KEY_ID":        "123",
+		"CATALOG_AUTH_KMS_KEY_REGION":    "us-east-1",
 	}
 
 	// envCfg is the config that is loaded from the environment variables.
@@ -152,6 +160,10 @@ var (
 			KMS: KMSConfig{
 				KeyID:     "123",
 				KeyRegion: "us-east-1",
+			},
+			KMSEd25519: KMSEd25519Config{
+				KeyID:     "e5-from-env",
+				KeyRegion: "us-east-2",
 			},
 			EVM: EVMConfig{
 				DeployerKey: "0x123",
@@ -235,7 +247,8 @@ func Test_Load(t *testing.T) { //nolint:paralleltest // see comment in setupTest
 			givePath: "./testdata/empty.yml",
 			want: &Config{
 				Onchain: OnchainConfig{
-					KMS: KMSConfig{},
+					KMS:        KMSConfig{},
+					KMSEd25519: KMSEd25519Config{},
 					EVM: EVMConfig{
 						Seth: nil, // Testing optional pointer fields
 					},
