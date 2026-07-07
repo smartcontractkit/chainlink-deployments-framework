@@ -368,7 +368,7 @@ func TestIsWorkflowsOwner(t *testing.T) {
 			desc:        "returns error for empty workflow list",
 			workflowIds: nil,
 			setupMock:   func(contract *contractmocks.MockWorkflowRegistryContract, opts *bind.CallOpts) {},
-			wantErr:     "no workflowIds provided",
+			wantErr:     "no workflow IDs provided",
 		},
 	}
 
