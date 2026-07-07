@@ -28,7 +28,7 @@ jobs:
       contents: read
     steps:
       - name: Linting Misc (yaml + sh files)
-        uses: smartcontractkit/.github/actions/ci-lint-misc@eeb76b5870e3c17856d5a60fd064a053c023b5f5 # ci-lint-misc@1.0.0
+        uses: smartcontractkit/.github/actions/ci-lint-misc@226df8538b11ed54e86346c3216642c6a971a66e # ci-lint-misc@1.0.0
 
   ci-test:
     name: Tests
