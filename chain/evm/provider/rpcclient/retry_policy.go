@@ -36,7 +36,9 @@ func (rc RetryConfig) rpcRetryOptions() []retry.Option {
 	opts := []retry.Option{
 		retry.Attempts(rc.Attempts),
 		retry.Delay(rc.Delay),
-		retry.DelayType(rc.delayForError),
+	}
+	if len(rc.ErrorPolicies) > 0 {
+		opts = append(opts, retry.DelayType(rc.delayForError))
 	}
 
 	return opts
