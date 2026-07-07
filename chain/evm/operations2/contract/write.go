@@ -301,8 +301,9 @@ func IsWorkflowsOwner[C WorkflowRegistryContract](contract C, opts *bind.CallOpt
 		return false, errors.New("no workflow IDs provided")
 	}
 
+	addr := contract.Address()
 	for _, workflowId := range workflowIds {
-		isWfOwner, err := RetryContractCall(opts, "workflow owner", "check workflow ownership", contract.Address(), func() (bool, error) {
+		isWfOwner, err := RetryContractCall(opts, "workflow owner", "check workflow ownership", addr, func() (bool, error) {
 			wfMetadata, err := contract.GetWorkflowById(opts, workflowId)
 			if err != nil {
 				return false, err
