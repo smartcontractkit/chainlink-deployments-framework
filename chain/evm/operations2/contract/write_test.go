@@ -9,6 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/smartcontractkit/chainlink-evm/gethwrappers/workflow/generated/workflow_registry_wrapper_v2"
 	mcms_types "github.com/smartcontractkit/mcms/types"
 	"github.com/stretchr/testify/require"
 
@@ -289,6 +290,106 @@ func TestIsAuthorizedCaller(t *testing.T) {
 			allowed, err := IsAuthorizedCaller(contract, test.opts, account)
 			require.NoError(t, err)
 			require.Equal(t, test.wantAuthorized, allowed)
+		})
+	}
+}
+
+func TestIsWorkflowsOwner(t *testing.T) {
+	t.Parallel()
+
+	caller := common.HexToAddress("0x1234")
+	other := common.HexToAddress("0x5678")
+	contractAddress := common.HexToAddress("0xabcd")
+	workflowId1 := [32]byte{0x01}
+	workflowId2 := [32]byte{0x02}
+	callErr := errors.New("get workflow failed")
+
+	tests := []struct {
+		desc        string
+		workflowIds [][32]byte
+		setupMock   func(*contractmocks.MockWorkflowRegistryContract, *bind.CallOpts)
+		wantAllowed bool
+		wantErr     string
+	}{
+		{
+			desc:        "returns true when caller owns all workflows",
+			workflowIds: [][32]byte{workflowId1, workflowId2},
+			setupMock: func(contract *contractmocks.MockWorkflowRegistryContract, opts *bind.CallOpts) {
+				contract.EXPECT().
+					Address().
+					Return(contractAddress).
+					Twice()
+				contract.EXPECT().
+					GetWorkflowById(opts, workflowId1).
+					Return(workflow_registry_wrapper_v2.WorkflowRegistryWorkflowMetadataView{Owner: caller}, nil).
+					Once()
+				contract.EXPECT().
+					GetWorkflowById(opts, workflowId2).
+					Return(workflow_registry_wrapper_v2.WorkflowRegistryWorkflowMetadataView{Owner: caller}, nil).
+					Once()
+			},
+			wantAllowed: true,
+		},
+		{
+			desc:        "returns false when caller does not own a workflow",
+			workflowIds: [][32]byte{workflowId1, workflowId2},
+			setupMock: func(contract *contractmocks.MockWorkflowRegistryContract, opts *bind.CallOpts) {
+				contract.EXPECT().
+					Address().
+					Return(contractAddress).
+					Twice()
+				contract.EXPECT().
+					GetWorkflowById(opts, workflowId1).
+					Return(workflow_registry_wrapper_v2.WorkflowRegistryWorkflowMetadataView{Owner: caller}, nil).
+					Once()
+				contract.EXPECT().
+					GetWorkflowById(opts, workflowId2).
+					Return(workflow_registry_wrapper_v2.WorkflowRegistryWorkflowMetadataView{Owner: other}, nil).
+					Once()
+			},
+			wantAllowed: false,
+		},
+		{
+			desc:        "returns error when workflow lookup fails",
+			workflowIds: [][32]byte{workflowId1},
+			setupMock: func(contract *contractmocks.MockWorkflowRegistryContract, opts *bind.CallOpts) {
+				contract.EXPECT().
+					Address().
+					Return(contractAddress).
+					Once()
+				contract.EXPECT().
+					GetWorkflowById(opts, workflowId1).
+					Return(workflow_registry_wrapper_v2.WorkflowRegistryWorkflowMetadataView{}, callErr).
+					Once()
+			},
+			wantErr: "failed to check workflow ownership",
+		},
+		{
+			desc:        "returns error for empty workflow list",
+			workflowIds: nil,
+			setupMock:   func(contract *contractmocks.MockWorkflowRegistryContract, opts *bind.CallOpts) {},
+			wantErr:     "no workflowIds provided",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			t.Parallel()
+			opts := &bind.CallOpts{}
+			contract := contractmocks.NewMockWorkflowRegistryContract(t)
+			test.setupMock(contract, opts)
+
+			allowed, err := IsWorkflowsOwner(contract, opts, caller, test.workflowIds)
+			if test.wantErr != "" {
+				require.Error(t, err)
+				require.ErrorContains(t, err, test.wantErr)
+				require.False(t, allowed)
+
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, test.wantAllowed, allowed)
 		})
 	}
 }

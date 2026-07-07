@@ -63,6 +63,7 @@ type OperationData struct {
 	IsWrite       bool
 	AccessControl string // Only for writes
 	Role          string // Go literal for the role bytes32, e.g. [32]byte{0x12, …}
+	WorkflowIds   string // Go expression for workflow ownership checks; always [][32]byte.
 	ReturnType    string // Only for reads
 	// ReturnFields is non-empty for read operations with multiple return values.
 	// The template uses it to pack individual return values into a synthetic result struct.
@@ -218,6 +219,7 @@ func prepareWriteOp(fi *FunctionInfo) OperationData {
 		IsWrite:       true,
 		AccessControl: fi.AccessControl,
 		Role:          role,
+		WorkflowIds:   fi.WorkflowIds,
 	}
 }
 

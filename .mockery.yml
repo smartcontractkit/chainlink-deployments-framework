@@ -109,6 +109,7 @@ packages:
     interfaces:
       AccessControlContract:
       AuthorizedCallersContract:
+      WorkflowRegistryContract:
   github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer:
     config:
       all: false

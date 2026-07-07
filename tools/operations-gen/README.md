@@ -165,15 +165,30 @@ contracts:
 
 ### Function access control
 
-| Value    | Behaviour                                                                                                                          |
-| -------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `owner`  | Generates a write operation gated by `OnlyOwner`, producing an MCMS-compatible transaction when the deployer key is not the owner. |
-| `role`   | Generates a write operation gated by OpenZeppelin-style `hasRole`. Requires `role: <ROLE_NAME>` on the function config.            |
-| `public` | Generates a read operation (for `view`/`pure` functions) or an unrestricted write operation.                                       |
+| Value             | Behaviour                                                                                                                          |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `owner`           | Generates a write operation gated by `OnlyOwner`, producing an MCMS-compatible transaction when the deployer key is not the owner. |
+| `role`            | Generates a write operation gated by OpenZeppelin-style `hasRole`. Requires `role: <ROLE_NAME>` on the function config.            |
+| `authorized`      | Generates a write operation gated by `IsAuthorizedCaller`, using the contract's authorized-caller set.                             |
+| `workflows_owner` | Generates a write operation gated by `IsWorkflowsOwner`. The ABI function must include `workflowId bytes32` or `workflowIds bytes32[]`. |
+| `private`         | Generates a write operation that is always collected for proposal execution rather than executed directly.                          |
+| `public`          | Generates a read operation (for `view`/`pure` functions) or an unrestricted write operation.                                       |
 
 For `access: role`, `DEFAULT_ADMIN_ROLE` maps to the all-zero role and any other
 human-readable role name is hashed as `keccak256("<ROLE_NAME>")`. Raw bytes32
 role hashes are rejected so configs remain readable.
+
+For `access: workflows_owner`, operations-gen infers the workflow IDs from the
+ABI parameter name. A single `workflowId bytes32` parameter is wrapped into a
+`[][32]byte` slice, while `workflowIds bytes32[]` is passed through directly:
+
+```yaml
+functions:
+  - name: upsertWorkflow
+    access: workflows_owner
+  - name: batchPauseWorkflows
+    access: workflows_owner
+```
 
 ## Deploy contract types
 
