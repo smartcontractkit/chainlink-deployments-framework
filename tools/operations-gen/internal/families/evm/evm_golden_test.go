@@ -41,7 +41,7 @@ func TestGenerateFeeQuoter(t *testing.T) {
 
 func TestGenerateWorkflowRegistry(t *testing.T) {
 	t.Parallel()
-	runGoldenGenerationTest(t, "opertions_gen_workflow_router.yaml", "workflow_registry.golden.go")
+	runGoldenGenerationTest(t, "operations_gen_workflow_router.yaml", "workflow_registry.golden.go")
 }
 
 // TestGenerateLinkTokenWithZkSyncBindingsPackage verifies generation when
