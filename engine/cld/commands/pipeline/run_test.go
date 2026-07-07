@@ -681,6 +681,130 @@ changesets:
 	}}, proposal.Operations)
 }
 
+//nolint:paralleltest
+func TestRunCmd_SingleChangesetWithoutSelector(t *testing.T) {
+	env := "testnet"
+	changesetName := "0001_test_changeset"
+	testDomain := domain.NewDomain(t.TempDir(), "test")
+
+	workspaceRoot := t.TempDir()
+	inputsDir := filepath.Join(workspaceRoot, "domains", testDomain.String(), env, "durable_pipelines", "inputs")
+	require.NoError(t, os.MkdirAll(inputsDir, 0o755))
+
+	yamlContent := `environment: testnet
+domain: test
+changesets:
+  - 0001_test_changeset:
+      payload:
+        chain: optimism_sepolia
+        value: 100`
+	yamlFileName := "single-changeset.yaml"
+	require.NoError(t, os.WriteFile(filepath.Join(inputsDir, yamlFileName), []byte(yamlContent), 0o600))
+
+	originalWd, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(workspaceRoot))
+	t.Cleanup(func() { require.NoError(t, os.Chdir(originalWd)) })
+
+	changesetStub := &stubChangeset{}
+	loadChangesets := func(envName string) (*changeset.ChangesetsRegistry, error) {
+		rp := &registryProviderStub{
+			BaseRegistryProvider: changeset.NewBaseRegistryProvider(),
+			AddAction: func(reg *changeset.ChangesetsRegistry) {
+				reg.Add(changesetName, changeset.Configure(changesetStub).With(1))
+			},
+		}
+		if initErr := rp.Init(); initErr != nil {
+			return nil, initErr
+		}
+
+		return rp.Registry(), nil
+	}
+
+	cfg := &Config{
+		Logger:                logger.Test(t),
+		Domain:                testDomain,
+		LoadChangesets:        loadChangesets,
+		ConfigResolverManager: fresolvers.NewConfigResolverManager(),
+		Deps: Deps{
+			EnvironmentLoader: func(ctx context.Context, dom domain.Domain, envKey string, opts ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
+				return fdeployment.Environment{}, nil
+			},
+		},
+	}
+
+	cmd, err := NewCommand(cfg)
+	require.NoError(t, err)
+
+	cmd.SetArgs([]string{
+		"run",
+		"--environment", env,
+		"--input-file", yamlFileName,
+		"--dry-run",
+	})
+
+	err = cmd.Execute()
+	require.NoError(t, err)
+	require.True(t, changesetStub.ApplyCalled)
+}
+
+//nolint:paralleltest
+func TestRunCmd_MultipleChangesetsRequireSelector(t *testing.T) {
+	env := "testnet"
+	testDomain := domain.NewDomain(t.TempDir(), "test")
+
+	workspaceRoot := t.TempDir()
+	inputsDir := filepath.Join(workspaceRoot, "domains", testDomain.String(), env, "durable_pipelines", "inputs")
+	require.NoError(t, os.MkdirAll(inputsDir, 0o755))
+
+	yamlContent := `environment: testnet
+domain: test
+changesets:
+  - 0001_test_changeset:
+      payload:
+        chain: optimism_sepolia
+  - 0002_other_changeset:
+      payload:
+        chain: base_sepolia`
+	yamlFileName := "multi-changeset.yaml"
+	require.NoError(t, os.WriteFile(filepath.Join(inputsDir, yamlFileName), []byte(yamlContent), 0o600))
+
+	originalWd, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(workspaceRoot))
+	t.Cleanup(func() { require.NoError(t, os.Chdir(originalWd)) })
+
+	cfg := &Config{
+		Logger: logger.Test(t),
+		Domain: testDomain,
+		LoadChangesets: func(string) (*changeset.ChangesetsRegistry, error) {
+			return changeset.NewBaseRegistryProvider().Registry(), nil
+		},
+		ConfigResolverManager: fresolvers.NewConfigResolverManager(),
+		Deps: Deps{
+			EnvironmentLoader: func(ctx context.Context, dom domain.Domain, envKey string, opts ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
+				return fdeployment.Environment{}, nil
+			},
+		},
+	}
+
+	cmd, err := NewCommand(cfg)
+	require.NoError(t, err)
+
+	cmd.SetArgs([]string{
+		"run",
+		"--environment", env,
+		"--input-file", yamlFileName,
+		"--dry-run",
+	})
+
+	err = cmd.Execute()
+	require.Error(t, err)
+	require.ErrorContains(t, err, "failed to parse input file:")
+	require.ErrorContains(t, err, "contains 2 changesets")
+	require.ErrorContains(t, err, "--changeset (-c) or --changeset-index (-x)")
+}
+
 // ----- shared test data -----
 
 var testProposal = lo.Must(mcms.NewTimelockProposalBuilder().
