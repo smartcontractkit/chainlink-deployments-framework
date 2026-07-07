@@ -318,7 +318,7 @@ func TestIsWorkflowsOwner(t *testing.T) {
 				contract.EXPECT().
 					Address().
 					Return(contractAddress).
-					Twice()
+					Once()
 				contract.EXPECT().
 					GetWorkflowById(opts, workflowId1).
 					Return(workflow_registry_wrapper_v2.WorkflowRegistryWorkflowMetadataView{Owner: caller}, nil).
@@ -337,7 +337,7 @@ func TestIsWorkflowsOwner(t *testing.T) {
 				contract.EXPECT().
 					Address().
 					Return(contractAddress).
-					Twice()
+					Once()
 				contract.EXPECT().
 					GetWorkflowById(opts, workflowId1).
 					Return(workflow_registry_wrapper_v2.WorkflowRegistryWorkflowMetadataView{Owner: caller}, nil).
