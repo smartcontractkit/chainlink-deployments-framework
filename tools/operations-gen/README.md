@@ -169,7 +169,7 @@ contracts:
 | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | `owner`           | Generates a write operation gated by `OnlyOwner`, producing an MCMS-compatible transaction when the deployer key is not the owner. |
 | `role`            | Generates a write operation gated by OpenZeppelin-style `hasRole`. Requires `role: <ROLE_NAME>` on the function config.            |
-| `workflows_owner` | Generates a write operation gated by `IsWorkflowsOwner`. Requires the contract binding to expose `GetWorkflowById(bytes32)` returning metadata with an `Owner` field, and the ABI function must include `workflowId bytes32` or `workflowIds bytes32[]`. |
+| `workflows_owner` | Generates a write operation gated by `IsWorkflowsOwner`. Requires the contract binding to satisfy `contract.WorkflowRegistryContract` (incl. `GetWorkflowById(bytes32)` returning `workflow_registry_wrapper_v2.WorkflowRegistryWorkflowMetadataView` with an `Owner` field), and the ABI function must include `workflowId bytes32` or `workflowIds bytes32[]`. |
 | `public`          | Generates a read operation (for `view`/`pure` functions) or an unrestricted write operation.                                       |
 
 For `access: role`, `DEFAULT_ADMIN_ROLE` maps to the all-zero role and any other
