@@ -296,7 +296,7 @@ type WorkflowRegistryContract interface {
 	GetWorkflowById(opts *bind.CallOpts, workflowId [32]byte) (workflow_registry_wrapper_v2.WorkflowRegistryWorkflowMetadataView, error)
 }
 
-func IsWorkflowsOwner[C WorkflowRegistryContract](contract C, opts *bind.CallOpts, caller common.Address, workflowIds [][32]byte) (bool, error) {
+func IsWorkflowsOwner(contract WorkflowRegistryContract, opts *bind.CallOpts, caller common.Address, workflowIds [][32]byte) (bool, error) {
 	if len(workflowIds) == 0 {
 		return false, errors.New("no workflow IDs provided")
 	}
