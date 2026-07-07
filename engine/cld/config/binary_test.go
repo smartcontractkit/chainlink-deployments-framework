@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
@@ -15,14 +16,16 @@ func TestLoadBinaryConfig(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name       string
-		beforeFunc func(t *testing.T, dom fdomain.Domain)
-		wantErrMsg string
-		validate   func(t *testing.T, cfg *cfgdomain.BinaryConfig)
+		name              string
+		setup             func(t *testing.T, dom fdomain.Domain)
+		wantProvider      cfgdomain.BinaryProvider
+		wantVersion       string
+		wantErr           string
+		missingDomainFile bool
 	}{
 		{
 			name: "successfully loads binary config",
-			beforeFunc: func(t *testing.T, dom fdomain.Domain) {
+			setup: func(t *testing.T, dom fdomain.Domain) {
 				t.Helper()
 
 				domainYAML := `environments:
@@ -37,16 +40,12 @@ binary:
 				err := os.WriteFile(dom.ConfigDomainFilePath(), []byte(domainYAML), filePerms)
 				require.NoError(t, err)
 			},
-			validate: func(t *testing.T, cfg *cfgdomain.BinaryConfig) {
-				t.Helper()
-
-				assert.Equal(t, cfgdomain.BinaryProviderS3, cfg.Provider)
-				assert.Equal(t, "v1.2.3", cfg.Version)
-			},
+			wantProvider: cfgdomain.BinaryProviderS3,
+			wantVersion:  "v1.2.3",
 		},
 		{
 			name: "defaults version to latest when not specified",
-			beforeFunc: func(t *testing.T, dom fdomain.Domain) {
+			setup: func(t *testing.T, dom fdomain.Domain) {
 				t.Helper()
 
 				domainYAML := `environments:
@@ -60,37 +59,26 @@ binary:
 				err := os.WriteFile(dom.ConfigDomainFilePath(), []byte(domainYAML), filePerms)
 				require.NoError(t, err)
 			},
-			validate: func(t *testing.T, cfg *cfgdomain.BinaryConfig) {
-				t.Helper()
-
-				assert.Equal(t, cfgdomain.BinaryProviderSource, cfg.Provider)
-				assert.Equal(t, cfgdomain.DefaultBinaryVersion, cfg.Version)
-			},
+			wantProvider: cfgdomain.BinaryProviderSource,
+			wantVersion:  cfgdomain.DefaultBinaryVersion,
 		},
 		{
 			name: "defaults to source when binary section is absent",
-			beforeFunc: func(t *testing.T, dom fdomain.Domain) {
+			setup: func(t *testing.T, dom fdomain.Domain) {
 				t.Helper()
 
 				writeConfigDomainFile(t, dom, "domain.yaml")
 			},
-			validate: func(t *testing.T, cfg *cfgdomain.BinaryConfig) {
-				t.Helper()
-
-				assert.Equal(t, cfgdomain.BinaryProviderSource, cfg.Provider)
-				assert.Equal(t, cfgdomain.DefaultBinaryVersion, cfg.Version)
-			},
+			wantProvider: cfgdomain.BinaryProviderSource,
+			wantVersion:  cfgdomain.DefaultBinaryVersion,
 		},
 		{
-			name: "fails when domain config file does not exist",
-			beforeFunc: func(t *testing.T, dom fdomain.Domain) {
-				t.Helper()
-			},
-			wantErrMsg: "no such file or directory",
+			name:              "fails when domain config file does not exist",
+			missingDomainFile: true,
 		},
 		{
 			name: "fails when binary provider is invalid",
-			beforeFunc: func(t *testing.T, dom fdomain.Domain) {
+			setup: func(t *testing.T, dom fdomain.Domain) {
 				t.Helper()
 
 				domainYAML := `environments:
@@ -104,7 +92,7 @@ binary:
 				err := os.WriteFile(dom.ConfigDomainFilePath(), []byte(domainYAML), filePerms)
 				require.NoError(t, err)
 			},
-			wantErrMsg: "invalid binary provider",
+			wantErr: "invalid binary provider: artifact-registry (must be 'source' or 's3')",
 		},
 	}
 
@@ -114,15 +102,21 @@ binary:
 
 			dom, _ := setupConfigDirs(t)
 
-			if tt.beforeFunc != nil {
-				tt.beforeFunc(t, dom)
+			if tt.setup != nil {
+				tt.setup(t, dom)
 			}
 
 			cfg, err := LoadBinaryConfig(dom)
 
-			if tt.wantErrMsg != "" {
-				require.Error(t, err)
-				require.ErrorContains(t, err, tt.wantErrMsg)
+			if tt.missingDomainFile {
+				require.EqualError(t, err, fmt.Sprintf("open %s: no such file or directory", dom.ConfigDomainFilePath()))
+				require.Nil(t, cfg)
+
+				return
+			}
+
+			if tt.wantErr != "" {
+				require.EqualError(t, err, tt.wantErr)
 				require.Nil(t, cfg)
 
 				return
@@ -130,10 +124,8 @@ binary:
 
 			require.NoError(t, err)
 			require.NotNil(t, cfg)
-
-			if tt.validate != nil {
-				tt.validate(t, cfg)
-			}
+			assert.Equal(t, tt.wantProvider, cfg.Provider)
+			assert.Equal(t, tt.wantVersion, cfg.Version)
 		})
 	}
 }
