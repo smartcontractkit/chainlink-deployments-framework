@@ -63,6 +63,13 @@ func TestWorkflowIdsExpression(t *testing.T) {
 			},
 			wantErr: `parameter "workflowIds" must be [][32]byte, got [32]byte`,
 		},
+		{
+			name: "wrong workflow ID type",
+			fi: &FunctionInfo{
+				Parameters: []ParameterInfo{{Name: "workflowId", GoType: "[][32]byte"}},
+			},
+			wantErr: `parameter "workflowId" must be [32]byte, got [][32]byte`,
+		},
 	}
 
 	for _, test := range tests {
