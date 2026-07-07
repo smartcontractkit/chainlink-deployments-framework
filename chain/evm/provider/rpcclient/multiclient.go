@@ -21,7 +21,7 @@ import (
 
 	chainsel "github.com/smartcontractkit/chain-selectors/remote"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
+	fevm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 )
 
 const (
@@ -64,16 +64,30 @@ func defaultRetryConfig() RetryConfig {
 }
 
 // MultiClient should comply with the OnchainClient interface
-var _ evm.OnchainClient = &MultiClient{}
+var _ fevm.OnchainClient = &MultiClient{}
 
 // MultiClient is a client that can manage multiple RPC endpoints with a failover mechanism and retry logic.
 type MultiClient struct {
 	*ethclient.Client
 	Backups     []*ethclient.Client
 	RetryConfig RetryConfig
-	lggr        logger.Logger
-	chainName   string
-	mu          sync.RWMutex
+	// gasLimitBufferBps increases eth_estimateGas results by this many basis points (2500 = +25%).
+	gasLimitBufferBps uint64
+	lggr              logger.Logger
+	chainName         string
+	mu                sync.RWMutex
+}
+
+// GasLimitBufferBps returns the configured gas limit buffer in basis points.
+func (mc *MultiClient) GasLimitBufferBps() uint64 {
+	return mc.gasLimitBufferBps
+}
+
+// WithGasLimitBufferBps configures a proactive gas limit buffer applied to EstimateGas results.
+func WithGasLimitBufferBps(bufferBps uint64) func(*MultiClient) {
+	return func(mc *MultiClient) {
+		mc.gasLimitBufferBps = bufferBps
+	}
 }
 
 // rpcHealthCheck performs a basic health check on the RPC client by calling eth_blockNumber
@@ -300,7 +314,7 @@ func (mc *MultiClient) EstimateGas(ctx context.Context, call ethereum.CallMsg) (
 		return err
 	})
 
-	return gas, err
+	return fevm.ApplyGasLimitBuffer(gas, mc.gasLimitBufferBps), err
 }
 
 // BalanceAt is a wrapper around the ethclient.BalanceAt method that retries on failure.

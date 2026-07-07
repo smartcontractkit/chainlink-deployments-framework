@@ -529,6 +529,7 @@ func (l *chainLoaderEVM) Load(ctx context.Context, selector uint64) (fchain.Bloc
 				HealthCheckTimeout: 15 * time.Second, // high concurrency needs more headroom than the 2s default
 			}
 		},
+		evmclient.WithGasLimitBufferBps(fevm.DefaultGasLimitBufferBps),
 	}
 
 	var c fchain.BlockChain

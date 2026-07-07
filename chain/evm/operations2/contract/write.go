@@ -94,7 +94,12 @@ func NewWrite[ARGS any, C interface{ Address() common.Address }](params WritePar
 			}
 			opts := deployment.SimTransactOpts()
 			if allowed {
-				opts = transactOptsWithGasOverrides(chain.DeployerKey, input.GasLimit, input.GasPrice)
+				opts = transactOptsWithGasOverrides(
+					chain.DeployerKey,
+					input.GasLimit,
+					input.GasPrice,
+					evm.GasLimitBufferBpsFromClient(chain.Client),
+				)
 			}
 			var execInfo *ExecInfo
 			tx, callErr := params.CallContract(params.Contract, opts, input.Args)
