@@ -302,6 +302,7 @@ func IsWorkflowsOwner[C WorkflowRegistryContract](contract C, opts *bind.CallOpt
 	}
 
 	addr := contract.Address()
+
 	return RetryContractCall(opts, "workflow owner", "check workflow ownership", addr, func() (bool, error) {
 		for _, workflowId := range workflowIds {
 			wfMetadata, err := contract.GetWorkflowById(opts, workflowId)
@@ -312,6 +313,7 @@ func IsWorkflowsOwner[C WorkflowRegistryContract](contract C, opts *bind.CallOpt
 				return false, nil
 			}
 		}
+
 		return true, nil
 	})
 }
