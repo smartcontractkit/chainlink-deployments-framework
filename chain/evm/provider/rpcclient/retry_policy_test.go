@@ -147,11 +147,9 @@ func TestMultiClient_retryWithBackups_errorPolicyDelay(t *testing.T) {
 	)
 
 	lggr := logger.Test(t)
-	client, err := ethclient.Dial("http://rpcs.cldev.sh/avalanche/fuji")
-	require.NoError(t, err)
 
 	mc := MultiClient{
-		Client:    client,
+		Client:    nil,
 		chainName: "ethereum-testnet-sepolia",
 		RetryConfig: RetryConfig{
 			Attempts: 2,
