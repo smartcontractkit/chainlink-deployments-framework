@@ -33,7 +33,7 @@ type EvmInputConfig struct {
 // EvmFunctionConfig selects a contract function and assigns its access control.
 type EvmFunctionConfig struct {
 	Name   string `yaml:"name"`
-	Access string `yaml:"access,omitempty"` // "owner", "role", "authorized", "private" or "public"
+	Access string `yaml:"access,omitempty"` // "owner", "role", "authorized", "private", "workflows_owner" or "public"
 	// Role is the OpenZeppelin-style role name used when Access is "role".
 	// Accepted formats:
 	//   - DEFAULT_ADMIN_ROLE                 → all-zero bytes32
