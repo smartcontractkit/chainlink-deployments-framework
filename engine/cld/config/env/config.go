@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-// KMSConfig is the configuration for the AWS KMS.
+// KMSConfig is the configuration for an AWS KMS key.
 //
 // WARNING: This data type contains sensitive fields and should not be logged or set in file
 // configuration.
@@ -17,6 +17,9 @@ type KMSConfig struct {
 	KeyID     string `mapstructure:"key_id" yaml:"key_id"`         // Secret: AWS KMS Key ID
 	KeyRegion string `mapstructure:"key_region" yaml:"key_region"` // Secret: AWS KMS Key Region (e.g. us-west-1)
 }
+
+// KMSEd25519Config is the configuration for the Ed25519 AWS KMS key used by non-EVM chains.
+type KMSEd25519Config = KMSConfig
 
 // EVMConfig is the configuration for the EVM Chains.
 //
@@ -175,15 +178,16 @@ type CREConfig struct {
 
 // OnchainConfig wraps the configuration for the onchain components.
 type OnchainConfig struct {
-	KMS     KMSConfig     `mapstructure:"kms" yaml:"kms"`
-	EVM     EVMConfig     `mapstructure:"evm" yaml:"evm"`
-	Solana  SolanaConfig  `mapstructure:"solana" yaml:"solana"`
-	Aptos   AptosConfig   `mapstructure:"aptos" yaml:"aptos"`
-	Sui     SuiConfig     `mapstructure:"sui" yaml:"sui"`
-	Stellar StellarConfig `mapstructure:"stellar" yaml:"stellar"`
-	Tron    TronConfig    `mapstructure:"tron" yaml:"tron"`
-	Ton     TonConfig     `mapstructure:"ton" yaml:"ton"`
-	Canton  CantonConfig  `mapstructure:"canton" yaml:"canton"`
+	KMS        KMSConfig        `mapstructure:"kms" yaml:"kms"`
+	KMSEd25519 KMSEd25519Config `mapstructure:"kms_ed25519" yaml:"kms_ed25519"`
+	EVM        EVMConfig        `mapstructure:"evm" yaml:"evm"`
+	Solana     SolanaConfig     `mapstructure:"solana" yaml:"solana"`
+	Aptos      AptosConfig      `mapstructure:"aptos" yaml:"aptos"`
+	Sui        SuiConfig        `mapstructure:"sui" yaml:"sui"`
+	Stellar    StellarConfig    `mapstructure:"stellar" yaml:"stellar"`
+	Tron       TronConfig       `mapstructure:"tron" yaml:"tron"`
+	Ton        TonConfig        `mapstructure:"ton" yaml:"ton"`
+	Canton     CantonConfig     `mapstructure:"canton" yaml:"canton"`
 }
 
 // OffchainConfig wraps the configuration for the offchain components.
@@ -270,6 +274,8 @@ var (
 	envBindings = map[string][]string{
 		"onchain.kms.key_id":                                      {"ONCHAIN_KMS_KEY_ID", "KMS_DEPLOYER_KEY_ID"},
 		"onchain.kms.key_region":                                  {"ONCHAIN_KMS_KEY_REGION", "KMS_DEPLOYER_KEY_REGION"},
+		"onchain.kms_ed25519.key_id":                              {"ONCHAIN_KMS_ED25519_KEY_ID"},
+		"onchain.kms_ed25519.key_region":                          {"ONCHAIN_KMS_ED25519_KEY_REGION"},
 		"onchain.evm.deployer_key":                                {"ONCHAIN_EVM_DEPLOYER_KEY", "TEST_WALLET_KEY"},
 		"onchain.evm.seth.config_file_path":                       {"ONCHAIN_EVM_SETH_CONFIG_FILE_PATH", "SETH_CONFIG_FILE"},
 		"onchain.evm.seth.geth_wrapper_dirs":                      {"ONCHAIN_EVM_SETH_GETH_WRAPPER_DIRS", "GETH_WRAPPERS_DIRS"},

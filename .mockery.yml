@@ -24,6 +24,7 @@ packages:
       filename: "mock_{{.InterfaceName | snakecase}}.go"
     interfaces:
       Client:
+      Ed25519Client:
   github.com/smartcontractkit/chainlink-deployments-framework/offchain:
     config:
       all: false
