@@ -168,7 +168,7 @@ func TestMultiClient_retryWithBackups_errorPolicyDelay(t *testing.T) {
 	}
 
 	start := time.Now()
-	err = mc.retryWithBackups(
+	err := mc.retryWithBackups(
 		context.Background(),
 		"test-operation",
 		func(context.Context, *ethclient.Client) error {
