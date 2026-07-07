@@ -14,14 +14,7 @@ func isNonceTooLowError(err error) bool {
 
 // isNoContractCodeError reports whether err indicates contract code is not yet available.
 func isNoContractCodeError(err error) bool {
-	if err == nil {
-		return false
-	}
-	msg := strings.ToLower(err.Error())
-
-	return strings.Contains(msg, "no code at") ||
-		strings.Contains(msg, "no contract code") ||
-		strings.Contains(msg, "empty string")
+	return err != nil && strings.Contains(strings.ToLower(err.Error()), "no contract code")
 }
 
 func nonceTooLowRetryPolicy(delay time.Duration) evmclient.ErrorRetryPolicy {

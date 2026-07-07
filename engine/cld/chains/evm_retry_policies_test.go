@@ -65,18 +65,8 @@ func TestIsNoContractCodeError(t *testing.T) {
 			want: false,
 		},
 		{
-			name: "matches no code at message",
-			err:  errors.New("no code at given address"),
-			want: true,
-		},
-		{
 			name: "matches no contract code message",
-			err:  errors.New("no contract code at address"),
-			want: true,
-		},
-		{
-			name: "matches empty string message",
-			err:  errors.New("attempting to unmarshal an empty string"),
+			err:  errors.New("no contract code at given address"),
 			want: true,
 		},
 		{

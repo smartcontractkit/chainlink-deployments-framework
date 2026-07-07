@@ -528,8 +528,8 @@ func (l *chainLoaderEVM) Load(ctx context.Context, selector uint64) (fchain.Bloc
 				DialTimeout:        2 * time.Second,
 				HealthCheckTimeout: 15 * time.Second, // high concurrency needs more headroom than the 2s default
 				ErrorPolicies: []evmclient.ErrorRetryPolicy{
-					nonceTooLowRetryPolicy(2 * time.Second),
-					noContractCodeRetryPolicy(2 * time.Second),
+					nonceTooLowRetryPolicy(5 * time.Second),
+					noContractCodeRetryPolicy(5 * time.Second),
 				},
 			}
 		},
