@@ -3,11 +3,14 @@ package rpcclient
 import (
 	"context"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -394,4 +397,74 @@ func TestMultiClient_reorderRPCs(t *testing.T) {
 			}
 		})
 	}
+}
+
+func newEstimateGasRPCServer(t *testing.T, estimateGasResult string, estimateGasError bool) *httptest.Server {
+	t.Helper()
+
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		body, _ := io.ReadAll(r.Body)
+		if strings.Contains(string(body), "eth_estimateGas") {
+			if estimateGasError {
+				_, _ = w.Write([]byte(`{"jsonrpc":"2.0","id":1,"error":{"code":-32000,"message":"execution reverted"}}`))
+
+				return
+			}
+			_, _ = w.Write([]byte(`{"jsonrpc":"2.0","id":1,"result":"` + estimateGasResult + `"}`))
+
+			return
+		}
+		_, _ = w.Write([]byte(`{"jsonrpc":"2.0","id":1,"result":"0x1"}`))
+	})
+
+	return httptest.NewServer(handler)
+}
+
+func TestMultiClient_EstimateGas_buffer(t *testing.T) {
+	t.Parallel()
+
+	const chainSelector uint64 = 16015286601757825753 // ethereum-testnet-sepolia
+
+	t.Run("buffers successful estimate", func(t *testing.T) {
+		t.Parallel()
+
+		srv := newEstimateGasRPCServer(t, "0xf4240", false) // 1_000_000
+		defer srv.Close()
+
+		mc, err := NewMultiClient(t.Context(), logger.Test(t), RPCConfig{
+			ChainSelector: chainSelector,
+			RPCs: []RPC{{
+				Name:               "test-rpc",
+				HTTPURL:            srv.URL,
+				PreferredURLScheme: URLSchemePreferenceHTTP,
+			}},
+		}, WithGasLimitBufferBps(2500))
+		require.NoError(t, err)
+
+		gas, err := mc.EstimateGas(context.Background(), ethereum.CallMsg{})
+		require.NoError(t, err)
+		require.Equal(t, uint64(1_250_000), gas)
+	})
+
+	t.Run("does not buffer failed estimate", func(t *testing.T) {
+		t.Parallel()
+
+		srv := newEstimateGasRPCServer(t, "0xf4240", true)
+		defer srv.Close()
+
+		mc, err := NewMultiClient(t.Context(), logger.Test(t), RPCConfig{
+			ChainSelector: chainSelector,
+			RPCs: []RPC{{
+				Name:               "test-rpc",
+				HTTPURL:            srv.URL,
+				PreferredURLScheme: URLSchemePreferenceHTTP,
+			}},
+		}, WithGasLimitBufferBps(2500))
+		require.NoError(t, err)
+
+		gas, err := mc.EstimateGas(context.Background(), ethereum.CallMsg{})
+		require.Error(t, err)
+		require.Equal(t, uint64(0), gas)
+	})
 }

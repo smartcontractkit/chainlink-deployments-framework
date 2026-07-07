@@ -21,6 +21,7 @@ func TestApplyGasLimitBuffer(t *testing.T) {
 	require.Equal(t, uint64(1_000_000), ApplyGasLimitBuffer(1_000_000, 0))
 	require.Equal(t, uint64(1_250_000), ApplyGasLimitBuffer(1_000_000, 2500))
 	require.Equal(t, uint64(1_300_000), ApplyGasLimitBuffer(1_000_000, 3000))
+	require.Equal(t, ^uint64(0), ApplyGasLimitBuffer(^uint64(0), 2500))
 }
 
 func TestGasLimitBufferBpsFromClient(t *testing.T) {

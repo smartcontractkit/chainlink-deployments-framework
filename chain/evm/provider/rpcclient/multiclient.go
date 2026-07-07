@@ -313,8 +313,11 @@ func (mc *MultiClient) EstimateGas(ctx context.Context, call ethereum.CallMsg) (
 
 		return err
 	})
+	if err != nil {
+		return gas, err
+	}
 
-	return fevm.ApplyGasLimitBuffer(gas, mc.gasLimitBufferBps), err
+	return fevm.ApplyGasLimitBuffer(gas, mc.gasLimitBufferBps), nil
 }
 
 // BalanceAt is a wrapper around the ethclient.BalanceAt method that retries on failure.
