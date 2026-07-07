@@ -475,6 +475,94 @@ jira:
 	}
 }
 
+func TestLoad_BinaryConfig(t *testing.T) {
+	t.Parallel()
+
+	configYAML := `
+environments:
+  testnet:
+    network_types:
+      - testnet
+
+binary:
+  provider: s3
+  version: latest
+`
+	tempDir := t.TempDir()
+	configPath := filepath.Join(tempDir, "domain.yaml")
+	require.NoError(t, os.WriteFile(configPath, []byte(configYAML), 0600))
+
+	config, err := Load(configPath)
+	require.NoError(t, err)
+	require.NotNil(t, config.Binary)
+
+	assert.Equal(t, BinaryProviderS3, config.Binary.Provider)
+	assert.Equal(t, "latest", config.Binary.Version)
+}
+
+func TestLoad_BinaryConfigDefaultsVersion(t *testing.T) {
+	t.Parallel()
+
+	configYAML := `
+environments:
+  testnet:
+    network_types:
+      - testnet
+
+binary:
+  provider: s3
+`
+	tempDir := t.TempDir()
+	configPath := filepath.Join(tempDir, "domain.yaml")
+	require.NoError(t, os.WriteFile(configPath, []byte(configYAML), 0600))
+
+	config, err := Load(configPath)
+	require.NoError(t, err)
+	require.NotNil(t, config.Binary)
+	assert.Equal(t, DefaultBinaryVersion, config.Binary.Version)
+}
+
+func TestLoad_BinaryConfigDefaultsToSourceWhenAbsent(t *testing.T) {
+	t.Parallel()
+
+	configYAML := `
+environments:
+  testnet:
+    network_types:
+      - testnet
+`
+	tempDir := t.TempDir()
+	configPath := filepath.Join(tempDir, "domain.yaml")
+	require.NoError(t, os.WriteFile(configPath, []byte(configYAML), 0600))
+
+	config, err := Load(configPath)
+	require.NoError(t, err)
+	require.NotNil(t, config.Binary)
+	assert.Equal(t, BinaryProviderSource, config.Binary.Provider)
+	assert.Equal(t, DefaultBinaryVersion, config.Binary.Version)
+}
+
+func TestLoad_BinaryConfigRejectsUnsupportedProvider(t *testing.T) {
+	t.Parallel()
+
+	configYAML := `
+environments:
+  testnet:
+    network_types:
+      - testnet
+
+binary:
+  provider: artifact-registry
+`
+	tempDir := t.TempDir()
+	configPath := filepath.Join(tempDir, "domain.yaml")
+	require.NoError(t, os.WriteFile(configPath, []byte(configYAML), 0600))
+
+	config, err := Load(configPath)
+	require.EqualError(t, err, "invalid binary provider: artifact-registry (must be 'source' or 's3')")
+	require.Nil(t, config)
+}
+
 func TestLoad_CREDefaultRegistries(t *testing.T) {
 	t.Parallel()
 
