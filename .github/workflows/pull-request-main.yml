@@ -148,9 +148,10 @@ jobs:
       # process's Ryuk keep-alive goroutine long enough to blow Ryuk's default 10s
       # reconnection timeout, causing it to reap the Aptos node container mid-test
       # ("connection refused" on the next API call). Raise the timeouts so Ryuk tolerates
-      # the compile step instead of killing the container out from under the test.
-      RYUK_RECONNECTION_TIMEOUT: 60s
-      RYUK_CONNECTION_TIMEOUT: 2m
+      # the compile step and parallel package teardown (chain/aptos/provider often
+      # finishes ~60-70s before chain/aptos) instead of killing the container mid-test.
+      RYUK_RECONNECTION_TIMEOUT: 5m
+      RYUK_CONNECTION_TIMEOUT: 5m
     steps:
       - name: Install Aptos CLI
         uses: aptos-labs/actions/install-aptos-cli@528ef7ad9427a8c0720ea3eea790a9190d6e377d # v0.1
