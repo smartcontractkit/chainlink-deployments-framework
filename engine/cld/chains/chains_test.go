@@ -1503,3 +1503,68 @@ func newFakeRPCServer(t *testing.T) *httptest.Server {
 
 	return srv
 }
+
+// Test_chainLoaderEVM_resolveIsZkSyncVM verifies that a per-chain
+// EVMMetadata.IsZkSync override in the network config takes precedence over the
+// hardcoded isZkSyncVM allowlist, and that the loader falls back to the allowlist
+// when no override is present.
+func Test_chainLoaderEVM_resolveIsZkSyncVM(t *testing.T) {
+	t.Parallel()
+
+	zkSel := chainsel.ETHEREUM_TESTNET_SEPOLIA_ZKSYNC_1.Selector // hardcoded zkSync
+	evmSel := chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector         // hardcoded non-zkSync
+
+	tests := []struct {
+		name     string
+		selector uint64
+		metadata any
+		want     bool
+	}{
+		{
+			name:     "no metadata: zkSync selector falls back to hardcoded true",
+			selector: zkSel,
+			metadata: nil,
+			want:     true,
+		},
+		{
+			name:     "no metadata: non-zkSync selector is set to false",
+			selector: evmSel,
+			metadata: nil,
+			want:     false,
+		},
+		{
+			name:     "override is_zksync=false on hardcoded zkSync selector wins",
+			selector: zkSel,
+			metadata: map[string]any{"is_zksync": false},
+			want:     false,
+		},
+		{
+			name:     "override is_zksync=true on non-zkSync selector wins",
+			selector: evmSel,
+			metadata: map[string]any{"is_zksync": true},
+			want:     true,
+		},
+		{
+			name:     "metadata present without is_zksync falls back to hardcoded",
+			selector: zkSel,
+			metadata: map[string]any{"anvil_config": map[string]any{"image": "x", "port": 1}},
+			want:     true,
+		},
+		{
+			name:     "malformed metadata warns and falls back to hardcoded",
+			selector: zkSel,
+			metadata: map[string]any{"is_zksync": "not-a-bool"},
+			want:     true,
+		},
+	}
+
+	l := &chainLoaderEVM{lggr: logger.Test(t)}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			network := cfgnet.Network{ChainSelector: tt.selector, Metadata: tt.metadata}
+			assert.Equal(t, tt.want, l.resolveIsZkSyncVM(network, tt.selector))
+		})
+	}
+}
