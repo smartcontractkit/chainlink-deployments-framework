@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.115.1
+
+### Patch Changes
+
+- [#1107](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1107) [`d33c1aa`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/d33c1aad76bd3cb44da9a6e715748d4a2520299e) Thanks [@simsonraj](https://github.com/simsonraj)! - Overrideable isZkSync via network metadata
+
 ## 0.115.0
 
 ### Minor Changes
