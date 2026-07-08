@@ -139,5 +139,13 @@ func (e *analyzerEngine) RenderTo(w io.Writer, rendererID string, renderReq rend
 		return fmt.Errorf("renderer with ID %q is not registered", rendererID)
 	}
 
+	if renderReq.TimelockProposal != nil {
+		cloned, err := renderer.CloneTimelockProposal(renderReq.TimelockProposal)
+		if err != nil {
+			return fmt.Errorf("clone timelock proposal: %w", err)
+		}
+		renderReq.TimelockProposal = cloned
+	}
+
 	return r.RenderTo(w, renderReq, proposal)
 }
