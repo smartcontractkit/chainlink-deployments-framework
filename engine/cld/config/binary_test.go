@@ -92,7 +92,7 @@ binary:
 				err := os.WriteFile(dom.ConfigDomainFilePath(), []byte(domainYAML), filePerms)
 				require.NoError(t, err)
 			},
-			wantErr: "invalid binary provider: artifact-registry (must be 'source' or 's3')",
+			wantErr: "failed to load domain config: invalid binary provider: artifact-registry (must be 'source' or 's3')",
 		},
 	}
 
@@ -109,7 +109,10 @@ binary:
 			cfg, err := LoadBinaryConfig(dom)
 
 			if tt.missingDomainFile {
-				require.EqualError(t, err, fmt.Sprintf("open %s: no such file or directory", dom.ConfigDomainFilePath()))
+				require.EqualError(t, err, fmt.Sprintf(
+					"failed to load domain config: open %s: no such file or directory",
+					dom.ConfigDomainFilePath(),
+				))
 				require.Nil(t, cfg)
 
 				return
