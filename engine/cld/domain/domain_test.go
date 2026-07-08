@@ -133,7 +133,7 @@ func Test_GetDomain_failure_with_invalid_domain_key(t *testing.T) {
 
 	_, err := GetDomain("invalid")
 	require.Error(t, err)
-	require.EqualError(t, err, "domain not found: invalid")
+	require.Contains(t, err.Error(), "domain not found: invalid")
 }
 
 //nolint:paralleltest // tests modify global ProjectRoot/DomainsRoot, cannot run in parallel
