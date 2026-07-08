@@ -537,9 +537,8 @@ func (l *chainLoaderEVM) Load(ctx context.Context, selector uint64) (fchain.Bloc
 
 	var c fchain.BlockChain
 
-	// Use the zkSync RPC if the chain is a zkSync chain. Per-chain network config may
-	// override the hardcoded classification via EVMMetadata.IsZkSyncVM; otherwise the
-	// hardcoded allowlist is used.
+	// Use the zkSync RPC if the chain should be treated as a zkSync VM chain. Per-chain network config may
+	// override the hardcoded classification via EVMMetadata.IsZkSync; otherwise the hardcoded allowlist is used.
 	if l.resolveIsZkSyncVM(network, selector) {
 		var signerGen evmprov.ZkSyncSignerGenerator
 		signerGen, err = l.zkSyncSignerGenerator(l.cfg)
