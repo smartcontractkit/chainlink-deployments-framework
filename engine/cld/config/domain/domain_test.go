@@ -495,25 +495,25 @@ binary:
 		{
 			name: "defaults provider to source when provider is omitted",
 			configYAML: `
- environments:
-   testnet:
-     network_types:
-       - testnet
+environments:
+  testnet:
+    network_types:
+      - testnet
 
- binary:
-   version: v1.2.3
- `,
+binary:
+  version: v1.2.3
+`,
 			wantProvider: BinaryProviderSource,
 			wantVersion:  "v1.2.3",
 		},
 		{
 			name: "defaults to source when binary section is absent",
 			configYAML: `
- environments:
-   testnet:
-     network_types:
-       - testnet
- `,
+environments:
+  testnet:
+    network_types:
+      - testnet
+`,
 			wantProvider: BinaryProviderSource,
 			wantVersion:  DefaultBinaryVersion,
 		},
@@ -528,7 +528,7 @@ environments:
 binary:
   provider: artifact-registry
 `,
-			wantErr: "invalid binary provider: artifact-registry (must be 'source' or 's3')",
+			wantErr: "invalid binary configuration: invalid binary provider: artifact-registry (must be 'source' or 's3')",
 		},
 	}
 

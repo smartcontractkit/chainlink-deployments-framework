@@ -180,7 +180,7 @@ func (cfg *DomainConfig) validate() error {
 	}
 
 	if err := cfg.Binary.validate(); err != nil {
-		return err
+		return fmt.Errorf("invalid binary configuration: %w", err)
 	}
 
 	return nil

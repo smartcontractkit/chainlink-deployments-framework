@@ -92,7 +92,7 @@ binary:
 				err := os.WriteFile(dom.ConfigDomainFilePath(), []byte(domainYAML), filePerms)
 				require.NoError(t, err)
 			},
-			wantErr: "failed to load domain config: invalid binary provider: artifact-registry (must be 'source' or 's3')",
+			wantErr: "failed to load domain config: invalid binary configuration: invalid binary provider: artifact-registry (must be 'source' or 's3')",
 		},
 	}
 
