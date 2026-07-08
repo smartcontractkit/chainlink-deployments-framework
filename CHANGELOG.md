@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.115.0
+
+### Minor Changes
+
+- [#1095](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1095) [`2200387`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/22003878b61a38085f13d31469db23ca611b5670) Thanks [@ecPablo](https://github.com/ecPablo)! - Adds domain binary configuration
+
 ## 0.114.6
 
 ### Patch Changes
