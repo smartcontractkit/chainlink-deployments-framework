@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -183,7 +182,7 @@ func (p *CTFChainProvider) startContainer(
 
 		containerName = output.ContainerName
 		testcontainers.CleanupContainer(p.t, output.Container)
-		url = strings.Replace(output.Nodes[0].ExternalHTTPUrl, "localhost", "127.0.0.1", 1) + "/v1"
+		url = output.Nodes[0].ExternalHTTPUrl + "/v1"
 
 		break
 	}

@@ -1,6 +1,7 @@
 package aptos_test
 
 import (
+	"sync"
 	"testing"
 	"time"
 
@@ -14,7 +15,6 @@ import (
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos/provider"
-	"github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/testutils"
 )
 
 func TestChain_ChainInfot(t *testing.T) {
@@ -73,10 +73,11 @@ func TestChainMetadata_IsNetworkType(t *testing.T) {
 	assert.False(t, c.IsNetworkType(chainsel.NetworkTypeTestnet))
 }
 
-//nolint:paralleltest // spins up a Docker container; must not run in parallel with other CTF tests
 func TestChain_ReadOnly(t *testing.T) {
+	t.Parallel()
+
 	ctfProvider := provider.NewCTFChainProvider(t, chainsel.APTOS_LOCALNET.Selector, provider.CTFChainProviderConfig{
-		Once:              testutils.DefaultNetworkOnce,
+		Once:              &sync.Once{},
 		DeployerSignerGen: provider.AccountGenCTFDefault(),
 	})
 	chain, err := ctfProvider.Initialize(t.Context())
@@ -96,15 +97,13 @@ func TestChain_ReadOnly(t *testing.T) {
 	require.Equal(t, uint64(1100100000000), balance)
 
 	// write with read-write client should work
-	seed := aptosmcms.DefaultSeed + time.Now().Format(time.RFC3339Nano)
-	_, _, _, err = aptosmcms.DeployToResourceAccount(aptosChain.DeployerSigner, aptosChain.Client, seed)
+	seed := aptosmcms.DefaultSeed + time.Now().String()
+	_, tx, _, err := aptosmcms.DeployToResourceAccount(aptosChain.DeployerSigner, roAptosChain.Client, seed)
+	require.NoError(t, err)
+	_, err = roAptosChain.Client.WaitForTransaction(tx.Hash)
 	require.NoError(t, err)
 
 	// write with read-only client should fail
-	_, _, _, err = aptosmcms.DeployToResourceAccount(
-		roAptosChain.DeployerSigner,
-		roAptosChain.Client,
-		seed+"-readonly",
-	) //nolint:dogsled
+	_, _, _, err = aptosmcms.DeployToResourceAccount(roAptosChain.DeployerSigner, roAptosChain.Client, seed) //nolint:dogsled
 	require.ErrorContains(t, err, "INSUFFICIENT_BALANCE_FOR_TRANSACTION_FEE")
 }
