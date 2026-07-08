@@ -7,6 +7,7 @@ import (
 	"errors"
 	"io"
 	"testing"
+	"time"
 
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/mcms"
@@ -163,6 +164,48 @@ func TestAnalyzerEngineRenderTo(t *testing.T) {
 	err = engine.RenderTo(out, "plain", req, analyzer.NewAnalyzedProposalNode(nil))
 	require.NoError(t, err)
 	require.Equal(t, "rendered", out.String())
+}
+
+func TestAnalyzerEngineRenderTo_clonesTimelockProposal(t *testing.T) {
+	t.Parallel()
+
+	original := &mcms.TimelockProposal{
+		BaseProposal: mcms.BaseProposal{
+			Version:     "v1",
+			Kind:        mcmstypes.KindTimelockProposal,
+			ValidUntil:  uint32(time.Now().Add(time.Hour).Unix()), //nolint:gosec // test fixture
+			Description: "original",
+			ChainMetadata: map[mcmstypes.ChainSelector]mcmstypes.ChainMetadata{
+				mcmstypes.ChainSelector(chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector): {
+					MCMAddress: "0x1111111111111111111111111111111111111111",
+				},
+			},
+		},
+		Action: mcmstypes.TimelockActionSchedule,
+		TimelockAddresses: map[mcmstypes.ChainSelector]string{
+			mcmstypes.ChainSelector(chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector): "0x1111111111111111111111111111111111111111",
+		},
+		Operations: []mcmstypes.BatchOperation{
+			{
+				ChainSelector: mcmstypes.ChainSelector(chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector),
+				Transactions:  []mcmstypes.Transaction{{To: "0x123", Data: []byte{0x01}}},
+			},
+		},
+	}
+	engine := NewAnalyzerEngine()
+	require.NoError(t, engine.RegisterRenderer(&rendererStub{
+		id: "mutator",
+		renderFn: func(_ io.Writer, req renderer.RenderRequest, _ analyzer.AnalyzedProposal) error {
+			req.TimelockProposal.Description = "mutated"
+			return nil
+		},
+	}))
+
+	err := engine.RenderTo(io.Discard, "mutator", renderer.RenderRequest{
+		TimelockProposal: original,
+	}, analyzer.NewAnalyzedProposalNode(nil))
+	require.NoError(t, err)
+	require.Equal(t, "original", original.Description)
 }
 
 func TestAnalyzerEngineRunExecutesAnalyzersAndResolvesDependencies(t *testing.T) {

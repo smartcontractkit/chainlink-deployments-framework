@@ -10,9 +10,9 @@ import (
 type RenderRequest struct {
 	Domain          string
 	EnvironmentName string
-	// TimelockProposal is the original MCMS timelock proposal used during analysis.
+	// TimelockProposal carries MCMS timelock metadata for rendering.
+	// AnalyzerEngine.RenderTo clones this value before invoking renderers.
 	// It may be nil in tests or when callers omit proposal metadata.
-	// Callers should pass the same instance supplied to AnalyzerEngine.Run.
 	TimelockProposal *mcms.TimelockProposal
 }
 
