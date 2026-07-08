@@ -1,5 +1,13 @@
 # chainlink-deployments-framework
 
+## 0.114.6
+
+### Patch Changes
+
+- [#1087](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1087) [`7f86d08`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/7f86d0804c9dc732c9c12deb642234c4810f9d90) Thanks [@RensR](https://github.com/RensR)! - Make `-c` / `-x` optional for `durable-pipeline run` when the input YAML contains exactly one changeset.
+
+- [#1096](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1096) [`969858c`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/969858c2a6010b214bf754cb6382d5bbebf00d1f) Thanks [@ChrisAmora](https://github.com/ChrisAmora)! - Add Ed25519 AWS KMS signing support.
+
 ## 0.114.5
 
 ### Patch Changes
