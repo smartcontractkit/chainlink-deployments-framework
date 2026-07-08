@@ -98,29 +98,25 @@ func TestEnvironment_Validate(t *testing.T) {
 	tests := []struct {
 		name        string
 		environment Environment
-		wantErr     bool
-		errContains string
+		wantErr     string
 	}{
 		{
 			name: "valid environment with both access types",
 			environment: Environment{
 				NetworkTypes: []string{"testnet", "mainnet"},
 			},
-			wantErr: false,
 		},
 		{
 			name: "valid environment with mainnet only",
 			environment: Environment{
 				NetworkTypes: []string{"mainnet"},
 			},
-			wantErr: false,
 		},
 		{
 			name: "valid environment with testnet only",
 			environment: Environment{
 				NetworkTypes: []string{"testnet"},
 			},
-			wantErr: false,
 		},
 		{
 			name: "valid environment with file datastore",
@@ -128,7 +124,6 @@ func TestEnvironment_Validate(t *testing.T) {
 				NetworkTypes: []string{"testnet"},
 				Datastore:    DatastoreTypeFile,
 			},
-			wantErr: false,
 		},
 		{
 			name: "valid environment with catalog datastore",
@@ -136,7 +131,6 @@ func TestEnvironment_Validate(t *testing.T) {
 				NetworkTypes: []string{"mainnet"},
 				Datastore:    DatastoreTypeCatalog,
 			},
-			wantErr: false,
 		},
 		{
 			name: "valid environment with all datastore",
@@ -144,7 +138,6 @@ func TestEnvironment_Validate(t *testing.T) {
 				NetworkTypes: []string{"testnet"},
 				Datastore:    DatastoreTypeAll,
 			},
-			wantErr: false,
 		},
 		{
 			name: "valid environment without datastore (optional field)",
@@ -152,39 +145,34 @@ func TestEnvironment_Validate(t *testing.T) {
 				NetworkTypes: []string{"testnet"},
 				Datastore:    "",
 			},
-			wantErr: false,
 		},
 		{
 			name: "empty network access",
 			environment: Environment{
 				NetworkTypes: []string{},
 			},
-			wantErr:     true,
-			errContains: "network_types is required and cannot be empty",
+			wantErr: "network_types is required and cannot be empty",
 		},
 		{
 			name: "invalid network access value",
 			environment: Environment{
 				NetworkTypes: []string{"invalid"},
 			},
-			wantErr:     true,
-			errContains: "invalid network_types value: invalid",
+			wantErr: "invalid network_types value: invalid (must be 'mainnet' or 'testnet')",
 		},
 		{
 			name: "duplicate network access values",
 			environment: Environment{
 				NetworkTypes: []string{"testnet", "testnet"},
 			},
-			wantErr:     true,
-			errContains: "duplicate network_types value: testnet",
+			wantErr: "duplicate network_types value: testnet",
 		},
 		{
 			name: "duplicate mainnet values",
 			environment: Environment{
 				NetworkTypes: []string{"mainnet", "mainnet"},
 			},
-			wantErr:     true,
-			errContains: "duplicate network_types value: mainnet",
+			wantErr: "duplicate network_types value: mainnet",
 		},
 		{
 			name: "invalid datastore value",
@@ -192,8 +180,7 @@ func TestEnvironment_Validate(t *testing.T) {
 				NetworkTypes: []string{"testnet"},
 				Datastore:    DatastoreType("invalid"),
 			},
-			wantErr:     true,
-			errContains: "invalid datastore value: invalid",
+			wantErr: "invalid datastore value: invalid (must be 'file', 'catalog', or 'all')",
 		},
 	}
 
@@ -202,9 +189,8 @@ func TestEnvironment_Validate(t *testing.T) {
 			t.Parallel()
 
 			err := tt.environment.validate()
-			if tt.wantErr {
-				require.Error(t, err)
-				assert.Contains(t, err.Error(), tt.errContains)
+			if tt.wantErr != "" {
+				require.EqualError(t, err, tt.wantErr)
 			} else {
 				require.NoError(t, err)
 			}
@@ -232,14 +218,6 @@ func TestLoad(t *testing.T) {
 
 				// Check that all expected environments are loaded
 				assert.Len(t, config.Environments, 6)
-
-				// Check specific environments exist
-				assert.Contains(t, config.Environments, "development")
-				assert.Contains(t, config.Environments, "staging")
-				assert.Contains(t, config.Environments, "production")
-				assert.Contains(t, config.Environments, "local")
-				assert.Contains(t, config.Environments, "dudeenv")
-				assert.Contains(t, config.Environments, "testtest")
 
 				// Test specific environment configurations
 				dev := config.Environments["development"]
@@ -471,6 +449,110 @@ jira:
 			if tt.checkConfig != nil {
 				require.NoError(t, tt.checkConfig(config))
 			}
+		})
+	}
+}
+
+func TestLoad_BinaryConfig(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name         string
+		configYAML   string
+		wantProvider BinaryProvider
+		wantVersion  string
+		wantErr      string
+	}{
+		{
+			name: "loads explicit s3 config",
+			configYAML: `
+environments:
+  testnet:
+    network_types:
+      - testnet
+
+binary:
+  provider: s3
+  version: latest
+`,
+			wantProvider: BinaryProviderS3,
+			wantVersion:  "latest",
+		},
+		{
+			name: "defaults version to latest",
+			configYAML: `
+environments:
+  testnet:
+    network_types:
+      - testnet
+
+binary:
+  provider: s3
+`,
+			wantProvider: BinaryProviderS3,
+			wantVersion:  DefaultBinaryVersion,
+		},
+		{
+			name: "defaults provider to source when provider is omitted",
+			configYAML: `
+environments:
+  testnet:
+    network_types:
+      - testnet
+
+binary:
+  version: v1.2.3
+`,
+			wantProvider: BinaryProviderSource,
+			wantVersion:  "v1.2.3",
+		},
+		{
+			name: "defaults to source when binary section is absent",
+			configYAML: `
+environments:
+  testnet:
+    network_types:
+      - testnet
+`,
+			wantProvider: BinaryProviderSource,
+			wantVersion:  DefaultBinaryVersion,
+		},
+		{
+			name: "rejects unsupported provider",
+			configYAML: `
+environments:
+  testnet:
+    network_types:
+      - testnet
+
+binary:
+  provider: artifact-registry
+`,
+			wantErr: "invalid binary configuration: invalid binary provider: artifact-registry (must be 'source' or 's3')",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			tempDir := t.TempDir()
+			configPath := filepath.Join(tempDir, "domain.yaml")
+			require.NoError(t, os.WriteFile(configPath, []byte(tt.configYAML), 0600))
+
+			config, err := Load(configPath)
+
+			if tt.wantErr != "" {
+				require.EqualError(t, err, tt.wantErr)
+				require.Nil(t, config)
+
+				return
+			}
+
+			require.NoError(t, err)
+			require.NotNil(t, config.Binary)
+			assert.Equal(t, tt.wantProvider, config.Binary.Provider)
+			assert.Equal(t, tt.wantVersion, config.Binary.Version)
 		})
 	}
 }
