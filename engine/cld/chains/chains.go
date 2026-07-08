@@ -576,10 +576,17 @@ func (l *chainLoaderEVM) Load(ctx context.Context, selector uint64) (fchain.Bloc
 }
 
 // resolveIsZkSyncVM determines whether a chain should use zkSync VM handling. A
-// per-chain EVMMetadata.IsZkSyncVM override in the network config takes precedence
+// per-chain EVMMetadata.IsZkSync override in the network config takes precedence;
+// when unset it falls back to the hardcoded isZkSyncVM allowlist.
 func (l *chainLoaderEVM) resolveIsZkSyncVM(network cfgnet.Network, selector uint64) bool {
-	if md, err := cfgnet.DecodeMetadata[cfgnet.EVMMetadata](network.Metadata); err == nil && md.IsZkSync != nil {
-		return *md.IsZkSync
+	if network.Metadata != nil {
+		switch md, err := cfgnet.DecodeMetadata[cfgnet.EVMMetadata](network.Metadata); {
+		case err != nil:
+			l.lggr.Warnw("Failed to decode EVM network metadata; falling back to hardcoded zkSync classification",
+				"selector", selector, "error", err)
+		case md.IsZkSync != nil:
+			return *md.IsZkSync
+		}
 	}
 
 	return l.isZkSyncVM(selector)

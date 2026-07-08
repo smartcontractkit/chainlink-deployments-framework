@@ -1550,9 +1550,15 @@ func Test_chainLoaderEVM_resolveIsZkSyncVM(t *testing.T) {
 			metadata: map[string]any{"anvil_config": map[string]any{"image": "x", "port": 1}},
 			want:     true,
 		},
+		{
+			name:     "malformed metadata warns and falls back to hardcoded",
+			selector: zkSel,
+			metadata: map[string]any{"is_zksync": "not-a-bool"},
+			want:     true,
+		},
 	}
 
-	l := &chainLoaderEVM{}
+	l := &chainLoaderEVM{lggr: logger.Test(t)}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
