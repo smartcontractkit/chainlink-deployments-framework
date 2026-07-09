@@ -4,6 +4,7 @@ import (
 	"slices"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer/annotation"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer/builtin/timelockdelay"
 )
 
 // ProposalSection links a built-in proposal analyzer to its markdown template.
@@ -15,7 +16,13 @@ type ProposalSection struct {
 
 // proposalSections lists built-in analyzers with dedicated proposal templates.
 // Entries are defined at compile time in this package; do not mutate at runtime.
-var proposalSections = []ProposalSection{}
+var proposalSections = []ProposalSection{
+	{
+		AnalyzerID:   timelockdelay.ValidatorID,
+		TemplateName: "builtinTimelockDelay",
+		ReportName:   timelockdelay.ReportName,
+	},
+}
 
 // ProposalSections returns a copy of registered built-in proposal sections.
 func ProposalSections() []ProposalSection {

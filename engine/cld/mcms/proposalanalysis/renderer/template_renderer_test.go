@@ -17,6 +17,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer/annotation"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer/builtin/timelockdelay"
 	experimentalanalyzer "github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 )
 
@@ -408,6 +409,41 @@ func TestRenderSeverityAndRisk_Markdown(t *testing.T) {
 	assert.Contains(t, out, "ccip.lane: ethereum -> arbitrum")
 	assert.NotContains(t, out, "cld.severity:")
 	assert.NotContains(t, out, "cld.risk:")
+}
+
+func TestRenderTimelockDelay_Markdown(t *testing.T) {
+	t.Parallel()
+
+	proposal := analyzer.NewAnalyzedProposalNode(nil)
+	proposal.AddAnnotations(
+		annotation.NewWithAnalyzer(
+			timelockdelay.ReportName,
+			"struct",
+			timelockdelay.Report{
+				ProposalDelay: "1h0m0s",
+				ChainMinDelays: []timelockdelay.ChainMinDelay{
+					{
+						ChainName: "ethereum-testnet-sepolia",
+						MinDelay:  "30m0s",
+						Address:   "0x2222222222222222222222222222222222222222",
+					},
+				},
+				Validation: "proposal delay 1h0m0s satisfies on-chain minDelay 30m0s",
+				Severity:   annotation.SeverityInfo,
+			},
+			timelockdelay.ValidatorID,
+		),
+	)
+
+	r, err := NewMarkdownRenderer()
+	require.NoError(t, err)
+	out := renderToString(t, r, RenderRequest{}, proposal)
+
+	assert.Contains(t, out, "### Timelock delay validation")
+	assert.Contains(t, out, "**Proposal delay:** 1h0m0s")
+	assert.Contains(t, out, "ethereum-testnet-sepolia: 30m0s")
+	assert.Contains(t, out, "proposal delay 1h0m0s satisfies on-chain minDelay 30m0s")
+	assert.NotContains(t, out, timelockdelay.ReportName+":")
 }
 
 func TestWithTemplateFuncs_OverridesBuiltIn(t *testing.T) {

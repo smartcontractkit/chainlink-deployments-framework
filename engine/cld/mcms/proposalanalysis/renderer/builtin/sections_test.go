@@ -7,26 +7,28 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer/annotation"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer/builtin/timelockdelay"
 )
 
 func TestIsRegisteredReportName(t *testing.T) {
 	t.Parallel()
 
 	assert.False(t, IsRegisteredReportName("cld.builtin.example.report"))
+	assert.True(t, IsRegisteredReportName(timelockdelay.ReportName))
 }
 
 func TestFindReport(t *testing.T) {
 	t.Parallel()
 
 	section := ProposalSection{
-		AnalyzerID:   "cld.proposal.example",
-		TemplateName: "builtinExample",
-		ReportName:   "cld.builtin.example.report",
+		AnalyzerID:   timelockdelay.ValidatorID,
+		TemplateName: "builtinTimelockDelay",
+		ReportName:   timelockdelay.ReportName,
 	}
-	type exampleReport struct {
-		Message string
+	report := timelockdelay.Report{
+		ProposalDelay: "1h0m0s",
+		Validation:    "ok",
 	}
-	report := exampleReport{Message: "ok"}
 	anns := annotation.Annotations{
 		annotation.NewWithAnalyzer(
 			section.ReportName,
@@ -36,7 +38,7 @@ func TestFindReport(t *testing.T) {
 		),
 	}
 
-	got, ok := FindReport(anns, section).(exampleReport)
+	got, ok := FindReport(anns, section).(timelockdelay.Report)
 	require.True(t, ok)
 	assert.Equal(t, report, got)
 

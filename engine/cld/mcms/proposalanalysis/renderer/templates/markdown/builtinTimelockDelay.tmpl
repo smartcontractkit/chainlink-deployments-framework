@@ -1,0 +1,17 @@
+{{- define "builtinTimelockDelay" -}}
+
+### Timelock delay validation
+
+**Proposal delay:** {{ .ProposalDelay }}
+
+{{- if .ChainMinDelays }}
+
+**On-chain min delay:**
+{{- range .ChainMinDelays }}
+- {{ .ChainName }}: {{ .MinDelay }} (`{{ .Address }}`)
+{{- end }}
+{{- end }}
+
+**Validation:** {{ severitySymbol .Severity }} {{ .Validation }}
+
+{{- end -}}

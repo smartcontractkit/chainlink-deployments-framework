@@ -721,6 +721,8 @@ github.com/smartcontractkit/libocr v0.0.0-20260304194147-a03701e2c02e h1:poXTj5c
 github.com/smartcontractkit/libocr v0.0.0-20260304194147-a03701e2c02e/go.mod h1:PLdNK6GlqfxIWXzziPkU7dCAVlVFeYkyyW7AQY0R+4Q=
 github.com/smartcontractkit/mcms v0.50.1 h1:WtzIO/eH14MaLEL0khh+Ifadlo8RQjRBYD4aNb9HXSQ=
 github.com/smartcontractkit/mcms v0.50.1/go.mod h1:L8XXsBRCDWjFKsMNvZdgDsaptDtoGkuK1ciP0Ui4OR8=
+github.com/smartcontractkit/mcms v0.51.0 h1:RA1qe2ltzgAiYlQu5WvfPX7sqCf21g/9qCgBOW2Hmqs=
+github.com/smartcontractkit/mcms v0.51.0/go.mod h1:L8XXsBRCDWjFKsMNvZdgDsaptDtoGkuK1ciP0Ui4OR8=
 github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 h1:+jumHNA0Wrelhe64i8F6HNlS8pkoyMv5sreGx2Ry5Rw=
 github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8/go.mod h1:3n1Cwaq1E1/1lhQhtRK2ts/ZwZEhjcQeJQ1RuC6Q/8U=
 github.com/spf13/afero v1.15.0 h1:b/YBCLWAJdFWJTN9cLhiXXcD7mzKn9Dm86dNnfyQw1I=

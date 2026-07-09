@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer/builtin/timelockdelay"
 )
 
 func TestRegisterAll(t *testing.T) {
@@ -14,5 +15,6 @@ func TestRegisterAll(t *testing.T) {
 	registry := analyzer.NewRegistry()
 	RegisterAll(registry)
 
-	require.Empty(t, registry.All())
+	_, ok := registry.Get(timelockdelay.ValidatorID)
+	require.True(t, ok)
 }
