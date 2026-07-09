@@ -122,6 +122,27 @@ func Test_TransactorRandom(t *testing.T) {
 	}
 }
 
+func TestWrapSignerWithGasOverrides(t *testing.T) {
+	t.Parallel()
+
+	privKey, err := crypto.GenerateKey()
+	require.NoError(t, err)
+	privKeyHex := hex.EncodeToString(crypto.FromECDSA(privKey))
+
+	base := TransactorFromRaw(privKeyHex)
+	wrapped := WrapSignerWithGasOverrides(base, 10_000_000, big.NewInt(5_000_000))
+
+	opts, err := wrapped.Generate(big.NewInt(1))
+	require.NoError(t, err)
+	require.Equal(t, uint64(10_000_000), opts.GasLimit)
+	require.Equal(t, uint64(5_000_000), opts.GasPrice.Uint64())
+	require.Nil(t, opts.GasFeeCap)
+	require.Nil(t, opts.GasTipCap)
+
+	require.Equal(t, base, WrapSignerWithGasOverrides(base, 0, nil))
+	require.Nil(t, WrapSignerWithGasOverrides(nil, 10_000_000, big.NewInt(1)))
+}
+
 // We only test the initialization here because this constructs an actual KMS client
 // and we don't want to make real KMS calls in unit tests.
 func Test_TransactorFromKMS(t *testing.T) {

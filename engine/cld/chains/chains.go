@@ -513,24 +513,26 @@ func (l *chainLoaderEVM) Load(ctx context.Context, selector uint64) (fchain.Bloc
 		return nil, fmt.Errorf("failed to create EVM signer generator: %w", err)
 	}
 
+	gasConfig := builtInEVMGasConfig(selector)
+	transactorGen = evmSignerWithGasConfig(transactorGen, gasConfig)
+
 	// Define the confirm function to use for transaction confirmation.
 	confirmFunctor := l.confirmFunctor(network, l.cfg.EVM.Seth)
 
 	// Define the client options to use for the MultiClient.
-	clientOpts := []func(client *evmclient.MultiClient){
-		func(client *evmclient.MultiClient) {
-			client.RetryConfig = evmclient.RetryConfig{
-				Attempts:           5,                     // assuming failure rate is 20%, this will take 5 attempts to succeed
-				Delay:              10 * time.Millisecond, // this is a very short delay, we want to be fast in this case
-				Timeout:            5 * time.Second,
-				DialAttempts:       5,
-				DialDelay:          10 * time.Millisecond,
-				DialTimeout:        2 * time.Second,
-				HealthCheckTimeout: 15 * time.Second, // high concurrency needs more headroom than the 2s default
-			}
-		},
-		evmclient.WithGasLimitBufferBps(fevm.DefaultGasLimitBufferBps),
-	}
+	clientOpts := make([]func(client *evmclient.MultiClient), 0, 2)
+	clientOpts = append(clientOpts, func(client *evmclient.MultiClient) {
+		client.RetryConfig = evmclient.RetryConfig{
+			Attempts:           5,                     // assuming failure rate is 20%, this will take 5 attempts to succeed
+			Delay:              10 * time.Millisecond, // this is a very short delay, we want to be fast in this case
+			Timeout:            5 * time.Second,
+			DialAttempts:       5,
+			DialDelay:          10 * time.Millisecond,
+			DialTimeout:        2 * time.Second,
+			HealthCheckTimeout: 15 * time.Second, // high concurrency needs more headroom than the 2s default
+		}
+	})
+	clientOpts = append(clientOpts, evmClientOptsFromGasConfig(gasConfig)...)
 
 	var c fchain.BlockChain
 

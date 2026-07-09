@@ -2,10 +2,6 @@ package evm
 
 import "math/bits"
 
-// DefaultGasLimitBufferBps is the default proactive gas limit buffer applied to
-// eth_estimateGas results and explicit gas limit overrides (+25%).
-const DefaultGasLimitBufferBps = uint64(2500)
-
 type gasLimitBufferer interface {
 	GasLimitBufferBps() uint64
 }

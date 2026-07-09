@@ -2,61 +2,26 @@
 "chainlink-deployments-framework": minor
 ---
 
-feat(evm): add proactive gas limit buffer for on-chain transactions
+feat(evm): add built-in gas defaults for selected EVM chains
 
-CLDF now applies a configurable gas limit buffer to EVM transactions to reduce out-of-gas failures caused by optimistic `eth_estimateGas` results.
+CLDF applies chain-specific gas configuration at load time via built-in defaults in `engine/cld/chains`. No `networks.yaml` metadata is required.
 
 ### Default behavior
 
-- Production EVM chains loaded via `engine/cld/chains` use `evm.DefaultGasLimitBufferBps` (**2500 = +25%**).
-- The buffer is applied in two places:
-  1. **`MultiClient.EstimateGas`** — all auto-estimated txs (operations, operations2, MCMS, legacy CLI).
-  2. **Explicit `GasLimit` overrides** on `operations2` `DeployInput` / `FunctionInput` — manual limits are also padded.
-- You only pay for gas **used**, not the limit. The buffer is free headroom, outside of exceptions like Hedera.
-- Test/sim providers (Anvil, CTF) are unchanged: buffer defaults to **0** unless configured.
+- **Default buffer is disabled** (`DefaultGasLimitBufferBps = 0`) for all EVM chains.
+- **Base mainnet and Base Sepolia testnet** automatically get **+25%** gas buffer (`BaseGasLimitBufferBps = 2500`).
+- Built-in deployer gas overrides replace consumer-side `UpdateBlockchainsWithEVMGasOverrides` for:
+  - Metal, Hedera, BOB, Wemix, MegaETH, Edge, Bittensor, Mind, Ronin mainnet **and testnet** (fixed gas limit and/or legacy gas price).
+  - Testnet-only: Gnosis Chiado, Ink Sepolia, Zora, Ronin Saigon, Ethereum Sepolia Ronin.
 
-### When to rely on the default buffer
+### Migration from `UpdateBlockchainsWithEVMGasOverrides`
 
-Use the default (+25%) for chains where estimation is usually close but occasionally under-shoots.
-
-No action needed if you load chains through CLD's chain loader.
-
-### Per-chain configuration
-
-Disable or tune the buffer when wiring a custom `RPCChainProvider`:
-
-```go
-evmclient.WithGasLimitBufferBps(0)    // disable
-evmclient.WithGasLimitBufferBps(3000) // +30%
-```
-
-In `engine/cld/chains`, branch on chain selector to apply chain-specific opts. Example pattern for a chain with bad estimation:
-
-```go
-clientOpts := []func(*evmclient.MultiClient){ /* retry config */ }
-if selector != inkSelector {
-    clientOpts = append(clientOpts, evmclient.WithGasLimitBufferBps(fevm.DefaultGasLimitBufferBps))
-}
-```
-
-### Explicit operation-level gas limits
-
-`GasLimit` on `DeployInput` / `FunctionInput` bypasses estimation but **still receives the buffer** (10M → 12.5M at default settings). Use this when you want a padded manual limit, not an exact cap.
-
-For an **exact** limit with no buffer, set it on the deployer key via `WithGasLimit` instead of on the operation input.
+Remove consumer-side gas override calls for the chains listed above. Base chains get +25% buffer automatically.
 
 ### API surface
 
 | Symbol | Package | Purpose |
 |--------|---------|---------|
-| `evm.DefaultGasLimitBufferBps` | `chain/evm` | Default +25% constant |
-| `evm.ApplyGasLimitBuffer` | `chain/evm` | Shared buffer math |
-| `evm.GasLimitBufferBpsFromClient` | `chain/evm` | Read buffer from client |
-| `rpcclient.WithGasLimitBufferBps` | `chain/evm/provider/rpcclient` | Configure per `MultiClient` |
-| `provider.WithGasLimit` | `chain/evm/provider` | Fixed deployer gas limit (skips estimate) |
-
-### Not covered
-
-- ZkSync VM deploys (separate wallet path)
-- Hardcoded 21k ETH transfer txs
-- Simulated txs (`NoSend: true`)
+| `evm.DefaultGasLimitBufferBps` | `chain/evm` | Default 0 (disabled) |
+| `evm.BaseGasLimitBufferBps` | `chain/evm` | +25% for Base chains |
+| `provider.WrapSignerWithGasOverrides` | `chain/evm/provider` | Fixed deployer gas limit/price |

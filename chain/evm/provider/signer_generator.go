@@ -184,3 +184,46 @@ func (g *transactorFromKMSSigner) Generate(chainID *big.Int) (*bind.TransactOpts
 func (g *transactorFromKMSSigner) SignHash(hash []byte) ([]byte, error) {
 	return g.signer.SignHash(hash)
 }
+
+var _ SignerGenerator = (*signerWithGasOverrides)(nil)
+
+type signerWithGasOverrides struct {
+	inner    SignerGenerator
+	gasLimit uint64
+	gasPrice *big.Int
+}
+
+// WrapSignerWithGasOverrides returns a SignerGenerator that sets fixed gas fields on generated transactors.
+func WrapSignerWithGasOverrides(inner SignerGenerator, gasLimit uint64, gasPrice *big.Int) SignerGenerator {
+	if inner == nil || (gasLimit == 0 && gasPrice == nil) {
+		return inner
+	}
+
+	return &signerWithGasOverrides{
+		inner:    inner,
+		gasLimit: gasLimit,
+		gasPrice: gasPrice,
+	}
+}
+
+func (g *signerWithGasOverrides) Generate(chainID *big.Int) (*bind.TransactOpts, error) {
+	transactor, err := g.inner.Generate(chainID)
+	if err != nil {
+		return nil, err
+	}
+
+	if g.gasLimit > 0 {
+		transactor.GasLimit = g.gasLimit
+	}
+	if g.gasPrice != nil {
+		transactor.GasPrice = new(big.Int).Set(g.gasPrice)
+		transactor.GasFeeCap = nil
+		transactor.GasTipCap = nil
+	}
+
+	return transactor, nil
+}
+
+func (g *signerWithGasOverrides) SignHash(hash []byte) ([]byte, error) {
+	return g.inner.SignHash(hash)
+}
