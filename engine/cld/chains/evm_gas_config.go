@@ -12,6 +12,9 @@ import (
 // BaseGasLimitBufferBps is the proactive gas limit buffer applied to Base mainnet and testnet (+25%).
 const BaseGasLimitBufferBps = uint64(2500)
 
+// HederaDeployerGasPriceWei is the fixed legacy gas price for Hedera mainnet and testnet (1500 gwei).
+const HederaDeployerGasPriceWei = uint64(1_500_000_000_000)
+
 type evmGasConfig struct {
 	gasLimitBufferBps uint64
 	deployerGasLimit  uint64
@@ -30,7 +33,7 @@ func builtInEVMGasConfig(selector uint64) evmGasConfig {
 	case chainsel.HEDERA_MAINNET.Selector, chainsel.HEDERA_TESTNET.Selector:
 		return evmGasConfig{
 			deployerGasLimit: 10_000_000,
-			deployerGasPrice: new(uint64(1_000_000_000_000)),
+			deployerGasPrice: new(HederaDeployerGasPriceWei),
 		}
 	case chainsel.BITCOIN_MAINNET_BOB_1.Selector, chainsel.BITCOIN_TESTNET_SEPOLIA_BOB_1.Selector:
 		return evmGasConfig{
@@ -60,7 +63,7 @@ func builtInEVMGasConfig(selector uint64) evmGasConfig {
 			deployerGasPrice: new(uint64(10_000_000_000)),
 		}
 	case chainsel.MIND_MAINNET.Selector:
-		return evmGasConfig{deployerGasLimit: 1_000_000}
+		return evmGasConfig{deployerGasLimit: 8_000_000}
 	case chainsel.RONIN_MAINNET.Selector:
 		return evmGasConfig{
 			deployerGasPrice: new(uint64(100_000_000_000)),

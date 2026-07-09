@@ -8,9 +8,9 @@ CLDF applies chain-specific gas configuration at load time via built-in defaults
 
 ### Default behavior
 
-- **Default buffer is disabled** (`DefaultGasLimitBufferBps = 0`) for all EVM chains.
-- **Base mainnet and Base Sepolia testnet** automatically get **+25%** gas buffer (`BaseGasLimitBufferBps = 2500`).
-- Built-in deployer gas overrides replace consumer-side `UpdateBlockchainsWithEVMGasOverrides` for:
+- **No gas overrides by default** — most EVM chains use normal estimation with no buffer.
+- **Base mainnet and Base Sepolia testnet** get a **+25%** gas limit buffer on `eth_estimateGas` results (`chains.BaseGasLimitBufferBps = 2500`).
+- **Fixed deployer gas overrides** replace consumer-side `UpdateBlockchainsWithEVMGasOverrides` for:
   - Metal, Hedera, BOB, Wemix, MegaETH, Edge, Bittensor, Mind, Ronin mainnet **and testnet** (fixed gas limit and/or legacy gas price).
   - Testnet-only: Gnosis Chiado, Ink Sepolia, Zora, Ronin Saigon, Ethereum Sepolia Ronin.
 
@@ -22,6 +22,8 @@ Remove consumer-side gas override calls for the chains listed above. Base chains
 
 | Symbol | Package | Purpose |
 |--------|---------|---------|
-| `evm.DefaultGasLimitBufferBps` | `chain/evm` | Default 0 (disabled) |
-| `evm.BaseGasLimitBufferBps` | `chain/evm` | +25% for Base chains |
+| `chains.BaseGasLimitBufferBps` | `engine/cld/chains` | +25% estimate buffer for Base chains |
+| `chains.HederaDeployerGasPriceWei` | `engine/cld/chains` | Fixed Hedera legacy gas price (1500 gwei) |
+| `evm.ApplyGasLimitBuffer` | `chain/evm` | Apply bps buffer to a gas limit |
+| `evm.GasLimitBufferBpsFromClient` | `chain/evm` | Read buffer config from RPC client |
 | `provider.WrapSignerWithGasOverrides` | `chain/evm/provider` | Fixed deployer gas limit/price |

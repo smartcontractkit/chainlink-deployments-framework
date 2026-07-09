@@ -38,7 +38,7 @@ func Test_builtInEVMGasConfig(t *testing.T) {
 		} {
 			cfg := builtInEVMGasConfig(selector)
 			require.Equal(t, uint64(10_000_000), cfg.deployerGasLimit)
-			require.Equal(t, uint64(1_000_000_000_000), *cfg.deployerGasPrice)
+			require.Equal(t, HederaDeployerGasPriceWei, *cfg.deployerGasPrice)
 			require.Equal(t, uint64(0), cfg.gasLimitBufferBps)
 		}
 	})
@@ -73,7 +73,7 @@ func Test_builtInEVMGasConfig(t *testing.T) {
 		t.Parallel()
 
 		cfg := builtInEVMGasConfig(chainsel.MIND_MAINNET.Selector)
-		require.Equal(t, uint64(1_000_000), cfg.deployerGasLimit)
+		require.Equal(t, uint64(8_000_000), cfg.deployerGasLimit)
 		require.Nil(t, cfg.deployerGasPrice)
 	})
 
