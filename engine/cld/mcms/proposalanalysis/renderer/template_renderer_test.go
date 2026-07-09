@@ -356,28 +356,21 @@ func TestFindAnnotationValue(t *testing.T) {
 	assert.Nil(t, findAnnotationValue(nil, "severity"))
 }
 
-func TestIsFrameworkAnnotation(t *testing.T) {
+func TestDisplayAnnotations(t *testing.T) {
 	t.Parallel()
 
-	assert.True(t, isFrameworkAnnotation("cld.severity"))
-	assert.True(t, isFrameworkAnnotation("cld.risk"))
-	assert.True(t, isFrameworkAnnotation("cld.diff"))
-	assert.False(t, isFrameworkAnnotation("ccip.lane"))
-	assert.False(t, isFrameworkAnnotation(""))
-}
-
-func TestHasDisplayAnnotations(t *testing.T) {
-	t.Parallel()
-
-	assert.False(t, hasDisplayAnnotations(nil))
-	assert.False(t, hasDisplayAnnotations(annotation.Annotations{
+	assert.Nil(t, displayAnnotations(nil))
+	assert.Nil(t, displayAnnotations(annotation.Annotations{
 		annotation.SeverityAnnotation(annotation.SeverityWarning),
 		annotation.RiskAnnotation(annotation.RiskHigh),
 	}))
-	assert.True(t, hasDisplayAnnotations(annotation.Annotations{
+
+	visible := displayAnnotations(annotation.Annotations{
 		annotation.SeverityAnnotation(annotation.SeverityWarning),
 		annotation.New("ccip.note", "string", "visible"),
-	}))
+	})
+	require.Len(t, visible, 1)
+	assert.Equal(t, "ccip.note", visible[0].Name())
 }
 
 func TestCommaGrouped(t *testing.T) {

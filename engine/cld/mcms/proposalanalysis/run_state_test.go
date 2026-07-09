@@ -29,7 +29,7 @@ func TestRunStateRunProposalAnalyzer_UsesExecutionContextAndDependencyStore(t *t
 	require.NotNil(t, inputParam)
 	require.NotNil(t, outputParam)
 
-	state := newTestRunState(decoded)
+	state := newTestRunState(t, decoded)
 	state.proposal.AddAnnotations(
 		annotation.NewWithAnalyzer("dep", "string", "allowed", "dep-a"),
 		annotation.NewWithAnalyzer("nondep", "string", "blocked", "other"),
@@ -71,7 +71,7 @@ func TestRunStateRunCallAnalyzer_UsesCallContextAndLevelScopedStore(t *testing.T
 	t.Parallel()
 
 	decoded, batch, call, _, _ := newDecodedFixture()
-	state := newTestRunState(decoded)
+	state := newTestRunState(t, decoded)
 	state.proposal.AddAnnotations(
 		annotation.NewWithAnalyzer("proposal-dep", "string", "ok", "dep-a"),
 		annotation.NewWithAnalyzer("proposal-other", "string", "skip", "other"),
@@ -121,7 +121,7 @@ func TestRunStateRunParameterAnalyzer_AnnotatesInputAndOutputNodes(t *testing.T)
 	t.Parallel()
 
 	decoded, batch, call, inParam, outParam := newDecodedFixture()
-	state := newTestRunState(decoded)
+	state := newTestRunState(t, decoded)
 	state.inputParameterAt(0, 0, 0).AddAnnotations(
 		annotation.NewWithAnalyzer("input-dep", "string", "ok", "dep-a"),
 		annotation.NewWithAnalyzer("input-other", "string", "skip", "other"),
@@ -182,7 +182,7 @@ func TestNewRunState_ConvertsAdditionalFieldsFromDecodedCall(t *testing.T) {
 	require.NotNil(t, call)
 	require.NotNil(t, inputParam)
 	require.NotNil(t, outputParam)
-	state := newTestRunState(decoded)
+	state := newTestRunState(t, decoded)
 
 	require.Equal(t, map[string]any{
 		"gas":    json.Number("12345"),
@@ -191,7 +191,9 @@ func TestNewRunState_ConvertsAdditionalFieldsFromDecodedCall(t *testing.T) {
 	}, state.callAt(0, 0).AdditionalFields())
 }
 
-func newTestRunState(decoded decoder.DecodedTimelockProposal) *runState {
+func newTestRunState(tb testing.TB, decoded decoder.DecodedTimelockProposal) *runState {
+	tb.Helper()
+
 	req := RunRequest{
 		Domain: cldfdomain.NewDomain("/tmp/domains", "mcms"),
 		Environment: &deployment.Environment{
@@ -202,9 +204,7 @@ func newTestRunState(decoded decoder.DecodedTimelockProposal) *runState {
 	}
 
 	state, err := newRunState(req, decoded, nil)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(tb, err)
 
 	return state
 }

@@ -13,14 +13,15 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer/annotation"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/format"
+	renderbuiltin "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/renderer/builtin"
 	experimentalanalyzer "github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 )
 
 const nilValue = "<nil>"
 
-// frameworkAnnotations lists annotation names that are consumed by the
-// framework's built-in template logic.
-var frameworkAnnotations = map[string]struct{}{
+// coreFrameworkAnnotations lists cross-cutting annotation names consumed by
+// shared template logic.
+var coreFrameworkAnnotations = map[string]struct{}{
 	annotation.AnnotationSeverityName: {},
 	annotation.AnnotationRiskName:     {},
 	annotation.AnnotationDiffName:     {},
@@ -29,8 +30,7 @@ var frameworkAnnotations = map[string]struct{}{
 func defaultFuncMap() template.FuncMap {
 	return template.FuncMap{
 		"annotation":            findAnnotationValue,
-		"isFrameworkAnnotation": isFrameworkAnnotation,
-		"hasDisplayAnnotations": hasDisplayAnnotations,
+		"displayAnnotations":    displayAnnotations,
 		"diffAnnotations":       diffAnnotations,
 		"renderDiff":            renderDiff,
 		"formatParam":           formatParam,
@@ -43,24 +43,38 @@ func defaultFuncMap() template.FuncMap {
 	}
 }
 
-// isFrameworkAnnotation reports whether the given annotation name is handled
-// by dedicated template logic rather than the generic annotations section.
-func isFrameworkAnnotation(name string) bool {
-	_, ok := frameworkAnnotations[name]
+// isDedicatedAnnotation reports whether ann is rendered elsewhere (severity
+// badges, builtin section templates, etc.) and should not appear as a generic
+// annotation bullet.
+func isDedicatedAnnotation(ann annotation.Annotation) bool {
+	if ann == nil {
+		return false
+	}
+	if _, ok := coreFrameworkAnnotations[ann.Name()]; ok {
+		return true
+	}
 
-	return ok
+	return renderbuiltin.IsHandledByBuiltinSection(ann)
 }
 
-// hasDisplayAnnotations reports whether any annotations should be shown in the
-// generic annotation list.
-func hasDisplayAnnotations(anns annotation.Annotations) bool {
+// displayAnnotations returns annotations that should appear in generic bullet lists.
+func displayAnnotations(anns annotation.Annotations) annotation.Annotations {
+	if len(anns) == 0 {
+		return nil
+	}
+
+	out := make(annotation.Annotations, 0, len(anns))
 	for _, ann := range anns {
-		if !isFrameworkAnnotation(ann.Name()) {
-			return true
+		if !isDedicatedAnnotation(ann) {
+			out = append(out, ann)
 		}
 	}
 
-	return false
+	if len(out) == 0 {
+		return nil
+	}
+
+	return out
 }
 
 // findAnnotationValue returns the value of the first annotation matching name.
@@ -260,7 +274,7 @@ func resolveChainSelector(sel uint64) string {
 }
 
 func severitySymbol(v any) string {
-	s, ok := v.(string)
+	s, ok := severityString(v)
 	if !ok {
 		return ""
 	}
@@ -280,7 +294,7 @@ func severitySymbol(v any) string {
 }
 
 func riskSymbol(v any) string {
-	s, ok := v.(string)
+	s, ok := riskString(v)
 	if !ok {
 		return ""
 	}
@@ -329,4 +343,26 @@ func formatDiffSide(v any, valueType string) string {
 	}
 
 	return formatValue(v)
+}
+
+func severityString(v any) (string, bool) {
+	switch val := v.(type) {
+	case string:
+		return val, true
+	case annotation.Severity:
+		return string(val), true
+	default:
+		return "", false
+	}
+}
+
+func riskString(v any) (string, bool) {
+	switch val := v.(type) {
+	case string:
+		return val, true
+	case annotation.Risk:
+		return string(val), true
+	default:
+		return "", false
+	}
 }

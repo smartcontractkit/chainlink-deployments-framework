@@ -1,6 +1,7 @@
 package renderer
 
 import (
+	"bytes"
 	"embed"
 	"fmt"
 	"io"
@@ -8,6 +9,8 @@ import (
 	"slices"
 	"strings"
 	"text/template"
+
+	renderbuiltin "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/renderer/builtin"
 )
 
 //go:embed templates/*
@@ -26,15 +29,40 @@ var _ Renderer = (*TemplateRenderer)(nil)
 func (r *TemplateRenderer) ID() string { return r.id }
 
 func (r *TemplateRenderer) RenderTo(w io.Writer, req RenderRequest, proposal AnalyzedProposal) error {
+	builtinSections, err := renderBuiltinSections(r.tmpl, proposal)
+	if err != nil {
+		return err
+	}
+
 	ctx := templateRenderContext{
-		Request:  req,
-		Proposal: proposal,
+		Request:         req,
+		Proposal:        proposal,
+		BuiltinSections: builtinSections,
 	}
 	if err := r.tmpl.ExecuteTemplate(w, "proposal", ctx); err != nil {
 		return fmt.Errorf("failed to render proposal: %w", err)
 	}
 
 	return nil
+}
+
+func renderBuiltinSections(tmpl *template.Template, proposal AnalyzedProposal) (string, error) {
+	sections := resolveBuiltinSections(proposal)
+	if len(sections) == 0 {
+		return "", nil
+	}
+
+	var buf bytes.Buffer
+	for i, section := range sections {
+		if i > 0 {
+			buf.WriteByte('\n')
+		}
+		if err := tmpl.ExecuteTemplate(&buf, section.TemplateName, section.Report); err != nil {
+			return "", fmt.Errorf("failed to render built-in section %q: %w", section.TemplateName, err)
+		}
+	}
+
+	return buf.String(), nil
 }
 
 // NewMarkdownRenderer creates a TemplateRenderer with embedded markdown templates.
@@ -72,8 +100,36 @@ func newTemplateRenderer(id, format string, opts ...Option) (*TemplateRenderer, 
 }
 
 type templateRenderContext struct {
-	Request  RenderRequest
-	Proposal AnalyzedProposal
+	Request         RenderRequest
+	Proposal        AnalyzedProposal
+	BuiltinSections string
+}
+
+type templateBuiltinSection struct {
+	TemplateName string
+	Report       any
+}
+
+func resolveBuiltinSections(proposal AnalyzedProposal) []templateBuiltinSection {
+	if proposal == nil {
+		return nil
+	}
+
+	anns := proposal.Annotations()
+	registered := renderbuiltin.ProposalSections()
+	sections := make([]templateBuiltinSection, 0, len(registered))
+	for _, section := range registered {
+		report := renderbuiltin.FindReport(anns, section)
+		if report == nil {
+			continue
+		}
+		sections = append(sections, templateBuiltinSection{
+			TemplateName: section.TemplateName,
+			Report:       report,
+		})
+	}
+
+	return sections
 }
 
 func validateRequiredTemplates(tmpl *template.Template) error {

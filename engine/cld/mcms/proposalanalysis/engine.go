@@ -11,6 +11,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	cldfdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer/builtin"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/decoder"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/renderer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/scheduler"
@@ -64,8 +65,11 @@ func newAnalyzerEngineWithDeps(deps Deps, opts ...EngineOption) AnalyzerEngine {
 		resolvedDeps.DecoderFactory = deps.DecoderFactory
 	}
 
+	analyzerRegistry := analyzer.NewRegistry()
+	builtin.RegisterAll(analyzerRegistry)
+
 	return &analyzerEngine{
-		analyzerRegistry: analyzer.NewRegistry(),
+		analyzerRegistry: analyzerRegistry,
 		rendererRegistry: renderer.NewRegistry(),
 		config:           cfg,
 		deps:             resolvedDeps,

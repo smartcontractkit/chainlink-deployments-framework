@@ -1,11 +1,9 @@
 {{- define "annotations" -}}
-{{- if hasDisplayAnnotations . }}
+{{- with displayAnnotations . }}
 
 _Annotations:_
 {{- range . }}
-{{- if not (isFrameworkAnnotation .Name) }}
 - {{ if .Name }}{{ .Name }}: {{ end }}{{ formatAnnotationValue .Value }}
-{{- end }}
 {{- end }}
 {{ end -}}
 {{- end -}}

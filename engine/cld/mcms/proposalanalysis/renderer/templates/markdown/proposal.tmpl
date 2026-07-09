@@ -6,6 +6,9 @@
 
 {{ end -}}
 
+{{- /* Built-in analyzer reports (pre-rendered) */ -}}
+{{- if .BuiltinSections }}{{ .BuiltinSections }}{{ end }}
+
 {{- /* Proposal-level annotations */ -}}
 {{ template "annotations" .Proposal.Annotations }}
 

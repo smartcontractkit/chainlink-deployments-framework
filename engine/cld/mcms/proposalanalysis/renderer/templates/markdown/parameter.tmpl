@@ -8,11 +8,9 @@
 {{ indentLines $formatted "  " }}
   ```
   </details>
-{{- if hasDisplayAnnotations .Annotations -}}
-{{- range .Annotations -}}
-{{- if not (isFrameworkAnnotation .Name) }}
+{{- with displayAnnotations .Annotations }}
+{{- range . }}
   - _{{ if .Name }}{{ .Name }}: {{ end }}{{ formatAnnotationValue .Value }}_
-{{- end -}}
-{{- end -}}
-{{- end -}}
+{{- end }}
+{{- end }}
 {{- end -}}
