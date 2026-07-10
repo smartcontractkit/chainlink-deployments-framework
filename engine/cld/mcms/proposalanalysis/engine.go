@@ -104,7 +104,10 @@ func (e *analyzerEngine) Run(ctx context.Context, req RunRequest, proposal *mcms
 		return nil, fmt.Errorf("decode proposal: %w", err)
 	}
 
-	state := newRunState(req, decodedProposal)
+	state, err := newRunState(req, decodedProposal, proposal)
+	if err != nil {
+		return nil, err
+	}
 	g, err := scheduler.New(e.analyzerRegistry.All())
 	if err != nil {
 		return state.proposal, fmt.Errorf("build analyzer graph: %w", err)
