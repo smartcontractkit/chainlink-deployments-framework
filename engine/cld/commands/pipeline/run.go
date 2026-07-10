@@ -198,6 +198,12 @@ func runRun(cmd *cobra.Command, cfg *Config, f runFlags) error {
 		return saveErr
 	}
 
+	if len(out.MCMSTimelockProposals) > 0 {
+		if delayErr := deps.TimelockDelayCorrector(cmd.Context(), cfg.Logger, env.BlockChains, out.MCMSTimelockProposals); delayErr != nil {
+			return fmt.Errorf("failed to correct timelock proposal delay: %w", delayErr)
+		}
+	}
+
 	err = saveChangesetProposalMetadata(registry, actualChangesetName, out)
 	if err != nil {
 		return fmt.Errorf("failed to save changeset proposal metadata: %w", err)
