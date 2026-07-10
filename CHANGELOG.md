@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.116.1
+
+### Patch Changes
+
+- [#1115](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1115) [`6690d94`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/6690d946b335d6b9d0d93e1f8a5aa50f611853d4) Thanks [@ChrisAmora](https://github.com/ChrisAmora)! - Fix domain scaffolding: the generated `cmd/main.go` hardcoded the `chainlink-deployments` repo in its self import while `go.mod` derived the module path from `{{.repo}}`.
+
 ## 0.116.0
 
 ### Minor Changes
