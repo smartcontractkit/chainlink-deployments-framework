@@ -9,7 +9,7 @@ import (
 	evmclient "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider/rpcclient"
 )
 
-// BaseGasLimitBufferBps is the proactive gas limit buffer applied to Base mainnet and testnet (+25%).
+// BaseGasLimitBufferBps is the proactive gas limit buffer applied to Base and Optimism mainnet and testnets (+25%).
 const BaseGasLimitBufferBps = uint64(2500)
 
 // HederaDeployerGasPriceWei is the fixed legacy gas price for Hedera mainnet and testnet (1500 gwei).
@@ -23,7 +23,8 @@ type evmGasConfig struct {
 
 func builtInEVMGasConfig(selector uint64) evmGasConfig {
 	switch selector {
-	case chainsel.ETHEREUM_MAINNET_BASE_1.Selector, chainsel.ETHEREUM_TESTNET_SEPOLIA_BASE_1.Selector:
+	case chainsel.ETHEREUM_MAINNET_BASE_1.Selector, chainsel.ETHEREUM_TESTNET_SEPOLIA_BASE_1.Selector,
+		chainsel.ETHEREUM_MAINNET_OPTIMISM_1.Selector, chainsel.ETHEREUM_TESTNET_SEPOLIA_OPTIMISM_1.Selector:
 		return evmGasConfig{gasLimitBufferBps: BaseGasLimitBufferBps}
 	case chainsel.METAL_MAINNET.Selector, chainsel.METAL_TESTNET.Selector:
 		return evmGasConfig{

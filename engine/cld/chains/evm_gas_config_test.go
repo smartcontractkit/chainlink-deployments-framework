@@ -29,6 +29,21 @@ func Test_builtInEVMGasConfig(t *testing.T) {
 		require.Equal(t, BaseGasLimitBufferBps, cfg.gasLimitBufferBps)
 	})
 
+	t.Run("optimism mainnet buffer", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := builtInEVMGasConfig(chainsel.ETHEREUM_MAINNET_OPTIMISM_1.Selector)
+		require.Equal(t, BaseGasLimitBufferBps, cfg.gasLimitBufferBps)
+		require.Equal(t, uint64(0), cfg.deployerGasLimit)
+	})
+
+	t.Run("optimism sepolia buffer", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := builtInEVMGasConfig(chainsel.ETHEREUM_TESTNET_SEPOLIA_OPTIMISM_1.Selector)
+		require.Equal(t, BaseGasLimitBufferBps, cfg.gasLimitBufferBps)
+	})
+
 	t.Run("hedera fixed gas", func(t *testing.T) {
 		t.Parallel()
 
