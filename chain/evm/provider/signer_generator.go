@@ -199,10 +199,15 @@ func WrapSignerWithGasOverrides(inner SignerGenerator, gasLimit uint64, gasPrice
 		return inner
 	}
 
+	var copiedGasPrice *big.Int
+	if gasPrice != nil {
+		copiedGasPrice = new(big.Int).Set(gasPrice)
+	}
+
 	return &signerWithGasOverrides{
 		inner:    inner,
 		gasLimit: gasLimit,
-		gasPrice: gasPrice,
+		gasPrice: copiedGasPrice,
 	}
 }
 
@@ -212,16 +217,17 @@ func (g *signerWithGasOverrides) Generate(chainID *big.Int) (*bind.TransactOpts,
 		return nil, err
 	}
 
+	opts := *transactor
 	if g.gasLimit > 0 {
-		transactor.GasLimit = g.gasLimit
+		opts.GasLimit = g.gasLimit
 	}
 	if g.gasPrice != nil {
-		transactor.GasPrice = new(big.Int).Set(g.gasPrice)
-		transactor.GasFeeCap = nil
-		transactor.GasTipCap = nil
+		opts.GasPrice = new(big.Int).Set(g.gasPrice)
+		opts.GasFeeCap = nil
+		opts.GasTipCap = nil
 	}
 
-	return transactor, nil
+	return &opts, nil
 }
 
 func (g *signerWithGasOverrides) SignHash(hash []byte) ([]byte, error) {

@@ -76,9 +76,9 @@ type MultiClient struct {
 	gasLimitBufferBps uint64
 	// maxTxGasLimit caps buffered eth_estimateGas results when non-zero (e.g. EIP-7825).
 	maxTxGasLimit uint64
-	lggr              logger.Logger
-	chainName         string
-	mu                sync.RWMutex
+	lggr          logger.Logger
+	chainName     string
+	mu            sync.RWMutex
 }
 
 // GasLimitBufferBps returns the configured gas limit buffer in basis points.
@@ -332,7 +332,9 @@ func (mc *MultiClient) EstimateGas(ctx context.Context, call ethereum.CallMsg) (
 		return gas, err
 	}
 
-	return fevm.ApplyGasLimitWithBufferAndCap(gas, mc.gasLimitBufferBps, mc.maxTxGasLimit), nil
+	gas = fevm.ApplyGasLimitBuffer(gas, mc.gasLimitBufferBps)
+
+	return fevm.CapGasLimit(gas, mc.maxTxGasLimit), nil
 }
 
 // BalanceAt is a wrapper around the ethclient.BalanceAt method that retries on failure.

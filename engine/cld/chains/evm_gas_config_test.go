@@ -12,246 +12,109 @@ import (
 	evmclient "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider/rpcclient"
 )
 
-func Test_builtInEVMGasConfig(t *testing.T) {
+func TestBuiltInEVMGasConfig(t *testing.T) {
 	t.Parallel()
 
-	t.Run("base mainnet buffer", func(t *testing.T) {
-		t.Parallel()
-
-		cfg := builtInEVMGasConfig(chainsel.ETHEREUM_MAINNET_BASE_1.Selector)
-		require.Equal(t, BaseGasLimitBufferBps, cfg.gasLimitBufferBps)
-		require.Equal(t, fevm.EIP7825MaxTxGasLimit, cfg.maxTxGasLimit)
-		require.Equal(t, uint64(0), cfg.deployerGasLimit)
-	})
-
-	t.Run("base sepolia buffer", func(t *testing.T) {
-		t.Parallel()
-
-		cfg := builtInEVMGasConfig(chainsel.ETHEREUM_TESTNET_SEPOLIA_BASE_1.Selector)
-		require.Equal(t, BaseGasLimitBufferBps, cfg.gasLimitBufferBps)
-	})
-
-	t.Run("optimism mainnet buffer", func(t *testing.T) {
-		t.Parallel()
-
-		cfg := builtInEVMGasConfig(chainsel.ETHEREUM_MAINNET_OPTIMISM_1.Selector)
-		require.Equal(t, BaseGasLimitBufferBps, cfg.gasLimitBufferBps)
-		require.Equal(t, fevm.EIP7825MaxTxGasLimit, cfg.maxTxGasLimit)
-		require.Equal(t, uint64(0), cfg.deployerGasLimit)
-	})
-
-	t.Run("optimism sepolia buffer", func(t *testing.T) {
-		t.Parallel()
-
-		cfg := builtInEVMGasConfig(chainsel.ETHEREUM_TESTNET_SEPOLIA_OPTIMISM_1.Selector)
-		require.Equal(t, BaseGasLimitBufferBps, cfg.gasLimitBufferBps)
-	})
-
-	t.Run("hedera fixed gas", func(t *testing.T) {
-		t.Parallel()
-
-		for _, selector := range []uint64{
+	eip7825 := fevm.EIP7825MaxTxGasLimit
+	tests := []struct {
+		name      string
+		selectors []uint64
+		want      evmGasConfig
+	}{
+		{"buffered estimates", []uint64{
+			chainsel.ETHEREUM_MAINNET_BASE_1.Selector,
+			chainsel.ETHEREUM_TESTNET_SEPOLIA_BASE_1.Selector,
+			chainsel.ETHEREUM_MAINNET_OPTIMISM_1.Selector,
+			chainsel.ETHEREUM_TESTNET_SEPOLIA_OPTIMISM_1.Selector,
+		}, evmGasConfig{gasLimitBufferBps: estimateGasBufferBps, maxTxGasLimit: eip7825}},
+		{"metal", []uint64{
+			chainsel.METAL_MAINNET.Selector,
+			chainsel.METAL_TESTNET.Selector,
+		}, evmGasConfig{maxTxGasLimit: eip7825, deployerGasLimit: 10_000_000, deployerGasPrice: 5_000_000}},
+		{"hedera", []uint64{
 			chainsel.HEDERA_MAINNET.Selector,
 			chainsel.HEDERA_TESTNET.Selector,
-		} {
-			cfg := builtInEVMGasConfig(selector)
-			require.Equal(t, uint64(10_000_000), cfg.deployerGasLimit)
-			require.Equal(t, HederaDeployerGasPriceWei, *cfg.deployerGasPrice)
-			require.Equal(t, uint64(0), cfg.gasLimitBufferBps)
-		}
-	})
-
-	t.Run("edge fixed gas limit only", func(t *testing.T) {
-		t.Parallel()
-
-		for _, selector := range []uint64{
+		}, evmGasConfig{deployerGasLimit: 10_000_000, deployerGasPrice: hederaDeployerGasPriceWei}},
+		{"bob", []uint64{
+			chainsel.BITCOIN_MAINNET_BOB_1.Selector,
+			chainsel.BITCOIN_TESTNET_SEPOLIA_BOB_1.Selector,
+		}, evmGasConfig{maxTxGasLimit: eip7825, deployerGasLimit: 7_500_000, deployerGasPrice: 2_000_000}},
+		{"wemix mainnet", []uint64{chainsel.WEMIX_MAINNET.Selector},
+			evmGasConfig{deployerGasLimit: 10_000_000, deployerGasPrice: 120_000_000_000}},
+		{"wemix testnet", []uint64{chainsel.WEMIX_TESTNET.Selector},
+			evmGasConfig{deployerGasLimit: 10_000_000, deployerGasPrice: 120_000_000_000}},
+		{"megaeth", []uint64{
+			chainsel.MEGAETH_MAINNET.Selector,
+			chainsel.MEGAETH_TESTNET.Selector,
+			chainsel.MEGAETH_TESTNET_2.Selector,
+		}, evmGasConfig{deployerGasLimit: 400_000_000, deployerGasPrice: 1_000_000}},
+		{"edge", []uint64{
 			chainsel.EDGE_MAINNET.Selector,
 			chainsel.EDGE_TESTNET.Selector,
-		} {
-			cfg := builtInEVMGasConfig(selector)
-			require.Equal(t, uint64(25_000_000), cfg.deployerGasLimit)
-			require.Nil(t, cfg.deployerGasPrice)
-		}
-	})
-
-	t.Run("bittensor fixed gas", func(t *testing.T) {
-		t.Parallel()
-
-		for _, selector := range []uint64{
+		}, evmGasConfig{deployerGasLimit: 25_000_000}},
+		{"bittensor", []uint64{
 			chainsel.BITTENSOR_MAINNET.Selector,
 			chainsel.BITTENSOR_TESTNET.Selector,
-		} {
-			cfg := builtInEVMGasConfig(selector)
-			require.Equal(t, uint64(10_000_000), cfg.deployerGasLimit)
-			require.Equal(t, uint64(10_000_000_000), *cfg.deployerGasPrice)
-		}
-	})
-
-	t.Run("mind fixed gas limit only", func(t *testing.T) {
-		t.Parallel()
-
-		cfg := builtInEVMGasConfig(chainsel.MIND_MAINNET.Selector)
-		require.Equal(t, uint64(8_000_000), cfg.deployerGasLimit)
-		require.Nil(t, cfg.deployerGasPrice)
-	})
-
-	t.Run("ronin mainnet legacy gas price", func(t *testing.T) {
-		t.Parallel()
-
-		cfg := builtInEVMGasConfig(chainsel.RONIN_MAINNET.Selector)
-		require.Equal(t, uint64(100_000_000_000), *cfg.deployerGasPrice)
-	})
-
-	t.Run("ronin testnets legacy gas price", func(t *testing.T) {
-		t.Parallel()
-
-		for _, selector := range []uint64{
+		}, evmGasConfig{deployerGasLimit: 10_000_000, deployerGasPrice: 10_000_000_000}},
+		{"mind", []uint64{chainsel.MIND_MAINNET.Selector},
+			evmGasConfig{deployerGasLimit: 8_000_000}},
+		{"ronin mainnet", []uint64{chainsel.RONIN_MAINNET.Selector},
+			evmGasConfig{deployerGasPrice: 100_000_000_000}},
+		{"ronin testnets", []uint64{
 			chainsel.RONIN_TESTNET_SAIGON.Selector,
 			chainsel.ETHEREUM_TESTNET_SEPOLIA_RONIN_1.Selector,
-		} {
-			cfg := builtInEVMGasConfig(selector)
-			require.Equal(t, uint64(50_000_000_000), *cfg.deployerGasPrice)
-		}
-	})
+		}, evmGasConfig{deployerGasPrice: 50_000_000_000}},
+		{"gnosis chiado", []uint64{chainsel.GNOSIS_CHAIN_TESTNET_CHIADO.Selector},
+			evmGasConfig{deployerGasLimit: 10_000_000}},
+		{"ink sepolia", []uint64{chainsel.INK_TESTNET_SEPOLIA.Selector},
+			evmGasConfig{maxTxGasLimit: eip7825, deployerGasLimit: 7_500_000}},
+		{"zora", []uint64{
+			chainsel.ZORA_MAINNET.Selector,
+			chainsel.ZORA_TESTNET.Selector,
+		}, evmGasConfig{maxTxGasLimit: eip7825, deployerGasLimit: 7_500_000}},
+	}
 
-	t.Run("testnet-only gas overrides", func(t *testing.T) {
-		t.Parallel()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			for _, selector := range tt.selectors {
+				require.Equal(t, tt.want, builtInEVMGasConfig(selector))
+			}
+		})
+	}
 
-		gnosis := builtInEVMGasConfig(chainsel.GNOSIS_CHAIN_TESTNET_CHIADO.Selector)
-		require.Equal(t, uint64(10_000_000), gnosis.deployerGasLimit)
-		require.Equal(t, uint64(0), gnosis.maxTxGasLimit)
-
-		ink := builtInEVMGasConfig(chainsel.INK_TESTNET_SEPOLIA.Selector)
-		require.Equal(t, uint64(7_500_000), ink.deployerGasLimit)
-		require.Equal(t, fevm.EIP7825MaxTxGasLimit, ink.maxTxGasLimit)
-
-		zora := builtInEVMGasConfig(chainsel.ZORA_TESTNET.Selector)
-		require.Equal(t, uint64(7_500_000), zora.deployerGasLimit)
-		require.Equal(t, fevm.EIP7825MaxTxGasLimit, zora.maxTxGasLimit)
-	})
-
-	t.Run("eip-7825 cap on op stack fixed overrides", func(t *testing.T) {
-		t.Parallel()
-
-		for _, selector := range []uint64{
-			chainsel.METAL_MAINNET.Selector,
-			chainsel.BITCOIN_MAINNET_BOB_1.Selector,
-		} {
-			cfg := builtInEVMGasConfig(selector)
-			require.Equal(t, fevm.EIP7825MaxTxGasLimit, cfg.maxTxGasLimit)
-		}
-	})
-
-	t.Run("non eip-7825 overrides have no tx gas cap", func(t *testing.T) {
-		t.Parallel()
-
-		for _, selector := range []uint64{
-			chainsel.HEDERA_MAINNET.Selector,
-			chainsel.EDGE_MAINNET.Selector,
-			chainsel.MEGAETH_MAINNET.Selector,
-			chainsel.MIND_MAINNET.Selector,
-		} {
-			cfg := builtInEVMGasConfig(selector)
-			require.Equal(t, uint64(0), cfg.maxTxGasLimit)
-		}
-	})
-
-	t.Run("applyEIP7825GasCapIfConfigured caps high fixed limits", func(t *testing.T) {
-		t.Parallel()
-
-		cfg := applyEIP7825GasCapIfConfigured(
-			chainsel.METAL_MAINNET.Selector,
-			evmGasConfig{deployerGasLimit: 25_000_000},
-		)
-		require.Equal(t, fevm.EIP7825MaxTxGasLimit, cfg.maxTxGasLimit)
-		require.Equal(t, fevm.EIP7825MaxTxGasLimit, cfg.deployerGasLimit)
-	})
-
-	t.Run("testnets match mainnet gas overrides", func(t *testing.T) {
-		t.Parallel()
-
-		pairs := []struct {
-			mainnet uint64
-			testnet uint64
-		}{
-			{chainsel.METAL_MAINNET.Selector, chainsel.METAL_TESTNET.Selector},
-			{chainsel.BITCOIN_MAINNET_BOB_1.Selector, chainsel.BITCOIN_TESTNET_SEPOLIA_BOB_1.Selector},
-			{chainsel.MEGAETH_MAINNET.Selector, chainsel.MEGAETH_TESTNET.Selector},
-			{chainsel.BITTENSOR_MAINNET.Selector, chainsel.BITTENSOR_TESTNET.Selector},
-		}
-
-		for _, pair := range pairs {
-			require.Equal(t, builtInEVMGasConfig(pair.mainnet), builtInEVMGasConfig(pair.testnet))
-		}
-
-		require.Equal(t,
-			builtInEVMGasConfig(chainsel.MEGAETH_MAINNET.Selector),
-			builtInEVMGasConfig(chainsel.MEGAETH_TESTNET_2.Selector),
-		)
-	})
-
-	t.Run("wemix testnet uses higher gas limit", func(t *testing.T) {
-		t.Parallel()
-
-		mainnet := builtInEVMGasConfig(chainsel.WEMIX_MAINNET.Selector)
-		testnet := builtInEVMGasConfig(chainsel.WEMIX_TESTNET.Selector)
-
-		require.Equal(t, uint64(7_500_000), mainnet.deployerGasLimit)
-		require.Equal(t, uint64(10_000_000), testnet.deployerGasLimit)
-		require.Equal(t, *mainnet.deployerGasPrice, *testnet.deployerGasPrice)
-	})
-
-	t.Run("unknown chain has no defaults", func(t *testing.T) {
-		t.Parallel()
-
-		cfg := builtInEVMGasConfig(12345)
-		require.Equal(t, evmGasConfig{}, cfg)
-	})
+	require.Equal(t, evmGasConfig{}, builtInEVMGasConfig(12345))
 }
 
-func Test_evmClientOptsFromGasConfig(t *testing.T) {
+func TestEVMClientOptsFromGasConfig(t *testing.T) {
 	t.Parallel()
 
-	opts := evmClientOptsFromGasConfig(builtInEVMGasConfig(chainsel.ETHEREUM_MAINNET_BASE_1.Selector))
-	require.Len(t, opts, 2)
-
 	mc := &evmclient.MultiClient{}
-	opts[0](mc)
-	opts[1](mc)
-	require.Equal(t, uint64(2500), mc.GasLimitBufferBps())
+	for _, opt := range evmClientOptsFromGasConfig(withEIP7825Cap(evmGasConfig{
+		gasLimitBufferBps: estimateGasBufferBps,
+	})) {
+		opt(mc)
+	}
+
+	require.Equal(t, estimateGasBufferBps, mc.GasLimitBufferBps())
 	require.Equal(t, fevm.EIP7825MaxTxGasLimit, mc.MaxTxGasLimit())
 }
 
-func Test_evmSignerWithGasConfig(t *testing.T) {
+func TestEVMSignerWithGasConfig(t *testing.T) {
 	t.Parallel()
 
-	gen := evmSignerWithGasConfig(
-		stubSignerGenerator{},
-		builtInEVMGasConfig(chainsel.METAL_MAINNET.Selector),
-	)
-
-	opts, err := gen.Generate(big.NewInt(1))
-	require.NoError(t, err)
-	require.Equal(t, uint64(10_000_000), opts.GasLimit)
-	require.Equal(t, uint64(5_000_000), opts.GasPrice.Uint64())
-	require.Nil(t, opts.GasFeeCap)
-	require.Nil(t, opts.GasTipCap)
-}
-
-func Test_evmSignerWithGasConfig_capsFixedLimitAtEIP7825(t *testing.T) {
-	t.Parallel()
-
-	gen := evmSignerWithGasConfig(
-		stubSignerGenerator{},
-		applyEIP7825GasCapIfConfigured(
-			chainsel.METAL_MAINNET.Selector,
-			evmGasConfig{deployerGasLimit: 25_000_000},
-		),
-	)
+	gen := evmSignerWithGasConfig(stubSignerGenerator{}, evmGasConfig{
+		maxTxGasLimit:    fevm.EIP7825MaxTxGasLimit,
+		deployerGasLimit: 25_000_000,
+		deployerGasPrice: 5_000_000,
+	})
 
 	opts, err := gen.Generate(big.NewInt(1))
 	require.NoError(t, err)
 	require.Equal(t, fevm.EIP7825MaxTxGasLimit, opts.GasLimit)
+	require.Equal(t, uint64(5_000_000), opts.GasPrice.Uint64())
+	require.Nil(t, opts.GasFeeCap)
+	require.Nil(t, opts.GasTipCap)
 }
 
 type stubSignerGenerator struct{}

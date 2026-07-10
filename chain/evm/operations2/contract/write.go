@@ -100,7 +100,6 @@ func NewWrite[ARGS any, C interface{ Address() common.Address }](params WritePar
 					chain.DeployerKey,
 					input.GasLimit,
 					input.GasPrice,
-					evm.GasLimitBufferBpsFromClient(chain.Client),
 					evm.MaxTxGasLimitFromClient(chain.Client),
 				)
 			}
