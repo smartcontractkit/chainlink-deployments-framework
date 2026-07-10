@@ -9,7 +9,8 @@ CLDF applies chain-specific gas configuration at load time via built-in defaults
 ### Default behavior
 
 - **No gas overrides by default** — most EVM chains use normal estimation with no buffer.
-- **Base and Optimism mainnet and Sepolia testnets** get a **+25%** gas limit buffer on `eth_estimateGas` results (`chains.BaseGasLimitBufferBps = 2500`).
+- **Base and Optimism mainnet and Sepolia testnets** get a **+25%** gas limit buffer on `eth_estimateGas` results.
+- Chains with built-in overrides that enforce **EIP-7825** (Base, Optimism, Metal, BOB, Ink Sepolia, Zora testnet) also cap gas at **16,777,216** on estimates and fixed deployer limits.
 - **Fixed deployer gas overrides** replace consumer-side `UpdateBlockchainsWithEVMGasOverrides` for:
   - Metal, Hedera, BOB, Wemix, MegaETH, Edge, Bittensor, Mind, Ronin mainnet **and testnet** (fixed gas limit and/or legacy gas price).
   - Testnet-only: Gnosis Chiado, Ink Sepolia, Zora, Ronin Saigon, Ethereum Sepolia Ronin.
@@ -24,6 +25,7 @@ Remove consumer-side gas override calls for the chains listed above. Base and Op
 |--------|---------|---------|
 | `chains.BaseGasLimitBufferBps` | `engine/cld/chains` | +25% estimate buffer for Base and Optimism chains |
 | `chains.HederaDeployerGasPriceWei` | `engine/cld/chains` | Fixed Hedera legacy gas price (1500 gwei) |
-| `evm.ApplyGasLimitBuffer` | `chain/evm` | Apply bps buffer to a gas limit |
-| `evm.GasLimitBufferBpsFromClient` | `chain/evm` | Read buffer config from RPC client |
+| `evm.EIP7825MaxTxGasLimit` | `chain/evm` | EIP-7825 per-transaction gas cap (16,777,216) |
+| `evm.ApplyGasLimitWithBufferAndCap` | `chain/evm` | Apply bps buffer then cap gas limit |
+| `evm.MaxTxGasLimitFromClient` | `chain/evm` | Read max tx gas cap from RPC client |
 | `provider.WrapSignerWithGasOverrides` | `chain/evm/provider` | Fixed deployer gas limit/price |

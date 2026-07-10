@@ -145,6 +145,7 @@ func NewDeploy[ARGS any](params DeployParams[ARGS]) *operations.Operation[Deploy
 						input.GasLimit,
 						input.GasPrice,
 						evm.GasLimitBufferBpsFromClient(chain.Client),
+						evm.MaxTxGasLimitFromClient(chain.Client),
 					),
 					*parsedABI,
 					bytecode.EVM,

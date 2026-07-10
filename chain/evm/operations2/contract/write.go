@@ -101,6 +101,7 @@ func NewWrite[ARGS any, C interface{ Address() common.Address }](params WritePar
 					input.GasLimit,
 					input.GasPrice,
 					evm.GasLimitBufferBpsFromClient(chain.Client),
+					evm.MaxTxGasLimitFromClient(chain.Client),
 				)
 			}
 			var execInfo *ExecInfo

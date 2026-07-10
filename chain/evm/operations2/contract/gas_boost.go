@@ -189,7 +189,7 @@ var gasRetryableErrorPatterns = []string{
 	"exceeds block gas limit",
 }
 
-func transactOptsWithGasOverrides(base *bind.TransactOpts, gasLimit, gasPrice, bufferBps uint64) *bind.TransactOpts {
+func transactOptsWithGasOverrides(base *bind.TransactOpts, gasLimit, gasPrice, bufferBps, maxTxGasLimit uint64) *bind.TransactOpts {
 	if base == nil {
 		return nil
 	}
@@ -199,7 +199,7 @@ func transactOptsWithGasOverrides(base *bind.TransactOpts, gasLimit, gasPrice, b
 
 	opts := *base
 	if gasLimit > 0 {
-		opts.GasLimit = evm.ApplyGasLimitBuffer(gasLimit, bufferBps)
+		opts.GasLimit = evm.ApplyGasLimitWithBufferAndCap(gasLimit, bufferBps, maxTxGasLimit)
 	}
 	if gasPrice > 0 {
 		opts.GasPrice = new(big.Int).SetUint64(gasPrice)

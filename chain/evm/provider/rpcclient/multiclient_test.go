@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	fevm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
@@ -466,5 +467,26 @@ func TestMultiClient_EstimateGas_buffer(t *testing.T) {
 		gas, err := mc.EstimateGas(context.Background(), ethereum.CallMsg{})
 		require.Error(t, err)
 		require.Equal(t, uint64(0), gas)
+	})
+
+	t.Run("caps buffered estimate at max tx gas", func(t *testing.T) {
+		t.Parallel()
+
+		srv := newEstimateGasRPCServer(t, "0xd59f80", false) // 14_000_000
+		defer srv.Close()
+
+		mc, err := NewMultiClient(t.Context(), logger.Test(t), RPCConfig{
+			ChainSelector: chainSelector,
+			RPCs: []RPC{{
+				Name:               "test-rpc",
+				HTTPURL:            srv.URL,
+				PreferredURLScheme: URLSchemePreferenceHTTP,
+			}},
+		}, WithGasLimitBufferBps(2500), WithMaxTxGasLimit(fevm.EIP7825MaxTxGasLimit))
+		require.NoError(t, err)
+
+		gas, err := mc.EstimateGas(context.Background(), ethereum.CallMsg{})
+		require.NoError(t, err)
+		require.Equal(t, fevm.EIP7825MaxTxGasLimit, gas)
 	})
 }

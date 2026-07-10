@@ -2,15 +2,29 @@ package evm
 
 import "math/bits"
 
-type gasLimitBufferer interface {
+// EIP7825MaxTxGasLimit is the EIP-7825 per-transaction gas limit cap (2^24).
+const EIP7825MaxTxGasLimit = uint64(16_777_216)
+
+type gasEstimateAdjuster interface {
 	GasLimitBufferBps() uint64
+	MaxTxGasLimit() uint64
 }
 
 // GasLimitBufferBpsFromClient returns the configured gas limit buffer for the client,
 // or 0 when the client does not support gas limit buffering.
 func GasLimitBufferBpsFromClient(client any) uint64 {
-	if c, ok := client.(gasLimitBufferer); ok {
+	if c, ok := client.(gasEstimateAdjuster); ok {
 		return c.GasLimitBufferBps()
+	}
+
+	return 0
+}
+
+// MaxTxGasLimitFromClient returns the configured per-transaction gas limit cap for the client,
+// or 0 when no cap is configured.
+func MaxTxGasLimitFromClient(client any) uint64 {
+	if c, ok := client.(gasEstimateAdjuster); ok {
+		return c.MaxTxGasLimit()
 	}
 
 	return 0
@@ -36,4 +50,18 @@ func ApplyGasLimitBuffer(estimated, bufferBps uint64) uint64 {
 	}
 
 	return result
+}
+
+// CapGasLimit returns gas unchanged when maxTxGas is 0; otherwise returns min(gas, maxTxGas).
+func CapGasLimit(gas, maxTxGas uint64) uint64 {
+	if maxTxGas == 0 || gas <= maxTxGas {
+		return gas
+	}
+
+	return maxTxGas
+}
+
+// ApplyGasLimitWithBufferAndCap applies bufferBps to estimated, then caps at maxTxGas when non-zero.
+func ApplyGasLimitWithBufferAndCap(estimated, bufferBps, maxTxGas uint64) uint64 {
+	return CapGasLimit(ApplyGasLimitBuffer(estimated, bufferBps), maxTxGas)
 }

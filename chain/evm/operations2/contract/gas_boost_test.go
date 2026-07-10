@@ -77,21 +77,21 @@ func TestTransactOptsWithGasOverrides(t *testing.T) {
 		GasTipCap: big.NewInt(2),
 	}
 
-	require.Nil(t, transactOptsWithGasOverrides(nil, 1, 1, 0))
-	require.Same(t, base, transactOptsWithGasOverrides(base, 0, 0, 0))
+	require.Nil(t, transactOptsWithGasOverrides(nil, 1, 1, 0, 0))
+	require.Same(t, base, transactOptsWithGasOverrides(base, 0, 0, 0, 0))
 
-	limitOnly := transactOptsWithGasOverrides(base, 500_000, 0, 0)
+	limitOnly := transactOptsWithGasOverrides(base, 500_000, 0, 0, 0)
 	require.Equal(t, uint64(500_000), limitOnly.GasLimit)
 	require.Equal(t, big.NewInt(1), limitOnly.GasPrice)
 	require.Equal(t, big.NewInt(100), limitOnly.GasFeeCap)
 
-	priceOnly := transactOptsWithGasOverrides(base, 0, 30_000_000_000, 0)
+	priceOnly := transactOptsWithGasOverrides(base, 0, 30_000_000_000, 0, 0)
 	require.Equal(t, uint64(21_000), priceOnly.GasLimit)
 	require.Equal(t, uint64(30_000_000_000), priceOnly.GasPrice.Uint64())
 	require.Nil(t, priceOnly.GasFeeCap)
 	require.Nil(t, priceOnly.GasTipCap)
 
-	withGas := transactOptsWithGasOverrides(base, 500_000, 30_000_000_000, 0)
+	withGas := transactOptsWithGasOverrides(base, 500_000, 30_000_000_000, 0, 0)
 	require.Equal(t, uint64(500_000), withGas.GasLimit)
 	require.Equal(t, uint64(30_000_000_000), withGas.GasPrice.Uint64())
 	require.Nil(t, withGas.GasFeeCap)
@@ -99,8 +99,11 @@ func TestTransactOptsWithGasOverrides(t *testing.T) {
 	require.Equal(t, uint64(21_000), base.GasLimit, "must not mutate base opts")
 	require.Equal(t, big.NewInt(100), base.GasFeeCap, "must not mutate base fee cap")
 
-	buffered := transactOptsWithGasOverrides(base, 1_000_000, 0, 2500)
+	buffered := transactOptsWithGasOverrides(base, 1_000_000, 0, 2500, 0)
 	require.Equal(t, uint64(1_250_000), buffered.GasLimit)
+
+	capped := transactOptsWithGasOverrides(base, 14_000_000, 0, 2500, evm.EIP7825MaxTxGasLimit)
+	require.Equal(t, evm.EIP7825MaxTxGasLimit, capped.GasLimit)
 }
 
 func TestRetryDeployWithGasBoostNilConfig(t *testing.T) {
