@@ -33,11 +33,6 @@ func builtInEVMGasConfig(selector uint64) evmGasConfig {
 	case chainsel.ETHEREUM_MAINNET_BASE_1.Selector, chainsel.ETHEREUM_TESTNET_SEPOLIA_BASE_1.Selector,
 		chainsel.ETHEREUM_MAINNET_OPTIMISM_1.Selector, chainsel.ETHEREUM_TESTNET_SEPOLIA_OPTIMISM_1.Selector:
 		return withEIP7825Cap(evmGasConfig{gasLimitBufferBps: estimateGasBufferBps})
-	case chainsel.METAL_MAINNET.Selector, chainsel.METAL_TESTNET.Selector:
-		return withEIP7825Cap(evmGasConfig{
-			deployerGasLimit: 10_000_000,
-			deployerGasPrice: 5_000_000,
-		})
 	case chainsel.HEDERA_MAINNET.Selector, chainsel.HEDERA_TESTNET.Selector:
 		return evmGasConfig{
 			deployerGasLimit: 10_000_000,
@@ -74,8 +69,6 @@ func builtInEVMGasConfig(selector uint64) evmGasConfig {
 	case chainsel.GNOSIS_CHAIN_TESTNET_CHIADO.Selector:
 		return evmGasConfig{deployerGasLimit: 10_000_000}
 	case chainsel.INK_TESTNET_SEPOLIA.Selector:
-		return withEIP7825Cap(evmGasConfig{deployerGasLimit: 7_500_000})
-	case chainsel.ZORA_MAINNET.Selector, chainsel.ZORA_TESTNET.Selector:
 		return withEIP7825Cap(evmGasConfig{deployerGasLimit: 7_500_000})
 	default:
 		return evmGasConfig{}

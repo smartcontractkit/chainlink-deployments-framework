@@ -27,10 +27,6 @@ func TestBuiltInEVMGasConfig(t *testing.T) {
 			chainsel.ETHEREUM_MAINNET_OPTIMISM_1.Selector,
 			chainsel.ETHEREUM_TESTNET_SEPOLIA_OPTIMISM_1.Selector,
 		}, evmGasConfig{gasLimitBufferBps: estimateGasBufferBps, maxTxGasLimit: eip7825}},
-		{"metal", []uint64{
-			chainsel.METAL_MAINNET.Selector,
-			chainsel.METAL_TESTNET.Selector,
-		}, evmGasConfig{maxTxGasLimit: eip7825, deployerGasLimit: 10_000_000, deployerGasPrice: 5_000_000}},
 		{"hedera", []uint64{
 			chainsel.HEDERA_MAINNET.Selector,
 			chainsel.HEDERA_TESTNET.Selector,
@@ -68,10 +64,6 @@ func TestBuiltInEVMGasConfig(t *testing.T) {
 			evmGasConfig{deployerGasLimit: 10_000_000}},
 		{"ink sepolia", []uint64{chainsel.INK_TESTNET_SEPOLIA.Selector},
 			evmGasConfig{maxTxGasLimit: eip7825, deployerGasLimit: 7_500_000}},
-		{"zora", []uint64{
-			chainsel.ZORA_MAINNET.Selector,
-			chainsel.ZORA_TESTNET.Selector,
-		}, evmGasConfig{maxTxGasLimit: eip7825, deployerGasLimit: 7_500_000}},
 	}
 
 	for _, tt := range tests {
