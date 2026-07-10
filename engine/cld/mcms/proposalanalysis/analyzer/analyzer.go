@@ -3,6 +3,8 @@ package analyzer
 import (
 	"context"
 
+	"github.com/smartcontractkit/mcms"
+
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	cldfdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
@@ -16,17 +18,25 @@ type ExecutionContext interface {
 	DataStore() datastore.DataStore
 }
 
-// AnalyzeRequest encapsulates the analyzer context, execution context, and annotation store passed to analyzer.
-type AnalyzeRequest[T any] struct {
-	AnalyzerContext           T
+// AnalyzeEnvelope carries shared fields passed to all analyzer requests.
+type AnalyzeEnvelope struct {
 	ExecutionContext          ExecutionContext
 	DependencyAnnotationStore DependencyAnnotationStore
+	// TimelockProposal is a deep clone isolated per analyzer invocation.
+	// The same instance is passed to CanAnalyze and Analyze for that invocation.
+	// Treat it as read-only; do not mutate it (especially in CanAnalyze).
+	TimelockProposal *mcms.TimelockProposal
 }
 
-// ProposalAnalyzeRequest encapsulates the execution context and annotation store passed to a proposal analyzer.
+// AnalyzeRequest encapsulates the analyzer context plus the shared AnalyzeEnvelope (execution context, dependency annotation store, and optional timelock metadata).
+type AnalyzeRequest[T any] struct {
+	AnalyzerContext T
+	AnalyzeEnvelope
+}
+
+// ProposalAnalyzeRequest encapsulates the shared AnalyzeEnvelope passed to a proposal analyzer.
 type ProposalAnalyzeRequest struct {
-	ExecutionContext          ExecutionContext
-	DependencyAnnotationStore DependencyAnnotationStore
+	AnalyzeEnvelope
 }
 
 type BaseAnalyzer interface {

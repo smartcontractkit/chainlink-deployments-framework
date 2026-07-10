@@ -104,6 +104,11 @@ func TestChain_ReadOnly(t *testing.T) {
 	require.NoError(t, err)
 
 	// write with read-only client should fail
-	_, _, _, err = aptosmcms.DeployToResourceAccount(roAptosChain.DeployerSigner, roAptosChain.Client, seed) //nolint:dogsled
+	transferPayload, err := aptosgosdk.CoinTransferPayload(nil, aptosChain.DeployerSigner.AccountAddress(), 1)
+	require.NoError(t, err)
+	_, err = roAptosChain.Client.BuildSignAndSubmitTransaction(
+		roAptosChain.DeployerSigner,
+		aptosgosdk.TransactionPayload{Payload: transferPayload},
+	)
 	require.ErrorContains(t, err, "INSUFFICIENT_BALANCE_FOR_TRANSACTION_FEE")
 }

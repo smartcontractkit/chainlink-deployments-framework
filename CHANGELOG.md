@@ -1,5 +1,25 @@
 # chainlink-deployments-framework
 
+## 0.115.1
+
+### Patch Changes
+
+- [#1107](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1107) [`d33c1aa`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/d33c1aad76bd3cb44da9a6e715748d4a2520299e) Thanks [@simsonraj](https://github.com/simsonraj)! - Overrideable isZkSync via network metadata
+
+## 0.115.0
+
+### Minor Changes
+
+- [#1095](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1095) [`2200387`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/22003878b61a38085f13d31469db23ca611b5670) Thanks [@ecPablo](https://github.com/ecPablo)! - Adds domain binary configuration
+
+## 0.114.6
+
+### Patch Changes
+
+- [#1087](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1087) [`7f86d08`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/7f86d0804c9dc732c9c12deb642234c4810f9d90) Thanks [@RensR](https://github.com/RensR)! - Make `-c` / `-x` optional for `durable-pipeline run` when the input YAML contains exactly one changeset.
+
+- [#1096](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1096) [`969858c`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/969858c2a6010b214bf754cb6382d5bbebf00d1f) Thanks [@ChrisAmora](https://github.com/ChrisAmora)! - Add Ed25519 AWS KMS signing support.
+
 ## 0.114.5
 
 ### Patch Changes

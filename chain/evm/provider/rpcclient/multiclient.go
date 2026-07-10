@@ -48,6 +48,7 @@ type RetryConfig struct {
 	DialDelay          time.Duration
 	DialTimeout        time.Duration
 	HealthCheckTimeout time.Duration
+	ErrorPolicies      []ErrorRetryPolicy
 }
 
 // defaultRetryConfig returns default retry configuration.
@@ -419,6 +420,9 @@ func (mc *MultiClient) retryWithBackups(ctx context.Context, opName string, op f
 
 	for rpcIndex, client := range mc.clients() {
 		retryCount := 0
+		retryOpts := mc.RetryConfig.rpcRetryOptions()
+		retryOpts = append(retryOpts, retry.OnRetry(func(n uint, err error) { retryCount++ }))
+
 		err2 := retry.Do(func() error {
 			timeoutCtx, cancel := ensureTimeout(ctx, mc.RetryConfig.Timeout)
 			defer cancel()
@@ -436,8 +440,7 @@ func (mc *MultiClient) retryWithBackups(ctx context.Context, opName string, op f
 			mc.reorderRPCs(rpcIndex)
 
 			return nil
-		}, retry.Attempts(mc.RetryConfig.Attempts), retry.Delay(mc.RetryConfig.Delay),
-			retry.OnRetry(func(n uint, err error) { retryCount++ }))
+		}, retryOpts...)
 		if err2 == nil {
 			if retryCount > 0 {
 				mc.lggr.Infof("traceID %q: chain %q: op: %q: client index %d: successfully executed after %d retry", traceID.String(), mc.chainName, opName, rpcIndex, retryCount)

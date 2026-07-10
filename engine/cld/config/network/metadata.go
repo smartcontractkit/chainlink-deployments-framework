@@ -10,6 +10,10 @@ import (
 // EVMMetadata is a struct that holds metadata specific to EVM networks.
 type EVMMetadata struct {
 	AnvilConfig *AnvilConfig `yaml:"anvil_config,omitempty"`
+	// IsZkSync overrides the default VM classification for this chain. When set, it
+	// takes precedence over the hardcoded isZkSyncVM allowlist in the EVM chain loader.
+	// Set false to force the standard EVM deploy path on zkStack chains
+	IsZkSync *bool `yaml:"is_zksync,omitempty"`
 }
 
 // StellarMetadata holds metadata specific to Stellar networks.
