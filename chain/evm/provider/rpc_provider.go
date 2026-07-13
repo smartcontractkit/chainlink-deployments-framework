@@ -132,7 +132,7 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 	client, err := rpcclient.NewMultiClient(ctx, p.config.Logger, rpcclient.RPCConfig{
 		ChainSelector: p.selector,
 		RPCs:          p.config.RPCs,
-	}, p.config.ClientOpts...)
+	}, multiClientOpts(p.config.GasConfig, p.config.ClientOpts)...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create multi-client: %w", err)
 	}

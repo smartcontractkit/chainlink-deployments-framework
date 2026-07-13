@@ -18,13 +18,14 @@ type Client interface {
 
 // ApplyDefaults applies configured default gas limit and price settings to opts.
 // When DefaultGasPriceWei is set, the latest block header is inspected to choose EIP-1559 vs legacy.
+// DefaultGasLimit is capped by MaxTxGasLimit when both are set.
 func ApplyDefaults(ctx context.Context, client Client, opts *bind.TransactOpts, cfg Config) error {
 	if opts == nil {
 		return errors.New("transact opts are nil")
 	}
 
 	if cfg.DefaultGasLimit > 0 {
-		opts.GasLimit = cfg.DefaultGasLimit
+		opts.GasLimit = CapGasLimit(cfg.DefaultGasLimit, cfg.MaxTxGasLimit)
 	}
 
 	if cfg.DefaultGasPriceWei == 0 {

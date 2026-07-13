@@ -227,6 +227,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/gas"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider/rpcclient"
 )
 
@@ -269,6 +270,9 @@ type CTFAnvilChainProviderConfig struct {
 	// provider. You can use this to set up custom HTTP clients, timeouts, or other
 	// configurations for the RPC connections.
 	ClientOpts []func(client *rpcclient.MultiClient)
+
+	// Optional: GasConfig configures default gas limit and price for the chain deployer.
+	GasConfig *gas.Config
 
 	// Optional: DockerCmdParamsOverrides allows customization of Docker command parameters
 	// for the Anvil container. These parameters are passed directly to the Docker container
@@ -396,26 +400,6 @@ func (p *CTFAnvilChainProvider) Initialize(ctx context.Context) (chain.BlockChai
 	}
 	p.httpURL = httpURL
 
-	lggr, err := logger.New()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create new logger: %w", err)
-	}
-
-	client, err := rpcclient.NewMultiClient(ctx, lggr, rpcclient.RPCConfig{
-		ChainSelector: p.selector,
-		RPCs: []rpcclient.RPC{
-			{
-				Name:               "anvil-local",
-				HTTPURL:            httpURL,
-				WSURL:              "", // Anvil typically doesn't provide WebSocket, only HTTP
-				PreferredURLScheme: rpcclient.URLSchemePreferenceHTTP,
-			},
-		},
-	}, p.config.ClientOpts...)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create multiclient for Anvil at %s: %w", httpURL, err)
-	}
-
 	// Get the Chain ID as big.Int for transactor generation
 	chainIDBigInt, ok := new(big.Int).SetString(chainID, 10)
 	if !ok {
@@ -458,6 +442,32 @@ func (p *CTFAnvilChainProvider) Initialize(ctx context.Context) (chain.BlockChai
 		}
 	}
 
+	lggr, err := logger.New()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create new logger: %w", err)
+	}
+
+	client, err := rpcclient.NewMultiClient(ctx, lggr, rpcclient.RPCConfig{
+		ChainSelector: p.selector,
+		RPCs: []rpcclient.RPC{
+			{
+				Name:               "anvil-local",
+				HTTPURL:            httpURL,
+				WSURL:              "", // Anvil typically doesn't provide WebSocket, only HTTP
+				PreferredURLScheme: rpcclient.URLSchemePreferenceHTTP,
+			},
+		},
+	}, multiClientOpts(p.config.GasConfig, p.config.ClientOpts)...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create multiclient for Anvil at %s: %w", httpURL, err)
+	}
+
+	if p.config.GasConfig != nil {
+		if applyErr := gas.ApplyDefaults(ctx, client, deployerKey, *p.config.GasConfig); applyErr != nil {
+			return nil, fmt.Errorf("failed to apply gas defaults for chain %d: %w", p.selector, applyErr)
+		}
+	}
+
 	// Build additional user transactors from the default Anvil accounts
 	userTransactors, err := p.getUserTransactors(chainID)
 	if err != nil {
@@ -478,6 +488,7 @@ func (p *CTFAnvilChainProvider) Initialize(ctx context.Context) (chain.BlockChai
 		Users:       userTransactors,
 		Confirm:     confirmFunc,
 		SignHash:    signHashFunc,
+		GasConfig:   p.config.GasConfig,
 	}
 
 	return *p.chain, nil

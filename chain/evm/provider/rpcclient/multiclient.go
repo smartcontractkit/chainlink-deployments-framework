@@ -22,6 +22,7 @@ import (
 	chainsel "github.com/smartcontractkit/chain-selectors/remote"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/gas"
 )
 
 const (
@@ -75,6 +76,20 @@ type MultiClient struct {
 	lggr        logger.Logger
 	chainName   string
 	mu          sync.RWMutex
+	// maxTxGasLimit caps eth_estimateGas results when non-zero.
+	maxTxGasLimit uint64
+}
+
+// MaxTxGasLimit returns the configured per-transaction gas limit cap, or 0 when unset.
+func (mc *MultiClient) MaxTxGasLimit() uint64 {
+	return mc.maxTxGasLimit
+}
+
+// WithMaxTxGasLimit configures a cap applied to EstimateGas results.
+func WithMaxTxGasLimit(maxTxGasLimit uint64) func(*MultiClient) {
+	return func(mc *MultiClient) {
+		mc.maxTxGasLimit = maxTxGasLimit
+	}
 }
 
 // rpcHealthCheck performs a basic health check on the RPC client by calling eth_blockNumber
@@ -295,15 +310,28 @@ func (mc *MultiClient) PendingNonceAt(ctx context.Context, account common.Addres
 
 // EstimateGas is a wrapper around the ethclient.EstimateGas method that retries on failure.
 func (mc *MultiClient) EstimateGas(ctx context.Context, call ethereum.CallMsg) (uint64, error) {
-	var gas uint64
+	var estimated uint64
 	err := mc.retryWithBackups(ctx, "EstimateGas", func(ct context.Context, client *ethclient.Client) error {
 		var err error
-		gas, err = client.EstimateGas(ct, call)
+		estimated, err = client.EstimateGas(ct, call)
 
 		return err
 	})
+	if err != nil {
+		return 0, err
+	}
 
-	return gas, err
+	capped := gas.CapGasLimit(estimated, mc.maxTxGasLimit)
+	if capped != estimated {
+		mc.lggr.Debugw("eth_estimateGas capped at max_tx_gas_limit",
+			"chain", mc.chainName,
+			"estimated", estimated,
+			"max_tx_gas_limit", mc.maxTxGasLimit,
+			"capped", capped,
+		)
+	}
+
+	return capped, nil
 }
 
 // BalanceAt is a wrapper around the ethclient.BalanceAt method that retries on failure.

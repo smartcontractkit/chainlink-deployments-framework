@@ -84,6 +84,17 @@ func TestApplyDefaults(t *testing.T) {
 			},
 		},
 		{
+			name: "caps default gas limit at max tx gas limit",
+			cfg: gas.Config{
+				DefaultGasLimit: 20_000_000,
+				MaxTxGasLimit:   gas.EIP7825MaxTxGasLimit,
+			},
+			assertOpts: func(t *testing.T, opts *bind.TransactOpts) {
+				t.Helper()
+				require.Equal(t, gas.EIP7825MaxTxGasLimit, opts.GasLimit)
+			},
+		},
+		{
 			name: "EIP-1559 with tip override",
 			cfg: gas.Config{
 				DefaultGasPriceWei:  100_000_000_000,

@@ -1599,6 +1599,7 @@ func Test_chainLoaderEVM_evmMetadataFromNetwork_gasConfig(t *testing.T) {
 					"gas_config": map[string]any{
 						"default_gas_limit":     int64(7_500_000),
 						"default_gas_price_wei": int64(210_000_000_000),
+						"max_tx_gas_limit":      int64(16_777_216),
 					},
 				},
 			},
@@ -1607,6 +1608,7 @@ func Test_chainLoaderEVM_evmMetadataFromNetwork_gasConfig(t *testing.T) {
 				require.NotNil(t, cfg)
 				require.Equal(t, uint64(7_500_000), cfg.DefaultGasLimit)
 				require.Equal(t, uint64(210_000_000_000), cfg.DefaultGasPriceWei)
+				require.Equal(t, uint64(16_777_216), cfg.MaxTxGasLimit)
 			},
 		},
 	}

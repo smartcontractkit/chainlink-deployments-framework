@@ -3,15 +3,19 @@ package rpcclient
 import (
 	"context"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/gas"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
@@ -392,6 +396,104 @@ func TestMultiClient_reorderRPCs(t *testing.T) {
 				assert.Same(t, expected, mc.Backups[i],
 					"Backup at position %d should be as expected", i)
 			}
+		})
+	}
+}
+
+func newEstimateGasRPCServer(t *testing.T, estimateGasResult string, estimateGasError bool) *httptest.Server {
+	t.Helper()
+
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, "bad request", http.StatusBadRequest)
+			return
+		}
+
+		if strings.Contains(string(body), "eth_estimateGas") {
+			if estimateGasError {
+				_, _ = w.Write([]byte(`{"jsonrpc":"2.0","id":1,"error":{"code":-32000,"message":"execution reverted"}}`))
+				return
+			}
+			_, _ = w.Write([]byte(`{"jsonrpc":"2.0","id":1,"result":"` + estimateGasResult + `"}`))
+
+			return
+		}
+
+		_, _ = w.Write([]byte(`{"jsonrpc":"2.0","id":1,"result":"0x1"}`))
+	})
+
+	srv := httptest.NewServer(handler)
+	t.Cleanup(srv.Close)
+
+	return srv
+}
+
+func TestMultiClient_EstimateGas_cap(t *testing.T) {
+	t.Parallel()
+
+	const chainSelector uint64 = 16015286601757825753 // ethereum-testnet-sepolia
+
+	tests := []struct {
+		name          string
+		estimateHex   string
+		estimateError bool
+		maxTxGasLimit uint64
+		wantGas       uint64
+		wantErr       bool
+	}{
+		{
+			name:        "returns estimate unchanged when no cap",
+			estimateHex: "0xf4240", // 1_000_000
+			wantGas:     1_000_000,
+		},
+		{
+			name:          "caps estimate at max tx gas",
+			estimateHex:   "0x1312d00", // 20_000_000
+			maxTxGasLimit: gas.EIP7825MaxTxGasLimit,
+			wantGas:       gas.EIP7825MaxTxGasLimit,
+		},
+		{
+			name:          "does not cap failed estimate",
+			estimateHex:   "0xf4240",
+			estimateError: true,
+			maxTxGasLimit: gas.EIP7825MaxTxGasLimit,
+			wantErr:       true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			srv := newEstimateGasRPCServer(t, tt.estimateHex, tt.estimateError)
+
+			var opts []func(*MultiClient)
+			if tt.maxTxGasLimit > 0 {
+				opts = append(opts, WithMaxTxGasLimit(tt.maxTxGasLimit))
+			}
+
+			mc, err := NewMultiClient(t.Context(), logger.Test(t), RPCConfig{
+				ChainSelector: chainSelector,
+				RPCs: []RPC{{
+					Name:               "test-rpc",
+					HTTPURL:            srv.URL,
+					PreferredURLScheme: URLSchemePreferenceHTTP,
+				}},
+			}, opts...)
+			require.NoError(t, err)
+
+			estimated, err := mc.EstimateGas(context.Background(), ethereum.CallMsg{})
+			if tt.wantErr {
+				require.Error(t, err)
+				require.Equal(t, uint64(0), estimated)
+
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, tt.wantGas, estimated)
 		})
 	}
 }
