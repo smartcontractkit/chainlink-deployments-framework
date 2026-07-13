@@ -142,6 +142,8 @@ func NewMultiClient(
 }
 
 // SendTransaction is a wrapper around the ethclient.SendTransaction method that retries on failure.
+// Gas bumping is not performed here because the transaction is already signed; adjust gas on
+// chain.DeployerKey at chain load (gas_config defaults) or before signing the transaction.
 func (mc *MultiClient) SendTransaction(ctx context.Context, tx *types.Transaction) error {
 	return mc.retryWithBackups(ctx, "SendTransaction", func(ct context.Context, client *ethclient.Client) error {
 		return client.SendTransaction(ct, tx)

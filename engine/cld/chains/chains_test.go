@@ -16,6 +16,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/gas"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config"
 	cfgenv "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/env"
 	cfgnet "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/network"
@@ -1504,11 +1505,11 @@ func newFakeRPCServer(t *testing.T) *httptest.Server {
 	return srv
 }
 
-// Test_chainLoaderEVM_resolveIsZkSyncVM verifies that a per-chain
+// Test_chainLoaderEVM_evmMetadataFromNetwork_zkSync verifies that a per-chain
 // EVMMetadata.IsZkSync override in the network config takes precedence over the
 // hardcoded isZkSyncVM allowlist, and that the loader falls back to the allowlist
 // when no override is present.
-func Test_chainLoaderEVM_resolveIsZkSyncVM(t *testing.T) {
+func Test_chainLoaderEVM_evmMetadataFromNetwork_zkSync(t *testing.T) {
 	t.Parallel()
 
 	zkSel := chainsel.ETHEREUM_TESTNET_SEPOLIA_ZKSYNC_1.Selector // hardcoded zkSync
@@ -1564,7 +1565,58 @@ func Test_chainLoaderEVM_resolveIsZkSyncVM(t *testing.T) {
 			t.Parallel()
 
 			network := cfgnet.Network{ChainSelector: tt.selector, Metadata: tt.metadata}
-			assert.Equal(t, tt.want, l.resolveIsZkSyncVM(network, tt.selector))
+			_, isZkSyncVM := l.evmMetadataFromNetwork(network, tt.selector)
+			assert.Equal(t, tt.want, isZkSyncVM)
+		})
+	}
+}
+
+func Test_chainLoaderEVM_evmMetadataFromNetwork_gasConfig(t *testing.T) {
+	t.Parallel()
+
+	selector := chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector
+
+	tests := []struct {
+		name      string
+		network   cfgnet.Network
+		assertCfg func(t *testing.T, cfg *gas.Config)
+	}{
+		{
+			name: "empty network",
+			network: cfgnet.Network{
+				ChainSelector: selector,
+			},
+			assertCfg: func(t *testing.T, cfg *gas.Config) {
+				t.Helper()
+				require.Nil(t, cfg)
+			},
+		},
+		{
+			name: "parses gas_config metadata",
+			network: cfgnet.Network{
+				ChainSelector: selector,
+				Metadata: map[string]any{
+					"gas_config": map[string]any{
+						"default_gas_limit":     int64(7_500_000),
+						"default_gas_price_wei": int64(210_000_000_000),
+					},
+				},
+			},
+			assertCfg: func(t *testing.T, cfg *gas.Config) {
+				t.Helper()
+				require.NotNil(t, cfg)
+				require.Equal(t, uint64(7_500_000), cfg.DefaultGasLimit)
+				require.Equal(t, uint64(210_000_000_000), cfg.DefaultGasPriceWei)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			l := &chainLoaderEVM{lggr: logger.Test(t)}
+			gasConfig, _ := l.evmMetadataFromNetwork(tt.network, tt.network.ChainSelector)
+			tt.assertCfg(t, gasConfig)
 		})
 	}
 }
