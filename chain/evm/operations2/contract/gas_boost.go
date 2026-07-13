@@ -1,35 +1,19 @@
 package contract
 
 import (
-	"errors"
-	"math/big"
-	"strings"
+	"context"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/core/txpool"
-	"github.com/ethereum/go-ethereum/core/vm"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/gas"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
-)
-
-const (
-	defaultInitialGasLimit   = uint64(5_000_000)
-	defaultGasLimitIncrement = uint64(500_000)
-	defaultInitialGasPrice   = uint64(20_000_000_000)
-	defaultGasPriceIncrement = uint64(10_000_000_000)
 )
 
 // GasBoostConfig defines gas limit and price increments applied on deploy retries.
 // Increment fields use pointers so zero is a valid configured value (no increment).
 // A nil increment pointer uses the package default increment.
-type GasBoostConfig struct {
-	InitialGasLimit   uint64  `json:"initialGasLimit"`
-	GasLimitIncrement *uint64 `json:"gasLimitIncrement,omitempty"`
-	InitialGasPrice   uint64  `json:"initialGasPrice"`
-	GasPriceIncrement *uint64 `json:"gasPriceIncrement,omitempty"`
-}
+type GasBoostConfig = gas.BoostConfig
 
 // GasOverridable is implemented by operation inputs that carry optional gas overrides.
 type GasOverridable[IN any] interface {
@@ -74,12 +58,14 @@ func RetryWithGasBoost[IN GasOverridable[IN]](cfg *GasBoostConfig) operations.Ex
 	c := *cfg
 
 	return operations.WithRetryInput(func(attempt uint, err error, in IN, deps evm.Chain) IN {
-		if deps.IsZkSyncVM || !isGasRetryableError(err) {
+		if deps.IsZkSyncVM || !gas.IsRetryable(err) {
 			return in
 		}
 
 		gasLimit, gasPrice := in.GasBoostValues()
-		gasLimit, gasPrice = nextBoostedGas(c, attempt, gasLimit, gasPrice)
+		baselineLimit, baselinePrice := gas.BaselineFromTransactOpts(deps.DeployerKey)
+		prevLimit, prevPrice := gas.ResolveBoostPreviousGas(gasLimit, gasPrice, baselineLimit, baselinePrice)
+		gasLimit, gasPrice = gas.NextBoostedGas(c, attempt, prevLimit, prevPrice)
 
 		return in.WithGasBoost(gasLimit, gasPrice)
 	})
@@ -98,114 +84,25 @@ func RetryWriteWithGasBoost[ARGS any](cfg *GasBoostConfig) operations.ExecuteOpt
 	return RetryWithGasBoost[FunctionInput[ARGS]](cfg)
 }
 
-func (cfg GasBoostConfig) gasLimitIncrement() uint64 {
-	if cfg.GasLimitIncrement == nil {
-		return defaultGasLimitIncrement
-	}
-
-	return *cfg.GasLimitIncrement
-}
-
-func (cfg GasBoostConfig) gasPriceIncrement() uint64 {
-	if cfg.GasPriceIncrement == nil {
-		return defaultGasPriceIncrement
-	}
-
-	return *cfg.GasPriceIncrement
-}
-
-func resolveInitialGasLimit(cfg GasBoostConfig) uint64 {
-	if cfg.InitialGasLimit > 0 {
-		return cfg.InitialGasLimit
-	}
-
-	return defaultInitialGasLimit
-}
-
-func resolveInitialGasPrice(cfg GasBoostConfig) uint64 {
-	if cfg.InitialGasPrice > 0 {
-		return cfg.InitialGasPrice
-	}
-
-	return defaultInitialGasPrice
-}
-
-func nextBoostedGas(cfg GasBoostConfig, attempt uint, previousLimit, previousPrice uint64) (gasLimit uint64, gasPrice uint64) {
-	initialGasLimit := resolveInitialGasLimit(cfg)
-	gasLimitIncrement := cfg.gasLimitIncrement()
-	initialGasPrice := resolveInitialGasPrice(cfg)
-	gasPriceIncrement := cfg.gasPriceIncrement()
-
-	if previousLimit > 0 {
-		gasLimit = previousLimit + gasLimitIncrement
-	} else {
-		gasLimit = initialGasLimit + uint64(attempt)*gasLimitIncrement
-	}
-
-	if previousPrice > 0 {
-		gasPrice = previousPrice + gasPriceIncrement
-	} else {
-		gasPrice = initialGasPrice + uint64(attempt)*gasPriceIncrement
-	}
-
-	return gasLimit, gasPrice
-}
-
-func isGasRetryableError(err error) bool {
-	if err == nil {
-		return false
-	}
-
-	if errors.Is(err, vm.ErrOutOfGas) ||
-		errors.Is(err, vm.ErrCodeStoreOutOfGas) ||
-		errors.Is(err, core.ErrIntrinsicGas) ||
-		errors.Is(err, core.ErrFeeCapTooLow) ||
-		errors.Is(err, core.ErrGasLimitReached) ||
-		errors.Is(err, txpool.ErrUnderpriced) ||
-		errors.Is(err, txpool.ErrReplaceUnderpriced) ||
-		errors.Is(err, txpool.ErrTxGasPriceTooLow) ||
-		errors.Is(err, txpool.ErrGasLimit) {
-		return true
-	}
-
-	msg := strings.ToLower(err.Error())
-	for _, pattern := range gasRetryableErrorPatterns {
-		if strings.Contains(msg, pattern) {
-			return true
-		}
-	}
-
-	return false
-}
-
-// gasRetryableErrorPatterns covers RPC and wrapped errors that no longer carry geth sentinels.
-var gasRetryableErrorPatterns = []string{
-	"out of gas",
-	"gas required exceeds allowance",
-	"intrinsic gas too low",
-	"underpriced",
-	"replacement transaction underpriced",
-	"max fee per gas less than block base fee",
-	"exceeds block gas limit",
-}
-
-func transactOptsWithGasOverrides(base *bind.TransactOpts, gasLimit, gasPrice uint64) *bind.TransactOpts {
-	if base == nil {
-		return nil
-	}
+func transactOptsWithGasOverrides(
+	ctx context.Context,
+	chain evm.Chain,
+	base *bind.TransactOpts,
+	gasLimit, gasPrice uint64,
+) (*bind.TransactOpts, error) {
 	if gasLimit == 0 && gasPrice == 0 {
-		return base
+		return base, nil
 	}
 
-	opts := *base
-	if gasLimit > 0 {
-		opts.GasLimit = gasLimit
-	}
-	if gasPrice > 0 {
-		opts.GasPrice = new(big.Int).SetUint64(gasPrice)
-		opts.GasFeeCap = nil
-		opts.GasTipCap = nil
-	}
+	return gas.ApplyBoostOverrides(ctx, chain.Client, base, gasLimit, gasPrice)
+}
 
-	return &opts
+func shouldAutoGasBoost(chain evm.Chain, gasLimit, gasPrice uint64) bool {
+	// A non-nil Boost pointer (including boost: {} in YAML) enables the inner retry loop.
+	// Use RetryDeployWithGasBoost for an additional outer operations-level retry; when both
+	// are active, outer retries set input gas overrides and disable this auto path.
+	return chain.GasConfig != nil &&
+		chain.GasConfig.Boost != nil &&
+		gasLimit == 0 &&
+		gasPrice == 0
 }

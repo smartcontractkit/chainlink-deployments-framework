@@ -18,6 +18,7 @@ import (
 	"github.com/smartcontractkit/chainlink-evm/gethwrappers/workflow/generated/workflow_registry_wrapper_v2"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/gas"
 	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 )
@@ -96,10 +97,41 @@ func NewWrite[ARGS any, C interface{ Address() common.Address }](params WritePar
 			}
 			opts := deployment.SimTransactOpts()
 			if allowed {
-				opts = transactOptsWithGasOverrides(chain.DeployerKey, input.GasLimit, input.GasPrice)
+				opts, err = transactOptsWithGasOverrides(b.GetContext(), chain, chain.DeployerKey, input.GasLimit, input.GasPrice)
+				if err != nil {
+					return WriteOutput{}, fmt.Errorf("failed to apply gas overrides for %s on %s: %w", params.Name, chain, err)
+				}
 			}
 			var execInfo *ExecInfo
-			tx, callErr := params.CallContract(params.Contract, opts, input.Args)
+			var tx *eth_types.Transaction
+			var callErr error
+
+			runWrite := func(gasLimit, gasPrice uint64) (*eth_types.Transaction, error) {
+				writeOpts, optsErr := transactOptsWithGasOverrides(b.GetContext(), chain, chain.DeployerKey, gasLimit, gasPrice)
+				if optsErr != nil {
+					return nil, optsErr
+				}
+
+				return params.CallContract(params.Contract, writeOpts, input.Args)
+			}
+
+			if allowed && shouldAutoGasBoost(chain, input.GasLimit, input.GasPrice) {
+				baselineLimit, baselinePriceWei := gas.BaselineFromTransactOpts(chain.DeployerKey)
+				tx, callErr = gas.ExecuteWithBoost(
+					b.GetContext(),
+					chain.IsZkSyncVM,
+					chain.GasConfig.Boost,
+					baselineLimit,
+					baselinePriceWei,
+					func(gasLimit, gasPrice uint64) (*eth_types.Transaction, error) {
+						return runWrite(gasLimit, gasPrice)
+					},
+				)
+			} else if allowed {
+				tx, callErr = runWrite(input.GasLimit, input.GasPrice)
+			} else {
+				tx, callErr = params.CallContract(params.Contract, opts, input.Args)
+			}
 			if callErr == nil && tx == nil {
 				return WriteOutput{}, fmt.Errorf("contract call returned nil transaction for %s against %s on %s", params.Name, params.Contract.Address(), chain)
 			}

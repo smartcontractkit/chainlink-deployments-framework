@@ -14,6 +14,7 @@ import (
 	"github.com/zksync-sdk/zksync2-go/accounts"
 	"github.com/zksync-sdk/zksync2-go/clients"
 
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/gas"
 	chaincommon "github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/common"
 	"github.com/smartcontractkit/chainlink-deployments-framework/internal/pointer"
 )
@@ -50,6 +51,9 @@ type Chain struct {
 	// SignHash allows signing of arbitrary hashes using the deployer key's signing mechanism.
 	// This function signature matches the expected format: func([]byte) ([]byte, error)
 	SignHash func([]byte) ([]byte, error)
+
+	// GasConfig holds per-chain default gas settings and optional retry boost configuration.
+	GasConfig *gas.Config
 
 	// ZK deployment specifics
 	IsZkSyncVM          bool

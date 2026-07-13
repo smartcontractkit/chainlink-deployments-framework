@@ -14,6 +14,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/gas"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider/rpcclient"
 )
 
@@ -45,6 +46,8 @@ type ZkSyncRPCChainProviderConfig struct {
 	// Optional: Logger is the logger to use for the RPCChainProvider. If not provided, a default
 	// logger will be used.
 	Logger logger.Logger
+	// Optional: GasConfig configures default gas limit/price for the chain.
+	GasConfig *gas.Config
 }
 
 // validate checks if the config is valid.
@@ -134,6 +137,13 @@ func (p *ZkSyncRPCChainProvider) Initialize(ctx context.Context) (chain.BlockCha
 		return nil, fmt.Errorf("failed to create multi-client: %w", err)
 	}
 
+	if p.config.GasConfig != nil {
+		// Applies EVM-style defaults to DeployerKey; ZkSync deployments use DeployerKeyZkSyncVM instead.
+		if applyErr := gas.ApplyDefaults(ctx, client, deployerKey, *p.config.GasConfig); applyErr != nil {
+			return nil, fmt.Errorf("failed to apply gas defaults for chain %d: %w", p.selector, applyErr)
+		}
+	}
+
 	// Setup the confirm function
 	confirmFunc, err := p.config.ConfirmFunctor.Generate(
 		ctx, p.selector, client, deployerKey.From,
@@ -160,6 +170,7 @@ func (p *ZkSyncRPCChainProvider) Initialize(ctx context.Context) (chain.BlockCha
 		DeployerKey:         deployerKey,
 		Confirm:             confirmFunc,
 		SignHash:            p.config.DeployerTransactorGen.SignHash,
+		GasConfig:           p.config.GasConfig,
 		IsZkSyncVM:          true,
 		ClientZkSyncVM:      clientZk,
 		DeployerKeyZkSyncVM: deployerKeyZkSyncVM,

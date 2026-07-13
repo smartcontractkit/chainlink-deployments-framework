@@ -5,6 +5,8 @@ import (
 	"fmt"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/gas"
 )
 
 // EVMMetadata is a struct that holds metadata specific to EVM networks.
@@ -13,7 +15,8 @@ type EVMMetadata struct {
 	// IsZkSync overrides the default VM classification for this chain. When set, it
 	// takes precedence over the hardcoded isZkSyncVM allowlist in the EVM chain loader.
 	// Set false to force the standard EVM deploy path on zkStack chains
-	IsZkSync *bool `yaml:"is_zksync,omitempty"`
+	IsZkSync  *bool       `yaml:"is_zksync,omitempty"`
+	GasConfig *gas.Config `yaml:"gas_config,omitempty"`
 }
 
 // StellarMetadata holds metadata specific to Stellar networks.

@@ -20,6 +20,7 @@ import (
 	cantonauthcode "github.com/smartcontractkit/chainlink-deployments-framework/chain/canton/provider/authentication/authorizationcode"
 	cantonclientcreds "github.com/smartcontractkit/chainlink-deployments-framework/chain/canton/provider/authentication/clientcredentials"
 	fevm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
+	evmgas "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/gas"
 	evmprov "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider"
 	evmclient "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider/rpcclient"
 	solanaprov "github.com/smartcontractkit/chainlink-deployments-framework/chain/solana/provider"
@@ -535,6 +536,8 @@ func (l *chainLoaderEVM) Load(ctx context.Context, selector uint64) (fchain.Bloc
 		},
 	}
 
+	gasConfig := evmGasConfigFromNetwork(network)
+
 	var c fchain.BlockChain
 
 	// Use the zkSync RPC if the chain should be treated as a zkSync VM chain. Per-chain network config may
@@ -554,6 +557,7 @@ func (l *chainLoaderEVM) Load(ctx context.Context, selector uint64) (fchain.Bloc
 				ConfirmFunctor:        confirmFunctor,
 				ClientOpts:            clientOpts,
 				Logger:                l.lggr,
+				GasConfig:             gasConfig,
 			},
 		).Initialize(ctx)
 	} else {
@@ -564,6 +568,7 @@ func (l *chainLoaderEVM) Load(ctx context.Context, selector uint64) (fchain.Bloc
 				ConfirmFunctor:        confirmFunctor,
 				ClientOpts:            clientOpts,
 				Logger:                l.lggr,
+				GasConfig:             gasConfig,
 			},
 		).Initialize(ctx)
 	}
@@ -589,6 +594,19 @@ func (l *chainLoaderEVM) resolveIsZkSyncVM(network cfgnet.Network, selector uint
 	}
 
 	return l.isZkSyncVM(selector)
+}
+
+func evmGasConfigFromNetwork(network cfgnet.Network) *evmgas.Config {
+	if network.Metadata == nil {
+		return nil
+	}
+
+	md, err := cfgnet.DecodeMetadata[cfgnet.EVMMetadata](network.Metadata)
+	if err != nil || md.GasConfig == nil {
+		return nil
+	}
+
+	return md.GasConfig
 }
 
 // isZkSyncVM checks if the given chain selector corresponds to a zkSyncchain.

@@ -16,6 +16,7 @@ import (
 	"github.com/zksync-sdk/zksync2-go/clients"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/gas"
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
@@ -139,13 +140,52 @@ func NewDeploy[ARGS any](params DeployParams[ARGS]) *operations.Operation[Deploy
 					args...,
 				)
 			} else {
-				addr, tx, _, deployErr = deployEVMContract(
-					transactOptsWithGasOverrides(chain.DeployerKey, input.GasLimit, input.GasPrice),
-					*parsedABI,
-					bytecode.EVM,
-					chain.Client,
-					args...,
-				)
+				runDeploy := func(gasLimit, gasPrice uint64) (common.Address, *types.Transaction, error) {
+					opts, optsErr := transactOptsWithGasOverrides(b.GetContext(), chain, chain.DeployerKey, gasLimit, gasPrice)
+					if optsErr != nil {
+						return common.Address{}, nil, optsErr
+					}
+					a, t, _, derr := deployEVMContract(
+						opts,
+						*parsedABI,
+						bytecode.EVM,
+						chain.Client,
+						args...,
+					)
+
+					return a, t, derr
+				}
+
+				if shouldAutoGasBoost(chain, input.GasLimit, input.GasPrice) {
+					baselineLimit, baselinePriceWei := gas.BaselineFromTransactOpts(chain.DeployerKey)
+					type deployResult struct {
+						addr common.Address
+						tx   *types.Transaction
+					}
+					result, boostErr := gas.ExecuteWithBoost(
+						b.GetContext(),
+						chain.IsZkSyncVM,
+						chain.GasConfig.Boost,
+						baselineLimit,
+						baselinePriceWei,
+						func(gasLimit, gasPrice uint64) (deployResult, error) {
+							a, t, derr := runDeploy(gasLimit, gasPrice)
+							if derr != nil {
+								return deployResult{}, derr
+							}
+
+							return deployResult{addr: a, tx: t}, nil
+						},
+					)
+					if boostErr != nil {
+						deployErr = boostErr
+					} else {
+						addr = result.addr
+						tx = result.tx
+					}
+				} else {
+					addr, tx, deployErr = runDeploy(input.GasLimit, input.GasPrice)
+				}
 			}
 			if !chain.IsZkSyncVM {
 				if deployErr == nil && tx == nil {

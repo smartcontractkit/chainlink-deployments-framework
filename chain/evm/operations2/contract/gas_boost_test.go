@@ -10,10 +10,13 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/txpool"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/gas"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations/optest"
 )
@@ -21,15 +24,15 @@ import (
 func TestNextBoostedGas(t *testing.T) {
 	t.Parallel()
 
-	limit, price := nextBoostedGas(GasBoostConfig{}, 0, 0, 0)
+	limit, price := gas.NextBoostedGas(gas.BoostConfig{}, 0, 0, 0)
 	require.Equal(t, uint64(5_000_000), limit)
 	require.Equal(t, uint64(20_000_000_000), price)
 
-	limit, price = nextBoostedGas(GasBoostConfig{}, 2, 0, 0)
+	limit, price = gas.NextBoostedGas(gas.BoostConfig{}, 2, 0, 0)
 	require.Equal(t, uint64(6_000_000), limit)
 	require.Equal(t, uint64(40_000_000_000), price)
 
-	limit, price = nextBoostedGas(GasBoostConfig{
+	limit, price = gas.NextBoostedGas(gas.BoostConfig{
 		InitialGasLimit:   1_000_000,
 		GasLimitIncrement: ptrUint64(100_000),
 		InitialGasPrice:   5_000_000_000,
@@ -38,12 +41,12 @@ func TestNextBoostedGas(t *testing.T) {
 	require.Equal(t, uint64(1_300_000), limit)
 	require.Equal(t, uint64(8_000_000_000), price)
 
-	limit, price = nextBoostedGas(GasBoostConfig{}, 5, 4_000_000, 30_000_000_000)
+	limit, price = gas.NextBoostedGas(gas.BoostConfig{}, 5, 4_000_000, 30_000_000_000)
 	require.Equal(t, uint64(4_500_000), limit)
 	require.Equal(t, uint64(40_000_000_000), price)
 
 	zeroInc := uint64(0)
-	limit, price = nextBoostedGas(GasBoostConfig{
+	limit, price = gas.NextBoostedGas(gas.BoostConfig{
 		GasLimitIncrement: &zeroInc,
 		GasPriceIncrement: &zeroInc,
 	}, 1, 2_000_000, 10_000_000_000)
@@ -54,17 +57,13 @@ func TestNextBoostedGas(t *testing.T) {
 func TestIsGasRetryableError(t *testing.T) {
 	t.Parallel()
 
-	require.False(t, isGasRetryableError(nil))
-	require.False(t, isGasRetryableError(errors.New("invalid constructor args")))
-
-	// String fallback for RPC / simulation messages.
-	require.True(t, isGasRetryableError(errors.New("out of gas: gas required exceeds allowance")))
-	require.True(t, isGasRetryableError(errors.New("transaction underpriced")))
-
-	// geth sentinels via errors.Is.
-	require.True(t, isGasRetryableError(vm.ErrOutOfGas))
-	require.True(t, isGasRetryableError(fmt.Errorf("send failed: %w", txpool.ErrUnderpriced)))
-	require.True(t, isGasRetryableError(fmt.Errorf("deploy failed: %w", core.ErrFeeCapTooLow)))
+	require.False(t, gas.IsRetryable(nil))
+	require.False(t, gas.IsRetryable(errors.New("invalid constructor args")))
+	require.True(t, gas.IsRetryable(errors.New("out of gas: gas required exceeds allowance")))
+	require.True(t, gas.IsRetryable(errors.New("transaction underpriced")))
+	require.True(t, gas.IsRetryable(vm.ErrOutOfGas))
+	require.True(t, gas.IsRetryable(fmt.Errorf("send failed: %w", txpool.ErrUnderpriced)))
+	require.True(t, gas.IsRetryable(fmt.Errorf("deploy failed: %w", core.ErrFeeCapTooLow)))
 }
 
 func TestTransactOptsWithGasOverrides(t *testing.T) {
@@ -76,22 +75,35 @@ func TestTransactOptsWithGasOverrides(t *testing.T) {
 		GasFeeCap: big.NewInt(100),
 		GasTipCap: big.NewInt(2),
 	}
+	mockClient := evm.NewMockOnchainClient(t)
+	chain := evm.Chain{Client: mockClient}
 
-	require.Nil(t, transactOptsWithGasOverrides(nil, 1, 1))
-	require.Same(t, base, transactOptsWithGasOverrides(base, 0, 0))
+	opts, err := transactOptsWithGasOverrides(t.Context(), chain, nil, 1, 1)
+	require.Error(t, err)
+	require.Nil(t, opts)
 
-	limitOnly := transactOptsWithGasOverrides(base, 500_000, 0)
+	same, err := transactOptsWithGasOverrides(t.Context(), chain, base, 0, 0)
+	require.NoError(t, err)
+	require.Same(t, base, same)
+
+	limitOnly, err := transactOptsWithGasOverrides(t.Context(), chain, base, 500_000, 0)
+	require.NoError(t, err)
 	require.Equal(t, uint64(500_000), limitOnly.GasLimit)
 	require.Equal(t, big.NewInt(1), limitOnly.GasPrice)
 	require.Equal(t, big.NewInt(100), limitOnly.GasFeeCap)
 
-	priceOnly := transactOptsWithGasOverrides(base, 0, 30_000_000_000)
-	require.Equal(t, uint64(21_000), priceOnly.GasLimit)
-	require.Equal(t, uint64(30_000_000_000), priceOnly.GasPrice.Uint64())
-	require.Nil(t, priceOnly.GasFeeCap)
-	require.Nil(t, priceOnly.GasTipCap)
+	mockClient.EXPECT().HeaderByNumber(mock.Anything, (*big.Int)(nil)).
+		Return(&types.Header{BaseFee: nil}, nil).Twice()
 
-	withGas := transactOptsWithGasOverrides(base, 500_000, 30_000_000_000)
+	legacyOnly, err := transactOptsWithGasOverrides(t.Context(), chain, base, 0, 30_000_000_000)
+	require.NoError(t, err)
+	require.Equal(t, uint64(21_000), legacyOnly.GasLimit)
+	require.Equal(t, uint64(30_000_000_000), legacyOnly.GasPrice.Uint64())
+	require.Nil(t, legacyOnly.GasFeeCap)
+	require.Nil(t, legacyOnly.GasTipCap)
+
+	withGas, err := transactOptsWithGasOverrides(t.Context(), chain, base, 500_000, 30_000_000_000)
+	require.NoError(t, err)
 	require.Equal(t, uint64(500_000), withGas.GasLimit)
 	require.Equal(t, uint64(30_000_000_000), withGas.GasPrice.Uint64())
 	require.Nil(t, withGas.GasFeeCap)
@@ -365,4 +377,57 @@ func TestRetryWriteWithGasBoostSkipsZkSync(t *testing.T) {
 	for _, limit := range gasLimits {
 		require.Equal(t, uint64(0), limit)
 	}
+}
+
+func TestShouldAutoGasBoost(t *testing.T) {
+	t.Parallel()
+
+	boost := &gas.BoostConfig{}
+	chainWithBoost := evm.Chain{
+		GasConfig: &gas.Config{Boost: boost},
+	}
+
+	require.True(t, shouldAutoGasBoost(chainWithBoost, 0, 0))
+	require.False(t, shouldAutoGasBoost(chainWithBoost, 1, 0))
+	require.False(t, shouldAutoGasBoost(chainWithBoost, 0, 1))
+	require.False(t, shouldAutoGasBoost(evm.Chain{}, 0, 0))
+	require.False(t, shouldAutoGasBoost(evm.Chain{GasConfig: &gas.Config{}}, 0, 0))
+}
+
+func TestRetryDeployWithGasBoostFromDeployerBaseline(t *testing.T) {
+	t.Parallel()
+
+	var gasLimits []uint64
+	op := operations.NewOperation(
+		"gas-boost-baseline",
+		semver.MustParse("1.0.0"),
+		"test",
+		func(_ operations.Bundle, _ evm.Chain, input DeployInput[struct{}]) (uint64, error) {
+			gasLimits = append(gasLimits, input.GasLimit)
+			if len(gasLimits) == 1 {
+				return 0, errors.New("out of gas")
+			}
+
+			return input.GasLimit, nil
+		},
+	)
+
+	cfg := &GasBoostConfig{GasLimitIncrement: ptrUint64(500_000)}
+	bundle := optest.NewBundle(t)
+	res, err := operations.ExecuteOperation(
+		bundle,
+		op,
+		evm.Chain{
+			Selector: 1,
+			DeployerKey: &bind.TransactOpts{
+				GasLimit: 7_500_000,
+				GasPrice: big.NewInt(210_000_000_000),
+			},
+		},
+		DeployInput[struct{}]{},
+		RetryDeployWithGasBoost[struct{}](cfg),
+	)
+	require.NoError(t, err)
+	require.Equal(t, uint64(8_000_000), res.Output)
+	require.Equal(t, []uint64{0, 8_000_000}, gasLimits)
 }

@@ -1568,3 +1568,29 @@ func Test_chainLoaderEVM_resolveIsZkSyncVM(t *testing.T) {
 		})
 	}
 }
+
+func Test_evmGasConfigFromNetwork(t *testing.T) {
+	t.Parallel()
+
+	require.Nil(t, evmGasConfigFromNetwork(cfgnet.Network{}))
+
+	network := cfgnet.Network{
+		Metadata: map[string]any{
+			"gas_config": map[string]any{
+				"default_gas_limit":     uint64(7_500_000),
+				"default_gas_price_wei": uint64(210_000_000_000),
+				"boost":                 map[string]any{},
+			},
+		},
+	}
+
+	cfg := evmGasConfigFromNetwork(network)
+	require.NotNil(t, cfg)
+	require.Equal(t, uint64(7_500_000), cfg.DefaultGasLimit)
+	require.Equal(t, uint64(210_000_000_000), cfg.DefaultGasPriceWei)
+	require.NotNil(t, cfg.Boost)
+
+	require.Nil(t, evmGasConfigFromNetwork(cfgnet.Network{
+		Metadata: map[string]any{"is_zksync": true},
+	}))
+}
