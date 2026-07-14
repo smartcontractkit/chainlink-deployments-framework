@@ -325,7 +325,7 @@ func TestIsWorkflowsOwner(t *testing.T) {
 					Once()
 				contract.EXPECT().
 					GetWorkflowById(opts, workflowId2).
-					Return(workflow_registry_wrapper_v2.WorkflowRegistryWorkflowMetadataView{WorkflowId: workflowId1, Owner: caller}, nil).
+					Return(workflow_registry_wrapper_v2.WorkflowRegistryWorkflowMetadataView{WorkflowId: workflowId2, Owner: caller}, nil).
 					Once()
 			},
 			wantAllowed: true,
