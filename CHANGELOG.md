@@ -1,5 +1,13 @@
 # chainlink-deployments-framework
 
+## 0.117.0
+
+### Minor Changes
+
+- [#1118](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1118) [`9d58336`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/9d5833617a40a027f44f5d876e96ec47b24a574b) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat(evm): per-chain gas defaults via network YAML
+
+  Adds `gas_config` to EVM network metadata so domains can set default gas limit and price on the chain deployer at load time, and optionally cap deployer gas and `eth_estimateGas` via `max_tx_gas_limit`.
+
 ## 0.116.1
 
 ### Patch Changes
