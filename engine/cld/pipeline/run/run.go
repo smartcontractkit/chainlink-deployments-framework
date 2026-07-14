@@ -1,6 +1,8 @@
 package run
 
 import (
+	"context"
+
 	cs "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/changeset"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
@@ -10,6 +12,7 @@ import (
 
 // ConfigureEnvironmentOptions builds the environment loading options for a changeset execution.
 func ConfigureEnvironmentOptions(
+	ctx context.Context,
 	registry *cs.ChangesetsRegistry,
 	changesetStr string,
 	dryRun bool,
@@ -24,7 +27,7 @@ func ConfigureEnvironmentOptions(
 		return nil, err
 	}
 
-	chainOverrides, err := GetChainOverrides(registry, changesetStr)
+	chainOverrides, err := GetChainOverrides(ctx, registry, changesetStr)
 	if err != nil {
 		return nil, err
 	}
@@ -48,22 +51,37 @@ func ConfigureEnvironmentOptions(
 }
 
 // GetChainOverrides retrieves the chain overrides for a given changeset.
-func GetChainOverrides(registry *cs.ChangesetsRegistry, changesetStr string) ([]uint64, error) {
+// It fails fast with a clear error if any of the resolved chain selectors have
+// been marked as decommissioned/deprecated, preventing misleading RPC errors
+// (e.g. "insufficient funds", "underpriced transaction") that occur when
+// interacting with a sunset chain.
+func GetChainOverrides(ctx context.Context, registry *cs.ChangesetsRegistry, changesetStr string) ([]uint64, error) {
 	changesetOptions, err := registry.GetChangesetOptions(changesetStr)
 	if err != nil {
 		return nil, err
 	}
 
+	var chainOverrides []uint64
 	if changesetOptions.ChainsToLoad != nil {
-		return changesetOptions.ChainsToLoad, nil
+		chainOverrides = changesetOptions.ChainsToLoad
+	} else {
+		configs, err := registry.GetConfigurations(changesetStr)
+		if err != nil {
+			return nil, err
+		}
+		chainOverrides = configs.InputChainOverrides
 	}
 
-	configs, err := registry.GetConfigurations(changesetStr)
-	if err != nil {
-		return nil, err
+	// Validate that no requested chain has been decommissioned. Only check
+	// when overrides are explicitly provided (non-nil); a nil value means
+	// "load all chains" and is handled by LoadChains downstream.
+	if chainOverrides != nil {
+		if err := checkDecommissionedChains(ctx, defaultChainDetailsChecker{}, chainOverrides); err != nil {
+			return nil, err
+		}
 	}
 
-	return configs.InputChainOverrides, nil
+	return chainOverrides, nil
 }
 
 // SaveReports saves any new operations reports generated during changeset execution.

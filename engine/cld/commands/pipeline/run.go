@@ -146,7 +146,7 @@ func runRun(cmd *cobra.Command, cfg *Config, f runFlags) error {
 		return err
 	}
 
-	envOptions, err := dprun.ConfigureEnvironmentOptions(registry, actualChangesetName, f.dryRun, cfg.Logger)
+	envOptions, err := dprun.ConfigureEnvironmentOptions(cmd.Context(), registry, actualChangesetName, f.dryRun, cfg.Logger)
 	if err != nil {
 		return err
 	}

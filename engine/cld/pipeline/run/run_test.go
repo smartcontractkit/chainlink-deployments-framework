@@ -4,6 +4,7 @@ import (
 	"errors"
 	"testing"
 
+	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/stretchr/testify/require"
 
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
@@ -74,7 +75,7 @@ func TestConfigureEnvironmentOptions(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			opts, err := ConfigureEnvironmentOptions(tt.regSetup(), tt.changeset, tt.dryRun, logger.Test(t))
+			opts, err := ConfigureEnvironmentOptions(t.Context(), tt.regSetup(), tt.changeset, tt.dryRun, logger.Test(t))
 
 			if tt.wantErr != "" {
 				require.Error(t, err)
@@ -117,13 +118,26 @@ func TestGetChainOverrides(t *testing.T) {
 			changeset: "0001_missing",
 			wantErr:   "changeset '0001_missing' not found",
 		},
+		{
+			name: "active chain overrides pass decommissioned check",
+			regSetup: func() *cs.ChangesetsRegistry {
+				reg := cs.NewChangesetsRegistry()
+				reg.Add("0001_test", cs.Configure(&runStubChangeset{}).With(map[string]any{}),
+					cs.OnlyLoadChainsFor(chainsel.ETHEREUM_MAINNET.Selector),
+				)
+
+				return reg
+			},
+			changeset: "0001_test",
+			want:      []uint64{chainsel.ETHEREUM_MAINNET.Selector},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := GetChainOverrides(tt.regSetup(), tt.changeset)
+			got, err := GetChainOverrides(t.Context(), tt.regSetup(), tt.changeset)
 
 			if tt.wantErr != "" {
 				require.Error(t, err)
