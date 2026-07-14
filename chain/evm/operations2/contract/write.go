@@ -309,7 +309,8 @@ func IsWorkflowsOwner(contract WorkflowRegistryContract, opts *bind.CallOpts, ca
 			if err != nil {
 				return false, err
 			}
-			if wfMetadata.Owner != caller {
+			// If a workflow does not yet exist, then it is a first deployment and the caller should be allowed.
+			if wfMetadata.WorkflowId != [32]byte{} && wfMetadata.Owner != caller {
 				return false, nil
 			}
 		}
