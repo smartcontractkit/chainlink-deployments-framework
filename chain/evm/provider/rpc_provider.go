@@ -13,6 +13,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/gas"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider/rpcclient"
 )
 
@@ -40,6 +41,8 @@ type RPCChainProviderConfig struct {
 	// Optional: Logger is the logger to use for the RPCChainProvider. If not provided, a default
 	// logger will be used.
 	Logger logger.Logger
+	// Optional: GasConfig configures default gas limit and price for the chain deployer.
+	GasConfig *gas.Config
 }
 
 // validate checks if the RPCChainProviderConfig is valid.
@@ -129,9 +132,15 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 	client, err := rpcclient.NewMultiClient(ctx, p.config.Logger, rpcclient.RPCConfig{
 		ChainSelector: p.selector,
 		RPCs:          p.config.RPCs,
-	}, p.config.ClientOpts...)
+	}, multiClientOpts(p.config.GasConfig, p.config.ClientOpts)...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create multi-client: %w", err)
+	}
+
+	if p.config.GasConfig != nil {
+		if applyErr := gas.ApplyDefaults(ctx, client, deployerKey, *p.config.GasConfig); applyErr != nil {
+			return nil, fmt.Errorf("failed to apply gas defaults for chain %d: %w", p.selector, applyErr)
+		}
 	}
 
 	// Setup the confirm function
@@ -149,6 +158,7 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 		Users:       users,
 		Confirm:     confirmFunc,
 		SignHash:    p.config.DeployerTransactorGen.SignHash,
+		GasConfig:   p.config.GasConfig,
 	}
 
 	return *p.chain, nil

@@ -20,6 +20,7 @@ import (
 	cantonauthcode "github.com/smartcontractkit/chainlink-deployments-framework/chain/canton/provider/authentication/authorizationcode"
 	cantonclientcreds "github.com/smartcontractkit/chainlink-deployments-framework/chain/canton/provider/authentication/clientcredentials"
 	fevm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
+	evmgas "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/gas"
 	evmprov "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider"
 	evmclient "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider/rpcclient"
 	solanaprov "github.com/smartcontractkit/chainlink-deployments-framework/chain/solana/provider"
@@ -535,11 +536,13 @@ func (l *chainLoaderEVM) Load(ctx context.Context, selector uint64) (fchain.Bloc
 		},
 	}
 
+	gasConfig, isZkSyncVM := l.evmMetadataFromNetwork(network, selector)
+
 	var c fchain.BlockChain
 
 	// Use the zkSync RPC if the chain should be treated as a zkSync VM chain. Per-chain network config may
 	// override the hardcoded classification via EVMMetadata.IsZkSync; otherwise the hardcoded allowlist is used.
-	if l.resolveIsZkSyncVM(network, selector) {
+	if isZkSyncVM {
 		var signerGen evmprov.ZkSyncSignerGenerator
 		signerGen, err = l.zkSyncSignerGenerator(l.cfg)
 		if err != nil {
@@ -554,6 +557,7 @@ func (l *chainLoaderEVM) Load(ctx context.Context, selector uint64) (fchain.Bloc
 				ConfirmFunctor:        confirmFunctor,
 				ClientOpts:            clientOpts,
 				Logger:                l.lggr,
+				GasConfig:             gasConfig,
 			},
 		).Initialize(ctx)
 	} else {
@@ -564,6 +568,7 @@ func (l *chainLoaderEVM) Load(ctx context.Context, selector uint64) (fchain.Bloc
 				ConfirmFunctor:        confirmFunctor,
 				ClientOpts:            clientOpts,
 				Logger:                l.lggr,
+				GasConfig:             gasConfig,
 			},
 		).Initialize(ctx)
 	}
@@ -574,21 +579,27 @@ func (l *chainLoaderEVM) Load(ctx context.Context, selector uint64) (fchain.Bloc
 	return c, nil
 }
 
-// resolveIsZkSyncVM determines whether a chain should use zkSync VM handling. A
-// per-chain EVMMetadata.IsZkSync override in the network config takes precedence;
-// when unset it falls back to the hardcoded isZkSyncVM allowlist.
-func (l *chainLoaderEVM) resolveIsZkSyncVM(network cfgnet.Network, selector uint64) bool {
-	if network.Metadata != nil {
-		switch md, err := cfgnet.DecodeMetadata[cfgnet.EVMMetadata](network.Metadata); {
-		case err != nil:
-			l.lggr.Warnw("Failed to decode EVM network metadata; falling back to hardcoded zkSync classification",
-				"selector", selector, "error", err)
-		case md.IsZkSync != nil:
-			return *md.IsZkSync
-		}
+// evmMetadataFromNetwork decodes EVMMetadata once per chain load and derives gas config
+// and zkSync classification from the result.
+func (l *chainLoaderEVM) evmMetadataFromNetwork(network cfgnet.Network, selector uint64) (*evmgas.Config, bool) {
+	if network.Metadata == nil {
+		return nil, l.isZkSyncVM(selector)
 	}
 
-	return l.isZkSyncVM(selector)
+	md, err := cfgnet.DecodeMetadata[cfgnet.EVMMetadata](network.Metadata)
+	if err != nil {
+		l.lggr.Warnw("Failed to decode EVM network metadata; falling back to hardcoded zkSync classification and skipping gas defaults",
+			"selector", selector, "error", err)
+
+		return nil, l.isZkSyncVM(selector)
+	}
+
+	isZkSyncVM := l.isZkSyncVM(selector)
+	if md.IsZkSync != nil {
+		isZkSyncVM = *md.IsZkSync
+	}
+
+	return md.GasConfig, isZkSyncVM
 }
 
 // isZkSyncVM checks if the given chain selector corresponds to a zkSyncchain.
