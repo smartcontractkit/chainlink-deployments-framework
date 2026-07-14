@@ -321,11 +321,11 @@ func TestIsWorkflowsOwner(t *testing.T) {
 					Once()
 				contract.EXPECT().
 					GetWorkflowById(opts, workflowId1).
-					Return(workflow_registry_wrapper_v2.WorkflowRegistryWorkflowMetadataView{Owner: caller}, nil).
+					Return(workflow_registry_wrapper_v2.WorkflowRegistryWorkflowMetadataView{WorkflowId: workflowId1, Owner: caller}, nil).
 					Once()
 				contract.EXPECT().
 					GetWorkflowById(opts, workflowId2).
-					Return(workflow_registry_wrapper_v2.WorkflowRegistryWorkflowMetadataView{Owner: caller}, nil).
+					Return(workflow_registry_wrapper_v2.WorkflowRegistryWorkflowMetadataView{WorkflowId: workflowId2, Owner: caller}, nil).
 					Once()
 			},
 			wantAllowed: true,
@@ -340,14 +340,29 @@ func TestIsWorkflowsOwner(t *testing.T) {
 					Once()
 				contract.EXPECT().
 					GetWorkflowById(opts, workflowId1).
-					Return(workflow_registry_wrapper_v2.WorkflowRegistryWorkflowMetadataView{Owner: caller}, nil).
+					Return(workflow_registry_wrapper_v2.WorkflowRegistryWorkflowMetadataView{WorkflowId: workflowId1, Owner: caller}, nil).
 					Once()
 				contract.EXPECT().
 					GetWorkflowById(opts, workflowId2).
-					Return(workflow_registry_wrapper_v2.WorkflowRegistryWorkflowMetadataView{Owner: other}, nil).
+					Return(workflow_registry_wrapper_v2.WorkflowRegistryWorkflowMetadataView{WorkflowId: workflowId2, Owner: other}, nil).
 					Once()
 			},
 			wantAllowed: false,
+		},
+		{
+			desc:        "returns true when a workflow does not exist",
+			workflowIds: [][32]byte{workflowId1},
+			setupMock: func(contract *contractmocks.MockWorkflowRegistryContract, opts *bind.CallOpts) {
+				contract.EXPECT().
+					Address().
+					Return(contractAddress).
+					Once()
+				contract.EXPECT().
+					GetWorkflowById(opts, workflowId1).
+					Return(workflow_registry_wrapper_v2.WorkflowRegistryWorkflowMetadataView{}, nil).
+					Once()
+			},
+			wantAllowed: true,
 		},
 		{
 			desc:        "returns error when workflow lookup fails",
