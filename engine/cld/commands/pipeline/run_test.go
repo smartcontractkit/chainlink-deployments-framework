@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/samber/lo"
@@ -16,11 +17,13 @@ import (
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 	"github.com/stretchr/testify/require"
 
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	fresolvers "github.com/smartcontractkit/chainlink-deployments-framework/changeset/resolvers"
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/changeset"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/timelockdelay"
 	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
@@ -89,7 +92,7 @@ func (m *mockProposalContext) GetEVMRegistry() analyzer.EVMABIRegistry {
 }
 
 // loadProposal is a helper function to load the generated proposal from disk for assertions.
-func loadProposal(t *testing.T, proposalsDir string) (*mcms.TimelockProposal, string) {
+func loadProposal(t *testing.T, proposalsDir string) *mcms.TimelockProposal {
 	t.Helper()
 
 	files, err := filepath.Glob(filepath.Join(proposalsDir, "*.json"))
@@ -99,7 +102,7 @@ func loadProposal(t *testing.T, proposalsDir string) (*mcms.TimelockProposal, st
 	proposal, err := mcms.LoadProposal(mcmstypes.KindTimelockProposal, files[0])
 	require.NoError(t, err)
 
-	return proposal.(*mcms.TimelockProposal), files[0]
+	return proposal.(*mcms.TimelockProposal)
 }
 
 //nolint:paralleltest
@@ -647,7 +650,7 @@ changesets:
 	err = cmd.Execute()
 	require.NoError(t, err)
 
-	proposal, _ := loadProposal(t, proposalsDir)
+	proposal := loadProposal(t, proposalsDir)
 	require.Equal(t, "v1", proposal.Version)
 	require.NotNil(t, proposal.Metadata)
 	require.Equal(t, map[string]any{
@@ -679,6 +682,139 @@ changesets:
 			},
 		}},
 	}}, proposal.Operations)
+}
+
+//nolint:paralleltest
+func TestRunCmd_TimelockDelayCorrection(t *testing.T) {
+	generateStableUUIDs(t)
+
+	const (
+		env           = "testnet"
+		changesetName = "0001_test_changeset"
+		yamlFileName  = "test-input.yaml"
+	)
+	yamlContent := `environment: testnet
+domain: test
+changesets:
+  - 0001_test_changeset:
+      payload:
+        chain: optimism_sepolia
+        value: 123456789012345678901234`
+	minDelay := mcmstypes.NewDuration(3 * time.Hour)
+
+	tests := []struct {
+		name       string
+		corrector  TimelockDelayCorrectorFunc
+		wantErr    error
+		wantErrMsg string
+		checkSaved func(t *testing.T, proposalsDir string)
+	}{
+		{
+			name: "corrects unset delay before save",
+			corrector: func(
+				ctx context.Context,
+				lggr logger.Logger,
+				_ chain.BlockChains,
+				proposals []mcms.TimelockProposal,
+			) error {
+				return timelockdelay.CorrectTimelockDelaysWithLookup(ctx, lggr, proposals, func(
+					_ context.Context,
+					_ *mcms.TimelockProposal,
+					_ uint64,
+					_ string,
+				) (mcmstypes.Duration, error) {
+					return minDelay, nil
+				})
+			},
+			checkSaved: func(t *testing.T, proposalsDir string) {
+				t.Helper()
+				savedProposal := loadProposal(t, proposalsDir)
+				require.Equal(t, minDelay, savedProposal.Delay)
+			},
+		},
+		{
+			name:       "fails when unset delay cannot be verified",
+			wantErr:    timelockdelay.ErrUnsetTimelockDelayUnverified,
+			wantErrMsg: "failed to correct timelock proposal delay",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			workspaceRoot := t.TempDir()
+			domainsRoot := filepath.Join(workspaceRoot, "domains")
+			testDomain := domain.NewDomain(domainsRoot, "test")
+			envRoot := filepath.Join(domainsRoot, testDomain.String(), env)
+			inputsDir := filepath.Join(envRoot, "durable_pipelines", "inputs")
+			require.NoError(t, os.MkdirAll(inputsDir, 0o755))
+			proposalsDir := filepath.Join(envRoot, "proposals")
+
+			require.NoError(t, os.WriteFile(filepath.Join(inputsDir, yamlFileName), []byte(yamlContent), 0o600))
+
+			originalWd, err := os.Getwd()
+			require.NoError(t, err)
+			require.NoError(t, os.Chdir(workspaceRoot))
+			t.Cleanup(func() { require.NoError(t, os.Chdir(originalWd)) })
+
+			proposal := *testProposal
+			proposal.Delay = mcmstypes.NewDuration(0)
+
+			changesetStub := &stubProposalChangeset{TimelockProposal: proposal}
+			loadChangesets := func(envName string) (*changeset.ChangesetsRegistry, error) {
+				rp := &registryProviderStub{
+					BaseRegistryProvider: changeset.NewBaseRegistryProvider(),
+					AddAction: func(reg *changeset.ChangesetsRegistry) {
+						reg.Add(changesetName, changeset.Configure(changesetStub).WithEnvInput())
+					},
+				}
+				if initErr := rp.Init(); initErr != nil {
+					return nil, initErr
+				}
+
+				return rp.Registry(), nil
+			}
+
+			cfg := &Config{
+				Logger:                logger.Test(t),
+				Domain:                testDomain,
+				LoadChangesets:        loadChangesets,
+				ConfigResolverManager: fresolvers.NewConfigResolverManager(),
+				Deps: Deps{
+					EnvironmentLoader: func(ctx context.Context, dom domain.Domain, envKey string, opts ...environment.LoadEnvironmentOption) (fdeployment.Environment, error) {
+						return fdeployment.Environment{}, nil
+					},
+					TimelockDelayCorrector: tt.corrector,
+				},
+			}
+
+			cmd, err := NewCommand(cfg)
+			require.NoError(t, err)
+
+			t.Setenv("DURABLE_PIPELINE_INPUT", `{"payload":{"chain":"optimism_sepolia","value":123456789012345678901234}}`)
+
+			cmd.SetArgs([]string{
+				"run",
+				"--environment", env,
+				"--changeset", changesetName,
+				"--input-file", yamlFileName,
+				"--dry-run",
+			})
+
+			err = cmd.Execute()
+			if tt.wantErr != nil {
+				require.Error(t, err)
+				require.ErrorIs(t, err, tt.wantErr)
+				require.ErrorContains(t, err, tt.wantErrMsg)
+
+				return
+			}
+
+			require.NoError(t, err)
+			if tt.checkSaved != nil {
+				tt.checkSaved(t, proposalsDir)
+			}
+		})
+	}
 }
 
 //nolint:paralleltest
@@ -812,6 +948,7 @@ var testProposal = lo.Must(mcms.NewTimelockProposalBuilder().
 	SetValidUntil(2082758399).
 	SetDescription("test timelock proposal").
 	SetOverridePreviousRoot(true).
+	SetDelay(mcmstypes.NewDuration(time.Hour)).
 	SetAction(mcmstypes.TimelockActionSchedule).
 	AddTimelockAddress(mcmstypes.ChainSelector(chainsel.GETH_TESTNET.Selector), "0xTimelockAddress").
 	AddChainMetadata(mcmstypes.ChainSelector(chainsel.GETH_TESTNET.Selector), mcmstypes.ChainMetadata{MCMAddress: "0xMCMAddress"}).

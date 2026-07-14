@@ -1,5 +1,19 @@
 # chainlink-deployments-framework
 
+## 0.116.1
+
+### Patch Changes
+
+- [#1115](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1115) [`6690d94`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/6690d946b335d6b9d0d93e1f8a5aa50f611853d4) Thanks [@ChrisAmora](https://github.com/ChrisAmora)! - Fix domain scaffolding: the generated `cmd/main.go` hardcoded the `chainlink-deployments` repo in its self import while `go.mod` derived the module path from `{{.repo}}`.
+
+## 0.116.0
+
+### Minor Changes
+
+- [#1106](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1106) [`e7fb227`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/e7fb22792ec426167ba1cbed24fcb771f7124eed) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat(proposalanalyzer): expose timelock proposal in renderer
+
+- [#1114](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1114) [`db8c279`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/db8c279c3dcbbeecacb24090eb6ba824764e7423) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat(pipeline): correct timelock proposal delay from on-chain minDelay during durable-pipeline run
+
 ## 0.115.1
 
 ### Patch Changes
