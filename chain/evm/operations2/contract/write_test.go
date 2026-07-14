@@ -350,7 +350,7 @@ func TestIsWorkflowsOwner(t *testing.T) {
 			wantAllowed: false,
 		},
 		{
-			desc:        "returns true when a workflow does not exists",
+			desc:        "returns true when a workflow does not exist",
 			workflowIds: [][32]byte{workflowId1},
 			setupMock: func(contract *contractmocks.MockWorkflowRegistryContract, opts *bind.CallOpts) {
 				contract.EXPECT().
