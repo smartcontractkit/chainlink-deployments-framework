@@ -5,8 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"slices"
-	"strconv"
-	"strings"
 	"sync"
 
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
@@ -96,9 +94,6 @@ type ChangesetsRegistry struct {
 	// keyHistory is a list of all changeset keys in the order they were added to the registry.
 	keyHistory []string
 
-	// validate enables or disables changeset key validation.
-	validate bool
-
 	// globalPreHooks run before every changeset in this registry.
 	globalPreHooks []PreHook
 	// globalPostHooks run after every changeset in this registry.
@@ -134,16 +129,14 @@ func NewChangesetsRegistry() *ChangesetsRegistry {
 	return &ChangesetsRegistry{
 		entries:    make(map[string]registryEntry),
 		keyHistory: []string{},
-		validate:   true,
 	}
 }
 
-// SetValidate sets the validate flag for the registry. If set to true, changeset keys will be validated.
+// SetValidate is deprecated and has no effect. Validation is now permanently disabled.
+// This method is kept for backward compatibility and will be removed in a future version.
+// Deprecated: SetValidate
 func (r *ChangesetsRegistry) SetValidate(validate bool) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	r.validate = validate
+	// no-op: kept for backward compatibility
 }
 
 // AddGlobalPreHooks appends pre-hooks that run before every changeset in this registry.
@@ -412,13 +405,6 @@ func (r *ChangesetsRegistry) Add(key string, cs ChangeSet, opts ...ChangesetOpti
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	// Validate the key format and index
-	if r.validate {
-		if err := r.validateKey(key); err != nil {
-			panic(fmt.Errorf("invalid changeset key '%s': %w", key, err))
-		}
-	}
-
 	// Process the options
 	options := ChangesetConfig{}
 	for _, opt := range opts {
@@ -427,46 +413,6 @@ func (r *ChangesetsRegistry) Add(key string, cs ChangeSet, opts ...ChangesetOpti
 
 	r.entries[key] = newRegistryEntry(cs, options)
 	r.keyHistory = append(r.keyHistory, key)
-}
-
-func (r *ChangesetsRegistry) validateKey(key string) error {
-	// Extract the numerical prefix from the new key
-	currentIndex, err := extractIndexFromKey(key)
-	if err != nil {
-		return fmt.Errorf("invalid changeset key format '%s': %w", key, err)
-	}
-
-	// If there are existing changesets, validate that the new index is greater than the last one
-	if len(r.keyHistory) > 0 {
-		lastKey := r.keyHistory[len(r.keyHistory)-1]
-		lastIndex, err := extractIndexFromKey(lastKey)
-		if err != nil {
-			return fmt.Errorf("invalid previous changeset key format '%s': %w", lastKey, err)
-		}
-
-		if currentIndex <= lastIndex {
-			return fmt.Errorf("changeset index must be monotonically increasing: got %d, previous was %d",
-				currentIndex, lastIndex)
-		}
-	}
-
-	return nil
-}
-
-// extractIndexFromKey extracts the numerical index from a changeset key.
-// Expected format: "0001_changeset_name" where "0001" is the index.
-func extractIndexFromKey(key string) (int, error) {
-	parts := strings.Split(key, "_")
-	if len(parts) < 2 {
-		return 0, fmt.Errorf("key '%s' does not follow the format 'index_name'", key)
-	}
-
-	index, err := strconv.Atoi(parts[0])
-	if err != nil {
-		return 0, fmt.Errorf("could not parse index from key '%s': %w", key, err)
-	}
-
-	return index, nil
 }
 
 // LatestKey returns the most recent changeset key.
