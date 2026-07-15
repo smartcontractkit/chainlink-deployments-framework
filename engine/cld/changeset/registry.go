@@ -134,8 +134,10 @@ func NewChangesetsRegistry() *ChangesetsRegistry {
 
 // SetValidate is deprecated and has no effect. Validation is now permanently disabled.
 // This method is kept for backward compatibility and will be removed in a future version.
-// Deprecated: SetValidate
-func (r *ChangesetsRegistry) SetValidate(validate bool) {
+//
+// Deprecated: SetValidate no longer performs any validation; the call is a no-op
+// and callers should remove it. Changeset key validation has been removed entirely.
+func (r *ChangesetsRegistry) SetValidate(_ bool) {
 	// no-op: kept for backward compatibility
 }
 
