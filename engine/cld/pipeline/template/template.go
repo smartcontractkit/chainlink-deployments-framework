@@ -169,6 +169,14 @@ func GenerateStructYAMLWithDepthLimit(
 		fieldCount := 0
 		maxFields := 20
 
+		// Inject the struct's own doc comment above its fields, giving
+		// users context on what the struct represents.
+		if comments != nil {
+			for _, commentLine := range comments.StructComments(t) {
+				fmt.Fprintf(&result, "%s# %s\n", indent, commentLine)
+			}
+		}
+
 		for i := 0; i < t.NumField() && fieldCount < maxFields; i++ {
 			field := t.Field(i)
 
