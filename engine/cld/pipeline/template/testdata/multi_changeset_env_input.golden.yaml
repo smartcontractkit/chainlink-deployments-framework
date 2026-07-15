@@ -1,0 +1,29 @@
+# Generated via template-input command
+environment: testnet
+domain: mydomain
+changesets:
+  # Input type: template.envInputFixtureConfig
+  # envInputFixtureChangeset is a stub changeset typed with envInputFixtureConfig,
+  # used by the golden test to verify the WithEnvInput path. This changeset's
+  # generic type C is envInputFixtureConfig, so cfg.InputType is populated and
+  # the InputType branch of generateChangesetSection is exercised.
+  # It MUST live in a regular .go file (not a _test.go file) because
+  # packages.Load does not load _test.go files by default.
+  - 0002_env:
+      # Optional: Chain overrides (uncomment if needed)
+      # chainOverrides:
+      #   - 1  # Chain selector 1
+      #   - 2  # Chain selector 2
+      payload:
+        # FeedURL is the HTTP endpoint the workflow polls for data.
+        feedURL: # string
+        # PollIntervalSec is the interval between polls in seconds.
+        # Must be a positive integer.
+        pollIntervalSec: # int
+        # Enabled controls whether the feed is active.
+        enabled: # bool
+        # BlockCommentField demonstrates a multi-line block comment
+        # with star-prefixed lines, which should be stripped in the
+        # generated YAML output.
+        blockComment: # string
+        noComment: # string
