@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.117.1
+
+### Patch Changes
+
+- [#1129](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1129) [`b2ec85b`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/b2ec85b52e121ea84e7c490275926624baeaf8e4) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - refactor(changeset): remove SetValidate validation restriction
+
 ## 0.117.0
 
 ### Minor Changes
