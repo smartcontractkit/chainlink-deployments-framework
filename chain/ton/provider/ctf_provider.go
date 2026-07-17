@@ -17,9 +17,10 @@ import (
 	"github.com/xssnick/tonutils-go/ton/wallet"
 
 	chainsel "github.com/smartcontractkit/chain-selectors"
+	"github.com/smartcontractkit/freeport"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
-	"github.com/smartcontractkit/freeport"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	cldf_ton "github.com/smartcontractkit/chainlink-deployments-framework/chain/ton"
@@ -217,7 +218,7 @@ func createTonWallet(client ton.APIClientWrapped, versionConfig wallet.VersionCo
 	if err != nil {
 		return nil, fmt.Errorf("failed to create wallet from seed: %w", err)
 	}
-	pw, perr := wallet.FromPrivateKeyWithOptions(client, rw.PrivateKey(), versionConfig, option)
+	pw, perr := wallet.FromPrivateKeyWithOptions(rw.PrivateKey(), versionConfig, wallet.WithAPI(client), option)
 	if perr != nil {
 		return nil, fmt.Errorf("failed to create wallet from private key: %w", perr)
 	}

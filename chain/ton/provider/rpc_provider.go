@@ -139,7 +139,7 @@ func createWallet(
 		return nil, nil, fmt.Errorf("unsupported wallet version: %w", err)
 	}
 
-	tonWallet, err := wallet.FromPrivateKeyWithOptions(api, privateKey, walletConfig, wallet.WithWorkchain(0))
+	tonWallet, err := wallet.FromPrivateKeyWithOptions(privateKey, walletConfig, wallet.WithAPI(api), wallet.WithWorkchain(0))
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to init TON wallet: %w", err)
 	}
