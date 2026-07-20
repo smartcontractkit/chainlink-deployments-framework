@@ -81,51 +81,52 @@ func Test_ResolveProjectRoot_finds_project_root_via_upward_search_from_working_d
 	)
 }
 
-//nolint:paralleltest // sets CLD_PROJECT_ROOT env var, cannot run in parallel
-func Test_ResolveProjectRoot_uses_env_var_override(t *testing.T) {
-	p := mkTempProject(t)
+//nolint:paralleltest // sets CLD_PROJECT_ROOT env var and cwd, cannot run in parallel
+func Test_ResolveProjectRoot_env_var(t *testing.T) {
+	tests := []struct {
+		name      string
+		envValue  func(t *testing.T, p tempProj) string
+		chdirTo   func(t *testing.T, p tempProj) string // nil = don't chdir
+		wantPanic bool
+	}{
+		{
+			name:     "override wins over cwd search",
+			envValue: func(_ *testing.T, p tempProj) string { return p.root },
+			chdirTo:  func(t *testing.T, _ tempProj) string { return t.TempDir() },
+		},
+		{
+			name:      "panics when set to directory without domains",
+			envValue:  func(t *testing.T, _ tempProj) string { return t.TempDir() },
+			wantPanic: true,
+		},
+		{
+			name:     "empty value falls through to cwd search",
+			envValue: func(_ *testing.T, _ tempProj) string { return "" },
+			chdirTo:  func(_ *testing.T, p tempProj) string { return p.nestedLevel },
+		},
+	}
 
-	// Run from an unrelated directory to prove the override wins over the
-	// executable/cwd search strategies.
-	orig, err := os.Getwd()
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = os.Chdir(orig) })
-	require.NoError(t, os.Chdir(t.TempDir()))
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := mkTempProject(t)
+			t.Setenv(ProjectRootEnvVar, tt.envValue(t, p))
 
-	t.Setenv(ProjectRootEnvVar, p.root)
+			if tt.chdirTo != nil {
+				orig, err := os.Getwd()
+				require.NoError(t, err)
+				t.Cleanup(func() { _ = os.Chdir(orig) })
+				require.NoError(t, os.Chdir(tt.chdirTo(t, p)))
+			}
 
-	got := ResolveProjectRoot()
-	require.Equal(t,
-		resolve(t, p.root),
-		resolve(t, got),
-		"ResolveProjectRoot should honor CLD_PROJECT_ROOT",
-	)
-}
+			if tt.wantPanic {
+				require.Panics(t, func() { _ = ResolveProjectRoot() })
+				return
+			}
 
-//nolint:paralleltest // sets CLD_PROJECT_ROOT env var, cannot run in parallel
-func Test_ResolveProjectRoot_panics_when_env_var_invalid(t *testing.T) {
-	// A directory that exists but has no domains/ subdirectory is not a valid root.
-	invalid := t.TempDir()
-	t.Setenv(ProjectRootEnvVar, invalid)
-
-	require.Panics(t, func() { _ = ResolveProjectRoot() },
-		"ResolveProjectRoot should panic when CLD_PROJECT_ROOT is set but invalid")
-}
-
-//nolint:paralleltest // sets CLD_PROJECT_ROOT env var, cannot run in parallel
-func Test_ResolveProjectRoot_ignores_empty_env_var(t *testing.T) {
-	p := mkTempProject(t)
-
-	orig, err := os.Getwd()
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = os.Chdir(orig) })
-	require.NoError(t, os.Chdir(p.nestedLevel))
-
-	// An empty value must be treated as unset and fall through to the search.
-	t.Setenv(ProjectRootEnvVar, "")
-
-	got := ResolveProjectRoot()
-	require.Equal(t, resolve(t, p.root), resolve(t, got))
+			got := ResolveProjectRoot()
+			require.Equal(t, resolve(t, p.root), resolve(t, got))
+		})
+	}
 }
 
 func Test_searchUpwardForProjectRoot_finds_project_root_when_starting_from_nested_directory(t *testing.T) {

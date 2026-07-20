@@ -29,7 +29,7 @@ func inputGenerateResolver(input map[string]any) (any, error) {
 func TestInputGenerateCmd_Success(t *testing.T) {
 	env := "testnet"
 	workspaceRoot := t.TempDir()
-	testDomain := domain.NewDomain(filepath.Join(workspaceRoot, "domains"), "test")
+	testDomain := domain.NewDomain(filepath.Join(workspaceRoot, domain.DomainsDirName), "test")
 	inputsDir := filepath.Join(workspaceRoot, "domains", testDomain.String(), env, "durable_pipelines", "inputs")
 	require.NoError(t, os.MkdirAll(inputsDir, 0o755))
 
@@ -88,7 +88,7 @@ changesets:
 func TestInputGenerateCmd_WithOutputFile(t *testing.T) {
 	env := "testnet"
 	workspaceRoot := t.TempDir()
-	testDomain := domain.NewDomain(filepath.Join(workspaceRoot, "domains"), "test")
+	testDomain := domain.NewDomain(filepath.Join(workspaceRoot, domain.DomainsDirName), "test")
 	inputsDir := filepath.Join(workspaceRoot, "domains", testDomain.String(), env, "durable_pipelines", "inputs")
 	require.NoError(t, os.MkdirAll(inputsDir, 0o755))
 
