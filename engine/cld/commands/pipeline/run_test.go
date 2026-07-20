@@ -821,9 +821,9 @@ changesets:
 func TestRunCmd_SingleChangesetWithoutSelector(t *testing.T) {
 	env := "testnet"
 	changesetName := "0001_test_changeset"
-	testDomain := domain.NewDomain(t.TempDir(), "test")
-
 	workspaceRoot := t.TempDir()
+	testDomain := domain.NewDomain(filepath.Join(workspaceRoot, domain.DomainsDirName), "test")
+
 	inputsDir := filepath.Join(workspaceRoot, "domains", testDomain.String(), env, "durable_pipelines", "inputs")
 	require.NoError(t, os.MkdirAll(inputsDir, 0o755))
 
@@ -887,9 +887,9 @@ changesets:
 //nolint:paralleltest
 func TestRunCmd_MultipleChangesetsRequireSelector(t *testing.T) {
 	env := "testnet"
-	testDomain := domain.NewDomain(t.TempDir(), "test")
-
 	workspaceRoot := t.TempDir()
+	testDomain := domain.NewDomain(filepath.Join(workspaceRoot, domain.DomainsDirName), "test")
+
 	inputsDir := filepath.Join(workspaceRoot, "domains", testDomain.String(), env, "durable_pipelines", "inputs")
 	require.NoError(t, os.MkdirAll(inputsDir, 0o755))
 

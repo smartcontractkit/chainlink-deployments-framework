@@ -583,7 +583,7 @@ domain: mydomain
 //nolint:paralleltest // mutates process cwd and environment variables.
 func TestPrepareInputForRunAuto(t *testing.T) {
 	workspaceRoot := t.TempDir()
-	dom := domain.NewDomain(workspaceRoot, "test")
+	dom := domain.NewDomain(filepath.Join(workspaceRoot, domain.DomainsDirName), "test")
 	envKey := "testnet"
 	inputsDir := filepath.Join(workspaceRoot, "domains", dom.String(), envKey, "durable_pipelines", "inputs")
 	require.NoError(t, os.MkdirAll(inputsDir, 0o755))
