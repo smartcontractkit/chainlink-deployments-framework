@@ -1,6 +1,7 @@
 package input
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -13,7 +14,7 @@ import (
 // when the filename ultimately comes from a CLI flag.
 func validateInputFileName(inputFileName string) error {
 	if strings.TrimSpace(inputFileName) == "" {
-		return fmt.Errorf("input file name must not be empty")
+		return errors.New("input file name must not be empty")
 	}
 
 	if filepath.Dir(inputFileName) != "." {
