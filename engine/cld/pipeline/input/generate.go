@@ -34,6 +34,10 @@ type GenerateOptions struct {
 
 // Generate resolves the inputs file and outputs the result.
 func Generate(opts GenerateOptions) (string, error) {
+	if err := validateInputFileName(opts.InputsFileName); err != nil {
+		return "", err
+	}
+
 	inputsPath := filepath.Join(
 		opts.Domain.EnvDir(opts.EnvKey).DurablePipelinesInputsDirPath(), opts.InputsFileName,
 	)

@@ -35,6 +35,27 @@ func TestResolveDurablePipelineYamlPath(t *testing.T) {
 			wantErr:   "only filenames are supported, not full paths: subdir/file.yaml",
 		},
 		{
+			name:      "rejects path traversal",
+			inputFile: "../escape.yaml",
+			domKey:    "test",
+			envKey:    "testnet",
+			wantErr:   "only filenames are supported, not full paths: ../escape.yaml",
+		},
+		{
+			name:      "rejects empty filename",
+			inputFile: "",
+			domKey:    "test",
+			envKey:    "testnet",
+			wantErr:   "input file name must not be empty",
+		},
+		{
+			name:      "rejects whitespace-only filename",
+			inputFile: "   ",
+			domKey:    "test",
+			envKey:    "testnet",
+			wantErr:   "input file name must not be empty",
+		},
+		{
 			name:       "success with filename",
 			inputFile:  "pipeline.yaml",
 			domKey:     "mydomain",
