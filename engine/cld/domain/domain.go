@@ -12,7 +12,7 @@ import (
 // GetDomain returns a Domain for the specified key based on the available dirs in the domains root.
 // If the key is not recognized, it will return an error
 func GetDomain(key string) (Domain, error) {
-	entries, err := os.ReadDir(filepath.Join(ProjectRoot, "domains"))
+	entries, err := os.ReadDir(filepath.Join(ProjectRoot, DomainsDirName))
 	if err != nil {
 		return Domain{}, fmt.Errorf("failed to read directory: %w", err)
 	}

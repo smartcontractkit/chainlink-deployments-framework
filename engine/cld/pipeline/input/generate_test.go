@@ -51,7 +51,7 @@ changesets:
 	reg := cs.NewChangesetsRegistry()
 	reg.Add("0001_cs1", cs.Configure(&generateStubChangeset{}).WithConfigResolver(arrayFormatResolver))
 
-	dom := domain.NewDomain(dir, "mydomain")
+	dom := domain.NewDomain(filepath.Join(dir, "domains"), "mydomain")
 	opts := GenerateOptions{
 		InputsFileName:  "in.yaml",
 		Domain:          dom,
@@ -87,7 +87,7 @@ changesets:
 	t.Cleanup(func() { _ = os.Chdir(originalWd) })
 
 	reg := cs.NewChangesetsRegistry()
-	dom := domain.NewDomain(dir, "mydomain")
+	dom := domain.NewDomain(filepath.Join(dir, "domains"), "mydomain")
 	opts := GenerateOptions{
 		InputsFileName:  "in.yaml",
 		Domain:          dom,
@@ -118,7 +118,7 @@ changesets: "not-object-or-array"
 	t.Cleanup(func() { _ = os.Chdir(originalWd) })
 
 	reg := cs.NewChangesetsRegistry()
-	dom := domain.NewDomain(dir, "mydomain")
+	dom := domain.NewDomain(filepath.Join(dir, "domains"), "mydomain")
 	opts := GenerateOptions{
 		InputsFileName:  "in.yaml",
 		Domain:          dom,
@@ -158,7 +158,7 @@ changesets:
 	// rm does NOT register resolver
 	rm := fresolvers.NewConfigResolverManager()
 
-	dom := domain.NewDomain(dir, "mydomain")
+	dom := domain.NewDomain(filepath.Join(dir, "domains"), "mydomain")
 	opts := GenerateOptions{
 		InputsFileName:  "in.yaml",
 		Domain:          dom,
@@ -191,7 +191,7 @@ changesets:
 	t.Cleanup(func() { _ = os.Chdir(originalWd) })
 
 	reg := cs.NewChangesetsRegistry()
-	dom := domain.NewDomain(dir, "mydomain")
+	dom := domain.NewDomain(filepath.Join(dir, "domains"), "mydomain")
 	opts := GenerateOptions{
 		InputsFileName:  "in.yaml",
 		Domain:          dom,

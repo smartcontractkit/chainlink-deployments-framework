@@ -47,11 +47,8 @@ func TestResolveDurablePipelineYamlPath(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			dir := t.TempDir()
 			require.NoError(t, os.MkdirAll(filepath.Join(dir, "domains", tt.domKey, tt.envKey, "durable_pipelines", "inputs"), 0o755))
-			originalWd, _ := os.Getwd()
-			require.NoError(t, os.Chdir(dir))
-			t.Cleanup(func() { _ = os.Chdir(originalWd) })
 
-			dom := domain.NewDomain(dir, tt.domKey)
+			dom := domain.NewDomain(filepath.Join(dir, "domains"), tt.domKey)
 			got, err := ResolveDurablePipelineYamlPath(tt.inputFile, dom, tt.envKey)
 
 			if tt.wantErr != "" {

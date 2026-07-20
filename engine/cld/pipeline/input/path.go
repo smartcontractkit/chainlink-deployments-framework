@@ -15,13 +15,7 @@ func ResolveDurablePipelineYamlPath(inputFileName string, dom domain.Domain, env
 		return "", fmt.Errorf("only filenames are supported, not full paths: %s", inputFileName)
 	}
 
-	workspaceRoot, err := FindWorkspaceRoot()
-	if err != nil {
-		return "", fmt.Errorf("find workspace root: %w", err)
-	}
-
 	return filepath.Join(
-		workspaceRoot, "domains", dom.String(),
-		envKey, "durable_pipelines", "inputs", inputFileName,
+		dom.EnvDir(envKey).DurablePipelinesInputsDirPath(), inputFileName,
 	), nil
 }

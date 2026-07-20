@@ -28,8 +28,8 @@ func inputGenerateResolver(input map[string]any) (any, error) {
 //nolint:paralleltest
 func TestInputGenerateCmd_Success(t *testing.T) {
 	env := "testnet"
-	testDomain := domain.NewDomain(t.TempDir(), "test")
 	workspaceRoot := t.TempDir()
+	testDomain := domain.NewDomain(filepath.Join(workspaceRoot, "domains"), "test")
 	inputsDir := filepath.Join(workspaceRoot, "domains", testDomain.String(), env, "durable_pipelines", "inputs")
 	require.NoError(t, os.MkdirAll(inputsDir, 0o755))
 
@@ -87,8 +87,8 @@ changesets:
 //nolint:paralleltest
 func TestInputGenerateCmd_WithOutputFile(t *testing.T) {
 	env := "testnet"
-	testDomain := domain.NewDomain(t.TempDir(), "test")
 	workspaceRoot := t.TempDir()
+	testDomain := domain.NewDomain(filepath.Join(workspaceRoot, "domains"), "test")
 	inputsDir := filepath.Join(workspaceRoot, "domains", testDomain.String(), env, "durable_pipelines", "inputs")
 	require.NoError(t, os.MkdirAll(inputsDir, 0o755))
 

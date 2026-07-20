@@ -64,21 +64,68 @@ func Test_ProjectRoot(t *testing.T) {
 }
 
 //nolint:paralleltest // tests modify global ProjectRoot/DomainsRoot, cannot run in parallel
-func Test_getProjectRoot_finds_project_root_via_upward_search_from_working_directory(t *testing.T) {
+func Test_ResolveProjectRoot_finds_project_root_via_upward_search_from_working_directory(t *testing.T) {
 	p := mkTempProject(t)
 
-	// run in nested dir so getProjectRoot's CWD strategy can find our root
+	// run in nested dir so ResolveProjectRoot's CWD strategy can find our root
 	orig, err := os.Getwd()
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = os.Chdir(orig) })
 	require.NoError(t, os.Chdir(p.nestedLevel))
 
-	got := getProjectRoot()
+	got := ResolveProjectRoot()
 	require.Equal(t,
 		resolve(t, p.root),
 		resolve(t, got),
-		"getProjectRoot should walk upward to temp project root",
+		"ResolveProjectRoot should walk upward to temp project root",
 	)
+}
+
+//nolint:paralleltest // sets CLD_PROJECT_ROOT env var, cannot run in parallel
+func Test_ResolveProjectRoot_uses_env_var_override(t *testing.T) {
+	p := mkTempProject(t)
+
+	// Run from an unrelated directory to prove the override wins over the
+	// executable/cwd search strategies.
+	orig, err := os.Getwd()
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = os.Chdir(orig) })
+	require.NoError(t, os.Chdir(t.TempDir()))
+
+	t.Setenv(ProjectRootEnvVar, p.root)
+
+	got := ResolveProjectRoot()
+	require.Equal(t,
+		resolve(t, p.root),
+		resolve(t, got),
+		"ResolveProjectRoot should honor CLD_PROJECT_ROOT",
+	)
+}
+
+//nolint:paralleltest // sets CLD_PROJECT_ROOT env var, cannot run in parallel
+func Test_ResolveProjectRoot_panics_when_env_var_invalid(t *testing.T) {
+	// A directory that exists but has no domains/ subdirectory is not a valid root.
+	invalid := t.TempDir()
+	t.Setenv(ProjectRootEnvVar, invalid)
+
+	require.Panics(t, func() { _ = ResolveProjectRoot() },
+		"ResolveProjectRoot should panic when CLD_PROJECT_ROOT is set but invalid")
+}
+
+//nolint:paralleltest // sets CLD_PROJECT_ROOT env var, cannot run in parallel
+func Test_ResolveProjectRoot_ignores_empty_env_var(t *testing.T) {
+	p := mkTempProject(t)
+
+	orig, err := os.Getwd()
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = os.Chdir(orig) })
+	require.NoError(t, os.Chdir(p.nestedLevel))
+
+	// An empty value must be treated as unset and fall through to the search.
+	t.Setenv(ProjectRootEnvVar, "")
+
+	got := ResolveProjectRoot()
+	require.Equal(t, resolve(t, p.root), resolve(t, got))
 }
 
 func Test_searchUpwardForProjectRoot_finds_project_root_when_starting_from_nested_directory(t *testing.T) {
