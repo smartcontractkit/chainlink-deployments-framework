@@ -563,7 +563,7 @@ domain: mydomain
 			require.NoError(t, os.Chdir(dir))
 			t.Cleanup(func() { _ = os.Chdir(originalWd) })
 
-			dom := domain.NewDomain(filepath.Join(dir, "domains"), tt.domKey)
+			dom := domain.NewDomain(filepath.Join(dir, domain.DomainsDirName), tt.domKey)
 			got, err := ParseDurablePipelineYAML(tt.fileName, dom, tt.envKey)
 
 			if tt.wantErr != "" {

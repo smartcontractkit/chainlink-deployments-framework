@@ -92,11 +92,17 @@ func Test_ResolveProjectRoot_env_var(t *testing.T) {
 		{
 			name:     "override wins over cwd search",
 			envValue: func(_ *testing.T, p tempProj) string { return p.root },
-			chdirTo:  func(t *testing.T, _ tempProj) string { return t.TempDir() },
+			chdirTo: func(t *testing.T, _ tempProj) string {
+				t.Helper()
+				return t.TempDir()
+			},
 		},
 		{
-			name:      "panics when set to directory without domains",
-			envValue:  func(t *testing.T, _ tempProj) string { return t.TempDir() },
+			name: "panics when set to directory without domains",
+			envValue: func(t *testing.T, _ tempProj) string {
+				t.Helper()
+				return t.TempDir()
+			},
 			wantPanic: true,
 		},
 		{
