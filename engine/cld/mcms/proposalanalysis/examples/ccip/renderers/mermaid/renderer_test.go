@@ -6,7 +6,10 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/smartcontractkit/mcms"
+	mcmstypes "github.com/smartcontractkit/mcms/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -15,11 +18,16 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/renderer"
 )
 
-func render(t *testing.T, proposal *renderer.AnalyzedProposalNode) string {
+func render(t *testing.T, proposal *renderer.AnalyzedProposalNode, req ...renderer.RenderRequest) string {
 	t.Helper()
 
+	renderReq := renderer.RenderRequest{Domain: "ccip", EnvironmentName: "mainnet"}
+	if len(req) > 0 {
+		renderReq = req[0]
+	}
+
 	var buf bytes.Buffer
-	err := NewMermaidRenderer().RenderTo(&buf, renderer.RenderRequest{Domain: "ccip", EnvironmentName: "mainnet"}, proposal)
+	err := NewMermaidRenderer().RenderTo(&buf, renderReq, proposal)
 	require.NoError(t, err)
 
 	return buf.String()
@@ -83,6 +91,17 @@ func TestMermaid_MultipleBatchesSameChain(t *testing.T) {
 	assert.Contains(t, out, "1. applyChainUpdates")
 	assert.Contains(t, out, "2. acceptOwnership")
 	assert.Contains(t, out, "3. setPool")
+}
+
+func TestMermaid_TimelockProposalDelay(t *testing.T) {
+	t.Parallel()
+
+	out := render(t, renderer.NewAnalyzedProposalNode(nil), renderer.RenderRequest{
+		TimelockProposal: &mcms.TimelockProposal{
+			Delay: mcmstypes.NewDuration(time.Hour),
+		},
+	})
+	assert.Contains(t, out, "%% Min delay: 1h0m0s")
 }
 
 func TestMermaid_CrossChainEdges(t *testing.T) {

@@ -31,6 +31,7 @@ type MCMSTimelockProposalInput struct {
 	// Root can't be set or executed after this time.
 	ValidUntil uint32
 	// TimelockDelay is the amount of time each operation in the proposal must wait before it can be executed.
+	// Zero means unset; durable-pipeline run resolves it to on-chain minDelay when every timelock chain is readable.
 	TimelockDelay mcmstypes.Duration
 	// TimelockAction is the action to perform on the timelock contract (schedule, bypass, or cancel).
 	TimelockAction mcmstypes.TimelockAction
@@ -58,9 +59,6 @@ func (c *MCMSTimelockProposalInput) validateAt(now time.Time) error {
 	}
 	if c.TimelockDelay.Duration < 0 {
 		return fmt.Errorf("%w: timelock delay must not be negative", ErrInvalidMCMSTimelockProposalInput)
-	}
-	if c.TimelockAction == mcmstypes.TimelockActionSchedule && c.TimelockDelay.Duration <= 0 {
-		return fmt.Errorf("%w: timelock delay must be positive for schedule action", ErrInvalidMCMSTimelockProposalInput)
 	}
 	if c.ValidUntil == 0 {
 		return fmt.Errorf("%w: valid until must be set", ErrInvalidMCMSTimelockProposalInput)

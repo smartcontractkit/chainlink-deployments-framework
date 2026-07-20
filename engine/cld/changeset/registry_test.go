@@ -234,27 +234,6 @@ func Test_Changesets_Add(t *testing.T) {
 
 	r.Add("0002_cap_reg", noopChangeset{})
 	require.Equal(t, []string{"0001_cap_reg", "0002_cap_reg"}, r.keyHistory)
-
-	require.Panics(t, func() {
-		r.Add("0002_same_index", noopChangeset{})
-	}, "Add should panic when adding a key with the same index")
-
-	require.Panics(t, func() {
-		r.Add("0001_lower_index", noopChangeset{})
-	}, "Add should panic when adding a key with lower index")
-
-	require.Panics(t, func() {
-		r.Add("xxxx_invalid_key", noopChangeset{})
-	}, "Add should panic when adding a key with invalid format")
-
-	require.Panics(t, func() {
-		r.Add("InvalidChangesetKeyFormat", noopChangeset{})
-	}, "Add should panic when adding an invalid changeset key format")
-
-	r.SetValidate(false)
-	require.NotPanics(t, func() {
-		r.Add("0002_same_index", noopChangeset{})
-	}, "Add should not panic when validation is disabled")
 }
 
 func Test_Changesets_ListKeys(t *testing.T) {
@@ -314,20 +293,6 @@ func Test_Changesets_LatestKey(t *testing.T) {
 			}
 		})
 	}
-}
-
-func Test_Changesets_SetValidate(t *testing.T) {
-	t.Parallel()
-
-	r := NewChangesetsRegistry()
-
-	require.True(t, r.validate, "validate should be true by default")
-
-	r.SetValidate(false)
-	require.False(t, r.validate, "validate should be false after setting it to false")
-
-	r.SetValidate(true)
-	require.True(t, r.validate, "validate should be true after setting it to true")
 }
 
 func Test_Changesets_GetChangesetOptions(t *testing.T) {
@@ -589,7 +554,6 @@ func Test_Apply_PreHook_ConfigurationErrorAbortsPipeline(t *testing.T) {
 		return "", errors.New("config unavailable")
 	})
 	registry := NewChangesetsRegistry()
-	registry.SetValidate(false)
 	registry.Add("test-cs", changeset)
 
 	preHookRan := false
@@ -693,7 +657,6 @@ func Test_Apply_ExecutionOrder(t *testing.T) {
 	cs := &orderRecordingChangeset{}
 
 	r := NewChangesetsRegistry()
-	r.SetValidate(false)
 
 	r.AddGlobalPreHooks(PreHook{
 		HookDefinition: HookDefinition{Name: "global-pre"},
@@ -743,7 +706,6 @@ func Test_Apply_GlobalPreHookAbort_BlocksChangeset(t *testing.T) {
 	cs := &recordingChangeset{}
 
 	r := NewChangesetsRegistry()
-	r.SetValidate(false)
 
 	r.AddGlobalPreHooks(PreHook{
 		HookDefinition: HookDefinition{Name: "global-blocker", FailurePolicy: Abort},
@@ -875,7 +837,6 @@ func Test_FluentAPI_HooksExtractedByAdd(t *testing.T) {
 	}
 	newRegistry := func(cs ChangeSet) *ChangesetsRegistry {
 		r := NewChangesetsRegistry()
-		r.SetValidate(false)
 		r.Add("test-cs", cs)
 
 		return r
@@ -1048,7 +1009,6 @@ func Test_Integration_MultiChangeset_GlobalAndPerCSHooks(t *testing.T) {
 	csB := Configure(MyChangeSet).With("cfgB").WithPostHooks(csBPost)
 
 	r := NewChangesetsRegistry()
-	r.SetValidate(false)
 	r.AddGlobalPreHooks(globalPre)
 	r.AddGlobalPostHooks(globalPost)
 	r.Add("csA", csA)
@@ -1074,7 +1034,6 @@ func Test_Integration_MixedAbortWarn_GlobalAndPerCS(t *testing.T) {
 	var order []string
 
 	r := NewChangesetsRegistry()
-	r.SetValidate(false)
 
 	r.AddGlobalPreHooks(PreHook{
 		HookDefinition: HookDefinition{Name: "global-warn-pre", FailurePolicy: Warn},
@@ -1150,7 +1109,6 @@ func Test_Integration_HooksCoexistWithThenWith(t *testing.T) {
 		})
 
 	r := NewChangesetsRegistry()
-	r.SetValidate(false)
 	r.AddGlobalPreHooks(PreHook{
 		HookDefinition: HookDefinition{Name: "global-pre"},
 		Func: func(_ context.Context, _ PreHookParams) error {
@@ -1185,7 +1143,6 @@ func Test_Apply_HappyPath_WithHooks(t *testing.T) {
 	postHookRan := false
 
 	r := NewChangesetsRegistry()
-	r.SetValidate(false)
 
 	r.AddGlobalPreHooks(PreHook{
 		HookDefinition: HookDefinition{Name: "global-pre"},
@@ -1311,7 +1268,6 @@ func Test_Changesets_GetResolvedInput(t *testing.T) {
 				cs := Configure(MyChangeSet).WithConfigFrom(func() (string, error) {
 					return "", errors.New("config unavailable")
 				})
-				r.SetValidate(false)
 				r.Add("0001_cap_reg", cs)
 			},
 			key:     "0001_cap_reg",

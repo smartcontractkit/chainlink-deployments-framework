@@ -15,6 +15,8 @@ import (
 	eth_types "github.com/ethereum/go-ethereum/core/types"
 	mcms_types "github.com/smartcontractkit/mcms/types"
 
+	"github.com/smartcontractkit/chainlink-evm/gethwrappers/workflow/generated/workflow_registry_wrapper_v2"
+
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
@@ -287,4 +289,32 @@ func NewBatchOperationFromWrites(outs []WriteOutput) (mcms_types.BatchOperation,
 		ChainSelector: mcms_types.ChainSelector(chainSelector),
 		Transactions:  txs,
 	}, nil
+}
+
+type WorkflowRegistryContract interface {
+	Address() common.Address
+	GetWorkflowById(opts *bind.CallOpts, workflowId [32]byte) (workflow_registry_wrapper_v2.WorkflowRegistryWorkflowMetadataView, error)
+}
+
+func IsWorkflowsOwner(contract WorkflowRegistryContract, opts *bind.CallOpts, caller common.Address, workflowIds [][32]byte) (bool, error) {
+	if len(workflowIds) == 0 {
+		return false, errors.New("no workflow IDs provided")
+	}
+
+	addr := contract.Address()
+
+	return RetryContractCall(opts, "workflow owner", "check workflow ownership", addr, func() (bool, error) {
+		for _, workflowId := range workflowIds {
+			wfMetadata, err := contract.GetWorkflowById(opts, workflowId)
+			if err != nil {
+				return false, err
+			}
+			// If a workflow does not yet exist, then it is a first deployment and the caller should be allowed.
+			if wfMetadata.WorkflowId != [32]byte{} && wfMetadata.Owner != caller {
+				return false, nil
+			}
+		}
+
+		return true, nil
+	})
 }

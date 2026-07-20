@@ -1,5 +1,53 @@
 # chainlink-deployments-framework
 
+## 0.117.1
+
+### Patch Changes
+
+- [#1129](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1129) [`b2ec85b`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/b2ec85b52e121ea84e7c490275926624baeaf8e4) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - refactor(changeset): remove SetValidate validation restriction
+
+## 0.117.0
+
+### Minor Changes
+
+- [#1118](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1118) [`9d58336`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/9d5833617a40a027f44f5d876e96ec47b24a574b) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat(evm): per-chain gas defaults via network YAML
+
+  Adds `gas_config` to EVM network metadata so domains can set default gas limit and price on the chain deployer at load time, and optionally cap deployer gas and `eth_estimateGas` via `max_tx_gas_limit`.
+
+## 0.116.1
+
+### Patch Changes
+
+- [#1115](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1115) [`6690d94`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/6690d946b335d6b9d0d93e1f8a5aa50f611853d4) Thanks [@ChrisAmora](https://github.com/ChrisAmora)! - Fix domain scaffolding: the generated `cmd/main.go` hardcoded the `chainlink-deployments` repo in its self import while `go.mod` derived the module path from `{{.repo}}`.
+
+## 0.116.0
+
+### Minor Changes
+
+- [#1106](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1106) [`e7fb227`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/e7fb22792ec426167ba1cbed24fcb771f7124eed) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat(proposalanalyzer): expose timelock proposal in renderer
+
+- [#1114](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1114) [`db8c279`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/db8c279c3dcbbeecacb24090eb6ba824764e7423) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - feat(pipeline): correct timelock proposal delay from on-chain minDelay during durable-pipeline run
+
+## 0.115.1
+
+### Patch Changes
+
+- [#1107](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1107) [`d33c1aa`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/d33c1aad76bd3cb44da9a6e715748d4a2520299e) Thanks [@simsonraj](https://github.com/simsonraj)! - Overrideable isZkSync via network metadata
+
+## 0.115.0
+
+### Minor Changes
+
+- [#1095](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1095) [`2200387`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/22003878b61a38085f13d31469db23ca611b5670) Thanks [@ecPablo](https://github.com/ecPablo)! - Adds domain binary configuration
+
+## 0.114.6
+
+### Patch Changes
+
+- [#1087](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1087) [`7f86d08`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/7f86d0804c9dc732c9c12deb642234c4810f9d90) Thanks [@RensR](https://github.com/RensR)! - Make `-c` / `-x` optional for `durable-pipeline run` when the input YAML contains exactly one changeset.
+
+- [#1096](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1096) [`969858c`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/969858c2a6010b214bf754cb6382d5bbebf00d1f) Thanks [@ChrisAmora](https://github.com/ChrisAmora)! - Add Ed25519 AWS KMS signing support.
+
 ## 0.114.5
 
 ### Patch Changes

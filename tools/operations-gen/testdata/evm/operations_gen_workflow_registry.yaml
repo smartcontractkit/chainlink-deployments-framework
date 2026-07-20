@@ -1,0 +1,26 @@
+version: "1.0.0"
+chain_family: evm
+
+input:
+  gobindings_package: "github.com/smartcontractkit/chainlink-deployments-framework/tools/operations-gen/testdata/evm/gobindings"
+
+output:
+  base_path: "."
+
+contracts:
+  - contract_name: WorkflowRegistry
+    version: "2.0.0"
+    omit_deploy: true
+    functions:
+      - name: upsertWorkflow
+        access: workflows_owner
+      - name: activateWorkflow
+        access: workflows_owner
+      - name: pauseWorkflow
+        access: workflows_owner
+      - name: batchPauseWorkflows
+        access: workflows_owner
+      - name: batchActivateWorkflows
+        access: workflows_owner
+      - name: deleteWorkflow
+        access: workflows_owner
