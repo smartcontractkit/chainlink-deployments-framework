@@ -12,7 +12,7 @@ import (
 // GetDomain returns a Domain for the specified key based on the available dirs in the domains root.
 // If the key is not recognized, it will return an error
 func GetDomain(key string) (Domain, error) {
-	entries, err := os.ReadDir(filepath.Join(ProjectRoot, "domains"))
+	entries, err := os.ReadDir(filepath.Join(ProjectRoot, DomainsDirName))
 	if err != nil {
 		return Domain{}, fmt.Errorf("failed to read directory: %w", err)
 	}
@@ -40,8 +40,10 @@ func MustGetDomain(key string) Domain {
 // Domain represents a specific domain that is operated by a team. Each domain corresponds to a
 // team's ownership of a set of changesets that span multiple environments.
 type Domain struct {
-	// rootPath is absolute path of the domains filesystem. e.g. if the domain directory is in the
-	// project root directory, this would be the project root directory.
+	// rootPath is the absolute path of the domains directory (typically DomainsRoot, e.g.
+	// "<project>/domains"), NOT the project root. Prefer GetDomain/MustGetDomain, which sets
+	// this correctly; when using NewDomain directly, rootPath must point at the domains
+	// directory.
 	rootPath string
 	// key is the name of the domain. e.g. "ccip", "keystone"
 	key string

@@ -504,8 +504,9 @@ func TestSetChangesetEnvironmentVariable_Success(t *testing.T) {
 	require.Equal(t, map[string]any{"x": float64(1)}, decoded["payload"])
 }
 
-//nolint:paralleltest
 func TestParseDurablePipelineYAML(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name        string
 		yamlContent string
@@ -555,15 +556,13 @@ domain: mydomain
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			dir := t.TempDir()
 			require.NoError(t, os.MkdirAll(filepath.Join(dir, "domains", tt.domKey, tt.envKey, "durable_pipelines", "inputs"), 0o755))
 			require.NoError(t, os.WriteFile(filepath.Join(dir, "domains", tt.domKey, tt.envKey, "durable_pipelines", "inputs", tt.fileName), []byte(tt.yamlContent), 0o644)) //nolint:gosec
 
-			originalWd, _ := os.Getwd()
-			require.NoError(t, os.Chdir(dir))
-			t.Cleanup(func() { _ = os.Chdir(originalWd) })
-
-			dom := domain.NewDomain(dir, tt.domKey)
+			dom := domain.NewDomain(filepath.Join(dir, domain.DomainsDirName), tt.domKey)
 			got, err := ParseDurablePipelineYAML(tt.fileName, dom, tt.envKey)
 
 			if tt.wantErr != "" {
@@ -583,7 +582,7 @@ domain: mydomain
 //nolint:paralleltest // mutates process cwd and environment variables.
 func TestPrepareInputForRunAuto(t *testing.T) {
 	workspaceRoot := t.TempDir()
-	dom := domain.NewDomain(workspaceRoot, "test")
+	dom := domain.NewDomain(filepath.Join(workspaceRoot, domain.DomainsDirName), "test")
 	envKey := "testnet"
 	inputsDir := filepath.Join(workspaceRoot, "domains", dom.String(), envKey, "durable_pipelines", "inputs")
 	require.NoError(t, os.MkdirAll(inputsDir, 0o755))

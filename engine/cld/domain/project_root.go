@@ -1,21 +1,50 @@
 package domain
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 )
 
+// ProjectRootEnvVar is the name of the environment variable that, when set, overrides the
+// project root resolution. Its value must point to the root of a chainlink-deployments
+// checkout (i.e. the directory that contains a "domains" subdirectory). This is primarily
+// intended for domain CLI binaries that are executed outside of the chainlink-deployments
+// repository (e.g. downloaded from S3), where the filesystem-based discovery cannot locate
+// the repo layout.
+const ProjectRootEnvVar = "CLD_PROJECT_ROOT"
+
 // Defines root paths for the project and domains.
 var (
-	ProjectRoot = getProjectRoot()
-	DomainsRoot = filepath.Join(ProjectRoot, "domains")
+	ProjectRoot = ResolveProjectRoot()
+	DomainsRoot = filepath.Join(ProjectRoot, DomainsDirName)
 )
 
-// getProjectRoot dynamically determines the project root path at runtime.
-// It tries multiple strategies in order:
-// 1. Search upward from executable location
-// 2. Search upward from current working directory
-func getProjectRoot() string {
+// ResolveProjectRoot determines the project root path at runtime. It tries multiple
+// strategies in order:
+//  0. Use the CLD_PROJECT_ROOT environment variable if it is set.
+//  1. Search upward from the executable location.
+//  2. Search upward from the current working directory.
+//
+// If CLD_PROJECT_ROOT is set but does not point to a valid project root, it panics rather
+// than silently falling back, so that an explicit misconfiguration fails fast.
+func ResolveProjectRoot() string {
+	// Strategy 0: Explicit override via environment variable.
+	if v, ok := os.LookupEnv(ProjectRootEnvVar); ok && v != "" {
+		abs, err := filepath.Abs(v)
+		if err != nil {
+			panic(fmt.Sprintf("%s=%q could not be resolved to an absolute path: %v", ProjectRootEnvVar, v, err))
+		}
+		if !isValidProjectRoot(abs) {
+			panic(fmt.Sprintf(
+				"%s=%q is not a valid project root: no %q subdirectory found",
+				ProjectRootEnvVar, abs, DomainsDirName,
+			))
+		}
+
+		return abs
+	}
+
 	// Strategy 1: Search upward from executable location
 	if execPath, err := os.Executable(); err == nil {
 		if root := searchUpwardForProjectRoot(filepath.Dir(execPath)); root != "" {
@@ -56,6 +85,6 @@ func searchUpwardForProjectRoot(startDir string) string {
 // isValidProjectRoot checks if the given directory is a valid project root
 // by verifying it contains a "domains" subdirectory.
 func isValidProjectRoot(dir string) bool {
-	_, err := os.Stat(filepath.Join(dir, "domains"))
+	_, err := os.Stat(filepath.Join(dir, DomainsDirName))
 	return err == nil
 }

@@ -109,9 +109,9 @@ func loadProposal(t *testing.T, proposalsDir string) *mcms.TimelockProposal {
 func TestRunCmd_Success(t *testing.T) {
 	env := "testnet"
 	changesetName := "0001_test_changeset"
-	testDomain := domain.NewDomain(t.TempDir(), "test")
-
 	workspaceRoot := t.TempDir()
+	testDomain := domain.NewDomain(filepath.Join(workspaceRoot, domain.DomainsDirName), "test")
+
 	inputsDir := filepath.Join(workspaceRoot, "domains", testDomain.String(), env, "durable_pipelines", "inputs")
 	require.NoError(t, os.MkdirAll(inputsDir, 0o755))
 
@@ -185,9 +185,9 @@ changesets:
 func TestRunCmd_ApplyError(t *testing.T) {
 	env := "testnet"
 	changesetName := "0001_test_changeset"
-	testDomain := domain.NewDomain(t.TempDir(), "test")
-
 	workspaceRoot := t.TempDir()
+	testDomain := domain.NewDomain(filepath.Join(workspaceRoot, domain.DomainsDirName), "test")
+
 	inputsDir := filepath.Join(workspaceRoot, "domains", testDomain.String(), env, "durable_pipelines", "inputs")
 	require.NoError(t, os.MkdirAll(inputsDir, 0o755))
 
@@ -274,8 +274,8 @@ func TestRunCmd_UnknownFlag(t *testing.T) {
 
 //nolint:paralleltest
 func TestRunCmd_LoadChangesetsError(t *testing.T) {
-	testDomain := domain.NewDomain(t.TempDir(), "test")
 	workspaceRoot := t.TempDir()
+	testDomain := domain.NewDomain(filepath.Join(workspaceRoot, domain.DomainsDirName), "test")
 	inputsDir := filepath.Join(workspaceRoot, "domains", testDomain.String(), "testnet", "durable_pipelines", "inputs")
 	require.NoError(t, os.MkdirAll(inputsDir, 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(inputsDir, "x.yaml"), []byte(`environment: testnet
@@ -318,8 +318,8 @@ changesets:
 
 //nolint:paralleltest
 func TestRunCmd_ResolverNotRegistered(t *testing.T) {
-	testDomain := domain.NewDomain(t.TempDir(), "test")
 	workspaceRoot := t.TempDir()
+	testDomain := domain.NewDomain(filepath.Join(workspaceRoot, domain.DomainsDirName), "test")
 	inputsDir := filepath.Join(workspaceRoot, "domains", testDomain.String(), "testnet", "durable_pipelines", "inputs")
 	require.NoError(t, os.MkdirAll(inputsDir, 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(inputsDir, "x.yaml"), []byte(`environment: testnet
@@ -371,9 +371,9 @@ changesets:
 //nolint:paralleltest
 func TestRunCmd_ByIndex(t *testing.T) {
 	env := "testnet"
-	testDomain := domain.NewDomain(t.TempDir(), "test")
-
 	workspaceRoot := t.TempDir()
+	testDomain := domain.NewDomain(filepath.Join(workspaceRoot, domain.DomainsDirName), "test")
+
 	inputsDir := filepath.Join(workspaceRoot, "domains", testDomain.String(), env, "durable_pipelines", "inputs")
 	require.NoError(t, os.MkdirAll(inputsDir, 0o755))
 
@@ -435,8 +435,8 @@ changesets:
 
 //nolint:paralleltest
 func TestRunCmd_InvalidInputFile(t *testing.T) {
-	testDomain := domain.NewDomain(t.TempDir(), "test")
 	workspaceRoot := t.TempDir()
+	testDomain := domain.NewDomain(filepath.Join(workspaceRoot, domain.DomainsDirName), "test")
 	require.NoError(t, os.MkdirAll(filepath.Join(workspaceRoot, "domains"), 0o755))
 
 	originalWd, _ := os.Getwd()
@@ -480,8 +480,8 @@ func TestRunCmd_InvalidInputFile(t *testing.T) {
 
 //nolint:paralleltest
 func TestRunCmd_EnvironmentLoaderError(t *testing.T) {
-	testDomain := domain.NewDomain(t.TempDir(), "test")
 	workspaceRoot := t.TempDir()
+	testDomain := domain.NewDomain(filepath.Join(workspaceRoot, domain.DomainsDirName), "test")
 	inputsDir := filepath.Join(workspaceRoot, "domains", testDomain.String(), "testnet", "durable_pipelines", "inputs")
 	require.NoError(t, os.MkdirAll(inputsDir, 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(inputsDir, "x.yaml"), []byte(`environment: testnet
@@ -821,9 +821,9 @@ changesets:
 func TestRunCmd_SingleChangesetWithoutSelector(t *testing.T) {
 	env := "testnet"
 	changesetName := "0001_test_changeset"
-	testDomain := domain.NewDomain(t.TempDir(), "test")
-
 	workspaceRoot := t.TempDir()
+	testDomain := domain.NewDomain(filepath.Join(workspaceRoot, domain.DomainsDirName), "test")
+
 	inputsDir := filepath.Join(workspaceRoot, "domains", testDomain.String(), env, "durable_pipelines", "inputs")
 	require.NoError(t, os.MkdirAll(inputsDir, 0o755))
 
@@ -887,9 +887,9 @@ changesets:
 //nolint:paralleltest
 func TestRunCmd_MultipleChangesetsRequireSelector(t *testing.T) {
 	env := "testnet"
-	testDomain := domain.NewDomain(t.TempDir(), "test")
-
 	workspaceRoot := t.TempDir()
+	testDomain := domain.NewDomain(filepath.Join(workspaceRoot, domain.DomainsDirName), "test")
+
 	inputsDir := filepath.Join(workspaceRoot, "domains", testDomain.String(), env, "durable_pipelines", "inputs")
 	require.NoError(t, os.MkdirAll(inputsDir, 0o755))
 
