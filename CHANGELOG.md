@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.118.0
+
+### Minor Changes
+
+- [#1132](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1132) [`1e3c71d`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/1e3c71d2889429a72900a1ed1fa40c884e9dc63d) Thanks [@ecPablo](https://github.com/ecPablo)! - Add `CLD_PROJECT_ROOT` env var to override domain folder root resolution, and unify the workspace-root resolution used by durable pipeline input generation onto the domain path helpers.
+
 ## 0.117.1
 
 ### Patch Changes
