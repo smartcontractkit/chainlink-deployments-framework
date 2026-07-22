@@ -24,6 +24,11 @@ type Configurations struct {
 	// InputType contains the reflect.Type of the input struct for this changeset
 	// This is useful for tools that need to generate templates or analyze the expected input
 	InputType reflect.Type
+
+	// ChangesetType contains the reflect.Type of the changeset operation itself
+	// (e.g. *MyChangeset), useful for tools that need to inspect the changeset's
+	// own type — for example to read its doc comment.
+	ChangesetType reflect.Type
 }
 
 // internalChangeSet provides an opaque type, to force the usage of only the ChangeSetImpl
@@ -327,6 +332,7 @@ func (ccs ChangeSetImpl[C]) Configurations() (Configurations, error) {
 		InputChainOverrides: chainOverrides,
 		ConfigResolver:      ccs.ConfigResolver,
 		InputType:           inputType,
+		ChangesetType:       reflect.TypeOf(ccs.changeset.operation),
 	}, nil
 }
 

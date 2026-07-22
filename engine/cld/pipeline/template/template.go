@@ -29,6 +29,8 @@ domain: %s
 changesets:
 `, envKey, domainName)
 
+	comments := newCommentExtractor()
+
 	var sb strings.Builder
 	for i, changesetName := range changesetNames {
 		if changesetName == "" {
@@ -44,7 +46,7 @@ changesets:
 			return "", fmt.Errorf("get configurations for changeset %s: %w", changesetName, err)
 		}
 
-		section, err := generateChangesetSection(changesetName, cfg, resolverManager, "  ", depthLimit)
+		section, err := generateChangesetSection(changesetName, cfg, resolverManager, comments, "  ", depthLimit)
 		if err != nil {
 			return "", fmt.Errorf("generate section for changeset %s: %w", changesetName, err)
 		}
@@ -60,6 +62,7 @@ func generateChangesetSection(
 	changesetName string,
 	cfg cs.Configurations,
 	resolverManager *resolvers.ConfigResolverManager,
+	comments commentProvider,
 	indent string,
 	depthLimit int,
 ) (string, error) {
@@ -80,13 +83,21 @@ func generateChangesetSection(
 
 		fmt.Fprintf(&section, "%s# Config Resolver: %s\n", indent, resolverName)
 		fmt.Fprintf(&section, "%s# Input type: %s\n", indent, inputType.String())
+
+		// Inject the changeset's own doc comment above the changeset name.
+		if comments != nil {
+			for _, commentLine := range comments.StructComments(cfg.ChangesetType) {
+				fmt.Fprintf(&section, "%s# %s\n", indent, commentLine)
+			}
+		}
+
 		fmt.Fprintf(&section, "%s- %s:\n", indent, changesetName)
 
 		writeChainOverridesSection(&section, indent)
 
 		section.WriteString(indent + "    payload:\n")
 
-		payloadYAML, err := GenerateStructYAMLWithDepthLimit(inputType, indent+"      ", 0, make(map[reflect.Type]bool), depthLimit)
+		payloadYAML, err := GenerateStructYAMLWithDepthLimit(inputType, indent+"      ", 0, make(map[reflect.Type]bool), depthLimit, comments)
 		if err != nil {
 			return "", fmt.Errorf("generate struct YAML for %s: %w", inputType.String(), err)
 		}
@@ -94,13 +105,21 @@ func generateChangesetSection(
 		section.WriteString(payloadYAML)
 	} else if cfg.InputType != nil {
 		fmt.Fprintf(&section, "%s# Input type: %s\n", indent, cfg.InputType.String())
+
+		// Inject the changeset's own doc comment above the changeset name.
+		if comments != nil {
+			for _, commentLine := range comments.StructComments(cfg.ChangesetType) {
+				fmt.Fprintf(&section, "%s# %s\n", indent, commentLine)
+			}
+		}
+
 		fmt.Fprintf(&section, "%s- %s:\n", indent, changesetName)
 
 		writeChainOverridesSection(&section, indent)
 
 		section.WriteString(indent + "    payload:\n")
 
-		payloadYAML, err := GenerateStructYAMLWithDepthLimit(cfg.InputType, indent+"      ", 0, make(map[reflect.Type]bool), depthLimit)
+		payloadYAML, err := GenerateStructYAMLWithDepthLimit(cfg.InputType, indent+"      ", 0, make(map[reflect.Type]bool), depthLimit, comments)
 		if err != nil {
 			return "", fmt.Errorf("generate struct YAML for %s: %w", cfg.InputType.String(), err)
 		}
@@ -119,12 +138,15 @@ func writeChainOverridesSection(section *strings.Builder, indent string) {
 }
 
 // GenerateStructYAMLWithDepthLimit recursively generates YAML structure with depth limiting.
+// The comments parameter injects Go struct field doc comments as YAML comments
+// above each field. Pass nil to disable comment injection.
 func GenerateStructYAMLWithDepthLimit(
 	t reflect.Type,
 	indent string,
 	depth int,
 	visited map[reflect.Type]bool,
 	maxDepth int,
+	comments commentProvider,
 ) (string, error) {
 	if depth > maxDepth {
 		return "", nil
@@ -147,6 +169,14 @@ func GenerateStructYAMLWithDepthLimit(
 		fieldCount := 0
 		maxFields := 20
 
+		// Inject the struct's own doc comment above its fields, giving
+		// users context on what the struct represents.
+		if comments != nil {
+			for _, commentLine := range comments.StructComments(t) {
+				fmt.Fprintf(&result, "%s# %s\n", indent, commentLine)
+			}
+		}
+
 		for i := 0; i < t.NumField() && fieldCount < maxFields; i++ {
 			field := t.Field(i)
 
@@ -161,7 +191,15 @@ func GenerateStructYAMLWithDepthLimit(
 			fieldName := GetFieldName(field)
 			fieldType := field.Type
 
-			fieldValue, err := GenerateFieldValueWithDepthLimit(fieldType, indent+"  ", depth+1, visited, maxDepth)
+			// Inject Go doc comments as YAML comments above the field, giving
+			// users hints on what values to set.
+			if comments != nil {
+				for _, commentLine := range comments.FieldComments(t, field.Name) {
+					fmt.Fprintf(&result, "%s# %s\n", indent, commentLine)
+				}
+			}
+
+			fieldValue, err := GenerateFieldValueWithDepthLimit(fieldType, indent+"  ", depth+1, visited, maxDepth, comments)
 			if err != nil {
 				return "", fmt.Errorf("generate field value for %s: %w", field.Name, err)
 			}
@@ -184,7 +222,7 @@ func GenerateStructYAMLWithDepthLimit(
 		elemType := t.Elem()
 		result := fmt.Sprintf("%s# Array of %s\n%s- ", indent, elemType.String(), indent)
 
-		elemValue, err := GenerateFieldValueWithDepthLimit(elemType, indent+"  ", depth+1, visited, maxDepth)
+		elemValue, err := GenerateFieldValueWithDepthLimit(elemType, indent+"  ", depth+1, visited, maxDepth, comments)
 		if err != nil {
 			return "", err
 		}
@@ -199,7 +237,7 @@ func GenerateStructYAMLWithDepthLimit(
 			return fmt.Sprintf("%s# Map[%s]%s\n%sexample_key: # %s\n", indent, keyType.String(), valueType.String(), indent, valueType.String()), nil
 		}
 
-		valueStr, err := GenerateFieldValueWithDepthLimit(valueType, indent+"  ", depth+1, visited, maxDepth)
+		valueStr, err := GenerateFieldValueWithDepthLimit(valueType, indent+"  ", depth+1, visited, maxDepth, comments)
 		if err != nil {
 			return "", err
 		}
@@ -216,6 +254,7 @@ func GenerateStructYAMLWithDepthLimit(
 }
 
 // GenerateFieldValueWithDepthLimit generates an example value for a field based on its type.
+// The comments parameter is forwarded to nested struct generation for comment injection.
 // Exported for testing.
 func GenerateFieldValueWithDepthLimit(
 	t reflect.Type,
@@ -223,6 +262,7 @@ func GenerateFieldValueWithDepthLimit(
 	depth int,
 	visited map[reflect.Type]bool,
 	maxDepth int,
+	comments commentProvider,
 ) (string, error) {
 	if depth > maxDepth {
 		return " ...", nil
@@ -246,7 +286,7 @@ func GenerateFieldValueWithDepthLimit(
 			return " # " + t.String(), nil
 		}
 		elemType := t.Elem()
-		elemValue, err := GenerateFieldValueWithDepthLimit(elemType, indent+"  ", depth+1, visited, maxDepth)
+		elemValue, err := GenerateFieldValueWithDepthLimit(elemType, indent+"  ", depth+1, visited, maxDepth, comments)
 		if err != nil {
 			return "", err
 		}
@@ -258,7 +298,7 @@ func GenerateFieldValueWithDepthLimit(
 
 		return fmt.Sprintf("\n%s- %s", indent, trimmedElem), nil
 	case reflect.Struct:
-		structYAML, err := GenerateStructYAMLWithDepthLimit(t, indent, depth+1, visited, maxDepth)
+		structYAML, err := GenerateStructYAMLWithDepthLimit(t, indent, depth+1, visited, maxDepth, comments)
 		if err != nil {
 			return "", err
 		}
@@ -267,7 +307,7 @@ func GenerateFieldValueWithDepthLimit(
 	case reflect.Map:
 		keyType := t.Key()
 		valueType := t.Elem()
-		valueStr, err := GenerateFieldValueWithDepthLimit(valueType, indent+"  ", depth+1, visited, maxDepth)
+		valueStr, err := GenerateFieldValueWithDepthLimit(valueType, indent+"  ", depth+1, visited, maxDepth, comments)
 		if err != nil {
 			return "", err
 		}
