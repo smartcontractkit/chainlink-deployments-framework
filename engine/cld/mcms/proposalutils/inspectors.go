@@ -67,7 +67,7 @@ func McmsInspectors(env cldf.Environment) (map[uint64]mcmssdk.Inspector, error) 
 		if err != nil {
 			continue
 		}
-		inspectors[uint64(chainSelector)] = inspector
+		inspectors[chainSelector] = inspector
 	}
 
 	return inspectors, nil
