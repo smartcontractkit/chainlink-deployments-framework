@@ -1,8 +1,6 @@
 package proposalutils
 
 import (
-	"fmt"
-
 	mcmschainwrappers "github.com/smartcontractkit/mcms/chainwrappers"
 	mcmssdk "github.com/smartcontractkit/mcms/sdk"
 
@@ -46,24 +44,29 @@ func McmsInspectorForChain(env cldf.Environment, chain uint64, opts ...MCMSInspe
 		mcmstypes.ChainMetadata{})
 }
 
-// McmsInspectors builds an mcmssdk.Inspector for every chain in the environment,
-// returning them keyed by uint64 chain selector. All inspectors use the default
-// TimelockActionSchedule action.
+// McmsInspectors builds an mcmssdk.Inspector for each chain in the environment
+// that can be constructed with empty chain metadata, keyed by uint64 chain
+// selector. All inspectors use the default TimelockActionSchedule action.
+//
+// Chains that require chain-specific metadata the framework does not hold, such
+// as Sui which needs AdditionalFields populated from onchain MCMS state, are
+// skipped rather than failing the whole set. Proposal building only consumes
+// inspectors for chains that have batch operations, so a skipped chain that is
+// later needed still surfaces as a missing-inspector error.
 func McmsInspectors(env cldf.Environment) (map[uint64]mcmssdk.Inspector, error) {
-	chainsMetadata := map[mcmstypes.ChainSelector]mcmstypes.ChainMetadata{}
-	for chainSelector := range env.BlockChains.All() {
-		chainsMetadata[mcmstypes.ChainSelector(chainSelector)] = mcmstypes.ChainMetadata{}
-	}
-
 	chainAccessor := cldfmcmsadapters.Wrap(env.BlockChains)
 
-	mcmsInspectors, err := mcmschainwrappers.BuildInspectors(&chainAccessor, chainsMetadata, mcmstypes.TimelockActionSchedule)
-	if err != nil {
-		return nil, fmt.Errorf("failed to build inspectors: %w", err)
-	}
-
-	inspectors := make(map[uint64]mcmssdk.Inspector, len(mcmsInspectors))
-	for chainSelector, inspector := range mcmsInspectors {
+	inspectors := make(map[uint64]mcmssdk.Inspector)
+	for chainSelector := range env.BlockChains.All() {
+		inspector, err := mcmschainwrappers.BuildInspector(
+			&chainAccessor,
+			mcmstypes.ChainSelector(chainSelector),
+			mcmstypes.TimelockActionSchedule,
+			mcmstypes.ChainMetadata{},
+		)
+		if err != nil {
+			continue
+		}
 		inspectors[uint64(chainSelector)] = inspector
 	}
 

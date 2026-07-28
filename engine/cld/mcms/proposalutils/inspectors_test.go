@@ -10,6 +10,8 @@ import (
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	cldfevm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
+	chainsui "github.com/smartcontractkit/chainlink-deployments-framework/chain/sui"
+	suimocks "github.com/smartcontractkit/chainlink-deployments-framework/chain/sui/mocks"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 )
 
@@ -157,4 +159,31 @@ func TestMcmsInspectors(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestMcmsInspectors_SkipsChainsRequiringMetadata(t *testing.T) {
+	t.Parallel()
+
+	evmSelector := chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector
+	suiSelector := chainsel.SUI_TESTNET.Selector
+
+	chains := map[uint64]chain.BlockChain{
+		evmSelector: cldfevm.Chain{Selector: evmSelector},
+		suiSelector: chainsui.Chain{
+			ChainMetadata: chainsui.ChainMetadata{Selector: suiSelector},
+			Client:        suimocks.NewMockSuiPTBClient(t),
+			Signer:        suimocks.NewMockSuiSigner(t),
+		},
+	}
+
+	env := cldf.Environment{BlockChains: chain.NewBlockChains(chains)}
+
+	inspectors, err := McmsInspectors(env)
+	require.NoError(t, err)
+
+	// Sui requires AdditionalFields the framework does not hold, so it is skipped;
+	// the EVM inspector is still returned and the call does not error.
+	require.Len(t, inspectors, 1)
+	assert.NotNil(t, inspectors[evmSelector])
+	assert.NotContains(t, inspectors, suiSelector)
 }
