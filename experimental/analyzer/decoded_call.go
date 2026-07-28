@@ -29,37 +29,50 @@ func (d *DecodedCall) String(context *FieldContext) string {
 }
 
 // resolveContractInfo looks up the contract type and version from the proposal
-// context's registered addresses.
+// context's registered addresses using the MCMS identity target (tx.To).
 func resolveContractInfo(ctx ProposalContext, chainSelector uint64, mcmsTx types.Transaction) (contractType, contractVersion string) {
-	// Use ContractVersion from transaction metadata (set by proposal creator) as fallback
+	fallbackVersion := ""
 	if mcmsTx.ContractVersion != nil {
-		contractVersion = mcmsTx.ContractVersion.String()
+		fallbackVersion = mcmsTx.ContractVersion.String()
 	}
+
+	return lookupContractInfoByAddress(ctx, chainSelector, mcmsTx.To, mcmsTx.ContractType, fallbackVersion)
+}
+
+// lookupContractInfoByAddress resolves contract type and version for an address from
+// the proposal context address book, falling back to the provided defaults.
+func lookupContractInfoByAddress(
+	ctx ProposalContext,
+	chainSelector uint64,
+	address string,
+	fallbackType string,
+	fallbackVersion string,
+) (contractType, contractVersion string) {
+	contractType = fallbackType
+	contractVersion = fallbackVersion
 
 	dpc, ok := ctx.(*DefaultProposalContext)
 	if !ok {
-		return mcmsTx.ContractType, contractVersion
+		return contractType, contractVersion
 	}
 
 	addresses, ok := dpc.AddressesByChain[chainSelector]
 	if !ok {
-		return mcmsTx.ContractType, contractVersion
+		return contractType, contractVersion
 	}
 
-	tv, ok := addresses[mcmsTx.To]
+	tv, ok := addresses[address]
 	if !ok {
-		return mcmsTx.ContractType, contractVersion
+		return contractType, contractVersion
 	}
 
-	ct := string(tv.Type)
-	if ct == "" {
-		ct = mcmsTx.ContractType
+	if ct := string(tv.Type); ct != "" {
+		contractType = ct
 	}
 
-	// Override with the DataStore version if available
 	if tv.Version.Original() != "" {
 		contractVersion = tv.Version.String()
 	}
 
-	return ct, contractVersion
+	return contractType, contractVersion
 }

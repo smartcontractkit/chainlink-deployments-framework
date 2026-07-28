@@ -30,6 +30,7 @@ func AnalyzeSuiTransaction(ctx ProposalContext, decoder *mcmssuisdk.Decoder, cha
 	if err := json.Unmarshal(mcmsTx.AdditionalFields, &additionalFields); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal Sui additional fields: %w", err)
 	}
+	routingInputs := suiPackageRoutingInputs(ctx, chainSelector, mcmsTx.To, additionalFields)
 
 	// Return the method name directly for MCMS transactions, since the inner transactions will be decoded separately
 	if additionalFields.ModuleName == "mcms" {
@@ -37,7 +38,7 @@ func AnalyzeSuiTransaction(ctx ProposalContext, decoder *mcmssuisdk.Decoder, cha
 		return &DecodedCall{
 			Address:         mcmsTx.To,
 			Method:          methodName,
-			Inputs:          []NamedField{},
+			Inputs:          routingInputs,
 			Outputs:         []NamedField{},
 			ContractType:    contractType,
 			ContractVersion: contractVersion,
@@ -52,6 +53,7 @@ func AnalyzeSuiTransaction(ctx ProposalContext, decoder *mcmssuisdk.Decoder, cha
 		return &DecodedCall{
 			Address:         mcmsTx.To,
 			Method:          errStr.Error(),
+			Inputs:          routingInputs,
 			ContractType:    contractType,
 			ContractVersion: contractVersion,
 		}, nil
@@ -65,6 +67,7 @@ func AnalyzeSuiTransaction(ctx ProposalContext, decoder *mcmssuisdk.Decoder, cha
 		return &DecodedCall{
 			Address:         mcmsTx.To,
 			Method:          errStr.Error(),
+			Inputs:          routingInputs,
 			ContractType:    contractType,
 			ContractVersion: contractVersion,
 		}, nil
@@ -77,7 +80,7 @@ func AnalyzeSuiTransaction(ctx ProposalContext, decoder *mcmssuisdk.Decoder, cha
 	return &DecodedCall{
 		Address:         mcmsTx.To,
 		Method:          decodedOp.MethodName(),
-		Inputs:          namedArgs,
+		Inputs:          prependSuiInputs(routingInputs, namedArgs),
 		Outputs:         []NamedField{},
 		ContractType:    contractType,
 		ContractVersion: contractVersion,
