@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	chainsel "github.com/smartcontractkit/chain-selectors"
+	"github.com/testcontainers/testcontainers-go"
 
 	fchain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/cre"
@@ -36,6 +37,7 @@ type ForkedEnvironment struct {
 	fdeployment.Environment
 	ChainConfigs map[uint64]ChainConfig
 	ForkClients  map[uint64]ForkedOnchainClient
+	Containers   map[uint64]testcontainers.Container
 }
 
 // LoadFork loads a deployment environment in which the chains are forks of real networks.
@@ -155,6 +157,7 @@ func LoadFork(
 		Environment:  *environment,
 		ChainConfigs: anvilOutput.ChainConfigs,
 		ForkClients:  anvilOutput.ForkClients, // TODO: map should eventually include clients from other families
+		Containers:   anvilOutput.Containers,
 	}, nil
 }
 

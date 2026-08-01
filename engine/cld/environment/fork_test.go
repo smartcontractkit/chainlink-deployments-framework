@@ -11,7 +11,6 @@ import (
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/mcms"
 	"github.com/smartcontractkit/mcms/types"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
@@ -22,12 +21,14 @@ func Test_LoadForkedEnvironment(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name         string
-		domain       fdomain.Domain
-		env          string
-		blockNumbers map[uint64]*big.Int
-		options      []LoadEnvironmentOption
-		expectError  string
+		name          string
+		domain        fdomain.Domain
+		env           string
+		blockNumbers  map[uint64]*big.Int
+		options       []LoadEnvironmentOption
+		wantName      string
+		wantNumChains int
+		wantErr       string
 	}{
 		{
 			name:   "Invalid Environment",
@@ -36,7 +37,7 @@ func Test_LoadForkedEnvironment(t *testing.T) {
 			blockNumbers: map[uint64]*big.Int{
 				1: big.NewInt(1000),
 			},
-			expectError: "failed to load config",
+			wantErr: "failed to load config",
 		},
 		{
 			name:   "AddressBook Failure",
@@ -45,8 +46,8 @@ func Test_LoadForkedEnvironment(t *testing.T) {
 			blockNumbers: map[uint64]*big.Int{
 				16015286601757825753: big.NewInt(1000),
 			},
-			options:     []LoadEnvironmentOption{WithoutJD()},
-			expectError: "failed to load addressbook for domain test and environment staging:",
+			options: []LoadEnvironmentOption{WithoutJD()},
+			wantErr: "failed to load addressbook for domain test and environment staging:",
 		},
 		{
 			name:   "DataStore Failure",
@@ -55,15 +56,15 @@ func Test_LoadForkedEnvironment(t *testing.T) {
 			blockNumbers: map[uint64]*big.Int{
 				16015286601757825753: big.NewInt(1000),
 			},
-			options:     []LoadEnvironmentOption{WithoutJD()},
-			expectError: "failed to load datastore for domain test and environment staging:",
+			options: []LoadEnvironmentOption{WithoutJD()},
+			wantErr: "failed to load datastore for domain test and environment staging:",
 		},
 		{
 			name:         "Empty Block Numbers",
 			domain:       setupTest(t, setupTestConfig, setupAddressbook),
 			env:          "staging",
 			blockNumbers: map[uint64]*big.Int{},
-			expectError:  "failed to create anvil chains",
+			wantErr:      "failed to create anvil chains",
 		},
 		{
 			name:   "Invalid Nodes File",
@@ -72,7 +73,7 @@ func Test_LoadForkedEnvironment(t *testing.T) {
 			blockNumbers: map[uint64]*big.Int{
 				16015286601757825753: big.NewInt(1000),
 			},
-			expectError: "failed to load nodes",
+			wantErr: "failed to load nodes",
 		},
 		{
 			name:   "OffchainClient Failure",
@@ -81,16 +82,25 @@ func Test_LoadForkedEnvironment(t *testing.T) {
 			blockNumbers: map[uint64]*big.Int{
 				16015286601757825753: big.NewInt(1000),
 			},
-			expectError: "failed to load offchain client",
+			wantErr: "failed to load offchain client",
 		},
 		{
-			name:   "No Error",
-			domain: setupTest(t, setupTestConfig, setupAddressbook, setupDataStore, setupNodes),
-			env:    "staging",
-			blockNumbers: map[uint64]*big.Int{
-				16015286601757825753: big.NewInt(1000),
-			},
-			options: []LoadEnvironmentOption{WithoutJD()},
+			name:          "Skip ZK Sync chain",
+			domain:        setupTest(t, setupTestConfig, setupAddressbook, setupDataStore, setupNodes),
+			env:           "staging",
+			blockNumbers:  map[uint64]*big.Int{6898391096552792247: big.NewInt(1000)},
+			options:       []LoadEnvironmentOption{WithoutJD(), WithAnvilKeyAsDeployer()},
+			wantName:      "fork",
+			wantNumChains: 0,
+		},
+		{
+			name:          "No Error",
+			domain:        setupTest(t, setupTestConfig, setupAddressbook, setupDataStore, setupNodes),
+			env:           "staging",
+			blockNumbers:  map[uint64]*big.Int{5224473277236331295: big.NewInt(1000)},
+			options:       []LoadEnvironmentOption{WithoutJD(), WithAnvilKeyAsDeployer()},
+			wantName:      "fork",
+			wantNumChains: 1,
 		},
 	}
 
@@ -99,15 +109,19 @@ func Test_LoadForkedEnvironment(t *testing.T) {
 			t.Parallel()
 
 			forkEnv, err := LoadFork(t.Context(), tt.domain, tt.env, tt.blockNumbers, tt.options...)
+			t.Cleanup(func() {
+				for _, container := range forkEnv.Containers {
+					_ = container.Terminate(context.Background())
+				}
+			})
 
-			if tt.expectError != "" {
-				require.ErrorContains(t, err, tt.expectError)
-
-				return
+			if tt.wantErr == "" {
+				require.NoError(t, err)
+				require.Equal(t, tt.wantName, forkEnv.Name)
+				require.Len(t, forkEnv.BlockChains.EVMChains(), tt.wantNumChains)
+			} else {
+				require.ErrorContains(t, err, tt.wantErr)
 			}
-
-			require.NoError(t, err)
-			assert.Equal(t, "fork", forkEnv.Name)
 		})
 	}
 }

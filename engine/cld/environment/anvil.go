@@ -18,8 +18,10 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/go-resty/resty/v2"
+	"github.com/samber/lo"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/freeport"
+	"github.com/testcontainers/testcontainers-go"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
@@ -122,6 +124,7 @@ type AnvilChainsOutput struct {
 	Chains       map[uint64]fevm.Chain
 	ForkClients  map[uint64]ForkedOnchainClient
 	ChainConfigs map[uint64]ChainConfig
+	Containers   map[uint64]testcontainers.Container
 }
 
 // newAnvilChains creates chain abstractions using local anvil nodes.
@@ -161,6 +164,7 @@ func newAnvilChains(
 
 	var once sync.Once
 	blockChains := make([]fchain.BlockChain, 0, len(filteredEvmNetworks))
+	containers := make(map[uint64]testcontainers.Container)
 	for _, network := range filteredEvmNetworks {
 		chainSelector := network.ChainSelector
 		if chainSelectorsToLoad != nil && !slices.Contains(chainSelectorsToLoad, chainSelector) {
@@ -178,6 +182,14 @@ func newAnvilChains(
 
 		// Extract the anvil metadata from the network
 		if network.Metadata == nil {
+			network.Metadata = cfgnet.EVMMetadata{}
+		}
+
+		metadata, err := cfgnet.DecodeMetadata[cfgnet.EVMMetadata](network.Metadata)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode network metadata for chain selector %d: %w", chainSelector, err)
+		}
+		if metadata.AnvilConfig == nil {
 			ports, errPort := freeport.Take(1)
 			if errPort != nil {
 				// Fallback (very unlikely to be hit)
@@ -186,20 +198,13 @@ func newAnvilChains(
 			if len(ports) == 0 {
 				return nil, fmt.Errorf("no free ports available for chain selector %d", chainSelector)
 			}
-			network.Metadata = cfgnet.EVMMetadata{
-				AnvilConfig: &cfgnet.AnvilConfig{
-					Image: "ghcr.io/foundry-rs/foundry:latest",
-					Port:  uint64(ports[0]), //nolint:gosec // G115: int to uint64 conversion is safe here (port numbers are always in valid range)
-				},
+
+			metadata.AnvilConfig = &cfgnet.AnvilConfig{
+				Image: "ghcr.io/foundry-rs/foundry:latest",
+				Port:  uint64(ports[0]), //nolint:gosec // G115: int to uint64 conversion is safe here (port numbers are always in valid range)
 			}
 		}
 
-		metadata, errMeta := cfgnet.DecodeMetadata[cfgnet.EVMMetadata](network.Metadata)
-		if errMeta != nil {
-			return nil, fmt.Errorf(
-				"failed to decode network metadata for chain selector %d: %w", chainSelector, errMeta,
-			)
-		}
 		forkURLs, err := selectPublicRPC(ctx, lggr, &metadata, network.ChainSelector, network.RPCs)
 		if err != nil {
 			lggr.Infof("Excluding chain with ID %d from environment: %s", chainID, err.Error())
@@ -207,6 +212,11 @@ func newAnvilChains(
 		}
 		if err = metadata.AnvilConfig.Validate(); err != nil {
 			lggr.Infof("Excluding chain with ID %d from environment due to failed anvil config validation: %s", chainID, err.Error())
+			continue
+		}
+
+		if lo.FromPtr(metadata.IsZkSync) {
+			lggr.Infof("skipping chain %d: zksync VM is not supported", network.ChainSelector)
 			continue
 		}
 
@@ -232,7 +242,7 @@ func newAnvilChains(
 		}
 
 		config := evmprov.CTFAnvilChainProviderConfig{
-			Name:                     fmt.Sprintf("anvil-fork-%d", network.ChainSelector),
+			Name:                     fmt.Sprintf("anvil-fork-%d-%d", network.ChainSelector, time.Now().UnixNano()),
 			Once:                     &once,
 			ConfirmFunctor:           evmprov.ConfirmFuncGeth(3 * time.Minute),
 			DockerCmdParamsOverrides: []string{"--auto-impersonate", "--no-storage-caching"},
@@ -252,6 +262,7 @@ func newAnvilChains(
 		if err != nil {
 			return nil, fmt.Errorf("failed to initialize anvil chain provider for chain selector %d: %w", chainSelector, err)
 		}
+		containers[chainSelector] = provider.Container
 
 		blockChains = append(blockChains, b)
 		anvilClients[chainSelector] = newAnvilForkClient(
@@ -279,6 +290,7 @@ func newAnvilChains(
 		Chains:       fchain.NewBlockChainsFromSlice(blockChains).EVMChains(),
 		ForkClients:  anvilClients,
 		ChainConfigs: chainConfigsBySelector,
+		Containers:   containers,
 	}, nil
 }
 

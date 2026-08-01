@@ -6,11 +6,29 @@ networks:
       - rpc_name: "sepolia-rpc"
         preferred_url_scheme: "http"
         http_url: "https://sepolia.infura.io/v3/test"
-        ws_url: "wss://sepolia.infura.io/ws/v3/test"
+
+  # Ethereum Mainnet
   - type: "mainnet"
     chain_selector: 5009297550715157269
     rpcs:
       - rpc_name: "mainnet-rpc"
         preferred_url_scheme: "http"
         http_url: "https://mainnet.infura.io/v3/test"
-        ws_url: "wss://mainnet.infura.io/ws/v3/test"
+
+  # Optimism Sepolia Testnet
+  - type: "testnet"
+    chain_selector: 5224473277236331295
+    rpcs:
+      - rpc_name: "optimism-sepolia-rpc"
+        preferred_url_scheme: "http"
+        http_url: "https://optimism-sepolia.drpc.org"
+
+  # ZkSync Era Testnet
+  - type: testnet
+    chain_selector: 6898391096552792247
+    metadata:
+      is_zksync: true
+    rpcs:
+      - rpc_name: Public
+        preferred_url_scheme: "http"
+        http_url: https://sepolia.era.zksync.dev
