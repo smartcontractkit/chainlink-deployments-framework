@@ -1,5 +1,15 @@
 # chainlink-deployments-framework
 
+## 0.118.0
+
+### Minor Changes
+
+- [#1132](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1132) [`1e3c71d`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/1e3c71d2889429a72900a1ed1fa40c884e9dc63d) Thanks [@ecPablo](https://github.com/ecPablo)! - Add `CLD_PROJECT_ROOT` env var to override domain folder root resolution, and unify the workspace-root resolution used by durable pipeline input generation onto the domain path helpers.
+
+### Patch Changes
+
+- [#1137](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1137) [`2df1813`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/2df181317158b87f055afc72a58c76c62e8e1153) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - fix: skip fork tests when a network is marked as "zksync"
+
 ## 0.117.1
 
 ### Patch Changes
