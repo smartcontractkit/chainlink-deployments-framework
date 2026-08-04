@@ -14,9 +14,13 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-const retryPolicy = `{
+// retryPolicy derives the service name from the generated gRPC ServiceDesc so it
+// always matches the proto definition, even if the proto package is renamed.
+// Note: gRPC retry policies only apply to unary RPCs; the bidirectional streaming
+// DataAccess RPC is never retried by gRPC.
+var retryPolicy = fmt.Sprintf(`{
 	"methodConfig": [{
-		"name": [{"service": "op_catalog.v1.datastore.Datastore"}],
+		"name": [{"service": %q}],
 		"retryPolicy": {
 			"maxAttempts": 5,
 			"initialBackoff": "0.1s",
@@ -30,7 +34,7 @@ const retryPolicy = `{
 			]
 		}
 	}]
-}`
+}`, pb.Datastore_ServiceDesc.ServiceName)
 
 type CatalogClient struct {
 	protoClient pb.DatastoreClient
