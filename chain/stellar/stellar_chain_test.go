@@ -22,7 +22,7 @@ func TestChain_ReadOnly(t *testing.T) {
 	ctfConfig := provider.CTFChainProviderConfig{
 		Once:               &sync.Once{},
 		DeployerKeypairGen: provider.KeypairRandom(),
-		Image:              "stellar/quickstart:latest", // as of Apr 2026, nightly spawns friendbot *much* faster
+		Image:              "stellar/quickstart:latest",
 	}
 	chainSelector := chainsel.STELLAR_LOCALNET.Selector
 	chain, err := provider.NewCTFChainProvider(t, chainSelector, ctfConfig).Initialize(t.Context())
