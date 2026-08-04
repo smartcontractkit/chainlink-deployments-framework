@@ -169,6 +169,7 @@ func (mc *MultiClient) SendTransaction(ctx context.Context, tx *types.Transactio
 			// transaction pool or was previously submitted to it.
 			return nil
 		}
+
 		return err
 	})
 }
@@ -576,5 +577,6 @@ func isAlreadyKnown(err error) bool {
 	}
 
 	msg := strings.ToLower(err.Error())
+
 	return strings.Contains(msg, AlreadyKnownErrorMessage)
 }
