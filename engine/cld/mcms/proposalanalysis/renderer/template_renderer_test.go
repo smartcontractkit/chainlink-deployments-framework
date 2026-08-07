@@ -8,7 +8,10 @@ import (
 	"strings"
 	"testing"
 	"text/template"
+	"time"
 
+	"github.com/smartcontractkit/mcms"
+	mcmstypes "github.com/smartcontractkit/mcms/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -132,6 +135,24 @@ func TestRenderTo_PassesRenderRequest(t *testing.T) {
 	err = r.RenderTo(&buf, RenderRequest{Domain: "test", EnvironmentName: "staging"}, newTestProposal())
 	require.NoError(t, err)
 	assert.Equal(t, "test-staging", buf.String())
+}
+
+func TestRenderTo_PassesTimelockProposal(t *testing.T) {
+	t.Parallel()
+
+	r, err := NewMarkdownRenderer(
+		WithTemplates(minimalTemplates(`{{ define "proposal" }}{{ .Request.TimelockProposal.Delay.Duration }}{{ end }}`)),
+	)
+	require.NoError(t, err)
+
+	var buf bytes.Buffer
+	err = r.RenderTo(&buf, RenderRequest{
+		TimelockProposal: &mcms.TimelockProposal{
+			Delay: mcmstypes.NewDuration(30 * time.Minute),
+		},
+	}, newTestProposal())
+	require.NoError(t, err)
+	assert.Equal(t, "30m0s", buf.String())
 }
 
 func TestWithTemplateFuncs(t *testing.T) {

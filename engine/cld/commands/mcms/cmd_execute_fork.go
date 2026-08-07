@@ -178,16 +178,6 @@ func executeFork(
 		return fmt.Errorf("no rpcs loaded in forked environment for chain %d (fork tests require public RPCs)", cfg.chainSelector)
 	}
 
-	// zkSync VM chains (zkSync Era, Lens, Cronos zkEVM, etc.) require anvil-zksync,
-	// not standard Anvil. Derive this from the loaded chain which is set by the chain
-	// provider, so it stays in sync with new zkSync chains automatically.
-	if evmChain, ok := cfg.blockchains.EVMChains()[cfg.chainSelector]; ok && evmChain.IsZkSyncVM {
-		lggr.Infof("Skipping fork execution: chain selector %d is zkSync VM (chain ID %s), which requires anvil-zksync instead of standard anvil",
-			cfg.chainSelector, chainConfig.ChainID)
-
-		return nil
-	}
-
 	url := chainConfig.HTTPRPCs[0].External
 	anvilClient := rpc.New(url, nil)
 	mcmAddress := cfg.proposal.ChainMetadata[types.ChainSelector(cfg.chainSelector)].MCMAddress

@@ -21,10 +21,13 @@ func NewMermaidRenderer() *MermaidRenderer { return &MermaidRenderer{} }
 
 func (r *MermaidRenderer) ID() string { return IDMermaid }
 
-func (r *MermaidRenderer) RenderTo(w io.Writer, _ renderer.RenderRequest, proposal renderer.AnalyzedProposal) error {
+func (r *MermaidRenderer) RenderTo(w io.Writer, req renderer.RenderRequest, proposal renderer.AnalyzedProposal) error {
 	var b strings.Builder
 
 	b.WriteString("graph TD\n")
+	if req.TimelockProposal != nil {
+		fmt.Fprintf(&b, "    %%%% Min delay: %s\n", req.TimelockProposal.Delay.Duration)
+	}
 	b.WriteString("    classDef registry fill:#e1f5fe,stroke:#01579b,stroke-width:2px\n")
 	b.WriteString("    classDef pool fill:#d4edda,stroke:#28a745,stroke-width:2px\n")
 	b.WriteString("    classDef default fill:#f5f5f5,stroke:#666,stroke-width:1px\n")

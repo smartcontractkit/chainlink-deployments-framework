@@ -4,47 +4,102 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"sync"
 	"time"
+
+	"github.com/smartcontractkit/mcms"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer/annotated"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer/annotation"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer/annotationstore"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/decoder"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/renderer"
 )
 
 // runState owns decoded and analyzed proposals and synchronizes annotation writes.
 type runState struct {
 	mu sync.RWMutex
 
-	req             RunRequest
-	decodedProposal decoder.DecodedTimelockProposal
-	proposal        *analyzer.AnalyzedProposalNode
+	req              RunRequest
+	decodedProposal  decoder.DecodedTimelockProposal
+	timelockProposal *mcms.TimelockProposal
+	proposal         *analyzer.AnalyzedProposalNode
 }
 
-func newRunState(req RunRequest, decoded decoder.DecodedTimelockProposal) *runState {
-	analyzed := toAnalyzedProposal(decoded)
-	return &runState{
-		req:             req,
-		decodedProposal: decoded,
-		proposal:        analyzed,
+func newRunState(
+	req RunRequest,
+	decoded decoder.DecodedTimelockProposal,
+	timelockProposal *mcms.TimelockProposal,
+) (*runState, error) {
+	cloned, err := renderer.CloneTimelockProposal(timelockProposal)
+	if err != nil {
+		return nil, fmt.Errorf("clone timelock proposal: %w", err)
 	}
+
+	analyzed := toAnalyzedProposal(decoded)
+
+	return &runState{
+		req:              req,
+		decodedProposal:  decoded,
+		timelockProposal: cloned,
+		proposal:         analyzed,
+	}, nil
+}
+
+func (s *runState) cloneAnalyzeEnvelope(store analyzer.DependencyAnnotationStore) (analyzer.AnalyzeEnvelope, error) {
+	cloned, err := renderer.CloneTimelockProposal(s.timelockProposal)
+	if err != nil {
+		return analyzer.AnalyzeEnvelope{}, fmt.Errorf("clone timelock proposal for analyzer: %w", err)
+	}
+
+	return analyzer.AnalyzeEnvelope{
+		ExecutionContext:          s.executionContext(),
+		DependencyAnnotationStore: store,
+		TimelockProposal:          cloned,
+	}, nil
+}
+
+func (s *runState) runWithEnvelope(
+	ctx context.Context,
+	timeout time.Duration,
+	store analyzer.DependencyAnnotationStore,
+	canAnalyze func(context.Context, analyzer.AnalyzeEnvelope) bool,
+	analyze func(context.Context, analyzer.AnalyzeEnvelope) (annotation.Annotations, error),
+) (annotation.Annotations, bool, error) {
+	envelope, err := s.cloneAnalyzeEnvelope(store)
+	if err != nil {
+		return nil, false, err
+	}
+
+	return runWithTimeout(
+		ctx,
+		timeout,
+		func(callCtx context.Context) (bool, error) {
+			return canAnalyze(callCtx, envelope), nil
+		},
+		func(callCtx context.Context) (annotation.Annotations, error) {
+			return analyze(callCtx, envelope)
+		},
+	)
 }
 
 func (s *runState) runProposalAnalyzer(ctx context.Context, a analyzer.ProposalAnalyzer, timeout time.Duration) error {
-	req := analyzer.ProposalAnalyzeRequest{
-		ExecutionContext:          s.executionContext(),
-		DependencyAnnotationStore: annotationstore.NewScopedDependencyAnnotationStore(a.Dependencies(), s.proposalAnnotationsByLevel()),
-	}
+	store := annotationstore.NewScopedDependencyAnnotationStore(a.Dependencies(), s.proposalAnnotationsByLevel())
 
-	anns, skipped, err := runWithTimeout(
+	anns, skipped, err := s.runWithEnvelope(
 		ctx,
 		timeout,
-		func(callCtx context.Context) bool {
+		store,
+		func(callCtx context.Context, envelope analyzer.AnalyzeEnvelope) bool {
+			req := analyzer.ProposalAnalyzeRequest{AnalyzeEnvelope: envelope}
+
 			return a.CanAnalyze(callCtx, req, s.decodedProposal)
 		},
-		func(callCtx context.Context) (annotation.Annotations, error) {
+		func(callCtx context.Context, envelope analyzer.AnalyzeEnvelope) (annotation.Annotations, error) {
+			req := analyzer.ProposalAnalyzeRequest{AnalyzeEnvelope: envelope}
+
 			return a.Analyze(callCtx, req, s.decodedProposal)
 		},
 	)
@@ -62,18 +117,26 @@ func (s *runState) runProposalAnalyzer(ctx context.Context, a analyzer.ProposalA
 
 func (s *runState) runBatchAnalyzer(ctx context.Context, a analyzer.BatchOperationAnalyzer, timeout time.Duration) error {
 	for batchIdx, batch := range s.decodedProposal.BatchOperations() {
-		req := analyzer.AnalyzeRequest[analyzer.BatchOperationAnalyzerContext]{
-			AnalyzerContext:           analyzer.NewBatchOperationAnalyzerContextNode(s.decodedProposal),
-			ExecutionContext:          s.executionContext(),
-			DependencyAnnotationStore: annotationstore.NewScopedDependencyAnnotationStore(a.Dependencies(), s.batchAnnotationsByLevel(batchIdx)),
-		}
-		anns, skipped, err := runWithTimeout(
+		store := annotationstore.NewScopedDependencyAnnotationStore(a.Dependencies(), s.batchAnnotationsByLevel(batchIdx))
+
+		anns, skipped, err := s.runWithEnvelope(
 			ctx,
 			timeout,
-			func(callCtx context.Context) bool {
+			store,
+			func(callCtx context.Context, envelope analyzer.AnalyzeEnvelope) bool {
+				req := analyzer.AnalyzeRequest[analyzer.BatchOperationAnalyzerContext]{
+					AnalyzerContext: analyzer.NewBatchOperationAnalyzerContextNode(s.decodedProposal),
+					AnalyzeEnvelope: envelope,
+				}
+
 				return a.CanAnalyze(callCtx, req, batch)
 			},
-			func(callCtx context.Context) (annotation.Annotations, error) {
+			func(callCtx context.Context, envelope analyzer.AnalyzeEnvelope) (annotation.Annotations, error) {
+				req := analyzer.AnalyzeRequest[analyzer.BatchOperationAnalyzerContext]{
+					AnalyzerContext: analyzer.NewBatchOperationAnalyzerContextNode(s.decodedProposal),
+					AnalyzeEnvelope: envelope,
+				}
+
 				return a.Analyze(callCtx, req, batch)
 			},
 		)
@@ -93,18 +156,26 @@ func (s *runState) runBatchAnalyzer(ctx context.Context, a analyzer.BatchOperati
 func (s *runState) runCallAnalyzer(ctx context.Context, a analyzer.CallAnalyzer, timeout time.Duration) error {
 	for batchIdx, batch := range s.decodedProposal.BatchOperations() {
 		for callIdx, call := range batch.Calls() {
-			req := analyzer.AnalyzeRequest[analyzer.CallAnalyzerContext]{
-				AnalyzerContext:           analyzer.NewCallAnalyzerContextNode(s.decodedProposal, batch),
-				ExecutionContext:          s.executionContext(),
-				DependencyAnnotationStore: annotationstore.NewScopedDependencyAnnotationStore(a.Dependencies(), s.callAnnotationsByLevel(batchIdx, callIdx)),
-			}
-			anns, skipped, err := runWithTimeout(
+			store := annotationstore.NewScopedDependencyAnnotationStore(a.Dependencies(), s.callAnnotationsByLevel(batchIdx, callIdx))
+
+			anns, skipped, err := s.runWithEnvelope(
 				ctx,
 				timeout,
-				func(callCtx context.Context) bool {
+				store,
+				func(callCtx context.Context, envelope analyzer.AnalyzeEnvelope) bool {
+					req := analyzer.AnalyzeRequest[analyzer.CallAnalyzerContext]{
+						AnalyzerContext: analyzer.NewCallAnalyzerContextNode(s.decodedProposal, batch),
+						AnalyzeEnvelope: envelope,
+					}
+
 					return a.CanAnalyze(callCtx, req, call)
 				},
-				func(callCtx context.Context) (annotation.Annotations, error) {
+				func(callCtx context.Context, envelope analyzer.AnalyzeEnvelope) (annotation.Annotations, error) {
+					req := analyzer.AnalyzeRequest[analyzer.CallAnalyzerContext]{
+						AnalyzerContext: analyzer.NewCallAnalyzerContextNode(s.decodedProposal, batch),
+						AnalyzeEnvelope: envelope,
+					}
+
 					return a.Analyze(callCtx, req, call)
 				},
 			)
@@ -147,19 +218,26 @@ func (s *runState) runParameterSet(
 	isInput bool,
 ) error {
 	for paramIdx, param := range params {
-		req := analyzer.AnalyzeRequest[analyzer.ParameterAnalyzerContext]{
-			AnalyzerContext:           analyzer.NewParameterAnalyzerContextNode(s.decodedProposal, batch, call),
-			ExecutionContext:          s.executionContext(),
-			DependencyAnnotationStore: annotationstore.NewScopedDependencyAnnotationStore(a.Dependencies(), s.parameterAnnotationsByLevel(batchIdx, callIdx, isInput, paramIdx)),
-		}
+		store := annotationstore.NewScopedDependencyAnnotationStore(a.Dependencies(), s.parameterAnnotationsByLevel(batchIdx, callIdx, isInput, paramIdx))
 
-		anns, skipped, err := runWithTimeout(
+		anns, skipped, err := s.runWithEnvelope(
 			ctx,
 			timeout,
-			func(callCtx context.Context) bool {
+			store,
+			func(callCtx context.Context, envelope analyzer.AnalyzeEnvelope) bool {
+				req := analyzer.AnalyzeRequest[analyzer.ParameterAnalyzerContext]{
+					AnalyzerContext: analyzer.NewParameterAnalyzerContextNode(s.decodedProposal, batch, call),
+					AnalyzeEnvelope: envelope,
+				}
+
 				return a.CanAnalyze(callCtx, req, param)
 			},
-			func(callCtx context.Context) (annotation.Annotations, error) {
+			func(callCtx context.Context, envelope analyzer.AnalyzeEnvelope) (annotation.Annotations, error) {
+				req := analyzer.AnalyzeRequest[analyzer.ParameterAnalyzerContext]{
+					AnalyzerContext: analyzer.NewParameterAnalyzerContextNode(s.decodedProposal, batch, call),
+					AnalyzeEnvelope: envelope,
+				}
+
 				return a.Analyze(callCtx, req, param)
 			},
 		)

@@ -35,6 +35,27 @@ func TestResolveDurablePipelineYamlPath(t *testing.T) {
 			wantErr:   "only filenames are supported, not full paths: subdir/file.yaml",
 		},
 		{
+			name:      "rejects path traversal",
+			inputFile: "../escape.yaml",
+			domKey:    "test",
+			envKey:    "testnet",
+			wantErr:   "only filenames are supported, not full paths: ../escape.yaml",
+		},
+		{
+			name:      "rejects empty filename",
+			inputFile: "",
+			domKey:    "test",
+			envKey:    "testnet",
+			wantErr:   "input file name must not be empty",
+		},
+		{
+			name:      "rejects whitespace-only filename",
+			inputFile: "   ",
+			domKey:    "test",
+			envKey:    "testnet",
+			wantErr:   "input file name must not be empty",
+		},
+		{
 			name:       "success with filename",
 			inputFile:  "pipeline.yaml",
 			domKey:     "mydomain",
@@ -47,11 +68,8 @@ func TestResolveDurablePipelineYamlPath(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			dir := t.TempDir()
 			require.NoError(t, os.MkdirAll(filepath.Join(dir, "domains", tt.domKey, tt.envKey, "durable_pipelines", "inputs"), 0o755))
-			originalWd, _ := os.Getwd()
-			require.NoError(t, os.Chdir(dir))
-			t.Cleanup(func() { _ = os.Chdir(originalWd) })
 
-			dom := domain.NewDomain(dir, tt.domKey)
+			dom := domain.NewDomain(filepath.Join(dir, domain.DomainsDirName), tt.domKey)
 			got, err := ResolveDurablePipelineYamlPath(tt.inputFile, dom, tt.envKey)
 
 			if tt.wantErr != "" {

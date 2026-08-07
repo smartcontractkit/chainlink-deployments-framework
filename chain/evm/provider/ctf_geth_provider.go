@@ -232,6 +232,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/gas"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider/rpcclient"
 )
 
@@ -271,6 +272,9 @@ type CTFGethChainProviderConfig struct {
 	// provider. You can use this to set up custom HTTP clients, timeouts, or other
 	// configurations for the RPC connections.
 	ClientOpts []func(client *rpcclient.MultiClient)
+
+	// Optional: GasConfig configures default gas limit and price for the chain deployer.
+	GasConfig *gas.Config
 
 	// Optional: DockerCmdParamsOverrides allows customization of Docker command parameters
 	// for the Geth container. These parameters are passed directly to the Docker container
@@ -407,7 +411,7 @@ func (p *CTFGethChainProvider) Initialize(ctx context.Context) (chain.BlockChain
 				PreferredURLScheme: rpcclient.URLSchemePreferenceHTTP,
 			},
 		},
-	}, p.config.ClientOpts...)
+	}, multiClientOpts(p.config.GasConfig, p.config.ClientOpts)...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create multiclient for Geth at %s: %w", httpURL, err)
 	}
@@ -454,6 +458,12 @@ func (p *CTFGethChainProvider) Initialize(ctx context.Context) (chain.BlockChain
 		}
 	}
 
+	if p.config.GasConfig != nil {
+		if applyErr := gas.ApplyDefaults(ctx, client, deployerKey, *p.config.GasConfig); applyErr != nil {
+			return nil, fmt.Errorf("failed to apply gas defaults for chain %d: %w", p.selector, applyErr)
+		}
+	}
+
 	// Build additional user transactors from the default Geth accounts
 	userTransactors, err := p.getUserTransactors(chainID)
 	if err != nil {
@@ -483,6 +493,7 @@ func (p *CTFGethChainProvider) Initialize(ctx context.Context) (chain.BlockChain
 		Users:       userTransactors,
 		Confirm:     confirmFunc,
 		SignHash:    signHashFunc,
+		GasConfig:   p.config.GasConfig,
 	}
 
 	return *p.chain, nil

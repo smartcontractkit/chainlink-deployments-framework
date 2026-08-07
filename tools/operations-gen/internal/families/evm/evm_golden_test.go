@@ -39,6 +39,11 @@ func TestGenerateFeeQuoter(t *testing.T) {
 	runGoldenGenerationTest(t, "operations_gen_fee_quoter.yaml", "fee_quoter.golden.go")
 }
 
+func TestGenerateWorkflowRegistry(t *testing.T) {
+	t.Parallel()
+	runGoldenGenerationTest(t, "operations_gen_workflow_registry.yaml", "workflow_registry.golden.go")
+}
+
 // TestGenerateLinkTokenWithZkSyncBindingsPackage verifies generation when
 // input.zksync_bindings_package and contract zksync_bytecode are both set.
 func TestGenerateLinkTokenWithZkSyncBindingsPackage(t *testing.T) {

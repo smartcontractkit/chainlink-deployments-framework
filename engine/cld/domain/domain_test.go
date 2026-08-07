@@ -64,21 +64,75 @@ func Test_ProjectRoot(t *testing.T) {
 }
 
 //nolint:paralleltest // tests modify global ProjectRoot/DomainsRoot, cannot run in parallel
-func Test_getProjectRoot_finds_project_root_via_upward_search_from_working_directory(t *testing.T) {
+func Test_ResolveProjectRoot_finds_project_root_via_upward_search_from_working_directory(t *testing.T) {
 	p := mkTempProject(t)
 
-	// run in nested dir so getProjectRoot's CWD strategy can find our root
+	// run in nested dir so ResolveProjectRoot's CWD strategy can find our root
 	orig, err := os.Getwd()
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = os.Chdir(orig) })
 	require.NoError(t, os.Chdir(p.nestedLevel))
 
-	got := getProjectRoot()
+	got := ResolveProjectRoot()
 	require.Equal(t,
 		resolve(t, p.root),
 		resolve(t, got),
-		"getProjectRoot should walk upward to temp project root",
+		"ResolveProjectRoot should walk upward to temp project root",
 	)
+}
+
+//nolint:paralleltest // sets CLD_PROJECT_ROOT env var and cwd, cannot run in parallel
+func Test_ResolveProjectRoot_env_var(t *testing.T) {
+	tests := []struct {
+		name      string
+		envValue  func(t *testing.T, p tempProj) string
+		chdirTo   func(t *testing.T, p tempProj) string // nil = don't chdir
+		wantPanic bool
+	}{
+		{
+			name:     "override wins over cwd search",
+			envValue: func(_ *testing.T, p tempProj) string { return p.root },
+			chdirTo: func(t *testing.T, _ tempProj) string {
+				t.Helper()
+				return t.TempDir()
+			},
+		},
+		{
+			name: "panics when set to directory without domains",
+			envValue: func(t *testing.T, _ tempProj) string {
+				t.Helper()
+				return t.TempDir()
+			},
+			wantPanic: true,
+		},
+		{
+			name:     "empty value falls through to cwd search",
+			envValue: func(_ *testing.T, _ tempProj) string { return "" },
+			chdirTo:  func(_ *testing.T, p tempProj) string { return p.nestedLevel },
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := mkTempProject(t)
+			t.Setenv(ProjectRootEnvVar, tt.envValue(t, p))
+
+			if tt.chdirTo != nil {
+				orig, err := os.Getwd()
+				require.NoError(t, err)
+				t.Cleanup(func() { _ = os.Chdir(orig) })
+				require.NoError(t, os.Chdir(tt.chdirTo(t, p)))
+			}
+
+			if tt.wantPanic {
+				require.Panics(t, func() { _ = ResolveProjectRoot() })
+				return
+			}
+
+			got := ResolveProjectRoot()
+			require.Equal(t, resolve(t, p.root), resolve(t, got))
+		})
+	}
 }
 
 func Test_searchUpwardForProjectRoot_finds_project_root_when_starting_from_nested_directory(t *testing.T) {

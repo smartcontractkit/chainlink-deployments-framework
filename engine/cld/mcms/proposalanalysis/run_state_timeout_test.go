@@ -2,6 +2,7 @@ package proposalanalysis
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -17,8 +18,8 @@ func TestRunWithTimeout_AnalyzeCalledWhenCanAnalyzeTrue(t *testing.T) {
 	anns, skipped, err := runWithTimeout(
 		t.Context(),
 		200*time.Millisecond,
-		func(ctx context.Context) bool {
-			return true
+		func(ctx context.Context) (bool, error) {
+			return true, nil
 		},
 		func(ctx context.Context) (annotation.Annotations, error) {
 			called = true
@@ -39,8 +40,8 @@ func TestRunWithTimeout_SkipsWhenCanAnalyzeFalse(t *testing.T) {
 	anns, skipped, err := runWithTimeout(
 		t.Context(),
 		200*time.Millisecond,
-		func(ctx context.Context) bool {
-			return false
+		func(ctx context.Context) (bool, error) {
+			return false, nil
 		},
 		func(ctx context.Context) (annotation.Annotations, error) {
 			called = true
@@ -53,15 +54,37 @@ func TestRunWithTimeout_SkipsWhenCanAnalyzeFalse(t *testing.T) {
 	require.Nil(t, anns)
 }
 
+func TestRunWithTimeout_PropagatesCanAnalyzeError(t *testing.T) {
+	t.Parallel()
+
+	errCanAnalyze := errors.New("can analyze failed")
+	called := false
+	anns, skipped, err := runWithTimeout(
+		t.Context(),
+		200*time.Millisecond,
+		func(ctx context.Context) (bool, error) {
+			return false, errCanAnalyze
+		},
+		func(ctx context.Context) (annotation.Annotations, error) {
+			called = true
+			return nil, nil
+		},
+	)
+	require.ErrorIs(t, err, errCanAnalyze)
+	require.False(t, skipped)
+	require.False(t, called)
+	require.Nil(t, anns)
+}
+
 func TestRunWithTimeout_TimesOutWhenCanAnalyzeIgnoresContext(t *testing.T) {
 	t.Parallel()
 
 	anns, skipped, err := runWithTimeout(
 		t.Context(),
 		5*time.Millisecond,
-		func(ctx context.Context) bool {
+		func(ctx context.Context) (bool, error) {
 			time.Sleep(80 * time.Millisecond)
-			return true
+			return true, nil
 		},
 		func(ctx context.Context) (annotation.Annotations, error) {
 			return nil, nil
@@ -79,8 +102,8 @@ func TestRunWithTimeout_TimesOutWhenAnalyzeIgnoresContext(t *testing.T) {
 	anns, skipped, err := runWithTimeout(
 		t.Context(),
 		5*time.Millisecond,
-		func(ctx context.Context) bool {
-			return true
+		func(ctx context.Context) (bool, error) {
+			return true, nil
 		},
 		func(ctx context.Context) (annotation.Annotations, error) {
 			time.Sleep(80 * time.Millisecond)

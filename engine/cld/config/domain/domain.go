@@ -39,6 +39,61 @@ type CREConfig struct {
 	DefaultRegistries []cre.ContextRegistryEntry `mapstructure:"default_registries" yaml:"default_registries,omitempty"`
 }
 
+// BinaryProvider identifies how a domain binary should be resolved.
+type BinaryProvider string
+
+const (
+	// BinaryProviderSource builds the domain binary from source.
+	BinaryProviderSource BinaryProvider = "source"
+	// BinaryProviderS3 downloads the domain binary from the CLD-managed S3 bucket.
+	BinaryProviderS3 BinaryProvider = "s3"
+
+	// DefaultBinaryVersion is used when binary.version is not specified.
+	DefaultBinaryVersion = "latest"
+)
+
+// IsValid reports whether the binary provider is supported.
+func (p BinaryProvider) IsValid() bool {
+	return p == "" || p == BinaryProviderSource || p == BinaryProviderS3
+}
+
+// BinaryConfig represents the optional domain binary configuration.
+// When provider is "s3", bucket, prefix, auth, and object paths are managed
+// internally by CLD and are not configurable per domain. The binary name is
+// derived from the domain key. When omitted from domain.yaml, defaults are
+// applied during Load.
+type BinaryConfig struct {
+	Provider BinaryProvider `mapstructure:"provider" yaml:"provider,omitempty"`
+	Version  string         `mapstructure:"version" yaml:"version,omitempty"`
+}
+
+// DefaultBinaryConfig returns the default binary configuration used when the
+// binary section is omitted from domain.yaml.
+func DefaultBinaryConfig() *BinaryConfig {
+	return &BinaryConfig{
+		Provider: BinaryProviderSource,
+		Version:  DefaultBinaryVersion,
+	}
+}
+
+func (cfg *BinaryConfig) applyDefaults() {
+	if cfg.Provider == "" {
+		cfg.Provider = BinaryProviderSource
+	}
+
+	if cfg.Version == "" {
+		cfg.Version = DefaultBinaryVersion
+	}
+}
+
+func (cfg *BinaryConfig) validate() error {
+	if cfg == nil || cfg.Provider.IsValid() {
+		return nil
+	}
+
+	return fmt.Errorf("invalid binary provider: %s (must be 'source' or 's3')", cfg.Provider)
+}
+
 // Environment represents a single environment configuration.
 type Environment struct {
 	NetworkTypes []string      `mapstructure:"network_types" yaml:"network_types"`
@@ -101,6 +156,7 @@ func isValidNetworkType(networkType string) bool {
 type DomainConfig struct {
 	Environments map[string]Environment `mapstructure:"environments" yaml:"environments"`
 	Jira         *jira.Config           `mapstructure:"jira" yaml:"jira"`
+	Binary       *BinaryConfig          `mapstructure:"binary" yaml:"binary,omitempty"`
 }
 
 // validate validates all environments in the domain configuration.
@@ -121,6 +177,10 @@ func (cfg *DomainConfig) validate() error {
 		if err := cfg.Jira.Validate(); err != nil {
 			return fmt.Errorf("invalid JIRA configuration: %w", err)
 		}
+	}
+
+	if err := cfg.Binary.validate(); err != nil {
+		return fmt.Errorf("invalid binary configuration: %w", err)
 	}
 
 	return nil
@@ -147,6 +207,12 @@ func Load(filePath string) (*DomainConfig, error) {
 			env.Datastore = DatastoreTypeFile // Default to file if not specified
 			cfg.Environments[name] = env
 		}
+	}
+
+	if cfg.Binary == nil {
+		cfg.Binary = DefaultBinaryConfig()
+	} else {
+		cfg.Binary.applyDefaults()
 	}
 
 	if err := cfg.validate(); err != nil {

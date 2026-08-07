@@ -34,14 +34,12 @@ type GenerateOptions struct {
 
 // Generate resolves the inputs file and outputs the result.
 func Generate(opts GenerateOptions) (string, error) {
-	workspaceRoot, err := FindWorkspaceRoot()
-	if err != nil {
-		return "", fmt.Errorf("find workspace root: %w", err)
+	if err := validateInputFileName(opts.InputsFileName); err != nil {
+		return "", err
 	}
 
 	inputsPath := filepath.Join(
-		workspaceRoot, "domains", opts.Domain.String(),
-		opts.EnvKey, "durable_pipelines", "inputs", opts.InputsFileName,
+		opts.Domain.EnvDir(opts.EnvKey).DurablePipelinesInputsDirPath(), opts.InputsFileName,
 	)
 
 	raw, err := os.ReadFile(inputsPath)

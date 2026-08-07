@@ -7,6 +7,7 @@ import (
 	"errors"
 	"io"
 	"testing"
+	"time"
 
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/mcms"
@@ -165,6 +166,98 @@ func TestAnalyzerEngineRenderTo(t *testing.T) {
 	require.Equal(t, "rendered", out.String())
 }
 
+func TestAnalyzerEngineRenderTo_clonesTimelockProposal(t *testing.T) {
+	t.Parallel()
+
+	original := &mcms.TimelockProposal{
+		BaseProposal: mcms.BaseProposal{
+			Version:     "v1",
+			Kind:        mcmstypes.KindTimelockProposal,
+			ValidUntil:  uint32(time.Now().Add(time.Hour).Unix()), //nolint:gosec // test fixture
+			Description: "original",
+			ChainMetadata: map[mcmstypes.ChainSelector]mcmstypes.ChainMetadata{
+				mcmstypes.ChainSelector(chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector): {
+					MCMAddress: "0x1111111111111111111111111111111111111111",
+				},
+			},
+		},
+		Action: mcmstypes.TimelockActionSchedule,
+		TimelockAddresses: map[mcmstypes.ChainSelector]string{
+			mcmstypes.ChainSelector(chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector): "0x1111111111111111111111111111111111111111",
+		},
+		Operations: []mcmstypes.BatchOperation{
+			{
+				ChainSelector: mcmstypes.ChainSelector(chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector),
+				Transactions:  []mcmstypes.Transaction{{To: "0x123", Data: []byte{0x01}}},
+			},
+		},
+	}
+	engine := NewAnalyzerEngine()
+	require.NoError(t, engine.RegisterRenderer(&rendererStub{
+		id: "mutator",
+		renderFn: func(_ io.Writer, req renderer.RenderRequest, _ analyzer.AnalyzedProposal) error {
+			req.TimelockProposal.Description = "mutated"
+			return nil
+		},
+	}))
+
+	err := engine.RenderTo(io.Discard, "mutator", renderer.RenderRequest{
+		TimelockProposal: original,
+	}, analyzer.NewAnalyzedProposalNode(nil))
+	require.NoError(t, err)
+	require.Equal(t, "original", original.Description)
+}
+
+func TestAnalyzerEngineRun_clonesTimelockProposal(t *testing.T) {
+	t.Parallel()
+
+	original := validTestTimelockProposal()
+	original.Description = "original"
+
+	engine := newAnalyzerEngineWithDeps(Deps{
+		DecoderFactory: func(cfg decoder.Config) (decoder.ProposalDecoder, error) {
+			return decoderStub{
+				decodeFn: func(ctx context.Context, env deployment.Environment, proposal *mcms.TimelockProposal) (decoder.DecodedTimelockProposal, error) {
+					return &decodedProposalStub{}, nil
+				},
+			}, nil
+		},
+	})
+	require.NoError(t, engine.RegisterAnalyzer(mutatingRunProposalAnalyzer{}))
+
+	_, err := engine.Run(t.Context(), RunRequest{
+		Domain:      cldfdomain.NewDomain("/tmp/domains", "mcms"),
+		Environment: &deployment.Environment{Name: "staging"},
+	}, original)
+	require.NoError(t, err)
+	require.Equal(t, "original", original.Description)
+}
+
+func TestAnalyzerEngineRun_clonesTimelockProposalPerAnalyzerCall(t *testing.T) {
+	t.Parallel()
+
+	original := validTestTimelockProposal()
+	original.Description = "original"
+
+	engine := newAnalyzerEngineWithDeps(Deps{
+		DecoderFactory: func(cfg decoder.Config) (decoder.ProposalDecoder, error) {
+			return decoderStub{
+				decodeFn: func(ctx context.Context, env deployment.Environment, proposal *mcms.TimelockProposal) (decoder.DecodedTimelockProposal, error) {
+					return &decodedProposalStub{}, nil
+				},
+			}, nil
+		},
+	})
+	require.NoError(t, engine.RegisterAnalyzer(mutatingRunProposalAnalyzer{}))
+	require.NoError(t, engine.RegisterAnalyzer(proposalDescriptionReaderAnalyzer{t: t}))
+
+	_, err := engine.Run(t.Context(), RunRequest{
+		Domain:      cldfdomain.NewDomain("/tmp/domains", "mcms"),
+		Environment: &deployment.Environment{Name: "staging"},
+	}, original)
+	require.NoError(t, err)
+}
+
 func TestAnalyzerEngineRunExecutesAnalyzersAndResolvesDependencies(t *testing.T) {
 	t.Parallel()
 
@@ -223,7 +316,7 @@ func TestAnalyzerEngineRunExecutesAnalyzersAndResolvesDependencies(t *testing.T)
 			DataStore:   datastore.NewMemoryDataStore().Seal(),
 			BlockChains: chain.NewBlockChains(nil),
 		},
-	}, &mcms.TimelockProposal{})
+	}, validTestTimelockProposal())
 	require.NoError(t, err)
 	require.NotNil(t, analyzed)
 
@@ -246,6 +339,19 @@ func TestAnalyzerEngineE2E_RunAndRenderMarkdown(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, engine.RegisterRenderer(markdownRenderer))
 
+	proposal := validTestTimelockProposalWithOperations([]mcmstypes.BatchOperation{
+		{
+			ChainSelector: mcmstypes.ChainSelector(chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector),
+			Transactions: []mcmstypes.Transaction{
+				{
+					To:               "0x1234567890123456789012345678901234567890",
+					Data:             []byte{},
+					AdditionalFields: json.RawMessage(`{"value":1000000000000000000}`),
+				},
+			},
+		},
+	})
+
 	analyzed, err := engine.Run(t.Context(), RunRequest{
 		Domain: cldfdomain.NewDomain("/tmp/domains", "mcms"),
 		Environment: &deployment.Environment{
@@ -254,20 +360,7 @@ func TestAnalyzerEngineE2E_RunAndRenderMarkdown(t *testing.T) {
 			DataStore:         datastore.NewMemoryDataStore().Seal(),
 			BlockChains:       chain.NewBlockChains(nil),
 		},
-	}, &mcms.TimelockProposal{
-		Operations: []mcmstypes.BatchOperation{
-			{
-				ChainSelector: mcmstypes.ChainSelector(chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector),
-				Transactions: []mcmstypes.Transaction{
-					{
-						To:               "0x1234567890123456789012345678901234567890",
-						Data:             []byte{},
-						AdditionalFields: json.RawMessage(`{"value":"1000000000000000000"}`),
-					},
-				},
-			},
-		},
-	})
+	}, proposal)
 	require.NoError(t, err)
 
 	var out bytes.Buffer
@@ -391,4 +484,81 @@ func (staticProposalNoteAnalyzer) Analyze(context.Context, analyzer.ProposalAnal
 	return annotation.Annotations{
 		annotation.New("proposal.note", "string", "generated by analyzer"),
 	}, nil
+}
+
+type mutatingRunProposalAnalyzer struct{}
+
+func (mutatingRunProposalAnalyzer) ID() string             { return "run-mutator" }
+func (mutatingRunProposalAnalyzer) Dependencies() []string { return nil }
+
+func (mutatingRunProposalAnalyzer) CanAnalyze(context.Context, analyzer.ProposalAnalyzeRequest, decoder.DecodedTimelockProposal) bool {
+	return true
+}
+
+func (mutatingRunProposalAnalyzer) Analyze(_ context.Context, req analyzer.ProposalAnalyzeRequest, _ decoder.DecodedTimelockProposal) (annotation.Annotations, error) {
+	if req.TimelockProposal != nil {
+		req.TimelockProposal.Description = "mutated"
+	}
+
+	return nil, nil
+}
+
+type proposalDescriptionReaderAnalyzer struct {
+	t *testing.T
+}
+
+func (a proposalDescriptionReaderAnalyzer) ID() string           { return "proposal-description-reader" }
+func (proposalDescriptionReaderAnalyzer) Dependencies() []string { return nil }
+
+func (proposalDescriptionReaderAnalyzer) CanAnalyze(context.Context, analyzer.ProposalAnalyzeRequest, decoder.DecodedTimelockProposal) bool {
+	return true
+}
+
+func (a proposalDescriptionReaderAnalyzer) Analyze(_ context.Context, req analyzer.ProposalAnalyzeRequest, _ decoder.DecodedTimelockProposal) (annotation.Annotations, error) {
+	require.NotNil(a.t, req.TimelockProposal)
+	require.Equal(a.t, "original", req.TimelockProposal.Description)
+
+	return nil, nil
+}
+
+type decodedProposalStub struct{}
+
+func (decodedProposalStub) BatchOperations() decoder.DecodedBatchOperations {
+	return nil
+}
+
+func validTestTimelockProposal() *mcms.TimelockProposal {
+	chainSelector := mcmstypes.ChainSelector(chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector)
+
+	return &mcms.TimelockProposal{
+		BaseProposal: mcms.BaseProposal{
+			Version:     "v1",
+			Kind:        mcmstypes.KindTimelockProposal,
+			ValidUntil:  uint32(time.Now().Add(time.Hour).Unix()), //nolint:gosec // test fixture
+			Description: "test proposal",
+			ChainMetadata: map[mcmstypes.ChainSelector]mcmstypes.ChainMetadata{
+				chainSelector: {MCMAddress: "0x1111111111111111111111111111111111111111"},
+			},
+		},
+		Action: mcmstypes.TimelockActionSchedule,
+		Delay:  mcmstypes.NewDuration(time.Hour),
+		TimelockAddresses: map[mcmstypes.ChainSelector]string{
+			chainSelector: "0x2222222222222222222222222222222222222222",
+		},
+		Operations: []mcmstypes.BatchOperation{
+			{
+				ChainSelector: chainSelector,
+				Transactions: []mcmstypes.Transaction{
+					{To: "0x1111111111111111111111111111111111111111", Data: []byte{0x01}},
+				},
+			},
+		},
+	}
+}
+
+func validTestTimelockProposalWithOperations(ops []mcmstypes.BatchOperation) *mcms.TimelockProposal {
+	proposal := validTestTimelockProposal()
+	proposal.Operations = ops
+
+	return proposal
 }

@@ -104,7 +104,10 @@ func (e *analyzerEngine) Run(ctx context.Context, req RunRequest, proposal *mcms
 		return nil, fmt.Errorf("decode proposal: %w", err)
 	}
 
-	state := newRunState(req, decodedProposal)
+	state, err := newRunState(req, decodedProposal, proposal)
+	if err != nil {
+		return nil, err
+	}
 	g, err := scheduler.New(e.analyzerRegistry.All())
 	if err != nil {
 		return state.proposal, fmt.Errorf("build analyzer graph: %w", err)
@@ -137,6 +140,14 @@ func (e *analyzerEngine) RenderTo(w io.Writer, rendererID string, renderReq rend
 	r, ok := e.rendererRegistry.Get(rendererID)
 	if !ok {
 		return fmt.Errorf("renderer with ID %q is not registered", rendererID)
+	}
+
+	if renderReq.TimelockProposal != nil {
+		cloned, err := renderer.CloneTimelockProposal(renderReq.TimelockProposal)
+		if err != nil {
+			return fmt.Errorf("clone timelock proposal: %w", err)
+		}
+		renderReq.TimelockProposal = cloned
 	}
 
 	return r.RenderTo(w, renderReq, proposal)

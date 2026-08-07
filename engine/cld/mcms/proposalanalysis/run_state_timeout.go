@@ -10,7 +10,7 @@ import (
 func runWithTimeout(
 	ctx context.Context,
 	timeout time.Duration,
-	canAnalyzeFn func(context.Context) bool,
+	canAnalyzeFn func(context.Context) (bool, error),
 	analyzeFn func(context.Context) (annotation.Annotations, error),
 ) (annotation.Annotations, bool, error) {
 	runCtx, cancel := context.WithTimeout(ctx, timeout)
@@ -32,17 +32,26 @@ func runWithTimeout(
 	return anns, false, nil
 }
 
-func callCanAnalyze(ctx context.Context, fn func(context.Context) bool) (bool, error) {
-	done := make(chan bool, 1)
+func callCanAnalyze(ctx context.Context, fn func(context.Context) (bool, error)) (bool, error) {
+	type canAnalyzeResult struct {
+		canAnalyze bool
+		err        error
+	}
+
+	done := make(chan canAnalyzeResult, 1)
 	go func() {
-		done <- fn(ctx)
+		canAnalyze, err := fn(ctx)
+		done <- canAnalyzeResult{
+			canAnalyze: canAnalyze,
+			err:        err,
+		}
 	}()
 
 	select {
 	case <-ctx.Done():
 		return false, ctx.Err()
-	case canAnalyze := <-done:
-		return canAnalyze, nil
+	case result := <-done:
+		return result.canAnalyze, result.err
 	}
 }
 

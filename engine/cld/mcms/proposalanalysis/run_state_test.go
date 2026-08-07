@@ -201,7 +201,12 @@ func newTestRunState(decoded decoder.DecodedTimelockProposal) *runState {
 		},
 	}
 
-	return newRunState(req, decoded)
+	state, err := newRunState(req, decoded, nil)
+	if err != nil {
+		panic(err)
+	}
+
+	return state
 }
 
 func newDecodedFixture() (

@@ -68,8 +68,9 @@ The engine workflow is:
 			os.Stdout,
 			renderer.IDMarkdown,
 			renderer.RenderRequest{
-				Domain:          domain.Key(),
-				EnvironmentName: env.Name,
+				Domain:           domain.Key(),
+				EnvironmentName:  env.Name,
+				TimelockProposal: proposal,
 			},
 			analyzed,
 		)

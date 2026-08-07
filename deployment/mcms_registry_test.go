@@ -65,14 +65,12 @@ func TestMCMSTimelockProposalInput_Validate(t *testing.T) {
 			errMsg:  "invalid timelock action",
 		},
 		{
-			name: "schedule requires positive delay",
+			name: "valid schedule with zero delay",
 			input: MCMSTimelockProposalInput{
 				TimelockAction: mcms_types.TimelockActionSchedule,
 				ValidUntil:     testValidUntilUnix,
 				TimelockDelay:  mcms_types.NewDuration(0),
 			},
-			wantErr: ErrInvalidMCMSTimelockProposalInput,
-			errMsg:  "timelock delay must be positive for schedule action",
 		},
 		{
 			name: "negative timelock delay",

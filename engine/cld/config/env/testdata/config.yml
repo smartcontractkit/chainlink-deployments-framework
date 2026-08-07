@@ -3,6 +3,9 @@ onchain:
   kms:
     key_id: "f1a2b3c4"
     key_region: "us-west-1"
+  kms_ed25519:
+    key_id: "e5d25519a"
+    key_region: "us-west-2"
   evm:
     deployer_key: "0xabc"
     seth:

@@ -16,11 +16,12 @@ import (
 )
 
 const (
-	accessPublic     = "public"
-	accessOwner      = "owner"
-	accessRole       = "role"
-	accessPrivate    = "private"
-	accessAuthorized = "authorized"
+	accessPublic         = "public"
+	accessOwner          = "owner"
+	accessRole           = "role"
+	accessPrivate        = "private"
+	accessAuthorized     = "authorized"
+	accessWorkflowsOwner = "workflows_owner"
 )
 
 // ---- Intermediate representation ----
@@ -69,6 +70,7 @@ type FunctionInfo struct {
 	CallMethod    string
 	AccessControl string
 	Role          [32]byte
+	WorkflowIds   string
 }
 
 type ParameterInfo struct {
@@ -280,6 +282,13 @@ func extractFunctions(info *ContractInfo, funcConfigs []EvmFunctionConfig, parse
 				fi.AccessControl = accessPrivate
 			case accessAuthorized:
 				fi.AccessControl = accessAuthorized
+			case accessWorkflowsOwner:
+				workflowIds, err := workflowIdsExpression(fi)
+				if err != nil {
+					return fmt.Errorf("function %s access %q: %w", funcCfg.Name, accessWorkflowsOwner, err)
+				}
+				fi.AccessControl = accessWorkflowsOwner
+				fi.WorkflowIds = workflowIds
 			case accessRole:
 				if funcCfg.Role == "" {
 					return fmt.Errorf("role is required when access is %q for function %s", accessRole, funcCfg.Name)
@@ -291,7 +300,7 @@ func extractFunctions(info *ContractInfo, funcConfigs []EvmFunctionConfig, parse
 				fi.AccessControl = accessRole
 				fi.Role = role
 			default:
-				return fmt.Errorf("unknown access control '%s' for function %s (use 'owner', 'public', 'authorized', 'private' or 'role')",
+				return fmt.Errorf("unknown access control '%s' for function %s (use 'owner', 'public', 'authorized', 'private', 'workflows_owner' or 'role')",
 					funcCfg.Access, funcCfg.Name)
 			}
 
@@ -301,6 +310,47 @@ func extractFunctions(info *ContractInfo, funcConfigs []EvmFunctionConfig, parse
 	}
 
 	return nil
+}
+
+// workflowIdsExpression returns the generated Go expression passed to
+// contract.IsWorkflowsOwner. The helper always expects [][32]byte, while
+// operations-gen uses the raw parameter type for single-argument functions and
+// an args struct for multi-argument functions. This normalizes both shapes:
+//   - workflowId [32]byte     -> [][32]byte{args} or [][32]byte{args.WorkflowId}
+//   - workflowIds [][32]byte  -> args or args.WorkflowIds
+func workflowIdsExpression(fi *FunctionInfo) (string, error) {
+	for i, p := range fi.Parameters {
+		var wrapSingle bool
+		switch p.Name {
+		case "workflowId":
+			if p.GoType != "[32]byte" {
+				return "", fmt.Errorf(`parameter "workflowId" must be [32]byte, got %s`, p.GoType)
+			}
+			wrapSingle = true
+		case "workflowIds":
+			if p.GoType != "[][32]byte" {
+				return "", fmt.Errorf(`parameter "workflowIds" must be [][32]byte, got %s`, p.GoType)
+			}
+		default:
+			continue
+		}
+
+		expr := "args"
+		if len(fi.Parameters) > 1 {
+			fieldName := SanitizeFieldName(p.Name)
+			if fieldName == "" {
+				fieldName = fmt.Sprintf("Field%d", i)
+			}
+			expr = "args." + fieldName
+		}
+		if wrapSingle {
+			expr = "[][32]byte{" + expr + "}"
+		}
+
+		return expr, nil
+	}
+
+	return "", errors.New(`missing "workflowId" or "workflowIds" parameter`)
 }
 
 // collectAllStructDefs registers the struct defs that the operations file

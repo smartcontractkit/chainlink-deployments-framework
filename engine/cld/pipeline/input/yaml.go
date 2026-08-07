@@ -74,6 +74,41 @@ func PrepareInputForRunByIndex(inputFileName string, index int, dom domain.Domai
 	return selected.Name, nil
 }
 
+// PrepareInputForRunAuto selects the changeset when the input file contains exactly one entry.
+// When multiple changesets are present, the caller must pass --changeset or --changeset-index.
+func PrepareInputForRunAuto(inputFileName string, dom domain.Domain, envKey string) (string, error) {
+	dpYAML, err := ParseDurablePipelineYAML(inputFileName, dom, envKey)
+	if err != nil {
+		return "", err
+	}
+
+	if _, isArray := dpYAML.Changesets.([]any); !isArray {
+		return "", fmt.Errorf("input file %s: invalid 'changesets' format, expected array format", inputFileName)
+	}
+
+	changesets, err := GetAllChangesetsInOrder(dpYAML.Changesets)
+	if err != nil {
+		return "", fmt.Errorf("input file %s: %w", inputFileName, err)
+	}
+
+	switch len(changesets) {
+	case 0:
+		return "", fmt.Errorf("input file %s: no changesets found", inputFileName)
+	case 1:
+		selected := changesets[0]
+		if err := SetChangesetEnvironmentVariable(selected.Name, selected.Data); err != nil {
+			return "", fmt.Errorf("input file %s: %w", inputFileName, err)
+		}
+
+		return selected.Name, nil
+	default:
+		return "", fmt.Errorf(
+			"input file %s contains %d changesets; specify --changeset (-c) or --changeset-index (-x)",
+			inputFileName, len(changesets),
+		)
+	}
+}
+
 // ChangesetItem represents a single changeset in order.
 type ChangesetItem struct {
 	Name string

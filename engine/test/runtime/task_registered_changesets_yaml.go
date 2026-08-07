@@ -87,8 +87,6 @@ func (t registeredChangesetsTask) Run(e fdeployment.Environment, state *State) e
 		return errors.New("input YAML has empty 'changesets' array")
 	}
 
-	provider.Registry().SetValidate(false)
-
 	if initErr := provider.Init(); initErr != nil {
 		return fmt.Errorf("failed to init registry provider: %w", initErr)
 	}

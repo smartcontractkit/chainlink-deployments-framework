@@ -139,8 +139,9 @@ func runAnalyzeProposalV2(cmd *cobra.Command, cfg Config, f analyzeProposalV2Fla
 
 	var out bytes.Buffer
 	if err := engine.RenderTo(&out, rendererID, analysisrenderer.RenderRequest{
-		Domain:          cfg.Domain.Key(),
-		EnvironmentName: proposalCfg.EnvStr,
+		Domain:           cfg.Domain.Key(),
+		EnvironmentName:  proposalCfg.EnvStr,
+		TimelockProposal: proposalCfg.TimelockProposal,
 	}, analyzedProposal); err != nil {
 		return fmt.Errorf("render analysis output: %w", err)
 	}

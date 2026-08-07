@@ -1,6 +1,10 @@
 package domain
 
 const (
+	// DomainsDirName is the name of the directory containing all the domains within the project
+	// root.
+	DomainsDirName = "domains"
+
 	// LibDirName is the name of the directory containing the domain's lib directory.
 	LibDirName = "lib"
 
