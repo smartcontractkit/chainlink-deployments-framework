@@ -1,5 +1,15 @@
 # chainlink-deployments-framework
 
+## 0.118.1
+
+### Patch Changes
+
+- [#1142](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1142) [`08c7ea9`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/08c7ea95d65f623d7c978889ce7f8e4f84fad36d) Thanks [@ecPablo](https://github.com/ecPablo)! - handle evm outputs decoding properly when funcs have return values
+
+- [#1139](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1139) [`ad42cde`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/ad42cdea66d34dbad4970b463698e172d4b712a2) Thanks [@giogam](https://github.com/giogam)! - fix: derive catalog gRPC retry policy service name from the proto ServiceDesc so it always matches the generated service name
+
+- [#1141](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1141) [`7e42a8c`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/7e42a8c4f3d275541feb06b239260ef4777036c3) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - fix: use "latest" docker image in stellar chain tests
+
 ## 0.118.0
 
 ### Minor Changes
