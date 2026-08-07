@@ -2,6 +2,7 @@ package analyzer
 
 import (
 	"encoding/base64"
+	"math/big"
 	"strings"
 	"testing"
 
@@ -108,6 +109,44 @@ func Test_AnalyzeRmnHomeSetConfig(t *testing.T) {
 	assert.NotNil(t, analyzeResult.Inputs[2].RawValue)
 	assert.Equal(t, BytesField{Value: hexutil.MustDecode("0x0000000000000000000000000000000000000000000000000000000000000000")}, analyzeResult.Inputs[2].Value)
 	assert.Equal(t, "newConfigDigest", analyzeResult.Outputs[0].Name)
-	assert.NotNil(t, analyzeResult.Outputs[0].RawValue)
-	assert.Equal(t, BytesField{Value: hexutil.MustDecode("0x0000000000000000000000000000000000000000000000000000000000000060")}, analyzeResult.Outputs[0].Value)
+	assert.Nil(t, analyzeResult.Outputs[0].RawValue)
+	assert.Equal(t, SimpleField{Value: "bytes32"}, analyzeResult.Outputs[0].Value)
+}
+
+func TestEVMTxCallDecoder_DecodeERC20TransferWithBoolReturn(t *testing.T) {
+	t.Parallel()
+
+	erc20ABI := `[{"type":"function","name":"transfer","stateMutability":"nonpayable","inputs":[{"name":"recipient","type":"address"},{"name":"amount","type":"uint256"}],"outputs":[{"name":"","type":"bool"}]}]`
+	_abi, err := abi.JSON(strings.NewReader(erc20ABI))
+	require.NoError(t, err)
+
+	method := _abi.Methods["transfer"]
+	recipient := common.HexToAddress("0x1234567890123456789012345678901234567890")
+	amount := big.NewInt(100)
+	inputs, err := method.Inputs.Pack(recipient, amount)
+	require.NoError(t, err)
+	data := append(method.ID, inputs...)
+
+	decoder := NewTxCallDecoder(nil)
+	analyzeResult, err := decoder.Decode(common.Address{}.Hex(), &_abi, data)
+	require.NoError(t, err)
+
+	assert.Equal(t, method.String(), analyzeResult.Method)
+	require.Len(t, analyzeResult.Inputs, 2)
+	assert.Equal(t, NamedField{
+		Name:     "recipient",
+		TypeName: "address",
+		Value:    AddressField{Value: recipient.Hex()},
+		RawValue: recipient,
+	}, analyzeResult.Inputs[0])
+	assert.Equal(t, "amount", analyzeResult.Inputs[1].Name)
+	assert.Equal(t, "uint256", analyzeResult.Inputs[1].TypeName)
+	assert.Equal(t, SimpleField{Value: "100"}, analyzeResult.Inputs[1].Value)
+	require.Len(t, analyzeResult.Outputs, 1)
+	assert.Equal(t, NamedField{
+		Name:     "output0",
+		TypeName: "bool",
+		Value:    SimpleField{Value: "bool"},
+		RawValue: nil,
+	}, analyzeResult.Outputs[0])
 }

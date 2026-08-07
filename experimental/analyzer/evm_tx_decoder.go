@@ -37,11 +37,7 @@ func (p *EVMTxCallDecoder) Decode(address string, contractABI *abi.ABI, data []b
 	if err != nil {
 		return nil, err
 	}
-	outs := make(map[string]any)
-	err = method.Outputs.UnpackIntoMap(outs, methodData)
-	if err != nil {
-		return nil, err
-	}
+	outs := outputPlaceholders(method.Outputs)
 	args := make(map[string]any)
 	err = method.Inputs.UnpackIntoMap(args, methodData)
 	if err != nil {
@@ -68,14 +64,14 @@ func (p *EVMTxCallDecoder) decodeMethodCall(address string, method *abi.Method, 
 	}
 	outputs := make([]NamedField, len(method.Outputs))
 	for i, output := range method.Outputs {
-		out, ok := outs[output.Name]
+		out, ok := outs[argumentName(output, i)]
 		if !ok {
 			return nil, fmt.Errorf("missing output '%s'", output.Name)
 		}
 		outputs[i] = NamedField{
-			Name:     output.Name,
+			Name:     argumentName(output, i),
 			TypeName: output.Type.String(),
-			Value:    p.decodeArg(output.Name, &output.Type, out),
+			Value:    SimpleField{Value: output.Type.String()},
 			RawValue: out,
 		}
 	}
@@ -86,6 +82,23 @@ func (p *EVMTxCallDecoder) decodeMethodCall(address string, method *abi.Method, 
 		Inputs:  inputs,
 		Outputs: outputs,
 	}, nil
+}
+
+func outputPlaceholders(outputs abi.Arguments) map[string]any {
+	outs := make(map[string]any, len(outputs))
+	for i, output := range outputs {
+		outs[argumentName(output, i)] = nil
+	}
+
+	return outs
+}
+
+func argumentName(arg abi.Argument, idx int) string {
+	if arg.Name != "" {
+		return arg.Name
+	}
+
+	return fmt.Sprintf("output%d", idx)
 }
 
 // decodeArg decodes a single argument using the provided ABI type and value.
