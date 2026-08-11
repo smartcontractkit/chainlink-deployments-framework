@@ -248,10 +248,7 @@ func (s *runState) runParameterSet(
 			continue
 		}
 
-		target := s.outputParameterAt(batchIdx, callIdx, paramIdx)
-		if isInput {
-			target = s.inputParameterAt(batchIdx, callIdx, paramIdx)
-		}
+		target := s.parameterAt(batchIdx, callIdx, paramIdx, isInput)
 		s.addAnnotations(&target.BaseAnnotated, a.ID(), anns)
 	}
 
@@ -281,6 +278,22 @@ func (s *runState) inputParameterAt(batchIdx, callIdx, paramIdx int) *analyzer.A
 
 func (s *runState) outputParameterAt(batchIdx, callIdx, paramIdx int) *analyzer.AnalyzedParameterNode {
 	return s.callAt(batchIdx, callIdx).Outputs()[paramIdx].(*analyzer.AnalyzedParameterNode)
+}
+
+// parameterAt returns the input or output parameter node at paramIdx.
+//
+// Callers must select the side before indexing. Writing this as an
+// unconditional output lookup with an input override reads harmlessly but
+// panics: Go evaluates the discarded call, and a call with no return values -
+// which is nearly every state-changing call - indexes an empty slice.
+func (s *runState) parameterAt(
+	batchIdx, callIdx, paramIdx int, isInput bool,
+) *analyzer.AnalyzedParameterNode {
+	if isInput {
+		return s.inputParameterAt(batchIdx, callIdx, paramIdx)
+	}
+
+	return s.outputParameterAt(batchIdx, callIdx, paramIdx)
 }
 
 func (s *runState) proposalAnnotationsByLevel() map[annotationstore.AnnotationLevel]annotation.Annotations {
@@ -321,10 +334,7 @@ func (s *runState) parameterAnnotationsByLevel(
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	paramNode := s.outputParameterAt(batchIdx, callIdx, paramIdx)
-	if isInput {
-		paramNode = s.inputParameterAt(batchIdx, callIdx, paramIdx)
-	}
+	paramNode := s.parameterAt(batchIdx, callIdx, paramIdx, isInput)
 
 	return map[annotationstore.AnnotationLevel]annotation.Annotations{
 		annotationstore.AnnotationLevelProposal:       cloneAnnotations(s.proposal.Annotations()),

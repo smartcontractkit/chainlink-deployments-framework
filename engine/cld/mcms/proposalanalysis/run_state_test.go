@@ -174,6 +174,88 @@ func TestRunStateRunParameterAnalyzer_AnnotatesInputAndOutputNodes(t *testing.T)
 	require.Equal(t, "param-analyzer", outAnns[2].AnalyzerID())
 }
 
+// Most state-changing contract calls return nothing, so a parameter analyzer
+// must work when Outputs() is empty. This previously panicked with an index out
+// of range: the input branch still evaluated the output lookup.
+func TestRunStateRunParameterAnalyzer_CallWithNoOutputs(t *testing.T) {
+	t.Parallel()
+
+	in := &decodedParam{name: "administrator", atype: "address", value: "0xabc"}
+	call := &decodedCall{to: "0xdef", name: "proposeAdministrator", inputs: decoder.DecodedParameters{in}}
+	batch := &decodedBatch{selector: 111, calls: decoder.DecodedCalls{call}}
+	decoded := &decodedProposal{batches: decoder.DecodedBatchOperations{batch}}
+
+	state := newTestRunState(decoded)
+
+	seen := 0
+	a := analyzermocks.NewMockParameterAnalyzer(t)
+	a.EXPECT().ID().Return("param-analyzer")
+	a.EXPECT().Dependencies().Return(nil)
+	a.EXPECT().CanAnalyze(mock.Anything, mock.Anything, mock.Anything).Return(true)
+	a.EXPECT().
+		Analyze(mock.Anything, mock.Anything, mock.Anything).
+		RunAndReturn(func(ctx context.Context, req analyzer.AnalyzeRequest[analyzer.ParameterAnalyzerContext], param decoder.DecodedParameter) (annotation.Annotations, error) {
+			seen++
+
+			return annotation.Annotations{annotation.New("param-note", "string", "ok")}, nil
+		})
+
+	err := state.runParameterAnalyzer(t.Context(), a, 2*time.Second)
+	require.NoError(t, err)
+
+	// Only the single input is visited, and it is annotated.
+	require.Equal(t, 1, seen)
+	require.Empty(t, state.callAt(0, 0).Outputs())
+
+	inAnns := state.inputParameterAt(0, 0, 0).Annotations()
+	require.Len(t, inAnns, 1)
+	require.Equal(t, "param-note", inAnns[0].Name())
+	require.Equal(t, "param-analyzer", inAnns[0].AnalyzerID())
+}
+
+// The mirror case: outputs present, no inputs.
+func TestRunStateRunParameterAnalyzer_CallWithNoInputs(t *testing.T) {
+	t.Parallel()
+
+	out := &decodedParam{name: "router", atype: "address", value: "0xabc"}
+	call := &decodedCall{to: "0xdef", name: "getRouter", outputs: decoder.DecodedParameters{out}}
+	batch := &decodedBatch{selector: 111, calls: decoder.DecodedCalls{call}}
+	decoded := &decodedProposal{batches: decoder.DecodedBatchOperations{batch}}
+
+	state := newTestRunState(decoded)
+
+	a := analyzermocks.NewMockParameterAnalyzer(t)
+	a.EXPECT().ID().Return("param-analyzer")
+	a.EXPECT().Dependencies().Return(nil)
+	a.EXPECT().CanAnalyze(mock.Anything, mock.Anything, mock.Anything).Return(true)
+	a.EXPECT().
+		Analyze(mock.Anything, mock.Anything, mock.Anything).
+		Return(annotation.Annotations{annotation.New("param-note", "string", "ok")}, nil)
+
+	err := state.runParameterAnalyzer(t.Context(), a, 2*time.Second)
+	require.NoError(t, err)
+
+	require.Empty(t, state.callAt(0, 0).Inputs())
+	require.Len(t, state.outputParameterAt(0, 0, 0).Annotations(), 1)
+}
+
+// A call with neither inputs nor outputs must simply be skipped.
+func TestRunStateRunParameterAnalyzer_CallWithNoParameters(t *testing.T) {
+	t.Parallel()
+
+	call := &decodedCall{to: "0xdef", name: "acceptOwnership"}
+	batch := &decodedBatch{selector: 111, calls: decoder.DecodedCalls{call}}
+	decoded := &decodedProposal{batches: decoder.DecodedBatchOperations{batch}}
+
+	state := newTestRunState(decoded)
+
+	a := analyzermocks.NewMockParameterAnalyzer(t)
+	a.EXPECT().ID().Return("param-analyzer").Maybe()
+	a.EXPECT().Dependencies().Return(nil).Maybe()
+
+	require.NoError(t, state.runParameterAnalyzer(t.Context(), a, 2*time.Second))
+}
+
 func TestNewRunState_ConvertsAdditionalFieldsFromDecodedCall(t *testing.T) {
 	t.Parallel()
 
