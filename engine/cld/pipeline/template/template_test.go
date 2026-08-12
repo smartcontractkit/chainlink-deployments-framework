@@ -138,7 +138,7 @@ func TestGenerateStructYAMLWithDepthLimit_Struct(t *testing.T) {
 		B int    `yaml:"b"`
 	}
 
-	got, err := GenerateStructYAMLWithDepthLimit(reflect.TypeOf(S{}), "  ", 0, make(map[reflect.Type]bool), 5)
+	got, err := GenerateStructYAMLWithDepthLimit(reflect.TypeOf(S{}), "  ", 0, make(map[reflect.Type]bool), 5, nil)
 	require.NoError(t, err)
 	require.Equal(t, "  a: # string\n  b: # int\n", got)
 }
@@ -150,7 +150,7 @@ func TestGenerateStructYAMLWithDepthLimit_DepthExceeded(t *testing.T) {
 		A string `yaml:"a"`
 	}
 
-	got, err := GenerateStructYAMLWithDepthLimit(reflect.TypeOf(S{}), "  ", 10, make(map[reflect.Type]bool), 5)
+	got, err := GenerateStructYAMLWithDepthLimit(reflect.TypeOf(S{}), "  ", 10, make(map[reflect.Type]bool), 5, nil)
 	require.NoError(t, err)
 	require.Empty(t, got)
 }
@@ -162,7 +162,7 @@ func TestGenerateStructYAMLWithDepthLimit_CircularRef(t *testing.T) {
 		Next *Node `yaml:"next"`
 	}
 
-	got, err := GenerateStructYAMLWithDepthLimit(reflect.TypeOf(Node{}), "  ", 0, make(map[reflect.Type]bool), 10)
+	got, err := GenerateStructYAMLWithDepthLimit(reflect.TypeOf(Node{}), "  ", 0, make(map[reflect.Type]bool), 10, nil)
 	require.NoError(t, err)
 	require.Equal(t, "  next:\n# ... (circular reference to template.Node)\n", got)
 }
@@ -170,7 +170,7 @@ func TestGenerateStructYAMLWithDepthLimit_CircularRef(t *testing.T) {
 func TestGenerateFieldValueWithDepthLimit_String(t *testing.T) {
 	t.Parallel()
 
-	got, err := GenerateFieldValueWithDepthLimit(reflect.TypeOf(""), "  ", 0, make(map[reflect.Type]bool), 5)
+	got, err := GenerateFieldValueWithDepthLimit(reflect.TypeOf(""), "  ", 0, make(map[reflect.Type]bool), 5, nil)
 	require.NoError(t, err)
 	require.Equal(t, " # string", got)
 }
@@ -178,7 +178,7 @@ func TestGenerateFieldValueWithDepthLimit_String(t *testing.T) {
 func TestGenerateFieldValueWithDepthLimit_Int(t *testing.T) {
 	t.Parallel()
 
-	got, err := GenerateFieldValueWithDepthLimit(reflect.TypeOf(0), "  ", 0, make(map[reflect.Type]bool), 5)
+	got, err := GenerateFieldValueWithDepthLimit(reflect.TypeOf(0), "  ", 0, make(map[reflect.Type]bool), 5, nil)
 	require.NoError(t, err)
 	require.Equal(t, " # int", got)
 }
@@ -186,7 +186,7 @@ func TestGenerateFieldValueWithDepthLimit_Int(t *testing.T) {
 func TestGenerateFieldValueWithDepthLimit_Slice(t *testing.T) {
 	t.Parallel()
 
-	got, err := GenerateFieldValueWithDepthLimit(reflect.TypeOf([]string{}), "  ", 0, make(map[reflect.Type]bool), 5)
+	got, err := GenerateFieldValueWithDepthLimit(reflect.TypeOf([]string{}), "  ", 0, make(map[reflect.Type]bool), 5, nil)
 	require.NoError(t, err)
 	require.Equal(t, "\n  - # string", got)
 }
