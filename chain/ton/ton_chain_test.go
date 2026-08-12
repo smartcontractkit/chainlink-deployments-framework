@@ -105,8 +105,8 @@ func funder(t *testing.T, tonChain ton.Chain) *wallet.Wallet {
 	t.Helper()
 	funderWallet, err := wallet.FromSeed(tonChain.Client, strings.Fields(faucetMnemonic), wallet.HighloadV2Verified) //nolint:staticcheck
 	require.NoError(t, err)
-	funderWallet, err = wallet.FromPrivateKeyWithOptions(tonChain.Client, funderWallet.PrivateKey(),
-		wallet.HighloadV2Verified, wallet.WithWorkchain(int8(address.MasterchainID))) //nolint:staticcheck
+	funderWallet, err = wallet.FromPrivateKeyWithOptions(funderWallet.PrivateKey(),
+		wallet.HighloadV2Verified, wallet.WithAPI(tonChain.Client), wallet.WithWorkchain(int8(address.MasterchainID))) //nolint:staticcheck
 	require.NoError(t, err)
 	funder, err := funderWallet.GetSubwallet(uint32(42))
 	require.NoError(t, err)

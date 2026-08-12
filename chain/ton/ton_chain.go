@@ -46,7 +46,7 @@ func (c Chain) ReadOnly() (common.BlockChain, error) {
 		return nil, fmt.Errorf("failed to generate private key for read-only chain %v: %w", c, err)
 	}
 
-	c.Wallet, err = wallet.FromPrivateKeyWithOptions(c.Client, privateKey, c.WalletVersionConfig)
+	c.Wallet, err = wallet.FromPrivateKeyWithOptions(privateKey, c.WalletVersionConfig, wallet.WithAPI(c.Client))
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate wallet for read-only chain %v: %w", c, err)
 	}
