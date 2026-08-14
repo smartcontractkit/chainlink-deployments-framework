@@ -1,5 +1,15 @@
 # chainlink-deployments-framework
 
+## 0.119.0
+
+### Minor Changes
+
+- [#1146](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1146) [`5e14f12`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/5e14f12ebceda1a37403d551f339424ad38c20cb) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - fix!: bump ccip-owner-contracts and mcms
+
+### Patch Changes
+
+- [#1144](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1144) [`91a2cfa`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/91a2cfa0855e8966750a0479545afe27755359ae) Thanks [@RensR](https://github.com/RensR)! - fix: stop parameter analyzers panicking on calls with no return values. runState indexed the output parameter slice even when annotating an input, so registering any ParameterAnalyzer crashed proposal analysis for nearly every state-changing call
+
 ## 0.118.1
 
 ### Patch Changes
