@@ -6,7 +6,7 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/aptos-labs/aptos-go-sdk"
 	"github.com/gagliardetto/solana-go"
-	ownerhelpers "github.com/smartcontractkit/ccip-owner-contracts/pkg/gethwrappers"
+	ownerhelpers "github.com/smartcontractkit/ccip-owner-contracts/gethwrappers"
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	mcmssolanasdk "github.com/smartcontractkit/mcms/sdk/solana"
 	mcmstypes "github.com/smartcontractkit/mcms/types"

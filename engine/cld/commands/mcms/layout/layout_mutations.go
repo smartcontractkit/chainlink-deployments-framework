@@ -14,7 +14,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
-	"github.com/smartcontractkit/ccip-owner-contracts/pkg/gethwrappers"
+	"github.com/smartcontractkit/ccip-owner-contracts/gethwrappers"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/evm_storage"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/rpc"

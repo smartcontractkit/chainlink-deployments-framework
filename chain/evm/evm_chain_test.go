@@ -10,7 +10,7 @@ import (
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/samber/lo"
-	mcmsbindings "github.com/smartcontractkit/ccip-owner-contracts/pkg/gethwrappers"
+	mcmsbindings "github.com/smartcontractkit/ccip-owner-contracts/gethwrappers"
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/stretchr/testify/assert"
