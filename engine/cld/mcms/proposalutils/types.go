@@ -3,22 +3,10 @@ package proposalutils
 import (
 	"math/big"
 
-	"github.com/smartcontractkit/ccip-owner-contracts/pkg/config"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 )
 
-// Deprecated: use MCMSWithTimelockConfig. This will be removed once all CCIP code is migrated to use the new MCMSWithTimelockConfig type.
-type MCMSWithTimelockConfigLegacy struct {
-	Canceller        config.Config `json:"canceller"`
-	Bypasser         config.Config `json:"bypasser"`
-	Proposer         config.Config `json:"proposer"`
-	TimelockMinDelay *big.Int      `json:"timelockMinDelay"`
-	Label            *string       `json:"label"`
-}
-
 // MCMSWithTimelockConfig holds the configuration for an MCMS with timelock.
-// Unlike the legacy MCMSWithTimelockConfigLegacy type above, this variant uses the
-// newer mcmstypes.Config definitions.
 type MCMSWithTimelockConfig struct {
 	Canceller        mcmstypes.Config `json:"canceller"`
 	Bypasser         mcmstypes.Config `json:"bypasser"`

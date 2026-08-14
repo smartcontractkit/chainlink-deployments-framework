@@ -3,7 +3,7 @@ package proposalutils
 import (
 	"errors"
 
-	ownerhelpers "github.com/smartcontractkit/ccip-owner-contracts/pkg/gethwrappers"
+	ownerhelpers "github.com/smartcontractkit/ccip-owner-contracts/gethwrappers"
 )
 
 var (

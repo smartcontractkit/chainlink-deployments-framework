@@ -3,7 +3,7 @@ package proposalutils
 import (
 	"testing"
 
-	ownerhelpers "github.com/smartcontractkit/ccip-owner-contracts/pkg/gethwrappers"
+	ownerhelpers "github.com/smartcontractkit/ccip-owner-contracts/gethwrappers"
 	"github.com/stretchr/testify/require"
 )
 

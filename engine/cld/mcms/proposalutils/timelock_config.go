@@ -7,7 +7,7 @@ import (
 
 	"github.com/aptos-labs/aptos-go-sdk"
 	"github.com/gagliardetto/solana-go"
-	ownerhelpers "github.com/smartcontractkit/ccip-owner-contracts/pkg/gethwrappers"
+	ownerhelpers "github.com/smartcontractkit/ccip-owner-contracts/gethwrappers"
 	mcmssolanasdk "github.com/smartcontractkit/mcms/sdk/solana"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 	"github.com/xssnick/tonutils-go/address"

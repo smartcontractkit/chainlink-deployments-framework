@@ -13,8 +13,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	gethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/smartcontractkit/ccip-owner-contracts/pkg/config"
-	bindings "github.com/smartcontractkit/ccip-owner-contracts/pkg/gethwrappers"
+	bindings "github.com/smartcontractkit/ccip-owner-contracts/gethwrappers"
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	mcmslib "github.com/smartcontractkit/mcms"
 	mcmschainwrappers "github.com/smartcontractkit/mcms/chainwrappers"
@@ -35,18 +34,6 @@ func init() {
 		panic(err)
 	}
 	TestXXXMCMSSigner = key
-}
-
-func SingleGroupMCMSLegacy(t *testing.T) config.Config {
-	t.Helper()
-
-	publicKey := TestXXXMCMSSigner.Public().(*ecdsa.PublicKey)
-	// Convert the public key to an Ethereum address
-	address := crypto.PubkeyToAddress(*publicKey)
-	c, err := config.NewConfig(1, []common.Address{address}, []config.Config{})
-	require.NoError(t, err)
-
-	return *c
 }
 
 func SingleGroupMCMS(t *testing.T) mcmstypes.Config {
