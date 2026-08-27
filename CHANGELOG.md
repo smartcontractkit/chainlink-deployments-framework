@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.120.0
+
+### Minor Changes
+
+- [#1150](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1150) [`461a5e2`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/461a5e29664c70ef33ae7d1df4c16ccb8661764b) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(mcms): allow when proposal delay and on-chain minDelay are unset
+
 ## 0.119.0
 
 ### Minor Changes
