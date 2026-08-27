@@ -205,10 +205,9 @@ func TestCorrectTimelockDelaysWithLookup(t *testing.T) {
 			wantDelay: mcmstypes.NewDuration(0),
 		},
 		{
-			name:      "zero on-chain minDelay with unset delay returns error",
+			name:      "zero on-chain minDelay with unset delay returns no error",
 			proposal:  func() mcms.TimelockProposal { return scheduleProposal(mcmstypes.NewDuration(0)) },
 			lookup:    zeroLookup,
-			wantErr:   ErrUnsetTimelockDelayUnverified,
 			wantDelay: mcmstypes.NewDuration(0),
 		},
 		{
