@@ -23,8 +23,9 @@ type MinDelayLookup func(
 // CorrectTimelockDelays updates schedule proposal delays using on-chain minDelay from blockChains.
 // Unset or too-low delays are bumped to the max on-chain minDelay across timelock chains when
 // minDelay can be read for every timelock chain. An unset delay fails the call if any chain
-// cannot be read or on-chain minDelay is zero. An explicitly set delay is left unchanged when
-// on-chain minDelay cannot be verified.
+// cannot be read. If on-chain minDelay is verified as zero on every timelock chain, an unset
+// proposal delay is left at zero so the proposal can execute immediately. An explicitly set
+// delay is left unchanged when on-chain minDelay cannot be verified.
 func CorrectTimelockDelays(
 	ctx context.Context,
 	lggr logger.Logger,
@@ -103,8 +104,7 @@ func correctProposalDelay(
 	maxMinDelay := MaxMinDelay(chainDelays)
 	if maxMinDelay.Duration <= 0 {
 		if unsetDelay {
-			lggr.Warnw("on-chain minDelay is zero on all timelock chains; cannot resolve unset proposal delay")
-			return fmt.Errorf("%w: on-chain minDelay is zero on all timelock chains", ErrUnsetTimelockDelayUnverified)
+			lggr.Infow("proposal delay and on-chain minDelay are both unset/zero on all timelock chains; proposal will execute immediately")
 		}
 
 		return nil
