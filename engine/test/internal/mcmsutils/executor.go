@@ -23,6 +23,7 @@ import (
 	fchainevm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/mcms/adapters"
 	fchainsolana "github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
+	fchainstellar "github.com/smartcontractkit/chainlink-deployments-framework/chain/stellar"
 	fchainton "github.com/smartcontractkit/chainlink-deployments-framework/chain/ton"
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
@@ -387,7 +388,9 @@ func confirmTransaction(ctx context.Context, blockchain fchain.BlockChain, tx mc
 			return fmt.Errorf("failed to confirm TON transaction %s on chain %s: %w", tx.Hash, chain.Name(), err)
 		}
 	case fchainsolana.Chain:
-		// NOOP: no need to confirm transaction on solana as the MCMS sdk confirms it internally
+	// NOOP: no need to confirm transaction on solana as the MCMS sdk confirms it internally
+	case fchainstellar.Chain:
+	// NOOP: no need to confirm transaction on Stellar as the MCMS SDK confirms it internally.
 	default:
 		return fmt.Errorf("unsupported blockchain type for transaction confirmation: %T", blockchain)
 	}
