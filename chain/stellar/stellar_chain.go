@@ -3,6 +3,7 @@ package stellar
 import (
 	"fmt"
 
+	stellar "github.com/smartcontractkit/chainlink-stellar/bindings"
 	"github.com/stellar/go-stellar-sdk/clients/rpcclient"
 	"github.com/stellar/go-stellar-sdk/keypair"
 
@@ -19,7 +20,7 @@ type Chain struct {
 	Client *rpcclient.Client
 
 	// Signer is the keypair used for signing transactions
-	Signer StellarSigner
+	Signer stellar.Signer
 
 	// URL is the Soroban RPC endpoint URL
 	URL string
@@ -36,7 +37,7 @@ func (c Chain) ReadOnly() (chaincommon.BlockChain, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate keypair for read-only chain %v: %w", c, err)
 	}
-	c.Signer = NewStellarKeypairSigner(keyPair)
+	c.Signer = stellar.NewStellarKeypairSigner(keyPair)
 
 	return c, nil
 }

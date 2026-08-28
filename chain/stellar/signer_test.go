@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"testing"
 
+	stellar "github.com/smartcontractkit/chainlink-stellar/bindings"
 	"github.com/stellar/go-stellar-sdk/keypair"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -15,7 +16,7 @@ func TestNewStellarKeypairSigner(t *testing.T) {
 	kp, err := keypair.Random()
 	require.NoError(t, err)
 
-	signer := NewStellarKeypairSigner(kp)
+	signer := stellar.NewStellarKeypairSigner(kp)
 	require.NotNil(t, signer)
 
 	assert.Equal(t, kp.Address(), signer.Address())
@@ -27,7 +28,7 @@ func TestStellarKeypairSigner_Sign(t *testing.T) {
 	kp, err := keypair.Random()
 	require.NoError(t, err)
 
-	signer := NewStellarKeypairSigner(kp)
+	signer := stellar.NewStellarKeypairSigner(kp)
 
 	message := []byte("test message")
 	sig, err := signer.Sign(message)
@@ -45,7 +46,7 @@ func TestStellarKeypairSigner_SignDecorated(t *testing.T) {
 	kp, err := keypair.Random()
 	require.NoError(t, err)
 
-	signer := NewStellarKeypairSigner(kp)
+	signer := stellar.NewStellarKeypairSigner(kp)
 
 	message := []byte("test message")
 	decoratedSig, err := signer.SignDecorated(message)
@@ -64,7 +65,7 @@ func TestStellarKeypairSigner_Address(t *testing.T) {
 	kp, err := keypair.Random()
 	require.NoError(t, err)
 
-	signer := NewStellarKeypairSigner(kp)
+	signer := stellar.NewStellarKeypairSigner(kp)
 	address := signer.Address()
 
 	assert.NotEmpty(t, address)
@@ -113,7 +114,7 @@ func TestKeypairFromHex(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			kp, err := KeypairFromHex(tt.hexKey)
+			kp, err := stellar.KeypairFromHex(tt.hexKey)
 
 			if tt.wantErr != "" {
 				require.ErrorContains(t, err, tt.wantErr)
@@ -145,10 +146,10 @@ func TestKeypairFromHex_ConsistentAddress(t *testing.T) {
 	hexKey := "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 
 	// Parse twice
-	kp1, err := KeypairFromHex(hexKey)
+	kp1, err := stellar.KeypairFromHex(hexKey)
 	require.NoError(t, err)
 
-	kp2, err := KeypairFromHex(hexKey)
+	kp2, err := stellar.KeypairFromHex(hexKey)
 	require.NoError(t, err)
 
 	// Both should produce the same address
@@ -178,9 +179,9 @@ func TestKeypairFromHex_RealStellarKey(t *testing.T) {
 	t.Parallel()
 
 	// We can't directly get the raw seed from SDK's Full keypair,
-	// so we'll just verify that our KeypairFromHex works with a properly formatted hex
+	// so we'll just verify that ourstellar.KeypairFromHex works with a properly formatted hex
 	testHex := "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"
-	reconstructedKp, err := KeypairFromHex(testHex)
+	reconstructedKp, err := stellar.KeypairFromHex(testHex)
 	require.NoError(t, err)
 
 	// Verify it can sign
@@ -203,10 +204,10 @@ func TestKeypairFromHex_WithAndWithoutPrefix(t *testing.T) {
 	hexWithout := "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 	hexWith := "0x" + hexWithout
 
-	kp1, err := KeypairFromHex(hexWithout)
+	kp1, err := stellar.KeypairFromHex(hexWithout)
 	require.NoError(t, err)
 
-	kp2, err := KeypairFromHex(hexWith)
+	kp2, err := stellar.KeypairFromHex(hexWith)
 	require.NoError(t, err)
 
 	// Both should produce the same address
@@ -216,13 +217,10 @@ func TestKeypairFromHex_WithAndWithoutPrefix(t *testing.T) {
 func TestStellarSigner_Interface(t *testing.T) {
 	t.Parallel()
 
-	// Verify stellarKeypairSigner implements StellarSigner
-	var _ StellarSigner = (*stellarKeypairSigner)(nil)
-
 	kp, err := keypair.Random()
 	require.NoError(t, err)
 
-	signer := NewStellarKeypairSigner(kp)
+	signer := stellar.NewStellarKeypairSigner(kp)
 	require.NotNil(t, signer)
 
 	// Test all interface methods
@@ -274,7 +272,7 @@ func TestKeypairFromHex_EdgeCases(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			kp, err := KeypairFromHex(tt.hexKey)
+			kp, err := stellar.KeypairFromHex(tt.hexKey)
 
 			if tt.wantErr != "" {
 				require.ErrorContains(t, err, tt.wantErr)
@@ -309,7 +307,7 @@ func TestKeypairFromHex_ByteConversion(t *testing.T) {
 	hexKey := hex.EncodeToString(expectedBytes)
 	require.Len(t, hexKey, 64, "hex encoding of 32 bytes should be 64 chars")
 
-	kp, err := KeypairFromHex(hexKey)
+	kp, err := stellar.KeypairFromHex(hexKey)
 	require.NoError(t, err)
 	require.NotNil(t, kp)
 
