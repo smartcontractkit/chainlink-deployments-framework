@@ -5,6 +5,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	sol "github.com/gagliardetto/solana-go"
 	solrpc "github.com/gagliardetto/solana-go/rpc"
+	stellar "github.com/smartcontractkit/chainlink-stellar/bindings"
 	mcmscanton "github.com/smartcontractkit/mcms/sdk/canton"
 	"github.com/smartcontractkit/mcms/sdk/evm"
 	mcmssui "github.com/smartcontractkit/mcms/sdk/sui"
@@ -144,7 +145,7 @@ func (a *ChainAccessAdapter) StellarClient(selector uint64) (*rpcclient.Client, 
 }
 
 // StellarSigner returns the Stellar signer for the given selector.
-func (a *ChainAccessAdapter) StellarSigner(selector uint64) (cldfstellar.StellarSigner, bool) {
+func (a *ChainAccessAdapter) StellarSigner(selector uint64) (stellar.Signer, bool) {
 	ch, ok := a.inner.StellarChains()[selector]
 	return ch.Signer, ok
 }
