@@ -161,6 +161,53 @@ func (c Chain) DeployProgram(logger logger.Logger, programInfo ProgramInfo, isUp
 	return parseProgramID(output, prefix)
 }
 
+func (c Chain) SetIDL(logger logger.Logger, programID string, programName string, isUpgrade bool) error {
+	if _, err := exec.LookPath("npx"); err != nil {
+		logger.Infow("Skipping setIDL, npx not installed", "program", programName)
+	}
+
+	idlFile := filepath.Join(c.ProgramsPath, "..", "idl", programName+".json")
+	if _, err := os.Stat(idlFile); err != nil {
+		return fmt.Errorf("IDL file not found: %w", err)
+	}
+
+	// TODO: if isUpgrade
+	// cliCommand = upgrade
+
+	baseArgs := []string{
+		"@solana-program/program-metadata@latest",
+		"write",
+		"idl",
+		programID,
+		idlFile,
+		"--keypair", c.KeypairPath,
+		"--rpc", c.URL,
+	}
+
+	cmd := exec.CommandContext(context.TODO(), "npx", baseArgs...) // #nosec G204
+	logger.Infof("Setting IDL with command: %s", cmd.String())
+
+	// Capture the command output
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	// Run the command
+	if err := cmd.Run(); err != nil {
+		logger.Errorw("Error setting IDL",
+			"error", err,
+			"stdout", stdout.String(),
+			"stderr", stderr.String())
+
+		return err
+	}
+	logger.Infow("Set IDL",
+		"stdout", stdout.String(),
+		"stderr", stderr.String())
+
+	return nil
+}
+
 func (c Chain) GetAccountDataBorshInto(ctx context.Context, pubkey sollib.PublicKey, accountState interface{}) error {
 	err := solCommonUtil.GetAccountDataBorshInto(ctx, c.Client, pubkey, SolDefaultCommitment, accountState)
 	if err != nil {
