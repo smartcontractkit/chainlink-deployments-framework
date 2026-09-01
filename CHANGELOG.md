@@ -1,5 +1,17 @@
 # chainlink-deployments-framework
 
+## 0.121.0
+
+### Minor Changes
+
+- [#1153](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1153) [`3e1bcd2`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/3e1bcd2ac1da78743dd9bda5be74a7943bf782d6) Thanks [@ilija42](https://github.com/ilija42)! - fix(mcms): Move stellar signer usee in ChainAccessAdapter to the relayer repo
+
+### Patch Changes
+
+- [#1155](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1155) [`9083d1d`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/9083d1dc8a6f001556186c7d352d502886331912) Thanks [@FelixFan1992](https://github.com/FelixFan1992)! - add retry logic for fund account endpoint for Sui
+
+- [#1154](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1154) [`89a246e`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/89a246ec79c02e4eb62c6643e32c2f2c88a9fc86) Thanks [@stackman27](https://github.com/stackman27)! - fix(canton): update experimental/analyzer to use chainlink-canton's restructured contracts/v2 bindings path, and migrate engine/cld/legacy CLI commands from olekukonko/tablewriter's v0.0.5 API to v1.x so no replace directive is needed
+
 ## 0.120.0
 
 ### Minor Changes
