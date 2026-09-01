@@ -9,9 +9,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	chainsel "github.com/smartcontractkit/chain-selectors"
-	core "github.com/smartcontractkit/chainlink-canton/bindings/generated/latest/ccip/core"
-	factory "github.com/smartcontractkit/chainlink-canton/bindings/generated/latest/ccip/factory"
-	chainlinkapi "github.com/smartcontractkit/chainlink-canton/bindings/generated/latest/chainlink/chainlinkapi"
+	core "github.com/smartcontractkit/chainlink-canton/contracts/v2/bindings/generated/ccip/core"
+	factory "github.com/smartcontractkit/chainlink-canton/contracts/v2/bindings/generated/ccip/factory"
+	chainlinkapi "github.com/smartcontractkit/chainlink-canton/contracts/v2/bindings/generated/chainlink/chainlinkapi"
 	cantontypes "github.com/smartcontractkit/go-daml/pkg/types"
 	"github.com/smartcontractkit/mcms"
 	mcmscantonsdk "github.com/smartcontractkit/mcms/sdk/canton"
