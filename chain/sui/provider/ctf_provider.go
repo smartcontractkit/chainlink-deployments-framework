@@ -267,6 +267,7 @@ func fundAccount(url string, address string) error {
 		if resp.IsError() {
 			return nil, fmt.Errorf("faucet returned status %d", resp.StatusCode())
 		}
+
 		return resp, nil
 	},
 		retry.Attempts(attempts),
