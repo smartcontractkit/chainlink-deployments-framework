@@ -246,8 +246,9 @@ func TestAnalyzeCantonTransactions_PerField(t *testing.T) {
 		inputs []inputCheck
 	}{
 		{
-			// Simple single-field scalar: NUMERIC("1234") → string "1234" → SimpleField
-			name: "IsCursedForChain — single NUMERIC field",
+			// Simple scalar (NUMERIC("1234") → string "1234" → SimpleField) plus the
+			// ChoiceContext this params struct now carries → StructField.
+			name: "IsCursedForChain — NUMERIC field plus choice context",
 			tx: types.Transaction{
 				To:   globalConfigAddr,
 				Data: cantonOperationData(t, core.IsCursedForChainMCMSParams{ChainSelector: "1234"}),
@@ -260,6 +261,7 @@ func TestAnalyzeCantonTransactions_PerField(t *testing.T) {
 			method: "RMNRemote::IsCursedForChain",
 			inputs: []inputCheck{
 				{name: "chainSelector", fieldType: "SimpleField"},
+				{name: "context", fieldType: "StructField"},
 			},
 		},
 		{
