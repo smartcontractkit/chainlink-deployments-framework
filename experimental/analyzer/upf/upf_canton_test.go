@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	chainsel "github.com/smartcontractkit/chain-selectors"
-	factory "github.com/smartcontractkit/chainlink-canton/bindings/generated/latest/ccip/factory"
+	factory "github.com/smartcontractkit/chainlink-canton/contracts/v2/bindings/generated/ccip/factory"
 	mcmscantonsdk "github.com/smartcontractkit/mcms/sdk/canton"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 
