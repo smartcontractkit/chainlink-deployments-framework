@@ -1,9 +1,11 @@
 package provider
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"runtime"
 	"strconv"
 	"sync"
@@ -241,14 +243,38 @@ func (p *CTFChainProvider) startContainer(
 	}
 	require.True(p.t, ready, "Sui network not ready")
 
-	err = fundAccount(fauceturl, address)
+	err = fundAccount(p.t.Context(), fauceturl, address)
 	require.NoError(p.t, err)
 
 	return url, fauceturl, client
 }
 
-func fundAccount(url string, address string) error {
-	r := resty.New().SetBaseURL(url)
+// faucetFundTimeout bounds the total time spent retrying Sui faucet /gas
+// funding. Without it, a faucet endpoint that hangs at the TCP/HTTP layer can
+// block each attempt indefinitely and significantly prolong test teardown. The
+// context carrying this deadline is attached to both retry-go and the Resty
+// request so an in-flight hang is cancelled as soon as the budget expires.
+const faucetFundTimeout = 2 * time.Minute
+
+// faucetRequestTimeout bounds a single faucet /gas HTTP request so that one
+// hung attempt does not consume the entire faucetFundTimeout budget, leaving
+// room for subsequent retries.
+const faucetRequestTimeout = 10 * time.Second
+
+// faucetFundAttempts is the maximum number of /gas funding attempts before
+// giving up. The faucetFundTimeout context still bounds the wall-clock total.
+const faucetFundAttempts = uint(15)
+
+func fundAccount(ctx context.Context, url string, address string) error {
+	// Bound the overall retry. A child of the caller's context wins on the
+	// earlier deadline, so callers (tests) can tighten it further.
+	ctx, cancel := context.WithTimeout(ctx, faucetFundTimeout)
+	defer cancel()
+
+	r := resty.New().
+		SetBaseURL(url).
+		SetTimeout(faucetRequestTimeout)
+
 	b := &models.FaucetRequest{
 		FixedAmountRequest: &models.FaucetFixedAmountRequest{
 			Recipient: address,
@@ -257,24 +283,32 @@ func fundAccount(url string, address string) error {
 	// The Sui faucet is served by the same container that just started, so the first
 	// /gas request can race the faucet's own readiness and fail with a connection
 	// reset. Retry with backoff until the faucet accepts the request, treating a
-	// successful POST (non-error HTTP response) as readiness.
-	const attempts = uint(15)
+	// successful POST (non-error HTTP response) as readiness. RetryIf classifies
+	// errors so transient failures are retried while failures that retrying cannot
+	// fix stop immediately instead of burning the budget.
 	_, err := retry.DoWithData(func() (*resty.Response, error) {
-		resp, perr := r.R().SetBody(b).SetHeader("Content-Type", "application/json").Post("/gas")
+		resp, perr := r.R().
+			SetContext(ctx).
+			SetBody(b).
+			SetHeader("Content-Type", "application/json").
+			Post("/gas")
 		if perr != nil {
 			return nil, perr
 		}
 		if resp.IsError() {
-			return nil, fmt.Errorf("faucet returned status %d", resp.StatusCode())
+			return nil, &faucetStatusError{status: resp.StatusCode(), body: resp.Body()}
 		}
 
 		return resp, nil
 	},
-		retry.Attempts(attempts),
+		retry.Context(ctx),
+		retry.Attempts(faucetFundAttempts),
 		retry.Delay(time.Second),
 		retry.DelayType(retry.BackOffDelay),
+		retry.RetryIf(isRetryableFaucetErr),
+		retry.LastErrorOnly(true),
 		retry.OnRetry(func(n uint, err error) {
-			framework.L.Warn().Err(err).Uint("attempt", n+1).Uint("attempts", attempts).
+			framework.L.Warn().Err(err).Uint("attempt", n+1).Uint("attempts", faucetFundAttempts).
 				Str("recipient", address).Msg("Retrying Sui faucet /gas funding")
 		}),
 	)
@@ -284,4 +318,52 @@ func fundAccount(url string, address string) error {
 	framework.L.Info().Str("recipient", address).Msg("Address is funded!")
 
 	return nil
+}
+
+// faucetStatusError carries the HTTP status and body of a non-2xx faucet
+// response so callers can inspect why funding failed without re-issuing the
+// request, and so isRetryableFaucetErr can classify it.
+type faucetStatusError struct {
+	status int
+	body   []byte
+}
+
+func (e *faucetStatusError) Error() string {
+	if trimmed := bytes.TrimSpace(e.body); len(trimmed) > 0 {
+		return fmt.Sprintf("faucet returned status %d: %s", e.status, trimmed)
+	}
+	return fmt.Sprintf("faucet returned status %d", e.status)
+}
+
+// isRetryableFaucetErr classifies faucet /gas errors. Transient failures (faucet
+// still warming up, brief network blips, rate limiting, 5xx) are retried; failures
+// that retrying cannot fix (a malformed request, an already-cancelled context)
+// stop immediately so they don't burn the retry budget and prolong teardown.
+func isRetryableFaucetErr(err error) bool {
+	if err == nil {
+		return false
+	}
+	// A cancelled/deadline-exceeded context means the caller (or the total
+	// budget) has given up; never retry, just propagate.
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return false
+	}
+	var se *faucetStatusError
+	if errors.As(err, &se) {
+		switch {
+		case se.status == http.StatusTooManyRequests:
+			// Rate limited; back off and try again.
+			return true
+		case se.status >= 400 && se.status < 500:
+			// Client-side error (bad recipient, unauthorized, not found, ...).
+			// Retrying an identical request won't fix it.
+			return false
+		case se.status >= 500:
+			// Server-side error / faucet not yet ready.
+			return true
+		}
+	}
+	// Transport-level failures (connection refused/reset, DNS, timeouts) are
+	// treated as transient while the faucet container comes up.
+	return true
 }
