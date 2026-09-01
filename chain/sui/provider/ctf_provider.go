@@ -254,11 +254,33 @@ func fundAccount(url string, address string) error {
 			Recipient: address,
 		},
 	}
-	resp, err := r.R().SetBody(b).SetHeader("Content-Type", "application/json").Post("/gas")
+	// The Sui faucet is served by the same container that just started, so the first
+	// /gas request can race the faucet's own readiness and fail with a connection
+	// reset. Retry with backoff until the faucet accepts the request, treating a
+	// successful POST (non-error HTTP response) as readiness.
+	const attempts = uint(15)
+	_, err := retry.DoWithData(func() (*resty.Response, error) {
+		resp, perr := r.R().SetBody(b).SetHeader("Content-Type", "application/json").Post("/gas")
+		if perr != nil {
+			return nil, perr
+		}
+		if resp.IsError() {
+			return nil, fmt.Errorf("faucet returned status %d", resp.StatusCode())
+		}
+		return resp, nil
+	},
+		retry.Attempts(attempts),
+		retry.Delay(time.Second),
+		retry.DelayType(retry.BackOffDelay),
+		retry.OnRetry(func(n uint, err error) {
+			framework.L.Warn().Err(err).Uint("attempt", n+1).Uint("attempts", attempts).
+				Str("recipient", address).Msg("Retrying Sui faucet /gas funding")
+		}),
+	)
 	if err != nil {
-		return err
+		return fmt.Errorf("fund account via Sui faucet: %w", err)
 	}
-	framework.L.Info().Any("Resp", resp).Msg("Address is funded!")
+	framework.L.Info().Str("recipient", address).Msg("Address is funded!")
 
 	return nil
 }
