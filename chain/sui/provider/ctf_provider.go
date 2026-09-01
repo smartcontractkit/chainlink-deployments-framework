@@ -332,6 +332,7 @@ func (e *faucetStatusError) Error() string {
 	if trimmed := bytes.TrimSpace(e.body); len(trimmed) > 0 {
 		return fmt.Sprintf("faucet returned status %d: %s", e.status, trimmed)
 	}
+
 	return fmt.Sprintf("faucet returned status %d", e.status)
 }
 
