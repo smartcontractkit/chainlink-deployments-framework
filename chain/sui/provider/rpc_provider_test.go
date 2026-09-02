@@ -27,6 +27,15 @@ func Test_RPCChainProviderConfig_validate(t *testing.T) {
 			wantErr: "",
 		},
 		{
+			name: "valid config with auth token",
+			config: RPCChainProviderConfig{
+				RPCURL:            "http://localhost:9000",
+				AuthToken:         "some-grpc-token",
+				DeployerSignerGen: AccountGenPrivateKey(testPrivateKey),
+			},
+			wantErr: "",
+		},
+		{
 			name: "missing rpc url",
 			config: RPCChainProviderConfig{
 				RPCURL: "",
@@ -71,6 +80,15 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 			giveSelector: chainsel.SUI_LOCALNET.Selector,
 			giveConfig: RPCChainProviderConfig{
 				RPCURL:            "http://localhost:9000",
+				DeployerSignerGen: AccountGenPrivateKey(testPrivateKey),
+			},
+		},
+		{
+			name:         "valid initialization with auth token",
+			giveSelector: chainsel.SUI_LOCALNET.Selector,
+			giveConfig: RPCChainProviderConfig{
+				RPCURL:            "http://localhost:9000",
+				AuthToken:         "some-grpc-token",
 				DeployerSignerGen: AccountGenPrivateKey(testPrivateKey),
 			},
 		},

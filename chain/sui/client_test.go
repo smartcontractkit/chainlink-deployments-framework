@@ -52,6 +52,11 @@ func TestGrpcTargetFromNodeURL(t *testing.T) {
 			nodeURL: "http:///path",
 			wantErr: "has no host",
 		},
+		{
+			name:    "userinfo is stripped from gRPC target",
+			nodeURL: "https://some-secret@sui-testnet.g.alchemy.com",
+			want:    "sui-testnet.g.alchemy.com:443",
+		},
 	}
 
 	for _, tt := range tests {
@@ -100,4 +105,71 @@ func TestNewPTBClientFromNodeURL(t *testing.T) {
 		require.Error(t, err)
 		require.Nil(t, client)
 	})
+
+	t.Run("URL with userinfo and empty explicit token constructs client", func(t *testing.T) {
+		t.Parallel()
+
+		// The token is read from userinfo (legacy fallback path); construction must not dial,
+		// so this works without a live node.
+		client, err := NewPTBClientFromNodeURL(log, "https://some-secret@127.0.0.1:9000", "")
+		require.NoError(t, err)
+		require.NotNil(t, client)
+	})
+}
+
+func TestGrpcTokenFromNodeURL(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		nodeURL  string
+		explicit string
+		want     string
+	}{
+		{
+			name:     "explicit token wins over userinfo",
+			nodeURL:  "https://userinfo-secret@sui-testnet.g.alchemy.com",
+			explicit: "explicit-token",
+			want:     "explicit-token",
+		},
+		{
+			name:     "explicit token wins when URL has no userinfo",
+			nodeURL:  "https://sui-testnet.g.alchemy.com",
+			explicit: "explicit-token",
+			want:     "explicit-token",
+		},
+		{
+			name:     "userinfo used when explicit empty",
+			nodeURL:  "https://alchemy-key@sui-testnet.g.alchemy.com",
+			explicit: "",
+			want:     "alchemy-key",
+		},
+		{
+			name:     "default token when neither explicit nor userinfo",
+			nodeURL:  "http://127.0.0.1:9000",
+			explicit: "",
+			want:     defaultGrpcToken,
+		},
+		{
+			name:     "empty userinfo username falls through to default",
+			nodeURL:  "https://@sui-testnet.g.alchemy.com",
+			explicit: "",
+			want:     defaultGrpcToken,
+		},
+		{
+			name:     "unparseable URL with empty explicit falls through to default",
+			nodeURL:  "http://\x7f",
+			explicit: "",
+			want:     defaultGrpcToken,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := grpcTokenFromNodeURL(tt.nodeURL, tt.explicit)
+			assert.Equal(t, tt.want, got)
+		})
+	}
 }

@@ -34,14 +34,7 @@ func NewPTBClientFromNodeURL(log logger.Logger, nodeURL string, grpcToken string
 	if err != nil {
 		return nil, err
 	}
-	if grpcToken == "" {
-		if u, parseErr := url.Parse(nodeURL); parseErr == nil && u.User != nil {
-			grpcToken = u.User.Username()
-		}
-	}
-	if grpcToken == "" {
-		grpcToken = defaultGrpcToken
-	}
+	grpcToken = grpcTokenFromNodeURL(nodeURL, grpcToken)
 
 	return cslclient.NewPTBClient(log, cslclient.PTBClientConfig{
 		GrpcTarget:            grpcTarget,
@@ -50,6 +43,23 @@ func NewPTBClientFromNodeURL(log logger.Logger, nodeURL string, grpcToken string
 		MaxConcurrentRequests: 50,
 		DefaultRequestType:    cslclient.WaitForEffectsCert,
 	})
+}
+
+// grpcTokenFromNodeURL resolves the gRPC auth token in the priority order documented on
+// NewPTBClientFromNodeURL: the explicit token arg when non-empty, then the URL userinfo
+// username (e.g. https://<token>@host) as a legacy fallback, then defaultGrpcToken. The URL
+// is re-parsed for userinfo only when no explicit token is supplied; a parse error is ignored
+// and falls through to the default, matching prior behavior.
+func grpcTokenFromNodeURL(nodeURL, explicit string) string {
+	if explicit != "" {
+		return explicit
+	}
+	if u, err := url.Parse(nodeURL); err == nil && u.User != nil {
+		if user := u.User.Username(); user != "" {
+			return user
+		}
+	}
+	return defaultGrpcToken
 }
 
 func grpcTargetFromNodeURL(nodeURL string) (string, error) {
