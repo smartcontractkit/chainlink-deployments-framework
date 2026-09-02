@@ -86,7 +86,7 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 		{
 			name:         "valid initialization with auth token",
 			giveSelector: chainsel.SUI_LOCALNET.Selector,
-			giveConfig: RPCChainProviderConfig{
+			giveConfig: RPCChainProviderConfig{ //nolint:gosec // False positive G101: Potential hardcoded credentials
 				RPCURL:            "http://localhost:9000",
 				AuthToken:         "some-grpc-token",
 				DeployerSignerGen: AccountGenPrivateKey(testPrivateKey),
