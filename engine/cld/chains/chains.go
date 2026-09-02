@@ -333,10 +333,11 @@ func (l *chainLoaderSui) Load(ctx context.Context, selector uint64) (fchain.Bloc
 		return nil, err
 	}
 
-	rpcURL := network.RPCs[0].HTTPURL
+	rpc := network.RPCs[0]
 	c, err := suiprov.NewRPCChainProvider(selector,
 		suiprov.RPCChainProviderConfig{
-			RPCURL:            rpcURL,
+			RPCURL:            rpc.HTTPURL,
+			AuthToken:         rpc.AuthToken,
 			DeployerSignerGen: suiprov.AccountGenPrivateKey(l.cfg.Sui.DeployerKey),
 		},
 	).Initialize(ctx)

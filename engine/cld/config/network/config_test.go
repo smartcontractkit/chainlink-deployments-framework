@@ -74,11 +74,12 @@ func Test_Config_MarshalYAML(t *testing.T) {
 				URL:    "https://etherscan.io",
 			},
 			RPCs: []RPC{
-				{
+				{ //nolint:gosec // False positive G101: Potential hardcoded credentials
 					RPCName:            "test_rpc",
 					PreferredURLScheme: "http",
 					HTTPURL:            "https://test.rpc",
 					WSURL:              "wss://test.rpc",
+					AuthToken:          "test_auth_token",
 				},
 			},
 			Metadata: map[string]any{
@@ -104,6 +105,7 @@ func Test_Config_MarshalYAML(t *testing.T) {
           preferred_url_scheme: http
           http_url: https://test.rpc
           ws_url: wss://test.rpc
+          auth_token: test_auth_token
       metadata:
         test: test
 `
@@ -127,6 +129,7 @@ networks:
         preferred_url_scheme: http
         http_url: https://test.rpc
         ws_url: wss://test.rpc
+        auth_token: test_auth_token
     metadata:
       test: test
 `
@@ -147,11 +150,12 @@ networks:
 					URL:    "https://etherscan.io",
 				},
 				RPCs: []RPC{
-					{
+					{ //nolint:gosec // False positive G101: Potential hardcoded credentials
 						RPCName:            "test_rpc",
 						PreferredURLScheme: "http",
 						HTTPURL:            "https://test.rpc",
 						WSURL:              "wss://test.rpc",
+						AuthToken:          "test_auth_token",
 					},
 				},
 				Metadata: map[string]any{
@@ -249,6 +253,35 @@ func Test_Config_Merge(t *testing.T) {
 			2: {ChainSelector: 2},
 		},
 	}, cfg)
+}
+
+func Test_Config_Merge_OverrideReplacesRPCAuthToken(t *testing.T) {
+	t.Parallel()
+
+	// Merge is Network-granular (maps.Copy of whole Network values), so an override Network
+	// carrying RPC.AuthToken replaces the base Network wholesale. This is the guarantee
+	// fastcurse-cli's testnetSuiNetworkOverride relies on: the AuthToken it sets is preserved.
+	base := NewConfig([]Network{
+		{
+			ChainSelector: 1,
+			RPCs:          []RPC{{RPCName: "base", HTTPURL: "https://base.rpc"}},
+		},
+	})
+
+	override := NewConfig([]Network{
+		{
+			ChainSelector: 1,
+			RPCs:          []RPC{{RPCName: "override", HTTPURL: "https://override.rpc", AuthToken: "override-token"}},
+		},
+	})
+
+	base.Merge(override)
+
+	got, err := base.NetworkBySelector(1)
+	require.NoError(t, err)
+	require.Len(t, got.RPCs, 1)
+	assert.Equal(t, "override-token", got.RPCs[0].AuthToken)
+	assert.Equal(t, "https://override.rpc", got.RPCs[0].HTTPURL)
 }
 
 func Test_Config_FilterWith(t *testing.T) {
