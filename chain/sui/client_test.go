@@ -122,8 +122,8 @@ func TestRedactURL(t *testing.T) {
 		},
 		{
 			name: "unparseable URL without userinfo returned as-is",
-			raw:  "not a url at all",
-			want: "not a url at all",
+			raw:  "http://bad\x7f",
+			want: "http://bad\x7f",
 		},
 	}
 

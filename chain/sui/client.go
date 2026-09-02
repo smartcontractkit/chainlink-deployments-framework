@@ -1,6 +1,7 @@
 package sui
 
 import (
+	"errors"
 	"fmt"
 	"net/url"
 	"strings"
@@ -65,7 +66,7 @@ func grpcTokenFromNodeURL(nodeURL, explicit string) string {
 func grpcTargetFromNodeURL(nodeURL string) (string, error) {
 	u, err := url.Parse(nodeURL)
 	if err != nil {
-		return "", fmt.Errorf("parse node URL %q: %w", redactURL(nodeURL), err)
+		return "", fmt.Errorf("parse node URL %q: %s", redactURL(nodeURL), urlParseReason(err))
 	}
 	host := u.Hostname()
 	port := u.Port()
@@ -102,4 +103,16 @@ func redactURL(raw string) string {
 		return "<redacted>@" + raw[i+1:]
 	}
 	return raw
+}
+
+// urlParseReason extracts the underlying reason from a url.Parse error, discarding the *url.Error
+// wrapper. url.Error.Error() echoes the raw (potentially token-bearing) URL as `parse "rawurl":
+// <reason>`; propagating it verbatim would leak the token that redactURL is meant to scrub. This
+// returns just the inner reason. Falls back to err.Error() for non-url.Error errors.
+func urlParseReason(err error) string {
+	var ue *url.Error
+	if errors.As(err, &ue) {
+		return ue.Err.Error()
+	}
+	return err.Error()
 }
