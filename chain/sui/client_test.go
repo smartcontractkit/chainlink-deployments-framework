@@ -1,6 +1,7 @@
 package sui
 
 import (
+	"net/url"
 	"testing"
 
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
@@ -90,6 +91,22 @@ func TestGrpcTargetFromNodeURL(t *testing.T) {
 			assert.Equal(t, tt.want, got)
 		})
 	}
+}
+
+func TestGrpcTargetFromNodeURL_ParseErrorPreservesUnwrapChain(t *testing.T) {
+	t.Parallel()
+
+	// The parse-error path wraps a sanitized *url.Error with %w, so the unwrap chain must remain
+	// intact (errors.As reaches *url.Error) while the raw userinfo never leaks into the error
+	// string or the wrapped url.Error.URL.
+	_, err := grpcTargetFromNodeURL("https://super-secret-key@bad\x7f")
+	require.Error(t, err)
+
+	var ue *url.Error
+	require.ErrorAs(t, err, &ue, "parse error should unwrap to *url.Error")
+
+	assert.NotContains(t, ue.URL, "super-secret-key")
+	assert.NotContains(t, err.Error(), "super-secret-key")
 }
 
 func TestRedactURL(t *testing.T) {

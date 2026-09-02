@@ -30,7 +30,7 @@ func Test_RPCChainProviderConfig_validate(t *testing.T) {
 			name: "valid config with auth token",
 			config: RPCChainProviderConfig{
 				RPCURL:            "http://localhost:9000",
-				AuthToken:         "some-grpc-token",
+				AuthToken:         "some-grpc-token", //nolint:gosec // False positive G101: Potential hardcoded credentials
 				DeployerSignerGen: AccountGenPrivateKey(testPrivateKey),
 			},
 			wantErr: "",

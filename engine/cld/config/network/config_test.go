@@ -79,7 +79,7 @@ func Test_Config_MarshalYAML(t *testing.T) {
 					PreferredURLScheme: "http",
 					HTTPURL:            "https://test.rpc",
 					WSURL:              "wss://test.rpc",
-					AuthToken:          "test_auth_token",
+					AuthToken:          "test_auth_token", //nolint:gosec // False positive G101: Potential hardcoded credentials
 				},
 			},
 			Metadata: map[string]any{
@@ -155,7 +155,7 @@ networks:
 						PreferredURLScheme: "http",
 						HTTPURL:            "https://test.rpc",
 						WSURL:              "wss://test.rpc",
-						AuthToken:          "test_auth_token",
+						AuthToken:          "test_auth_token", //nolint:gosec // False positive G101: Potential hardcoded credentials
 					},
 				},
 				Metadata: map[string]any{

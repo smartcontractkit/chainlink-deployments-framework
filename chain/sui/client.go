@@ -60,13 +60,14 @@ func grpcTokenFromNodeURL(nodeURL, explicit string) string {
 			return user
 		}
 	}
+
 	return defaultGrpcToken
 }
 
 func grpcTargetFromNodeURL(nodeURL string) (string, error) {
 	u, err := url.Parse(nodeURL)
 	if err != nil {
-		return "", fmt.Errorf("parse node URL %q: %s", redactURL(nodeURL), urlParseReason(err))
+		return "", fmt.Errorf("parse node URL: %w", sanitizedParseError(err))
 	}
 	host := u.Hostname()
 	port := u.Port()
@@ -102,17 +103,22 @@ func redactURL(raw string) string {
 	if i := strings.LastIndex(raw, "@"); i >= 0 {
 		return "<redacted>@" + raw[i+1:]
 	}
+
 	return raw
 }
 
-// urlParseReason extracts the underlying reason from a url.Parse error, discarding the *url.Error
-// wrapper. url.Error.Error() echoes the raw (potentially token-bearing) URL as `parse "rawurl":
-// <reason>`; propagating it verbatim would leak the token that redactURL is meant to scrub. This
-// returns just the inner reason. Falls back to err.Error() for non-url.Error errors.
-func urlParseReason(err error) string {
+// sanitizedParseError returns a copy of a url.Parse error with the raw URL stripped from its
+// Error() string, so it is safe to wrap with %w (preserving the unwrap chain for callers'
+// errors.Is/errors.As) without leaking userinfo. url.Parse returns *url.Error, whose Error() is
+// `parse "rawurl": <reason>` and which implements Unwrap() returning its inner Err; we rebuild
+// it with a redacted URL and the original inner Err, so errors.As(err, &*url.Error) and
+// errors.Is against the inner sentinel both still work. For non-*url.Error errors (not produced
+// by url.Parse in practice), the message is redacted best-effort via redactURL.
+func sanitizedParseError(err error) error {
 	var ue *url.Error
 	if errors.As(err, &ue) {
-		return ue.Err.Error()
+		return &url.Error{Op: ue.Op, URL: redactURL(ue.URL), Err: ue.Err}
 	}
-	return err.Error()
+
+	return errors.New(redactURL(err.Error()))
 }
