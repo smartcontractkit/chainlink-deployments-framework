@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.121.1
+
+### Patch Changes
+
+- [#1158](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1158) [`de066d1`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/de066d1180e446de5300fa944192066751629150) Thanks [@friedemannf](https://github.com/friedemannf)! - Add InteractiveSubmissionServiceClient to canton.Participant
+
 ## 0.121.0
 
 ### Minor Changes
