@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.121.2
+
+### Patch Changes
+
+- [#1161](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1161) [`2004fe6`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/2004fe6b1852854bbcf65d6285981fe987c19b79) Thanks [@FelixFan1992](https://github.com/FelixFan1992)! - add an auth token for Sui gRPC
+
 ## 0.121.1
 
 ### Patch Changes
