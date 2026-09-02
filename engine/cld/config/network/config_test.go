@@ -74,12 +74,12 @@ func Test_Config_MarshalYAML(t *testing.T) {
 				URL:    "https://etherscan.io",
 			},
 			RPCs: []RPC{
-				{
+				{ //nolint:gosec // False positive G101: Potential hardcoded credentials
 					RPCName:            "test_rpc",
 					PreferredURLScheme: "http",
 					HTTPURL:            "https://test.rpc",
 					WSURL:              "wss://test.rpc",
-					AuthToken:          "test_auth_token", //nolint:gosec // False positive G101: Potential hardcoded credentials
+					AuthToken:          "test_auth_token",
 				},
 			},
 			Metadata: map[string]any{
@@ -150,12 +150,12 @@ networks:
 					URL:    "https://etherscan.io",
 				},
 				RPCs: []RPC{
-					{
+					{ //nolint:gosec // False positive G101: Potential hardcoded credentials
 						RPCName:            "test_rpc",
 						PreferredURLScheme: "http",
 						HTTPURL:            "https://test.rpc",
 						WSURL:              "wss://test.rpc",
-						AuthToken:          "test_auth_token", //nolint:gosec // False positive G101: Potential hardcoded credentials
+						AuthToken:          "test_auth_token",
 					},
 				},
 				Metadata: map[string]any{

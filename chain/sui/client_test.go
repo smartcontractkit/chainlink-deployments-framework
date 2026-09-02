@@ -122,7 +122,7 @@ func TestRedactURL(t *testing.T) {
 			raw:  "https://alchemy-key@sui-testnet.g.alchemy.com",
 			want: "https://sui-testnet.g.alchemy.com",
 		},
-		{
+		{ //nolint:gosec // False positive G101: Potential hardcoded credentials
 			name: "userinfo username and password stripped",
 			raw:  "https://user:pass@sui-testnet.g.alchemy.com",
 			want: "https://sui-testnet.g.alchemy.com",
