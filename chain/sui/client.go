@@ -14,10 +14,30 @@ import (
 const defaultGrpcToken = "test"
 
 // NewPTBClientFromNodeURL creates a gRPC-backed Sui PTB client from an HTTP RPC URL.
+//
+// The gRPC auth token is resolved in priority order:
+//  1. The grpcToken argument, when non-empty. This is the primary path: the deployment framework
+//     threads cfgnet.RPC.AuthToken through RPCChainProviderConfig into this argument, so an
+//     authenticated endpoint such as Alchemy is configured via a first-class token field rather
+//     than embedded in the URL.
+//  2. The URL userinfo (e.g. https://<token>@host), used only as a legacy fallback when grpcToken
+//     is empty but the URL carries userinfo. grpcTargetFromNodeURL strips userinfo from the gRPC
+//     target, so only the host:port is dialed regardless.
+//  3. defaultGrpcToken ("test"), preserving prior behavior for unauthenticated endpoints (local
+//     nodes, public fullnodes).
+//
+// The resolved token is sent as gRPC metadata (Bearer / x-api-key / x-token / x-spectrum-auth) by
+// suigrpcconn.authMetadata. Note: it is applied to the gRPC transport only; the JSON-RPC/devInspect
+// client built downstream from the bare gRPC target does not receive it.
 func NewPTBClientFromNodeURL(log logger.Logger, nodeURL string, grpcToken string) (cslclient.SuiPTBClient, error) {
 	grpcTarget, err := grpcTargetFromNodeURL(nodeURL)
 	if err != nil {
 		return nil, err
+	}
+	if grpcToken == "" {
+		if u, parseErr := url.Parse(nodeURL); parseErr == nil && u.User != nil {
+			grpcToken = u.User.Username()
+		}
 	}
 	if grpcToken == "" {
 		grpcToken = defaultGrpcToken
