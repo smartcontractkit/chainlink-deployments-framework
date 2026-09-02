@@ -12,10 +12,11 @@ func TestGrpcTargetFromNodeURL(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name    string
-		nodeURL string
-		want    string
-		wantErr string
+		name            string
+		nodeURL         string
+		want            string
+		wantErr         string
+		wantNotContains string // asserted in the error string when wantErr is set
 	}{
 		{
 			name:    "host with explicit port",
@@ -57,6 +58,18 @@ func TestGrpcTargetFromNodeURL(t *testing.T) {
 			nodeURL: "https://some-secret@sui-testnet.g.alchemy.com",
 			want:    "sui-testnet.g.alchemy.com:443",
 		},
+		{
+			name:            "userinfo is redacted from missing-host error",
+			nodeURL:         "https://super-secret-key@/path",
+			wantErr:         "has no host",
+			wantNotContains: "super-secret-key",
+		},
+		{
+			name:            "userinfo is redacted from parse-error message",
+			nodeURL:         "https://super-secret-key@bad\x7f",
+			wantErr:         "parse node URL",
+			wantNotContains: "super-secret-key",
+		},
 	}
 
 	for _, tt := range tests {
@@ -67,11 +80,58 @@ func TestGrpcTargetFromNodeURL(t *testing.T) {
 			if tt.wantErr != "" {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tt.wantErr)
+				if tt.wantNotContains != "" {
+					assert.NotContains(t, err.Error(), tt.wantNotContains)
+				}
 
 				return
 			}
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestRedactURL(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		raw  string
+		want string
+	}{
+		{
+			name: "userinfo username stripped",
+			raw:  "https://alchemy-key@sui-testnet.g.alchemy.com",
+			want: "https://sui-testnet.g.alchemy.com",
+		},
+		{
+			name: "userinfo username and password stripped",
+			raw:  "https://user:pass@sui-testnet.g.alchemy.com",
+			want: "https://sui-testnet.g.alchemy.com",
+		},
+		{
+			name: "no userinfo unchanged",
+			raw:  "https://sui-testnet.g.alchemy.com:443/path?q=1",
+			want: "https://sui-testnet.g.alchemy.com:443/path?q=1",
+		},
+		{
+			name: "unparseable URL with userinfo best-effort redacted",
+			raw:  "https://secret-key@bad\x7f",
+			want: "<redacted>@bad\x7f",
+		},
+		{
+			name: "unparseable URL without userinfo returned as-is",
+			raw:  "not a url at all",
+			want: "not a url at all",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, tt.want, redactURL(tt.raw))
 		})
 	}
 }

@@ -65,12 +65,12 @@ func grpcTokenFromNodeURL(nodeURL, explicit string) string {
 func grpcTargetFromNodeURL(nodeURL string) (string, error) {
 	u, err := url.Parse(nodeURL)
 	if err != nil {
-		return "", fmt.Errorf("parse node URL %q: %w", nodeURL, err)
+		return "", fmt.Errorf("parse node URL %q: %w", redactURL(nodeURL), err)
 	}
 	host := u.Hostname()
 	port := u.Port()
 	if host == "" {
-		return "", fmt.Errorf("node URL %q has no host", nodeURL)
+		return "", fmt.Errorf("node URL %q has no host", redactURL(nodeURL))
 	}
 	if port == "" {
 		switch u.Scheme {
@@ -85,4 +85,21 @@ func grpcTargetFromNodeURL(nodeURL string) (string, error) {
 	}
 
 	return fmt.Sprintf("%s:%s", host, port), nil
+}
+
+// redactURL returns a log-safe representation of a node URL with any userinfo removed, so that
+// error messages never echo the raw URL and leak an auth token into logs. In the legacy
+// https://<token>@host form the token is the userinfo *username*, so url.URL.Redacted (which
+// only masks the password) is insufficient; the entire u.User is cleared instead. When the URL
+// cannot be parsed at all, userinfo is redacted best-effort by dropping everything before the
+// last '@'; if there is no '@' the raw input is returned as-is since it carries no userinfo.
+func redactURL(raw string) string {
+	if u, err := url.Parse(raw); err == nil {
+		u.User = nil
+		return u.String()
+	}
+	if i := strings.LastIndex(raw, "@"); i >= 0 {
+		return "<redacted>@" + raw[i+1:]
+	}
+	return raw
 }
