@@ -1,0 +1,50 @@
+{
+  "domain": "exemplar",
+  "environment": "staging",
+  "default_rpc_base_url": "http://rpc-proxy.example.com",
+  "networks": [
+    { "chain_selector": 16015286601757825753 },
+    {
+      "chain_selector": 5009297550715157269,
+      "type": "mainnet",
+      "block_explorer": {
+        "type": "etherscan",
+        "url": "https://api.etherscan.io/api",
+        "api_key": "abc123"
+      },
+      "rpcs": [
+        {
+          "rpc_name": "mainnet-rpc",
+          "preferred_url_scheme": "http",
+          "http_url": "https://mainnet.example.com",
+          "ws_url": "wss://mainnet.example.com"
+        }
+      ]
+    },
+    {
+      "chain_selector": 6898391096552792247,
+      "metadata": { "is_zksync": true }
+    }
+  ],
+  "onchain": {
+    "kms": { "key_id": "f1a2b3c4", "key_region": "us-west-1" },
+    "evm": {
+      "deployer_key": "0xabc",
+      "seth": {
+        "config_file_path": "/tmp/config",
+        "geth_wrapper_dirs": ["./dir1"]
+      }
+    },
+    "solana": {
+      "wallet_key": "0xbcd",
+      "programs_dir_path": "/tmp/program"
+    }
+  },
+  "catalog": {
+    "grpc": "catalog.example.com:443",
+    "auth": {
+      "kms_key_id": "alias/catalog",
+      "kms_key_region": "us-west-1"
+    }
+  }
+}
