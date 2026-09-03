@@ -69,7 +69,7 @@ func defaultDataStoreLoader(ctx context.Context, envdir domain.EnvDir, lggr logg
 		return nil, fmt.Errorf("catalog GRPC endpoint is required when datastore is set to %q", cfg.DatastoreType)
 	}
 	lggr.Infow("Loading datastore from catalog", "url", cfg.Env.Catalog.GRPC)
-	catalogStore, err := cldcatalog.LoadCatalog(ctx, envKey, cfg, dom)
+	catalogStore, err := cldcatalog.LoadCatalog(ctx, dom.Key(), envKey, cfg.Env.Catalog)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load catalog: %w", err)
 	}

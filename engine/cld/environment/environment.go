@@ -153,7 +153,7 @@ func LoadDataStore(
 	if useCatalog(effectiveDatastoreType) {
 		if cfg.Env.Catalog.GRPC != "" {
 			loadcfg.lggr.Infow("Fetching data from Catalog", "url", cfg.Env.Catalog.GRPC)
-			catalogStore, catalogErr := cldcatalog.LoadCatalog(ctx, envKey, cfg, domain)
+			catalogStore, catalogErr := cldcatalog.LoadCatalog(ctx, domain.Key(), envKey, cfg.Env.Catalog)
 			if catalogErr != nil {
 				return nil, catalogErr
 			}
