@@ -46,7 +46,7 @@ func TestKmsSigner_Sign(t *testing.T) {
 	client.EXPECT().Sign(mock.Anything, mock.Anything).RunAndReturn(
 		func(_ context.Context, in *kmsv2.SignInput, _ ...func(*kmsv2.Options)) (*kmsv2.SignOutput, error) {
 			return &kmsv2.SignOutput{Signature: ed25519.Sign(priv, in.Message)}, nil
-		})
+		}).Once()
 
 	signer, err := newKmsSigner(t.Context(), kmsTestKeyID, client)
 	require.NoError(t, err)
@@ -76,7 +76,7 @@ func TestKmsSigner_SignAfterConstructionContextDone(t *testing.T) {
 			}
 
 			return &kmsv2.SignOutput{Signature: ed25519.Sign(priv, in.Message)}, nil
-		})
+		}).Once()
 
 	ctx, cancel := context.WithCancel(t.Context())
 	signer, err := newKmsSigner(ctx, kmsTestKeyID, client)
@@ -105,7 +105,7 @@ func TestKmsSigner_SignDecorated(t *testing.T) {
 	client.EXPECT().Sign(mock.Anything, mock.Anything).RunAndReturn(
 		func(_ context.Context, in *kmsv2.SignInput, _ ...func(*kmsv2.Options)) (*kmsv2.SignOutput, error) {
 			return &kmsv2.SignOutput{Signature: ed25519.Sign(priv, in.Message)}, nil
-		})
+		}).Once()
 
 	signer, err := newKmsSigner(t.Context(), kmsTestKeyID, client)
 	require.NoError(t, err)

@@ -3,6 +3,7 @@ package stellar
 import (
 	"context"
 	"crypto/ed25519"
+	"errors"
 	"fmt"
 	"time"
 
@@ -33,6 +34,14 @@ var _ bindings.Signer = (*KmsSigner)(nil)
 
 // NewKmsSigner builds a bindings.Signer backed by an AWS KMS Ed25519 key.
 func NewKmsSigner(ctx context.Context, keyID, keyRegion string) (bindings.Signer, error) {
+	// Check the key ID before building the client. Otherwise a missing key ID is
+	// only reported after the AWS config is loaded, and is masked entirely when
+	// that load fails for an unrelated reason. NewEd25519Client already checks the
+	// region as its first action, so it needs no equivalent check here.
+	if keyID == "" {
+		return nil, errors.New("KMS key ID is required")
+	}
+
 	client, err := kms.NewEd25519Client(ctx, keyRegion)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create KMS Ed25519 client: %w", err)
