@@ -210,10 +210,23 @@ func newChainLoaders(
 		lggr.Info("Skipping Sui chains, no private key found in secrets")
 	}
 
-	if cfg.Stellar.DeployerKey != "" {
+	// Stellar chains are loaded if either the Ed25519 KMS key or a deployer key is
+	// configured. Log which one signs, since KMS silently wins when both are set.
+	switch stellarSigner(cfg) {
+	case stellarSignerKMS:
 		loaders[chainsel.FamilyStellar] = newChainLoaderStellar(networks, cfg)
-	} else {
-		lggr.Info("Skipping Stellar chains, no private key found in secrets")
+
+		if cfg.Stellar.DeployerKey != "" {
+			lggr.Warn("Loading Stellar chains, signing with the Ed25519 KMS key; the configured Stellar deployer key is ignored")
+		} else {
+			lggr.Info("Loading Stellar chains, signing with the Ed25519 KMS key")
+		}
+	case stellarSignerDeployerKey:
+		loaders[chainsel.FamilyStellar] = newChainLoaderStellar(networks, cfg)
+
+		lggr.Info("Loading Stellar chains, signing with the Stellar deployer key")
+	default:
+		lggr.Info("Skipping Stellar chains, no private key or KMS config found in secrets")
 	}
 
 	if cfg.Ton.DeployerKey != "" {
@@ -353,6 +366,31 @@ type chainLoaderStellar struct {
 	*baseChainLoader
 }
 
+// The signers the Stellar loader can sign with.
+const (
+	// stellarSignerKMS signs with the Ed25519 AWS KMS key.
+	stellarSignerKMS = "kms_ed25519"
+	// stellarSignerDeployerKey signs with the hex-encoded Stellar deployer key.
+	stellarSignerDeployerKey = "deployer_key"
+)
+
+// stellarSigner reports which signer the Stellar loader will use, or an empty
+// string when neither is configured and Stellar cannot be loaded at all.
+//
+// The Ed25519 KMS key takes precedence over the deployer key. Both the loader
+// registration and Load consult this, so the signer that gets logged is always
+// the one that ends up signing.
+func stellarSigner(cfg cfgenv.OnchainConfig) string {
+	switch {
+	case useKMS(cfg.KMSEd25519):
+		return stellarSignerKMS
+	case cfg.Stellar.DeployerKey != "":
+		return stellarSignerDeployerKey
+	default:
+		return ""
+	}
+}
+
 // newChainLoaderStellar creates a new chain loader for Stellar.
 func newChainLoaderStellar(
 	networks *cfgnet.Config, cfg cfgenv.OnchainConfig,
@@ -380,12 +418,19 @@ func (l *chainLoaderStellar) Load(ctx context.Context, selector uint64) (fchain.
 		return nil, fmt.Errorf("stellar network %d: decode metadata: %w", selector, err)
 	}
 
+	var keypairGen stellarprov.KeypairGenerator
+	if stellarSigner(l.cfg) == stellarSignerKMS {
+		keypairGen = stellarprov.KeypairGenKMS(ctx, l.cfg.KMSEd25519.KeyID, l.cfg.KMSEd25519.KeyRegion)
+	} else {
+		keypairGen = stellarprov.KeypairFromHex(l.cfg.Stellar.DeployerKey)
+	}
+
 	c, err := stellarprov.NewRPCChainProvider(selector,
 		stellarprov.RPCChainProviderConfig{
 			NetworkPassphrase:  md.NetworkPassphrase,
 			FriendbotURL:       md.FriendbotURL,
 			SorobanRPCURL:      rpcURL,
-			DeployerKeypairGen: stellarprov.KeypairFromHex(l.cfg.Stellar.DeployerKey),
+			DeployerKeypairGen: keypairGen,
 		},
 	).Initialize(ctx)
 	if err != nil {
