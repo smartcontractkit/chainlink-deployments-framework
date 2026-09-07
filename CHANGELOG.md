@@ -1,5 +1,17 @@
 # chainlink-deployments-framework
 
+## 0.122.0
+
+### Minor Changes
+
+- [#1164](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1164) [`48ca2f6`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/48ca2f6b3036bbe6993e66919ecf9636fb5e95e6) Thanks [@karen-stepanyan](https://github.com/karen-stepanyan)! - feat(stellar): add KMS signing logic
+
+- [#1159](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1159) [`684365b`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/684365b2a1a1551f654e2c17c0f9b1258555aa4c) Thanks [@jkongie](https://github.com/jkongie)! - feat!: add environment.Build to build an environment from parameters
+  
+  BREAKING CHANGE: `catalog.LoadCatalog` now takes a domain key, an
+  environment key and a `cfgenv.CatalogConfig` instead of a domain.Domain
+  and a *config.Config.
+
 ## 0.121.2
 
 ### Patch Changes
