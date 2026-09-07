@@ -2,6 +2,7 @@ package deployment
 
 import (
 	"bytes"
+	"context"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -174,20 +175,34 @@ func DeployContract[C any](
 		lggr.Errorw("Failed to deploy contract", "chain", chain.String(), "err", contractDeploy.Err)
 		return nil, contractDeploy.Err
 	}
-	var err error
-	if !chain.IsZkSyncVM {
-		_, err = chain.Confirm(contractDeploy.Tx)
-		if err != nil {
+
+	deployedAddr := contractDeploy.Address
+	// contractDeploy.Tx is nil only for native zkSync deploys, which are confirmed synchronously
+	// inside deploy(). Keying off chain.IsZkSyncVM instead let EVM-emulator deploys on a zkSync
+	// chain skip confirmation too, silently dropping the tx (seen on ZKsync Era mainnet).
+	if contractDeploy.Tx != nil {
+		if _, err := chain.Confirm(contractDeploy.Tx); err != nil {
 			lggr.Errorw("Failed to confirm deployment", "chain", chain.String(), "Contract", contractDeploy.Tv.String(), "err", err)
 			return nil, err
 		}
+
+		receipt, err := chain.Client.TransactionReceipt(context.Background(), contractDeploy.Tx.Hash())
+		if err != nil {
+			lggr.Errorw("Failed to fetch deployment receipt", "chain", chain.String(), "Contract", contractDeploy.Tv.String(), "err", err)
+			return nil, err
+		}
+		if receipt.ContractAddress != (common.Address{}) {
+			deployedAddr = receipt.ContractAddress
+		}
 	}
-	lggr.Infow("Deployed contract", "Contract", contractDeploy.Tv.String(), "addr", contractDeploy.Address, "chain", chain.String())
-	err = addressBook.Save(chain.Selector, contractDeploy.Address.String(), contractDeploy.Tv)
-	if err != nil {
-		lggr.Errorw("Failed to save contract address", "Contract", contractDeploy.Tv.String(), "addr", contractDeploy.Address, "chain", chain.String(), "err", err)
+
+	lggr.Infow("Deployed contract", "Contract", contractDeploy.Tv.String(), "addr", deployedAddr, "chain", chain.String())
+	if err := addressBook.Save(chain.Selector, deployedAddr.String(), contractDeploy.Tv); err != nil {
+		lggr.Errorw("Failed to save contract address", "Contract", contractDeploy.Tv.String(), "addr", deployedAddr, "chain", chain.String(), "err", err)
 		return nil, err
 	}
+
+	contractDeploy.Address = deployedAddr
 
 	return &contractDeploy, nil
 }
