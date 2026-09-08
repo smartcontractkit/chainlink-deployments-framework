@@ -2,6 +2,7 @@ package network
 
 import (
 	"errors"
+	"fmt"
 
 	chainsel "github.com/smartcontractkit/chain-selectors"
 )
@@ -33,18 +34,36 @@ func (n *Network) ChainID() (string, error) {
 	return chainsel.GetChainIDFromSelector(n.ChainSelector)
 }
 
-// Validate validates the network configuration to ensure that all required fields are set.
+// Validate validates the network configuration to ensure that all required fields are set,
+// including that at least one RPC is defined.
 func (n *Network) Validate() error {
-	if n.Type == "" {
-		return errors.New("type is required")
-	}
-
-	if n.ChainSelector == 0 {
-		return errors.New("chain selector is required")
+	if err := n.ValidateStructure(); err != nil {
+		return err
 	}
 
 	if len(n.RPCs) == 0 {
 		return errors.New("at least one RPC is required")
+	}
+
+	return nil
+}
+
+// ValidateStructure validates the fields of a network configuration that must be present
+// regardless of whether RPCs have been filled in yet (e.g. by an RPC manifest merge). This lets
+// callers catch a missing or mistyped type, or a missing chain_selector, before that network is
+// dropped by an environment-type filter, which would otherwise hide the misconfiguration
+// entirely (a mistyped type never matches any environment's TypesFilter, same as an empty one).
+func (n *Network) ValidateStructure() error {
+	if n.Type == "" {
+		return errors.New("type is required")
+	}
+
+	if n.Type != NetworkTypeMainnet && n.Type != NetworkTypeTestnet {
+		return fmt.Errorf("type %q is not a recognized network type (must be %q or %q)", n.Type, NetworkTypeMainnet, NetworkTypeTestnet)
+	}
+
+	if n.ChainSelector == 0 {
+		return errors.New("chain selector is required")
 	}
 
 	return nil
