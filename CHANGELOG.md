@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.122.1
+
+### Patch Changes
+
+- [#1167](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1167) [`587487f`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/587487fced3f8ccabe4c3a3bb114f68187fe3f3d) Thanks [@FelixFan1992](https://github.com/FelixFan1992)! - bump ctf/framework to 0.16.8
+
 ## 0.122.0
 
 ### Minor Changes
