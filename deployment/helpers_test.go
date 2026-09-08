@@ -12,10 +12,10 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	chainsel "github.com/smartcontractkit/chain-selectors"
+
 	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
@@ -245,105 +245,96 @@ func TestParseErrorFromABI_CallReverted(t *testing.T) {
 	}
 }
 
-func newTestTx(t *testing.T) *types.Transaction {
-	t.Helper()
+// DeployContract must decide whether to confirm based on the transaction the deploy returned,
+// not on the chain type: only native zkSync deploys confirm synchronously and leave Tx nil,
+// while EVM-emulator deploys on a zkSync chain return a tx that still needs confirming.
+func TestDeployContract_Confirm(t *testing.T) {
+	t.Parallel()
 
-	return types.NewTx(&types.LegacyTx{
-		Nonce:    0,
-		GasPrice: big.NewInt(1),
-		Gas:      21_000,
-		Value:    big.NewInt(0),
-	})
-}
+	addr := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	errConfirm := errors.New("nonce too low")
 
-// Native zkSync deploys return a nil Tx because they're confirmed synchronously inside
-// deploy(); DeployContract must not call chain.Confirm or fetch a receipt for them.
-func TestDeployContract_NilTxSkipsConfirm(t *testing.T) {
-	predictedAddr := common.HexToAddress("0x1111111111111111111111111111111111111111")
-	client := cldf_evm.NewMockOnchainClient(t) // no expectations set: any call fails the test
-	chain := cldf_evm.Chain{
-		Selector: chainsel.TEST_90000001.Selector,
-		Client:   client,
-		Confirm: func(*types.Transaction) (uint64, error) {
-			t.Fatal("Confirm should not be called when Tx is nil")
-
-			return 0, nil
+	tests := []struct {
+		name          string
+		isZkSyncVM    bool
+		hasTx         bool
+		confirmErr    error
+		wantConfirmed bool
+		wantErr       error
+	}{
+		{
+			name:       "native zkSync deploy returns no tx and is not confirmed",
+			isZkSyncVM: true,
+			hasTx:      false,
+		},
+		{
+			name:          "EVM deploy on a zkSync chain is confirmed",
+			isZkSyncVM:    true,
+			hasTx:         true,
+			wantConfirmed: true,
+		},
+		{
+			name:          "EVM deploy on a non-zkSync chain is confirmed",
+			hasTx:         true,
+			wantConfirmed: true,
+		},
+		{
+			name:          "failed confirmation is returned and no address is saved",
+			hasTx:         true,
+			confirmErr:    errConfirm,
+			wantConfirmed: true,
+			wantErr:       errConfirm,
 		},
 	}
-	tv := NewTypeAndVersion(ContractType("Foo"), *semver.MustParse("1.0.0"))
-	addressBook := NewMemoryAddressBook()
 
-	result, err := DeployContract(logger.Test(t), chain, addressBook, func(cldf_evm.Chain) ContractDeploy[string] {
-		return ContractDeploy[string]{Address: predictedAddr, Contract: "foo", Tx: nil, Tv: tv}
-	})
-	require.NoError(t, err)
-	assert.Equal(t, predictedAddr, result.Address)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	addrs, err := addressBook.AddressesForChain(chain.Selector)
-	require.NoError(t, err)
-	assert.Contains(t, addrs, predictedAddr.Hex())
-}
+			var deployTx *types.Transaction
+			if tt.hasTx {
+				deployTx = types.NewTx(&types.LegacyTx{GasPrice: big.NewInt(1), Gas: 21_000})
+			}
 
-// A real Tx must always be confirmed regardless of chain.IsZkSyncVM, and the recorded address
-// must come from the receipt rather than the (possibly stale/colliding) prediction.
-func TestDeployContract_ConfirmsAndResolvesAddressFromReceipt(t *testing.T) {
-	predictedAddr := common.HexToAddress("0x1111111111111111111111111111111111111111")
-	actualAddr := common.HexToAddress("0x2222222222222222222222222222222222222222")
-	tx := newTestTx(t)
+			var confirmedTx *types.Transaction
+			chain := cldf_evm.Chain{
+				Selector: chainsel.TEST_90000001.Selector,
+				// No expectations are set: DeployContract must not make RPC calls of its own.
+				Client:     cldf_evm.NewMockOnchainClient(t),
+				IsZkSyncVM: tt.isZkSyncVM,
+				Confirm: func(confirming *types.Transaction) (uint64, error) {
+					confirmedTx = confirming
 
-	client := cldf_evm.NewMockOnchainClient(t)
-	client.EXPECT().
-		TransactionReceipt(mock.Anything, tx.Hash()).
-		Return(&types.Receipt{ContractAddress: actualAddr}, nil)
+					return 0, tt.confirmErr
+				},
+			}
+			tv := NewTypeAndVersion("Foo", *semver.MustParse("1.0.0"))
+			addressBook := NewMemoryAddressBook()
 
-	confirmCalled := false
-	chain := cldf_evm.Chain{
-		Selector:   chainsel.TEST_90000001.Selector,
-		Client:     client,
-		IsZkSyncVM: true, // proves confirmation no longer keys off chain type
-		Confirm: func(gotTx *types.Transaction) (uint64, error) {
-			confirmCalled = true
-			assert.Equal(t, tx.Hash(), gotTx.Hash())
+			deployed, err := DeployContract(logger.Test(t), chain, addressBook,
+				func(cldf_evm.Chain) ContractDeploy[string] {
+					return ContractDeploy[string]{Address: addr, Contract: "foo", Tx: deployTx, Tv: tv}
+				},
+			)
 
-			return 1, nil
-		},
+			if tt.wantConfirmed {
+				assert.Same(t, deployTx, confirmedTx, "the deploy tx should have been confirmed")
+			} else {
+				assert.Nil(t, confirmedTx, "no tx should have been confirmed")
+			}
+
+			addrs, addrsErr := addressBook.AddressesForChain(chain.Selector)
+			if tt.wantErr != nil {
+				require.ErrorIs(t, err, tt.wantErr)
+				require.ErrorIs(t, addrsErr, ErrChainNotFound, "an unconfirmed deploy must not be saved")
+
+				return
+			}
+
+			require.NoError(t, err)
+			assert.Equal(t, addr, deployed.Address)
+			require.NoError(t, addrsErr)
+			assert.Contains(t, addrs, addr.Hex())
+		})
 	}
-	tv := NewTypeAndVersion(ContractType("Foo"), *semver.MustParse("1.0.0"))
-	addressBook := NewMemoryAddressBook()
-
-	result, err := DeployContract(logger.Test(t), chain, addressBook, func(cldf_evm.Chain) ContractDeploy[string] {
-		return ContractDeploy[string]{Address: predictedAddr, Contract: "foo", Tx: tx, Tv: tv}
-	})
-	require.NoError(t, err)
-	assert.True(t, confirmCalled)
-	assert.Equal(t, actualAddr, result.Address)
-
-	addrs, err := addressBook.AddressesForChain(chain.Selector)
-	require.NoError(t, err)
-	assert.Contains(t, addrs, actualAddr.Hex())
-	assert.NotContains(t, addrs, predictedAddr.Hex())
-}
-
-// A confirmation failure (e.g. "nonce too low") must be returned as-is and must not reach the
-// receipt lookup or the address book.
-func TestDeployContract_ConfirmErrorIsPropagated(t *testing.T) {
-	tx := newTestTx(t)
-	wantErr := errors.New("nonce too low")
-	client := cldf_evm.NewMockOnchainClient(t) // TransactionReceipt must not be called
-	chain := cldf_evm.Chain{
-		Selector: chainsel.TEST_90000001.Selector,
-		Client:   client,
-		Confirm: func(*types.Transaction) (uint64, error) {
-			return 0, wantErr
-		},
-	}
-	tv := NewTypeAndVersion(ContractType("Foo"), *semver.MustParse("1.0.0"))
-
-	_, err := DeployContract(logger.Test(t), chain, NewMemoryAddressBook(), func(cldf_evm.Chain) ContractDeploy[string] {
-		return ContractDeploy[string]{
-			Address:  common.HexToAddress("0x1111111111111111111111111111111111111111"),
-			Contract: "foo", Tx: tx, Tv: tv,
-		}
-	})
-	require.ErrorIs(t, err, wantErr)
 }
