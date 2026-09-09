@@ -1,5 +1,16 @@
 # chainlink-deployments-framework
 
+## 0.122.2
+
+### Patch Changes
+
+- [#1165](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1165) [`a5b7465`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/a5b74656ac387f9ecf3bcfca8940c215573a74d0) Thanks [@iljapavlovs](https://github.com/iljapavlovs)! - fix: confirm EVM deploys based on the returned tx instead of the chain type
+  
+  `DeployContract` skipped confirmation whenever `chain.IsZkSyncVM` was set, which also
+  skipped it for EVM-emulator deploys on zkSync chains. Those return a real transaction, so a
+  dropped tx was recorded in the address book as if it had landed. Confirmation now keys off
+  `ContractDeploy.Tx`, which is nil only for native zkSync deploys.
+
 ## 0.122.1
 
 ### Patch Changes
