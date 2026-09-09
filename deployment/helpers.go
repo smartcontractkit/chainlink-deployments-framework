@@ -175,7 +175,10 @@ func DeployContract[C any](
 		return nil, contractDeploy.Err
 	}
 	var err error
-	if !chain.IsZkSyncVM {
+	// Only native zkSync deploys leave Tx nil; those are already confirmed synchronously inside
+	// deploy(). Everything else returns a tx that must be confirmed, including EVM-emulator
+	// deploys on a zkSync chain, which the previous chain.IsZkSyncVM check skipped.
+	if contractDeploy.Tx != nil {
 		_, err = chain.Confirm(contractDeploy.Tx)
 		if err != nil {
 			lggr.Errorw("Failed to confirm deployment", "chain", chain.String(), "Contract", contractDeploy.Tv.String(), "err", err)
