@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
-	"slices"
 	"sync"
 	"time"
 
@@ -630,7 +629,7 @@ func (l *chainLoaderEVM) Load(ctx context.Context, selector uint64) (fchain.Bloc
 // and zkSync classification from the result.
 func (l *chainLoaderEVM) evmMetadataFromNetwork(network cfgnet.Network, selector uint64) (*evmgas.Config, bool) {
 	if network.Metadata == nil {
-		return nil, l.isZkSyncVM(selector)
+		return nil, fevm.IsZkSyncVM(selector)
 	}
 
 	md, err := cfgnet.DecodeMetadata[cfgnet.EVMMetadata](network.Metadata)
@@ -638,29 +637,15 @@ func (l *chainLoaderEVM) evmMetadataFromNetwork(network cfgnet.Network, selector
 		l.lggr.Warnw("Failed to decode EVM network metadata; falling back to hardcoded zkSync classification and skipping gas defaults",
 			"selector", selector, "error", err)
 
-		return nil, l.isZkSyncVM(selector)
+		return nil, fevm.IsZkSyncVM(selector)
 	}
 
-	isZkSyncVM := l.isZkSyncVM(selector)
+	isZkSyncVM := fevm.IsZkSyncVM(selector)
 	if md.IsZkSync != nil {
 		isZkSyncVM = *md.IsZkSync
 	}
 
 	return md.GasConfig, isZkSyncVM
-}
-
-// isZkSyncVM checks if the given chain selector corresponds to a zkSyncchain.
-func (l *chainLoaderEVM) isZkSyncVM(selector uint64) bool {
-	var zkSyncchainsel = []uint64{
-		chainsel.ETHEREUM_TESTNET_SEPOLIA_ZKSYNC_1.Selector,
-		chainsel.ETHEREUM_MAINNET_ZKSYNC_1.Selector,
-		chainsel.LENS_MAINNET.Selector,
-		chainsel.ETHEREUM_TESTNET_SEPOLIA_LENS_1.Selector,
-		chainsel.CRONOS_ZKEVM_MAINNET.Selector,
-		chainsel.CRONOS_ZKEVM_TESTNET_SEPOLIA.Selector,
-	}
-
-	return slices.Contains(zkSyncchainsel, selector)
 }
 
 // toRPCs converts a network to a slice of RPCs for a specific chain ID.

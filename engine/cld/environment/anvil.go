@@ -8,7 +8,6 @@ import (
 	"math/big"
 	"math/rand/v2"
 	"os"
-	"regexp"
 	"slices"
 	"strconv"
 	"sync"
@@ -16,7 +15,6 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/go-resty/resty/v2"
 	"github.com/samber/lo"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
@@ -165,6 +163,10 @@ func newAnvilChains(
 	var once sync.Once
 	blockChains := make([]fchain.BlockChain, 0, len(filteredEvmNetworks))
 	containers := make(map[uint64]testcontainers.Container)
+
+	rpcHealthChecker := &containerRPCHealthChecker{}
+	defer rpcHealthChecker.Close(ctx) //nolint:errcheck
+
 	for _, network := range filteredEvmNetworks {
 		chainSelector := network.ChainSelector
 		if chainSelectorsToLoad != nil && !slices.Contains(chainSelectorsToLoad, chainSelector) {
@@ -205,7 +207,7 @@ func newAnvilChains(
 			}
 		}
 
-		forkURLs, err := selectPublicRPC(ctx, lggr, &metadata, network.ChainSelector, network.RPCs)
+		forkURLs, err := selectRPCs(ctx, lggr, rpcHealthChecker, &metadata, network.ChainSelector, network.RPCs)
 		if err != nil {
 			lggr.Infof("Excluding chain with ID %d from environment: %s", chainID, err.Error())
 			continue
@@ -215,7 +217,7 @@ func newAnvilChains(
 			continue
 		}
 
-		if lo.FromPtr(metadata.IsZkSync) {
+		if fevm.IsZkSyncVM(chainSelector) {
 			lggr.Infof("skipping chain %d: zksync VM is not supported", network.ChainSelector)
 			continue
 		}
@@ -242,7 +244,7 @@ func newAnvilChains(
 		}
 
 		config := evmprov.CTFAnvilChainProviderConfig{
-			Name:                     fmt.Sprintf("anvil-fork-%d-%d", network.ChainSelector, time.Now().UnixNano()),
+			Name:                     fmt.Sprintf("anvil-fork-%d", network.ChainSelector),
 			Once:                     &once,
 			ConfirmFunctor:           evmprov.ConfirmFuncGeth(3 * time.Minute),
 			DockerCmdParamsOverrides: []string{"--auto-impersonate", "--no-storage-caching"},
@@ -255,6 +257,9 @@ func newAnvilChains(
 
 		if blockNumber, ok := blockNumbers[chainSelector]; ok {
 			config.DockerCmdParamsOverrides = append(config.DockerCmdParamsOverrides, "--fork-block-number", blockNumber.String())
+		}
+		if len(metadata.AnvilConfig.ExtraArgs) > 0 {
+			config.DockerCmdParamsOverrides = append(config.DockerCmdParamsOverrides, metadata.AnvilConfig.ExtraArgs...)
 		}
 
 		provider := evmprov.NewCTFAnvilChainProvider(chainSelector, config)
@@ -294,50 +299,33 @@ func newAnvilChains(
 	}, nil
 }
 
-func selectPublicRPC(
-	ctx context.Context, lggr logger.Logger, metadata *cfgnet.EVMMetadata, chainSelector uint64, rpcs []cfgnet.RPC,
+func selectRPCs(
+	ctx context.Context, lggr logger.Logger, checker rpcHealthChecker, metadata *cfgnet.EVMMetadata, chainSelector uint64, rpcs []cfgnet.RPC,
 ) ([]string, error) {
-	if metadata.AnvilConfig.ArchiveHTTPURL != "" && isPublicRPC(metadata.AnvilConfig.ArchiveHTTPURL) {
-		return []string{metadata.AnvilConfig.ArchiveHTTPURL}, nil
+	urls := []string{}
+	if metadata.AnvilConfig.ArchiveHTTPURL != "" {
+		urls = append(urls, metadata.AnvilConfig.ArchiveHTTPURL)
+	}
+	urls = append(urls, metadata.AnvilConfig.ArchiveHTTPURLs...)
+	for _, rpc := range rpcs {
+		urls = append(urls, rpc.HTTPURL)
 	}
 
-	urls := []string{}
-	for _, rpc := range rpcs {
-		if isPublicRPC(rpc.HTTPURL) {
-			err := runHealthCheck(ctx, rpc.HTTPURL)
-			if err != nil {
-				lggr.Infow("rpc failed health check", "url", rpc.HTTPURL, "chainSelector", chainSelector)
-			} else {
-				lggr.Infow("selected rpc for fork environment", "url", rpc.HTTPURL, "chainSelector", chainSelector)
-				urls = append(urls, rpc.HTTPURL)
-			}
+	urls = lo.Filter(urls, func(url string, _ int) bool {
+		err := checker.Check(ctx, url)
+		if err != nil {
+			lggr.Infow("rpc failed health check", "url", url, "chainSelector", chainSelector, "error", err)
+			return false
 		}
-	}
+
+		lggr.Infow("selected rpc for fork environment", "url", url, "chainSelector", chainSelector)
+
+		return true
+	})
 
 	if len(urls) == 0 {
 		return []string{}, fmt.Errorf("no public RPCs found for chain %d", chainSelector)
 	}
 
 	return urls, nil
-}
-
-var privateRpcRegexp = regexp.MustCompile(`^https?://(rpcs\.cldev\.sh|gap\-.*\.(prod|stage)\.cldev\.sh|.*\.tail[a-z0-9]+\.ts\.net)(?::\d+)?/`)
-
-func isPublicRPC(url string) bool {
-	return !privateRpcRegexp.MatchString(url)
-}
-
-func runHealthCheck(ctx context.Context, rpcURL string) error {
-	client, err := ethclient.DialContext(ctx, rpcURL)
-	if err != nil {
-		return fmt.Errorf("failed to connect to rpc %v: %w", rpcURL, err)
-	}
-	defer client.Close()
-
-	_, err = client.BlockNumber(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to retrieve block number: %w", err)
-	}
-
-	return nil
 }

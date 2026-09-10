@@ -76,6 +76,55 @@ func TestChainMetadata_IsNetworkType(t *testing.T) {
 	assert.False(t, c.IsNetworkType(chainsel.NetworkTypeTestnet))
 }
 
+func TestIsZkSyncVM(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		selector uint64
+		want     bool
+	}{
+		{
+			name:     "zkSync mainnet",
+			selector: chainsel.ETHEREUM_MAINNET_ZKSYNC_1.Selector,
+			want:     true,
+		},
+		{
+			name:     "zkSync sepolia testnet",
+			selector: chainsel.ETHEREUM_TESTNET_SEPOLIA_ZKSYNC_1.Selector,
+			want:     true,
+		},
+		{
+			name:     "lens mainnet",
+			selector: chainsel.LENS_MAINNET.Selector,
+			want:     true,
+		},
+		{
+			name:     "cronos zkEVM mainnet",
+			selector: chainsel.CRONOS_ZKEVM_MAINNET.Selector,
+			want:     true,
+		},
+		{
+			name:     "non-zkSync chain",
+			selector: chainsel.ETHEREUM_MAINNET.Selector,
+			want:     false,
+		},
+		{
+			name:     "unknown selector",
+			selector: 0,
+			want:     false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, tt.want, evm.IsZkSyncVM(tt.selector))
+		})
+	}
+}
+
 func TestChain_ReadOnly(t *testing.T) {
 	t.Parallel()
 
