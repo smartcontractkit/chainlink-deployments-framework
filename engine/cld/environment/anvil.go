@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"slices"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -207,7 +208,14 @@ func newAnvilChains(
 
 		forkURLs, err := selectPublicRPC(ctx, lggr, &metadata, network.ChainSelector, network.RPCs)
 		if err != nil {
+			// A chain the caller explicitly named (by selector or fork block)
+			// must not be silently dropped — fail loudly with the exclusion
+			// cause. Unrequested chains in fork-all mode stay skippable.
+			if explicitlyRequested(chainSelector, chainSelectorsToLoad, blockNumbers) {
+				return nil, fmt.Errorf("no forkable public RPC for requested chain selector %d: %w", chainSelector, err)
+			}
 			lggr.Infof("Excluding chain with ID %d from environment: %s", chainID, err.Error())
+
 			continue
 		}
 		if err = metadata.AnvilConfig.Validate(); err != nil {
@@ -294,34 +302,62 @@ func newAnvilChains(
 	}, nil
 }
 
+// selectPublicRPC picks the fork sources for one chain: the archive URL when
+// public, else every configured RPC that is public and healthy. When nothing
+// qualifies, the error names every candidate with the reason it was excluded,
+// so a silently-failing fork load is diagnosable from the log alone.
 func selectPublicRPC(
 	ctx context.Context, lggr logger.Logger, metadata *cfgnet.EVMMetadata, chainSelector uint64, rpcs []cfgnet.RPC,
 ) ([]string, error) {
-	if metadata.AnvilConfig.ArchiveHTTPURL != "" && isPublicRPC(metadata.AnvilConfig.ArchiveHTTPURL) {
-		return []string{metadata.AnvilConfig.ArchiveHTTPURL}, nil
+	excluded := []string{}
+	if metadata.AnvilConfig.ArchiveHTTPURL != "" {
+		if isPublicRPC(metadata.AnvilConfig.ArchiveHTTPURL) {
+			return []string{metadata.AnvilConfig.ArchiveHTTPURL}, nil
+		}
+		excluded = append(excluded, metadata.AnvilConfig.ArchiveHTTPURL+" (private)")
 	}
 
 	urls := []string{}
 	for _, rpc := range rpcs {
-		if isPublicRPC(rpc.HTTPURL) {
-			err := runHealthCheck(ctx, rpc.HTTPURL)
-			if err != nil {
-				lggr.Infow("rpc failed health check", "url", rpc.HTTPURL, "chainSelector", chainSelector)
-			} else {
-				lggr.Infow("selected rpc for fork environment", "url", rpc.HTTPURL, "chainSelector", chainSelector)
-				urls = append(urls, rpc.HTTPURL)
-			}
+		if !isPublicRPC(rpc.HTTPURL) {
+			excluded = append(excluded, rpc.HTTPURL+" (private)")
+
+			continue
 		}
+		err := runHealthCheck(ctx, rpc.HTTPURL)
+		if err != nil {
+			lggr.Infow("rpc failed health check", "url", rpc.HTTPURL, "chainSelector", chainSelector)
+			excluded = append(excluded, fmt.Sprintf("%s (health check failed: %v)", rpc.HTTPURL, err))
+
+			continue
+		}
+		lggr.Infow("selected rpc for fork environment", "url", rpc.HTTPURL, "chainSelector", chainSelector)
+		urls = append(urls, rpc.HTTPURL)
 	}
 
 	if len(urls) == 0 {
-		return []string{}, fmt.Errorf("no public RPCs found for chain %d", chainSelector)
+		return []string{}, fmt.Errorf(
+			"no public RPCs found for chain %d; candidates: [%s]",
+			chainSelector, strings.Join(excluded, ", "))
 	}
 
 	return urls, nil
 }
 
 var privateRpcRegexp = regexp.MustCompile(`^https?://(rpcs\.cldev\.sh|gap\-.*\.(prod|stage)\.cldev\.sh|.*\.tail[a-z0-9]+\.ts\.net)(?::\d+)?/`)
+
+// explicitlyRequested reports whether chainSelector was named by the caller —
+// in chainSelectorsToLoad, or pinned via blockNumbers — rather than loaded
+// incidentally by fork-all mode. Only explicitly requested chains turn a
+// fork-load exclusion into a hard error.
+func explicitlyRequested(chainSelector uint64, chainSelectorsToLoad []uint64, blockNumbers map[uint64]*big.Int) bool {
+	if slices.Contains(chainSelectorsToLoad, chainSelector) {
+		return true
+	}
+	_, pinned := blockNumbers[chainSelector]
+
+	return pinned
+}
 
 func isPublicRPC(url string) bool {
 	return !privateRpcRegexp.MatchString(url)

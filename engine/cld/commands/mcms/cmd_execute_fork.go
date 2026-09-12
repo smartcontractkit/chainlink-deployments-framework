@@ -9,6 +9,9 @@ import (
 	"maps"
 	"math/big"
 	"regexp"
+	"slices"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -172,7 +175,16 @@ func executeFork(
 
 	chainConfig, ok := cfg.forkedEnv.ChainConfigs[cfg.chainSelector]
 	if !ok {
-		return fmt.Errorf("failed to get forked env's chain config for chain %d", cfg.chainSelector)
+		carried := make([]string, 0, len(cfg.forkedEnv.ChainConfigs))
+		for carriedSelector := range cfg.forkedEnv.ChainConfigs {
+			carried = append(carried, strconv.FormatUint(carriedSelector, 10))
+		}
+		slices.Sort(carried)
+
+		return fmt.Errorf(
+			"failed to get forked env's chain config for requested chain %d (the fork env carries chains: %s); "+
+				"the chain was likely excluded while loading the fork environment, e.g. no public RPC available for it",
+			cfg.chainSelector, strings.Join(carried, ", "))
 	}
 	if len(chainConfig.HTTPRPCs) == 0 {
 		return fmt.Errorf("no rpcs loaded in forked environment for chain %d (fork tests require public RPCs)", cfg.chainSelector)
