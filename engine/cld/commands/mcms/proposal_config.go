@@ -162,7 +162,8 @@ func isProposalExpiredError(err error) bool {
 	// Check for common expired proposal error patterns
 	errStr := err.Error()
 
-	return containsStr(errStr, "expired") || containsStr(errStr, "valid_until")
+	return containsStr(errStr, "expired") || containsStr(errStr, "valid_until") ||
+		containsStr(errStr, "invalid valid until")
 }
 
 func containsStr(s, substr string) bool {
