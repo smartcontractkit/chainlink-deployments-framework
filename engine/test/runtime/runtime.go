@@ -92,10 +92,19 @@ func (r *Runtime) Exec(executables ...Executable) error {
 // Go does not allow type parameters on methods.
 //
 // Returns the task ID and error if the changeset execution fails.
-func ExecChangeset[C any](r *Runtime, changeset fdeployment.ChangeSetV2[C], config C) (string, error) {
+func ExecChangeset[C any](r *Runtime, changeset fdeployment.ChangeSetV2[C], config C) (fdeployment.ChangesetOutput, error) {
 	task := ChangesetTask(changeset, config)
 
-	return task.ID(), r.Exec(task)
+	if err := r.Exec(task); err != nil {
+		return fdeployment.ChangesetOutput{}, err
+	}
+
+	output, ok := r.state.Outputs[task.ID()]
+	if !ok {
+		return fdeployment.ChangesetOutput{}, fmt.Errorf("changeset output not found for task %s", task.ID())
+	}
+
+	return output, nil
 }
 
 // State returns the current state of the runtime.
