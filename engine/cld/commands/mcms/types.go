@@ -1,6 +1,8 @@
 package mcms
 
 import (
+	"time"
+
 	"github.com/smartcontractkit/mcms"
 	"github.com/smartcontractkit/mcms/types"
 
@@ -23,4 +25,14 @@ type forkConfig struct {
 	forkedEnv        cldfenvironment.ForkedEnvironment
 	fork             bool
 	proposalCtx      analyzer.ProposalContext
+	// simulateState enables the pre/post state-view simulation around the
+	// proposal execution (--simulate-state). Requires the mcms Config to
+	// carry a SimulationViewProvider; zero value keeps the legacy
+	// feature-off behavior byte-identical.
+	simulateState bool
+	simulationOut string
+	// forkTimeout bounds everything after fork-env load (setRoot, execute,
+	// timelock, hooks and, when simulating, the two view passes). Zero
+	// falls back to the historical 300s.
+	forkTimeout time.Duration
 }
