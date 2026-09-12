@@ -10,6 +10,7 @@ import (
 	"os"
 	"slices"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -135,6 +136,7 @@ func newAnvilChains(
 	kmsConfig cfgenv.KMSConfig,
 	chainSelectorsToLoad []uint64,
 	anvilKeyAsDeployer bool,
+	healthChecker rpcHealthChecker,
 ) (*AnvilChainsOutput, error) {
 	// filter out not in blockNumbers, if any, to ensure we only use the chains we care about for forking
 	filteredEvmNetworks := make([]cfgnet.Network, 0, len(blockNumbers))
@@ -164,8 +166,11 @@ func newAnvilChains(
 	blockChains := make([]fchain.BlockChain, 0, len(filteredEvmNetworks))
 	containers := make(map[uint64]testcontainers.Container)
 
-	rpcHealthChecker := &containerRPCHealthChecker{}
-	defer rpcHealthChecker.Close(ctx) //nolint:errcheck
+	if healthChecker == nil {
+		containerChecker := &containerRPCHealthChecker{}
+		defer containerChecker.Close(ctx) //nolint:errcheck
+		healthChecker = containerChecker
+	}
 
 	for _, network := range filteredEvmNetworks {
 		chainSelector := network.ChainSelector
@@ -207,9 +212,15 @@ func newAnvilChains(
 			}
 		}
 
-		forkURLs, err := selectRPCs(ctx, lggr, rpcHealthChecker, &metadata, network.ChainSelector, network.RPCs)
+		forkURLs, err := selectRPCs(ctx, lggr, healthChecker, &metadata, network.ChainSelector, network.RPCs)
 		if err != nil {
+			// A chain the caller named (by selector or fork block) must not be
+			// silently dropped. Unrequested chains in fork-all mode stay skippable.
+			if explicitlyRequested(chainSelector, chainSelectorsToLoad, blockNumbers) {
+				return nil, fmt.Errorf("no forkable public RPC for requested chain selector %d: %w", chainSelector, err)
+			}
 			lggr.Infof("Excluding chain with ID %d from environment: %s", chainID, err.Error())
+
 			continue
 		}
 		if err = metadata.AnvilConfig.Validate(); err != nil {
@@ -299,6 +310,10 @@ func newAnvilChains(
 	}, nil
 }
 
+// selectRPCs picks the fork sources for one chain: the archive URLs and every
+// configured RPC that passes the health check. When nothing qualifies, the
+// error names every candidate with the reason it was excluded, so a failed
+// fork load is diagnosable from the error alone.
 func selectRPCs(
 	ctx context.Context, lggr logger.Logger, checker rpcHealthChecker, metadata *cfgnet.EVMMetadata, chainSelector uint64, rpcs []cfgnet.RPC,
 ) ([]string, error) {
@@ -311,10 +326,13 @@ func selectRPCs(
 		urls = append(urls, rpc.HTTPURL)
 	}
 
+	excluded := make([]string, 0, len(urls))
 	urls = lo.Filter(urls, func(url string, _ int) bool {
 		err := checker.Check(ctx, url)
 		if err != nil {
 			lggr.Infow("rpc failed health check", "url", url, "chainSelector", chainSelector, "error", err)
+			excluded = append(excluded, fmt.Sprintf("%s (health check failed: %v)", url, err))
+
 			return false
 		}
 
@@ -324,8 +342,23 @@ func selectRPCs(
 	})
 
 	if len(urls) == 0 {
-		return []string{}, fmt.Errorf("no public RPCs found for chain %d", chainSelector)
+		return []string{}, fmt.Errorf(
+			"no public RPCs found for chain %d; candidates: [%s]",
+			chainSelector, strings.Join(excluded, ", "))
 	}
 
 	return urls, nil
+}
+
+// explicitlyRequested reports whether chainSelector was named by the caller,
+// in chainSelectorsToLoad or pinned via blockNumbers, rather than loaded
+// incidentally by fork-all mode. Only explicitly requested chains turn a
+// fork-load exclusion into a hard error.
+func explicitlyRequested(chainSelector uint64, chainSelectorsToLoad []uint64, blockNumbers map[uint64]*big.Int) bool {
+	if slices.Contains(chainSelectorsToLoad, chainSelector) {
+		return true
+	}
+	_, pinned := blockNumbers[chainSelector]
+
+	return pinned
 }
