@@ -4,18 +4,81 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math/big"
+	"net/http"
+	"net/http/httptest"
+	"os"
 	"testing"
 	"time"
 
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/mcms"
 	"github.com/smartcontractkit/mcms/types"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	fdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 )
+
+// forkSkipTestSel is the fixture network's zkSync Era testnet selector. Fork
+// tests pin it when they need LoadFork to succeed without Docker: the
+// chain's local fixture RPC passes the health check and the chain is then skipped
+// by the deliberate (non-fatal) zkSync-VM exclusion, yielding a fork
+// environment with zero chains. Pinning any other fixture chain would fail
+// loudly — a chain the caller explicitly requests is no longer silently
+// dropped when it has no usable public RPC.
+const forkSkipTestSel = uint64(6898391096552792247)
+
+// setupForkTestConfig preserves the shared domain configuration but replaces
+// fork RPCs with local, deterministic responses. None of these loader/error
+// tests should depend on public archive health or credentials.
+func setupForkTestConfig(t *testing.T, domain fdomain.Domain) {
+	t.Helper()
+	setupTestConfig(t, domain)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/unhealthy" {
+			w.WriteHeader(http.StatusServiceUnavailable)
+
+			return
+		}
+		var request struct {
+			ID json.RawMessage `json:"id"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, err := fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%s,"result":"0x123"}`, request.ID)
+		assert.NoError(t, err)
+	}))
+	t.Cleanup(server.Close)
+
+	networks := fmt.Sprintf(`networks:
+  - type: testnet
+    chain_selector: %d
+    metadata:
+      is_zksync: true
+    rpcs:
+      - rpc_name: local-healthy
+        preferred_url_scheme: http
+        http_url: %s
+  - type: testnet
+    chain_selector: 16015286601757825753
+    rpcs:
+      - rpc_name: local-unhealthy
+        preferred_url_scheme: http
+        http_url: %s/unhealthy
+`, forkSkipTestSel, server.URL, server.URL)
+	root, err := os.OpenRoot(domain.DirPath())
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, root.Close()) })
+	require.NoError(t, root.WriteFile(".config/networks/networks-testnet.yaml", []byte(networks), 0600))
+}
 
 func Test_LoadForkedEnvironment(t *testing.T) {
 	t.Parallel()
@@ -41,63 +104,78 @@ func Test_LoadForkedEnvironment(t *testing.T) {
 		},
 		{
 			name:   "AddressBook Failure",
-			domain: setupTest(t, setupTestConfig, setupNodes),
+			domain: setupTest(t, setupForkTestConfig, setupNodes),
 			env:    "staging",
 			blockNumbers: map[uint64]*big.Int{
-				16015286601757825753: big.NewInt(1000),
+				forkSkipTestSel: big.NewInt(1000),
 			},
 			options: []LoadEnvironmentOption{WithoutJD()},
 			wantErr: "failed to load addressbook for domain test and environment staging:",
 		},
 		{
 			name:   "DataStore Failure",
-			domain: setupTest(t, setupTestConfig, setupNodes, setupAddressbook),
+			domain: setupTest(t, setupForkTestConfig, setupNodes, setupAddressbook),
 			env:    "staging",
 			blockNumbers: map[uint64]*big.Int{
-				16015286601757825753: big.NewInt(1000),
+				forkSkipTestSel: big.NewInt(1000),
 			},
 			options: []LoadEnvironmentOption{WithoutJD()},
 			wantErr: "failed to load datastore for domain test and environment staging:",
 		},
 		{
 			name:         "Empty Block Numbers",
-			domain:       setupTest(t, setupTestConfig, setupAddressbook),
+			domain:       setupTest(t, setupForkTestConfig, setupAddressbook),
 			env:          "staging",
 			blockNumbers: map[uint64]*big.Int{},
 			wantErr:      "failed to create anvil chains",
 		},
 		{
 			name:   "Invalid Nodes File",
-			domain: setupTest(t, setupTestConfig, setupAddressbook),
+			domain: setupTest(t, setupForkTestConfig, setupAddressbook),
 			env:    "staging",
 			blockNumbers: map[uint64]*big.Int{
-				16015286601757825753: big.NewInt(1000),
+				forkSkipTestSel: big.NewInt(1000),
 			},
 			wantErr: "failed to load nodes",
 		},
 		{
 			name:   "OffchainClient Failure",
-			domain: setupTest(t, setupTestConfig, setupAddressbook, setupNodes),
+			domain: setupTest(t, setupForkTestConfig, setupAddressbook, setupNodes),
 			env:    "staging",
 			blockNumbers: map[uint64]*big.Int{
-				16015286601757825753: big.NewInt(1000),
+				forkSkipTestSel: big.NewInt(1000),
 			},
 			wantErr: "failed to load offchain client",
 		},
 		{
 			name:          "Skip ZK Sync chain",
-			domain:        setupTest(t, setupTestConfig, setupAddressbook, setupDataStore, setupNodes),
+			domain:        setupTest(t, setupForkTestConfig, setupAddressbook, setupDataStore, setupNodes),
 			env:           "staging",
-			blockNumbers:  map[uint64]*big.Int{6898391096552792247: big.NewInt(1000)},
+			blockNumbers:  map[uint64]*big.Int{forkSkipTestSel: big.NewInt(1000)},
 			options:       []LoadEnvironmentOption{WithoutJD(), WithAnvilKeyAsDeployer()},
 			wantName:      "fork",
 			wantNumChains: 0,
+		},
+		{
+			// The local Sepolia fixture returns HTTP 503, so it can never
+			// pass the health check: a chain the caller
+			// pinned must fail loudly with the exclusion cause instead of
+			// being silently dropped (which used to surface later as a
+			// misleading "failed to get forked env's chain config" error).
+			name:   "Requested Chain With No Public RPC",
+			domain: setupTest(t, setupForkTestConfig, setupAddressbook, setupDataStore, setupNodes),
+			env:    "staging",
+			blockNumbers: map[uint64]*big.Int{
+				16015286601757825753: big.NewInt(1000),
+			},
+			options: []LoadEnvironmentOption{WithoutJD(), WithAnvilKeyAsDeployer()},
+			wantErr: "no forkable public RPC for requested chain selector 16015286601757825753",
 		},
 		// FIXME: CI can't reach https://optimism-sepolia.drpc.org anymore, so we'll
 		// skip the test for now
 		// {
 		// 	name:          "No Error",
-		// 	domain:        setupTest(t, setupTestConfig, setupAddressbook, setupDataStore, setupNodes),
+		// 	domain:        setupTest(t, setupForkTestConfig, setupAddressbook, setupDataStore, setupNodes),
 		// 	env:           "staging",
 		// 	blockNumbers:  map[uint64]*big.Int{5224473277236331295: big.NewInt(1000)},
 		// 	options:       []LoadEnvironmentOption{WithoutJD(), WithAnvilKeyAsDeployer()},
@@ -147,7 +225,7 @@ func Test_ApplyChangesetOutput(t *testing.T) {
 			},
 			forkClients: nil,
 			blockNumbers: map[uint64]*big.Int{
-				16015286601757825753: big.NewInt(1000),
+				forkSkipTestSel: big.NewInt(1000),
 			},
 			expectError: "no timelock address defined for chain selector",
 		},
@@ -160,7 +238,7 @@ func Test_ApplyChangesetOutput(t *testing.T) {
 			},
 			forkClients: nil,
 			blockNumbers: map[uint64]*big.Int{
-				16015286601757825753: big.NewInt(1000),
+				forkSkipTestSel: big.NewInt(1000),
 			},
 			expectError: "no fork client defined for chain selector",
 		},
@@ -175,7 +253,7 @@ func Test_ApplyChangesetOutput(t *testing.T) {
 				uint64(types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector)): MockForkedOnchainClient{returnError: true},
 			},
 			blockNumbers: map[uint64]*big.Int{
-				uint64(types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector)): big.NewInt(1000),
+				forkSkipTestSel: big.NewInt(1000),
 			},
 			expectError: "failed to send transaction on chain",
 		},
@@ -190,7 +268,7 @@ func Test_ApplyChangesetOutput(t *testing.T) {
 				uint64(types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector)): MockForkedOnchainClient{},
 			},
 			blockNumbers: map[uint64]*big.Int{
-				uint64(types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector)): big.NewInt(1000),
+				forkSkipTestSel: big.NewInt(1000),
 			},
 		},
 		{
@@ -202,7 +280,7 @@ func Test_ApplyChangesetOutput(t *testing.T) {
 			},
 			forkClients: nil,
 			blockNumbers: map[uint64]*big.Int{
-				16015286601757825753: big.NewInt(1000),
+				forkSkipTestSel: big.NewInt(1000),
 			},
 			expectError: "no fork client defined for chain selector",
 		},
@@ -217,7 +295,7 @@ func Test_ApplyChangesetOutput(t *testing.T) {
 				uint64(types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector)): MockForkedOnchainClient{returnError: true},
 			},
 			blockNumbers: map[uint64]*big.Int{
-				uint64(types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector)): big.NewInt(1000),
+				forkSkipTestSel: big.NewInt(1000),
 			},
 			expectError: "failed to send transaction on chain",
 		},
@@ -232,7 +310,7 @@ func Test_ApplyChangesetOutput(t *testing.T) {
 				uint64(types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector)): MockForkedOnchainClient{},
 			},
 			blockNumbers: map[uint64]*big.Int{
-				uint64(types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector)): big.NewInt(1000),
+				forkSkipTestSel: big.NewInt(1000),
 			},
 		},
 	}
@@ -241,7 +319,7 @@ func Test_ApplyChangesetOutput(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			domain := setupTest(t, setupTestConfig, setupAddressbook, setupDataStore, setupNodes)
+			domain := setupTest(t, setupForkTestConfig, setupAddressbook, setupDataStore, setupNodes)
 
 			forkEnv, err := LoadFork(t.Context(), domain, "staging", tt.blockNumbers, WithoutJD())
 			require.NoError(t, err)
