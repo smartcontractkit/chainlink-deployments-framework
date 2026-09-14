@@ -72,10 +72,11 @@ func AnalyzeStellarTransaction(
 		}, nil
 	}
 
+	names := stellarArgNames(function, len(args))
 	inputs := make([]NamedField, 0, len(args))
 	for i, arg := range args {
 		inputs = append(inputs, NamedField{
-			Name:     fmt.Sprintf("arg%d", i),
+			Name:     names[i],
 			TypeName: stellarScValTypeName(arg),
 			Value:    stellarScValField(arg),
 			RawValue: arg,
@@ -90,6 +91,37 @@ func AnalyzeStellarTransaction(
 		ContractType:    contractType,
 		ContractVersion: contractVersion,
 	}, nil
+}
+
+// stellarTimelockArgNames gives the parameter names of the RBACTimelock entrypoints, taken from
+// contracts/timelock/src/lib.rs. Naming them is not cosmetic: the UPF timelock conversion replaces
+// FunctionArgs["calls"] with the expanded batch (upf.go), so an outer call whose batch argument is
+// named argN keeps the raw encoded batch alongside a second, expanded "calls" entry instead of
+// replacing it. The framework already hard-codes these function names in the timelock batch
+// checkers, so their signatures are equally fixed knowledge.
+var stellarTimelockArgNames = map[string][]string{
+	"schedule_batch":         {"caller", "calls", "predecessor", "salt", "delay"},
+	"bypasser_execute_batch": {"caller", "calls"},
+	"execute_batch":          {"calls", "predecessor", "salt"},
+	"cancel":                 {"caller", "id"},
+}
+
+// stellarArgNames returns the field names to use for count arguments of function: the known
+// parameter names for the timelock entrypoints, and positional arg0, arg1, ... otherwise.
+//
+// A known function whose argument count does not match its recorded signature falls back to
+// positional names, so a future contract revision mislabels nothing.
+func stellarArgNames(function string, count int) []string {
+	if known, ok := stellarTimelockArgNames[function]; ok && len(known) == count {
+		return known
+	}
+
+	names := make([]string, count)
+	for i := range names {
+		names[i] = fmt.Sprintf("arg%d", i)
+	}
+
+	return names
 }
 
 // stellarUnsupportedEncoding reports why a transaction must not be decoded with this analyzer's

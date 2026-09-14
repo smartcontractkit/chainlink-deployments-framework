@@ -201,6 +201,103 @@ func TestAnalyzeStellarTransaction_AdditionalFields(t *testing.T) {
 	}
 }
 
+// TestStellarArgNames pins the timelock entrypoint argument names. The UPF timelock conversion
+// replaces FunctionArgs["calls"], so a batch argument named argN would leave the raw encoded
+// batch in place and add a duplicate expanded entry.
+func TestStellarArgNames(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		function string
+		count    int
+		want     []string
+	}{
+		{
+			name:     "schedule_batch",
+			function: "schedule_batch",
+			count:    5,
+			want:     []string{"caller", "calls", "predecessor", "salt", "delay"},
+		},
+		{
+			name:     "bypasser_execute_batch",
+			function: "bypasser_execute_batch",
+			count:    2,
+			want:     []string{"caller", "calls"},
+		},
+		{
+			name:     "execute_batch",
+			function: "execute_batch",
+			count:    3,
+			want:     []string{"calls", "predecessor", "salt"},
+		},
+		{
+			name:     "cancel",
+			function: "cancel",
+			count:    2,
+			want:     []string{"caller", "id"},
+		},
+		{
+			name:     "an unknown function stays positional",
+			function: "set_feed_configs",
+			count:    2,
+			want:     []string{"arg0", "arg1"},
+		},
+		{
+			name:     "a known function with an unexpected arity stays positional",
+			function: "schedule_batch",
+			count:    6,
+			want:     []string{"arg0", "arg1", "arg2", "arg3", "arg4", "arg5"},
+		},
+		{
+			name:     "no arguments",
+			function: "accept_ownership",
+			count:    0,
+			want:     []string{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			require.Equal(t, tt.want, stellarArgNames(tt.function, tt.count))
+		})
+	}
+}
+
+// TestAnalyzeStellarTransaction_TimelockArgNames checks the names reach the decoded call, so the
+// UPF conversion can replace the batch argument instead of duplicating it.
+func TestAnalyzeStellarTransaction_TimelockArgNames(t *testing.T) {
+	t.Parallel()
+
+	calls, err := scval.BuildStructScVal(map[string]xdr.ScVal{"inner": scval.VecToScVal(nil)})
+	require.NoError(t, err)
+
+	got, err := AnalyzeStellarTransaction(
+		stellarProposalContext(), chainsel.STELLAR_TESTNET.Selector,
+		types.Transaction{
+			To: stellarTimelock,
+			Data: mustEncodeStellarPayload(t, "schedule_batch",
+				scval.AddressToScVal(stellarProposerMCM),
+				calls,
+				scval.Bytes32ToScVal([32]byte{}),
+				scval.Bytes32ToScVal([32]byte{1}),
+				scval.Uint64ToScVal(60),
+			),
+			AdditionalFields: json.RawMessage(stellarAdditionalFieldsJSON),
+		},
+	)
+	require.NoError(t, err)
+	require.Equal(t, "schedule_batch", got.Method)
+
+	gotNames := make([]string, 0, len(got.Inputs))
+	for _, in := range got.Inputs {
+		gotNames = append(gotNames, in.Name)
+	}
+	require.Equal(t, []string{"caller", "calls", "predecessor", "salt", "delay"}, gotNames)
+}
+
 func TestStellarScValField(t *testing.T) {
 	t.Parallel()
 
