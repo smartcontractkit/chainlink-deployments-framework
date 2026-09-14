@@ -21,7 +21,7 @@ const (
 	// stellarTimelock is the Stellar testnet RBACTimelock.
 	stellarTimelock = "CAZPM2APSKKYZEGGS3E3V6MONKF2ZQZSZVCFSZOSDYPQK3XQ2XUO2LQW"
 
-	stellarAdditionalFields = `{"family":"stellar","encodingVersion":1}`
+	stellarAdditionalFieldsJSON = `{"family":"stellar","encodingVersion":1}`
 )
 
 func stellarProposalContext() *DefaultProposalContext {
@@ -68,7 +68,7 @@ func TestAnalyzeStellarTransactions(t *testing.T) {
 			mcmsTx: types.Transaction{
 				To:               stellarProposerMCM,
 				Data:             mustEncodeStellarPayload(t, "accept_ownership"),
-				AdditionalFields: json.RawMessage(stellarAdditionalFields),
+				AdditionalFields: json.RawMessage(stellarAdditionalFieldsJSON),
 			},
 			want: &DecodedCall{
 				Address:         stellarProposerMCM,
@@ -87,7 +87,7 @@ func TestAnalyzeStellarTransactions(t *testing.T) {
 					scval.AddressToScVal(stellarTimelock),
 					scval.Uint32ToScVal(12345),
 				),
-				AdditionalFields: json.RawMessage(stellarAdditionalFields),
+				AdditionalFields: json.RawMessage(stellarAdditionalFieldsJSON),
 			},
 			want: &DecodedCall{
 				Address: stellarProposerMCM,
@@ -106,7 +106,7 @@ func TestAnalyzeStellarTransactions(t *testing.T) {
 			mcmsTx: types.Transaction{
 				To:               stellarProposerMCM,
 				Data:             []byte{0x01, 0x02, 0x03},
-				AdditionalFields: json.RawMessage(stellarAdditionalFields),
+				AdditionalFields: json.RawMessage(stellarAdditionalFieldsJSON),
 			},
 			want: nil, // asserted separately below
 		},
@@ -135,6 +135,68 @@ func TestAnalyzeStellarTransactions(t *testing.T) {
 				got[0].Inputs[i].RawValue = nil
 			}
 			require.Equal(t, tt.want, got[0])
+		})
+	}
+}
+
+// TestAnalyzeStellarTransaction_AdditionalFields pins that an encoding this analyzer does not
+// implement is reported rather than decoded under v1 assumptions: a future wire format could
+// still parse as an ScVal vector and show a reviewer a confident, wrong method name.
+func TestAnalyzeStellarTransaction_AdditionalFields(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name             string
+		additionalFields string
+		wantMethod       string
+	}{
+		{
+			name:             "current encoding decodes",
+			additionalFields: stellarAdditionalFieldsJSON,
+			wantMethod:       "accept_ownership",
+		},
+		{
+			name:             "absent additional fields fall back to best-effort decoding",
+			additionalFields: "",
+			wantMethod:       "accept_ownership",
+		},
+		{
+			name:             "unparseable additional fields fall back to best-effort decoding",
+			additionalFields: "not json",
+			wantMethod:       "accept_ownership",
+		},
+		{
+			name:             "fields present but empty decode",
+			additionalFields: `{}`,
+			wantMethod:       "accept_ownership",
+		},
+		{
+			name:             "a future encoding version is reported, not decoded",
+			additionalFields: `{"family":"stellar","encodingVersion":2}`,
+			wantMethod:       "unsupported Stellar MCMS encoding version 2",
+		},
+		{
+			name:             "a mismatched family is reported, not decoded",
+			additionalFields: `{"family":"aptos","encodingVersion":1}`,
+			wantMethod:       `unexpected transaction family "aptos"`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := AnalyzeStellarTransaction(
+				stellarProposalContext(), chainsel.STELLAR_TESTNET.Selector,
+				types.Transaction{
+					To:               stellarProposerMCM,
+					Data:             mustEncodeStellarPayload(t, "accept_ownership"),
+					AdditionalFields: json.RawMessage(tt.additionalFields),
+				},
+			)
+			require.NoError(t, err)
+			require.Contains(t, got.Method, tt.wantMethod)
+			require.Equal(t, "ProposerManyChainMultiSig", got.ContractType)
 		})
 	}
 }
@@ -233,6 +295,28 @@ func TestStellarScValField_MapKeyNames(t *testing.T) {
 				scval.SymbolToScVal("U32(1)"),
 			},
 			wantNames: []string{"U32(1)", "U32(1)#1"},
+		},
+		{
+			// All three keys are distinct and legal. A single base#<index> attempt would give the
+			// third entry the second's name, dropping it from the UPF map.
+			name: "a suffixed candidate that is itself taken keeps probing",
+			keys: []xdr.ScVal{
+				scval.Uint32ToScVal(1),
+				scval.SymbolToScVal("U32(1)#2"),
+				scval.SymbolToScVal("U32(1)"),
+			},
+			wantNames: []string{"U32(1)", "U32(1)#2", "U32(1)#3"},
+		},
+		{
+			// Duplicate keys are invalid on-chain but the decoder does not validate uniqueness,
+			// so a malformed payload must not be able to hide an entry from reviewers.
+			name: "duplicate keys each keep a distinct name",
+			keys: []xdr.ScVal{
+				scval.SymbolToScVal("x"),
+				scval.SymbolToScVal("x#2"),
+				scval.SymbolToScVal("x"),
+			},
+			wantNames: []string{"x", "x#2", "x#3"},
 		},
 	}
 

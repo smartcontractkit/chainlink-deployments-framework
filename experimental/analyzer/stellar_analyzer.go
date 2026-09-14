@@ -1,13 +1,23 @@
 package analyzer
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/stellar/go-stellar-sdk/xdr"
 
+	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-stellar/bindings"
 	"github.com/smartcontractkit/mcms/types"
 )
+
+// stellarAdditionalFields is the Stellar arm of a transaction's AdditionalFields, as stamped by
+// the MCMS Stellar encoder. Both members are pointers so an absent field is distinguishable from
+// a zero value.
+type stellarAdditionalFields struct {
+	Family          *string `json:"family"`
+	EncodingVersion *uint32 `json:"encodingVersion"`
+}
 
 // AnalyzeStellarTransactions decodes a slice of Stellar transactions and returns their decoded
 // representations.
@@ -42,6 +52,15 @@ func AnalyzeStellarTransaction(
 ) (*DecodedCall, error) {
 	contractType, contractVersion := resolveContractInfo(ctx, chainSelector, mcmsTx)
 
+	if reason := stellarUnsupportedEncoding(mcmsTx.AdditionalFields); reason != "" {
+		return &DecodedCall{
+			Address:         mcmsTx.To,
+			Method:          reason,
+			ContractType:    contractType,
+			ContractVersion: contractVersion,
+		}, nil
+	}
+
 	function, args, err := bindings.DecodeSorobanInvokePayload(mcmsTx.Data)
 	if err != nil {
 		//nolint:nilerr // Surface the failure in the report rather than blocking the whole proposal.
@@ -71,6 +90,37 @@ func AnalyzeStellarTransaction(
 		ContractType:    contractType,
 		ContractVersion: contractVersion,
 	}, nil
+}
+
+// stellarUnsupportedEncoding reports why a transaction must not be decoded with this analyzer's
+// assumptions, or "" when decoding may proceed.
+//
+// AdditionalFields is advisory: a missing or unparseable value falls back to best-effort decoding,
+// since a hand-written proposal may omit it. But an explicit family or encodingVersion this
+// analyzer does not implement must never be decoded anyway — a future wire format could still
+// parse as an ScVal vector and show a reviewer a confident, wrong method name.
+func stellarUnsupportedEncoding(raw json.RawMessage) string {
+	if len(raw) == 0 {
+		return ""
+	}
+
+	var fields stellarAdditionalFields
+	if err := json.Unmarshal(raw, &fields); err != nil {
+		return ""
+	}
+
+	if fields.Family != nil && *fields.Family != chainsel.FamilyStellar {
+		return fmt.Sprintf("unexpected transaction family %q on a Stellar chain", *fields.Family)
+	}
+
+	if fields.EncodingVersion != nil && *fields.EncodingVersion != bindings.SorobanInvokeEncodingVersion {
+		return fmt.Sprintf(
+			"unsupported Stellar MCMS encoding version %d: this analyzer decodes version %d",
+			*fields.EncodingVersion, bindings.SorobanInvokeEncodingVersion,
+		)
+	}
+
+	return ""
 }
 
 // stellarScValField converts a Soroban value into the field representation used by the renderers.
@@ -112,12 +162,7 @@ func stellarScValField(val xdr.ScVal) FieldValue {
 		fields := make([]NamedField, 0, len(entries))
 		used := make(map[string]struct{}, len(entries))
 		for i, entry := range entries {
-			name := stellarMapKeyName(entry.Key, i)
-			if _, taken := used[name]; taken {
-				// Distinct keys must never share a name: UPF serializes a StructField into a
-				// map[string]any keyed by NamedField.Name, so a collision drops an entry.
-				name = fmt.Sprintf("%s#%d", name, i)
-			}
+			name := stellarUniqueFieldName(stellarMapKeyName(entry.Key, i), i, used)
 			used[name] = struct{}{}
 
 			fields = append(fields, NamedField{
@@ -133,6 +178,28 @@ func stellarScValField(val xdr.ScVal) FieldValue {
 	default:
 		// ScVal.String covers the scalar types, including the 128/256-bit integers.
 		return SimpleField{Value: val.String()}
+	}
+}
+
+// stellarUniqueFieldName returns base when it is unused, and otherwise probes base#<n> until it
+// finds a free name. Probing is required rather than a single base#<index> attempt: a suffixed
+// candidate can itself collide with another key's name, as with the keys U32(1),
+// Symbol("U32(1)#2") and Symbol("U32(1)"), where the third would otherwise reuse the second's
+// name. UPF serializes a StructField into a map[string]any keyed by NamedField.Name, so any
+// collision silently drops an entry.
+//
+// The loop terminates: each rejected candidate matches a distinct already-used name, so it runs
+// at most len(used)+1 times.
+func stellarUniqueFieldName(base string, index int, used map[string]struct{}) string {
+	if _, taken := used[base]; !taken {
+		return base
+	}
+
+	for n := index; ; n++ {
+		candidate := fmt.Sprintf("%s#%d", base, n)
+		if _, taken := used[candidate]; !taken {
+			return candidate
+		}
 	}
 }
 
