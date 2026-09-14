@@ -43,6 +43,15 @@ func mustEncodeStellarPayload(t *testing.T, function string, args ...xdr.ScVal) 
 	return data
 }
 
+func mustStructScVal(t *testing.T, fields map[string]xdr.ScVal) xdr.ScVal {
+	t.Helper()
+
+	val, err := scval.BuildStructScVal(fields)
+	require.NoError(t, err)
+
+	return val
+}
+
 func TestAnalyzeStellarTransactions(t *testing.T) {
 	t.Parallel()
 
@@ -133,38 +142,85 @@ func TestAnalyzeStellarTransactions(t *testing.T) {
 func TestStellarScValField(t *testing.T) {
 	t.Parallel()
 
-	t.Run("bytes", func(t *testing.T) {
-		t.Parallel()
+	tests := []struct {
+		name string
+		val  xdr.ScVal
+		want FieldValue
+	}{
+		{
+			name: "address",
+			val:  scval.AddressToScVal(stellarTimelock),
+			want: AddressField{Value: stellarTimelock},
+		},
+		{
+			name: "bytes",
+			val:  scval.BytesToScVal([]byte{0xde, 0xad, 0xbe, 0xef}),
+			want: BytesField{Value: []byte{0xde, 0xad, 0xbe, 0xef}},
+		},
+		{
+			name: "vector recurses into its elements",
+			val: scval.VecToScVal([]xdr.ScVal{
+				scval.Uint32ToScVal(1),
+				scval.AddressToScVal(stellarTimelock),
+			}),
+			want: ArrayField{Elements: []FieldValue{
+				SimpleField{Value: "1"},
+				AddressField{Value: stellarTimelock},
+			}},
+		},
+		{
+			name: "map recurses and keeps its keys as field names",
+			val:  mustStructScVal(t, map[string]xdr.ScVal{"description": scval.StringToScVal("BTC/USD")}),
+			want: StructField{Fields: []NamedField{
+				{
+					Name:     "description",
+					TypeName: "String",
+					Value:    SimpleField{Value: "BTC/USD"},
+					RawValue: scval.StringToScVal("BTC/USD"),
+				},
+			}},
+		},
+		{
+			name: "symbol falls back to the scalar rendering",
+			val:  scval.SymbolToScVal("schedule"),
+			want: SimpleField{Value: "schedule"},
+		},
+		{
+			name: "u64 falls back to the scalar rendering",
+			val:  scval.Uint64ToScVal(1234567890),
+			want: SimpleField{Value: "1234567890"},
+		},
+	}
 
-		got := stellarScValField(scval.BytesToScVal([]byte{0xde, 0xad, 0xbe, 0xef}))
-		require.Equal(t, BytesField{Value: []byte{0xde, 0xad, 0xbe, 0xef}}, got)
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	t.Run("vector recurses", func(t *testing.T) {
-		t.Parallel()
-
-		got := stellarScValField(scval.VecToScVal([]xdr.ScVal{
-			scval.Uint32ToScVal(1),
-			scval.AddressToScVal(stellarTimelock),
-		}))
-		require.Equal(t, ArrayField{Elements: []FieldValue{
-			SimpleField{Value: "1"},
-			AddressField{Value: stellarTimelock},
-		}}, got)
-	})
-
-	t.Run("symbol falls back to the scalar rendering", func(t *testing.T) {
-		t.Parallel()
-
-		got := stellarScValField(scval.SymbolToScVal("schedule"))
-		require.Equal(t, SimpleField{Value: "schedule"}, got)
-	})
+			require.Equal(t, tt.want, stellarScValField(tt.val))
+		})
+	}
 }
 
 func TestStellarScValTypeName(t *testing.T) {
 	t.Parallel()
 
-	require.Equal(t, "Address", stellarScValTypeName(scval.AddressToScVal(stellarTimelock)))
-	require.Equal(t, "U32", stellarScValTypeName(scval.Uint32ToScVal(1)))
-	require.Equal(t, "Bytes", stellarScValTypeName(scval.BytesToScVal([]byte{0x01})))
+	tests := []struct {
+		name string
+		val  xdr.ScVal
+		want string
+	}{
+		{name: "address", val: scval.AddressToScVal(stellarTimelock), want: "Address"},
+		{name: "u32", val: scval.Uint32ToScVal(1), want: "U32"},
+		{name: "bytes", val: scval.BytesToScVal([]byte{0x01}), want: "Bytes"},
+		{name: "symbol", val: scval.SymbolToScVal("schedule"), want: "Symbol"},
+		{name: "vec", val: scval.VecToScVal([]xdr.ScVal{}), want: "Vec"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			require.Equal(t, tt.want, stellarScValTypeName(tt.val))
+		})
+	}
 }

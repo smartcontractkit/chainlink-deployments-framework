@@ -279,6 +279,9 @@ func batchOperationsToUpfDecodedCalls(ctx context.Context, proposalContext mcmsa
 		case chainsel.FamilyCanton:
 			describedTxs, err = mcmsanalyzer.AnalyzeCantonTransactions(proposalContext, chainSel, batch.Transactions)
 
+		case chainsel.FamilyStellar:
+			describedTxs, err = mcmsanalyzer.AnalyzeStellarTransactions(proposalContext, chainSel, batch.Transactions)
+
 		default:
 			for callIdx, mcmsTx := range batch.Transactions {
 				decodedCalls[batchIdx][callIdx] = &DecodedInnerCall{
@@ -372,6 +375,15 @@ func analyzeTransaction(
 	case chainsel.FamilyCanton:
 		decoder := mcmscantonsdk.NewDecoder()
 		analyzeResult, err := mcmsanalyzer.AnalyzeCantonTransaction(proposalCtx, decoder, uint64(mcmsOp.ChainSelector), mcmsOp.Transaction)
+		if err != nil {
+			return nil, "", err
+		}
+
+		return analyzeResult, "", nil
+
+	case chainsel.FamilyStellar:
+		// No decoder instance: Stellar decoding is driven by the Soroban invoke payload itself.
+		analyzeResult, err := mcmsanalyzer.AnalyzeStellarTransaction(proposalCtx, uint64(mcmsOp.ChainSelector), mcmsOp.Transaction)
 		if err != nil {
 			return nil, "", err
 		}
