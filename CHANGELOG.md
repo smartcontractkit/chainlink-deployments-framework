@@ -1,5 +1,12 @@
 # chainlink-deployments-framework
 
+## 0.123.0
+
+### Minor Changes
+
+- [#1178](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1178) [`e6e2fa6`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/e6e2fa666d809908b22414a864142cdfc4588de3) Thanks [@friedemannf](https://github.com/friedemannf)! - Replace Canton authentication with chainlink-canton/authentication v1.0.0
+  Bump chainlink-canton/contracts to v2.1.0
+
 ## 0.122.2
 
 ### Patch Changes
