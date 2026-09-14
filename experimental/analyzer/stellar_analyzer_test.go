@@ -201,6 +201,71 @@ func TestStellarScValField(t *testing.T) {
 	}
 }
 
+// TestStellarScValField_MapKeyNames pins that distinct map keys never collapse into one field
+// name. UPF serializes a StructField into a map[string]any keyed by NamedField.Name, so a
+// collision silently drops entries from the reviewer-facing YAML.
+func TestStellarScValField_MapKeyNames(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		keys      []xdr.ScVal
+		wantNames []string
+	}{
+		{
+			name:      "symbol keys keep their bare text",
+			keys:      []xdr.ScVal{scval.SymbolToScVal("description"), scval.SymbolToScVal("data_id")},
+			wantNames: []string{"description", "data_id"},
+		},
+		{
+			name: "keys that render identically stay distinct",
+			keys: []xdr.ScVal{
+				scval.Uint32ToScVal(1),
+				scval.StringToScVal("1"),
+				scval.SymbolToScVal("1"),
+			},
+			wantNames: []string{"U32(1)", "String(1)", "1"},
+		},
+		{
+			name: "a symbol shaped like a qualified key is still disambiguated",
+			keys: []xdr.ScVal{
+				scval.Uint32ToScVal(1),
+				scval.SymbolToScVal("U32(1)"),
+			},
+			wantNames: []string{"U32(1)", "U32(1)#1"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			entries := make(xdr.ScMap, 0, len(tt.keys))
+			for _, key := range tt.keys {
+				entries = append(entries, xdr.ScMapEntry{Key: key, Val: scval.Uint32ToScVal(7)})
+			}
+			mapPtr := &entries
+			val := xdr.ScVal{Type: xdr.ScValTypeScvMap, Map: &mapPtr}
+
+			got, ok := stellarScValField(val).(StructField)
+			require.True(t, ok)
+
+			gotNames := make([]string, 0, len(got.Fields))
+			for _, field := range got.Fields {
+				gotNames = append(gotNames, field.Name)
+			}
+			require.Equal(t, tt.wantNames, gotNames)
+			require.Len(t, gotNames, len(tt.keys), "every entry must survive")
+
+			unique := make(map[string]struct{}, len(gotNames))
+			for _, name := range gotNames {
+				unique[name] = struct{}{}
+			}
+			require.Len(t, unique, len(tt.keys), "field names must be collision-free")
+		})
+	}
+}
+
 func TestStellarScValTypeName(t *testing.T) {
 	t.Parallel()
 

@@ -108,12 +108,18 @@ func stellarScValField(val xdr.ScVal) FieldValue {
 		if val.Map == nil || *val.Map == nil {
 			return StructField{}
 		}
-		fields := make([]NamedField, 0, len(**val.Map))
-		for i, entry := range **val.Map {
-			name := entry.Key.String()
-			if name == "" {
-				name = fmt.Sprintf("key%d", i)
+		entries := **val.Map
+		fields := make([]NamedField, 0, len(entries))
+		used := make(map[string]struct{}, len(entries))
+		for i, entry := range entries {
+			name := stellarMapKeyName(entry.Key, i)
+			if _, taken := used[name]; taken {
+				// Distinct keys must never share a name: UPF serializes a StructField into a
+				// map[string]any keyed by NamedField.Name, so a collision drops an entry.
+				name = fmt.Sprintf("%s#%d", name, i)
 			}
+			used[name] = struct{}{}
+
 			fields = append(fields, NamedField{
 				Name:     name,
 				TypeName: stellarScValTypeName(entry.Val),
@@ -128,6 +134,29 @@ func stellarScValField(val xdr.ScVal) FieldValue {
 		// ScVal.String covers the scalar types, including the 128/256-bit integers.
 		return SimpleField{Value: val.String()}
 	}
+}
+
+// stellarMapKeyName renders a Soroban map key as a field name.
+//
+// Map keys are arbitrary ScVals, not just symbols. Symbol keys — what contract-generated structs
+// use — keep their bare text so reports stay readable. Every other key type is qualified with its
+// type, because ScVal.String omits it: U32(1), String("1") and Symbol("1") all render as "1" and
+// would otherwise collide into a single field name.
+func stellarMapKeyName(key xdr.ScVal, index int) string {
+	if sym, ok := key.GetSym(); ok {
+		if name := string(sym); name != "" {
+			return name
+		}
+
+		return fmt.Sprintf("key%d", index)
+	}
+
+	rendered := key.String()
+	if rendered == "" {
+		return fmt.Sprintf("key%d", index)
+	}
+
+	return fmt.Sprintf("%s(%s)", stellarScValTypeName(key), rendered)
 }
 
 // stellarScValTypeName renders the Soroban type of a value without the XDR enum prefix, so
