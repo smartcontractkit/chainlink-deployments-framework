@@ -1,5 +1,34 @@
 # chainlink-deployments-framework
 
+## 0.122.2
+
+### Patch Changes
+
+- [#1165](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1165) [`a5b7465`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/a5b74656ac387f9ecf3bcfca8940c215573a74d0) Thanks [@iljapavlovs](https://github.com/iljapavlovs)! - fix: confirm EVM deploys based on the returned tx instead of the chain type
+  
+  `DeployContract` skipped confirmation whenever `chain.IsZkSyncVM` was set, which also
+  skipped it for EVM-emulator deploys on zkSync chains. Those return a real transaction, so a
+  dropped tx was recorded in the address book as if it had landed. Confirmation now keys off
+  `ContractDeploy.Tx`, which is nil only for native zkSync deploys.
+
+## 0.122.1
+
+### Patch Changes
+
+- [#1167](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1167) [`587487f`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/587487fced3f8ccabe4c3a3bb114f68187fe3f3d) Thanks [@FelixFan1992](https://github.com/FelixFan1992)! - bump ctf/framework to 0.16.8
+
+## 0.122.0
+
+### Minor Changes
+
+- [#1164](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1164) [`48ca2f6`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/48ca2f6b3036bbe6993e66919ecf9636fb5e95e6) Thanks [@karen-stepanyan](https://github.com/karen-stepanyan)! - feat(stellar): add KMS signing logic
+
+- [#1159](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1159) [`684365b`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/684365b2a1a1551f654e2c17c0f9b1258555aa4c) Thanks [@jkongie](https://github.com/jkongie)! - feat!: add environment.Build to build an environment from parameters
+  
+  BREAKING CHANGE: `catalog.LoadCatalog` now takes a domain key, an
+  environment key and a `cfgenv.CatalogConfig` instead of a domain.Domain
+  and a *config.Config.
+
 ## 0.121.2
 
 ### Patch Changes

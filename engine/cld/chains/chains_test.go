@@ -13,6 +13,7 @@ import (
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap/zapcore"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
@@ -96,6 +97,42 @@ func Test_newChainLoaders(t *testing.T) {
 				chainsel.FamilyEVM,
 				chainsel.FamilyTron,
 			},
+		},
+		{
+			name: "Ed25519 KMS configured - Stellar loaded",
+			onchainConfig: cfgenv.OnchainConfig{
+				KMSEd25519: cfgenv.KMSEd25519Config{
+					KeyID:     "test-ed25519-key-id",
+					KeyRegion: "us-west-2",
+				},
+			},
+			wantLoaders: []string{
+				chainsel.FamilyStellar,
+			},
+		},
+		{
+			name: "Ed25519 KMS and Stellar deployer key - Stellar loaded once",
+			onchainConfig: cfgenv.OnchainConfig{
+				KMSEd25519: cfgenv.KMSEd25519Config{
+					KeyID:     "test-ed25519-key-id",
+					KeyRegion: "us-west-2",
+				},
+				Stellar: cfgenv.StellarConfig{
+					DeployerKey: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+				},
+			},
+			wantLoaders: []string{
+				chainsel.FamilyStellar,
+			},
+		},
+		{
+			name: "Partial Ed25519 KMS config - Stellar skipped",
+			onchainConfig: cfgenv.OnchainConfig{
+				KMSEd25519: cfgenv.KMSEd25519Config{
+					KeyID: "test-ed25519-key-id", // no region, so KMS is not usable
+				},
+			},
+			wantLoaders: []string{},
 		},
 		{
 			name:          "No credentials - all chains skipped",
@@ -593,6 +630,128 @@ func Test_chainLoaderSui_Load(t *testing.T) {
 				assert.Equal(t, tt.giveSelector, chain.ChainSelector())
 				assert.Equal(t, "sui", chain.Family())
 			}
+		})
+	}
+}
+
+// Test_newChainLoaders_stellarSignerLogging asserts that loading Stellar states
+// which signer it uses, so an operator can tell KMS from the deployer key without
+// running a deployment.
+func Test_newChainLoaders_stellarSignerLogging(t *testing.T) {
+	t.Parallel()
+
+	var (
+		kmsCfg = cfgenv.KMSEd25519Config{
+			KeyID:     "test-ed25519-key-id",
+			KeyRegion: "us-west-2",
+		}
+		deployerKeyCfg = cfgenv.StellarConfig{
+			DeployerKey: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+		}
+	)
+
+	tests := []struct {
+		name          string
+		onchainConfig cfgenv.OnchainConfig
+		wantLevel     zapcore.Level
+		wantMessage   string
+	}{
+		{
+			name:          "KMS only",
+			onchainConfig: cfgenv.OnchainConfig{KMSEd25519: kmsCfg},
+			wantLevel:     zapcore.InfoLevel,
+			wantMessage:   "Loading Stellar chains, signing with the Ed25519 KMS key",
+		},
+		{
+			name:          "deployer key only",
+			onchainConfig: cfgenv.OnchainConfig{Stellar: deployerKeyCfg},
+			wantLevel:     zapcore.InfoLevel,
+			wantMessage:   "Loading Stellar chains, signing with the Stellar deployer key",
+		},
+		{
+			// The deployer key being silently overridden is the surprising case, so
+			// it warns and says so explicitly.
+			name:          "both configured warns that the deployer key is ignored",
+			onchainConfig: cfgenv.OnchainConfig{KMSEd25519: kmsCfg, Stellar: deployerKeyCfg},
+			wantLevel:     zapcore.WarnLevel,
+			wantMessage:   "Loading Stellar chains, signing with the Ed25519 KMS key; the configured Stellar deployer key is ignored",
+		},
+		{
+			name:          "neither configured",
+			onchainConfig: cfgenv.OnchainConfig{},
+			wantLevel:     zapcore.InfoLevel,
+			wantMessage:   "Skipping Stellar chains, no private key or KMS config found in secrets",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			lggr, logs := logger.TestObserved(t, zapcore.InfoLevel)
+
+			newChainLoaders(lggr, &cfgnet.Config{}, tt.onchainConfig)
+
+			entries := logs.FilterMessage(tt.wantMessage).All()
+			require.Len(t, entries, 1, "want exactly one %q entry, got %v", tt.wantMessage, logs.All())
+			assert.Equal(t, tt.wantLevel, entries[0].Level)
+		})
+	}
+}
+
+func Test_stellarSigner(t *testing.T) {
+	t.Parallel()
+
+	var (
+		kmsCfg = cfgenv.KMSEd25519Config{
+			KeyID:     "test-ed25519-key-id",
+			KeyRegion: "us-west-2",
+		}
+		deployerKeyCfg = cfgenv.StellarConfig{
+			DeployerKey: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+		}
+	)
+
+	tests := []struct {
+		name          string
+		onchainConfig cfgenv.OnchainConfig
+		want          string
+	}{
+		{
+			name:          "KMS only",
+			onchainConfig: cfgenv.OnchainConfig{KMSEd25519: kmsCfg},
+			want:          stellarSignerKMS,
+		},
+		{
+			name:          "deployer key only",
+			onchainConfig: cfgenv.OnchainConfig{Stellar: deployerKeyCfg},
+			want:          stellarSignerDeployerKey,
+		},
+		{
+			name:          "both configured - KMS wins",
+			onchainConfig: cfgenv.OnchainConfig{KMSEd25519: kmsCfg, Stellar: deployerKeyCfg},
+			want:          stellarSignerKMS,
+		},
+		{
+			name: "partial KMS config falls back to the deployer key",
+			onchainConfig: cfgenv.OnchainConfig{
+				KMSEd25519: cfgenv.KMSEd25519Config{KeyID: kmsCfg.KeyID}, // no region
+				Stellar:    deployerKeyCfg,
+			},
+			want: stellarSignerDeployerKey,
+		},
+		{
+			name:          "neither configured",
+			onchainConfig: cfgenv.OnchainConfig{},
+			want:          "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, tt.want, stellarSigner(tt.onchainConfig))
 		})
 	}
 }

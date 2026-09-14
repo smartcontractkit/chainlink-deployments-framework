@@ -23,8 +23,9 @@ type RPCChainProviderConfig struct {
 	// Optional: The Friendbot URL for funding test accounts (only required for testing environments)
 	FriendbotURL string
 
-	// Required: A generator for the deployer keypair. Use KeypairFromHex to create a deployer
-	// keypair from a hex-encoded private key.
+	// Required: A generator for the deployer keypair. Use KeypairGenKMS to sign with an
+	// AWS KMS Ed25519 key, or KeypairFromHex to create a deployer keypair from a
+	// hex-encoded private key.
 	DeployerKeypairGen KeypairGenerator
 }
 
