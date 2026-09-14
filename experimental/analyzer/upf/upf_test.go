@@ -831,6 +831,27 @@ func TestIsTimelockBatchFunction(t *testing.T) {
 			functionName: "timelock_schedule_batch",
 			want:         false,
 		},
+		// Stellar
+		{
+			name:         "Stellar schedule_batch",
+			functionName: "schedule_batch",
+			want:         true,
+		},
+		{
+			name:         "Stellar bypasser_execute_batch",
+			functionName: "bypasser_execute_batch",
+			want:         true,
+		},
+		{
+			name:         "Stellar execute_batch is not a batch-wrapping call",
+			functionName: "execute_batch",
+			want:         false,
+		},
+		{
+			name:         "Stellar cancel",
+			functionName: "cancel",
+			want:         false,
+		},
 	}
 
 	for _, tt := range tests {
