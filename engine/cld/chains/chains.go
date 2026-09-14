@@ -10,15 +10,16 @@ import (
 
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	chainselremote "github.com/smartcontractkit/chain-selectors/remote"
+	cantonauth "github.com/smartcontractkit/chainlink-canton/authentication"
+	cantonauthauthorizationcode "github.com/smartcontractkit/chainlink-canton/authentication/providers/authorizationcode"
+	cantonauthclientcreds "github.com/smartcontractkit/chainlink-canton/authentication/providers/clientcredentials"
+	cantonauthstatic "github.com/smartcontractkit/chainlink-canton/authentication/providers/static"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
 	fchain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	aptosprov "github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos/provider"
 	cantonprov "github.com/smartcontractkit/chainlink-deployments-framework/chain/canton/provider"
-	cantonauth "github.com/smartcontractkit/chainlink-deployments-framework/chain/canton/provider/authentication"
-	cantonauthcode "github.com/smartcontractkit/chainlink-deployments-framework/chain/canton/provider/authentication/authorizationcode"
-	cantonclientcreds "github.com/smartcontractkit/chainlink-deployments-framework/chain/canton/provider/authentication/clientcredentials"
 	fevm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	evmgas "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/gas"
 	evmprov "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider"
@@ -898,14 +899,14 @@ func (l *chainLoaderCanton) cantonAuthProvider(ctx context.Context, selector uin
 	c := l.cfg.Canton
 	switch cantonEffectiveAuthStrategy(c) {
 	case cfgenv.CantonAuthStrategyClientCredentials:
-		provider, err := cantonclientcreds.NewDiscoveryProvider(ctx, c.AuthURL, c.ClientID, c.ClientSecret)
+		provider, err := cantonauthclientcreds.NewDiscoveryProvider(ctx, c.AuthURL, c.ClientID, c.ClientSecret)
 		if err != nil {
 			return nil, fmt.Errorf("canton network %d: client_credentials auth: %w", selector, err)
 		}
 
 		return provider, nil
 	case cfgenv.CantonAuthStrategyAuthorizationCode:
-		provider, err := cantonauthcode.NewDiscoveryProvider(ctx, c.AuthURL, c.ClientID)
+		provider, err := cantonauthauthorizationcode.NewDiscoveryProvider(ctx, c.AuthURL, c.ClientID)
 		if err != nil {
 			return nil, fmt.Errorf("canton network %d: authorization_code auth: %w", selector, err)
 		}
@@ -916,10 +917,10 @@ func (l *chainLoaderCanton) cantonAuthProvider(ctx context.Context, selector uin
 			return nil, fmt.Errorf("canton network %d: JWT token is required for static auth", selector)
 		}
 		if insecureTransport {
-			return cantonauth.NewInsecureStaticProvider(c.JWTToken), nil
+			return cantonauthstatic.NewInsecureStaticProvider(c.JWTToken), nil
 		}
 
-		return cantonauth.NewStaticProvider(c.JWTToken), nil
+		return cantonauthstatic.NewStaticProvider(c.JWTToken), nil
 	default:
 		return nil, fmt.Errorf("canton network %d: unknown auth strategy: %q", selector, c.AuthStrategy)
 	}

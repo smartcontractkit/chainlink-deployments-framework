@@ -7,9 +7,10 @@ import (
 
 	"google.golang.org/grpc"
 
+	"github.com/smartcontractkit/chainlink-canton/authentication"
+
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/canton"
-	"github.com/smartcontractkit/chainlink-deployments-framework/chain/canton/provider/authentication"
 )
 
 // RPCChainProviderConfig is the configuration for the RPCChainProvider.
