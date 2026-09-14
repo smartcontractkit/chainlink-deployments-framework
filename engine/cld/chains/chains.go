@@ -10,15 +10,16 @@ import (
 
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	chainselremote "github.com/smartcontractkit/chain-selectors/remote"
+	cantonauth "github.com/smartcontractkit/chainlink-canton/authentication"
+	cantonauthcode "github.com/smartcontractkit/chainlink-canton/authentication/providers/authorizationcode"
+	cantonclientcreds "github.com/smartcontractkit/chainlink-canton/authentication/providers/clientcredentials"
+	cantonstatic "github.com/smartcontractkit/chainlink-canton/authentication/providers/static"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
 	fchain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	aptosprov "github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos/provider"
 	cantonprov "github.com/smartcontractkit/chainlink-deployments-framework/chain/canton/provider"
-	cantonauth "github.com/smartcontractkit/chainlink-deployments-framework/chain/canton/provider/authentication"
-	cantonauthcode "github.com/smartcontractkit/chainlink-deployments-framework/chain/canton/provider/authentication/authorizationcode"
-	cantonclientcreds "github.com/smartcontractkit/chainlink-deployments-framework/chain/canton/provider/authentication/clientcredentials"
 	fevm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	evmgas "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/gas"
 	evmprov "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider"
@@ -871,10 +872,10 @@ func (l *chainLoaderCanton) cantonAuthProvider(ctx context.Context, selector uin
 			return nil, fmt.Errorf("canton network %d: JWT token is required for static auth", selector)
 		}
 		if insecureTransport {
-			return cantonauth.NewInsecureStaticProvider(c.JWTToken), nil
+			return cantonstatic.NewInsecureStaticProvider(c.JWTToken), nil
 		}
 
-		return cantonauth.NewStaticProvider(c.JWTToken), nil
+		return cantonstatic.NewStaticProvider(c.JWTToken), nil
 	default:
 		return nil, fmt.Errorf("canton network %d: unknown auth strategy: %q", selector, c.AuthStrategy)
 	}
