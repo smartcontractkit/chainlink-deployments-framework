@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 
-	"github.com/smartcontractkit/chainlink-canton/authentication/providers/static"
+	cantonauthstatic "github.com/smartcontractkit/chainlink-canton/authentication/providers/static"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 
@@ -115,7 +115,7 @@ func (p *CTFChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 
 	for i, participantEndpoints := range output.NetworkSpecificData.CantonData.ExternalEndpoints.Participants {
 		// Create an InsecureStaticProvider that always returns the same JWT token for the participant
-		authProvider := static.NewInsecureStaticProvider(participantEndpoints.JWT)
+		authProvider := cantonauthstatic.NewInsecureStaticProvider(participantEndpoints.JWT)
 		tokenSource := authProvider.TokenSource()
 		transportCredentials := authProvider.TransportCredentials()
 		perRPCCredentials := authProvider.PerRPCCredentials()
