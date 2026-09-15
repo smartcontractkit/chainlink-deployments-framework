@@ -3,6 +3,7 @@ package mcms
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -219,6 +220,28 @@ func TestLoadProposalConfig(t *testing.T) {
 				tt.proposalCtxProvider, tt.flags, tt.opts...)
 
 			tt.assert(t, got, err)
+		})
+	}
+}
+
+func TestIsProposalExpiredError(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{name: "nil error", err: nil, want: false},
+		{name: "unrelated error", err: errors.New("some other failure"), want: false},
+		{name: "legacy expired text", err: errors.New("proposal has expired: valid_until exceeded"), want: true},
+		{name: "sdk invalid valid until", err: errors.New("invalid valid until: 1780000000"), want: true},
+		{name: "wrapped sdk error", err: fmt.Errorf("error loading proposal: %w", errors.New("invalid valid until: 1780000000")), want: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, tt.want, isProposalExpiredError(tt.err))
 		})
 	}
 }
