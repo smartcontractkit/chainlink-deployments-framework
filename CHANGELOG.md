@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.123.2
+
+### Patch Changes
+
+- [#1182](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1182) [`710391f`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/710391f9ca8765be8f249b46e2a6455c794ad338) Thanks [@FelixFan1992](https://github.com/FelixFan1992)! - improve stellar support
+
 ## 0.123.1
 
 ### Patch Changes
