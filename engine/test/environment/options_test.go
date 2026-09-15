@@ -129,9 +129,11 @@ func Test_withChainLoaderN(t *testing.T) {
 }
 
 func Test_WithStellarContainer(t *testing.T) {
-	t.Parallel()
-	// Stub the package-level loader var so no Docker container is started.
-	// Not parallel: mutates a package var (restored via t.Cleanup).
+	// This test mutates the package-level newStellarContainerLoader var (restored via
+	// t.Cleanup), so the parent must NOT run in parallel: a non-parallel parent's entire
+	// run — including its parallel subtests and cleanup — completes in an isolated window
+	// before any other top-level test starts, which keeps the global mutation race-free.
+	// The subtests below call t.Parallel() and run concurrently once the stub is installed.
 	orig := newStellarContainerLoader
 	t.Cleanup(func() { newStellarContainerLoader = orig })
 
