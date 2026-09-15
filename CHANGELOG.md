@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.123.1
+
+### Patch Changes
+
+- [#1180](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1180) [`21057ee`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/21057ee1ea3f5988e421d1e1906bc2e1b0b969e0) Thanks [@karen-stepanyan](https://github.com/karen-stepanyan)! - feat(stellar): Add Stellar MCM proposal analyzer
+
 ## 0.123.0
 
 ### Minor Changes
