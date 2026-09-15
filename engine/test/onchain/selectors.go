@@ -40,6 +40,9 @@ var (
 		chainselectors.FamilySui: {
 			chainselectors.SUI_LOCALNET.Selector,
 		},
+		chainselectors.FamilyStellar: {
+			chainselectors.STELLAR_LOCALNET.Selector,
+		},
 	}
 
 	// ZKSync selectors are defined here rather than in testSelectors to avoid adding more

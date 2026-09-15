@@ -2,7 +2,7 @@
 Package addrconv provides utilities for converting blockchain addresses to bytes across different chain families.
 
 This package implements the Strategy pattern to handle address conversion for various blockchain networks
-including EVM, Solana, Aptos, Sui, TON, and TRON. It automatically detects the appropriate converter
+including EVM, Solana, Aptos, Sui, TON, TRON, and Stellar. It automatically detects the appropriate converter
 based on the chain family and handles the conversion seamlessly.
 
 # Basic Usage
@@ -89,6 +89,11 @@ you can extract the family and use it with ToBytes:
 				addr:   "0x1",
 				desc:   "Aptos framework account",
 			},
+			{
+				family: chain_selectors.FamilyStellar,
+				addr:   "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
+				desc:   "Stellar account (ed25519 public key)",
+			},
 		}
 
 		for _, example := range examples {
@@ -139,5 +144,10 @@ The package supports the following blockchain families:
 	  - Family: chain_selectors.FamilyTron
 	  - Address format: Base58 encoded (21 bytes)
 	  - Sample: "TLyqzVGLV1srkB7dToTAEqgDSfPtXRJZYH"
+
+	Stellar:
+	  - Family: chain_selectors.FamilyStellar
+	  - Address format: strkey encoded (32 bytes); account "G…" (ed25519 public key) or contract "C…"
+	  - Sample: "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7"
 */
 package addrconv

@@ -128,6 +128,39 @@ func Test_withChainLoaderN(t *testing.T) {
 	}
 }
 
+func Test_WithStellarContainer(t *testing.T) {
+	// This test mutates the package-level newStellarContainerLoader var (restored via
+	// t.Cleanup), so the parent must NOT run in parallel: a non-parallel parent's entire
+	// run — including its parallel subtests and cleanup — completes in an isolated window
+	// before any other top-level test starts, which keeps the global mutation race-free.
+	// The subtests below call t.Parallel() and run concurrently once the stub is installed.
+	orig := newStellarContainerLoader
+	t.Cleanup(func() { newStellarContainerLoader = orig })
+
+	const selector = uint64(17301180955411967724) // chainsel.STELLAR_LOCALNET
+	stubChain := testutils.NewStubChain(selector)
+	newStellarContainerLoader = func() *onchain.ChainLoader {
+		return onchain.NewChainLoader([]uint64{selector}, func(t *testing.T, _ uint64) (fchain.BlockChain, error) {
+			t.Helper()
+			return stubChain, nil
+		})
+	}
+
+	t.Run("WithStellarContainer", func(t *testing.T) {
+		t.Parallel()
+		cmps := newComponents()
+		require.NoError(t, WithStellarContainer(t, []uint64{selector})(cmps))
+		require.ElementsMatch(t, []fchain.BlockChain{stubChain}, cmps.Chains)
+	})
+
+	t.Run("WithStellarContainerN", func(t *testing.T) {
+		t.Parallel()
+		cmps := newComponents()
+		require.NoError(t, WithStellarContainerN(t, 1)(cmps))
+		require.ElementsMatch(t, []fchain.BlockChain{stubChain}, cmps.Chains)
+	})
+}
+
 func Test_WithCRERunner(t *testing.T) {
 	t.Parallel()
 
