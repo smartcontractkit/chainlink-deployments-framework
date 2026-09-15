@@ -9,6 +9,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/stellar"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/sui"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/ton"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/tron"
@@ -55,6 +56,7 @@ func newAddressConverterRegistry() *addressConverterRegistry {
 	registry.converters[chain_selectors.FamilySui] = sui.AddressConverter{}
 	registry.converters[chain_selectors.FamilyTon] = ton.AddressConverter{}
 	registry.converters[chain_selectors.FamilyTron] = tron.AddressConverter{}
+	registry.converters[chain_selectors.FamilyStellar] = stellar.AddressConverter{}
 
 	return registry
 }
