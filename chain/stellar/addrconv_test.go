@@ -53,6 +53,21 @@ func TestAddressToBytes(t *testing.T) {
 		assert.Nil(t, b)
 		assert.Contains(t, err.Error(), "invalid Stellar address format")
 	})
+
+	t.Run("wrong-length strkey rejected", func(t *testing.T) {
+		t.Parallel()
+
+		// strkey.Decode validates only the version byte + checksum, not the payload
+		// length. Build a valid-checksum account strkey from a 16-byte payload (not 32)
+		// and confirm AddressToBytes rejects it rather than returning a short slice.
+		short, err := strkey.Encode(strkey.VersionByteAccountID, make([]byte, 16))
+		require.NoError(t, err)
+
+		b, err := AddressToBytes(short)
+		require.Error(t, err)
+		assert.Nil(t, b)
+		assert.Contains(t, err.Error(), "invalid Stellar address format")
+	})
 }
 
 func TestAddressConverter(t *testing.T) {

@@ -128,6 +128,34 @@ func Test_withChainLoaderN(t *testing.T) {
 	}
 }
 
+func Test_WithStellarContainer(t *testing.T) {
+	// Stub the package-level loader var so no Docker container is started.
+	// Not parallel: mutates a package var (restored via t.Cleanup).
+	orig := newStellarContainerLoader
+	t.Cleanup(func() { newStellarContainerLoader = orig })
+
+	const selector = uint64(17301180955411967724) // chainsel.STELLAR_LOCALNET
+	stubChain := testutils.NewStubChain(selector)
+	newStellarContainerLoader = func() *onchain.ChainLoader {
+		return onchain.NewChainLoader([]uint64{selector}, func(t *testing.T, _ uint64) (fchain.BlockChain, error) {
+			t.Helper()
+			return stubChain, nil
+		})
+	}
+
+	t.Run("WithStellarContainer", func(t *testing.T) {
+		cmps := newComponents()
+		require.NoError(t, WithStellarContainer(t, []uint64{selector})(cmps))
+		require.ElementsMatch(t, []fchain.BlockChain{stubChain}, cmps.Chains)
+	})
+
+	t.Run("WithStellarContainerN", func(t *testing.T) {
+		cmps := newComponents()
+		require.NoError(t, WithStellarContainerN(t, 1)(cmps))
+		require.ElementsMatch(t, []fchain.BlockChain{stubChain}, cmps.Chains)
+	})
+}
+
 func Test_WithCRERunner(t *testing.T) {
 	t.Parallel()
 
