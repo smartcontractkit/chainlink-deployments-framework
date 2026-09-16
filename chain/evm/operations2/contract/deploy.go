@@ -164,6 +164,12 @@ func NewDeploy[ARGS any](params DeployParams[ARGS]) *operations.Operation[Deploy
 			}
 			b.Logger.Debugw(fmt.Sprintf("Deployed %s to %s", input.TypeAndVersion, chain), "args", input.Args)
 
+			if err := deployment.WaitForDeployedCode(b, chain, addr); err != nil {
+				return datastore.AddressRef{}, operations.NewUnrecoverableError(
+					fmt.Errorf("deployed %s to %s: %w", input.TypeAndVersion, chain, err),
+				)
+			}
+
 			return datastore.AddressRef{
 				Address:       addr.Hex(),
 				ChainSelector: chain.Selector,

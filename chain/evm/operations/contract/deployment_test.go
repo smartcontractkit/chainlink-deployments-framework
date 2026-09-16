@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/big"
 	"testing"
 
 	"github.com/Masterminds/semver/v3"
@@ -12,6 +13,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/zksync-sdk/zksync2-go/accounts"
 	"github.com/zksync-sdk/zksync2-go/clients"
@@ -133,8 +135,17 @@ func TestDeploy(t *testing.T) {
 			)
 
 			var confirmed bool
+			client := evm.NewMockOnchainClient(t)
+			codeAtExpectation := client.EXPECT().CodeAt(mock.Anything, address, (*big.Int)(nil)).
+				Return([]byte{0xDE, 0xAD}, nil)
+			if test.expectedErr == "" {
+				codeAtExpectation.Once()
+			} else {
+				codeAtExpectation.Maybe()
+			}
 			chain := evm.Chain{
 				Selector: validChainSel,
+				Client:   client,
 				Confirm: func(tx *types.Transaction) (uint64, error) {
 					confirmed = true
 					return 1, nil
