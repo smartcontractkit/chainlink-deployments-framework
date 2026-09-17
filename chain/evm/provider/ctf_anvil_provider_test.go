@@ -10,6 +10,7 @@ import (
 	"github.com/smartcontractkit/freeport"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider/rpcclient"
@@ -516,4 +517,147 @@ func TestCTFAnvilChainProvider_Cleanup(t *testing.T) {
 		require.NoError(t, err, "Second cleanup should succeed (no-op)")
 		assert.Nil(t, provider.Container, "Container reference should remain nil after second cleanup")
 	})
+}
+
+// fakeContainer satisfies testcontainers.Container for the failure-path
+// tests; only Terminate is ever called on it.
+type fakeContainer struct {
+	testcontainers.Container
+	terminated   bool
+	terminateErr error
+	terminateFn  func(context.Context) error
+}
+
+func (f *fakeContainer) Terminate(ctx context.Context, opts ...testcontainers.TerminateOption) error {
+	f.terminated = true
+	if f.terminateFn != nil {
+		return f.terminateFn(ctx)
+	}
+
+	return f.terminateErr
+}
+
+// noSuchContainerError carries Docker's not-found marker method.
+type noSuchContainerError struct{}
+
+func (noSuchContainerError) NotFound() {}
+
+func (noSuchContainerError) Error() string { return "no such container" }
+
+func TestRemoveFailedContainer(t *testing.T) {
+	t.Parallel()
+
+	t.Run("container handle present terminates it and skips the remover", func(t *testing.T) {
+		t.Parallel()
+
+		p := &CTFAnvilChainProvider{config: CTFAnvilChainProviderConfig{Name: "anvil-fork-handle"}}
+		fc := &fakeContainer{}
+		p.Container = fc
+
+		removerCalled := false
+		p.removeFailedContainer(t.Context(), func(context.Context, string) error {
+			removerCalled = true
+
+			return nil
+		})
+
+		assert.True(t, fc.terminated, "container should be terminated via its handle")
+		assert.Nil(t, p.Container, "container handle should be cleared")
+		assert.False(t, removerCalled, "name-based remover must not run when a handle exists")
+	})
+
+	t.Run("no handle removes by container name", func(t *testing.T) {
+		t.Parallel()
+
+		p := &CTFAnvilChainProvider{config: CTFAnvilChainProviderConfig{Name: "anvil-fork-nameless"}}
+
+		var gotName string
+		p.removeFailedContainer(t.Context(), func(_ context.Context, name string) error {
+			gotName = name
+
+			return nil
+		})
+
+		assert.Equal(t, "anvil-fork-nameless", gotName, "remover should be called with the container name")
+		assert.Nil(t, p.Container)
+	})
+
+	t.Run("cleanup errors are swallowed (best effort)", func(t *testing.T) {
+		t.Parallel()
+
+		p := &CTFAnvilChainProvider{config: CTFAnvilChainProviderConfig{Name: "anvil-fork-failclean"}}
+		p.Container = &fakeContainer{terminateErr: assert.AnError}
+
+		assert.NotPanics(t, func() {
+			p.removeFailedContainer(t.Context(), func(context.Context, string) error {
+				return assert.AnError
+			})
+		})
+		assert.Nil(t, p.Container, "handle cleared even when terminate fails")
+	})
+
+	t.Run("docker not-found marker is recognized", func(t *testing.T) {
+		t.Parallel()
+
+		assert.True(t, isContainerNotFound(noSuchContainerError{}))
+		assert.False(t, isContainerNotFound(assert.AnError))
+		assert.False(t, isContainerNotFound(nil))
+	})
+}
+
+func TestRemoveFailedContainer_AfterStartupCancellation(t *testing.T) {
+	t.Parallel()
+
+	for _, expired := range []bool{false, true} {
+		for _, withHandle := range []bool{false, true} {
+			t.Run("expired="+strconv.FormatBool(expired)+"/handle="+strconv.FormatBool(withHandle), func(t *testing.T) {
+				t.Parallel()
+
+				type contextKey struct{}
+				parent := context.WithValue(t.Context(), contextKey{}, "startup-value")
+				var cancel context.CancelFunc
+				if expired {
+					parent, cancel = context.WithDeadline(parent, time.Now().Add(-time.Second))
+				} else {
+					parent, cancel = context.WithCancel(parent)
+				}
+				cancel()
+				require.Error(t, parent.Err())
+
+				var cleanupDone <-chan struct{}
+				inspect := func(ctx context.Context) {
+					cleanupDone = ctx.Done()
+					require.NoError(t, ctx.Err(), "expired startup must not cancel cleanup")
+					require.Equal(t, "startup-value", ctx.Value(contextKey{}))
+					deadline, ok := ctx.Deadline()
+					require.True(t, ok, "cleanup must have its own deadline")
+					require.Positive(t, time.Until(deadline))
+					require.LessOrEqual(t, time.Until(deadline), failedContainerCleanupTimeout)
+				}
+				provider := &CTFAnvilChainProvider{config: CTFAnvilChainProviderConfig{Name: "failed-start"}}
+				if withHandle {
+					provider.Container = &fakeContainer{terminateFn: func(ctx context.Context) error {
+						inspect(ctx)
+
+						return nil
+					}}
+				}
+				provider.removeFailedContainer(parent, func(ctx context.Context, name string) error {
+					require.False(t, withHandle, "do not change cleanup targets")
+					require.Equal(t, "failed-start", name)
+
+					inspect(ctx)
+
+					return nil
+				})
+				require.NotNil(t, cleanupDone)
+				select {
+				case <-cleanupDone:
+				default:
+					t.Fatal("cleanup context must be released after removal")
+				}
+				require.Nil(t, provider.Container)
+			})
+		}
+	}
 }
