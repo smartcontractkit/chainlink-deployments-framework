@@ -23,4 +23,7 @@ type forkConfig struct {
 	forkedEnv        cldfenvironment.ForkedEnvironment
 	fork             bool
 	proposalCtx      analyzer.ProposalContext
+	// forkBlockNumber is the block the chain's fork was pinned to via
+	// --fork-block (0 = latest).
+	forkBlockNumber uint64
 }
