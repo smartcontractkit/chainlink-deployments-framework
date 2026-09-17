@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.123.3
+
+### Patch Changes
+
+- [#1184](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1184) [`724883a`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/724883ac436e894b2dd67c86f021cd4cb64f2813) Thanks [@HelloKashif](https://github.com/HelloKashif)! - Wait for deployed contract code to be visible via `eth_getCode` before returning from `NewDeploy`, to avoid downstream reads racing a lagging RPC backend right after deployment. Tests mocking `evm.Chain.Client` around a deploy now need to stub `CodeAt`.
+
 ## 0.123.2
 
 ### Patch Changes
