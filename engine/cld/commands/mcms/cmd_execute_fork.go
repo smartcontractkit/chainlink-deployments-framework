@@ -66,6 +66,9 @@ type executeForkFlags struct {
 	chainSelector uint64
 	testSigner    bool
 	randomSalt    bool
+	simulateState bool
+	simulationOut string
+	forkTimeout   time.Duration
 }
 
 // newExecuteForkCmd creates the "execute-fork" subcommand.
@@ -83,6 +86,9 @@ func newExecuteForkCmd(mcmsCfg Config) *cobra.Command {
 				chainSelector: flags.MustUint64(cmd.Flags().GetUint64("selector")),
 				testSigner:    flags.MustBool(cmd.Flags().GetBool("test-signer")),
 				randomSalt:    flags.MustBool(cmd.Flags().GetBool("random-salt")),
+				simulateState: flags.MustBool(cmd.Flags().GetBool("simulate-state")),
+				simulationOut: flags.MustString(cmd.Flags().GetString("simulation-out")),
+				forkTimeout:   flags.MustDuration(cmd.Flags().GetDuration("fork-timeout")),
 			}
 
 			return runExecuteFork(cmd, mcmsCfg, f)
@@ -99,14 +105,45 @@ func newExecuteForkCmd(mcmsCfg Config) *cobra.Command {
 	cmd.Flags().Bool("test-signer", false, "Use a test signer key")
 	cmd.Flags().Bool("random-salt", false, "Override the proposal's salt with a random value. "+
 		"Useful to run fork tests with proposals already executed onchain.")
+	cmd.Flags().Bool("simulate-state", false, "Simulate the proposal's state effects: take scoped state views "+
+		"of the fork before and after execution, diff them, and write a .statediff.json artifact. "+
+		"Requires the CLI's mcms config to wire a SimulationViewProvider.")
+	cmd.Flags().String("simulation-out", "", "Path for the simulation artifact (required with --simulate-state)")
+	cmd.Flags().Duration("fork-timeout", 300*time.Second, "Timeout for the fork execution after the environment loads, "+
+		"including setRoot, execute, timelock and, when simulating, both state views")
 
 	return cmd
 }
 
 // runExecuteFork executes the execute-fork command logic.
-func runExecuteFork(cmd *cobra.Command, mcmsCfg Config, f executeForkFlags) error {
+func runExecuteFork(cmd *cobra.Command, mcmsCfg Config, f executeForkFlags) (err error) {
 	ctx := cmd.Context()
 	deps := mcmsCfg.deps()
+
+	if f.simulateState && f.simulationOut == "" {
+		return errors.New("--simulation-out is required with --simulate-state")
+	}
+	var prepared *simulationRun
+	if f.simulateState {
+		var authored mcms.ProposalInterface
+		prepared, authored, err = prepareSimulationRun(ctx, mcmsCfg.Logger, *deps, f)
+		if err != nil {
+			return fmt.Errorf("preparing simulation: %w", err)
+		}
+		// Load once before random-salt mutation; never hash one file read and
+		// execute a different read after the proposal changes on disk.
+		deps.ProposalLoader = func(_ types.ProposalKind, _ string) (mcms.ProposalInterface, error) {
+			return authored, nil
+		}
+		defer func() {
+			if !prepared.emitted {
+				prepared.earlyExitReason(err)
+				if emitErr := prepared.emit(); emitErr != nil {
+					err = errors.Join(err, fmt.Errorf("emitting simulation artifact: %w", emitErr))
+				}
+			}
+		}()
+	}
 
 	// --- Load all data first ---
 
@@ -136,16 +173,20 @@ func runExecuteFork(cmd *cobra.Command, mcmsCfg Config, f executeForkFlags) erro
 
 	// Create the fork execution config
 	forkCfg := &forkConfig{
-		kind:             proposalCfg.Kind,
-		proposal:         proposalCfg.Proposal,
-		timelockProposal: proposalCfg.TimelockProposal,
-		chainSelector:    f.chainSelector,
-		blockchains:      proposalCfg.Env.BlockChains,
-		envStr:           f.environment,
-		env:              proposalCfg.Env,
-		forkedEnv:        proposalCfg.ForkedEnv,
-		fork:             true,
-		proposalCtx:      proposalCfg.ProposalCtx,
+		kind:               proposalCfg.Kind,
+		proposal:           proposalCfg.Proposal,
+		timelockProposal:   proposalCfg.TimelockProposal,
+		chainSelector:      f.chainSelector,
+		blockchains:        proposalCfg.Env.BlockChains,
+		envStr:             f.environment,
+		env:                proposalCfg.Env,
+		forkedEnv:          proposalCfg.ForkedEnv,
+		fork:               true,
+		proposalCtx:        proposalCfg.ProposalCtx,
+		simulateState:      f.simulateState,
+		simulationOut:      f.simulationOut,
+		forkTimeout:        f.forkTimeout,
+		preparedSimulation: prepared,
 	}
 
 	// Execute the fork
@@ -158,15 +199,41 @@ func runExecuteFork(cmd *cobra.Command, mcmsCfg Config, f executeForkFlags) erro
 // This is the main entry point for fork execution.
 func executeFork(
 	ctx context.Context, mcmsCfg Config, cfg *forkConfig, testSigner bool,
-) error {
+) (err error) {
 	lggr := mcmsCfg.Logger
 
-	family, err := chainsel.GetSelectorFamily(cfg.chainSelector)
-	if err != nil {
-		return fmt.Errorf("failed to get selector family: %w", err)
+	// State-view simulation (--simulate-state): resolve the scope up front
+	// and emit whatever the run observes on every exit path. Nil run keeps
+	// the legacy behavior byte-identical.
+	var sim *simulationRun
+	if cfg.simulateState {
+		sim, err = newSimulationRun(ctx, lggr, mcmsCfg, cfg)
+		if err != nil {
+			return fmt.Errorf("setting up simulation: %w", err)
+		}
+		defer func() {
+			sim.earlyExitReason(err)
+			if eerr := sim.emit(); eerr != nil {
+				lggr.Warnw("failed to emit simulation artifact", "err", eerr)
+				err = errors.Join(err, fmt.Errorf("emitting simulation artifact: %w", eerr))
+			}
+		}()
+	}
+
+	if cfg.forkTimeout <= 0 {
+		cfg.forkTimeout = 300 * time.Second
+	}
+
+	family, ferr := chainsel.GetSelectorFamily(cfg.chainSelector)
+	if ferr != nil {
+		return fmt.Errorf("failed to get selector family: %w", ferr)
 	}
 	if family != chainsel.FamilyEVM {
+		if sim != nil {
+			sim.notSimulated(fmt.Sprintf("chain family %s is not EVM; fork simulation supports EVM only", family))
+		}
 		lggr.Infof("Skipping fork execution: chain selector %d is not EVM. Family is %s", cfg.chainSelector, family)
+
 		return nil
 	}
 
@@ -183,11 +250,30 @@ func executeFork(
 	mcmAddress := cfg.proposal.ChainMetadata[types.ChainSelector(cfg.chainSelector)].MCMAddress
 	timelockAddress := common.HexToAddress(cfg.timelockProposal.TimelockAddresses[types.ChainSelector(cfg.chainSelector)])
 
-	ctx, cancel := context.WithTimeout(ctx, 300*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, cfg.forkTimeout)
 	defer cancel()
 
+	// Capture actual fork provenance and pristine target state before the
+	// temporary test signer changes the executing MCMS configuration.
+	if sim != nil {
+		if berr := sim.recordForkBaseline(ctx, url); berr != nil {
+			return fmt.Errorf("capturing fork baseline: %w", berr)
+		}
+		sim.preView(ctx, url)
+	}
+
+	var restoreSignerConfig func(context.Context) error
 	if testSigner {
-		if lerr := layout.SetMCMSigner(
+		setSigner := layout.SetMCMSigner
+		if sim != nil {
+			setSigner = func(ctx context.Context, lggr logger.Logger, layoutData, privateKey, owner, signer, rpcURL, chainID, mcmAddress string) error {
+				var installErr error
+				restoreSignerConfig, installErr = layout.SetTemporaryMCMSigner(ctx, lggr, layoutData, privateKey, owner, signer, rpcURL, chainID, mcmAddress)
+
+				return installErr
+			}
+		}
+		if lerr := setSigner(
 			ctx,
 			lggr,
 			layout.MCMSLayout,
@@ -225,6 +311,15 @@ func executeFork(
 	}
 	lggr.Info("MCM.setRoot() - success")
 
+	// The root is authenticated. Restore the original security configuration
+	// before any proposal operation, including an authored setConfig that
+	// happens to request exactly the temporary signer's configuration.
+	if restoreSignerConfig != nil {
+		if rerr := restoreSignerConfig(ctx); rerr != nil {
+			return fmt.Errorf("restoring original MCMS config before execution: %w", rerr)
+		}
+	}
+
 	err = executeChainCommand(ctx, lggr, cfg, true)
 	if err != nil {
 		return fmt.Errorf("MCM.execute() - failure: %w", addDecodedRevertReason(lggr, err, cfg.proposalCtx))
@@ -241,6 +336,13 @@ func executeFork(
 
 	if cfg.timelockProposal.Action != types.TimelockActionSchedule {
 		lggr.Infof("Proposal has type %s, skipping executing timelock chain command", cfg.timelockProposal.Action)
+
+		// The fork still ran setRoot and execute: diff the executed state,
+		// noting that the timelock stage never ran.
+		if sim != nil {
+			sim.note("timelock stage skipped: proposal action is not schedule")
+			sim.postViewAndDiff(ctx, url)
+		}
 
 		return nil
 	}
@@ -266,6 +368,11 @@ func executeFork(
 	}
 
 	lggr.Info("Timelock.execute() - success")
+
+	// Post-view + diff after the full setRoot/execute/timelock sequence.
+	if sim != nil {
+		sim.postViewAndDiff(ctx, url)
+	}
 
 	return nil
 }
