@@ -46,7 +46,7 @@ require (
 	github.com/smartcontractkit/chainlink-stellar/bindings v0.0.0-20260921193419-5f9a9d3b335a
 	github.com/smartcontractkit/chainlink-testing-framework/framework v0.16.8
 	github.com/smartcontractkit/chainlink-testing-framework/seth v1.51.5
-	github.com/smartcontractkit/chainlink-ton v1.0.5-0.20260921212252-7b779bf39648
+	github.com/smartcontractkit/chainlink-ton v1.0.5-0.20260922223831-267f1979d206
 	github.com/smartcontractkit/chainlink-tron/relayer v0.0.11-0.20251014143056-a0c6328c91e9
 	github.com/smartcontractkit/freeport v0.1.3-0.20250828155247-add56fa28aad
 	github.com/smartcontractkit/go-daml v0.0.0-20260702101944-3a593d4e8e19
@@ -135,7 +135,7 @@ require (
 	github.com/smartcontractkit/chainlink-protos/linking-service/go v0.0.0-20260512230622-65f10f4cd305 // indirect
 	github.com/smartcontractkit/chainlink-protos/metering/go v0.0.0-20260710151514-27b5a126dabe // indirect
 	github.com/smartcontractkit/chainlink-protos/node-platform v0.0.0-20260709145319-7782fb89eb16 // indirect
-	github.com/smartcontractkit/chainlink-ton/cciplib v0.1.1-0.20260921212252-7b779bf39648 // indirect
+	github.com/smartcontractkit/chainlink-ton/cciplib v0.1.1-0.20260922223831-267f1979d206 // indirect
 	github.com/stellar/go-xdr v0.0.0-20260806060815-dc590f17552a // indirect
 	github.com/wlynxg/anet v0.0.5 // indirect
 	go.opentelemetry.io/contrib/bridges/prometheus v0.68.0 // indirect
