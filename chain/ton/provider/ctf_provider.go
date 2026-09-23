@@ -197,7 +197,7 @@ func (p *CTFChainProvider) startContainer(ctx context.Context, chainID string) (
 		return "", "", nil, fmt.Errorf("failed to create liteclient connection pool: %w", err)
 	}
 
-	client := ton.NewAPIClient(connectionPool, ton.ProofCheckPolicyFast).WithRetry(defaultClientRetryCount)
+	client := ton.NewAPIClient(connectionPool, ton.ProofCheckPolicyFast).WithRetryTimeout(defaultClientRetryCount, 0)
 
 	// check connection, CTFv2 handles the readiness
 	mb, err := getMasterchainBlockID(ctx, client)
@@ -214,7 +214,7 @@ func (p *CTFChainProvider) startContainer(ctx context.Context, chainID string) (
 // Note: this utility functions can be replaced once we have in the chainlink-ton utils package
 func createTonWallet(client ton.APIClientWrapped, versionConfig wallet.VersionConfig, option wallet.Option) (*wallet.Wallet, error) {
 	seed := wallet.NewSeed()
-	rw, err := wallet.FromSeed(client, seed, versionConfig)
+	rw, err := wallet.FromSeedWithOptions(client, seed, versionConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create wallet from seed: %w", err)
 	}

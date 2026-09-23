@@ -116,7 +116,7 @@ func setupConnection(ctx context.Context, liteserverURL string) (tonlib.APIClien
 		return nil, fmt.Errorf("failed to connect to liteserver: %w", err)
 	}
 
-	api := tonlib.NewAPIClient(connectionPool, tonlib.ProofCheckPolicyFast).WithRetry(defaultClientRetryCount)
+	api := tonlib.NewAPIClient(connectionPool, tonlib.ProofCheckPolicyFast).WithRetryTimeout(defaultClientRetryCount, 0)
 
 	// Test connection and get current block
 	mb, err := api.GetMasterchainInfo(ctx)

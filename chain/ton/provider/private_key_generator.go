@@ -54,7 +54,7 @@ type privateKeyRandom struct{}
 
 func (g *privateKeyRandom) Generate() (ed25519.PrivateKey, error) {
 	seed := wallet.NewSeed()
-	privateKey, err := wallet.SeedToPrivateKey(seed /*password=*/, "" /*isBIP39=*/, false)
+	privateKey, err := wallet.SeedToPrivateKeyWithOptions(seed)
 
 	if err != nil {
 		return ed25519.PrivateKey{}, fmt.Errorf("failed to generate random private key: %w", err)
