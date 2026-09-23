@@ -34,6 +34,7 @@ const (
 	// supportedTONImageRepository is the only supported Docker image repository for TON localnet.
 	supportedTONImageRepository = "ghcr.io/neodix42/mylocalton-docker"
 	defaultClientRetryCount     = 5
+	defaultClientRetryTimeout   = 500
 )
 
 // CTFChainProviderConfig holds the configuration to initialize the CTFChainProvider.
@@ -197,7 +198,7 @@ func (p *CTFChainProvider) startContainer(ctx context.Context, chainID string) (
 		return "", "", nil, fmt.Errorf("failed to create liteclient connection pool: %w", err)
 	}
 
-	client := ton.NewAPIClient(connectionPool, ton.ProofCheckPolicyFast).WithRetryTimeout(defaultClientRetryCount, 0)
+	client := ton.NewAPIClient(connectionPool, ton.ProofCheckPolicyFast).WithRetryTimeout(defaultClientRetryCount, defaultClientRetryTimeout*time.Millisecond)
 
 	// check connection, CTFv2 handles the readiness
 	mb, err := getMasterchainBlockID(ctx, client)

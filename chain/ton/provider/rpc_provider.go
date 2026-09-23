@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/xssnick/tonutils-go/liteclient"
 	tonlib "github.com/xssnick/tonutils-go/ton"
@@ -116,7 +117,7 @@ func setupConnection(ctx context.Context, liteserverURL string) (tonlib.APIClien
 		return nil, fmt.Errorf("failed to connect to liteserver: %w", err)
 	}
 
-	api := tonlib.NewAPIClient(connectionPool, tonlib.ProofCheckPolicyFast).WithRetryTimeout(defaultClientRetryCount, 0)
+	api := tonlib.NewAPIClient(connectionPool, tonlib.ProofCheckPolicyFast).WithRetryTimeout(defaultClientRetryCount, defaultClientRetryTimeout*time.Millisecond)
 
 	// Test connection and get current block
 	mb, err := api.GetMasterchainInfo(ctx)
