@@ -162,13 +162,15 @@ func (_c *MockAPIClientWrapped_CurrentMasterchainInfo_Call) RunAndReturn(run fun
 
 // FindLastTransactionByInMsgHash provides a mock function for the type MockAPIClientWrapped
 func (_mock *MockAPIClientWrapped) FindLastTransactionByInMsgHash(ctx context.Context, addr *address.Address, msgHash []byte, maxTxNumToScan ...int) (*tlb.Transaction, error) {
-	var tmpRet mock.Arguments
-	if len(maxTxNumToScan) > 0 {
-		tmpRet = _mock.Called(ctx, addr, msgHash, maxTxNumToScan)
-	} else {
-		tmpRet = _mock.Called(ctx, addr, msgHash)
+	// int
+	_va := make([]any, len(maxTxNumToScan))
+	for _i := range maxTxNumToScan {
+		_va[_i] = maxTxNumToScan[_i]
 	}
-	ret := tmpRet
+	var _ca []any
+	_ca = append(_ca, ctx, addr, msgHash)
+	_ca = append(_ca, _va...)
+	ret := _mock.Called(_ca...)
 
 	if len(ret) == 0 {
 		panic("no return value specified for FindLastTransactionByInMsgHash")
@@ -224,9 +226,11 @@ func (_c *MockAPIClientWrapped_FindLastTransactionByInMsgHash_Call) Run(run func
 			arg2 = args[2].([]byte)
 		}
 		var arg3 []int
-		var variadicArgs []int
-		if len(args) > 3 {
-			variadicArgs = args[3].([]int)
+		variadicArgs := make([]int, len(args)-3)
+		for i, a := range args[3:] {
+			if a != nil {
+				variadicArgs[i] = a.(int)
+			}
 		}
 		arg3 = variadicArgs
 		run(
@@ -331,13 +335,15 @@ func (_c *MockAPIClientWrapped_FindLastTransactionByInMsgHashAfterTime_Call) Run
 
 // FindLastTransactionByOutMsgHash provides a mock function for the type MockAPIClientWrapped
 func (_mock *MockAPIClientWrapped) FindLastTransactionByOutMsgHash(ctx context.Context, addr *address.Address, msgHash []byte, maxTxNumToScan ...int) (*tlb.Transaction, error) {
-	var tmpRet mock.Arguments
-	if len(maxTxNumToScan) > 0 {
-		tmpRet = _mock.Called(ctx, addr, msgHash, maxTxNumToScan)
-	} else {
-		tmpRet = _mock.Called(ctx, addr, msgHash)
+	// int
+	_va := make([]any, len(maxTxNumToScan))
+	for _i := range maxTxNumToScan {
+		_va[_i] = maxTxNumToScan[_i]
 	}
-	ret := tmpRet
+	var _ca []any
+	_ca = append(_ca, ctx, addr, msgHash)
+	_ca = append(_ca, _va...)
+	ret := _mock.Called(_ca...)
 
 	if len(ret) == 0 {
 		panic("no return value specified for FindLastTransactionByOutMsgHash")
@@ -393,9 +399,11 @@ func (_c *MockAPIClientWrapped_FindLastTransactionByOutMsgHash_Call) Run(run fun
 			arg2 = args[2].([]byte)
 		}
 		var arg3 []int
-		var variadicArgs []int
-		if len(args) > 3 {
-			variadicArgs = args[3].([]int)
+		variadicArgs := make([]int, len(args)-3)
+		for i, a := range args[3:] {
+			if a != nil {
+				variadicArgs[i] = a.(int)
+			}
 		}
 		arg3 = variadicArgs
 		run(
@@ -1112,13 +1120,15 @@ func (_c *MockAPIClientWrapped_GetBlockShardsInfo_Call) RunAndReturn(run func(ct
 
 // GetBlockTransactionsV2 provides a mock function for the type MockAPIClientWrapped
 func (_mock *MockAPIClientWrapped) GetBlockTransactionsV2(ctx context.Context, block *ton.BlockIDExt, count uint32, after ...*ton.TransactionID3) ([]ton.TransactionShortInfo, bool, error) {
-	var tmpRet mock.Arguments
-	if len(after) > 0 {
-		tmpRet = _mock.Called(ctx, block, count, after)
-	} else {
-		tmpRet = _mock.Called(ctx, block, count)
+	// *ton.TransactionID3
+	_va := make([]any, len(after))
+	for _i := range after {
+		_va[_i] = after[_i]
 	}
-	ret := tmpRet
+	var _ca []any
+	_ca = append(_ca, ctx, block, count)
+	_ca = append(_ca, _va...)
+	ret := _mock.Called(_ca...)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetBlockTransactionsV2")
@@ -1180,9 +1190,11 @@ func (_c *MockAPIClientWrapped_GetBlockTransactionsV2_Call) Run(run func(ctx con
 			arg2 = args[2].(uint32)
 		}
 		var arg3 []*ton.TransactionID3
-		var variadicArgs []*ton.TransactionID3
-		if len(args) > 3 {
-			variadicArgs = args[3].([]*ton.TransactionID3)
+		variadicArgs := make([]*ton.TransactionID3, len(args)-3)
+		for i, a := range args[3:] {
+			if a != nil {
+				variadicArgs[i] = a.(*ton.TransactionID3)
+			}
 		}
 		arg3 = variadicArgs
 		run(
@@ -1207,13 +1219,15 @@ func (_c *MockAPIClientWrapped_GetBlockTransactionsV2_Call) RunAndReturn(run fun
 
 // GetBlockchainConfig provides a mock function for the type MockAPIClientWrapped
 func (_mock *MockAPIClientWrapped) GetBlockchainConfig(ctx context.Context, block *ton.BlockIDExt, onlyParams ...int32) (*tlb.BlockchainConfig, error) {
-	var tmpRet mock.Arguments
-	if len(onlyParams) > 0 {
-		tmpRet = _mock.Called(ctx, block, onlyParams)
-	} else {
-		tmpRet = _mock.Called(ctx, block)
+	// int32
+	_va := make([]any, len(onlyParams))
+	for _i := range onlyParams {
+		_va[_i] = onlyParams[_i]
 	}
-	ret := tmpRet
+	var _ca []any
+	_ca = append(_ca, ctx, block)
+	_ca = append(_ca, _va...)
+	ret := _mock.Called(_ca...)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetBlockchainConfig")
@@ -1264,9 +1278,11 @@ func (_c *MockAPIClientWrapped_GetBlockchainConfig_Call) Run(run func(ctx contex
 			arg1 = args[1].(*ton.BlockIDExt)
 		}
 		var arg2 []int32
-		var variadicArgs []int32
-		if len(args) > 2 {
-			variadicArgs = args[2].([]int32)
+		variadicArgs := make([]int32, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(int32)
+			}
 		}
 		arg2 = variadicArgs
 		run(
@@ -1370,13 +1386,15 @@ func (_c *MockAPIClientWrapped_GetDispatchQueueInfo_Call) RunAndReturn(run func(
 
 // GetDispatchQueueMessages provides a mock function for the type MockAPIClientWrapped
 func (_mock *MockAPIClientWrapped) GetDispatchQueueMessages(ctx context.Context, block *ton.BlockIDExt, addr *address.Address, afterLT uint64, maxMessages int, options ...func(*ton.GetDispatchQueueMessages)) (*ton.DispatchQueueMessages, error) {
-	var tmpRet mock.Arguments
-	if len(options) > 0 {
-		tmpRet = _mock.Called(ctx, block, addr, afterLT, maxMessages, options)
-	} else {
-		tmpRet = _mock.Called(ctx, block, addr, afterLT, maxMessages)
+	// func(*ton.GetDispatchQueueMessages)
+	_va := make([]any, len(options))
+	for _i := range options {
+		_va[_i] = options[_i]
 	}
-	ret := tmpRet
+	var _ca []any
+	_ca = append(_ca, ctx, block, addr, afterLT, maxMessages)
+	_ca = append(_ca, _va...)
+	ret := _mock.Called(_ca...)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetDispatchQueueMessages")
@@ -1442,9 +1460,11 @@ func (_c *MockAPIClientWrapped_GetDispatchQueueMessages_Call) Run(run func(ctx c
 			arg4 = args[4].(int)
 		}
 		var arg5 []func(*ton.GetDispatchQueueMessages)
-		var variadicArgs []func(*ton.GetDispatchQueueMessages)
-		if len(args) > 5 {
-			variadicArgs = args[5].([]func(*ton.GetDispatchQueueMessages))
+		variadicArgs := make([]func(*ton.GetDispatchQueueMessages), len(args)-5)
+		for i, a := range args[5:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*ton.GetDispatchQueueMessages))
+			}
 		}
 		arg5 = variadicArgs
 		run(
@@ -1471,13 +1491,15 @@ func (_c *MockAPIClientWrapped_GetDispatchQueueMessages_Call) RunAndReturn(run f
 
 // GetLibraries provides a mock function for the type MockAPIClientWrapped
 func (_mock *MockAPIClientWrapped) GetLibraries(ctx context.Context, list ...[]byte) ([]*cell.Cell, error) {
-	var tmpRet mock.Arguments
-	if len(list) > 0 {
-		tmpRet = _mock.Called(ctx, list)
-	} else {
-		tmpRet = _mock.Called(ctx)
+	// []byte
+	_va := make([]any, len(list))
+	for _i := range list {
+		_va[_i] = list[_i]
 	}
-	ret := tmpRet
+	var _ca []any
+	_ca = append(_ca, ctx)
+	_ca = append(_ca, _va...)
+	ret := _mock.Called(_ca...)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetLibraries")
@@ -1523,9 +1545,11 @@ func (_c *MockAPIClientWrapped_GetLibraries_Call) Run(run func(ctx context.Conte
 			arg0 = args[0].(context.Context)
 		}
 		var arg1 [][]byte
-		var variadicArgs [][]byte
-		if len(args) > 1 {
-			variadicArgs = args[1].([][]byte)
+		variadicArgs := make([][]byte, len(args)-1)
+		for i, a := range args[1:] {
+			if a != nil {
+				variadicArgs[i] = a.([]byte)
+			}
 		}
 		arg1 = variadicArgs
 		run(
@@ -2206,13 +2230,10 @@ func (_c *MockAPIClientWrapped_LookupBlock_Call) RunAndReturn(run func(ctx conte
 
 // RunGetMethod provides a mock function for the type MockAPIClientWrapped
 func (_mock *MockAPIClientWrapped) RunGetMethod(ctx context.Context, blockInfo *ton.BlockIDExt, addr *address.Address, method string, params ...interface{}) (*ton.ExecutionResult, error) {
-	var tmpRet mock.Arguments
-	if len(params) > 0 {
-		tmpRet = _mock.Called(ctx, blockInfo, addr, method, params)
-	} else {
-		tmpRet = _mock.Called(ctx, blockInfo, addr, method)
-	}
-	ret := tmpRet
+	var _ca []any
+	_ca = append(_ca, ctx, blockInfo, addr, method)
+	_ca = append(_ca, params...)
+	ret := _mock.Called(_ca...)
 
 	if len(ret) == 0 {
 		panic("no return value specified for RunGetMethod")
@@ -2273,9 +2294,11 @@ func (_c *MockAPIClientWrapped_RunGetMethod_Call) Run(run func(ctx context.Conte
 			arg3 = args[3].(string)
 		}
 		var arg4 []interface{}
-		var variadicArgs []interface{}
-		if len(args) > 4 {
-			variadicArgs = args[4].([]interface{})
+		variadicArgs := make([]interface{}, len(args)-4)
+		for i, a := range args[4:] {
+			if a != nil {
+				variadicArgs[i] = a.(interface{})
+			}
 		}
 		arg4 = variadicArgs
 		run(
@@ -2301,13 +2324,10 @@ func (_c *MockAPIClientWrapped_RunGetMethod_Call) RunAndReturn(run func(ctx cont
 
 // RunGetMethodByID provides a mock function for the type MockAPIClientWrapped
 func (_mock *MockAPIClientWrapped) RunGetMethodByID(ctx context.Context, blockInfo *ton.BlockIDExt, addr *address.Address, methodID uint64, params ...interface{}) (*ton.ExecutionResult, error) {
-	var tmpRet mock.Arguments
-	if len(params) > 0 {
-		tmpRet = _mock.Called(ctx, blockInfo, addr, methodID, params)
-	} else {
-		tmpRet = _mock.Called(ctx, blockInfo, addr, methodID)
-	}
-	ret := tmpRet
+	var _ca []any
+	_ca = append(_ca, ctx, blockInfo, addr, methodID)
+	_ca = append(_ca, params...)
+	ret := _mock.Called(_ca...)
 
 	if len(ret) == 0 {
 		panic("no return value specified for RunGetMethodByID")
@@ -2368,9 +2388,11 @@ func (_c *MockAPIClientWrapped_RunGetMethodByID_Call) Run(run func(ctx context.C
 			arg3 = args[3].(uint64)
 		}
 		var arg4 []interface{}
-		var variadicArgs []interface{}
-		if len(args) > 4 {
-			variadicArgs = args[4].([]interface{})
+		variadicArgs := make([]interface{}, len(args)-4)
+		for i, a := range args[4:] {
+			if a != nil {
+				variadicArgs[i] = a.(interface{})
+			}
 		}
 		arg4 = variadicArgs
 		run(
@@ -2837,13 +2859,14 @@ func (_c *MockAPIClientWrapped_WithLSInfoInErrors_Call) RunAndReturn(run func() 
 
 // WithRetry provides a mock function for the type MockAPIClientWrapped
 func (_mock *MockAPIClientWrapped) WithRetry(maxRetries ...int) ton.APIClientWrapped {
-	var tmpRet mock.Arguments
-	if len(maxRetries) > 0 {
-		tmpRet = _mock.Called(maxRetries)
-	} else {
-		tmpRet = _mock.Called()
+	// int
+	_va := make([]any, len(maxRetries))
+	for _i := range maxRetries {
+		_va[_i] = maxRetries[_i]
 	}
-	ret := tmpRet
+	var _ca []any
+	_ca = append(_ca, _va...)
+	ret := _mock.Called(_ca...)
 
 	if len(ret) == 0 {
 		panic("no return value specified for WithRetry")
@@ -2875,9 +2898,11 @@ func (_e *MockAPIClientWrapped_Expecter) WithRetry(maxRetries ...any) *MockAPICl
 func (_c *MockAPIClientWrapped_WithRetry_Call) Run(run func(maxRetries ...int)) *MockAPIClientWrapped_WithRetry_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 []int
-		var variadicArgs []int
-		if len(args) > 0 {
-			variadicArgs = args[0].([]int)
+		variadicArgs := make([]int, len(args)-0)
+		for i, a := range args[0:] {
+			if a != nil {
+				variadicArgs[i] = a.(int)
+			}
 		}
 		arg0 = variadicArgs
 		run(
