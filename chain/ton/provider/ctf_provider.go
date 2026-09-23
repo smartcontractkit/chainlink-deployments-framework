@@ -17,9 +17,10 @@ import (
 	"github.com/xssnick/tonutils-go/ton/wallet"
 
 	chainsel "github.com/smartcontractkit/chain-selectors"
+	"github.com/smartcontractkit/freeport"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
-	"github.com/smartcontractkit/freeport"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	cldf_ton "github.com/smartcontractkit/chainlink-deployments-framework/chain/ton"
@@ -33,6 +34,7 @@ const (
 	// supportedTONImageRepository is the only supported Docker image repository for TON localnet.
 	supportedTONImageRepository = "ghcr.io/neodix42/mylocalton-docker"
 	defaultClientRetryCount     = 5
+	defaultClientRetryTimeout   = 500
 )
 
 // CTFChainProviderConfig holds the configuration to initialize the CTFChainProvider.
@@ -196,7 +198,7 @@ func (p *CTFChainProvider) startContainer(ctx context.Context, chainID string) (
 		return "", "", nil, fmt.Errorf("failed to create liteclient connection pool: %w", err)
 	}
 
-	client := ton.NewAPIClient(connectionPool, ton.ProofCheckPolicyFast).WithRetry(defaultClientRetryCount)
+	client := ton.NewAPIClient(connectionPool, ton.ProofCheckPolicyFast).WithRetryTimeout(defaultClientRetryCount, defaultClientRetryTimeout*time.Millisecond)
 
 	// check connection, CTFv2 handles the readiness
 	mb, err := getMasterchainBlockID(ctx, client)
@@ -213,11 +215,11 @@ func (p *CTFChainProvider) startContainer(ctx context.Context, chainID string) (
 // Note: this utility functions can be replaced once we have in the chainlink-ton utils package
 func createTonWallet(client ton.APIClientWrapped, versionConfig wallet.VersionConfig, option wallet.Option) (*wallet.Wallet, error) {
 	seed := wallet.NewSeed()
-	rw, err := wallet.FromSeed(client, seed, versionConfig)
+	rw, err := wallet.FromSeedWithOptions(client, seed, versionConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create wallet from seed: %w", err)
 	}
-	pw, perr := wallet.FromPrivateKeyWithOptions(client, rw.PrivateKey(), versionConfig, option)
+	pw, perr := wallet.FromPrivateKeyWithOptions(rw.PrivateKey(), versionConfig, wallet.WithAPI(client), option)
 	if perr != nil {
 		return nil, fmt.Errorf("failed to create wallet from private key: %w", perr)
 	}

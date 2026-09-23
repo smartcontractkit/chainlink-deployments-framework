@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/xssnick/tonutils-go/liteclient"
 	tonlib "github.com/xssnick/tonutils-go/ton"
@@ -116,7 +117,7 @@ func setupConnection(ctx context.Context, liteserverURL string) (tonlib.APIClien
 		return nil, fmt.Errorf("failed to connect to liteserver: %w", err)
 	}
 
-	api := tonlib.NewAPIClient(connectionPool, tonlib.ProofCheckPolicyFast).WithRetry(defaultClientRetryCount)
+	api := tonlib.NewAPIClient(connectionPool, tonlib.ProofCheckPolicyFast).WithRetryTimeout(defaultClientRetryCount, defaultClientRetryTimeout*time.Millisecond)
 
 	// Test connection and get current block
 	mb, err := api.GetMasterchainInfo(ctx)
@@ -139,7 +140,7 @@ func createWallet(
 		return nil, nil, fmt.Errorf("unsupported wallet version: %w", err)
 	}
 
-	tonWallet, err := wallet.FromPrivateKeyWithOptions(api, privateKey, walletConfig, wallet.WithWorkchain(0))
+	tonWallet, err := wallet.FromPrivateKeyWithOptions(privateKey, walletConfig, wallet.WithAPI(api), wallet.WithWorkchain(0))
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to init TON wallet: %w", err)
 	}
