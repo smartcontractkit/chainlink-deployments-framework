@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/xssnick/tonutils-go/ton/wallet"
 )
 
 func Test_PrivateKeyFromRaw(t *testing.T) {
@@ -101,4 +102,26 @@ func Test_PrivateKeyRandom(t *testing.T) {
 			assert.True(t, ed25519.Verify(pub, msg, sig), "signature should verify")
 		})
 	}
+}
+
+// Test_PrivateKeyRandom_DerivationScheme pins the seed-derivation scheme used by
+// privateKeyRandom: no password and no BIP39 (the pre-Options SeedToPrivateKey
+// semantics). If a future tonutils-go version changes its functional-option
+// defaults, this golden-value test fails instead of silently changing how
+// private keys are derived.
+func Test_PrivateKeyRandom_DerivationScheme(t *testing.T) {
+	t.Parallel()
+
+	// Golden vector generated with tonutils-go v1.18.0:
+	// SeedToPrivateKeyWithOptions(seed, WithPassword(""), WithBIP39(false)).
+	giveSeed := []string{
+		"stay", "again", "retire", "employ", "party", "ripple", "reject", "shuffle",
+		"similar", "clock", "wash", "all", "great", "height", "giggle", "offer",
+		"age", "empower", "boss", "private", "island", "promote", "voyage", "layer",
+	}
+	wantKey := "6a1503c8cfa2039f38bbfe41be7f7b538d696e36e3f8421fe1c6f63a7d65a7912be188a0441c8176769031ddb8027c00f57f169b014e9818716079c47c5330ad"
+
+	got, err := wallet.SeedToPrivateKeyWithOptions(giveSeed, wallet.WithPassword(""), wallet.WithBIP39(false))
+	require.NoError(t, err)
+	assert.Equal(t, wantKey, hex.EncodeToString(got))
 }
