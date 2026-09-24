@@ -1,6 +1,7 @@
 package renderer
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -16,6 +17,20 @@ func TestCloneTimelockProposal_nil(t *testing.T) {
 	cloned, err := CloneTimelockProposal(nil)
 	require.NoError(t, err)
 	require.Nil(t, cloned)
+}
+
+func TestCloneTimelockProposal_expired(t *testing.T) {
+	t.Parallel()
+	original := testTimelockProposalForClone("historical proposal")
+	original.ValidUntil = 1
+	cloned, err := CloneTimelockProposal(original)
+	require.NoError(t, err)
+	originalJSON, err := json.Marshal(original)
+	require.NoError(t, err)
+	clonedJSON, err := json.Marshal(cloned)
+	require.NoError(t, err)
+	require.JSONEq(t, string(originalJSON), string(clonedJSON))
+	require.NotSame(t, original, cloned)
 }
 
 func TestCloneTimelockProposal_isolatesMutation(t *testing.T) {
