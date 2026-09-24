@@ -34,7 +34,10 @@ const (
 	// supportedTONImageRepository is the only supported Docker image repository for TON localnet.
 	supportedTONImageRepository = "ghcr.io/neodix42/mylocalton-docker"
 	defaultClientRetryCount     = 5
-	defaultClientRetryTimeout   = 500
+	// defaultClientRetryTimeout is 0: no per-attempt timeout, matching the
+	// pre-v1.18 tonutils-go WithRetry(n) behavior (WithRetryTimeout(n, 0)
+	// is the exact equivalent — see tonutils-go retrier.go).
+	defaultClientRetryTimeout = 0
 )
 
 // CTFChainProviderConfig holds the configuration to initialize the CTFChainProvider.
