@@ -49,6 +49,20 @@ func (c *Config) Validate() error {
 	return nil
 }
 
+// ValidateStructure ensures every network has the fields required regardless of whether RPCs
+// have been filled in yet. Call this before filtering networks (e.g. by environment type) so a
+// network with a missing/mistyped type or chain_selector is caught instead of silently dropped
+// by the filter.
+func (c *Config) ValidateStructure() error {
+	for _, network := range c.Networks() {
+		if err := network.ValidateStructure(); err != nil {
+			return fmt.Errorf("network %d: %w", network.ChainSelector, err)
+		}
+	}
+
+	return nil
+}
+
 // Networks returns a slice of all networks in the config.
 func (c *Config) Networks() []Network {
 	return slices.Collect(maps.Values(c.networks))
@@ -222,8 +236,10 @@ func Load(filePaths []string, opts ...LoadOption) (*Config, error) {
 		cfg.transformWSURLs(loadCfg.WSURLTransformer)
 	}
 
-	if err := cfg.Validate(); err != nil {
-		return nil, fmt.Errorf("failed to validate networks configuration: %w", err)
+	if !loadCfg.skipValidation {
+		if err := cfg.Validate(); err != nil {
+			return nil, fmt.Errorf("failed to validate networks configuration: %w", err)
+		}
 	}
 
 	return cfg, nil
@@ -236,10 +252,18 @@ type LoadOption func(*loadConfig)
 type loadConfig struct {
 	HTTPURLTransformer URLTransformer
 	WSURLTransformer   URLTransformer
+	skipValidation     bool
 }
 
 // URLTransformer is a function that transforms a URL.
 type URLTransformer func(string) string
+
+// WithSkipValidation defers Validate until after callers merge additional network data.
+func WithSkipValidation() LoadOption {
+	return func(opts *loadConfig) {
+		opts.skipValidation = true
+	}
+}
 
 // WithHTTPURLTransformer transforms the HTTP URLs of the networks RPCs after loading.
 func WithHTTPURLTransformer(t URLTransformer) LoadOption {
