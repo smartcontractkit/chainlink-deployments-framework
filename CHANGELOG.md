@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.124.0
+
+### Minor Changes
+
+- [#1189](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1189) [`a66eed6`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/a66eed6df45cf17174c881458c7033c7e58bb226) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - feat: minor improvements to EVM fork tests
+
 ## 0.123.3
 
 ### Patch Changes
