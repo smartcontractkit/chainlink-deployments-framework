@@ -131,49 +131,7 @@ func Test_AnvilClient_SendTransaction(t *testing.T) {
 	}
 }
 
-func Test_isPublicRPC(t *testing.T) {
-	t.Parallel()
-	tests := []struct {
-		url  string
-		want bool
-	}{
-		{"http://rpcs.cldev.sh/", false},
-		{"https://rpcs.cldev.sh/", false},
-		{"https://rpcs.cldev.sh/anything", false},
-		{"https://gap-rpcs.stage.cldev.sh/anything", false},
-		{"https://gap-rpcs.prod.cldev.sh/anything", false},
-		{"https://gap-other.prod.cldev.sh/anything", false},
-		{"https://gap-other.stage.cldev.sh/anything", false},
-		{"https://gap-other.stage.cldev.sh/anything", false},
-		{"https://gap-grpc-job-distributor.public.main.prod.cldev.sh/", false},
-		{"https://gap-ws-job-distributor.public.main.prod.cldev.sh/", false},
-		{"https://gap-rpc-proxy.public.main.prod.cldev.sh/", false},
-		{"https://gap-grpc-job-distributor.public.main.stage.cldev.sh/", false},
-		{"https://gap-ws-job-distributor.public.main.stage.cldev.sh/", false},
-		{"https://gap-grpc-chainlink-catalog.public.main.stage.cldev.sh/", false},
-		{"https://gap-rpc-proxy.public.main.prod.cldev.sh:4443/ethereum/sepolia/archive", false},
-		{"https://gap-rpc-proxy.public.main.prod.cldev.sh:9443/ethereum/sepolia/archive", false},
-		{"", true},
-		{"http://", true},
-		{"https://", true},
-		{"https://rpcs.cldev.sh", true},
-		{"https://rpcs.prod.cldev.sh/anything", true},
-		{"https://rpcs.stage.cldev.sh/anything", true},
-		{"https://gap.stage.cldev.sh/anything", true},
-		{"https://rpcs-test.tailec123.ts.net/", false},
-		{"https://rpcs-test.tail123abc.ts.net/anything", false},
-		{"http://rpc-proxy-some-env.tailec123.ts.net/anything", false},
-		{"http://tail.publicrpc.ts.net/anything", true},
-	}
-	for _, tt := range tests {
-		t.Run(tt.url, func(t *testing.T) {
-			t.Parallel()
-			require.Equal(t, tt.want, isPublicRPC(tt.url))
-		})
-	}
-}
-
-func Test_selectPublicRPC(t *testing.T) { //nolint:paralleltest
+func Test_selectRPCs(t *testing.T) { //nolint:paralleltest
 	httpmock.Activate(t)
 
 	lggr := logger.Test(t)
@@ -196,8 +154,28 @@ func Test_selectPublicRPC(t *testing.T) { //nolint:paralleltest
 			rpcs: []cfgnet.RPC{
 				{HTTPURL: "http://other.url"},
 			},
-			setup: nosetup,
-			want:  []string{"http://metadata.url"},
+			setup: func(t *testing.T) {
+				t.Helper()
+				httpmock.RegisterResponder("POST", "http://metadata.url",
+					httpmock.NewStringResponder(200, `{"jsonrpc":"2.0","id":1,"result":"0x123"}`))
+			},
+			want: []string{"http://metadata.url"},
+		},
+		{
+			name: "success: archive_http_urls are included alongside archive_http_url",
+			metadata: &cfgnet.EVMMetadata{AnvilConfig: &cfgnet.AnvilConfig{
+				ArchiveHTTPURL:  "http://metadata.url",
+				ArchiveHTTPURLs: []string{"http://archive1.url", "http://archive2.url"},
+			}},
+			setup: func(t *testing.T) {
+				t.Helper()
+				httpmock.RegisterResponder("POST", "http://metadata.url",
+					httpmock.NewStringResponder(200, `{"jsonrpc":"2.0","id":1,"result":"0x123"}`))
+				httpmock.RegisterResponder("POST", "http://archive1.url",
+					httpmock.NewStringResponder(200, `{"jsonrpc":"2.0","id":1,"result":"0x123"}`))
+				// archive2.url is intentionally left unregistered so its health check fails.
+			},
+			want: []string{"http://metadata.url", "http://archive1.url"},
 		},
 		{
 			name: "success: selects only health public rpcs",
@@ -235,7 +213,7 @@ func Test_selectPublicRPC(t *testing.T) { //nolint:paralleltest
 	for _, tt := range tests { //nolint:paralleltest
 		t.Run(tt.name, func(t *testing.T) {
 			tt.setup(t)
-			urls, err := selectPublicRPC(t.Context(), lggr, tt.metadata, tt.chainSelector, tt.rpcs)
+			urls, err := selectRPCs(t.Context(), lggr, hostRPCHealthChecker{}, tt.metadata, tt.chainSelector, tt.rpcs)
 
 			if tt.wantErr == "" {
 				require.NoError(t, err)

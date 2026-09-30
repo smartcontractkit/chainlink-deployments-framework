@@ -170,6 +170,11 @@ func executeFork(
 		return nil
 	}
 
+	if cldf_evm.IsZkSyncVM(cfg.chainSelector) {
+		lggr.Infof("Skipping fork execution: chain selector %d is from a ZkSync chain.", cfg.chainSelector)
+		return nil
+	}
+
 	chainConfig, ok := cfg.forkedEnv.ChainConfigs[cfg.chainSelector]
 	if !ok {
 		return fmt.Errorf("failed to get forked env's chain config for chain %d", cfg.chainSelector)

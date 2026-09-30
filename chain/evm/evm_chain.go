@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 	"math/big"
+	"slices"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -109,4 +110,18 @@ func (c Chain) ReadOnly() (chaincommon.BlockChain, error) {
 	c.DeployerKey.From = crypto.PubkeyToAddress(*privateKey.Public().(*ecdsa.PublicKey))
 
 	return c, nil
+}
+
+// IsZkSyncVM checks if the given chain selector corresponds to a zkSyncchain.
+func IsZkSyncVM(selector uint64) bool {
+	var zkSyncchainsel = []uint64{
+		chainsel.ETHEREUM_TESTNET_SEPOLIA_ZKSYNC_1.Selector,
+		chainsel.ETHEREUM_MAINNET_ZKSYNC_1.Selector,
+		chainsel.LENS_MAINNET.Selector,
+		chainsel.ETHEREUM_TESTNET_SEPOLIA_LENS_1.Selector,
+		chainsel.CRONOS_ZKEVM_MAINNET.Selector,
+		chainsel.CRONOS_ZKEVM_TESTNET_SEPOLIA.Selector,
+	}
+
+	return slices.Contains(zkSyncchainsel, selector)
 }

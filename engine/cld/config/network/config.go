@@ -6,6 +6,7 @@ import (
 	"os"
 	"slices"
 
+	"github.com/samber/lo"
 	"gopkg.in/yaml.v3"
 )
 
@@ -162,6 +163,8 @@ func (c *Config) transformHTTPURLs(transform URLTransformer) {
 		}
 
 		md.AnvilConfig.ArchiveHTTPURL = transform(md.AnvilConfig.ArchiveHTTPURL)
+		md.AnvilConfig.ArchiveHTTPURLs = lo.Map(md.AnvilConfig.ArchiveHTTPURLs,
+			func(u string, _ int) string { return transform(u) })
 		n.Metadata = md
 
 		// Update the network with the modifications. We need to do this the network is a value

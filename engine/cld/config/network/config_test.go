@@ -714,6 +714,9 @@ networks:
   metadata:
     anvil_config:
       archive_http_url: "https://test.archive.rpc"
+      archive_http_urls:
+        - "https://test.archive1.rpc"
+        - "https://test.archive2.rpc"
 `
 
 	tmpFile := filepath.Join(tmpDir, "test.yaml")
@@ -750,7 +753,8 @@ networks:
 					},
 					Metadata: EVMMetadata{
 						AnvilConfig: &AnvilConfig{
-							ArchiveHTTPURL: "https://test2.archive.rpc",
+							ArchiveHTTPURL:  "https://test2.archive.rpc",
+							ArchiveHTTPURLs: []string{"https://test2.archive1.rpc", "https://test2.archive2.rpc"},
 						},
 					},
 				},
