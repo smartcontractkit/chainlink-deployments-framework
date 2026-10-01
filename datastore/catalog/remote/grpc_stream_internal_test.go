@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -155,9 +156,9 @@ func TestCatalogClient_roundTrip_StreamPerRequest(t *testing.T) {
 	client := newFakeCatalogClient(t, srv)
 
 	for i := range 3 {
-		resp, err := client.roundTrip(findRequest(fmt.Sprint(i)))
+		resp, err := client.roundTrip(findRequest(strconv.Itoa(i)))
 		require.NoError(t, err)
-		assert.Equal(t, fmt.Sprint(i), resp.Status.Message)
+		assert.Equal(t, strconv.Itoa(i), resp.Status.Message)
 	}
 
 	// Each request got its own stream, closed cleanly once answered.
@@ -289,7 +290,7 @@ func TestCatalogClient_roundTrip_ConcurrentCallers(t *testing.T) {
 	errs := make([]error, callers)
 	for i := range callers {
 		wg.Go(func() {
-			want := fmt.Sprint(i)
+			want := strconv.Itoa(i)
 			resp, err := client.roundTrip(findRequest(want))
 			if err == nil && resp.Status.Message != want {
 				err = fmt.Errorf("caller %s got the response for %s", want, resp.Status.Message)
