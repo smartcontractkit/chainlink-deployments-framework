@@ -3,7 +3,6 @@ package remote
 import (
 	"errors"
 	"fmt"
-	"io"
 
 	"google.golang.org/grpc/codes"
 
@@ -80,22 +79,9 @@ func executeEdit[R comparable](
 	if err != nil {
 		return fmt.Errorf("failed to get operation name: %w", err)
 	}
-	stream, clientErr := client.DataAccess(req)
-	if clientErr != nil {
-		return fmt.Errorf("failed to create gRPC stream: %w", clientErr)
-	}
-
-	if sendErr := stream.Send(req); sendErr != nil {
-		return fmt.Errorf("failed to send %s request: %w", opName, sendErr)
-	}
-
-	resp, recvErr := stream.Recv()
-	if recvErr != nil {
-		if errors.Is(recvErr, io.EOF) {
-			return errors.New("unexpected end of stream")
-		}
-
-		return fmt.Errorf("failed to receive %s response: %w", opName, recvErr)
+	resp, err := client.roundTrip(req)
+	if err != nil {
+		return fmt.Errorf("%s: %w", opName, err)
 	}
 
 	if statusErr := parseResponseStatus(resp.Status); statusErr != nil {

@@ -135,20 +135,9 @@ func (s *catalogContractMetadataStore) get(ignoreTransaction bool, key datastore
 		},
 	}
 
-	// Create stream with the initial request for HMAC
-	stream, err := s.client.DataAccess(findReq)
+	resp, err := s.client.roundTrip(findReq)
 	if err != nil {
-		return datastore.ContractMetadata{}, fmt.Errorf("failed to create gRPC stream: %w", err)
-	}
-
-	if sendErr := stream.Send(findReq); sendErr != nil {
-		return datastore.ContractMetadata{}, fmt.Errorf("failed to send find request: %w", sendErr)
-	}
-
-	// Receive response
-	resp, err := stream.Recv()
-	if err != nil {
-		return datastore.ContractMetadata{}, fmt.Errorf("failed to receive response: %w", err)
+		return datastore.ContractMetadata{}, err
 	}
 
 	// Check for errors in the response
@@ -200,20 +189,9 @@ func (s *catalogContractMetadataStore) Fetch(_ context.Context) ([]datastore.Con
 		},
 	}
 
-	// Create stream with the initial request for HMAC
-	stream, err := s.client.DataAccess(findReq)
+	resp, err := s.client.roundTrip(findReq)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create gRPC stream: %w", err)
-	}
-
-	if sendErr := stream.Send(findReq); sendErr != nil {
-		return nil, fmt.Errorf("failed to send find request: %w", sendErr)
-	}
-
-	// Receive response
-	resp, err := stream.Recv()
-	if err != nil {
-		return nil, fmt.Errorf("failed to receive response: %w", err)
+		return nil, err
 	}
 
 	// Check for errors in the response

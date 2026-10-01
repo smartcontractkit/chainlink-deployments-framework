@@ -67,20 +67,9 @@ func (s *catalogAddressRefStore) get(
 		},
 	}
 
-	// Create a bidirectional stream with the initial request for HMAC
-	stream, err := s.client.DataAccess(request)
+	response, err := s.client.roundTrip(request)
 	if err != nil {
-		return datastore.AddressRef{}, fmt.Errorf("failed to create data access stream: %w", err)
-	}
-
-	if sendErr := stream.Send(request); sendErr != nil {
-		return datastore.AddressRef{}, fmt.Errorf("failed to send find request: %w", sendErr)
-	}
-
-	// Receive the response
-	response, err := stream.Recv()
-	if err != nil {
-		return datastore.AddressRef{}, fmt.Errorf("failed to receive response: %w", err)
+		return datastore.AddressRef{}, err
 	}
 
 	// Check for errors in the response
@@ -139,20 +128,9 @@ func (s *catalogAddressRefStore) Fetch(_ context.Context) ([]datastore.AddressRe
 		},
 	}
 
-	// Create a bidirectional stream with the initial request for HMAC
-	stream, err := s.client.DataAccess(request)
+	response, err := s.client.roundTrip(request)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create data access stream: %w", err)
-	}
-
-	if sendErr := stream.Send(request); sendErr != nil {
-		return nil, fmt.Errorf("failed to send find request: %w", sendErr)
-	}
-
-	// Receive the response
-	response, err := stream.Recv()
-	if err != nil {
-		return nil, fmt.Errorf("failed to receive response: %w", err)
+		return nil, err
 	}
 
 	// Check for errors in the response

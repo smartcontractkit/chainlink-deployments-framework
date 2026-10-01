@@ -76,12 +76,12 @@ func TestCatalogTransactions_Commit(t *testing.T) {
 	})
 
 	t.Run("Commit Transaction", func(t *testing.T) {
-		err := catalog.beginTransaction()
+		err := catalog.commitTransaction()
 		require.NoError(t, err)
 	})
 
-	t.Run("Read Contract Metadata (from outside tx)", func(t *testing.T) {
-		// Read ignoring transaction context to ensure that the commit worked.
+	t.Run("Read Contract Metadata (after commit)", func(t *testing.T) {
+		// Read outside the transaction, which has ended, to ensure that the commit worked.
 		result, err := catalog.ContractMetadata().
 			Get(t.Context(), datastore.NewContractMetadataKey(1, "0x12345678"))
 		require.NoError(t, err)
