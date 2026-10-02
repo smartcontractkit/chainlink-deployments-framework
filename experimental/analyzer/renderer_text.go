@@ -79,6 +79,7 @@ type TextOperationTemplateData struct {
 }
 
 type TextTimelockTemplateData struct {
+	Action  string
 	Batches []TextBatchTemplateData
 	Context *FieldContext
 }
@@ -170,6 +171,7 @@ func (r *TextRenderer) RenderProposal(rep *ProposalReport, ctx *FieldContext) st
 // RenderTimelockProposal renders a Timelock ProposalReport as plain text using templates
 func (r *TextRenderer) RenderTimelockProposal(rep *ProposalReport, ctx *FieldContext) string {
 	data := TextTimelockTemplateData{
+		Action:  rep.Action,
 		Batches: make([]TextBatchTemplateData, len(rep.Batches)),
 		Context: ctx,
 	}

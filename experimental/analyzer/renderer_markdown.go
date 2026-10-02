@@ -58,6 +58,7 @@ type OperationTemplateData struct {
 }
 
 type TimelockTemplateData struct {
+	Action  string
 	Batches []BatchTemplateData
 	Context *FieldContext
 }
@@ -159,6 +160,7 @@ func (r *MarkdownRenderer) RenderProposal(rep *ProposalReport, ctx *FieldContext
 // RenderTimelock renders a Timelock ProposalReport as Markdown.
 func (r *MarkdownRenderer) RenderTimelockProposal(rep *ProposalReport, ctx *FieldContext) string {
 	data := TimelockTemplateData{
+		Action:  rep.Action,
 		Batches: make([]BatchTemplateData, len(rep.Batches)),
 		Context: ctx,
 	}

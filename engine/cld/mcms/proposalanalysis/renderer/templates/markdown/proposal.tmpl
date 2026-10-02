@@ -6,6 +6,12 @@
 
 {{ end -}}
 
+{{- /* Timelock action: make the operation being signed explicit */ -}}
+{{- if .Request.TimelockProposal -}}
+**Timelock action:** {{ timelockActionBadge .Request.TimelockProposal.Action }}
+
+{{ end -}}
+
 {{- /* Proposal-level annotations */ -}}
 {{ template "annotations" .Proposal.Annotations }}
 

@@ -155,6 +155,74 @@ func TestRenderTo_PassesTimelockProposal(t *testing.T) {
 	assert.Equal(t, "30m0s", buf.String())
 }
 
+func TestRenderTimelockAction(t *testing.T) {
+	t.Parallel()
+
+	r, err := NewMarkdownRenderer()
+	require.NoError(t, err)
+
+	tests := []struct {
+		name     string
+		action   mcmstypes.TimelockAction
+		contains []string
+	}{
+		{
+			name:   "cancel action is explicit",
+			action: mcmstypes.TimelockActionCancel,
+			contains: []string{
+				"**Timelock action:**",
+				"CANCEL",
+				"cancels a previously scheduled timelock operation",
+			},
+		},
+		{
+			name:   "bypass action is explicit",
+			action: mcmstypes.TimelockActionBypass,
+			contains: []string{
+				"**Timelock action:**",
+				"BYPASS",
+				"bypasses the timelock delay",
+			},
+		},
+		{
+			name:   "schedule action is explicit",
+			action: mcmstypes.TimelockActionSchedule,
+			contains: []string{
+				"**Timelock action:**",
+				"SCHEDULE",
+				"schedules operations for execution after the timelock delay",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			out := renderToString(t, r, RenderRequest{
+				Domain:           "ccip",
+				EnvironmentName:  "testnet",
+				TimelockProposal: &mcms.TimelockProposal{Action: tt.action},
+			}, newTestProposal())
+
+			for _, want := range tt.contains {
+				assert.Contains(t, out, want)
+			}
+		})
+	}
+}
+
+func TestRenderTimelockAction_OmittedWithoutProposal(t *testing.T) {
+	t.Parallel()
+
+	r, err := NewMarkdownRenderer()
+	require.NoError(t, err)
+
+	out := renderToString(t, r, RenderRequest{Domain: "ccip", EnvironmentName: "mainnet"}, newTestProposal())
+
+	assert.NotContains(t, out, "Timelock action")
+}
+
 func TestWithTemplateFuncs(t *testing.T) {
 	t.Parallel()
 

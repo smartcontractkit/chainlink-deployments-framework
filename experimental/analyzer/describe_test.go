@@ -214,3 +214,21 @@ func TestDescribeTimelockProposal(t *testing.T) {
 		})
 	}
 }
+
+func TestDescribeTimelockProposal_RendersAction(t *testing.T) {
+	t.Parallel()
+
+	proposalCtx := &DefaultProposalContext{
+		AddressesByChain: deployment.AddressesByChain{},
+		renderer:         NewMarkdownRenderer(),
+	}
+
+	proposal := &mcms.TimelockProposal{
+		Action:     types.TimelockActionCancel,
+		Operations: []types.BatchOperation{},
+	}
+
+	output, err := DescribeTimelockProposal(t.Context(), proposalCtx, deployment.Environment{}, proposal)
+	require.NoError(t, err)
+	require.Contains(t, output, "**Timelock action:** `cancel`")
+}

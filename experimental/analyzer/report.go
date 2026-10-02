@@ -5,6 +5,9 @@ package analyzer
 //
 // Exactly one of Operations or Batches is populated depending on the proposal type.
 type ProposalReport struct {
+	// Action is the timelock action being signed (schedule, cancel, or bypass).
+	// It is only populated for timelock proposals; empty for plain proposals.
+	Action     string
 	Operations []OperationReport
 	Batches    []BatchReport
 }
