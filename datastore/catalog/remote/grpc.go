@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"sync"
 	"time"
 
@@ -47,57 +48,146 @@ type CatalogClient struct {
 	// passing context down the call-stack.
 	//
 	//nolint:containedctx
-	ctx            context.Context
-	conn           *grpc.ClientConn
-	cachedStream   grpc.BidiStreamingClient[pb.DataAccessRequest, pb.DataAccessResponse]
-	hmacConfig     *HMACAuthConfig
-	streamInitOnce sync.Once
-	streamInitErr  error
-	kmsClient      kmsClient
-	kmsClientOnce  sync.Once
-	kmsClientErr   error
+	ctx           context.Context
+	conn          *grpc.ClientConn
+	hmacConfig    *HMACAuthConfig
+	kmsClient     kmsClient
+	kmsClientOnce sync.Once
+	kmsClientErr  error
+
+	// mu guards the stream state below. Each request/response pair runs under it, so concurrent
+	// callers cannot receive each other's responses.
+	mu           sync.Mutex
+	stream       grpc.BidiStreamingClient[pb.DataAccessRequest, pb.DataAccessResponse]
+	cancelStream context.CancelFunc
+	// inTransaction is set while a transaction is open on the stream. The server scopes
+	// transactions to a stream, so the stream is kept open until the transaction ends.
+	inTransaction bool
 }
 
+// DataAccess returns the client's current stream, opening one if there is none. When HMAC
+// authentication is enabled, req is the message signed to authenticate the stream.
 func (c *CatalogClient) DataAccess(req proto.Message) (grpc.BidiStreamingClient[pb.DataAccessRequest, pb.DataAccessResponse], error) {
-	c.streamInitOnce.Do(func() {
-		ctx := c.ctx
-		if c.hmacConfig != nil {
-			var err error
-			ctx, err = c.prepareHMACContext(c.ctx, req)
-			if err != nil {
-				c.streamInitErr = fmt.Errorf("failed to prepare HMAC context: %w", err)
-				return
-			}
-		}
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
-		stream, err := c.protoClient.DataAccess(ctx)
-		if err != nil {
-			c.streamInitErr = err
-			return
-		}
-		c.cachedStream = stream
-	})
-
-	return c.cachedStream, c.streamInitErr
+	return c.openStreamLocked(req)
 }
 
-// CloseStream closes the current stream.
+func (c *CatalogClient) openStreamLocked(req proto.Message) (grpc.BidiStreamingClient[pb.DataAccessRequest, pb.DataAccessResponse], error) {
+	if c.stream != nil {
+		return c.stream, nil
+	}
+
+	// Each stream gets its own context, so closing it releases its resources without affecting
+	// the client's context.
+	ctx, cancel := context.WithCancel(c.ctx)
+	if c.hmacConfig != nil {
+		var err error
+		ctx, err = c.prepareHMACContext(ctx, req)
+		if err != nil {
+			cancel()
+			return nil, fmt.Errorf("failed to prepare HMAC context: %w", err)
+		}
+	}
+
+	stream, err := c.protoClient.DataAccess(ctx)
+	if err != nil {
+		cancel()
+		return nil, err
+	}
+	c.stream = stream
+	c.cancelStream = cancel
+
+	return stream, nil
+}
+
+// roundTrip sends req and returns the server's response. Outside a transaction, each request
+// gets its own stream, closed once the response is received, so no stream is left idle. A
+// transaction keeps its stream from the begin request until the commit or rollback.
+func (c *CatalogClient) roundTrip(req *pb.DataAccessRequest) (*pb.DataAccessResponse, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	stream, err := c.openStreamLocked(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create data access stream: %w", err)
+	}
+
+	if err = stream.Send(req); err != nil {
+		c.discardStreamLocked()
+		return nil, fmt.Errorf("failed to send request: %w", err)
+	}
+
+	resp, err := stream.Recv()
+	if err != nil {
+		c.discardStreamLocked()
+		if errors.Is(err, io.EOF) {
+			return nil, errors.New("unexpected end of stream")
+		}
+
+		return nil, fmt.Errorf("failed to receive response: %w", err)
+	}
+
+	switch req.Operation.(type) {
+	case *pb.DataAccessRequest_BeginTransactionRequest:
+		// A rejected begin (e.g. a nested one) leaves any transaction already open untouched.
+		c.inTransaction = c.inTransaction || parseResponseStatus(resp.Status) == nil
+	case *pb.DataAccessRequest_CommitTransactionRequest, *pb.DataAccessRequest_RollbackTransactionRequest:
+		c.inTransaction = false
+	}
+	if !c.inTransaction {
+		// The response has been received, so a failure to close cleanly does not affect it.
+		_ = c.closeStreamLocked()
+	}
+
+	return resp, nil
+}
+
+// CloseStream closes the current stream, if any. The client stays usable: the next request
+// opens a new stream.
 func (c *CatalogClient) CloseStream() error {
-	if c.cachedStream == nil {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	return c.closeStreamLocked()
+}
+
+// closeStreamLocked half-closes the stream and waits for the server to end it, so the server
+// sees a clean end of stream rather than a cancellation, then releases the stream's context.
+func (c *CatalogClient) closeStreamLocked() error {
+	if c.stream == nil {
 		return nil
 	}
-	err := c.cachedStream.CloseSend()
-	if err != nil {
+	defer c.discardStreamLocked()
+
+	if err := c.stream.CloseSend(); err != nil {
 		return err
 	}
-	c.cachedStream = nil
+	if _, err := c.stream.Recv(); err != nil && !errors.Is(err, io.EOF) {
+		return err
+	}
 
 	return nil
 }
 
+// discardStreamLocked drops the current stream without waiting for the server, cancelling its
+// context. Any open transaction is lost with it; the server rolls it back.
+func (c *CatalogClient) discardStreamLocked() {
+	if c.cancelStream != nil {
+		c.cancelStream()
+	}
+	c.stream = nil
+	c.cancelStream = nil
+	c.inTransaction = false
+}
+
 // Close closes the underlying gRPC connection.
 func (c *CatalogClient) Close() error {
-	if c.cachedStream != nil {
+	c.mu.Lock()
+	open := c.stream != nil
+	c.mu.Unlock()
+	if open {
 		return errors.New("stream is not closed")
 	}
 

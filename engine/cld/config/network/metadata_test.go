@@ -95,6 +95,26 @@ func TestDecodeMetadata(t *testing.T) {
 			},
 		},
 		{
+			name: "successful conversion to EVMMetadata with archive_http_urls and extra_args",
+			metadata: map[string]any{
+				"anvil_config": map[string]any{
+					"image":             "my/image:latest",
+					"port":              8545,
+					"archive_http_urls": []any{"https://archive1.example.com", "https://archive2.example.com"},
+					"extra_args":        []any{"--hardfork", "shanghai"},
+				},
+			},
+			wantErr: false,
+			expectedValue: EVMMetadata{
+				AnvilConfig: &AnvilConfig{
+					Image:           "my/image:latest",
+					Port:            8545,
+					ArchiveHTTPURLs: []string{"https://archive1.example.com", "https://archive2.example.com"},
+					ExtraArgs:       []string{"--hardfork", "shanghai"},
+				},
+			},
+		},
+		{
 			name: "successful conversion to SimpleStruct",
 			metadata: map[string]any{
 				"name":     "test",

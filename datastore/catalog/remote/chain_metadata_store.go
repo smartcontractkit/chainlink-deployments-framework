@@ -132,20 +132,9 @@ func (s *catalogChainMetadataStore) get(ignoreTransaction bool, key datastore.Ch
 		},
 	}
 
-	// Create stream with the initial request for HMAC
-	stream, err := s.client.DataAccess(findReq)
+	resp, err := s.client.roundTrip(findReq)
 	if err != nil {
-		return datastore.ChainMetadata{}, fmt.Errorf("failed to create gRPC stream: %w", err)
-	}
-
-	if sendErr := stream.Send(findReq); sendErr != nil {
-		return datastore.ChainMetadata{}, fmt.Errorf("failed to send find request: %w", sendErr)
-	}
-
-	// Receive response
-	resp, err := stream.Recv()
-	if err != nil {
-		return datastore.ChainMetadata{}, fmt.Errorf("failed to receive response: %w", err)
+		return datastore.ChainMetadata{}, err
 	}
 
 	// Check for errors in the response
@@ -197,20 +186,9 @@ func (s *catalogChainMetadataStore) Fetch(_ context.Context) ([]datastore.ChainM
 		},
 	}
 
-	// Create stream with the initial request for HMAC
-	stream, err := s.client.DataAccess(findReq)
+	resp, err := s.client.roundTrip(findReq)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create gRPC stream: %w", err)
-	}
-
-	if sendErr := stream.Send(findReq); sendErr != nil {
-		return nil, fmt.Errorf("failed to send find request: %w", sendErr)
-	}
-
-	// Receive response
-	resp, err := stream.Recv()
-	if err != nil {
-		return nil, fmt.Errorf("failed to receive response: %w", err)
+		return nil, err
 	}
 
 	// Check for errors in the response

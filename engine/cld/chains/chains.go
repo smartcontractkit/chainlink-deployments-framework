@@ -4,21 +4,21 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
-	"slices"
 	"sync"
 	"time"
 
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	chainselremote "github.com/smartcontractkit/chain-selectors/remote"
+	cantonauth "github.com/smartcontractkit/chainlink-canton/authentication"
+	cantonauthauthorizationcode "github.com/smartcontractkit/chainlink-canton/authentication/providers/authorizationcode"
+	cantonauthclientcreds "github.com/smartcontractkit/chainlink-canton/authentication/providers/clientcredentials"
+	cantonauthstatic "github.com/smartcontractkit/chainlink-canton/authentication/providers/static"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
 	fchain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	aptosprov "github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos/provider"
 	cantonprov "github.com/smartcontractkit/chainlink-deployments-framework/chain/canton/provider"
-	cantonauth "github.com/smartcontractkit/chainlink-deployments-framework/chain/canton/provider/authentication"
-	cantonauthcode "github.com/smartcontractkit/chainlink-deployments-framework/chain/canton/provider/authentication/authorizationcode"
-	cantonclientcreds "github.com/smartcontractkit/chainlink-deployments-framework/chain/canton/provider/authentication/clientcredentials"
 	fevm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	evmgas "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/gas"
 	evmprov "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider"
@@ -210,10 +210,23 @@ func newChainLoaders(
 		lggr.Info("Skipping Sui chains, no private key found in secrets")
 	}
 
-	if cfg.Stellar.DeployerKey != "" {
+	// Stellar chains are loaded if either the Ed25519 KMS key or a deployer key is
+	// configured. Log which one signs, since KMS silently wins when both are set.
+	switch stellarSigner(cfg) {
+	case stellarSignerKMS:
 		loaders[chainsel.FamilyStellar] = newChainLoaderStellar(networks, cfg)
-	} else {
-		lggr.Info("Skipping Stellar chains, no private key found in secrets")
+
+		if cfg.Stellar.DeployerKey != "" {
+			lggr.Warn("Loading Stellar chains, signing with the Ed25519 KMS key; the configured Stellar deployer key is ignored")
+		} else {
+			lggr.Info("Loading Stellar chains, signing with the Ed25519 KMS key")
+		}
+	case stellarSignerDeployerKey:
+		loaders[chainsel.FamilyStellar] = newChainLoaderStellar(networks, cfg)
+
+		lggr.Info("Loading Stellar chains, signing with the Stellar deployer key")
+	default:
+		lggr.Info("Skipping Stellar chains, no private key or KMS config found in secrets")
 	}
 
 	if cfg.Ton.DeployerKey != "" {
@@ -333,10 +346,11 @@ func (l *chainLoaderSui) Load(ctx context.Context, selector uint64) (fchain.Bloc
 		return nil, err
 	}
 
-	rpcURL := network.RPCs[0].HTTPURL
+	rpc := network.RPCs[0]
 	c, err := suiprov.NewRPCChainProvider(selector,
 		suiprov.RPCChainProviderConfig{
-			RPCURL:            rpcURL,
+			RPCURL:            rpc.HTTPURL,
+			AuthToken:         rpc.AuthToken,
 			DeployerSignerGen: suiprov.AccountGenPrivateKey(l.cfg.Sui.DeployerKey),
 		},
 	).Initialize(ctx)
@@ -350,6 +364,31 @@ func (l *chainLoaderSui) Load(ctx context.Context, selector uint64) (fchain.Bloc
 // chainLoaderStellar implements the ChainLoader interface for Stellar.
 type chainLoaderStellar struct {
 	*baseChainLoader
+}
+
+// The signers the Stellar loader can sign with.
+const (
+	// stellarSignerKMS signs with the Ed25519 AWS KMS key.
+	stellarSignerKMS = "kms_ed25519"
+	// stellarSignerDeployerKey signs with the hex-encoded Stellar deployer key.
+	stellarSignerDeployerKey = "deployer_key"
+)
+
+// stellarSigner reports which signer the Stellar loader will use, or an empty
+// string when neither is configured and Stellar cannot be loaded at all.
+//
+// The Ed25519 KMS key takes precedence over the deployer key. Both the loader
+// registration and Load consult this, so the signer that gets logged is always
+// the one that ends up signing.
+func stellarSigner(cfg cfgenv.OnchainConfig) string {
+	switch {
+	case useKMS(cfg.KMSEd25519):
+		return stellarSignerKMS
+	case cfg.Stellar.DeployerKey != "":
+		return stellarSignerDeployerKey
+	default:
+		return ""
+	}
 }
 
 // newChainLoaderStellar creates a new chain loader for Stellar.
@@ -379,12 +418,19 @@ func (l *chainLoaderStellar) Load(ctx context.Context, selector uint64) (fchain.
 		return nil, fmt.Errorf("stellar network %d: decode metadata: %w", selector, err)
 	}
 
+	var keypairGen stellarprov.KeypairGenerator
+	if stellarSigner(l.cfg) == stellarSignerKMS {
+		keypairGen = stellarprov.KeypairGenKMS(ctx, l.cfg.KMSEd25519.KeyID, l.cfg.KMSEd25519.KeyRegion)
+	} else {
+		keypairGen = stellarprov.KeypairFromHex(l.cfg.Stellar.DeployerKey)
+	}
+
 	c, err := stellarprov.NewRPCChainProvider(selector,
 		stellarprov.RPCChainProviderConfig{
 			NetworkPassphrase:  md.NetworkPassphrase,
 			FriendbotURL:       md.FriendbotURL,
 			SorobanRPCURL:      rpcURL,
-			DeployerKeypairGen: stellarprov.KeypairFromHex(l.cfg.Stellar.DeployerKey),
+			DeployerKeypairGen: keypairGen,
 		},
 	).Initialize(ctx)
 	if err != nil {
@@ -583,7 +629,7 @@ func (l *chainLoaderEVM) Load(ctx context.Context, selector uint64) (fchain.Bloc
 // and zkSync classification from the result.
 func (l *chainLoaderEVM) evmMetadataFromNetwork(network cfgnet.Network, selector uint64) (*evmgas.Config, bool) {
 	if network.Metadata == nil {
-		return nil, l.isZkSyncVM(selector)
+		return nil, fevm.IsZkSyncVM(selector)
 	}
 
 	md, err := cfgnet.DecodeMetadata[cfgnet.EVMMetadata](network.Metadata)
@@ -591,29 +637,15 @@ func (l *chainLoaderEVM) evmMetadataFromNetwork(network cfgnet.Network, selector
 		l.lggr.Warnw("Failed to decode EVM network metadata; falling back to hardcoded zkSync classification and skipping gas defaults",
 			"selector", selector, "error", err)
 
-		return nil, l.isZkSyncVM(selector)
+		return nil, fevm.IsZkSyncVM(selector)
 	}
 
-	isZkSyncVM := l.isZkSyncVM(selector)
+	isZkSyncVM := fevm.IsZkSyncVM(selector)
 	if md.IsZkSync != nil {
 		isZkSyncVM = *md.IsZkSync
 	}
 
 	return md.GasConfig, isZkSyncVM
-}
-
-// isZkSyncVM checks if the given chain selector corresponds to a zkSyncchain.
-func (l *chainLoaderEVM) isZkSyncVM(selector uint64) bool {
-	var zkSyncchainsel = []uint64{
-		chainsel.ETHEREUM_TESTNET_SEPOLIA_ZKSYNC_1.Selector,
-		chainsel.ETHEREUM_MAINNET_ZKSYNC_1.Selector,
-		chainsel.LENS_MAINNET.Selector,
-		chainsel.ETHEREUM_TESTNET_SEPOLIA_LENS_1.Selector,
-		chainsel.CRONOS_ZKEVM_MAINNET.Selector,
-		chainsel.CRONOS_ZKEVM_TESTNET_SEPOLIA.Selector,
-	}
-
-	return slices.Contains(zkSyncchainsel, selector)
 }
 
 // toRPCs converts a network to a slice of RPCs for a specific chain ID.
@@ -852,14 +884,14 @@ func (l *chainLoaderCanton) cantonAuthProvider(ctx context.Context, selector uin
 	c := l.cfg.Canton
 	switch cantonEffectiveAuthStrategy(c) {
 	case cfgenv.CantonAuthStrategyClientCredentials:
-		provider, err := cantonclientcreds.NewDiscoveryProvider(ctx, c.AuthURL, c.ClientID, c.ClientSecret)
+		provider, err := cantonauthclientcreds.NewDiscoveryProvider(ctx, c.AuthURL, c.ClientID, c.ClientSecret)
 		if err != nil {
 			return nil, fmt.Errorf("canton network %d: client_credentials auth: %w", selector, err)
 		}
 
 		return provider, nil
 	case cfgenv.CantonAuthStrategyAuthorizationCode:
-		provider, err := cantonauthcode.NewDiscoveryProvider(ctx, c.AuthURL, c.ClientID)
+		provider, err := cantonauthauthorizationcode.NewDiscoveryProvider(ctx, c.AuthURL, c.ClientID)
 		if err != nil {
 			return nil, fmt.Errorf("canton network %d: authorization_code auth: %w", selector, err)
 		}
@@ -870,10 +902,10 @@ func (l *chainLoaderCanton) cantonAuthProvider(ctx context.Context, selector uin
 			return nil, fmt.Errorf("canton network %d: JWT token is required for static auth", selector)
 		}
 		if insecureTransport {
-			return cantonauth.NewInsecureStaticProvider(c.JWTToken), nil
+			return cantonauthstatic.NewInsecureStaticProvider(c.JWTToken), nil
 		}
 
-		return cantonauth.NewStaticProvider(c.JWTToken), nil
+		return cantonauthstatic.NewStaticProvider(c.JWTToken), nil
 	default:
 		return nil, fmt.Errorf("canton network %d: unknown auth strategy: %q", selector, c.AuthStrategy)
 	}

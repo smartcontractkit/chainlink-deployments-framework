@@ -147,6 +147,19 @@ linters:
           - staticcheck
         text: "SA1019:.*(has been deprecated since Go 1\\.26).*ParseUncompressedPublicKey"
         path: chain/(evm|tron)/provider/kms_signer(_test)?\.go
+      # Pre-existing usages of deprecated symbols (53 findings, all pre-dating the
+      # golangci-lint v2.13 bump which ships a newer staticcheck that detects them).
+      # Clean these up in dedicated PRs; excluded here so the linter version bump
+      # does not have to be blocked on them.
+      - linters:
+          - staticcheck
+        text: "SA1019: .*AddressBook is deprecated"
+      - linters:
+          - staticcheck
+        text: "SA1019: .*JobSpecs is deprecated"
+      - linters:
+          - staticcheck
+        text: "SA1019: .*job\\..*Request_Uuid.*is deprecated"
     paths:
       - third_party$
       - builtin$

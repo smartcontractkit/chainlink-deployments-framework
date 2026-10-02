@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/olekukonko/tablewriter"
+	"github.com/olekukonko/tablewriter/tw"
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	jobv1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/job"
 	nodev1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/node"
@@ -158,14 +159,20 @@ func writeNodeTable(nodes []*nodev1.Node) {
 		for _, label := range node.Labels {
 			labels = append(labels, []string{label.Key, *label.Value})
 		}
-		labelsTable.SetBorders(tablewriter.Border{
-			Left:   false,
-			Right:  false,
-			Top:    true,
-			Bottom: true,
-		})
-		labelsTable.AppendBulk(labels)
-		labelsTable.Render()
+		labelsTable.Options(tablewriter.WithRendition(tw.Rendition{
+			Borders: tw.Border{
+				Left:   tw.Off,
+				Right:  tw.Off,
+				Top:    tw.On,
+				Bottom: tw.On,
+			},
+		}))
+		if err := labelsTable.Bulk(labels); err != nil {
+			panic(err)
+		}
+		if err := labelsTable.Render(); err != nil {
+			panic(err)
+		}
 
 		data := [][]string{
 			{"ID", node.Id},
@@ -186,14 +193,20 @@ func writeNodeTable(nodes []*nodev1.Node) {
 				p2pData = append(p2pData, []string{"Peer ID", p2p.PeerId})
 				p2pData = append(p2pData, []string{"Public Key", p2p.PublicKey})
 			}
-			p2pTable.SetBorders(tablewriter.Border{
-				Left:   false,
-				Right:  false,
-				Top:    true,
-				Bottom: true,
-			})
-			p2pTable.AppendBulk(p2pData)
-			p2pTable.Render()
+			p2pTable.Options(tablewriter.WithRendition(tw.Rendition{
+				Borders: tw.Border{
+					Left:   tw.Off,
+					Right:  tw.Off,
+					Top:    tw.On,
+					Bottom: tw.On,
+				},
+			}))
+			if err := p2pTable.Bulk(p2pData); err != nil {
+				panic(err)
+			}
+			if err := p2pTable.Render(); err != nil {
+				panic(err)
+			}
 			data = append(data, []string{"P2P Key Bundles", p2pBuilder.String()})
 		}
 
@@ -206,9 +219,13 @@ func writeNodeTable(nodes []*nodev1.Node) {
 			[]string{"Updated at", node.UpdatedAt.AsTime().Format(time.RFC3339)},
 		)
 		table := tablewriter.NewWriter(os.Stdout)
-		table.SetAutoWrapText(false)
-		table.AppendBulk(data)
-		table.Render()
+		table.Options(tablewriter.WithRowAutoWrap(tw.WrapNone))
+		if err := table.Bulk(data); err != nil {
+			panic(err)
+		}
+		if err := table.Render(); err != nil {
+			panic(err)
+		}
 	}
 }
 
@@ -257,21 +274,31 @@ func writeChainConfigTable(configsByNode map[string][]*nodev1.ChainConfig) {
 					{"Offchain Public Key", config.Ocr2Config.OcrKeyBundle.OffchainPublicKey},
 					{"Onchain Signing Key", config.Ocr2Config.OcrKeyBundle.OnchainSigningAddress},
 				}
-				ocr2Table.SetBorders(tablewriter.Border{
-					Left:   false,
-					Right:  false,
-					Top:    true,
-					Bottom: true,
-				})
-				ocr2Table.AppendBulk(ocr2Data)
-				ocr2Table.Render()
+				ocr2Table.Options(tablewriter.WithRendition(tw.Rendition{
+					Borders: tw.Border{
+						Left:   tw.Off,
+						Right:  tw.Off,
+						Top:    tw.On,
+						Bottom: tw.On,
+					},
+				}))
+				if err := ocr2Table.Bulk(ocr2Data); err != nil {
+					panic(err)
+				}
+				if err := ocr2Table.Render(); err != nil {
+					panic(err)
+				}
 				data = append(data, []string{"OCR2", ocr2String.String()})
 			}
 
 			table := tablewriter.NewWriter(os.Stdout)
-			table.SetAutoWrapText(false)
-			table.AppendBulk(data)
-			table.Render()
+			table.Options(tablewriter.WithRowAutoWrap(tw.WrapNone))
+			if err := table.Bulk(data); err != nil {
+				panic(err)
+			}
+			if err := table.Render(); err != nil {
+				panic(err)
+			}
 		}
 		fmt.Println()
 	}

@@ -33,7 +33,7 @@ func defaultConfigLoader(dom domain.Domain, envKey string, lggr logger.Logger) (
 
 // defaultCatalogLoader is the production implementation that loads catalog.
 func defaultCatalogLoader(ctx context.Context, envKey string, cfg *config.Config, dom domain.Domain) (fdatastore.CatalogStore, error) {
-	return cldcatalog.LoadCatalog(ctx, envKey, cfg, dom)
+	return cldcatalog.LoadCatalog(ctx, dom.Key(), envKey, cfg.Env.Catalog)
 }
 
 // defaultFileMerger is the production implementation that merges to files.

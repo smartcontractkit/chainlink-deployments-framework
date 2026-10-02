@@ -1,5 +1,101 @@
 # chainlink-deployments-framework
 
+## 0.124.1
+
+### Patch Changes
+
+- [#1191](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1191) [`1d57715`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/1d57715880d585d4d007596881ee074402360eee) Thanks [@giogam](https://github.com/giogam)! - fix(catalog): open a DataAccess stream per request instead of one long-lived stream, keeping a single stream for the duration of a transaction
+
+## 0.124.0
+
+### Minor Changes
+
+- [#1189](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1189) [`a66eed6`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/a66eed6df45cf17174c881458c7033c7e58bb226) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - feat: minor improvements to EVM fork tests
+
+## 0.123.3
+
+### Patch Changes
+
+- [#1184](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1184) [`724883a`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/724883ac436e894b2dd67c86f021cd4cb64f2813) Thanks [@HelloKashif](https://github.com/HelloKashif)! - Wait for deployed contract code to be visible via `eth_getCode` before returning from `NewDeploy`, to avoid downstream reads racing a lagging RPC backend right after deployment. Tests mocking `evm.Chain.Client` around a deploy now need to stub `CodeAt`.
+
+## 0.123.2
+
+### Patch Changes
+
+- [#1182](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1182) [`710391f`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/710391f9ca8765be8f249b46e2a6455c794ad338) Thanks [@FelixFan1992](https://github.com/FelixFan1992)! - improve stellar support
+
+## 0.123.1
+
+### Patch Changes
+
+- [#1180](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1180) [`21057ee`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/21057ee1ea3f5988e421d1e1906bc2e1b0b969e0) Thanks [@karen-stepanyan](https://github.com/karen-stepanyan)! - feat(stellar): Add Stellar MCM proposal analyzer
+
+## 0.123.0
+
+### Minor Changes
+
+- [#1178](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1178) [`e6e2fa6`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/e6e2fa666d809908b22414a864142cdfc4588de3) Thanks [@friedemannf](https://github.com/friedemannf)! - Replace Canton authentication with chainlink-canton/authentication v1.0.0
+  Bump chainlink-canton/contracts to v2.1.0
+
+## 0.122.2
+
+### Patch Changes
+
+- [#1165](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1165) [`a5b7465`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/a5b74656ac387f9ecf3bcfca8940c215573a74d0) Thanks [@iljapavlovs](https://github.com/iljapavlovs)! - fix: confirm EVM deploys based on the returned tx instead of the chain type
+  
+  `DeployContract` skipped confirmation whenever `chain.IsZkSyncVM` was set, which also
+  skipped it for EVM-emulator deploys on zkSync chains. Those return a real transaction, so a
+  dropped tx was recorded in the address book as if it had landed. Confirmation now keys off
+  `ContractDeploy.Tx`, which is nil only for native zkSync deploys.
+
+## 0.122.1
+
+### Patch Changes
+
+- [#1167](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1167) [`587487f`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/587487fced3f8ccabe4c3a3bb114f68187fe3f3d) Thanks [@FelixFan1992](https://github.com/FelixFan1992)! - bump ctf/framework to 0.16.8
+
+## 0.122.0
+
+### Minor Changes
+
+- [#1164](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1164) [`48ca2f6`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/48ca2f6b3036bbe6993e66919ecf9636fb5e95e6) Thanks [@karen-stepanyan](https://github.com/karen-stepanyan)! - feat(stellar): add KMS signing logic
+
+- [#1159](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1159) [`684365b`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/684365b2a1a1551f654e2c17c0f9b1258555aa4c) Thanks [@jkongie](https://github.com/jkongie)! - feat!: add environment.Build to build an environment from parameters
+  
+  BREAKING CHANGE: `catalog.LoadCatalog` now takes a domain key, an
+  environment key and a `cfgenv.CatalogConfig` instead of a domain.Domain
+  and a *config.Config.
+
+## 0.121.2
+
+### Patch Changes
+
+- [#1161](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1161) [`2004fe6`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/2004fe6b1852854bbcf65d6285981fe987c19b79) Thanks [@FelixFan1992](https://github.com/FelixFan1992)! - add an auth token for Sui gRPC
+
+## 0.121.1
+
+### Patch Changes
+
+- [#1158](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1158) [`de066d1`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/de066d1180e446de5300fa944192066751629150) Thanks [@friedemannf](https://github.com/friedemannf)! - Add InteractiveSubmissionServiceClient to canton.Participant
+
+## 0.121.0
+
+### Minor Changes
+
+- [#1153](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1153) [`3e1bcd2`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/3e1bcd2ac1da78743dd9bda5be74a7943bf782d6) Thanks [@ilija42](https://github.com/ilija42)! - fix(mcms): Move stellar signer usee in ChainAccessAdapter to the relayer repo
+
+### Patch Changes
+
+- [#1155](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1155) [`9083d1d`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/9083d1dc8a6f001556186c7d352d502886331912) Thanks [@FelixFan1992](https://github.com/FelixFan1992)! - add retry logic for fund account endpoint for Sui
+
+- [#1154](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1154) [`89a246e`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/89a246ec79c02e4eb62c6643e32c2f2c88a9fc86) Thanks [@stackman27](https://github.com/stackman27)! - fix(canton): update experimental/analyzer to use chainlink-canton's restructured contracts/v2 bindings path, and migrate engine/cld/legacy CLI commands from olekukonko/tablewriter's v0.0.5 API to v1.x so no replace directive is needed
+
+## 0.120.0
+
+### Minor Changes
+
+- [#1150](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1150) [`461a5e2`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/461a5e29664c70ef33ae7d1df4c16ccb8661764b) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(mcms): allow when proposal delay and on-chain minDelay are unset
+
 ## 0.119.0
 
 ### Minor Changes

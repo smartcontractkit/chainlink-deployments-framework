@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	stellarbindings "github.com/smartcontractkit/chainlink-stellar/bindings"
 	"github.com/smartcontractkit/mcms"
 	"github.com/smartcontractkit/mcms/types"
 
@@ -282,6 +283,77 @@ func TestBuildProposalReport_TONDecodeFailure(t *testing.T) {
 	report, err := BuildProposalReport(t.Context(), ctx, deployment.Environment{}, proposal)
 	require.NoError(t, err)
 	require.Contains(t, report.Operations[0].Calls[0].Method, "failed to decode TON transaction")
+}
+
+// TestBuildReports_Stellar covers the Stellar dispatch in both report builders, so a regression in
+// the family routing cannot leave Stellar calls empty while the analyzer's own tests still pass.
+// Stellar needs no AdditionalFields to decode (only tx.Data), so like TON it reaches the decode
+// stage directly and reports failures in the Method field rather than erroring.
+func TestBuildReports_Stellar(t *testing.T) {
+	t.Parallel()
+
+	const stellarContract = "CB66PWVWBA765OSEMEPL3766WXEFPVGVMVS5UHNPEP266Y6QZGFJQG4B"
+
+	acceptOwnership, err := stellarbindings.EncodeSorobanInvokePayload("accept_ownership", nil)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name       string
+		data       []byte
+		wantMethod string
+	}{
+		{
+			name:       "decodes the invoke payload",
+			data:       acceptOwnership,
+			wantMethod: "accept_ownership",
+		},
+		{
+			name:       "reports a decode failure in the method",
+			data:       []byte{0x01, 0x02, 0x03, 0x04},
+			wantMethod: "failed to decode Stellar transaction",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx := &DefaultProposalContext{
+				AddressesByChain: deployment.AddressesByChain{},
+				renderer:         NewMarkdownRenderer(),
+			}
+			tx := types.Transaction{To: stellarContract, Data: tt.data}
+
+			proposalReport, err := BuildProposalReport(t.Context(), ctx, deployment.Environment{}, &mcms.Proposal{
+				Operations: []types.Operation{
+					{
+						ChainSelector: types.ChainSelector(chainsel.STELLAR_TESTNET.Selector),
+						Transaction:   tx,
+					},
+				},
+			})
+			require.NoError(t, err)
+			require.Len(t, proposalReport.Operations, 1)
+			require.Equal(t, chainsel.FamilyStellar, proposalReport.Operations[0].Family)
+			require.Len(t, proposalReport.Operations[0].Calls, 1)
+			require.Contains(t, proposalReport.Operations[0].Calls[0].Method, tt.wantMethod)
+
+			timelockReport, err := BuildTimelockReport(t.Context(), ctx, deployment.Environment{}, &mcms.TimelockProposal{
+				Operations: []types.BatchOperation{
+					{
+						ChainSelector: types.ChainSelector(chainsel.STELLAR_TESTNET.Selector),
+						Transactions:  []types.Transaction{tx},
+					},
+				},
+			})
+			require.NoError(t, err)
+			require.Len(t, timelockReport.Batches, 1)
+			require.Equal(t, chainsel.FamilyStellar, timelockReport.Batches[0].Family)
+			require.Len(t, timelockReport.Batches[0].Operations, 1)
+			require.Len(t, timelockReport.Batches[0].Operations[0].Calls, 1)
+			require.Contains(t, timelockReport.Batches[0].Operations[0].Calls[0].Method, tt.wantMethod)
+		})
+	}
 }
 
 // TestBuildTimelockReport_FamilyErrors tests error handling when analyzers fail during

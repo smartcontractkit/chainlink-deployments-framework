@@ -7,9 +7,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	chainsel "github.com/smartcontractkit/chain-selectors"
+	cantonauthstatic "github.com/smartcontractkit/chainlink-canton/authentication/providers/static"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/canton"
-	"github.com/smartcontractkit/chainlink-deployments-framework/chain/canton/provider/authentication"
 )
 
 func Test_RPCChainProviderConfig_validate(t *testing.T) {
@@ -33,7 +33,7 @@ func Test_RPCChainProviderConfig_validate(t *testing.T) {
 						},
 						UserID:       "user-id",
 						PartyID:      "party-id",
-						AuthProvider: authentication.InsecureStaticProvider{AccessToken: ""},
+						AuthProvider: cantonauthstatic.InsecureStaticProvider{AccessToken: ""},
 					},
 				},
 			},
@@ -56,7 +56,7 @@ func Test_RPCChainProviderConfig_validate(t *testing.T) {
 						},
 						UserID:       "user-id",
 						PartyID:      "party-id",
-						AuthProvider: authentication.InsecureStaticProvider{AccessToken: ""},
+						AuthProvider: cantonauthstatic.InsecureStaticProvider{AccessToken: ""},
 					},
 				},
 			},
@@ -74,7 +74,7 @@ func Test_RPCChainProviderConfig_validate(t *testing.T) {
 						},
 						UserID:       "user-id",
 						PartyID:      "party-id",
-						AuthProvider: authentication.InsecureStaticProvider{AccessToken: ""},
+						AuthProvider: cantonauthstatic.InsecureStaticProvider{AccessToken: ""},
 					},
 				},
 			},
@@ -93,7 +93,7 @@ func Test_RPCChainProviderConfig_validate(t *testing.T) {
 						},
 						UserID:       "user-id",
 						PartyID:      "party-id",
-						AuthProvider: authentication.InsecureStaticProvider{AccessToken: ""},
+						AuthProvider: cantonauthstatic.InsecureStaticProvider{AccessToken: ""},
 					},
 				},
 			},
@@ -111,7 +111,7 @@ func Test_RPCChainProviderConfig_validate(t *testing.T) {
 						},
 						UserID:       "",
 						PartyID:      "party-id",
-						AuthProvider: authentication.InsecureStaticProvider{AccessToken: ""},
+						AuthProvider: cantonauthstatic.InsecureStaticProvider{AccessToken: ""},
 					},
 				},
 			},
@@ -130,7 +130,7 @@ func Test_RPCChainProviderConfig_validate(t *testing.T) {
 						},
 						UserID:       "user-id",
 						PartyID:      "",
-						AuthProvider: authentication.InsecureStaticProvider{AccessToken: ""},
+						AuthProvider: cantonauthstatic.InsecureStaticProvider{AccessToken: ""},
 					},
 				},
 			},
@@ -193,7 +193,7 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 						},
 						UserID:       "participant1",
 						PartyID:      "local-party-1",
-						AuthProvider: authentication.InsecureStaticProvider{AccessToken: "testToken"},
+						AuthProvider: cantonauthstatic.InsecureStaticProvider{AccessToken: "testToken"},
 					},
 				},
 			},
@@ -211,7 +211,7 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 						},
 						UserID:       "participant1",
 						PartyID:      "local-party-1",
-						AuthProvider: authentication.InsecureStaticProvider{AccessToken: "testToken"},
+						AuthProvider: cantonauthstatic.InsecureStaticProvider{AccessToken: "testToken"},
 					},
 				},
 			},
@@ -235,7 +235,7 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 						},
 						UserID:       "participant1",
 						PartyID:      "local-party-1",
-						AuthProvider: authentication.InsecureStaticProvider{AccessToken: "testToken"},
+						AuthProvider: cantonauthstatic.InsecureStaticProvider{AccessToken: "testToken"},
 					},
 				},
 			},

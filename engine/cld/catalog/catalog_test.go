@@ -53,7 +53,7 @@ func TestLoadCatalog(t *testing.T) {
 
 			ctx := t.Context()
 
-			result, err := LoadCatalog(ctx, tt.env, tt.config, tt.domain)
+			result, err := LoadCatalog(ctx, tt.domain.Key(), tt.env, tt.config.Env.Catalog)
 
 			if tt.wantErr != "" {
 				require.Error(t, err)

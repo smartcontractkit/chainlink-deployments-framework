@@ -56,6 +56,10 @@ type RPC struct {
 	PreferredURLScheme string `yaml:"preferred_url_scheme"`
 	HTTPURL            string `yaml:"http_url"`
 	WSURL              string `yaml:"ws_url"`
+	// AuthToken is an optional bearer/API key sent to RPC endpoints that require authentication
+	// (e.g. an Alchemy Sui gRPC gateway). Currently only the Sui chain consumes it, as gRPC auth
+	// metadata; other families ignore it. It is never logged.
+	AuthToken string `yaml:"auth_token,omitempty"`
 }
 
 // PreferredEndpoint returns the correct endpoint based on the preferred URL scheme. By default, it

@@ -45,16 +45,26 @@ func (tonTimelockChecker) isTimelockBatch(functionName string) bool {
 		strings.Contains(functionName, "::BypasserExecuteBatch(")
 }
 
+// stellarTimelockChecker handles the Stellar chain.
+// Matches the Soroban contract function symbols exactly: schedule_batch, bypasser_execute_batch
+// (contracts/timelock/src/lib.rs), which is what the Stellar analyzer decodes the outer call to.
+type stellarTimelockChecker struct{}
+
+func (stellarTimelockChecker) isTimelockBatch(functionName string) bool {
+	return functionName == "schedule_batch" || functionName == "bypasser_execute_batch"
+}
+
 // timelockBatchCheckers is a list of chain-specific checkers for timelock batch functions.
 var timelockBatchCheckers = []timelockBatchChecker{
 	evmTimelockChecker{},
 	solanaTimelockChecker{},
 	suiAptosTimelockChecker{},
 	tonTimelockChecker{},
+	stellarTimelockChecker{},
 }
 
 // isTimelockBatchFunction checks if the function name corresponds to a timelock batch operation
-// across different chain families (EVM, Solana, Sui, Aptos, TON).
+// across different chain families (EVM, Solana, Sui, Aptos, TON, Stellar).
 func isTimelockBatchFunction(functionName string) bool {
 	for _, checker := range timelockBatchCheckers {
 		if checker.isTimelockBatch(functionName) {

@@ -165,6 +165,13 @@ packages:
       pkgname: "mocks"
       dir: "chain/ton/mocks"
       filename: "{{.InterfaceName | snakecase}}.go"
+      template-data:
+        # The expecter side of the testify template always unrolls variadic
+        # arguments into separate mock.On(...) arguments. Without this, the
+        # mock-method side passes the variadic as a single slice, so
+        # EXPECT().Method(..., opt) can never match a real call that supplies
+        # options. Unrolling both sides keeps them consistent.
+        unroll-variadic: true
     interfaces:
       APIClientWrapped:
   github.com/smartcontractkit/chainlink-deployments-framework/cre:

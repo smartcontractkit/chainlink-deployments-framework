@@ -6,6 +6,7 @@ import (
 
 	apiv2 "github.com/digital-asset/dazl-client/v8/go/api/com/daml/ledger/api/v2"
 	adminv2 "github.com/digital-asset/dazl-client/v8/go/api/com/daml/ledger/api/v2/admin"
+	interactivev2 "github.com/digital-asset/dazl-client/v8/go/api/com/daml/ledger/api/v2/interactive"
 	participantv30 "github.com/digital-asset/dazl-client/v8/go/api/com/digitalasset/canton/admin/participant/v30"
 
 	chaincommon "github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/common"
@@ -86,14 +87,15 @@ type LedgerAdminServiceClients struct {
 
 // LedgerServiceClients provides all available Ledger API gRPC service clients.
 type LedgerServiceClients struct {
-	CommandCompletion apiv2.CommandCompletionServiceClient
-	Command           apiv2.CommandServiceClient
-	CommandSubmission apiv2.CommandSubmissionServiceClient
-	EventQuery        apiv2.EventQueryServiceClient
-	PackageService    apiv2.PackageServiceClient
-	State             apiv2.StateServiceClient
-	Update            apiv2.UpdateServiceClient
-	Version           apiv2.VersionServiceClient
+	CommandCompletion     apiv2.CommandCompletionServiceClient
+	Command               apiv2.CommandServiceClient
+	CommandSubmission     apiv2.CommandSubmissionServiceClient
+	EventQuery            apiv2.EventQueryServiceClient
+	PackageService        apiv2.PackageServiceClient
+	State                 apiv2.StateServiceClient
+	Update                apiv2.UpdateServiceClient
+	Version               apiv2.VersionServiceClient
+	InteractiveSubmission interactivev2.InteractiveSubmissionServiceClient
 	// Ledger API admin clients
 	// These endpoints can only be accessed if the user the participant has been configured with
 	// has admin rights. Access with caution and only if you're certain that admin rights are available.
@@ -111,14 +113,15 @@ func CreateLedgerServiceClients(conn grpc.ClientConnInterface) LedgerServiceClie
 			PartyManagement:        adminv2.NewPartyManagementServiceClient(conn),
 			UserManagement:         adminv2.NewUserManagementServiceClient(conn),
 		},
-		CommandCompletion: apiv2.NewCommandCompletionServiceClient(conn),
-		Command:           apiv2.NewCommandServiceClient(conn),
-		CommandSubmission: apiv2.NewCommandSubmissionServiceClient(conn),
-		EventQuery:        apiv2.NewEventQueryServiceClient(conn),
-		PackageService:    apiv2.NewPackageServiceClient(conn),
-		State:             apiv2.NewStateServiceClient(conn),
-		Update:            apiv2.NewUpdateServiceClient(conn),
-		Version:           apiv2.NewVersionServiceClient(conn),
+		CommandCompletion:     apiv2.NewCommandCompletionServiceClient(conn),
+		Command:               apiv2.NewCommandServiceClient(conn),
+		CommandSubmission:     apiv2.NewCommandSubmissionServiceClient(conn),
+		EventQuery:            apiv2.NewEventQueryServiceClient(conn),
+		PackageService:        apiv2.NewPackageServiceClient(conn),
+		State:                 apiv2.NewStateServiceClient(conn),
+		Update:                apiv2.NewUpdateServiceClient(conn),
+		Version:               apiv2.NewVersionServiceClient(conn),
+		InteractiveSubmission: interactivev2.NewInteractiveSubmissionServiceClient(conn),
 	}
 }
 

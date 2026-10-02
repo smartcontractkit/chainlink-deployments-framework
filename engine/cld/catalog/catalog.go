@@ -6,34 +6,34 @@ import (
 
 	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	catalogremote "github.com/smartcontractkit/chainlink-deployments-framework/datastore/catalog/remote"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config"
 	cfgenv "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/env"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	credentials "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/internal/credentials"
 )
 
-// LoadCatalog loads a catalog data store for the specified domain and environment.
-func LoadCatalog(ctx context.Context, env string,
-	config *config.Config, domain domain.Domain) (fdatastore.CatalogStore, error) {
-	catalogClient, err := loadCatalogClient(ctx, env, &config.Env.Catalog)
+// LoadCatalog loads a catalog data store using the specified domain
+// key, environment key, and configuration.
+func LoadCatalog(
+	ctx context.Context, domainKey, envKey string, cfg cfgenv.CatalogConfig,
+) (fdatastore.CatalogStore, error) {
+	client, err := loadCatalogClient(ctx, envKey, &cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	catalogDatastore := catalogremote.NewCatalogDataStore(catalogremote.CatalogDataStoreConfig{
-		Domain:      domain.Key(),
-		Environment: env,
-		Client:      catalogClient,
+	cs := catalogremote.NewCatalogDataStore(catalogremote.CatalogDataStoreConfig{
+		Domain:      domainKey,
+		Environment: envKey,
+		Client:      client,
 	})
 
-	return catalogDatastore, nil
+	return cs, nil
 }
 
 // loadCatalogClient initializes a Catalogue client using the grpc config.
 func loadCatalogClient(
-	ctx context.Context, env string, cfg *cfgenv.CatalogConfig,
+	ctx context.Context, envKey string, cfg *cfgenv.CatalogConfig,
 ) (*catalogremote.CatalogClient, error) {
-	creds := credentials.GetCredsForEnv(env)
+	creds := credentials.GetCredsForEnv(envKey)
 
 	catalogCfg := catalogremote.CatalogConfig{
 		GRPC:  cfg.GRPC,

@@ -17,6 +17,11 @@ type RPCChainProviderConfig struct {
 	// Required: The RPC URL to connect to the Sui node
 	RPCURL string
 
+	// Optional: AuthToken is sent as gRPC auth metadata (Bearer / x-api-key) to endpoints that
+	// require authentication (e.g. Alchemy). Empty for unauthenticated endpoints (local nodes,
+	// public fullnodes), which fall back to the Sui client's default token.
+	AuthToken string
+
 	DeployerSignerGen AccountGenerator
 }
 
@@ -86,7 +91,7 @@ func (p *RPCChainProvider) Initialize(_ context.Context) (chain.BlockChain, erro
 		return nil, fmt.Errorf("failed to create logger: %w", err)
 	}
 
-	client, err := sui.NewPTBClientFromNodeURL(log, p.config.RPCURL, "")
+	client, err := sui.NewPTBClientFromNodeURL(log, p.config.RPCURL, p.config.AuthToken)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Sui PTB client: %w", err)
 	}

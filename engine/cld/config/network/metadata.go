@@ -55,9 +55,11 @@ type CantonMetadata struct {
 
 // AnvilConfig holds the configuration for starting an Anvil node.
 type AnvilConfig struct {
-	Image          string `yaml:"image"`
-	Port           uint64 `yaml:"port"`
-	ArchiveHTTPURL string `yaml:"archive_http_url"`
+	Image           string   `yaml:"image"`
+	Port            uint64   `yaml:"port"`
+	ArchiveHTTPURL  string   `yaml:"archive_http_url"`
+	ArchiveHTTPURLs []string `yaml:"archive_http_urls"`
+	ExtraArgs       []string `yaml:"extra_args,omitempty"`
 }
 
 // Validate checks if the AnvilConfig has all required fields set.

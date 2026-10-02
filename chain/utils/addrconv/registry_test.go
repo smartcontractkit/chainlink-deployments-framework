@@ -25,6 +25,7 @@ func TestNewAddressConverterRegistry(t *testing.T) {
 		chain_selectors.FamilySui,
 		chain_selectors.FamilyTon,
 		chain_selectors.FamilyTron,
+		chain_selectors.FamilyStellar,
 	}
 
 	for _, family := range expectedFamilies {
@@ -73,6 +74,13 @@ func TestAddressToBytes(t *testing.T) {
 			name:           "Aptos family conversion",
 			family:         chain_selectors.FamilyAptos,
 			address:        "0x1",
+			expectedLength: 32,
+			shouldError:    false,
+		},
+		{
+			name:           "Stellar family conversion",
+			family:         chain_selectors.FamilyStellar,
+			address:        "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
 			expectedLength: 32,
 			shouldError:    false,
 		},

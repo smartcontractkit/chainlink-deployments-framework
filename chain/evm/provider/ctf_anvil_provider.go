@@ -568,7 +568,7 @@ func (p *CTFAnvilChainProvider) startContainer(ctx context.Context, chainID stri
 		return "", fmt.Errorf("failed to set up CTF default network: %w", err)
 	}
 
-	httpURL, err := retry.DoWithData(func() (string, error) {
+	httpURL, err := retry.DoWithData(func() (externalURL string, err error) {
 		var port int
 		var portStr string
 		if p.config.Port != "" {
@@ -594,9 +594,14 @@ func (p *CTFAnvilChainProvider) startContainer(ctx context.Context, chainID stri
 			dockerCmdOverrides = append(dockerCmdOverrides, "--fork-url", url)
 		}
 
+		containerName := p.config.Name
+		if containerName == "" {
+			containerName = "anvil"
+		}
+
 		// Create the input for the Anvil blockchain network
 		input := &blockchain.Input{
-			ContainerName:            p.config.Name,
+			ContainerName:            fmt.Sprintf("%s-%d", containerName, time.Now().UnixNano()),
 			Type:                     blockchain.TypeAnvil,
 			ChainID:                  chainID,
 			Port:                     portStr,
@@ -605,7 +610,7 @@ func (p *CTFAnvilChainProvider) startContainer(ctx context.Context, chainID stri
 		}
 
 		// Create the CTF container for Anvil
-		output, rerr := blockchain.NewBlockchainNetwork(input)
+		output, rerr := blockchain.NewWithContext(ctx, input)
 		if rerr != nil {
 			// Return the port to freeport only if it was auto-allocated
 			if p.config.Port == "" {
@@ -621,10 +626,19 @@ func (p *CTFAnvilChainProvider) startContainer(ctx context.Context, chainID stri
 		// Only register cleanup if T is available (for test cleanup)
 		if p.config.T != nil {
 			testcontainers.CleanupContainer(p.config.T, output.Container)
+		} else {
+			defer func() {
+				if err != nil {
+					terr := testcontainers.TerminateContainer(output.Container, testcontainers.StopContext(ctx))
+					if terr != nil {
+						err = errors.Join(err, fmt.Errorf("failed to terminate container: %w", terr))
+					}
+				}
+			}()
 		}
 
 		// Validate that the ExternalHTTPUrl is not empty
-		externalURL := output.Nodes[0].ExternalHTTPUrl
+		externalURL = output.Nodes[0].ExternalHTTPUrl
 		if externalURL == "" {
 			return "", errors.New("container started but ExternalHTTPUrl is empty")
 		}

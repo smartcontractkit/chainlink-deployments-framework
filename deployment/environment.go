@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
 
@@ -17,6 +19,59 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
+
+var (
+	codeCheckMaxAttempts    = 10
+	codeCheckInitialDelay   = 250 * time.Millisecond
+	codeCheckMaxDelay       = 5 * time.Second
+	codeCheckOverallTimeout = 2 * time.Minute
+)
+
+func WaitForDeployedCode(b operations.Bundle, chain evm.Chain, addr common.Address) error {
+	if chain.Client == nil {
+		b.Logger.Warnw("Skipping deployed-code check: chain.Client is nil", "address", addr.Hex(), "chain", chain.String())
+
+		return nil
+	}
+
+	ctx, cancel := context.WithTimeout(b.GetContext(), codeCheckOverallTimeout)
+	defer cancel()
+	delay := codeCheckInitialDelay
+
+	var lastErr error
+	for attempt := 1; attempt <= codeCheckMaxAttempts; attempt++ {
+		if attempt > 1 {
+			select {
+			case <-ctx.Done():
+				return fmt.Errorf("context done while waiting for code at %s: %w (last error: %w)", addr.Hex(), ctx.Err(), lastErr)
+			case <-time.After(delay):
+			}
+			delay = min(delay*2, codeCheckMaxDelay)
+		}
+
+		code, err := chain.Client.CodeAt(ctx, addr, nil)
+		switch {
+		case err != nil:
+			lastErr = err
+			b.Logger.Warnw("eth_getCode failed while waiting for deployed contract",
+				"address", addr.Hex(), "chain", chain.String(), "attempt", attempt, "err", err)
+		case len(code) == 0:
+			lastErr = errors.New("eth_getCode returned empty bytecode")
+			b.Logger.Warnw("Deployed contract not yet visible to the RPC endpoint, retrying",
+				"address", addr.Hex(), "chain", chain.String(), "attempt", attempt)
+		default:
+			if attempt > 1 {
+				b.Logger.Infow("Deployed contract became visible after waiting for RPC propagation",
+					"address", addr.Hex(), "chain", chain.String(), "attempts", attempt)
+			}
+
+			return nil
+		}
+	}
+
+	return fmt.Errorf("contract exists at %s on %s but code was not visible after %d attempts; do not redeploy, verify manually: %w",
+		addr.Hex(), chain.String(), codeCheckMaxAttempts, lastErr)
+}
 
 // TODO(giogam): remove this once multiclient is removed from deployment
 func MaybeDataErr(err error) error {

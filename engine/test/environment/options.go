@@ -17,6 +17,7 @@ import (
 var (
 	newAptosContainerLoader         = onchain.NewAptosContainerLoader
 	newSolanaContainerLoader        = onchain.NewSolanaContainerLoader
+	newStellarContainerLoader       = onchain.NewStellarContainerLoader
 	newSuiContainerLoader           = onchain.NewSuiContainerLoader
 	newSuiContainerLoaderWithConfig = onchain.NewSuiContainerLoaderWithConfig
 	newTonContainerLoader           = onchain.NewTonContainerLoader
@@ -113,6 +114,20 @@ func WithAptosContainerN(t *testing.T, n int) LoadOpt {
 	t.Helper()
 
 	return withChainLoaderN(t, newAptosContainerLoader(), n)
+}
+
+// WithStellarContainer loads Stellar blockchain container instances for specified chain selectors.
+func WithStellarContainer(t *testing.T, selectors []uint64) LoadOpt {
+	t.Helper()
+
+	return withChainLoader(t, newStellarContainerLoader(), selectors)
+}
+
+// WithStellarContainerN loads n Stellar blockchain container instances.
+func WithStellarContainerN(t *testing.T, n int) LoadOpt {
+	t.Helper()
+
+	return withChainLoaderN(t, newStellarContainerLoader(), n)
 }
 
 // WithSolanaContainer loads Solana blockchain container instances for specified chain selectors.

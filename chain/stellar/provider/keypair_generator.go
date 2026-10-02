@@ -6,12 +6,12 @@ import (
 
 	"github.com/stellar/go-stellar-sdk/keypair"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/chain/stellar"
+	stellar "github.com/smartcontractkit/chainlink-stellar/bindings"
 )
 
 // KeypairGenerator is an interface for generating Stellar keypairs.
 type KeypairGenerator interface {
-	Generate() (stellar.StellarSigner, error)
+	Generate() (stellar.Signer, error)
 }
 
 // keypairFromHex is a KeypairGenerator that generates a keypair from a hex-encoded private key.
@@ -28,7 +28,7 @@ func KeypairFromHex(hexKey string) KeypairGenerator {
 }
 
 // Generate generates a Stellar keypair from the hex-encoded private key.
-func (k *keypairFromHex) Generate() (stellar.StellarSigner, error) {
+func (k *keypairFromHex) Generate() (stellar.Signer, error) {
 	if k.hexKey == "" {
 		return nil, errors.New("hex key is empty")
 	}
@@ -52,7 +52,7 @@ func KeypairRandom() KeypairGenerator {
 }
 
 // Generate generates a random Stellar keypair.
-func (k *keypairRandom) Generate() (stellar.StellarSigner, error) {
+func (k *keypairRandom) Generate() (stellar.Signer, error) {
 	kp, err := keypair.Random()
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate random keypair: %w", err)
