@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.124.1
+
+### Patch Changes
+
+- [#1191](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1191) [`1d57715`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/1d57715880d585d4d007596881ee074402360eee) Thanks [@giogam](https://github.com/giogam)! - fix(catalog): open a DataAccess stream per request instead of one long-lived stream, keeping a single stream for the duration of a transaction
+
 ## 0.124.0
 
 ### Minor Changes
