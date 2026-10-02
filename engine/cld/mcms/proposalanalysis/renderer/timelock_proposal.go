@@ -2,6 +2,7 @@ package renderer
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 
 	"github.com/smartcontractkit/mcms"
@@ -19,10 +20,14 @@ func CloneTimelockProposal(proposal *mcms.TimelockProposal) (*mcms.TimelockPropo
 		return nil, fmt.Errorf("marshal timelock proposal: %w", err)
 	}
 
-	cloned, err := mcms.NewTimelockProposal(&buf)
-	if err != nil {
+	// Cloning must preserve an already-loaded proposal without reapplying
+	// wall-clock validity rules. Historical analysis accepts expired proposals.
+	var cloned mcms.TimelockProposal
+	decoder := json.NewDecoder(&buf)
+	decoder.UseNumber()
+	if err := decoder.Decode(&cloned); err != nil {
 		return nil, fmt.Errorf("unmarshal timelock proposal: %w", err)
 	}
 
-	return cloned, nil
+	return &cloned, nil
 }
