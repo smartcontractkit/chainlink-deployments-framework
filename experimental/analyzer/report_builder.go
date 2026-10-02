@@ -40,7 +40,10 @@ func BuildProposalReport(ctx context.Context, proposalContext ProposalContext, e
 
 // BuildTimelockReport assembles a ProposalReport for timelock-style proposals with batches.
 func BuildTimelockReport(ctx context.Context, proposalCtx ProposalContext, env deployment.Environment, p *mcms.TimelockProposal) (*ProposalReport, error) {
-	rpt := &ProposalReport{Batches: make([]BatchReport, len(p.Operations))}
+	rpt := &ProposalReport{
+		Action:  string(p.Action),
+		Batches: make([]BatchReport, len(p.Operations)),
+	}
 	for i, batch := range p.Operations {
 		chainSel := uint64(batch.ChainSelector)
 		family, err := chainsel.GetSelectorFamily(chainSel)

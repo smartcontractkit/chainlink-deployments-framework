@@ -1,4 +1,6 @@
-{{range $i, $batch := .Batches}}{{if $i}}
+{{if .Action}}Timelock action: {{.Action}}
+
+{{end}}{{range $i, $batch := .Batches}}{{if $i}}
 
 {{end}}Batch - Chain: {{$batch.ChainName}} ({{$batch.ChainSelector}})
 {{range $j, $op := $batch.Operations}}{{if $j}}

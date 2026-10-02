@@ -10,6 +10,8 @@ import (
 	"strings"
 	"text/template"
 
+	mcmstypes "github.com/smartcontractkit/mcms/types"
+
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer/annotation"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/format"
@@ -39,7 +41,24 @@ func defaultFuncMap() template.FuncMap {
 		"resolveChainSelector":  resolveChainSelector,
 		"severitySymbol":        severitySymbol,
 		"riskSymbol":            riskSymbol,
+		"timelockActionBadge":   timelockActionBadge,
 		"add":                   func(a, b int) int { return a + b },
+	}
+}
+
+// timelockActionBadge renders a prominent badge describing the timelock action
+// being signed, so signers can immediately tell whether the proposal schedules,
+// cancels, or bypasses the wrapped operations.
+func timelockActionBadge(action mcmstypes.TimelockAction) string {
+	switch action {
+	case mcmstypes.TimelockActionCancel:
+		return "🚫 **CANCEL** — this proposal cancels a previously scheduled timelock operation"
+	case mcmstypes.TimelockActionBypass:
+		return "⚡ **BYPASS** — this proposal bypasses the timelock delay and executes immediately"
+	case mcmstypes.TimelockActionSchedule:
+		return "⏱️ **SCHEDULE** — this proposal schedules operations for execution after the timelock delay"
+	default:
+		return fmt.Sprintf("**%s**", strings.ToUpper(string(action)))
 	}
 }
 
