@@ -497,3 +497,52 @@ func TestMultiClient_EstimateGas_cap(t *testing.T) {
 		})
 	}
 }
+
+func TestIsAlreadyKnown(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{
+			name: "nil error",
+			err:  nil,
+			want: false,
+		},
+		{
+			name: "generic error containing 'already known'",
+			err:  errors.New("failed to send transaction: already known"),
+			want: true,
+		},
+		{
+			name: "error with uppercase 'Already Known'",
+			err:  errors.New("Already Known"),
+			want: true,
+		},
+		{
+			name: "error with padded 'already known'",
+			err:  errors.New("  already known  "),
+			want: true,
+		},
+		{
+			name: "error with 'already known' in middle",
+			err:  errors.New("operation failed: already known: reason unknown"),
+			want: true,
+		},
+		{
+			name: "error that doesn't match",
+			err:  errors.New("some other error"),
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got := isAlreadyKnown(tt.err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}

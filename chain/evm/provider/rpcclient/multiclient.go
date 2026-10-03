@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strings"
 	"sync"
 	"time"
 
@@ -38,6 +39,7 @@ const (
 
 	// Default timeout for health checks
 	RPCDefaultHealthCheckTimeout = 2 * time.Second
+	AlreadyKnownErrorMessage     = "already known"
 )
 
 // RetryConfig configures retry behavior for RPC operations.
@@ -161,7 +163,14 @@ func NewMultiClient(
 // chain.DeployerKey at chain load (gas_config defaults) or before signing the transaction.
 func (mc *MultiClient) SendTransaction(ctx context.Context, tx *types.Transaction) error {
 	return mc.retryWithBackups(ctx, "SendTransaction", func(ct context.Context, client *ethclient.Client) error {
-		return client.SendTransaction(ct, tx)
+		err := client.SendTransaction(ctx, tx)
+		if isAlreadyKnown(err) {
+			// The exact signed transaction is already in this node's
+			// transaction pool or was previously submitted to it.
+			return nil
+		}
+
+		return err
 	})
 }
 
@@ -560,4 +569,14 @@ func maybeDataErr(err error) error {
 	}
 
 	return err
+}
+
+func isAlreadyKnown(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	msg := strings.ToLower(err.Error())
+
+	return strings.Contains(msg, AlreadyKnownErrorMessage)
 }
