@@ -44,3 +44,17 @@ catalog:
   auth:
     kms_key_id: "alias/catalog"
     kms_key_region: "us-west-1"
+
+notifications:
+  slack:
+    channels:
+      - name: "#exemplar-signers"
+        slack_handles:
+          - "@exemplar-signers"
+        timelock_contracts:
+          - chain_selector: 16015286601757825753
+            address: "0xabc"
+        mcm_contracts:
+          - chain_selector: 16015286601757825753
+            address: "0xdef"
+      - name: "#mcms-proposals"
