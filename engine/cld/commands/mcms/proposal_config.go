@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
+	"math/big"
 	"slices"
 
 	"github.com/smartcontractkit/mcms"
@@ -23,6 +24,10 @@ const (
 	acceptExpiredProposal = "accept-expired-proposal-option" // sentinel option to accept expired proposals.
 	randomSalt            = "random-salt-option"             // sentinel option to override the proposal's salt with a random value
 )
+
+// ForkBlockNumberOption pins the fork of the selected chain to a specific block
+// height. Pass it through LoadProposalConfig's opts; absence (or 0) forks at latest.
+type ForkBlockNumberOption uint64
 
 // ProposalConfig holds the loaded proposal configuration.
 type ProposalConfig struct {
@@ -115,7 +120,13 @@ func LoadProposalConfig(
 
 	// Load Environment
 	if cfg.Fork {
-		cfg.ForkedEnv, err = deps.ForkEnvironmentLoader(ctx, dom, cfg.EnvStr, nil,
+		var blockNumbers map[uint64]*big.Int
+		for _, opt := range opts {
+			if block, ok := opt.(ForkBlockNumberOption); ok && cfg.ChainSelector != 0 {
+				blockNumbers = map[uint64]*big.Int{cfg.ChainSelector: new(big.Int).SetUint64(uint64(block))}
+			}
+		}
+		cfg.ForkedEnv, err = deps.ForkEnvironmentLoader(ctx, dom, cfg.EnvStr, blockNumbers,
 			cldfenvironment.OnlyLoadChainsFor(chainSelectors),
 			cldfenvironment.WithoutJD(),
 			cldfenvironment.WithLogger(lggr))
