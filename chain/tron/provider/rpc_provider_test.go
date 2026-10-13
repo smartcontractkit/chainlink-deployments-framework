@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/avast/retry-go/v4"
-	"github.com/fbsobreira/gotron-sdk/pkg/address"
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
+	"github.com/smartcontractkit/chainlink-tron/relayer/gotron-sdk/pkg/address"
 	"github.com/smartcontractkit/freeport"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

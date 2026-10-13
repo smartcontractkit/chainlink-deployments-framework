@@ -10,7 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	kmslib "github.com/aws/aws-sdk-go/service/kms"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/fbsobreira/gotron-sdk/pkg/address"
+	"github.com/smartcontractkit/chainlink-tron/relayer/gotron-sdk/pkg/address"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/internal/kms"
 )
