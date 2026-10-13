@@ -1,5 +1,13 @@
 # chainlink-deployments-framework
 
+## 0.125.0
+
+### Minor Changes
+
+- [#1193](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1193) [`f70c25f`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/f70c25f299f59430015e39aca24b82feab6d7331) Thanks [@ecPablo](https://github.com/ecPablo)! - Adds timelock action to proposal analyzers
+
+- [#1196](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1196) [`ded861a`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/ded861a7b32b2f0cf9fc9fadad1f670a3f3665f2) Thanks [@ecPablo](https://github.com/ecPablo)! - Adds optional `notifications` routing of MCMS proposal notifications to Slack channels on `BuildParams`
+
 ## 0.124.1
 
 ### Patch Changes
