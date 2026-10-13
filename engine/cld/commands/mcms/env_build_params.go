@@ -44,7 +44,8 @@ func withEnvBuildParams(cmd *cobra.Command, deps *Deps) func() *cldfenvironment.
 }
 
 // buildEnvironment builds the environment from params. All listed networks are
-// dialed, so chainSelectors is only used to check each needed chain is present.
+// dialed, so chainSelectors is only used to check each needed chain is present:
+// first that it is listed, before building, then that it loaded.
 func buildEnvironment(
 	ctx context.Context,
 	lggr logger.Logger,
@@ -59,6 +60,18 @@ func buildEnvironment(
 		)
 	}
 
+	listed := make(map[uint64]bool, len(params.Networks))
+	for _, network := range params.Networks {
+		listed[network.ChainSelector] = true
+	}
+	for _, selector := range chainSelectors {
+		if !listed[selector] {
+			return cldf.Environment{}, fmt.Errorf(
+				"chain selector %d is not listed under networks in the build params", selector,
+			)
+		}
+	}
+
 	env, err := deps.EnvironmentBuilder(ctx, params, cldfenvironment.BuildWithLogger(lggr))
 	if err != nil {
 		return cldf.Environment{}, fmt.Errorf("failed to build environment from build params: %w", err)
@@ -67,8 +80,8 @@ func buildEnvironment(
 	for _, selector := range chainSelectors {
 		if _, err = env.BlockChains.GetBySelector(selector); err != nil {
 			return cldf.Environment{}, fmt.Errorf(
-				"chain selector %d not found in the supplied build params, list it under networks "+
-					"(chains without a configured signing key are skipped): %w", selector, err,
+				"chain selector %d is listed in the build params but was not loaded, "+
+					"check that a signing key is configured for its chain family: %w", selector, err,
 			)
 		}
 	}

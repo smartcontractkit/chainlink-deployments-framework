@@ -19,6 +19,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	fdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	cldfnetwork "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/network"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	cldfenv "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
@@ -70,6 +71,18 @@ func (f *fakeBuilder) build(
 	}, nil
 }
 
+// listedParams returns params that list the given chain selectors under networks.
+func listedParams(selectors ...uint64) cldfenv.BuildParams {
+	params := cldfenv.BuildParams{Domain: buildParamsDomain, Environment: buildParamsEnv}
+	for _, selector := range selectors {
+		params.Networks = append(params.Networks, cldfnetwork.Network{ChainSelector: selector})
+	}
+
+	return params
+}
+
+func ptr[T any](v T) *T { return &v }
+
 func failingEnvLoader(t *testing.T) EnvironmentLoaderFunc {
 	t.Helper()
 
@@ -85,7 +98,7 @@ func failingEnvLoader(t *testing.T) EnvironmentLoaderFunc {
 func TestBuildEnvironment(t *testing.T) {
 	t.Parallel()
 
-	params := cldfenv.BuildParams{Domain: buildParamsDomain, Environment: buildParamsEnv}
+	params := listedParams(buildParamsSelector)
 	dom := domain.NewDomain("/does/not/exist", buildParamsDomain)
 
 	tests := []struct {
@@ -93,6 +106,7 @@ func TestBuildEnvironment(t *testing.T) {
 		dom       domain.Domain
 		builder   *fakeBuilder
 		selectors []uint64
+		wantCalls int
 		wantErr   string
 	}{
 		{
@@ -100,6 +114,7 @@ func TestBuildEnvironment(t *testing.T) {
 			dom:       dom,
 			builder:   &fakeBuilder{selector: []uint64{buildParamsSelector}},
 			selectors: []uint64{buildParamsSelector},
+			wantCalls: 1,
 		},
 		{
 			name:    "domain mismatch",
@@ -108,17 +123,26 @@ func TestBuildEnvironment(t *testing.T) {
 			wantErr: `build params are for domain "testdomain", but this binary is for domain "other"`,
 		},
 		{
-			name:    "builder error",
-			dom:     dom,
-			builder: &fakeBuilder{err: errors.New("catalog unreachable")},
-			wantErr: "failed to build environment from build params: catalog unreachable",
+			name:      "builder error",
+			dom:       dom,
+			builder:   &fakeBuilder{err: errors.New("catalog unreachable")},
+			wantErr:   "failed to build environment from build params: catalog unreachable",
+			wantCalls: 1,
 		},
 		{
-			name:      "selector missing from networks is named",
+			name:      "selector not listed fails before building",
 			dom:       dom,
 			builder:   &fakeBuilder{selector: []uint64{buildParamsSelector}},
 			selectors: []uint64{buildParamsSelector, 42},
-			wantErr:   "chain selector 42 not found in the supplied build params",
+			wantErr:   "chain selector 42 is not listed under networks in the build params",
+		},
+		{
+			name:      "listed selector that did not load is named",
+			dom:       dom,
+			builder:   &fakeBuilder{},
+			selectors: []uint64{buildParamsSelector},
+			wantCalls: 1,
+			wantErr:   "chain selector 3379446385462418246 is listed in the build params but was not loaded",
 		},
 	}
 
@@ -130,6 +154,8 @@ func TestBuildEnvironment(t *testing.T) {
 
 			env, err := buildEnvironment(t.Context(), logger.Nop(), tt.dom, deps, params, tt.selectors)
 
+			require.Equal(t, tt.wantCalls, tt.builder.calls)
+
 			if tt.wantErr != "" {
 				require.ErrorContains(t, err, tt.wantErr)
 				return
@@ -137,7 +163,6 @@ func TestBuildEnvironment(t *testing.T) {
 
 			require.NoError(t, err)
 			require.Equal(t, buildParamsEnv, env.Name)
-			require.Equal(t, 1, tt.builder.calls)
 			require.Equal(t, params, tt.builder.params)
 		})
 	}
@@ -148,7 +173,7 @@ func TestBuildEnvironment_WarnsWhenCatalogIsEmpty(t *testing.T) {
 
 	lggr, logs := logger.TestObserved(t, zapcore.WarnLevel)
 	builder := &fakeBuilder{selector: []uint64{buildParamsSelector}}
-	params := cldfenv.BuildParams{Domain: buildParamsDomain, Environment: buildParamsEnv}
+	params := listedParams(buildParamsSelector)
 
 	_, err := buildEnvironment(t.Context(), lggr, domain.NewDomain("/x", buildParamsDomain),
 		&Deps{EnvironmentBuilder: builder.build}, params, []uint64{buildParamsSelector})
@@ -164,7 +189,7 @@ func TestLoadProposalConfig_BuildParams(t *testing.T) {
 	proposalPath := filepath.Join(t.TempDir(), "proposal.json")
 	require.NoError(t, os.WriteFile(proposalPath, testProposalWithoutChangesetsJSON, 0o600))
 
-	params := &cldfenv.BuildParams{Domain: buildParamsDomain, Environment: buildParamsEnv}
+	params := listedParams(buildParamsSelector)
 	dom := domain.NewDomain("/does/not/exist", buildParamsDomain)
 
 	t.Run("uses the builder and not the file loader", func(t *testing.T) {
@@ -181,16 +206,16 @@ func TestLoadProposalConfig_BuildParams(t *testing.T) {
 			ProposalPath: proposalPath,
 			ProposalKind: string(mcmstypes.KindTimelockProposal),
 			Environment:  buildParamsEnv,
-			BuildParams:  params,
+			BuildParams:  &params,
 		})
 
 		require.NoError(t, err)
 		require.Equal(t, 1, builder.calls)
-		require.Equal(t, *params, builder.params)
+		require.Equal(t, params, builder.params)
 		require.Equal(t, buildParamsEnv, got.Env.Name)
 	})
 
-	t.Run("a proposal chain missing from networks fails naming the selector", func(t *testing.T) {
+	t.Run("a proposal chain not listed in networks fails before building", func(t *testing.T) {
 		t.Parallel()
 
 		builder := &fakeBuilder{}
@@ -204,10 +229,31 @@ func TestLoadProposalConfig_BuildParams(t *testing.T) {
 			ProposalPath: proposalPath,
 			ProposalKind: string(mcmstypes.KindTimelockProposal),
 			Environment:  buildParamsEnv,
-			BuildParams:  params,
+			BuildParams:  ptr(listedParams(42)),
 		})
 
-		require.ErrorContains(t, err, "chain selector 3379446385462418246 not found in the supplied build params")
+		require.ErrorContains(t, err, "chain selector 3379446385462418246 is not listed under networks")
+		require.Zero(t, builder.calls)
+	})
+
+	t.Run("a listed chain that did not load fails naming the selector", func(t *testing.T) {
+		t.Parallel()
+
+		builder := &fakeBuilder{}
+		deps := &Deps{
+			EnvironmentLoader:  failingEnvLoader(t),
+			EnvironmentBuilder: builder.build,
+			ProposalLoader:     mcms.LoadProposal,
+		}
+
+		_, err := LoadProposalConfig(t.Context(), logger.Nop(), dom, deps, nil, ProposalFlags{
+			ProposalPath: proposalPath,
+			ProposalKind: string(mcmstypes.KindTimelockProposal),
+			Environment:  buildParamsEnv,
+			BuildParams:  &params,
+		})
+
+		require.ErrorContains(t, err, "chain selector 3379446385462418246 is listed in the build params but was not loaded")
 	})
 
 	t.Run("build params cannot be combined with fork", func(t *testing.T) {
@@ -220,7 +266,7 @@ func TestLoadProposalConfig_BuildParams(t *testing.T) {
 			ProposalKind: string(mcmstypes.KindTimelockProposal),
 			Environment:  buildParamsEnv,
 			Fork:         true,
-			BuildParams:  params,
+			BuildParams:  &params,
 		})
 
 		require.ErrorContains(t, err, "not supported when running on a fork")
@@ -271,7 +317,7 @@ func TestBuildParamsCommands(t *testing.T) {
 	subcommands := []string{"analyze-proposal-v2", "convert-upf", "analyze-proposal"}
 
 	for _, sub := range subcommands {
-		// The fake builder returns no chains, so runs stop at the selector check.
+		// The fake builder returns no chains, so runs stop at the post-build check.
 		// Reaching it shows the environment came from the document.
 		t.Run(sub+"/document from variable builds the environment", func(t *testing.T) {
 			t.Parallel()
@@ -285,7 +331,7 @@ func TestBuildParamsCommands(t *testing.T) {
 
 			err := executeCommand(cmd, sub, "-p", writeTestProposal(t))
 
-			require.ErrorContains(t, err, "chain selector 3379446385462418246 not found in the supplied build params")
+			require.ErrorContains(t, err, "chain selector 3379446385462418246 is listed in the build params but was not loaded")
 			require.Equal(t, 1, builder.calls)
 			require.Equal(t, buildParamsDomain, builder.params.Domain)
 			require.Equal(t, buildParamsEnv, builder.params.Environment)
@@ -304,7 +350,7 @@ func TestBuildParamsCommands(t *testing.T) {
 
 			err := executeCommand(cmd, sub, "-p", writeTestProposal(t), "--env-build-params", buildParamsDoc)
 
-			require.ErrorContains(t, err, "chain selector 3379446385462418246 not found")
+			require.ErrorContains(t, err, "chain selector 3379446385462418246 is listed in the build params but was not loaded")
 			require.Equal(t, 1, builder.calls)
 		})
 
