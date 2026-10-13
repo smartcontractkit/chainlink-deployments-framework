@@ -15,6 +15,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/mcms/adapters"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/flags"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/text"
+	cldfenvironment "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer/upf"
 )
 
@@ -26,6 +27,14 @@ var (
 
 		This is useful for sharing proposals in a standardized format that can
 		be imported into other tools and systems.
+
+		By default the environment is read from the domain directory on disk. To
+		build it from a BuildParams YAML document instead, with no domain directory
+		needed, set the MCMS_ENV_BUILD_PARAMS environment variable (preferred, as the
+		document carries secrets) or pass --env-build-params. The document then owns
+		the domain and environment, so -e must be omitted. Every chain the proposal
+		targets must be listed under networks, all listed networks are dialed, the
+		address book is empty and addresses come only from the catalog.
 	`)
 
 	convertUpfExample = text.Examples(`
@@ -34,6 +43,9 @@ var (
 
 		# Convert and save to a file
 		myapp mcms convert-upf -e staging -p ./proposal.json -o proposal.upf.json
+
+		# Convert using a BuildParams document instead of a domain directory
+		MCMS_ENV_BUILD_PARAMS="$(cat params.yaml)" myapp mcms convert-upf -p ./proposal.json
 	`)
 )
 
@@ -43,10 +55,13 @@ type convertUpfFlags struct {
 	proposalKind  string
 	chainSelector uint64
 	output        string
+	buildParams   *cldfenvironment.BuildParams
 }
 
 // newConvertUpfCmd creates the "convert-upf" subcommand.
 func newConvertUpfCmd(cfg Config) *cobra.Command {
+	var buildParams func() *cldfenvironment.BuildParams
+
 	cmd := &cobra.Command{
 		Use:     "convert-upf",
 		Short:   convertUpfShort,
@@ -59,6 +74,7 @@ func newConvertUpfCmd(cfg Config) *cobra.Command {
 				proposalKind:  flags.MustString(cmd.Flags().GetString("proposalKind")),
 				chainSelector: flags.MustUint64(cmd.Flags().GetUint64("selector")),
 				output:        flags.MustString(cmd.Flags().GetString("output")),
+				buildParams:   buildParams(),
 			}
 
 			return runConvertUpf(cmd, cfg, f)
@@ -67,6 +83,7 @@ func newConvertUpfCmd(cfg Config) *cobra.Command {
 
 	// Shared flags
 	flags.Environment(cmd)
+	buildParams = withEnvBuildParams(cmd, cfg.deps())
 	flags.Proposal(cmd)
 	flags.ProposalKind(cmd, string(types.KindTimelockProposal))
 	flags.ChainSelector(cmd, false) // optional
@@ -90,6 +107,7 @@ func runConvertUpf(cmd *cobra.Command, cfg Config, f convertUpfFlags) error {
 			ProposalKind:  f.proposalKind,
 			Environment:   f.environment,
 			ChainSelector: f.chainSelector,
+			BuildParams:   f.buildParams,
 		},
 		acceptExpiredProposal,
 	)

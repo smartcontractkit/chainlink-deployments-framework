@@ -3,6 +3,7 @@ package mcms
 import (
 	"context"
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"slices"
 
@@ -44,6 +45,10 @@ type ProposalFlags struct {
 	Environment   string
 	ChainSelector uint64
 	Fork          bool
+
+	// BuildParams, when set, builds the environment from the document. Not
+	// supported with Fork.
+	BuildParams *cldfenvironment.BuildParams
 }
 
 // LoadProposalConfig loads and validates a proposal configuration.
@@ -114,7 +119,15 @@ func LoadProposalConfig(
 	}
 
 	// Load Environment
-	if cfg.Fork {
+	switch {
+	case flags.BuildParams != nil && cfg.Fork:
+		return nil, errors.New("build params are not supported when running on a fork")
+	case flags.BuildParams != nil:
+		cfg.Env, err = buildEnvironment(ctx, lggr, dom, deps, *flags.BuildParams, chainSelectors)
+		if err != nil {
+			return nil, fmt.Errorf("error loading environment: %w", err)
+		}
+	case cfg.Fork:
 		cfg.ForkedEnv, err = deps.ForkEnvironmentLoader(ctx, dom, cfg.EnvStr, nil,
 			cldfenvironment.OnlyLoadChainsFor(chainSelectors),
 			cldfenvironment.WithoutJD(),
@@ -123,7 +136,7 @@ func LoadProposalConfig(
 			return nil, fmt.Errorf("error loading forked environment: %w", err)
 		}
 		cfg.Env = cfg.ForkedEnv.Environment
-	} else {
+	default:
 		cfg.Env, err = deps.EnvironmentLoader(ctx, dom, cfg.EnvStr, lggr,
 			cldfenvironment.OnlyLoadChainsFor(chainSelectors),
 			cldfenvironment.WithoutJD())

@@ -13,6 +13,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/flags"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/text"
+	cldfenvironment "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis"
 	proposalanalysisanalyzer "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
 	analysisdecoder "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/decoder"
@@ -28,6 +29,14 @@ var (
 
 		This command only supports timelock proposals and is intended to replace
 		the legacy analyze-proposal command.
+
+		By default the environment is read from the domain directory on disk. To
+		build it from a BuildParams YAML document instead, with no domain directory
+		needed, set the MCMS_ENV_BUILD_PARAMS environment variable (preferred, as the
+		document carries secrets) or pass --env-build-params. The document then owns
+		the domain and environment, so -e must be omitted. Every chain the proposal
+		targets must be listed under networks, all listed networks are dialed, the
+		address book is empty and addresses come only from the catalog.
 	`)
 
 	analyzeProposalV2Example = text.Examples(`
@@ -36,6 +45,9 @@ var (
 
 		# Analyze and save to a file in markdown format
 		myapp mcms analyze-proposal-v2 -e staging -p ./proposal.json -o analysis.md
+
+		# Analyze using a BuildParams document instead of a domain directory
+		MCMS_ENV_BUILD_PARAMS="$(cat params.yaml)" myapp mcms analyze-proposal-v2 -p ./proposal.json
 	`)
 )
 
@@ -45,9 +57,12 @@ type analyzeProposalV2Flags struct {
 	chainSelector uint64
 	output        string
 	rendererID    string
+	buildParams   *cldfenvironment.BuildParams
 }
 
 func newAnalyzeProposalV2Cmd(cfg Config) *cobra.Command {
+	var buildParams func() *cldfenvironment.BuildParams
+
 	cmd := &cobra.Command{
 		Use:     "analyze-proposal-v2",
 		Short:   analyzeProposalV2Short,
@@ -60,6 +75,7 @@ func newAnalyzeProposalV2Cmd(cfg Config) *cobra.Command {
 				chainSelector: flags.MustUint64(cmd.Flags().GetUint64("selector")),
 				output:        flags.MustString(cmd.Flags().GetString("output")),
 				rendererID:    flags.MustString(cmd.Flags().GetString("renderer-id")),
+				buildParams:   buildParams(),
 			}
 
 			return runAnalyzeProposalV2(cmd, cfg, f)
@@ -67,6 +83,7 @@ func newAnalyzeProposalV2Cmd(cfg Config) *cobra.Command {
 	}
 
 	flags.Environment(cmd)
+	buildParams = withEnvBuildParams(cmd, cfg.deps())
 	flags.Proposal(cmd)
 	flags.ChainSelector(cmd, false)
 
@@ -86,6 +103,7 @@ func runAnalyzeProposalV2(cmd *cobra.Command, cfg Config, f analyzeProposalV2Fla
 			ProposalKind:  string(types.KindTimelockProposal),
 			Environment:   f.environment,
 			ChainSelector: f.chainSelector,
+			BuildParams:   f.buildParams,
 		},
 		acceptExpiredProposal,
 	)

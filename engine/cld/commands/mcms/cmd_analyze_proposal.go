@@ -11,6 +11,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/flags"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/text"
+	cldfenvironment "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 )
 
@@ -23,6 +24,9 @@ var (
 
 		The output includes details about the proposal's operations, targets, and
 		any decoded call data. Supports markdown and text output formats.
+
+		The environment can be built from a BuildParams YAML document instead of the
+		domain directory, see analyze-proposal-v2 for details.
 	`)
 
 	analyzeProposalExample = text.Examples(`
@@ -44,10 +48,13 @@ type analyzeProposalFlags struct {
 	chainSelector uint64
 	output        string
 	format        string
+	buildParams   *cldfenvironment.BuildParams
 }
 
 // newAnalyzeProposalCmd creates the "analyze-proposal" subcommand.
 func newAnalyzeProposalCmd(cfg Config) *cobra.Command {
+	var buildParams func() *cldfenvironment.BuildParams
+
 	cmd := &cobra.Command{
 		Use:        "analyze-proposal",
 		Short:      analyzeProposalShort,
@@ -62,6 +69,7 @@ func newAnalyzeProposalCmd(cfg Config) *cobra.Command {
 				chainSelector: flags.MustUint64(cmd.Flags().GetUint64("selector")),
 				output:        flags.MustString(cmd.Flags().GetString("output")),
 				format:        flags.MustString(cmd.Flags().GetString("format")),
+				buildParams:   buildParams(),
 			}
 
 			return runAnalyzeProposal(cmd, cfg, f)
@@ -70,6 +78,7 @@ func newAnalyzeProposalCmd(cfg Config) *cobra.Command {
 
 	// Shared flags
 	flags.Environment(cmd)
+	buildParams = withEnvBuildParams(cmd, cfg.deps())
 	flags.Proposal(cmd)
 	flags.ProposalKind(cmd, string(types.KindTimelockProposal))
 	flags.ChainSelector(cmd, false) // optional for analyze
@@ -98,6 +107,7 @@ func runAnalyzeProposal(cmd *cobra.Command, cfg Config, f analyzeProposalFlags) 
 			ProposalKind:  f.proposalKind,
 			Environment:   f.environment,
 			ChainSelector: f.chainSelector,
+			BuildParams:   f.buildParams,
 		},
 		acceptExpiredProposal,
 	)
