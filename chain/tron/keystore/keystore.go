@@ -6,7 +6,7 @@ import (
 	"errors"
 
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/fbsobreira/gotron-sdk/pkg/address"
+	"github.com/smartcontractkit/chainlink-tron/relayer/gotron-sdk/pkg/address"
 )
 
 // Keystore is a simple in-memory key store that holds private keys for signing.

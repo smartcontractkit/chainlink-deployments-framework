@@ -3,8 +3,8 @@ package tron
 import (
 	"fmt"
 
-	"github.com/fbsobreira/gotron-sdk/pkg/address"
 	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	"github.com/smartcontractkit/chainlink-tron/relayer/gotron-sdk/pkg/address"
 )
 
 // AddressToBytes converts a Tron address string to bytes.

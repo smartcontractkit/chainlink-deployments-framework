@@ -4,8 +4,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/fbsobreira/gotron-sdk/pkg/address"
 	chainsel "github.com/smartcontractkit/chain-selectors"
+	"github.com/smartcontractkit/chainlink-tron/relayer/gotron-sdk/pkg/address"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
