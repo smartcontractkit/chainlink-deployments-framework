@@ -14,6 +14,7 @@ import (
 
 	cfgenv "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/env"
 	cfgnet "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/network"
+	cfgnotifications "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/notifications"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
@@ -380,6 +381,17 @@ func wantGoldenParams() BuildParams {
 				KMSKeyRegion: "us-west-1",
 			},
 		},
+		Notifications: &cfgnotifications.Config{
+			Slack: cfgnotifications.SlackConfig{Channels: []cfgnotifications.SlackChannel{
+				{
+					Name:              "#exemplar-signers",
+					SlackHandles:      []string{"@exemplar-signers"},
+					TimelockContracts: []cfgnotifications.ContractRef{{ChainSelector: selSepolia, Address: "0xabc"}},
+					MCMContracts:      []cfgnotifications.ContractRef{{ChainSelector: selSepolia, Address: "0xdef"}},
+				},
+				{Name: "#mcms-proposals"},
+			}},
+		},
 	}
 }
 
@@ -474,6 +486,11 @@ func Test_parseBuildParams_Errors(t *testing.T) {
 			name:    "unknown nested field",
 			give:    "networks:\n  - chain_selector: 1\n    rpc: nope\n",
 			wantErr: "field rpc not found",
+		},
+		{
+			name:    "unknown notifications field",
+			give:    "notifications:\n  slack:\n    chanels: []\n",
+			wantErr: "field chanels not found",
 		},
 		{
 			name:    "empty document",

@@ -18,6 +18,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config"
 	cfgenv "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/env"
 	cfgnet "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/network"
+	cfgnotifications "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/notifications"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
@@ -46,6 +47,10 @@ type BuildParams struct {
 	// gets a "<base>/<chain selector>" RPC prepended ahead of its own. Any
 	// trailing slashes on the base are trimmed before the selector is appended.
 	DefaultRPCBaseURL string `yaml:"default_rpc_base_url"`
+
+	// Notifications optionally routes MCMS proposal notifications to Slack
+	// channels.
+	Notifications *cfgnotifications.Config `yaml:"notifications,omitempty"`
 }
 
 // BuildFromYAML builds an environment from a YAML encoded BuildParams document.
