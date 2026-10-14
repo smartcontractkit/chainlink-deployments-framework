@@ -6,6 +6,8 @@
 package flags
 
 import (
+	"time"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -121,3 +123,5 @@ func ChainSelector(cmd *cobra.Command, required bool) {
 		_ = cmd.MarkFlagRequired("selector")
 	}
 }
+
+func MustDuration(d time.Duration, _ error) time.Duration { return d }

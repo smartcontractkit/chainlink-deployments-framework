@@ -12,6 +12,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	proposalanalyzer "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
 	proposalrenderer "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/renderer"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/simulation"
 	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
@@ -46,6 +47,13 @@ type Config struct {
 
 	// LoadChangeset are custom changeset loading functions. Optional
 	LoadChangesets func(envName string) (*changeset.ChangesetsRegistry, error)
+
+	// SimulationViewProvider produces scoped state views for execute-fork's
+	// --simulate-state. Optional: nil disables simulation entirely (the
+	// feature-off path is byte-identical to the legacy behavior). The scope
+	// resolves from the fork environment's own datastore, so no ref source
+	// needs to be wired here.
+	SimulationViewProvider simulation.ViewProvider
 
 	// Deps holds optional dependencies that can be overridden.
 	// If fields are nil, production defaults are used.
