@@ -1,0 +1,302 @@
+[
+  {
+    "package": "committee_verifier",
+    "module": "committee_verifier",
+    "name": "set_allowed_finality_config",
+    "parameters": [
+      {
+        "name": "ccv_addr",
+        "type": "address"
+      },
+      {
+        "name": "allowed_finality_bits",
+        "type": "u32"
+      }
+    ]
+  },
+  {
+    "package": "versioned_ccv_resolver",
+    "module": "versioned_ccv_resolver",
+    "name": "apply_outbound_implementation_updates",
+    "parameters": [
+      {
+        "name": "handle",
+        "type": "address"
+      },
+      {
+        "name": "remove",
+        "type": "vector\u003cu64\u003e"
+      },
+      {
+        "name": "add_dest_chain_selectors",
+        "type": "vector\u003cu64\u003e"
+      },
+      {
+        "name": "add_implementations",
+        "type": "vector\u003caddress\u003e"
+      }
+    ]
+  },
+  {
+    "package": "ccip_executor",
+    "module": "base_executor",
+    "name": "set_dynamic_config",
+    "parameters": [
+      {
+        "name": "executor_addr",
+        "type": "address"
+      },
+      {
+        "name": "fee_aggregator",
+        "type": "address"
+      },
+      {
+        "name": "allowed_finality_bits",
+        "type": "u32"
+      },
+      {
+        "name": "ccv_allowlist_enabled",
+        "type": "bool"
+      }
+    ]
+  },
+  {
+    "package": "ccip_onramp_2_0_0",
+    "module": "onramp",
+    "name": "initialize",
+    "parameters": [
+      {
+        "name": "chain_selector",
+        "type": "u64"
+      },
+      {
+        "name": "max_usd_cents_per_message",
+        "type": "u32"
+      },
+      {
+        "name": "fee_aggregator",
+        "type": "address"
+      }
+    ]
+  },
+  {
+    "package": "ccip_offramp_2_0_0",
+    "module": "offramp",
+    "name": "apply_source_chain_config_updates",
+    "parameters": [
+      {
+        "name": "source_chain_selector",
+        "type": "u64"
+      },
+      {
+        "name": "is_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "on_ramps",
+        "type": "vector\u003cvector\u003cu8\u003e\u003e"
+      },
+      {
+        "name": "default_ccvs",
+        "type": "vector\u003caddress\u003e"
+      },
+      {
+        "name": "lane_mandated_ccvs",
+        "type": "vector\u003caddress\u003e"
+      }
+    ]
+  },
+  {
+    "package": "burn_mint_token_pool",
+    "module": "burn_mint_token_pool_v2",
+    "name": "add_remote_pool",
+    "parameters": [
+      {
+        "name": "remote_chain_selector",
+        "type": "u64"
+      },
+      {
+        "name": "remote_pool_address",
+        "type": "vector\u003cu8\u003e"
+      }
+    ]
+  },
+  {
+    "package": "lock_release_token_pool",
+    "module": "lock_release_token_pool_v2",
+    "name": "initialize",
+    "parameters": [
+      {
+        "name": "lock_box",
+        "type": "address"
+      }
+    ]
+  },
+  {
+    "package": "managed_token_pool",
+    "module": "managed_token_pool_v2",
+    "name": "set_allowed_finality_config",
+    "parameters": [
+      {
+        "name": "allowed_finality_bits",
+        "type": "u32"
+      }
+    ]
+  },
+  {
+    "package": "regulated_token_pool",
+    "module": "regulated_token_pool_v2",
+    "name": "remove_remote_pool",
+    "parameters": [
+      {
+        "name": "remote_chain_selector",
+        "type": "u64"
+      },
+      {
+        "name": "remote_pool_address",
+        "type": "vector\u003cu8\u003e"
+      }
+    ]
+  },
+  {
+    "package": "ccip_token_pool",
+    "module": "token_pool_v2",
+    "name": "fee_account_address",
+    "parameters": [
+      {
+        "name": "pool",
+        "type": "address"
+      }
+    ]
+  },
+  {
+    "package": "siloed_lock_release_token_pool",
+    "module": "siloed_lock_release_token_pool",
+    "name": "configure_lock_boxes",
+    "parameters": [
+      {
+        "name": "remote_chain_selectors",
+        "type": "vector\u003cu64\u003e"
+      },
+      {
+        "name": "lock_boxes",
+        "type": "vector\u003caddress\u003e"
+      }
+    ]
+  },
+  {
+    "package": "lock_box",
+    "module": "lock_box",
+    "name": "apply_allowed_caller_updates",
+    "parameters": [
+      {
+        "name": "lock_box",
+        "type": "address"
+      },
+      {
+        "name": "removes",
+        "type": "vector\u003caddress\u003e"
+      },
+      {
+        "name": "adds",
+        "type": "vector\u003caddress\u003e"
+      }
+    ]
+  },
+  {
+    "package": "ccip_token_pool",
+    "module": "advanced_pool_hooks",
+    "name": "set_threshold_amount",
+    "parameters": [
+      {
+        "name": "config",
+        "type": "address"
+      },
+      {
+        "name": "threshold_amount",
+        "type": "u256"
+      }
+    ]
+  },
+  {
+    "package": "ccip",
+    "module": "token_admin_registry_v2",
+    "name": "set_pool",
+    "parameters": [
+      {
+        "name": "local_token",
+        "type": "address"
+      },
+      {
+        "name": "token_pool_address",
+        "type": "address"
+      }
+    ]
+  },
+  {
+    "package": "mcms",
+    "module": "mcms",
+    "name": "execute",
+    "parameters": [
+      {
+        "name": "role",
+        "type": "u8"
+      },
+      {
+        "name": "chain_id",
+        "type": "u256"
+      },
+      {
+        "name": "multisig_addr",
+        "type": "address"
+      },
+      {
+        "name": "nonce",
+        "type": "u64"
+      },
+      {
+        "name": "to",
+        "type": "address"
+      },
+      {
+        "name": "module_name",
+        "type": "0x1::string::String"
+      },
+      {
+        "name": "function_name",
+        "type": "0x1::string::String"
+      },
+      {
+        "name": "data",
+        "type": "vector\u003cu8\u003e"
+      },
+      {
+        "name": "merkle_proof",
+        "type": "vector\u003cvector\u003cu8\u003e\u003e"
+      }
+    ]
+  },
+  {
+    "package": "ccip",
+    "module": "fee_quoter",
+    "name": "apply_dest_chain_config_v2_updates",
+    "parameters": [
+      {
+        "name": "dest_chain_selector",
+        "type": "u64"
+      },
+      {
+        "name": "default_token_fee_usd_cents",
+        "type": "u32"
+      },
+      {
+        "name": "default_token_dest_gas_overhead",
+        "type": "u32"
+      },
+      {
+        "name": "is_enabled",
+        "type": "bool"
+      }
+    ]
+  }
+]
