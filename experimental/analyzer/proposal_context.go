@@ -22,6 +22,7 @@ type DefaultProposalContext struct {
 	evmRegistry      EVMABIRegistry
 	solanaRegistry   SolanaDecoderRegistry
 	renderer         Renderer
+	aptosLookups     []aptosFunctionInfoLookup
 }
 
 func (c *DefaultProposalContext) GetEVMRegistry() EVMABIRegistry {
@@ -30,6 +31,10 @@ func (c *DefaultProposalContext) GetEVMRegistry() EVMABIRegistry {
 
 func (c *DefaultProposalContext) GetSolanaDecoderRegistry() SolanaDecoderRegistry {
 	return c.solanaRegistry
+}
+
+func (c *DefaultProposalContext) aptosFunctionInfoLookups() []aptosFunctionInfoLookup {
+	return c.aptosLookups
 }
 
 func (c *DefaultProposalContext) GetRenderer() Renderer {
@@ -50,6 +55,7 @@ type proposalCtxOptions struct {
 	evmABIMappings map[string]string
 	solanaDecoders map[string]DecodeInstructionFn
 	renderer       Renderer
+	aptosLookups   []aptosFunctionInfoLookup
 }
 
 func WithEVMABIMappings(mappings map[string]string) proposalCtxOption {
@@ -62,6 +68,15 @@ func WithEVMABIMappings(mappings map[string]string) proposalCtxOption {
 func WithSolanaDecoders(decoders map[string]DecodeInstructionFn) proposalCtxOption {
 	return func(o *proposalCtxOptions) error {
 		o.solanaDecoders = decoders
+		return nil
+	}
+}
+
+// WithAptosFunctionInfo adds an Aptos function info lookup, such as chainlink-ccip-aptos bindings.GetFunctionInfo.
+// Lookups run in the order added, before the chainlink-aptos bindings.
+func WithAptosFunctionInfo[T ~[]E, E any](getFunctionInfo func(packageModuleFunction ...string) T) proposalCtxOption {
+	return func(o *proposalCtxOptions) error {
+		o.aptosLookups = append(o.aptosLookups, newAptosFunctionInfoLookup(getFunctionInfo))
 		return nil
 	}
 }
@@ -126,6 +141,7 @@ func NewDefaultProposalContext(env deployment.Environment, opts ...proposalCtxOp
 		solanaRegistry:   solanaRegistry,
 		AddressesByChain: addressesByChain,
 		renderer:         options.renderer,
+		aptosLookups:     options.aptosLookups,
 	}, nil
 }
 
