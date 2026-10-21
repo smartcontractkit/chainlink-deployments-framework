@@ -22,7 +22,7 @@ type DefaultProposalContext struct {
 	evmRegistry      EVMABIRegistry
 	solanaRegistry   SolanaDecoderRegistry
 	renderer         Renderer
-	aptosLookups     []aptosFunctionInfoLookup
+	aptosLookups     []AptosFunctionInfoLookup
 }
 
 func (c *DefaultProposalContext) GetEVMRegistry() EVMABIRegistry {
@@ -33,7 +33,7 @@ func (c *DefaultProposalContext) GetSolanaDecoderRegistry() SolanaDecoderRegistr
 	return c.solanaRegistry
 }
 
-func (c *DefaultProposalContext) aptosFunctionInfoLookups() []aptosFunctionInfoLookup {
+func (c *DefaultProposalContext) aptosFunctionInfoLookups() []AptosFunctionInfoLookup {
 	return c.aptosLookups
 }
 
@@ -55,7 +55,7 @@ type proposalCtxOptions struct {
 	evmABIMappings map[string]string
 	solanaDecoders map[string]DecodeInstructionFn
 	renderer       Renderer
-	aptosLookups   []aptosFunctionInfoLookup
+	aptosLookups   []AptosFunctionInfoLookup
 }
 
 func WithEVMABIMappings(mappings map[string]string) proposalCtxOption {
@@ -72,11 +72,12 @@ func WithSolanaDecoders(decoders map[string]DecodeInstructionFn) proposalCtxOpti
 	}
 }
 
-// WithAptosFunctionInfo adds an Aptos function info lookup, such as chainlink-ccip-aptos bindings.GetFunctionInfo.
-// Lookups run in the order added, before the chainlink-aptos bindings.
-func WithAptosFunctionInfo[T ~[]E, E any](getFunctionInfo func(packageModuleFunction ...string) T) proposalCtxOption {
+// WithAptosFunctionInfo adds an Aptos function info lookup. Lookups run in the order added, before
+// the chainlink-aptos bindings. For the CCIP 2.0 Aptos modules, pass
+// chainlink-ccip-aptos bindings.GetFunctionInfo through its String method.
+func WithAptosFunctionInfo(lookup AptosFunctionInfoLookup) proposalCtxOption {
 	return func(o *proposalCtxOptions) error {
-		o.aptosLookups = append(o.aptosLookups, newAptosFunctionInfoLookup(getFunctionInfo))
+		o.aptosLookups = append(o.aptosLookups, lookup)
 		return nil
 	}
 }

@@ -13,64 +13,52 @@ import (
 	"github.com/smartcontractkit/mcms/types"
 )
 
-type aptosFunctionInfoLookup func(packageName, moduleName, function string) (string, error)
-
-// Generic so callers can pass a bindings GetFunctionInfo from another module without a converter.
-func newAptosFunctionInfoLookup[T ~[]E, E any](getFunctionInfo func(packageModuleFunction ...string) T) aptosFunctionInfoLookup {
-	return func(packageName, moduleName, function string) (string, error) {
-		found := getFunctionInfo(packageName, moduleName, function)
-		if len(found) == 0 {
-			return "", nil
-		}
-		raw, err := json.Marshal(found)
-		if err != nil {
-			return "", fmt.Errorf("failed to marshal Aptos function info: %w", err)
-		}
-		infos, err := aptosbind.ParseFunctionInfo(string(raw))
-		if err != nil {
-			return "", fmt.Errorf("failed to parse Aptos function info: %w", err)
-		}
-		for _, info := range infos {
-			if info.Package != packageName || info.Module != moduleName || info.Name != function {
-				return "", fmt.Errorf("aptos function info lookup returned an entry that does not match %s::%s::%s", packageName, moduleName, function)
-			}
-		}
-
-		return infos.String(), nil
-	}
-}
+// AptosFunctionInfoLookup returns the function info JSON of one Move function, in the
+// chainlink-aptos bindings format, or "" when it does not know the function.
+type AptosFunctionInfoLookup func(packageName, moduleName, function string) string
 
 // getAptosFunctionInfo tries the context's lookups in order, then the chainlink-aptos bindings.
 func getAptosFunctionInfo(ctx ProposalContext, packageName, moduleName, function string) (string, error) {
-	var lookups []aptosFunctionInfoLookup
+	var lookups []AptosFunctionInfoLookup
 	if c, ok := ctx.(interface {
-		aptosFunctionInfoLookups() []aptosFunctionInfoLookup
+		aptosFunctionInfoLookups() []AptosFunctionInfoLookup
 	}); ok {
 		lookups = c.aptosFunctionInfoLookups()
 	}
 
 	var errs []error
 	for _, lookup := range lookups {
-		info, err := lookup(packageName, moduleName, function)
-		if err != nil {
-			errs = append(errs, err)
+		info := lookup(packageName, moduleName, function)
+		if info == "" {
 			continue
 		}
-		if info != "" {
+		infos, err := aptosbind.ParseFunctionInfo(info)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("aptos function info lookup for %s::%s::%s: %w", packageName, moduleName, function, err))
+			continue
+		}
+		if len(infos) == 0 {
+			continue
+		}
+		if hasFunctionInfo(infos, packageName, moduleName, function) {
 			return info, nil
 		}
+		errs = append(errs, fmt.Errorf("aptos function info lookup returned entries that do not name %s::%s::%s", packageName, moduleName, function))
 	}
 
 	// chainlink-aptos returns a zero entry for an unknown function, so match the key.
 	fallback := bindings.GetFunctionInfo(packageName, moduleName, function)
-	resolved := slices.ContainsFunc(fallback, func(info aptosbind.FunctionInfo) bool {
-		return info.Package == packageName && info.Module == moduleName && info.Name == function
-	})
-	if !resolved && len(errs) > 0 {
+	if !hasFunctionInfo(fallback, packageName, moduleName, function) && len(errs) > 0 {
 		return "", errors.Join(errs...)
 	}
 
 	return fallback.String(), nil
+}
+
+func hasFunctionInfo(infos aptosbind.FunctionInfos, packageName, moduleName, function string) bool {
+	return slices.ContainsFunc(infos, func(info aptosbind.FunctionInfo) bool {
+		return info.Package == packageName && info.Module == moduleName && info.Name == function
+	})
 }
 
 func AnalyzeAptosTransactions(ctx ProposalContext, chainSelector uint64, txs []types.Transaction) ([]*DecodedCall, error) {

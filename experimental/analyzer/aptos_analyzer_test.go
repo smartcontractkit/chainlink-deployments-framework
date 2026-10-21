@@ -328,9 +328,10 @@ func getBadOperations() []types.BatchOperation {
 	}}
 }
 
-// aptosCCIPV2FunctionInfo returns a lookup shaped like chainlink-ccip-aptos bindings.GetFunctionInfo.
+// aptosCCIPV2FunctionInfo returns a lookup shaped like a caller passing chainlink-ccip-aptos
+// bindings.GetFunctionInfo(...).String(): the JSON of the matching entries, "null" for none.
 // The testdata file and the call data below come from chainlink-ccip-aptos bindings at 882eb7ec.
-func aptosCCIPV2FunctionInfo(t *testing.T) func(packageModuleFunction ...string) aptosbind.FunctionInfos {
+func aptosCCIPV2FunctionInfo(t *testing.T) AptosFunctionInfoLookup {
 	t.Helper()
 
 	raw, err := os.ReadFile("testdata/aptos_ccip_v2_function_info.json")
@@ -338,15 +339,15 @@ func aptosCCIPV2FunctionInfo(t *testing.T) func(packageModuleFunction ...string)
 	infos, err := aptosbind.ParseFunctionInfo(string(raw))
 	require.NoError(t, err)
 
-	return func(packageModuleFunction ...string) aptosbind.FunctionInfos {
+	return func(packageName, moduleName, function string) string {
 		var found aptosbind.FunctionInfos
 		for _, info := range infos {
-			if packageModuleFunction[0] == info.Package && packageModuleFunction[1] == info.Module && packageModuleFunction[2] == info.Name {
+			if packageName == info.Package && moduleName == info.Module && function == info.Name {
 				found = append(found, info)
 			}
 		}
 
-		return found
+		return found.String()
 	}
 }
 
@@ -631,17 +632,11 @@ func TestAnalyzeAptosTransaction_WithAptosFunctionInfo(t *testing.T) {
 	}
 }
 
-type aptosWrongShapeFunctionInfo struct {
-	Foo string
-}
-
 func TestAnalyzeAptosTransaction_AptosFunctionInfoFallback(t *testing.T) {
 	t.Parallel()
 
-	marshalError := WithAptosFunctionInfo(func(...string) []chan int { return []chan int{make(chan int)} })
-	wrongShape := WithAptosFunctionInfo(func(...string) []aptosWrongShapeFunctionInfo {
-		return []aptosWrongShapeFunctionInfo{{Foo: "bar"}}
-	})
+	invalidJSON := WithAptosFunctionInfo(func(string, string, string) string { return "{" })
+	wrongShape := WithAptosFunctionInfo(func(string, string, string) string { return `[{"Foo":"bar"}]` })
 	v16Tx := getOperations(1)[0].Transactions[2]
 	unknownTx := aptosTestTransaction("committee_verifier", "committee_verifier", "unknown_function", []byte{0x01})
 	v2Tx := aptosTestTransaction("managed_token_pool", "managed_token_pool_v2", "set_allowed_finality_config", []byte{0x05, 0x00, 0x00, 0x00})
@@ -664,16 +659,16 @@ func TestAnalyzeAptosTransaction_AptosFunctionInfoFallback(t *testing.T) {
 			wantMethod: "failed to decode Aptos transaction: could not find function info for committee_verifier::committee_verifier::unknown_function",
 		},
 		{
-			name:       "marshal error falls back to chainlink-aptos",
-			opts:       []proposalCtxOption{marshalError},
+			name:       "invalid JSON falls back to chainlink-aptos",
+			opts:       []proposalCtxOption{invalidJSON},
 			tx:         v16Tx,
 			wantMethod: "ccip::rmn_remote::initialize",
 		},
 		{
-			name:       "marshal error without fallback renders failed method",
-			opts:       []proposalCtxOption{marshalError},
+			name:       "invalid JSON without fallback renders failed method",
+			opts:       []proposalCtxOption{invalidJSON},
 			tx:         unknownTx,
-			wantMethod: "failed to decode Aptos transaction: failed to marshal Aptos function info: json: unsupported type: chan int",
+			wantMethod: "failed to decode Aptos transaction: aptos function info lookup for committee_verifier::committee_verifier::unknown_function: unexpected end of JSON input",
 		},
 		{
 			name:       "wrong shape falls back to chainlink-aptos",
@@ -685,7 +680,7 @@ func TestAnalyzeAptosTransaction_AptosFunctionInfoFallback(t *testing.T) {
 			name:       "wrong shape without fallback renders failed method",
 			opts:       []proposalCtxOption{wrongShape},
 			tx:         unknownTx,
-			wantMethod: "failed to decode Aptos transaction: aptos function info lookup returned an entry that does not match committee_verifier::committee_verifier::unknown_function",
+			wantMethod: "failed to decode Aptos transaction: aptos function info lookup returned entries that do not name committee_verifier::committee_verifier::unknown_function",
 		},
 		{
 			name:       "error falls through to the next lookup",
