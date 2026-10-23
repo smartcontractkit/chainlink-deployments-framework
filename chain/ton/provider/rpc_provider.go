@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -27,7 +28,12 @@ const (
 
 // RPCChainProviderConfig holds the configuration to initialize the RPCChainProvider.
 type RPCChainProviderConfig struct {
-	// Required: The liteserver URL to connect to the Ton node (format: liteserver://publickey@host:port).
+	// Required: The URL used to connect to the Ton node. Two transports are supported, selected by
+	// the URL scheme:
+	//   - liteserver://publickey@host:port - ADNL liteserver connection (proof-checked reads).
+	//   - http(s)://host/<v2 root>         - TON HTTP API v2 root, methods are called as <url>/runGetMethod etc.
+	//     (toncenter: https://toncenter.com/api/v2). Reads are NOT
+	//     proof-checked. An optional API key is read from the TONCENTER_API_KEY environment variable.
 	HTTPURL string
 	// Optional: The WebSocket URL to connect to the Ton node.
 	WSURL string
@@ -37,6 +43,18 @@ type RPCChainProviderConfig struct {
 	// Optional: The TON wallet version to use. Supported versions are: V1R1, V1R2, V1R3, V2R1,
 	// V2R2, V3R1, V3R2, V4R1, V4R2 and V5R1. If no value provided, V5R1 is used as default.
 	WalletVersion WalletVersion
+}
+
+// toncenterAPIKeyEnv is the environment variable holding an optional API key for the HTTP API transport.
+const toncenterAPIKeyEnv = "TONCENTER_API_KEY"
+
+// validateNodeURL validates the node URL, which is either a liteserver:// or an http(s):// URL.
+func validateNodeURL(nodeURL string) error {
+	if isHTTPAPIURL(nodeURL) {
+		return nil
+	}
+
+	return validateLiteserverURL(nodeURL)
 }
 
 // validateLiteserverURL validates the format of a liteserver URL
@@ -74,7 +92,7 @@ func validateLiteserverURL(liteserverURL string) error {
 
 // validate checks if the RPCChainProviderConfig is valid.
 func (c RPCChainProviderConfig) validate() error {
-	if err := validateLiteserverURL(c.HTTPURL); err != nil {
+	if err := validateNodeURL(c.HTTPURL); err != nil {
 		return err
 	}
 	if c.DeployerSignerGen == nil {
@@ -110,8 +128,30 @@ func NewRPCChainProvider(selector uint64, config RPCChainProviderConfig) *RPCCha
 	}
 }
 
-// setupConnection creates and tests a connection to the TON liteserver
-func setupConnection(ctx context.Context, liteserverURL string) (tonlib.APIClientWrapped, error) {
+// setupConnection creates and tests a connection to the TON node, over the liteserver protocol or
+// the HTTP API depending on the URL scheme.
+func setupConnection(ctx context.Context, nodeURL string) (tonlib.APIClientWrapped, error) {
+	if isHTTPAPIURL(nodeURL) {
+		return setupHTTPConnection(ctx, nodeURL)
+	}
+
+	return setupLiteserverConnection(ctx, nodeURL)
+}
+
+// setupHTTPConnection creates and tests a connection to a TON HTTP API v2 endpoint
+func setupHTTPConnection(ctx context.Context, apiURL string) (tonlib.APIClientWrapped, error) {
+	api := newHTTPAPIClient(apiURL, os.Getenv(toncenterAPIKeyEnv))
+
+	// Test connection
+	if _, err := api.GetMasterchainInfo(ctx); err != nil {
+		return nil, fmt.Errorf("failed to get masterchain info: %w", err)
+	}
+
+	return api, nil
+}
+
+// setupLiteserverConnection creates and tests a connection to the TON liteserver
+func setupLiteserverConnection(ctx context.Context, liteserverURL string) (tonlib.APIClientWrapped, error) {
 	connectionPool, err := createLiteclientConnectionPool(ctx, liteserverURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to liteserver: %w", err)
@@ -184,8 +224,12 @@ func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, er
 		Wallet:              tonWallet,
 		WalletAddress:       tonWallet.WalletAddress(),
 		WalletVersionConfig: versionConfig,
-		URL:                 p.config.HTTPURL,
 		Confirm:             ton.MakeDefaultConfirmFunc(api),
+	}
+	if isHTTPAPIURL(p.config.HTTPURL) {
+		p.chain.HTTPURL = p.config.HTTPURL
+	} else {
+		p.chain.URL = p.config.HTTPURL
 	}
 
 	return *p.chain, nil
