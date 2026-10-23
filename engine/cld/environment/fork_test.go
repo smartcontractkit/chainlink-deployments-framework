@@ -17,6 +17,21 @@ import (
 	fdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 )
 
+// forkSkipTestSel is the fixture network's zkSync Era testnet selector. Fork
+// tests pin it when LoadFork must succeed without Docker: with the fake health
+// check its RPC passes, and the chain is then skipped by the non-fatal
+// zkSync-VM exclusion, yielding a fork environment with zero chains. Any other
+// fixture chain would start a real anvil fork.
+const forkSkipTestSel = uint64(6898391096552792247)
+
+// fakeRPCHealthChecker keeps fork-loader tests hermetic: the default check runs
+// from a container on the CTF network and needs Docker plus public RPCs.
+type fakeRPCHealthChecker struct {
+	err error // returned for every URL; nil marks every RPC healthy
+}
+
+func (f fakeRPCHealthChecker) Check(context.Context, string) error { return f.err }
+
 func Test_LoadForkedEnvironment(t *testing.T) {
 	t.Parallel()
 
@@ -25,6 +40,7 @@ func Test_LoadForkedEnvironment(t *testing.T) {
 		domain        fdomain.Domain
 		env           string
 		blockNumbers  map[uint64]*big.Int
+		rpcErr        error // fails every RPC health check when set
 		options       []LoadEnvironmentOption
 		wantName      string
 		wantNumChains int
@@ -44,7 +60,7 @@ func Test_LoadForkedEnvironment(t *testing.T) {
 			domain: setupTest(t, setupTestConfig, setupNodes),
 			env:    "staging",
 			blockNumbers: map[uint64]*big.Int{
-				16015286601757825753: big.NewInt(1000),
+				forkSkipTestSel: big.NewInt(1000),
 			},
 			options: []LoadEnvironmentOption{WithoutJD()},
 			wantErr: "failed to load addressbook for domain test and environment staging:",
@@ -54,7 +70,7 @@ func Test_LoadForkedEnvironment(t *testing.T) {
 			domain: setupTest(t, setupTestConfig, setupNodes, setupAddressbook),
 			env:    "staging",
 			blockNumbers: map[uint64]*big.Int{
-				16015286601757825753: big.NewInt(1000),
+				forkSkipTestSel: big.NewInt(1000),
 			},
 			options: []LoadEnvironmentOption{WithoutJD()},
 			wantErr: "failed to load datastore for domain test and environment staging:",
@@ -71,7 +87,7 @@ func Test_LoadForkedEnvironment(t *testing.T) {
 			domain: setupTest(t, setupTestConfig, setupAddressbook),
 			env:    "staging",
 			blockNumbers: map[uint64]*big.Int{
-				16015286601757825753: big.NewInt(1000),
+				forkSkipTestSel: big.NewInt(1000),
 			},
 			wantErr: "failed to load nodes",
 		},
@@ -80,7 +96,7 @@ func Test_LoadForkedEnvironment(t *testing.T) {
 			domain: setupTest(t, setupTestConfig, setupAddressbook, setupNodes),
 			env:    "staging",
 			blockNumbers: map[uint64]*big.Int{
-				16015286601757825753: big.NewInt(1000),
+				forkSkipTestSel: big.NewInt(1000),
 			},
 			wantErr: "failed to load offchain client",
 		},
@@ -88,10 +104,26 @@ func Test_LoadForkedEnvironment(t *testing.T) {
 			name:          "Skip ZK Sync chain",
 			domain:        setupTest(t, setupTestConfig, setupAddressbook, setupDataStore, setupNodes),
 			env:           "staging",
-			blockNumbers:  map[uint64]*big.Int{6898391096552792247: big.NewInt(1000)},
+			blockNumbers:  map[uint64]*big.Int{forkSkipTestSel: big.NewInt(1000)},
 			options:       []LoadEnvironmentOption{WithoutJD(), WithAnvilKeyAsDeployer()},
 			wantName:      "fork",
 			wantNumChains: 0,
+		},
+		{
+			// A chain the caller pinned must fail loudly with the exclusion
+			// cause instead of being silently dropped, which used to surface
+			// later as a misleading "failed to get forked env's chain config".
+			name:   "Requested Chain With No Public RPC",
+			domain: setupTest(t, setupTestConfig, setupAddressbook, setupDataStore, setupNodes),
+			env:    "staging",
+			blockNumbers: map[uint64]*big.Int{
+				16015286601757825753: big.NewInt(1000),
+			},
+			rpcErr:  errors.New("503 Service Unavailable"),
+			options: []LoadEnvironmentOption{WithoutJD(), WithAnvilKeyAsDeployer()},
+			wantErr: "no forkable public RPC for requested chain selector 16015286601757825753: " +
+				"no public RPCs found for chain 16015286601757825753; candidates: " +
+				"[https://sepolia.infura.io/v3/test (health check failed: 503 Service Unavailable)]",
 		},
 		// FIXME: CI can't reach https://optimism-sepolia.drpc.org anymore, so we'll
 		// skip the test for now
@@ -110,7 +142,8 @@ func Test_LoadForkedEnvironment(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			forkEnv, err := LoadFork(t.Context(), tt.domain, tt.env, tt.blockNumbers, tt.options...)
+			opts := append([]LoadEnvironmentOption{withRPCHealthChecker(fakeRPCHealthChecker{err: tt.rpcErr})}, tt.options...)
+			forkEnv, err := LoadFork(t.Context(), tt.domain, tt.env, tt.blockNumbers, opts...)
 			t.Cleanup(func() {
 				for _, container := range forkEnv.Containers {
 					_ = container.Terminate(context.Background())
@@ -147,7 +180,7 @@ func Test_ApplyChangesetOutput(t *testing.T) {
 			},
 			forkClients: nil,
 			blockNumbers: map[uint64]*big.Int{
-				16015286601757825753: big.NewInt(1000),
+				forkSkipTestSel: big.NewInt(1000),
 			},
 			expectError: "no timelock address defined for chain selector",
 		},
@@ -160,7 +193,7 @@ func Test_ApplyChangesetOutput(t *testing.T) {
 			},
 			forkClients: nil,
 			blockNumbers: map[uint64]*big.Int{
-				16015286601757825753: big.NewInt(1000),
+				forkSkipTestSel: big.NewInt(1000),
 			},
 			expectError: "no fork client defined for chain selector",
 		},
@@ -175,7 +208,7 @@ func Test_ApplyChangesetOutput(t *testing.T) {
 				uint64(types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector)): MockForkedOnchainClient{returnError: true},
 			},
 			blockNumbers: map[uint64]*big.Int{
-				uint64(types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector)): big.NewInt(1000),
+				forkSkipTestSel: big.NewInt(1000),
 			},
 			expectError: "failed to send transaction on chain",
 		},
@@ -190,7 +223,7 @@ func Test_ApplyChangesetOutput(t *testing.T) {
 				uint64(types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector)): MockForkedOnchainClient{},
 			},
 			blockNumbers: map[uint64]*big.Int{
-				uint64(types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector)): big.NewInt(1000),
+				forkSkipTestSel: big.NewInt(1000),
 			},
 		},
 		{
@@ -202,7 +235,7 @@ func Test_ApplyChangesetOutput(t *testing.T) {
 			},
 			forkClients: nil,
 			blockNumbers: map[uint64]*big.Int{
-				16015286601757825753: big.NewInt(1000),
+				forkSkipTestSel: big.NewInt(1000),
 			},
 			expectError: "no fork client defined for chain selector",
 		},
@@ -217,7 +250,7 @@ func Test_ApplyChangesetOutput(t *testing.T) {
 				uint64(types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector)): MockForkedOnchainClient{returnError: true},
 			},
 			blockNumbers: map[uint64]*big.Int{
-				uint64(types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector)): big.NewInt(1000),
+				forkSkipTestSel: big.NewInt(1000),
 			},
 			expectError: "failed to send transaction on chain",
 		},
@@ -232,7 +265,7 @@ func Test_ApplyChangesetOutput(t *testing.T) {
 				uint64(types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector)): MockForkedOnchainClient{},
 			},
 			blockNumbers: map[uint64]*big.Int{
-				uint64(types.ChainSelector(chainsel.ETHEREUM_MAINNET.Selector)): big.NewInt(1000),
+				forkSkipTestSel: big.NewInt(1000),
 			},
 		},
 	}
@@ -243,7 +276,8 @@ func Test_ApplyChangesetOutput(t *testing.T) {
 
 			domain := setupTest(t, setupTestConfig, setupAddressbook, setupDataStore, setupNodes)
 
-			forkEnv, err := LoadFork(t.Context(), domain, "staging", tt.blockNumbers, WithoutJD())
+			forkEnv, err := LoadFork(t.Context(), domain, "staging", tt.blockNumbers, WithoutJD(),
+				withRPCHealthChecker(fakeRPCHealthChecker{}))
 			require.NoError(t, err)
 
 			if tt.forkClients != nil {

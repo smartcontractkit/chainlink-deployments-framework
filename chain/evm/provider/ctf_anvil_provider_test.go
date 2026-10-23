@@ -517,3 +517,86 @@ func TestCTFAnvilChainProvider_Cleanup(t *testing.T) {
 		assert.Nil(t, provider.Container, "Container reference should remain nil after second cleanup")
 	})
 }
+
+// noSuchContainerError carries Docker's not-found marker method.
+type noSuchContainerError struct{}
+
+func (noSuchContainerError) NotFound() {}
+
+func (noSuchContainerError) Error() string { return "no such container" }
+
+func TestRemoveFailedContainer(t *testing.T) {
+	t.Parallel()
+
+	t.Run("removes by container name", func(t *testing.T) {
+		t.Parallel()
+
+		var gotName string
+		removeFailedContainer(t.Context(), func(_ context.Context, name string) error {
+			gotName = name
+
+			return nil
+		}, "anvil-fork-1")
+
+		assert.Equal(t, "anvil-fork-1", gotName)
+	})
+
+	t.Run("cleanup errors are swallowed (best effort)", func(t *testing.T) {
+		t.Parallel()
+
+		assert.NotPanics(t, func() {
+			removeFailedContainer(t.Context(), func(context.Context, string) error {
+				return assert.AnError
+			}, "anvil-fork-1")
+		})
+	})
+
+	t.Run("docker not-found marker is recognized", func(t *testing.T) {
+		t.Parallel()
+
+		assert.True(t, isContainerNotFound(noSuchContainerError{}))
+		assert.False(t, isContainerNotFound(assert.AnError))
+		assert.False(t, isContainerNotFound(nil))
+	})
+}
+
+func TestRemoveFailedContainer_AfterStartupCancellation(t *testing.T) {
+	t.Parallel()
+
+	for _, expired := range []bool{false, true} {
+		t.Run("expired="+strconv.FormatBool(expired), func(t *testing.T) {
+			t.Parallel()
+
+			type contextKey struct{}
+			parent := context.WithValue(t.Context(), contextKey{}, "startup-value")
+			var cancel context.CancelFunc
+			if expired {
+				parent, cancel = context.WithDeadline(parent, time.Now().Add(-time.Second))
+			} else {
+				parent, cancel = context.WithCancel(parent)
+			}
+			cancel()
+			require.Error(t, parent.Err())
+
+			var cleanupDone <-chan struct{}
+			removeFailedContainer(parent, func(ctx context.Context, name string) error {
+				cleanupDone = ctx.Done()
+				require.Equal(t, "failed-start", name)
+				require.NoError(t, ctx.Err(), "expired startup must not cancel cleanup")
+				require.Equal(t, "startup-value", ctx.Value(contextKey{}))
+				deadline, ok := ctx.Deadline()
+				require.True(t, ok, "cleanup must have its own deadline")
+				require.Positive(t, time.Until(deadline))
+				require.LessOrEqual(t, time.Until(deadline), failedContainerCleanupTimeout)
+
+				return nil
+			}, "failed-start")
+			require.NotNil(t, cleanupDone)
+			select {
+			case <-cleanupDone:
+			default:
+				t.Fatal("cleanup context must be released after removal")
+			}
+		})
+	}
+}
