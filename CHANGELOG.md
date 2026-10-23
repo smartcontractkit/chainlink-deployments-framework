@@ -1,5 +1,15 @@
 # chainlink-deployments-framework
 
+## 0.127.0
+
+### Minor Changes
+
+- [#1200](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1200) [`464769a`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/464769a04396c4334f43d3b3d4810838a08b4c07) Thanks [@JohnChangUK](https://github.com/JohnChangUK)! - Callers can now add an Aptos function info lookup with the `analyzer.WithAptosFunctionInfo` proposal context option. The lookup takes a package, module and function name and returns the function info JSON, for example `chainlink-ccip-aptos/bindings.GetFunctionInfo(...).String()`. Lookups run in order before the `chainlink-aptos` bindings, so proposals that call CCIP 2.0 Aptos modules can be decoded. A lookup that returns invalid JSON or no entry for the function is skipped. Calls that still cannot be decoded show as a failed method in the report, as before.
+
+### Patch Changes
+
+- [#1202](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1202) [`c9cfaf3`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/c9cfaf38ae56b307eeec364ec4cdc6fd018069c9) Thanks [@graham-chainlink](https://github.com/graham-chainlink)! - fix(deps): update Seth to v1.52.0. This version enforces the TLS certificate check for HTTPS RPC connections. To skip the check for a local node, set `SETH_INSECURE_SKIP_VERIFY=true`.
+
 ## 0.126.0
 
 ### Minor Changes
