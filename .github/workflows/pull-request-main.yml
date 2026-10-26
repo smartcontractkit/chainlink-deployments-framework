@@ -341,22 +341,3 @@ jobs:
           artifact-name: catalog-remote-tests
         env:
           CATALOG_SERVICE_IMAGE: ${{ secrets.AWS_ACCOUNT_NUMBER_PROD }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/op-catalog-service:${{ steps.get-catalog-tag.outputs.tag }}
-
-  sonarqube:
-    name: Sonar Scan
-    if: |
-      always() &&
-      github.event_name == 'pull_request' &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled')
-    runs-on: ubuntu-24.04
-    needs: [ci-test, ci-test-operations-gen, ci-test-provider-evm, ci-test-provider-solana, ci-test-provider-aptos, ci-test-provider-sui, ci-test-provider-canton, ci-test-provider-ton, ci-test-provider-tron, ci-test-provider-stellar, ci-test-provider-fast, ci-test-catalog-remote, ci-lint-misc, ci-lint, ci-lint-operations-gen]
-    permissions:
-      contents: read
-      actions: read
-    steps:
-      - name: Scan with Sonarqube
-        uses: smartcontractkit/.github/actions/ci-sonarqube-go@01d931b0455a754d12e7143cc54a5a3521a8f6f6 # ci-sonarqube-go@0.3.1
-        with:
-          sonar-token: ${{ secrets.SONAR_TOKEN }}
-          sonar-host-url: ${{ secrets.SONAR_HOST_URL }}
