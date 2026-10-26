@@ -217,6 +217,7 @@ import (
 	"github.com/avast/retry-go/v4"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/moby/moby/client"
 	chainsel "github.com/smartcontractkit/chain-selectors/remote"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
@@ -549,6 +550,54 @@ func (p *CTFAnvilChainProvider) Cleanup(ctx context.Context) error {
 	return nil
 }
 
+// containerRemover force-removes a container by name or ID. Injectable so the
+// failure-path cleanup logic is unit-testable without a Docker daemon.
+type containerRemover func(ctx context.Context, idOrName string) error
+
+const failedContainerCleanupTimeout = 10 * time.Second
+
+// dockerContainerRemover is the production remover. The container name is
+// per-attempt unique, so a name-keyed force-remove never races a healthy
+// container.
+var dockerContainerRemover = containerRemover(func(ctx context.Context, idOrName string) error {
+	cli, err := testcontainers.NewDockerClientWithOpts(ctx)
+	if err != nil {
+		return fmt.Errorf("creating docker client: %w", err)
+	}
+	defer cli.Close()
+
+	if _, err := cli.ContainerRemove(ctx, idOrName, client.ContainerRemoveOptions{Force: true}); err != nil {
+		if isContainerNotFound(err) {
+			// Already gone — nothing to clean up.
+			return nil
+		}
+
+		return fmt.Errorf("removing container %q: %w", idOrName, err)
+	}
+
+	return nil
+})
+
+// isContainerNotFound reports whether err carries Docker's not-found marker
+// (e.g. removing a container that was never created).
+func isContainerNotFound(err error) bool {
+	var notFound interface{ NotFound() }
+
+	return errors.As(err, &notFound)
+}
+
+// removeFailedContainer force-removes the container a failed start attempt
+// may have left behind. Best effort: the startup error, not a cleanup
+// failure, is what the caller needs.
+func removeFailedContainer(ctx context.Context, remover containerRemover, name string) {
+	// Startup commonly fails because its context expired. Cleanup must still
+	// reach Docker, but must not outlive a fixed budget.
+	cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), failedContainerCleanupTimeout)
+	defer cancel()
+
+	_ = remover(cleanupCtx, name)
+}
+
 // startContainer starts a CTF container for the Anvil EVM returning the HTTP URL of the node.
 //
 // This method handles the Docker container lifecycle including:
@@ -616,6 +665,8 @@ func (p *CTFAnvilChainProvider) startContainer(ctx context.Context, chainID stri
 			if p.config.Port == "" {
 				freeport.Return([]int{port})
 			}
+			// A failed create can still leave the container behind.
+			removeFailedContainer(ctx, dockerContainerRemover, input.ContainerName)
 
 			return "", fmt.Errorf("failed to create Anvil container: %w", rerr)
 		}
