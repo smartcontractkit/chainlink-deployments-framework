@@ -52,6 +52,8 @@ type Endpoints struct {
 	// Required
 	// https://docs.digitalasset.com/build/3.5/reference/lapi-proto-docs.html
 	GRPCLedgerAPIURL string
+	// Optional gRPC dial options applied to the Ledger API connection.
+	DialOptions []grpc.DialOption
 	// (gRPC) The URL to access the participant's Admin API
 	// Optional - if not set, admin services will not be populated for this participant
 	// https://docs.digitalasset.com/operate/3.5/howtos/configure/apis/admin_api.html
@@ -112,8 +114,8 @@ func (p *RPCChainProvider) Initialize(_ context.Context) (chain.BlockChain, erro
 	}
 
 	p.chain = &canton.Chain{
-		ChainMetadata: canton.ChainMetadata{Selector: p.selector},
-		Participants:  make([]canton.Participant, len(p.config.Participants)),
+		Selector:     p.selector,
+		Participants: make([]canton.Participant, len(p.config.Participants)),
 	}
 
 	for i, participant := range p.config.Participants {
@@ -122,10 +124,13 @@ func (p *RPCChainProvider) Initialize(_ context.Context) (chain.BlockChain, erro
 		perRPCCredentials := participant.AuthProvider.PerRPCCredentials()
 
 		// Dial Ledger API endpoint
-		ledgerApiConn, err := grpc.NewClient(
-			participant.GRPCLedgerAPIURL,
+		ledgerDialOptions := append([]grpc.DialOption{
 			grpc.WithTransportCredentials(transportCredentials),
 			grpc.WithPerRPCCredentials(perRPCCredentials),
+		}, participant.Endpoints.DialOptions...)
+		ledgerApiConn, err := grpc.NewClient(
+			participant.GRPCLedgerAPIURL,
+			ledgerDialOptions...,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create Ledger API gRPC client for participant %d(%s): %w", i+1, participant.GRPCLedgerAPIURL, err)
