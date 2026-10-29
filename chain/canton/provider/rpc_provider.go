@@ -127,7 +127,7 @@ func (p *RPCChainProvider) Initialize(_ context.Context) (chain.BlockChain, erro
 		ledgerDialOptions := append([]grpc.DialOption{
 			grpc.WithTransportCredentials(transportCredentials),
 			grpc.WithPerRPCCredentials(perRPCCredentials),
-		}, participant.Endpoints.DialOptions...)
+		}, participant.DialOptions...)
 		ledgerApiConn, err := grpc.NewClient(
 			participant.GRPCLedgerAPIURL,
 			ledgerDialOptions...,

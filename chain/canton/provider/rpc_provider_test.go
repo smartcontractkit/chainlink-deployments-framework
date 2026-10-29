@@ -338,7 +338,9 @@ func Test_RPCChainProvider_InitializeWithDialOptions(t *testing.T) {
 	healthServer := health.NewServer()
 	healthServer.SetServingStatus("", healthv1.HealthCheckResponse_SERVING)
 	healthv1.RegisterHealthServer(server, healthServer)
-	go server.Serve(listener)
+	go func() {
+		_ = server.Serve(listener)
+	}()
 	t.Cleanup(func() {
 		server.Stop()
 		require.NoError(t, listener.Close())
