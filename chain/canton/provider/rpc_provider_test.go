@@ -1,7 +1,14 @@
 package provider
 
 import (
+	"context"
+	"net"
 	"testing"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/health"
+	healthv1 "google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/grpc/test/bufconn"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -273,6 +280,7 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 					assert.Equal(t, tt.giveConfig.Participants[i].UserID, participant.UserID)
 					assert.Equal(t, tt.giveConfig.Participants[i].PartyID, participant.PartyID)
 					// Validate service clients have been created
+					assert.NotNil(t, participant.LedgerServices.Health)
 					assert.NotNil(t, participant.LedgerServices.CommandCompletion)
 					assert.NotNil(t, participant.LedgerServices.Command)
 					assert.NotNil(t, participant.LedgerServices.CommandSubmission)
@@ -320,6 +328,49 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_RPCChainProvider_InitializeWithDialOptions(t *testing.T) {
+	t.Parallel()
+
+	listener := bufconn.Listen(1024 * 1024)
+	server := grpc.NewServer()
+	healthServer := health.NewServer()
+	healthServer.SetServingStatus("", healthv1.HealthCheckResponse_SERVING)
+	healthv1.RegisterHealthServer(server, healthServer)
+	go func() {
+		_ = server.Serve(listener)
+	}()
+	t.Cleanup(func() {
+		server.Stop()
+		require.NoError(t, listener.Close())
+	})
+
+	provider := NewRPCChainProvider(chainsel.CANTON_LOCALNET.Selector, RPCChainProviderConfig{
+		Participants: []ParticipantConfig{
+			{
+				Endpoints: Endpoints{
+					GRPCLedgerAPIURL: "passthrough:///bufnet",
+					DialOptions: []grpc.DialOption{
+						grpc.WithContextDialer(func(_ context.Context, _ string) (net.Conn, error) {
+							return listener.Dial()
+						}),
+					},
+				},
+				UserID:       "participant1",
+				PartyID:      "local-party-1",
+				AuthProvider: cantonauthstatic.InsecureStaticProvider{AccessToken: "testToken"},
+			},
+		},
+	})
+
+	chain, err := provider.Initialize(t.Context())
+	require.NoError(t, err)
+
+	gotChain := chain.(*canton.Chain)
+	response, err := gotChain.Participants[0].LedgerServices.Health.Check(t.Context(), &healthv1.HealthCheckRequest{})
+	require.NoError(t, err)
+	assert.Equal(t, healthv1.HealthCheckResponse_SERVING, response.GetStatus())
 }
 
 func Test_RPCChainProvider_Name(t *testing.T) {

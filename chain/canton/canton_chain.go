@@ -3,6 +3,7 @@ package canton
 import (
 	"golang.org/x/oauth2"
 	"google.golang.org/grpc"
+	healthv1 "google.golang.org/grpc/health/grpc_health_v1"
 
 	apiv2 "github.com/digital-asset/dazl-client/v8/go/api/com/daml/ledger/api/v2"
 	adminv2 "github.com/digital-asset/dazl-client/v8/go/api/com/daml/ledger/api/v2/admin"
@@ -87,6 +88,7 @@ type LedgerAdminServiceClients struct {
 
 // LedgerServiceClients provides all available Ledger API gRPC service clients.
 type LedgerServiceClients struct {
+	Health                healthv1.HealthClient
 	CommandCompletion     apiv2.CommandCompletionServiceClient
 	Command               apiv2.CommandServiceClient
 	CommandSubmission     apiv2.CommandSubmissionServiceClient
@@ -113,6 +115,7 @@ func CreateLedgerServiceClients(conn grpc.ClientConnInterface) LedgerServiceClie
 			PartyManagement:        adminv2.NewPartyManagementServiceClient(conn),
 			UserManagement:         adminv2.NewUserManagementServiceClient(conn),
 		},
+		Health:                healthv1.NewHealthClient(conn),
 		CommandCompletion:     apiv2.NewCommandCompletionServiceClient(conn),
 		Command:               apiv2.NewCommandServiceClient(conn),
 		CommandSubmission:     apiv2.NewCommandSubmissionServiceClient(conn),
