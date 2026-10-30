@@ -114,8 +114,8 @@ func (p *RPCChainProvider) Initialize(_ context.Context) (chain.BlockChain, erro
 	}
 
 	p.chain = &canton.Chain{
-		Selector:     p.selector,
-		Participants: make([]canton.Participant, len(p.config.Participants)),
+		ChainMetadata: canton.ChainMetadata{Selector: p.selector},
+		Participants:  make([]canton.Participant, len(p.config.Participants)),
 	}
 
 	for i, participant := range p.config.Participants {
