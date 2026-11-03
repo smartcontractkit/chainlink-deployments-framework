@@ -60,7 +60,7 @@ type ZkSyncCTFChainProvider struct {
 	chain *evm.Chain
 }
 
-// NewZkCTFChainProvider creates a new ZkSyncCTFChainProvider with the given selector and
+// NewZkSyncCTFChainProvider creates a new ZkSyncCTFChainProvider with the given selector and
 // configuration.
 func NewZkSyncCTFChainProvider(
 	t *testing.T, selector uint64, config ZkSyncCTFChainProviderConfig,

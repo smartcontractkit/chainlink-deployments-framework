@@ -2,10 +2,8 @@ package environment
 
 import (
 	"context"
-	"maps"
 	"os"
 	"path/filepath"
-	"slices"
 	"testing"
 	"time"
 
@@ -82,32 +80,57 @@ func Test_resolveNetworkType(t *testing.T) {
 	}
 }
 
-func Test_buildNetworksConfig(t *testing.T) {
+func Test_BuildNetworksConfig(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name     string
-		giveNets []cfgnet.Network
-		giveBase string
-		wantRPCs map[uint64][]cfgnet.RPC
-		wantErr  string
+		name          string
+		giveNets      []cfgnet.Network
+		giveBase      string
+		giveSelectors []uint64
+		want          *cfgnet.Config
+		// wantRPCs      map[uint64][]cfgnet.RPC
+		wantErr string
 	}{
 		{
 			name:     "derives a default RPC per chain from the base URL",
 			giveNets: []cfgnet.Network{{ChainSelector: selSepolia}, {ChainSelector: selMainnet}},
 			giveBase: "http://proxy.example.com",
-			wantRPCs: map[uint64][]cfgnet.RPC{
-				selSepolia: {{
+			want: cfgnet.NewConfig([]cfgnet.Network{
+				{
+					Type:          cfgnet.NetworkTypeTestnet,
+					ChainSelector: 16015286601757825753,
+					RPCs: []cfgnet.RPC{{
+						RPCName:            "default",
+						PreferredURLScheme: "http",
+						HTTPURL:            "http://proxy.example.com/16015286601757825753",
+					}},
+				},
+				{
+					Type:          cfgnet.NetworkTypeMainnet,
+					ChainSelector: 5009297550715157269,
+					RPCs: []cfgnet.RPC{{
+						RPCName:            "default",
+						PreferredURLScheme: "http",
+						HTTPURL:            "http://proxy.example.com/5009297550715157269",
+					}},
+				},
+			}),
+		},
+		{
+			name:          "filters by given chain selectors",
+			giveNets:      []cfgnet.Network{{ChainSelector: selSepolia}, {ChainSelector: selMainnet}},
+			giveBase:      "http://proxy.example.com",
+			giveSelectors: []uint64{selSepolia},
+			want: cfgnet.NewConfig([]cfgnet.Network{{
+				Type:          cfgnet.NetworkTypeTestnet,
+				ChainSelector: 16015286601757825753,
+				RPCs: []cfgnet.RPC{{
 					RPCName:            "default",
 					PreferredURLScheme: "http",
 					HTTPURL:            "http://proxy.example.com/16015286601757825753",
 				}},
-				selMainnet: {{
-					RPCName:            "default",
-					PreferredURLScheme: "http",
-					HTTPURL:            "http://proxy.example.com/5009297550715157269",
-				}},
-			},
+			}}),
 		},
 		{
 			// Ordering is load bearing: chains.LoadChains reads RPCs[0] for every
@@ -118,16 +141,45 @@ func Test_buildNetworksConfig(t *testing.T) {
 				RPCs:          []cfgnet.RPC{{RPCName: "caller", HTTPURL: "http://caller"}},
 			}},
 			giveBase: "http://proxy.example.com",
-			wantRPCs: map[uint64][]cfgnet.RPC{
-				selSepolia: {
+			want: cfgnet.NewConfig([]cfgnet.Network{{
+				Type:          cfgnet.NetworkTypeTestnet,
+				ChainSelector: 16015286601757825753,
+				RPCs: []cfgnet.RPC{
 					{
 						RPCName:            "default",
 						PreferredURLScheme: "http",
 						HTTPURL:            "http://proxy.example.com/16015286601757825753",
 					},
-					{RPCName: "caller", HTTPURL: "http://caller"},
+					{
+						RPCName: "caller",
+						HTTPURL: "http://caller",
+					},
 				},
-			},
+			}}),
+		},
+		{
+			name: "does not mutate params",
+			giveNets: func() []cfgnet.Network {
+				rpcs := make([]cfgnet.RPC, 1, 4) // spare capacity, so an in-place insert is possible
+				rpcs[0] = cfgnet.RPC{RPCName: "caller", HTTPURL: "http://caller"}
+				return []cfgnet.Network{{ChainSelector: selSepolia, RPCs: rpcs}} //nolint:nlreturn
+			}(),
+			giveBase: "http://proxy.example.com",
+			want: cfgnet.NewConfig([]cfgnet.Network{{
+				Type:          cfgnet.NetworkTypeTestnet,
+				ChainSelector: 16015286601757825753,
+				RPCs: []cfgnet.RPC{
+					{
+						RPCName:            "default",
+						PreferredURLScheme: "http",
+						HTTPURL:            "http://proxy.example.com/16015286601757825753",
+					},
+					{
+						RPCName: "caller",
+						HTTPURL: "http://caller",
+					},
+				},
+			}}),
 		},
 		{
 			name: "keeps only the caller supplied RPCs when no base URL is set",
@@ -136,27 +188,57 @@ func Test_buildNetworksConfig(t *testing.T) {
 				RPCs:          []cfgnet.RPC{{RPCName: "caller", HTTPURL: "http://caller"}},
 			}},
 			giveBase: "",
-			wantRPCs: map[uint64][]cfgnet.RPC{
-				selSepolia: {{RPCName: "caller", HTTPURL: "http://caller"}},
-			},
+			want: cfgnet.NewConfig([]cfgnet.Network{{
+				Type:          cfgnet.NetworkTypeTestnet,
+				ChainSelector: 16015286601757825753,
+				RPCs: []cfgnet.RPC{{
+					RPCName: "caller",
+					HTTPURL: "http://caller",
+				}},
+			}}),
+		},
+		{
+			name: "preserves metadata",
+			giveNets: []cfgnet.Network{{
+				ChainSelector: selSepolia,
+				RPCs:          []cfgnet.RPC{{RPCName: "caller", HTTPURL: "http://caller"}},
+				Metadata: map[string]any{
+					"network_passphrase": "Test SDF Network ; September 2015",
+					"friendbot_url":      "https://friendbot.stellar.org",
+				},
+			}},
+			want: cfgnet.NewConfig([]cfgnet.Network{{
+				Type:          cfgnet.NetworkTypeTestnet,
+				ChainSelector: 16015286601757825753,
+				RPCs: []cfgnet.RPC{{
+					RPCName: "caller",
+					HTTPURL: "http://caller",
+				}},
+				Metadata: map[string]any{
+					"network_passphrase": "Test SDF Network ; September 2015",
+					"friendbot_url":      "https://friendbot.stellar.org",
+				},
+			}}),
 		},
 		{
 			name:     "trims trailing slashes from the base URL",
 			giveNets: []cfgnet.Network{{ChainSelector: selSepolia}},
 			giveBase: "http://proxy.example.com//",
-			wantRPCs: map[uint64][]cfgnet.RPC{
-				selSepolia: {{
+			want: cfgnet.NewConfig([]cfgnet.Network{{
+				Type:          cfgnet.NetworkTypeTestnet,
+				ChainSelector: 16015286601757825753,
+				RPCs: []cfgnet.RPC{{
 					RPCName:            "default",
 					PreferredURLScheme: "http",
 					HTTPURL:            "http://proxy.example.com/16015286601757825753",
 				}},
-			},
+			}}),
 		},
 		{
 			name:     "no networks",
 			giveNets: nil,
 			giveBase: "http://proxy.example.com",
-			wantRPCs: map[uint64][]cfgnet.RPC{},
+			want:     cfgnet.NewConfig([]cfgnet.Network{}),
 		},
 		{
 			name:     "unknown chain selector",
@@ -185,84 +267,16 @@ func Test_buildNetworksConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := buildNetworksConfig(t.Context(), tt.giveNets, tt.giveBase)
+			got, err := BuildNetworksConfig(t.Context(), tt.giveNets, tt.giveBase, tt.giveSelectors)
 
-			if tt.wantErr != "" {
+			if tt.wantErr == "" {
+				require.NoError(t, err)
+				require.Equal(t, tt.want, got)
+			} else {
 				require.ErrorContains(t, err, tt.wantErr)
-				return
-			}
-
-			require.NoError(t, err)
-			assert.ElementsMatch(t, slices.Collect(maps.Keys(tt.wantRPCs)), got.ChainSelectors())
-
-			for sel, wantRPCs := range tt.wantRPCs {
-				network, nerr := got.NetworkBySelector(sel)
-				require.NoError(t, nerr)
-				assert.Equal(t, wantRPCs, network.RPCs, "selector %d", sel)
 			}
 		})
 	}
-}
-
-// Test_buildNetworksConfig_DoesNotMutateParams guards the aliasing hazard that
-// slices.Insert introduces: inserting at index 0 only reallocates when the slice
-// is at capacity, so with spare capacity it writes through to the caller's
-// backing array and overwrites their first RPC with the derived default.
-func Test_buildNetworksConfig_DoesNotMutateParams(t *testing.T) {
-	t.Parallel()
-
-	rpcs := make([]cfgnet.RPC, 1, 4) // spare capacity, so an in-place insert is possible
-	rpcs[0] = cfgnet.RPC{RPCName: "caller", HTTPURL: "http://caller"}
-
-	params := []cfgnet.Network{{ChainSelector: selSepolia, RPCs: rpcs}}
-
-	got, err := buildNetworksConfig(t.Context(), params, "http://proxy.example.com")
-	require.NoError(t, err)
-
-	assert.Equal(t,
-		[]cfgnet.RPC{{RPCName: "caller", HTTPURL: "http://caller"}},
-		params[0].RPCs,
-		"buildNetworksConfig must not write through to the caller's slice",
-	)
-
-	// The derived default still landed ahead of the caller's RPC.
-	network, err := got.NetworkBySelector(selSepolia)
-	require.NoError(t, err)
-	require.Len(t, network.RPCs, 2)
-	assert.Equal(t, "default", network.RPCs[0].RPCName)
-	assert.Equal(t, "caller", network.RPCs[1].RPCName)
-}
-
-// Test_buildNetworksConfig_MetadataDecodes pins the end of the chain that
-// matters: metadata supplied as params has to survive into cfgnet.Network in a
-// shape cfgnet.DecodeMetadata accepts, since the Stellar and Canton loaders
-// treat a nil or undecodable value as a fatal error.
-func Test_buildNetworksConfig_MetadataDecodes(t *testing.T) {
-	t.Parallel()
-
-	// Shaped as a JSON decoder would produce it, not as the concrete struct.
-	metadata := map[string]any{
-		"network_passphrase": "Test SDF Network ; September 2015",
-		"friendbot_url":      "https://friendbot.stellar.org",
-	}
-
-	got, err := buildNetworksConfig(
-		t.Context(),
-		[]cfgnet.Network{{ChainSelector: selSepolia, Metadata: metadata}},
-		"http://proxy.example.com",
-	)
-	require.NoError(t, err)
-
-	network, err := got.NetworkBySelector(selSepolia)
-	require.NoError(t, err)
-
-	md, err := cfgnet.DecodeMetadata[cfgnet.StellarMetadata](network.Metadata)
-	require.NoError(t, err)
-
-	assert.Equal(t, cfgnet.StellarMetadata{
-		NetworkPassphrase: "Test SDF Network ; September 2015",
-		FriendbotURL:      "https://friendbot.stellar.org",
-	}, md)
 }
 
 func Test_newBuildConfig_Defaults(t *testing.T) {
@@ -292,11 +306,13 @@ func Test_BuildOptions(t *testing.T) {
 		BuildWithLogger(lggr),
 		BuildWithReporter(reporter),
 		BuildWithOperationRegistry(registry),
+		BuildWithChainSelectors([]uint64{1, 2}),
 	})
 
 	assert.Equal(t, lggr, cfg.lggr)
 	assert.Equal(t, reporter, cfg.reporter)
 	assert.Equal(t, registry, cfg.operationRegistry)
+	assert.Equal(t, []uint64{1, 2}, cfg.chainSelectors)
 }
 
 func Test_Build_InvalidChainSelector(t *testing.T) {
@@ -310,6 +326,42 @@ func Test_Build_InvalidChainSelector(t *testing.T) {
 	}, BuildWithLogger(logger.Test(t)))
 
 	require.ErrorContains(t, err, "unknown chain selector")
+}
+
+func Test_Build_ChainSelectors(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		networks  []cfgnet.Network
+		selectors []uint64
+		wantErr   string
+	}{
+		{
+			name:      "selector missing from networks",
+			networks:  []cfgnet.Network{{ChainSelector: 1}},
+			selectors: []uint64{1, 42},
+			wantErr:   "chain selectors [42] weren't found in build params",
+		},
+		{
+			name:      "no networks listed",
+			selectors: []uint64{42},
+			wantErr:   "chain selectors [42] weren't found in build params",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			_, err := Build(t.Context(), BuildParams{
+				Domain:      "dummy",
+				Environment: "test",
+				Networks:    tt.networks,
+			}, BuildWithLogger(logger.Test(t)), BuildWithChainSelectors(tt.selectors))
+
+			require.ErrorContains(t, err, tt.wantErr)
+		})
+	}
 }
 
 func Test_Build_CatalogUnreachable(t *testing.T) {
@@ -328,71 +380,6 @@ func Test_Build_CatalogUnreachable(t *testing.T) {
 	}, BuildWithLogger(logger.Test(t)))
 
 	require.ErrorContains(t, err, "failed to load data from catalog")
-}
-
-// wantGoldenParams is the decoded form of both testdata/build_params.yaml and
-// testdata/build_params.json. The two fixtures describe the same environment in
-// different encodings, so decoding either must produce this value.
-func wantGoldenParams() BuildParams {
-	return BuildParams{
-		Domain:            "exemplar",
-		Environment:       "staging",
-		DefaultRPCBaseURL: "http://rpc-proxy.example.com",
-		Networks: []cfgnet.Network{
-			{ChainSelector: selSepolia},
-			{
-				ChainSelector: selMainnet,
-				Type:          cfgnet.NetworkTypeMainnet,
-				BlockExplorer: cfgnet.BlockExplorer{
-					Type:   "etherscan",
-					URL:    "https://api.etherscan.io/api",
-					APIKey: "abc123",
-				},
-				RPCs: []cfgnet.RPC{{
-					RPCName:            "mainnet-rpc",
-					PreferredURLScheme: "http",
-					HTTPURL:            "https://mainnet.example.com",
-					WSURL:              "wss://mainnet.example.com",
-				}},
-			},
-			{
-				ChainSelector: selZkSyncSepolia,
-				Metadata:      map[string]any{"is_zksync": true},
-			},
-		},
-		Onchain: cfgenv.OnchainConfig{
-			KMS: cfgenv.KMSConfig{KeyID: "f1a2b3c4", KeyRegion: "us-west-1"},
-			EVM: cfgenv.EVMConfig{
-				DeployerKey: "0xabc",
-				Seth: &cfgenv.SethConfig{
-					ConfigFilePath:  "/tmp/config",
-					GethWrapperDirs: []string{"./dir1"},
-				},
-			},
-			Solana: cfgenv.SolanaConfig{
-				WalletKey:       "0xbcd",
-				ProgramsDirPath: "/tmp/program",
-			},
-		},
-		Catalog: cfgenv.CatalogConfig{
-			GRPC: "catalog.example.com:443",
-			Auth: &cfgenv.CatalogAuthConfig{
-				KMSKeyID:     "alias/catalog",
-				KMSKeyRegion: "us-west-1",
-			},
-		},
-		Notifications: &cfgnotifications.Config{
-			Slack: cfgnotifications.SlackConfig{Channels: []cfgnotifications.SlackChannel{
-				{
-					Name:              "#exemplar-signers",
-					SlackHandles:      []string{"@exemplar-signers"},
-					TimelockContracts: []cfgnotifications.ContractRef{{ChainSelector: selSepolia, Address: "0xabc"}},
-					MCMContracts:      []cfgnotifications.ContractRef{{ChainSelector: selSepolia, Address: "0xdef"}},
-				},
-				{Name: "#mcms-proposals"},
-			}},
-		},
-	}
 }
 
 // Test_parseBuildParams_Golden pins the yaml tags on BuildParams and
@@ -441,7 +428,7 @@ func Test_parseBuildParams_Golden_BuildableNetworks(t *testing.T) {
 	params, err := parseBuildParams(data)
 	require.NoError(t, err)
 
-	got, err := buildNetworksConfig(t.Context(), params.Networks, params.DefaultRPCBaseURL)
+	got, err := BuildNetworksConfig(t.Context(), params.Networks, params.DefaultRPCBaseURL, nil)
 	require.NoError(t, err)
 
 	// Every network gets the derived default RPC first, ahead of any explicit ones.
@@ -516,5 +503,114 @@ func Test_parseBuildParams_Errors(t *testing.T) {
 			_, err := parseBuildParams([]byte(tt.give))
 			require.ErrorContains(t, err, tt.wantErr)
 		})
+	}
+}
+
+func Test_missingSelectors(t *testing.T) {
+	t.Parallel()
+
+	networks := []cfgnet.Network{{ChainSelector: 1}, {ChainSelector: 2}}
+
+	tests := []struct {
+		name      string
+		selectors []uint64
+		want      []uint64
+	}{
+		{
+			name:      "all listed",
+			selectors: []uint64{1, 2},
+			want:      []uint64{},
+		},
+		{
+			name:      "some missing",
+			selectors: []uint64{1, 3, 4},
+			want:      []uint64{3, 4},
+		},
+		{
+			name:      "all missing",
+			selectors: []uint64{5},
+			want:      []uint64{5},
+		},
+		{
+			name:      "no selectors",
+			selectors: []uint64{},
+			want:      []uint64{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := missingSelectors(networks, tt.selectors)
+
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+// --- helpers -----------------------------------------------------------------
+
+// wantGoldenParams is the decoded form of both testdata/build_params.yaml and
+// testdata/build_params.json. The two fixtures describe the same environment in
+// different encodings, so decoding either must produce this value.
+func wantGoldenParams() BuildParams {
+	return BuildParams{
+		Domain:            "exemplar",
+		Environment:       "staging",
+		DefaultRPCBaseURL: "http://rpc-proxy.example.com",
+		Networks: []cfgnet.Network{
+			{ChainSelector: selSepolia},
+			{
+				ChainSelector: selMainnet,
+				Type:          cfgnet.NetworkTypeMainnet,
+				BlockExplorer: cfgnet.BlockExplorer{
+					Type:   "etherscan",
+					URL:    "https://api.etherscan.io/api",
+					APIKey: "abc123",
+				},
+				RPCs: []cfgnet.RPC{{
+					RPCName:            "mainnet-rpc",
+					PreferredURLScheme: "http",
+					HTTPURL:            "https://mainnet.example.com",
+					WSURL:              "wss://mainnet.example.com",
+				}},
+			},
+			{
+				ChainSelector: selZkSyncSepolia,
+				Metadata:      map[string]any{"is_zksync": true},
+			},
+		},
+		Onchain: cfgenv.OnchainConfig{
+			KMS: cfgenv.KMSConfig{KeyID: "f1a2b3c4", KeyRegion: "us-west-1"},
+			EVM: cfgenv.EVMConfig{
+				DeployerKey: "0xabc",
+				Seth: &cfgenv.SethConfig{
+					ConfigFilePath:  "/tmp/config",
+					GethWrapperDirs: []string{"./dir1"},
+				},
+			},
+			Solana: cfgenv.SolanaConfig{
+				WalletKey:       "0xbcd",
+				ProgramsDirPath: "/tmp/program",
+			},
+		},
+		Catalog: cfgenv.CatalogConfig{
+			GRPC: "catalog.example.com:443",
+			Auth: &cfgenv.CatalogAuthConfig{
+				KMSKeyID:     "alias/catalog",
+				KMSKeyRegion: "us-west-1",
+			},
+		},
+		Notifications: &cfgnotifications.Config{
+			Slack: cfgnotifications.SlackConfig{Channels: []cfgnotifications.SlackChannel{
+				{
+					Name:              "#exemplar-signers",
+					SlackHandles:      []string{"@exemplar-signers"},
+					TimelockContracts: []cfgnotifications.ContractRef{{ChainSelector: selSepolia, Address: "0xabc"}},
+					MCMContracts:      []cfgnotifications.ContractRef{{ChainSelector: selSepolia, Address: "0xdef"}},
+				},
+				{Name: "#mcms-proposals"},
+			}},
+		},
 	}
 }

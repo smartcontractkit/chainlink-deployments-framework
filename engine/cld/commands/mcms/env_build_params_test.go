@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -38,6 +39,7 @@ domain: testdomain
 environment: testnet
 catalog:
   grpc: catalog.example.com:443
+default_rpc_base_url: "http://rpc.cldev.sh/"
 networks:
   - chain_selector: 3379446385462418246
 `
@@ -75,13 +77,14 @@ func (f *fakeBuilder) build(
 func listedParams(selectors ...uint64) cldfenv.BuildParams {
 	params := cldfenv.BuildParams{Domain: buildParamsDomain, Environment: buildParamsEnv}
 	for _, selector := range selectors {
-		params.Networks = append(params.Networks, cldfnetwork.Network{ChainSelector: selector})
+		params.Networks = append(params.Networks, cldfnetwork.Network{
+			ChainSelector: selector,
+			RPCs:          []cldfnetwork.RPC{{HTTPURL: fmt.Sprintf("http://rpc.cldev.sh/%d", selector)}},
+		})
 	}
 
 	return params
 }
-
-func ptr[T any](v T) *T { return &v }
 
 func failingEnvLoader(t *testing.T) EnvironmentLoaderFunc {
 	t.Helper()
@@ -128,13 +131,6 @@ func TestBuildEnvironment(t *testing.T) {
 			builder:   &fakeBuilder{err: errors.New("catalog unreachable")},
 			wantErr:   "failed to build environment from build params: catalog unreachable",
 			wantCalls: 1,
-		},
-		{
-			name:      "selector not listed fails before building",
-			dom:       dom,
-			builder:   &fakeBuilder{selector: []uint64{buildParamsSelector}},
-			selectors: []uint64{buildParamsSelector, 42},
-			wantErr:   "chain selector 42 is not listed under networks in the build params",
 		},
 		{
 			name:      "listed selector that did not load is named",
@@ -215,27 +211,6 @@ func TestLoadProposalConfig_BuildParams(t *testing.T) {
 		require.Equal(t, buildParamsEnv, got.Env.Name)
 	})
 
-	t.Run("a proposal chain not listed in networks fails before building", func(t *testing.T) {
-		t.Parallel()
-
-		builder := &fakeBuilder{}
-		deps := &Deps{
-			EnvironmentLoader:  failingEnvLoader(t),
-			EnvironmentBuilder: builder.build,
-			ProposalLoader:     mcms.LoadProposal,
-		}
-
-		_, err := LoadProposalConfig(t.Context(), logger.Nop(), dom, deps, nil, ProposalFlags{
-			ProposalPath: proposalPath,
-			ProposalKind: string(mcmstypes.KindTimelockProposal),
-			Environment:  buildParamsEnv,
-			BuildParams:  ptr(listedParams(42)),
-		})
-
-		require.ErrorContains(t, err, "chain selector 3379446385462418246 is not listed under networks")
-		require.Zero(t, builder.calls)
-	})
-
 	t.Run("a listed chain that did not load fails naming the selector", func(t *testing.T) {
 		t.Parallel()
 
@@ -254,22 +229,6 @@ func TestLoadProposalConfig_BuildParams(t *testing.T) {
 		})
 
 		require.ErrorContains(t, err, "chain selector 3379446385462418246 is listed in the build params but was not loaded")
-	})
-
-	t.Run("build params cannot be combined with fork", func(t *testing.T) {
-		t.Parallel()
-
-		deps := &Deps{ProposalLoader: mcms.LoadProposal, ForkEnvironmentLoader: nopForkEnvLoader}
-
-		_, err := LoadProposalConfig(t.Context(), logger.Nop(), dom, deps, nil, ProposalFlags{
-			ProposalPath: proposalPath,
-			ProposalKind: string(mcmstypes.KindTimelockProposal),
-			Environment:  buildParamsEnv,
-			Fork:         true,
-			BuildParams:  &params,
-		})
-
-		require.ErrorContains(t, err, "not supported when running on a fork")
 	})
 }
 
@@ -426,7 +385,7 @@ func TestBuildParamsFlag_OnlyOnSupportedCommands(t *testing.T) {
 		"analyze-proposal-v2": true,
 		"convert-upf":         true,
 		"analyze-proposal":    true,
-		"execute-fork":        false,
+		"execute-fork":        true,
 		"error-decode-evm":    false,
 		"hooks":               false,
 	}
