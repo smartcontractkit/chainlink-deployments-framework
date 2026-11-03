@@ -6,8 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 
+	"github.com/samber/lo"
 	chainselremote "github.com/smartcontractkit/chain-selectors/remote"
 	"gopkg.in/yaml.v3"
 
@@ -91,6 +93,16 @@ func Build(ctx context.Context, params BuildParams, opts ...BuildOption) (fdeplo
 		lggr   = buildcfg.lggr
 		getCtx = func() context.Context { return ctx }
 	)
+
+	if buildcfg.chainSelectors != nil {
+		params.Networks = lo.Filter(params.Networks, func(n cfgnet.Network, _ int) bool {
+			return slices.Contains(buildcfg.chainSelectors, n.ChainSelector)
+		})
+		if len(params.Networks) != len(buildcfg.chainSelectors) {
+			missing := missingSelectors(params, buildcfg.chainSelectors)
+			return fdeployment.Environment{}, fmt.Errorf("chain selectors %v weren't found in build params \"networks\"", missing)
+		}
+	}
 
 	netConfig, err := buildNetworksConfig(ctx, params.Networks, params.DefaultRPCBaseURL)
 	if err != nil {
@@ -236,6 +248,8 @@ type BuildConfig struct {
 
 	// lggr is used throughout the build and by the resulting environment.
 	lggr logger.Logger
+
+	chainSelectors []uint64
 }
 
 // Configure applies the given options, overriding the defaults.
@@ -284,4 +298,22 @@ func BuildWithReporter(reporter operations.Reporter) BuildOption {
 	return func(o *BuildConfig) {
 		o.reporter = reporter
 	}
+}
+
+// BuildWithChainSelectors supplies the chain selectors that should be loaded
+func BuildWithChainSelectors(chainSelectors []uint64) BuildOption {
+	return func(o *BuildConfig) {
+		o.chainSelectors = chainSelectors
+	}
+}
+
+func missingSelectors(params BuildParams, chainSelectors []uint64) []uint64 {
+	paramsChainSelectors := lo.Keyify(lo.Map(params.Networks, func(n cfgnet.Network, _ int) uint64 {
+		return n.ChainSelector
+	}))
+
+	return lo.Filter(chainSelectors, func(selector uint64, _ int) bool {
+		_, found := paramsChainSelectors[selector]
+		return found
+	})
 }

@@ -14,6 +14,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	cfgenv "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/env"
+	cfgnet "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/network"
 	fdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 )
 
@@ -23,8 +25,11 @@ func Test_LoadForkedEnvironment(t *testing.T) {
 	tests := []struct {
 		name          string
 		domain        fdomain.Domain
-		env           string
+		env           fdeployment.Environment
+		networkCfg    *cfgnet.Config
+		onchainCfg    cfgenv.OnchainConfig
 		blockNumbers  map[uint64]*big.Int
+		providerType  ProviderType
 		options       []LoadEnvironmentOption
 		wantName      string
 		wantNumChains int
@@ -33,7 +38,7 @@ func Test_LoadForkedEnvironment(t *testing.T) {
 		{
 			name:   "Invalid Environment",
 			domain: fdomain.NewDomain("dummy", "test"),
-			env:    "non_existent_env",
+			env:    fdeployment.Environment{Name: "non_existent_env"},
 			blockNumbers: map[uint64]*big.Int{
 				1: big.NewInt(1000),
 			},
@@ -42,7 +47,7 @@ func Test_LoadForkedEnvironment(t *testing.T) {
 		{
 			name:   "AddressBook Failure",
 			domain: setupTest(t, setupTestConfig, setupNodes),
-			env:    "staging",
+			env:    fdeployment.Environment{Name: "staging"},
 			blockNumbers: map[uint64]*big.Int{
 				16015286601757825753: big.NewInt(1000),
 			},
@@ -52,7 +57,7 @@ func Test_LoadForkedEnvironment(t *testing.T) {
 		{
 			name:   "DataStore Failure",
 			domain: setupTest(t, setupTestConfig, setupNodes, setupAddressbook),
-			env:    "staging",
+			env:    fdeployment.Environment{Name: "staging"},
 			blockNumbers: map[uint64]*big.Int{
 				16015286601757825753: big.NewInt(1000),
 			},
@@ -62,14 +67,14 @@ func Test_LoadForkedEnvironment(t *testing.T) {
 		{
 			name:         "Empty Block Numbers",
 			domain:       setupTest(t, setupTestConfig, setupAddressbook),
-			env:          "staging",
+			env:          fdeployment.Environment{Name: "staging"},
 			blockNumbers: map[uint64]*big.Int{},
 			wantErr:      "failed to create anvil chains",
 		},
 		{
 			name:   "Invalid Nodes File",
 			domain: setupTest(t, setupTestConfig, setupAddressbook),
-			env:    "staging",
+			env:    fdeployment.Environment{Name: "staging"},
 			blockNumbers: map[uint64]*big.Int{
 				16015286601757825753: big.NewInt(1000),
 			},
@@ -78,7 +83,7 @@ func Test_LoadForkedEnvironment(t *testing.T) {
 		{
 			name:   "OffchainClient Failure",
 			domain: setupTest(t, setupTestConfig, setupAddressbook, setupNodes),
-			env:    "staging",
+			env:    fdeployment.Environment{Name: "staging"},
 			blockNumbers: map[uint64]*big.Int{
 				16015286601757825753: big.NewInt(1000),
 			},
@@ -87,7 +92,7 @@ func Test_LoadForkedEnvironment(t *testing.T) {
 		{
 			name:          "Skip ZK Sync chain",
 			domain:        setupTest(t, setupTestConfig, setupAddressbook, setupDataStore, setupNodes),
-			env:           "staging",
+			env:           fdeployment.Environment{Name: "staging"},
 			blockNumbers:  map[uint64]*big.Int{6898391096552792247: big.NewInt(1000)},
 			options:       []LoadEnvironmentOption{WithoutJD(), WithAnvilKeyAsDeployer()},
 			wantName:      "fork",
@@ -110,7 +115,7 @@ func Test_LoadForkedEnvironment(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			forkEnv, err := LoadFork(t.Context(), tt.domain, tt.env, tt.blockNumbers, tt.options...)
+			forkEnv, err := LoadFork(t.Context(), tt.domain, tt.env, tt.networkCfg, tt.onchainCfg, tt.blockNumbers, tt.providerType, tt.options...)
 			t.Cleanup(func() {
 				for _, container := range forkEnv.Containers {
 					_ = container.Terminate(context.Background())
@@ -243,7 +248,8 @@ func Test_ApplyChangesetOutput(t *testing.T) {
 
 			domain := setupTest(t, setupTestConfig, setupAddressbook, setupDataStore, setupNodes)
 
-			forkEnv, err := LoadFork(t.Context(), domain, "staging", tt.blockNumbers, WithoutJD())
+			forkEnv, err := LoadFork(t.Context(), domain, fdeployment.Environment{Name: "staging"}, &cfgnet.Config{},
+				cfgenv.OnchainConfig{}, tt.blockNumbers, ProviderTypeTestContainer, WithoutJD())
 			require.NoError(t, err)
 
 			if tt.forkClients != nil {

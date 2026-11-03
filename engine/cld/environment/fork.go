@@ -5,20 +5,18 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"slices"
 	"strings"
 
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/testcontainers/testcontainers-go"
 
 	fchain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
-	"github.com/smartcontractkit/chainlink-deployments-framework/cre"
-	crecli "github.com/smartcontractkit/chainlink-deployments-framework/cre/cli"
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config"
+	cfgenv "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/env"
 	cfgnet "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/network"
 	fdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/internal/credentials"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/offchain"
+
 	foffchain "github.com/smartcontractkit/chainlink-deployments-framework/offchain"
 	focr "github.com/smartcontractkit/chainlink-deployments-framework/offchain/ocr"
 )
@@ -48,8 +46,11 @@ type ForkedEnvironment struct {
 func LoadFork(
 	ctx context.Context,
 	domain fdomain.Domain,
-	env string,
+	env fdeployment.Environment,
+	networksCfg *cfgnet.Config,
+	onchainCfg cfgenv.OnchainConfig,
 	blockNumbers map[uint64]*big.Int,
+	providerType ProviderType,
 	opts ...LoadEnvironmentOption,
 ) (ForkedEnvironment, error) {
 	loadcfg, err := newLoadConfig()
@@ -58,32 +59,22 @@ func LoadFork(
 	}
 	loadcfg.Configure(opts)
 
-	lggr := loadcfg.lggr
-
-	cfg, err := config.Load(domain, env, lggr)
-	if err != nil {
-		return ForkedEnvironment{}, fmt.Errorf("failed to load config: %w", err)
-	}
-
-	if loadcfg.creRunner == nil {
-		apiKey := cfg.Env.CRE.Auth.APIKey
-		loadcfg.creRunner = cre.NewRunner(cre.WithCLI(crecli.NewCLIRunner("", apiKey)))
-	}
-
-	// Limit to EVM networks only
-	networks := cfg.Networks.FilterWith(
+	networksCfg = networksCfg.FilterWith(
 		cfgnet.ChainFamilyFilter(chainsel.FamilyEVM),
-	)
+		func(n cfgnet.Network) bool {
+			return loadcfg.chainSelectorsToLoad == nil || slices.Contains(loadcfg.chainSelectorsToLoad, n.ChainSelector)
+		})
 
 	anvilOutput, err := newAnvilChains(
 		ctx,
-		lggr,
-		networks,
+		env.Logger,
+		networksCfg,
 		blockNumbers,
-		cfg.Env.Onchain,
-		cfg.Env.Onchain.KMS,
-		loadcfg.chainSelectorsToLoad,
+		onchainCfg,
+		onchainCfg.KMS,
+		networksCfg.ChainSelectors(),
 		loadcfg.anvilKeyAsDeployer,
+		providerType,
 	)
 	if err != nil {
 		if strings.Contains(err.Error(), "context deadline exceeded") {
@@ -93,37 +84,16 @@ func LoadFork(
 		return ForkedEnvironment{}, fmt.Errorf("failed to create anvil chains: %w", err)
 	}
 
-	envdir := domain.EnvDir(env)
-	nodes, err := envdir.LoadNodes()
-	if err != nil {
-		return ForkedEnvironment{}, fmt.Errorf("failed to load nodes: %w", err)
-	}
+	// envdir := domain.EnvDir(env.Name)
+	// nodes, err := envdir.LoadNodes()
+	// if err != nil {
+	// 	return ForkedEnvironment{}, fmt.Errorf("failed to load nodes: %w", err)
+	// }
 
-	config, err := config.LoadEnvConfig(domain, env)
-	if err != nil {
-		return ForkedEnvironment{}, fmt.Errorf("failed to load environment-specific config: %w", err)
-	}
-
-	var oc foffchain.Client
-
-	if !loadcfg.withoutJD {
-		oc, err = offchain.LoadOffchainClient(ctx, domain, config.Offchain.JobDistributor,
-			offchain.WithLogger(lggr),
-			offchain.WithDryRun(true),
-			offchain.WithCredentials(credentials.GetCredsForEnv(env)),
-		)
-		if err != nil {
-			if errors.Is(err, offchain.ErrEndpointsRequired) {
-				lggr.Warn("Skipping JD initialization: gRPC endpoint is not set in config")
-			} else {
-				return ForkedEnvironment{}, fmt.Errorf("failed to load offchain client: %w", err)
-			}
-
-			return ForkedEnvironment{}, fmt.Errorf("failed to load offchain client: %w", err)
-		}
-	} else {
-		lggr.Info("Override: skipping JD initialization")
-	}
+	// config, err := config.LoadEnvConfig(domain, env.Name)
+	// if err != nil {
+	// 	return ForkedEnvironment{}, fmt.Errorf("failed to load environment-specific config: %w", err)
+	// }
 
 	blockChains := map[uint64]fchain.BlockChain{}
 	for selector, ch := range anvilOutput.Chains {
@@ -132,25 +102,25 @@ func LoadFork(
 
 	// TODO: newSolChains, newAptosChains, etc.
 
-	addressBook, err := domain.AddressBookByEnv(env)
-	if err != nil {
-		return ForkedEnvironment{}, fmt.Errorf("failed to load addressbook for domain %s and environment %s: %w", domain.Key(), env, err)
-	}
-	dataStore, err := LoadDataStore(ctx, cfg, loadcfg, domain, env)
-	if err != nil {
-		return ForkedEnvironment{}, fmt.Errorf("failed to load datastore for domain %s and environment %s: %w", domain.Key(), env, err)
-	}
+	// addressBook, err := domain.AddressBookByEnv(env)
+	// if err != nil {
+	// 	return ForkedEnvironment{}, fmt.Errorf("failed to load addressbook for domain %s and environment %s: %w", domain.Key(), env, err)
+	// }
+	// dataStore, err := LoadDataStore(ctx, cfg, loadcfg, domain, env)
+	// if err != nil {
+	// 	return ForkedEnvironment{}, fmt.Errorf("failed to load datastore for domain %s and environment %s: %w", domain.Key(), env, err)
+	// }
 	environment := fdeployment.NewEnvironment(
 		"fork",
-		lggr,
-		addressBook,
-		dataStore,
-		nodes.Keys(),
-		oc,
+		env.Logger,
+		env.ExistingAddresses,
+		env.DataStore,
+		[]string{},
+		foffchain.Client(nil),
 		func() context.Context { return ctx },
 		focr.XXXGenerateTestOCRSecrets(),
 		fchain.NewBlockChains(blockChains),
-		fdeployment.WithCRERunner(loadcfg.creRunner),
+		fdeployment.WithCRERunner(env.CRERunner),
 	)
 
 	return ForkedEnvironment{

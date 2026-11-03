@@ -125,6 +125,16 @@ type AnvilChainsOutput struct {
 	Containers   map[uint64]testcontainers.Container
 }
 
+var once sync.Once
+
+type ProviderType uint8
+
+const (
+	ProviderTypeUnknown       = ProviderType(0)
+	ProviderTypeTestContainer = ProviderType(1)
+	ProviderTypeSubprocess    = ProviderType(2)
+)
+
 // newAnvilChains creates chain abstractions using local anvil nodes.
 func newAnvilChains(
 	ctx context.Context,
@@ -135,6 +145,7 @@ func newAnvilChains(
 	kmsConfig cfgenv.KMSConfig,
 	chainSelectorsToLoad []uint64,
 	anvilKeyAsDeployer bool,
+	providerType ProviderType,
 ) (*AnvilChainsOutput, error) {
 	// filter out not in blockNumbers, if any, to ensure we only use the chains we care about for forking
 	filteredEvmNetworks := make([]cfgnet.Network, 0, len(blockNumbers))
@@ -160,11 +171,13 @@ func newAnvilChains(
 	chainConfigsBySelector := make(map[uint64]ChainConfig)
 	anvilClients := make(map[uint64]ForkedOnchainClient)
 
-	var once sync.Once
 	blockChains := make([]fchain.BlockChain, 0, len(filteredEvmNetworks))
 	containers := make(map[uint64]testcontainers.Container)
 
-	rpcHealthChecker := &containerRPCHealthChecker{}
+	var rpcHealthChecker rpcHealthChecker = &hostRPCHealthChecker{}
+	if providerType == ProviderTypeTestContainer {
+		rpcHealthChecker = &containerRPCHealthChecker{}
+	}
 	defer rpcHealthChecker.Close(ctx) //nolint:errcheck
 
 	for _, network := range filteredEvmNetworks {
@@ -243,51 +256,39 @@ func newAnvilChains(
 			)
 		}
 
-		config := evmprov.CTFAnvilChainProviderConfig{
-			Name:                     fmt.Sprintf("anvil-fork-%d", network.ChainSelector),
-			Once:                     &once,
-			ConfirmFunctor:           evmprov.ConfirmFuncGeth(3 * time.Minute),
-			DockerCmdParamsOverrides: []string{"--auto-impersonate", "--no-storage-caching"},
-			Image:                    metadata.AnvilConfig.Image,
-			ForkURLs:                 forkURLs,
-			DeployerTransactorGen:    signerGenerator,
-			T:                        testing.TB(&testing.T{}),
-			Port:                     "", // let the provider choose a free port; this ensures retries are handled properly
+		var provider anvilProvider
+
+		switch providerType {
+		case ProviderTypeUnknown:
+			return nil, fmt.Errorf("unsupported provider type: %d", providerType)
+		case ProviderTypeTestContainer:
+			lggr.Infof("running anvil test container for chain selector %v", chainSelector)
+			provider, err = runAnvilTestContainer(ctx, chainSelector, metadata, forkURLs, signerGenerator, blockNumbers)
+			if err != nil {
+				return nil, err
+			}
+
+			containers[chainSelector] = provider.(*evmprov.CTFAnvilChainProvider).Container
+		case ProviderTypeSubprocess:
+			lggr.Infof("running anvil subprocess for chain selector %v", chainSelector)
+			provider, err = runAnvilSubprocess(ctx, lggr, chainSelector, metadata, forkURLs, signerGenerator, blockNumbers)
+			if err != nil {
+				return nil, err
+			}
+		default:
+			return nil, fmt.Errorf("unknown provider type: %d", providerType)
 		}
 
-		if blockNumber, ok := blockNumbers[chainSelector]; ok {
-			config.DockerCmdParamsOverrides = append(config.DockerCmdParamsOverrides, "--fork-block-number", blockNumber.String())
-		}
-		if len(metadata.AnvilConfig.ExtraArgs) > 0 {
-			config.DockerCmdParamsOverrides = append(config.DockerCmdParamsOverrides, metadata.AnvilConfig.ExtraArgs...)
-		}
-
-		provider := evmprov.NewCTFAnvilChainProvider(chainSelector, config)
-		b, err := provider.Initialize(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to initialize anvil chain provider for chain selector %d: %w", chainSelector, err)
-		}
-		containers[chainSelector] = provider.Container
-
-		blockChains = append(blockChains, b)
+		blockChains = append(blockChains, provider.BlockChain())
 		anvilClients[chainSelector] = newAnvilForkClient(
 			provider.GetNodeHTTPURL(),
-			map[string]string{
-				"Content-Type": "application/json",
-			},
-			&tls.Config{
-				InsecureSkipVerify: true, //nolint:gosec // G402: TODO: Verify certificate? Though this will only be for testing so not sure if needed.
-			},
+			map[string]string{"Content-Type": "application/json"},
+			&tls.Config{InsecureSkipVerify: true}, //nolint:gosec // G402: TODO: Verify certificate? Though this will only be for testing so not sure if needed.
 			os.Getenv("RESTY_DEBUG") == "true",
 		)
-
 		chainConfigsBySelector[chainSelector] = ChainConfig{
-			ChainID: chainIDStr,
-			HTTPRPCs: []RPCs{
-				{
-					External: provider.GetNodeHTTPURL(),
-				},
-			},
+			ChainID:  chainIDStr,
+			HTTPRPCs: []RPCs{{External: provider.GetNodeHTTPURL()}},
 		}
 	}
 
@@ -297,6 +298,80 @@ func newAnvilChains(
 		ChainConfigs: chainConfigsBySelector,
 		Containers:   containers,
 	}, nil
+}
+
+type anvilProvider interface {
+	Initialize(ctx context.Context) (fchain.BlockChain, error)
+	GetNodeHTTPURL() string
+	BlockChain() fchain.BlockChain
+}
+
+func runAnvilTestContainer(
+	ctx context.Context,
+	chainSelector uint64,
+	metadata cfgnet.EVMMetadata,
+	forkURLs []string,
+	signerGenerator evmprov.SignerGenerator,
+	blockNumbers map[uint64]*big.Int,
+) (*evmprov.CTFAnvilChainProvider, error) {
+	config := evmprov.CTFAnvilChainProviderConfig{
+		Name:                     fmt.Sprintf("anvil-fork-%d", chainSelector),
+		Once:                     &once,
+		ConfirmFunctor:           evmprov.ConfirmFuncGeth(3 * time.Minute),
+		DockerCmdParamsOverrides: []string{"--auto-impersonate", "--no-storage-caching"},
+		Image:                    metadata.AnvilConfig.Image,
+		ForkURLs:                 forkURLs,
+		DeployerTransactorGen:    signerGenerator,
+		T:                        testing.TB(&testing.T{}),
+		Port:                     "", // let the provider choose a free port; this ensures retries are handled properly
+	}
+
+	if blockNumber, ok := blockNumbers[chainSelector]; ok {
+		config.DockerCmdParamsOverrides = append(config.DockerCmdParamsOverrides, "--fork-block-number", blockNumber.String())
+	}
+	if len(metadata.AnvilConfig.ExtraArgs) > 0 {
+		config.DockerCmdParamsOverrides = append(config.DockerCmdParamsOverrides, metadata.AnvilConfig.ExtraArgs...)
+	}
+
+	provider := evmprov.NewCTFAnvilChainProvider(chainSelector, config)
+	_, err := provider.Initialize(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize anvil chain provider for chain selector %d: %w", chainSelector, err)
+	}
+
+	return provider, nil
+}
+
+func runAnvilSubprocess(
+	ctx context.Context,
+	lggr logger.Logger,
+	chainSelector uint64,
+	metadata cfgnet.EVMMetadata,
+	rpcURLs []string,
+	signerGenerator evmprov.SignerGenerator,
+	blockNumbers map[uint64]*big.Int,
+) (anvilProvider, error) {
+	config := evmprov.SubprocessAnvilChainProviderConfig{
+		RpcURLs:               rpcURLs,
+		DeployerTransactorGen: signerGenerator,
+		ConfirmFunctor:        evmprov.ConfirmFuncGeth(3 * time.Minute),
+		Args:                  []string{},
+	}
+
+	if blockNumber, ok := blockNumbers[chainSelector]; ok {
+		config.Args = append(config.Args, "--fork-block-number", blockNumber.String())
+	}
+	if len(metadata.AnvilConfig.ExtraArgs) > 0 {
+		config.Args = append(config.Args, metadata.AnvilConfig.ExtraArgs...)
+	}
+
+	provider := evmprov.NewSubprocessAnvilChainProvider(lggr, chainSelector, config)
+	_, err := provider.Initialize(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize anvil chain provider for chain selector %d: %w", chainSelector, err)
+	}
+
+	return provider, nil
 }
 
 func selectRPCs(
