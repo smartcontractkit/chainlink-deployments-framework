@@ -46,6 +46,10 @@ type LoadConfig struct {
 	datastoreType *cfgdomain.DatastoreType
 
 	creRunner cre.Runner
+
+	// rpcHealthChecker overrides the fork RPC health check. nil uses the
+	// in-network container check; tests inject a fake to stay hermetic.
+	rpcHealthChecker rpcHealthChecker
 }
 
 // Configure applies a slice of LoadEnvironmentOption functions to the LoadConfig.
@@ -197,5 +201,13 @@ func WithDatastoreType(t cfgdomain.DatastoreType) LoadEnvironmentOption {
 func WithCRERunner(r cre.Runner) LoadEnvironmentOption {
 	return func(o *LoadConfig) {
 		o.creRunner = r
+	}
+}
+
+// withRPCHealthChecker replaces the fork RPC health check. Test-only: the
+// default check runs from a container on the CTF network.
+func withRPCHealthChecker(checker rpcHealthChecker) LoadEnvironmentOption {
+	return func(o *LoadConfig) {
+		o.rpcHealthChecker = checker
 	}
 }

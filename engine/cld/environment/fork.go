@@ -84,6 +84,7 @@ func LoadFork(
 		cfg.Env.Onchain.KMS,
 		loadcfg.chainSelectorsToLoad,
 		loadcfg.anvilKeyAsDeployer,
+		loadcfg.rpcHealthChecker,
 	)
 	if err != nil {
 		if strings.Contains(err.Error(), "context deadline exceeded") {
