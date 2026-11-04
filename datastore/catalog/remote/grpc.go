@@ -235,9 +235,14 @@ func NewCatalogClient(ctx context.Context, cfg CatalogConfig) (*CatalogClient, e
 	return &client, nil
 }
 
+const maxCallRecvBytes = 16 * 1024 * 1024 // 16 MB
+const maxCallSendBytes = 16 * 1024 * 1024 // 16 MB
+
 // newCatalogConnection creates a new gRPC connection to the Catalog service.
 func newCatalogConnection(cfg CatalogConfig) (*grpc.ClientConn, error) {
-	var opts []grpc.DialOption
+	var opts = []grpc.DialOption{
+		grpc.WithDefaultCallOptions(grpc.MaxCallSendMsgSize(maxCallSendBytes), grpc.MaxCallRecvMsgSize(maxCallRecvBytes)),
+	}
 
 	if cfg.Creds != nil {
 		opts = append(opts, grpc.WithTransportCredentials(cfg.Creds))
