@@ -60,12 +60,13 @@ var (
 )
 
 type executeForkFlags struct {
-	environment   string
-	proposalPath  string
-	proposalKind  string
-	chainSelector uint64
-	testSigner    bool
-	randomSalt    bool
+	environment     string
+	proposalPath    string
+	proposalKind    string
+	chainSelector   uint64
+	testSigner      bool
+	randomSalt      bool
+	forkBlockNumber uint64
 }
 
 // newExecuteForkCmd creates the "execute-fork" subcommand.
@@ -77,12 +78,13 @@ func newExecuteForkCmd(mcmsCfg Config) *cobra.Command {
 		Example: executeForkExample,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			f := executeForkFlags{
-				environment:   flags.MustString(cmd.Flags().GetString("environment")),
-				proposalPath:  flags.MustString(cmd.Flags().GetString("proposal")),
-				proposalKind:  flags.MustString(cmd.Flags().GetString("proposalKind")),
-				chainSelector: flags.MustUint64(cmd.Flags().GetUint64("selector")),
-				testSigner:    flags.MustBool(cmd.Flags().GetBool("test-signer")),
-				randomSalt:    flags.MustBool(cmd.Flags().GetBool("random-salt")),
+				environment:     flags.MustString(cmd.Flags().GetString("environment")),
+				proposalPath:    flags.MustString(cmd.Flags().GetString("proposal")),
+				proposalKind:    flags.MustString(cmd.Flags().GetString("proposalKind")),
+				chainSelector:   flags.MustUint64(cmd.Flags().GetUint64("selector")),
+				testSigner:      flags.MustBool(cmd.Flags().GetBool("test-signer")),
+				randomSalt:      flags.MustBool(cmd.Flags().GetBool("random-salt")),
+				forkBlockNumber: flags.MustUint64(cmd.Flags().GetUint64("fork-block")),
 			}
 
 			return runExecuteFork(cmd, mcmsCfg, f)
@@ -99,6 +101,8 @@ func newExecuteForkCmd(mcmsCfg Config) *cobra.Command {
 	cmd.Flags().Bool("test-signer", false, "Use a test signer key")
 	cmd.Flags().Bool("random-salt", false, "Override the proposal's salt with a random value. "+
 		"Useful to run fork tests with proposals already executed onchain.")
+	cmd.Flags().Uint64("fork-block", 0, "Pin the fork of the selected chain to this block (EVM only). "+
+		"Useful to re-simulate historical proposals at their pre-execution state.")
 
 	return cmd
 }
@@ -113,6 +117,9 @@ func runExecuteFork(cmd *cobra.Command, mcmsCfg Config, f executeForkFlags) erro
 	loadOptions := []any{acceptExpiredProposal}
 	if f.randomSalt {
 		loadOptions = append(loadOptions, randomSalt)
+	}
+	if f.forkBlockNumber != 0 {
+		loadOptions = append(loadOptions, ForkBlockNumberOption(f.forkBlockNumber))
 	}
 	proposalCfg, err := LoadProposalConfig(ctx, mcmsCfg.Logger, mcmsCfg.Domain, deps, mcmsCfg.ProposalContextProvider,
 		ProposalFlags{
@@ -146,6 +153,7 @@ func runExecuteFork(cmd *cobra.Command, mcmsCfg Config, f executeForkFlags) erro
 		forkedEnv:        proposalCfg.ForkedEnv,
 		fork:             true,
 		proposalCtx:      proposalCfg.ProposalCtx,
+		forkBlockNumber:  f.forkBlockNumber,
 	}
 
 	// Execute the fork
