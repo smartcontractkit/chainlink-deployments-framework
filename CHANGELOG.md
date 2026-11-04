@@ -1,5 +1,14 @@
 # chainlink-deployments-framework
 
+## 0.127.1
+
+### Patch Changes
+
+- [#1210](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1210) [`5d0e37a`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/5d0e37af04b101f4fbf08503edbccf3648d4ddd9) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - fix: increase buffers used in Catalog's gRPC connection to 16MB
+
+- [#1206](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1206) [`b1b2eb9`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/b1b2eb974bf3a641e4fa9198209b94921b94a164) Thanks [@friedemannf](https://github.com/friedemannf)! - Add gRPC dial options to Canton RPC provider.
+  Add gRPC health check service client to canton.Participant
+
 ## 0.127.0
 
 ### Minor Changes
