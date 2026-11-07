@@ -8,7 +8,10 @@ import (
 	"fmt"
 	"maps"
 	"math/big"
+	"os"
+	"os/signal"
 	"regexp"
+	"syscall"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -34,29 +37,24 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/flags"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/mcms/layout"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/commands/text"
+	cldfenv "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
 var (
 	executeForkShort = "Execute proposal on forked environment"
-
-	executeForkLong = text.LongDesc(`
-		Executes set-root, execute-chain and execute-timelock-chain operations
-		for a forked environment.
-
-		This is useful for testing proposals before executing them on mainnet.
-		The command will use Anvil to fork the target chain and execute the
-		proposal operations.
-	`)
-
-	executeForkExample = text.Examples(`
-		# Execute a proposal on a forked environment
-		myapp mcms execute-fork -e staging -p ./proposal.json -s 1
-
-		# Execute with a test signer
-		myapp mcms execute-fork -e staging -p ./proposal.json -s 1 --test-signer
-	`)
+	executeForkLong  = text.LongDesc("" +
+		"Executes set-root, execute-chain and execute-timelock-chain operations" +
+		"for a forked environment. This is useful for testing proposals before " +
+		"executing them on mainnet.\nThe command will use Anvil to fork the " +
+		"target chain and execute the proposal operations.")
+	executeForkExample = text.Examples("" +
+		"# Execute a proposal on a forked environment\n" +
+		"myapp mcms execute-fork -e staging -p ./proposal.json -s 1\n" +
+		"\n" +
+		"# Execute with a test signer\n" +
+		"myapp mcms execute-fork -e staging -p ./proposal.json -s 1 --test-signer")
 )
 
 type executeForkFlags struct {
@@ -66,15 +64,20 @@ type executeForkFlags struct {
 	chainSelector uint64
 	testSigner    bool
 	randomSalt    bool
+	subprocess    bool
+	reportPath    string
+	buildParams   *cldfenv.BuildParams
 }
 
 // newExecuteForkCmd creates the "execute-fork" subcommand.
 func newExecuteForkCmd(mcmsCfg Config) *cobra.Command {
+	var buildParams func() *cldfenv.BuildParams
 	cmd := &cobra.Command{
-		Use:     "execute-fork",
-		Short:   executeForkShort,
-		Long:    executeForkLong,
-		Example: executeForkExample,
+		Use:          "execute-fork",
+		Short:        executeForkShort,
+		Long:         executeForkLong,
+		Example:      executeForkExample,
+		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			f := executeForkFlags{
 				environment:   flags.MustString(cmd.Flags().GetString("environment")),
@@ -83,9 +86,22 @@ func newExecuteForkCmd(mcmsCfg Config) *cobra.Command {
 				chainSelector: flags.MustUint64(cmd.Flags().GetUint64("selector")),
 				testSigner:    flags.MustBool(cmd.Flags().GetBool("test-signer")),
 				randomSalt:    flags.MustBool(cmd.Flags().GetBool("random-salt")),
+				subprocess:    flags.MustBool(cmd.Flags().GetBool("subprocess")),
+				reportPath:    flags.MustString(cmd.Flags().GetString("report")),
+				buildParams:   buildParams(),
 			}
 
-			return runExecuteFork(cmd, mcmsCfg, f)
+			err := runExecuteFork(cmd, mcmsCfg, f)
+
+			if f.reportPath != "" {
+				serr := newForkTestReport(f.chainSelector, err).save(f.reportPath)
+				err = errors.Join(err, serr)
+			}
+			if _, ok := errors.AsType[ErrForkTestSkipped](err); ok {
+				return nil
+			}
+
+			return err
 		},
 	}
 
@@ -93,19 +109,24 @@ func newExecuteForkCmd(mcmsCfg Config) *cobra.Command {
 	flags.Environment(cmd)
 	flags.Proposal(cmd)
 	flags.ProposalKind(cmd, string(types.KindTimelockProposal))
-	flags.ChainSelector(cmd, true) // required for execute-fork
+	flags.ChainSelector(cmd, true)
+	buildParams = withEnvBuildParams(cmd, mcmsCfg.deps())
 
 	// Fork-specific flags
 	cmd.Flags().Bool("test-signer", false, "Use a test signer key")
 	cmd.Flags().Bool("random-salt", false, "Override the proposal's salt with a random value. "+
 		"Useful to run fork tests with proposals already executed onchain.")
+	cmd.Flags().Bool("subprocess", false, "Run fork-tests in a subprocess, rather than CTF (docker + testcontainers)")
+	cmd.Flags().String("report", "", "Path of the report file to save the fork test results. If not specified, no report will be saved.")
 
 	return cmd
 }
 
 // runExecuteFork executes the execute-fork command logic.
 func runExecuteFork(cmd *cobra.Command, mcmsCfg Config, f executeForkFlags) error {
-	ctx := cmd.Context()
+	ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	deps := mcmsCfg.deps()
 
 	// --- Load all data first ---
@@ -114,12 +135,16 @@ func runExecuteFork(cmd *cobra.Command, mcmsCfg Config, f executeForkFlags) erro
 	if f.randomSalt {
 		loadOptions = append(loadOptions, randomSalt)
 	}
+	if f.subprocess {
+		loadOptions = append(loadOptions, subprocessForkTestProvider)
+	}
 	proposalCfg, err := LoadProposalConfig(ctx, mcmsCfg.Logger, mcmsCfg.Domain, deps, mcmsCfg.ProposalContextProvider,
 		ProposalFlags{
 			ProposalPath:  f.proposalPath,
 			ProposalKind:  f.proposalKind,
 			Environment:   f.environment,
 			ChainSelector: f.chainSelector,
+			BuildParams:   f.buildParams,
 			Fork:          true,
 		},
 		loadOptions...,
@@ -148,7 +173,6 @@ func runExecuteFork(cmd *cobra.Command, mcmsCfg Config, f executeForkFlags) erro
 		proposalCtx:      proposalCfg.ProposalCtx,
 	}
 
-	// Execute the fork
 	return executeFork(ctx, mcmsCfg, forkCfg, f.testSigner)
 }
 
@@ -167,12 +191,12 @@ func executeFork(
 	}
 	if family != chainsel.FamilyEVM {
 		lggr.Infof("Skipping fork execution: chain selector %d is not EVM. Family is %s", cfg.chainSelector, family)
-		return nil
+		return ErrForkTestSkipped{message: fmt.Sprintf("unsupported chain family: %v", family)}
 	}
 
 	if cldf_evm.IsZkSyncVM(cfg.chainSelector) {
 		lggr.Infof("Skipping fork execution: chain selector %d is from a ZkSync chain.", cfg.chainSelector)
-		return nil
+		return ErrForkTestSkipped{message: "ZkSync chains are not supported"}
 	}
 
 	chainConfig, ok := cfg.forkedEnv.ChainConfigs[cfg.chainSelector]
@@ -226,13 +250,13 @@ func executeFork(
 
 	err = setRootCommand(ctx, lggr, cfg)
 	if err != nil {
-		return fmt.Errorf("MCM.setRoot() - failure: %w", addDecodedRevertReason(lggr, err, cfg.proposalCtx))
+		return ErrForkTestFailed{stage: "MCM.setRoot", cause: addDecodedRevertReason(lggr, err, cfg.proposalCtx)}
 	}
 	lggr.Info("MCM.setRoot() - success")
 
 	err = executeChainCommand(ctx, lggr, cfg, true)
 	if err != nil {
-		return fmt.Errorf("MCM.execute() - failure: %w", addDecodedRevertReason(lggr, err, cfg.proposalCtx))
+		return ErrForkTestFailed{stage: "MCM.execute", cause: addDecodedRevertReason(lggr, err, cfg.proposalCtx)}
 	}
 	lggr.Info("MCM.execute() - success")
 
@@ -246,7 +270,6 @@ func executeFork(
 
 	if cfg.timelockProposal.Action != types.TimelockActionSchedule {
 		lggr.Infof("Proposal has type %s, skipping executing timelock chain command", cfg.timelockProposal.Action)
-
 		return nil
 	}
 
@@ -260,18 +283,17 @@ func executeFork(
 
 	if execErr != nil {
 		lggr.Warnw("Timelock.execute() - failure; starting calling individual ops for debugging", "err", execErr)
-		if derr := diagnoseTimelockRevert(ctx, lggr, anvilClient.URL, cfg.chainSelector, cfg.timelockProposal.Operations,
-			timelockAddress, cfg.env.ExistingAddresses, cfg.proposalCtx); derr != nil { //nolint:staticcheck
+		derr := diagnoseTimelockRevert(ctx, lggr, anvilClient.URL, cfg.chainSelector, cfg.timelockProposal.Operations,
+			timelockAddress, cfg.env.ExistingAddresses, cfg.proposalCtx)
+		if derr != nil {
 			lggr.Errorw("Diagnosis results", "err", derr)
-
-			return fmt.Errorf("failed to timelock execute chain: %w", derr)
+			return ErrForkTestFailed{stage: "Timelock.execute", cause: derr}
 		}
 
-		return fmt.Errorf("failed to timelock execute chain: %w", execErr)
+		return ErrForkTestFailed{stage: "Timelock.execute", cause: execErr}
 	}
 
 	lggr.Info("Timelock.execute() - success")
-
 	return nil
 }
 

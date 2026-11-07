@@ -16,6 +16,7 @@ import (
 // rpcHealthChecker probes an RPC URL for liveness/reachability.
 type rpcHealthChecker interface {
 	Check(ctx context.Context, rpcURL string) error
+	Close(ctx context.Context) error
 }
 
 // hostRPCHealthChecker checks RPC reachability from the host process directly. This is correct for
@@ -36,6 +37,10 @@ func (hostRPCHealthChecker) Check(ctx context.Context, rpcURL string) error {
 		return fmt.Errorf("failed to retrieve block number: %w", err)
 	}
 
+	return nil
+}
+
+func (hostRPCHealthChecker) Close(ctx context.Context) error {
 	return nil
 }
 

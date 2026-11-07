@@ -3,7 +3,6 @@ package mcms
 import (
 	"context"
 	"crypto/rand"
-	"errors"
 	"fmt"
 	"slices"
 
@@ -14,6 +13,9 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config"
+	cfgenv "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/env"
+	cfgnet "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/network"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	cldfenvironment "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
@@ -21,8 +23,9 @@ import (
 )
 
 const (
-	acceptExpiredProposal = "accept-expired-proposal-option" // sentinel option to accept expired proposals.
-	randomSalt            = "random-salt-option"             // sentinel option to override the proposal's salt with a random value
+	acceptExpiredProposal      = "accept-expired-proposal-option" // sentinel option to accept expired proposals.
+	randomSalt                 = "random-salt-option"             // sentinel option to override the proposal's salt with a random value
+	subprocessForkTestProvider = "subprocess-fork-test-provider"  // sentinel option to run subprocess-based fork tests
 )
 
 // ProposalConfig holds the loaded proposal configuration.
@@ -99,6 +102,8 @@ func LoadProposalConfig(
 		mcmsProposal = fileProposal.(*mcms.Proposal)
 	}
 
+	var onchainCfg cfgenv.OnchainConfig
+	var networksCfg *cfgnet.Config
 	cfg := &ProposalConfig{
 		Kind:             proposalKind,
 		Proposal:         *mcmsProposal,
@@ -118,31 +123,40 @@ func LoadProposalConfig(
 		}
 	}
 
-	// Load Environment
-	switch {
-	case flags.BuildParams != nil && cfg.Fork:
-		return nil, errors.New("build params are not supported when running on a fork")
-	case flags.BuildParams != nil:
+	if flags.BuildParams != nil {
 		cfg.Env, err = buildEnvironment(ctx, lggr, dom, deps, *flags.BuildParams, chainSelectors)
 		if err != nil {
 			return nil, fmt.Errorf("error loading environment: %w", err)
 		}
-	case cfg.Fork:
-		cfg.ForkedEnv, err = deps.ForkEnvironmentLoader(ctx, dom, cfg.EnvStr, nil,
-			cldfenvironment.OnlyLoadChainsFor(chainSelectors),
-			cldfenvironment.WithoutJD(),
-			cldfenvironment.WithLogger(lggr))
-		if err != nil {
-			return nil, fmt.Errorf("error loading forked environment: %w", err)
-		}
-		cfg.Env = cfg.ForkedEnv.Environment
-	default:
+		onchainCfg = flags.BuildParams.Onchain
+		networksCfg = cfgnet.NewConfig(flags.BuildParams.Networks)
+	} else {
 		cfg.Env, err = deps.EnvironmentLoader(ctx, dom, cfg.EnvStr, lggr,
 			cldfenvironment.OnlyLoadChainsFor(chainSelectors),
 			cldfenvironment.WithoutJD())
 		if err != nil {
 			return nil, fmt.Errorf("error loading environment: %w", err)
 		}
+		cldfEngineConfig, err := config.Load(dom, cfg.EnvStr, lggr)
+		if err != nil {
+			return nil, err
+		}
+		onchainCfg = cldfEngineConfig.Env.Onchain
+		networksCfg = cldfEngineConfig.Networks
+	}
+
+	if cfg.Fork {
+		forkProviderType := cldfenvironment.ProviderTypeTestContainer
+		if slices.Contains(opts, subprocessForkTestProvider) {
+			forkProviderType = cldfenvironment.ProviderTypeSubprocess
+		}
+
+		cfg.ForkedEnv, err = deps.ForkEnvironmentLoader(ctx, dom, cfg.Env, networksCfg, onchainCfg, nil, forkProviderType,
+			cldfenvironment.OnlyLoadChainsFor(chainSelectors), cldfenvironment.WithoutJD(), cldfenvironment.WithLogger(lggr))
+		if err != nil {
+			return nil, fmt.Errorf("error loading forked environment: %w", err)
+		}
+		cfg.Env = cfg.ForkedEnv.Environment
 	}
 
 	// Create ProposalContext
