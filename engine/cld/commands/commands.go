@@ -42,6 +42,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	proposalanalyzer "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/analyzer"
 	proposalrenderer "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalanalysis/renderer"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/simulation"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/verification/evm"
 	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
@@ -105,6 +106,13 @@ type MCMSConfig struct {
 
 	// LoadChangesets are custom changeset loading functions. Optional
 	LoadChangesets func(envName string) (*cs.ChangesetsRegistry, error)
+
+	// SimulationViewProvider produces scoped state views for execute-fork's
+	// --simulate-state. Optional: nil disables simulation entirely (the
+	// feature-off path is byte-identical to the legacy behavior). The scope
+	// resolves from the fork environment's own datastore, so no ref source
+	// needs to be wired here.
+	SimulationViewProvider simulation.ViewProvider
 }
 
 // MCMS creates the mcms command group for proposal analysis and conversion.
@@ -116,6 +124,7 @@ func (c *Commands) MCMS(dom domain.Domain, cfg MCMSConfig) (*cobra.Command, erro
 		ProposalAnalyzers:       cfg.ProposalAnalyzers,
 		ProposalRenderers:       cfg.ProposalRenderers,
 		LoadChangesets:          cfg.LoadChangesets,
+		SimulationViewProvider:  cfg.SimulationViewProvider,
 	})
 }
 
