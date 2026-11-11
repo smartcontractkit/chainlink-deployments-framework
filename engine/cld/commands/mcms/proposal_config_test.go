@@ -223,6 +223,34 @@ func TestLoadProposalConfig(t *testing.T) {
 	}
 }
 
+func TestLoadProposalConfig_ForkBlockNumber(t *testing.T) {
+	t.Parallel()
+
+	proposalFilePath := filepath.Join(t.TempDir(), "proposal.json")
+	require.NoError(t, os.WriteFile(proposalFilePath, testProposalWithoutChangesetsJSON, 0o600))
+
+	var gotBlocks map[uint64]*big.Int
+	deps := &Deps{
+		ProposalLoader: mcms.LoadProposal,
+		ForkEnvironmentLoader: func(_ context.Context, _ domain.Domain, _ string, blockNumbers map[uint64]*big.Int, _ ...cldfenv.LoadEnvironmentOption) (cldfenv.ForkedEnvironment, error) {
+			gotBlocks = blockNumbers
+			return cldfenv.ForkedEnvironment{Environment: cldf.Environment{Name: "testnet"}}, nil
+		},
+	}
+	flags := ProposalFlags{
+		ProposalKind:  string(mcmstypes.KindTimelockProposal),
+		ProposalPath:  proposalFilePath,
+		Environment:   "testnet",
+		ChainSelector: chainsel.GETH_TESTNET.Selector,
+		Fork:          true,
+	}
+
+	_, err := LoadProposalConfig(t.Context(), logger.Nop(), domain.Domain{}, deps, nil, flags,
+		ForkBlockNumberOption(12345))
+	require.NoError(t, err)
+	require.Equal(t, map[uint64]*big.Int{flags.ChainSelector: big.NewInt(12345)}, gotBlocks)
+}
+
 // ----- helpers -----
 
 func nopEnvLoader(
