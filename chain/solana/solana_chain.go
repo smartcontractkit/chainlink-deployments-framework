@@ -239,7 +239,7 @@ func (c Chain) ReadOnly() (chaincommon.BlockChain, error) {
 
 	c.Confirm = func(instructions []sollib.Instruction, opts ...solCommonUtil.TxModifier) error {
 		_, err := solCommonUtil.SendAndConfirm(context.Background(), rpcClient.Client, instructions,
-			privateKey, solrpc.CommitmentConfirmed, opts...)
+			privateKey, solrpc.CommitmentFinalized, opts...)
 
 		return err
 	}
