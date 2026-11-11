@@ -130,7 +130,7 @@ func (p *RPCChainProvider) Initialize(_ context.Context) (chain.BlockChain, erro
 		},
 		Confirm: func(instructions []sollib.Instruction, opts ...solCommonUtil.TxModifier) error {
 			_, err := solCommonUtil.SendAndConfirm(
-				context.Background(), client.Client, instructions, privKey, solrpc.CommitmentConfirmed, opts...,
+				context.Background(), client.Client, instructions, privKey, solrpc.CommitmentFinalized, opts...,
 			)
 
 			return err
