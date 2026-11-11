@@ -160,7 +160,7 @@ func (p *CTFChainProvider) Initialize(_ context.Context) (chain.BlockChain, erro
 				client.Client,
 				instructions,
 				privKey,
-				solrpc.CommitmentConfirmed,
+				solrpc.CommitmentFinalized,
 				emptyLookupTables,
 				opts...,
 			)
