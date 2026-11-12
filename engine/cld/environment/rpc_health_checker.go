@@ -8,6 +8,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/testcontainers/testcontainers-go"
+	tcexec "github.com/testcontainers/testcontainers-go/exec"
 	"github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
@@ -16,6 +17,7 @@ import (
 // rpcHealthChecker probes an RPC URL for liveness/reachability.
 type rpcHealthChecker interface {
 	Check(ctx context.Context, rpcURL string) error
+	Close(ctx context.Context) error
 }
 
 // hostRPCHealthChecker checks RPC reachability from the host process directly. This is correct for
@@ -36,6 +38,10 @@ func (hostRPCHealthChecker) Check(ctx context.Context, rpcURL string) error {
 		return fmt.Errorf("failed to retrieve block number: %w", err)
 	}
 
+	return nil
+}
+
+func (hostRPCHealthChecker) Close(ctx context.Context) error {
 	return nil
 }
 
@@ -87,7 +93,7 @@ func (h *containerRPCHealthChecker) Check(ctx context.Context, rpcURL string) er
 		"-H", "Content-Type: application/json",
 		"--data", `{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}`,
 		rpcURL,
-	})
+	}, tcexec.Multiplexed())
 	if err != nil {
 		return fmt.Errorf("failed to exec rpc health check: %w", err)
 	}

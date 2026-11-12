@@ -63,6 +63,7 @@ func Test_newRunProposalHooksCmd(t *testing.T) { //nolint:paralleltest
 		{
 			name: "success: processes proposal without changesets without any side effects",
 			cfg: Config{
+				Domain:         testDomain,
 				LoadChangesets: loadChangesets,
 				Deps: Deps{
 					EnvironmentLoader: func(
@@ -113,6 +114,7 @@ func Test_newRunProposalHooksCmd(t *testing.T) { //nolint:paralleltest
 		{
 			name: "success: processes proposal with two changesets, only one of which has a hook",
 			cfg: Config{
+				Domain:         testDomain,
 				LoadChangesets: loadChangesets,
 				Deps: Deps{
 					EnvironmentLoader: func(

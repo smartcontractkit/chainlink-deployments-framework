@@ -9,6 +9,8 @@ import (
 	"github.com/smartcontractkit/mcms/types"
 
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	cfgenv "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/env"
+	cfgnet "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/network"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	cldfenvironment "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
@@ -34,8 +36,11 @@ type EnvironmentBuilderFunc func(
 type ForkEnvironmentLoaderFunc func(
 	ctx context.Context,
 	domain domain.Domain,
-	envKey string,
+	env cldf.Environment,
+	networksCfg *cfgnet.Config,
+	onchainCfg cfgenv.OnchainConfig,
 	blockNumbers map[uint64]*big.Int,
+	providerType cldfenvironment.ProviderType,
 	opts ...cldfenvironment.LoadEnvironmentOption,
 ) (cldfenvironment.ForkedEnvironment, error)
 
@@ -73,7 +78,7 @@ func (d *Deps) applyDefaults() {
 		d.Getenv = os.Getenv
 	}
 	if d.ForkEnvironmentLoader == nil {
-		d.ForkEnvironmentLoader = cldfenvironment.LoadFork
+		d.ForkEnvironmentLoader = cldfenvironment.LoadForkFromEnv
 	}
 	if d.ProposalLoader == nil {
 		d.ProposalLoader = mcms.LoadProposal

@@ -60,19 +60,8 @@ func buildEnvironment(
 		)
 	}
 
-	listed := make(map[uint64]bool, len(params.Networks))
-	for _, network := range params.Networks {
-		listed[network.ChainSelector] = true
-	}
-	for _, selector := range chainSelectors {
-		if !listed[selector] {
-			return cldf.Environment{}, fmt.Errorf(
-				"chain selector %d is not listed under networks in the build params", selector,
-			)
-		}
-	}
-
-	env, err := deps.EnvironmentBuilder(ctx, params, cldfenvironment.BuildWithLogger(lggr))
+	env, err := deps.EnvironmentBuilder(ctx, params, cldfenvironment.BuildWithLogger(lggr),
+		cldfenvironment.BuildWithChainSelectors(chainSelectors))
 	if err != nil {
 		return cldf.Environment{}, fmt.Errorf("failed to build environment from build params: %w", err)
 	}
