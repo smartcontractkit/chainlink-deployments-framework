@@ -201,19 +201,19 @@ func urlPathFromFileURI(raw string) (string, error) {
 func fetchHTTP(ctx context.Context, manifestURL string) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, manifestURL, nil)
 	if err != nil {
-		return nil, fmt.Errorf("create manifest request: %w", err)
+		return nil, fmt.Errorf("create manifest request: %w", redactURLError(err))
 	}
 
 	client := &http.Client{Timeout: manifestHTTPTimeout}
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("fetch rpc manifest: %w", err)
+		return nil, fmt.Errorf("fetch rpc manifest: %w", redactURLError(err))
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
-		return nil, fmt.Errorf("fetch rpc manifest from %s: status %d: %s", manifestURL, resp.StatusCode, strings.TrimSpace(string(body)))
+		return nil, fmt.Errorf("fetch rpc manifest: status %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
 	}
 
 	data, err := io.ReadAll(io.LimitReader(resp.Body, maxManifestBytes+1))
@@ -221,8 +221,19 @@ func fetchHTTP(ctx context.Context, manifestURL string) ([]byte, error) {
 		return nil, fmt.Errorf("read rpc manifest body: %w", err)
 	}
 	if len(data) > maxManifestBytes {
-		return nil, fmt.Errorf("rpc manifest response from %s exceeds max size of %d bytes", manifestURL, maxManifestBytes)
+		return nil, fmt.Errorf("rpc manifest response exceeds max size of %d bytes", maxManifestBytes)
 	}
 
 	return data, nil
+}
+
+// redactURLError strips the request URL from a *url.Error, since the manifest source may carry
+// credentials (userinfo or query tokens) that must not leak into logs.
+func redactURLError(err error) error {
+	var uerr *url.Error
+	if errors.As(err, &uerr) {
+		return uerr.Err
+	}
+
+	return err
 }

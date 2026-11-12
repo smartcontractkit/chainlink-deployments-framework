@@ -1,8 +1,8 @@
 package rpcmanifest
 
-// ManifestURL is the default public RPC manifest published by the RPC proxy service.
 const (
-	ManifestURL       = "https://rpcs.cldev.sh/files/rpcs.json"
+	// EnvRPCManifestURL opts in to RPC discovery: when set to a manifest source (URL, file://
+	// URI or path), networks with empty rpcs are filled from it. No default source is built in.
 	EnvRPCManifestURL = "CLD_RPC_MANIFEST_URL"
 	rpcProxyBase      = "https://rpcs.cldev.sh"
 )

@@ -139,10 +139,12 @@ func loadRPCManifest(ctx context.Context, source string, lggr logger.Logger) (*r
 // mergeNetworksFromManifest merges RPC data from the RPC manifest into any network whose yaml
 // config has an empty rpcs list; every other field is left untouched. The manifest is only
 // fetched if at least one loaded network needs it, so domains where every network fully defines
-// its own RPCs never make a network call. The manifest source defaults to rpcmanifest.ManifestURL
-// and can be overridden with CLD_RPC_MANIFEST_URL (e.g. to point at a local file for testing).
+// its own RPCs never make a network call. The merge is opt-in: it only runs when
+// CLD_RPC_MANIFEST_URL is set (an HTTP(S) URL, file:// URI or local path). The source is never
+// logged or put in errors, since it may carry credentials.
 func mergeNetworksFromManifest(ctx context.Context, cfg *cfgnet.Config, lggr logger.Logger) (*cfgnet.Config, error) {
-	if !anyNetworkMissingRPCs(cfg) {
+	manifestURL := strings.TrimSpace(os.Getenv(rpcmanifest.EnvRPCManifestURL))
+	if manifestURL == "" || !anyNetworkMissingRPCs(cfg) {
 		if err := cfg.Validate(); err != nil {
 			return nil, fmt.Errorf("validate network config: %w", err)
 		}
@@ -150,14 +152,9 @@ func mergeNetworksFromManifest(ctx context.Context, cfg *cfgnet.Config, lggr log
 		return cfg, nil
 	}
 
-	manifestURL := os.Getenv(rpcmanifest.EnvRPCManifestURL)
-	if manifestURL == "" {
-		manifestURL = rpcmanifest.ManifestURL
-	}
-
 	manifest, err := loadRPCManifest(ctx, manifestURL, lggr)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load rpc manifest from %s: %w", manifestURL, err)
+		return nil, fmt.Errorf("failed to load rpc manifest from %s: %w", rpcmanifest.EnvRPCManifestURL, err)
 	}
 
 	merged, err := rpcmanifest.MergeInto(cfg, manifest, lggr)
@@ -165,7 +162,7 @@ func mergeNetworksFromManifest(ctx context.Context, cfg *cfgnet.Config, lggr log
 		return nil, fmt.Errorf("failed to merge rpc manifest: %w", err)
 	}
 
-	lggr.Infof("Merged RPC manifest from %s into network config", manifestURL)
+	lggr.Infof("Merged RPC manifest from %s into network config", rpcmanifest.EnvRPCManifestURL)
 
 	return merged, nil
 }

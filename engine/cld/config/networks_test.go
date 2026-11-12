@@ -286,6 +286,23 @@ func Test_LoadNetworks_WithManifest(t *testing.T) {
 	assert.Equal(t, "CLL Proxy", net.RPCs[0].RPCName)
 }
 
+func Test_LoadNetworks_EmptyRPCsWithoutOptInFailsValidation(t *testing.T) {
+	// Opt-in: with the env var unset, empty rpcs must not trigger any manifest fetch.
+	t.Setenv(rpcmanifest.EnvRPCManifestURL, "")
+
+	dom, _ := setupConfigDirs(t)
+	networkYAML := []byte(`networks:
+  - type: testnet
+    chain_selector: 16015286601757825753
+`)
+	require.NoError(t, os.WriteFile(filepath.Join(dom.ConfigNetworksDirPath(), "testnet.yaml"), networkYAML, filePerms))
+	writeConfigDomainFile(t, dom, "domain.yaml")
+
+	_, err := LoadNetworks("staging_testnet", dom, logger.Test(t))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "at least one RPC is required")
+}
+
 func Test_LoadNetworks_FailsOnMissingTypeInsteadOfSilentlyDroppingNetwork(t *testing.T) {
 	t.Parallel()
 
