@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.128.0
+
+### Minor Changes
+
+- [#1213](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1213) [`f8eb9aa`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/f8eb9aa26b10eb42eca00dc73fec63e780f6e92a) Thanks [@archseer](https://github.com/archseer)! - feat(solana): sign with an Ed25519 AWS KMS key when `onchain.solana.use_kms_ed25519` is set
+
 ## 0.127.2
 
 ### Patch Changes
