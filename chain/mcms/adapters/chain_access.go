@@ -80,10 +80,16 @@ func (a *ChainAccessAdapter) SolanaClient(selector uint64) (*solrpc.Client, bool
 	return ch.Client, true
 }
 
-// SolanaSigner returns the Solana signer for the given selector.
+// SolanaSigner returns the Solana signer for the given selector. It reports false when the chain
+// has no local deployer key, e.g. when the deployer signs with AWS KMS, because the MCMS SDK can
+// only sign with a private key.
 func (a *ChainAccessAdapter) SolanaSigner(selector uint64) (*sol.PrivateKey, bool) {
 	ch, ok := a.inner.SolanaChains()[selector]
-	return ch.DeployerKey, ok
+	if !ok || ch.DeployerKey == nil {
+		return nil, false
+	}
+
+	return ch.DeployerKey, true
 }
 
 // AptosClient returns the Aptos RPC client for the given selector.

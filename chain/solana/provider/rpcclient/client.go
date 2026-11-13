@@ -27,8 +27,8 @@ type sendConfig struct {
 	// TxModifiers is a slice of functions that modify the transaction before sending.
 	// These can be used to add signers, set compute unit limits, adjust fees, etc.
 	TxModifiers []TxModifier
-	// Commitment specifies the desired commitment level for the transaction.
-	// Currently set to Confirmed and not user-configurable, but may be made adjustable in the future.
+	// Commitment specifies the desired commitment level for the transaction. Defaults to
+	// Confirmed.
 	Commitment solrpc.CommitmentType
 }
 
@@ -73,6 +73,15 @@ func WithRetry(attempts uint, delay time.Duration) SendOpt {
 	}
 }
 
+// WithCommitment sets the commitment level used for the blockhash and preflight, and the level
+// the transaction must reach before it is considered confirmed. Only confirmed and finalized are
+// supported, because the transaction result cannot be fetched at processed commitment.
+func WithCommitment(commitment solrpc.CommitmentType) SendOpt {
+	return func(config *sendConfig) {
+		config.Commitment = commitment
+	}
+}
+
 // WithTxModifiers allows adding transaction modifiers to the send configuration.
 func WithTxModifiers(modifiers ...TxModifier) SendOpt {
 	return func(config *sendConfig) {
@@ -85,7 +94,12 @@ func WithTxModifiers(modifiers ...TxModifier) SendOpt {
 type Client struct {
 	*solrpc.Client
 
+	// DeployerKey is the deployer's private key. It is empty when the client was created with
+	// NewWithSigner, because a remote signer does not expose its private key.
 	DeployerKey sollib.PrivateKey
+
+	// Signer signs transactions on behalf of the deployer. It is always set.
+	Signer Signer
 }
 
 // New creates a new Client instance with the provided Solana RPC client and deployer's private
@@ -94,6 +108,17 @@ func New(client *solrpc.Client, deployerKey sollib.PrivateKey) *Client {
 	return &Client{
 		Client:      client,
 		DeployerKey: deployerKey,
+		Signer:      NewPrivateKeySigner(deployerKey),
+	}
+}
+
+// NewWithSigner creates a new Client instance with the provided Solana RPC client and deployer
+// signer. Use this when the deployer's private key is not available locally, e.g. when signing
+// with AWS KMS.
+func NewWithSigner(client *solrpc.Client, signer Signer) *Client {
+	return &Client{
+		Client: client,
+		Signer: signer,
 	}
 }
 
@@ -110,6 +135,9 @@ func (c *Client) SendAndConfirmTx(
 	for _, opt := range opts {
 		opt(&config)
 	}
+	if config.Commitment != solrpc.CommitmentConfirmed && config.Commitment != solrpc.CommitmentFinalized {
+		return nil, fmt.Errorf("unsupported commitment %q: must be confirmed or finalized", config.Commitment)
+	}
 
 	// Fetch the latest blockhash to use in the transaction.
 	hashRes, err := c.getLatestBlockhash(ctx, config.Commitment, config.RetryOpts(ctx)...)
@@ -123,9 +151,12 @@ func (c *Client) SendAndConfirmTx(
 		return nil, fmt.Errorf("error constructing transaction: %w", err)
 	}
 
-	// Build the signers map
+	// Build the signers map. The deployer signs through c.Signer, but its key is still added when
+	// available because TxModifiers may read it.
 	signers := map[sollib.PublicKey]sollib.PrivateKey{}
-	signers[c.DeployerKey.PublicKey()] = c.DeployerKey
+	if len(c.DeployerKey) > 0 {
+		signers[c.DeployerKey.PublicKey()] = c.DeployerKey
+	}
 
 	// Apply TxModifiers to the transaction.
 	for _, o := range config.TxModifiers {
@@ -135,14 +166,7 @@ func (c *Client) SendAndConfirmTx(
 	}
 
 	// Sign the transaction
-	if _, err = tx.Sign(func(pub sollib.PublicKey) *sollib.PrivateKey {
-		// We know that the deployer key is always present in the signers map,
-		// and is inserted into the transaction in `newTx`, so we can safely
-		// retrieve it without checking for existence.
-		priv := signers[pub]
-
-		return &priv
-	}); err != nil {
+	if err = signTx(ctx, tx, c.Signer, signers); err != nil {
 		return nil, err
 	}
 
@@ -156,7 +180,7 @@ func (c *Client) SendAndConfirmTx(
 	}
 
 	// Confirm the transaction
-	err = c.confirmTx(ctx, txsig, config.ConfirmRetryOpts(ctx)...)
+	err = c.confirmTx(ctx, txsig, config.Commitment, config.ConfirmRetryOpts(ctx)...)
 	if err != nil {
 		return nil, fmt.Errorf("error confirming transaction: %w", err)
 	}
@@ -186,7 +210,7 @@ func (c *Client) newTx(
 		instructions,
 		recentBlockHash,
 		lookupTables,
-		sollib.TransactionPayer(c.DeployerKey.PublicKey()),
+		sollib.TransactionPayer(c.Signer.PublicKey()),
 	)
 }
 
@@ -250,33 +274,52 @@ func (c *Client) sendTx(
 	return txsig, err
 }
 
-// confirmTx checks the status of a transaction signature until it is confirmed or finalized.
+// confirmTx checks the status of a transaction signature until it reaches the given commitment.
 // It retries fetching the signature status based on the provided retry options.
 func (c *Client) confirmTx(
 	ctx context.Context,
 	txsig sollib.Signature,
+	commitment solrpc.CommitmentType,
 	retryOpts ...retry.Option,
 ) error {
-	var status solrpc.ConfirmationStatusType
-
 	return retry.Do(func() error {
-		// Success
-		if status == solrpc.ConfirmationStatusConfirmed || status == solrpc.ConfirmationStatusFinalized {
-			return nil
-		}
-
 		statusRes, err := c.GetSignatureStatuses(ctx, true, txsig)
 		if err != nil {
 			// Retry if we hit an error fetching the signature status. Mainnet can be flakey.
 			return err
 		}
 
+		var status solrpc.ConfirmationStatusType
 		if statusRes != nil && len(statusRes.Value) > 0 && statusRes.Value[0] != nil {
+			// A failed transaction still lands in a block, so its status advances like a
+			// successful one. Stop waiting as soon as the failure is visible.
+			if txErr := statusRes.Value[0].Err; txErr != nil {
+				return retry.Unrecoverable(fmt.Errorf("transaction %s failed: %v", txsig, txErr))
+			}
 			status = statusRes.Value[0].ConfirmationStatus
+		}
+
+		if !reachedCommitment(status, commitment) {
+			return fmt.Errorf("transaction %s has status %q, waiting for %q", txsig, status, commitment)
 		}
 
 		return nil
 	}, retryOpts...)
+}
+
+// reachedCommitment reports whether a transaction with the given status has reached commitment,
+// which is either confirmed or finalized.
+func reachedCommitment(status solrpc.ConfirmationStatusType, commitment solrpc.CommitmentType) bool {
+	switch status {
+	case solrpc.ConfirmationStatusFinalized:
+		return true
+	case solrpc.ConfirmationStatusConfirmed:
+		return commitment == solrpc.CommitmentConfirmed
+	case solrpc.ConfirmationStatusProcessed:
+		return false
+	default:
+		return false
+	}
 }
 
 // getTransactionResult retrieves the result of a transaction by its signature.

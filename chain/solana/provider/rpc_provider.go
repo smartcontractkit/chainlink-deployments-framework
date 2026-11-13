@@ -22,9 +22,13 @@ type RPCChainProviderConfig struct {
 	HTTPURL string
 	// Optional: The WebSocket URL to connect to the Solana node.
 	WSURL string
-	// Required: A generator for the deployer key. Use PrivateKeyFromRaw to create a deployer
-	// key from a private key.
+	// Required unless DeployerSignerGen is set: A generator for the deployer key. Use
+	// PrivateKeyFromRaw to create a deployer key from a private key. When DeployerSignerGen is
+	// set, this key is only used by the Solana CLI to deploy programs.
 	DeployerKeyGen PrivateKeyGenerator
+	// Optional: A generator for a remote deployer signer, e.g. SignerGenKMS. When set, all
+	// transactions are signed by this signer instead of the key from DeployerKeyGen.
+	DeployerSignerGen SignerGenerator
 	// Required: The absolute path to the directory containing the Solana CLI binaries.
 	ProgramsPath string
 	// Required: The absolute path to the directory that will contain the keypair file used for
@@ -37,8 +41,8 @@ func (c RPCChainProviderConfig) validate() error {
 	if c.HTTPURL == "" {
 		return errors.New("http url is required")
 	}
-	if c.DeployerKeyGen == nil {
-		return errors.New("deployer key generator is required")
+	if c.DeployerKeyGen == nil && c.DeployerSignerGen == nil {
+		return errors.New("deployer key generator or deployer signer generator is required")
 	}
 	if c.ProgramsPath == "" {
 		return errors.New("programs path is required")
@@ -81,10 +85,11 @@ func NewRPCChainProvider(selector uint64, config RPCChainProviderConfig) *RPCCha
 	}
 }
 
-// Initialize initializes the RPCChainProvider. It generates the deployer keypair from the provided
-// configuration, writes it to the specified KeypairPath directory, and sets up the Solana client
-// with the provided HTTP RPC URL. It returns the initialized Solana chain instance.
-func (p *RPCChainProvider) Initialize(_ context.Context) (chain.BlockChain, error) {
+// Initialize initializes the RPCChainProvider. It generates the deployer keypair and/or signer
+// from the provided configuration, writes the keypair to the KeypairDirPath directory for the
+// Solana CLI, and sets up the Solana client with the provided HTTP RPC URL. It returns the
+// initialized Solana chain instance.
+func (p *RPCChainProvider) Initialize(ctx context.Context) (chain.BlockChain, error) {
 	if p.chain != nil {
 		return *p.chain, nil // Already initialized
 	}
@@ -94,30 +99,51 @@ func (p *RPCChainProvider) Initialize(_ context.Context) (chain.BlockChain, erro
 		return nil, fmt.Errorf("failed to validate provider config: %w", err)
 	}
 
-	// Generate the deployer keypair
-	privKey, err := p.config.DeployerKeyGen.Generate()
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate deployer keypair: %w", err)
-	}
+	var (
+		privKey     *sollib.PrivateKey
+		keypairPath string
+	)
+	if p.config.DeployerKeyGen != nil {
+		// Generate the deployer keypair
+		key, err := p.config.DeployerKeyGen.Generate()
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate deployer keypair: %w", err)
+		}
 
-	// Persist the deployer keypair to the KeypairDirPath for the Solana CLI to use
-	keypairPath := filepath.Join(p.config.KeypairDirPath, "authority-keypair.json")
-	if err := WritePrivateKeyToPath(keypairPath, privKey); err != nil {
-		return nil, fmt.Errorf("failed to write deployer keypair to file: %w", err)
+		// Persist the deployer keypair to the KeypairDirPath for the Solana CLI to use
+		keypairPath = filepath.Join(p.config.KeypairDirPath, "authority-keypair.json")
+		if err = WritePrivateKeyToPath(keypairPath, key); err != nil {
+			return nil, fmt.Errorf("failed to write deployer keypair to file: %w", err)
+		}
+
+		privKey = &key
 	}
 
 	// Initialize the Solana client with the provided HTTP RPC URL
-	client := rpcclient.New(solrpc.New(p.config.HTTPURL), privKey)
+	var client *rpcclient.Client
+	if p.config.DeployerSignerGen != nil {
+		signer, err := p.config.DeployerSignerGen.Generate(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate deployer signer: %w", err)
+		}
+
+		client = rpcclient.NewWithSigner(solrpc.New(p.config.HTTPURL), signer)
+		// The local key, if any, is only used by the Solana CLI and must not sign as the deployer.
+		privKey = nil
+	} else {
+		client = rpcclient.New(solrpc.New(p.config.HTTPURL), *privKey)
+	}
 
 	// Create the Solana chain instance with the provided configuration
 	p.chain = &solana.Chain{
-		Selector:     p.selector,
-		Client:       client.Client,
-		URL:          p.config.HTTPURL,
-		WSURL:        p.config.WSURL,
-		DeployerKey:  &privKey,
-		ProgramsPath: p.config.ProgramsPath,
-		KeypairPath:  keypairPath,
+		Selector:       p.selector,
+		Client:         client.Client,
+		URL:            p.config.HTTPURL,
+		WSURL:          p.config.WSURL,
+		DeployerKey:    privKey,
+		DeployerSigner: client.Signer,
+		ProgramsPath:   p.config.ProgramsPath,
+		KeypairPath:    keypairPath,
 		SendAndConfirm: func(
 			ctx context.Context, instructions []sollib.Instruction, txMods ...rpcclient.TxModifier,
 		) error {
@@ -129,8 +155,24 @@ func (p *RPCChainProvider) Initialize(_ context.Context) (chain.BlockChain, erro
 			return err
 		},
 		Confirm: func(instructions []sollib.Instruction, opts ...solCommonUtil.TxModifier) error {
+			if privKey == nil {
+				// The legacy helper requires a private key, so a remote deployer sends through
+				// the RPC client instead.
+				txMods := make([]rpcclient.TxModifier, len(opts))
+				for i, o := range opts {
+					txMods[i] = rpcclient.TxModifier(o)
+				}
+				_, err := client.SendAndConfirmTx(context.Background(), instructions,
+					rpcclient.WithTxModifiers(txMods...),
+					rpcclient.WithRetry(1, 50*time.Millisecond),
+					rpcclient.WithCommitment(solrpc.CommitmentFinalized),
+				)
+
+				return err
+			}
+
 			_, err := solCommonUtil.SendAndConfirm(
-				context.Background(), client.Client, instructions, privKey, solrpc.CommitmentFinalized, opts...,
+				context.Background(), client.Client, instructions, *privKey, solrpc.CommitmentFinalized, opts...,
 			)
 
 			return err

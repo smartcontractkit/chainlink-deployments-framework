@@ -42,6 +42,9 @@ type SethConfig struct {
 type SolanaConfig struct {
 	WalletKey       string `mapstructure:"wallet_key" yaml:"wallet_key"`               // Secret: The private key of the wallet account.
 	ProgramsDirPath string `mapstructure:"programs_dir_path" yaml:"programs_dir_path"` // The path to the Solana programs directory.
+	// UseKMSEd25519 makes the deployer sign with the Ed25519 KMS key (onchain.kms_ed25519). The
+	// wallet key, if set, is then only used by the Solana CLI to deploy programs.
+	UseKMSEd25519 bool `mapstructure:"use_kms_ed25519" yaml:"use_kms_ed25519,omitempty"`
 }
 
 // TonConfig is the configuration for the TON Chains.
@@ -281,6 +284,7 @@ var (
 		"onchain.evm.seth.geth_wrapper_dirs":                      {"ONCHAIN_EVM_SETH_GETH_WRAPPER_DIRS", "GETH_WRAPPERS_DIRS"},
 		"onchain.solana.wallet_key":                               {"ONCHAIN_SOLANA_WALLET_KEY", "SOLANA_WALLET_KEY"},
 		"onchain.solana.programs_dir_path":                        {"ONCHAIN_SOLANA_PROGRAMS_DIR_PATH", "SOLANA_PROGRAM_PATH"},
+		"onchain.solana.use_kms_ed25519":                          {"ONCHAIN_SOLANA_USE_KMS_ED25519"},
 		"onchain.aptos.deployer_key":                              {"ONCHAIN_APTOS_DEPLOYER_KEY", "APTOS_DEPLOYER_KEY"},
 		"onchain.tron.deployer_key":                               {"ONCHAIN_TRON_DEPLOYER_KEY", "TRON_DEPLOYER_KEY"},
 		"onchain.sui.deployer_key":                                {"ONCHAIN_SUI_DEPLOYER_KEY", "SUI_DEPLOYER_KEY"},

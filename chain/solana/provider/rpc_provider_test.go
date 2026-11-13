@@ -1,10 +1,13 @@
 package provider
 
 import (
+	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
 
+	sollib "github.com/gagliardetto/solana-go"
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -31,7 +34,14 @@ func Test_RPCChainProviderConfig_validate(t *testing.T) {
 		{
 			name:           "missing deployer key generator",
 			giveConfigFunc: func(c *RPCChainProviderConfig) { c.DeployerKeyGen = nil },
-			wantErr:        "deployer key generator is required",
+			wantErr:        "deployer key generator or deployer signer generator is required",
+		},
+		{
+			name: "signer generator without deployer key generator",
+			giveConfigFunc: func(c *RPCChainProviderConfig) {
+				c.DeployerKeyGen = nil
+				c.DeployerSignerGen = &staticSignerGen{}
+			},
 		},
 		{
 			name:           "missing programs path",
@@ -233,6 +243,84 @@ func Test_RPCChainProvider_Initialize(t *testing.T) {
 				)
 				assert.NotNil(t, gotChain.SendAndConfirm)
 				assert.NotNil(t, gotChain.Confirm)
+			}
+		})
+	}
+}
+
+// staticSignerGen is a SignerGenerator that returns a fixed signer or error.
+type staticSignerGen struct {
+	signer solana.Signer
+	err    error
+}
+
+func (g *staticSignerGen) Generate(context.Context) (solana.Signer, error) {
+	return g.signer, g.err
+}
+
+func Test_RPCChainProvider_Initialize_SignerGen(t *testing.T) {
+	t.Parallel()
+
+	chainSelector := chainsel.TEST_22222222222222222222222222222222222222222222.Selector
+	signer := solana.NewPrivateKeySigner(sollib.NewWallet().PrivateKey)
+
+	tests := []struct {
+		name            string
+		giveKeyGen      PrivateKeyGenerator
+		giveSignerGen   *staticSignerGen
+		wantKeypairFile bool
+		wantErr         string
+	}{
+		{
+			name:            "signer with CLI keypair",
+			giveKeyGen:      PrivateKeyRandom(),
+			giveSignerGen:   &staticSignerGen{signer: signer},
+			wantKeypairFile: true,
+		},
+		{
+			name:          "signer without CLI keypair",
+			giveSignerGen: &staticSignerGen{signer: signer},
+		},
+		{
+			name:          "fails to generate signer",
+			giveSignerGen: &staticSignerGen{err: errors.New("kms unavailable")},
+			wantErr:       "failed to generate deployer signer",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			keypairDirPath := t.TempDir()
+
+			got, err := NewRPCChainProvider(chainSelector, RPCChainProviderConfig{
+				HTTPURL:           "http://localhost:8080",
+				DeployerKeyGen:    tt.giveKeyGen,
+				DeployerSignerGen: tt.giveSignerGen,
+				ProgramsPath:      t.TempDir(),
+				KeypairDirPath:    keypairDirPath,
+			}).Initialize(t.Context())
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+
+			gotChain, ok := got.(solana.Chain)
+			require.True(t, ok, "expected got to be of type solana.Chain")
+
+			// The deployer signs only through the signer; the CLI keypair is never exposed as
+			// the deployer key.
+			assert.Nil(t, gotChain.DeployerKey)
+			assert.Equal(t, signer, gotChain.DeployerSigner)
+			assert.Equal(t, signer, gotChain.Deployer())
+
+			if tt.wantKeypairFile {
+				assert.Equal(t, filepath.Join(keypairDirPath, "authority-keypair.json"), gotChain.KeypairPath)
+				assert.FileExists(t, gotChain.KeypairPath)
+			} else {
+				assert.Empty(t, gotChain.KeypairPath)
 			}
 		})
 	}
