@@ -136,13 +136,14 @@ func (p *CTFChainProvider) Initialize(_ context.Context) (chain.BlockChain, erro
 
 	// Initialize the Solana chain instance with the provided configuration
 	p.chain = &solana.Chain{
-		Selector:     p.selector,
-		Client:       client.Client,
-		URL:          httpURL,
-		WSURL:        wsURL,
-		DeployerKey:  &privKey,
-		ProgramsPath: p.config.ProgramsPath,
-		KeypairPath:  keypairPath,
+		Selector:       p.selector,
+		Client:         client.Client,
+		URL:            httpURL,
+		WSURL:          wsURL,
+		DeployerKey:    &privKey,
+		DeployerSigner: client.Signer,
+		ProgramsPath:   p.config.ProgramsPath,
+		KeypairPath:    keypairPath,
 		SendAndConfirm: func(
 			ctx context.Context, instructions []sollib.Instruction, txMods ...rpcclient.TxModifier,
 		) error {

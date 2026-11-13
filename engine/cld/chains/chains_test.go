@@ -135,6 +135,47 @@ func Test_newChainLoaders(t *testing.T) {
 			wantLoaders: []string{},
 		},
 		{
+			name: "Ed25519 KMS without Solana opt-in - Solana skipped",
+			onchainConfig: cfgenv.OnchainConfig{
+				KMSEd25519: cfgenv.KMSEd25519Config{
+					KeyID:     "test-ed25519-key-id",
+					KeyRegion: "us-west-2",
+				},
+				Solana: cfgenv.SolanaConfig{
+					ProgramsDirPath: "/tmp/programs",
+				},
+			},
+			wantLoaders: []string{
+				chainsel.FamilyStellar,
+			},
+		},
+		{
+			name: "Solana opted into Ed25519 KMS without wallet key - Solana loaded",
+			onchainConfig: cfgenv.OnchainConfig{
+				KMSEd25519: cfgenv.KMSEd25519Config{
+					KeyID:     "test-ed25519-key-id",
+					KeyRegion: "us-west-2",
+				},
+				Solana: cfgenv.SolanaConfig{
+					ProgramsDirPath: "/tmp/programs",
+					UseKMSEd25519:   true,
+				},
+			},
+			wantLoaders: []string{
+				chainsel.FamilySolana,
+				chainsel.FamilyStellar,
+			},
+		},
+		{
+			name: "Solana opted into Ed25519 KMS without program path - Solana skipped",
+			onchainConfig: cfgenv.OnchainConfig{
+				Solana: cfgenv.SolanaConfig{
+					UseKMSEd25519: true,
+				},
+			},
+			wantLoaders: []string{},
+		},
+		{
 			name:          "No credentials - all chains skipped",
 			onchainConfig: cfgenv.OnchainConfig{},
 			wantLoaders:   []string{},
