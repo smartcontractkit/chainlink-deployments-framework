@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -171,7 +172,7 @@ func Test_loadNetworkConfig(t *testing.T) {
 	}
 }
 
-func Test_loadDomainConfigNetworkTypes(t *testing.T) {
+func Test_networkTypesForEnv(t *testing.T) {
 	t.Parallel()
 
 	var (
@@ -251,7 +252,14 @@ func Test_loadDomainConfigNetworkTypes(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			got, err := loadDomainConfigNetworkTypes(tt.giveEnv, dom)
+			var got []cfgnet.NetworkType
+
+			domainConfig, err := cfgdomain.Load(dom.ConfigDomainFilePath())
+			if err == nil {
+				got, err = networkTypesForEnv(domainConfig, tt.giveEnv)
+			} else {
+				err = fmt.Errorf("failed to load domain config: %w", err)
+			}
 			if tt.wantErr != "" {
 				require.Error(t, err)
 				require.ErrorContains(t, err, tt.wantErr)
@@ -263,11 +271,23 @@ func Test_loadDomainConfigNetworkTypes(t *testing.T) {
 	}
 }
 
+// writeDomainConfigWithManifest writes a domain.yaml for staging_testnet with rpc_manifest_url set
+// to manifestURL (omitted when empty).
+func writeDomainConfigWithManifest(t *testing.T, dom fdomain.Domain, manifestURL string) {
+	t.Helper()
+
+	content := "environments:\n  staging_testnet:\n    network_types:\n      - testnet\n"
+	if manifestURL != "" {
+		content += fmt.Sprintf("rpc_manifest_url: %q\n", manifestURL)
+	}
+	require.NoError(t, os.WriteFile(dom.ConfigDomainFilePath(), []byte(content), filePerms))
+}
+
 func Test_LoadNetworks_WithManifest(t *testing.T) {
+	t.Parallel()
+
 	manifestPath, err := filepath.Abs(filepath.Join("network", "rpcmanifest", "testdata", "rpcs.json"))
 	require.NoError(t, err)
-
-	t.Setenv(rpcmanifest.EnvRPCManifestURL, manifestPath)
 
 	dom, _ := setupConfigDirs(t)
 	networkYAML := []byte(`networks:
@@ -275,7 +295,7 @@ func Test_LoadNetworks_WithManifest(t *testing.T) {
     chain_selector: 16015286601757825753
 `)
 	require.NoError(t, os.WriteFile(filepath.Join(dom.ConfigNetworksDirPath(), "testnet.yaml"), networkYAML, filePerms))
-	writeConfigDomainFile(t, dom, "domain.yaml")
+	writeDomainConfigWithManifest(t, dom, manifestPath)
 
 	got, err := LoadNetworks("staging_testnet", dom, logger.Test(t))
 	require.NoError(t, err)
@@ -286,8 +306,32 @@ func Test_LoadNetworks_WithManifest(t *testing.T) {
 	assert.Equal(t, "CLL Proxy", net.RPCs[0].RPCName)
 }
 
+func Test_LoadNetworks_EnvOverridesDomainManifest(t *testing.T) {
+	manifestPath, err := filepath.Abs(filepath.Join("network", "rpcmanifest", "testdata", "rpcs.json"))
+	require.NoError(t, err)
+
+	// The domain points at a manifest that doesn't exist; the env var override must win.
+	t.Setenv(rpcmanifest.EnvRPCManifestURL, manifestPath)
+
+	dom, _ := setupConfigDirs(t)
+	networkYAML := []byte(`networks:
+  - type: testnet
+    chain_selector: 16015286601757825753
+`)
+	require.NoError(t, os.WriteFile(filepath.Join(dom.ConfigNetworksDirPath(), "testnet.yaml"), networkYAML, filePerms))
+	writeDomainConfigWithManifest(t, dom, filepath.Join(t.TempDir(), "does-not-exist.json"))
+
+	got, err := LoadNetworks("staging_testnet", dom, logger.Test(t))
+	require.NoError(t, err)
+
+	net, err := got.NetworkBySelector(16015286601757825753)
+	require.NoError(t, err)
+	assert.NotEmpty(t, net.RPCs)
+}
+
 func Test_LoadNetworks_EmptyRPCsWithoutOptInFailsValidation(t *testing.T) {
-	// Opt-in: with the env var unset, empty rpcs must not trigger any manifest fetch.
+	// Opt-in: with neither rpc_manifest_url nor the env var set, empty rpcs must not trigger any
+	// manifest fetch.
 	t.Setenv(rpcmanifest.EnvRPCManifestURL, "")
 
 	dom, _ := setupConfigDirs(t)
@@ -358,11 +402,10 @@ func Test_LoadNetworks_DoesNotFetchManifestForFilteredOutNetworkType(t *testing.
     chain_selector: 999999999999999999
 `)
 	require.NoError(t, os.WriteFile(filepath.Join(dom.ConfigNetworksDirPath(), "networks.yaml"), networkYAML, filePerms))
-	writeConfigDomainFile(t, dom, "domain.yaml")
 
 	// Point at a manifest source that does not exist. If LoadNetworks ever attempted to fetch it
 	// (because the mainnet network with empty rpcs wasn't filtered out first), this would fail.
-	t.Setenv(rpcmanifest.EnvRPCManifestURL, filepath.Join(t.TempDir(), "does-not-exist.json"))
+	writeDomainConfigWithManifest(t, dom, filepath.Join(t.TempDir(), "does-not-exist.json"))
 
 	got, err := LoadNetworks("staging_testnet", dom, logger.Test(t))
 	require.NoError(t, err)

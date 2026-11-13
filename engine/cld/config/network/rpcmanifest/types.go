@@ -1,8 +1,8 @@
 package rpcmanifest
 
 const (
-	// EnvRPCManifestURL opts in to RPC discovery: when set to a manifest source (URL, file://
-	// URI or path), networks with empty rpcs are filled from it. No default source is built in.
+	// EnvRPCManifestURL overrides the domain's rpc_manifest_url (e.g. to use a local file). RPC
+	// discovery is opt-in per domain; no default source is built in.
 	EnvRPCManifestURL = "CLD_RPC_MANIFEST_URL"
 	rpcProxyBase      = "https://rpcs.cldev.sh"
 )

@@ -157,6 +157,9 @@ type DomainConfig struct {
 	Environments map[string]Environment `mapstructure:"environments" yaml:"environments"`
 	Jira         *jira.Config           `mapstructure:"jira" yaml:"jira"`
 	Binary       *BinaryConfig          `mapstructure:"binary" yaml:"binary,omitempty"`
+	// RPCManifestURL opts the domain in to RPC discovery: networks with empty rpcs are filled from
+	// this manifest (HTTP(S) URL, file:// URI or path). Unset means no discovery.
+	RPCManifestURL string `mapstructure:"rpc_manifest_url" yaml:"rpc_manifest_url,omitempty"`
 }
 
 // validate validates all environments in the domain configuration.
