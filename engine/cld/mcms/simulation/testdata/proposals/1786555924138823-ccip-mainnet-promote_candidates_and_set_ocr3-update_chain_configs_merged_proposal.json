@@ -1,0 +1,896 @@
+{
+  "version": "v1",
+  "kind": "TimelockProposal",
+  "validUntil": 1786814898,
+  "signatures": [
+    {
+      "R": "0xb2b651ac7ea6f08f304fe6216f75505682f1971038c0d1b480f26623e4bc4a54",
+      "S": "0x3badfbd83a3b1f5efae5100b9e6a4b45df6baae6e20cc41cb5510ff0f0546a8e",
+      "V": 28
+    },
+    {
+      "R": "0x292e657eb16b7df39c1d32ba4545562cdc18ab0f00514de809dca75151d59455",
+      "S": "0x6c58aa188605f131b148856a9672d1ba74358318669f60ab6e20f888a43debaf",
+      "V": 28
+    },
+    {
+      "R": "0x77fdd0fffaf75a135375d4d9cbd2b9a7ece65da1c9e68237da81c4dcec6551a5",
+      "S": "0x68078008087809cc0be9670e246468ec70b368b78b41b39ce99f3aecef1bf4a4",
+      "V": 27
+    },
+    {
+      "R": "0xe908b4bc7cb77f30ceb982ef0d8c1bfc6c9c4d004cc5704b4cd0bb4dffc6c30a",
+      "S": "0x5ab505f7a0bad77b8f11808325f34e4b68ccc30a9d8d58e19aea2b4ef99e9344",
+      "V": 27
+    }
+  ],
+  "overridePreviousRoot": false,
+  "chainMetadata": {
+    "4741433654826277614": {
+      "startingOpCount": 71,
+      "mcmAddress": "0x2d3254b5c860a75d8d5095d44388ae8e9c23a234a85abfcff6264d298fbef6cc",
+      "additionalFields": {
+        "role": 2
+      }
+    },
+    "5009297550715157269": {
+      "startingOpCount": 1379,
+      "mcmAddress": "0xD9757aA52907798d1aF2FDa7A6C0cC733E5aCf7e"
+    }
+  },
+  "description": "Promote candidates and set OCR3: map[4741433654826277614:{0x32fec9ae7194 0x32fec9ae7195}]\n, Update chain configs on CCIPHome",
+  "metadata": {
+    "changesets": [
+      {
+        "config": {
+          "ChangeSets": [
+            {
+              "ChangeSet": {},
+              "Config": {
+                "homeChainSelector": 5009297550715157269,
+                "mcms": {
+                  "mcmsAction": "",
+                  "minDelay": 10800000000000,
+                  "overrideRoot": false,
+                  "timelockQualifierPerChain": {
+                    "4741433654826277614": "CLLCCIP",
+                    "5009297550715157269": "CLLCCIP"
+                  },
+                  "validDuration": null
+                },
+                "pluginInfo": [
+                  {
+                    "allowEmptyConfigPromote": false,
+                    "pluginType": 0,
+                    "remoteChainSelectors": [
+                      4741433654826277614
+                    ]
+                  },
+                  {
+                    "allowEmptyConfigPromote": false,
+                    "pluginType": 1,
+                    "remoteChainSelectors": [
+                      4741433654826277614
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "ChangeSet": {},
+              "Config": {
+                "ConfigType": "candidate",
+                "HomeChainSel": 5009297550715157269,
+                "MCMS": {
+                  "Description": "Set OCR3 config (APTOS)",
+                  "OverridePreviousRoot": false,
+                  "Qualifier": "CLLCCIP",
+                  "TimelockAction": "",
+                  "TimelockDelay": "3h0m0s",
+                  "ValidUntil": 4294927557
+                },
+                "RemoteChainSels": [
+                  4741433654826277614
+                ]
+              }
+            }
+          ],
+          "Description": "Promote candidates and set OCR3: map[4741433654826277614:{0x32feccd19da0 0x32feccd19da1}]",
+          "MCMS": {
+            "mcmsAction": "",
+            "minDelay": 10800000000000,
+            "overrideRoot": false,
+            "timelockQualifierPerChain": {
+              "4741433654826277614": "CLLCCIP",
+              "5009297550715157269": "CLLCCIP"
+            },
+            "validDuration": null
+          },
+          "MCMSOverridesForEVMChains": null
+        },
+        "id": "96d82514-23f4-40c0-87f3-9ef247a41a56",
+        "input": {
+          "chainOverrides": [
+            5009297550715157269,
+            4949039107694359620,
+            4741433654826277614
+          ],
+          "payload": {
+            "chains": {
+              "4741433654826277614": {
+                "promoteCommit": true,
+                "promoteExec": true
+              }
+            },
+            "mcms": {
+              "minDelay": 10800000000000,
+              "overrideRoot": false,
+              "timelockQualifierPerChain": {
+                "4741433654826277614": "CLLCCIP",
+                "5009297550715157269": "CLLCCIP"
+              }
+            },
+            "networkType": "mainnet"
+          }
+        },
+        "name": "promote_candidates_and_set_ocr3"
+      },
+      {
+        "config": {
+          "homeChainSelector": 5009297550715157269,
+          "mcms": {
+            "mcmsAction": "",
+            "minDelay": 10800000000000,
+            "overrideRoot": false,
+            "timelockQualifierPerChain": {
+              "5009297550715157269": "CLLCCIP"
+            },
+            "validDuration": null
+          },
+          "remoteChainAdds": {
+            "4741433654826277614": {
+              "encodableChainConfig": {
+                "chainFeeDeviationDisabled": true,
+                "daGasPriceDeviationPPB": "4000000000",
+                "gasPriceDeviationPPB": "4000000000",
+                "optimisticConfirmations": 1
+              },
+              "fChain": 5,
+              "readers": [
+                [
+                  125,
+                  53,
+                  217,
+                  125,
+                  135,
+                  87,
+                  160,
+                  138,
+                  116,
+                  229,
+                  65,
+                  68,
+                  184,
+                  65,
+                  103,
+                  74,
+                  230,
+                  215,
+                  40,
+                  140,
+                  87,
+                  201,
+                  162,
+                  41,
+                  238,
+                  82,
+                  131,
+                  81,
+                  168,
+                  157,
+                  68,
+                  89
+                ],
+                [
+                  46,
+                  162,
+                  25,
+                  99,
+                  154,
+                  31,
+                  28,
+                  146,
+                  58,
+                  248,
+                  217,
+                  14,
+                  239,
+                  45,
+                  1,
+                  104,
+                  197,
+                  232,
+                  135,
+                  172,
+                  143,
+                  219,
+                  46,
+                  173,
+                  91,
+                  210,
+                  130,
+                  11,
+                  16,
+                  10,
+                  74,
+                  235
+                ],
+                [
+                  111,
+                  2,
+                  100,
+                  239,
+                  202,
+                  15,
+                  248,
+                  238,
+                  153,
+                  171,
+                  200,
+                  94,
+                  142,
+                  55,
+                  243,
+                  62,
+                  204,
+                  176,
+                  23,
+                  19,
+                  5,
+                  244,
+                  74,
+                  238,
+                  224,
+                  49,
+                  253,
+                  201,
+                  253,
+                  141,
+                  201,
+                  145
+                ],
+                [
+                  218,
+                  248,
+                  142,
+                  107,
+                  34,
+                  10,
+                  78,
+                  6,
+                  189,
+                  172,
+                  178,
+                  210,
+                  244,
+                  184,
+                  199,
+                  31,
+                  13,
+                  158,
+                  158,
+                  235,
+                  251,
+                  37,
+                  186,
+                  75,
+                  225,
+                  43,
+                  221,
+                  241,
+                  89,
+                  249,
+                  75,
+                  60
+                ],
+                [
+                  23,
+                  81,
+                  181,
+                  151,
+                  177,
+                  253,
+                  117,
+                  113,
+                  230,
+                  26,
+                  0,
+                  200,
+                  78,
+                  34,
+                  7,
+                  65,
+                  190,
+                  173,
+                  16,
+                  232,
+                  123,
+                  233,
+                  104,
+                  160,
+                  57,
+                  208,
+                  91,
+                  167,
+                  49,
+                  41,
+                  220,
+                  32
+                ],
+                [
+                  243,
+                  132,
+                  108,
+                  24,
+                  123,
+                  190,
+                  148,
+                  20,
+                  193,
+                  241,
+                  112,
+                  176,
+                  157,
+                  56,
+                  149,
+                  223,
+                  214,
+                  74,
+                  170,
+                  77,
+                  233,
+                  63,
+                  255,
+                  168,
+                  221,
+                  215,
+                  61,
+                  146,
+                  105,
+                  172,
+                  253,
+                  223
+                ],
+                [
+                  187,
+                  207,
+                  26,
+                  64,
+                  240,
+                  193,
+                  211,
+                  151,
+                  113,
+                  24,
+                  205,
+                  225,
+                  7,
+                  175,
+                  239,
+                  181,
+                  183,
+                  230,
+                  64,
+                  156,
+                  93,
+                  126,
+                  114,
+                  71,
+                  107,
+                  93,
+                  124,
+                  83,
+                  251,
+                  11,
+                  147,
+                  11
+                ],
+                [
+                  142,
+                  250,
+                  166,
+                  4,
+                  249,
+                  205,
+                  46,
+                  20,
+                  89,
+                  137,
+                  183,
+                  162,
+                  102,
+                  221,
+                  216,
+                  35,
+                  182,
+                  71,
+                  185,
+                  236,
+                  70,
+                  103,
+                  248,
+                  34,
+                  20,
+                  106,
+                  223,
+                  127,
+                  200,
+                  226,
+                  107,
+                  233
+                ],
+                [
+                  190,
+                  238,
+                  137,
+                  184,
+                  155,
+                  135,
+                  160,
+                  191,
+                  172,
+                  110,
+                  196,
+                  159,
+                  242,
+                  54,
+                  43,
+                  74,
+                  63,
+                  178,
+                  71,
+                  182,
+                  103,
+                  53,
+                  175,
+                  115,
+                  214,
+                  123,
+                  175,
+                  203,
+                  78,
+                  225,
+                  219,
+                  239
+                ],
+                [
+                  25,
+                  146,
+                  114,
+                  46,
+                  78,
+                  219,
+                  15,
+                  139,
+                  55,
+                  173,
+                  183,
+                  154,
+                  230,
+                  94,
+                  237,
+                  180,
+                  90,
+                  137,
+                  179,
+                  222,
+                  70,
+                  146,
+                  116,
+                  47,
+                  51,
+                  198,
+                  106,
+                  109,
+                  192,
+                  138,
+                  178,
+                  196
+                ],
+                [
+                  175,
+                  99,
+                  123,
+                  239,
+                  41,
+                  142,
+                  19,
+                  80,
+                  4,
+                  63,
+                  90,
+                  213,
+                  180,
+                  247,
+                  207,
+                  242,
+                  102,
+                  42,
+                  11,
+                  236,
+                  133,
+                  132,
+                  162,
+                  3,
+                  158,
+                  48,
+                  229,
+                  229,
+                  147,
+                  123,
+                  124,
+                  126
+                ],
+                [
+                  0,
+                  72,
+                  213,
+                  200,
+                  194,
+                  145,
+                  58,
+                  107,
+                  56,
+                  135,
+                  92,
+                  52,
+                  237,
+                  138,
+                  59,
+                  189,
+                  207,
+                  8,
+                  211,
+                  172,
+                  63,
+                  120,
+                  161,
+                  236,
+                  221,
+                  104,
+                  99,
+                  70,
+                  2,
+                  77,
+                  122,
+                  194
+                ],
+                [
+                  241,
+                  5,
+                  250,
+                  204,
+                  55,
+                  102,
+                  106,
+                  171,
+                  200,
+                  211,
+                  22,
+                  91,
+                  39,
+                  76,
+                  49,
+                  172,
+                  202,
+                  156,
+                  67,
+                  103,
+                  64,
+                  93,
+                  137,
+                  161,
+                  77,
+                  151,
+                  31,
+                  243,
+                  208,
+                  98,
+                  163,
+                  59
+                ],
+                [
+                  106,
+                  244,
+                  199,
+                  17,
+                  100,
+                  140,
+                  195,
+                  96,
+                  214,
+                  51,
+                  205,
+                  201,
+                  220,
+                  113,
+                  177,
+                  146,
+                  203,
+                  191,
+                  58,
+                  219,
+                  165,
+                  231,
+                  10,
+                  249,
+                  143,
+                  134,
+                  245,
+                  188,
+                  48,
+                  187,
+                  144,
+                  35
+                ],
+                [
+                  194,
+                  37,
+                  205,
+                  252,
+                  132,
+                  55,
+                  66,
+                  19,
+                  196,
+                  34,
+                  145,
+                  12,
+                  155,
+                  49,
+                  234,
+                  29,
+                  102,
+                  156,
+                  72,
+                  234,
+                  148,
+                  158,
+                  155,
+                  98,
+                  71,
+                  177,
+                  70,
+                  121,
+                  169,
+                  183,
+                  101,
+                  16
+                ],
+                [
+                  96,
+                  72,
+                  138,
+                  66,
+                  12,
+                  230,
+                  168,
+                  11,
+                  232,
+                  118,
+                  245,
+                  153,
+                  187,
+                  205,
+                  163,
+                  127,
+                  222,
+                  98,
+                  84,
+                  115,
+                  104,
+                  242,
+                  110,
+                  93,
+                  237,
+                  160,
+                  214,
+                  21,
+                  144,
+                  218,
+                  58,
+                  2
+                ]
+              ]
+            }
+          },
+          "remoteChainRemoves": null
+        },
+        "id": "81f84cfe-d56e-4120-8e62-f04f57f0138d",
+        "input": {
+          "chainOverrides": [
+            5009297550715157269,
+            4949039107694359620,
+            4741433654826277614
+          ],
+          "payload": {
+            "adds": [
+              4741433654826277614
+            ],
+            "mcms": {
+              "minDelay": 10800000000000,
+              "overrideRoot": false,
+              "timelockQualifierPerChain": {
+                "5009297550715157269": "CLLCCIP"
+              }
+            },
+            "networkType": "mainnet"
+          }
+        },
+        "name": "update_chain_configs"
+      }
+    ],
+    "pipelinePullRequest": {
+      "author": "b-gopalswami",
+      "authorType": "User",
+      "branch": "bg/ccip-12950-aptos-piertwo",
+      "prNumber": 17829,
+      "sha": "a131aefafbfe8412222d5cc8f5ab49e639534ec8",
+      "workflowRun": "https://github.com/smartcontractkit/chainlink-deployments/actions/runs/31622154941"
+    },
+    "pullRequest": {
+      "analyzedProposalCommentId": 5270217255,
+      "analyzedProposalCommentMarkerId": "proposal-analyzer-output",
+      "author": "app-token-issuer-infra-releng[bot]",
+      "branch": "1786555924138823-ccip-mainnet-promote_candidates_and_set_ocr3-update_chain_configs_merged_proposal-31622154941",
+      "prNumber": 17834,
+      "sha": "0de8ad70e887dc46b8381b9ac80fc853da8e8909"
+    },
+    "rootHash": "0xaee315e98af12b10f3b48f3143748e554664e0d2af386fb21554de3216dabbcd",
+    "signers": [
+      "0x29c5f7aCfDea3F48486b282aF0FA797b0F04D845",
+      "0x3Ce065c714810e0b2a85Ed71f1582038823c75d8",
+      "0x41eAdbc688797a02bfaBE48472995833489ce69D",
+      "0x4833c0fcE02C92fF8D92903BAB14827ff1cBD4bf",
+      "0x532657dDd472E9f9061963a44955acCCeE318B1c",
+      "0x5AA4D76f0CD8ea04fB3C4C4b771A0B9E03dC776C",
+      "0x615B9b28B754Afd1fD03EbaB2BAE8b14A6Dc94Ee",
+      "0x843742760078Df85609690D85827173A1A96D14a",
+      "0x8569de6e68F22937e69b7338E47Ee751aCcFb266",
+      "0x893234a5EbE7Ae1D5089Fe5936a05c6cd6fBaDE7",
+      "0x89810cb91a5fe67dDf3483182f08e1559A5699De",
+      "0x957913184D083731770A15E4d401e4A8310Bb5F3",
+      "0xa69dceB575892EFe06C90b4c79bE7DeC5112DE7B",
+      "0xB2675C40d0E3B7466Cc419CcBdac289392618Ce8",
+      "0xd107276078c6605bE0CEC43D765733291B7102aF",
+      "0xE062e7D123AC8dF480C56147f911144F55C10f88",
+      "0xE3fe08c2Ac10a690284EdeBf20A3820479277162",
+      "0xF27805Fd4416cE6cB433c5a63A39B2bCc47a4BF6",
+      "0x15C50aAdC2ff201FA0545996528082c9fC551eB0",
+      "0x1BD478DB8E202A887440b2f89E854927651Ce142",
+      "0x1E2cDb5Fe0461C3688E090B879fd1156ed32a887",
+      "0x4c29a3a0ECe46F27417953b925fA9cC01BF99253",
+      "0x4D12E3BaE007227CA63d55a8e3c4ddc3EbBFA2b6",
+      "0x54081602645704EE2B76FEe30E8B4d4F2D82d4E0",
+      "0x568DCF31bEE597CbcA90F6063123f48dF502532b",
+      "0x70f498A0AD8a17fC853fcb8eDbE31Fbce71173E6",
+      "0x767EDF33E430E14C6611cb1A9Ea3108E2C6346C2",
+      "0x7b404a74F7d78191F4359C6Cc75f895b5A44bdB2",
+      "0x8AbFC1005bee7ec7ddd4Df69fAC70399B9dEFf61",
+      "0x97D0895BEd8acd240C32427191D96B18eB283748",
+      "0x9a2595b4482F463fc629fBf5900e6Fab6d4D5fD0",
+      "0xADE26816Bb84a0c3CB8e468157Eb4dc13B006c44",
+      "0xD924A8A91c1406afaF55Be2Ad3Ee24Cc09D8814C",
+      "0xEA6247A8565de25E7d1E31f3055911566A2Addc6",
+      "0xF3C4A0C49234c6f08ACf889522812d0647A8481b",
+      "0xFccD1128fc823dD78e76240dc206a7A26494F271",
+      "0x013D4A675Fd02359c3c35Abc514dafd97B127e34",
+      "0x0D2730AD6D62A49907Fb9273cD4a59D1092cb472",
+      "0x1A1981c347Cd352CdF4882c343fC9C24C4796e94",
+      "0x6bfBf6BC4bc5CD20768dAA6F58f0743bAFf2e5f4",
+      "0xa42c8570771240D1e2F3211064a7C7472Cc05b7D",
+      "0xfBB1B9F0adFc8696e716CC8AD05a2fEbC1605028",
+      "0xFc660abD73677bb4942f1bDDd1054a975D228d29"
+    ],
+    "signingHash": "0xd1c7eaad24758110b5e89fd1de7e590776266a06f58cae0be3991dfac0b9e596",
+    "signingMessageHash": "0x5348de7bab0f6ecab417d86efb382bd12c667568f3e5dec7b9bed7cbcaeb3634",
+    "slack_messages": {
+      "#msig-ccip": {
+        "channel_id": "C08DPNDTV47",
+        "parent_ts": "1786555949.818009"
+      }
+    }
+  },
+  "action": "schedule",
+  "delay": "3h0m0s",
+  "timelockAddresses": {
+    "4741433654826277614": "0x2d3254b5c860a75d8d5095d44388ae8e9c23a234a85abfcff6264d298fbef6cc",
+    "5009297550715157269": "0x44835bBBA9D40DEDa9b64858095EcFB2693c9449"
+  },
+  "operations": [
+    {
+      "chainSelector": 5009297550715157269,
+      "transactions": [
+        {
+          "contractType": "CapabilitiesRegistry",
+          "tags": [
+            "changeset:96d82514-23f4-40c0-87f3-9ef247a41a56"
+          ],
+          "to": "0x006bC1F599a10B73C88cc3cD19a92829C4AC1E83",
+          "data": "KoUpMwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEABI1cjCkTprOIdcNO2KO73PCNOsP3ih7N1oY0YCTXrCF1G1l7H9dXHmGgDITiIHQb6tEOh76WigOdBbpzEp3CAZknIuTtsPizett5rmXu20Womz3kaSdC8zxmptwIqyxC6iGWOaHxySOvjZDu8tAWjF6Iesj9surVvSggsQCkrrYEiKQgzmqAvodvWZu82jf95iVHNo8m5d7aDWFZDaOgJq9McRZIzDYNYzzcnccbGSy78626XnCvmPhvW8MLuQI28CZO/KD/jumavIXo438z7MsBcTBfRK7uAx/cn9jcmRfTXZfYdXoIp05UFEuEFnSubXKIxXyaIp7lKDUaidRFmO+qYE+c0uFFmJt6Jm3dgjtke57EZn+CIUat9/yOJr6a9je+8pjhNQBD9a1bT3z/JmKgvshYSiA54w5eWTe3x+u88aQPDB05dxGM3hB6/vtbfmQJxdfnJHa118U/sLkwu+7om4m4egv6xuxJ/yNitKP7JHtmc1r3PWe6/LTuHb78IlzfyEN0ITxCKRDJsx6h1mnEjqlJ6bYkexRnmpt2UQ2viOayIKTga9rLLS9LjHHw2enuv7JbpL4Svd8Vn5SzzxBfrMN2Zqq8jTFlsnTDGsypxDZ0BdiaFNlx/z0GKjO/OEbBh7vpQUwfFwsJ04ld/WSqpN6T//qN3XPZJprP3fAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIODaPCuQBRePRzHJ9AFk8ZM60AusnWwTrUyhqKdjQWOAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAhFqDf5cAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAoEPtHju8sJkCoubS7mK7ffYsfpraUcRG2ArJjhmqQACpHJhD9aibb0FhwIo6shO8/PFMRZiDPyecNjE+hJEwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+          "additionalFields": {
+            "value": 0
+          }
+        }
+      ]
+    },
+    {
+      "chainSelector": 5009297550715157269,
+      "transactions": [
+        {
+          "contractType": "CapabilitiesRegistry",
+          "tags": [
+            "changeset:96d82514-23f4-40c0-87f3-9ef247a41a56"
+          ],
+          "to": "0x006bC1F599a10B73C88cc3cD19a92829C4AC1E83",
+          "data": "KoUpMwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEABI1cjCkTprOIdcNO2KO73PCNOsP3ih7N1oY0YCTXrCF1G1l7H9dXHmGgDITiIHQb6tEOh76WigOdBbpzEp3CAZknIuTtsPizett5rmXu20Womz3kaSdC8zxmptwIqyxC6iGWOaHxySOvjZDu8tAWjF6Iesj9surVvSggsQCkrrYEiKQgzmqAvodvWZu82jf95iVHNo8m5d7aDWFZDaOgJq9McRZIzDYNYzzcnccbGSy78626XnCvmPhvW8MLuQI28CZO/KD/jumavIXo438z7MsBcTBfRK7uAx/cn9jcmRfTXZfYdXoIp05UFEuEFnSubXKIxXyaIp7lKDUaidRFmO+qYE+c0uFFmJt6Jm3dgjtke57EZn+CIUat9/yOJr6a9je+8pjhNQBD9a1bT3z/JmKgvshYSiA54w5eWTe3x+u88aQPDB05dxGM3hB6/vtbfmQJxdfnJHa118U/sLkwu+7om4m4egv6xuxJ/yNitKP7JHtmc1r3PWe6/LTuHb78IlzfyEN0ITxCKRDJsx6h1mnEjqlJ6bYkexRnmpt2UQ2viOayIKTga9rLLS9LjHHw2enuv7JbpL4Svd8Vn5SzzxBfrMN2Zqq8jTFlsnTDGsypxDZ0BdiaFNlx/z0GKjO/OEbBh7vpQUwfFwsJ04ld/WSqpN6T//qN3XPZJprP3fAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIODaPCuQBRePRzHJ9AFk8ZM60AusnWwTrUyhqKdjQWOAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAhFqDf5cAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAp1V9DjFHXqFGhz5Gy2iUH1RdglepJBqOJrvi4o/hwACnOmnLgo/x0q13Bk1Ryw/o/PYPSA6C9nxIBK9NZsFgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+          "additionalFields": {
+            "value": 0
+          }
+        }
+      ]
+    },
+    {
+      "chainSelector": 4741433654826277614,
+      "transactions": [
+        {
+          "contractType": "",
+          "tags": [
+            "changeset:96d82514-23f4-40c0-87f3-9ef247a41a56"
+          ],
+          "to": "0x20f808de3375db34d17cc946ec6b43fc26962f6afa125182dc903359756caf6b",
+          "data": "IAAKBD7R47vLCZAqLm0u5iu332LH6a2lHERtgKyY4ZqkAAUBECCR/MqRkyz0Mq5tZmcud2XUESKBwwR8jRscaXgDSGGq/SD4kblzvUKxj+IeY1MpcqqYqxmLPtwnT19/g0gAXBD3ViAvplbAdIHy4RTgWRQ+oGbI7bq+qXdJApCTF5VsvUTKfCAxPIbzl90nopLQkc/td4UpYBI0f6HHlfYmizcf9/bu1iBWAMrRrP9iXBdskDGOcgWRNsz4pZUqZsUBRnQdQjQMyCBBjyKj8W3QWc4d004tyzhSZyEFxOCOuK1E3hdInVqRdyBOE2K/cp7K9IoovyLppjZZFjV3mRLIdBSWyleh8het3SCporXQOikNeTo7SqFIGIG4fir3FxqizxgZqiIn3vW11SDxp/IxfsoU1WWe6z/cevAIOpmdmoa2mnXIU/u6m6dGDyDkJJPx4jzMsRe7QhfSM8k84exjCNv2K0MaGr64MqKoeCBRkkq8btdiEwSYrgNZoqgBX++u+elfR1hsAZUcOHdheiA5UJcsacc/jNlv44PGzpIoxwk1USb9LeMSsAc7hiOk5iB7fV8My/yCOcwHeR/41zNbOb26S+BOsB4/jPr+CFqKgyAC4nCv9LjEX9hcUYri2Sm3zwrbvW/+4k57VsjA9A8v1iAPzL3ErScA8RGTSpIZS4IFiG3YVOPb76RFU0CM+wfEyyDQzlvf611qcPl7dnQmI/TO4DzvnfHBz43CHzk3YtIPbxAfOW9NgU3eSeMHNcxgrTQBqXC0MZhAE+6MxkKvEngCN6v1g7angQQ1JXGsTCbAwhzDAKxHIfIOfMr+j+8BZZlM/DZUaZTumShdu4pQXvLhteHmXlg2ecFbHtjd6EvhoUGrzAhKGgcZ4hncdSA/b8Oi52pD7sn4kV9EgbfYmo5H46nxISxso/vFzoQugHVFZw2VNRsMJd17Be0OJGYhUrENX6k0jw1ddBCDLggpb4K6uMXmt3BdXJdXTyxeP9WxheLlwreEYdvApl7JGsx+vNWMUXTHbyYHI+u78Oiye5lhOFYwQrQhSR6sV49Y4Fa3Wmyhoc2EdaswRVoB2s6hEN0hwwMrvpC42HRE/te8EnEofpEX+N0ENJKheTcdcSdQ1oD8VpwBAhzfuObirr8koTyV+B6Nk/RTgODlhOUwKpwHALX9Y1tVOs1e3xDVvklSANDiXbzEn1M8ysCzriqQAvxhHjMI9TRKPaXmNcbMvBo4TttIYV1osb4O51MfOjXlPIeflnwsMbzMBvZ5Qx8CwBNP9CqtM562JXJjrucscHB4yO8pRReCpaAvBliOjV3veAjIFg84Hnwb/saBEwXHDqEYG2Aelyfrik/u0GxXjozcBUBeyEm3JZxewQff3BJQqp580IXbg2KZxIPdi6dN5gJtFX3qE/1yP9+x7dSAEpAE7A==",
+          "additionalFields": {
+            "package_name": "ccip_offramp",
+            "module_name": "offramp",
+            "function": "set_ocr3_config"
+          }
+        }
+      ]
+    },
+    {
+      "chainSelector": 4741433654826277614,
+      "transactions": [
+        {
+          "contractType": "",
+          "tags": [
+            "changeset:96d82514-23f4-40c0-87f3-9ef247a41a56"
+          ],
+          "to": "0x20f808de3375db34d17cc946ec6b43fc26962f6afa125182dc903359756caf6b",
+          "data": "IAAKdVfQ4xR16hRoc+RstolB9UXYJXqSQajia74uKP4cAQUAECCR/MqRkyz0Mq5tZmcud2XUESKBwwR8jRscaXgDSGGq/SD4kblzvUKxj+IeY1MpcqqYqxmLPtwnT19/g0gAXBD3ViAvplbAdIHy4RTgWRQ+oGbI7bq+qXdJApCTF5VsvUTKfCAxPIbzl90nopLQkc/td4UpYBI0f6HHlfYmizcf9/bu1iBWAMrRrP9iXBdskDGOcgWRNsz4pZUqZsUBRnQdQjQMyCBBjyKj8W3QWc4d004tyzhSZyEFxOCOuK1E3hdInVqRdyBOE2K/cp7K9IoovyLppjZZFjV3mRLIdBSWyleh8het3SCporXQOikNeTo7SqFIGIG4fir3FxqizxgZqiIn3vW11SDxp/IxfsoU1WWe6z/cevAIOpmdmoa2mnXIU/u6m6dGDyDkJJPx4jzMsRe7QhfSM8k84exjCNv2K0MaGr64MqKoeCBRkkq8btdiEwSYrgNZoqgBX++u+elfR1hsAZUcOHdheiA5UJcsacc/jNlv44PGzpIoxwk1USb9LeMSsAc7hiOk5iB7fV8My/yCOcwHeR/41zNbOb26S+BOsB4/jPr+CFqKgyAC4nCv9LjEX9hcUYri2Sm3zwrbvW/+4k57VsjA9A8v1iAPzL3ErScA8RGTSpIZS4IFiG3YVOPb76RFU0CM+wfEyyDQzlvf611qcPl7dnQmI/TO4DzvnfHBz43CHzk3YtIPbxAfOW9NgU3eSeMHNcxgrTQBqXC0MZhAE+6MxkKvEngCN6v1g7angQQ1JXGsTCbAwhzDAKxHIfIOfMr+j+8BZZlM/DZUaZTumShdu4pQXvLhteHmXlg2ecFbHtjd6EvhoUGrzAhKGgcZ4hncdSA/b8Oi52pD7sn4kV9EgbfYmo5H46nxISxso/vFzoQugHVFZw2VNRsMJd17Be0OJGYhUrENX6k0jw1ddBCDLggpb4K6uMXmt3BdXJdXTyxeP9WxheLlwreEYdvApl7JGsx+vNWMUXTHbyYHI+u78Oiye5lhOFYwQrQhSR6sV49Y4Fa3Wmyhoc2EdaswRVoB2s6hEN0hwwMrvpC42HRE/te8EnEofpEX+N0ENJKheTcdcSdQ1oD8VpwBAhzfuObirr8koTyV+B6Nk/RTgODlhOUwKpwHALX9Y1tVOs1e3xDVvklSANDiXbzEn1M8ysCzriqQAvxhHjMI9TRKPaXmNcbMvBo4TttIYV1osb4O51MfOjXlPIeflnwsMbzMBvZ5Qx8CwBNP9CqtM562JXJjrucscHB4yO8pRReCpaAvBliOjV3veAjIFg84Hnwb/saBEwXHDqEYG2Aelyfrik/u0GxXjozcBUBeyEm3JZxewQff3BJQqp580IXbg2KZxIPdi6dN5gJtFX3qE/1yP9+x7dSAEpAE7A==",
+          "additionalFields": {
+            "package_name": "ccip_offramp",
+            "module_name": "offramp",
+            "function": "set_ocr3_config"
+          }
+        }
+      ]
+    },
+    {
+      "chainSelector": 5009297550715157269,
+      "transactions": [
+        {
+          "contractType": "CCIPHome",
+          "tags": [
+            "changeset:81f84cfe-d56e-4120-8e62-f04f57f0138d"
+          ],
+          "to": "0x76a443768A5e3B8d1AED0105FC250877841Deb40",
+          "data": "9ELImgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBzPTJsgCa7gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABB9Ndl9h1eginTlQUS4QWdK5tcojFfJoinuUoNRqJ1EWS6iGWOaHxySOvjZDu8tAWjF6Iesj9surVvSggsQCkrrbwJk78oP+O6Zq8hejjfzPsywFxMF9Eru4DH9yf2NyZHa+I5rIgpOBr2sstL0uMcfDZ6e6/slukvhK93xWflLPBdRtZex/XVx5hoAyE4iB0G+rRDoe+looDnQW6cxKdwg84RsGHu+lBTB8XCwnTiV39ZKqk3pP/+o3dc9kmms/d+7zxpA8MHTl3EYzeEHr++1t+ZAnF1+ckdrXXxT+wuTC476pgT5zS4UWYm3ombd2CO2R7nsRmf4IhRq33/I4mvpvu6JuJuHoL+sbsSf8jYrSj+yR7ZnNa9z1nuvy07h2+8ZknIuTtsPizett5rmXu20Womz3kaSdC8zxmptwIqyxK9je+8pjhNQBD9a1bT3z/JmKgvshYSiA54w5eWTe3x+AEjVyMKROms4h1w07Yo7vc8I06w/eKHs3WhjRgJNesLxBfrMN2Zqq8jTFlsnTDGsypxDZ0BdiaFNlx/z0GKjO2r0xxFkjMNg1jPNydxxsZLLvzrbpecK+Y+G9bwwu5AjwiXN/IQ3QhPEIpEMmzHqHWacSOqUnptiR7FGeam3ZRBgSIpCDOaoC+h29Zm7zaN/3mJUc2jybl3toNYVkNo6AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACIeyJnYXNQcmljZURldmlhdGlvblBQQiI6IjQwMDAwMDAwMDAiLCJkYUdhc1ByaWNlRGV2aWF0aW9uUFBCIjoiNDAwMDAwMDAwMCIsIm9wdGltaXN0aWNDb25maXJtYXRpb25zIjoxLCJjaGFpbkZlZURldmlhdGlvbkRpc2FibGVkIjp0cnVlfQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+          "additionalFields": {
+            "value": 0
+          }
+        }
+      ]
+    }
+  ]
+}
