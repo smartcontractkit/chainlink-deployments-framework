@@ -139,17 +139,16 @@ func loadRPCManifest(ctx context.Context, source string, lggr logger.Logger) (*r
 // config has an empty rpcs list; every other field is left untouched. The manifest is only
 // fetched if at least one loaded network needs it, so domains where every network fully defines
 // its own RPCs never make a network call. The merge is opt-in per domain: it only runs when the
-// domain config sets rpc_manifest_url (an HTTP(S) URL, file:// URI or local path). The
-// CLD_RPC_MANIFEST_URL env var, if set, overrides it (e.g. to point at a local file). The source
-// is never logged or put in errors, since it may carry credentials.
+// domain config sets rpc_manifest_url (an HTTP(S) URL, file:// URI or local path). The source is
+// never logged or put in errors, since it may carry credentials.
 func mergeNetworksFromManifest(
 	ctx context.Context, cfg *cfgnet.Config, domainManifestURL string, lggr logger.Logger,
 ) (*cfgnet.Config, error) {
 	manifestURL := strings.TrimSpace(domainManifestURL)
-	if override := strings.TrimSpace(os.Getenv(rpcmanifest.EnvRPCManifestURL)); override != "" {
-		manifestURL = override
-	}
-	if manifestURL == "" || !anyNetworkMissingRPCs(cfg) {
+	if manifestURL == "" || !anyNetworkNeedsManifest(cfg) {
+		if manifestURL == "" && anyNetworkAppends(cfg) {
+			lggr.Warn("networks set rpcs_mode: append but no rpc_manifest_url is configured; using their yaml rpcs only")
+		}
 		if err := cfg.Validate(); err != nil {
 			return nil, fmt.Errorf("validate network config: %w", err)
 		}
@@ -172,10 +171,11 @@ func mergeNetworksFromManifest(
 	return merged, nil
 }
 
-// anyNetworkMissingRPCs reports whether any network in cfg has no RPCs defined in yaml.
-func anyNetworkMissingRPCs(cfg *cfgnet.Config) bool {
+// anyNetworkNeedsManifest reports whether any network in cfg has no RPCs defined in yaml or asks
+// for the manifest's RPCs to be appended to its own.
+func anyNetworkNeedsManifest(cfg *cfgnet.Config) bool {
 	for _, network := range cfg.Networks() {
-		if len(network.RPCs) == 0 {
+		if len(network.RPCs) == 0 || network.RPCsMode == cfgnet.RPCsModeAppend {
 			return true
 		}
 	}
@@ -191,4 +191,15 @@ func isGeneratedNetworkConfig(path string) bool {
 	name := filepath.Base(path)
 
 	return strings.HasSuffix(name, ".merged.yaml") || strings.HasSuffix(name, ".merged.yml")
+}
+
+// anyNetworkAppends reports whether any network in cfg has rpcs_mode: append.
+func anyNetworkAppends(cfg *cfgnet.Config) bool {
+	for _, network := range cfg.Networks() {
+		if network.RPCsMode == cfgnet.RPCsModeAppend {
+			return true
+		}
+	}
+
+	return false
 }

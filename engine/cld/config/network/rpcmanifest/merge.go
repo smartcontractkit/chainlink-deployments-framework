@@ -3,6 +3,7 @@ package rpcmanifest
 import (
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
@@ -19,8 +20,11 @@ type MergeOptions struct {
 // MergeInto applies RPC proxy manifest data onto a YAML-loaded network config.
 //
 // For each network in yamlCfg:
-//   - If YAML rpcs is non-empty, YAML rpcs are kept (override).
-//   - Otherwise rpcs are populated from the manifest (load-balanced proxy + per-node URLs).
+//   - If YAML rpcs is non-empty and rpcs_mode is "replace" (the default), YAML rpcs are kept.
+//   - If YAML rpcs is non-empty and rpcs_mode is "append", YAML rpcs come first, followed by the
+//     manifest's provider RPCs (skipping any with the same HTTP URL).
+//   - Otherwise rpcs are populated from the manifest (one provider-specific proxy URL per node;
+//     the load-balanced chain-level URL is not used).
 //
 // All other fields (block_explorer, metadata, etc.) always come from YAML, untouched — the
 // manifest is only ever used to fill in rpcs.
@@ -72,27 +76,53 @@ func mergeNetworkWithOptions(
 	}
 
 	entry, inManifest := manifest.Chain(network.ChainSelector)
-	if len(network.RPCs) == 0 {
+	appendMode := len(network.RPCs) > 0 && network.RPCsMode == cfgnet.RPCsModeAppend
+	if len(network.RPCs) == 0 || appendMode {
 		if !inManifest {
 			if opts.SkipMissingManifestChains {
-				lggr.Warnw("skipping chain not present in rpc manifest",
+				lggr.Warnw("chain not present in rpc manifest",
 					"chain_selector", network.ChainSelector,
 				)
 
-				return cfgnet.Network{}, false, nil
+				// A chain with yaml rpcs is still usable without the manifest.
+				return network, appendMode, nil
 			}
 
 			return cfgnet.Network{}, false, fmt.Errorf(
-				"chain selector %d has no rpcs in YAML and is not present in rpc manifest",
+				"chain selector %d uses the rpc manifest (empty rpcs or rpcs_mode: append) but is not present in rpc manifest",
 				network.ChainSelector,
 			)
 		}
-		network.RPCs = RPCsForChain(network.ChainSelector, entry)
+
+		discovered := RPCsForChain(network.ChainSelector, entry)
+		if len(discovered) == 0 && !appendMode {
+			return cfgnet.Network{}, false, fmt.Errorf(
+				"chain selector %d has no rpcs in YAML and no provider nodes in rpc manifest",
+				network.ChainSelector,
+			)
+		}
+
+		network.RPCs = mergeRPCs(network.RPCs, discovered)
 		lggr.Infow("populated rpcs from manifest",
 			"chain_selector", network.ChainSelector,
 			"rpc_count", len(network.RPCs),
 		)
 	}
+	// The result is a final list; clear the mode so re-writing it as yaml doesn't append twice.
+	network.RPCsMode = ""
 
 	return network, true, nil
+}
+
+// mergeRPCs returns the yaml RPCs followed by any discovered RPCs whose HTTP URL isn't already
+// listed.
+func mergeRPCs(yaml, discovered []cfgnet.RPC) []cfgnet.RPC {
+	out := slices.Clone(yaml)
+	for _, rpc := range discovered {
+		if !slices.ContainsFunc(out, func(r cfgnet.RPC) bool { return r.HTTPURL == rpc.HTTPURL }) {
+			out = append(out, rpc)
+		}
+	}
+
+	return out
 }

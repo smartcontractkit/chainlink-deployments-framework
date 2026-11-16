@@ -1,11 +1,6 @@
 package rpcmanifest
 
-const (
-	// EnvRPCManifestURL overrides the domain's rpc_manifest_url (e.g. to use a local file). RPC
-	// discovery is opt-in per domain; no default source is built in.
-	EnvRPCManifestURL = "CLD_RPC_MANIFEST_URL"
-	rpcProxyBase      = "https://rpcs.cldev.sh"
-)
+const rpcProxyBase = "https://rpcs.cldev.sh"
 
 // ChainEntry is one chain from the RPC proxy manifest (rpcs.json).
 type ChainEntry struct {

@@ -15,13 +15,27 @@ const (
 	NetworkTypeTestnet NetworkType = "testnet"
 )
 
+// RPCsMode controls how a network's yaml rpcs combine with RPCs discovered from an RPC manifest.
+type RPCsMode string
+
+const (
+	// RPCsModeReplace uses the yaml rpcs as-is and ignores the manifest (the default). With an
+	// empty rpcs list, the manifest fills the network instead.
+	RPCsModeReplace RPCsMode = "replace"
+	// RPCsModeAppend keeps the yaml rpcs first and appends the manifest's provider RPCs after them.
+	RPCsModeAppend RPCsMode = "append"
+)
+
 // Network represents a network configuration.
 type Network struct {
 	Type          NetworkType   `yaml:"type"`
 	ChainSelector uint64        `yaml:"chain_selector"`
 	BlockExplorer BlockExplorer `yaml:"block_explorer"`
 	RPCs          []RPC         `yaml:"rpcs"`
-	Metadata      any           `yaml:"metadata"`
+	// RPCsMode is "replace" (default) or "append"; see RPCsMode. It only matters when the domain
+	// has an RPC manifest configured.
+	RPCsMode RPCsMode `yaml:"rpcs_mode,omitempty"`
+	Metadata any      `yaml:"metadata"`
 }
 
 // ChainFamily returns the family of the network based on its chain selector.
@@ -64,6 +78,12 @@ func (n *Network) ValidateStructure() error {
 
 	if n.ChainSelector == 0 {
 		return errors.New("chain selector is required")
+	}
+
+	switch n.RPCsMode {
+	case "", RPCsModeReplace, RPCsModeAppend:
+	default:
+		return fmt.Errorf("rpcs_mode %q is not recognized (must be %q or %q)", n.RPCsMode, RPCsModeReplace, RPCsModeAppend)
 	}
 
 	return nil

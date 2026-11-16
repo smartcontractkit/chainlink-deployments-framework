@@ -7,21 +7,14 @@ import (
 	cfgnet "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/network"
 )
 
-const (
-	cllProxyRPCName          = "CLL Proxy"
-	preferredTransportScheme = "http"
-)
+const preferredTransportScheme = "http"
 
-// RPCsForChain builds network RPC entries from a manifest chain entry.
+// RPCsForChain builds one network RPC entry per provider node in a manifest chain entry. It
+// deliberately does not include the chain-level load-balanced proxy URL
+// (https://rpcs.cldev.sh/{selector}): CLD wants to talk to a specific provider, not whichever
+// one the load balancer picks. Nodes without a numerical ID have no proxy path and are skipped.
 func RPCsForChain(selector uint64, entry ChainEntry) []cfgnet.RPC {
-	rpcs := make([]cfgnet.RPC, 0, 1+len(entry.Nodes))
-
-	rpcs = append(rpcs, cfgnet.RPC{
-		RPCName:            cllProxyRPCName,
-		PreferredURLScheme: preferredTransportScheme,
-		HTTPURL:            proxyHTTPURL(selector, ""),
-		WSURL:              proxyWSURL(selector, ""),
-	})
+	rpcs := make([]cfgnet.RPC, 0, len(entry.Nodes))
 
 	for _, node := range entry.Nodes {
 		numericalID := node.ID.Numerical

@@ -14,7 +14,6 @@ import (
 
 	cfgdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/domain"
 	cfgnet "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/network"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/network/rpcmanifest"
 	fdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 )
 
@@ -303,36 +302,13 @@ func Test_LoadNetworks_WithManifest(t *testing.T) {
 	net, err := got.NetworkBySelector(16015286601757825753)
 	require.NoError(t, err)
 	require.NotEmpty(t, net.RPCs)
-	assert.Equal(t, "CLL Proxy", net.RPCs[0].RPCName)
-}
-
-func Test_LoadNetworks_EnvOverridesDomainManifest(t *testing.T) {
-	manifestPath, err := filepath.Abs(filepath.Join("network", "rpcmanifest", "testdata", "rpcs.json"))
-	require.NoError(t, err)
-
-	// The domain points at a manifest that doesn't exist; the env var override must win.
-	t.Setenv(rpcmanifest.EnvRPCManifestURL, manifestPath)
-
-	dom, _ := setupConfigDirs(t)
-	networkYAML := []byte(`networks:
-  - type: testnet
-    chain_selector: 16015286601757825753
-`)
-	require.NoError(t, os.WriteFile(filepath.Join(dom.ConfigNetworksDirPath(), "testnet.yaml"), networkYAML, filePerms))
-	writeDomainConfigWithManifest(t, dom, filepath.Join(t.TempDir(), "does-not-exist.json"))
-
-	got, err := LoadNetworks("staging_testnet", dom, logger.Test(t))
-	require.NoError(t, err)
-
-	net, err := got.NetworkBySelector(16015286601757825753)
-	require.NoError(t, err)
-	assert.NotEmpty(t, net.RPCs)
+	assert.Equal(t, "LinkPool (linkpool1)", net.RPCs[0].RPCName)
 }
 
 func Test_LoadNetworks_EmptyRPCsWithoutOptInFailsValidation(t *testing.T) {
-	// Opt-in: with neither rpc_manifest_url nor the env var set, empty rpcs must not trigger any
-	// manifest fetch.
-	t.Setenv(rpcmanifest.EnvRPCManifestURL, "")
+	t.Parallel()
+
+	// Opt-in: without rpc_manifest_url, empty rpcs must not trigger any manifest fetch.
 
 	dom, _ := setupConfigDirs(t)
 	networkYAML := []byte(`networks:
@@ -450,4 +426,72 @@ func Test_loadNetworkConfig_ignoresMergedYAML(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, got.Networks(), 1)
 	assert.Equal(t, uint64(16015286601757825753), got.Networks()[0].ChainSelector)
+}
+
+func Test_LoadNetworks_RPCsModeAppend(t *testing.T) {
+	t.Parallel()
+
+	manifestPath, err := filepath.Abs(filepath.Join("network", "rpcmanifest", "testdata", "rpcs.json"))
+	require.NoError(t, err)
+
+	dom, _ := setupConfigDirs(t)
+	networkYAML := []byte(`networks:
+  - type: testnet
+    chain_selector: 16015286601757825753
+    rpcs_mode: append
+    rpcs:
+      - rpc_name: Mine
+        preferred_url_scheme: http
+        http_url: https://mine.example.com
+`)
+	require.NoError(t, os.WriteFile(filepath.Join(dom.ConfigNetworksDirPath(), "testnet.yaml"), networkYAML, filePerms))
+	writeDomainConfigWithManifest(t, dom, manifestPath)
+
+	got, err := LoadNetworks("staging_testnet", dom, logger.Test(t))
+	require.NoError(t, err)
+
+	net, err := got.NetworkBySelector(16015286601757825753)
+	require.NoError(t, err)
+	require.Len(t, net.RPCs, 3)
+	assert.Equal(t, "Mine", net.RPCs[0].RPCName)
+}
+
+func Test_LoadNetworks_RPCsModeAppendWithoutManifestUsesYAMLRPCs(t *testing.T) {
+	t.Parallel()
+
+	dom, _ := setupConfigDirs(t)
+	networkYAML := []byte(`networks:
+  - type: testnet
+    chain_selector: 16015286601757825753
+    rpcs_mode: append
+    rpcs:
+      - rpc_name: Mine
+        preferred_url_scheme: http
+        http_url: https://mine.example.com
+`)
+	require.NoError(t, os.WriteFile(filepath.Join(dom.ConfigNetworksDirPath(), "testnet.yaml"), networkYAML, filePerms))
+	writeDomainConfigWithManifest(t, dom, "")
+
+	got, err := LoadNetworks("staging_testnet", dom, logger.Test(t))
+	require.NoError(t, err)
+
+	net, err := got.NetworkBySelector(16015286601757825753)
+	require.NoError(t, err)
+	require.Len(t, net.RPCs, 1)
+}
+
+func Test_LoadNetworks_InvalidRPCsMode(t *testing.T) {
+	t.Parallel()
+
+	dom, _ := setupConfigDirs(t)
+	networkYAML := []byte(`networks:
+  - type: testnet
+    chain_selector: 16015286601757825753
+    rpcs_mode: sideways
+`)
+	require.NoError(t, os.WriteFile(filepath.Join(dom.ConfigNetworksDirPath(), "testnet.yaml"), networkYAML, filePerms))
+	writeDomainConfigWithManifest(t, dom, "")
+
+	_, err := LoadNetworks("staging_testnet", dom, logger.Test(t))
+	require.ErrorContains(t, err, "rpcs_mode")
 }

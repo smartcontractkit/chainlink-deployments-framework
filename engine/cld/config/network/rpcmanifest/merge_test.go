@@ -37,12 +37,15 @@ func TestRPCsForChain(t *testing.T) {
 	require.True(t, ok)
 
 	rpcs := rpcmanifest.RPCsForChain(16015286601757825753, entry)
-	require.Len(t, rpcs, 3)
-	assert.Equal(t, "CLL Proxy", rpcs[0].RPCName)
-	assert.Equal(t, "https://rpcs.cldev.sh/16015286601757825753", rpcs[0].HTTPURL)
-	assert.Equal(t, "wss://rpcs.cldev.sh/16015286601757825753", rpcs[0].WSURL)
-	assert.Equal(t, "LinkPool (linkpool1)", rpcs[1].RPCName)
-	assert.Equal(t, "https://rpcs.cldev.sh/16015286601757825753/linkpool1", rpcs[1].HTTPURL)
+	// Provider-specific endpoints only; no load-balanced chain-level URL.
+	require.Len(t, rpcs, 2)
+	assert.Equal(t, "LinkPool (linkpool1)", rpcs[0].RPCName)
+	assert.Equal(t, "https://rpcs.cldev.sh/16015286601757825753/linkpool1", rpcs[0].HTTPURL)
+	assert.Equal(t, "wss://rpcs.cldev.sh/16015286601757825753/linkpool1", rpcs[0].WSURL)
+	assert.Equal(t, "Alchemy (alchemy1)", rpcs[1].RPCName)
+	for _, rpc := range rpcs {
+		assert.NotEqual(t, "https://rpcs.cldev.sh/16015286601757825753", rpc.HTTPURL)
+	}
 }
 
 func TestMergeInto_PopulatesMissingRPCs(t *testing.T) {
@@ -63,8 +66,8 @@ func TestMergeInto_PopulatesMissingRPCs(t *testing.T) {
 
 	net, err := merged.NetworkBySelector(16015286601757825753)
 	require.NoError(t, err)
-	require.Len(t, net.RPCs, 3)
-	assert.Equal(t, "CLL Proxy", net.RPCs[0].RPCName)
+	require.Len(t, net.RPCs, 2)
+	assert.Equal(t, "LinkPool (linkpool1)", net.RPCs[0].RPCName)
 }
 
 func TestMergeInto_YAMLOverridesManifestRPCs(t *testing.T) {
@@ -94,6 +97,84 @@ func TestMergeInto_YAMLOverridesManifestRPCs(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, net.RPCs, 1)
 	assert.Equal(t, "Custom Override", net.RPCs[0].RPCName)
+}
+
+func TestMergeInto_AppendMode(t *testing.T) {
+	t.Parallel()
+
+	manifest, err := rpcmanifest.Load(context.Background(), "testdata/rpcs.json")
+	require.NoError(t, err)
+
+	own := cfgnet.RPC{RPCName: "Mine", PreferredURLScheme: "http", HTTPURL: "https://mine.example.com"}
+	yamlCfg := cfgnet.NewConfig([]cfgnet.Network{
+		{
+			Type:          cfgnet.NetworkTypeTestnet,
+			ChainSelector: 16015286601757825753,
+			RPCs:          []cfgnet.RPC{own},
+			RPCsMode:      cfgnet.RPCsModeAppend,
+		},
+	})
+
+	merged, err := rpcmanifest.MergeInto(yamlCfg, manifest, logger.Test(t))
+	require.NoError(t, err)
+
+	net, err := merged.NetworkBySelector(16015286601757825753)
+	require.NoError(t, err)
+	require.Len(t, net.RPCs, 3)
+	assert.Equal(t, "Mine", net.RPCs[0].RPCName, "own rpcs come first")
+	assert.Equal(t, "LinkPool (linkpool1)", net.RPCs[1].RPCName)
+	assert.Equal(t, "Alchemy (alchemy1)", net.RPCs[2].RPCName)
+	assert.Empty(t, net.RPCsMode, "merged result is a final list")
+}
+
+func TestMergeInto_AppendModeSkipsDuplicateURL(t *testing.T) {
+	t.Parallel()
+
+	manifest, err := rpcmanifest.Load(context.Background(), "testdata/rpcs.json")
+	require.NoError(t, err)
+
+	yamlCfg := cfgnet.NewConfig([]cfgnet.Network{
+		{
+			Type:          cfgnet.NetworkTypeTestnet,
+			ChainSelector: 16015286601757825753,
+			RPCs: []cfgnet.RPC{
+				{RPCName: "Pinned", HTTPURL: "https://rpcs.cldev.sh/16015286601757825753/linkpool1"},
+			},
+			RPCsMode: cfgnet.RPCsModeAppend,
+		},
+	})
+
+	merged, err := rpcmanifest.MergeInto(yamlCfg, manifest, logger.Test(t))
+	require.NoError(t, err)
+
+	net, err := merged.NetworkBySelector(16015286601757825753)
+	require.NoError(t, err)
+	require.Len(t, net.RPCs, 2)
+	assert.Equal(t, "Pinned", net.RPCs[0].RPCName)
+	assert.Equal(t, "Alchemy (alchemy1)", net.RPCs[1].RPCName)
+}
+
+func TestMergeInto_ExplicitReplaceKeepsYAMLRPCs(t *testing.T) {
+	t.Parallel()
+
+	manifest, err := rpcmanifest.Load(context.Background(), "testdata/rpcs.json")
+	require.NoError(t, err)
+
+	yamlCfg := cfgnet.NewConfig([]cfgnet.Network{
+		{
+			Type:          cfgnet.NetworkTypeTestnet,
+			ChainSelector: 16015286601757825753,
+			RPCs:          []cfgnet.RPC{{RPCName: "Mine", HTTPURL: "https://mine.example.com"}},
+			RPCsMode:      cfgnet.RPCsModeReplace,
+		},
+	})
+
+	merged, err := rpcmanifest.MergeInto(yamlCfg, manifest, logger.Test(t))
+	require.NoError(t, err)
+
+	net, err := merged.NetworkBySelector(16015286601757825753)
+	require.NoError(t, err)
+	require.Len(t, net.RPCs, 1)
 }
 
 func TestMergeInto_MissingManifestChainWithoutRPCs(t *testing.T) {
