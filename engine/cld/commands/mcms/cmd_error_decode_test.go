@@ -86,8 +86,9 @@ func errorDecodeBuilder(fake *fakeBuilder) EnvironmentBuilderFunc {
 	}
 }
 
-// runErrorDecodeTest runs the command and returns stdout and stderr separately.
-func runErrorDecodeTest(t *testing.T, cmd *cobra.Command, stdin string, args ...string) (string, string, error) {
+// runErrorDecodeTest runs the command and returns what it wrote to stdout.
+// Cobra writes the usage text of a failed command to stderr, which is dropped.
+func runErrorDecodeTest(t *testing.T, cmd *cobra.Command, stdin string, args ...string) (string, error) {
 	t.Helper()
 
 	var stdout, stderr bytes.Buffer
@@ -98,7 +99,7 @@ func runErrorDecodeTest(t *testing.T, cmd *cobra.Command, stdin string, args ...
 
 	err := cmd.Execute()
 
-	return stdout.String(), stderr.String(), err
+	return stdout.String(), err
 }
 
 func writeErrorDecodeFile(t *testing.T, content string) string {
@@ -192,7 +193,7 @@ func TestErrorDecode_Output(t *testing.T) {
 				args = append(args, "--error-file", writeErrorDecodeFile(t, tt.input))
 			}
 
-			stdout, _, err := runErrorDecodeTest(t, cmd, stdin, args...)
+			stdout, err := runErrorDecodeTest(t, cmd, stdin, args...)
 
 			require.NoError(t, err)
 			if tt.format == "json" {
@@ -246,7 +247,7 @@ func TestErrorDecode_InputErrors(t *testing.T) {
 
 			cmd := newErrorDecodeTestCommand(t, Deps{EnvironmentLoader: emptyEnvLoader})
 
-			_, _, err := runErrorDecodeTest(t, cmd, tt.stdin, append([]string{"-e", "staging"}, tt.args...)...)
+			_, err := runErrorDecodeTest(t, cmd, tt.stdin, append([]string{"-e", "staging"}, tt.args...)...)
 
 			require.ErrorContains(t, err, tt.wantErr)
 		})
@@ -318,7 +319,7 @@ func TestErrorDecode_BuildParams(t *testing.T) {
 				args = append(args, "--error-file", writeErrorDecodeFile(t, input))
 			}
 
-			stdout, _, err := runErrorDecodeTest(t, cmd, stdin, args...)
+			stdout, err := runErrorDecodeTest(t, cmd, stdin, args...)
 
 			require.Equal(t, tt.wantCalls, builder.calls)
 
