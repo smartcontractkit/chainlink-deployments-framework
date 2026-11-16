@@ -232,17 +232,17 @@ func decodeRevertReasonWithStatus(execError *evm.ExecutionError, dec *ErrDecoder
 }
 
 // tryDecodeFromData attempts to decode revert data from the CustomErrorData.
+//
+// Data holds the ABI-encoded arguments without the selector, so with a selector
+// the decoder gets the selector followed by the arguments. Without a selector,
+// Data is all the revert data there is.
 func tryDecodeFromData(raw *evm.CustomErrorData, dec *ErrDecoder) (string, bool) {
-	if len(raw.Data) >= 4 {
-		if reason, decoded := decodeRevertDataFromBytes(raw.Data, dec, ""); decoded {
-			return reason, true
-		}
+	if raw.Selector != emptySelector {
+		return decodeRevertDataFromBytes(raw.Combined(), dec, "")
 	}
 
-	if raw.Selector != emptySelector {
-		if combined := raw.Combined(); len(combined) > 4 {
-			return decodeRevertDataFromBytes(combined, dec, "")
-		}
+	if len(raw.Data) >= 4 {
+		return decodeRevertDataFromBytes(raw.Data, dec, "")
 	}
 
 	return "", false

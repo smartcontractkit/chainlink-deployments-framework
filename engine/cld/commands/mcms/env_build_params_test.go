@@ -427,7 +427,7 @@ func TestBuildParamsFlag_OnlyOnSupportedCommands(t *testing.T) {
 		"convert-upf":         true,
 		"analyze-proposal":    true,
 		"execute-fork":        false,
-		"error-decode-evm":    false,
+		"error-decode-evm":    true,
 		"hooks":               false,
 	}
 
