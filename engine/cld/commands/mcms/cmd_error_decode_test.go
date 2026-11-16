@@ -259,83 +259,77 @@ func TestErrorDecode_BuildParams(t *testing.T) {
 	selector, arg := errorDecodeTestRevert(t)
 	input := fmt.Sprintf(`{"execution_error":{"RevertReasonRaw":{"selector":%q,"data":%q}}}`, selector, arg)
 
-	t.Run("document from variable builds the environment and decodes", func(t *testing.T) {
-		t.Parallel()
+	tests := []struct {
+		name string
+		// envDoc is the value of MCMS_ENV_BUILD_PARAMS. Empty means the variable is not set.
+		envDoc string
+		// viaStdin passes the input on stdin with --error-file -, and in a file otherwise.
+		viaStdin bool
+		// args are added to the command line.
+		args      []string
+		wantErr   string
+		wantCalls int
+	}{
+		{
+			name:      "document from variable builds the environment and decodes",
+			envDoc:    buildParamsDoc,
+			wantCalls: 1,
+		},
+		{
+			name:      "document from flag works with stdin",
+			viaStdin:  true,
+			args:      []string{"--env-build-params", buildParamsDoc},
+			wantCalls: 1,
+		},
+		{
+			name:    "document cannot be combined with -e",
+			envDoc:  buildParamsDoc,
+			args:    []string{"-e", "staging"},
+			wantErr: "cannot be combined with build params",
+		},
+		{
+			name:    "document for another domain is rejected",
+			envDoc:  strings.Replace(buildParamsDoc, "domain: testdomain", "domain: other", 1),
+			wantErr: `build params are for domain "other"`,
+		},
+		{
+			name:    "without a document -e stays required",
+			wantErr: `required flag(s) "environment" not set`,
+		},
+	}
 
-		builder := &fakeBuilder{}
-		cmd := newErrorDecodeTestCommand(t, Deps{
-			EnvironmentLoader:  failingEnvLoader(t),
-			EnvironmentBuilder: errorDecodeBuilder(builder),
-			Getenv:             getenvFrom(map[string]string{"MCMS_ENV_BUILD_PARAMS": buildParamsDoc}),
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			builder := &fakeBuilder{}
+			cmd := newErrorDecodeTestCommand(t, Deps{
+				EnvironmentLoader:  failingEnvLoader(t),
+				EnvironmentBuilder: errorDecodeBuilder(builder),
+				Getenv:             getenvFrom(map[string]string{"MCMS_ENV_BUILD_PARAMS": tt.envDoc}),
+			})
+
+			args := append([]string{"--format", "json"}, tt.args...)
+			stdin := ""
+			if tt.viaStdin {
+				args = append(args, "--error-file", "-")
+				stdin = input
+			} else {
+				args = append(args, "--error-file", writeErrorDecodeFile(t, input))
+			}
+
+			stdout, _, err := runErrorDecodeTest(t, cmd, stdin, args...)
+
+			require.Equal(t, tt.wantCalls, builder.calls)
+
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, buildParamsEnv, builder.params.Environment)
+			require.Contains(t, stdout, "InsufficientFunds(7)")
 		})
-
-		stdout, _, err := runErrorDecodeTest(t, cmd, "", "--error-file", writeErrorDecodeFile(t, input), "--format", "json")
-
-		require.NoError(t, err)
-		require.Equal(t, 1, builder.calls)
-		require.Equal(t, buildParamsEnv, builder.params.Environment)
-		require.Contains(t, stdout, "InsufficientFunds(7)")
-	})
-
-	t.Run("document from flag works with stdin", func(t *testing.T) {
-		t.Parallel()
-
-		builder := &fakeBuilder{}
-		cmd := newErrorDecodeTestCommand(t, Deps{
-			EnvironmentLoader:  failingEnvLoader(t),
-			EnvironmentBuilder: errorDecodeBuilder(builder),
-			Getenv:             getenvFrom(nil),
-		})
-
-		stdout, _, err := runErrorDecodeTest(t, cmd, input,
-			"--error-file", "-", "--format", "json", "--env-build-params", buildParamsDoc)
-
-		require.NoError(t, err)
-		require.Equal(t, 1, builder.calls)
-		require.Contains(t, stdout, "InsufficientFunds(7)")
-	})
-
-	t.Run("document cannot be combined with -e", func(t *testing.T) {
-		t.Parallel()
-
-		builder := &fakeBuilder{}
-		cmd := newErrorDecodeTestCommand(t, Deps{
-			EnvironmentLoader:  failingEnvLoader(t),
-			EnvironmentBuilder: errorDecodeBuilder(builder),
-			Getenv:             getenvFrom(map[string]string{"MCMS_ENV_BUILD_PARAMS": buildParamsDoc}),
-		})
-
-		_, _, err := runErrorDecodeTest(t, cmd, "", "-e", "staging", "--error-file", writeErrorDecodeFile(t, input))
-
-		require.ErrorContains(t, err, "cannot be combined with build params")
-		require.Zero(t, builder.calls)
-	})
-
-	t.Run("document for another domain is rejected", func(t *testing.T) {
-		t.Parallel()
-
-		builder := &fakeBuilder{}
-		cmd := newErrorDecodeTestCommand(t, Deps{
-			EnvironmentLoader:  failingEnvLoader(t),
-			EnvironmentBuilder: errorDecodeBuilder(builder),
-			Getenv: getenvFrom(map[string]string{
-				"MCMS_ENV_BUILD_PARAMS": strings.Replace(buildParamsDoc, "domain: testdomain", "domain: other", 1),
-			}),
-		})
-
-		_, _, err := runErrorDecodeTest(t, cmd, "", "--error-file", writeErrorDecodeFile(t, input))
-
-		require.ErrorContains(t, err, `build params are for domain "other"`)
-		require.Zero(t, builder.calls)
-	})
-
-	t.Run("without a document -e stays required", func(t *testing.T) {
-		t.Parallel()
-
-		cmd := newErrorDecodeTestCommand(t, Deps{EnvironmentLoader: failingEnvLoader(t), Getenv: getenvFrom(nil)})
-
-		_, _, err := runErrorDecodeTest(t, cmd, "", "--error-file", writeErrorDecodeFile(t, input))
-
-		require.ErrorContains(t, err, `required flag(s) "environment" not set`)
-	})
+	}
 }
