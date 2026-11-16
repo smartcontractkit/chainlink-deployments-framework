@@ -4,113 +4,148 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math/big"
+	"strconv"
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum/ethclient"
 	chainsel "github.com/smartcontractkit/chain-selectors"
+	ctf "github.com/smartcontractkit/chainlink-testing-framework/framework"
+	ctfblockchain "github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
+	"github.com/smartcontractkit/freeport"
 	"github.com/smartcontractkit/mcms"
 	"github.com/smartcontractkit/mcms/types"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go"
 
 	fdeployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	fconfig "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config"
+	cfgnet "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/network"
 	fdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
+)
+
+var (
+	gethTestnetChainID    = chainsel.GETH_TESTNET.EvmChainID
+	gethTestnetSelector   = chainsel.GETH_TESTNET.Selector
+	zksyncSepoliaSelector = chainsel.ETHEREUM_TESTNET_SEPOLIA_ZKSYNC_1.Selector
 )
 
 func Test_LoadForkedEnvironment(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
+	localChainHostRpcURL, localChainContainerRpcURL := startLocalChain(t, gethTestnetChainID)
+
+	type test struct {
 		name          string
 		domain        fdomain.Domain
-		env           string
+		env           fdeployment.Environment
+		envcfg        func(*test) *fconfig.Config
 		blockNumbers  map[uint64]*big.Int
+		providerType  ProviderType
 		options       []LoadEnvironmentOption
-		wantName      string
 		wantNumChains int
 		wantErr       string
-	}{
+	}
+	tests := []test{
 		{
-			name:   "Invalid Environment",
-			domain: fdomain.NewDomain("dummy", "test"),
-			env:    "non_existent_env",
-			blockNumbers: map[uint64]*big.Int{
-				1: big.NewInt(1000),
-			},
-			wantErr: "failed to load config",
-		},
-		{
-			name:   "AddressBook Failure",
-			domain: setupTest(t, setupTestConfig, setupNodes),
-			env:    "staging",
-			blockNumbers: map[uint64]*big.Int{
-				16015286601757825753: big.NewInt(1000),
-			},
-			options: []LoadEnvironmentOption{WithoutJD()},
-			wantErr: "failed to load addressbook for domain test and environment staging:",
-		},
-		{
-			name:   "DataStore Failure",
-			domain: setupTest(t, setupTestConfig, setupNodes, setupAddressbook),
-			env:    "staging",
-			blockNumbers: map[uint64]*big.Int{
-				16015286601757825753: big.NewInt(1000),
-			},
-			options: []LoadEnvironmentOption{WithoutJD()},
-			wantErr: "failed to load datastore for domain test and environment staging:",
-		},
-		{
-			name:         "Empty Block Numbers",
-			domain:       setupTest(t, setupTestConfig, setupAddressbook),
-			env:          "staging",
-			blockNumbers: map[uint64]*big.Int{},
-			wantErr:      "failed to create anvil chains",
-		},
-		{
-			name:   "Invalid Nodes File",
+			name:   "failure: empty block numbers",
 			domain: setupTest(t, setupTestConfig, setupAddressbook),
-			env:    "staging",
-			blockNumbers: map[uint64]*big.Int{
-				16015286601757825753: big.NewInt(1000),
+			env:    fdeployment.Environment{Name: "staging", Logger: logger.Nop()},
+			envcfg: func(tt *test) *fconfig.Config {
+				envcfg, err := fconfig.Load(tt.domain, tt.env.Name, tt.env.Logger)
+				require.NoError(t, err)
+				return envcfg //nolint:nlreturn
 			},
-			wantErr: "failed to load nodes",
+			blockNumbers: map[uint64]*big.Int{},
+			wantErr:      "failed to create anvil chains: no evm networks found for forking in the provided blockNumbers map",
 		},
 		{
-			name:   "OffchainClient Failure",
-			domain: setupTest(t, setupTestConfig, setupAddressbook, setupNodes),
-			env:    "staging",
-			blockNumbers: map[uint64]*big.Int{
-				16015286601757825753: big.NewInt(1000),
+			name:   "failure: bad network metadata",
+			domain: setupTest(t, setupTestConfig, setupAddressbook),
+			env:    fdeployment.Environment{Name: "staging", Logger: logger.Nop()},
+			envcfg: func(tt *test) *fconfig.Config {
+				envcfg, err := fconfig.Load(tt.domain, tt.env.Name, tt.env.Logger)
+				require.NoError(t, err)
+				envcfg.Networks = cfgnet.NewConfig([]cfgnet.Network{{
+					ChainSelector: gethTestnetSelector,
+					Metadata:      "invalid-network-metadata",
+				}})
+				return envcfg //nolint:nlreturn
 			},
-			wantErr: "failed to load offchain client",
+			wantErr: "failed to create anvil chains: failed to decode network metadata for chain selector 337944638546241824",
 		},
 		{
-			name:          "Skip ZK Sync chain",
-			domain:        setupTest(t, setupTestConfig, setupAddressbook, setupDataStore, setupNodes),
-			env:           "staging",
-			blockNumbers:  map[uint64]*big.Int{6898391096552792247: big.NewInt(1000)},
-			options:       []LoadEnvironmentOption{WithoutJD(), WithAnvilKeyAsDeployer()},
-			wantName:      "fork",
+			name:         "failure: bad provider type",
+			domain:       setupTest(t, setupTestConfig, setupAddressbook),
+			env:          fdeployment.Environment{Name: "staging", Logger: logger.Nop()},
+			providerType: ProviderType(255),
+			options:      []LoadEnvironmentOption{WithAnvilKeyAsDeployer(), OnlyLoadChainsFor([]uint64{gethTestnetSelector})},
+			envcfg: func(tt *test) *fconfig.Config {
+				envcfg, err := fconfig.Load(tt.domain, tt.env.Name, tt.env.Logger)
+				require.NoError(t, err)
+				envcfg.Networks = cfgnet.NewConfig([]cfgnet.Network{{
+					ChainSelector: gethTestnetSelector,
+					RPCs:          []cfgnet.RPC{{HTTPURL: localChainHostRpcURL}},
+				}})
+				return envcfg //nolint:nlreturn
+			},
+			wantErr: "failed to create anvil chains: unknown provider type: 255",
+		},
+		{
+			name:   "skip: unknown chain selector",
+			domain: setupTest(t, setupTestConfig, setupAddressbook),
+			env:    fdeployment.Environment{Name: "staging", Logger: logger.Nop()},
+			envcfg: func(tt *test) *fconfig.Config {
+				envcfg, err := fconfig.Load(tt.domain, tt.env.Name, tt.env.Logger)
+				require.NoError(t, err)
+				envcfg.Networks = cfgnet.NewConfig([]cfgnet.Network{{ChainSelector: 123456789}})
+				return envcfg //nolint:nlreturn
+			},
 			wantNumChains: 0,
 		},
-		// FIXME: CI can't reach https://optimism-sepolia.drpc.org anymore, so we'll
-		// skip the test for now
-		// {
-		// 	name:          "No Error",
-		// 	domain:        setupTest(t, setupTestConfig, setupAddressbook, setupDataStore, setupNodes),
-		// 	env:           "staging",
-		// 	blockNumbers:  map[uint64]*big.Int{5224473277236331295: big.NewInt(1000)},
-		// 	options:       []LoadEnvironmentOption{WithoutJD(), WithAnvilKeyAsDeployer()},
-		// 	wantName:      "fork",
-		// 	wantNumChains: 1,
-		// },
+		{
+			name:   "skip: selected zksync chain",
+			domain: setupTest(t, setupTestConfig, setupAddressbook, setupDataStore, setupNodes),
+			env:    fdeployment.Environment{Name: "staging", Logger: logger.Nop()},
+			envcfg: func(tt *test) *fconfig.Config {
+				envcfg, err := fconfig.Load(tt.domain, tt.env.Name, tt.env.Logger)
+				require.NoError(t, err)
+				return envcfg //nolint:nlreturn
+			},
+			options:       []LoadEnvironmentOption{WithAnvilKeyAsDeployer(), OnlyLoadChainsFor([]uint64{zksyncSepoliaSelector})},
+			wantNumChains: 0,
+		},
+		{
+			name:         "success",
+			domain:       setupTest(t, setupTestConfig, setupAddressbook),
+			env:          fdeployment.Environment{Name: "staging", Logger: logger.Nop()},
+			providerType: ProviderTypeTestContainer,
+			options:      []LoadEnvironmentOption{WithAnvilKeyAsDeployer(), OnlyLoadChainsFor([]uint64{gethTestnetSelector})},
+			envcfg: func(tt *test) *fconfig.Config {
+				envcfg, err := fconfig.Load(tt.domain, tt.env.Name, tt.env.Logger)
+				require.NoError(t, err)
+				envcfg.Networks = cfgnet.NewConfig([]cfgnet.Network{{
+					ChainSelector: gethTestnetSelector,
+					RPCs:          []cfgnet.RPC{{HTTPURL: localChainContainerRpcURL}},
+				}})
+				return envcfg //nolint:nlreturn
+			},
+			wantNumChains: 1,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			forkEnv, err := LoadFork(t.Context(), tt.domain, tt.env, tt.blockNumbers, tt.options...)
+			envcfg := tt.envcfg(&tt)
+
+			forkEnv, err := LoadForkFromEnv(t.Context(), tt.domain, tt.env, envcfg.Networks, envcfg.Env.Onchain,
+				tt.blockNumbers, tt.providerType, tt.options...)
 			t.Cleanup(func() {
 				for _, container := range forkEnv.Containers {
 					_ = container.Terminate(context.Background())
@@ -119,7 +154,6 @@ func Test_LoadForkedEnvironment(t *testing.T) {
 
 			if tt.wantErr == "" {
 				require.NoError(t, err)
-				require.Equal(t, tt.wantName, forkEnv.Name)
 				require.Len(t, forkEnv.BlockChains.EVMChains(), tt.wantNumChains)
 			} else {
 				require.ErrorContains(t, err, tt.wantErr)
@@ -242,8 +276,12 @@ func Test_ApplyChangesetOutput(t *testing.T) {
 			t.Parallel()
 
 			domain := setupTest(t, setupTestConfig, setupAddressbook, setupDataStore, setupNodes)
+			environment := fdeployment.Environment{Name: "staging", Logger: logger.Nop()}
+			envcfg, err := fconfig.Load(domain, environment.Name, environment.Logger)
+			require.NoError(t, err)
 
-			forkEnv, err := LoadFork(t.Context(), domain, "staging", tt.blockNumbers, WithoutJD())
+			forkEnv, err := LoadForkFromEnv(t.Context(), domain, environment, envcfg.Networks,
+				envcfg.Env.Onchain, tt.blockNumbers, ProviderTypeTestContainer, WithoutJD())
 			require.NoError(t, err)
 
 			if tt.forkClients != nil {
@@ -366,4 +404,43 @@ func createBaseProposal(t *testing.T, metadataAddress types.ChainSelector, opera
 	require.NoError(t, err)
 
 	return *proposal
+}
+
+func startLocalChain(t *testing.T, chainID uint64) (string, string) {
+	t.Helper()
+
+	// create CTF network so container can talk to each other; ignore errors as it might already exist
+	_, _ = testcontainers.GenericNetwork(t.Context(), testcontainers.GenericNetworkRequest{ //nolint:staticcheck
+		Driver: "bridge",
+		Name:   ctf.DefaultNetworkName,
+		Labels: testcontainers.GenericLabels(),
+	})
+
+	ports, err := freeport.Take(1)
+	require.NoError(t, err)
+
+	input := &ctfblockchain.Input{
+		ContainerName: fmt.Sprintf("anvil-local-chain-%d", time.Now().UnixNano()),
+		Type:          ctfblockchain.TypeAnvil,
+		ChainID:       strconv.FormatUint(chainID, 10),
+		Port:          strconv.Itoa(ports[0]),
+	}
+
+	output, err := ctfblockchain.NewWithContext(t.Context(), input)
+	require.NoError(t, err)
+	testcontainers.CleanupContainer(t, output.Container)
+
+	hostRpcURL := output.Nodes[0].ExternalHTTPUrl
+	require.NotEmpty(t, hostRpcURL)
+	containerRpcURL := output.Nodes[0].InternalHTTPUrl
+	require.NotEmpty(t, containerRpcURL)
+
+	require.EventuallyWithT(t, func(ct *assert.CollectT) {
+		client, err := ethclient.DialContext(t.Context(), hostRpcURL)
+		require.NoError(ct, err)
+		_, err = client.BlockNumber(t.Context())
+		require.NoError(ct, err)
+	}, time.Second*5, time.Millisecond*100)
+
+	return hostRpcURL, containerRpcURL
 }

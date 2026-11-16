@@ -392,34 +392,56 @@ func (p *CTFAnvilChainProvider) Initialize(ctx context.Context) (chain.BlockChai
 	if err != nil {
 		return nil, fmt.Errorf("failed to get chain details for selector: %w", err)
 	}
-	chainID := chainDetails.ChainID
 
-	httpURL, err := p.startContainer(ctx, chainID)
+	p.httpURL, err = p.startContainer(ctx, chainDetails.ChainID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start container: %w", err)
 	}
-	p.httpURL = httpURL
 
-	// Get the Chain ID as big.Int for transactor generation
+	lggr, err := logger.New()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create new logger: %w", err)
+	}
+
+	p.chain, err = newAnvilBlockChain(ctx, lggr, p.selector, p.httpURL, chainDetails.ChainID,
+		p.config.DeployerTransactorGen, p.config.ConfirmFunctor, p.config.NumAdditionalAccounts,
+		p.config.ClientOpts, p.config.GasConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	return *p.chain, nil
+}
+
+func newAnvilBlockChain(
+	ctx context.Context,
+	lggr logger.Logger,
+	chainSelector uint64,
+	rpcURL string,
+	chainID string,
+	deployerTransactorGen SignerGenerator,
+	confirmFunctor ConfirmFunctor,
+	numAdditionalAccounts uint,
+	clientOpts []func(client *rpcclient.MultiClient),
+	gasConfig *gas.Config,
+) (*evm.Chain, error) {
 	chainIDBigInt, ok := new(big.Int).SetString(chainID, 10)
 	if !ok {
 		return nil, fmt.Errorf("failed to parse chain ID into big.Int: %s", chainID)
 	}
 
-	// Generate deployer key using the provided transactor generator or default Anvil account
 	var deployerKey *bind.TransactOpts
 	var signHashFunc func([]byte) ([]byte, error)
+	var err error
 
-	if p.config.DeployerTransactorGen != nil {
+	// generate deployer key using the provided transactor generator or default Anvil account
+	if deployerTransactorGen != nil {
 		// Use custom deployer transactor generator
-		deployerKey, err = p.config.DeployerTransactorGen.Generate(chainIDBigInt)
+		deployerKey, err = deployerTransactorGen.Generate(chainIDBigInt)
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate deployer transactor: %w", err)
 		}
-
-		signHashFunc = func(hash []byte) ([]byte, error) {
-			return p.config.DeployerTransactorGen.SignHash(hash)
-		}
+		signHashFunc = func(hash []byte) ([]byte, error) { return deployerTransactorGen.SignHash(hash) }
 	} else {
 		// Use default Anvil deployer account
 		deployerPrivateKey, perr := crypto.HexToECDSA(anvilTestPrivateKeys[0])
@@ -442,56 +464,45 @@ func (p *CTFAnvilChainProvider) Initialize(ctx context.Context) (chain.BlockChai
 		}
 	}
 
-	lggr, err := logger.New()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create new logger: %w", err)
-	}
-
 	client, err := rpcclient.NewMultiClient(ctx, lggr, rpcclient.RPCConfig{
-		ChainSelector: p.selector,
-		RPCs: []rpcclient.RPC{
-			{
-				Name:               "anvil-local",
-				HTTPURL:            httpURL,
-				WSURL:              "", // Anvil typically doesn't provide WebSocket, only HTTP
-				PreferredURLScheme: rpcclient.URLSchemePreferenceHTTP,
-			},
-		},
-	}, multiClientOpts(p.config.GasConfig, p.config.ClientOpts)...)
+		ChainSelector: chainSelector,
+		RPCs: []rpcclient.RPC{{
+			Name:               "anvil-local",
+			HTTPURL:            rpcURL,
+			PreferredURLScheme: rpcclient.URLSchemePreferenceHTTP,
+		}},
+	}, multiClientOpts(gasConfig, clientOpts)...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create multiclient for Anvil at %s: %w", httpURL, err)
+		return nil, fmt.Errorf("failed to create multiclient for Anvil at %s: %w", rpcURL, err)
 	}
 
-	if p.config.GasConfig != nil {
-		if applyErr := gas.ApplyDefaults(ctx, client, deployerKey, *p.config.GasConfig); applyErr != nil {
-			return nil, fmt.Errorf("failed to apply gas defaults for chain %d: %w", p.selector, applyErr)
+	if gasConfig != nil {
+		err = gas.ApplyDefaults(ctx, client, deployerKey, *gasConfig)
+		if err != nil {
+			return nil, fmt.Errorf("failed to apply gas defaults for chain %d: %w", chainSelector, err)
 		}
 	}
 
-	// Build additional user transactors from the default Anvil accounts
-	userTransactors, err := p.getUserTransactors(chainID)
+	// build additional user transactors from the default Anvil accounts
+	userTransactors, err := getUserTransactors(numAdditionalAccounts, chainIDBigInt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user transactors: %w", err)
 	}
 
-	confirmFunc, err := p.config.ConfirmFunctor.Generate(
-		ctx, p.selector, client, deployerKey.From,
-	)
+	confirmFunc, err := confirmFunctor.Generate(ctx, chainSelector, client, deployerKey.From)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate confirm function: %w", err)
 	}
 
-	p.chain = &evm.Chain{
-		Selector:    p.selector,
+	return &evm.Chain{
+		Selector:    chainSelector,
 		Client:      client,
 		DeployerKey: deployerKey,
 		Users:       userTransactors,
 		Confirm:     confirmFunc,
 		SignHash:    signHashFunc,
-		GasConfig:   p.config.GasConfig,
-	}
-
-	return *p.chain, nil
+		GasConfig:   gasConfig,
+	}, nil
 }
 
 // Name returns the human-readable name of the CTFAnvilChainProvider.
@@ -681,20 +692,15 @@ func (p *CTFAnvilChainProvider) startContainer(ctx context.Context, chainID stri
 //   - chainID: The chain ID as a string, used to create chain-specific transactors
 //
 // Returns a slice of bind.TransactOpts ready for use as user accounts.
-func (p *CTFAnvilChainProvider) getUserTransactors(chainID string) ([]*bind.TransactOpts, error) {
+func getUserTransactors(numAdditionalAccounts uint, chainID *big.Int) ([]*bind.TransactOpts, error) {
 	if len(anvilTestPrivateKeys) <= 1 {
 		return nil, errors.New("at least 2 anvil test private keys are required")
 	}
 
-	cid, ok := new(big.Int).SetString(chainID, 10)
-	if !ok {
-		return nil, fmt.Errorf("failed to parse chain ID into big.Int: %s", chainID)
-	}
-
 	// Determine how many user accounts to create (excluding deployer)
 	maxUserAccounts := uint(len(anvilTestPrivateKeys)) - 1 // -1 to exclude deployer account
-	if p.config.NumAdditionalAccounts > 0 && p.config.NumAdditionalAccounts < maxUserAccounts {
-		maxUserAccounts = p.config.NumAdditionalAccounts
+	if numAdditionalAccounts > 0 && numAdditionalAccounts < maxUserAccounts {
+		maxUserAccounts = numAdditionalAccounts
 	}
 
 	transactors := make([]*bind.TransactOpts, 0, maxUserAccounts)
@@ -707,7 +713,7 @@ func (p *CTFAnvilChainProvider) getUserTransactors(chainID string) ([]*bind.Tran
 			return nil, fmt.Errorf("failed to parse private key %d: %w", i, err)
 		}
 
-		transactor, err := bind.NewKeyedTransactorWithChainID(privateKey, cid)
+		transactor, err := bind.NewKeyedTransactorWithChainID(privateKey, chainID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create transactor %d: %w", i, err)
 		}

@@ -7,6 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -14,42 +17,94 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
+	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	cfgenv "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/env"
+	cfgnet "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/network"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
+	cldfenv "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
-func TestExecuteFork_FlagShortcuts(t *testing.T) {
+func TestExecuteFork_Flags(t *testing.T) {
 	t.Parallel()
 
 	cmd, err := newTestCommand(t)
 	require.NoError(t, err)
-
-	// Find the execute-fork subcommand
 	executeForkCmd, _, err := cmd.Find([]string{"execute-fork"})
 	require.NoError(t, err)
 
-	// Verify shorthand flags exist
 	tests := []struct {
-		longFlag  string
-		shortFlag string
+		name        string
+		flag        string
+		shortFlag   string
+		wantType    string
+		wantDefault string
 	}{
-		{"environment", "e"},
-		{"proposal", "p"},
-		{"proposalKind", "k"},
-		{"selector", "s"},
+		{
+			name:        "environment",
+			flag:        "environment",
+			shortFlag:   "e",
+			wantType:    "string",
+			wantDefault: "",
+		},
+		{
+			name:        "proposal",
+			flag:        "proposal",
+			shortFlag:   "p",
+			wantType:    "string",
+			wantDefault: "",
+		},
+		{
+			name:        "proposal kind",
+			flag:        "proposalKind",
+			shortFlag:   "k",
+			wantType:    "string",
+			wantDefault: "TimelockProposal",
+		},
+		{
+			name:        "selector",
+			flag:        "selector",
+			shortFlag:   "s",
+			wantType:    "uint64",
+			wantDefault: "0",
+		},
+		{
+			name:        "subprocess",
+			flag:        "subprocess",
+			wantType:    "bool",
+			wantDefault: "false",
+		},
+		{
+			name:        "report",
+			flag:        "report",
+			wantType:    "string",
+			wantDefault: "",
+		},
+		{
+			name:        "build params",
+			flag:        "env-build-params",
+			wantType:    "string",
+			wantDefault: "",
+		},
 	}
-
 	for _, tt := range tests {
-		flag := executeForkCmd.Flags().Lookup(tt.longFlag)
-		require.NotNil(t, flag, "flag %s should exist", tt.longFlag)
-		require.Equal(t, tt.shortFlag, flag.Shorthand, "flag %s should have shorthand %s", tt.longFlag, tt.shortFlag)
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			flag := executeForkCmd.Flags().Lookup(tt.flag)
+			require.NotNil(t, flag)
+			require.Equal(t, tt.wantType, flag.Value.Type())
+			require.Equal(t, tt.wantDefault, flag.DefValue)
+		})
 	}
 }
 
@@ -132,6 +187,120 @@ func TestExecuteFork_TestSignerFlag(t *testing.T) {
 	require.NotNil(t, testSignerFlag)
 	require.Equal(t, "false", testSignerFlag.DefValue, "test-signer default should be false")
 	require.Equal(t, "bool", testSignerFlag.Value.Type(), "test-signer should be boolean")
+}
+
+func TestExecuteFork_Run(t *testing.T) {
+	t.Parallel()
+
+	selector := buildParamsSelector
+
+	type testContext struct {
+		cmd        *cobra.Command
+		forkEnv    mockForkEnvLoader
+		reportPath string
+	}
+
+	tests := []struct {
+		name       string
+		setup      func(t *testing.T) *testContext
+		args       func(testCtx *testContext) []string
+		loadErr    error
+		withReport bool
+		unwritable bool
+		wantErr    string
+		wantType   cldfenv.ProviderType
+		wantReport string
+	}{
+		{
+			name: "failure: fork environment cannot be loaded, report is saved",
+			setup: func(t *testing.T) *testContext {
+				t.Helper()
+
+				var testCtx testContext
+				testCtx.reportPath = filepath.Join(t.TempDir(), "report.json")
+
+				testCtx.forkEnv.On("ForkEnvironmentLoader", mock.Anything, mock.Anything, mock.Anything, mock.Anything,
+					mock.Anything, mock.Anything, cldfenv.ProviderTypeTestContainer, mock.Anything).
+					Return(cldfenv.ForkedEnvironment{}, errors.New("fork-load-environment-failed"))
+
+				builder := &fakeBuilder{selector: []uint64{selector}}
+				testCtx.cmd = newBuildParamsCommand(t, Deps{
+					EnvironmentLoader:     failingEnvLoader(t),
+					EnvironmentBuilder:    builder.build,
+					Getenv:                getenvFrom(nil),
+					ForkEnvironmentLoader: testCtx.forkEnv.ForkEnvironmentLoader,
+				})
+
+				return &testCtx
+			},
+			args: func(testCtx *testContext) []string {
+				return []string{
+					"execute-fork", "--proposal", writeTestProposal(t), "--selector", strconv.FormatUint(selector, 10),
+					"--env-build-params", buildParamsDoc, "--report", testCtx.reportPath,
+				}
+			},
+			wantErr: "error creating config: error loading forked environment: fork-load-environment-failed",
+			wantReport: `{
+				"chainSelector": 3379446385462418246,
+				"status":        "error",
+				"details":       "error creating config: error loading forked environment: fork-load-environment-failed"
+			}`,
+		},
+		{
+			name: "subprocess flag selects the subprocess provider",
+			setup: func(t *testing.T) *testContext {
+				t.Helper()
+
+				var testCtx testContext
+				testCtx.reportPath = filepath.Join(t.TempDir(), "report.json")
+
+				testCtx.forkEnv.On("ForkEnvironmentLoader", mock.Anything, mock.Anything, mock.Anything, mock.Anything,
+					mock.Anything, mock.Anything, cldfenv.ProviderTypeSubprocess, mock.Anything).
+					Return(cldfenv.ForkedEnvironment{}, errors.New("fork-load-environment-with-subprocess-failed"))
+
+				builder := &fakeBuilder{selector: []uint64{selector}}
+				testCtx.cmd = newBuildParamsCommand(t, Deps{
+					EnvironmentLoader:     failingEnvLoader(t),
+					EnvironmentBuilder:    builder.build,
+					Getenv:                getenvFrom(nil),
+					ForkEnvironmentLoader: testCtx.forkEnv.ForkEnvironmentLoader,
+				})
+
+				return &testCtx
+			},
+			args: func(testCtx *testContext) []string {
+				return []string{
+					"execute-fork", "--proposal", writeTestProposal(t), "--selector", strconv.FormatUint(selector, 10),
+					"--env-build-params", buildParamsDoc, "--report", testCtx.reportPath, "--subprocess",
+				}
+			},
+			wantErr: "error creating config: error loading forked environment: fork-load-environment-with-subprocess-failed",
+			wantReport: `{
+				"chainSelector": 3379446385462418246,
+				"status":        "error",
+				"details":       "error creating config: error loading forked environment: fork-load-environment-with-subprocess-failed"
+			}`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			testCtx := tt.setup(t)
+			t.Cleanup(func() { testCtx.forkEnv.AssertExpectations(t) })
+
+			err := executeCommand(testCtx.cmd, tt.args(testCtx)...)
+
+			if tt.wantErr == "" {
+				require.NoError(t, err)
+			} else {
+				require.ErrorContains(t, err, tt.wantErr)
+			}
+			reportJSON, rerr := os.ReadFile(testCtx.reportPath)
+			require.NoError(t, rerr)
+			require.JSONEq(t, tt.wantReport, string(reportJSON))
+		})
+	}
 }
 
 func TestExecuteFork_CommandDescriptions(t *testing.T) {
@@ -548,4 +717,16 @@ func packCallReverted(t *testing.T, mcmABIJSON string, innerHex string) string {
 	require.NoError(t, err)
 
 	return hex.EncodeToString(append(crErr.ID[:4], packed...))
+}
+
+type mockForkEnvLoader struct {
+	mock.Mock
+}
+
+func (m *mockForkEnvLoader) ForkEnvironmentLoader(
+	ctx context.Context, domain domain.Domain, env cldf.Environment, netCfg *cfgnet.Config, onchainCfg cfgenv.OnchainConfig,
+	blockNumbers map[uint64]*big.Int, providerType cldfenv.ProviderType, opts ...cldfenv.LoadEnvironmentOption,
+) (cldfenv.ForkedEnvironment, error) {
+	args := m.Called(ctx, domain, env, netCfg, onchainCfg, blockNumbers, providerType, opts)
+	return args.Get(0).(cldfenv.ForkedEnvironment), args.Error(1)
 }

@@ -6,8 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 
+	"github.com/samber/lo"
 	chainselremote "github.com/smartcontractkit/chain-selectors/remote"
 	"gopkg.in/yaml.v3"
 
@@ -92,7 +94,7 @@ func Build(ctx context.Context, params BuildParams, opts ...BuildOption) (fdeplo
 		getCtx = func() context.Context { return ctx }
 	)
 
-	netConfig, err := buildNetworksConfig(ctx, params.Networks, params.DefaultRPCBaseURL)
+	netConfig, err := BuildNetworksConfig(ctx, params.Networks, params.DefaultRPCBaseURL, buildcfg.chainSelectors)
 	if err != nil {
 		return fdeployment.Environment{}, err
 	}
@@ -170,10 +172,22 @@ func resolveNetworkType(ctx context.Context, network cfgnet.Network) (cfgnet.Net
 	return derived, nil
 }
 
-// buildNetworksConfig converts the supplied networks into the cfgnet.Config
+// BuildNetworksConfig converts the supplied networks into the cfgnet.Config
 // that the chain loaders consume, deriving each network type and injecting the
 // default RPC. Each network is validated once fully populated.
-func buildNetworksConfig(ctx context.Context, nets []cfgnet.Network, rpcBaseURL string) (*cfgnet.Config, error) {
+func BuildNetworksConfig(
+	ctx context.Context, nets []cfgnet.Network, rpcBaseURL string, chainSelectors []uint64,
+) (*cfgnet.Config, error) {
+	if chainSelectors != nil {
+		nets = lo.Filter(nets, func(n cfgnet.Network, _ int) bool {
+			return slices.Contains(chainSelectors, n.ChainSelector)
+		})
+		missing := missingSelectors(nets, chainSelectors)
+		if len(missing) > 0 {
+			return nil, fmt.Errorf("chain selectors %v weren't found in build params \"networks\"", missing)
+		}
+	}
+
 	networks := make([]cfgnet.Network, 0, len(nets))
 
 	for _, network := range nets {
@@ -236,6 +250,8 @@ type BuildConfig struct {
 
 	// lggr is used throughout the build and by the resulting environment.
 	lggr logger.Logger
+
+	chainSelectors []uint64
 }
 
 // Configure applies the given options, overriding the defaults.
@@ -284,4 +300,22 @@ func BuildWithReporter(reporter operations.Reporter) BuildOption {
 	return func(o *BuildConfig) {
 		o.reporter = reporter
 	}
+}
+
+// BuildWithChainSelectors supplies the chain selectors that should be loaded
+func BuildWithChainSelectors(chainSelectors []uint64) BuildOption {
+	return func(o *BuildConfig) {
+		o.chainSelectors = chainSelectors
+	}
+}
+
+func missingSelectors(networks []cfgnet.Network, chainSelectors []uint64) []uint64 {
+	paramsChainSelectors := lo.Keyify(lo.Map(networks, func(n cfgnet.Network, _ int) uint64 {
+		return n.ChainSelector
+	}))
+
+	return lo.Filter(chainSelectors, func(selector uint64, _ int) bool {
+		_, found := paramsChainSelectors[selector]
+		return !found
+	})
 }

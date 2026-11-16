@@ -1,5 +1,19 @@
 # chainlink-deployments-framework
 
+## 0.128.0
+
+### Minor Changes
+
+- [#1213](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1213) [`f8eb9aa`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/f8eb9aa26b10eb42eca00dc73fec63e780f6e92a) Thanks [@archseer](https://github.com/archseer)! - feat(solana): sign with an Ed25519 AWS KMS key when `onchain.solana.use_kms_ed25519` is set
+
+## 0.127.2
+
+### Patch Changes
+
+- [#1209](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1209) [`22faedc`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/22faedcbc7deba39575e3835a50413304614743a) Thanks [@gustavogama-cll](https://github.com/gustavogama-cll)! - feat: prepare fork tests for execution in Temporal workflows
+
+- [#1211](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1211) [`e2ad868`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/e2ad868bf7c45cf0d7b1c15e8d951c766067d230) Thanks [@agusaldasoro](https://github.com/agusaldasoro)! - fix(solana): wait for the finalized commitment in `Chain.Confirm`, so confirmation no longer times out on clusters that do not report the confirmed commitment level
+
 ## 0.127.1
 
 ### Patch Changes

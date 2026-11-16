@@ -192,10 +192,21 @@ func newChainLoaders(
 		lggr.Info("Skipping Tron chains, no private key or KMS config found in secrets")
 	}
 
-	if cfg.Solana.ProgramsDirPath != "" && cfg.Solana.WalletKey != "" {
+	switch {
+	case cfg.Solana.ProgramsDirPath == "":
+		lggr.Info("Skipping Solana chains, no program path found in secrets")
+	case cfg.Solana.UseKMSEd25519:
 		loaders[chainsel.FamilySolana] = newChainLoaderSolana(networks, cfg)
-	} else {
-		lggr.Info("Skipping Solana chains, no private key or program path found in secrets")
+
+		if cfg.Solana.WalletKey != "" {
+			lggr.Info("Loading Solana chains, signing with the Ed25519 KMS key; the Solana wallet key is only used to deploy programs")
+		} else {
+			lggr.Info("Loading Solana chains, signing with the Ed25519 KMS key; deploying programs is disabled without a Solana wallet key")
+		}
+	case cfg.Solana.WalletKey != "":
+		loaders[chainsel.FamilySolana] = newChainLoaderSolana(networks, cfg)
+	default:
+		lggr.Info("Skipping Solana chains, no private key found in secrets")
 	}
 
 	if cfg.Aptos.DeployerKey != "" {
@@ -470,13 +481,28 @@ func (l *chainLoaderSolana) Load(ctx context.Context, selector uint64) (fchain.B
 	httpURL := network.RPCs[0].HTTPURL
 	wsURL := network.RPCs[0].WSURL
 
+	var (
+		keyGen    solanaprov.PrivateKeyGenerator
+		signerGen solanaprov.SignerGenerator
+	)
+	if l.cfg.Solana.WalletKey != "" {
+		keyGen = solanaprov.PrivateKeyFromRaw(l.cfg.Solana.WalletKey)
+	}
+	if l.cfg.Solana.UseKMSEd25519 {
+		if !useKMS(l.cfg.KMSEd25519) {
+			return nil, fmt.Errorf("solana network %d: use_kms_ed25519 is set but the Ed25519 KMS key ID or region is missing", selector)
+		}
+		signerGen = solanaprov.SignerGenKMS(l.cfg.KMSEd25519.KeyID, l.cfg.KMSEd25519.KeyRegion)
+	}
+
 	c, err := solanaprov.NewRPCChainProvider(selector,
 		solanaprov.RPCChainProviderConfig{
-			HTTPURL:        httpURL,
-			WSURL:          wsURL,
-			DeployerKeyGen: solanaprov.PrivateKeyFromRaw(l.cfg.Solana.WalletKey),
-			ProgramsPath:   programsPath,
-			KeypairDirPath: programsPath, // Use the same path for keypair storage
+			HTTPURL:           httpURL,
+			WSURL:             wsURL,
+			DeployerKeyGen:    keyGen,
+			DeployerSignerGen: signerGen,
+			ProgramsPath:      programsPath,
+			KeypairDirPath:    programsPath, // Use the same path for keypair storage
 		},
 	).Initialize(ctx)
 	if err != nil {

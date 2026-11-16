@@ -36,7 +36,7 @@ func (g *zkSyncSignerFromRaw) Generate(chainID *big.Int) (zkAccounts.Signer, err
 	return zkAccounts.NewECDSASignerFromRawPrivateKey(common.FromHex(g.privKey), chainID)
 }
 
-// ZkSyncSignerRandom returns a generator which creates a ZkSync signer with a random private key.
+// ZKSyncSignerRandom returns a generator which creates a ZkSync signer with a random private key.
 func ZKSyncSignerRandom() ZkSyncSignerGenerator {
 	return &zkSyncSignerRandom{}
 }

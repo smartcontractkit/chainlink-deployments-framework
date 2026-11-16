@@ -2,6 +2,7 @@ package mcms
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"maps"
 	"math/big"
@@ -11,7 +12,6 @@ import (
 	"runtime"
 	"slices"
 	"strconv"
-	"sync"
 	"testing"
 	"time"
 
@@ -19,23 +19,25 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/samber/lo"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go"
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/yaml.v3"
 
 	chainsel "github.com/smartcontractkit/chain-selectors"
-	ctf "github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	ctfchain "github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
+	"github.com/smartcontractkit/freeport"
 	"github.com/smartcontractkit/mcms"
 	mcmssdk "github.com/smartcontractkit/mcms/sdk"
 	mcmsevmsdk "github.com/smartcontractkit/mcms/sdk/evm"
 	mcmsevmbindings "github.com/smartcontractkit/mcms/sdk/evm/bindings"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 
-	cldfchain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	evmchain "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
-	cldfchainprovider "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider"
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	cldfconfig "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config"
@@ -52,7 +54,10 @@ const (
 	integrationEnvName    = "testnet"
 )
 
-var _, integrationModulePath, _, _ = runtime.Caller(0)
+var (
+	_, integrationModulePath, _, _ = runtime.Caller(0)
+	testDomain                     = cldfdomain.NewDomain(filepath.Clean(filepath.Join(integrationModulePath, "..", "testdata", "domains")), integrationDomainName)
+)
 
 func Test_executeFork_Integration(t *testing.T) { //nolint:paralleltest
 	lggr, logs := logger.TestObserved(t, zapcore.DebugLevel)
@@ -63,40 +68,20 @@ func Test_executeFork_Integration(t *testing.T) { //nolint:paralleltest
 	domainConfig, err := cldfconfig.Load(domain, integrationEnvName, lggr)
 	require.NoError(t, err)
 
-	// initialize anvil container with main blockchain
-	anvilConfig := cldfchainprovider.CTFAnvilChainProviderConfig{
-		Name:                  "anvil-main-blockchain",
-		Once:                  &sync.Once{},
-		ConfirmFunctor:        cldfchainprovider.ConfirmFuncGeth(3 * time.Minute),
-		Image:                 "f4hrenh9it/foundry:latest",
-		Port:                  strconv.Itoa(getFreePortForIntegration(t)),
-		DeployerTransactorGen: cldfchainprovider.TransactorFromRaw(domainConfig.Env.Onchain.EVM.DeployerKey),
-		T:                     t,
-	}
+	chainID := chainsel.GETH_TESTNET.EvmChainID
 	chainSelector := chainsel.GETH_TESTNET.Selector
-	provider := cldfchainprovider.NewCTFAnvilChainProvider(chainSelector, anvilConfig)
-	evmChain, err := provider.Initialize(t.Context())
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		alias, _ := provider.Container.NetworkAliases(t.Context())
-		id := provider.Container.GetContainerID()
-		t.Logf("terminating anvil container %v (alias: %v)", id, alias)
-		_ = provider.Container.Terminate(t.Context())
-	})
+	localChainHostRpcURL, localChainContainerRpcURL := startLocalChain(t, chainID)
 
-	saveDomainNetworkConfigForIntegration(t, &domain, integrationEnvName, domainConfig, provider, anvilConfig.Port)
+	saveDomainNetworkConfigForIntegration(t, &domain, integrationEnvName, domainConfig, localChainHostRpcURL, localChainContainerRpcURL) // provider, anvilConfig.Port)
 
 	env, err := cldfenv.Load(t.Context(), domain, integrationEnvName, cldfenv.WithLogger(lggr))
 	require.NoError(t, err)
-	env.BlockChains = cldfchain.NewBlockChains(map[uint64]cldfchain.BlockChain{
-		chainsel.GETH_TESTNET.Selector: evmChain,
-	})
 
 	mcmAddress, timelockAddress, callProxyAddress, env := deployMCMSForIntegration(t, env)
 	saveChangesetOutputsForIntegration(t, domain, env, "deploy-mcms")
 
-	forkedEnv, err := cldfenv.LoadFork(t.Context(), domain, env.Name, nil,
-		cldfenv.WithLogger(lggr), cldfenv.OnlyLoadChainsFor([]uint64{chainSelector}),
+	forkedEnv, err := cldfenv.LoadForkFromEnv(t.Context(), domain, env, domainConfig.Networks, domainConfig.Env.Onchain, nil,
+		cldfenv.ProviderTypeTestContainer, cldfenv.WithLogger(lggr), cldfenv.OnlyLoadChainsFor([]uint64{chainSelector}),
 		cldfenv.WithAnvilKeyAsDeployer(), cldfenv.WithoutJD())
 	require.NoError(t, err)
 	forkedChain := slices.Collect(maps.Values(forkedEnv.BlockChains.EVMChains()))[0]
@@ -403,27 +388,23 @@ func testTimelockProposal(
 
 func saveDomainNetworkConfigForIntegration(
 	t *testing.T, domain *cldfdomain.Domain, envName string, domainConfig *cldfconfig.Config,
-	provider *cldfchainprovider.CTFAnvilChainProvider, containerPort string,
+	hostRpcURL string, containerRpcURL string,
 ) {
 	t.Helper()
-
-	containerURL := provider.GetNodeHTTPURL()
-	networkAliases, err := provider.Container.NetworkAliases(t.Context())
-	require.NoError(t, err)
-	require.GreaterOrEqual(t, len(networkAliases[ctf.DefaultNetworkName]), 1)
 
 	networks := domainConfig.Networks.Networks()
 	require.Len(t, networks, 1)
 	require.Len(t, networks[0].RPCs, 1)
 
-	networks[0].RPCs[0].HTTPURL = containerURL
+	networks[0].RPCs[0].HTTPURL = hostRpcURL
 	networks[0].Metadata = &cldfconfignet.EVMMetadata{AnvilConfig: &cldfconfignet.AnvilConfig{
 		Image:          "f4hrenh9it/foundry:latest",
 		Port:           uint64(getFreePortForIntegration(t)), //nolint:gosec
-		ArchiveHTTPURL: "http://" + networkAliases[ctf.DefaultNetworkName][0] + ":" + containerPort,
+		ArchiveHTTPURL: containerRpcURL,
 	}}
+	domainConfig.Networks = cldfconfignet.NewConfig(networks)
 
-	cldfNetConfig, err := cldfconfignet.NewConfig(networks).MarshalYAML()
+	cldfNetConfig, err := domainConfig.Networks.MarshalYAML()
 	require.NoError(t, err)
 	networkConfigYaml, err := yaml.Marshal(cldfNetConfig)
 	require.NoError(t, err)
@@ -482,4 +463,44 @@ func copyFileForIntegration(t *testing.T, src, dest string) {
 	defer destFile.Close()
 	_, err = io.Copy(destFile, srcFile)
 	require.NoError(t, err)
+}
+
+func startLocalChain(t *testing.T, chainID uint64) (string, string) {
+	t.Helper()
+
+	// create CTF network so container can talk to each other; ignore errors as it might already exist
+	_, _ = testcontainers.GenericNetwork(t.Context(), testcontainers.GenericNetworkRequest{ //nolint:staticcheck
+		Driver: "bridge",
+		Name:   framework.DefaultNetworkName,
+		Labels: testcontainers.GenericLabels(),
+	})
+
+	ports, err := freeport.Take(1)
+	require.NoError(t, err)
+
+	input := &ctfchain.Input{
+		ContainerName:   fmt.Sprintf("anvil-local-chain-%d", time.Now().UnixNano()),
+		Type:            ctfchain.TypeAnvil,
+		ChainID:         strconv.FormatUint(chainID, 10),
+		Port:            strconv.Itoa(ports[0]),
+		HostNetworkMode: false,
+	}
+
+	output, err := ctfchain.NewWithContext(t.Context(), input)
+	require.NoError(t, err)
+	testcontainers.CleanupContainer(t, output.Container)
+
+	hostRpcURL := output.Nodes[0].ExternalHTTPUrl
+	require.NotEmpty(t, hostRpcURL)
+	containerRpcURL := output.Nodes[0].InternalHTTPUrl
+	require.NotEmpty(t, containerRpcURL)
+
+	require.EventuallyWithT(t, func(ct *assert.CollectT) {
+		client, err := ethclient.DialContext(t.Context(), hostRpcURL)
+		require.NoError(ct, err)
+		_, err = client.BlockNumber(t.Context())
+		require.NoError(ct, err)
+	}, time.Second*5, time.Millisecond*100)
+
+	return hostRpcURL, containerRpcURL
 }

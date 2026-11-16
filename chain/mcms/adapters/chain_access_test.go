@@ -25,6 +25,23 @@ import (
 	tonmocks "github.com/smartcontractkit/chainlink-deployments-framework/chain/ton/mocks"
 )
 
+func TestChainAccess_SolanaSignerWithoutDeployerKey(t *testing.T) {
+	t.Parallel()
+
+	// A KMS-backed deployer only exposes a signer, which the MCMS SDK cannot use.
+	selector := uint64(1)
+	a := Wrap(chain.NewBlockChains(map[uint64]chain.BlockChain{
+		selector: solana.Chain{
+			Selector:       selector,
+			DeployerSigner: solana.NewPrivateKeySigner(sol.NewWallet().PrivateKey),
+		},
+	}))
+
+	signer, ok := a.SolanaSigner(selector)
+	require.False(t, ok)
+	require.Nil(t, signer)
+}
+
 func TestChainAccess_UnknownSelector(t *testing.T) {
 	t.Parallel()
 

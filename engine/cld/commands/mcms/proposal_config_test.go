@@ -3,6 +3,7 @@ package mcms
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -15,7 +16,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
+	cfgenv "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/env"
+	cfgnet "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/network"
+	cldfdomain "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/domain"
 	cldfenv "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/environment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
@@ -23,6 +26,9 @@ import (
 
 func TestLoadProposalConfig(t *testing.T) {
 	t.Parallel()
+
+	domainsRoot := filepath.Clean(filepath.Join(integrationModulePath, "..", "testdata", "domains"))
+	domain := cldfdomain.NewDomain(domainsRoot, integrationDomainName)
 
 	// Write a valid TimelockProposal to a shared temp file for tests that need real loading.
 	proposalFilePath := filepath.Join(t.TempDir(), "proposal.json")
@@ -37,7 +43,7 @@ func TestLoadProposalConfig(t *testing.T) {
 
 	tests := []struct {
 		name                string
-		dom                 domain.Domain
+		dom                 cldfdomain.Domain
 		deps                *Deps
 		proposalCtxProvider analyzer.ProposalContextProvider
 		flags               ProposalFlags
@@ -82,7 +88,7 @@ func TestLoadProposalConfig(t *testing.T) {
 					return &mcms.Proposal{}, nil
 				},
 				EnvironmentLoader: func(
-					_ context.Context, _ domain.Domain, _ string, _ logger.Logger, _ ...cldfenv.LoadEnvironmentOption,
+					_ context.Context, _ cldfdomain.Domain, _ string, _ logger.Logger, _ ...cldfenv.LoadEnvironmentOption,
 				) (cldf.Environment, error) {
 					return cldf.Environment{}, errors.New("environment error")
 				},
@@ -112,6 +118,7 @@ func TestLoadProposalConfig(t *testing.T) {
 		},
 		{
 			name: "failure: proposal context provider returns error",
+			dom:  domain,
 			flags: ProposalFlags{
 				ProposalKind:  string(mcmstypes.KindProposal),
 				Environment:   "testnet",
@@ -133,6 +140,7 @@ func TestLoadProposalConfig(t *testing.T) {
 		},
 		{
 			name: "success: loads proposal config",
+			dom:  domain,
 			flags: ProposalFlags{
 				ProposalPath:  proposalFilePath,
 				ProposalKind:  string(mcmstypes.KindTimelockProposal),
@@ -166,6 +174,7 @@ func TestLoadProposalConfig(t *testing.T) {
 		},
 		{
 			name: "success: loads proposal with acceptExpiredProposal option",
+			dom:  domain,
 			flags: ProposalFlags{
 				ProposalKind:  string(mcmstypes.KindTimelockProposal),
 				ProposalPath:  proposalFilePath,
@@ -197,10 +206,17 @@ func TestLoadProposalConfig(t *testing.T) {
 				Environment:   "testnet",
 				ChainSelector: chainsel.GETH_TESTNET.Selector,
 				Fork:          true,
+				BuildParams: &cldfenv.BuildParams{
+					Networks: []cfgnet.Network{{
+						Type:          cfgnet.NetworkTypeTestnet,
+						ChainSelector: chainsel.GETH_TESTNET.Selector,
+						RPCs:          []cfgnet.RPC{{HTTPURL: fmt.Sprintf("http://rpc.cldev.sh/%d", chainsel.GETH_TESTNET.Selector)}},
+					}},
+				},
 			},
 			deps: &Deps{
 				ProposalLoader:        mcms.LoadProposal,
-				EnvironmentLoader:     nopEnvLoader,
+				EnvironmentBuilder:    (&fakeBuilder{selector: []uint64{chainsel.GETH_TESTNET.Selector}}).build,
 				ForkEnvironmentLoader: nopForkEnvLoader,
 			},
 			opts: []any{randomSalt},
@@ -208,6 +224,37 @@ func TestLoadProposalConfig(t *testing.T) {
 				t.Helper()
 				require.NoError(t, err)
 				require.NotNil(t, got.TimelockProposal.SaltOverride)
+			},
+		},
+		{
+			name: "failure: fork environment load error",
+			flags: ProposalFlags{
+				ProposalKind:  string(mcmstypes.KindTimelockProposal),
+				ProposalPath:  proposalFilePath,
+				Environment:   "testnet",
+				ChainSelector: chainsel.GETH_TESTNET.Selector,
+				Fork:          true,
+				BuildParams: &cldfenv.BuildParams{
+					Networks: []cfgnet.Network{{
+						Type:          cfgnet.NetworkTypeTestnet,
+						ChainSelector: chainsel.GETH_TESTNET.Selector,
+						RPCs:          []cfgnet.RPC{{HTTPURL: fmt.Sprintf("http://rpc.cldev.sh/%d", chainsel.GETH_TESTNET.Selector)}},
+					}},
+				},
+			},
+			deps: &Deps{
+				ProposalLoader:     mcms.LoadProposal,
+				EnvironmentBuilder: (&fakeBuilder{selector: []uint64{chainsel.GETH_TESTNET.Selector}}).build,
+				ForkEnvironmentLoader: func(_ context.Context, _ cldfdomain.Domain, env cldf.Environment, _ *cfgnet.Config,
+					_ cfgenv.OnchainConfig, _ map[uint64]*big.Int, _ cldfenv.ProviderType,
+					_ ...cldfenv.LoadEnvironmentOption,
+				) (cldfenv.ForkedEnvironment, error) {
+					return cldfenv.ForkedEnvironment{}, errors.New("fork environment load error")
+				},
+			},
+			assert: func(t *testing.T, got *ProposalConfig, err error) {
+				t.Helper()
+				require.ErrorContains(t, err, "error loading forked environment: fork environment load error")
 			},
 		},
 	}
@@ -223,16 +270,17 @@ func TestLoadProposalConfig(t *testing.T) {
 	}
 }
 
-// ----- helpers -----
+// ----- helpers ---------------------------------------------------------------
 
 func nopEnvLoader(
-	_ context.Context, _ domain.Domain, envKey string, _ logger.Logger, _ ...cldfenv.LoadEnvironmentOption,
+	_ context.Context, dom cldfdomain.Domain, envKey string, _ logger.Logger, _ ...cldfenv.LoadEnvironmentOption,
 ) (cldf.Environment, error) {
 	return cldf.Environment{Name: envKey}, nil
 }
 
 func nopForkEnvLoader(
-	_ context.Context, _ domain.Domain, envKey string, _ map[uint64]*big.Int, _ ...cldfenv.LoadEnvironmentOption,
+	_ context.Context, _ cldfdomain.Domain, env cldf.Environment, _ *cfgnet.Config, _ cfgenv.OnchainConfig,
+	_ map[uint64]*big.Int, _ cldfenv.ProviderType, _ ...cldfenv.LoadEnvironmentOption,
 ) (cldfenv.ForkedEnvironment, error) {
-	return cldfenv.ForkedEnvironment{Environment: cldf.Environment{Name: envKey}}, nil
+	return cldfenv.ForkedEnvironment{Environment: cldf.Environment{Name: env.Name}}, nil
 }

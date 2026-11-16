@@ -95,6 +95,7 @@ var (
 		"ONCHAIN_EVM_SETH_GETH_WRAPPER_DIRS":         "./a,./b",
 		"ONCHAIN_SOLANA_WALLET_KEY":                  "0x123",
 		"ONCHAIN_SOLANA_PROGRAMS_DIR_PATH":           "/tmp",
+		"ONCHAIN_SOLANA_USE_KMS_ED25519":             "true",
 		"ONCHAIN_APTOS_DEPLOYER_KEY":                 "0x123",
 		"ONCHAIN_TRON_DEPLOYER_KEY":                  "0x123",
 		"ONCHAIN_SUI_DEPLOYER_KEY":                   "0x123",
@@ -144,6 +145,7 @@ var (
 		"ONCHAIN_STELLAR_DEPLOYER_KEY":   "0x567",       // Stellar is new, uses new-style env var
 		"ONCHAIN_KMS_ED25519_KEY_ID":     "e5-from-env", // Ed25519 KMS is new, uses new-style env var
 		"ONCHAIN_KMS_ED25519_KEY_REGION": "us-east-2",
+		"ONCHAIN_SOLANA_USE_KMS_ED25519": "true",
 		"ONCHAIN_CANTON_AUTH_STRATEGY":   "client_credentials",
 		"ONCHAIN_CANTON_AUTH_URL":        "https://canton-auth.example.com",
 		"ONCHAIN_CANTON_CLIENT_ID":       "canton-client-id",
@@ -175,6 +177,7 @@ var (
 			Solana: SolanaConfig{
 				WalletKey:       "0x123",
 				ProgramsDirPath: "/tmp",
+				UseKMSEd25519:   true,
 			},
 			Aptos: AptosConfig{
 				DeployerKey: "0x123",
