@@ -367,6 +367,8 @@ func Test_LoadNetworks_FailsOnMistypedTypeInsteadOfSilentlyDroppingNetwork(t *te
 }
 
 func Test_LoadNetworks_DoesNotFetchManifestForFilteredOutNetworkType(t *testing.T) {
+	t.Parallel()
+
 	dom, _ := setupConfigDirs(t)
 	networkYAML := []byte(`networks:
   - type: testnet
