@@ -155,7 +155,7 @@ func TestSubcommands_HaveRequiredFlags(t *testing.T) {
 	}{
 		{
 			subcommand: "error-decode-evm",
-			flags:      []string{"environment", "error-file"},
+			flags:      []string{"environment", "error-file", "format", "env-build-params"},
 		},
 		{
 			subcommand: "analyze-proposal",
