@@ -13,6 +13,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/google/uuid"
@@ -160,10 +161,41 @@ func NewMultiClient(
 // Gas bumping is not performed here because the transaction is already signed; adjust gas on
 // chain.DeployerKey at chain load (gas_config defaults) or before signing the transaction.
 func (mc *MultiClient) SendTransaction(ctx context.Context, tx *types.Transaction) error {
+	if isDeployment(tx) && !isApprovedContract(tx) {
+		return fmt.Errorf("contract bytecode is not approved (tx %s, data length %d)", tx.Hash().Hex(), len(tx.Data()))
+	}
+
 	return mc.retryWithBackups(ctx, "SendTransaction", func(ct context.Context, client *ethclient.Client) error {
 		return client.SendTransaction(ct, tx)
 	})
 }
+
+// isDeployment reports whether tx is a top-level contract creation.
+// Contracts deployed through a factory, CREATE2 deployers or a proxy admin have To != nil and will pass unchecked
+func isDeployment(tx *types.Transaction) bool {
+	return tx.To() == nil
+}
+
+// isApprovedContract reports whether the creation bytecode in tx is approved. The tx data is
+// creationCode ++ abi.encode(ctorArgs) with no delimiter, so for each approved bytecode length we
+// hash the data prefix of that length and look it up.
+func isApprovedContract(tx *types.Transaction) bool {
+	data := tx.Data()
+	for n, hashes := range approvedBytecodes {
+		if n > len(data) {
+			continue
+		}
+		if _, ok := hashes[crypto.Keccak256Hash(data[:n])]; ok {
+			return true
+		}
+	}
+
+	return false
+}
+
+// approvedBytecodes maps creation-bytecode length -> set of keccak256(creation bytecode).
+// Hashes must be of the creation bytecode (not the deployed/runtime bytecode).
+var approvedBytecodes = map[int]map[common.Hash]struct{}{}
 
 // CallContract is a wrapper around the ethclient.CallContract method that retries on failure.
 func (mc *MultiClient) CallContract(ctx context.Context, msg ethereum.CallMsg, blockNumber *big.Int) ([]byte, error) {
