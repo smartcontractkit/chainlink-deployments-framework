@@ -65,6 +65,75 @@ func TestNewDefaultProposalContext(t *testing.T) {
 	})
 }
 
+// TestNewDefaultProposalContext_UpgradedInPlace checks that a contract with refs of several versions at one address
+// resolves to the highest version whatever order the refs come in, so the analyzer picks the decoder for the code
+// that is deployed. Refs of another type at the same address still override it.
+func TestNewDefaultProposalContext_UpgradedInPlace(t *testing.T) {
+	t.Parallel()
+
+	const (
+		chainSelector = 124615329519749607
+		router        = "Ccip842gzYHhvdDkSyi2YVCoAWPbYJoApMFzSxQroE9C"
+	)
+	ref := func(version string) datastore.AddressRef {
+		return datastore.AddressRef{
+			ChainSelector: chainSelector,
+			Address:       router,
+			Type:          "Router",
+			Version:       semver.MustParse(version),
+		}
+	}
+
+	tests := []struct {
+		name string
+		refs []datastore.AddressRef
+		want deployment.TypeAndVersion
+	}{
+		{
+			name: "older ref last",
+			refs: []datastore.AddressRef{ref("2.1.0"), ref("1.6.0")},
+			want: deployment.MustTypeAndVersionFromString("Router 2.1.0"),
+		},
+		{
+			name: "newer ref last",
+			refs: []datastore.AddressRef{ref("1.6.0"), ref("2.1.0")},
+			want: deployment.MustTypeAndVersionFromString("Router 2.1.0"),
+		},
+		{
+			name: "other type at the same address",
+			refs: []datastore.AddressRef{ref("2.1.0"), {
+				ChainSelector: chainSelector,
+				Address:       router,
+				Type:          "TestRouter",
+				Version:       semver.MustParse("1.0.0"),
+			}},
+			want: deployment.MustTypeAndVersionFromString("TestRouter 1.0.0"),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			ds := datastore.NewMemoryDataStore()
+			for _, r := range tt.refs {
+				require.NoError(t, ds.Addresses().Add(r))
+			}
+			env := deployment.Environment{
+				ExistingAddresses: deployment.NewMemoryAddressBook(),
+				DataStore:         ds.Seal(),
+			}
+
+			got, err := NewDefaultProposalContext(env)
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got.(*DefaultProposalContext).AddressesByChain[chainSelector][router]) //nolint:testifylint
+
+			solReg, err := NewEnvironmentSolanaRegistry(env, nil)
+			require.NoError(t, err)
+			require.Equal(t, tt.want, solReg.addressesByChain[chainSelector][router])
+		})
+	}
+}
+
 func Test_DefaultProposalContext_FieldContext(t *testing.T) {
 	t.Parallel()
 

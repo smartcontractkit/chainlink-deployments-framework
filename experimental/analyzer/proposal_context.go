@@ -2,7 +2,6 @@ package analyzer
 
 import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
-	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer/pointer"
 )
 
 type ProposalContext interface {
@@ -100,30 +99,13 @@ func NewDefaultProposalContext(env deployment.Environment, opts ...proposalCtxOp
 			return nil, err
 		}
 	}
-	addressesByChain, errAddrBook := env.ExistingAddresses.Addresses() //nolint:staticcheck
-	if errAddrBook != nil {
-		return nil, errAddrBook
-	}
-	dataStoreAddresses, errFetch := env.DataStore.Addresses().Fetch()
-	if errFetch != nil {
-		return nil, errFetch
-	}
-	for _, address := range dataStoreAddresses {
-		chainAddresses, exists := addressesByChain[address.ChainSelector]
-		if !exists {
-			chainAddresses = map[string]deployment.TypeAndVersion{}
-		}
-		chainAddresses[address.Address] = deployment.TypeAndVersion{
-			Type:    deployment.ContractType(address.Type),
-			Version: pointer.DerefOrEmpty(address.Version),
-			Labels:  deployment.NewLabelSet(address.Labels.List()...),
-		}
-		addressesByChain[address.ChainSelector] = chainAddresses
+	addressesByChain, err := getAllAddressesByChain(env)
+	if err != nil {
+		return nil, err
 	}
 	// Initialize contract registries
 	var evmRegistry EVMABIRegistry
 	var solanaRegistry SolanaDecoderRegistry
-	var err error
 	if len(options.solanaDecoders) > 0 {
 		solanaRegistry, err = NewEnvironmentSolanaRegistry(env, options.solanaDecoders)
 		if err != nil {
