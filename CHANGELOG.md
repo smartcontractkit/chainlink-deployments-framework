@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.129.1
+
+### Patch Changes
+
+- [#1217](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1217) [`3fd0d02`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/3fd0d0203d0ed3ddddb22fe15a40a538bdd419ac) Thanks [@archseer](https://github.com/archseer)! - The proposal analyzer now picks the highest version when one address has several datastore refs of the same type, as a contract upgraded in place does (for example Router 1.6.0 and 2.1.0). Before, the ref read last won, so `mcms analyze-proposal-v2` could decode a call with the old version's decoder and fail on instructions only the new version has. The four copies of the address-mapping code in the analyzer now share one function.
+
 ## 0.129.0
 
 ### Minor Changes
