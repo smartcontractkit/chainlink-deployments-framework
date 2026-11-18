@@ -1,0 +1,197 @@
+{
+  "version": "v1",
+  "kind": "TimelockProposal",
+  "validUntil": 1786913912,
+  "signatures": [
+    {
+      "R": "0x8caf41e26405abb93f84492306abb8f0cd29dd40970a782d83d27068a063d034",
+      "S": "0x6336dc3a8f7ca41514d53dbee9c32e0c542c679185acf838bfea576e3aa937c9",
+      "V": 28
+    },
+    {
+      "R": "0x9540ec5fc527bc358730a9ef6a4ae4ff33bffe0fbb3befbc603e969129ac6a9d",
+      "S": "0x7c9b33d0434a71536c084b352db82bacd3c61edee78e3cae295b7090f310aefc",
+      "V": 28
+    },
+    {
+      "R": "0x8e7ddb0f0fd5aca1942d600af0f913d36327c1444991497dda5a44e91337d623",
+      "S": "0x114fc81fa0bfae05cb63d7633f50465c87546e210f521ef21f537b56a7d67133",
+      "V": 28
+    },
+    {
+      "R": "0x644a3956792fd06bd698ff0bf02b2ce139e80986cec90853882422c4800c1e81",
+      "S": "0x7c7a208472adf230bd1ca36d69dad0920a5ea86709de9f731b643b41cc0cf1c5",
+      "V": 27
+    },
+    {
+      "R": "0x3df642a04ab1eb4131277c48ee41f9c40a002ce17d643ba806be38e5e9441a3f",
+      "S": "0x1e8fdc867ab38c0f2215af692b1d46a28e8ced06c5b61d17edb9ed003f7f38c6",
+      "V": 27
+    }
+  ],
+  "overridePreviousRoot": false,
+  "chainMetadata": {
+    "17529533435026248318": {
+      "startingOpCount": 16,
+      "mcmAddress": "0x9c8228c14012bbbb6bd1f04ccfb9d6310877c94e85e01446df892c4c83eee95a",
+      "additionalFields": {
+        "role": 2,
+        "mcms_package_id": "0x32ff1d8b394b8fdfe6411669c5bc59f6b39fc2a4523616fa518419a985a3e8a2",
+        "account_obj": "0xdc7eaff6b2a3598546ed21f3e76d12fa4f8de25c9a2342808a66a85baf3fae4f",
+        "registry_obj": "0xbd986ae4a5d339e2b50b184448582d9f652a5c3ea99dc81615685c48aa2483e6",
+        "timelock_obj": "0x8358c1d5262cd412ed1f0c6ce0db912ed20714d0946c8881cd309ee5232abd53",
+        "deployer_state_obj": "0x2114a89359efdba1dfe9ccd9bd6cf13953eadc5131a3f5d0586822909ffa06b5"
+      }
+    }
+  },
+  "description": "Invokes the following set of operations: sui-ccip-off-ramp-package-configure, sui-ccip-off-ramp-package-configure",
+  "metadata": {
+    "changesets": [
+      {
+        "config": {
+          "CCIPHomeConfigType": "active",
+          "HomeChainSel": 5009297550715157269,
+          "MCMS": {
+            "mcmsAction": "schedule",
+            "minDelay": 10800000000000,
+            "overrideRoot": false,
+            "validDuration": null
+          },
+          "PluginTypes": "",
+          "RemoteChainSels": [
+            17529533435026248318
+          ]
+        },
+        "id": "df42fc80-0bf4-4cf8-8428-c1c91260440f",
+        "input": {
+          "chainOverrides": [
+            17529533435026248318,
+            5009297550715157269
+          ],
+          "payload": {
+            "cciphomeconfigtype": "active",
+            "homechainsel": 5009297550715157269,
+            "mcms": {
+              "mcmsAction": "schedule",
+              "minDelay": 10800000000000,
+              "overrideRoot": false
+            },
+            "plugintypes": [],
+            "remotechainsels": [
+              17529533435026248318
+            ]
+          }
+        },
+        "name": "set_ocr3_config"
+      }
+    ],
+    "pipelinePullRequest": {
+      "author": "FelixFan1992",
+      "authorType": "User",
+      "branch": "fix-sui-mainnet-config-digest",
+      "prNumber": 17990,
+      "sha": "17479a0bc3eda0bf46259df6387c4e158a4fbe10",
+      "workflowRun": "https://github.com/smartcontractkit/chainlink-deployments/actions/runs/31742939677"
+    },
+    "pullRequest": {
+      "analyzedProposalCommentId": 5286333498,
+      "analyzedProposalCommentMarkerId": "proposal-analyzer-output",
+      "author": "app-token-issuer-infra-releng[bot]",
+      "branch": "1786654670927127434-ccip-mainnet-set_ocr3_config_mcms_timelock_proposal_0-31742939677",
+      "prNumber": 17994,
+      "sha": "cb2c11d80b9ea50cabf69e26ea518cf4d68ad572"
+    },
+    "rootHash": "0xc1fdebd9c808bca01aee2ec57611699dea6b800dde7a2140945deb51c1d0921b",
+    "signers": [
+      "0x29c5f7aCfDea3F48486b282aF0FA797b0F04D845",
+      "0x34e42200901133bdceb1195f2c5241cb03D06274",
+      "0x3Ce065c714810e0b2a85Ed71f1582038823c75d8",
+      "0x41eAdbc688797a02bfaBE48472995833489ce69D",
+      "0x4833c0fcE02C92fF8D92903BAB14827ff1cBD4bf",
+      "0x532657dDd472E9f9061963a44955acCCeE318B1c",
+      "0x843742760078Df85609690D85827173A1A96D14a",
+      "0x893234a5EbE7Ae1D5089Fe5936a05c6cd6fBaDE7",
+      "0x8E0e08E8cbc324310550E195383b7aC200726639",
+      "0xa53a14c85965734C875C91A6a145CFB5ff4624dD",
+      "0xd107276078c6605bE0CEC43D765733291B7102aF",
+      "0xE062e7D123AC8dF480C56147f911144F55C10f88",
+      "0xE3fe08c2Ac10a690284EdeBf20A3820479277162",
+      "0xE5e14e1FA005dB2DC05020b432942F2611279cc8",
+      "0xF27805Fd4416cE6cB433c5a63A39B2bCc47a4BF6",
+      "0x15C50aAdC2ff201FA0545996528082c9fC551eB0",
+      "0x1BD478DB8E202A887440b2f89E854927651Ce142",
+      "0x1E2cDb5Fe0461C3688E090B879fd1156ed32a887",
+      "0x4c29a3a0ECe46F27417953b925fA9cC01BF99253",
+      "0x4D12E3BaE007227CA63d55a8e3c4ddc3EbBFA2b6",
+      "0x54081602645704EE2B76FEe30E8B4d4F2D82d4E0",
+      "0x6943b0B1C63d3226B44853eEe8C2Bb6360fF3226",
+      "0x70f498A0AD8a17fC853fcb8eDbE31Fbce71173E6",
+      "0x7b404a74F7d78191F4359C6Cc75f895b5A44bdB2",
+      "0xB89FC4d62344a77dD09159390f9283ae9e5150F2",
+      "0xb8C1688807788A7F3FFc3Fb6F0c19E06889c051F",
+      "0xBA778eaBa9E592B644344bC5fe9D0a89d5c24009",
+      "0xBbe4467c7151B810eC8FdB281F6fB7F0cD8A7b65",
+      "0xD8B2263665600f2742425D451e91FEaf642bac30",
+      "0xD924A8A91c1406afaF55Be2Ad3Ee24Cc09D8814C",
+      "0xEA6247A8565de25E7d1E31f3055911566A2Addc6",
+      "0x5AA4D76f0CD8ea04fB3C4C4b771A0B9E03dC776C",
+      "0x60Fead3745461393F9298228E19d6D720Db89F2e",
+      "0x615B9b28B754Afd1fD03EbaB2BAE8b14A6Dc94Ee",
+      "0x9B391a5179BdC59af9B3a49423Fe8F10b74aF3c6",
+      "0xFccD1128fc823dD78e76240dc206a7A26494F271",
+      "0x013D4A675Fd02359c3c35Abc514dafd97B127e34",
+      "0x0D2730AD6D62A49907Fb9273cD4a59D1092cb472",
+      "0x1A1981c347Cd352CdF4882c343fC9C24C4796e94",
+      "0x6bfBf6BC4bc5CD20768dAA6F58f0743bAFf2e5f4",
+      "0xa42c8570771240D1e2F3211064a7C7472Cc05b7D",
+      "0xfBB1B9F0adFc8696e716CC8AD05a2fEbC1605028",
+      "0xFc660abD73677bb4942f1bDDd1054a975D228d29"
+    ],
+    "signingHash": "0x5c5b2177dc64736b499c187da039207c843d2535b3972c804cd109a652f728f8",
+    "signingMessageHash": "0x70ff5ba34d4b79cbf41fc44492762add6b8cacc1d87652ea79375f53ce5f3010",
+    "slack_messages": {
+      "#msig-ccip": {
+        "channel_id": "C08DPNDTV47",
+        "parent_ts": "1786654825.426299"
+      }
+    }
+  },
+  "action": "schedule",
+  "delay": "3h0m0s",
+  "timelockAddresses": {
+    "17529533435026248318": "0x8358c1d5262cd412ed1f0c6ce0db912ed20714d0946c8881cd309ee5232abd53"
+  },
+  "operations": [
+    {
+      "chainSelector": 17529533435026248318,
+      "transactions": [
+        {
+          "contractType": "offramp",
+          "tags": [
+            "changeset:df42fc80-0bf4-4cf8-8428-c1c91260440f"
+          ],
+          "to": "0xb9cb33ec10384413680e8327a1bd2c09704852b4132afa42075b90cdceac4b6c",
+          "data": "esCECN+ULCgtWt8+S/2XG3VuuLSKdR5BYpoTBiPHqI9xtDpR/RjXTnzHkJeDCvwaulMexxiTnuGvP5G4pm+mkzi53QDkBSuqYSSpDySWQO5MIwuBa1jjqKLHIwflHd5MIAAKUniIKBTB6m3npsgzezPdytSgBFpRarvfpcumJk8dAAUBECAcLNi/1U+9l+kiQfXPWopnwy5I/24t+sTaQpP8Q3vGHSA2TZZSCET5/Qv+UUhOziidpt2tpBntIP4z1OfrngPB8CD5y8rMXpzd5W/Pg/cBllG5T5cVh33zwF6kKerVFN2N0yCTS9TOI4/ne/4O1/2dVM43A+CO4ZUHr7LNfnfWOclFDiBwgrHdP8/YYq5YN0kOANRQZrJRgwBeOrs/kdSHsrsk+CDe5mzfxuZFgyUPI6zWnwdDxh37exHVe52uyP0UTXJXCCBmqZkhmn9IxiVLbVw8H2XO0fU+EE+Q0wUVOdMPvE+iTSCYI1fyfWizjeJv3+uuhPzNxoaneiEpPVmwvtrd4onknyAJ2kWNUoQwzAahYhpRDQ/hKhZXmP5eMflUDxWkV8sXMCB4E+ODQWkGICh7bL4rKHECuX9x9+NhyRimUNDQBf2AJiCeMx9NVF2kRWJngi85khgEy/2tgJhppq6PELJlh1NpKSA+VA6kYpZlBMROdVwZNzZu2VWsRXMXsCdgxn81MfB+ESChFFmm2Vv4QsswxDNijQG45KkTjHDVj9zAOXBqAplNaSByNAG7OWxAVA/UHApxWgjD1xYt2VnoMsJX2MMVzKWTBiD+2PVX0jA8RBuEnt/ElsZwEZG38jeIB5S6haa1TOi/qiAYXwgUsczUoDluMT9HgE5zszfgQ3J28t6mvQCIZiiZ5xAHRPu+2bCcgGLt20r9IIoG9dq2kxrGcgEVfW01B9REYxWcfU8nN0Fn0YZ5mDrVXynEms7tXnxDmD1ZaJPVifEJrZ5xHQtDePJx/u3jQ74RJLxZ/9nzCYDAAyrvRK0csIW318ol29qH2BWeaILqT0NCevZTbxNRghZcDk0kc8thqdTnvCszxV78L8VuFKW1wjsUKPkeGYBP2CbJiBFc3gwY9gXWUsDzlWzOSyh46Cq+p02VdYPILKzDp0eeHXiqmqzd5c3fyyjL5QL1Q0FOrdVEcqigCeL1MRfj7t0uayxIyWUUZC/j7peDsAs/REHy9gjtHZTa1iFt8Mu9daowPw/lKV+QvgOZ57LYnszXpjLxwfHPfoGBBDVqZeCA1bFE/MK1mvJxWNsUU6o82jRXz0HShT62Qri+8H3thr5rduXDfVPVeDjRyEfMq/IVlW5net8PjtpqJ41mDaJle9VqC58E7INAoItHGfIveu4NhYqdBo8PPgbcu9B/zF1w3e/qH9Lr9kQYy0soeZzVpq98Adz2PgS0Y19IbIn5DYJJR0AjayCCV5ZJA0SBW/zOzUz3AlX5kaN971OKWugAeDL5brQgPTq7q9+6kyTCHupfhceS16ZSJRLWo04smiUu4uVw/t3PRyhU/IAoz/LPIShOLd1r3+cRP0WI88miZnTtGtLExw==",
+          "additionalFields": {
+            "module_name": "offramp",
+            "function": "set_ocr3_config",
+            "state_obj": "0x71b43a51fd18d74e7cc79097830afc1aba531ec718939ee1af3f91b8a66fa693"
+          }
+        },
+        {
+          "contractType": "offramp",
+          "tags": [
+            "changeset:df42fc80-0bf4-4cf8-8428-c1c91260440f"
+          ],
+          "to": "0xb9cb33ec10384413680e8327a1bd2c09704852b4132afa42075b90cdceac4b6c",
+          "data": "esCECN+ULCgtWt8+S/2XG3VuuLSKdR5BYpoTBiPHqI9xtDpR/RjXTnzHkJeDCvwaulMexxiTnuGvP5G4pm+mkzi53QDkBSuqYSSpDySWQO5MIwuBa1jjqKLHIwflHd5MIAAKLtD5nu5HbbFORmzJ57VN8sg5xfL+f+evfkWLfRJmAQUAECAcLNi/1U+9l+kiQfXPWopnwy5I/24t+sTaQpP8Q3vGHSA2TZZSCET5/Qv+UUhOziidpt2tpBntIP4z1OfrngPB8CD5y8rMXpzd5W/Pg/cBllG5T5cVh33zwF6kKerVFN2N0yCTS9TOI4/ne/4O1/2dVM43A+CO4ZUHr7LNfnfWOclFDiBwgrHdP8/YYq5YN0kOANRQZrJRgwBeOrs/kdSHsrsk+CDe5mzfxuZFgyUPI6zWnwdDxh37exHVe52uyP0UTXJXCCBmqZkhmn9IxiVLbVw8H2XO0fU+EE+Q0wUVOdMPvE+iTSCYI1fyfWizjeJv3+uuhPzNxoaneiEpPVmwvtrd4onknyAJ2kWNUoQwzAahYhpRDQ/hKhZXmP5eMflUDxWkV8sXMCB4E+ODQWkGICh7bL4rKHECuX9x9+NhyRimUNDQBf2AJiCeMx9NVF2kRWJngi85khgEy/2tgJhppq6PELJlh1NpKSA+VA6kYpZlBMROdVwZNzZu2VWsRXMXsCdgxn81MfB+ESChFFmm2Vv4QsswxDNijQG45KkTjHDVj9zAOXBqAplNaSByNAG7OWxAVA/UHApxWgjD1xYt2VnoMsJX2MMVzKWTBiD+2PVX0jA8RBuEnt/ElsZwEZG38jeIB5S6haa1TOi/qiAYXwgUsczUoDluMT9HgE5zszfgQ3J28t6mvQCIZiiZ5xAHRPu+2bCcgGLt20r9IIoG9dq2kxrGcgEVfW01B9REYxWcfU8nN0Fn0YZ5mDrVXynEms7tXnxDmD1ZaJPVifEJrZ5xHQtDePJx/u3jQ74RJLxZ/9nzCYDAAyrvRK0csIW318ol29qH2BWeaILqT0NCevZTbxNRghZcDk0kc8thqdTnvCszxV78L8VuFKW1wjsUKPkeGYBP2CbJiBFc3gwY9gXWUsDzlWzOSyh46Cq+p02VdYPILKzDp0eeHXiqmqzd5c3fyyjL5QL1Q0FOrdVEcqigCeL1MRfj7t0uayxIyWUUZC/j7peDsAs/REHy9gjtHZTa1iFt8Mu9daowPw/lKV+QvgOZ57LYnszXpjLxwfHPfoGBBDVqZeCA1bFE/MK1mvJxWNsUU6o82jRXz0HShT62Qri+8H3thr5rduXDfVPVeDjRyEfMq/IVlW5net8PjtpqJ41mDaJle9VqC58E7INAoItHGfIveu4NhYqdBo8PPgbcu9B/zF1w3e/qH9Lr9kQYy0soeZzVpq98Adz2PgS0Y19IbIn5DYJJR0AjayCCV5ZJA0SBW/zOzUz3AlX5kaN971OKWugAeDL5brQgPTq7q9+6kyTCHupfhceS16ZSJRLWo04smiUu4uVw/t3PRyhU/IAoz/LPIShOLd1r3+cRP0WI88miZnTtGtLExw==",
+          "additionalFields": {
+            "module_name": "offramp",
+            "function": "set_ocr3_config",
+            "state_obj": "0x71b43a51fd18d74e7cc79097830afc1aba531ec718939ee1af3f91b8a66fa693"
+          }
+        }
+      ]
+    }
+  ]
+}

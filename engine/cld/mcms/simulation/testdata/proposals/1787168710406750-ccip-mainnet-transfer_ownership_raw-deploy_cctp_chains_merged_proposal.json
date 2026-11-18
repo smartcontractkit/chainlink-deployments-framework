@@ -1,0 +1,470 @@
+{
+  "version": "v1",
+  "kind": "TimelockProposal",
+  "validUntil": 1787433153,
+  "signatures": [
+    {
+      "R": "0x816ba26b648bf6add6c94a95a6d12a365108a7c11c3af35e53d2ace794f1ac51",
+      "S": "0x620f3e1269a3aa10f9888e93d1b8df7c4a40be61766339d7b0f011a687d5649f",
+      "V": 28
+    },
+    {
+      "R": "0xb33ac01fadcb95835d894db472fb79c89e31515c647f849a27e0468faddcf263",
+      "S": "0x086b6d74b430ef16a866acb8f3687ffa441048221ee3c2d081b27d8622266fc8",
+      "V": 28
+    },
+    {
+      "R": "0xf9ed54998b59aab4c9dc29c4b17dfc8b839fc1851a4d157f69cd07a5bc51e212",
+      "S": "0x4150785d746cf3635ee85732dad334cac59890fd45ecd100b00ce7872be8acb3",
+      "V": 28
+    },
+    {
+      "R": "0x69f0fe19f5a8c9134845c3e61835338d638f6e1f38b9b1eac32b07bde7f3c2fa",
+      "S": "0x07c0a8fc48a0e15e6cfea1654ea4a4235631d370a5a223d854c06f45c5fb2bb8",
+      "V": 28
+    },
+    {
+      "R": "0xb40d6d64e5043cf6583ab4fee9036062f07d13724489f2f222296b20c0abb1aa",
+      "S": "0x76c6643568eb83e921d3b503cf1e4f02eb47ae923892978a5e6f9d2cfb57fb82",
+      "V": 28
+    }
+  ],
+  "overridePreviousRoot": false,
+  "chainMetadata": {
+    "5009297550715157269": {
+      "startingOpCount": 1404,
+      "mcmAddress": "0xD9757aA52907798d1aF2FDa7A6C0cC733E5aCf7e"
+    },
+    "7222032299962346917": {
+      "startingOpCount": 25,
+      "mcmAddress": "0xf4a170A36D4C656F614d44453f73308Bdb275196"
+    }
+  },
+  "description": "Transfer ownership to timelock",
+  "metadata": {
+    "changesets": [
+      {
+        "config": {
+          "ContractsByChain": {
+            "7222032299962346917": [
+              "0xbbc18ab9162dacc6de1a51bfea25d3be0ff40843"
+            ]
+          },
+          "MCMSConfig": {
+            "mcmsAction": "",
+            "minDelay": 10800000000000,
+            "overrideRoot": false,
+            "timelockQualifierPerChain": {
+              "7222032299962346917": "CLLCCIP"
+            },
+            "validDuration": null
+          },
+          "OnlyAcceptOwnership": false
+        },
+        "id": "a9209ab2-f4a0-4a5a-b76a-442cc053ec3f",
+        "input": {
+          "chainOverrides": [
+            7222032299962346917
+          ],
+          "payload": {
+            "MCMSConfig": {
+              "minDelay": 10800000000000,
+              "timelockQualifierPerChain": {
+                "7222032299962346917": "CLLCCIP"
+              }
+            },
+            "contractsByChain": {
+              "7222032299962346917": [
+                "0xBbC18AB9162dAcC6dE1A51BFEa25d3BE0FF40843"
+              ]
+            }
+          }
+        },
+        "name": "transfer_ownership_raw"
+      },
+      {
+        "config": {
+          "Chains": {
+            "5009297550715157269": {
+              "DeployerContract": "0x10084720415099383209f7C939dea5B14FCFbb09",
+              "FastFinalityBps": 1,
+              "FeeAggregator": "0x062f05CD6c835677B05a8658A351969476861316",
+              "RegisteredPoolRef": {
+                "address": "",
+                "chainSelector": 0,
+                "labels": [],
+                "qualifier": "",
+                "type": "USDCTokenPoolProxy",
+                "version": "2.0.0"
+              },
+              "RemoteChains": {
+                "7222032299962346917": {
+                  "DomainIdentifier": 0,
+                  "FeeUSDCents": 0,
+                  "GasForVerification": 0,
+                  "InboundRateLimiterConfig": {
+                    "capacity": 4583333.304,
+                    "isEnabled": true,
+                    "rate": 1273.14814
+                  },
+                  "LockOrBurnMechanism": "LOCK_RELEASE",
+                  "OutboundRateLimiterConfig": {
+                    "capacity": 4166666.6667,
+                    "isEnabled": true,
+                    "rate": 1157.4074
+                  },
+                  "PayloadSizeBytes": 0,
+                  "TokenTransferFeeConfig": {
+                    "customFinalityFeeUSDCents": 0,
+                    "customFinalityTransferFeeBps": 0,
+                    "defaultFinalityFeeUSDCents": 0,
+                    "defaultFinalityTransferFeeBps": 0,
+                    "destBytesOverhead": 0,
+                    "destGasOverhead": 0,
+                    "isEnabled": false
+                  }
+                }
+              },
+              "StorageLocations": [
+                ""
+              ],
+              "TokenDecimals": 6,
+              "TokenMessengerV1": "0xBd3fa81B58Ba92a82136038B25aDec7066af3155",
+              "TokenMessengerV2": "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
+              "USDCToken": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+              "USDCType": "CANONICAL"
+            },
+            "7222032299962346917": {
+              "DeployerContract": "",
+              "FastFinalityBps": 0,
+              "FeeAggregator": "",
+              "RegisteredPoolRef": {
+                "address": "",
+                "chainSelector": 0,
+                "labels": [],
+                "qualifier": "",
+                "type": "BurnMintWithLockReleaseFlagTokenPool",
+                "version": "1.6.1"
+              },
+              "RemoteChains": {
+                "5009297550715157269": {
+                  "DomainIdentifier": 0,
+                  "FeeUSDCents": 0,
+                  "GasForVerification": 0,
+                  "InboundRateLimiterConfig": {
+                    "capacity": 4583333.304,
+                    "isEnabled": true,
+                    "rate": 1273.14814
+                  },
+                  "LockOrBurnMechanism": "LOCK_RELEASE",
+                  "OutboundRateLimiterConfig": {
+                    "capacity": 4166666.6667,
+                    "isEnabled": true,
+                    "rate": 1157.4074
+                  },
+                  "PayloadSizeBytes": 0,
+                  "TokenTransferFeeConfig": {
+                    "customFinalityFeeUSDCents": 0,
+                    "customFinalityTransferFeeBps": 0,
+                    "defaultFinalityFeeUSDCents": 0,
+                    "defaultFinalityTransferFeeBps": 0,
+                    "destBytesOverhead": 0,
+                    "destGasOverhead": 0,
+                    "isEnabled": false
+                  }
+                }
+              },
+              "StorageLocations": null,
+              "TokenDecimals": 6,
+              "TokenMessengerV1": "",
+              "TokenMessengerV2": "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
+              "USDCToken": "0x028447684F3fFb6d27042D6c3Da7B088332c6576",
+              "USDCType": "NON_CANONICAL"
+            }
+          },
+          "MCMS": {
+            "Description": "",
+            "OverridePreviousRoot": false,
+            "Qualifier": "",
+            "TimelockAction": "schedule",
+            "TimelockDelay": "3h0m0s",
+            "ValidUntil": 1788137925
+          }
+        },
+        "id": "90ac5508-9279-4510-9263-d4e821f50285",
+        "input": {
+          "chainOverrides": [
+            5009297550715157269,
+            7222032299962346917
+          ],
+          "payload": {
+            "chains": {
+              "5009297550715157269": {
+                "deployercontract": "0x10084720415099383209f7C939dea5B14FCFbb09",
+                "fastfinalitybps": 1,
+                "feeaggregator": "0x062f05CD6c835677B05a8658A351969476861316",
+                "registeredpoolref": {
+                  "type": "USDCTokenPoolProxy",
+                  "version": "2.0.0"
+                },
+                "remotechains": {
+                  "7222032299962346917": {
+                    "domainidentifier": null,
+                    "inboundratelimiterconfig": {
+                      "capacity": 4583333.304,
+                      "isEnabled": true,
+                      "rate": 1273.14814
+                    },
+                    "lockorburnmechanism": "LOCK_RELEASE",
+                    "outboundratelimiterconfig": {
+                      "capacity": 4166666.6667,
+                      "isEnabled": true,
+                      "rate": 1157.4074
+                    },
+                    "tokentransferfeeconfig": {
+                      "isEnabled": false
+                    }
+                  }
+                },
+                "storagelocations": [
+                  ""
+                ],
+                "tokendecimals": 6,
+                "tokenmessengerv1": "0xBd3fa81B58Ba92a82136038B25aDec7066af3155",
+                "tokenmessengerv2": "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
+                "usdctoken": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+                "usdctype": "CANONICAL"
+              },
+              "7222032299962346917": {
+                "registeredpoolref": {
+                  "type": "BurnMintWithLockReleaseFlagTokenPool",
+                  "version": "1.6.1"
+                },
+                "remotechains": {
+                  "5009297550715157269": {
+                    "domainidentifier": 0,
+                    "inboundratelimiterconfig": {
+                      "capacity": 4583333.304,
+                      "isEnabled": true,
+                      "rate": 1273.14814
+                    },
+                    "lockorburnmechanism": "LOCK_RELEASE",
+                    "outboundratelimiterconfig": {
+                      "capacity": 4166666.6667,
+                      "isEnabled": true,
+                      "rate": 1157.4074
+                    },
+                    "tokentransferfeeconfig": {
+                      "isEnabled": false
+                    }
+                  }
+                },
+                "tokendecimals": 6,
+                "tokenmessengerv2": "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
+                "usdctoken": "0x028447684F3fFb6d27042D6c3Da7B088332c6576",
+                "usdctype": "NON_CANONICAL"
+              }
+            },
+            "mcms": {
+              "overridepreviousroot": false,
+              "timelockaction": "schedule",
+              "timelockdelay": "3h",
+              "validuntil": 1788137925
+            }
+          }
+        },
+        "name": "deploy_cctp_chains"
+      }
+    ],
+    "pipelinePullRequest": {
+      "author": "b-gopalswami",
+      "authorType": "User",
+      "branch": "bg/ccip-12535-configure-usdc.e-neo",
+      "prNumber": 18153,
+      "sha": "49e0148bb4d6fa72f9116643e93d2e7ba68797ea",
+      "workflowRun": "https://github.com/smartcontractkit/chainlink-deployments/actions/runs/32293990529"
+    },
+    "pullRequest": {
+      "analyzedProposalCommentId": 5347167331,
+      "analyzedProposalCommentMarkerId": "proposal-analyzer-output",
+      "author": "app-token-issuer-infra-releng[bot]",
+      "branch": "1787168710406750-ccip-mainnet-transfer_ownership_raw-deploy_cctp_chains_merged_proposal-32293990529",
+      "prNumber": 18159,
+      "sha": "109997dd80c2dbfa3f5caab2babce41ee12bbd1d"
+    },
+    "rootHash": "0xf73bd7711e58ae5c6245c33cd2fccbd6a10250366f9b55629419b1d73c45bc8d",
+    "signers": [
+      "0x29c5f7aCfDea3F48486b282aF0FA797b0F04D845",
+      "0x3Ce065c714810e0b2a85Ed71f1582038823c75d8",
+      "0x41eAdbc688797a02bfaBE48472995833489ce69D",
+      "0x4833c0fcE02C92fF8D92903BAB14827ff1cBD4bf",
+      "0x532657dDd472E9f9061963a44955acCCeE318B1c",
+      "0x5AA4D76f0CD8ea04fB3C4C4b771A0B9E03dC776C",
+      "0x615B9b28B754Afd1fD03EbaB2BAE8b14A6Dc94Ee",
+      "0x843742760078Df85609690D85827173A1A96D14a",
+      "0x8569de6e68F22937e69b7338E47Ee751aCcFb266",
+      "0x89810cb91a5fe67dDf3483182f08e1559A5699De",
+      "0x957913184D083731770A15E4d401e4A8310Bb5F3",
+      "0xa69dceB575892EFe06C90b4c79bE7DeC5112DE7B",
+      "0xB2675C40d0E3B7466Cc419CcBdac289392618Ce8",
+      "0xd107276078c6605bE0CEC43D765733291B7102aF",
+      "0xE062e7D123AC8dF480C56147f911144F55C10f88",
+      "0xE3fe08c2Ac10a690284EdeBf20A3820479277162",
+      "0xF27805Fd4416cE6cB433c5a63A39B2bCc47a4BF6",
+      "0x15C50aAdC2ff201FA0545996528082c9fC551eB0",
+      "0x1BD478DB8E202A887440b2f89E854927651Ce142",
+      "0x1E2cDb5Fe0461C3688E090B879fd1156ed32a887",
+      "0x4c29a3a0ECe46F27417953b925fA9cC01BF99253",
+      "0x4D12E3BaE007227CA63d55a8e3c4ddc3EbBFA2b6",
+      "0x54081602645704EE2B76FEe30E8B4d4F2D82d4E0",
+      "0x568DCF31bEE597CbcA90F6063123f48dF502532b",
+      "0x70f498A0AD8a17fC853fcb8eDbE31Fbce71173E6",
+      "0x767EDF33E430E14C6611cb1A9Ea3108E2C6346C2",
+      "0x7b404a74F7d78191F4359C6Cc75f895b5A44bdB2",
+      "0x8AbFC1005bee7ec7ddd4Df69fAC70399B9dEFf61",
+      "0x97D0895BEd8acd240C32427191D96B18eB283748",
+      "0x9a2595b4482F463fc629fBf5900e6Fab6d4D5fD0",
+      "0xADE26816Bb84a0c3CB8e468157Eb4dc13B006c44",
+      "0xD924A8A91c1406afaF55Be2Ad3Ee24Cc09D8814C",
+      "0xEA6247A8565de25E7d1E31f3055911566A2Addc6",
+      "0xF3C4A0C49234c6f08ACf889522812d0647A8481b",
+      "0xFccD1128fc823dD78e76240dc206a7A26494F271",
+      "0x013D4A675Fd02359c3c35Abc514dafd97B127e34",
+      "0x0D2730AD6D62A49907Fb9273cD4a59D1092cb472",
+      "0x1A1981c347Cd352CdF4882c343fC9C24C4796e94",
+      "0x6bfBf6BC4bc5CD20768dAA6F58f0743bAFf2e5f4",
+      "0xa42c8570771240D1e2F3211064a7C7472Cc05b7D",
+      "0xfBB1B9F0adFc8696e716CC8AD05a2fEbC1605028",
+      "0xFc660abD73677bb4942f1bDDd1054a975D228d29"
+    ],
+    "signingHash": "0xa352460a791fdeded06cf2838ced81b6e56e765e9e51140faacef1289f349303",
+    "signingMessageHash": "0x4d3113833de734b7463aa2dded456a078ccea61dad3964384b8e34ef8eab479f",
+    "slack_messages": {
+      "#msig-ccip": {
+        "channel_id": "C08DPNDTV47",
+        "parent_ts": "1787168736.595289"
+      }
+    }
+  },
+  "action": "schedule",
+  "delay": "3h0m0s",
+  "timelockAddresses": {
+    "5009297550715157269": "0x44835bBBA9D40DEDa9b64858095EcFB2693c9449",
+    "7222032299962346917": "0x0c43bb1A15A1FF1CbDdFF2B8F9518C1B0d3B17E2"
+  },
+  "operations": [
+    {
+      "chainSelector": 7222032299962346917,
+      "transactions": [
+        {
+          "contractType": "",
+          "tags": [
+            "changeset:a9209ab2-f4a0-4a5a-b76a-442cc053ec3f"
+          ],
+          "to": "0xBbC18AB9162dAcC6dE1A51BFEa25d3BE0FF40843",
+          "data": "ebpQlw==",
+          "additionalFields": {
+            "value": 0
+          }
+        }
+      ]
+    },
+    {
+      "chainSelector": 5009297550715157269,
+      "transactions": [
+        {
+          "contractType": "SiloedUSDCTokenPool",
+          "tags": [
+            "changeset:90ac5508-9279-4510-9263-d4e821f50285"
+          ],
+          "to": "0xed37ecDcc2bb79ab310457702713626d5C07FC2D",
+          "data": "79B+7AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABkOdAc46ctpQAAAAAAAAAAAAAAACuvu8LJa/LnarJTiZ+1H5UiuO89",
+          "additionalFields": {
+            "value": 0
+          }
+        }
+      ]
+    },
+    {
+      "chainSelector": 5009297550715157269,
+      "transactions": [
+        {
+          "contractType": "TokenPool",
+          "tags": [
+            "changeset:90ac5508-9279-4510-9263-d4e821f50285"
+          ],
+          "to": "0xed37ecDcc2bb79ab310457702713626d5C07FC2D",
+          "data": "6KHaFwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABkOdAc46ctpQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAaAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA8ogr8LMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAET8oqgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABCsj9Il6AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEvisuwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAC7wYq5Fi2sxt4aUb/qJdO+D/QIQwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAAAAAAAAAAAAAAoRHaE8/+20nBC1sPaewiDMsZXY=",
+          "additionalFields": {
+            "value": 0
+          }
+        },
+        {
+          "contractType": "TokenPool",
+          "tags": [
+            "changeset:90ac5508-9279-4510-9263-d4e821f50285"
+          ],
+          "to": "0xed37ecDcc2bb79ab310457702713626d5C07FC2D",
+          "data": "3L1BvAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABkOdAc46ctpQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPKIK/CzAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABE/KKoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQrI/SJegAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABL4rLs",
+          "additionalFields": {
+            "value": 0
+          }
+        }
+      ]
+    },
+    {
+      "chainSelector": 5009297550715157269,
+      "transactions": [
+        {
+          "contractType": "USDCTokenPoolProxy",
+          "tags": [
+            "changeset:90ac5508-9279-4510-9263-d4e821f50285"
+          ],
+          "to": "0xf70B4B6ec7AdB8822b23119c844729E9b1B1683D",
+          "data": "20wq7wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGQ50Bzjpy2lAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAw==",
+          "additionalFields": {
+            "value": 0
+          }
+        }
+      ]
+    },
+    {
+      "chainSelector": 7222032299962346917,
+      "transactions": [
+        {
+          "contractType": "TokenAdminRegistry",
+          "tags": [
+            "changeset:90ac5508-9279-4510-9263-d4e821f50285"
+          ],
+          "to": "0x344FCBb30EC9ECf58c8399EDe0430592E6703BC1",
+          "data": "5neuNwAAAAAAAAAAAAAAAAKER2hPP/ttJwQtbD2nsIgzLGV2AAAAAAAAAAAAAAAADEO7GhWh/xy93/K4+VGMGw07F+I=",
+          "additionalFields": {
+            "value": 0
+          }
+        },
+        {
+          "contractType": "TokenAdminRegistry",
+          "tags": [
+            "changeset:90ac5508-9279-4510-9263-d4e821f50285"
+          ],
+          "to": "0x344FCBb30EC9ECf58c8399EDe0430592E6703BC1",
+          "data": "FWGU2gAAAAAAAAAAAAAAAAKER2hPP/ttJwQtbD2nsIgzLGV2",
+          "additionalFields": {
+            "value": 0
+          }
+        },
+        {
+          "contractType": "TokenAdminRegistry",
+          "tags": [
+            "changeset:90ac5508-9279-4510-9263-d4e821f50285"
+          ],
+          "to": "0x344FCBb30EC9ECf58c8399EDe0430592E6703BC1",
+          "data": "ToR/xwAAAAAAAAAAAAAAAAKER2hPP/ttJwQtbD2nsIgzLGV2AAAAAAAAAAAAAAAAu8GKuRYtrMbeGlG/6iXTvg/0CEM=",
+          "additionalFields": {
+            "value": 0
+          }
+        }
+      ]
+    }
+  ]
+}
