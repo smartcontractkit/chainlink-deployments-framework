@@ -7,8 +7,6 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
-
-	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer/pointer"
 )
 
 type EVMABIRegistry interface {
@@ -71,25 +69,9 @@ func (reg environmentEVMRegistry) AddABI(typeAndVersion deployment.TypeAndVersio
 
 // NewEnvironmentEVMRegistry creates a new environmentEVMRegistry from the provided ABI mappings and domain name.
 func NewEnvironmentEVMRegistry(env deployment.Environment, abiMappings map[string]string) (*environmentEVMRegistry, error) {
-	addressesByChain, errAddrBook := env.ExistingAddresses.Addresses() //nolint:staticcheck
-	if errAddrBook != nil {
-		return nil, errAddrBook
-	}
-	dataStoreAddresses, err := env.DataStore.Addresses().Fetch()
+	addressesByChain, err := getAllAddressesByChain(env)
 	if err != nil {
 		return nil, err
-	}
-	for _, address := range dataStoreAddresses {
-		chainAddresses, exists := addressesByChain[address.ChainSelector]
-		if !exists {
-			chainAddresses = map[string]deployment.TypeAndVersion{}
-		}
-		chainAddresses[address.Address] = deployment.TypeAndVersion{
-			Type:    deployment.ContractType(address.Type),
-			Version: pointer.DerefOrEmpty(address.Version),
-			Labels:  deployment.NewLabelSet(address.Labels.List()...),
-		}
-		addressesByChain[address.ChainSelector] = chainAddresses
 	}
 
 	return &environmentEVMRegistry{

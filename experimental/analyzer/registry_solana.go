@@ -15,7 +15,6 @@ import (
 	"github.com/gagliardetto/solana-go/programs/vote"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/deployment"
-	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer/pointer"
 	"github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer/solana/programs/loaderv3"
 	verify "github.com/smartcontractkit/chainlink-deployments-framework/experimental/analyzer/solana/programs/otter_verify"
 )
@@ -105,25 +104,9 @@ func NewEnvironmentSolanaRegistry(env deployment.Environment, decoderMappings ma
 		decoderMappings = maps.Clone(decoderMappings)
 	}
 
-	addressesByChain, errAddrBook := env.ExistingAddresses.Addresses() //nolint:staticcheck
-	if errAddrBook != nil {
-		return nil, errAddrBook
-	}
-	dataStoreAddresses, err := env.DataStore.Addresses().Fetch()
+	addressesByChain, err := getAllAddressesByChain(env)
 	if err != nil {
 		return nil, err
-	}
-	for _, address := range dataStoreAddresses {
-		chainAddresses, exists := addressesByChain[address.ChainSelector]
-		if !exists {
-			chainAddresses = map[string]deployment.TypeAndVersion{}
-		}
-		chainAddresses[address.Address] = deployment.TypeAndVersion{
-			Type:    deployment.ContractType(address.Type),
-			Version: pointer.DerefOrEmpty(address.Version),
-			Labels:  deployment.NewLabelSet(address.Labels.List()...),
-		}
-		addressesByChain[address.ChainSelector] = chainAddresses
 	}
 
 	// add native programs and mappings

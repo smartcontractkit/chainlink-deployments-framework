@@ -253,6 +253,11 @@ func tryEIP1967ProxyFallback(
 
 // getAllAddressesByChain retrieves addresses from both ExistingAddresses and DataStore,
 // merging them into a single map.
+//
+// A contract upgraded in place has one address and several refs of the same type, for example
+// Router 1.6.0 and Router 2.1.0. The highest version describes what is deployed, so it is kept
+// whatever order the refs come in. Refs of different types at one address keep the previous
+// behavior: the DataStore ref read last wins.
 func getAllAddressesByChain(env deployment.Environment) (deployment.AddressesByChain, error) {
 	// Start with addresses from ExistingAddresses
 	addressesByChain, err := env.ExistingAddresses.Addresses() //nolint:staticcheck
@@ -272,11 +277,15 @@ func getAllAddressesByChain(env deployment.Environment) (deployment.AddressesByC
 		if !exists {
 			chainAddresses = map[string]deployment.TypeAndVersion{}
 		}
-		chainAddresses[address.Address] = deployment.TypeAndVersion{
+		tv := deployment.TypeAndVersion{
 			Type:    deployment.ContractType(address.Type),
 			Version: pointer.DerefOrEmpty(address.Version),
 			Labels:  deployment.NewLabelSet(address.Labels.List()...),
 		}
+		if current, ok := chainAddresses[address.Address]; ok && current.Type == tv.Type && current.Version.GreaterThan(&tv.Version) {
+			continue
+		}
+		chainAddresses[address.Address] = tv
 		addressesByChain[address.ChainSelector] = chainAddresses
 	}
 
