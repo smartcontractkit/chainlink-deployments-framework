@@ -2,6 +2,7 @@ package network
 
 import (
 	"errors"
+	"fmt"
 
 	chainsel "github.com/smartcontractkit/chain-selectors"
 )
@@ -14,13 +15,26 @@ const (
 	NetworkTypeTestnet NetworkType = "testnet"
 )
 
+// RPCsMode controls how a network's yaml rpcs combine with RPCs discovered from an RPC manifest.
+type RPCsMode string
+
+const (
+	// RPCsModeReplace uses the yaml rpcs as-is, falling back to the manifest only when there are
+	// none. It is the default.
+	RPCsModeReplace RPCsMode = "replace"
+	// RPCsModeAppend keeps the yaml rpcs first and appends the manifest's provider RPCs.
+	RPCsModeAppend RPCsMode = "append"
+)
+
 // Network represents a network configuration.
 type Network struct {
 	Type          NetworkType   `yaml:"type"`
 	ChainSelector uint64        `yaml:"chain_selector"`
 	BlockExplorer BlockExplorer `yaml:"block_explorer"`
 	RPCs          []RPC         `yaml:"rpcs"`
-	Metadata      any           `yaml:"metadata"`
+	// RPCsMode only takes effect when the domain configures an RPC manifest.
+	RPCsMode RPCsMode `yaml:"rpcs_mode,omitempty"`
+	Metadata any      `yaml:"metadata"`
 }
 
 // ChainFamily returns the family of the network based on its chain selector.
@@ -35,16 +49,36 @@ func (n *Network) ChainID() (string, error) {
 
 // Validate validates the network configuration to ensure that all required fields are set.
 func (n *Network) Validate() error {
+	if err := n.ValidateStructure(); err != nil {
+		return err
+	}
+
+	if len(n.RPCs) == 0 {
+		return errors.New("at least one RPC is required")
+	}
+
+	return nil
+}
+
+// ValidateStructure validates everything except the presence of RPCs, which an RPC manifest may
+// still fill in.
+func (n *Network) ValidateStructure() error {
 	if n.Type == "" {
 		return errors.New("type is required")
+	}
+
+	if n.Type != NetworkTypeMainnet && n.Type != NetworkTypeTestnet {
+		return fmt.Errorf("type %q is not a recognized network type (must be %q or %q)", n.Type, NetworkTypeMainnet, NetworkTypeTestnet)
 	}
 
 	if n.ChainSelector == 0 {
 		return errors.New("chain selector is required")
 	}
 
-	if len(n.RPCs) == 0 {
-		return errors.New("at least one RPC is required")
+	switch n.RPCsMode {
+	case "", RPCsModeReplace, RPCsModeAppend:
+	default:
+		return fmt.Errorf("rpcs_mode %q is not recognized (must be %q or %q)", n.RPCsMode, RPCsModeReplace, RPCsModeAppend)
 	}
 
 	return nil

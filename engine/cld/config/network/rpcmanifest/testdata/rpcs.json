@@ -1,0 +1,32 @@
+[
+  {
+    "ChainID": "11155111",
+    "ChainSelector": "16015286601757825753",
+    "Names": {
+      "Blockchain": "ethereum",
+      "Canonical": "ethereum-testnet-sepolia",
+      "Fullname": "ethereum-testnet-sepolia",
+      "Network": "testnet",
+      "Shortname": "ethereum-testnet-sepolia"
+    },
+    "Nodes": [
+      {
+        "ID": {"Numerical": "linkpool1", "Stable": "linkpool-test"},
+        "Provider": "LinkPool"
+      },
+      {
+        "ID": {"Numerical": "alchemy1", "Stable": "alchemy-test"},
+        "Provider": "Alchemy"
+      }
+    ]
+  },
+  {
+    "ChainID": "42",
+    "ChainSelector": "42",
+    "Names": {
+      "Canonical": "no-nodes",
+      "Network": "testnet"
+    },
+    "Nodes": []
+  }
+]
