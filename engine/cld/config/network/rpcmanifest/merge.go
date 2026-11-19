@@ -43,6 +43,10 @@ func MergeInto(yamlCfg *cfgnet.Config, manifest *Manifest, lggr logger.Logger) (
 }
 
 func mergeNetwork(network cfgnet.Network, manifest *Manifest, lggr logger.Logger) (cfgnet.Network, error) {
+	if err := network.ValidateStructure(); err != nil {
+		return cfgnet.Network{}, fmt.Errorf("failed to validate network %d: %w", network.ChainSelector, err)
+	}
+
 	appendMode := network.RPCsMode == cfgnet.RPCsModeAppend
 	// The merged list is final; clearing the mode keeps a second merge from appending again.
 	network.RPCsMode = ""

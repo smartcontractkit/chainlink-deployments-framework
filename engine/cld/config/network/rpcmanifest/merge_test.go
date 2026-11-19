@@ -104,6 +104,13 @@ func TestMergeInto(t *testing.T) {
 			wantErr: "chain selector 123 uses the rpc manifest",
 		},
 		{
+			name: "unrecognized rpcs_mode fails",
+			give: cfgnet.Network{
+				ChainSelector: unknownSelector, RPCs: []cfgnet.RPC{own}, RPCsMode: "sideways",
+			},
+			wantErr: "rpcs_mode",
+		},
+		{
 			name:    "empty rpcs fail for a chain missing from the manifest",
 			give:    cfgnet.Network{ChainSelector: unknownSelector},
 			wantErr: "chain selector 123 uses the rpc manifest",

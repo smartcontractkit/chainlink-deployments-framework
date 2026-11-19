@@ -32,7 +32,7 @@ func Test_fetchHTTP(t *testing.T) {
 		assert.JSONEq(t, `[{"ChainSelector":"1"}]`, string(data))
 	})
 
-	t.Run("non-200 status includes body", func(t *testing.T) {
+	t.Run("non-200 status does not echo the response body", func(t *testing.T) {
 		t.Parallel()
 
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -44,7 +44,7 @@ func Test_fetchHTTP(t *testing.T) {
 		_, err := fetchHTTP(context.Background(), srv.URL)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "status 500")
-		assert.Contains(t, err.Error(), "boom")
+		assert.NotContains(t, err.Error(), "boom")
 	})
 
 	t.Run("oversize response is rejected", func(t *testing.T) {
