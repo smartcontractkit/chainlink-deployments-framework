@@ -1,7 +1,5 @@
 package rpcmanifest
 
-const rpcProxyBase = "https://rpcs.cldev.sh"
-
 // ChainEntry is one chain from the RPC proxy manifest (rpcs.json).
 type ChainEntry struct {
 	ChainID       string `json:"ChainID"`

@@ -8,7 +8,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v3"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
@@ -142,6 +141,15 @@ func Test_loadNetworkConfig(t *testing.T) {
 			want: cfgnet.NewConfig([]cfgnet.Network{testnetNetwork1, testnetNetwork2, mainnetNetwork1}),
 		},
 		{
+			name: "Ignoring generated merged files",
+			networkFiles: map[string]string{
+				"networks.yaml":        "networks-testnet.yaml",
+				"networks.merged.yaml": "networks-mainnet.yaml",
+				"networks.merged.yml":  "networks-mainnet.yaml",
+			},
+			want: cfgnet.NewConfig([]cfgnet.Network{testnetNetwork1, testnetNetwork2}),
+		},
+		{
 			name:    "No config files found",
 			wantErr: "no config files found",
 		},
@@ -174,55 +182,36 @@ func Test_loadNetworkConfig(t *testing.T) {
 func Test_networkTypesForEnv(t *testing.T) {
 	t.Parallel()
 
-	var (
-		testEnv = "test"
-	)
-
 	tests := []struct {
-		name       string
-		configEnvs []string // The environments to include in the domain config file. Use this to set the network types for the environment.
-		giveEnv    string
-		want       []cfgnet.NetworkType
-		wantErr    string
+		name             string
+		giveNetworkTypes []string
+		giveEnv          string
+		want             []cfgnet.NetworkType
+		wantErr          string
 	}{
 		{
-			name:       "Valid domain config with testnet",
-			configEnvs: []string{"testnet"},
-			giveEnv:    testEnv,
-			want:       []cfgnet.NetworkType{cfgnet.NetworkTypeTestnet},
+			name:             "testnet",
+			giveNetworkTypes: []string{"testnet"},
+			giveEnv:          "test",
+			want:             []cfgnet.NetworkType{cfgnet.NetworkTypeTestnet},
 		},
 		{
-			name:       "Valid domain config with mainnet",
-			configEnvs: []string{"mainnet"},
-			giveEnv:    testEnv,
-			want:       []cfgnet.NetworkType{cfgnet.NetworkTypeMainnet},
+			name:             "mainnet",
+			giveNetworkTypes: []string{"mainnet"},
+			giveEnv:          "test",
+			want:             []cfgnet.NetworkType{cfgnet.NetworkTypeMainnet},
 		},
 		{
-			name:       "Valid domain config with both types",
-			configEnvs: []string{"testnet", "mainnet"},
-			giveEnv:    testEnv,
-			want: []cfgnet.NetworkType{
-				cfgnet.NetworkTypeTestnet,
-				cfgnet.NetworkTypeMainnet,
-			},
+			name:             "both types",
+			giveNetworkTypes: []string{"testnet", "mainnet"},
+			giveEnv:          "test",
+			want:             []cfgnet.NetworkType{cfgnet.NetworkTypeTestnet, cfgnet.NetworkTypeMainnet},
 		},
 		{
-			name:       "Environment not found",
-			configEnvs: []string{"testnet"},
-			giveEnv:    "nonexistent",
-			wantErr:    "environment nonexistent not found in domain config",
-		},
-		{
-			name:       "domain config file not found",
-			configEnvs: nil, // No domain config file will be created for this test.
-			giveEnv:    "development",
-			wantErr:    "failed to load domain config",
-		},
-		{
-			name:       "Empty network_types - validation error",
-			configEnvs: []string{},
-			giveEnv:    "development",
-			wantErr:    "network_types is required and cannot be empty",
+			name:             "environment not found",
+			giveNetworkTypes: []string{"testnet"},
+			giveEnv:          "nonexistent",
+			wantErr:          "environment nonexistent not found in domain config",
 		},
 	}
 
@@ -230,38 +219,15 @@ func Test_networkTypesForEnv(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			dom, _ := setupConfigDirs(t)
-
-			if tt.configEnvs != nil {
-				domainConfig := cfgdomain.DomainConfig{
-					Environments: map[string]cfgdomain.Environment{
-						testEnv: {
-							NetworkTypes: tt.configEnvs,
-						},
-					},
-				}
-
-				yamlConfig, err := yaml.Marshal(domainConfig)
-				require.NoError(t, err)
-
-				// Create the domain config file
-				err = os.WriteFile(
-					filepath.Join(dom.ConfigDomainFilePath()), yamlConfig, filePerms,
-				)
-				require.NoError(t, err)
+			domainConfig := &cfgdomain.DomainConfig{
+				Environments: map[string]cfgdomain.Environment{
+					"test": {NetworkTypes: tt.giveNetworkTypes},
+				},
 			}
 
-			var got []cfgnet.NetworkType
-
-			domainConfig, err := cfgdomain.Load(dom.ConfigDomainFilePath())
-			if err == nil {
-				got, err = networkTypesForEnv(domainConfig, tt.giveEnv)
-			} else {
-				err = fmt.Errorf("failed to load domain config: %w", err)
-			}
+			got, err := networkTypesForEnv(domainConfig, tt.giveEnv)
 			if tt.wantErr != "" {
-				require.Error(t, err)
-				require.ErrorContains(t, err, tt.wantErr)
+				require.EqualError(t, err, tt.wantErr)
 			} else {
 				require.NoError(t, err)
 				assert.Equal(t, tt.want, got)
@@ -270,230 +236,142 @@ func Test_networkTypesForEnv(t *testing.T) {
 	}
 }
 
-// writeDomainConfigWithManifest writes a domain.yaml for staging_testnet with rpc_manifest_url set
-// to manifestURL (omitted when empty).
-func writeDomainConfigWithManifest(t *testing.T, dom fdomain.Domain, manifestURL string) {
-	t.Helper()
-
-	content := "environments:\n  staging_testnet:\n    network_types:\n      - testnet\n"
-	if manifestURL != "" {
-		content += fmt.Sprintf("rpc_manifest_url: %q\n", manifestURL)
-	}
-	require.NoError(t, os.WriteFile(dom.ConfigDomainFilePath(), []byte(content), filePerms))
-}
-
-func Test_LoadNetworks_WithManifest(t *testing.T) {
+func Test_LoadNetworks_RPCManifest(t *testing.T) {
 	t.Parallel()
+
+	const selector = uint64(16015286601757825753)
 
 	manifestPath, err := filepath.Abs(filepath.Join("network", "rpcmanifest", "testdata", "rpcs.json"))
 	require.NoError(t, err)
 
-	dom, _ := setupConfigDirs(t)
-	networkYAML := []byte(`networks:
+	const (
+		emptyRPCs = `networks:
   - type: testnet
     chain_selector: 16015286601757825753
-`)
-	require.NoError(t, os.WriteFile(filepath.Join(dom.ConfigNetworksDirPath(), "testnet.yaml"), networkYAML, filePerms))
-	writeDomainConfigWithManifest(t, dom, manifestPath)
-
-	got, err := LoadNetworks("staging_testnet", dom, logger.Test(t))
-	require.NoError(t, err)
-
-	net, err := got.NetworkBySelector(16015286601757825753)
-	require.NoError(t, err)
-	require.NotEmpty(t, net.RPCs)
-	assert.Equal(t, "LinkPool (linkpool1)", net.RPCs[0].RPCName)
-}
-
-func Test_LoadNetworks_EmptyRPCsWithoutOptInFailsValidation(t *testing.T) {
-	t.Parallel()
-
-	// Opt-in: without rpc_manifest_url, empty rpcs must not trigger any manifest fetch.
-
-	dom, _ := setupConfigDirs(t)
-	networkYAML := []byte(`networks:
+`
+		appendRPCs = `networks:
   - type: testnet
     chain_selector: 16015286601757825753
-`)
-	require.NoError(t, os.WriteFile(filepath.Join(dom.ConfigNetworksDirPath(), "testnet.yaml"), networkYAML, filePerms))
-	writeConfigDomainFile(t, dom, "domain.yaml")
-
-	_, err := LoadNetworks("staging_testnet", dom, logger.Test(t))
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "at least one RPC is required")
-}
-
-func Test_LoadNetworks_FailsOnMissingTypeInsteadOfSilentlyDroppingNetwork(t *testing.T) {
-	t.Parallel()
-
-	dom, _ := setupConfigDirs(t)
-	networkYAML := []byte(`networks:
-  - chain_selector: 16015286601757825753
+    rpcs_mode: append
     rpcs:
-      - rpc_name: primary
-        http_url: https://testnet.example.com
-`)
-	require.NoError(t, os.WriteFile(filepath.Join(dom.ConfigNetworksDirPath(), "networks.yaml"), networkYAML, filePerms))
-	writeConfigDomainFile(t, dom, "domain.yaml")
+      - rpc_name: Mine
+        http_url: https://mine.example.com
+`
+	)
 
-	// A network missing `type` never matches any environment's TypesFilter. If structural
-	// validation didn't run before that filter, this network would be silently dropped instead
-	// of failing loudly here.
-	_, err := LoadNetworks("staging_testnet", dom, logger.Test(t))
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "type is required")
-}
-
-func Test_LoadNetworks_FailsOnMistypedTypeInsteadOfSilentlyDroppingNetwork(t *testing.T) {
-	t.Parallel()
-
-	dom, _ := setupConfigDirs(t)
-	networkYAML := []byte(`networks:
-  - type: mainet
-    chain_selector: 16015286601757825753
-    rpcs:
-      - rpc_name: primary
-        http_url: https://testnet.example.com
-`)
-	require.NoError(t, os.WriteFile(filepath.Join(dom.ConfigNetworksDirPath(), "networks.yaml"), networkYAML, filePerms))
-	writeConfigDomainFile(t, dom, "domain.yaml")
-
-	// A typo'd `type` (e.g. "mainet" instead of "mainnet") never matches any environment's
-	// TypesFilter either — same failure mode as a missing type, and must fail loudly rather than
-	// silently dropping the network.
-	_, err := LoadNetworks("staging_testnet", dom, logger.Test(t))
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), `type "mainet" is not a recognized network type`)
-}
-
-func Test_LoadNetworks_DoesNotFetchManifestForFilteredOutNetworkType(t *testing.T) {
-	t.Parallel()
-
-	dom, _ := setupConfigDirs(t)
-	networkYAML := []byte(`networks:
+	tests := []struct {
+		name            string
+		giveNetworks    string
+		giveManifestURL string
+		wantRPCNames    []string
+		wantErr         string
+	}{
+		{
+			name:            "empty rpcs are filled from the manifest",
+			giveNetworks:    emptyRPCs,
+			giveManifestURL: manifestPath,
+			wantRPCNames:    []string{"LinkPool (linkpool1)", "Alchemy (alchemy1)"},
+		},
+		{
+			name:         "empty rpcs without a manifest fail validation",
+			giveNetworks: emptyRPCs,
+			wantErr:      "at least one RPC is required",
+		},
+		{
+			name:            "append mode adds manifest rpcs after yaml rpcs",
+			giveNetworks:    appendRPCs,
+			giveManifestURL: manifestPath,
+			wantRPCNames:    []string{"Mine", "LinkPool (linkpool1)", "Alchemy (alchemy1)"},
+		},
+		{
+			name:         "append mode without a manifest keeps yaml rpcs",
+			giveNetworks: appendRPCs,
+			wantRPCNames: []string{"Mine"},
+		},
+		{
+			name: "manifest is not loaded for networks outside the environment",
+			giveNetworks: `networks:
   - type: testnet
     chain_selector: 16015286601757825753
     rpcs:
       - rpc_name: primary
         http_url: https://testnet.example.com
   - type: mainnet
-    chain_selector: 999999999999999999
-`)
-	require.NoError(t, os.WriteFile(filepath.Join(dom.ConfigNetworksDirPath(), "networks.yaml"), networkYAML, filePerms))
-
-	// Point at a manifest source that does not exist. If LoadNetworks ever attempted to fetch it
-	// (because the mainnet network with empty rpcs wasn't filtered out first), this would fail.
-	writeDomainConfigWithManifest(t, dom, filepath.Join(t.TempDir(), "does-not-exist.json"))
-
-	got, err := LoadNetworks("staging_testnet", dom, logger.Test(t))
-	require.NoError(t, err)
-
-	require.Len(t, got.Networks(), 1)
-	net, err := got.NetworkBySelector(16015286601757825753)
-	require.NoError(t, err)
-	assert.Equal(t, "https://testnet.example.com", net.RPCs[0].HTTPURL)
-
-	_, err = got.NetworkBySelector(999999999999999999)
-	require.Error(t, err)
-}
-
-func Test_loadNetworkConfig_ignoresMergedYAML(t *testing.T) {
-	t.Parallel()
-
-	dom, _ := setupConfigDirs(t)
-	require.NoError(t, os.WriteFile(
-		filepath.Join(dom.ConfigNetworksDirPath(), "testnet.yaml"),
-		[]byte(`networks:
-  - type: testnet
+    chain_selector: 5009297550715157269
+`,
+			giveManifestURL: filepath.Join(t.TempDir(), "does-not-exist.json"),
+			wantRPCNames:    []string{"primary"},
+		},
+		{
+			name:            "manifest load failure",
+			giveNetworks:    emptyRPCs,
+			giveManifestURL: filepath.Join(t.TempDir(), "does-not-exist.json"),
+			wantErr:         "failed to load rpc manifest",
+		},
+		{
+			name: "missing type",
+			giveNetworks: `networks:
+  - chain_selector: 16015286601757825753
+    rpcs:
+      - rpc_name: primary
+        http_url: https://testnet.example.com
+`,
+			wantErr: "type is required",
+		},
+		{
+			name: "unrecognized type",
+			giveNetworks: `networks:
+  - type: mainet
     chain_selector: 16015286601757825753
     rpcs:
       - rpc_name: primary
-        http_url: https://example.com
-`),
-		filePerms,
-	))
-	require.NoError(t, os.WriteFile(
-		filepath.Join(dom.ConfigNetworksDirPath(), "testnet.merged.yaml"),
-		[]byte(`networks:
-  - type: testnet
-    chain_selector: 999
-    rpcs:
-      - rpc_name: merged-only
-        http_url: https://merged.example.com
-`),
-		filePerms,
-	))
-
-	got, err := loadNetworkConfig(dom)
-	require.NoError(t, err)
-	require.Len(t, got.Networks(), 1)
-	assert.Equal(t, uint64(16015286601757825753), got.Networks()[0].ChainSelector)
-}
-
-func Test_LoadNetworks_RPCsModeAppend(t *testing.T) {
-	t.Parallel()
-
-	manifestPath, err := filepath.Abs(filepath.Join("network", "rpcmanifest", "testdata", "rpcs.json"))
-	require.NoError(t, err)
-
-	dom, _ := setupConfigDirs(t)
-	networkYAML := []byte(`networks:
-  - type: testnet
-    chain_selector: 16015286601757825753
-    rpcs_mode: append
-    rpcs:
-      - rpc_name: Mine
-        preferred_url_scheme: http
-        http_url: https://mine.example.com
-`)
-	require.NoError(t, os.WriteFile(filepath.Join(dom.ConfigNetworksDirPath(), "testnet.yaml"), networkYAML, filePerms))
-	writeDomainConfigWithManifest(t, dom, manifestPath)
-
-	got, err := LoadNetworks("staging_testnet", dom, logger.Test(t))
-	require.NoError(t, err)
-
-	net, err := got.NetworkBySelector(16015286601757825753)
-	require.NoError(t, err)
-	require.Len(t, net.RPCs, 3)
-	assert.Equal(t, "Mine", net.RPCs[0].RPCName)
-}
-
-func Test_LoadNetworks_RPCsModeAppendWithoutManifestUsesYAMLRPCs(t *testing.T) {
-	t.Parallel()
-
-	dom, _ := setupConfigDirs(t)
-	networkYAML := []byte(`networks:
-  - type: testnet
-    chain_selector: 16015286601757825753
-    rpcs_mode: append
-    rpcs:
-      - rpc_name: Mine
-        preferred_url_scheme: http
-        http_url: https://mine.example.com
-`)
-	require.NoError(t, os.WriteFile(filepath.Join(dom.ConfigNetworksDirPath(), "testnet.yaml"), networkYAML, filePerms))
-	writeDomainConfigWithManifest(t, dom, "")
-
-	got, err := LoadNetworks("staging_testnet", dom, logger.Test(t))
-	require.NoError(t, err)
-
-	net, err := got.NetworkBySelector(16015286601757825753)
-	require.NoError(t, err)
-	require.Len(t, net.RPCs, 1)
-}
-
-func Test_LoadNetworks_InvalidRPCsMode(t *testing.T) {
-	t.Parallel()
-
-	dom, _ := setupConfigDirs(t)
-	networkYAML := []byte(`networks:
+        http_url: https://testnet.example.com
+`,
+			wantErr: `type "mainet" is not a recognized network type`,
+		},
+		{
+			name: "unrecognized rpcs_mode",
+			giveNetworks: `networks:
   - type: testnet
     chain_selector: 16015286601757825753
     rpcs_mode: sideways
-`)
-	require.NoError(t, os.WriteFile(filepath.Join(dom.ConfigNetworksDirPath(), "testnet.yaml"), networkYAML, filePerms))
-	writeDomainConfigWithManifest(t, dom, "")
+`,
+			wantErr: `rpcs_mode "sideways" is not recognized`,
+		},
+	}
 
-	_, err := LoadNetworks("staging_testnet", dom, logger.Test(t))
-	require.ErrorContains(t, err, "rpcs_mode")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			dom, env := setupConfigDirs(t)
+			require.NoError(t, os.WriteFile(
+				dom.ConfigNetworksFilePath("networks.yaml"), []byte(tt.giveNetworks), filePerms,
+			))
+
+			domainConfig := "environments:\n  " + env + ":\n    network_types:\n      - testnet\n"
+			if tt.giveManifestURL != "" {
+				domainConfig += fmt.Sprintf("rpc_manifest_url: %q\n", tt.giveManifestURL)
+			}
+			require.NoError(t, os.WriteFile(dom.ConfigDomainFilePath(), []byte(domainConfig), filePerms))
+
+			got, err := LoadNetworks(env, dom, logger.Test(t))
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, []uint64{selector}, got.ChainSelectors())
+
+			network, err := got.NetworkBySelector(selector)
+			require.NoError(t, err)
+
+			names := make([]string, 0, len(network.RPCs))
+			for _, rpc := range network.RPCs {
+				names = append(names, rpc.RPCName)
+			}
+			assert.Equal(t, tt.wantRPCNames, names)
+		})
+	}
 }

@@ -19,10 +19,10 @@ const (
 type RPCsMode string
 
 const (
-	// RPCsModeReplace uses the yaml rpcs as-is and ignores the manifest (the default). With an
-	// empty rpcs list, the manifest fills the network instead.
+	// RPCsModeReplace uses the yaml rpcs as-is, falling back to the manifest only when there are
+	// none. It is the default.
 	RPCsModeReplace RPCsMode = "replace"
-	// RPCsModeAppend keeps the yaml rpcs first and appends the manifest's provider RPCs after them.
+	// RPCsModeAppend keeps the yaml rpcs first and appends the manifest's provider RPCs.
 	RPCsModeAppend RPCsMode = "append"
 )
 
@@ -32,8 +32,7 @@ type Network struct {
 	ChainSelector uint64        `yaml:"chain_selector"`
 	BlockExplorer BlockExplorer `yaml:"block_explorer"`
 	RPCs          []RPC         `yaml:"rpcs"`
-	// RPCsMode is "replace" (default) or "append"; see RPCsMode. It only matters when the domain
-	// has an RPC manifest configured.
+	// RPCsMode only takes effect when the domain configures an RPC manifest.
 	RPCsMode RPCsMode `yaml:"rpcs_mode,omitempty"`
 	Metadata any      `yaml:"metadata"`
 }
@@ -48,8 +47,7 @@ func (n *Network) ChainID() (string, error) {
 	return chainsel.GetChainIDFromSelector(n.ChainSelector)
 }
 
-// Validate validates the network configuration to ensure that all required fields are set,
-// including that at least one RPC is defined.
+// Validate validates the network configuration to ensure that all required fields are set.
 func (n *Network) Validate() error {
 	if err := n.ValidateStructure(); err != nil {
 		return err
@@ -62,11 +60,8 @@ func (n *Network) Validate() error {
 	return nil
 }
 
-// ValidateStructure validates the fields of a network configuration that must be present
-// regardless of whether RPCs have been filled in yet (e.g. by an RPC manifest merge). This lets
-// callers catch a missing or mistyped type, or a missing chain_selector, before that network is
-// dropped by an environment-type filter, which would otherwise hide the misconfiguration
-// entirely (a mistyped type never matches any environment's TypesFilter, same as an empty one).
+// ValidateStructure validates everything except the presence of RPCs, which an RPC manifest may
+// still fill in.
 func (n *Network) ValidateStructure() error {
 	if n.Type == "" {
 		return errors.New("type is required")

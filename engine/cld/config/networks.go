@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
@@ -18,11 +19,12 @@ import (
 // LoadNetworks retrieves the network configuration for the given domain and filters the networks
 // according to the specified environment. This ensures that only networks relevant to the selected
 // environment are accessible, minimizing the risk of accidental operations on unintended networks.
+//
+// When the domain config sets rpc_manifest_url, networks with no rpcs (or with rpcs_mode: append)
+// get their RPCs from that manifest.
 func LoadNetworks(
 	env string, dom fdomain.Domain, lggr logger.Logger,
 ) (*cfgnet.Config, error) {
-	// Load network types from domain config first so a missing/invalid domain config fails fast,
-	// before we potentially make a network call to fetch the RPC manifest below.
 	domainConfigPath := filepath.Join(dom.ConfigDomainFilePath())
 	if _, statErr := os.Stat(domainConfigPath); statErr != nil {
 		return nil, fmt.Errorf("domain config not found at %s: %w", domainConfigPath, statErr)
@@ -30,7 +32,7 @@ func LoadNetworks(
 
 	domainConfig, err := cfgdomain.Load(domainConfigPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load domain config network types: failed to load domain config: %w", err)
+		return nil, fmt.Errorf("failed to load domain config: %w", err)
 	}
 
 	networkTypes, err := networkTypesForEnv(domainConfig, env)
@@ -43,21 +45,16 @@ func LoadNetworks(
 		return nil, fmt.Errorf("failed to load network config: %w", err)
 	}
 
-	// Validate structural fields (type, chain_selector) on every loaded network before filtering
-	// by environment type below. Otherwise a network with a missing/mistyped `type` would never
-	// match any environment's TypesFilter and would be silently dropped instead of failing
-	// validation — hiding a yaml misconfiguration rather than surfacing it.
+	// Validate before filtering: a missing or mistyped type matches no filter and would otherwise
+	// be dropped silently.
 	if err = cfg.ValidateStructure(); err != nil {
 		return nil, fmt.Errorf("failed to validate networks configuration: %w", err)
 	}
 
-	// Filter to the environment's network types before merging/validating against the RPC
-	// manifest, so a network of a type this environment doesn't use (e.g. a mainnet chain with
-	// no rpcs in a testnet-only environment) can't trigger an unnecessary manifest fetch or fail
-	// validation for a chain this environment will never touch.
+	// Filter before resolving RPCs so networks outside this environment never need the manifest.
 	cfg = cfg.FilterWith(cfgnet.TypesFilter(networkTypes...))
 
-	cfg, err = mergeNetworksFromManifest(context.Background(), cfg, domainConfig.RPCManifestURL, lggr)
+	cfg, err = resolveRPCs(context.Background(), cfg, domainConfig.RPCManifestURL, lggr)
 	if err != nil {
 		return nil, err
 	}
@@ -78,34 +75,19 @@ func loadNetworkConfig(domain fdomain.Domain) (*cfgnet.Config, error) {
 	// Find all yaml config files in the .config/networks directory
 	var configFiles []string
 
-	yamlFiles, err := filepath.Glob(filepath.Join(configNetworkDir, "*.yaml"))
-	if err != nil {
-		return nil, fmt.Errorf("failed to find config files: %w", err)
-	}
-	for _, fp := range yamlFiles {
-		if isGeneratedNetworkConfig(fp) {
-			continue
+	for _, pattern := range []string{"*.yaml", "*.yml"} {
+		matches, err := filepath.Glob(filepath.Join(configNetworkDir, pattern))
+		if err != nil {
+			return nil, fmt.Errorf("failed to find config files: %w", err)
 		}
-		configFiles = append(configFiles, fp)
-	}
-
-	ymlFiles, err := filepath.Glob(filepath.Join(configNetworkDir, "*.yml"))
-	if err != nil {
-		return nil, fmt.Errorf("failed to find config files: %w", err)
-	}
-	for _, fp := range ymlFiles {
-		if isGeneratedNetworkConfig(fp) {
-			continue
-		}
-		configFiles = append(configFiles, fp)
+		configFiles = append(configFiles, slices.DeleteFunc(matches, isGeneratedNetworkConfig)...)
 	}
 
 	if len(configFiles) == 0 {
 		return nil, fmt.Errorf("no config files found in %s", configNetworkDir)
 	}
 
-	// Validation is deferred until after mergeNetworksFromManifest runs, since a network with an
-	// empty rpcs list is only invalid if the RPC manifest doesn't end up filling it in.
+	// Validation is deferred to LoadNetworks: empty rpcs may still be filled from the RPC manifest.
 	cfg, err := cfgnet.Load(configFiles, cfgnet.WithSkipValidation())
 	if err != nil {
 		return nil, fmt.Errorf("failed to load config files: %w", err)
@@ -129,34 +111,31 @@ func networkTypesForEnv(domainConfig *cfgdomain.DomainConfig, env string) ([]cfg
 	return networkTypes, nil
 }
 
-// loadRPCManifest loads the RPC proxy manifest from source.
-// source may be an HTTP(S) URL, file:// URI, or local filesystem path.
-func loadRPCManifest(ctx context.Context, source string, lggr logger.Logger) (*rpcmanifest.Manifest, error) {
-	return rpcmanifest.Load(ctx, source, rpcmanifest.WithLogger(lggr))
-}
-
-// mergeNetworksFromManifest merges RPC data from the RPC manifest into any network whose yaml
-// config has an empty rpcs list; every other field is left untouched. The manifest is only
-// fetched if at least one loaded network needs it, so domains where every network fully defines
-// its own RPCs never make a network call. The merge is opt-in per domain: it only runs when the
-// domain config sets rpc_manifest_url (an HTTP(S) URL, file:// URI or local path). The source is
-// never logged or put in errors, since it may carry credentials.
-func mergeNetworksFromManifest(
-	ctx context.Context, cfg *cfgnet.Config, domainManifestURL string, lggr logger.Logger,
+// resolveRPCs validates cfg and returns it with RPCs from the domain's RPC manifest merged in. The
+// manifest is fetched only when it is configured and a network has no rpcs or appends to them.
+// The manifest URL may carry credentials, so it is kept out of logs and errors.
+func resolveRPCs(
+	ctx context.Context, cfg *cfgnet.Config, manifestURL string, lggr logger.Logger,
 ) (*cfgnet.Config, error) {
-	manifestURL := strings.TrimSpace(domainManifestURL)
-	if manifestURL == "" || !anyNetworkNeedsManifest(cfg) {
-		if manifestURL == "" && anyNetworkAppends(cfg) {
-			lggr.Warn("networks set rpcs_mode: append but no rpc_manifest_url is configured; using their yaml rpcs only")
-		}
+	manifestURL = strings.TrimSpace(manifestURL)
+	networks := cfg.Networks()
+
+	appends := func(n cfgnet.Network) bool { return n.RPCsMode == cfgnet.RPCsModeAppend }
+	usesManifest := func(n cfgnet.Network) bool { return len(n.RPCs) == 0 || appends(n) }
+
+	if manifestURL == "" && slices.ContainsFunc(networks, appends) {
+		lggr.Warn("networks set rpcs_mode: append but no rpc_manifest_url is configured; using their yaml rpcs only")
+	}
+
+	if manifestURL == "" || !slices.ContainsFunc(networks, usesManifest) {
 		if err := cfg.Validate(); err != nil {
-			return nil, fmt.Errorf("validate network config: %w", err)
+			return nil, fmt.Errorf("failed to validate networks configuration: %w", err)
 		}
 
 		return cfg, nil
 	}
 
-	manifest, err := loadRPCManifest(ctx, manifestURL, lggr)
+	manifest, err := rpcmanifest.Load(ctx, manifestURL, rpcmanifest.WithLogger(lggr))
 	if err != nil {
 		return nil, fmt.Errorf("failed to load rpc manifest: %w", err)
 	}
@@ -166,40 +145,11 @@ func mergeNetworksFromManifest(
 		return nil, fmt.Errorf("failed to merge rpc manifest: %w", err)
 	}
 
-	lggr.Info("Merged RPC manifest into network config")
-
 	return merged, nil
 }
 
-// anyNetworkNeedsManifest reports whether any network in cfg has no RPCs defined in yaml or asks
-// for the manifest's RPCs to be appended to its own.
-func anyNetworkNeedsManifest(cfg *cfgnet.Config) bool {
-	for _, network := range cfg.Networks() {
-		if len(network.RPCs) == 0 || network.RPCsMode == cfgnet.RPCsModeAppend {
-			return true
-		}
-	}
-
-	return false
-}
-
-// isGeneratedNetworkConfig reports whether path is a `.merged.yaml`/`.merged.yml` file —
-// generated output written by tooling (see rpcmanifest.WriteConfigYAML) that reflects networks
-// yaml already merged with RPC manifest data. These are excluded from loadNetworkConfig's glob so
-// a previously generated snapshot never gets re-loaded as if it were hand-authored source yaml.
+// isGeneratedNetworkConfig reports whether path is a *.merged.yaml or *.merged.yml file: generated
+// output (see rpcmanifest.WriteConfigYAML) that must not be loaded back as source yaml.
 func isGeneratedNetworkConfig(path string) bool {
-	name := filepath.Base(path)
-
-	return strings.HasSuffix(name, ".merged.yaml") || strings.HasSuffix(name, ".merged.yml")
-}
-
-// anyNetworkAppends reports whether any network in cfg has rpcs_mode: append.
-func anyNetworkAppends(cfg *cfgnet.Config) bool {
-	for _, network := range cfg.Networks() {
-		if network.RPCsMode == cfgnet.RPCsModeAppend {
-			return true
-		}
-	}
-
-	return false
+	return strings.HasSuffix(path, ".merged.yaml") || strings.HasSuffix(path, ".merged.yml")
 }

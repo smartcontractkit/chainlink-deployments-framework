@@ -50,10 +50,7 @@ func (c *Config) Validate() error {
 	return nil
 }
 
-// ValidateStructure ensures every network has the fields required regardless of whether RPCs
-// have been filled in yet. Call this before filtering networks (e.g. by environment type) so a
-// network with a missing/mistyped type or chain_selector is caught instead of silently dropped
-// by the filter.
+// ValidateStructure ensures that all networks are valid, except that they may have no RPCs yet.
 func (c *Config) ValidateStructure() error {
 	for _, network := range c.Networks() {
 		if err := network.ValidateStructure(); err != nil {
@@ -261,7 +258,7 @@ type loadConfig struct {
 // URLTransformer is a function that transforms a URL.
 type URLTransformer func(string) string
 
-// WithSkipValidation defers Validate until after callers merge additional network data.
+// WithSkipValidation skips validation on load, for callers that fill in RPCs before validating.
 func WithSkipValidation() LoadOption {
 	return func(opts *loadConfig) {
 		opts.skipValidation = true

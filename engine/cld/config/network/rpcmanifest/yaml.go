@@ -42,9 +42,7 @@ func buildYAMLWithAnchor(networks []cfgnet.Network) ([]byte, error) {
 		Value:  preferredTransportScheme,
 		Anchor: "preferred_url_scheme",
 		Tag:    "!!str",
-		// Double-quote to match the scaffolded network YAML templates (e.g.
-		// engine/cld/scaffold/templates/testnet.yaml.tmpl:2), so generated output is consistent
-		// with hand-authored network yaml.
+		// Quoted to match the scaffolded network yaml templates.
 		Style: yaml.DoubleQuotedStyle,
 	}
 	networksYaml, err := yaml.Marshal(networks)
@@ -80,10 +78,8 @@ func buildYAMLWithAnchor(networks []cfgnet.Network) ([]byte, error) {
 	return []byte(bld.String()), nil
 }
 
-// aliasPreferredURLSchemes rewrites every rpcs[].preferred_url_scheme scalar value in the given
-// networks sequence node to an alias referencing anchor, matching the scaffolded network YAML
-// templates (e.g. engine/cld/scaffold/templates/testnet.yaml.tmpl) instead of repeating the
-// literal scheme string on every RPC entry.
+// aliasPreferredURLSchemes replaces each rpcs[].preferred_url_scheme equal to the anchor's value
+// with an alias to it, as the scaffolded network yaml templates do.
 func aliasPreferredURLSchemes(networksSeq *yaml.Node, anchor *yaml.Node) {
 	if networksSeq.Kind != yaml.SequenceNode {
 		return

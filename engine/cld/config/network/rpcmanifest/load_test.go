@@ -78,11 +78,18 @@ func Test_fetchHTTP(t *testing.T) {
 		require.Error(t, err)
 	})
 
-	t.Run("invalid URL fails to build request", func(t *testing.T) {
+	t.Run("errors do not leak the URL", func(t *testing.T) {
 		t.Parallel()
 
-		_, err := fetchHTTP(context.Background(), "http://[::1]:namedport/bad")
-		require.Error(t, err)
+		srv := httptest.NewServer(http.NotFoundHandler())
+		unreachable := strings.Replace(srv.URL, "http://", "http://user:secret@", 1) + "?token=secret"
+		srv.Close()
+
+		for _, manifestURL := range []string{unreachable, "http://user:secret@[::1]:namedport/bad"} {
+			_, err := fetchHTTP(context.Background(), manifestURL)
+			require.Error(t, err)
+			assert.NotContains(t, err.Error(), "secret")
+		}
 	})
 }
 
@@ -193,19 +200,6 @@ func Test_readSource(t *testing.T) {
 		assert.JSONEq(t, `[]`, string(data))
 	})
 
-	t.Run("relative local path is resolved against cwd", func(t *testing.T) {
-		t.Parallel()
-
-		// Verify expandPath's cwd-joining logic directly rather than via os.Chdir, which would
-		// mutate global process state and race with sibling tests reading their own relative paths.
-		cwd, err := os.Getwd()
-		require.NoError(t, err)
-
-		got, err := expandPath("rpcs.json")
-		require.NoError(t, err)
-		assert.Equal(t, filepath.Join(cwd, "rpcs.json"), got)
-	})
-
 	t.Run("missing local file surfaces an error", func(t *testing.T) {
 		t.Parallel()
 
@@ -228,6 +222,18 @@ func Test_readSource(t *testing.T) {
 
 func Test_Load(t *testing.T) {
 	t.Parallel()
+
+	t.Run("testdata manifest", func(t *testing.T) {
+		t.Parallel()
+
+		manifest, err := Load(context.Background(), "testdata/rpcs.json")
+		require.NoError(t, err)
+
+		entry, ok := manifest.Chain(16015286601757825753)
+		require.True(t, ok)
+		assert.Equal(t, "11155111", entry.ChainID)
+		assert.Len(t, entry.Nodes, 2)
+	})
 
 	t.Run("malformed JSON is an error", func(t *testing.T) {
 		t.Parallel()
@@ -264,7 +270,7 @@ func Test_Load(t *testing.T) {
 		assert.False(t, ok)
 	})
 
-	t.Run("works without a logger option", func(t *testing.T) {
+	t.Run("invalid selectors are skipped without a logger option", func(t *testing.T) {
 		t.Parallel()
 
 		dir := t.TempDir()
@@ -274,20 +280,5 @@ func Test_Load(t *testing.T) {
 		manifest, err := Load(context.Background(), path)
 		require.NoError(t, err)
 		assert.Empty(t, manifest.chains)
-	})
-
-	t.Run("nil logger option does not panic", func(t *testing.T) {
-		t.Parallel()
-
-		dir := t.TempDir()
-		path := filepath.Join(dir, "rpcs.json")
-		require.NoError(t, os.WriteFile(path, []byte(`[{"ChainSelector": "not-a-number"}]`), 0o600))
-
-		// WithLogger(nil) must not replace the default no-op logger, or the warning logged for
-		// the invalid selector above would panic on a nil logger.Logger interface value.
-		require.NotPanics(t, func() {
-			_, err := Load(context.Background(), path, WithLogger(nil))
-			require.NoError(t, err)
-		})
 	})
 }

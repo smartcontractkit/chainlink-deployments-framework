@@ -21,17 +21,12 @@
     ]
   },
   {
-    "ChainID": "999999",
-    "ChainSelector": "9999999999999999999",
+    "ChainID": "42",
+    "ChainSelector": "42",
     "Names": {
-      "Canonical": "public-only",
+      "Canonical": "no-nodes",
       "Network": "testnet"
     },
-    "Nodes": [
-      {
-        "ID": {"Numerical": "public1", "Stable": "public-test"},
-        "Provider": "Public"
-      }
-    ]
+    "Nodes": []
   }
 ]
