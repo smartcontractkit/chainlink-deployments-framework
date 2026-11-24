@@ -4,8 +4,6 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -93,191 +91,89 @@ func Test_fetchHTTP(t *testing.T) {
 	})
 }
 
-func Test_urlPathFromFileURI(t *testing.T) {
-	t.Parallel()
+// serveManifest serves body as the RPC manifest and returns its URL.
+func serveManifest(t *testing.T, body string) string {
+	t.Helper()
 
-	tests := []struct {
-		name    string
-		give    string
-		want    string
-		wantErr string
-	}{
-		{
-			name: "simple absolute path",
-			give: "file:///tmp/rpcs.json",
-			want: filepath.FromSlash("/tmp/rpcs.json"),
-		},
-		{
-			name: "localhost host is allowed",
-			give: "file://localhost/tmp/rpcs.json",
-			want: filepath.FromSlash("/tmp/rpcs.json"),
-		},
-		{
-			name: "percent-encoded path is unescaped",
-			give: "file:///tmp/rpc%20manifest.json",
-			want: filepath.FromSlash("/tmp/rpc manifest.json"),
-		},
-		{
-			name:    "non-empty non-localhost host is rejected",
-			give:    "file://otherhost/tmp/rpcs.json",
-			wantErr: "must not specify a host",
-		},
-		{
-			name:    "empty path is rejected",
-			give:    "file://",
-			wantErr: "empty path",
-		},
-		{
-			name:    "invalid URI fails to parse",
-			give:    "file://%zz",
-			wantErr: "parse file URI",
-		},
-	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(body))
+	}))
+	t.Cleanup(srv.Close)
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			got, err := urlPathFromFileURI(tt.give)
-			if tt.wantErr != "" {
-				require.Error(t, err)
-				assert.Contains(t, err.Error(), tt.wantErr)
-
-				return
-			}
-			require.NoError(t, err)
-			assert.Equal(t, tt.want, got)
-		})
-	}
-}
-
-func Test_readSource(t *testing.T) {
-	t.Parallel()
-
-	t.Run("empty source is rejected", func(t *testing.T) {
-		t.Parallel()
-
-		_, err := readSource(context.Background(), "   ")
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "empty")
-	})
-
-	t.Run("file:// URI reads local file", func(t *testing.T) {
-		t.Parallel()
-
-		dir := t.TempDir()
-		path := filepath.Join(dir, "rpcs.json")
-		require.NoError(t, os.WriteFile(path, []byte(`[]`), 0o600))
-
-		data, err := readSource(context.Background(), "file://"+filepath.ToSlash(path))
-		require.NoError(t, err)
-		assert.JSONEq(t, `[]`, string(data))
-	})
-
-	t.Run("http source dispatches to fetchHTTP", func(t *testing.T) {
-		t.Parallel()
-
-		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(`[]`))
-		}))
-		defer srv.Close()
-
-		data, err := readSource(context.Background(), srv.URL)
-		require.NoError(t, err)
-		assert.JSONEq(t, `[]`, string(data))
-	})
-
-	t.Run("bare local path is read directly", func(t *testing.T) {
-		t.Parallel()
-
-		dir := t.TempDir()
-		path := filepath.Join(dir, "rpcs.json")
-		require.NoError(t, os.WriteFile(path, []byte(`[]`), 0o600))
-
-		data, err := readSource(context.Background(), path)
-		require.NoError(t, err)
-		assert.JSONEq(t, `[]`, string(data))
-	})
-
-	t.Run("missing local file surfaces an error", func(t *testing.T) {
-		t.Parallel()
-
-		_, err := readSource(context.Background(), filepath.Join(t.TempDir(), "missing.json"))
-		require.Error(t, err)
-	})
-
-	t.Run("oversize local file is rejected", func(t *testing.T) {
-		t.Parallel()
-
-		dir := t.TempDir()
-		path := filepath.Join(dir, "rpcs.json")
-		require.NoError(t, os.WriteFile(path, []byte(strings.Repeat("a", maxManifestBytes+1)), 0o600))
-
-		_, err := readSource(context.Background(), path)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "exceeds max size")
-	})
+	return srv.URL + "/files/rpcs.json"
 }
 
 func Test_Load(t *testing.T) {
 	t.Parallel()
 
-	t.Run("testdata manifest", func(t *testing.T) {
+	t.Run("testdata manifest uses the server origin as base url", func(t *testing.T) {
 		t.Parallel()
 
-		manifest, err := Load(context.Background(), "testdata/rpcs.json")
-		require.NoError(t, err)
+		manifest, origin := loadTestManifest(t)
+		assert.Equal(t, origin, manifest.baseURL)
+		assert.Len(t, manifest.chains, 2)
 
-		entry, ok := manifest.Chain(16015286601757825753)
+		entry, ok := manifest.chains[sepoliaSelector]
 		require.True(t, ok)
 		assert.Equal(t, "11155111", entry.ChainID)
 		assert.Len(t, entry.Nodes, 2)
 	})
 
+	t.Run("base url drops credentials, path, query and fragment; scheme is case-insensitive", func(t *testing.T) {
+		t.Parallel()
+
+		manifestURL := strings.Replace(serveManifest(t, `[]`), "http://", "HTTP://user:secret@", 1) + "?token=x#frag"
+
+		manifest, err := Load(context.Background(), " "+manifestURL+" ")
+		require.NoError(t, err)
+		assert.Regexp(t, `^http://127\.0\.0\.1:\d+$`, manifest.baseURL)
+	})
+
+	t.Run("non-http(s) urls are rejected", func(t *testing.T) {
+		t.Parallel()
+
+		for _, give := range []string{"", "   ", "ftp://example.com/rpcs.json", "rpcs.json", "https:///rpcs.json"} {
+			_, err := Load(context.Background(), give)
+			require.ErrorContains(t, err, "must be an http(s) url", "source %q", give)
+		}
+	})
+
+	t.Run("unparseable url error does not leak the url", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := Load(context.Background(), "http://user:secret@[::1]:namedport/bad")
+		require.ErrorContains(t, err, "failed to parse rpc manifest url")
+		assert.NotContains(t, err.Error(), "secret")
+	})
+
 	t.Run("malformed JSON is an error", func(t *testing.T) {
 		t.Parallel()
 
-		dir := t.TempDir()
-		path := filepath.Join(dir, "rpcs.json")
-		require.NoError(t, os.WriteFile(path, []byte(`not json`), 0o600))
-
-		_, err := Load(context.Background(), path)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "unmarshal rpc manifest")
+		_, err := Load(context.Background(), serveManifest(t, `not json`))
+		require.ErrorContains(t, err, "unmarshal rpc manifest")
 	})
 
 	t.Run("invalid and duplicate selectors are skipped with a warning, valid ones kept", func(t *testing.T) {
 		t.Parallel()
 
-		dir := t.TempDir()
-		path := filepath.Join(dir, "rpcs.json")
-		require.NoError(t, os.WriteFile(path, []byte(`[
+		manifestURL := serveManifest(t, `[
 			{"ChainSelector": "not-a-number", "Names": {"Canonical": "bad-chain"}},
 			{"ChainSelector": "", "Names": {"Canonical": "empty-chain"}},
 			{"ChainSelector": "1", "Names": {"Canonical": "chain-one"}},
 			{"ChainSelector": "1", "Names": {"Canonical": "chain-one-dup"}}
-		]`), 0o600))
+		]`)
 
-		manifest, err := Load(context.Background(), path, WithLogger(logger.Test(t)))
+		manifest, err := Load(context.Background(), manifestURL, WithLogger(logger.Test(t)))
 		require.NoError(t, err)
 
-		entry, ok := manifest.Chain(1)
-		require.True(t, ok)
-		assert.Equal(t, "chain-one", entry.Names.Canonical)
-
-		_, ok = manifest.Chain(2)
-		assert.False(t, ok)
+		require.Len(t, manifest.chains, 1)
+		assert.Equal(t, "chain-one", manifest.chains[1].Names.Canonical)
 	})
 
 	t.Run("invalid selectors are skipped without a logger option", func(t *testing.T) {
 		t.Parallel()
 
-		dir := t.TempDir()
-		path := filepath.Join(dir, "rpcs.json")
-		require.NoError(t, os.WriteFile(path, []byte(`[{"ChainSelector": "-1"}]`), 0o600))
-
-		manifest, err := Load(context.Background(), path)
+		manifest, err := Load(context.Background(), serveManifest(t, `[{"ChainSelector": "-1"}]`))
 		require.NoError(t, err)
 		assert.Empty(t, manifest.chains)
 	})

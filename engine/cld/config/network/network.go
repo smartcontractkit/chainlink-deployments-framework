@@ -19,9 +19,9 @@ const (
 type RPCsMode string
 
 const (
-	// RPCsModeReplace uses the yaml rpcs as-is, falling back to the manifest only when there are
+	// RPCsModeFallback uses the yaml rpcs as-is, falling back to the manifest only when there are
 	// none. It is the default.
-	RPCsModeReplace RPCsMode = "replace"
+	RPCsModeFallback RPCsMode = "fallback"
 	// RPCsModeAppend keeps the yaml rpcs first and appends the manifest's provider RPCs.
 	RPCsModeAppend RPCsMode = "append"
 )
@@ -76,9 +76,9 @@ func (n *Network) ValidateStructure() error {
 	}
 
 	switch n.RPCsMode {
-	case "", RPCsModeReplace, RPCsModeAppend:
+	case "", RPCsModeFallback, RPCsModeAppend:
 	default:
-		return fmt.Errorf("rpcs_mode %q is not recognized (must be %q or %q)", n.RPCsMode, RPCsModeReplace, RPCsModeAppend)
+		return fmt.Errorf("rpcs_mode %q is not recognized (must be %q or %q)", n.RPCsMode, RPCsModeFallback, RPCsModeAppend)
 	}
 
 	return nil

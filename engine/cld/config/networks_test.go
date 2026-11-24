@@ -2,6 +2,8 @@ package config
 
 import (
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -141,15 +143,6 @@ func Test_loadNetworkConfig(t *testing.T) {
 			want: cfgnet.NewConfig([]cfgnet.Network{testnetNetwork1, testnetNetwork2, mainnetNetwork1}),
 		},
 		{
-			name: "Ignoring generated merged files",
-			networkFiles: map[string]string{
-				"networks.yaml":        "networks-testnet.yaml",
-				"networks.merged.yaml": "networks-mainnet.yaml",
-				"networks.merged.yml":  "networks-mainnet.yaml",
-			},
-			want: cfgnet.NewConfig([]cfgnet.Network{testnetNetwork1, testnetNetwork2}),
-		},
-		{
 			name:    "No config files found",
 			wantErr: "no config files found",
 		},
@@ -241,8 +234,12 @@ func Test_LoadNetworks_RPCManifest(t *testing.T) {
 
 	const selector = uint64(16015286601757825753)
 
-	manifestPath, err := filepath.Abs(filepath.Join("network", "rpcmanifest", "testdata", "rpcs.json"))
-	require.NoError(t, err)
+	manifestPath := filepath.Join("network", "rpcmanifest", "testdata", "rpcs.json")
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, manifestPath)
+	}))
+	t.Cleanup(srv.Close)
+	manifestURL := srv.URL + "/files/rpcs.json"
 
 	const (
 		emptyRPCs = `networks:
@@ -269,7 +266,7 @@ func Test_LoadNetworks_RPCManifest(t *testing.T) {
 		{
 			name:            "empty rpcs are filled from the manifest",
 			giveNetworks:    emptyRPCs,
-			giveManifestURL: manifestPath,
+			giveManifestURL: manifestURL,
 			wantRPCNames:    []string{"LinkPool (linkpool1)", "Alchemy (alchemy1)"},
 		},
 		{
@@ -280,7 +277,7 @@ func Test_LoadNetworks_RPCManifest(t *testing.T) {
 		{
 			name:            "append mode adds manifest rpcs after yaml rpcs",
 			giveNetworks:    appendRPCs,
-			giveManifestURL: manifestPath,
+			giveManifestURL: manifestURL,
 			wantRPCNames:    []string{"Mine", "LinkPool (linkpool1)", "Alchemy (alchemy1)"},
 		},
 		{
@@ -299,14 +296,14 @@ func Test_LoadNetworks_RPCManifest(t *testing.T) {
   - type: mainnet
     chain_selector: 5009297550715157269
 `,
-			giveManifestURL: filepath.Join(t.TempDir(), "does-not-exist.json"),
+			giveManifestURL: "ftp://rpcs.example.com/rpcs.json",
 			wantRPCNames:    []string{"primary"},
 		},
 		{
-			name:            "manifest load failure",
+			name:            "non-http(s) manifest url fails to load",
 			giveNetworks:    emptyRPCs,
-			giveManifestURL: filepath.Join(t.TempDir(), "does-not-exist.json"),
-			wantErr:         "failed to load rpc manifest",
+			giveManifestURL: "ftp://rpcs.example.com/rpcs.json",
+			wantErr:         "failed to load rpc manifest: rpc manifest url must be an http(s) url",
 		},
 		{
 			name: "missing type",

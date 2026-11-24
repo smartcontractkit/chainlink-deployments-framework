@@ -11,7 +11,7 @@ import (
 )
 
 // MergeInto returns a copy of yamlCfg with each network's rpcs resolved against the manifest:
-//   - non-empty rpcs in "replace" mode (the default) are kept as-is;
+//   - non-empty rpcs in "fallback" mode (the default) are kept as-is;
 //   - non-empty rpcs in "append" mode are followed by the manifest's provider RPCs, skipping any
 //     with an HTTP URL already listed;
 //   - empty rpcs are filled from the manifest's provider RPCs.
@@ -47,15 +47,11 @@ func mergeNetwork(network cfgnet.Network, manifest *Manifest, lggr logger.Logger
 		return cfgnet.Network{}, fmt.Errorf("failed to validate network %d: %w", network.ChainSelector, err)
 	}
 
-	appendMode := network.RPCsMode == cfgnet.RPCsModeAppend
-	// The merged list is final; clearing the mode keeps a second merge from appending again.
-	network.RPCsMode = ""
-
-	if len(network.RPCs) > 0 && !appendMode {
+	if len(network.RPCs) > 0 && network.RPCsMode != cfgnet.RPCsModeAppend {
 		return network, nil
 	}
 
-	entry, ok := manifest.Chain(network.ChainSelector)
+	entry, ok := manifest.chains[network.ChainSelector]
 	if !ok {
 		return cfgnet.Network{}, fmt.Errorf(
 			"chain selector %d uses the rpc manifest (empty rpcs or rpcs_mode: append) but is not present in rpc manifest",
@@ -63,10 +59,10 @@ func mergeNetwork(network cfgnet.Network, manifest *Manifest, lggr logger.Logger
 		)
 	}
 
-	discovered := RPCsForChain(network.ChainSelector, entry)
+	discovered := rpcsForChain(manifest.baseURL, network.ChainSelector, entry, lggr)
 	if len(network.RPCs) == 0 && len(discovered) == 0 {
 		return cfgnet.Network{}, fmt.Errorf(
-			"chain selector %d has no rpcs in YAML and no provider nodes in rpc manifest",
+			"chain selector %d has no rpcs in YAML and no usable provider nodes in rpc manifest",
 			network.ChainSelector,
 		)
 	}

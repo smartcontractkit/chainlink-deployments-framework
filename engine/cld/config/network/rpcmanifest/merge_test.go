@@ -1,7 +1,9 @@
-package rpcmanifest_test
+package rpcmanifest
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,7 +12,6 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
 	cfgnet "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/network"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/network/rpcmanifest"
 )
 
 const (
@@ -21,23 +22,39 @@ const (
 	unknownSelector = uint64(123)
 )
 
-func loadTestManifest(t *testing.T) *rpcmanifest.Manifest {
+// loadTestManifest loads testdata/rpcs.json over HTTP and returns it with the server origin.
+func loadTestManifest(t *testing.T) (*Manifest, string) {
 	t.Helper()
 
-	manifest, err := rpcmanifest.Load(context.Background(), "testdata/rpcs.json")
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "testdata/rpcs.json")
+	}))
+	t.Cleanup(srv.Close)
+
+	manifest, err := Load(context.Background(), srv.URL+"/files/rpcs.json")
 	require.NoError(t, err)
 
-	return manifest
+	return manifest, srv.URL
+}
+
+func testNetwork(n cfgnet.Network) cfgnet.Network {
+	n.Type = cfgnet.NetworkTypeTestnet
+	n.BlockExplorer = cfgnet.BlockExplorer{Type: "etherscan", URL: "https://example.com/api"}
+	n.Metadata = map[string]any{"custom_field": "custom_value"}
+
+	return n
 }
 
 func TestMergeInto(t *testing.T) {
 	t.Parallel()
 
+	manifest, origin := loadTestManifest(t)
+
 	var (
 		own       = cfgnet.RPC{RPCName: "Mine", PreferredURLScheme: "http", HTTPURL: "https://mine.example.com"}
 		linkpool  = "LinkPool (linkpool1)"
 		alchemy   = "Alchemy (alchemy1)"
-		linkpoolH = "https://rpcs.cldev.sh/16015286601757825753/linkpool1"
+		linkpoolH = origin + "/16015286601757825753/linkpool1"
 	)
 
 	tests := []struct {
@@ -57,9 +74,9 @@ func TestMergeInto(t *testing.T) {
 			wantRPCNames: []string{"Mine"},
 		},
 		{
-			name: "yaml rpcs are kept in replace mode",
+			name: "yaml rpcs are kept in fallback mode",
 			give: cfgnet.Network{
-				ChainSelector: sepoliaSelector, RPCs: []cfgnet.RPC{own}, RPCsMode: cfgnet.RPCsModeReplace,
+				ChainSelector: sepoliaSelector, RPCs: []cfgnet.RPC{own}, RPCsMode: cfgnet.RPCsModeFallback,
 			},
 			wantRPCNames: []string{"Mine"},
 		},
@@ -118,7 +135,7 @@ func TestMergeInto(t *testing.T) {
 		{
 			name:    "empty rpcs fail when the manifest chain has no nodes",
 			give:    cfgnet.Network{ChainSelector: noNodesSelector},
-			wantErr: "no provider nodes in rpc manifest",
+			wantErr: "no usable provider nodes in rpc manifest",
 		},
 	}
 
@@ -126,13 +143,9 @@ func TestMergeInto(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			tt.give.Type = cfgnet.NetworkTypeTestnet
-			tt.give.BlockExplorer = cfgnet.BlockExplorer{Type: "etherscan", URL: "https://example.com/api"}
-			tt.give.Metadata = map[string]any{"custom_field": "custom_value"}
+			give := testNetwork(tt.give)
 
-			merged, err := rpcmanifest.MergeInto(
-				cfgnet.NewConfig([]cfgnet.Network{tt.give}), loadTestManifest(t), logger.Test(t),
-			)
+			merged, err := MergeInto(cfgnet.NewConfig([]cfgnet.Network{give}), manifest, logger.Test(t))
 			if tt.wantErr != "" {
 				require.ErrorContains(t, err, tt.wantErr)
 
@@ -141,7 +154,7 @@ func TestMergeInto(t *testing.T) {
 			require.NoError(t, err)
 			require.Len(t, merged.Networks(), 1)
 
-			got, err := merged.NetworkBySelector(tt.give.ChainSelector)
+			got, err := merged.NetworkBySelector(give.ChainSelector)
 			require.NoError(t, err)
 
 			names := make([]string, 0, len(got.RPCs))
@@ -149,21 +162,57 @@ func TestMergeInto(t *testing.T) {
 				names = append(names, rpc.RPCName)
 			}
 			assert.Equal(t, tt.wantRPCNames, names)
-			assert.Empty(t, got.RPCsMode)
 
-			// Only rpcs and rpcs_mode may differ from the input.
-			got.RPCs, got.RPCsMode = tt.give.RPCs, tt.give.RPCsMode
-			assert.Equal(t, tt.give, got)
+			// Only rpcs may differ from the input.
+			got.RPCs = give.RPCs
+			assert.Equal(t, give, got)
 		})
 	}
+}
+
+func TestMergeInto_ProviderURLs(t *testing.T) {
+	t.Parallel()
+
+	manifest, origin := loadTestManifest(t)
+
+	merged, err := MergeInto(
+		cfgnet.NewConfig([]cfgnet.Network{testNetwork(cfgnet.Network{ChainSelector: sepoliaSelector})}),
+		manifest, logger.Test(t),
+	)
+	require.NoError(t, err)
+
+	got, err := merged.NetworkBySelector(sepoliaSelector)
+	require.NoError(t, err)
+	assert.Equal(t, []cfgnet.RPC{
+		{RPCName: "LinkPool (linkpool1)", PreferredURLScheme: "http", HTTPURL: origin + "/16015286601757825753/linkpool1"},
+		{RPCName: "Alchemy (alchemy1)", PreferredURLScheme: "http", HTTPURL: origin + "/16015286601757825753/alchemy1"},
+	}, got.RPCs)
+}
+
+func TestMergeInto_AppendIsIdempotent(t *testing.T) {
+	t.Parallel()
+
+	manifest, _ := loadTestManifest(t)
+	cfg := cfgnet.NewConfig([]cfgnet.Network{testNetwork(cfgnet.Network{
+		ChainSelector: sepoliaSelector,
+		RPCs:          []cfgnet.RPC{{RPCName: "Mine", HTTPURL: "https://mine.example.com"}},
+		RPCsMode:      cfgnet.RPCsModeAppend,
+	})})
+
+	once, err := MergeInto(cfg, manifest, logger.Test(t))
+	require.NoError(t, err)
+
+	twice, err := MergeInto(once, manifest, logger.Test(t))
+	require.NoError(t, err)
+	assert.Equal(t, once, twice)
 }
 
 func TestMergeInto_NilArguments(t *testing.T) {
 	t.Parallel()
 
-	_, err := rpcmanifest.MergeInto(nil, loadTestManifest(t), logger.Test(t))
+	_, err := MergeInto(nil, &Manifest{}, logger.Test(t))
 	require.ErrorContains(t, err, "yaml network config is nil")
 
-	_, err = rpcmanifest.MergeInto(cfgnet.NewConfig(nil), nil, logger.Test(t))
+	_, err = MergeInto(cfgnet.NewConfig(nil), nil, logger.Test(t))
 	require.ErrorContains(t, err, "rpc manifest is nil")
 }

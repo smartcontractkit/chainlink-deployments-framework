@@ -157,8 +157,8 @@ type DomainConfig struct {
 	Environments map[string]Environment `mapstructure:"environments" yaml:"environments"`
 	Jira         *jira.Config           `mapstructure:"jira" yaml:"jira"`
 	Binary       *BinaryConfig          `mapstructure:"binary" yaml:"binary,omitempty"`
-	// RPCManifestURL opts the domain in to RPC discovery: networks with empty rpcs are filled from
-	// this manifest (HTTP(S) URL, file:// URI or path). Unset means no discovery.
+	// RPCManifestURL is the HTTP(S) URL of an RPC manifest; its host also serves the provider RPCs.
+	// Networks with empty rpcs (or rpcs_mode: append) get RPCs from it. Unset means no discovery.
 	RPCManifestURL string `mapstructure:"rpc_manifest_url" yaml:"rpc_manifest_url,omitempty"`
 }
 

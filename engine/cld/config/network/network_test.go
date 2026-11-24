@@ -57,7 +57,7 @@ func Test_Network_Validate(t *testing.T) {
 		{
 			name:     "unrecognized rpcs mode",
 			giveFunc: func(n *Network) { n.RPCsMode = "sideways" },
-			wantErr:  `rpcs_mode "sideways" is not recognized (must be "replace" or "append")`,
+			wantErr:  `rpcs_mode "sideways" is not recognized (must be "fallback" or "append")`,
 		},
 		{
 			name:     "missing chain selector",

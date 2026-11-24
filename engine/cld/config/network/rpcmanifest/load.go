@@ -8,8 +8,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -38,28 +36,39 @@ func WithLogger(lggr logger.Logger) LoadOption {
 
 // Manifest is an RPC proxy manifest indexed by chain selector.
 type Manifest struct {
-	chains map[uint64]ChainEntry
+	chains map[uint64]chainEntry
+	// baseURL is the origin of the manifest URL, which also serves the per-provider RPC paths.
+	baseURL string
 }
 
-// Load loads an RPC manifest from an HTTP(S) URL, file:// URI, or local filesystem path. Entries
-// with an invalid or duplicate chain selector are skipped.
-func Load(ctx context.Context, source string, opts ...LoadOption) (*Manifest, error) {
+// Load fetches an RPC manifest from an HTTP(S) URL. Entries with an invalid or duplicate chain
+// selector are skipped.
+func Load(ctx context.Context, manifestURL string, opts ...LoadOption) (*Manifest, error) {
 	cfg := loadOptions{lggr: logger.Nop()}
 	for _, opt := range opts {
 		opt(&cfg)
 	}
 
-	data, err := readSource(ctx, source)
+	// url.Parse lowercases the scheme. The URL is left out of errors as it may carry credentials.
+	u, err := url.Parse(strings.TrimSpace(manifestURL))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse rpc manifest url: %w", redactURLError(err))
+	}
+	if (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+		return nil, errors.New("rpc manifest url must be an http(s) url with a host")
+	}
+
+	data, err := fetchHTTP(ctx, u.String())
 	if err != nil {
 		return nil, err
 	}
 
-	var entries []ChainEntry
+	var entries []chainEntry
 	if err := json.Unmarshal(data, &entries); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal rpc manifest: %w", err)
 	}
 
-	chains := make(map[uint64]ChainEntry, len(entries))
+	chains := make(map[uint64]chainEntry, len(entries))
 	for _, entry := range entries {
 		selector, err := parseChainSelector(entry.ChainSelector)
 		if err != nil {
@@ -82,7 +91,9 @@ func Load(ctx context.Context, source string, opts ...LoadOption) (*Manifest, er
 		chains[selector] = entry
 	}
 
-	return &Manifest{chains: chains}, nil
+	baseURL := (&url.URL{Scheme: u.Scheme, Host: u.Host}).String()
+
+	return &Manifest{chains: chains, baseURL: baseURL}, nil
 }
 
 func parseChainSelector(raw string) (uint64, error) {
@@ -97,88 +108,6 @@ func parseChainSelector(raw string) (uint64, error) {
 	}
 
 	return selector, nil
-}
-
-// Chain returns the manifest entry for a chain selector, if present.
-func (m *Manifest) Chain(selector uint64) (ChainEntry, bool) {
-	entry, ok := m.chains[selector]
-
-	return entry, ok
-}
-
-func readSource(ctx context.Context, source string) ([]byte, error) {
-	source = strings.TrimSpace(source)
-	if source == "" {
-		return nil, errors.New("rpc manifest source is empty")
-	}
-
-	if strings.HasPrefix(source, "file://") {
-		path, err := urlPathFromFileURI(source)
-		if err != nil {
-			return nil, err
-		}
-
-		return readFileBounded(path)
-	}
-
-	if strings.HasPrefix(source, "http://") || strings.HasPrefix(source, "https://") {
-		return fetchHTTP(ctx, source)
-	}
-
-	path, err := expandPath(source)
-	if err != nil {
-		return nil, err
-	}
-
-	return readFileBounded(path)
-}
-
-func readFileBounded(path string) ([]byte, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open rpc manifest file: %w", err)
-	}
-	defer f.Close()
-
-	data, err := io.ReadAll(io.LimitReader(f, maxManifestBytes+1))
-	if err != nil {
-		return nil, fmt.Errorf("failed to read rpc manifest file: %w", err)
-	}
-	if len(data) > maxManifestBytes {
-		return nil, fmt.Errorf("rpc manifest file %s exceeds max size of %d bytes", path, maxManifestBytes)
-	}
-
-	return data, nil
-}
-
-// expandPath expands a leading "~/" to the user's home directory.
-func expandPath(path string) (string, error) {
-	rest, ok := strings.CutPrefix(path, "~/")
-	if !ok {
-		return path, nil
-	}
-
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", fmt.Errorf("failed to resolve home directory: %w", err)
-	}
-
-	return filepath.Join(home, rest), nil
-}
-
-func urlPathFromFileURI(raw string) (string, error) {
-	u, err := url.Parse(raw)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse file URI: %w", err)
-	}
-	if u.Host != "" && u.Host != "localhost" {
-		return "", fmt.Errorf("file URI must not specify a host: %q", raw)
-	}
-	if u.Path == "" {
-		return "", errors.New("file URI has empty path")
-	}
-
-	return filepath.FromSlash(u.Path), nil
 }
 
 func fetchHTTP(ctx context.Context, manifestURL string) ([]byte, error) {

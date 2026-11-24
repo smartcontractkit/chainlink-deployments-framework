@@ -75,13 +75,17 @@ func loadNetworkConfig(domain fdomain.Domain) (*cfgnet.Config, error) {
 	// Find all yaml config files in the .config/networks directory
 	var configFiles []string
 
-	for _, pattern := range []string{"*.yaml", "*.yml"} {
-		matches, err := filepath.Glob(filepath.Join(configNetworkDir, pattern))
-		if err != nil {
-			return nil, fmt.Errorf("failed to find config files: %w", err)
-		}
-		configFiles = append(configFiles, slices.DeleteFunc(matches, isGeneratedNetworkConfig)...)
+	yamlFiles, err := filepath.Glob(filepath.Join(configNetworkDir, "*.yaml"))
+	if err != nil {
+		return nil, fmt.Errorf("failed to find config files: %w", err)
 	}
+	configFiles = append(configFiles, yamlFiles...)
+
+	ymlFiles, err := filepath.Glob(filepath.Join(configNetworkDir, "*.yml"))
+	if err != nil {
+		return nil, fmt.Errorf("failed to find config files: %w", err)
+	}
+	configFiles = append(configFiles, ymlFiles...)
 
 	if len(configFiles) == 0 {
 		return nil, fmt.Errorf("no config files found in %s", configNetworkDir)
@@ -146,10 +150,4 @@ func resolveRPCs(
 	}
 
 	return merged, nil
-}
-
-// isGeneratedNetworkConfig reports whether path is a *.merged.yaml or *.merged.yml file: generated
-// output (see rpcmanifest.WriteConfigYAML) that must not be loaded back as source yaml.
-func isGeneratedNetworkConfig(path string) bool {
-	return strings.HasSuffix(path, ".merged.yaml") || strings.HasSuffix(path, ".merged.yml")
 }

@@ -1,27 +1,27 @@
 package rpcmanifest
 
-// ChainEntry is one chain from the RPC proxy manifest (rpcs.json).
-type ChainEntry struct {
+// chainEntry is one chain from the RPC proxy manifest (rpcs.json).
+type chainEntry struct {
 	ChainID       string `json:"ChainID"`
 	ChainSelector string `json:"ChainSelector"`
-	Names         Names  `json:"Names"`
-	Nodes         []Node `json:"Nodes"`
+	Names         names  `json:"Names"`
+	Nodes         []node `json:"Nodes"`
 }
 
-// Node identifies a single RPC provider endpoint in the proxy.
-type Node struct {
-	ID       NodeID `json:"ID"`
+// node identifies a single RPC provider endpoint in the proxy.
+type node struct {
+	ID       nodeID `json:"ID"`
 	Provider string `json:"Provider"`
 }
 
-// NodeID holds stable and numerical identifiers for a proxy node path segment.
-type NodeID struct {
+// nodeID holds stable and numerical identifiers for a proxy node path segment.
+type nodeID struct {
 	Numerical string `json:"Numerical"`
 	Stable    string `json:"Stable"`
 }
 
-// Names holds human-readable chain naming metadata from the manifest.
-type Names struct {
+// names holds human-readable chain naming metadata from the manifest.
+type names struct {
 	Blockchain string `json:"Blockchain"`
 	Canonical  string `json:"Canonical"`
 	Fullname   string `json:"Fullname"`
