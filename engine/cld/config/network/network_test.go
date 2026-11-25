@@ -46,6 +46,20 @@ func Test_Network_Validate(t *testing.T) {
 			wantErr:  "type is required",
 		},
 		{
+			name:     "unrecognized type",
+			giveFunc: func(n *Network) { n.Type = "mainet" },
+			wantErr:  `type "mainet" is not a recognized network type (must be "mainnet" or "testnet")`,
+		},
+		{
+			name:     "append rpcs mode",
+			giveFunc: func(n *Network) { n.RPCsMode = RPCsModeAppend },
+		},
+		{
+			name:     "unrecognized rpcs mode",
+			giveFunc: func(n *Network) { n.RPCsMode = "sideways" },
+			wantErr:  `rpcs_mode "sideways" is not recognized (must be "fallback" or "append")`,
+		},
+		{
 			name:     "missing chain selector",
 			giveFunc: func(n *Network) { n.ChainSelector = 0 },
 			wantErr:  "chain selector is required",
