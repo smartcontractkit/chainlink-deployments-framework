@@ -1,11 +1,9 @@
 package state
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -129,15 +127,11 @@ func runGenerate(cmd *cobra.Command, cfg Config, f generateFlags) error {
 
 	deps := cfg.deps()
 	envdir := cfg.Domain.EnvDir(envKey)
-	viewTimeout := 10 * time.Minute
 
 	// --- Load all data first ---
 
 	cmd.Printf("Generate latest state for %s in environment: %s\n", cfg.Domain, envKey)
-	cmd.Printf("This command may take a while to complete, please be patient. Timeout set to %v\n", viewTimeout)
-
-	ctx, cancel := context.WithTimeout(cmd.Context(), viewTimeout)
-	defer cancel()
+	cmd.Printf("This command may take a while to complete, please be patient.\n")
 
 	envOpts := []environment.LoadEnvironmentOption{environment.WithLogger(cfg.Logger)}
 	switch datastoreFlag {
@@ -146,7 +140,7 @@ func runGenerate(cmd *cobra.Command, cfg Config, f generateFlags) error {
 	case "catalog":
 		envOpts = append(envOpts, environment.WithDatastoreType(cfgdomain.DatastoreTypeCatalog))
 	}
-	env, err := deps.EnvironmentLoader(ctx, cfg.Domain, envKey, envOpts...)
+	env, err := deps.EnvironmentLoader(cmd.Context(), cfg.Domain, envKey, envOpts...)
 	if err != nil {
 		return fmt.Errorf("failed to load environment: %w", err)
 	}
