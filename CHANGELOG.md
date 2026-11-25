@@ -1,5 +1,11 @@
 # chainlink-deployments-framework
 
+## 0.129.2
+
+### Patch Changes
+
+- [#1219](https://github.com/smartcontractkit/chainlink-deployments-framework/pull/1219) [`3b7f14a`](https://github.com/smartcontractkit/chainlink-deployments-framework/commit/3b7f14af6721724a285b9ecaa1015f1eadf0560f) Thanks [@DimitriosNaikopoulos](https://github.com/DimitriosNaikopoulos)! - chore: remove context cancelation from state generation and let the runner decide when to cancel
+
 ## 0.129.1
 
 ### Patch Changes
