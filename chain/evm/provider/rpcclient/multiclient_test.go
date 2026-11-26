@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -11,6 +12,9 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -496,4 +500,96 @@ func TestMultiClient_EstimateGas_cap(t *testing.T) {
 			require.Equal(t, tt.wantGas, estimated)
 		})
 	}
+}
+
+func TestMultiClient_SendTransaction_BytecodeApproval(t *testing.T) { //nolint:paralleltest // mutates the package-level approvedBytecodes.
+	saved := approvedBytecodes
+	approvedBytecodes = map[int]map[common.Hash]struct{}{}
+	t.Cleanup(func() { approvedBytecodes = saved })
+
+	creationCode := []byte{0x60, 0x80, 0x60, 0x40, 0x52, 0xaa, 0xbb}
+	approveBytecode(creationCode)
+
+	ctorArgs := common.LeftPadBytes(big.NewInt(42).Bytes(), 32)
+	withArgs := append(append([]byte{}, creationCode...), ctorArgs...)
+
+	newCreate := func(data []byte) *types.Transaction {
+		return types.NewContractCreation(0, big.NewInt(0), 1_000_000, big.NewInt(1), data)
+	}
+
+	tests := []struct {
+		name         string
+		tx           *types.Transaction
+		wantDeploy   bool
+		wantApproved bool
+	}{
+		{
+			name:         "approved, no ctor args",
+			tx:           newCreate(creationCode),
+			wantDeploy:   true,
+			wantApproved: true,
+		},
+		{
+			name:         "approved, with ctor args",
+			tx:           newCreate(withArgs),
+			wantDeploy:   true,
+			wantApproved: true,
+		},
+		{
+			name:         "unapproved bytecode",
+			tx:           newCreate([]byte{0x60, 0x80, 0x60, 0x40, 0x52, 0xaa, 0xcc, 0x01}),
+			wantDeploy:   true,
+			wantApproved: false,
+		},
+		{
+			name:         "data shorter than approved bytecode",
+			tx:           newCreate(creationCode[:3]),
+			wantDeploy:   true,
+			wantApproved: false,
+		},
+		{
+			name:         "empty data",
+			tx:           newCreate(nil),
+			wantDeploy:   true,
+			wantApproved: false,
+		},
+		{
+			name:         "regular call is not a deployment",
+			tx:           types.NewTransaction(0, common.Address{1}, big.NewInt(0), 21000, big.NewInt(1), withArgs),
+			wantDeploy:   false,
+			wantApproved: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			require.Equal(t, tt.wantDeploy, isDeployment(tt.tx))
+			if tt.wantDeploy {
+				require.Equal(t, tt.wantApproved, isApprovedContract(tt.tx))
+			}
+		})
+	}
+}
+
+func TestMultiClient_SendTransaction_RejectsUnapprovedDeployment(t *testing.T) { //nolint:paralleltest // mutates the package-level approvedBytecodes.
+	saved := approvedBytecodes
+	approvedBytecodes = map[int]map[common.Hash]struct{}{}
+	t.Cleanup(func() { approvedBytecodes = saved })
+
+	tx := types.NewContractCreation(0, big.NewInt(0), 1_000_000, big.NewInt(1), []byte{0x01, 0x02})
+
+	// rejected before any RPC is attempted, so a zero-value MultiClient is sufficient.
+	err := (&MultiClient{}).SendTransaction(context.Background(), tx)
+	require.ErrorContains(t, err, "contract bytecode is not approved")
+}
+
+// approveBytecode adds a creation bytecode (without constructor arguments) to the approved set.
+func approveBytecode(creationCode []byte) {
+	n := len(creationCode)
+	if approvedBytecodes[n] == nil {
+		approvedBytecodes[n] = map[common.Hash]struct{}{}
+	}
+	approvedBytecodes[n][crypto.Keccak256Hash(creationCode)] = struct{}{}
 }
