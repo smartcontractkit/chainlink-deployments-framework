@@ -8,6 +8,8 @@ import (
 	"reflect"
 	"slices"
 
+	"github.com/samber/lo"
+
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/canton"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
@@ -115,6 +117,11 @@ func (b BlockChains) ExistsN(selectors ...uint64) bool {
 // All returns an iterator over all chains with their selectors.
 func (b BlockChains) All() iter.Seq2[uint64, BlockChain] {
 	return maps.All(b.chains)
+}
+
+// ToSlice returns a slice of all chains.
+func (b BlockChains) ToSlice() []BlockChain {
+	return lo.Values(b.chains)
 }
 
 // EVMChains returns a map of all EVM chains with their selectors.
